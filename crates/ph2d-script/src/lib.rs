@@ -1,10 +1,14 @@
-//! ph2d-script — Luau scripting runtime + coroutine scheduler.
+//! ph2d-script — Luau scripting runtime + coroutine scheduler + messaging bus.
 //!
 //! S1 spike (C1): minimal ScriptRuntime + 60-frame loop. ✓
-//! S2 spike (C3, in progress): Scheduler para coroutines com `ph2d.wait(seconds)`.
+//! S2 spike (C3): Scheduler para coroutines com `ph2d.wait(seconds)`. ✓
+//! S3 spike (C2.1): MessageBus estilo Defold. ✓ (sub-módulo `messaging`).
 //!
-//! Surface ainda intencionalmente pequena; expande em C4 (hot reload via
-//! reset+restore) e C7 (bytecode-only ship build).
+//! Surface intencionalmente pequena; expande em S2 (hot reload integrado) e
+//! S3 (LLM-centric API completa).
+
+pub mod messaging;
+pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 
 use mlua::{Function, IntoLuaMulti, Lua, Thread, ThreadStatus, Value};
 

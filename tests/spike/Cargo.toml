@@ -65,6 +65,10 @@ name = "c14_memory"
 path = "src/bin/c14_memory.rs"
 required-features = ["bevy_ecs"]
 
+[[bin]]
+name = "c2_1_messaging"
+path = "src/bin/c2_1_messaging.rs"
+
 [dependencies]
 ph2d-script = { path = "../../crates/ph2d-script" }
 mlua = { version = "0.10", features = ["luau"] }

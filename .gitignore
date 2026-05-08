@@ -9,7 +9,9 @@ target/
 *.swo
 *~
 .idea/
-.vscode/
+# .vscode/ is COMMITTED — shared workspace settings (luau-lsp + rust-analyzer config)
+.vscode/launch.json
+.vscode/tasks.json
 
 # Node / web shell
 node_modules/

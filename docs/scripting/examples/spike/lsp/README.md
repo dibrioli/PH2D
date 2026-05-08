@@ -4,18 +4,17 @@ Manual verification (LSP é interativo — não automatizável puramente em CI).
 
 ## Setup esperado em VSCode
 
-1. Instalar extensão `luau-lsp` (JohnnyMorganz.luau-lsp).
-2. Settings (`.vscode/settings.json` no workspace):
-   ```json
-   {
-       "luau-lsp.types.definitionFiles": [
-           "docs/scripting/examples/spike/llm-tests/ph2d.d.luau"
-       ],
-       "luau-lsp.diagnostics.strictDatamodelTypes": true,
-       "luau-lsp.completion.autocompleteEnd": true
-   }
-   ```
-3. Abrir cada `case_*.luau` neste diretório.
+**Tudo pré-configurado no repo.** Passos:
+
+1. Abre o workspace no VSCode (`code .` na raiz do projeto).
+2. VSCode vai prompar para instalar extensões recomendadas (`.vscode/extensions.json`):
+   - `johnnymorganz.luau-lsp`
+   - `rust-lang.rust-analyzer`
+   - `tamasfe.even-better-toml`
+   - `vadimcn.vscode-lldb`
+   Aceita.
+3. `.vscode/settings.json` já configura `luau-lsp.types.definitionFiles` apontando para `docs/scripting/examples/spike/llm-tests/ph2d.d.luau`.
+4. Abrir cada `case_*.luau` neste diretório.
 
 ## 5 casos canônicos (per docs/spike/2026-05-plan.md L86-89)
 

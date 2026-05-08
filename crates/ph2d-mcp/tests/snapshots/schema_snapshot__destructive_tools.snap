@@ -1,0 +1,5 @@
+---
+source: crates/ph2d-mcp/tests/schema_snapshot.rs
+expression: sorted
+---
+- scene.delete_entity

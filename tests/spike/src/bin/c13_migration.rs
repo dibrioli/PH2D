@@ -93,15 +93,19 @@ fn migrate_v1_to_v2(v1: SaveV1) -> SaveV2 {
             flags: v1.state_table.flags,
             last_hit_tick: 0, // safe default
         },
-        entities: v1.entities.into_iter().map(|e| EntityRecordV2 {
-            id: e.id,
-            name: e.name,
-            health: HealthV2 {
-                value: e.health.value,
-                max: e.health.max,
-                regen_rate: 0.0,
-            },
-        }).collect(),
+        entities: v1
+            .entities
+            .into_iter()
+            .map(|e| EntityRecordV2 {
+                id: e.id,
+                name: e.name,
+                health: HealthV2 {
+                    value: e.health.value,
+                    max: e.health.max,
+                    regen_rate: 0.0,
+                },
+            })
+            .collect(),
     }
 }
 
@@ -135,11 +139,16 @@ fn make_v1_fixture(seed: u64) -> SaveV1 {
                 ("tutorial_done".into(), seed > 1),
             ],
         },
-        entities: (0..3).map(|i| EntityRecordV1 {
-            id: seed * 100 + i,
-            name: format!("entity_{seed}_{i}"),
-            health: HealthV1 { value: 50 + i as i32, max: 100 },
-        }).collect(),
+        entities: (0..3)
+            .map(|i| EntityRecordV1 {
+                id: seed * 100 + i,
+                name: format!("entity_{seed}_{i}"),
+                health: HealthV1 {
+                    value: 50 + i as i32,
+                    max: 100,
+                },
+            })
+            .collect(),
     }
 }
 
@@ -166,7 +175,10 @@ fn main() {
         }
         // Spot-check key invariants.
         if loaded.version != 2 {
-            println!("fixture {seed}: FAIL — version {} (esperava 2)", loaded.version);
+            println!(
+                "fixture {seed}: FAIL — version {} (esperava 2)",
+                loaded.version
+            );
             all_pass = false;
             continue;
         }
@@ -190,7 +202,8 @@ fn main() {
             all_pass = false;
             continue;
         }
-        println!("fixture {seed}: PASS — v1 ({} bytes) → v2 ({} bytes)",
+        println!(
+            "fixture {seed}: PASS — v1 ({} bytes) → v2 ({} bytes)",
             bytes.len(),
             postcard::to_allocvec(&loaded).unwrap().len(),
         );
@@ -201,13 +214,18 @@ fn main() {
     let bytes_v2 = postcard::to_allocvec(&v2).unwrap();
     let reloaded = load(&bytes_v2).unwrap();
     let idempotent = reloaded == v2;
-    println!("\nidempotência v2→v2: {}", if idempotent { "PASS" } else { "FAIL" });
+    println!(
+        "\nidempotência v2→v2: {}",
+        if idempotent { "PASS" } else { "FAIL" }
+    );
     if !idempotent {
         all_pass = false;
     }
 
     if all_pass {
-        println!("\nC13 PASS — 5/5 fixtures migram, v2 idempotente, regen_rate/last_hit_tick zeram corretamente");
+        println!(
+            "\nC13 PASS — 5/5 fixtures migram, v2 idempotente, regen_rate/last_hit_tick zeram corretamente"
+        );
     } else {
         println!("\nC13 FAIL");
         std::process::exit(1);

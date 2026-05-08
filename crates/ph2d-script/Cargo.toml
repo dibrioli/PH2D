@@ -11,3 +11,6 @@ authors.workspace = true
 
 [dependencies]
 mlua = { version = "0.10", features = ["luau"] }
+
+[dev-dependencies]
+proptest = "1.11.0"

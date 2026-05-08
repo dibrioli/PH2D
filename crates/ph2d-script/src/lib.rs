@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! ph2d-script — Luau scripting runtime + coroutine scheduler + messaging bus.
 //!
 //! S1 spike (C1): minimal ScriptRuntime + 60-frame loop. ✓
@@ -85,7 +86,11 @@ impl Scheduler {
         match thread.status() {
             ThreadStatus::Resumable => {
                 let target = value_as_seconds(&value);
-                self.tasks.push(Task { thread, elapsed: 0.0, target });
+                self.tasks.push(Task {
+                    thread,
+                    elapsed: 0.0,
+                    target,
+                });
                 Ok(true)
             }
             _ => Ok(false),

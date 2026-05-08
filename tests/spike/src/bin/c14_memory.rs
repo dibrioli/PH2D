@@ -19,11 +19,17 @@ use wasmtime::{Engine, Module};
 // purpose is to measure ECS world memory per (entity × 4 component) cell.
 #[allow(dead_code)]
 #[derive(Component)]
-struct Position { x: f32, y: f32 }
+struct Position {
+    x: f32,
+    y: f32,
+}
 
 #[allow(dead_code)]
 #[derive(Component)]
-struct Velocity { x: f32, y: f32 }
+struct Velocity {
+    x: f32,
+    y: f32,
+}
 
 #[allow(dead_code)]
 #[derive(Component)]
@@ -88,14 +94,20 @@ fn main() -> mlua::Result<()> {
     let mut world = World::new();
     for i in 0..N_ENTITIES {
         world.spawn((
-            Position { x: i as f32, y: 0.0 },
+            Position {
+                x: i as f32,
+                y: 0.0,
+            },
             Velocity { x: 1.0, y: 0.0 },
             Health((i % 200) as i32),
             Tag((i % 16) as u8),
         ));
     }
     let after_ecs = rss_mb();
-    println!("after 10k entities × 4 components: {after_ecs:.1} MB  (Δ {:.1} MB)", after_ecs - baseline_mb);
+    println!(
+        "after 10k entities × 4 components: {after_ecs:.1} MB  (Δ {:.1} MB)",
+        after_ecs - baseline_mb
+    );
 
     // 200 Luau scripts ativos (cada um com state heap)
     let mut runtimes: Vec<ScriptRuntime> = Vec::with_capacity(N_SCRIPTS);
@@ -105,7 +117,10 @@ fn main() -> mlua::Result<()> {
         runtimes.push(rt);
     }
     let after_scripts = rss_mb();
-    println!("after 200 Luau script runtimes (each with state): {after_scripts:.1} MB  (Δ {:.1} MB)", after_scripts - after_ecs);
+    println!(
+        "after 200 Luau script runtimes (each with state): {after_scripts:.1} MB  (Δ {:.1} MB)",
+        after_scripts - after_ecs
+    );
 
     // 1000 coroutines em um único runtime (sharing)
     let coro_rt = ScriptRuntime::new()?;
@@ -117,7 +132,10 @@ fn main() -> mlua::Result<()> {
         sched.add(thread, 1000.0)?; // wait long enough to never fire
     }
     let after_coroutines = rss_mb();
-    println!("after 1k coroutines pending: {after_coroutines:.1} MB  (Δ {:.1} MB)", after_coroutines - after_scripts);
+    println!(
+        "after 1k coroutines pending: {after_coroutines:.1} MB  (Δ {:.1} MB)",
+        after_coroutines - after_scripts
+    );
 
     // 50 WASM modules instanciados
     let engine = Engine::default();
@@ -129,7 +147,10 @@ fn main() -> mlua::Result<()> {
         wasm_instances.push(inst);
     }
     let after_wasm = rss_mb();
-    println!("after 50 WASM modules instanciados: {after_wasm:.1} MB  (Δ {:.1} MB)", after_wasm - after_coroutines);
+    println!(
+        "after 50 WASM modules instanciados: {after_wasm:.1} MB  (Δ {:.1} MB)",
+        after_wasm - after_coroutines
+    );
 
     let total_growth = after_wasm - baseline_mb;
     println!("\nTotal stress growth: {total_growth:.1} MB");

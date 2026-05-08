@@ -29,7 +29,9 @@ const GC: &str = include_str!("../../gc_stress.luau");
 const TYPICAL: &str = include_str!("../../c7_typical_script.luau");
 
 fn percentile(sorted: &[f64], p: f64) -> f64 {
-    if sorted.is_empty() { return 0.0; }
+    if sorted.is_empty() {
+        return 0.0;
+    }
     let idx = ((sorted.len() as f64 - 1.0) * p).round() as usize;
     sorted[idx]
 }
@@ -77,14 +79,28 @@ fn measure(label: &str, source: &str) -> mlua::Result<()> {
     bc_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     println!("cold start (Lua::new + load + exec, p50/p99 of 20 samples):");
-    println!("  source:   p50 {:.2} ms / p99 {:.2} ms", percentile(&src_times, 0.50), percentile(&src_times, 0.99));
-    println!("  bytecode: p50 {:.2} ms / p99 {:.2} ms", percentile(&bc_times, 0.50), percentile(&bc_times, 0.99));
+    println!(
+        "  source:   p50 {:.2} ms / p99 {:.2} ms",
+        percentile(&src_times, 0.50),
+        percentile(&src_times, 0.99)
+    );
+    println!(
+        "  bytecode: p50 {:.2} ms / p99 {:.2} ms",
+        percentile(&bc_times, 0.50),
+        percentile(&bc_times, 0.99)
+    );
 
     let bc_p99 = percentile(&bc_times, 0.99);
     let pass_size = ratio <= 70.0;
     let pass_time = bc_p99 <= 100.0;
-    println!("  size threshold (≤70%): {}", if pass_size { "PASS" } else { "FAIL" });
-    println!("  time threshold (≤100ms p99 on Mac proxy): {}", if pass_time { "PASS" } else { "FAIL" });
+    println!(
+        "  size threshold (≤70%): {}",
+        if pass_size { "PASS" } else { "FAIL" }
+    );
+    println!(
+        "  time threshold (≤100ms p99 on Mac proxy): {}",
+        if pass_time { "PASS" } else { "FAIL" }
+    );
     Ok(())
 }
 
@@ -94,7 +110,9 @@ fn main() -> mlua::Result<()> {
     measure("coro_timing.luau (tiny)", CORO)?;
     measure("gc_stress.luau (small)", GC)?;
     measure("c7_typical_script.luau (gameplay-sized)", TYPICAL)?;
-    println!("\nNote: cold-start medido em Mac M-series. iPad Pro M2 \
-provavelmente ~1.5x. Reaferir on-device em S3.");
+    println!(
+        "\nNote: cold-start medido em Mac M-series. iPad Pro M2 \
+provavelmente ~1.5x. Reaferir on-device em S3."
+    );
     Ok(())
 }

@@ -63,11 +63,15 @@ fn main() {
         println!(
             "{script:24}  SyntaxErrors={syntax}  TypeErrors={type_errs} (of which ph2d-related={unknown_ph2d})  → {status}"
         );
-        if !pass { all_pass = false; }
+        if !pass {
+            all_pass = false;
+        }
     }
 
-    println!("\nNota: TypeErrors de 'ph2d' são esperados — runtime injeta a global.\n\
-              Validação completa de tipo cross-file será C5 (luau-lsp + ph2d.d.luau).");
+    println!(
+        "\nNota: TypeErrors de 'ph2d' são esperados — runtime injeta a global.\n\
+              Validação completa de tipo cross-file será C5 (luau-lsp + ph2d.d.luau)."
+    );
     println!("Cross-vendor (Gemini 3.1+ Pro): pendente — requer acesso externo.");
 
     if all_pass {

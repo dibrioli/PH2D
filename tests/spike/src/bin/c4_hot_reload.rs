@@ -55,10 +55,26 @@ const CYCLES: usize = 100;
 /// Per-entity snapshot is a tagged enum array (3 components per entity, of 20 types).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 enum CompSnap {
-    C00(C00), C01(C01), C02(C02), C03(C03), C04(C04),
-    C05(C05), C06(C06), C07(C07), C08(C08), C09(C09),
-    C10(C10), C11(C11), C12(C12), C13(C13), C14(C14),
-    C15(C15), C16(C16), C17(C17), C18(C18), C19(C19),
+    C00(C00),
+    C01(C01),
+    C02(C02),
+    C03(C03),
+    C04(C04),
+    C05(C05),
+    C06(C06),
+    C07(C07),
+    C08(C08),
+    C09(C09),
+    C10(C10),
+    C11(C11),
+    C12(C12),
+    C13(C13),
+    C14(C14),
+    C15(C15),
+    C16(C16),
+    C17(C17),
+    C18(C18),
+    C19(C19),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -68,7 +84,9 @@ struct WorldSnapshot {
 
 fn build_world() -> (World, WorldSnapshot) {
     let mut world = World::new();
-    let mut snap = WorldSnapshot { entities: Vec::with_capacity(N_ENTITIES as usize) };
+    let mut snap = WorldSnapshot {
+        entities: Vec::with_capacity(N_ENTITIES as usize),
+    };
     for i in 0..N_ENTITIES {
         let comps: Vec<CompSnap> = vec![
             match i % 20 {
@@ -106,26 +124,66 @@ fn spawn_from_snap(world: &mut World, comps: &[CompSnap]) {
     let mut e = world.spawn_empty();
     for c in comps {
         match c.clone() {
-            CompSnap::C00(v) => { e.insert(v); }
-            CompSnap::C01(v) => { e.insert(v); }
-            CompSnap::C02(v) => { e.insert(v); }
-            CompSnap::C03(v) => { e.insert(v); }
-            CompSnap::C04(v) => { e.insert(v); }
-            CompSnap::C05(v) => { e.insert(v); }
-            CompSnap::C06(v) => { e.insert(v); }
-            CompSnap::C07(v) => { e.insert(v); }
-            CompSnap::C08(v) => { e.insert(v); }
-            CompSnap::C09(v) => { e.insert(v); }
-            CompSnap::C10(v) => { e.insert(v); }
-            CompSnap::C11(v) => { e.insert(v); }
-            CompSnap::C12(v) => { e.insert(v); }
-            CompSnap::C13(v) => { e.insert(v); }
-            CompSnap::C14(v) => { e.insert(v); }
-            CompSnap::C15(v) => { e.insert(v); }
-            CompSnap::C16(v) => { e.insert(v); }
-            CompSnap::C17(v) => { e.insert(v); }
-            CompSnap::C18(v) => { e.insert(v); }
-            CompSnap::C19(v) => { e.insert(v); }
+            CompSnap::C00(v) => {
+                e.insert(v);
+            }
+            CompSnap::C01(v) => {
+                e.insert(v);
+            }
+            CompSnap::C02(v) => {
+                e.insert(v);
+            }
+            CompSnap::C03(v) => {
+                e.insert(v);
+            }
+            CompSnap::C04(v) => {
+                e.insert(v);
+            }
+            CompSnap::C05(v) => {
+                e.insert(v);
+            }
+            CompSnap::C06(v) => {
+                e.insert(v);
+            }
+            CompSnap::C07(v) => {
+                e.insert(v);
+            }
+            CompSnap::C08(v) => {
+                e.insert(v);
+            }
+            CompSnap::C09(v) => {
+                e.insert(v);
+            }
+            CompSnap::C10(v) => {
+                e.insert(v);
+            }
+            CompSnap::C11(v) => {
+                e.insert(v);
+            }
+            CompSnap::C12(v) => {
+                e.insert(v);
+            }
+            CompSnap::C13(v) => {
+                e.insert(v);
+            }
+            CompSnap::C14(v) => {
+                e.insert(v);
+            }
+            CompSnap::C15(v) => {
+                e.insert(v);
+            }
+            CompSnap::C16(v) => {
+                e.insert(v);
+            }
+            CompSnap::C17(v) => {
+                e.insert(v);
+            }
+            CompSnap::C18(v) => {
+                e.insert(v);
+            }
+            CompSnap::C19(v) => {
+                e.insert(v);
+            }
         }
     }
 }

@@ -60,7 +60,13 @@ fn bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("c2_query");
 
     let mut buf: Vec<Entity> = (0..N)
-        .map(|i| Entity { x: i as f32, y: 0.0, vx: 1.0, vy: 1.0, hp: 100 })
+        .map(|i| Entity {
+            x: i as f32,
+            y: 0.0,
+            vx: 1.0,
+            vy: 1.0,
+            hp: 100,
+        })
         .collect();
     group.bench_function("rust_native_1000", |b| {
         b.iter(|| {

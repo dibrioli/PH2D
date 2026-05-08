@@ -82,7 +82,12 @@ impl MessageBus {
     /// O(1). Send is just a push; dispatching happens on `dispatch_all`.
     #[inline]
     pub fn send(&mut self, sender: EntityId, target: EntityId, id: MessageId, payload: u64) {
-        self.queue.push(Message { sender, target, id, payload });
+        self.queue.push(Message {
+            sender,
+            target,
+            id,
+            payload,
+        });
     }
 
     /// Register a handler for a given message id. Multiple handlers per id

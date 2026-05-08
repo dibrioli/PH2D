@@ -36,11 +36,16 @@ impl McpHost for MemoryHost {
     }
 
     fn add_component(&mut self, entity: u64, name: &str, data: Value) {
-        self.components.entry(entity).or_default().insert(name.to_owned(), data);
+        self.components
+            .entry(entity)
+            .or_default()
+            .insert(name.to_owned(), data);
     }
 
     fn get_component(&self, entity: u64, name: &str) -> Option<Value> {
-        self.components.get(&entity).and_then(|c| c.get(name).cloned())
+        self.components
+            .get(&entity)
+            .and_then(|c| c.get(name).cloned())
     }
 
     fn send_message(&mut self, target: u64, message: &str, payload: Value) {

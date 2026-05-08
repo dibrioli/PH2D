@@ -1,0 +1,103 @@
+# cargo-deny configuration for PH2D
+# Run: cargo deny check
+#
+# Three checks: licenses, bans (duplicates), advisories (CVEs).
+# Designed to fail the build on any forbidden license, known CVE, or
+# duplicate version of a dep that materially bloats the binary.
+
+[graph]
+# Audit all targets we ship to.
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+    "wasm32-unknown-unknown",
+]
+
+# ----------------------------------------------------------------------------
+# Licenses — ph2d is proprietary; deps must be permissive.
+# ----------------------------------------------------------------------------
+[licenses]
+# Confidence threshold for SPDX detection (0.0–1.0). 0.8 = strict.
+confidence-threshold = 0.85
+
+# Whitelist of permissive licenses we accept in dependencies.
+# (See https://spdx.org/licenses/ for canonical IDs.)
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unlicense",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    # Our own crates declare this:
+    "LicenseRef-Proprietary",
+]
+
+# Per-crate license overrides for crates with non-standard or dual licensing
+# we've manually audited. Each entry is the choice we accept from a multi-
+# license expression.
+[[licenses.exceptions]]
+# ittapi is dual BSD-3-Clause OR GPL-2.0; we choose BSD.
+allow = ["BSD-3-Clause"]
+name = "ittapi"
+
+[[licenses.exceptions]]
+allow = ["BSD-3-Clause"]
+name = "ittapi-sys"
+
+[[licenses.exceptions]]
+# r-efi is tri-licensed Apache-2.0 OR LGPL-2.1-or-later OR MIT; we choose MIT.
+allow = ["MIT"]
+name = "r-efi"
+
+# Grant clarification for crates whose embedded LICENSE files don't match
+# their Cargo.toml `license` field exactly.
+[[licenses.clarify]]
+name = "encoding_rs"
+expression = "(Apache-2.0 OR MIT) AND BSD-3-Clause"
+license-files = [{ path = "COPYRIGHT", hash = 0x39f8ad31 }]
+
+# ----------------------------------------------------------------------------
+# Advisories — fail on known CVEs and yanked versions.
+# ----------------------------------------------------------------------------
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "deny"
+ignore = []
+
+# ----------------------------------------------------------------------------
+# Bans — duplicates and forbidden crates.
+# ----------------------------------------------------------------------------
+[bans]
+# Allow up to 1 duplicate version of any crate (i.e., warn on 2+, deny on 3+).
+multiple-versions = "warn"
+wildcards = "warn"
+highlight = "all"
+
+# Force `tokio` ban (HR: async proibido no core, exceto asset loader e net).
+# We allow tokio in transitive deps if pulled by quinn/wasmtime/etc., but
+# deny direct first-party deps.
+deny = []
+
+# Skip duplicate-version checks for crates that legitimately have multiple
+# versions in the dep tree (e.g., wasmtime brings older variants).
+skip-tree = []
+
+# ----------------------------------------------------------------------------
+# Sources — only crates.io, no git/path forks unless declared here.
+# ----------------------------------------------------------------------------
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

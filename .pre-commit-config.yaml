@@ -1,0 +1,37 @@
+# Pre-commit hooks for PH2D — minimal, fast.
+#
+# Install once: `pip install pre-commit && pre-commit install`
+# Then runs automatically on `git commit`. Skip with `git commit --no-verify`
+# (allowed but flagged in PR review).
+#
+# All hooks must finish in < 5s to not annoy. Heavy stuff (clippy, deny,
+# audit) runs in CI only.
+
+repos:
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: rustfmt (cargo fmt --check)
+        entry: cargo fmt --all -- --check
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+      - id: trailing-whitespace
+        name: trim trailing whitespace
+        entry: bash -c 'for f in "$@"; do sed -i "" "s/[[:space:]]*$//" "$f"; done' --
+        language: system
+        files: \.(rs|toml|md|yaml|yml|luau)$
+        exclude: ^Cargo\.lock$
+
+      - id: end-of-file-newline
+        name: ensure single trailing newline
+        entry: bash -c 'for f in "$@"; do [ -n "$(tail -c1 "$f")" ] && echo >> "$f" || true; done' --
+        language: system
+        files: \.(rs|toml|md|yaml|yml|luau)$
+
+      - id: no-merge-conflict-markers
+        name: no merge conflict markers
+        entry: bash -c '! grep -lE "^(<{7}|={7}|>{7})" "$@" || (echo "merge markers found" && exit 1)' --
+        language: system
+        files: \.(rs|toml|md|yaml|yml|luau)$

@@ -82,7 +82,11 @@ fn main() -> mlua::Result<()> {
         total_finished, N_TASKS,
         "leak: only {total_finished}/{N_TASKS} finished"
     );
-    assert_eq!(sched.pending(), 0, "leak: scheduler still has pending tasks");
+    assert_eq!(
+        sched.pending(),
+        0,
+        "leak: scheduler still has pending tasks"
+    );
 
     errors_ms.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let p50 = percentile(&errors_ms, 0.50);
@@ -99,7 +103,9 @@ fn main() -> mlua::Result<()> {
     println!("  p95:  {p95:.3} ms");
     println!("  p99:  {p99:.3} ms");
     println!("  max:  {max:.3} ms");
-    println!("threshold p99 ≤ {FRAME_MS:.3} ms (1 frame at 60Hz; plan L59 says 16.6 — read as 16.667)");
+    println!(
+        "threshold p99 ≤ {FRAME_MS:.3} ms (1 frame at 60Hz; plan L59 says 16.6 — read as 16.667)"
+    );
 
     let pass = p99 <= FRAME_MS + 1e-6;
     if pass {

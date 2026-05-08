@@ -25,7 +25,10 @@ pub struct ConfirmationStore {
 
 impl ConfirmationStore {
     pub fn new() -> Self {
-        Self { issued: HashMap::new(), counter: 0 }
+        Self {
+            issued: HashMap::new(),
+            counter: 0,
+        }
     }
 
     pub fn issue(&mut self) -> ConfirmationToken {

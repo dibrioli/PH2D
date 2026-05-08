@@ -33,7 +33,9 @@ const WAT: &str = r#"
 const N_CALLS: usize = 100_000;
 
 fn percentile(sorted: &[f64], p: f64) -> f64 {
-    if sorted.is_empty() { return 0.0; }
+    if sorted.is_empty() {
+        return 0.0;
+    }
     let idx = ((sorted.len() as f64 - 1.0) * p).round() as usize;
     sorted[idx]
 }
@@ -66,10 +68,8 @@ fn main() -> mlua::Result<()> {
     }
 
     // Path B: Luau → Rust callback (no WASM)
-    lua.globals().set(
-        "rust_callback",
-        lua.create_function(|_, n: i32| Ok(n + 1))?,
-    )?;
+    lua.globals()
+        .set("rust_callback", lua.create_function(|_, n: i32| Ok(n + 1))?)?;
     let bench_luau_callback: Function = lua
         .load(
             r#"

@@ -20,7 +20,9 @@ const SCRIPT: &str = include_str!("../../gc_stress.luau");
 const FRAMES: usize = 600;
 
 fn percentile(sorted: &[f64], p: f64) -> f64 {
-    if sorted.is_empty() { return 0.0; }
+    if sorted.is_empty() {
+        return 0.0;
+    }
     let idx = ((sorted.len() as f64 - 1.0) * p).round() as usize;
     sorted[idx]
 }

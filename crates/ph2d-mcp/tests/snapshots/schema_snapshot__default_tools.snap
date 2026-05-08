@@ -1,0 +1,19 @@
+---
+source: crates/ph2d-mcp/tests/schema_snapshot.rs
+expression: tools
+---
+- name: message.send
+  description: Send a Defold-style message to a target entity.
+  destructive: false
+- name: scene.add_component
+  description: Attach a component (JSON data) to an entity.
+  destructive: false
+- name: scene.delete_entity
+  description: Despawn an entity. Destructive — requires confirmation_token (HR-11).
+  destructive: true
+- name: scene.get_component
+  description: Read a component by name from an entity.
+  destructive: false
+- name: scene.spawn_entity
+  description: "Spawn empty entity, returns Entity handle."
+  destructive: false

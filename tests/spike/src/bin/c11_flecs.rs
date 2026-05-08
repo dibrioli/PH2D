@@ -14,10 +14,16 @@
 use flecs_ecs::prelude::*;
 
 #[derive(Debug, Component)]
-struct Position { x: f32, y: f32 }
+struct Position {
+    x: f32,
+    y: f32,
+}
 
 #[derive(Debug, Component)]
-struct Velocity { x: f32, y: f32 }
+struct Velocity {
+    x: f32,
+    y: f32,
+}
 
 #[derive(Debug, Component)]
 struct Health(i32);
@@ -31,18 +37,14 @@ fn main() {
             println!("observer fired: entity {} lost Health", it.entity(index));
         });
 
-    let move_sys = world
-        .system::<(&mut Position, &Velocity)>()
-        .each(|(p, v)| {
-            p.x += v.x;
-            p.y += v.y;
-        });
+    let move_sys = world.system::<(&mut Position, &Velocity)>().each(|(p, v)| {
+        p.x += v.x;
+        p.y += v.y;
+    });
 
-    let damage_sys = world
-        .system::<&mut Health>()
-        .each(|h| {
-            h.0 -= 1;
-        });
+    let damage_sys = world.system::<&mut Health>().each(|h| {
+        h.0 -= 1;
+    });
 
     let parent = world
         .entity_named("parent")
@@ -54,7 +56,10 @@ fn main() {
     for i in 0..199 {
         let e = world
             .entity()
-            .set(Position { x: i as f32, y: 0.0 })
+            .set(Position {
+                x: i as f32,
+                y: 0.0,
+            })
             .set(Velocity { x: 0.0, y: 1.0 })
             .set(Health(50 + i as i32))
             .child_of(parent);

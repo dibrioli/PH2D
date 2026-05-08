@@ -25,3 +25,9 @@ runtime/ts/dist/
 # Local env
 .env
 .env.local
+
+# insta pending snapshots (review with `cargo insta review` then accept)
+*.snap.new
+
+# pre-commit cache
+.pre-commit-state

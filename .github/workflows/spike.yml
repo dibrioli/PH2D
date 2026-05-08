@@ -9,55 +9,118 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-D warnings"
+  # Reproducibility: fixed timestamp baked into builds (per SKILL §12.7).
+  # Updated only on intentional release tag.
+  SOURCE_DATE_EPOCH: "1746662400"
 
 jobs:
+  # --------------------------------------------------------------------------
+  # Static analysis: format, lint, license/CVE/dependency audit.
+  # Runs on Linux only — same answer on every OS, no benefit from matrix.
+  # --------------------------------------------------------------------------
+  lint:
+    name: lint (fmt + clippy + deny + audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: lint
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy (workspace, all features)
+        run: cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: cargo deny check (licenses, advisories, bans, sources)
+        run: cargo deny --all-features check
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: cargo audit (CVE scan)
+        # Fails on vulnerabilities; logs unmaintained/yanked as warnings without
+        # failing CI (those are usually transitive and out of our control).
+        # If a real CVE lands, the default behavior is non-zero exit.
+        run: cargo audit
+
+  # --------------------------------------------------------------------------
+  # MSRV check — verifies declared MSRV (rust-version = "1.85") still builds.
+  # Catches drift where toolchain pin (1.95) hides accidental MSRV bumps.
+  # --------------------------------------------------------------------------
+  msrv:
+    name: MSRV (rust 1.85) check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: msrv
+      - name: cargo check --workspace --locked (MSRV)
+        run: cargo check --workspace --locked
+
+  # --------------------------------------------------------------------------
+  # Cross-OS build + tests + spike fixtures.
+  # --locked enforces Cargo.lock is the source of truth (no transient drift).
+  # --------------------------------------------------------------------------
   test:
     name: ${{ matrix.os }} — workspace check + tests
     runs-on: ${{ matrix.os }}
+    needs: [lint, msrv]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain (pinned by rust-toolchain.toml)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.os }}
 
-      - name: cargo check (workspace, default features)
-        run: cargo check --workspace
+      - name: cargo check (workspace, default features) --locked
+        run: cargo check --workspace --locked
 
-      - name: cargo check (workspace, --features bevy_ecs)
-        run: cargo check --workspace --features ph2d-spike/bevy_ecs
+      - name: cargo check (workspace, --features bevy_ecs) --locked
+        run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
       - name: ph2d-script unit tests
-        run: cargo test -p ph2d-script --release
+        run: cargo test -p ph2d-script --release --locked
 
       - name: ph2d-mcp unit tests
-        run: cargo test -p ph2d-mcp --release
+        run: cargo test -p ph2d-mcp --release --locked
 
       - name: spike fixtures (no ECS)
         run: |
-          cargo run --release --bin hello_runner -p ph2d-spike
-          cargo run --release --bin c3_coro_timing -p ph2d-spike
-          cargo run --release --bin c10_gc_stress -p ph2d-spike
-          cargo run --release --bin c12_wasm_marshall -p ph2d-spike
-          cargo run --release --bin c13_migration -p ph2d-spike
-          cargo run --release --bin c2_1_messaging -p ph2d-spike
+          cargo run --release --locked --bin hello_runner -p ph2d-spike
+          cargo run --release --locked --bin c3_coro_timing -p ph2d-spike
+          cargo run --release --locked --bin c10_gc_stress -p ph2d-spike
+          cargo run --release --locked --bin c12_wasm_marshall -p ph2d-spike
+          cargo run --release --locked --bin c13_migration -p ph2d-spike
+          cargo run --release --locked --bin c2_1_messaging -p ph2d-spike
 
       - name: spike fixtures (with bevy_ecs)
         run: |
-          cargo run --release --bin c11_bevy --features bevy_ecs -p ph2d-spike
-          cargo run --release --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
-          cargo run --release --bin c14_memory --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
 
+  # --------------------------------------------------------------------------
+  # Cross-platform replay determinism (HR-5). The whole point: hash equal on
+  # Linux, macOS, Windows.
+  # --------------------------------------------------------------------------
   determinism:
     name: ${{ matrix.os }} — C9 cross-platform replay hash
     runs-on: ${{ matrix.os }}
@@ -66,7 +129,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -78,43 +140,65 @@ jobs:
         id: replay
         shell: bash
         run: |
-          OUT=$(cargo run --release --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
+          OUT=$(cargo run --release --locked --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
           echo "$OUT"
           HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
           echo "Captured hash: $HASH"
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          echo "$HASH" > /tmp/c9-hash.txt
 
       - name: Upload hash artifact
         uses: actions/upload-artifact@v4
         with:
           name: c9-hash-${{ matrix.os }}
-          path: |
-            target/release/c9_replay*
-          if-no-files-found: warn
+          path: /tmp/c9-hash.txt
+          if-no-files-found: error
 
   determinism-compare:
     name: C9 cross-platform comparison
     needs: determinism
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: hashes
+      - name: Compare hashes across all OSes
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Per-OS hashes:"
+          for f in hashes/c9-hash-*/c9-hash.txt; do
+            os=$(basename "$(dirname "$f")" | sed 's/c9-hash-//')
+            hash=$(cat "$f")
+            echo "  $os: $hash"
+          done
+          # Verify all hashes equal.
+          uniq=$(for f in hashes/c9-hash-*/c9-hash.txt; do cat "$f"; done | sort -u | wc -l)
+          if [ "$uniq" -ne 1 ]; then
+            echo "FAIL: hashes differ across OSes — HR-5 violated."
+            exit 1
+          fi
+          echo "PASS: hash identical across all OSes."
+
+  # --------------------------------------------------------------------------
+  # Bench baseline — runs criterion against `main` to surface regressions in PRs.
+  # On main pushes, only stores the new baseline (no comparison).
+  # --------------------------------------------------------------------------
+  bench:
+    name: criterion bench (regression check)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+    steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bench
 
-      - name: Re-run replay locally to get baseline
-        id: baseline
-        run: |
-          OUT=$(cargo run --release --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
-          HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
-          echo "baseline=$HASH" >> "$GITHUB_OUTPUT"
-          echo "Baseline hash: $HASH"
-
-      - name: Compare against per-OS hashes
-        run: |
-          echo "Cross-platform comparison must match the determinism job outputs."
-          echo "If hashes differ between Linux/macOS/Windows, HR-5 was violated"
-          echo "and the offending non-deterministic op must be removed."
-          echo ""
-          echo "Manual cross-check: inspect 'C9 cross-platform replay hash' job"
-          echo "outputs in this workflow run; the 'baseline hash' line in each"
-          echo "OS log must be identical."
+      - name: Run criterion benches (current PR)
+        # Criterion stores baseline in target/criterion/. Without a baseline
+        # comparison action set up, we just ensure the bench compiles and runs
+        # without panic; full regression detection is a follow-up (track in
+        # ADR if it becomes load-bearing).
+        run: cargo bench --bench c2_query -p ph2d-spike --locked -- --output-format bencher

@@ -8,6 +8,8 @@
 //! 60 frames de bench, mede p99 do tempo total send+dispatch por frame.
 
 use ph2d_script::MessageBus;
+use std::cell::Cell;
+use std::rc::Rc;
 use std::time::Instant;
 
 const SENDERS: u64 = 100;
@@ -16,7 +18,9 @@ const MSGS_PER_FRAME: usize = 100_000;
 const FRAMES: usize = 60;
 
 fn percentile(sorted: &[f64], p: f64) -> f64 {
-    if sorted.is_empty() { return 0.0; }
+    if sorted.is_empty() {
+        return 0.0;
+    }
     let idx = ((sorted.len() as f64 - 1.0) * p).round() as usize;
     sorted[idx]
 }
@@ -29,19 +33,34 @@ fn main() {
     let pickup_id = bus.intern("pickup");
     let interact_id = bus.intern("interact");
 
-    let counter = std::cell::Cell::new(0u64);
-    // Use a raw pointer trick to share `counter` across handlers without
-    // the lifetime ceremony — for the bench only.
-    let ctr_ptr: *const std::cell::Cell<u64> = &counter;
-    bus.on(damage_id, Box::new(move |msg: &ph2d_script::Message| {
-        unsafe { (*ctr_ptr).set((*ctr_ptr).get() + msg.payload); }
-    }));
-    bus.on(pickup_id, Box::new(move |_msg: &ph2d_script::Message| {
-        unsafe { (*ctr_ptr).set((*ctr_ptr).get() + 1); }
-    }));
-    bus.on(interact_id, Box::new(move |_msg: &ph2d_script::Message| {
-        unsafe { (*ctr_ptr).set((*ctr_ptr).get() + 1); }
-    }));
+    let counter: Rc<Cell<u64>> = Rc::new(Cell::new(0));
+    {
+        let c = counter.clone();
+        bus.on(
+            damage_id,
+            Box::new(move |msg: &ph2d_script::Message| {
+                c.set(c.get() + msg.payload);
+            }),
+        );
+    }
+    {
+        let c = counter.clone();
+        bus.on(
+            pickup_id,
+            Box::new(move |_msg: &ph2d_script::Message| {
+                c.set(c.get() + 1);
+            }),
+        );
+    }
+    {
+        let c = counter.clone();
+        bus.on(
+            interact_id,
+            Box::new(move |_msg: &ph2d_script::Message| {
+                c.set(c.get() + 1);
+            }),
+        );
+    }
 
     let ids = [damage_id, pickup_id, interact_id];
 
@@ -71,7 +90,10 @@ fn main() {
     let max = *frame_ms.last().unwrap();
 
     println!("=== C2.1 messaging throughput ({MSGS_PER_FRAME} msg/frame × {FRAMES} frames) ===");
-    println!("processed total: {grand_total} (expected {})", MSGS_PER_FRAME * FRAMES);
+    println!(
+        "processed total: {grand_total} (expected {})",
+        MSGS_PER_FRAME * FRAMES
+    );
     println!("counter (smoke check): {}", counter.get());
     println!("frame send+dispatch time:");
     println!("  p50:  {p50:.3} ms");

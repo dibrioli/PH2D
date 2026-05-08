@@ -23,10 +23,16 @@ use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
-struct Position { x: f32, y: f32 }
+struct Position {
+    x: f32,
+    y: f32,
+}
 
 #[derive(Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
-struct Velocity { x: f32, y: f32 }
+struct Velocity {
+    x: f32,
+    y: f32,
+}
 
 #[derive(Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
 struct Health(i32);
@@ -63,17 +69,19 @@ fn build_world() -> (World, Vec<Entity>) {
     let mut ids = Vec::with_capacity(N_ENTITIES as usize);
     for i in 0..N_ENTITIES {
         let s = lcg(0xCAFE_F00D, i);
-        let id = world.spawn((
-            Position {
-                x: ((s & 0xFFFF) as f32) / 65535.0,
-                y: (((s >> 16) & 0xFFFF) as f32) / 65535.0,
-            },
-            Velocity {
-                x: (((s >> 32) & 0xFFFF) as f32 - 32768.0) / 65535.0,
-                y: (((s >> 48) & 0xFFFF) as f32 - 32768.0) / 65535.0,
-            },
-            Health((s % 200) as i32),
-        )).id();
+        let id = world
+            .spawn((
+                Position {
+                    x: ((s & 0xFFFF) as f32) / 65535.0,
+                    y: (((s >> 16) & 0xFFFF) as f32) / 65535.0,
+                },
+                Velocity {
+                    x: (((s >> 32) & 0xFFFF) as f32 - 32768.0) / 65535.0,
+                    y: (((s >> 48) & 0xFFFF) as f32 - 32768.0) / 65535.0,
+                },
+                Health((s % 200) as i32),
+            ))
+            .id();
         ids.push(id);
     }
     (world, ids)
@@ -103,8 +111,14 @@ fn step(world: &mut World, ids: &[Entity], tick: u64) {
 fn snapshot(world: &mut World, ids: &[Entity]) -> WorldHash {
     let mut entities = Vec::with_capacity(ids.len());
     for &e in ids {
-        let p = world.get::<Position>(e).cloned().unwrap_or(Position { x: 0.0, y: 0.0 });
-        let v = world.get::<Velocity>(e).cloned().unwrap_or(Velocity { x: 0.0, y: 0.0 });
+        let p = world
+            .get::<Position>(e)
+            .cloned()
+            .unwrap_or(Position { x: 0.0, y: 0.0 });
+        let v = world
+            .get::<Velocity>(e)
+            .cloned()
+            .unwrap_or(Velocity { x: 0.0, y: 0.0 });
         let h = world.get::<Health>(e).map(|x| x.0).unwrap_or(0);
         entities.push(EntitySnap {
             id: e.to_bits(),
@@ -128,12 +142,16 @@ fn run_once() -> [u8; 32] {
 
 fn hex(bytes: &[u8; 32]) -> String {
     let mut s = String::with_capacity(64);
-    for b in bytes { s.push_str(&format!("{b:02x}")); }
+    for b in bytes {
+        s.push_str(&format!("{b:02x}"));
+    }
     s
 }
 
 fn main() {
-    println!("=== C9 replay determinismo intra-host ({REPS} runs × {TICKS} ticks × {N_ENTITIES} entities) ===\n");
+    println!(
+        "=== C9 replay determinismo intra-host ({REPS} runs × {TICKS} ticks × {N_ENTITIES} entities) ===\n"
+    );
     let baseline = run_once();
     println!("baseline hash: {}", hex(&baseline));
     let mut mismatches = 0;

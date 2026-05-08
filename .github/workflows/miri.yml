@@ -1,0 +1,43 @@
+name: miri
+
+# Runs miri (UB detector) weekly + on-demand. Heavy job — not on every PR.
+# When the project gains real `unsafe` blocks (ph2d-gpu interop, ph2d-script
+# bridge), wire this into the standard PR check.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  MIRIFLAGS: "-Zmiri-strict-provenance -Zmiri-symbolic-alignment-check"
+
+jobs:
+  miri:
+    name: miri (UB detector)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: miri
+
+      - name: cargo miri setup
+        run: cargo miri setup
+
+      # Run miri only on crates that exercise unsafe (or that we want to harden
+      # against UB). Currently:
+      # - ph2d-script: mlua bridge surface
+      # - ph2d-mcp: serde / blake3 / governance state
+      # - tests/spike: c2_1_messaging uses raw pointer for handler shared state
+      - name: miri test ph2d-script
+        run: cargo miri test -p ph2d-script
+        continue-on-error: true # Allowed to fail until first real unsafe lands.
+
+      - name: miri test ph2d-mcp
+        run: cargo miri test -p ph2d-mcp
+        continue-on-error: true

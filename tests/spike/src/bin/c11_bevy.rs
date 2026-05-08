@@ -27,10 +27,16 @@
 use bevy_ecs::prelude::*;
 
 #[derive(Component, Debug)]
-struct Position { x: f32, y: f32 }
+struct Position {
+    x: f32,
+    y: f32,
+}
 
 #[derive(Component, Debug)]
-struct Velocity { x: f32, y: f32 }
+struct Velocity {
+    x: f32,
+    y: f32,
+}
 
 #[derive(Component, Debug)]
 struct Health(i32);
@@ -49,7 +55,10 @@ fn damage_sys(mut q: Query<&mut Health>) {
 }
 
 fn on_remove_health(trigger: On<Remove, Health>) {
-    println!("observer fired: entity {:?} lost Health", trigger.event().entity);
+    println!(
+        "observer fired: entity {:?} lost Health",
+        trigger.event().entity
+    );
 }
 
 fn main() {
@@ -57,16 +66,23 @@ fn main() {
     world.add_observer(on_remove_health);
 
     let parent = world
-        .spawn((Position { x: 0.0, y: 0.0 }, Velocity { x: 1.0, y: 0.0 }, Health(100)))
+        .spawn((
+            Position { x: 0.0, y: 0.0 },
+            Velocity { x: 1.0, y: 0.0 },
+            Health(100),
+        ))
         .id();
 
     let mut child_ids: Vec<Entity> = Vec::with_capacity(199);
     for i in 0..199 {
         let id = world
             .spawn((
-                Position { x: i as f32, y: 0.0 },
+                Position {
+                    x: i as f32,
+                    y: 0.0,
+                },
                 Velocity { x: 0.0, y: 1.0 },
-                Health(50 + i as i32),
+                Health(50 + i),
                 ChildOf(parent),
             ))
             .id();

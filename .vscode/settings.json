@@ -1,0 +1,31 @@
+{
+    "luau-lsp.types.definitionFiles": [
+        "docs/scripting/examples/spike/llm-tests/ph2d.d.luau"
+    ],
+    "luau-lsp.diagnostics.strictDatamodelTypes": true,
+    "luau-lsp.completion.autocompleteEnd": true,
+    "luau-lsp.completion.suggestImports": true,
+    "luau-lsp.hover.strictDatamodelTypes": true,
+    "luau-lsp.inlayHints.parameterNames": "all",
+    "luau-lsp.inlayHints.variableTypes": true,
+
+    "rust-analyzer.cargo.features": ["bevy_ecs"],
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.check.allTargets": true,
+
+    "files.watcherExclude": {
+        "**/target/**": true
+    },
+    "files.exclude": {
+        "**/target": true,
+        "**/Cargo.lock": false
+    },
+
+    "[rust]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+    "[luau]": {
+        "editor.formatOnSave": false
+    }
+}

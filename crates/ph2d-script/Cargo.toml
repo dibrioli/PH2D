@@ -8,3 +8,6 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+mlua = { version = "0.10", features = ["luau"] }

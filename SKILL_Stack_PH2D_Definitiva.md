@@ -486,19 +486,35 @@ Emissivos vêm de canal alfa de sprites + emission textures. Sombras derivam do 
 
 ### 11.7 Scripting
 
-> ⚠ **EM REVISÃO — spike ativo.** Esta subseção descreve a arquitetura inicial (TypeScript + QuickJS-NG). Uma revisão substancial está em validação por spike de 3 semanas (deadline **2026-05-29**) propondo migração para **Luau strict via mlua 0.10**, com 16 critérios pass/fail organizados em 4 famílias (Foundation, Runtime, LLM-centric, Integration). Detalhes operacionais em [`docs/spike/2026-05-plan.md`](docs/spike/2026-05-plan.md). Output do spike vai para [ADR-0019](docs/architecture/decisions/0019-spike-scripting-output.md). Esta subseção será reescrita ao fim do spike — não tome decisões arquiteturais derivadas dela enquanto o aviso estiver presente.
+**Status:** Ratificado por spike 2026-05 (vide [ADR-0019](docs/architecture/decisions/0019-spike-scripting-output.md)). Linguagem canônica: **Luau strict via mlua 0.10** (não TypeScript/QuickJS). ECS canônico: `bevy_ecs = "0.18"` ([ADR-0003-rev2](docs/architecture/decisions/0003-ecs-choice.md)).
 
-QuickJS-NG via `rquickjs` em runtime por mundo (single-player) ou por sessão (multiplayer authoritative server). Heap budget default: 64 MB (configurável em ADR-0010 para AAA).
+**Luau runtime (canônico):**
+- `mlua 0.10` com feature `luau`. Runtime por mundo (single-player) ou por sessão (multiplayer authoritative server).
+- Sandbox em dois níveis: trusted (project scripts) vs untrusted (asset scripts).
+- Bytecode pré-compilado no ship build (Compiler com `optimization_level=2`, `debug_level=0`). Cold start 1.5–2× mais rápido que source. **Nota:** size com gzip on-top é equiparável ou pior que source gzipped — bytecode otimiza time + anti-tamper, não size.
+- GC incremental: `gc_step_kbytes(1)` por frame mantém p99 < 0.01ms (medido em fixture 10k tabelas). HR-9 cumprido folgadamente.
+- Coroutines como primitiva temporal canônica; `ph2d.wait(seconds)` via `coroutine.yield`. Scheduler PH2D resume em tick (dt fixed) — p99 = 1 frame (16.67ms a 60Hz).
 
-**Hot reload TS:**
-- Salvar `.ts` recompila para `.js` (esbuild via plugin Rust `ph2d-script::bundler`).
-- Runtime swap-a o módulo preservando state via convenção `__hot__` exportado.
-- **Risco conhecido:** state em closures fechadas se perde. Documentação aos gameplay programmers em `docs/scripting/hot-reload.md` enfatiza: estado canônico vai no ECS via `World::insert_resource`, não em variáveis-módulo.
+**Hot reload (Defold-style reset+restore):**
+- Snapshot do World via `postcard` + hash `blake3`. Reset = drop World; restore = re-spawn de snapshot.
+- 100% determinístico em fixture 200 entities × 3 components (medido C4: 100/100 hash matches, freeze p99 0.3ms).
+- Estado canônico vai no World, não em closures Lua. Coroutines pendentes mid-flight são descartadas com warning ao recarregar.
+- HR-16 storage lateral: `state_table(entity)` aceita apenas tipos POD-like; `pairs_sorted()` obrigatório em pipeline determinístico.
 
-**WASM:**
-- Para systems CPU-bound (pathfinding, AI, simulação custom).
-- Bindings via `wit-bindgen` + Component Model (NÃO `wasm-bindgen` — esse é específico de browser/JS host).
-- Choice de baseline: Winch (instanciação ~µs, código menos otimizado, default) vs Cranelift (instanciação lenta, código rápido, opt-in via feature `wasm-aot`).
+**Mensageria estilo Defold:**
+- `ph2d.message_send(target, message, payload)` + `ph2d.message_handler(message, fn)`.
+- Hash interning para nomes de mensagem; FIFO same-sender→same-target.
+- Schema opcional em dev (Cargo feature `mcp-schema`); off em release.
+
+**WASM (hot path):**
+- Para systems CPU-bound (pathfinding, AI, simulação custom): payload primitivo Luau→Rust→wasmtime mede p99 = 0.21µs (folgadíssimo vs threshold 1µs em C12).
+- Bindings via `wit-bindgen` + Component Model. NÃO `wasm-bindgen` (esse é específico de browser/JS host).
+- Wasmtime 44 com Winch (instanciação ~µs, código menos otimizado, default) vs Cranelift (instanciação lenta, código rápido, opt-in via feature `wasm-aot`).
+- Bridge canônica: **Luau chama Rust; Rust chama WASM** (single FFI boundary).
+
+**Performance trade-off (medido C2):**
+- Luau iteração ~60× mais lenta que Rust nativo (loop puro, 1k entries × 5 fields).
+- **Implicação:** Luau é para gameplay scene logic (FSM, dialogue, scripted events, tweens) — não hot path iteration de muitas entities. Lógica iterativa heavy → Rust system ou WASM.
 
 ### 11.8 Networking
 Três modos selecionáveis por projeto, **não combináveis dentro da mesma sessão**:

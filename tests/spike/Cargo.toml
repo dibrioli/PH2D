@@ -1,0 +1,92 @@
+[package]
+name = "ph2d-spike"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "hello_runner"
+path = "src/bin/hello_runner.rs"
+
+[[bin]]
+name = "c11_bevy"
+path = "src/bin/c11_bevy.rs"
+required-features = ["bevy_ecs"]
+
+[[bin]]
+name = "c11_flecs"
+path = "src/bin/c11_flecs.rs"
+required-features = ["flecs_ecs"]
+
+[[bin]]
+name = "c3_coro_timing"
+path = "src/bin/c3_coro_timing.rs"
+
+[[bin]]
+name = "c10_gc_stress"
+path = "src/bin/c10_gc_stress.rs"
+
+[[bin]]
+name = "c7_bytecode"
+path = "src/bin/c7_bytecode.rs"
+
+[[bin]]
+name = "c12_wasm_marshall"
+path = "src/bin/c12_wasm_marshall.rs"
+
+[[bin]]
+name = "c4_hot_reload"
+path = "src/bin/c4_hot_reload.rs"
+required-features = ["bevy_ecs"]
+
+[[bin]]
+name = "bevy_observer_debug"
+path = "src/bin/bevy_observer_debug.rs"
+required-features = ["bevy_ecs"]
+
+[[bin]]
+name = "c13_migration"
+path = "src/bin/c13_migration.rs"
+
+[[bin]]
+name = "c9_replay"
+path = "src/bin/c9_replay.rs"
+required-features = ["bevy_ecs"]
+
+[[bin]]
+name = "c8_llm_gen"
+path = "src/bin/c8_llm_gen.rs"
+
+[[bin]]
+name = "c14_memory"
+path = "src/bin/c14_memory.rs"
+required-features = ["bevy_ecs"]
+
+[[bin]]
+name = "c2_1_messaging"
+path = "src/bin/c2_1_messaging.rs"
+
+[dependencies]
+ph2d-script = { path = "../../crates/ph2d-script" }
+mlua = { version = "0.10", features = ["luau"] }
+flate2 = "1.1.9"
+bevy_ecs = { version = "0.18", optional = true }
+flecs_ecs = { version = "0.2", optional = true }
+wasmtime = "44"
+postcard = "1.1.3"
+blake3 = "1.8.5"
+serde = { version = "1.0.228", features = ["derive"] }
+
+[features]
+bevy_ecs = ["dep:bevy_ecs"]
+flecs_ecs = ["dep:flecs_ecs"]
+
+[dev-dependencies]
+criterion = "0.7.0"
+
+[[bench]]
+name = "c2_query"
+harness = false

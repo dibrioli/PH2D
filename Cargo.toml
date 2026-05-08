@@ -24,6 +24,7 @@ members = [
     "crates/ph2d-a11y",
     "crates/ph2d-save",
     "crates/ph2d-telemetry",
+    "tests/spike",
 ]
 
 [workspace.package]

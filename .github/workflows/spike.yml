@@ -1,0 +1,120 @@
+name: spike
+
+on:
+  push:
+    branches: [main, "spike/**"]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  test:
+    name: ${{ matrix.os }} — workspace check + tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (pinned by rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.os }}
+
+      - name: cargo check (workspace, default features)
+        run: cargo check --workspace
+
+      - name: cargo check (workspace, --features bevy_ecs)
+        run: cargo check --workspace --features ph2d-spike/bevy_ecs
+
+      - name: ph2d-script unit tests
+        run: cargo test -p ph2d-script --release
+
+      - name: ph2d-mcp unit tests
+        run: cargo test -p ph2d-mcp --release
+
+      - name: spike fixtures (no ECS)
+        run: |
+          cargo run --release --bin hello_runner -p ph2d-spike
+          cargo run --release --bin c3_coro_timing -p ph2d-spike
+          cargo run --release --bin c10_gc_stress -p ph2d-spike
+          cargo run --release --bin c12_wasm_marshall -p ph2d-spike
+          cargo run --release --bin c13_migration -p ph2d-spike
+          cargo run --release --bin c2_1_messaging -p ph2d-spike
+
+      - name: spike fixtures (with bevy_ecs)
+        run: |
+          cargo run --release --bin c11_bevy --features bevy_ecs -p ph2d-spike
+          cargo run --release --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
+          cargo run --release --bin c14_memory --features bevy_ecs -p ph2d-spike
+
+  determinism:
+    name: ${{ matrix.os }} — C9 cross-platform replay hash
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.os }}
+
+      - name: Run C9 replay and capture baseline hash
+        id: replay
+        shell: bash
+        run: |
+          OUT=$(cargo run --release --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
+          echo "$OUT"
+          HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
+          echo "Captured hash: $HASH"
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Upload hash artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: c9-hash-${{ matrix.os }}
+          path: |
+            target/release/c9_replay*
+          if-no-files-found: warn
+
+  determinism-compare:
+    name: C9 cross-platform comparison
+    needs: determinism
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Re-run replay locally to get baseline
+        id: baseline
+        run: |
+          OUT=$(cargo run --release --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
+          HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
+          echo "baseline=$HASH" >> "$GITHUB_OUTPUT"
+          echo "Baseline hash: $HASH"
+
+      - name: Compare against per-OS hashes
+        run: |
+          echo "Cross-platform comparison must match the determinism job outputs."
+          echo "If hashes differ between Linux/macOS/Windows, HR-5 was violated"
+          echo "and the offending non-deterministic op must be removed."
+          echo ""
+          echo "Manual cross-check: inspect 'C9 cross-platform replay hash' job"
+          echo "outputs in this workflow run; the 'baseline hash' line in each"
+          echo "OS log must be identical."

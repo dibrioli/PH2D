@@ -42,6 +42,11 @@ name = "c4_hot_reload"
 path = "src/bin/c4_hot_reload.rs"
 required-features = ["bevy_ecs"]
 
+[[bin]]
+name = "bevy_observer_debug"
+path = "src/bin/bevy_observer_debug.rs"
+required-features = ["bevy_ecs"]
+
 [dependencies]
 ph2d-script = { path = "../../crates/ph2d-script" }
 mlua = { version = "0.10", features = ["luau"] }

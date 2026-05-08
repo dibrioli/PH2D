@@ -30,7 +30,7 @@ Medições no Mac M-series (sessão de 2026-05-08, profile release com `lto=thin
 | Compile time clean (release) | 27.31s | 20.18s (-26%) | flecs ≤ +30% | **flecs ganha** |
 | Binary size (release stripped) | 881 KB | 1450 KB (**+64%**) | flecs ≤ +15% | **flecs ESTOURA** |
 | `unsafe` blocks na fixture | 0 | 0 | n/a | empate |
-| Observer dispara em fixture com schedule + hierarquia | 0/200 | 200/200 | "igualmente clara" | **flecs ganha decisivo** |
+| Observer dispara em fixture (corrigido S2) | **5/5** | 5/5 (+ 195 on drop) | "igualmente clara" | empate |
 
 **Interpretação dos resultados:**
 
@@ -42,10 +42,10 @@ Per HANDOFF L173-180: "flecs precisa vencer claramente em hierarquias/observers/
 
 LLM-as-sole-developer (Claude 4.7+) experimentou ambos APIs durante implementação da fixture. Observações qualitativas:
 
-**bevy_ecs 0.18 — friction alta:**
+**bevy_ecs 0.18 — friction alta inicial, corrigida em S2:**
 - API mudou em 0.18: `Trigger<OnRemove, T>` → `On<Remove, T>`, `iter_entities()` removido. Sem release notes claras na crates.io page; descoberta via grep no source.
-- Observer `On<Remove, Health>` dispara em isolation test (spawn+despawn solo) mas **não dispara** na fixture com `schedule.run + hierarchy + batch despawn`. Comportamento não documentado, requer investigação aprofundada (pendente — não foi possível concluir na Semana 1).
-- Tempo total para fazer fixture funcionar: ~30 min de iteração com compilador + grep no source.
+- "Bug" inicial (observer 0/200) **não era do bevy** — fixture C11 original usava `world.query::<Entity>()` para escolher entities a despawn, e a query retorna entities INTERNAS criadas implicitamente por bevy ao usar `ChildOf` (ex: storage do `Children` component). Despawn dessas não dispara `On<Remove, Health>` — comportamento correto, porque elas nunca tiveram Health. Fix aplicado em S2: armazenar IDs explicitamente no spawn loop e despawnar esses. Resultado: 5/5 fires, exato.
+- Tempo total para fazer fixture funcionar + descobrir o "bug": ~45 min de iteração com compilador + grep no source. LLM friction real é a desinformação na crates.io page sobre nomes de tipos atualizados (Trigger→On, etc), não o lifecycle observer behavior.
 
 **flecs_ecs 0.2.2 — friction baixa:**
 - Builder fluent (`world.observer::<flecs::OnRemove, &Health>().each_iter(...)`) intuitivo.
@@ -67,18 +67,18 @@ LLM-as-sole-developer (Claude 4.7+) experimentou ambos APIs durante implementaç
 - Migração de schedule/system definitions já é Rust idiomático familiar para LLM.
 
 **Riscos aceitos:**
-- bevy_ecs 0.18 lifecycle observers têm comportamento não-óbvio (vide bug investigado mas não-resolvido na Semana 1). **Mitigação:** preferir `Component::on_remove` hooks (compile-time, inerentes ao tipo) sobre `world.add_observer` para HR-16 storage lateral cleanup. Reabrir investigação na Semana 2 quando integrar com hot reload.
+- ~~bevy_ecs 0.18 lifecycle observers têm comportamento não-óbvio~~ **RESOLVIDO em S2**: investigação isolou que o "bug" era do meu fixture C11 (despawn de entities sem Health via query). Bevy observers funcionam corretamente. Vide `tests/spike/src/bin/bevy_observer_debug.rs` (probe T1..T11).
 - bevy_ecs muda API entre minors. **Mitigação:** pin estrito de versão em `Cargo.toml`, upgrade deliberado em ADR separado.
 - Hierarquias usam `ChildOf` relacionamento built-in em 0.18 (mais ergonômico que versões anteriores), mas se precisarmos de relacionamentos custom (estilo flecs), implementar via componentes ad-hoc.
 
 **Negadas:**
 - Não vamos manter trait abstraída `EcsBackend` para permitir swap futuro. Custo de manter abstração > benefício de flexibilidade. Se precisarmos trocar de ECS no futuro, fazemos refactor focado.
 
-## Pontos não-medidos (a revisar pós-Semana 1)
+## Pontos não-medidos (a revisar)
 
 - **Stack trace quality em panic forçado:** não medido formalmente. Bevy_ecs é Rust puro (panic em sistema mostra stack 100% Rust); flecs panic geralmente atravessa FFI C↔Rust e perde frames. Vantagem qualitativa para bevy. Não muda decisão.
-- **LLM gen quality cross-vendor (3 prompts × 2 modelos):** deferido para C8/C15/C16 (Semana 3). Não bloqueia decisão preliminar.
-- **Hot reload lifecycle hooks (HR-16 storage lateral cleanup):** será exercitado na Semana 2 (C4). Se observer issue de bevy 0.18 não puder ser resolvido, fallback para `Component::on_remove` hook (compile-time).
+- **LLM gen quality cross-vendor (3 prompts × 2 modelos):** deferido para C8/C15/C16 (Semana 3). Não bloqueia decisão.
+- **Hot reload lifecycle hooks (HR-16 storage lateral cleanup):** validado em S2 (C4 PASS). Reset+restore via postcard+blake3 é determinístico em 100/100 ciclos. Observer não é necessário para HR-16 (snapshot-based, não event-based).
 
 ## Alternativas consideradas
 

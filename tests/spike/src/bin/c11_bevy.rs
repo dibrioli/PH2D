@@ -16,10 +16,13 @@
 //!   `iter_entities()` → `query::<Entity>().iter(&world)`. Sem
 //!   release notes claras na crates.io page; descoberta via grep
 //!   no source.
-//! - Observer `On<Remove, Health>` dispara em isolation test (spawn
-//!   solo + despawn) mas comportamento mudou após `schedule.run`. A
-//!   investigação completa fica pendente — para a métrica C11 vale
-//!   o dado: API requer iteração para LLM dominar.
+//! - Observer "issue" inicial (0/200 fires) RESOLVIDO em S2: era bug do
+//!   fixture, não do bevy. `world.query::<Entity>()` retorna entities
+//!   INTERNAS (criadas por bevy ao usar ChildOf — ex: storage do Children
+//!   component) que nunca tiveram Health. Despawn dessas não dispara
+//!   On<Remove, Health> — comportamento correto.
+//!   Fix: armazenar child IDs explicitamente no spawn loop e despawnar
+//!   esses (não via query).
 
 use bevy_ecs::prelude::*;
 
@@ -57,13 +60,17 @@ fn main() {
         .spawn((Position { x: 0.0, y: 0.0 }, Velocity { x: 1.0, y: 0.0 }, Health(100)))
         .id();
 
+    let mut child_ids: Vec<Entity> = Vec::with_capacity(199);
     for i in 0..199 {
-        world.spawn((
-            Position { x: i as f32, y: 0.0 },
-            Velocity { x: 0.0, y: 1.0 },
-            Health(50 + i as i32),
-            ChildOf(parent),
-        ));
+        let id = world
+            .spawn((
+                Position { x: i as f32, y: 0.0 },
+                Velocity { x: 0.0, y: 1.0 },
+                Health(50 + i as i32),
+                ChildOf(parent),
+            ))
+            .id();
+        child_ids.push(id);
     }
 
     let mut schedule = Schedule::default();
@@ -72,13 +79,11 @@ fn main() {
         schedule.run(&mut world);
     }
 
-    let mut q = world.query::<Entity>();
-    let to_despawn: Vec<Entity> = q.iter(&world).filter(|e| *e != parent).take(5).collect();
-    for e in to_despawn {
+    for e in child_ids.into_iter().take(5) {
         world.despawn(e);
     }
 
-    let mut q2 = world.query::<Entity>();
-    let alive = q2.iter(&world).count();
-    println!("C11 BEVY PASS — alive entities: {alive}");
+    let mut q = world.query::<&Health>();
+    let alive_with_health = q.iter(&world).count();
+    println!("C11 BEVY PASS — entities with Health alive: {alive_with_health}");
 }

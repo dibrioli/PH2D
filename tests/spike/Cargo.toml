@@ -30,3 +30,10 @@ flecs_ecs = { version = "0.2", optional = true }
 [features]
 bevy_ecs = ["dep:bevy_ecs"]
 flecs_ecs = ["dep:flecs_ecs"]
+
+[dev-dependencies]
+criterion = "0.7.0"
+
+[[bench]]
+name = "c2_query"
+harness = false

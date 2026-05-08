@@ -47,6 +47,19 @@ name = "bevy_observer_debug"
 path = "src/bin/bevy_observer_debug.rs"
 required-features = ["bevy_ecs"]
 
+[[bin]]
+name = "c13_migration"
+path = "src/bin/c13_migration.rs"
+
+[[bin]]
+name = "c9_replay"
+path = "src/bin/c9_replay.rs"
+required-features = ["bevy_ecs"]
+
+[[bin]]
+name = "c8_llm_gen"
+path = "src/bin/c8_llm_gen.rs"
+
 [dependencies]
 ph2d-script = { path = "../../crates/ph2d-script" }
 mlua = { version = "0.10", features = ["luau"] }

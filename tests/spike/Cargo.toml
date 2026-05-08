@@ -1,5 +1,5 @@
 [package]
-name = "ph2d-script"
+name = "ph2d-spike"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,7 +7,10 @@ publish.workspace = true
 license.workspace = true
 authors.workspace = true
 
-[lib]
+[[bin]]
+name = "hello_runner"
+path = "src/bin/hello_runner.rs"
 
 [dependencies]
+ph2d-script = { path = "../../crates/ph2d-script" }
 mlua = { version = "0.10", features = ["luau"] }

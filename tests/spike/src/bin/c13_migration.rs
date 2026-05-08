@@ -74,6 +74,7 @@ struct EntityRecordV2 {
 // === Migration: pure function v1 → v2 ===
 
 #[derive(Debug)]
+#[allow(dead_code)] // fields used via Debug derive in error reports.
 enum MigrationError {
     UnsupportedVersion(u32),
     DecodeError(postcard::Error),

@@ -15,15 +15,21 @@ use ph2d_script::{Scheduler, ScriptRuntime};
 use std::process::Command;
 use wasmtime::{Engine, Module};
 
+// Components are populated for the stress workload but never read — the
+// purpose is to measure ECS world memory per (entity × 4 component) cell.
+#[allow(dead_code)]
 #[derive(Component)]
 struct Position { x: f32, y: f32 }
 
+#[allow(dead_code)]
 #[derive(Component)]
 struct Velocity { x: f32, y: f32 }
 
+#[allow(dead_code)]
 #[derive(Component)]
 struct Health(i32);
 
+#[allow(dead_code)]
 #[derive(Component)]
 struct Tag(u8);
 

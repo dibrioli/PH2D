@@ -1,0 +1,932 @@
+---
+name: ph2d-engine
+description: Onboarding completo para a PH2D — Power House Game Engine, uma engine 2D de alta performance escrita em Rust com shells nativas finas para PC/Mac/iPad/iOS/Android. Use esta skill SEMPRE que o usuário mencionar PH2D, Power House, "a engine", trabalhar no editor, escrever código de subsistemas (rendering, física, fluidos, shaders, vetorial, SDFs, iluminação, networking, editor UI, scripting, áudio, MCP, acessibilidade, i18n), discutir arquitetura, tomar decisões de stack, ou pedir ajuda com qualquer parte do projeto da game engine 2D do usuário. Ative também quando o usuário falar em comparar/superar Godot ou Unity em 2D, ou quando aparecerem nomes de crates como wgpu, vello, kurbo, parley, cosmic-text, rapier, bevy_ecs, winit, naga, taffy, gilrs, wasmtime, quinn, rquickjs ou referências a WGSL/Slang/Metal/WebGPU/WebTransport/Apple Pencil/MCP no contexto do projeto dele. Esta é a fonte de verdade sobre vision, stack, convenções e invariantes do projeto — consulte antes de propor qualquer mudança arquitetural ou escolha de dependência. Para detalhes específicos de decisões individuais, consulte os ADRs em `docs/architecture/decisions/`.
+---
+
+# PH2D — Power House Game Engine — LLM Onboarding
+
+> **PH2D** (Power House 2D). Engine 2D de altíssima performance, sem teto para artistas, com IA tratada como first-class user.
+
+**Versão deste documento:** 2.0 — 2026-05-08
+**Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
+
+## 1. Visão em uma frase
+
+Uma engine 2D em Rust que: (a) renderiza vetorial, SDFs, fluidos e iluminação global em tempo real via GPU compute em qualquer plataforma moderna; (b) tem editor unificado em PC/Mac/iPad com UX nativa real (Apple Pencil incluso); (c) exporta apps nativos para iOS/Android/PC/Web com performance idêntica ao código manual; (d) é projetada desde o dia 1 para ser programada por LLMs com qualidade equivalente a humanos.
+
+**Posicionamento:** superar Godot e Unity em 2D em três eixos onde ambos são fracos — qualidade vetorial/SDF, ferramentas de artista, e produtividade com agentes de IA.
+
+## 2. Glossário e termos-chave
+
+Lido cedo porque o resto do documento usa.
+
+- **ABI** — Application Binary Interface. Layout binário estável das structs/funções que cruzam FFI.
+- **ADR** — Architecture Decision Record. Documento curto justificando uma decisão; em `docs/architecture/decisions/NNNN-titulo.md`.
+- **Core** — código Rust compartilhado, platform-agnostic. Vive em `crates/ph2d-*`.
+- **ECS** — Entity Component System. Padrão arquitetural; aqui via `bevy_ecs` standalone.
+- **Edition 2024** — edição da linguagem Rust (estabilizada em 1.85). Habilita `unsafe extern`, async closures, RPIT lifetime capture novo.
+- **FFI** — Foreign Function Interface. Boundary `extern "C"` entre core Rust e shells nativas.
+- **FLIP/PIC** — método híbrido grid-particle para fluidos.
+- **Frame budget** — tempo total disponível para um frame: 16.6 ms a 60 Hz, 8.3 ms a 120 Hz (iPad ProMotion).
+- **GGPO** — biblioteca/algoritmo seminal de rollback netcode. Usamos a ideia, não o código.
+- **Handle opaco** — `u64` ou newtype que script/MCP recebe; mapeia internamente para `Entity` ou índice em pool.
+- **Hot path** — código que roda dentro do frame: `render_graph`, `physics_step`, `audio_callback`, `editor_layout`. Não pode alocar.
+- **HR-N** — Hard Rule número N. Ver §9.
+- **IME** — Input Method Editor. Composição de texto para CJK, indispensável em produtos sérios.
+- **Lockstep** — modo de netcode determinístico onde todos clientes simulam o mesmo input, peer-to-peer.
+- **MCP** — Model Context Protocol (Anthropic). Servidor embutido que expõe operações da engine a LLMs.
+- **MSRV** — Minimum Supported Rust Version. Aqui: **1.85+** (edition 2024 exige; algumas deps exigem 1.88).
+- **MSL/SPIR-V** — Metal Shading Language e SPIR-V (alvos de compilação a partir de WGSL via naga).
+- **Platform-agnostic** — código que não conhece o SO. Toda interação com SO passa por trait `PlatformHost`.
+- **PlatformHost** — trait expondo serviços do SO (FS, IME, file picker, gamepad, áudio device, etc.) para o core.
+- **ProMotion** — display Apple a 120 Hz com refresh adaptativo (iPad Pro 2017+, iPhone 13 Pro+).
+- **RC** — Radiance Cascades, técnica de GI 2D (Sannikov 2023).
+- **Rollback** — modo de netcode que permite re-simular frames passados ao receber input atrasado.
+- **SDF** — Signed Distance Field.
+- **Shell** — camada nativa fina por plataforma (Swift, Kotlin, Rust+winit). ~5–10% da base de código.
+- **WGSL** — WebGPU Shading Language (linguagem primária de shading aqui).
+- **XPBD** — Extended Position Based Dynamics (Müller 2020). Soft body, cloth, rope.
+
+## 3. Não-objetivos (importante)
+
+Decisões deliberadas que economizam complexidade e foco. **Cada "não" aqui é uma decisão consciente; reverter exige ADR.**
+
+- **Não** é engine 3D. 2.5D (sprites stack, parallax depth, normal maps) sim; cenas 3D completas não.
+- **Não** suporta plataformas legadas. Sem OpenGL, sem D3D11. Ver §4 para a matriz exata.
+- **Não** roda em hardware antigo. Ver §4.
+- **Não** é "general purpose game framework." É opinionada: se você quer ECS diferente, scripting diferente, network diferente — fork.
+- **Não** tem GUI immediate mode no produto distribuído. `egui` só é aceitável em ferramentas internas, profilers in-app e debug overlays — nunca compilado em build de release público.
+- **Não** suporta scripting em N linguagens. TypeScript é a única linguagem de gameplay first-class. WASM aceita qualquer linguagem que produza WASM, mas a API canônica é TS.
+- **Não** suporta backwards-compat infinito. SemVer estrito; quebras agrupadas em majors anuais (ver §12.3).
+- **Não** persegue paridade de funcionalidades com Unity/Godot. Persegue **superioridade nos eixos onde elas são fracas**.
+
+## 4. Plataformas mínimas e GPU alvo
+
+Tabela definitiva. Hardware abaixo disso não é alvo — feature won't fix.
+
+| Plataforma | OS mínimo | API GPU mínima | GPU mínima | Memória app | Display alvo |
+|---|---|---|---|---|---|
+| iOS / iPadOS | iOS/iPadOS 17 | Metal 3 | Apple A14 (iPhone 12, iPad Air 4ª gen) | 1.5 GB | 60–120 Hz ProMotion |
+| macOS | macOS 14 Sonoma | Metal 3 | Apple Silicon (M1+) ou AMD GCN5+ | 4 GB | até 120 Hz |
+| Android | Android 13 (API 33) | Vulkan 1.3 | Adreno 660 / Mali-G78 / Xclipse 920+ | 2 GB | 60–120 Hz |
+| Windows | Windows 11 | D3D12 (FL 12_1) ou Vulkan 1.3 | NVIDIA Turing+ / AMD RDNA1+ / Intel Arc Alchemist+ | 4 GB | 60–240 Hz |
+| Linux | kernel 6.1 + Mesa 24+ | Vulkan 1.3 | igual a Windows | 4 GB | 60–240 Hz |
+| Web | Chrome 121+, Safari 18+, Firefox 141+ | WebGPU | qualquer com WebGPU exposto | 1 GB heap | 60 Hz |
+
+**Notas críticas:**
+- iOS NÃO suporta Vulkan nativo. Em iOS o backend é Metal direto via wgpu — não MoltenVK.
+- Android Vulkan 1.3 corta devices pre-2024. Decisão consciente — alvo de mercado é "smartphone moderno", não "menor denominador comum".
+- Web é alvo first-class mas com restrições próprias (ver §11.12).
+- Intel iGPUs em laptops "2018+" geralmente caem fora pelo `Memory Available` ou compute throughput. Documente em ADR-0007.
+
+## 5. Stack canônico (versões pinadas)
+
+Versões verificadas em **2026-05-08**. Adicionar dep fora desta tabela exige justificativa em PR + ADR se for não-trivial.
+
+| Camada | Tecnologia | Crate / Lib | Versão | Notas |
+|---|---|---|---|---|
+| Linguagem core | Rust 2024 edition | — | MSRV **1.85+** (algumas deps exigem 1.88) | `unsafe` requer justificativa em comentário |
+| GPU abstração | wgpu | `wgpu` | `29` | Único path; sem fallback OpenGL |
+| GPU baixo nível (interop shell) | wgpu-hal | `wgpu-hal` | `29` | Apenas em FFI shell↔core, isolado em `ph2d-gpu::interop` |
+| Shading runtime | WGSL via naga | `naga` | acompanha `wgpu` | Backends: SPIR-V, MSL, HLSL, GLSL |
+| Shading autoria avançada | Slang (opcional) | `shader-slang` | `0.1.x` (experimental) | Apenas autoria; runtime continua WGSL |
+| Vetorial GPU | Vello | `vello` | `0.8` (**alpha**) | Rasterização 100% compute. Risco arquitetural — ver ADR-0004 |
+| Curvas / Bézier | kurbo | `kurbo` | `0.13` | Hit-test, offset, fitting. Boolean ops via `linesweeper`, NÃO `kurbo::PathOps` (não existe) |
+| Boolean ops vetorial | linesweeper | `linesweeper` | `beta` | Bentley-Ottmann robusto sobre Béziers. Marcar features que dependem disto como alpha |
+| Text shaping | parley + harfrust + skrifa | `parley`, `harfrust`, `skrifa` | acompanha Linebender | Shaping, BiDi, fallback. Integra nativamente com Vello |
+| Text editing widget | parley editor (ou custom) | `parley` | — | IME passa pelo `PlatformHost` (HR-1) |
+| ECS | bevy_ecs (standalone) | `bevy_ecs` | `0.18` | Sem o resto do Bevy. Plano de upgrade documentado em ADR-0003 |
+| Math | glam | `glam` | `0.30` | SIMD habilitado |
+| Janela / input desktop | winit | `winit` | `0.30` | **Apenas** em shell desktop; nunca no core. iOS/Android usam shells nativas |
+| UI layout | taffy | `taffy` | `0.10` | Flexbox + Grid; agnóstico de renderer |
+| Rígidos | Rapier 2D | `rapier2d` | `0.32` | Determinístico em modo lockstep, fixed timestep |
+| Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (interno) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5) |
+| Fluidos | FLIP/PIC híbrido em compute | `ph2d-fluids` (interno) | — | Não-determinístico por padrão; opt-out em modos com rollback |
+| Iluminação | Radiance Cascades 2D | `ph2d-light` (interno) | — | Sannikov 2023; Holographic RC (2025) em roadmap |
+| Scripting | TypeScript via QuickJS-NG | `rquickjs` | `0.6` | Runtime por mundo; GC explícito ao final do frame |
+| Hot path script | WASM | `wasmtime` | `44` | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA |
+| Networking transporte | QUIC | `quinn` | `0.11` | Desktop/mobile |
+| Networking web | WebTransport-over-HTTP/3 | `web-transport-quinn` | `0.11` | Crate auxiliar — quinn puro NÃO é WebTransport |
+| Áudio mixer | rodio + cpal | `rodio`, `cpal` | atual | Mixagem em SIMD; DSP custom em `ph2d-audio` |
+| Gamepad | gilrs (desktop), nativo (mobile) | `gilrs` | atual | iOS via GameController.framework na shell; Android via InputManager |
+| Serialização binária | postcard | `postcard` | `1` | Assets, snapshots, save files |
+| Serialização texto | serde JSON | `serde`, `serde_json` | atual | Apenas dev (cenas, configs); não shipping |
+| Asset hash | blake3 | `blake3` | `1` | Conteúdo-endereçado (HR-6) |
+| Logging | tracing | `tracing`, `tracing-subscriber` | `0.1`/atual | Spans estruturados |
+| Profiling in-app | puffin | `puffin` | atual | Editor overlay; sem release |
+| Profiling externo | tracy | `tracy-client` | atual | Apenas com feature `tracy` |
+| Erros | thiserror (libs) / anyhow (apps) | `thiserror`, `anyhow` | `2`/`1` | Nunca panic em código de produção (HR-4 implica) |
+| Alocação em pool | bumpalo | `bumpalo` | atual | Hot path; reset por frame |
+| Channels | crossbeam-channel | `crossbeam-channel` | atual | Comunicação entre threads (game/render/audio/IO) |
+| Imagens | image | `image` | atual | PNG, JPEG, WebP, AVIF; EXR via `exr` |
+| i18n | fluent-rs | `fluent`, `fluent-bundle` | atual | Strings de UI; NÃO usar gettext |
+
+**Regra:** dependências fora desta tabela exigem justificativa em PR. Adicionar deps é caro — propagam em build time, supply chain, footprint.
+
+## 6. Arquitetura: 1 core + 3 shells + 1 web target
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                  SHELLS (finas, ~5–10% código)                       │
+├──────────────┬──────────────────────┬──────────────────┬─────────────┤
+│  Desktop     │  iPad / iOS          │  Android         │  Web        │
+│  winit+wgpu  │  SwiftUI + MTKView   │  Kotlin +        │  WebGPU +   │
+│  (Rust)      │  (Swift, ~3–5k LOC)  │  SurfaceView     │  WebTrans.  │
+│              │  + GameController    │  (Kotlin,        │  (TS shell  │
+│              │  + UIPencil          │  ~3–5k LOC)      │  ~1k LOC)   │
+└──────┬───────┴──────────┬───────────┴────────┬─────────┴──────┬──────┘
+       │                  │                    │                │
+       │   FFI fino: eventos in, frame request out
+       │   IME, gamepad, haptics, file picker, a11y tree
+       │                  │                    │                │
+┌──────▼──────────────────▼────────────────────▼────────────────▼──────┐
+│                    CORE (Rust, ~85–90% código)                       │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ Editor UI (custom retained-mode em Vello + parley + taffy)     │ │
+│  │ Exporta árvore de acessibilidade via PlatformHost              │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ Scene / ECS (bevy_ecs) │ Asset DB (blake3) │ Undo/Redo │ i18n  │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│  ┌──────────┬────────┬──────────┬──────────┬──────────┬──────────┐ │
+│  │ Renderer │ Vector │ Lighting │ Physics  │ Audio    │ Net      │ │
+│  │ (wgpu)   │+SDF+txt│ (RC 2D)  │ +Fluids  │ DSP      │ QUIC/WT  │ │
+│  └──────────┴────────┴──────────┴──────────┴──────────┴──────────┘ │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ Scripting (QuickJS / WASM) + MCP server (com governance)       │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Invariante crítico:** o core não conhece a plataforma (HR-1). Zero `#[cfg(target_os = ...)]` em código de subsistema. Toda interação com SO passa pela trait `PlatformHost` exposta pela shell. Web é uma "plataforma" como outra qualquer; `#[cfg(target_arch = "wasm32")]` é tolerado **apenas** em `ph2d-host` e em backends de transporte de `ph2d-net`.
+
+## 7. Layout do repositório
+
+```
+ph2d/
+├── Cargo.toml                    # workspace
+├── rust-toolchain.toml           # MSRV travada em 1.85+
+├── crates/
+│   ├── ph2d-core/                # tipos base, math, traits
+│   ├── ph2d-host/                # trait PlatformHost (interface SO)
+│   ├── ph2d-ecs/                 # wrapper bevy_ecs com defaults + Reflect
+│   ├── ph2d-gpu/                 # wrapper wgpu, render graph, hal interop
+│   ├── ph2d-render/              # pipeline 2D principal
+│   ├── ph2d-vector/              # Vello + kurbo + linesweeper
+│   ├── ph2d-text/                # parley + harfrust + IME plumbing
+│   ├── ph2d-sdf/                 # SDFs animados, raymarching
+│   ├── ph2d-light/               # Radiance Cascades, normal mapping
+│   ├── ph2d-physics/             # rapier wrapper, fixed timestep
+│   ├── ph2d-physics-soft/        # XPBD compute (+ fallback CPU)
+│   ├── ph2d-fluids/              # FLIP/PIC compute
+│   ├── ph2d-audio/               # mixer, DSP, voice management
+│   ├── ph2d-asset/               # asset DB, hot reload, importadores
+│   ├── ph2d-script/              # runtime QuickJS + WASM + bindgen
+│   ├── ph2d-net/                 # QUIC (quinn) + WebTransport, rollback, lockstep
+│   ├── ph2d-input/               # gamepad, haptics, abstrações de Pencil
+│   ├── ph2d-editor/              # UI retained-mode (Vello + taffy + parley)
+│   ├── ph2d-mcp/                 # MCP server + governance + audit log
+│   ├── ph2d-i18n/                # Fluent runtime
+│   ├── ph2d-a11y/                # AccessibilityNode tree (exposto via host)
+│   ├── ph2d-save/                # snapshot, replay, migration
+│   └── ph2d-telemetry/           # crash, opt-in metrics, log rotation
+├── shells/
+│   ├── desktop/                  # binário Rust com winit
+│   ├── ipad/                     # Xcode project, SwiftUI + UIPencil + GameController
+│   ├── android/                  # Gradle, Kotlin
+│   └── web/                      # TS bootstrap, wasm-pack, Service Worker
+├── runtime/
+│   └── ts/                       # tipos .d.ts gerados, runtime JS, exemplos
+├── tools/
+│   ├── shader-cooker/            # WGSL → SPIR-V/MSL/HLSL via naga; Slang opcional
+│   ├── asset-cooker/             # importação batch determinística
+│   ├── ph2d-bindgen/             # gera .d.ts e schema MCP a partir de #[js_export]
+│   └── frame-budget-bench/       # bench de frame em CI
+├── docs/
+│   ├── architecture/
+│   │   └── decisions/            # ADRs numerados (ADR-0001, ...)
+│   ├── shaders/
+│   ├── scripting/
+│   ├── platform/                 # iOS/Android/Web specifics
+│   └── operations/               # build, release, observability
+└── tests/
+    ├── golden/                   # imagens-referência por teste
+    ├── budget/                   # bench de frame budget
+    ├── determinism/              # replay tests cross-platform
+    └── fuzz/                     # parsers, MCP, script bridge
+```
+
+## 8. Feature flags canônicas
+
+Cargo features são explosivas em combinação. Esta é a lista canônica; combinação fora dessa matriz não é suportada.
+
+| Feature | Default | Descrição | Mutuamente exclusiva com |
+|---|---|---|---|
+| `editor` | off em release público | Compila editor UI completo | — |
+| `mcp-server` | off em release de jogo | Embute MCP server | — |
+| `tracy` | off | Liga `tracy-client` | `puffin-only` |
+| `puffin-only` | on em editor | Apenas puffin overlay | `tracy` |
+| `slang` | off | Habilita autoria Slang | — |
+| `web` | exclusivo | Compila para wasm32 | `desktop`, `mobile` |
+| `desktop` | exclusivo | Habilita winit, file picker desktop | `web`, `mobile` |
+| `mobile` | exclusivo | Habilita IME mobile, sandbox FS | `web`, `desktop` |
+| `dev-overlays` | on em editor | Debug HUDs, frame-time meter | — |
+| `headless-server` | off | Build sem render/audio (server auth) | `editor`, `dev-overlays` |
+| `det-physics` | on quando `mode=lockstep` | XPBD em fallback CPU; FLIP/PIC desligado | — |
+
+**CI matrix:** o pipeline testa cada combinação válida (cartesian product das exclusivas × subset das ortogonais). Combinação que não foi testada não é suportada.
+
+## 9. Hard rules — invariantes inegociáveis
+
+**Cada hard rule é citável por ID (`HR-N`).** Cada uma carrega `Rule | Rationale | Enforced by`.
+
+### HR-1 — Core é platform-agnostic
+**Rule:** zero `#[cfg(target_os)]` em `ph2d-*` exceto `ph2d-host` e `ph2d-net::transport`. Nada de `std::fs::File`, `std::env`, sockets diretos no core. Tudo passa pela trait `PlatformHost`.
+**Rationale:** permite iPad sandbox, Android SAF, Web OPFS, server auth headless — sem fork.
+**Enforced by:** teste em CI (`tests/architecture/no_os_in_core.rs`) que faz grep por padrões proibidos nos crates listados; falha o build.
+
+### HR-2 — `unsafe` requer justificativa escrita
+**Rule:** todo bloco `unsafe` precisa de comentário acima explicando POR QUÊ é necessário e QUAIS invariantes garantem soundness.
+**Rationale:** `unsafe` em engine é inevitável (FFI, GPU hal interop), mas inspecionar dezenas de blocos sem contexto é como auditar criptografia no escuro.
+**Enforced by:** clippy custom lint (`ph2d-clippy::undocumented-unsafe`); CI quebra. Clippy `-D missing-safety-doc` para `pub unsafe fn`.
+
+### HR-3 — Sem alocação dinâmica no hot path
+**Rule:** dentro de `render_graph`, `physics_step`, `audio_callback`, `editor_layout` — zero `Box::new`, `Vec::push` que realoque, `String::from`, `HashMap::insert` que rehash. Use `bumpalo` (reset por frame), pools pré-alocados, `SmallVec` com capacidade fixa, ou ring buffers.
+**Rationale:** alocação no hot path traz jitter imprevisível e leak surface; em audio callback, é causa raiz de glitch audível.
+**Enforced by:** bench em `tests/budget/no_alloc_hot_path.rs` usa `dhat-rs` para contar allocs durante 10 frames sintéticos; falha se contar > 0 em hot paths marcados.
+
+### HR-4 — Frame budget é sagrado
+**Rule:** 16.6 ms a 60 Hz, 8.3 ms a 120 Hz. Cada subsistema declara seu sub-budget no `Plugin::init`. Estourar budget sem flag explícita `#[allow(budget_overrun = "razão")]` é bug.
+
+Sub-budgets default (60 Hz, hardware mediano da matriz §4):
+
+| Subsistema | Budget (ms) | Notas |
+|---|---|---|
+| Input + ECS scheduler | 0.5 | bevy_ecs scheduler overhead |
+| Physics rígidos (rapier) | 1.5 | Fixed step 60 Hz |
+| Physics soft (XPBD) | 2.0 | Compute, escala com partículas |
+| Fluidos (FLIP/PIC) | 2.0 | Opt-in; off por default |
+| Lighting (Radiance Cascades) | 2.5 | 6 cascades, configurável |
+| Render principal | 3.5 | Sprites + vector + SDF + post |
+| Editor UI overlay | 1.0 | Apenas em build com `editor` |
+| Scripts (TS+WASM) | 1.5 | Inclui FFI overhead |
+| GC explícito QuickJS | 1.0 | Soft target; ver HR-9 |
+| Audio mixer | <0.1 | Roda em thread separada (HR mas listado para clareza) |
+| Folga | 1.5 | Para spikes |
+| **Total 60 Hz** | **16.1** | |
+
+A 120 Hz: corte FLIP/PIC, reduz cascades de 6 para 4, ECS roda metade dos systems não-críticos a 60 Hz interpolando.
+
+**Rationale:** sem orçamento por subsistema, todo mundo gasta "só 1 ms" e o frame estoura.
+**Enforced by:** `frame-budget-bench` em CI (hardware fixo: GitHub Actions Linux + um Mac mini M2 hospedado), gera baseline em git, falha em regressão > 5%.
+
+### HR-5 — Determinismo onde prometido
+**Rule:** quando o projeto declara modo determinístico (`Rollback`, `Lockstep`, replay), valem todas as regras abaixo:
+- `f32` operações em ordem fixa, sem reordenamento por SIMD count-dependente.
+- `mul_add`/FMA proibido em código determinístico (varia entre archs).
+- Sem `fast-math`, `-ffast-math`, ou flags equivalentes.
+- RNG com seed explícita (`Pcg64Mcg` recomendado), nunca `thread_rng`.
+- GPU compute **proibido** em pipeline determinístico — XPBD cai para fallback CPU; FLIP/PIC desligado; Radiance Cascades aceito apenas porque é puramente visual (não influi em estado simulado).
+- Reduções em GPU não-determinísticas; se entrarem em estado simulado, é bug.
+
+**Rationale:** rollback netcode quebra silenciosamente quando dois clientes divergem por 1 ULP em float; debugar isso em produção é pesadelo.
+**Enforced by:** `tests/determinism/replay_cross_platform.rs` roda fixture de 600 ticks em Linux/Mac/Windows e compara hash do estado final.
+
+### HR-6 — Asset = hash blake3
+**Rule:** todo asset é content-addressed. Identidade = blake3 do conteúdo cooked. Paths são apenas índices humanos. Renomear arquivo NÃO invalida referências.
+**Rationale:** refactoring de árvore de assets sem quebrar cenas/saves; cache hit determinístico em CI; integridade verificável em runtime.
+**Enforced by:** `ph2d-asset::AssetDb::insert` exige hash; APIs que aceitam path o resolvem para handle e gravam o handle, não o path.
+
+### HR-7 — Editor é a engine
+**Rule:** mesma codebase, mesmo binário com feature flag `editor`. Em release público de jogo, `editor=off`, `mcp-server=off`, `dev-overlays=off`.
+**Clarificação importante:** a feature `editor` deve cortar 100% do código de editor do binário final. CI mede o tamanho do binário com e sem a feature; diferença é o "custo do editor".
+**Rationale:** sem fork "engine vs runtime" o editor é exatamente WYSIWYG; novas APIs aparecem para gameplay e ferramenta simultaneamente.
+**Enforced by:** `tests/architecture/editor_feature_isolation.rs` builda com `--no-default-features --features release-game` e verifica símbolos do editor ausentes; CI falha se grep encontra.
+
+### HR-8 — Scripts e MCP só falam handles opacos
+**Rule:** TS, WASM e MCP nunca recebem ponteiros, nunca enxergam layout interno. APIs expõem `Entity`, `Handle<T>`, `AssetId` — todos `u64` ou newtypes equivalentes. Tentativa de exfiltrar pointer é UB e CVE.
+**Rationale:** sandbox é parte do modelo de segurança; um bug em script não pode corromper memória da engine.
+**Enforced by:** revisão obrigatória de PRs que tocam `ph2d-script::bindings::*` ou `ph2d-mcp::tools::*`. Lista de tipos permitidos em FFI script é mantida em `ph2d-script/SAFE_TYPES.md`.
+
+### HR-9 — GC em janelas explícitas
+**Rule:** QuickJS roda em runtime dedicado por mundo. `Runtime::run_gc()` é chamado entre frames, em janela dedicada (sub-budget ~1 ms).
+
+**Importante — limitação real:** QuickJS-NG GC é **stop-the-world** (refcount + cycle removal mark-sweep). NÃO existe API de "budget em ms". O alvo de 1 ms é **soft**: heap dimensionado via `set_gc_threshold()` para forçar coletas frequentes e curtas; quando estourar 1 ms, é sinal para mover lógica do hot path para WASM ou reduzir alocação JS.
+
+**Rationale:** GC pause não pode estragar frame, mas QuickJS é mais simples que V8/JSC para sandbox, embedding, hot reload e auditabilidade.
+**Enforced by:** `tests/budget/quickjs_gc.rs` mede pause máximo em fixture sintético; flag de regressão > 1.5 ms é warning, > 3 ms é falha.
+
+### HR-10 — MCP é first-class
+**Rule:** toda API exposta a TS é exposta a MCP. Se LLM não consegue fazer X, humano com TS também não consegue. `ph2d-bindgen` gera schema MCP a partir das mesmas anotações `#[js_export]`.
+**Rationale:** o LLM é primeiro classe usuário, não bolt-on; a paridade força APIs limpas.
+**Enforced by:** CI roda `cargo run -p ph2d-bindgen -- check` que verifica que cada `#[js_export]` tem schema MCP correspondente.
+
+### HR-11 — Mutações destrutivas via MCP exigem confirmação
+**Rule:** ferramentas MCP marcadas `destructive: true` no schema (`scene_delete`, `asset_delete`, `project_clear`, `migration_run`) só executam com:
+- token de confirmação humana (gerado por UI, válido por 5 min, single-use), OU
+- flag `--unsafe-mcp` ligada explicitamente no servidor (modo CI/dev).
+
+Toda mutação destrutiva grava em `audit.log` (JSON Lines, append-only): timestamp, agente, ferramenta, parâmetros, hash do estado antes/depois.
+**Rationale:** "MCP first-class" sem governance é vetor de ataque adversarial; LLM pode ser enganado por prompt injection vindo de asset, conteúdo de scene, ou texto em chat.
+**Enforced by:** `ph2d-mcp::governance::Guard` é envolto em todo handler destrutivo via macro `#[mcp_destructive]`; teste em `tests/security/mcp_governance.rs` tenta executar sem token e espera falha.
+
+### HR-12 — UI custom popula árvore de acessibilidade
+**Rule:** todo widget do editor (e qualquer UI que o jogo distribuído queira marcar acessível) gera nó na `AccessibilityTree` mantida em `ph2d-a11y`. Shells consomem essa árvore e a publicam:
+- iOS: `UIAccessibility` / `AXUIElement`
+- Android: `AccessibilityNodeInfo`
+- Windows: UIA
+- macOS: `NSAccessibility`
+- Web: ARIA via DOM proxy
+
+**Rationale:** UI nativa vem acessível de graça; UI custom em Vello tem custo escondido enorme aqui — ignorar bloqueia AppStore review e quebra a UE Accessibility Act 2025.
+**Enforced by:** lint customizada exige que todo widget público implemente trait `Accessible`; CI verifica.
+
+### HR-13 — Subsistemas declaram memory budget
+**Rule:** cada `Plugin::init` retorna `MemoryBudget { vram_mb, ram_mb, heap_script_mb }`. Na inicialização, `ph2d-core` soma e checa contra limite da plataforma (§4); se estourar, recusa o boot com erro claro.
+**Rationale:** OOM em iOS é jetsam silencioso; descobrir budget total no produto distribuído é cedo demais.
+**Enforced by:** unit test em `ph2d-core::budget::test_total_under_platform_min` simula a matriz §4.
+
+### HR-14 — Save format é versionado e migrável
+**Rule:** todo struct que vai a save game tem campo `version: u32` no início. Migração de versão N → N+1 é função pura `fn migrate_v{N}_to_v{N+1}(old: VN) -> Result<V{N+1}>`. Sem migração, build de release não compila para um diff que muda schema.
+**Rationale:** save corruption é uma das piores classes de bug em jogo distribuído; jogador perde progresso, review tanka.
+**Enforced by:** macro `#[derive(Saveable)]` exige campo version; teste `tests/save/migration_chain.rs` carrega saves de N=1 até atual.
+
+### HR-15 — Strings de UI passam por i18n
+**Rule:** zero string hardcoded em UI de produção (editor distribuído ou jogo). Tudo via `t!("identifier")` que resolve em Fluent bundle. Strings de erro técnico (logs, panics, dev tools) são exceção — ficam em inglês.
+**Rationale:** sem disciplina desde o dia 1, a localização vira projeto de meses; com, é commodity.
+**Enforced by:** lint custom procura literais string em chamadas de widget; whitelisted em logs e panic messages.
+
+### HR-16 — Storage lateral é serializável e determinístico, ou não existe
+**Rule:** estruturas de estado fora do ECS (FSM, BT, Dialogue tables via `ph2d.fsm.state_table(entity)` e similares) só aceitam tipos POD-like: `number`, `boolean`, `string`, `Entity`/`Component` handles, e nested tables com mesma restrição (max depth 16). Proibidos: `function`, `userdata`, `thread` (coroutine), metatables custom. Iteração para serialização usa ordem alfabética de chaves (não a ordem de inserção/hash).
+**Rationale:** save/restore (HR-14), snapshot rollback (HR-5) e hot reload (reset+restore) precisam serializar AMBOS — ECS world e storage lateral. Lua iteration é não-determinística por padrão; closures e userdata não são serializáveis. Sem disciplina desde o dia 1, save corruption é silenciosa e descoberta em produção.
+**Enforced by:** API restritiva em `ph2d-script::lateral_storage` rejeita tipos proibidos em mlua bridge; teste `tests/determinism/lateral_storage_replay.rs` com fixture state_table-heavy. Lint custom proíbe uso de `pairs()` em vez de `pairs_sorted()` em pipeline determinístico.
+
+### HR-17 — Examples canônicos compilam em CI
+**Rule:** todo example em `docs/scripting/examples/` (~30 entradas no v0.1) compila com `luau-analyze` em strict mode e roda em fixture sintético. PR que altera API canônica e quebra example exige update do example no mesmo PR.
+**Rationale:** LLM é o único programador. Documentação desatualizada é fricção catastrófica — LLM lê doc, gera código baseado nele, código falha. Examples curados em training data on-the-fly só funcionam se garantidamente corretos.
+**Enforced by:** `tests/scripting/examples_compile.rs` carrega cada arquivo `.luau` em `docs/scripting/examples/`, valida com `luau-analyze --strict`, executa em runtime fixture; CI quebra na primeira falha.
+
+## 10. Convenções de código
+
+### 10.1 Rust style
+- `cargo fmt` obrigatório (`rustfmt.toml`: `style_edition = "2024"`, `max_width = 100`).
+- `cargo clippy -- -D warnings` em CI.
+- Módulos: `snake_case`. Tipos: `PascalCase`. Constantes: `SCREAMING_SNAKE`.
+- Erros: cada crate tem `Error` enum próprio com `thiserror`. App layer compõe com `anyhow`.
+- Documentação: `///` em todo `pub`. Exemplos compilados (`cargo test --doc`) onde fizer sentido.
+- Async: **proibido no core** exceto em `ph2d-asset::loader` (IO) e `ph2d-net` (sockets). Sync por default. Sem tokio no workspace; runtime async é `pollster` para casos pontuais.
+
+### 10.2 Naming patterns
+- Componentes ECS: substantivo singular. `Position`, `Velocity`, `SpriteRenderer`.
+- Sistemas: verbo + objeto. `update_physics`, `render_sprites`.
+- Resources: substantivo + sufixo descritivo. `AssetDb`, `RenderContext`, `InputState`.
+- Eventos: passado. `EntitySpawned`, `AssetLoaded`.
+- Traits: capacidade. `Renderable`, `Serializable`, `PlatformHost`.
+
+### 10.3 FFI boundary (core ↔ shell)
+- Tudo passa por `extern "C"` em `ph2d_host_ffi`.
+- Tipos atravessando: apenas `#[repr(C)]` POD ou handles opacos `u64`.
+- Nunca `Vec`, `String`, `&str` cruzando FFI. Use `*const u8 + len`.
+- Lifetime: shell empresta buffer ao core dentro do callback; core não retém após retorno.
+- Erros: returncodes `i32` + função separada `ph2d_last_error()` para detalhes (thread-local).
+- **Versionamento:** toda struct de FFI começa com `version: u32`. Adicionar campo cresce versão; remover campo é major-bump no SDK shell.
+
+### 10.4 wgpu-hal interop (shell entrega texture)
+Tema sensível: para iOS receber `id<MTLTexture>` da shell e fazer wgpu renderizar nele, usamos `wgpu::hal` direto — API insegura.
+
+- Isolado em `ph2d-gpu::interop::{metal, vulkan, dx12}`.
+- Cada arquivo é `unsafe`-pesado e tem ADR (`ADR-0008-shell-texture-interop.md`) descrevendo invariantes.
+- Esse é o único lugar do core onde `target_os` é tolerado, mas dentro de `ph2d-gpu` (não `ph2d-render`).
+
+### 10.5 Shaders (WGSL)
+- Um arquivo por pipeline. Não monolitos.
+- Includes via preprocessor próprio em `ph2d-gpu`. Convenção: `#include "common/lighting.wgsl"`.
+- Constantes via `override` quando possível (specialization), senão push constants ≤ 128 bytes, senão uniform buffer.
+- Compute: workgroup size sempre potência de 2, documentada no topo. Subgroup operations apenas com fallback para devices sem suporte.
+- **Determinismo:** shaders que entram em pipeline determinístico não usam `dpdx`/`dpdy`, não usam `pow` com base negativa, não confiam em ordem de execução de invocations.
+
+### 10.6 TypeScript API
+- Nomes idiomáticos JS, não traduções de Rust. `entity.position` (getter), não `entity.get_position()`.
+- Tipos `.d.ts` gerados automaticamente do core via `ph2d-bindgen`. Não escrever à mão.
+- Promises para qualquer coisa que cruze frame boundary. Não bloqueie.
+- Eventos via `EventTarget` web-standard.
+- Strings de UI passam por `t!()` (HR-15) — wrapper TS gera chamada Fluent.
+
+## 11. Subsistemas — pontos críticos
+
+### 11.1 Rendering {#rendering}
+Pipeline base: clear → shadow/light pass (compute) → opaque sprites (depth-sorted) → vector layer (Vello) → SDF layer → particles → post → UI overlay.
+
+Render graph é declarativo. Adicione passes via `RenderGraphBuilder`, nunca chamando `wgpu::CommandEncoder` diretamente fora do graph. Recursos transientes são alias-ados automaticamente.
+
+**Convenção de coordenadas — explícito:**
+- **World space:** Y-**up**, origem em metro 0,0 livre. `f32` em metros.
+- **Texture/screen space:** Y-**down**, origem top-left, pixels.
+- **Vello space:** Y-**down**, origem top-left (convenção PostScript/SVG, herdada de Vello/kurbo).
+- O flip Y-up→Y-down é aplicado **uma vez** na projection matrix do main pass e em qualquer matrix passada ao Vello. Documentado em `ph2d-render::projection`. Nunca misture os dois sistemas dentro da mesma função.
+
+### 11.2 Vetorial e SDF
+Vello renderiza qualquer path Bézier que `kurbo::BezPath` produz.
+
+Para **edição vetorial**, use `ph2d-vector::Document` (Bézier paths + transforms + boolean ops). Boolean ops via `linesweeper` (estável o suficiente para uso, mas marcado alpha — features que dependem disso herdam o status).
+
+**Hit-testing:** use método `nearest()` do trait `kurbo::ParamCurveNearest` em cada segmento (não existe `kurbo::nearest` como função livre). Nunca rasterize-then-pick.
+
+**SDF animados:** gerados em compute pass dedicado para textura `r16float` (verifique `Features::FLOAT16_SUPPORTED`; em devices que não suportam, fallback para `r16unorm`). Consumidos por shader de raymarching ou usados como mask. Nunca SDF em CPU em runtime.
+
+### 11.3 Text e tipografia
+**Stack:** `parley` (layout), `harfrust` (shaping), `skrifa` (font parsing), Vello (rasterização). Linebender mantém tudo, integração nativa.
+
+**O que oferecemos:**
+- Bidi (RTL para árabe/hebraico) via Unicode Bidi Algorithm (UAX #9).
+- Complex scripts (devanagari, thai, brahmic, CJK).
+- Emoji color (COLR/CPAL e CBDT/CBLC) e variation sequences.
+- Variable fonts.
+- Font fallback chain configurável; default por plataforma vem do `PlatformHost::system_fonts()`.
+- Subpixel positioning.
+
+**Text editing widget:**
+- Cursor, seleção, undo/redo per-widget.
+- IME composing string passa pelo `PlatformHost` via `ph2d_event_ime_*` (ver §13).
+- Widget de texto editável é o componente mais complexo do editor; é trabalho contínuo, não "pronto na v1".
+
+**Licenciamento de fontes:** assets de fonte importados ganham campo `license` no manifest. MCP `asset_import` valida (ou recusa se ausente); release build falha se algum asset de fonte não tem licença declarada.
+
+### 11.4 Iluminação (Radiance Cascades)
+Implementação segue **Sannikov 2023** (paper original, ExileCon). Roadmap: avaliar **Holographic Radiance Cascades** (Osborne et al., 2025) para reduzir penumbra de luzes distantes — em ADR-0009.
+
+Parâmetros default:
+- 6 cascades.
+- Cascade 0 interval: configurável; padrão 4 px na resolução interna de iluminação.
+- Angular resolution dobra por cascade; spatial resolution diminui pela metade — mantém memória aproximadamente constante.
+- Tudo em compute. Output: `rgba16float` radiance map composto no main pass.
+
+Emissivos vêm de canal alfa de sprites + emission textures. Sombras derivam do occluder map (em `r8unorm`, 1 byte/pixel — não tente "1 bit" na mesma textura; se quiser compactar, empacote 8 pixels por byte explicitamente em `r8uint`).
+
+### 11.5 Physics
+**Dois mundos coexistem:** Rapier (rígidos, fixed step 60 Hz) e XPBD (soft/cloth/rope, mesma freq).
+
+- **Modo padrão:** XPBD em compute (GPU), acoplado a Rapier via "pinned constraints" — XPBD lê pose de Rapier no início do step, devolve forças no final. Acoplamento é one-way em modo determinístico.
+- **Modo determinístico (`det-physics` feature):** XPBD cai para fallback CPU pure-Rust (`ph2d-physics-soft::cpu_backend`); Rapier usa modo lockstep. Performance cai ~3× mas é reprodutível bit-a-bit cross-platform.
+
+**Fluidos FLIP/PIC:**
+- Grid 256² ou 512² (configurável), partículas por célula 4–8.
+- Não interage com rígidos por padrão; opt-in via voxelization do collider.
+- **Não-determinístico** (reduções em compute). Em modo determinístico: desligado.
+
+### 11.6 Áudio
+`rodio` para mixing de alto nível, `cpal` para device backend.
+
+- Mixer roda em thread separada (callback do `cpal`).
+- HR-3 vale dobrado aqui: alocar no callback = glitch garantido.
+- DSP custom em `ph2d-audio::dsp`: filtros, reverb (FDN), spatial 2D (HRTF opcional).
+- Voice management via pool fixo (default: 64 voices simultâneas). Política de stealing: oldest-quietest.
+- Hot reload de samples: feita off-thread, swap atômico no fim do frame.
+
+### 11.7 Scripting
+
+> ⚠ **EM REVISÃO — spike ativo.** Esta subseção descreve a arquitetura inicial (TypeScript + QuickJS-NG). Uma revisão substancial está em validação por spike de 3 semanas (deadline **2026-05-29**) propondo migração para **Luau strict via mlua 0.10**, com 16 critérios pass/fail organizados em 4 famílias (Foundation, Runtime, LLM-centric, Integration). Detalhes operacionais em [`docs/spike/2026-05-plan.md`](docs/spike/2026-05-plan.md). Output do spike vai para [ADR-0019](docs/architecture/decisions/0019-spike-scripting-output.md). Esta subseção será reescrita ao fim do spike — não tome decisões arquiteturais derivadas dela enquanto o aviso estiver presente.
+
+QuickJS-NG via `rquickjs` em runtime por mundo (single-player) ou por sessão (multiplayer authoritative server). Heap budget default: 64 MB (configurável em ADR-0010 para AAA).
+
+**Hot reload TS:**
+- Salvar `.ts` recompila para `.js` (esbuild via plugin Rust `ph2d-script::bundler`).
+- Runtime swap-a o módulo preservando state via convenção `__hot__` exportado.
+- **Risco conhecido:** state em closures fechadas se perde. Documentação aos gameplay programmers em `docs/scripting/hot-reload.md` enfatiza: estado canônico vai no ECS via `World::insert_resource`, não em variáveis-módulo.
+
+**WASM:**
+- Para systems CPU-bound (pathfinding, AI, simulação custom).
+- Bindings via `wit-bindgen` + Component Model (NÃO `wasm-bindgen` — esse é específico de browser/JS host).
+- Choice de baseline: Winch (instanciação ~µs, código menos otimizado, default) vs Cranelift (instanciação lenta, código rápido, opt-in via feature `wasm-aot`).
+
+### 11.8 Networking
+Três modos selecionáveis por projeto, **não combináveis dentro da mesma sessão**:
+
+- `Rollback` — GGPO-style, input delay configurável, history buffer 60 frames. Requer determinismo (HR-5 + `det-physics`).
+- `Lockstep` — determinístico puro, peer-to-peer, ideal para RTS. Mesmas exigências.
+- `ServerAuth` — tick rate independente de framerate, client prediction + reconciliation. Não exige determinismo.
+
+**Transporte:**
+- Desktop/mobile: QUIC via `quinn`.
+- Web: WebTransport-over-HTTP/3 via `web-transport-quinn` (não é o mesmo wire format que QUIC puro).
+- `ph2d-net::Transport` é trait que esconde a diferença; o subsistema que chama não sabe se está rodando native ou web.
+
+**Snapshot/restore:** essencial para Rollback. ECS expõe `World::snapshot(&Reflect)` → `Bytes` (postcard) e `World::restore(&Bytes)`. Componentes precisam derivar `Reflect` para entrar no snapshot.
+
+### 11.9 Editor UI
+Retained-mode próprio em Vello + parley + taffy. Não egui no produto final (HR-7).
+
+Componentes: tree, panel, tabs, dock, gizmo, timeline, node graph, inspector, text editor.
+
+Input passa pelo trait `EditorInput` que abstrai mouse/touch/Pencil. Pencil pressure/tilt são primeiros-classe — não emulados como mouse.
+
+**Acessibilidade:** cada widget implementa `Accessible` (HR-12). Editor sem acessibilidade não passa em CI.
+
+**i18n:** UI strings via Fluent (HR-15). Bundle padrão em `crates/ph2d-editor/locales/`.
+
+### 11.10 Asset pipeline
+Pipeline **deterministic + reproducible**: mesmo input + mesma versão de cooker = mesmo blake3 do output.
+
+**Importadores suportados (v1):**
+
+| Formato | Crate | Output cooked |
+|---|---|---|
+| PNG, JPEG, WebP, AVIF | `image` | Texture (BC7 desktop, ASTC mobile, ETC2 fallback) |
+| EXR | `exr` | Texture HDR (`rgba16float` ou `rgba32float`) |
+| SVG | `usvg` + conversão para `BezPath` | Vector document |
+| TTF, OTF, WOFF2 | `skrifa` | Font asset com licença obrigatória |
+| WAV, OGG, Opus | nativo Rust | Audio asset (passthrough Opus, recompress WAV→Opus se config) |
+| Aseprite | `asefile` | Sprite atlas + animation clips |
+| Tiled | `tiled` | Tilemap |
+| Spine, DragonBones | `ph2d-importers::spine`/`dragonbones` (custom) | Skeletal animation |
+| Lottie | `lottie-rs` | Vector animation |
+| glTF (apenas para 2.5D normal maps + bones) | `gltf` | Subset 2.5D |
+
+**Adicionar importador novo:** ver §14.
+
+**Texture compression:**
+- Desktop: BC7 (RGBA), BC6H (HDR), BC4 (mask).
+- Mobile (iOS/Android): ASTC 6x6 default; 4x4 para UI/sprites críticos.
+- Web: BC + ASTC (depende de browser feature query); fallback para `rgba8unorm`.
+
+**Atlas packing:** offline, em `asset-cooker`. Heurística: max-rect com guillotine.
+
+**Streaming:** texturas grandes (> 4 MB) marcadas `streamable: true`; carregadas em mip-chain progressiva.
+
+**Hot reload:**
+- Arquivo source muda → cooker re-importa → novo blake3 → registry atualiza (path → handle) — **handle muda**, mas referências por path em scenes resolvidas em load time pegam o novo handle. Snapshots em uso recebem swap atômico no fim do frame.
+- Renomeação não invalida (HR-6) — paths são índice, hash é identidade.
+
+### 11.11 MCP server + governance
+Embutido. Expõe ferramentas:
+
+**Read-only:**
+- `scene_query`, `entity_get`, `component_list`
+- `asset_browse`, `asset_inspect`
+- `shader_compile_check`, `shader_inspect`
+- `runtime_state`, `runtime_log_tail`
+- `script_lint`
+
+**Mutative (não-destrutivas):**
+- `scene_create_entity`, `component_set`
+- `asset_import` (gera novo asset; não deleta existentes)
+- `script_run` (em sandbox, com timeout)
+
+**Destructive (HR-11):**
+- `scene_delete_entity`, `scene_clear`
+- `asset_delete`
+- `project_clear`
+- `migration_run`
+
+Cada destructive operação:
+1. Recebe `confirmation_token` no payload.
+2. Token validado contra `ph2d-mcp::tokens` (single-use, 5 min).
+3. Se válido: snapshot do estado pré-operação salvo em `audit/`, operação executa, audit log registra.
+4. Se inválido: retorna erro pedindo token humano OU presença de `--unsafe-mcp` no servidor.
+
+**Multi-agent:** mutações detêm lock advisory por path/entity. Conflito: erro com hint para retry.
+
+**Schema MCP** em `crates/ph2d-mcp/SCHEMA.md`, gerado por `ph2d-bindgen`.
+
+### 11.12 Web target
+First-class, com restrições:
+
+- **Threading:** sem `SharedArrayBuffer` por default (precisa COOP/COEP headers no host). Fallback single-thread aceito; certas features perdem (paralelismo em XPBD CPU, etc.).
+- **Asset loading:** `fetch` streaming + cache em OPFS (`Origin Private File System`). Hot reload via WebSocket dev server.
+- **Audio:** Web Audio API atrás do `ph2d-audio`. Latência tipicamente pior que native (~20 ms vs ~5 ms).
+- **Wasm size budget:** core compilado deve ficar abaixo de 8 MB gzipped na configuração default (`web` feature). Medido em CI.
+- **Service Worker:** opcional, gerencia offline + cache de assets.
+- **WebGPU adapter selection:** `high-performance` por default; user override via query string `?adapter=low-power` para devmobile testing.
+
+## 12. Cross-cutting concerns
+
+### 12.1 Memory budgets
+Cada subsistema declara budget em `Plugin::init` (HR-13). Tabela default por plataforma (em MB):
+
+| Subsistema | iPad / iPhone | Android med | Desktop | Web |
+|---|---|---|---|---|
+| Render textures+meshes | 350 | 400 | 1200 | 200 |
+| Audio buffers | 30 | 30 | 80 | 20 |
+| Physics state | 20 | 20 | 80 | 10 |
+| Lighting (RC) | 80 | 80 | 200 | 50 |
+| Asset DB cache | 200 | 250 | 1000 | 150 |
+| ECS world | 50 | 50 | 200 | 30 |
+| Script heap (QuickJS) | 64 | 64 | 128 | 32 |
+| WASM linear memory | 64 | 64 | 256 | 64 |
+| Editor UI | 80 (apenas iPad) | — | 200 | 80 |
+| Working / temp | 60 | 60 | 200 | 50 |
+| **Total app target** | **~1000** | **~1000** | **~3500** | **~700** |
+
+Margem para OS deixada explícita no doc-string de `MemoryBudget::platform_max`.
+
+### 12.2 Concurrency model
+Threads canônicas:
+
+- **Game thread (main):** ECS scheduler do bevy_ecs, lógica de jogo, scripts. Pode ser multi-threaded internamente via bevy_ecs (parallel systems).
+- **Render thread:** comando GPU encoding + present. Recebe `RenderWorld` via channel `crossbeam` no fim do frame de game.
+- **Audio thread:** `cpal` callback. Sample-accurate, sem alocação. Comunica com game via lock-free queue (`crossbeam` ArrayQueue).
+- **IO thread pool:** `rayon`-based. Asset loading, hot reload, save IO. `rayon` é a única lib de paralelismo permitida; tokio é proibido no core.
+- **Script thread (opcional):** WASM heavy pode rodar em thread dedicada com message passing; default é game thread.
+
+QuickJS é single-threaded por design — runtime fica preso à game thread.
+
+`parking_lot::RwLock`: usado raramente, apenas em `AssetDb` e `Registry`. Hot path proíbe (HR-3 deriva).
+
+### 12.3 Estabilidade e versionamento
+**SemVer:**
+- 0.x até a primeira release pública. `0.x.y` aceita quebras em `x`.
+- 1.0 = compromisso de estabilidade. APIs públicas seguem SemVer estrito.
+- Quebras agrupadas em majors; major bump por ano calendário no máximo.
+
+**Deprecation:**
+- API marcada `#[deprecated(since = "X.Y", note = "...")]`.
+- Permanece por 2 minor releases (~6 meses) antes de remoção.
+- TS API: `@deprecated` no TSDoc; warning em runtime.
+
+**ABI FFI shell:**
+- Cada struct começa com `version: u32`.
+- Adicionar campo: incrementa versão; shells antigas ignoram.
+- Remover/mudar tipo: major-bump no SDK shell, requer update sincronizado.
+
+**Save format:** ver HR-14.
+
+### 12.4 Save/load e persistência
+- Snapshot do mundo ECS via `Reflect` + postcard.
+- Replays: input log + seed + versão de engine; replay reproduz estado bit-a-bit em modo determinístico.
+- Cross-platform: save no iPad abre no PC. Endianness fixa (little-endian no wire).
+- Encryption: opcional via `ring` (AES-GCM); chave derivada de Game Center / Play Games user ID se desejado.
+- Migration: HR-14.
+- Recovery: corrupção detectada via blake3 do save; oferece carregar último checkpoint conhecido bom.
+
+### 12.5 Observabilidade e crash handling
+**Em produção:**
+- Crash reporter: integração com `sentry-rust` opcional (feature `crash-reporter`).
+- Symbolicação: dSYM (iOS), .symbols (Android), .pdb (Windows) uploaded em release pipeline.
+- Telemetry opt-in obrigatório por privacidade. Default: off. Usuário liga em settings.
+- Log policy: `tracing` com filter `info` em release; rotacionado in-device (max 10 MB, 5 arquivos).
+- Performance counters: amostragem 1% em produção, agrega métricas de frame time, GC pause, OOM warnings.
+
+**Apple privacy manifest (`PrivacyInfo.xcprivacy`):**
+- Declarado em `shells/ipad/PrivacyInfo.xcprivacy`.
+- Lista APIs "required reason" usadas (file timestamp, system boot time, user defaults).
+- Sem isso, AppStore rejeita.
+
+**Panic handling:**
+- Global panic hook em `ph2d-core::panic` registra: stack trace, ECS state hash, último frame ID.
+- Tenta save de emergência em arena reservada (1 MB pré-alocados).
+- Em release: report + restart graceful se possível; em debug: trap.
+
+**OOM:**
+- iOS: `applicationDidReceiveMemoryWarning` → `host_low_memory()` → core dropa caches não-essenciais (atlas LRU, audio decompressed).
+- Android: similar via `onTrimMemory`.
+
+**GPU device lost:**
+- wgpu lifetime pode quebrar (drivers crashing, backgrounding mobile).
+- `ph2d-gpu` detecta, tenta recuperar com novo device, recarrega assets transientes; se falhar 2× consecutivas, panic graceful.
+
+### 12.6 Acessibilidade e i18n
+- HR-12 e HR-15 são obrigatórias.
+- A11y tree mantida em `ph2d-a11y::Tree`; nodes contém role, label, value, actions, bounds.
+- Shells convertem para API nativa.
+- Editor distribuído passa em testes automatizados de acessibilidade (axe-like) em CI.
+- i18n via Fluent: bundle `.ftl` por idioma, em `locales/<lang>.ftl`. Default: pt-BR + en-US.
+- Tradução comunitária aceita via PR; ADR-0011 governa fluxo.
+- Reduced motion respeitado em transições e particles.
+- Color contrast WCAG AA mínimo no editor; AAA quando possível.
+
+### 12.7 Build, CI e release
+- **Toolchain:** `rust-toolchain.toml` no root pina versão exata.
+- **Workspace:** `cargo build` builda tudo; cada shell tem build próprio.
+- **iOS:** `cargo lipo` + Xcode. Code signing automatizado via fastlane. TestFlight para staging.
+- **Android:** `cargo ndk` + Gradle. ABI splits: arm64-v8a (primary), x86_64 (testing). NDK r28+.
+- **Web:** `wasm-pack` + bundler (Vite ou esbuild). Deploy em CDN.
+- **Reproducible builds:** `SOURCE_DATE_EPOCH` fixado, `Cargo.lock` versionado, dependências verificadas via `cargo-deny`.
+- **Supply chain:** `cargo-audit` em CI; `cargo-deny` proíbe deps não-listadas em `deny.toml`.
+- **Artefatos de release:**
+  - Core: `.lib`/`.a`/`.dylib`/`.so` por target.
+  - Shells: `.ipa`/`.apk`/`.aab`/`.exe`/`.app`.
+  - Runtime TS: `runtime/ts/dist/` publicado em npm (escopo `@ph2d/runtime`).
+  - Asset cooker: binário portátil por OS de dev.
+
+## 13. Fronteira Rust ↔ Shell — eventos e callbacks
+
+Eventos shell → core (Swift/Kotlin/JS call para Rust):
+
+```c
+// Input
+ph2d_event_pointer(x, y, pressure, tilt_x, tilt_y, kind, source, timestamp_ns);
+ph2d_event_key(keycode, modifiers, kind, timestamp_ns);
+ph2d_event_gamepad_button(gamepad_id, button, kind, timestamp_ns);
+ph2d_event_gamepad_axis(gamepad_id, axis, value, timestamp_ns);
+ph2d_event_pencil_squeeze(intensity, timestamp_ns);
+ph2d_event_pencil_double_tap(timestamp_ns);
+ph2d_event_pencil_hover(x, y, distance, timestamp_ns);
+
+// Lifecycle
+ph2d_event_resize(width, height, scale_factor);
+ph2d_event_lifecycle(kind);  // foreground, background, low_memory, will_terminate
+
+// IME (text input com composição CJK / acentuação)
+ph2d_event_ime_begin();
+ph2d_event_ime_compose(text_ptr, len, cursor_pos);
+ph2d_event_ime_commit(text_ptr, len);
+ph2d_event_ime_end();
+```
+
+Core → shell (Rust call para Swift/Kotlin via callback table):
+
+```c
+host_request_redraw();
+host_open_url(*const u8, len);
+host_show_keyboard(kind);
+host_hide_keyboard();
+host_haptic(kind, intensity);  // light, medium, heavy, success, warning, error
+host_file_picker(filter_ptr, filter_len, callback_token);
+host_file_save(suggested_name_ptr, len, data_ptr, data_len, callback_token);
+host_a11y_update(tree_ptr, len);  // serializado em postcard, shell decodifica
+host_low_memory_handled();  // ack após core liberar caches
+```
+
+Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::SurfaceTexture` (desktop) ao core no callback de frame. Core renderiza diretamente, devolve. Detalhes do interop em `ph2d-gpu::interop` (§10.4).
+
+**Pencil específico (iPad):**
+- `UIPencilInteraction` capturado em Swift, eventos squeeze/double-tap/hover viram chamadas dedicadas.
+- Predictive touch via `predictedTouches` ativo em ink mode; **desligado** em UI mode (predição quebra snapping/gizmo).
+- Latência alvo: ~9 ms end-to-end em iPad ProMotion (target documentado pela Apple desde iPadOS 13). Vale para qualquer iPad ProMotion, não exclusivo M-series; M4 + Pencil Pro aproxima 7 ms em casos otimizados.
+
+## 14. Padrões para tasks comuns
+
+**Adicionar um componente novo:**
+1. Definir struct em crate apropriado, derivar `Component`, `Reflect`, `Saveable`.
+2. Registrar no `TypeRegistry` no plugin do crate.
+3. Adicionar ao schema TS via `#[js_export]` se exposto a script.
+4. Se afeta render, adicionar ao extract phase em `ph2d-render`.
+5. Se vai a save, adicionar entrada de versão (HR-14).
+6. Doctest mínimo no `///`.
+
+**Adicionar um shader:**
+1. Arquivo em `crates/<crate>/shaders/<name>.wgsl`.
+2. Embed via `include_str!` ou via `ph2d-gpu::ShaderRegistry`.
+3. Pipeline em `pipelines.rs` do crate.
+4. Bind group layout reutiliza `CommonBindGroups` se possível.
+5. Adicionar ao matrix de cross-compile test em CI.
+
+**Adicionar uma API ao TS:**
+1. Função Rust em `ph2d-script::bindings::<area>`.
+2. Atributo `#[js_export]`.
+3. Tipo `.d.ts` regenerado automaticamente via `cargo run -p ph2d-bindgen`.
+4. Documentar com TSDoc no atributo.
+5. Verificar se faz sentido como ferramenta MCP (HR-10).
+
+**Adicionar uma ferramenta MCP:**
+1. Função em `ph2d-mcp::tools::<area>`.
+2. Anotar `#[mcp_tool(name = "...", destructive = true|false)]`.
+3. Schema gerado via `ph2d-bindgen`.
+4. Se destructive: macro `#[mcp_destructive]` adiciona governance check.
+5. Teste em `tests/mcp/<area>_<tool>.rs`.
+
+**Adicionar um importador de asset:**
+1. Crate em `tools/asset-cooker/src/importers/<format>.rs`.
+2. Implementar trait `Importer { fn import(input: &Path) -> Result<CookedAsset> }`.
+3. Registrar em `importers::registry`.
+4. Adicionar fixture em `tests/fixtures/import/<format>/`.
+5. Teste de determinismo (mesmo input → mesmo blake3).
+6. Documentar em `docs/asset-pipeline.md`.
+
+**Adicionar uma string i18n:**
+1. Adicionar entrada em `locales/en-US.ftl` (master).
+2. Adicionar tradução em `locales/pt-BR.ftl`.
+3. Usar `t!("identifier", args...)` no código.
+4. CI checa que toda chave usada existe em todos bundles core.
+
+## 15. Anti-patterns (NÃO faça)
+
+- ❌ `Arc<Mutex<T>>` em hot path. Use `parking_lot::RwLock` raramente, prefira channels (`crossbeam`) ou ECS.
+- ❌ `async fn` no core sem necessidade. Sync por default; async só em `ph2d-asset::loader` e `ph2d-net`.
+- ❌ Strings como identificadores em runtime. Use `Handle<T>` ou `Entity`.
+- ❌ Singleton globais. Use Resources do ECS.
+- ❌ Macro mágica que esconde lógica. Macros pra reduzir boilerplate ok; pra esconder controle de fluxo, não.
+- ❌ Adicionar dependência sem revisão. Cada crate é supply chain.
+- ❌ Misturar pixel space e world space na mesma função.
+- ❌ `if cfg!(target_os = ...)` no core. Vai pra trait `PlatformHost`.
+- ❌ Reimplementar algo que `kurbo`/`glam`/`bevy_ecs` já fazem bem.
+- ❌ Performance otimização sem profile. Measure first; `tracing` + `puffin` ou `tracy`.
+- ❌ Hardcoded string em UI (HR-15).
+- ❌ Save sem migração (HR-14).
+- ❌ MCP destructive sem token (HR-11).
+- ❌ Widget sem `Accessible` (HR-12).
+- ❌ `unwrap()` em código não-test. Em prototipagem, `expect("razão clara")`; em produção, propaga.
+- ❌ Confiar em ordem de execução de invocations em compute shader determinístico.
+
+## 16. Estratégia de testes
+
+| Tipo | Onde | Quando roda |
+|---|---|---|
+| Unit | `src/` `#[cfg(test)]` | `cargo test` |
+| Doctest | `///` examples | `cargo test --doc` |
+| Integration | `tests/<crate>/` | `cargo test` |
+| Property-based | `tests/proptest/` via `proptest` | `cargo test` |
+| Golden image render | `tests/golden/` | CI Linux + Mac mini M2; SSIM ≥ 0.995 vs baseline |
+| Frame budget bench | `tests/budget/` via `criterion` + `ph2d-bench` | CI; baseline em git, regressão > 5% falha |
+| Determinism replay | `tests/determinism/` | CI Linux + Mac + Windows; hash do estado final compara |
+| Shader cross-compile | `tests/shaders/` | CI; naga compila WGSL → SPIR-V/MSL/HLSL/GLSL e diff contra reference |
+| Fuzz | `tests/fuzz/` via `cargo-fuzz` | Diário em CI dedicado; targets: postcard parser, MCP request, script bridge, importadores |
+| Architecture | `tests/architecture/` | CI; greps + stub-imports verificam HR-1, HR-7 |
+| MCP governance | `tests/security/mcp_governance.rs` | CI; tenta destructive sem token |
+| A11y | `tests/a11y/` | CI; widget tree validation |
+| Cross-shell smoke | `tests/shells/` | CI Mac runner roda iPad sim, Linux runner roda Android emulator |
+
+**Aprovação de baseline golden image:** mudança requer revisão humana + ADR se a mudança visual é arquitetural; senão PR review aprova `update-baseline` flag.
+
+## 17. Definition of done
+
+Toda mudança não-trivial precisa:
+
+- [ ] Compila sem warnings em todos os targets ativos.
+- [ ] `cargo test` passa, incluindo doctests.
+- [ ] `cargo clippy -- -D warnings` clean.
+- [ ] Golden image atualizado se afeta render output.
+- [ ] Frame budget bench rodado se afeta hot path; sem regressão > 5%.
+- [ ] Determinism replay passa se mexe em estado simulado.
+- [ ] Documentação `///` em novos `pub`.
+- [ ] Schema MCP regenerado se adicionou `#[js_export]` (HR-10).
+- [ ] Migration script se mudou save format (HR-14).
+- [ ] Strings novas em UI passam por Fluent (HR-15).
+- [ ] Widget novo implementa `Accessible` (HR-12).
+- [ ] Memory budget atualizado se subsistema muda footprint (HR-13).
+- [ ] Se cruza FFI: smoke test em pelo menos uma shell.
+- [ ] Se afeta API TS: `.d.ts` regenerado.
+- [ ] Changelog entry em `CHANGELOG.md` para mudanças user-facing.
+- [ ] ADR criado se mudança arquitetural; ADR linkado no PR.
+
+## 18. Quando ficar em dúvida
+
+Hierarquia de decisão (ordem importa):
+
+1. **Performance no hot path** > tudo
+2. **Determinismo onde prometido** > conveniência
+3. **Segurança (sandbox, MCP governance)** > facilidade
+4. **Acessibilidade** > UX bonita
+5. **UX nativa de iPad** > uniformidade de codebase
+6. **APIs estáveis** > APIs elegantes
+7. **Reproducibilidade de build** > velocidade de build
+8. **Compreensibilidade por LLM** > brevidade clever
+
+Se uma decisão não cabe em nenhuma das 8 acima e não está clara: **pergunte ao Enio antes de implementar**. Não adivinhe arquitetura. Abra issue com label `arch-question` ou pingue diretamente.
+
+## 19. ADRs — política e índice
+
+ADRs vivem em `docs/architecture/decisions/NNNN-titulo-em-kebab-case.md`. Numeração monotônica.
+
+**Template:**
+
+```markdown
+# ADR-NNNN: Título
+
+**Status:** Proposed | Accepted | Superseded by ADR-XXXX | Deprecated
+**Data:** YYYY-MM-DD
+**Decisor(es):** Enio + ...
+
+## Contexto
+O quê e porquê precisa de decisão.
+
+## Decisão
+O que decidimos.
+
+## Consequências
+Positivas, negativas, neutras.
+
+## Alternativas consideradas
+Listar com motivo de rejeição.
+```
+
+**ADRs canônicos esperados (v1):**
+
+- ADR-0001 — Editor é a engine
+- ADR-0002 — Rust + Vello + wgpu como pilar
+- ADR-0003 — bevy_ecs upgrade policy
+- ADR-0004 — Vello em alpha: risco aceito e mitigações
+- ADR-0005 — TypeScript como gameplay primário
+- ADR-0006 — MCP first-class + governance
+- ADR-0007 — Hardware mínimo (matriz §4)
+- ADR-0008 — Shell texture interop via wgpu-hal
+- ADR-0009 — Roadmap Holographic Radiance Cascades
+- ADR-0010 — Heap script default 64 MB; AAA opt-in
+- ADR-0011 — Tradução comunitária e governança i18n
+
+ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-15.
+
+## 20. Última nota para a LLM lendo isso
+
+Este projeto é opinionado por design. Quando algo parecer estranho, há provavelmente uma razão registrada em ADR (`docs/architecture/decisions/`). Leia o ADR antes de propor mudança contrária. Se não houver ADR, é candidato a virar um.
+
+Quando você (LLM) implementar algo:
+
+1. Cite a HR aplicável no commit message ("HR-3: pool pré-alocado em vez de Vec").
+2. Se não consegue satisfazer uma HR, isso é sinal de que ou o design precisa de ADR ou você está fazendo a tarefa errada — pare e pergunte.
+3. Memory budget e frame budget são contratos. Estourar sem flag é bug, mesmo que o teste passe.
+4. Compreensibilidade > brevidade clever. Outra LLM vai ler isso.
+5. Quando documentar API nova, escreva pensando na próxima LLM, não no humano. Concrete > abstract; example > prose.
+
+A barra é alta porque o projeto pretende ser melhor que Unity e Godot em 2D. Tratamento de gambiarra é "obrigado, mas não, obrigado".

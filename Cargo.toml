@@ -1,0 +1,48 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/ph2d-core",
+    "crates/ph2d-host",
+    "crates/ph2d-ecs",
+    "crates/ph2d-gpu",
+    "crates/ph2d-render",
+    "crates/ph2d-vector",
+    "crates/ph2d-text",
+    "crates/ph2d-sdf",
+    "crates/ph2d-light",
+    "crates/ph2d-physics",
+    "crates/ph2d-physics-soft",
+    "crates/ph2d-fluids",
+    "crates/ph2d-audio",
+    "crates/ph2d-asset",
+    "crates/ph2d-script",
+    "crates/ph2d-net",
+    "crates/ph2d-input",
+    "crates/ph2d-editor",
+    "crates/ph2d-mcp",
+    "crates/ph2d-i18n",
+    "crates/ph2d-a11y",
+    "crates/ph2d-save",
+    "crates/ph2d-telemetry",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+debug = false
+strip = "symbols"
+
+[profile.bench]
+inherits = "release"
+debug = true

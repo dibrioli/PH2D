@@ -1,0 +1,10 @@
+[toolchain]
+channel = "1.95"
+components = ["rustfmt", "clippy", "rust-src"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "wasm32-unknown-unknown",
+]
+profile = "default"

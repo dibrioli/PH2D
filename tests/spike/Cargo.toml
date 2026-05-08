@@ -11,6 +11,22 @@ authors.workspace = true
 name = "hello_runner"
 path = "src/bin/hello_runner.rs"
 
+[[bin]]
+name = "c11_bevy"
+path = "src/bin/c11_bevy.rs"
+required-features = ["bevy_ecs"]
+
+[[bin]]
+name = "c11_flecs"
+path = "src/bin/c11_flecs.rs"
+required-features = ["flecs_ecs"]
+
 [dependencies]
 ph2d-script = { path = "../../crates/ph2d-script" }
 mlua = { version = "0.10", features = ["luau"] }
+bevy_ecs = { version = "0.18", optional = true }
+flecs_ecs = { version = "0.2", optional = true }
+
+[features]
+bevy_ecs = ["dep:bevy_ecs"]
+flecs_ecs = ["dep:flecs_ecs"]

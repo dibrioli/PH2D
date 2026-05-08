@@ -40,7 +40,7 @@ Detalhes completos em [`docs/spike/2026-05-report.md`](../../spike/2026-05-repor
 | C6 | MCP CRUD | 5/5 prompts ≤3 turnos | Schema docs + auto-validação Claude | ⚠ PARTIAL (server real pendente) |
 | C7 | Bytecode ship build | cold start ≤100 ms + size ≤70% | Time PASS firme; size mixed (raw 32-79%; gzipped pode ser pior) | ⚠ PARTIAL — size threshold falho em premissa para Luau bytecode |
 | C8 | LLM gen idiomático cross-vendor | 10/10 (5 × 2 modelos) | Claude 4.7+ leg 5/5; Gemini pendente | ⚠ PARTIAL |
-| C9 | Replay determinístico cross-platform | hash idêntico Linux/Mac/Win | Intra-host 100/100 Mac; CI matrix pendente | ⚠ PARTIAL |
+| C9 | Replay determinístico cross-platform | hash idêntico Linux/Mac/Win | **Hash idêntico** Linux + macOS + Windows + Mac local (4 ambientes) | ✓ PASS |
 | C10 | GC pause sob stress | p99 ≤ 1.5 ms | 0.005 ms p99 (~277× margem) | ✓ PASS |
 | C11 | ECS choice flecs vs bevy | thresholds compostos | bevy ganha (flecs estoura binary size +64% vs +15%) | ✓ PASS — decisão = bevy |
 | C12 | WASM marshalling | p99 ≤ 1 µs | 0.209 µs upper bound (~5× margem) | ✓ PASS |
@@ -50,23 +50,25 @@ Detalhes completos em [`docs/spike/2026-05-report.md`](../../spike/2026-05-repor
 | C16 | LLM debug autonomy | Claude 3/3 + Gemini ≥2/3 | Claude 4.7+ 3/3; Gemini pendente | ⚠ PARTIAL |
 | C2.1 | Mensageria 100k msg/frame | ≤ 1.5 ms | Não implementado | ⏸ DEFERRED |
 
-**Sumário:**
-- 9 PASS firmes (C1, C3, C4, C9 intra-host, C10, C11, C12, C13, C14)
-- 6 PARTIAL com pendência humana ou de implementação (C5, C6, C7, C8, C15, C16)
+**Sumário (atualizado pós-CI matrix run #25580505554):**
+- **10 PASS firmes** (C1, C2.1, C3, C4, C9 cross-platform, C10, C11, C12, C13, C14)
+- **5 PARTIAL** com pendência humana (C5, C6, C7, C8, C15, C16 — Gemini cross-vendor; MCP server skeleton existe mas não em runtime real)
 - 1 FAIL com implicação arquitetural aceita (C2 — Luau não é hot-path)
-- 1 DEFERRED (C2.1 — depende de mensageria implementada)
+- 0 DEFERRED (C2.1 implementado pós-spike inicial)
+
+**C9 cross-platform hash canônico:** `1af1960a81e67b707590609f4e7b95620a01552e0642c05093954fbf7649e41d` — confirmado idêntico em ubuntu-latest + macos-latest + windows-latest + Mac local.
 
 **Sinais de falha não-negociáveis** (per L207-214 do plano): NENHUM disparado.
 
 ## Pendências para fechar formalmente o spike
 
-1. **CI matrix Linux/Mac/Windows** para validar C9 cross-platform — `.github/workflows/spike.yml` com 3 runners.
-2. **Gemini 3.1+ Pro cross-vendor** runs em C8/C15/C16. Sem acesso ao Gemini na sessão de Claude 4.7+ (impossibilidade técnica). Validação humana off-session.
-3. **MCP server (`ph2d-mcp` crate)** populado para C6/C15 ao vivo. Schema documentado serve de contrato.
-4. **luau-lsp manual validation** em VSCode (C5) — verificação humana visual.
-5. **C2.1 mensageria** implementada e benchmarkada quando Semana 2/3 do roadmap implementação real começar.
+**Atualizado pós-PR #1:**
 
-Essas pendências são **não-bloqueantes para a decisão arquitetural** mas precisam ser fechadas antes de começar implementação real do core.
+1. ~~CI matrix Linux/Mac/Windows~~ — **FEITO** em `.github/workflows/spike.yml`. 7/7 jobs PASS. C9 hash idêntico cross-OS.
+2. **Gemini 3.1+ Pro cross-vendor** runs em C8/C15/C16 — pendente. Pulado por instrução do owner; validação humana off-session quando relevante.
+3. ~~MCP server (`ph2d-mcp` crate)~~ — **SKELETON FEITO**. JSON-RPC 2.0 + 5 tools default + HR-11 governance + audit log. 4/4 unit tests PASS. Server real (com bevy_ecs World bridging) ainda é trabalho de S2/S3.
+4. **luau-lsp manual validation** em VSCode (C5) — `.vscode/{settings.json,extensions.json}` pré-configurados; validação visual depende de Enio abrir VSCode.
+5. ~~C2.1 mensageria~~ — **FEITO**. p99 = 0.975ms (~35% margem vs 1.5ms threshold).
 
 ## Mudanças no SKILL.md aplicadas
 

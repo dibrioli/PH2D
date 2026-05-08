@@ -1,6 +1,6 @@
 ---
 name: ph2d-engine
-description: Onboarding completo para a PH2D — Power House Game Engine, uma engine 2D de alta performance escrita em Rust com shells nativas finas para PC/Mac/iPad/iOS/Android. Use esta skill SEMPRE que o usuário mencionar PH2D, Power House, "a engine", trabalhar no editor, escrever código de subsistemas (rendering, física, fluidos, shaders, vetorial, SDFs, iluminação, networking, editor UI, scripting, áudio, MCP, acessibilidade, i18n), discutir arquitetura, tomar decisões de stack, ou pedir ajuda com qualquer parte do projeto da game engine 2D do usuário. Ative também quando o usuário falar em comparar/superar Godot ou Unity em 2D, ou quando aparecerem nomes de crates como wgpu, vello, kurbo, parley, cosmic-text, rapier, bevy_ecs, winit, naga, taffy, gilrs, wasmtime, quinn, rquickjs ou referências a WGSL/Slang/Metal/WebGPU/WebTransport/Apple Pencil/MCP no contexto do projeto dele. Esta é a fonte de verdade sobre vision, stack, convenções e invariantes do projeto — consulte antes de propor qualquer mudança arquitetural ou escolha de dependência. Para detalhes específicos de decisões individuais, consulte os ADRs em `docs/architecture/decisions/`.
+description: Onboarding completo para a PH2D — Power House Game Engine, uma engine 2D de alta performance escrita em Rust com shells nativas finas para PC/Mac/iPad/iOS/Android. Use esta skill SEMPRE que o usuário mencionar PH2D, Power House, "a engine", trabalhar no editor, escrever código de subsistemas (rendering, física, fluidos, shaders, vetorial, SDFs, iluminação, networking, editor UI, scripting, áudio, MCP, acessibilidade, i18n), discutir arquitetura, tomar decisões de stack, ou pedir ajuda com qualquer parte do projeto da game engine 2D do usuário. Ative também quando o usuário falar em comparar/superar Godot ou Unity em 2D, ou quando aparecerem nomes de crates como wgpu, vello, kurbo, parley, harfrust, skrifa, rapier, bevy_ecs, winit, naga, taffy, gilrs, wasmtime, quinn, mlua (Luau) ou referências a WGSL/Slang/Metal/WebGPU/WebTransport/Apple Pencil/MCP no contexto do projeto dele. Esta é a fonte de verdade sobre vision, stack, convenções e invariantes do projeto — consulte antes de propor qualquer mudança arquitetural ou escolha de dependência. Para detalhes específicos de decisões individuais, consulte os ADRs em `docs/architecture/decisions/`.
 ---
 
 # PH2D — Power House Game Engine — LLM Onboarding
@@ -56,7 +56,7 @@ Decisões deliberadas que economizam complexidade e foco. **Cada "não" aqui é 
 - **Não** roda em hardware antigo. Ver §4.
 - **Não** é "general purpose game framework." É opinionada: se você quer ECS diferente, scripting diferente, network diferente — fork.
 - **Não** tem GUI immediate mode no produto distribuído. `egui` só é aceitável em ferramentas internas, profilers in-app e debug overlays — nunca compilado em build de release público.
-- **Não** suporta scripting em N linguagens. TypeScript é a única linguagem de gameplay first-class. WASM aceita qualquer linguagem que produza WASM, mas a API canônica é TS.
+- **Não** suporta scripting em N linguagens. **Luau strict** é a única linguagem de gameplay first-class (ratificado em ADR-0019). WASM aceita qualquer linguagem que produza WASM, mas a API canônica é Luau.
 - **Não** suporta backwards-compat infinito. SemVer estrito; quebras agrupadas em majors anuais (ver §12.3).
 - **Não** persegue paridade de funcionalidades com Unity/Godot. Persegue **superioridade nos eixos onde elas são fracas**.
 
@@ -103,7 +103,7 @@ Versões verificadas em **2026-05-08**. Adicionar dep fora desta tabela exige ju
 | Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (interno) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5) |
 | Fluidos | FLIP/PIC híbrido em compute | `ph2d-fluids` (interno) | — | Não-determinístico por padrão; opt-out em modos com rollback |
 | Iluminação | Radiance Cascades 2D | `ph2d-light` (interno) | — | Sannikov 2023; Holographic RC (2025) em roadmap |
-| Scripting | TypeScript via QuickJS-NG | `rquickjs` | `0.6` | Runtime por mundo; GC explícito ao final do frame |
+| Scripting (gameplay) | Luau strict via mlua | `mlua` | `0.10` (feature `luau`) | Runtime por mundo; GC incremental p99 < 0.01ms (medido C10). Ratificado ADR-0019. |
 | Hot path script | WASM | `wasmtime` | `44` | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA |
 | Networking transporte | QUIC | `quinn` | `0.11` | Desktop/mobile |
 | Networking web | WebTransport-over-HTTP/3 | `web-transport-quinn` | `0.11` | Crate auxiliar — quinn puro NÃO é WebTransport |
@@ -154,7 +154,7 @@ Versões verificadas em **2026-05-08**. Adicionar dep fora desta tabela exige ju
 │  │ (wgpu)   │+SDF+txt│ (RC 2D)  │ +Fluids  │ DSP      │ QUIC/WT  │ │
 │  └──────────┴────────┴──────────┴──────────┴──────────┴──────────┘ │
 │  ┌────────────────────────────────────────────────────────────────┐ │
-│  │ Scripting (QuickJS / WASM) + MCP server (com governance)       │ │
+│  │ Scripting (Luau / WASM) + MCP server (com governance)          │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -182,7 +182,7 @@ ph2d/
 │   ├── ph2d-fluids/              # FLIP/PIC compute
 │   ├── ph2d-audio/               # mixer, DSP, voice management
 │   ├── ph2d-asset/               # asset DB, hot reload, importadores
-│   ├── ph2d-script/              # runtime QuickJS + WASM + bindgen
+│   ├── ph2d-script/              # runtime Luau + WASM + bindgen
 │   ├── ph2d-net/                 # QUIC (quinn) + WebTransport, rollback, lockstep
 │   ├── ph2d-input/               # gamepad, haptics, abstrações de Pencil
 │   ├── ph2d-editor/              # UI retained-mode (Vello + taffy + parley)
@@ -197,11 +197,11 @@ ph2d/
 │   ├── android/                  # Gradle, Kotlin
 │   └── web/                      # TS bootstrap, wasm-pack, Service Worker
 ├── runtime/
-│   └── ts/                       # tipos .d.ts gerados, runtime JS, exemplos
+│   └── luau/                     # tipos .d.luau gerados (ph2d-bindgen), exemplos canônicos
 ├── tools/
 │   ├── shader-cooker/            # WGSL → SPIR-V/MSL/HLSL via naga; Slang opcional
 │   ├── asset-cooker/             # importação batch determinística
-│   ├── ph2d-bindgen/             # gera .d.ts e schema MCP a partir de #[js_export]
+│   ├── ph2d-bindgen/             # gera .d.luau e schema MCP a partir de #[lua_export]
 │   └── frame-budget-bench/       # bench de frame em CI
 ├── docs/
 │   ├── architecture/
@@ -270,8 +270,8 @@ Sub-budgets default (60 Hz, hardware mediano da matriz §4):
 | Lighting (Radiance Cascades) | 2.5 | 6 cascades, configurável |
 | Render principal | 3.5 | Sprites + vector + SDF + post |
 | Editor UI overlay | 1.0 | Apenas em build com `editor` |
-| Scripts (TS+WASM) | 1.5 | Inclui FFI overhead |
-| GC explícito QuickJS | 1.0 | Soft target; ver HR-9 |
+| Scripts (Luau+WASM) | 1.5 | Inclui FFI overhead |
+| GC step Luau | 1.0 | p99 medido em C10: 0.005ms (folgadíssimo); manter budget para regressão |
 | Audio mixer | <0.1 | Roda em thread separada (HR mas listado para clareza) |
 | Folga | 1.5 | Para spikes |
 | **Total 60 Hz** | **16.1** | |
@@ -305,22 +305,22 @@ A 120 Hz: corte FLIP/PIC, reduz cascades de 6 para 4, ECS roda metade dos system
 **Enforced by:** `tests/architecture/editor_feature_isolation.rs` builda com `--no-default-features --features release-game` e verifica símbolos do editor ausentes; CI falha se grep encontra.
 
 ### HR-8 — Scripts e MCP só falam handles opacos
-**Rule:** TS, WASM e MCP nunca recebem ponteiros, nunca enxergam layout interno. APIs expõem `Entity`, `Handle<T>`, `AssetId` — todos `u64` ou newtypes equivalentes. Tentativa de exfiltrar pointer é UB e CVE.
+**Rule:** Luau, WASM e MCP nunca recebem ponteiros, nunca enxergam layout interno. APIs expõem `Entity`, `Handle<T>`, `AssetId` — todos `u64` ou newtypes equivalentes. Tentativa de exfiltrar pointer é UB e CVE.
 **Rationale:** sandbox é parte do modelo de segurança; um bug em script não pode corromper memória da engine.
 **Enforced by:** revisão obrigatória de PRs que tocam `ph2d-script::bindings::*` ou `ph2d-mcp::tools::*`. Lista de tipos permitidos em FFI script é mantida em `ph2d-script/SAFE_TYPES.md`.
 
 ### HR-9 — GC em janelas explícitas
-**Rule:** QuickJS roda em runtime dedicado por mundo. `Runtime::run_gc()` é chamado entre frames, em janela dedicada (sub-budget ~1 ms).
+**Rule:** Luau roda em runtime dedicado por mundo. `lua.gc_step_kbytes(1)` é chamado entre frames pelo scheduler, em janela dedicada (sub-budget ~1 ms).
 
-**Importante — limitação real:** QuickJS-NG GC é **stop-the-world** (refcount + cycle removal mark-sweep). NÃO existe API de "budget em ms". O alvo de 1 ms é **soft**: heap dimensionado via `set_gc_threshold()` para forçar coletas frequentes e curtas; quando estourar 1 ms, é sinal para mover lógica do hot path para WASM ou reduzir alocação JS.
+**Status (medido em C10 do spike, ADR-0019):** GC incremental do Luau é **muito** mais eficiente que QuickJS. Em fixture com 10k tabelas + 1k coroutines + per-frame allocation, p99 de step pause = **0.005 ms** (~277× abaixo do budget). Full `gc_collect()` upper bound: 0.015 ms. **Sem necessidade de mover lógica para WASM por causa de GC** — apenas por iteration overhead (vide HR sobre Luau ~60× Rust em C2).
 
-**Rationale:** GC pause não pode estragar frame, mas QuickJS é mais simples que V8/JSC para sandbox, embedding, hot reload e auditabilidade.
-**Enforced by:** `tests/budget/quickjs_gc.rs` mede pause máximo em fixture sintético; flag de regressão > 1.5 ms é warning, > 3 ms é falha.
+**Rationale:** GC pause não pode estragar frame; Luau (mark-incremental, ref-count híbrido) cumpre folgadamente.
+**Enforced by:** `tests/budget/luau_gc.rs` (port do c10_gc_stress) mede pause máximo em fixture; regressão > 0.5 ms warning, > 1.5 ms falha.
 
 ### HR-10 — MCP é first-class
-**Rule:** toda API exposta a TS é exposta a MCP. Se LLM não consegue fazer X, humano com TS também não consegue. `ph2d-bindgen` gera schema MCP a partir das mesmas anotações `#[js_export]`.
+**Rule:** toda API exposta a Luau é exposta a MCP. Se LLM não consegue fazer X, humano com Luau também não consegue. `ph2d-bindgen` gera schema MCP a partir das mesmas anotações `#[lua_export]`.
 **Rationale:** o LLM é primeiro classe usuário, não bolt-on; a paridade força APIs limpas.
-**Enforced by:** CI roda `cargo run -p ph2d-bindgen -- check` que verifica que cada `#[js_export]` tem schema MCP correspondente.
+**Enforced by:** CI roda `cargo run -p ph2d-bindgen -- check` que verifica que cada `#[lua_export]` tem schema MCP correspondente.
 
 ### HR-11 — Mutações destrutivas via MCP exigem confirmação
 **Rule:** ferramentas MCP marcadas `destructive: true` no schema (`scene_delete`, `asset_delete`, `project_clear`, `migration_run`) só executam com:
@@ -406,12 +406,12 @@ Tema sensível: para iOS receber `id<MTLTexture>` da shell e fazer wgpu renderiz
 - Compute: workgroup size sempre potência de 2, documentada no topo. Subgroup operations apenas com fallback para devices sem suporte.
 - **Determinismo:** shaders que entram em pipeline determinístico não usam `dpdx`/`dpdy`, não usam `pow` com base negativa, não confiam em ordem de execução de invocations.
 
-### 10.6 TypeScript API
-- Nomes idiomáticos JS, não traduções de Rust. `entity.position` (getter), não `entity.get_position()`.
-- Tipos `.d.ts` gerados automaticamente do core via `ph2d-bindgen`. Não escrever à mão.
-- Promises para qualquer coisa que cruze frame boundary. Não bloqueie.
-- Eventos via `EventTarget` web-standard.
-- Strings de UI passam por `t!()` (HR-15) — wrapper TS gera chamada Fluent.
+### 10.6 Luau API
+- Nomes idiomáticos Luau (snake_case), não traduções de Rust. `entity.position` (acesso), `ph2d.spawn(...)` (call).
+- Tipos `.d.luau` gerados automaticamente do core via `ph2d-bindgen` (saída em `runtime/luau/`). Não escrever à mão.
+- Coroutines (`ph2d.wait(seconds)` via `coroutine.yield`) para qualquer coisa que cruze frame boundary. Não bloqueie.
+- Mensageria estilo Defold (`ph2d.message_send` / `ph2d.message_handler`) para desacoplamento entity-local.
+- Strings de UI passam por `t!()` (HR-15) — wrapper Luau gera chamada Fluent.
 
 ## 11. Subsistemas — pontos críticos
 
@@ -628,7 +628,7 @@ Cada subsistema declara budget em `Plugin::init` (HR-13). Tabela default por pla
 | Lighting (RC) | 80 | 80 | 200 | 50 |
 | Asset DB cache | 200 | 250 | 1000 | 150 |
 | ECS world | 50 | 50 | 200 | 30 |
-| Script heap (QuickJS) | 64 | 64 | 128 | 32 |
+| Script heap (Luau) | 64 | 64 | 128 | 32 |
 | WASM linear memory | 64 | 64 | 256 | 64 |
 | Editor UI | 80 (apenas iPad) | — | 200 | 80 |
 | Working / temp | 60 | 60 | 200 | 50 |
@@ -645,7 +645,7 @@ Threads canônicas:
 - **IO thread pool:** `rayon`-based. Asset loading, hot reload, save IO. `rayon` é a única lib de paralelismo permitida; tokio é proibido no core.
 - **Script thread (opcional):** WASM heavy pode rodar em thread dedicada com message passing; default é game thread.
 
-QuickJS é single-threaded por design — runtime fica preso à game thread.
+Luau (mlua) é single-threaded por design — runtime fica preso à game thread (mesmo modelo que QuickJS antigo).
 
 `parking_lot::RwLock`: usado raramente, apenas em `AssetDb` e `Registry`. Hot path proíbe (HR-3 deriva).
 
@@ -658,7 +658,7 @@ QuickJS é single-threaded por design — runtime fica preso à game thread.
 **Deprecation:**
 - API marcada `#[deprecated(since = "X.Y", note = "...")]`.
 - Permanece por 2 minor releases (~6 meses) antes de remoção.
-- TS API: `@deprecated` no TSDoc; warning em runtime.
+- Luau API: doc-comment `--- @deprecated` no `.d.luau`; warning em runtime via `ph2d.warn_deprecated(name)`.
 
 **ABI FFI shell:**
 - Cada struct começa com `version: u32`.
@@ -722,7 +722,7 @@ QuickJS é single-threaded por design — runtime fica preso à game thread.
 - **Artefatos de release:**
   - Core: `.lib`/`.a`/`.dylib`/`.so` por target.
   - Shells: `.ipa`/`.apk`/`.aab`/`.exe`/`.app`.
-  - Runtime TS: `runtime/ts/dist/` publicado em npm (escopo `@ph2d/runtime`).
+  - Runtime Luau types: `runtime/luau/dist/` (tipo `.d.luau` + examples) publicado como tarball / git tag (escopo `@ph2d/runtime`). NPM continua válido apenas para o web shell bootstrap em `shells/web/`.
   - Asset cooker: binário portátil por OS de dev.
 
 ## 13. Fronteira Rust ↔ Shell — eventos e callbacks
@@ -776,7 +776,7 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 **Adicionar um componente novo:**
 1. Definir struct em crate apropriado, derivar `Component`, `Reflect`, `Saveable`.
 2. Registrar no `TypeRegistry` no plugin do crate.
-3. Adicionar ao schema TS via `#[js_export]` se exposto a script.
+3. Adicionar ao schema Luau via `#[lua_export]` se exposto a script.
 4. Se afeta render, adicionar ao extract phase em `ph2d-render`.
 5. Se vai a save, adicionar entrada de versão (HR-14).
 6. Doctest mínimo no `///`.
@@ -788,11 +788,11 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 4. Bind group layout reutiliza `CommonBindGroups` se possível.
 5. Adicionar ao matrix de cross-compile test em CI.
 
-**Adicionar uma API ao TS:**
+**Adicionar uma API ao Luau:**
 1. Função Rust em `ph2d-script::bindings::<area>`.
-2. Atributo `#[js_export]`.
-3. Tipo `.d.ts` regenerado automaticamente via `cargo run -p ph2d-bindgen`.
-4. Documentar com TSDoc no atributo.
+2. Atributo `#[lua_export]`.
+3. Tipo `.d.luau` regenerado automaticamente via `cargo run -p ph2d-bindgen`.
+4. Documentar com Luau doc-comment (`--- @param`, `--- @return`) no atributo.
 5. Verificar se faz sentido como ferramenta MCP (HR-10).
 
 **Adicionar uma ferramenta MCP:**
@@ -866,7 +866,7 @@ Toda mudança não-trivial precisa:
 - [ ] Frame budget bench rodado se afeta hot path; sem regressão > 5%.
 - [ ] Determinism replay passa se mexe em estado simulado.
 - [ ] Documentação `///` em novos `pub`.
-- [ ] Schema MCP regenerado se adicionou `#[js_export]` (HR-10).
+- [ ] Schema MCP regenerado se adicionou `#[lua_export]` (HR-10).
 - [ ] Migration script se mudou save format (HR-14).
 - [ ] Strings novas em UI passam por Fluent (HR-15).
 - [ ] Widget novo implementa `Accessible` (HR-12).

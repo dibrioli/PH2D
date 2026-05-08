@@ -60,6 +60,26 @@ jobs:
           rm -rf ~/.cargo/advisory-db
           cargo audit
 
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-machete
+
+      - name: cargo machete (unused dependency check)
+        # Detects deps in Cargo.toml that no longer have any `use` in code.
+        # Reduces supply-chain surface + build time + binary size.
+        run: cargo machete
+
+      - name: Install typos-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: typos-cli
+
+      - name: typos (project-wide typo scan)
+        # Config in .typos.toml whitelists project terms.
+        # Pre-commit hook catches them locally; CI is the safety net.
+        run: typos
+
   # --------------------------------------------------------------------------
   # MSRV check — verifies declared MSRV (rust-version = "1.85") still builds.
   # Catches drift where toolchain pin (1.95) hides accidental MSRV bumps.
@@ -79,6 +99,8 @@ jobs:
   # --------------------------------------------------------------------------
   # Cross-OS build + tests + spike fixtures.
   # --locked enforces Cargo.lock is the source of truth (no transient drift).
+  # Tests via cargo-nextest: process isolation (panic in one test ≠ takedown
+  # of the whole binary), 3× faster, JUnit XML output for future dashboards.
   # --------------------------------------------------------------------------
   test:
     name: ${{ matrix.os }} — workspace check + tests
@@ -95,17 +117,22 @@ jobs:
         with:
           shared-key: ${{ matrix.os }}
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
       - name: cargo check (workspace, default features) --locked
         run: cargo check --workspace --locked
 
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
-      - name: ph2d-script unit tests
-        run: cargo test -p ph2d-script --release --locked
+      - name: ph2d-script tests (nextest)
+        run: cargo nextest run -p ph2d-script --release --locked
 
-      - name: ph2d-mcp unit tests
-        run: cargo test -p ph2d-mcp --release --locked
+      - name: ph2d-mcp tests (nextest)
+        run: cargo nextest run -p ph2d-mcp --release --locked
 
       - name: spike fixtures (no ECS)
         run: |
@@ -208,3 +235,32 @@ jobs:
         # without panic; full regression detection is a follow-up (track in
         # ADR if it becomes load-bearing).
         run: cargo bench --bench c2_query -p ph2d-spike --locked -- --output-format bencher
+
+# =============================================================================
+# DEFENSES PARKED (active when prerequisites land — keep these comments as
+# the on-ramp checklist; do NOT enable without the noted preconditions).
+#
+# 1. cargo-fuzz (libFuzzer + LLVM coverage)
+#    Activate WHEN: ph2d-script has a real Luau→Rust bridge AND/OR ph2d-net
+#    parses untrusted packets. Today the only parse boundary is `postcard`
+#    deserialize used in C4/C13 — that lib is already heavily fuzzed upstream.
+#    Setup sketch: `cargo install cargo-fuzz`; `cargo fuzz init -p ph2d-script`;
+#    add a job `fuzz-quick: cargo fuzz run lua_eval_input -- -max_total_time=120`.
+#
+# 2. ASan / TSan (address + thread sanitizer)
+#    Activate WHEN: ph2d-gpu::interop populated (wgpu-hal needs unsafe per
+#    HR-2 + ADR-0008). Until then, every other crate is `#![forbid(unsafe_code)]`
+#    so sanitizers have nothing to sanitize.
+#    Setup sketch: matrix job with nightly toolchain,
+#    `RUSTFLAGS=-Zsanitizer=address cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu`.
+#    Same for `thread`. Run weekly (workflow_dispatch).
+#
+# 3. cargo-mutants (mutation testing)
+#    Activate WHEN: production code reaches ≥1k LOC in critical paths
+#    (current scheduler/messaging are ~250 LOC — proptest already covers).
+#    Setup sketch: `cargo install cargo-mutants`; weekly job
+#    `cargo mutants --in-place -p ph2d-script -p ph2d-mcp --timeout 120`.
+#    Expect ~30min run; gate on missed/timeout count, not absolute survival.
+#
+# When activating any of these, REMOVE the matching block from this list.
+# =============================================================================

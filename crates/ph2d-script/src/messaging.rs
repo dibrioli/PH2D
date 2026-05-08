@@ -1,18 +1,18 @@
-//! C2.1 — Mensageria estilo Defold.
+//! C2.1 — Defold-style messaging bus.
 //!
-//! Design: hash-interning de message names (string → u32 id O(1) lookup),
-//! FIFO queue global (mesmo sender→mesmo target preserva ordem por
-//! construção), handlers registrados por message id.
+//! Design: hash-interned message names (string → u32 id O(1) lookup),
+//! global FIFO queue (same sender→same target preserves order by
+//! construction), handlers registered per message id.
 //!
-//! Throughput target (HR-4): 100_000 mensagens/frame em ≤ 1.5 ms.
+//! Throughput target (HR-4): 100_000 messages/frame in ≤ 1.5 ms.
 //!
-//! Thread-safety: NÃO. Single-threaded por design (per HR-4 audio é o
-//! único subsystem em thread separada). MessageBus vive em main thread
-//! dentro do `ScriptRuntime` ou ao lado dele.
+//! Thread-safety: NO. Single-threaded by design (per HR-4 audio is the
+//! only subsystem on a separate thread). MessageBus lives on the main
+//! thread inside `ScriptRuntime` or next to it.
 //!
-//! Out of scope no skeleton:
-//! - Payload arbitrário via postcard (atual: u64 inline para bench).
-//! - Schema enforcement em dev (Cargo feature `mcp-schema`).
+//! Out of scope in this skeleton:
+//! - Arbitrary payload via postcard (current: u64 inline for the bench).
+//! - Schema enforcement in dev (Cargo feature `mcp-schema`).
 //! - Cross-runtime/cross-thread bridging.
 
 use std::collections::HashMap;

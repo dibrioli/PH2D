@@ -35,3 +35,9 @@ repos:
         entry: bash -c '! grep -lE "^(<{7}|={7}|>{7})" "$@" || (echo "merge markers found" && exit 1)' --
         language: system
         files: \.(rs|toml|md|yaml|yml|luau)$
+
+      - id: typos
+        name: typos (typos-cli)
+        entry: typos
+        language: system
+        pass_filenames: false

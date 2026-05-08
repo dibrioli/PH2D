@@ -1,0 +1,63 @@
+# Configuration for typos-cli (https://github.com/crate-ci/typos)
+# Run: typos
+#
+# False positives we explicitly accept (project-specific terms, acronyms,
+# Brazilian Portuguese, etc.).
+
+[default]
+extend-ignore-identifiers-re = [
+    # mlua + Luau API surface and types
+    "luau",
+    "mlua",
+    "Luau",
+]
+
+[default.extend-words]
+# Project-specific names (not typos).
+ph2d = "ph2d"
+PH2D = "PH2D"
+# Library/crate names.
+rquickjs = "rquickjs"
+flecs = "flecs"
+naga = "naga"
+parley = "parley"
+harfrust = "harfrust"
+skrifa = "skrifa"
+kurbo = "kurbo"
+vello = "vello"
+taffy = "taffy"
+gilrs = "gilrs"
+quinn = "quinn"
+postcard = "postcard"
+linesweeper = "linesweeper"
+bumpalo = "bumpalo"
+puffin = "puffin"
+# Brazilian Portuguese tokens that look like typos to en-US dictionaries.
+"nao" = "nao"
+"sim" = "sim"
+# Technical terms that show up in shaders / numerics.
+texel = "texel"
+mipmap = "mipmap"
+# AccessibilityNode etc.
+a11y = "a11y"
+
+[files]
+extend-exclude = [
+    "target/**",
+    "Cargo.lock",
+    # Snapshots are auto-generated; reviewing typos there is the snapshot's job.
+    "**/snapshots/*.snap",
+    # Spike fixtures may contain Luau intentionally
+    "docs/scripting/examples/spike/**/*.luau",
+    # PT-BR docs — typos-cli only knows en-US, would flag every "rever",
+    # "sinal", "ser", "vai" etc. as typo. Per SKILL §10.1, code comments
+    # are in English (and *those* still get scanned via .rs/.toml).
+    "SKILL_Stack_PH2D_Definitiva.md",
+    "docs/**/*.md",
+    "README.md",
+    "**/HANDOFF.md",
+    # tests/spike/ has many pt-BR comments (debt — violation of §10.1).
+    # When promoting any spike fixture to crates/ production code, rewrite
+    # comments in English; remove the corresponding entry here.
+    "tests/spike/**",
+]

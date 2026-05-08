@@ -1,12 +1,13 @@
 //! Snapshot tests for `ph2d_mcp::Server` default tool catalog.
 //!
-//! `insta` é o framework canônico de snapshot testing em Rust. Cada
-//! `assert_yaml_snapshot!` compara a saída atual contra um arquivo
-//! `tests/snapshots/<name>.snap`. Se a estrutura mudar, o test falha
-//! e o dev escolhe entre regenerar (`cargo insta accept`) ou ajustar.
+//! `insta` is the canonical snapshot-testing framework for Rust. Each
+//! `assert_yaml_snapshot!` compares the current output against a file
+//! at `tests/snapshots/<name>.snap`. If the structure changes, the test
+//! fails and the dev chooses between regenerating (`cargo insta accept`)
+//! or fixing.
 //!
-//! Esses snapshots formam a CONTRACT pública do MCP server. Mudança no
-//! schema = breaking change = bump major.
+//! These snapshots form the PUBLIC CONTRACT of the MCP server. A schema
+//! change = breaking change = major version bump.
 
 use ph2d_mcp::{Server, ToolSchema};
 

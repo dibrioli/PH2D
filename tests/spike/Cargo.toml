@@ -21,9 +21,22 @@ name = "c11_flecs"
 path = "src/bin/c11_flecs.rs"
 required-features = ["flecs_ecs"]
 
+[[bin]]
+name = "c3_coro_timing"
+path = "src/bin/c3_coro_timing.rs"
+
+[[bin]]
+name = "c10_gc_stress"
+path = "src/bin/c10_gc_stress.rs"
+
+[[bin]]
+name = "c7_bytecode"
+path = "src/bin/c7_bytecode.rs"
+
 [dependencies]
 ph2d-script = { path = "../../crates/ph2d-script" }
 mlua = { version = "0.10", features = ["luau"] }
+flate2 = "1.1.9"
 bevy_ecs = { version = "0.18", optional = true }
 flecs_ecs = { version = "0.2", optional = true }
 

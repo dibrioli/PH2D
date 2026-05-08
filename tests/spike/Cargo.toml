@@ -60,6 +60,11 @@ required-features = ["bevy_ecs"]
 name = "c8_llm_gen"
 path = "src/bin/c8_llm_gen.rs"
 
+[[bin]]
+name = "c14_memory"
+path = "src/bin/c14_memory.rs"
+required-features = ["bevy_ecs"]
+
 [dependencies]
 ph2d-script = { path = "../../crates/ph2d-script" }
 mlua = { version = "0.10", features = ["luau"] }

@@ -150,13 +150,14 @@ jobs:
           HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
           echo "Captured hash: $HASH"
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
-          echo "$HASH" > /tmp/c9-hash.txt
+          # RUNNER_TEMP works on Linux/macOS/Windows; /tmp does not exist on Windows.
+          echo "$HASH" > "${RUNNER_TEMP}/c9-hash.txt"
 
       - name: Upload hash artifact
         uses: actions/upload-artifact@v4
         with:
           name: c9-hash-${{ matrix.os }}
-          path: /tmp/c9-hash.txt
+          path: ${{ runner.temp }}/c9-hash.txt
           if-no-files-found: error
 
   determinism-compare:

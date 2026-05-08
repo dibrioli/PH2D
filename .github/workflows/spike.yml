@@ -53,7 +53,12 @@ jobs:
         # Fails on vulnerabilities; logs unmaintained/yanked as warnings without
         # failing CI (those are usually transitive and out of our control).
         # If a real CVE lands, the default behavior is non-zero exit.
-        run: cargo audit
+        # Wipe the advisory-db dir first — Swatinem/rust-cache restores a
+        # partial copy that cargo-audit refuses to reuse ("Refusing to
+        # initialize the non-empty directory").
+        run: |
+          rm -rf ~/.cargo/advisory-db
+          cargo audit
 
   # --------------------------------------------------------------------------
   # MSRV check — verifies declared MSRV (rust-version = "1.85") still builds.

@@ -37,16 +37,20 @@ use ph2d_asset::AssetDb;
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
 use ph2d_editor::floating_panel::selection_demo_panel;
-use ph2d_editor::{FloatingPanel, Toast, ToastQueue, ZenMode};
+use ph2d_editor::paint::{Paint, PaintCtx};
+use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor::{FloatingPanel, Layout as EditorLayout, Toast, ToastQueue, ZenMode};
 use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
 use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
     PointerKind, PointerSource, WindowSize,
 };
 use ph2d_input::{Event as InputEvent, InputState};
-use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer, TextureAtlas};
+use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer, TextureAtlas, VelloPass};
 use ph2d_script::ScriptHost;
+use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
+use ph2d_vector::{Color as VelloColor, VectorScene};
 use std::cell::Cell;
 use std::sync::Arc;
 use std::time::Instant;
@@ -178,11 +182,24 @@ struct AppGfx {
     /// keeps the GC budget warm; set/get bindings ready for follow-up
     /// gameplay work.
     script: Option<ScriptHost>,
-    /// M12 editor data layer (no Vello paint until M11 surface share).
+    /// M12 editor data layer + M11 widget paint pass.
     theme: Theme,
     zen: ZenMode,
     toasts: ToastQueue,
     selection_panel: FloatingPanel,
+    /// 4-zone editor layout (ADR-0023 §3). Sized from window each
+    /// resize; the M11 paint pass walks this to draw zone backdrops.
+    layout: EditorLayout,
+    /// Vello pipeline + intermediate texture + blitter for the
+    /// widget paint pass. Runs AFTER the sprite pass on the same
+    /// surface frame, so widgets sit on top of game content.
+    vello_pass: VelloPass,
+    /// Reused [`VectorScene`] — encoded fresh each frame; allocations
+    /// pool inside Vello so this is cheap.
+    vector_scene: VectorScene,
+    /// parley font + layout context (heavy state). Threaded through
+    /// `PaintCtx` so future text passes don't re-load fonts.
+    text_system: TextSystem,
 }
 
 struct App {
@@ -406,6 +423,10 @@ impl App {
             zen,
             toasts,
             selection_panel,
+            layout,
+            vello_pass,
+            vector_scene,
+            text_system,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -423,16 +444,20 @@ impl App {
         // M7 per-frame GC step. Cheap (p99 ≤ 10µs target per the M7
         // gate test) — keeps the Luau heap from accumulating between
         // future scripted ticks. Errors here are non-fatal; just log.
-        if let Some(host) = script {
-            if let Err(e) = host.gc_step() {
-                eprintln!("M7 gc_step error: {e}");
-            }
+        if let Some(host) = script
+            && let Err(e) = host.gc_step()
+        {
+            eprintln!("M7 gc_step error: {e}");
         }
 
         // Apply coalesced resize once per frame.
         if let Some(size) = self.pending_resize.take() {
             surface.resize(size);
+            // Layout + Vello intermediate must follow surface size.
+            *layout = EditorLayout::new(size.width as f32, size.height as f32);
+            vello_pass.ensure_size(surface.gpu(), (size.width, size.height));
             self.handler.on_resize(size, host.scale_factor());
+            self.title_dirty = true;
         }
 
         // Drive fixed-step accumulator.
@@ -498,8 +523,31 @@ impl App {
         let b = ((t + 4.188).sin() * 0.05 + 0.05).clamp(0.0, 1.0);
 
         let window_size = surface.size();
+        // M11: build the widget scene up-front (no GPU work yet — just
+        // VectorScene encoding). Done outside acquire_frame so an
+        // Occluded/Timeout doesn't waste the encoder.
+        let viewport = EditorRect::new(
+            0.0,
+            0.0,
+            window_size.width as f32,
+            window_size.height as f32,
+        );
+        vector_scene.reset();
+        let mut paint_ctx = PaintCtx {
+            theme: *theme,
+            viewport,
+            text: text_system,
+        };
+        layout.paint(vector_scene, &mut paint_ctx);
+        if !zen.is_active() {
+            // Hide all floating panels in Zen mode (ADR-0023 §2).
+            selection_panel.paint(vector_scene, &mut paint_ctx);
+        }
+        toasts.paint(vector_scene, &mut paint_ctx);
+
         match surface.acquire_frame() {
             Ok(frame) => {
+                // Pass 1: sprite renderer clears + draws game content.
                 renderer.render(
                     &frame,
                     present,
@@ -507,6 +555,19 @@ impl App {
                     window_size,
                     wgpu::Color { r, g, b, a: 1.0 },
                 );
+                // Pass 2: Vello widgets composite over the surface.
+                // bg_color = TRANSPARENT so sprite content shows
+                // through where the editor scene is empty (the canvas
+                // Center zone is the whole sprite layer).
+                if let Err(e) = vello_pass.render(
+                    surface.gpu(),
+                    vector_scene.inner(),
+                    frame.view(),
+                    (window_size.width, window_size.height),
+                    VelloColor::TRANSPARENT,
+                ) {
+                    eprintln!("M11 vello_pass.render error: {e}");
+                }
                 // FrameTarget presents on Drop.
             }
             Err(AcquireError::AwaitingReconfigure) => {
@@ -625,15 +686,36 @@ impl ApplicationHandler for App {
             }
         };
 
-        // M12: editor data layer. ZenMode/ToastQueue/FloatingPanel
-        // model state only — Vello widget paint requires sharing the
-        // wgpu Surface with the sprite pipeline (M11 follow-up). For
-        // now state is surfaced via the window title.
+        // M12 + M11: editor data layer + Vello widget paint pass.
+        // ZenMode/ToastQueue/FloatingPanel model state, Layout
+        // computes the 4 zones, VelloPass renders all widgets onto
+        // the surface AFTER the sprite pass.
         let theme = Theme::Dark;
         let zen = ZenMode::new();
         let mut toasts = ToastQueue::new();
         toasts.push(Toast::success("Editor data layer wired (M12)"));
+        toasts.push(Toast::info("Vello widget paint active (M11)"));
         let selection_panel = selection_demo_panel();
+        let layout = EditorLayout::new(size.width as f32, size.height as f32);
+        let vello_pass =
+            match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {
+                Ok(p) => {
+                    println!(
+                        "[{:>6}ms] M11: VelloPass initialized ({}×{} intermediate)",
+                        self.handler.elapsed_ms(),
+                        size.width,
+                        size.height
+                    );
+                    p
+                }
+                Err(e) => {
+                    // Pass init failure is fatal here — the demo's whole
+                    // point is showing the editor over the canvas.
+                    panic!("VelloPass::new failed: {e}");
+                }
+            };
+        let vector_scene = VectorScene::new();
+        let text_system = TextSystem::new();
 
         self.window = Some(window);
         self.host = Some(host);
@@ -650,6 +732,10 @@ impl ApplicationHandler for App {
             zen,
             toasts,
             selection_panel,
+            layout,
+            vello_pass,
+            vector_scene,
+            text_system,
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -740,10 +826,10 @@ impl ApplicationHandler for App {
                 });
 
                 // M12 demo controls (only on key Down, no repeat).
-                if matches!((state, repeat), (ElementState::Pressed, false)) {
-                    if let PhysicalKey::Code(code) = physical_key {
-                        self.handle_editor_key(code);
-                    }
+                if matches!((state, repeat), (ElementState::Pressed, false))
+                    && let PhysicalKey::Code(code) = physical_key
+                {
+                    self.handle_editor_key(code);
                 }
             }
 

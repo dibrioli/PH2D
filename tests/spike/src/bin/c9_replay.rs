@@ -100,10 +100,10 @@ fn step(world: &mut World, ids: &[Entity], tick: u64) {
             pos.y += dy * 0.001;
         }
         // Damage proportional to tick
-        if let Some(mut h) = world.get_mut::<Health>(e) {
-            if (tick + i as u64) % 7 == 0 {
-                h.0 -= 1;
-            }
+        if let Some(mut h) = world.get_mut::<Health>(e)
+            && (tick + i as u64).is_multiple_of(7)
+        {
+            h.0 -= 1;
         }
     }
 }

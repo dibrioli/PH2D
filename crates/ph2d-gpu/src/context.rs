@@ -51,10 +51,15 @@ impl GpuContext {
         }))
         .map_err(|e| GpuError::NoAdapter(format!("{e:?}")))?;
 
+        // Limits::default() (desktop tier) is required by Vello's
+        // compute pipelines (M11 widget paint) — downlevel_defaults
+        // caps storage texture bindings and workgroup sizes too low
+        // for Vello to even compile its shaders. iPad/web shells will
+        // need to revisit if/when they pick a downlevel adapter.
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("ph2d-gpu device"),
             required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
+            required_limits: wgpu::Limits::default(),
             experimental_features: wgpu::ExperimentalFeatures::default(),
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,

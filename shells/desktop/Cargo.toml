@@ -29,6 +29,11 @@ ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-input = { path = "../../crates/ph2d-input" }
 ph2d-editor = { path = "../../crates/ph2d-editor" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
+# M11 widget paint pass — Vello scene encoder + parley text contexts.
+# Editor's `Paint` trait lowers widgets into a `VectorScene` that the
+# render crate's `VelloPass` then composites onto the surface.
+ph2d-vector = { path = "../../crates/ph2d-vector" }
+ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the
 # application layer and is the only place we tolerate this leak.
@@ -37,7 +42,7 @@ bevy_ecs = "0.18"
 # launch (so M6 has real files to consume). Same dep ph2d-asset
 # pulls — workspace Cargo.lock unifies version.
 image = { version = "0.25", default-features = false, features = ["png"] }
-wgpu = "29"
+wgpu = "28"
 winit = "0.30"
 gilrs = "0.11"
 

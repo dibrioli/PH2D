@@ -112,10 +112,10 @@ fn migrate_v1_to_v2(v1: SaveV1) -> SaveV2 {
 fn load(bytes: &[u8]) -> Result<SaveV2, MigrationError> {
     // Peek version field (always first u32 by HR-14 convention).
     let v1: Result<SaveV1, _> = postcard::from_bytes(bytes);
-    if let Ok(s) = v1 {
-        if s.version == 1 {
-            return Ok(migrate_v1_to_v2(s));
-        }
+    if let Ok(s) = v1
+        && s.version == 1
+    {
+        return Ok(migrate_v1_to_v2(s));
     }
     let v2: SaveV2 = postcard::from_bytes(bytes).map_err(MigrationError::DecodeError)?;
     if v2.version == 2 {

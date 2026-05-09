@@ -73,7 +73,14 @@ license-files = [{ path = "COPYRIGHT", hash = 0x39f8ad31 }]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
-ignore = []
+ignore = [
+    # `paste` is unmaintained (RUSTSEC-2024-0436) but pulled
+    # transitively by rapier2d → nalgebra → simba. No CVE; just
+    # archived. The crate is feature-frozen, battle-tested, used
+    # only at proc-macro expansion (no runtime risk). Accepted
+    # until the rapier upstream chain migrates.
+    "RUSTSEC-2024-0436",
+]
 
 # ----------------------------------------------------------------------------
 # Bans — duplicates and forbidden crates.

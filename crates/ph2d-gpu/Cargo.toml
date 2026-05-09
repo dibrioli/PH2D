@@ -8,3 +8,8 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+ph2d-host = { path = "../ph2d-host" }
+wgpu = "29"
+pollster = "0.4"

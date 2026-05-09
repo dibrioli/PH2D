@@ -46,12 +46,43 @@ pub struct PanelTab {
 
 /// One action in the action grid below the tabs (e.g. *Add /
 /// Remove / Invert / Copy & Paste / Feather / Save & Load /
-/// Color Fill / Clear*).
+/// Color Fill / Clear*). Used when the action is essentially a
+/// labeled button — no internal state of its own.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PanelAction {
     pub label: String,
     pub icon: Option<&'static str>,
     pub enabled: bool,
+}
+
+/// One control in a tool panel. Lifted enum over the widget set so
+/// a single `controls: Vec<PanelControl>` field can carry mixed
+/// Sliders / Toggles / RadioGroups / ColorSwatches — Brush wants
+/// 3 sliders + 1 swatch; Move wants 2 toggles + 1 radio group.
+///
+/// `Action` is the label-only fallback (the original `PanelAction`),
+/// used for Procreate-style action grids like the Selection panel.
+#[derive(Clone, Debug)]
+pub enum PanelControl {
+    Slider(crate::widget::Slider),
+    Toggle(crate::widget::Toggle),
+    RadioGroup(crate::widget::RadioGroup<String>),
+    ColorSwatch(crate::widget::ColorSwatch),
+    Action(PanelAction),
+}
+
+impl PanelControl {
+    /// Display label routed to the paint pass; pulled from whatever
+    /// the wrapped widget calls its label.
+    pub fn label(&self) -> &str {
+        match self {
+            Self::Slider(s) => &s.label,
+            Self::Toggle(t) => &t.label,
+            Self::RadioGroup(g) => &g.label,
+            Self::ColorSwatch(s) => &s.label,
+            Self::Action(a) => &a.label,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -64,7 +95,12 @@ pub struct FloatingPanel {
     pub width: f32,
     pub height: f32,
     pub tabs: Vec<PanelTab>,
+    /// Label-only actions (Procreate Selection-style action grid).
+    /// Empty for tools that use the richer [`Self::controls`] vector.
     pub actions: Vec<PanelAction>,
+    /// Mixed widgets (Slider/Toggle/RadioGroup/ColorSwatch). When
+    /// non-empty, the paint pass renders these instead of `actions`.
+    pub controls: Vec<PanelControl>,
     pub collapsed: bool,
     pub visible: bool,
 }
@@ -82,6 +118,7 @@ impl FloatingPanel {
             height: 96.0, // 1 tab row + 1 action row + padding
             tabs: Vec::new(),
             actions: Vec::new(),
+            controls: Vec::new(),
             collapsed: false,
             visible: true,
         }
@@ -94,6 +131,11 @@ impl FloatingPanel {
 
     pub fn with_actions(mut self, actions: Vec<PanelAction>) -> Self {
         self.actions = actions;
+        self
+    }
+
+    pub fn with_controls(mut self, controls: Vec<PanelControl>) -> Self {
+        self.controls = controls;
         self
     }
 

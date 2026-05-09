@@ -1,12 +1,14 @@
 //! [`BrushTool`] — first concrete tool. Model: size/opacity/flow/color.
 //!
 //! Panel layout follows Procreate's brush HUD: one "Tip" tab plus a
-//! row of placeholder actions tagging the four parameters. Once the
-//! widget-primitives PR lands, the placeholders swap for Slider +
-//! ColorSwatch widgets driven by the same model fields below.
+//! row of three Sliders (Size / Opacity / Flow) + one ColorSwatch.
+//! The slider values reflect the model fields; mouse drag (next PR)
+//! will write back into them.
 
-use crate::floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelTab, ToolId};
+use crate::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
 use crate::tool::Tool;
+use crate::widget::{ColorSwatch, Slider};
+use ph2d_a11y::NodeId;
 
 #[derive(Clone, Debug)]
 pub struct BrushTool {
@@ -41,33 +43,25 @@ impl Tool for BrushTool {
     }
 
     fn build_panel(&self) -> FloatingPanel {
+        let mut size = Slider::new(NodeId(101), "Size");
+        size.set_value(self.size / 100.0); // size 0..100 px → slider 0..1
+        let mut opacity = Slider::new(NodeId(102), "Opacity");
+        opacity.set_value(self.opacity);
+        let mut flow = Slider::new(NodeId(103), "Flow");
+        flow.set_value(self.flow);
+        let swatch = ColorSwatch::new(NodeId(104), "Color", self.color_rgba);
+
         let mut panel = FloatingPanel::new(self.id(), "Brush")
             .with_tabs(vec![PanelTab {
                 label: "Tip".into(),
                 icon: None,
                 active: true,
             }])
-            .with_actions(vec![
-                PanelAction {
-                    label: "Size".into(),
-                    icon: None,
-                    enabled: true,
-                },
-                PanelAction {
-                    label: "Opacity".into(),
-                    icon: None,
-                    enabled: true,
-                },
-                PanelAction {
-                    label: "Flow".into(),
-                    icon: None,
-                    enabled: true,
-                },
-                PanelAction {
-                    label: "Color".into(),
-                    icon: None,
-                    enabled: true,
-                },
+            .with_controls(vec![
+                PanelControl::Slider(size),
+                PanelControl::Slider(opacity),
+                PanelControl::Slider(flow),
+                PanelControl::ColorSwatch(swatch),
             ]);
         panel.anchor = PanelAnchor::BottomCenter;
         panel.width = 480.0;
@@ -98,17 +92,18 @@ mod tests {
     }
 
     #[test]
-    fn panel_has_one_tab_and_four_actions() {
+    fn panel_has_one_tab_and_four_controls() {
         let p = BrushTool::default().build_panel();
         assert_eq!(p.tool_id, ToolId::new("brush"));
         assert_eq!(p.title, "Brush");
         assert_eq!(p.anchor, PanelAnchor::BottomCenter);
-        assert_eq!(p.width, 480.0);
-        assert_eq!(p.height, 96.0);
         assert_eq!(p.tabs.len(), 1);
         assert!(p.tabs[0].active);
         assert_eq!(p.tabs[0].label, "Tip");
-        let labels: Vec<&str> = p.actions.iter().map(|a| a.label.as_str()).collect();
+        assert_eq!(p.controls.len(), 4);
+        assert!(matches!(p.controls[0], PanelControl::Slider(_)));
+        assert!(matches!(p.controls[3], PanelControl::ColorSwatch(_)));
+        let labels: Vec<&str> = p.controls.iter().map(|c| c.label()).collect();
         assert_eq!(labels, vec!["Size", "Opacity", "Flow", "Color"]);
     }
 }

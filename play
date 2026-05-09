@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# ▶ Play — launch the PH2D desktop shell.
+#
+# Usage from terminal:
+#   ./play           release build (best perf)
+#   ./play dev       debug build (fast compile, slow runtime)
+#   ./play clean     wipe target/ + full rebuild
+#
+# Thin wrapper over scripts/run-shell.sh — same behavior, shorter
+# name so it's quick to launch from the workspace root.
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/scripts/run-shell.sh" "$@"

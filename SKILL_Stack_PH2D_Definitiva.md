@@ -185,10 +185,11 @@ ph2d/
 │   ├── ph2d-script/              # runtime Luau + WASM + bindgen
 │   ├── ph2d-net/                 # QUIC (quinn) + WebTransport, rollback, lockstep
 │   ├── ph2d-input/               # gamepad, haptics, abstrações de Pencil
-│   ├── ph2d-editor/              # UI retained-mode (Vello + taffy + parley)
+│   ├── ph2d-tokens/              # design tokens (color/type/spacing) — ADR-0023
+│   ├── ph2d-editor/              # UI retained-mode (Vello + taffy + parley) + 4-zone Procreate-style — ADR-0023
 │   ├── ph2d-mcp/                 # MCP server + governance + audit log
 │   ├── ph2d-i18n/                # Fluent runtime
-│   ├── ph2d-a11y/                # AccessibilityNode tree (exposto via host)
+│   ├── ph2d-a11y/                # AccessKit (Mac VO + Win Narrator + iPadOS VO + AT-SPI) — ADR-0023
 │   ├── ph2d-save/                # snapshot, replay, migration
 │   └── ph2d-telemetry/           # crash, opt-in metrics, log rotation
 ├── shells/
@@ -951,6 +952,7 @@ Listar com motivo de rejeição.
 | ADR-0020 | Surface lifecycle e device-lost recovery | **Accepted** ([0020-surface-lifecycle.md](../docs/architecture/decisions/0020-surface-lifecycle.md)) |
 | ADR-0021 | Fronteira simulation ↔ presentation (SubWorld) | **Accepted** ([0021-simulation-presentation-boundary.md](../docs/architecture/decisions/0021-simulation-presentation-boundary.md)) |
 | ADR-0022 | Banimento HashMap em simulation crates | **Accepted** ([0022-no-hashmap-in-simulation.md](../docs/architecture/decisions/0022-no-hashmap-in-simulation.md)) |
+| ADR-0023 | UI/UX baseline — Procreate-style canvas-first + WCAG 2.2 AA + AccessKit | **Accepted** ([0023-ui-ux-baseline.md](../docs/architecture/decisions/0023-ui-ux-baseline.md)) |
 
 ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-17.
 

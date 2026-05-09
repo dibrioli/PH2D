@@ -128,6 +128,9 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
+      - name: ph2d-core tests (nextest)
+        run: cargo nextest run -p ph2d-core --release --locked
+
       - name: ph2d-host tests (nextest)
         run: cargo nextest run -p ph2d-host --release --locked
 

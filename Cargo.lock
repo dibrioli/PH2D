@@ -2275,6 +2275,9 @@ version = "0.0.0"
 [[package]]
 name = "ph2d-core"
 version = "0.0.0"
+dependencies = [
+ "glam",
+]
 
 [[package]]
 name = "ph2d-ecs"

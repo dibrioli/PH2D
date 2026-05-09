@@ -8,3 +8,16 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+# ph2d-input is intentionally pure-data: no gilrs / IOKit / evdev /
+# winit dep here. Shells (desktop, future iPad) translate their
+# native input source into [`Event`] and call apply_event.
+# Keeps the crate buildable on every target including no_std-adjacent
+# WASM in the future.
+
+[dev-dependencies]
+criterion = { version = "0.7", default-features = false }
+
+[[bench]]
+name = "input_throughput"
+harness = false

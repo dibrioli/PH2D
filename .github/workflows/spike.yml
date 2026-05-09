@@ -33,6 +33,9 @@ jobs:
         with:
           shared-key: lint
 
+      - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
 
@@ -107,6 +110,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: msrv
+      - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
       - name: cargo check --workspace --locked (MSRV)
         run: cargo check --workspace --locked
 
@@ -133,6 +138,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.os }}
+
+      - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -314,7 +323,11 @@ jobs:
         # comparison action set up, we just ensure the bench compiles and runs
         # without panic; full regression detection is a follow-up (track in
         # ADR if it becomes load-bearing).
-        run: cargo bench --bench c2_query -p ph2d-spike --locked -- --output-format bencher
+        # M8 added the input_throughput bench — first frame-budget bench
+        # rooted in production code (not just spike fixture).
+        run: |
+          cargo bench --bench c2_query -p ph2d-spike --locked -- --output-format bencher
+          cargo bench --bench input_throughput -p ph2d-input --locked -- --output-format bencher
 
 # =============================================================================
 # DEFENSES PARKED (active when prerequisites land — keep these comments as

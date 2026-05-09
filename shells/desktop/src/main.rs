@@ -17,9 +17,18 @@
 //!   via window title since Vello widget paint requires sharing the
 //!   wgpu Surface with the sprite pipeline (see `integration.rs`).
 //!
+//! M8 add-on (gamepad path):
+//! - gilrs adapter (`gilrs_adapter` module) pumps gamepad events into
+//!   [`ph2d_input::InputState`] each frame, BEFORE sim tick.
+//! - Connection / button / axis events log to the terminal at the
+//!   `[Nms]` timestamp prefix used by the rest of the shell.
+//! - Axis logs filter dead-zone jitter (only `|value| > 0.25`).
+//! - Pencil events are wired through the abstraction but not produced
+//!   by this shell (iPad shell will, in M9+).
+//!
 //! Out of scope here:
-//! - **M8** ph2d-input gilrs adapter — already in PR #13 (cascade);
-//!   cleanly merges once that lands and integration rebases.
+//! - **M8 → ScriptHost**: `InputState` lives on `App`, but routing into
+//!   `ph2d.input` Luau snapshot is a follow-up.
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
 mod integration;
@@ -34,12 +43,15 @@ use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
     PointerKind, PointerSource, WindowSize,
 };
+use ph2d_input::{Event as InputEvent, InputState};
 use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer, TextureAtlas};
 use ph2d_script::ScriptHost;
 use ph2d_tokens::Theme;
 use std::cell::Cell;
 use std::sync::Arc;
 use std::time::Instant;
+
+mod gilrs_adapter;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent as WinitKeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -184,10 +196,37 @@ struct App {
     modifiers: ModifiersState,
     last_pointer: (f32, f32),
     title_dirty: bool,
+    /// gilrs context (M8). `None` if init failed (e.g. Linux without
+    /// /dev/input read perms in CI sandboxes — we degrade gracefully
+    /// instead of crashing the renderer).
+    gilrs: Option<gilrs::Gilrs>,
+    /// Input snapshot pumped by the gilrs adapter each frame.
+    input: InputState,
 }
 
 impl App {
     fn new() -> Self {
+        let gilrs = match gilrs::Gilrs::new() {
+            Ok(g) => {
+                let pads: Vec<String> = g
+                    .gamepads()
+                    .map(|(id, pad)| format!("[{:?}] {}", id, pad.name()))
+                    .collect();
+                if pads.is_empty() {
+                    println!("gilrs: initialized; no gamepads connected yet");
+                } else {
+                    println!("gilrs: detected {} gamepad(s):", pads.len());
+                    for p in &pads {
+                        println!("  {p}");
+                    }
+                }
+                Some(g)
+            }
+            Err(e) => {
+                eprintln!("gilrs init failed (continuing without gamepad): {e}");
+                None
+            }
+        };
         Self {
             window: None,
             host: None,
@@ -199,6 +238,37 @@ impl App {
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             title_dirty: true,
+            gilrs,
+            input: InputState::new(),
+        }
+    }
+
+    /// Pump every queued gilrs event into the [`InputState`] and log
+    /// the salient ones. Press / release / axis-change all logged at
+    /// elapsed-ms timestamps so behavior is auditable from the
+    /// terminal without an explicit debug overlay.
+    fn pump_gamepad(&mut self) {
+        let Some(g) = self.gilrs.as_mut() else {
+            return;
+        };
+        // begin_frame snapshots last-frame held buttons so
+        // pressed()/released() return correct edge-trigger values.
+        self.input.begin_frame();
+        while let Some(gilrs::Event { event, time: _, .. }) = g.next_event() {
+            match event {
+                gilrs::EventType::Connected => {
+                    println!("[{:>6}ms] gamepad connected", self.handler.elapsed_ms());
+                }
+                gilrs::EventType::Disconnected => {
+                    println!("[{:>6}ms] gamepad disconnected", self.handler.elapsed_ms());
+                }
+                _ => {
+                    if let Some(translated) = gilrs_adapter::translate(event) {
+                        self.input.apply_event(translated);
+                        log_input_event(self.handler.elapsed_ms(), &translated);
+                    }
+                }
+            }
         }
     }
 
@@ -314,6 +384,12 @@ impl App {
     }
 
     fn render_frame(&mut self) {
+        // Pump gamepad events first so InputState reflects the latest
+        // state by the time sim/extract run. Order: input → sim →
+        // extract → render. (M9 will route InputState into the script
+        // bridge so Luau can react; for M8 we just log.)
+        self.pump_gamepad();
+
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -676,6 +752,40 @@ impl ApplicationHandler for App {
             }
 
             _ => {}
+        }
+    }
+}
+
+fn log_input_event(elapsed_ms: u128, event: &InputEvent) {
+    match event {
+        InputEvent::GamepadButtonDown(b) => {
+            println!(
+                "[{:>6}ms] gamepad button down: {}",
+                elapsed_ms,
+                b.as_lua_key()
+            );
+        }
+        InputEvent::GamepadButtonUp(b) => {
+            println!(
+                "[{:>6}ms] gamepad button up:   {}",
+                elapsed_ms,
+                b.as_lua_key()
+            );
+        }
+        InputEvent::GamepadAxis { axis, value } => {
+            // Spam-prone: log only when |value| > 0.25 to skip
+            // dead-zone jitter.
+            if value.abs() > 0.25 {
+                println!(
+                    "[{:>6}ms] gamepad axis {} = {:+.2}",
+                    elapsed_ms,
+                    axis.as_lua_key(),
+                    value
+                );
+            }
+        }
+        InputEvent::Pencil(_) => {
+            // No iPad shell yet; pencil events can't originate here.
         }
     }
 }

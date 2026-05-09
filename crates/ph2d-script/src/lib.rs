@@ -15,13 +15,18 @@
 //!   wired into the Lua globals; both go through the queues above.
 //! - `Lua::sandbox(true)` activated so user scripts can't reach
 //!   `os.execute`, `io.open`, `package.loadlib`, etc. (HR-9).
+//!
+//! M8 added a third FFI lane: [`InputSnapshot`] + the
+//! `ph2d.input(key)` Lua binding. Same Arc-shared, survives-reset
+//! pattern; populated by shells from `ph2d_input::InputState` per
+//! frame.
 
 pub mod host;
 pub mod io;
 pub mod messaging;
 
 pub use host::ScriptHost;
-pub use io::{EntityWrite, QueueFull, ReadSnapshot, WriteQueue};
+pub use io::{EntityWrite, InputSnapshot, QueueFull, ReadSnapshot, WriteQueue};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 
 use mlua::{Function, IntoLuaMulti, Lua, Thread, ThreadStatus, Value};

@@ -37,7 +37,14 @@ authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]
 
 [profile.dev]
 opt-level = 0
-debug = true
+# `line-tables-only` keeps panic backtraces with file:line but skips
+# variable type info — ~30% smaller artifacts, faster link, lighter
+# CI cache. Re-enable full `debug = true` locally if you need LLDB
+# variable inspection (per-package override or `cargo --config`).
+debug = "line-tables-only"
+
+[profile.test]
+debug = "line-tables-only"
 
 [profile.release]
 opt-level = 3
@@ -45,6 +52,17 @@ lto = "thin"
 codegen-units = 1
 debug = false
 strip = "symbols"
+
+# Used by CI for tests + spike correctness fixtures. Runs at -O3 like
+# release (so test asserts on perf-sensitive code are realistic) but
+# without LTO + with parallel codegen, saving 30-60s per build vs
+# `--release`. Real benchmarks (criterion) still use `--release` for
+# fidelity.
+[profile.release-test]
+inherits = "release"
+lto = false
+codegen-units = 16
+strip = "none"
 
 [profile.bench]
 inherits = "release"

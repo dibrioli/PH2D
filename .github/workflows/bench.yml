@@ -1,0 +1,56 @@
+name: bench
+
+# Criterion bench — weekly schedule + on-demand dispatch.
+# NOT triggered by PR (would gate merges on hardware-specific p99
+# thresholds calibrated for Mac M-series local). For real perf
+# regression detection in PR, set up a self-hosted Mac mini M2 runner
+# (HR-4 enforcer; tracked as M14+ infra work).
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"  # Mondays 09:00 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tests/spike/benches/**"
+      - "tests/spike/Cargo.toml"
+      - "crates/**/Cargo.toml"
+      - "Cargo.lock"
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+  SOURCE_DATE_EPOCH: "1746662400"
+
+jobs:
+  bench:
+    name: criterion bench (regression baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mold linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mold
+          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bench
+
+      - name: Run criterion benches
+        # `--release` (not release-test) — benches need full LTO for
+        # fidelity. Output via bencher format for easy diff in
+        # workflow logs; criterion baseline files in target/criterion/
+        # could be uploaded as artifact for trend tracking later.
+        run: cargo bench --bench c2_query -p ph2d-spike --locked -- --output-format bencher
+
+      - name: Upload criterion artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: criterion-${{ github.sha }}
+          path: target/criterion/
+          if-no-files-found: warn
+          retention-days: 30

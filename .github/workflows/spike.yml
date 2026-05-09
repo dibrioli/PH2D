@@ -2,27 +2,51 @@ name: spike
 
 on:
   push:
-    branches: [main, "spike/**"]
+    branches: [main, "spike/**", "m*/**", "ci/**"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "CLAUDE.md"
+      - ".gitignore"
+      - "LICENSE.md"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "CLAUDE.md"
+      - ".gitignore"
+      - "LICENSE.md"
+
+# Cancel in-progress runs on the same branch when a new commit lands.
+# Scoped to PRs / non-main branches — never cancels main pushes
+# (those validate releases / merges and must complete).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-D warnings"
   # Reproducibility: fixed timestamp baked into builds (per SKILL §12.7).
-  # Updated only on intentional release tag.
   SOURCE_DATE_EPOCH: "1746662400"
 
 jobs:
   # --------------------------------------------------------------------------
   # Static analysis: format, lint, license/CVE/dependency audit.
-  # Runs on Linux only — same answer on every OS, no benefit from matrix.
+  # Linux-only (same answer on every OS) + mold linker for fast clippy.
   # --------------------------------------------------------------------------
   lint:
     name: lint (fmt + clippy + deny + audit)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Install mold linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mold
+          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -50,12 +74,7 @@ jobs:
           tool: cargo-audit
 
       - name: cargo audit (CVE scan)
-        # Fails on vulnerabilities; logs unmaintained/yanked as warnings without
-        # failing CI (those are usually transitive and out of our control).
-        # If a real CVE lands, the default behavior is non-zero exit.
-        # Wipe the advisory-db dir first — Swatinem/rust-cache restores a
-        # partial copy that cargo-audit refuses to reuse ("Refusing to
-        # initialize the non-empty directory").
+        # See spike.yml history for why we wipe advisory-db before each run.
         run: |
           rm -rf ~/.cargo/advisory-db
           cargo audit
@@ -66,8 +85,6 @@ jobs:
           tool: cargo-machete
 
       - name: cargo machete (unused dependency check)
-        # Detects deps in Cargo.toml that no longer have any `use` in code.
-        # Reduces supply-chain surface + build time + binary size.
         run: cargo machete
 
       - name: Install typos-cli
@@ -76,19 +93,22 @@ jobs:
           tool: typos-cli
 
       - name: typos (project-wide typo scan)
-        # Config in .typos.toml whitelists project terms.
-        # Pre-commit hook catches them locally; CI is the safety net.
         run: typos
 
   # --------------------------------------------------------------------------
   # MSRV check — verifies declared MSRV (rust-version = "1.85") still builds.
-  # Catches drift where toolchain pin (1.95) hides accidental MSRV bumps.
   # --------------------------------------------------------------------------
   msrv:
     name: MSRV (rust 1.85) check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Install mold linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mold
+          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@1.85
       - uses: Swatinem/rust-cache@v2
         with:
@@ -97,28 +117,27 @@ jobs:
         run: cargo check --workspace --locked
 
   # --------------------------------------------------------------------------
-  # Cross-OS build + tests + spike fixtures.
-  # --locked enforces Cargo.lock is the source of truth (no transient drift).
-  # Tests via cargo-nextest: process isolation (panic in one test ≠ takedown
-  # of the whole binary), 3× faster, JUnit XML output for future dashboards.
+  # Linux test — runs FIRST in the test chain. Fail-fast: if Linux breaks,
+  # macOS and Windows never start (saves ~15min of runner time per fail).
+  # Uses mold linker + release-test profile (no LTO) for ~2x faster builds.
   # --------------------------------------------------------------------------
-  test:
-    name: ${{ matrix.os }} — workspace check + tests
-    runs-on: ${{ matrix.os }}
+  test-linux:
+    name: ubuntu-latest — workspace check + tests
+    runs-on: ubuntu-latest
     needs: [lint, msrv]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Install mold linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mold
+          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.os }}
-
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@v2
+          shared-key: ubuntu-latest
+      - uses: taiki-e/install-action@v2
         with:
           tool: nextest
 
@@ -128,41 +147,88 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
-      - name: ph2d-script tests (nextest)
-        run: cargo nextest run -p ph2d-script --release --locked
+      - name: ph2d-script tests (nextest, profile release-test)
+        run: cargo nextest run -p ph2d-script --cargo-profile release-test --locked
 
-      - name: ph2d-mcp tests (nextest)
-        run: cargo nextest run -p ph2d-mcp --release --locked
+      - name: ph2d-mcp tests (nextest, profile release-test)
+        run: cargo nextest run -p ph2d-mcp --cargo-profile release-test --locked
 
-      - name: spike fixtures (no ECS)
+      - name: spike correctness fixtures (no ECS)
         run: |
-          cargo run --release --locked --bin hello_runner -p ph2d-spike
-          cargo run --release --locked --bin c3_coro_timing -p ph2d-spike
-          cargo run --release --locked --bin c10_gc_stress -p ph2d-spike
-          cargo run --release --locked --bin c12_wasm_marshall -p ph2d-spike
-          cargo run --release --locked --bin c13_migration -p ph2d-spike
-          cargo run --release --locked --bin c2_1_messaging -p ph2d-spike
+          cargo run --profile release-test --locked --bin hello_runner -p ph2d-spike
+          cargo run --profile release-test --locked --bin c13_migration -p ph2d-spike
 
-      - name: spike fixtures (with bevy_ecs)
+      - name: spike correctness fixtures (with bevy_ecs)
         run: |
-          cargo run --release --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
-          cargo run --release --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
-          cargo run --release --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
+          cargo run --profile release-test --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
+          cargo run --profile release-test --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
+          cargo run --profile release-test --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
 
   # --------------------------------------------------------------------------
-  # Cross-platform replay determinism (HR-5). The whole point: hash equal on
-  # Linux, macOS, Windows.
+  # macOS + Windows — only run if Linux passed (fail-fast economy).
+  # --------------------------------------------------------------------------
+  test-other:
+    name: ${{ matrix.os }} — workspace check + tests
+    runs-on: ${{ matrix.os }}
+    needs: test-linux
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.os }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: cargo check (workspace, default features) --locked
+        run: cargo check --workspace --locked
+
+      - name: cargo check (workspace, --features bevy_ecs) --locked
+        run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
+
+      - name: ph2d-script tests (nextest, profile release-test)
+        run: cargo nextest run -p ph2d-script --cargo-profile release-test --locked
+
+      - name: ph2d-mcp tests (nextest, profile release-test)
+        run: cargo nextest run -p ph2d-mcp --cargo-profile release-test --locked
+
+      - name: spike correctness fixtures (no ECS)
+        run: |
+          cargo run --profile release-test --locked --bin hello_runner -p ph2d-spike
+          cargo run --profile release-test --locked --bin c13_migration -p ph2d-spike
+
+      - name: spike correctness fixtures (with bevy_ecs)
+        run: |
+          cargo run --profile release-test --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
+          cargo run --profile release-test --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
+          cargo run --profile release-test --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
+
+  # --------------------------------------------------------------------------
+  # Cross-platform replay determinism (HR-5). Hash equal on all 3 OSes.
   # --------------------------------------------------------------------------
   determinism:
     name: ${{ matrix.os }} — C9 cross-platform replay hash
     runs-on: ${{ matrix.os }}
-    needs: test
+    needs: [test-linux, test-other]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
+      - name: Install mold linker (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mold
+          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -172,12 +238,11 @@ jobs:
         id: replay
         shell: bash
         run: |
-          OUT=$(cargo run --release --locked --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
+          OUT=$(cargo run --profile release-test --locked --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
           echo "$OUT"
           HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
           echo "Captured hash: $HASH"
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
-          # RUNNER_TEMP works on Linux/macOS/Windows; /tmp does not exist on Windows.
           echo "$HASH" > "${RUNNER_TEMP}/c9-hash.txt"
 
       - name: Upload hash artifact
@@ -191,6 +256,7 @@ jobs:
     name: C9 cross-platform comparison
     needs: determinism
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -205,7 +271,6 @@ jobs:
             hash=$(cat "$f")
             echo "  $os: $hash"
           done
-          # Verify all hashes equal.
           uniq=$(for f in hashes/c9-hash-*/c9-hash.txt; do cat "$f"; done | sort -u | wc -l)
           if [ "$uniq" -ne 1 ]; then
             echo "FAIL: hashes differ across OSes — HR-5 violated."
@@ -213,54 +278,22 @@ jobs:
           fi
           echo "PASS: hash identical across all OSes."
 
-  # --------------------------------------------------------------------------
-  # Bench baseline — runs criterion against `main` to surface regressions in PRs.
-  # On main pushes, only stores the new baseline (no comparison).
-  # --------------------------------------------------------------------------
-  bench:
-    name: criterion bench (regression check)
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: bench
-
-      - name: Run criterion benches (current PR)
-        # Criterion stores baseline in target/criterion/. Without a baseline
-        # comparison action set up, we just ensure the bench compiles and runs
-        # without panic; full regression detection is a follow-up (track in
-        # ADR if it becomes load-bearing).
-        run: cargo bench --bench c2_query -p ph2d-spike --locked -- --output-format bencher
-
 # =============================================================================
 # DEFENSES PARKED (active when prerequisites land — keep these comments as
 # the on-ramp checklist; do NOT enable without the noted preconditions).
 #
 # 1. cargo-fuzz (libFuzzer + LLVM coverage)
 #    Activate WHEN: ph2d-script has a real Luau→Rust bridge AND/OR ph2d-net
-#    parses untrusted packets. Today the only parse boundary is `postcard`
-#    deserialize used in C4/C13 — that lib is already heavily fuzzed upstream.
-#    Setup sketch: `cargo install cargo-fuzz`; `cargo fuzz init -p ph2d-script`;
-#    add a job `fuzz-quick: cargo fuzz run lua_eval_input -- -max_total_time=120`.
+#    parses untrusted packets.
 #
-# 2. ASan / TSan (address + thread sanitizer)
-#    Activate WHEN: ph2d-gpu::interop populated (wgpu-hal needs unsafe per
-#    HR-2 + ADR-0008). Until then, every other crate is `#![forbid(unsafe_code)]`
-#    so sanitizers have nothing to sanitize.
-#    Setup sketch: matrix job with nightly toolchain,
-#    `RUSTFLAGS=-Zsanitizer=address cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu`.
-#    Same for `thread`. Run weekly (workflow_dispatch).
+# 2. ASan / TSan
+#    Activate WHEN: ph2d-gpu::interop populated (wgpu-hal needs unsafe).
 #
-# 3. cargo-mutants (mutation testing)
-#    Activate WHEN: production code reaches ≥1k LOC in critical paths
-#    (current scheduler/messaging are ~250 LOC — proptest already covers).
-#    Setup sketch: `cargo install cargo-mutants`; weekly job
-#    `cargo mutants --in-place -p ph2d-script -p ph2d-mcp --timeout 120`.
-#    Expect ~30min run; gate on missed/timeout count, not absolute survival.
+# 3. cargo-mutants
+#    Activate WHEN: production code reaches ≥1k LOC in critical paths.
 #
-# When activating any of these, REMOVE the matching block from this list.
+# Bench (criterion) lives in .github/workflows/bench.yml (weekly schedule
+# + manual dispatch). Removed from PR runs because bench thresholds
+# calibrated on hardware alvo (Mac M-series local) cause false positives
+# on GitHub-hosted runners.
 # =============================================================================

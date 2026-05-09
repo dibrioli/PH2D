@@ -289,6 +289,7 @@ A 120 Hz: corte FLIP/PIC, reduz cascades de 6 para 4, ECS roda metade dos system
 - RNG com seed explícita (`Pcg64Mcg` recomendado), nunca `thread_rng`.
 - GPU compute **proibido** em pipeline determinístico — XPBD cai para fallback CPU; FLIP/PIC desligado; Radiance Cascades aceito apenas porque é puramente visual (não influi em estado simulado).
 - Reduções em GPU não-determinísticas; se entrarem em estado simulado, é bug.
+- Iteração de `std::collections::HashMap`/`HashSet` **proibida** em simulation crates (SipHash com seed random por instância — ordem de iteração diverge cross-platform). Use `bevy_ecs::EntityHashMap`, `BTreeMap`, ou `Vec` indexed. Enforced via `clippy.toml` workspace-wide; ver [ADR-0022](../docs/architecture/decisions/0022-no-hashmap-in-simulation.md).
 
 **Rationale:** rollback netcode quebra silenciosamente quando dois clientes divergem por 1 ULP em float; debugar isso em produção é pesadelo.
 **Enforced by:** `tests/determinism/replay_cross_platform.rs` roda fixture de 600 ticks em Linux/Mac/Windows e compara hash do estado final.
@@ -404,6 +405,7 @@ Tema sensível: para iOS receber `id<MTLTexture>` da shell e fazer wgpu renderiz
 - Includes via preprocessor próprio em `ph2d-gpu`. Convenção: `#include "common/lighting.wgsl"`.
 - Constantes via `override` quando possível (specialization), senão push constants ≤ 128 bytes, senão uniform buffer.
 - Compute: workgroup size sempre potência de 2, documentada no topo. Subgroup operations apenas com fallback para devices sem suporte.
+- **`PipelineLayoutDescriptor` sempre explícito.** `layout: PipelineLayout::Auto` proibido — quebra reuso entre pipelines similares e falha silenciosamente ao editar WGSL. Convenção `@group(0)` frame, `@group(1)` material, `@group(2)` draw (per toji.dev guide).
 - **Determinismo:** shaders que entram em pipeline determinístico não usam `dpdx`/`dpdy`, não usam `pow` com base negativa, não confiam em ordem de execução de invocations.
 
 ### 10.6 Luau API
@@ -608,7 +610,7 @@ Cada destructive operação:
 ### 11.12 Web target
 First-class, com restrições:
 
-- **Threading:** sem `SharedArrayBuffer` por default (precisa COOP/COEP headers no host). Fallback single-thread aceito; certas features perdem (paralelismo em XPBD CPU, etc.).
+- **Threading:** sem `SharedArrayBuffer` por default — requer headers HTTP `Cross-Origin-Opener-Policy: same-origin` e `Cross-Origin-Embedder-Policy: require-corp` no servidor que serve o app. Sem isso, `rayon` cai para single-thread fallback automático em runtime; `ph2d-physics` perde paralelismo, `ph2d-asset` loader serializa. Documentar explicitamente em README do projeto-piloto que deploy precisa configurar esses headers (Vercel/Cloudflare/nginx — todos suportam via headers config). **Não silenciar:** logar warning se em runtime web detectar ausência (`window.crossOriginIsolated === false`).
 - **Asset loading:** `fetch` streaming + cache em OPFS (`Origin Private File System`). Hot reload via WebSocket dev server.
 - **Audio:** Web Audio API atrás do `ph2d-audio`. Latência tipicamente pior que native (~20 ms vs ~5 ms).
 - **Wasm size budget:** core compilado deve ficar abaixo de 8 MB gzipped na configuração default (`web` feature). Medido em CI.
@@ -640,10 +642,14 @@ Margem para OS deixada explícita no doc-string de `MemoryBudget::platform_max`.
 Threads canônicas:
 
 - **Game thread (main):** ECS scheduler do bevy_ecs, lógica de jogo, scripts. Pode ser multi-threaded internamente via bevy_ecs (parallel systems).
-- **Render thread:** comando GPU encoding + present. Recebe `RenderWorld` via channel `crossbeam` no fim do frame de game.
+- **Render thread:** comando GPU encoding + present. Recebe `PresentWorld` via channel `crossbeam` no fim do frame de game.
 - **Audio thread:** `cpal` callback. Sample-accurate, sem alocação. Comunica com game via lock-free queue (`crossbeam` ArrayQueue).
 - **IO thread pool:** `rayon`-based. Asset loading, hot reload, save IO. `rayon` é a única lib de paralelismo permitida; tokio é proibido no core.
 - **Script thread (opcional):** WASM heavy pode rodar em thread dedicada com message passing; default é game thread.
+
+**Two-world model (separação por TIPOS, não só threads):** PH2D usa `SimWorld` (estado simulado canônico) + `PresentWorld` (estado de presentation, render, animation, editor) em `bevy_ecs::World` distintos. Ponte one-way via `extract!` macro. Traits `SimComponent`/`PresentComponent` enforce em compile-time que sistema de presentation não muta estado simulado (HR-5, HR-7). Vide [ADR-0021](../docs/architecture/decisions/0021-simulation-presentation-boundary.md).
+
+**Async morre na fronteira da shell:** o Web "respira" async (fetch, requestAnimationFrame), mas o core PH2D é síncrono por design (HR e §10.1). Único async tolerado é `ph2d-asset::loader` (carregamento off-thread) e `ph2d-net::transport` (sockets). Tudo o mais é fixed-step síncrono.
 
 Luau (mlua) é single-threaded por design — runtime fica preso à game thread (mesmo modelo que QuickJS antigo).
 
@@ -697,9 +703,9 @@ Luau (mlua) é single-threaded por design — runtime fica preso à game thread 
 - iOS: `applicationDidReceiveMemoryWarning` → `host_low_memory()` → core dropa caches não-essenciais (atlas LRU, audio decompressed).
 - Android: similar via `onTrimMemory`.
 
-**GPU device lost:**
+**GPU device lost / surface lifecycle:**
 - wgpu lifetime pode quebrar (drivers crashing, backgrounding mobile).
-- `ph2d-gpu` detecta, tenta recuperar com novo device, recarrega assets transientes; se falhar 2× consecutivas, panic graceful.
+- Protocolo formal de recovery por variant de `wgpu::SurfaceError` (Lost/Outdated/Suboptimal/Timeout/OutOfMemory) + handshake background→foreground em mobile + interação com modo determinístico: vide [ADR-0020](../docs/architecture/decisions/0020-surface-lifecycle.md). `SurfaceContext::acquire_frame()` em `ph2d-gpu` é o único caminho público.
 
 ### 12.6 Acessibilidade e i18n
 - HR-12 e HR-15 são obrigatórias.
@@ -834,6 +840,15 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 - ❌ Widget sem `Accessible` (HR-12).
 - ❌ `unwrap()` em código não-test. Em prototipagem, `expect("razão clara")`; em produção, propaga.
 - ❌ Confiar em ordem de execução de invocations em compute shader determinístico.
+- ❌ `bind_group_layout` derivado por reflection (`layout: PipelineLayout::Auto`) em pipeline novo. Sempre `PipelineLayoutDescriptor` explícito (§10.5).
+- ❌ `wgpu::Surface::get_current_texture()` direto sem matchear todas as variantes `SurfaceError`. Use `SurfaceContext::acquire_frame()` em `ph2d-gpu` — único caminho público (ADR-0020).
+- ❌ Criar `RenderPipeline` ou `BindGroup` dentro de `RenderGraph` node execution. Só em init / on-resize. Cache agressivo em `ph2d-gpu::pipeline_cache`.
+- ❌ Iteração de `std::HashMap`/`HashSet` em código que serializa state lateral, gera snapshot determinístico, ou roda em lockstep/rollback. HR-5 + ADR-0022; lint via `clippy.toml`.
+- ❌ Re-exportar tipos `wgpu::*` ou `winit::*` na API pública de qualquer crate. Único re-export legítimo é `ph2d-gpu` para tipos cosméticos como `wgpu::TextureFormat` quando necessário; arquitetura interna fica isolada (Comfy post-mortem).
+- ❌ GPU compute em qualquer cálculo cujo output entra em `SimWorld` (HR-5; ADR-0021 reforça por TIPO via `SimComponent` trait).
+- ❌ Resize não-coalescido no shell desktop. Descartar resize events intermediários do mesmo frame (wgpu issues #2301/#3868/#5353).
+- ❌ Async runtime no core além de `ph2d-asset::loader` e `ph2d-net::transport`. **Async morre na fronteira da shell** (§12.2).
+- ❌ Assumir `SharedArrayBuffer` no web target sem confirmar headers COOP/COEP. Sempre fallback single-thread elegante (§11.12).
 
 ## 16. Estratégia de testes
 
@@ -917,21 +932,27 @@ Positivas, negativas, neutras.
 Listar com motivo de rejeição.
 ```
 
-**ADRs canônicos esperados (v1):**
+**ADRs canônicos (status real, atualizado 2026-05-08):**
 
-- ADR-0001 — Editor é a engine
-- ADR-0002 — Rust + Vello + wgpu como pilar
-- ADR-0003 — bevy_ecs upgrade policy
-- ADR-0004 — Vello em alpha: risco aceito e mitigações
-- ADR-0005 — TypeScript como gameplay primário
-- ADR-0006 — MCP first-class + governance
-- ADR-0007 — Hardware mínimo (matriz §4)
-- ADR-0008 — Shell texture interop via wgpu-hal
-- ADR-0009 — Roadmap Holographic Radiance Cascades
-- ADR-0010 — Heap script default 64 MB; AAA opt-in
-- ADR-0011 — Tradução comunitária e governança i18n
+| # | Título | Status |
+|---|---|---|
+| ADR-0001 | Editor é a engine | esperado (HR-7 cobre por enquanto) |
+| ADR-0002 | Rust + Vello + wgpu como pilar | esperado (§5 + §6 cobrem por enquanto) |
+| ADR-0003-rev2 | ECS choice — bevy_ecs 0.18 | **Accepted** ([0003-ecs-choice.md](../docs/architecture/decisions/0003-ecs-choice.md)) |
+| ADR-0004 | Vello em alpha: risco aceito e mitigações | esperado |
+| ADR-0005 | ~~TypeScript como gameplay primário~~ Luau ratificado | superseded por ADR-0019 |
+| ADR-0006 | MCP first-class + governance | esperado (HR-10/HR-11 cobrem; ph2d-mcp skeleton em [crates/ph2d-mcp/](../crates/ph2d-mcp/)) |
+| ADR-0007 | Hardware mínimo (matriz §4) | esperado |
+| ADR-0008 | Shell texture interop via wgpu-hal | esperado (citado em §10.4 e ADR-0020) |
+| ADR-0009 | Roadmap Holographic Radiance Cascades | esperado |
+| ADR-0010 | Heap script default 64 MB; AAA opt-in | esperado (§12.1 cobre números) |
+| ADR-0011 | Tradução comunitária e governança i18n | esperado |
+| ADR-0019 | Spike scripting output (Luau ratificado) | **Accepted** ([0019-spike-scripting-output.md](../docs/architecture/decisions/0019-spike-scripting-output.md)) |
+| ADR-0020 | Surface lifecycle e device-lost recovery | **Accepted** ([0020-surface-lifecycle.md](../docs/architecture/decisions/0020-surface-lifecycle.md)) |
+| ADR-0021 | Fronteira simulation ↔ presentation (SubWorld) | **Accepted** ([0021-simulation-presentation-boundary.md](../docs/architecture/decisions/0021-simulation-presentation-boundary.md)) |
+| ADR-0022 | Banimento HashMap em simulation crates | **Accepted** ([0022-no-hashmap-in-simulation.md](../docs/architecture/decisions/0022-no-hashmap-in-simulation.md)) |
 
-ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-15.
+ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-17.
 
 ## 20. Última nota para a LLM lendo isso
 

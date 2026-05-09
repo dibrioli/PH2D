@@ -55,6 +55,7 @@ extend-exclude = [
     "SKILL_Stack_PH2D_Definitiva.md",
     "docs/**/*.md",
     "README.md",
+    "CLAUDE.md",
     "**/HANDOFF.md",
     # tests/spike/ has many pt-BR comments (debt — violation of §10.1).
     # When promoting any spike fixture to crates/ production code, rewrite

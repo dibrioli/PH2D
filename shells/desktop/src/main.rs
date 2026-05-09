@@ -16,6 +16,12 @@
 //!
 //! M5 still does NOT have: Luau scripting, asset loading, input → ECS
 //! routing, MCP. Those land in M7+.
+//!
+//! M5 perf-tools add-on (this branch):
+//! - Live FPS + frame-time in the window title (gated to 250 ms).
+//! - `S` key toggles a drop-shadow pass — extract emits a second
+//!   `RenderInstance` per sprite tinted black and offset, doubling
+//!   the instance count. Lets the user A/B the cost of 2× draw load.
 
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
@@ -26,6 +32,7 @@ use ph2d_host::{
 };
 use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer, TextureAtlas};
 use std::cell::Cell;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
@@ -39,6 +46,69 @@ const SPRITE_COUNT: u32 = 1000;
 /// `height_world = 10`, so [-5, 5] in Y is exactly the visible region;
 /// X depends on aspect (narrower than visible at 4:3+).
 const WORLD_HALF: f32 = 5.0;
+/// Drop-shadow offset in world units (meters). Right + down (Y-up world,
+/// so screen-down is -Y). Roughly 1/3 of a sprite size for visibility.
+const SHADOW_OFFSET: [f32; 2] = [0.06, -0.06];
+/// Drop-shadow tint — black with 50 % alpha. Multiplied with the
+/// sampled texel: `(1, R, G, B) * (0, 0, 0, 0.5) = (0, 0, 0, 0.5)`,
+/// which the alpha-blend pipeline then composites under the sprite.
+const SHADOW_TINT: [f32; 4] = [0.0, 0.0, 0.0, 0.5];
+
+/// Rolling FPS averager. Stores the last `CAP` per-frame `dt` values
+/// (in seconds) and computes `1 / mean(dt)`. Avoids per-frame title
+/// updates by gating emission to ~250 ms intervals (winit windows
+/// flicker on rapid `set_title`).
+struct FpsCounter {
+    samples: VecDeque<f64>,
+    last_emit: Instant,
+}
+
+impl FpsCounter {
+    const CAP: usize = 120;
+    const EMIT_INTERVAL_MS: u128 = 250;
+
+    fn new() -> Self {
+        Self {
+            samples: VecDeque::with_capacity(Self::CAP),
+            last_emit: Instant::now(),
+        }
+    }
+
+    fn record(&mut self, dt_secs: f64) {
+        if self.samples.len() == Self::CAP {
+            self.samples.pop_front();
+        }
+        self.samples.push_back(dt_secs);
+    }
+
+    fn fps(&self) -> f32 {
+        if self.samples.is_empty() {
+            return 0.0;
+        }
+        let sum: f64 = self.samples.iter().sum();
+        let mean = sum / self.samples.len() as f64;
+        if mean > 0.0 { (1.0 / mean) as f32 } else { 0.0 }
+    }
+
+    /// Mean per-frame time in milliseconds.
+    fn mean_ms(&self) -> f32 {
+        if self.samples.is_empty() {
+            return 0.0;
+        }
+        let sum: f64 = self.samples.iter().sum();
+        ((sum / self.samples.len() as f64) * 1000.0) as f32
+    }
+
+    /// True at most every `EMIT_INTERVAL_MS`; flips the gate when so.
+    fn should_emit(&mut self) -> bool {
+        if self.last_emit.elapsed().as_millis() >= Self::EMIT_INTERVAL_MS {
+            self.last_emit = Instant::now();
+            true
+        } else {
+            false
+        }
+    }
+}
 
 #[derive(Component, Copy, Clone, Debug)]
 struct Position(Vec2);
@@ -152,6 +222,12 @@ struct App {
     pending_resize: Option<WindowSize>,
     modifiers: ModifiersState,
     last_pointer: (f32, f32),
+    /// Toggle with `S`. When `true`, every sprite emits a second
+    /// `RenderInstance` offset by `SHADOW_OFFSET` and tinted black —
+    /// doubling the instance count, which is the perf knob the user
+    /// wanted to compare against.
+    shadow_enabled: bool,
+    fps: FpsCounter,
 }
 
 impl App {
@@ -166,6 +242,8 @@ impl App {
             pending_resize: None,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
+            shadow_enabled: false,
+            fps: FpsCounter::new(),
         }
     }
 
@@ -235,6 +313,7 @@ impl App {
         let now = Instant::now();
         let wall_dt = now.duration_since(self.last_frame).as_secs_f64();
         self.last_frame = now;
+        self.fps.record(wall_dt);
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             eprintln!(
@@ -272,15 +351,33 @@ impl App {
         // bridge. Pre-build the QueryState because `bevy_ecs::query()`
         // needs `&mut World`, but inside `extract!` the sim handle is
         // immutable.
+        //
+        // Shadow draw order: insert the shadow `RenderInstance` BEFORE
+        // the sprite. The renderer iterates the present world in
+        // archetype-storage order, which equals insertion order since
+        // we `clear_entities` and re-spawn from scratch every frame
+        // (no removals → no gaps). Shadow lands earlier in the
+        // instance buffer and the alpha-blend pipeline composites the
+        // sprite on top of it.
         let atlas = renderer.atlas();
+        let shadow_on = self.shadow_enabled;
         let mut sim_q = sim.world_mut().query::<(&Position, &Sprite)>();
         ph2d_ecs::extract!(*sim => *present, |sim_w, present_w| {
             present_w.clear_entities();
             for (pos, spr) in sim_q.iter(sim_w) {
+                let uv = atlas.dummy_uv(spr.atlas_index);
+                if shadow_on {
+                    present_w.spawn(RenderInstance {
+                        world_pos: [pos.0.x + SHADOW_OFFSET[0], pos.0.y + SHADOW_OFFSET[1]],
+                        size: spr.size,
+                        atlas_uv: uv,
+                        tint: SHADOW_TINT,
+                    });
+                }
                 present_w.spawn(RenderInstance {
                     world_pos: [pos.0.x, pos.0.y],
                     size: spr.size,
-                    atlas_uv: atlas.dummy_uv(spr.atlas_index),
+                    atlas_uv: uv,
                     tint: spr.tint,
                 });
             }
@@ -315,6 +412,21 @@ impl App {
             }
         }
 
+        // Update window title with current FPS — gated to ~250 ms to
+        // avoid Cocoa/Win32 title-bar redraw storms.
+        if self.fps.should_emit()
+            && let Some(window) = self.window.as_ref()
+        {
+            let title = format!(
+                "PH2D — {fps:>3.0} FPS ({ms:.2} ms) — {n} sprites — shadow {s} (S to toggle)",
+                fps = self.fps.fps(),
+                ms = self.fps.mean_ms(),
+                n = SPRITE_COUNT,
+                s = if self.shadow_enabled { "ON " } else { "off" },
+            );
+            window.set_title(&title);
+        }
+
         host.request_redraw();
     }
 }
@@ -322,7 +434,7 @@ impl App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let attrs = Window::default_attributes()
-            .with_title("PH2D — desktop shell (M5 — 1000 sprites)")
+            .with_title("PH2D — starting…")
             .with_inner_size(winit::dpi::LogicalSize::new(1024, 768));
         let window = Arc::new(
             event_loop
@@ -433,6 +545,23 @@ impl ApplicationHandler for App {
                     },
                 ..
             } => {
+                // Shell-level shortcut: S toggles drop shadow. Handled
+                // here (not in HostHandler) because it mutates app
+                // state; HostHandler is intentionally read-only-ish.
+                if matches!(
+                    physical_key,
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyS)
+                ) && state == ElementState::Pressed
+                    && !repeat
+                {
+                    self.shadow_enabled = !self.shadow_enabled;
+                    println!(
+                        "[{:>6}ms] shadow toggle → {}",
+                        self.handler.elapsed_ms(),
+                        if self.shadow_enabled { "ON" } else { "off" }
+                    );
+                }
+
                 let keycode = match physical_key {
                     winit::keyboard::PhysicalKey::Code(code) => code as u32,
                     winit::keyboard::PhysicalKey::Unidentified(_) => 0,
@@ -465,7 +594,9 @@ fn main() {
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::new();
-    println!("PH2D desktop shell starting (1000 sprites; close window to exit)…");
+    println!(
+        "PH2D desktop shell starting ({SPRITE_COUNT} sprites; press S to toggle drop shadow; close window to exit)…"
+    );
     event_loop.run_app(&mut app).expect("event loop crashed");
     println!("PH2D desktop shell exited cleanly.");
 }

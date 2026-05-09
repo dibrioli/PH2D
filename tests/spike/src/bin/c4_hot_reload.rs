@@ -38,7 +38,7 @@ mk_component!(C06, mana: i32 = (|s: u64| (s % 100) as i32));
 mk_component!(C07, level: u32 = (|s: u64| (s % 50) as u32));
 mk_component!(C08, exp: u64 = (|s: u64| s * 7));
 mk_component!(C09, label: String = (|s: u64| format!("L{}", s % 100)));
-mk_component!(C10, alive: bool = (|s: u64| s % 2 == 0));
+mk_component!(C10, alive: bool = (|s: u64| s.is_multiple_of(2)));
 mk_component!(C11, weight: f64 = (|s: u64| (s % 1000) as f64 * 0.5));
 mk_component!(C12, color: u32 = (|s: u64| 0xFF00_0000 | (s & 0x00FF_FFFF) as u32));
 mk_component!(C13, rotation: f32 = (|s: u64| (s % 360) as f32));

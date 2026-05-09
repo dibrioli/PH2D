@@ -13,4 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 ph2d-host = { path = "../../crates/ph2d-host" }
+ph2d-core = { path = "../../crates/ph2d-core" }
+ph2d-gpu = { path = "../../crates/ph2d-gpu" }
+wgpu = "29"
 winit = "0.30"

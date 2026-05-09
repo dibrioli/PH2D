@@ -208,7 +208,7 @@ jobs:
         with:
           shared-key: ${{ matrix.os }}
 
-      - name: Run C9 replay and capture baseline hash
+      - name: Run C9 replay (ECS) and capture baseline hash
         id: replay
         shell: bash
         run: |
@@ -220,15 +220,36 @@ jobs:
           # RUNNER_TEMP works on Linux/macOS/Windows; /tmp does not exist on Windows.
           echo "$HASH" > "${RUNNER_TEMP}/c9-hash.txt"
 
-      - name: Upload hash artifact
+      - name: Upload ECS hash artifact
         uses: actions/upload-artifact@v4
         with:
           name: c9-hash-${{ matrix.os }}
           path: ${{ runner.temp }}/c9-hash.txt
           if-no-files-found: error
 
+      # M10 extends C9 to physics: same protocol (one binary per OS,
+      # collect hashes, diff). Different fixture (50-body Rapier sim
+      # with `enhanced-determinism` ON), separate artifact namespace
+      # so failures point at the right subsystem.
+      - name: Run physics C9 (Rapier 50-body) and capture hash
+        id: physics_replay
+        shell: bash
+        run: |
+          OUT=$(cargo run --release --locked --quiet --bin ph2d_physics_c9 -p ph2d-physics)
+          echo "$OUT"
+          HASH=$(echo "$OUT" | grep -E '^physics-c9 hash: ' | awk '{print $3}')
+          echo "Captured physics hash: $HASH"
+          echo "$HASH" > "${RUNNER_TEMP}/physics-c9-hash.txt"
+
+      - name: Upload physics hash artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: physics-c9-hash-${{ matrix.os }}
+          path: ${{ runner.temp }}/physics-c9-hash.txt
+          if-no-files-found: error
+
   determinism-compare:
-    name: C9 cross-platform comparison
+    name: C9 cross-platform comparison (ECS + physics)
     needs: determinism
     runs-on: ubuntu-latest
     # Pure artifact diff, no compile; observed <1 min.
@@ -237,23 +258,38 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: hashes
-      - name: Compare hashes across all OSes
+      - name: Compare ECS hashes across all OSes
         shell: bash
         run: |
           set -euo pipefail
-          echo "Per-OS hashes:"
+          echo "Per-OS ECS hashes:"
           for f in hashes/c9-hash-*/c9-hash.txt; do
             os=$(basename "$(dirname "$f")" | sed 's/c9-hash-//')
             hash=$(cat "$f")
             echo "  $os: $hash"
           done
-          # Verify all hashes equal.
           uniq=$(for f in hashes/c9-hash-*/c9-hash.txt; do cat "$f"; done | sort -u | wc -l)
           if [ "$uniq" -ne 1 ]; then
-            echo "FAIL: hashes differ across OSes — HR-5 violated."
+            echo "FAIL: ECS hashes differ across OSes — HR-5 violated."
             exit 1
           fi
-          echo "PASS: hash identical across all OSes."
+          echo "PASS: ECS hash identical across all OSes."
+      - name: Compare physics hashes across all OSes
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Per-OS physics hashes:"
+          for f in hashes/physics-c9-hash-*/physics-c9-hash.txt; do
+            os=$(basename "$(dirname "$f")" | sed 's/physics-c9-hash-//')
+            hash=$(cat "$f")
+            echo "  $os: $hash"
+          done
+          uniq=$(for f in hashes/physics-c9-hash-*/physics-c9-hash.txt; do cat "$f"; done | sort -u | wc -l)
+          if [ "$uniq" -ne 1 ]; then
+            echo "FAIL: physics hashes differ across OSes — Rapier enhanced-determinism violated."
+            exit 1
+          fi
+          echo "PASS: physics hash identical across all OSes (M10 gate)."
 
   # --------------------------------------------------------------------------
   # Bench baseline — runs criterion against `main` to surface regressions in PRs.

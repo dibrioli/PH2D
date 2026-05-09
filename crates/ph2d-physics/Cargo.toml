@@ -8,3 +8,18 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[[bin]]
+name = "ph2d_physics_c9"
+path = "src/bin/c9.rs"
+
+[dependencies]
+# rapier2d with `enhanced-determinism` ON (per HR-5 + plan M10
+# gate). Default features OFF — `parallel`, `simd-stable`,
+# `simd-nightly` all break cross-OS determinism. `dim2` is a
+# crate-level decision (we use rapier2d not rapier3d), `f32` is
+# fine for 2D games.
+rapier2d = { version = "0.28", default-features = false, features = ["dim2", "f32", "enhanced-determinism"] }
+# blake3 for hashing the deterministic state — same hash family as
+# C9 cross-OS replay (HR-5 alignment).
+blake3 = "1"

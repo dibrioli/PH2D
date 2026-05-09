@@ -165,6 +165,57 @@ impl ReadSnapshot {
     }
 }
 
+/// Per-frame input snapshot consulted by `ph2d.input(key)` from Luau.
+/// Distinct from [`ReadSnapshot`] because keys are flat strings
+/// (e.g. `"gamepad.held.south"`, `"gamepad.axis.left_stick_x"`)
+/// rather than `(entity, field)` pairs — input isn't entity-scoped.
+///
+/// The host (shells/desktop) populates this each frame from
+/// `ph2d_input::InputState`. M8 ships gamepad + Pencil-stub keys;
+/// future devices (e.g. mouse wheel, IMU) just add new keys.
+#[derive(Clone, Default)]
+pub struct InputSnapshot {
+    inner: Arc<Mutex<BTreeMap<String, f64>>>,
+}
+
+impl InputSnapshot {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set(&self, key: &str, value: f64) {
+        self.inner
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(key.to_owned(), value);
+    }
+
+    pub fn get(&self, key: &str) -> Option<f64> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(key)
+            .copied()
+    }
+
+    /// Drop every key. Call before re-populating per-frame so stale
+    /// "pressed" edges from the previous frame don't leak.
+    pub fn clear(&self) {
+        self.inner.lock().unwrap_or_else(|p| p.into_inner()).clear();
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.lock().unwrap_or_else(|p| p.into_inner()).len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .is_empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,6 +255,18 @@ mod tests {
         let q2 = q1.clone();
         q1.push(ew(0, "z", 9.0)).unwrap();
         assert_eq!(q2.len(), 1);
+    }
+
+    #[test]
+    fn input_snapshot_round_trips() {
+        let s = InputSnapshot::new();
+        s.set("gamepad.held.south", 1.0);
+        s.set("gamepad.axis.left_stick_x", -0.42);
+        assert_eq!(s.get("gamepad.held.south"), Some(1.0));
+        assert!((s.get("gamepad.axis.left_stick_x").unwrap() + 0.42).abs() < 1e-6);
+        assert_eq!(s.get("gamepad.held.north"), None);
+        s.clear();
+        assert!(s.is_empty());
     }
 
     #[test]

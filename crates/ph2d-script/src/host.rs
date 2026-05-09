@@ -13,7 +13,7 @@
 //!   canonical store, scripts are derived behavior).
 
 use crate::ScriptRuntime;
-use crate::io::{EntityWrite, ReadSnapshot, WriteQueue};
+use crate::io::{EntityWrite, InputSnapshot, ReadSnapshot, WriteQueue};
 use mlua::Function;
 
 /// Public host facade. One per app. Held by the shell; passed
@@ -26,19 +26,22 @@ pub struct ScriptHost {
     reset_count: u64,
     write_queue: WriteQueue,
     read_snapshot: ReadSnapshot,
+    input_snapshot: InputSnapshot,
 }
 
 impl ScriptHost {
     pub fn new() -> mlua::Result<Self> {
         let write_queue = WriteQueue::new();
         let read_snapshot = ReadSnapshot::new();
-        let runtime = build_runtime(&write_queue, &read_snapshot)?;
+        let input_snapshot = InputSnapshot::new();
+        let runtime = build_runtime(&write_queue, &read_snapshot, &input_snapshot)?;
         Ok(Self {
             runtime,
             last_source_hash: None,
             reset_count: 0,
             write_queue,
             read_snapshot,
+            input_snapshot,
         })
     }
 
@@ -62,7 +65,7 @@ impl ScriptHost {
         }
         // Source actually changed → tear down + rebuild. The previous
         // VM (with its coroutines, globals, GC heap) is dropped here.
-        self.runtime = build_runtime(&self.write_queue, &self.read_snapshot)?;
+        self.runtime = build_runtime(&self.write_queue, &self.read_snapshot, &self.input_snapshot)?;
         self.runtime.eval(source)?;
         self.last_source_hash = Some(hash);
         self.reset_count += 1;
@@ -80,6 +83,25 @@ impl ScriptHost {
     /// of values, otherwise stale entries from the previous tick leak.
     pub fn clear_reads(&self) {
         self.read_snapshot.clear();
+    }
+
+    /// Push one input key/value into the per-frame snapshot consulted
+    /// by `ph2d.input(key)` from Luau. Shells (e.g. shells/desktop
+    /// gilrs poll) call this for each held button / axis value after
+    /// `clear_input()`.
+    pub fn provide_input(&self, key: &str, value: f64) {
+        self.input_snapshot.set(key, value);
+    }
+
+    /// Drop every key from the input snapshot. Must be called once
+    /// per frame BEFORE re-populating, otherwise a button released
+    /// last frame would still show as held.
+    pub fn clear_input(&self) {
+        self.input_snapshot.clear();
+    }
+
+    pub fn input_snapshot(&self) -> &InputSnapshot {
+        &self.input_snapshot
     }
 
     /// Drain everything Luau wrote via `ph2d.set` since the last
@@ -112,8 +134,8 @@ impl ScriptHost {
     }
 }
 
-/// Build a fresh `ScriptRuntime` with `ph2d.set`/`ph2d.get` wired
-/// against the supplied bridge handles, then activate
+/// Build a fresh `ScriptRuntime` with `ph2d.set`/`ph2d.get`/`ph2d.input`
+/// wired against the supplied bridge handles, then activate
 /// `Lua::sandbox(true)`. Order is load-bearing: sandbox freezes the
 /// globals + the `ph2d` namespace, so the API must be installed
 /// FIRST. Activating sandbox last makes the surface read-only to
@@ -121,9 +143,10 @@ impl ScriptHost {
 fn build_runtime(
     write_queue: &WriteQueue,
     read_snapshot: &ReadSnapshot,
+    input_snapshot: &InputSnapshot,
 ) -> mlua::Result<ScriptRuntime> {
     let runtime = ScriptRuntime::new()?;
-    wire_ph2d_api(&runtime, write_queue, read_snapshot)?;
+    wire_ph2d_api(&runtime, write_queue, read_snapshot, input_snapshot)?;
     runtime.lua().sandbox(true)?;
     Ok(runtime)
 }
@@ -132,16 +155,18 @@ fn wire_ph2d_api(
     runtime: &ScriptRuntime,
     write_queue: &WriteQueue,
     read_snapshot: &ReadSnapshot,
+    input_snapshot: &InputSnapshot,
 ) -> mlua::Result<()> {
     let lua = runtime.lua();
     // Stash clones of the SHARED handles in app-data so the closures
     // below can grab them without capturing — `Lua::create_function`
     // requires `Send + 'static` bodies; app-data sidesteps the
     // closure-capture lifetimes. The clones share inner Arc storage,
-    // so values the host pushes via `provide_read` are observable
-    // here even after a VM rebuild.
+    // so values the host pushes via `provide_read` / `provide_input`
+    // are observable here even after a VM rebuild.
     lua.set_app_data(write_queue.clone());
     lua.set_app_data(read_snapshot.clone());
+    lua.set_app_data(input_snapshot.clone());
 
     let set_fn = lua.create_function(
         |lua, (entity, field, value): (u32, String, f64)| -> mlua::Result<()> {
@@ -174,9 +199,17 @@ fn wire_ph2d_api(
         },
     )?;
 
+    let input_fn = lua.create_function(|lua, key: String| -> mlua::Result<Option<f64>> {
+        let s = lua.app_data_ref::<InputSnapshot>().ok_or_else(|| {
+            mlua::Error::RuntimeError("ph2d.input: InputSnapshot not registered".into())
+        })?;
+        Ok(s.get(&key))
+    })?;
+
     let ph2d: mlua::Table = lua.globals().get("ph2d")?;
     ph2d.set("set", set_fn)?;
     ph2d.set("get", get_fn)?;
+    ph2d.set("input", input_fn)?;
 
     Ok(())
 }

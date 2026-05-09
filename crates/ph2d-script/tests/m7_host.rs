@@ -202,6 +202,78 @@ fn ph2d_set_surfaces_queue_full_as_lua_error() {
 }
 
 #[test]
+fn ph2d_input_resolves_from_input_snapshot() {
+    // M8: shell pushes input keys via provide_input; script reads
+    // them via ph2d.input(key). nil for unknown keys.
+    let mut host = ScriptHost::new().unwrap();
+    host.provide_input("gamepad.held.south", 1.0);
+    host.provide_input("gamepad.axis.left_stick_x", 0.42);
+
+    host.load_script(
+        r#"
+        if ph2d.input("gamepad.held.south") then
+            ph2d.set(0, "south_held", 1)
+        end
+        local ax = ph2d.input("gamepad.axis.left_stick_x")
+        if ax ~= nil then
+            ph2d.set(0, "axis_doubled", ax * 2)
+        end
+        if ph2d.input("gamepad.held.north") == nil then
+            ph2d.set(0, "north_unknown", 1)
+        end
+        "#,
+    )
+    .unwrap();
+
+    let writes = host.drain_writes();
+    let mut by_field: std::collections::BTreeMap<String, f64> = Default::default();
+    for w in writes {
+        by_field.insert(w.field, w.value);
+    }
+    assert_eq!(by_field.get("south_held"), Some(&1.0));
+    assert!((by_field["axis_doubled"] - 0.84).abs() < 1e-6);
+    assert_eq!(by_field.get("north_unknown"), Some(&1.0));
+}
+
+#[test]
+fn ph2d_input_clear_drops_stale_keys() {
+    let mut host = ScriptHost::new().unwrap();
+    host.provide_input("gamepad.held.south", 1.0);
+    host.clear_input();
+
+    host.load_script(
+        r#"
+        if ph2d.input("gamepad.held.south") == nil then
+            ph2d.set(0, "cleared", 1)
+        end
+        "#,
+    )
+    .unwrap();
+
+    let writes = host.drain_writes();
+    assert_eq!(writes.len(), 1);
+    assert_eq!(writes[0].field, "cleared");
+}
+
+#[test]
+fn input_snapshot_survives_reset() {
+    let mut host = ScriptHost::new().unwrap();
+    host.provide_input("test_key", 9.0);
+    host.load_script(r#" ph2d.set(0, "v", ph2d.input("test_key") or -1) "#)
+        .unwrap();
+    let writes = host.drain_writes();
+    assert_eq!(writes[0].value, 9.0);
+
+    // Different source → reset_count++. Same key still resolves
+    // because InputSnapshot survives the rebuild (Arc-shared).
+    host.load_script(r#" ph2d.set(0, "v2", ph2d.input("test_key") or -1) "#)
+        .unwrap();
+    assert_eq!(host.reset_count(), 2);
+    let writes = host.drain_writes();
+    assert_eq!(writes[0].value, 9.0);
+}
+
+#[test]
 fn read_snapshot_clear_removes_stale_entries() {
     let mut host = ScriptHost::new().unwrap();
     host.provide_read(0, "x", 1.0);

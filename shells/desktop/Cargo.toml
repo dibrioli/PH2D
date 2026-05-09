@@ -20,11 +20,13 @@ ph2d-render = { path = "../../crates/ph2d-render" }
 # Integration demo deps:
 # - ph2d-asset (M6): PNG load, blake3 ids, hot-reload watcher
 # - ph2d-script (M7): Luau ScriptHost, ph2d.set/get/input bindings
+# - ph2d-input (M8): gamepad/pencil device abstraction
 # - ph2d-editor (M12): FloatingPanel, ZenMode, ToastQueue (data layer
 #   visible via window title until Vello widget paint wires in)
 # - ph2d-tokens (M12): semantic tokens for theme switching
 ph2d-asset = { path = "../../crates/ph2d-asset" }
 ph2d-script = { path = "../../crates/ph2d-script" }
+ph2d-input = { path = "../../crates/ph2d-input" }
 ph2d-editor = { path = "../../crates/ph2d-editor" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
@@ -37,6 +39,7 @@ bevy_ecs = "0.18"
 image = { version = "0.25", default-features = false, features = ["png"] }
 wgpu = "29"
 winit = "0.30"
+gilrs = "0.11"
 
 [package.metadata.cargo-machete]
 # `bevy_ecs` is reached only through `#[derive(Component)]` expansion,

@@ -17,12 +17,24 @@ ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# Integration demo deps:
+# - ph2d-asset (M6): PNG load, blake3 ids, hot-reload watcher
+# - ph2d-script (M7): Luau ScriptHost, ph2d.set/get/input bindings
+# - ph2d-editor (M12): FloatingPanel, ZenMode, ToastQueue (data layer
+#   visible via window title until Vello widget paint wires in)
+# - ph2d-tokens (M12): semantic tokens for theme switching
+ph2d-asset = { path = "../../crates/ph2d-asset" }
+ph2d-script = { path = "../../crates/ph2d-script" }
+ph2d-editor = { path = "../../crates/ph2d-editor" }
+ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the
 # application layer and is the only place we tolerate this leak.
-# M6+ a ph2d-ecs-derive proc macro will re-emit the derive against
-# `::ph2d_ecs::*` and this dep can be removed.
 bevy_ecs = "0.18"
+# image: shell uses for procedural-PNG-fixture generation at first
+# launch (so M6 has real files to consume). Same dep ph2d-asset
+# pulls — workspace Cargo.lock unifies version.
+image = { version = "0.25", default-features = false, features = ["png"] }
 wgpu = "29"
 winit = "0.30"
 

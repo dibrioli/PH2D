@@ -40,13 +40,11 @@ jobs:
     name: lint (fmt + clippy + deny + audit)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # No mold here — clippy/check don't link binaries; the
+    # `apt-get install mold` (~30-60s) costs more than it saves
+    # in jobs that are <1min compile-bound.
     steps:
       - uses: actions/checkout@v4
-      - name: Install mold linker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mold
-          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -102,13 +100,9 @@ jobs:
     name: MSRV (rust 1.85) check
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # No mold — same reason as `lint`: cargo check doesn't link.
     steps:
       - uses: actions/checkout@v4
-      - name: Install mold linker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mold
-          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@1.85
       - uses: Swatinem/rust-cache@v2
         with:

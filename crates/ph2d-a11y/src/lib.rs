@@ -37,4 +37,4 @@ pub use tree::Tree;
 // Re-export AccessKit primitives that show up in the public API.
 // Keep the surface small per SKILL §7 anti-pattern "acoplar API
 // pública a tipos externos" — only what callers genuinely need.
-pub use accesskit::{Action, Live, Node, NodeId as AkNodeId, Role};
+pub use accesskit::{Action, Live, Node, NodeId as AkNodeId, Role, Toggled};

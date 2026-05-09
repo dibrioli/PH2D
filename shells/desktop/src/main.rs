@@ -36,10 +36,11 @@ mod integration;
 use ph2d_asset::AssetDb;
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
-use ph2d_editor::floating_panel::selection_demo_panel;
 use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
-use ph2d_editor::{FloatingPanel, Layout as EditorLayout, Toast, ToastQueue, ZenMode};
+use ph2d_editor::{
+    BrushTool, Layout as EditorLayout, MoveTool, Toast, ToastQueue, ToolRegistry, ZenMode,
+};
 use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
 use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
@@ -186,7 +187,10 @@ struct AppGfx {
     theme: Theme,
     zen: ZenMode,
     toasts: ToastQueue,
-    selection_panel: FloatingPanel,
+    /// Registered editor tools. Keys 1/2 switch active tool; the
+    /// active tool's `build_panel()` is painted each frame as the
+    /// FloatingPanel that shows in the bottom-center of the canvas.
+    tools: ToolRegistry,
     /// 4-zone editor layout (ADR-0023 §3). Sized from window each
     /// resize; the M11 paint pass walks this to draw zone backdrops.
     layout: EditorLayout,
@@ -305,10 +309,12 @@ impl App {
             .unwrap_or(0)
     }
 
-    /// M12 demo control router. Tab toggles ZenMode (debounced 30
-    /// frames per `ZenMode::try_toggle`), KeyM flips theme Dark↔Light,
-    /// KeyT pushes an info toast. Each action also pushes a toast so
-    /// the queue actually changes during the demo (visible via title).
+    /// M12 demo control router.
+    ///   Tab — toggle ZenMode (debounced 30 frames)
+    ///   M   — flip theme Dark↔Light
+    ///   T   — push info toast
+    ///   1   — activate Brush tool
+    ///   2   — activate Move tool
     fn handle_editor_key(&mut self, code: KeyCode) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -333,19 +339,39 @@ impl App {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;
             }
-            KeyCode::KeyP => {
-                gfx.selection_panel.toggle_collapsed();
-                gfx.toasts.push(Toast::info(format!(
-                    "Selection panel → {}",
-                    if gfx.selection_panel.collapsed {
-                        "collapsed"
-                    } else {
-                        "open"
-                    }
-                )));
+            KeyCode::Digit1 if gfx.tools.set_active(&ph2d_editor::ToolId::new("brush")) => {
+                gfx.toasts.push(Toast::info("Tool → Brush"));
+                self.title_dirty = true;
+            }
+            KeyCode::Digit2 if gfx.tools.set_active(&ph2d_editor::ToolId::new("move")) => {
+                gfx.toasts.push(Toast::info("Tool → Move"));
                 self.title_dirty = true;
             }
             _ => {}
+        }
+    }
+
+    /// Snapshot `InputState` into the ScriptHost's `ph2d.input` table
+    /// so Luau can read held buttons / axis values via the canonical
+    /// `gamepad.held.<button>` and `gamepad.axis.<axis>` keys.
+    /// Cleared and rebuilt every frame — keys absent from this frame
+    /// resolve to `nil` on the Luau side (per the M8 ph2d_input
+    /// resolves test).
+    fn push_input_to_script(&self) {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return;
+        };
+        let Some(host) = gfx.script.as_ref() else {
+            return;
+        };
+        host.clear_input();
+        for button in self.input.gamepad.iter_held() {
+            let key = format!("gamepad.held.{}", button.as_lua_key());
+            host.provide_input(&key, 1.0);
+        }
+        for (axis, value) in self.input.gamepad.iter_axes() {
+            let key = format!("gamepad.axis.{}", axis.as_lua_key());
+            host.provide_input(&key, value as f64);
         }
     }
 
@@ -402,10 +428,10 @@ impl App {
 
     fn render_frame(&mut self) {
         // Pump gamepad events first so InputState reflects the latest
-        // state by the time sim/extract run. Order: input → sim →
-        // extract → render. (M9 will route InputState into the script
-        // bridge so Luau can react; for M8 we just log.)
+        // state by the time sim/extract run. Order: input → script
+        // input snapshot → sim → extract → render.
         self.pump_gamepad();
+        self.push_input_to_script();
 
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -422,7 +448,7 @@ impl App {
             theme,
             zen,
             toasts,
-            selection_panel,
+            tools,
             layout,
             vello_pass,
             vector_scene,
@@ -539,9 +565,14 @@ impl App {
             text: text_system,
         };
         layout.paint(vector_scene, &mut paint_ctx);
-        if !zen.is_active() {
-            // Hide all floating panels in Zen mode (ADR-0023 §2).
-            selection_panel.paint(vector_scene, &mut paint_ctx);
+        if !zen.is_active()
+            && let Some(active) = tools.active()
+        {
+            // Active tool's panel — built fresh each frame; cheap (no
+            // allocations beyond the FloatingPanel struct itself).
+            // Hidden in Zen mode per ADR-0023 §2.
+            let panel = active.build_panel();
+            panel.paint(vector_scene, &mut paint_ctx);
         }
         toasts.paint(vector_scene, &mut paint_ctx);
 
@@ -580,25 +611,20 @@ impl App {
             }
         }
 
-        // M12 visibility: window title carries editor data-layer state
-        // until M11 ships Vello widget paint. Refresh only when state
+        // Window title carries editor state. Refresh only when state
         // actually changes — winit set_title triggers a platform call.
         if self.title_dirty {
-            let panel_state = if selection_panel.collapsed {
-                "collapsed"
-            } else {
-                "open"
-            };
+            let tool_label = tools.active().map(|t| t.label()).unwrap_or("none");
             let title = format!(
-                "PH2D — M5+M6+M7+M12 demo | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
-                 | script={} | theme={:?} | zen={} | toasts={} | panel={}",
+                "PH2D — M5+M6+M7+M11+M12 demo | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
+                 | script={} | theme={:?} | zen={} | toasts={} | tool={}",
                 if *atlas_is_real { "PNG" } else { "dummy" },
                 asset_db.len_assets(),
                 if script.is_some() { "ok" } else { "off" },
                 theme,
                 if zen.is_active() { "on" } else { "off" },
                 toasts.len(),
-                panel_state,
+                tool_label,
             );
             host.window().set_title(&title);
             self.title_dirty = false;
@@ -687,15 +713,17 @@ impl ApplicationHandler for App {
         };
 
         // M12 + M11: editor data layer + Vello widget paint pass.
-        // ZenMode/ToastQueue/FloatingPanel model state, Layout
-        // computes the 4 zones, VelloPass renders all widgets onto
-        // the surface AFTER the sprite pass.
+        // ZenMode/ToastQueue/ToolRegistry model state, Layout computes
+        // the 4 zones, VelloPass renders all widgets onto the surface
+        // AFTER the sprite pass.
         let theme = Theme::Dark;
         let zen = ZenMode::new();
         let mut toasts = ToastQueue::new();
         toasts.push(Toast::success("Editor data layer wired (M12)"));
-        toasts.push(Toast::info("Vello widget paint active (M11)"));
-        let selection_panel = selection_demo_panel();
+        toasts.push(Toast::info("Press 1=Brush, 2=Move, Tab=Zen"));
+        let mut tools = ToolRegistry::new();
+        tools.register(Box::new(BrushTool::default()));
+        tools.register(Box::new(MoveTool::default()));
         let layout = EditorLayout::new(size.width as f32, size.height as f32);
         let vello_pass =
             match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {
@@ -731,7 +759,7 @@ impl ApplicationHandler for App {
             theme,
             zen,
             toasts,
-            selection_panel,
+            tools,
             layout,
             vello_pass,
             vector_scene,

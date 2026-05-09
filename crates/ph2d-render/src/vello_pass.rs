@@ -20,7 +20,7 @@
 use ph2d_gpu::GpuContext;
 use vello::peniko::Color;
 use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene};
-use wgpu::util::TextureBlitter;
+use wgpu::util::{TextureBlitter, TextureBlitterBuilder};
 
 pub struct VelloPass {
     renderer: Renderer,
@@ -55,7 +55,15 @@ impl VelloPass {
         .map_err(|e| format!("vello::Renderer::new: {e}"))?;
 
         let (intermediate, intermediate_view) = create_intermediate(&gpu.device, initial_size);
-        let blitter = TextureBlitter::new(&gpu.device, surface_format);
+        // Pre-multiplied alpha blending: the intermediate texture has
+        // a transparent background (Color::TRANSPARENT in render()) so
+        // sprites underneath stay visible where the editor scene is
+        // empty. Default `TextureBlitter::new` uses a no-blend
+        // pipeline (overdraw) which paints transparent pixels as
+        // black — hiding everything.
+        let blitter = TextureBlitterBuilder::new(&gpu.device, surface_format)
+            .blend_state(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING)
+            .build();
 
         Ok(Self {
             renderer,

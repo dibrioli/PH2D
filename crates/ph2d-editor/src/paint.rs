@@ -1,4 +1,4 @@
-//! [`Paint`] trait + impls — widget tree → `vello::Scene` (M11).
+//! [`Paint`] trait + impls — widget tree → `vello::Scene` (M11+M12).
 //!
 //! This is the **lowering pass** that takes the data-only widget
 //! representation (zones, panels, buttons, toasts) and emits Vello
@@ -6,24 +6,21 @@
 //! once per frame, then hands the resulting `VectorScene` to
 //! `ph2d_render::VelloPass` which composites onto the wgpu surface.
 //!
-//! **v1 scope (this PR):** rects + borders only. Color resolution
-//! goes through `ph2d_tokens::ColorToken::resolve(theme)` so swapping
-//! Dark↔Light flips the entire UI.
+//! **Color resolution** goes through `ph2d_tokens::ColorToken::resolve(theme)`
+//! so swapping Dark↔Light flips the entire UI.
 //!
-//! **Text is deliberately deferred** to a follow-up PR — parley
-//! glyph runs need a `vello::draw_glyphs` integration that's
-//! non-trivial enough to merit its own scoped change. Buttons and
-//! tabs render as solid surfaces with their tinting (the a11y tree
-//! still carries the label, so screen readers work even before
-//! visible text lands).
+//! **Text rendering** uses [`paint_text`] / [`paint_text_centered`] —
+//! parley layout → `vello::Scene::draw_glyphs` per parley `GlyphRun`.
+//! Tabs / actions / button labels / toast messages all render visibly
+//! with the system sans-serif fallback chain.
 
-use crate::floating_panel::{FloatingPanel, PanelTab};
+use crate::floating_panel::{FloatingPanel, PanelAction, PanelTab};
 use crate::toast::ToastQueue;
 use crate::widget::Button;
 use crate::zones::{Layout, Rect, Zone};
-use ph2d_text::TextSystem;
+use ph2d_text::{PositionedLayoutItem, TextSystem};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
-use ph2d_vector::{Color, Rect as VelloRect, VectorScene};
+use ph2d_vector::{Affine, Color, Fill, Glyph, Rect as VelloRect, VectorScene};
 
 /// Per-frame paint context. Built by the shell, threaded through
 /// every widget's [`Paint::paint`] call.
@@ -62,6 +59,66 @@ pub fn rect_to_vello(r: Rect) -> VelloRect {
         (r.x + r.w) as f64,
         (r.y + r.h) as f64,
     )
+}
+
+/// Lay out `text` via parley + emit a glyph run for each parley
+/// [`PositionedLayoutItem::GlyphRun`] at `(x, y)` (top-left origin).
+/// `font_size` is in device-independent pixels; `max_width` is the
+/// wrap budget (pass `f32::INFINITY` for single-line).
+#[allow(clippy::too_many_arguments)]
+pub fn paint_text(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+) {
+    let layout = text_system.layout(text, font_size, max_width);
+    let inner = scene.inner_mut();
+    let translate = Affine::translate((x as f64, y as f64));
+    for line in layout.lines() {
+        for item in line.items() {
+            let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
+                continue;
+            };
+            let run = glyph_run.run();
+            let font = run.font();
+            let run_font_size = run.font_size();
+            inner
+                .draw_glyphs(font)
+                .font_size(run_font_size)
+                .brush(color)
+                .transform(translate)
+                .draw(
+                    Fill::NonZero,
+                    glyph_run.positioned_glyphs().map(|g| Glyph {
+                        id: g.id,
+                        x: g.x,
+                        y: g.y,
+                    }),
+                );
+        }
+    }
+}
+
+/// Center `text` inside `rect` (horizontally + vertically).
+pub fn paint_text_centered(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    rect: Rect,
+    font_size: f32,
+    color: Color,
+) {
+    let layout = text_system.layout(text, font_size, rect.w);
+    let text_w = layout.width();
+    let text_h = layout.height();
+    let x = rect.x + (rect.w - text_w) / 2.0;
+    let y = rect.y + (rect.h - text_h) / 2.0;
+    paint_text(text_system, scene, text, x, y, font_size, rect.w, color);
 }
 
 // -----------------------------------------------------------------------
@@ -130,6 +187,14 @@ impl Paint for FloatingPanel {
                 h: tab_h,
             };
             scene.fill_rect(rect_to_vello(r), tab_color(tab, ctx.theme));
+            // Tab label — invert color when active so it stays readable
+            // on AccentPrimary.
+            let label_color = if tab.active {
+                resolve(ColorToken::TextPrimary, ctx.theme.toggle())
+            } else {
+                resolve(ColorToken::TextPrimary, ctx.theme)
+            };
+            paint_text_centered(ctx.text, scene, &tab.label, r, 13.0, label_color);
         }
 
         // Action row beneath tabs.
@@ -137,7 +202,8 @@ impl Paint for FloatingPanel {
         let action_h = panel_rect.h - tab_h;
         let action_count = self.actions.len().max(1) as f32;
         let action_w = panel_rect.w / action_count;
-        for (i, _action) in self.actions.iter().enumerate() {
+        let action_label_color = resolve(ColorToken::TextSecondary, ctx.theme);
+        for (i, action) in self.actions.iter().enumerate() {
             let r = Rect {
                 x: panel_rect.x + action_w * i as f32 + 2.0,
                 y: action_y + 4.0,
@@ -145,8 +211,20 @@ impl Paint for FloatingPanel {
                 h: action_h - 8.0,
             };
             scene.fill_rect(rect_to_vello(r), resolve(ColorToken::Surface, ctx.theme));
+            paint_text_centered(
+                ctx.text,
+                scene,
+                action_label(action),
+                r,
+                11.0,
+                action_label_color,
+            );
         }
     }
+}
+
+fn action_label(action: &PanelAction) -> &str {
+    &action.label
 }
 
 fn tab_color(tab: &PanelTab, theme: Theme) -> Color {
@@ -161,10 +239,16 @@ fn tab_color(tab: &PanelTab, theme: Theme) -> Color {
 // Button — solid rect tinted by state. Position+size come from caller.
 // -----------------------------------------------------------------------
 
-/// Convenience: draw a button at an explicit rect. The Button data
-/// type itself doesn't carry geometry (panels arrange them); the
-/// shell or panel impl decides where, then calls this.
-pub fn paint_button(button: &Button, rect: Rect, scene: &mut VectorScene, theme: Theme) {
+/// Convenience: draw a button at an explicit rect with its label
+/// centered. The Button data type doesn't carry geometry (panels
+/// arrange them); the shell or panel impl decides where.
+pub fn paint_button(
+    button: &Button,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     use crate::widget::ButtonState;
     let token = if button.accent {
         match button.state {
@@ -181,6 +265,14 @@ pub fn paint_button(button: &Button, rect: Rect, scene: &mut VectorScene, theme:
         }
     };
     scene.fill_rect(rect_to_vello(rect), resolve(token, theme));
+    let label_color = if matches!(button.state, ButtonState::Disabled) {
+        resolve(ColorToken::TextDisabled, theme)
+    } else if button.accent {
+        resolve(ColorToken::TextPrimary, theme.toggle())
+    } else {
+        resolve(ColorToken::TextPrimary, theme)
+    };
+    paint_text_centered(text_system, scene, &button.label, rect, 13.0, label_color);
 }
 
 // -----------------------------------------------------------------------
@@ -195,6 +287,9 @@ impl Paint for ToastQueue {
         let gap = 6.0_f32;
         let top_margin = 16.0_f32;
         let center_x = ctx.viewport.x + (ctx.viewport.w - toast_w) / 2.0;
+        // Severity tints sit on a dark surface in either theme — Dark
+        // TextPrimary stays AA on every tint.
+        let label_color = resolve(ColorToken::TextPrimary, Theme::Dark);
         for (i, toast) in self.iter().enumerate() {
             let r = Rect {
                 x: center_x,
@@ -209,6 +304,21 @@ impl Paint for ToastQueue {
                 ToastSeverity::ErrorState => ColorToken::ErrorState,
             };
             scene.fill_rect(rect_to_vello(r), resolve(token, ctx.theme));
+            // Inset 12 px so the label doesn't kiss the edge.
+            let text_rect = Rect {
+                x: r.x + 12.0,
+                y: r.y,
+                w: r.w - 24.0,
+                h: r.h,
+            };
+            paint_text_centered(
+                ctx.text,
+                scene,
+                &toast.message,
+                text_rect,
+                13.0,
+                label_color,
+            );
         }
     }
 }

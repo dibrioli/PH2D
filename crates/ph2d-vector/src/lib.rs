@@ -31,3 +31,7 @@ pub use scene::VectorScene;
 // monomorphic types vello expects (no version-skew accidents).
 pub use vello::kurbo::{Affine, BezPath, Point, Rect, Vec2};
 pub use vello::peniko::{Brush, Color, Fill};
+// Glyph + Scene used by callers that drive `Scene::draw_glyphs`
+// directly (text rendering in ph2d-editor::paint). Same version-skew
+// rationale as kurbo/peniko above.
+pub use vello::{Glyph, Scene};

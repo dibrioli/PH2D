@@ -2,7 +2,7 @@
 //!
 //! `acquire_frame()` is the **only** public way to get a renderable
 //! target. It encapsulates retry / reconfigure / cascade-to-Lost
-//! logic so callers never see a raw [`wgpu::SurfaceTexture`]
+//! logic so callers never see a raw [`wgpu::CurrentSurfaceTexture`]
 //! variant. See
 //! [ADR-0020](../../../docs/architecture/decisions/0020-surface-lifecycle.md)
 //! for the full per-variant protocol.
@@ -160,21 +160,15 @@ impl SurfaceContext {
             self.state = SurfaceState::Healthy;
         }
 
-        // wgpu 28 returns Result<SurfaceTexture, SurfaceError> where
-        // suboptimal is a field on the success variant. The variant
-        // mapping below preserves the wgpu 29 semantics we previously
-        // had — see ADR-0020 for the recovery state machine.
+        // wgpu 29 returns CurrentSurfaceTexture (an enum with
+        // success+failure variants); see ADR-0020 for the full
+        // recovery state machine.
         match self.surface.get_current_texture() {
-            Ok(texture) => {
-                if texture.suboptimal {
-                    // Render this frame, reconfigure before next acquire.
-                    self.state = SurfaceState::NeedsReconfigureNext;
-                } else {
-                    self.state = match self.state {
-                        SurfaceState::TimingOut(_) => SurfaceState::Healthy,
-                        other => other,
-                    };
-                }
+            wgpu::CurrentSurfaceTexture::Success(texture) => {
+                self.state = match self.state {
+                    SurfaceState::TimingOut(_) => SurfaceState::Healthy,
+                    other => other,
+                };
                 Ok(FrameTarget::new(
                     texture,
                     self.config.format,
@@ -182,10 +176,20 @@ impl SurfaceContext {
                 ))
             }
 
-            Err(wgpu::SurfaceError::Outdated) => {
+            wgpu::CurrentSurfaceTexture::Suboptimal(texture) => {
+                // Render this frame, reconfigure before next acquire.
+                self.state = SurfaceState::NeedsReconfigureNext;
+                Ok(FrameTarget::new(
+                    texture,
+                    self.config.format,
+                    self.gpu.clone(),
+                ))
+            }
+
+            wgpu::CurrentSurfaceTexture::Outdated => {
                 self.surface.configure(&self.gpu.device, &self.config);
                 match self.surface.get_current_texture() {
-                    Ok(texture) => {
+                    wgpu::CurrentSurfaceTexture::Success(texture) => {
                         self.state = SurfaceState::Healthy;
                         Ok(FrameTarget::new(
                             texture,
@@ -193,14 +197,14 @@ impl SurfaceContext {
                             self.gpu.clone(),
                         ))
                     }
-                    Err(_) => {
+                    _ => {
                         self.state = SurfaceState::AwaitingReconfigure;
                         Err(AcquireError::AwaitingReconfigure)
                     }
                 }
             }
 
-            Err(wgpu::SurfaceError::Timeout) => {
+            wgpu::CurrentSurfaceTexture::Timeout => {
                 let count = match self.state {
                     SurfaceState::TimingOut(n) => n + 1,
                     _ => 1,
@@ -215,18 +219,16 @@ impl SurfaceContext {
                 }
             }
 
-            Err(wgpu::SurfaceError::Lost) => {
+            wgpu::CurrentSurfaceTexture::Occluded => Err(AcquireError::Occluded),
+
+            wgpu::CurrentSurfaceTexture::Lost => {
                 self.transients.clear();
                 self.state = SurfaceState::AwaitingReconfigure;
                 Err(AcquireError::AwaitingReconfigure)
             }
 
-            Err(wgpu::SurfaceError::OutOfMemory) => Err(AcquireError::Other(
-                "wgpu out-of-memory during get_current_texture".into(),
-            )),
-
-            Err(wgpu::SurfaceError::Other) => Err(AcquireError::Other(
-                "wgpu generic error inside get_current_texture (caught by error scope)".into(),
+            wgpu::CurrentSurfaceTexture::Validation => Err(AcquireError::Other(
+                "wgpu validation error inside get_current_texture (caught by error scope)".into(),
             )),
         }
     }

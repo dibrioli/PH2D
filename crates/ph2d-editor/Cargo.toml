@@ -12,9 +12,6 @@ authors.workspace = true
 [dependencies]
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-a11y = { path = "../ph2d-a11y" }
-# ph2d-vector + ph2d-text — M11 widget paint pass. The `Paint` trait
-# in `paint.rs` lowers each widget into a `vello::Scene` via
-# `ph2d-vector::VectorScene`; text labels go through
-# `ph2d-text::TextSystem` (parley layout → Vello glyph runs).
-ph2d-vector = { path = "../ph2d-vector" }
-ph2d-text = { path = "../ph2d-text" }
+# Vello rendering removed in the egui-migration pivot — egui owns
+# widget paint now. Editor crate is back to data structures + a11y
+# only; the shell renders panels via egui-wgpu directly.

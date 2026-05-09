@@ -1,25 +1,24 @@
 #![forbid(unsafe_code)]
 //! ph2d-editor — Procreate-style canvas-first editor (M12, ADR-0023).
 //!
+//! Pure data + a11y. Rendering is the shell's job (egui owns paint
+//! after the egui-migration pivot — see ADR-0024).
+//!
 //! Foundation:
 //! - [`zones::Layout`] — 4-zone canonical positioning (top-left
-//!   creates / top-right edits / sidebar modulates / center 100 %
+//!   edits / top-right creates / sidebar modulates / center 100 %
 //!   canvas). Per ADR-0023 §3.
-//! - [`floating_panel::FloatingPanel`] — Procreate-style draggable
-//!   tool drawer primitive. Per ADR-0023 §5.
+//! - [`floating_panel::FloatingPanel`] — Procreate-style panel data
+//!   (tabs + actions + controls). Per ADR-0023 §5.
 //! - [`widget`] — primitives (Button, Slider, Toggle, RadioGroup,
-//!   ColorSwatch). Each follows the same pattern: data + state enum
-//!   + tokens + a11y::Node + colocated `paint_X` helper.
+//!   ColorSwatch) with AccessKit nodes.
 //! - [`tool::Tool`] + [`tool::ToolRegistry`] — canonical contract
 //!   every editor tool implements (id / label / icon / build_panel
-//!   / activate hooks). Registry tracks the active tool.
+//!   / activate hooks / handle_panel_event).
 //! - [`tools`] — seed implementations ([`tools::BrushTool`],
-//!   [`tools::MoveTool`]) proving the trait shape.
+//!   [`tools::MoveTool`]).
 //! - [`zen::ZenMode`] — Tab-toggle workspace state. Per ADR-0023 §2.
-//! - [`toast::ToastQueue`] — non-modal notification stream. Per
-//!   ADR-0023 §2 ("Notificações flutuantes não-modais").
-//! - [`paint`] — Vello lowering (`Paint` trait + `paint_text`
-//!   helper). M11 widget paint pass + this PR's text rendering.
+//! - [`toast::ToastQueue`] — non-modal notification stream.
 //!
 //! Out of scope (M13+):
 //! - QuickMenu radial (ADR-0023 §6)
@@ -27,7 +26,6 @@
 //! - Single-Touch Companion overlay
 
 pub mod floating_panel;
-pub mod paint;
 pub mod toast;
 pub mod tool;
 pub mod tools;
@@ -36,16 +34,11 @@ pub mod zen;
 pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
-pub use paint::{Paint, PaintCtx, paint_button, paint_text, paint_text_centered, resolve};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};
-// Re-export so the shell can name the dragging node id without
-// taking a direct ph2d-a11y dep just for one type.
+// Re-export so the shell can name node ids without a direct ph2d-a11y dep.
 pub use ph2d_a11y::NodeId;
 pub use tools::{BrushTool, MoveTool};
-pub use widget::{
-    Button, ColorSwatch, RadioGroup, RadioOption, Slider, Toggle, paint_color_swatch,
-    paint_radio_group, paint_slider, paint_toggle,
-};
+pub use widget::{Button, ColorSwatch, RadioGroup, RadioOption, Slider, Toggle};
 pub use zen::ZenMode;
 pub use zones::{Layout, Zone};

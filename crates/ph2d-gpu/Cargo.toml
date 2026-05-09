@@ -11,5 +11,5 @@ authors.workspace = true
 
 [dependencies]
 ph2d-host = { path = "../ph2d-host" }
-wgpu = "28"
+wgpu = "29"
 pollster = "0.4"

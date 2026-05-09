@@ -63,7 +63,7 @@ impl SpritePipeline {
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("ph2d-render sprite layout"),
-                bind_group_layouts: &[&frame_bgl, &material_bgl],
+                bind_group_layouts: &[Some(&frame_bgl), Some(&material_bgl)],
                 immediate_size: 0,
             });
 

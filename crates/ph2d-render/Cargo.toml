@@ -15,11 +15,9 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 bevy_ecs = "0.18"
-wgpu = "28"
+wgpu = "29"
 bytemuck = { version = "1", features = ["derive"] }
-# Vello renderer for the M11 widget paint pass. Pinned to 0.8 (which
-# tracks wgpu 28 — this is why ph2d-gpu/render/desktop downgraded
-# from wgpu 29 in this PR; see ADR follow-up). VelloPass takes
-# `&vello::Scene` directly so we don't need ph2d-vector here; the
-# editor builds the Scene via ph2d-vector and passes it through.
-vello = "0.8"
+# Vello dropped in the egui-migration PR — egui has its own
+# rasterizer that handles widgets. ph2d-render is back to sprite-only
+# for now; vector graphics (SVG, brush strokes) come back as a
+# follow-up if/when needed.

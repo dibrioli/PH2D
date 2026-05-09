@@ -145,23 +145,31 @@ fn wire_ph2d_api(
 
     let set_fn = lua.create_function(
         |lua, (entity, field, value): (u32, String, f64)| -> mlua::Result<()> {
-            let q = lua
-                .app_data_ref::<WriteQueue>()
-                .expect("WriteQueue app-data missing");
+            // app_data_ref panic was a known gap (audit MEDIUM): convert
+            // missing-data into a script-visible error instead of a Rust
+            // panic. This branch is unreachable in normal flow (we just
+            // set the data in build_runtime), but defends against
+            // mlua-version drift or mid-tick lua.remove_app_data calls.
+            let q = lua.app_data_ref::<WriteQueue>().ok_or_else(|| {
+                mlua::Error::RuntimeError("ph2d.set: WriteQueue not registered".into())
+            })?;
+            // Surface QueueFull as a Luau runtime error so the script
+            // fails fast (HR-9 backpressure) instead of OOMing the
+            // host. Caller can `pcall` to recover.
             q.push(EntityWrite {
                 entity,
                 field,
                 value,
-            });
-            Ok(())
+            })
+            .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.set: {e}")))
         },
     )?;
 
     let get_fn = lua.create_function(
         |lua, (entity, field): (u32, String)| -> mlua::Result<Option<f64>> {
-            let s = lua
-                .app_data_ref::<ReadSnapshot>()
-                .expect("ReadSnapshot app-data missing");
+            let s = lua.app_data_ref::<ReadSnapshot>().ok_or_else(|| {
+                mlua::Error::RuntimeError("ph2d.get: ReadSnapshot not registered".into())
+            })?;
             Ok(s.get(entity, &field))
         },
     )?;

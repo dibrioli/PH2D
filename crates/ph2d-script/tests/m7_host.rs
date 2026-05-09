@@ -167,6 +167,41 @@ fn reset_clears_old_globals() {
 }
 
 #[test]
+fn ph2d_set_surfaces_queue_full_as_lua_error() {
+    // A runaway script must hit the queue cap and surface a Luau
+    // error instead of OOMing the host. We attempt 1M sets; cap is
+    // 250k. Two assertions:
+    //   1. load_script returns an error (the surplus push raises in
+    //      Luau, propagates out of `exec`).
+    //   2. The error message mentions "WriteQueue full" so the
+    //      script author can fix the call site.
+    //   3. Drained writes are exactly the cap — proves the cap held
+    //      and didn't OOM the host.
+    let mut host = ScriptHost::new().unwrap();
+    let err = host
+        .load_script(
+            r#"
+            for i = 1, 1000000 do
+                ph2d.set(i, "x", i)
+            end
+            "#,
+        )
+        .unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("WriteQueue full"),
+        "expected WriteQueue full error — got: {msg}"
+    );
+
+    let writes = host.drain_writes();
+    assert_eq!(
+        writes.len(),
+        ph2d_script::WriteQueue::DEFAULT_CAP,
+        "queue must hold exactly cap writes before erroring"
+    );
+}
+
+#[test]
 fn read_snapshot_clear_removes_stale_entries() {
     let mut host = ScriptHost::new().unwrap();
     host.provide_read(0, "x", 1.0);

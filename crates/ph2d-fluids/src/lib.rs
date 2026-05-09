@@ -1,2 +1,4 @@
 #![forbid(unsafe_code)]
-//! TODO: spike S0 (bootstrap skeleton)
+//! ph2d-fluids — fluid simulation (SPH or grid, TBD).
+//!
+//! Empty pending **M13** (paralelo, ditado por demanda).

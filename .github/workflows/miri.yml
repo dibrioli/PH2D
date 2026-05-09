@@ -17,6 +17,9 @@ jobs:
   miri:
     name: miri (UB detector)
     runs-on: ubuntu-latest
+    # Miri is slow (interprets every instruction); single-crate runs ~10-20 min
+    # each. Two crates + setup → 60 min ceiling so weekly runs can't camp.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly

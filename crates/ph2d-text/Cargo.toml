@@ -8,3 +8,9 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+# parley — Linebender's text-layout engine. Wraps harfrust (HarfBuzz
+# rewrite in Rust) for shaping and skrifa for font handling. Currently
+# 0.x; same alpha-risk note as Vello (M11 plan).
+parley = "0.6"

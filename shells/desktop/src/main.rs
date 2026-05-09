@@ -660,12 +660,31 @@ impl App {
             text: text_system,
         };
         layout.paint(vector_scene, &mut paint_ctx);
+
+        // Tool palette in the CREATE zone (top-right). Always-visible
+        // chips; click switches active tool. Hidden in Zen mode by
+        // virtue of `tool_palette_rects` returning empty there.
+        let palette_rects = layout.tool_palette_rects(tools.tools().len());
+        let active_id = tools.active().map(|t| t.id());
+        let palette_icons: Vec<(EditorRect, &str, bool)> = palette_rects
+            .iter()
+            .zip(tools.tools().iter())
+            .map(|(r, tool)| {
+                let is_active = active_id.as_ref() == Some(&tool.id());
+                (*r, tool.label(), is_active)
+            })
+            .collect();
+        ph2d_editor::paint_tool_palette_icons(
+            paint_ctx.text,
+            vector_scene,
+            &palette_icons,
+            paint_ctx.theme,
+        );
+
         if !zen.is_active()
             && let Some(active) = tools.active()
         {
-            // Active tool's panel — built fresh each frame; cheap (no
-            // allocations beyond the FloatingPanel struct itself).
-            // Hidden in Zen mode per ADR-0023 §2.
+            // Active tool's panel — built fresh each frame; cheap.
             let panel = active.build_panel();
             panel.paint(vector_scene, &mut paint_ctx);
         }
@@ -942,6 +961,25 @@ impl ApplicationHandler for App {
                             )));
                             self.title_dirty = true;
                             consumed = true;
+                        }
+                        // Tool palette icon click — switch active tool.
+                        if !consumed
+                            && let Some(gfx) = self.gfx.as_mut()
+                            && !gfx.zen.is_active()
+                        {
+                            let palette = gfx.layout.tool_palette_rects(gfx.tools.tools().len());
+                            let hit_idx = palette
+                                .iter()
+                                .position(|r| r.contains(self.last_pointer.0, self.last_pointer.1));
+                            if let Some(idx) = hit_idx {
+                                let tool_id = gfx.tools.tools()[idx].id();
+                                let tool_label = gfx.tools.tools()[idx].label().to_string();
+                                if gfx.tools.set_active(&tool_id) {
+                                    gfx.toasts.push(Toast::info(format!("Tool → {tool_label}")));
+                                    self.title_dirty = true;
+                                }
+                                consumed = true;
+                            }
                         }
                         if !consumed {
                             // Mouse down — start hit-test against active panel.

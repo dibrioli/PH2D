@@ -36,7 +36,10 @@ pub mod zen;
 pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
-pub use paint::{Paint, PaintCtx, paint_button, paint_text, paint_text_centered, resolve};
+pub use paint::{
+    Paint, PaintCtx, paint_button, paint_text, paint_text_centered, paint_tool_palette_icons,
+    resolve,
+};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};
 // Re-export so the shell can name the dragging node id without

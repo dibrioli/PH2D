@@ -153,6 +153,29 @@ impl Layout {
         self.sidebar_side = self.sidebar_side.mirror();
     }
 
+    /// Tool palette icon rects inside the TopRight ("CREATE") zone,
+    /// laid out horizontally with `pad` between each. Each icon is
+    /// 36×36 (slightly smaller than toolbar_h to leave breathing room
+    /// for the EDIT/CREATE label below). Returns `None` in Zen mode
+    /// or when the zone is too narrow to fit even one icon.
+    pub fn tool_palette_rects(&self, count: usize) -> Vec<Rect> {
+        if self.zen || count == 0 {
+            return Vec::new();
+        }
+        let zone = self.rect(Zone::TopRight);
+        let icon = 36.0_f32;
+        let pad = 6.0_f32;
+        if zone.w < icon + pad * 2.0 {
+            return Vec::new();
+        }
+        let total_w = (icon + pad) * count as f32 - pad;
+        let start_x = zone.x + (zone.w - total_w).max(pad);
+        let y = zone.y + (zone.h - icon) / 2.0;
+        (0..count)
+            .map(|i| Rect::new(start_x + (icon + pad) * i as f32, y, icon, icon))
+            .collect()
+    }
+
     /// Click target for the sidebar mirror chip. Sits at the top of
     /// the sidebar zone, on the canvas-facing edge so the user can
     /// always see it without occluding the sidebar's own widgets.

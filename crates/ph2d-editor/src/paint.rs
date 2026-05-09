@@ -104,6 +104,63 @@ pub fn paint_text(
     }
 }
 
+/// Tool palette paint helper — for each `(rect, label, is_active)`
+/// triple, draws a 36×36 icon chip in the TopRight zone:
+///   - Active: AccentPrimary background + inverted text
+///   - Hover (when state != Normal): SurfaceElevated
+///   - Idle: Surface
+///
+/// Until a real icon set ships, the icon is just the first character
+/// of the tool's label centered in the chip.
+pub fn paint_tool_palette_icons(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    icons: &[(Rect, &str, bool)],
+    theme: Theme,
+) {
+    for &(rect, label, is_active) in icons {
+        let (bg, fg) = if is_active {
+            (
+                resolve(ColorToken::AccentPrimary, theme),
+                resolve(ColorToken::TextPrimary, theme.toggle()),
+            )
+        } else {
+            (
+                resolve(ColorToken::Surface, theme),
+                resolve(ColorToken::TextPrimary, theme),
+            )
+        };
+        scene.fill_rect(rect_to_vello(rect), bg);
+        // 1-px BorderEmphasis ring on inactive icons so they don't
+        // disappear into the surrounding zone fill.
+        if !is_active {
+            let border_color = resolve(ColorToken::Border, theme);
+            // Top edge
+            scene.fill_rect(
+                rect_to_vello(Rect::new(rect.x, rect.y, rect.w, 1.0)),
+                border_color,
+            );
+            // Bottom edge
+            scene.fill_rect(
+                rect_to_vello(Rect::new(rect.x, rect.y + rect.h - 1.0, rect.w, 1.0)),
+                border_color,
+            );
+            // Left edge
+            scene.fill_rect(
+                rect_to_vello(Rect::new(rect.x, rect.y, 1.0, rect.h)),
+                border_color,
+            );
+            // Right edge
+            scene.fill_rect(
+                rect_to_vello(Rect::new(rect.x + rect.w - 1.0, rect.y, 1.0, rect.h)),
+                border_color,
+            );
+        }
+        let glyph = label.chars().next().unwrap_or('?').to_string();
+        paint_text_centered(text_system, scene, &glyph, rect, 18.0, fg);
+    }
+}
+
 /// Center `text` inside `rect` (horizontally + vertically).
 pub fn paint_text_centered(
     text_system: &mut TextSystem,

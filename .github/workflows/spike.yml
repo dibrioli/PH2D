@@ -128,11 +128,17 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
+      - name: ph2d-host tests (nextest)
+        run: cargo nextest run -p ph2d-host --release --locked
+
       - name: ph2d-script tests (nextest)
         run: cargo nextest run -p ph2d-script --release --locked
 
       - name: ph2d-mcp tests (nextest)
         run: cargo nextest run -p ph2d-mcp --release --locked
+
+      - name: build ph2d-host-desktop (M1 — verifies winit links cross-OS)
+        run: cargo build --release --locked -p ph2d-host-desktop
 
       - name: spike fixtures (no ECS)
         run: |

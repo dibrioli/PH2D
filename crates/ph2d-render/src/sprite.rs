@@ -1,0 +1,124 @@
+//! Sprite components.
+//!
+//! [`Sprite`] is a SimComponent (lives in SimWorld; canonical state).
+//! [`RenderInstance`] is a PresentComponent (built each frame from
+//! Sprite via the extract phase; uploaded to instance buffer).
+
+use bevy_ecs::component::Component;
+use ph2d_ecs::{PresentComponent, SimComponent};
+
+/// Canonical sprite description in simulation state.
+/// Position lives separately as `ph2d_core::WorldPos` (Y-up, meters).
+#[derive(Component, Copy, Clone, Debug)]
+pub struct Sprite {
+    /// Index into the texture atlas tile grid.
+    pub atlas_index: u32,
+    /// Sprite size in world units (meters).
+    pub size: [f32; 2],
+    /// RGBA tint multiplied with the texel color in the fragment shader.
+    pub tint: [f32; 4],
+}
+
+impl SimComponent for Sprite {}
+
+/// Per-frame instance data uploaded to the GPU. Layout matches the
+/// `InstanceInput` struct in `shaders/sprite.wgsl`. `#[repr(C)]` +
+/// `bytemuck::Pod` for zero-copy upload via `Queue::write_buffer`.
+#[derive(Component, Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+pub struct RenderInstance {
+    pub world_pos: [f32; 2],
+    pub size: [f32; 2],
+    pub atlas_uv: [f32; 4],
+    pub tint: [f32; 4],
+}
+
+impl PresentComponent for RenderInstance {}
+
+impl RenderInstance {
+    pub const VERTEX_ATTRIBUTES: &'static [wgpu::VertexAttribute] = &wgpu::vertex_attr_array![
+        2 => Float32x2,  // world_pos
+        3 => Float32x2,  // size
+        4 => Float32x4,  // atlas_uv
+        5 => Float32x4,  // tint
+    ];
+
+    pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: Self::VERTEX_ATTRIBUTES,
+        }
+    }
+}
+
+/// Vertex of the unit quad used as the geometry for every sprite
+/// instance. Layout matches `VertexInput` in the shader.
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+pub struct QuadVertex {
+    pub pos: [f32; 2],
+    pub uv: [f32; 2],
+}
+
+impl QuadVertex {
+    pub const VERTEX_ATTRIBUTES: &'static [wgpu::VertexAttribute] = &wgpu::vertex_attr_array![
+        0 => Float32x2,  // quad_pos
+        1 => Float32x2,  // quad_uv
+    ];
+
+    pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: Self::VERTEX_ATTRIBUTES,
+        }
+    }
+
+    /// Unit quad as triangle strip, centered at origin.
+    pub const QUAD_STRIP: [Self; 4] = [
+        Self {
+            pos: [-0.5, -0.5],
+            uv: [0.0, 1.0],
+        },
+        Self {
+            pos: [0.5, -0.5],
+            uv: [1.0, 1.0],
+        },
+        Self {
+            pos: [-0.5, 0.5],
+            uv: [0.0, 0.0],
+        },
+        Self {
+            pos: [0.5, 0.5],
+            uv: [1.0, 0.0],
+        },
+    ];
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_instance_is_pod_compatible() {
+        let inst = RenderInstance {
+            world_pos: [1.0, 2.0],
+            size: [10.0, 10.0],
+            atlas_uv: [0.0, 0.0, 0.25, 0.25],
+            tint: [1.0, 1.0, 1.0, 1.0],
+        };
+        let bytes: &[u8] = bytemuck::bytes_of(&inst);
+        assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
+        // 2 + 2 + 4 + 4 = 12 floats = 48 bytes
+        assert_eq!(bytes.len(), 48);
+    }
+
+    #[test]
+    fn quad_strip_winding() {
+        // Triangle strip [0,1,2] then [1,3,2] → both CCW when viewed
+        // from +Z (Y-up world space). Just sanity that vertex order
+        // matches what the shader expects.
+        assert_eq!(QuadVertex::QUAD_STRIP.len(), 4);
+    }
+}

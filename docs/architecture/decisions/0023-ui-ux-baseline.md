@@ -1,10 +1,11 @@
 # ADR-0023: UI/UX baseline — designer-first, Procreate-inspired, WCAG 2.2 AA
 
-**Status:** Proposed (pending Enio ratification)
+**Status:** Accepted
 **Data:** 2026-05-09
 **Decisor:** Enio Oliveira Dias Brito
 **Implementador:** Claude Opus 4.7 (1M context)
 **Origem:** decisão pré-M12; Enio definiu audiência, baseline visual e princípios; LLM consolidou postura a11y e tokens.
+**Ratificação:** 2026-05-09 — Enio aceitou todas as decisões + adicionou §5 (Painéis flutuantes) como primitive central.
 
 ## Contexto
 
@@ -99,7 +100,55 @@ O plano operacional original M12 dizia *"3 panels (scene tree, inspector, viewpo
 - **Detecção de conflito** com warning visual ao atribuir
 - **Profiles** por contexto (ex.: "Tile Editing", "Animation", "Physics Setup", "Lighting")
 
-### 5. QuickMenu radial
+### 5. Painéis flutuantes + arrastáveis (Tool Drawers)
+
+**Padrão central** observado em Procreate (selection panel, brush settings, layer ops): **panels contextuais que aparecem flutuando sobre o canvas quando uma ferramenta exige opções**, são livremente movíveis pelo usuário, e somem quando outra ferramenta é ativada. **Usaremos muito essa primitive em M12+ para todas as edições contextuais.**
+
+**Distinto de §6 (QuickMenu radial):**
+- **Radial:** invocação por gesto, transient, 6 slots, fecha após escolha
+- **Tool drawer (este):** persistente enquanto ferramenta ativa, multi-row, navegável
+
+**Anatomia padrão:**
+
+| Elemento | Função |
+|---|---|
+| Header com drag handle | Permite arrastar; pode incluir botões pin / collapse |
+| Tab row / segmented (opcional) | Mode picker (ex.: Procreate Selection: *Automatic / Freehand / Rectangle / Ellipse*) |
+| Action grid | Botões com icon + label (ex.: *Add / Remove / Invert / Copy & Paste / Feather / Save & Load / Color Fill / Clear*) |
+
+**Comportamento:**
+- **Drag livre** pelo header — usuário decide onde fica
+- **Snap soft** quando solto perto de bordas/cantos (bottom-center é o default Procreate)
+- **Auto-dismiss** quando ferramenta muda OU quando 4-finger tap (modo Zen)
+- **Translúcido** (alpha igual sidebar, ~0.85) — não obstrui canvas mais do que precisa
+- **Não-modal** — clicar fora não fecha; é parte do workspace persistente
+- **Memória de posição por ferramenta** — quando você reativa a Selection tool, o panel volta onde você o deixou
+- **Collapse** via double-tap header → vira chip-icon que reabre com tap
+
+**Interação multi-modal (per §4):**
+- Touch: drag o header
+- Mouse: drag o header (cursor vira "move" no hover)
+- Pencil/Wacom: pen drag o header
+
+**Casos de uso na engine (M12+):**
+- **Selection** — Add / Remove / Invert / Copy / Feather / Color Fill / Clear / Save & Load (igual Procreate na imagem de referência da ratificação)
+- **Brush settings** — size / flow / jitter / scatter além do que cabe na sidebar
+- **Layer ops** — blend mode picker, opacity, mask, clipping
+- **Transform** — move / rotate / scale / skew + numeric inputs
+- **Tile painter** — brush shape, random rotation, snap precision, layer target
+- **Animation** — timeline scrubber + keyframe ops
+- **Physics** — body type, mass, friction, restitution sliders quando entity tem rigid body
+- **Curve / path tool** — node ops, smoothing, simplify
+- **Color picker** — HSL/RGB/HEX inputs + recent + saved palettes
+
+**Por que NÃO docks fixos tradicionais (Unity-style):**
+- Dock fixa rouba pixel real do canvas o tempo todo, mesmo quando ferramenta está inativa
+- User-positioning permite adapting a workflow + handedness (canhoto coloca no lado oposto)
+- Touch-first ergonomic: usuário aproxima o painel da mão dominante; dock fixo força braço cruzar tela
+
+**Primitive arquitetural (M12 PR):** `ph2d_editor::FloatingPanel { header, tabs?, body, anchor, position, tool_id }` — single primitive reusável; toda tool option vira instância dela. State (posição + collapsed?) é serializado por `tool_id` no save de workspace.
+
+### 6. QuickMenu radial
 
 **Menu radial customizável invocado por:**
 - **Touch:** hold (configurável: long-press 500 ms padrão) ou squeeze do Apple Pencil Pro
@@ -112,7 +161,7 @@ O plano operacional original M12 dizia *"3 panels (scene tree, inspector, viewpo
 - **Profiles ilimitados** (sketching, coloring, tile-paint, animate, physics, lighting…)
 - Ações disponíveis pra mapear: 50+ comandos do editor
 
-### 6. Sliders com precisão progressiva
+### 7. Sliders com precisão progressiva
 
 **Cada slider numérico expõe controle fino sem widget extra:**
 
@@ -122,7 +171,7 @@ O plano operacional original M12 dizia *"3 panels (scene tree, inspector, viewpo
 
 Sem popup numérico, sem botão "modo fino". O comportamento é o widget.
 
-### 7. Modify button (Shift virtual)
+### 8. Modify button (Shift virtual)
 
 Sidebar tem um botão **Modify** que age como tecla Shift virtual:
 - Hold + tap em qualquer lugar = eyedropper (default)
@@ -130,7 +179,7 @@ Sidebar tem um botão **Modify** que age como tecla Shift virtual:
 - **No tablet:** crítico — substitui modifier keys que não existem
 - **No desktop:** mantém visível em modo touch; modifier keys reais cobrem o caso normal
 
-### 8. Hover gestures
+### 9. Hover gestures
 
 **Para alterar tamanho/opacidade do pincel sem sair do canvas:**
 
@@ -141,7 +190,7 @@ Sidebar tem um botão **Modify** que age como tecla Shift virtual:
 | Mouse | Scroll wheel + modificador (`[`/`]` para size, Shift+scroll para opacity) |
 | Touch sem hover | Long-press + drag radial |
 
-### 9. Acessibilidade — WCAG 2.2 Level AA + AccessKit
+### 10. Acessibilidade — WCAG 2.2 Level AA + AccessKit
 
 **Standard formal:** **WCAG 2.2 Level AA** — industry definitive (Apple/Microsoft/Adobe/Figma todos garantem AA). AAA é aspiracional, raramente atingível 100 % (contrast 7:1, todo conteúdo com nível de leitura ≤ Lower Secondary, etc).
 
@@ -162,7 +211,7 @@ Sidebar tem um botão **Modify** que age como tecla Shift virtual:
 
 **Gate M12:** ainda *"Mac VoiceOver navega editor"*; agora estende para *Windows Narrator + iPadOS VoiceOver no mesmo nível*. Linux AT-SPI fica em best-effort até alguém pedir.
 
-### 10. Hierarquia visual por luminosidade (não por hue)
+### 11. Hierarquia visual por luminosidade (não por hue)
 
 Estado é codificado por **luminosidade/saturação de uma única hue**, não por hues diferentes (mantém coesão visual + acomoda color-blindness).
 
@@ -190,7 +239,7 @@ Estado é codificado por **luminosidade/saturação de uma única hue**, não po
 
 A direção (cyan-blue Procreate-style, não verde-Inkscape ou laranja-Blender) é o que importa.
 
-### 11. Tokens semânticos
+### 12. Tokens semânticos
 
 **Color tokens** (light + dark variants, AA contrast garantido):
 
@@ -293,8 +342,8 @@ Plano original M12 (*"3 panels: scene tree, inspector, viewport"*) é **substitu
 
 ### Crates afetados
 
-- `ph2d-editor` → arquitetura de 4 zonas + Modify button + zen mode + notifications
-- `ph2d-a11y` → AccessKit integration; cada widget exporta Node
+- `ph2d-editor` → arquitetura de 4 zonas + Modify button + zen mode + notifications + **`FloatingPanel` primitive (§5)** consumida por toda tool option
+- `ph2d-a11y` → AccessKit integration; cada widget exporta Node (incluindo `FloatingPanel`s — drag handle exposta como `accesskit::Role::Window` movable)
 - `ph2d-input` → gesture detection (multi-touch, hover, pencil pressure)
 - `ph2d-text` → respeitar OS text scaling
 - `ph2d-vector` → Single-Touch Companion overlay primitive
@@ -311,6 +360,7 @@ Plano original M12 (*"3 panels: scene tree, inspector, viewport"*) é **substitu
 - AccessKit integrado em ph2d-a11y (skeleton)
 - ph2d-tokens criado com color + type + spacing tokens
 - ph2d-editor com 4 zonas básicas (placeholder content em cada uma)
+- **`FloatingPanel` primitive (§5)** funcional + 1 instância demo (ex.: panel de Selection com tabs + action grid, igual Procreate)
 - 1 widget de exemplo (Button) implementando `accesskit::Node` + tokens
 - Modo Zen funcional (Tab para alternar)
 - Notification toast no topo, não-modal
@@ -325,7 +375,7 @@ Plano original M12 (*"3 panels: scene tree, inspector, viewport"*) é **substitu
 
 ## Não decidido (deferred — fica para PR de implementação)
 
-- **HEX exato dos accents** — direção fixada (Procreate cyan-blue). Sample-from-screenshot + AA validation acontece no PR de tokens; valores propostos em §11 são ponto de partida.
+- **HEX exato dos accents** — direção fixada (Procreate cyan-blue). Sample-from-screenshot + AA validation acontece no PR de tokens; valores propostos em §12 são ponto de partida.
 - **Animation library:** custom vs lyon vs nada (apenas easings inline). Provavelmente nada — animações são simples demais para justificar dep.
 - **Drag-and-drop infrastructure:** Vello primitive vs custom. Decidir no PR M12.
 - **Re-skin de cada icon** — 200+ icons Blender/Godot/Inkscape precisam passar pelo mesmo grid 16/20px + stroke 1.5/1.75. Trabalho mecânico distribuído ao longo de M12-M13.

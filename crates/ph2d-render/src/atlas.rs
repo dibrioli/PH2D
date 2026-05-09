@@ -122,8 +122,9 @@ fn make_dummy_rgba8() -> Vec<u8> {
 }
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> (u8, u8, u8) {
-    let i = (h * 6.0).floor() as i32 % 6;
-    let f = h * 6.0 - h * 6.0_f32.floor();
+    let h6 = h * 6.0;
+    let i = h6.floor() as i32 % 6;
+    let f = h6 - h6.floor();
     let p = v * (1.0 - s);
     let q = v * (1.0 - f * s);
     let t = v * (1.0 - (1.0 - f) * s);
@@ -146,6 +147,26 @@ mod tests {
     fn dummy_atlas_buffer_has_correct_size() {
         let pixels = make_dummy_rgba8();
         assert_eq!(pixels.len(), (DUMMY_ATLAS_PX * DUMMY_ATLAS_PX * 4) as usize);
+    }
+
+    #[test]
+    fn hsv_to_rgb_yields_distinct_colors_per_index() {
+        // Regression: prior `f = h * 6.0 - h * 6.0_f32.floor()` always
+        // evaluated to 0 (since `6.0_f32.floor() == 6.0`), so the
+        // intra-bucket interpolation collapsed and only 6 unique
+        // colors emerged across all 16 dummy tiles.
+        use std::collections::BTreeSet;
+        let mut seen = BTreeSet::new();
+        for i in 0..(DUMMY_GRID * DUMMY_GRID) {
+            let hue = (i as f32 * 0.618_034) % 1.0;
+            seen.insert(hsv_to_rgb(hue, 0.85, 0.95));
+        }
+        assert_eq!(
+            seen.len(),
+            (DUMMY_GRID * DUMMY_GRID) as usize,
+            "expected 16 distinct golden-angle hues, got {}",
+            seen.len()
+        );
     }
 
     #[test]

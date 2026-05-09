@@ -140,8 +140,9 @@ pub fn init_script_host() -> Result<ScriptHost, String> {
 }
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> (u8, u8, u8) {
-    let i = (h * 6.0).floor() as i32 % 6;
-    let f = h * 6.0 - h * 6.0_f32.floor();
+    let h6 = h * 6.0;
+    let i = h6.floor() as i32 % 6;
+    let f = h6 - h6.floor();
     let p = v * (1.0 - s);
     let q = v * (1.0 - f * s);
     let t = v * (1.0 - (1.0 - f) * s);

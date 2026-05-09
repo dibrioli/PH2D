@@ -9,6 +9,10 @@ authors.workspace = true
 
 [lib]
 
+[[bin]]
+name = "ph2d-mcp-server"
+path = "src/bin/server.rs"
+
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1"

@@ -2665,6 +2665,14 @@ name = "ph2d-audio"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-bindgen"
+version = "0.0.0"
+dependencies = [
+ "ph2d-mcp",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-core"
 version = "0.0.0"
 dependencies = [

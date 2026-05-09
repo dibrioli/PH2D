@@ -1,0 +1,149 @@
+{
+  "$generator": "tools/ph2d-bindgen",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$source_of_truth": "crates/ph2d-mcp/src/catalog.rs",
+  "tools": [
+    {
+      "description": "Spawn empty entity in current scene; returns Entity handle.",
+      "input_schema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "scene.spawn_entity",
+      "output_schema": {
+        "properties": {
+          "entity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Attach a component to an entity. Component data is JSON-serialized.",
+      "input_schema": {
+        "properties": {
+          "component": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "entity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity",
+          "component",
+          "data"
+        ],
+        "type": "object"
+      },
+      "name": "scene.add_component",
+      "output_schema": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Read a component by name from an entity. Returns null when absent.",
+      "input_schema": {
+        "properties": {
+          "component": {
+            "type": "string"
+          },
+          "entity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity",
+          "component"
+        ],
+        "type": "object"
+      },
+      "name": "scene.get_component",
+      "output_schema": {
+        "properties": {
+          "data": {}
+        },
+        "type": "object"
+      }
+    },
+    {
+      "description": "Send a Defold-style message to a target entity.",
+      "input_schema": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          },
+          "target": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "target",
+          "message"
+        ],
+        "type": "object"
+      },
+      "name": "message.send",
+      "output_schema": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Despawn an entity. Destructive — requires confirmation_token (HR-11).",
+      "destructive": true,
+      "input_schema": {
+        "properties": {
+          "confirmation_token": {
+            "type": "string"
+          },
+          "entity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity",
+          "confirmation_token"
+        ],
+        "type": "object"
+      },
+      "name": "scene.delete_entity",
+      "output_schema": {
+        "properties": {
+          "removed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

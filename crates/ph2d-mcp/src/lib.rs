@@ -19,6 +19,7 @@
 //! - `message.send(target, message, payload)`
 //! - `scene.delete_entity(entity, confirmation_token)` — destrutivo
 
+pub mod catalog;
 pub mod governance;
 pub mod host;
 
@@ -26,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
+pub use catalog::{CATALOG, ToolSpec};
 pub use governance::{ConfirmationStore, ConfirmationToken};
 pub use host::{McpHost, MemoryHost};
 
@@ -114,38 +116,16 @@ impl Server {
         self.tools.insert(schema.name.clone(), schema);
     }
 
-    /// Default tool catalog (the 5 tools of c6-prompts.md). Caller wires
-    /// these to a concrete McpHost via `dispatch`.
+    /// Default tool catalog (the 5 tools of c6-prompts.md), populated
+    /// from [`CATALOG`] (single source of truth shared with
+    /// `ph2d-bindgen` — HR-10 parity).
     pub fn register_default_tools(&mut self) {
-        for tool in [
-            ToolSchema {
-                name: "scene.spawn_entity".into(),
-                description: "Spawn empty entity, returns Entity handle.".into(),
-                destructive: false,
-            },
-            ToolSchema {
-                name: "scene.add_component".into(),
-                description: "Attach a component (JSON data) to an entity.".into(),
-                destructive: false,
-            },
-            ToolSchema {
-                name: "scene.get_component".into(),
-                description: "Read a component by name from an entity.".into(),
-                destructive: false,
-            },
-            ToolSchema {
-                name: "message.send".into(),
-                description: "Send a Defold-style message to a target entity.".into(),
-                destructive: false,
-            },
-            ToolSchema {
-                name: "scene.delete_entity".into(),
-                description:
-                    "Despawn an entity. Destructive — requires confirmation_token (HR-11).".into(),
-                destructive: true,
-            },
-        ] {
-            self.register(tool);
+        for spec in CATALOG {
+            self.register(ToolSchema {
+                name: spec.name.into(),
+                description: spec.description.into(),
+                destructive: spec.destructive,
+            });
         }
     }
 

@@ -26,6 +26,7 @@ members = [
     "crates/ph2d-telemetry",
     "tests/spike",
     "shells/desktop",
+    "tools/ph2d-bindgen",
 ]
 
 [workspace.package]

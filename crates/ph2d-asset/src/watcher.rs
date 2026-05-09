@@ -12,11 +12,21 @@
 //! patterns (atomic save = remove + create). We don't debounce
 //! explicitly — apply_pending is idempotent under "last write wins",
 //! and the cost of one extra decode + apply is sub-millisecond.
+//!
+//! ### Path safety (defense in depth)
+//!
+//! The watcher canonicalizes every event path and verifies it is a
+//! descendant of the watched root before reading. Symlinks pointing
+//! outside the watched directory are rejected silently — this
+//! prevents an attacker (or careless `ln -s`) from making the
+//! watcher leak file contents from `/etc/passwd` or similar via the
+//! reload pipeline. The watched root itself is canonicalized once at
+//! `watch_dir` time.
 
 use crate::asset::Asset;
 use crate::error::AssetError;
 use crate::id::AssetId;
-use crate::loader::decode_png_bytes;
+use crate::loader::{decode_png_bytes, is_png_extension};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
@@ -52,9 +62,16 @@ pub struct AssetWatcher {
 impl AssetWatcher {
     /// Watch `dir` recursively, decoding any `.png` file that changes
     /// on disk. Other extensions are ignored (M6 supports PNG only).
+    /// Symlinks pointing outside the canonical `dir` are silently
+    /// dropped (see module docs).
     pub fn watch_dir(dir: &Path) -> Result<Self, AssetError> {
+        let root = dir.canonicalize().map_err(|e| AssetError::Io {
+            path: dir.to_path_buf(),
+            source: e,
+        })?;
         let (tx, rx) = mpsc::channel::<ReloadEvent>();
         let watcher_tx = tx;
+        let root_for_cb = root.clone();
 
         let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
             let event = match res {
@@ -69,12 +86,12 @@ impl AssetWatcher {
                     return;
                 }
             };
-            handle_fs_event(event, &watcher_tx);
+            handle_fs_event(event, &root_for_cb, &watcher_tx);
         })
         .map_err(|e| AssetError::Watch(e.to_string()))?;
 
         watcher
-            .watch(dir, RecursiveMode::Recursive)
+            .watch(&root, RecursiveMode::Recursive)
             .map_err(|e| AssetError::Watch(e.to_string()))?;
 
         Ok(Self {
@@ -108,11 +125,28 @@ impl AssetWatcher {
     }
 }
 
-fn handle_fs_event(event: notify::Event, tx: &mpsc::Sender<ReloadEvent>) {
+/// True if `path`'s canonical form is a descendant of `root`. Returns
+/// `false` for symlink escapes, vanished files (canonicalize would
+/// fail), or paths the OS can't resolve. Conservative: anything
+/// suspicious is dropped from the reload pipeline.
+fn is_within_root(path: &Path, root: &Path) -> bool {
+    let Ok(canonical) = path.canonicalize() else {
+        return false;
+    };
+    canonical.starts_with(root)
+}
+
+fn handle_fs_event(event: notify::Event, root: &Path, tx: &mpsc::Sender<ReloadEvent>) {
     match event.kind {
         EventKind::Create(_) | EventKind::Modify(_) => {
             for path in event.paths {
-                if path.extension().and_then(|s| s.to_str()) != Some("png") {
+                if !is_png_extension(&path) {
+                    continue;
+                }
+                if !is_within_root(&path, root) {
+                    // Symlink escape, vanished file, or path outside
+                    // root — silently skip. Reporting via Error variant
+                    // would just spam the queue on transient races.
                     continue;
                 }
                 let bytes = match std::fs::read(&path) {
@@ -141,7 +175,15 @@ fn handle_fs_event(event: notify::Event, tx: &mpsc::Sender<ReloadEvent>) {
         }
         EventKind::Remove(_) => {
             for path in event.paths {
-                if path.extension().and_then(|s| s.to_str()) != Some("png") {
+                if !is_png_extension(&path) {
+                    continue;
+                }
+                // Don't gate Removed on canonicalize — by definition
+                // the file no longer exists. We DO check the lexical
+                // prefix so a sibling directory's removals don't leak
+                // through (notify shouldn't report them, but defense
+                // in depth).
+                if !path.starts_with(root) {
                     continue;
                 }
                 let _ = tx.send(ReloadEvent::Removed { path });

@@ -1,2 +1,5 @@
 #![forbid(unsafe_code)]
-//! TODO: spike S0 (bootstrap skeleton)
+//! ph2d-input — input abstraction (gamepad via gilrs, Pencil stubs).
+//!
+//! Empty pending **M8**: routes shell-side input through `ph2d.input`
+//! Luau table; Pencil squeeze/double-tap stub before iPad shell exists.

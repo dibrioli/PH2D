@@ -1,2 +1,5 @@
 #![forbid(unsafe_code)]
-//! TODO: spike S0 (bootstrap skeleton)
+//! ph2d-a11y — accessibility tree + `Accessible` trait.
+//!
+//! Empty pending **M12**: tree exported via `host.a11y_update`; Mac
+//! VoiceOver navigates the editor panels.

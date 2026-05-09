@@ -28,6 +28,13 @@ struct AssetDbInner {
     by_path: BTreeMap<PathBuf, AssetId>,
 }
 
+/// Lock acquisitions use `unwrap_or_else(into_inner)` instead of
+/// `expect("poisoned")`. A panic in any code path holding the lock
+/// (e.g. PNG decode panicking under memory pressure) leaves the
+/// state intact under the standard library's poison protocol; we
+/// honor "best effort" rather than cascade-crash every subsequent
+/// asset read. Worst case: callers see a snapshot from immediately
+/// before the panicking write — preferable to dropping the engine.
 pub struct AssetDb {
     inner: RwLock<AssetDbInner>,
 }
@@ -45,7 +52,7 @@ impl AssetDb {
     pub fn insert_png_bytes(&self, bytes: &[u8]) -> Result<AssetId, AssetError> {
         let id = AssetId::from_bytes(bytes);
         let asset = decode_png_bytes(bytes, None)?;
-        let mut g = self.inner.write().expect("AssetDb write lock poisoned");
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
         g.by_id.entry(id).or_insert_with(|| Arc::new(asset));
         Ok(id)
     }
@@ -59,36 +66,36 @@ impl AssetDb {
         })?;
         let id = AssetId::from_bytes(&bytes);
         let asset = decode_png_bytes(&bytes, Some(path))?;
-        let mut g = self.inner.write().expect("AssetDb write lock poisoned");
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
         g.by_id.entry(id).or_insert_with(|| Arc::new(asset));
         g.by_path.insert(path.to_path_buf(), id);
         Ok(id)
     }
 
     pub fn get(&self, id: &AssetId) -> Option<Arc<Asset>> {
-        let g = self.inner.read().expect("AssetDb read lock poisoned");
+        let g = self.inner.read().unwrap_or_else(|p| p.into_inner());
         g.by_id.get(id).cloned()
     }
 
     pub fn id_for_path(&self, path: &Path) -> Option<AssetId> {
-        let g = self.inner.read().expect("AssetDb read lock poisoned");
+        let g = self.inner.read().unwrap_or_else(|p| p.into_inner());
         g.by_path.get(path).copied()
     }
 
     /// All paths currently tracked. Order is `BTreeMap`-canonical
     /// (lexicographic on `PathBuf`).
     pub fn tracked_paths(&self) -> Vec<PathBuf> {
-        let g = self.inner.read().expect("AssetDb read lock poisoned");
+        let g = self.inner.read().unwrap_or_else(|p| p.into_inner());
         g.by_path.keys().cloned().collect()
     }
 
     pub fn len_assets(&self) -> usize {
-        let g = self.inner.read().expect("AssetDb read lock poisoned");
+        let g = self.inner.read().unwrap_or_else(|p| p.into_inner());
         g.by_id.len()
     }
 
     pub fn len_paths(&self) -> usize {
-        let g = self.inner.read().expect("AssetDb read lock poisoned");
+        let g = self.inner.read().unwrap_or_else(|p| p.into_inner());
         g.by_path.len()
     }
 
@@ -104,7 +111,7 @@ impl AssetDb {
         if events.is_empty() {
             return;
         }
-        let mut g = self.inner.write().expect("AssetDb write lock poisoned");
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
         for ev in events {
             match ev {
                 ReloadEvent::Changed { path, id, asset } => {
@@ -215,6 +222,36 @@ mod tests {
         // Both old and new live in by_id — old handles remain valid.
         assert!(db.get(&old_id).is_some());
         assert!(db.get(&new_id).is_some());
+    }
+
+    #[test]
+    fn rwlock_poison_does_not_cascade_crash() {
+        use std::sync::Arc as StdArc;
+        let db = StdArc::new(AssetDb::new());
+        let bytes = tiny_png(1, 2, 3, 255);
+        let id = db.insert_png_bytes(&bytes).unwrap();
+
+        // Spawn a thread that grabs the write lock and panics.
+        // This poisons the inner RwLock per std::sync semantics.
+        let db2 = StdArc::clone(&db);
+        let h = std::thread::spawn(move || {
+            let _g = db2.inner.write().unwrap();
+            panic!("synthetic poison");
+        });
+        let _ = h.join(); // Result is Err — that's the point.
+
+        // Subsequent reads must NOT panic. The lock is poisoned, but
+        // our `unwrap_or_else(into_inner)` wrapper recovers the guard.
+        let asset = db.get(&id);
+        assert!(
+            asset.is_some(),
+            "post-poison read must succeed (data is intact)"
+        );
+        // Writes also recover.
+        let new = tiny_png(9, 9, 9, 255);
+        let id2 = db.insert_png_bytes(&new).unwrap();
+        assert_ne!(id, id2);
+        assert_eq!(db.len_assets(), 2);
     }
 
     #[test]

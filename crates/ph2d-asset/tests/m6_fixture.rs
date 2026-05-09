@@ -160,12 +160,131 @@ fn watcher_emits_changed_event_on_modification() {
     assert_eq!(&pixels[..4], &[250, 200, 100, 255]);
 }
 
+#[cfg(unix)]
+#[test]
+fn watcher_drops_symlink_escapes() {
+    // Two directories: one watched, one outside. Inside the watched
+    // dir, a symlink points at the outside dir's PNG. The watcher
+    // MUST NOT emit a Changed event for the symlink — that would let
+    // a malicious link drain arbitrary file contents into AssetDb.
+    use std::os::unix::fs::symlink;
+
+    let watched = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+
+    // Real PNG outside the watched dir.
+    let outside_png = outside.path().join("secret.png");
+    write_solid_png(&outside_png, 200, 0, 0);
+
+    // Plant a symlink inside the watched dir pointing at it.
+    let escape_link = watched.path().join("escape.png");
+    symlink(&outside_png, &escape_link).expect("symlink");
+
+    // Also plant a legitimate PNG inside the watched dir as a
+    // positive control — proves the watcher itself is firing events.
+    let legit = watched.path().join("legit.png");
+    write_solid_png(&legit, 0, 200, 0);
+
+    let watcher = AssetWatcher::watch_dir(watched.path()).expect("watch");
+    std::thread::sleep(Duration::from_millis(150));
+
+    // Touch both files: rewrite the legit one + chmod the symlink to
+    // trigger a Modify event on it.
+    write_solid_png(&legit, 0, 250, 0);
+    // Re-touch the symlink target via the symlink path — this will
+    // generate a Modify event for `escape.png` (the link itself), but
+    // canonicalization should resolve to outside the root and reject.
+    write_solid_png(&escape_link, 250, 0, 0);
+
+    let mut events = Vec::new();
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while std::time::Instant::now() < deadline {
+        events.extend(watcher.drain_blocking(Duration::from_millis(250)));
+        if events
+            .iter()
+            .any(|e| matches!(e, ReloadEvent::Changed { .. }))
+        {
+            break;
+        }
+    }
+
+    let mut saw_legit = false;
+    for ev in &events {
+        if let ReloadEvent::Changed { path, .. } = ev {
+            // Compare by file_name to dodge /var → /private/var on macOS.
+            assert_ne!(
+                path.file_name().and_then(|s| s.to_str()),
+                Some("escape.png"),
+                "watcher leaked symlink-escape file: {ev:?}"
+            );
+            if path.file_name().and_then(|s| s.to_str()) == Some("legit.png") {
+                saw_legit = true;
+            }
+        }
+    }
+    assert!(
+        saw_legit,
+        "positive control: legit.png Changed event missing"
+    );
+}
+
 #[test]
 fn apply_pending_is_idempotent_on_empty_batch() {
     let db = AssetDb::new();
     db.apply_pending(Vec::<ReloadEvent>::new());
     assert_eq!(db.len_assets(), 0);
     assert_eq!(db.len_paths(), 0);
+}
+
+#[test]
+fn png_bomb_oversized_dimensions_rejected() {
+    // Craft a 16k × 16k PNG header — over the 8k MAX_DIMENSION limit
+    // baked into ph2d-asset's loader. Real allocation would be 16384 ×
+    // 16384 × 4 = 1 GiB; with limits the decoder must refuse before
+    // touching that memory.
+    let mut img = image::RgbaImage::new(16_384, 16_384);
+    // Don't actually fill 1 GiB of test memory — `image::RgbaImage::new`
+    // already does. Skip the test if allocation would fail (unlikely on
+    // dev machines but graceful in resource-constrained CI runners).
+    if img.as_raw().len() < (16_384 * 16_384 * 4) as usize {
+        eprintln!("skip: cannot allocate 1 GiB for synthetic bomb");
+        return;
+    }
+    for px in img.pixels_mut() {
+        *px = image::Rgba([0, 0, 0, 255]);
+    }
+    let mut buf = Vec::new();
+    image::DynamicImage::ImageRgba8(img)
+        .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+        .expect("encode");
+
+    let db = AssetDb::new();
+    let result = db.insert_png_bytes(&buf);
+    assert!(
+        result.is_err(),
+        "16k × 16k PNG must be rejected by image::Limits"
+    );
+}
+
+#[test]
+fn case_insensitive_png_extension_in_load() {
+    // The watcher uses is_png_extension() to filter events; verify
+    // load_png_path covers a .PNG file too. (load_png_path doesn't
+    // filter by extension itself — that's the caller's job — but a
+    // common Windows pattern is uppercase .PNG.)
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("upper.PNG");
+    let mut img = image::RgbaImage::new(2, 2);
+    for px in img.pixels_mut() {
+        *px = image::Rgba([10, 20, 30, 255]);
+    }
+    image::DynamicImage::ImageRgba8(img)
+        .save_with_format(&path, image::ImageFormat::Png)
+        .unwrap();
+
+    let db = AssetDb::new();
+    let id = db.load_png_path(&path).expect("load .PNG");
+    assert!(db.get(&id).is_some());
 }
 
 #[test]

@@ -21,7 +21,7 @@ pub mod io;
 pub mod messaging;
 
 pub use host::ScriptHost;
-pub use io::{EntityWrite, ReadSnapshot, WriteQueue};
+pub use io::{EntityWrite, QueueFull, ReadSnapshot, WriteQueue};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 
 use mlua::{Function, IntoLuaMulti, Lua, Thread, ThreadStatus, Value};

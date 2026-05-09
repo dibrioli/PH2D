@@ -11,6 +11,24 @@
 //! `&dyn Tool`.
 
 use crate::floating_panel::{FloatingPanel, ToolId};
+use ph2d_a11y::NodeId;
+
+/// Pointer-driven event delivered to the active tool when the user
+/// interacts with one of its panel widgets. The shell does the
+/// hit-testing (using the same per-control rect math as the paint
+/// pass) and dispatches the resulting event here.
+#[derive(Clone, Debug, PartialEq)]
+pub enum PanelEvent {
+    /// Plain click on a button-style action (no payload beyond the
+    /// node id).
+    Click(NodeId),
+    /// Slider value changed to `value` (clamped to [0, 1]).
+    SetValue(NodeId, f64),
+    /// Toggle flipped to `on`.
+    Toggle(NodeId, bool),
+    /// RadioGroup option selected (the option's `value` field).
+    SelectOption(NodeId, String),
+}
 
 /// Canonical contract every editor tool implements.
 ///
@@ -42,6 +60,12 @@ pub trait Tool {
     /// Default no-op; override to flush in-progress state (e.g.
     /// commit pending stroke, drop preview overlays).
     fn on_deactivate(&mut self) {}
+
+    /// Called when the shell's hit-test routes a pointer event to
+    /// one of this tool's panel widgets. Default no-op; override to
+    /// fold the event back into the tool's model state (e.g. update
+    /// `BrushTool::size` when the Size slider was dragged).
+    fn handle_panel_event(&mut self, _event: PanelEvent) {}
 }
 
 /// Owns the registered tools and tracks which one is active. The

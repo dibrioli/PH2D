@@ -139,6 +139,34 @@ impl FloatingPanel {
         self
     }
 
+    /// Compute per-control widget rects given the panel's `viewport`.
+    /// Mirror of the layout the paint pass uses, so hit-test and
+    /// rendering stay aligned. Returns one entry per `controls[i]`
+    /// containing the cell rect for the widget itself (label band
+    /// excluded — touch targets shouldn't include the static label).
+    /// Empty when the panel is collapsed or has no controls.
+    pub fn control_widget_rects(&self, viewport: Rect) -> Vec<Rect> {
+        if self.collapsed || self.controls.is_empty() {
+            return Vec::new();
+        }
+        let panel = self.rect(viewport);
+        let tab_h = (panel.h * 0.4).min(36.0);
+        let row_y = panel.y + tab_h;
+        let row_h = panel.h - tab_h;
+        let label_h = (row_h * 0.32).min(14.0);
+        let pad = 4.0_f32;
+        let count = self.controls.len() as f32;
+        let cell_w = panel.w / count;
+        (0..self.controls.len())
+            .map(|i| Rect {
+                x: panel.x + cell_w * i as f32 + pad,
+                y: row_y + 2.0 + label_h,
+                w: cell_w - pad * 2.0,
+                h: row_h - 4.0 - label_h,
+            })
+            .collect()
+    }
+
     /// Compute the panel's pixel rect within `viewport`. Honors
     /// anchor. Caller is the layout system; this is pure math.
     pub fn rect(&self, viewport: Rect) -> Rect {

@@ -6,9 +6,14 @@
 //! will write back into them.
 
 use crate::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
-use crate::tool::Tool;
+use crate::tool::{PanelEvent, Tool};
 use crate::widget::{ColorSwatch, Slider};
 use ph2d_a11y::NodeId;
+
+const SIZE_NODE: NodeId = NodeId(101);
+const OPACITY_NODE: NodeId = NodeId(102);
+const FLOW_NODE: NodeId = NodeId(103);
+const COLOR_NODE: NodeId = NodeId(104);
 
 #[derive(Clone, Debug)]
 pub struct BrushTool {
@@ -43,13 +48,13 @@ impl Tool for BrushTool {
     }
 
     fn build_panel(&self) -> FloatingPanel {
-        let mut size = Slider::new(NodeId(101), "Size");
+        let mut size = Slider::new(SIZE_NODE, "Size");
         size.set_value(self.size / 100.0); // size 0..100 px → slider 0..1
-        let mut opacity = Slider::new(NodeId(102), "Opacity");
+        let mut opacity = Slider::new(OPACITY_NODE, "Opacity");
         opacity.set_value(self.opacity);
-        let mut flow = Slider::new(NodeId(103), "Flow");
+        let mut flow = Slider::new(FLOW_NODE, "Flow");
         flow.set_value(self.flow);
-        let swatch = ColorSwatch::new(NodeId(104), "Color", self.color_rgba);
+        let swatch = ColorSwatch::new(COLOR_NODE, "Color", self.color_rgba);
 
         let mut panel = FloatingPanel::new(self.id(), "Brush")
             .with_tabs(vec![PanelTab {
@@ -67,6 +72,23 @@ impl Tool for BrushTool {
         panel.width = 480.0;
         panel.height = 96.0;
         panel
+    }
+
+    fn handle_panel_event(&mut self, event: PanelEvent) {
+        match event {
+            PanelEvent::SetValue(id, v) if id == SIZE_NODE => {
+                // Slider is normalized 0..=1; tool stores px in 0..=100.
+                self.size = (v.clamp(0.0, 1.0) * 100.0) as f32;
+            }
+            PanelEvent::SetValue(id, v) if id == OPACITY_NODE => {
+                self.opacity = v.clamp(0.0, 1.0) as f32;
+            }
+            PanelEvent::SetValue(id, v) if id == FLOW_NODE => {
+                self.flow = v.clamp(0.0, 1.0) as f32;
+            }
+            // ColorSwatch click would open a picker — out of scope here.
+            _ => {}
+        }
     }
 }
 

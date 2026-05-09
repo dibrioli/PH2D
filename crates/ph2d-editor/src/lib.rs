@@ -38,7 +38,10 @@ pub mod zones;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use paint::{Paint, PaintCtx, paint_button, paint_text, paint_text_centered, resolve};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
-pub use tool::{Tool, ToolRegistry};
+pub use tool::{PanelEvent, Tool, ToolRegistry};
+// Re-export so the shell can name the dragging node id without
+// taking a direct ph2d-a11y dep just for one type.
+pub use ph2d_a11y::NodeId;
 pub use tools::{BrushTool, MoveTool};
 pub use widget::{
     Button, ColorSwatch, RadioGroup, RadioOption, Slider, Toggle, paint_color_swatch,

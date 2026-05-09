@@ -30,11 +30,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Install mold linker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mold
-          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:

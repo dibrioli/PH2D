@@ -113,7 +113,6 @@ jobs:
   # --------------------------------------------------------------------------
   # Linux test — runs FIRST in the test chain. Fail-fast: if Linux breaks,
   # macOS and Windows never start (saves ~15min of runner time per fail).
-  # Uses mold linker + release-test profile (no LTO) for ~2x faster builds.
   # --------------------------------------------------------------------------
   test-linux:
     name: ubuntu-latest — workspace check + tests
@@ -122,11 +121,6 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Install mold linker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mold
-          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -141,22 +135,22 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
-      - name: ph2d-script tests (nextest, profile release-test)
-        run: cargo nextest run -p ph2d-script --cargo-profile release-test --locked
+      - name: ph2d-script tests (nextest)
+        run: cargo nextest run -p ph2d-script --release --locked
 
-      - name: ph2d-mcp tests (nextest, profile release-test)
-        run: cargo nextest run -p ph2d-mcp --cargo-profile release-test --locked
+      - name: ph2d-mcp tests (nextest)
+        run: cargo nextest run -p ph2d-mcp --release --locked
 
       - name: spike correctness fixtures (no ECS)
         run: |
-          cargo run --profile release-test --locked --bin hello_runner -p ph2d-spike
-          cargo run --profile release-test --locked --bin c13_migration -p ph2d-spike
+          cargo run --release --locked --bin hello_runner -p ph2d-spike
+          cargo run --release --locked --bin c13_migration -p ph2d-spike
 
       - name: spike correctness fixtures (with bevy_ecs)
         run: |
-          cargo run --profile release-test --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
-          cargo run --profile release-test --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
-          cargo run --profile release-test --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
 
   # --------------------------------------------------------------------------
   # macOS + Windows — only run if Linux passed (fail-fast economy).
@@ -186,22 +180,22 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
-      - name: ph2d-script tests (nextest, profile release-test)
-        run: cargo nextest run -p ph2d-script --cargo-profile release-test --locked
+      - name: ph2d-script tests (nextest)
+        run: cargo nextest run -p ph2d-script --release --locked
 
-      - name: ph2d-mcp tests (nextest, profile release-test)
-        run: cargo nextest run -p ph2d-mcp --cargo-profile release-test --locked
+      - name: ph2d-mcp tests (nextest)
+        run: cargo nextest run -p ph2d-mcp --release --locked
 
       - name: spike correctness fixtures (no ECS)
         run: |
-          cargo run --profile release-test --locked --bin hello_runner -p ph2d-spike
-          cargo run --profile release-test --locked --bin c13_migration -p ph2d-spike
+          cargo run --release --locked --bin hello_runner -p ph2d-spike
+          cargo run --release --locked --bin c13_migration -p ph2d-spike
 
       - name: spike correctness fixtures (with bevy_ecs)
         run: |
-          cargo run --profile release-test --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
-          cargo run --profile release-test --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
-          cargo run --profile release-test --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
+          cargo run --release --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
 
   # --------------------------------------------------------------------------
   # Cross-platform replay determinism (HR-5). Hash equal on all 3 OSes.
@@ -217,12 +211,6 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - name: Install mold linker (Linux only)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mold
-          echo "RUSTFLAGS=-D warnings -C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -232,7 +220,7 @@ jobs:
         id: replay
         shell: bash
         run: |
-          OUT=$(cargo run --profile release-test --locked --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
+          OUT=$(cargo run --release --locked --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
           echo "$OUT"
           HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
           echo "Captured hash: $HASH"

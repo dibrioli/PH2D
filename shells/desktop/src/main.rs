@@ -927,8 +927,30 @@ impl ApplicationHandler for App {
                 });
                 match state {
                     ElementState::Pressed => {
-                        // Mouse down — start hit-test against active panel.
-                        self.dispatch_panel_pointer(self.last_pointer.0, self.last_pointer.1, true);
+                        // Mirror-sidebar chip takes precedence over the
+                        // panel hit-test (different zone, no overlap).
+                        let mut consumed = false;
+                        if let Some(gfx) = self.gfx.as_mut()
+                            && !gfx.zen.is_active()
+                            && let Some(btn) = gfx.layout.mirror_button_rect()
+                            && btn.contains(self.last_pointer.0, self.last_pointer.1)
+                        {
+                            gfx.layout.mirror_sidebar();
+                            gfx.toasts.push(Toast::info(format!(
+                                "Sidebar → {:?}",
+                                gfx.layout.sidebar_side
+                            )));
+                            self.title_dirty = true;
+                            consumed = true;
+                        }
+                        if !consumed {
+                            // Mouse down — start hit-test against active panel.
+                            self.dispatch_panel_pointer(
+                                self.last_pointer.0,
+                                self.last_pointer.1,
+                                true,
+                            );
+                        }
                     }
                     ElementState::Released => {
                         // End any drag-in-progress.

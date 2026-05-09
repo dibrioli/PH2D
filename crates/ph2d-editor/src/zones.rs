@@ -152,6 +152,30 @@ impl Layout {
     pub fn mirror_sidebar(&mut self) {
         self.sidebar_side = self.sidebar_side.mirror();
     }
+
+    /// Click target for the sidebar mirror chip. Sits at the top of
+    /// the sidebar zone, on the canvas-facing edge so the user can
+    /// always see it without occluding the sidebar's own widgets.
+    /// Returns `None` in Zen mode (sidebar collapsed) or if the
+    /// sidebar would be too short to fit the chip.
+    pub fn mirror_button_rect(&self) -> Option<Rect> {
+        if self.zen {
+            return None;
+        }
+        let sidebar = self.rect(Zone::Sidebar);
+        if sidebar.h < 40.0 {
+            return None;
+        }
+        let chip = 24.0_f32;
+        let pad = 4.0_f32;
+        // Place chip on the canvas-facing edge (Right sidebar → chip on
+        // the LEFT edge; mirrored vice versa).
+        let x = match self.sidebar_side {
+            SidebarSide::Right => sidebar.x + pad,
+            SidebarSide::Left => sidebar.x + sidebar.w - chip - pad,
+        };
+        Some(Rect::new(x, sidebar.y + pad, chip, chip))
+    }
 }
 
 #[cfg(test)]

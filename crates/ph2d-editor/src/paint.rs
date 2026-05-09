@@ -127,17 +127,98 @@ pub fn paint_text_centered(
 
 impl Paint for Layout {
     fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
-        // Center is canvas — the sprite layer underneath is what the
-        // user sees. We deliberately do NOT paint the Center rect so
-        // the existing wgpu surface (sprites) shows through.
+        // Center is canvas — the sprite layer underneath shows through;
+        // we deliberately do NOT paint Center.
+        let surface = resolve(ColorToken::Surface, ctx.theme);
+        let border = resolve(ColorToken::Border, ctx.theme);
+        let border_emphasis = resolve(ColorToken::BorderEmphasis, ctx.theme);
+        let label_color = resolve(ColorToken::TextSecondary, ctx.theme);
+
         for zone in [Zone::TopLeft, Zone::TopRight, Zone::Sidebar] {
             let r = self.rect(zone);
             if r.area() <= 0.0 {
-                continue; // Zen mode — zone collapsed to zero.
+                continue; // Zen mode — zone collapsed.
             }
-            // Zones use Surface (panel chrome). A 1-px BorderEmphasis
-            // edge along the seam toward Center sells the layout.
-            scene.fill_rect(rect_to_vello(r), resolve(ColorToken::Surface, ctx.theme));
+            // Surface fill.
+            scene.fill_rect(rect_to_vello(r), surface);
+
+            // Zone label — top-left/right have CREATE/EDIT per ADR-0023
+            // §3, sidebar gets MOD label oriented vertically (we just
+            // render text horizontally for now — vertical text needs
+            // vello transform handling that's a follow-up).
+            let label = match zone {
+                Zone::TopLeft => Some("EDIT"),
+                Zone::TopRight => Some("CREATE"),
+                Zone::Sidebar => Some("MOD"),
+                Zone::Center => None,
+            };
+            if let Some(label) = label {
+                // Inset 12 px from the seam-facing edge so the label
+                // doesn't kiss the divider line.
+                let label_rect = match zone {
+                    Zone::Sidebar => Rect {
+                        x: r.x,
+                        y: r.y + 12.0,
+                        w: r.w,
+                        h: 14.0,
+                    },
+                    _ => Rect {
+                        x: r.x + 16.0,
+                        y: r.y,
+                        w: r.w - 32.0,
+                        h: r.h,
+                    },
+                };
+                paint_text_centered(ctx.text, scene, label, label_rect, 11.0, label_color);
+            }
+
+            // 1-px divider along the seam toward Center (BorderEmphasis
+            // when sidebar; Border for top zones — quieter line above
+            // the canvas).
+            let divider = match zone {
+                Zone::TopLeft | Zone::TopRight => Rect {
+                    x: r.x,
+                    y: r.y + r.h - 1.0,
+                    w: r.w,
+                    h: 1.0,
+                },
+                Zone::Sidebar => match self.sidebar_side {
+                    crate::zones::SidebarSide::Right => Rect {
+                        x: r.x,
+                        y: r.y,
+                        w: 1.0,
+                        h: r.h,
+                    },
+                    crate::zones::SidebarSide::Left => Rect {
+                        x: r.x + r.w - 1.0,
+                        y: r.y,
+                        w: 1.0,
+                        h: r.h,
+                    },
+                },
+                Zone::Center => continue,
+            };
+            let divider_color = if matches!(zone, Zone::Sidebar) {
+                border_emphasis
+            } else {
+                border
+            };
+            scene.fill_rect(rect_to_vello(divider), divider_color);
+        }
+
+        // Mirror-side toggle button on the sidebar — small chip at top
+        // edge. Click target exposed via [`Layout::mirror_button_rect`]
+        // so the shell can hit-test it.
+        if let Some(btn) = self.mirror_button_rect() {
+            scene.fill_rect(
+                rect_to_vello(btn),
+                resolve(ColorToken::SurfaceElevated, ctx.theme),
+            );
+            let glyph = match self.sidebar_side {
+                crate::zones::SidebarSide::Right => "<",
+                crate::zones::SidebarSide::Left => ">",
+            };
+            paint_text_centered(ctx.text, scene, glyph, btn, 14.0, label_color);
         }
     }
 }

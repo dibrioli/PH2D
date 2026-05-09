@@ -1,5 +1,22 @@
 # HANDOFF — Claude assume no Mac
 
+> **⚠️ HISTÓRICO — handoff de 2026-05-08, antes do spike fechar.**
+>
+> O spike de scripting fechou em 2026-05-08 (ADR-0019 ratificou Luau).
+> A fase atual é pós-spike, executando o plano de marcos M1-M13 (M1-M7
+> implementados em 2026-05-08/09).
+>
+> **Doc canônico para LLM nova:**
+> - **Plano operacional ativo:** [`docs/plans/2026-05-post-spike.md`](plans/2026-05-post-spike.md)
+> - **Spec do projeto:** [`SKILL_Stack_PH2D_Definitiva.md`](../SKILL_Stack_PH2D_Definitiva.md)
+> - **Operacional LLM (CI, memória):** [`CLAUDE.md`](../CLAUDE.md)
+> - **Memória persistente:** `~/.claude/projects/.../memory/MEMORY.md`
+>
+> Este HANDOFF preserva o contexto da transição inicial (Windows → Mac,
+> bootstrap do workspace, expectativas de papel). Referências abaixo a
+> `docs/spike/2026-05-plan.md` apontam pro plano do spike (fechado),
+> não pra fase atual.
+
 **Versão:** 1.0
 **Data deste handoff:** 2026-05-08
 **Origem:** Claude Opus 4.7 (1M context) trabalhando no Windows 11 do Enio

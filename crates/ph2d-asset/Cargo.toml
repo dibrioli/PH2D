@@ -8,3 +8,20 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+# Content-addressed identity per HR-6: blake3 over the raw bytes is the
+# canonical AssetId. blake3 is the same hash family the spike used for
+# C9 cross-OS replay determinism, so we get one hash crate, not two.
+blake3 = "1"
+# PNG decode for the M6 visual gate. `default-features = false` +
+# explicit `png` opt-in keeps the dep slim (no jpeg/webp/gif until a
+# scene actually needs them).
+image = { version = "0.25", default-features = false, features = ["png"] }
+# Off-thread file watcher. notify wraps OS-native watchers (FSEvents on
+# macOS, inotify on Linux, ReadDirectoryChangesW on Windows) and keeps
+# its own background thread.
+notify = "8"
+
+[dev-dependencies]
+tempfile = "3"

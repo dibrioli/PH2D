@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+// ph2d-mcp is presentation/IO (LLM-facing tooling), NOT in the simulation
+// path defined by ADR-0022. HashMap iteration here is fine.
+#![allow(clippy::disallowed_types)]
 //! ph2d-mcp — MCP server skeleton (HR-10, HR-11).
 //!
 //! JSON-RPC 2.0 dispatcher para tools registradas. Governance (HR-11):

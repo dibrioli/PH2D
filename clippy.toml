@@ -1,0 +1,13 @@
+# Workspace-wide clippy configuration.
+# See: https://doc.rust-lang.org/clippy/configuration.html
+#
+# Per ADR-0022: ban std::collections::HashMap/HashSet/RandomState in
+# simulation crates. Lint applies workspace-wide; presentation/IO crates
+# (ph2d-render, ph2d-asset, ph2d-mcp, etc.) opt out locally with
+# `#[allow(clippy::disallowed_types)] // ok: presentation, not in HR-5 sim path`.
+
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "use bevy_ecs::EntityHashMap, hashbrown w/ fixed hasher, ou BTreeMap (HR-5 + ADR-0022)" },
+    { path = "std::collections::HashSet", reason = "use BTreeSet (HR-5 + ADR-0022)" },
+    { path = "std::collections::hash_map::RandomState", reason = "RandomState é não-determinístico cross-platform (HR-5)" },
+]

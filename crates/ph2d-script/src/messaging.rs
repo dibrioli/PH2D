@@ -15,6 +15,12 @@
 //! - Schema enforcement in dev (Cargo feature `mcp-schema`).
 //! - Cross-runtime/cross-thread bridging.
 
+// HashMap usage in this module is LOOKUP-only (string→id intern); never
+// iterated. Determinism preserved because dispatch hot path uses
+// `Vec<Vec<Handler>>` indexed by MessageId.0 (sequential). ADR-0022 ban
+// targets HashMap *iteration* in simulation paths; lookup-only is fine.
+#![allow(clippy::disallowed_types)]
+
 use std::collections::HashMap;
 
 /// Hash-interned identifier for a message name. Construct via

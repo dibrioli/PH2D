@@ -1,0 +1,292 @@
+# ADR-0023: UI/UX baseline — designer-first, Procreate-inspired, WCAG 2.2 AA
+
+**Status:** Proposed (pending Enio ratification)
+**Data:** 2026-05-09
+**Decisor:** Enio Oliveira Dias Brito
+**Implementador:** Claude Opus 4.7 (1M context)
+**Origem:** decisão pré-M12; Enio definiu audiência, baseline visual e princípios; LLM consolidou postura a11y e tokens.
+
+## Contexto
+
+Pós-M11 o engine tem renderização vetorial (Vello) + layout de texto (parley) operacionais. M12 começaria a construir o editor sem ter fixado:
+
+1. **Quem é o usuário primário** (game dev humano, LLM via MCP, designer não-coder, modder)
+2. **Qual o vocabulário visual** (Unity-style 3-pane, Figma-style toolbar, app-style canvas)
+3. **Qual a postura multi-modal** (mouse-first com touch como afterthought, ou paridade real)
+4. **Qual o nível de acessibilidade** (best-effort, WCAG AA, WCAG AAA)
+
+Sem essas decisões, M12 viraria um rascunho que precisa ser refeito assim que o "design certo" emergisse — re-trabalhar fundamentos custa muito mais do que escolhê-los antes de escrever uma linha.
+
+O plano operacional original M12 dizia *"3 panels (scene tree, inspector, viewport) via taffy + Vello"*. Esta ADR substitui essa formulação por uma arquitetura de quatro zonas Procreate-inspired.
+
+## Decisão
+
+### 1. Audiência primária
+
+**Designer não-coder fazendo cenas visualmente.** Implica:
+
+- Editor visual é **a porta de entrada**, código é a porta de saída avançada (não o contrário, como Unity ou Godot).
+- Drag-and-drop é cidadão de primeira classe; teclas de atalho são aceleradores, não pré-requisito.
+- WYSIWYG: a viewport do editor é a viewport do jogo. Sem "play mode" que muda render path.
+- Snap, grid, guides são padrão (não opt-in).
+- Undo/redo é generoso (≥ 250 estados, igual Procreate).
+- Asset library (sprites, tiles, sons) é tão visível quanto a scene tree.
+
+**Audiências secundárias** (não ignoradas, não otimizadas):
+- Game dev humano usando keyboard+mouse (tem todos os atalhos)
+- LLM via MCP (M9 já entrega catálogo de tools; UI não bloqueia LLM)
+- Modder/player (cenário M13+)
+
+### 2. Visual baseline — Procreate-inspired canvas-first
+
+**Tema padrão:** Dark Mode charcoal "unobtrusive", mantém foco na arte do canvas. Tokens semânticos abaixo.
+
+**Tema alternativo:** Light Mode mais contrastante para ambientes muito iluminados (sol direto, etc). Procreate usa o mesmo padrão.
+
+**Filosofia central — Canvas-First:**
+- UI ocupa apenas as **margens**; o **centro é 100% canvas**, sem obstrução.
+- **Modo Zen** acionável a qualquer momento: 4-finger tap (touch), `Tab` (keyboard), Q (mouse, configurável). Esconde toda a UI deixando só um indicador discreto no canto.
+- **UI translúcida nas bordas** (alpha ~0.85 em panels, ~0.95 em modals).
+- **Notificações flutuantes não-modais** no topo do canvas (ex.: *"Undo: Brush Stroke"*, *"Saved 2 s ago"*) — informam sem interromper.
+
+**Inspirações honestas:** Procreate (canvas-first + multi-modal), Figma (toolbar discoverability), Blender 2.8+ (radial menus + workspace profiles), AccessKit demos (a11y patterns). **Não copiamos pixel-by-pixel** — capturamos princípios.
+
+### 3. Arquitetura de layout — Triângulo de Zonas
+
+**Quatro zonas fixas:**
+
+| Zona | Categoria | Conteúdo (M12+) |
+|---|---|---|
+| **Top-right** | Criar (toca o canvas) | Tile painter, Sprite placer, Asset insertion, Brush picker, Layer, Color |
+| **Top-left** | Editar / gerir (modifica o que existe) | Gallery (projetos), Actions (file/save/export), Scene tree, Adjustments, Selections, Transform |
+| **Sidebar lateral** | Modular (toque frequente, polegar-distance) | Brush size, Opacity, Snap, Undo/Redo, Eyedropper, **Modify button** (Shift virtual) |
+| **Center** | Viewport | 100% canvas; sem obstrução. Fullscreen via 4-finger tap |
+
+**Sidebar:**
+- **Móvel verticalmente** (drag no Modify button) — ajustável à altura do polegar
+- **Espelhável esquerda↔direita** (canhotos)
+- Sempre visível em modo normal; some em modo zen
+
+**Princípio que rege a triangulação:** *frequência × natureza* da ação determina a posição. Top-right toca o canvas; top-left modifica o que existe; sidebar modula valores em uso constante.
+
+### 4. Multi-modal input — paridade real
+
+**Princípio:** toda ação tem **≥ 2 caminhos de entrada**, sem hierarquia entre eles. Touch ≠ second-class.
+
+**Carinho especial:** Touch + caneta (Apple Pencil + Wacom). Hover gestures, pressure curves, tilt response, squeeze (Pencil Pro), ExpressKey (Wacom).
+
+**Tabela canônica de gestos** (subconjunto Procreate adaptado):
+
+| Gesto Touch | Função | Mouse/Keyboard | Wacom |
+|---|---|---|---|
+| 1-finger drag | Pintar / mover seleção | LMB drag | Pen stroke |
+| 2-finger pinch | Zoom | Ctrl+scroll / Alt+RMB drag | Touch ring / atalho |
+| 2-finger pinch-twist | Rotacionar canvas | R+drag / Alt+Shift+MMB | Rotate gesture |
+| 2-finger drag | Pan | MMB drag / Space+LMB | Pen+modifier |
+| 2-finger tap | Undo | Ctrl+Z | ExpressKey |
+| 3-finger tap | Redo | Ctrl+Shift+Z | ExpressKey |
+| 3-finger scrub | Limpar layer | Ctrl+Del | ExpressKey |
+| 3-finger swipe down | Menu copy/paste | Ctrl+Shift+C/V | Atalho |
+| **4-finger tap** | **Full screen / Zen** | **Tab / F11** | **ExpressKey** |
+| Quick-pinch | Fit to screen | F / numpad . | Atalho |
+| Draw-and-hold | QuickShape (snap) | Shift durante o stroke | Shift |
+| Hover (Pencil) | Pré-visualizar pincel | Mouse-over | Hover quando suportado |
+
+**Customização total:**
+- Editor visual de mapeamento dentro do editor (não só arquivo de config)
+- Toggle on/off por shortcut (desligar atalhos raramente usados)
+- Múltiplos triggers por função (ex.: undo por gesto + atalho + ExpressKey)
+- **Detecção de conflito** com warning visual ao atribuir
+- **Profiles** por contexto (ex.: "Tile Editing", "Animation", "Physics Setup", "Lighting")
+
+### 5. QuickMenu radial
+
+**Menu radial customizável invocado por:**
+- **Touch:** hold (configurável: long-press 500 ms padrão) ou squeeze do Apple Pencil Pro
+- **Mouse:** Q hold + drag, ou RMB hold
+- **Wacom:** ExpressKey configurável
+
+**Características:**
+- **6 botões** (limite cognitivo Miller-friendly)
+- **Touch-drag (flick gesture):** após aprendido, o menu nem precisa ser visto — memória muscular direcional
+- **Profiles ilimitados** (sketching, coloring, tile-paint, animate, physics, lighting…)
+- Ações disponíveis pra mapear: 50+ comandos do editor
+
+### 6. Sliders com precisão progressiva
+
+**Cada slider numérico expõe controle fino sem widget extra:**
+
+- **Tablet/Pencil:** drag horizontal no slider; **afastar perpendicularmente** aumenta precisão (mais distância = passos menores). O eixo perpendicular vira o controle de resolução.
+- **Mouse:** Shift+drag = modo fino; OU drag vertical perpendicular ao slider (mesmo princípio).
+- **Wacom:** funciona nativo se o mapeamento expor pressão como modificador.
+
+Sem popup numérico, sem botão "modo fino". O comportamento é o widget.
+
+### 7. Modify button (Shift virtual)
+
+Sidebar tem um botão **Modify** que age como tecla Shift virtual:
+- Hold + tap em qualquer lugar = eyedropper (default)
+- Reprogramável para qualquer ação
+- **No tablet:** crítico — substitui modifier keys que não existem
+- **No desktop:** mantém visível em modo touch; modifier keys reais cobrem o caso normal
+
+### 8. Hover gestures
+
+**Para alterar tamanho/opacidade do pincel sem sair do canvas:**
+
+| Modo | Mecanismo |
+|---|---|
+| Apple Pencil hover | Pinch interno = diminuir, pinch externo = aumentar (size); slide L/R = opacity |
+| Wacom hover | Idem quando suportado pelo driver |
+| Mouse | Scroll wheel + modificador (`[`/`]` para size, Shift+scroll para opacity) |
+| Touch sem hover | Long-press + drag radial |
+
+### 9. Acessibilidade — WCAG 2.2 Level AA + AccessKit
+
+**Standard formal:** **WCAG 2.2 Level AA** — industry definitive (Apple/Microsoft/Adobe/Figma todos garantem AA). AAA é aspiracional, raramente atingível 100 % (contrast 7:1, todo conteúdo com nível de leitura ≤ Lower Secondary, etc).
+
+**Cross-platform abstraction:** **[AccessKit](https://github.com/AccessKit/accesskit)** (Linebender, mesma org de Vello/parley/skrifa). Único projeto Rust sério; integra Mac VoiceOver + Win Narrator + Linux AT-SPI + iPadOS VoiceOver pela mesma trait `Node`.
+
+**Postura derivada da audiência (designer não-coder):**
+
+| Item | Decisão |
+|---|---|
+| **Multi-touch fallback** | **"Single-Touch Companion"** overlay (igual Procreate): toda ação multi-touch tem botão equivalente single-touch flutuante |
+| **Multi-key fallback** | Sticky modifiers (Mac convention) + on-screen Modify button já decidido |
+| **Keyboard nav** | **100 % reachable.** Tab/Shift-Tab/Arrows; Escape sempre fecha modal/popover; focus visible sempre (ring ≥ 2 px no token `border-emphasis`) |
+| **Reduced motion** | OS setting respeitado: `prefers-reduced-motion` → desliga animações ≥ 200 ms |
+| **Live regions** | Announce undo/redo, save, errors via `accesskit::Live` sem roubar foco |
+| **Contrast** | AA tokens enforced (4.5:1 texto, 3:1 elementos UI). Lint contra paleta — qualquer cor proposta fora dos tokens bate erro |
+| **Text scaling** | Type scale em rem-equivalente; respeitar OS text size override até 200 % sem clipping |
+| **Color-blind safe** | Estado nunca codificado SÓ por hue; sempre acompanha shape/icon/position |
+
+**Gate M12:** ainda *"Mac VoiceOver navega editor"*; agora estende para *Windows Narrator + iPadOS VoiceOver no mesmo nível*. Linux AT-SPI fica em best-effort até alguém pedir.
+
+### 10. Hierarquia visual por luminosidade (não por hue)
+
+Estado é codificado por **luminosidade/saturação de uma única hue**, não por hues diferentes (mantém coesão visual + acomoda color-blindness).
+
+**Exemplo Procreate:** layer ativo = azul brilhante (Primary), layer secundário selecionado = azul escuro (Secondary).
+
+**Aplicação na engine:** uma única hue de destaque (proposta inicial: **azul ciano `#3DA5D9`** — testar AA contra dark + light themes; ajustar) com 3 intensidades:
+- `accent-primary` — selected/active
+- `accent-secondary` — selected secondary / pressed
+- `accent-tertiary` — hover / focus ring
+
+### 11. Tokens semânticos
+
+**Color tokens** (light + dark variants, AA contrast garantido):
+
+```
+background      — primary canvas behind everything
+surface         — panels, sidebar, toolbar
+surface-elevated — popovers, tooltips, modals
+border          — low-contrast separator
+border-emphasis — focused/hovered border, focus ring (≥ 4.5:1)
+text-primary    — main copy, ≥ 4.5:1 vs surface
+text-secondary  — labels, captions, ≥ 4.5:1 (on AA), ≥ 3:1 minimum on AAA-aspirational
+text-disabled   — explicit non-interactive (3:1 ok per WCAG)
+accent-primary  — single brand hue, max intensity
+accent-secondary — same hue, dimmer
+accent-tertiary — same hue, dimmest
+success         — semantic green (≥ 3:1 vs surface)
+warning         — semantic amber (idem)
+error           — semantic red (idem)
+info            — semantic blue/cyan (idem; pode coincidir com accent-primary se for azul)
+```
+
+Cores literais NÃO são usadas em código de widget — sempre token. Lint enforced no design system crate (futuro `ph2d-tokens`).
+
+**Type scale:**
+
+| Token | Tamanho |
+|---|---|
+| `font-size-xs` | 11 px (badges, tooltips) |
+| `font-size-sm` | 13 px (sidebar labels, secondary text) |
+| `font-size-base` | 14 px (default body) |
+| `font-size-md` | 16 px (primary text, inputs) |
+| `font-size-lg` | 20 px (panel headers) |
+| `font-size-xl` | 24 px (page headers) |
+| `font-mono` | 13 px (paths, IDs, code) |
+
+Type respeita OS text scaling até 200 %.
+
+**Densidade:** **compact** (Procreate é naturalmente compacto sendo tablet-first). Spacing scale em múltiplos de 4 px (4, 8, 12, 16, 24, 32).
+
+**Iconography:** open-source com stroke consistente — proposta **Phosphor Icons** ou **Lucide**. Decidir no PR de implementação dos tokens. Tamanhos canônicos: 16 px (sidebar) e 20 px (toolbar).
+
+**Animation:** mínima. Default easing `ease-out` 150 ms. Respeitar `prefers-reduced-motion` → 0 ms para tudo ≥ 200 ms.
+
+## Consequências
+
+### M12 reformulado
+
+Plano original M12 (*"3 panels: scene tree, inspector, viewport"*) é **substituído** pela arquitetura de 4 zonas:
+
+- Top-left, top-right, sidebar, viewport (definição completa em §3 acima)
+- ph2d-editor wraps tudo
+- ph2d-a11y vira **componente crítico** (era opcional no plano antigo); cada widget implementa `accesskit::Node`
+- Adiciona dep nova: **AccessKit** em `ph2d-a11y`
+- Adiciona crate novo: **`ph2d-tokens`** (color + type + spacing tokens; substitui qualquer literal em widget code)
+
+### Inputs ampliados
+
+- ph2d-input ganha gesture detection: 2/3/4-finger tap, pinch, pinch-twist, swipes, hover, draw-and-hold (M12+)
+- Novo subsistema "input mapping" com profiles + conflict detection (parte de ph2d-input ou crate separado `ph2d-bindings`)
+
+### Crates afetados
+
+- `ph2d-editor` → arquitetura de 4 zonas + Modify button + zen mode + notifications
+- `ph2d-a11y` → AccessKit integration; cada widget exporta Node
+- `ph2d-input` → gesture detection (multi-touch, hover, pencil pressure)
+- `ph2d-text` → respeitar OS text scaling
+- `ph2d-vector` → Single-Touch Companion overlay primitive
+- **Novo:** `ph2d-tokens` (M12 mesmo PR ou follow-up)
+- **Novo:** `ph2d-bindings` ou módulo dentro de `ph2d-input` (M12+)
+
+### Plano operacional
+
+`docs/plans/2026-05-post-spike.md` M12 row atualizada para refletir o novo escopo + dependência desta ADR.
+
+## Implementação / Rollout
+
+**M12 (este sprint, próxima implementação):**
+- AccessKit integrado em ph2d-a11y (skeleton)
+- ph2d-tokens criado com color + type + spacing tokens
+- ph2d-editor com 4 zonas básicas (placeholder content em cada uma)
+- 1 widget de exemplo (Button) implementando `accesskit::Node` + tokens
+- Modo Zen funcional (Tab para alternar)
+- Notification toast no topo, não-modal
+
+**M13+ (paralelo, ditado por demanda):**
+- Gesture detection completa (2/3/4-finger, pinch-twist, hover)
+- Editor visual de input mapping
+- QuickMenu radial
+- Sliders com precisão progressiva
+- Single-Touch Companion overlay completo
+- Profiles por contexto
+
+## Não decidido (deferred — fica para PR de implementação)
+
+- **Hue exato de accent** — proposta inicial `#3DA5D9` ciano. Validar AA contra ambos temas; ajustar.
+- **Iconography:** Phosphor vs Lucide vs custom. Decidir no PR de tokens.
+- **Animation library:** custom vs lyon vs nada (apenas easings inline). Provavelmente nada — animações são simples demais para justificar dep.
+- **Drag-and-drop infrastructure:** Vello primitive vs custom. Decidir no PR M12.
+
+## Riscos
+
+1. **AccessKit em iPadOS** — suporte ainda jovem; pode requerer fallback parcial. Mitigação: testar early, abrir issue upstream se algo faltar.
+2. **Procreate como inspiração ≠ cópia** — manter linguagem visual diferente o suficiente para evitar confusão de marca + risco legal. Mitigação: cores próprias, iconography própria, marca PH2D em todo lugar.
+3. **Multi-modal input editor** é complexidade própria — pode estourar M12 e bleed para M13. Mitigação: editor de mapeamento é M13+, não M12.
+4. **WCAG AA é o teto inicial** — design pode flertar com AAA em alguns lugares (contrast >7:1) sem se comprometer formalmente. Re-avaliar quando primeiro produto comercial pedir certificação formal.
+5. **`ph2d-tokens` cria nova dep para todo crate de UI** — aceitar; é o ponto da decisão.
+
+## Referências
+
+- **WCAG 2.2 (W3C):** https://www.w3.org/TR/WCAG22/
+- **AccessKit:** https://github.com/AccessKit/accesskit
+- **Procreate Handbook (Touch Gestures):** https://procreate.com/handbook (referência de princípios; não cópia)
+- **Apple HIG — Accessibility:** https://developer.apple.com/design/human-interface-guidelines/accessibility
+- **Microsoft Inclusive Design Toolkit:** https://www.microsoft.com/design/inclusive/
+- ADR-0021 (Sim/Present boundary) — UI vive em PresentWorld
+- HR-1 (cross-platform abstraction), HR-12 (a11y como concern de presentation)

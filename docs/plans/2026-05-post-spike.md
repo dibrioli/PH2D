@@ -27,7 +27,7 @@ Todos os marcos são **incrementais e mergeáveis** — branch curta (≤ 1 sema
 | **M9** | MCP server real conectado ao SimWorld + ph2d-bindgen | `ph2d-mcp` (popular sobre spike skeleton), `tools/ph2d-bindgen` (novo) | HR-8, HR-10, HR-11 | `cargo run -p ph2d-mcp-server` aceita JSON-RPC; 5 tools de c6-prompts.md operacionais sobre SimWorld real. ph2d-bindgen gera `runtime/luau/ph2d.d.luau` + `mcp/schema.json` a partir das mesmas `#[lua_export]` annotations (HR-10 paridade enforced em CI). | 7-10 dias | M7 |
 | **M10** | Physics — Rapier wrapper + det-physics feature ON desde dia 1 | `ph2d-physics` | HR-5 | Fixture lockstep: 50 corpos rígidos em colisão, fixed-step 60Hz, `enhanced-determinism` ativo. Hash idêntico cross-OS em Linux+Mac+Windows (estende C9). Rapier `parallel`/`simd-stable` desligados (incompatíveis com determinism). | 6-8 dias | M4, CI matrix |
 | **M11** | Vetorial + texto (Vello + parley + harfrust + skrifa) | `ph2d-vector`, `ph2d-text` | HR-1 | Editor stub: 1 panel Vello renderiza "Hello PH2D" em parley layout com fallback CJK + emoji color. Vello em alpha — risco aceito (ADR-0004 a escrever quando aparecer regressão). | 8-12 dias | M5, M6 |
-| **M12** | Editor base + a11y tree | `ph2d-editor`, `ph2d-a11y` | HR-7, HR-12 | Editor com 3 panels (scene tree, inspector, viewport) via taffy + Vello. Cada widget implementa trait `Accessible`; árvore exportada via `host.a11y_update`. Mac VoiceOver consegue navegar. | 10-15 dias | M11, M8 |
+| **M12** | Editor base + a11y tree (Procreate-style canvas-first, ADR-0023) | `ph2d-editor`, `ph2d-a11y`, novo `ph2d-tokens` | HR-7, HR-12, **ADR-0023** | Editor com **4 zonas** Procreate-inspired (top-right cria, top-left edita, sidebar modula, center 100% canvas) via taffy + Vello. AccessKit integrado (`ph2d-a11y`); cada widget exporta `accesskit::Node`. Mac VoiceOver + Win Narrator + iPadOS VoiceOver navegam. Modo Zen funcional (Tab toggle). 1 widget de exemplo (Button) usando tokens semânticos. WCAG 2.2 AA enforced via lint. | 10-15 dias | M11, M8, **ADR-0023** ratificada |
 | **M13** | Restantes em paralelo ditados por demanda | `ph2d-light`, `ph2d-physics-soft` (CPU first), `ph2d-fluids`, `ph2d-audio`, `ph2d-net`, `ph2d-i18n`, `ph2d-save`, `ph2d-telemetry` | HR-3, HR-4, HR-5, HR-14, HR-15 | Cada um com gate próprio quando ativado. Ordem ditada por projeto-piloto que será escolhido pós-M12. | depende | M12 (loop visível completo) |
 
 **Total estimado M1-M12:** ~10-13 semanas calendário (assumindo 1 marco por semana com folga). M13 é open-ended.
@@ -38,7 +38,7 @@ Todos os marcos são **incrementais e mergeáveis** — branch curta (≤ 1 sema
 - **Após M5:** 1000 sprites animados a 60Hz. **Loop visual fechado.**
 - **Após M7:** gameplay scriptável em Luau, hot reload funciona. **Loop de gameplay fechado.**
 - **Após M9:** LLM (eu próprio) consegue criar entity + atribuir component + observar via MCP. **Loop LLM-as-developer fechado.**
-- **Após M12:** editor mínimo navegável, a11y reportada. **Engine começa a ter "cara de engine".**
+- **Após M12:** editor canvas-first 4-zonas Procreate-inspired (ADR-0023), AccessKit reportando para Mac VoiceOver + Win Narrator + iPadOS VoiceOver, Modo Zen funcional, tokens semânticos AA-compliant. **Engine começa a ter "cara de engine".**
 - **M13+:** features incrementais sobre fundação madura.
 
 ## Anti-patterns reforçados (extensão a §15 do SKILL)
@@ -63,7 +63,7 @@ Adicionar ao SKILL §15 quando este plano for aprovado e iniciado:
 4. **§12.2 (Concurrency):** adicionar referência a ADR-0021 (SimWorld/PresentWorld separados por tipo, não só por thread).
 5. **§12.5 (Observability):** substituir bullet "se falhar 2× consecutivas, panic graceful" por link para ADR-0020.
 6. **§15 (Anti-patterns):** anexar os 9 itens acima.
-7. **§19 (ADR index):** adicionar ADR-0020, ADR-0021, ADR-0022 à lista.
+7. **§19 (ADR index):** adicionar ADR-0020, ADR-0021, ADR-0022, ADR-0023 à lista.
 
 ## Riscos identificados pré-execução
 
@@ -73,7 +73,9 @@ Adicionar ao SKILL §15 quando este plano for aprovado e iniciado:
 | Vello regression na alpha | M11 | Acompanhar issues do linebender/vello; ADR-0004 escrito ao primeiro problema. |
 | Rapier `enhanced-determinism` quebrar cross-OS | M10 | C9 cross-platform CI já valida; estender com fixture rapier específica. |
 | iPad shell não pronto até M11 | M11 | Aceitar — Mac é primary; iPad shell pode ser M14+. |
-| Editor scope creep em M12 | M12 | Limitar a 3 panels. Inspector/scene/viewport. Resto em ADR. |
+| Editor scope creep em M12 | M12 | Escopo agora canônicamente definido em ADR-0023 (4 zonas, AccessKit, tokens AA). QuickMenu radial + gesture-mapping editor + Single-Touch Companion overlay são M13+ (não M12). |
+| AccessKit em iPadOS pode estar imaturo | M12 | Testar early; fallback parcial aceito; abrir issue upstream se necessário. |
+| Procreate-inspired confundido com cópia | M12 | Iconography, marca e cores PH2D próprias; só princípios são absorvidos (ADR-0023 §"Inspirações honestas"). |
 | LLM-as-dev não acompanhar o ritmo | qualquer | Marcos têm folga (1 semana cada nominal; reescopar se necessário). Plano não é deadline rígido. |
 
 ## Definition of done deste plano

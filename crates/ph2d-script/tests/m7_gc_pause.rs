@@ -7,10 +7,22 @@
 //! - p99 = sample at index 990 of the sorted vector.
 //!
 //! Threshold rationale (from M7 plan): 0.01 ms p99 keeps GC
-//! invisible at 60 Hz (16.7 ms budget) and 120 Hz (8.3 ms). If this
-//! test ever flakes on slow CI runners, mark it `#[ignore]` and
-//! schedule via the bench workflow instead — we deliberately did NOT
-//! gate it on a CI hardware floor.
+//! invisible at 60 Hz (16.7 ms budget) and 120 Hz (8.3 ms).
+//!
+//! ### Why `#[ignore]` by default
+//!
+//! GitHub-hosted Windows runners are noisy (shared-tenant VMs +
+//! Defender + slow CPU); observed p99 = 18 µs on m10/physics #43,
+//! M7 budget = 10 µs. False fail. Same noise rules out Mac runners
+//! per HR-4 ("perf gating requires self-hosted Mac mini M2").
+//!
+//! Run locally with:
+//! ```sh
+//! cargo test --release -p ph2d-script --test m7_gc_pause -- --ignored --nocapture
+//! ```
+//!
+//! When the self-hosted runner lands, flip this back to a real CI
+//! gate (remove `#[ignore]` + add the runner label).
 
 use ph2d_script::ScriptHost;
 use std::time::{Duration, Instant};

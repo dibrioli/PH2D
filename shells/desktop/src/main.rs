@@ -1,16 +1,25 @@
 #![forbid(unsafe_code)]
-//! Desktop shell — winit 0.30 ApplicationHandler skeleton (M1).
+//! Desktop shell — winit 0.30 ApplicationHandler + wgpu integration (M3).
 //!
 //! Run with: `cargo run -p ph2d-host-desktop`
 //!
-//! Opens a window, forwards resize / pointer / key / lifecycle events
-//! to a [`HostHandler`] implementor. The reference handler here just
-//! logs events; real subsystems (renderer, input router, etc.) will
-//! be plugged in later marcos.
+//! M3 scope adds (over M1):
+//! - Real GPU init (wgpu Instance/Adapter/Device/Queue via ph2d-gpu).
+//! - Surface lifecycle per ADR-0020 (acquire_frame protocol).
+//! - Animated clear color (sin/cos of fixed-step tick count) — proves
+//!   the render path works end-to-end without yet needing a real
+//!   render graph (M5).
+//! - Resize coalescer: latest size kept in `pending_resize`; applied
+//!   once per frame in `redraw_requested`, not per OS event (per
+//!   LLM1 audit + plan anti-pattern "resize não-coalescido").
+//! - Lifecycle::Background → SurfaceContext::on_background() (proactive
+//!   transient release per ADR-0020).
 //!
-//! M1 scope: prove that the trait shape works end-to-end. No render
-//! yet (M3). No input → ECS routing (M8). No gizmos / editor (M12).
+//! M3 still does NOT have: real ECS, sprites, input routing. Those
+//! land in M4/M5/M8.
 
+use ph2d_core::{FixedStep, install_panic_hook, panic};
+use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
 use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
     PointerKind, PointerSource, WindowSize,
@@ -27,10 +36,6 @@ use winit::window::{Window, WindowId};
 /// Implementation of [`PlatformHost`] backed by a winit `Window`.
 struct WinitHost {
     window: Arc<Window>,
-    /// Cached scale factor — updated whenever the OS notifies us via
-    /// `WindowEvent::ScaleFactorChanged`. Avoids querying the window
-    /// on every `scale_factor()` call (cheap but allocs a syscall on
-    /// some platforms).
     scale: Cell<f32>,
 }
 
@@ -48,36 +53,30 @@ impl PlatformHost for WinitHost {
     fn request_redraw(&self) {
         self.window.request_redraw();
     }
-
     fn window_size(&self) -> WindowSize {
         let size = self.window.inner_size();
         WindowSize::new(size.width, size.height)
     }
-
     fn scale_factor(&self) -> f32 {
         self.scale.get()
     }
 }
 
-/// Reference [`HostHandler`] that logs every event and exits on
-/// close. Real subsystems will replace this with their own
-/// implementations.
+/// Reference [`HostHandler`] that logs events; render is wired
+/// separately in `App` because it needs the SurfaceContext.
 struct LoggingHandler {
     started_at: Instant,
 }
-
 impl LoggingHandler {
     fn new() -> Self {
         Self {
             started_at: Instant::now(),
         }
     }
-
     fn elapsed_ms(&self) -> u128 {
         self.started_at.elapsed().as_millis()
     }
 }
-
 impl HostHandler for LoggingHandler {
     fn on_resize(&mut self, size: WindowSize, scale_factor: f32) {
         println!(
@@ -88,13 +87,10 @@ impl HostHandler for LoggingHandler {
             scale_factor
         );
     }
-
     fn on_lifecycle(&mut self, kind: Lifecycle) {
         println!("[{:>6}ms] lifecycle: {:?}", self.elapsed_ms(), kind);
     }
-
     fn on_pointer(&mut self, event: PointerEvent) {
-        // Pointer floods. Only log Down/Up (not Move) to keep stdout sane.
         if matches!(event.kind, PointerKind::Down | PointerKind::Up) {
             println!(
                 "[{:>6}ms] pointer {:?} {:?} ({:.0}, {:.0}) p={:.2}",
@@ -107,7 +103,6 @@ impl HostHandler for LoggingHandler {
             );
         }
     }
-
     fn on_key(&mut self, event: KeyEvent) {
         println!(
             "[{:>6}ms] key {:?} keycode={} mods={:?}",
@@ -117,20 +112,22 @@ impl HostHandler for LoggingHandler {
             event.modifiers
         );
     }
-
     fn on_close_request(&mut self) -> CloseAction {
         println!("[{:>6}ms] close requested → Close", self.elapsed_ms());
         CloseAction::Close
     }
 }
 
-/// Glue: holds the winit window + the core handler. winit's
-/// `ApplicationHandler` trait dispatches OS events here; we translate
-/// to ph2d_host event types and forward to `HostHandler`.
 struct App {
     window: Option<Arc<Window>>,
     host: Option<WinitHost>,
+    surface: Option<SurfaceContext>,
     handler: LoggingHandler,
+    fixed_step: FixedStep,
+    last_frame: Instant,
+    /// Coalesced pending resize. None when no resize event since last
+    /// applied. Applied at most once per frame in `redraw_requested`.
+    pending_resize: Option<WindowSize>,
     modifiers: ModifiersState,
     last_pointer: (f32, f32),
 }
@@ -140,7 +137,11 @@ impl App {
         Self {
             window: None,
             host: None,
+            surface: None,
             handler: LoggingHandler::new(),
+            fixed_step: FixedStep::default(),
+            last_frame: Instant::now(),
+            pending_resize: None,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
         }
@@ -161,12 +162,70 @@ impl App {
             .map(|d| d.as_nanos())
             .unwrap_or(0)
     }
+
+    /// Apply the coalesced pending resize (if any) and render the frame.
+    fn render_frame(&mut self) {
+        let Some(surface) = self.surface.as_mut() else {
+            return;
+        };
+        let Some(host) = self.host.as_ref() else {
+            return;
+        };
+
+        // Apply coalesced resize once per frame (not per event).
+        if let Some(size) = self.pending_resize.take() {
+            surface.resize(size);
+            self.handler.on_resize(size, host.scale_factor());
+        }
+
+        // Drive fixed-step accumulator.
+        let now = Instant::now();
+        let wall_dt = now.duration_since(self.last_frame).as_secs_f64();
+        self.last_frame = now;
+        let report = self.fixed_step.advance(wall_dt);
+        if report.dropped_secs > 0.0 {
+            eprintln!(
+                "warn: dropped {:.3}s of sim time (max_substeps cap)",
+                report.dropped_secs
+            );
+        }
+        panic::set_frame_id(self.fixed_step.tick_count());
+
+        // Animated clear color: hue sweeps with the simulated tick clock.
+        let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
+        let r = (t.sin() * 0.5 + 0.5).clamp(0.0, 1.0);
+        let g = ((t + 2.094).sin() * 0.5 + 0.5).clamp(0.0, 1.0); // 120° phase
+        let b = ((t + 4.188).sin() * 0.5 + 0.5).clamp(0.0, 1.0); // 240° phase
+
+        match surface.acquire_frame() {
+            Ok(frame) => {
+                frame.clear(wgpu::Color { r, g, b, a: 1.0 });
+                // FrameTarget presents on Drop.
+            }
+            Err(AcquireError::AwaitingReconfigure) => {
+                // Lost cascade — reconfigure and try next frame.
+                surface.reconfigure_after_lost();
+            }
+            Err(AcquireError::Occluded) => {
+                // Window minimized; skip frame.
+            }
+            Err(AcquireError::Timeout) => {
+                // Skip frame; protocol counter cascades to Lost at 3.
+            }
+            Err(AcquireError::Other(s)) => {
+                eprintln!("acquire_frame other error: {s}");
+            }
+        }
+
+        // Schedule the next frame.
+        host.request_redraw();
+    }
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let attrs = Window::default_attributes()
-            .with_title("PH2D — desktop shell (M1 skeleton)")
+            .with_title("PH2D — desktop shell (M3 — animated clear)")
             .with_inner_size(winit::dpi::LogicalSize::new(1024, 768));
         let window = Arc::new(
             event_loop
@@ -176,12 +235,25 @@ impl ApplicationHandler for App {
         let host = WinitHost::new(window.clone());
         let size = host.window_size();
         let scale = host.scale_factor();
+
+        // GPU init. The wgpu Surface borrows from `window`, so we hand
+        // it an `Arc<Window>` whose lifetime matches the SurfaceContext.
+        let instance = GpuContext::default_instance();
+        let raw_surface = instance
+            .create_surface(window.clone())
+            .expect("create_surface");
+        let gpu = GpuContext::new(instance, Some(&raw_surface)).expect("GpuContext::new");
+        let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
+
         self.window = Some(window);
         self.host = Some(host);
-        // Synthetic Foreground on first resume.
+        self.surface = Some(surface);
         self.handler.on_lifecycle(Lifecycle::Foreground);
-        // Synthetic initial resize so the core knows the surface size.
         self.handler.on_resize(size, scale);
+        // Kick off the render loop.
+        if let Some(host) = self.host.as_ref() {
+            host.request_redraw();
+        }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -195,19 +267,17 @@ impl ApplicationHandler for App {
             },
 
             WindowEvent::Resized(size) => {
-                if let Some(host) = &self.host {
-                    self.handler.on_resize(
-                        WindowSize::new(size.width, size.height),
-                        host.scale_factor(),
-                    );
-                }
+                // Coalesce: keep latest, apply in render_frame.
+                self.pending_resize = Some(WindowSize::new(size.width, size.height));
             }
 
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 if let Some(host) = &self.host {
                     host.scale.set(scale_factor as f32);
-                    self.handler
-                        .on_resize(host.window_size(), scale_factor as f32);
+                    if let Some(surface) = self.surface.as_ref() {
+                        // Re-resize at the same physical px (DPI changed).
+                        self.pending_resize = Some(surface.size());
+                    }
                 }
             }
 
@@ -270,11 +340,7 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
-                // No render yet (M3). Just request next frame so the
-                // window stays "alive" (visible scheduling activity).
-                if let Some(host) = &self.host {
-                    host.request_redraw();
-                }
+                self.render_frame();
             }
 
             _ => {}
@@ -283,13 +349,13 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
+    install_panic_hook();
     let event_loop = EventLoop::new().expect("create EventLoop");
-    // Poll = always ask for a new frame; Wait = block until next event.
-    // Wait is right for an event-driven shell with no render yet — saves CPU.
-    event_loop.set_control_flow(ControlFlow::Wait);
+    // Poll so we drive frames continuously (animated clear).
+    event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::new();
-    println!("PH2D desktop shell starting (close window to exit)…");
+    println!("PH2D desktop shell starting (animated clear; close window to exit)…");
     event_loop.run_app(&mut app).expect("event loop crashed");
     println!("PH2D desktop shell exited cleanly.");
 }

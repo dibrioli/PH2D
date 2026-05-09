@@ -134,6 +134,9 @@ jobs:
       - name: ph2d-host tests (nextest)
         run: cargo nextest run -p ph2d-host --release --locked
 
+      - name: ph2d-gpu tests (nextest — surface state machine + transient pool)
+        run: cargo nextest run -p ph2d-gpu --release --locked
+
       - name: ph2d-script tests (nextest)
         run: cargo nextest run -p ph2d-script --release --locked
 

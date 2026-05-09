@@ -137,6 +137,12 @@ jobs:
       - name: ph2d-gpu tests (nextest — surface state machine + transient pool)
         run: cargo nextest run -p ph2d-gpu --release --locked
 
+      - name: ph2d-ecs tests (nextest — sim/present flow + extract macro)
+        run: cargo nextest run -p ph2d-ecs --release --locked
+
+      - name: ph2d-ecs doc tests (extract! compile_fail proof)
+        run: cargo test --doc -p ph2d-ecs --release --locked
+
       - name: ph2d-script tests (nextest)
         run: cargo nextest run -p ph2d-script --release --locked
 

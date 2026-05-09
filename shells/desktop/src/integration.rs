@@ -20,7 +20,7 @@ pub const ATLAS_GRID: u32 = 4;
 pub const ATLAS_SPRITE_PX: u32 = 64;
 pub const ATLAS_PX: u32 = ATLAS_GRID * ATLAS_SPRITE_PX; // 256
 
-/// Where the demo PNGs live, relative to the workspace root. The
+/// Where the demo PNG files live, relative to the workspace root. The
 /// shell creates them on first launch if missing — keeps the
 /// repo lean (no committed binary fixtures).
 pub fn demo_assets_dir() -> PathBuf {
@@ -63,7 +63,7 @@ pub fn ensure_demo_assets_exist(dir: &Path) -> std::io::Result<u32> {
     Ok(created)
 }
 
-/// Load the 16 demo PNGs through `AssetDb::load_png_path`, returning
+/// Load the 16 demo PNG files through `AssetDb::load_png_path`, returning
 /// the AssetIds in canonical order (sprite_00..sprite_15). Any
 /// failure aborts and propagates — fixture is mandatory for the demo.
 pub fn load_demo_assets(asset_db: &AssetDb, dir: &Path) -> Result<Vec<AssetId>, String> {

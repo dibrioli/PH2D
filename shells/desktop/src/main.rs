@@ -6,7 +6,7 @@
 //! Layered subsystems (each gated to keep the demo bootable even if
 //! one fails — never crash the shell over an integration-demo issue):
 //! - **M5** SpriteRenderer + 1000-sprite Vogel spiral with bouncing motion
-//! - **M6** AssetDb loads 16 real PNGs from `assets/sprites/` (auto-
+//! - **M6** AssetDb loads 16 real PNG files from `assets/sprites/` (auto-
 //!   generated on first launch) and composes them into a 256×256
 //!   RGBA8 atlas. Falls back to procedural dummy if anything fails.
 //! - **M7** ScriptHost with placeholder Luau script; per-frame gc_step
@@ -159,7 +159,7 @@ struct AppGfx {
     /// M6 — set when PNG fixtures loaded successfully; held so the
     /// AssetDb keeps `Arc<Asset>` alive for hot-reload follow-ups.
     asset_db: AssetDb,
-    /// M6 — true when the atlas was composed from real PNGs (vs the
+    /// M6 — true when the atlas was composed from real PNG files (vs the
     /// procedural dummy fallback). Surfaced in window title.
     atlas_is_real: bool,
     /// M7 — Luau VM with placeholder script loaded. Per-frame gc_step
@@ -262,7 +262,7 @@ impl App {
         }
     }
 
-    /// Compose the M6 atlas from real PNGs. Generates fixtures on first
+    /// Compose the M6 atlas from real PNG files. Generates fixtures on first
     /// launch; subsequent launches reuse the on-disk files. Any failure
     /// bubbles a String — caller falls back to the dummy atlas.
     fn try_load_real_atlas(
@@ -492,7 +492,7 @@ impl ApplicationHandler for App {
         let gpu = GpuContext::new(instance, Some(&raw_surface)).expect("GpuContext::new");
         let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
 
-        // M6: try to compose the atlas from real PNGs on disk.
+        // M6: try to compose the atlas from real PNG files on disk.
         // Auto-generates 16 procedural fixtures on first launch so the
         // demo is self-contained (no committed binary fixtures). Any
         // failure logs and falls back to the M5 procedural dummy —

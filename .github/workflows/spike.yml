@@ -140,16 +140,19 @@ jobs:
       - name: build ph2d-host-desktop (M1 — verifies winit links cross-OS)
         run: cargo build --release --locked -p ph2d-host-desktop
 
-      - name: spike fixtures (no ECS)
+      # Correctness fixtures only — no perf-gated benches in CI.
+      # Bench fixtures (c2_1_messaging, c3_coro_timing, c10_gc_stress,
+      # c12_wasm_marshall, c7_bytecode) measure p99 latency vs thresholds
+      # calibrated on hardware alvo (Mac M-series local). GitHub-hosted
+      # runners are slower and trigger false fails. Real perf gating
+      # requires a self-hosted Mac mini M2 (HR-4 enforcer; tracked in
+      # plan as M14+ infra work).
+      - name: spike correctness fixtures (no ECS)
         run: |
           cargo run --release --locked --bin hello_runner -p ph2d-spike
-          cargo run --release --locked --bin c3_coro_timing -p ph2d-spike
-          cargo run --release --locked --bin c10_gc_stress -p ph2d-spike
-          cargo run --release --locked --bin c12_wasm_marshall -p ph2d-spike
           cargo run --release --locked --bin c13_migration -p ph2d-spike
-          cargo run --release --locked --bin c2_1_messaging -p ph2d-spike
 
-      - name: spike fixtures (with bevy_ecs)
+      - name: spike correctness fixtures (with bevy_ecs)
         run: |
           cargo run --release --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
           cargo run --release --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike

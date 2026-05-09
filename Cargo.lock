@@ -3357,7 +3357,6 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-gpu",
  "ph2d-host",
- "ph2d-vector",
  "vello",
  "wgpu",
 ]

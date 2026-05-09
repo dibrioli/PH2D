@@ -21,5 +21,5 @@
 
 pub mod system;
 
-pub use parley::{FontContext, Layout, LayoutContext};
+pub use parley::{FontContext, Layout, LayoutContext, PositionedLayoutItem};
 pub use system::TextSystem;

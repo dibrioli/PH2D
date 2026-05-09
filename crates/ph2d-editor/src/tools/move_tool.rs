@@ -5,9 +5,13 @@
 //! states reflect the model; mouse interaction (next PR) writes back.
 
 use crate::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
-use crate::tool::Tool;
+use crate::tool::{PanelEvent, Tool};
 use crate::widget::{RadioGroup, RadioOption, Toggle};
 use ph2d_a11y::NodeId;
+
+const SNAP_GRID_NODE: NodeId = NodeId(201);
+const SNAP_PIXEL_NODE: NodeId = NodeId(202);
+const LOCK_AXIS_NODE: NodeId = NodeId(203);
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum LockAxis {
@@ -48,9 +52,9 @@ impl Tool for MoveTool {
     }
 
     fn build_panel(&self) -> FloatingPanel {
-        let mut snap_grid = Toggle::new(NodeId(201), "Snap Grid");
+        let mut snap_grid = Toggle::new(SNAP_GRID_NODE, "Snap Grid");
         snap_grid.on = self.snap_to_grid;
-        let mut snap_pixel = Toggle::new(NodeId(202), "Snap Pixel");
+        let mut snap_pixel = Toggle::new(SNAP_PIXEL_NODE, "Snap Pixel");
         snap_pixel.on = self.snap_to_pixel;
 
         let lock_options = vec![
@@ -70,7 +74,7 @@ impl Tool for MoveTool {
                 id: NodeId(212),
             },
         ];
-        let mut lock = RadioGroup::new(NodeId(203), "Lock Axis", lock_options);
+        let mut lock = RadioGroup::new(LOCK_AXIS_NODE, "Lock Axis", lock_options);
         lock.select(match self.lock_axis {
             LockAxis::None => "none".to_string(),
             LockAxis::X => "x".to_string(),
@@ -90,6 +94,21 @@ impl Tool for MoveTool {
             ]);
         panel.anchor = PanelAnchor::BottomCenter;
         panel
+    }
+
+    fn handle_panel_event(&mut self, event: PanelEvent) {
+        match event {
+            PanelEvent::Toggle(id, on) if id == SNAP_GRID_NODE => self.snap_to_grid = on,
+            PanelEvent::Toggle(id, on) if id == SNAP_PIXEL_NODE => self.snap_to_pixel = on,
+            PanelEvent::SelectOption(id, v) if id == LOCK_AXIS_NODE => {
+                self.lock_axis = match v.as_str() {
+                    "x" => LockAxis::X,
+                    "y" => LockAxis::Y,
+                    _ => LockAxis::None,
+                };
+            }
+            _ => {}
+        }
     }
 }
 

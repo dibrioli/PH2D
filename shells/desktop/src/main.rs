@@ -39,8 +39,11 @@ use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
 use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{
-    BrushTool, Layout as EditorLayout, MoveTool, Toast, ToastQueue, ToolRegistry, ZenMode,
+    BrushTool, Layout as EditorLayout, MoveTool, PanelControl, PanelEvent, Toast, ToastQueue,
+    ToolRegistry, ZenMode,
 };
+// NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
+use ph2d_editor::NodeId;
 use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
 use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
@@ -216,6 +219,11 @@ struct App {
     pending_resize: Option<WindowSize>,
     modifiers: ModifiersState,
     last_pointer: (f32, f32),
+    /// Set to `Some(node_id)` when the user pressed inside a draggable
+    /// widget (Slider) — subsequent pointer-move events continue to
+    /// fire SetValue until pointer-up clears this. None for click-only
+    /// widgets (Toggle, RadioGroup, ColorSwatch).
+    dragging: Option<NodeId>,
     title_dirty: bool,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
@@ -258,6 +266,7 @@ impl App {
             pending_resize: None,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
+            dragging: None,
             title_dirty: true,
             gilrs,
             input: InputState::new(),
@@ -348,6 +357,92 @@ impl App {
                 self.title_dirty = true;
             }
             _ => {}
+        }
+    }
+
+    /// Hit-test the active tool's panel at `(px, py)` and dispatch a
+    /// [`PanelEvent`] into the tool. `is_press` distinguishes the
+    /// initial mouse-down (which may start a drag) from continued
+    /// move-while-dragging (which only updates an in-progress slider).
+    fn dispatch_panel_pointer(&mut self, px: f32, py: f32, is_press: bool) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        if gfx.zen.is_active() {
+            return; // panels hidden
+        }
+        let Some(tool) = gfx.tools.active() else {
+            return;
+        };
+        let panel = tool.build_panel();
+        let viewport = EditorRect::new(
+            0.0,
+            0.0,
+            gfx.surface.size().width as f32,
+            gfx.surface.size().height as f32,
+        );
+        let widget_rects = panel.control_widget_rects(viewport);
+
+        // Existing drag → re-emit SetValue against the same node. Done
+        // even if pointer left the original cell (slider-style "live
+        // drag" feel).
+        if let Some(dragging_id) = self.dragging
+            && let Some((idx, ctrl)) = panel
+                .controls
+                .iter()
+                .enumerate()
+                .find(|(_, c)| matches!(c, PanelControl::Slider(s) if s.id == dragging_id))
+            && let Some(rect) = widget_rects.get(idx)
+            && let PanelControl::Slider(_) = ctrl
+        {
+            let v = ((px - rect.x) / rect.w).clamp(0.0, 1.0) as f64;
+            if let Some(active) = gfx.tools.active_mut() {
+                active.handle_panel_event(PanelEvent::SetValue(dragging_id, v));
+            }
+            return;
+        }
+
+        if !is_press {
+            return; // not a click and not a drag — nothing to do
+        }
+
+        // Find the cell containing (px, py).
+        let Some((idx, _)) = widget_rects
+            .iter()
+            .enumerate()
+            .find(|(_, r)| r.contains(px, py))
+        else {
+            return;
+        };
+        let ctrl = &panel.controls[idx];
+        let rect = widget_rects[idx];
+
+        let event = match ctrl {
+            PanelControl::Slider(s) => {
+                self.dragging = Some(s.id);
+                let v = ((px - rect.x) / rect.w).clamp(0.0, 1.0) as f64;
+                Some(PanelEvent::SetValue(s.id, v))
+            }
+            PanelControl::Toggle(t) => Some(PanelEvent::Toggle(t.id, !t.on)),
+            PanelControl::RadioGroup(g) if !g.options.is_empty() => {
+                // Horizontal split — pick option by which sub-rect
+                // contains the pointer.
+                let opt_w = rect.w / g.options.len() as f32;
+                let opt_idx = (((px - rect.x) / opt_w) as usize).min(g.options.len() - 1);
+                Some(PanelEvent::SelectOption(
+                    g.id,
+                    g.options[opt_idx].value.clone(),
+                ))
+            }
+            PanelControl::ColorSwatch(s) => Some(PanelEvent::Click(s.id)),
+            PanelControl::Action(_) | PanelControl::RadioGroup(_) => None,
+        };
+
+        if let Some(event) = event
+            && let Some(active) = gfx.tools.active_mut()
+        {
+            active.handle_panel_event(event);
+            self.title_dirty = true;
         }
     }
 
@@ -810,6 +905,11 @@ impl ApplicationHandler for App {
                     source: PointerSource::Mouse,
                     timestamp_ns: Self::timestamp_ns(),
                 });
+                // Drag-in-progress: forward pointer to active tool
+                // panel hit-test → updates slider value continuously.
+                if self.dragging.is_some() {
+                    self.dispatch_panel_pointer(self.last_pointer.0, self.last_pointer.1, false);
+                }
             }
 
             WindowEvent::MouseInput { state, .. } => {
@@ -825,6 +925,16 @@ impl ApplicationHandler for App {
                     source: PointerSource::Mouse,
                     timestamp_ns: Self::timestamp_ns(),
                 });
+                match state {
+                    ElementState::Pressed => {
+                        // Mouse down — start hit-test against active panel.
+                        self.dispatch_panel_pointer(self.last_pointer.0, self.last_pointer.1, true);
+                    }
+                    ElementState::Released => {
+                        // End any drag-in-progress.
+                        self.dragging = None;
+                    }
+                }
             }
 
             WindowEvent::KeyboardInput {

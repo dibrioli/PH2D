@@ -41,7 +41,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::ModifiersState;
 use winit::window::{Window, WindowId};
 
-const SPRITE_COUNT: u32 = 1000;
+const SPRITE_COUNT: u32 = 10_000;
 /// Half-extent of the bouncing world in meters. Camera default has
 /// `height_world = 10`, so [-5, 5] in Y is exactly the visible region;
 /// X depends on aspect (narrower than visible at 4:3+).

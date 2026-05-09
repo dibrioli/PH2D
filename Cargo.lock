@@ -2542,6 +2542,9 @@ dependencies = [
 [[package]]
 name = "ph2d-ecs"
 version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+]
 
 [[package]]
 name = "ph2d-editor"

@@ -1,8 +1,36 @@
 #![forbid(unsafe_code)]
-//! ph2d-editor — Procreate-style canvas-first editor (taffy + Vello).
+//! ph2d-editor — Procreate-style canvas-first editor (M12, ADR-0023).
 //!
-//! Empty pending **M12** (per **ADR-0023**): 4-zone layout —
-//! top-right (creating tools), top-left (editing/scene), sidebar
-//! (modulators), center 100 % canvas. Modo Zen via Tab toggle.
-//! AccessKit integrated via `ph2d-a11y`. Tokens semânticos via
-//! `ph2d-tokens`. WCAG 2.2 AA enforced.
+//! Foundation in this skeleton:
+//! - [`zones::Layout`] — 4-zone canonical positioning (top-left
+//!   creates / top-right edits / sidebar modulates / center 100 %
+//!   canvas). Per ADR-0023 §3.
+//! - [`floating_panel::FloatingPanel`] — Procreate-style draggable
+//!   tool drawer primitive. Per ADR-0023 §5.
+//! - [`widget::Button`] — example widget showing the
+//!   `tokens` + `a11y::Node` integration pattern every future
+//!   widget follows.
+//! - [`zen::ZenMode`] — Tab-toggle workspace state. Per ADR-0023 §2.
+//! - [`toast::ToastQueue`] — non-modal notification stream. Per
+//!   ADR-0023 §2 ("Notificações flutuantes não-modais").
+//!
+//! Out of scope this skeleton (lands in M12 follow-ups / M13):
+//! - Vello rendering of widgets (only data shapes here; rendering
+//!   path lands when shells/desktop wires the editor in)
+//! - QuickMenu radial (M13+ per ADR-0023 §6)
+//! - Gesture-mapping editor UI (M13+ per ADR-0023 §4)
+//! - Single-Touch Companion overlay (M13+)
+//! - Selection panel demo with all 8 actions (this skeleton ships
+//!   the `FloatingPanel` primitive + 1 minimal demo proving the API)
+
+pub mod floating_panel;
+pub mod toast;
+pub mod widget;
+pub mod zen;
+pub mod zones;
+
+pub use floating_panel::{FloatingPanel, PanelAnchor, PanelTab};
+pub use toast::{Toast, ToastQueue, ToastSeverity};
+pub use widget::Button;
+pub use zen::ZenMode;
+pub use zones::{Layout, Zone};

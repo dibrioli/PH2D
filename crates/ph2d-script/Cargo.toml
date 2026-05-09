@@ -11,6 +11,10 @@ authors.workspace = true
 
 [dependencies]
 mlua = { version = "0.10", features = ["luau"] }
+# blake3 used for source-content hashing — drives the reset+restore
+# decision in `ScriptHost::load_script` (HR-16: hot-reload only when
+# bytes actually changed, not on every save).
+blake3 = "1"
 
 [dev-dependencies]
 proptest = "1.11.0"

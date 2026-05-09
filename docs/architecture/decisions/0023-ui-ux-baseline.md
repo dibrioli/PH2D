@@ -168,10 +168,27 @@ Estado é codificado por **luminosidade/saturação de uma única hue**, não po
 
 **Exemplo Procreate:** layer ativo = azul brilhante (Primary), layer secundário selecionado = azul escuro (Secondary).
 
-**Aplicação na engine:** uma única hue de destaque (proposta inicial: **azul ciano `#3DA5D9`** — testar AA contra dark + light themes; ajustar) com 3 intensidades:
-- `accent-primary` — selected/active
-- `accent-secondary` — selected secondary / pressed
-- `accent-tertiary` — hover / focus ring
+**Aplicação na engine:** uma única hue de destaque amostrada das paletas oficiais do Procreate (Dark + Light) com 3 intensidades.
+
+**Valores propostos** (a serem sampled-from-screenshot e validados WCAG AA na PR de implementação dos tokens — não tenho Procreate instalado pra sample exato agora):
+
+| Token | Dark Mode | Light Mode | Notas |
+|---|---|---|---|
+| `background` | `#161616` (charcoal) | `#F5F5F5` (warm off-white) | Procreate-canvas-feel; nem preto puro nem branco puro |
+| `surface` | `#1F1F1F` | `#FFFFFF` | Painéis e sidebar |
+| `surface-elevated` | `#2A2A2A` | `#FFFFFF` + shadow | Popovers, tooltips |
+| `text-primary` | `#E8E8E8` | `#1A1A1A` | ≥ 4.5:1 vs surface |
+| `text-secondary` | `#9A9A9A` | `#5A5A5A` | ≥ 4.5:1 vs surface |
+| `accent-primary` | **`#0AB4FF`** (Procreate iconic blue-cyan) | **`#0078D4`** (mesma hue, ajustada para AA em fundo claro) | Active/selected primary |
+| `accent-secondary` | `#0786BF` (mesma hue, dimmer) | `#005A9E` | Selected secondary / pressed |
+| `accent-tertiary` | `#04566F` (mesma hue, mais dimmer) | `#003D6B` | Hover, focus ring |
+
+**Disclaimer honesto:** o exato HEX do accent Procreate pode variar entre versões e screenshots. A PR de implementação valida com:
+1. Sample direto de screenshots oficiais Procreate 5+ (ambos modos)
+2. Verificar AA contra os tokens `surface` propostos acima
+3. Ajustar ±5 % luminance se necessário sem mudar hue
+
+A direção (cyan-blue Procreate-style, não verde-Inkscape ou laranja-Blender) é o que importa.
 
 ### 11. Tokens semânticos
 
@@ -213,9 +230,49 @@ Type respeita OS text scaling até 200 %.
 
 **Densidade:** **compact** (Procreate é naturalmente compacto sendo tablet-first). Spacing scale em múltiplos de 4 px (4, 8, 12, 16, 24, 32).
 
-**Iconography:** open-source com stroke consistente — proposta **Phosphor Icons** ou **Lucide**. Decidir no PR de implementação dos tokens. Tamanhos canônicos: 16 px (sidebar) e 20 px (toolbar).
+**Iconography:** **mix curado de Blender Icons + Godot Icons + Inkscape Icons**, re-skinned para stroke consistente PH2D.
+
+**Por quê os três:**
+- **Godot Icons** (MIT) — primário; estilo monoline mais editor-appropriate, cobre 80 % dos icons que precisamos
+- **Blender Icons** (GPL — usar SVGs sob fair-use ou redesenhar com mesma pegada; verificar) — preencher icons de 3D-adjacent / bone / skeleton / animation que Godot é mais fraco
+- **Inkscape Icons** (LGPL) — preencher icons de vector-editing (pen tool, node editor, path operations) que Procreate-style canvas pode evocar
+
+**Risco de inconsistência visual:** os três têm estilos distintos. Resolução:
+1. **Re-pintar tudo** num único stroke-width (1.5 px @ 16 px / 1.75 px @ 20 px) e geometric grid PH2D
+2. **Filled vs outline**: outline default; filled só para "estado ON" (ex: layer visibility eye-on vs eye-off)
+3. **Sem cor literal** nos SVGs — todos usam `currentColor`, recebem hue via token CSS-var-equivalent
+
+**Tamanhos canônicos:** 16 px (sidebar, dense) e 20 px (toolbar, comfortable). Tudo em SVG; rasterização runtime via Vello.
+
+**Licensing nota:** Godot icons são MIT (compatível com proprietary). Blender e Inkscape são GPL/LGPL — re-desenhar inspirado-em é mais limpo legalmente do que copiar SVG. PR de tokens documenta cada icon com sua origem ("inspired by Blender icon X" vs "MIT-licensed from Godot project").
 
 **Animation:** mínima. Default easing `ease-out` 150 ms. Respeitar `prefers-reduced-motion` → 0 ms para tudo ≥ 200 ms.
+
+## iPad readiness em M12
+
+**M12 ships desktop only** (`shells/desktop` — Mac primary, Linux/Windows secondary). iPad shell é M14+ por dois motivos:
+
+1. **shells/ipad** precisa UIKit/SwiftUI bridge não-trivial; ph2d-host trait existe mas a implementação é trabalho dedicado
+2. **HR-13 memory budget validation** requer hardware iPad Pro M2 físico — projeto ainda não tem
+
+**Mas M12 NÃO bloqueia iPad.** O design já assume:
+
+| Abstração | Status M12 | Implicação iPad |
+|---|---|---|
+| `ph2d_host::PlatformHost` (HR-1) | desktop impl em uso desde M1 | iPad implementa o mesmo trait; ph2d-editor consome só o trait |
+| `ph2d_input::Event` (M8) | gestos multi-touch + hover + pencil já tipados; gilrs adapter no desktop | UIKit gesture recognizers traduzem pra mesmo `Event` enum |
+| `ph2d_a11y` (AccessKit, ADR-0023 aqui) | Mac VoiceOver via AccessKit Mac backend | iPadOS VoiceOver via AccessKit iOS backend (best-effort hoje, melhora upstream) |
+| `ph2d_render` (Vello/wgpu, M5+M11) | wgpu Metal backend no Mac | wgpu Metal backend no iPad (sem mudança) |
+| Tokens semânticos (M12) | mesma paleta | mesma paleta |
+
+**Concretamente em M12:** widgets do editor são desenhados com Vello e respondem a `ph2d_input::Event`. Touch events no iPad chegam via UIKit → `Event::*Pointer*` / `Event::Pencil*`. Os widgets nunca veem se está em mouse, touch ou pencil — só veem `Event`.
+
+**Riscos para a transição iPad:**
+- **AccessKit iOS** ainda imaturo — pode requerer fallback parcial até upstream amadurecer
+- **Notch / Dynamic Island** safe-area insets — adicionar à HostHandler quando shells/ipad existir
+- **Apple Pencil hover** só no iPad Pro M2+ — fallback obrigatório (single-touch companion já decidido)
+
+Conclusão: M12 ships desktop hoje, mas cada decisão arquitetural acima é compatível com o iPad shell que vai chegar em M14+. Não estamos pintando-nos num canto.
 
 ## Consequências
 
@@ -268,10 +325,10 @@ Plano original M12 (*"3 panels: scene tree, inspector, viewport"*) é **substitu
 
 ## Não decidido (deferred — fica para PR de implementação)
 
-- **Hue exato de accent** — proposta inicial `#3DA5D9` ciano. Validar AA contra ambos temas; ajustar.
-- **Iconography:** Phosphor vs Lucide vs custom. Decidir no PR de tokens.
+- **HEX exato dos accents** — direção fixada (Procreate cyan-blue). Sample-from-screenshot + AA validation acontece no PR de tokens; valores propostos em §11 são ponto de partida.
 - **Animation library:** custom vs lyon vs nada (apenas easings inline). Provavelmente nada — animações são simples demais para justificar dep.
 - **Drag-and-drop infrastructure:** Vello primitive vs custom. Decidir no PR M12.
+- **Re-skin de cada icon** — 200+ icons Blender/Godot/Inkscape precisam passar pelo mesmo grid 16/20px + stroke 1.5/1.75. Trabalho mecânico distribuído ao longo de M12-M13.
 
 ## Riscos
 

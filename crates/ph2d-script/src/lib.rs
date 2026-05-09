@@ -1,14 +1,27 @@
 #![forbid(unsafe_code)]
 //! ph2d-script — Luau scripting runtime + coroutine scheduler + messaging bus.
 //!
-//! S1 spike (C1): minimal ScriptRuntime + 60-frame loop. ✓
-//! S2 spike (C3): Scheduler para coroutines com `ph2d.wait(seconds)`. ✓
-//! S3 spike (C2.1): MessageBus estilo Defold. ✓ (sub-módulo `messaging`).
+//! Spike (S1-S3) skeleton: minimal `ScriptRuntime`, `Scheduler` for
+//! `ph2d.wait`-style coroutines, Defold-style `MessageBus`. ✓
 //!
-//! Surface intencionalmente pequena; expande em S2 (hot reload integrado) e
-//! S3 (LLM-centric API completa).
+//! M7 layered the canonical engine ↔ Luau bridge on top:
+//! - [`ScriptHost`] — public facade with reset+restore hot reload via
+//!   blake3 source-content hashing (HR-16). VM rebuild costs one
+//!   constructor call; ECS state stays untouched (canonical store).
+//! - [`WriteQueue`] / [`ReadSnapshot`] — the only legal data path
+//!   between Luau callbacks and ECS, per HR-8 ("scripts are pure
+//!   data at the FFI boundary"). Same pattern Defold/Roblox use.
+//! - `ph2d.set(entity, field, value)` and `ph2d.get(entity, field)`
+//!   wired into the Lua globals; both go through the queues above.
+//! - `Lua::sandbox(true)` activated so user scripts can't reach
+//!   `os.execute`, `io.open`, `package.loadlib`, etc. (HR-9).
 
+pub mod host;
+pub mod io;
 pub mod messaging;
+
+pub use host::ScriptHost;
+pub use io::{EntityWrite, ReadSnapshot, WriteQueue};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 
 use mlua::{Function, IntoLuaMulti, Lua, Thread, ThreadStatus, Value};

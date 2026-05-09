@@ -8,3 +8,14 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+# Vello — Linebender's GPU vector renderer (currently 0.x; alpha-
+# quality per the M11 plan note "Vello em alpha — risco aceito,
+# ADR-0004 a escrever quando aparecer regressão").
+# We pin to the wgpu-29-compatible release. `default-features` keeps
+# wgpu integration on; we don't need the `hot_reload` feature.
+# kurbo + peniko reach our public API via `vello::kurbo` /
+# `vello::peniko` re-exports — declaring them as direct deps would
+# risk version skew (vello 0.7 ships peniko 0.6, kurbo 0.12).
+vello = { version = "0.7", default-features = false, features = ["wgpu"] }

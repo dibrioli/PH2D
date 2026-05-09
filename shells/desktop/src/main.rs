@@ -1,37 +1,49 @@
 #![forbid(unsafe_code)]
-//! Desktop shell — winit 0.30 + wgpu + ECS + sprite render (M5).
+//! Desktop shell — winit 0.30 + wgpu + ECS + sprite render + M6+M7+M12.
 //!
 //! Run with: `cargo run -p ph2d-host-desktop`
 //!
-//! M5 scope adds (over M3):
-//! - SimWorld + PresentWorld instantiated; 1000 sprites spawned at
-//!   startup with deterministic Vogel-spiral positions and pseudo-
-//!   random velocities (no PRNG dep — index hashing).
-//! - Sim tick: bouncing motion at world boundary `[-5, 5]²`.
-//! - Extract phase via `ph2d_ecs::extract!`: rebuilds RenderInstance
-//!   set in PresentWorld each frame from `(Position, Sprite)` in
-//!   SimWorld.
-//! - SpriteRenderer drives a single instanced draw call (4 verts ×
-//!   N instances) with explicit pipeline+bind-group layouts.
+//! Layered subsystems (each gated to keep the demo bootable even if
+//! one fails — never crash the shell over an integration-demo issue):
+//! - **M5** SpriteRenderer + 1000-sprite Vogel spiral with bouncing motion
+//! - **M6** AssetDb loads 16 real PNGs from `assets/sprites/` (auto-
+//!   generated on first launch) and composes them into a 256×256
+//!   RGBA8 atlas. Falls back to procedural dummy if anything fails.
+//! - **M7** ScriptHost with placeholder Luau script; per-frame gc_step
+//!   keeps the GC budget warm for future script-driven gameplay.
+//! - **M12** editor data layer: `ZenMode` (Tab toggle), `ToastQueue`
+//!   (T key adds info toast), theme switch (M key flips Dark↔Light),
+//!   and a `FloatingPanel` (Procreate-style selection demo). Visible
+//!   via window title since Vello widget paint requires sharing the
+//!   wgpu Surface with the sprite pipeline (see `integration.rs`).
 //!
-//! M5 still does NOT have: Luau scripting, asset loading, input → ECS
-//! routing, MCP. Those land in M7+.
+//! Out of scope here:
+//! - **M8** ph2d-input gilrs adapter — already in PR #13 (cascade);
+//!   cleanly merges once that lands and integration rebases.
+//! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
+mod integration;
+
+use ph2d_asset::AssetDb;
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
+use ph2d_editor::floating_panel::selection_demo_panel;
+use ph2d_editor::{FloatingPanel, Toast, ToastQueue, ZenMode};
 use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
 use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
     PointerKind, PointerSource, WindowSize,
 };
 use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer, TextureAtlas};
+use ph2d_script::ScriptHost;
+use ph2d_tokens::Theme;
 use std::cell::Cell;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent as WinitKeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::ModifiersState;
+use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 const SPRITE_COUNT: u32 = 1000;
@@ -60,6 +72,10 @@ impl WinitHost {
             window,
             scale: Cell::new(scale),
         }
+    }
+
+    fn window(&self) -> &Window {
+        &self.window
     }
 }
 
@@ -140,6 +156,21 @@ struct AppGfx {
     sim: SimWorld,
     present: PresentWorld,
     camera: Camera2d,
+    /// M6 — set when PNG fixtures loaded successfully; held so the
+    /// AssetDb keeps `Arc<Asset>` alive for hot-reload follow-ups.
+    asset_db: AssetDb,
+    /// M6 — true when the atlas was composed from real PNGs (vs the
+    /// procedural dummy fallback). Surfaced in window title.
+    atlas_is_real: bool,
+    /// M7 — Luau VM with placeholder script loaded. Per-frame gc_step
+    /// keeps the GC budget warm; set/get bindings ready for follow-up
+    /// gameplay work.
+    script: Option<ScriptHost>,
+    /// M12 editor data layer (no Vello paint until M11 surface share).
+    theme: Theme,
+    zen: ZenMode,
+    toasts: ToastQueue,
+    selection_panel: FloatingPanel,
 }
 
 struct App {
@@ -152,6 +183,7 @@ struct App {
     pending_resize: Option<WindowSize>,
     modifiers: ModifiersState,
     last_pointer: (f32, f32),
+    title_dirty: bool,
 }
 
 impl App {
@@ -166,6 +198,7 @@ impl App {
             pending_resize: None,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
+            title_dirty: true,
         }
     }
 
@@ -183,6 +216,76 @@ impl App {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0)
+    }
+
+    /// M12 demo control router. Tab toggles ZenMode (debounced 30
+    /// frames per `ZenMode::try_toggle`), KeyM flips theme Dark↔Light,
+    /// KeyT pushes an info toast. Each action also pushes a toast so
+    /// the queue actually changes during the demo (visible via title).
+    fn handle_editor_key(&mut self, code: KeyCode) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        match code {
+            KeyCode::Tab if gfx.zen.try_toggle() => {
+                let msg = if gfx.zen.is_active() {
+                    "Zen mode ON (zones collapsed)"
+                } else {
+                    "Zen mode OFF (zones restored)"
+                };
+                gfx.toasts.push(Toast::info(msg));
+                self.title_dirty = true;
+            }
+            KeyCode::KeyM => {
+                gfx.theme = gfx.theme.toggle();
+                gfx.toasts
+                    .push(Toast::info(format!("Theme → {:?}", gfx.theme)));
+                self.title_dirty = true;
+            }
+            KeyCode::KeyT => {
+                gfx.toasts.push(Toast::info("Toast key (T) pressed"));
+                self.title_dirty = true;
+            }
+            KeyCode::KeyP => {
+                gfx.selection_panel.toggle_collapsed();
+                gfx.toasts.push(Toast::info(format!(
+                    "Selection panel → {}",
+                    if gfx.selection_panel.collapsed {
+                        "collapsed"
+                    } else {
+                        "open"
+                    }
+                )));
+                self.title_dirty = true;
+            }
+            _ => {}
+        }
+    }
+
+    /// Compose the M6 atlas from real PNGs. Generates fixtures on first
+    /// launch; subsequent launches reuse the on-disk files. Any failure
+    /// bubbles a String — caller falls back to the dummy atlas.
+    fn try_load_real_atlas(
+        gpu: &GpuContext,
+        asset_db: &AssetDb,
+        dir: &std::path::Path,
+    ) -> Result<TextureAtlas, String> {
+        let created = integration::ensure_demo_assets_exist(dir)
+            .map_err(|e| format!("ensure_demo_assets_exist({}): {e}", dir.display()))?;
+        if created > 0 {
+            println!(
+                "M6: generated {created} demo PNG fixtures in {}",
+                dir.display()
+            );
+        }
+        let ids = integration::load_demo_assets(asset_db, dir)?;
+        let rgba = integration::compose_atlas_rgba(asset_db, &ids)?;
+        Ok(TextureAtlas::from_rgba8(
+            gpu,
+            integration::ATLAS_PX,
+            integration::ATLAS_PX,
+            &rgba,
+        ))
     }
 
     /// Spawn `SPRITE_COUNT` sprites on a Vogel (golden-angle) spiral
@@ -220,10 +323,35 @@ impl App {
             sim,
             present,
             camera,
+            asset_db,
+            atlas_is_real,
+            script,
+            theme,
+            zen,
+            toasts,
+            selection_panel,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
         };
+
+        // M12 per-frame ticks: ZenMode debounce cooldown + ToastQueue
+        // TTL decay. Both are pure data-layer (no Vello paint here).
+        zen.tick();
+        let prev_toasts = toasts.len();
+        toasts.tick();
+        if toasts.len() != prev_toasts {
+            self.title_dirty = true;
+        }
+
+        // M7 per-frame GC step. Cheap (p99 ≤ 10µs target per the M7
+        // gate test) — keeps the Luau heap from accumulating between
+        // future scripted ticks. Errors here are non-fatal; just log.
+        if let Some(host) = script {
+            if let Err(e) = host.gc_step() {
+                eprintln!("M7 gc_step error: {e}");
+            }
+        }
 
         // Apply coalesced resize once per frame.
         if let Some(size) = self.pending_resize.take() {
@@ -315,6 +443,30 @@ impl App {
             }
         }
 
+        // M12 visibility: window title carries editor data-layer state
+        // until M11 ships Vello widget paint. Refresh only when state
+        // actually changes — winit set_title triggers a platform call.
+        if self.title_dirty {
+            let panel_state = if selection_panel.collapsed {
+                "collapsed"
+            } else {
+                "open"
+            };
+            let title = format!(
+                "PH2D — M5+M6+M7+M12 demo | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
+                 | script={} | theme={:?} | zen={} | toasts={} | panel={}",
+                if *atlas_is_real { "PNG" } else { "dummy" },
+                asset_db.len_assets(),
+                if script.is_some() { "ok" } else { "off" },
+                theme,
+                if zen.is_active() { "on" } else { "off" },
+                toasts.len(),
+                panel_state,
+            );
+            host.window().set_title(&title);
+            self.title_dirty = false;
+        }
+
         host.request_redraw();
     }
 }
@@ -340,7 +492,32 @@ impl ApplicationHandler for App {
         let gpu = GpuContext::new(instance, Some(&raw_surface)).expect("GpuContext::new");
         let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
 
-        let atlas = TextureAtlas::dummy(surface.gpu());
+        // M6: try to compose the atlas from real PNGs on disk.
+        // Auto-generates 16 procedural fixtures on first launch so the
+        // demo is self-contained (no committed binary fixtures). Any
+        // failure logs and falls back to the M5 procedural dummy —
+        // the shell must boot regardless of asset-pipeline issues.
+        let asset_db = AssetDb::new();
+        let assets_dir = integration::demo_assets_dir();
+        let (atlas, atlas_is_real) =
+            match Self::try_load_real_atlas(surface.gpu(), &asset_db, &assets_dir) {
+                Ok(atlas) => {
+                    println!(
+                        "[{:>6}ms] M6: real atlas composed from {} ({} assets cached)",
+                        self.handler.elapsed_ms(),
+                        assets_dir.display(),
+                        asset_db.len_assets()
+                    );
+                    (atlas, true)
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[{:>6}ms] M6 fallback to dummy atlas: {e}",
+                        self.handler.elapsed_ms()
+                    );
+                    (TextureAtlas::dummy(surface.gpu()), false)
+                }
+            };
         let renderer = SpriteRenderer::new(
             surface.gpu().clone(),
             surface.format(),
@@ -353,6 +530,35 @@ impl ApplicationHandler for App {
         let present = PresentWorld::new();
         let camera = Camera2d::default();
 
+        // M7: ScriptHost. Failure here is also non-fatal (script is
+        // a placeholder; full sim-driving lands in M12+ editor panel).
+        let script = match integration::init_script_host() {
+            Ok(host) => {
+                println!(
+                    "[{:>6}ms] M7: ScriptHost initialized (placeholder script loaded)",
+                    self.handler.elapsed_ms()
+                );
+                Some(host)
+            }
+            Err(e) => {
+                eprintln!(
+                    "[{:>6}ms] M7 ScriptHost failed: {e} — continuing without scripting",
+                    self.handler.elapsed_ms()
+                );
+                None
+            }
+        };
+
+        // M12: editor data layer. ZenMode/ToastQueue/FloatingPanel
+        // model state only — Vello widget paint requires sharing the
+        // wgpu Surface with the sprite pipeline (M11 follow-up). For
+        // now state is surfaced via the window title.
+        let theme = Theme::Dark;
+        let zen = ZenMode::new();
+        let mut toasts = ToastQueue::new();
+        toasts.push(Toast::success("Editor data layer wired (M12)"));
+        let selection_panel = selection_demo_panel();
+
         self.window = Some(window);
         self.host = Some(host);
         self.gfx = Some(AppGfx {
@@ -361,9 +567,17 @@ impl ApplicationHandler for App {
             sim,
             present,
             camera,
+            asset_db,
+            atlas_is_real,
+            script,
+            theme,
+            zen,
+            toasts,
+            selection_panel,
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
+        self.title_dirty = true;
         if let Some(host) = self.host.as_ref() {
             host.request_redraw();
         }
@@ -448,6 +662,13 @@ impl ApplicationHandler for App {
                     kind,
                     timestamp_ns: Self::timestamp_ns(),
                 });
+
+                // M12 demo controls (only on key Down, no repeat).
+                if matches!((state, repeat), (ElementState::Pressed, false)) {
+                    if let PhysicalKey::Code(code) = physical_key {
+                        self.handle_editor_key(code);
+                    }
+                }
             }
 
             WindowEvent::RedrawRequested => {

@@ -3255,11 +3255,16 @@ name = "ph2d-host-desktop"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "image",
+ "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
+ "ph2d-editor",
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-render",
+ "ph2d-script",
+ "ph2d-tokens",
  "wgpu 29.0.3",
  "winit",
 ]

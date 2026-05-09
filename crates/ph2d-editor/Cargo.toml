@@ -12,8 +12,9 @@ authors.workspace = true
 [dependencies]
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-a11y = { path = "../ph2d-a11y" }
-# ph2d-vector + ph2d-text wired in once widget-rendering lands
-# (M12 follow-up PR — this skeleton ships shapes + a11y, no Vello
-# paint path yet).
-# ph2d-input dep wired in once M8 merges (PR #13 in review). Until
-# then ZenMode exposes try_toggle() and the shell wires any source.
+# ph2d-vector + ph2d-text — M11 widget paint pass. The `Paint` trait
+# in `paint.rs` lowers each widget into a `vello::Scene` via
+# `ph2d-vector::VectorScene`; text labels go through
+# `ph2d-text::TextSystem` (parley layout → Vello glyph runs).
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-text = { path = "../ph2d-text" }

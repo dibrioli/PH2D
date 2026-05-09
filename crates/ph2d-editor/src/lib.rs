@@ -24,12 +24,14 @@
 //!   the `FloatingPanel` primitive + 1 minimal demo proving the API)
 
 pub mod floating_panel;
+pub mod paint;
 pub mod toast;
 pub mod widget;
 pub mod zen;
 pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAnchor, PanelTab};
+pub use paint::{Paint, PaintCtx, paint_button, resolve};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use widget::Button;
 pub use zen::ZenMode;

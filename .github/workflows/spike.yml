@@ -96,17 +96,19 @@ jobs:
         run: cargo run -p ph2d-bindgen --locked -- --check
 
   # --------------------------------------------------------------------------
-  # MSRV check — verifies declared MSRV (rust-version = "1.85") still builds.
-  # Catches drift where toolchain pin (1.95) hides accidental MSRV bumps.
+  # MSRV check — verifies declared MSRV (rust-version = "1.92") still builds.
+  # Bumped from 1.85 to 1.92 in the M11 widget-paint PR (vello 0.8 +
+  # wgpu 28 chain require 1.92). Catches drift where toolchain pin
+  # (1.95) hides accidental MSRV bumps.
   # --------------------------------------------------------------------------
   msrv:
-    name: MSRV (rust 1.85) check
+    name: MSRV (rust 1.92) check
     runs-on: ubuntu-latest
     # Pure `cargo check`, no test execution; observed ~2 min.
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.85
+      - uses: dtolnay/rust-toolchain@1.92
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: msrv

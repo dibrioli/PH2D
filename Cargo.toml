@@ -33,7 +33,7 @@ members = [
 [workspace.package]
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.92"
 publish = false
 license = "LicenseRef-Proprietary"
 authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]

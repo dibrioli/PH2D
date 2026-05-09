@@ -6,14 +6,14 @@ expression: tools
   description: Send a Defold-style message to a target entity.
   destructive: false
 - name: scene.add_component
-  description: Attach a component (JSON data) to an entity.
+  description: Attach a component to an entity. Component data is JSON-serialized.
   destructive: false
 - name: scene.delete_entity
   description: Despawn an entity. Destructive — requires confirmation_token (HR-11).
   destructive: true
 - name: scene.get_component
-  description: Read a component by name from an entity.
+  description: Read a component by name from an entity. Returns null when absent.
   destructive: false
 - name: scene.spawn_entity
-  description: "Spawn empty entity, returns Entity handle."
+  description: Spawn empty entity in current scene; returns Entity handle.
   destructive: false

@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-bindgen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "ph2d-bindgen"
+path = "src/main.rs"
+
+[dependencies]
+# Source of truth: ph2d-mcp::CATALOG. The bindgen tool is downstream
+# of ph2d-mcp so any catalog change here forces a regeneration of
+# both runtime/luau and runtime/mcp artifacts (CI enforces parity).
+ph2d-mcp = { path = "../../crates/ph2d-mcp" }
+serde_json = "1"

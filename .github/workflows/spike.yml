@@ -83,6 +83,15 @@ jobs:
         # Pre-commit hook catches them locally; CI is the safety net.
         run: typos
 
+      - name: ph2d-bindgen --check (HR-10 parity)
+        # The MCP catalog (crates/ph2d-mcp/src/catalog.rs) is the
+        # source of truth for both runtime/luau/ph2d.d.luau and
+        # runtime/mcp/schema.json. After editing the catalog, the
+        # developer must run `cargo run -p ph2d-bindgen -- --write`
+        # and commit. This step regenerates in memory and diffs
+        # against the committed files; drift fails the build.
+        run: cargo run -p ph2d-bindgen --locked -- --check
+
   # --------------------------------------------------------------------------
   # MSRV check — verifies declared MSRV (rust-version = "1.85") still builds.
   # Catches drift where toolchain pin (1.95) hides accidental MSRV bumps.

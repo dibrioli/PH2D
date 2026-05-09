@@ -8,3 +8,12 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+# ph2d-vector + ph2d-text wired in once widget-rendering lands
+# (M12 follow-up PR — this skeleton ships shapes + a11y, no Vello
+# paint path yet).
+# ph2d-input dep wired in once M8 merges (PR #13 in review). Until
+# then ZenMode exposes try_toggle() and the shell wires any source.

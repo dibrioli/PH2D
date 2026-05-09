@@ -8,3 +8,15 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+# AccessKit (Linebender) — same org as Vello/parley/skrifa. Único
+# projeto Rust sério para acessibilidade cross-platform: integra
+# Mac VoiceOver + Win Narrator + iPadOS VoiceOver + Linux AT-SPI
+# pela mesma trait `Node`. Per ADR-0023 §10.
+#
+# Versão pinada: 0.21 (compatível com Rust 1.85+ MSRV).
+# As crates de adapter por OS (accesskit_macos, accesskit_windows,
+# accesskit_unix) ficam fora deste crate — só o shell desktop/iPad
+# pulla os adapters pra ligar no winit/UIKit.
+accesskit = "0.24"

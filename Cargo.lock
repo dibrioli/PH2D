@@ -19,6 +19,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "366ffbaa4442f4684d91e2cd7c5ea7c4ed8add41959a31447066e279e432b618"
 
 [[package]]
+name = "accesskit"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5351dcebb14b579ccab05f288596b2ae097005be7ee50a7c3d4ca9d0d5a66f6a"
+dependencies = [
+ "uuid",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2649,6 +2658,9 @@ dependencies = [
 [[package]]
 name = "ph2d-a11y"
 version = "0.0.0"
+dependencies = [
+ "accesskit",
+]
 
 [[package]]
 name = "ph2d-asset"
@@ -2689,6 +2701,10 @@ dependencies = [
 [[package]]
 name = "ph2d-editor"
 version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-tokens",
+]
 
 [[package]]
 name = "ph2d-fluids"
@@ -2807,6 +2823,10 @@ version = "0.0.0"
 
 [[package]]
 name = "ph2d-text"
+version = "0.0.0"
+
+[[package]]
+name = "ph2d-tokens"
 version = "0.0.0"
 
 [[package]]

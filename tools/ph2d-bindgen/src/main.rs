@@ -131,7 +131,10 @@ fn generate_luau() -> String {
     let mut by_ns: BTreeMap<&str, Vec<(&str, &str)>> = BTreeMap::new();
     for spec in CATALOG {
         let (ns, member) = spec.name.split_once('.').unwrap_or(("", spec.name));
-        by_ns.entry(ns).or_default().push((member, spec.luau_signature));
+        by_ns
+            .entry(ns)
+            .or_default()
+            .push((member, spec.luau_signature));
     }
     // Sort members within each namespace for stable output.
     for v in by_ns.values_mut() {

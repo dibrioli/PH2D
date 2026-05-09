@@ -2571,9 +2571,12 @@ version = "0.0.0"
 name = "ph2d-host-desktop"
 version = "0.0.0"
 dependencies = [
+ "bevy_ecs",
  "ph2d-core",
+ "ph2d-ecs",
  "ph2d-gpu",
  "ph2d-host",
+ "ph2d-render",
  "wgpu",
  "winit",
 ]
@@ -2615,6 +2618,15 @@ version = "0.0.0"
 [[package]]
 name = "ph2d-render"
 version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "bytemuck",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-gpu",
+ "ph2d-host",
+ "wgpu",
+]
 
 [[package]]
 name = "ph2d-save"

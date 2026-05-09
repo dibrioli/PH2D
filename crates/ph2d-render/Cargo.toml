@@ -8,3 +8,12 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+ph2d-host = { path = "../ph2d-host" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+bevy_ecs = "0.18"
+wgpu = "29"
+bytemuck = { version = "1", features = ["derive"] }

@@ -1,29 +1,30 @@
 #![forbid(unsafe_code)]
-//! Desktop shell — winit 0.30 ApplicationHandler + wgpu integration (M3).
+//! Desktop shell — winit 0.30 + wgpu + ECS + sprite render (M5).
 //!
 //! Run with: `cargo run -p ph2d-host-desktop`
 //!
-//! M3 scope adds (over M1):
-//! - Real GPU init (wgpu Instance/Adapter/Device/Queue via ph2d-gpu).
-//! - Surface lifecycle per ADR-0020 (acquire_frame protocol).
-//! - Animated clear color (sin/cos of fixed-step tick count) — proves
-//!   the render path works end-to-end without yet needing a real
-//!   render graph (M5).
-//! - Resize coalescer: latest size kept in `pending_resize`; applied
-//!   once per frame in `redraw_requested`, not per OS event (per
-//!   LLM1 audit + plan anti-pattern "resize não-coalescido").
-//! - Lifecycle::Background → SurfaceContext::on_background() (proactive
-//!   transient release per ADR-0020).
+//! M5 scope adds (over M3):
+//! - SimWorld + PresentWorld instantiated; 1000 sprites spawned at
+//!   startup with deterministic Vogel-spiral positions and pseudo-
+//!   random velocities (no PRNG dep — index hashing).
+//! - Sim tick: bouncing motion at world boundary `[-5, 5]²`.
+//! - Extract phase via `ph2d_ecs::extract!`: rebuilds RenderInstance
+//!   set in PresentWorld each frame from `(Position, Sprite)` in
+//!   SimWorld.
+//! - SpriteRenderer drives a single instanced draw call (4 verts ×
+//!   N instances) with explicit pipeline+bind-group layouts.
 //!
-//! M3 still does NOT have: real ECS, sprites, input routing. Those
-//! land in M4/M5/M8.
+//! M5 still does NOT have: Luau scripting, asset loading, input → ECS
+//! routing, MCP. Those land in M7+.
 
-use ph2d_core::{FixedStep, install_panic_hook, panic};
+use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
+use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
 use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
 use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
     PointerKind, PointerSource, WindowSize,
 };
+use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer, TextureAtlas};
 use std::cell::Cell;
 use std::sync::Arc;
 use std::time::Instant;
@@ -33,7 +34,20 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::ModifiersState;
 use winit::window::{Window, WindowId};
 
-/// Implementation of [`PlatformHost`] backed by a winit `Window`.
+const SPRITE_COUNT: u32 = 1000;
+/// Half-extent of the bouncing world in meters. Camera default has
+/// `height_world = 10`, so [-5, 5] in Y is exactly the visible region;
+/// X depends on aspect (narrower than visible at 4:3+).
+const WORLD_HALF: f32 = 5.0;
+
+#[derive(Component, Copy, Clone, Debug)]
+struct Position(Vec2);
+impl SimComponent for Position {}
+
+#[derive(Component, Copy, Clone, Debug)]
+struct Velocity(Vec2);
+impl SimComponent for Velocity {}
+
 struct WinitHost {
     window: Arc<Window>,
     scale: Cell<f32>,
@@ -62,8 +76,6 @@ impl PlatformHost for WinitHost {
     }
 }
 
-/// Reference [`HostHandler`] that logs events; render is wired
-/// separately in `App` because it needs the SurfaceContext.
 struct LoggingHandler {
     started_at: Instant,
 }
@@ -118,15 +130,25 @@ impl HostHandler for LoggingHandler {
     }
 }
 
+/// Holds every initialized-after-`resumed` resource. Bundling them into
+/// a single `Option<AppGfx>` lets us destructure into per-field `&mut`
+/// borrows in `render_frame()` — split-borrowing through a method
+/// chain on individual `Option<...>` fields would be awkward.
+struct AppGfx {
+    surface: SurfaceContext,
+    renderer: SpriteRenderer,
+    sim: SimWorld,
+    present: PresentWorld,
+    camera: Camera2d,
+}
+
 struct App {
     window: Option<Arc<Window>>,
     host: Option<WinitHost>,
-    surface: Option<SurfaceContext>,
+    gfx: Option<AppGfx>,
     handler: LoggingHandler,
     fixed_step: FixedStep,
     last_frame: Instant,
-    /// Coalesced pending resize. None when no resize event since last
-    /// applied. Applied at most once per frame in `redraw_requested`.
     pending_resize: Option<WindowSize>,
     modifiers: ModifiersState,
     last_pointer: (f32, f32),
@@ -137,7 +159,7 @@ impl App {
         Self {
             window: None,
             host: None,
-            surface: None,
+            gfx: None,
             handler: LoggingHandler::new(),
             fixed_step: FixedStep::default(),
             last_frame: Instant::now(),
@@ -163,16 +185,47 @@ impl App {
             .unwrap_or(0)
     }
 
-    /// Apply the coalesced pending resize (if any) and render the frame.
+    /// Spawn `SPRITE_COUNT` sprites on a Vogel (golden-angle) spiral
+    /// with pseudo-random velocities derived from index — fully
+    /// deterministic, no PRNG dep.
+    fn populate_sim(sim: &mut SimWorld) {
+        for i in 0..SPRITE_COUNT {
+            let f = i as f32;
+            let angle = f * 2.399_963_2; // golden angle (rad)
+            let r = (f / SPRITE_COUNT as f32).sqrt() * (WORLD_HALF - 0.5);
+            let pos = Vec2::new(r * angle.cos(), r * angle.sin());
+            // Velocity in m/s; both axes seeded by independent index hashes
+            // so motion isn't correlated with the spiral pattern.
+            let vx = ((f * 12.9898).sin() * 43758.547).fract() * 3.0 - 1.5;
+            let vy = ((f * 78.233).sin() * 12345.678).fract() * 3.0 - 1.5;
+            sim.world_mut().spawn((
+                Position(pos),
+                Velocity(Vec2::new(vx, vy)),
+                Sprite {
+                    atlas_index: i % 16,
+                    size: [0.18, 0.18],
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                },
+            ));
+        }
+    }
+
     fn render_frame(&mut self) {
-        let Some(surface) = self.surface.as_mut() else {
+        let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        let AppGfx {
+            surface,
+            renderer,
+            sim,
+            present,
+            camera,
+        } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
         };
 
-        // Apply coalesced resize once per frame (not per event).
+        // Apply coalesced resize once per frame.
         if let Some(size) = self.pending_resize.take() {
             surface.resize(size);
             self.handler.on_resize(size, host.scale_factor());
@@ -191,33 +244,77 @@ impl App {
         }
         panic::set_frame_id(self.fixed_step.tick_count());
 
-        // Animated clear color: hue sweeps with the simulated tick clock.
-        let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
-        let r = (t.sin() * 0.5 + 0.5).clamp(0.0, 1.0);
-        let g = ((t + 2.094).sin() * 0.5 + 0.5).clamp(0.0, 1.0); // 120° phase
-        let b = ((t + 4.188).sin() * 0.5 + 0.5).clamp(0.0, 1.0); // 240° phase
+        // Sim tick: bouncing motion. Single substep per frame for the
+        // M5 demo (we don't yet honor the FixedStep substep count for
+        // gameplay — that lands in M10 with the physics integrator).
+        let dt = self.fixed_step.fixed_dt() as f32;
+        {
+            let mut q = sim.world_mut().query::<(&mut Position, &mut Velocity)>();
+            for (mut pos, mut vel) in q.iter_mut(sim.world_mut()) {
+                let mut p = pos.0;
+                let mut v = vel.0;
+                p += v * dt;
+                if p.x.abs() > WORLD_HALF {
+                    v.x = -v.x;
+                    p.x = p.x.clamp(-WORLD_HALF, WORLD_HALF);
+                }
+                if p.y.abs() > WORLD_HALF {
+                    v.y = -v.y;
+                    p.y = p.y.clamp(-WORLD_HALF, WORLD_HALF);
+                }
+                pos.0 = p;
+                vel.0 = v;
+            }
+        }
 
+        // Extract: rebuild RenderInstance set in PresentWorld each
+        // frame. Per ADR-0021: this is the only legal sim → present
+        // bridge. Pre-build the QueryState because `bevy_ecs::query()`
+        // needs `&mut World`, but inside `extract!` the sim handle is
+        // immutable.
+        let atlas = renderer.atlas();
+        let mut sim_q = sim.world_mut().query::<(&Position, &Sprite)>();
+        ph2d_ecs::extract!(*sim => *present, |sim_w, present_w| {
+            present_w.clear_entities();
+            for (pos, spr) in sim_q.iter(sim_w) {
+                present_w.spawn(RenderInstance {
+                    world_pos: [pos.0.x, pos.0.y],
+                    size: spr.size,
+                    atlas_uv: atlas.dummy_uv(spr.atlas_index),
+                    tint: spr.tint,
+                });
+            }
+        });
+
+        // Animated background tint (proves the sim clock drives the
+        // frame). Subtle so the sprites stay readable.
+        let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
+        let r = (t.sin() * 0.05 + 0.05).clamp(0.0, 1.0);
+        let g = ((t + 2.094).sin() * 0.05 + 0.05).clamp(0.0, 1.0);
+        let b = ((t + 4.188).sin() * 0.05 + 0.05).clamp(0.0, 1.0);
+
+        let window_size = surface.size();
         match surface.acquire_frame() {
             Ok(frame) => {
-                frame.clear(wgpu::Color { r, g, b, a: 1.0 });
+                renderer.render(
+                    &frame,
+                    present,
+                    camera,
+                    window_size,
+                    wgpu::Color { r, g, b, a: 1.0 },
+                );
                 // FrameTarget presents on Drop.
             }
             Err(AcquireError::AwaitingReconfigure) => {
-                // Lost cascade — reconfigure and try next frame.
                 surface.reconfigure_after_lost();
             }
-            Err(AcquireError::Occluded) => {
-                // Window minimized; skip frame.
-            }
-            Err(AcquireError::Timeout) => {
-                // Skip frame; protocol counter cascades to Lost at 3.
-            }
+            Err(AcquireError::Occluded) => {}
+            Err(AcquireError::Timeout) => {}
             Err(AcquireError::Other(s)) => {
                 eprintln!("acquire_frame other error: {s}");
             }
         }
 
-        // Schedule the next frame.
         host.request_redraw();
     }
 }
@@ -225,7 +322,7 @@ impl App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let attrs = Window::default_attributes()
-            .with_title("PH2D — desktop shell (M3 — animated clear)")
+            .with_title("PH2D — desktop shell (M5 — 1000 sprites)")
             .with_inner_size(winit::dpi::LogicalSize::new(1024, 768));
         let window = Arc::new(
             event_loop
@@ -236,8 +333,6 @@ impl ApplicationHandler for App {
         let size = host.window_size();
         let scale = host.scale_factor();
 
-        // GPU init. The wgpu Surface borrows from `window`, so we hand
-        // it an `Arc<Window>` whose lifetime matches the SurfaceContext.
         let instance = GpuContext::default_instance();
         let raw_surface = instance
             .create_surface(window.clone())
@@ -245,12 +340,30 @@ impl ApplicationHandler for App {
         let gpu = GpuContext::new(instance, Some(&raw_surface)).expect("GpuContext::new");
         let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
 
+        let atlas = TextureAtlas::dummy(surface.gpu());
+        let renderer = SpriteRenderer::new(
+            surface.gpu().clone(),
+            surface.format(),
+            atlas,
+            SPRITE_COUNT.next_power_of_two(),
+        );
+
+        let mut sim = SimWorld::new();
+        Self::populate_sim(&mut sim);
+        let present = PresentWorld::new();
+        let camera = Camera2d::default();
+
         self.window = Some(window);
         self.host = Some(host);
-        self.surface = Some(surface);
+        self.gfx = Some(AppGfx {
+            surface,
+            renderer,
+            sim,
+            present,
+            camera,
+        });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
-        // Kick off the render loop.
         if let Some(host) = self.host.as_ref() {
             host.request_redraw();
         }
@@ -267,16 +380,14 @@ impl ApplicationHandler for App {
             },
 
             WindowEvent::Resized(size) => {
-                // Coalesce: keep latest, apply in render_frame.
                 self.pending_resize = Some(WindowSize::new(size.width, size.height));
             }
 
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 if let Some(host) = &self.host {
                     host.scale.set(scale_factor as f32);
-                    if let Some(surface) = self.surface.as_ref() {
-                        // Re-resize at the same physical px (DPI changed).
-                        self.pending_resize = Some(surface.size());
+                    if let Some(gfx) = self.gfx.as_ref() {
+                        self.pending_resize = Some(gfx.surface.size());
                     }
                 }
             }
@@ -351,11 +462,10 @@ impl ApplicationHandler for App {
 fn main() {
     install_panic_hook();
     let event_loop = EventLoop::new().expect("create EventLoop");
-    // Poll so we drive frames continuously (animated clear).
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::new();
-    println!("PH2D desktop shell starting (animated clear; close window to exit)…");
+    println!("PH2D desktop shell starting (1000 sprites; close window to exit)…");
     event_loop.run_app(&mut app).expect("event loop crashed");
     println!("PH2D desktop shell exited cleanly.");
 }

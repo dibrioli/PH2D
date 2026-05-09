@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8" />
+<title>PH2D — Component Library &amp; Screen Mockups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* === DESIGN TOKENS (mirror of crates/ph2d-tokens) === */
+  :root {
+    /* Dark theme (default) */
+    --bg: #161616;
+    --surface: #1f1f1f;
+    --surface-elevated: #2a2a2a;
+    --border: #3a3a3a;
+    --border-emphasis: #6e6e6e;
+    --text-primary: #e8e8e8;
+    --text-secondary: #b5b5b5;
+    --text-disabled: #6e6e6e;
+    --accent-primary: #0ab4ff;
+    --accent-secondary: #0786bf;
+    --accent-tertiary: #04566f;
+    --success: #4caf50;
+    --warning: #ffb300;
+    --error: #ef5350;
+    --info: #29b6f6;
+
+    /* Typography */
+    --font-sans: -apple-system, "SF Pro", "Helvetica Neue", system-ui, sans-serif;
+    --font-mono: "SF Mono", Menlo, Consolas, monospace;
+    --font-xs: 11px;
+    --font-sm: 13px;
+    --font-base: 15px;
+    --font-md: 17px;
+    --font-lg: 22px;
+    --font-xl: 28px;
+
+    /* Spacing (multiples of 4) */
+    --sp-xxs: 2px;
+    --sp-xs: 4px;
+    --sp-sm: 8px;
+    --sp-md: 12px;
+    --sp-lg: 16px;
+    --sp-xl: 24px;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+  }
+
+  body.theme-light {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --border: #d0d0d0;
+    --border-emphasis: #707070;
+    --text-primary: #1a1a1a;
+    --text-secondary: #595959;
+    --text-disabled: #9e9e9e;
+    --accent-primary: #0078d4;
+    --accent-secondary: #005a9e;
+    --accent-tertiary: #003d6b;
+    --success: #2e7d32;
+    --warning: #e65100;
+    --error: #c62828;
+    --info: #0277bd;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font: var(--font-base) / 1.4 var(--font-sans);
+    padding: var(--sp-xl);
+  }
+
+  h1 { font-size: var(--font-xl); margin: 0 0 var(--sp-lg) 0; }
+  h2 { font-size: var(--font-lg); margin: var(--sp-xl) 0 var(--sp-sm) 0; border-bottom: 1px solid var(--border); padding-bottom: var(--sp-sm); }
+  h3 { font-size: var(--font-md); margin: var(--sp-lg) 0 var(--sp-sm) 0; color: var(--text-secondary); }
+
+  /* Theme toggle pinned top-right */
+  .theme-toggle {
+    position: fixed;
+    top: var(--sp-md);
+    right: var(--sp-md);
+    background: var(--surface-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: var(--sp-sm) var(--sp-md);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font: var(--font-sm) var(--font-sans);
+    z-index: 1000;
+  }
+
+  /* TOC */
+  nav.toc {
+    position: fixed;
+    top: var(--sp-md);
+    left: var(--sp-md);
+    background: var(--surface);
+    padding: var(--sp-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
+    max-width: 220px;
+  }
+  nav.toc a { display: block; color: var(--text-secondary); text-decoration: none; padding: 2px 0; }
+  nav.toc a:hover { color: var(--accent-primary); }
+
+  main { max-width: 1100px; margin: 0 auto 0 240px; }
+
+  .grid { display: grid; gap: var(--sp-md); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-6 { grid-template-columns: repeat(6, 1fr); }
+  .grid-states { grid-template-columns: repeat(5, 1fr); align-items: center; }
+
+  .swatch {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--sp-md);
+    background: var(--surface);
+  }
+  .swatch .chip {
+    width: 100%;
+    height: 60px;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--sp-xs);
+  }
+  .swatch .name { font-size: var(--font-sm); font-weight: 600; }
+  .swatch .hex { font: var(--font-xs) var(--font-mono); color: var(--text-secondary); }
+
+  /* === WIDGET PREVIEWS === */
+  .demo-row { background: var(--surface); padding: var(--sp-md); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+  .demo-label { color: var(--text-secondary); font-size: var(--font-xs); text-transform: uppercase; letter-spacing: .04em; margin-bottom: var(--sp-sm); }
+
+  /* Button states */
+  .btn {
+    display: inline-block;
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: var(--sp-sm) var(--sp-md);
+    border-radius: var(--radius-sm);
+    font: var(--font-sm) var(--font-sans);
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .btn:hover { background: var(--surface-elevated); }
+  .btn.accent { background: var(--accent-primary); color: #fff; border-color: transparent; }
+  .btn.accent:hover { background: var(--accent-secondary); }
+  .btn.pressed { background: var(--accent-tertiary); color: #fff; border-color: transparent; }
+  .btn.focused { outline: 2px solid var(--border-emphasis); outline-offset: 1px; }
+  .btn:disabled, .btn.disabled { color: var(--text-disabled); border-color: var(--border); cursor: not-allowed; background: var(--surface); }
+
+  /* Slider */
+  .slider {
+    background: var(--border);
+    height: 6px;
+    border-radius: 3px;
+    position: relative;
+    margin: 14px 0;
+  }
+  .slider .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-secondary); border-radius: 3px; }
+  .slider.accent .fill { background: var(--accent-primary); }
+  .slider .thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: var(--accent-primary); border-radius: 50%; }
+  .slider.dragging .thumb { background: var(--border-emphasis); transform: translate(-50%, -50%) scale(1.2); }
+  .slider.disabled { background: var(--border); }
+  .slider.disabled .fill, .slider.disabled .thumb { display: none; }
+
+  /* Toggle */
+  .toggle { display: inline-flex; align-items: center; gap: var(--sp-sm); }
+  .toggle .pill {
+    width: 36px; height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    transition: background .12s;
+  }
+  .toggle .pill::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text-primary); transition: left .12s;
+  }
+  .toggle.on .pill { background: var(--accent-primary); }
+  .toggle.on .pill::after { left: 18px; background: #fff; }
+
+  /* Radio horizontal */
+  .radio { display: inline-flex; gap: var(--sp-xs); background: var(--surface-elevated); padding: var(--sp-xs); border-radius: var(--radius-sm); }
+  .radio .opt { padding: var(--sp-xs) var(--sp-md); font-size: var(--font-sm); border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); }
+  .radio .opt.sel { background: var(--accent-primary); color: #fff; }
+
+  /* Color swatch */
+  .swatch-chip { width: 40px; height: 40px; border-radius: var(--radius-sm); border: 2px solid var(--border); }
+  .swatch-chip.focused { border-color: var(--border-emphasis); }
+
+  /* Tool palette icon */
+  .tool-chip { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; }
+  .tool-chip.active { background: var(--accent-primary); color: #fff; border-color: transparent; }
+
+  /* Toast */
+  .toast { padding: var(--sp-sm) var(--sp-md); border-radius: var(--radius-sm); font-size: var(--font-sm); margin-bottom: var(--sp-xs); color: #fff; }
+  .toast.info { background: var(--info); }
+  .toast.success { background: var(--success); }
+  .toast.warning { background: var(--warning); color: #1a1a1a; }
+  .toast.error { background: var(--error); }
+
+  /* === SCREEN MOCKUPS === */
+  .screen {
+    aspect-ratio: 16/10;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: var(--sp-lg);
+  }
+  .zone { position: absolute; background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: var(--font-xs); letter-spacing: .08em; text-transform: uppercase; }
+  .zone-tl { top: 0; left: 0; width: 50%; height: 56px; border-bottom: 1px solid var(--border); }
+  .zone-tr { top: 0; right: 0; width: 50%; height: 56px; border-bottom: 1px solid var(--border); }
+  .zone-sb-r { top: 50%; right: 0; transform: translateY(-50%); width: 64px; height: 320px; border-left: 1px solid var(--border-emphasis); flex-direction: column; gap: 8px; }
+  .zone-sb-r .mod-chip { width: 24px; height: 24px; background: var(--surface-elevated); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .canvas { position: absolute; top: 56px; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, #2a3942 0%, #1f2429 100%); display: flex; align-items: center; justify-content: center; color: #647580; font-size: 12px; }
+
+  /* Tool palette inside CREATE zone */
+  .palette { display: flex; gap: 6px; }
+
+  /* Floating panel at bottom */
+  .panel-bottom {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--surface-elevated);
+    border-radius: var(--radius-md);
+    padding: var(--sp-sm);
+    width: 480px; min-height: 96px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+  }
+  .panel-bottom .tabs { display: flex; gap: var(--sp-xs); margin-bottom: var(--sp-sm); }
+  .panel-bottom .tab { flex: 1; padding: var(--sp-xs) 0; text-align: center; font-size: var(--font-sm); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; }
+  .panel-bottom .tab.active { background: var(--accent-primary); color: #fff; }
+  .panel-bottom .ctrls { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-sm); }
+  .panel-bottom .cell .label { font-size: var(--font-xs); color: var(--text-secondary); text-align: center; margin-bottom: 4px; }
+
+  .toast-stack { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+
+  /* Tool catalog table */
+  table { width: 100%; border-collapse: collapse; margin-top: var(--sp-md); }
+  th, td { text-align: left; padding: var(--sp-sm); border-bottom: 1px solid var(--border); font-size: var(--font-sm); }
+  th { color: var(--text-secondary); font-weight: 600; font-size: var(--font-xs); text-transform: uppercase; letter-spacing: .04em; }
+  td.glyph { font-weight: 700; color: var(--accent-primary); width: 32px; text-align: center; }
+  td.status-built { color: var(--success); }
+  td.status-planned { color: var(--text-secondary); }
+  td.status-future { color: var(--warning); }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="document.body.classList.toggle('theme-light')">Toggle Theme</button>
+
+<nav class="toc">
+  <strong>Index</strong>
+  <a href="#tokens">1. Tokens</a>
+  <a href="#typography">2. Typography</a>
+  <a href="#widgets">3. Widgets</a>
+  <a href="#tools">4. Tool Catalog</a>
+  <a href="#screens">5. Screen Mockups</a>
+  <a href="#flows">6. User Flows</a>
+  <a href="#status">7. Status Matrix</a>
+</nav>
+
+<main>
+
+<h1>PH2D — Component Library &amp; Screen Mockups</h1>
+<p style="color: var(--text-secondary); margin: 0 0 var(--sp-xl) 0;">
+  Esta página é a <strong>fonte de verdade visual</strong> do PH2D. Tudo o que for implementado em Vello deve corresponder pixel-a-pixel ao que está aqui.
+  Itera-se este HTML primeiro, depois implementa-se. Toggle theme no canto pra ver Dark/Light.
+</p>
+
+<!-- ====================================== -->
+<h2 id="tokens">1. Color Tokens</h2>
+<p>Mirror exato de <code>crates/ph2d-tokens/src/color.rs</code>. WCAG 2.2 AA validado em testes.</p>
+
+<h3>Surface chrome</h3>
+<div class="grid grid-6">
+  <div class="swatch"><div class="chip" style="background: var(--bg)"></div><div class="name">Background</div><div class="hex">#161616</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--surface)"></div><div class="name">Surface</div><div class="hex">#1F1F1F</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--surface-elevated)"></div><div class="name">SurfaceElevated</div><div class="hex">#2A2A2A</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--border)"></div><div class="name">Border</div><div class="hex">#3A3A3A</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--border-emphasis)"></div><div class="name">BorderEmphasis</div><div class="hex">#6E6E6E</div></div>
+</div>
+
+<h3>Text</h3>
+<div class="grid grid-4">
+  <div class="swatch"><div class="chip" style="background: var(--text-primary)"></div><div class="name">TextPrimary</div><div class="hex">#E8E8E8</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--text-secondary)"></div><div class="name">TextSecondary</div><div class="hex">#B5B5B5</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--text-disabled)"></div><div class="name">TextDisabled</div><div class="hex">#6E6E6E</div></div>
+</div>
+
+<h3>Accent (Procreate cyan-blue)</h3>
+<div class="grid grid-3">
+  <div class="swatch"><div class="chip" style="background: var(--accent-primary)"></div><div class="name">AccentPrimary</div><div class="hex">#0AB4FF</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--accent-secondary)"></div><div class="name">AccentSecondary</div><div class="hex">#0786BF</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--accent-tertiary)"></div><div class="name">AccentTertiary</div><div class="hex">#04566F</div></div>
+</div>
+
+<h3>Semantic (status)</h3>
+<div class="grid grid-4">
+  <div class="swatch"><div class="chip" style="background: var(--success)"></div><div class="name">Success</div><div class="hex">#4CAF50</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--warning)"></div><div class="name">Warning</div><div class="hex">#FFB300</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--error)"></div><div class="name">ErrorState</div><div class="hex">#EF5350</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--info)"></div><div class="name">Info</div><div class="hex">#29B6F6</div></div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="typography">2. Typography</h2>
+<p>Sans-serif do sistema (parley fallback). Mono pra debug overlays.</p>
+<div class="demo-row">
+  <div style="font-size: var(--font-xs);">Xs (11 px) — captions, status bar</div>
+  <div style="font-size: var(--font-sm);">Sm (13 px) — labels, action buttons</div>
+  <div style="font-size: var(--font-base);">Base (15 px) — body, panel titles</div>
+  <div style="font-size: var(--font-md);">Md (17 px) — section headings</div>
+  <div style="font-size: var(--font-lg);">Lg (22 px) — modal titles</div>
+  <div style="font-size: var(--font-xl);">Xl (28 px) — splash / welcome</div>
+  <div style="font-family: var(--font-mono); font-size: var(--font-sm); margin-top: var(--sp-sm);">Mono (13 px) — debug overlay numerics</div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="widgets">3. Widgets</h2>
+
+<h3>Button — todos os estados</h3>
+<div class="demo-row">
+  <div class="grid grid-states">
+    <span><div class="demo-label">Normal</div><button class="btn">Save</button></span>
+    <span><div class="demo-label">Hover</div><button class="btn" style="background: var(--surface-elevated)">Save</button></span>
+    <span><div class="demo-label">Pressed</div><button class="btn pressed">Save</button></span>
+    <span><div class="demo-label">Focused</div><button class="btn focused">Save</button></span>
+    <span><div class="demo-label">Disabled</div><button class="btn disabled">Save</button></span>
+  </div>
+  <div class="grid grid-states" style="margin-top: var(--sp-md)">
+    <span><div class="demo-label">Accent Normal</div><button class="btn accent">Confirm</button></span>
+    <span><div class="demo-label">Accent Hover</div><button class="btn accent" style="background: var(--accent-secondary)">Confirm</button></span>
+    <span><div class="demo-label">Accent Pressed</div><button class="btn accent" style="background: var(--accent-tertiary)">Confirm</button></span>
+    <span></span><span></span>
+  </div>
+</div>
+
+<h3>Slider — todos os estados</h3>
+<div class="demo-row">
+  <div class="demo-label">Normal · 0.30</div>
+  <div class="slider"><div class="fill" style="width: 30%"></div><div class="thumb" style="left: 30%"></div></div>
+  <div class="demo-label">Accent · 0.65</div>
+  <div class="slider accent"><div class="fill" style="width: 65%"></div><div class="thumb" style="left: 65%"></div></div>
+  <div class="demo-label">Dragging · 0.85</div>
+  <div class="slider accent dragging"><div class="fill" style="width: 85%"></div><div class="thumb" style="left: 85%"></div></div>
+  <div class="demo-label">Disabled</div>
+  <div class="slider disabled"></div>
+</div>
+
+<h3>Toggle</h3>
+<div class="demo-row">
+  <div style="display: flex; gap: var(--sp-xl);">
+    <div class="toggle"><span class="pill"></span> Snap to grid · OFF</div>
+    <div class="toggle on"><span class="pill"></span> Snap to grid · ON</div>
+  </div>
+</div>
+
+<h3>RadioGroup (horizontal)</h3>
+<div class="demo-row">
+  <div style="display: flex; align-items: center; gap: var(--sp-md);">
+    <span class="demo-label" style="margin: 0;">Lock Axis</span>
+    <div class="radio">
+      <span class="opt sel">None</span>
+      <span class="opt">X</span>
+      <span class="opt">Y</span>
+    </div>
+  </div>
+</div>
+
+<h3>ColorSwatch</h3>
+<div class="demo-row">
+  <div style="display: flex; gap: var(--sp-md); align-items: center;">
+    <div class="swatch-chip" style="background: #ff5e3a"></div>
+    <div class="swatch-chip focused" style="background: #0ab4ff"></div>
+    <div class="swatch-chip" style="background: #4caf50"></div>
+    <div class="swatch-chip" style="background: #2a2a2a"></div>
+  </div>
+</div>
+
+<h3>Tool palette chip</h3>
+<div class="demo-row">
+  <div class="palette">
+    <div class="tool-chip active">B</div>
+    <div class="tool-chip">M</div>
+    <div class="tool-chip">E</div>
+    <div class="tool-chip">S</div>
+    <div class="tool-chip">C</div>
+  </div>
+  <div style="color: var(--text-secondary); font-size: var(--font-xs); margin-top: var(--sp-sm);">B=Brush, M=Move, E=Eraser, S=Selection, C=Color (1-letter glyph é placeholder; SVG icons depois)</div>
+</div>
+
+<h3>Toast notifications</h3>
+<div class="demo-row">
+  <div class="toast info">Info · Press 1=Brush, 2=Move</div>
+  <div class="toast success">Success · Project saved</div>
+  <div class="toast warning">Warning · Sidebar layout reset</div>
+  <div class="toast error">Error · Failed to load asset.png</div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="tools">4. Tool Catalog (proposed)</h2>
+<p>Quais ferramentas o editor PH2D vai oferecer. Status: <span style="color: var(--success)">built</span> = em código hoje, <span style="color: var(--text-secondary)">planned</span> = próximas, <span style="color: var(--warning)">future</span> = M14+.</p>
+
+<table>
+  <thead>
+    <tr><th>Glyph</th><th>Tool</th><th>Function</th><th>Controls</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="glyph">B</td><td>Brush</td><td>Pinta sprite no canvas (paint stroke)</td><td>Size · Opacity · Flow · Color</td><td class="status-built">built</td></tr>
+    <tr><td class="glyph">M</td><td>Move</td><td>Move/transforma seleção</td><td>Snap Grid · Snap Pixel · Lock Axis</td><td class="status-built">built</td></tr>
+    <tr><td class="glyph">E</td><td>Eraser</td><td>Apaga sprite no canvas</td><td>Size · Hardness</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">S</td><td>Selection</td><td>Seleciona região (lasso/rect/ellipse)</td><td>Mode · Add · Remove · Invert</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">C</td><td>Color picker</td><td>Pega cor do canvas (eyedropper)</td><td>Sample size</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">F</td><td>Fill</td><td>Bucket fill com cor selecionada</td><td>Tolerance · Anti-alias</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">T</td><td>Text</td><td>Insere texto no canvas</td><td>Font · Size · Color</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">L</td><td>Layer</td><td>Painel de layers (visibility/opacity/blend)</td><td>Layer list · Blend mode · Mask</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">A</td><td>Asset placer</td><td>Drag-drop sprite/asset no scene</td><td>Asset browser · Snap</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">P</td><td>Pan/Zoom (camera)</td><td>Move câmera do editor</td><td>Zoom in/out · Reset</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">G</td><td>Grid/Tile</td><td>Pinta tilemap em grid</td><td>Tile size · Snap · Layer</td><td class="status-future">future</td></tr>
+  </tbody>
+</table>
+
+<!-- ====================================== -->
+<h2 id="screens">5. Screen Mockups</h2>
+
+<h3>5.1 Main Editor — default state (Brush ativo)</h3>
+<div class="screen">
+  <div class="zone zone-tl">EDIT</div>
+  <div class="zone zone-tr">
+    <div class="palette">
+      <div class="tool-chip active">B</div>
+      <div class="tool-chip">M</div>
+      <div class="tool-chip">E</div>
+      <div class="tool-chip">S</div>
+      <div class="tool-chip">C</div>
+    </div>
+  </div>
+  <div class="canvas">[ canvas — 1000 sprites + brush stroke preview ]</div>
+  <div class="zone zone-sb-r">
+    MOD
+    <div class="mod-chip">&lt;</div>
+    <div class="mod-chip">⊞</div>
+    <div class="mod-chip">↶</div>
+    <div class="mod-chip">↷</div>
+  </div>
+  <div class="panel-bottom">
+    <div class="tabs"><span class="tab active">Tip</span></div>
+    <div class="ctrls">
+      <div class="cell"><div class="label">Size</div><div class="slider accent"><div class="fill" style="width: 24%"></div><div class="thumb" style="left: 24%"></div></div></div>
+      <div class="cell"><div class="label">Opacity</div><div class="slider accent"><div class="fill" style="width: 100%"></div><div class="thumb" style="left: 98%"></div></div></div>
+      <div class="cell"><div class="label">Flow</div><div class="slider accent"><div class="fill" style="width: 100%"></div><div class="thumb" style="left: 98%"></div></div></div>
+      <div class="cell"><div class="label">Color</div><div class="swatch-chip" style="margin: 0 auto; background: #ff5e3a;"></div></div>
+    </div>
+  </div>
+  <div class="toast-stack">
+    <div class="toast info">Info · Press 1=Brush, 2=Move, Tab=Zen</div>
+  </div>
+</div>
+
+<h3>5.2 Move tool active</h3>
+<div class="screen">
+  <div class="zone zone-tl">EDIT</div>
+  <div class="zone zone-tr">
+    <div class="palette">
+      <div class="tool-chip">B</div>
+      <div class="tool-chip active">M</div>
+      <div class="tool-chip">E</div>
+      <div class="tool-chip">S</div>
+      <div class="tool-chip">C</div>
+    </div>
+  </div>
+  <div class="canvas">[ canvas + selection bbox ghost ]</div>
+  <div class="zone zone-sb-r">MOD<div class="mod-chip">&lt;</div></div>
+  <div class="panel-bottom">
+    <div class="tabs"><span class="tab active">Transform</span></div>
+    <div class="ctrls" style="grid-template-columns: 1fr 1fr 2fr;">
+      <div class="cell"><div class="label">Snap Grid</div><div style="display: flex; justify-content: center;"><div class="toggle on"><span class="pill"></span></div></div></div>
+      <div class="cell"><div class="label">Snap Pixel</div><div style="display: flex; justify-content: center;"><div class="toggle on"><span class="pill"></span></div></div></div>
+      <div class="cell"><div class="label">Lock Axis</div><div style="display: flex; justify-content: center;"><div class="radio"><span class="opt sel">None</span><span class="opt">X</span><span class="opt">Y</span></div></div></div>
+    </div>
+  </div>
+</div>
+
+<h3>5.3 Zen mode (chrome escondido, Tab toggle)</h3>
+<div class="screen">
+  <div class="canvas" style="top: 0;">[ canvas full screen — só sprites + brush stroke; Tab volta ]</div>
+</div>
+
+<h3>5.4 Color picker modal (futuro)</h3>
+<div class="screen">
+  <div class="zone zone-tl">EDIT</div>
+  <div class="zone zone-tr"><div class="palette"><div class="tool-chip active">C</div></div></div>
+  <div class="canvas">[ canvas com cursor eyedropper ]</div>
+  <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; background: var(--surface-elevated); border-radius: var(--radius-md); padding: var(--sp-md); border: 1px solid var(--border-emphasis); box-shadow: 0 8px 32px rgba(0,0,0,.5);">
+    <div style="font-size: var(--font-md); margin-bottom: var(--sp-sm);">Pick color</div>
+    <div style="height: 160px; background: linear-gradient(135deg, #ff0000 0%, #ffff00 25%, #00ff00 50%, #00ffff 75%, #0000ff 100%); border-radius: var(--radius-sm); margin-bottom: var(--sp-sm); position: relative;">
+      <div style="position: absolute; left: 30%; top: 45%; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,.6);"></div>
+    </div>
+    <div style="display: flex; gap: var(--sp-sm); align-items: center;">
+      <div class="swatch-chip" style="width: 36px; height: 36px; background: #ff5e3a;"></div>
+      <div style="font-family: var(--font-mono); font-size: var(--font-sm);">#FF5E3A</div>
+      <button class="btn accent" style="margin-left: auto;">Apply</button>
+    </div>
+  </div>
+</div>
+
+<h3>5.5 Layer panel (futuro)</h3>
+<div class="screen">
+  <div class="zone zone-tl">EDIT</div>
+  <div class="zone zone-tr"><div class="palette"><div class="tool-chip active">L</div></div></div>
+  <div class="canvas">[ canvas ]</div>
+  <div style="position: absolute; right: 80px; top: 64px; bottom: 16px; width: 240px; background: var(--surface-elevated); border-radius: var(--radius-md); padding: var(--sp-md); border: 1px solid var(--border);">
+    <div style="font-size: var(--font-md); margin-bottom: var(--sp-md);">Layers</div>
+    <div style="display: flex; flex-direction: column; gap: var(--sp-xs);">
+      <div style="display: flex; align-items: center; gap: var(--sp-sm); padding: var(--sp-xs); background: var(--accent-tertiary); border-radius: var(--radius-sm); color: #fff;">👁 <span style="flex:1">Foreground</span> <span style="font-size: var(--font-xs); opacity: .7;">100%</span></div>
+      <div style="display: flex; align-items: center; gap: var(--sp-sm); padding: var(--sp-xs);">👁 <span style="flex:1">Tiles</span> <span style="font-size: var(--font-xs); color: var(--text-secondary);">75%</span></div>
+      <div style="display: flex; align-items: center; gap: var(--sp-sm); padding: var(--sp-xs); color: var(--text-disabled);">⊘ <span style="flex:1">BG hidden</span> <span style="font-size: var(--font-xs);">100%</span></div>
+    </div>
+    <button class="btn accent" style="width: 100%; margin-top: var(--sp-md);">+ New Layer</button>
+  </div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="flows">6. User Flows (top 5)</h2>
+<ol style="line-height: 1.8;">
+  <li><strong>Create + Brush stroke:</strong> open project → Brush selected by default → adjust Size slider → click+drag on canvas → stroke appears.</li>
+  <li><strong>Switch tool via palette:</strong> click M chip in CREATE zone → palette updates active state → Move panel replaces Brush panel at bottom.</li>
+  <li><strong>Color pick via Color tool:</strong> press C key (or click C chip) → cursor turns into eyedropper → click on sprite → color modal opens with picked color → Apply → BrushTool.color_rgba updated.</li>
+  <li><strong>Zen mode:</strong> press Tab → all chrome animates out (panel + zones + palette) → only canvas + sprites visible → press Tab again → chrome returns.</li>
+  <li><strong>Theme flip:</strong> press M (currently — bind to a Settings toggle in the future) → Visuals re-resolve from ph2d-tokens → Dark↔Light transition.</li>
+</ol>
+
+<!-- ====================================== -->
+<h2 id="status">7. Status Matrix</h2>
+<table>
+  <thead><tr><th>Component</th><th>Spec aqui</th><th>Vello impl</th><th>Mouse interativo</th><th>A11y</th><th>Tests</th></tr></thead>
+  <tbody>
+    <tr><td>Color tokens</td><td>✅</td><td>✅</td><td>n/a</td><td>n/a</td><td>✅ AA</td></tr>
+    <tr><td>Typography</td><td>✅</td><td>partial</td><td>n/a</td><td>n/a</td><td>—</td></tr>
+    <tr><td>Button</td><td>✅</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Slider</td><td>✅</td><td>✅</td><td>✅ drag</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Toggle</td><td>✅</td><td>✅</td><td>✅ click</td><td>✅</td><td>✅</td></tr>
+    <tr><td>RadioGroup</td><td>✅</td><td>✅</td><td>✅ click</td><td>✅</td><td>✅</td></tr>
+    <tr><td>ColorSwatch</td><td>✅</td><td>✅</td><td>partial</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Tool palette chip</td><td>✅</td><td>✅</td><td>✅ click</td><td>—</td><td>—</td></tr>
+    <tr><td>Toast</td><td>✅</td><td>✅</td><td>n/a</td><td>✅ Live</td><td>—</td></tr>
+    <tr><td>Mirror sidebar chip</td><td>✅</td><td>✅</td><td>✅ click</td><td>—</td><td>—</td></tr>
+    <tr><td>Floating panel (Brush)</td><td>✅</td><td>✅</td><td>✅</td><td>partial</td><td>✅</td></tr>
+    <tr><td>Floating panel (Move)</td><td>✅</td><td>✅</td><td>✅</td><td>partial</td><td>✅</td></tr>
+    <tr><td>Color picker modal</td><td>✅ planejado</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Layer panel</td><td>✅ planejado</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Brush actually paints</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<p style="color: var(--text-secondary); margin-top: var(--sp-xl);">
+  <strong>Como usar este arquivo:</strong>
+  <br>1. Iterar visualmente (HTML é fácil de mudar — abre, edita, F5)
+  <br>2. Quando aprovado, cada PR de implementação Vello consulta esta página como spec
+  <br>3. Status matrix ↑ vira o backlog: pegar uma linha não-implementada e construir
+</p>
+
+</main>
+</body>
+</html>

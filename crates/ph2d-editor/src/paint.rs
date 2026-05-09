@@ -14,9 +14,9 @@
 //! Tabs / actions / button labels / toast messages all render visibly
 //! with the system sans-serif fallback chain.
 
-use crate::floating_panel::{FloatingPanel, PanelAction, PanelTab};
+use crate::floating_panel::{FloatingPanel, PanelAction, PanelControl, PanelTab};
 use crate::toast::ToastQueue;
-use crate::widget::Button;
+use crate::widget::{Button, paint_color_swatch, paint_radio_group, paint_slider, paint_toggle};
 use crate::zones::{Layout, Rect, Zone};
 use ph2d_text::{PositionedLayoutItem, TextSystem};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
@@ -197,28 +197,77 @@ impl Paint for FloatingPanel {
             paint_text_centered(ctx.text, scene, &tab.label, r, 13.0, label_color);
         }
 
-        // Action row beneath tabs.
-        let action_y = panel_rect.y + tab_h;
-        let action_h = panel_rect.h - tab_h;
+        // Control / action row beneath tabs. Tools using the modern
+        // `controls` field (Brush, Move) render widgets; legacy panels
+        // (selection_demo) fall back to the labeled action grid.
+        let row_y = panel_rect.y + tab_h;
+        let row_h = panel_rect.h - tab_h;
+        let label_color = resolve(ColorToken::TextSecondary, ctx.theme);
+        if !self.controls.is_empty() {
+            let count = self.controls.len() as f32;
+            let cell_w = panel_rect.w / count;
+            // Header label band ~32% of cell h, widget below.
+            let label_h = (row_h * 0.32).min(14.0);
+            let pad = 4.0_f32;
+            for (i, ctrl) in self.controls.iter().enumerate() {
+                let cell = Rect {
+                    x: panel_rect.x + cell_w * i as f32 + pad,
+                    y: row_y + 2.0,
+                    w: cell_w - pad * 2.0,
+                    h: row_h - 4.0,
+                };
+                let label_rect = Rect {
+                    x: cell.x,
+                    y: cell.y,
+                    w: cell.w,
+                    h: label_h,
+                };
+                let widget_rect = Rect {
+                    x: cell.x,
+                    y: cell.y + label_h,
+                    w: cell.w,
+                    h: cell.h - label_h,
+                };
+                paint_text_centered(ctx.text, scene, ctrl.label(), label_rect, 10.0, label_color);
+                match ctrl {
+                    PanelControl::Slider(s) => paint_slider(s, widget_rect, scene, ctx.theme),
+                    PanelControl::Toggle(t) => paint_toggle(t, widget_rect, scene, ctx.theme),
+                    PanelControl::RadioGroup(g) => {
+                        paint_radio_group(g, widget_rect, scene, ctx.theme)
+                    }
+                    PanelControl::ColorSwatch(s) => {
+                        paint_color_swatch(s, widget_rect, scene, ctx.theme)
+                    }
+                    PanelControl::Action(a) => {
+                        scene.fill_rect(
+                            rect_to_vello(widget_rect),
+                            resolve(ColorToken::Surface, ctx.theme),
+                        );
+                        paint_text_centered(
+                            ctx.text,
+                            scene,
+                            &a.label,
+                            widget_rect,
+                            11.0,
+                            label_color,
+                        );
+                    }
+                }
+            }
+            return;
+        }
+        // Legacy: labels-only action grid.
         let action_count = self.actions.len().max(1) as f32;
         let action_w = panel_rect.w / action_count;
-        let action_label_color = resolve(ColorToken::TextSecondary, ctx.theme);
         for (i, action) in self.actions.iter().enumerate() {
             let r = Rect {
                 x: panel_rect.x + action_w * i as f32 + 2.0,
-                y: action_y + 4.0,
+                y: row_y + 4.0,
                 w: action_w - 4.0,
-                h: action_h - 8.0,
+                h: row_h - 8.0,
             };
             scene.fill_rect(rect_to_vello(r), resolve(ColorToken::Surface, ctx.theme));
-            paint_text_centered(
-                ctx.text,
-                scene,
-                action_label(action),
-                r,
-                11.0,
-                action_label_color,
-            );
+            paint_text_centered(ctx.text, scene, action_label(action), r, 11.0, label_color);
         }
     }
 }

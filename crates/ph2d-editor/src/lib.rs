@@ -35,7 +35,7 @@ pub mod widget;
 pub mod zen;
 pub mod zones;
 
-pub use floating_panel::{FloatingPanel, PanelAnchor, PanelTab, ToolId};
+pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use paint::{Paint, PaintCtx, paint_button, paint_text, paint_text_centered, resolve};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{Tool, ToolRegistry};

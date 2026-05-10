@@ -78,6 +78,20 @@ pub const INSP_SAMPLE_BTN_DANGER: NodeId = NodeId(331);
 pub const INSP_SAMPLE_BTN_ICON: NodeId = NodeId(332);
 pub const INSP_SAMPLE_LIST_ITEM: NodeId = NodeId(333);
 pub const INSP_SAMPLE_TAG_REMOVE: NodeId = NodeId(334);
+
+// Section header ids — clicking toggles the section's collapsed
+// state on the WidgetStore. Each maps 1:1 to the corresponding
+// `paint_*_section` function in `inspector.rs`.
+pub const INSP_SECTION_INPUTS: NodeId = NodeId(350);
+pub const INSP_SECTION_SLIDER: NodeId = NodeId(351);
+pub const INSP_SECTION_SWITCHES: NodeId = NodeId(352);
+pub const INSP_SECTION_LISTS: NodeId = NodeId(353);
+pub const INSP_SECTION_VECTOR: NodeId = NodeId(354);
+pub const INSP_SECTION_STATUS: NodeId = NodeId(355);
+pub const INSP_SECTION_COLOR: NodeId = NodeId(356);
+pub const INSP_SECTION_ACTIONS: NodeId = NodeId(357);
+pub const INSP_SECTION_IDENTITY: NodeId = NodeId(358);
+pub const INSP_SECTION_CARD: NodeId = NodeId(359);
 /// Floating `BlenderColorPicker` parent id. The picker is painted
 /// over the canvas (not inside the Inspector) — the historical
 /// `INSP_` prefix is kept to avoid churning every side-table key.

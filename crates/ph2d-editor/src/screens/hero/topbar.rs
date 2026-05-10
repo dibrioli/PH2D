@@ -87,6 +87,18 @@ pub fn paint_hover_tooltip(
     let Some(id) = store.hot_id() else {
         return;
     };
+    // Suppress the tooltip when the hot widget is an open Dropdown
+    // (or any widget whose popover paints directly below the hit
+    // rect — they share the exact pill geometry the tooltip wants
+    // and would otherwise paint OVER the first option). See
+    // `docs/UI_Bugs/README.md` §9.13.
+    if matches!(
+        store.get(id),
+        Some(crate::interaction::InteractiveState::Dropdown { open: true, .. })
+            | Some(crate::interaction::InteractiveState::Combobox { open: true, .. })
+    ) {
+        return;
+    }
     let Some(text) = store.tooltip_for(id) else {
         return;
     };

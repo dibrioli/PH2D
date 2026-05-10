@@ -419,6 +419,70 @@ estava implícito nos §1–§8.
   do buffer.
 - **Código**: [`interaction/dispatch.rs byte_offset_from_click_xy`](../../crates/ph2d-editor/src/interaction/dispatch.rs).
 
+### 9.12 Dropdown aberto: lista flutuante real
+
+- **Sintoma 1**: a lista do `Dropdown` aberto era pintada como linhas
+  individuais com fill `BgElev` — em temas onde o painel host
+  também é `BgElev`, a lista "sumia" no fundo.
+- **Sintoma 2**: a primeira linha da lista tocava a borda inferior
+  do chip; sem gap, viravam uma surface só.
+- **Sintoma 3**: o tooltip-pill da hover-tooltip registry caía em
+  cima da primeira opção (mesma geometria que o pill esperaria).
+- **Fix**: `Dropdown::popover_rect(chip)` retorna um painel
+  flutuante completo (BgElev + Border + radius Md), 4 px abaixo do
+  chip. `option_rect` agora inset dentro desse painel. `paint_dropdown`
+  pinta o painel, e a tooltip-pintora (`paint_hover_tooltip`) faz
+  early-out quando o hot widget é um `Dropdown { open: true, .. }`
+  ou `Combobox { open: true, .. }`.
+- **Código**: [`widget/dropdown.rs Dropdown::popover_rect`](../../crates/ph2d-editor/src/widget/dropdown.rs);
+  [`screens/hero/topbar.rs paint_hover_tooltip` early-out](../../crates/ph2d-editor/src/screens/hero/topbar.rs).
+
+### 9.13 SectionHeader v2: chevron-only + UPPERCASE + colapso real
+
+- **Sintoma**: header pintava um ponto rosa decorativo + label `Xs`
+  em `Text2` minúsculo — visualmente fraco e sem affordance de
+  "clique para minimizar".
+- **Fix**: removido o ponto. Chevron sempre desenhado (ChevronDown
+  aberto, ChevronRight colapsado). Label vira `to_uppercase()` em
+  `TypeToken::Sm` com `Text1`. Estado de colapso vive em
+  `WidgetStore::collapsed` (side-table genérica); `inspector::apply_event`
+  toggleia em Click e cada section painter early-outs quando
+  `!open`.
+- **Código**: [`widget/section_header.rs paint_section_header`](../../crates/ph2d-editor/src/widget/section_header.rs);
+  [`interaction/state.rs collapsed` side-table](../../crates/ph2d-editor/src/interaction/state.rs);
+  [`screens/hero/inspector.rs apply_event + paint_collapsible_header`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
+
+### 9.14 RadioGroup/Tabs/TreeView mantendo seleção entre frames
+
+- **Sintoma**: clicar Mid no segmented RadioGroup voltava pra Low
+  imediatamente; tabs sample não trocava conteúdo; Group TreeView
+  não colapsava.
+- **Causa**: cada widget era modelado como N `Button`s. O default
+  `set_widget_released` no Up handler reverte cada botão pra
+  `Hovered`/`Normal` — nenhum continua `Pressed`. O painter lia o
+  índice ativo via `Button::Pressed`, então achava que nada estava
+  selecionado e caía no índice 0.
+- **Fix**: `inspector::apply_event` intercepta o `Click` do grupo e
+  chama `pin_button_selection(selected, group)` que força o
+  clicado em `Pressed` e os irmãos em `Normal`. Mesmo padrão usado
+  para tabs e folhas do TreeView. Para o root do TreeView, click
+  toggleia `is_collapsed(ROOT)`; a paint passa a chamar
+  `tree.expand(ROOT)` somente quando não colapsado.
+- **Código**: [`screens/hero/inspector.rs apply_event + pin_button_selection`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
+
+### 9.15 Vector3Editor com buffer vivo
+
+- **Sintoma**: clicar nos chips X/Y/Z focava (border accent) mas
+  digitar não aparecia na caixa.
+- **Causa**: o sample chamava o estático `paint_vector3_editor`,
+  que passa `[None; 3]` para os buffers → o `paint_number_input_with_buffer`
+  sempre exibe `input.value` em vez do buffer em edição.
+- **Fix**: o Inspector lê o estado completo (state/value/buffer/caret/anchor)
+  de cada chip via `read_number_input` e chama
+  `paint_vector3_editor_with_state` com `Some(buffer)` por eixo.
+  Mesma fix do TextArea (§9.10) aplicada a NumberInput composto.
+- **Código**: [`screens/hero/inspector.rs paint_vector_section`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
+
 ### 9.11 Combobox click X-offset corrigido + clear-✕ central
 
 - **Sintoma 1**: caret do `Combobox` "escorregava" ~24 px à direita

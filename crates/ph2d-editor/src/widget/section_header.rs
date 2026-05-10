@@ -12,7 +12,7 @@ use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
+use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
 pub struct SectionHeader {
@@ -59,6 +59,11 @@ impl SectionHeader {
     }
 }
 
+/// Canonical section-header chrome (Inspector + every collapsible
+/// panel uses this). Layout (left → right): collapse chevron + label
+/// in UPPERCASE + optional count pill on the far right. The previous
+/// accent-dot ornament was retired — every section is collapsible by
+/// design, so the chevron itself is the only "anchor" glyph.
 pub fn paint_section_header(
     header: &SectionHeader,
     rect: Rect,
@@ -68,58 +73,43 @@ pub fn paint_section_header(
 ) {
     let pad_x = Spacing::Md.px();
     let mut cursor_x = rect.x + pad_x;
-    let icon_w = (rect.h * 0.6).clamp(10.0, 16.0);
+    let icon_w = (rect.h * 0.7).clamp(12.0, 18.0);
 
-    // Collapse chevron.
-    if let Some(open) = header.collapsible {
-        let chev_rect = Rect::new(cursor_x, rect.y + (rect.h - icon_w) * 0.5, icon_w, icon_w);
-        let icon = if open {
-            IconId::ChevronDown
-        } else {
-            IconId::ChevronRight
-        };
-        paint_icon(
-            scene,
-            icon,
-            chev_rect,
-            resolve(ColorToken::Text3, theme),
-            1.5,
-        );
-        cursor_x += icon_w + Spacing::Xs.px();
-    }
+    // Collapse chevron — always painted now; non-collapsible headers
+    // simply default to "open" via `is_open()`. Single visual anchor
+    // for the "this is a section title, click me to fold" affordance.
+    let chev_rect = Rect::new(cursor_x, rect.y + (rect.h - icon_w) * 0.5, icon_w, icon_w);
+    let icon = if header.is_open() {
+        IconId::ChevronDown
+    } else {
+        IconId::ChevronRight
+    };
+    paint_icon(scene, icon, chev_rect, resolve(ColorToken::Text2, theme), 1.5);
+    cursor_x += icon_w + Spacing::Sm.px();
 
-    // Accent dot — 6 px circle aligned baseline.
-    let dot_r = 3.0;
-    let dot_cx = cursor_x + dot_r;
-    let dot_cy = rect.y + rect.h * 0.5;
-    let dot = Circle::new(Point::new(dot_cx as f64, dot_cy as f64), dot_r as f64);
-    scene.inner_mut().fill(
-        Fill::NonZero,
-        Affine::IDENTITY,
-        &Brush::Solid(resolve(ColorToken::Accent, theme)),
-        None,
-        &dot,
-    );
-    cursor_x += dot_r * 2.0 + Spacing::Md.px();
-
-    // Label — uppercase happens visually; we hand parley the source
-    // string and rely on font + size to read as a section title.
-    let font = TypeToken::Xs.px();
+    // Bigger, bolder label in UPPERCASE — the §x.x design refresh
+    // ditched the tiny lowercase title in favor of a clear section
+    // banner. Parley has no weight-700 font in the editor's stack
+    // (text/lib.rs: "no italics, no weight"), so visual emphasis is
+    // built from font_size (Sm instead of Xs) + Text1 contrast +
+    // case folding.
+    let font = TypeToken::Sm.px();
     let label_y = rect.y + (rect.h - font) * 0.5;
     let label_w = if header.count.is_some() {
         (rect.x + rect.w - cursor_x - 48.0 - pad_x).max(0.0)
     } else {
         (rect.x + rect.w - cursor_x - pad_x).max(0.0)
     };
+    let upper = header.label.to_uppercase();
     paint_text(
         text_system,
         scene,
-        &header.label,
+        &upper,
         cursor_x,
         label_y,
         font,
         label_w,
-        resolve(ColorToken::Text2, theme),
+        resolve(ColorToken::Text1, theme),
     );
 
     // Count chip — right-aligned mono pill.
@@ -144,7 +134,7 @@ pub fn paint_section_header(
             scene,
             &text,
             chip_rect,
-            font,
+            TypeToken::Xs.px(),
             resolve(ColorToken::Text3, theme),
         );
     }
@@ -160,6 +150,22 @@ mod tests {
         assert!(h.count.is_none());
         assert!(h.collapsible.is_none());
         assert!(h.is_open(), "non-collapsible defaults to open");
+    }
+
+    #[test]
+    fn paint_emits_no_panic_for_uppercase_label_and_chevron() {
+        // Smoke: header with all the new chrome bits (chevron +
+        // uppercase + count chip) renders without geometry asserts.
+        let h = SectionHeader::new(NodeId(1), "vector").count(3).collapsible(true);
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_section_header(
+            &h,
+            Rect::new(0.0, 0.0, 280.0, 28.0),
+            &mut scene,
+            &mut text,
+            Theme::ForgeSdf,
+        );
     }
 
     #[test]

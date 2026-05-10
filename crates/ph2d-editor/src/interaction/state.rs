@@ -286,6 +286,11 @@ pub struct WidgetStore {
     /// hardcoded `tooltip_for(id)` match — every widget can now
     /// participate without per-id boilerplate.
     tooltips: BTreeMap<NodeId, String>,
+    /// Collapsed/expanded state per id. `true` = collapsed; missing
+    /// entry defaults to "expanded" so newly-registered sections
+    /// open by default. Toggled by `apply_event` on Click and
+    /// consumed by section painters that early-out when collapsed.
+    collapsed: BTreeMap<NodeId, bool>,
 }
 
 impl WidgetStore {
@@ -313,6 +318,7 @@ impl WidgetStore {
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
             tooltips: BTreeMap::new(),
+            collapsed: BTreeMap::new(),
         }
     }
 
@@ -620,6 +626,27 @@ impl WidgetStore {
         self.tooltips.get(&id).map(|s| s.as_str())
     }
 
+    /// `true` iff the section/panel at `id` is currently collapsed.
+    /// Missing entries default to expanded — newly-registered
+    /// sections start open without any setup.
+    pub fn is_collapsed(&self, id: NodeId) -> bool {
+        self.collapsed.get(&id).copied().unwrap_or(false)
+    }
+
+    /// Set the collapsed state for a section/panel. `true` collapses,
+    /// `false` expands.
+    pub fn set_collapsed(&mut self, id: NodeId, collapsed: bool) {
+        self.collapsed.insert(id, collapsed);
+    }
+
+    /// Flip the collapsed state for `id`. Convenience for click
+    /// handlers — equivalent to
+    /// `set_collapsed(id, !is_collapsed(id))`.
+    pub fn toggle_collapsed(&mut self, id: NodeId) {
+        let was = self.is_collapsed(id);
+        self.collapsed.insert(id, !was);
+    }
+
     /// Append `color` to the BlenderPicker's palette. No-op if the
     /// palette wasn't initialized OR is already at the static cap
     /// (24 entries — matches the pre-registered swatch hit slots so
@@ -889,6 +916,23 @@ mod tests {
         );
         assert_eq!(store.focus_order().len(), 1);
         assert_eq!(store.button_state(NodeId(1)), Some(ButtonState::Hovered));
+    }
+
+    #[test]
+    fn collapsed_defaults_to_false() {
+        let store = WidgetStore::with_capacity(4);
+        assert!(!store.is_collapsed(NodeId(99)));
+    }
+
+    #[test]
+    fn collapsed_set_and_toggle() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.set_collapsed(NodeId(7), true);
+        assert!(store.is_collapsed(NodeId(7)));
+        store.toggle_collapsed(NodeId(7));
+        assert!(!store.is_collapsed(NodeId(7)));
+        store.toggle_collapsed(NodeId(8));
+        assert!(store.is_collapsed(NodeId(8)));
     }
 
     #[test]

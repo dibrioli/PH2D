@@ -24,7 +24,7 @@ use super::ids;
 use super::style::{PANEL_HEAD_PAD, paint_panel_surface};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{paint_text, rect_to_vello, resolve};
+use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use crate::widget::{
     Avatar, AvatarShape, Button, ButtonKind, ButtonState, Card, ChannelMode, Checkbox,
     CheckboxState, CheckboxValue, ColorSwatch, Combobox, ComboboxOption, ComboboxState,
@@ -36,21 +36,57 @@ use crate::widget::{
     paint_dropdown, paint_list_item, paint_number_input_with_buffer, paint_progress_bar,
     paint_radio_group_with_labels, paint_section_header, paint_slider_with_chip,
     paint_spinner, paint_tabs, paint_tag, paint_text_area_with_state,
-    paint_text_input_with_buffer, paint_toggle, paint_tree_view, paint_vector3_editor,
+    paint_text_input_with_buffer, paint_toggle, paint_tree_view,
 };
 use crate::widget::Dropdown;
 use crate::widget::DropdownOption;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ColorValue, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ColorValue, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 const BODY_PAD: f32 = 10.0;
 const ROW_GAP: f32 = 6.0;
-const SECTION_HEAD_H: f32 = 22.0;
+const SECTION_HEAD_H: f32 = 28.0;
 const SECTION_GAP: f32 = 12.0;
 const FIELD_H: f32 = 32.0;
+
+/// Stable id list for every collapsible section header in the
+/// Inspector. Order matches `paint_inspector` paint order so the
+/// `apply_event` lookup and `populate` registration walk the same
+/// sequence.
+const SECTION_IDS: [ph2d_a11y::NodeId; 10] = [
+    ids::INSP_SECTION_INPUTS,
+    ids::INSP_SECTION_SLIDER,
+    ids::INSP_SECTION_SWITCHES,
+    ids::INSP_SECTION_LISTS,
+    ids::INSP_SECTION_VECTOR,
+    ids::INSP_SECTION_STATUS,
+    ids::INSP_SECTION_COLOR,
+    ids::INSP_SECTION_ACTIONS,
+    ids::INSP_SECTION_IDENTITY,
+    ids::INSP_SECTION_CARD,
+];
+
+/// Ids of the three Radio buttons that form the Switches sample's
+/// segmented "Low / Mid / High" group. Same trick used for the
+/// "Edit / Play / Debug" tabs — exactly one button is `Pressed` at
+/// a time, the painter reads the active index from that flag.
+const RADIO_GROUP_IDS: [ph2d_a11y::NodeId; 3] = [
+    ids::INSP_SAMPLE_RADIO_A,
+    ids::INSP_SAMPLE_RADIO_B,
+    ids::INSP_SAMPLE_RADIO_C,
+];
+const TAB_GROUP_IDS: [ph2d_a11y::NodeId; 3] = [
+    ids::INSP_SAMPLE_TAB_A,
+    ids::INSP_SAMPLE_TAB_B,
+    ids::INSP_SAMPLE_TAB_C,
+];
+const TREE_LEAF_IDS: [ph2d_a11y::NodeId; 2] = [
+    ids::INSP_SAMPLE_TREE_LEAF_A,
+    ids::INSP_SAMPLE_TREE_LEAF_B,
+];
 
 /// Register every sample widget + the floating BlenderColorPicker's
 /// retained state. Called once at screen construction time.
@@ -315,13 +351,22 @@ fn populate_samples(store: &mut WidgetStore) {
         *state = ButtonState::Pressed;
     }
 
-    // TreeView leaves/root — each row is a Plain hit.
-    for id in [
-        ids::INSP_SAMPLE_TREE_ROOT,
-        ids::INSP_SAMPLE_TREE_LEAF_A,
-        ids::INSP_SAMPLE_TREE_LEAF_B,
-    ] {
-        store.register(id, InteractiveState::Plain);
+    // TreeView root + leaves. The root is `Plain` (its click flips
+    // the panel's collapsed flag); leaves are `Button` so we can
+    // reuse the same `pin_button_selection` trick used for the
+    // Radio/Tabs samples (exactly one is `Pressed`, persistent
+    // across frames).
+    store.register(ids::INSP_SAMPLE_TREE_ROOT, InteractiveState::Plain);
+    for id in [ids::INSP_SAMPLE_TREE_LEAF_A, ids::INSP_SAMPLE_TREE_LEAF_B] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    if let Some(InteractiveState::Button { state }) = store.get_mut(ids::INSP_SAMPLE_TREE_LEAF_A) {
+        *state = ButtonState::Pressed;
     }
 
     // Vector3Editor — 3 chips.
@@ -377,6 +422,13 @@ fn populate_samples(store: &mut WidgetStore) {
         },
     );
 
+    // Section headers — every section is collapsible. Registered
+    // as Plain so the dispatch emits a `Click` event; the inspector
+    // `apply_event` flips the store's collapsed flag.
+    for id in SECTION_IDS {
+        store.register(id, InteractiveState::Plain);
+    }
+
     // Per-widget tooltips so the generic registry shows hints when
     // the user hovers. Demonstrates the §9.8 lesson in practice.
     for (id, text) in [
@@ -400,10 +452,65 @@ fn populate_samples(store: &mut WidgetStore) {
     }
 }
 
-/// Apply a [`WidgetEvent`] against Inspector widgets. Stub — sample
-/// rows have no project-level reactions yet.
-pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+/// Apply a [`WidgetEvent`] against Inspector widgets. Currently
+/// handles:
+///   - **Section headers**: clicking toggles the section's collapsed
+///     flag on the store.
+///   - **Radio group + Tabs**: clicking one option pins it as the
+///     `Pressed` Button state and resets the siblings to `Normal`.
+///     Without this, the default Button-Up handler reverts every
+///     option to `Hovered`/`Normal` after release, losing selection.
+pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
+    if let WidgetEvent::Click(id) = event {
+        // Section header → flip collapse.
+        if SECTION_IDS.iter().any(|s| *s == id) {
+            store.toggle_collapsed(id);
+            return true;
+        }
+        // TreeView root chevron → flip child visibility. Uses the
+        // same `is_collapsed` side-table as sections; the painter
+        // calls `tree.expand(...)` only when `!collapsed`.
+        if id == ids::INSP_SAMPLE_TREE_ROOT {
+            store.toggle_collapsed(id);
+            return true;
+        }
+        // Tree leaf selection — same pin-pressed trick as radio/tabs.
+        if TREE_LEAF_IDS.iter().any(|l| *l == id) {
+            pin_button_selection(store, id, &TREE_LEAF_IDS);
+            return true;
+        }
+        // Radio group selection lock — pin clicked, clear siblings.
+        if RADIO_GROUP_IDS.iter().any(|r| *r == id) {
+            pin_button_selection(store, id, &RADIO_GROUP_IDS);
+            return true;
+        }
+        // Tabs sample — same shape, different ids.
+        if TAB_GROUP_IDS.iter().any(|t| *t == id) {
+            pin_button_selection(store, id, &TAB_GROUP_IDS);
+            return true;
+        }
+    }
     false
+}
+
+/// Force `selected` into `ButtonState::Pressed` and every other id in
+/// `group` into `ButtonState::Normal`. Used for "exactly one is
+/// active" segmented controls (RadioGroup, Tabs) that model selection
+/// as a single Pressed flag across N Button entries.
+fn pin_button_selection(
+    store: &mut WidgetStore,
+    selected: ph2d_a11y::NodeId,
+    group: &[ph2d_a11y::NodeId],
+) {
+    for id in group {
+        if let Some(InteractiveState::Button { state }) = store.get_mut(*id) {
+            *state = if *id == selected {
+                ButtonState::Pressed
+            } else {
+                ButtonState::Normal
+            };
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -481,35 +588,50 @@ pub fn paint_inspector(
     y += SECTION_GAP;
     y = paint_vector_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
     y += SECTION_GAP;
-    y = paint_status_section(scene, text_system, theme, inner_x, inner_w, y);
+    y = paint_status_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
     y += SECTION_GAP;
-    y = paint_color_section(scene, text_system, theme, hit_index, inner_x, inner_w, y);
+    y = paint_color_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
     y += SECTION_GAP;
     y = paint_actions_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
     y += SECTION_GAP;
-    y = paint_identity_section(scene, text_system, theme, inner_x, inner_w, y);
+    y = paint_identity_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
     y += SECTION_GAP;
-    let _ = paint_card_section(scene, text_system, theme, inner_x, inner_w, y);
+    let _ = paint_card_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
 
     scene.pop_layer();
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-fn paint_header_row(
+/// Paint a collapsible section header at `(x, y)` and register its
+/// click hit. Returns `(next_y, is_open)` where `is_open` controls
+/// whether the caller paints the section body or skips ahead.
+///
+/// Single source of truth for every section in the Inspector — the
+/// chevron direction, hit rect, and collapsed-flag read all live
+/// here so individual section painters stay focused on their content.
+#[allow(clippy::too_many_arguments)]
+fn paint_collapsible_header(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
+    id: NodeId,
     label: &str,
     count: u32,
-) -> f32 {
+) -> (f32, bool) {
     let r = Rect::new(x, y, w, SECTION_HEAD_H);
-    let header = SectionHeader::new(NodeId(0), label).count(count);
+    let is_collapsed = store.is_collapsed(id);
+    hit_index.register(id, r);
+    let header = SectionHeader::new(id, label)
+        .count(count)
+        .collapsible(!is_collapsed);
     paint_section_header(&header, r, scene, text_system, theme);
-    y + SECTION_HEAD_H + 4.0
+    (y + SECTION_HEAD_H + 4.0, !is_collapsed)
 }
 
 fn paint_left_label(
@@ -546,7 +668,22 @@ fn paint_inputs_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = paint_header_row(scene, text_system, theme, x, w, y, "Inputs", 4);
+    let (mut y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_INPUTS,
+        "Inputs",
+        4,
+    );
+    if !open {
+        return y;
+    }
 
     // TextInput.
     let r = Rect::new(x, y, w, FIELD_H);
@@ -632,7 +769,22 @@ fn paint_slider_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = paint_header_row(scene, text_system, theme, x, w, y, "Slider", 1);
+    let (mut y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_SLIDER,
+        "Slider",
+        1,
+    );
+    if !open {
+        return y;
+    }
     let (_, value) = store
         .slider(ids::INSP_SAMPLE_SLIDER)
         .unwrap_or((SliderState::Normal, 0.62));
@@ -664,7 +816,22 @@ fn paint_switches_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = paint_header_row(scene, text_system, theme, x, w, y, "Switches", 3);
+    let (mut y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_SWITCHES,
+        "Switches",
+        3,
+    );
+    if !open {
+        return y;
+    }
 
     // Checkbox.
     let r = Rect::new(x, y, w, 22.0);
@@ -742,7 +909,22 @@ fn paint_lists_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = paint_header_row(scene, text_system, theme, x, w, y, "Lists", 4);
+    let (mut y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_LISTS,
+        "Lists",
+        4,
+    );
+    if !open {
+        return y;
+    }
 
     // Dropdown.
     let r = Rect::new(x, y, w, FIELD_H);
@@ -797,10 +979,46 @@ fn paint_lists_section(
     for (i, item) in tabs.items.iter().enumerate() {
         hit_index.register(item.id, tabs.tab_rect(r, i));
     }
-    y += 28.0 + ROW_GAP;
+    y += 28.0 + 4.0;
 
-    // TreeView (1 root + 2 leaves).
-    let tree_h = 26.0_f32 * 3.0;
+    // Tab body — distinct sample per selected tab so the user can
+    // see the tab actually swapping content (vs. just visual
+    // emphasis on the segmented control). Each body is painted in a
+    // `BgElev` rounded panel for visual grouping with the tabs.
+    let body_h = 36.0_f32;
+    let body_rect = Rect::new(x, y, w, body_h);
+    fill_rounded_rect(
+        scene,
+        body_rect,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg2, theme),
+    );
+    let (caption, tone) = match selected {
+        0 => ("Editing scene · pencil tool", ColorToken::Text1),
+        1 => ("Running simulation · 60 fps", ColorToken::Success),
+        _ => ("Logging · 124 events captured", ColorToken::Warn),
+    };
+    paint_text(
+        text_system,
+        scene,
+        caption,
+        body_rect.x + Spacing::Md.px(),
+        body_rect.y + (body_rect.h - TypeToken::Xs.px()) * 0.5,
+        TypeToken::Xs.px(),
+        body_rect.w - Spacing::Md.px() * 2.0,
+        resolve(tone, theme),
+    );
+    y += body_h + ROW_GAP;
+
+    // TreeView (1 root + 2 leaves). Expand-state lives on the
+    // store's `collapsed` side-table (same one that drives section
+    // collapse) so clicking the root row truly hides/shows its
+    // children. Selected leaf comes from the per-leaf `Pressed`
+    // button state — `pin_button_selection` keeps exactly one
+    // leaf Pressed across frames.
+    let expanded = !store.is_collapsed(ids::INSP_SAMPLE_TREE_ROOT);
+    let visible_rows = if expanded { 3.0 } else { 1.0 };
+    let tree_h = 26.0_f32 * visible_rows;
     let r = Rect::new(x, y, w, tree_h);
     let mut tree = TreeView::new(
         NodeId(0),
@@ -816,8 +1034,11 @@ fn paint_lists_section(
                 ]),
         ],
     );
-    tree.expand(ids::INSP_SAMPLE_TREE_ROOT);
-    tree.select(ids::INSP_SAMPLE_TREE_LEAF_A);
+    if expanded {
+        tree.expand(ids::INSP_SAMPLE_TREE_ROOT);
+    }
+    let selected_leaf = active_index(store, &TREE_LEAF_IDS).unwrap_or(0);
+    tree.select(TREE_LEAF_IDS[selected_leaf]);
     paint_tree_view(&tree, r, scene, text_system, theme, 26.0);
     // Register hit rects for each visible row.
     for (i, (_depth, node)) in tree.visible_rows().iter().enumerate() {
@@ -853,16 +1074,47 @@ fn paint_vector_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = paint_header_row(scene, text_system, theme, x, w, y, "Vector", 3);
+    let (mut y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_VECTOR,
+        "Vector",
+        3,
+    );
+    if !open {
+        return y;
+    }
     let r = Rect::new(x, y, w, FIELD_H);
-    let (_, vx, _, _, _) = read_number_input(store, ids::INSP_SAMPLE_V3_X);
-    let (_, vy, _, _, _) = read_number_input(store, ids::INSP_SAMPLE_V3_Y);
-    let (_, vz, _, _, _) = read_number_input(store, ids::INSP_SAMPLE_V3_Z);
-    let nx = NumberInput::new(ids::INSP_SAMPLE_V3_X, "X", vx);
-    let ny = NumberInput::new(ids::INSP_SAMPLE_V3_Y, "Y", vy);
-    let nz = NumberInput::new(ids::INSP_SAMPLE_V3_Z, "Z", vz);
+    // Pull each axis' live state from the store so focus/typing
+    // actually drives the chip. Previously this rendered via the
+    // static `paint_vector3_editor` which never reads the in-progress
+    // edit buffer — clicking a chip "focused" it visually (border
+    // accent) but every keystroke vanished because the painter kept
+    // showing `input.value` regardless. See `docs/UI_Bugs/README.md`
+    // §9.14.
+    let (sx, vx, bx, cx, ax) = read_number_input(store, ids::INSP_SAMPLE_V3_X);
+    let (sy, vy, by, cy, ay) = read_number_input(store, ids::INSP_SAMPLE_V3_Y);
+    let (sz, vz, bz, cz, az) = read_number_input(store, ids::INSP_SAMPLE_V3_Z);
+    let nx = NumberInput::new(ids::INSP_SAMPLE_V3_X, "X", vx).state(sx);
+    let ny = NumberInput::new(ids::INSP_SAMPLE_V3_Y, "Y", vy).state(sy);
+    let nz = NumberInput::new(ids::INSP_SAMPLE_V3_Z, "Z", vz).state(sz);
     let v3 = Vector3Editor::new(NodeId(0), "Position", nx, ny, nz);
-    paint_vector3_editor(&v3, r, scene, text_system, theme);
+    crate::widget::paint_vector3_editor_with_state(
+        &v3,
+        [Some(bx), Some(by), Some(bz)],
+        [cx, cy, cz],
+        [ax, ay, az],
+        r,
+        scene,
+        text_system,
+        theme,
+    );
     let rects = v3.field_rects(r);
     for (id, fr) in [
         (ids::INSP_SAMPLE_V3_X, rects[0]),
@@ -875,15 +1127,33 @@ fn paint_vector_section(
     y
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_status_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = paint_header_row(scene, text_system, theme, x, w, y, "Status", 3);
+    let (mut y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_STATUS,
+        "Status",
+        3,
+    );
+    if !open {
+        return y;
+    }
 
     // ProgressBar — determinate, 60 %.
     let bar = ProgressBar::new(NodeId(0), "Build")
@@ -927,16 +1197,33 @@ fn paint_status_section(
     y + chip_h
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_color_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
 ) -> f32 {
-    let y = paint_header_row(scene, text_system, theme, x, w, y, "Color", 1);
+    let (y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_COLOR,
+        "Color",
+        1,
+    );
+    if !open {
+        return y;
+    }
     let sw_h = 28.0_f32;
     let label_w = 80.0_f32;
     paint_left_label(scene, text_system, theme, x, "Tint", label_w, y, sw_h);
@@ -960,7 +1247,22 @@ fn paint_actions_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = paint_header_row(scene, text_system, theme, x, w, y, "Actions", 4);
+    let (mut y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_ACTIONS,
+        "Actions",
+        4,
+    );
+    if !open {
+        return y;
+    }
     let btn_h = 30.0_f32;
     let gap = 6.0_f32;
     // Three labelled buttons.
@@ -1011,15 +1313,33 @@ fn paint_actions_section(
     y + icon_size
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_identity_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
 ) -> f32 {
-    let y = paint_header_row(scene, text_system, theme, x, w, y, "Identity", 2);
+    let (y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_IDENTITY,
+        "Identity",
+        2,
+    );
+    if !open {
+        return y;
+    }
     let size = 36.0_f32;
     let gap = 8.0_f32;
     let circle = Rect::new(x, y, size, size);
@@ -1053,15 +1373,33 @@ fn paint_identity_section(
     y + size
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_card_section(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
 ) -> f32 {
-    let y = paint_header_row(scene, text_system, theme, x, w, y, "Card", 1);
+    let (y, open) = paint_collapsible_header(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_SECTION_CARD,
+        "Card",
+        1,
+    );
+    if !open {
+        return y;
+    }
     let card_h = 80.0_f32;
     let r = Rect::new(x, y, w, card_h);
     let card = Card::new(NodeId(0)).title("Quick actions");

@@ -1,0 +1,144 @@
+//! `BlenderColorPicker` data + supporting enums + palettes.
+
+use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
+use ph2d_tokens::ColorValue;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum InterpolationMode {
+    Linear,
+    /// OKLCH-perceptually uniform (Blender's default).
+    #[default]
+    Perceptual,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ChannelMode {
+    #[default]
+    Rgb,
+    Hsv,
+}
+
+/// One palette: a named collection of editable swatches.
+#[derive(Clone, Debug)]
+pub struct ColorPalette {
+    pub name: String,
+    pub swatches: Vec<ColorValue>,
+    pub editable: bool,
+}
+
+impl ColorPalette {
+    pub fn new(name: impl Into<String>, swatches: Vec<ColorValue>) -> Self {
+        Self {
+            name: name.into(),
+            swatches,
+            editable: true,
+        }
+    }
+
+    pub fn read_only(mut self) -> Self {
+        self.editable = false;
+        self
+    }
+}
+
+pub fn default_palette() -> ColorPalette {
+    let swatches = [
+        [231u8, 231, 231, 255],
+        [40, 40, 40, 255],
+        [0, 122, 204, 255],
+        [240, 96, 0, 255],
+        [220, 50, 50, 255],
+        [60, 200, 100, 255],
+        [200, 200, 60, 255],
+        [180, 80, 200, 255],
+        [60, 200, 200, 255],
+        [120, 120, 200, 255],
+        [200, 120, 60, 255],
+        [120, 80, 60, 255],
+    ]
+    .into_iter()
+    .map(|[r, g, b, a]| ColorValue::from_rgba8(r, g, b, a))
+    .collect();
+    ColorPalette {
+        name: "Default".into(),
+        swatches,
+        editable: false,
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BlenderColorPicker {
+    pub id: NodeId,
+    pub label: String,
+    pub value: ColorValue,
+    pub interpolation: InterpolationMode,
+    pub channel_mode: ChannelMode,
+    pub palettes: Vec<ColorPalette>,
+    pub active_palette: usize,
+    pub hex: String,
+}
+
+impl BlenderColorPicker {
+    pub fn new(id: NodeId, label: impl Into<String>) -> Self {
+        let value = ColorValue::from_rgba8(231, 231, 231, 255);
+        let mut s = Self {
+            id,
+            label: label.into(),
+            value,
+            interpolation: InterpolationMode::Perceptual,
+            channel_mode: ChannelMode::Rgb,
+            palettes: vec![default_palette()],
+            active_palette: 0,
+            hex: String::new(),
+        };
+        s.sync_hex();
+        s
+    }
+
+    pub fn value(mut self, value: ColorValue) -> Self {
+        self.value = value;
+        self.sync_hex();
+        self
+    }
+
+    pub fn interpolation(mut self, mode: InterpolationMode) -> Self {
+        self.interpolation = mode;
+        self
+    }
+
+    pub fn channel_mode(mut self, mode: ChannelMode) -> Self {
+        self.channel_mode = mode;
+        self
+    }
+
+    pub fn palettes(mut self, palettes: Vec<ColorPalette>) -> Self {
+        self.palettes = palettes;
+        self
+    }
+
+    pub fn active_palette(mut self, idx: usize) -> Self {
+        if idx < self.palettes.len() {
+            self.active_palette = idx;
+        }
+        self
+    }
+
+    pub fn set_value(&mut self, value: ColorValue) {
+        self.value = value;
+        self.sync_hex();
+    }
+
+    pub fn sync_hex(&mut self) {
+        let [r, g, b, a] = self.value.rgba;
+        self.hex = format!("#{r:02X}{g:02X}{b:02X}{a:02X}");
+    }
+
+    pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
+        NodeBuilder::new(Role::Group)
+            .label(&self.label)
+            .bounds(x, y, w, h)
+            .focusable(true)
+            .action(Action::Focus)
+            .build()
+    }
+}

@@ -687,12 +687,40 @@ fn paint_blender_picker_demo(
         h,
     );
     let cp = BlenderColorPicker::new(ids::INSP_BLENDER_PICKER, "Color");
+    let sub_ids = crate::widget::BlenderSubIds {
+        parent: ids::INSP_BLENDER_PICKER,
+        wheel: ids::BLENDER_WHEEL,
+        value_slider: ids::BLENDER_VALUE_SLIDER,
+        interp_linear: ids::BLENDER_INTERP_LINEAR,
+        interp_perceptual: ids::BLENDER_INTERP_PERCEPTUAL,
+        channel_rgb: ids::BLENDER_CHANNEL_RGB,
+        channel_hsv: ids::BLENDER_CHANNEL_HSV,
+        channels: [
+            ids::BLENDER_CHANNEL_0,
+            ids::BLENDER_CHANNEL_1,
+            ids::BLENDER_CHANNEL_2,
+            ids::BLENDER_CHANNEL_3,
+        ],
+        hex: ids::BLENDER_HEX,
+        swatches: [
+            ids::BLENDER_SWATCH_0,
+            ids::BLENDER_SWATCH_1,
+            ids::BLENDER_SWATCH_2,
+            ids::BLENDER_SWATCH_3,
+            ids::BLENDER_SWATCH_4,
+            ids::BLENDER_SWATCH_5,
+            ids::BLENDER_SWATCH_6,
+            ids::BLENDER_SWATCH_7,
+            ids::BLENDER_SWATCH_8,
+            ids::BLENDER_SWATCH_9,
+            ids::BLENDER_SWATCH_10,
+            ids::BLENDER_SWATCH_11,
+        ],
+    };
     crate::widget::paint_blender_color_picker_with_store(
         &cp,
         rect,
-        ids::INSP_BLENDER_PICKER,
-        ids::BLENDER_WHEEL,
-        ids::BLENDER_VALUE_SLIDER,
+        &sub_ids,
         store,
         hit_index,
         scene,

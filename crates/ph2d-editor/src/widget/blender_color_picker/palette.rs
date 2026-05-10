@@ -1,6 +1,7 @@
 //! Palette tabs + swatch grid painter.
 
 use super::state::{BlenderColorPicker, ColorPalette};
+use crate::interaction::HitIndex;
 use crate::paint::{paint_text, resolve};
 use crate::widget::{ColorSwatch, TabItem, Tabs, TabsVariant, paint_color_swatch, paint_tabs};
 use crate::zones::Rect;
@@ -12,6 +13,29 @@ use ph2d_vector::VectorScene;
 pub fn paint_palettes(
     cp: &BlenderColorPicker,
     rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    paint_palettes_with_hits(
+        cp,
+        rect,
+        &[NodeId(0); 12],
+        &mut HitIndex::new(),
+        scene,
+        text_system,
+        theme,
+    );
+}
+
+/// Paint the palette section and register each swatch's hit rect.
+/// `swatch_ids` is a fixed-size array of up to 12 NodeIds; entries
+/// with id == 0 are skipped (no hit registration).
+pub fn paint_palettes_with_hits(
+    cp: &BlenderColorPicker,
+    rect: Rect,
+    swatch_ids: &[NodeId; 12],
+    hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -35,13 +59,23 @@ pub fn paint_palettes(
     let body_y = rect.y + tabs_h + Spacing::Md.px();
     let body_rect = Rect::new(rect.x, body_y, rect.w, rect.y + rect.h - body_y);
     if let Some(palette) = cp.palettes.get(cp.active_palette) {
-        paint_palette_grid(palette, body_rect, scene, text_system, theme);
+        paint_palette_grid(
+            palette,
+            body_rect,
+            swatch_ids,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
     }
 }
 
 fn paint_palette_grid(
     palette: &ColorPalette,
     rect: Rect,
+    swatch_ids: &[NodeId; 12],
+    hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -61,6 +95,12 @@ fn paint_palette_grid(
         let mut sw = ColorSwatch::new(NodeId(i as u64), &palette.name, value.rgba);
         sw.size = crate::widget::SwatchSize::Sm;
         paint_color_swatch(&sw, swatch_rect, scene, theme);
+        // Register hit rect for this swatch if an id was provided.
+        if let Some(&id) = swatch_ids.get(i)
+            && id.0 != 0
+        {
+            hit_index.register(id, swatch_rect);
+        }
     }
     if !palette.editable {
         let hint_y = rect.y + rect.h - TypeToken::Xs.px();

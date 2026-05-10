@@ -154,6 +154,87 @@ pub fn populate(store: &mut WidgetStore) {
             kind: crate::interaction::BlenderHitKind::ValueSlider,
         },
     );
+
+    // Channel slider shims (4 rows: index 0 = R/H, 1 = G/S, 2 = B/V, 3 = A).
+    for (id, idx) in [
+        (ids::BLENDER_CHANNEL_0, 0u8),
+        (ids::BLENDER_CHANNEL_1, 1),
+        (ids::BLENDER_CHANNEL_2, 2),
+        (ids::BLENDER_CHANNEL_3, 3),
+    ] {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind: crate::interaction::BlenderHitKind::ChannelSlider(idx),
+            },
+        );
+    }
+
+    // Hex field as TextInput — the buffer is pre-allocated with the
+    // initial hex string matching the picker's default value.
+    store.register(
+        ids::BLENDER_HEX,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: "#E7E7E7FF".to_string(),
+            caret: 9,
+        },
+    );
+
+    // Segmented toggle shims.
+    store.register(
+        ids::BLENDER_INTERP_LINEAR,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::InterpolationLinear,
+        },
+    );
+    store.register(
+        ids::BLENDER_INTERP_PERCEPTUAL,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::InterpolationPerceptual,
+        },
+    );
+    store.register(
+        ids::BLENDER_CHANNEL_RGB,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::ChannelRgb,
+        },
+    );
+    store.register(
+        ids::BLENDER_CHANNEL_HSV,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::ChannelHsv,
+        },
+    );
+
+    // Palette swatch shims — default_palette has 12 swatches (0..11).
+    for (id, swatch_idx) in [
+        (ids::BLENDER_SWATCH_0, 0u8),
+        (ids::BLENDER_SWATCH_1, 1),
+        (ids::BLENDER_SWATCH_2, 2),
+        (ids::BLENDER_SWATCH_3, 3),
+        (ids::BLENDER_SWATCH_4, 4),
+        (ids::BLENDER_SWATCH_5, 5),
+        (ids::BLENDER_SWATCH_6, 6),
+        (ids::BLENDER_SWATCH_7, 7),
+        (ids::BLENDER_SWATCH_8, 8),
+        (ids::BLENDER_SWATCH_9, 9),
+        (ids::BLENDER_SWATCH_10, 10),
+        (ids::BLENDER_SWATCH_11, 11),
+    ] {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind: crate::interaction::BlenderHitKind::PaletteSwatch(swatch_idx),
+            },
+        );
+    }
 }
 
 /// Apply a [`WidgetEvent`] against Inspector widgets. Returns true

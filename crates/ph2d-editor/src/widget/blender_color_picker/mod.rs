@@ -38,8 +38,12 @@ pub mod wheel;
 #[cfg(test)]
 mod tests;
 
+pub use channels::rgba_to_hsv;
 pub use hex_field::parse_hex;
-pub use paint::{paint_blender_color_picker, paint_blender_color_picker_with_store};
+pub use paint::{
+    BlenderSubIds, paint_blender_color_picker, paint_blender_color_picker_with_store,
+    paint_blender_color_picker_with_store_compat,
+};
 pub use state::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
 };

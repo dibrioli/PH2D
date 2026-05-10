@@ -722,6 +722,39 @@ fn apply_blender_hit(
             store.set_blender_channel_mode(parent, ChannelMode::Hsv);
             Some(parent)
         }
+        BlenderHitKind::ChannelSlider(idx) => {
+            // Compute normalised 0..1 from pointer x relative to the
+            // slider track rect. The full rect is the track hit area
+            // registered by `paint_blender_color_picker_with_store`.
+            let norm = if rect.w > 0.0 {
+                ((px - rect.x) / rect.w).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            store.set_blender_channel(parent, idx, norm);
+            Some(parent)
+        }
+        BlenderHitKind::Hex => {
+            // `Hex` hits redirect focus to the hex TextInput sibling
+            // registered with the same parent id hierarchy. The
+            // BlenderHit NodeId IS the hex TextInput id in our
+            // registration scheme (BLENDER_HEX = NodeId 604 which is
+            // registered as TextInput, not as BlenderHit). This arm
+            // is a no-op: focus was already set by the Down handler.
+            // Return None so no spurious ValueChanged fires.
+            None
+        }
+        BlenderHitKind::PaletteSwatch(swatch_idx) => {
+            // Read the swatch colour from the static default palette
+            // (no alloc: slice index into a const array).
+            let palette = crate::widget::default_palette();
+            if let Some(color) = palette.swatches.get(swatch_idx as usize).copied() {
+                store.set_blender_value(parent, color);
+                Some(parent)
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -1624,5 +1657,206 @@ mod tests {
         let _ = dispatch_text_input(&mut store, 's', &arena);
         let _ = dispatch_text_input(&mut store, 'p', &arena);
         assert_eq!(store.text(NodeId(1)), Some("sp"));
+    }
+
+    // -----------------------------------------------------------------
+    // BlenderColorPicker sub-control dispatch (B4 fix)
+    // -----------------------------------------------------------------
+
+    fn blender_picker_setup() -> (WidgetStore, HitIndex) {
+        use crate::interaction::BlenderHitKind;
+        use crate::widget::{ChannelMode, InterpolationMode};
+        use ph2d_tokens::ColorValue;
+
+        let mut store = WidgetStore::with_capacity(32);
+        store.register(
+            NodeId(100),
+            InteractiveState::BlenderPicker {
+                value: ColorValue::from_rgba8(128, 64, 32, 255),
+                channel_mode: ChannelMode::Rgb,
+                interpolation: InterpolationMode::Perceptual,
+                active_palette: 0,
+            },
+        );
+        // Channel slider shims (0..3 = R, G, B, A).
+        for idx in 0u8..4 {
+            store.register(
+                NodeId(200 + idx as u64),
+                InteractiveState::BlenderHit {
+                    parent: NodeId(100),
+                    kind: BlenderHitKind::ChannelSlider(idx),
+                },
+            );
+        }
+        // Interpolation toggle shims.
+        store.register(
+            NodeId(210),
+            InteractiveState::BlenderHit {
+                parent: NodeId(100),
+                kind: BlenderHitKind::InterpolationLinear,
+            },
+        );
+        store.register(
+            NodeId(211),
+            InteractiveState::BlenderHit {
+                parent: NodeId(100),
+                kind: BlenderHitKind::InterpolationPerceptual,
+            },
+        );
+        // Channel mode toggle shims.
+        store.register(
+            NodeId(212),
+            InteractiveState::BlenderHit {
+                parent: NodeId(100),
+                kind: BlenderHitKind::ChannelRgb,
+            },
+        );
+        store.register(
+            NodeId(213),
+            InteractiveState::BlenderHit {
+                parent: NodeId(100),
+                kind: BlenderHitKind::ChannelHsv,
+            },
+        );
+        // Palette swatch shims.
+        for swatch in 0u8..4 {
+            store.register(
+                NodeId(220 + swatch as u64),
+                InteractiveState::BlenderHit {
+                    parent: NodeId(100),
+                    kind: BlenderHitKind::PaletteSwatch(swatch),
+                },
+            );
+        }
+        let mut hits = HitIndex::new();
+        // Channel slider rects (100 px wide each).
+        for idx in 0u8..4 {
+            hits.register(
+                NodeId(200 + idx as u64),
+                Rect::new(0.0, idx as f32 * 30.0, 100.0, 22.0),
+            );
+        }
+        // Toggle half-rects.
+        hits.register(NodeId(210), Rect::new(0.0, 200.0, 100.0, 28.0));
+        hits.register(NodeId(211), Rect::new(100.0, 200.0, 100.0, 28.0));
+        hits.register(NodeId(212), Rect::new(0.0, 240.0, 100.0, 28.0));
+        hits.register(NodeId(213), Rect::new(100.0, 240.0, 100.0, 28.0));
+        // Swatch rects.
+        for swatch in 0u8..4 {
+            hits.register(
+                NodeId(220 + swatch as u64),
+                Rect::new(swatch as f32 * 30.0, 300.0, 24.0, 24.0),
+            );
+        }
+        (store, hits)
+    }
+
+    #[test]
+    fn channel_slider_down_mutates_red_channel() {
+        let (mut store, hits) = blender_picker_setup();
+        let arena = Bump::new();
+        // Red slider (NodeId 200) rect is x: 0..100. Click at x=50 → R ≈ 128.
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 50.0, 11.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(100))),
+            "expected ValueChanged(100) from channel slider hit"
+        );
+        let (v, _, _, _) = store.blender_picker(NodeId(100)).unwrap();
+        assert!(
+            (v.rgba[0] as f32 / 255.0 - 0.5).abs() < 0.01,
+            "red channel should be ≈128 (0.5 * 255), got {}",
+            v.rgba[0]
+        );
+        // Other channels should be unchanged.
+        assert_eq!(v.rgba[1], 64, "green channel unchanged");
+        assert_eq!(v.rgba[2], 32, "blue channel unchanged");
+    }
+
+    #[test]
+    fn channel_slider_down_mutates_alpha_channel() {
+        let (mut store, hits) = blender_picker_setup();
+        let arena = Bump::new();
+        // Alpha slider (NodeId 203) rect is y offset at 90. Click at x=0 → A = 0.
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 0.0, 101.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(100))),
+            "expected ValueChanged(100) from alpha channel slider"
+        );
+        let (v, _, _, _) = store.blender_picker(NodeId(100)).unwrap();
+        assert_eq!(v.rgba[3], 0, "alpha channel should be 0 after click at x=0");
+    }
+
+    #[test]
+    fn interp_toggle_linear_switches_mode() {
+        use crate::widget::InterpolationMode;
+        let (mut store, hits) = blender_picker_setup();
+        let arena = Bump::new();
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 50.0, 214.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(100)))
+        );
+        let (_, _, interp, _) = store.blender_picker(NodeId(100)).unwrap();
+        assert_eq!(interp, InterpolationMode::Linear);
+    }
+
+    #[test]
+    fn channel_mode_toggle_hsv_switches_mode() {
+        use crate::widget::ChannelMode;
+        let (mut store, hits) = blender_picker_setup();
+        let arena = Bump::new();
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 150.0, 254.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(100)))
+        );
+        let (_, mode, _, _) = store.blender_picker(NodeId(100)).unwrap();
+        assert_eq!(mode, ChannelMode::Hsv);
+    }
+
+    #[test]
+    fn palette_swatch_click_changes_picker_value() {
+        let (mut store, hits) = blender_picker_setup();
+        let arena = Bump::new();
+        // Click swatch 2 (NodeId 222), which maps to default_palette().swatches[2].
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 60.0 + 12.0, 312.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(100))),
+            "expected ValueChanged(100) from swatch click"
+        );
+        let (new_val, _, _, _) = store.blender_picker(NodeId(100)).unwrap();
+        let expected = crate::widget::default_palette().swatches[2];
+        assert_eq!(
+            new_val.rgba, expected.rgba,
+            "picker value should match swatch 2 of default palette"
+        );
     }
 }

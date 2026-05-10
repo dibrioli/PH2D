@@ -64,6 +64,33 @@ pub const INSP_BLENDER_PICKER: NodeId = NodeId(380);
 pub const BLENDER_WHEEL: NodeId = NodeId(381);
 pub const BLENDER_VALUE_SLIDER: NodeId = NodeId(382);
 
+// BlenderColorPicker extension hit ids (range 600-699).
+// Channel sliders (4 rows: R/H, G/S, B/V, A).
+pub const BLENDER_CHANNEL_0: NodeId = NodeId(600);
+pub const BLENDER_CHANNEL_1: NodeId = NodeId(601);
+pub const BLENDER_CHANNEL_2: NodeId = NodeId(602);
+pub const BLENDER_CHANNEL_3: NodeId = NodeId(603);
+// Hex `#RRGGBBAA` TextInput.
+pub const BLENDER_HEX: NodeId = NodeId(604);
+// Segmented toggle ids.
+pub const BLENDER_INTERP_LINEAR: NodeId = NodeId(610);
+pub const BLENDER_INTERP_PERCEPTUAL: NodeId = NodeId(611);
+pub const BLENDER_CHANNEL_RGB: NodeId = NodeId(612);
+pub const BLENDER_CHANNEL_HSV: NodeId = NodeId(613);
+// Palette swatches 0..11 (default_palette has 12 entries).
+pub const BLENDER_SWATCH_0: NodeId = NodeId(620);
+pub const BLENDER_SWATCH_1: NodeId = NodeId(621);
+pub const BLENDER_SWATCH_2: NodeId = NodeId(622);
+pub const BLENDER_SWATCH_3: NodeId = NodeId(623);
+pub const BLENDER_SWATCH_4: NodeId = NodeId(624);
+pub const BLENDER_SWATCH_5: NodeId = NodeId(625);
+pub const BLENDER_SWATCH_6: NodeId = NodeId(626);
+pub const BLENDER_SWATCH_7: NodeId = NodeId(627);
+pub const BLENDER_SWATCH_8: NodeId = NodeId(628);
+pub const BLENDER_SWATCH_9: NodeId = NodeId(629);
+pub const BLENDER_SWATCH_10: NodeId = NodeId(630);
+pub const BLENDER_SWATCH_11: NodeId = NodeId(631);
+
 pub const HIER_PLAYER: NodeId = NodeId(400);
 pub const HIER_SPRITE_IDLE: NodeId = NodeId(401);
 pub const HIER_COLLIDER_BOX: NodeId = NodeId(402);

@@ -30,6 +30,13 @@ pub enum BlenderHitKind {
     InterpolationPerceptual,
     ChannelRgb,
     ChannelHsv,
+    /// One of the 4 horizontal channel sliders (R/G/B/A or H/S/V/A).
+    /// Index 0..3: 0 = R/H, 1 = G/S, 2 = B/V, 3 = A.
+    ChannelSlider(u8),
+    /// The hex `#RRGGBBAA` text input field.
+    Hex,
+    /// One swatch in the active palette. Index into `default_palette().swatches`.
+    PaletteSwatch(u8),
 }
 
 use crate::widget::{
@@ -384,6 +391,43 @@ impl WidgetStore {
         }
     }
 
+    /// Mutate a single channel of the BlenderPicker's RGBA value.
+    /// `channel_idx` 0..=3 = R/G/B/A (or H/S/V/A in HSV mode — caller
+    /// is responsible for converting before calling). `norm` must be in
+    /// [0.0, 1.0].
+    pub fn set_blender_channel(&mut self, id: NodeId, channel_idx: u8, norm: f32) {
+        if let Some(InteractiveState::BlenderPicker {
+            value,
+            channel_mode,
+            ..
+        }) = self.states.get_mut(&id)
+        {
+            let byte = (norm.clamp(0.0, 1.0) * 255.0).round() as u8;
+            match *channel_mode {
+                ChannelMode::Rgb => {
+                    if let Some(slot) = value.rgba.get_mut(channel_idx as usize) {
+                        *slot = byte;
+                    }
+                    let [r, g, b, a] = value.rgba;
+                    *value = ColorValue::from_rgba8(r, g, b, a);
+                }
+                ChannelMode::Hsv => {
+                    // Convert current rgba → (h,s,v,a), update one channel,
+                    // convert back. Uses the same helper as the painter.
+                    let (mut h, mut s, mut v, mut a) = crate::widget::rgba_to_hsv(value.rgba);
+                    match channel_idx {
+                        0 => h = norm.clamp(0.0, 1.0),
+                        1 => s = norm.clamp(0.0, 1.0),
+                        2 => v = norm.clamp(0.0, 1.0),
+                        3 => a = norm.clamp(0.0, 1.0),
+                        _ => {}
+                    }
+                    *value = hsv_to_color_value(h, s, v, a);
+                }
+            }
+        }
+    }
+
     /// Read just the current numeric value (committed). Useful for
     /// linked sliders that don't care about the in-progress buffer.
     pub fn number_value(&self, id: NodeId) -> Option<f64> {
@@ -415,6 +459,31 @@ impl WidgetStore {
             }
         }
     }
+}
+
+/// Convert HSV (all in [0..1]) + alpha to [`ColorValue`].
+/// Inverse of [`crate::widget::blender_color_picker::channels::rgba_to_hsv`].
+pub fn hsv_to_color_value(h: f32, s: f32, v: f32, a: f32) -> ColorValue {
+    let h6 = h * 6.0;
+    let i = h6.floor() as u32 % 6;
+    let f = h6 - h6.floor();
+    let p = v * (1.0 - s);
+    let q = v * (1.0 - f * s);
+    let t = v * (1.0 - (1.0 - f) * s);
+    let (r, g, b) = match i {
+        0 => (v, t, p),
+        1 => (q, v, p),
+        2 => (p, v, t),
+        3 => (p, q, v),
+        4 => (t, p, v),
+        _ => (v, p, q),
+    };
+    ColorValue::from_rgba8(
+        (r * 255.0).round() as u8,
+        (g * 255.0).round() as u8,
+        (b * 255.0).round() as u8,
+        (a * 255.0).round() as u8,
+    )
 }
 
 /// Pretty-print a `f64` for NumberInput buffer initialisation:

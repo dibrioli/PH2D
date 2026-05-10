@@ -7,11 +7,8 @@ use super::ids;
 use super::style::{
     FIELD_GAP, FIELD_ROW_H, PANEL_HEAD_PAD, SECTION_GAP, SECTION_HEAD_H, paint_panel_surface,
 };
-use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use crate::widget::{
     ButtonState, ChannelMode, Checkbox, CheckboxState, CheckboxValue, ColorSwatch, DropdownState,
     InterpolationMode, SectionHeader, SliderOrientation, SliderState, SwatchSize, TabItem, Tabs,
@@ -382,7 +379,20 @@ pub fn paint_inspector(
     );
     paint_inspector_tabs(tabs_rect, scene, text_system, theme, hit_index, store);
 
-    let mut y = tabs_y + tabs_h + Spacing::Md.px();
+    // Scrollable content area below the tabs. Clip layer keeps
+    // overflowing sections inside the panel; `scroll_y` shifts the
+    // content cursor by however much the user scrolled the wheel.
+    let content_top = tabs_y + tabs_h + Spacing::Md.px();
+    let content_bottom = rect.y + rect.h - 4.0;
+    let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
+    let clip = ph2d_vector::Rect::new(
+        rect.x as f64,
+        content_top as f64,
+        (rect.x + rect.w) as f64,
+        content_bottom as f64,
+    );
+    scene.push_clip(&clip);
+    let mut y = content_top - scroll_y;
     let body_pad = 10.0_f32;
     for section in fixture::inspector_sections() {
         let header_rect = Rect::new(
@@ -402,9 +412,10 @@ pub fn paint_inspector(
             continue;
         }
         for field in &section.fields {
-            if y + FIELD_ROW_H > rect.y + rect.h {
-                return;
-            }
+            // Pre-scroll-era code returned early here to avoid
+            // painting past the panel — now the clip layer above
+            // hides overflow, so we keep painting all sections so
+            // scrolling can bring them into view.
             let field_id = ids::inspector_field_id(&field.label);
             let consumed = paint_inspector_field(
                 field,
@@ -423,19 +434,21 @@ pub fn paint_inspector(
         y += SECTION_GAP;
     }
 
-    // Behavior section (Phase 1 polish): Checkbox + Toggle + ColorSwatch.
-    if y + 100.0 < rect.y + rect.h {
-        paint_inspector_behavior_section(
-            rect.x + body_pad,
-            rect.w - body_pad * 2.0,
-            y,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-        );
-    }
+    // Behavior section (Checkbox + Toggle + ColorSwatch) always
+    // paints — scroll brings it into view if it overflows.
+    paint_inspector_behavior_section(
+        rect.x + body_pad,
+        rect.w - body_pad * 2.0,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+
+    // Pop the content clip pushed above the section loop.
+    scene.pop_layer();
 }
 
 /// Map a slider's NodeId to its sibling NumberInput NodeId
@@ -685,61 +698,39 @@ fn paint_inspector_field(
             unreachable!("handled in single-row branch above");
         }
         InspectorFieldKind::Select { current } => {
-            let is_open = field_id
+            // Canonical Dropdown widget — same painter the rest of
+            // the app uses. Was rolled inline pre-audit; see
+            // `docs/UI_Bugs/README.md` §6 for the "ad-hoc chrome"
+            // principle.
+            let id = field_id.unwrap_or(NodeId(0));
+            let (dd_state, is_open) = field_id
                 .and_then(|i| match store.get(i) {
-                    Some(InteractiveState::Dropdown { open, .. }) => Some(*open),
+                    Some(InteractiveState::Dropdown { state, open, .. }) => {
+                        Some((*state, *open))
+                    }
                     _ => None,
                 })
-                .unwrap_or(false);
+                .unwrap_or((crate::widget::DropdownState::Normal, false));
             if let Some(i) = field_id {
                 hit_index.register(i, body_rect);
             }
-            let border = if is_open {
-                ColorToken::Accent
-            } else {
-                ColorToken::Border
-            };
-            fill_rounded_rect(
-                scene,
-                body_rect,
-                Radius::Sm.px(),
-                resolve(ColorToken::Bg3, theme),
-            );
-            stroke_rounded_rect(
-                scene,
-                body_rect,
-                Radius::Sm.px(),
-                if is_open { 2.0 } else { 1.0 },
-                resolve(border, theme),
-            );
-            paint_text(
-                text_system,
-                scene,
-                current,
-                body_rect.x + Spacing::Lg.px(),
-                body_rect.y + (body_rect.h - TypeToken::Xs.px()) * 0.5,
-                TypeToken::Xs.px(),
-                body_rect.w - Spacing::Lg.px() * 2.0 - 24.0,
-                resolve(ColorToken::Text1, theme),
-            );
-            let chev_rect = Rect::new(
-                body_rect.x + body_rect.w - Spacing::Lg.px() - 16.0,
-                body_rect.y + (body_rect.h - 16.0) * 0.5,
-                16.0,
-                16.0,
-            );
-            let chev = if is_open {
-                IconId::ChevronUp
-            } else {
-                IconId::ChevronDown
-            };
-            paint_icon(
-                scene,
-                chev,
-                chev_rect,
-                resolve(ColorToken::Text3, theme),
-                1.5,
-            );
+            // Single-option dropdown — `current` IS the selected
+            // label; we don't have a full options list (fixture
+            // hasn't been extended yet). Real callers should pass
+            // their own option vec.
+            let dd = crate::widget::Dropdown::new(
+                id,
+                &field.label,
+                vec![crate::widget::DropdownOption::new(
+                    NodeId(0),
+                    current.clone(),
+                    current.clone(),
+                )],
+            )
+            .selected(current.clone())
+            .open(is_open)
+            .state(dd_state);
+            crate::widget::paint_dropdown(&dd, body_rect, scene, text_system, theme);
         }
         InspectorFieldKind::Linked { source } => {
             fill_rounded_rect(

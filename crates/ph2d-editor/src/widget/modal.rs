@@ -9,7 +9,7 @@ use crate::icons::IconId;
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
 };
-use crate::widget::{Button, paint_button};
+use crate::widget::{Button, ButtonState, paint_button};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -25,6 +25,11 @@ pub struct Modal {
     pub title: String,
     pub cancel: Button,
     pub confirm: Button,
+    /// Visual state of the inline close icon. Set by the consumer
+    /// from `WidgetStore::button_state(modal.close_id)` so the X
+    /// icon highlights on hover, matching every other interactive
+    /// chip in the editor.
+    pub close_state: ButtonState,
 }
 
 impl Modal {
@@ -34,7 +39,19 @@ impl Modal {
             title: title.into(),
             cancel,
             confirm,
+            close_state: ButtonState::Normal,
         }
+    }
+
+    pub fn close_state(mut self, state: ButtonState) -> Self {
+        self.close_state = state;
+        self
+    }
+
+    /// True iff `(x, y)` lies outside the dialog (i.e. on the scrim).
+    /// Use this to implement click-on-scrim-to-dismiss behavior.
+    pub fn is_on_scrim(&self, dialog_rect: Rect, x: f32, y: f32) -> bool {
+        !dialog_rect.contains(x, y)
     }
 
     pub fn body_rect(&self, host: Rect) -> Rect {
@@ -108,6 +125,11 @@ pub fn paint_modal(
     let pad = Spacing::Lg.px();
     let title_font = TypeToken::Md.px();
     let title_y = header.y + (header.h - title_font) * 0.5;
+    let close_rect = modal.close_rect(dialog_rect);
+    // Reserve everything left of the close icon for the title — the
+    // previous `header.w - pad * 3 - 24` heuristic underestimated
+    // the gap and let long titles slip under the X.
+    let title_max_w = ((close_rect.x - (header.x + pad)) - pad).max(0.0);
     paint_text(
         text_system,
         scene,
@@ -115,16 +137,26 @@ pub fn paint_modal(
         header.x + pad,
         title_y,
         title_font,
-        (header.w - pad * 3.0 - 24.0).max(0.0),
+        title_max_w,
         resolve(ColorToken::Text1, theme),
     );
 
-    let close_color = resolve(ColorToken::Text2, theme);
+    // Hover/press feedback on the close X — a flat icon with no
+    // visible chip felt static next to the rest of the chrome. Uses
+    // the same AccentSoft/Accent pair as `HIERARCHY_ADD`.
+    let (close_bg, close_fg) = match modal.close_state {
+        ButtonState::Pressed => (Some(ColorToken::Accent), ColorToken::AccentFg),
+        ButtonState::Hovered => (Some(ColorToken::AccentSoft), ColorToken::Text1),
+        _ => (None, ColorToken::Text2),
+    };
+    if let Some(bg) = close_bg {
+        fill_rounded_rect(scene, close_rect, 6.0, resolve(bg, theme));
+    }
     paint_icon(
         scene,
         IconId::Close,
-        modal.close_rect(dialog_rect),
-        close_color,
+        close_rect,
+        resolve(close_fg, theme),
         1.5,
     );
 
@@ -151,10 +183,29 @@ pub fn paint_modal(
     );
 }
 
+/// Push a clip layer matching `modal.body_rect(host)` so consumer
+/// content painted between this call and [`pop_modal_body_clip`]
+/// can't leak past the dialog chrome. Always pair the calls.
+pub fn push_modal_body_clip(modal: &Modal, host: Rect, scene: &mut VectorScene) {
+    let body = modal.body_rect(host);
+    let clip = ph2d_vector::Rect::new(
+        body.x as f64,
+        body.y as f64,
+        (body.x + body.w) as f64,
+        (body.y + body.h) as f64,
+    );
+    scene.push_clip(&clip);
+}
+
+/// Pop the clip layer pushed by [`push_modal_body_clip`].
+pub fn pop_modal_body_clip(scene: &mut VectorScene) {
+    scene.pop_layer();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::{ButtonKind, ButtonState};
+    use crate::widget::ButtonKind;
 
     fn fixture() -> Modal {
         Modal::new(

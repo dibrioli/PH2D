@@ -288,6 +288,10 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
     );
+    // Publish Inspector + Hierarchy panel rects so wheel-event
+    // dispatch can route to them. Both are static (no drag offset).
+    hero.store.set_panel_rect(ids::INSP_PANEL, layout.inspector);
+    hero.store.set_panel_rect(ids::HIER_PANEL, layout.hierarchy);
     paint_inspector(
         &layout,
         hero.selection.as_ref(),

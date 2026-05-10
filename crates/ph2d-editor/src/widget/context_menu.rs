@@ -76,6 +76,34 @@ impl ContextMenu {
             ContextMenuEntry::Separator(_) => None,
         }
     }
+
+    /// Rect of the `index`th entry given the menu's host rect + row
+    /// height. Returns `None` for out-of-range indices or separators
+    /// (separators aren't interactive). Hosts use this to register
+    /// hit rects without re-walking the layout the painter does.
+    pub fn entry_rect(&self, host: Rect, index: usize, row_h: f32) -> Option<Rect> {
+        let pad = Spacing::Md.px();
+        let inner_x = host.x + pad;
+        let inner_w = (host.w - pad * 2.0).max(0.0);
+        let mut y = host.y + pad;
+        for (i, entry) in self.entries.iter().enumerate() {
+            match entry {
+                ContextMenuEntry::Item(_) => {
+                    if i == index {
+                        return Some(Rect::new(inner_x, y, inner_w, row_h));
+                    }
+                    y += row_h;
+                }
+                ContextMenuEntry::Separator(_) => {
+                    if i == index {
+                        return None;
+                    }
+                    y += 1.0 + Spacing::Xs.px() * 2.0;
+                }
+            }
+        }
+        None
+    }
 }
 
 pub fn paint_context_menu(
@@ -164,6 +192,23 @@ mod tests {
                 .build_item_a11y(2, 0.0, 0.0, 200.0, 26.0)
                 .is_none()
         );
+    }
+
+    #[test]
+    fn entry_rect_returns_item_position() {
+        let m = fixture();
+        let host = Rect::new(10.0, 20.0, 200.0, m.preferred_height(26.0));
+        let r0 = m.entry_rect(host, 0, 26.0).unwrap();
+        let r1 = m.entry_rect(host, 1, 26.0).unwrap();
+        // Second item must sit one row below the first.
+        assert!((r1.y - r0.y - 26.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn entry_rect_skips_separator() {
+        let m = fixture();
+        let host = Rect::new(0.0, 0.0, 200.0, m.preferred_height(26.0));
+        assert!(m.entry_rect(host, 2, 26.0).is_none());
     }
 
     #[test]

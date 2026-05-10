@@ -114,6 +114,22 @@ pub fn paint_tabs(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_tabs_with_hover(tabs, None, rect, scene, text_system, theme);
+}
+
+/// Like [`paint_tabs`] but draws a subtle hover background under the
+/// hovered tab. Pass `hovered = None` for the unhovered case (or just
+/// call [`paint_tabs`]). Used by call sites that read the hot id from
+/// `WidgetStore` and want immediate hover feedback rather than waiting
+/// for the click to commit the selection.
+pub fn paint_tabs_with_hover(
+    tabs: &Tabs,
+    hovered: Option<usize>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     if tabs.variant == TabsVariant::Segmented {
         let radius = Radius::Md.px();
         fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
@@ -123,9 +139,26 @@ pub fn paint_tabs(
     for (i, item) in tabs.items.iter().enumerate() {
         let r = tabs.tab_rect(rect, i);
         let is_selected = i == tabs.selected;
+        let is_hovered = hovered == Some(i);
+        // Hover affordance for non-selected tabs — a subtle Bg2
+        // fill (Ghost) or AccentSoft @ 50 % alpha equivalent
+        // (Segmented). Selected tabs already have their own
+        // emphasis, so we don't paint the hover layer on top.
+        if is_hovered && !is_selected {
+            let inset = Rect::new(
+                r.x + 2.0,
+                r.y + 2.0,
+                (r.w - 4.0).max(0.0),
+                (r.h - 4.0).max(0.0),
+            );
+            let radius = (Radius::Md.px() - 2.0).max(0.0);
+            fill_rounded_rect(scene, inset, radius, resolve(ColorToken::Bg2, theme));
+        }
         match tabs.variant {
             TabsVariant::Ghost => {
                 let fg = if is_selected {
+                    ColorToken::Text1
+                } else if is_hovered {
                     ColorToken::Text1
                 } else {
                     ColorToken::Text2

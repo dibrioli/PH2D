@@ -305,3 +305,102 @@ durante o desenvolvimento.
   evento, mas chamadas de `format!`/`String::push_str` no painter
   ainda alocam. Para hot-path use `paint_text_centered` com slices
   ou builders sobre BumpString.
+
+---
+
+## 9. Auditoria pós-picker (loop M13.x)
+
+Padrões aplicados em massa quando varremos o catálogo inteiro depois
+do BlenderColorPicker estabilizar. Cada item generaliza algo que já
+estava implícito nos §1–§8.
+
+### 9.1 Helpers de hit (`close_rect`, `entry_rect`, `row_rect`, `chevron_rect`)
+
+- **Sintoma**: consumidores recalculavam a geometria interna dos
+  widgets para registrar sub-hits (ex.: close X de uma `Tag`,
+  chevron de uma linha de `TreeView`, item de um `ContextMenu`). Era
+  fácil errar paddings e descolar do que o painter desenhava.
+- **Fix**: cada widget composto expõe métodos públicos que devolvem
+  os rects de cada sub-elemento — fonte única usada por painter e
+  hit-test. Padrão é `widget.<elemento>_rect(host[, index])`.
+- **Código**: [`widget/tag.rs Tag::close_rect`](../../crates/ph2d-editor/src/widget/tag.rs);
+  [`widget/context_menu.rs ContextMenu::entry_rect`](../../crates/ph2d-editor/src/widget/context_menu.rs);
+  [`widget/tree_view.rs TreeView::row_rect / chevron_rect`](../../crates/ph2d-editor/src/widget/tree_view.rs).
+
+### 9.2 Body-clip helpers em surface containers
+
+- **Sintoma**: conteúdo pintado dentro de um `Modal`/`Card`/`Popover`
+  vazava pelos cantos arredondados (mesma família de bug do §3.1,
+  mas em escala de container e não de glifo).
+- **Fix**: cada container expõe `push_<container>_body_clip` /
+  `pop_<container>_body_clip` que empilham um `scene.push_clip`
+  pelo `body_rect`. Consumidor chama em par.
+- **Código**: [`widget/modal.rs push_modal_body_clip`](../../crates/ph2d-editor/src/widget/modal.rs);
+  [`widget/card.rs push_card_body_clip`](../../crates/ph2d-editor/src/widget/card.rs);
+  [`widget/popover.rs push_popover_clip`](../../crates/ph2d-editor/src/widget/popover.rs).
+
+### 9.3 Medição real em TODO painter com `text_system`
+
+- **Sintoma**: rótulos secundários (key shortcut no `ListItem`,
+  segmentos do `StatusBar`) ficavam apertados/sobrescritos. Mesmo
+  bug que o §3.3 mas em widgets que escapavam da regra.
+- **Fix**: substituir QUALQUER `chars().count() * <const>` por
+  `text_system.layout(s, font_size, INF).width()`. Único caso
+  aceito: estimativas pré-text-system (ex.: `preferred_width`
+  chamado pela fase de layout, antes da paint pass).
+- **Código**: [`widget/list_item.rs paint_list_item value_w`](../../crates/ph2d-editor/src/widget/list_item.rs);
+  [`widget/status_bar.rs paint_status_bar widths`](../../crates/ph2d-editor/src/widget/status_bar.rs).
+
+### 9.4 ProgressBar: raio do fill clamped à largura
+
+- **Sintoma**: valores baixos (0–10 %) exibiam stadium com caps
+  iguais ao trilho. Visualmente o fill parecia maior que o valor.
+- **Fix**: `fill_radius = radius.min(fill_w * 0.5)`. Quando o fill
+  é mais estreito que o diâmetro do cap, o cap encolhe junto.
+- **Código**: [`widget/progress_bar.rs`](../../crates/ph2d-editor/src/widget/progress_bar.rs).
+
+### 9.5 Checkbox indeterminate: glifo certo
+
+- **Sintoma**: o estado "mixed" pintava um `+` (Plus) — lia como
+  "adicionar" e não como "alguns filhos selecionados".
+- **Fix**: adicionado `IconId::Minus` (path único `M5 12h14`); o
+  pintor usa Minus para Indeterminate.
+- **Código**: [`icons.rs IconId::Minus`](../../crates/ph2d-editor/src/icons.rs);
+  [`widget/checkbox.rs paint_checkbox`](../../crates/ph2d-editor/src/widget/checkbox.rs).
+
+### 9.6 Toggle disabled deve preservar on/off
+
+- **Sintoma**: `Toggle` desabilitado virava cinza tanto em on quanto
+  em off — usuário não conseguia ler o valor.
+- **Fix**: disabled+on → `AccentSoft`; disabled+off → `Border`. Estado
+  on continua legível mesmo travado.
+- **Código**: [`widget/toggle.rs paint_toggle`](../../crates/ph2d-editor/src/widget/toggle.rs).
+
+### 9.7 Tabs hover overlay
+
+- **Sintoma**: tabs não-selecionadas não davam feedback sob o cursor.
+- **Fix**: `paint_tabs_with_hover(hovered: Option<usize>, …)` desenha
+  um `Bg2` rounded por baixo da tab quando hovered e não-selecionada.
+  `paint_tabs` continua sendo o entry point estático.
+- **Código**: [`widget/tabs.rs paint_tabs_with_hover`](../../crates/ph2d-editor/src/widget/tabs.rs).
+
+### 9.8 Tooltip registry genérico
+
+- **Sintoma**: tooltips estavam hardcoded em `tooltip_for(id)` num
+  match enorme; cada widget novo exigia editar topbar.rs.
+- **Fix**: `WidgetStore::set_tooltip(id, text)` + `tooltip_for(id)`
+  como side-table. `paint_hover_tooltip` lê do store. Qualquer
+  painter pode registrar tooltip via uma linha.
+- **Código**: [`interaction/state.rs tooltips`](../../crates/ph2d-editor/src/interaction/state.rs);
+  [`screens/hero/topbar.rs paint_hover_tooltip`](../../crates/ph2d-editor/src/screens/hero/topbar.rs).
+
+### 9.9 TextArea multi-line caret/selection
+
+- **Sintoma**: `TextArea` não mostrava caret nem seleção quando
+  focado — invisível pro usuário.
+- **Fix**: `paint_text_area_with_state(caret, selection_anchor, …)`
+  divide `value` por `\n`, mede prefixo da linha do caret com
+  `text_system.layout`, e desenha caret + AccentSoft por linha. Seleção
+  multi-linha estende até a margem direita nas linhas intermediárias
+  (convenção de editor).
+- **Código**: [`widget/text_area.rs paint_text_area_with_state`](../../crates/ph2d-editor/src/widget/text_area.rs).

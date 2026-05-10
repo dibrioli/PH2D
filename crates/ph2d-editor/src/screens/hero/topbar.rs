@@ -38,6 +38,29 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Seed the generic tooltip side-table. Previously these strings
+    // lived only in `tooltip_for(id)` and the hover painter matched
+    // ids directly; now every widget can register its own tooltip
+    // via `store.set_tooltip(id, text)` — keeps screens cohesive
+    // with no boilerplate per-id lookup.
+    for (id, text) in [
+        (ids::TOPBAR_SAVE, "Save \u{00b7} \u{2318}S"),
+        (ids::TOPBAR_PROJECT, "Project"),
+        (ids::TOPBAR_PLAY_TOGGLE, "Theme mode"),
+        (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),
+        (ids::TOPBAR_RIGHT_LAYERS, "Layers"),
+        (ids::TOPBAR_RIGHT_ASSETS, "Asset library"),
+        (ids::TOPBAR_RIGHT_SCRIPT, "Code \u{00b7} Luau"),
+        (ids::TOOL_TRANSLATE, "Translate \u{00b7} G"),
+        (ids::TOOL_ROTATE, "Rotate \u{00b7} R"),
+        (ids::TOOL_SCALE, "Scale \u{00b7} S"),
+        (ids::TOOL_PIVOT, "Pivot"),
+        (ids::TOOL_UNDO, "Undo"),
+        (ids::TOOL_REDO, "Redo"),
+        (ids::HIERARCHY_ADD, "Add entity"),
+    ] {
+        store.set_tooltip(id, text);
+    }
 }
 
 /// Apply a [`WidgetEvent`] against TopBar widgets. Returns true iff
@@ -48,31 +71,12 @@ pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
     false
 }
 
-/// Tooltip text for a known TopBar / LeftRail id when the user
-/// hovers over it. Returns `None` for ids without a defined hint.
-pub fn tooltip_for(id: NodeId) -> Option<&'static str> {
-    Some(match id {
-        x if x == ids::TOPBAR_SAVE => "Save \u{00b7} \u{2318}S",
-        x if x == ids::TOPBAR_PROJECT => "Project",
-        x if x == ids::TOPBAR_PLAY_TOGGLE => "Theme mode",
-        x if x == ids::TOPBAR_PLAY_BUTTON => "Run \u{00b7} \u{2318}\u{21b5}",
-        x if x == ids::TOPBAR_RIGHT_LAYERS => "Layers",
-        x if x == ids::TOPBAR_RIGHT_ASSETS => "Asset library",
-        x if x == ids::TOPBAR_RIGHT_SCRIPT => "Code \u{00b7} Luau",
-        x if x == ids::TOOL_TRANSLATE => "Translate \u{00b7} G",
-        x if x == ids::TOOL_ROTATE => "Rotate \u{00b7} R",
-        x if x == ids::TOOL_SCALE => "Scale \u{00b7} S",
-        x if x == ids::TOOL_PIVOT => "Pivot",
-        x if x == ids::TOOL_UNDO => "Undo",
-        x if x == ids::TOOL_REDO => "Redo",
-        x if x == ids::HIERARCHY_ADD => "Add entity",
-        _ => return None,
-    })
-}
-
 /// Paint a Tooltip floating just above the currently hovered widget.
 /// Called by the hero orchestrator after every chrome painter has
-/// run so the tooltip lands on top.
+/// run so the tooltip lands on top. Tooltip text is read from the
+/// store's generic tooltip side-table — populate it via
+/// `WidgetStore::set_tooltip(id, text)` from any painter / populate
+/// pass.
 pub fn paint_hover_tooltip(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -83,7 +87,7 @@ pub fn paint_hover_tooltip(
     let Some(id) = store.hot_id() else {
         return;
     };
-    let Some(text) = tooltip_for(id) else {
+    let Some(text) = store.tooltip_for(id) else {
         return;
     };
     let Some(target_rect) = hit_index.rect_for(id) else {

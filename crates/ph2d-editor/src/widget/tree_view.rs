@@ -7,7 +7,7 @@
 //! handling without per-node mutation.
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -103,6 +103,32 @@ impl TreeView {
         out
     }
 
+    /// Rect of the `visible_index`th row given the host rect and row
+    /// height. Hosts use this to register a per-row hit zone so a
+    /// click selects the entity at that row.
+    pub fn row_rect(&self, host: Rect, visible_index: usize, row_h: f32) -> Rect {
+        Rect::new(host.x, host.y + row_h * visible_index as f32, host.w, row_h)
+    }
+
+    /// Rect of the expand/collapse chevron for the `visible_index`th
+    /// row, given the host rect, depth, and row height. Hosts use
+    /// this to register a dedicated hit so the chevron toggles
+    /// expansion without triggering selection.
+    pub fn chevron_rect(
+        &self,
+        host: Rect,
+        visible_index: usize,
+        depth: usize,
+        row_h: f32,
+    ) -> Rect {
+        let pad_x = Spacing::Md.px();
+        let indent = Spacing::Lg.px();
+        let chev_size = (row_h * 0.6).clamp(10.0, 16.0);
+        let y = host.y + row_h * visible_index as f32;
+        let x = host.x + pad_x + indent * depth as f32;
+        Rect::new(x, y + (row_h - chev_size) * 0.5, chev_size, chev_size)
+    }
+
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
         NodeBuilder::new(Role::Tree)
             .label(&self.label)
@@ -158,6 +184,17 @@ pub fn paint_tree_view(
                 row,
                 Radius::Xs.px(),
                 resolve(ColorToken::AccentSoft, theme),
+            );
+            // Thin accent stroke so the selected row reads as
+            // "active" rather than just "tinted" — matches the
+            // hierarchy panel's row stroke and the picker's
+            // channel-chip-active state.
+            stroke_rounded_rect(
+                scene,
+                row,
+                Radius::Xs.px(),
+                1.0,
+                resolve(ColorToken::Accent, theme),
             );
         }
         let depth_offset = indent * (*depth as f32);

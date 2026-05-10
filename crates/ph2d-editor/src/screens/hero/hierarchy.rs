@@ -131,12 +131,20 @@ pub fn paint_hierarchy(
 
     let body_top = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0;
     let body_pad = 8.0_f32;
-    let mut y = body_top;
+    // Scrollable content area below the header. Clip layer + wheel
+    // offset so the entity list can grow past the panel bottom.
+    let content_bottom = rect.y + rect.h - 4.0;
+    let scroll_y = store.panel_scroll(ids::HIER_PANEL).max(0.0);
+    let clip = ph2d_vector::Rect::new(
+        rect.x as f64,
+        body_top as f64,
+        (rect.x + rect.w) as f64,
+        content_bottom as f64,
+    );
+    scene.push_clip(&clip);
+    let mut y = body_top - scroll_y;
     let selected_label = current_selection_label();
     for mut entity in fixture::hierarchy() {
-        if y + HIER_ROW_H > rect.y + rect.h {
-            break;
-        }
         let row_rect = Rect::new(rect.x + body_pad, y, rect.w - body_pad * 2.0, HIER_ROW_H);
         if let Some(ref sel_label) = selected_label {
             entity.selected = entity.name == *sel_label;
@@ -147,6 +155,7 @@ pub fn paint_hierarchy(
         paint_hierarchy_row(&entity, row_rect, scene, text_system, theme);
         y += HIER_ROW_H + 2.0;
     }
+    scene.pop_layer();
 }
 
 // `paint_hierarchy` reads the current selection label via this

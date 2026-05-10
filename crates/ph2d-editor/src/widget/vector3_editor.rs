@@ -5,7 +5,7 @@
 //! Per-axis tinting (Danger/Success/Info) makes axes visually
 //! distinct without a colored chip.
 
-use super::number_input::{NumberInput, paint_number_input};
+use super::number_input::{NumberInput, paint_number_input_with_buffer};
 use super::text_input::TextInputState;
 use crate::paint::{paint_text, resolve};
 use crate::zones::Rect;
@@ -92,6 +92,23 @@ pub fn paint_vector3_editor(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_vector3_editor_with_state(v, [None; 3], [0; 3], [None; 3], rect, scene, text_system, theme);
+}
+
+/// Like [`paint_vector3_editor`] but renders per-axis live edit
+/// buffers + caret + selection. The arrays index 0/1/2 = X/Y/Z. Pass
+/// `[None; 3]` / `[0; 3]` for the static (unfocused) case.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_vector3_editor_with_state(
+    v: &Vector3Editor,
+    buffers: [Option<&str>; 3],
+    carets: [usize; 3],
+    selection_anchors: [Option<usize>; 3],
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     let rects = v.field_rects(rect);
     let labels = ["X", "Y", "Z"];
     let label_tokens = [ColorToken::Danger, ColorToken::Success, ColorToken::Info];
@@ -123,7 +140,16 @@ pub fn paint_vector3_editor(
                 resolve(color, theme),
             );
         }
-        paint_number_input(input, field_rect, scene, text_system, theme);
+        paint_number_input_with_buffer(
+            input,
+            buffers[i],
+            carets[i],
+            selection_anchors[i],
+            field_rect,
+            scene,
+            text_system,
+            theme,
+        );
     }
 }
 

@@ -88,6 +88,24 @@ impl Tag {
         builder.build()
     }
 
+    /// Rect of the close `X` icon inside `host` (or `None` for
+    /// non-removable tags). Hosts use this to register a dedicated
+    /// hit zone for the close action so a click on the X removes
+    /// the tag rather than activating the whole pill.
+    pub fn close_rect(&self, host: Rect) -> Option<Rect> {
+        if !self.removable {
+            return None;
+        }
+        let pad_x = (host.h * 0.5).max(8.0);
+        let close_size = (host.h * 0.7).clamp(10.0, 16.0);
+        Some(Rect::new(
+            host.x + host.w - pad_x - close_size,
+            host.y + (host.h - close_size) * 0.5,
+            close_size,
+            close_size,
+        ))
+    }
+
     fn bg_token(&self) -> ColorToken {
         if self.state == TagState::Disabled {
             return ColorToken::Bg2;
@@ -134,14 +152,7 @@ pub fn paint_tag(
     }
 
     let pad_x = (rect.h * 0.5).max(8.0);
-    if tag.removable {
-        let close_size = (rect.h * 0.7).clamp(10.0, 16.0);
-        let close_rect = Rect::new(
-            rect.x + rect.w - pad_x - close_size,
-            rect.y + (rect.h - close_size) * 0.5,
-            close_size,
-            close_size,
-        );
+    if let Some(close_rect) = tag.close_rect(rect) {
         let label_rect = Rect::new(
             rect.x + pad_x,
             rect.y,
@@ -178,6 +189,18 @@ mod tests {
     fn a11y_static_tag_has_label_role() {
         let node = Tag::new(NodeId(1), "x").build_a11y(0.0, 0.0, 60.0, 24.0);
         assert_eq!(node.role(), Role::Label);
+    }
+
+    #[test]
+    fn close_rect_only_for_removable() {
+        let host = Rect::new(0.0, 0.0, 80.0, 22.0);
+        assert!(Tag::new(NodeId(1), "x").close_rect(host).is_none());
+        let r = Tag::new(NodeId(1), "x")
+            .removable(true)
+            .close_rect(host)
+            .unwrap();
+        // close X must sit at the right edge of the pill.
+        assert!(r.x > host.x + host.w * 0.5);
     }
 
     #[test]

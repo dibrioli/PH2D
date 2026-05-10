@@ -119,10 +119,14 @@ pub fn paint_list_item(
     }
 
     let chevron_w = if item.trailing_chevron { icon_w } else { 0.0 };
+    // Real text measurement for the right-aligned value pill — the
+    // `len * 7` heuristic underestimated wide glyphs and overlapped
+    // the label on proportional fonts (`docs/UI_Bugs/README.md` §3.3).
+    let value_font = TypeToken::Sm.px();
     let value_w = item
         .value
         .as_ref()
-        .map(|v| v.len() as f32 * 7.0)
+        .map(|v| text_system.layout(v, value_font, f32::INFINITY).width())
         .unwrap_or(0.0);
     let label_w =
         (rect.x + rect.w - cursor_x - pad_x - chevron_w - value_w - Spacing::Lg.px()).max(0.0);
@@ -152,7 +156,7 @@ pub fn paint_list_item(
             value,
             value_x,
             label_y,
-            TypeToken::Sm.px(),
+            value_font,
             value_w,
             resolve(ColorToken::Text2, theme),
         );

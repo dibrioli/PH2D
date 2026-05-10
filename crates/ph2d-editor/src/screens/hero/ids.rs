@@ -56,6 +56,8 @@ pub const INSP_NUM_CAM_YAW: NodeId = NodeId(354);
 pub const INSP_HOT_RELOAD_CHECK: NodeId = NodeId(360);
 pub const INSP_SNAP_GRID_TOGGLE: NodeId = NodeId(361);
 pub const INSP_TINT_SWATCH: NodeId = NodeId(370);
+/// Inspector panel container — used as the wheel-scroll key.
+pub const INSP_PANEL: NodeId = NodeId(371);
 pub const INSP_BLENDER_PICKER: NodeId = NodeId(380);
 
 // BlenderColorPicker sub-control hit ids — registered by the
@@ -127,6 +129,8 @@ pub const BLENDER_SWATCH_24: NodeId = NodeId(654);
 pub const BLENDER_SWATCH_25: NodeId = NodeId(655);
 pub const BLENDER_SWATCH_26: NodeId = NodeId(656);
 
+/// Hierarchy panel container — wheel-scroll key.
+pub const HIER_PANEL: NodeId = NodeId(399);
 pub const HIER_PLAYER: NodeId = NodeId(400);
 pub const HIER_SPRITE_IDLE: NodeId = NodeId(401);
 pub const HIER_COLLIDER_BOX: NodeId = NodeId(402);

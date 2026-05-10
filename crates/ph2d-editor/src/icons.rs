@@ -86,6 +86,7 @@ pub enum IconId {
     Maximize,
     Menu,
     Minimize,
+    Minus,
     Modify,
     More,
     MoreHorizontal,
@@ -314,6 +315,7 @@ impl IconId {
             Self::Minimize => &[IconCmd::Path(
                 "M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3",
             )],
+            Self::Minus => &[IconCmd::Path("M5 12h14")],
             Self::Modify => &[
                 IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 3.0),
                 IconCmd::Circle(12.0, 12.0, 4.0),

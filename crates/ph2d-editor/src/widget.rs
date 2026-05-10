@@ -45,7 +45,7 @@ pub use blender_color_picker::{
     paint_blender_color_picker_with_store_compat, parse_hex, rgba_to_hsv, value_pick, wheel_pick,
 };
 pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
-pub use card::{Card, paint_card};
+pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};
 pub use color_swatch::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
@@ -56,10 +56,10 @@ pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
 pub use dropdown::{Dropdown, DropdownOption, DropdownState, paint_dropdown};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
-pub use modal::{Modal, paint_modal};
+pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{NumberInput, paint_number_input, paint_number_input_with_buffer};
 pub use pill_group::{PILL_PADDING_PX, PillGroup, paint_pill_group};
-pub use popover::{Popover, paint_popover};
+pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_popover_clip};
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
@@ -72,7 +72,7 @@ pub use slider_with_chip::{
 };
 pub use spinner::{Spinner, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};
-pub use tabs::{TabItem, Tabs, TabsVariant, paint_tabs};
+pub use tabs::{TabItem, Tabs, TabsVariant, paint_tabs, paint_tabs_with_hover};
 pub use tag::{Tag, TagState, TagTone, paint_tag};
 pub use text_area::{TextArea, min_height as text_area_min_height, paint_text_area};
 pub use text_input::{TextInput, TextInputState, paint_text_input, paint_text_input_with_buffer};
@@ -83,4 +83,4 @@ pub use tool_rail::{
 };
 pub use tooltip::{Tooltip, paint_tooltip};
 pub use tree_view::{TreeNode, TreeView, paint_tree_view};
-pub use vector3_editor::{Vector3Editor, paint_vector3_editor};
+pub use vector3_editor::{Vector3Editor, paint_vector3_editor, paint_vector3_editor_with_state};

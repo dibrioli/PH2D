@@ -280,6 +280,12 @@ pub struct WidgetStore {
     /// under the cursor. Cleared together with `clear_for_frame` on
     /// the hit_index by the host (or hero) at frame start.
     panel_rects: BTreeMap<NodeId, Rect>,
+    /// Tooltip text per widget id. Read by `paint_hover_tooltip`
+    /// when the user hovers over a registered widget. Populated by
+    /// `populate` / paint passes via `set_tooltip`. Replaces the old
+    /// hardcoded `tooltip_for(id)` match — every widget can now
+    /// participate without per-id boilerplate.
+    tooltips: BTreeMap<NodeId, String>,
 }
 
 impl WidgetStore {
@@ -306,6 +312,7 @@ impl WidgetStore {
             eyedropper_pending: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
+            tooltips: BTreeMap::new(),
         }
     }
 
@@ -592,6 +599,25 @@ impl WidgetStore {
             }
         }
         None
+    }
+
+    /// Register a tooltip string for `id`. Called by `populate`
+    /// passes or directly inside painters; read by the hover-tooltip
+    /// pass via [`Self::tooltip_for`]. Empty strings are treated as
+    /// no-tooltip and removed from the table.
+    pub fn set_tooltip(&mut self, id: NodeId, text: impl Into<String>) {
+        let s = text.into();
+        if s.is_empty() {
+            self.tooltips.remove(&id);
+        } else {
+            self.tooltips.insert(id, s);
+        }
+    }
+
+    /// Lookup the tooltip for a widget id. Returns `None` if the id
+    /// has no registered tooltip.
+    pub fn tooltip_for(&self, id: NodeId) -> Option<&str> {
+        self.tooltips.get(&id).map(|s| s.as_str())
     }
 
     /// Append `color` to the BlenderPicker's palette. No-op if the

@@ -89,7 +89,17 @@ pub fn paint_progress_bar(
     };
     if fill_w > 0.0 {
         let fill_rect = Rect::new(rect.x, rect.y, fill_w, rect.h);
-        fill_rounded_rect(scene, fill_rect, radius, resolve(ColorToken::Accent, theme));
+        // Clamp the fill radius to half the fill width so a tiny
+        // progress value (e.g. 5%) doesn't paint a stadium that
+        // visually overstates the value — the pill caps would
+        // otherwise occupy more pixels than the actual fill.
+        let fill_radius = radius.min(fill_w * 0.5).max(0.0);
+        fill_rounded_rect(
+            scene,
+            fill_rect,
+            fill_radius,
+            resolve(ColorToken::Accent, theme),
+        );
     }
     if bar.show_percent
         && let ProgressMode::Determinate(v) = bar.mode

@@ -114,7 +114,37 @@ pub fn paint_card(
             (header.w - pad * 2.0).max(0.0),
             resolve(ColorToken::Text1, theme),
         );
+        // 1-px divider between header and body, inset so the line
+        // doesn't run into the rounded corners and create the same
+        // ear artifact tracked in `docs/UI_Bugs/README.md` §3.1.
+        let pad_x = Spacing::Md.px();
+        let div_rect = Rect::new(rect.x + pad_x, header.y + header.h - 1.0, rect.w - pad_x * 2.0, 1.0);
+        fill_rounded_rect(scene, div_rect, 0.5, resolve(ColorToken::Border, theme));
     }
+    if let Some(footer) = card.footer_rect(rect) {
+        let pad_x = Spacing::Md.px();
+        let div_rect = Rect::new(rect.x + pad_x, footer.y, rect.w - pad_x * 2.0, 1.0);
+        fill_rounded_rect(scene, div_rect, 0.5, resolve(ColorToken::Border, theme));
+    }
+}
+
+/// Push a clip layer matching `card.body_rect(host)` so consumer
+/// content painted between this call and [`pop_card_body_clip`] is
+/// kept inside the body slot and can't leak past the rounded chrome.
+pub fn push_card_body_clip(card: &Card, host: Rect, scene: &mut VectorScene) {
+    let body = card.body_rect(host);
+    let clip = ph2d_vector::Rect::new(
+        body.x as f64,
+        body.y as f64,
+        (body.x + body.w) as f64,
+        (body.y + body.h) as f64,
+    );
+    scene.push_clip(&clip);
+}
+
+/// Pop the clip layer pushed by [`push_card_body_clip`].
+pub fn pop_card_body_clip(scene: &mut VectorScene) {
+    scene.pop_layer();
 }
 
 #[cfg(test)]

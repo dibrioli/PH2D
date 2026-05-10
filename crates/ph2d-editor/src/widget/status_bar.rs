@@ -130,21 +130,29 @@ pub fn paint_status_bar(
         return;
     }
     let pad = Spacing::Lg.px();
-    let approx = TypeToken::Sm.px() * 0.6;
     let dot_extra = 12.0;
-    // Re-use preferred-width math to derive each slot's exact extent.
+    let font = TypeToken::Sm.px();
+    // Real text measurement per segment — the previous `chars × 0.6`
+    // heuristic miscounted proportional glyphs and made wide
+    // segments (e.g. `13101 / 16660`) shrink while narrow ones
+    // overflowed. See `docs/UI_Bugs/README.md` §3.3.
     let widths: Vec<f32> = bar
         .segments
         .iter()
         .map(|s| {
-            let w = s.text.chars().count() as f32 * approx + pad * 2.0;
-            if s.leading_dot { w + dot_extra } else { w }
+            let measured = text_system
+                .layout(&s.text, font, f32::INFINITY)
+                .width();
+            let mut w = measured + pad * 2.0;
+            if s.leading_dot {
+                w += dot_extra;
+            }
+            w
         })
         .collect();
     let total: f32 = widths.iter().sum();
     let scale = if total > 0.0 { rect.w / total } else { 1.0 };
 
-    let font = TypeToken::Sm.px();
     let mut x = rect.x;
     for (i, segment) in bar.segments.iter().enumerate() {
         let w = widths[i] * scale;

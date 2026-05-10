@@ -133,7 +133,11 @@ pub fn paint_checkbox(
     let g = resolve(glyph_color, theme);
     match cb.value {
         CheckboxValue::Checked => paint_icon(scene, IconId::Check, box_rect, g, 1.5),
-        CheckboxValue::Indeterminate => paint_icon(scene, IconId::Plus, box_rect, g, 1.5),
+        // Indeterminate paints a horizontal dash (Minus glyph) — the
+        // platform convention for "some children selected". Previous
+        // code used `Plus` here, which painted a `+` and read as
+        // "add" rather than "mixed".
+        CheckboxValue::Indeterminate => paint_icon(scene, IconId::Minus, box_rect, g, 2.0),
         CheckboxValue::Unchecked => {}
     }
 

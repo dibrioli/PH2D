@@ -78,18 +78,31 @@ impl Toggle {
 pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let radius = Radius::Full.px();
     let body_token = match (toggle.on, toggle.state) {
-        (_, ToggleState::Disabled) => ColorToken::Border,
+        // Disabled + on stays on a muted accent so users can still
+        // read the current value at a glance; disabled + off keeps
+        // the neutral Border fill. Previously both collapsed to
+        // Border which read as "off, locked" regardless of the
+        // actual `on` flag.
+        (true, ToggleState::Disabled) => ColorToken::AccentSoft,
+        (false, ToggleState::Disabled) => ColorToken::Border,
         (true, _) => ColorToken::Accent,
         (false, _) => ColorToken::Bg2,
     };
     fill_rounded_rect(scene, rect, radius, resolve(body_token, theme));
 
-    if toggle.state == ToggleState::Focused {
+    // Subtle border emphasis on Hover/Focus so the off-state pill
+    // doesn't look static when the cursor is over it.
+    if matches!(toggle.state, ToggleState::Hovered | ToggleState::Focused) {
+        let stroke_w = if toggle.state == ToggleState::Focused {
+            2.0
+        } else {
+            1.0
+        };
         stroke_rounded_rect(
             scene,
             rect,
             radius,
-            2.0,
+            stroke_w,
             resolve(ColorToken::BorderEmph, theme),
         );
     }

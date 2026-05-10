@@ -509,6 +509,28 @@ fn next_char_boundary(s: &str, mut i: usize) -> usize {
     i
 }
 
+/// Wheel / trackpad scroll. Finds the panel under `(x, y)` via
+/// [`WidgetStore::panel_at`] and adjusts that panel's
+/// `panel_scroll` by `delta_y`. Caller (painter) is responsible
+/// for clamping the offset against the panel's `content_h` —
+/// dispatch only deltas, doesn't know content height.
+pub fn dispatch_wheel<'frame>(
+    store: &mut WidgetStore,
+    event: ph2d_host::WheelEvent,
+    arena: &'frame Bump,
+) -> &'frame [WidgetEvent] {
+    let events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
+    if let Some(panel) = store.panel_at(event.x, event.y) {
+        let cur = store.panel_scroll(panel);
+        // delta_y > 0 from winit means "scroll forward" / content
+        // moves up. We store offset as "how far down content
+        // pretends to be" — so positive delta increments the
+        // offset (showing content further down).
+        store.set_panel_scroll(panel, (cur - event.delta_y).max(0.0));
+    }
+    events.into_bump_slice()
+}
+
 /// Character input from the IME / keyboard. Inserts `ch` at the
 /// caret of a focused [`InteractiveState::TextInput`] or appends to
 /// a focused [`InteractiveState::Combobox::query`]. Other widget

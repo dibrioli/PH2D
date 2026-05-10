@@ -20,7 +20,7 @@ pub mod events;
 
 pub use events::{
     CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PointerButton, PointerEvent, PointerKind,
-    PointerSource, WindowSize,
+    PointerSource, WheelEvent, WindowSize,
 };
 
 /// Services exposed by the shell to the core.

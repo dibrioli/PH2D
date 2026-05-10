@@ -337,27 +337,16 @@ pub fn paint_components_showcase(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    // Width must fit; height can be smaller than the panel — the
-    // panel is movable via the drag bar so the user can scroll the
-    // overflowing portion into view by dragging it.
-    if layout.canvas.w < SHOWCASE_W + 40.0 || layout.canvas.h < 320.0 {
-        return; // viewport too small — skip showcase.
-    }
-    let (dx, dy) = store.blender_picker_offset(ids::SHOWCASE_PANEL);
-    let base_x = layout.canvas.x + 12.0;
-    let base_y = layout.canvas.y + layout.canvas.h - SHOWCASE_H - 12.0;
-    // Clamp x normally (panel always fits horizontally given the
-    // viewport-too-small early-out above). For y, the panel may be
-    // taller than the viewport — allow free positioning in that
-    // case so the user can drag the overflowing portion into view.
-    let min_x = layout.canvas.x + 8.0;
-    let max_x = layout.canvas.x + layout.canvas.w - SHOWCASE_W - 8.0;
-    let final_x = (base_x + dx).clamp(min_x.min(max_x), min_x.max(max_x));
-    let min_y = layout.canvas.y + 8.0 - SHOWCASE_H + 80.0;
-    let max_y = layout.canvas.y + layout.canvas.h - 80.0;
-    let final_y = (base_y + dy).clamp(min_y, max_y);
-    let rect = Rect::new(final_x, final_y, SHOWCASE_W, SHOWCASE_H);
-    paint_panel_surface(rect, scene, theme);
+    let Some(rect) = current_showcase_rect(layout, store) else {
+        return;
+    };
+    // Auto-shrink: if the panel's ideal `SHOWCASE_H` rect overflows
+    // past the canvas bottom, shrink the visible portion to what
+    // fits. Content scrolls within `visible_rect` via `panel_scroll`.
+    let canvas_bottom = layout.canvas.y + layout.canvas.h;
+    let visible_h = (canvas_bottom - rect.y).min(rect.h).max(80.0);
+    let visible_rect = Rect::new(rect.x, rect.y, rect.w, visible_h);
+    paint_panel_surface(visible_rect, scene, theme);
 
     let pad = Spacing::Lg.px();
     let inner_x = rect.x + pad;
@@ -384,6 +373,26 @@ pub fn paint_components_showcase(
     }
     hit_index.register(ids::SHOWCASE_DRAG_HANDLE, drag_rect);
     y += drag_h + Spacing::Sm.px();
+
+    // Push a clip layer over the content area below the drag handle
+    // so scrolled content doesn't bleed past the visible panel
+    // bottom. Pop happens at the very end of this function. Scroll
+    // offset comes from the store (wheel dispatch updates it; no
+    // upper-bound clamp here yet — scrolls forever, will tighten
+    // when we measure content height).
+    let content_top = y;
+    let content_bottom = visible_rect.y + visible_rect.h - pad;
+    if content_bottom > content_top {
+        let clip = ph2d_vector::Rect::new(
+            visible_rect.x as f64,
+            content_top as f64,
+            (visible_rect.x + visible_rect.w) as f64,
+            content_bottom as f64,
+        );
+        scene.push_clip(&clip);
+    }
+    let scroll_y = store.panel_scroll(ids::SHOWCASE_PANEL).max(0.0);
+    y -= scroll_y;
 
     // Title.
     paint_text(
@@ -790,11 +799,46 @@ pub fn paint_components_showcase(
         ListItemState::Normal,
         DropdownState::Normal,
     );
+    // Pop the content clip layer pushed before the title (matches
+    // the `scene.push_clip` above). The picker demo and tree-view
+    // demo paint OUTSIDE the clip — they're separate regions.
+    if content_bottom > content_top {
+        scene.pop_layer();
+    }
+
     // BlenderColorPicker + TreeView paint in the dedicated demo
     // region attached to the canvas (bottom-right, see
     // `paint_blender_picker_demo`).
     paint_tree_view_demo(rect, scene, text_system, theme);
     paint_blender_picker_demo(layout, scene, text_system, theme, hit_index, store);
+}
+
+/// Compute the showcase panel's outer rect for this frame —
+/// factoring in the user-driven drag offset and the keep-handle-
+/// visible clamps. Pure function of `(layout, store)`; called by
+/// the painter to position content AND by the hero pre-paint loop
+/// to publish the rect into `WidgetStore::set_panel_rect` so
+/// wheel-event dispatch can route to this panel.
+///
+/// Returns `None` for viewports too small to host the panel at all
+/// (mirrors the early-out at the top of `paint_components_showcase`).
+pub fn current_showcase_rect(layout: &HeroLayout, store: &WidgetStore) -> Option<Rect> {
+    if layout.canvas.w < SHOWCASE_W + 40.0 || layout.canvas.h < 320.0 {
+        return None;
+    }
+    let (dx, dy) = store.blender_picker_offset(ids::SHOWCASE_PANEL);
+    let base_x = layout.canvas.x + 12.0;
+    let base_y = layout.canvas.y + layout.canvas.h - SHOWCASE_H - 12.0;
+    let min_x = layout.canvas.x + 8.0;
+    let max_x = layout.canvas.x + layout.canvas.w - SHOWCASE_W - 8.0;
+    let final_x = (base_x + dx).clamp(min_x.min(max_x), min_x.max(max_x));
+    // Drag handle stays inside the canvas; panel may overflow the
+    // bottom (user drags it back via the handle). See
+    // `docs/UI_Bugs/README.md` §1 for the recovery requirement.
+    let min_y = layout.canvas.y;
+    let max_y = layout.canvas.y + layout.canvas.h - 60.0;
+    let final_y = (base_y + dy).clamp(min_y, max_y);
+    Some(Rect::new(final_x, final_y, SHOWCASE_W, SHOWCASE_H))
 }
 
 fn paint_tree_view_demo(
@@ -1013,8 +1057,12 @@ pub fn paint_blender_picker_demo(
     let base_y = layout.canvas.y + layout.canvas.h - h - 12.0;
     let min_x = layout.canvas.x + 8.0;
     let max_x = layout.canvas.x + layout.canvas.w - w - 8.0;
-    let min_y = layout.canvas.y + 8.0;
-    let max_y = layout.canvas.y + layout.canvas.h - h - 8.0;
+    // Keep the drag handle (top of the panel) always visible inside
+    // the canvas, mirroring the showcase panel clamp. The panel may
+    // overflow the canvas bottom — the user can drag it back up via
+    // the handle, which stays accessible.
+    let min_y = layout.canvas.y;
+    let max_y = layout.canvas.y + layout.canvas.h - 60.0;
     let rect = Rect::new(
         (base_x + dx).clamp(min_x, max_x),
         (base_y + dy).clamp(min_y, max_y),

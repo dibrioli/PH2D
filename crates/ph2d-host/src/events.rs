@@ -68,6 +68,21 @@ pub enum PointerButton {
     Middle,
 }
 
+/// Mouse-wheel / trackpad scroll event. `delta_y` is in DIP (already
+/// converted from `winit::MouseScrollDelta` by the shell — for line
+/// deltas we multiply by ~16 px/line). Positive `delta_y` scrolls
+/// content **upwards** (cursor sees content move up).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct WheelEvent {
+    /// Cursor position when the wheel rotated, in physical pixels.
+    pub x: f32,
+    pub y: f32,
+    pub delta_x: f32,
+    pub delta_y: f32,
+    pub modifiers: Modifiers,
+    pub timestamp_ns: u128,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PointerSource {
     Mouse,

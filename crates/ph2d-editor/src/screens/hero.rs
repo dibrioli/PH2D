@@ -208,6 +208,18 @@ impl HeroScreen {
         crate::interaction::dispatch_text_input(&mut self.store, ch, arena)
     }
 
+    /// Forward a wheel/trackpad scroll event into the dispatch.
+    /// Painters publish their panel rects each frame via
+    /// `WidgetStore::set_panel_rect`, so the wheel dispatch knows
+    /// which panel sits under the cursor and applies the delta.
+    pub fn handle_wheel<'frame>(
+        &mut self,
+        event: ph2d_host::WheelEvent,
+        arena: &'frame Bump,
+    ) -> &'frame [WidgetEvent] {
+        crate::interaction::dispatch_wheel(&mut self.store, event, arena)
+    }
+
     /// Translate a [`WidgetEvent`] from the dispatcher into a
     /// hero-level state mutation. Walks each region's
     /// `apply_event` in z-order; first region that consumes the
@@ -295,6 +307,14 @@ pub fn paint_hero_screen(
         &hero.store,
     );
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
+    // Publish movable panel rects so wheel-event dispatch can route
+    // to the panel under the cursor BEFORE paint runs. Both
+    // `current_showcase_rect` and `current_picker_rect` are pure
+    // functions of (layout, store); the painter recomputes the
+    // same value, so the publish + render stay in lockstep.
+    if let Some(r) = showcase::current_showcase_rect(&layout, &hero.store) {
+        hero.store.set_panel_rect(ids::SHOWCASE_PANEL, r);
+    }
     // Components Showcase — gallery of every widget in functional
     // use. Re-enabled after the picker debug round; pairs with the
     // floating BlenderColorPicker demo so the user can see every UI

@@ -595,7 +595,13 @@ fn paint_inspector_field(
     ) {
         let row_rect = Rect::new(x, y, w, FIELD_ROW_H);
         match &field.kind {
-            InspectorFieldKind::Slider { value, display } => {
+            InspectorFieldKind::Slider { value, display: _ } => {
+                // No `display_override`: the chip MUST track the
+                // live store value so dragging the slider visibly
+                // updates the chip (and typing into the chip moves
+                // the slider). Earlier this passed the fixture's
+                // engineering-unit string which froze the chip on
+                // its initial label, severing the slider×chip link.
                 let id = field_id.unwrap_or(NodeId(0));
                 let live_value = field_id
                     .and_then(|i| store.slider(i).map(|(_, v)| v))
@@ -604,18 +610,13 @@ fn paint_inspector_field(
                 let chip_value = store
                     .number_input(chip_id)
                     .map(|(_, v, _, _, _)| v)
-                    .unwrap_or_else(|| display.parse::<f64>().unwrap_or(*value as f64));
-                let display_override = if display.is_empty() {
-                    None
-                } else {
-                    Some(display.as_str())
-                };
+                    .unwrap_or(*value as f64);
                 crate::widget::paint_slider_with_chip_layout(
                     row_rect,
                     &field.label,
                     live_value,
                     chip_value,
-                    display_override,
+                    None,
                     id,
                     chip_id,
                     crate::widget::DEFAULT_LABEL_W,
@@ -627,18 +628,15 @@ fn paint_inspector_field(
                     theme,
                 );
             }
-            InspectorFieldKind::LinkedSlider { value, display } => {
-                let display_override = if display.is_empty() {
-                    None
-                } else {
-                    Some(display.as_str())
-                };
+            InspectorFieldKind::LinkedSlider { value, display: _ } => {
+                // Same reasoning as `Slider` above: chip displays
+                // the live value, no override.
                 crate::widget::paint_slider_with_chip_layout(
                     row_rect,
                     &field.label,
                     *value,
                     *value as f64,
-                    display_override,
+                    None,
                     NodeId(0),
                     NodeId(0),
                     crate::widget::DEFAULT_LABEL_W,

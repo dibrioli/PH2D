@@ -975,6 +975,22 @@ impl ApplicationHandler for App {
                 }
             }
 
+            WindowEvent::MouseWheel { delta, .. } => {
+                let (dx, dy) = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(x, y) => (x * 16.0, y * 16.0),
+                    winit::event::MouseScrollDelta::PixelDelta(p) => (p.x as f32, p.y as f32),
+                };
+                let evt = ph2d_host::WheelEvent {
+                    x: self.last_pointer.0,
+                    y: self.last_pointer.1,
+                    delta_x: dx,
+                    delta_y: dy,
+                    modifiers: Self::convert_modifiers(self.modifiers),
+                    timestamp_ns: Self::timestamp_ns(),
+                };
+                forward_wheel_to_hero(self.gfx.as_mut(), evt);
+            }
+
             WindowEvent::MouseInput { state, button, .. } => {
                 let kind = match state {
                     ElementState::Pressed => PointerKind::Down,
@@ -1204,6 +1220,16 @@ fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
             eprintln!("[hero] unhandled key event: {e:?}");
         }
     }
+}
+
+/// Forward a wheel / trackpad scroll into the hero dispatcher.
+/// Routes to whichever panel registered its rect under the cursor.
+fn forward_wheel_to_hero(gfx: Option<&mut AppGfx>, event: ph2d_host::WheelEvent) {
+    let Some(gfx) = gfx else { return };
+    let Some(hero) = gfx.hero_screen.as_mut() else {
+        return;
+    };
+    let _ = hero.handle_wheel(event, &gfx.hero_arena);
 }
 
 /// Forward a single printable character into the hero text-input

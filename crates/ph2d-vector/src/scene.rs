@@ -52,6 +52,24 @@ impl VectorScene {
     pub fn fill_path(&mut self, path: &BezPath, brush: &Brush, transform: Affine) {
         self.inner.fill(Fill::NonZero, transform, brush, None, path);
     }
+
+    /// Push a clip layer that masks subsequent drawing to `path`.
+    /// Pair with [`Self::pop_layer`]. Used by scrollable panels to
+    /// keep overflowing content inside the panel rect.
+    pub fn push_clip(&mut self, path: &impl vello::kurbo::Shape) {
+        self.inner.push_layer(
+            Fill::NonZero,
+            vello::peniko::BlendMode::default(),
+            1.0,
+            Affine::IDENTITY,
+            path,
+        );
+    }
+
+    /// Pop the most recent layer pushed via [`Self::push_clip`].
+    pub fn pop_layer(&mut self) {
+        self.inner.pop_layer();
+    }
 }
 
 impl Default for VectorScene {

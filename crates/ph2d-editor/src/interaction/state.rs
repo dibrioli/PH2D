@@ -268,6 +268,18 @@ pub struct WidgetStore {
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
     /// signaling the host to readback the pixel under the cursor.
     eyedropper_pending: Option<NodeId>,
+    /// Vertical scroll offset per panel. Wheel events advance the
+    /// offset; painters subtract it from content y. Clamped on each
+    /// scroll to `[0, content_h - visible_h]` by the painter (which
+    /// knows both heights). See `docs/UI_Bugs/README.md` §1
+    /// (hit-testing) — content rendered with offset must compensate
+    /// in hit-test too.
+    panel_scroll: BTreeMap<NodeId, f32>,
+    /// Painter-published rect of each scrollable panel — populated
+    /// every frame so the wheel dispatch can find which panel sits
+    /// under the cursor. Cleared together with `clear_for_frame` on
+    /// the hit_index by the host (or hero) at frame start.
+    panel_rects: BTreeMap<NodeId, Rect>,
 }
 
 impl WidgetStore {
@@ -292,6 +304,8 @@ impl WidgetStore {
             blender_picker_offset: BTreeMap::new(),
             blender_drag_anchor: None,
             eyedropper_pending: None,
+            panel_scroll: BTreeMap::new(),
+            panel_rects: BTreeMap::new(),
         }
     }
 
@@ -547,6 +561,37 @@ impl WidgetStore {
 
     pub fn set_eyedropper_pending(&mut self, parent: Option<NodeId>) {
         self.eyedropper_pending = parent;
+    }
+
+    /// Read the vertical scroll offset for a panel (defaults to 0).
+    pub fn panel_scroll(&self, panel: NodeId) -> f32 {
+        self.panel_scroll.get(&panel).copied().unwrap_or(0.0)
+    }
+
+    /// Set the vertical scroll offset for a panel. Caller is
+    /// responsible for clamping to `[0, content_h - visible_h]`.
+    pub fn set_panel_scroll(&mut self, panel: NodeId, y: f32) {
+        self.panel_scroll.insert(panel, y);
+    }
+
+    /// Painter publishes its panel rect each frame so wheel
+    /// dispatch can find which panel is under the cursor.
+    pub fn set_panel_rect(&mut self, panel: NodeId, rect: Rect) {
+        self.panel_rects.insert(panel, rect);
+    }
+
+    /// Find the panel whose rect contains `(x, y)`. Walks all
+    /// registered panels and returns the first match. Acceptable
+    /// because there are only a handful of panels (~3-5); for
+    /// dozens, switch to the same back-to-front Vec approach as
+    /// [`crate::interaction::HitIndex`].
+    pub fn panel_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        for (id, rect) in &self.panel_rects {
+            if rect.contains(x, y) {
+                return Some(*id);
+            }
+        }
+        None
     }
 
     /// Append `color` to the BlenderPicker's palette. No-op if the

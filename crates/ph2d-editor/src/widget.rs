@@ -74,7 +74,9 @@ pub use spinner::{Spinner, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};
 pub use tabs::{TabItem, Tabs, TabsVariant, paint_tabs, paint_tabs_with_hover};
 pub use tag::{Tag, TagState, TagTone, paint_tag};
-pub use text_area::{TextArea, min_height as text_area_min_height, paint_text_area};
+pub use text_area::{
+    TextArea, min_height as text_area_min_height, paint_text_area, paint_text_area_with_state,
+};
 pub use text_input::{TextInput, TextInputState, paint_text_input, paint_text_input_with_buffer};
 pub use toggle::{Toggle, ToggleState, paint_toggle};
 pub use tool_rail::{

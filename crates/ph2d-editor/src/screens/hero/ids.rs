@@ -36,11 +36,48 @@ pub const TOOL_HOME: NodeId = NodeId(207);
 pub const TOOL_UNDO: NodeId = NodeId(208);
 pub const TOOL_REDO: NodeId = NodeId(209);
 
-/// Inspector panel container — used as the wheel-scroll key. The
-/// panel is currently a blank canvas waiting for canonical widget
-/// samples (next phase). Placeholder field ids previously parked in
-/// the 300..370 range were removed alongside the showcase teardown.
+/// Inspector panel container — used as the wheel-scroll key.
 pub const INSP_PANEL: NodeId = NodeId(371);
+
+// ── Inspector widget samples ───────────────────────────────────────────────
+// One of each canonical widget, parented to the Inspector panel.
+// These are *demonstration* widgets; their state lives on the store
+// but is not wired to any simulation. The placeholder fixture-driven
+// rows that used to live in 300..370 were removed pre-samples.
+pub const INSP_SAMPLE_TEXT: NodeId = NodeId(300);
+pub const INSP_SAMPLE_TEXTAREA: NodeId = NodeId(301);
+pub const INSP_SAMPLE_COMBO: NodeId = NodeId(302);
+pub const INSP_SAMPLE_COMBO_OPT_A: NodeId = NodeId(303);
+pub const INSP_SAMPLE_COMBO_OPT_B: NodeId = NodeId(304);
+pub const INSP_SAMPLE_COMBO_OPT_C: NodeId = NodeId(305);
+pub const INSP_SAMPLE_NUMBER: NodeId = NodeId(306);
+pub const INSP_SAMPLE_SLIDER: NodeId = NodeId(307);
+pub const INSP_SAMPLE_SLIDER_CHIP: NodeId = NodeId(308);
+pub const INSP_SAMPLE_CHECKBOX: NodeId = NodeId(309);
+pub const INSP_SAMPLE_TOGGLE: NodeId = NodeId(310);
+pub const INSP_SAMPLE_RADIO_A: NodeId = NodeId(312);
+pub const INSP_SAMPLE_RADIO_B: NodeId = NodeId(313);
+pub const INSP_SAMPLE_RADIO_C: NodeId = NodeId(314);
+pub const INSP_SAMPLE_DROPDOWN: NodeId = NodeId(315);
+pub const INSP_SAMPLE_DD_OPT_A: NodeId = NodeId(316);
+pub const INSP_SAMPLE_DD_OPT_B: NodeId = NodeId(317);
+pub const INSP_SAMPLE_DD_OPT_C: NodeId = NodeId(318);
+pub const INSP_SAMPLE_TAB_A: NodeId = NodeId(319);
+pub const INSP_SAMPLE_TAB_B: NodeId = NodeId(320);
+pub const INSP_SAMPLE_TAB_C: NodeId = NodeId(321);
+pub const INSP_SAMPLE_TREE_ROOT: NodeId = NodeId(322);
+pub const INSP_SAMPLE_TREE_LEAF_A: NodeId = NodeId(323);
+pub const INSP_SAMPLE_TREE_LEAF_B: NodeId = NodeId(324);
+pub const INSP_SAMPLE_V3_X: NodeId = NodeId(325);
+pub const INSP_SAMPLE_V3_Y: NodeId = NodeId(326);
+pub const INSP_SAMPLE_V3_Z: NodeId = NodeId(327);
+pub const INSP_SAMPLE_SWATCH: NodeId = NodeId(328);
+pub const INSP_SAMPLE_BTN_PRIMARY: NodeId = NodeId(329);
+pub const INSP_SAMPLE_BTN_SECONDARY: NodeId = NodeId(330);
+pub const INSP_SAMPLE_BTN_DANGER: NodeId = NodeId(331);
+pub const INSP_SAMPLE_BTN_ICON: NodeId = NodeId(332);
+pub const INSP_SAMPLE_LIST_ITEM: NodeId = NodeId(333);
+pub const INSP_SAMPLE_TAG_REMOVE: NodeId = NodeId(334);
 /// Floating `BlenderColorPicker` parent id. The picker is painted
 /// over the canvas (not inside the Inspector) — the historical
 /// `INSP_` prefix is kept to avoid churning every side-table key.

@@ -42,3 +42,8 @@ assets/sprites/*.png
 # part of the design system deliverable. Gitignored to keep repo lean
 # and avoid committing third-party screenshots with unclear licenses.
 docs/design/uploads/
+
+# Claude Code session-local artifacts: agent worktrees (isolated git
+# checkouts spawned by the Agent tool) and any other harness state
+# under .claude/. These are per-machine and should never enter repo.
+.claude/

@@ -85,7 +85,7 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
     let body_token = if toggle.state == ToggleState::Disabled {
         ColorToken::Border
     } else {
-        ColorToken::SurfaceElevated
+        ColorToken::BgElev
     };
     scene.fill_rect(rect_to_vello(rect), resolve(body_token, theme));
 
@@ -103,7 +103,7 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
         );
         scene.fill_rect(
             rect_to_vello(inner),
-            resolve(ColorToken::BorderEmphasis, theme),
+            resolve(ColorToken::BorderEmph, theme),
         );
         // Re-fill the body inside the ring so the ring reads as a frame.
         let pad2 = pad + 2.0;
@@ -127,7 +127,7 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
     let thumb_token = if toggle.state == ToggleState::Disabled {
         ColorToken::TextDisabled
     } else if toggle.on {
-        ColorToken::AccentPrimary
+        ColorToken::Accent
     } else {
         ColorToken::Border
     };
@@ -188,7 +188,7 @@ mod tests {
             &t,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 
@@ -202,7 +202,7 @@ mod tests {
             &t,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Light,
+            Theme::Sunstone,
         );
     }
 
@@ -214,7 +214,7 @@ mod tests {
             &t,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 }

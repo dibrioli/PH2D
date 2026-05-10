@@ -36,3 +36,9 @@ runtime/ts/dist/
 # launch (shells/desktop/src/integration.rs). Keeping the repo binary-
 # free; regenerated deterministically per the golden-angle hue cycle.
 assets/sprites/*.png
+
+# Claude Design hands off a `uploads/` folder with reference images
+# (Procreate screenshots, drawing app captures) used as input — not
+# part of the design system deliverable. Gitignored to keep repo lean
+# and avoid committing third-party screenshots with unclear licenses.
+docs/design/uploads/

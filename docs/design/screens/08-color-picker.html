@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head><meta charset="utf-8"/><title>PH2D · Color Picker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css"/><link rel="stylesheet" href="../styles/components.css"/>
+<style>
+body{background:oklch(0.05 0.004 285);overflow:hidden;height:100vh}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.frame{width:1366px;height:1024px;transform-origin:center;background:var(--bg-0);position:relative;overflow:hidden;border-radius:14px;box-shadow:0 40px 100px oklch(0 0 0 /.7)}
+/* dim editor backdrop */
+.bg{position:absolute;inset:0;background:oklch(0.07 0.004 285);background-image:linear-gradient(oklch(1 0 0 /.025) 1px,transparent 1px),linear-gradient(90deg,oklch(1 0 0 /.025) 1px,transparent 1px);background-size:32px 32px;opacity:.6}
+.bg::after{content:'';position:absolute;inset:0;background:oklch(0 0 0 /.5)}
+/* tiny inspector field that opened the picker (anchor) */
+.anchor{position:absolute;left:80px;top:200px;width:300px;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;padding:14px;font-family:var(--font-mono);font-size:11px;color:var(--text-2)}
+.anchor .h{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px}
+.anchor .row{display:grid;grid-template-columns:90px 28px 1fr;align-items:center;gap:10px;padding:6px 0}
+.anchor .row.on{color:var(--text-1)}
+.anchor .sw{width:24px;height:24px;border-radius:4px;border:1px solid var(--border)}
+.anchor .v{color:var(--text-1)}
+.anchor .row.on .sw{box-shadow:0 0 0 2px var(--accent)}
+/* PICKER PANEL */
+.picker{position:absolute;left:404px;top:90px;width:520px;background:oklch(0.10 0.005 285 /.92);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(20px) saturate(140%);box-shadow:0 30px 80px oklch(0 0 0 /.6),0 0 0 1px oklch(1 0 0 /.04)}
+.pgrab{height:18px;display:flex;justify-content:center;align-items:center}
+.pgrab i{width:32px;height:3px;background:var(--text-3);border-radius:2px;opacity:.5}
+.pclose{position:absolute;right:14px;top:14px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-family:var(--font-mono);cursor:pointer;border-radius:4px}
+.ptitle{position:absolute;left:18px;top:14px;font:var(--fw-semibold) 12px/1 var(--font-sans);color:var(--text-1);letter-spacing:.02em}
+.ptitle small{color:var(--text-3);font:var(--fw-medium) 9.5px/1 var(--font-mono);letter-spacing:.16em;text-transform:uppercase;margin-left:8px}
+.ptabs{display:flex;gap:0;padding:0 16px;margin-top:14px;border-bottom:1px solid var(--border)}
+.ptabs button{flex:1;height:34px;background:transparent;border:0;color:var(--text-3);font:var(--fw-medium) 11px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent}
+.ptabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+/* DISC content */
+.pbody{padding:18px}
+.disc{position:relative;width:340px;height:340px;margin:0 auto}
+.ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,oklch(0.7 0.22 0),oklch(0.85 0.18 60),oklch(0.92 0.18 110),oklch(0.78 0.18 160),oklch(0.74 0.16 205),oklch(0.62 0.18 260),oklch(0.66 0.22 310),oklch(0.7 0.22 360));mask:radial-gradient(circle,transparent 39%,black 41%,black 99%,transparent 100%)}
+.ring .knob{position:absolute;left:84%;top:24%;width:18px;height:18px;border-radius:50%;background:oklch(0.74 0.16 340);border:2px solid white;transform:translate(-50%,-50%);box-shadow:0 4px 12px oklch(0 0 0 /.4)}
+.sat{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64%;height:64%;border-radius:50%;background:radial-gradient(circle,oklch(1 0 0 /1) 0%,oklch(0.74 0.16 340) 50%,oklch(0 0 0 /1) 100%)}
+.sat .knob{position:absolute;left:62%;top:32%;width:14px;height:14px;border-radius:50%;border:2px solid white;background:transparent;transform:translate(-50%,-50%);box-shadow:0 2px 8px oklch(0 0 0 /.4)}
+.preview{display:flex;align-items:center;gap:12px;margin-top:18px;padding:12px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px}
+.preview .new{width:56px;height:56px;border-radius:6px;background:oklch(0.74 0.16 340);box-shadow:inset 0 0 0 1px oklch(0 0 0 /.2)}
+.preview .old{width:36px;height:36px;border-radius:6px;background:oklch(0.62 0.20 250);box-shadow:inset 0 0 0 1px oklch(0 0 0 /.2)}
+.preview .vals{flex:1;display:grid;grid-template-columns:auto auto auto auto;gap:6px 14px;font:var(--fw-medium) 11px/1.4 var(--font-mono);color:var(--text-2)}
+.preview .vals .k{color:var(--text-3);letter-spacing:.04em}
+.preview .vals .v{color:var(--text-1)}
+.eyedrop{width:36px;height:36px;border-radius:6px;background:var(--bg-3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-1);font-family:var(--font-mono);font-size:14px;cursor:pointer}
+/* HISTORY */
+.hist{margin-top:14px}
+.hist h5{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 8px}
+.hist .row{display:flex;gap:5px}
+.hist .sw{flex:1;height:26px;border-radius:3px;box-shadow:inset 0 0 0 1px oklch(0 0 0 /.2)}
+/* PALETTES */
+.pal{margin-top:14px;border-top:1px solid var(--border);padding-top:14px}
+.pal h5{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 4px;display:flex;justify-content:space-between}
+.pal h5 .acc{color:var(--accent)}
+.pal .name{font:var(--fw-medium) 11.5px/1 var(--font-mono);color:var(--text-1);margin-bottom:8px}
+.pal .grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.pal .grid .sw{aspect-ratio:1;border-radius:3px;box-shadow:inset 0 0 0 1px oklch(0 0 0 /.2);position:relative}
+.pal .grid .sw.on::after{content:'';position:absolute;inset:-3px;border:2px solid var(--accent);border-radius:5px}
+.pfoot{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg-2)}
+.pfoot input{flex:1;background:var(--bg-3);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text-1);font:var(--fw-medium) 12px/1 var(--font-mono);outline:0}
+.pfoot button{height:32px;padding:0 14px;background:var(--accent);color:var(--accent-fg);border:0;border-radius:4px;font:var(--fw-semibold) 11px/1 var(--font-sans);letter-spacing:.04em;cursor:pointer}
+.pfoot button.gh{background:transparent;color:var(--text-2);border:1px solid var(--border)}
+/* HARMONY callout (right side) */
+.harmony{position:absolute;left:946px;top:90px;width:380px;background:oklch(0.10 0.005 285 /.92);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(20px);padding:18px}
+.harmony h5{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 4px}
+.harmony .nm{font:var(--fw-semibold) 13px/1 var(--font-sans);color:var(--text-1);margin-bottom:14px}
+.harm-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.harm-tabs span{font:var(--fw-medium) 9.5px/1 var(--font-mono);padding:5px 8px;border:1px solid var(--border);border-radius:3px;color:var(--text-3);letter-spacing:.04em;text-transform:uppercase}
+.harm-tabs span.on{color:var(--accent);border-color:oklch(0.74 0.16 var(--accent-h) /.4);background:var(--accent-soft)}
+.wheel{position:relative;width:240px;height:240px;margin:14px auto;border-radius:50%;background:conic-gradient(from 0deg,oklch(0.7 0.22 0),oklch(0.85 0.18 60),oklch(0.92 0.18 110),oklch(0.78 0.18 160),oklch(0.74 0.16 205),oklch(0.62 0.18 260),oklch(0.66 0.22 310),oklch(0.7 0.22 360));mask:radial-gradient(circle,transparent 56%,black 58%,black 99%,transparent 100%)}
+.wheel .pt{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid white;transform:translate(-50%,-50%);box-shadow:0 2px 6px oklch(0 0 0 /.5)}
+.wheel .line{position:absolute;left:50%;top:50%;transform-origin:left center;height:1px;background:oklch(1 0 0 /.6)}
+.harm-out{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px}
+.harm-out .c{aspect-ratio:1;border-radius:6px;display:flex;align-items:end;padding:6px;font:var(--fw-medium) 9px/1 var(--font-mono);color:white;letter-spacing:.04em;text-shadow:0 1px 3px oklch(0 0 0 /.6)}
+.harm-meta{margin-top:14px;font:var(--fw-medium) 10.5px/1.6 var(--font-mono);color:var(--text-2)}
+.harm-meta .r{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--border)}
+.harm-meta .r .v{color:var(--text-1)}
+</style></head>
+<body data-screen-label="08 Color Picker">
+<div class="stage"><div class="frame" id="frame">
+  <div class="bg"></div>
+
+  <div class="anchor">
+    <div class="h">Inspector · Sprite</div>
+    <div class="row"><span>texture</span><span></span><span class="v">slime_idle.png</span></div>
+    <div class="row on"><span>tint <span style="color:var(--accent)">•</span></span><span class="sw" style="background:oklch(0.74 0.16 340)"></span><span class="v">oklch(.74 .16 340)</span></div>
+    <div class="row"><span>opacity</span><span></span><span class="v">100 %</span></div>
+    <div class="row"><span>blend</span><span></span><span class="v">normal</span></div>
+    <div class="row"><span>sort layer</span><span></span><span class="v">enemies · 12</span></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);font:var(--fw-medium) 10px/1.4 var(--font-mono);color:var(--text-3)">tap tint swatch · opens picker · this anchor stays in sync</div>
+  </div>
+
+  <!-- MAIN PICKER (Disc tab) -->
+  <div class="picker">
+    <div class="pgrab"><i></i></div>
+    <span class="ptitle">Color picker <small>oklch · linear · srgb</small></span>
+    <span class="pclose">×</span>
+    <div class="ptabs">
+      <button class="on">Disc</button><button>Classic</button><button>Harmony</button><button>Value</button><button>Palettes</button>
+    </div>
+    <div class="pbody">
+      <div class="disc">
+        <div class="ring"><div class="knob"></div></div>
+        <div class="sat"><div class="knob"></div></div>
+      </div>
+      <div class="preview">
+        <div class="new"></div><div class="old"></div>
+        <div class="vals">
+          <span class="k">L</span><span class="v">0.740</span>
+          <span class="k">C</span><span class="v">0.160</span>
+          <span class="k">H</span><span class="v">340°</span>
+          <span class="k">α</span><span class="v">1.00</span>
+          <span class="k">hex</span><span class="v" style="grid-column:span 3">#E47BC0</span>
+        </div>
+        <div class="eyedrop">⊙</div>
+      </div>
+      <div class="hist">
+        <h5>recent · 10</h5>
+        <div class="row">
+          <span class="sw" style="background:oklch(0.74 0.16 340);box-shadow:inset 0 0 0 2px var(--accent)"></span>
+          <span class="sw" style="background:oklch(0.62 0.20 250)"></span>
+          <span class="sw" style="background:oklch(0.78 0.14 80)"></span>
+          <span class="sw" style="background:oklch(0.74 0.14 155)"></span>
+          <span class="sw" style="background:oklch(0.66 0.22 25)"></span>
+          <span class="sw" style="background:oklch(0.85 0.06 90)"></span>
+          <span class="sw" style="background:oklch(0.40 0.04 280)"></span>
+          <span class="sw" style="background:oklch(0.22 0.02 280)"></span>
+          <span class="sw" style="background:oklch(0.96 0.005 280)"></span>
+          <span class="sw" style="background:oklch(0.55 0.18 200)"></span>
+        </div>
+      </div>
+      <div class="pal">
+        <h5>palette · forest_dusk · 24 colors <span class="acc">⊕ add</span></h5>
+        <div class="name">level_01_forest dusk lighting</div>
+        <div class="grid">
+          <span class="sw" style="background:oklch(0.18 0.04 280)"></span>
+          <span class="sw" style="background:oklch(0.24 0.06 270)"></span>
+          <span class="sw" style="background:oklch(0.34 0.08 290)"></span>
+          <span class="sw" style="background:oklch(0.42 0.12 300)"></span>
+          <span class="sw on" style="background:oklch(0.74 0.16 340)"></span>
+          <span class="sw" style="background:oklch(0.78 0.14 350)"></span>
+          <span class="sw" style="background:oklch(0.82 0.10 30)"></span>
+          <span class="sw" style="background:oklch(0.88 0.10 60)"></span>
+          <span class="sw" style="background:oklch(0.92 0.06 90)"></span>
+          <span class="sw" style="background:oklch(0.96 0.02 100)"></span>
+          <span class="sw" style="background:oklch(0.50 0.10 160)"></span>
+          <span class="sw" style="background:oklch(0.40 0.08 170)"></span>
+          <span class="sw" style="background:oklch(0.32 0.06 180)"></span>
+          <span class="sw" style="background:oklch(0.26 0.04 200)"></span>
+          <span class="sw" style="background:oklch(0.20 0.03 220)"></span>
+          <span class="sw" style="background:oklch(0.30 0.10 250)"></span>
+          <span class="sw" style="background:oklch(0.40 0.14 245)"></span>
+          <span class="sw" style="background:oklch(0.55 0.18 235)"></span>
+          <span class="sw" style="background:oklch(0.66 0.20 220)"></span>
+          <span class="sw" style="background:oklch(0.72 0.16 195)"></span>
+          <span class="sw" style="background:oklch(0.78 0.10 170)"></span>
+          <span class="sw" style="background:oklch(0.66 0.22 25)"></span>
+          <span class="sw" style="background:oklch(0.55 0.20 15)"></span>
+          <span class="sw" style="background:oklch(0.40 0.12 5)"></span>
+        </div>
+      </div>
+    </div>
+    <div class="pfoot">
+      <input value="oklch(0.74 0.16 340)"/>
+      <button class="gh">cancel</button>
+      <button>apply · ⏎</button>
+    </div>
+  </div>
+
+  <!-- HARMONY callout -->
+  <div class="harmony">
+    <h5>Live harmony</h5>
+    <div class="nm">Triadic · 120° split</div>
+    <div class="harm-tabs"><span>complementary</span><span class="on">triadic</span><span>analogous</span><span>split</span><span>tetradic</span><span>square</span></div>
+    <div class="wheel">
+      <span class="line" style="width:84px;transform:rotate(340deg)"></span>
+      <span class="line" style="width:84px;transform:rotate(100deg)"></span>
+      <span class="line" style="width:84px;transform:rotate(220deg)"></span>
+      <span class="pt" style="left:84%;top:34%;background:oklch(0.74 0.16 340);box-shadow:0 0 0 3px var(--accent-fg),0 0 0 5px var(--accent)"></span>
+      <span class="pt" style="left:24%;top:24%;background:oklch(0.78 0.14 100)"></span>
+      <span class="pt" style="left:24%;top:78%;background:oklch(0.66 0.18 220)"></span>
+    </div>
+    <div class="harm-out">
+      <span class="c" style="background:oklch(0.74 0.16 340)">base</span>
+      <span class="c" style="background:oklch(0.78 0.14 100)">+120°</span>
+      <span class="c" style="background:oklch(0.66 0.18 220)">+240°</span>
+      <span class="c" style="background:oklch(0.85 0.10 340)">+L</span>
+      <span class="c" style="background:oklch(0.45 0.18 340)">−L</span>
+    </div>
+    <div class="harm-meta">
+      <div class="r"><span>L spread</span><span class="v">.45 → .85</span></div>
+      <div class="r"><span>C locked</span><span class="v">.16 — perceptual uniform</span></div>
+      <div class="r"><span>contrast vs bg-1</span><span class="v" style="color:oklch(0.74 0.14 155)">8.9 : 1 · AAA</span></div>
+      <div class="r" style="border:0"><span>output</span><span class="v acc">5 swatches → palette</span></div>
+    </div>
+  </div>
+</div></div>
+<script>function fit(){const f=document.getElementById('frame');const s=Math.min(innerWidth/1366,innerHeight/1024,1);f.style.transform=`scale(${s})`}fit();onresize=fit;</script>
+</body></html>

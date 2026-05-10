@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head>
+<meta charset="utf-8" />
+<title>PH2D · Zen Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css" />
+<link rel="stylesheet" href="../styles/components.css" />
+<style>
+  body { background: oklch(0.05 0.004 285); overflow: hidden; height: 100vh; }
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .frame {
+    width: 1366px; height: 1024px; transform-origin: center center;
+    background: oklch(0.06 0.005 285); position: relative; overflow: hidden; border-radius: 14px;
+    box-shadow: 0 40px 100px oklch(0 0 0 / 0.7);
+  }
+  /* canvas occupies full frame */
+  .scene {
+    position: absolute; inset: 0;
+    background-color: oklch(0.07 0.006 285);
+    background-image: 
+      radial-gradient(circle at 50% 40%, oklch(0.16 0.02 340 / 0.18), transparent 60%),
+      linear-gradient(oklch(1 0 0 / 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.018) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+  }
+  .perspective {
+    position: absolute; left: 50%; bottom: -40%; width: 200%; height: 100%;
+    transform: translateX(-50%) perspective(900px) rotateX(64deg);
+    transform-origin: bottom center;
+    background-image: 
+      linear-gradient(oklch(1 0 0 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.05) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse at top, black 30%, transparent 75%);
+  }
+
+  /* placeholder entities, dimmed */
+  .ent { position: absolute; border: 1px dashed oklch(1 0 0 / 0.15); display: flex; align-items: end; justify-content: start; padding: 4px; font: var(--fw-medium) 9px/1 var(--font-mono); color: oklch(1 0 0 / 0.25); letter-spacing: 0.04em; text-transform: uppercase; }
+  .e1 { left: 38%; top: 38%; width: 80px; height: 110px; }
+  .e2 { left: 56%; top: 50%; width: 60px; height: 60px; border-radius: 50%; }
+  .e3 { left: 22%; top: 62%; width: 380px; height: 14px; border-style: solid; border-color: oklch(0.5 0.05 340 / 0.25); }
+  .e4 { left: 70%; top: 30%; width: 130px; height: 24px; }
+
+  /* corner zen indicator (super faint, only shown briefly) */
+  .zen-hint {
+    position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: oklch(0.08 0.005 285 / 0.85); backdrop-filter: blur(20px);
+    border: 1px solid oklch(1 0 0 / 0.06); border-radius: 999px;
+    font: var(--fw-medium) 11px/1 var(--font-sans); color: oklch(1 0 0 / 0.55);
+    letter-spacing: 0.04em;
+  }
+  .zen-hint .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  .zen-hint .kbd {
+    font-family: var(--font-mono); font-size: 10px;
+    color: oklch(1 0 0 / 0.4);
+    padding: 3px 6px; background: oklch(1 0 0 / 0.04);
+    border: 1px solid oklch(1 0 0 / 0.06); border-radius: 4px;
+  }
+
+  /* ghost tools that fade in on cursor near edge — shown as illustrative */
+  .ghost-rail {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 4px;
+    opacity: 0.12;
+  }
+  .ghost-rail i { width: 32px; height: 32px; border: 1px solid oklch(1 0 0 / 0.4); border-radius: 4px; display: block; }
+
+  .ghost-top {
+    position: absolute; top: 18px; left: 18px; right: 18px; height: 24px;
+    display: flex; gap: 8px; opacity: 0.10;
+  }
+  .ghost-top i { background: oklch(1 0 0 / 0.5); border-radius: 12px; height: 100%; }
+
+  /* tiny corner stamp */
+  .stamp { position: absolute; left: 18px; bottom: 18px; display: flex; align-items: baseline; gap: 8px; font: var(--fw-medium) 9px/1 var(--font-mono); color: oklch(1 0 0 / 0.22); letter-spacing: 0.18em; text-transform: uppercase; }
+  .stamp .b { color: oklch(1 0 0 / 0.42); font-weight: var(--fw-semibold); }
+
+  .meter { position: absolute; right: 18px; bottom: 18px; display: inline-flex; align-items: center; gap: 12px; font: var(--fw-medium) 9px/1 var(--font-mono); color: oklch(1 0 0 / 0.22); letter-spacing: 0.12em; text-transform: uppercase; }
+  .meter .b { color: oklch(1 0 0 / 0.5); font-weight: var(--fw-semibold); font-size: 11px; }
+
+  .label-screen { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.07; font: var(--fw-bold) 220px/0.85 var(--font-sans); letter-spacing: -0.05em; color: oklch(1 0 0); user-select: none; }
+</style>
+</head>
+<body data-screen-label="13 Zen Mode">
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <div class="scene"><div class="perspective"></div></div>
+
+    <!-- nearly invisible chrome that fades in on hover/edge gesture -->
+    <div class="ghost-top">
+      <i style="width: 90px;"></i><i style="width: 32px;"></i><i style="width: 80px;"></i>
+      <i style="margin-left: auto; width: 110px;"></i>
+    </div>
+    <div class="ghost-rail"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+    <!-- entities with their handles hidden -->
+    <div class="ent e1">player_idle</div>
+    <div class="ent e2">slime_basic</div>
+    <div class="ent e3">tilemap.ground</div>
+    <div class="ent e4">camera.main</div>
+
+    <!-- big faded watermark — content first -->
+    <div class="label-screen">ZEN</div>
+
+    <!-- gentle hint that auto-fades after a few seconds -->
+    <div class="zen-hint">
+      <span class="dot"></span>
+      <span style="color: oklch(1 0 0 / 0.85); font-weight: var(--fw-semibold);">Zen mode active</span>
+      <span style="color: oklch(1 0 0 / 0.35);">·</span>
+      <span>Four-finger tap or</span>
+      <span class="kbd">⌘ ⇧ Z</span>
+      <span>to exit</span>
+    </div>
+
+    <div class="stamp">
+      <span>playground_test</span>
+      <span class="b">·</span>
+      <span>scene</span>
+    </div>
+
+    <div class="meter">
+      <span>60 fps</span>
+      <span>·</span>
+      <span class="b">f 15,108</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  function fit() {
+    const f = document.getElementById('frame');
+    const sx = window.innerWidth / 1366;
+    const sy = window.innerHeight / 1024;
+    const s = Math.min(sx, sy, 1);
+    f.style.transform = `scale(${s})`;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+</body>
+</html>

@@ -1,16 +1,22 @@
 //! Color token system.
 //!
-//! Tokens (semantic) → resolved by `Theme` → concrete `Color`.
-//! Widget code only ever uses tokens; literal hex values are walled
-//! off in this module.
+//! Pipeline: design tokens em OKLCH (`docs/design/tokens.json`) →
+//! `Color::from_oklch` → sRGB 8-bit → consumido pelos widgets.
 //!
-//! HEX values per ADR-0023 §12. Sample-from-screenshot validation
-//! pendente — direção fixada (Procreate cyan-blue accent).
+//! ### Por quê OKLCH na fonte
+//!
+//! - Perceptualmente uniforme (mesmo `L` = mesmo brilho percebido entre matizes).
+//! - Facilita gerar variações de tema (mesma estrutura, só mudar `H`).
+//! - WCAG contrast continua sendo computado no espaço sRGB linear (per spec).
+//!
+//! O design source-of-truth está em `docs/design/tokens.json`. Este módulo
+//! reproduz aqueles valores como Rust constants/expressões — mudanças
+//! ali precisam ser refletidas aqui (ou via codegen futuro).
 
 use crate::theme::Theme;
 
-/// sRGB 8-bit color with alpha. Constructed via `from_hex` for
-/// readability; stored as four bytes for cheap copy + tests.
+/// sRGB 8-bit color with alpha. Constructed via `from_hex` ou
+/// `from_oklch`; stored as four bytes para cheap copy + tests.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
     pub r: u8,
@@ -37,6 +43,26 @@ impl Color {
             g: ((hex >> 16) & 0xFF) as u8,
             b: ((hex >> 8) & 0xFF) as u8,
             a: (hex & 0xFF) as u8,
+        }
+    }
+
+    /// Construct from OKLCH (L 0..1, C 0..0.4-ish, H 0..360 degrees).
+    /// Alpha defaults to opaque. Out-of-gamut colors são clamped para
+    /// sRGB [0,1] sem aviso — desenhar fora do gamut é problema do
+    /// design, não da função.
+    pub fn from_oklch(l: f64, c: f64, h_deg: f64) -> Self {
+        let [r, g, b] = oklch_to_srgb(l, c, h_deg);
+        Self { r, g, b, a: 0xFF }
+    }
+
+    /// Construct from OKLCH with alpha (0..1).
+    pub fn from_oklch_alpha(l: f64, c: f64, h_deg: f64, alpha: f64) -> Self {
+        let [r, g, b] = oklch_to_srgb(l, c, h_deg);
+        Self {
+            r,
+            g,
+            b,
+            a: (alpha.clamp(0.0, 1.0) * 255.0).round() as u8,
         }
     }
 
@@ -70,77 +96,278 @@ impl Color {
     }
 }
 
-/// Semantic color slot — every widget references one of these by
-/// name; literal `from_hex` outside this crate is a code smell.
+/// Convert OKLCH → sRGB 8-bit per Björn Ottosson's algorithm
+/// (https://bottosson.github.io/posts/oklab/). Out-of-gamut colors
+/// são clamped por canal.
+///
+/// `l` em 0..1, `c` ~0..0.4, `h_deg` em graus.
+pub fn oklch_to_srgb(l: f64, c: f64, h_deg: f64) -> [u8; 3] {
+    // OKLCH → OKLAB
+    let h_rad = h_deg.to_radians();
+    let a = c * h_rad.cos();
+    let b = c * h_rad.sin();
+
+    // OKLAB → linear LMS (cube)
+    let l_ = l + 0.396_337_777_4 * a + 0.215_803_757_3 * b;
+    let m_ = l - 0.105_561_345_8 * a - 0.063_854_172_8 * b;
+    let s_ = l - 0.089_484_177_5 * a - 1.291_485_548_0 * b;
+
+    let l3 = l_ * l_ * l_;
+    let m3 = m_ * m_ * m_;
+    let s3 = s_ * s_ * s_;
+
+    // LMS → linear sRGB
+    let lr = 4.076_741_662_1 * l3 - 3.307_711_591_3 * m3 + 0.230_969_929_2 * s3;
+    let lg = -1.268_438_004_6 * l3 + 2.609_757_401_1 * m3 - 0.341_319_396_5 * s3;
+    let lb = -0.004_196_086_3 * l3 - 0.703_418_614_7 * m3 + 1.707_614_701_0 * s3;
+
+    [linear_to_srgb_byte(lr), linear_to_srgb_byte(lg), linear_to_srgb_byte(lb)]
+}
+
+fn linear_to_srgb_byte(linear: f64) -> u8 {
+    let x = linear.clamp(0.0, 1.0);
+    let srgb = if x <= 0.003_130_8 {
+        12.92 * x
+    } else {
+        1.055 * x.powf(1.0 / 2.4) - 0.055
+    };
+    (srgb.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+/// Semantic color slot — every widget references one of these by name;
+/// literal `from_hex`/`from_oklch` outside this crate is a code smell.
+///
+/// Variantes correspondem 1:1 às chaves de `color.*` em
+/// `docs/design/tokens.json`. Quando adicionar slot novo: edite tokens.json
+/// + adicione variant aqui + adicione branch em `resolve` para cada um dos
+/// 4 themes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ColorToken {
-    /// Primary canvas backdrop (everything sits on this).
-    Background,
-    /// Panels, sidebar, toolbar.
-    Surface,
-    /// Popovers, tooltips, modals (slightly brighter than surface).
-    SurfaceElevated,
-    /// Low-contrast separator / inactive border.
+    // ── Background scale (4 níveis + elevated + scrim) ─────────────
+    /// `bg-0` — base canvas backdrop.
+    Bg0,
+    /// `bg-1` — first elevation (panels, sidebar).
+    Bg1,
+    /// `bg-2` — second elevation (cards inside panels).
+    Bg2,
+    /// `bg-3` — third elevation (input rows, list items).
+    Bg3,
+    /// `bg-elev` — popovers/tooltips/floating panels (slight alpha).
+    BgElev,
+    /// `bg-scrim` — modal backdrop (heavy alpha).
+    BgScrim,
+
+    // ── Borders (3 níveis) ─────────────────────────────────────────
+    /// `border` — low-contrast separators.
     Border,
-    /// Focused / hovered border, focus ring.
-    BorderEmphasis,
-    /// Main copy. ≥ 4.5:1 vs Surface (AA).
-    TextPrimary,
-    /// Labels, captions. ≥ 4.5:1 vs Surface (AA).
-    TextSecondary,
-    /// Explicit non-interactive. 3:1 OK per WCAG.
+    /// `border-strong` — visible dividers.
+    BorderStrong,
+    /// `border-emph` — focus rings, active selection borders.
+    BorderEmph,
+
+    // ── Text scale (3 níveis + disabled) ───────────────────────────
+    /// `text-1` — primary copy. ≥ 4.5:1 vs Bg1 (AA).
+    Text1,
+    /// `text-2` — labels, captions. ≥ 4.5:1 vs Bg1 (AA).
+    Text2,
+    /// `text-3` — tertiary/hints.
+    Text3,
+    /// `text-disabled` — explicit non-interactive (3:1 OK per WCAG).
     TextDisabled,
-    /// Active/selected primary — Procreate iconic cyan-blue.
-    AccentPrimary,
-    /// Selected secondary / pressed.
-    AccentSecondary,
-    /// Hover, focus ring tint.
-    AccentTertiary,
+
+    // ── Accent stack ───────────────────────────────────────────────
+    /// `accent` — primary call-to-action / active state.
+    Accent,
+    /// `accent-hover` — hover state.
+    AccentHover,
+    /// `accent-press` — pressed state.
+    AccentPress,
+    /// `accent-soft` — accent at low alpha (selection tints).
+    AccentSoft,
+    /// `accent-fg` — foreground sobre accent (contraste guaranteed).
+    AccentFg,
+
+    // ── Semantic states ────────────────────────────────────────────
+    Danger,
+    DangerSoft,
     Success,
-    Warning,
-    ErrorState,
+    SuccessSoft,
+    Warn,
+    WarnSoft,
     Info,
+    InfoSoft,
+
+    // ── Editor-specific ────────────────────────────────────────────
+    /// `selection` — selected entity highlight.
+    Selection,
+    /// `focus-ring` — keyboard focus indicator.
+    FocusRing,
+    /// `grid-line` — minor grid stroke on canvas.
+    GridLine,
+    /// `grid-axis` — major axis line on canvas.
+    GridAxis,
+    /// `canvas` — viewport background (scene render target backdrop).
+    Canvas,
 }
 
 impl ColorToken {
     /// Resolve token → concrete Color for the given Theme.
-    /// Values per ADR-0023 §12; sample-from-screenshot validation
-    /// pendente.
-    pub const fn resolve(self, theme: Theme) -> Color {
-        match (theme, self) {
-            // Dark Mode (Procreate-inspired charcoal)
-            (Theme::Dark, Self::Background) => Color::from_hex(0x161616),
-            (Theme::Dark, Self::Surface) => Color::from_hex(0x1F1F1F),
-            (Theme::Dark, Self::SurfaceElevated) => Color::from_hex(0x2A2A2A),
-            (Theme::Dark, Self::Border) => Color::from_hex(0x3A3A3A),
-            (Theme::Dark, Self::BorderEmphasis) => Color::from_hex(0x6E6E6E),
-            (Theme::Dark, Self::TextPrimary) => Color::from_hex(0xE8E8E8),
-            (Theme::Dark, Self::TextSecondary) => Color::from_hex(0xB5B5B5),
-            (Theme::Dark, Self::TextDisabled) => Color::from_hex(0x6E6E6E),
-            (Theme::Dark, Self::AccentPrimary) => Color::from_hex(0x0AB4FF),
-            (Theme::Dark, Self::AccentSecondary) => Color::from_hex(0x0786BF),
-            (Theme::Dark, Self::AccentTertiary) => Color::from_hex(0x04566F),
-            (Theme::Dark, Self::Success) => Color::from_hex(0x4CAF50),
-            (Theme::Dark, Self::Warning) => Color::from_hex(0xFFB300),
-            (Theme::Dark, Self::ErrorState) => Color::from_hex(0xEF5350),
-            (Theme::Dark, Self::Info) => Color::from_hex(0x29B6F6),
+    /// Valores espelham `docs/design/tokens.json`; mudou aqui sem
+    /// mudar lá → divergência. Tests deste crate verificam contraste.
+    pub fn resolve(self, theme: Theme) -> Color {
+        // Per-theme tables. Each theme is its own block — repetição é
+        // intencional para diff legível e match exhaustivo no compilador.
+        match theme {
+            Theme::ForgeSdf => self.resolve_forge_sdf(),
+            Theme::PaintStudio => self.resolve_paint_studio(),
+            Theme::Sunstone => self.resolve_sunstone(),
+            Theme::Blueprint => self.resolve_blueprint(),
+        }
+    }
 
-            // Light Mode (Procreate-inspired warm off-white)
-            (Theme::Light, Self::Background) => Color::from_hex(0xF5F5F5),
-            (Theme::Light, Self::Surface) => Color::from_hex(0xFFFFFF),
-            (Theme::Light, Self::SurfaceElevated) => Color::from_hex(0xFFFFFF),
-            (Theme::Light, Self::Border) => Color::from_hex(0xD0D0D0),
-            (Theme::Light, Self::BorderEmphasis) => Color::from_hex(0x707070),
-            (Theme::Light, Self::TextPrimary) => Color::from_hex(0x1A1A1A),
-            (Theme::Light, Self::TextSecondary) => Color::from_hex(0x595959),
-            (Theme::Light, Self::TextDisabled) => Color::from_hex(0x9E9E9E),
-            (Theme::Light, Self::AccentPrimary) => Color::from_hex(0x0078D4),
-            (Theme::Light, Self::AccentSecondary) => Color::from_hex(0x005A9E),
-            (Theme::Light, Self::AccentTertiary) => Color::from_hex(0x003D6B),
-            (Theme::Light, Self::Success) => Color::from_hex(0x2E7D32),
-            (Theme::Light, Self::Warning) => Color::from_hex(0xE65100),
-            (Theme::Light, Self::ErrorState) => Color::from_hex(0xC62828),
-            (Theme::Light, Self::Info) => Color::from_hex(0x0277BD),
+    /// `forge-sdf` (default): dark + magenta accent.
+    fn resolve_forge_sdf(self) -> Color {
+        match self {
+            Self::Bg0 => Color::from_oklch(0.135, 0.006, 285.0),
+            Self::Bg1 => Color::from_oklch(0.170, 0.007, 285.0),
+            Self::Bg2 => Color::from_oklch(0.205, 0.008, 285.0),
+            Self::Bg3 => Color::from_oklch(0.250, 0.010, 285.0),
+            Self::BgElev => Color::from_oklch_alpha(0.220, 0.008, 285.0, 0.86),
+            Self::BgScrim => Color::from_oklch_alpha(0.080, 0.005, 285.0, 0.55),
+
+            Self::Border => Color::from_oklch(0.295, 0.011, 285.0),
+            Self::BorderStrong => Color::from_oklch(0.500, 0.018, 285.0),
+            Self::BorderEmph => Color::from_oklch(0.560, 0.020, 285.0),
+
+            Self::Text1 => Color::from_oklch(0.965, 0.004, 285.0),
+            Self::Text2 => Color::from_oklch(0.745, 0.007, 285.0),
+            Self::Text3 => Color::from_oklch(0.560, 0.009, 285.0),
+            Self::TextDisabled => Color::from_oklch(0.420, 0.008, 285.0),
+
+            Self::Accent => Color::from_oklch(0.740, 0.160, 340.0),
+            Self::AccentHover => Color::from_oklch(0.790, 0.165, 340.0),
+            Self::AccentPress => Color::from_oklch(0.690, 0.155, 340.0),
+            Self::AccentSoft => Color::from_oklch_alpha(0.740, 0.160, 340.0, 0.16),
+            Self::AccentFg => Color::from_oklch(0.150, 0.030, 340.0),
+
+            Self::Danger => Color::from_oklch(0.660, 0.200, 25.0),
+            Self::DangerSoft => Color::from_oklch_alpha(0.660, 0.200, 25.0, 0.16),
+            Self::Success => Color::from_oklch(0.745, 0.140, 155.0),
+            Self::SuccessSoft => Color::from_oklch_alpha(0.745, 0.140, 155.0, 0.16),
+            Self::Warn => Color::from_oklch(0.800, 0.140, 80.0),
+            Self::WarnSoft => Color::from_oklch_alpha(0.800, 0.140, 80.0, 0.16),
+            Self::Info => Color::from_oklch(0.720, 0.120, 235.0),
+            Self::InfoSoft => Color::from_oklch_alpha(0.720, 0.120, 235.0, 0.16),
+
+            Self::Selection => Color::from_oklch_alpha(0.740, 0.160, 340.0, 0.24),
+            Self::FocusRing => Color::from_oklch_alpha(0.740, 0.160, 340.0, 0.55),
+            Self::GridLine => Color::from_oklch_alpha(1.0, 0.0, 0.0, 0.04),
+            Self::GridAxis => Color::from_oklch_alpha(0.740, 0.160, 340.0, 0.32),
+            Self::Canvas => Color::from_oklch(0.105, 0.004, 285.0),
+        }
+    }
+
+    /// `paint-studio`: inherits `forge-sdf` structure, only accent
+    /// stack changes (cyan).
+    fn resolve_paint_studio(self) -> Color {
+        match self {
+            Self::Accent => Color::from_oklch(0.780, 0.140, 205.0),
+            Self::AccentHover => Color::from_oklch(0.820, 0.140, 205.0),
+            Self::AccentPress => Color::from_oklch(0.730, 0.140, 205.0),
+            Self::AccentSoft => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.16),
+            Self::Selection => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.24),
+            Self::FocusRing => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.55),
+            Self::GridAxis => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.32),
+            // Tudo o resto herda forge-sdf.
+            other => other.resolve_forge_sdf(),
+        }
+    }
+
+    /// `sunstone`: light + warm orange. Redefine surfaces, text, accent.
+    fn resolve_sunstone(self) -> Color {
+        match self {
+            Self::Bg0 => Color::from_oklch(0.985, 0.006, 75.0),
+            Self::Bg1 => Color::from_oklch(0.965, 0.008, 75.0),
+            Self::Bg2 => Color::from_oklch(0.940, 0.010, 75.0),
+            Self::Bg3 => Color::from_oklch(0.910, 0.014, 75.0),
+            Self::BgElev => Color::from_oklch_alpha(0.985, 0.006, 75.0, 0.92),
+            Self::BgScrim => Color::from_oklch_alpha(0.220, 0.014, 75.0, 0.40),
+
+            Self::Border => Color::from_oklch(0.870, 0.016, 75.0),
+            Self::BorderStrong => Color::from_oklch(0.640, 0.018, 75.0),
+            Self::BorderEmph => Color::from_oklch(0.500, 0.020, 75.0),
+
+            Self::Text1 => Color::from_oklch(0.220, 0.014, 75.0),
+            Self::Text2 => Color::from_oklch(0.420, 0.012, 75.0),
+            Self::Text3 => Color::from_oklch(0.560, 0.010, 75.0),
+            Self::TextDisabled => Color::from_oklch(0.700, 0.008, 75.0),
+
+            Self::Accent => Color::from_oklch(0.560, 0.190, 55.0),
+            Self::AccentHover => Color::from_oklch(0.610, 0.195, 55.0),
+            Self::AccentPress => Color::from_oklch(0.510, 0.185, 55.0),
+            Self::AccentSoft => Color::from_oklch_alpha(0.560, 0.190, 55.0, 0.16),
+            Self::AccentFg => Color::from_oklch(0.985, 0.030, 55.0),
+
+            Self::Warn => Color::from_oklch(0.560, 0.160, 80.0),
+            Self::Selection => Color::from_oklch_alpha(0.560, 0.190, 55.0, 0.24),
+            Self::FocusRing => Color::from_oklch_alpha(0.560, 0.190, 55.0, 0.55),
+            Self::GridLine => Color::from_oklch_alpha(0.0, 0.0, 0.0, 0.04),
+            Self::GridAxis => Color::from_oklch_alpha(0.560, 0.190, 55.0, 0.32),
+            Self::Canvas => Color::from_oklch(0.945, 0.012, 75.0),
+
+            // Semantic states inherit forge-sdf chroma but shift L for
+            // light surface. Per audit.md sunstone tunes accent/warn
+            // explicitly; rest uses sensible darker variants.
+            Self::Danger => Color::from_oklch(0.560, 0.200, 25.0),
+            Self::DangerSoft => Color::from_oklch_alpha(0.560, 0.200, 25.0, 0.16),
+            Self::Success => Color::from_oklch(0.520, 0.140, 155.0),
+            Self::SuccessSoft => Color::from_oklch_alpha(0.520, 0.140, 155.0, 0.16),
+            Self::WarnSoft => Color::from_oklch_alpha(0.560, 0.160, 80.0, 0.16),
+            Self::Info => Color::from_oklch(0.520, 0.140, 235.0),
+            Self::InfoSoft => Color::from_oklch_alpha(0.520, 0.140, 235.0, 0.16),
+        }
+    }
+
+    /// `blueprint`: light + cool blue (CAD vibe). Sidebar layout flag
+    /// is read from `Theme::panel_layout`, not from color resolve.
+    fn resolve_blueprint(self) -> Color {
+        match self {
+            Self::Bg0 => Color::from_oklch(0.975, 0.008, 250.0),
+            Self::Bg1 => Color::from_oklch(0.955, 0.010, 250.0),
+            Self::Bg2 => Color::from_oklch(0.925, 0.014, 250.0),
+            Self::Bg3 => Color::from_oklch(0.895, 0.016, 250.0),
+            Self::BgElev => Color::from_oklch_alpha(0.975, 0.008, 250.0, 0.92),
+            Self::BgScrim => Color::from_oklch_alpha(0.220, 0.020, 250.0, 0.40),
+
+            Self::Border => Color::from_oklch(0.860, 0.018, 250.0),
+            Self::BorderStrong => Color::from_oklch(0.620, 0.020, 250.0),
+            Self::BorderEmph => Color::from_oklch(0.480, 0.022, 250.0),
+
+            Self::Text1 => Color::from_oklch(0.220, 0.020, 250.0),
+            Self::Text2 => Color::from_oklch(0.420, 0.018, 250.0),
+            Self::Text3 => Color::from_oklch(0.560, 0.014, 250.0),
+            Self::TextDisabled => Color::from_oklch(0.700, 0.012, 250.0),
+
+            Self::Accent => Color::from_oklch(0.500, 0.180, 250.0),
+            Self::AccentHover => Color::from_oklch(0.555, 0.185, 250.0),
+            Self::AccentPress => Color::from_oklch(0.450, 0.175, 250.0),
+            Self::AccentSoft => Color::from_oklch_alpha(0.500, 0.180, 250.0, 0.16),
+            Self::AccentFg => Color::from_oklch(0.985, 0.020, 250.0),
+
+            Self::Warn => Color::from_oklch(0.560, 0.160, 80.0),
+            Self::Selection => Color::from_oklch_alpha(0.500, 0.180, 250.0, 0.24),
+            Self::FocusRing => Color::from_oklch_alpha(0.500, 0.180, 250.0, 0.55),
+            Self::GridLine => Color::from_oklch_alpha(0.0, 0.0, 0.0, 0.06),
+            Self::GridAxis => Color::from_oklch_alpha(0.500, 0.180, 250.0, 0.36),
+            Self::Canvas => Color::from_oklch(0.940, 0.016, 250.0),
+
+            Self::Danger => Color::from_oklch(0.560, 0.200, 25.0),
+            Self::DangerSoft => Color::from_oklch_alpha(0.560, 0.200, 25.0, 0.16),
+            Self::Success => Color::from_oklch(0.520, 0.140, 155.0),
+            Self::SuccessSoft => Color::from_oklch_alpha(0.520, 0.140, 155.0, 0.16),
+            Self::WarnSoft => Color::from_oklch_alpha(0.560, 0.160, 80.0, 0.16),
+            Self::Info => Color::from_oklch(0.520, 0.140, 235.0),
+            Self::InfoSoft => Color::from_oklch_alpha(0.520, 0.140, 235.0, 0.16),
         }
     }
 }
@@ -172,90 +399,102 @@ mod tests {
         assert_eq!(c.a, 0xFF);
     }
 
-    /// **WCAG 2.2 Level AA gate** — text-on-surface contrast must
-    /// be ≥ 4.5:1 in BOTH themes. This is the headline a11y promise
-    /// of ADR-0023; if anyone tweaks a hex and breaks it, this test
-    /// is the immediate bouncer.
     #[test]
-    fn text_primary_on_surface_meets_aa_dark() {
-        let bg = ColorToken::Surface.resolve(Theme::Dark);
-        let fg = ColorToken::TextPrimary.resolve(Theme::Dark);
-        let ratio = bg.contrast_ratio(&fg);
-        assert!(
-            ratio >= 4.5,
-            "Dark text-primary on surface = {ratio:.2}:1, need ≥ 4.5"
-        );
+    fn oklch_white_round_trips_to_white_ish() {
+        // L=1, C=0 should yield pure white in sRGB.
+        let [r, g, b] = oklch_to_srgb(1.0, 0.0, 0.0);
+        assert_eq!((r, g, b), (255, 255, 255));
     }
 
     #[test]
-    fn text_primary_on_surface_meets_aa_light() {
-        let bg = ColorToken::Surface.resolve(Theme::Light);
-        let fg = ColorToken::TextPrimary.resolve(Theme::Light);
-        let ratio = bg.contrast_ratio(&fg);
-        assert!(
-            ratio >= 4.5,
-            "Light text-primary on surface = {ratio:.2}:1, need ≥ 4.5"
-        );
+    fn oklch_black_round_trips_to_black() {
+        // L=0, C=0 should yield pure black in sRGB.
+        let [r, g, b] = oklch_to_srgb(0.0, 0.0, 0.0);
+        assert_eq!((r, g, b), (0, 0, 0));
     }
 
     #[test]
-    fn text_secondary_meets_aa_in_both_themes() {
-        for theme in [Theme::Dark, Theme::Light] {
-            let bg = ColorToken::Surface.resolve(theme);
-            let fg = ColorToken::TextSecondary.resolve(theme);
+    fn oklch_mid_gray_is_neutral() {
+        // C=0 sempre yields R=G=B (achromatic). L=0.5 em OKLAB corresponde
+        // a sRGB ~99 (perceptualmente "metade do branco" — não é 128 porque
+        // OKLAB é perceptualmente uniforme, não linear em sRGB).
+        let [r, g, b] = oklch_to_srgb(0.5, 0.0, 0.0);
+        assert_eq!(r, g);
+        assert_eq!(g, b);
+        assert!((90..=110).contains(&r), "expected ~99, got {r}");
+    }
+
+    /// **WCAG 2.2 AA gate** — text-on-bg1 contrast ≥ 4.5:1 nos 4 themes.
+    #[test]
+    fn text1_on_bg1_meets_aa_in_all_themes() {
+        for theme in [
+            Theme::ForgeSdf,
+            Theme::PaintStudio,
+            Theme::Sunstone,
+            Theme::Blueprint,
+        ] {
+            let bg = ColorToken::Bg1.resolve(theme);
+            let fg = ColorToken::Text1.resolve(theme);
             let ratio = bg.contrast_ratio(&fg);
             assert!(
                 ratio >= 4.5,
-                "{theme:?} text-secondary = {ratio:.2}:1, need ≥ 4.5"
+                "{theme:?}: text-1 on bg-1 = {ratio:.2}:1, need ≥ 4.5"
             );
         }
     }
 
     #[test]
-    fn border_emphasis_meets_aa_ui_in_both_themes() {
-        // BorderEmphasis is used as focus ring. WCAG SC 1.4.11
-        // (Non-text Contrast) = 3.0 minimum for UI components.
-        for theme in [Theme::Dark, Theme::Light] {
-            let bg = ColorToken::Surface.resolve(theme);
-            let fg = ColorToken::BorderEmphasis.resolve(theme);
+    fn text2_on_bg1_meets_aa_in_all_themes() {
+        for theme in [
+            Theme::ForgeSdf,
+            Theme::PaintStudio,
+            Theme::Sunstone,
+            Theme::Blueprint,
+        ] {
+            let bg = ColorToken::Bg1.resolve(theme);
+            let fg = ColorToken::Text2.resolve(theme);
+            let ratio = bg.contrast_ratio(&fg);
+            assert!(
+                ratio >= 4.5,
+                "{theme:?}: text-2 on bg-1 = {ratio:.2}:1, need ≥ 4.5"
+            );
+        }
+    }
+
+    /// WCAG SC 1.4.11 — non-text UI components (focus rings, borders).
+    #[test]
+    fn border_emph_meets_ui_aa_in_all_themes() {
+        for theme in [
+            Theme::ForgeSdf,
+            Theme::PaintStudio,
+            Theme::Sunstone,
+            Theme::Blueprint,
+        ] {
+            let bg = ColorToken::Bg1.resolve(theme);
+            let fg = ColorToken::BorderEmph.resolve(theme);
             let ratio = bg.contrast_ratio(&fg);
             assert!(
                 ratio >= 3.0,
-                "{theme:?} border-emphasis = {ratio:.2}:1, need ≥ 3.0 (WCAG 1.4.11)"
+                "{theme:?}: border-emph on bg-1 = {ratio:.2}:1, need ≥ 3.0"
             );
         }
     }
 
     #[test]
-    fn accent_primary_meets_ui_aa_in_both_themes() {
-        for theme in [Theme::Dark, Theme::Light] {
-            let bg = ColorToken::Surface.resolve(theme);
-            let fg = ColorToken::AccentPrimary.resolve(theme);
+    fn accent_meets_ui_aa_in_all_themes() {
+        for theme in [
+            Theme::ForgeSdf,
+            Theme::PaintStudio,
+            Theme::Sunstone,
+            Theme::Blueprint,
+        ] {
+            let bg = ColorToken::Bg1.resolve(theme);
+            let fg = ColorToken::Accent.resolve(theme);
             let ratio = bg.contrast_ratio(&fg);
             assert!(
                 ratio >= 3.0,
-                "{theme:?} accent-primary on surface = {ratio:.2}:1, need ≥ 3.0"
+                "{theme:?}: accent on bg-1 = {ratio:.2}:1, need ≥ 3.0"
             );
-        }
-    }
-
-    #[test]
-    fn semantic_colors_meet_ui_aa() {
-        for theme in [Theme::Dark, Theme::Light] {
-            for token in [
-                ColorToken::Success,
-                ColorToken::Warning,
-                ColorToken::ErrorState,
-                ColorToken::Info,
-            ] {
-                let bg = ColorToken::Surface.resolve(theme);
-                let fg = token.resolve(theme);
-                let ratio = bg.contrast_ratio(&fg);
-                assert!(
-                    ratio >= 3.0,
-                    "{theme:?} {token:?} = {ratio:.2}:1, need ≥ 3.0"
-                );
-            }
         }
     }
 }

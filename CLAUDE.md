@@ -32,4 +32,22 @@ LLM nova chegando lê esse índice antes de tomar ações.
 ## Plano operacional ativo
 
 [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) — 13
-marcos M1..M13 para implementação real do core pós-spike. Iniciar do M1.
+marcos M1..M13 para implementação real do core pós-spike.
+
+**Estado em 2026-05-09:** M1-M12 implementados e mergeados (PRs #1-#28).
+M13 em curso: tool palette UI shipada (PR #30), em paralelo com design
+library handoff para Claude Design (vide `docs/design/`).
+
+## Design system
+
+[`docs/design/PROMPT_CLAUDE_DESIGN.md`](docs/design/PROMPT_CLAUDE_DESIGN.md) —
+brief para gerar tokens.json + component-library.html + 17 mockups de tela
++ icons SVG + interactions/gestures/animation/accessibility specs. Output
+do Claude Design alimenta a implementação dos widgets em Vello sobre o
+[`ph2d-editor`](crates/ph2d-editor/) já existente (4 zonas, FloatingPanel,
+ToolRegistry, ZenMode, ToastQueue por ADR-0023).
+
+[`docs/design/component-library.html`](docs/design/component-library.html) —
+mockup v2 inspirado em sdf3d-studio (4 temas OKLCH, glass surfaces,
+Inter+JetBrains Mono); referência visual até o output canônico do Claude
+Design substituí-lo.

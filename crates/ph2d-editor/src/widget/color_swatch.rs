@@ -64,7 +64,7 @@ impl ColorSwatch {
 pub fn paint_color_swatch(swatch: &ColorSwatch, rect: Rect, scene: &mut VectorScene, theme: Theme) {
     // 1. Outer frame — two-pixel border via outer fill + inner inset.
     let border_token = if swatch.state == SwatchState::Focused {
-        ColorToken::BorderEmphasis
+        ColorToken::BorderEmph
     } else {
         ColorToken::Border
     };
@@ -117,7 +117,7 @@ mod tests {
             &s,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 
@@ -129,7 +129,7 @@ mod tests {
             &s,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Light,
+            Theme::Sunstone,
         );
     }
 
@@ -137,6 +137,6 @@ mod tests {
     fn paint_smoke_alpha_translucent() {
         let s = ColorSwatch::new(NodeId(1), "x", [255, 0, 0, 64]);
         let mut scene = VectorScene::new();
-        paint_color_swatch(&s, Rect::new(0.0, 0.0, 50.0, 50.0), &mut scene, Theme::Dark);
+        paint_color_swatch(&s, Rect::new(0.0, 0.0, 50.0, 50.0), &mut scene, Theme::ForgeSdf);
     }
 }

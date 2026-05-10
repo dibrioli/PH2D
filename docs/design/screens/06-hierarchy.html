@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head><meta charset="utf-8"/><title>PH2D · Hierarchy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css"/><link rel="stylesheet" href="../styles/components.css"/>
+<style>
+body{background:oklch(0.05 0.004 285);overflow:hidden;height:100vh}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.frame{width:1366px;height:1024px;transform-origin:center;background:var(--bg-0);position:relative;overflow:hidden;border-radius:14px;box-shadow:0 40px 100px oklch(0 0 0 /.7);display:grid;grid-template-rows:46px 1fr}
+.top{display:flex;align-items:center;padding:0 18px;border-bottom:1px solid var(--border);gap:12px;font:var(--fw-medium) 11px/1 var(--font-sans);color:var(--text-2)}
+.top .b{color:var(--text-1);font-weight:var(--fw-semibold)}
+.top .acc{color:var(--accent);text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:var(--fw-semibold)}
+.body{display:grid;grid-template-columns:520px 1fr 360px;overflow:hidden}
+/* HIERARCHY (focused) */
+.hier{border-right:1px solid var(--border);background:var(--bg-1);display:grid;grid-template-rows:42px 38px 1fr 86px;overflow:hidden}
+.hh{display:flex;align-items:center;padding:0 18px;border-bottom:1px solid var(--border);gap:10px;font:var(--fw-semibold) 10px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-2)}
+.hh .ct{margin-left:auto;color:var(--accent);font-family:var(--font-mono)}
+.hh .ic{margin-left:8px;color:var(--text-3);font-family:var(--font-mono);font-size:14px}
+.hsearch{display:flex;align-items:center;gap:8px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--bg-2);font:var(--fw-medium) 11.5px/1 var(--font-mono);color:var(--text-3)}
+.hsearch input{background:transparent;border:0;outline:0;color:var(--text-1);flex:1;font:inherit}
+.hsearch .chip{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:3px 7px;border-radius:3px}
+.htree{overflow-y:auto;padding:6px 0;font-family:var(--font-mono);font-size:11.5px}
+.row{display:grid;grid-template-columns:auto auto 1fr auto auto;align-items:center;gap:8px;padding:5px 18px;color:var(--text-2);position:relative;cursor:pointer}
+.row:hover{background:var(--bg-2)}
+.row.on{background:var(--accent-soft);color:var(--text-1);box-shadow:inset 2px 0 0 var(--accent)}
+.row.dragging{background:var(--bg-3);opacity:.6;border:1px dashed var(--accent)}
+.row .indent{display:inline-flex;width:0}
+.row .tw{width:10px;color:var(--text-3);font-size:9px;display:inline-flex;justify-content:center}
+.row .tw.exp{color:var(--accent)}
+.row .ic{width:14px;color:var(--text-3);text-align:center}
+.row.on .ic{color:var(--accent)}
+.row .nm{color:inherit;display:inline-flex;align-items:center;gap:6px;min-width:0}
+.row .tag{font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);padding:1px 5px;border:1px solid var(--border);border-radius:2px}
+.row .tag.prf{color:oklch(0.78 0.14 var(--accent-h));border-color:oklch(0.74 0.16 var(--accent-h) /.4)}
+.row .tag.scr{color:oklch(0.74 0.14 155);border-color:oklch(0.74 0.14 155 /.35)}
+.row .tag.dis{color:var(--text-3)}
+.row .meta{font-size:9.5px;color:var(--text-3);letter-spacing:.04em}
+.row .vis{color:var(--text-3);font-family:var(--font-mono);font-size:12px}
+.row .vis.off{color:var(--text-3);opacity:.4}
+.row .lock{color:var(--accent);font-size:11px}
+/* drop indicator */
+.drop{height:2px;background:var(--accent);margin:0 18px;box-shadow:0 0 0 1px oklch(0.74 0.16 var(--accent-h) /.4)}
+.drop::before{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:var(--accent);transform:translate(-4px,-3px)}
+.hfoot{padding:10px 18px;border-top:1px solid var(--border);font:var(--fw-medium) 10px/1.5 var(--font-mono);color:var(--text-2);display:flex;flex-direction:column;gap:3px}
+.hfoot .r{display:flex;justify-content:space-between}.hfoot .r .v{color:var(--text-1)}
+.hfoot .actions{display:flex;gap:6px;margin-top:4px}
+.hfoot .actions button{flex:1;height:26px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text-2);font:var(--fw-medium) 10px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.hfoot .actions button.acc{color:var(--accent);border-color:oklch(0.74 0.16 var(--accent-h) /.4)}
+/* MIDDLE: viewport with selected entity highlighted */
+.vp{background:oklch(0.07 0.004 285);position:relative;overflow:hidden;background-image:linear-gradient(oklch(1 0 0 /.025) 1px,transparent 1px),linear-gradient(90deg,oklch(1 0 0 /.025) 1px,transparent 1px);background-size:32px 32px}
+.vplabel{position:absolute;left:18px;top:14px;font:var(--fw-semibold) 9.5px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase}
+.ent{position:absolute;border:1px solid oklch(1 0 0 /.18);border-radius:2px;display:flex;align-items:end;padding:3px;font:var(--fw-medium) 9px/1 var(--font-mono);color:var(--text-3);letter-spacing:.04em;text-transform:uppercase}
+.ent.dim{opacity:.45}
+.ent.sel{border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 1px oklch(0.74 0.16 var(--accent-h) /.3)}
+.parent{position:absolute;left:30%;top:30%;width:340px;height:380px;border:1px dashed oklch(0.74 0.16 var(--accent-h) /.5);border-radius:6px}
+.parent .pl{position:absolute;left:0;top:-22px;background:var(--accent);color:var(--accent-fg);padding:3px 8px;border-radius:3px;font:var(--fw-semibold) 10px/1 var(--font-mono);letter-spacing:.04em}
+.minimap{position:absolute;right:14px;top:14px;width:160px;height:120px;background:oklch(0.10 0.005 285 /.85);border:1px solid var(--border);border-radius:4px;backdrop-filter:blur(10px)}
+.minimap::after{content:'minimap';position:absolute;left:7px;top:5px;font:var(--fw-semibold) 8px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase}
+.minimap .vw{position:absolute;left:38%;top:34%;width:38%;height:42%;border:1px solid var(--accent);background:oklch(0.74 0.16 var(--accent-h) /.06)}
+.minimap .dot{position:absolute;width:3px;height:3px;background:var(--accent);border-radius:50%}
+/* RIGHT: stats / scene info */
+.right{background:var(--bg-1);border-left:1px solid var(--border);display:grid;grid-template-rows:42px 1fr;overflow:hidden}
+.rh{display:flex;align-items:center;padding:0 18px;border-bottom:1px solid var(--border);font:var(--fw-semibold) 10px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-2)}
+.rb{padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:18px}
+.sec{display:flex;flex-direction:column;gap:8px}
+.sec h4{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0}
+.sec .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat{background:var(--bg-2);border:1px solid var(--border);border-radius:4px;padding:8px 10px}
+.stat .v{font:var(--fw-semibold) 18px/1 var(--font-mono);color:var(--text-1);letter-spacing:-.01em}
+.stat .v.acc{color:var(--accent)}
+.stat .l{font:var(--fw-medium) 9px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase;margin-top:5px}
+.bar{height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.kv{display:flex;justify-content:space-between;font:var(--fw-medium) 11px/1.4 var(--font-mono);color:var(--text-2);padding:3px 0}
+.kv .v{color:var(--text-1)}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tags span{font:var(--fw-medium) 10px/1 var(--font-mono);padding:4px 8px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text-2);letter-spacing:.04em}
+.tags span.on{color:var(--accent);border-color:oklch(0.74 0.16 var(--accent-h) /.4);background:var(--accent-soft)}
+</style></head>
+<body data-screen-label="06 Hierarchy">
+<div class="stage"><div class="frame" id="frame">
+  <div class="top">
+    <span class="acc">Hierarchy</span>
+    <span>scene · <span class="b">level_01_forest</span></span>
+    <span style="color:var(--text-3)">·</span>
+    <span><span class="b">187</span> entities · <span class="b">14</span> groups · <span class="b">9</span> prefab instances</span>
+    <span style="margin-left:auto;color:var(--text-3)">⌘ ⇧ H to toggle · ⌘ F to find · drag to reparent</span>
+  </div>
+
+  <div class="body">
+    <div class="hier">
+      <div class="hh">tree<span class="ic">⊕</span><span class="ic">⛬</span><span class="ic">⌘</span><span class="ct">187</span></div>
+      <div class="hsearch"><span>⌕</span><input value="" placeholder="filter by name, tag, component…"><span class="chip">tag:enemy</span></div>
+      <div class="htree">
+        <!-- Scene root -->
+        <div class="row"><span></span><span class="tw exp">▾</span><span class="ic">▣</span><span class="nm"><b style="color:var(--text-1)">level_01_forest</b><span class="tag">scene</span></span><span class="meta">root</span><span class="vis">●</span></div>
+
+        <!-- environment group -->
+        <div class="row" style="padding-left:36px"><span></span><span class="tw">▸</span><span class="ic">▤</span><span class="nm">environment</span><span class="tag">group · 24</span><span class="meta">L 0</span><span class="vis">●</span></div>
+
+        <!-- gameplay group expanded -->
+        <div class="row" style="padding-left:36px"><span></span><span class="tw exp">▾</span><span class="ic">▤</span><span class="nm">gameplay</span><span class="tag">group · 38</span><span class="meta">L 1</span><span class="vis">●</span></div>
+
+          <div class="row" style="padding-left:62px"><span></span><span class="tw">▸</span><span class="ic">●</span><span class="nm">player_spawn</span><span class="tag prf">prefab</span><span class="meta">L 1</span><span class="vis">●</span></div>
+          <div class="row" style="padding-left:62px"><span></span><span class="tw exp">▾</span><span class="ic">●</span><span class="nm"><b style="color:var(--text-1)">player</b><span class="tag prf">prefab</span><span class="tag scr">script</span></span><span class="meta">L 1</span><span class="vis">●</span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">⌖</span><span class="nm">transform</span><span class="tag">comp</span><span class="meta">x 448 · y 320</span><span></span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">▦</span><span class="nm">sprite</span><span class="tag">comp</span><span class="meta">player_idle.png</span><span></span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">◇</span><span class="nm">collider · capsule</span><span class="tag">comp</span><span class="meta">28 × 64</span><span></span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">⊙</span><span class="nm">rigidbody · dynamic</span><span class="tag">comp</span><span class="meta">m 1.0</span><span></span></div>
+
+          <div class="row" style="padding-left:62px"><span></span><span class="tw exp">▾</span><span class="ic">▤</span><span class="nm">enemies</span><span class="tag">group · 12</span><span class="meta">L 2</span><span class="vis">●</span></div>
+            <div class="row on" style="padding-left:88px"><span></span><span></span><span class="ic">◐</span><span class="nm"><b>slime_basic_01</b><span class="tag prf">prefab</span></span><span class="meta">selected</span><span class="vis">●</span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">◐</span><span class="nm">slime_basic_02</b><span class="tag prf">prefab</span></span><span class="meta">L 2</span><span class="vis">●</span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">◐</span><span class="nm">slime_basic_03 <span class="tag prf">prefab · override</span></span><span class="meta">L 2 · scale 1.4</span><span class="vis">●</span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">▴</span><span class="nm">bat_swarm <span class="tag prf">prefab</span> <span class="tag scr">ai</span></span><span class="meta">L 2 · 6 emit</span><span class="vis">●</span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">▴</span><span class="nm">bat_boss <span class="tag scr">script</span></span><span class="meta">L 3</span><span class="vis off">○</span><span class="lock">⌧</span></div>
+            <div class="row" style="padding-left:88px"><span></span><span></span><span class="ic">⏻</span><span class="nm">trap_spike_row <span class="tag dis">disabled</span></span><span class="meta" style="opacity:.5">L 2</span><span class="vis off">○</span></div>
+
+          <!-- drop indicator -->
+          <div class="drop" style="margin-left:88px"></div>
+
+          <div class="row dragging" style="padding-left:88px"><span></span><span></span><span class="ic">◇</span><span class="nm">crystal_pickup_3</span><span class="tag prf">moving</span><span class="meta">→ enemies</span><span></span></div>
+
+          <div class="row" style="padding-left:62px"><span></span><span class="tw">▸</span><span class="ic">▤</span><span class="nm">checkpoints</span><span class="tag">group · 4</span><span class="meta">L 1</span><span class="vis">●</span></div>
+          <div class="row" style="padding-left:62px"><span></span><span class="tw">▸</span><span class="ic">▤</span><span class="nm">pickups</span><span class="tag">group · 18</span><span class="meta">L 1</span><span class="vis">●</span></div>
+
+        <div class="row" style="padding-left:36px"><span></span><span class="tw">▸</span><span class="ic">▤</span><span class="nm">lighting</span><span class="tag">group · 14</span><span class="meta">L 0</span><span class="vis">●</span></div>
+        <div class="row" style="padding-left:36px"><span></span><span class="tw">▸</span><span class="ic">▤</span><span class="nm">cameras</span><span class="tag">group · 3</span><span class="meta">L 0</span><span class="vis">●</span></div>
+        <div class="row" style="padding-left:36px"><span></span><span class="tw">▸</span><span class="ic">▤</span><span class="nm">audio</span><span class="tag">group · 8</span><span class="meta">L 0</span><span class="vis">●</span></div>
+        <div class="row" style="padding-left:36px"><span></span><span class="tw">▸</span><span class="ic">▤</span><span class="nm">debug · gizmos</span><span class="tag dis">editor only</span><span class="meta" style="opacity:.5">L 0</span><span class="vis off">○</span></div>
+      </div>
+      <div class="hfoot">
+        <div class="r"><span>visible</span><span class="v">142 / 187</span></div>
+        <div class="r"><span>filter</span><span class="v">tag:enemy · 12 matches</span></div>
+        <div class="actions"><button>▤ group</button><button>⊠ prefab</button><button class="acc">⊕ entity</button></div>
+      </div>
+    </div>
+
+    <div class="vp">
+      <div class="vplabel">scene viewport · level_01_forest</div>
+      <div class="parent"><span class="pl">enemies · group of 12 · highlighted from hierarchy</span>
+        <div class="ent" style="left:8%;top:80%;width:80%;height:6px"></div>
+        <div class="ent" style="left:14%;top:62%;width:36px;height:36px;border-radius:50%">slime_2</div>
+        <div class="ent" style="left:32%;top:62%;width:36px;height:36px;border-radius:50%">slime_3</div>
+        <div class="ent sel" style="left:50%;top:60%;width:42px;height:38px;border-radius:50%">slime_basic_01</div>
+        <div class="ent" style="left:18%;top:24%;width:30px;height:24px">bat_1</div>
+        <div class="ent" style="left:42%;top:18%;width:30px;height:24px">bat_2</div>
+        <div class="ent" style="left:62%;top:24%;width:30px;height:24px">bat_3</div>
+      </div>
+
+      <div class="ent dim" style="left:6%;top:88%;right:6%;height:14px">tilemap.ground</div>
+      <div class="ent dim" style="left:80%;top:18%;width:80px;height:54px">camera.main</div>
+      <div class="ent dim" style="left:8%;top:54%;width:48px;height:64px">player</div>
+
+      <div class="minimap">
+        <div class="vw"></div>
+        <div class="dot" style="left:50%;top:54%"></div><div class="dot" style="left:46%;top:56%"></div><div class="dot" style="left:54%;top:55%"></div>
+        <div class="dot" style="left:34%;top:30%;background:oklch(0.78 0.14 80)"></div><div class="dot" style="left:60%;top:28%;background:oklch(0.78 0.14 80)"></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="rh">scene stats</div>
+      <div class="rb">
+        <div class="sec">
+          <div class="grid">
+            <div class="stat"><div class="v">187</div><div class="l">entities</div></div>
+            <div class="stat"><div class="v">14</div><div class="l">groups</div></div>
+            <div class="stat"><div class="v acc">9</div><div class="l">prefab refs</div></div>
+            <div class="stat"><div class="v">3</div><div class="l">overrides</div></div>
+          </div>
+        </div>
+        <div class="sec">
+          <h4>render layers · 6</h4>
+          <div class="kv"><span>bg / parallax</span><span class="v">14</span></div>
+          <div class="kv"><span>terrain</span><span class="v">42</span></div>
+          <div class="kv"><span>gameplay</span><span class="v">38</span></div>
+          <div class="kv"><span>fx</span><span class="v">11</span></div>
+          <div class="kv"><span>ui · world</span><span class="v">6</span></div>
+          <div class="kv"><span>debug</span><span class="v" style="color:var(--text-3)">76 hidden</span></div>
+        </div>
+        <div class="sec">
+          <h4>tags in scene</h4>
+          <div class="tags"><span class="on">enemy · 12</span><span>player · 1</span><span>pickup · 18</span><span>hazard · 7</span><span>checkpoint · 4</span><span>trigger · 9</span><span>npc · 3</span></div>
+        </div>
+        <div class="sec">
+          <h4>component density</h4>
+          <div class="kv"><span>Transform</span><span class="v">187 · all</span></div>
+          <div class="bar"><i style="width:100%"></i></div>
+          <div class="kv"><span>Sprite</span><span class="v">142</span></div>
+          <div class="bar"><i style="width:76%"></i></div>
+          <div class="kv"><span>Collider</span><span class="v">98</span></div>
+          <div class="bar"><i style="width:52%"></i></div>
+          <div class="kv"><span>RigidBody</span><span class="v">42</span></div>
+          <div class="bar"><i style="width:22%"></i></div>
+          <div class="kv"><span>Script · luau</span><span class="v">31</span></div>
+          <div class="bar"><i style="width:16%"></i></div>
+        </div>
+        <div class="sec">
+          <h4>warnings · 2</h4>
+          <div class="kv" style="color:oklch(0.78 0.14 80)"><span>missing sprite</span><span class="v">trap_spike_row</span></div>
+          <div class="kv" style="color:oklch(0.78 0.14 80)"><span>orphan prefab override</span><span class="v">slime_basic_03</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<script>function fit(){const f=document.getElementById('frame');const s=Math.min(innerWidth/1366,innerHeight/1024,1);f.style.transform=`scale(${s})`}fit();onresize=fit;</script>
+</body></html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head>
+<meta charset="utf-8" />
+<title>PH2D · Play Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css" />
+<link rel="stylesheet" href="../styles/components.css" />
+<style>
+  body { background: oklch(0.05 0.004 285); overflow: hidden; height: 100vh; }
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .frame {
+    width: 1366px; height: 1024px; transform-origin: center center;
+    background: var(--bg-0); position: relative; overflow: hidden; border-radius: 14px;
+    box-shadow: 0 40px 100px oklch(0 0 0 / 0.7);
+  }
+  /* play-mode signature: red/magenta border ring */
+  .frame::after {
+    content: ''; position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
+    box-shadow: inset 0 0 0 2px oklch(0.66 0.20 25 / 0.55), inset 0 0 60px oklch(0.66 0.20 25 / 0.10);
+  }
+
+  /* top bar — tools dimmed, play controls active */
+  .top {
+    position: absolute; top: 14px; left: 14px; right: 14px; height: 44px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pill { height: 36px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 18px; color: var(--text-2); font: var(--fw-medium) 11px/1 var(--font-sans); letter-spacing: 0.04em; }
+  .pill .b { color: var(--text-1); font-weight: var(--fw-semibold); }
+  .pill.dim { opacity: 0.35; }
+  .pill.live { background: oklch(0.66 0.20 25 / 0.12); border-color: oklch(0.66 0.20 25 / 0.45); color: oklch(0.94 0.05 25); }
+  .pill.live .dot { width: 8px; height: 8px; border-radius: 50%; background: oklch(0.72 0.20 25); box-shadow: 0 0 12px oklch(0.72 0.20 25); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  .play-controls { display: inline-flex; gap: 4px; }
+  .pcbtn { width: 44px; height: 36px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elev); border: 1px solid var(--border); color: var(--text-1); cursor: pointer; font-family: var(--font-mono); font-size: 14px; }
+  .pcbtn:first-child { border-radius: 18px 0 0 18px; }
+  .pcbtn:last-child { border-radius: 0 18px 18px 0; }
+  .pcbtn + .pcbtn { border-left: 0; }
+  .pcbtn.active { background: oklch(0.66 0.20 25); border-color: oklch(0.66 0.20 25); color: oklch(0.99 0 0); }
+
+  .right-cluster { margin-left: auto; display: flex; gap: 8px; }
+
+  /* canvas */
+  .scene {
+    position: absolute; left: 14px; right: 14px; top: 70px; bottom: 320px;
+    background-color: oklch(0.10 0.005 285);
+    background-image: 
+      radial-gradient(circle at 30% 40%, oklch(0.20 0.04 340 / 0.18), transparent 60%),
+      linear-gradient(oklch(1 0 0 / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.025) 1px, transparent 1px);
+    background-size: auto, 32px 32px, 32px 32px;
+    border-radius: 6px; overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  /* simulated entities */
+  .e { position: absolute; border: 1.5px solid; display: flex; align-items: end; justify-content: start; padding: 4px; font: var(--fw-semibold) 10px/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
+  .player { left: 28%; top: 40%; width: 64px; height: 96px; border-color: oklch(0.74 0.16 340); background: oklch(0.74 0.16 340 / 0.10); color: oklch(0.94 0.06 340); }
+  .slime1 { left: 56%; top: 52%; width: 52px; height: 40px; border-radius: 50%; border-color: oklch(0.74 0.14 155); background: oklch(0.74 0.14 155 / 0.10); color: oklch(0.94 0.04 155); }
+  .slime2 { left: 70%; top: 56%; width: 52px; height: 40px; border-radius: 50%; border-color: oklch(0.74 0.14 155); background: oklch(0.74 0.14 155 / 0.10); color: oklch(0.94 0.04 155); }
+  .ground { left: 6%; top: 78%; right: 6%; height: 14px; border-color: oklch(0.5 0.02 80 / 0.6); background: oklch(0.4 0.04 80 / 0.18); }
+  .platform { left: 56%; top: 60%; width: 220px; height: 14px; border-color: oklch(0.5 0.02 80 / 0.5); background: oklch(0.4 0.04 80 / 0.15); }
+
+  /* gizmo on player to indicate physics simulating */
+  .vel { position: absolute; left: 32%; top: 40%; transform: translate(0, -10px); display: inline-flex; align-items: center; gap: 6px; font: var(--fw-medium) 9.5px/1 var(--font-mono); color: oklch(0.74 0.16 340); }
+  .vel::before { content: '→'; font-size: 14px; }
+
+  /* HUD pill bottom-left */
+  .hud {
+    position: absolute; left: 14px; bottom: 230px;
+    display: inline-flex; align-items: center; gap: 14px;
+    padding: 10px 18px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 999px;
+    font: var(--fw-medium) 10.5px/1 var(--font-mono); color: var(--text-2); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .hud .v { color: var(--text-1); font-weight: var(--fw-semibold); }
+  .hud .ok { color: oklch(0.74 0.14 155); }
+  .hud .warn { color: oklch(0.78 0.14 80); }
+  .hud .div { width: 1px; height: 12px; background: var(--border); }
+
+  /* bottom — game view + perf strip */
+  .bottom-row { position: absolute; left: 14px; right: 14px; bottom: 14px; height: 200px; display: grid; grid-template-columns: 360px 1fr 280px; gap: 10px; }
+  .panel { background: var(--bg-1); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
+  .panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .panel-head .title { font: var(--fw-semibold) 10px/1 var(--font-sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-2); }
+  .panel-head .meta { margin-left: auto; font: var(--fw-medium) 10px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; }
+
+  /* INPUT MAP */
+  .inputs { padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+  .inp { display: flex; align-items: center; gap: 10px; }
+  .inp .key {
+    min-width: 28px; height: 22px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
+    font: var(--fw-semibold) 10px/1 var(--font-mono); color: var(--text-1);
+  }
+  .inp .key.hot { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); box-shadow: 0 0 10px var(--accent-soft); }
+  .inp .lab { font: var(--fw-medium) 11px/1 var(--font-sans); color: var(--text-2); }
+  .inp .lab.act { color: var(--text-1); font-weight: var(--fw-semibold); }
+  .inp .v { margin-left: auto; font: var(--fw-medium) 10px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; }
+
+  /* PERF graph */
+  .perf-body { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .perf-stats { display: flex; gap: 18px; padding: 0 4px; }
+  .stat { font: var(--fw-medium) 10px/1.4 var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; text-transform: uppercase; }
+  .stat .v { display: block; font: var(--fw-semibold) 18px/1 var(--font-sans); color: var(--text-1); margin-top: 4px; letter-spacing: -0.01em; }
+  .stat.ok .v { color: oklch(0.74 0.14 155); }
+  .stat.warn .v { color: oklch(0.78 0.14 80); }
+  .graph { flex: 1; position: relative; background: var(--bg-2); border-radius: 4px; overflow: hidden; min-height: 80px; }
+  .graph::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1px); background-size: 100% 25%; }
+  .graph svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* CONSOLE PIP */
+  .console-pip { padding: 0; }
+  .pip-body { flex: 1; padding: 8px 12px; font: var(--fw-medium) 10px/1.55 var(--font-mono); color: var(--text-2); overflow: hidden; }
+  .pip-body .l { display: grid; grid-template-columns: 60px 1fr; gap: 8px; padding: 2px 0; border-bottom: 1px solid oklch(1 0 0 / 0.025); }
+  .pip-body .t { color: var(--text-3); }
+  .pip-body .ok { color: oklch(0.74 0.14 155); }
+  .pip-body .warn { color: oklch(0.78 0.14 80); }
+  .pip-body .err { color: oklch(0.72 0.18 25); }
+  .pip-body .ent { color: var(--accent); }
+</style>
+</head>
+<body data-screen-label="14 Play Mode">
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+
+    <!-- TOP -->
+    <div class="top">
+      <span class="pill dim">forge-sdf</span>
+      <span class="pill dim"><span class="b">playground_test</span></span>
+
+      <div class="play-controls" style="margin-left: 8px;">
+        <button class="pcbtn" title="Restart">↻</button>
+        <button class="pcbtn active" title="Stop">■</button>
+        <button class="pcbtn" title="Pause">‖</button>
+        <button class="pcbtn" title="Step frame">⇥</button>
+        <button class="pcbtn" title="Step second">⇥⇥</button>
+      </div>
+
+      <span class="pill live" style="margin-left: 8px;">
+        <span class="dot"></span>
+        <span class="b">PLAYING</span>
+        <span style="color: oklch(0.94 0.05 25 / 0.6);">·</span>
+        <span>00:14.842</span>
+      </span>
+
+      <div class="right-cluster">
+        <span class="pill">view <span class="b">game</span> · editor</span>
+        <span class="pill">×<span class="b">1.0</span> speed</span>
+        <span class="pill"><span class="b">⌘ ⇧ R</span></span>
+      </div>
+    </div>
+
+    <!-- SCENE -->
+    <div class="scene">
+      <div class="ground">tilemap.ground · 64 tiles</div>
+      <div class="platform">platform_b</div>
+      <div class="player">player</div>
+      <div class="vel" style="left: 32%; top: 38%;">v 4.2 m/s</div>
+      <div class="slime1">slime_1</div>
+      <div class="slime2">slime_2</div>
+    </div>
+
+    <!-- HUD -->
+    <div class="hud">
+      <span>fps <span class="v ok">59.8</span></span>
+      <span class="div"></span>
+      <span>frame <span class="v">14.7 ms</span></span>
+      <span class="div"></span>
+      <span>cpu <span class="v">3.1</span> · gpu <span class="v">5.8</span></span>
+      <span class="div"></span>
+      <span>draws <span class="v">142</span></span>
+      <span class="div"></span>
+      <span>ents <span class="v">87</span> · phys <span class="v warn">8</span></span>
+      <span class="div"></span>
+      <span>mem <span class="v">142 MB</span></span>
+    </div>
+
+    <!-- BOTTOM -->
+    <div class="bottom-row">
+
+      <!-- INPUT MAP -->
+      <div class="panel">
+        <div class="panel-head">
+          <span class="title">Input · live</span>
+          <span class="meta">player_1 · keyboard</span>
+        </div>
+        <div class="inputs">
+          <div class="inp"><span class="key hot">A</span><span class="lab act">move ←</span><span class="v">-1.0</span></div>
+          <div class="inp"><span class="key">D</span><span class="lab">move →</span><span class="v">0.0</span></div>
+          <div class="inp"><span class="key">W</span><span class="lab">look ↑</span><span class="v">0.0</span></div>
+          <div class="inp"><span class="key">S</span><span class="lab">crouch</span><span class="v">0.0</span></div>
+          <div class="inp"><span class="key hot">␣</span><span class="lab act">jump</span><span class="v">held</span></div>
+          <div class="inp"><span class="key">X</span><span class="lab">dash</span><span class="v">0.0</span></div>
+          <div class="inp"><span class="key">Z</span><span class="lab">attack</span><span class="v">0.0</span></div>
+          <div class="inp"><span class="key">⎋</span><span class="lab">pause</span><span class="v">—</span></div>
+        </div>
+      </div>
+
+      <!-- PERF -->
+      <div class="panel">
+        <div class="panel-head">
+          <span class="title">Performance</span>
+          <span class="meta">last 4s · 240 frames</span>
+        </div>
+        <div class="perf-body">
+          <div class="perf-stats">
+            <div class="stat ok">fps avg<span class="v">59.8</span></div>
+            <div class="stat">cpu<span class="v">3.1<small style="color: var(--text-3); font-size: 11px;"> ms</small></span></div>
+            <div class="stat">gpu<span class="v">5.8<small style="color: var(--text-3); font-size: 11px;"> ms</small></span></div>
+            <div class="stat warn">phys<span class="v">3.4<small style="color: var(--text-3); font-size: 11px;"> ms</small></span></div>
+            <div class="stat">script<span class="v">0.6<small style="color: var(--text-3); font-size: 11px;"> ms</small></span></div>
+            <div class="stat">draws<span class="v">142</span></div>
+          </div>
+          <div class="graph">
+            <svg viewBox="0 0 240 80" preserveAspectRatio="none">
+              <path d="M0,40 L8,38 L16,42 L24,40 L32,36 L40,42 L48,44 L56,40 L64,36 L72,38 L80,42 L88,44 L96,40 L104,38 L112,42 L120,40 L128,38 L136,42 L144,44 L152,40 L160,38 L168,36 L176,38 L184,40 L192,42 L200,46 L208,44 L216,42 L224,40 L232,38 L240,40"
+                stroke="oklch(0.74 0.16 340)" stroke-width="1.4" fill="none" />
+              <path d="M0,52 L8,54 L16,50 L24,52 L32,56 L40,52 L48,50 L56,54 L64,56 L72,52 L80,50 L88,52 L96,56 L104,58 L112,54 L120,52 L128,56 L136,58 L144,54 L152,50 L160,52 L168,56 L176,58 L184,54 L192,52 L200,50 L208,52 L216,56 L224,54 L232,52 L240,54"
+                stroke="oklch(0.78 0.14 80)" stroke-width="1.2" fill="none" opacity="0.7" />
+              <path d="M0,68 L240,68" stroke="oklch(0.66 0.20 25 / 0.4)" stroke-width="1" stroke-dasharray="3 3" />
+              <text x="6" y="76" font-family="JetBrains Mono" font-size="6" fill="oklch(0.66 0.20 25)">budget 16.6 ms</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONSOLE PIP -->
+      <div class="panel console-pip">
+        <div class="panel-head">
+          <span class="title">Live Log</span>
+          <span class="meta" style="color: oklch(0.74 0.14 155);">●  recording</span>
+        </div>
+        <div class="pip-body">
+          <div class="l"><span class="t">+12.481</span><span><span class="ok">✓</span> player jump · <span class="ent">player</span></span></div>
+          <div class="l"><span class="t">+12.892</span><span><span class="ok">✓</span> grounded · cy 0.06s</span></div>
+          <div class="l"><span class="t">+13.001</span><span><span class="warn">!</span> phys.iter→ <span class="ent">8</span></span></div>
+          <div class="l"><span class="t">+13.218</span><span><span class="ok">✓</span> slime_1 anim · idle</span></div>
+          <div class="l"><span class="t">+13.401</span><span><span class="ok">✓</span> hot-reload <span class="ent">slime_ai</span></span></div>
+          <div class="l"><span class="t">+13.522</span><span><span class="ok">✓</span> 4 instances rebound</span></div>
+          <div class="l"><span class="t">+14.018</span><span><span class="warn">!</span> sprite batch split</span></div>
+          <div class="l"><span class="t">+14.842</span><span>player input · <span class="ent">move ←</span></span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function fit() {
+    const f = document.getElementById('frame');
+    const sx = window.innerWidth / 1366;
+    const sy = window.innerHeight / 1024;
+    const s = Math.min(sx, sy, 1);
+    f.style.transform = `scale(${s})`;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+</body>
+</html>

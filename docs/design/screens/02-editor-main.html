@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="round" data-accent="magenta">
+<head>
+<meta charset="utf-8" />
+<title>PH2D · Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css" />
+<link rel="stylesheet" href="../styles/components.css" />
+<link rel="stylesheet" href="../styles/components-2.css" />
+<style>
+  /* iPad 12.9 landscape — 1366×1024 */
+  body { background: var(--bg-scrim, oklch(0.05 0.004 285)); overflow: hidden; height: 100vh; }
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .frame {
+    width: 1366px; height: 1024px;
+    transform-origin: center center;
+    background: var(--bg-0);
+    position: relative; overflow: hidden;
+    border-radius: 14px;
+    box-shadow: 0 40px 100px oklch(0 0 0 / 0.7);
+  }
+
+  /* ──── canvas: subtle perspective grid + soft vignette ──── */
+  .canvas-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at center, var(--canvas, oklch(0.16 0.01 260)) 0%, var(--bg-1) 70%, var(--bg-0) 100%);
+  }
+  .canvas-grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(oklch(1 0 0 / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+    background-position: center center;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+    transform: perspective(1200px) rotateX(58deg) translateY(140px) scale(2.6);
+    transform-origin: center 70%;
+  }
+  /* canvas centerpiece — 2D layered placeholder (stand-in for level scene) */
+  .canvas-stage {
+    position: absolute; inset: 0; display: grid; place-items: center;
+  }
+  .scene-stack {
+    position: relative; width: 460px; height: 380px;
+    filter: drop-shadow(0 30px 60px oklch(0 0 0 / 0.55));
+  }
+  .scene-stack .layer {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    border-radius: 12px;
+    background: var(--c, oklch(0.66 0.10 var(--ch, 340)));
+    border: 1px solid oklch(1 0 0 / 0.12);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.18), inset 0 -8px 24px oklch(0 0 0 / 0.18);
+  }
+  .scene-stack .label {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font: var(--fw-semibold) 9px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase;
+    color: oklch(1 0 0 / 0.85); padding: 3px 7px; background: oklch(0 0 0 / 0.45); border-radius: 999px; backdrop-filter: blur(6px);
+  }
+
+  /* selection marquee around scene root */
+  .selmarquee {
+    position: absolute; pointer-events: none;
+    border: 1px dashed oklch(0.74 0.16 var(--accent-h) / 0.7);
+    border-radius: 6px;
+  }
+  .selmarquee::before, .selmarquee::after,
+  .selmarquee > i {
+    content: ''; position: absolute; width: 8px; height: 8px;
+    background: var(--bg-0); border: 2px solid var(--accent); border-radius: 1px;
+  }
+  .selmarquee::before { left: -5px; top: -5px; }
+  .selmarquee::after { right: -5px; top: -5px; }
+  .selmarquee > i.bl { left: -5px; bottom: -5px; }
+  .selmarquee > i.br { right: -5px; bottom: -5px; }
+
+  /* ──── top bar — left cluster ──── */
+  .topbar {
+    position: absolute; top: 14px; left: 14px; right: 14px;
+    display: flex; align-items: center; gap: 10px;
+    pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg-elev);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: var(--r-2xl);
+    padding: 5px;
+    box-shadow: var(--shadow-md), var(--inset-hi);
+  }
+  .theme-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 12px 0 9px; border-radius: var(--r-xl);
+    background: transparent; border: 0; cursor: pointer;
+    color: var(--text-1); font: var(--fw-semibold) var(--fs-sm)/1 var(--font-sans);
+  }
+  .theme-pill:hover { background: var(--bg-3); }
+  .theme-dots { display: inline-flex; gap: 3px; }
+  .theme-dots i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .theme-dots .a { background: var(--accent); box-shadow: 0 0 8px var(--accent-soft); }
+  .theme-dots .b { background: oklch(0.78 0.12 var(--accent-h) / 0.6); }
+  .theme-pill .chev { color: var(--text-3); margin-left: 2px; }
+
+  .play-btn {
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: oklch(0.62 0.22 25);
+    color: oklch(0.99 0.01 25);
+    border: 0; border-radius: var(--r-lg);
+    box-shadow: 0 0 0 1px oklch(0.62 0.22 25 / 0.4), 0 4px 14px oklch(0.62 0.22 25 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.25);
+    cursor: pointer;
+  }
+  .play-btn:hover { background: oklch(0.66 0.22 25); }
+
+  .topbar .center-mark {
+    flex: 1; text-align: center;
+    font: var(--fw-bold) var(--fs-md)/1 var(--font-sans);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-3); opacity: 0.5;
+    user-select: none;
+  }
+
+  /* ──── left rail (tools) ──── */
+  .rail {
+    position: absolute; left: 14px; top: 70px; bottom: 70px;
+    width: 56px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px;
+    z-index: 5;
+  }
+  .rail .tool {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-elev);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    color: var(--text-2);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm), var(--inset-hi);
+    transition: all var(--d-fast) var(--ease-out);
+  }
+  .rail .tool:hover { color: var(--text-1); border-color: var(--border-strong); }
+  .rail .tool.is-active {
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 18px var(--accent-soft), var(--inset-hi);
+    background: oklch(0.74 0.16 var(--accent-h) / 0.06);
+  }
+  .rail .tool[data-icon] { font-family: var(--font-mono); font-size: 14px; }
+  .rail .toolbtn {
+    width: 44px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; cursor: pointer; background: transparent; border: 0;
+    padding: 0;
+  }
+  .rail .toolbtn .face {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-elev);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    color: var(--text-1);
+    font: var(--fw-semibold) 11px/1 var(--font-sans);
+    letter-spacing: 0.02em;
+    box-shadow: var(--shadow-sm), var(--inset-hi);
+    transition: all var(--d-fast) var(--ease-out);
+  }
+  .rail .toolbtn:hover .face { border-color: var(--border-strong); }
+  .rail .toolbtn .sub {
+    font: var(--fw-medium) 8px/1 var(--font-mono);
+    letter-spacing: 0.18em; color: var(--text-3);
+    text-transform: uppercase;
+  }
+  .rail .group-spacer { height: 8px; }
+  .rail .divider { width: 24px; height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* ──── inspector (left floating panel) ──── */
+  .inspector {
+    position: absolute; left: 84px; top: 70px;
+    width: 304px; max-height: 880px;
+    display: flex; flex-direction: column;
+    background: var(--bg-elev);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-lg), var(--inset-hi);
+    overflow: hidden;
+    z-index: 4;
+  }
+  .grab {
+    position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 4px; border-radius: 999px; background: var(--border-strong);
+    opacity: 0.7;
+  }
+  .pn-head { padding: 18px 18px 12px; }
+  .pn-title { font: var(--fw-semibold) var(--fs-md)/1.15 var(--font-sans); color: var(--text-1); margin: 0 0 4px; letter-spacing: -0.01em; }
+  .pn-sub { font: var(--fw-medium) 11px/1 var(--font-mono); color: var(--text-3); }
+  .pn-body { padding: 0 10px 14px; overflow-y: auto; }
+  .pn-desc {
+    font: var(--fw-regular) 11.5px/1.5 var(--font-sans); color: var(--text-2);
+    padding: 0 4px 14px; border-bottom: 1px solid var(--border); margin-bottom: 12px;
+  }
+  .pn-desc code { font-family: var(--font-mono); color: var(--text-1); background: var(--bg-3); padding: 1px 4px; border-radius: 4px; font-size: 10px; }
+
+  .sec-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 4px 8px;
+    font: var(--fw-semibold) 10px/1 var(--font-sans); letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .sec-head .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .sec-head .count { margin-left: auto; font: var(--fw-medium) 11px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0; text-transform: none; }
+  .sec-head.collapsible::before { content: '▸'; color: var(--text-3); margin-right: 2px; transform: translateY(-1px); display: inline-block; }
+  .sec-head.collapsible.open::before { transform: rotate(90deg); }
+
+  .field { padding: 6px 4px 10px; }
+  .field-head {
+    display: flex; align-items: center; gap: 6px;
+    font: var(--fw-semibold) 10.5px/1 var(--font-sans); letter-spacing: 0.10em; text-transform: uppercase;
+    color: var(--text-2);
+    margin-bottom: 8px;
+  }
+  .field-head .marker { width: 7px; height: 7px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
+  .field-head .marker.ok { background: oklch(0.68 0.14 145); }
+  .field-head .x { margin-left: auto; color: var(--text-3); cursor: pointer; font-family: var(--font-mono); font-size: 13px; line-height: 1; }
+
+  .slider-h {
+    position: relative; height: 24px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .field { padding: 6px 0 10px; }
+  .field-head { padding: 0 4px; margin-bottom: 8px; }
+  .slider-h .track {
+    position: relative; flex: 1; height: 6px; border-radius: 3px;
+    background: var(--bg-3);
+    box-shadow: inset 0 1px 1px oklch(0 0 0 / 0.3);
+  }
+  .slider-h .track .fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    border-radius: 3px 0 0 3px;
+    background: var(--accent);
+  }
+  .slider-h .track .thumb {
+    position: absolute; top: 50%;
+    width: 12px; height: 16px; border-radius: 3px;
+    background: var(--text-1); border: 1px solid var(--bg-0);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.55), inset 0 1px 0 oklch(1 0 0 / 0.4);
+  }
+  .slider-h .val {
+    width: 52px; flex-shrink: 0;
+    height: 22px; padding: 0 7px;
+    background: var(--bg-3); border: 1px solid var(--border);
+    border-radius: 4px;
+    font: var(--fw-medium) 11px/24px var(--font-mono);
+    color: var(--text-1); text-align: right;
+  }
+  .input-pill {
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; padding: 0 10px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    border: 1px solid oklch(0.74 0.16 var(--accent-h) / 0.32);
+    color: var(--accent);
+    font: var(--fw-medium) 11px/1 var(--font-mono);
+  }
+  .input-pill::before { content: '↳'; color: var(--accent); opacity: 0.7; margin-right: 2px; }
+  .select-pill {
+    display: flex; align-items: center;
+    height: 28px; padding: 0 10px;
+    border-radius: 8px;
+    background: var(--bg-3); border: 1px solid var(--border);
+    font: var(--fw-medium) 12px/1 var(--font-sans);
+    color: var(--text-1);
+    justify-content: space-between;
+  }
+  .select-pill .chev { color: var(--text-3); }
+  .link-empty {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 22px; padding: 0 8px; border-radius: 6px;
+    background: var(--bg-2); border: 1px dashed var(--border-strong);
+    color: var(--text-3); font: var(--fw-medium) 11px/1 var(--font-mono);
+    cursor: pointer;
+  }
+
+  /* horizontal slider with dual-thumb sub */
+  .field .row-sub { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 10px; margin-top: 6px; }
+  .field .row-sub .key { font: var(--fw-medium) 10px/1 var(--font-mono); letter-spacing: 0.06em; color: var(--text-3); text-transform: uppercase; }
+
+  /* ──── hierarchy (right floating panel) ──── */
+  .hier {
+    position: absolute; right: 14px; top: 70px;
+    width: 308px;
+    background: var(--bg-elev);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-lg), var(--inset-hi);
+    overflow: hidden;
+    z-index: 4;
+  }
+  .hier .pn-head { display: flex; align-items: flex-end; justify-content: space-between; padding: 18px 18px 14px; }
+  .hier .pn-title-wrap .pn-title { margin-bottom: 6px; }
+  .hier .pn-counts { font: var(--fw-medium) 10.5px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; }
+  .hier .add {
+    width: 30px; height: 30px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid oklch(0.74 0.16 var(--accent-h) / 0.32);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font: var(--fw-medium) 16px/1 var(--font-sans);
+  }
+  .hier .pn-body { padding: 4px 8px 10px; }
+  .h-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-1);
+    font: var(--fw-medium) 12px/1 var(--font-sans);
+  }
+  .h-row:hover { background: var(--bg-3); }
+  .h-row .glyph {
+    width: 16px; height: 16px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    color: var(--text-3);
+    font: var(--fw-medium) 10px/1 var(--font-mono);
+  }
+  .h-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .h-row .badge {
+    height: 18px; padding: 0 6px;
+    border-radius: 4px;
+    background: var(--bg-3); color: var(--text-3);
+    font: var(--fw-semibold) 9px/18px var(--font-mono); letter-spacing: 0.06em;
+  }
+  .h-row .swatch {
+    width: 14px; height: 14px; border-radius: 4px; background: var(--c, var(--bg-3));
+    border: 1px solid oklch(1 0 0 / 0.2); flex-shrink: 0;
+  }
+  .h-row .vis {
+    width: 14px; height: 14px; flex-shrink: 0;
+    border-radius: 999px; background: oklch(0.62 0.14 145);
+    box-shadow: 0 0 6px oklch(0.62 0.14 145 / 0.6);
+  }
+  .h-row.is-selected {
+    background: oklch(0.74 0.16 var(--accent-h) / 0.14);
+    color: var(--text-1);
+    box-shadow: inset 0 0 0 1px oklch(0.74 0.16 var(--accent-h) / 0.4);
+  }
+  .h-row.is-selected .glyph { color: var(--accent); }
+  .h-row.is-selected .badge { background: var(--accent); color: var(--accent-fg); }
+  .h-row.is-child { padding-left: 28px; }
+  .h-row.is-grandchild { padding-left: 44px; }
+
+  /* ──── bottom HUD (centered pill) ──── */
+  .hud {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: inline-flex; align-items: center;
+    height: 34px; padding: 0;
+    background: var(--bg-elev);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: var(--shadow-md), var(--inset-hi);
+    font: var(--fw-medium) 11px/1 var(--font-mono); letter-spacing: 0.04em;
+    color: var(--text-2);
+    overflow: hidden;
+    z-index: 5;
+  }
+  .hud > span {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0 14px; height: 100%;
+  }
+  .hud > span + span { box-shadow: inset 1px 0 0 var(--border); }
+  .hud .dot { width: 7px; height: 7px; border-radius: 50%; background: oklch(0.62 0.14 145); box-shadow: 0 0 8px oklch(0.62 0.14 145 / 0.7); }
+  .hud .pulse { color: var(--text-1); font-weight: var(--fw-semibold); letter-spacing: 0.10em; }
+  .hud b { color: var(--text-1); font-weight: var(--fw-semibold); }
+  .hud .accent { color: var(--accent); }
+  .hud .scene { color: var(--text-3); }
+  .hud .scene::before { content: '*'; color: var(--accent); margin-right: 4px; }
+
+  /* selection-info badge floating above scene */
+  .sel-tag {
+    position: absolute;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px; border-radius: 6px;
+    background: color-mix(in oklab, var(--bg-2) 92%, transparent);
+    backdrop-filter: blur(6px);
+    color: var(--text-1);
+    font: var(--fw-medium) 10.5px/1 var(--font-mono); letter-spacing: 0.04em;
+    box-shadow: var(--shadow-sm);
+    z-index: 3;
+  }
+  .sel-tag .badge { color: var(--accent); font-weight: var(--fw-semibold); letter-spacing: 0.08em; }
+
+  /* tweaks button hint pill bottom-right */
+  .ed-hint {
+    position: absolute; bottom: 18px; right: 18px;
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 12px;
+    background: var(--bg-elev); backdrop-filter: blur(20px);
+    border: 1px solid var(--border); border-radius: 999px;
+    color: var(--text-2); font: var(--fw-medium) 11px/1 var(--font-sans);
+    z-index: 5;
+  }
+  .ed-hint .kbd {
+    background: var(--bg-3); border: 1px solid var(--border);
+    padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px;
+  }
+
+  /* mini icons via unicode glyphs to avoid icon hydration coupling */
+  .gi { font-family: var(--font-mono); font-style: normal; }
+</style>
+</head>
+<body data-screen-label="02 Editor — Main">
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+
+    <!-- canvas layer -->
+    <div class="canvas-bg"></div>
+    <div class="canvas-grid"></div>
+
+    <!-- centerpiece scene (placeholder layered shapes) -->
+    <div class="canvas-stage">
+      <div class="scene-stack">
+        <!-- back layer: ground tile -->
+        <div class="layer" style="--c: oklch(0.55 0.10 340); top:240px; width:380px; height:90px; border-radius: 999px; opacity: 0.6;"></div>
+        <!-- mid: ring -->
+        <div class="layer" style="--c: oklch(0.75 0.10 145); top:160px; width:320px; height:170px; border-radius: 999px; box-shadow: inset 0 0 0 22px oklch(0.45 0.06 145), inset 0 1px 0 oklch(1 0 0 / 0.18), inset 0 -8px 24px oklch(0 0 0 / 0.18);"></div>
+        <!-- mid front: triangle -->
+        <div class="layer" style="--c: transparent; top:60px; width:0; height:0; border-left:90px solid transparent; border-right:90px solid transparent; border-bottom:170px solid oklch(0.74 0.10 245); border-radius:0; box-shadow: none; background: transparent; border-top: 0;"></div>
+        <!-- top yellow torus -->
+        <div class="layer" style="--c: oklch(0.85 0.13 90); top:40px; left: calc(50% + 24px); transform: translateX(-50%); width:90px; height:36px; border-radius: 999px;"></div>
+        <!-- label -->
+        <div class="label" style="bottom: -22px;">Player · Prefab</div>
+      </div>
+    </div>
+
+    <!-- selection marquee around scene -->
+    <div class="selmarquee" style="left: calc(50% - 248px); top: calc(50% - 228px); width: 496px; height: 416px;">
+      <i class="bl"></i><i class="br"></i>
+    </div>
+    <div class="sel-tag" style="left: calc(50% - 248px); top: calc(50% - 252px);">
+      <span>Player</span><span class="badge">PRF</span><span style="color:var(--text-3);">· 124, −48</span>
+    </div>
+
+    <!-- ────────── TOP BAR ────────── -->
+    <div class="topbar">
+      <!-- Theme + project pill -->
+      <div class="pill">
+        <button class="theme-pill" title="Theme · Forge SDF">
+          <span class="theme-dots"><i class="a"></i><i class="b"></i></span>
+          Forge SDF
+          <span class="chev gi">▾</span>
+        </button>
+      </div>
+
+      <!-- Save -->
+      <div class="pill">
+        <button class="iconbtn" title="Save · ⌘S"><span class="gi" style="font-size:13px;">◌</span></button>
+      </div>
+
+      <!-- Folder / scene -->
+      <div class="pill">
+        <button class="iconbtn" title="Project"><span class="gi" style="font-size:13px;">▭</span></button>
+        <button class="theme-pill" style="height:30px; padding:0 12px 0 4px;">
+          Level_01
+        </button>
+      </div>
+
+      <!-- Theme mode + Play -->
+      <div class="pill">
+        <button class="iconbtn" title="Light/Dark"><span class="gi" style="font-size:13px;">☼</span></button>
+        <button class="play-btn" title="Run · ⌘↵">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+
+      <!-- centered wordmark -->
+      <div class="center-mark">PH2D · EDITOR</div>
+
+      <!-- right cluster -->
+      <div class="pill">
+        <button class="iconbtn" title="Layers"><span class="gi" style="font-size:13px;">⌥</span></button>
+        <button class="iconbtn" title="Asset library"><span class="gi" style="font-size:13px;">▣</span></button>
+        <button class="iconbtn" title="Code · Luau"><span class="gi" style="font-size:13px;">{ }</span></button>
+      </div>
+    </div>
+
+    <!-- ────────── LEFT RAIL ────────── -->
+    <div class="rail">
+      <button class="tool is-active" title="Translate · G">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>
+      </button>
+      <button class="tool" title="Rotate · R">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+      </button>
+      <button class="tool" title="Scale · S">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-7-7M21 21V14M21 21h-7M3 3l7 7M3 3v7M3 3h7"/></svg>
+      </button>
+      <button class="tool" title="Pivot">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+      </button>
+
+      <div class="group-spacer"></div>
+
+      <button class="toolbtn" title="Coordinate space"><span class="face">Global</span><span class="sub">SPACE</span></button>
+      <button class="toolbtn" title="Camera projection"><span class="face">Persp</span><span class="sub">PROJ</span></button>
+      <button class="toolbtn" title="Frame to home"><span class="face">Home</span><span class="sub">VIEW</span></button>
+
+      <div class="group-spacer"></div>
+
+      <button class="tool" title="Undo · 2-finger tap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 1 1 0 10h-4"/></svg>
+      </button>
+      <button class="tool" title="Redo · 3-finger tap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 1 0 0 10h4"/></svg>
+      </button>
+    </div>
+
+    <!-- ────────── INSPECTOR (LEFT) ────────── -->
+    <div class="inspector">
+      <div class="grab"></div>
+      <div class="pn-head">
+        <h3 class="pn-title">Player</h3>
+        <div class="pn-sub">prefab.player.idle</div>
+      </div>
+      <div class="pn-body">
+        <p class="pn-desc">
+          Sprite prefab linked to <code>Player.lua</code>. Hot-reloads on save. Collider derived from sprite alpha; physics body is dynamic (mass 1.0).
+        </p>
+
+        <div class="sec-head">
+          <span>Params (compile-time)</span>
+          <span class="count">12</span>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker"></span>Move Speed</div>
+          <div class="slider-h">
+            <div class="track"><div class="fill" style="width:62%;"></div><div class="thumb" style="left:62%;"></div></div>
+            <div class="val">160</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker"></span>Jump Height</div>
+          <div class="slider-h">
+            <div class="track"><div class="fill" style="width:30%;"></div><div class="thumb" style="left:30%;"></div></div>
+            <div class="val">200</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker"></span>Friction</div>
+          <div class="slider-h">
+            <div class="track"><div class="fill" style="width:8%;"></div><div class="thumb" style="left:8%;"></div></div>
+            <div class="val">0.0010</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker"></span>Damping</div>
+          <div class="slider-h">
+            <div class="track"><div class="fill" style="width:48%;"></div><div class="thumb" style="left:48%;"></div></div>
+            <div class="val">0.70</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker"></span>Debug</div>
+          <div class="select-pill">
+            <span>Shading (PBR-lite)</span>
+            <span class="chev gi">▾</span>
+          </div>
+        </div>
+
+        <div class="sec-head collapsible">
+          <span>Advanced</span>
+          <span class="count">7</span>
+        </div>
+
+        <div class="sec-head" style="margin-top:6px;">
+          <span>Inputs</span>
+          <span class="count">24</span>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker ok"></span>Distance<span class="x">×</span></div>
+          <div class="input-pill">Union.distance</div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker"></span>Material<span class="x">×</span></div>
+          <div class="input-pill">Materializer 3D.material</div>
+        </div>
+
+        <div class="field" style="padding-bottom: 4px;">
+          <div class="field-head"><span class="marker"></span>Cam Yaw <span style="margin-left:6px; color:var(--text-3); font-size:10px;">↻</span><span style="margin-left: auto;"><span class="link-empty">+ link</span></span></div>
+          <div class="slider-h">
+            <div class="track"><div class="fill" style="width:57%;"></div><div class="thumb" style="left:57%;"></div></div>
+            <div class="val">0.57</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="marker"></span>Cam Pitch <span style="margin-left:6px; color:var(--text-3); font-size:10px;">↻</span><span style="margin-left: auto;"><span class="link-empty">+ link</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────── HIERARCHY (RIGHT) ────────── -->
+    <div class="hier">
+      <div class="grab"></div>
+      <div class="pn-head">
+        <div class="pn-title-wrap">
+          <h3 class="pn-title">Hierarchy</h3>
+          <div class="pn-counts">12 entities · 8 components</div>
+        </div>
+        <button class="add">+</button>
+      </div>
+      <div class="pn-body">
+        <div class="h-row is-selected">
+          <span class="glyph">◍</span>
+          <span class="name">Player</span>
+          <span class="badge">OUT</span>
+        </div>
+        <div class="h-row is-child">
+          <span class="glyph">⊕</span>
+          <span class="name">Sprite_idle</span>
+          <span class="swatch" style="--c: oklch(0.78 0.10 340);"></span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row is-child">
+          <span class="glyph">⊕</span>
+          <span class="name">Collider_box</span>
+          <span class="badge">UNI</span>
+          <span class="swatch" style="--c: oklch(0.74 0.10 245);"></span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row is-child">
+          <span class="glyph">⊕</span>
+          <span class="name">Script_player</span>
+          <span class="badge">UNI</span>
+          <span class="swatch" style="--c: oklch(0.85 0.13 90);"></span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row is-child">
+          <span class="glyph">⊕</span>
+          <span class="name">RigidBody</span>
+          <span class="badge">UNI</span>
+          <span class="swatch" style="--c: oklch(0.78 0.13 145);"></span>
+          <span class="vis"></span>
+        </div>
+
+        <div class="h-row" style="margin-top:6px;">
+          <span class="glyph">▦</span>
+          <span class="name">Tilemap_ground</span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row">
+          <span class="glyph">▦</span>
+          <span class="name">Tilemap_decor</span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row">
+          <span class="glyph">◔</span>
+          <span class="name">Slime_01</span>
+          <span class="badge">PRF</span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row" style="opacity: 0.55;">
+          <span class="glyph">◔</span>
+          <span class="name">Slime_02</span>
+          <span class="badge">PRF</span>
+          <span class="vis" style="background: oklch(0.40 0.005 285); box-shadow: none;"></span>
+        </div>
+        <div class="h-row">
+          <span class="glyph">◇</span>
+          <span class="name">Trigger_zoneA</span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row">
+          <span class="glyph">✦</span>
+          <span class="name">Ambient_light</span>
+          <span class="vis"></span>
+        </div>
+        <div class="h-row">
+          <span class="glyph">▷</span>
+          <span class="name">Main_Camera</span>
+          <span class="badge">CAM</span>
+          <span class="vis"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────── BOTTOM HUD ────────── -->
+    <div class="hud">
+      <span class="pulse"><span class="dot"></span>EDIT</span>
+      <span><b>60</b> fps</span>
+      <span><span class="accent">13101</span> / 16660</span>
+      <span><b>21</b>n</span>
+      <span><b>100</b>%</span>
+      <span class="scene">default-scene</span>
+    </div>
+
+    <!-- tweaks hint -->
+    <div class="ed-hint">Tweaks <span class="kbd">⌘.</span></div>
+
+    <!-- Tweaks panel mounts here when active -->
+    <div id="tweaks-root"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="../scripts/ph2d-tweaks.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "forge-sdf",
+  "accent": "magenta",
+  "density": "comfortable",
+  "radius": "sharp",
+  "sidebarSide": "right",
+  "viewport": "mac-16-10"
+}/*EDITMODE-END*/;
+
+const VIEWPORTS = {
+  'ipad-12':   { w: 1366, h: 1024, label: 'iPad 12.9"' },
+  'ipad-11':   { w: 1194, h: 834,  label: 'iPad 11"'   },
+  'mac-16-10': { w: 1440, h: 900,  label: 'Mac 16:10'  }
+};
+
+const { TweaksPanel, Section, Row, Seg, ColorChips, useTweaks } = window.PH2DTweaks;
+
+function App() {
+  const [open, setOpen] = React.useState(false);
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  React.useEffect(() => {
+    const onOpen = () => setOpen(true);
+    const onClose = () => setOpen(false);
+    window.addEventListener('ph2d-tweaks-open', onOpen);
+    window.addEventListener('ph2d-tweaks-close', onClose);
+    return () => {
+      window.removeEventListener('ph2d-tweaks-open', onOpen);
+      window.removeEventListener('ph2d-tweaks-close', onClose);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const html = document.documentElement;
+    html.dataset.theme = t.theme;
+    html.dataset.accent = t.accent;
+    html.dataset.density = t.density;
+    html.dataset.radius = t.radius;
+    const vp = VIEWPORTS[t.viewport] || VIEWPORTS['ipad-12'];
+    const fr = document.getElementById('frame');
+    if (fr) { fr.style.width = vp.w + 'px'; fr.style.height = vp.h + 'px'; }
+    if (window.fit) window.fit();
+    const ins = document.querySelector('.inspector');
+    const hier = document.querySelector('.hier');
+    const rail = document.querySelector('.rail');
+    if (t.sidebarSide === 'right') {
+      if (rail) { rail.style.left = 'auto'; rail.style.right = '14px'; }
+      if (ins) { ins.style.left = 'auto'; ins.style.right = '84px'; }
+      if (hier) { hier.style.right = 'auto'; hier.style.left = '14px'; }
+    } else {
+      if (rail) { rail.style.left = '14px'; rail.style.right = 'auto'; }
+      if (ins) { ins.style.left = '84px'; ins.style.right = 'auto'; }
+      if (hier) { hier.style.right = '14px'; hier.style.left = 'auto'; }
+    }
+  }, [t]);
+
+  return (
+    <TweaksPanel open={open} onClose={() => setOpen(false)}>
+      <Section title="Theme">
+        <Row label="Mode">
+          <Seg value={t.theme} options={[
+            {v:'forge-sdf', l:'Forge'},
+            {v:'procreate', l:'Cyan'},
+            {v:'sunstone',  l:'Sun'},
+            {v:'blueprint', l:'Blue'}
+          ]} onChange={v => setTweak('theme', v)}/>
+        </Row>
+        <Row label="Accent">
+          <ColorChips value={t.accent} options={['magenta','cyan','orange','blue','lime']} onChange={v => setTweak('accent', v)}/>
+        </Row>
+      </Section>
+      <Section title="Layout">
+        <Row label="Density">
+          <Seg value={t.density} options={[
+            {v:'comfortable', l:'Comfy'},
+            {v:'compact', l:'Compact'}
+          ]} onChange={v => setTweak('density', v)}/>
+        </Row>
+        <Row label="Radius">
+          <Seg value={t.radius} options={[
+            {v:'sharp', l:'Sharp'},
+            {v:'default', l:'Default'},
+            {v:'round', l:'Round'}
+          ]} onChange={v => setTweak('radius', v)}/>
+        </Row>
+        <Row label="Sidebar">
+          <Seg value={t.sidebarSide} options={[
+            {v:'left', l:'Left'},
+            {v:'right', l:'Right'}
+          ]} onChange={v => setTweak('sidebarSide', v)}/>
+        </Row>
+        <Row label="Viewport">
+          <Seg value={t.viewport} options={[
+            {v:'ipad-12',   l:'iPad 12.9'},
+            {v:'ipad-11',   l:'iPad 11'},
+            {v:'mac-16-10', l:'Mac 16:10'}
+          ]} onChange={v => setTweak('viewport', v)}/>
+        </Row>
+      </Section>
+    </TweaksPanel>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<App />);
+</script>
+
+<script>
+  window.fit = function() {
+    const f = document.getElementById('frame');
+    if (!f) return;
+    const w = f.offsetWidth || 1366;
+    const h = f.offsetHeight || 1024;
+    const sx = window.innerWidth / w;
+    const sy = window.innerHeight / h;
+    const s = Math.min(sx, sy, 1);
+    f.style.transform = `scale(${s})`;
+  };
+  window.fit();
+  window.addEventListener('resize', window.fit);
+</script>
+</body>
+</html>

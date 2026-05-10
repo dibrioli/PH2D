@@ -1,1037 +1,859 @@
 <!doctype html>
-<html lang="pt-br" data-theme="forge-sdf">
+<html lang="en" data-theme="forge-sdf" data-density="comfortable" data-radius="default" data-accent="magenta">
 <head>
 <meta charset="utf-8" />
-<title>PH2D — Component Library &amp; Screen Mockups</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>PH2D · Component Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/tokens.css" />
+<link rel="stylesheet" href="styles/components.css" />
+<link rel="stylesheet" href="styles/components-2.css" />
 <style>
-  /* ============================================================
-   * DESIGN TOKENS — adapted from sdf3d-studio (4 themes, OKLCH).
-   * sdf3d-studio is the M0 reference app for the PH2D UI/UX v0.1.
-   * Reference path: /Volumes/MAC_EXTERNO/PROJETOS/Referencias/
-   *                 Game-Engine-Legada/apps/sdf3d-studio/
-   * ============================================================ */
-
-  /* --- FORGE SDF (default — dark, magenta accent) --- */
-  [data-theme="forge-sdf"] {
-    --bg-0: oklch(0.16 0.012 290);
-    --bg-1: oklch(0.20 0.012 290);
-    --bg-2: oklch(0.24 0.012 290);
-    --fg-0: oklch(0.96 0.004 290);
-    --fg-1: oklch(0.78 0.004 290);
-    --fg-2: oklch(0.55 0.006 290);
-    --accent: oklch(0.74 0.16 340);
-    --accent-strong: oklch(0.66 0.18 340);
-    --accent-soft: oklch(0.32 0.10 340);
-    --line: oklch(1 0 0 / 0.08);
-    --line-strong: oklch(1 0 0 / 0.14);
-    --glass-bg: oklch(0.18 0.012 290 / 0.72);
-    --glass-blur: blur(22px) saturate(1.4);
-    --shadow-sm: 0 2px 6px oklch(0 0 0 / 0.4);
-    --shadow-md: 0 8px 28px -8px oklch(0 0 0 / 0.5);
-    --shadow-lg: 0 20px 60px -12px oklch(0 0 0 / 0.6), 0 0 0 1px var(--line);
-    --row-h: 26px;
-    --icon-btn-size: 36px;
-    --section-gap: 14px;
-    --panel-layout: floating;
-    --success: oklch(0.74 0.18 145);
-    --warning: oklch(0.78 0.18 75);
-    --error:   oklch(0.66 0.22 25);
-    --info:    oklch(0.74 0.14 230);
-  }
-
-  /* --- PROCREATE (dark glass, cyan accent — closer to canonical Procreate look) --- */
-  [data-theme="procreate"] {
-    --bg-0: oklch(0.16 0.008 230);
-    --bg-1: oklch(0.20 0.008 230);
-    --bg-2: oklch(0.24 0.008 230);
-    --fg-0: oklch(0.96 0.004 230);
-    --fg-1: oklch(0.78 0.004 230);
-    --fg-2: oklch(0.55 0.006 230);
-    --accent: oklch(0.78 0.14 205);
-    --accent-strong: oklch(0.70 0.16 205);
-    --accent-soft: oklch(0.32 0.08 205);
-    --line: oklch(1 0 0 / 0.08);
-    --line-strong: oklch(1 0 0 / 0.14);
-    --glass-bg: oklch(0.18 0.008 230 / 0.72);
-    --glass-blur: blur(22px) saturate(1.4);
-    --shadow-sm: 0 2px 6px oklch(0 0 0 / 0.4);
-    --shadow-md: 0 8px 28px -8px oklch(0 0 0 / 0.5);
-    --shadow-lg: 0 20px 60px -12px oklch(0 0 0 / 0.6), 0 0 0 1px var(--line);
-    --row-h: 26px;
-    --icon-btn-size: 36px;
-    --section-gap: 14px;
-    --panel-layout: floating;
-    --success: oklch(0.74 0.18 145);
-    --warning: oklch(0.78 0.18 75);
-    --error:   oklch(0.66 0.22 25);
-    --info:    oklch(0.74 0.14 230);
-  }
-
-  /* --- SUNSTONE (light, warm orange accent — daylight tablet mode) --- */
-  [data-theme="sunstone"] {
-    --bg-0: oklch(0.92 0.018 95);
-    --bg-1: oklch(0.95 0.012 95);
-    --bg-2: oklch(0.98 0.008 95);
-    --fg-0: oklch(0.18 0.012 50);
-    --fg-1: oklch(0.34 0.012 50);
-    --fg-2: oklch(0.50 0.012 50);
-    --accent: oklch(0.70 0.22 55);
-    --accent-strong: oklch(0.62 0.24 55);
-    --accent-soft: oklch(0.84 0.10 55);
-    --line: oklch(0 0 0 / 0.10);
-    --line-strong: oklch(0 0 0 / 0.18);
-    --glass-bg: oklch(0.96 0.012 95 / 0.78);
-    --glass-blur: blur(22px) saturate(1.4);
-    --shadow-sm: 0 2px 6px oklch(0 0 0 / 0.16);
-    --shadow-md: 0 8px 28px -8px oklch(0 0 0 / 0.20);
-    --shadow-lg: 0 20px 60px -12px oklch(0 0 0 / 0.26), 0 0 0 1px var(--line);
-    --row-h: 32px;
-    --icon-btn-size: 40px;
-    --section-gap: 18px;
-    --panel-layout: floating;
-    --success: oklch(0.62 0.18 145);
-    --warning: oklch(0.66 0.20 60);
-    --error:   oklch(0.58 0.22 25);
-    --info:    oklch(0.58 0.14 230);
-  }
-
-  /* --- BLUEPRINT (CAD light, sidebar layout) --- */
-  [data-theme="blueprint"] {
-    --bg-0: oklch(0.97 0.003 240);
-    --bg-1: oklch(0.99 0.002 240);
-    --bg-2: oklch(1.00 0 0);
-    --fg-0: oklch(0.20 0.012 240);
-    --fg-1: oklch(0.36 0.012 240);
-    --fg-2: oklch(0.52 0.010 240);
-    --accent: oklch(0.62 0.20 250);
-    --accent-strong: oklch(0.54 0.22 250);
-    --accent-soft: oklch(0.86 0.06 250);
-    --line: oklch(0 0 0 / 0.08);
-    --line-strong: oklch(0 0 0 / 0.16);
-    --glass-bg: oklch(0.99 0.002 240 / 0.92);
-    --glass-blur: none;
-    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.06);
-    --shadow-md: 0 4px 12px -4px oklch(0 0 0 / 0.10);
-    --shadow-lg: 0 8px 24px -6px oklch(0 0 0 / 0.16), 0 0 0 1px var(--line);
-    --row-h: 44px;
-    --icon-btn-size: 40px;
-    --section-gap: 18px;
-    --panel-layout: sidebar;
-    --success: oklch(0.58 0.18 145);
-    --warning: oklch(0.66 0.18 60);
-    --error:   oklch(0.54 0.22 25);
-    --info:    oklch(0.54 0.18 230);
-  }
-
-  /* ===== TYPOGRAPHY ===== */
-  :root {
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-    --font-size-xs: 11px;
-    --font-size-sm: 12px;
-    --font-size-base: 13px;
-    --font-size-md: 15px;
-    --font-size-lg: 18px;
-    --font-size-xl: 24px;
-
-    --r-sm: 8px;
-    --r-md: 10px;
-    --r-lg: 14px;
-    --r-xl: 18px;
-  }
-
-  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-
-  body {
-    margin: 0;
-    background: var(--bg-0);
-    color: var(--fg-0);
-    font: var(--font-size-base) / 1.45 var(--font-sans);
-    padding: 24px;
-    transition: background .25s, color .25s;
-  }
-
-  h1 { font-size: var(--font-size-xl); margin: 0 0 14px 0; font-weight: 600; letter-spacing: -0.02em; }
-  h2 { font-size: var(--font-size-lg); margin: 32px 0 8px 0; font-weight: 600; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
-  h3 { font-size: var(--font-size-md); margin: 18px 0 8px 0; color: var(--fg-1); font-weight: 500; }
-
-  p { color: var(--fg-1); }
-
-  code { font: var(--font-size-sm) var(--font-mono); background: var(--bg-1); padding: 2px 6px; border-radius: 4px; }
-
-  /* Theme switcher pinned top-right */
-  .theme-switcher {
-    position: fixed;
-    top: 12px; right: 12px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--line);
-    padding: 4px;
-    border-radius: var(--r-lg);
-    display: flex;
-    gap: 2px;
-    z-index: 1000;
-    box-shadow: var(--shadow-md);
-  }
-  .theme-switcher button {
-    background: transparent;
-    color: var(--fg-1);
-    border: none;
-    padding: 6px 12px;
-    border-radius: var(--r-sm);
-    cursor: pointer;
-    font: 500 var(--font-size-sm) var(--font-sans);
-  }
-  .theme-switcher button[data-active] {
-    background: var(--accent);
-    color: oklch(0.16 0.01 290);
-  }
-
-  /* TOC */
-  nav.toc {
-    position: fixed;
-    top: 12px; left: 12px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    padding: 14px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    font-size: var(--font-size-sm);
-    max-width: 220px;
-    z-index: 1000;
-    box-shadow: var(--shadow-md);
-  }
-  nav.toc strong { display: block; margin-bottom: 6px; color: var(--fg-0); }
-  nav.toc a { display: block; color: var(--fg-1); text-decoration: none; padding: 3px 0; }
-  nav.toc a:hover { color: var(--accent); }
-
-  main { max-width: 1100px; margin: 0 auto 0 240px; }
-
-  /* ===== SHARED LAYOUT HELPERS ===== */
-  .grid { display: grid; gap: 12px; }
-  .grid-3 { grid-template-columns: repeat(3, 1fr); }
-  .grid-4 { grid-template-columns: repeat(4, 1fr); }
-  .grid-5 { grid-template-columns: repeat(5, 1fr); }
-  .grid-6 { grid-template-columns: repeat(6, 1fr); }
-
-  .glass {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-md);
-  }
-  .glass-strong {
+  /* page chrome (catalog only — not part of system) */
+  .page { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .nav {
+    position: sticky; top: 0;
+    height: 100vh;
+    border-right: 1px solid var(--border);
     background: var(--bg-1);
-    border: 1px solid var(--line-strong);
+    padding: 24px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .nav .brand {
+    display: flex; align-items: baseline; gap: 8px;
+    margin-bottom: 24px; padding: 0 8px;
+  }
+  .nav .brand .mark {
+    font: var(--fw-bold) var(--fs-md)/1 var(--font-display);
+    letter-spacing: var(--tr-tight);
+    color: var(--text-1);
+  }
+  .nav .brand .ver {
+    font: var(--fw-medium) var(--fs-xxs)/1 var(--font-mono);
+    letter-spacing: var(--tr-wide);
+    color: var(--text-3);
+    padding: 2px 5px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-xs);
+    text-transform: uppercase;
+  }
+  .nav h4 {
+    margin: 16px 8px 4px;
+    font: var(--fw-medium) var(--fs-xxs)/1 var(--font-sans);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .nav a {
+    text-decoration: none;
+    padding: 6px 8px;
+    border-radius: var(--r-sm);
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+    transition: background var(--d-fast), color var(--d-fast);
+  }
+  .nav a:hover { background: var(--bg-2); color: var(--text-1); }
+
+  .main { padding: 48px 56px 96px; max-width: 1100px; }
+
+  .page-head { margin-bottom: 56px; }
+  .eyebrow {
+    font: var(--fw-medium) var(--fs-xxs)/1 var(--font-mono);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  h1.display {
+    margin: 0 0 16px;
+    font: var(--fw-semibold) var(--fs-3xl)/1.05 var(--font-display);
+    letter-spacing: -0.025em;
+    color: var(--text-1);
+    max-width: 16ch;
+  }
+  .lede {
+    max-width: 60ch;
+    color: var(--text-2);
+    font-size: var(--fs-md);
+    line-height: var(--lh-snug);
+    text-wrap: pretty;
+  }
+
+  section { margin-bottom: 64px; }
+  section > h2 {
+    margin: 0 0 4px;
+    font: var(--fw-semibold) var(--fs-xl)/1.1 var(--font-display);
+    letter-spacing: var(--tr-tight);
+  }
+  section > .desc {
+    margin: 0 0 24px;
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+    max-width: 56ch;
+  }
+
+  .specimen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
     border-radius: var(--r-lg);
-    box-shadow: var(--shadow-lg);
-  }
-
-  /* ===== TOKEN SWATCHES ===== */
-  .swatch {
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
-    padding: 10px;
-    background: var(--bg-1);
-  }
-  .swatch .chip {
-    width: 100%;
-    height: 50px;
-    border-radius: var(--r-sm);
-    margin-bottom: 6px;
-    border: 1px solid var(--line);
-  }
-  .swatch .name { font-size: var(--font-size-sm); font-weight: 600; }
-  .swatch .hex { font: var(--font-size-xs) var(--font-mono); color: var(--fg-2); }
-
-  /* ===== WIDGET PREVIEWS ===== */
-  .demo-row { background: var(--bg-1); padding: 14px; border-radius: var(--r-md); border: 1px solid var(--line); margin-bottom: 12px; }
-  .demo-label { color: var(--fg-2); font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; font-weight: 500; }
-  .demo-states { display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; gap: 14px; }
-
-  /* === Icon Button (circular, primary chrome unit) === */
-  .icon-btn {
-    width: var(--icon-btn-size);
-    height: var(--icon-btn-size);
-    border-radius: 50%;
-    background: transparent;
-    color: var(--fg-1);
-    border: 1px solid var(--line);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    transition: background .12s, color .12s, border-color .12s;
-  }
-  .icon-btn:hover { background: var(--bg-2); color: var(--fg-0); }
-  .icon-btn[data-active] { background: var(--accent); color: oklch(0.16 0.01 290); border-color: transparent; }
-  .icon-btn[disabled] { opacity: .35; cursor: not-allowed; }
-
-  /* === Button ghost === */
-  .btn-ghost {
-    background: transparent;
-    color: var(--fg-0);
-    border: 1px solid var(--line);
-    padding: 6px 14px;
-    border-radius: var(--r-sm);
-    font: 500 var(--font-size-sm) var(--font-sans);
-    cursor: pointer;
-    transition: background .12s, border-color .12s;
-  }
-  .btn-ghost:hover { background: var(--bg-2); }
-  .btn-ghost[data-active] { background: var(--accent); color: oklch(0.16 0.01 290); border-color: transparent; }
-  .btn-ghost[disabled] { opacity: .35; cursor: not-allowed; }
-  .btn-primary {
-    background: var(--accent);
-    color: oklch(0.16 0.01 290);
-    border: 1px solid transparent;
-    padding: 6px 14px;
-    border-radius: var(--r-sm);
-    font: 600 var(--font-size-sm) var(--font-sans);
-    cursor: pointer;
-  }
-  .btn-primary:hover { background: var(--accent-strong); }
-
-  /* === Slider (with expression input) === */
-  .slider-row { display: flex; align-items: center; gap: 10px; }
-  .slider-row .label { font-size: var(--font-size-sm); color: var(--fg-1); min-width: 60px; }
-  .slider-track {
-    flex: 1; height: 6px; background: var(--bg-2); border-radius: 3px; position: relative;
-  }
-  .slider-track .fill { position: absolute; top: 0; left: 0; bottom: 0; background: var(--accent-soft); border-radius: 3px; }
-  .slider-track .fill.accent { background: var(--accent); }
-  .slider-track .thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: grab; }
-  .slider-track[data-dragging] .thumb { background: var(--fg-0); transform: translate(-50%, -50%) scale(1.15); }
-  .slider-input {
-    width: 60px; padding: 4px 6px; background: var(--bg-2); color: var(--fg-0); border: 1px solid var(--line); border-radius: 4px;
-    font: var(--font-size-xs) var(--font-mono); text-align: right;
-  }
-
-  /* === Toggle === */
-  .toggle { display: inline-flex; align-items: center; gap: 8px; }
-  .toggle .pill { width: 36px; height: 20px; background: var(--bg-2); border-radius: 10px; position: relative; transition: background .12s; }
-  .toggle .pill::after {
-    content: ""; position: absolute; top: 2px; left: 2px;
-    width: 16px; height: 16px; border-radius: 50%;
-    background: var(--fg-1); transition: left .12s, background .12s;
-  }
-  .toggle[data-on] .pill { background: var(--accent); }
-  .toggle[data-on] .pill::after { left: 18px; background: oklch(0.16 0.01 290); }
-
-  /* === Radio horizontal segmented === */
-  .radio-segmented { display: inline-flex; gap: 2px; background: var(--bg-2); padding: 2px; border-radius: var(--r-sm); }
-  .radio-segmented .opt { padding: 4px 12px; font-size: var(--font-size-sm); border-radius: 6px; cursor: pointer; color: var(--fg-1); }
-  .radio-segmented .opt[data-sel] { background: var(--accent); color: oklch(0.16 0.01 290); }
-
-  /* === Color swatch (chip + popup hint) === */
-  .color-swatch { width: 22px; height: 22px; border-radius: var(--r-sm); border: 2px solid var(--line); cursor: pointer; }
-  .color-swatch[data-focused] { border-color: var(--accent); }
-  .color-swatch.lg { width: 36px; height: 36px; }
-
-  /* === ColorRamp editor === */
-  .color-ramp-editor { display: flex; flex-direction: column; gap: 8px; }
-  .color-ramp { height: 24px; border-radius: var(--r-sm); border: 1px solid var(--line); position: relative; }
-  .color-ramp .stop { position: absolute; top: -4px; width: 10px; height: 32px; transform: translateX(-50%); cursor: pointer; }
-  .color-ramp .stop::after { content: ""; position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--fg-0); }
-
-  /* === Path2D editor mini === */
-  .path-editor {
-    height: 120px; background: var(--bg-2); border-radius: var(--r-sm); border: 1px solid var(--line);
-    position: relative; padding: 8px;
-  }
-  .path-editor .vertex { position: absolute; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; transform: translate(-50%, -50%); }
-  .path-editor .handle { position: absolute; width: 6px; height: 6px; background: var(--fg-0); border-radius: 50%; transform: translate(-50%, -50%); }
-  .path-editor svg { position: absolute; inset: 0; pointer-events: none; }
-
-  /* === Toast === */
-  .toast { padding: 8px 14px; border-radius: var(--r-sm); font-size: var(--font-size-sm); margin-bottom: 6px; color: oklch(0.16 0.01 290); font-weight: 500; }
-  .toast.info { background: var(--info); color: oklch(0.96 0.01 230); }
-  .toast.success { background: var(--success); color: oklch(0.96 0.01 145); }
-  .toast.warning { background: var(--warning); color: oklch(0.16 0.01 60); }
-  .toast.error { background: var(--error); color: oklch(0.96 0.01 25); }
-
-  /* === Float Panel mockup === */
-  .float-panel {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-md);
-    padding: 12px;
-    width: 280px;
-    position: relative;
-  }
-  .float-panel .grab-pill {
-    width: 42px; height: 4px;
-    background: var(--line-strong);
-    border-radius: 2px;
-    margin: 2px auto 8px auto;
-  }
-  .float-panel .header { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
-  .float-panel .header .title { flex: 1; font-weight: 600; font-size: var(--font-size-sm); }
-  .float-panel .close-btn { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--fg-1); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
-
-  /* ===== SCREEN MOCKUPS ===== */
-  .screen {
-    aspect-ratio: 16/10;
-    background: var(--bg-0);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--r-lg);
-    position: relative;
     overflow: hidden;
-    margin-bottom: 18px;
   }
-  /* TopBar (46px) */
-  .top-bar {
-    position: absolute; top: 8px; left: 8px; right: 8px; height: 46px;
-    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--line); border-radius: var(--r-lg);
-    display: flex; align-items: center; padding: 0 10px; gap: 10px;
-    z-index: 20;
-  }
-  .top-bar .grp { display: flex; gap: 6px; align-items: center; }
-  .top-bar .center { flex: 1; text-align: center; font-size: var(--font-size-sm); color: var(--fg-1); font-weight: 500; }
-
-  /* LeftSidebar (60px wide, vertically centered, 360px tall) */
-  .left-sidebar {
-    position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
-    width: 60px; min-height: 360px;
-    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--line); border-radius: var(--r-lg);
-    display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 9px;
-    z-index: 18;
-  }
-  .left-sidebar .group { display: flex; flex-direction: column; gap: 6px; }
-  .left-sidebar hr { width: 70%; border: none; border-top: 1px solid var(--line); margin: 4px 0; }
-
-  /* BottomHUD (compact pill, lower-left corner) */
-  .bottom-hud {
-    position: absolute; bottom: 8px; left: 8px;
-    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--line); border-radius: 999px;
-    padding: 6px 14px;
-    display: flex; align-items: center; gap: 12px;
-    font: 500 var(--font-size-xs) var(--font-mono);
-    color: var(--fg-1);
-    z-index: 18;
-  }
-  .bottom-hud .badge { display: flex; align-items: center; gap: 4px; }
-  .bottom-hud .badge .v { color: var(--fg-0); }
-  .bottom-hud .badge.fps .v { color: var(--accent); }
-
-  /* Canvas */
-  .canvas {
-    position: absolute; inset: 0;
-    background: linear-gradient(135deg, oklch(0.20 0.012 290), oklch(0.16 0.012 290));
-    z-index: 0;
-  }
-  [data-theme="sunstone"] .canvas { background: linear-gradient(135deg, oklch(0.95 0.012 95), oklch(0.92 0.018 95)); }
-  [data-theme="blueprint"] .canvas { background: linear-gradient(135deg, oklch(1 0 0), oklch(0.97 0.003 240)); }
-  [data-theme="procreate"] .canvas { background: linear-gradient(135deg, oklch(0.20 0.008 230), oklch(0.16 0.008 230)); }
-
-  /* Floating panel inside screen */
-  .scr-panel {
-    position: absolute; right: 16px; top: 70px; width: 240px;
-    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--line); border-radius: var(--r-lg);
-    padding: 12px; box-shadow: var(--shadow-md);
-    z-index: 30;
-  }
-  .scr-panel .grab-pill { width: 42px; height: 4px; background: var(--line-strong); border-radius: 2px; margin: 0 auto 10px auto; }
-
-  /* Marquee selection visual */
-  .marquee {
-    position: absolute; border: 1px dashed oklch(1 0 0 / 0.6);
-    background: oklch(1 0 0 / 0.05);
-  }
-
-  /* Color picker modal (HSV wheel mockup) */
-  .modal-bg {
-    position: absolute; inset: 0; background: oklch(0 0 0 / 0.4); z-index: 40;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .modal {
-    width: 320px; padding: 16px;
+  .specimen .cell {
     background: var(--bg-1);
-    border: 1px solid var(--line-strong);
+    padding: 28px 16px 12px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+    min-height: 120px;
+    justify-content: space-between;
+  }
+  .specimen .cell .demo { display: flex; align-items: center; justify-content: center; flex: 1; min-height: 36px; }
+  .specimen .cell .label {
+    font: var(--fw-medium) var(--fs-xxs)/1 var(--font-mono);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .grid-row {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    padding: 24px;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
     border-radius: var(--r-lg);
-    box-shadow: var(--shadow-lg);
   }
-  .hsv-wheel {
-    width: 220px; height: 220px; margin: 0 auto 12px auto;
-    border-radius: 50%;
-    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-    position: relative;
+  .grid-row + .grid-row { margin-top: 12px; }
+
+  .field-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding: 24px;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
   }
-  .hsv-wheel::after {
-    content: ""; position: absolute; inset: 18px;
-    border-radius: 50%;
-    background: radial-gradient(closest-side, white, transparent 90%);
-  }
-  .hsv-wheel .picker {
-    position: absolute; left: 60%; top: 40%;
-    width: 14px; height: 14px; border: 2px solid white;
-    border-radius: 50%; box-shadow: 0 0 4px oklch(0 0 0 / 0.6);
+  @media (max-width: 900px) { .field-grid { grid-template-columns: 1fr; } }
+
+  .surface-stack {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
   }
 
-  /* Tool catalog table */
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: var(--font-size-sm); }
-  th { color: var(--fg-2); font-weight: 600; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: .04em; }
-  td.glyph { font-weight: 700; color: var(--accent); width: 40px; text-align: center; font-family: var(--font-mono); }
-  td.status-built { color: var(--success); font-weight: 500; }
-  td.status-planned { color: var(--fg-2); }
-  td.status-future { color: var(--warning); }
-
-  /* Animations */
-  @keyframes fadeInUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes scaleIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
-  .fade-up { animation: fadeInUp .2s ease-out both; }
-  .scale-in { animation: scaleIn .15s ease-out both; }
-
-  /* Mini sprite preview to suggest 2D canvas content */
-  .sprite-grid {
-    position: absolute; inset: 80px 80px 60px 80px;
-    display: grid; grid-template-columns: repeat(20, 1fr);
-    gap: 8px;
-    z-index: 1;
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
   }
-  .sprite-grid .sprite {
-    aspect-ratio: 1; border-radius: 2px;
+  .swatch-tile {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .swatch-tile .chip {
+    aspect-ratio: 16 / 9;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+  }
+  .swatch-tile .name { font: var(--fw-medium) var(--fs-xxs)/1 var(--font-mono); color: var(--text-2); letter-spacing: var(--tr-wide); }
+  .swatch-tile .val  { font: var(--fw-regular) 10px/1.3 var(--font-mono); color: var(--text-3); word-break: break-all; }
+
+  .type-spec { display: flex; flex-direction: column; gap: 18px; padding: 24px; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--r-lg); }
+  .type-row { display: grid; grid-template-columns: 140px 1fr; align-items: baseline; gap: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+  .type-row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .type-row .meta { font: var(--fw-medium) var(--fs-xxs)/1.5 var(--font-mono); letter-spacing: var(--tr-wide); color: var(--text-3); text-transform: uppercase; }
+  .type-row .meta b { display: block; color: var(--text-2); margin-bottom: 4px; font-weight: var(--fw-medium); text-transform: none; letter-spacing: 0; }
+  .type-row .sample { color: var(--text-1); }
+
+  .demo-floating {
+    width: 280px;
+  }
+
+  .pill-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: var(--r-full);
+    font: var(--fw-medium) var(--fs-xs)/1 var(--font-mono);
+    letter-spacing: var(--tr-wide);
+    background: var(--bg-2); color: var(--text-2);
+    border: 1px solid var(--border);
   }
 </style>
 </head>
 <body>
+<div class="page" data-screen-label="Component Library">
 
-<div class="theme-switcher">
-  <button data-active onclick="setTheme('forge-sdf', this)">Forge SDF</button>
-  <button onclick="setTheme('procreate', this)">Procreate</button>
-  <button onclick="setTheme('sunstone', this)">Sunstone</button>
-  <button onclick="setTheme('blueprint', this)">Blueprint</button>
-</div>
-
-<nav class="toc">
-  <strong>Index</strong>
-  <a href="#about">0. About this file</a>
-  <a href="#tokens">1. Color tokens</a>
-  <a href="#typography">2. Typography</a>
-  <a href="#widgets">3. Widgets</a>
-  <a href="#tools">4. Tool catalog</a>
-  <a href="#layout">5. Layout zones</a>
-  <a href="#screens">6. Screen mockups</a>
-  <a href="#flows">7. User flows</a>
-  <a href="#status">8. Status matrix</a>
-</nav>
-
-<main>
-
-<h1>PH2D — Component Library &amp; Screen Mockups</h1>
-
-<!-- ====================================== -->
-<h2 id="about">0. About this file</h2>
-<p>
-  Esta página é a <strong>fonte de verdade visual</strong> do editor PH2D. Adapta a linguagem do
-  <strong>sdf3d-studio</strong> (a app de referência v0.1, em React/TypeScript com WebGL2) para o nosso contexto:
-  motor 2D em Rust+Vello, mesmo design system de tokens / glass surfaces / multi-theme.
-</p>
-<p>
-  Tudo que for implementado em Vello deve corresponder ao que está aqui. Itera-se este HTML primeiro,
-  depois implementa-se em Rust. Os 4 themes do switcher (canto superior direito) cobrem os modos canônicos:
-  <strong>Forge SDF</strong> (default, magenta dark), <strong>Procreate</strong> (cyan dark),
-  <strong>Sunstone</strong> (warm light), <strong>Blueprint</strong> (CAD light com sidebar fixa).
-</p>
-
-<!-- ====================================== -->
-<h2 id="tokens">1. Color tokens (OKLCH)</h2>
-<p>OKLCH é perceptualmente uniforme — tons consistentes entre themes. WCAG AA validado nos pares texto-superfície.</p>
-
-<h3>Surface chrome</h3>
-<div class="grid grid-6">
-  <div class="swatch"><div class="chip" style="background: var(--bg-0)"></div><div class="name">--bg-0</div><div class="hex">page bg</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--bg-1)"></div><div class="name">--bg-1</div><div class="hex">surface</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--bg-2)"></div><div class="name">--bg-2</div><div class="hex">elevated</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--line)"></div><div class="name">--line</div><div class="hex">divider</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--line-strong)"></div><div class="name">--line-strong</div><div class="hex">border</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--glass-bg); backdrop-filter: var(--glass-blur);"></div><div class="name">--glass-bg</div><div class="hex">+ blur 22px</div></div>
-</div>
-
-<h3>Text (foreground)</h3>
-<div class="grid grid-3">
-  <div class="swatch"><div class="chip" style="background: var(--fg-0)"></div><div class="name">--fg-0</div><div class="hex">primary</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--fg-1)"></div><div class="name">--fg-1</div><div class="hex">secondary</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--fg-2)"></div><div class="name">--fg-2</div><div class="hex">tertiary / hint</div></div>
-</div>
-
-<h3>Accent (per theme)</h3>
-<div class="grid grid-3">
-  <div class="swatch"><div class="chip" style="background: var(--accent)"></div><div class="name">--accent</div><div class="hex">brand hue</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--accent-strong)"></div><div class="name">--accent-strong</div><div class="hex">pressed/hover</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--accent-soft)"></div><div class="name">--accent-soft</div><div class="hex">backdrop</div></div>
-</div>
-
-<h3>Semantic</h3>
-<div class="grid grid-4">
-  <div class="swatch"><div class="chip" style="background: var(--success)"></div><div class="name">--success</div><div class="hex">positive</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--warning)"></div><div class="name">--warning</div><div class="hex">caution</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--error)"></div><div class="name">--error</div><div class="hex">danger</div></div>
-  <div class="swatch"><div class="chip" style="background: var(--info)"></div><div class="name">--info</div><div class="hex">neutral hint</div></div>
-</div>
-
-<!-- ====================================== -->
-<h2 id="typography">2. Typography</h2>
-<p>Inter (sans, UI) + JetBrains Mono (debug overlays, numeric inputs).</p>
-<div class="demo-row">
-  <div style="font-size: var(--font-size-xs);">Xs · 11px · status badges, captions</div>
-  <div style="font-size: var(--font-size-sm);">Sm · 12-13px · labels, action buttons (default body)</div>
-  <div style="font-size: var(--font-size-base);">Base · 13px · panel content</div>
-  <div style="font-size: var(--font-size-md);">Md · 15px · section headings</div>
-  <div style="font-size: var(--font-size-lg);">Lg · 18px · panel titles, modal headers</div>
-  <div style="font-size: var(--font-size-xl); font-weight: 600;">Xl · 24px · welcome / splash</div>
-  <div style="font-family: var(--font-mono); font-size: var(--font-size-base); margin-top: 8px;">Mono · 13px · 0123 ↑↓ debug · slider numerics</div>
-</div>
-
-<!-- ====================================== -->
-<h2 id="widgets">3. Widgets</h2>
-
-<h3>3.1 Icon Button (primary chrome unit, circular 36px / 40px)</h3>
-<div class="demo-row">
-  <div style="display: flex; gap: 12px; align-items: center;">
-    <button class="icon-btn">✎</button>
-    <button class="icon-btn" data-active>✎</button>
-    <button class="icon-btn" disabled>✎</button>
-    <span style="color: var(--fg-2); font-size: var(--font-size-xs);">normal · active · disabled</span>
-  </div>
-</div>
-
-<h3>3.2 Buttons (ghost / primary)</h3>
-<div class="demo-row">
-  <div style="display: flex; gap: 10px; align-items: center;">
-    <button class="btn-ghost">Cancel</button>
-    <button class="btn-ghost" data-active>Active</button>
-    <button class="btn-ghost" disabled>Disabled</button>
-    <button class="btn-primary">Save</button>
-  </div>
-</div>
-
-<h3>3.3 Slider — with editable expression input</h3>
-<div class="demo-row">
-  <div class="slider-row">
-    <span class="label">Size</span>
-    <div class="slider-track"><div class="fill" style="width: 30%"></div><div class="thumb" style="left: 30%"></div></div>
-    <input class="slider-input" value="0.30" />
-  </div>
-  <div class="slider-row">
-    <span class="label">Opacity</span>
-    <div class="slider-track"><div class="fill accent" style="width: 100%"></div><div class="thumb" style="left: 99%"></div></div>
-    <input class="slider-input" value="1.00" />
-  </div>
-  <div class="slider-row">
-    <span class="label">Flow</span>
-    <div class="slider-track" data-dragging><div class="fill accent" style="width: 65%"></div><div class="thumb" style="left: 65%"></div></div>
-    <input class="slider-input" value="0.65" />
-  </div>
-  <div style="color: var(--fg-2); font-size: var(--font-size-xs); margin-top: 8px;">
-    Input aceita expressões (sdf3d ref): <code>2*pi/3</code>, <code>sqrt(2)</code>, <code>1/0.85</code>. Shift+drag → snap humanizado (0/¼/½/¾/1).
-  </div>
-</div>
-
-<h3>3.4 Toggle</h3>
-<div class="demo-row">
-  <div style="display: flex; gap: 24px;">
-    <div class="toggle"><span class="pill"></span> Snap to grid · OFF</div>
-    <div class="toggle" data-on><span class="pill"></span> Snap to grid · ON</div>
-  </div>
-</div>
-
-<h3>3.5 RadioGroup (segmented)</h3>
-<div class="demo-row">
-  <div style="display: flex; align-items: center; gap: 12px;">
-    <span class="demo-label" style="margin: 0;">Lock Axis</span>
-    <div class="radio-segmented">
-      <span class="opt" data-sel>None</span>
-      <span class="opt">X</span>
-      <span class="opt">Y</span>
+  <!-- LEFT NAV -->
+  <aside class="nav">
+    <div class="brand">
+      <span class="mark">PH2D</span>
+      <span class="ver">DS · 0.1</span>
     </div>
-  </div>
-</div>
 
-<h3>3.6 Color swatches</h3>
-<div class="demo-row">
-  <div style="display: flex; gap: 10px; align-items: center;">
-    <div class="color-swatch" style="background: oklch(0.62 0.20 25)"></div>
-    <div class="color-swatch lg" data-focused style="background: var(--accent)"></div>
-    <div class="color-swatch lg" style="background: oklch(0.74 0.18 145)"></div>
-    <div class="color-swatch lg" style="background: oklch(0.78 0.18 75)"></div>
-    <span style="color: var(--fg-2); font-size: var(--font-size-xs);">click → HSV wheel modal (sdf3d uses iro.js v5)</span>
-  </div>
-</div>
+    <h4>Foundation</h4>
+    <a href="#color">Color</a>
+    <a href="#type">Typography</a>
+    <a href="#space">Spacing & radius</a>
 
-<h3>3.7 ColorRamp editor (gradient with stops)</h3>
-<div class="demo-row">
-  <div class="color-ramp-editor">
-    <div class="color-ramp" style="background: linear-gradient(90deg, oklch(0.16 0.012 290), oklch(0.74 0.16 340), oklch(0.96 0.004 290));">
-      <div class="stop" style="left: 0%; background: oklch(0.16 0.012 290);"></div>
-      <div class="stop" style="left: 50%; background: oklch(0.74 0.16 340);"></div>
-      <div class="stop" style="left: 100%; background: oklch(0.96 0.004 290);"></div>
-    </div>
-    <div style="font-size: var(--font-size-xs); color: var(--fg-2);">3 stops · click ramp pra adicionar · drag stops · click stop pra remover</div>
-  </div>
-</div>
+    <h4>Controls</h4>
+    <a href="#buttons">Buttons</a>
+    <a href="#icon-buttons">Icon buttons</a>
+    <a href="#inputs">Inputs</a>
+    <a href="#numinputs">Number / Vector</a>
+    <a href="#toggles">Toggles & checks</a>
+    <a href="#sliders">Sliders</a>
+    <a href="#selection">Segmented & radio</a>
+    <a href="#color-pick">Color swatch</a>
+    <a href="#tabs">Tabs</a>
 
-<h3>3.8 Path2D editor (Bézier sketch overlay)</h3>
-<div class="demo-row">
-  <div class="path-editor">
-    <svg viewBox="0 0 280 100" preserveAspectRatio="none">
-      <path d="M 30 80 Q 90 10, 140 50 T 250 30" stroke="oklch(0.78 0.14 205)" stroke-width="2" fill="none"/>
-      <line x1="30" y1="80" x2="60" y2="35" stroke="oklch(0.55 0.006 290)" stroke-width="1" stroke-dasharray="2 2"/>
-      <line x1="140" y1="50" x2="190" y2="80" stroke="oklch(0.55 0.006 290)" stroke-width="1" stroke-dasharray="2 2"/>
-    </svg>
-    <div class="vertex" style="left: 11%; top: 80%;"></div>
-    <div class="handle" style="left: 21%; top: 35%;"></div>
-    <div class="vertex" style="left: 50%; top: 50%;"></div>
-    <div class="handle" style="left: 68%; top: 80%;"></div>
-    <div class="vertex" style="left: 89%; top: 30%;"></div>
-  </div>
-  <div style="font-size: var(--font-size-xs); color: var(--fg-2); margin-top: 6px;">Modos: line / arc / bezier · vertices draggables · handles ajustam curva</div>
-</div>
+    <h4>Surfaces</h4>
+    <a href="#panel">Floating panel</a>
+    <a href="#tree">Tree / List</a>
+    <a href="#asset">Asset card</a>
+    <a href="#dialog">Dialog</a>
 
-<h3>3.9 Toast notifications</h3>
-<div class="demo-row">
-  <div class="toast info">Info · Press B=Brush, E=Eraser, Tab=Zen</div>
-  <div class="toast success">Success · Project saved (12.4 MB)</div>
-  <div class="toast warning">Warning · Sidebar reset to default</div>
-  <div class="toast error">Error · Failed to load asset.png — file missing</div>
-</div>
+    <h4>Feedback</h4>
+    <a href="#toast">Toasts</a>
+    <a href="#tooltip">Tooltip</a>
+    <a href="#progress">Progress</a>
+    <a href="#badge">Badges & kbd</a>
+  </aside>
 
-<h3>3.10 Float Panel (draggable, glass + grab pill)</h3>
-<div class="demo-row" style="display: flex; gap: 16px;">
-  <div class="float-panel">
-    <div class="grab-pill"></div>
-    <div class="header">
-      <span class="title">Brush properties</span>
-      <button class="close-btn">×</button>
-    </div>
-    <div class="slider-row"><span class="label">Size</span><div class="slider-track"><div class="fill accent" style="width: 24%"></div><div class="thumb" style="left: 24%"></div></div><input class="slider-input" value="24"></div>
-    <div class="slider-row" style="margin-top: 8px;"><span class="label">Opacity</span><div class="slider-track"><div class="fill accent" style="width: 100%"></div><div class="thumb" style="left: 99%"></div></div><input class="slider-input" value="1.00"></div>
-    <div class="slider-row" style="margin-top: 8px;"><span class="label">Color</span><div class="color-swatch lg" style="background: var(--accent);"></div></div>
-  </div>
-  <div style="color: var(--fg-2); font-size: var(--font-size-xs); align-self: flex-start;">
-    Glass surface (blur 22px + saturate 1.4)<br>
-    Grab pill (4×42px) topo = drag handle<br>
-    Header com close button<br>
-    Drag pra reposicionar (clamped ao viewport)<br>
-    Auto-anima fadeInUp ao montar
-  </div>
-</div>
-
-<!-- ====================================== -->
-<h2 id="tools">4. Tool catalog (PH2D 2D engine)</h2>
-<p>SDF3D é 3D modeling. PH2D é 2D engine — tools adaptadas. Status: <span style="color: var(--success);">built</span> · <span style="color: var(--fg-2);">planned</span> · <span style="color: var(--warning);">future</span>.</p>
-
-<table>
-  <thead>
-    <tr><th>Glyph</th><th>Tool</th><th>Function</th><th>Controls (Float Panel)</th><th>Status</th></tr>
-  </thead>
-  <tbody>
-    <tr><td class="glyph">B</td><td>Brush</td><td>Pinta sprite no canvas (paint stroke)</td><td>Size · Opacity · Flow · Color</td><td class="status-built">built</td></tr>
-    <tr><td class="glyph">M</td><td>Move</td><td>Move/transforma seleção</td><td>Snap Grid · Snap Pixel · Lock Axis</td><td class="status-built">built</td></tr>
-    <tr><td class="glyph">E</td><td>Eraser</td><td>Apaga sprite no canvas</td><td>Size · Hardness · Mode (Layer/All)</td><td class="status-planned">planned</td></tr>
-    <tr><td class="glyph">S</td><td>Selection</td><td>Lasso / Rectangle / Ellipse / Wand</td><td>Mode · Tolerance · Anti-alias · Add/Remove/Invert</td><td class="status-planned">planned</td></tr>
-    <tr><td class="glyph">C</td><td>Color picker</td><td>Eyedropper sample do canvas</td><td>Sample size · Layer-only</td><td class="status-planned">planned</td></tr>
-    <tr><td class="glyph">F</td><td>Fill</td><td>Bucket fill com cor selecionada</td><td>Tolerance · Anti-alias · Contiguous</td><td class="status-planned">planned</td></tr>
-    <tr><td class="glyph">T</td><td>Text</td><td>Insere texto no canvas (parley)</td><td>Font · Size · Color · Alignment · Outline</td><td class="status-future">future</td></tr>
-    <tr><td class="glyph">L</td><td>Layer</td><td>Painel de layers (visibility/opacity/blend)</td><td>Layer list · Blend mode · Mask · Group</td><td class="status-future">future</td></tr>
-    <tr><td class="glyph">A</td><td>Asset placer</td><td>Drag-drop sprite/asset no scene</td><td>Asset browser · Snap · Tint</td><td class="status-future">future</td></tr>
-    <tr><td class="glyph">P</td><td>Pan / Zoom (camera)</td><td>Move / zoom da câmera do editor</td><td>Zoom level · Reset · Fit selection</td><td class="status-future">future</td></tr>
-    <tr><td class="glyph">G</td><td>Grid / Tile</td><td>Pinta tilemap em grid</td><td>Tile size · Snap · Layer · Tile picker</td><td class="status-future">future</td></tr>
-    <tr><td class="glyph">R</td><td>Path / Shape</td><td>Desenha bezier/path (sdf3d Path2D)</td><td>Stroke · Fill · Mode (line/arc/bezier)</td><td class="status-future">future</td></tr>
-  </tbody>
-</table>
-
-<!-- ====================================== -->
-<h2 id="layout">5. Layout zones</h2>
-<p>Estrutura sdf3d-style: TopBar fixa + LeftSidebar 60px + Canvas full-bleed + Floating panels + BottomHUD. Adaptado pro contexto PH2D (sem gizmos 3D, com tools 2D + asset/layer panels).</p>
-
-<div class="screen">
-  <div class="canvas"></div>
-  <div class="top-bar">
-    <div class="grp">
-      <button class="icon-btn">⚙</button>
-      <button class="icon-btn">⤓</button>
-      <button class="icon-btn">▶</button>
-    </div>
-    <div class="center">PH2D · untitled.ph2d</div>
-    <div class="grp">
-      <button class="icon-btn">≣</button>
-      <button class="icon-btn">⊞</button>
-      <button class="icon-btn">{·}</button>
-    </div>
-  </div>
-  <div class="left-sidebar">
-    <div class="group">
-      <button class="icon-btn" data-active>B</button>
-      <button class="icon-btn">M</button>
-      <button class="icon-btn">E</button>
-      <button class="icon-btn">S</button>
-    </div>
-    <hr>
-    <div class="group">
-      <button class="icon-btn">C</button>
-      <button class="icon-btn">F</button>
-      <button class="icon-btn">L</button>
-    </div>
-    <hr>
-    <div class="group">
-      <button class="icon-btn">↶</button>
-      <button class="icon-btn">↷</button>
-    </div>
-  </div>
-  <div class="bottom-hud">
-    <span class="badge fps">fps <span class="v">60</span></span>
-    <span class="badge">zoom <span class="v">×1.0</span></span>
-    <span class="badge">scene <span class="v">untitled*</span></span>
-    <span class="badge">cost <span class="v">0.42</span> ms</span>
-  </div>
-</div>
-
-<p style="font-size: var(--font-size-xs); color: var(--fg-2);">
-  ▲ Zonas: <strong>TopBar</strong> (46px, theme/save/play/panel toggles) ·
-  <strong>LeftSidebar</strong> (60px, vertical, gizmo+camera+undo grupos com hr separators) ·
-  <strong>BottomHUD</strong> (pill compacta, fps/zoom/scene/cost) ·
-  <strong>Canvas</strong> (full-bleed, sprites + overlays) ·
-  <strong>Floating panels</strong> (drag livre, anchor opcional)
-</p>
-
-<!-- ====================================== -->
-<h2 id="screens">6. Screen mockups</h2>
-
-<h3>6.1 Main editor — Brush ativo, Float panel visível</h3>
-<div class="screen">
-  <div class="canvas"></div>
-  <div class="sprite-grid">
-    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
-    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
-    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
-    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
-    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
-    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
-    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
-  </div>
-  <div class="top-bar">
-    <div class="grp"><button class="icon-btn">⚙</button><button class="icon-btn">⤓</button><button class="icon-btn">▶</button></div>
-    <div class="center">PH2D · my-game.ph2d</div>
-    <div class="grp"><button class="icon-btn">≣</button><button class="icon-btn">⊞</button></div>
-  </div>
-  <div class="left-sidebar">
-    <div class="group"><button class="icon-btn" data-active>B</button><button class="icon-btn">M</button><button class="icon-btn">E</button><button class="icon-btn">S</button></div>
-    <hr><div class="group"><button class="icon-btn">C</button><button class="icon-btn">F</button><button class="icon-btn">L</button></div>
-  </div>
-  <div class="scr-panel">
-    <div class="grab-pill"></div>
-    <div style="font-weight: 600; font-size: var(--font-size-sm); margin-bottom: 12px;">Brush</div>
-    <div class="slider-row"><span class="label">Size</span><div class="slider-track"><div class="fill accent" style="width: 24%"></div><div class="thumb" style="left: 24%"></div></div><input class="slider-input" value="24"></div>
-    <div class="slider-row" style="margin-top: 8px;"><span class="label">Opacity</span><div class="slider-track"><div class="fill accent" style="width: 100%"></div><div class="thumb" style="left: 99%"></div></div><input class="slider-input" value="1.0"></div>
-    <div class="slider-row" style="margin-top: 8px;"><span class="label">Flow</span><div class="slider-track"><div class="fill accent" style="width: 80%"></div><div class="thumb" style="left: 80%"></div></div><input class="slider-input" value="0.8"></div>
-    <div class="slider-row" style="margin-top: 8px;"><span class="label">Color</span><div class="color-swatch lg" style="background: var(--accent);"></div></div>
-  </div>
-  <div class="bottom-hud">
-    <span class="badge fps">fps <span class="v">60</span></span>
-    <span class="badge">zoom <span class="v">×1.0</span></span>
-    <span class="badge">scene <span class="v">my-game*</span></span>
-    <span class="badge">tool <span class="v">brush</span></span>
-  </div>
-</div>
-
-<h3>6.2 Selection tool ativa, marquee rect drag</h3>
-<div class="screen">
-  <div class="canvas"></div>
-  <div class="top-bar">
-    <div class="grp"><button class="icon-btn">⚙</button><button class="icon-btn">▶</button></div>
-    <div class="center">PH2D · my-game.ph2d</div>
-    <div class="grp"><button class="icon-btn">≣</button></div>
-  </div>
-  <div class="left-sidebar">
-    <div class="group"><button class="icon-btn">B</button><button class="icon-btn">M</button><button class="icon-btn">E</button><button class="icon-btn" data-active>S</button></div>
-  </div>
-  <div class="marquee" style="left: 30%; top: 35%; width: 25%; height: 30%;"></div>
-  <div class="scr-panel">
-    <div class="grab-pill"></div>
-    <div style="font-weight: 600; font-size: var(--font-size-sm); margin-bottom: 12px;">Selection</div>
-    <div class="slider-row"><span class="label">Mode</span><div class="radio-segmented" style="margin-left: auto;"><span class="opt" data-sel>Rect</span><span class="opt">Lasso</span><span class="opt">Wand</span></div></div>
-    <div style="display: flex; gap: 6px; margin-top: 12px;">
-      <button class="btn-ghost" style="flex: 1;">Add</button>
-      <button class="btn-ghost" style="flex: 1;">Remove</button>
-      <button class="btn-ghost" style="flex: 1;">Invert</button>
-    </div>
-    <div style="display: flex; gap: 6px; margin-top: 6px;">
-      <button class="btn-ghost" style="flex: 1;">Copy</button>
-      <button class="btn-ghost" style="flex: 1;">Cut</button>
-    </div>
-    <button class="btn-primary" style="width: 100%; margin-top: 12px;">Convert to Layer</button>
-  </div>
-</div>
-
-<h3>6.3 Color picker modal (HSV wheel + hex)</h3>
-<div class="screen">
-  <div class="canvas"></div>
-  <div class="top-bar"><div class="center">PH2D · my-game.ph2d</div></div>
-  <div class="left-sidebar"><div class="group"><button class="icon-btn" data-active>B</button></div></div>
-  <div class="modal-bg">
-    <div class="modal scale-in">
-      <div style="font-size: var(--font-size-md); font-weight: 600; margin-bottom: 12px;">Pick color</div>
-      <div class="hsv-wheel"><div class="picker"></div></div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <div class="color-swatch lg" style="background: oklch(0.74 0.16 340);"></div>
-        <input class="slider-input" value="#D45EBC" style="width: 90px;">
-        <input class="slider-input" value="100%" style="width: 60px;">
-        <button class="btn-primary" style="margin-left: auto;">Apply</button>
+  <!-- MAIN -->
+  <main class="main">
+    <header class="page-head">
+      <div class="eyebrow">PH2D / Design system</div>
+      <h1 class="display">A canvas-first, gesture-first editor for 2D games.</h1>
+      <p class="lede">
+        This catalog is the source of truth for every widget the editor draws. Components are composed from
+        a small set of design tokens (color, type, spacing, radius, motion) so any theme — Forge-SDF, Procreate,
+        Sunstone, Blueprint — can take the same UI without changing markup.
+      </p>
+      <div style="display:flex; gap:8px; margin-top:24px;">
+        <span class="pill-tag">v0.1 · Foundation pass</span>
+        <span class="pill-tag">Theme: Forge-SDF</span>
+        <span class="pill-tag">iPad 12.9 · 1366×1024</span>
       </div>
-    </div>
-  </div>
+    </header>
+
+    <!-- ─────────────── COLOR ─────────────── -->
+    <section id="color">
+      <h2>Color</h2>
+      <p class="desc">Tokens are declared in OKLCH. Surfaces step in lightness only; chroma is reserved for accent and semantic states.</p>
+
+      <div style="background:var(--bg-1); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; display:flex; flex-direction:column; gap:24px;">
+
+        <div>
+          <div style="font:var(--fw-medium) var(--fs-xxs)/1 var(--font-mono); letter-spacing:var(--tr-caps); text-transform:uppercase; color:var(--text-3); margin-bottom:12px;">Surfaces</div>
+          <div class="swatch-grid">
+            <div class="swatch-tile"><div class="chip" style="background:var(--bg-0)"></div><div class="name">bg-0</div><div class="val">page</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--bg-1)"></div><div class="name">bg-1</div><div class="val">panel</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--bg-2)"></div><div class="name">bg-2</div><div class="val">elevated</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--bg-3)"></div><div class="name">bg-3</div><div class="val">hover</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--canvas)"></div><div class="name">canvas</div><div class="val">scene</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--border)"></div><div class="name">border</div><div class="val">divider</div></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:var(--fw-medium) var(--fs-xxs)/1 var(--font-mono); letter-spacing:var(--tr-caps); text-transform:uppercase; color:var(--text-3); margin-bottom:12px;">Text</div>
+          <div class="swatch-grid">
+            <div class="swatch-tile"><div class="chip" style="background:var(--text-1)"></div><div class="name">text-1</div><div class="val">primary</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--text-2)"></div><div class="name">text-2</div><div class="val">secondary</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--text-3)"></div><div class="name">text-3</div><div class="val">tertiary</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--text-disabled)"></div><div class="name">disabled</div><div class="val">muted</div></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:var(--fw-medium) var(--fs-xxs)/1 var(--font-mono); letter-spacing:var(--tr-caps); text-transform:uppercase; color:var(--text-3); margin-bottom:12px;">Accent + semantic</div>
+          <div class="swatch-grid">
+            <div class="swatch-tile"><div class="chip" style="background:var(--accent)"></div><div class="name">accent</div><div class="val">interactive</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--accent-soft)"></div><div class="name">accent-soft</div><div class="val">tint</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--info)"></div><div class="name">info</div><div class="val">notice</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--success)"></div><div class="name">success</div><div class="val">ok</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--warn)"></div><div class="name">warn</div><div class="val">caution</div></div>
+            <div class="swatch-tile"><div class="chip" style="background:var(--danger)"></div><div class="name">danger</div><div class="val">destructive</div></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────────── TYPE ─────────────── -->
+    <section id="type">
+      <h2>Typography</h2>
+      <p class="desc">Inter for UI; JetBrains Mono for numeric data, file paths, hex/expression fields. The type scale is tight — a dev tool earns density.</p>
+
+      <div class="type-spec">
+        <div class="type-row">
+          <div class="meta"><b>Display / 3xl</b>Inter SemiBold · 44 / 48</div>
+          <div class="sample" style="font:var(--fw-semibold) var(--fs-3xl)/1.05 var(--font-display); letter-spacing:-0.025em;">Power House 2D</div>
+        </div>
+        <div class="type-row">
+          <div class="meta"><b>Heading / xl</b>Inter SemiBold · 24 / 28</div>
+          <div class="sample" style="font:var(--fw-semibold) var(--fs-xl)/1.1 var(--font-display); letter-spacing:var(--tr-tight);">Inspector — Player.entity</div>
+        </div>
+        <div class="type-row">
+          <div class="meta"><b>Title / md</b>Inter SemiBold · 15 / 20</div>
+          <div class="sample" style="font:var(--fw-semibold) var(--fs-md)/1.3 var(--font-display);">Transform component</div>
+        </div>
+        <div class="type-row">
+          <div class="meta"><b>Body / base</b>Inter Regular · 13 / 19</div>
+          <div class="sample" style="font:var(--fw-regular) var(--fs-base)/1.45 var(--font-sans); max-width:48ch;">Drag the handle to translate, hold Alt to clone, hold Shift to snap to grid. Components inherit transform from their parent unless detached.</div>
+        </div>
+        <div class="type-row">
+          <div class="meta"><b>Caption / xs</b>Inter Medium · 11 / 16 · 0.04em</div>
+          <div class="sample" style="font:var(--fw-medium) var(--fs-xs)/1.4 var(--font-sans); letter-spacing:var(--tr-wide); text-transform:uppercase; color:var(--text-3);">Components · 4 of 12</div>
+        </div>
+        <div class="type-row">
+          <div class="meta"><b>Mono / sm</b>JetBrains Mono · 12 / 16</div>
+          <div class="sample" style="font:var(--fw-regular) var(--fs-sm)/1.3 var(--font-mono);">vec3(0.000, 1.250, -3.840)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── SPACE ─────────────── -->
+    <section id="space">
+      <h2>Spacing &amp; radius</h2>
+      <p class="desc">A 2/4/6/8/12/16/24/32 scale. Touch targets ≥ 44px on iPad; mouse ≥ 24px. Radius is themeable via Tweaks (sharp / default / round).</p>
+      <div class="grid-row" style="gap:24px;">
+        <!-- spacing -->
+        <div style="display:flex; gap:12px; align-items:flex-end;">
+          <div title="2"  style="width:2px;  height:48px; background:var(--accent); border-radius:1px;"></div>
+          <div title="4"  style="width:4px;  height:48px; background:var(--accent); border-radius:1px;"></div>
+          <div title="6"  style="width:6px;  height:48px; background:var(--accent); border-radius:1px;"></div>
+          <div title="8"  style="width:8px;  height:48px; background:var(--accent); border-radius:1px;"></div>
+          <div title="12" style="width:12px; height:48px; background:var(--accent); border-radius:2px;"></div>
+          <div title="16" style="width:16px; height:48px; background:var(--accent); border-radius:2px;"></div>
+          <div title="24" style="width:24px; height:48px; background:var(--accent); border-radius:3px;"></div>
+          <div title="32" style="width:32px; height:48px; background:var(--accent); border-radius:4px;"></div>
+        </div>
+        <div class="divider v" style="height:48px;"></div>
+        <!-- radius -->
+        <div style="display:flex; gap:12px; align-items:center;">
+          <div style="width:48px; height:48px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--r-xs);"></div>
+          <div style="width:48px; height:48px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--r-sm);"></div>
+          <div style="width:48px; height:48px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--r-md);"></div>
+          <div style="width:48px; height:48px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--r-lg);"></div>
+          <div style="width:48px; height:48px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--r-xl);"></div>
+          <div style="width:48px; height:48px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--r-2xl);"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── BUTTONS ─────────────── -->
+    <section id="buttons">
+      <h2>Buttons</h2>
+      <p class="desc">Text buttons. <b>Primary</b> for the single most important affordance per surface; <b>default</b> for everything else; <b>ghost</b> in dense rows; <b>danger</b> for destructive only.</p>
+
+      <div class="specimen">
+        <div class="cell"><div class="demo"><button class="btn primary">Run scene</button></div><div class="label">Primary · idle</div></div>
+        <div class="cell"><div class="demo"><button class="btn primary" style="background:var(--accent-hover);">Run scene</button></div><div class="label">Primary · hover</div></div>
+        <div class="cell"><div class="demo"><button class="btn primary" style="background:var(--accent-press); transform:translateY(0.5px);">Run scene</button></div><div class="label">Primary · press</div></div>
+        <div class="cell"><div class="demo"><button class="btn primary" style="box-shadow:0 0 0 2px var(--focus-ring);">Run scene</button></div><div class="label">Primary · focus</div></div>
+        <div class="cell"><div class="demo"><button class="btn primary" disabled>Run scene</button></div><div class="label">Primary · disabled</div></div>
+
+        <div class="cell"><div class="demo"><button class="btn">Add entity</button></div><div class="label">Default · idle</div></div>
+        <div class="cell"><div class="demo"><button class="btn" style="background:var(--bg-3); border-color:var(--border-strong);">Add entity</button></div><div class="label">Default · hover</div></div>
+        <div class="cell"><div class="demo"><button class="btn" style="box-shadow:0 0 0 2px var(--focus-ring);">Add entity</button></div><div class="label">Default · focus</div></div>
+        <div class="cell"><div class="demo"><button class="btn" disabled>Add entity</button></div><div class="label">Default · disabled</div></div>
+
+        <div class="cell"><div class="demo"><button class="btn ghost">Cancel</button></div><div class="label">Ghost · idle</div></div>
+        <div class="cell"><div class="demo"><button class="btn ghost" style="background:var(--bg-2); color:var(--text-1);">Cancel</button></div><div class="label">Ghost · hover</div></div>
+        <div class="cell"><div class="demo"><button class="btn danger">Delete</button></div><div class="label">Danger · idle</div></div>
+        <div class="cell"><div class="demo"><button class="btn danger" style="filter:brightness(1.08);">Delete</button></div><div class="label">Danger · hover</div></div>
+      </div>
+
+      <div class="grid-row" style="margin-top:12px;">
+        <button class="btn sm">Small</button>
+        <button class="btn">Default</button>
+        <button class="btn lg">Large</button>
+        <div class="divider v"></div>
+        <button class="btn"><span data-icon="add" data-size="14"></span>With icon</button>
+        <button class="btn primary"><span data-icon="play" data-size="14"></span>Run</button>
+        <button class="btn"><span>Trailing</span><span data-icon="chev_d" data-size="14"></span></button>
+      </div>
+    </section>
+
+    <!-- ─────────────── ICON BUTTONS ─────────────── -->
+    <section id="icon-buttons">
+      <h2>Icon buttons</h2>
+      <p class="desc">Square 36pt by default (44pt for tablet primary tools, 28pt for inline). Active state uses accent tint, never solid fill — the canvas is the figure, the button is ground.</p>
+
+      <div class="specimen">
+        <div class="cell"><div class="demo"><button class="iconbtn" data-icon="place"></button></div><div class="label">Idle</div></div>
+        <div class="cell"><div class="demo"><button class="iconbtn" data-icon="place" style="background:var(--bg-3); color:var(--text-1);"></button></div><div class="label">Hover</div></div>
+        <div class="cell"><div class="demo"><button class="iconbtn" data-icon="place" style="transform:scale(0.96); background:var(--bg-2);"></button></div><div class="label">Press</div></div>
+        <div class="cell"><div class="demo"><button class="iconbtn" data-icon="place" style="box-shadow:0 0 0 2px var(--focus-ring);"></button></div><div class="label">Focus</div></div>
+        <div class="cell"><div class="demo"><button class="iconbtn is-active" data-icon="place"></button></div><div class="label">Active</div></div>
+        <div class="cell"><div class="demo"><button class="iconbtn" data-icon="place" disabled></button></div><div class="label">Disabled</div></div>
+      </div>
+
+      <div class="grid-row" style="margin-top:12px;">
+        <button class="iconbtn sm" data-icon="undo"></button>
+        <button class="iconbtn" data-icon="undo"></button>
+        <button class="iconbtn lg" data-icon="undo"></button>
+        <div class="divider v"></div>
+        <button class="iconbtn" data-icon="play"></button>
+        <button class="iconbtn" data-icon="pause"></button>
+        <button class="iconbtn" data-icon="step"></button>
+        <button class="iconbtn" data-icon="reset"></button>
+        <button class="iconbtn is-active" data-icon="hot"></button>
+        <div class="divider v"></div>
+        <button class="iconbtn" data-icon="select"></button>
+        <button class="iconbtn is-active" data-icon="place"></button>
+        <button class="iconbtn" data-icon="gizmo"></button>
+        <button class="iconbtn" data-icon="erase"></button>
+      </div>
+    </section>
+
+    <!-- ─────────────── INPUTS ─────────────── -->
+    <section id="inputs">
+      <h2>Text inputs</h2>
+      <p class="desc">Mono variant for paths, expressions, and code-like fields. Errors surface inline; the form never disables submission silently.</p>
+
+      <div class="field-grid">
+        <div class="field">
+          <label class="field-label">Name · idle</label>
+          <input class="input" placeholder="Player" />
+        </div>
+        <div class="field">
+          <label class="field-label">Name · focused</label>
+          <input class="input" value="Player" style="border-color:var(--accent); box-shadow:0 0 0 2px var(--focus-ring);" />
+        </div>
+        <div class="field">
+          <label class="field-label">Asset path · mono</label>
+          <input class="input mono" value="sprites/player_idle.png" />
+        </div>
+        <div class="field">
+          <label class="field-label">Field · error</label>
+          <input class="input is-error" value="ent_!@#" />
+          <div style="font-size:var(--fs-xs); color:var(--danger);">Identifier must match <code style="font-family:var(--font-mono);">[a-z_][a-z0-9_]*</code>.</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Field · disabled</label>
+          <input class="input" value="locked.field" disabled />
+        </div>
+        <div class="field">
+          <label class="field-label">Description · textarea</label>
+          <textarea class="textarea" placeholder="Describe what this entity does in your scene…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── NUMINPUT / VECTOR ─────────────── -->
+    <section id="numinputs">
+      <h2>Number &amp; Vector editors</h2>
+      <p class="desc">Numeric fields accept expressions (<code style="font-family:var(--font-mono); font-size:var(--fs-sm); background:var(--bg-2); padding:1px 5px; border-radius:3px;">2*pi/3</code>, <code style="font-family:var(--font-mono); font-size:var(--fs-sm); background:var(--bg-2); padding:1px 5px; border-radius:3px;">prev + 0.5</code>). Drag-scrub on the label is supported on every number field.</p>
+      <div class="grid-row" style="gap:24px;">
+        <!-- single -->
+        <div class="numinput"><div class="label">N</div>
+          <button>−</button><input value="1.000"/><button>+</button>
+        </div>
+
+        <!-- vec3 -->
+        <div style="display:flex; gap:6px;">
+          <div class="numinput x"><div class="label">X</div><input value="0.000"/></div>
+          <div class="numinput y"><div class="label">Y</div><input value="1.250"/></div>
+          <div class="numinput z"><div class="label">Z</div><input value="−3.840"/></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── TOGGLES ─────────────── -->
+    <section id="toggles">
+      <h2>Toggles, switches &amp; checks</h2>
+      <p class="desc">Switch = boolean preference (live). Checkbox = selection / form value. Both have visible focus states.</p>
+      <div class="specimen">
+        <div class="cell"><div class="demo"><input class="switch" type="checkbox"/></div><div class="label">Switch · off</div></div>
+        <div class="cell"><div class="demo"><input class="switch" type="checkbox" checked/></div><div class="label">Switch · on</div></div>
+        <div class="cell"><div class="demo"><input class="switch" type="checkbox" checked style="box-shadow:0 0 0 2px var(--focus-ring);"/></div><div class="label">Switch · focus</div></div>
+        <div class="cell"><div class="demo"><input class="switch" type="checkbox" disabled/></div><div class="label">Switch · disabled</div></div>
+
+        <div class="cell"><div class="demo"><input class="checkbox" type="checkbox"/></div><div class="label">Check · off</div></div>
+        <div class="cell"><div class="demo"><input class="checkbox" type="checkbox" checked/></div><div class="label">Check · on</div></div>
+        <div class="cell"><div class="demo"><input class="checkbox" type="checkbox" style="border-color:var(--text-2);"/></div><div class="label">Check · hover</div></div>
+        <div class="cell"><div class="demo"><input class="checkbox" type="checkbox" checked style="box-shadow:0 0 0 2px var(--focus-ring);"/></div><div class="label">Check · focus</div></div>
+      </div>
+    </section>
+
+    <!-- ─────────────── SLIDERS ─────────────── -->
+    <section id="sliders">
+      <h2>Sliders</h2>
+      <p class="desc">Horizontal in panels and inspectors; vertical in the persistent sidebar. Vertical sliders pair with a numeric readout above.</p>
+
+      <div class="grid-row" style="gap:32px;">
+        <div style="flex:1; display:flex; flex-direction:column; gap:14px;">
+          <div class="slider-row">
+            <input class="slider accent" type="range" min="0" max="100" value="32"/>
+            <span class="value">32%</span>
+          </div>
+          <div class="slider-row">
+            <input class="slider accent" type="range" min="0" max="100" value="68"/>
+            <span class="expr">2*pi/3</span>
+          </div>
+          <div class="slider-row">
+            <input class="slider" type="range" min="0" max="100" value="50"/>
+            <span class="value">0.500</span>
+          </div>
+        </div>
+
+        <div class="divider v"></div>
+
+        <!-- vertical sliders -->
+        <div style="display:flex; gap:24px; height:240px; align-items:stretch;">
+          <div class="vslider">
+            <div class="ticks"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="track"><div class="fill" style="height:60%"></div><div class="thumb" style="bottom:60%"></div></div>
+          </div>
+          <div class="vslider">
+            <div class="ticks"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="track"><div class="fill" style="height:30%"></div><div class="thumb" style="bottom:30%"></div></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; justify-content:center; font:var(--fw-medium) var(--fs-xxs)/1 var(--font-mono); letter-spacing:var(--tr-wide); text-transform:uppercase; color:var(--text-3);">
+            <div>top — Brush size 60%</div>
+            <div>btm — Opacity 30%</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── SELECTION ─────────────── -->
+    <section id="selection">
+      <h2>Segmented &amp; radio</h2>
+      <p class="desc">Segmented control for 2–4 mutually-exclusive views (Inspector tabs sub-modes, gizmo modes). Vertical radio for &gt; 4 options or longer labels.</p>
+
+      <div class="field-grid">
+        <div class="field">
+          <label class="field-label">Gizmo mode</label>
+          <div class="segmented">
+            <button aria-pressed="true">Translate</button>
+            <button>Rotate</button>
+            <button>Scale</button>
+            <button>Skew</button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Snap target</label>
+          <div class="radio-list">
+            <label><input type="radio" name="snap" checked/> Grid (8 px)</label>
+            <label><input type="radio" name="snap"/> Pixel</label>
+            <label><input type="radio" name="snap"/> Parent transform</label>
+            <label><input type="radio" name="snap"/> Off</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── COLOR PICK ─────────────── -->
+    <section id="color-pick">
+      <h2>Color swatch</h2>
+      <p class="desc">Swatches drop opens a color popover (5 tabs: Wheel / Sliders / Harmony / Value / Palette). The popover spec lives on screen <code style="font-family:var(--font-mono);">08-color-picker</code>.</p>
+      <div class="grid-row" style="gap:14px;">
+        <div class="swatch lg" style="background:oklch(0.74 0.16 340);"></div>
+        <div class="swatch lg is-active" style="background:oklch(0.74 0.16 30);"></div>
+        <div class="swatch lg" style="background:oklch(0.78 0.14 205);"></div>
+        <div class="swatch lg" style="background:oklch(0.74 0.16 145);"></div>
+        <div class="swatch lg" style="background:oklch(0.95 0.005 285);"></div>
+        <div class="swatch lg" style="background:oklch(0.18 0.005 285);"></div>
+        <div class="divider v"></div>
+        <div class="swatch" style="background:oklch(0.74 0.16 340);"></div>
+        <div class="swatch" style="background:oklch(0.78 0.14 205);"></div>
+        <div class="swatch" style="background:oklch(0.74 0.16 145);"></div>
+      </div>
+    </section>
+
+    <!-- ─────────────── TABS ─────────────── -->
+    <section id="tabs">
+      <h2>Tabs</h2>
+      <p class="desc">Top tabs split a panel into views (Inspector: Transform / Physics / Render / Script / Custom). Underline-only — no bg fill.</p>
+      <div style="background:var(--bg-1); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden;">
+        <div class="tabs">
+          <button aria-selected="true">Transform</button>
+          <button>Physics</button>
+          <button>Render</button>
+          <button>Script</button>
+          <button>Custom</button>
+        </div>
+        <div style="padding:24px; color:var(--text-2); font-size:var(--fs-sm);">
+          <i>Tab content area · 320 × n.</i>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── PANEL ─────────────── -->
+    <section id="panel">
+      <h2>Floating panel</h2>
+      <p class="desc">Glass surface · 24 px backdrop blur · grab handle on top · close button only when invoked manually (canvas-tap dismisses too). Anchored near its source button.</p>
+
+      <div class="surface-stack">
+        <div class="fpanel demo-floating">
+          <div class="fpanel-grab"></div>
+          <div class="fpanel-head">
+            <h3>Hierarchy</h3>
+            <div class="actions">
+              <button class="iconbtn sm" data-icon="search"></button>
+              <button class="iconbtn sm" data-icon="add"></button>
+              <button class="iconbtn sm" data-icon="more_v"></button>
+            </div>
+          </div>
+          <div class="fpanel-body" style="padding:0 8px 12px;">
+            <div class="tree">
+              <div class="tree-row" data-depth="0">
+                <span class="chev open" data-icon="chev_r" data-size="12"></span>
+                <span class="icon" data-icon="scene" data-size="14"></span>
+                <span class="name">Level_01.scene</span>
+              </div>
+              <div class="tree-row is-selected" data-depth="1">
+                <span class="chev empty"></span>
+                <span class="icon" data-icon="prefab" data-size="14"></span>
+                <span class="name">Player</span>
+                <span class="meta">PRF</span>
+                <span class="vis" data-icon="visible" data-size="14"></span>
+              </div>
+              <div class="tree-row" data-depth="1">
+                <span class="chev open" data-icon="chev_r" data-size="12"></span>
+                <span class="icon" data-icon="folder" data-size="14"></span>
+                <span class="name">Enemies</span>
+                <span class="vis" data-icon="visible" data-size="14"></span>
+              </div>
+              <div class="tree-row" data-depth="2">
+                <span class="chev empty"></span>
+                <span class="icon" data-icon="sprite" data-size="14"></span>
+                <span class="name">Slime_01</span>
+                <span class="vis" data-icon="visible" data-size="14"></span>
+              </div>
+              <div class="tree-row is-hidden" data-depth="2">
+                <span class="chev empty"></span>
+                <span class="icon" data-icon="sprite" data-size="14"></span>
+                <span class="name">Slime_02</span>
+                <span class="vis" data-icon="hidden" data-size="14"></span>
+              </div>
+              <div class="tree-row" data-depth="1">
+                <span class="chev empty"></span>
+                <span class="icon" data-icon="light" data-size="14"></span>
+                <span class="name">Ambient</span>
+                <span class="vis" data-icon="visible" data-size="14"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fpanel demo-floating">
+          <div class="fpanel-grab"></div>
+          <div class="fpanel-head">
+            <h3>Inspector</h3>
+            <div class="actions">
+              <button class="iconbtn sm" data-icon="more_v"></button>
+              <button class="iconbtn sm" data-icon="close"></button>
+            </div>
+          </div>
+          <div class="tabs" style="padding:0 14px;">
+            <button aria-selected="true">Transform</button>
+            <button>Physics</button>
+            <button>Render</button>
+          </div>
+          <div class="fpanel-body">
+            <div class="fpanel-section">
+              <div class="label">Position</div>
+              <div style="display:flex; gap:6px;">
+                <div class="numinput x" style="flex:1;"><div class="label">X</div><input value="124.0"/></div>
+                <div class="numinput y" style="flex:1;"><div class="label">Y</div><input value="−48.5"/></div>
+              </div>
+            </div>
+            <div class="fpanel-section">
+              <div class="label">Rotation</div>
+              <div class="slider-row">
+                <input class="slider accent" type="range" min="-180" max="180" value="22"/>
+                <span class="value">22°</span>
+              </div>
+            </div>
+            <div class="fpanel-section">
+              <div class="label">Scale (lock)</div>
+              <div style="display:flex; gap:6px;">
+                <div class="numinput x" style="flex:1;"><div class="label">X</div><input value="1.000"/></div>
+                <div class="numinput y" style="flex:1;"><div class="label">Y</div><input value="1.000"/></div>
+                <button class="iconbtn sm is-active" data-icon="lock"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── ASSET CARD ─────────────── -->
+    <section id="asset">
+      <h2>Asset card</h2>
+      <p class="desc">Thumbnail tile with mono filename. Drag onto canvas to instance. Selected state mirrors tree-row selection (accent tint + no border).</p>
+      <div class="grid-row" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:8px;">
+        <div class="asset-card"><div class="thumb"><div class="glyph">SPRITE</div></div><div class="name">player_idle.png</div></div>
+        <div class="asset-card is-selected"><div class="thumb"><div class="glyph">PREFAB</div></div><div class="name">Slime.prefab</div></div>
+        <div class="asset-card"><div class="thumb"><div class="glyph">SCRIPT</div></div><div class="name">player_ctrl.luau</div></div>
+        <div class="asset-card"><div class="thumb"><div class="glyph">AUDIO</div></div><div class="name">jump.wav</div></div>
+        <div class="asset-card"><div class="thumb"><div class="glyph">MAT</div></div><div class="name">water.mat</div></div>
+        <div class="asset-card"><div class="thumb"><div class="glyph">SCENE</div></div><div class="name">Level_02.scene</div></div>
+      </div>
+    </section>
+
+    <!-- ─────────────── DIALOG ─────────────── -->
+    <section id="dialog">
+      <h2>Dialog</h2>
+      <p class="desc">Modal — used sparingly: Component editor, Build/Export, destructive confirms. Scrim is dimmed canvas, not opaque.</p>
+      <div style="position:relative; height:380px; background:var(--canvas); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden;
+                  background-image:linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+                  background-size:24px 24px;">
+        <div style="position:absolute; inset:0; background:var(--bg-scrim); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center;">
+          <div class="dialog" style="min-width:480px;">
+            <div class="dialog-head">
+              <h2>Delete entity “Slime_02”?</h2>
+              <button class="iconbtn sm" data-icon="close"></button>
+            </div>
+            <div class="dialog-body">
+              <p style="margin:0 0 8px; color:var(--text-2); font-size:var(--fs-sm); line-height:var(--lh-snug);">This removes the entity from the scene and detaches all references. Components on this entity are not deleted from the project.</p>
+              <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:var(--fs-sm); color:var(--text-2);">
+                <input class="checkbox" type="checkbox"/> Also remove unused components
+              </label>
+            </div>
+            <div class="dialog-foot">
+              <button class="btn ghost">Cancel</button>
+              <button class="btn danger">Delete entity</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── TREE ─────────────── -->
+    <section id="tree">
+      <h2>Tree / list row anatomy</h2>
+      <p class="desc">A single row hosts: chevron · icon · name · metadata pill · trailing controls. Depth indents in 14 px steps. Right-swipe (touch) reveals secondary actions.</p>
+      <div style="background:var(--bg-1); border:1px solid var(--border); border-radius:var(--r-lg); padding:8px;">
+        <div class="tree">
+          <div class="tree-row" data-depth="0">
+            <span class="chev open" data-icon="chev_r" data-size="12"></span>
+            <span class="icon" data-icon="folder" data-size="14"></span>
+            <span class="name">World</span>
+            <span class="meta">3</span>
+            <span class="vis" data-icon="visible" data-size="14"></span>
+          </div>
+          <div class="tree-row" data-depth="1">
+            <span class="chev empty"></span>
+            <span class="icon" data-icon="sprite" data-size="14"></span>
+            <span class="name">Tilemap_ground</span>
+            <span class="vis" data-icon="visible" data-size="14"></span>
+          </div>
+          <div class="tree-row is-selected" data-depth="1">
+            <span class="chev empty"></span>
+            <span class="icon" data-icon="prefab" data-size="14"></span>
+            <span class="name">Player</span>
+            <span class="meta">PRF</span>
+            <span class="vis" data-icon="visible" data-size="14"></span>
+          </div>
+          <div class="tree-row is-hidden" data-depth="1">
+            <span class="chev empty"></span>
+            <span class="icon" data-icon="particle" data-size="14"></span>
+            <span class="name">Dust_emitter</span>
+            <span class="vis" data-icon="hidden" data-size="14"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── TOAST ─────────────── -->
+    <section id="toast">
+      <h2>Toasts</h2>
+      <p class="desc">Live region announcements. Polite by default; assertive only for errors that block work. Auto-dismiss 4s; manual dismissable.</p>
+      <div style="display:flex; flex-direction:column; gap:10px; max-width:420px;">
+        <div class="toast info">
+          <span class="icon" data-icon="info" data-size="18"></span>
+          <div class="body"><div class="title">Asset imported</div><div class="desc">player_idle.png · 64 × 64 · sprites/</div></div>
+        </div>
+        <div class="toast success">
+          <span class="icon" data-icon="success" data-size="18"></span>
+          <div class="body"><div class="title">Hot-reload complete</div><div class="desc">player_ctrl.luau recompiled · 12 ms</div></div>
+        </div>
+        <div class="toast warn">
+          <span class="icon" data-icon="warn" data-size="18"></span>
+          <div class="body"><div class="title">Collider missing on Slime_02</div><div class="desc">Click to open Inspector → Physics.</div></div>
+        </div>
+        <div class="toast error">
+          <span class="icon" data-icon="error" data-size="18"></span>
+          <div class="body"><div class="title">Build failed</div><div class="desc"><span style="font-family:var(--font-mono); color:var(--text-2);">parse error · Level_01.scene · line 42</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── TOOLTIP ─────────────── -->
+    <section id="tooltip">
+      <h2>Tooltip</h2>
+      <p class="desc">Always paired with an icon button, so the affordance is never silent. 600 ms delay; instant when chained.</p>
+      <div class="grid-row">
+        <div style="display:flex; align-items:center; gap:32px;">
+          <div style="position:relative; padding-top:30px;">
+            <div class="tooltip" style="position:absolute; left:50%; top:0; transform:translateX(-50%);">Run scene <span class="kbd">⌘ ↵</span></div>
+            <button class="iconbtn lg" data-icon="play"></button>
+          </div>
+          <div style="position:relative; padding-top:30px;">
+            <div class="tooltip" style="position:absolute; left:50%; top:0; transform:translateX(-50%);">Hot-reload scripts <span class="kbd">⌘ R</span></div>
+            <button class="iconbtn lg is-active" data-icon="hot"></button>
+          </div>
+          <div style="position:relative; padding-top:30px;">
+            <div class="tooltip" style="position:absolute; left:50%; top:0; transform:translateX(-50%);">Search everything <span class="kbd">⌘ P</span></div>
+            <button class="iconbtn lg" data-icon="search"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── PROGRESS ─────────────── -->
+    <section id="progress">
+      <h2>Progress</h2>
+      <p class="desc">Determinate for builds and asset import; spinner for &lt; 1 s loads.</p>
+      <div class="grid-row" style="gap:24px;">
+        <div style="flex:1;">
+          <div style="display:flex; justify-content:space-between; font:var(--fw-medium) var(--fs-xs)/1 var(--font-mono); color:var(--text-3); margin-bottom:6px;">
+            <span>Building Level_01 · 64 entities</span>
+            <span>72%</span>
+          </div>
+          <div class="progress"><div class="fill" style="width:72%"></div></div>
+        </div>
+        <div class="divider v"></div>
+        <div style="display:flex; align-items:center; gap:8px; color:var(--text-2); font-size:var(--fs-sm);">
+          <span data-icon="spinner" data-size="16" style="display:inline-flex; animation:spin 1s linear infinite;"></span>
+          Loading texture atlas…
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── BADGE / KBD ─────────────── -->
+    <section id="badge">
+      <h2>Badges, keys &amp; chips</h2>
+      <p class="desc">Sparingly. Mono caps; never a sentence.</p>
+      <div class="grid-row" style="gap:8px;">
+        <span class="badge">DEFAULT</span>
+        <span class="badge accent">PREFAB</span>
+        <span class="badge success dot">RUNNING</span>
+        <span class="badge warn dot">DIRTY</span>
+        <span class="badge danger">ERR · 3</span>
+        <div class="divider v"></div>
+        <span class="kbd">⌘</span><span class="kbd">⇧</span><span class="kbd">P</span>
+        <div class="divider v"></div>
+        <span class="pill-tag"><span data-icon="cube" data-size="12"></span>v0.8.2 · Vello</span>
+      </div>
+    </section>
+
+  </main>
 </div>
 
-<h3>6.4 Layer panel + asset browser (futuro)</h3>
-<div class="screen">
-  <div class="canvas"></div>
-  <div class="top-bar">
-    <div class="grp"><button class="icon-btn">⚙</button><button class="icon-btn">▶</button></div>
-    <div class="center">PH2D · my-game.ph2d</div>
-    <div class="grp"><button class="icon-btn" data-active>≣</button></div>
-  </div>
-  <div class="left-sidebar"><div class="group"><button class="icon-btn">B</button><button class="icon-btn">M</button><button class="icon-btn" data-active>L</button></div></div>
+<style>
+  @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  /* tooltip "stem" */
+  .tooltip { position: relative; }
+</style>
 
-  <!-- Layer panel right -->
-  <div class="scr-panel" style="width: 220px; right: 16px; top: 70px;">
-    <div class="grab-pill"></div>
-    <div style="font-weight: 600; font-size: var(--font-size-sm); margin-bottom: 12px;">Layers</div>
-    <div style="display: flex; flex-direction: column; gap: 4px;">
-      <div style="display: flex; align-items: center; gap: 6px; padding: 6px; background: var(--accent-soft); border-radius: 6px;">👁 <span style="flex:1; font-size: var(--font-size-sm);">Foreground</span> <span style="font-size: var(--font-size-xs); color: var(--fg-1);">100%</span></div>
-      <div style="display: flex; align-items: center; gap: 6px; padding: 6px;">👁 <span style="flex:1; font-size: var(--font-size-sm);">Tiles</span> <span style="font-size: var(--font-size-xs); color: var(--fg-2);">75%</span></div>
-      <div style="display: flex; align-items: center; gap: 6px; padding: 6px; color: var(--fg-2);">⊘ <span style="flex:1; font-size: var(--font-size-sm);">Background</span> <span style="font-size: var(--font-size-xs);">100%</span></div>
-    </div>
-    <button class="btn-primary" style="width: 100%; margin-top: 12px;">+ New Layer</button>
-  </div>
-
-  <!-- Asset browser bottom -->
-  <div class="scr-panel" style="width: 540px; right: auto; left: 80px; top: auto; bottom: 16px; height: 130px;">
-    <div class="grab-pill"></div>
-    <div style="display: flex; align-items: center; margin-bottom: 8px; gap: 12px;">
-      <span style="font-weight: 600; font-size: var(--font-size-sm);">Assets</span>
-      <input class="slider-input" placeholder="search…" style="width: 120px; text-align: left;">
-      <div class="radio-segmented" style="margin-left: auto;"><span class="opt" data-sel>Sprites</span><span class="opt">Tiles</span><span class="opt">Audio</span></div>
-    </div>
-    <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px;">
-      <div style="aspect-ratio: 1; background: oklch(0.74 0.16 340); border-radius: 4px;"></div>
-      <div style="aspect-ratio: 1; background: oklch(0.78 0.14 205); border-radius: 4px;"></div>
-      <div style="aspect-ratio: 1; background: oklch(0.74 0.18 145); border-radius: 4px;"></div>
-      <div style="aspect-ratio: 1; background: oklch(0.78 0.18 75); border-radius: 4px;"></div>
-      <div style="aspect-ratio: 1; background: oklch(0.66 0.22 25); border-radius: 4px;"></div>
-      <div style="aspect-ratio: 1; background: oklch(0.62 0.20 250); border-radius: 4px;"></div>
-      <div style="aspect-ratio: 1; background: var(--bg-2); border: 1px dashed var(--line-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--fg-2); font-size: 18px;">+</div>
-    </div>
-  </div>
-</div>
-
-<h3>6.5 Zen mode (Tab toggle — chrome escondido, só canvas)</h3>
-<div class="screen">
-  <div class="canvas"></div>
-  <div class="sprite-grid">
-    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
-    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
-    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
-    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
-    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
-    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
-    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
-  </div>
-  <div style="position: absolute; top: 16px; right: 16px; font-size: var(--font-size-xs); color: var(--fg-2); font-family: var(--font-mono);">Tab volta · ESC volta</div>
-</div>
-
-<!-- ====================================== -->
-<h2 id="flows">7. User flows</h2>
-<ol style="line-height: 1.8;">
-  <li><strong>Create + Brush stroke:</strong> abre projeto → Brush selected by default → ajusta Size slider (drag thumb ou type expression no input) → click+drag no canvas → stroke aparece com size/opacity/flow corrente.</li>
-  <li><strong>Switch tool via LeftSidebar:</strong> click no chip M (Move) → palette atualiza active → Float panel atual fade out → Move panel fade in.</li>
-  <li><strong>Color pick via Color tool:</strong> click chip C (ou key C) → cursor vira eyedropper → click no sprite → color picker modal abre com cor sampleada (HSV wheel + hex) → Apply → BrushTool.color_rgba update.</li>
-  <li><strong>Marquee select + transform:</strong> click S (Selection) → drag rect no canvas → marquee aparece → release → selection criada → switch M → drag selection → Lock Axis = X garante movimento horizontal.</li>
-  <li><strong>Zen mode:</strong> Tab → todas as glass surfaces fade out (TopBar, LeftSidebar, BottomHUD, Float panels) com transition 200ms → só canvas + sprites visíveis → Tab again → chrome volta.</li>
-  <li><strong>Theme switch:</strong> click Settings (TopBar) → dropdown Theme → escolhe Sunstone → todos os tokens re-resolve → smooth transition 250ms.</li>
-  <li><strong>Float panel reposition:</strong> grab pill no topo do panel → drag → panel segue cursor → release → posição persistida per-tool (sdf3d ref: position memory por toolId).</li>
-  <li><strong>Layer flow:</strong> click chip L → Layer panel aparece (right side) → click "+" → new layer → drag layer no panel pra reordenar → click eye icon pra hide/show.</li>
-</ol>
-
-<!-- ====================================== -->
-<h2 id="status">8. Status matrix</h2>
-<table>
-  <thead><tr><th>Component</th><th>Spec aqui</th><th>Vello impl</th><th>Mouse</th><th>A11y</th><th>Tests</th><th>Próximo PR</th></tr></thead>
-  <tbody>
-    <tr><td>Color tokens (4 themes OKLCH)</td><td>✅</td><td>partial (2 themes)</td><td>n/a</td><td>n/a</td><td>✅ AA</td><td>add forge-sdf + sunstone</td></tr>
-    <tr><td>Typography (Inter+JetBrains)</td><td>✅</td><td>system fallback</td><td>n/a</td><td>n/a</td><td>—</td><td>load .ttf via parley</td></tr>
-    <tr><td>Glass surface (blur+saturate)</td><td>✅</td><td>—</td><td>n/a</td><td>n/a</td><td>—</td><td>add Vello blur filter</td></tr>
-    <tr><td>Icon Button (circular)</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>replace square Buttons</td></tr>
-    <tr><td>Button ghost / primary</td><td>✅</td><td>partial</td><td>—</td><td>✅</td><td>✅</td><td>add primary variant</td></tr>
-    <tr><td>Slider + expression input</td><td>✅</td><td>basic</td><td>✅ drag</td><td>✅</td><td>✅</td><td>add input + parser</td></tr>
-    <tr><td>Toggle</td><td>✅</td><td>✅</td><td>✅ click</td><td>✅</td><td>✅</td><td>—</td></tr>
-    <tr><td>RadioGroup segmented</td><td>✅</td><td>✅</td><td>✅ click</td><td>✅</td><td>✅</td><td>—</td></tr>
-    <tr><td>ColorSwatch</td><td>✅</td><td>basic</td><td>partial</td><td>✅</td><td>✅</td><td>HSV picker modal</td></tr>
-    <tr><td>ColorRamp editor</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future</td></tr>
-    <tr><td>Path2D editor</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future (Path tool)</td></tr>
-    <tr><td>Toast notifications</td><td>✅</td><td>✅</td><td>n/a</td><td>✅ Live</td><td>—</td><td>—</td></tr>
-    <tr><td>FloatPanel (drag + grab pill)</td><td>✅</td><td>basic</td><td>partial</td><td>partial</td><td>—</td><td>add drag, glass</td></tr>
-    <tr><td>TopBar (46px)</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>replace 4-zone w/ TopBar</td></tr>
-    <tr><td>LeftSidebar (60px vertical)</td><td>✅</td><td>partial (top-right)</td><td>partial</td><td>—</td><td>—</td><td>move palette to LeftSidebar</td></tr>
-    <tr><td>BottomHUD (pill)</td><td>✅</td><td>—</td><td>n/a</td><td>—</td><td>—</td><td>add fps/zoom/scene/cost</td></tr>
-    <tr><td>HSV color picker modal</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>iro.js-style wheel</td></tr>
-    <tr><td>Layer panel</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future</td></tr>
-    <tr><td>Asset browser</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future</td></tr>
-    <tr><td>Marquee selection</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Selection tool</td></tr>
-    <tr><td>Brush actually paints</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>major feature</td></tr>
-  </tbody>
-</table>
-
-<p style="color: var(--fg-2); margin-top: 24px; font-size: var(--font-size-sm);">
-  <strong>Como usar:</strong>
-  <br>1. Iterar visualmente (open this file, edit CSS/HTML, F5)
-  <br>2. Cada PR de implementação Vello consulta esta spec
-  <br>3. Status matrix ↑ é o backlog priorizado: pegar uma linha não-implementada e construir
-  <br>4. Themes do switcher (canto superior direito) testam o visual em cada modo — UI deve funcionar nos 4
-</p>
-
-</main>
-
+<script src="scripts/icons.js"></script>
 <script>
-function setTheme(name, btn) {
-  document.documentElement.setAttribute('data-theme', name);
-  document.querySelectorAll('.theme-switcher button').forEach(b => b.removeAttribute('data-active'));
-  btn.setAttribute('data-active', '');
-}
+  hydrateIcons();
 </script>
-
 </body>
 </html>

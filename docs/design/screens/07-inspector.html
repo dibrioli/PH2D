@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head><meta charset="utf-8"/><title>PH2D · Inspector</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css"/><link rel="stylesheet" href="../styles/components.css"/>
+<style>
+body{background:var(--bg-scrim,oklch(0.05 0.004 285));overflow:hidden;height:100vh}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.frame{width:1366px;height:1024px;transform-origin:center;background:var(--bg-0);position:relative;overflow:hidden;border-radius:14px;box-shadow:0 40px 100px oklch(0 0 0 /.7);display:grid;grid-template-rows:46px 1fr}
+.top{display:flex;align-items:center;padding:0 18px;border-bottom:1px solid var(--border);gap:12px;font:var(--fw-medium) 11px/1 var(--font-sans);color:var(--text-2)}
+.top .acc{color:var(--accent);text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:var(--fw-semibold)}
+.top .b{color:var(--text-1);font-weight:var(--fw-semibold)}
+.body{display:grid;grid-template-columns:280px 1fr 480px;overflow:hidden}
+/* LEFT: target / mini hierarchy */
+.left{border-right:1px solid var(--border);background:var(--bg-1);padding:18px;overflow-y:auto}
+.target{padding:14px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;margin-bottom:18px}
+.target .nm{font:var(--fw-semibold) 14px/1.2 var(--font-sans);color:var(--text-1);margin-bottom:4px}
+.target .meta{font:var(--fw-medium) 10px/1.4 var(--font-mono);color:var(--text-3);letter-spacing:.04em;text-transform:uppercase}
+.target .meta b{color:var(--accent)}
+.target .row{display:flex;justify-content:space-between;font:var(--fw-medium) 11px/1.4 var(--font-mono);padding:5px 0;border-bottom:1px dashed var(--border);color:var(--text-2)}
+.target .row .v{color:var(--text-1)}
+.target .row:last-child{border:0}
+.target h5{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:14px 0 8px}
+.previewbox{width:100%;aspect-ratio:1.3;background:var(--canvas);background-image:linear-gradient(color-mix(in oklab,var(--text-1) 4%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--text-1) 4%,transparent) 1px,transparent 1px);background-size:16px 16px;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;margin-top:10px;position:relative}
+.previewbox .ent{width:32px;height:50px;border:1.5px solid var(--accent);background:var(--accent-soft);position:relative}
+.previewbox .ent::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%)}
+.previewbox .lab{position:absolute;left:8px;bottom:6px;font:var(--fw-medium) 9px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase}
+/* sub hierarchy */
+.subhier h5{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 10px}
+.subhier .r{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;padding:5px 0;font:var(--fw-medium) 11px/1 var(--font-mono);color:var(--text-2)}
+.subhier .r.on{color:var(--text-1)}
+.subhier .r.on::before{content:'';position:absolute;left:0;width:2px;height:16px;background:var(--accent)}
+.subhier .r .ic{color:var(--text-3);text-align:center}
+.subhier .r .meta{color:var(--text-3);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase}
+/* MIDDLE: viewport */
+.vp{background:var(--canvas);position:relative;overflow:hidden;background-image:linear-gradient(color-mix(in oklab,var(--text-1) 2.5%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--text-1) 2.5%,transparent) 1px,transparent 1px);background-size:32px 32px}
+.vplabel{position:absolute;left:18px;top:14px;font:var(--fw-semibold) 9.5px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase}
+.vplabel .acc{color:var(--accent);margin-left:8px}
+.entity{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:180px;height:240px;border:1.5px solid var(--accent);background:var(--accent-soft);display:flex;align-items:end;padding:10px;font:var(--fw-semibold) 11px/1 var(--font-mono);color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.gizmo{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:280px;height:280px}
+.gizmo::before{content:'';position:absolute;left:50%;top:0;width:1.5px;height:50%;background:oklch(0.74 0.14 155);transform:translateX(-50%)}
+.gizmo::after{content:'';position:absolute;left:50%;top:50%;width:50%;height:1.5px;background:oklch(0.66 0.22 25);transform:translateY(-50%)}
+.gizmo .y{position:absolute;left:50%;top:-22px;color:oklch(0.74 0.14 155);font:var(--fw-semibold) 10px/1 var(--font-mono);transform:translateX(-50%)}
+.gizmo .x{position:absolute;right:-22px;top:50%;color:oklch(0.66 0.22 25);font:var(--fw-semibold) 10px/1 var(--font-mono);transform:translateY(-50%)}
+.gizmo .yh{position:absolute;left:50%;top:-2px;width:10px;height:10px;background:oklch(0.74 0.14 155);transform:translate(-50%,-50%);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.gizmo .xh{position:absolute;right:-2px;top:50%;width:10px;height:10px;background:oklch(0.66 0.22 25);transform:translate(50%,-50%);clip-path:polygon(0 0,100% 50%,0 100%)}
+.colliderv{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:120px;height:200px;border:1.5px dashed oklch(0.74 0.14 155);border-radius:60px}
+.collider-lab{position:absolute;left:50%;top:18%;transform:translate(-50%,-50%);font:var(--fw-medium) 9px/1 var(--font-mono);color:oklch(0.74 0.14 155);letter-spacing:.16em;text-transform:uppercase;background:oklch(0.10 0.005 285 /.8);padding:3px 7px;border-radius:3px}
+.minihud{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:var(--bg-elev);border:1px solid var(--border);border-radius:999px;padding:6px 14px;font:var(--fw-medium) 10px/1 var(--font-mono);color:var(--text-2);display:inline-flex;gap:12px;letter-spacing:.06em;text-transform:uppercase}
+.minihud .v{color:var(--text-1)}
+/* RIGHT: INSPECTOR (the focus of this screen) */
+.insp{background:var(--bg-1);border-left:1px solid var(--border);display:grid;grid-template-rows:42px 38px 1fr 70px;overflow:hidden}
+.ih{display:flex;align-items:center;padding:0 18px;border-bottom:1px solid var(--border);font:var(--fw-semibold) 10px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-2);justify-content:space-between}
+.ih .acc{color:var(--accent);font-family:var(--font-mono)}
+.itabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg-2)}
+.itabs button{flex:1;height:38px;background:transparent;border:0;color:var(--text-3);font:var(--fw-medium) 10.5px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.itabs button.on{color:var(--accent);border-bottom-color:var(--accent);background:var(--bg-1)}
+.itabs button .ct{font-size:9px;background:var(--bg-3);padding:2px 5px;border-radius:8px;color:var(--text-2)}
+.itabs button.on .ct{background:var(--accent-soft);color:var(--accent)}
+.ibody{overflow-y:auto;padding:0}
+.cmp{border-bottom:1px solid var(--border)}
+.cmph{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--bg-2);cursor:pointer}
+.cmph .ic{color:var(--accent);font:var(--fw-semibold) 12px/1 var(--font-mono);width:14px}
+.cmph .nm{font:var(--fw-semibold) 12px/1 var(--font-sans);color:var(--text-1)}
+.cmph .tag{font:var(--fw-medium) 9.5px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase}
+.cmph .actions{margin-left:auto;display:flex;gap:8px;color:var(--text-3);font-family:var(--font-mono)}
+.cmpb{padding:12px 18px}
+.row{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;padding:5px 0;font-family:var(--font-mono);font-size:11px}
+.row .l{color:var(--text-2);letter-spacing:.04em}
+.row .l .ovr{color:var(--accent);margin-right:4px}
+.row .ctrl{display:flex;gap:6px;align-items:center}
+.row .vec{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;flex:1}
+.row .vec .v{display:grid;grid-template-columns:14px 1fr;gap:6px;align-items:center;padding:5px 8px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text-1)}
+.row .vec .v .axis{font:var(--fw-semibold) 9.5px/1 var(--font-mono);color:var(--text-3);letter-spacing:.04em;text-transform:uppercase}
+.row .vec .v.x .axis{color:oklch(0.66 0.22 25)}
+.row .vec .v.y .axis{color:oklch(0.74 0.14 155)}
+.row .vec .v.z .axis{color:oklch(0.62 0.20 250)}
+.input{flex:1;padding:5px 9px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text-1);font:var(--fw-medium) 11px/1 var(--font-mono)}
+.input.acc{color:var(--accent);border-color:oklch(0.74 0.16 var(--accent-h) /.4);background:var(--accent-soft)}
+.slider{flex:1;height:24px;display:flex;align-items:center;position:relative}
+.slider::before{content:'';position:absolute;left:0;right:0;top:50%;height:6px;background:var(--bg-3);border-radius:3px;transform:translateY(-50%);box-shadow:inset 0 1px 1px oklch(0 0 0 /.3)}
+.slider::after{content:'';position:absolute;left:0;top:50%;height:6px;background:var(--accent);border-radius:3px 0 0 3px;transform:translateY(-50%)}
+.slider.s1::after{width:54%}.slider.s2::after{width:32%}.slider.s3::after{width:78%}.slider.s4::after{width:18%}
+.slider .knob{position:absolute;top:50%;width:12px;height:16px;border-radius:3px;background:var(--text-1);border:1px solid var(--bg-0);box-shadow:0 1px 3px oklch(0 0 0 /.55),inset 0 1px 0 oklch(1 0 0 /.4);transform:translate(-50%,-50%)}
+.slider.s1 .knob{left:54%}.slider.s2 .knob{left:32%}.slider.s3 .knob{left:78%}.slider.s4 .knob{left:18%}
+.val{font:var(--fw-medium) 10.5px/1 var(--font-mono);color:var(--text-2);min-width:48px;text-align:right;letter-spacing:.04em}
+.val .acc{color:var(--accent)}
+.toggle{width:32px;height:18px;background:var(--bg-3);border-radius:9px;position:relative;border:1px solid var(--border)}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;left:2px;top:1.5px;width:13px;height:13px;border-radius:50%;background:var(--text-1)}
+.toggle.on::after{left:16px;background:var(--accent-fg)}
+.seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;padding:1px;flex:1}
+.seg button{flex:1;background:transparent;border:0;color:var(--text-3);padding:5px 8px;font:var(--fw-medium) 10px/1 var(--font-mono);letter-spacing:.04em;text-transform:uppercase;border-radius:2px;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.swatch{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;flex:1;font:var(--fw-medium) 11px/1 var(--font-mono);color:var(--text-1)}
+.swatch .sw{width:14px;height:14px;border-radius:2px;border:1px solid var(--border)}
+.linkpill{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;background:var(--accent-soft);border:1px solid oklch(0.74 0.16 var(--accent-h) /.4);border-radius:3px;flex:1;font:var(--fw-medium) 11px/1 var(--font-mono);color:var(--accent)}
+.linkpill .ic{font-family:var(--font-mono);font-size:10px}
+.linkpill .clear{margin-left:auto;color:var(--text-3);cursor:pointer}
+.subgroup{margin-top:8px;padding:8px 12px;background:var(--bg-0);border-left:2px solid oklch(0.74 0.16 var(--accent-h) /.3);border-radius:2px}
+.subgroup h6{font:var(--fw-semibold) 9px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 6px}
+.bind{font:var(--fw-medium) 10px/1.4 var(--font-mono);color:var(--text-3);padding-left:120px;margin-top:-2px;margin-bottom:4px;letter-spacing:.04em}
+.bind .acc{color:var(--accent)}
+.addcmp{margin:14px 18px;padding:10px;background:transparent;border:1px dashed var(--border);border-radius:4px;color:var(--text-2);font:var(--fw-medium) 10.5px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;display:block;width:calc(100% - 36px);text-align:center}
+.ifoot{padding:12px 18px;border-top:1px solid var(--border);background:var(--bg-2);display:flex;align-items:center;gap:12px;font:var(--fw-medium) 10px/1.4 var(--font-mono);color:var(--text-2);letter-spacing:.04em;text-transform:uppercase}
+.ifoot .acc{color:var(--accent)}
+.ifoot .ovr{padding:3px 7px;background:var(--accent-soft);color:var(--accent);border-radius:3px}
+.ifoot .actions{margin-left:auto;display:flex;gap:6px}
+.ifoot .actions button{height:26px;padding:0 12px;background:var(--bg-3);border:1px solid var(--border);color:var(--text-2);border-radius:3px;font:var(--fw-medium) 10px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+</style></head>
+<body data-screen-label="07 Inspector">
+<div class="stage"><div class="frame" id="frame">
+  <div class="top">
+    <span class="acc">Inspector</span>
+    <span>focus · <span class="b">slime_basic_01</span></span>
+    <span style="color:var(--text-3)">·</span>
+    <span>scene <span class="b">level_01_forest</span></span>
+    <span style="margin-left:auto;color:var(--text-3)">⌘ I to toggle · ⌘ ⇧ ⏎ to apply prefab override · ⌥ click to multi-select</span>
+  </div>
+
+  <div class="body">
+    <div class="left">
+      <div class="target">
+        <div class="nm">slime_basic_01</div>
+        <div class="meta">prefab instance · <b>3 overrides</b></div>
+        <div class="previewbox">
+          <span class="lab">render preview</span>
+          <div class="ent"></div>
+        </div>
+        <h5>identity</h5>
+        <div class="row"><span>id</span><span class="v">e:7B41A0F3</span></div>
+        <div class="row"><span>parent</span><span class="v">enemies</span></div>
+        <div class="row"><span>prefab</span><span class="v" style="color:var(--accent)">slime_basic@v3</span></div>
+        <div class="row"><span>tag</span><span class="v">enemy · ai</span></div>
+        <div class="row"><span>layer</span><span class="v">L 2 · gameplay</span></div>
+        <div class="row"><span>sort key</span><span class="v">2.014</span></div>
+
+        <h5>sub-hierarchy</h5>
+        <div class="subhier">
+          <div class="r on" style="position:relative"><span class="ic">●</span><span>slime_basic_01</span><span class="meta">root</span></div>
+          <div class="r" style="padding-left:14px"><span class="ic">▤</span><span>visual</span><span class="meta">group</span></div>
+          <div class="r" style="padding-left:28px"><span class="ic">▦</span><span>sprite_idle</span><span class="meta">sprite</span></div>
+          <div class="r" style="padding-left:28px"><span class="ic">⊘</span><span>shadow_blob</span><span class="meta">sprite</span></div>
+          <div class="r" style="padding-left:14px"><span class="ic">◇</span><span>collider</span><span class="meta">capsule</span></div>
+          <div class="r" style="padding-left:14px"><span class="ic">⊙</span><span>body</span><span class="meta">dynamic</span></div>
+          <div class="r" style="padding-left:14px"><span class="ic">⌬</span><span>fsm</span><span class="meta">script</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vp">
+      <div class="vplabel">scene viewport <span class="acc">· framing slime_basic_01 · gizmo translate</span></div>
+      <div class="entity">slime_basic</div>
+      <div class="colliderv"></div>
+      <span class="collider-lab">collider · capsule 28×64</span>
+      <div class="gizmo">
+        <span class="y">y</span><span class="x">x</span>
+        <span class="yh"></span><span class="xh"></span>
+      </div>
+      <div class="minihud">
+        <span>x <span class="v">448.0</span></span>·
+        <span>y <span class="v">320.0</span></span>·
+        <span>θ <span class="v">0°</span></span>·
+        <span>scale <span class="v">1.00</span></span>·
+        <span>parent <span class="v">enemies</span></span>
+      </div>
+    </div>
+
+    <div class="insp">
+      <div class="ih"><span>component inspector</span><span class="acc">5 components · 3 overrides</span></div>
+
+      <div class="itabs">
+        <button class="on">Transform <span class="ct">3</span></button>
+        <button>Physics <span class="ct">2</span></button>
+        <button>Render <span class="ct">2</span></button>
+        <button>Script <span class="ct">1</span></button>
+        <button>Custom <span class="ct">+</span></button>
+      </div>
+
+      <div class="ibody">
+
+        <!-- TRANSFORM -->
+        <div class="cmp">
+          <div class="cmph"><span class="ic">⌖</span><span class="nm">Transform</span><span class="tag">core · always</span><span class="actions"><span>↺</span><span>⇲</span></span></div>
+          <div class="cmpb">
+            <div class="row"><span class="l"><span class="ovr">●</span>position</span>
+              <div class="vec"><span class="v x"><span class="axis">x</span><span>448.0</span></span><span class="v y"><span class="axis">y</span><span>320.0</span></span><span class="v z"><span class="axis">z</span><span>0.0</span></span></div></div>
+            <div class="bind"><span class="acc">●</span> override · was 0, 0, 0 from prefab</div>
+            <div class="row"><span class="l">rotation</span>
+              <div class="ctrl"><div class="slider s2"><span class="knob"></span></div><span class="val">12.0°</span></div></div>
+            <div class="row"><span class="l">scale</span>
+              <div class="vec"><span class="v x"><span class="axis">x</span><span>1.00</span></span><span class="v y"><span class="axis">y</span><span>1.00</span></span><span class="v z"><span class="axis">z</span><span>1.00</span></span></div></div>
+            <div class="row"><span class="l">pivot</span>
+              <div class="ctrl"><span class="seg"><button>tl</button><button>tm</button><button>tr</button><button>ml</button><button class="on">center</button><button>mr</button></span></div></div>
+            <div class="row"><span class="l">space</span>
+              <div class="ctrl"><span class="seg"><button class="on">local</button><button>world</button></span></div></div>
+          </div>
+        </div>
+
+        <!-- SPRITE -->
+        <div class="cmp">
+          <div class="cmph"><span class="ic">▦</span><span class="nm">Sprite</span><span class="tag">render · 0.4 ms</span><span class="actions"><span>👁</span><span>↺</span><span>⋯</span></span></div>
+          <div class="cmpb">
+            <div class="row"><span class="l">texture</span>
+              <div class="ctrl"><span class="linkpill"><span class="ic">▦</span>slime_idle.png<span class="clear">×</span></span></div></div>
+            <div class="bind">256 × 256 · sRGB · 32 KB · 4 frames</div>
+            <div class="row"><span class="l"><span class="ovr">●</span>tint</span>
+              <div class="ctrl"><span class="swatch"><span class="sw" style="background:oklch(0.74 0.16 340)"></span>oklch(.74 .16 340)</span></div></div>
+            <div class="row"><span class="l">opacity</span>
+              <div class="ctrl"><div class="slider s3"><span class="knob"></span></div><span class="val">100 %</span></div></div>
+            <div class="row"><span class="l">flip</span>
+              <div class="ctrl"><span class="seg"><button class="on">none</button><button>x</button><button>y</button><button>both</button></span></div></div>
+            <div class="row"><span class="l">blend mode</span>
+              <div class="ctrl"><span class="input">normal</span><span style="color:var(--text-3);font-family:var(--font-mono);font-size:10px">▾</span></div></div>
+            <div class="row"><span class="l">sort layer</span>
+              <div class="ctrl"><span class="input">enemies</span><span class="input acc" style="max-width:64px">12</span></div></div>
+          </div>
+        </div>
+
+        <!-- COLLIDER -->
+        <div class="cmp">
+          <div class="cmph"><span class="ic">◇</span><span class="nm">Collider · Capsule</span><span class="tag">physics</span><span class="actions"><span>↺</span><span>⋯</span></span></div>
+          <div class="cmpb">
+            <div class="row"><span class="l">shape</span>
+              <div class="ctrl"><span class="seg"><button>box</button><button>circle</button><button class="on">capsule</button><button>polygon</button></span></div></div>
+            <div class="row"><span class="l">size</span>
+              <div class="vec" style="grid-template-columns:1fr 1fr"><span class="v x"><span class="axis">w</span><span>28</span></span><span class="v y"><span class="axis">h</span><span>64</span></span></div></div>
+            <div class="row"><span class="l">offset</span>
+              <div class="vec" style="grid-template-columns:1fr 1fr"><span class="v x"><span class="axis">x</span><span>0.0</span></span><span class="v y"><span class="axis">y</span><span>−4.0</span></span></div></div>
+            <div class="row"><span class="l">trigger</span><div class="ctrl"><span class="toggle"></span><span style="color:var(--text-3);margin-left:8px">solid · blocks bodies</span></div></div>
+            <div class="row"><span class="l">mask</span>
+              <div class="ctrl"><span class="input">player · environment · pickup</span></div></div>
+          </div>
+        </div>
+
+        <!-- RIGIDBODY -->
+        <div class="cmp">
+          <div class="cmph"><span class="ic">⊙</span><span class="nm">RigidBody</span><span class="tag">physics · dynamic</span><span class="actions"><span>↺</span><span>⋯</span></span></div>
+          <div class="cmpb">
+            <div class="row"><span class="l">type</span>
+              <div class="ctrl"><span class="seg"><button>static</button><button>kinematic</button><button class="on">dynamic</button></span></div></div>
+            <div class="row"><span class="l">mass</span>
+              <div class="ctrl"><span class="input">1.4</span><span style="color:var(--text-3);font-family:var(--font-mono);font-size:10px">kg</span></div></div>
+            <div class="row"><span class="l">gravity scale</span>
+              <div class="ctrl"><div class="slider s1"><span class="knob"></span></div><span class="val">1.00 ×</span></div></div>
+            <div class="row"><span class="l">damping</span>
+              <div class="ctrl"><div class="slider s4"><span class="knob"></span></div><span class="val">0.18</span></div></div>
+            <div class="row"><span class="l">freeze rotation</span><div class="ctrl"><span class="toggle on"></span><span style="color:var(--text-3);margin-left:8px">no tumble on impact</span></div></div>
+          </div>
+        </div>
+
+        <!-- SCRIPT -->
+        <div class="cmp">
+          <div class="cmph"><span class="ic">⌬</span><span class="nm">Script · slime_fsm.luau</span><span class="tag" style="color:oklch(0.74 0.14 155)">hot · 0.7 ms</span><span class="actions"><span>↻</span><span>↗</span><span>⋯</span></span></div>
+          <div class="cmpb">
+            <div class="row"><span class="l">state</span>
+              <div class="ctrl"><span class="input">idle</span><span class="val">→ patrol in 1.2 s</span></div></div>
+            <div class="row"><span class="l">patrol radius</span>
+              <div class="ctrl"><div class="slider s2"><span class="knob"></span></div><span class="val">96 px</span></div></div>
+            <div class="row"><span class="l">aggro range</span>
+              <div class="ctrl"><div class="slider s3"><span class="knob"></span></div><span class="val">240 px</span></div></div>
+            <div class="row"><span class="l">jump cooldown</span>
+              <div class="ctrl"><span class="input">1.5</span><span style="color:var(--text-3);font-family:var(--font-mono);font-size:10px">s</span></div></div>
+            <div class="row"><span class="l"><span class="ovr">●</span>target</span>
+              <div class="ctrl"><span class="linkpill"><span class="ic">●</span>player<span class="clear">×</span></span></div></div>
+            <div class="bind">resolved at runtime · scene-local reference</div>
+            <div class="subgroup">
+              <h6>events emitted</h6>
+              <div class="row" style="grid-template-columns:80px 1fr"><span class="l">on_hit</span><span class="ctrl" style="color:var(--text-1);font-family:var(--font-mono);font-size:10.5px">→ damage_player(self.dmg) · play(slime_hit.ogg) · emit(blood)</span></div>
+              <div class="row" style="grid-template-columns:80px 1fr"><span class="l">on_die</span><span class="ctrl" style="color:var(--text-1);font-family:var(--font-mono);font-size:10.5px">→ spawn(crystal, .25) · emit(splat) · destroy(self)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="addcmp">⊕  Add component  ⌘ K</button>
+
+      </div>
+
+      <div class="ifoot">
+        <span class="ovr">3 OVERRIDES</span>
+        <span>position · tint · target</span>
+        <span class="actions">
+          <button>↺ revert</button><button>⤴ apply to prefab</button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div></div>
+<script>function fit(){const f=document.getElementById('frame');const s=Math.min(innerWidth/1366,innerHeight/1024,1);f.style.transform=`scale(${s})`}fit();onresize=fit;</script>
+</body></html>

@@ -100,9 +100,9 @@ pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme:
     let fill_w = rect.w * slider.value.clamp(0.0, 1.0);
     if fill_w > 0.0 {
         let fill_token = if slider.accent {
-            ColorToken::AccentPrimary
+            ColorToken::Accent
         } else {
-            ColorToken::AccentSecondary
+            ColorToken::AccentPress
         };
         let filled = Rect::new(rect.x, track_y, fill_w, track_h);
         scene.fill_rect(rect_to_vello(filled), resolve(fill_token, theme));
@@ -113,8 +113,8 @@ pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme:
     let thumb_x = rect.x + rect.w * slider.value.clamp(0.0, 1.0) - thumb_size / 2.0;
     let thumb_y = rect.y + (rect.h - thumb_size) / 2.0;
     let thumb_token = match slider.state {
-        SliderState::Dragging => ColorToken::BorderEmphasis,
-        _ => ColorToken::AccentPrimary,
+        SliderState::Dragging => ColorToken::BorderEmph,
+        _ => ColorToken::Accent,
     };
     let thumb = Rect::new(thumb_x, thumb_y, thumb_size, thumb_size);
     scene.fill_rect(rect_to_vello(thumb), resolve(thumb_token, theme));
@@ -174,7 +174,7 @@ mod tests {
             &s,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 
@@ -187,7 +187,7 @@ mod tests {
             &s,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 
@@ -200,7 +200,7 @@ mod tests {
             &s,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Light,
+            Theme::Sunstone,
         );
     }
 
@@ -212,7 +212,7 @@ mod tests {
             &s,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 
@@ -226,7 +226,7 @@ mod tests {
             &s,
             Rect::new(10.0, 10.0, 200.0, 24.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 

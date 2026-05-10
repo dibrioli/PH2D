@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head><meta charset="utf-8"/><title>PH2D · Build & Export</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css"/><link rel="stylesheet" href="../styles/components.css"/>
+<style>
+body{background:oklch(0.05 0.004 285);overflow:hidden;height:100vh}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.frame{width:1366px;height:1024px;transform-origin:center;background:var(--bg-0);position:relative;overflow:hidden;border-radius:14px;box-shadow:0 40px 100px oklch(0 0 0 /.7)}
+.bg{position:absolute;inset:0;background:oklch(0.07 0.004 285);opacity:.5}
+.bg::after{content:'';position:absolute;inset:0;background:oklch(0 0 0 /.55)}
+/* MODAL */
+.modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1240px;height:900px;background:var(--bg-1);border:1px solid var(--border);border-radius:10px;box-shadow:0 40px 100px oklch(0 0 0 /.7);display:grid;grid-template-rows:54px 1fr 60px;overflow:hidden}
+.mh{display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);gap:14px;font-family:var(--font-sans)}
+.mh .acc{color:var(--accent);font:var(--fw-semibold) 10px/1 var(--font-mono);letter-spacing:.16em;text-transform:uppercase}
+.mh .ti{font:var(--fw-semibold) 16px/1 var(--font-sans);color:var(--text-1)}
+.mh .meta{color:var(--text-3);font:var(--fw-medium) 11px/1 var(--font-mono);letter-spacing:.04em}
+.mh .x{margin-left:auto;width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-family:var(--font-mono);font-size:14px;cursor:pointer;border-radius:4px}
+.body{display:grid;grid-template-columns:200px 1fr 380px;overflow:hidden}
+/* sidebar */
+.side{border-right:1px solid var(--border);background:var(--bg-2);padding:18px 12px;overflow-y:auto}
+.side h5{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:14px 12px 8px}
+.side h5:first-child{margin-top:0}
+.side .it{display:grid;grid-template-columns:18px 1fr auto;gap:10px;align-items:center;padding:8px 12px;font:var(--fw-medium) 12px/1 var(--font-sans);color:var(--text-2);cursor:pointer;border-radius:4px}
+.side .it:hover{background:var(--bg-3)}
+.side .it.on{background:var(--accent-soft);color:var(--accent);box-shadow:inset 2px 0 0 var(--accent)}
+.side .it .ic{color:var(--text-3);font-family:var(--font-mono);text-align:center}
+.side .it.on .ic{color:var(--accent)}
+.side .it .meta{font-size:9.5px;color:var(--text-3);font-family:var(--font-mono)}
+.side .it.on .meta{color:var(--accent)}
+/* main panel */
+.main{padding:24px 32px;overflow-y:auto}
+.main h2{font:var(--fw-semibold) 18px/1.2 var(--font-sans);color:var(--text-1);margin:0 0 4px}
+.main .sub{color:var(--text-3);font:var(--fw-medium) 11px/1.5 var(--font-mono);margin-bottom:24px;letter-spacing:.04em}
+.main h4{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:24px 0 10px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.card{padding:14px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;flex-direction:column;gap:6px;position:relative}
+.card.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card.on::after{content:'';position:absolute;right:10px;top:10px;width:18px;height:18px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--bg-2)}
+.card .glyph{font:var(--fw-semibold) 18px/1 var(--font-mono);color:var(--text-2);margin-bottom:4px}
+.card.on .glyph{color:var(--accent)}
+.card .nm{font:var(--fw-semibold) 12px/1 var(--font-sans);color:var(--text-1)}
+.card .meta{color:var(--text-3);font:var(--fw-medium) 10px/1.4 var(--font-mono);letter-spacing:.04em}
+.card.dis{opacity:.45}
+.card.dis::after{content:'soon';position:absolute;top:10px;right:10px;font:var(--fw-medium) 8.5px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase}
+.row{display:grid;grid-template-columns:160px 1fr;gap:18px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border);font-family:var(--font-mono);font-size:11.5px}
+.row .l{color:var(--text-2);letter-spacing:.04em}
+.row .ctrl{display:flex;gap:6px;align-items:center}
+.input{flex:1;padding:7px 10px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text-1);font:var(--fw-medium) 11.5px/1 var(--font-mono)}
+.seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;padding:1px}
+.seg button{background:transparent;border:0;color:var(--text-3);padding:6px 12px;font:var(--fw-medium) 10.5px/1 var(--font-mono);letter-spacing:.04em;text-transform:uppercase;border-radius:2px;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.toggle{width:32px;height:18px;background:var(--bg-3);border-radius:9px;position:relative;border:1px solid var(--border)}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;left:2px;top:1.5px;width:13px;height:13px;border-radius:50%;background:var(--text-1)}
+.toggle.on::after{left:16px;background:var(--accent-fg)}
+.opt{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text-1);font:var(--fw-medium) 11px/1 var(--font-mono)}
+.opt .acc{color:var(--accent)}
+/* preview side */
+.preview{background:var(--bg-2);border-left:1px solid var(--border);display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}
+.pheader{padding:18px 22px;border-bottom:1px solid var(--border)}
+.pheader h4{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 6px}
+.pheader .nm{font:var(--fw-semibold) 14px/1 var(--font-sans);color:var(--text-1);margin-bottom:6px}
+.pheader .meta{font:var(--fw-medium) 11px/1.4 var(--font-mono);color:var(--text-2)}
+.pheader .meta .acc{color:var(--accent)}
+/* progress / bundle composition */
+.prog{padding:18px 22px;border-bottom:1px solid var(--border);background:var(--bg-1)}
+.prog .b{display:flex;justify-content:space-between;font:var(--fw-medium) 10.5px/1 var(--font-mono);color:var(--text-2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:7px}
+.prog .b .v{color:var(--text-1)}
+.prog .bar{height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden;margin-bottom:10px}
+.prog .bar i{display:block;height:100%;background:var(--accent)}
+.bundle{display:flex;height:14px;border-radius:3px;overflow:hidden;margin-top:14px}
+.bundle span{display:block}
+.bundle .b1{background:var(--accent);width:34%}
+.bundle .b2{background:oklch(0.74 0.14 155);width:24%}
+.bundle .b3{background:oklch(0.78 0.14 80);width:18%}
+.bundle .b4{background:oklch(0.62 0.20 250);width:14%}
+.bundle .b5{background:var(--text-3);width:10%}
+.bundle-key{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;font:var(--fw-medium) 10.5px/1.2 var(--font-mono);color:var(--text-2)}
+.bundle-key .k{display:flex;align-items:center;gap:6px}
+.bundle-key .sw{width:8px;height:8px;border-radius:2px}
+.bundle-key .v{color:var(--text-1);margin-left:auto}
+/* log */
+.log{overflow-y:auto;padding:18px 22px;font-family:var(--font-mono);font-size:10.5px;line-height:1.7;color:var(--text-2)}
+.log h4{font:var(--fw-semibold) 9.5px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 10px}
+.log .line{display:grid;grid-template-columns:60px 1fr;gap:10px;padding:1px 0}
+.log .t{color:var(--text-3)}
+.log .ok{color:oklch(0.74 0.14 155)}
+.log .info{color:var(--text-1)}
+.log .warn{color:oklch(0.78 0.14 80)}
+.log .acc{color:var(--accent)}
+.log .step{font-weight:var(--fw-semibold);color:var(--text-1);margin-top:6px}
+/* artifact */
+.artifact{padding:18px 22px;border-top:1px solid var(--border);background:var(--bg-1);display:flex;flex-direction:column;gap:10px}
+.artifact .row{display:flex;justify-content:space-between;font:var(--fw-medium) 11px/1.4 var(--font-mono);color:var(--text-2);border:0;padding:2px 0}
+.artifact .row .v{color:var(--text-1)}
+.artifact .row .v.acc{color:var(--accent)}
+.artifact button{height:36px;background:var(--accent);color:var(--accent-fg);border:0;border-radius:4px;font:var(--fw-semibold) 11px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+/* footer */
+.foot{display:flex;align-items:center;padding:0 24px;border-top:1px solid var(--border);background:var(--bg-2);gap:14px;font:var(--fw-medium) 11px/1 var(--font-mono);color:var(--text-2);letter-spacing:.04em}
+.foot .acc{color:var(--accent)}
+.foot .actions{margin-left:auto;display:flex;gap:8px}
+.foot .actions button{height:32px;padding:0 16px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-2);font:var(--fw-medium) 10.5px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.foot .actions button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:var(--fw-semibold)}
+</style></head>
+<body data-screen-label="15 Build Export">
+<div class="stage"><div class="frame" id="frame">
+  <div class="bg"></div>
+
+  <div class="modal">
+    <div class="mh">
+      <span class="acc">Build & export</span>
+      <span class="ti">playground_test → desktop · macos · arm64</span>
+      <span class="meta">build #4071 · sources clean · last green 8 min ago</span>
+      <span class="x">×</span>
+    </div>
+
+    <div class="body">
+      <div class="side">
+        <h5>profile</h5>
+        <div class="it"><span class="ic">▤</span><span>summary</span><span class="meta"></span></div>
+        <div class="it on"><span class="ic">⛬</span><span>target & cfg</span><span class="meta">●</span></div>
+        <div class="it"><span class="ic">▦</span><span>assets & atlas</span><span class="meta">tuned</span></div>
+        <div class="it"><span class="ic">⌬</span><span>scripts · luau</span><span class="meta">jit</span></div>
+        <div class="it"><span class="ic">⊙</span><span>signing</span><span class="meta">developer id</span></div>
+        <div class="it"><span class="ic">⤴</span><span>distribute</span><span class="meta"></span></div>
+        <h5>history</h5>
+        <div class="it"><span class="ic">●</span><span>#4071</span><span class="meta" style="color:oklch(0.74 0.14 155)">ok 12s</span></div>
+        <div class="it"><span class="ic">●</span><span>#4070</span><span class="meta" style="color:oklch(0.74 0.14 155)">ok 14s</span></div>
+        <div class="it"><span class="ic">●</span><span>#4069</span><span class="meta" style="color:oklch(0.78 0.14 80)">warn</span></div>
+        <div class="it"><span class="ic">●</span><span>#4068</span><span class="meta" style="color:oklch(0.66 0.22 25)">err</span></div>
+      </div>
+
+      <div class="main">
+        <h2>Target & configuration</h2>
+        <div class="sub">defines build matrix · variant settings · code-gen profile</div>
+
+        <h4>platform</h4>
+        <div class="cards">
+          <div class="card on"><span class="glyph">⌘</span><span class="nm">macOS</span><span class="meta">arm64 · x86_64<br/>app · pkg · dmg</span></div>
+          <div class="card"><span class="glyph">▦</span><span class="nm">Windows</span><span class="meta">x86_64<br/>exe · msix</span></div>
+          <div class="card"><span class="glyph">◐</span><span class="nm">Linux</span><span class="meta">x86_64 · arm64<br/>appimage · deb</span></div>
+          <div class="card"><span class="glyph">▣</span><span class="nm">iPad / iOS</span><span class="meta">arm64<br/>ipa · testflight</span></div>
+          <div class="card dis"><span class="glyph">▴</span><span class="nm">Android</span><span class="meta">arm64 · x86_64</span></div>
+          <div class="card dis"><span class="glyph">⊞</span><span class="nm">Web · WebGPU</span><span class="meta">wasm32</span></div>
+          <div class="card dis"><span class="glyph">●</span><span class="nm">Switch</span><span class="meta">licensed only</span></div>
+          <div class="card dis"><span class="glyph">▭</span><span class="nm">Steam Deck</span><span class="meta">via linux</span></div>
+        </div>
+
+        <h4>configuration</h4>
+        <div class="row"><span class="l">profile</span><div class="ctrl"><span class="seg"><button>debug</button><button>development</button><button class="on">release</button><button>shipping</button></span></div></div>
+        <div class="row"><span class="l">arch</span><div class="ctrl"><span class="seg"><button class="on">arm64</button><button>x86_64</button><button>universal</button></span></div></div>
+        <div class="row"><span class="l">renderer</span><div class="ctrl"><span class="seg"><button class="on">vello · wgpu</button><button>metal direct</button></span></div></div>
+        <div class="row"><span class="l">app id</span><div class="ctrl"><span class="input">com.powerhouse.playground_test</span></div></div>
+        <div class="row"><span class="l">version</span><div class="ctrl"><span class="input" style="max-width:120px">0.4.1</span><span class="input" style="max-width:120px">build 4071</span><span style="color:var(--text-3)">semver · auto-increment</span></div></div>
+        <div class="row"><span class="l">window</span><div class="ctrl"><span class="input" style="max-width:80px">1366</span><span style="color:var(--text-3)">×</span><span class="input" style="max-width:80px">768</span><span class="seg"><button class="on">resizable</button><button>fixed</button><button>fullscreen</button></span></div></div>
+
+        <h4>optimization</h4>
+        <div class="row"><span class="l">strip debug</span><div class="ctrl"><span class="toggle on"></span><span style="color:var(--text-3);margin-left:6px">remove asserts · trim symbols</span></div></div>
+        <div class="row"><span class="l">link-time-opt</span><div class="ctrl"><span class="toggle on"></span><span style="color:var(--text-3);margin-left:6px">+12% binary, −18% size</span></div></div>
+        <div class="row"><span class="l">luau bytecode</span><div class="ctrl"><span class="seg"><button>O0</button><button>O1</button><button class="on">O2</button></span><span style="color:var(--text-3);margin-left:6px">+ inline + dce</span></div></div>
+        <div class="row"><span class="l">texture compression</span><div class="ctrl"><span class="seg"><button>none</button><button>etc2</button><button>bc7</button><button class="on">astc 6×6</button></span></div></div>
+        <div class="row"><span class="l">audio compression</span><div class="ctrl"><span class="seg"><button>pcm</button><button class="on">opus 96 kbps</button><button>aac</button></span></div></div>
+        <div class="row"><span class="l">scenes included</span><div class="ctrl"><span class="opt"><span class="acc">3</span> active</span><span class="opt">1 disabled</span><span class="opt">+ <span class="acc">edit list</span></span></div></div>
+        <div class="row"><span class="l">flags</span><div class="ctrl"><span class="opt">--features=hot-reload</span><span class="opt">--no-default-features</span></div></div>
+
+      </div>
+
+      <div class="preview">
+        <div class="pheader">
+          <h4>Bundle preview</h4>
+          <div class="nm">playground_test_0.4.1.app</div>
+          <div class="meta">macos · arm64 · release · vello · estimate <span class="acc">38.4 MB</span></div>
+        </div>
+
+        <div class="prog">
+          <div class="b"><span>building</span><span class="v">step 7 / 12 · 64 %</span></div>
+          <div class="bar"><i style="width:64%"></i></div>
+          <div class="b" style="margin-top:12px"><span>composition</span><span class="v">12 480 files</span></div>
+          <div class="bundle">
+            <span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="b4"></span><span class="b5"></span>
+          </div>
+          <div class="bundle-key">
+            <div class="k"><span class="sw" style="background:var(--accent)"></span>textures<span class="v">13.1 MB</span></div>
+            <div class="k"><span class="sw" style="background:oklch(0.74 0.14 155)"></span>audio<span class="v">9.2 MB</span></div>
+            <div class="k"><span class="sw" style="background:oklch(0.78 0.14 80)"></span>luau<span class="v">6.9 MB</span></div>
+            <div class="k"><span class="sw" style="background:oklch(0.62 0.20 250)"></span>engine<span class="v">5.4 MB</span></div>
+            <div class="k"><span class="sw" style="background:var(--text-3)"></span>meta<span class="v">3.8 MB</span></div>
+          </div>
+        </div>
+
+        <div class="log">
+          <h4>build log</h4>
+          <div class="line"><span class="t">00.0 s</span><span class="step">▸ resolving sources</span></div>
+          <div class="line"><span class="t">00.4 s</span><span class="ok">✓ scenes loaded · 4 / 4</span></div>
+          <div class="line"><span class="t">00.8 s</span><span class="ok">✓ assets resolved · 1 184</span></div>
+          <div class="line"><span class="t">01.1 s</span><span class="step">▸ atlas pack</span></div>
+          <div class="line"><span class="t">01.6 s</span><span class="info">  pack <span class="acc">enemies.atlas</span> · 4096² · 84 sprites · 96 % occupancy</span></div>
+          <div class="line"><span class="t">02.3 s</span><span class="info">  pack <span class="acc">env.atlas</span> · 4096² · 312 sprites · 91 %</span></div>
+          <div class="line"><span class="t">02.4 s</span><span class="ok">✓ atlas · 6 textures · ASTC 6×6 · 13.1 MB</span></div>
+          <div class="line"><span class="t">02.5 s</span><span class="step">▸ luau compile</span></div>
+          <div class="line"><span class="t">03.2 s</span><span class="ok">✓ compiled 142 / 142 modules · O2 · 0 errors</span></div>
+          <div class="line"><span class="t">03.4 s</span><span class="warn">⚠ unused export · combat/dash.luau:apply_friction</span></div>
+          <div class="line"><span class="t">03.6 s</span><span class="step">▸ rust crate · ph2d_runtime</span></div>
+          <div class="line"><span class="t">07.2 s</span><span class="info">  cargo build --release · LTO=fat</span></div>
+          <div class="line"><span class="t">07.9 s</span><span class="ok">✓ link · arm64 mach-o · 5.4 MB</span></div>
+          <div class="line"><span class="t">08.1 s</span><span class="step">▸ codesign</span></div>
+          <div class="line"><span class="t">08.4 s</span><span class="info">  identity · Developer ID · Power House Studio</span></div>
+          <div class="line"><span class="t">08.6 s</span><span class="step">▸ packaging .app</span></div>
+        </div>
+
+        <div class="artifact">
+          <div class="row"><span>output</span><span class="v acc">~/dist/playground_test_0.4.1.app</span></div>
+          <div class="row"><span>checksum</span><span class="v">sha256 · 7f4a…b29e</span></div>
+          <div class="row"><span>elapsed</span><span class="v">8.6 s · cache 84 % hit</span></div>
+          <button>⤓ Reveal in Finder</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span class="acc">●</span><span>build in progress · 64 %</span>
+      <span style="color:var(--text-3)">·</span>
+      <span>elapsed <span style="color:var(--text-1)">8.6 s</span></span>
+      <span style="color:var(--text-3)">·</span>
+      <span>est remaining <span style="color:var(--text-1)">4.8 s</span></span>
+      <span class="actions">
+        <button>save preset</button>
+        <button>cancel</button>
+        <button class="primary">⊕ build & sign · ⌘ ⏎</button>
+      </span>
+    </div>
+  </div>
+</div></div>
+<script>function fit(){const f=document.getElementById('frame');const s=Math.min(innerWidth/1366,innerHeight/1024,1);f.style.transform=`scale(${s})`}fit();onresize=fit;</script>
+</body></html>

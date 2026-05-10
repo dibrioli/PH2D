@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head>
+<meta charset="utf-8" />
+<title>PH2D · Script Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css" />
+<link rel="stylesheet" href="../styles/components.css" />
+<style>
+  body { background: oklch(0.05 0.004 285); overflow: hidden; height: 100vh; }
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .frame {
+    width: 1366px; height: 1024px; transform-origin: center center;
+    background: var(--bg-0); position: relative; overflow: hidden; border-radius: 14px;
+    box-shadow: 0 40px 100px oklch(0 0 0 / 0.7);
+  }
+  .scrim { position: absolute; inset: 0; background: oklch(0.05 0.005 285 / 0.7); backdrop-filter: blur(6px); }
+
+  /* MODAL */
+  .modal {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: calc(100% - 56px); height: calc(100% - 56px);
+    background: var(--bg-1); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; display: grid; grid-template-rows: 48px 32px 1fr 28px;
+  }
+  .head { display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--border); }
+  .head .title { font: var(--fw-semibold) 13px/1 var(--font-display); color: var(--text-1); letter-spacing: -0.005em; }
+  .head .file { font: var(--fw-medium) 11.5px/1 var(--font-mono); color: var(--text-3); }
+  .head .file .b { color: var(--text-2); }
+  .head .dirty { font: var(--fw-semibold) 9.5px/1 var(--font-mono); padding: 3px 6px; background: oklch(0.78 0.14 80 / 0.12); border: 1px solid oklch(0.78 0.14 80 / 0.4); color: oklch(0.94 0.10 80); border-radius: 3px; letter-spacing: 0.06em; }
+  .head .right { margin-left: auto; display: flex; gap: 6px; }
+
+  .icbtn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 5px; color: var(--text-2); cursor: pointer; font-family: var(--font-mono); font-size: 13px; }
+  .pillbtn { height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 5px; color: var(--text-1); font: var(--fw-medium) 11px/1 var(--font-sans); cursor: pointer; letter-spacing: 0.02em; }
+  .pillbtn .kbd { font-family: var(--font-mono); font-size: 9.5px; padding: 2px 5px; background: var(--bg-3); border-radius: 3px; color: var(--text-3); margin-left: 4px; }
+  .pillbtn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+
+  /* TABS */
+  .tabs {
+    display: flex; align-items: stretch; padding: 0 6px;
+    background: var(--bg-2); border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; height: 32px;
+    border-right: 1px solid var(--border);
+    font: var(--fw-medium) 11px/1 var(--font-mono); color: var(--text-2); cursor: pointer; letter-spacing: 0.04em;
+  }
+  .tab:hover { background: var(--bg-3); }
+  .tab.active { background: var(--bg-0); color: var(--text-1); position: relative; }
+  .tab.active::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--accent); }
+  .tab .dot { width: 6px; height: 6px; border-radius: 50%; background: oklch(0.78 0.14 80); }
+  .tab .x { color: var(--text-3); margin-left: 4px; opacity: 0.5; font-size: 14px; }
+
+  /* BODY */
+  .body { display: grid; grid-template-columns: 220px 1fr 320px; min-height: 0; }
+
+  /* TREE */
+  .tree { background: var(--bg-1); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  .tree-h { display: flex; align-items: center; padding: 10px 14px; gap: 8px; border-bottom: 1px solid var(--border); }
+  .tree-h .ti { font: var(--fw-semibold) 10px/1 var(--font-sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-2); }
+  .tree-h .right { margin-left: auto; color: var(--text-3); font-size: 11px; cursor: pointer; }
+  .tree-list { flex: 1; overflow-y: auto; padding: 4px 0; font: var(--fw-medium) 11.5px/1 var(--font-mono); }
+  .tn { display: grid; grid-template-columns: 14px 16px 1fr; gap: 6px; align-items: center; padding: 5px 12px; cursor: pointer; color: var(--text-2); }
+  .tn:hover { background: var(--bg-2); }
+  .tn.dir > .name { color: var(--text-1); font-weight: var(--fw-semibold); }
+  .tn .car { color: var(--text-3); font-size: 10px; }
+  .tn .ic { color: var(--text-3); font-size: 11px; }
+  .tn.active { background: var(--accent-soft); color: var(--text-1); border-left: 2px solid var(--accent); padding-left: 10px; }
+  .tn.active .ic { color: var(--accent); }
+  .tn.dirty .name::after { content: '●'; color: oklch(0.78 0.14 80); margin-left: 6px; font-size: 9px; }
+  .tn.l1 { padding-left: 24px; } .tn.l1.active { padding-left: 22px; }
+  .tn.l2 { padding-left: 36px; } .tn.l2.active { padding-left: 34px; }
+
+  /* EDITOR */
+  .editor { background: var(--bg-0); display: grid; grid-template-rows: 28px 1fr; min-height: 0; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; padding: 0 18px; border-bottom: 1px solid var(--border); font: var(--fw-medium) 10.5px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; background: var(--bg-1); }
+  .breadcrumb .b { color: var(--text-1); }
+  .breadcrumb .sep { color: var(--text-3); opacity: 0.5; }
+  .breadcrumb .right { margin-left: auto; display: flex; gap: 14px; }
+  .breadcrumb .right .b { color: var(--text-2); }
+
+  .code { display: grid; grid-template-columns: 56px 1fr; min-height: 0; overflow: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.65; }
+  .gutter { padding: 14px 0; text-align: right; color: var(--text-3); user-select: none; background: var(--bg-1); border-right: 1px solid var(--border); }
+  .gutter span { display: block; padding-right: 12px; font-size: 10.5px; }
+  .gutter span.cur { color: var(--text-1); background: var(--bg-2); }
+  .gutter span.bp::before { content: '●'; position: absolute; margin-left: 4px; color: oklch(0.66 0.20 25); font-size: 11px; line-height: 1; transform: translateY(2px); }
+  .src { padding: 14px 18px 14px 14px; color: var(--text-1); white-space: pre; position: relative; }
+  .src .l { display: block; min-height: 1.65em; padding-left: 6px; position: relative; }
+  .src .l.cur { background: oklch(1 0 0 / 0.025); }
+  .src .l.cur::before { content: ''; position: absolute; left: -14px; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+
+  .kw { color: oklch(0.74 0.16 340); }
+  .fn { color: oklch(0.78 0.14 80); }
+  .str { color: oklch(0.74 0.14 155); }
+  .num { color: oklch(0.78 0.13 50); }
+  .com { color: var(--text-3); font-style: italic; }
+  .typ { color: oklch(0.72 0.12 235); }
+  .pun { color: var(--text-3); }
+  .cap { color: var(--accent); text-decoration: underline dotted oklch(0.74 0.16 340 / 0.4); text-underline-offset: 4px; }
+  .err-squig { background: linear-gradient(to bottom, transparent 80%, oklch(0.66 0.20 25 / 0.5) 80%, oklch(0.66 0.20 25 / 0.5) 100%); }
+
+  /* INLINE DIAGNOSTIC */
+  .diag {
+    margin: 6px 0 6px 6px;
+    padding: 8px 12px; background: oklch(0.66 0.20 25 / 0.10); border-left: 2px solid oklch(0.66 0.20 25);
+    border-radius: 0 4px 4px 0; font: var(--fw-medium) 11px/1.5 var(--font-mono); color: oklch(0.94 0.05 25);
+    display: flex; gap: 8px; align-items: baseline;
+  }
+  .diag .src-tag { color: oklch(0.78 0.18 25); font-weight: var(--fw-semibold); letter-spacing: 0.08em; text-transform: uppercase; font-size: 9.5px; padding-top: 1px; }
+  .diag .fix { margin-left: auto; color: var(--accent); cursor: pointer; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .ghost {
+    margin: -8px 0 8px 6px;
+    padding: 4px 12px; color: var(--text-3); font: var(--fw-regular) 11px/1.5 var(--font-mono); font-style: italic;
+    border-left: 2px solid var(--border);
+  }
+
+  /* AUTOCOMPLETE POPUP */
+  .ac {
+    position: absolute; left: 320px; top: 156px;
+    background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 6px;
+    box-shadow: 0 14px 40px oklch(0 0 0 / 0.6);
+    min-width: 320px; overflow: hidden; font: var(--fw-medium) 11.5px/1 var(--font-mono);
+    z-index: 10;
+  }
+  .ac-row { display: grid; grid-template-columns: 22px 1fr 90px; gap: 8px; padding: 7px 12px; align-items: center; color: var(--text-2); cursor: pointer; }
+  .ac-row:hover { background: var(--bg-3); }
+  .ac-row.active { background: var(--accent-soft); color: var(--text-1); }
+  .ac-row .k { font: var(--fw-bold) 9px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; }
+  .ac-row.active .k { color: var(--accent); }
+  .ac-row .ty { color: var(--text-3); text-align: right; font-size: 10px; }
+  .ac-doc { border-top: 1px solid var(--border); padding: 10px 12px; background: var(--bg-1); color: var(--text-2); font: var(--fw-regular) 11px/1.5 var(--font-sans); }
+  .ac-doc code { background: var(--bg-3); padding: 1px 5px; border-radius: 3px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-1); }
+
+  /* INSPECTOR */
+  .right-pane { background: var(--bg-1); border-left: 1px solid var(--border); display: grid; grid-template-rows: auto 1fr; min-height: 0; overflow: hidden; }
+  .rp-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .rp-tabs button { flex: 1; height: 36px; background: transparent; border: 0; color: var(--text-3); font: var(--fw-medium) 10.5px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; position: relative; }
+  .rp-tabs button.active { color: var(--text-1); }
+  .rp-tabs button.active::after { content: ''; position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; background: var(--accent); }
+
+  .rp-body { overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 18px; }
+  .sec .lbl { font: var(--fw-semibold) 9.5px/1 var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .sec .lbl .ct { font-weight: var(--fw-medium); color: var(--text-3); }
+  .row { display: grid; grid-template-columns: 100px 1fr; gap: 12px; padding: 4px 0; align-items: baseline; font: var(--fw-medium) 11px/1.4 var(--font-sans); }
+  .row .k { color: var(--text-3); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; }
+  .row .v { color: var(--text-1); font-family: var(--font-mono); font-size: 10.5px; }
+  .row .v .b { color: var(--accent); }
+  .row .v.warn { color: oklch(0.94 0.10 80); }
+
+  /* attached-to row */
+  .attached { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; }
+  .attached .pin { width: 22px; height: 22px; border-radius: 4px; background: var(--accent-soft); border: 1px solid oklch(0.74 0.16 var(--accent-h) / 0.4); display: inline-flex; align-items: center; justify-content: center; color: var(--accent); font-size: 11px; }
+  .attached .nm { font: var(--fw-semibold) 11.5px/1 var(--font-mono); color: var(--text-1); }
+  .attached .nm small { color: var(--text-3); font-weight: var(--fw-medium); display: block; margin-top: 4px; font-size: 10px; }
+  .attached .ct { margin-left: auto; font: var(--fw-medium) 9.5px/1 var(--font-mono); padding: 3px 6px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); letter-spacing: 0.06em; }
+
+  /* problems */
+  .prob { display: grid; grid-template-columns: 14px 1fr 28px; gap: 8px; padding: 8px 0; border-bottom: 1px solid oklch(1 0 0 / 0.04); }
+  .prob .ic.err { color: oklch(0.72 0.18 25); }
+  .prob .ic.warn { color: oklch(0.78 0.14 80); }
+  .prob .msg { color: var(--text-1); font: var(--fw-medium) 11px/1.4 var(--font-sans); }
+  .prob .where { font: var(--fw-medium) 10px/1.4 var(--font-mono); color: var(--text-3); margin-top: 3px; }
+  .prob .where .b { color: var(--text-2); }
+  .prob .ln { font: var(--fw-medium) 10px/1 var(--font-mono); color: var(--text-3); text-align: right; padding-top: 1px; }
+
+  /* FOOT */
+  .foot { display: flex; align-items: center; gap: 14px; padding: 0 18px; border-top: 1px solid var(--border); background: var(--bg-1); font: var(--fw-medium) 10px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.06em; }
+  .foot .git { color: var(--accent); }
+  .foot .right { margin-left: auto; display: flex; gap: 14px; }
+  .foot .ok { color: oklch(0.74 0.14 155); }
+</style>
+</head>
+<body data-screen-label="10 Script Editor">
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <div class="scrim"></div>
+
+    <div class="modal">
+
+      <!-- HEAD -->
+      <div class="head">
+        <span class="title">Script Editor</span>
+        <span class="file"><span class="b">scripts/enemies/</span>slime_ai.luau</span>
+        <span class="dirty">● modified</span>
+        <div class="right">
+          <button class="pillbtn">Format <span class="kbd">⇧ ⌥ F</span></button>
+          <button class="pillbtn">Run tests <span class="kbd">⌘ T</span></button>
+          <button class="pillbtn primary">Save & hot-reload <span class="kbd" style="background: oklch(0.20 0.04 var(--accent-h) / 0.4);">⌘ S</span></button>
+          <button class="icbtn" title="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <div class="tab"><span class="ic" style="color: var(--text-3);">⌧</span>player_controller.luau<span class="x">×</span></div>
+        <div class="tab active"><span class="dot"></span>slime_ai.luau<span class="x">×</span></div>
+        <div class="tab"><span class="ic" style="color: var(--text-3);">⌧</span>camera_follow.luau<span class="x">×</span></div>
+        <div class="tab"><span class="ic" style="color: var(--text-3);">⌧</span>_main.luau<span class="x">×</span></div>
+        <div class="tab" style="color: var(--text-3); border-right: 0;">＋</div>
+      </div>
+
+      <!-- BODY -->
+      <div class="body">
+
+        <!-- TREE -->
+        <div class="tree">
+          <div class="tree-h">
+            <span class="ti">Scripts</span>
+            <span class="right">⌕</span>
+          </div>
+          <div class="tree-list">
+            <div class="tn dir"><span class="car">▾</span><span class="ic">▤</span><span class="name">scripts</span></div>
+            <div class="tn l1"><span></span><span class="ic">≡</span><span class="name">_main.luau</span></div>
+            <div class="tn l1 dir"><span class="car">▾</span><span class="ic">▤</span><span class="name">player</span></div>
+            <div class="tn l2"><span></span><span class="ic">≡</span><span class="name">player_controller.luau</span></div>
+            <div class="tn l2"><span></span><span class="ic">≡</span><span class="name">player_input.luau</span></div>
+            <div class="tn l1 dir"><span class="car">▾</span><span class="ic">▤</span><span class="name">enemies</span></div>
+            <div class="tn l2 active dirty"><span></span><span class="ic">≡</span><span class="name">slime_ai.luau</span></div>
+            <div class="tn l2"><span></span><span class="ic">≡</span><span class="name">bat_ai.luau</span></div>
+            <div class="tn l2"><span></span><span class="ic">≡</span><span class="name">spawner.luau</span></div>
+            <div class="tn l1 dir"><span class="car">▸</span><span class="ic">▤</span><span class="name">camera</span></div>
+            <div class="tn l1 dir"><span class="car">▸</span><span class="ic">▤</span><span class="name">ui</span></div>
+            <div class="tn l1 dir"><span class="car">▸</span><span class="ic">▤</span><span class="name">_lib</span></div>
+            <div class="tn"><span></span><span class="ic">≡</span><span class="name">project.luau</span></div>
+          </div>
+        </div>
+
+        <!-- EDITOR -->
+        <div class="editor">
+          <div class="breadcrumb">
+            <span>scripts</span><span class="sep">›</span><span>enemies</span><span class="sep">›</span><span class="b">slime_ai.luau</span><span class="sep">›</span><span class="b">on_collide</span>
+            <div class="right">
+              <span>Luau · <span class="b">strict</span></span>
+              <span>UTF-8</span>
+              <span>LF</span>
+              <span>spaces · <span class="b">2</span></span>
+            </div>
+          </div>
+          <div class="code">
+            <div class="gutter">
+              <span>1</span><span>2</span><span>3</span><span class="bp">4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span><span>28</span><span>29</span><span class="bp">30</span><span>31</span><span>32</span><span>33</span><span>34</span><span>35</span><span>36</span><span>37</span><span>38</span><span>39</span><span>40</span><span>41</span><span class="cur">42</span><span>43</span><span>44</span><span>45</span><span>46</span>
+            </div>
+            <div class="src"><span class="l"><span class="com">--!strict</span></span><span class="l"><span class="com">-- slime_ai.luau · simple state-machine enemy</span></span><span class="l"></span><span class="l"><span class="kw">local</span> <span class="typ">Entity</span> <span class="pun">=</span> <span class="cap">require</span><span class="pun">(</span><span class="str">"_lib/entity"</span><span class="pun">)</span></span><span class="l"><span class="kw">local</span> <span class="typ">Vec2</span>   <span class="pun">=</span> <span class="cap">require</span><span class="pun">(</span><span class="str">"_lib/math"</span><span class="pun">)</span><span class="pun">.</span>Vec2</span><span class="l"></span><span class="l"><span class="kw">type</span> <span class="typ">State</span> <span class="pun">=</span> <span class="str">"idle"</span> <span class="pun">|</span> <span class="str">"chase"</span> <span class="pun">|</span> <span class="str">"hurt"</span></span><span class="l"></span><span class="l"><span class="kw">local</span> <span class="fn">Slime</span> <span class="pun">=</span> <span class="pun">{}</span></span><span class="l"><span class="fn">Slime</span><span class="pun">.</span>__index <span class="pun">=</span> <span class="fn">Slime</span></span><span class="l"></span><span class="l"><span class="kw">function</span> <span class="fn">Slime.new</span><span class="pun">(</span>self<span class="pun">:</span> <span class="typ">Entity</span><span class="pun">)</span></span><span class="l">  <span class="kw">local</span> s <span class="pun">=</span> <span class="cap">setmetatable</span><span class="pun">({},</span> <span class="fn">Slime</span><span class="pun">)</span></span><span class="l">  s<span class="pun">.</span>entity   <span class="pun">=</span> self</span><span class="l">  s<span class="pun">.</span>state    <span class="pun">=</span> <span class="pun">(</span><span class="str">"idle"</span> <span class="pun">::</span> <span class="typ">State</span><span class="pun">)</span></span><span class="l">  s<span class="pun">.</span>hp       <span class="pun">=</span> <span class="num">3</span></span><span class="l">  s<span class="pun">.</span>speed    <span class="pun">=</span> <span class="num">1.4</span></span><span class="l">  s<span class="pun">.</span>vision   <span class="pun">=</span> <span class="num">96</span></span><span class="l">  <span class="kw">return</span> s</span><span class="l"><span class="kw">end</span></span><span class="l"></span><span class="l"><span class="kw">function</span> <span class="fn">Slime:update</span><span class="pun">(</span>dt<span class="pun">:</span> <span class="typ">number</span><span class="pun">)</span></span><span class="l">  <span class="kw">local</span> player <span class="pun">=</span> <span class="cap">scene</span><span class="pun">.</span>find<span class="pun">(</span><span class="str">"player"</span><span class="pun">)</span></span><span class="l">  <span class="kw">if</span> <span class="kw">not</span> player <span class="kw">then</span> <span class="kw">return</span> <span class="kw">end</span></span><span class="l"></span><span class="l">  <span class="kw">local</span> dist <span class="pun">=</span> <span class="typ">Vec2</span><span class="pun">.</span>distance<span class="pun">(</span>self<span class="pun">.</span>entity<span class="pun">.</span>position<span class="pun">,</span> player<span class="pun">.</span>position<span class="pun">)</span></span><span class="l"></span><span class="l">  <span class="kw">if</span> dist <span class="pun">&lt;</span> self<span class="pun">.</span>vision <span class="kw">then</span></span><span class="l">    self<span class="pun">.</span>state <span class="pun">=</span> <span class="str">"chase"</span></span><span class="l">    <span class="kw">local</span> dir <span class="pun">=</span> <span class="typ">Vec2</span><span class="pun">.</span>direction<span class="pun">(</span>self<span class="pun">.</span>entity<span class="pun">.</span>position<span class="pun">,</span> player<span class="pun">.</span>position<span class="pun">)</span></span><span class="l">    self<span class="pun">.</span>entity<span class="pun">.</span>velocity <span class="pun">=</span> dir <span class="pun">*</span> self<span class="pun">.</span>speed</span><span class="l">  <span class="kw">else</span></span><span class="l">    self<span class="pun">.</span>state <span class="pun">=</span> <span class="str">"idle"</span></span><span class="l">    self<span class="pun">.</span>entity<span class="pun">.</span>velocity <span class="pun">=</span> <span class="typ">Vec2</span><span class="pun">.</span>zero</span><span class="l">  <span class="kw">end</span></span><span class="l"><span class="kw">end</span></span><span class="l"></span><span class="l"><span class="kw">function</span> <span class="fn">Slime:on_collide</span><span class="pun">(</span>other<span class="pun">:</span> <span class="typ">Entity</span><span class="pun">)</span></span><span class="l">  <span class="kw">if</span> other<span class="pun">.</span>tag <span class="pun">==</span> <span class="str">"player_attack"</span> <span class="kw">then</span></span><span class="l">    self<span class="pun">.</span>hp <span class="pun">=</span> self<span class="pun">.</span>hp <span class="pun">-</span> other<span class="pun">.</span><span class="err-squig">damge</span></span><span class="l cur">    <span class="kw">if</span> self<span class="pun">.</span>hp <span class="pun">&lt;=</span> <span class="num">0</span> <span class="kw">then</span> self<span class="pun">.</span>entity<span class="pun">:</span><span class="cap">destroy</span><span class="pun">()</span> <span class="kw">end</span></span><div class="diag"><span class="src-tag">err</span><span>field <span style="color: var(--text-1);">'damge'</span> does not exist on type <span style="color: oklch(0.72 0.12 235);">{ damage: number, tag: string, ... }</span> · did you mean <span style="color: var(--text-1);">damage</span>?</span><span class="fix">⇧⌘ . fix</span></div><span class="l">  <span class="kw">end</span></span><span class="l"><span class="kw">end</span></span><span class="l"></span><span class="l"><span class="kw">return</span> <span class="fn">Slime</span></span></div>
+
+            <!-- AUTOCOMPLETE -->
+            <div class="ac">
+              <div class="ac-row active"><span class="k">F</span><span><span style="color: var(--accent);">damage</span><span class="pun">: </span><span class="typ">number</span></span><span class="ty">field</span></div>
+              <div class="ac-row"><span class="k">F</span><span>damage_type<span class="pun">: </span><span class="typ">string</span></span><span class="ty">field</span></div>
+              <div class="ac-row"><span class="k">M</span><span>destroy<span class="pun">()</span></span><span class="ty">method</span></div>
+              <div class="ac-row"><span class="k">M</span><span>distance_to<span class="pun">(</span>e<span class="pun">: </span>Entity<span class="pun">)</span></span><span class="ty">method</span></div>
+              <div class="ac-doc"><b style="color: var(--text-1); font-family: var(--font-mono); font-size: 10.5px;">other.damage</b> · <code>number</code> — Damage payload attached to the colliding entity. Read in <code>on_collide</code>; pair with <code>damage_type</code> for typed reactions.</div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <!-- INSPECTOR -->
+        <div class="right-pane">
+          <div class="rp-tabs">
+            <button class="active">Outline</button>
+            <button>Problems</button>
+            <button>Refs</button>
+            <button>Watch</button>
+          </div>
+          <div class="rp-body">
+
+            <div class="sec">
+              <div class="lbl">Attached to <span class="ct">· 4 instances</span></div>
+              <div class="attached">
+                <span class="pin">▤</span>
+                <div>
+                  <div class="nm">Slime_basic</div>
+                  <small>prefab · scenes/playground_test</small>
+                </div>
+                <span class="ct">×4</span>
+              </div>
+            </div>
+
+            <div class="sec">
+              <div class="lbl">Outline <span class="ct">· module Slime</span></div>
+              <div style="font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7; color: var(--text-2);">
+                <div>≡ <span style="color: oklch(0.78 0.14 80);">Slime.new</span><span class="pun" style="color:var(--text-3);">(self)</span> <span style="color: var(--text-3);">L11</span></div>
+                <div>≡ <span style="color: oklch(0.78 0.14 80);">Slime:update</span><span class="pun" style="color:var(--text-3);">(dt)</span> <span style="color: var(--text-3);">L21</span></div>
+                <div>≡ <span style="color: oklch(0.78 0.14 80);">Slime:on_collide</span><span class="pun" style="color:var(--text-3);">(other)</span> <span style="color: var(--accent);">L40</span> <span style="color: oklch(0.72 0.18 25);">●</span></div>
+                <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 10.5px;">type <span style="color: oklch(0.72 0.12 235);">State</span> = "idle" | "chase" | "hurt"</div>
+              </div>
+            </div>
+
+            <div class="sec">
+              <div class="lbl">Problems <span class="ct">· 1 err · 0 warn</span></div>
+              <div class="prob">
+                <span class="ic err">●</span>
+                <div>
+                  <div class="msg">Field <code style="font-family: var(--font-mono); background: var(--bg-3); padding: 0 4px; border-radius: 2px;">damge</code> does not exist on Entity</div>
+                  <div class="where"><span class="b">slime_ai.luau</span> · <span class="b">on_collide</span></div>
+                </div>
+                <div class="ln">42</div>
+              </div>
+            </div>
+
+            <div class="sec">
+              <div class="lbl">References <span class="ct">· 7 callers</span></div>
+              <div class="row"><span class="k">scenes/playground</span><span class="v"><span class="b">×4</span> instances</span></div>
+              <div class="row"><span class="k">prefabs/slime</span><span class="v"><span class="b">×1</span> attach</span></div>
+              <div class="row"><span class="k">_main.luau</span><span class="v"><span class="b">L18</span> spawn</span></div>
+              <div class="row"><span class="k">spawner.luau</span><span class="v"><span class="b">L42</span> require</span></div>
+            </div>
+
+            <div class="sec">
+              <div class="lbl">Hot-reload</div>
+              <div class="row"><span class="k">strategy</span><span class="v"><span class="b">preserve state</span></span></div>
+              <div class="row"><span class="k">last reload</span><span class="v">29 ms · ok</span></div>
+              <div class="row"><span class="k">re-bound</span><span class="v">4 instances</span></div>
+              <div class="row"><span class="k">on save</span><span class="v">format · lint · reload</span></div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FOOT -->
+      <div class="foot">
+        <span><span class="git">⎇ main</span> · 2 ahead · 0 behind</span>
+        <span>· <span style="color: oklch(0.72 0.18 25);">● 1 err</span></span>
+        <span>· 0 warn</span>
+        <span>· line <span style="color: var(--text-1);">42</span> col <span style="color: var(--text-1);">38</span></span>
+        <div class="right">
+          <span>Luau <span style="color: var(--text-2);">0.612</span></span>
+          <span>· lsp <span class="ok">●</span> ready</span>
+          <span>· format on save</span>
+          <span>· vim mode</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function fit() {
+    const f = document.getElementById('frame');
+    const sx = window.innerWidth / 1366;
+    const sy = window.innerHeight / 1024;
+    const s = Math.min(sx, sy, 1);
+    f.style.transform = `scale(${s})`;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+</body>
+</html>

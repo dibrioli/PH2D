@@ -27,7 +27,7 @@ pub struct Button {
     pub id: NodeId,
     pub label: String,
     pub state: ButtonState,
-    /// When true, paints with `AccentPrimary` foreground (e.g. the
+    /// When true, paints with `Accent` foreground (e.g. the
     /// "primary" CTA in a panel).
     pub accent: bool,
 }
@@ -61,13 +61,13 @@ impl Button {
         if self.accent {
             // Accent buttons go through the 3-intensity ladder.
             let token = match self.state {
-                ButtonState::Pressed => ColorToken::AccentSecondary,
-                ButtonState::Hovered | ButtonState::Focused => ColorToken::AccentTertiary,
-                _ => ColorToken::AccentPrimary,
+                ButtonState::Pressed => ColorToken::AccentPress,
+                ButtonState::Hovered | ButtonState::Focused => ColorToken::AccentSoft,
+                _ => ColorToken::Accent,
             };
             return token.resolve(theme);
         }
-        ColorToken::TextPrimary.resolve(theme)
+        ColorToken::Text1.resolve(theme)
     }
 
     /// Resolve the background token. Accent CTAs paint a filled
@@ -79,9 +79,9 @@ impl Button {
             return None;
         }
         let token = match self.state {
-            ButtonState::Pressed => ColorToken::AccentSecondary,
-            ButtonState::Hovered => ColorToken::AccentTertiary,
-            _ => ColorToken::AccentPrimary,
+            ButtonState::Pressed => ColorToken::AccentPress,
+            ButtonState::Hovered => ColorToken::AccentSoft,
+            _ => ColorToken::Accent,
         };
         Some(token.resolve(theme))
     }
@@ -92,11 +92,15 @@ impl Button {
     }
 
     pub fn font_size(&self) -> f32 {
-        TypeToken::Sm.px()
+        // Old API used `TypeToken::Sm` (13 px). New scale renumbered:
+        // `Base` is the new 13 px slot. Buttons read body-size text.
+        TypeToken::Base.px()
     }
 
     pub fn padding(&self) -> f32 {
-        Spacing::Sm.px()
+        // Old API used `Spacing::Sm` (12 px). New scale renumbered:
+        // `Lg` is the new 12 px slot — default vertical rhythm.
+        Spacing::Lg.px()
     }
 
     /// Build the AccessKit node. Per ADR-0023 §10: every interactive
@@ -118,15 +122,15 @@ mod tests {
     #[test]
     fn default_button_uses_text_primary_for_fg() {
         let b = Button::new(NodeId(1), "Save");
-        let fg = b.fg_color(Theme::Dark);
-        assert_eq!(fg, ColorToken::TextPrimary.resolve(Theme::Dark));
+        let fg = b.fg_color(Theme::ForgeSdf);
+        assert_eq!(fg, ColorToken::Text1.resolve(Theme::ForgeSdf));
     }
 
     #[test]
     fn accent_button_uses_accent_primary_default_state() {
         let b = Button::new(NodeId(1), "Save").accent(true);
-        let fg = b.fg_color(Theme::Dark);
-        assert_eq!(fg, ColorToken::AccentPrimary.resolve(Theme::Dark));
+        let fg = b.fg_color(Theme::ForgeSdf);
+        assert_eq!(fg, ColorToken::Accent.resolve(Theme::ForgeSdf));
     }
 
     #[test]
@@ -134,8 +138,8 @@ mod tests {
         let b = Button::new(NodeId(1), "Save")
             .accent(true)
             .state(ButtonState::Pressed);
-        let fg = b.fg_color(Theme::Dark);
-        assert_eq!(fg, ColorToken::AccentSecondary.resolve(Theme::Dark));
+        let fg = b.fg_color(Theme::ForgeSdf);
+        assert_eq!(fg, ColorToken::AccentPress.resolve(Theme::ForgeSdf));
     }
 
     #[test]
@@ -143,27 +147,27 @@ mod tests {
         let b = Button::new(NodeId(1), "Save")
             .accent(true)
             .state(ButtonState::Hovered);
-        let fg = b.fg_color(Theme::Dark);
-        assert_eq!(fg, ColorToken::AccentTertiary.resolve(Theme::Dark));
+        let fg = b.fg_color(Theme::ForgeSdf);
+        assert_eq!(fg, ColorToken::AccentSoft.resolve(Theme::ForgeSdf));
     }
 
     #[test]
     fn disabled_uses_text_disabled() {
         let b = Button::new(NodeId(1), "Save").state(ButtonState::Disabled);
-        let fg = b.fg_color(Theme::Light);
-        assert_eq!(fg, ColorToken::TextDisabled.resolve(Theme::Light));
+        let fg = b.fg_color(Theme::Sunstone);
+        assert_eq!(fg, ColorToken::TextDisabled.resolve(Theme::Sunstone));
     }
 
     #[test]
     fn default_button_has_no_bg() {
         let b = Button::new(NodeId(1), "Save");
-        assert!(b.bg_color(Theme::Dark).is_none());
+        assert!(b.bg_color(Theme::ForgeSdf).is_none());
     }
 
     #[test]
     fn accent_button_has_bg() {
         let b = Button::new(NodeId(1), "Save").accent(true);
-        assert!(b.bg_color(Theme::Dark).is_some());
+        assert!(b.bg_color(Theme::ForgeSdf).is_some());
     }
 
     #[test]
@@ -177,8 +181,8 @@ mod tests {
     #[test]
     fn font_and_padding_use_tokens() {
         let b = Button::new(NodeId(1), "Save");
-        assert_eq!(b.font_size(), TypeToken::Sm.px());
-        assert_eq!(b.padding(), Spacing::Sm.px());
+        assert_eq!(b.font_size(), TypeToken::Base.px());
+        assert_eq!(b.padding(), Spacing::Lg.px());
     }
 
     #[test]

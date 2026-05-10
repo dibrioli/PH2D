@@ -339,9 +339,9 @@ impl App {
                 self.title_dirty = true;
             }
             KeyCode::KeyM => {
-                gfx.theme = gfx.theme.toggle();
+                gfx.theme = gfx.theme.next();
                 gfx.toasts
-                    .push(Toast::info(format!("Theme → {:?}", gfx.theme)));
+                    .push(Toast::info(format!("Theme → {}", gfx.theme.id())));
                 self.title_dirty = true;
             }
             KeyCode::KeyT => {
@@ -830,7 +830,7 @@ impl ApplicationHandler for App {
         // ZenMode/ToastQueue/ToolRegistry model state, Layout computes
         // the 4 zones, VelloPass renders all widgets onto the surface
         // AFTER the sprite pass.
-        let theme = Theme::Dark;
+        let theme = Theme::ForgeSdf;
         let zen = ZenMode::new();
         let mut toasts = ToastQueue::new();
         toasts.push(Toast::success("Editor data layer wired (M12)"));

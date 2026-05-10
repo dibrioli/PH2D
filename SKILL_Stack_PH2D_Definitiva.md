@@ -7,7 +7,7 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 
 > **PH2D** (Power House 2D). Engine 2D de altíssima performance, sem teto para artistas, com IA tratada como first-class user.
 
-**Versão deste documento:** 2.0 — 2026-05-08
+**Versão deste documento:** 2.1 — 2026-05-09 (versões pinadas atualizadas após M11; status M1-M12 done refletido em §7; design library handoff em §11.9)
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
 
 ## 1. Visão em uma frase
@@ -35,7 +35,7 @@ Lido cedo porque o resto do documento usa.
 - **IME** — Input Method Editor. Composição de texto para CJK, indispensável em produtos sérios.
 - **Lockstep** — modo de netcode determinístico onde todos clientes simulam o mesmo input, peer-to-peer.
 - **MCP** — Model Context Protocol (Anthropic). Servidor embutido que expõe operações da engine a LLMs.
-- **MSRV** — Minimum Supported Rust Version. Aqui: **1.85+** (edition 2024 exige; algumas deps exigem 1.88).
+- **MSRV** — Minimum Supported Rust Version. Aqui: **1.92** (toolchain pinada em 1.95; bumped em M11 para vello 0.8 + wgpu 28).
 - **MSL/SPIR-V** — Metal Shading Language e SPIR-V (alvos de compilação a partir de WGSL via naga).
 - **Platform-agnostic** — código que não conhece o SO. Toda interação com SO passa por trait `PlatformHost`.
 - **PlatformHost** — trait expondo serviços do SO (FS, IME, file picker, gamepad, áudio device, etc.) para o core.
@@ -81,45 +81,46 @@ Tabela definitiva. Hardware abaixo disso não é alvo — feature won't fix.
 
 ## 5. Stack canônico (versões pinadas)
 
-Versões verificadas em **2026-05-08**. Adicionar dep fora desta tabela exige justificativa em PR + ADR se for não-trivial.
+Versões verificadas em **2026-05-09** (pós-M11). Toolchain: `rust-toolchain.toml` channel `1.95`, MSRV `1.92`, resolver `"3"`. Adicionar dep fora desta tabela exige justificativa em PR + ADR se for não-trivial.
 
-| Camada | Tecnologia | Crate / Lib | Versão | Notas |
+| Camada | Tecnologia | Crate / Lib | Versão | Status / Notas |
 |---|---|---|---|---|
-| Linguagem core | Rust 2024 edition | — | MSRV **1.85+** (algumas deps exigem 1.88) | `unsafe` requer justificativa em comentário |
-| GPU abstração | wgpu | `wgpu` | `29` | Único path; sem fallback OpenGL |
-| GPU baixo nível (interop shell) | wgpu-hal | `wgpu-hal` | `29` | Apenas em FFI shell↔core, isolado em `ph2d-gpu::interop` |
-| Shading runtime | WGSL via naga | `naga` | acompanha `wgpu` | Backends: SPIR-V, MSL, HLSL, GLSL |
-| Shading autoria avançada | Slang (opcional) | `shader-slang` | `0.1.x` (experimental) | Apenas autoria; runtime continua WGSL |
-| Vetorial GPU | Vello | `vello` | `0.8` (**alpha**) | Rasterização 100% compute. Risco arquitetural — ver ADR-0004 |
-| Curvas / Bézier | kurbo | `kurbo` | `0.13` | Hit-test, offset, fitting. Boolean ops via `linesweeper`, NÃO `kurbo::PathOps` (não existe) |
-| Boolean ops vetorial | linesweeper | `linesweeper` | `beta` | Bentley-Ottmann robusto sobre Béziers. Marcar features que dependem disto como alpha |
-| Text shaping | parley + harfrust + skrifa | `parley`, `harfrust`, `skrifa` | acompanha Linebender | Shaping, BiDi, fallback. Integra nativamente com Vello |
-| Text editing widget | parley editor (ou custom) | `parley` | — | IME passa pelo `PlatformHost` (HR-1) |
-| ECS | bevy_ecs (standalone) | `bevy_ecs` | `0.18` | Sem o resto do Bevy. Plano de upgrade documentado em ADR-0003 |
+| Linguagem core | Rust 2024 edition | — | MSRV **1.92** (toolchain pinada em 1.95) | `unsafe` requer justificativa em comentário; resolver = "3" |
+| GPU abstração | wgpu | `wgpu` | `28` | **Downgrade de 29 → 28 em M11** para alinhar com vello 0.8. Único path; sem fallback OpenGL |
+| GPU baixo nível (interop shell) | wgpu-hal | `wgpu-hal` | `28` | Apenas em FFI shell↔core, isolado em `ph2d-gpu::interop` (não wired ainda; M14+) |
+| Shading runtime | WGSL via naga | `naga` | acompanha `wgpu 28` | Backends: SPIR-V, MSL, HLSL, GLSL |
+| Shading autoria avançada | Slang (opcional) | `shader-slang` | `0.1.x` (experimental) | Não wired ainda |
+| Vetorial GPU | Vello | `vello` | `0.8` (**alpha**, `default-features = false` + `wgpu`) | Rasterização 100% compute. Acessado via `vello::kurbo` / `vello::peniko` re-exports (kurbo 0.12, peniko 0.6) — declarar como dep direta arrisca version skew. Risco arquitetural — ver ADR-0004 |
+| Curvas / Bézier | kurbo | `kurbo` | `0.12` (via `vello::kurbo`) | Hit-test, offset, fitting. Boolean ops via `linesweeper`, NÃO `kurbo::PathOps` (não existe) |
+| Boolean ops vetorial | linesweeper | `linesweeper` | `beta` | Não wired ainda; M13+ |
+| Text shaping | parley + harfrust + skrifa | `parley` | `0.6` (alpha) | Shaping, BiDi, fallback. Integra nativamente com Vello via `parley::Layout` + `vello::Scene` |
+| Text editing widget | parley editor (ou custom) | `parley` | `0.6` | IME passa pelo `PlatformHost` (HR-1); não wired ainda |
+| ECS | bevy_ecs (standalone) | `bevy_ecs` | `0.18` | Sem o resto do Bevy. Plano de upgrade documentado em ADR-0003-rev2 (Accepted) |
 | Math | glam | `glam` | `0.30` | SIMD habilitado |
 | Janela / input desktop | winit | `winit` | `0.30` | **Apenas** em shell desktop; nunca no core. iOS/Android usam shells nativas |
-| UI layout | taffy | `taffy` | `0.10` | Flexbox + Grid; agnóstico de renderer |
-| Rígidos | Rapier 2D | `rapier2d` | `0.32` | Determinístico em modo lockstep, fixed timestep |
-| Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (interno) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5) |
-| Fluidos | FLIP/PIC híbrido em compute | `ph2d-fluids` (interno) | — | Não-determinístico por padrão; opt-out em modos com rollback |
-| Iluminação | Radiance Cascades 2D | `ph2d-light` (interno) | — | Sannikov 2023; Holographic RC (2025) em roadmap |
-| Scripting (gameplay) | Luau strict via mlua | `mlua` | `0.10` (feature `luau`) | Runtime por mundo; GC incremental p99 < 0.01ms (medido C10). Ratificado ADR-0019. |
-| Hot path script | WASM | `wasmtime` | `44` | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA |
-| Networking transporte | QUIC | `quinn` | `0.11` | Desktop/mobile |
-| Networking web | WebTransport-over-HTTP/3 | `web-transport-quinn` | `0.11` | Crate auxiliar — quinn puro NÃO é WebTransport |
-| Áudio mixer | rodio + cpal | `rodio`, `cpal` | atual | Mixagem em SIMD; DSP custom em `ph2d-audio` |
-| Gamepad | gilrs (desktop), nativo (mobile) | `gilrs` | atual | iOS via GameController.framework na shell; Android via InputManager |
+| UI layout | taffy / custom zones | `taffy` (planejada) / [`ph2d-editor::zones`](crates/ph2d-editor/src/zones.rs) (M12) | `0.10` (planejada) / 4-zone próprio (atual) | Layout 4-zonas Procreate-inspired escrito direto em ph2d-editor (ADR-0023). taffy entra se complexidade demandar (M13+) |
+| Acessibilidade | AccessKit | `accesskit` | `0.24` | M12 wired em [`ph2d-a11y`](crates/ph2d-a11y/). Adapters por OS (`accesskit_macos`/`accesskit_windows`/`accesskit_unix`) ficam em shells |
+| Rígidos | Rapier 2D | `rapier2d` | `0.28` (`default-features = false` + `dim2`/`f32`/`enhanced-determinism`) | Determinístico em modo lockstep, fixed timestep. M10 |
+| Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (interno, **stub**) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5). M13+ |
+| Fluidos | FLIP/PIC híbrido em compute | `ph2d-fluids` (interno, **stub**) | — | Não-determinístico por padrão; opt-out em modos com rollback. M13+ |
+| Iluminação | Radiance Cascades 2D | `ph2d-light` (interno, **stub**) | — | Sannikov 2023; Holographic RC (2025) em roadmap. M13+ |
+| Scripting (gameplay) | Luau strict via mlua | `mlua` | `0.10` (feature `luau`) | Runtime por mundo; GC incremental p99 ~0.005ms (medido C10). Ratificado ADR-0019. M7 wired |
+| Hot path script | WASM | `wasmtime` | `44` (planejada) | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA. Não wired ainda; M13+ |
+| Networking transporte | QUIC | `quinn` | `0.11` (planejada) | Desktop/mobile. Não wired (`ph2d-net` é stub) |
+| Networking web | WebTransport-over-HTTP/3 | `web-transport-quinn` | `0.11` (planejada) | Crate auxiliar — quinn puro NÃO é WebTransport |
+| Áudio mixer | rodio + cpal | `rodio`, `cpal` | atual (planejadas) | `ph2d-audio` é stub. M13+ |
+| Gamepad | gilrs (desktop), nativo (mobile) | `gilrs` | `0.11` | M8 wired em shells/desktop |
 | Serialização binária | postcard | `postcard` | `1` | Assets, snapshots, save files |
 | Serialização texto | serde JSON | `serde`, `serde_json` | atual | Apenas dev (cenas, configs); não shipping |
-| Asset hash | blake3 | `blake3` | `1` | Conteúdo-endereçado (HR-6) |
+| Asset hash | blake3 | `blake3` | `1` | Conteúdo-endereçado (HR-6). M6 wired |
 | Logging | tracing | `tracing`, `tracing-subscriber` | `0.1`/atual | Spans estruturados |
-| Profiling in-app | puffin | `puffin` | atual | Editor overlay; sem release |
-| Profiling externo | tracy | `tracy-client` | atual | Apenas com feature `tracy` |
+| Profiling in-app | puffin | `puffin` | atual (planejada) | Editor overlay; sem release |
+| Profiling externo | tracy | `tracy-client` | atual (planejada) | Apenas com feature `tracy` |
 | Erros | thiserror (libs) / anyhow (apps) | `thiserror`, `anyhow` | `2`/`1` | Nunca panic em código de produção (HR-4 implica) |
 | Alocação em pool | bumpalo | `bumpalo` | atual | Hot path; reset por frame |
 | Channels | crossbeam-channel | `crossbeam-channel` | atual | Comunicação entre threads (game/render/audio/IO) |
-| Imagens | image | `image` | atual | PNG, JPEG, WebP, AVIF; EXR via `exr` |
-| i18n | fluent-rs | `fluent`, `fluent-bundle` | atual | Strings de UI; NÃO usar gettext |
+| Imagens | image | `image` | `0.25` (`default-features = false` + `png`) | M6 fixtures (PNG procedural). Outros formatos M13+ |
+| i18n | fluent-rs | `fluent`, `fluent-bundle` | atual (planejada) | `ph2d-i18n` é stub. M13+ |
 
 **Regra:** dependências fora desta tabela exigem justificativa em PR. Adicionar deps é caro — propagam em build time, supply chain, footprint.
 
@@ -163,60 +164,63 @@ Versões verificadas em **2026-05-08**. Adicionar dep fora desta tabela exige ju
 
 ## 7. Layout do repositório
 
+Estado real verificado em **2026-05-09**. Legenda: ✅ implementado e wired no shell desktop; 🟡 implementado parcialmente (M13 em curso); ⏳ stub aguardando projeto-piloto.
+
 ```
-ph2d/
-├── Cargo.toml                    # workspace
-├── rust-toolchain.toml           # MSRV travada em 1.85+
+_PH2D_definitiva/
+├── Cargo.toml                    # workspace (resolver "3", edition 2024, MSRV 1.92)
+├── rust-toolchain.toml           # toolchain channel 1.95
+├── clippy.toml                   # workspace lints (HashMap ban per ADR-0022)
+├── deny.toml                     # cargo-deny licenses + bans + advisories
 ├── crates/
-│   ├── ph2d-core/                # tipos base, math, traits
-│   ├── ph2d-host/                # trait PlatformHost (interface SO)
-│   ├── ph2d-ecs/                 # wrapper bevy_ecs com defaults + Reflect
-│   ├── ph2d-gpu/                 # wrapper wgpu, render graph, hal interop
-│   ├── ph2d-render/              # pipeline 2D principal
-│   ├── ph2d-vector/              # Vello + kurbo + linesweeper
-│   ├── ph2d-text/                # parley + harfrust + IME plumbing
-│   ├── ph2d-sdf/                 # SDFs animados, raymarching
-│   ├── ph2d-light/               # Radiance Cascades, normal mapping
-│   ├── ph2d-physics/             # rapier wrapper, fixed timestep
-│   ├── ph2d-physics-soft/        # XPBD compute (+ fallback CPU)
-│   ├── ph2d-fluids/              # FLIP/PIC compute
-│   ├── ph2d-audio/               # mixer, DSP, voice management
-│   ├── ph2d-asset/               # asset DB, hot reload, importadores
-│   ├── ph2d-script/              # runtime Luau + WASM + bindgen
-│   ├── ph2d-net/                 # QUIC (quinn) + WebTransport, rollback, lockstep
-│   ├── ph2d-input/               # gamepad, haptics, abstrações de Pencil
-│   ├── ph2d-tokens/              # design tokens (color/type/spacing) — ADR-0023
-│   ├── ph2d-editor/              # UI retained-mode (Vello + taffy + parley) + 4-zone Procreate-style — ADR-0023
-│   ├── ph2d-mcp/                 # MCP server + governance + audit log
-│   ├── ph2d-i18n/                # Fluent runtime
-│   ├── ph2d-a11y/                # AccessKit (Mac VO + Win Narrator + iPadOS VO + AT-SPI) — ADR-0023
-│   ├── ph2d-save/                # snapshot, replay, migration
-│   └── ph2d-telemetry/           # crash, opt-in metrics, log rotation
+│   ├── ph2d-core/                # ✅ M2 — math (glam), FixedStep, MemoryBudget, panic hook
+│   ├── ph2d-host/                # ✅ M1 — trait PlatformHost (HostHandler, KeyEvent, PointerEvent)
+│   ├── ph2d-ecs/                 # ✅ M4 — bevy_ecs 0.18 + SimWorld/PresentWorld + extract! macro (ADR-0021)
+│   ├── ph2d-gpu/                 # ✅ M3 — wgpu 28 wrapper (GpuContext, SurfaceContext, FrameTarget, TransientPool) — ADR-0020
+│   ├── ph2d-render/              # ✅ M5 — sprite renderer + VelloPass overlay (1000-sprite demo)
+│   ├── ph2d-vector/              # ✅ M11 — vello 0.8 wrapper (VectorScene); re-exporta kurbo + peniko
+│   ├── ph2d-text/                # ✅ M11 — parley 0.6 wrapper (TextSystem)
+│   ├── ph2d-sdf/                 # ⏳ stub — SDFs animados, raymarching (M13+)
+│   ├── ph2d-light/               # ⏳ stub — Radiance Cascades (M13+)
+│   ├── ph2d-physics/             # ✅ M10 — rapier2d 0.28 + enhanced-determinism + cross-OS hash test
+│   ├── ph2d-physics-soft/        # ⏳ stub — XPBD compute + fallback CPU (M13+)
+│   ├── ph2d-fluids/              # ⏳ stub — FLIP/PIC compute (M13+)
+│   ├── ph2d-audio/               # ⏳ stub — mixer, DSP, voice management (M13+)
+│   ├── ph2d-asset/               # ✅ M6 — AssetDb (blake3 content-addressed) + AssetWatcher + ReloadEvent
+│   ├── ph2d-script/              # ✅ M7 — Luau (mlua 0.10) ScriptHost + Scheduler + reset+restore
+│   ├── ph2d-net/                 # ⏳ stub — QUIC + WebTransport, rollback, lockstep (M13+)
+│   ├── ph2d-input/               # ✅ M8 — pure-data Event/InputState/Pencil (gilrs adapter na shell)
+│   ├── ph2d-tokens/              # ✅ M12 — design tokens semânticos (color/type/spacing) — ADR-0023
+│   ├── ph2d-editor/              # ✅ M12 — Layout 4-zonas + FloatingPanel + ZenMode + ToastQueue + ToolRegistry + paint trait + BrushTool + MoveTool — ADR-0023
+│   ├── ph2d-mcp/                 # ✅ M9 — MCP server skeleton (JSON-RPC 2.0 dispatcher, tool registry)
+│   ├── ph2d-i18n/                # ⏳ stub — Fluent runtime (M13+)
+│   ├── ph2d-a11y/                # ✅ M12 — AccessKit 0.24 (Tree, NodeBuilder, Live) — ADR-0023
+│   ├── ph2d-save/                # ⏳ stub — snapshot, replay, migration (M13+)
+│   └── ph2d-telemetry/           # ⏳ stub — crash reporting, opt-in metrics (M13+)
 ├── shells/
-│   ├── desktop/                  # binário Rust com winit
-│   ├── ipad/                     # Xcode project, SwiftUI + UIPencil + GameController
-│   ├── android/                  # Gradle, Kotlin
-│   └── web/                      # TS bootstrap, wasm-pack, Service Worker
-├── runtime/
-│   └── luau/                     # tipos .d.luau gerados (ph2d-bindgen), exemplos canônicos
+│   ├── desktop/                  # ✅ winit 0.30 + wgpu 28 demo bin (integra M1/M5/M6/M7/M8/M12)
+│   ├── ipad/                     # ⏳ não criada — Xcode project + SwiftUI + UIPencil + GameController (M14+)
+│   ├── android/                  # ⏳ não criada — Gradle + Kotlin (M14+)
+│   └── web/                      # ⏳ não criada — TS bootstrap + wasm-pack + Service Worker (M14+)
 ├── tools/
-│   ├── shader-cooker/            # WGSL → SPIR-V/MSL/HLSL via naga; Slang opcional
-│   ├── asset-cooker/             # importação batch determinística
-│   ├── ph2d-bindgen/             # gera .d.luau e schema MCP a partir de #[lua_export]
-│   └── frame-budget-bench/       # bench de frame em CI
+│   ├── ph2d-bindgen/             # ✅ M9 — gera .d.luau + schema MCP de catálogo (HR-10 enforced em CI)
+│   ├── shader-cooker/            # ⏳ não criada — WGSL → SPIR-V/MSL/HLSL via naga (M13+)
+│   └── asset-cooker/             # ⏳ não criada — importação batch determinística (M13+)
+├── runtime/
+│   └── luau/                     # ⏳ tipos .d.luau gerados (popular em M13+ quando catálogo estabilizar)
 ├── docs/
-│   ├── architecture/
-│   │   └── decisions/            # ADRs numerados (ADR-0001, ...)
-│   ├── shaders/
-│   ├── scripting/
-│   ├── platform/                 # iOS/Android/Web specifics
-│   └── operations/               # build, release, observability
-└── tests/
-    ├── golden/                   # imagens-referência por teste
-    ├── budget/                   # bench de frame budget
-    ├── determinism/              # replay tests cross-platform
-    └── fuzz/                     # parsers, MCP, script bridge
+│   ├── HANDOFF.md                # documento histórico de bootstrap (2026-05-08)
+│   ├── architecture/decisions/   # ADRs (0003, 0019, 0020, 0021, 0022, 0023 todos Accepted)
+│   ├── plans/2026-05-post-spike.md # plano de marcos M1-M13 com status atualizado
+│   ├── design/                   # design system: PROMPT_CLAUDE_DESIGN.md + component-library.html (vide §11.9)
+│   ├── scripting/                # exemplos Luau + MCP prompts (c6/c15/c16 do spike)
+│   └── spike/                    # plano + report do spike fechado (histórico)
+├── tests/
+│   └── spike/                    # fixtures do spike de scripting (parte do workspace ainda)
+└── .github/workflows/            # spike.yml (CI principal) + miri.yml — clippy + fmt + nextest + deny + audit + machete + typos + bindgen-check + cross-OS hash + MSRV
 ```
+
+**24 crates total** (de §6: 1 core + 23 subsistemas/ferramentas). 14 implementados (✅ ou parcial), 10 stubs (⏳) aguardando M13+.
 
 ## 8. Feature flags canônicas
 
@@ -534,15 +538,44 @@ Três modos selecionáveis por projeto, **não combináveis dentro da mesma sess
 **Snapshot/restore:** essencial para Rollback. ECS expõe `World::snapshot(&Reflect)` → `Bytes` (postcard) e `World::restore(&Bytes)`. Componentes precisam derivar `Reflect` para entrar no snapshot.
 
 ### 11.9 Editor UI
-Retained-mode próprio em Vello + parley + taffy. Não egui no produto final (HR-7).
+Retained-mode próprio em Vello + parley. Não egui no produto final (HR-7).
 
-Componentes: tree, panel, tabs, dock, gizmo, timeline, node graph, inspector, text editor.
+**Estado em M12 (2026-05-09):** [`ph2d-editor`](crates/ph2d-editor/) implementa o esqueleto canvas-first 4-zonas (ADR-0023):
+- [`Layout`](crates/ph2d-editor/src/zones.rs) — 4 zonas (TopLeft EDIT / TopRight CREATE / Sidebar modulators / Center 100% canvas) + ZenMode toggle + sidebar mirror
+- [`FloatingPanel`](crates/ph2d-editor/src/floating_panel.rs) — Procreate-style draggable tool drawer com `PanelControl` enum (Slider/Toggle/RadioGroup/ColorSwatch/Action)
+- [`widget`](crates/ph2d-editor/src/widget/) — Button, Slider, Toggle, RadioGroup, ColorSwatch (cada com data + state enum + tokens + `a11y::Node` + `paint_X` helper colocalizado)
+- [`Tool` + `ToolRegistry`](crates/ph2d-editor/src/tool.rs) — contrato canônico (id/label/icon/build_panel/activate/handle_panel_event)
+- [`tools::BrushTool`](crates/ph2d-editor/src/tools/brush.rs) + [`tools::MoveTool`](crates/ph2d-editor/src/tools/move_tool.rs) — implementações seed
+- [`paint`](crates/ph2d-editor/src/paint.rs) — Vello lowering (`Paint` trait, `paint_text` via parley→vello glyph runs, `paint_tool_palette_icons`)
+- [`ZenMode`](crates/ph2d-editor/src/zen.rs) + [`ToastQueue`](crates/ph2d-editor/src/toast.rs)
 
-Input passa pelo trait `EditorInput` que abstrai mouse/touch/Pencil. Pencil pressure/tilt são primeiros-classe — não emulados como mouse.
+**Out of scope até M13+:** QuickMenu radial (ADR-0023 §6), gesture-mapping editor UI (§4), Single-Touch Companion overlay, dock complexo, timeline, node graph editor, text editor widget — todos viram após design system canônico estabilizar.
 
-**Acessibilidade:** cada widget implementa `Accessible` (HR-12). Editor sem acessibilidade não passa em CI.
+**Layout solver:** zones próprias por enquanto (matemática trivial 4-zonas); `taffy` 0.10 entra se complexidade demandar (formulários longos, listas virtualizadas).
 
-**i18n:** UI strings via Fluent (HR-15). Bundle padrão em `crates/ph2d-editor/locales/`.
+Input passa pelo trait do `ph2d-input` que abstrai mouse/touch/Pencil pure-data. Shell desktop usa `gilrs` adapter (M8). Pencil pressure/tilt são primeiros-classe — não emulados como mouse.
+
+**Acessibilidade (M12 wired):** cada widget implementa `accesskit::Node` builder via [`ph2d-a11y`](crates/ph2d-a11y/) (HR-12). Editor sem acessibilidade não passa em CI. Adapters por OS (`accesskit_macos` / `accesskit_windows` / `accesskit_unix`) ficam nas shells.
+
+**i18n:** UI strings via Fluent (HR-15). Bundle padrão em `crates/ph2d-editor/locales/` quando i18n entrar (M13+; ph2d-i18n é stub atualmente).
+
+**Design system canônico (M13, entregue 2026-05-09):**
+Pacote oficial em [`docs/design/`](docs/design/), gerado pelo Claude Design a partir do brief em [`PROMPT_CLAUDE_DESIGN.md`](docs/design/PROMPT_CLAUDE_DESIGN.md). Conteúdo:
+- [`tokens.json`](docs/design/tokens.json) — 4 temas OKLCH (`forge-sdf` default, `paint-studio`, `sunstone`, `blueprint`) + typography + spacing + radius + shadow + motion + z-stack. **Source of truth** para codegen do crate `ph2d-tokens`.
+- [`component-library.html`](docs/design/component-library.html) — 30+ widgets × 7 estados (Normal/Hover/Pressed/Focused/Disabled/Active/Selected) tematizados ao vivo via tweaks panel.
+- [`screens/`](docs/design/screens/) — 17 telas iPad 12.9 (1366×1024): welcome, editor-main (hero), place-tool, select-tool, asset-browser, hierarchy, inspector, color-picker, component-editor, script-editor, console, quickmenu, zen-mode, play-mode, build-export, prefs, search-global.
+- [`icons/`](docs/design/icons/) — 87 SVGs Lucide-derived (ISC license), 24×24 viewbox, 1.5pt stroke, currentColor — convertem direto para `vello::kurbo::BezPath`.
+- 4 specs canônicos: [`interactions.md`](docs/design/interactions.md), [`gestures.md`](docs/design/gestures.md), [`animation.md`](docs/design/animation.md), [`accessibility.md`](docs/design/accessibility.md).
+- [`audit.md`](docs/design/audit.md) — auto-auditoria do entregue (P1: temas não-default têm bg dark hardcoded em 13 das 17 telas — fix de 2-3h; P2: aspect ratios extras só em tela 02).
+- [`styles/`](docs/design/styles/) — CSS vars derivados (consumo browser sem rodar codegen). `tweaks-panel.jsx` + `index.html` para navegação interativa.
+- [`component-library-v2-legacy.html`](docs/design/component-library-v2-legacy.html) — mockup pré-canonical (sdf3d-studio inspiration), preservado para contexto histórico.
+
+**Implementação do design em Vello (M13 em curso):**
+1. ✅ Import do pacote em `docs/design/`.
+2. 🟡 Codegen `ph2d-tokens` a partir de tokens.json (4 themes, OKLCH→sRGB, semantic slots) — **em curso**.
+3. ⏳ Port dos 87 SVGs para módulo `ph2d-editor::icons` (BezPath consts).
+4. ⏳ Renderizar tela 02-editor-main (hero) pixel-a-pixel em Vello.
+5. ⏳ Resolver P1/P2 do audit (telas não-canônicas).
 
 ### 11.10 Asset pipeline
 Pipeline **deterministic + reproducible**: mesmo input + mesma versão de cooker = mesmo blake3 do output.
@@ -888,7 +921,7 @@ Toda mudança não-trivial precisa:
 - [ ] Widget novo implementa `Accessible` (HR-12).
 - [ ] Memory budget atualizado se subsistema muda footprint (HR-13).
 - [ ] Se cruza FFI: smoke test em pelo menos uma shell.
-- [ ] Se afeta API TS: `.d.ts` regenerado.
+- [ ] Se afeta API Luau: `.d.luau` regenerado via `cargo run -p ph2d-bindgen` (HR-10).
 - [ ] Changelog entry em `CHANGELOG.md` para mudanças user-facing.
 - [ ] ADR criado se mudança arquitetural; ADR linkado no PR.
 
@@ -933,7 +966,7 @@ Positivas, negativas, neutras.
 Listar com motivo de rejeição.
 ```
 
-**ADRs canônicos (status real, atualizado 2026-05-08):**
+**ADRs canônicos (status real, atualizado 2026-05-09):**
 
 | # | Título | Status |
 |---|---|---|

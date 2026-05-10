@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-accent="magenta">
+<head>
+<meta charset="utf-8"/>
+<title>PH2D · Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/tokens.css"/>
+<style>
+  body { padding: 80px 56px; max-width: 880px; margin: 0 auto; }
+  .eyebrow { font: 500 11px/1 var(--font-mono); letter-spacing:0.08em; text-transform:uppercase; color: var(--accent); margin-bottom: 12px; }
+  h1 { font: 600 44px/1.05 var(--font-display); letter-spacing:-0.025em; margin: 0 0 16px; }
+  p.lede { color: var(--text-2); font-size: 15px; line-height: 1.5; max-width: 60ch; }
+  ul { list-style: none; padding: 0; margin: 48px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  li { background: var(--bg-1); }
+  a { display:block; padding: 24px; text-decoration: none; color: inherit; transition: background .15s; }
+  a:hover { background: var(--bg-2); }
+  .name { font: 600 18px/1.2 var(--font-display); letter-spacing: -0.015em; color: var(--text-1); margin-bottom: 6px; }
+  .desc { font-size: 13px; color: var(--text-2); line-height: 1.45; }
+  .pill { display: inline-block; font: 500 10px/1 var(--font-mono); letter-spacing:0.08em; text-transform: uppercase; padding: 3px 7px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-3); margin-top: 14px; }
+  .note { margin-top: 56px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-1); color: var(--text-2); font-size: 13px; line-height: 1.5; }
+  .note b { color: var(--text-1); }
+</style>
+</head>
+<body>
+  <div class="eyebrow">PH2D · Foundation pass</div>
+  <h1>Design system + editor hero, ready for review.</h1>
+  <p class="lede">First-pass deliverable: the token system, the visual catalog of every widget the editor draws, and the main editor screen on iPad 12.9. Once you sign off on the language, I'll produce the remaining 16 screens and finalize the four themes.</p>
+
+  <ul>
+    <li><a href="component-library.html">
+      <div class="name">Component library</div>
+      <div class="desc">Every widget in every state — color, type, buttons, inputs, sliders, panels, trees, dialogs, toasts, badges. Forge-SDF theme.</div>
+      <span class="pill">component-library.html</span>
+    </a></li>
+    <li><a href="screens/01-welcome.html">
+      <div class="name">01 · Welcome</div>
+      <div class="desc">Project picker. Hero, recent projects, templates / changelog strip, top brand bar.</div>
+      <span class="pill">01-welcome.html</span>
+    </a></li>
+    <li><a href="screens/02-editor-main.html">
+      <div class="name">02 · Editor — main</div>
+      <div class="desc">Canvas-first hero. Dual top toolbars, vertical tool rail, Hierarchy + Inspector, HUD pill, command hint. Tweaks live.</div>
+      <span class="pill">02-editor-main.html</span>
+    </a></li>
+    <li><a href="screens/03-place-tool.html">
+      <div class="name">03 · Place Tool</div>
+      <div class="desc">Place tool active. Ghost cursor with snap pin, prefab tray, grid snap dots, place library.</div>
+      <span class="pill">03-place-tool.html</span>
+    </a></li>
+    <li><a href="screens/04-select-tool.html">
+      <div class="name">04 · Select Tool</div>
+      <div class="desc">Lasso pick · 4 entities selected with bbox + handles + rotate stem · floating context toolbar · multi-edit panel with mixed values.</div>
+      <span class="pill">04-select-tool.html</span>
+    </a></li>
+    <li><a href="screens/05-asset-browser.html">
+      <div class="name">05 · Asset Library</div>
+      <div class="desc">Category sidebar, thumbnail grid, preview pane. Sprites · Prefabs · Scripts · Audio · Materials.</div>
+      <span class="pill">05-asset-browser.html</span>
+    </a></li>
+    <li><a href="screens/06-hierarchy.html">
+      <div class="name">06 · Hierarchy</div>
+      <div class="desc">Full hierarchy detail. Expanded tree with prefab/override/script tags, drag-drop indicator, scene stats &amp; warnings.</div>
+      <span class="pill">06-hierarchy.html</span>
+    </a></li>
+    <li><a href="screens/07-inspector.html">
+      <div class="name">07 · Inspector</div>
+      <div class="desc">Inspector full · 5 tabs · 5 components expanded · prefab overrides marked · entity refs · revert / apply to prefab.</div>
+      <span class="pill">07-inspector.html</span>
+    </a></li>
+    <li><a href="screens/08-color-picker.html">
+      <div class="name">08 · Color Picker</div>
+      <div class="desc">5-tab picker · disc + sat · history · palette · live triadic harmony callout with WCAG contrast.</div>
+      <span class="pill">08-color-picker.html</span>
+    </a></li>
+    <li><a href="screens/09-component-editor.html">
+      <div class="name">09 · Component Editor</div>
+      <div class="desc">Full-window modal. Component list, grouped fields, isolated preview, perf budget bar.</div>
+      <span class="pill">09-component-editor.html</span>
+    </a></li>
+    <li><a href="screens/10-script-editor.html">
+      <div class="name">10 · Script Editor</div>
+      <div class="desc">Luau editor modal. File tree, syntax-highlighted source, inline diagnostic + autocomplete, outline / problems pane.</div>
+      <span class="pill">10-script-editor.html</span>
+    </a></li>
+    <li><a href="screens/11-console.html">
+      <div class="name">11 · Console</div>
+      <div class="desc">Bottom log panel — levels, hot-reload events, stack traces, live REPL. Tabs by source.</div>
+      <span class="pill">11-console.html</span>
+    </a></li>
+    <li><a href="screens/12-quickmenu.html">
+      <div class="name">12 · QuickMenu</div>
+      <div class="desc">Radial 6-slot overlay with selection wedge and customizable bindings.</div>
+      <span class="pill">12-quickmenu.html</span>
+    </a></li>
+    <li><a href="screens/13-zen-mode.html">
+      <div class="name">13 · Zen Mode</div>
+      <div class="desc">Chrome hidden. Ghosted edges, faint corner stamp, auto-fading hint pill.</div>
+      <span class="pill">13-zen-mode.html</span>
+    </a></li>
+    <li><a href="screens/14-play-mode.html">
+      <div class="name">14 · Play Mode</div>
+      <div class="desc">Simulating state. Red ring, play controls, live input map, perf graph, log pip.</div>
+      <span class="pill">14-play-mode.html</span>
+    </a></li>
+    <li><a href="screens/15-build-export.html">
+      <div class="name">15 · Build &amp; Export</div>
+      <div class="desc">Modal · 8 platform cards · target/cfg/optimization · live build progress with bundle composition + log + artifact reveal.</div>
+      <span class="pill">15-build-export.html</span>
+    </a></li>
+    <li><a href="screens/16-prefs.html">
+      <div class="name">16 · Preferences</div>
+      <div class="desc">Theme &amp; Density section. Showcase of checkboxes (on / off / indeterminate / disabled / focused), toggles, segmented, sliders, multi-select chips.</div>
+      <span class="pill">16-prefs.html</span>
+    </a></li>
+    <li><a href="screens/17-search-global.html">
+      <div class="name">17 · Global Search</div>
+      <div class="desc">Cmd+P style. Type filters, grouped results, query highlight, kbd hints.</div>
+      <span class="pill">17-search-global.html</span>
+    </a></li>
+    <li><a href="tokens.json">
+      <div class="name">tokens.json</div>
+      <div class="desc">Machine-readable design tokens. Four themes (forge-sdf full, three stubs), typography, motion, z-stack — ready for Rust codegen.</div>
+      <span class="pill">tokens.json</span>
+    </a></li>
+    <li><a href="styles/tokens.css">
+      <div class="name">tokens.css</div>
+      <div class="desc">Derived CSS custom properties consumed by every HTML file. Theme + density + radius + accent levers via <code style="font-family:var(--font-mono);">data-*</code> attributes on &lt;html&gt;.</div>
+      <span class="pill">styles/tokens.css</span>
+    </a></li>
+  </ul>
+
+  <div class="note">
+    <b>Tweaks are live</b> on the editor screen — toggle the chrome on and you can switch theme (Forge / Cyan / Sun / Blue), accent hue, density, radius, and sidebar side without leaving the page. The sister three themes are scaffolded but not fully tuned yet; that comes in the next pass alongside the remaining screens.
+  </div>
+</body>
+</html>

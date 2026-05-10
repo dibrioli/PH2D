@@ -94,8 +94,8 @@ impl Layout {
         Self {
             window_w,
             window_h,
-            toolbar_h: 56.0, // 32 px icon + Spacing::Sm padding (12 px) × 2
-            sidebar_w: 64.0, // single column of 32 px icons + Spacing::Md padding × 2
+            toolbar_h: 56.0, // 32 px icon + Spacing::Lg padding (12 px) × 2
+            sidebar_w: 64.0, // single column of 32 px icons + Spacing::Xl padding (16 px) × 2
             sidebar_v_center: 0.5,
             sidebar_h: 320.0,
             sidebar_side: SidebarSide::Right,
@@ -277,10 +277,12 @@ mod tests {
     }
 
     /// Smoke test: spacing tokens used in defaults are reasonable.
-    /// Toolbar height = 32 px icon + Spacing::Sm padding × 2 = 56 px.
+    /// Toolbar height = 32 px icon + `Spacing::Lg` (12 px) × 2 = 56 px.
+    /// Old API used `Spacing::Sm` for the 12 px slot — design tokens.json
+    /// renumbered it as `Lg` (`md` = 8, `lg` = 12, `xl` = 16).
     #[test]
     fn default_toolbar_height_matches_token_math() {
-        let expected = 32.0 + ph2d_tokens::Spacing::Sm.px() * 2.0;
+        let expected = 32.0 + ph2d_tokens::Spacing::Lg.px() * 2.0;
         let layout = Layout::new(1024.0, 768.0);
         assert_eq!(layout.toolbar_h, expected);
     }

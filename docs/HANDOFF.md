@@ -1,21 +1,39 @@
 # HANDOFF — Claude assume no Mac
 
-> **⚠️ HISTÓRICO — handoff de 2026-05-08, antes do spike fechar.**
+> **⚠️ DOCUMENTO HISTÓRICO — handoff de bootstrap em 2026-05-08.**
 >
-> O spike de scripting fechou em 2026-05-08 (ADR-0019 ratificou Luau).
-> A fase atual é pós-spike, executando o plano de marcos M1-M13 (M1-M7
-> implementados em 2026-05-08/09).
+> Tudo abaixo deste banner descreve o estado **antes** do spike fechar.
+> Não use o corpo deste arquivo para decidir próxima ação — vá direto
+> para os docs canônicos abaixo.
 >
-> **Doc canônico para LLM nova:**
-> - **Plano operacional ativo:** [`docs/plans/2026-05-post-spike.md`](plans/2026-05-post-spike.md)
-> - **Spec do projeto:** [`SKILL_Stack_PH2D_Definitiva.md`](../SKILL_Stack_PH2D_Definitiva.md)
-> - **Operacional LLM (CI, memória):** [`CLAUDE.md`](../CLAUDE.md)
+> **Estado em 2026-05-09:**
+> - Spike de scripting fechado (ADR-0019, Luau ratificado).
+> - M1-M12 do plano pós-spike implementados e mergeados em `main`
+>   (PRs #1-#28). Cobertura: ph2d-host, ph2d-core, ph2d-gpu, ph2d-ecs,
+>   ph2d-render (sprites), ph2d-asset (hot reload blake3), ph2d-script
+>   (Luau sandbox + reset+restore), ph2d-input (gilrs + Pencil stub),
+>   ph2d-mcp + ph2d-bindgen, ph2d-physics (Rapier determinístico),
+>   ph2d-vector + ph2d-text (Vello + parley wrappers), ph2d-tokens +
+>   ph2d-a11y + ph2d-editor (4 zonas Procreate-style + FloatingPanel +
+>   ZenMode + ToastQueue + ToolRegistry).
+> - M13 em curso: tool palette UI shipada (PR #30); design system em
+>   handoff para Claude Design (vide `docs/design/PROMPT_CLAUDE_DESIGN.md`);
+>   crates `ph2d-sdf`, `ph2d-light`, `ph2d-physics-soft`, `ph2d-fluids`,
+>   `ph2d-audio`, `ph2d-net`, `ph2d-i18n`, `ph2d-save`, `ph2d-telemetry`
+>   ainda stubs aguardando projeto-piloto que dite ordem.
+>
+> **Docs canônicos para LLM nova (ler nesta ordem):**
+> - [`SKILL_Stack_PH2D_Definitiva.md`](../SKILL_Stack_PH2D_Definitiva.md) — fonte de verdade técnica (stack, HRs, ADRs)
+> - [`CLAUDE.md`](../CLAUDE.md) — workflow operacional (CI, memória)
+> - [`docs/plans/2026-05-post-spike.md`](plans/2026-05-post-spike.md) — plano de marcos com status atualizado
+> - [`docs/design/PROMPT_CLAUDE_DESIGN.md`](design/PROMPT_CLAUDE_DESIGN.md) — brief do design system em curso
+> - [`docs/architecture/decisions/`](architecture/decisions/) — ADRs 0003, 0019, 0020, 0021, 0022, 0023 (todos Accepted)
 > - **Memória persistente:** `~/.claude/projects/.../memory/MEMORY.md`
 >
-> Este HANDOFF preserva o contexto da transição inicial (Windows → Mac,
-> bootstrap do workspace, expectativas de papel). Referências abaixo a
-> `docs/spike/2026-05-plan.md` apontam pro plano do spike (fechado),
-> não pra fase atual.
+> Referências no corpo abaixo a `docs/spike/2026-05-plan.md` apontam para
+> o plano do spike (fechado em 2026-05-08), não para a fase atual.
+> Caminhos antigos do Windows (`C:\Users\dibri\...`) também são
+> históricos — projeto migrado para `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/`.
 
 **Versão:** 1.0
 **Data deste handoff:** 2026-05-08

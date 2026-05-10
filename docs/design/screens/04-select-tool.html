@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head><meta charset="utf-8"/><title>PH2D · Select</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css"/><link rel="stylesheet" href="../styles/components.css"/>
+<style>
+body{background:oklch(0.05 0.004 285);overflow:hidden;height:100vh}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.frame{width:1366px;height:1024px;transform-origin:center;background:var(--bg-0);position:relative;overflow:hidden;border-radius:14px;box-shadow:0 40px 100px oklch(0 0 0 /.7)}
+.scene{position:absolute;inset:60px 14px 14px 76px;background:oklch(0.10 0.005 285);background-image:linear-gradient(oklch(1 0 0 /.04) 1px,transparent 1px),linear-gradient(90deg,oklch(1 0 0 /.04) 1px,transparent 1px);background-size:32px 32px;border-radius:6px;box-shadow:inset 0 0 0 1px var(--border)}
+.top{position:absolute;top:14px;left:14px;right:14px;height:36px;display:flex;gap:6px}
+.tb{height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;font:var(--fw-medium) 11px/1 var(--font-sans);color:var(--text-2)}
+.tb.active{background:var(--accent-soft);border-color:oklch(0.74 0.16 var(--accent-h) /.5);color:var(--accent)}
+.tb .b{color:var(--text-1);font-weight:var(--fw-semibold)}
+/* SUBTOOLBAR — pick modes */
+.subtb{position:absolute;left:50%;top:60px;transform:translateX(-50%);display:flex;background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;padding:3px;gap:2px}
+.subtb button{height:30px;padding:0 14px;display:inline-flex;align-items:center;gap:6px;background:transparent;border:0;color:var(--text-2);font:var(--fw-medium) 11px/1 var(--font-sans);cursor:pointer;border-radius:4px}
+.subtb button.on{background:var(--accent);color:var(--accent-fg)}
+.rail{position:absolute;left:14px;top:60px;bottom:14px;width:56px;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.rt{width:40px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:5px;color:var(--text-2);font-family:var(--font-mono);font-size:14px}
+.rt.on{background:var(--accent);color:var(--accent-fg)}
+.rt small{font-size:8px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;opacity:.7;font-weight:600}
+/* entities + selection */
+.e{position:absolute;border:1px solid oklch(1 0 0 /.16);border-radius:2px;display:flex;align-items:end;padding:3px;font:var(--fw-semibold) 9px/1 var(--font-mono);color:var(--text-3);letter-spacing:.04em;text-transform:uppercase}
+.e.sel{border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 1px oklch(0.74 0.16 var(--accent-h) /.3),inset 0 0 0 1px oklch(0.74 0.16 var(--accent-h) /.2)}
+.e.hover{border-color:oklch(0.74 0.16 var(--accent-h) /.5);box-shadow:0 0 0 1px oklch(0.74 0.16 var(--accent-h) /.2)}
+/* selection bbox */
+.bbox{position:absolute;border:1.5px solid var(--accent);pointer-events:none}
+.bbox::before,.bbox::after{content:'';position:absolute;width:8px;height:8px;background:var(--accent-fg);border:1.5px solid var(--accent)}
+.bbox .h{position:absolute;width:8px;height:8px;background:var(--accent-fg);border:1.5px solid var(--accent)}
+.h.tl{top:-5px;left:-5px}.h.tr{top:-5px;right:-5px}.h.bl{bottom:-5px;left:-5px}.h.br{bottom:-5px;right:-5px}
+.h.tm{top:-5px;left:50%;transform:translateX(-50%)}.h.bm{bottom:-5px;left:50%;transform:translateX(-50%)}
+.h.lm{top:50%;left:-5px;transform:translateY(-50%)}.h.rm{top:50%;right:-5px;transform:translateY(-50%)}
+.bbox::before{display:none}.bbox::after{display:none}
+.bbox .rot{position:absolute;left:50%;top:-32px;transform:translateX(-50%);width:1px;height:24px;background:var(--accent)}
+.bbox .rot::after{content:'';position:absolute;top:-7px;left:-6px;width:12px;height:12px;border-radius:50%;background:var(--accent-fg);border:1.5px solid var(--accent)}
+.bbox .pivot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;border:1.5px solid var(--accent)}
+.bbox .pivot::after{content:'';position:absolute;inset:5px;background:var(--accent);border-radius:50%}
+.bbox .lab{position:absolute;left:0;top:-26px;background:var(--accent);color:var(--accent-fg);padding:3px 8px;border-radius:3px;font:var(--fw-semibold) 10px/1 var(--font-mono);letter-spacing:.04em}
+.bbox .dim{position:absolute;left:50%;bottom:-22px;transform:translateX(-50%);background:oklch(0.10 0.005 285 /.9);border:1px solid var(--accent);color:var(--accent);padding:2px 8px;border-radius:3px;font:var(--fw-medium) 10px/1 var(--font-mono);white-space:nowrap}
+/* lasso */
+.lasso{position:absolute;left:32%;top:34%;width:280px;height:240px;border:1.5px dashed var(--accent);background:oklch(0.74 0.16 340 /.08);border-radius:6px;pointer-events:none}
+.lasso .ct{position:absolute;left:0;top:-22px;background:var(--accent);color:var(--accent-fg);padding:3px 8px;border-radius:3px;font:var(--fw-semibold) 10px/1 var(--font-mono);letter-spacing:.04em}
+/* selection toolbar (floats over selection) */
+.seltb{position:absolute;left:32%;top:32%;transform:translateY(-44px);display:inline-flex;background:oklch(0.10 0.005 285 /.9);border:1px solid var(--border);border-radius:6px;padding:3px;gap:1px;backdrop-filter:blur(10px)}
+.seltb button{height:28px;padding:0 10px;background:transparent;border:0;color:var(--text-2);font:var(--fw-medium) 10px/1 var(--font-mono);cursor:pointer;border-radius:3px;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px}
+.seltb button:hover{background:var(--bg-3);color:var(--text-1)}
+.seltb .div{width:1px;background:var(--border);margin:4px 2px}
+.seltb button.danger{color:oklch(0.72 0.18 25)}
+/* selection list (right) */
+.list{position:absolute;right:14px;top:60px;bottom:14px;width:280px;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;display:grid;grid-template-rows:38px 1fr 60px;overflow:hidden}
+.lh{display:flex;align-items:center;padding:0 14px;border-bottom:1px solid var(--border);font:var(--fw-semibold) 10px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-2)}
+.lh .ct{margin-left:auto;font:var(--fw-medium) 10px/1 var(--font-mono);color:var(--accent)}
+.lbody{overflow-y:auto;padding:6px 0}
+.li{display:grid;grid-template-columns:14px 18px 1fr auto;align-items:center;gap:10px;padding:7px 14px;font:var(--fw-medium) 11.5px/1 var(--font-mono);color:var(--text-2);cursor:pointer}
+.li.on{background:var(--accent-soft);color:var(--text-1);border-left:2px solid var(--accent);padding-left:12px}
+.li .sw{width:8px;height:8px;border-radius:2px}.li .sw.s1{background:oklch(0.78 0.14 80)}.li .sw.s2{background:oklch(0.74 0.14 155)}.li .sw.s3{background:oklch(0.72 0.12 235)}
+.li .ic{color:var(--text-3);font-family:var(--font-mono)}
+.li .meta{margin-left:auto;color:var(--text-3);font-size:10px}
+.lfoot{padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px;font:var(--fw-medium) 10px/1.4 var(--font-mono);color:var(--text-2)}
+.lfoot .r{display:flex;justify-content:space-between}
+.lfoot .r .v{color:var(--text-1)}
+.lfoot .r .acc{color:var(--accent)}
+/* hud */
+.hud{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);background:var(--bg-elev);border:1px solid var(--border);border-radius:999px;padding:8px 18px;display:inline-flex;gap:14px;font:var(--fw-medium) 10px/1 var(--font-mono);color:var(--text-2);letter-spacing:.06em;text-transform:uppercase}
+.hud .v{color:var(--text-1)}.hud .acc{color:var(--accent)}
+</style></head>
+<body data-screen-label="04 Select Tool">
+<div class="stage"><div class="frame" id="frame">
+  <div class="top">
+    <span class="tb">forge-sdf</span><span class="tb"><span class="b">playground_test</span></span>
+    <span class="tb active" style="margin-left:8px">▱ <span class="b">Select</span> · 4 entities</span>
+    <span class="tb" style="margin-left:auto">global · y-up</span>
+    <span class="tb">⌘ G group</span>
+  </div>
+
+  <div class="subtb">
+    <button>Auto · tag</button><button class="on">Lasso</button><button>Rect</button><button>Ellipse</button>
+    <span style="width:1px;background:var(--border);margin:4px 2px"></span>
+    <button>＋ add</button><button>− subtract</button><button>↔ intersect</button>
+  </div>
+
+  <div class="rail">
+    <div class="rt">⊕<small>place</small></div>
+    <div class="rt">↔<small>move</small></div>
+    <div class="rt">↻<small>rot</small></div>
+    <div class="rt">⤢<small>scale</small></div>
+    <div class="rt on">▱<small>pick</small></div>
+    <div class="rt">⌫<small>erase</small></div>
+  </div>
+
+  <div class="scene">
+    <!-- bg entities -->
+    <div class="e" style="left:6%;top:78%;right:6%;height:14px">tilemap.ground</div>
+    <div class="e" style="left:80%;top:24%;width:90px;height:60px">camera.main</div>
+    <div class="e hover" style="left:8%;top:60%;width:64px;height:48px">crystal_3</div>
+
+    <!-- selection group: 3 enemies + 1 prop -->
+    <div class="e sel" style="left:34%;top:42%;width:64px;height:96px">player</div>
+    <div class="e sel" style="left:46%;top:50%;width:54px;height:42px;border-radius:50%">slime_1</div>
+    <div class="e sel" style="left:56%;top:54%;width:54px;height:42px;border-radius:50%">slime_2</div>
+    <div class="e sel" style="left:48%;top:36%;width:48px;height:48px">crate_a</div>
+
+    <!-- lasso path -->
+    <div class="lasso"><div class="ct">lasso · 4 captured</div></div>
+
+    <!-- selection bbox encompassing the 4 -->
+    <div class="bbox" style="left:33%;top:34%;width:312px;height:240px">
+      <span class="lab">selection · 4 entities · 312×240</span>
+      <span class="rot"></span>
+      <span class="pivot"></span>
+      <span class="h tl"></span><span class="h tr"></span><span class="h bl"></span><span class="h br"></span>
+      <span class="h tm"></span><span class="h bm"></span><span class="h lm"></span><span class="h rm"></span>
+      <span class="dim">w 312 · h 240 · ∠ 0° · scale 1.00</span>
+    </div>
+
+    <!-- floating context toolbar -->
+    <div class="seltb">
+      <button>⎘ duplicate</button><span class="div"></span>
+      <button>▤ group</button><button>⤓ parent</button><span class="div"></span>
+      <button>⊠ prefab</button><button>⤴ align</button><button>⇆ distribute</button><span class="div"></span>
+      <button>⊕ merge</button><button class="danger">⌫ delete</button>
+    </div>
+  </div>
+
+  <div class="list">
+    <div class="lh">Selection<span class="ct">4 ENTITIES</span></div>
+    <div class="lbody">
+      <div class="li on"><span></span><span class="sw s1"></span><span>player</span><span class="meta">L 1</span></div>
+      <div class="li on"><span></span><span class="sw s2"></span><span>slime_basic_1</span><span class="meta">L 2 · prefab</span></div>
+      <div class="li on"><span></span><span class="sw s2"></span><span>slime_basic_2</span><span class="meta">L 2 · prefab</span></div>
+      <div class="li on"><span></span><span class="sw s3"></span><span>crate_a</span><span class="meta">L 0 · phys</span></div>
+      <div style="height:6px;border-bottom:1px solid var(--border);margin:6px 0"></div>
+      <div style="padding:0 14px;font:var(--fw-semibold) 9.5px/1 var(--font-mono);color:var(--text-3);letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px">Mixed properties</div>
+      <div class="li"><span></span><span class="ic">≡</span><span>position.x</span><span class="meta" style="color:oklch(0.78 0.14 80)">— mixed</span></div>
+      <div class="li"><span></span><span class="ic">≡</span><span>scale</span><span class="meta">1.00</span></div>
+      <div class="li"><span></span><span class="ic">≡</span><span>visibility</span><span class="meta">on · 4/4</span></div>
+      <div class="li"><span></span><span class="ic">≡</span><span>tag</span><span class="meta" style="color:oklch(0.78 0.14 80)">— mixed</span></div>
+      <div class="li"><span></span><span class="ic">≡</span><span>layer</span><span class="meta" style="color:oklch(0.78 0.14 80)">— mixed</span></div>
+    </div>
+    <div class="lfoot">
+      <div class="r"><span>bbox</span><span class="v">312 × 240 px</span></div>
+      <div class="r"><span>center</span><span class="v acc">488, 472</span></div>
+      <div class="r"><span>shared comps</span><span class="v">3 · Transform · Sprite · Collider</span></div>
+    </div>
+  </div>
+
+  <div class="hud">
+    <span>fps <span class="v">59.8</span></span><span>·</span>
+    <span>sel <span class="v acc">4</span></span><span>·</span>
+    <span>bbox <span class="v">312 × 240</span></span><span>·</span>
+    <span>lasso <span class="v">freehand</span></span><span>·</span>
+    <span>tap-empty to deselect</span>
+  </div>
+</div></div>
+<script>function fit(){const f=document.getElementById('frame');const s=Math.min(innerWidth/1366,innerHeight/1024,1);f.style.transform=`scale(${s})`}fit();onresize=fit;</script>
+</body></html>

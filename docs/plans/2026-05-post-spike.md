@@ -1,10 +1,31 @@
 # Plano operacional pós-spike — implementação real do core
 
-**Status:** Approved
+**Status:** In progress (M1-M12 done; M13 active)
 **Data abertura:** 2026-05-08 (logo após merge do PR #1, spike fechado)
+**Última revisão:** 2026-05-09
 **Owner:** Enio Oliveira Dias Brito
 **Implementador:** Claude Opus 4.7 (1M context)
-**Referências:** [ADR-0019](../architecture/decisions/0019-spike-scripting-output.md) (spike output), [ADR-0003-rev2](../architecture/decisions/0003-ecs-choice.md) (ECS), [ADR-0020](../architecture/decisions/0020-surface-lifecycle.md) (surface lifecycle), [ADR-0021](../architecture/decisions/0021-simulation-presentation-boundary.md) (sim/present), [ADR-0022](../architecture/decisions/0022-no-hashmap-in-simulation.md) (HashMap ban).
+**Referências:** [ADR-0019](../architecture/decisions/0019-spike-scripting-output.md) (spike output), [ADR-0003-rev2](../architecture/decisions/0003-ecs-choice.md) (ECS), [ADR-0020](../architecture/decisions/0020-surface-lifecycle.md) (surface lifecycle), [ADR-0021](../architecture/decisions/0021-simulation-presentation-boundary.md) (sim/present), [ADR-0022](../architecture/decisions/0022-no-hashmap-in-simulation.md) (HashMap ban), [ADR-0023](../architecture/decisions/0023-ui-ux-baseline.md) (UI/UX baseline).
+
+## Status em 2026-05-09
+
+| Marco | Status | PR / commit | Notas |
+|---|---|---|---|
+| M1 — Platform host | ✅ Done | PR #2 | `shells/desktop` abre janela winit; ph2d-host trait |
+| M2 — Math/time/budget | ✅ Done | PR #3 | ph2d-core completo (FixedStep + MemoryBudget) |
+| M3 — wgpu surface | ✅ Done | PR #4 | ADR-0020 implementada (`SurfaceContext::acquire_frame`) |
+| M4 — ECS sim/present | ✅ Done | PR #5 | ADR-0021 enforced via `SimComponent`/`PresentComponent` traits |
+| M5 — Sprite renderer | ✅ Done | PR #7 + #21 | 1000-sprite demo verde; perf valida 100k @ 60Hz Mac M-series |
+| M6 — Asset hot reload | ✅ Done | PR #8 | blake3 content-addressed + off-thread reload |
+| M7 — Luau ScriptHost | ✅ Done | PR #9 + #10 | `ph2d.set/get`, sandbox + reset+restore (Defold-style) |
+| M8 — Input + gamepad | ✅ Done | PR #13 | gilrs adapter + Pencil stub + first prod bench em CI |
+| M9 — MCP + bindgen | ✅ Done | PR #16 | HR-10 paridade enforced via `ph2d-bindgen --check` em CI |
+| M10 — Physics determinístico | ✅ Done | PR #18 | Rapier 0.28 + enhanced-determinism + cross-OS hash check |
+| M11 — Vector + text | ✅ Done | PR #20 + #23 | ph2d-vector (Vello 0.8) + ph2d-text (parley 0.6); widget paint pass |
+| M12 — Editor base + a11y | ✅ Done | PR #19 + #25-#28 | ph2d-tokens + ph2d-a11y + ph2d-editor (4 zonas + FloatingPanel + ZenMode + ToastQueue + ToolRegistry); BrushTool + MoveTool wired |
+| **M13 — Polish + features** | 🟡 In progress | branches `m13/design-library`, `m13/tool-palette-ui` | Tool palette UI shipada (PR #30). Design system em handoff para Claude Design (vide [`docs/design/PROMPT_CLAUDE_DESIGN.md`](../design/PROMPT_CLAUDE_DESIGN.md)). Crates `ph2d-sdf`, `ph2d-light`, `ph2d-physics-soft`, `ph2d-fluids`, `ph2d-audio`, `ph2d-net`, `ph2d-i18n`, `ph2d-save`, `ph2d-telemetry` ainda stubs aguardando projeto-piloto. |
+
+**Updates do SKILL aplicáveis aplicados:** §9/§10/§11/§12/§15 atualizados conforme item "Updates aplicáveis ao SKILL" abaixo (ADR-0020/21/22/23 todas referenciadas inline).
 
 ## Princípio de organização
 
@@ -89,6 +110,14 @@ Adicionar ao SKILL §15 quando este plano for aprovado e iniciado:
 
 ## Próximos passos imediatos
 
-1. Aprovar este plano (Enio review).
-2. Aplicar updates ao SKILL listados acima (commit separado ou junto com este merge).
-3. Iniciar M1: criar branch `m1/platform-host`, popular `ph2d-host` + `shells/desktop` sob CI verde.
+**Concluído (2026-05-08 a 2026-05-09):**
+1. ✅ Plano aprovado.
+2. ✅ Updates ao SKILL aplicados ao longo dos PRs (commits `5f821ff`, `3515418`, `4e95670` para ADR-0023; outros inline).
+3. ✅ M1-M12 mergeados em sequência.
+
+**Em curso:**
+1. 🟡 Aguardar output do Claude Design (tokens.json + 17 mockups + icons + specs).
+2. 🟡 Iterar com Enio sobre design library até aprovação.
+3. 🟡 Implementar widgets em Vello sobre `ph2d-editor` seguindo design canônico.
+4. ⏳ Pós-design: escolher projeto-piloto que dite ordem de população dos crates stub do M13 (audio? net? save?).
+5. ⏳ Hardening sprint pós-auditoria multi-agêntica (branch `hardening/post-audit` no remote, parallel timeline) — a decidir se mergeia, rebasea ou descarta após M13 estabilizar.

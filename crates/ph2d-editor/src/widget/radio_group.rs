@@ -151,9 +151,9 @@ pub fn paint_radio_group<T: Clone + PartialEq>(
             (r.h - 2.0).max(0.0),
         );
         let token = if group.selected.as_ref() == Some(&opt.value) {
-            ColorToken::AccentPrimary
+            ColorToken::Accent
         } else {
-            ColorToken::Surface
+            ColorToken::Bg1
         };
         scene.fill_rect(rect_to_vello(inset), resolve(token, theme));
     }
@@ -264,7 +264,7 @@ mod tests {
             &g,
             Rect::new(0.0, 0.0, 100.0, 30.0),
             &mut scene,
-            Theme::Dark,
+            Theme::ForgeSdf,
         );
     }
 
@@ -277,7 +277,7 @@ mod tests {
             &g,
             Rect::new(0.0, 0.0, 100.0, 90.0),
             &mut scene,
-            Theme::Light,
+            Theme::Sunstone,
         );
     }
 }

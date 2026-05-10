@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="pt-br" data-theme="forge-sdf">
+<head>
+<meta charset="utf-8" />
+<title>PH2D — Component Library &amp; Screen Mockups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+   * DESIGN TOKENS — adapted from sdf3d-studio (4 themes, OKLCH).
+   * sdf3d-studio is the M0 reference app for the PH2D UI/UX v0.1.
+   * Reference path: /Volumes/MAC_EXTERNO/PROJETOS/Referencias/
+   *                 Game-Engine-Legada/apps/sdf3d-studio/
+   * ============================================================ */
+
+  /* --- FORGE SDF (default — dark, magenta accent) --- */
+  [data-theme="forge-sdf"] {
+    --bg-0: oklch(0.16 0.012 290);
+    --bg-1: oklch(0.20 0.012 290);
+    --bg-2: oklch(0.24 0.012 290);
+    --fg-0: oklch(0.96 0.004 290);
+    --fg-1: oklch(0.78 0.004 290);
+    --fg-2: oklch(0.55 0.006 290);
+    --accent: oklch(0.74 0.16 340);
+    --accent-strong: oklch(0.66 0.18 340);
+    --accent-soft: oklch(0.32 0.10 340);
+    --line: oklch(1 0 0 / 0.08);
+    --line-strong: oklch(1 0 0 / 0.14);
+    --glass-bg: oklch(0.18 0.012 290 / 0.72);
+    --glass-blur: blur(22px) saturate(1.4);
+    --shadow-sm: 0 2px 6px oklch(0 0 0 / 0.4);
+    --shadow-md: 0 8px 28px -8px oklch(0 0 0 / 0.5);
+    --shadow-lg: 0 20px 60px -12px oklch(0 0 0 / 0.6), 0 0 0 1px var(--line);
+    --row-h: 26px;
+    --icon-btn-size: 36px;
+    --section-gap: 14px;
+    --panel-layout: floating;
+    --success: oklch(0.74 0.18 145);
+    --warning: oklch(0.78 0.18 75);
+    --error:   oklch(0.66 0.22 25);
+    --info:    oklch(0.74 0.14 230);
+  }
+
+  /* --- PROCREATE (dark glass, cyan accent — closer to canonical Procreate look) --- */
+  [data-theme="procreate"] {
+    --bg-0: oklch(0.16 0.008 230);
+    --bg-1: oklch(0.20 0.008 230);
+    --bg-2: oklch(0.24 0.008 230);
+    --fg-0: oklch(0.96 0.004 230);
+    --fg-1: oklch(0.78 0.004 230);
+    --fg-2: oklch(0.55 0.006 230);
+    --accent: oklch(0.78 0.14 205);
+    --accent-strong: oklch(0.70 0.16 205);
+    --accent-soft: oklch(0.32 0.08 205);
+    --line: oklch(1 0 0 / 0.08);
+    --line-strong: oklch(1 0 0 / 0.14);
+    --glass-bg: oklch(0.18 0.008 230 / 0.72);
+    --glass-blur: blur(22px) saturate(1.4);
+    --shadow-sm: 0 2px 6px oklch(0 0 0 / 0.4);
+    --shadow-md: 0 8px 28px -8px oklch(0 0 0 / 0.5);
+    --shadow-lg: 0 20px 60px -12px oklch(0 0 0 / 0.6), 0 0 0 1px var(--line);
+    --row-h: 26px;
+    --icon-btn-size: 36px;
+    --section-gap: 14px;
+    --panel-layout: floating;
+    --success: oklch(0.74 0.18 145);
+    --warning: oklch(0.78 0.18 75);
+    --error:   oklch(0.66 0.22 25);
+    --info:    oklch(0.74 0.14 230);
+  }
+
+  /* --- SUNSTONE (light, warm orange accent — daylight tablet mode) --- */
+  [data-theme="sunstone"] {
+    --bg-0: oklch(0.92 0.018 95);
+    --bg-1: oklch(0.95 0.012 95);
+    --bg-2: oklch(0.98 0.008 95);
+    --fg-0: oklch(0.18 0.012 50);
+    --fg-1: oklch(0.34 0.012 50);
+    --fg-2: oklch(0.50 0.012 50);
+    --accent: oklch(0.70 0.22 55);
+    --accent-strong: oklch(0.62 0.24 55);
+    --accent-soft: oklch(0.84 0.10 55);
+    --line: oklch(0 0 0 / 0.10);
+    --line-strong: oklch(0 0 0 / 0.18);
+    --glass-bg: oklch(0.96 0.012 95 / 0.78);
+    --glass-blur: blur(22px) saturate(1.4);
+    --shadow-sm: 0 2px 6px oklch(0 0 0 / 0.16);
+    --shadow-md: 0 8px 28px -8px oklch(0 0 0 / 0.20);
+    --shadow-lg: 0 20px 60px -12px oklch(0 0 0 / 0.26), 0 0 0 1px var(--line);
+    --row-h: 32px;
+    --icon-btn-size: 40px;
+    --section-gap: 18px;
+    --panel-layout: floating;
+    --success: oklch(0.62 0.18 145);
+    --warning: oklch(0.66 0.20 60);
+    --error:   oklch(0.58 0.22 25);
+    --info:    oklch(0.58 0.14 230);
+  }
+
+  /* --- BLUEPRINT (CAD light, sidebar layout) --- */
+  [data-theme="blueprint"] {
+    --bg-0: oklch(0.97 0.003 240);
+    --bg-1: oklch(0.99 0.002 240);
+    --bg-2: oklch(1.00 0 0);
+    --fg-0: oklch(0.20 0.012 240);
+    --fg-1: oklch(0.36 0.012 240);
+    --fg-2: oklch(0.52 0.010 240);
+    --accent: oklch(0.62 0.20 250);
+    --accent-strong: oklch(0.54 0.22 250);
+    --accent-soft: oklch(0.86 0.06 250);
+    --line: oklch(0 0 0 / 0.08);
+    --line-strong: oklch(0 0 0 / 0.16);
+    --glass-bg: oklch(0.99 0.002 240 / 0.92);
+    --glass-blur: none;
+    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.06);
+    --shadow-md: 0 4px 12px -4px oklch(0 0 0 / 0.10);
+    --shadow-lg: 0 8px 24px -6px oklch(0 0 0 / 0.16), 0 0 0 1px var(--line);
+    --row-h: 44px;
+    --icon-btn-size: 40px;
+    --section-gap: 18px;
+    --panel-layout: sidebar;
+    --success: oklch(0.58 0.18 145);
+    --warning: oklch(0.66 0.18 60);
+    --error:   oklch(0.54 0.22 25);
+    --info:    oklch(0.54 0.18 230);
+  }
+
+  /* ===== TYPOGRAPHY ===== */
+  :root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-base: 13px;
+    --font-size-md: 15px;
+    --font-size-lg: 18px;
+    --font-size-xl: 24px;
+
+    --r-sm: 8px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 18px;
+  }
+
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    color: var(--fg-0);
+    font: var(--font-size-base) / 1.45 var(--font-sans);
+    padding: 24px;
+    transition: background .25s, color .25s;
+  }
+
+  h1 { font-size: var(--font-size-xl); margin: 0 0 14px 0; font-weight: 600; letter-spacing: -0.02em; }
+  h2 { font-size: var(--font-size-lg); margin: 32px 0 8px 0; font-weight: 600; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  h3 { font-size: var(--font-size-md); margin: 18px 0 8px 0; color: var(--fg-1); font-weight: 500; }
+
+  p { color: var(--fg-1); }
+
+  code { font: var(--font-size-sm) var(--font-mono); background: var(--bg-1); padding: 2px 6px; border-radius: 4px; }
+
+  /* Theme switcher pinned top-right */
+  .theme-switcher {
+    position: fixed;
+    top: 12px; right: 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line);
+    padding: 4px;
+    border-radius: var(--r-lg);
+    display: flex;
+    gap: 2px;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+  }
+  .theme-switcher button {
+    background: transparent;
+    color: var(--fg-1);
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    font: 500 var(--font-size-sm) var(--font-sans);
+  }
+  .theme-switcher button[data-active] {
+    background: var(--accent);
+    color: oklch(0.16 0.01 290);
+  }
+
+  /* TOC */
+  nav.toc {
+    position: fixed;
+    top: 12px; left: 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    font-size: var(--font-size-sm);
+    max-width: 220px;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+  }
+  nav.toc strong { display: block; margin-bottom: 6px; color: var(--fg-0); }
+  nav.toc a { display: block; color: var(--fg-1); text-decoration: none; padding: 3px 0; }
+  nav.toc a:hover { color: var(--accent); }
+
+  main { max-width: 1100px; margin: 0 auto 0 240px; }
+
+  /* ===== SHARED LAYOUT HELPERS ===== */
+  .grid { display: grid; gap: 12px; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-5 { grid-template-columns: repeat(5, 1fr); }
+  .grid-6 { grid-template-columns: repeat(6, 1fr); }
+
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-md);
+  }
+  .glass-strong {
+    background: var(--bg-1);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* ===== TOKEN SWATCHES ===== */
+  .swatch {
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 10px;
+    background: var(--bg-1);
+  }
+  .swatch .chip {
+    width: 100%;
+    height: 50px;
+    border-radius: var(--r-sm);
+    margin-bottom: 6px;
+    border: 1px solid var(--line);
+  }
+  .swatch .name { font-size: var(--font-size-sm); font-weight: 600; }
+  .swatch .hex { font: var(--font-size-xs) var(--font-mono); color: var(--fg-2); }
+
+  /* ===== WIDGET PREVIEWS ===== */
+  .demo-row { background: var(--bg-1); padding: 14px; border-radius: var(--r-md); border: 1px solid var(--line); margin-bottom: 12px; }
+  .demo-label { color: var(--fg-2); font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; font-weight: 500; }
+  .demo-states { display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; gap: 14px; }
+
+  /* === Icon Button (circular, primary chrome unit) === */
+  .icon-btn {
+    width: var(--icon-btn-size);
+    height: var(--icon-btn-size);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--fg-1);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .icon-btn:hover { background: var(--bg-2); color: var(--fg-0); }
+  .icon-btn[data-active] { background: var(--accent); color: oklch(0.16 0.01 290); border-color: transparent; }
+  .icon-btn[disabled] { opacity: .35; cursor: not-allowed; }
+
+  /* === Button ghost === */
+  .btn-ghost {
+    background: transparent;
+    color: var(--fg-0);
+    border: 1px solid var(--line);
+    padding: 6px 14px;
+    border-radius: var(--r-sm);
+    font: 500 var(--font-size-sm) var(--font-sans);
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .btn-ghost:hover { background: var(--bg-2); }
+  .btn-ghost[data-active] { background: var(--accent); color: oklch(0.16 0.01 290); border-color: transparent; }
+  .btn-ghost[disabled] { opacity: .35; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent);
+    color: oklch(0.16 0.01 290);
+    border: 1px solid transparent;
+    padding: 6px 14px;
+    border-radius: var(--r-sm);
+    font: 600 var(--font-size-sm) var(--font-sans);
+    cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--accent-strong); }
+
+  /* === Slider (with expression input) === */
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row .label { font-size: var(--font-size-sm); color: var(--fg-1); min-width: 60px; }
+  .slider-track {
+    flex: 1; height: 6px; background: var(--bg-2); border-radius: 3px; position: relative;
+  }
+  .slider-track .fill { position: absolute; top: 0; left: 0; bottom: 0; background: var(--accent-soft); border-radius: 3px; }
+  .slider-track .fill.accent { background: var(--accent); }
+  .slider-track .thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: grab; }
+  .slider-track[data-dragging] .thumb { background: var(--fg-0); transform: translate(-50%, -50%) scale(1.15); }
+  .slider-input {
+    width: 60px; padding: 4px 6px; background: var(--bg-2); color: var(--fg-0); border: 1px solid var(--line); border-radius: 4px;
+    font: var(--font-size-xs) var(--font-mono); text-align: right;
+  }
+
+  /* === Toggle === */
+  .toggle { display: inline-flex; align-items: center; gap: 8px; }
+  .toggle .pill { width: 36px; height: 20px; background: var(--bg-2); border-radius: 10px; position: relative; transition: background .12s; }
+  .toggle .pill::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--fg-1); transition: left .12s, background .12s;
+  }
+  .toggle[data-on] .pill { background: var(--accent); }
+  .toggle[data-on] .pill::after { left: 18px; background: oklch(0.16 0.01 290); }
+
+  /* === Radio horizontal segmented === */
+  .radio-segmented { display: inline-flex; gap: 2px; background: var(--bg-2); padding: 2px; border-radius: var(--r-sm); }
+  .radio-segmented .opt { padding: 4px 12px; font-size: var(--font-size-sm); border-radius: 6px; cursor: pointer; color: var(--fg-1); }
+  .radio-segmented .opt[data-sel] { background: var(--accent); color: oklch(0.16 0.01 290); }
+
+  /* === Color swatch (chip + popup hint) === */
+  .color-swatch { width: 22px; height: 22px; border-radius: var(--r-sm); border: 2px solid var(--line); cursor: pointer; }
+  .color-swatch[data-focused] { border-color: var(--accent); }
+  .color-swatch.lg { width: 36px; height: 36px; }
+
+  /* === ColorRamp editor === */
+  .color-ramp-editor { display: flex; flex-direction: column; gap: 8px; }
+  .color-ramp { height: 24px; border-radius: var(--r-sm); border: 1px solid var(--line); position: relative; }
+  .color-ramp .stop { position: absolute; top: -4px; width: 10px; height: 32px; transform: translateX(-50%); cursor: pointer; }
+  .color-ramp .stop::after { content: ""; position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--fg-0); }
+
+  /* === Path2D editor mini === */
+  .path-editor {
+    height: 120px; background: var(--bg-2); border-radius: var(--r-sm); border: 1px solid var(--line);
+    position: relative; padding: 8px;
+  }
+  .path-editor .vertex { position: absolute; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; transform: translate(-50%, -50%); }
+  .path-editor .handle { position: absolute; width: 6px; height: 6px; background: var(--fg-0); border-radius: 50%; transform: translate(-50%, -50%); }
+  .path-editor svg { position: absolute; inset: 0; pointer-events: none; }
+
+  /* === Toast === */
+  .toast { padding: 8px 14px; border-radius: var(--r-sm); font-size: var(--font-size-sm); margin-bottom: 6px; color: oklch(0.16 0.01 290); font-weight: 500; }
+  .toast.info { background: var(--info); color: oklch(0.96 0.01 230); }
+  .toast.success { background: var(--success); color: oklch(0.96 0.01 145); }
+  .toast.warning { background: var(--warning); color: oklch(0.16 0.01 60); }
+  .toast.error { background: var(--error); color: oklch(0.96 0.01 25); }
+
+  /* === Float Panel mockup === */
+  .float-panel {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-md);
+    padding: 12px;
+    width: 280px;
+    position: relative;
+  }
+  .float-panel .grab-pill {
+    width: 42px; height: 4px;
+    background: var(--line-strong);
+    border-radius: 2px;
+    margin: 2px auto 8px auto;
+  }
+  .float-panel .header { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .float-panel .header .title { flex: 1; font-weight: 600; font-size: var(--font-size-sm); }
+  .float-panel .close-btn { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--fg-1); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
+  /* ===== SCREEN MOCKUPS ===== */
+  .screen {
+    aspect-ratio: 16/10;
+    background: var(--bg-0);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  /* TopBar (46px) */
+  .top-bar {
+    position: absolute; top: 8px; left: 8px; right: 8px; height: 46px;
+    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    display: flex; align-items: center; padding: 0 10px; gap: 10px;
+    z-index: 20;
+  }
+  .top-bar .grp { display: flex; gap: 6px; align-items: center; }
+  .top-bar .center { flex: 1; text-align: center; font-size: var(--font-size-sm); color: var(--fg-1); font-weight: 500; }
+
+  /* LeftSidebar (60px wide, vertically centered, 360px tall) */
+  .left-sidebar {
+    position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+    width: 60px; min-height: 360px;
+    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 9px;
+    z-index: 18;
+  }
+  .left-sidebar .group { display: flex; flex-direction: column; gap: 6px; }
+  .left-sidebar hr { width: 70%; border: none; border-top: 1px solid var(--line); margin: 4px 0; }
+
+  /* BottomHUD (compact pill, lower-left corner) */
+  .bottom-hud {
+    position: absolute; bottom: 8px; left: 8px;
+    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px;
+    display: flex; align-items: center; gap: 12px;
+    font: 500 var(--font-size-xs) var(--font-mono);
+    color: var(--fg-1);
+    z-index: 18;
+  }
+  .bottom-hud .badge { display: flex; align-items: center; gap: 4px; }
+  .bottom-hud .badge .v { color: var(--fg-0); }
+  .bottom-hud .badge.fps .v { color: var(--accent); }
+
+  /* Canvas */
+  .canvas {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, oklch(0.20 0.012 290), oklch(0.16 0.012 290));
+    z-index: 0;
+  }
+  [data-theme="sunstone"] .canvas { background: linear-gradient(135deg, oklch(0.95 0.012 95), oklch(0.92 0.018 95)); }
+  [data-theme="blueprint"] .canvas { background: linear-gradient(135deg, oklch(1 0 0), oklch(0.97 0.003 240)); }
+  [data-theme="procreate"] .canvas { background: linear-gradient(135deg, oklch(0.20 0.008 230), oklch(0.16 0.008 230)); }
+
+  /* Floating panel inside screen */
+  .scr-panel {
+    position: absolute; right: 16px; top: 70px; width: 240px;
+    background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: 12px; box-shadow: var(--shadow-md);
+    z-index: 30;
+  }
+  .scr-panel .grab-pill { width: 42px; height: 4px; background: var(--line-strong); border-radius: 2px; margin: 0 auto 10px auto; }
+
+  /* Marquee selection visual */
+  .marquee {
+    position: absolute; border: 1px dashed oklch(1 0 0 / 0.6);
+    background: oklch(1 0 0 / 0.05);
+  }
+
+  /* Color picker modal (HSV wheel mockup) */
+  .modal-bg {
+    position: absolute; inset: 0; background: oklch(0 0 0 / 0.4); z-index: 40;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal {
+    width: 320px; padding: 16px;
+    background: var(--bg-1);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+  }
+  .hsv-wheel {
+    width: 220px; height: 220px; margin: 0 auto 12px auto;
+    border-radius: 50%;
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+    position: relative;
+  }
+  .hsv-wheel::after {
+    content: ""; position: absolute; inset: 18px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, white, transparent 90%);
+  }
+  .hsv-wheel .picker {
+    position: absolute; left: 60%; top: 40%;
+    width: 14px; height: 14px; border: 2px solid white;
+    border-radius: 50%; box-shadow: 0 0 4px oklch(0 0 0 / 0.6);
+  }
+
+  /* Tool catalog table */
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: var(--font-size-sm); }
+  th { color: var(--fg-2); font-weight: 600; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: .04em; }
+  td.glyph { font-weight: 700; color: var(--accent); width: 40px; text-align: center; font-family: var(--font-mono); }
+  td.status-built { color: var(--success); font-weight: 500; }
+  td.status-planned { color: var(--fg-2); }
+  td.status-future { color: var(--warning); }
+
+  /* Animations */
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+  .fade-up { animation: fadeInUp .2s ease-out both; }
+  .scale-in { animation: scaleIn .15s ease-out both; }
+
+  /* Mini sprite preview to suggest 2D canvas content */
+  .sprite-grid {
+    position: absolute; inset: 80px 80px 60px 80px;
+    display: grid; grid-template-columns: repeat(20, 1fr);
+    gap: 8px;
+    z-index: 1;
+  }
+  .sprite-grid .sprite {
+    aspect-ratio: 1; border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="theme-switcher">
+  <button data-active onclick="setTheme('forge-sdf', this)">Forge SDF</button>
+  <button onclick="setTheme('procreate', this)">Procreate</button>
+  <button onclick="setTheme('sunstone', this)">Sunstone</button>
+  <button onclick="setTheme('blueprint', this)">Blueprint</button>
+</div>
+
+<nav class="toc">
+  <strong>Index</strong>
+  <a href="#about">0. About this file</a>
+  <a href="#tokens">1. Color tokens</a>
+  <a href="#typography">2. Typography</a>
+  <a href="#widgets">3. Widgets</a>
+  <a href="#tools">4. Tool catalog</a>
+  <a href="#layout">5. Layout zones</a>
+  <a href="#screens">6. Screen mockups</a>
+  <a href="#flows">7. User flows</a>
+  <a href="#status">8. Status matrix</a>
+</nav>
+
+<main>
+
+<h1>PH2D — Component Library &amp; Screen Mockups</h1>
+
+<!-- ====================================== -->
+<h2 id="about">0. About this file</h2>
+<p>
+  Esta página é a <strong>fonte de verdade visual</strong> do editor PH2D. Adapta a linguagem do
+  <strong>sdf3d-studio</strong> (a app de referência v0.1, em React/TypeScript com WebGL2) para o nosso contexto:
+  motor 2D em Rust+Vello, mesmo design system de tokens / glass surfaces / multi-theme.
+</p>
+<p>
+  Tudo que for implementado em Vello deve corresponder ao que está aqui. Itera-se este HTML primeiro,
+  depois implementa-se em Rust. Os 4 themes do switcher (canto superior direito) cobrem os modos canônicos:
+  <strong>Forge SDF</strong> (default, magenta dark), <strong>Procreate</strong> (cyan dark),
+  <strong>Sunstone</strong> (warm light), <strong>Blueprint</strong> (CAD light com sidebar fixa).
+</p>
+
+<!-- ====================================== -->
+<h2 id="tokens">1. Color tokens (OKLCH)</h2>
+<p>OKLCH é perceptualmente uniforme — tons consistentes entre themes. WCAG AA validado nos pares texto-superfície.</p>
+
+<h3>Surface chrome</h3>
+<div class="grid grid-6">
+  <div class="swatch"><div class="chip" style="background: var(--bg-0)"></div><div class="name">--bg-0</div><div class="hex">page bg</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--bg-1)"></div><div class="name">--bg-1</div><div class="hex">surface</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--bg-2)"></div><div class="name">--bg-2</div><div class="hex">elevated</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--line)"></div><div class="name">--line</div><div class="hex">divider</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--line-strong)"></div><div class="name">--line-strong</div><div class="hex">border</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--glass-bg); backdrop-filter: var(--glass-blur);"></div><div class="name">--glass-bg</div><div class="hex">+ blur 22px</div></div>
+</div>
+
+<h3>Text (foreground)</h3>
+<div class="grid grid-3">
+  <div class="swatch"><div class="chip" style="background: var(--fg-0)"></div><div class="name">--fg-0</div><div class="hex">primary</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--fg-1)"></div><div class="name">--fg-1</div><div class="hex">secondary</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--fg-2)"></div><div class="name">--fg-2</div><div class="hex">tertiary / hint</div></div>
+</div>
+
+<h3>Accent (per theme)</h3>
+<div class="grid grid-3">
+  <div class="swatch"><div class="chip" style="background: var(--accent)"></div><div class="name">--accent</div><div class="hex">brand hue</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--accent-strong)"></div><div class="name">--accent-strong</div><div class="hex">pressed/hover</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--accent-soft)"></div><div class="name">--accent-soft</div><div class="hex">backdrop</div></div>
+</div>
+
+<h3>Semantic</h3>
+<div class="grid grid-4">
+  <div class="swatch"><div class="chip" style="background: var(--success)"></div><div class="name">--success</div><div class="hex">positive</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--warning)"></div><div class="name">--warning</div><div class="hex">caution</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--error)"></div><div class="name">--error</div><div class="hex">danger</div></div>
+  <div class="swatch"><div class="chip" style="background: var(--info)"></div><div class="name">--info</div><div class="hex">neutral hint</div></div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="typography">2. Typography</h2>
+<p>Inter (sans, UI) + JetBrains Mono (debug overlays, numeric inputs).</p>
+<div class="demo-row">
+  <div style="font-size: var(--font-size-xs);">Xs · 11px · status badges, captions</div>
+  <div style="font-size: var(--font-size-sm);">Sm · 12-13px · labels, action buttons (default body)</div>
+  <div style="font-size: var(--font-size-base);">Base · 13px · panel content</div>
+  <div style="font-size: var(--font-size-md);">Md · 15px · section headings</div>
+  <div style="font-size: var(--font-size-lg);">Lg · 18px · panel titles, modal headers</div>
+  <div style="font-size: var(--font-size-xl); font-weight: 600;">Xl · 24px · welcome / splash</div>
+  <div style="font-family: var(--font-mono); font-size: var(--font-size-base); margin-top: 8px;">Mono · 13px · 0123 ↑↓ debug · slider numerics</div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="widgets">3. Widgets</h2>
+
+<h3>3.1 Icon Button (primary chrome unit, circular 36px / 40px)</h3>
+<div class="demo-row">
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <button class="icon-btn">✎</button>
+    <button class="icon-btn" data-active>✎</button>
+    <button class="icon-btn" disabled>✎</button>
+    <span style="color: var(--fg-2); font-size: var(--font-size-xs);">normal · active · disabled</span>
+  </div>
+</div>
+
+<h3>3.2 Buttons (ghost / primary)</h3>
+<div class="demo-row">
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <button class="btn-ghost">Cancel</button>
+    <button class="btn-ghost" data-active>Active</button>
+    <button class="btn-ghost" disabled>Disabled</button>
+    <button class="btn-primary">Save</button>
+  </div>
+</div>
+
+<h3>3.3 Slider — with editable expression input</h3>
+<div class="demo-row">
+  <div class="slider-row">
+    <span class="label">Size</span>
+    <div class="slider-track"><div class="fill" style="width: 30%"></div><div class="thumb" style="left: 30%"></div></div>
+    <input class="slider-input" value="0.30" />
+  </div>
+  <div class="slider-row">
+    <span class="label">Opacity</span>
+    <div class="slider-track"><div class="fill accent" style="width: 100%"></div><div class="thumb" style="left: 99%"></div></div>
+    <input class="slider-input" value="1.00" />
+  </div>
+  <div class="slider-row">
+    <span class="label">Flow</span>
+    <div class="slider-track" data-dragging><div class="fill accent" style="width: 65%"></div><div class="thumb" style="left: 65%"></div></div>
+    <input class="slider-input" value="0.65" />
+  </div>
+  <div style="color: var(--fg-2); font-size: var(--font-size-xs); margin-top: 8px;">
+    Input aceita expressões (sdf3d ref): <code>2*pi/3</code>, <code>sqrt(2)</code>, <code>1/0.85</code>. Shift+drag → snap humanizado (0/¼/½/¾/1).
+  </div>
+</div>
+
+<h3>3.4 Toggle</h3>
+<div class="demo-row">
+  <div style="display: flex; gap: 24px;">
+    <div class="toggle"><span class="pill"></span> Snap to grid · OFF</div>
+    <div class="toggle" data-on><span class="pill"></span> Snap to grid · ON</div>
+  </div>
+</div>
+
+<h3>3.5 RadioGroup (segmented)</h3>
+<div class="demo-row">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span class="demo-label" style="margin: 0;">Lock Axis</span>
+    <div class="radio-segmented">
+      <span class="opt" data-sel>None</span>
+      <span class="opt">X</span>
+      <span class="opt">Y</span>
+    </div>
+  </div>
+</div>
+
+<h3>3.6 Color swatches</h3>
+<div class="demo-row">
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <div class="color-swatch" style="background: oklch(0.62 0.20 25)"></div>
+    <div class="color-swatch lg" data-focused style="background: var(--accent)"></div>
+    <div class="color-swatch lg" style="background: oklch(0.74 0.18 145)"></div>
+    <div class="color-swatch lg" style="background: oklch(0.78 0.18 75)"></div>
+    <span style="color: var(--fg-2); font-size: var(--font-size-xs);">click → HSV wheel modal (sdf3d uses iro.js v5)</span>
+  </div>
+</div>
+
+<h3>3.7 ColorRamp editor (gradient with stops)</h3>
+<div class="demo-row">
+  <div class="color-ramp-editor">
+    <div class="color-ramp" style="background: linear-gradient(90deg, oklch(0.16 0.012 290), oklch(0.74 0.16 340), oklch(0.96 0.004 290));">
+      <div class="stop" style="left: 0%; background: oklch(0.16 0.012 290);"></div>
+      <div class="stop" style="left: 50%; background: oklch(0.74 0.16 340);"></div>
+      <div class="stop" style="left: 100%; background: oklch(0.96 0.004 290);"></div>
+    </div>
+    <div style="font-size: var(--font-size-xs); color: var(--fg-2);">3 stops · click ramp pra adicionar · drag stops · click stop pra remover</div>
+  </div>
+</div>
+
+<h3>3.8 Path2D editor (Bézier sketch overlay)</h3>
+<div class="demo-row">
+  <div class="path-editor">
+    <svg viewBox="0 0 280 100" preserveAspectRatio="none">
+      <path d="M 30 80 Q 90 10, 140 50 T 250 30" stroke="oklch(0.78 0.14 205)" stroke-width="2" fill="none"/>
+      <line x1="30" y1="80" x2="60" y2="35" stroke="oklch(0.55 0.006 290)" stroke-width="1" stroke-dasharray="2 2"/>
+      <line x1="140" y1="50" x2="190" y2="80" stroke="oklch(0.55 0.006 290)" stroke-width="1" stroke-dasharray="2 2"/>
+    </svg>
+    <div class="vertex" style="left: 11%; top: 80%;"></div>
+    <div class="handle" style="left: 21%; top: 35%;"></div>
+    <div class="vertex" style="left: 50%; top: 50%;"></div>
+    <div class="handle" style="left: 68%; top: 80%;"></div>
+    <div class="vertex" style="left: 89%; top: 30%;"></div>
+  </div>
+  <div style="font-size: var(--font-size-xs); color: var(--fg-2); margin-top: 6px;">Modos: line / arc / bezier · vertices draggables · handles ajustam curva</div>
+</div>
+
+<h3>3.9 Toast notifications</h3>
+<div class="demo-row">
+  <div class="toast info">Info · Press B=Brush, E=Eraser, Tab=Zen</div>
+  <div class="toast success">Success · Project saved (12.4 MB)</div>
+  <div class="toast warning">Warning · Sidebar reset to default</div>
+  <div class="toast error">Error · Failed to load asset.png — file missing</div>
+</div>
+
+<h3>3.10 Float Panel (draggable, glass + grab pill)</h3>
+<div class="demo-row" style="display: flex; gap: 16px;">
+  <div class="float-panel">
+    <div class="grab-pill"></div>
+    <div class="header">
+      <span class="title">Brush properties</span>
+      <button class="close-btn">×</button>
+    </div>
+    <div class="slider-row"><span class="label">Size</span><div class="slider-track"><div class="fill accent" style="width: 24%"></div><div class="thumb" style="left: 24%"></div></div><input class="slider-input" value="24"></div>
+    <div class="slider-row" style="margin-top: 8px;"><span class="label">Opacity</span><div class="slider-track"><div class="fill accent" style="width: 100%"></div><div class="thumb" style="left: 99%"></div></div><input class="slider-input" value="1.00"></div>
+    <div class="slider-row" style="margin-top: 8px;"><span class="label">Color</span><div class="color-swatch lg" style="background: var(--accent);"></div></div>
+  </div>
+  <div style="color: var(--fg-2); font-size: var(--font-size-xs); align-self: flex-start;">
+    Glass surface (blur 22px + saturate 1.4)<br>
+    Grab pill (4×42px) topo = drag handle<br>
+    Header com close button<br>
+    Drag pra reposicionar (clamped ao viewport)<br>
+    Auto-anima fadeInUp ao montar
+  </div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="tools">4. Tool catalog (PH2D 2D engine)</h2>
+<p>SDF3D é 3D modeling. PH2D é 2D engine — tools adaptadas. Status: <span style="color: var(--success);">built</span> · <span style="color: var(--fg-2);">planned</span> · <span style="color: var(--warning);">future</span>.</p>
+
+<table>
+  <thead>
+    <tr><th>Glyph</th><th>Tool</th><th>Function</th><th>Controls (Float Panel)</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="glyph">B</td><td>Brush</td><td>Pinta sprite no canvas (paint stroke)</td><td>Size · Opacity · Flow · Color</td><td class="status-built">built</td></tr>
+    <tr><td class="glyph">M</td><td>Move</td><td>Move/transforma seleção</td><td>Snap Grid · Snap Pixel · Lock Axis</td><td class="status-built">built</td></tr>
+    <tr><td class="glyph">E</td><td>Eraser</td><td>Apaga sprite no canvas</td><td>Size · Hardness · Mode (Layer/All)</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">S</td><td>Selection</td><td>Lasso / Rectangle / Ellipse / Wand</td><td>Mode · Tolerance · Anti-alias · Add/Remove/Invert</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">C</td><td>Color picker</td><td>Eyedropper sample do canvas</td><td>Sample size · Layer-only</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">F</td><td>Fill</td><td>Bucket fill com cor selecionada</td><td>Tolerance · Anti-alias · Contiguous</td><td class="status-planned">planned</td></tr>
+    <tr><td class="glyph">T</td><td>Text</td><td>Insere texto no canvas (parley)</td><td>Font · Size · Color · Alignment · Outline</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">L</td><td>Layer</td><td>Painel de layers (visibility/opacity/blend)</td><td>Layer list · Blend mode · Mask · Group</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">A</td><td>Asset placer</td><td>Drag-drop sprite/asset no scene</td><td>Asset browser · Snap · Tint</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">P</td><td>Pan / Zoom (camera)</td><td>Move / zoom da câmera do editor</td><td>Zoom level · Reset · Fit selection</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">G</td><td>Grid / Tile</td><td>Pinta tilemap em grid</td><td>Tile size · Snap · Layer · Tile picker</td><td class="status-future">future</td></tr>
+    <tr><td class="glyph">R</td><td>Path / Shape</td><td>Desenha bezier/path (sdf3d Path2D)</td><td>Stroke · Fill · Mode (line/arc/bezier)</td><td class="status-future">future</td></tr>
+  </tbody>
+</table>
+
+<!-- ====================================== -->
+<h2 id="layout">5. Layout zones</h2>
+<p>Estrutura sdf3d-style: TopBar fixa + LeftSidebar 60px + Canvas full-bleed + Floating panels + BottomHUD. Adaptado pro contexto PH2D (sem gizmos 3D, com tools 2D + asset/layer panels).</p>
+
+<div class="screen">
+  <div class="canvas"></div>
+  <div class="top-bar">
+    <div class="grp">
+      <button class="icon-btn">⚙</button>
+      <button class="icon-btn">⤓</button>
+      <button class="icon-btn">▶</button>
+    </div>
+    <div class="center">PH2D · untitled.ph2d</div>
+    <div class="grp">
+      <button class="icon-btn">≣</button>
+      <button class="icon-btn">⊞</button>
+      <button class="icon-btn">{·}</button>
+    </div>
+  </div>
+  <div class="left-sidebar">
+    <div class="group">
+      <button class="icon-btn" data-active>B</button>
+      <button class="icon-btn">M</button>
+      <button class="icon-btn">E</button>
+      <button class="icon-btn">S</button>
+    </div>
+    <hr>
+    <div class="group">
+      <button class="icon-btn">C</button>
+      <button class="icon-btn">F</button>
+      <button class="icon-btn">L</button>
+    </div>
+    <hr>
+    <div class="group">
+      <button class="icon-btn">↶</button>
+      <button class="icon-btn">↷</button>
+    </div>
+  </div>
+  <div class="bottom-hud">
+    <span class="badge fps">fps <span class="v">60</span></span>
+    <span class="badge">zoom <span class="v">×1.0</span></span>
+    <span class="badge">scene <span class="v">untitled*</span></span>
+    <span class="badge">cost <span class="v">0.42</span> ms</span>
+  </div>
+</div>
+
+<p style="font-size: var(--font-size-xs); color: var(--fg-2);">
+  ▲ Zonas: <strong>TopBar</strong> (46px, theme/save/play/panel toggles) ·
+  <strong>LeftSidebar</strong> (60px, vertical, gizmo+camera+undo grupos com hr separators) ·
+  <strong>BottomHUD</strong> (pill compacta, fps/zoom/scene/cost) ·
+  <strong>Canvas</strong> (full-bleed, sprites + overlays) ·
+  <strong>Floating panels</strong> (drag livre, anchor opcional)
+</p>
+
+<!-- ====================================== -->
+<h2 id="screens">6. Screen mockups</h2>
+
+<h3>6.1 Main editor — Brush ativo, Float panel visível</h3>
+<div class="screen">
+  <div class="canvas"></div>
+  <div class="sprite-grid">
+    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
+    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
+    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
+    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
+    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
+    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
+    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
+  </div>
+  <div class="top-bar">
+    <div class="grp"><button class="icon-btn">⚙</button><button class="icon-btn">⤓</button><button class="icon-btn">▶</button></div>
+    <div class="center">PH2D · my-game.ph2d</div>
+    <div class="grp"><button class="icon-btn">≣</button><button class="icon-btn">⊞</button></div>
+  </div>
+  <div class="left-sidebar">
+    <div class="group"><button class="icon-btn" data-active>B</button><button class="icon-btn">M</button><button class="icon-btn">E</button><button class="icon-btn">S</button></div>
+    <hr><div class="group"><button class="icon-btn">C</button><button class="icon-btn">F</button><button class="icon-btn">L</button></div>
+  </div>
+  <div class="scr-panel">
+    <div class="grab-pill"></div>
+    <div style="font-weight: 600; font-size: var(--font-size-sm); margin-bottom: 12px;">Brush</div>
+    <div class="slider-row"><span class="label">Size</span><div class="slider-track"><div class="fill accent" style="width: 24%"></div><div class="thumb" style="left: 24%"></div></div><input class="slider-input" value="24"></div>
+    <div class="slider-row" style="margin-top: 8px;"><span class="label">Opacity</span><div class="slider-track"><div class="fill accent" style="width: 100%"></div><div class="thumb" style="left: 99%"></div></div><input class="slider-input" value="1.0"></div>
+    <div class="slider-row" style="margin-top: 8px;"><span class="label">Flow</span><div class="slider-track"><div class="fill accent" style="width: 80%"></div><div class="thumb" style="left: 80%"></div></div><input class="slider-input" value="0.8"></div>
+    <div class="slider-row" style="margin-top: 8px;"><span class="label">Color</span><div class="color-swatch lg" style="background: var(--accent);"></div></div>
+  </div>
+  <div class="bottom-hud">
+    <span class="badge fps">fps <span class="v">60</span></span>
+    <span class="badge">zoom <span class="v">×1.0</span></span>
+    <span class="badge">scene <span class="v">my-game*</span></span>
+    <span class="badge">tool <span class="v">brush</span></span>
+  </div>
+</div>
+
+<h3>6.2 Selection tool ativa, marquee rect drag</h3>
+<div class="screen">
+  <div class="canvas"></div>
+  <div class="top-bar">
+    <div class="grp"><button class="icon-btn">⚙</button><button class="icon-btn">▶</button></div>
+    <div class="center">PH2D · my-game.ph2d</div>
+    <div class="grp"><button class="icon-btn">≣</button></div>
+  </div>
+  <div class="left-sidebar">
+    <div class="group"><button class="icon-btn">B</button><button class="icon-btn">M</button><button class="icon-btn">E</button><button class="icon-btn" data-active>S</button></div>
+  </div>
+  <div class="marquee" style="left: 30%; top: 35%; width: 25%; height: 30%;"></div>
+  <div class="scr-panel">
+    <div class="grab-pill"></div>
+    <div style="font-weight: 600; font-size: var(--font-size-sm); margin-bottom: 12px;">Selection</div>
+    <div class="slider-row"><span class="label">Mode</span><div class="radio-segmented" style="margin-left: auto;"><span class="opt" data-sel>Rect</span><span class="opt">Lasso</span><span class="opt">Wand</span></div></div>
+    <div style="display: flex; gap: 6px; margin-top: 12px;">
+      <button class="btn-ghost" style="flex: 1;">Add</button>
+      <button class="btn-ghost" style="flex: 1;">Remove</button>
+      <button class="btn-ghost" style="flex: 1;">Invert</button>
+    </div>
+    <div style="display: flex; gap: 6px; margin-top: 6px;">
+      <button class="btn-ghost" style="flex: 1;">Copy</button>
+      <button class="btn-ghost" style="flex: 1;">Cut</button>
+    </div>
+    <button class="btn-primary" style="width: 100%; margin-top: 12px;">Convert to Layer</button>
+  </div>
+</div>
+
+<h3>6.3 Color picker modal (HSV wheel + hex)</h3>
+<div class="screen">
+  <div class="canvas"></div>
+  <div class="top-bar"><div class="center">PH2D · my-game.ph2d</div></div>
+  <div class="left-sidebar"><div class="group"><button class="icon-btn" data-active>B</button></div></div>
+  <div class="modal-bg">
+    <div class="modal scale-in">
+      <div style="font-size: var(--font-size-md); font-weight: 600; margin-bottom: 12px;">Pick color</div>
+      <div class="hsv-wheel"><div class="picker"></div></div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="color-swatch lg" style="background: oklch(0.74 0.16 340);"></div>
+        <input class="slider-input" value="#D45EBC" style="width: 90px;">
+        <input class="slider-input" value="100%" style="width: 60px;">
+        <button class="btn-primary" style="margin-left: auto;">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>6.4 Layer panel + asset browser (futuro)</h3>
+<div class="screen">
+  <div class="canvas"></div>
+  <div class="top-bar">
+    <div class="grp"><button class="icon-btn">⚙</button><button class="icon-btn">▶</button></div>
+    <div class="center">PH2D · my-game.ph2d</div>
+    <div class="grp"><button class="icon-btn" data-active>≣</button></div>
+  </div>
+  <div class="left-sidebar"><div class="group"><button class="icon-btn">B</button><button class="icon-btn">M</button><button class="icon-btn" data-active>L</button></div></div>
+
+  <!-- Layer panel right -->
+  <div class="scr-panel" style="width: 220px; right: 16px; top: 70px;">
+    <div class="grab-pill"></div>
+    <div style="font-weight: 600; font-size: var(--font-size-sm); margin-bottom: 12px;">Layers</div>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div style="display: flex; align-items: center; gap: 6px; padding: 6px; background: var(--accent-soft); border-radius: 6px;">👁 <span style="flex:1; font-size: var(--font-size-sm);">Foreground</span> <span style="font-size: var(--font-size-xs); color: var(--fg-1);">100%</span></div>
+      <div style="display: flex; align-items: center; gap: 6px; padding: 6px;">👁 <span style="flex:1; font-size: var(--font-size-sm);">Tiles</span> <span style="font-size: var(--font-size-xs); color: var(--fg-2);">75%</span></div>
+      <div style="display: flex; align-items: center; gap: 6px; padding: 6px; color: var(--fg-2);">⊘ <span style="flex:1; font-size: var(--font-size-sm);">Background</span> <span style="font-size: var(--font-size-xs);">100%</span></div>
+    </div>
+    <button class="btn-primary" style="width: 100%; margin-top: 12px;">+ New Layer</button>
+  </div>
+
+  <!-- Asset browser bottom -->
+  <div class="scr-panel" style="width: 540px; right: auto; left: 80px; top: auto; bottom: 16px; height: 130px;">
+    <div class="grab-pill"></div>
+    <div style="display: flex; align-items: center; margin-bottom: 8px; gap: 12px;">
+      <span style="font-weight: 600; font-size: var(--font-size-sm);">Assets</span>
+      <input class="slider-input" placeholder="search…" style="width: 120px; text-align: left;">
+      <div class="radio-segmented" style="margin-left: auto;"><span class="opt" data-sel>Sprites</span><span class="opt">Tiles</span><span class="opt">Audio</span></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px;">
+      <div style="aspect-ratio: 1; background: oklch(0.74 0.16 340); border-radius: 4px;"></div>
+      <div style="aspect-ratio: 1; background: oklch(0.78 0.14 205); border-radius: 4px;"></div>
+      <div style="aspect-ratio: 1; background: oklch(0.74 0.18 145); border-radius: 4px;"></div>
+      <div style="aspect-ratio: 1; background: oklch(0.78 0.18 75); border-radius: 4px;"></div>
+      <div style="aspect-ratio: 1; background: oklch(0.66 0.22 25); border-radius: 4px;"></div>
+      <div style="aspect-ratio: 1; background: oklch(0.62 0.20 250); border-radius: 4px;"></div>
+      <div style="aspect-ratio: 1; background: var(--bg-2); border: 1px dashed var(--line-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--fg-2); font-size: 18px;">+</div>
+    </div>
+  </div>
+</div>
+
+<h3>6.5 Zen mode (Tab toggle — chrome escondido, só canvas)</h3>
+<div class="screen">
+  <div class="canvas"></div>
+  <div class="sprite-grid">
+    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
+    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
+    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.16 340)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.14 205)"></div>
+    <div class="sprite" style="background: oklch(0.74 0.18 145)"></div>
+    <div class="sprite" style="background: oklch(0.78 0.18 75)"></div>
+    <div class="sprite" style="background: oklch(0.66 0.22 25)"></div>
+    <div class="sprite" style="background: oklch(0.62 0.20 250)"></div>
+  </div>
+  <div style="position: absolute; top: 16px; right: 16px; font-size: var(--font-size-xs); color: var(--fg-2); font-family: var(--font-mono);">Tab volta · ESC volta</div>
+</div>
+
+<!-- ====================================== -->
+<h2 id="flows">7. User flows</h2>
+<ol style="line-height: 1.8;">
+  <li><strong>Create + Brush stroke:</strong> abre projeto → Brush selected by default → ajusta Size slider (drag thumb ou type expression no input) → click+drag no canvas → stroke aparece com size/opacity/flow corrente.</li>
+  <li><strong>Switch tool via LeftSidebar:</strong> click no chip M (Move) → palette atualiza active → Float panel atual fade out → Move panel fade in.</li>
+  <li><strong>Color pick via Color tool:</strong> click chip C (ou key C) → cursor vira eyedropper → click no sprite → color picker modal abre com cor sampleada (HSV wheel + hex) → Apply → BrushTool.color_rgba update.</li>
+  <li><strong>Marquee select + transform:</strong> click S (Selection) → drag rect no canvas → marquee aparece → release → selection criada → switch M → drag selection → Lock Axis = X garante movimento horizontal.</li>
+  <li><strong>Zen mode:</strong> Tab → todas as glass surfaces fade out (TopBar, LeftSidebar, BottomHUD, Float panels) com transition 200ms → só canvas + sprites visíveis → Tab again → chrome volta.</li>
+  <li><strong>Theme switch:</strong> click Settings (TopBar) → dropdown Theme → escolhe Sunstone → todos os tokens re-resolve → smooth transition 250ms.</li>
+  <li><strong>Float panel reposition:</strong> grab pill no topo do panel → drag → panel segue cursor → release → posição persistida per-tool (sdf3d ref: position memory por toolId).</li>
+  <li><strong>Layer flow:</strong> click chip L → Layer panel aparece (right side) → click "+" → new layer → drag layer no panel pra reordenar → click eye icon pra hide/show.</li>
+</ol>
+
+<!-- ====================================== -->
+<h2 id="status">8. Status matrix</h2>
+<table>
+  <thead><tr><th>Component</th><th>Spec aqui</th><th>Vello impl</th><th>Mouse</th><th>A11y</th><th>Tests</th><th>Próximo PR</th></tr></thead>
+  <tbody>
+    <tr><td>Color tokens (4 themes OKLCH)</td><td>✅</td><td>partial (2 themes)</td><td>n/a</td><td>n/a</td><td>✅ AA</td><td>add forge-sdf + sunstone</td></tr>
+    <tr><td>Typography (Inter+JetBrains)</td><td>✅</td><td>system fallback</td><td>n/a</td><td>n/a</td><td>—</td><td>load .ttf via parley</td></tr>
+    <tr><td>Glass surface (blur+saturate)</td><td>✅</td><td>—</td><td>n/a</td><td>n/a</td><td>—</td><td>add Vello blur filter</td></tr>
+    <tr><td>Icon Button (circular)</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>replace square Buttons</td></tr>
+    <tr><td>Button ghost / primary</td><td>✅</td><td>partial</td><td>—</td><td>✅</td><td>✅</td><td>add primary variant</td></tr>
+    <tr><td>Slider + expression input</td><td>✅</td><td>basic</td><td>✅ drag</td><td>✅</td><td>✅</td><td>add input + parser</td></tr>
+    <tr><td>Toggle</td><td>✅</td><td>✅</td><td>✅ click</td><td>✅</td><td>✅</td><td>—</td></tr>
+    <tr><td>RadioGroup segmented</td><td>✅</td><td>✅</td><td>✅ click</td><td>✅</td><td>✅</td><td>—</td></tr>
+    <tr><td>ColorSwatch</td><td>✅</td><td>basic</td><td>partial</td><td>✅</td><td>✅</td><td>HSV picker modal</td></tr>
+    <tr><td>ColorRamp editor</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future</td></tr>
+    <tr><td>Path2D editor</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future (Path tool)</td></tr>
+    <tr><td>Toast notifications</td><td>✅</td><td>✅</td><td>n/a</td><td>✅ Live</td><td>—</td><td>—</td></tr>
+    <tr><td>FloatPanel (drag + grab pill)</td><td>✅</td><td>basic</td><td>partial</td><td>partial</td><td>—</td><td>add drag, glass</td></tr>
+    <tr><td>TopBar (46px)</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>replace 4-zone w/ TopBar</td></tr>
+    <tr><td>LeftSidebar (60px vertical)</td><td>✅</td><td>partial (top-right)</td><td>partial</td><td>—</td><td>—</td><td>move palette to LeftSidebar</td></tr>
+    <tr><td>BottomHUD (pill)</td><td>✅</td><td>—</td><td>n/a</td><td>—</td><td>—</td><td>add fps/zoom/scene/cost</td></tr>
+    <tr><td>HSV color picker modal</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>iro.js-style wheel</td></tr>
+    <tr><td>Layer panel</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future</td></tr>
+    <tr><td>Asset browser</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>future</td></tr>
+    <tr><td>Marquee selection</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td><td>Selection tool</td></tr>
+    <tr><td>Brush actually paints</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>major feature</td></tr>
+  </tbody>
+</table>
+
+<p style="color: var(--fg-2); margin-top: 24px; font-size: var(--font-size-sm);">
+  <strong>Como usar:</strong>
+  <br>1. Iterar visualmente (open this file, edit CSS/HTML, F5)
+  <br>2. Cada PR de implementação Vello consulta esta spec
+  <br>3. Status matrix ↑ é o backlog priorizado: pegar uma linha não-implementada e construir
+  <br>4. Themes do switcher (canto superior direito) testam o visual em cada modo — UI deve funcionar nos 4
+</p>
+
+</main>
+
+<script>
+function setTheme(name, btn) {
+  document.documentElement.setAttribute('data-theme', name);
+  document.querySelectorAll('.theme-switcher button').forEach(b => b.removeAttribute('data-active'));
+  btn.setAttribute('data-active', '');
+}
+</script>
+
+</body>
+</html>

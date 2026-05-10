@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="comfy" data-radius="sharp" data-accent="magenta">
+<head>
+<meta charset="utf-8" />
+<title>PH2D · Welcome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css" />
+<link rel="stylesheet" href="../styles/components.css" />
+<style>
+  body { background: oklch(0.05 0.004 285); overflow: hidden; height: 100vh; }
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .frame {
+    width: 1366px; height: 1024px; transform-origin: center center;
+    background: var(--bg-0); position: relative; overflow: hidden; border-radius: 14px;
+    box-shadow: 0 40px 100px oklch(0 0 0 / 0.7);
+  }
+
+  /* faint background flourish */
+  .bg-art {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(ellipse 60% 50% at 70% 100%, oklch(0.20 0.05 340 / 0.25), transparent 60%),
+      radial-gradient(ellipse 70% 60% at 0% 0%, oklch(0.15 0.03 250 / 0.15), transparent 60%);
+  }
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(oklch(1 0 0 / 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.018) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at 50% 60%, black 30%, transparent 80%);
+  }
+
+  /* TOP BAR */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 56px;
+    display: flex; align-items: center; padding: 0 28px; gap: 24px;
+    border-bottom: 1px solid var(--border);
+    background: oklch(0.10 0.005 285 / 0.6); backdrop-filter: blur(18px);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; font: var(--fw-bold) 16px/1 var(--font-display); letter-spacing: -0.01em; color: var(--text-1); }
+  .brand .v { font: var(--fw-medium) 10px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.06em; }
+  .brand .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 14px var(--accent); margin-right: 4px; }
+
+  .top-actions { margin-left: auto; display: flex; gap: 8px; }
+  .icbtn { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; color: var(--text-2); cursor: pointer; font-family: var(--font-mono); font-size: 14px; }
+  .pill-btn { height: 36px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; color: var(--text-2); font: var(--fw-medium) 12px/1 var(--font-sans); cursor: pointer; }
+  .pill-btn .b { color: var(--text-1); font-weight: var(--fw-semibold); }
+
+  /* HERO */
+  .hero {
+    position: absolute; left: 56px; right: 56px; top: 110px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
+  }
+  .hero-l .eyebrow {
+    font: var(--fw-medium) 11px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent);
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .hero-l .eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--accent); }
+  .hero-l h1 {
+    font: var(--fw-bold) 76px/0.95 var(--font-display); letter-spacing: -0.035em;
+    color: var(--text-1); margin: 16px 0 0;
+  }
+  .hero-l h1 em {
+    font-style: normal; color: var(--text-3); font-weight: var(--fw-regular); display: block;
+  }
+  .hero-l p {
+    margin: 28px 0 0; max-width: 44ch;
+    font: var(--fw-regular) 15px/1.5 var(--font-sans); color: var(--text-2);
+  }
+  .hero-l .cta { margin-top: 36px; display: inline-flex; gap: 10px; }
+  .btn-primary {
+    height: 44px; padding: 0 22px; display: inline-flex; align-items: center; gap: 10px;
+    background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 8px;
+    font: var(--fw-semibold) 13px/1 var(--font-sans); letter-spacing: 0.02em; cursor: pointer;
+    box-shadow: 0 0 0 1px oklch(0.74 0.16 var(--accent-h) / 0.4), 0 8px 30px var(--accent-soft);
+  }
+  .btn-primary .kbd {
+    font-family: var(--font-mono); font-size: 10.5px; padding: 3px 6px;
+    background: oklch(0.20 0.04 var(--accent-h) / 0.4);
+    border-radius: 3px; letter-spacing: 0.04em; margin-left: 4px;
+  }
+  .btn-ghost {
+    height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 10px;
+    background: var(--bg-elev); color: var(--text-1); border: 1px solid var(--border); border-radius: 8px;
+    font: var(--fw-medium) 13px/1 var(--font-sans); cursor: pointer;
+  }
+
+  .hero-stats { margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 1px solid var(--border); padding-top: 28px; max-width: 540px; }
+  .hs .v { font: var(--fw-semibold) 30px/1 var(--font-display); letter-spacing: -0.02em; color: var(--text-1); }
+  .hs .l { font: var(--fw-medium) 10px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); margin-top: 8px; }
+
+  /* PROJECT PICKER */
+  .picker {
+    background: var(--bg-1); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; display: flex; flex-direction: column; max-height: 560px;
+  }
+  .pk-head {
+    display: flex; align-items: center; gap: 14px; padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pk-head .title { font: var(--fw-semibold) 11px/1 var(--font-sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-2); }
+  .pk-head .count { font: var(--fw-medium) 11px/1 var(--font-mono); color: var(--text-3); margin-left: 8px; letter-spacing: 0.04em; }
+  .pk-search { margin-left: auto; height: 30px; min-width: 200px; padding: 0 12px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 6px; color: var(--text-2); font: var(--fw-medium) 11px/1 var(--font-mono); display: inline-flex; align-items: center; gap: 8px; letter-spacing: 0.04em; }
+  .pk-search .key { margin-left: auto; font-size: 10px; padding: 2px 5px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 3px; color: var(--text-3); }
+
+  .pk-list { overflow-y: auto; }
+  .prj { display: grid; grid-template-columns: 56px 1fr 90px 70px 90px; gap: 18px; align-items: center; padding: 14px 22px; border-bottom: 1px solid oklch(1 0 0 / 0.025); cursor: pointer; }
+  .prj:hover { background: var(--bg-2); }
+  .prj.active { background: var(--accent-soft); border-left: 2px solid var(--accent); padding-left: 20px; }
+  .prj .thumb { width: 56px; height: 42px; border-radius: 4px; background: var(--bg-3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font: var(--fw-bold) 10px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.06em; overflow: hidden; position: relative; }
+  .prj .thumb.alt-1 { background: linear-gradient(135deg, oklch(0.30 0.10 340 / 0.4), oklch(0.20 0.05 250 / 0.4)); color: oklch(0.94 0.04 340); }
+  .prj .thumb.alt-2 { background: linear-gradient(135deg, oklch(0.32 0.12 80 / 0.4), oklch(0.20 0.06 60 / 0.4)); color: oklch(0.94 0.04 80); }
+  .prj .thumb.alt-3 { background: linear-gradient(135deg, oklch(0.30 0.10 155 / 0.4), oklch(0.20 0.05 200 / 0.4)); color: oklch(0.94 0.04 155); }
+  .prj .meta .nm { font: var(--fw-semibold) 14px/1.2 var(--font-display); color: var(--text-1); letter-spacing: -0.005em; }
+  .prj .meta .pth { margin-top: 4px; font: var(--fw-regular) 10.5px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.02em; }
+  .prj .col { font: var(--fw-medium) 10.5px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; }
+  .prj .col.b { color: var(--text-2); }
+  .prj .badge { font: var(--fw-semibold) 9.5px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); padding: 4px 7px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 3px; text-align: center; justify-self: end; }
+  .prj .badge.dirty { background: oklch(0.78 0.14 80 / 0.12); border-color: oklch(0.78 0.14 80 / 0.4); color: oklch(0.94 0.10 80); }
+  .prj .badge.synced { background: oklch(0.74 0.14 155 / 0.12); border-color: oklch(0.74 0.14 155 / 0.4); color: oklch(0.94 0.06 155); }
+
+  .pk-foot {
+    margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 14px 22px;
+    border-top: 1px solid var(--border); background: var(--bg-2);
+  }
+  .pk-foot .ghost { background: transparent; border: 0; color: var(--text-2); font: var(--fw-medium) 12px/1 var(--font-sans); cursor: pointer; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px; }
+  .pk-foot .right { margin-left: auto; font: var(--fw-medium) 10px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.06em; }
+
+  /* RECENT/COMMUNITY ROW */
+  .strip {
+    position: absolute; left: 56px; right: 56px; bottom: 56px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;
+  }
+  .feat {
+    background: var(--bg-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .feat .tag { font: var(--fw-semibold) 9.5px/1 var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-3); }
+  .feat .ti { font: var(--fw-semibold) 16px/1.2 var(--font-display); color: var(--text-1); letter-spacing: -0.01em; }
+  .feat .tx { font: var(--fw-regular) 12px/1.45 var(--font-sans); color: var(--text-2); }
+  .feat .cta { margin-top: auto; display: inline-flex; gap: 6px; align-items: center; font: var(--fw-medium) 11px/1 var(--font-mono); color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .footer {
+    position: absolute; bottom: 18px; left: 28px; right: 28px;
+    display: flex; align-items: center; gap: 18px;
+    font: var(--fw-medium) 10px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.06em;
+  }
+  .footer .right { margin-left: auto; display: flex; gap: 18px; }
+</style>
+</head>
+<body data-screen-label="01 Welcome">
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <div class="bg-art"></div>
+    <div class="bg-grid"></div>
+
+    <!-- TOP -->
+    <div class="topbar">
+      <div class="brand"><span class="dot"></span>PH2D <span class="v">v0.4 alpha</span></div>
+      <div class="top-actions">
+        <button class="pill-btn">docs</button>
+        <button class="pill-btn">discord</button>
+        <button class="icbtn" title="Settings">⚙</button>
+        <button class="icbtn" title="Account">◐</button>
+      </div>
+    </div>
+
+    <!-- HERO -->
+    <div class="hero">
+
+      <div class="hero-l">
+        <span class="eyebrow">power house · 2D engine</span>
+        <h1>Build worlds.<em>Ship them.</em></h1>
+        <p>A canvas-first 2D editor for solo devs and small teams. Touch-native on iPad, keyboard-fluent on Mac, with a Rust core that compiles your scenes straight to a runnable binary.</p>
+        <div class="cta">
+          <button class="btn-primary">＋ New project<span class="kbd">⌘ N</span></button>
+          <button class="btn-ghost">Open scene…</button>
+          <button class="btn-ghost">Clone from URL</button>
+        </div>
+        <div class="hero-stats">
+          <div class="hs"><div class="v">3</div><div class="l">recent projects</div></div>
+          <div class="hs"><div class="v">142</div><div class="l">community starters</div></div>
+          <div class="hs"><div class="v">28<small style="color: var(--text-3); font-size: 14px;"> ms</small></div><div class="l">cold-launch p50</div></div>
+        </div>
+      </div>
+
+      <!-- PICKER -->
+      <div class="picker">
+        <div class="pk-head">
+          <span class="title">Recent</span>
+          <span class="count">3 projects · 1.4 GB</span>
+          <div class="pk-search">
+            <span style="color: var(--text-3);">⌕</span>
+            <span>Filter projects</span>
+            <span class="key">⌘ K</span>
+          </div>
+        </div>
+        <div class="pk-list">
+          <div class="prj active">
+            <div class="thumb alt-1">PT</div>
+            <div class="meta">
+              <div class="nm">playground_test</div>
+              <div class="pth">~/PH2D/playground_test · 87 entities · 12 scenes</div>
+            </div>
+            <div class="col b">opened 2 min ago</div>
+            <div class="col">v 0.4.2</div>
+            <div class="badge dirty">2 unsaved</div>
+          </div>
+          <div class="prj">
+            <div class="thumb alt-2">CV</div>
+            <div class="meta">
+              <div class="nm">cavern_descent</div>
+              <div class="pth">~/PH2D/cavern_descent · 312 entities · 28 scenes</div>
+            </div>
+            <div class="col">yesterday · 18:42</div>
+            <div class="col">v 0.4.2</div>
+            <div class="badge synced">synced</div>
+          </div>
+          <div class="prj">
+            <div class="thumb alt-3">SD</div>
+            <div class="meta">
+              <div class="nm">stardrop_farm</div>
+              <div class="pth">~/PH2D/stardrop_farm · 1,204 entities · 64 scenes</div>
+            </div>
+            <div class="col">May 2 · 10:18</div>
+            <div class="col">v 0.4.0</div>
+            <div class="badge">archived</div>
+          </div>
+          <div class="prj" style="opacity: 0.55;">
+            <div class="thumb">＋</div>
+            <div class="meta">
+              <div class="nm" style="color: var(--text-2);">Browse for project…</div>
+              <div class="pth">Open a .ph2d project from disk or iCloud</div>
+            </div>
+            <div class="col"></div>
+            <div class="col"></div>
+            <div class="badge" style="background: transparent; border: 1px dashed var(--border);">⌘ O</div>
+          </div>
+        </div>
+        <div class="pk-foot">
+          <button class="ghost">＋ from template</button>
+          <button class="ghost">↓ import</button>
+          <button class="ghost">⎘ duplicate</button>
+          <span class="right">last sync · 2 min ago</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- STRIP -->
+    <div class="strip">
+      <div class="feat">
+        <span class="tag">tutorial · 12 min</span>
+        <span class="ti">First scene · platformer in 12 minutes</span>
+        <span class="tx">Walk through camera, tilemap, player controller, and one physics-aware enemy. Everything you need to ship a vertical slice.</span>
+        <span class="cta">start tutorial →</span>
+      </div>
+      <div class="feat">
+        <span class="tag">templates · 6 starters</span>
+        <span class="ti">Top-down RPG · Side-scroller · Tower defense · Puzzle</span>
+        <span class="tx">Production-grade starting points with cameras, input maps, and example art baked in. MIT-licensed assets ready to remix.</span>
+        <span class="cta">browse all →</span>
+      </div>
+      <div class="feat">
+        <span class="tag">changelog · v0.4.2</span>
+        <span class="ti">Hot-reload now preserves Luau coroutine state</span>
+        <span class="tx">Plus: collider gizmos in the scene view, Vector3Editor expressions, faster atlas packer, and four crash fixes on iPad 11.</span>
+        <span class="cta">read notes →</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>PH2D 0.4.2 (build 18,402)</span>
+      <span>·</span>
+      <span>signed-in as <span style="color: var(--text-1);">jules</span></span>
+      <div class="right">
+        <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:oklch(0.74 0.14 155);"></span> services online</span>
+        <span>· cloud sync ✓</span>
+        <span>· telemetry off</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function fit() {
+    const f = document.getElementById('frame');
+    const sx = window.innerWidth / 1366;
+    const sy = window.innerHeight / 1024;
+    const s = Math.min(sx, sy, 1);
+    f.style.transform = `scale(${s})`;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+</body>
+</html>

@@ -121,13 +121,13 @@ pub fn paint_tool_palette_icons(
     for &(rect, label, is_active) in icons {
         let (bg, fg) = if is_active {
             (
-                resolve(ColorToken::AccentPrimary, theme),
-                resolve(ColorToken::TextPrimary, theme.toggle()),
+                resolve(ColorToken::Accent, theme),
+                resolve(ColorToken::AccentFg, theme),
             )
         } else {
             (
-                resolve(ColorToken::Surface, theme),
-                resolve(ColorToken::TextPrimary, theme),
+                resolve(ColorToken::Bg1, theme),
+                resolve(ColorToken::Text1, theme),
             )
         };
         scene.fill_rect(rect_to_vello(rect), bg);
@@ -186,10 +186,10 @@ impl Paint for Layout {
     fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
         // Center is canvas — the sprite layer underneath shows through;
         // we deliberately do NOT paint Center.
-        let surface = resolve(ColorToken::Surface, ctx.theme);
+        let surface = resolve(ColorToken::Bg1, ctx.theme);
         let border = resolve(ColorToken::Border, ctx.theme);
-        let border_emphasis = resolve(ColorToken::BorderEmphasis, ctx.theme);
-        let label_color = resolve(ColorToken::TextSecondary, ctx.theme);
+        let border_emphasis = resolve(ColorToken::BorderEmph, ctx.theme);
+        let label_color = resolve(ColorToken::Text2, ctx.theme);
 
         for zone in [Zone::TopLeft, Zone::TopRight, Zone::Sidebar] {
             let r = self.rect(zone);
@@ -269,7 +269,7 @@ impl Paint for Layout {
         if let Some(btn) = self.mirror_button_rect() {
             scene.fill_rect(
                 rect_to_vello(btn),
-                resolve(ColorToken::SurfaceElevated, ctx.theme),
+                resolve(ColorToken::BgElev, ctx.theme),
             );
             let glyph = match self.sidebar_side {
                 crate::zones::SidebarSide::Right => "<",
@@ -306,7 +306,7 @@ impl Paint for FloatingPanel {
         // zones below.
         scene.fill_rect(
             rect_to_vello(panel_rect),
-            resolve(ColorToken::SurfaceElevated, ctx.theme),
+            resolve(ColorToken::BgElev, ctx.theme),
         );
         if self.collapsed {
             // Just the chip — no tabs / actions.
@@ -328,9 +328,9 @@ impl Paint for FloatingPanel {
             // Tab label — invert color when active so it stays readable
             // on AccentPrimary.
             let label_color = if tab.active {
-                resolve(ColorToken::TextPrimary, ctx.theme.toggle())
+                resolve(ColorToken::AccentFg, ctx.theme)
             } else {
-                resolve(ColorToken::TextPrimary, ctx.theme)
+                resolve(ColorToken::Text1, ctx.theme)
             };
             paint_text_centered(ctx.text, scene, &tab.label, r, 13.0, label_color);
         }
@@ -340,7 +340,7 @@ impl Paint for FloatingPanel {
         // (selection_demo) fall back to the labeled action grid.
         let row_y = panel_rect.y + tab_h;
         let row_h = panel_rect.h - tab_h;
-        let label_color = resolve(ColorToken::TextSecondary, ctx.theme);
+        let label_color = resolve(ColorToken::Text2, ctx.theme);
         if !self.controls.is_empty() {
             let count = self.controls.len() as f32;
             let cell_w = panel_rect.w / count;
@@ -379,7 +379,7 @@ impl Paint for FloatingPanel {
                     PanelControl::Action(a) => {
                         scene.fill_rect(
                             rect_to_vello(widget_rect),
-                            resolve(ColorToken::Surface, ctx.theme),
+                            resolve(ColorToken::Bg1, ctx.theme),
                         );
                         paint_text_centered(
                             ctx.text,
@@ -404,7 +404,7 @@ impl Paint for FloatingPanel {
                 w: action_w - 4.0,
                 h: row_h - 8.0,
             };
-            scene.fill_rect(rect_to_vello(r), resolve(ColorToken::Surface, ctx.theme));
+            scene.fill_rect(rect_to_vello(r), resolve(ColorToken::Bg1, ctx.theme));
             paint_text_centered(ctx.text, scene, action_label(action), r, 11.0, label_color);
         }
     }
@@ -416,9 +416,9 @@ fn action_label(action: &PanelAction) -> &str {
 
 fn tab_color(tab: &PanelTab, theme: Theme) -> Color {
     if tab.active {
-        resolve(ColorToken::AccentPrimary, theme)
+        resolve(ColorToken::Accent, theme)
     } else {
-        resolve(ColorToken::Surface, theme)
+        resolve(ColorToken::Bg1, theme)
     }
 }
 
@@ -439,25 +439,25 @@ pub fn paint_button(
     use crate::widget::ButtonState;
     let token = if button.accent {
         match button.state {
-            ButtonState::Disabled => ColorToken::AccentTertiary,
-            ButtonState::Pressed => ColorToken::AccentSecondary,
-            _ => ColorToken::AccentPrimary,
+            ButtonState::Disabled => ColorToken::AccentSoft,
+            ButtonState::Pressed => ColorToken::AccentPress,
+            _ => ColorToken::Accent,
         }
     } else {
         match button.state {
             ButtonState::Disabled => ColorToken::Border,
-            ButtonState::Pressed => ColorToken::AccentTertiary,
-            ButtonState::Hovered | ButtonState::Focused => ColorToken::SurfaceElevated,
-            ButtonState::Normal => ColorToken::Surface,
+            ButtonState::Pressed => ColorToken::AccentSoft,
+            ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+            ButtonState::Normal => ColorToken::Bg1,
         }
     };
     scene.fill_rect(rect_to_vello(rect), resolve(token, theme));
     let label_color = if matches!(button.state, ButtonState::Disabled) {
         resolve(ColorToken::TextDisabled, theme)
     } else if button.accent {
-        resolve(ColorToken::TextPrimary, theme.toggle())
+        resolve(ColorToken::AccentFg, theme)
     } else {
-        resolve(ColorToken::TextPrimary, theme)
+        resolve(ColorToken::Text1, theme)
     };
     paint_text_centered(text_system, scene, &button.label, rect, 13.0, label_color);
 }
@@ -474,9 +474,9 @@ impl Paint for ToastQueue {
         let gap = 6.0_f32;
         let top_margin = 16.0_f32;
         let center_x = ctx.viewport.x + (ctx.viewport.w - toast_w) / 2.0;
-        // Severity tints sit on a dark surface in either theme — Dark
-        // TextPrimary stays AA on every tint.
-        let label_color = resolve(ColorToken::TextPrimary, Theme::Dark);
+        // Severity tints carry their own color identity — `AccentFg`
+        // is tuned per-theme to remain readable on any tinted surface.
+        let label_color = resolve(ColorToken::AccentFg, ctx.theme);
         for (i, toast) in self.iter().enumerate() {
             let r = Rect {
                 x: center_x,
@@ -487,8 +487,8 @@ impl Paint for ToastQueue {
             let token = match toast.severity {
                 ToastSeverity::Info => ColorToken::Info,
                 ToastSeverity::Success => ColorToken::Success,
-                ToastSeverity::Warning => ColorToken::Warning,
-                ToastSeverity::ErrorState => ColorToken::ErrorState,
+                ToastSeverity::Warning => ColorToken::Warn,
+                ToastSeverity::ErrorState => ColorToken::Danger,
             };
             scene.fill_rect(rect_to_vello(r), resolve(token, ctx.theme));
             // Inset 12 px so the label doesn't kiss the edge.
@@ -518,10 +518,10 @@ mod tests {
     /// our 8-bit palette (no banding from the sRGB linearization).
     #[test]
     fn token_to_vello_preserves_visible_difference() {
-        let dark_bg = ColorToken::Background.resolve(Theme::Dark);
-        let dark_surface = ColorToken::Surface.resolve(Theme::Dark);
+        let bg0 = ColorToken::Bg0.resolve(Theme::ForgeSdf);
+        let bg1 = ColorToken::Bg1.resolve(Theme::ForgeSdf);
         // Tokens are different ⇒ vello colors must differ.
-        assert_ne!(token_to_vello(dark_bg), token_to_vello(dark_surface));
+        assert_ne!(token_to_vello(bg0), token_to_vello(bg1));
     }
 
     /// Painting a 4-zone Layout doesn't panic and emits at least the
@@ -532,7 +532,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         let mut ctx = PaintCtx {
-            theme: Theme::Dark,
+            theme: Theme::ForgeSdf,
             viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
             text: &mut text,
         };
@@ -549,7 +549,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         let mut ctx = PaintCtx {
-            theme: Theme::Dark,
+            theme: Theme::ForgeSdf,
             viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
             text: &mut text,
         };
@@ -566,7 +566,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         let mut ctx = PaintCtx {
-            theme: Theme::Light,
+            theme: Theme::Sunstone,
             viewport: Rect::new(0.0, 0.0, 800.0, 600.0),
             text: &mut text,
         };

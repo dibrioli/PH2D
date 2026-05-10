@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head><meta charset="utf-8"/><title>PH2D · Place</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css"/><link rel="stylesheet" href="../styles/components.css"/>
+<style>
+body{background:oklch(0.05 0.004 285);overflow:hidden;height:100vh}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.frame{width:1366px;height:1024px;transform-origin:center;background:var(--bg-0);position:relative;overflow:hidden;border-radius:14px;box-shadow:0 40px 100px oklch(0 0 0 /.7)}
+.scene{position:absolute;inset:60px 14px 14px 76px;background:oklch(0.10 0.005 285);background-image:linear-gradient(oklch(1 0 0 /.04) 1px,transparent 1px),linear-gradient(90deg,oklch(1 0 0 /.04) 1px,transparent 1px);background-size:32px 32px;border-radius:6px;box-shadow:inset 0 0 0 1px var(--border)}
+.snap{position:absolute;inset:0;background-image:radial-gradient(circle,oklch(0.74 0.16 340 /.4) 1.5px,transparent 1.5px);background-size:32px 32px;background-position:0 0;mask-image:radial-gradient(ellipse at 56% 48%,black 0,black 14%,transparent 30%)}
+.top{position:absolute;top:14px;left:14px;right:14px;height:36px;display:flex;gap:6px}
+.tb{height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;font:var(--fw-medium) 11px/1 var(--font-sans);color:var(--text-2);letter-spacing:.04em}
+.tb.active{background:var(--accent-soft);border-color:oklch(0.74 0.16 var(--accent-h) /.5);color:var(--accent)}
+.tb .b{color:var(--text-1);font-weight:var(--fw-semibold)}
+.tb .icb{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px}
+.rail{position:absolute;left:14px;top:60px;bottom:14px;width:56px;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.rt{width:40px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:5px;color:var(--text-2);cursor:pointer;font-family:var(--font-mono);font-size:14px}
+.rt.on{background:var(--accent);color:var(--accent-fg);box-shadow:0 0 0 2px oklch(0.74 0.16 var(--accent-h) /.4)}
+.rt small{font-size:8px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;opacity:.7;font-weight:600}
+.rt.on small{opacity:1}
+/* SNAP CURSOR */
+.cursor{position:absolute;left:56%;top:48%;transform:translate(-50%,-50%);pointer-events:none}
+.cursor .ghost{width:64px;height:96px;border:2px dashed var(--accent);background:var(--accent-soft);display:flex;align-items:end;justify-content:start;padding:4px;font:var(--fw-semibold) 9px/1 var(--font-mono);color:var(--accent);letter-spacing:.06em;text-transform:uppercase;border-radius:2px}
+.cursor .axis{position:absolute;top:-100px;left:50%;width:1px;height:200px;background:linear-gradient(oklch(0.74 0.16 340 /0),oklch(0.74 0.16 340 /.6) 50%,oklch(0.74 0.16 340 /0));transform:translateX(-50%)}
+.cursor .axis.h{transform:translateY(-50%) rotate(90deg);top:50%;left:50%;width:1px;height:300px}
+.cursor .pin{position:absolute;left:50%;top:-22px;transform:translateX(-50%);background:var(--accent);color:var(--accent-fg);padding:4px 10px;border-radius:4px;font:var(--fw-semibold) 10px/1 var(--font-mono);letter-spacing:.04em;white-space:nowrap}
+.cursor .meta{position:absolute;left:74px;top:0;display:flex;flex-direction:column;gap:3px;font:var(--fw-medium) 10px/1.4 var(--font-mono);color:var(--text-2);background:oklch(0.10 0.005 285 /.85);border:1px solid var(--border);padding:8px 10px;border-radius:4px;backdrop-filter:blur(10px);min-width:160px}
+.cursor .meta .l{display:grid;grid-template-columns:54px 1fr;gap:8px}
+.cursor .meta .l .k{color:var(--text-3);letter-spacing:.04em}
+.cursor .meta .l .v{color:var(--text-1)}
+.cursor .meta .l .v.acc{color:var(--accent)}
+/* placed entities */
+.e{position:absolute;border:1px solid oklch(1 0 0 /.18);border-radius:2px;display:flex;align-items:end;padding:3px;font:var(--fw-semibold) 9px/1 var(--font-mono);color:var(--text-3);letter-spacing:.04em;text-transform:uppercase}
+.e.placed{border-color:oklch(0.74 0.14 155 /.6);background:oklch(0.74 0.14 155 /.06);color:oklch(0.94 0.04 155)}
+/* prefab tray (right) */
+.tray{position:absolute;right:14px;top:60px;bottom:14px;width:240px;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;display:grid;grid-template-rows:38px 32px 1fr 64px;overflow:hidden}
+.th{display:flex;align-items:center;padding:0 14px;border-bottom:1px solid var(--border);font:var(--fw-semibold) 10px/1 var(--font-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--text-2)}
+.th .ct{margin-left:auto;font:var(--fw-medium) 10px/1 var(--font-mono);color:var(--text-3)}
+.tcat{display:flex;align-items:center;padding:0 14px;border-bottom:1px solid var(--border);background:var(--bg-2);gap:10px;font:var(--fw-medium) 10px/1 var(--font-mono);color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;overflow-x:auto}
+.tcat span.on{color:var(--accent)}
+.grid{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow-y:auto;align-content:start}
+.gc{aspect-ratio:1;background:var(--bg-2);border:1px solid var(--border);border-radius:4px;padding:6px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;font:var(--fw-medium) 9.5px/1 var(--font-mono);color:var(--text-2)}
+.gc.sel{border-color:var(--accent);background:var(--accent-soft);color:var(--text-1);box-shadow:inset 0 0 0 1px var(--accent)}
+.gc .ic{flex:1;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--text-3)}
+.gc.sel .ic{color:var(--accent)}
+.gc small{color:var(--text-3);font-size:8.5px;letter-spacing:.04em;text-transform:uppercase}
+.tparams{padding:10px 14px;border-top:1px solid var(--border);font:var(--fw-medium) 10px/1.5 var(--font-mono);color:var(--text-2)}
+.tparams .r{display:flex;justify-content:space-between;padding:2px 0}
+.tparams .r .v{color:var(--text-1)}
+/* hud */
+.hud{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);background:var(--bg-elev);border:1px solid var(--border);border-radius:999px;padding:8px 18px;display:inline-flex;gap:14px;font:var(--fw-medium) 10px/1 var(--font-mono);color:var(--text-2);letter-spacing:.06em;text-transform:uppercase}
+.hud .v{color:var(--text-1)}
+.hud .acc{color:var(--accent)}
+/* gestures hint */
+.hint{position:absolute;right:268px;bottom:30px;background:oklch(0.10 0.005 285 /.85);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font:var(--fw-medium) 11px/1.5 var(--font-sans);color:var(--text-2);backdrop-filter:blur(10px);max-width:240px}
+.hint .h{color:var(--accent);font:var(--fw-semibold) 9.5px/1 var(--font-mono);letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px;display:block}
+.hint kbd{font-family:var(--font-mono);font-size:10px;background:var(--bg-3);border:1px solid var(--border);padding:2px 5px;border-radius:3px;color:var(--text-1)}
+</style></head>
+<body data-screen-label="03 Place Tool">
+<div class="stage"><div class="frame" id="frame">
+  <div class="top">
+    <span class="tb">forge-sdf</span><span class="tb"><span class="b">playground_test</span> · scene_01</span>
+    <span class="tb active" style="margin-left:8px"><span class="icb">⊕</span><span class="b">Place</span> · slime_basic</span>
+    <span class="tb" style="margin-left:auto"><span class="icb">▶</span></span>
+    <span class="tb">snap <span class="b">grid</span> · 32 px</span>
+    <span class="tb">⌘ K</span>
+  </div>
+
+  <div class="rail">
+    <div class="rt on">⊕<small>place</small></div>
+    <div class="rt">↔<small>move</small></div>
+    <div class="rt">↻<small>rotate</small></div>
+    <div class="rt">⤢<small>scale</small></div>
+    <div class="rt">▱<small>pick</small></div>
+    <div class="rt">⌫<small>erase</small></div>
+    <div class="rt">▤<small>asset</small></div>
+  </div>
+
+  <div class="scene">
+    <div class="snap"></div>
+    <!-- ground tiles already placed -->
+    <div class="e placed" style="left:6%;top:78%;right:6%;height:14px">tilemap.ground</div>
+    <div class="e placed" style="left:18%;top:54%;width:80px;height:96px">slime_basic_1</div>
+    <div class="e placed" style="left:34%;top:54%;width:80px;height:96px">slime_basic_2</div>
+
+    <!-- ghost cursor with snap pin -->
+    <div class="cursor">
+      <div class="axis"></div><div class="axis h"></div>
+      <div class="pin">snap · 14, 8 · grid</div>
+      <div class="ghost">slime_basic</div>
+      <div class="meta">
+        <div class="l"><span class="k">prefab</span><span class="v acc">slime_basic</span></div>
+        <div class="l"><span class="k">layer</span><span class="v">enemies</span></div>
+        <div class="l"><span class="k">parent</span><span class="v">level_01</span></div>
+        <div class="l"><span class="k">x</span><span class="v">448</span></div>
+        <div class="l"><span class="k">y</span><span class="v">256</span></div>
+        <div class="l"><span class="k">snap</span><span class="v acc">grid 32</span></div>
+        <div class="l"><span class="k">tap</span><span class="v">place</span></div>
+        <div class="l"><span class="k">hold</span><span class="v">align</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tray">
+    <div class="th">Place library<span class="ct">prefabs · 18</span></div>
+    <div class="tcat"><span class="on">all</span><span>·</span><span>characters</span><span>·</span><span>enemies</span><span>·</span><span>props</span><span>·</span><span>fx</span></div>
+    <div class="grid">
+      <div class="gc"><div class="ic">●</div><span>player_idle</span><small>character · 1</small></div>
+      <div class="gc sel"><div class="ic">◐</div><span>slime_basic</span><small>enemy · ai</small></div>
+      <div class="gc"><div class="ic">▴</div><span>bat_swarm</span><small>enemy · 4</small></div>
+      <div class="gc"><div class="ic">◇</div><span>crystal</span><small>pickup</small></div>
+      <div class="gc"><div class="ic">▤</div><span>chest</span><small>prop · int</small></div>
+      <div class="gc"><div class="ic">⏻</div><span>torch</span><small>prop · light</small></div>
+      <div class="gc"><div class="ic">●</div><span>spike_trap</span><small>hazard</small></div>
+      <div class="gc"><div class="ic">⤴</div><span>spawn_point</span><small>marker</small></div>
+      <div class="gc"><div class="ic">▦</div><span>tilemap_grass</span><small>tile</small></div>
+      <div class="gc"><div class="ic">▦</div><span>tilemap_stone</span><small>tile</small></div>
+    </div>
+    <div class="tparams">
+      <div class="r"><span>variant</span><span class="v">basic</span></div>
+      <div class="r"><span>scale</span><span class="v">1.0 ×</span></div>
+      <div class="r"><span>tint</span><span class="v">— inherit</span></div>
+      <div class="r"><span>flip</span><span class="v">none</span></div>
+    </div>
+  </div>
+
+  <div class="hint">
+    <span class="h">place gesture</span>
+    Tap canvas to drop · <kbd>hold</kbd> snaps to grid / pixel / parent · <kbd>⌥</kbd> drag to scatter · <kbd>⇧</kbd> to align with siblings
+  </div>
+
+  <div class="hud">
+    <span>fps <span class="v">59.8</span></span><span>·</span>
+    <span>zoom <span class="v">100%</span></span><span>·</span>
+    <span>scene <span class="v">scene_01</span></span><span>·</span>
+    <span>cursor <span class="v acc">448, 256</span></span><span>·</span>
+    <span>placed <span class="v">3</span> this session</span>
+  </div>
+</div></div>
+<script>
+function fit(){const f=document.getElementById('frame');const s=Math.min(innerWidth/1366,innerHeight/1024,1);f.style.transform=`scale(${s})`}
+fit();onresize=fit;
+</script></body></html>

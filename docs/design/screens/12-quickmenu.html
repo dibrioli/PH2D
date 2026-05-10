@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en" data-theme="forge-sdf" data-density="compact" data-radius="sharp" data-accent="magenta">
+<head>
+<meta charset="utf-8" />
+<title>PH2D · QuickMenu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/tokens.css" />
+<link rel="stylesheet" href="../styles/components.css" />
+<style>
+  body { background: oklch(0.05 0.004 285); overflow: hidden; height: 100vh; }
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .frame {
+    width: 1366px; height: 1024px; transform-origin: center center;
+    background: var(--bg-0); position: relative; overflow: hidden; border-radius: 14px;
+    box-shadow: 0 40px 100px oklch(0 0 0 / 0.7);
+  }
+
+  /* faint scene canvas behind */
+  .canvas-bg {
+    position: absolute; inset: 0;
+    background-color: oklch(0.10 0.005 285);
+    background-image:
+      radial-gradient(ellipse at 70% 60%, oklch(0.18 0.04 320 / 0.4), transparent 60%),
+      linear-gradient(oklch(1 0 0 / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.025) 1px, transparent 1px);
+    background-size: 100% 100%, 32px 32px, 32px 32px;
+  }
+  .canvas-bg::before {
+    content: ''; position: absolute; left: 50%; top: 56%; width: 280px; height: 80px;
+    transform: translate(-50%, -50%);
+    background: oklch(0.30 0.04 285); border-radius: 4px; opacity: 0.45;
+  }
+
+  .scrim { position: absolute; inset: 0; background: oklch(0.05 0.005 285 / 0.55); backdrop-filter: blur(2px); }
+
+  /* radial menu */
+  .qm {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 460px; height: 460px;
+  }
+  .qm .ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid oklch(1 0 0 / 0.06);
+    box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.4);
+  }
+  .qm .ring-2 { inset: 60px; border: 1px dashed oklch(1 0 0 / 0.08); }
+
+  .qm .core {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 110px; height: 110px; border-radius: 50%;
+    background: oklch(0.155 0.007 285 / 0.92); backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    box-shadow: 0 10px 40px oklch(0 0 0 / 0.6);
+  }
+  .qm .core .label { font: var(--fw-semibold) 10px/1 var(--font-sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-3); }
+  .qm .core .name { font: var(--fw-semibold) 14px/1 var(--font-sans); letter-spacing: -0.01em; color: var(--text-1); }
+  .qm .core .hint { font: var(--fw-medium) 9px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.1em; }
+
+  /* slots */
+  .slot {
+    position: absolute; left: 50%; top: 50%;
+    width: 130px; height: 130px;
+    transform-origin: center center;
+    margin: -65px 0 0 -65px;
+  }
+  .slot .face {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 96px; height: 96px; border-radius: 50%;
+    background: oklch(0.20 0.008 285 / 0.92); backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    color: var(--text-1);
+    box-shadow: 0 6px 24px oklch(0 0 0 / 0.5);
+    transition: all var(--d-fast) var(--ease-out);
+  }
+  .slot .face .ico { font-family: var(--font-mono); font-size: 22px; color: var(--text-2); line-height: 1; }
+  .slot .face .lbl { font: var(--fw-semibold) 10.5px/1 var(--font-sans); color: var(--text-1); }
+  .slot .face .key { font: var(--fw-medium) 8.5px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0.1em; }
+
+  .slot.is-hover .face,
+  .slot[data-hover="true"] .face {
+    background: oklch(0.74 0.16 var(--accent-h) / 0.18);
+    border-color: var(--accent);
+    box-shadow: 0 6px 24px oklch(0 0 0 / 0.5), 0 0 0 1px var(--accent), 0 0 24px var(--accent-soft);
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+  .slot.is-hover .ico,
+  .slot.is-hover .lbl { color: var(--accent); }
+  .slot.is-hover .ico { color: var(--accent); }
+
+  /* destructive slot tone */
+  .slot.danger .face .ico { color: oklch(0.72 0.18 25); }
+
+  /* Position the 6 slots — angles in degrees from top, cw */
+  /* Distance from center — about 165px */
+  .slot.pos-0 { transform: rotate(0deg) translate(0, -170px) rotate(0deg); }       /* top */
+  .slot.pos-1 { transform: rotate(60deg) translate(0, -170px) rotate(-60deg); }
+  .slot.pos-2 { transform: rotate(120deg) translate(0, -170px) rotate(-120deg); }
+  .slot.pos-3 { transform: rotate(180deg) translate(0, -170px) rotate(-180deg); }
+  .slot.pos-4 { transform: rotate(240deg) translate(0, -170px) rotate(-240deg); }
+  .slot.pos-5 { transform: rotate(300deg) translate(0, -170px) rotate(-300deg); }
+
+  /* slice indicators (the 6 wedges very subtle) */
+  .qm .wedges { position: absolute; inset: 30px; border-radius: 50%; pointer-events: none; }
+  .qm .wedges::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background:
+      conic-gradient(from -30deg,
+        oklch(1 0 0 / 0.02) 0deg 60deg,
+        oklch(1 0 0 / 0.005) 60deg 120deg,
+        oklch(1 0 0 / 0.02) 120deg 180deg,
+        oklch(1 0 0 / 0.005) 180deg 240deg,
+        oklch(1 0 0 / 0.02) 240deg 300deg,
+        oklch(1 0 0 / 0.005) 300deg 360deg
+      );
+    -webkit-mask: radial-gradient(circle, transparent 50%, black 50.5%, black 99.5%, transparent 100%);
+            mask: radial-gradient(circle, transparent 50%, black 50.5%, black 99.5%, transparent 100%);
+  }
+
+  /* selection wedge — points to top slot (Run) */
+  .qm .selection {
+    position: absolute; inset: 30px; border-radius: 50%; pointer-events: none;
+  }
+  .qm .selection::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from -30deg, var(--accent-soft) 0deg, var(--accent-soft) 60deg, transparent 60deg);
+    -webkit-mask: radial-gradient(circle, transparent 50%, black 50.5%, black 99.5%, transparent 100%);
+            mask: radial-gradient(circle, transparent 50%, black 50.5%, black 99.5%, transparent 100%);
+    opacity: 0.7;
+  }
+
+  /* center pulse line indicator */
+  .qm .pointer {
+    position: absolute; left: 50%; top: 50%; width: 2px; height: 110px;
+    transform: translate(-50%, -100%);
+    background: linear-gradient(to top, var(--accent), transparent);
+    box-shadow: 0 0 12px var(--accent-soft);
+  }
+
+  /* Hint pill bottom */
+  .hint-pill {
+    position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 14px;
+    padding: 10px 18px; border-radius: 999px;
+    background: oklch(0.155 0.007 285 / 0.92); backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    color: var(--text-2); font: var(--fw-medium) 12px/1 var(--font-sans); letter-spacing: 0.02em;
+    box-shadow: 0 8px 28px oklch(0 0 0 / 0.5);
+  }
+  .hint-pill .key { background: var(--bg-3); border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px; font: var(--fw-semibold) 10.5px/1 var(--font-mono); color: var(--text-1); }
+  .hint-pill .sep { width: 1px; height: 14px; background: var(--border); }
+  .hint-pill .gesture { color: var(--text-3); font-size: 11px; }
+
+  /* edit handle top-right */
+  .edit {
+    position: absolute; left: 50%; top: 60px; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 999px;
+    background: oklch(0.155 0.007 285 / 0.92); backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    color: var(--text-2); font: var(--fw-medium) 11px/1 var(--font-sans);
+  }
+  .edit .glyph { color: var(--accent); font-family: var(--font-mono); }
+
+</style>
+</head>
+<body data-screen-label="12 QuickMenu">
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <div class="canvas-bg"></div>
+    <div class="scrim"></div>
+
+    <div class="edit"><span class="glyph">✎</span>Editing layout · QuickMenu A · 6 slots</div>
+
+    <div class="qm">
+      <div class="ring"></div>
+      <div class="ring ring-2"></div>
+      <div class="wedges"></div>
+      <div class="selection"></div>
+
+      <!-- TOP — selected -->
+      <div class="slot pos-0 is-hover">
+        <div class="face">
+          <div class="ico">▶</div>
+          <div class="lbl">Run</div>
+          <div class="key">⌘R</div>
+        </div>
+      </div>
+
+      <!-- 60° -->
+      <div class="slot pos-1">
+        <div class="face">
+          <div class="ico">⏸</div>
+          <div class="lbl">Pause</div>
+          <div class="key">⇧⌘P</div>
+        </div>
+      </div>
+
+      <!-- 120° -->
+      <div class="slot pos-2">
+        <div class="face">
+          <div class="ico">⏭</div>
+          <div class="lbl">Step</div>
+          <div class="key">F10</div>
+        </div>
+      </div>
+
+      <!-- 180° -->
+      <div class="slot pos-3 danger">
+        <div class="face">
+          <div class="ico">↺</div>
+          <div class="lbl">Reset</div>
+          <div class="key">⌘⌫</div>
+        </div>
+      </div>
+
+      <!-- 240° -->
+      <div class="slot pos-4">
+        <div class="face">
+          <div class="ico">⟲</div>
+          <div class="lbl">Hot-reload</div>
+          <div class="key">⌥R</div>
+        </div>
+      </div>
+
+      <!-- 300° -->
+      <div class="slot pos-5">
+        <div class="face">
+          <div class="ico">⤓</div>
+          <div class="lbl">Export</div>
+          <div class="key">⌘E</div>
+        </div>
+      </div>
+
+      <div class="pointer"></div>
+      <div class="core">
+        <div class="label">QUICKMENU</div>
+        <div class="name">Run</div>
+        <div class="hint">RELEASE TO TRIGGER</div>
+      </div>
+    </div>
+
+    <div class="hint-pill">
+      <span>Hold and drag to a slot</span>
+      <span class="sep"></span>
+      <span class="gesture">Long-press canvas · or</span>
+      <span class="key">Space</span>
+      <span class="sep"></span>
+      <span>Tap center to edit</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  function fit() {
+    const f = document.getElementById('frame');
+    const sx = window.innerWidth / 1366;
+    const sy = window.innerHeight / 1024;
+    const s = Math.min(sx, sy, 1);
+    f.style.transform = `scale(${s})`;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+</body>
+</html>

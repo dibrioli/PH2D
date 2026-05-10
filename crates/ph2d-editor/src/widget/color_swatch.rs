@@ -102,27 +102,35 @@ const CHECKER_DARK: VelloColor = VelloColor::from_rgba8(170, 170, 170, 255);
 
 /// Fill rect with a small checkerboard pattern. Used to communicate
 /// translucency under low-alpha fills.
-fn paint_checker(scene: &mut VectorScene, rect: Rect) {
+fn paint_checker(scene: &mut VectorScene, rect: Rect, corner_radius: f32) {
     if rect.w <= 0.0 || rect.h <= 0.0 {
         return;
     }
-    let cols = (rect.w / CHECKER_CELL_PX).ceil() as i32;
-    let rows = (rect.h / CHECKER_CELL_PX).ceil() as i32;
+    // Inset the checker grid by `corner_radius` on every side so
+    // sharp checker cells never spill past the swatch's rounded
+    // corners (the alpha overlay is rounded; without the inset the
+    // cells in the corners stick out as tiny 1-2 px squares).
+    let chk_x = rect.x + corner_radius;
+    let chk_y = rect.y + corner_radius;
+    let chk_w = (rect.w - corner_radius * 2.0).max(0.0);
+    let chk_h = (rect.h - corner_radius * 2.0).max(0.0);
+    if chk_w <= 0.0 || chk_h <= 0.0 {
+        return;
+    }
+    let cols = (chk_w / CHECKER_CELL_PX).ceil() as i32;
+    let rows = (chk_h / CHECKER_CELL_PX).ceil() as i32;
     for row in 0..rows {
         for col in 0..cols {
             let dark = (row + col) % 2 == 0;
-            let cx = rect.x + col as f32 * CHECKER_CELL_PX;
-            let cy = rect.y + row as f32 * CHECKER_CELL_PX;
-            let cw = CHECKER_CELL_PX.min(rect.x + rect.w - cx);
-            let ch = CHECKER_CELL_PX.min(rect.y + rect.h - cy);
+            let cx = chk_x + col as f32 * CHECKER_CELL_PX;
+            let cy = chk_y + row as f32 * CHECKER_CELL_PX;
+            let cw = CHECKER_CELL_PX.min(chk_x + chk_w - cx);
+            let ch = CHECKER_CELL_PX.min(chk_y + chk_h - cy);
             if cw <= 0.0 || ch <= 0.0 {
                 continue;
             }
             let cell = Rect::new(cx, cy, cw, ch);
             let color = if dark { CHECKER_DARK } else { CHECKER_LIGHT };
-            // Sharp fills (no rounding) for the checker cells —
-            // rounding the inside of a clipped rounded rect needs
-            // clip stacks we can add later if anyone notices.
             scene.fill_rect(crate::paint::rect_to_vello(cell), color);
         }
     }
@@ -150,7 +158,7 @@ pub fn paint_color_swatch(swatch: &ColorSwatch, rect: Rect, scene: &mut VectorSc
     let inner_radius = (radius - pad).max(0.0);
 
     if swatch.rgba[3] < 255 {
-        paint_checker(scene, inner);
+        paint_checker(scene, inner, inner_radius);
     }
     let [r, g, b, a] = swatch.rgba;
     fill_rounded_rect(

@@ -194,6 +194,20 @@ pub const SHOWCASE_PROGRESS_IND: NodeId = NodeId(541);
 pub const SHOWCASE_SPINNER: NodeId = NodeId(542);
 pub const SHOWCASE_AVATAR_CIRCLE: NodeId = NodeId(543);
 pub const SHOWCASE_AVATAR_SQUARE: NodeId = NodeId(544);
+// Primitives — canonical "one of each" gallery at the bottom
+// of the showcase. New widgets added by the M13 audit round.
+pub const SHOWCASE_PRIM_SLIDER: NodeId = NodeId(545);
+pub const SHOWCASE_PRIM_SLIDER_CHIP: NodeId = NodeId(546);
+pub const SHOWCASE_PRIM_BTN_PRIMARY: NodeId = NodeId(547);
+pub const SHOWCASE_PRIM_BTN_SECONDARY: NodeId = NodeId(548);
+pub const SHOWCASE_PRIM_BTN_DANGER: NodeId = NodeId(549);
+pub const SHOWCASE_PRIM_BTN_ICON: NodeId = NodeId(550);
+pub const SHOWCASE_PRIM_TOGGLE: NodeId = NodeId(551);
+pub const SHOWCASE_PRIM_TABS_A: NodeId = NodeId(552);
+pub const SHOWCASE_PRIM_TABS_B: NodeId = NodeId(553);
+pub const SHOWCASE_PRIM_TABS_C: NodeId = NodeId(554);
+pub const SHOWCASE_PRIM_SWATCH: NodeId = NodeId(555);
+pub const SHOWCASE_PRIM_NUMBER: NodeId = NodeId(556);
 
 /// Map fixture entity name to canonical hierarchy `NodeId`.
 pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {

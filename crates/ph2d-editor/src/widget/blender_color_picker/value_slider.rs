@@ -8,7 +8,7 @@ use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Theme};
 use ph2d_vector::{
-    Affine, Brush, Color as VelloColor, Fill, Gradient, Point, Rect as KurboRect, VectorScene,
+    Affine, Brush, Color as VelloColor, Fill, Gradient, Point, RoundedRect, VectorScene,
 };
 
 const HUE_STOPS: [VelloColor; 7] = [
@@ -28,11 +28,16 @@ pub fn paint_value_slider(
     theme: Theme,
 ) {
     let radius = Radius::Sm.px();
-    let body = KurboRect::new(
+    // Filled with a rounded path (not a sharp `KurboRect`) so the
+    // gradient terminates inside the rounded outline — earlier the
+    // fill leaked past the stroke at the strip's corners as tiny
+    // colored "ears".
+    let body = RoundedRect::new(
         rect.x as f64,
         rect.y as f64,
         (rect.x + rect.w) as f64,
         (rect.y + rect.h) as f64,
+        radius as f64,
     );
     let gradient = Gradient::new_linear(
         Point::new(rect.x as f64, rect.y as f64),

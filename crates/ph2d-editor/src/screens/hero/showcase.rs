@@ -221,6 +221,77 @@ pub fn populate(store: &mut WidgetStore) {
     ] {
         store.register(id, InteractiveState::Plain);
     }
+
+    // Primitives gallery — one of each canonical widget kind for
+    // the M13 audit. Slider + linked NumberInput chip; 4 button
+    // variants; Toggle; Tabs; ColorSwatch; standalone NumberInput.
+    store.register(
+        ids::SHOWCASE_PRIM_SLIDER,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.42,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        ids::SHOWCASE_PRIM_SLIDER_CHIP,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 0.42,
+            buffer: crate::interaction::format_number(0.42),
+            caret: 0,
+            last_committed: 0.42,
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number(ids::SHOWCASE_PRIM_SLIDER, ids::SHOWCASE_PRIM_SLIDER_CHIP);
+    for id in [
+        ids::SHOWCASE_PRIM_BTN_PRIMARY,
+        ids::SHOWCASE_PRIM_BTN_SECONDARY,
+        ids::SHOWCASE_PRIM_BTN_DANGER,
+        ids::SHOWCASE_PRIM_BTN_ICON,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    store.register(
+        ids::SHOWCASE_PRIM_TOGGLE,
+        InteractiveState::Toggle {
+            state: crate::widget::ToggleState::Normal,
+            on: true,
+        },
+    );
+    for id in [
+        ids::SHOWCASE_PRIM_TABS_A,
+        ids::SHOWCASE_PRIM_TABS_B,
+        ids::SHOWCASE_PRIM_TABS_C,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    if let Some(InteractiveState::Button { state }) = store.get_mut(ids::SHOWCASE_PRIM_TABS_A) {
+        *state = ButtonState::Pressed;
+    }
+    store.register(ids::SHOWCASE_PRIM_SWATCH, InteractiveState::Plain);
+    store.register(
+        ids::SHOWCASE_PRIM_NUMBER,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 1.5,
+            buffer: crate::interaction::format_number(1.5),
+            caret: 0,
+            last_committed: 1.5,
+            selection_anchor: None,
+        },
+    );
 }
 
 /// Apply a [`WidgetEvent`] against Showcase widgets. Returns true
@@ -250,7 +321,12 @@ use ph2d_vector::VectorScene;
 /// Width and height of the showcase panel. Anchored to the bottom-
 /// left of the canvas, with EDGE_PAD inset.
 pub const SHOWCASE_W: f32 = 360.0;
-pub const SHOWCASE_H: f32 = 720.0;
+// Tall enough to fit the original 10 sections plus the
+// "Primitives" gallery (Slider / Buttons / Toggle / Tabs /
+// ColorSwatch / NumberInput) added by the M13 audit. Panel is
+// movable via the top drag bar so overflow on shorter
+// viewports is handleable.
+pub const SHOWCASE_H: f32 = 920.0;
 
 #[allow(clippy::too_many_arguments)]
 pub fn paint_components_showcase(
@@ -261,22 +337,26 @@ pub fn paint_components_showcase(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    if layout.canvas.w < SHOWCASE_W + 40.0 || layout.canvas.h < SHOWCASE_H + 40.0 {
+    // Width must fit; height can be smaller than the panel — the
+    // panel is movable via the drag bar so the user can scroll the
+    // overflowing portion into view by dragging it.
+    if layout.canvas.w < SHOWCASE_W + 40.0 || layout.canvas.h < 320.0 {
         return; // viewport too small — skip showcase.
     }
     let (dx, dy) = store.blender_picker_offset(ids::SHOWCASE_PANEL);
     let base_x = layout.canvas.x + 12.0;
     let base_y = layout.canvas.y + layout.canvas.h - SHOWCASE_H - 12.0;
+    // Clamp x normally (panel always fits horizontally given the
+    // viewport-too-small early-out above). For y, the panel may be
+    // taller than the viewport — allow free positioning in that
+    // case so the user can drag the overflowing portion into view.
     let min_x = layout.canvas.x + 8.0;
     let max_x = layout.canvas.x + layout.canvas.w - SHOWCASE_W - 8.0;
-    let min_y = layout.canvas.y + 8.0;
-    let max_y = layout.canvas.y + layout.canvas.h - SHOWCASE_H - 8.0;
-    let rect = Rect::new(
-        (base_x + dx).clamp(min_x, max_x),
-        (base_y + dy).clamp(min_y, max_y),
-        SHOWCASE_W,
-        SHOWCASE_H,
-    );
+    let final_x = (base_x + dx).clamp(min_x.min(max_x), min_x.max(max_x));
+    let min_y = layout.canvas.y + 8.0 - SHOWCASE_H + 80.0;
+    let max_y = layout.canvas.y + layout.canvas.h - 80.0;
+    let final_y = (base_y + dy).clamp(min_y, max_y);
+    let rect = Rect::new(final_x, final_y, SHOWCASE_W, SHOWCASE_H);
     paint_panel_surface(rect, scene, theme);
 
     let pad = Spacing::Lg.px();
@@ -669,6 +749,20 @@ pub fn paint_components_showcase(
     paint_slider(&vs, vs_rect, scene, theme);
     y += 96.0 + Spacing::Md.px();
 
+    // 11. Primitives gallery — canonical "one of each" widget that
+    // wasn't already covered by sections 1-10. Compact rows so the
+    // panel total height stays under SHOWCASE_H. Drawn before the
+    // Modal so Modal's scrim, when shown, overlays this section.
+    paint_primitives_section(
+        Rect::new(inner_x, y, inner_w, 200.0),
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y += 200.0 + Spacing::Md.px();
+
     // 10. Modal mini paint at the showcase footer.
     let modal_h = (rect.y + rect.h - y - pad).max(0.0);
     if modal_h > 110.0 {
@@ -712,6 +806,189 @@ fn paint_tree_view_demo(
     // No-op stub: TreeView demo lands when the showcase region grows
     // a third column. Kept so the widget appears in the dependency
     // graph and doesn't get pruned by a future dead-code lint.
+}
+
+/// Compact "Primitives" gallery — one of each widget kind that the
+/// other showcase sections don't cover (canonical Slider, the four
+/// Button variants, Toggle, Tabs, transparent ColorSwatch, and a
+/// standalone NumberInput). Sized to fit ~200 px tall.
+#[allow(clippy::too_many_arguments)]
+fn paint_primitives_section(
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    use crate::widget::{
+        Button, ButtonKind, ColorSwatch, NumberInput, SwatchSize, Toggle, ToggleState,
+        paint_button, paint_color_swatch, paint_number_input_with_buffer, paint_toggle,
+    };
+
+    paint_text(
+        text_system,
+        scene,
+        "Primitives",
+        rect.x,
+        rect.y,
+        TypeToken::Sm.px(),
+        rect.w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let mut y = rect.y + TypeToken::Sm.px() + 6.0;
+    let row_h = 28.0_f32;
+
+    // Canonical Slider + chip composite. Live value from store.
+    let slider_value = store
+        .slider(ids::SHOWCASE_PRIM_SLIDER)
+        .map(|(_, v)| v)
+        .unwrap_or(0.42);
+    crate::widget::paint_slider_with_chip(
+        Rect::new(rect.x, y, rect.w, row_h),
+        "Slider",
+        slider_value,
+        ids::SHOWCASE_PRIM_SLIDER,
+        ids::SHOWCASE_PRIM_SLIDER_CHIP,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += row_h + Spacing::Sm.px();
+
+    // Button row — Primary / Secondary / Danger / Icon.
+    let btn_count = 4.0_f32;
+    let gap = Spacing::Sm.px();
+    let btn_w = (rect.w - gap * (btn_count - 1.0)) / btn_count;
+    let btn_h = row_h;
+    let btn_data = [
+        (
+            ids::SHOWCASE_PRIM_BTN_PRIMARY,
+            "Primary",
+            ButtonKind::Accent,
+        ),
+        (
+            ids::SHOWCASE_PRIM_BTN_SECONDARY,
+            "Secondary",
+            ButtonKind::Default,
+        ),
+        (ids::SHOWCASE_PRIM_BTN_DANGER, "Danger", ButtonKind::Danger),
+        (
+            ids::SHOWCASE_PRIM_BTN_ICON,
+            "Icon",
+            ButtonKind::IconOnly { icon: IconId::Plus },
+        ),
+    ];
+    for (i, (id, label, kind)) in btn_data.iter().enumerate() {
+        let bx = rect.x + (btn_w + gap) * i as f32;
+        let br = Rect::new(bx, y, btn_w, btn_h);
+        hit_index.register(*id, br);
+        let btn_state = store
+            .button_state(*id)
+            .unwrap_or(crate::widget::ButtonState::Normal);
+        let mut b = Button::new(*id, *label).kind(*kind);
+        b.state = btn_state;
+        paint_button(&b, br, scene, text_system, theme);
+    }
+    y += btn_h + Spacing::Sm.px();
+
+    // Toggle + ColorSwatch (transparent) + Tabs row.
+    let cell_w = (rect.w - gap * 2.0) / 3.0;
+    let toggle_rect = Rect::new(rect.x, y, cell_w, row_h);
+    hit_index.register(ids::SHOWCASE_PRIM_TOGGLE, toggle_rect);
+    let (tg_state, tg_on) = store
+        .toggle(ids::SHOWCASE_PRIM_TOGGLE)
+        .unwrap_or((ToggleState::Normal, true));
+    let tg = Toggle::new(ids::SHOWCASE_PRIM_TOGGLE, "Toggle")
+        .state(tg_state)
+        .on(tg_on);
+    paint_toggle(&tg, toggle_rect, scene, theme);
+    paint_text(
+        text_system,
+        scene,
+        "Toggle",
+        toggle_rect.x + 48.0,
+        toggle_rect.y + (toggle_rect.h - TypeToken::Xs.px()) * 0.5,
+        TypeToken::Xs.px(),
+        toggle_rect.w - 48.0,
+        resolve(ColorToken::Text2, theme),
+    );
+
+    let sw_rect = Rect::new(rect.x + cell_w + gap, y, cell_w, row_h);
+    hit_index.register(ids::SHOWCASE_PRIM_SWATCH, sw_rect);
+    let mut sw = ColorSwatch::new(ids::SHOWCASE_PRIM_SWATCH, "Swatch", [80, 200, 120, 128]);
+    sw.size = SwatchSize::Md;
+    let sw_inner = Rect::new(sw_rect.x, sw_rect.y, 32.0, 28.0);
+    paint_color_swatch(&sw, sw_inner, scene, theme);
+    paint_text(
+        text_system,
+        scene,
+        "Swatch",
+        sw_rect.x + 36.0,
+        sw_rect.y + (sw_rect.h - TypeToken::Xs.px()) * 0.5,
+        TypeToken::Xs.px(),
+        sw_rect.w - 36.0,
+        resolve(ColorToken::Text2, theme),
+    );
+
+    // Tabs (3 buttons in a row, segmented-ish).
+    let tabs_rect = Rect::new(rect.x + (cell_w + gap) * 2.0, y, cell_w, row_h);
+    let tab_count = 3.0_f32;
+    let tab_w = tabs_rect.w / tab_count;
+    let tab_data = [
+        (ids::SHOWCASE_PRIM_TABS_A, "A"),
+        (ids::SHOWCASE_PRIM_TABS_B, "B"),
+        (ids::SHOWCASE_PRIM_TABS_C, "C"),
+    ];
+    for (i, (id, label)) in tab_data.iter().enumerate() {
+        let tx = tabs_rect.x + tab_w * i as f32;
+        let tr = Rect::new(tx, tabs_rect.y, tab_w, tabs_rect.h);
+        hit_index.register(*id, tr);
+        let tb_state = store
+            .button_state(*id)
+            .unwrap_or(crate::widget::ButtonState::Normal);
+        let kind = if matches!(tb_state, crate::widget::ButtonState::Pressed) {
+            ButtonKind::Accent
+        } else {
+            ButtonKind::Default
+        };
+        let mut b = Button::new(*id, *label).kind(kind);
+        b.state = tb_state;
+        paint_button(&b, tr, scene, text_system, theme);
+    }
+    y += row_h + Spacing::Sm.px();
+
+    // Standalone NumberInput.
+    let num_rect = Rect::new(rect.x, y, rect.w * 0.5, row_h);
+    hit_index.register(ids::SHOWCASE_PRIM_NUMBER, num_rect);
+    let (num_state, num_value, num_buf, num_caret, num_anchor) = store
+        .number_input(ids::SHOWCASE_PRIM_NUMBER)
+        .map(|(s, v, b, c, a)| (s, v, Some(b), Some(c), a))
+        .unwrap_or((crate::widget::TextInputState::Normal, 1.5, None, None, None));
+    let mut ni = NumberInput::new(ids::SHOWCASE_PRIM_NUMBER, "Number", num_value);
+    ni.state = num_state;
+    paint_number_input_with_buffer(
+        &ni,
+        num_buf,
+        num_caret.unwrap_or(0),
+        num_anchor,
+        num_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    paint_text(
+        text_system,
+        scene,
+        "Number",
+        num_rect.x + num_rect.w + Spacing::Sm.px(),
+        num_rect.y + (num_rect.h - TypeToken::Xs.px()) * 0.5,
+        TypeToken::Xs.px(),
+        rect.w - num_rect.w - Spacing::Sm.px(),
+        resolve(ColorToken::Text2, theme),
+    );
 }
 
 pub fn paint_blender_picker_demo(

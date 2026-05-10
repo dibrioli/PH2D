@@ -5,6 +5,7 @@
 //! FloatingPanel and ToastQueue).
 
 mod avatar;
+mod blender_color_picker;
 mod button;
 mod card;
 mod checkbox;
@@ -36,6 +37,10 @@ mod tree_view;
 mod vector3_editor;
 
 pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
+pub use blender_color_picker::{
+    BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
+    paint_blender_color_picker,
+};
 pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
 pub use card::{Card, paint_card};
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};

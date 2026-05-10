@@ -138,6 +138,89 @@ fn linear_to_srgb_byte(linear: f64) -> u8 {
     (srgb.clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
+/// Inverse of [`oklch_to_srgb`]: sRGB 8-bit → OKLCH (L, C, H_deg).
+/// Used by [`ColorValue::from_rgba8`] to keep both representations in
+/// sync. Per Björn Ottosson's reference. Output: L 0..1, C 0..~0.4,
+/// H 0..360.
+pub fn srgb_to_oklch(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
+    let lr = srgb_byte_to_linear(r);
+    let lg = srgb_byte_to_linear(g);
+    let lb = srgb_byte_to_linear(b);
+    // linear sRGB → LMS
+    let l = 0.412_221_470_8 * lr + 0.536_332_536_3 * lg + 0.051_445_992_9 * lb;
+    let m = 0.211_903_498_2 * lr + 0.680_699_545_1 * lg + 0.107_396_956_6 * lb;
+    let s = 0.088_302_461_9 * lr + 0.281_718_837_6 * lg + 0.629_978_700_5 * lb;
+    let l_ = l.cbrt();
+    let m_ = m.cbrt();
+    let s_ = s.cbrt();
+    // LMS → OKLAB
+    let lab_l = 0.210_454_255_3 * l_ + 0.793_617_785_0 * m_ - 0.004_072_046_8 * s_;
+    let lab_a = 1.977_998_495_1 * l_ - 2.428_592_205_0 * m_ + 0.450_593_709_9 * s_;
+    let lab_b = 0.025_904_037_1 * l_ + 0.782_771_766_2 * m_ - 0.808_675_766_0 * s_;
+    let c = (lab_a * lab_a + lab_b * lab_b).sqrt();
+    let mut h = lab_b.atan2(lab_a).to_degrees();
+    if h < 0.0 {
+        h += 360.0;
+    }
+    (lab_l, c, h)
+}
+
+fn srgb_byte_to_linear(channel: u8) -> f64 {
+    let c = channel as f64 / 255.0;
+    if c <= 0.040_45 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// Color value carrying both sRGB 8-bit and OKLCH in sync. Editor
+/// code (paint helpers, ColorSwatch) consumes `rgba`; design tokens
+/// and ColorPicker math operate on `oklch`. Construct via
+/// [`ColorValue::from_rgba8`] or [`ColorValue::from_oklch`] — both
+/// constructors compute the missing representation so the pair stays
+/// consistent.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ColorValue {
+    pub rgba: [u8; 4],
+    /// `(L, C, H_deg, alpha)` — alpha mirrors `rgba[3] / 255.0`.
+    pub oklch: (f64, f64, f64, f64),
+}
+
+impl ColorValue {
+    pub fn from_rgba8(r: u8, g: u8, b: u8, a: u8) -> Self {
+        let (l, c, h) = srgb_to_oklch(r, g, b);
+        Self {
+            rgba: [r, g, b, a],
+            oklch: (l, c, h, a as f64 / 255.0),
+        }
+    }
+
+    pub fn from_oklch(l: f64, c: f64, h_deg: f64, alpha: f64) -> Self {
+        let [r, g, b] = oklch_to_srgb(l, c, h_deg);
+        let a = (alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+        Self {
+            rgba: [r, g, b, a],
+            oklch: (l, c, h_deg, alpha.clamp(0.0, 1.0)),
+        }
+    }
+
+    pub const TRANSPARENT: Self = Self {
+        rgba: [0, 0, 0, 0],
+        oklch: (0.0, 0.0, 0.0, 0.0),
+    };
+
+    pub const BLACK: Self = Self {
+        rgba: [0, 0, 0, 255],
+        oklch: (0.0, 0.0, 0.0, 1.0),
+    };
+
+    pub const WHITE: Self = Self {
+        rgba: [255, 255, 255, 255],
+        oklch: (1.0, 0.0, 0.0, 1.0),
+    };
+}
+
 /// Semantic color slot — every widget references one of these by name;
 /// literal `from_hex`/`from_oklch` outside this crate is a code smell.
 ///
@@ -500,5 +583,70 @@ mod tests {
                 "{theme:?}: accent on bg-1 = {ratio:.2}:1, need ≥ 3.0"
             );
         }
+    }
+
+    #[test]
+    fn color_value_constants_match_extremes() {
+        assert_eq!(ColorValue::BLACK.rgba, [0, 0, 0, 255]);
+        assert_eq!(ColorValue::WHITE.rgba, [255, 255, 255, 255]);
+        assert_eq!(ColorValue::TRANSPARENT.rgba, [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn color_value_from_rgba_round_trips_alpha() {
+        let cv = ColorValue::from_rgba8(120, 80, 200, 128);
+        assert_eq!(cv.rgba, [120, 80, 200, 128]);
+        assert!((cv.oklch.3 - 128.0 / 255.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn color_value_oklch_round_trip_within_one_byte() {
+        // sRGB → OKLCH → sRGB must round-trip within ±1 byte per
+        // channel (rounding noise from the linearization step).
+        for sample in [
+            [0u8, 0, 0],
+            [255, 255, 255],
+            [128, 128, 128],
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+            [231, 231, 231],
+        ] {
+            let cv = ColorValue::from_rgba8(sample[0], sample[1], sample[2], 255);
+            let (l, c, h, _) = cv.oklch;
+            let cv2 = ColorValue::from_oklch(l, c, h, 1.0);
+            for i in 0..3 {
+                let delta = (cv.rgba[i] as i32 - cv2.rgba[i] as i32).abs();
+                assert!(
+                    delta <= 1,
+                    "channel {i} drifted by {delta} bytes (sRGB→OKLCH→sRGB) for {sample:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn srgb_to_oklch_red_yields_red_hue() {
+        // OKLCH hue for pure red sits around 29 degrees.
+        let (_, _, h) = srgb_to_oklch(255, 0, 0);
+        assert!(
+            (20.0..40.0).contains(&h),
+            "expected ~29° hue for red, got {h}"
+        );
+    }
+
+    #[test]
+    fn srgb_to_oklch_white_zero_chroma() {
+        let (l, c, _) = srgb_to_oklch(255, 255, 255);
+        assert!(l > 0.99);
+        assert!(c < 0.001);
+    }
+
+    #[test]
+    fn color_value_from_oklch_clamps_alpha() {
+        let cv = ColorValue::from_oklch(0.5, 0.0, 0.0, 2.0);
+        assert_eq!(cv.rgba[3], 255);
+        let cv = ColorValue::from_oklch(0.5, 0.0, 0.0, -1.0);
+        assert_eq!(cv.rgba[3], 0);
     }
 }

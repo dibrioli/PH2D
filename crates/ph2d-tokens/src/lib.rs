@@ -44,7 +44,7 @@ pub mod spacing;
 pub mod theme;
 pub mod typography;
 
-pub use color::{Color, ColorToken, oklch_to_srgb};
+pub use color::{Color, ColorToken, ColorValue, oklch_to_srgb, srgb_to_oklch};
 pub use layer::Layer;
 pub use motion::{Duration, Easing};
 pub use radius::Radius;

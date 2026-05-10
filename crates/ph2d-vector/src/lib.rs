@@ -30,7 +30,9 @@ pub use scene::VectorScene;
 // Brush/Color/Fill types our wrapper hands to vello are the same
 // monomorphic types vello expects (no version-skew accidents).
 pub use vello::kurbo::{Affine, BezPath, Circle, Point, Rect, RoundedRect, Shape, Stroke, Vec2};
-pub use vello::peniko::{Brush, Color, Fill};
+pub use vello::peniko::{
+    Brush, Color, ColorStop, ColorStops, Fill, Gradient, GradientKind, LinearGradientPosition,
+};
 // Glyph + Scene used by callers that drive `Scene::draw_glyphs`
 // directly (text rendering in ph2d-editor::paint). Same version-skew
 // rationale as kurbo/peniko above.

@@ -1,131 +1,36 @@
-//! Inspector painter — title + sub + sections + per-field rows.
+//! Inspector painter — currently a blank panel.
+//!
+//! The placeholder fixture (Properties/Layers/Materials tabs, fake
+//! sliders, Behavior section with Checkbox/Toggle/Swatch) was removed
+//! when the showcase teardown landed. The next phase repopulates this
+//! panel with canonical widget samples driven by the centralized
+//! [`crate::widget`] painters.
+//!
+//! What stays:
+//! - Panel surface + title/subtitle from the current `HeroSelection`.
+//! - Scroll-ready clip layer so future samples can overflow.
+//! - Registration of the floating [`crate::widget::BlenderColorPicker`]
+//!   state (parented on [`ids::INSP_BLENDER_PICKER`]). The picker is
+//!   painted by [`super::color_picker_demo`], not here.
 
 use super::HeroLayout;
 use super::HeroSelection;
-use super::fixture;
 use super::ids;
-use super::style::{
-    FIELD_GAP, FIELD_ROW_H, PANEL_HEAD_PAD, SECTION_GAP, SECTION_HEAD_H, paint_panel_surface,
-};
+use super::style::{PANEL_HEAD_PAD, paint_panel_surface};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
+use crate::paint::{paint_text, rect_to_vello, resolve};
 use crate::widget::{
-    ButtonState, ChannelMode, Checkbox, CheckboxState, CheckboxValue, ColorSwatch, DropdownState,
-    InterpolationMode, SectionHeader, SliderOrientation, SliderState, SwatchSize, TabItem, Tabs,
-    TabsVariant, TextInputState, Toggle, ToggleState, paint_checkbox, paint_color_swatch,
-    paint_section_header, paint_tabs, paint_toggle,
+    ChannelMode, InterpolationMode, TextInputState,
 };
 use crate::zones::Rect;
-use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ColorValue, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
+use ph2d_tokens::{ColorToken, ColorValue, Spacing, Theme, TypeToken};
+use ph2d_vector::VectorScene;
 
-/// Register every Inspector widget into the [`WidgetStore`]:
-/// section tabs, sliders, linked NumberInputs, dropdowns, toggles,
-/// checkbox, swatch, and the BlenderColorPicker (with sub-rect
-/// hit shims for the wheel + value slider).
+/// Register the floating BlenderColorPicker's retained state + every
+/// sub-control hit shim. Inspector chrome itself is currently
+/// state-free (no fields yet — sample population is the next phase).
 pub fn populate(store: &mut WidgetStore) {
-    // Inspector tabs (Properties / Layers / Materials).
-    for id in [
-        ids::INSP_TAB_PROPS,
-        ids::INSP_TAB_LAYERS,
-        ids::INSP_TAB_MATERIALS,
-    ] {
-        store.register(
-            id,
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-    }
-    if let Some(InteractiveState::Button { state }) = store.get_mut(ids::INSP_TAB_PROPS) {
-        *state = ButtonState::Pressed;
-    }
-
-    // Field sliders (normalized 0..=1).
-    for (id, value) in [
-        (ids::INSP_MOVE_SPEED, 0.62),
-        (ids::INSP_JUMP_HEIGHT, 0.30),
-        (ids::INSP_FRICTION, 0.08),
-        (ids::INSP_DAMPING, 0.48),
-        (ids::INSP_CAM_YAW, 0.57),
-        (ids::INSP_CAM_PITCH, 0.0),
-    ] {
-        store.register(
-            id,
-            InteractiveState::Slider {
-                state: SliderState::Normal,
-                value,
-                orientation: SliderOrientation::Horizontal,
-            },
-        );
-    }
-
-    // Debug select dropdown.
-    store.register(
-        ids::INSP_DEBUG_SELECT,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: Some(0),
-        },
-    );
-
-    // NumberInput chips linked to the field sliders. Initial values
-    // mirror the slider's value scaled to display range — the
-    // dispatcher keeps them in sync as the user drags.
-    for (id, value) in [
-        (ids::INSP_NUM_MOVE_SPEED, 160.0_f64),
-        (ids::INSP_NUM_JUMP_HEIGHT, 200.0),
-        (ids::INSP_NUM_FRICTION, 0.0010),
-        (ids::INSP_NUM_DAMPING, 0.70),
-        (ids::INSP_NUM_CAM_YAW, 0.57),
-    ] {
-        store.register(
-            id,
-            InteractiveState::NumberInput {
-                state: TextInputState::Normal,
-                value,
-                buffer: crate::interaction::format_number(value),
-                caret: 0,
-                last_committed: value,
-                selection_anchor: None,
-            },
-        );
-    }
-
-    // Slider × NumberInput two-way bindings (Phase 2).
-    for (slider_id, number_id) in [
-        (ids::INSP_MOVE_SPEED, ids::INSP_NUM_MOVE_SPEED),
-        (ids::INSP_JUMP_HEIGHT, ids::INSP_NUM_JUMP_HEIGHT),
-        (ids::INSP_FRICTION, ids::INSP_NUM_FRICTION),
-        (ids::INSP_DAMPING, ids::INSP_NUM_DAMPING),
-        (ids::INSP_CAM_YAW, ids::INSP_NUM_CAM_YAW),
-    ] {
-        store.link_slider_number(slider_id, number_id);
-    }
-
-    // Hot-reload checkbox + Snap-grid toggle.
-    store.register(
-        ids::INSP_HOT_RELOAD_CHECK,
-        InteractiveState::Checkbox {
-            state: CheckboxState::Normal,
-            value: CheckboxValue::Checked,
-        },
-    );
-    store.register(
-        ids::INSP_SNAP_GRID_TOGGLE,
-        InteractiveState::Toggle {
-            state: ToggleState::Normal,
-            on: true,
-        },
-    );
-
-    // Tint swatch — clicking selects it (Plain) and the
-    // BlenderColorPicker in the demo region reads its rgba.
-    store.register(ids::INSP_TINT_SWATCH, InteractiveState::Plain);
-
     // BlenderColorPicker retained state — wheel + value-slider hit
     // shims route their picks back into the parent picker.
     store.register(
@@ -145,47 +50,27 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
     // Seed the picker's mutable palette with the default 12 swatches.
-    // The "+ swatch" button appends; right-click on a swatch removes.
+    // "+ swatch" appends; right-click on a swatch removes.
     store.init_blender_palette(
         ids::INSP_BLENDER_PICKER,
         crate::widget::default_palette().swatches.clone(),
     );
-    // "+ swatch" and eyedropper hit shims.
-    store.register(
-        ids::BLENDER_ADD_SWATCH,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::AddSwatch,
-        },
-    );
-    store.register(
-        ids::BLENDER_EYEDROPPER,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::Eyedropper,
-        },
-    );
-    store.register(
-        ids::BLENDER_DRAG_HANDLE,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::DragHandle,
-        },
-    );
-    store.register(
-        ids::BLENDER_WHEEL,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::Wheel,
-        },
-    );
-    store.register(
-        ids::BLENDER_VALUE_SLIDER,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::ValueSlider,
-        },
-    );
+    // "+ swatch", eyedropper, drag-handle, wheel, value-slider shims.
+    for (id, kind) in [
+        (ids::BLENDER_ADD_SWATCH, crate::interaction::BlenderHitKind::AddSwatch),
+        (ids::BLENDER_EYEDROPPER, crate::interaction::BlenderHitKind::Eyedropper),
+        (ids::BLENDER_DRAG_HANDLE, crate::interaction::BlenderHitKind::DragHandle),
+        (ids::BLENDER_WHEEL, crate::interaction::BlenderHitKind::Wheel),
+        (ids::BLENDER_VALUE_SLIDER, crate::interaction::BlenderHitKind::ValueSlider),
+    ] {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind,
+            },
+        );
+    }
 
     // Channel slider shims (4 rows: index 0 = R/H, 1 = G/S, 2 = B/V, 3 = A).
     for (id, idx) in [
@@ -239,40 +124,26 @@ pub fn populate(store: &mut WidgetStore) {
     );
     store.link_blender_hex(ids::INSP_BLENDER_PICKER, ids::BLENDER_HEX);
 
-    // Segmented toggle shims.
-    store.register(
-        ids::BLENDER_INTERP_LINEAR,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::InterpolationLinear,
-        },
-    );
-    store.register(
-        ids::BLENDER_INTERP_PERCEPTUAL,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::InterpolationPerceptual,
-        },
-    );
-    store.register(
-        ids::BLENDER_CHANNEL_RGB,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::ChannelRgb,
-        },
-    );
-    store.register(
-        ids::BLENDER_CHANNEL_HSV,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_BLENDER_PICKER,
-            kind: crate::interaction::BlenderHitKind::ChannelHsv,
-        },
-    );
+    // Segmented toggle shims (Linear / Perceptual interpolation,
+    // RGB / HSV channel modes).
+    for (id, kind) in [
+        (ids::BLENDER_INTERP_LINEAR, crate::interaction::BlenderHitKind::InterpolationLinear),
+        (ids::BLENDER_INTERP_PERCEPTUAL, crate::interaction::BlenderHitKind::InterpolationPerceptual),
+        (ids::BLENDER_CHANNEL_RGB, crate::interaction::BlenderHitKind::ChannelRgb),
+        (ids::BLENDER_CHANNEL_HSV, crate::interaction::BlenderHitKind::ChannelHsv),
+    ] {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind,
+            },
+        );
+    }
 
-    // Palette swatch shims — slots 0..26. The default palette fills
-    // 0..11; "+ swatch" appends into 12..26. Beyond 27, the
-    // `blender_palette_push` helper is capped and the painter
-    // hides the "+" tile.
+    // Palette swatch shims — slots 0..26. Default palette fills 0..11;
+    // "+ swatch" appends into 12..26. Beyond 27, `blender_palette_push`
+    // is capped and the painter hides the "+" tile.
     for (id, swatch_idx) in [
         (ids::BLENDER_SWATCH_0, 0u8),
         (ids::BLENDER_SWATCH_1, 1),
@@ -312,9 +183,8 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
-/// Apply a [`WidgetEvent`] against Inspector widgets. Returns true
-/// iff the event was consumed. Stub for now — tab switching, field
-/// commits to the simulation, etc. land in follow-up PRs.
+/// Apply a [`WidgetEvent`] against Inspector widgets. Stub — the
+/// inspector chrome has no interactive widgets of its own right now.
 pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
     false
 }
@@ -326,7 +196,7 @@ pub fn paint_inspector(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    hit_index: &mut HitIndex,
+    _hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
     let rect = layout.inspector;
@@ -335,7 +205,7 @@ pub fn paint_inspector(
     let title = selection
         .map(|s| s.label.as_str())
         .unwrap_or("(no selection)");
-    let sub = "prefab.player.idle";
+    let sub = "Inspector";
 
     let title_y = rect.y + 18.0;
     paint_text(
@@ -368,23 +238,13 @@ pub fn paint_inspector(
     );
     scene.fill_rect(rect_to_vello(div), resolve(ColorToken::Border, theme));
 
-    // Inspector Tabs (Phase 1 polish): Properties / Layers / Materials.
-    let tabs_h = 28.0_f32;
-    let tabs_y = div_y + Spacing::Md.px();
-    let tabs_rect = Rect::new(
-        rect.x + PANEL_HEAD_PAD,
-        tabs_y,
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        tabs_h,
-    );
-    paint_inspector_tabs(tabs_rect, scene, text_system, theme, hit_index, store);
-
-    // Scrollable content area below the tabs. Clip layer keeps
-    // overflowing sections inside the panel; `scroll_y` shifts the
-    // content cursor by however much the user scrolled the wheel.
-    let content_top = tabs_y + tabs_h + Spacing::Md.px();
+    // Scroll-ready clip layer — kept even though the body is empty,
+    // so the next phase (canonical sample population) can paint
+    // into the clipped region and inherit wheel-scroll behavior
+    // without re-wiring the chrome.
+    let content_top = div_y + Spacing::Md.px();
     let content_bottom = rect.y + rect.h - 4.0;
-    let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
+    let _scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
     let clip = ph2d_vector::Rect::new(
         rect.x as f64,
         content_top as f64,
@@ -392,364 +252,6 @@ pub fn paint_inspector(
         content_bottom as f64,
     );
     scene.push_clip(&clip);
-    let mut y = content_top - scroll_y;
-    let body_pad = 10.0_f32;
-    for section in fixture::inspector_sections() {
-        let header_rect = Rect::new(
-            rect.x + body_pad,
-            y,
-            rect.w - body_pad * 2.0,
-            SECTION_HEAD_H,
-        );
-        let mut header = SectionHeader::new(NodeId(0), section.label.clone()).count(section.count);
-        if let Some(open) = section.collapsible {
-            header = header.collapsible(open);
-        }
-        paint_section_header(&header, header_rect, scene, text_system, theme);
-        y += SECTION_HEAD_H;
-        if matches!(section.collapsible, Some(false)) {
-            y += SECTION_GAP;
-            continue;
-        }
-        for field in &section.fields {
-            // Pre-scroll-era code returned early here to avoid
-            // painting past the panel — now the clip layer above
-            // hides overflow, so we keep painting all sections so
-            // scrolling can bring them into view.
-            let field_id = ids::inspector_field_id(&field.label);
-            let consumed = paint_inspector_field(
-                field,
-                field_id,
-                rect.x + body_pad,
-                rect.w - body_pad * 2.0,
-                y,
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-            );
-            y += consumed + FIELD_GAP;
-        }
-        y += SECTION_GAP;
-    }
-
-    // Behavior section (Checkbox + Toggle + ColorSwatch) always
-    // paints — scroll brings it into view if it overflows.
-    paint_inspector_behavior_section(
-        rect.x + body_pad,
-        rect.w - body_pad * 2.0,
-        y,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-
-    // Pop the content clip pushed above the section loop.
+    // Body intentionally empty — sample widgets land here next phase.
     scene.pop_layer();
-}
-
-/// Map a slider's NodeId to its sibling NumberInput NodeId
-/// (Phase 1 polish: sliders carry a linked numeric chip).
-fn sibling_number_id(slider_id: Option<NodeId>) -> Option<NodeId> {
-    let slider_id = slider_id?;
-    Some(match slider_id {
-        x if x == ids::INSP_MOVE_SPEED => ids::INSP_NUM_MOVE_SPEED,
-        x if x == ids::INSP_JUMP_HEIGHT => ids::INSP_NUM_JUMP_HEIGHT,
-        x if x == ids::INSP_FRICTION => ids::INSP_NUM_FRICTION,
-        x if x == ids::INSP_DAMPING => ids::INSP_NUM_DAMPING,
-        x if x == ids::INSP_CAM_YAW => ids::INSP_NUM_CAM_YAW,
-        _ => return None,
-    })
-}
-
-fn paint_inspector_tabs(
-    rect: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-) {
-    let tabs = Tabs::new(
-        ids::INSP_TAB_PROPS,
-        "Inspector tabs",
-        vec![
-            TabItem::new(ids::INSP_TAB_PROPS, "Properties"),
-            TabItem::new(ids::INSP_TAB_LAYERS, "Layers"),
-            TabItem::new(ids::INSP_TAB_MATERIALS, "Materials"),
-        ],
-    )
-    .variant(TabsVariant::Segmented)
-    .selected(active_inspector_tab_index(store));
-    paint_tabs(&tabs, rect, scene, text_system, theme);
-    // Register per-tab hit rects (3 evenly split).
-    let count = tabs.items.len() as f32;
-    let tab_w = rect.w / count;
-    for (i, item) in tabs.items.iter().enumerate() {
-        let r = Rect::new(rect.x + tab_w * i as f32, rect.y, tab_w, rect.h);
-        hit_index.register(item.id, r);
-    }
-}
-
-/// Determine which tab id is currently the active one by reading the
-/// per-tab Button state from the store. Falls back to Properties.
-fn active_inspector_tab_index(store: &WidgetStore) -> usize {
-    use crate::widget::ButtonState;
-    let candidates = [
-        ids::INSP_TAB_PROPS,
-        ids::INSP_TAB_LAYERS,
-        ids::INSP_TAB_MATERIALS,
-    ];
-    for (i, id) in candidates.iter().enumerate() {
-        if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
-            return i;
-        }
-    }
-    0
-}
-
-#[allow(clippy::too_many_arguments)]
-fn paint_inspector_behavior_section(
-    x: f32,
-    w: f32,
-    y: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-) {
-    let head_rect = Rect::new(x, y, w, FIELD_ROW_H);
-    let header = SectionHeader::new(NodeId(0), "Behavior".to_string()).count(3);
-    paint_section_header(&header, head_rect, scene, text_system, theme);
-    let mut row_y = y + FIELD_ROW_H + 4.0;
-
-    // Checkbox row.
-    let cb_state = store
-        .checkbox(ids::INSP_HOT_RELOAD_CHECK)
-        .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
-    let cb_rect = Rect::new(x, row_y, w, 20.0);
-    hit_index.register(ids::INSP_HOT_RELOAD_CHECK, cb_rect);
-    let cb = Checkbox::new(ids::INSP_HOT_RELOAD_CHECK, "Hot reload on save")
-        .state(cb_state.0)
-        .value(cb_state.1);
-    paint_checkbox(&cb, cb_rect, scene, text_system, theme);
-    row_y += 24.0;
-
-    // Toggle row.
-    let (tg_state, tg_on) = store
-        .toggle(ids::INSP_SNAP_GRID_TOGGLE)
-        .unwrap_or((ToggleState::Normal, true));
-    let toggle_w = 44.0;
-    let toggle_rect = Rect::new(x + w - toggle_w, row_y, toggle_w, 20.0);
-    hit_index.register(ids::INSP_SNAP_GRID_TOGGLE, toggle_rect);
-    let toggle = Toggle::new(ids::INSP_SNAP_GRID_TOGGLE, "Snap to grid")
-        .state(tg_state)
-        .on(tg_on);
-    paint_toggle(&toggle, toggle_rect, scene, theme);
-    paint_text(
-        text_system,
-        scene,
-        "Snap to grid",
-        x,
-        row_y + (20.0 - TypeToken::Xs.px()) * 0.5,
-        TypeToken::Xs.px(),
-        w - toggle_w - Spacing::Md.px(),
-        resolve(ColorToken::Text2, theme),
-    );
-    row_y += 24.0;
-
-    // ColorSwatch row.
-    paint_text(
-        text_system,
-        scene,
-        "Tint",
-        x,
-        row_y + (20.0 - TypeToken::Xs.px()) * 0.5,
-        TypeToken::Xs.px(),
-        80.0,
-        resolve(ColorToken::Text2, theme),
-    );
-    let sw_rect = Rect::new(x + w - 32.0, row_y - 4.0, 32.0, 28.0);
-    hit_index.register(ids::INSP_TINT_SWATCH, sw_rect);
-    let mut tint = ColorSwatch::new(ids::INSP_TINT_SWATCH, "Tint", [120, 60, 200, 255]);
-    tint.size = SwatchSize::Md;
-    paint_color_swatch(&tint, sw_rect, scene, theme);
-}
-
-/// Paint a single inspector field row. Returns the height the row
-/// consumed so the caller can advance `y` accordingly. Sliders are
-/// single-row (canonical composite owns the label) so they line up
-/// with the picker's channel rows; other field kinds keep the
-/// dual-row dot+label-above + body-below layout.
-#[allow(clippy::too_many_arguments)]
-fn paint_inspector_field(
-    field: &fixture::InspectorField,
-    field_id: Option<NodeId>,
-    x: f32,
-    w: f32,
-    y: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-) -> f32 {
-    use fixture::InspectorFieldKind;
-    // Slider variants get a single-row layout (no separate header)
-    // so they look identical to the picker's channel rows. Other
-    // kinds keep the dual-row dot+label/body layout.
-    if matches!(
-        field.kind,
-        InspectorFieldKind::Slider { .. } | InspectorFieldKind::LinkedSlider { .. }
-    ) {
-        let row_rect = Rect::new(x, y, w, FIELD_ROW_H);
-        match &field.kind {
-            InspectorFieldKind::Slider { value, display: _ } => {
-                // No `display_override`: the chip MUST track the
-                // live store value so dragging the slider visibly
-                // updates the chip (and typing into the chip moves
-                // the slider). Earlier this passed the fixture's
-                // engineering-unit string which froze the chip on
-                // its initial label, severing the slider×chip link.
-                let id = field_id.unwrap_or(NodeId(0));
-                let live_value = field_id
-                    .and_then(|i| store.slider(i).map(|(_, v)| v))
-                    .unwrap_or(*value);
-                let chip_id = sibling_number_id(field_id).unwrap_or(NodeId(0));
-                let chip_value = store
-                    .number_input(chip_id)
-                    .map(|(_, v, _, _, _)| v)
-                    .unwrap_or(*value as f64);
-                crate::widget::paint_slider_with_chip_layout(
-                    row_rect,
-                    &field.label,
-                    live_value,
-                    chip_value,
-                    None,
-                    id,
-                    chip_id,
-                    crate::widget::DEFAULT_LABEL_W,
-                    crate::widget::DEFAULT_CHIP_W,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            InspectorFieldKind::LinkedSlider { value, display: _ } => {
-                // Same reasoning as `Slider` above: chip displays
-                // the live value, no override.
-                crate::widget::paint_slider_with_chip_layout(
-                    row_rect,
-                    &field.label,
-                    *value,
-                    *value as f64,
-                    None,
-                    NodeId(0),
-                    NodeId(0),
-                    crate::widget::DEFAULT_LABEL_W,
-                    crate::widget::DEFAULT_CHIP_W,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            _ => unreachable!(),
-        }
-        return FIELD_ROW_H;
-    }
-
-    let head_rect = Rect::new(x, y, w, FIELD_ROW_H);
-    let dot_r = 3.5;
-    let dot_cx = x + dot_r + 4.0;
-    let dot_cy = head_rect.y + head_rect.h * 0.5;
-    let dot = Circle::new(Point::new(dot_cx as f64, dot_cy as f64), dot_r as f64);
-    scene.inner_mut().fill(
-        Fill::NonZero,
-        Affine::IDENTITY,
-        &Brush::Solid(resolve(ColorToken::Accent, theme)),
-        None,
-        &dot,
-    );
-    let label_x = dot_cx + dot_r + Spacing::Md.px();
-    let label_y = head_rect.y + (head_rect.h - TypeToken::Xs.px()) * 0.5;
-    paint_text(
-        text_system,
-        scene,
-        &field.label,
-        label_x,
-        label_y,
-        TypeToken::Xs.px(),
-        head_rect.x + head_rect.w - label_x,
-        resolve(ColorToken::Text2, theme),
-    );
-
-    let body_y = y + FIELD_ROW_H;
-    let body_rect = Rect::new(x, body_y, w, FIELD_ROW_H);
-    match &field.kind {
-        InspectorFieldKind::Slider { .. } | InspectorFieldKind::LinkedSlider { .. } => {
-            unreachable!("handled in single-row branch above");
-        }
-        InspectorFieldKind::Select { current } => {
-            // Canonical Dropdown widget — same painter the rest of
-            // the app uses. Was rolled inline pre-audit; see
-            // `docs/UI_Bugs/README.md` §6 for the "ad-hoc chrome"
-            // principle.
-            let id = field_id.unwrap_or(NodeId(0));
-            let (dd_state, is_open) = field_id
-                .and_then(|i| match store.get(i) {
-                    Some(InteractiveState::Dropdown { state, open, .. }) => {
-                        Some((*state, *open))
-                    }
-                    _ => None,
-                })
-                .unwrap_or((crate::widget::DropdownState::Normal, false));
-            if let Some(i) = field_id {
-                hit_index.register(i, body_rect);
-            }
-            // Single-option dropdown — `current` IS the selected
-            // label; we don't have a full options list (fixture
-            // hasn't been extended yet). Real callers should pass
-            // their own option vec.
-            let dd = crate::widget::Dropdown::new(
-                id,
-                &field.label,
-                vec![crate::widget::DropdownOption::new(
-                    NodeId(0),
-                    current.clone(),
-                    current.clone(),
-                )],
-            )
-            .selected(current.clone())
-            .open(is_open)
-            .state(dd_state);
-            crate::widget::paint_dropdown(&dd, body_rect, scene, text_system, theme);
-        }
-        InspectorFieldKind::Linked { source } => {
-            fill_rounded_rect(
-                scene,
-                body_rect,
-                Radius::Sm.px(),
-                resolve(ColorToken::AccentSoft, theme),
-            );
-            paint_text(
-                text_system,
-                scene,
-                source,
-                body_rect.x + Spacing::Lg.px(),
-                body_rect.y + (body_rect.h - TypeToken::Xs.px()) * 0.5,
-                TypeToken::Xs.px(),
-                body_rect.w - Spacing::Lg.px() * 2.0,
-                resolve(ColorToken::Accent, theme),
-            );
-        }
-    }
-    FIELD_ROW_H * 2.0
 }

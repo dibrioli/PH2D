@@ -7,9 +7,11 @@
 //!
 //! - 100..199 — TopBar buttons + Hierarchy add
 //! - 200..299 — LeftRail tools
-//! - 300..399 — Inspector fields
+//! - 300..399 — Inspector slots (currently only the panel container;
+//!   the placeholder field ids were removed when the inspector was
+//!   emptied for the next sample-loading phase)
 //! - 400..499 — Hierarchy entity rows
-//! - 500..599 — Components Showcase widgets (RESERVED)
+//! - 600..699 — Floating BlenderColorPicker sub-controls
 
 use ph2d_a11y::NodeId;
 
@@ -34,35 +36,20 @@ pub const TOOL_HOME: NodeId = NodeId(207);
 pub const TOOL_UNDO: NodeId = NodeId(208);
 pub const TOOL_REDO: NodeId = NodeId(209);
 
-pub const INSP_MOVE_SPEED: NodeId = NodeId(300);
-pub const INSP_JUMP_HEIGHT: NodeId = NodeId(301);
-pub const INSP_FRICTION: NodeId = NodeId(302);
-pub const INSP_DAMPING: NodeId = NodeId(303);
-pub const INSP_DEBUG_SELECT: NodeId = NodeId(310);
-pub const INSP_LINK_DISTANCE: NodeId = NodeId(320);
-pub const INSP_LINK_MATERIAL: NodeId = NodeId(321);
-pub const INSP_CAM_YAW: NodeId = NodeId(330);
-pub const INSP_CAM_PITCH: NodeId = NodeId(331);
-
-// Inspector polish (Phase 1) extra ids:
-pub const INSP_TAB_PROPS: NodeId = NodeId(340);
-pub const INSP_TAB_LAYERS: NodeId = NodeId(341);
-pub const INSP_TAB_MATERIALS: NodeId = NodeId(342);
-pub const INSP_NUM_MOVE_SPEED: NodeId = NodeId(350);
-pub const INSP_NUM_JUMP_HEIGHT: NodeId = NodeId(351);
-pub const INSP_NUM_FRICTION: NodeId = NodeId(352);
-pub const INSP_NUM_DAMPING: NodeId = NodeId(353);
-pub const INSP_NUM_CAM_YAW: NodeId = NodeId(354);
-pub const INSP_HOT_RELOAD_CHECK: NodeId = NodeId(360);
-pub const INSP_SNAP_GRID_TOGGLE: NodeId = NodeId(361);
-pub const INSP_TINT_SWATCH: NodeId = NodeId(370);
-/// Inspector panel container — used as the wheel-scroll key.
+/// Inspector panel container — used as the wheel-scroll key. The
+/// panel is currently a blank canvas waiting for canonical widget
+/// samples (next phase). Placeholder field ids previously parked in
+/// the 300..370 range were removed alongside the showcase teardown.
 pub const INSP_PANEL: NodeId = NodeId(371);
+/// Floating `BlenderColorPicker` parent id. The picker is painted
+/// over the canvas (not inside the Inspector) — the historical
+/// `INSP_` prefix is kept to avoid churning every side-table key.
 pub const INSP_BLENDER_PICKER: NodeId = NodeId(380);
 
-// BlenderColorPicker sub-control hit ids — registered by the
-// showcase painter every frame, dispatched by `dispatch_pointer`
-// into store mutations on `INSP_BLENDER_PICKER`.
+// BlenderColorPicker sub-control hit ids — registered by
+// `color_picker_demo::paint_blender_picker_demo` every frame,
+// dispatched by `dispatch_pointer` into store mutations on
+// `INSP_BLENDER_PICKER`.
 pub const BLENDER_WHEEL: NodeId = NodeId(381);
 pub const BLENDER_VALUE_SLIDER: NodeId = NodeId(382);
 
@@ -92,11 +79,6 @@ pub const BLENDER_ADD_SWATCH: NodeId = NodeId(644);
 pub const BLENDER_EYEDROPPER: NodeId = NodeId(645);
 // Drag handle bar at the top of the picker — drag to move.
 pub const BLENDER_DRAG_HANDLE: NodeId = NodeId(646);
-// Components Showcase panel — drag handle reuses the picker's
-// `BlenderHitKind::DragHandle` mechanism (panel-agnostic on the
-// `parent` NodeId).
-pub const SHOWCASE_PANEL: NodeId = NodeId(660);
-pub const SHOWCASE_DRAG_HANDLE: NodeId = NodeId(661);
 // Palette swatch slots 0..26 — first 12 are the default palette,
 // remaining 15 cover user "+ swatch" additions. Hard cap at 27 to
 // keep registration static; `blender_palette_push` rejects beyond
@@ -143,80 +125,6 @@ pub const HIER_SLIME_02: NodeId = NodeId(408);
 pub const HIER_TRIGGER_ZONE_A: NodeId = NodeId(409);
 pub const HIER_AMBIENT_LIGHT: NodeId = NodeId(410);
 pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
-
-// ── Components Showcase (500..599) ─────────────────────────────────────────
-// Text fields
-pub const SHOWCASE_TEXT_INPUT_NAME: NodeId = NodeId(500);
-pub const SHOWCASE_TEXT_AREA_NOTES: NodeId = NodeId(501);
-// Combobox + its options
-pub const SHOWCASE_COMBOBOX_ASSET: NodeId = NodeId(502);
-pub const SHOWCASE_COMBOBOX_OPT_SPIKE: NodeId = NodeId(512);
-pub const SHOWCASE_COMBOBOX_OPT_BLOCK: NodeId = NodeId(513);
-// Checkbox
-pub const SHOWCASE_CHECKBOX_LOCK: NodeId = NodeId(503);
-// Dropdown + its options
-pub const SHOWCASE_DROPDOWN_VIEW: NodeId = NodeId(504);
-pub const SHOWCASE_DROPDOWN_OPT_FRONT: NodeId = NodeId(514);
-pub const SHOWCASE_DROPDOWN_OPT_SIDE: NodeId = NodeId(515);
-// RadioGroup + options
-pub const SHOWCASE_RADIO_MODE: NodeId = NodeId(505);
-pub const SHOWCASE_RADIO_SHADED: NodeId = NodeId(506);
-pub const SHOWCASE_RADIO_WIRE: NodeId = NodeId(507);
-pub const SHOWCASE_RADIO_SOLID: NodeId = NodeId(508);
-// Vertical slider
-pub const SHOWCASE_SLIDER_VERTICAL: NodeId = NodeId(509);
-// Tags (removable → need a hit rect)
-pub const SHOWCASE_TAG_DRAFT: NodeId = NodeId(510);
-pub const SHOWCASE_TAG_DONE: NodeId = NodeId(511);
-// Vector3Editor (position) — container + three NumberInput sub-fields
-pub const SHOWCASE_V3_POS: NodeId = NodeId(516);
-pub const SHOWCASE_V3_X: NodeId = NodeId(517);
-pub const SHOWCASE_V3_Y: NodeId = NodeId(518);
-pub const SHOWCASE_V3_Z: NodeId = NodeId(519);
-// SectionHeader
-pub const SHOWCASE_SECTION_ADVANCED: NodeId = NodeId(520);
-// Modal buttons
-pub const SHOWCASE_MODAL_CANCEL: NodeId = NodeId(521);
-pub const SHOWCASE_MODAL_CONFIRM: NodeId = NodeId(522);
-// Popover surface
-pub const SHOWCASE_POPOVER: NodeId = NodeId(523);
-// ContextMenu container + items
-pub const SHOWCASE_CTX_MENU: NodeId = NodeId(524);
-pub const SHOWCASE_CTX_ITEM_CUT: NodeId = NodeId(525);
-pub const SHOWCASE_CTX_ITEM_COPY: NodeId = NodeId(526);
-pub const SHOWCASE_CTX_DIVIDER: NodeId = NodeId(527);
-pub const SHOWCASE_CTX_ITEM_DELETE: NodeId = NodeId(528);
-// Card + list items + divider inside it
-pub const SHOWCASE_CARD_QUICK_ACTIONS: NodeId = NodeId(529);
-pub const SHOWCASE_LIST_OPEN: NodeId = NodeId(530);
-pub const SHOWCASE_LIST_SAVE: NodeId = NodeId(531);
-pub const SHOWCASE_LIST_EXPORT: NodeId = NodeId(532);
-pub const SHOWCASE_CARD_DIVIDER: NodeId = NodeId(533);
-// Decorative non-interactive widgets — still need stable ids for a11y
-pub const SHOWCASE_PROGRESS_DET: NodeId = NodeId(540);
-pub const SHOWCASE_PROGRESS_IND: NodeId = NodeId(541);
-pub const SHOWCASE_SPINNER: NodeId = NodeId(542);
-pub const SHOWCASE_AVATAR_CIRCLE: NodeId = NodeId(543);
-pub const SHOWCASE_AVATAR_SQUARE: NodeId = NodeId(544);
-// Primitives — canonical "one of each" gallery at the bottom
-// of the showcase. New widgets added by the M13 audit round.
-pub const SHOWCASE_PRIM_SLIDER: NodeId = NodeId(545);
-pub const SHOWCASE_PRIM_SLIDER_CHIP: NodeId = NodeId(546);
-pub const SHOWCASE_PRIM_BTN_PRIMARY: NodeId = NodeId(547);
-pub const SHOWCASE_PRIM_BTN_SECONDARY: NodeId = NodeId(548);
-pub const SHOWCASE_PRIM_BTN_DANGER: NodeId = NodeId(549);
-pub const SHOWCASE_PRIM_BTN_ICON: NodeId = NodeId(550);
-pub const SHOWCASE_PRIM_TOGGLE: NodeId = NodeId(551);
-pub const SHOWCASE_PRIM_TABS_A: NodeId = NodeId(552);
-pub const SHOWCASE_PRIM_TABS_B: NodeId = NodeId(553);
-pub const SHOWCASE_PRIM_TABS_C: NodeId = NodeId(554);
-pub const SHOWCASE_PRIM_SWATCH: NodeId = NodeId(555);
-pub const SHOWCASE_PRIM_NUMBER: NodeId = NodeId(556);
-pub const SHOWCASE_PRIM_TREE: NodeId = NodeId(557);
-pub const SHOWCASE_PRIM_TREE_ROOT_A: NodeId = NodeId(558);
-pub const SHOWCASE_PRIM_TREE_LEAF_A1: NodeId = NodeId(559);
-pub const SHOWCASE_PRIM_TREE_LEAF_A2: NodeId = NodeId(580);
-pub const SHOWCASE_PRIM_TOOLTIP: NodeId = NodeId(581);
 
 /// Map fixture entity name to canonical hierarchy `NodeId`.
 pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {
@@ -274,19 +182,3 @@ pub(crate) fn hierarchy_kind_for_label(label: &str) -> &'static str {
     }
 }
 
-/// Map a fixture-label to the canonical interactive id for that
-/// inspector field. `None` when the field is non-interactive.
-pub(crate) fn inspector_field_id(label: &str) -> Option<NodeId> {
-    Some(match label {
-        "Move Speed" => INSP_MOVE_SPEED,
-        "Jump Height" => INSP_JUMP_HEIGHT,
-        "Friction" => INSP_FRICTION,
-        "Damping" => INSP_DAMPING,
-        "Cam Yaw" => INSP_CAM_YAW,
-        "Cam Pitch" => INSP_CAM_PITCH,
-        "Debug" => INSP_DEBUG_SELECT,
-        "Distance" => INSP_LINK_DISTANCE,
-        "Material" => INSP_LINK_MATERIAL,
-        _ => return None,
-    })
-}

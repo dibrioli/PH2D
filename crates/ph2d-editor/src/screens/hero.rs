@@ -27,23 +27,23 @@
 
 pub mod bottom_hud;
 pub mod canvas;
+pub mod color_picker_demo;
 pub mod fixture;
 pub mod hierarchy;
 pub mod ids;
 pub mod inspector;
 pub mod left_rail;
 pub mod selection;
-pub mod showcase;
 pub mod style;
 pub mod topbar;
 
 pub use bottom_hud::paint_bottom_hud;
 pub use canvas::paint_canvas_bg;
+pub use color_picker_demo::paint_blender_picker_demo;
 pub use hierarchy::paint_hierarchy;
 pub use inspector::paint_inspector;
 pub use left_rail::paint_left_rail;
 pub use selection::paint_selection_overlay;
-pub use showcase::paint_components_showcase;
 pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 pub use topbar::paint_top_bar;
 
@@ -166,7 +166,6 @@ impl HeroScreen {
         left_rail::populate(store);
         hierarchy::populate(store);
         inspector::populate(store);
-        showcase::populate(store);
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -235,9 +234,6 @@ impl HeroScreen {
             return true;
         }
         if inspector::apply_event(&mut self.store, event) {
-            return true;
-        }
-        if showcase::apply_event(&mut self.store, event) {
             return true;
         }
         false
@@ -311,27 +307,12 @@ pub fn paint_hero_screen(
         &hero.store,
     );
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
-    // Publish movable panel rects so wheel-event dispatch can route
-    // to the panel under the cursor BEFORE paint runs. Both
-    // `current_showcase_rect` and `current_picker_rect` are pure
-    // functions of (layout, store); the painter recomputes the
-    // same value, so the publish + render stay in lockstep.
-    if let Some(r) = showcase::current_showcase_rect(&layout, &hero.store) {
-        hero.store.set_panel_rect(ids::SHOWCASE_PANEL, r);
-    }
-    // Components Showcase — gallery of every widget in functional
-    // use. Re-enabled after the picker debug round; pairs with the
-    // floating BlenderColorPicker demo so the user can see every UI
-    // primitive in one viewport.
-    showcase::paint_components_showcase(
-        &layout,
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-    );
-    showcase::paint_blender_picker_demo(
+    // Floating BlenderColorPicker on top of the canvas. Pure
+    // function of `(layout, store)` — drag offset comes from the
+    // store. The Inspector keeps the picker's state under
+    // `INSP_BLENDER_PICKER` even though the picker is painted out
+    // here, not inside the Inspector chrome.
+    color_picker_demo::paint_blender_picker_demo(
         &layout,
         scene,
         text_system,

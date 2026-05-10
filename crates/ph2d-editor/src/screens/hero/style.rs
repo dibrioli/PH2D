@@ -25,13 +25,12 @@ pub(super) const HIERARCHY_W: f32 = 308.0;
 pub(super) const HUD_H: f32 = 34.0;
 pub(super) const HUD_BOTTOM_PAD: f32 = 18.0;
 
-/// Inspector + Hierarchy panel layout constants.
+/// Inspector + Hierarchy panel layout constants. Field/section
+/// metrics were removed alongside the inspector placeholder
+/// teardown — they'll be reintroduced when canonical sample
+/// widgets land in the inspector body.
 pub(super) const PANEL_RADIUS: f32 = 16.0;
 pub(super) const PANEL_HEAD_PAD: f32 = 18.0;
-pub(super) const FIELD_ROW_H: f32 = 26.0;
-pub(super) const FIELD_GAP: f32 = 10.0;
-pub(super) const SECTION_HEAD_H: f32 = 26.0;
-pub(super) const SECTION_GAP: f32 = 6.0;
 pub(super) const HIER_ROW_H: f32 = 32.0;
 
 /// Floating-panel surface common to Inspector and Hierarchy: rounded

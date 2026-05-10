@@ -267,6 +267,9 @@ impl HeroScreen {
                 InteractiveState::NumberInput {
                     state: crate::widget::TextInputState::Normal,
                     value,
+                    buffer: crate::interaction::format_number(value),
+                    caret: 0,
+                    last_committed: value,
                 },
             );
         }

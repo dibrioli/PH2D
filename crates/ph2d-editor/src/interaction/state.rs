@@ -75,6 +75,15 @@ pub enum InteractiveState {
     NumberInput {
         state: TextInputState,
         value: f64,
+        /// Mirror of `value` formatted as a string while the input is
+        /// not focused; the user's in-progress edit while it is. Pre-
+        /// allocated by the caller via [`InteractiveState::number_input`]
+        /// so dispatch never grows the String at construction time.
+        buffer: String,
+        caret: usize,
+        /// Snapshot of `value` taken when focus arrives — restored on
+        /// Escape or on Blur with an unparsable buffer.
+        last_committed: f64,
     },
     ListItem {
         state: ListItemState,
@@ -257,8 +266,68 @@ impl WidgetStore {
         match self.states.get(&id) {
             Some(InteractiveState::TextInput { text, .. }) => Some(text.as_str()),
             Some(InteractiveState::Combobox { query, .. }) => Some(query.as_str()),
+            Some(InteractiveState::NumberInput { buffer, .. }) => Some(buffer.as_str()),
             _ => None,
         }
+    }
+
+    /// Convenience: read number-input full state (state + value +
+    /// editing buffer + caret). Returns `None` for non-number widgets.
+    pub fn number_input(&self, id: NodeId) -> Option<(TextInputState, f64, &str, usize)> {
+        match self.states.get(&id) {
+            Some(InteractiveState::NumberInput {
+                state,
+                value,
+                buffer,
+                caret,
+                ..
+            }) => Some((*state, *value, buffer.as_str(), *caret)),
+            _ => None,
+        }
+    }
+
+    /// Read just the current numeric value (committed). Useful for
+    /// linked sliders that don't care about the in-progress buffer.
+    pub fn number_value(&self, id: NodeId) -> Option<f64> {
+        match self.states.get(&id) {
+            Some(InteractiveState::NumberInput { value, .. }) => Some(*value),
+            _ => None,
+        }
+    }
+
+    /// Mutate a NumberInput's committed value programmatically (e.g.
+    /// from a linked Slider drag). Re-syncs the buffer to the new
+    /// formatted value when the input is **not** focused; if it is
+    /// focused, the user's edit is preserved.
+    pub fn set_number_value(&mut self, id: NodeId, new_value: f64) {
+        let focused = self.focus_id == Some(id);
+        if let Some(InteractiveState::NumberInput {
+            value,
+            buffer,
+            last_committed,
+            ..
+        }) = self.states.get_mut(&id)
+        {
+            *value = new_value;
+            *last_committed = new_value;
+            if !focused {
+                buffer.clear();
+                use std::fmt::Write;
+                let _ = write!(buffer, "{}", format_number(new_value));
+            }
+        }
+    }
+}
+
+/// Pretty-print a `f64` for NumberInput buffer initialisation:
+/// integers without trailing `.0`, fractions with up to 3 decimals.
+/// Mirrors `widget::number_input::format_number` to keep both reps
+/// in sync without crossing the module boundary.
+pub fn format_number(v: f64) -> String {
+    if (v - v.round()).abs() < 1e-6 {
+        format!("{}", v as i64)
+    } else {
+        format!("{v:.3}")
     }
 }
 

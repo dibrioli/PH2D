@@ -78,9 +78,11 @@ pub fn dispatch_pointer<'frame>(
                 let prev_focus = store.focus_id();
                 if prev_focus != Some(id) {
                     if let Some(old) = prev_focus {
+                        commit_number_buffer(store, old, &mut events);
                         events.push(WidgetEvent::Blur(old));
                     }
                     store.set_focus(Some(id));
+                    init_number_buffer(store, id);
                     events.push(WidgetEvent::Focus(id));
                 }
                 set_widget_pressed(store, id);
@@ -178,6 +180,15 @@ pub fn dispatch_key<'frame>(
         }
         KEY_ENTER | KEY_SPACE => {
             if let Some(id) = store.focus_id() {
+                // For NumberInput, Enter commits the buffer (parses)
+                // and emits ValueChanged on success. Falls through to
+                // apply_click for everything else.
+                if matches!(store.get(id), Some(InteractiveState::NumberInput { .. }))
+                    && event.keycode == KEY_ENTER
+                {
+                    commit_number_buffer(store, id, &mut events);
+                    return events.into_bump_slice();
+                }
                 apply_click(store, id, &mut events);
             }
         }
@@ -190,51 +201,98 @@ pub fn dispatch_key<'frame>(
                     *open = false;
                     return events.into_bump_slice();
                 }
+                // NumberInput: revert buffer to last committed value.
+                if matches!(store.get(id), Some(InteractiveState::NumberInput { .. })) {
+                    revert_number_buffer(store, id);
+                }
                 store.set_focus(None);
                 events.push(WidgetEvent::Blur(id));
             }
         }
         KEY_BACKSPACE => {
-            if let Some(id) = store.focus_id()
-                && let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
-                && *caret > 0
-            {
-                // Decrement caret + remove preceding char (UTF-8 safe).
-                let new_caret = prev_char_boundary(text, *caret);
-                text.replace_range(new_caret..*caret, "");
-                *caret = new_caret;
-                events.push(WidgetEvent::TextChanged(id));
+            if let Some(id) = store.focus_id() {
+                match store.get_mut(id) {
+                    Some(InteractiveState::TextInput { text, caret, .. }) if *caret > 0 => {
+                        let new_caret = prev_char_boundary(text, *caret);
+                        text.replace_range(new_caret..*caret, "");
+                        *caret = new_caret;
+                        events.push(WidgetEvent::TextChanged(id));
+                    }
+                    Some(InteractiveState::NumberInput { buffer, caret, .. }) if *caret > 0 => {
+                        let new_caret = prev_char_boundary(buffer, *caret);
+                        buffer.replace_range(new_caret..*caret, "");
+                        *caret = new_caret;
+                        events.push(WidgetEvent::TextChanged(id));
+                    }
+                    _ => {}
+                }
             }
         }
         KEY_ARROW_LEFT => {
-            if let Some(id) = store.focus_id()
-                && let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
-                && *caret > 0
-            {
-                *caret = prev_char_boundary(text, *caret);
+            if let Some(id) = store.focus_id() {
+                match store.get_mut(id) {
+                    Some(InteractiveState::TextInput { text, caret, .. }) if *caret > 0 => {
+                        *caret = prev_char_boundary(text, *caret);
+                    }
+                    Some(InteractiveState::NumberInput { buffer, caret, .. }) if *caret > 0 => {
+                        *caret = prev_char_boundary(buffer, *caret);
+                    }
+                    _ => {}
+                }
             }
         }
         KEY_ARROW_RIGHT => {
-            if let Some(id) = store.focus_id()
-                && let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
-                && *caret < text.len()
-            {
-                *caret = next_char_boundary(text, *caret);
+            if let Some(id) = store.focus_id() {
+                match store.get_mut(id) {
+                    Some(InteractiveState::TextInput { text, caret, .. })
+                        if *caret < text.len() =>
+                    {
+                        *caret = next_char_boundary(text, *caret);
+                    }
+                    Some(InteractiveState::NumberInput { buffer, caret, .. })
+                        if *caret < buffer.len() =>
+                    {
+                        *caret = next_char_boundary(buffer, *caret);
+                    }
+                    _ => {}
+                }
             }
         }
         KEY_ARROW_UP => {
             if let Some(id) = store.focus_id()
-                && let Some(InteractiveState::NumberInput { value, .. }) = store.get_mut(id)
+                && let Some(InteractiveState::NumberInput {
+                    value,
+                    buffer,
+                    caret,
+                    last_committed,
+                    ..
+                }) = store.get_mut(id)
             {
                 *value += 1.0;
+                *last_committed = *value;
+                buffer.clear();
+                use std::fmt::Write;
+                let _ = write!(buffer, "{}", super::state::format_number(*value));
+                *caret = buffer.len();
                 events.push(WidgetEvent::ValueChanged(id));
             }
         }
         KEY_ARROW_DOWN => {
             if let Some(id) = store.focus_id()
-                && let Some(InteractiveState::NumberInput { value, .. }) = store.get_mut(id)
+                && let Some(InteractiveState::NumberInput {
+                    value,
+                    buffer,
+                    caret,
+                    last_committed,
+                    ..
+                }) = store.get_mut(id)
             {
                 *value -= 1.0;
+                *last_committed = *value;
+                buffer.clear();
+                use std::fmt::Write;
+                let _ = write!(buffer, "{}", super::state::format_number(*value));
+                *caret = buffer.len();
                 events.push(WidgetEvent::ValueChanged(id));
             }
         }
@@ -293,9 +351,102 @@ pub fn dispatch_text_input<'frame>(
             query.push(ch);
             events.push(WidgetEvent::TextChanged(id));
         }
+        Some(InteractiveState::NumberInput { buffer, caret, .. }) if is_numeric_input_char(ch) => {
+            buffer.insert(*caret, ch);
+            *caret += ch.len_utf8();
+            events.push(WidgetEvent::TextChanged(id));
+        }
         _ => {}
     }
     events.into_bump_slice()
+}
+
+/// Filter for chars allowed in a NumberInput buffer: digits, sign,
+/// decimal point, and scientific-notation `e`/`E`/`+`. Anything else
+/// (letters, spaces, control chars) is dropped silently.
+fn is_numeric_input_char(ch: char) -> bool {
+    matches!(ch, '0'..='9' | '.' | '-' | '+' | 'e' | 'E')
+}
+
+/// On focus arrival into a NumberInput, sync `buffer` from `value`
+/// using the same formatter the painter uses, and place the caret at
+/// the end so the user can append digits immediately.
+pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    if let Some(InteractiveState::NumberInput {
+        value,
+        buffer,
+        caret,
+        last_committed,
+        ..
+    }) = store.get_mut(id)
+    {
+        buffer.clear();
+        use std::fmt::Write;
+        let _ = write!(buffer, "{}", super::state::format_number(*value));
+        *caret = buffer.len();
+        *last_committed = *value;
+    }
+}
+
+/// On focus departure (Blur, Tab away, Enter commit) from a
+/// NumberInput, parse `buffer.trim()`. On success → update `value` +
+/// `last_committed` and emit `ValueChanged`. On failure → revert the
+/// buffer to the formatted `last_committed`.
+pub(super) fn commit_number_buffer<'a>(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    events: &mut BumpVec<'a, WidgetEvent>,
+) {
+    let Some(InteractiveState::NumberInput {
+        value,
+        buffer,
+        caret,
+        last_committed,
+        ..
+    }) = store.get_mut(id)
+    else {
+        return;
+    };
+    match buffer.trim().parse::<f64>() {
+        Ok(parsed) if parsed.is_finite() => {
+            if (parsed - *value).abs() > f64::EPSILON {
+                *value = parsed;
+                *last_committed = parsed;
+                events.push(WidgetEvent::ValueChanged(id));
+            }
+            buffer.clear();
+            use std::fmt::Write;
+            let _ = write!(buffer, "{}", super::state::format_number(*value));
+            *caret = buffer.len();
+        }
+        _ => {
+            // Unparsable — revert.
+            buffer.clear();
+            use std::fmt::Write;
+            let _ = write!(buffer, "{}", super::state::format_number(*last_committed));
+            *value = *last_committed;
+            *caret = buffer.len();
+        }
+    }
+}
+
+/// Restore a NumberInput's buffer to its last committed value
+/// without emitting any event. Used by Escape.
+pub(super) fn revert_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    if let Some(InteractiveState::NumberInput {
+        value,
+        buffer,
+        caret,
+        last_committed,
+        ..
+    }) = store.get_mut(id)
+    {
+        *value = *last_committed;
+        buffer.clear();
+        use std::fmt::Write;
+        let _ = write!(buffer, "{}", super::state::format_number(*last_committed));
+        *caret = buffer.len();
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -489,10 +640,12 @@ fn cycle_focus<'a>(store: &mut WidgetStore, forward: bool, events: &mut BumpVec<
             if let Some(old) = store.focus_id()
                 && old != id
             {
+                commit_number_buffer(store, old, events);
                 events.push(WidgetEvent::Blur(old));
             }
             if store.focus_id() != Some(id) {
                 store.set_focus(Some(id));
+                init_number_buffer(store, id);
                 events.push(WidgetEvent::Focus(id));
             }
             return;
@@ -1036,6 +1189,9 @@ mod tests {
             InteractiveState::NumberInput {
                 state: TextInputState::Normal,
                 value: 5.0,
+                buffer: "5".into(),
+                caret: 1,
+                last_committed: 5.0,
             },
         );
         store.set_focus(Some(NodeId(1)));
@@ -1047,6 +1203,116 @@ mod tests {
         } else {
             panic!("expected NumberInput");
         }
+    }
+
+    fn make_number_store(value: f64) -> WidgetStore {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(1),
+            InteractiveState::NumberInput {
+                state: TextInputState::Focused,
+                value,
+                buffer: super::super::state::format_number(value),
+                caret: super::super::state::format_number(value).len(),
+                last_committed: value,
+            },
+        );
+        store.set_focus(Some(NodeId(1)));
+        store
+    }
+
+    #[test]
+    fn number_input_typing_replaces_buffer_and_commits_on_enter() {
+        let mut store = make_number_store(5.0);
+        let arena = Bump::new();
+        // Erase '5' then type "1.25".
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE, false), &arena);
+        for ch in ['1', '.', '2', '5'] {
+            let _ = dispatch_text_input(&mut store, ch, &arena);
+        }
+        // Buffer reflects edits but value has not yet committed.
+        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        assert_eq!(buf, "1.25");
+        assert!((value - 5.0).abs() < f64::EPSILON);
+        // Enter commits.
+        let evts = dispatch_key(&mut store, key(KEY_ENTER, false), &arena);
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(_)))
+        );
+        let (_, value, _, _) = store.number_input(NodeId(1)).unwrap();
+        assert!((value - 1.25).abs() < 1e-9);
+    }
+
+    #[test]
+    fn number_input_escape_reverts_to_last_committed() {
+        let mut store = make_number_store(7.0);
+        let arena = Bump::new();
+        for ch in ['9', '9'] {
+            let _ = dispatch_text_input(&mut store, ch, &arena);
+        }
+        let (_, _, buf, _) = store.number_input(NodeId(1)).unwrap();
+        assert_eq!(buf, "799");
+        let evts = dispatch_key(&mut store, key(KEY_ESCAPE, false), &arena);
+        assert!(evts.iter().any(|e| matches!(e, WidgetEvent::Blur(_))));
+        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        assert!((value - 7.0).abs() < f64::EPSILON);
+        assert_eq!(buf, "7");
+    }
+
+    #[test]
+    fn number_input_unparsable_buffer_reverts_on_commit() {
+        let mut store = make_number_store(3.0);
+        let arena = Bump::new();
+        // Replace the existing single digit with garbage.
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE, false), &arena);
+        for ch in ['e', 'e', 'e'] {
+            let _ = dispatch_text_input(&mut store, ch, &arena);
+        }
+        let _ = dispatch_key(&mut store, key(KEY_ENTER, false), &arena);
+        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        assert!((value - 3.0).abs() < f64::EPSILON);
+        assert_eq!(buf, "3");
+    }
+
+    #[test]
+    fn number_input_filters_non_numeric_chars() {
+        let mut store = make_number_store(0.0);
+        let arena = Bump::new();
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE, false), &arena);
+        // Typing letters should be filtered.
+        for ch in ['a', 'b', 'X', '!', ' '] {
+            let _ = dispatch_text_input(&mut store, ch, &arena);
+        }
+        let (_, _, buf, _) = store.number_input(NodeId(1)).unwrap();
+        assert_eq!(buf, "");
+    }
+
+    #[test]
+    fn number_input_set_value_syncs_buffer_when_unfocused() {
+        let mut store = make_number_store(0.0);
+        store.set_focus(None); // simulate unfocused
+        store.set_number_value(NodeId(1), 0.42);
+        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        assert!((value - 0.42).abs() < 1e-9);
+        assert_eq!(buf, "0.420");
+    }
+
+    #[test]
+    fn number_input_set_value_preserves_buffer_when_focused() {
+        let mut store = make_number_store(0.0);
+        // Type a partial edit.
+        let arena = Bump::new();
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE, false), &arena);
+        for ch in ['1', '.', '2'] {
+            let _ = dispatch_text_input(&mut store, ch, &arena);
+        }
+        // While focused, programmatic set_number_value should NOT
+        // clobber the in-progress buffer.
+        store.set_number_value(NodeId(1), 9.99);
+        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        assert!((value - 9.99).abs() < 1e-9);
+        assert_eq!(buf, "1.2");
     }
 
     #[test]

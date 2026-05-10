@@ -125,6 +125,23 @@ pub fn paint_number_input(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_number_input_with_buffer(input, None, 0, rect, scene, text_system, theme)
+}
+
+/// Like [`paint_number_input`] but renders the in-progress edit
+/// buffer + caret line when the input is focused. Pass `Some(buffer)`
+/// and a caret byte offset when reading live state from a
+/// [`crate::interaction::WidgetStore`]; otherwise pass `None`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_number_input_with_buffer(
+    input: &NumberInput,
+    buffer: Option<&str>,
+    caret: usize,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     let radius = Radius::Sm.px();
     fill_rounded_rect(scene, rect, radius, resolve(fill_token(input.state), theme));
     let stroke_w = if input.state == TextInputState::Focused {
@@ -142,11 +159,17 @@ pub fn paint_number_input(
 
     let chip_w = stepper_width(rect);
     let pad_x = Spacing::Lg.px();
-    let pad_y = Spacing::Md.px();
-    let value_text = format_number(input.value);
+    let value_text_owned;
+    let value_text: &str = match buffer {
+        Some(b) if input.state == TextInputState::Focused => b,
+        _ => {
+            value_text_owned = format_number(input.value);
+            value_text_owned.as_str()
+        }
+    };
     let font_size = TypeToken::Base.px();
     let inner_x = rect.x + pad_x;
-    let inner_y = rect.y + (rect.h - font_size) * 0.5 - pad_y * 0.0;
+    let inner_y = rect.y + (rect.h - font_size) * 0.5;
     let inner_w = (rect.w - pad_x * 2.0 - chip_w).max(0.0);
     let label_color = if input.state == TextInputState::Disabled {
         ColorToken::TextDisabled
@@ -156,13 +179,24 @@ pub fn paint_number_input(
     paint_text(
         text_system,
         scene,
-        &value_text,
+        value_text,
         inner_x,
         inner_y,
         font_size,
         inner_w,
         resolve(label_color, theme),
     );
+
+    if input.state == TextInputState::Focused && buffer.is_some() {
+        let caret_clamped = caret.min(value_text.len());
+        let prefix = &value_text[..caret_clamped];
+        let approx_advance = prefix.chars().count() as f32 * (font_size * 0.55);
+        let caret_x = inner_x + approx_advance.min(inner_w);
+        let caret_top = rect.y + Spacing::Md.px();
+        let caret_bot = rect.y + rect.h - Spacing::Md.px();
+        let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
+        fill_rounded_rect(scene, caret_rect, 1.0, resolve(ColorToken::Accent, theme));
+    }
 
     let icon_color = resolve(ColorToken::Text2, theme);
     paint_icon(
@@ -181,7 +215,7 @@ pub fn paint_number_input(
     );
 }
 
-fn format_number(v: f64) -> String {
+pub fn format_number(v: f64) -> String {
     if (v - v.round()).abs() < 1e-6 {
         format!("{}", v as i64)
     } else {

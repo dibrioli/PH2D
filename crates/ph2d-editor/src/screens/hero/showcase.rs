@@ -14,11 +14,198 @@ use super::style::paint_panel_surface;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
 
-/// Register every Showcase widget into the [`WidgetStore`]. Empty
-/// today — Showcase widgets currently paint with `NodeId(0)` and
-/// are not yet wired for interaction. Adding ids + registrations
-/// here is the next step (per agent split-up).
-pub fn populate(_store: &mut WidgetStore) {}
+/// Register every Showcase widget into the [`WidgetStore`] so that
+/// hit-testing and state-driven painting work. Called once at screen
+/// construction time (never during the hot-path paint).
+pub fn populate(store: &mut WidgetStore) {
+    use crate::interaction::InteractiveState;
+    use crate::widget::{
+        ButtonState, CheckboxState, CheckboxValue, ComboboxState, DropdownState, SliderOrientation,
+        SliderState, TagState, TextInputState,
+    };
+
+    // TextInput "Name" — initial text mirrors the painted placeholder.
+    store.register(
+        ids::SHOWCASE_TEXT_INPUT_NAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: "Player_01".to_string(),
+            caret: 9,
+        },
+    );
+
+    // TextArea "Notes" — uses the TextInput variant (no separate
+    // TextArea variant; the painter reads text the same way).
+    store.register(
+        ids::SHOWCASE_TEXT_AREA_NOTES,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: "Brush prefab — hot reloads on save.\nCollider via sprite alpha.".to_string(),
+            caret: 0,
+        },
+    );
+
+    // Combobox "Asset" — query pre-filled to match the painted state.
+    store.register(
+        ids::SHOWCASE_COMBOBOX_ASSET,
+        InteractiveState::Combobox {
+            state: ComboboxState::Normal,
+            open: false,
+            query: "sp".to_string(),
+        },
+    );
+
+    // Checkbox "Lock" — indeterminate initial value.
+    store.register(
+        ids::SHOWCASE_CHECKBOX_LOCK,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Indeterminate,
+        },
+    );
+
+    // Dropdown "View" — "Front" pre-selected (index 0).
+    store.register(
+        ids::SHOWCASE_DROPDOWN_VIEW,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
+        },
+    );
+
+    // RadioGroup "Mode" — "Shaded" pre-selected (index 0).
+    store.register(
+        ids::SHOWCASE_RADIO_MODE,
+        InteractiveState::Radio {
+            state: ButtonState::Normal,
+            selected_index: 0,
+        },
+    );
+
+    // Vertical slider — 65 % pre-filled, hovered visual for demo.
+    store.register(
+        ids::SHOWCASE_SLIDER_VERTICAL,
+        InteractiveState::Slider {
+            state: SliderState::Hovered,
+            value: 0.65,
+            orientation: SliderOrientation::Vertical,
+        },
+    );
+
+    // Tags — DRAFT is non-removable; DONE is removable.
+    store.register(
+        ids::SHOWCASE_TAG_DRAFT,
+        InteractiveState::Tag {
+            state: TagState::Normal,
+        },
+    );
+    store.register(
+        ids::SHOWCASE_TAG_DONE,
+        InteractiveState::Tag {
+            state: TagState::Normal,
+        },
+    );
+
+    // Vector3Editor NumberInputs (X / Y / Z positional fields).
+    for (id, value) in [
+        (ids::SHOWCASE_V3_X, 1.0_f64),
+        (ids::SHOWCASE_V3_Y, 2.0),
+        (ids::SHOWCASE_V3_Z, 3.0),
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: crate::interaction::format_number(value),
+                caret: 0,
+                last_committed: value,
+            },
+        );
+    }
+
+    // SectionHeader "Advanced" — plain focusable.
+    store.register(ids::SHOWCASE_SECTION_ADVANCED, InteractiveState::Plain);
+
+    // Modal cancel + confirm buttons.
+    store.register(
+        ids::SHOWCASE_MODAL_CANCEL,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    store.register(
+        ids::SHOWCASE_MODAL_CONFIRM,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+
+    // Card + list items + their divider.
+    store.register(ids::SHOWCASE_CARD_QUICK_ACTIONS, InteractiveState::Plain);
+    store.register(
+        ids::SHOWCASE_LIST_OPEN,
+        InteractiveState::ListItem {
+            state: crate::widget::ListItemState::Normal,
+            selected: false,
+        },
+    );
+    store.register(
+        ids::SHOWCASE_LIST_SAVE,
+        InteractiveState::ListItem {
+            state: crate::widget::ListItemState::Normal,
+            selected: false,
+        },
+    );
+    store.register(
+        ids::SHOWCASE_LIST_EXPORT,
+        InteractiveState::ListItem {
+            state: crate::widget::ListItemState::Normal,
+            selected: false,
+        },
+    );
+
+    // ContextMenu + items.
+    store.register(ids::SHOWCASE_CTX_MENU, InteractiveState::Plain);
+    store.register(
+        ids::SHOWCASE_CTX_ITEM_CUT,
+        InteractiveState::ListItem {
+            state: crate::widget::ListItemState::Normal,
+            selected: false,
+        },
+    );
+    store.register(
+        ids::SHOWCASE_CTX_ITEM_COPY,
+        InteractiveState::ListItem {
+            state: crate::widget::ListItemState::Normal,
+            selected: false,
+        },
+    );
+    store.register(
+        ids::SHOWCASE_CTX_ITEM_DELETE,
+        InteractiveState::ListItem {
+            state: crate::widget::ListItemState::Normal,
+            selected: false,
+        },
+    );
+
+    // Popover surface — plain (no interactive state needed).
+    store.register(ids::SHOWCASE_POPOVER, InteractiveState::Plain);
+
+    // Non-interactive decorative widgets — registered as Plain so the
+    // a11y tree has nodes for them and the dispatcher never panics on
+    // an unexpected id.
+    for id in [
+        ids::SHOWCASE_PROGRESS_DET,
+        ids::SHOWCASE_PROGRESS_IND,
+        ids::SHOWCASE_SPINNER,
+        ids::SHOWCASE_AVATAR_CIRCLE,
+        ids::SHOWCASE_AVATAR_SQUARE,
+    ] {
+        store.register(id, InteractiveState::Plain);
+    }
+}
 
 /// Apply a [`WidgetEvent`] against Showcase widgets. Returns true
 /// iff the event was consumed. Stub.
@@ -31,9 +218,9 @@ use crate::widget::{
     CheckboxState, CheckboxValue, Combobox, ComboboxOption, ComboboxState, ContextMenu,
     ContextMenuEntry, Divider, DividerOrientation, Dropdown, DropdownOption, DropdownState,
     ListItem, ListItemState, Modal, NumberInput, Popover, ProgressBar, RadioGroup, RadioOption,
-    RadioOrientation, SectionHeader, Slider, SliderState, Spinner, Tag, TagState, TagTone,
-    TextArea, TextInput, TextInputState, TreeNode, TreeView, Vector3Editor, paint_avatar,
-    paint_card, paint_checkbox, paint_combobox, paint_context_menu, paint_divider, paint_dropdown,
+    RadioOrientation, SectionHeader, Slider, SliderState, Spinner, Tag, TagTone, TextArea,
+    TextInput, TextInputState, TreeNode, TreeView, Vector3Editor, paint_avatar, paint_card,
+    paint_checkbox, paint_combobox, paint_context_menu, paint_divider, paint_dropdown,
     paint_list_item, paint_modal, paint_popover, paint_progress_bar, paint_radio_group,
     paint_section_header, paint_slider, paint_spinner, paint_tag, paint_text_area,
     paint_text_input, paint_vector3_editor,
@@ -103,18 +290,30 @@ pub fn paint_components_showcase(
     // 1. Card hosting a tiny title/sub + 3 ListItems + Divider.
     let card_h = 156.0;
     let card_rect = Rect::new(inner_x, y, inner_w, card_h);
-    let card = Card::new(NodeId(0)).title("Quick actions");
+    let card = Card::new(ids::SHOWCASE_CARD_QUICK_ACTIONS).title("Quick actions");
+    hit_index.register(ids::SHOWCASE_CARD_QUICK_ACTIONS, card_rect);
     paint_card(&card, card_rect, scene, text_system, theme);
     let body = card.body_rect(card_rect);
     let row_h = 28.0;
     let items = [
-        ("Open", IconId::Open, Some("\u{2318}O")),
-        ("Save", IconId::Save, Some("\u{2318}S")),
-        ("Export", IconId::Export, None),
+        (
+            ids::SHOWCASE_LIST_OPEN,
+            "Open",
+            IconId::Open,
+            Some("\u{2318}O"),
+        ),
+        (
+            ids::SHOWCASE_LIST_SAVE,
+            "Save",
+            IconId::Save,
+            Some("\u{2318}S"),
+        ),
+        (ids::SHOWCASE_LIST_EXPORT, "Export", IconId::Export, None),
     ];
-    for (i, (label, icon, shortcut)) in items.iter().enumerate() {
+    for (i, (item_id, label, icon, shortcut)) in items.iter().enumerate() {
         let row = Rect::new(body.x, body.y + (row_h + 2.0) * i as f32, body.w, row_h);
-        let mut li = ListItem::new(NodeId(0), *label).icon(*icon);
+        hit_index.register(*item_id, row);
+        let mut li = ListItem::new(*item_id, *label).icon(*icon);
         if let Some(sc) = shortcut {
             li = li.value(*sc);
         }
@@ -123,7 +322,7 @@ pub fn paint_components_showcase(
     // Divider after items.
     let div_y = body.y + (row_h + 2.0) * items.len() as f32 + 2.0;
     let div_rect = Rect::new(body.x, div_y, body.w, 8.0);
-    let div = Divider::new(NodeId(0)).orientation(DividerOrientation::Horizontal);
+    let div = Divider::new(ids::SHOWCASE_CARD_DIVIDER).orientation(DividerOrientation::Horizontal);
     paint_divider(&div, div_rect, scene, theme);
     y += card_h + Spacing::Md.px();
 
@@ -140,12 +339,29 @@ pub fn paint_components_showcase(
     );
     y += TypeToken::Xs.px() + 4.0;
     let v3_rect = Rect::new(inner_x, y, inner_w, 32.0);
+    // Read live values from store; fall back to hard-coded defaults if
+    // the store hasn't been populated yet (e.g. smoke tests).
+    let x_val = store.number_value(ids::SHOWCASE_V3_X).unwrap_or(1.0);
+    let y_val = store.number_value(ids::SHOWCASE_V3_Y).unwrap_or(2.0);
+    let z_val = store.number_value(ids::SHOWCASE_V3_Z).unwrap_or(3.0);
+    hit_index.register(
+        ids::SHOWCASE_V3_X,
+        Rect::new(inner_x, y, inner_w / 3.0, 32.0),
+    );
+    hit_index.register(
+        ids::SHOWCASE_V3_Y,
+        Rect::new(inner_x + inner_w / 3.0, y, inner_w / 3.0, 32.0),
+    );
+    hit_index.register(
+        ids::SHOWCASE_V3_Z,
+        Rect::new(inner_x + inner_w * 2.0 / 3.0, y, inner_w / 3.0, 32.0),
+    );
     let v3 = Vector3Editor::new(
-        NodeId(0),
+        ids::SHOWCASE_V3_POS,
         "Position",
-        NumberInput::new(NodeId(0), "X", 1.0),
-        NumberInput::new(NodeId(0), "Y", 2.0),
-        NumberInput::new(NodeId(0), "Z", 3.0),
+        NumberInput::new(ids::SHOWCASE_V3_X, "X", x_val),
+        NumberInput::new(ids::SHOWCASE_V3_Y, "Y", y_val),
+        NumberInput::new(ids::SHOWCASE_V3_Z, "Z", z_val),
     );
     paint_vector3_editor(&v3, v3_rect, scene, text_system, theme);
     y += 32.0 + Spacing::Md.px();
@@ -164,7 +380,7 @@ pub fn paint_components_showcase(
     y += TypeToken::Xs.px() + 4.0;
     let bar_h = 8.0;
     let bar_w = (inner_w - Spacing::Md.px()) / 2.0;
-    let p_det = ProgressBar::new(NodeId(0), "Loading")
+    let p_det = ProgressBar::new(ids::SHOWCASE_PROGRESS_DET, "Loading")
         .determinate(0.62)
         .show_percent(false);
     paint_progress_bar(
@@ -174,7 +390,7 @@ pub fn paint_components_showcase(
         text_system,
         theme,
     );
-    let p_ind = ProgressBar::new(NodeId(0), "Indeterminate").indeterminate();
+    let p_ind = ProgressBar::new(ids::SHOWCASE_PROGRESS_IND, "Indeterminate").indeterminate();
     paint_progress_bar(
         &p_ind,
         Rect::new(inner_x + bar_w + Spacing::Md.px(), y, bar_w, bar_h),
@@ -186,21 +402,23 @@ pub fn paint_components_showcase(
 
     // 4. Spinner + Avatar (Square + Circle).
     let spinner_rect = Rect::new(inner_x, y, 24.0, 24.0);
-    let spinner = Spinner::new(NodeId(0), "Working");
+    let spinner = Spinner::new(ids::SHOWCASE_SPINNER, "Working");
     paint_spinner(&spinner, spinner_rect, scene, theme);
     let av_circle = Rect::new(inner_x + 36.0, y, 24.0, 24.0);
     let av_square = Rect::new(inner_x + 72.0, y, 24.0, 24.0);
-    let av_c = Avatar::new(NodeId(0), "Anna", 'A').shape(AvatarShape::Circle);
-    let av_s = Avatar::new(NodeId(0), "Bob", 'B').shape(AvatarShape::Square);
+    let av_c = Avatar::new(ids::SHOWCASE_AVATAR_CIRCLE, "Anna", 'A').shape(AvatarShape::Circle);
+    let av_s = Avatar::new(ids::SHOWCASE_AVATAR_SQUARE, "Bob", 'B').shape(AvatarShape::Square);
     paint_avatar(&av_c, av_circle, scene, text_system, theme);
     paint_avatar(&av_s, av_square, scene, text_system, theme);
-    // Tags on the right.
+    // Tags on the right — register hit rects so clicks reach them.
     let tag_x = inner_x + 108.0;
     let tag_w = 50.0_f32;
     let tag_rect_a = Rect::new(tag_x, y + 2.0, tag_w, 20.0);
     let tag_rect_b = Rect::new(tag_x + tag_w + 4.0, y + 2.0, tag_w, 20.0);
-    let tag_a = Tag::new(NodeId(0), "DRAFT").tone(TagTone::Warn);
-    let tag_b = Tag::new(NodeId(0), "DONE")
+    hit_index.register(ids::SHOWCASE_TAG_DRAFT, tag_rect_a);
+    hit_index.register(ids::SHOWCASE_TAG_DONE, tag_rect_b);
+    let tag_a = Tag::new(ids::SHOWCASE_TAG_DRAFT, "DRAFT").tone(TagTone::Warn);
+    let tag_b = Tag::new(ids::SHOWCASE_TAG_DONE, "DONE")
         .tone(TagTone::Success)
         .removable(true);
     paint_tag(&tag_a, tag_rect_a, scene, text_system, theme);
@@ -209,17 +427,34 @@ pub fn paint_components_showcase(
 
     // 5. RadioGroup (Segmented) + Dropdown.
     let radio_rect = Rect::new(inner_x, y, inner_w * 0.55, 28.0);
+    hit_index.register(ids::SHOWCASE_RADIO_MODE, radio_rect);
+    // Read selected index from store (default "shaded" = index 0).
+    let radio_sel_idx = store
+        .get(ids::SHOWCASE_RADIO_MODE)
+        .and_then(|s| {
+            if let crate::interaction::InteractiveState::Radio { selected_index, .. } = s {
+                Some(*selected_index)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(0);
+    let radio_options: [&'static str; 3] = ["shaded", "wire", "solid"];
+    let radio_selected = radio_options
+        .get(radio_sel_idx)
+        .copied()
+        .unwrap_or("shaded");
     let radio = RadioGroup::new(
-        NodeId(0),
+        ids::SHOWCASE_RADIO_MODE,
         "Mode",
         vec![
-            RadioOption::new(NodeId(0), "shaded", "Shaded"),
-            RadioOption::new(NodeId(0), "wire", "Wire"),
-            RadioOption::new(NodeId(0), "solid", "Solid"),
+            RadioOption::new(ids::SHOWCASE_RADIO_SHADED, "shaded", "Shaded"),
+            RadioOption::new(ids::SHOWCASE_RADIO_WIRE, "wire", "Wire"),
+            RadioOption::new(ids::SHOWCASE_RADIO_SOLID, "solid", "Solid"),
         ],
     )
     .orientation(RadioOrientation::Segmented)
-    .selected("shaded");
+    .selected(radio_selected);
     paint_radio_group(&radio, radio_rect, scene, theme);
 
     let dd_rect = Rect::new(
@@ -228,12 +463,13 @@ pub fn paint_components_showcase(
         inner_w - radio_rect.w - Spacing::Md.px(),
         28.0,
     );
+    hit_index.register(ids::SHOWCASE_DROPDOWN_VIEW, dd_rect);
     let dd: Dropdown<&'static str> = Dropdown::new(
-        NodeId(0),
+        ids::SHOWCASE_DROPDOWN_VIEW,
         "View",
         vec![
-            DropdownOption::new(NodeId(0), "front", "Front"),
-            DropdownOption::new(NodeId(0), "side", "Side"),
+            DropdownOption::new(ids::SHOWCASE_DROPDOWN_OPT_FRONT, "front", "Front"),
+            DropdownOption::new(ids::SHOWCASE_DROPDOWN_OPT_SIDE, "side", "Side"),
         ],
     )
     .placeholder("View")
@@ -243,16 +479,29 @@ pub fn paint_components_showcase(
 
     // 6. Combobox + Checkbox.
     let cb_rect = Rect::new(inner_x, y, inner_w * 0.6, 28.0);
+    hit_index.register(ids::SHOWCASE_COMBOBOX_ASSET, cb_rect);
+    // Read live query + open state from the store.
+    let (combo_query, combo_open, combo_state) = store
+        .get(ids::SHOWCASE_COMBOBOX_ASSET)
+        .and_then(|s| {
+            if let crate::interaction::InteractiveState::Combobox { query, open, state } = s {
+                Some((query.as_str(), *open, *state))
+            } else {
+                None
+            }
+        })
+        .unwrap_or(("sp", false, ComboboxState::Normal));
     let combo = Combobox::new(
-        NodeId(0),
+        ids::SHOWCASE_COMBOBOX_ASSET,
         "Asset",
         vec![
-            ComboboxOption::new(NodeId(0), "spike.png"),
-            ComboboxOption::new(NodeId(0), "block.png"),
+            ComboboxOption::new(ids::SHOWCASE_COMBOBOX_OPT_SPIKE, "spike.png"),
+            ComboboxOption::new(ids::SHOWCASE_COMBOBOX_OPT_BLOCK, "block.png"),
         ],
     )
-    .query("sp")
-    .state(ComboboxState::Normal);
+    .query(combo_query)
+    .open(combo_open)
+    .state(combo_state);
     paint_combobox(&combo, cb_rect, scene, text_system, theme);
     let chk_rect = Rect::new(
         inner_x + cb_rect.w + Spacing::Md.px(),
@@ -260,31 +509,75 @@ pub fn paint_components_showcase(
         inner_w - cb_rect.w - Spacing::Md.px(),
         20.0,
     );
-    let chk = Checkbox::new(NodeId(0), "Lock").value(CheckboxValue::Indeterminate);
+    hit_index.register(ids::SHOWCASE_CHECKBOX_LOCK, chk_rect);
+    // Read live checkbox value from the store.
+    let (chk_state, chk_value) = store
+        .checkbox(ids::SHOWCASE_CHECKBOX_LOCK)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Indeterminate));
+    let chk = Checkbox::new(ids::SHOWCASE_CHECKBOX_LOCK, "Lock")
+        .state(chk_state)
+        .value(chk_value);
     paint_checkbox(&chk, chk_rect, scene, text_system, theme);
     y += 28.0 + Spacing::Md.px();
 
     // 7. TextInput + TextArea.
     let ti_rect = Rect::new(inner_x, y, inner_w, 30.0);
-    let ti = TextInput::new(NodeId(0), "Name").value("Player_01");
+    hit_index.register(ids::SHOWCASE_TEXT_INPUT_NAME, ti_rect);
+    // Read live text + state from the store.
+    let (ti_text, ti_state) = store
+        .get(ids::SHOWCASE_TEXT_INPUT_NAME)
+        .and_then(|s| {
+            if let crate::interaction::InteractiveState::TextInput { text, state, .. } = s {
+                Some((text.as_str(), *state))
+            } else {
+                None
+            }
+        })
+        .unwrap_or(("Player_01", TextInputState::Normal));
+    let ti = TextInput::new(ids::SHOWCASE_TEXT_INPUT_NAME, "Name")
+        .value(ti_text)
+        .state(ti_state);
     paint_text_input(&ti, ti_rect, scene, text_system, theme);
     y += 30.0 + 4.0;
     let ta_rect = Rect::new(inner_x, y, inner_w, 50.0);
-    let ta = TextArea::new(NodeId(0), "Notes")
-        .value("Brush prefab — hot reloads on save.\nCollider via sprite alpha.");
+    hit_index.register(ids::SHOWCASE_TEXT_AREA_NOTES, ta_rect);
+    // Read live text + state from the store (uses TextInput variant).
+    let (ta_text, ta_state) = store
+        .get(ids::SHOWCASE_TEXT_AREA_NOTES)
+        .and_then(|s| {
+            if let crate::interaction::InteractiveState::TextInput { text, state, .. } = s {
+                Some((text.as_str(), *state))
+            } else {
+                None
+            }
+        })
+        .unwrap_or((
+            "Brush prefab — hot reloads on save.\nCollider via sprite alpha.",
+            TextInputState::Normal,
+        ));
+    let ta = TextArea::new(ids::SHOWCASE_TEXT_AREA_NOTES, "Notes")
+        .value(ta_text)
+        .state(ta_state);
     paint_text_area(&ta, ta_rect, scene, text_system, theme);
     y += 50.0 + Spacing::Md.px();
 
     // 8. ContextMenu (static demo) + Popover (small wrap).
     let menu_rect = Rect::new(inner_x, y, inner_w * 0.5, 110.0);
+    hit_index.register(ids::SHOWCASE_CTX_MENU, menu_rect);
     let menu = ContextMenu::new(
-        NodeId(0),
+        ids::SHOWCASE_CTX_MENU,
         "File",
         vec![
-            ContextMenuEntry::Item(ListItem::new(NodeId(0), "Cut").value("\u{2318}X")),
-            ContextMenuEntry::Item(ListItem::new(NodeId(0), "Copy").value("\u{2318}C")),
-            ContextMenuEntry::Separator(Divider::new(NodeId(0))),
-            ContextMenuEntry::Item(ListItem::new(NodeId(0), "Delete").value("Del")),
+            ContextMenuEntry::Item(
+                ListItem::new(ids::SHOWCASE_CTX_ITEM_CUT, "Cut").value("\u{2318}X"),
+            ),
+            ContextMenuEntry::Item(
+                ListItem::new(ids::SHOWCASE_CTX_ITEM_COPY, "Copy").value("\u{2318}C"),
+            ),
+            ContextMenuEntry::Separator(Divider::new(ids::SHOWCASE_CTX_DIVIDER)),
+            ContextMenuEntry::Item(
+                ListItem::new(ids::SHOWCASE_CTX_ITEM_DELETE, "Delete").value("Del"),
+            ),
         ],
     );
     paint_context_menu(&menu, menu_rect, scene, text_system, theme, 26.0);
@@ -295,7 +588,8 @@ pub fn paint_components_showcase(
         inner_w - menu_rect.w - Spacing::Md.px(),
         110.0,
     );
-    let pop = Popover::new(NodeId(0));
+    hit_index.register(ids::SHOWCASE_POPOVER, pop_rect);
+    let pop = Popover::new(ids::SHOWCASE_POPOVER);
     paint_popover(&pop, pop_rect, scene, theme);
     paint_text_centered(
         text_system,
@@ -309,16 +603,22 @@ pub fn paint_components_showcase(
 
     // 9. SectionHeader collapsible standalone + Slider vertical.
     let sh_rect = Rect::new(inner_x, y, inner_w * 0.55, 24.0);
-    let sh = SectionHeader::new(NodeId(0), "Advanced")
+    hit_index.register(ids::SHOWCASE_SECTION_ADVANCED, sh_rect);
+    let sh = SectionHeader::new(ids::SHOWCASE_SECTION_ADVANCED, "Advanced")
         .count(7)
         .collapsible(false);
     paint_section_header(&sh, sh_rect, scene, text_system, theme);
     let vs_rect = Rect::new(inner_x + sh_rect.w + Spacing::Md.px(), y, 24.0, 96.0);
-    let mut vs = Slider::new(NodeId(0), "Vertical")
+    hit_index.register(ids::SHOWCASE_SLIDER_VERTICAL, vs_rect);
+    // Read live slider value + state from the store.
+    let (vs_state, vs_value) = store
+        .slider(ids::SHOWCASE_SLIDER_VERTICAL)
+        .unwrap_or((SliderState::Hovered, 0.65));
+    let mut vs = Slider::new(ids::SHOWCASE_SLIDER_VERTICAL, "Vertical")
         .accent(true)
         .orientation(crate::widget::SliderOrientation::Vertical);
-    vs.set_value(0.65);
-    vs.state = SliderState::Hovered;
+    vs.set_value(vs_value);
+    vs.state = vs_state;
     paint_slider(&vs, vs_rect, scene, theme);
     y += 96.0 + Spacing::Md.px();
 
@@ -326,32 +626,32 @@ pub fn paint_components_showcase(
     let modal_h = (rect.y + rect.h - y - pad).max(0.0);
     if modal_h > 110.0 {
         let modal_rect = Rect::new(inner_x, y, inner_w, modal_h.min(170.0));
+        hit_index.register(ids::SHOWCASE_MODAL_CANCEL, modal_rect);
+        hit_index.register(ids::SHOWCASE_MODAL_CONFIRM, modal_rect);
         let modal = Modal::new(
-            NodeId(0),
+            ids::SHOWCASE_MODAL_CANCEL, // id identifies the modal via its cancel button
             "Confirm delete",
-            Button::new(NodeId(0), "Cancel"),
-            Button::new(NodeId(0), "Delete").kind(ButtonKind::Danger),
+            Button::new(ids::SHOWCASE_MODAL_CANCEL, "Cancel"),
+            Button::new(ids::SHOWCASE_MODAL_CONFIRM, "Delete").kind(ButtonKind::Danger),
         );
         // Use a clipping-friendly viewport equal to the showcase
         // surface so the scrim doesn't paint outside.
         paint_modal(&modal, rect, modal_rect, scene, text_system, theme);
     }
 
-    // Suppress unused warnings while the showcase doesn't yet wire
-    // dynamic state from these widgets' interactive ids.
+    // Keep these imports alive — BlenderColorPicker + TreeView paint in
+    // a dedicated extra region (bottom-right canvas), not inside the
+    // main showcase panel. The let-binding suppresses dead-code lints
+    // while those regions are still stubs.
     let _ = (
         TreeView::new(NodeId(0), "x", vec![TreeNode::new(NodeId(0), "x")]),
         BlenderColorPicker::new(NodeId(0), "x").channel_mode(ChannelMode::Hsv),
         ListItemState::Normal,
         DropdownState::Normal,
-        TextInputState::Normal,
-        TagState::Normal,
-        CheckboxState::Normal,
     );
     // BlenderColorPicker + TreeView paint in the dedicated demo
     // region attached to the canvas (bottom-right, see
-    // `paint_components_showcase_extras`). Suppression above keeps
-    // imports honest while that region wires in the next iteration.
+    // `paint_blender_picker_demo`).
     paint_tree_view_demo(rect, scene, text_system, theme);
     paint_blender_picker_demo(layout, scene, text_system, theme, hit_index, store);
 }

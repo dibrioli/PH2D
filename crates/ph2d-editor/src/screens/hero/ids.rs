@@ -9,6 +9,7 @@
 //! - 200..299 — LeftRail tools
 //! - 300..399 — Inspector fields
 //! - 400..499 — Hierarchy entity rows
+//! - 500..599 — Components Showcase widgets (RESERVED)
 
 use ph2d_a11y::NodeId;
 
@@ -75,6 +76,61 @@ pub const HIER_SLIME_02: NodeId = NodeId(408);
 pub const HIER_TRIGGER_ZONE_A: NodeId = NodeId(409);
 pub const HIER_AMBIENT_LIGHT: NodeId = NodeId(410);
 pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
+
+// ── Components Showcase (500..599) ─────────────────────────────────────────
+// Text fields
+pub const SHOWCASE_TEXT_INPUT_NAME: NodeId = NodeId(500);
+pub const SHOWCASE_TEXT_AREA_NOTES: NodeId = NodeId(501);
+// Combobox + its options
+pub const SHOWCASE_COMBOBOX_ASSET: NodeId = NodeId(502);
+pub const SHOWCASE_COMBOBOX_OPT_SPIKE: NodeId = NodeId(512);
+pub const SHOWCASE_COMBOBOX_OPT_BLOCK: NodeId = NodeId(513);
+// Checkbox
+pub const SHOWCASE_CHECKBOX_LOCK: NodeId = NodeId(503);
+// Dropdown + its options
+pub const SHOWCASE_DROPDOWN_VIEW: NodeId = NodeId(504);
+pub const SHOWCASE_DROPDOWN_OPT_FRONT: NodeId = NodeId(514);
+pub const SHOWCASE_DROPDOWN_OPT_SIDE: NodeId = NodeId(515);
+// RadioGroup + options
+pub const SHOWCASE_RADIO_MODE: NodeId = NodeId(505);
+pub const SHOWCASE_RADIO_SHADED: NodeId = NodeId(506);
+pub const SHOWCASE_RADIO_WIRE: NodeId = NodeId(507);
+pub const SHOWCASE_RADIO_SOLID: NodeId = NodeId(508);
+// Vertical slider
+pub const SHOWCASE_SLIDER_VERTICAL: NodeId = NodeId(509);
+// Tags (removable → need a hit rect)
+pub const SHOWCASE_TAG_DRAFT: NodeId = NodeId(510);
+pub const SHOWCASE_TAG_DONE: NodeId = NodeId(511);
+// Vector3Editor (position) — container + three NumberInput sub-fields
+pub const SHOWCASE_V3_POS: NodeId = NodeId(516);
+pub const SHOWCASE_V3_X: NodeId = NodeId(517);
+pub const SHOWCASE_V3_Y: NodeId = NodeId(518);
+pub const SHOWCASE_V3_Z: NodeId = NodeId(519);
+// SectionHeader
+pub const SHOWCASE_SECTION_ADVANCED: NodeId = NodeId(520);
+// Modal buttons
+pub const SHOWCASE_MODAL_CANCEL: NodeId = NodeId(521);
+pub const SHOWCASE_MODAL_CONFIRM: NodeId = NodeId(522);
+// Popover surface
+pub const SHOWCASE_POPOVER: NodeId = NodeId(523);
+// ContextMenu container + items
+pub const SHOWCASE_CTX_MENU: NodeId = NodeId(524);
+pub const SHOWCASE_CTX_ITEM_CUT: NodeId = NodeId(525);
+pub const SHOWCASE_CTX_ITEM_COPY: NodeId = NodeId(526);
+pub const SHOWCASE_CTX_DIVIDER: NodeId = NodeId(527);
+pub const SHOWCASE_CTX_ITEM_DELETE: NodeId = NodeId(528);
+// Card + list items + divider inside it
+pub const SHOWCASE_CARD_QUICK_ACTIONS: NodeId = NodeId(529);
+pub const SHOWCASE_LIST_OPEN: NodeId = NodeId(530);
+pub const SHOWCASE_LIST_SAVE: NodeId = NodeId(531);
+pub const SHOWCASE_LIST_EXPORT: NodeId = NodeId(532);
+pub const SHOWCASE_CARD_DIVIDER: NodeId = NodeId(533);
+// Decorative non-interactive widgets — still need stable ids for a11y
+pub const SHOWCASE_PROGRESS_DET: NodeId = NodeId(540);
+pub const SHOWCASE_PROGRESS_IND: NodeId = NodeId(541);
+pub const SHOWCASE_SPINNER: NodeId = NodeId(542);
+pub const SHOWCASE_AVATAR_CIRCLE: NodeId = NodeId(543);
+pub const SHOWCASE_AVATAR_SQUARE: NodeId = NodeId(544);
 
 /// Map fixture entity name to canonical hierarchy `NodeId`.
 pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {

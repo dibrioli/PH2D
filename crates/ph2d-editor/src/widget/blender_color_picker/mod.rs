@@ -38,7 +38,7 @@ pub mod wheel;
 #[cfg(test)]
 mod tests;
 
-pub use channels::rgba_to_hsv;
+pub use channels::{hsv_to_rgba8, rgba_to_hsv};
 pub use hex_field::parse_hex;
 pub use paint::{
     BlenderSubIds, paint_blender_color_picker, paint_blender_color_picker_with_store,
@@ -55,9 +55,11 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_tokens::ColorValue;
 
-/// Apply a click on the wheel sub-rect: translate `(px, py)` into
-/// hue/sat via [`wheel_pick`], then mutate the BlenderPicker state
-/// at `parent_id`. Caller must pass the wheel's registered rect.
+/// Apply a click on the SV-rectangle sub-rect: translate `(px, py)`
+/// into HSV saturation + value via [`wheel_pick`], then rewrite the
+/// parent picker's RGBA preserving the current hue and alpha.
+/// Web-standard model: the rectangle controls S + V at constant H;
+/// the horizontal hue strip below controls H.
 pub fn apply_blender_wheel_pick(
     store: &mut WidgetStore,
     parent_id: NodeId,
@@ -68,29 +70,41 @@ pub fn apply_blender_wheel_pick(
     let Some((cur, _, _, _)) = store.blender_picker(parent_id) else {
         return false;
     };
-    let Some((hue, sat)) = wheel_pick(rect, px, py) else {
+    let Some((s, v)) = wheel_pick(rect, px, py) else {
         return false;
     };
-    let chroma = sat as f64 * 0.4;
-    let new_value = ColorValue::from_oklch(cur.oklch.0, chroma, hue as f64, cur.oklch.3);
-    store.set_blender_value(parent_id, new_value);
+    // Use the retained hue anchor instead of deriving from RGBA — at
+    // V→0 the RGBA collapses to (0,0,0) and `rgba_to_hsv` returns
+    // H=0 (red), which would silently rotate the user's hue choice.
+    let (retained_h, _) = store.blender_hsv_anchor(parent_id).unwrap_or((0.0, 1.0));
+    let (_, _, _, a) = channels::rgba_to_hsv(cur.rgba);
+    let rgba = channels::hsv_to_rgba8(retained_h, s, v, a);
+    let new_value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+    store.set_blender_value_with_hsv(parent_id, new_value, retained_h, s);
     true
 }
 
-/// Apply a click on the value slider sub-rect: translate `py` into
-/// OKLCH lightness via [`value_pick`], mutate the BlenderPicker.
+/// Apply a click on the hue-strip sub-rect: translate `px` into a
+/// HSV hue via [`value_pick`], preserving the current S + V + A.
+/// Left edge of the strip = hue 0 (red), right edge = wrap-around.
 pub fn apply_blender_value_pick(
     store: &mut WidgetStore,
     parent_id: NodeId,
     rect: Rect,
-    _px: f32,
-    py: f32,
+    px: f32,
+    _py: f32,
 ) -> bool {
     let Some((cur, _, _, _)) = store.blender_picker(parent_id) else {
         return false;
     };
-    let l = value_pick(rect, py) as f64;
-    let new_value = ColorValue::from_oklch(l, cur.oklch.1, cur.oklch.2, cur.oklch.3);
-    store.set_blender_value(parent_id, new_value);
+    let h = value_pick(rect, px);
+    // Use retained S so dragging the hue strip while at V=0 (or at
+    // pure white where S=0) still preserves the user's saturation
+    // choice. V is recoverable from RGBA so we read it directly.
+    let (_, retained_s) = store.blender_hsv_anchor(parent_id).unwrap_or((0.0, 1.0));
+    let (_, _, v, a) = channels::rgba_to_hsv(cur.rgba);
+    let rgba = channels::hsv_to_rgba8(h, retained_s, v, a);
+    let new_value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+    store.set_blender_value_with_hsv(parent_id, new_value, h, retained_s);
     true
 }

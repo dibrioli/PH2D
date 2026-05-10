@@ -66,9 +66,46 @@ pub fn paint_hex_field(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_hex_field_with_state(
+        hex,
+        None,
+        0,
+        None,
+        crate::widget::TextInputState::Normal,
+        rect,
+        scene,
+        text_system,
+        theme,
+    )
+}
+
+/// Like [`paint_hex_field`] but reads `buffer`/`caret` from the
+/// caller's [`crate::interaction::WidgetStore`] entry and draws a
+/// caret + accent border when `state == Focused`. Used by
+/// `paint_blender_color_picker_with_store` so typing into the hex
+/// field is visible.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_hex_field_with_state(
+    fallback_hex: &str,
+    buffer: Option<&str>,
+    caret: usize,
+    selection_anchor: Option<usize>,
+    state: crate::widget::TextInputState,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let focused = state == crate::widget::TextInputState::Focused;
     let radius = Radius::Sm.px();
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    let stroke_w = if focused { 2.0 } else { 1.0 };
+    let border = if focused {
+        ColorToken::Accent
+    } else {
+        ColorToken::Border
+    };
+    stroke_rounded_rect(scene, rect, radius, stroke_w, resolve(border, theme));
     let pad = Spacing::Md.px();
     let label_w = 36.0;
     let label_rect = Rect::new(rect.x + pad, rect.y, label_w, rect.h);
@@ -82,29 +119,109 @@ pub fn paint_hex_field(
         label_w,
         resolve(ColorToken::Text2, theme),
     );
+    // While focused, the user's typed buffer is the source of truth
+    // (it contains the in-progress edit). Once blurred, fall back to
+    // the canonical `#RRGGBBAA` derived from the picker's current
+    // value, so wheel/slider/swatch picks immediately update the
+    // visible hex even if `TextInput.text` is stale.
+    let display = match buffer {
+        Some(b) if focused => b,
+        _ => fallback_hex,
+    };
+    let text_x = rect.x + pad + label_w;
+    let text_y = rect.y + (rect.h - TypeToken::Sm.px()) * 0.5;
+    let text_w = rect.w - pad * 2.0 - label_w;
+    if focused
+        && let Some(anchor) = selection_anchor
+        && anchor != caret
+    {
+        let (sel_start, sel_end) = if anchor < caret {
+            (anchor, caret)
+        } else {
+            (caret, anchor)
+        };
+        let sel_start = sel_start.min(display.len());
+        let sel_end = sel_end.min(display.len());
+        let prefix_w = if sel_start == 0 {
+            0.0
+        } else {
+            text_system
+                .layout(&display[..sel_start], TypeToken::Sm.px(), f32::INFINITY)
+                .width()
+        };
+        let mid_w = if sel_start == sel_end {
+            0.0
+        } else {
+            text_system
+                .layout(
+                    &display[sel_start..sel_end],
+                    TypeToken::Sm.px(),
+                    f32::INFINITY,
+                )
+                .width()
+        };
+        let sel_x = (text_x + prefix_w).min(text_x + text_w);
+        let sel_w = mid_w.min(text_x + text_w - sel_x);
+        if sel_w > 0.0 {
+            let sel_top = rect.y + 4.0;
+            let sel_bot = rect.y + rect.h - 4.0;
+            let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
+            fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
+        }
+    }
     paint_text(
         text_system,
         scene,
-        hex,
-        rect.x + pad + label_w,
-        rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
+        display,
+        text_x,
+        text_y,
         TypeToken::Sm.px(),
-        rect.w - pad * 2.0 - label_w,
+        text_w,
         resolve(ColorToken::Text1, theme),
     );
+    if focused {
+        // Measure the prefix through `caret` using the real font
+        // layout — fixed-advance approximations sit visibly off the
+        // glyph edges (and worse for proportional fonts).
+        let caret_clamped = caret.min(display.len());
+        let prefix = &display[..caret_clamped];
+        let advance = if prefix.is_empty() {
+            0.0
+        } else {
+            text_system
+                .layout(prefix, TypeToken::Sm.px(), f32::INFINITY)
+                .width()
+        };
+        let caret_x = (text_x + advance).min(text_x + text_w);
+        let caret_top = rect.y + 4.0;
+        let caret_bot = rect.y + rect.h - 4.0;
+        let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
+        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
+    }
 }
 
 pub fn paint_eyedropper(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    paint_eyedropper_with_state(rect, false, scene, theme);
+}
+
+/// Like [`paint_eyedropper`] but draws an "active" highlight when
+/// the picker is in pixel-pick mode (the next click outside this
+/// button will sample the rendered scene).
+pub fn paint_eyedropper_with_state(
+    rect: Rect,
+    active: bool,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
     let radius = Radius::Sm.px();
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
-    paint_icon(
-        scene,
-        IconId::EyePencil,
-        rect,
-        resolve(ColorToken::Text2, theme),
-        1.5,
-    );
+    let (bg, border, fg) = if active {
+        (ColorToken::Accent, ColorToken::Accent, ColorToken::AccentFg)
+    } else {
+        (ColorToken::Bg2, ColorToken::Border, ColorToken::Text2)
+    };
+    fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(border, theme));
+    paint_icon(scene, IconId::EyePencil, rect, resolve(fg, theme), 1.5);
 }
 
 #[cfg(test)]

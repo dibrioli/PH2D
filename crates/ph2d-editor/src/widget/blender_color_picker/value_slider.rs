@@ -1,14 +1,25 @@
-//! Vertical value (lightness) slider painter — gradient from the
-//! current hue+sat at full lightness down to black, with a thumb
-//! handle marking the current OKLCH `L`.
+//! Horizontal hue strip painter — rainbow gradient with a vertical
+//! thumb marking the current H. Pairs with the SV rectangle painted
+//! by [`super::wheel`]: the strip controls hue, the rectangle
+//! controls saturation + value at that hue.
 
 use super::state::BlenderColorPicker;
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
-use ph2d_tokens::{ColorToken, ColorValue, Radius, Theme};
+use ph2d_tokens::{ColorToken, Radius, Theme};
 use ph2d_vector::{
     Affine, Brush, Color as VelloColor, Fill, Gradient, Point, Rect as KurboRect, VectorScene,
 };
+
+const HUE_STOPS: [VelloColor; 7] = [
+    VelloColor::from_rgba8(255, 0, 0, 255),   // red
+    VelloColor::from_rgba8(255, 255, 0, 255), // yellow
+    VelloColor::from_rgba8(0, 255, 0, 255),   // green
+    VelloColor::from_rgba8(0, 255, 255, 255), // cyan
+    VelloColor::from_rgba8(0, 0, 255, 255),   // blue
+    VelloColor::from_rgba8(255, 0, 255, 255), // magenta
+    VelloColor::from_rgba8(255, 0, 0, 255),   // red (close)
+];
 
 pub fn paint_value_slider(
     cp: &BlenderColorPicker,
@@ -17,27 +28,17 @@ pub fn paint_value_slider(
     theme: Theme,
 ) {
     let radius = Radius::Sm.px();
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
-
-    // Bright endpoint: keep current hue + chroma but force L=1.0.
-    let (_, c, h, _) = cp.value.oklch;
-    let bright = ColorValue::from_oklch(1.0, c, h, 1.0);
-    let dark = ColorValue::from_oklch(0.0, 0.0, 0.0, 1.0);
-    let top_color = VelloColor::from_rgba8(bright.rgba[0], bright.rgba[1], bright.rgba[2], 255);
-    let bot_color = VelloColor::from_rgba8(dark.rgba[0], dark.rgba[1], dark.rgba[2], 255);
-
-    // Linear gradient top→bottom (high-L → low-L).
-    let gradient = Gradient::new_linear(
-        Point::new(rect.x as f64, rect.y as f64),
-        Point::new(rect.x as f64, (rect.y + rect.h) as f64),
-    )
-    .with_stops([top_color, bot_color]);
     let body = KurboRect::new(
         rect.x as f64,
         rect.y as f64,
         (rect.x + rect.w) as f64,
         (rect.y + rect.h) as f64,
     );
+    let gradient = Gradient::new_linear(
+        Point::new(rect.x as f64, rect.y as f64),
+        Point::new((rect.x + rect.w) as f64, rect.y as f64),
+    )
+    .with_stops(HUE_STOPS);
     scene.inner_mut().fill(
         Fill::NonZero,
         Affine::IDENTITY,
@@ -45,23 +46,28 @@ pub fn paint_value_slider(
         None,
         &body,
     );
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
 
-    // Thumb: thin horizontal pill marking current L (top = L=1, bot = L=0).
-    let l = cp.value.oklch.0 as f32;
-    let thumb_h = 4.0_f32;
-    let thumb_y = rect.y + (1.0 - l).clamp(0.0, 1.0) * (rect.h - thumb_h);
-    let thumb_rect = Rect::new(rect.x - 2.0, thumb_y, rect.w + 4.0, thumb_h);
+    // Thumb: thin vertical pill at retained `hsv_h × w`. Reading
+    // hue from the picker's anchor (rather than rgba_to_hsv) keeps
+    // the thumb where the user dragged it even when the resulting
+    // RGBA loses chromaticity (V→0, S→0) — and avoids the right-
+    // edge "wrap to left" jump where 1.0 would round-trip to 0.0.
+    let h = cp.hsv_h;
+    let thumb_w = 4.0_f32;
+    let thumb_x = rect.x + h.clamp(0.0, 1.0) * rect.w - thumb_w * 0.5;
+    let thumb_rect = Rect::new(thumb_x, rect.y - 2.0, thumb_w, rect.h + 4.0);
     fill_rounded_rect(scene, thumb_rect, 2.0, resolve(ColorToken::Text1, theme));
     stroke_rounded_rect(scene, thumb_rect, 2.0, 1.0, resolve(ColorToken::Bg0, theme));
 }
 
-/// Map a click `py` inside the value slider's `rect` to an OKLCH
-/// lightness in `[0..1]` (top = 1.0, bottom = 0.0).
-pub fn value_pick(rect: Rect, py: f32) -> f32 {
-    if rect.h <= 0.0 {
+/// Map a click at `(px, _py)` inside the hue strip's `rect` to a
+/// hue in `[0..1]` (left = 0 / red, right = 1 / red wrap-around).
+pub fn value_pick(rect: Rect, px: f32) -> f32 {
+    if rect.w <= 0.0 {
         return 0.0;
     }
-    (1.0 - (py - rect.y) / rect.h).clamp(0.0, 1.0)
+    ((px - rect.x) / rect.w).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
@@ -69,20 +75,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn pick_top_is_full_lightness() {
-        let r = Rect::new(0.0, 0.0, 24.0, 200.0);
-        assert!((value_pick(r, 0.0) - 1.0).abs() < 1e-3);
+    fn pick_left_edge_is_hue_zero() {
+        let r = Rect::new(0.0, 0.0, 200.0, 16.0);
+        assert!(value_pick(r, 0.0).abs() < 1e-3);
     }
 
     #[test]
-    fn pick_bottom_is_zero_lightness() {
-        let r = Rect::new(0.0, 0.0, 24.0, 200.0);
-        assert!(value_pick(r, 200.0).abs() < 1e-3);
+    fn pick_right_edge_is_hue_one() {
+        let r = Rect::new(0.0, 0.0, 200.0, 16.0);
+        assert!((value_pick(r, 200.0) - 1.0).abs() < 1e-3);
     }
 
     #[test]
-    fn pick_middle_is_half_lightness() {
-        let r = Rect::new(0.0, 0.0, 24.0, 200.0);
+    fn pick_middle_is_half_hue() {
+        let r = Rect::new(0.0, 0.0, 200.0, 16.0);
         assert!((value_pick(r, 100.0) - 0.5).abs() < 1e-3);
     }
 }

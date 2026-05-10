@@ -295,8 +295,10 @@ pub fn paint_hero_screen(
         &hero.store,
     );
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
-    // Components Showcase region (Phase 4 polish).
-    paint_components_showcase(
+    // Components Showcase disabled while debugging interaction pipeline.
+    // BlenderColorPicker preserved as standalone demo (anchored bottom-
+    // right of canvas). Re-enable showcase once everything else works.
+    showcase::paint_blender_picker_demo(
         &layout,
         scene,
         text_system,
@@ -427,6 +429,7 @@ mod tests {
             pressure: 1.0,
             kind: PointerKind::Down,
             source: PointerSource::Mouse,
+            button: ph2d_host::PointerButton::Primary,
             timestamp_ns: 0,
         }
     }
@@ -438,6 +441,7 @@ mod tests {
             pressure: 1.0,
             kind: PointerKind::Up,
             source: PointerSource::Mouse,
+            button: ph2d_host::PointerButton::Primary,
             timestamp_ns: 0,
         }
     }

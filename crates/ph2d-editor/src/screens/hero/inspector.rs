@@ -94,6 +94,7 @@ pub fn populate(store: &mut WidgetStore) {
                 buffer: crate::interaction::format_number(value),
                 caret: 0,
                 last_committed: value,
+                selection_anchor: None,
             },
         );
     }
@@ -134,10 +135,45 @@ pub fn populate(store: &mut WidgetStore) {
     store.register(
         ids::INSP_BLENDER_PICKER,
         InteractiveState::BlenderPicker {
-            value: ColorValue::from_rgba8(231, 231, 231, 255),
+            // Initial state: pure black (0, 0, 0). The SV cursor
+            // lands at the bottom-left corner (S=0, V=0); the hue
+            // strip thumb sits at H=0 (red). Once the user picks a
+            // color the BlenderPicker state retains it across the
+            // session — this default only applies on fresh start.
+            value: ColorValue::from_rgba8(0, 0, 0, 255),
             channel_mode: ChannelMode::Rgb,
             interpolation: InterpolationMode::Perceptual,
             active_palette: 0,
+            hsv_h: 0.0,
+            hsv_s: 0.0,
+        },
+    );
+    // Seed the picker's mutable palette with the default 12 swatches.
+    // The "+ swatch" button appends; right-click on a swatch removes.
+    store.init_blender_palette(
+        ids::INSP_BLENDER_PICKER,
+        crate::widget::default_palette().swatches.clone(),
+    );
+    // "+ swatch" and eyedropper hit shims.
+    store.register(
+        ids::BLENDER_ADD_SWATCH,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::AddSwatch,
+        },
+    );
+    store.register(
+        ids::BLENDER_EYEDROPPER,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::Eyedropper,
+        },
+    );
+    store.register(
+        ids::BLENDER_DRAG_HANDLE,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::DragHandle,
         },
     );
     store.register(
@@ -171,6 +207,29 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
+    // Channel value chips — `NumberInput`s mirrored to the channel
+    // sliders. Initial value 0; the painter syncs from the parent
+    // `BlenderPicker.value` every frame (when not focused).
+    for (id, idx) in [
+        (ids::BLENDER_NUM_0, 0u8),
+        (ids::BLENDER_NUM_1, 1),
+        (ids::BLENDER_NUM_2, 2),
+        (ids::BLENDER_NUM_3, 3),
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::new(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.link_blender_channel(ids::INSP_BLENDER_PICKER, id, idx);
+    }
+
     // Hex field as TextInput — the buffer is pre-allocated with the
     // initial hex string matching the picker's default value.
     store.register(
@@ -179,8 +238,10 @@ pub fn populate(store: &mut WidgetStore) {
             state: TextInputState::Normal,
             text: "#E7E7E7FF".to_string(),
             caret: 9,
+            selection_anchor: None,
         },
     );
+    store.link_blender_hex(ids::INSP_BLENDER_PICKER, ids::BLENDER_HEX);
 
     // Segmented toggle shims.
     store.register(
@@ -212,7 +273,10 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 
-    // Palette swatch shims — default_palette has 12 swatches (0..11).
+    // Palette swatch shims — slots 0..26. The default palette fills
+    // 0..11; "+ swatch" appends into 12..26. Beyond 27, the
+    // `blender_palette_push` helper is capped and the painter
+    // hides the "+" tile.
     for (id, swatch_idx) in [
         (ids::BLENDER_SWATCH_0, 0u8),
         (ids::BLENDER_SWATCH_1, 1),
@@ -226,6 +290,21 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::BLENDER_SWATCH_9, 9),
         (ids::BLENDER_SWATCH_10, 10),
         (ids::BLENDER_SWATCH_11, 11),
+        (ids::BLENDER_SWATCH_12, 12),
+        (ids::BLENDER_SWATCH_13, 13),
+        (ids::BLENDER_SWATCH_14, 14),
+        (ids::BLENDER_SWATCH_15, 15),
+        (ids::BLENDER_SWATCH_16, 16),
+        (ids::BLENDER_SWATCH_17, 17),
+        (ids::BLENDER_SWATCH_18, 18),
+        (ids::BLENDER_SWATCH_19, 19),
+        (ids::BLENDER_SWATCH_20, 20),
+        (ids::BLENDER_SWATCH_21, 21),
+        (ids::BLENDER_SWATCH_22, 22),
+        (ids::BLENDER_SWATCH_23, 23),
+        (ids::BLENDER_SWATCH_24, 24),
+        (ids::BLENDER_SWATCH_25, 25),
+        (ids::BLENDER_SWATCH_26, 26),
     ] {
         store.register(
             id,
@@ -532,7 +611,9 @@ fn paint_inspector_field(
     let body_rect = Rect::new(x, body_y, w, FIELD_ROW_H);
     match &field.kind {
         InspectorFieldKind::Slider { value, display } => {
-            let val_w = 64.0_f32;
+            // Wider value chip so the click target is obvious and
+            // distinct from the slider track.
+            let val_w = 100.0_f32;
             let val_rect = Rect::new(
                 body_rect.x + body_rect.w - val_w,
                 body_rect.y,
@@ -562,16 +643,17 @@ fn paint_inspector_field(
             // store-backed numeric value (if a sibling id exists) or
             // the fixture's display string as a fallback.
             let num_id = sibling_number_id(field_id);
-            let (num_state, num_value, num_buf, num_caret) = num_id
+            let (num_state, num_value, num_buf, num_caret, num_anchor) = num_id
                 .and_then(|i| {
                     store
                         .number_input(i)
-                        .map(|(s, v, b, c)| (s, v, Some(b), Some(c)))
+                        .map(|(s, v, b, c, a)| (s, v, Some(b), Some(c), a))
                 })
                 .unwrap_or_else(|| {
                     (
                         crate::widget::TextInputState::Normal,
                         display.parse::<f64>().unwrap_or(*value as f64),
+                        None,
                         None,
                         None,
                     )
@@ -585,6 +667,7 @@ fn paint_inspector_field(
                 &ni,
                 num_buf,
                 num_caret.unwrap_or(0),
+                num_anchor,
                 val_rect,
                 scene,
                 text_system,

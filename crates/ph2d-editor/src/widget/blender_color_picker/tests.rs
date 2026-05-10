@@ -18,7 +18,7 @@ fn defaults_match_spec() {
     assert_eq!(cp.channel_mode, ChannelMode::Rgb);
     assert_eq!(cp.palettes.len(), 1);
     assert_eq!(cp.palettes[0].name, "Default");
-    assert!(!cp.palettes[0].editable);
+    assert!(cp.palettes[0].editable);
     assert_eq!(cp.value.rgba, [231, 231, 231, 255]);
     assert!(cp.hex.starts_with('#'));
 }
@@ -56,7 +56,9 @@ fn rgba_to_hsv_red() {
 fn default_palette_has_12_swatches() {
     let p = default_palette();
     assert_eq!(p.swatches.len(), 12);
-    assert!(!p.editable);
+    // Default palette is now editable so the user can append to it
+    // via the "+ swatch" button and remove via right-click.
+    assert!(p.editable);
 }
 
 #[test]
@@ -160,13 +162,16 @@ fn try_set_hex_rejects_invalid_keeps_value() {
 #[test]
 fn add_swatch_only_when_palette_editable() {
     let mut cp = BlenderColorPicker::new(NodeId(1), "x");
-    // Default palette is read-only.
-    assert!(cp.add_swatch(ColorValue::WHITE).is_none());
-    cp.palettes.push(ColorPalette::new("Custom", vec![]));
-    cp.active_palette = 1;
+    // Default palette is now editable — add returns Some.
+    let initial = cp.palettes[0].swatches.len();
     let idx = cp.add_swatch(ColorValue::WHITE).unwrap();
-    assert_eq!(idx, 0);
-    assert_eq!(cp.palettes[1].swatches.len(), 1);
+    assert_eq!(idx, initial);
+    assert_eq!(cp.palettes[0].swatches.len(), initial + 1);
+    // A read-only palette still rejects.
+    cp.palettes
+        .push(ColorPalette::new("Locked", vec![]).read_only());
+    cp.active_palette = 1;
+    assert!(cp.add_swatch(ColorValue::WHITE).is_none());
 }
 
 #[test]

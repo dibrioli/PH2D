@@ -31,6 +31,7 @@ pub fn populate(store: &mut WidgetStore) {
             state: TextInputState::Normal,
             text: "Player_01".to_string(),
             caret: 9,
+            selection_anchor: None,
         },
     );
 
@@ -42,6 +43,7 @@ pub fn populate(store: &mut WidgetStore) {
             state: TextInputState::Normal,
             text: "Brush prefab — hot reloads on save.\nCollider via sprite alpha.".to_string(),
             caret: 0,
+            selection_anchor: None,
         },
     );
 
@@ -52,6 +54,8 @@ pub fn populate(store: &mut WidgetStore) {
             state: ComboboxState::Normal,
             open: false,
             query: "sp".to_string(),
+            caret: 2,
+            selection_anchor: None,
         },
     );
 
@@ -121,6 +125,7 @@ pub fn populate(store: &mut WidgetStore) {
                 buffer: crate::interaction::format_number(value),
                 caret: 0,
                 last_committed: value,
+                selection_anchor: None,
             },
         );
     }
@@ -484,7 +489,10 @@ pub fn paint_components_showcase(
     let (combo_query, combo_open, combo_state) = store
         .get(ids::SHOWCASE_COMBOBOX_ASSET)
         .and_then(|s| {
-            if let crate::interaction::InteractiveState::Combobox { query, open, state } = s {
+            if let crate::interaction::InteractiveState::Combobox {
+                query, open, state, ..
+            } = s
+            {
                 Some((query.as_str(), *open, *state))
             } else {
                 None
@@ -667,7 +675,7 @@ fn paint_tree_view_demo(
     // graph and doesn't get pruned by a future dead-code lint.
 }
 
-fn paint_blender_picker_demo(
+pub fn paint_blender_picker_demo(
     layout: &HeroLayout,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -680,9 +688,20 @@ fn paint_blender_picker_demo(
     if layout.canvas.w < w + SHOWCASE_W + 60.0 || layout.canvas.h < h + 40.0 {
         return;
     }
+    // Default-anchored to the bottom-right of the canvas; the
+    // user-controlled drag handle adds an offset stored on the
+    // WidgetStore. Clamp the final rect inside the viewport so a
+    // bad drag can't strand the picker off-screen.
+    let (dx, dy) = store.blender_picker_offset(ids::INSP_BLENDER_PICKER);
+    let base_x = layout.canvas.x + layout.canvas.w - w - 12.0;
+    let base_y = layout.canvas.y + layout.canvas.h - h - 12.0;
+    let min_x = layout.canvas.x + 8.0;
+    let max_x = layout.canvas.x + layout.canvas.w - w - 8.0;
+    let min_y = layout.canvas.y + 8.0;
+    let max_y = layout.canvas.y + layout.canvas.h - h - 8.0;
     let rect = Rect::new(
-        layout.canvas.x + layout.canvas.w - w - 12.0,
-        layout.canvas.y + layout.canvas.h - h - 12.0,
+        (base_x + dx).clamp(min_x, max_x),
+        (base_y + dy).clamp(min_y, max_y),
         w,
         h,
     );
@@ -701,7 +720,16 @@ fn paint_blender_picker_demo(
             ids::BLENDER_CHANNEL_2,
             ids::BLENDER_CHANNEL_3,
         ],
+        channels_num: [
+            ids::BLENDER_NUM_0,
+            ids::BLENDER_NUM_1,
+            ids::BLENDER_NUM_2,
+            ids::BLENDER_NUM_3,
+        ],
         hex: ids::BLENDER_HEX,
+        add_swatch: ids::BLENDER_ADD_SWATCH,
+        eyedropper: ids::BLENDER_EYEDROPPER,
+        drag_handle: ids::BLENDER_DRAG_HANDLE,
         swatches: [
             ids::BLENDER_SWATCH_0,
             ids::BLENDER_SWATCH_1,
@@ -715,6 +743,21 @@ fn paint_blender_picker_demo(
             ids::BLENDER_SWATCH_9,
             ids::BLENDER_SWATCH_10,
             ids::BLENDER_SWATCH_11,
+            ids::BLENDER_SWATCH_12,
+            ids::BLENDER_SWATCH_13,
+            ids::BLENDER_SWATCH_14,
+            ids::BLENDER_SWATCH_15,
+            ids::BLENDER_SWATCH_16,
+            ids::BLENDER_SWATCH_17,
+            ids::BLENDER_SWATCH_18,
+            ids::BLENDER_SWATCH_19,
+            ids::BLENDER_SWATCH_20,
+            ids::BLENDER_SWATCH_21,
+            ids::BLENDER_SWATCH_22,
+            ids::BLENDER_SWATCH_23,
+            ids::BLENDER_SWATCH_24,
+            ids::BLENDER_SWATCH_25,
+            ids::BLENDER_SWATCH_26,
         ],
     };
     crate::widget::paint_blender_color_picker_with_store(

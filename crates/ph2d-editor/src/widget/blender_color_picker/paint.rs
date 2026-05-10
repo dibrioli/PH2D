@@ -4,7 +4,7 @@
 use super::channels::{paint_slider_row, rgba_to_hsv};
 use super::hex_field::{paint_eyedropper, paint_hex_field};
 use super::palette::{paint_palettes, paint_palettes_with_hits};
-use super::segmented::{paint_channel_toggle, paint_interpolation_toggle};
+use super::segmented::paint_channel_toggle;
 use super::state::{BlenderColorPicker, ChannelMode};
 use super::value_slider::paint_value_slider;
 use super::wheel::paint_color_wheel;
@@ -16,12 +16,13 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
-pub const WHEEL_SIZE: f32 = 232.0;
-pub const VALUE_SLIDER_W: f32 = 24.0;
+pub const SV_RECT_H: f32 = 150.0;
+pub const HUE_STRIP_H: f32 = 16.0;
 pub const ROW_GAP: f32 = 8.0;
 pub const TOGGLE_H: f32 = 28.0;
 pub const SLIDER_ROW_H: f32 = 22.0;
 pub const HEX_ROW_H: f32 = 28.0;
+pub const PREVIEW_H: f32 = 24.0;
 
 /// All sub-control [`NodeId`]s that
 /// [`paint_blender_color_picker_with_store`] needs to register in the
@@ -42,10 +43,21 @@ pub struct BlenderSubIds {
     pub channel_hsv: NodeId,
     /// Channel slider ids 0..4 (R/H, G/S, B/V, A).
     pub channels: [NodeId; 4],
+    /// Channel value chip `NumberInput` ids 0..4 (mirror channels).
+    pub channels_num: [NodeId; 4],
     /// Hex TextInput id.
     pub hex: NodeId,
-    /// Palette swatch ids (up to 12). Entries with id == 0 are skipped.
-    pub swatches: [NodeId; 12],
+    /// "+ swatch" button id (appends current value to palette).
+    pub add_swatch: NodeId,
+    /// Eyedropper button id.
+    pub eyedropper: NodeId,
+    /// Drag-handle bar id (at top of picker — drag to reposition).
+    pub drag_handle: NodeId,
+    /// Palette swatch ids (up to 27). Entries with id == 0 are
+    /// skipped. The first 12 cover the default palette; the rest
+    /// cover user "+ swatch" additions (capped to keep the array
+    /// fixed-size).
+    pub swatches: [NodeId; 27],
 }
 
 impl BlenderSubIds {
@@ -60,8 +72,12 @@ impl BlenderSubIds {
             channel_rgb: NodeId(0),
             channel_hsv: NodeId(0),
             channels: [NodeId(0); 4],
+            channels_num: [NodeId(0); 4],
             hex: NodeId(0),
-            swatches: [NodeId(0); 12],
+            add_swatch: NodeId(0),
+            eyedropper: NodeId(0),
+            drag_handle: NodeId(0),
+            swatches: [NodeId(0); 27],
         }
     }
 }
@@ -81,22 +97,17 @@ pub fn paint_blender_color_picker(
     let inner_w = rect.w - pad * 2.0;
     let mut y = rect.y + pad;
 
-    let wheel_block_w = WHEEL_SIZE + Spacing::Md.px() + VALUE_SLIDER_W;
-    let wheel_x = rect.x + (rect.w - wheel_block_w) * 0.5;
-    let wheel_rect = Rect::new(wheel_x, y, WHEEL_SIZE, WHEEL_SIZE);
-    paint_color_wheel(cp, wheel_rect, scene);
-    let value_rect = Rect::new(
-        wheel_x + WHEEL_SIZE + Spacing::Md.px(),
-        y,
-        VALUE_SLIDER_W,
-        WHEEL_SIZE,
-    );
-    paint_value_slider(cp, value_rect, scene, theme);
-    y += WHEEL_SIZE + ROW_GAP;
+    let sv_rect = Rect::new(rect.x + pad, y, inner_w, SV_RECT_H);
+    paint_color_wheel(cp, sv_rect, scene);
+    y += SV_RECT_H + ROW_GAP;
 
-    let interp_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
-    paint_interpolation_toggle(cp, interp_rect, scene, text_system, theme);
-    y += TOGGLE_H + ROW_GAP;
+    let hue_rect = Rect::new(rect.x + pad, y, inner_w, HUE_STRIP_H);
+    paint_value_slider(cp, hue_rect, scene, theme);
+    y += HUE_STRIP_H + ROW_GAP;
+
+    let preview_rect = Rect::new(rect.x + pad, y, inner_w, PREVIEW_H);
+    paint_color_preview(cp, preview_rect, scene, theme);
+    y += PREVIEW_H + ROW_GAP;
 
     let chan_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
     paint_channel_toggle(cp, chan_rect, scene, text_system, theme);
@@ -114,8 +125,10 @@ pub fn paint_blender_color_picker(
             cp.value.rgba[3] as f32 / 255.0,
         ],
         ChannelMode::Hsv => {
-            let (h, s, v, a) = rgba_to_hsv(cp.value.rgba);
-            [h, s, v, a]
+            // Same retained-anchor read as the with-store variant
+            // (see comment there) — H/S survive V→0 collapse.
+            let (_, _, v, a) = rgba_to_hsv(cp.value.rgba);
+            [cp.hsv_h, cp.hsv_s, v, a]
         }
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
@@ -169,6 +182,10 @@ pub fn paint_blender_color_picker_with_store(
         local.active_palette = active_palette;
         local.sync_hex();
     }
+    if let Some((h, s)) = store.blender_hsv_anchor(parent_id) {
+        local.hsv_h = h;
+        local.hsv_s = s;
+    }
     let radius = Radius::Md.px();
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
@@ -177,47 +194,68 @@ pub fn paint_blender_color_picker_with_store(
     let inner_w = rect.w - pad * 2.0;
     let mut y = rect.y + pad;
 
-    let wheel_block_w = WHEEL_SIZE + Spacing::Md.px() + VALUE_SLIDER_W;
-    let wheel_x = rect.x + (rect.w - wheel_block_w) * 0.5;
-    let wheel_rect = Rect::new(wheel_x, y, WHEEL_SIZE, WHEEL_SIZE);
-    paint_color_wheel(&local, wheel_rect, scene);
-    if ids.wheel.0 != 0 {
-        hit_index.register(ids.wheel, wheel_rect);
-    }
-    let value_rect = Rect::new(
-        wheel_x + WHEEL_SIZE + Spacing::Md.px(),
-        y,
-        VALUE_SLIDER_W,
-        WHEEL_SIZE,
+    // Drag handle — slim bar across the top with three dot grips.
+    // Click+drag to move the picker (host updates rect via stored
+    // offset before calling this painter).
+    let drag_h = 14.0_f32;
+    let drag_rect = Rect::new(rect.x + pad, y, inner_w, drag_h);
+    fill_rounded_rect(
+        scene,
+        drag_rect,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg2, theme),
     );
-    paint_value_slider(&local, value_rect, scene, theme);
-    if ids.value_slider.0 != 0 {
-        hit_index.register(ids.value_slider, value_rect);
+    let dot_y = drag_rect.y + drag_rect.h * 0.5 - 1.5;
+    let dot_color = resolve(ColorToken::Text3, theme);
+    for i in 0..3i32 {
+        let dot_x = drag_rect.x + drag_rect.w * 0.5 + (i - 1) as f32 * 6.0 - 1.5;
+        let dot_rect = Rect::new(dot_x, dot_y, 3.0, 3.0);
+        fill_rounded_rect(scene, dot_rect, 1.5, dot_color);
     }
-    if parent_id.0 != 0 {
-        hit_index.register(parent_id, rect);
+    if ids.drag_handle.0 != 0 {
+        hit_index.register(ids.drag_handle, drag_rect);
     }
-    y += WHEEL_SIZE + ROW_GAP;
+    y += drag_h + ROW_GAP;
 
-    // Interpolation toggle (Linear / Perceptual).
-    let interp_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
-    paint_interpolation_toggle(&local, interp_rect, scene, text_system, theme);
-    if ids.interp_linear.0 != 0 || ids.interp_perceptual.0 != 0 {
-        let half_w = interp_rect.w * 0.5;
-        if ids.interp_linear.0 != 0 {
-            hit_index.register(
-                ids.interp_linear,
-                Rect::new(interp_rect.x, interp_rect.y, half_w, interp_rect.h),
-            );
-        }
-        if ids.interp_perceptual.0 != 0 {
-            hit_index.register(
-                ids.interp_perceptual,
-                Rect::new(interp_rect.x + half_w, interp_rect.y, half_w, interp_rect.h),
-            );
-        }
+    // Web-standard SV rectangle (replaces the HSV disc). Full
+    // picker width, fixed height — saturation runs left→right,
+    // value runs top→bottom (top = bright, bottom = black).
+    let sv_rect = Rect::new(rect.x + pad, y, inner_w, SV_RECT_H);
+    paint_color_wheel(&local, sv_rect, scene);
+    if ids.wheel.0 != 0 {
+        hit_index.register(ids.wheel, sv_rect);
     }
-    y += TOGGLE_H + ROW_GAP;
+    y += SV_RECT_H + ROW_GAP;
+
+    // Horizontal hue strip (replaces the vertical V slider). Click
+    // anywhere along it sets the hue while preserving S + V.
+    let hue_rect = Rect::new(rect.x + pad, y, inner_w, HUE_STRIP_H);
+    paint_value_slider(&local, hue_rect, scene, theme);
+    if ids.value_slider.0 != 0 {
+        hit_index.register(ids.value_slider, hue_rect);
+    }
+    // Intentionally NOT registering `parent_id` (the outer picker
+    // rect) in the hit index: it would shadow the SV + hue strip
+    // sub-rects since `HitIndex::hit` walks back-to-front and would
+    // pick the most-recently-registered rect (the outer one) for
+    // any click that lands inside it.
+    y += HUE_STRIP_H + ROW_GAP;
+
+    // Resulting-color preview swatch — full-width strip showing the
+    // current `value.rgba` so the user can verify the pick before
+    // committing it elsewhere.
+    let preview_rect = Rect::new(rect.x + pad, y, inner_w, PREVIEW_H);
+    paint_color_preview(&local, preview_rect, scene, theme);
+    y += PREVIEW_H + ROW_GAP;
+
+    // Linear / Perceptual interpolation toggle removed by design —
+    // OKLCH-perceptual mixing was a Blender-specific concept the
+    // simplified picker doesn't expose. The state field still exists
+    // (defaults to Perceptual) but the toggle row is no longer
+    // painted and `interp_linear`/`interp_perceptual` ids are not
+    // registered in the hit index.
+    let _ = ids.interp_linear;
+    let _ = ids.interp_perceptual;
 
     // Channel mode toggle (RGB / HSV).
     let chan_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
@@ -251,32 +289,119 @@ pub fn paint_blender_color_picker_with_store(
             local.value.rgba[3] as f32 / 255.0,
         ],
         ChannelMode::Hsv => {
-            let (h, s, v, a) = rgba_to_hsv(local.value.rgba);
-            [h, s, v, a]
+            // H + S come from the retained anchor — RGBA→HSV would
+            // collapse H to 0 (red) on V=0 / S=0 colors and report
+            // 0.000 in the chip even though the hue strip stays at
+            // the user's chosen position. V + A are recoverable
+            // from RGBA.
+            let (_, _, v, a) = rgba_to_hsv(local.value.rgba);
+            [local.hsv_h, local.hsv_s, v, a]
         }
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
         let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;
         let row_rect = Rect::new(rect.x + pad, row_y, inner_w, SLIDER_ROW_H);
         paint_slider_row(label, *val, row_rect, scene, text_system, theme);
-        // Register the full row as the channel slider hit rect. The
-        // dispatch normalises px relative to this rect to get 0..1.
+        // Register only the slider TRACK as the channel hit (label
+        // and value chip stay free for the NumberInput chips below).
+        // Layout mirrors `paint_slider_row`: label_w=70, val_w=60,
+        // gap=Spacing::Sm.px()=8 → track at row.x+78, width 110…
+        // (computed dynamically in case row width differs).
+        const LABEL_W: f32 = 70.0;
+        const VAL_W: f32 = 60.0;
+        const GAP: f32 = 8.0;
+        let track_x = row_rect.x + LABEL_W + GAP;
+        let track_w = (row_rect.w - LABEL_W - VAL_W - GAP * 2.0).max(1.0);
+        let track_rect = Rect::new(track_x, row_rect.y, track_w, row_rect.h);
         let ch_id = ids.channels.get(i).copied().unwrap_or(NodeId(0));
         if ch_id.0 != 0 {
-            hit_index.register(ch_id, row_rect);
+            hit_index.register(ch_id, track_rect);
+        }
+        // Override the static value chip drawn by `paint_slider_row`
+        // with an interactive `NumberInput` chip — focusable, accepts
+        // typed input, and registers a hit rect so the dispatcher
+        // can route clicks here.
+        let chip_id = ids.channels_num.get(i).copied().unwrap_or(NodeId(0));
+        if chip_id.0 != 0 {
+            let chip_rect = Rect::new(
+                row_rect.x + row_rect.w - VAL_W,
+                row_rect.y,
+                VAL_W,
+                row_rect.h,
+            );
+            let (chip_state, chip_buffer, chip_caret, chip_anchor) = match store.get(chip_id) {
+                Some(crate::interaction::InteractiveState::NumberInput {
+                    state,
+                    buffer,
+                    caret,
+                    selection_anchor,
+                    ..
+                }) => (*state, Some(buffer.as_str()), *caret, *selection_anchor),
+                _ => (crate::widget::TextInputState::Normal, None, 0, None),
+            };
+            super::channels::paint_channel_chip(
+                chip_rect,
+                chip_state,
+                *val as f64,
+                chip_buffer,
+                chip_caret,
+                chip_anchor,
+                scene,
+                text_system,
+                theme,
+            );
+            hit_index.register(chip_id, chip_rect);
         }
     }
     y += (SLIDER_ROW_H + 4.0) * 4.0 + ROW_GAP;
 
     let hex_rect = Rect::new(rect.x + pad, y, inner_w - 32.0, HEX_ROW_H);
     let eye_rect = Rect::new(hex_rect.x + hex_rect.w + 4.0, y, HEX_ROW_H, HEX_ROW_H);
-    paint_hex_field(&local.hex, hex_rect, scene, text_system, theme);
-    paint_eyedropper(eye_rect, scene, theme);
+    // Read live buffer/caret/state from the WidgetStore entry for
+    // the hex TextInput so typing is visible (caret + buffer +
+    // focus border). Falls back to `local.hex` when not registered.
+    let (hex_state, hex_buffer, hex_caret, hex_anchor) = if ids.hex.0 != 0 {
+        match store.get(ids.hex) {
+            Some(crate::interaction::InteractiveState::TextInput {
+                state,
+                text,
+                caret,
+                selection_anchor,
+            }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
+            _ => (crate::widget::TextInputState::Normal, None, 0, None),
+        }
+    } else {
+        (crate::widget::TextInputState::Normal, None, 0, None)
+    };
+    super::hex_field::paint_hex_field_with_state(
+        &local.hex,
+        hex_buffer,
+        hex_caret,
+        hex_anchor,
+        hex_state,
+        hex_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    let eyedropper_active = store.eyedropper_pending() == Some(parent_id);
+    super::hex_field::paint_eyedropper_with_state(eye_rect, eyedropper_active, scene, theme);
     if ids.hex.0 != 0 {
         hit_index.register(ids.hex, hex_rect);
     }
+    if ids.eyedropper.0 != 0 {
+        hit_index.register(ids.eyedropper, eye_rect);
+    }
     y += HEX_ROW_H + ROW_GAP;
 
+    // Patch the local picker's active palette swatches with the
+    // store-side mutable palette (init_blender_palette + push/remove).
+    if let Some(swatches) = store.blender_palette(parent_id)
+        && let Some(palette) = local.palettes.get_mut(local.active_palette)
+    {
+        palette.swatches = swatches.to_vec();
+        palette.editable = true;
+    }
     let palette_h = (rect.y + rect.h - y - pad).max(0.0);
     let palette_rect = Rect::new(rect.x + pad, y, inner_w, palette_h);
     if palette_h > 60.0 {
@@ -284,12 +409,69 @@ pub fn paint_blender_color_picker_with_store(
             &local,
             palette_rect,
             &ids.swatches,
+            ids.add_swatch,
             hit_index,
             scene,
             text_system,
             theme,
         );
     }
+}
+
+/// Paint the resulting-color preview swatch — full-width strip
+/// showing the current `value.rgba` over a checkerboard so partial
+/// alpha is legible (light/dark squares show through translucent
+/// colors, matching what every other paint app does).
+fn paint_color_preview(cp: &BlenderColorPicker, rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    let radius = Radius::Sm.px();
+    // Light backdrop covering the whole rect (the "white" cells of
+    // the checker).
+    fill_rounded_rect(
+        scene,
+        rect,
+        radius,
+        ph2d_vector::Color::from_rgba8(220, 220, 220, 255),
+    );
+    // Darker squares — every other cell. We don't bother clipping
+    // to the rounded rect: the dark cells along the corner overlap
+    // a 2-3 px sliver of empty space outside the radius, but the
+    // color overlay below covers it (alpha=1 cases) and the border
+    // stroke masks the rest.
+    let cell = 6.0_f32;
+    let cols = (rect.w / cell).ceil() as i32;
+    let rows = (rect.h / cell).ceil() as i32;
+    let dark = ph2d_vector::Color::from_rgba8(170, 170, 170, 255);
+    for j in 0..rows {
+        for i in 0..cols {
+            if (i + j) % 2 == 0 {
+                continue;
+            }
+            let cx = rect.x + (i as f32) * cell;
+            let cy = rect.y + (j as f32) * cell;
+            let w = cell.min(rect.x + rect.w - cx);
+            let h = cell.min(rect.y + rect.h - cy);
+            if w <= 0.0 || h <= 0.0 {
+                continue;
+            }
+            let kr = ph2d_vector::Rect::new(cx as f64, cy as f64, (cx + w) as f64, (cy + h) as f64);
+            scene.inner_mut().fill(
+                ph2d_vector::Fill::NonZero,
+                ph2d_vector::Affine::IDENTITY,
+                &ph2d_vector::Brush::Solid(dark),
+                None,
+                &kr,
+            );
+        }
+    }
+    // Color overlay (with whatever alpha the picker carries).
+    let [r, g, b, a] = cp.value.rgba;
+    fill_rounded_rect(
+        scene,
+        rect,
+        radius,
+        ph2d_vector::Color::from_rgba8(r, g, b, a),
+    );
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
 }
 
 /// Backward-compatible wrapper that only registers the wheel and

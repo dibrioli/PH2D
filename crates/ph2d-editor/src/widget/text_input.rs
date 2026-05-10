@@ -101,7 +101,7 @@ pub fn paint_text_input(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    paint_text_input_with_buffer(input, None, None, rect, scene, text_system, theme)
+    paint_text_input_with_buffer(input, None, None, None, rect, scene, text_system, theme)
 }
 
 /// Like [`paint_text_input`] but draws an override `buffer` and
@@ -109,11 +109,15 @@ pub fn paint_text_input(
 /// [`crate::interaction::WidgetStore`] entry for the input. Reading
 /// from the store avoids per-frame allocations that would happen if
 /// the caller copied `store.text(id)` into `TextInput.value`.
+/// `selection_anchor` is the other end of an active selection (for
+/// double-click "select all" + Shift+Arrow); when None, no selection
+/// is drawn.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_text_input_with_buffer(
     input: &TextInput,
     buffer: Option<&str>,
     caret: Option<usize>,
+    selection_anchor: Option<usize>,
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -143,6 +147,39 @@ pub fn paint_text_input_with_buffer(
 
     let displayed: &str = buffer.unwrap_or(input.value.as_str());
     let displayed_caret = caret.unwrap_or(input.caret_byte);
+
+    if input.state == TextInputState::Focused
+        && let Some(anchor) = selection_anchor
+        && anchor != displayed_caret
+    {
+        let (sel_start, sel_end) = if anchor < displayed_caret {
+            (anchor, displayed_caret)
+        } else {
+            (displayed_caret, anchor)
+        };
+        let sel_start = sel_start.min(displayed.len());
+        let sel_end = sel_end.min(displayed.len());
+        let prefix_w = if sel_start == 0 {
+            0.0
+        } else {
+            text_system
+                .layout(&displayed[..sel_start], font_size, f32::INFINITY)
+                .width()
+        };
+        let mid_w = if sel_start == sel_end {
+            0.0
+        } else {
+            text_system
+                .layout(&displayed[sel_start..sel_end], font_size, f32::INFINITY)
+                .width()
+        };
+        let sel_x = (inner_x + prefix_w).min(inner_x + inner_w);
+        let sel_w = mid_w.min(inner_x + inner_w - sel_x);
+        if sel_w > 0.0 {
+            let sel_rect = Rect::new(sel_x, rect.y + pad_y, sel_w, rect.h - pad_y * 2.0);
+            fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
+        }
+    }
 
     if displayed.is_empty() && !input.placeholder.is_empty() {
         paint_text(
@@ -176,8 +213,12 @@ pub fn paint_text_input_with_buffer(
     if input.state == TextInputState::Focused {
         let caret_byte = displayed_caret.min(displayed.len());
         let prefix = &displayed[..caret_byte];
-        let approx_advance = prefix.chars().count() as f32 * font_size * 0.55;
-        let caret_x = inner_x + approx_advance.min(inner_w);
+        let prefix_w = if prefix.is_empty() {
+            0.0
+        } else {
+            text_system.layout(prefix, font_size, f32::INFINITY).width()
+        };
+        let caret_x = (inner_x + prefix_w).min(inner_x + inner_w);
         let caret_rect = Rect::new(caret_x, rect.y + pad_y, 1.0, rect.h - pad_y * 2.0);
         scene.fill_rect(
             crate::paint::rect_to_vello(caret_rect),
@@ -274,6 +315,7 @@ mod tests {
             &t,
             Some("live edit"),
             Some(4),
+            None,
             Rect::new(0.0, 0.0, 240.0, 32.0),
             &mut scene,
             &mut text,
@@ -292,6 +334,7 @@ mod tests {
             &t,
             Some(""),
             Some(99),
+            None,
             Rect::new(0.0, 0.0, 240.0, 32.0),
             &mut scene,
             &mut text,

@@ -39,7 +39,7 @@ mod vector3_editor;
 pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
 pub use blender_color_picker::{
     BlenderColorPicker, BlenderSubIds, ChannelMode, ColorPalette, InterpolationMode,
-    apply_blender_value_pick, apply_blender_wheel_pick, default_palette,
+    apply_blender_value_pick, apply_blender_wheel_pick, default_palette, hsv_to_rgba8,
     paint_blender_color_picker, paint_blender_color_picker_with_store,
     paint_blender_color_picker_with_store_compat, parse_hex, rgba_to_hsv, value_pick, wheel_pick,
 };

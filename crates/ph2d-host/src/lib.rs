@@ -19,8 +19,8 @@
 pub mod events;
 
 pub use events::{
-    CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PointerEvent, PointerKind, PointerSource,
-    WindowSize,
+    CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PointerButton, PointerEvent, PointerKind,
+    PointerSource, WindowSize,
 };
 
 /// Services exposed by the shell to the core.
@@ -144,6 +144,7 @@ mod tests {
             pressure: 0.5,
             kind: PointerKind::Down,
             source: PointerSource::Mouse,
+            button: PointerButton::Primary,
             timestamp_ns: 12345,
         };
         handler.on_pointer(p);

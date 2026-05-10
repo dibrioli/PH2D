@@ -30,6 +30,7 @@ pub const KEY_ENTER: u32 = 0x0D;
 pub const KEY_SPACE: u32 = 0x20;
 pub const KEY_ESCAPE: u32 = 0x1B;
 pub const KEY_BACKSPACE: u32 = 0x08;
+pub const KEY_KEY_A: u32 = 0x41;
 pub const KEY_ARROW_UP: u32 = 0xF700;
 pub const KEY_ARROW_DOWN: u32 = 0xF701;
 pub const KEY_ARROW_LEFT: u32 = 0xF702;
@@ -58,11 +59,51 @@ pub fn dispatch_pointer<'frame>(
             // active rect. Hover tracking is suppressed (the active
             // widget keeps its Pressed state regardless of where the
             // cursor went).
+            // Picker drag — keep the picker stuck to the cursor.
+            if let Some((parent, down_x, down_y, off_x, off_y)) = store.blender_drag_anchor() {
+                let new_off_x = off_x + (event.x - down_x);
+                let new_off_y = off_y + (event.y - down_y);
+                store.set_blender_picker_offset(parent, new_off_x, new_off_y);
+            }
             if let Some(active) = store.active_id() {
-                if let Some(rect) = store.active_rect()
-                    && update_drag_value(store, active, rect, event.x, event.y)
-                {
-                    events.push(WidgetEvent::ValueChanged(active));
+                if let Some(rect) = store.active_rect() {
+                    // Text drag-to-select: extend the selection from
+                    // the anchor (set on Down) to the new cursor x.
+                    if matches!(
+                        store.get(active),
+                        Some(InteractiveState::TextInput { .. })
+                            | Some(InteractiveState::NumberInput { .. })
+                            | Some(InteractiveState::Combobox { .. })
+                    ) {
+                        let offset = byte_offset_from_click_x(store, active, rect, event.x);
+                        place_text_caret(store, active, offset, false);
+                    }
+                    // Plain slider drag.
+                    if update_drag_value(store, active, rect, event.x, event.y) {
+                        events.push(WidgetEvent::ValueChanged(active));
+                    }
+                    // BlenderColorPicker drag-relevant sub-controls —
+                    // wheel, hue strip, channel sliders. Re-apply on
+                    // every Move so the color tracks the cursor.
+                    // Buttons / toggles / swatches / eyedropper are
+                    // click-once: re-applying them on Move would, e.g.,
+                    // append the current color N times when "+ swatch"
+                    // is held with even the slightest cursor jitter.
+                    let drag_apply = matches!(
+                        store.get(active),
+                        Some(InteractiveState::BlenderHit {
+                            kind: super::BlenderHitKind::Wheel
+                                | super::BlenderHitKind::ValueSlider
+                                | super::BlenderHitKind::ChannelSlider(_),
+                            ..
+                        })
+                    );
+                    if drag_apply
+                        && let Some(parent) =
+                            apply_blender_hit(store, active, rect, event.x, event.y, event.button)
+                    {
+                        events.push(WidgetEvent::ValueChanged(parent));
+                    }
                 }
             } else {
                 let hit = hit_index.hit(event.x, event.y);
@@ -70,20 +111,91 @@ pub fn dispatch_pointer<'frame>(
             }
         }
         PointerKind::Down => {
-            if let Some((id, rect)) = hit_index.hit_with_rect(event.x, event.y)
+            let hit = hit_index.hit_with_rect(event.x, event.y);
+
+            // Eyedropper interception: while a pick is pending and
+            // the click isn't on the eyedropper button itself, emit
+            // `EyedropperPick` for the host to read back the
+            // rendered pixel. Skip the rest of the Down logic so
+            // we don't focus / drag whatever's under the cursor.
+            if let Some(parent) = store.eyedropper_pending() {
+                let is_eyedropper_btn = matches!(
+                    hit.and_then(|(id, _)| store.get(id)),
+                    Some(InteractiveState::BlenderHit {
+                        kind: super::BlenderHitKind::Eyedropper,
+                        ..
+                    })
+                );
+                if !is_eyedropper_btn {
+                    events.push(WidgetEvent::EyedropperPick {
+                        parent,
+                        px: event.x.max(0.0) as u32,
+                        py: event.y.max(0.0) as u32,
+                    });
+                    store.set_eyedropper_pending(None);
+                    return events.into_bump_slice();
+                }
+            }
+
+            // Compute the new focus target (if the click landed on a
+            // focusable widget). Blur+commit the previous focus
+            // whenever it isn't the same target — including the case
+            // where the click landed in dead space (canvas, panel
+            // chrome, etc.) so the user's typed buffer always
+            // commits when the field loses focus.
+            let new_focus = match hit {
+                Some((id, _)) if is_focusable(store, id) => Some(id),
+                _ => None,
+            };
+            let prev_focus = store.focus_id();
+            if let Some(old) = prev_focus
+                && new_focus != Some(old)
+            {
+                commit_number_buffer(store, old, &mut events);
+                commit_hex_buffer(store, old, &mut events);
+                match store.get_mut(old) {
+                    Some(InteractiveState::NumberInput { state, .. })
+                    | Some(InteractiveState::TextInput { state, .. }) => {
+                        *state = crate::widget::TextInputState::Normal;
+                    }
+                    _ => {}
+                }
+                events.push(WidgetEvent::Blur(old));
+                store.set_focus(None);
+            }
+
+            // Detect double-click against the previous Down. Anything
+            // landing on a TextInput / NumberInput within the
+            // double-click window (and on the same id) selects all.
+            let is_double_click = store.record_pointer_down(new_focus, event.timestamp_ns);
+
+            if let Some((id, rect)) = hit
                 && is_focusable(store, id)
             {
                 store.set_active(Some(id));
                 store.set_active_rect(Some(rect));
-                let prev_focus = store.focus_id();
-                if prev_focus != Some(id) {
-                    if let Some(old) = prev_focus {
-                        commit_number_buffer(store, old, &mut events);
-                        events.push(WidgetEvent::Blur(old));
-                    }
+                if store.focus_id() != Some(id) {
                     store.set_focus(Some(id));
                     init_number_buffer(store, id);
+                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
+                        *state = crate::widget::TextInputState::Focused;
+                    }
                     events.push(WidgetEvent::Focus(id));
+                }
+                if is_double_click {
+                    select_all_in_text_widget(store, id);
+                } else if matches!(
+                    store.get(id),
+                    Some(InteractiveState::TextInput { .. })
+                        | Some(InteractiveState::NumberInput { .. })
+                        | Some(InteractiveState::Combobox { .. })
+                ) {
+                    // Single Down on a text widget: place caret at
+                    // the clicked byte position and seed the
+                    // selection anchor there. Subsequent Move events
+                    // extend the selection from anchor → new caret.
+                    let offset = byte_offset_from_click_x(store, id, rect, event.x);
+                    place_text_caret(store, id, offset, true);
                 }
                 set_widget_pressed(store, id);
                 // For sliders, the initial Down also sets value
@@ -94,13 +206,19 @@ pub fn dispatch_pointer<'frame>(
                     events.push(WidgetEvent::ValueChanged(id));
                 }
                 // BlenderColorPicker sub-control hits route into the
-                // parent's stored state mutation.
-                if let Some(parent) = apply_blender_hit(store, id, rect, event.x, event.y) {
+                // parent's stored state mutation. Right-click on a
+                // palette swatch removes it instead of picking it.
+                if let Some(parent) =
+                    apply_blender_hit(store, id, rect, event.x, event.y, event.button)
+                {
                     events.push(WidgetEvent::ValueChanged(parent));
                 }
             }
         }
         PointerKind::Up => {
+            // Picker drag ends on Up — clear the anchor so a stray
+            // Move after release doesn't drag the picker further.
+            store.end_blender_drag();
             if let Some(active) = store.active_id() {
                 let hit = hit_index.hit(event.x, event.y);
                 let still_hot = hit == Some(active);
@@ -189,6 +307,13 @@ pub fn dispatch_key<'frame>(
                 cycle_focus(store, true, &mut events);
             }
         }
+        KEY_KEY_A if event.modifiers.meta || event.modifiers.ctrl => {
+            // Cmd/Ctrl+A on a focused TextInput / NumberInput selects
+            // the whole buffer (same effect as double-click).
+            if let Some(id) = store.focus_id() {
+                select_all_in_text_widget(store, id);
+            }
+        }
         KEY_ENTER | KEY_SPACE => {
             if let Some(id) = store.focus_id() {
                 // For NumberInput, Enter commits the buffer (parses)
@@ -198,6 +323,21 @@ pub fn dispatch_key<'frame>(
                     && event.keycode == KEY_ENTER
                 {
                     commit_number_buffer(store, id, &mut events);
+                    return events.into_bump_slice();
+                }
+                // Hex TextInput linked to a BlenderPicker: parse the
+                // buffer and apply the resulting color to the parent,
+                // then blur (Enter ends the edit, like a form field).
+                if event.keycode == KEY_ENTER
+                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
+                    && store.blender_hex_parent(id).is_some()
+                {
+                    commit_hex_buffer(store, id, &mut events);
+                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
+                        *state = crate::widget::TextInputState::Normal;
+                    }
+                    store.set_focus(None);
+                    events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
                 }
                 apply_click(store, id, &mut events);
@@ -216,31 +356,52 @@ pub fn dispatch_key<'frame>(
                 if matches!(store.get(id), Some(InteractiveState::NumberInput { .. })) {
                     revert_number_buffer(store, id);
                 }
+                // Hex TextInput: revert buffer to canonical form of
+                // the parent picker's current value.
+                if matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
+                    && store.blender_hex_parent(id).is_some()
+                {
+                    write_hex_canonical(store, id);
+                }
                 store.set_focus(None);
                 events.push(WidgetEvent::Blur(id));
             }
         }
         KEY_BACKSPACE => {
             if let Some(id) = store.focus_id() {
-                match store.get_mut(id) {
-                    Some(InteractiveState::TextInput { text, caret, .. }) if *caret > 0 => {
-                        let new_caret = prev_char_boundary(text, *caret);
-                        text.replace_range(new_caret..*caret, "");
-                        *caret = new_caret;
-                        events.push(WidgetEvent::TextChanged(id));
+                if delete_selection_if_any(store, id) {
+                    events.push(WidgetEvent::TextChanged(id));
+                } else {
+                    match store.get_mut(id) {
+                        Some(InteractiveState::TextInput { text, caret, .. }) if *caret > 0 => {
+                            let new_caret = prev_char_boundary(text, *caret);
+                            text.replace_range(new_caret..*caret, "");
+                            *caret = new_caret;
+                            events.push(WidgetEvent::TextChanged(id));
+                        }
+                        Some(InteractiveState::NumberInput { buffer, caret, .. }) if *caret > 0 => {
+                            let new_caret = prev_char_boundary(buffer, *caret);
+                            buffer.replace_range(new_caret..*caret, "");
+                            *caret = new_caret;
+                            events.push(WidgetEvent::TextChanged(id));
+                        }
+                        Some(InteractiveState::Combobox { query, caret, .. }) if *caret > 0 => {
+                            let new_caret = prev_char_boundary(query, *caret);
+                            query.replace_range(new_caret..*caret, "");
+                            *caret = new_caret;
+                            events.push(WidgetEvent::TextChanged(id));
+                        }
+                        _ => {}
                     }
-                    Some(InteractiveState::NumberInput { buffer, caret, .. }) if *caret > 0 => {
-                        let new_caret = prev_char_boundary(buffer, *caret);
-                        buffer.replace_range(new_caret..*caret, "");
-                        *caret = new_caret;
-                        events.push(WidgetEvent::TextChanged(id));
-                    }
-                    _ => {}
                 }
             }
         }
         KEY_ARROW_LEFT => {
             if let Some(id) = store.focus_id() {
+                // Selection collapse takes precedence over caret motion.
+                if collapse_selection(store, id, false) {
+                    return events.into_bump_slice();
+                }
                 match store.get_mut(id) {
                     Some(InteractiveState::TextInput { text, caret, .. }) if *caret > 0 => {
                         *caret = prev_char_boundary(text, *caret);
@@ -248,12 +409,18 @@ pub fn dispatch_key<'frame>(
                     Some(InteractiveState::NumberInput { buffer, caret, .. }) if *caret > 0 => {
                         *caret = prev_char_boundary(buffer, *caret);
                     }
+                    Some(InteractiveState::Combobox { query, caret, .. }) if *caret > 0 => {
+                        *caret = prev_char_boundary(query, *caret);
+                    }
                     _ => {}
                 }
             }
         }
         KEY_ARROW_RIGHT => {
             if let Some(id) = store.focus_id() {
+                if collapse_selection(store, id, true) {
+                    return events.into_bump_slice();
+                }
                 match store.get_mut(id) {
                     Some(InteractiveState::TextInput { text, caret, .. })
                         if *caret < text.len() =>
@@ -264,6 +431,11 @@ pub fn dispatch_key<'frame>(
                         if *caret < buffer.len() =>
                     {
                         *caret = next_char_boundary(buffer, *caret);
+                    }
+                    Some(InteractiveState::Combobox { query, caret, .. })
+                        if *caret < query.len() =>
+                    {
+                        *caret = next_char_boundary(query, *caret);
                     }
                     _ => {}
                 }
@@ -352,14 +524,29 @@ pub fn dispatch_text_input<'frame>(
     let Some(id) = store.focus_id() else {
         return events.into_bump_slice();
     };
+    // If the focused widget has an active selection, replacing it
+    // is the first half of "type to overwrite". For NumberInput we
+    // additionally require the typed char to be a valid numeric
+    // character — otherwise we drop the char without touching
+    // selection state.
+    let should_replace_selection = match store.get(id) {
+        Some(InteractiveState::TextInput { .. }) | Some(InteractiveState::Combobox { .. }) => true,
+        Some(InteractiveState::NumberInput { .. }) => is_numeric_input_char(ch),
+        _ => false,
+    };
+    if should_replace_selection {
+        delete_selection_if_any(store, id);
+    }
     match store.get_mut(id) {
         Some(InteractiveState::TextInput { text, caret, .. }) => {
             text.insert(*caret, ch);
             *caret += ch.len_utf8();
             events.push(WidgetEvent::TextChanged(id));
         }
-        Some(InteractiveState::Combobox { query, .. }) => {
-            query.push(ch);
+        Some(InteractiveState::Combobox { query, caret, .. }) => {
+            let pos = (*caret).min(query.len());
+            query.insert(pos, ch);
+            *caret = pos + ch.len_utf8();
             events.push(WidgetEvent::TextChanged(id));
         }
         Some(InteractiveState::NumberInput { buffer, caret, .. }) if is_numeric_input_char(ch) => {
@@ -380,22 +567,284 @@ fn is_numeric_input_char(ch: char) -> bool {
 }
 
 /// On focus arrival into a NumberInput, sync `buffer` from `value`
-/// using the same formatter the painter uses, and place the caret at
-/// the end so the user can append digits immediately.
+/// using the same formatter the painter uses, place the caret at
+/// the end, and mark state as Focused so the painter draws the
+/// caret + focus ring (otherwise the user has no visual feedback
+/// that the field accepted the click).
 pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    // BlenderColorPicker channel chip: seed `value` from the parent
+    // picker's current channel value (the chip's stored `value` is
+    // stale; the painter renders the live derived value every
+    // frame, but on focus the buffer needs to start from the
+    // visible value, not the stale stored one).
+    if let Some((parent, idx)) = store.blender_channel_chip(id) {
+        let derived = derive_blender_channel_value(store, parent, idx);
+        if let Some(InteractiveState::NumberInput { value, .. }) = store.get_mut(id) {
+            *value = derived;
+        }
+    }
     if let Some(InteractiveState::NumberInput {
+        state,
         value,
         buffer,
         caret,
         last_committed,
-        ..
+        selection_anchor,
     }) = store.get_mut(id)
     {
+        *state = crate::widget::TextInputState::Focused;
         buffer.clear();
         use std::fmt::Write;
         let _ = write!(buffer, "{}", super::state::format_number(*value));
         *caret = buffer.len();
         *last_committed = *value;
+        *selection_anchor = None;
+    }
+}
+
+/// Approximate character advance per em — matches the painter's
+/// caret-position formula. Used for drag-to-select byte-offset
+/// computation without dragging text_system through dispatch.
+const APPROX_ADVANCE_RATIO: f32 = 0.55;
+
+/// Map a pointer x-coordinate to a byte offset within the
+/// editable buffer of the widget at `id`. Honors per-widget layout
+/// (hex field has a 36 px label prefix; channel chips are centered;
+/// everything else uses `Spacing::Lg.px()`-equivalent left padding).
+/// Approximate — uses a fixed advance ratio because the dispatch
+/// has no `TextSystem`. Off by 1-2 chars at worst, which is fine
+/// for the "click to place caret + drag to extend selection" UX.
+fn byte_offset_from_click_x(
+    store: &WidgetStore,
+    id: ph2d_a11y::NodeId,
+    rect: Rect,
+    click_x: f32,
+) -> usize {
+    let (text, text_start_x, font_size) = match store.get(id) {
+        Some(InteractiveState::TextInput { text, .. }) => {
+            // Hex TextInput: 36 px label sits on the left, then the
+            // value text. Plain TextInput: `Spacing::Lg.px()` left pad.
+            let is_hex = store.blender_hex_parent(id).is_some();
+            let (start, fs) = if is_hex {
+                (rect.x + 8.0 + 36.0, 13.0_f32) // pad_md + label_w, TypeToken::Sm
+            } else {
+                (rect.x + 12.0, 14.0_f32) // Spacing::Lg, TypeToken::Base
+            };
+            (text.as_str(), start, fs)
+        }
+        Some(InteractiveState::NumberInput { buffer, .. }) => {
+            // Plain NumberInput uses Spacing::Lg pad. Channel chips
+            // are centered — their click→byte offset depends on the
+            // current text width which we don't measure here, so we
+            // approximate by treating the chip as if text starts at
+            // its left padding.
+            (buffer.as_str(), rect.x + 12.0, 14.0_f32)
+        }
+        Some(InteractiveState::Combobox { query, .. }) => (query.as_str(), rect.x + 12.0, 14.0_f32),
+        _ => return 0,
+    };
+    let advance = font_size * APPROX_ADVANCE_RATIO;
+    if advance <= 0.0 {
+        return 0;
+    }
+    let rel_x = (click_x - text_start_x).max(0.0);
+    let approx_chars = (rel_x / advance).round() as usize;
+    // For ASCII text (hex / numeric / Latin labels) char count =
+    // byte count. Clamp to text length for safety.
+    approx_chars.min(text.len())
+}
+
+/// Place the caret at byte offset `offset` on the TextInput /
+/// NumberInput widget at `id`. When `seed_anchor` is true (single
+/// Down event), the selection_anchor is reset to the new caret —
+/// any prior selection collapses. When false (Move during drag),
+/// the anchor is preserved so the selection extends from anchor →
+/// new caret. No-op for non-text widgets.
+fn place_text_caret(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    offset: usize,
+    seed_anchor: bool,
+) {
+    let (text, caret, selection_anchor): (&str, &mut usize, &mut Option<usize>) =
+        match store.get_mut(id) {
+            Some(InteractiveState::TextInput {
+                text,
+                caret,
+                selection_anchor,
+                ..
+            }) => (text.as_str(), caret, selection_anchor),
+            Some(InteractiveState::NumberInput {
+                buffer,
+                caret,
+                selection_anchor,
+                ..
+            }) => (buffer.as_str(), caret, selection_anchor),
+            Some(InteractiveState::Combobox {
+                query,
+                caret,
+                selection_anchor,
+                ..
+            }) => (query.as_str(), caret, selection_anchor),
+            _ => return,
+        };
+    let bounded = offset.min(text.len());
+    let snapped = nearest_char_boundary(text, bounded);
+    *caret = snapped;
+    if seed_anchor {
+        *selection_anchor = Some(snapped);
+    }
+}
+
+fn nearest_char_boundary(s: &str, mut i: usize) -> usize {
+    let len = s.len();
+    if i >= len {
+        return len;
+    }
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+/// Set `selection_anchor = Some(0)` and `caret = text.len()` on the
+/// focused TextInput / NumberInput widget at `id`. Triggered by
+/// double-click and by Cmd/Ctrl+A. No-op for any other widget kind.
+pub(super) fn select_all_in_text_widget(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    match store.get_mut(id) {
+        Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) => {
+            *selection_anchor = Some(0);
+            *caret = text.len();
+        }
+        Some(InteractiveState::NumberInput {
+            buffer,
+            caret,
+            selection_anchor,
+            ..
+        }) => {
+            *selection_anchor = Some(0);
+            *caret = buffer.len();
+        }
+        Some(InteractiveState::Combobox {
+            query,
+            caret,
+            selection_anchor,
+            ..
+        }) => {
+            *selection_anchor = Some(0);
+            *caret = query.len();
+        }
+        _ => {}
+    }
+}
+
+/// If the focused TextInput / NumberInput has a non-empty selection,
+/// delete the selected range (replacing it with an empty cut at
+/// `caret = sel_start`) and return true. The caller is then expected
+/// to insert any pending character at the new caret position.
+fn delete_selection_if_any(store: &mut WidgetStore, id: ph2d_a11y::NodeId) -> bool {
+    let (text_ref, caret_ref, anchor_ref): (&mut String, &mut usize, &mut Option<usize>) =
+        match store.get_mut(id) {
+            Some(InteractiveState::TextInput {
+                text,
+                caret,
+                selection_anchor,
+                ..
+            }) => (text, caret, selection_anchor),
+            Some(InteractiveState::NumberInput {
+                buffer,
+                caret,
+                selection_anchor,
+                ..
+            }) => (buffer, caret, selection_anchor),
+            Some(InteractiveState::Combobox {
+                query,
+                caret,
+                selection_anchor,
+                ..
+            }) => (query, caret, selection_anchor),
+            _ => return false,
+        };
+    let Some(anchor) = *anchor_ref else {
+        return false;
+    };
+    let (start, end) = if anchor < *caret_ref {
+        (anchor, *caret_ref)
+    } else {
+        (*caret_ref, anchor)
+    };
+    if start == end {
+        *anchor_ref = None;
+        return false;
+    }
+    let start = start.min(text_ref.len());
+    let end = end.min(text_ref.len());
+    text_ref.replace_range(start..end, "");
+    *caret_ref = start;
+    *anchor_ref = None;
+    true
+}
+
+/// Collapse any active selection on the focused TextInput /
+/// NumberInput, optionally moving the caret to the left or right
+/// edge of the original selection (matching standard text-editor
+/// behavior for non-shift Arrow keys with an active selection).
+/// Returns true iff a selection was collapsed.
+fn collapse_selection(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    move_to_right_edge: bool,
+) -> bool {
+    let (caret, selection_anchor) = match store.get_mut(id) {
+        Some(InteractiveState::TextInput {
+            caret,
+            selection_anchor,
+            ..
+        })
+        | Some(InteractiveState::NumberInput {
+            caret,
+            selection_anchor,
+            ..
+        })
+        | Some(InteractiveState::Combobox {
+            caret,
+            selection_anchor,
+            ..
+        }) => (caret, selection_anchor),
+        _ => return false,
+    };
+    let Some(anchor) = *selection_anchor else {
+        return false;
+    };
+    let (lo, hi) = if anchor < *caret {
+        (anchor, *caret)
+    } else {
+        (*caret, anchor)
+    };
+    *caret = if move_to_right_edge { hi } else { lo };
+    *selection_anchor = None;
+    true
+}
+
+/// Read a single channel value (0..=1) from the parent picker's
+/// current `value` + `channel_mode`. Used when seeding a chip's
+/// edit buffer on focus arrival.
+fn derive_blender_channel_value(store: &WidgetStore, parent: ph2d_a11y::NodeId, idx: u8) -> f64 {
+    use crate::widget::{ChannelMode, rgba_to_hsv};
+    let Some((cur, mode, _, _)) = store.blender_picker(parent) else {
+        return 0.0;
+    };
+    match mode {
+        ChannelMode::Rgb => cur.rgba[idx as usize] as f64 / 255.0,
+        ChannelMode::Hsv => {
+            let (h, s, v, a) = rgba_to_hsv(cur.rgba);
+            [h, s, v, a][idx as usize] as f64
+        }
     }
 }
 
@@ -450,6 +899,64 @@ pub(super) fn commit_number_buffer<'a>(
         *value = (v as f32).clamp(0.0, 1.0);
         events.push(WidgetEvent::ValueChanged(slider_id));
     }
+    // BlenderColorPicker channel chip: write the parsed value back
+    // into the parent picker's RGBA / HSVA dimension at `idx`.
+    if let Some(v) = new_value
+        && let Some((parent, idx)) = store.blender_channel_chip(id)
+    {
+        apply_blender_channel_value(store, parent, idx, v as f32);
+        events.push(WidgetEvent::ValueChanged(parent));
+    }
+}
+
+/// Rewrite the parent BlenderPicker's color value with `new_norm`
+/// (0..=1) at channel index `idx`. Honors the parent's current
+/// `channel_mode`: in RGB mode `idx` maps to R/G/B/A, in HSV mode
+/// `idx` maps to H/S/V/A (then converted to RGBA via
+/// [`crate::widget::hsv_to_rgba8`]).
+fn apply_blender_channel_value(
+    store: &mut WidgetStore,
+    parent: ph2d_a11y::NodeId,
+    idx: u8,
+    new_norm: f32,
+) {
+    use crate::widget::{ChannelMode, hsv_to_rgba8, rgba_to_hsv};
+    use ph2d_tokens::ColorValue;
+    let Some((cur, mode, _, _)) = store.blender_picker(parent) else {
+        return;
+    };
+    let n = new_norm.clamp(0.0, 1.0);
+    match mode {
+        ChannelMode::Rgb => {
+            let mut rgba = cur.rgba;
+            rgba[idx as usize] = (n * 255.0).round() as u8;
+            let new_value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+            store.set_blender_value(parent, new_value);
+        }
+        ChannelMode::Hsv => {
+            // Use the retained (h, s) anchor as the canonical HSV
+            // basis — RGBA→HSV would collapse H/S on V=0 / S=0
+            // states and silently rotate the user's hue back to red
+            // when they edit V or A. Only the channel being changed
+            // gets overwritten with `n`; the others stay retained.
+            let (retained_h, retained_s) = store.blender_hsv_anchor(parent).unwrap_or((0.0, 1.0));
+            let (_, _, v_rgba, a_rgba) = rgba_to_hsv(cur.rgba);
+            let mut h = retained_h;
+            let mut s = retained_s;
+            let mut v = v_rgba;
+            let mut a = a_rgba;
+            match idx {
+                0 => h = n,
+                1 => s = n,
+                2 => v = n,
+                3 => a = n,
+                _ => {}
+            }
+            let rgba = hsv_to_rgba8(h, s, v, a);
+            let new_value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+            store.set_blender_value_with_hsv(parent, new_value, h, s);
+        }
+    }
 }
 
 /// Restore a NumberInput's buffer to its last committed value
@@ -468,6 +975,52 @@ pub(super) fn revert_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeI
         use std::fmt::Write;
         let _ = write!(buffer, "{}", super::state::format_number(*last_committed));
         *caret = buffer.len();
+    }
+}
+
+/// Parse the hex `TextInput` buffer at `id` and apply the resulting
+/// color to the linked parent BlenderPicker (via
+/// [`WidgetStore::link_blender_hex`]). Whether the parse succeeds or
+/// not, the buffer is normalised to the canonical `#RRGGBBAA` form
+/// of the parent's resulting value, so the painter always shows a
+/// consistent string after commit. No-op if `id` is not a TextInput
+/// or has no linked parent.
+pub(super) fn commit_hex_buffer<'a>(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    events: &mut BumpVec<'a, WidgetEvent>,
+) {
+    let Some(parent) = store.blender_hex_parent(id) else {
+        return;
+    };
+    let buf_owned: String = match store.get(id) {
+        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
+        _ => return,
+    };
+    if let Some(color) = crate::widget::parse_hex(&buf_owned) {
+        store.set_blender_value(parent, color);
+        events.push(WidgetEvent::ValueChanged(parent));
+    }
+    write_hex_canonical(store, id);
+}
+
+/// Rewrite the hex `TextInput` buffer at `id` with the canonical
+/// `#RRGGBBAA` form of the linked parent BlenderPicker's current
+/// value. Used by both commit (after parse + apply) and revert
+/// (ESC) so the visible text always matches the parent state.
+pub(super) fn write_hex_canonical(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    let Some(parent) = store.blender_hex_parent(id) else {
+        return;
+    };
+    let Some((cv, ..)) = store.blender_picker(parent) else {
+        return;
+    };
+    let [r, g, b, a] = cv.rgba;
+    if let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id) {
+        text.clear();
+        use std::fmt::Write;
+        let _ = write!(text, "#{r:02X}{g:02X}{b:02X}{a:02X}");
+        *caret = text.len();
     }
 }
 
@@ -663,6 +1216,7 @@ fn cycle_focus<'a>(store: &mut WidgetStore, forward: bool, events: &mut BumpVec<
                 && old != id
             {
                 commit_number_buffer(store, old, events);
+                commit_hex_buffer(store, old, events);
                 events.push(WidgetEvent::Blur(old));
             }
             if store.focus_id() != Some(id) {
@@ -690,6 +1244,7 @@ fn apply_blender_hit(
     rect: Rect,
     px: f32,
     py: f32,
+    button: ph2d_host::PointerButton,
 ) -> Option<ph2d_a11y::NodeId> {
     use crate::interaction::BlenderHitKind;
     use crate::widget::{
@@ -723,9 +1278,10 @@ fn apply_blender_hit(
             Some(parent)
         }
         BlenderHitKind::ChannelSlider(idx) => {
-            // Compute normalised 0..1 from pointer x relative to the
-            // slider track rect. The full rect is the track hit area
-            // registered by `paint_blender_color_picker_with_store`.
+            // The hit rect is now the slider track itself (the
+            // painter registers only the inner track region, not
+            // the full row). Direct normalisation against rect.x
+            // and rect.w gives the value cleanly.
             let norm = if rect.w > 0.0 {
                 ((px - rect.x) / rect.w).clamp(0.0, 1.0)
             } else {
@@ -745,15 +1301,49 @@ fn apply_blender_hit(
             None
         }
         BlenderHitKind::PaletteSwatch(swatch_idx) => {
-            // Read the swatch colour from the static default palette
-            // (no alloc: slice index into a const array).
-            let palette = crate::widget::default_palette();
-            if let Some(color) = palette.swatches.get(swatch_idx as usize).copied() {
-                store.set_blender_value(parent, color);
-                Some(parent)
+            // Right-click: remove the swatch from the picker's
+            // palette. Left/middle: pick its color.
+            if button == ph2d_host::PointerButton::Secondary {
+                if store.blender_palette_remove(parent, swatch_idx as usize) {
+                    Some(parent)
+                } else {
+                    None
+                }
             } else {
-                None
+                let color = store
+                    .blender_palette(parent)
+                    .and_then(|p| p.get(swatch_idx as usize).copied());
+                if let Some(color) = color {
+                    store.set_blender_value(parent, color);
+                    Some(parent)
+                } else {
+                    None
+                }
             }
+        }
+        BlenderHitKind::AddSwatch => {
+            // Append the picker's current value to the palette.
+            let (cur, _, _, _) = store.blender_picker(parent)?;
+            store.blender_palette_push(parent, cur);
+            Some(parent)
+        }
+        BlenderHitKind::Eyedropper => {
+            // Toggle eyedropper "pending" mode. While pending, the
+            // next pointer Down anywhere except this button is
+            // intercepted by the Down handler and emitted as
+            // `WidgetEvent::EyedropperPick` for the host to perform
+            // the GPU pixel readback. Clicking the button a second
+            // time (still pending → same parent) cancels the mode.
+            let already_pending = store.eyedropper_pending() == Some(parent);
+            store.set_eyedropper_pending(if already_pending { None } else { Some(parent) });
+            None
+        }
+        BlenderHitKind::DragHandle => {
+            // Down on the drag bar — snapshot the cursor + current
+            // offset so Move events can apply (cursor − down_cursor)
+            // as the new delta. Up clears the anchor.
+            store.begin_blender_drag(parent, px, py);
+            None
         }
     }
 }
@@ -774,6 +1364,7 @@ mod tests {
             pressure: 1.0,
             kind,
             source: PointerSource::Mouse,
+            button: ph2d_host::PointerButton::Primary,
             timestamp_ns: 0,
         }
     }
@@ -1229,6 +1820,7 @@ mod tests {
             state: TextInputState::Normal,
             text: text.into(),
             caret: text.len(),
+            selection_anchor: None,
         }
     }
 
@@ -1292,6 +1884,7 @@ mod tests {
                 buffer: "5".into(),
                 caret: 1,
                 last_committed: 5.0,
+                selection_anchor: None,
             },
         );
         store.set_focus(Some(NodeId(1)));
@@ -1315,6 +1908,7 @@ mod tests {
                 buffer: super::super::state::format_number(value),
                 caret: super::super::state::format_number(value).len(),
                 last_committed: value,
+                selection_anchor: None,
             },
         );
         store.set_focus(Some(NodeId(1)));
@@ -1331,7 +1925,7 @@ mod tests {
             let _ = dispatch_text_input(&mut store, ch, &arena);
         }
         // Buffer reflects edits but value has not yet committed.
-        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, value, buf, _, _) = store.number_input(NodeId(1)).unwrap();
         assert_eq!(buf, "1.25");
         assert!((value - 5.0).abs() < f64::EPSILON);
         // Enter commits.
@@ -1340,7 +1934,7 @@ mod tests {
             evts.iter()
                 .any(|e| matches!(e, WidgetEvent::ValueChanged(_)))
         );
-        let (_, value, _, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, value, _, _, _) = store.number_input(NodeId(1)).unwrap();
         assert!((value - 1.25).abs() < 1e-9);
     }
 
@@ -1351,11 +1945,11 @@ mod tests {
         for ch in ['9', '9'] {
             let _ = dispatch_text_input(&mut store, ch, &arena);
         }
-        let (_, _, buf, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, _, buf, _, _) = store.number_input(NodeId(1)).unwrap();
         assert_eq!(buf, "799");
         let evts = dispatch_key(&mut store, key(KEY_ESCAPE, false), &arena);
         assert!(evts.iter().any(|e| matches!(e, WidgetEvent::Blur(_))));
-        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, value, buf, _, _) = store.number_input(NodeId(1)).unwrap();
         assert!((value - 7.0).abs() < f64::EPSILON);
         assert_eq!(buf, "7");
     }
@@ -1370,7 +1964,7 @@ mod tests {
             let _ = dispatch_text_input(&mut store, ch, &arena);
         }
         let _ = dispatch_key(&mut store, key(KEY_ENTER, false), &arena);
-        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, value, buf, _, _) = store.number_input(NodeId(1)).unwrap();
         assert!((value - 3.0).abs() < f64::EPSILON);
         assert_eq!(buf, "3");
     }
@@ -1384,7 +1978,7 @@ mod tests {
         for ch in ['a', 'b', 'X', '!', ' '] {
             let _ = dispatch_text_input(&mut store, ch, &arena);
         }
-        let (_, _, buf, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, _, buf, _, _) = store.number_input(NodeId(1)).unwrap();
         assert_eq!(buf, "");
     }
 
@@ -1393,7 +1987,7 @@ mod tests {
         let mut store = make_number_store(0.0);
         store.set_focus(None); // simulate unfocused
         store.set_number_value(NodeId(1), 0.42);
-        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, value, buf, _, _) = store.number_input(NodeId(1)).unwrap();
         assert!((value - 0.42).abs() < 1e-9);
         assert_eq!(buf, "0.420");
     }
@@ -1410,7 +2004,7 @@ mod tests {
         // While focused, programmatic set_number_value should NOT
         // clobber the in-progress buffer.
         store.set_number_value(NodeId(1), 9.99);
-        let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
+        let (_, value, buf, _, _) = store.number_input(NodeId(1)).unwrap();
         assert!((value - 9.99).abs() < 1e-9);
         assert_eq!(buf, "1.2");
     }
@@ -1434,6 +2028,7 @@ mod tests {
                 buffer: "0".into(),
                 caret: 1,
                 last_committed: 0.0,
+                selection_anchor: None,
             },
         );
         store.link_slider_number(NodeId(1), NodeId(2));
@@ -1447,7 +2042,7 @@ mod tests {
             pointer(PointerKind::Down, 50.0, 15.0),
             &arena,
         );
-        let (_, num_value, num_buf, _) = store.number_input(NodeId(2)).unwrap();
+        let (_, num_value, num_buf, _, _) = store.number_input(NodeId(2)).unwrap();
         assert!((num_value - 0.5).abs() < 1e-6);
         assert_eq!(num_buf, "0.500");
     }
@@ -1471,6 +2066,7 @@ mod tests {
                 buffer: "0".into(),
                 caret: 1,
                 last_committed: 0.0,
+                selection_anchor: None,
             },
         );
         store.link_slider_number(NodeId(1), NodeId(2));
@@ -1499,6 +2095,8 @@ mod tests {
                 channel_mode: ChannelMode::Rgb,
                 interpolation: InterpolationMode::Perceptual,
                 active_palette: 0,
+                hsv_h: 0.0,
+                hsv_s: 1.0,
             },
         );
         store.register(
@@ -1552,6 +2150,7 @@ mod tests {
                 buffer: "0.5".into(),
                 caret: 3,
                 last_committed: 0.5,
+                selection_anchor: None,
             },
         );
         store.link_slider_number(NodeId(1), NodeId(2));
@@ -1650,6 +2249,8 @@ mod tests {
                 state: crate::widget::ComboboxState::Normal,
                 open: false,
                 query: String::new(),
+                caret: 0,
+                selection_anchor: None,
             },
         );
         store.set_focus(Some(NodeId(1)));
@@ -1676,7 +2277,15 @@ mod tests {
                 channel_mode: ChannelMode::Rgb,
                 interpolation: InterpolationMode::Perceptual,
                 active_palette: 0,
+                hsv_h: 0.07,
+                hsv_s: 0.75,
             },
+        );
+        // Seed the picker's palette so swatch clicks have something
+        // to read (the default 12 colors from `default_palette`).
+        store.init_blender_palette(
+            NodeId(100),
+            crate::widget::default_palette().swatches.clone(),
         );
         // Channel slider shims (0..3 = R, G, B, A).
         for idx in 0u8..4 {
@@ -1729,11 +2338,13 @@ mod tests {
             );
         }
         let mut hits = HitIndex::new();
-        // Channel slider rects (100 px wide each).
+        // Channel slider track rects — painter now registers only the
+        // inner track (no label/value chip), so x=0..110 covers the
+        // interactive region directly.
         for idx in 0u8..4 {
             hits.register(
                 NodeId(200 + idx as u64),
-                Rect::new(0.0, idx as f32 * 30.0, 100.0, 22.0),
+                Rect::new(0.0, idx as f32 * 30.0, 110.0, 22.0),
             );
         }
         // Toggle half-rects.
@@ -1755,11 +2366,12 @@ mod tests {
     fn channel_slider_down_mutates_red_channel() {
         let (mut store, hits) = blender_picker_setup();
         let arena = Bump::new();
-        // Red slider (NodeId 200) rect is x: 0..100. Click at x=50 → R ≈ 128.
+        // Red slider track (NodeId 200) is x: 0..110. Click at x=55
+        // (midpoint) → R ≈ 128 (0.5 * 255).
         let evts = dispatch_pointer(
             &mut store,
             &hits,
-            pointer(PointerKind::Down, 50.0, 11.0),
+            pointer(PointerKind::Down, 55.0, 11.0),
             &arena,
         );
         assert!(

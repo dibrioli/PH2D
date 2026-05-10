@@ -188,11 +188,15 @@ fn paint_segmented<T: Clone + PartialEq>(
             (r.w - 4.0).max(0.0),
             (r.h - 4.0).max(0.0),
         );
+        // Saturated accent fill on the active pill so the selection
+        // is unambiguous against the surrounding `Bg2` tray. Soft
+        // tints (e.g. AccentSoft) blend with the tray on dark themes
+        // and read as "no selection".
         fill_rounded_rect(
             scene,
             inset,
             (outer - 2.0).max(0.0),
-            resolve(ColorToken::AccentSoft, theme),
+            resolve(ColorToken::Accent, theme),
         );
     }
 }

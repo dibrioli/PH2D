@@ -46,6 +46,9 @@ pub struct PointerEvent {
     pub pressure: f32,
     pub kind: PointerKind,
     pub source: PointerSource,
+    /// Which button caused this event. `Move` events report the
+    /// button that's currently being held (or `Primary` if none).
+    pub button: PointerButton,
     /// Monotonic clock in nanoseconds (host-defined epoch).
     pub timestamp_ns: u128,
 }
@@ -55,6 +58,14 @@ pub enum PointerKind {
     Down,
     Up,
     Move,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum PointerButton {
+    #[default]
+    Primary,
+    Secondary,
+    Middle,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

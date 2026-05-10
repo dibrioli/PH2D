@@ -36,6 +36,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
         pressure: 1.0,
         kind,
         source: PointerSource::Mouse,
+        button: ph2d_host::PointerButton::Primary,
         timestamp_ns: 0,
     }
 }

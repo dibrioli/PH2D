@@ -125,18 +125,21 @@ pub fn paint_number_input(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    paint_number_input_with_buffer(input, None, 0, rect, scene, text_system, theme)
+    paint_number_input_with_buffer(input, None, 0, None, rect, scene, text_system, theme)
 }
 
 /// Like [`paint_number_input`] but renders the in-progress edit
 /// buffer + caret line when the input is focused. Pass `Some(buffer)`
 /// and a caret byte offset when reading live state from a
 /// [`crate::interaction::WidgetStore`]; otherwise pass `None`.
+/// `selection_anchor` paints a selection background when non-None
+/// and the input is focused.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_number_input_with_buffer(
     input: &NumberInput,
     buffer: Option<&str>,
     caret: usize,
+    selection_anchor: Option<usize>,
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -176,6 +179,41 @@ pub fn paint_number_input_with_buffer(
     } else {
         ColorToken::Text1
     };
+    if input.state == TextInputState::Focused
+        && buffer.is_some()
+        && let Some(anchor) = selection_anchor
+        && anchor != caret
+    {
+        let (sel_start, sel_end) = if anchor < caret {
+            (anchor, caret)
+        } else {
+            (caret, anchor)
+        };
+        let sel_start = sel_start.min(value_text.len());
+        let sel_end = sel_end.min(value_text.len());
+        let prefix_w = if sel_start == 0 {
+            0.0
+        } else {
+            text_system
+                .layout(&value_text[..sel_start], font_size, f32::INFINITY)
+                .width()
+        };
+        let mid_w = if sel_start == sel_end {
+            0.0
+        } else {
+            text_system
+                .layout(&value_text[sel_start..sel_end], font_size, f32::INFINITY)
+                .width()
+        };
+        let sel_x = (inner_x + prefix_w).min(inner_x + inner_w);
+        let sel_w = mid_w.min(inner_x + inner_w - sel_x);
+        if sel_w > 0.0 {
+            let sel_top = rect.y + Spacing::Md.px();
+            let sel_bot = rect.y + rect.h - Spacing::Md.px();
+            let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
+            fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
+        }
+    }
     paint_text(
         text_system,
         scene,
@@ -190,12 +228,16 @@ pub fn paint_number_input_with_buffer(
     if input.state == TextInputState::Focused && buffer.is_some() {
         let caret_clamped = caret.min(value_text.len());
         let prefix = &value_text[..caret_clamped];
-        let approx_advance = prefix.chars().count() as f32 * (font_size * 0.55);
-        let caret_x = inner_x + approx_advance.min(inner_w);
+        let prefix_w = if prefix.is_empty() {
+            0.0
+        } else {
+            text_system.layout(prefix, font_size, f32::INFINITY).width()
+        };
+        let caret_x = (inner_x + prefix_w).min(inner_x + inner_w);
         let caret_top = rect.y + Spacing::Md.px();
         let caret_bot = rect.y + rect.h - Spacing::Md.px();
         let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
-        fill_rounded_rect(scene, caret_rect, 1.0, resolve(ColorToken::Accent, theme));
+        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
     }
 
     let icon_color = resolve(ColorToken::Text2, theme);

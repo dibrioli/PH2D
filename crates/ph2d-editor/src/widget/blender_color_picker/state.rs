@@ -62,7 +62,7 @@ pub fn default_palette() -> ColorPalette {
     ColorPalette {
         name: "Default".into(),
         swatches,
-        editable: false,
+        editable: true,
     }
 }
 
@@ -76,6 +76,13 @@ pub struct BlenderColorPicker {
     pub palettes: Vec<ColorPalette>,
     pub active_palette: usize,
     pub hex: String,
+    /// Retained HSV hue (0..1). The SV-rect / hue-strip painters
+    /// read this instead of deriving from `value.rgba` so the user's
+    /// chosen hue survives V→0 (pure black) collapses where RGBA
+    /// loses all chromaticity.
+    pub hsv_h: f32,
+    /// Retained HSV saturation (0..1). Same role as `hsv_h`.
+    pub hsv_s: f32,
 }
 
 impl BlenderColorPicker {
@@ -90,6 +97,12 @@ impl BlenderColorPicker {
             palettes: vec![default_palette()],
             active_palette: 0,
             hex: String::new(),
+            // Default hue/saturation: the gray default value has no
+            // hue, so we anchor at "red, full sat" — the conventional
+            // starting point for color pickers when the user hasn't
+            // expressed a preference yet.
+            hsv_h: 0.0,
+            hsv_s: 1.0,
         };
         s.sync_hex();
         s

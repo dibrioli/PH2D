@@ -963,6 +963,7 @@ impl ApplicationHandler for App {
                     pressure: 1.0,
                     kind: PointerKind::Move,
                     source: PointerSource::Mouse,
+                    button: ph2d_host::PointerButton::Primary,
                     timestamp_ns: Self::timestamp_ns(),
                 };
                 self.handler.on_pointer(evt);
@@ -974,10 +975,16 @@ impl ApplicationHandler for App {
                 }
             }
 
-            WindowEvent::MouseInput { state, .. } => {
+            WindowEvent::MouseInput { state, button, .. } => {
                 let kind = match state {
                     ElementState::Pressed => PointerKind::Down,
                     ElementState::Released => PointerKind::Up,
+                };
+                let mapped_button = match button {
+                    winit::event::MouseButton::Left => ph2d_host::PointerButton::Primary,
+                    winit::event::MouseButton::Right => ph2d_host::PointerButton::Secondary,
+                    winit::event::MouseButton::Middle => ph2d_host::PointerButton::Middle,
+                    _ => ph2d_host::PointerButton::Primary,
                 };
                 let evt = PointerEvent {
                     x: self.last_pointer.0,
@@ -985,6 +992,7 @@ impl ApplicationHandler for App {
                     pressure: 1.0,
                     kind,
                     source: PointerSource::Mouse,
+                    button: mapped_button,
                     timestamp_ns: Self::timestamp_ns(),
                 };
                 self.handler.on_pointer(evt);
@@ -1165,6 +1173,17 @@ fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
     // but the events slice itself lives in the arena (immutable view).
     let snapshot: Vec<WidgetEvent> = hero.handle_pointer(event, &gfx.hero_arena).to_vec();
     for e in snapshot {
+        // Eyedropper pick — read the rendered pixel at the click
+        // position from vello_pass's intermediate texture and apply
+        // it to the picker. Only the host can do this (the dispatch
+        // has no GPU access); intercept before `apply_event`.
+        if let WidgetEvent::EyedropperPick { parent, px, py } = e {
+            if let Some([r, g, b, a]) = gfx.vello_pass.read_pixel(gfx.surface.gpu(), px, py) {
+                hero.store
+                    .set_blender_value(parent, ph2d_tokens::ColorValue::from_rgba8(r, g, b, a));
+            }
+            continue;
+        }
         if !hero.apply_event(e) {
             eprintln!("[hero] unhandled event: {e:?}");
         }
@@ -1208,7 +1227,7 @@ fn forward_text_to_hero(gfx: Option<&mut AppGfx>, ch: char) {
 fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
     use ph2d_editor::interaction::{
         KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
-        KEY_ESCAPE, KEY_SPACE, KEY_TAB,
+        KEY_ESCAPE, KEY_KEY_A, KEY_SPACE, KEY_TAB,
     };
     Some(match code {
         KeyCode::Tab => KEY_TAB,
@@ -1220,6 +1239,7 @@ fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
         KeyCode::ArrowDown => KEY_ARROW_DOWN,
         KeyCode::ArrowLeft => KEY_ARROW_LEFT,
         KeyCode::ArrowRight => KEY_ARROW_RIGHT,
+        KeyCode::KeyA => KEY_KEY_A,
         _ => return None,
     })
 }

@@ -35,8 +35,20 @@ pub enum BlenderHitKind {
     ChannelSlider(u8),
     /// The hex `#RRGGBBAA` text input field.
     Hex,
-    /// One swatch in the active palette. Index into `default_palette().swatches`.
+    /// One swatch in the active palette. Index into the picker's
+    /// store-side palette (see [`WidgetStore::blender_palette`]).
+    /// Left-click picks the swatch; right-click removes it.
     PaletteSwatch(u8),
+    /// "+ swatch" button at the end of the palette grid; clicking
+    /// appends the picker's current value to the palette.
+    AddSwatch,
+    /// Eyedropper button next to the hex field. Clicking enters
+    /// pixel-pick mode (the host samples the next click's color from
+    /// the rendered scene).
+    Eyedropper,
+    /// Drag handle bar at the top of the picker — Down begins a
+    /// drag, Move updates the picker offset, Up ends it.
+    DragHandle,
 }
 
 use crate::widget::{
@@ -87,11 +99,19 @@ pub enum InteractiveState {
         state: ComboboxState,
         open: bool,
         query: String,
+        caret: usize,
+        /// Same semantics as `TextInput::selection_anchor`.
+        selection_anchor: Option<usize>,
     },
     TextInput {
         state: TextInputState,
         text: String,
         caret: usize,
+        /// `None` = collapsed (no selection); `Some(anchor)` = the
+        /// selection covers `[min(anchor, caret), max(anchor, caret)]`.
+        /// Set by double-click ("select all") and by Shift+Arrow; any
+        /// non-shift cursor motion or text mutation collapses it.
+        selection_anchor: Option<usize>,
     },
     NumberInput {
         state: TextInputState,
@@ -105,6 +125,8 @@ pub enum InteractiveState {
         /// Snapshot of `value` taken when focus arrives — restored on
         /// Escape or on Blur with an unparsable buffer.
         last_committed: f64,
+        /// Same semantics as `TextInput::selection_anchor`.
+        selection_anchor: Option<usize>,
     },
     ListItem {
         state: ListItemState,
@@ -128,6 +150,15 @@ pub enum InteractiveState {
         channel_mode: ChannelMode,
         interpolation: InterpolationMode,
         active_palette: usize,
+        /// Retained HSV hue (0..1). Used by the SV-rect/hue-strip
+        /// painters when `value.rgba` collapses to gray (S=0) or
+        /// black (V=0) and would otherwise lose the user's chosen
+        /// hue. Updated whenever a pick path knows the canonical H.
+        hsv_h: f32,
+        /// Retained HSV saturation (0..1). Same role as `hsv_h` —
+        /// preserved across V→0 transitions where round-tripping
+        /// through RGBA loses the value.
+        hsv_s: f32,
     },
     /// Sub-control hit shim: pointing at a sub-rect of a parent
     /// BlenderPicker. The dispatcher uses `kind` to route the click
@@ -166,6 +197,17 @@ pub enum WidgetEvent {
     Blur(NodeId),
     /// Tabs / Dropdown / TreeView — selected index changed.
     SelectionChanged(NodeId),
+    /// Eyedropper pick request — emitted when the user clicks
+    /// anywhere outside the eyedropper button while eyedropper mode
+    /// is pending. The host should sample the rendered pixel at
+    /// `(px, py)` (physical pixels) and apply it to the picker at
+    /// `parent` via `store.set_blender_value`. Pixel coords are
+    /// `u32` so the event keeps `Copy + Eq` (no f32 fields).
+    EyedropperPick {
+        parent: NodeId,
+        px: u32,
+        py: u32,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -188,6 +230,39 @@ pub struct WidgetStore {
     /// hosting screen at construction time.
     slider_to_number: BTreeMap<NodeId, NodeId>,
     number_to_slider: BTreeMap<NodeId, NodeId>,
+    /// Hex `TextInput` id → its parent `BlenderPicker` id, so the
+    /// dispatch can parse the typed buffer on Enter / blur and apply
+    /// the resulting color to the parent state.
+    hex_to_blender_parent: BTreeMap<NodeId, NodeId>,
+    /// Channel `NumberInput` chip id → (parent `BlenderPicker`,
+    /// channel index 0..=3). Lets dispatch rewrite the parent's
+    /// color value when the user commits a new channel value.
+    blender_channel_chip: BTreeMap<NodeId, (NodeId, u8)>,
+    /// Most recent pointer-Down event, used for double-click
+    /// detection. Stores the hit `NodeId` (or `None` if the click
+    /// missed every widget) and the event timestamp.
+    last_down_id: Option<NodeId>,
+    last_down_at_ns: u128,
+    /// Mutable color palettes per BlenderPicker — one Vec of swatches
+    /// per parent picker id. Initialized at populate time; mutated by
+    /// "+ swatch" / right-click-delete dispatch paths.
+    blender_palettes: BTreeMap<NodeId, Vec<ColorValue>>,
+    /// Per-picker drag offset (dx, dy) applied to the rect chosen by
+    /// the host painter. Mutated by drag-handle clicks; defaults to
+    /// (0, 0). When the drag handle is `active`, `drag_anchor_px`
+    /// stores the (cursor.x − rect.x, cursor.y − rect.y) at Down so
+    /// Move events can keep the picker stuck to the cursor.
+    blender_picker_offset: BTreeMap<NodeId, (f32, f32)>,
+    /// In-progress picker drag: (parent_id, cursor_x_at_down,
+    /// cursor_y_at_down, offset_x_at_down, offset_y_at_down). Move
+    /// events compute `new_offset = offset_at_down + (cursor − down_cursor)`.
+    /// Cleared on pointer Up.
+    blender_drag_anchor: Option<(NodeId, f32, f32, f32, f32)>,
+    /// Eyedropper pending: when Some(parent), the next pointer Down
+    /// (anywhere except on the eyedropper button itself) is intercepted
+    /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
+    /// signaling the host to readback the pixel under the cursor.
+    eyedropper_pending: Option<NodeId>,
 }
 
 impl WidgetStore {
@@ -204,6 +279,14 @@ impl WidgetStore {
             active_rect: None,
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
+            hex_to_blender_parent: BTreeMap::new(),
+            blender_channel_chip: BTreeMap::new(),
+            last_down_id: None,
+            last_down_at_ns: 0,
+            blender_palettes: BTreeMap::new(),
+            blender_picker_offset: BTreeMap::new(),
+            blender_drag_anchor: None,
+            eyedropper_pending: None,
         }
     }
 
@@ -222,6 +305,44 @@ impl WidgetStore {
 
     pub fn linked_slider(&self, number: NodeId) -> Option<NodeId> {
         self.number_to_slider.get(&number).copied()
+    }
+
+    /// Tag a hex `TextInput` widget as belonging to a `BlenderPicker`.
+    /// Caller is responsible for both ids being pre-registered.
+    pub fn link_blender_hex(&mut self, parent: NodeId, hex: NodeId) {
+        self.hex_to_blender_parent.insert(hex, parent);
+    }
+
+    pub fn blender_hex_parent(&self, hex: NodeId) -> Option<NodeId> {
+        self.hex_to_blender_parent.get(&hex).copied()
+    }
+
+    /// Tag a channel `NumberInput` chip as belonging to a
+    /// `BlenderPicker` at channel index `idx` (0..=3). On commit,
+    /// dispatch reads `idx` to know which RGBA / HSVA dimension to
+    /// rewrite.
+    pub fn link_blender_channel(&mut self, parent: NodeId, chip: NodeId, idx: u8) {
+        self.blender_channel_chip.insert(chip, (parent, idx));
+    }
+
+    pub fn blender_channel_chip(&self, chip: NodeId) -> Option<(NodeId, u8)> {
+        self.blender_channel_chip.get(&chip).copied()
+    }
+
+    /// Record the latest pointer-Down for double-click detection.
+    /// Returns true iff this Down should be treated as a double-click
+    /// (same id as the previous Down + within `DOUBLE_CLICK_WINDOW_NS`
+    /// of it).
+    pub fn record_pointer_down(&mut self, id: Option<NodeId>, timestamp_ns: u128) -> bool {
+        const DOUBLE_CLICK_WINDOW_NS: u128 = 350_000_000; // 350 ms
+        let is_double = id.is_some()
+            && id == self.last_down_id
+            && timestamp_ns.saturating_sub(self.last_down_at_ns) < DOUBLE_CLICK_WINDOW_NS;
+        // Reset the counter on a confirmed double-click so a third
+        // rapid click doesn't register as another double.
+        self.last_down_id = if is_double { None } else { id };
+        self.last_down_at_ns = timestamp_ns;
+        is_double
     }
 
     /// Register a widget at construction time. Idempotent — repeat
@@ -336,16 +457,22 @@ impl WidgetStore {
     }
 
     /// Convenience: read number-input full state (state + value +
-    /// editing buffer + caret). Returns `None` for non-number widgets.
-    pub fn number_input(&self, id: NodeId) -> Option<(TextInputState, f64, &str, usize)> {
+    /// editing buffer + caret + selection anchor). Returns `None`
+    /// for non-number widgets.
+    #[allow(clippy::type_complexity)]
+    pub fn number_input(
+        &self,
+        id: NodeId,
+    ) -> Option<(TextInputState, f64, &str, usize, Option<usize>)> {
         match self.states.get(&id) {
             Some(InteractiveState::NumberInput {
                 state,
                 value,
                 buffer,
                 caret,
+                selection_anchor,
                 ..
-            }) => Some((*state, *value, buffer.as_str(), *caret)),
+            }) => Some((*state, *value, buffer.as_str(), *caret, *selection_anchor)),
             _ => None,
         }
     }
@@ -362,15 +489,142 @@ impl WidgetStore {
                 channel_mode,
                 interpolation,
                 active_palette,
+                ..
             }) => Some((*value, *channel_mode, *interpolation, *active_palette)),
             _ => None,
         }
     }
 
-    /// Mutate the BlenderPicker's value (e.g. after a wheel click).
+    /// Initialize the BlenderPicker's palette swatches. Caller passes
+    /// the seed colors (typically `default_palette()`).
+    pub fn init_blender_palette(&mut self, parent: NodeId, swatches: Vec<ColorValue>) {
+        self.blender_palettes.insert(parent, swatches);
+    }
+
+    /// Read the BlenderPicker's current palette swatches. Returns
+    /// `None` if `init_blender_palette` was never called for `parent`.
+    pub fn blender_palette(&self, parent: NodeId) -> Option<&[ColorValue]> {
+        self.blender_palettes.get(&parent).map(|v| v.as_slice())
+    }
+
+    /// Read the BlenderPicker's drag offset (dx, dy). Defaults to
+    /// (0, 0) if no drag has happened yet.
+    pub fn blender_picker_offset(&self, parent: NodeId) -> (f32, f32) {
+        self.blender_picker_offset
+            .get(&parent)
+            .copied()
+            .unwrap_or((0.0, 0.0))
+    }
+
+    pub fn set_blender_picker_offset(&mut self, parent: NodeId, dx: f32, dy: f32) {
+        self.blender_picker_offset.insert(parent, (dx, dy));
+    }
+
+    /// Begin a picker drag at cursor `(px, py)`. Snapshots the
+    /// current offset so Move events can compute new_offset =
+    /// offset_at_down + (cursor − down_cursor).
+    pub fn begin_blender_drag(&mut self, parent: NodeId, cursor_x: f32, cursor_y: f32) {
+        let (off_x, off_y) = self.blender_picker_offset(parent);
+        self.blender_drag_anchor = Some((parent, cursor_x, cursor_y, off_x, off_y));
+    }
+
+    pub fn blender_drag_anchor(&self) -> Option<(NodeId, f32, f32, f32, f32)> {
+        self.blender_drag_anchor
+    }
+
+    pub fn end_blender_drag(&mut self) {
+        self.blender_drag_anchor = None;
+    }
+
+    pub fn eyedropper_pending(&self) -> Option<NodeId> {
+        self.eyedropper_pending
+    }
+
+    pub fn set_eyedropper_pending(&mut self, parent: Option<NodeId>) {
+        self.eyedropper_pending = parent;
+    }
+
+    /// Append `color` to the BlenderPicker's palette. No-op if the
+    /// palette wasn't initialized OR is already at the static cap
+    /// (24 entries — matches the pre-registered swatch hit slots so
+    /// every visible swatch has a clickable hit rect).
+    pub fn blender_palette_push(&mut self, parent: NodeId, color: ColorValue) {
+        const PALETTE_CAP: usize = 27;
+        if let Some(palette) = self.blender_palettes.get_mut(&parent)
+            && palette.len() < PALETTE_CAP
+        {
+            palette.push(color);
+        }
+    }
+
+    /// Remove the swatch at `idx` from the BlenderPicker's palette.
+    /// Returns true if a swatch was actually removed.
+    pub fn blender_palette_remove(&mut self, parent: NodeId, idx: usize) -> bool {
+        if let Some(palette) = self.blender_palettes.get_mut(&parent)
+            && idx < palette.len()
+        {
+            palette.remove(idx);
+            return true;
+        }
+        false
+    }
+
+    /// Read the retained HSV anchor (h, s) the picker uses to
+    /// preserve hue + saturation across V→0 transitions where the
+    /// RGBA representation would otherwise lose them. Both in 0..1.
+    pub fn blender_hsv_anchor(&self, id: NodeId) -> Option<(f32, f32)> {
+        match self.states.get(&id) {
+            Some(InteractiveState::BlenderPicker { hsv_h, hsv_s, .. }) => Some((*hsv_h, *hsv_s)),
+            _ => None,
+        }
+    }
+
+    /// Mutate the BlenderPicker's value. Auto-updates the retained
+    /// (h, s) anchor when the new color is chromatic (S>0, V>0); for
+    /// gray/black inputs the anchor is preserved so the user's chosen
+    /// hue doesn't reset to red on a V=0 click.
     pub fn set_blender_value(&mut self, id: NodeId, new_value: ColorValue) {
-        if let Some(InteractiveState::BlenderPicker { value, .. }) = self.states.get_mut(&id) {
+        if let Some(InteractiveState::BlenderPicker {
+            value,
+            hsv_h,
+            hsv_s,
+            ..
+        }) = self.states.get_mut(&id)
+        {
             *value = new_value;
+            let (h, s, v, _) = crate::widget::rgba_to_hsv(new_value.rgba);
+            if s > 1e-3 && v > 1e-3 {
+                *hsv_h = h;
+                *hsv_s = s;
+            }
+        }
+    }
+
+    /// Mutate the BlenderPicker's value AND override the retained
+    /// (h, s) anchor explicitly. Used by the SV-rect / hue-strip
+    /// dispatchers, which know the canonical H or S even when the
+    /// resulting RGBA collapses (e.g. picking V=0 → all-zero RGBA).
+    pub fn set_blender_value_with_hsv(
+        &mut self,
+        id: NodeId,
+        new_value: ColorValue,
+        h: f32,
+        s: f32,
+    ) {
+        if let Some(InteractiveState::BlenderPicker {
+            value,
+            hsv_h,
+            hsv_s,
+            ..
+        }) = self.states.get_mut(&id)
+        {
+            *value = new_value;
+            // Clamp instead of `rem_euclid`: the user-picked H from
+            // a hue-strip click may equal 1.0 at the right edge; we
+            // want the thumb to stay at the right rather than
+            // wrapping to 0.0 (left edge).
+            *hsv_h = h.clamp(0.0, 1.0);
+            *hsv_s = s.clamp(0.0, 1.0);
         }
     }
 
@@ -399,6 +653,8 @@ impl WidgetStore {
         if let Some(InteractiveState::BlenderPicker {
             value,
             channel_mode,
+            hsv_h,
+            hsv_s,
             ..
         }) = self.states.get_mut(&id)
         {
@@ -410,11 +666,24 @@ impl WidgetStore {
                     }
                     let [r, g, b, a] = value.rgba;
                     *value = ColorValue::from_rgba8(r, g, b, a);
+                    // Refresh retained anchor when the new RGB is
+                    // chromatic (else keep what we had so the H chip
+                    // doesn't spuriously reset on RGB-mode edits).
+                    let (h, s, v, _) = crate::widget::rgba_to_hsv(value.rgba);
+                    if s > 1e-3 && v > 1e-3 {
+                        *hsv_h = h;
+                        *hsv_s = s;
+                    }
                 }
                 ChannelMode::Hsv => {
-                    // Convert current rgba → (h,s,v,a), update one channel,
-                    // convert back. Uses the same helper as the painter.
-                    let (mut h, mut s, mut v, mut a) = crate::widget::rgba_to_hsv(value.rgba);
+                    // Use retained (h, s) as the canonical HSV basis
+                    // — see `apply_blender_channel_value` for the
+                    // why. V + A from RGBA are recoverable.
+                    let (_, _, v_rgba, a_rgba) = crate::widget::rgba_to_hsv(value.rgba);
+                    let mut h = *hsv_h;
+                    let mut s = *hsv_s;
+                    let mut v = v_rgba;
+                    let mut a = a_rgba;
                     match channel_idx {
                         0 => h = norm.clamp(0.0, 1.0),
                         1 => s = norm.clamp(0.0, 1.0),
@@ -423,6 +692,8 @@ impl WidgetStore {
                         _ => {}
                     }
                     *value = hsv_to_color_value(h, s, v, a);
+                    *hsv_h = h;
+                    *hsv_s = s;
                 }
             }
         }

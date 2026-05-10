@@ -77,7 +77,23 @@ pub const BLENDER_INTERP_LINEAR: NodeId = NodeId(610);
 pub const BLENDER_INTERP_PERCEPTUAL: NodeId = NodeId(611);
 pub const BLENDER_CHANNEL_RGB: NodeId = NodeId(612);
 pub const BLENDER_CHANNEL_HSV: NodeId = NodeId(613);
-// Palette swatches 0..11 (default_palette has 12 entries).
+// Channel value chips — interactive `NumberInput`s mirrored
+// to the channel sliders. Display the current channel value
+// (R/G/B/A or H/S/V/A depending on `channel_mode`) in 0..1.
+pub const BLENDER_NUM_0: NodeId = NodeId(640);
+pub const BLENDER_NUM_1: NodeId = NodeId(641);
+pub const BLENDER_NUM_2: NodeId = NodeId(642);
+pub const BLENDER_NUM_3: NodeId = NodeId(643);
+// "+ swatch" button (appends current value to palette).
+pub const BLENDER_ADD_SWATCH: NodeId = NodeId(644);
+// Eyedropper button (enters pixel-pick mode).
+pub const BLENDER_EYEDROPPER: NodeId = NodeId(645);
+// Drag handle bar at the top of the picker — drag to move.
+pub const BLENDER_DRAG_HANDLE: NodeId = NodeId(646);
+// Palette swatch slots 0..26 — first 12 are the default palette,
+// remaining 15 cover user "+ swatch" additions. Hard cap at 27 to
+// keep registration static; `blender_palette_push` rejects beyond
+// (and the painter hides the "+" tile when the palette is full).
 pub const BLENDER_SWATCH_0: NodeId = NodeId(620);
 pub const BLENDER_SWATCH_1: NodeId = NodeId(621);
 pub const BLENDER_SWATCH_2: NodeId = NodeId(622);
@@ -90,6 +106,21 @@ pub const BLENDER_SWATCH_8: NodeId = NodeId(628);
 pub const BLENDER_SWATCH_9: NodeId = NodeId(629);
 pub const BLENDER_SWATCH_10: NodeId = NodeId(630);
 pub const BLENDER_SWATCH_11: NodeId = NodeId(631);
+pub const BLENDER_SWATCH_12: NodeId = NodeId(632);
+pub const BLENDER_SWATCH_13: NodeId = NodeId(633);
+pub const BLENDER_SWATCH_14: NodeId = NodeId(634);
+pub const BLENDER_SWATCH_15: NodeId = NodeId(635);
+pub const BLENDER_SWATCH_16: NodeId = NodeId(636);
+pub const BLENDER_SWATCH_17: NodeId = NodeId(637);
+pub const BLENDER_SWATCH_18: NodeId = NodeId(638);
+pub const BLENDER_SWATCH_19: NodeId = NodeId(639);
+pub const BLENDER_SWATCH_20: NodeId = NodeId(650);
+pub const BLENDER_SWATCH_21: NodeId = NodeId(651);
+pub const BLENDER_SWATCH_22: NodeId = NodeId(652);
+pub const BLENDER_SWATCH_23: NodeId = NodeId(653);
+pub const BLENDER_SWATCH_24: NodeId = NodeId(654);
+pub const BLENDER_SWATCH_25: NodeId = NodeId(655);
+pub const BLENDER_SWATCH_26: NodeId = NodeId(656);
 
 pub const HIER_PLAYER: NodeId = NodeId(400);
 pub const HIER_SPRITE_IDLE: NodeId = NodeId(401);

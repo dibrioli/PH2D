@@ -10,14 +10,13 @@ use super::style::{
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, rect_to_vello, resolve,
-    stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
 };
 use crate::widget::{
     ButtonState, ChannelMode, Checkbox, CheckboxState, CheckboxValue, ColorSwatch, DropdownState,
-    InterpolationMode, NumberInput, SectionHeader, Slider, SliderOrientation, SliderState,
-    SwatchSize, TabItem, Tabs, TabsVariant, TextInputState, Toggle, ToggleState, paint_checkbox,
-    paint_color_swatch, paint_section_header, paint_slider, paint_tabs, paint_toggle,
+    InterpolationMode, SectionHeader, SliderOrientation, SliderState, SwatchSize, TabItem, Tabs,
+    TabsVariant, TextInputState, Toggle, ToggleState, paint_checkbox, paint_color_swatch,
+    paint_section_header, paint_tabs, paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -611,64 +610,38 @@ fn paint_inspector_field(
     let body_rect = Rect::new(x, body_y, w, FIELD_ROW_H);
     match &field.kind {
         InspectorFieldKind::Slider { value, display } => {
-            // Wider value chip so the click target is obvious and
-            // distinct from the slider track.
-            let val_w = 100.0_f32;
-            let val_rect = Rect::new(
-                body_rect.x + body_rect.w - val_w,
-                body_rect.y,
-                val_w,
-                body_rect.h,
-            );
-            let slider_rect = Rect::new(
-                body_rect.x,
-                body_rect.y,
-                body_rect.w - val_w - Spacing::Md.px(),
-                body_rect.h,
-            );
+            // Canonical slider+chip composite — same painter the
+            // BlenderColorPicker uses for its R/G/B/A channel rows,
+            // so every slider in the app reads identically. Live
+            // value comes from the store (drag updates it); the
+            // chip's display string is preserved (fixture's "160",
+            // "0.0010", etc. instead of forcing 0..1 normalised).
             let id = field_id.unwrap_or(NodeId(0));
-            let (live_state, live_value) = field_id
-                .and_then(|i| store.slider(i))
-                .unwrap_or((SliderState::Normal, *value));
-            if let Some(i) = field_id {
-                hit_index.register(i, slider_rect);
-            }
-            let mut s = Slider::new(id, &field.label).accent(true);
-            s.set_value(live_value);
-            s.state = live_state;
-            paint_slider(&s, slider_rect, scene, theme);
-            // NumberInput-style value chip linked to the slider via
-            // a sibling NodeId. The dispatcher keeps both in sync;
-            // for now we paint a NumberInput stub showing either the
-            // store-backed numeric value (if a sibling id exists) or
-            // the fixture's display string as a fallback.
-            let num_id = sibling_number_id(field_id);
-            let (num_state, num_value, num_buf, num_caret, num_anchor) = num_id
-                .and_then(|i| {
-                    store
-                        .number_input(i)
-                        .map(|(s, v, b, c, a)| (s, v, Some(b), Some(c), a))
-                })
-                .unwrap_or_else(|| {
-                    (
-                        crate::widget::TextInputState::Normal,
-                        display.parse::<f64>().unwrap_or(*value as f64),
-                        None,
-                        None,
-                        None,
-                    )
-                });
-            if let Some(i) = num_id {
-                hit_index.register(i, val_rect);
-            }
-            let mut ni = NumberInput::new(num_id.unwrap_or(NodeId(0)), &field.label, num_value);
-            ni.state = num_state;
-            crate::widget::paint_number_input_with_buffer(
-                &ni,
-                num_buf,
-                num_caret.unwrap_or(0),
-                num_anchor,
-                val_rect,
+            let live_value = field_id
+                .and_then(|i| store.slider(i).map(|(_, v)| v))
+                .unwrap_or(*value);
+            let chip_id = sibling_number_id(field_id).unwrap_or(NodeId(0));
+            let chip_value = store
+                .number_input(chip_id)
+                .map(|(_, v, _, _, _)| v)
+                .unwrap_or_else(|| display.parse::<f64>().unwrap_or(*value as f64));
+            let display_override = if display.is_empty() {
+                None
+            } else {
+                Some(display.as_str())
+            };
+            crate::widget::paint_slider_with_chip_layout(
+                body_rect,
+                &field.label,
+                live_value,
+                chip_value,
+                display_override,
+                id,
+                chip_id,
+                crate::widget::DEFAULT_LABEL_W,
+                crate::widget::DEFAULT_CHIP_W,
+                store,
+                hit_index,
                 scene,
                 text_system,
                 theme,
@@ -750,40 +723,31 @@ fn paint_inspector_field(
             );
         }
         InspectorFieldKind::LinkedSlider { value, display } => {
-            let mut s = Slider::new(NodeId(0), &field.label)
-                .accent(true)
-                .state(SliderState::Normal);
-            s.set_value(*value);
-            let val_w = 56.0_f32;
-            let slider_rect = Rect::new(
-                body_rect.x,
-                body_rect.y,
-                body_rect.w - val_w - Spacing::Md.px(),
-                body_rect.h,
-            );
-            paint_slider(&s, slider_rect, scene, theme);
-            let val_rect = Rect::new(
-                body_rect.x + body_rect.w - val_w,
-                body_rect.y,
-                val_w,
-                body_rect.h,
-            );
-            fill_rounded_rect(
+            // Non-interactive linked slider: NodeId(0) for both
+            // slider and chip skips hit registration but the visual
+            // is still the canonical composite — same painter as
+            // every other slider in the app.
+            let display_override = if display.is_empty() {
+                None
+            } else {
+                Some(display.as_str())
+            };
+            crate::widget::paint_slider_with_chip_layout(
+                body_rect,
+                &field.label,
+                *value,
+                *value as f64,
+                display_override,
+                NodeId(0),
+                NodeId(0),
+                crate::widget::DEFAULT_LABEL_W,
+                crate::widget::DEFAULT_CHIP_W,
+                store,
+                hit_index,
                 scene,
-                val_rect,
-                Radius::Xs.px(),
-                resolve(ColorToken::Bg3, theme),
+                text_system,
+                theme,
             );
-            if !display.is_empty() {
-                paint_text_centered(
-                    text_system,
-                    scene,
-                    display,
-                    val_rect,
-                    TypeToken::Xs.px(),
-                    resolve(ColorToken::Text1, theme),
-                );
-            }
         }
     }
 }

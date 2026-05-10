@@ -301,57 +301,23 @@ pub fn paint_blender_color_picker_with_store(
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
         let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;
         let row_rect = Rect::new(rect.x + pad, row_y, inner_w, SLIDER_ROW_H);
-        paint_slider_row(label, *val, row_rect, scene, text_system, theme);
-        // Register only the slider TRACK as the channel hit (label
-        // and value chip stay free for the NumberInput chips below).
-        // Layout mirrors `paint_slider_row`: label_w=70, val_w=60,
-        // gap=Spacing::Sm.px()=8 → track at row.x+78, width 110…
-        // (computed dynamically in case row width differs).
-        const LABEL_W: f32 = 70.0;
-        const VAL_W: f32 = 60.0;
-        const GAP: f32 = 8.0;
-        let track_x = row_rect.x + LABEL_W + GAP;
-        let track_w = (row_rect.w - LABEL_W - VAL_W - GAP * 2.0).max(1.0);
-        let track_rect = Rect::new(track_x, row_rect.y, track_w, row_rect.h);
         let ch_id = ids.channels.get(i).copied().unwrap_or(NodeId(0));
-        if ch_id.0 != 0 {
-            hit_index.register(ch_id, track_rect);
-        }
-        // Override the static value chip drawn by `paint_slider_row`
-        // with an interactive `NumberInput` chip — focusable, accepts
-        // typed input, and registers a hit rect so the dispatcher
-        // can route clicks here.
         let chip_id = ids.channels_num.get(i).copied().unwrap_or(NodeId(0));
-        if chip_id.0 != 0 {
-            let chip_rect = Rect::new(
-                row_rect.x + row_rect.w - VAL_W,
-                row_rect.y,
-                VAL_W,
-                row_rect.h,
-            );
-            let (chip_state, chip_buffer, chip_caret, chip_anchor) = match store.get(chip_id) {
-                Some(crate::interaction::InteractiveState::NumberInput {
-                    state,
-                    buffer,
-                    caret,
-                    selection_anchor,
-                    ..
-                }) => (*state, Some(buffer.as_str()), *caret, *selection_anchor),
-                _ => (crate::widget::TextInputState::Normal, None, 0, None),
-            };
-            super::channels::paint_channel_chip(
-                chip_rect,
-                chip_state,
-                *val as f64,
-                chip_buffer,
-                chip_caret,
-                chip_anchor,
-                scene,
-                text_system,
-                theme,
-            );
-            hit_index.register(chip_id, chip_rect);
-        }
+        // Canonical slider+chip composite — the rest of the app uses
+        // this same painter (Inspector field rows etc.). Both ids
+        // register their own hit rects inside.
+        crate::widget::paint_slider_with_chip(
+            row_rect,
+            label,
+            *val,
+            ch_id,
+            chip_id,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
     }
     y += (SLIDER_ROW_H + 4.0) * 4.0 + ROW_GAP;
 

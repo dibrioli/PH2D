@@ -295,9 +295,18 @@ pub fn paint_hero_screen(
         &hero.store,
     );
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
-    // Components Showcase disabled while debugging interaction pipeline.
-    // BlenderColorPicker preserved as standalone demo (anchored bottom-
-    // right of canvas). Re-enable showcase once everything else works.
+    // Components Showcase — gallery of every widget in functional
+    // use. Re-enabled after the picker debug round; pairs with the
+    // floating BlenderColorPicker demo so the user can see every UI
+    // primitive in one viewport.
+    showcase::paint_components_showcase(
+        &layout,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+    );
     showcase::paint_blender_picker_demo(
         &layout,
         scene,

@@ -24,6 +24,7 @@ mod progress_bar;
 mod radio_group;
 mod section_header;
 mod slider;
+mod slider_with_chip;
 mod spinner;
 mod status_bar;
 mod tabs;
@@ -63,6 +64,10 @@ pub use radio_group::{
 };
 pub use section_header::{SectionHeader, paint_section_header};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider};
+pub use slider_with_chip::{
+    DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,
+    paint_slider_with_chip_layout,
+};
 pub use spinner::{Spinner, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};
 pub use tabs::{TabItem, Tabs, TabsVariant, paint_tabs};

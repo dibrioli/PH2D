@@ -1,8 +1,9 @@
-//! 4-row channel sliders (R/G/B/A or H/S/V/A) + chip painter +
-//! `rgba_to_hsv` helper.
+//! Legacy `paint_slider_row` (used by the non-store
+//! `paint_blender_color_picker` path) + `rgba_to_hsv` /
+//! `hsv_to_rgba8` color-space helpers. The interactive channel
+//! row is now drawn by `crate::widget::paint_slider_with_chip`.
 
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect};
-use crate::widget::TextInputState;
+use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
@@ -71,110 +72,10 @@ pub fn paint_slider_row(
     );
 }
 
-/// Paint an interactive channel value chip (replaces the static
-/// chip drawn by [`paint_slider_row`] when the orchestrator wants
-/// edit/focus/caret behavior). `value` is the channel value in
-/// 0..=1; the chip displays it as a 3-decimal float. When `state`
-/// is `Focused` and `buffer` is `Some`, the buffer is shown instead
-/// (so live typing is visible) and a caret is drawn at the byte
-/// offset given by `caret`.
-#[allow(clippy::too_many_arguments)]
-pub fn paint_channel_chip(
-    rect: Rect,
-    state: TextInputState,
-    value: f64,
-    buffer: Option<&str>,
-    caret: usize,
-    selection_anchor: Option<usize>,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    let focused = state == TextInputState::Focused;
-    let radius = Radius::Xs.px();
-    let bg = if focused {
-        ColorToken::Bg2
-    } else {
-        ColorToken::Bg3
-    };
-    fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
-    if focused {
-        stroke_rounded_rect(scene, rect, radius, 2.0, resolve(ColorToken::Accent, theme));
-    }
-    let display_owned;
-    let display = match buffer {
-        Some(b) if focused => b,
-        _ => {
-            display_owned = format!("{value:.3}");
-            display_owned.as_str()
-        }
-    };
-    let font_size = TypeToken::Xs.px();
-    let total_w = if display.is_empty() {
-        0.0
-    } else {
-        text_system
-            .layout(display, font_size, f32::INFINITY)
-            .width()
-    };
-    let text_start = rect.x + (rect.w - total_w) * 0.5;
-    if focused
-        && let Some(anchor) = selection_anchor
-        && anchor != caret
-    {
-        let (sel_start, sel_end) = if anchor < caret {
-            (anchor, caret)
-        } else {
-            (caret, anchor)
-        };
-        let sel_start = sel_start.min(display.len());
-        let sel_end = sel_end.min(display.len());
-        let prefix_w = if sel_start == 0 {
-            0.0
-        } else {
-            text_system
-                .layout(&display[..sel_start], font_size, f32::INFINITY)
-                .width()
-        };
-        let mid_w = if sel_start == sel_end {
-            0.0
-        } else {
-            text_system
-                .layout(&display[sel_start..sel_end], font_size, f32::INFINITY)
-                .width()
-        };
-        let sel_top = rect.y + 4.0;
-        let sel_bot = rect.y + rect.h - 4.0;
-        let sel_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0);
-        let sel_w = mid_w.min(rect.x + rect.w - 2.0 - sel_x);
-        if sel_w > 0.0 {
-            let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
-            fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
-        }
-    }
-    paint_text_centered(
-        text_system,
-        scene,
-        display,
-        rect,
-        font_size,
-        resolve(ColorToken::Text1, theme),
-    );
-    if focused {
-        let caret_clamped = caret.min(display.len());
-        let prefix = &display[..caret_clamped];
-        let prefix_w = if prefix.is_empty() {
-            0.0
-        } else {
-            text_system.layout(prefix, font_size, f32::INFINITY).width()
-        };
-        let caret_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0);
-        let caret_top = rect.y + 4.0;
-        let caret_bot = rect.y + rect.h - 4.0;
-        let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
-        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
-    }
-}
+// `paint_channel_chip` was the picker-local interactive chip; it
+// has been folded into `crate::widget::paint_number_chip`
+// (the canonical app-wide chip used by `paint_slider_with_chip`).
+// Callers should use the new module instead.
 
 pub fn rgba_to_hsv(rgba: [u8; 4]) -> (f32, f32, f32, f32) {
     let r = rgba[0] as f32 / 255.0;

@@ -100,33 +100,88 @@ pub struct InspectorSection {
 }
 
 pub fn inspector_sections() -> Vec<InspectorSection> {
-    // Simplified for debug — 1 widget per kind so we can isolate
-    // which interaction works and which doesn't:
-    //   - 1 Slider (+ linked NumberInput chip via inspector painter)
-    //   - 1 Select (Dropdown)
-    // Behavior section below adds Checkbox + Toggle + ColorSwatch +
-    // BlenderColorPicker. That covers every interactive widget the
-    // hero needs for the manual test pass.
-    vec![InspectorSection {
-        label: String::from("Debug"),
-        count: 2,
-        collapsible: None,
-        fields: vec![
-            InspectorField {
-                label: String::from("Move Speed"),
-                kind: InspectorFieldKind::Slider {
-                    value: 0.62,
-                    display: String::from("160"),
+    vec![
+        InspectorSection {
+            label: String::from("Params (compile-time)"),
+            count: 12,
+            collapsible: None,
+            fields: vec![
+                InspectorField {
+                    label: String::from("Move Speed"),
+                    kind: InspectorFieldKind::Slider {
+                        value: 0.62,
+                        display: String::from("160"),
+                    },
                 },
-            },
-            InspectorField {
-                label: String::from("Debug"),
-                kind: InspectorFieldKind::Select {
-                    current: String::from("Shading (PBR-lite)"),
+                InspectorField {
+                    label: String::from("Jump Height"),
+                    kind: InspectorFieldKind::Slider {
+                        value: 0.30,
+                        display: String::from("200"),
+                    },
                 },
-            },
-        ],
-    }]
+                InspectorField {
+                    label: String::from("Friction"),
+                    kind: InspectorFieldKind::Slider {
+                        value: 0.08,
+                        display: String::from("0.0010"),
+                    },
+                },
+                InspectorField {
+                    label: String::from("Damping"),
+                    kind: InspectorFieldKind::Slider {
+                        value: 0.48,
+                        display: String::from("0.70"),
+                    },
+                },
+                InspectorField {
+                    label: String::from("Debug"),
+                    kind: InspectorFieldKind::Select {
+                        current: String::from("Shading (PBR-lite)"),
+                    },
+                },
+            ],
+        },
+        InspectorSection {
+            label: String::from("Advanced"),
+            count: 7,
+            collapsible: Some(false),
+            fields: Vec::new(),
+        },
+        InspectorSection {
+            label: String::from("Inputs"),
+            count: 24,
+            collapsible: None,
+            fields: vec![
+                InspectorField {
+                    label: String::from("Distance"),
+                    kind: InspectorFieldKind::Linked {
+                        source: String::from("Union.distance"),
+                    },
+                },
+                InspectorField {
+                    label: String::from("Material"),
+                    kind: InspectorFieldKind::Linked {
+                        source: String::from("Materializer 3D.material"),
+                    },
+                },
+                InspectorField {
+                    label: String::from("Cam Yaw"),
+                    kind: InspectorFieldKind::LinkedSlider {
+                        value: 0.57,
+                        display: String::from("0.57"),
+                    },
+                },
+                InspectorField {
+                    label: String::from("Cam Pitch"),
+                    kind: InspectorFieldKind::LinkedSlider {
+                        value: 0.0,
+                        display: String::new(),
+                    },
+                },
+            ],
+        },
+    ]
 }
 
 #[derive(Clone, Debug)]

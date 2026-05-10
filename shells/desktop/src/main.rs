@@ -1119,24 +1119,21 @@ fn log_input_event(elapsed_ms: u128, event: &InputEvent) {
 }
 
 /// Forward a pointer event to the hero screen's interaction
-/// dispatcher when the hero is active. Logs emitted [`WidgetEvent`]s
-/// to stderr so the developer can verify wiring without a UI binding
-/// (Phases B+ wire concrete handlers).
+/// dispatcher when the hero is active. Drains emitted
+/// [`WidgetEvent`]s into `HeroScreen::apply_event` (consumed events
+/// drive hero-level state mutations) and logs unconsumed ones to
+/// stderr for the developer to verify wiring.
 fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
     let Some(gfx) = gfx else { return };
     let Some(hero) = gfx.hero_screen.as_mut() else {
         return;
     };
-    let evts = hero.handle_pointer(event, &gfx.hero_arena);
-    for e in evts {
-        match e {
-            WidgetEvent::Click(id) => eprintln!("[hero] Click({id:?})"),
-            WidgetEvent::Toggled(id) => eprintln!("[hero] Toggled({id:?})"),
-            WidgetEvent::ValueChanged(id) => eprintln!("[hero] ValueChanged({id:?})"),
-            WidgetEvent::TextChanged(id) => eprintln!("[hero] TextChanged({id:?})"),
-            WidgetEvent::Focus(id) => eprintln!("[hero] Focus({id:?})"),
-            WidgetEvent::Blur(id) => eprintln!("[hero] Blur({id:?})"),
-            WidgetEvent::SelectionChanged(id) => eprintln!("[hero] SelectionChanged({id:?})"),
+    // Snapshot events before applying — apply_event may mutate hero,
+    // but the events slice itself lives in the arena (immutable view).
+    let snapshot: Vec<WidgetEvent> = hero.handle_pointer(event, &gfx.hero_arena).to_vec();
+    for e in snapshot {
+        if !hero.apply_event(e) {
+            eprintln!("[hero] unhandled event: {e:?}");
         }
     }
 }

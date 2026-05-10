@@ -171,6 +171,76 @@ pub mod ids {
     pub const INSP_LINK_MATERIAL: NodeId = NodeId(321);
     pub const INSP_CAM_YAW: NodeId = NodeId(330);
     pub const INSP_CAM_PITCH: NodeId = NodeId(331);
+
+    // Hierarchy entity rows (400-419 reserved). Mirrors the order
+    // in `fixture::hierarchy()`.
+    pub const HIER_PLAYER: NodeId = NodeId(400);
+    pub const HIER_SPRITE_IDLE: NodeId = NodeId(401);
+    pub const HIER_COLLIDER_BOX: NodeId = NodeId(402);
+    pub const HIER_SCRIPT_PLAYER: NodeId = NodeId(403);
+    pub const HIER_RIGIDBODY: NodeId = NodeId(404);
+    pub const HIER_TILEMAP_GROUND: NodeId = NodeId(405);
+    pub const HIER_TILEMAP_DECOR: NodeId = NodeId(406);
+    pub const HIER_SLIME_01: NodeId = NodeId(407);
+    pub const HIER_SLIME_02: NodeId = NodeId(408);
+    pub const HIER_TRIGGER_ZONE_A: NodeId = NodeId(409);
+    pub const HIER_AMBIENT_LIGHT: NodeId = NodeId(410);
+    pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
+}
+
+/// Map a hierarchy `NodeId` back to its fixture entity name. Inverse
+/// of [`hierarchy_id`].
+fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
+    Some(match id {
+        x if x == ids::HIER_PLAYER => "Player",
+        x if x == ids::HIER_SPRITE_IDLE => "Sprite_idle",
+        x if x == ids::HIER_COLLIDER_BOX => "Collider_box",
+        x if x == ids::HIER_SCRIPT_PLAYER => "Script_player",
+        x if x == ids::HIER_RIGIDBODY => "RigidBody",
+        x if x == ids::HIER_TILEMAP_GROUND => "Tilemap_ground",
+        x if x == ids::HIER_TILEMAP_DECOR => "Tilemap_decor",
+        x if x == ids::HIER_SLIME_01 => "Slime_01",
+        x if x == ids::HIER_SLIME_02 => "Slime_02",
+        x if x == ids::HIER_TRIGGER_ZONE_A => "Trigger_zoneA",
+        x if x == ids::HIER_AMBIENT_LIGHT => "Ambient_light",
+        x if x == ids::HIER_MAIN_CAMERA => "Main_Camera",
+        _ => return None,
+    })
+}
+
+/// Best-effort 3-letter "kind" badge for the selection tag. Mirrors
+/// the badges shown by `paint_hierarchy_row` (PRF / UNI / OUT / CAM).
+fn hierarchy_kind_for_label(label: &str) -> &'static str {
+    match label {
+        "Player" => "OUT",
+        "Sprite_idle" => "SPR",
+        "Collider_box" | "Script_player" | "RigidBody" => "UNI",
+        "Slime_01" | "Slime_02" => "PRF",
+        "Main_Camera" => "CAM",
+        "Tilemap_ground" | "Tilemap_decor" => "TIL",
+        "Trigger_zoneA" => "TRG",
+        "Ambient_light" => "LGT",
+        _ => "ENT",
+    }
+}
+
+/// Map fixture entity name to canonical hierarchy `NodeId`.
+fn hierarchy_id(name: &str) -> Option<NodeId> {
+    Some(match name {
+        "Player" => ids::HIER_PLAYER,
+        "Sprite_idle" => ids::HIER_SPRITE_IDLE,
+        "Collider_box" => ids::HIER_COLLIDER_BOX,
+        "Script_player" => ids::HIER_SCRIPT_PLAYER,
+        "RigidBody" => ids::HIER_RIGIDBODY,
+        "Tilemap_ground" => ids::HIER_TILEMAP_GROUND,
+        "Tilemap_decor" => ids::HIER_TILEMAP_DECOR,
+        "Slime_01" => ids::HIER_SLIME_01,
+        "Slime_02" => ids::HIER_SLIME_02,
+        "Trigger_zoneA" => ids::HIER_TRIGGER_ZONE_A,
+        "Ambient_light" => ids::HIER_AMBIENT_LIGHT,
+        "Main_Camera" => ids::HIER_MAIN_CAMERA,
+        _ => return None,
+    })
 }
 
 #[derive(Debug)]
@@ -264,6 +334,26 @@ impl HeroScreen {
                 selected_index: Some(0),
             },
         );
+
+        // Hierarchy entity rows — Plain interactive nodes; click
+        // emits Click event that the hero handler maps to selection
+        // change (Phase D).
+        for id in [
+            ids::HIER_PLAYER,
+            ids::HIER_SPRITE_IDLE,
+            ids::HIER_COLLIDER_BOX,
+            ids::HIER_SCRIPT_PLAYER,
+            ids::HIER_RIGIDBODY,
+            ids::HIER_TILEMAP_GROUND,
+            ids::HIER_TILEMAP_DECOR,
+            ids::HIER_SLIME_01,
+            ids::HIER_SLIME_02,
+            ids::HIER_TRIGGER_ZONE_A,
+            ids::HIER_AMBIENT_LIGHT,
+            ids::HIER_MAIN_CAMERA,
+        ] {
+            store.register(id, InteractiveState::Plain);
+        }
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -295,6 +385,28 @@ impl HeroScreen {
         arena: &'frame Bump,
     ) -> &'frame [WidgetEvent] {
         crate::interaction::dispatch_key(&mut self.store, event, arena)
+    }
+
+    /// Translate a [`WidgetEvent`] from the dispatcher into a
+    /// hero-level state mutation. Returns true iff the event was
+    /// consumed (caller may chain into other handlers if false).
+    ///
+    /// Phase D scope:
+    /// - Click on a hierarchy row id → updates `self.selection` to
+    ///   that entity (Inspector title follows automatically because
+    ///   `paint_inspector` reads `hero.selection`).
+    pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
+        if let WidgetEvent::Click(id) = event
+            && let Some(label) = hierarchy_label_for_id(id)
+        {
+            self.selection = Some(HeroSelection {
+                label: label.into(),
+                kind: hierarchy_kind_for_label(label).into(),
+                world_pos: (0.0, 0.0),
+            });
+            return true;
+        }
+        false
     }
 
     pub fn build_a11y(&self, viewport: Rect) -> Node {
@@ -1091,14 +1203,41 @@ pub fn paint_hierarchy(
     let body_top = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0;
     let body_pad = 8.0_f32;
     let mut y = body_top;
-    for entity in fixture::hierarchy() {
+    let selected_label = current_selection_label();
+    for mut entity in fixture::hierarchy() {
         if y + HIER_ROW_H > rect.y + rect.h {
             break;
         }
         let row_rect = Rect::new(rect.x + body_pad, y, rect.w - body_pad * 2.0, HIER_ROW_H);
+        // Override the fixture's static `selected` flag with the
+        // hero's live selection (so clicking a row visually moves
+        // the highlight without rewriting the fixture).
+        if let Some(ref sel_label) = selected_label {
+            entity.selected = entity.name == *sel_label;
+        }
+        if let Some(id) = hierarchy_id(&entity.name) {
+            hit_index.register(id, row_rect);
+        }
         paint_hierarchy_row(&entity, row_rect, scene, text_system, theme);
         y += HIER_ROW_H + 2.0;
     }
+}
+
+// `paint_hierarchy` reads the current selection label via this
+// thread-local since the painter takes the layout/store but not
+// the hero-level selection. Set by `paint_hero_screen` before
+// calling `paint_hierarchy`.
+thread_local! {
+    static CURRENT_SELECTION_LABEL: std::cell::RefCell<Option<String>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn current_selection_label() -> Option<String> {
+    CURRENT_SELECTION_LABEL.with(|c| c.borrow().clone())
+}
+
+fn set_selection_label(label: Option<String>) {
+    CURRENT_SELECTION_LABEL.with(|c| *c.borrow_mut() = label);
 }
 
 fn paint_hierarchy_row(
@@ -1420,6 +1559,7 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
     );
+    set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
     paint_hierarchy(
         &layout,
         scene,
@@ -1742,5 +1882,27 @@ mod tests {
                 .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::TOPBAR_SAVE)),
             "expected Click event for TOPBAR_SAVE, got {evts:?}"
         );
+    }
+
+    #[test]
+    fn hero_apply_event_hierarchy_click_changes_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        // Default selection is "Player". Click Slime_01 → selection
+        // should become Slime_01.
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::HIER_SLIME_01));
+        assert!(consumed);
+        assert_eq!(
+            hero.selection.as_ref().map(|s| s.label.as_str()),
+            Some("Slime_01")
+        );
+    }
+
+    #[test]
+    fn hero_apply_event_unrelated_click_returns_false() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        // TOPBAR_SAVE is not a hierarchy id, so apply_event returns
+        // false (caller handles it elsewhere or logs it).
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::TOPBAR_SAVE));
+        assert!(!consumed);
     }
 }

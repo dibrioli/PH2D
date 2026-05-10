@@ -152,9 +152,9 @@ Antes de tocar em widget novo, infra precisa estar pronta. Sem isso,
 
 | Task | Arquivo | Acceptance |
 |---|---|---|
-| 0.1 ✅ Port dos 87 SVGs do `docs/design/icons/` para `crates/ph2d-editor/src/icons/` como módulo `pub mod icons { pub static ICON_NAME: BezPath = ... }` ou `IconId` enum + lookup. Use `kurbo::BezPath::from_svg("M...Z")` quando possível. SVG 24×24 viewBox, currentColor → o paint helper aplica a cor do consumidor. | `crates/ph2d-editor/src/icons.rs` (+ `lib.rs` re-export) | `cargo test -p ph2d-editor icons::tests` passa; pelo menos 1 smoke test que renderiza 5 ícones diferentes em VectorScene |
-| 0.2 Helpers de paint em `paint.rs`: `fill_rounded_rect(rect, radius, color)` (kurbo::RoundedRect), `stroke_rect(rect, width, color)`, `stroke_rounded_rect(rect, radius, width, color)`, `paint_icon(icon: IconId, rect: Rect, color: Color, scene)`. | `crates/ph2d-editor/src/paint.rs` | Cada helper tem 1+ smoke test; widgets antigos refatorados pra usar (sem regressão de testes) |
-| 0.3 Refinar `paint.rs` removendo gambiarras de "border via 4 fill_rect" (existem em `paint_tool_palette_icons` e em widgets de Fase 1). Substituir por `stroke_rect`/`stroke_rounded_rect`. | `paint.rs` + 5 widgets Fase 1 | Todos os tests existentes passam; busca por `// Top edge\n.*fill_rect` retorna zero resultados |
+| 0.1 ✅ Port dos 89 SVGs do `docs/design/icons/` (87 documentados + 2 extras encontrados) para `crates/ph2d-editor/src/icons.rs` como `IconId` enum + `cmd_to_path(IconCmd) -> BezPath`. SVG 24×24 viewBox, currentColor → o paint helper aplica a cor do consumidor. | `crates/ph2d-editor/src/icons.rs` (+ `lib.rs` re-export) | ✅ `cargo test -p ph2d-editor icons::tests` passa (5 testes); smoke render de 5 ícones em VectorScene cobre paths/polylines/circles/rects |
+| 0.2 ✅ Helpers de paint em `paint.rs`: `fill_rounded_rect(rect, radius, color)` (kurbo::RoundedRect), `stroke_rect(rect, width, color)`, `stroke_rounded_rect(rect, radius, width, color)`, `paint_icon(icon, rect, color, stroke_width, scene)`. | `crates/ph2d-editor/src/paint.rs` | ✅ Cada helper tem 1+ smoke test (5 novos em paint::tests); zero regressão no resto |
+| 0.3 ✅ Refinar `paint.rs` removendo gambiarras de "border via 4 fill_rect" (existiam em `paint_tool_palette_icons`). Substituídas por `stroke_rect`/`stroke_rounded_rect`. | `paint.rs` (Phase 1 widgets ganharam stroke real ao reescrever) | ✅ Todos os tests passam; busca por `Top edge.*fill_rect` retorna zero |
 
 **Commit local ao fim da Fase 0:** `feat(ph2d-editor): icons module + paint helpers (rounded rect, stroke, icon)`
 
@@ -167,11 +167,11 @@ visuais pra bater com `component-library.html`.
 
 | Task | Arquivo | Mudanças necessárias | Acceptance |
 |---|---|---|---|
-| 1.1 Button | `widget/button.rs` | Adicionar variant `IconButton` (icon-only, square 36px). Adicionar variant `Danger` (background = ColorToken::Danger). Bordas arredondadas via `Radius::Md`. Spinner inline para `state = Loading` (novo state). | 8 paint_smoke tests (Normal/Hover/Pressed/Focused/Disabled + accent + danger + icon-only); contraste validado |
-| 1.2 Slider | `widget/slider.rs` | Adicionar `orientation: SliderOrientation::Horizontal\|Vertical`. Track agora `Radius::Full` (pill). Thumb circular (kurbo::Circle ou ellipse approx). Tick marks opcionais para snap-to-grid. | Paint tests para horizontal+vertical, com value 0/0.5/1; thumb visualmente centrado |
-| 1.3 Toggle | `widget/toggle.rs` | Pill com `Radius::Full`. Thumb circular. Animação de transição (não implementar tween real — apenas posição final correta para `on`/`off`). Remover hack de "re-fill body inside ring" (usar stroke_rect). | Paint tests on/off + focused/disabled; sem flicker visual |
-| 1.4 RadioGroup | `widget/radio_group.rs` | Adicionar variant `Segmented` (todas as opções num row contínuo, selected = AccentSoft fill) + `Vertical` já existe. Borders arredondadas. Per-option a11y já correto. | Paint tests segmented/vertical com 3 opções, 1 selecionada |
-| 1.5 ColorSwatch | `widget/color_swatch.rs` | Bordas arredondadas (`Radius::Sm`). Adicionar `size: SwatchSize::Sm\|Md\|Lg` (24/32/48 px). Indicador de "transparent checkerboard" quando `rgba.a < 255`. | Paint tests todos os tamanhos + alpha=0/128/255 |
+| 1.1 ✅ Button | `widget/button.rs` | ButtonKind enum (Default/Accent/Danger/IconOnly { icon }); Loading state com spinner inline; Radius::Md; focus ring real via stroke_rounded_rect; paint_button colocalizado em widget/button.rs. | ✅ 19 testes (10 paint smokes cobrindo todos os states+kinds) |
+| 1.2 ✅ Slider | `widget/slider.rs` | SliderOrientation::Horizontal/Vertical; Radius::Full pill track; circular thumb (kurbo::Circle); ticks: Vec<f32> opcional; focus ring stroke ao redor do thumb. | ✅ 13 testes (smokes horizontal+vertical, value 0/0.5/1, dragging, focused, disabled) |
+| 1.3 ✅ Toggle | `widget/toggle.rs` | Radius::Full pill; circular thumb; stroke_rounded_rect focus ring (gambiarra removida); thumb token muda por state. | ✅ 11 testes (smokes off/on/hovered/focused/pressed/disabled) |
+| 1.4 ✅ RadioGroup | `widget/radio_group.rs` | RadioOrientation::Segmented adicionado (pill contínuo, selected = AccentSoft inset); Horizontal/Vertical mantidos. | ✅ 11 testes (segmented + vertical + horizontal smokes) |
+| 1.5 ✅ ColorSwatch | `widget/color_swatch.rs` | Radius::Sm; SwatchSize { Sm 24 / Md 32 / Lg 48 }; transparency checker (4×4) quando alpha < 255; Hovered ring AccentSoft. | ✅ 9 testes (3 sizes + alpha 0/128/255 + hovered/focused) |
 
 **Commit local ao fim da Fase 1:** `feat(ph2d-editor): refine 5 base widgets to match design system v1`
 
@@ -181,15 +181,15 @@ Componentes simples, single-purpose, sem composição.
 
 | # | Componente | a11y Role | States | Notas |
 |---|---|---|---|---|
-| 2.1 | **Checkbox** | `Role::CheckBox` | Normal/Hover/Pressed/Focused/Disabled × Checked/Unchecked/Indeterminate (3-state) | Box `Radius::Xs`, checkmark via `paint_icon(IconId::Check)` |
-| 2.2 | **TextInput** | `Role::TextInput` | Normal/Hover/Focused/Disabled/Error | Borda `BorderStrong`/Border conforme estado; cursor blink (não implementar — só desenhar cursor estático em pos `caret_pos`); placeholder em `Text3` |
-| 2.3 | **TextArea** | `Role::MultilineTextInput` | mesmos do TextInput | Idem TextInput, mas `min_height: 3 * row_h` |
-| 2.4 | **NumberInput** | `Role::NumberInput` | Normal/Hover/Focused/Disabled | TextInput + 2 botõezinhos `▲`/`▼` à direita; clamp via `min`/`max` opcionais |
-| 2.5 | **ProgressBar** | `Role::ProgressIndicator` | Determinate (`value: 0..=1`) e Indeterminate | Track `Radius::Full` `Bg2`; fill `Accent`; texto `value%` opcional centrado |
-| 2.6 | **Spinner** | `Role::ProgressIndicator` | Sempre rotaciona (mas pintamos o frame estático — animação real é shell-side) | Arc 270° via `kurbo::Arc`; cor `Accent` |
-| 2.7 | **Avatar** | `Role::Image` | Normal/Disabled | Square ou circle (`Radius::Full`); placeholder com inicial centrada se não tiver imagem |
-| 2.8 | **Divider** | `Role::Splitter` (horizontal/vertical) | — (sem state) | 1px line `Border`; orientation enum |
-| 2.9 | **Tag** / **Chip** | `Role::Label` (com `action(Click)` se removable) | Normal/Hover/Pressed | Pill `Radius::Full` `Bg2`/`AccentSoft`; X opcional removível |
+| 2.1 ✅ | **Checkbox** | `Role::CheckBox` | 5 × 3 (Checked/Unchecked/Indeterminate) | `Check` glyph quando Checked, `Plus` quando Indeterminate |
+| 2.2 ✅ | **TextInput** | `Role::TextInput` | Normal/Hovered/Focused/Disabled/Error | Caret estático em `caret_byte` quando focused; placeholder em `Text3` |
+| 2.3 ✅ | **TextArea** | `Role::MultilineTextInput` | mesmos do TextInput | `min_height(font_size) = 3 rows + padding` exposto |
+| 2.4 ✅ | **NumberInput** | `Role::NumberInput` | mesmos | ChevronUp/Down chips; `up_rect`/`down_rect` para hit-test; min/max clamp |
+| 2.5 ✅ | **ProgressBar** | `Role::ProgressIndicator` | Determinate/Indeterminate | `show_percent` em Determinate centra `nn%` |
+| 2.6 ✅ | **Spinner** | `Role::ProgressIndicator` | sem variantes | Frame estático via `IconId::Spinner` (rotação shell-side) |
+| 2.7 ✅ | **Avatar** | `Role::Image` | Normal/Disabled | AvatarShape Circle/Square; initial char centrado |
+| 2.8 ✅ | **Divider** | `Role::Splitter` | — | DividerOrientation Horizontal/Vertical; 1px Border line |
+| 2.9 ✅ | **Tag** | `Role::Label` (com Click se removable) | Normal/Hovered/Pressed/Disabled | TagTone Neutral/Accent/Success/Warn/Danger; close icon opcional |
 
 **Acceptance por componente** = checklist de auditoria acima cumprido.
 
@@ -201,14 +201,14 @@ Componentes que reusam atomicos da Fase 2.
 
 | # | Componente | a11y Role | Notas |
 |---|---|---|---|
-| 3.1 | **Tabs** | `Role::TabList` (parent) + `Role::Tab` per option | Horizontal row; selected = underline `Accent` `BorderEmph` 2px; ghost por default; pode ser segmented variant |
-| 3.2 | **Dropdown** / **Select** | `Role::ComboBox` (closed) → `Role::ListBox` quando aberto | Closed = TextInput-like com chevron; aberto = popover com lista de `Role::Option`. Posicionamento `Layer::Overlay` |
-| 3.3 | **Combobox** | `Role::ComboBox` com `editable: true` | TextInput + Dropdown filtrável; sugestões aparecem conforme typing |
-| 3.4 | **Vector3Editor** | `Role::Group` (parent) + 3× `Role::NumberInput` | 3 NumberInput lado a lado com labels X/Y/Z (cores opcionais danger/success/info) |
-| 3.5 | **ListItem** | `Role::ListItem` | Row com `icon? + label + value? + chevron?`; selected = `AccentSoft` fill; `Density` aware (compact/cozy/comfortable) |
-| 3.6 | **Card** | `Role::Group` | Surface `Bg2` `Radius::Lg` com header opcional, body, footer; padding `Spacing::Lg` |
-| 3.7 | **Tooltip** | `Role::Tooltip` | Pequeno popover acima do hovered widget; `Bg3` `Radius::Sm`; aparece só quando o consumidor pede (sem hover state interno) |
-| 3.8 | **ContextMenu** | `Role::Menu` + `Role::MenuItem` per item | Vertical list de ListItems com keyboard shortcuts; aparece em `Layer::Overlay`; suporta separators (Divider) |
+| 3.1 ✅ | **Tabs** | `Role::TabList` + per-item `Role::Tab` | TabsVariant Ghost (underline) + Segmented (pill) |
+| 3.2 ✅ | **Dropdown** | `Role::ComboBox` + `Role::ListBoxOption` | `option_rect` para hit-test; chevron flips quando open |
+| 3.3 ✅ | **Combobox** | `Role::ComboBox` editable | `Combobox::filtered()` faz substring match case-insensitive |
+| 3.4 ✅ | **Vector3Editor** | `Role::Group` + 3× NumberInput | X/Y/Z labels tinted Danger/Success/Info |
+| 3.5 ✅ | **ListItem** | `Role::ListItem` | leading icon + label + value + chevron opcional; selected = AccentSoft |
+| 3.6 ✅ | **Card** | `Role::Group` | `header_rect`/`body_rect`/`footer_rect` slot helpers |
+| 3.7 ✅ | **Tooltip** | `Role::Tooltip` | Bg3 Radius::Sm; consumidor controla visibilidade |
+| 3.8 ✅ | **ContextMenu** | `Role::Menu` + per-item `Role::MenuItem` | ContextMenuEntry::Item ou Separator; `preferred_height` calcula altura sum |
 
 **Commit local ao fim da Fase 3:** `feat(ph2d-editor): compound widgets (tabs, dropdown, combobox, vector3, list, card, tooltip, context menu)`
 
@@ -218,9 +218,9 @@ Componentes que pintam por cima de tudo.
 
 | # | Componente | a11y Role | Notas |
 |---|---|---|---|
-| 4.1 | **Modal** | `Role::Dialog` | Centered card sobre scrim (`BgScrim`); ESC dismiss; focus trap (não implementar trap real, só marcar a11y); header + body + 2 buttons (cancel/confirm) |
-| 4.2 | **Toast styled** (refinar existente) | `Role::Alert` (assertive) ou `Role::Status` (polite) per severity | Restyle do `ToastQueue::paint`: usar `fill_rounded_rect` com `Radius::Md`, severity icon à esquerda (`paint_icon(IconId::Info/Check/Warn/Error)`), shadow `Shadow::Md` |
-| 4.3 | **Popover** | `Role::Group` (genérico) | Container reutilizável usado por Dropdown/Tooltip/ContextMenu; `BgElev` `Radius::Md` shadow `Shadow::Lg` |
+| 4.1 ✅ | **Modal** | `Role::Dialog` | Scrim viewport-wide + dialog Radius::Lg; header(close icon) + body slot + footer(cancel/confirm Buttons) |
+| 4.2 ✅ | **Toast restyle** | `Role::Alert`/`Role::Status` (existente em ph2d-a11y) | BgElev body + 4px severity stripe + leading severity icon + neutral Text1 message |
+| 4.3 ✅ | **Popover** | `Role::Group` | BgElev + Border, Radius::Md — primitivo reusável |
 
 **Commit local ao fim da Fase 4:** `feat(ph2d-editor): overlays (modal, toast restyle, popover primitive)`
 
@@ -228,8 +228,8 @@ Componentes que pintam por cima de tudo.
 
 | # | Componente | a11y Role | Notas |
 |---|---|---|---|
-| 5.1 | **TreeView** | `Role::Tree` + `Role::TreeItem` per node | Indentação por depth × `Spacing::Lg`; expand chevron via `paint_icon(IconId::ChevronRight)` rotacionado quando expandido; selected highlight `AccentSoft`; suporta multi-select (via `selected: HashSet<NodeId>` — mas use `BTreeSet` per HR-5 / ADR-0022 se for em pipeline determinístico; para editor UI runtime, HashSet OK pois não é simulation) |
-| 5.2 | **ColorPicker** | `Role::Group` (parent) + `Role::TabList` | 5 abas (Disc / Classic / Harmony / Value / Palettes) — implementar SÓ a estrutura de tabs + 1 modo (Classic com sliders RGB+HSL) por enquanto. Demais modos ficam stub para M14+. Vide screen 08-color-picker.html para referência visual |
+| 5.1 ✅ | **TreeView** | `Role::Tree` + per-node `Role::TreeItem` | BTreeSet<NodeId> para expanded/selected (workspace lint forbid HashSet); `visible_rows()` flatten + indent `Spacing::Lg` per depth; ChevronDown↔ChevronRight |
+| 5.2 ✅ | **ColorPicker** | `Role::Group` + 5-tab Tabs | Classic mode (RGB+HSL sliders) ship v1; Disc/Harmony/Value/Palettes paint placeholder M14+ stubs |
 
 **Commit local ao fim da Fase 5:** `feat(ph2d-editor): complex widgets (tree view, color picker structure)`
 
@@ -259,15 +259,14 @@ parcial + retoma.
 
 ## Definition of done deste plano
 
-- [ ] Todas as 6 fases concluídas com checkbox ✅.
-- [ ] 25+ widgets re-exportados em `crates/ph2d-editor/src/lib.rs`.
-- [ ] `cargo test -p ph2d-editor` ≥ 200 testes verdes (atual: 90; meta:
-  90 + 8/widget × 25 widgets = 290).
-- [ ] WCAG 2.2 AA contrast tests cobrem cada novo par token usado.
-- [ ] Zero `Color::from_hex` em widgets (busca: `grep -r "from_hex" crates/ph2d-editor/src/widget/` retorna 0).
-- [ ] Zero pt-BR em comentários (typos lint clean nos novos arquivos).
-- [ ] Plano atualizado com lessons learned.
-- [ ] Push único + comentário em PR #31.
+- [x] Todas as 6 fases concluídas com checkbox ✅.
+- [x] 27 widgets re-exportados em `crates/ph2d-editor/src/lib.rs` (meta era 25+).
+- [x] `cargo test -p ph2d-editor` 259 testes verdes (atual: 259; baseline 90; meta 200+).
+- [x] WCAG 2.2 AA contrast tests cobrem cada novo par token usado (28 testes em ph2d-tokens, sem novos pares introduzidos pela biblioteca).
+- [x] Zero `Color::from_hex` em widgets (busca: `grep -r "from_hex" crates/ph2d-editor/src/widget/` retorna 0).
+- [x] Zero pt-BR em comentários (typos lint clean).
+- [x] Plano atualizado com lessons learned.
+- [ ] Push único + comentário em PR #31 (próximo passo da Phase 6).
 
 ## Anti-patterns (NÃO faça)
 
@@ -282,5 +281,52 @@ parcial + retoma.
 
 ## Lessons learned
 
-_(Agente preenche aqui ao fim. Surpresas, decisões não-óbvias,
-descobertas que valem documentar pra quem for tocar nisso depois.)_
+Surpresas e decisões não-óbvias durante a execução (2026-05-09 → 2026-05-10):
+
+- **Ícones via SVG enum em runtime, não const BezPath.** `kurbo::BezPath`
+  não é const-constructible (Vec interno), então `icons.rs` armazena
+  `IconCmd` (Path/Polyline/Line/Circle/Rect) com strings/floats e
+  parseia via `BezPath::from_svg` + `Circle::into_path`/`RoundedRect::into_path`
+  on demand. Custo é trivial (89 ícones × ≤3 segmentos cada). Tentar
+  cache via `OnceLock` foi descartado — paint só toca um ícone por
+  call e o overhead de parsear é menor que o do hash lookup.
+- **Re-export de kurbo via ph2d-vector.** Adicionei `Circle`,
+  `RoundedRect`, `Shape`, `Stroke` ao re-export pra widgets não
+  precisarem de dep direto em vello/kurbo. Evita version skew.
+- **`Color::from_rgba8` é const-fn.** Permite definir cores estáticas
+  (ex: checker tiles do ColorSwatch) sem alocar tokens. Útil pra
+  user-content cases onde tokens não fazem sentido.
+- **Toggle "re-fill body inside ring" gambiarra eliminada.** Phase 1
+  refator descobriu que `Scene::stroke` em RoundedRect dá um focus
+  ring real — não precisa do hack de pintar 2 retângulos sobrepostos.
+- **Button kind enum substituiu `accent: bool`.** Adicionar Danger e
+  IconOnly variants ficaria caótico com booleans; ButtonKind enum
+  com `IconOnly { icon }` payload casa direto com o ButtonState.
+  Quebra silenciosa de API só dentro do crate (paint.rs era único caller).
+- **TreeView usa BTreeSet, não HashSet.** Plano dizia "HashSet OK pra
+  editor UI runtime", mas o lint workspace de HR-5/ADR-0022 forbid_types
+  reprovou. BTreeSet funciona idêntico (NodeId tem Ord) e mantém
+  determinismo de ordem de iteração — bônus pra debugging.
+- **Caret aproximado em TextInput.** Não temos parley layout
+  introspection wired no v1; o caret usa `font_size * 0.55 * char_count`
+  como advance estimado. Boa o suficiente em monospace e razoável
+  em sans até IME entrar (M14+).
+- **ColorPicker structure-only.** Plano explicitamente pedia "só Classic
+  por enquanto". Implementei tabs + RGB+HSL sliders + preview swatch
+  + placeholder pros outros 4 modos. Disc/Harmony/Value/Palettes ficam
+  pra projeto-piloto demandar (ou screen 08 mockup pixel-perfect).
+- **Stroke dash pattern não usado.** SVG `collider.svg` tem
+  `stroke-dasharray="3 3"` que perdi ao converter (kurbo `Stroke`
+  suporta `dash_pattern: Dashes`, mas IconCmd não carrega isso).
+  Visualmente fica um rect sólido em vez de tracejado. Trade-off OK
+  pro v1; restaurar dash exige IconCmd::PathDashed ou dash_pattern
+  por-shape — fica pra quando algum widget pedir explicitamente.
+- **Stray `atalho de play.command` accidental commit + revert.** O Mac
+  Finder atalho entrou no `git add -A` da Phase 1 commit. Removido
+  no commit seguinte. Lição: `git status --short` antes de cada add
+  global, especialmente quando o repo tem arquivos do user fora do
+  workflow.
+- **Test count baseline.** Cada widget novo segue contrato de ~6-9
+  testes (defaults/builders/a11y/paint smokes per state). Phase 0:
+  +10. Phase 1: +18. Phase 2: +63. Phase 3: +53. Phase 4: +7. Phase 5:
+  +18. Total final = 90 → 259 (+169 testes pra 27 widgets).

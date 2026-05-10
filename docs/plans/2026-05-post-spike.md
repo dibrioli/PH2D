@@ -23,7 +23,7 @@
 | M10 — Physics determinístico | ✅ Done | PR #18 | Rapier 0.28 + enhanced-determinism + cross-OS hash check |
 | M11 — Vector + text | ✅ Done | PR #20 + #23 | ph2d-vector (Vello 0.8) + ph2d-text (parley 0.6); widget paint pass |
 | M12 — Editor base + a11y | ✅ Done | PR #19 + #25-#28 | ph2d-tokens + ph2d-a11y + ph2d-editor (4 zonas + FloatingPanel + ZenMode + ToastQueue + ToolRegistry); BrushTool + MoveTool wired |
-| **M13 — Polish + features** | 🟡 In progress | branches `m13/design-library`, `m13/tool-palette-ui` | Tool palette UI shipada (PR #30). Design system em handoff para Claude Design (vide [`docs/design/PROMPT_CLAUDE_DESIGN.md`](../design/PROMPT_CLAUDE_DESIGN.md)). Crates `ph2d-sdf`, `ph2d-light`, `ph2d-physics-soft`, `ph2d-fluids`, `ph2d-audio`, `ph2d-net`, `ph2d-i18n`, `ph2d-save`, `ph2d-telemetry` ainda stubs aguardando projeto-piloto. |
+| **M13 — Polish + features** | 🟢 Component library done; falta tela 02 hero | branches `m13/design-library`, `m13/tool-palette-ui` | Tool palette UI shipada (PR #30). Design system canônico Claude Design importado (`docs/design/`, 89 SVGs + 17 telas + 4 specs + tokens.json). `ph2d-tokens` codegenerado (4 themes OKLCH). Biblioteca completa: 27 widgets em `ph2d-editor::widget` (259 testes), `paint_*` helpers + `IconId` enum. Vide [`docs/plans/2026-05-ui-components.md`](2026-05-ui-components.md). Próximo: montar tela 02-editor-main (hero) pixel-a-pixel + projeto-piloto pra crates stub. |
 
 **Updates do SKILL aplicáveis aplicados:** §9/§10/§11/§12/§15 atualizados conforme item "Updates aplicáveis ao SKILL" abaixo (ADR-0020/21/22/23 todas referenciadas inline).
 

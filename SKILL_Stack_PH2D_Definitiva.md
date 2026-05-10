@@ -540,13 +540,18 @@ Três modos selecionáveis por projeto, **não combináveis dentro da mesma sess
 ### 11.9 Editor UI
 Retained-mode próprio em Vello + parley. Não egui no produto final (HR-7).
 
-**Estado em M12 (2026-05-09):** [`ph2d-editor`](crates/ph2d-editor/) implementa o esqueleto canvas-first 4-zonas (ADR-0023):
+**Estado em M13 (2026-05-10):** [`ph2d-editor`](crates/ph2d-editor/) implementa o esqueleto canvas-first 4-zonas (ADR-0023) + biblioteca completa de componentes UI:
 - [`Layout`](crates/ph2d-editor/src/zones.rs) — 4 zonas (TopLeft EDIT / TopRight CREATE / Sidebar modulators / Center 100% canvas) + ZenMode toggle + sidebar mirror
 - [`FloatingPanel`](crates/ph2d-editor/src/floating_panel.rs) — Procreate-style draggable tool drawer com `PanelControl` enum (Slider/Toggle/RadioGroup/ColorSwatch/Action)
-- [`widget`](crates/ph2d-editor/src/widget/) — Button, Slider, Toggle, RadioGroup, ColorSwatch (cada com data + state enum + tokens + `a11y::Node` + `paint_X` helper colocalizado)
+- [`icons`](crates/ph2d-editor/src/icons.rs) — 89 IconId variants (Lucide-derived), 24×24 viewBox, parsed via `BezPath::from_svg` em `cmd_to_path`
+- [`paint`](crates/ph2d-editor/src/paint.rs) — Vello lowering (`Paint` trait, `paint_text` via parley→vello, `fill_rounded_rect`/`stroke_rect`/`stroke_rounded_rect`/`paint_icon`)
+- [`widget`](crates/ph2d-editor/src/widget/) — biblioteca completa: cada widget = data + state enum + tokens + `a11y::Node` + `paint_X` helper colocalizado:
+  - **Atomic**: Button (Default/Accent/Danger/IconOnly + Loading), Checkbox (3-state), TextInput, TextArea, NumberInput, Slider (Horizontal/Vertical + ticks), Toggle, RadioGroup (Horizontal/Vertical/Segmented), ColorSwatch (3 sizes + alpha checker), ProgressBar (Determinate/Indeterminate), Spinner, Avatar (Circle/Square), Divider, Tag (5 tones)
+  - **Compound**: Tabs (Ghost/Segmented), Dropdown, Combobox (filtered), Vector3Editor (R/G/B-tinted X/Y/Z labels), ListItem, Card, Tooltip, ContextMenu (com separators)
+  - **Surfaces**: Modal (over `BgScrim`), Popover, restyled ToastQueue (severity icon + accent stripe + neutral body)
+  - **Complex**: TreeView (BTreeSet expand/select), ColorPicker (5 modes; Classic ships v1)
 - [`Tool` + `ToolRegistry`](crates/ph2d-editor/src/tool.rs) — contrato canônico (id/label/icon/build_panel/activate/handle_panel_event)
 - [`tools::BrushTool`](crates/ph2d-editor/src/tools/brush.rs) + [`tools::MoveTool`](crates/ph2d-editor/src/tools/move_tool.rs) — implementações seed
-- [`paint`](crates/ph2d-editor/src/paint.rs) — Vello lowering (`Paint` trait, `paint_text` via parley→vello glyph runs, `paint_tool_palette_icons`)
 - [`ZenMode`](crates/ph2d-editor/src/zen.rs) + [`ToastQueue`](crates/ph2d-editor/src/toast.rs)
 
 **Out of scope até M13+:** QuickMenu radial (ADR-0023 §6), gesture-mapping editor UI (§4), Single-Touch Companion overlay, dock complexo, timeline, node graph editor, text editor widget — todos viram após design system canônico estabilizar.
@@ -570,10 +575,11 @@ Pacote oficial em [`docs/design/`](docs/design/), gerado pelo Claude Design a pa
 - [`styles/`](docs/design/styles/) — CSS vars derivados (consumo browser sem rodar codegen). `tweaks-panel.jsx` + `index.html` para navegação interativa.
 - [`component-library-v2-legacy.html`](docs/design/component-library-v2-legacy.html) — mockup pré-canonical (sdf3d-studio inspiration), preservado para contexto histórico.
 
-**Implementação do design em Vello (M13 em curso):**
+**Implementação do design em Vello (M13):**
 1. ✅ Import do pacote em `docs/design/`.
-2. 🟡 Codegen `ph2d-tokens` a partir de tokens.json (4 themes, OKLCH→sRGB, semantic slots) — **em curso**.
-3. ⏳ Port dos 87 SVGs para módulo `ph2d-editor::icons` (BezPath consts).
+2. ✅ Codegen `ph2d-tokens` a partir de tokens.json (4 themes, OKLCH→sRGB, semantic slots).
+3. ✅ Port dos 89 SVGs para módulo `ph2d-editor::icons` (IconId enum + cmd_to_path).
+3.5. ✅ Biblioteca completa de componentes (27 widgets, 259 testes em ph2d-editor) — vide §11.9 lista por categoria.
 4. ⏳ Renderizar tela 02-editor-main (hero) pixel-a-pixel em Vello.
 5. ⏳ Resolver P1/P2 do audit (telas não-canônicas).
 

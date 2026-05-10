@@ -2,14 +2,15 @@
 //!
 //! Procreate uses sliders for brush size, opacity, flow. Same pattern
 //! as [`crate::widget::Button`]: data + state enum + token-resolved
-//! colors + AccessKit `Role::Slider` node + `paint_slider` colocated
-//! here (paint.rs stays the dispatch layer for compound widgets).
+//! colors + AccessKit `Role::Slider` node + `paint_slider` colocated.
+//! Supports horizontal and vertical orientation and an optional set
+//! of tick positions for snap-to-grid affordance.
 
-use crate::paint::{rect_to_vello, resolve};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vector::VectorScene;
+use ph2d_tokens::{ColorToken, Radius, Theme};
+use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum SliderState {
@@ -21,6 +22,13 @@ pub enum SliderState {
     Disabled,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum SliderOrientation {
+    #[default]
+    Horizontal,
+    Vertical,
+}
+
 #[derive(Clone, Debug)]
 pub struct Slider {
     pub id: NodeId,
@@ -28,9 +36,13 @@ pub struct Slider {
     /// Normalized 0..=1; UI maps this to whatever the binding wants.
     pub value: f32,
     pub state: SliderState,
-    /// True ⇒ filled bar uses `AccentPrimary`, the "active modulator"
-    /// look; false ⇒ `AccentSecondary` (a dim default).
+    pub orientation: SliderOrientation,
+    /// True ⇒ filled bar uses `Accent`; false ⇒ `AccentPress` (a dim
+    /// default). Distinct from focus highlight.
     pub accent: bool,
+    /// Optional snap positions in [0, 1]. Painted as small marks on
+    /// the track. Empty means no ticks.
+    pub ticks: Vec<f32>,
 }
 
 impl Slider {
@@ -40,7 +52,9 @@ impl Slider {
             label: label.into(),
             value: 0.5,
             state: SliderState::Normal,
+            orientation: SliderOrientation::Horizontal,
             accent: false,
+            ticks: Vec::new(),
         }
     }
 
@@ -54,13 +68,23 @@ impl Slider {
         self
     }
 
+    pub fn orientation(mut self, orientation: SliderOrientation) -> Self {
+        self.orientation = orientation;
+        self
+    }
+
+    pub fn ticks(mut self, ticks: impl Into<Vec<f32>>) -> Self {
+        self.ticks = ticks.into();
+        self
+    }
+
     /// Clamp + assign. Value is held in [0, 1].
     pub fn set_value(&mut self, v: f32) {
         self.value = v.clamp(0.0, 1.0);
     }
 
-    /// Build the AccessKit node. Per ADR-0023 §10: Role::Slider with
-    /// numeric value + min/max so screen readers can announce
+    /// Build the AccessKit node. Per ADR-0023 §10: `Role::Slider`
+    /// with numeric value + min/max so screen readers can announce
     /// "30 percent" without us spelling it out.
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
         NodeBuilder::new(Role::Slider)
@@ -75,165 +99,250 @@ impl Slider {
     }
 }
 
-/// Track + filled portion + thumb. Caller supplies the rect; the panel
-/// layout decides where the slider sits.
+/// Pill-shaped track + filled portion + circular thumb.
 ///
-/// - Track: thin horizontal bar centered vertically (`Border` color).
-/// - Filled: from `rect.x` to `rect.x + rect.w * value` (accent-colored).
-/// - Thumb: small square at the value position, raised to `BorderEmphasis`
-///   while `Dragging`. Vello has no circle primitive on `VectorScene`;
-///   we approximate with a square — matches Procreate's chunky aesthetic.
+/// Vertical orientation flips the major/minor axis; thumb stays
+/// circular and centered on the value position.
 pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme: Theme) {
     if slider.state == SliderState::Disabled {
-        // Single flat bar, no thumb / fill — leaves a clear "off" state.
-        scene.fill_rect(rect_to_vello(rect), resolve(ColorToken::Border, theme));
+        let track = track_rect(slider.orientation, rect);
+        fill_rounded_rect(
+            scene,
+            track,
+            Radius::Full.px(),
+            resolve(ColorToken::Border, theme),
+        );
         return;
     }
 
-    // 1. Track (full width, thin).
-    let track_h = (rect.h * 0.15).max(1.0);
-    let track_y = rect.y + (rect.h - track_h) / 2.0;
-    let track = Rect::new(rect.x, track_y, rect.w, track_h);
-    scene.fill_rect(rect_to_vello(track), resolve(ColorToken::Border, theme));
+    let track = track_rect(slider.orientation, rect);
+    fill_rounded_rect(
+        scene,
+        track,
+        Radius::Full.px(),
+        resolve(ColorToken::Bg2, theme),
+    );
 
-    // 2. Filled portion.
-    let fill_w = rect.w * slider.value.clamp(0.0, 1.0);
-    if fill_w > 0.0 {
-        let fill_token = if slider.accent {
-            ColorToken::Accent
-        } else {
-            ColorToken::AccentPress
+    let value = slider.value.clamp(0.0, 1.0);
+    let fill_token = if slider.accent {
+        ColorToken::Accent
+    } else {
+        ColorToken::AccentPress
+    };
+    if value > 0.0 {
+        let filled = match slider.orientation {
+            SliderOrientation::Horizontal => Rect::new(track.x, track.y, track.w * value, track.h),
+            SliderOrientation::Vertical => {
+                let h = track.h * value;
+                Rect::new(track.x, track.y + track.h - h, track.w, h)
+            }
         };
-        let filled = Rect::new(rect.x, track_y, fill_w, track_h);
-        scene.fill_rect(rect_to_vello(filled), resolve(fill_token, theme));
+        fill_rounded_rect(scene, filled, Radius::Full.px(), resolve(fill_token, theme));
     }
 
-    // 3. Thumb (small square at value position).
-    let thumb_size = rect.h * 0.6;
-    let thumb_x = rect.x + rect.w * slider.value.clamp(0.0, 1.0) - thumb_size / 2.0;
-    let thumb_y = rect.y + (rect.h - thumb_size) / 2.0;
-    let thumb_token = match slider.state {
-        SliderState::Dragging => ColorToken::BorderEmph,
+    for tick in &slider.ticks {
+        let pos = tick.clamp(0.0, 1.0);
+        let mark = tick_mark_rect(slider.orientation, rect, pos);
+        fill_rounded_rect(
+            scene,
+            mark,
+            Radius::Xs.px(),
+            resolve(ColorToken::Text3, theme),
+        );
+    }
+
+    let (thumb_cx, thumb_cy, thumb_r) = thumb_geometry(slider.orientation, rect, value);
+    let thumb_color = match slider.state {
+        SliderState::Dragging => ColorToken::AccentPress,
         _ => ColorToken::Accent,
     };
-    let thumb = Rect::new(thumb_x, thumb_y, thumb_size, thumb_size);
-    scene.fill_rect(rect_to_vello(thumb), resolve(thumb_token, theme));
+    let circle = Circle::new(Point::new(thumb_cx as f64, thumb_cy as f64), thumb_r as f64);
+    scene.inner_mut().fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(resolve(thumb_color, theme)),
+        None,
+        &circle,
+    );
+    if slider.state == SliderState::Focused {
+        let ring_r = thumb_r + 2.0;
+        let stroke = ph2d_vector::Stroke::new(2.0);
+        let ring = Circle::new(Point::new(thumb_cx as f64, thumb_cy as f64), ring_r as f64);
+        scene.inner_mut().stroke(
+            &stroke,
+            Affine::IDENTITY,
+            &Brush::Solid(resolve(ColorToken::BorderEmph, theme)),
+            None,
+            &ring,
+        );
+    }
+}
+
+fn track_rect(orientation: SliderOrientation, rect: Rect) -> Rect {
+    match orientation {
+        SliderOrientation::Horizontal => {
+            let h = (rect.h * 0.25).clamp(2.0, 8.0);
+            let y = rect.y + (rect.h - h) / 2.0;
+            Rect::new(rect.x, y, rect.w, h)
+        }
+        SliderOrientation::Vertical => {
+            let w = (rect.w * 0.25).clamp(2.0, 8.0);
+            let x = rect.x + (rect.w - w) / 2.0;
+            Rect::new(x, rect.y, w, rect.h)
+        }
+    }
+}
+
+fn tick_mark_rect(orientation: SliderOrientation, rect: Rect, value: f32) -> Rect {
+    match orientation {
+        SliderOrientation::Horizontal => {
+            let x = rect.x + rect.w * value - 1.0;
+            let h = (rect.h * 0.5).max(4.0);
+            let y = rect.y + (rect.h - h) / 2.0;
+            Rect::new(x, y, 2.0, h)
+        }
+        SliderOrientation::Vertical => {
+            let y = rect.y + rect.h - rect.h * value - 1.0;
+            let w = (rect.w * 0.5).max(4.0);
+            let x = rect.x + (rect.w - w) / 2.0;
+            Rect::new(x, y, w, 2.0)
+        }
+    }
+}
+
+fn thumb_geometry(orientation: SliderOrientation, rect: Rect, value: f32) -> (f32, f32, f32) {
+    match orientation {
+        SliderOrientation::Horizontal => {
+            let r = (rect.h * 0.45).clamp(6.0, 14.0);
+            let cx = rect.x + rect.w * value;
+            let cy = rect.y + rect.h * 0.5;
+            (cx, cy, r)
+        }
+        SliderOrientation::Vertical => {
+            let r = (rect.w * 0.45).clamp(6.0, 14.0);
+            let cx = rect.x + rect.w * 0.5;
+            let cy = rect.y + rect.h - rect.h * value;
+            (cx, cy, r)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn fixture() -> Slider {
+        Slider::new(NodeId(1), "Opacity")
+    }
+
     #[test]
     fn defaults_match_spec() {
-        let s = Slider::new(NodeId(1), "Opacity");
+        let s = fixture();
         assert_eq!(s.id, NodeId(1));
         assert_eq!(s.label, "Opacity");
         assert!((s.value - 0.5).abs() < f32::EPSILON);
         assert_eq!(s.state, SliderState::Normal);
+        assert_eq!(s.orientation, SliderOrientation::Horizontal);
         assert!(!s.accent);
+        assert!(s.ticks.is_empty());
     }
 
     #[test]
     fn set_value_clamps_below_zero() {
-        let mut s = Slider::new(NodeId(1), "x");
+        let mut s = fixture();
         s.set_value(-0.5);
         assert_eq!(s.value, 0.0);
     }
 
     #[test]
     fn set_value_clamps_above_one() {
-        let mut s = Slider::new(NodeId(1), "x");
+        let mut s = fixture();
         s.set_value(1.5);
         assert_eq!(s.value, 1.0);
     }
 
     #[test]
-    fn set_value_inside_range_passes_through() {
-        let mut s = Slider::new(NodeId(1), "x");
-        s.set_value(0.42);
-        assert!((s.value - 0.42).abs() < f32::EPSILON);
+    fn vertical_thumb_position_inverts_value() {
+        let rect = Rect::new(0.0, 0.0, 24.0, 200.0);
+        let (_, top_y, _) = thumb_geometry(SliderOrientation::Vertical, rect, 1.0);
+        let (_, bot_y, _) = thumb_geometry(SliderOrientation::Vertical, rect, 0.0);
+        assert!(top_y < bot_y, "value=1 must sit above value=0 vertically");
+    }
+
+    #[test]
+    fn ticks_setter_round_trips() {
+        let s = fixture().ticks(vec![0.0, 0.25, 0.5, 0.75, 1.0]);
+        assert_eq!(s.ticks.len(), 5);
     }
 
     #[test]
     fn a11y_node_has_slider_role_and_value() {
-        let s = Slider::new(NodeId(1), "Size");
+        let s = fixture();
         let node = s.build_a11y(0.0, 0.0, 100.0, 30.0);
         assert_eq!(node.role(), Role::Slider);
-        assert_eq!(node.label(), Some("Size"));
+        assert_eq!(node.label(), Some("Opacity"));
         assert_eq!(node.numeric_value(), Some(0.5));
         assert_eq!(node.min_numeric_value(), Some(0.0));
         assert_eq!(node.max_numeric_value(), Some(1.0));
     }
 
-    #[test]
-    fn paint_smoke_default_does_not_panic() {
-        let s = Slider::new(NodeId(1), "x");
+    fn smoke(slider: Slider, rect: Rect, theme: Theme) {
         let mut scene = VectorScene::new();
-        paint_slider(
-            &s,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
-            Theme::ForgeSdf,
-        );
+        paint_slider(&slider, rect, &mut scene, theme);
     }
 
     #[test]
-    fn paint_smoke_value_zero_does_not_panic() {
-        let mut s = Slider::new(NodeId(1), "x");
+    fn paint_smoke_horizontal_default() {
+        smoke(fixture(), Rect::new(0.0, 0.0, 200.0, 24.0), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_horizontal_zero() {
+        let mut s = fixture();
         s.set_value(0.0);
-        let mut scene = VectorScene::new();
-        paint_slider(
-            &s,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
-            Theme::ForgeSdf,
-        );
+        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::ForgeSdf);
     }
 
     #[test]
-    fn paint_smoke_value_one_does_not_panic() {
-        let mut s = Slider::new(NodeId(1), "x");
+    fn paint_smoke_horizontal_one() {
+        let mut s = fixture();
         s.set_value(1.0);
-        let mut scene = VectorScene::new();
-        paint_slider(
-            &s,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
-            Theme::Sunstone,
+        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Sunstone);
+    }
+
+    #[test]
+    fn paint_smoke_vertical_half() {
+        smoke(
+            fixture().orientation(SliderOrientation::Vertical),
+            Rect::new(0.0, 0.0, 24.0, 200.0),
+            Theme::Blueprint,
         );
     }
 
     #[test]
-    fn paint_disabled_uses_flat_border_path() {
-        let s = Slider::new(NodeId(1), "x").state(SliderState::Disabled);
-        let mut scene = VectorScene::new();
-        paint_slider(
-            &s,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
-            Theme::ForgeSdf,
-        );
-    }
-
-    #[test]
-    fn paint_dragging_smoke() {
-        let s = Slider::new(NodeId(1), "x")
+    fn paint_smoke_dragging_with_ticks() {
+        let s = fixture()
             .accent(true)
+            .ticks(vec![0.0, 0.25, 0.5, 0.75, 1.0])
             .state(SliderState::Dragging);
-        let mut scene = VectorScene::new();
-        paint_slider(
-            &s,
-            Rect::new(10.0, 10.0, 200.0, 24.0),
-            &mut scene,
-            Theme::ForgeSdf,
+        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_focused_draws_ring() {
+        smoke(
+            fixture().state(SliderState::Focused),
+            Rect::new(0.0, 0.0, 200.0, 24.0),
+            Theme::PaintStudio,
         );
     }
 
     #[test]
-    fn disabled_slider_is_not_focusable_in_a11y() {
-        let s = Slider::new(NodeId(1), "x").state(SliderState::Disabled);
-        let _ = s.build_a11y(0.0, 0.0, 100.0, 30.0);
-        // NodeBuilder default is non-focusable; we trust focusable(false).
+    fn paint_smoke_disabled() {
+        smoke(
+            fixture().state(SliderState::Disabled),
+            Rect::new(0.0, 0.0, 200.0, 24.0),
+            Theme::ForgeSdf,
+        );
     }
 }

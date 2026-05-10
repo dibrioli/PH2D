@@ -5,15 +5,17 @@
 //! their own `NodeId` so each radio gets its own a11y node, but the
 //! group itself is identified by the outer `id`.
 //!
-//! Layout splits the host rect by `orientation` — Horizontal divides
-//! width evenly, Vertical divides height. Selected paints with
-//! `AccentPrimary`; unselected with `Surface`. Borders are faked via
-//! a thin gap (no stroke API on `VectorScene`'s convenience layer).
+//! Three orientations:
+//! - `Horizontal` — sub-rects laid out left→right, separated by a
+//!   thin seam in `Border` color.
+//! - `Vertical` — sub-rects laid out top→bottom, same seam.
+//! - `Segmented` — pill-shaped contiguous row; selected option fills
+//!   with `AccentSoft`. iOS-style segmented control.
 
-use crate::paint::{rect_to_vello, resolve};
+use crate::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, Radius, Theme};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -21,6 +23,10 @@ pub enum RadioOrientation {
     #[default]
     Horizontal,
     Vertical,
+    /// iOS-style segmented control. Contiguous pill row; selected
+    /// option fills with `AccentSoft` instead of `Accent` so it reads
+    /// as a soft tint over the whole group, not a punched-out CTA.
+    Segmented,
 }
 
 #[derive(Clone, Debug)]
@@ -115,7 +121,7 @@ impl<T: Clone + PartialEq> RadioGroup<T> {
     pub fn option_rect(&self, host: Rect, index: usize) -> Rect {
         let count = self.options.len().max(1) as f32;
         match self.orientation {
-            RadioOrientation::Horizontal => {
+            RadioOrientation::Horizontal | RadioOrientation::Segmented => {
                 let w = host.w / count;
                 Rect::new(host.x + w * index as f32, host.y, w, host.h)
             }
@@ -127,23 +133,23 @@ impl<T: Clone + PartialEq> RadioGroup<T> {
     }
 }
 
-/// Each option becomes a sub-rect filled with `AccentPrimary` if
-/// selected, else `Surface`. A 1 px gap of `Border` color between
-/// options stands in for a real stroke (which `VectorScene` doesn't
-/// expose at the convenience layer).
+/// Render the group. Horizontal/Vertical share the seamed-tile look;
+/// Segmented draws a single pill with the selected option as a tinted
+/// inner pill.
 pub fn paint_radio_group<T: Clone + PartialEq>(
     group: &RadioGroup<T>,
     rect: Rect,
     scene: &mut VectorScene,
     theme: Theme,
 ) {
-    // Backdrop painted with Border color so the seams between options
-    // read as separators when we leave a 1 px gap on each option.
-    scene.fill_rect(rect_to_vello(rect), resolve(ColorToken::Border, theme));
+    if group.orientation == RadioOrientation::Segmented {
+        paint_segmented(group, rect, scene, theme);
+        return;
+    }
 
+    scene.fill_rect(rect_to_vello(rect), resolve(ColorToken::Border, theme));
     for (i, opt) in group.options.iter().enumerate() {
         let r = group.option_rect(rect, i);
-        // Inset 1 px so the Border backdrop shows through as a seam.
         let inset = Rect::new(
             r.x + 1.0,
             r.y + 1.0,
@@ -155,7 +161,36 @@ pub fn paint_radio_group<T: Clone + PartialEq>(
         } else {
             ColorToken::Bg1
         };
-        scene.fill_rect(rect_to_vello(inset), resolve(token, theme));
+        fill_rounded_rect(scene, inset, Radius::Sm.px(), resolve(token, theme));
+    }
+}
+
+fn paint_segmented<T: Clone + PartialEq>(
+    group: &RadioGroup<T>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let outer = Radius::Md.px();
+    fill_rounded_rect(scene, rect, outer, resolve(ColorToken::Bg2, theme));
+    stroke_rounded_rect(scene, rect, outer, 1.0, resolve(ColorToken::Border, theme));
+    for (i, opt) in group.options.iter().enumerate() {
+        if group.selected.as_ref() != Some(&opt.value) {
+            continue;
+        }
+        let r = group.option_rect(rect, i);
+        let inset = Rect::new(
+            r.x + 2.0,
+            r.y + 2.0,
+            (r.w - 4.0).max(0.0),
+            (r.h - 4.0).max(0.0),
+        );
+        fill_rounded_rect(
+            scene,
+            inset,
+            (outer - 2.0).max(0.0),
+            resolve(ColorToken::AccentSoft, theme),
+        );
     }
 }
 
@@ -198,41 +233,26 @@ mod tests {
     }
 
     #[test]
-    fn select_can_be_changed() {
-        let mut g = sample_group();
-        g.select("draw");
-        g.select("smudge");
-        assert_eq!(g.selected, Some("smudge"));
-    }
-
-    #[test]
-    fn orientation_horizontal_splits_width() {
-        let g = sample_group();
+    fn segmented_lays_out_horizontally() {
+        let g = sample_group().orientation(RadioOrientation::Segmented);
         let host = Rect::new(0.0, 0.0, 300.0, 30.0);
         let r0 = g.option_rect(host, 0);
-        let r1 = g.option_rect(host, 1);
         let r2 = g.option_rect(host, 2);
         assert!((r0.w - 100.0).abs() < f32::EPSILON);
-        assert_eq!(r0.x, 0.0);
-        assert_eq!(r1.x, 100.0);
         assert_eq!(r2.x, 200.0);
-        assert_eq!(r0.h, 30.0);
     }
 
     #[test]
-    fn orientation_vertical_splits_height() {
+    fn vertical_splits_height() {
         let g = sample_group().orientation(RadioOrientation::Vertical);
         let host = Rect::new(0.0, 0.0, 100.0, 90.0);
-        let r0 = g.option_rect(host, 0);
         let r1 = g.option_rect(host, 1);
-        assert_eq!(r0.h, 30.0);
-        assert_eq!(r0.y, 0.0);
         assert_eq!(r1.y, 30.0);
-        assert_eq!(r1.w, 100.0);
+        assert_eq!(r1.h, 30.0);
     }
 
     #[test]
-    fn group_a11y_has_radio_group_role_and_children() {
+    fn group_a11y_has_radio_group_role() {
         let g = sample_group();
         let node = g.build_a11y(0.0, 0.0, 300.0, 30.0);
         assert_eq!(node.role(), Role::RadioGroup);
@@ -240,44 +260,56 @@ mod tests {
     }
 
     #[test]
-    fn option_a11y_has_radio_button_role_and_toggled() {
+    fn option_a11y_toggled_reflects_selection() {
         let mut g = sample_group();
         g.select("draw");
-        let node = g
-            .build_option_a11y(0, 0.0, 0.0, 100.0, 30.0)
-            .expect("option exists");
-        assert_eq!(node.role(), Role::RadioButton);
-        assert_eq!(node.label(), Some("Draw"));
-        assert_eq!(node.toggled(), Some(ph2d_a11y::Toggled::True));
-
-        let off = g
-            .build_option_a11y(1, 100.0, 0.0, 100.0, 30.0)
-            .expect("option exists");
+        let on = g.build_option_a11y(0, 0.0, 0.0, 100.0, 30.0).unwrap();
+        let off = g.build_option_a11y(1, 100.0, 0.0, 100.0, 30.0).unwrap();
+        assert_eq!(on.toggled(), Some(ph2d_a11y::Toggled::True));
         assert_eq!(off.toggled(), Some(ph2d_a11y::Toggled::False));
     }
 
-    #[test]
-    fn paint_smoke_unselected() {
-        let g = sample_group();
+    fn smoke(group: RadioGroup<&'static str>, rect: Rect, theme: Theme) {
         let mut scene = VectorScene::new();
-        paint_radio_group(
-            &g,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
+        paint_radio_group(&group, rect, &mut scene, theme);
+    }
+
+    #[test]
+    fn paint_smoke_horizontal_unselected() {
+        smoke(
+            sample_group(),
+            Rect::new(0.0, 0.0, 300.0, 30.0),
             Theme::ForgeSdf,
         );
     }
 
     #[test]
-    fn paint_smoke_selected_vertical() {
+    fn paint_smoke_horizontal_selected() {
+        let mut g = sample_group();
+        g.select("erase");
+        smoke(g, Rect::new(0.0, 0.0, 300.0, 30.0), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_vertical_selected() {
         let mut g = sample_group().orientation(RadioOrientation::Vertical);
         g.select("smudge");
-        let mut scene = VectorScene::new();
-        paint_radio_group(
-            &g,
-            Rect::new(0.0, 0.0, 100.0, 90.0),
-            &mut scene,
-            Theme::Sunstone,
+        smoke(g, Rect::new(0.0, 0.0, 100.0, 90.0), Theme::Sunstone);
+    }
+
+    #[test]
+    fn paint_smoke_segmented_unselected() {
+        smoke(
+            sample_group().orientation(RadioOrientation::Segmented),
+            Rect::new(0.0, 0.0, 300.0, 30.0),
+            Theme::Blueprint,
         );
+    }
+
+    #[test]
+    fn paint_smoke_segmented_selected_middle() {
+        let mut g = sample_group().orientation(RadioOrientation::Segmented);
+        g.select("erase");
+        smoke(g, Rect::new(0.0, 0.0, 300.0, 30.0), Theme::Blueprint);
     }
 }

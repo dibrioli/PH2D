@@ -39,7 +39,7 @@ pub mod zones;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use icons::{IconCmd, IconId, cmd_to_path};
 pub use paint::{
-    Paint, PaintCtx, fill_rounded_rect, paint_button, paint_icon, paint_text, paint_text_centered,
+    Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
     paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
@@ -49,8 +49,9 @@ pub use tool::{PanelEvent, Tool, ToolRegistry};
 pub use ph2d_a11y::NodeId;
 pub use tools::{BrushTool, MoveTool};
 pub use widget::{
-    Button, ColorSwatch, RadioGroup, RadioOption, Slider, Toggle, paint_color_swatch,
-    paint_radio_group, paint_slider, paint_toggle,
+    Button, ButtonKind, ButtonState, ColorSwatch, ICON_BUTTON_SIZE_PX, RadioGroup, RadioOption,
+    Slider, Toggle, paint_button, paint_color_swatch, paint_radio_group, paint_slider,
+    paint_toggle,
 };
 pub use zen::ZenMode;
 pub use zones::{Layout, Zone};

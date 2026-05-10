@@ -17,7 +17,7 @@
 use crate::floating_panel::{FloatingPanel, PanelAction, PanelControl, PanelTab};
 use crate::icons::{IconId, cmd_to_path};
 use crate::toast::ToastQueue;
-use crate::widget::{Button, paint_color_swatch, paint_radio_group, paint_slider, paint_toggle};
+use crate::widget::{paint_color_swatch, paint_radio_group, paint_slider, paint_toggle};
 use crate::zones::{Layout, Rect, Zone};
 use ph2d_text::{PositionedLayoutItem, TextSystem};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
@@ -489,45 +489,8 @@ fn tab_color(tab: &PanelTab, theme: Theme) -> Color {
     }
 }
 
-// -----------------------------------------------------------------------
-// Button — solid rect tinted by state. Position+size come from caller.
-// -----------------------------------------------------------------------
-
-/// Convenience: draw a button at an explicit rect with its label
-/// centered. The Button data type doesn't carry geometry (panels
-/// arrange them); the shell or panel impl decides where.
-pub fn paint_button(
-    button: &Button,
-    rect: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    use crate::widget::ButtonState;
-    let token = if button.accent {
-        match button.state {
-            ButtonState::Disabled => ColorToken::AccentSoft,
-            ButtonState::Pressed => ColorToken::AccentPress,
-            _ => ColorToken::Accent,
-        }
-    } else {
-        match button.state {
-            ButtonState::Disabled => ColorToken::Border,
-            ButtonState::Pressed => ColorToken::AccentSoft,
-            ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
-            ButtonState::Normal => ColorToken::Bg1,
-        }
-    };
-    scene.fill_rect(rect_to_vello(rect), resolve(token, theme));
-    let label_color = if matches!(button.state, ButtonState::Disabled) {
-        resolve(ColorToken::TextDisabled, theme)
-    } else if button.accent {
-        resolve(ColorToken::AccentFg, theme)
-    } else {
-        resolve(ColorToken::Text1, theme)
-    };
-    paint_text_centered(text_system, scene, &button.label, rect, 13.0, label_color);
-}
+// Button paint helper now lives at crate::widget::paint_button — see
+// `widget/button.rs` for the rounded-rect, kind-aware implementation.
 
 // -----------------------------------------------------------------------
 // ToastQueue — stacked at top-center

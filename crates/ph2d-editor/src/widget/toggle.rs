@@ -5,11 +5,11 @@
 //! helper colocated. Maps the boolean `on` to `Toggled::True/False`
 //! so screen readers announce "on" / "off".
 
-use crate::paint::{rect_to_vello, resolve};
+use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role, Toggled};
-use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vector::VectorScene;
+use ph2d_tokens::{ColorToken, Radius, Theme};
+use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum ToggleState {
@@ -72,64 +72,54 @@ impl Toggle {
     }
 }
 
-/// Pill body + thumb (left=off, right=on).
-///
-/// - Outer: `SurfaceElevated` so the toggle visually lifts off the
-///   panel surface; the focus ring lands as `BorderEmphasis` overlay
-///   on a Focused state (drawn as a thin inner border ring fall-back
-///   = filled rect 2 px in from the outer pill).
-/// - Inner thumb: ~40 % of the rect width, square approximation of
-///   a circle. `AccentPrimary` when `on`, `Border` when off.
+/// Pill body + circular thumb (left=off, right=on). Focus ring is
+/// drawn as a true stroked outer rounded rect — no more "re-fill
+/// inside the ring" inversion hack.
 pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    // 1. Outer pill body.
-    let body_token = if toggle.state == ToggleState::Disabled {
-        ColorToken::Border
-    } else {
-        ColorToken::BgElev
+    let radius = Radius::Full.px();
+    let body_token = match (toggle.on, toggle.state) {
+        (_, ToggleState::Disabled) => ColorToken::Border,
+        (true, _) => ColorToken::Accent,
+        (false, _) => ColorToken::Bg2,
     };
-    scene.fill_rect(rect_to_vello(rect), resolve(body_token, theme));
+    fill_rounded_rect(scene, rect, radius, resolve(body_token, theme));
 
-    // 2. Focus ring fall-back: paint a slightly inset overlay using
-    //    BorderEmphasis. We don't have a stroke API on VectorScene
-    //    helpers, so a thin border-colored frame stands in.
     if toggle.state == ToggleState::Focused {
-        // 2 px inset.
-        let pad = 2.0_f32.min(rect.w * 0.1).min(rect.h * 0.1);
-        let inner = Rect::new(
-            rect.x + pad,
-            rect.y + pad,
-            (rect.w - 2.0 * pad).max(0.0),
-            (rect.h - 2.0 * pad).max(0.0),
+        stroke_rounded_rect(
+            scene,
+            rect,
+            radius,
+            2.0,
+            resolve(ColorToken::BorderEmph, theme),
         );
-        scene.fill_rect(rect_to_vello(inner), resolve(ColorToken::BorderEmph, theme));
-        // Re-fill the body inside the ring so the ring reads as a frame.
-        let pad2 = pad + 2.0;
-        let inner2 = Rect::new(
-            rect.x + pad2,
-            rect.y + pad2,
-            (rect.w - 2.0 * pad2).max(0.0),
-            (rect.h - 2.0 * pad2).max(0.0),
-        );
-        scene.fill_rect(rect_to_vello(inner2), resolve(body_token, theme));
     }
 
-    // 3. Thumb. Square ≈ 40 % of width, vertically centered.
-    let thumb_w = (rect.w * 0.4).min(rect.h - 4.0).max(2.0);
-    let thumb_y = rect.y + (rect.h - thumb_w) / 2.0;
-    let thumb_x = if toggle.on {
-        rect.x + rect.w - thumb_w - 2.0
+    // Circular thumb. Diameter = body height - 2*pad. Off → left,
+    // On → right. Disabled tints to Text3 so it stays visible but mute.
+    let pad = (rect.h * 0.15).clamp(2.0, 6.0);
+    let diameter = (rect.h - pad * 2.0).max(4.0);
+    let r = diameter * 0.5;
+    let cy = rect.y + rect.h * 0.5;
+    let cx = if toggle.on {
+        rect.x + rect.w - pad - r
     } else {
-        rect.x + 2.0
+        rect.x + pad + r
     };
     let thumb_token = if toggle.state == ToggleState::Disabled {
-        ColorToken::TextDisabled
+        ColorToken::Text3
     } else if toggle.on {
-        ColorToken::Accent
+        ColorToken::AccentFg
     } else {
-        ColorToken::Border
+        ColorToken::Text2
     };
-    let thumb = Rect::new(thumb_x, thumb_y, thumb_w, thumb_w);
-    scene.fill_rect(rect_to_vello(thumb), resolve(thumb_token, theme));
+    let thumb = Circle::new(Point::new(cx as f64, cy as f64), r as f64);
+    scene.inner_mut().fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(resolve(thumb_token, theme)),
+        None,
+        &thumb,
+    );
 }
 
 #[cfg(test)]
@@ -177,40 +167,51 @@ mod tests {
         assert_eq!(node.toggled(), Some(Toggled::True));
     }
 
-    #[test]
-    fn paint_smoke_off() {
-        let t = Toggle::new(NodeId(1), "x");
+    fn smoke(t: Toggle, theme: Theme) {
         let mut scene = VectorScene::new();
-        paint_toggle(
-            &t,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
-            Theme::ForgeSdf,
-        );
+        paint_toggle(&t, Rect::new(0.0, 0.0, 60.0, 24.0), &mut scene, theme);
     }
 
     #[test]
-    fn paint_smoke_on_focused() {
-        let t = Toggle::new(NodeId(1), "x")
-            .on(true)
-            .state(ToggleState::Focused);
-        let mut scene = VectorScene::new();
-        paint_toggle(
-            &t,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
+    fn paint_smoke_off() {
+        smoke(Toggle::new(NodeId(1), "x"), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_on() {
+        smoke(Toggle::new(NodeId(1), "x").on(true), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_hovered_on() {
+        smoke(
+            Toggle::new(NodeId(1), "x")
+                .on(true)
+                .state(ToggleState::Hovered),
             Theme::Sunstone,
         );
     }
 
     #[test]
+    fn paint_smoke_focused() {
+        smoke(
+            Toggle::new(NodeId(1), "x").state(ToggleState::Focused),
+            Theme::Sunstone,
+        );
+    }
+
+    #[test]
+    fn paint_smoke_pressed() {
+        smoke(
+            Toggle::new(NodeId(1), "x").state(ToggleState::Pressed),
+            Theme::Blueprint,
+        );
+    }
+
+    #[test]
     fn paint_smoke_disabled() {
-        let t = Toggle::new(NodeId(1), "x").state(ToggleState::Disabled);
-        let mut scene = VectorScene::new();
-        paint_toggle(
-            &t,
-            Rect::new(0.0, 0.0, 100.0, 30.0),
-            &mut scene,
+        smoke(
+            Toggle::new(NodeId(1), "x").state(ToggleState::Disabled),
             Theme::ForgeSdf,
         );
     }

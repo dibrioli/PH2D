@@ -1,16 +1,18 @@
-//! [`Button`] — example widget. Pattern every future widget follows.
+//! [`Button`] — text/icon CTA, four kinds × six states.
 //!
-//! Three responsibilities:
-//! 1. **Visual** — resolves color/type/spacing tokens for the active
-//!    Theme, exposes them so the Vello render path can paint without
-//!    re-resolving every frame.
-//! 2. **A11y** — emits an `accesskit::Node` via `ph2d_a11y::NodeBuilder`
-//!    so screen readers see "button labeled X, focusable, clickable".
-//! 3. **State** — tracks pressed / focused / hovered for Procreate-
-//!    style luminance hierarchy (a single hue, three intensities).
+//! Same pattern as [`crate::widget::ColorSwatch`]: data + state enum +
+//! token-resolved colors + AccessKit `Role::Button` node + colocated
+//! [`paint_button`]. Per ADR-0023 §11 the accent ladder collapses
+//! Hover→AccentSoft, Pressed→AccentPress on a single hue; Danger
+//! follows the same ladder rotated to the danger hue.
 
+use crate::icons::IconId;
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, stroke_rounded_rect};
+use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{Color, ColorToken, Spacing, Theme, TypeToken};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{Color as TokenColor, ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum ButtonState {
@@ -20,6 +22,27 @@ pub enum ButtonState {
     Pressed,
     Focused,
     Disabled,
+    /// Awaiting an async result. Body grays out, label is replaced
+    /// with a spinner glyph (rendered by [`paint_button`]).
+    Loading,
+}
+
+/// Visual variant. The geometry is identical across kinds — only the
+/// token palette changes — except for [`ButtonKind::IconOnly`] which
+/// renders a square chip with no label and an icon centered.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ButtonKind {
+    /// Ghost / text-only on the panel surface. Default for secondary
+    /// actions (Cancel, Reset).
+    #[default]
+    Default,
+    /// Primary CTA. Filled `Accent` background.
+    Accent,
+    /// Destructive CTA. Filled `Danger` background.
+    Danger,
+    /// Square 36x36 chip with only an icon. Used in tool palettes
+    /// and dense toolbars.
+    IconOnly { icon: IconId },
 }
 
 #[derive(Clone, Debug)]
@@ -27,9 +50,7 @@ pub struct Button {
     pub id: NodeId,
     pub label: String,
     pub state: ButtonState,
-    /// When true, paints with `Accent` foreground (e.g. the
-    /// "primary" CTA in a panel).
-    pub accent: bool,
+    pub kind: ButtonKind,
 }
 
 impl Button {
@@ -38,12 +59,31 @@ impl Button {
             id,
             label: label.into(),
             state: ButtonState::Normal,
-            accent: false,
+            kind: ButtonKind::Default,
         }
     }
 
-    pub fn accent(mut self, yes: bool) -> Self {
-        self.accent = yes;
+    /// Convenience: filled accent CTA.
+    pub fn accent(mut self) -> Self {
+        self.kind = ButtonKind::Accent;
+        self
+    }
+
+    /// Convenience: filled destructive CTA.
+    pub fn danger(mut self) -> Self {
+        self.kind = ButtonKind::Danger;
+        self
+    }
+
+    /// Convenience: 36x36 icon-only chip. Label still required for
+    /// AccessKit (screen readers narrate it).
+    pub fn icon_only(mut self, icon: IconId) -> Self {
+        self.kind = ButtonKind::IconOnly { icon };
+        self
+    }
+
+    pub fn kind(mut self, kind: ButtonKind) -> Self {
+        self.kind = kind;
         self
     }
 
@@ -52,36 +92,44 @@ impl Button {
         self
     }
 
-    /// Resolve the foreground token for the current state + accent
-    /// flag. Per ADR-0023 §11 (luminance hierarchy on a single hue).
-    pub fn fg_color(&self, theme: Theme) -> Color {
+    /// Resolve the foreground (text + icon) token for the current
+    /// state and kind.
+    pub fn fg_color(&self, theme: Theme) -> TokenColor {
         if self.state == ButtonState::Disabled {
             return ColorToken::TextDisabled.resolve(theme);
         }
-        if self.accent {
-            // Accent buttons go through the 3-intensity ladder.
-            let token = match self.state {
-                ButtonState::Pressed => ColorToken::AccentPress,
-                ButtonState::Hovered | ButtonState::Focused => ColorToken::AccentSoft,
-                _ => ColorToken::Accent,
-            };
-            return token.resolve(theme);
+        match self.kind {
+            ButtonKind::Default | ButtonKind::IconOnly { .. } => ColorToken::Text1.resolve(theme),
+            ButtonKind::Accent | ButtonKind::Danger => ColorToken::AccentFg.resolve(theme),
         }
-        ColorToken::Text1.resolve(theme)
     }
 
-    /// Resolve the background token. Accent CTAs paint a filled
-    /// background; default buttons are transparent over the panel
-    /// surface (relying on focus ring for affordance).
-    pub fn bg_color(&self, theme: Theme) -> Option<Color> {
-        if !self.accent {
-            // Default button is text-only (transparent fill).
-            return None;
-        }
-        let token = match self.state {
-            ButtonState::Pressed => ColorToken::AccentPress,
-            ButtonState::Hovered => ColorToken::AccentSoft,
-            _ => ColorToken::Accent,
+    /// Resolve the background token. Returns `None` for ghost
+    /// (Default + IconOnly Normal); the rect stays transparent and
+    /// the label/icon paint over the panel surface beneath.
+    pub fn bg_color(&self, theme: Theme) -> Option<TokenColor> {
+        let token = match (self.kind, self.state) {
+            (_, ButtonState::Disabled) => match self.kind {
+                ButtonKind::Default | ButtonKind::IconOnly { .. } => return None,
+                _ => ColorToken::Border,
+            },
+            (ButtonKind::Default, ButtonState::Hovered | ButtonState::Focused) => {
+                ColorToken::BgElev
+            }
+            (ButtonKind::Default, ButtonState::Pressed) => ColorToken::AccentSoft,
+            (ButtonKind::Default, _) => return None,
+            (ButtonKind::IconOnly { .. }, ButtonState::Hovered | ButtonState::Focused) => {
+                ColorToken::BgElev
+            }
+            (ButtonKind::IconOnly { .. }, ButtonState::Pressed) => ColorToken::AccentSoft,
+            (ButtonKind::IconOnly { .. }, _) => return None,
+            (ButtonKind::Accent, ButtonState::Pressed) => ColorToken::AccentPress,
+            (ButtonKind::Accent, ButtonState::Hovered) => ColorToken::AccentSoft,
+            (ButtonKind::Accent, _) => ColorToken::Accent,
+            (ButtonKind::Danger, ButtonState::Pressed | ButtonState::Hovered) => {
+                ColorToken::DangerSoft
+            }
+            (ButtonKind::Danger, _) => ColorToken::Danger,
         };
         Some(token.resolve(theme))
     }
@@ -92,19 +140,19 @@ impl Button {
     }
 
     pub fn font_size(&self) -> f32 {
-        // Old API used `TypeToken::Sm` (13 px). New scale renumbered:
-        // `Base` is the new 13 px slot. Buttons read body-size text.
         TypeToken::Base.px()
     }
 
     pub fn padding(&self) -> f32 {
-        // Old API used `Spacing::Sm` (12 px). New scale renumbered:
-        // `Lg` is the new 12 px slot — default vertical rhythm.
         Spacing::Lg.px()
     }
 
+    pub fn radius(&self) -> f32 {
+        Radius::Md.px()
+    }
+
     /// Build the AccessKit node. Per ADR-0023 §10: every interactive
-    /// widget must expose role + label + clickable action.
+    /// widget exposes role + label + clickable action.
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
         NodeBuilder::new(Role::Button)
             .label(&self.label)
@@ -115,90 +163,212 @@ impl Button {
     }
 }
 
+/// Suggested square edge for [`ButtonKind::IconOnly`].
+pub const ICON_BUTTON_SIZE_PX: f32 = 36.0;
+
+/// Paint a button at the given rect. Honors [`ButtonKind`] for
+/// background, focus ring, label/icon swap, and Loading→spinner glyph.
+pub fn paint_button(
+    button: &Button,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let radius = button.radius();
+    if let Some(bg) = button.bg_color(theme) {
+        fill_rounded_rect(
+            scene,
+            rect,
+            radius,
+            ph2d_vector::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a),
+        );
+    }
+    if button.focus_ring() {
+        let ring = ColorToken::BorderEmph.resolve(theme);
+        stroke_rounded_rect(
+            scene,
+            rect,
+            radius,
+            2.0,
+            ph2d_vector::Color::from_rgba8(ring.r, ring.g, ring.b, ring.a),
+        );
+    }
+    let fg_token = button.fg_color(theme);
+    let fg = ph2d_vector::Color::from_rgba8(fg_token.r, fg_token.g, fg_token.b, fg_token.a);
+    match button.kind {
+        ButtonKind::IconOnly { icon } => {
+            paint_icon(scene, icon, rect, fg, 1.5);
+        }
+        _ => {
+            if button.state == ButtonState::Loading {
+                paint_icon(scene, IconId::Spinner, rect, fg, 1.5);
+            } else {
+                paint_text_centered(
+                    text_system,
+                    scene,
+                    &button.label,
+                    rect,
+                    button.font_size(),
+                    fg,
+                );
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn fixture() -> Button {
+        Button::new(NodeId(1), "Save")
+    }
+
     #[test]
     fn default_button_uses_text_primary_for_fg() {
-        let b = Button::new(NodeId(1), "Save");
-        let fg = b.fg_color(Theme::ForgeSdf);
-        assert_eq!(fg, ColorToken::Text1.resolve(Theme::ForgeSdf));
+        let b = fixture();
+        assert_eq!(
+            b.fg_color(Theme::ForgeSdf),
+            ColorToken::Text1.resolve(Theme::ForgeSdf)
+        );
     }
 
     #[test]
-    fn accent_button_uses_accent_primary_default_state() {
-        let b = Button::new(NodeId(1), "Save").accent(true);
-        let fg = b.fg_color(Theme::ForgeSdf);
-        assert_eq!(fg, ColorToken::Accent.resolve(Theme::ForgeSdf));
+    fn accent_button_paints_accent_fg() {
+        let b = fixture().accent();
+        assert_eq!(
+            b.fg_color(Theme::ForgeSdf),
+            ColorToken::AccentFg.resolve(Theme::ForgeSdf)
+        );
     }
 
     #[test]
-    fn accent_pressed_drops_to_secondary() {
-        let b = Button::new(NodeId(1), "Save")
-            .accent(true)
-            .state(ButtonState::Pressed);
-        let fg = b.fg_color(Theme::ForgeSdf);
-        assert_eq!(fg, ColorToken::AccentPress.resolve(Theme::ForgeSdf));
+    fn danger_button_paints_danger_bg() {
+        let b = fixture().danger();
+        assert_eq!(
+            b.bg_color(Theme::ForgeSdf),
+            Some(ColorToken::Danger.resolve(Theme::ForgeSdf))
+        );
     }
 
     #[test]
-    fn accent_hover_drops_to_tertiary() {
-        let b = Button::new(NodeId(1), "Save")
-            .accent(true)
-            .state(ButtonState::Hovered);
-        let fg = b.fg_color(Theme::ForgeSdf);
-        assert_eq!(fg, ColorToken::AccentSoft.resolve(Theme::ForgeSdf));
+    fn danger_hover_softens() {
+        let b = fixture().danger().state(ButtonState::Hovered);
+        assert_eq!(
+            b.bg_color(Theme::ForgeSdf),
+            Some(ColorToken::DangerSoft.resolve(Theme::ForgeSdf))
+        );
     }
 
     #[test]
-    fn disabled_uses_text_disabled() {
-        let b = Button::new(NodeId(1), "Save").state(ButtonState::Disabled);
-        let fg = b.fg_color(Theme::Sunstone);
-        assert_eq!(fg, ColorToken::TextDisabled.resolve(Theme::Sunstone));
+    fn icon_only_uses_icon_kind() {
+        let b = fixture().icon_only(IconId::Save);
+        assert!(matches!(
+            b.kind,
+            ButtonKind::IconOnly { icon: IconId::Save }
+        ));
     }
 
     #[test]
-    fn default_button_has_no_bg() {
-        let b = Button::new(NodeId(1), "Save");
-        assert!(b.bg_color(Theme::ForgeSdf).is_none());
+    fn disabled_overrides_fg() {
+        let b = fixture().accent().state(ButtonState::Disabled);
+        assert_eq!(
+            b.fg_color(Theme::Sunstone),
+            ColorToken::TextDisabled.resolve(Theme::Sunstone)
+        );
     }
 
     #[test]
-    fn accent_button_has_bg() {
-        let b = Button::new(NodeId(1), "Save").accent(true);
-        assert!(b.bg_color(Theme::ForgeSdf).is_some());
+    fn default_normal_has_no_bg() {
+        assert!(fixture().bg_color(Theme::ForgeSdf).is_none());
+    }
+
+    #[test]
+    fn default_hover_lifts_to_bg_elev() {
+        let b = fixture().state(ButtonState::Hovered);
+        assert_eq!(
+            b.bg_color(Theme::ForgeSdf),
+            Some(ColorToken::BgElev.resolve(Theme::ForgeSdf))
+        );
     }
 
     #[test]
     fn focus_ring_only_when_focused() {
-        let b = Button::new(NodeId(1), "Save");
-        assert!(!b.focus_ring());
-        let b = b.state(ButtonState::Focused);
-        assert!(b.focus_ring());
+        assert!(!fixture().focus_ring());
+        assert!(fixture().state(ButtonState::Focused).focus_ring());
     }
 
     #[test]
-    fn font_and_padding_use_tokens() {
-        let b = Button::new(NodeId(1), "Save");
-        assert_eq!(b.font_size(), TypeToken::Base.px());
-        assert_eq!(b.padding(), Spacing::Lg.px());
+    fn radius_uses_md_token() {
+        assert_eq!(fixture().radius(), Radius::Md.px());
     }
 
     #[test]
-    fn a11y_node_has_button_role_and_label_and_click() {
-        let b = Button::new(NodeId(1), "Save");
-        let node = b.build_a11y(0.0, 0.0, 80.0, 32.0);
+    fn a11y_node_has_button_role_and_click() {
+        let node = fixture().build_a11y(0.0, 0.0, 80.0, 32.0);
         assert_eq!(node.role(), Role::Button);
         assert_eq!(node.label(), Some("Save"));
         assert!(node.supports_action(Action::Click));
     }
 
+    fn smoke(button: Button, theme: Theme) {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_button(
+            &button,
+            Rect::new(0.0, 0.0, 120.0, 32.0),
+            &mut scene,
+            &mut text,
+            theme,
+        );
+    }
+
     #[test]
-    fn disabled_button_is_not_focusable_in_a11y() {
-        let b = Button::new(NodeId(1), "Save").state(ButtonState::Disabled);
-        let _node = b.build_a11y(0.0, 0.0, 80.0, 32.0);
-        // accesskit::Node doesn't expose is_focusable() directly;
-        // we trust NodeBuilder honored focusable(false).
+    fn paint_smoke_normal() {
+        smoke(fixture(), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_hovered() {
+        smoke(fixture().state(ButtonState::Hovered), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_pressed() {
+        smoke(fixture().state(ButtonState::Pressed), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_focused() {
+        smoke(fixture().state(ButtonState::Focused), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_disabled() {
+        smoke(fixture().state(ButtonState::Disabled), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_accent() {
+        smoke(fixture().accent(), Theme::Sunstone);
+    }
+
+    #[test]
+    fn paint_smoke_danger() {
+        smoke(fixture().danger(), Theme::Sunstone);
+    }
+
+    #[test]
+    fn paint_smoke_icon_only() {
+        smoke(fixture().icon_only(IconId::Settings), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn paint_smoke_loading_renders_spinner() {
+        smoke(
+            fixture().accent().state(ButtonState::Loading),
+            Theme::ForgeSdf,
+        );
     }
 }

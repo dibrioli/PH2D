@@ -122,6 +122,25 @@ impl Combobox {
             row_h,
         )
     }
+
+    /// Rect of the inline "clear ✕" icon sitting at the right edge.
+    /// Returns `None` when the query is empty (nothing to clear) or
+    /// the widget is disabled. Hosts use this both for hit-testing
+    /// (the dispatch checks if a Down landed inside) and as the
+    /// canonical geometry the painter draws into.
+    pub fn clear_button_rect(&self, host: Rect) -> Option<Rect> {
+        if self.query.is_empty() || self.state == ComboboxState::Disabled {
+            return None;
+        }
+        let pad_x = Spacing::Lg.px();
+        let size = (host.h * 0.5).clamp(14.0, 18.0);
+        Some(Rect::new(
+            host.x + host.w - pad_x * 0.5 - size,
+            host.y + (host.h - size) * 0.5,
+            size,
+            size,
+        ))
+    }
 }
 
 pub fn paint_combobox(
@@ -186,7 +205,15 @@ pub fn paint_combobox_with_state(
     let font_size = TypeToken::Base.px();
     let inner_x = rect.x + pad_x + icon_size + Spacing::Md.px();
     let inner_y = rect.y + (rect.h - font_size) * 0.5;
-    let inner_w = (rect.w - (inner_x - rect.x) - pad_x).max(0.0);
+    // Reserve room for the inline clear-✕ icon at the right edge so
+    // the text/caret/selection never slide under it. `clear_button_rect`
+    // is the single source of truth — returns `None` when the query
+    // is empty (no icon painted, no reserved gutter).
+    let clear_rect = cb.clear_button_rect(rect);
+    let right_reserve = clear_rect
+        .map(|r| (rect.x + rect.w) - r.x + Spacing::Sm.px())
+        .unwrap_or(pad_x);
+    let inner_w = (rect.w - (inner_x - rect.x) - right_reserve).max(0.0);
     let label_color = if cb.query.is_empty() {
         ColorToken::Text3
     } else {
@@ -264,6 +291,20 @@ pub fn paint_combobox_with_state(
         fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
     }
 
+    // Clear-✕ icon at the right edge when the query is non-empty.
+    // Single Close glyph in `Text2`; dispatch routes a Down landing
+    // here through `Combobox::clear_button_rect` and zeroes the
+    // query (see `dispatch::clear_combobox_if_button_hit`).
+    if let Some(cr) = clear_rect {
+        paint_icon(
+            scene,
+            IconId::Close,
+            cr,
+            resolve(ColorToken::Text2, theme),
+            1.5,
+        );
+    }
+
     if cb.open {
         for (visible, &index) in cb.filtered().iter().enumerate() {
             let r = cb.option_rect(rect, visible);
@@ -295,6 +336,31 @@ mod tests {
                 ComboboxOption::new(NodeId(5), "block-tex.png"),
             ],
         )
+    }
+
+    #[test]
+    fn clear_button_rect_none_when_empty() {
+        let host = Rect::new(0.0, 0.0, 240.0, 32.0);
+        assert!(fixture().clear_button_rect(host).is_none());
+    }
+
+    #[test]
+    fn clear_button_rect_some_with_query() {
+        let host = Rect::new(0.0, 0.0, 240.0, 32.0);
+        let cb = fixture().query("spike");
+        let r = cb.clear_button_rect(host).expect("expected clear rect");
+        // Must sit on the right half of the pill.
+        assert!(r.x > host.x + host.w * 0.5);
+        // Vertically centered.
+        let mid_y = r.y + r.h * 0.5;
+        assert!((mid_y - (host.y + host.h * 0.5)).abs() < 1.0);
+    }
+
+    #[test]
+    fn clear_button_rect_none_when_disabled() {
+        let host = Rect::new(0.0, 0.0, 240.0, 32.0);
+        let cb = fixture().query("spike").state(ComboboxState::Disabled);
+        assert!(cb.clear_button_rect(host).is_none());
     }
 
     #[test]

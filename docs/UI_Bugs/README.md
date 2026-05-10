@@ -404,3 +404,34 @@ estava implícito nos §1–§8.
   multi-linha estende até a margem direita nas linhas intermediárias
   (convenção de editor).
 - **Código**: [`widget/text_area.rs paint_text_area_with_state`](../../crates/ph2d-editor/src/widget/text_area.rs).
+
+### 9.10 Click→byte multi-line aware (TextArea) e snap por linha
+
+- **Sintoma**: clicar na linha 2 do `TextArea` posicionava o caret
+  na linha 1 no X equivalente; clicar à direita do texto em uma
+  linha pulava para o fim do buffer (em vez do fim da LINHA).
+- **Causa**: `byte_offset_from_click_x` ignorava o `y` do clique e
+  fazia `.min(text.len())` no buffer inteiro.
+- **Fix**: `byte_offset_from_click_xy` detecta multi-linha pela
+  presença de `\n`, deriva o `line_idx` do `click_y - text_start_y`
+  / `line_h`, e clampa o offset local em `[0, line.len()]` —
+  clicar à direita de uma linha curta vai pro fim DA LINHA, não
+  do buffer.
+- **Código**: [`interaction/dispatch.rs byte_offset_from_click_xy`](../../crates/ph2d-editor/src/interaction/dispatch.rs).
+
+### 9.11 Combobox click X-offset corrigido + clear-✕ central
+
+- **Sintoma 1**: caret do `Combobox` "escorregava" ~24 px à direita
+  do ponto clicado.
+- **Causa**: `byte_offset_from_click_x` usava `rect.x + 12` como
+  `text_start_x` para Combobox, mas o painter desenha o texto após
+  o ícone de busca + gap (`pad_x + icon_size + Spacing::Md`).
+- **Sintoma 2**: campo de busca não tinha como esvaziar a query
+  sem teclado (Cmd+A → Backspace).
+- **Fix**: `Combobox::clear_button_rect(host)` exposto pelo widget
+  (única fonte da geometria do ✕). Painter desenha o `IconId::Close`
+  quando `!query.is_empty()`; dispatch detecta Down dentro do rect
+  via `clear_combobox_if_button_hit` e zera query + caret + anchor
+  emitindo `TextChanged`.
+- **Código**: [`widget/combobox.rs Combobox::clear_button_rect`](../../crates/ph2d-editor/src/widget/combobox.rs);
+  [`interaction/dispatch.rs clear_combobox_if_button_hit`](../../crates/ph2d-editor/src/interaction/dispatch.rs).

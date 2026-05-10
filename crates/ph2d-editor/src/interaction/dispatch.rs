@@ -75,7 +75,8 @@ pub fn dispatch_pointer<'frame>(
                             | Some(InteractiveState::NumberInput { .. })
                             | Some(InteractiveState::Combobox { .. })
                     ) {
-                        let offset = byte_offset_from_click_x(store, active, rect, event.x);
+                        let offset =
+                            byte_offset_from_click_xy(store, active, rect, event.x, event.y);
                         place_text_caret(store, active, offset, false);
                     }
                     // Plain slider drag.
@@ -184,7 +185,14 @@ pub fn dispatch_pointer<'frame>(
                     }
                     events.push(WidgetEvent::Focus(id));
                 }
-                if is_double_click {
+                // Inline clear-✕ on the Combobox right edge. Takes
+                // precedence over both caret placement AND
+                // double-click select-all: clicking the X is the
+                // unambiguous "wipe the query" gesture.
+                let combo_cleared = clear_combobox_if_button_hit(store, id, rect, event.x, event.y);
+                if combo_cleared {
+                    events.push(WidgetEvent::TextChanged(id));
+                } else if is_double_click {
                     select_all_in_text_widget(store, id);
                 } else if matches!(
                     store.get(id),
@@ -196,7 +204,8 @@ pub fn dispatch_pointer<'frame>(
                     // the clicked byte position and seed the
                     // selection anchor there. Subsequent Move events
                     // extend the selection from anchor → new caret.
-                    let offset = byte_offset_from_click_x(store, id, rect, event.x);
+                    let offset =
+                        byte_offset_from_click_xy(store, id, rect, event.x, event.y);
                     place_text_caret(store, id, offset, true);
                 }
                 set_widget_pressed(store, id);
@@ -631,30 +640,87 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
 /// computation without dragging text_system through dispatch.
 const APPROX_ADVANCE_RATIO: f32 = 0.55;
 
-/// Map a pointer x-coordinate to a byte offset within the
-/// editable buffer of the widget at `id`. Honors per-widget layout
-/// (hex field has a 36 px label prefix; channel chips are centered;
-/// everything else uses `Spacing::Lg.px()`-equivalent left padding).
-/// Approximate — uses a fixed advance ratio because the dispatch
-/// has no `TextSystem`. Off by 1-2 chars at worst, which is fine
-/// for the "click to place caret + drag to extend selection" UX.
-fn byte_offset_from_click_x(
+/// Detect a Down landing on the Combobox's inline clear-✕ icon. When
+/// the widget at `id` is a Combobox with a non-empty query and the
+/// click coordinates fall inside `Combobox::clear_button_rect(host)`,
+/// wipe the query/caret/selection and return true. Returns false in
+/// every other case (non-Combobox, empty query, click outside the X).
+/// The caller emits `WidgetEvent::TextChanged(id)` on a true return.
+fn clear_combobox_if_button_hit(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    host: Rect,
+    click_x: f32,
+    click_y: f32,
+) -> bool {
+    use crate::widget::{Combobox, ComboboxOption};
+    // Build a throw-away Combobox snapshot just to reuse the
+    // widget-side `clear_button_rect` math — keeps geometry in
+    // exactly one place (the widget). Cost: one empty Vec alloc per
+    // Down event, dwarfed by the bumpalo event arena cost.
+    let (query, state) = match store.get(id) {
+        Some(InteractiveState::Combobox { query, state, .. }) => (query.clone(), *state),
+        _ => return false,
+    };
+    let probe = Combobox::new(id, "", Vec::<ComboboxOption>::new())
+        .query(query)
+        .state(state);
+    let Some(btn_rect) = probe.clear_button_rect(host) else {
+        return false;
+    };
+    if !btn_rect.contains(click_x, click_y) {
+        return false;
+    }
+    if let Some(InteractiveState::Combobox {
+        query,
+        caret,
+        selection_anchor,
+        ..
+    }) = store.get_mut(id)
+    {
+        query.clear();
+        *caret = 0;
+        *selection_anchor = None;
+        return true;
+    }
+    false
+}
+
+/// Map a pointer (x, y) to a byte offset within the editable buffer
+/// of the widget at `id`. Honors per-widget layout (hex field has a
+/// 36 px label prefix; Combobox text sits after a 16 px search icon;
+/// channel chips are centered; multi-line `TextInput` content split
+/// on `\n` is line-aware via the y-coordinate).
+///
+/// Approximate — uses a fixed advance ratio because the dispatch has
+/// no `TextSystem`. Off by 1–2 chars at worst, which is fine for the
+/// "click to place caret + drag to extend selection" UX. Snaps to
+/// **end-of-line** when the click lands past the last glyph on a
+/// line (per `docs/UI_Bugs/README.md` §3.3 lesson: don't let click→
+/// byte cross visible line boundaries).
+fn byte_offset_from_click_xy(
     store: &WidgetStore,
     id: ph2d_a11y::NodeId,
     rect: Rect,
     click_x: f32,
+    click_y: f32,
 ) -> usize {
-    let (text, text_start_x, font_size) = match store.get(id) {
+    // Per-widget text + layout parameters. `multiline` = true when
+    // the painter is the `TextArea` 3+ row layout (the dispatch has
+    // no widget-kind discriminator, so we infer from `\n` content).
+    let (text, text_start_x, text_start_y, font_size, multiline) = match store.get(id) {
         Some(InteractiveState::TextInput { text, .. }) => {
-            // Hex TextInput: 36 px label sits on the left, then the
-            // value text. Plain TextInput: `Spacing::Lg.px()` left pad.
             let is_hex = store.blender_hex_parent(id).is_some();
-            let (start, fs) = if is_hex {
-                (rect.x + 8.0 + 36.0, 13.0_f32) // pad_md + label_w, TypeToken::Sm
+            if is_hex {
+                // Hex field: pad_md + 36 px label, single-line.
+                (text.as_str(), rect.x + 8.0 + 36.0, rect.y, 13.0_f32, false)
+            } else if text.contains('\n') {
+                // TextArea: pad_x = Spacing::Lg, pad_y = Spacing::Md,
+                // line_h = font_size + 4 (matches the painter).
+                (text.as_str(), rect.x + 12.0, rect.y + 8.0, 14.0_f32, true)
             } else {
-                (rect.x + 12.0, 14.0_f32) // Spacing::Lg, TypeToken::Base
-            };
-            (text.as_str(), start, fs)
+                (text.as_str(), rect.x + 12.0, rect.y, 14.0_f32, false)
+            }
         }
         Some(InteractiveState::NumberInput { buffer, .. }) => {
             // Plain NumberInput uses Spacing::Lg pad. Channel chips
@@ -662,19 +728,59 @@ fn byte_offset_from_click_x(
             // current text width which we don't measure here, so we
             // approximate by treating the chip as if text starts at
             // its left padding.
-            (buffer.as_str(), rect.x + 12.0, 14.0_f32)
+            (buffer.as_str(), rect.x + 12.0, rect.y, 14.0_f32, false)
         }
-        Some(InteractiveState::Combobox { query, .. }) => (query.as_str(), rect.x + 12.0, 14.0_f32),
+        Some(InteractiveState::Combobox { query, .. }) => {
+            // Combobox text sits AFTER the search icon + gap, not at
+            // the left edge of the pill. Mirrors the painter math
+            // `inner_x = rect.x + pad_x + icon_size + Spacing::Md`.
+            // Previously this read `rect.x + 12.0` which was off by
+            // ~24 px and made click→caret feel "slipped right".
+            let icon_size = (rect.h * 0.5).clamp(14.0, 18.0);
+            let inner_x = rect.x + 12.0 + icon_size + 8.0;
+            (query.as_str(), inner_x, rect.y, 14.0_f32, false)
+        }
         _ => return 0,
     };
     let advance = font_size * APPROX_ADVANCE_RATIO;
     if advance <= 0.0 {
         return 0;
     }
+
+    if multiline {
+        // Determine which `\n`-separated line was clicked from the
+        // y-coordinate relative to the text-area inner top. Then
+        // snap to end-of-line if the click lands past the last
+        // glyph — fixes the "clicking right of short line on line
+        // 1 lands the caret at end of line 2" feel reported by the
+        // user (TextArea bug log).
+        let line_h = font_size + 4.0;
+        let rel_y = (click_y - text_start_y).max(0.0);
+        let mut line_idx = (rel_y / line_h).floor() as usize;
+        let line_count = text.split('\n').count();
+        if line_count > 0 && line_idx >= line_count {
+            line_idx = line_count - 1;
+        }
+
+        let mut line_start: usize = 0;
+        for (i, line) in text.split('\n').enumerate() {
+            let line_end = line_start + line.len();
+            if i == line_idx {
+                let rel_x = (click_x - text_start_x).max(0.0);
+                let approx_chars = (rel_x / advance).round() as usize;
+                // Snap into [0, line.len()] — clicking past the
+                // right edge of THIS LINE goes to the line's end,
+                // not the end of the whole buffer.
+                let local = approx_chars.min(line.len());
+                return line_start + local;
+            }
+            line_start = line_end + 1; // +1 for the '\n'
+        }
+        return text.len();
+    }
+
     let rel_x = (click_x - text_start_x).max(0.0);
     let approx_chars = (rel_x / advance).round() as usize;
-    // For ASCII text (hex / numeric / Latin labels) char count =
-    // byte count. Clamp to text length for safety.
     approx_chars.min(text.len())
 }
 
@@ -2513,5 +2619,140 @@ mod tests {
             new_val.rgba, expected.rgba,
             "picker value should match swatch 2 of default palette"
         );
+    }
+
+    // ── Multi-line click mapping (TextArea) ────────────────────────────────
+
+    fn textarea_setup(initial: &str) -> (WidgetStore, HitIndex, Rect) {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(42),
+            InteractiveState::TextInput {
+                state: crate::widget::TextInputState::Normal,
+                text: initial.to_string(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+        let rect = Rect::new(100.0, 200.0, 240.0, 60.0);
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(42), rect);
+        (store, hits, rect)
+    }
+
+    #[test]
+    fn textarea_click_line2_places_caret_on_line2() {
+        // Two lines: "abc" (3 bytes) + '\n' + "defgh" (5 bytes). Total 9.
+        let (mut store, hits, rect) = textarea_setup("abc\ndefgh");
+        let arena = Bump::new();
+        // Click well into line 2's y range (line_h ~ 18, padding 8,
+        // so y ≈ rect.y + 8 + 18 + 4 = rect.y + 30 hits line 2).
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 12.0 + 1.0, rect.y + 32.0),
+            &arena,
+        );
+        let caret = match store.get(NodeId(42)) {
+            Some(InteractiveState::TextInput { caret, .. }) => *caret,
+            _ => 0,
+        };
+        // Line 2 starts at byte 4 (`abc` + '\n'). Caret at byte 4 means
+        // start of line 2 — exactly what the user wants when clicking
+        // near the left of line 2.
+        assert!(
+            caret >= 4 && caret <= 9,
+            "expected caret on line 2 (>= byte 4), got {caret}"
+        );
+    }
+
+    #[test]
+    fn textarea_click_far_right_snaps_to_end_of_line() {
+        // Line 1 is short ("abc"); clicking far right of line 1 must
+        // not jump into line 2 — caret should land at byte 3 (end of
+        // line 1).
+        let (mut store, hits, rect) = textarea_setup("abc\ndefghijklmnop");
+        let arena = Bump::new();
+        // Click on line 1 (y ≈ rect.y + 12, inside first line band)
+        // at the far right of the rect.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + rect.w - 4.0, rect.y + 12.0),
+            &arena,
+        );
+        let caret = match store.get(NodeId(42)) {
+            Some(InteractiveState::TextInput { caret, .. }) => *caret,
+            _ => 99,
+        };
+        assert_eq!(
+            caret, 3,
+            "click past end of line 1 must snap to end-of-line (byte 3), got {caret}"
+        );
+    }
+
+    // ── Combobox clear-✕ button ────────────────────────────────────────────
+
+    fn combobox_setup(initial_query: &str) -> (WidgetStore, HitIndex, Rect) {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(55),
+            InteractiveState::Combobox {
+                state: crate::widget::ComboboxState::Normal,
+                open: false,
+                query: initial_query.to_string(),
+                caret: initial_query.len(),
+                selection_anchor: None,
+            },
+        );
+        let rect = Rect::new(50.0, 100.0, 240.0, 32.0);
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(55), rect);
+        (store, hits, rect)
+    }
+
+    #[test]
+    fn combobox_clear_x_wipes_query_and_emits_text_changed() {
+        let (mut store, hits, rect) = combobox_setup("spike");
+        let arena = Bump::new();
+        let probe = crate::widget::Combobox::new(NodeId(55), "", vec![]).query("spike");
+        let xr = probe.clear_button_rect(rect).expect("clear rect must exist");
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, xr.x + xr.w * 0.5, xr.y + xr.h * 0.5),
+            &arena,
+        );
+        let q = match store.get(NodeId(55)) {
+            Some(InteractiveState::Combobox { query, .. }) => query.clone(),
+            _ => "<missing>".to_string(),
+        };
+        assert!(q.is_empty(), "expected empty query after X click, got {q:?}");
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::TextChanged(id) if *id == NodeId(55))),
+            "expected TextChanged(55) after clear, got {evts:?}"
+        );
+    }
+
+    #[test]
+    fn combobox_no_clear_x_when_query_empty() {
+        // Clicking on the right side of an empty Combobox should not
+        // mutate any state (no clear, no error). It just focuses +
+        // places caret at 0.
+        let (mut store, hits, rect) = combobox_setup("");
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + rect.w - 8.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        // Still empty.
+        let q = match store.get(NodeId(55)) {
+            Some(InteractiveState::Combobox { query, .. }) => query.clone(),
+            _ => "<missing>".to_string(),
+        };
+        assert!(q.is_empty());
     }
 }

@@ -404,6 +404,8 @@ pub fn paint_hero_screen(
         &hero.store,
     );
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
+    // Tooltip overlay on top of all chrome (Phase 3 polish).
+    topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);
 }
 
 #[cfg(test)]

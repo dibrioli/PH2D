@@ -9,12 +9,67 @@ use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
 };
-use crate::widget::{ButtonState, PILL_PADDING_PX};
+use crate::widget::{
+    Avatar, AvatarShape, ButtonState, PILL_PADDING_PX, Tooltip, paint_avatar, paint_tooltip,
+};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
+
+/// Tooltip text for a known TopBar / LeftRail id when the user
+/// hovers over it. Returns `None` for ids without a defined hint.
+pub fn tooltip_for(id: NodeId) -> Option<&'static str> {
+    Some(match id {
+        x if x == ids::TOPBAR_SAVE => "Save \u{00b7} \u{2318}S",
+        x if x == ids::TOPBAR_PROJECT => "Project",
+        x if x == ids::TOPBAR_PLAY_TOGGLE => "Theme mode",
+        x if x == ids::TOPBAR_PLAY_BUTTON => "Run \u{00b7} \u{2318}\u{21b5}",
+        x if x == ids::TOPBAR_RIGHT_LAYERS => "Layers",
+        x if x == ids::TOPBAR_RIGHT_ASSETS => "Asset library",
+        x if x == ids::TOPBAR_RIGHT_SCRIPT => "Code \u{00b7} Luau",
+        x if x == ids::TOOL_TRANSLATE => "Translate \u{00b7} G",
+        x if x == ids::TOOL_ROTATE => "Rotate \u{00b7} R",
+        x if x == ids::TOOL_SCALE => "Scale \u{00b7} S",
+        x if x == ids::TOOL_PIVOT => "Pivot",
+        x if x == ids::TOOL_UNDO => "Undo",
+        x if x == ids::TOOL_REDO => "Redo",
+        x if x == ids::HIERARCHY_ADD => "Add entity",
+        _ => return None,
+    })
+}
+
+/// Paint a Tooltip floating just above the currently hovered widget.
+/// Called by the hero orchestrator after every chrome painter has
+/// run so the tooltip lands on top.
+pub fn paint_hover_tooltip(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &HitIndex,
+    store: &WidgetStore,
+) {
+    let Some(id) = store.hot_id() else {
+        return;
+    };
+    let Some(text) = tooltip_for(id) else {
+        return;
+    };
+    let Some(target_rect) = hit_index.rect_for(id) else {
+        return;
+    };
+    let approx_w = (text.chars().count() as f32 * 6.5 + 16.0).max(60.0);
+    let approx_h = 22.0_f32;
+    let tip_rect = Rect::new(
+        target_rect.x + (target_rect.w - approx_w) * 0.5,
+        target_rect.y + target_rect.h + 6.0,
+        approx_w,
+        approx_h,
+    );
+    let tip = Tooltip::new(NodeId(0), text);
+    paint_tooltip(&tip, tip_rect, scene, text_system, theme);
+}
 
 pub fn paint_top_bar(
     layout: &HeroLayout,
@@ -166,20 +221,18 @@ fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Project { name } => {
-            let icon_rect = Rect::new(
+            // Phase 3 polish: replace the folder glyph with an
+            // Avatar carrying the project owner's initial.
+            let avatar_size = 22.0_f32;
+            let avatar_rect = Rect::new(
                 rect.x + pad_x,
-                rect.y + (rect.h - icon_w) * 0.5,
-                icon_w,
-                icon_w,
+                rect.y + (rect.h - avatar_size) * 0.5,
+                avatar_size,
+                avatar_size,
             );
-            paint_icon(
-                scene,
-                IconId::Folder,
-                icon_rect,
-                resolve(ColorToken::Text2, theme),
-                1.5,
-            );
-            let name_x = icon_rect.x + icon_w + Spacing::Md.px();
+            let av = Avatar::new(NodeId(0), "Enio", 'E').shape(AvatarShape::Circle);
+            paint_avatar(&av, avatar_rect, scene, text_system, theme);
+            let name_x = avatar_rect.x + avatar_size + Spacing::Md.px();
             let name_y = rect.y + (rect.h - font) * 0.5;
             paint_text(
                 text_system,

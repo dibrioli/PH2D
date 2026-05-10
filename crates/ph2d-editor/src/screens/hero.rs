@@ -361,6 +361,19 @@ impl HeroScreen {
         crate::interaction::dispatch_key(&mut self.store, event, arena)
     }
 
+    /// Forward a printable character into the focused widget's
+    /// editing buffer (`TextInput.text` / `Combobox.query` /
+    /// `NumberInput.buffer`). Filters by widget kind: NumberInput
+    /// only accepts `[0-9.eE+-]`; TextInput/Combobox accept anything
+    /// non-control.
+    pub fn handle_text_input<'frame>(
+        &mut self,
+        ch: char,
+        arena: &'frame Bump,
+    ) -> &'frame [WidgetEvent] {
+        crate::interaction::dispatch_text_input(&mut self.store, ch, arena)
+    }
+
     /// Translate a [`WidgetEvent`] from the dispatcher into a
     /// hero-level state mutation. Returns true iff the event was
     /// consumed (caller may chain into other handlers if false).

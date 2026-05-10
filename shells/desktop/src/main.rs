@@ -1048,6 +1048,7 @@ impl ApplicationHandler for App {
                         physical_key,
                         state,
                         repeat,
+                        ref text,
                         ..
                     },
                 ..
@@ -1067,6 +1068,37 @@ impl ApplicationHandler for App {
                     kind,
                     timestamp_ns: Self::timestamp_ns(),
                 });
+
+                // Hero pipeline (ADR-0024): translate winit's
+                // physical KeyCode into the editor's KEY_* constants
+                // and route to the focused widget.
+                if state == ElementState::Pressed
+                    && let PhysicalKey::Code(code) = physical_key
+                    && let Some(editor_keycode) = winit_to_editor_keycode(code)
+                {
+                    forward_key_to_hero(
+                        self.gfx.as_mut(),
+                        KeyEvent {
+                            keycode: editor_keycode,
+                            modifiers: Self::convert_modifiers(self.modifiers),
+                            kind,
+                            timestamp_ns: Self::timestamp_ns(),
+                        },
+                    );
+                }
+                // Printable text from this key event (winit already
+                // resolved layout + dead-keys + shift). Send each
+                // char through the text-input dispatcher so focused
+                // TextInput/NumberInput/Combobox buffers update.
+                if state == ElementState::Pressed
+                    && let Some(s) = text.as_ref()
+                {
+                    for ch in s.chars() {
+                        if !ch.is_control() {
+                            forward_text_to_hero(self.gfx.as_mut(), ch);
+                        }
+                    }
+                }
 
                 // M12 demo controls (only on key Down, no repeat).
                 if matches!((state, repeat), (ElementState::Pressed, false))
@@ -1137,6 +1169,59 @@ fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
             eprintln!("[hero] unhandled event: {e:?}");
         }
     }
+}
+
+/// Forward a translated [`KeyEvent`] (with editor-canonical
+/// `keycode` from [`winit_to_editor_keycode`]) into the hero
+/// dispatcher so focused widgets see Tab/Enter/Backspace/arrows etc.
+fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
+    let Some(gfx) = gfx else { return };
+    let Some(hero) = gfx.hero_screen.as_mut() else {
+        return;
+    };
+    let snapshot: Vec<WidgetEvent> = hero.handle_key(event, &gfx.hero_arena).to_vec();
+    for e in snapshot {
+        if !hero.apply_event(e) {
+            eprintln!("[hero] unhandled key event: {e:?}");
+        }
+    }
+}
+
+/// Forward a single printable character into the hero text-input
+/// dispatcher (focused TextInput/NumberInput/Combobox buffer).
+fn forward_text_to_hero(gfx: Option<&mut AppGfx>, ch: char) {
+    let Some(gfx) = gfx else { return };
+    let Some(hero) = gfx.hero_screen.as_mut() else {
+        return;
+    };
+    let snapshot: Vec<WidgetEvent> = hero.handle_text_input(ch, &gfx.hero_arena).to_vec();
+    for e in snapshot {
+        if !hero.apply_event(e) {
+            eprintln!("[hero] unhandled text-input event: {e:?}");
+        }
+    }
+}
+
+/// Map a winit [`KeyCode`] into the editor's canonical KEY_*
+/// constants (the values `dispatch_key` matches against). Returns
+/// `None` for keys the editor pipeline doesn't currently consume.
+fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
+    use ph2d_editor::interaction::{
+        KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
+        KEY_ESCAPE, KEY_SPACE, KEY_TAB,
+    };
+    Some(match code {
+        KeyCode::Tab => KEY_TAB,
+        KeyCode::Enter | KeyCode::NumpadEnter => KEY_ENTER,
+        KeyCode::Space => KEY_SPACE,
+        KeyCode::Escape => KEY_ESCAPE,
+        KeyCode::Backspace => KEY_BACKSPACE,
+        KeyCode::ArrowUp => KEY_ARROW_UP,
+        KeyCode::ArrowDown => KEY_ARROW_DOWN,
+        KeyCode::ArrowLeft => KEY_ARROW_LEFT,
+        KeyCode::ArrowRight => KEY_ARROW_RIGHT,
+        _ => return None,
+    })
 }
 
 /// Resolve the editor theme from a name (typically read from the

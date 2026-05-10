@@ -34,6 +34,9 @@ pub mod dispatch;
 pub mod hit;
 pub mod state;
 
-pub use dispatch::{dispatch_key, dispatch_pointer, dispatch_text_input};
+pub use dispatch::{
+    KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
+    KEY_ESCAPE, KEY_SPACE, KEY_TAB, dispatch_key, dispatch_pointer, dispatch_text_input,
+};
 pub use hit::HitIndex;
 pub use state::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore, format_number};

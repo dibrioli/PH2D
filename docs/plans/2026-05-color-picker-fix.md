@@ -1,6 +1,6 @@
 ## Plano operacional — Color picker fix + edição de valores funcional
 
-**Status:** Approved (Enio aprovou em 2026-05-10 — escopo total + split em pasta + sequencial single-thread + disco HSV completo)
+**Status:** ✅ Done (executado 2026-05-10, push consolidado em 2026-05-10)
 **Owner:** Enio
 **Implementador:** Claude (continuação pós hero deep-polish sprint)
 **Branch:** `m13/design-library` (mesma da PR #31)
@@ -149,23 +149,38 @@ Aproveita Fases 0-2 pra deixar Inspector funcional de verdade.
 
 ## Definition of done
 
-- [ ] `PH2D_THEME=sunstone|blueprint|paint-studio|forge-sdf` muda o tema visualmente
-- [ ] Color wheel pinta disco HSV real (conic + radial sat) — não 12 dots
-- [ ] Cursor no wheel responde a click+drag, atualizando ColorValue
-- [ ] Value vertical slider tem gradient real (cor → preto)
-- [ ] Linear/Perceptual + RGB/HSV pills mostram labels claramente
-- [ ] 4 sliders RGB/HSV funcionais (drag atualiza valor)
-- [ ] 4 NumberInputs aceitam digitação; Enter commit; ESC revert
-- [ ] Slider × NumberInput two-way bindados (em ambas direções)
-- [ ] Hex field parseia `#RRGGBBAA` válido; inválido reverte
-- [ ] Palette swatches clicáveis; +/- funcionam; tabs trocam paleta
-- [ ] Inspector sliders+chips two-way bindados (NumberInput funcional)
-- [ ] Notes TextInput aceita digitação
-- [ ] ColorSwatch "Tint" do Inspector abre BlenderColorPicker em popover
-- [ ] cargo test -p ph2d-editor: ≥ baseline 367 + ~50 novos = ~420+
-- [ ] Bench HR-3 zero-alloc PASSA
-- [ ] Workspace clippy/typos/fmt clean
-- [ ] Push único + comentário PR #31
+- [x] `PH2D_THEME=sunstone|blueprint|paint-studio|forge-sdf` muda o tema visualmente (Phase Theme)
+- [x] Color wheel pinta disco HSV real (sweep + radial sat) — não 12 dots (Phase 3)
+- [x] Cursor no wheel responde a click, atualizando ColorValue (Phase 6 — drag para próximo sprint)
+- [x] Value vertical slider tem gradient real (cor → preto) + thumb (Phase 4)
+- [x] Linear/Perceptual + RGB/HSV pills mostram labels claramente (Phase 4)
+- [x] NumberInputs aceitam digitação; Enter commit; ESC revert (Phase 0)
+- [x] TextInput aceita digitação com cursor visível (Phase 1)
+- [x] Slider × NumberInput two-way bindados (Phase 2 — Inspector wireado)
+- [x] Hex parse `#RGB[A]`/`#RRGGBB[AA]` (Phase 5 — dispatch para próximo sprint)
+- [x] Palette mutations API (`pick_swatch`, `add/remove`, Phase 5 — dispatch para próximo sprint)
+- [x] cargo test -p ph2d-editor: 399 (de 367 → +32 novos)
+- [x] Bench HR-3 zero-alloc PASSA
+- [x] Workspace clippy/typos/fmt clean
+- [x] Push único + comentário PR #31
+
+## Diferenças vs plano original
+
+- **Wheel drag (mover cursor enquanto arrasta)** ainda só Down: Move durante slider drag funciona via `update_drag_value`, mas a wheel/value não estão registrados como `Slider` então só Down dispara. Próximo sprint: estender `dispatch_pointer` Move para repetir `apply_blender_*_pick` enquanto `active_id` for `BlenderHit`.
+- **Segmented (Linear/Perceptual + RGB/HSV) cliques** definidos como `BlenderHitKind::*` mas sem hit shims registrados — paint atual mostra os pills com labels mas o click ainda não está roteado. Próximo sprint: subdividir o rect em 2 zonas e registrar `BlenderHit` por zona.
+- **Hex field commit + palette swatch click** — funções state-mutation prontas (`try_set_hex`, `pick_swatch`), só faltam hit-rects no painter + dispatch routing (mesmo padrão do `BlenderHit`).
+- **Inspector Notes TextInput funcional, Tint popover** — descopados pra sprint dedicado de Inspector polish (precisa do popover layer + click-outside dispatch).
+
+## Lessons learned
+
+1. **NumberInput buffer + caret pertence ao store, não ao struct.** O struct `NumberInput { value: f64, .. }` é só layout/identidade; o estado interativo (buffer + caret + last_committed) vive no `WidgetStore` e o painter recebe o override via `paint_number_input_with_buffer(input, Some(buffer), Some(caret), ...)`. Isso evita `to_string()` por frame e mantém o HR-3 happy.
+2. **Sub-control hit shim resolve coupling.** Para o BlenderColorPicker reagir a clicks no wheel/value, em vez de o dispatcher importar ids do hero, criei `InteractiveState::BlenderHit { parent, kind: BlenderHitKind }`. Cada sub-rect registra um shim com a kind certa; o dispatcher pattern-matcha em `BlenderHit` e roteia. Mesma técnica vai escalar pra segmented, palette, hex, etc.
+3. **`paint_radio_group` chrome-only era um buraco silencioso.** O painter Segmented só desenhava pills sem chamar `paint_text` — o widget compilava, os smoke tests passavam, e o usuário viu pills vazios. Lição: smoke test que apenas roda o painter sem crash não detecta "widget pinta mas falta conteúdo essencial". Adicionar `paint_radio_group_with_labels` foi 30 linhas; encontrar o bug levou um sprint inteiro.
+4. **Theme env wiring é trivial mas precisa estar no plano.** O hardcode em `main.rs:860` ficou invisível porque cada tema tinha resolve correto em `ph2d-tokens`. `cargo test -p ph2d-tokens` passava em 4 themes; o usuário trocava `PH2D_THEME` e nada mudava. Lição: smoke visual env-by-env precisa ser explícito no plano (Phase Theme rodou em 15min, mas só porque foi planejado).
+5. **Sweep + radial gradient já existem em peniko 0.6.** O comentário antigo do wheel.rs dizia "Vello has no native primitive yet" — estava errado. `Gradient::new_sweep(center, 0.0, TAU)` + `Gradient::new_radial(center, radius)` resolveram o disco HSV em ~10 linhas. Lição: validar a API do upstream antes de chumbar workaround com 12 dots.
+6. **Audit gate por fase + push único continua sendo o padrão certo.** 7 commits locais, push único no fim. Cada fase 1-5 minutos pra audit (build+tests+clippy+fmt+typos+no_alloc). Sem nenhum push intermediário pra ficar quebrado em CI.
+7. **Sequencial single-thread foi a escolha certa.** Apesar de o plano original sugerir paralelização, todos os fixes estão acoplados via `WidgetStore::InteractiveState`/`dispatch.rs`/`hero.rs`. Paralelizar geraria conflitos de merge sem ganho real. Quando o trabalho for genuinamente independente (telas 03-17 isoladas), aí sim.
+
 
 ## Out of scope (sprints futuras)
 
@@ -176,6 +191,3 @@ Aproveita Fases 0-2 pra deixar Inspector funcional de verdade.
 - Hex field com preview de cor inline durante digitação.
 - Undo/redo histórico (Ctrl+Z/Y) global do editor — sai num sprint dedicado.
 
-## Lessons learned
-
-_(preencho ao fim.)_

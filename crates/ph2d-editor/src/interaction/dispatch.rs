@@ -89,6 +89,8 @@ pub fn dispatch_pointer<'frame>(
                     // click-once: re-applying them on Move would, e.g.,
                     // append the current color N times when "+ swatch"
                     // is held with even the slightest cursor jitter.
+                    // (See `docs/UI_Bugs/README.md` §2.1 for the
+                    // multi-cor "+ swatch" bug.)
                     let drag_apply = matches!(
                         store.get(active),
                         Some(InteractiveState::BlenderHit {

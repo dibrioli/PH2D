@@ -154,6 +154,11 @@ pub enum InteractiveState {
         /// painters when `value.rgba` collapses to gray (S=0) or
         /// black (V=0) and would otherwise lose the user's chosen
         /// hue. Updated whenever a pick path knows the canonical H.
+        ///
+        /// **Don't read hue from `rgba_to_hsv(value.rgba)` directly**
+        /// in painters / dispatchers — for dark or gray colors it
+        /// returns 0 (red) and the SV cursor / hue thumb teleport.
+        /// See `docs/UI_Bugs/README.md` §4.1.
         hsv_h: f32,
         /// Retained HSV saturation (0..1). Same role as `hsv_h` —
         /// preserved across V→0 transitions where round-tripping

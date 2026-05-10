@@ -103,8 +103,7 @@ impl VelloPass {
     /// sRGB). So the bytes we read back are already in the same
     /// encoding `ColorValue::from_rgba8` expects — no conversion
     /// needed. Doing an extra linear→sRGB pass here would lighten
-    /// midtones (which is what we did first; corrected after the
-    /// "cor sai mais clara" report).
+    /// midtones. See `docs/UI_Bugs/README.md` §4.3.
     ///
     /// Blocks the calling thread until the GPU finishes the copy and
     /// the staging buffer maps — typically a few ms. Eyedropper picks

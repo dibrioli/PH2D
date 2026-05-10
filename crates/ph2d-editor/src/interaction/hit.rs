@@ -39,6 +39,11 @@ impl HitIndex {
     /// interactive widget as it emits geometry. Multiple registrations
     /// for the same `NodeId` are allowed — the latest wins for hit
     /// (used when a popover / tooltip overlays an existing widget).
+    ///
+    /// **Pitfall**: hit() walks back-to-front, so registering a parent
+    /// container's rect AFTER its children's rects shadows them
+    /// (see `docs/UI_Bugs/README.md` §1.1). When a parent only acts
+    /// through its children, don't register the parent at all.
     pub fn register(&mut self, id: NodeId, rect: Rect) {
         self.rects.push((id, rect));
     }

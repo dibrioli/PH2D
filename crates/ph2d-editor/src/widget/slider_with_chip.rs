@@ -3,6 +3,12 @@
 //! extracted so the Inspector and any other slider site can share
 //! the exact same visual + interaction surface.
 //!
+//! **Use this anywhere a slider with a value chip is needed.**
+//! Don't roll a one-off `Slider + paint_number_input_with_buffer`
+//! pair like the Inspector did pre-M13 — that was a recurring
+//! source of "the slider in panel X looks different from the one
+//! in panel Y" bugs. See `docs/UI_Bugs/README.md` §6.1.
+//!
 //! Two pieces:
 //! - [`paint_slider_with_chip`] — the full row (label + track + chip),
 //!   reads the slider's state + the chip's NumberInput state straight

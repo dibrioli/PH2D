@@ -109,7 +109,10 @@ fn paint_checker(scene: &mut VectorScene, rect: Rect, corner_radius: f32) {
     // Inset the checker grid by `corner_radius` on every side so
     // sharp checker cells never spill past the swatch's rounded
     // corners (the alpha overlay is rounded; without the inset the
-    // cells in the corners stick out as tiny 1-2 px squares).
+    // cells in the corners stick out as tiny 1-2 px squares). The
+    // generic rule: any sharp-rect fill stacked under a
+    // rounded-rect mask must be clipped or inset by the radius.
+    // See `docs/UI_Bugs/README.md` §3.1.
     let chk_x = rect.x + corner_radius;
     let chk_y = rect.y + corner_radius;
     let chk_w = (rect.w - corner_radius * 2.0).max(0.0);

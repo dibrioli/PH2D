@@ -7,7 +7,7 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 
 > **PH2D** (Power House 2D). Engine 2D de altíssima performance, sem teto para artistas, com IA tratada como first-class user.
 
-**Versão deste documento:** 2.1 — 2026-05-09 (versões pinadas atualizadas após M11; status M1-M12 done refletido em §7; design library handoff em §11.9)
+**Versão deste documento:** 2.2 — 2026-05-10 (versões pinadas atualizadas após M11; status M1-M12 done refletido em §7; design library handoff + hero deep polish em §11.9)
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
 
 ## 1. Visão em uma frase
@@ -549,8 +549,9 @@ Retained-mode próprio em Vello + parley. Não egui no produto final (HR-7).
   - **Atomic**: Button (Default/Accent/Danger/IconOnly + Loading), Checkbox (3-state), TextInput, TextArea, NumberInput, Slider (Horizontal/Vertical + ticks), Toggle, RadioGroup (Horizontal/Vertical/Segmented), ColorSwatch (3 sizes + alpha checker), ProgressBar (Determinate/Indeterminate), Spinner, Avatar (Circle/Square), Divider, Tag (5 tones)
   - **Compound**: Tabs (Ghost/Segmented), Dropdown, Combobox (filtered), Vector3Editor (R/G/B-tinted X/Y/Z labels), ListItem, Card, Tooltip, ContextMenu (com separators)
   - **Surfaces**: Modal (over `BgScrim`), Popover, restyled ToastQueue (severity icon + accent stripe + neutral body)
-  - **Complex**: TreeView (BTreeSet expand/select), ColorPicker (5 modes; Classic ships v1)
+  - **Complex**: TreeView (BTreeSet expand/select), ColorPicker (5 modes; Classic ships v1), BlenderColorPicker (wheel + valor vertical + Linear/Perceptual + RGB/HSV + 4 sliders + hex + paletas editáveis; saída `ColorValue { rgba, oklch }`)
   - **Composição** (M13 hero sprint): PillGroup, ToolRail (icon+compound entries), StatusBar (segmented HUD), SectionHeader (count chip + collapsible) — primitivos da tela hero `02-editor-main`.
+  - **Showcase region** (deep polish 2026-05-10): [`screens/hero/showcase.rs`](crates/ph2d-editor/src/screens/hero/showcase.rs) — painel ancorado bottom-left do canvas que exercita 18+ widgets em uso funcional simultâneo (Card+ListItem+Divider, Vector3Editor, ProgressBar det+ind, Spinner, Avatar Circle+Square, Tag, RadioGroup Segmented, Dropdown, Combobox, Checkbox Indeterminate, TextInput, TextArea, ContextMenu, Popover, SectionHeader, Slider Vertical, Modal mini); BlenderColorPicker no bottom-right do canvas. Skip silencioso quando viewport pequeno demais.
 - [`screens::hero`](crates/ph2d-editor/src/screens/hero.rs) — composição da tela `02-editor-main.html` em `paint_hero_screen`. Layout regions (TopBar/LeftRail/Inspector/Hierarchy/BottomHUD/canvas/overlay) renderizadas com fixture content em [`screens/hero/fixture.rs`](crates/ph2d-editor/src/screens/hero/fixture.rs). Habilitada via `PH2D_HERO_SCREEN=1 cargo run -p ph2d-host-desktop`. Interativa via [`interaction`](crates/ph2d-editor/src/interaction/) per ADR-0024.
 - [`interaction`](crates/ph2d-editor/src/interaction/) — input pipeline + retained widget state (ADR-0024). `WidgetStore` (BTreeMap pré-populado), `HitIndex` (SmallVec inline 128), `dispatch_pointer/dispatch_key/dispatch_text_input` (eventos via arena bumpalo). HR-3 zero-alloc enforced em [`tests/interaction_no_alloc.rs`](crates/ph2d-editor/tests/interaction_no_alloc.rs) com dhat-rs.
 - [`Tool` + `ToolRegistry`](crates/ph2d-editor/src/tool.rs) — contrato canônico (id/label/icon/build_panel/activate/handle_panel_event)

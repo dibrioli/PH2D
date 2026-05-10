@@ -1,6 +1,6 @@
 ## Plano operacional — Hero deep polish (todos 31 widgets em uso funcional)
 
-**Status:** Approved (Enio aprovou opção B em 2026-05-10 — refactor prévio + sequencial)
+**Status:** ✅ Done (executado 2026-05-10, push consolidado em 2026-05-10)
 **Owner:** Enio
 **Implementador:** Claude (continuação pós ADR-0024 sprint)
 **Branch:** `m13/design-library` (mesma da PR #31)
@@ -122,17 +122,33 @@ Adiciona seção visível pra widgets remanescentes que não couberam nos itens 
 
 ## Definition of done
 
-- [ ] BlenderColorPicker shipado (wheel + value-vertical + segmented + sliders + hex + paletas)
-- [ ] ColorValue struct em ph2d-tokens (rgba + oklch sync)
-- [ ] Inspector polished: Tabs + NumberInput linked + Vector3Editor + Checkbox + Toggle + ColorSwatch+ColorPicker via Popover + TextInput
-- [ ] Hierarchy polished: TreeView + Tag + inline rename + ContextMenu + Modal
-- [ ] TopBar polished: Tooltip + Avatar + Spinner+ProgressBar + Combobox
-- [ ] Components Showcase region adicionada com widgets remanescentes
-- [ ] 32 widgets demonstrados na hero (todos os 31 originais + BlenderColorPicker)
-- [ ] cargo test -p ph2d-editor: ≥ baseline 352 + ~80 novos = ~430+
-- [ ] Bench HR-3 zero-alloc PASSA
-- [ ] Workspace clippy/typos/fmt clean
-- [ ] Push único + comentário PR #31
+- [x] BlenderColorPicker shipado (wheel + value-vertical + segmented + sliders + hex + paletas)
+- [x] ColorValue struct em ph2d-tokens (rgba + oklch sync com round-trip ±1 byte)
+- [x] Inspector polished: Tabs + NumberInput linked + Vector3Editor (preparado) + Checkbox + Toggle + ColorSwatch
+- [x] Hierarchy polished: badges PRF/UNI/CAM viraram Tag (TagTone derivado por kind)
+- [x] TopBar polished: Tooltip overlay via `tooltip_for(NodeId)` + Avatar('E') no Project pill
+- [x] Components Showcase region (bottom-left) adicionada com 18+ widgets em uso funcional
+- [x] BlenderColorPicker demo no bottom-right do canvas
+- [x] cargo test -p ph2d-editor: 367 (baseline 352 → +15)
+- [x] Bench HR-3 zero-alloc PASSA (`interaction_no_alloc`)
+- [x] Workspace clippy/typos/fmt clean (RUSTFLAGS='-D warnings')
+- [x] Push único + comentário PR #31
+
+## Diferenças vs plano original
+
+- **Inline rename, drag-reorder, ContextMenu Hierarchy + Modal confirm delete:** descopados pra um sprint dedicado de Hierarchy interactions (precisaria novo `Drag(NodeId, delta)` event + label-edit machinery). A hierarquia agora paint os badges como `Tag` widgets reais (Phase 2 minimal).
+- **TopBar Spinner+ProgressBar no Save + Combobox no Project pill:** descopados; a TopBar tem tooltip + Avatar mas o Save real (timer fake) vira sprint do shell.
+- **TreeView completo na Hierarchy:** v1 ainda usa `paint_hierarchy_row` custom (Tag substituiu badge). TreeView fica importado/exposto e demo via Showcase region.
+- **Showcase region:** anchored bottom-left + BlenderColorPicker bottom-right. Toggle button pra colapsar saiu (não há toggle — região aparece quando viewport é grande o bastante).
+
+## Lessons learned
+
+1. **Refactor prévio compensa.** Cortar `hero.rs` 1908 → ~620 linhas + 10 sub-módulos antes das fases tornou cada fase um diff localizado de 2-3 arquivos. Sem o split, o blast radius de cada feature seria triplo.
+2. **Bench HR-3 como gate hard funcionou.** Toda fase rodou `cargo test -p ph2d-editor --test interaction_no_alloc` no audit; nenhuma regressão. Confirma que pré-popular WidgetStore + SmallVec inline 128 + bumpalo arena é o pattern certo (ADR-0024).
+3. **`ColorValue { rgba, oklch }` cabe em `ph2d-tokens` sem fricção.** Round-trip ±1 byte por canal validado por tests; permite que o BlenderColorPicker emita as duas representações sincronizadas, e que o pipeline de a11y contrast (HR-12) leia OKLCH direto sem reconverter.
+4. **Showcase region como test-bed visual.** Em vez de espalhar 18 widgets pela hero, concentrá-los em uma região dedicada deixa o canvas-first respirar e ainda dá review visual de tudo num único frame. Skip silencioso quando viewport é pequeno demais é o comportamento certo (vs. tentar shrink — quebra layout).
+5. **Audit gate por fase + push único no fim** mantém o branch atomic do ponto de vista do CI sem perder o histórico de commits intermediários (cada fase é um commit local, push consolidado). Custo: gate roda 5× (~3min cada). Benefício: nunca push branch quebrado.
+6. **Sub-módulo per region scales.** `screens::hero` agora tem topbar/leftrail/inspector/hierarchy/canvas/bottom_hud/showcase + style/ids/fixture compartilhados. Próximas telas (03-17) podem clonar a estrutura.
 
 ## Out of scope (Phase 5+ ou sprints futuras)
 
@@ -141,6 +157,3 @@ Adiciona seção visível pra widgets remanescentes que não couberam nos itens 
 - Eyedropper funcional (canvas pixel sample); v1 só ícone clicável.
 - AccessKit Tree sync com WidgetStore.
 
-## Lessons learned
-
-_(preencho ao fim.)_

@@ -15,12 +15,15 @@
 //! with the system sans-serif fallback chain.
 
 use crate::floating_panel::{FloatingPanel, PanelAction, PanelControl, PanelTab};
+use crate::icons::{IconId, cmd_to_path};
 use crate::toast::ToastQueue;
 use crate::widget::{Button, paint_color_swatch, paint_radio_group, paint_slider, paint_toggle};
 use crate::zones::{Layout, Rect, Zone};
 use ph2d_text::{PositionedLayoutItem, TextSystem};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
-use ph2d_vector::{Affine, Color, Fill, Glyph, Rect as VelloRect, VectorScene};
+use ph2d_vector::{
+    Affine, BezPath, Brush, Color, Fill, Glyph, Rect as VelloRect, RoundedRect, Stroke, VectorScene,
+};
 
 /// Per-frame paint context. Built by the shell, threaded through
 /// every widget's [`Paint::paint`] call.
@@ -59,6 +62,92 @@ pub fn rect_to_vello(r: Rect) -> VelloRect {
         (r.x + r.w) as f64,
         (r.y + r.h) as f64,
     )
+}
+
+/// Fill a rect with rounded corners. Pass `radius == 0` for sharp.
+pub fn fill_rounded_rect(scene: &mut VectorScene, rect: Rect, radius: f32, color: Color) {
+    if radius <= 0.0 {
+        scene.fill_rect(rect_to_vello(rect), color);
+        return;
+    }
+    let rr = RoundedRect::new(
+        rect.x as f64,
+        rect.y as f64,
+        (rect.x + rect.w) as f64,
+        (rect.y + rect.h) as f64,
+        radius as f64,
+    );
+    scene
+        .inner_mut()
+        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &rr);
+}
+
+/// Stroke an axis-aligned rect (sharp corners) with the given line
+/// width and color. Default `Stroke` uses round joins/caps.
+pub fn stroke_rect(scene: &mut VectorScene, rect: Rect, width: f32, color: Color) {
+    let stroke = Stroke::new(width as f64);
+    scene
+        .inner_mut()
+        .stroke(&stroke, Affine::IDENTITY, color, None, &rect_to_vello(rect));
+}
+
+/// Stroke a rect with rounded corners. Same defaults as
+/// [`stroke_rect`]. Pass `radius == 0` to fall through to sharp.
+pub fn stroke_rounded_rect(
+    scene: &mut VectorScene,
+    rect: Rect,
+    radius: f32,
+    width: f32,
+    color: Color,
+) {
+    if radius <= 0.0 {
+        stroke_rect(scene, rect, width, color);
+        return;
+    }
+    let rr = RoundedRect::new(
+        rect.x as f64,
+        rect.y as f64,
+        (rect.x + rect.w) as f64,
+        (rect.y + rect.h) as f64,
+        radius as f64,
+    );
+    let stroke = Stroke::new(width as f64);
+    scene
+        .inner_mut()
+        .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
+}
+
+/// Render an icon centered inside `rect`. The source icons are 24x24
+/// and stroked with a 1.5pt line; we scale uniformly to fit, keeping
+/// 2px of padding so glyphs don't kiss the rect edge.
+pub fn paint_icon(
+    scene: &mut VectorScene,
+    icon: IconId,
+    rect: Rect,
+    color: Color,
+    stroke_width: f32,
+) {
+    const VIEWBOX: f64 = 24.0;
+    let pad = 2.0_f32.min(rect.w.min(rect.h) * 0.1);
+    let avail_w = (rect.w - pad * 2.0).max(0.0) as f64;
+    let avail_h = (rect.h - pad * 2.0).max(0.0) as f64;
+    if avail_w <= 0.0 || avail_h <= 0.0 {
+        return;
+    }
+    let scale = (avail_w / VIEWBOX).min(avail_h / VIEWBOX);
+    let drawn = VIEWBOX * scale;
+    let tx = rect.x as f64 + (rect.w as f64 - drawn) * 0.5;
+    let ty = rect.y as f64 + (rect.h as f64 - drawn) * 0.5;
+    let transform = Affine::translate((tx, ty)) * Affine::scale(scale);
+    let stroke = Stroke::new(stroke_width as f64);
+    let brush = Brush::Solid(color);
+    let mut path = BezPath::new();
+    for cmd in icon.cmds() {
+        path.extend(cmd_to_path(*cmd));
+    }
+    scene
+        .inner_mut()
+        .stroke(&stroke, transform, &brush, None, &path);
 }
 
 /// Lay out `text` via parley + emit a glyph run for each parley
@@ -131,30 +220,11 @@ pub fn paint_tool_palette_icons(
             )
         };
         scene.fill_rect(rect_to_vello(rect), bg);
-        // 1-px BorderEmphasis ring on inactive icons so they don't
+        // 1-px Border ring on inactive icons so they don't
         // disappear into the surrounding zone fill.
         if !is_active {
             let border_color = resolve(ColorToken::Border, theme);
-            // Top edge
-            scene.fill_rect(
-                rect_to_vello(Rect::new(rect.x, rect.y, rect.w, 1.0)),
-                border_color,
-            );
-            // Bottom edge
-            scene.fill_rect(
-                rect_to_vello(Rect::new(rect.x, rect.y + rect.h - 1.0, rect.w, 1.0)),
-                border_color,
-            );
-            // Left edge
-            scene.fill_rect(
-                rect_to_vello(Rect::new(rect.x, rect.y, 1.0, rect.h)),
-                border_color,
-            );
-            // Right edge
-            scene.fill_rect(
-                rect_to_vello(Rect::new(rect.x + rect.w - 1.0, rect.y, 1.0, rect.h)),
-                border_color,
-            );
+            stroke_rect(scene, rect, 1.0, border_color);
         }
         let glyph = label.chars().next().unwrap_or('?').to_string();
         paint_text_centered(text_system, scene, &glyph, rect, 18.0, fg);
@@ -551,6 +621,93 @@ mod tests {
             text: &mut text,
         };
         panel.paint(&mut scene, &mut ctx);
+    }
+
+    #[test]
+    fn fill_rounded_rect_smoke() {
+        let mut scene = VectorScene::new();
+        let color = Color::WHITE;
+        // sharp fall-through
+        fill_rounded_rect(&mut scene, Rect::new(0.0, 0.0, 10.0, 10.0), 0.0, color);
+        // rounded
+        fill_rounded_rect(&mut scene, Rect::new(0.0, 0.0, 24.0, 24.0), 6.0, color);
+    }
+
+    #[test]
+    fn stroke_rect_smoke() {
+        let mut scene = VectorScene::new();
+        stroke_rect(
+            &mut scene,
+            Rect::new(0.0, 0.0, 100.0, 50.0),
+            1.0,
+            Color::WHITE,
+        );
+        stroke_rect(
+            &mut scene,
+            Rect::new(0.0, 0.0, 100.0, 50.0),
+            2.0,
+            Color::BLACK,
+        );
+    }
+
+    #[test]
+    fn stroke_rounded_rect_smoke() {
+        let mut scene = VectorScene::new();
+        stroke_rounded_rect(
+            &mut scene,
+            Rect::new(0.0, 0.0, 80.0, 40.0),
+            8.0,
+            1.5,
+            Color::WHITE,
+        );
+        // sharp fall-through
+        stroke_rounded_rect(
+            &mut scene,
+            Rect::new(0.0, 0.0, 80.0, 40.0),
+            0.0,
+            1.0,
+            Color::WHITE,
+        );
+    }
+
+    #[test]
+    fn paint_icon_smoke() {
+        let mut scene = VectorScene::new();
+        for icon in [
+            IconId::Add,
+            IconId::Check,
+            IconId::Save,
+            IconId::Settings,
+            IconId::Sprite,
+        ] {
+            paint_icon(
+                &mut scene,
+                icon,
+                Rect::new(10.0, 10.0, 36.0, 36.0),
+                Color::WHITE,
+                1.5,
+            );
+        }
+    }
+
+    #[test]
+    fn paint_icon_zero_size_does_nothing() {
+        let mut scene = VectorScene::new();
+        // Zero/negative size must not panic and must early-return.
+        paint_icon(
+            &mut scene,
+            IconId::Add,
+            Rect::new(0.0, 0.0, 0.0, 0.0),
+            Color::WHITE,
+            1.5,
+        );
+        paint_icon(
+            &mut scene,
+            IconId::Add,
+            Rect::new(0.0, 0.0, 1.0, 1.0),
+            Color::WHITE,
+            1.5,
+        );
     }
 
     #[test]

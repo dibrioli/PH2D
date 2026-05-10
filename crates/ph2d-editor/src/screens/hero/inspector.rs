@@ -14,11 +14,10 @@ use crate::paint::{
     stroke_rounded_rect,
 };
 use crate::widget::{
-    ButtonState, ChannelMode, Checkbox, CheckboxState, CheckboxValue, ColorSwatch,
-    DropdownState, InterpolationMode, NumberInput, SectionHeader, Slider, SliderOrientation,
-    SliderState, SwatchSize, TabItem, Tabs, TabsVariant, TextInputState, Toggle, ToggleState,
-    paint_checkbox, paint_color_swatch, paint_section_header, paint_slider, paint_tabs,
-    paint_toggle,
+    ButtonState, ChannelMode, Checkbox, CheckboxState, CheckboxValue, ColorSwatch, DropdownState,
+    InterpolationMode, NumberInput, SectionHeader, Slider, SliderOrientation, SliderState,
+    SwatchSize, TabItem, Tabs, TabsVariant, TextInputState, Toggle, ToggleState, paint_checkbox,
+    paint_color_swatch, paint_section_header, paint_slider, paint_tabs, paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;

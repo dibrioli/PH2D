@@ -99,7 +99,7 @@ pub fn paint_left_rail(
         layout.left_rail.w,
         rail.preferred_height(),
     );
-    paint_tool_rail(&rail, rail_rect, scene, text_system, theme);
+    paint_tool_rail(&rail, rail_rect, scene, text_system, theme, store);
 
     let mut y = rail_rect.y;
     let gap = Spacing::Xs.px();

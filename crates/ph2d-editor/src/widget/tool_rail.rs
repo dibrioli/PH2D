@@ -11,9 +11,11 @@
 //! parent layout — AccessKit doesn't expose orientation on Toolbar).
 
 use crate::icons::IconId;
+use crate::interaction::WidgetStore;
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
 };
+use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -153,6 +155,7 @@ pub fn paint_tool_rail(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &WidgetStore,
 ) {
     let gap = Spacing::Xs.px();
     let mut y = rect.y;
@@ -161,7 +164,9 @@ pub fn paint_tool_rail(
             y += gap;
         }
         match entry {
-            ToolRailEntry::Icon { icon, active, .. } => {
+            ToolRailEntry::Icon {
+                id, icon, active, ..
+            } => {
                 let chip_rect = Rect::new(
                     rect.x + (rect.w - TOOL_CHIP_PX) * 0.5,
                     y,
@@ -169,33 +174,32 @@ pub fn paint_tool_rail(
                     TOOL_CHIP_PX,
                 );
                 let radius = Radius::Lg.px();
-                let bg = if *active {
-                    ColorToken::AccentSoft
-                } else {
-                    ColorToken::BgElev
+                let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                let is_active = *active || state == ButtonState::Pressed;
+                let bg = match state {
+                    ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+                    ButtonState::Pressed => ColorToken::AccentSoft,
+                    _ if is_active => ColorToken::AccentSoft,
+                    _ => ColorToken::BgElev,
                 };
                 fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
-                let border = if *active {
-                    ColorToken::Accent
-                } else {
-                    ColorToken::Border
+                let (border, border_w) = match state {
+                    ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
+                    ButtonState::Pressed => (ColorToken::Accent, 1.5),
+                    _ if is_active => (ColorToken::Accent, 1.5),
+                    _ => (ColorToken::Border, 1.0),
                 };
-                stroke_rounded_rect(
-                    scene,
-                    chip_rect,
-                    radius,
-                    if *active { 1.5 } else { 1.0 },
-                    resolve(border, theme),
-                );
-                let fg = if *active {
-                    ColorToken::Accent
-                } else {
-                    ColorToken::Text2
+                stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+                let fg = match state {
+                    ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
+                    ButtonState::Pressed => ColorToken::Accent,
+                    _ if is_active => ColorToken::Accent,
+                    _ => ColorToken::Text2,
                 };
                 paint_icon(scene, *icon, chip_rect, resolve(fg, theme), 1.5);
                 y += TOOL_CHIP_PX;
             }
-            ToolRailEntry::Compound { face, sub, .. } => {
+            ToolRailEntry::Compound { id, face, sub, .. } => {
                 let chip_rect = Rect::new(
                     rect.x + (rect.w - TOOL_CHIP_PX) * 0.5,
                     y,
@@ -203,21 +207,30 @@ pub fn paint_tool_rail(
                     TOOL_CHIP_PX,
                 );
                 let radius = Radius::Lg.px();
-                fill_rounded_rect(scene, chip_rect, radius, resolve(ColorToken::BgElev, theme));
-                stroke_rounded_rect(
-                    scene,
-                    chip_rect,
-                    radius,
-                    1.0,
-                    resolve(ColorToken::Border, theme),
-                );
+                let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                let bg = match state {
+                    ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+                    ButtonState::Pressed => ColorToken::AccentSoft,
+                    _ => ColorToken::BgElev,
+                };
+                fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
+                let (border, border_w) = match state {
+                    ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
+                    ButtonState::Pressed => (ColorToken::Accent, 1.5),
+                    _ => (ColorToken::Border, 1.0),
+                };
+                stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+                let face_color = match state {
+                    ButtonState::Pressed => ColorToken::Accent,
+                    _ => ColorToken::Text1,
+                };
                 paint_text_centered(
                     text_system,
                     scene,
                     face,
                     chip_rect,
                     TypeToken::Xs.px(),
-                    resolve(ColorToken::Text1, theme),
+                    resolve(face_color, theme),
                 );
                 let sub_rect = Rect::new(
                     rect.x,
@@ -308,7 +321,8 @@ mod tests {
         let mut text = TextSystem::new();
         let rail = fixture();
         let host = Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height());
-        paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::ForgeSdf);
+        let store = crate::interaction::WidgetStore::with_capacity(0);
+        paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::ForgeSdf, &store);
     }
 
     #[test]
@@ -320,12 +334,14 @@ mod tests {
         );
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
+        let store = crate::interaction::WidgetStore::with_capacity(0);
         paint_tool_rail(
             &rail,
             Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height()),
             &mut scene,
             &mut text,
             Theme::Sunstone,
+            &store,
         );
     }
 }

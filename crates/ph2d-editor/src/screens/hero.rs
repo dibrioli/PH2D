@@ -25,16 +25,20 @@
 //! the entity model.
 
 use crate::icons::IconId;
+use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_pointer};
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_centered, rect_to_vello, resolve,
     stroke_rounded_rect,
 };
 use crate::widget::{
-    PILL_PADDING_PX, SectionHeader, SegmentTone, Slider, SliderState, StatusBar, StatusSegment,
-    ToolRail, ToolRailEntry, paint_section_header, paint_slider, paint_status_bar, paint_tool_rail,
+    ButtonState, PILL_PADDING_PX, SectionHeader, SegmentTone, Slider, SliderState, StatusBar,
+    StatusSegment, ToolRail, ToolRailEntry, paint_section_header, paint_slider, paint_status_bar,
+    paint_tool_rail,
 };
 use crate::zones::Rect;
+use bumpalo::Bump;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_host::{KeyEvent, PointerEvent};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::Stroke;
@@ -128,19 +132,95 @@ pub struct HeroSelection {
     pub world_pos: (f32, f32),
 }
 
-#[derive(Clone, Debug)]
+/// Stable `NodeId`s for the hero's interactive widgets. Pre-populated
+/// in [`WidgetStore`] at construction time so the dispatcher always
+/// finds an entry on hit-test.
+pub mod ids {
+    use ph2d_a11y::NodeId;
+
+    pub const TOPBAR_THEME: NodeId = NodeId(101);
+    pub const TOPBAR_SAVE: NodeId = NodeId(102);
+    pub const TOPBAR_PROJECT: NodeId = NodeId(103);
+    pub const TOPBAR_PLAY_TOGGLE: NodeId = NodeId(104);
+    pub const TOPBAR_PLAY_BUTTON: NodeId = NodeId(105);
+    pub const TOPBAR_RIGHT_LAYERS: NodeId = NodeId(106);
+    pub const TOPBAR_RIGHT_ASSETS: NodeId = NodeId(107);
+    pub const TOPBAR_RIGHT_SCRIPT: NodeId = NodeId(108);
+
+    pub const HIERARCHY_ADD: NodeId = NodeId(150);
+
+    // ToolRail entries already use 200-209 (assigned in
+    // `paint_left_rail` via fixture).
+    pub const TOOL_TRANSLATE: NodeId = NodeId(201);
+    pub const TOOL_ROTATE: NodeId = NodeId(202);
+    pub const TOOL_SCALE: NodeId = NodeId(203);
+    pub const TOOL_PIVOT: NodeId = NodeId(204);
+    pub const TOOL_SPACE: NodeId = NodeId(205);
+    pub const TOOL_PROJECTION: NodeId = NodeId(206);
+    pub const TOOL_HOME: NodeId = NodeId(207);
+    pub const TOOL_UNDO: NodeId = NodeId(208);
+    pub const TOOL_REDO: NodeId = NodeId(209);
+}
+
+#[derive(Debug)]
 pub struct HeroScreen {
     pub id: NodeId,
     pub theme: Theme,
     pub selection: Option<HeroSelection>,
+    /// Per-widget interactive state (hover/press/focus). Pre-populated
+    /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
+    pub store: WidgetStore,
+    /// Per-frame hit-test index. Cleared at the start of each
+    /// `paint_hero_screen` call and re-populated as painters emit
+    /// geometry.
+    pub hit_index: HitIndex,
 }
 
 impl HeroScreen {
     pub fn new(id: NodeId) -> Self {
+        let mut store = WidgetStore::with_capacity(64);
+        Self::pre_populate_store(&mut store);
         Self {
             id,
             theme: Theme::ForgeSdf,
             selection: Some(fixture::default_selection()),
+            store,
+            hit_index: HitIndex::new(),
+        }
+    }
+
+    fn pre_populate_store(store: &mut WidgetStore) {
+        // TopBar single-icon buttons.
+        for id in [
+            ids::TOPBAR_THEME,
+            ids::TOPBAR_SAVE,
+            ids::TOPBAR_PROJECT,
+            ids::TOPBAR_PLAY_TOGGLE,
+            ids::TOPBAR_PLAY_BUTTON,
+            ids::TOPBAR_RIGHT_LAYERS,
+            ids::TOPBAR_RIGHT_ASSETS,
+            ids::TOPBAR_RIGHT_SCRIPT,
+            ids::HIERARCHY_ADD,
+            ids::TOOL_TRANSLATE,
+            ids::TOOL_ROTATE,
+            ids::TOOL_SCALE,
+            ids::TOOL_PIVOT,
+            ids::TOOL_SPACE,
+            ids::TOOL_PROJECTION,
+            ids::TOOL_HOME,
+            ids::TOOL_UNDO,
+            ids::TOOL_REDO,
+        ] {
+            store.register(
+                id,
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+        // The active tool starts highlighted (matches the mockup).
+        if let Some(InteractiveState::Button { state }) = store.get_mut(ids::TOOL_TRANSLATE) {
+            *state = ButtonState::Pressed;
         }
     }
 
@@ -152,6 +232,27 @@ impl HeroScreen {
     pub fn selection(mut self, sel: Option<HeroSelection>) -> Self {
         self.selection = sel;
         self
+    }
+
+    /// Forward a pointer event into the interaction store. Returns
+    /// the events emitted in the caller's frame-local arena. Caller
+    /// drains synchronously and resets the arena at end-of-frame.
+    pub fn handle_pointer<'frame>(
+        &mut self,
+        event: PointerEvent,
+        arena: &'frame Bump,
+    ) -> &'frame [WidgetEvent] {
+        dispatch_pointer(&mut self.store, &self.hit_index, event, arena)
+    }
+
+    /// Forward a key event into the interaction store. Same arena
+    /// contract as [`Self::handle_pointer`].
+    pub fn handle_key<'frame>(
+        &mut self,
+        event: KeyEvent,
+        arena: &'frame Bump,
+    ) -> &'frame [WidgetEvent] {
+        crate::interaction::dispatch_key(&mut self.store, event, arena)
     }
 
     pub fn build_a11y(&self, viewport: Rect) -> Node {
@@ -188,32 +289,38 @@ pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Them
 }
 
 /// Paint the TopBar: 5 pill clusters from `fixture::topbar_clusters`
-/// and a centered `PH2D · EDITOR` wordmark.
+/// and a centered `PH2D · EDITOR` wordmark. Registers each cluster's
+/// hit rect into [`HitIndex`] for pointer dispatch.
 pub fn paint_top_bar(
     layout: &HeroLayout,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
 ) {
     let clusters = fixture::topbar_clusters();
     let row_h = layout.top_bar.h;
-    // Left cluster column.
     let mut x = layout.top_bar.x;
     let gap = Spacing::Md.px();
-    // We split clusters into "left" (first 4) and "right" (last 1)
-    // groups so the wordmark can sit in the middle.
     let split = 4.min(clusters.len());
-    let mut id = 100u64;
-    for cluster in &clusters[..split] {
-        let (rect, next_id) = layout_top_bar_cluster(x, layout.top_bar.y, row_h, cluster, id);
-        paint_top_bar_cluster(cluster, rect, scene, text_system, theme);
+    for (id, cluster) in &clusters[..split] {
+        let rect = Rect::new(x, layout.top_bar.y, cluster_width(cluster), row_h);
+        paint_top_bar_cluster(
+            *id,
+            cluster,
+            rect,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+        );
         x = rect.x + rect.w + gap;
-        id = next_id;
     }
-    // Centered wordmark fills the gap between left and right clusters.
     let right_clusters = &clusters[split..];
     let mut right_w = 0.0_f32;
-    for c in right_clusters {
+    for (_, c) in right_clusters {
         right_w += cluster_width(c) + gap;
     }
     let right_x = layout.top_bar.x + layout.top_bar.w - right_w + gap.max(0.0);
@@ -227,11 +334,19 @@ pub fn paint_top_bar(
         resolve(ColorToken::Text3, theme),
     );
     let mut rx = right_x;
-    for cluster in right_clusters {
-        let (rect, next_id) = layout_top_bar_cluster(rx, layout.top_bar.y, row_h, cluster, id);
-        paint_top_bar_cluster(cluster, rect, scene, text_system, theme);
+    for (id, cluster) in right_clusters {
+        let rect = Rect::new(rx, layout.top_bar.y, cluster_width(cluster), row_h);
+        paint_top_bar_cluster(
+            *id,
+            cluster,
+            rect,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+        );
         rx = rect.x + rect.w + gap;
-        id = next_id;
     }
 }
 
@@ -246,23 +361,27 @@ fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     }
 }
 
-fn layout_top_bar_cluster(
-    x: f32,
-    y: f32,
-    h: f32,
-    cluster: &fixture::TopBarCluster,
-    id: u64,
-) -> (Rect, u64) {
-    let w = cluster_width(cluster);
-    (Rect::new(x, y, w, h), id + 1)
+/// Pick a chrome icon's foreground tint based on its interactive
+/// state. Used by TopBar single-icon clusters and the Right cluster.
+fn icon_button_fg(state: ButtonState) -> ColorToken {
+    match state {
+        ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
+        ButtonState::Pressed => ColorToken::Accent,
+        ButtonState::Disabled => ColorToken::TextDisabled,
+        ButtonState::Normal | ButtonState::Loading => ColorToken::Text2,
+    }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_top_bar_cluster(
+    id: NodeId,
     cluster: &fixture::TopBarCluster,
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
 ) {
     use fixture::TopBarCluster;
     let radius = Radius::Xl.px();
@@ -317,13 +436,21 @@ fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Single { icon, .. } => {
+            hit_index.register(id, rect);
+            let state = store.button_state(id).unwrap_or(ButtonState::Normal);
             let chip = Rect::new(
                 rect.x + (rect.w - 32.0) * 0.5,
                 rect.y + (rect.h - 32.0) * 0.5,
                 32.0,
                 32.0,
             );
-            paint_icon(scene, *icon, chip, resolve(ColorToken::Text2, theme), 1.5);
+            paint_icon(
+                scene,
+                *icon,
+                chip,
+                resolve(icon_button_fg(state), theme),
+                1.5,
+            );
         }
         TopBarCluster::Project { name } => {
             let icon_rect = Rect::new(
@@ -353,27 +480,36 @@ fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Play => {
-            // Theme-mode toggle on the left, accent play button on the right.
+            // Theme-mode toggle on the left.
             let toggle_rect = Rect::new(rect.x + pad_x, rect.y + (rect.h - 22.0) * 0.5, 22.0, 22.0);
+            hit_index.register(ids::TOPBAR_PLAY_TOGGLE, toggle_rect);
+            let toggle_state = store
+                .button_state(ids::TOPBAR_PLAY_TOGGLE)
+                .unwrap_or(ButtonState::Normal);
             paint_icon(
                 scene,
                 IconId::Light,
                 toggle_rect,
-                resolve(ColorToken::Text2, theme),
+                resolve(icon_button_fg(toggle_state), theme),
                 1.5,
             );
+            // Accent play button on the right — hit-test for the
+            // canonical PLAY_BUTTON id (the cluster's own id parameter
+            // doubles up to PLAY_BUTTON to keep the API uniform).
             let play_rect = Rect::new(
                 rect.x + rect.w - pad_x - 32.0,
                 rect.y + (rect.h - 32.0) * 0.5,
                 32.0,
                 32.0,
             );
-            fill_rounded_rect(
-                scene,
-                play_rect,
-                Radius::Lg.px(),
-                resolve(ColorToken::Danger, theme),
-            );
+            hit_index.register(id, play_rect);
+            let play_state = store.button_state(id).unwrap_or(ButtonState::Normal);
+            let bg = match play_state {
+                ButtonState::Pressed => ColorToken::AccentPress,
+                ButtonState::Hovered => ColorToken::AccentSoft,
+                _ => ColorToken::Danger,
+            };
+            fill_rounded_rect(scene, play_rect, Radius::Lg.px(), resolve(bg, theme));
             paint_icon(
                 scene,
                 IconId::Play,
@@ -383,16 +519,22 @@ fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Right => {
-            let icons = [IconId::Layers, IconId::Asset, IconId::Script];
+            let icons = [
+                (ids::TOPBAR_RIGHT_LAYERS, IconId::Layers),
+                (ids::TOPBAR_RIGHT_ASSETS, IconId::Asset),
+                (ids::TOPBAR_RIGHT_SCRIPT, IconId::Script),
+            ];
             let chip = 32.0_f32;
-            for (i, icon) in icons.iter().enumerate() {
+            for (i, (icon_id, icon)) in icons.iter().enumerate() {
                 let cx = rect.x + pad_x + (chip + 4.0) * i as f32;
                 let chip_rect = Rect::new(cx, rect.y + (rect.h - chip) * 0.5, chip, chip);
+                hit_index.register(*icon_id, chip_rect);
+                let state = store.button_state(*icon_id).unwrap_or(ButtonState::Normal);
                 paint_icon(
                     scene,
                     *icon,
                     chip_rect,
-                    resolve(ColorToken::Text2, theme),
+                    resolve(icon_button_fg(state), theme),
                     1.5,
                 );
             }
@@ -401,30 +543,58 @@ fn paint_top_bar_cluster(
 }
 
 /// Paint the LeftRail using the `ToolRail` widget with the
-/// fixture's transform/space/history entries.
+/// fixture's transform/space/history entries. The "active" tool is
+/// whichever tool's [`InteractiveState::Button::state`] in the store
+/// is `Pressed` (the others render as Normal/Hovered per their
+/// per-widget state).
 pub fn paint_left_rail(
     layout: &HeroLayout,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
 ) {
-    let rail = ToolRail::new(
-        NodeId(200),
-        "Editor tools",
-        vec![
-            ToolRailEntry::icon(NodeId(201), "Translate", IconId::Transform).active(),
-            ToolRailEntry::icon(NodeId(202), "Rotate", IconId::Rotate),
-            ToolRailEntry::icon(NodeId(203), "Scale", IconId::Scale),
-            ToolRailEntry::icon(NodeId(204), "Pivot", IconId::Pivot),
-            ToolRailEntry::Divider,
-            ToolRailEntry::compound(NodeId(205), "Coordinate space", "Global", "SPACE"),
-            ToolRailEntry::compound(NodeId(206), "Camera projection", "Persp", "PROJ"),
-            ToolRailEntry::compound(NodeId(207), "Frame to home", "Home", "VIEW"),
-            ToolRailEntry::Divider,
-            ToolRailEntry::icon(NodeId(208), "Undo", IconId::Undo),
-            ToolRailEntry::icon(NodeId(209), "Redo", IconId::Redo),
-        ],
-    );
+    let entries = [
+        (ids::TOOL_TRANSLATE, "Translate", IconId::Transform),
+        (ids::TOOL_ROTATE, "Rotate", IconId::Rotate),
+        (ids::TOOL_SCALE, "Scale", IconId::Scale),
+        (ids::TOOL_PIVOT, "Pivot", IconId::Pivot),
+    ];
+    let mut rail_entries: Vec<ToolRailEntry> = entries
+        .iter()
+        .map(|(id, label, icon)| {
+            let mut e = ToolRailEntry::icon(*id, *label, *icon);
+            if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
+                e = e.active();
+            }
+            e
+        })
+        .collect();
+    rail_entries.push(ToolRailEntry::Divider);
+    rail_entries.push(ToolRailEntry::compound(
+        ids::TOOL_SPACE,
+        "Coordinate space",
+        "Global",
+        "SPACE",
+    ));
+    rail_entries.push(ToolRailEntry::compound(
+        ids::TOOL_PROJECTION,
+        "Camera projection",
+        "Persp",
+        "PROJ",
+    ));
+    rail_entries.push(ToolRailEntry::compound(
+        ids::TOOL_HOME,
+        "Frame to home",
+        "Home",
+        "VIEW",
+    ));
+    rail_entries.push(ToolRailEntry::Divider);
+    rail_entries.push(ToolRailEntry::icon(ids::TOOL_UNDO, "Undo", IconId::Undo));
+    rail_entries.push(ToolRailEntry::icon(ids::TOOL_REDO, "Redo", IconId::Redo));
+
+    let rail = ToolRail::new(NodeId(200), "Editor tools", rail_entries);
     let rail_rect = Rect::new(
         layout.left_rail.x,
         layout.left_rail.y,
@@ -432,6 +602,42 @@ pub fn paint_left_rail(
         rail.preferred_height(),
     );
     paint_tool_rail(&rail, rail_rect, scene, text_system, theme);
+
+    // Register per-entry hit rects. ToolRail lays out vertically;
+    // we recompute slot rects here so dispatch can see them.
+    let mut y = rail_rect.y;
+    let gap = Spacing::Xs.px();
+    let chip_x = rail_rect.x + (rail_rect.w - crate::widget::TOOL_CHIP_PX) * 0.5;
+    for (i, entry) in rail.entries.iter().enumerate() {
+        if i > 0 {
+            y += gap;
+        }
+        match entry {
+            ToolRailEntry::Icon { id, .. } => {
+                let chip = Rect::new(
+                    chip_x,
+                    y,
+                    crate::widget::TOOL_CHIP_PX,
+                    crate::widget::TOOL_CHIP_PX,
+                );
+                hit_index.register(*id, chip);
+                y += crate::widget::TOOL_CHIP_PX;
+            }
+            ToolRailEntry::Compound { id, .. } => {
+                let chip = Rect::new(
+                    chip_x,
+                    y,
+                    crate::widget::TOOL_CHIP_PX,
+                    crate::widget::TOOL_CHIP_PX,
+                );
+                hit_index.register(*id, chip);
+                y += crate::widget::COMPOUND_TOTAL_H_PX;
+            }
+            ToolRailEntry::Divider => {
+                y += crate::widget::DIVIDER_GAP_PX * 2.0 + 1.0;
+            }
+        }
+    }
 }
 
 const PANEL_RADIUS: f32 = 16.0;
@@ -713,6 +919,8 @@ pub fn paint_hierarchy(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
 ) {
     let rect = layout.hierarchy;
     paint_panel_surface(rect, scene, theme);
@@ -749,12 +957,16 @@ pub fn paint_hierarchy(
         add_size,
         add_size,
     );
-    fill_rounded_rect(
-        scene,
-        add_rect,
-        999.0,
-        resolve(ColorToken::AccentSoft, theme),
-    );
+    hit_index.register(ids::HIERARCHY_ADD, add_rect);
+    let add_state = store
+        .button_state(ids::HIERARCHY_ADD)
+        .unwrap_or(ButtonState::Normal);
+    let add_bg = match add_state {
+        ButtonState::Pressed => ColorToken::Accent,
+        ButtonState::Hovered => ColorToken::AccentSoft,
+        _ => ColorToken::AccentSoft,
+    };
+    fill_rounded_rect(scene, add_rect, 999.0, resolve(add_bg, theme));
     stroke_rounded_rect(
         scene,
         add_rect,
@@ -762,13 +974,12 @@ pub fn paint_hierarchy(
         1.0,
         resolve(ColorToken::Accent, theme),
     );
-    paint_icon(
-        scene,
-        IconId::Add,
-        add_rect,
-        resolve(ColorToken::Accent, theme),
-        1.5,
-    );
+    let add_fg = if add_state == ButtonState::Pressed {
+        ColorToken::AccentFg
+    } else {
+        ColorToken::Accent
+    };
+    paint_icon(scene, IconId::Add, add_rect, resolve(add_fg, theme), 1.5);
 
     let body_top = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0;
     let body_pad = 8.0_f32;
@@ -1057,20 +1268,42 @@ fn vello_dashed_rect(rect: Rect) -> ph2d_vector::Rect {
     rect_to_vello(rect)
 }
 
-/// Phase 4 paint — full hero composition.
+/// Phase A paint — full hero composition + hit-index population.
+///
+/// Mutates [`HeroScreen::hit_index`]: clears it at the start of the
+/// frame and re-registers every interactive widget's rect as the
+/// painters emit geometry. The [`WidgetStore`] supplies hover/press
+/// state for visual feedback (Button/Toggle wired in Phase A;
+/// Slider/Checkbox/etc. in Phases B-D).
 pub fn paint_hero_screen(
-    hero: &HeroScreen,
+    hero: &mut HeroScreen,
     viewport: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
 ) {
     let layout = HeroLayout::for_viewport(viewport);
+    hero.hit_index.clear_for_frame();
+
     paint_canvas_bg(&layout, scene, hero.theme);
     if let Some(sel) = hero.selection.as_ref() {
         paint_selection_overlay(&layout, sel, scene, text_system, hero.theme);
     }
-    paint_top_bar(&layout, scene, text_system, hero.theme);
-    paint_left_rail(&layout, scene, text_system, hero.theme);
+    paint_top_bar(
+        &layout,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+    );
+    paint_left_rail(
+        &layout,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+    );
     paint_inspector(
         &layout,
         hero.selection.as_ref(),
@@ -1078,7 +1311,14 @@ pub fn paint_hero_screen(
         text_system,
         hero.theme,
     );
-    paint_hierarchy(&layout, scene, text_system, hero.theme);
+    paint_hierarchy(
+        &layout,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+    );
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
 }
 
@@ -1153,26 +1393,26 @@ mod tests {
 
     #[test]
     fn paint_hero_smoke_default() {
-        let hero = HeroScreen::new(NodeId(1));
+        let mut hero = HeroScreen::new(NodeId(1));
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_hero_screen(&hero, ipad12_viewport(), &mut scene, &mut text);
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     }
 
     #[test]
     fn paint_hero_smoke_alternate_theme() {
-        let hero = HeroScreen::new(NodeId(1)).theme(Theme::Sunstone);
+        let mut hero = HeroScreen::new(NodeId(1)).theme(Theme::Sunstone);
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_hero_screen(&hero, ipad12_viewport(), &mut scene, &mut text);
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     }
 
     #[test]
     fn paint_hero_smoke_no_selection() {
-        let hero = HeroScreen::new(NodeId(1)).selection(None);
+        let mut hero = HeroScreen::new(NodeId(1)).selection(None);
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_hero_screen(&hero, ipad12_viewport(), &mut scene, &mut text);
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     }
 
     #[test]
@@ -1180,7 +1420,16 @@ mod tests {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_top_bar(&layout, &mut scene, &mut text, Theme::ForgeSdf);
+        let mut hits = HitIndex::new();
+        let store = WidgetStore::with_capacity(32);
+        paint_top_bar(
+            &layout,
+            &mut scene,
+            &mut text,
+            Theme::ForgeSdf,
+            &mut hits,
+            &store,
+        );
     }
 
     #[test]
@@ -1188,7 +1437,16 @@ mod tests {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_left_rail(&layout, &mut scene, &mut text, Theme::ForgeSdf);
+        let mut hits = HitIndex::new();
+        let store = WidgetStore::with_capacity(32);
+        paint_left_rail(
+            &layout,
+            &mut scene,
+            &mut text,
+            Theme::ForgeSdf,
+            &mut hits,
+            &store,
+        );
     }
 
     #[test]
@@ -1213,7 +1471,16 @@ mod tests {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_hierarchy(&layout, &mut scene, &mut text, Theme::ForgeSdf);
+        let mut hits = HitIndex::new();
+        let store = WidgetStore::with_capacity(32);
+        paint_hierarchy(
+            &layout,
+            &mut scene,
+            &mut text,
+            Theme::ForgeSdf,
+            &mut hits,
+            &store,
+        );
     }
 
     #[test]
@@ -1241,10 +1508,110 @@ mod tests {
             Theme::Sunstone,
             Theme::Blueprint,
         ] {
-            let hero = HeroScreen::new(NodeId(1)).theme(theme);
+            let mut hero = HeroScreen::new(NodeId(1)).theme(theme);
             let mut scene = VectorScene::new();
             let mut text = TextSystem::new();
-            paint_hero_screen(&hero, ipad12_viewport(), &mut scene, &mut text);
+            paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
         }
+    }
+
+    // -----------------------------------------------------------------
+    // Phase A — interactive integration smokes
+    // -----------------------------------------------------------------
+
+    use bumpalo::Bump;
+    use ph2d_host::{PointerEvent, PointerKind, PointerSource};
+
+    fn down(x: f32, y: f32) -> PointerEvent {
+        PointerEvent {
+            x,
+            y,
+            pressure: 1.0,
+            kind: PointerKind::Down,
+            source: PointerSource::Mouse,
+            timestamp_ns: 0,
+        }
+    }
+
+    fn up(x: f32, y: f32) -> PointerEvent {
+        PointerEvent {
+            x,
+            y,
+            pressure: 1.0,
+            kind: PointerKind::Up,
+            source: PointerSource::Mouse,
+            timestamp_ns: 0,
+        }
+    }
+
+    #[test]
+    fn hero_pre_populates_store_with_topbar_and_tools() {
+        let hero = HeroScreen::new(NodeId(1));
+        for id in [
+            ids::TOPBAR_SAVE,
+            ids::TOPBAR_PROJECT,
+            ids::TOPBAR_PLAY_BUTTON,
+            ids::TOPBAR_RIGHT_LAYERS,
+            ids::HIERARCHY_ADD,
+            ids::TOOL_TRANSLATE,
+            ids::TOOL_REDO,
+        ] {
+            assert!(
+                hero.store.contains(id),
+                "store missing pre-populated id {id:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn hero_translate_tool_starts_pressed() {
+        let hero = HeroScreen::new(NodeId(1));
+        assert_eq!(
+            hero.store.button_state(ids::TOOL_TRANSLATE),
+            Some(ButtonState::Pressed),
+        );
+    }
+
+    #[test]
+    fn hero_topbar_save_click_round_trip() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        // Paint once to populate hit_index with TopBar Save rect.
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        // The Save chip lives inside the Single cluster; find its rect
+        // by querying hit_index for the canonical NodeId.
+        // We synthesize the click at the first paint-registered rect
+        // for that id by sweeping a few candidate Y rows in the topbar.
+        // Topbar Y is around 14..54 — sweep with a known-good x.
+        // Simpler: find center by iterating through the registered
+        // rects in the index (test-only helper would be cleaner).
+        // For Phase A we trust paint geometry: TOPBAR_SAVE chip
+        // sits in the second pill cluster on the left.
+        // Use a known-good coordinate based on layout knowledge:
+        // theme cluster ~132 wide + 8 gap = chip cluster starts at ~154.
+        // Safer: brute-force scan through registered rects.
+        let arena = Bump::new();
+        // hover into the Save chip first to exercise the hit pipeline
+        let mut save_x = 0.0;
+        let mut save_y = 0.0;
+        // Sweep; find any (x, y) that hits TOPBAR_SAVE.
+        'outer: for y_int in (14..54).step_by(4) {
+            for x_int in (14..1352).step_by(4) {
+                if hero.hit_index.hit(x_int as f32, y_int as f32) == Some(ids::TOPBAR_SAVE) {
+                    save_x = x_int as f32;
+                    save_y = y_int as f32;
+                    break 'outer;
+                }
+            }
+        }
+        assert!(save_x > 0.0, "TOPBAR_SAVE rect not found in hit_index");
+        let _ = hero.handle_pointer(down(save_x, save_y), &arena);
+        let evts = hero.handle_pointer(up(save_x, save_y), &arena);
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::TOPBAR_SAVE)),
+            "expected Click event for TOPBAR_SAVE, got {evts:?}"
+        );
     }
 }

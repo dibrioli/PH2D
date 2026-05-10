@@ -17,15 +17,20 @@ pub fn default_selection() -> HeroSelection {
     }
 }
 
-/// Top-bar pill clusters in left-to-right order. Each pill carries
-/// 1-3 icon-only chips.
-pub fn topbar_clusters() -> Vec<TopBarCluster> {
+/// Top-bar pill clusters in left-to-right order, paired with the
+/// `NodeId` used in [`crate::screens::hero::ids`] for hit-test +
+/// store lookup.
+pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
+    use crate::screens::hero::ids;
     vec![
-        TopBarCluster::theme("Forge SDF"),
-        TopBarCluster::single("Save", IconId::Save),
-        TopBarCluster::project("Level_01"),
-        TopBarCluster::play(),
-        TopBarCluster::right(),
+        (ids::TOPBAR_THEME, TopBarCluster::theme("Forge SDF")),
+        (
+            ids::TOPBAR_SAVE,
+            TopBarCluster::single("Save", IconId::Save),
+        ),
+        (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
+        (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
+        (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
     ]
 }
 

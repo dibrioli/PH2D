@@ -33,6 +33,7 @@
 
 mod integration;
 
+use bumpalo::Bump;
 use ph2d_asset::AssetDb;
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
@@ -40,7 +41,7 @@ use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{
     BrushTool, HeroScreen, Layout as EditorLayout, MoveTool, PanelControl, PanelEvent, Toast,
-    ToastQueue, ToolRegistry, ZenMode, paint_hero_screen,
+    ToastQueue, ToolRegistry, WidgetEvent, ZenMode, paint_hero_screen,
 };
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
 use ph2d_editor::NodeId;
@@ -207,6 +208,14 @@ struct AppGfx {
     /// parley font + layout context (heavy state). Threaded through
     /// `PaintCtx` so future text passes don't re-load fonts.
     text_system: TextSystem,
+    /// Hero screen (`02-editor-main` mockup) — populated when
+    /// `PH2D_HERO_SCREEN=1`. Owns the [`WidgetStore`] + [`HitIndex`]
+    /// so input pipeline (ADR-0024) can route pointer/key events
+    /// through `dispatch_*`.
+    hero_screen: Option<HeroScreen>,
+    /// Per-frame arena for [`WidgetEvent`]s emitted by the hero
+    /// dispatcher. Reset at end-of-frame.
+    hero_arena: Bump,
 }
 
 struct App {
@@ -548,6 +557,8 @@ impl App {
             vello_pass,
             vector_scene,
             text_system,
+            hero_screen,
+            hero_arena,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -660,14 +671,19 @@ impl App {
             text: text_system,
         };
 
-        // Opt-in hero screen mode: `PH2D_HERO_SCREEN=1 cargo run -p
-        // ph2d-host-desktop` swaps the default 4-zone editor chrome
-        // for the `02-editor-main` mockup composition. Useful for
-        // visual review of the M13 design system implementation.
-        if std::env::var("PH2D_HERO_SCREEN").as_deref() == Ok("1") {
-            let hero = HeroScreen::new(NodeId(1)).theme(*theme);
-            paint_hero_screen(&hero, viewport, vector_scene, paint_ctx.text);
+        // Opt-in hero screen mode: when `PH2D_HERO_SCREEN=1` was set
+        // at startup the AppGfx owns a HeroScreen with a retained
+        // WidgetStore (ADR-0024). Paint reads + writes its hit_index
+        // each frame; pointer/key events are forwarded to it from
+        // window_event handlers via `hero_screen.handle_*`.
+        if let Some(hero) = hero_screen.as_mut() {
+            paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             toasts.paint(vector_scene, &mut paint_ctx);
+            // Drain frame-local arena AFTER the dispatch + paint pass
+            // so any events emitted earlier this frame are still alive
+            // for downstream consumers — wired in Phase A+ (currently
+            // events are logged, not acted on).
+            hero_arena.reset();
         } else {
             layout.paint(vector_scene, &mut paint_ctx);
 
@@ -870,6 +886,17 @@ impl ApplicationHandler for App {
         let vector_scene = VectorScene::new();
         let text_system = TextSystem::new();
 
+        // Hero screen mode opt-in via env var (set ONCE at startup,
+        // not per frame). When set, the editor's default 4-zone
+        // chrome is replaced with the `02-editor-main` mockup
+        // composition, and pointer/key events flow through the
+        // ADR-0024 interaction pipeline.
+        let hero_screen = if std::env::var("PH2D_HERO_SCREEN").as_deref() == Ok("1") {
+            Some(HeroScreen::new(NodeId(1)).theme(theme))
+        } else {
+            None
+        };
+
         self.window = Some(window);
         self.host = Some(host);
         self.gfx = Some(AppGfx {
@@ -889,6 +916,8 @@ impl ApplicationHandler for App {
             vello_pass,
             vector_scene,
             text_system,
+            hero_screen,
+            hero_arena: Bump::with_capacity(4096),
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -927,14 +956,16 @@ impl ApplicationHandler for App {
 
             WindowEvent::CursorMoved { position, .. } => {
                 self.last_pointer = (position.x as f32, position.y as f32);
-                self.handler.on_pointer(PointerEvent {
+                let evt = PointerEvent {
                     x: self.last_pointer.0,
                     y: self.last_pointer.1,
                     pressure: 1.0,
                     kind: PointerKind::Move,
                     source: PointerSource::Mouse,
                     timestamp_ns: Self::timestamp_ns(),
-                });
+                };
+                self.handler.on_pointer(evt);
+                forward_to_hero(self.gfx.as_mut(), evt);
                 // Drag-in-progress: forward pointer to active tool
                 // panel hit-test → updates slider value continuously.
                 if self.dragging.is_some() {
@@ -947,14 +978,16 @@ impl ApplicationHandler for App {
                     ElementState::Pressed => PointerKind::Down,
                     ElementState::Released => PointerKind::Up,
                 };
-                self.handler.on_pointer(PointerEvent {
+                let evt = PointerEvent {
                     x: self.last_pointer.0,
                     y: self.last_pointer.1,
                     pressure: 1.0,
                     kind,
                     source: PointerSource::Mouse,
                     timestamp_ns: Self::timestamp_ns(),
-                });
+                };
+                self.handler.on_pointer(evt);
+                forward_to_hero(self.gfx.as_mut(), evt);
                 match state {
                     ElementState::Pressed => {
                         // Mirror-sidebar chip takes precedence over the
@@ -1081,6 +1114,29 @@ fn log_input_event(elapsed_ms: u128, event: &InputEvent) {
         }
         InputEvent::Pencil(_) => {
             // No iPad shell yet; pencil events can't originate here.
+        }
+    }
+}
+
+/// Forward a pointer event to the hero screen's interaction
+/// dispatcher when the hero is active. Logs emitted [`WidgetEvent`]s
+/// to stderr so the developer can verify wiring without a UI binding
+/// (Phases B+ wire concrete handlers).
+fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
+    let Some(gfx) = gfx else { return };
+    let Some(hero) = gfx.hero_screen.as_mut() else {
+        return;
+    };
+    let evts = hero.handle_pointer(event, &gfx.hero_arena);
+    for e in evts {
+        match e {
+            WidgetEvent::Click(id) => eprintln!("[hero] Click({id:?})"),
+            WidgetEvent::Toggled(id) => eprintln!("[hero] Toggled({id:?})"),
+            WidgetEvent::ValueChanged(id) => eprintln!("[hero] ValueChanged({id:?})"),
+            WidgetEvent::TextChanged(id) => eprintln!("[hero] TextChanged({id:?})"),
+            WidgetEvent::Focus(id) => eprintln!("[hero] Focus({id:?})"),
+            WidgetEvent::Blur(id) => eprintln!("[hero] Blur({id:?})"),
+            WidgetEvent::SelectionChanged(id) => eprintln!("[hero] SelectionChanged({id:?})"),
         }
     }
 }

@@ -45,6 +45,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 wgpu = "28"
 winit = "0.30"
 gilrs = "0.11"
+# bumpalo: per-frame arena for HeroScreen interaction events
+# (ADR-0024). Allocated once at AppGfx construction; reset every
+# frame after dispatch.
+bumpalo = "3"
 
 [package.metadata.cargo-machete]
 # `bevy_ecs` is reached only through `#[derive(Component)]` expansion,

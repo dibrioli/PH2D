@@ -1,9 +1,10 @@
 //! Linear/Perceptual + RGB/HSV segmented toggles.
 
 use super::state::{BlenderColorPicker, ChannelMode, InterpolationMode};
-use crate::widget::{RadioGroup, RadioOption, RadioOrientation, paint_radio_group};
+use crate::widget::{RadioGroup, RadioOption, RadioOrientation, paint_radio_group_with_labels};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
@@ -11,6 +12,7 @@ pub fn paint_interpolation_toggle(
     cp: &BlenderColorPicker,
     rect: Rect,
     scene: &mut VectorScene,
+    text_system: &mut TextSystem,
     theme: Theme,
 ) {
     let group = RadioGroup::new(
@@ -26,13 +28,14 @@ pub fn paint_interpolation_toggle(
         InterpolationMode::Linear => "linear",
         InterpolationMode::Perceptual => "perceptual",
     });
-    paint_radio_group(&group, rect, scene, theme);
+    paint_radio_group_with_labels(&group, rect, scene, text_system, theme);
 }
 
 pub fn paint_channel_toggle(
     cp: &BlenderColorPicker,
     rect: Rect,
     scene: &mut VectorScene,
+    text_system: &mut TextSystem,
     theme: Theme,
 ) {
     let group = RadioGroup::new(
@@ -48,5 +51,5 @@ pub fn paint_channel_toggle(
         ChannelMode::Rgb => "rgb",
         ChannelMode::Hsv => "hsv",
     });
-    paint_radio_group(&group, rect, scene, theme);
+    paint_radio_group_with_labels(&group, rect, scene, text_system, theme);
 }

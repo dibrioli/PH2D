@@ -50,11 +50,11 @@ pub fn paint_blender_color_picker(
     y += WHEEL_SIZE + ROW_GAP;
 
     let interp_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
-    paint_interpolation_toggle(cp, interp_rect, scene, theme);
+    paint_interpolation_toggle(cp, interp_rect, scene, text_system, theme);
     y += TOGGLE_H + ROW_GAP;
 
     let chan_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
-    paint_channel_toggle(cp, chan_rect, scene, theme);
+    paint_channel_toggle(cp, chan_rect, scene, text_system, theme);
     y += TOGGLE_H + ROW_GAP;
 
     let labels = match cp.channel_mode {

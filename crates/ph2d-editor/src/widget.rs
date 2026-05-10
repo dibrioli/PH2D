@@ -39,7 +39,7 @@ mod vector3_editor;
 pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
 pub use blender_color_picker::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
-    paint_blender_color_picker, wheel_pick,
+    paint_blender_color_picker, value_pick, wheel_pick,
 };
 pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
 pub use card::{Card, paint_card};
@@ -56,7 +56,9 @@ pub use number_input::{NumberInput, paint_number_input, paint_number_input_with_
 pub use pill_group::{PILL_PADDING_PX, PillGroup, paint_pill_group};
 pub use popover::{Popover, paint_popover};
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
-pub use radio_group::{RadioGroup, RadioOption, RadioOrientation, paint_radio_group};
+pub use radio_group::{
+    RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
+};
 pub use section_header::{SectionHeader, paint_section_header};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider};
 pub use spinner::{Spinner, paint_spinner};

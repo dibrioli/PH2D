@@ -12,10 +12,13 @@
 //! - `Segmented` — pill-shaped contiguous row; selected option fills
 //!   with `AccentSoft`. iOS-style segmented control.
 
-use crate::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
+use crate::paint::{
+    fill_rounded_rect, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
+};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Radius, Theme};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -190,6 +193,39 @@ fn paint_segmented<T: Clone + PartialEq>(
             inset,
             (outer - 2.0).max(0.0),
             resolve(ColorToken::AccentSoft, theme),
+        );
+    }
+}
+
+/// Like [`paint_radio_group`] but paints each option's label text on
+/// top of its sub-rect. Required for Segmented mode (where the
+/// chrome-only painter would leave the user staring at empty pills).
+/// Uses `TypeToken::Sm`. Selected option draws in `AccentFg`,
+/// unselected in `Text2`.
+pub fn paint_radio_group_with_labels<T: Clone + PartialEq>(
+    group: &RadioGroup<T>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    paint_radio_group(group, rect, scene, theme);
+    let font = TypeToken::Sm.px();
+    for (i, opt) in group.options.iter().enumerate() {
+        let r = group.option_rect(rect, i);
+        let selected = group.selected.as_ref() == Some(&opt.value);
+        let color = if selected {
+            ColorToken::AccentFg
+        } else {
+            ColorToken::Text2
+        };
+        paint_text_centered(
+            text_system,
+            scene,
+            &opt.label,
+            r,
+            font,
+            resolve(color, theme),
         );
     }
 }

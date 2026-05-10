@@ -42,4 +42,5 @@ pub use paint::paint_blender_color_picker;
 pub use state::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
 };
+pub use value_slider::value_pick;
 pub use wheel::wheel_pick;

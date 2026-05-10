@@ -13,7 +13,12 @@ use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_centered, rect_to_vello, resolve,
     stroke_rounded_rect,
 };
-use crate::widget::{SectionHeader, Slider, SliderState, paint_section_header, paint_slider};
+use crate::widget::{
+    Checkbox, CheckboxState, CheckboxValue, ColorSwatch, NumberInput, SectionHeader, Slider,
+    SliderState, SwatchSize, TabItem, Tabs, TabsVariant, Toggle, ToggleState, paint_checkbox,
+    paint_color_swatch, paint_number_input, paint_section_header, paint_slider, paint_tabs,
+    paint_toggle,
+};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -69,7 +74,18 @@ pub fn paint_inspector(
     );
     scene.fill_rect(rect_to_vello(div), resolve(ColorToken::Border, theme));
 
-    let mut y = div_y + Spacing::Md.px();
+    // Inspector Tabs (Phase 1 polish): Properties / Layers / Materials.
+    let tabs_h = 28.0_f32;
+    let tabs_y = div_y + Spacing::Md.px();
+    let tabs_rect = Rect::new(
+        rect.x + PANEL_HEAD_PAD,
+        tabs_y,
+        rect.w - PANEL_HEAD_PAD * 2.0,
+        tabs_h,
+    );
+    paint_inspector_tabs(tabs_rect, scene, text_system, theme, hit_index, store);
+
+    let mut y = tabs_y + tabs_h + Spacing::Md.px();
     let body_pad = 10.0_f32;
     for section in fixture::inspector_sections() {
         let header_rect = Rect::new(
@@ -109,6 +125,149 @@ pub fn paint_inspector(
         }
         y += SECTION_GAP;
     }
+
+    // Behavior section (Phase 1 polish): Checkbox + Toggle + ColorSwatch.
+    if y + 100.0 < rect.y + rect.h {
+        paint_inspector_behavior_section(
+            rect.x + body_pad,
+            rect.w - body_pad * 2.0,
+            y,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+        );
+    }
+}
+
+/// Map a slider's NodeId to its sibling NumberInput NodeId
+/// (Phase 1 polish: sliders carry a linked numeric chip).
+fn sibling_number_id(slider_id: Option<NodeId>) -> Option<NodeId> {
+    let slider_id = slider_id?;
+    Some(match slider_id {
+        x if x == ids::INSP_MOVE_SPEED => ids::INSP_NUM_MOVE_SPEED,
+        x if x == ids::INSP_JUMP_HEIGHT => ids::INSP_NUM_JUMP_HEIGHT,
+        x if x == ids::INSP_FRICTION => ids::INSP_NUM_FRICTION,
+        x if x == ids::INSP_DAMPING => ids::INSP_NUM_DAMPING,
+        x if x == ids::INSP_CAM_YAW => ids::INSP_NUM_CAM_YAW,
+        _ => return None,
+    })
+}
+
+fn paint_inspector_tabs(
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    let tabs = Tabs::new(
+        ids::INSP_TAB_PROPS,
+        "Inspector tabs",
+        vec![
+            TabItem::new(ids::INSP_TAB_PROPS, "Properties"),
+            TabItem::new(ids::INSP_TAB_LAYERS, "Layers"),
+            TabItem::new(ids::INSP_TAB_MATERIALS, "Materials"),
+        ],
+    )
+    .variant(TabsVariant::Segmented)
+    .selected(active_inspector_tab_index(store));
+    paint_tabs(&tabs, rect, scene, text_system, theme);
+    // Register per-tab hit rects (3 evenly split).
+    let count = tabs.items.len() as f32;
+    let tab_w = rect.w / count;
+    for (i, item) in tabs.items.iter().enumerate() {
+        let r = Rect::new(rect.x + tab_w * i as f32, rect.y, tab_w, rect.h);
+        hit_index.register(item.id, r);
+    }
+}
+
+/// Determine which tab id is currently the active one by reading the
+/// per-tab Button state from the store. Falls back to Properties.
+fn active_inspector_tab_index(store: &WidgetStore) -> usize {
+    use crate::widget::ButtonState;
+    let candidates = [
+        ids::INSP_TAB_PROPS,
+        ids::INSP_TAB_LAYERS,
+        ids::INSP_TAB_MATERIALS,
+    ];
+    for (i, id) in candidates.iter().enumerate() {
+        if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
+            return i;
+        }
+    }
+    0
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_inspector_behavior_section(
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    let head_rect = Rect::new(x, y, w, FIELD_ROW_H);
+    let header = SectionHeader::new(NodeId(0), "Behavior".to_string()).count(3);
+    paint_section_header(&header, head_rect, scene, text_system, theme);
+    let mut row_y = y + FIELD_ROW_H + 4.0;
+
+    // Checkbox row.
+    let cb_state = store
+        .checkbox(ids::INSP_HOT_RELOAD_CHECK)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
+    let cb_rect = Rect::new(x, row_y, w, 20.0);
+    hit_index.register(ids::INSP_HOT_RELOAD_CHECK, cb_rect);
+    let cb = Checkbox::new(ids::INSP_HOT_RELOAD_CHECK, "Hot reload on save")
+        .state(cb_state.0)
+        .value(cb_state.1);
+    paint_checkbox(&cb, cb_rect, scene, text_system, theme);
+    row_y += 24.0;
+
+    // Toggle row.
+    let (tg_state, tg_on) = store
+        .toggle(ids::INSP_SNAP_GRID_TOGGLE)
+        .unwrap_or((ToggleState::Normal, true));
+    let toggle_w = 44.0;
+    let toggle_rect = Rect::new(x + w - toggle_w, row_y, toggle_w, 20.0);
+    hit_index.register(ids::INSP_SNAP_GRID_TOGGLE, toggle_rect);
+    let toggle = Toggle::new(ids::INSP_SNAP_GRID_TOGGLE, "Snap to grid")
+        .state(tg_state)
+        .on(tg_on);
+    paint_toggle(&toggle, toggle_rect, scene, theme);
+    paint_text(
+        text_system,
+        scene,
+        "Snap to grid",
+        x,
+        row_y + (20.0 - TypeToken::Xs.px()) * 0.5,
+        TypeToken::Xs.px(),
+        w - toggle_w - Spacing::Md.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    row_y += 24.0;
+
+    // ColorSwatch row.
+    paint_text(
+        text_system,
+        scene,
+        "Tint",
+        x,
+        row_y + (20.0 - TypeToken::Xs.px()) * 0.5,
+        TypeToken::Xs.px(),
+        80.0,
+        resolve(ColorToken::Text2, theme),
+    );
+    let sw_rect = Rect::new(x + w - 32.0, row_y - 4.0, 32.0, 28.0);
+    hit_index.register(ids::INSP_TINT_SWATCH, sw_rect);
+    let mut tint = ColorSwatch::new(ids::INSP_TINT_SWATCH, "Tint", [120, 60, 200, 255]);
+    tint.size = SwatchSize::Md;
+    paint_color_swatch(&tint, sw_rect, scene, theme);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -154,7 +313,7 @@ fn paint_inspector_field(
     let body_rect = Rect::new(x, body_y, w, FIELD_ROW_H);
     match &field.kind {
         InspectorFieldKind::Slider { value, display } => {
-            let val_w = 56.0_f32;
+            let val_w = 64.0_f32;
             let val_rect = Rect::new(
                 body_rect.x + body_rect.w - val_w,
                 body_rect.y,
@@ -178,20 +337,25 @@ fn paint_inspector_field(
             s.set_value(live_value);
             s.state = live_state;
             paint_slider(&s, slider_rect, scene, theme);
-            fill_rounded_rect(
-                scene,
-                val_rect,
-                Radius::Xs.px(),
-                resolve(ColorToken::Bg3, theme),
-            );
-            paint_text_centered(
-                text_system,
-                scene,
-                display,
-                val_rect,
-                TypeToken::Xs.px(),
-                resolve(ColorToken::Text1, theme),
-            );
+            // NumberInput-style value chip linked to the slider via
+            // a sibling NodeId. The dispatcher keeps both in sync;
+            // for now we paint a NumberInput stub showing either the
+            // store-backed numeric value (if a sibling id exists) or
+            // the fixture's display string as a fallback.
+            let num_id = sibling_number_id(field_id);
+            let num_value = num_id
+                .and_then(|i| match store.get(i) {
+                    Some(crate::interaction::InteractiveState::NumberInput { value, .. }) => {
+                        Some(*value)
+                    }
+                    _ => None,
+                })
+                .unwrap_or_else(|| display.parse::<f64>().unwrap_or(*value as f64));
+            if let Some(i) = num_id {
+                hit_index.register(i, val_rect);
+            }
+            let ni = NumberInput::new(num_id.unwrap_or(NodeId(0)), &field.label, num_value);
+            paint_number_input(&ni, val_rect, scene, text_system, theme);
         }
         InspectorFieldKind::Select { current } => {
             let is_open = field_id

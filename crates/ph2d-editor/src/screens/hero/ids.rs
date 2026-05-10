@@ -43,6 +43,20 @@ pub const INSP_LINK_MATERIAL: NodeId = NodeId(321);
 pub const INSP_CAM_YAW: NodeId = NodeId(330);
 pub const INSP_CAM_PITCH: NodeId = NodeId(331);
 
+// Inspector polish (Phase 1) extra ids:
+pub const INSP_TAB_PROPS: NodeId = NodeId(340);
+pub const INSP_TAB_LAYERS: NodeId = NodeId(341);
+pub const INSP_TAB_MATERIALS: NodeId = NodeId(342);
+pub const INSP_NUM_MOVE_SPEED: NodeId = NodeId(350);
+pub const INSP_NUM_JUMP_HEIGHT: NodeId = NodeId(351);
+pub const INSP_NUM_FRICTION: NodeId = NodeId(352);
+pub const INSP_NUM_DAMPING: NodeId = NodeId(353);
+pub const INSP_NUM_CAM_YAW: NodeId = NodeId(354);
+pub const INSP_HOT_RELOAD_CHECK: NodeId = NodeId(360);
+pub const INSP_SNAP_GRID_TOGGLE: NodeId = NodeId(361);
+pub const INSP_TINT_SWATCH: NodeId = NodeId(370);
+pub const INSP_BLENDER_PICKER: NodeId = NodeId(380);
+
 pub const HIER_PLAYER: NodeId = NodeId(400);
 pub const HIER_SPRITE_IDLE: NodeId = NodeId(401);
 pub const HIER_COLLIDER_BOX: NodeId = NodeId(402);

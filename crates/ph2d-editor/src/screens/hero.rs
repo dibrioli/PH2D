@@ -232,6 +232,69 @@ impl HeroScreen {
         ] {
             store.register(id, InteractiveState::Plain);
         }
+
+        // Inspector Tabs (Properties active by default).
+        for id in [
+            ids::INSP_TAB_PROPS,
+            ids::INSP_TAB_LAYERS,
+            ids::INSP_TAB_MATERIALS,
+        ] {
+            store.register(
+                id,
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+        if let Some(InteractiveState::Button { state }) = store.get_mut(ids::INSP_TAB_PROPS) {
+            *state = ButtonState::Pressed;
+        }
+
+        // Inspector NumberInput linked-twin per slider. Initial values
+        // mirror the slider's value scaled to display range — the
+        // dispatcher will keep them in sync as the user drags.
+        for (id, value) in [
+            (ids::INSP_NUM_MOVE_SPEED, 160.0_f64),
+            (ids::INSP_NUM_JUMP_HEIGHT, 200.0),
+            (ids::INSP_NUM_FRICTION, 0.0010),
+            (ids::INSP_NUM_DAMPING, 0.70),
+            (ids::INSP_NUM_CAM_YAW, 0.57),
+        ] {
+            store.register(
+                id,
+                InteractiveState::NumberInput {
+                    state: crate::widget::TextInputState::Normal,
+                    value,
+                },
+            );
+        }
+
+        // Inspector Checkbox + Toggle.
+        store.register(
+            ids::INSP_HOT_RELOAD_CHECK,
+            InteractiveState::Checkbox {
+                state: crate::widget::CheckboxState::Normal,
+                value: crate::widget::CheckboxValue::Checked,
+            },
+        );
+        store.register(
+            ids::INSP_SNAP_GRID_TOGGLE,
+            InteractiveState::Toggle {
+                state: crate::widget::ToggleState::Normal,
+                on: true,
+            },
+        );
+
+        // ColorSwatch "Tint" — clicking selects it (Plain) and the
+        // BlenderColorPicker in the demo region reads its rgba.
+        store.register(ids::INSP_TINT_SWATCH, InteractiveState::Plain);
+        store.register(
+            ids::INSP_BLENDER_PICKER,
+            InteractiveState::ColorPicker {
+                mode: crate::widget::ColorPickerMode::Classic,
+                rgba: [120, 60, 200, 255],
+            },
+        );
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {

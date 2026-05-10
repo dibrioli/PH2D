@@ -49,7 +49,9 @@ pub use card::{Card, paint_card};
 pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};
 pub use color_swatch::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
-pub use combobox::{Combobox, ComboboxOption, ComboboxState, paint_combobox};
+pub use combobox::{
+    Combobox, ComboboxOption, ComboboxState, paint_combobox, paint_combobox_with_state,
+};
 pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
 pub use dropdown::{Dropdown, DropdownOption, DropdownState, paint_dropdown};

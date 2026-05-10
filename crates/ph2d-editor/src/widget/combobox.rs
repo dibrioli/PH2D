@@ -131,6 +131,24 @@ pub fn paint_combobox(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_combobox_with_state(cb, 0, None, rect, scene, text_system, theme);
+}
+
+/// Like [`paint_combobox`] but draws the focused-state caret + an
+/// active selection range read from the caller's
+/// [`crate::interaction::WidgetStore`] entry. Pass `caret = 0` /
+/// `selection_anchor = None` for the unfocused / non-interactive
+/// case (or just call [`paint_combobox`]).
+#[allow(clippy::too_many_arguments)]
+pub fn paint_combobox_with_state(
+    cb: &Combobox,
+    caret: usize,
+    selection_anchor: Option<usize>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     let radius = Radius::Sm.px();
     let fill = if cb.state == ComboboxState::Disabled {
         ColorToken::Bg2
@@ -179,6 +197,45 @@ pub fn paint_combobox(
     } else {
         cb.query.as_str()
     };
+    let focused = cb.state == ComboboxState::Focused;
+    // Selection background drawn under the text when focused +
+    // there's a non-empty selection range. Paint before the text
+    // so it sits behind the glyphs.
+    if focused
+        && !cb.query.is_empty()
+        && let Some(anchor) = selection_anchor
+        && anchor != caret
+    {
+        let (sel_start, sel_end) = if anchor < caret {
+            (anchor, caret)
+        } else {
+            (caret, anchor)
+        };
+        let sel_start = sel_start.min(cb.query.len());
+        let sel_end = sel_end.min(cb.query.len());
+        let prefix_w = if sel_start == 0 {
+            0.0
+        } else {
+            text_system
+                .layout(&cb.query[..sel_start], font_size, f32::INFINITY)
+                .width()
+        };
+        let mid_w = if sel_start == sel_end {
+            0.0
+        } else {
+            text_system
+                .layout(&cb.query[sel_start..sel_end], font_size, f32::INFINITY)
+                .width()
+        };
+        let sel_x = (inner_x + prefix_w).min(inner_x + inner_w);
+        let sel_w = mid_w.min(inner_x + inner_w - sel_x);
+        if sel_w > 0.0 {
+            let sel_top = rect.y + Spacing::Md.px();
+            let sel_bot = rect.y + rect.h - Spacing::Md.px();
+            let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
+            fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
+        }
+    }
     paint_text(
         text_system,
         scene,
@@ -189,6 +246,23 @@ pub fn paint_combobox(
         inner_w,
         resolve(label_color, theme),
     );
+    // Caret line at the user's typing position, sized via real
+    // text measurement so it lands between glyphs (not on top of
+    // them — see `docs/UI_Bugs/README.md` §3.3).
+    if focused {
+        let caret_byte = caret.min(cb.query.len());
+        let prefix = &cb.query[..caret_byte];
+        let prefix_w = if prefix.is_empty() {
+            0.0
+        } else {
+            text_system.layout(prefix, font_size, f32::INFINITY).width()
+        };
+        let caret_x = (inner_x + prefix_w).min(inner_x + inner_w);
+        let caret_top = rect.y + Spacing::Md.px();
+        let caret_bot = rect.y + rect.h - Spacing::Md.px();
+        let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
+        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
+    }
 
     if cb.open {
         for (visible, &index) in cb.filtered().iter().enumerate() {

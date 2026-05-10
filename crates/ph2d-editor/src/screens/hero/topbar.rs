@@ -89,14 +89,18 @@ pub fn paint_hover_tooltip(
     let Some(target_rect) = hit_index.rect_for(id) else {
         return;
     };
-    let approx_w = (text.chars().count() as f32 * 6.5 + 16.0).max(60.0);
-    let approx_h = 22.0_f32;
-    let tip_rect = Rect::new(
-        target_rect.x + (target_rect.w - approx_w) * 0.5,
-        target_rect.y + target_rect.h + 6.0,
-        approx_w,
-        approx_h,
-    );
+    // Real text measurement instead of `chars × 6.5` — for
+    // proportional fonts the approximation is off by 10-30 % and
+    // the pill ends up clipped or oversized. See
+    // `docs/UI_Bugs/README.md` §3.3.
+    let font_size = ph2d_tokens::TypeToken::Sm.px();
+    let measured_w = text_system.layout(text, font_size, f32::INFINITY).width();
+    let pill_w = (measured_w + 16.0).max(60.0);
+    let pill_h = (font_size + 10.0).max(22.0);
+    // Center over the target; if that would clip the right edge of
+    // the viewport, fall back to right-aligning to the target.
+    let tip_x = target_rect.x + (target_rect.w - pill_w) * 0.5;
+    let tip_rect = Rect::new(tip_x, target_rect.y + target_rect.h + 6.0, pill_w, pill_h);
     let tip = Tooltip::new(NodeId(0), text);
     paint_tooltip(&tip, tip_rect, scene, text_system, theme);
 }

@@ -346,10 +346,10 @@ use crate::widget::{
     ListItem, ListItemState, Modal, NumberInput, Popover, ProgressBar, RadioGroup, RadioOption,
     RadioOrientation, SectionHeader, Slider, SliderState, Spinner, Tag, TagTone, TextArea,
     TextInput, TextInputState, TreeNode, TreeView, Vector3Editor, paint_avatar, paint_card,
-    paint_checkbox, paint_combobox, paint_context_menu, paint_divider, paint_dropdown,
-    paint_list_item, paint_modal, paint_popover, paint_progress_bar, paint_radio_group,
-    paint_section_header, paint_slider, paint_spinner, paint_tag, paint_text_area,
-    paint_text_input, paint_vector3_editor,
+    paint_checkbox, paint_context_menu, paint_divider, paint_dropdown, paint_list_item,
+    paint_modal, paint_popover, paint_progress_bar, paint_radio_group, paint_section_header,
+    paint_slider, paint_spinner, paint_tag, paint_text_area, paint_text_input,
+    paint_vector3_editor,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -652,20 +652,26 @@ pub fn paint_components_showcase(
     // 6. Combobox + Checkbox.
     let cb_rect = Rect::new(inner_x, y, inner_w * 0.6, 28.0);
     hit_index.register(ids::SHOWCASE_COMBOBOX_ASSET, cb_rect);
-    // Read live query + open state from the store.
-    let (combo_query, combo_open, combo_state) = store
+    // Read live query + open state + caret + selection from the
+    // store so typing / double-click select-all / drag-to-select
+    // are all visible.
+    let (combo_query, combo_open, combo_state, combo_caret, combo_anchor) = store
         .get(ids::SHOWCASE_COMBOBOX_ASSET)
         .and_then(|s| {
             if let crate::interaction::InteractiveState::Combobox {
-                query, open, state, ..
+                query,
+                open,
+                state,
+                caret,
+                selection_anchor,
             } = s
             {
-                Some((query.as_str(), *open, *state))
+                Some((query.as_str(), *open, *state, *caret, *selection_anchor))
             } else {
                 None
             }
         })
-        .unwrap_or(("sp", false, ComboboxState::Normal));
+        .unwrap_or(("sp", false, ComboboxState::Normal, 0, None));
     let combo = Combobox::new(
         ids::SHOWCASE_COMBOBOX_ASSET,
         "Asset",
@@ -677,7 +683,15 @@ pub fn paint_components_showcase(
     .query(combo_query)
     .open(combo_open)
     .state(combo_state);
-    paint_combobox(&combo, cb_rect, scene, text_system, theme);
+    crate::widget::paint_combobox_with_state(
+        &combo,
+        combo_caret,
+        combo_anchor,
+        cb_rect,
+        scene,
+        text_system,
+        theme,
+    );
     let chk_rect = Rect::new(
         inner_x + cb_rect.w + Spacing::Md.px(),
         y + 4.0,

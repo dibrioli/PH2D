@@ -155,13 +155,7 @@ pub fn dispatch_pointer<'frame>(
             {
                 commit_number_buffer(store, old, &mut events);
                 commit_hex_buffer(store, old, &mut events);
-                match store.get_mut(old) {
-                    Some(InteractiveState::NumberInput { state, .. })
-                    | Some(InteractiveState::TextInput { state, .. }) => {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
-                    _ => {}
-                }
+                reset_focused_visual_state(store, old);
                 events.push(WidgetEvent::Blur(old));
                 store.set_focus(None);
             }
@@ -179,8 +173,14 @@ pub fn dispatch_pointer<'frame>(
                 if store.focus_id() != Some(id) {
                     store.set_focus(Some(id));
                     init_number_buffer(store, id);
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Focused;
+                    match store.get_mut(id) {
+                        Some(InteractiveState::TextInput { state, .. }) => {
+                            *state = crate::widget::TextInputState::Focused;
+                        }
+                        Some(InteractiveState::Combobox { state, .. }) => {
+                            *state = crate::widget::ComboboxState::Focused;
+                        }
+                        _ => {}
                     }
                     events.push(WidgetEvent::Focus(id));
                 }
@@ -731,6 +731,24 @@ fn nearest_char_boundary(s: &str, mut i: usize) -> usize {
     i
 }
 
+/// Reset the focused visual state of a text-editing widget at `id`
+/// to its `Normal` variant. Used on every blur path (Down handler,
+/// `cycle_focus`, ESC, hex commit) so the painter stops drawing the
+/// caret + focus border once the widget loses focus. Combobox uses
+/// its own `ComboboxState` enum so it gets a separate match arm.
+pub(super) fn reset_focused_visual_state(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    match store.get_mut(id) {
+        Some(InteractiveState::NumberInput { state, .. })
+        | Some(InteractiveState::TextInput { state, .. }) => {
+            *state = crate::widget::TextInputState::Normal;
+        }
+        Some(InteractiveState::Combobox { state, .. }) => {
+            *state = crate::widget::ComboboxState::Normal;
+        }
+        _ => {}
+    }
+}
+
 /// Set `selection_anchor = Some(0)` and `caret = text.len()` on the
 /// focused TextInput / NumberInput widget at `id`. Triggered by
 /// double-click and by Cmd/Ctrl+A. No-op for any other widget kind.
@@ -1241,6 +1259,7 @@ fn cycle_focus<'a>(store: &mut WidgetStore, forward: bool, events: &mut BumpVec<
             {
                 commit_number_buffer(store, old, events);
                 commit_hex_buffer(store, old, events);
+                reset_focused_visual_state(store, old);
                 events.push(WidgetEvent::Blur(old));
             }
             if store.focus_id() != Some(id) {

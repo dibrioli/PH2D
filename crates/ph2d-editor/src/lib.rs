@@ -49,8 +49,13 @@ pub use tool::{PanelEvent, Tool, ToolRegistry};
 pub use ph2d_a11y::NodeId;
 pub use tools::{BrushTool, MoveTool};
 pub use widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, ICON_BUTTON_SIZE_PX, RadioGroup, RadioOption,
-    Slider, Toggle, paint_button, paint_color_swatch, paint_radio_group, paint_slider,
+    Avatar, AvatarShape, AvatarState, Button, ButtonKind, ButtonState, CHECKBOX_BOX_PX, Checkbox,
+    CheckboxState, CheckboxValue, ColorSwatch, Divider, DividerOrientation, ICON_BUTTON_SIZE_PX,
+    NumberInput, ProgressBar, ProgressMode, RadioGroup, RadioOption, RadioOrientation, Slider,
+    SliderOrientation, SliderState, Spinner, SwatchSize, SwatchState, Tag, TagState, TagTone,
+    TextArea, TextInput, TextInputState, Toggle, ToggleState, paint_avatar, paint_button,
+    paint_checkbox, paint_color_swatch, paint_divider, paint_number_input, paint_progress_bar,
+    paint_radio_group, paint_slider, paint_spinner, paint_tag, paint_text_area, paint_text_input,
     paint_toggle,
 };
 pub use zen::ZenMode;

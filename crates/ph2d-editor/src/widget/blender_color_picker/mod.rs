@@ -38,6 +38,7 @@ pub mod wheel;
 #[cfg(test)]
 mod tests;
 
+pub use hex_field::parse_hex;
 pub use paint::paint_blender_color_picker;
 pub use state::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,

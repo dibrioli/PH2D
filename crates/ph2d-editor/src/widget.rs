@@ -39,7 +39,7 @@ mod vector3_editor;
 pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
 pub use blender_color_picker::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
-    paint_blender_color_picker, value_pick, wheel_pick,
+    paint_blender_color_picker, parse_hex, value_pick, wheel_pick,
 };
 pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
 pub use card::{Card, paint_card};

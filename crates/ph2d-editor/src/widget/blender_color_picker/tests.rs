@@ -115,3 +115,69 @@ fn paint_smoke_with_alpha() {
         Theme::PaintStudio,
     );
 }
+
+#[test]
+fn pick_swatch_updates_value_and_active() {
+    let mut cp = BlenderColorPicker::new(NodeId(1), "x");
+    let custom = ColorPalette::new(
+        "Custom",
+        vec![
+            ColorValue::from_rgba8(10, 20, 30, 255),
+            ColorValue::from_rgba8(40, 50, 60, 255),
+        ],
+    );
+    cp.palettes.push(custom);
+    assert!(cp.pick_swatch(1, 1));
+    assert_eq!(cp.value.rgba, [40, 50, 60, 255]);
+    assert_eq!(cp.active_palette, 1);
+}
+
+#[test]
+fn pick_swatch_oob_is_noop() {
+    let mut cp = BlenderColorPicker::new(NodeId(1), "x");
+    let original = cp.value.rgba;
+    assert!(!cp.pick_swatch(99, 0));
+    assert!(!cp.pick_swatch(0, 99));
+    assert_eq!(cp.value.rgba, original);
+}
+
+#[test]
+fn try_set_hex_commits_valid() {
+    let mut cp = BlenderColorPicker::new(NodeId(1), "x");
+    assert!(cp.try_set_hex("#101820"));
+    assert_eq!(cp.value.rgba, [0x10, 0x18, 0x20, 0xFF]);
+    assert_eq!(cp.hex, "#101820FF");
+}
+
+#[test]
+fn try_set_hex_rejects_invalid_keeps_value() {
+    let mut cp = BlenderColorPicker::new(NodeId(1), "x");
+    let original = cp.value.rgba;
+    assert!(!cp.try_set_hex("nope"));
+    assert_eq!(cp.value.rgba, original);
+}
+
+#[test]
+fn add_swatch_only_when_palette_editable() {
+    let mut cp = BlenderColorPicker::new(NodeId(1), "x");
+    // Default palette is read-only.
+    assert!(cp.add_swatch(ColorValue::WHITE).is_none());
+    cp.palettes.push(ColorPalette::new("Custom", vec![]));
+    cp.active_palette = 1;
+    let idx = cp.add_swatch(ColorValue::WHITE).unwrap();
+    assert_eq!(idx, 0);
+    assert_eq!(cp.palettes[1].swatches.len(), 1);
+}
+
+#[test]
+fn remove_swatch_from_editable_palette() {
+    let mut cp = BlenderColorPicker::new(NodeId(1), "x");
+    cp.palettes.push(ColorPalette::new(
+        "Custom",
+        vec![ColorValue::WHITE, ColorValue::BLACK],
+    ));
+    cp.active_palette = 1;
+    assert!(cp.remove_swatch(0));
+    assert_eq!(cp.palettes[1].swatches.len(), 1);
+    assert_eq!(cp.palettes[1].swatches[0].rgba, ColorValue::BLACK.rgba);
+}

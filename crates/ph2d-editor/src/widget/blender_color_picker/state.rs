@@ -133,6 +133,56 @@ impl BlenderColorPicker {
         self.hex = format!("#{r:02X}{g:02X}{b:02X}{a:02X}");
     }
 
+    /// Pick the swatch at `(palette_index, swatch_index)` and set
+    /// it as the picker's current value. No-op if either index is
+    /// out of range.
+    pub fn pick_swatch(&mut self, palette_index: usize, swatch_index: usize) -> bool {
+        let Some(palette) = self.palettes.get(palette_index) else {
+            return false;
+        };
+        let Some(swatch) = palette.swatches.get(swatch_index).copied() else {
+            return false;
+        };
+        self.set_value(swatch);
+        self.active_palette = palette_index;
+        true
+    }
+
+    /// Try to commit a hex string into the picker's value. Returns
+    /// `true` on a successful parse (and updates `value` + `hex`).
+    pub fn try_set_hex(&mut self, hex: &str) -> bool {
+        match super::hex_field::parse_hex(hex) {
+            Some(cv) => {
+                self.set_value(cv);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Push a new swatch to the active palette. Returns the new
+    /// swatch's index, or `None` if the active palette is read-only.
+    pub fn add_swatch(&mut self, value: ColorValue) -> Option<usize> {
+        let palette = self.palettes.get_mut(self.active_palette)?;
+        if !palette.editable {
+            return None;
+        }
+        palette.swatches.push(value);
+        Some(palette.swatches.len() - 1)
+    }
+
+    /// Remove the swatch at `index` from the active palette.
+    pub fn remove_swatch(&mut self, index: usize) -> bool {
+        let Some(palette) = self.palettes.get_mut(self.active_palette) else {
+            return false;
+        };
+        if !palette.editable || index >= palette.swatches.len() {
+            return false;
+        }
+        palette.swatches.remove(index);
+        true
+    }
+
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
         NodeBuilder::new(Role::Group)
             .label(&self.label)

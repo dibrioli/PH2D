@@ -33,6 +33,7 @@ pub mod ids;
 pub mod inspector;
 pub mod left_rail;
 pub mod selection;
+pub mod showcase;
 pub mod style;
 pub mod topbar;
 
@@ -42,6 +43,7 @@ pub use hierarchy::paint_hierarchy;
 pub use inspector::paint_inspector;
 pub use left_rail::paint_left_rail;
 pub use selection::paint_selection_overlay;
+pub use showcase::paint_components_showcase;
 pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 pub use topbar::paint_top_bar;
 
@@ -404,6 +406,15 @@ pub fn paint_hero_screen(
         &hero.store,
     );
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
+    // Components Showcase region (Phase 4 polish).
+    paint_components_showcase(
+        &layout,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+    );
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);
 }

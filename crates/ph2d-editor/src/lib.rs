@@ -50,16 +50,18 @@ pub use ph2d_a11y::NodeId;
 pub use tools::{BrushTool, MoveTool};
 pub use widget::{
     Avatar, AvatarShape, AvatarState, Button, ButtonKind, ButtonState, CHECKBOX_BOX_PX, Card,
-    Checkbox, CheckboxState, CheckboxValue, ColorSwatch, Combobox, ComboboxOption, ComboboxState,
-    ContextMenu, ContextMenuEntry, Divider, DividerOrientation, Dropdown, DropdownOption,
-    DropdownState, ICON_BUTTON_SIZE_PX, ListItem, ListItemState, NumberInput, ProgressBar,
-    ProgressMode, RadioGroup, RadioOption, RadioOrientation, Slider, SliderOrientation,
-    SliderState, Spinner, SwatchSize, SwatchState, TabItem, Tabs, TabsVariant, Tag, TagState,
-    TagTone, TextArea, TextInput, TextInputState, Toggle, ToggleState, Tooltip, Vector3Editor,
-    paint_avatar, paint_button, paint_card, paint_checkbox, paint_color_swatch, paint_combobox,
-    paint_context_menu, paint_divider, paint_dropdown, paint_list_item, paint_number_input,
+    Checkbox, CheckboxState, CheckboxValue, ColorPicker, ColorPickerMode, ColorSwatch, Combobox,
+    ComboboxOption, ComboboxState, ContextMenu, ContextMenuEntry, Divider, DividerOrientation,
+    Dropdown, DropdownOption, DropdownState, ICON_BUTTON_SIZE_PX, ListItem, ListItemState, Modal,
+    NumberInput, Popover, ProgressBar, ProgressMode, RadioGroup, RadioOption, RadioOrientation,
+    Slider, SliderOrientation, SliderState, Spinner, SwatchSize, SwatchState, TabItem, Tabs,
+    TabsVariant, Tag, TagState, TagTone, TextArea, TextInput, TextInputState, Toggle, ToggleState,
+    Tooltip, TreeNode, TreeView, Vector3Editor, paint_avatar, paint_button, paint_card,
+    paint_checkbox, paint_color_picker, paint_color_swatch, paint_combobox, paint_context_menu,
+    paint_divider, paint_dropdown, paint_list_item, paint_modal, paint_number_input, paint_popover,
     paint_progress_bar, paint_radio_group, paint_slider, paint_spinner, paint_tabs, paint_tag,
-    paint_text_area, paint_text_input, paint_toggle, paint_tooltip, paint_vector3_editor,
+    paint_text_area, paint_text_input, paint_toggle, paint_tooltip, paint_tree_view,
+    paint_vector3_editor,
 };
 pub use zen::ZenMode;
 pub use zones::{Layout, Zone};

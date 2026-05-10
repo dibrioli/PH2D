@@ -499,14 +499,13 @@ fn tab_color(tab: &PanelTab, theme: Theme) -> Color {
 impl Paint for ToastQueue {
     fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
         use crate::toast::ToastSeverity;
-        let toast_w = 320.0_f32;
-        let toast_h = 36.0_f32;
-        let gap = 6.0_f32;
+        use ph2d_tokens::Radius;
+        let toast_w = 360.0_f32;
+        let toast_h = 44.0_f32;
+        let gap = 8.0_f32;
         let top_margin = 16.0_f32;
         let center_x = ctx.viewport.x + (ctx.viewport.w - toast_w) / 2.0;
-        // Severity tints carry their own color identity — `AccentFg`
-        // is tuned per-theme to remain readable on any tinted surface.
-        let label_color = resolve(ColorToken::AccentFg, ctx.theme);
+        let radius = Radius::Md.px();
         for (i, toast) in self.iter().enumerate() {
             let r = Rect {
                 x: center_x,
@@ -514,18 +513,41 @@ impl Paint for ToastQueue {
                 w: toast_w,
                 h: toast_h,
             };
-            let token = match toast.severity {
-                ToastSeverity::Info => ColorToken::Info,
-                ToastSeverity::Success => ColorToken::Success,
-                ToastSeverity::Warning => ColorToken::Warn,
-                ToastSeverity::ErrorState => ColorToken::Danger,
+            // Body uses BgElev so the toast lifts off the canvas
+            // independently of its severity tint; the severity color
+            // is reserved for the icon + accent stripe on the left.
+            fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, ctx.theme));
+            stroke_rounded_rect(
+                scene,
+                r,
+                radius,
+                1.0,
+                resolve(ColorToken::Border, ctx.theme),
+            );
+
+            let (severity_token, icon) = match toast.severity {
+                ToastSeverity::Info => (ColorToken::Info, crate::icons::IconId::Info),
+                ToastSeverity::Success => (ColorToken::Success, crate::icons::IconId::Check),
+                ToastSeverity::Warning => (ColorToken::Warn, crate::icons::IconId::Warning),
+                ToastSeverity::ErrorState => (ColorToken::Danger, crate::icons::IconId::Error),
             };
-            scene.fill_rect(rect_to_vello(r), resolve(token, ctx.theme));
-            // Inset 12 px so the label doesn't kiss the edge.
+            let severity_color = resolve(severity_token, ctx.theme);
+
+            // Left accent stripe — 4 px wide, full height, severity-tinted.
+            let stripe = Rect::new(r.x + 1.0, r.y + 1.0, 4.0, r.h - 2.0);
+            scene.fill_rect(rect_to_vello(stripe), severity_color);
+
+            // Severity icon, centered in a 28x28 chip after the stripe.
+            let icon_w = 24.0;
+            let icon_rect = Rect::new(r.x + 16.0, r.y + (r.h - icon_w) * 0.5, icon_w, icon_w);
+            paint_icon(scene, icon, icon_rect, severity_color, 1.5);
+
+            // Message text fills the rest, left-aligned with padding.
+            let text_x = icon_rect.x + icon_w + 12.0;
             let text_rect = Rect {
-                x: r.x + 12.0,
+                x: text_x,
                 y: r.y,
-                w: r.w - 24.0,
+                w: (r.x + r.w - text_x - 16.0).max(0.0),
                 h: r.h,
             };
             paint_text_centered(
@@ -534,7 +556,7 @@ impl Paint for ToastQueue {
                 &toast.message,
                 text_rect,
                 13.0,
-                label_color,
+                resolve(ColorToken::Text1, ctx.theme),
             );
         }
     }

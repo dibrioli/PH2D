@@ -137,6 +137,11 @@ mod tests {
     fn paint_smoke_alpha_translucent() {
         let s = ColorSwatch::new(NodeId(1), "x", [255, 0, 0, 64]);
         let mut scene = VectorScene::new();
-        paint_color_swatch(&s, Rect::new(0.0, 0.0, 50.0, 50.0), &mut scene, Theme::ForgeSdf);
+        paint_color_swatch(
+            &s,
+            Rect::new(0.0, 0.0, 50.0, 50.0),
+            &mut scene,
+            Theme::ForgeSdf,
+        );
     }
 }

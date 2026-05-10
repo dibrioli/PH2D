@@ -267,10 +267,7 @@ impl Paint for Layout {
         // edge. Click target exposed via [`Layout::mirror_button_rect`]
         // so the shell can hit-test it.
         if let Some(btn) = self.mirror_button_rect() {
-            scene.fill_rect(
-                rect_to_vello(btn),
-                resolve(ColorToken::BgElev, ctx.theme),
-            );
+            scene.fill_rect(rect_to_vello(btn), resolve(ColorToken::BgElev, ctx.theme));
             let glyph = match self.sidebar_side {
                 crate::zones::SidebarSide::Right => "<",
                 crate::zones::SidebarSide::Left => ">",

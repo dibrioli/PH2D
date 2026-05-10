@@ -121,7 +121,11 @@ pub fn oklch_to_srgb(l: f64, c: f64, h_deg: f64) -> [u8; 3] {
     let lg = -1.268_438_004_6 * l3 + 2.609_757_401_1 * m3 - 0.341_319_396_5 * s3;
     let lb = -0.004_196_086_3 * l3 - 0.703_418_614_7 * m3 + 1.707_614_701_0 * s3;
 
-    [linear_to_srgb_byte(lr), linear_to_srgb_byte(lg), linear_to_srgb_byte(lb)]
+    [
+        linear_to_srgb_byte(lr),
+        linear_to_srgb_byte(lg),
+        linear_to_srgb_byte(lb),
+    ]
 }
 
 fn linear_to_srgb_byte(linear: f64) -> u8 {
@@ -138,9 +142,9 @@ fn linear_to_srgb_byte(linear: f64) -> u8 {
 /// literal `from_hex`/`from_oklch` outside this crate is a code smell.
 ///
 /// Variantes correspondem 1:1 às chaves de `color.*` em
-/// `docs/design/tokens.json`. Quando adicionar slot novo: edite tokens.json
-/// + adicione variant aqui + adicione branch em `resolve` para cada um dos
-/// 4 themes.
+/// `docs/design/tokens.json`. Quando adicionar slot novo: edite
+/// tokens.json + adicione variant aqui + adicione branch em `resolve`
+/// para cada um dos 4 themes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ColorToken {
     // ── Background scale (4 níveis + elevated + scrim) ─────────────

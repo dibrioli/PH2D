@@ -101,10 +101,7 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
             (rect.w - 2.0 * pad).max(0.0),
             (rect.h - 2.0 * pad).max(0.0),
         );
-        scene.fill_rect(
-            rect_to_vello(inner),
-            resolve(ColorToken::BorderEmph, theme),
-        );
+        scene.fill_rect(rect_to_vello(inner), resolve(ColorToken::BorderEmph, theme));
         // Re-fill the body inside the ring so the ring reads as a frame.
         let pad2 = pad + 2.0;
         let inner2 = Rect::new(

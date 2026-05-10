@@ -6,10 +6,8 @@ use super::ids;
 use super::style::{HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_surface};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
-use crate::widget::ButtonState;
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::widget::{ButtonState, Tag, TagState, TagTone, paint_tag};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
@@ -187,7 +185,11 @@ fn paint_hierarchy_row(
         right_x -= sw + 6.0;
     }
     if let Some(badge) = &entity.badge {
-        let badge_w = 32.0_f32;
+        // Phase 2 polish: render the kind badge as a `Tag` widget
+        // tinted by kind (PRF=Accent, UNI=Neutral, CAM=Success,
+        // OUT=Warn, etc). Functional in the sense that it shares
+        // identity with the rest of the editor's chrome.
+        let badge_w = 36.0_f32;
         let badge_h = 18.0_f32;
         let badge_rect = Rect::new(
             right_x - badge_w,
@@ -195,25 +197,25 @@ fn paint_hierarchy_row(
             badge_w,
             badge_h,
         );
-        let bg = if entity.selected {
-            ColorToken::Accent
-        } else {
-            ColorToken::Bg3
+        let tone = match badge.as_str() {
+            "PRF" => TagTone::Accent,
+            "UNI" => TagTone::Neutral,
+            "OUT" => TagTone::Warn,
+            "CAM" => TagTone::Success,
+            "TIL" => TagTone::Neutral,
+            "TRG" => TagTone::Danger,
+            "LGT" => TagTone::Warn,
+            "SPR" => TagTone::Accent,
+            _ => TagTone::Neutral,
         };
-        let fg = if entity.selected {
-            ColorToken::AccentFg
-        } else {
-            ColorToken::Text3
-        };
-        fill_rounded_rect(scene, badge_rect, Radius::Xs.px(), resolve(bg, theme));
-        paint_text_centered(
-            text_system,
-            scene,
-            badge,
-            badge_rect,
-            TypeToken::Xs.px() - 2.0,
-            resolve(fg, theme),
-        );
+        let tag = Tag::new(ph2d_a11y::NodeId(0), badge)
+            .tone(tone)
+            .state(if entity.muted {
+                TagState::Disabled
+            } else {
+                TagState::Normal
+            });
+        paint_tag(&tag, badge_rect, scene, text_system, theme);
         right_x -= badge_w + 6.0;
     }
 

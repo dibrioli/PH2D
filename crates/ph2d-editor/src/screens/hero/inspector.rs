@@ -402,11 +402,11 @@ pub fn paint_inspector(
             continue;
         }
         for field in &section.fields {
-            if y + FIELD_ROW_H * 2.0 > rect.y + rect.h {
+            if y + FIELD_ROW_H > rect.y + rect.h {
                 return;
             }
             let field_id = ids::inspector_field_id(&field.label);
-            paint_inspector_field(
+            let consumed = paint_inspector_field(
                 field,
                 field_id,
                 rect.x + body_pad,
@@ -418,7 +418,7 @@ pub fn paint_inspector(
                 hit_index,
                 store,
             );
-            y += FIELD_ROW_H * 2.0 + FIELD_GAP;
+            y += consumed + FIELD_GAP;
         }
         y += SECTION_GAP;
     }
@@ -567,6 +567,11 @@ fn paint_inspector_behavior_section(
     paint_color_swatch(&tint, sw_rect, scene, theme);
 }
 
+/// Paint a single inspector field row. Returns the height the row
+/// consumed so the caller can advance `y` accordingly. Sliders are
+/// single-row (canonical composite owns the label) so they line up
+/// with the picker's channel rows; other field kinds keep the
+/// dual-row dot+label-above + body-below layout.
 #[allow(clippy::too_many_arguments)]
 fn paint_inspector_field(
     field: &fixture::InspectorField,
@@ -579,8 +584,77 @@ fn paint_inspector_field(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-) {
+) -> f32 {
     use fixture::InspectorFieldKind;
+    // Slider variants get a single-row layout (no separate header)
+    // so they look identical to the picker's channel rows. Other
+    // kinds keep the dual-row dot+label/body layout.
+    if matches!(
+        field.kind,
+        InspectorFieldKind::Slider { .. } | InspectorFieldKind::LinkedSlider { .. }
+    ) {
+        let row_rect = Rect::new(x, y, w, FIELD_ROW_H);
+        match &field.kind {
+            InspectorFieldKind::Slider { value, display } => {
+                let id = field_id.unwrap_or(NodeId(0));
+                let live_value = field_id
+                    .and_then(|i| store.slider(i).map(|(_, v)| v))
+                    .unwrap_or(*value);
+                let chip_id = sibling_number_id(field_id).unwrap_or(NodeId(0));
+                let chip_value = store
+                    .number_input(chip_id)
+                    .map(|(_, v, _, _, _)| v)
+                    .unwrap_or_else(|| display.parse::<f64>().unwrap_or(*value as f64));
+                let display_override = if display.is_empty() {
+                    None
+                } else {
+                    Some(display.as_str())
+                };
+                crate::widget::paint_slider_with_chip_layout(
+                    row_rect,
+                    &field.label,
+                    live_value,
+                    chip_value,
+                    display_override,
+                    id,
+                    chip_id,
+                    crate::widget::DEFAULT_LABEL_W,
+                    crate::widget::DEFAULT_CHIP_W,
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
+            }
+            InspectorFieldKind::LinkedSlider { value, display } => {
+                let display_override = if display.is_empty() {
+                    None
+                } else {
+                    Some(display.as_str())
+                };
+                crate::widget::paint_slider_with_chip_layout(
+                    row_rect,
+                    &field.label,
+                    *value,
+                    *value as f64,
+                    display_override,
+                    NodeId(0),
+                    NodeId(0),
+                    crate::widget::DEFAULT_LABEL_W,
+                    crate::widget::DEFAULT_CHIP_W,
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
+            }
+            _ => unreachable!(),
+        }
+        return FIELD_ROW_H;
+    }
+
     let head_rect = Rect::new(x, y, w, FIELD_ROW_H);
     let dot_r = 3.5;
     let dot_cx = x + dot_r + 4.0;
@@ -609,43 +683,8 @@ fn paint_inspector_field(
     let body_y = y + FIELD_ROW_H;
     let body_rect = Rect::new(x, body_y, w, FIELD_ROW_H);
     match &field.kind {
-        InspectorFieldKind::Slider { value, display } => {
-            // Canonical slider+chip composite — same painter the
-            // BlenderColorPicker uses for its R/G/B/A channel rows,
-            // so every slider in the app reads identically. Live
-            // value comes from the store (drag updates it); the
-            // chip's display string is preserved (fixture's "160",
-            // "0.0010", etc. instead of forcing 0..1 normalised).
-            let id = field_id.unwrap_or(NodeId(0));
-            let live_value = field_id
-                .and_then(|i| store.slider(i).map(|(_, v)| v))
-                .unwrap_or(*value);
-            let chip_id = sibling_number_id(field_id).unwrap_or(NodeId(0));
-            let chip_value = store
-                .number_input(chip_id)
-                .map(|(_, v, _, _, _)| v)
-                .unwrap_or_else(|| display.parse::<f64>().unwrap_or(*value as f64));
-            let display_override = if display.is_empty() {
-                None
-            } else {
-                Some(display.as_str())
-            };
-            crate::widget::paint_slider_with_chip_layout(
-                body_rect,
-                &field.label,
-                live_value,
-                chip_value,
-                display_override,
-                id,
-                chip_id,
-                crate::widget::DEFAULT_LABEL_W,
-                crate::widget::DEFAULT_CHIP_W,
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
+        InspectorFieldKind::Slider { .. } | InspectorFieldKind::LinkedSlider { .. } => {
+            unreachable!("handled in single-row branch above");
         }
         InspectorFieldKind::Select { current } => {
             let is_open = field_id
@@ -722,32 +761,6 @@ fn paint_inspector_field(
                 resolve(ColorToken::Accent, theme),
             );
         }
-        InspectorFieldKind::LinkedSlider { value, display } => {
-            // Non-interactive linked slider: NodeId(0) for both
-            // slider and chip skips hit registration but the visual
-            // is still the canonical composite — same painter as
-            // every other slider in the app.
-            let display_override = if display.is_empty() {
-                None
-            } else {
-                Some(display.as_str())
-            };
-            crate::widget::paint_slider_with_chip_layout(
-                body_rect,
-                &field.label,
-                *value,
-                *value as f64,
-                display_override,
-                NodeId(0),
-                NodeId(0),
-                crate::widget::DEFAULT_LABEL_W,
-                crate::widget::DEFAULT_CHIP_W,
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
-        }
     }
+    FIELD_ROW_H * 2.0
 }

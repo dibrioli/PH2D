@@ -398,24 +398,27 @@ fn paint_color_preview(cp: &BlenderColorPicker, rect: Rect, scene: &mut VectorSc
         radius,
         ph2d_vector::Color::from_rgba8(220, 220, 220, 255),
     );
-    // Darker squares — every other cell. We don't bother clipping
-    // to the rounded rect: the dark cells along the corner overlap
-    // a 2-3 px sliver of empty space outside the radius, but the
-    // color overlay below covers it (alpha=1 cases) and the border
-    // stroke masks the rest.
+    // Darker squares — every other cell. Inset by `radius` on all
+    // sides so the checker stays inside the rounded outline; with
+    // a translucent overlay the corners would otherwise show tiny
+    // squares poking past the curve.
     let cell = 6.0_f32;
-    let cols = (rect.w / cell).ceil() as i32;
-    let rows = (rect.h / cell).ceil() as i32;
+    let chk_x = rect.x + radius;
+    let chk_y = rect.y + radius;
+    let chk_w = (rect.w - radius * 2.0).max(0.0);
+    let chk_h = (rect.h - radius * 2.0).max(0.0);
+    let cols = (chk_w / cell).ceil() as i32;
+    let rows = (chk_h / cell).ceil() as i32;
     let dark = ph2d_vector::Color::from_rgba8(170, 170, 170, 255);
     for j in 0..rows {
         for i in 0..cols {
             if (i + j) % 2 == 0 {
                 continue;
             }
-            let cx = rect.x + (i as f32) * cell;
-            let cy = rect.y + (j as f32) * cell;
-            let w = cell.min(rect.x + rect.w - cx);
-            let h = cell.min(rect.y + rect.h - cy);
+            let cx = chk_x + (i as f32) * cell;
+            let cy = chk_y + (j as f32) * cell;
+            let w = cell.min(chk_x + chk_w - cx);
+            let h = cell.min(chk_y + chk_h - cy);
             if w <= 0.0 || h <= 0.0 {
                 continue;
             }

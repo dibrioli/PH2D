@@ -53,10 +53,16 @@ pub fn paint_value_slider(
     // the thumb where the user dragged it even when the resulting
     // RGBA loses chromaticity (V→0, S→0) — and avoids the right-
     // edge "wrap to left" jump where 1.0 would round-trip to 0.0.
+    //
+    // Thumb stays inside the strip bounds: x clamped so no part
+    // hangs off the left/right edges, y matches the strip height
+    // (no overshoot top/bottom). Earlier versions extended ±2 px
+    // beyond the strip — visible as tiny "ears" at the corners.
     let h = cp.hsv_h;
     let thumb_w = 4.0_f32;
-    let thumb_x = rect.x + h.clamp(0.0, 1.0) * rect.w - thumb_w * 0.5;
-    let thumb_rect = Rect::new(thumb_x, rect.y - 2.0, thumb_w, rect.h + 4.0);
+    let thumb_x = (rect.x + h.clamp(0.0, 1.0) * rect.w - thumb_w * 0.5)
+        .clamp(rect.x, rect.x + rect.w - thumb_w);
+    let thumb_rect = Rect::new(thumb_x, rect.y, thumb_w, rect.h);
     fill_rounded_rect(scene, thumb_rect, 2.0, resolve(ColorToken::Text1, theme));
     stroke_rounded_rect(scene, thumb_rect, 2.0, 1.0, resolve(ColorToken::Bg0, theme));
 }

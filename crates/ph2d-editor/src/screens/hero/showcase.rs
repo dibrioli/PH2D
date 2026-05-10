@@ -24,6 +24,17 @@ pub fn populate(store: &mut WidgetStore) {
         SliderState, TagState, TextInputState,
     };
 
+    // Showcase panel + its drag handle — same drag mechanism as the
+    // BlenderColorPicker (panel-agnostic on the parent `NodeId`).
+    store.register(ids::SHOWCASE_PANEL, InteractiveState::Plain);
+    store.register(
+        ids::SHOWCASE_DRAG_HANDLE,
+        InteractiveState::BlenderHit {
+            parent: ids::SHOWCASE_PANEL,
+            kind: crate::interaction::BlenderHitKind::DragHandle,
+        },
+    );
+
     // TextInput "Name" — initial text mirrors the painted placeholder.
     store.register(
         ids::SHOWCASE_TEXT_INPUT_NAME,
@@ -253,9 +264,16 @@ pub fn paint_components_showcase(
     if layout.canvas.w < SHOWCASE_W + 40.0 || layout.canvas.h < SHOWCASE_H + 40.0 {
         return; // viewport too small — skip showcase.
     }
+    let (dx, dy) = store.blender_picker_offset(ids::SHOWCASE_PANEL);
+    let base_x = layout.canvas.x + 12.0;
+    let base_y = layout.canvas.y + layout.canvas.h - SHOWCASE_H - 12.0;
+    let min_x = layout.canvas.x + 8.0;
+    let max_x = layout.canvas.x + layout.canvas.w - SHOWCASE_W - 8.0;
+    let min_y = layout.canvas.y + 8.0;
+    let max_y = layout.canvas.y + layout.canvas.h - SHOWCASE_H - 8.0;
     let rect = Rect::new(
-        layout.canvas.x + 12.0,
-        layout.canvas.y + layout.canvas.h - SHOWCASE_H - 12.0,
+        (base_x + dx).clamp(min_x, max_x),
+        (base_y + dy).clamp(min_y, max_y),
         SHOWCASE_W,
         SHOWCASE_H,
     );
@@ -265,6 +283,27 @@ pub fn paint_components_showcase(
     let inner_x = rect.x + pad;
     let inner_w = rect.w - pad * 2.0;
     let mut y = rect.y + pad + 4.0;
+
+    // Drag handle bar at the top — same visual + same dispatch path
+    // as the BlenderColorPicker handle (3 dots; click+drag updates
+    // `panel_offset` keyed by `SHOWCASE_PANEL`).
+    let drag_h = 14.0_f32;
+    let drag_rect = Rect::new(inner_x, y, inner_w, drag_h);
+    crate::paint::fill_rounded_rect(
+        scene,
+        drag_rect,
+        ph2d_tokens::Radius::Sm.px(),
+        crate::paint::resolve(ColorToken::Bg2, theme),
+    );
+    let dot_y = drag_rect.y + drag_rect.h * 0.5 - 1.5;
+    let dot_color = crate::paint::resolve(ColorToken::Text3, theme);
+    for i in 0..3i32 {
+        let dot_x = drag_rect.x + drag_rect.w * 0.5 + (i - 1) as f32 * 6.0 - 1.5;
+        let dot_rect = Rect::new(dot_x, dot_y, 3.0, 3.0);
+        crate::paint::fill_rounded_rect(scene, dot_rect, 1.5, dot_color);
+    }
+    hit_index.register(ids::SHOWCASE_DRAG_HANDLE, drag_rect);
+    y += drag_h + Spacing::Sm.px();
 
     // Title.
     paint_text(

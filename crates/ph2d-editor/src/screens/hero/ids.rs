@@ -90,6 +90,11 @@ pub const BLENDER_ADD_SWATCH: NodeId = NodeId(644);
 pub const BLENDER_EYEDROPPER: NodeId = NodeId(645);
 // Drag handle bar at the top of the picker — drag to move.
 pub const BLENDER_DRAG_HANDLE: NodeId = NodeId(646);
+// Components Showcase panel — drag handle reuses the picker's
+// `BlenderHitKind::DragHandle` mechanism (panel-agnostic on the
+// `parent` NodeId).
+pub const SHOWCASE_PANEL: NodeId = NodeId(660);
+pub const SHOWCASE_DRAG_HANDLE: NodeId = NodeId(661);
 // Palette swatch slots 0..26 — first 12 are the default palette,
 // remaining 15 cover user "+ swatch" additions. Hard cap at 27 to
 // keep registration static; `blender_palette_push` rejects beyond

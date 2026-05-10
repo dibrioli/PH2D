@@ -84,10 +84,18 @@ pub fn paint_color_wheel(cp: &BlenderColorPicker, rect: Rect, scene: &mut Vector
         &body,
     );
 
-    // Cursor at (S × w, (1 − V) × h).
-    let cur_x = rect.x + s.clamp(0.0, 1.0) * rect.w;
-    let cur_y = rect.y + (1.0 - v.clamp(0.0, 1.0)) * rect.h;
-    let cursor = Circle::new(Point::new(cur_x as f64, cur_y as f64), 6.0);
+    // Cursor at (S × w, (1 − V) × h). Clamped inwards by the cursor
+    // radius (6) + outer-stroke half-width (1.5) so the ring never
+    // pokes past the SV rect's edge — visible as a tiny "ear" at
+    // the corners when S/V land at 0 or 1.
+    const CURSOR_R: f32 = 6.0;
+    const CURSOR_OUTER_HALF: f32 = 1.5;
+    let inset = CURSOR_R + CURSOR_OUTER_HALF;
+    let cur_x =
+        (rect.x + s.clamp(0.0, 1.0) * rect.w).clamp(rect.x + inset, rect.x + rect.w - inset);
+    let cur_y = (rect.y + (1.0 - v.clamp(0.0, 1.0)) * rect.h)
+        .clamp(rect.y + inset, rect.y + rect.h - inset);
+    let cursor = Circle::new(Point::new(cur_x as f64, cur_y as f64), CURSOR_R as f64);
     let outer = Stroke::new(3.0);
     let inner = Stroke::new(1.5);
     scene.inner_mut().stroke(

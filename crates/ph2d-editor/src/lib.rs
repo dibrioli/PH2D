@@ -28,6 +28,7 @@
 
 pub mod floating_panel;
 pub mod icons;
+pub mod interaction;
 pub mod paint;
 pub mod screens;
 pub mod toast;
@@ -39,6 +40,10 @@ pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use icons::{IconCmd, IconId, cmd_to_path};
+pub use interaction::{
+    HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
+    dispatch_text_input,
+};
 pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
     paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,

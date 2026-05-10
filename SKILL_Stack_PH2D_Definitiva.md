@@ -995,6 +995,7 @@ Listar com motivo de rejeição.
 | ADR-0021 | Fronteira simulation ↔ presentation (SubWorld) | **Accepted** ([0021-simulation-presentation-boundary.md](../docs/architecture/decisions/0021-simulation-presentation-boundary.md)) |
 | ADR-0022 | Banimento HashMap em simulation crates | **Accepted** ([0022-no-hashmap-in-simulation.md](../docs/architecture/decisions/0022-no-hashmap-in-simulation.md)) |
 | ADR-0023 | UI/UX baseline — Procreate-style canvas-first + WCAG 2.2 AA + AccessKit | **Accepted** ([0023-ui-ux-baseline.md](../docs/architecture/decisions/0023-ui-ux-baseline.md)) |
+| ADR-0024 | Editor input pipeline + retained widget state (Modelo B + plano HR-3 zero-alloc) | **Accepted** ([0024-editor-input-and-widget-state.md](../docs/architecture/decisions/0024-editor-input-and-widget-state.md)) |
 
 ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-17.
 

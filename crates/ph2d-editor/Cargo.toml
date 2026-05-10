@@ -18,3 +18,17 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 # `ph2d-text::TextSystem` (parley layout → Vello glyph runs).
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-text = { path = "../ph2d-text" }
+# ph2d-host — PointerEvent / KeyEvent types consumed by the
+# interaction dispatcher (ADR-0024).
+ph2d-host = { path = "../ph2d-host" }
+# Interaction infrastructure (ADR-0024 plan, HR-3 zero-alloc):
+# - smallvec: HitIndex inline storage (no heap until > 128 widgets).
+# - bumpalo: per-frame arena for emitted WidgetEvents.
+smallvec = "1"
+bumpalo = { version = "3", features = ["collections"] }
+
+[dev-dependencies]
+# dhat-rs: HR-3 enforcement bench — counts allocations in
+# `interaction_dispatch_no_alloc` test to assert hot path is
+# allocation-free. See ADR-0024 "Plano de conformidade HR-3".
+dhat = "0.3"

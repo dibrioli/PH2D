@@ -54,6 +54,28 @@ impl HitIndex {
         None
     }
 
+    /// Like [`Self::hit`] but returns the rect alongside the id —
+    /// drag dispatchers (Slider) need the geometry to compute new
+    /// values from pointer position.
+    pub fn hit_with_rect(&self, x: f32, y: f32) -> Option<(NodeId, Rect)> {
+        for (id, rect) in self.rects.iter().rev() {
+            if rect.contains(x, y) {
+                return Some((*id, *rect));
+            }
+        }
+        None
+    }
+
+    /// Look up the most recent registered rect for `id`, if any.
+    /// Used to refresh `WidgetStore::active_rect` when geometry
+    /// changes between Down and Up.
+    pub fn rect_for(&self, id: NodeId) -> Option<Rect> {
+        self.rects
+            .iter()
+            .rev()
+            .find_map(|(rid, r)| if *rid == id { Some(*r) } else { None })
+    }
+
     /// Number of registered rects this frame.
     pub fn len(&self) -> usize {
         self.rects.len()

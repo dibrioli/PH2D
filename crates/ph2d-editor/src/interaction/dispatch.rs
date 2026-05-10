@@ -12,7 +12,10 @@
 //! TreeView/ContextMenu/ColorPicker/Modal/Tabs in Phase D.
 
 use super::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::widget::{ButtonState, ToggleState};
+use crate::widget::{
+    ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, ToggleState,
+};
+use crate::zones::Rect;
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::{KeyEvent, KeyKind, PointerEvent, PointerKind};
@@ -42,21 +45,31 @@ pub fn dispatch_pointer<'frame>(
     arena: &'frame Bump,
 ) -> &'frame [WidgetEvent] {
     let mut events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
-    let hit = hit_index.hit(event.x, event.y);
 
     match event.kind {
         PointerKind::Move => {
-            // Hover tracking. If a widget is being dragged
-            // (active_id), its state stays Pressed regardless of
-            // where the cursor went — that's drag semantics. Phase
-            // B uses this for sliders.
-            update_hover(store, hit);
+            // While a Slider is being dragged, every Move computes a
+            // fresh value from the pointer position relative to the
+            // active rect. Hover tracking is suppressed (the active
+            // widget keeps its Pressed state regardless of where the
+            // cursor went).
+            if let Some(active) = store.active_id() {
+                if let Some(rect) = store.active_rect()
+                    && update_drag_value(store, active, rect, event.x, event.y)
+                {
+                    events.push(WidgetEvent::ValueChanged(active));
+                }
+            } else {
+                let hit = hit_index.hit(event.x, event.y);
+                update_hover(store, hit);
+            }
         }
         PointerKind::Down => {
-            if let Some(id) = hit
+            if let Some((id, rect)) = hit_index.hit_with_rect(event.x, event.y)
                 && is_focusable(store, id)
             {
                 store.set_active(Some(id));
+                store.set_active_rect(Some(rect));
                 let prev_focus = store.focus_id();
                 if prev_focus != Some(id) {
                     if let Some(old) = prev_focus {
@@ -66,23 +79,77 @@ pub fn dispatch_pointer<'frame>(
                     events.push(WidgetEvent::Focus(id));
                 }
                 set_widget_pressed(store, id);
+                // For sliders, the initial Down also sets value
+                // (jump-to-clicked-position behavior).
+                if matches!(store.get(id), Some(InteractiveState::Slider { .. }))
+                    && update_drag_value(store, id, rect, event.x, event.y)
+                {
+                    events.push(WidgetEvent::ValueChanged(id));
+                }
             }
         }
         PointerKind::Up => {
             if let Some(active) = store.active_id() {
-                // Click only counts if the Up landed inside the
-                // same widget that received Down (standard UI
-                // semantic — drag-out cancels).
-                if hit == Some(active) {
+                let hit = hit_index.hit(event.x, event.y);
+                let still_hot = hit == Some(active);
+                // Sliders emit no Click on release — they emitted
+                // ValueChanged events throughout the drag. Buttons,
+                // Toggles, and Checkboxes only count Click if the
+                // pointer ended inside the original widget.
+                let is_drag_widget =
+                    matches!(store.get(active), Some(InteractiveState::Slider { .. }));
+                if still_hot && !is_drag_widget {
                     apply_click(store, active, &mut events);
                 }
-                set_widget_released(store, active, hit == Some(active));
+                set_widget_released(store, active, still_hot);
                 store.set_active(None);
+                store.set_active_rect(None);
             }
         }
     }
 
     events.into_bump_slice()
+}
+
+/// Recompute slider value from pointer position relative to its
+/// active rect. Returns true iff the value actually changed (so
+/// dispatcher can decide whether to emit `ValueChanged`).
+fn update_drag_value(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    rect: Rect,
+    px: f32,
+    py: f32,
+) -> bool {
+    let Some(InteractiveState::Slider {
+        state,
+        value,
+        orientation,
+    }) = store.get_mut(id)
+    else {
+        return false;
+    };
+    let new_value = match *orientation {
+        SliderOrientation::Horizontal => {
+            if rect.w <= 0.0 {
+                0.0
+            } else {
+                ((px - rect.x) / rect.w).clamp(0.0, 1.0)
+            }
+        }
+        SliderOrientation::Vertical => {
+            // Vertical slider: y=top → value=1, y=bottom → value=0.
+            if rect.h <= 0.0 {
+                0.0
+            } else {
+                (1.0 - (py - rect.y) / rect.h).clamp(0.0, 1.0)
+            }
+        }
+    };
+    let changed = (new_value - *value).abs() > f32::EPSILON;
+    *value = new_value;
+    *state = SliderState::Dragging;
+    changed
 }
 
 /// Entry point for key events. Tab / Shift+Tab traverse the focus
@@ -140,13 +207,13 @@ fn is_focusable(store: &WidgetStore, id: ph2d_a11y::NodeId) -> bool {
     match store.get(id) {
         Some(InteractiveState::Button { state }) => *state != ButtonState::Disabled,
         Some(InteractiveState::Toggle { state, .. }) => *state != ToggleState::Disabled,
+        Some(InteractiveState::Slider { state, .. }) => *state != SliderState::Disabled,
+        Some(InteractiveState::Checkbox { state, .. }) => *state != CheckboxState::Disabled,
         // Plain rects (section headers without collapsibility, etc.)
         // are still focusable for keyboard nav purposes — they don't
         // emit click events but accept Tab focus.
         Some(InteractiveState::Plain) => true,
-        // Phases B-D add per-kind focusability (Slider focusable
-        // unless disabled, etc.). Until then, any registered
-        // non-Plain widget defaults to focusable.
+        // Phases C-D add per-kind focusability for the rest.
         Some(_) => true,
         None => false,
     }
@@ -174,52 +241,82 @@ fn update_hover(store: &mut WidgetStore, hit: Option<ph2d_a11y::NodeId>) {
 }
 
 fn enter_hover(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    if let Some(InteractiveState::Button { state }) = store.get_mut(id)
-        && *state == ButtonState::Normal
-    {
-        *state = ButtonState::Hovered;
-    } else if let Some(InteractiveState::Toggle { state, .. }) = store.get_mut(id)
-        && *state == ToggleState::Normal
-    {
-        *state = ToggleState::Hovered;
+    match store.get_mut(id) {
+        Some(InteractiveState::Button { state }) if *state == ButtonState::Normal => {
+            *state = ButtonState::Hovered
+        }
+        Some(InteractiveState::Toggle { state, .. }) if *state == ToggleState::Normal => {
+            *state = ToggleState::Hovered
+        }
+        Some(InteractiveState::Slider { state, .. }) if *state == SliderState::Normal => {
+            *state = SliderState::Hovered
+        }
+        Some(InteractiveState::Checkbox { state, .. }) if *state == CheckboxState::Normal => {
+            *state = CheckboxState::Hovered
+        }
+        _ => {}
     }
 }
 
 fn leave_hover(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    if let Some(InteractiveState::Button { state }) = store.get_mut(id)
-        && *state == ButtonState::Hovered
-    {
-        *state = ButtonState::Normal;
-    } else if let Some(InteractiveState::Toggle { state, .. }) = store.get_mut(id)
-        && *state == ToggleState::Hovered
-    {
-        *state = ToggleState::Normal;
+    match store.get_mut(id) {
+        Some(InteractiveState::Button { state }) if *state == ButtonState::Hovered => {
+            *state = ButtonState::Normal
+        }
+        Some(InteractiveState::Toggle { state, .. }) if *state == ToggleState::Hovered => {
+            *state = ToggleState::Normal
+        }
+        Some(InteractiveState::Slider { state, .. }) if *state == SliderState::Hovered => {
+            *state = SliderState::Normal
+        }
+        Some(InteractiveState::Checkbox { state, .. }) if *state == CheckboxState::Hovered => {
+            *state = CheckboxState::Normal
+        }
+        _ => {}
     }
 }
 
 fn set_widget_pressed(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    if let Some(InteractiveState::Button { state }) = store.get_mut(id) {
-        *state = ButtonState::Pressed;
-    } else if let Some(InteractiveState::Toggle { state, .. }) = store.get_mut(id) {
-        *state = ToggleState::Pressed;
+    match store.get_mut(id) {
+        Some(InteractiveState::Button { state }) => *state = ButtonState::Pressed,
+        Some(InteractiveState::Toggle { state, .. }) => *state = ToggleState::Pressed,
+        Some(InteractiveState::Slider { state, .. }) => *state = SliderState::Dragging,
+        Some(InteractiveState::Checkbox { state, .. }) => *state = CheckboxState::Pressed,
+        _ => {}
     }
 }
 
 fn set_widget_released(store: &mut WidgetStore, id: ph2d_a11y::NodeId, still_hot: bool) {
-    let next_button = if still_hot {
-        ButtonState::Hovered
-    } else {
-        ButtonState::Normal
-    };
-    let next_toggle = if still_hot {
-        ToggleState::Hovered
-    } else {
-        ToggleState::Normal
-    };
-    if let Some(InteractiveState::Button { state }) = store.get_mut(id) {
-        *state = next_button;
-    } else if let Some(InteractiveState::Toggle { state, .. }) = store.get_mut(id) {
-        *state = next_toggle;
+    match store.get_mut(id) {
+        Some(InteractiveState::Button { state }) => {
+            *state = if still_hot {
+                ButtonState::Hovered
+            } else {
+                ButtonState::Normal
+            };
+        }
+        Some(InteractiveState::Toggle { state, .. }) => {
+            *state = if still_hot {
+                ToggleState::Hovered
+            } else {
+                ToggleState::Normal
+            };
+        }
+        Some(InteractiveState::Slider { state, .. }) => {
+            *state = if still_hot {
+                SliderState::Hovered
+            } else {
+                SliderState::Normal
+            };
+        }
+        Some(InteractiveState::Checkbox { state, .. }) => {
+            *state = if still_hot {
+                CheckboxState::Hovered
+            } else {
+                CheckboxState::Normal
+            };
+        }
+        _ => {}
     }
 }
 
@@ -233,11 +330,18 @@ fn apply_click<'a>(
             *on = !*on;
             events.push(WidgetEvent::Toggled(id));
         }
+        Some(InteractiveState::Checkbox { value, .. }) => {
+            *value = match *value {
+                CheckboxValue::Unchecked | CheckboxValue::Indeterminate => CheckboxValue::Checked,
+                CheckboxValue::Checked => CheckboxValue::Unchecked,
+            };
+            events.push(WidgetEvent::Toggled(id));
+        }
         Some(InteractiveState::Button { .. }) | Some(InteractiveState::Plain) => {
             events.push(WidgetEvent::Click(id));
         }
-        // Phases B-D add per-kind click semantics (Checkbox toggle,
-        // RadioGroup select, Tabs select, Modal dismiss, etc.).
+        // Phases C-D add per-kind click semantics (Tabs select,
+        // Modal dismiss, Dropdown open, etc.).
         _ => {
             events.push(WidgetEvent::Click(id));
         }
@@ -553,6 +657,188 @@ mod tests {
         let evts = dispatch_key(&mut store, key(KEY_ESCAPE, false), &arena);
         assert_eq!(evts, &[WidgetEvent::Blur(NodeId(1))]);
         assert_eq!(store.focus_id(), None);
+    }
+
+    #[test]
+    fn slider_down_jumps_to_pointer_and_emits_value_changed() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(7),
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.5,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(7), Rect::new(0.0, 0.0, 100.0, 20.0));
+        let arena = Bump::new();
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 75.0, 10.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(7)))
+        );
+        let (state, v) = store.slider(NodeId(7)).unwrap();
+        assert_eq!(state, SliderState::Dragging);
+        assert!((v - 0.75).abs() < 0.01, "expected 0.75, got {v}");
+    }
+
+    #[test]
+    fn slider_drag_emits_value_changed_per_move() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(7),
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(7), Rect::new(0.0, 0.0, 100.0, 20.0));
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 25.0, 10.0),
+            &arena,
+        );
+        // Drag the cursor outside the rect — value still updates,
+        // because active drag persists.
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, 90.0, 200.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(_)))
+        );
+        let (_, v) = store.slider(NodeId(7)).unwrap();
+        assert!((v - 0.90).abs() < 0.01);
+    }
+
+    #[test]
+    fn slider_release_clears_active_and_does_not_emit_click() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(7),
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(7), Rect::new(0.0, 0.0, 100.0, 20.0));
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 50.0, 10.0),
+            &arena,
+        );
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 50.0, 10.0),
+            &arena,
+        );
+        assert!(
+            !evts.iter().any(|e| matches!(e, WidgetEvent::Click(_))),
+            "Slider should not emit Click on release"
+        );
+        assert_eq!(store.active_id(), None);
+    }
+
+    #[test]
+    fn vertical_slider_inverts_y_to_value() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(7),
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Vertical,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(7), Rect::new(0.0, 0.0, 20.0, 100.0));
+        let arena = Bump::new();
+        // Down at the top of the rect → value should be near 1.0.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 10.0, 5.0),
+            &arena,
+        );
+        let (_, v) = store.slider(NodeId(7)).unwrap();
+        assert!((v - 0.95).abs() < 0.01, "expected ~0.95 at top, got {v}");
+    }
+
+    #[test]
+    fn checkbox_click_cycles_unchecked_to_checked() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(7),
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(7), Rect::new(0.0, 0.0, 18.0, 18.0));
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 9.0, 9.0),
+            &arena,
+        );
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 9.0, 9.0),
+            &arena,
+        );
+        assert!(evts.iter().any(|e| matches!(e, WidgetEvent::Toggled(_))));
+        let (_, v) = store.checkbox(NodeId(7)).unwrap();
+        assert_eq!(v, CheckboxValue::Checked);
+    }
+
+    #[test]
+    fn checkbox_indeterminate_then_click_yields_checked() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(7),
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Indeterminate,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(7), Rect::new(0.0, 0.0, 18.0, 18.0));
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 9.0, 9.0),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 9.0, 9.0),
+            &arena,
+        );
+        let (_, v) = store.checkbox(NodeId(7)).unwrap();
+        assert_eq!(v, CheckboxValue::Checked);
     }
 
     #[test]

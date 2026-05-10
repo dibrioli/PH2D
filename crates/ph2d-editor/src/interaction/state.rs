@@ -22,8 +22,9 @@ use std::collections::BTreeMap;
 
 use crate::widget::{
     ButtonState, CheckboxState, CheckboxValue, ColorPickerMode, ComboboxState, DropdownState,
-    ListItemState, SliderState, TagState, TextInputState, ToggleState,
+    ListItemState, SliderOrientation, SliderState, TagState, TextInputState, ToggleState,
 };
+use crate::zones::Rect;
 
 /// One per-widget state slot. Variants mirror the widget kinds in
 /// `crate::widget::*`; mappings to the original widget's state enum
@@ -40,6 +41,7 @@ pub enum InteractiveState {
     Slider {
         state: SliderState,
         value: f32,
+        orientation: SliderOrientation,
     },
     Checkbox {
         state: CheckboxState,
@@ -128,6 +130,10 @@ pub struct WidgetStore {
     hot_id: Option<NodeId>,
     active_id: Option<NodeId>,
     focus_id: Option<NodeId>,
+    /// Rect of the active widget at the moment of Down. Used by
+    /// drag dispatch (Slider) to compute new value from pointer
+    /// position relative to the original geometry.
+    active_rect: Option<Rect>,
 }
 
 impl WidgetStore {
@@ -141,6 +147,7 @@ impl WidgetStore {
             hot_id: None,
             active_id: None,
             focus_id: None,
+            active_rect: None,
         }
     }
 
@@ -189,6 +196,16 @@ impl WidgetStore {
         self.active_id = id;
     }
 
+    /// Geometry of the active widget at the moment of Down. Used by
+    /// drag-handling dispatch (Slider) to compute new value.
+    pub fn active_rect(&self) -> Option<Rect> {
+        self.active_rect
+    }
+
+    pub fn set_active_rect(&mut self, rect: Option<Rect>) {
+        self.active_rect = rect;
+    }
+
     pub fn focus_id(&self) -> Option<NodeId> {
         self.focus_id
     }
@@ -222,7 +239,7 @@ impl WidgetStore {
     /// Convenience: read slider value + state.
     pub fn slider(&self, id: NodeId) -> Option<(SliderState, f32)> {
         match self.states.get(&id) {
-            Some(InteractiveState::Slider { state, value }) => Some((*state, *value)),
+            Some(InteractiveState::Slider { state, value, .. }) => Some((*state, *value)),
             _ => None,
         }
     }
@@ -317,6 +334,7 @@ mod tests {
             InteractiveState::Slider {
                 state: SliderState::Normal,
                 value: 0.42,
+                orientation: SliderOrientation::Horizontal,
             },
         );
         let (st, v) = store.slider(NodeId(1)).unwrap();

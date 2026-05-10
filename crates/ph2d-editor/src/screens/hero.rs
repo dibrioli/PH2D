@@ -31,9 +31,9 @@ use crate::paint::{
     stroke_rounded_rect,
 };
 use crate::widget::{
-    ButtonState, PILL_PADDING_PX, SectionHeader, SegmentTone, Slider, SliderState, StatusBar,
-    StatusSegment, ToolRail, ToolRailEntry, paint_section_header, paint_slider, paint_status_bar,
-    paint_tool_rail,
+    ButtonState, PILL_PADDING_PX, SectionHeader, SegmentTone, Slider, SliderOrientation,
+    SliderState, StatusBar, StatusSegment, ToolRail, ToolRailEntry, paint_section_header,
+    paint_slider, paint_status_bar, paint_tool_rail,
 };
 use crate::zones::Rect;
 use bumpalo::Bump;
@@ -160,6 +160,17 @@ pub mod ids {
     pub const TOOL_HOME: NodeId = NodeId(207);
     pub const TOOL_UNDO: NodeId = NodeId(208);
     pub const TOOL_REDO: NodeId = NodeId(209);
+
+    // Inspector field ids (300-360 reserved).
+    pub const INSP_MOVE_SPEED: NodeId = NodeId(300);
+    pub const INSP_JUMP_HEIGHT: NodeId = NodeId(301);
+    pub const INSP_FRICTION: NodeId = NodeId(302);
+    pub const INSP_DAMPING: NodeId = NodeId(303);
+    pub const INSP_DEBUG_SELECT: NodeId = NodeId(310);
+    pub const INSP_LINK_DISTANCE: NodeId = NodeId(320);
+    pub const INSP_LINK_MATERIAL: NodeId = NodeId(321);
+    pub const INSP_CAM_YAW: NodeId = NodeId(330);
+    pub const INSP_CAM_PITCH: NodeId = NodeId(331);
 }
 
 #[derive(Debug)]
@@ -221,6 +232,26 @@ impl HeroScreen {
         // The active tool starts highlighted (matches the mockup).
         if let Some(InteractiveState::Button { state }) = store.get_mut(ids::TOOL_TRANSLATE) {
             *state = ButtonState::Pressed;
+        }
+
+        // Inspector sliders — initial values mirror the mockup's
+        // `display` strings (160 / 200 / 0.0010 / 0.70 / 0.57).
+        for (id, value) in [
+            (ids::INSP_MOVE_SPEED, 0.62),
+            (ids::INSP_JUMP_HEIGHT, 0.30),
+            (ids::INSP_FRICTION, 0.08),
+            (ids::INSP_DAMPING, 0.48),
+            (ids::INSP_CAM_YAW, 0.57),
+            (ids::INSP_CAM_PITCH, 0.0),
+        ] {
+            store.register(
+                id,
+                InteractiveState::Slider {
+                    state: SliderState::Normal,
+                    value,
+                    orientation: SliderOrientation::Horizontal,
+                },
+            );
         }
     }
 
@@ -658,12 +689,15 @@ fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
 
 /// Paint the Inspector panel: drag handle + header (title + sub) +
 /// description placeholder + sections from the fixture.
+#[allow(clippy::too_many_arguments)]
 pub fn paint_inspector(
     layout: &HeroLayout,
     selection: Option<&HeroSelection>,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
 ) {
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
@@ -728,14 +762,18 @@ pub fn paint_inspector(
             if y + FIELD_ROW_H * 2.0 > rect.y + rect.h {
                 return;
             }
+            let field_id = inspector_field_id(&field.label);
             paint_inspector_field(
                 field,
+                field_id,
                 rect.x + body_pad,
                 rect.w - body_pad * 2.0,
                 y,
                 scene,
                 text_system,
                 theme,
+                hit_index,
+                store,
             );
             y += FIELD_ROW_H * 2.0 + FIELD_GAP;
         }
@@ -743,14 +781,36 @@ pub fn paint_inspector(
     }
 }
 
+/// Map a fixture-label to the canonical interactive id for that
+/// inspector field. `None` when the field is non-interactive in
+/// Phase B (text-only or Phase C+ wiring).
+fn inspector_field_id(label: &str) -> Option<NodeId> {
+    Some(match label {
+        "Move Speed" => ids::INSP_MOVE_SPEED,
+        "Jump Height" => ids::INSP_JUMP_HEIGHT,
+        "Friction" => ids::INSP_FRICTION,
+        "Damping" => ids::INSP_DAMPING,
+        "Cam Yaw" => ids::INSP_CAM_YAW,
+        "Cam Pitch" => ids::INSP_CAM_PITCH,
+        "Debug" => ids::INSP_DEBUG_SELECT,
+        "Distance" => ids::INSP_LINK_DISTANCE,
+        "Material" => ids::INSP_LINK_MATERIAL,
+        _ => return None,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
 fn paint_inspector_field(
     field: &fixture::InspectorField,
+    field_id: Option<NodeId>,
     x: f32,
     w: f32,
     y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
 ) {
     use fixture::InspectorFieldKind;
     // Field head: marker dot + uppercase label.
@@ -796,10 +856,24 @@ fn paint_inspector_field(
                 body_rect.w - val_w - Spacing::Md.px(),
                 body_rect.h,
             );
-            let mut s = Slider::new(NodeId(0), &field.label).accent(true);
-            s.set_value(*value);
+            // If this field is wired into the store, register its
+            // rect for hit-test and read the live value/state.
+            // Otherwise fall back to the fixture's static value.
+            let id = field_id.unwrap_or(NodeId(0));
+            let (live_state, live_value) = field_id
+                .and_then(|i| store.slider(i))
+                .unwrap_or((SliderState::Normal, *value));
+            if let Some(i) = field_id {
+                hit_index.register(i, slider_rect);
+            }
+            let mut s = Slider::new(id, &field.label).accent(true);
+            s.set_value(live_value);
+            s.state = live_state;
             paint_slider(&s, slider_rect, scene, theme);
-            // Value chip.
+            // Value chip — show the original display string when no
+            // store-backed value (Phase B+ fields keep the fixture
+            // formatting; updates after drag are reflected by the
+            // thumb position, not the numeric chip).
             fill_rounded_rect(
                 scene,
                 val_rect,
@@ -1310,6 +1384,8 @@ pub fn paint_hero_screen(
         scene,
         text_system,
         hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
     );
     paint_hierarchy(
         &layout,
@@ -1455,7 +1531,17 @@ mod tests {
         let sel = fixture::default_selection();
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_inspector(&layout, Some(&sel), &mut scene, &mut text, Theme::Sunstone);
+        let mut hits = HitIndex::new();
+        let store = WidgetStore::with_capacity(32);
+        paint_inspector(
+            &layout,
+            Some(&sel),
+            &mut scene,
+            &mut text,
+            Theme::Sunstone,
+            &mut hits,
+            &store,
+        );
     }
 
     #[test]
@@ -1463,7 +1549,17 @@ mod tests {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_inspector(&layout, None, &mut scene, &mut text, Theme::Blueprint);
+        let mut hits = HitIndex::new();
+        let store = WidgetStore::with_capacity(32);
+        paint_inspector(
+            &layout,
+            None,
+            &mut scene,
+            &mut text,
+            Theme::Blueprint,
+            &mut hits,
+            &store,
+        );
     }
 
     #[test]

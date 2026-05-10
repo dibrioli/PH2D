@@ -5,7 +5,7 @@ use super::fixture;
 use super::ids;
 use super::style::icon_button_fg;
 use crate::icons::IconId;
-use crate::interaction::{HitIndex, WidgetStore};
+use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
 };
@@ -17,6 +17,36 @@ use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
+
+/// Register every TopBar widget into the [`WidgetStore`]. Called
+/// once by `HeroScreen::pre_populate_store`.
+pub fn populate(store: &mut WidgetStore) {
+    for id in [
+        ids::TOPBAR_THEME,
+        ids::TOPBAR_SAVE,
+        ids::TOPBAR_PROJECT,
+        ids::TOPBAR_PLAY_TOGGLE,
+        ids::TOPBAR_PLAY_BUTTON,
+        ids::TOPBAR_RIGHT_LAYERS,
+        ids::TOPBAR_RIGHT_ASSETS,
+        ids::TOPBAR_RIGHT_SCRIPT,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+}
+
+/// Apply a [`WidgetEvent`] against TopBar widgets. Returns true iff
+/// the event was consumed. Stub for now — TopBar buttons currently
+/// only carry hover/press visual feedback; project-level reactions
+/// (Save flush, Play start, etc.) land in follow-up PRs.
+pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+    false
+}
 
 /// Tooltip text for a known TopBar / LeftRail id when the user
 /// hovers over it. Returns `None` for ids without a defined hint.

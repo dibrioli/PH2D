@@ -47,8 +47,7 @@ pub use showcase::paint_components_showcase;
 pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 pub use topbar::paint_top_bar;
 
-use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_pointer};
-use crate::widget::{ButtonState, SliderOrientation, SliderState};
+use crate::interaction::{HitIndex, WidgetEvent, WidgetStore, dispatch_pointer};
 use crate::zones::Rect;
 use bumpalo::Bump;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
@@ -159,180 +158,15 @@ impl HeroScreen {
         }
     }
 
+    /// Pre-populate the [`WidgetStore`] by delegating to each
+    /// region's `populate` function. Each region owns its ids;
+    /// adding a widget means editing only that region's file.
     fn pre_populate_store(store: &mut WidgetStore) {
-        for id in [
-            ids::TOPBAR_THEME,
-            ids::TOPBAR_SAVE,
-            ids::TOPBAR_PROJECT,
-            ids::TOPBAR_PLAY_TOGGLE,
-            ids::TOPBAR_PLAY_BUTTON,
-            ids::TOPBAR_RIGHT_LAYERS,
-            ids::TOPBAR_RIGHT_ASSETS,
-            ids::TOPBAR_RIGHT_SCRIPT,
-            ids::HIERARCHY_ADD,
-            ids::TOOL_TRANSLATE,
-            ids::TOOL_ROTATE,
-            ids::TOOL_SCALE,
-            ids::TOOL_PIVOT,
-            ids::TOOL_SPACE,
-            ids::TOOL_PROJECTION,
-            ids::TOOL_HOME,
-            ids::TOOL_UNDO,
-            ids::TOOL_REDO,
-        ] {
-            store.register(
-                id,
-                InteractiveState::Button {
-                    state: ButtonState::Normal,
-                },
-            );
-        }
-        if let Some(InteractiveState::Button { state }) = store.get_mut(ids::TOOL_TRANSLATE) {
-            *state = ButtonState::Pressed;
-        }
-
-        for (id, value) in [
-            (ids::INSP_MOVE_SPEED, 0.62),
-            (ids::INSP_JUMP_HEIGHT, 0.30),
-            (ids::INSP_FRICTION, 0.08),
-            (ids::INSP_DAMPING, 0.48),
-            (ids::INSP_CAM_YAW, 0.57),
-            (ids::INSP_CAM_PITCH, 0.0),
-        ] {
-            store.register(
-                id,
-                InteractiveState::Slider {
-                    state: SliderState::Normal,
-                    value,
-                    orientation: SliderOrientation::Horizontal,
-                },
-            );
-        }
-
-        store.register(
-            ids::INSP_DEBUG_SELECT,
-            InteractiveState::Dropdown {
-                state: crate::widget::DropdownState::Normal,
-                open: false,
-                selected_index: Some(0),
-            },
-        );
-
-        for id in [
-            ids::HIER_PLAYER,
-            ids::HIER_SPRITE_IDLE,
-            ids::HIER_COLLIDER_BOX,
-            ids::HIER_SCRIPT_PLAYER,
-            ids::HIER_RIGIDBODY,
-            ids::HIER_TILEMAP_GROUND,
-            ids::HIER_TILEMAP_DECOR,
-            ids::HIER_SLIME_01,
-            ids::HIER_SLIME_02,
-            ids::HIER_TRIGGER_ZONE_A,
-            ids::HIER_AMBIENT_LIGHT,
-            ids::HIER_MAIN_CAMERA,
-        ] {
-            store.register(id, InteractiveState::Plain);
-        }
-
-        // Inspector Tabs (Properties active by default).
-        for id in [
-            ids::INSP_TAB_PROPS,
-            ids::INSP_TAB_LAYERS,
-            ids::INSP_TAB_MATERIALS,
-        ] {
-            store.register(
-                id,
-                InteractiveState::Button {
-                    state: ButtonState::Normal,
-                },
-            );
-        }
-        if let Some(InteractiveState::Button { state }) = store.get_mut(ids::INSP_TAB_PROPS) {
-            *state = ButtonState::Pressed;
-        }
-
-        // Inspector NumberInput linked-twin per slider. Initial values
-        // mirror the slider's value scaled to display range — the
-        // dispatcher will keep them in sync as the user drags.
-        for (id, value) in [
-            (ids::INSP_NUM_MOVE_SPEED, 160.0_f64),
-            (ids::INSP_NUM_JUMP_HEIGHT, 200.0),
-            (ids::INSP_NUM_FRICTION, 0.0010),
-            (ids::INSP_NUM_DAMPING, 0.70),
-            (ids::INSP_NUM_CAM_YAW, 0.57),
-        ] {
-            store.register(
-                id,
-                InteractiveState::NumberInput {
-                    state: crate::widget::TextInputState::Normal,
-                    value,
-                    buffer: crate::interaction::format_number(value),
-                    caret: 0,
-                    last_committed: value,
-                },
-            );
-        }
-
-        // Slider × NumberInput two-way bindings (Phase 2).
-        // Drag the slider → number's chip follows. Type a new value
-        // into the number → slider thumb jumps to it on commit.
-        for (slider_id, number_id) in [
-            (ids::INSP_MOVE_SPEED, ids::INSP_NUM_MOVE_SPEED),
-            (ids::INSP_JUMP_HEIGHT, ids::INSP_NUM_JUMP_HEIGHT),
-            (ids::INSP_FRICTION, ids::INSP_NUM_FRICTION),
-            (ids::INSP_DAMPING, ids::INSP_NUM_DAMPING),
-            (ids::INSP_CAM_YAW, ids::INSP_NUM_CAM_YAW),
-        ] {
-            store.link_slider_number(slider_id, number_id);
-        }
-
-        // Inspector Checkbox + Toggle.
-        store.register(
-            ids::INSP_HOT_RELOAD_CHECK,
-            InteractiveState::Checkbox {
-                state: crate::widget::CheckboxState::Normal,
-                value: crate::widget::CheckboxValue::Checked,
-            },
-        );
-        store.register(
-            ids::INSP_SNAP_GRID_TOGGLE,
-            InteractiveState::Toggle {
-                state: crate::widget::ToggleState::Normal,
-                on: true,
-            },
-        );
-
-        // ColorSwatch "Tint" — clicking selects it (Plain) and the
-        // BlenderColorPicker in the demo region reads its rgba.
-        store.register(ids::INSP_TINT_SWATCH, InteractiveState::Plain);
-        // BlenderColorPicker retained state — driven by sub-control
-        // hits below.
-        store.register(
-            ids::INSP_BLENDER_PICKER,
-            InteractiveState::BlenderPicker {
-                value: ph2d_tokens::ColorValue::from_rgba8(231, 231, 231, 255),
-                channel_mode: crate::widget::ChannelMode::Rgb,
-                interpolation: crate::widget::InterpolationMode::Perceptual,
-                active_palette: 0,
-            },
-        );
-        // Wheel + value slider hit shims — both route to the parent
-        // picker's state on Down.
-        store.register(
-            ids::BLENDER_WHEEL,
-            InteractiveState::BlenderHit {
-                parent: ids::INSP_BLENDER_PICKER,
-                kind: crate::interaction::BlenderHitKind::Wheel,
-            },
-        );
-        store.register(
-            ids::BLENDER_VALUE_SLIDER,
-            InteractiveState::BlenderHit {
-                parent: ids::INSP_BLENDER_PICKER,
-                kind: crate::interaction::BlenderHitKind::ValueSlider,
-            },
-        );
+        topbar::populate(store);
+        left_rail::populate(store);
+        hierarchy::populate(store);
+        inspector::populate(store);
+        showcase::populate(store);
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -375,17 +209,23 @@ impl HeroScreen {
     }
 
     /// Translate a [`WidgetEvent`] from the dispatcher into a
-    /// hero-level state mutation. Returns true iff the event was
-    /// consumed (caller may chain into other handlers if false).
+    /// hero-level state mutation. Walks each region's
+    /// `apply_event` in z-order; first region that consumes the
+    /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
-        if let WidgetEvent::Click(id) = event
-            && let Some(label) = ids::hierarchy_label_for_id(id)
-        {
-            self.selection = Some(HeroSelection {
-                label: label.into(),
-                kind: ids::hierarchy_kind_for_label(label).into(),
-                world_pos: (0.0, 0.0),
-            });
+        if topbar::apply_event(&mut self.store, event) {
+            return true;
+        }
+        if left_rail::apply_event(&mut self.store, event) {
+            return true;
+        }
+        if hierarchy::apply_event(&mut self.store, &mut self.selection, event) {
+            return true;
+        }
+        if inspector::apply_event(&mut self.store, event) {
+            return true;
+        }
+        if showcase::apply_event(&mut self.store, event) {
             return true;
         }
         false
@@ -471,6 +311,7 @@ pub fn paint_hero_screen(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::widget::ButtonState;
 
     fn ipad12_viewport() -> Rect {
         Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H)

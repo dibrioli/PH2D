@@ -8,21 +8,161 @@ use super::style::{
     FIELD_GAP, FIELD_ROW_H, PANEL_HEAD_PAD, SECTION_GAP, SECTION_HEAD_H, paint_panel_surface,
 };
 use crate::icons::IconId;
-use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
+use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_centered, rect_to_vello, resolve,
     stroke_rounded_rect,
 };
 use crate::widget::{
-    Checkbox, CheckboxState, CheckboxValue, ColorSwatch, NumberInput, SectionHeader, Slider,
-    SliderState, SwatchSize, TabItem, Tabs, TabsVariant, Toggle, ToggleState, paint_checkbox,
-    paint_color_swatch, paint_section_header, paint_slider, paint_tabs, paint_toggle,
+    ButtonState, ChannelMode, Checkbox, CheckboxState, CheckboxValue, ColorSwatch,
+    DropdownState, InterpolationMode, NumberInput, SectionHeader, Slider, SliderOrientation,
+    SliderState, SwatchSize, TabItem, Tabs, TabsVariant, TextInputState, Toggle, ToggleState,
+    paint_checkbox, paint_color_swatch, paint_section_header, paint_slider, paint_tabs,
+    paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ColorValue, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
+
+/// Register every Inspector widget into the [`WidgetStore`]:
+/// section tabs, sliders, linked NumberInputs, dropdowns, toggles,
+/// checkbox, swatch, and the BlenderColorPicker (with sub-rect
+/// hit shims for the wheel + value slider).
+pub fn populate(store: &mut WidgetStore) {
+    // Inspector tabs (Properties / Layers / Materials).
+    for id in [
+        ids::INSP_TAB_PROPS,
+        ids::INSP_TAB_LAYERS,
+        ids::INSP_TAB_MATERIALS,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    if let Some(InteractiveState::Button { state }) = store.get_mut(ids::INSP_TAB_PROPS) {
+        *state = ButtonState::Pressed;
+    }
+
+    // Field sliders (normalized 0..=1).
+    for (id, value) in [
+        (ids::INSP_MOVE_SPEED, 0.62),
+        (ids::INSP_JUMP_HEIGHT, 0.30),
+        (ids::INSP_FRICTION, 0.08),
+        (ids::INSP_DAMPING, 0.48),
+        (ids::INSP_CAM_YAW, 0.57),
+        (ids::INSP_CAM_PITCH, 0.0),
+    ] {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+    }
+
+    // Debug select dropdown.
+    store.register(
+        ids::INSP_DEBUG_SELECT,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
+        },
+    );
+
+    // NumberInput chips linked to the field sliders. Initial values
+    // mirror the slider's value scaled to display range — the
+    // dispatcher keeps them in sync as the user drags.
+    for (id, value) in [
+        (ids::INSP_NUM_MOVE_SPEED, 160.0_f64),
+        (ids::INSP_NUM_JUMP_HEIGHT, 200.0),
+        (ids::INSP_NUM_FRICTION, 0.0010),
+        (ids::INSP_NUM_DAMPING, 0.70),
+        (ids::INSP_NUM_CAM_YAW, 0.57),
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: crate::interaction::format_number(value),
+                caret: 0,
+                last_committed: value,
+            },
+        );
+    }
+
+    // Slider × NumberInput two-way bindings (Phase 2).
+    for (slider_id, number_id) in [
+        (ids::INSP_MOVE_SPEED, ids::INSP_NUM_MOVE_SPEED),
+        (ids::INSP_JUMP_HEIGHT, ids::INSP_NUM_JUMP_HEIGHT),
+        (ids::INSP_FRICTION, ids::INSP_NUM_FRICTION),
+        (ids::INSP_DAMPING, ids::INSP_NUM_DAMPING),
+        (ids::INSP_CAM_YAW, ids::INSP_NUM_CAM_YAW),
+    ] {
+        store.link_slider_number(slider_id, number_id);
+    }
+
+    // Hot-reload checkbox + Snap-grid toggle.
+    store.register(
+        ids::INSP_HOT_RELOAD_CHECK,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Checked,
+        },
+    );
+    store.register(
+        ids::INSP_SNAP_GRID_TOGGLE,
+        InteractiveState::Toggle {
+            state: ToggleState::Normal,
+            on: true,
+        },
+    );
+
+    // Tint swatch — clicking selects it (Plain) and the
+    // BlenderColorPicker in the demo region reads its rgba.
+    store.register(ids::INSP_TINT_SWATCH, InteractiveState::Plain);
+
+    // BlenderColorPicker retained state — wheel + value-slider hit
+    // shims route their picks back into the parent picker.
+    store.register(
+        ids::INSP_BLENDER_PICKER,
+        InteractiveState::BlenderPicker {
+            value: ColorValue::from_rgba8(231, 231, 231, 255),
+            channel_mode: ChannelMode::Rgb,
+            interpolation: InterpolationMode::Perceptual,
+            active_palette: 0,
+        },
+    );
+    store.register(
+        ids::BLENDER_WHEEL,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::Wheel,
+        },
+    );
+    store.register(
+        ids::BLENDER_VALUE_SLIDER,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_BLENDER_PICKER,
+            kind: crate::interaction::BlenderHitKind::ValueSlider,
+        },
+    );
+}
+
+/// Apply a [`WidgetEvent`] against Inspector widgets. Returns true
+/// iff the event was consumed. Stub for now — tab switching, field
+/// commits to the simulation, etc. land in follow-up PRs.
+pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+    false
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn paint_inspector(

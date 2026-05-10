@@ -4,13 +4,46 @@
 use super::HeroLayout;
 use super::ids;
 use crate::icons::IconId;
-use crate::interaction::{HitIndex, WidgetStore};
+use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::widget::{ButtonState, ToolRail, ToolRailEntry, paint_tool_rail};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
+
+/// Register every LeftRail tool button into the [`WidgetStore`].
+/// Translate is the default-pressed tool (matches the M13 fixture).
+pub fn populate(store: &mut WidgetStore) {
+    for id in [
+        ids::TOOL_TRANSLATE,
+        ids::TOOL_ROTATE,
+        ids::TOOL_SCALE,
+        ids::TOOL_PIVOT,
+        ids::TOOL_SPACE,
+        ids::TOOL_PROJECTION,
+        ids::TOOL_HOME,
+        ids::TOOL_UNDO,
+        ids::TOOL_REDO,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    if let Some(InteractiveState::Button { state }) = store.get_mut(ids::TOOL_TRANSLATE) {
+        *state = ButtonState::Pressed;
+    }
+}
+
+/// Apply a [`WidgetEvent`] against LeftRail widgets. Returns true
+/// iff the event was consumed. Stub for now — switching the active
+/// transform tool is a follow-up PR.
+pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+    false
+}
 
 pub fn paint_left_rail(
     layout: &HeroLayout,

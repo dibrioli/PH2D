@@ -1,17 +1,67 @@
 //! Hierarchy panel painter — header + add button + entity rows.
 
 use super::HeroLayout;
+use super::HeroSelection;
 use super::fixture;
 use super::ids;
 use super::style::{HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_surface};
 use crate::icons::IconId;
-use crate::interaction::{HitIndex, WidgetStore};
+use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::{ButtonState, Tag, TagState, TagTone, paint_tag};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, VectorScene};
+
+/// Register the hierarchy header `+` button + every entity row's hit
+/// id. Entity rows are `Plain` (focusable; no per-state visual
+/// transitions — selection is driven by `apply_event` below).
+pub fn populate(store: &mut WidgetStore) {
+    store.register(
+        ids::HIERARCHY_ADD,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    for id in [
+        ids::HIER_PLAYER,
+        ids::HIER_SPRITE_IDLE,
+        ids::HIER_COLLIDER_BOX,
+        ids::HIER_SCRIPT_PLAYER,
+        ids::HIER_RIGIDBODY,
+        ids::HIER_TILEMAP_GROUND,
+        ids::HIER_TILEMAP_DECOR,
+        ids::HIER_SLIME_01,
+        ids::HIER_SLIME_02,
+        ids::HIER_TRIGGER_ZONE_A,
+        ids::HIER_AMBIENT_LIGHT,
+        ids::HIER_MAIN_CAMERA,
+    ] {
+        store.register(id, InteractiveState::Plain);
+    }
+}
+
+/// Apply a [`WidgetEvent`] against hierarchy widgets. A click on an
+/// entity row updates `selection`; everything else is ignored.
+/// Returns true iff the event was consumed.
+pub fn apply_event(
+    _store: &mut WidgetStore,
+    selection: &mut Option<HeroSelection>,
+    event: WidgetEvent,
+) -> bool {
+    if let WidgetEvent::Click(id) = event
+        && let Some(label) = ids::hierarchy_label_for_id(id)
+    {
+        *selection = Some(HeroSelection {
+            label: label.into(),
+            kind: ids::hierarchy_kind_for_label(label).into(),
+            world_pos: (0.0, 0.0),
+        });
+        return true;
+    }
+    false
+}
 
 pub fn paint_hierarchy(
     layout: &HeroLayout,

@@ -12,7 +12,19 @@ use super::HeroLayout;
 use super::ids;
 use super::style::paint_panel_surface;
 use crate::icons::IconId;
-use crate::interaction::{HitIndex, WidgetStore};
+use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
+
+/// Register every Showcase widget into the [`WidgetStore`]. Empty
+/// today — Showcase widgets currently paint with `NodeId(0)` and
+/// are not yet wired for interaction. Adding ids + registrations
+/// here is the next step (per agent split-up).
+pub fn populate(_store: &mut WidgetStore) {}
+
+/// Apply a [`WidgetEvent`] against Showcase widgets. Returns true
+/// iff the event was consumed. Stub.
+pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+    false
+}
 use crate::paint::{paint_text, paint_text_centered, resolve};
 use crate::widget::{
     Avatar, AvatarShape, BlenderColorPicker, Button, ButtonKind, Card, ChannelMode, Checkbox,

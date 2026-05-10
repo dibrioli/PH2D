@@ -57,6 +57,12 @@ pub const INSP_SNAP_GRID_TOGGLE: NodeId = NodeId(361);
 pub const INSP_TINT_SWATCH: NodeId = NodeId(370);
 pub const INSP_BLENDER_PICKER: NodeId = NodeId(380);
 
+// BlenderColorPicker sub-control hit ids — registered by the
+// showcase painter every frame, dispatched by `dispatch_pointer`
+// into store mutations on `INSP_BLENDER_PICKER`.
+pub const BLENDER_WHEEL: NodeId = NodeId(381);
+pub const BLENDER_VALUE_SLIDER: NodeId = NodeId(382);
+
 pub const HIER_PLAYER: NodeId = NodeId(400);
 pub const HIER_SPRITE_IDLE: NodeId = NodeId(401);
 pub const HIER_COLLIDER_BOX: NodeId = NodeId(402);

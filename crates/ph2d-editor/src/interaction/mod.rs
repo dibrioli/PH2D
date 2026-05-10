@@ -36,4 +36,4 @@ pub mod state;
 
 pub use dispatch::{dispatch_key, dispatch_pointer, dispatch_text_input};
 pub use hit::HitIndex;
-pub use state::{InteractiveState, WidgetEvent, WidgetStore, format_number};
+pub use state::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore, format_number};

@@ -93,6 +93,11 @@ pub fn dispatch_pointer<'frame>(
                 {
                     events.push(WidgetEvent::ValueChanged(id));
                 }
+                // BlenderColorPicker sub-control hits route into the
+                // parent's stored state mutation.
+                if let Some(parent) = apply_blender_hit(store, id, rect, event.x, event.y) {
+                    events.push(WidgetEvent::ValueChanged(parent));
+                }
             }
         }
         PointerKind::Up => {
@@ -672,6 +677,51 @@ fn cycle_focus<'a>(store: &mut WidgetStore, forward: bool, events: &mut BumpVec<
         } else {
             (idx + len - 1) % len
         };
+    }
+}
+
+/// If `id` is a [`InteractiveState::BlenderHit`] sub-control, apply
+/// the click to its parent [`InteractiveState::BlenderPicker`] and
+/// return the parent's id (so the caller can emit `ValueChanged`).
+/// Returns `None` for non-picker hits.
+fn apply_blender_hit(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    rect: Rect,
+    px: f32,
+    py: f32,
+) -> Option<ph2d_a11y::NodeId> {
+    use crate::interaction::BlenderHitKind;
+    use crate::widget::{
+        ChannelMode, InterpolationMode, apply_blender_value_pick, apply_blender_wheel_pick,
+    };
+    let (parent, kind) = match store.get(id)? {
+        InteractiveState::BlenderHit { parent, kind } => (*parent, *kind),
+        _ => return None,
+    };
+    match kind {
+        BlenderHitKind::Wheel => {
+            apply_blender_wheel_pick(store, parent, rect, px, py).then_some(parent)
+        }
+        BlenderHitKind::ValueSlider => {
+            apply_blender_value_pick(store, parent, rect, px, py).then_some(parent)
+        }
+        BlenderHitKind::InterpolationLinear => {
+            store.set_blender_interpolation(parent, InterpolationMode::Linear);
+            Some(parent)
+        }
+        BlenderHitKind::InterpolationPerceptual => {
+            store.set_blender_interpolation(parent, InterpolationMode::Perceptual);
+            Some(parent)
+        }
+        BlenderHitKind::ChannelRgb => {
+            store.set_blender_channel_mode(parent, ChannelMode::Rgb);
+            Some(parent)
+        }
+        BlenderHitKind::ChannelHsv => {
+            store.set_blender_channel_mode(parent, ChannelMode::Hsv);
+            Some(parent)
+        }
     }
 }
 
@@ -1401,6 +1451,51 @@ mod tests {
         let _ = dispatch_key(&mut store, key(KEY_ENTER, false), &arena);
         let (_, sv) = store.slider(NodeId(1)).unwrap();
         assert!((sv - 0.75).abs() < 1e-5);
+    }
+
+    #[test]
+    fn blender_wheel_click_mutates_picker_value() {
+        use crate::interaction::BlenderHitKind;
+        use crate::widget::{ChannelMode, InterpolationMode};
+        use ph2d_tokens::ColorValue;
+        let mut store = WidgetStore::with_capacity(8);
+        store.register(
+            NodeId(100),
+            InteractiveState::BlenderPicker {
+                value: ColorValue::from_rgba8(231, 231, 231, 255),
+                channel_mode: ChannelMode::Rgb,
+                interpolation: InterpolationMode::Perceptual,
+                active_palette: 0,
+            },
+        );
+        store.register(
+            NodeId(101),
+            InteractiveState::BlenderHit {
+                parent: NodeId(100),
+                kind: BlenderHitKind::Wheel,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(101), Rect::new(0.0, 0.0, 100.0, 100.0));
+        let arena = Bump::new();
+        // Click right-edge → hue ≈ 0°, sat ≈ 1.0 → red-leaning value.
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 95.0, 50.0),
+            &arena,
+        );
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(_))),
+            "expected a ValueChanged event from wheel click"
+        );
+        let (new_value, _, _, _) = store.blender_picker(NodeId(100)).unwrap();
+        // Value should have rotated away from neutral grey.
+        assert!(
+            new_value.rgba != [231, 231, 231, 255],
+            "picker value should change after wheel click"
+        );
     }
 
     #[test]

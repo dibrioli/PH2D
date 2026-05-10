@@ -306,11 +306,31 @@ impl HeroScreen {
         // ColorSwatch "Tint" — clicking selects it (Plain) and the
         // BlenderColorPicker in the demo region reads its rgba.
         store.register(ids::INSP_TINT_SWATCH, InteractiveState::Plain);
+        // BlenderColorPicker retained state — driven by sub-control
+        // hits below.
         store.register(
             ids::INSP_BLENDER_PICKER,
-            InteractiveState::ColorPicker {
-                mode: crate::widget::ColorPickerMode::Classic,
-                rgba: [120, 60, 200, 255],
+            InteractiveState::BlenderPicker {
+                value: ph2d_tokens::ColorValue::from_rgba8(231, 231, 231, 255),
+                channel_mode: crate::widget::ChannelMode::Rgb,
+                interpolation: crate::widget::InterpolationMode::Perceptual,
+                active_palette: 0,
+            },
+        );
+        // Wheel + value slider hit shims — both route to the parent
+        // picker's state on Down.
+        store.register(
+            ids::BLENDER_WHEEL,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind: crate::interaction::BlenderHitKind::Wheel,
+            },
+        );
+        store.register(
+            ids::BLENDER_VALUE_SLIDER,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind: crate::interaction::BlenderHitKind::ValueSlider,
             },
         );
     }

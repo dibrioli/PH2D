@@ -39,9 +39,54 @@ pub mod wheel;
 mod tests;
 
 pub use hex_field::parse_hex;
-pub use paint::paint_blender_color_picker;
+pub use paint::{paint_blender_color_picker, paint_blender_color_picker_with_store};
 pub use state::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
 };
 pub use value_slider::value_pick;
 pub use wheel::wheel_pick;
+
+use crate::interaction::WidgetStore;
+use crate::zones::Rect;
+use ph2d_a11y::NodeId;
+use ph2d_tokens::ColorValue;
+
+/// Apply a click on the wheel sub-rect: translate `(px, py)` into
+/// hue/sat via [`wheel_pick`], then mutate the BlenderPicker state
+/// at `parent_id`. Caller must pass the wheel's registered rect.
+pub fn apply_blender_wheel_pick(
+    store: &mut WidgetStore,
+    parent_id: NodeId,
+    rect: Rect,
+    px: f32,
+    py: f32,
+) -> bool {
+    let Some((cur, _, _, _)) = store.blender_picker(parent_id) else {
+        return false;
+    };
+    let Some((hue, sat)) = wheel_pick(rect, px, py) else {
+        return false;
+    };
+    let chroma = sat as f64 * 0.4;
+    let new_value = ColorValue::from_oklch(cur.oklch.0, chroma, hue as f64, cur.oklch.3);
+    store.set_blender_value(parent_id, new_value);
+    true
+}
+
+/// Apply a click on the value slider sub-rect: translate `py` into
+/// OKLCH lightness via [`value_pick`], mutate the BlenderPicker.
+pub fn apply_blender_value_pick(
+    store: &mut WidgetStore,
+    parent_id: NodeId,
+    rect: Rect,
+    _px: f32,
+    py: f32,
+) -> bool {
+    let Some((cur, _, _, _)) = store.blender_picker(parent_id) else {
+        return false;
+    };
+    let l = value_pick(rect, py) as f64;
+    let new_value = ColorValue::from_oklch(l, cur.oklch.1, cur.oklch.2, cur.oklch.3);
+    store.set_blender_value(parent_id, new_value);
+    true
+}

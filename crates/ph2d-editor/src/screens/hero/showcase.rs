@@ -9,6 +9,7 @@
 //! state from the [`WidgetStore`] when the consumer wires them.
 
 use super::HeroLayout;
+use super::ids;
 use super::style::paint_panel_surface;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
@@ -20,10 +21,10 @@ use crate::widget::{
     ListItem, ListItemState, Modal, NumberInput, Popover, ProgressBar, RadioGroup, RadioOption,
     RadioOrientation, SectionHeader, Slider, SliderState, Spinner, Tag, TagState, TagTone,
     TextArea, TextInput, TextInputState, TreeNode, TreeView, Vector3Editor, paint_avatar,
-    paint_blender_color_picker, paint_card, paint_checkbox, paint_combobox, paint_context_menu,
-    paint_divider, paint_dropdown, paint_list_item, paint_modal, paint_popover, paint_progress_bar,
-    paint_radio_group, paint_section_header, paint_slider, paint_spinner, paint_tag,
-    paint_text_area, paint_text_input, paint_vector3_editor,
+    paint_card, paint_checkbox, paint_combobox, paint_context_menu, paint_divider, paint_dropdown,
+    paint_list_item, paint_modal, paint_popover, paint_progress_bar, paint_radio_group,
+    paint_section_header, paint_slider, paint_spinner, paint_tag, paint_text_area,
+    paint_text_input, paint_vector3_editor,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -327,8 +328,6 @@ pub fn paint_components_showcase(
     // Suppress unused warnings while the showcase doesn't yet wire
     // dynamic state from these widgets' interactive ids.
     let _ = (
-        hit_index,
-        store,
         TreeView::new(NodeId(0), "x", vec![TreeNode::new(NodeId(0), "x")]),
         BlenderColorPicker::new(NodeId(0), "x").channel_mode(ChannelMode::Hsv),
         ListItemState::Normal,
@@ -342,7 +341,7 @@ pub fn paint_components_showcase(
     // `paint_components_showcase_extras`). Suppression above keeps
     // imports honest while that region wires in the next iteration.
     paint_tree_view_demo(rect, scene, text_system, theme);
-    paint_blender_picker_demo(layout, scene, text_system, theme);
+    paint_blender_picker_demo(layout, scene, text_system, theme, hit_index, store);
 }
 
 fn paint_tree_view_demo(
@@ -361,10 +360,9 @@ fn paint_blender_picker_demo(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
 ) {
-    // Anchor the BlenderColorPicker to the bottom-right of the
-    // canvas, sized for its native ~280x540. Shows up only when the
-    // canvas has room.
     let w = 280.0_f32;
     let h = 560.0_f32;
     if layout.canvas.w < w + SHOWCASE_W + 60.0 || layout.canvas.h < h + 40.0 {
@@ -376,8 +374,19 @@ fn paint_blender_picker_demo(
         w,
         h,
     );
-    let cp = BlenderColorPicker::new(NodeId(0), "Color");
-    paint_blender_color_picker(&cp, rect, scene, text_system, theme);
+    let cp = BlenderColorPicker::new(ids::INSP_BLENDER_PICKER, "Color");
+    crate::widget::paint_blender_color_picker_with_store(
+        &cp,
+        rect,
+        ids::INSP_BLENDER_PICKER,
+        ids::BLENDER_WHEEL,
+        ids::BLENDER_VALUE_SLIDER,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
 }
 
 #[cfg(test)]

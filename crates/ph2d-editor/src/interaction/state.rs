@@ -20,11 +20,25 @@
 use ph2d_a11y::NodeId;
 use std::collections::BTreeMap;
 
+/// Which sub-control of a [`InteractiveState::BlenderPicker`] a
+/// [`InteractiveState::BlenderHit`] points at.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BlenderHitKind {
+    Wheel,
+    ValueSlider,
+    InterpolationLinear,
+    InterpolationPerceptual,
+    ChannelRgb,
+    ChannelHsv,
+}
+
 use crate::widget::{
-    ButtonState, CheckboxState, CheckboxValue, ColorPickerMode, ComboboxState, DropdownState,
-    ListItemState, SliderOrientation, SliderState, TagState, TextInputState, ToggleState,
+    ButtonState, ChannelMode, CheckboxState, CheckboxValue, ColorPickerMode, ComboboxState,
+    DropdownState, InterpolationMode, ListItemState, SliderOrientation, SliderState, TagState,
+    TextInputState, ToggleState,
 };
 use crate::zones::Rect;
+use ph2d_tokens::ColorValue;
 
 /// One per-widget state slot. Variants mirror the widget kinds in
 /// `crate::widget::*`; mappings to the original widget's state enum
@@ -98,6 +112,22 @@ pub enum InteractiveState {
     ColorPicker {
         mode: ColorPickerMode,
         rgba: [u8; 4],
+    },
+    /// `BlenderColorPicker` retained state. Painted by
+    /// `paint_blender_color_picker_with_store`; mutated by clicks
+    /// on registered wheel/value/swatch/segmented sub-rect ids.
+    BlenderPicker {
+        value: ColorValue,
+        channel_mode: ChannelMode,
+        interpolation: InterpolationMode,
+        active_palette: usize,
+    },
+    /// Sub-control hit shim: pointing at a sub-rect of a parent
+    /// BlenderPicker. The dispatcher uses `kind` to route the click
+    /// into the correct widget-side mutation.
+    BlenderHit {
+        parent: NodeId,
+        kind: BlenderHitKind,
     },
     Modal {
         // Open/closed lives on the host; store only tracks ESC->dismiss intent.
@@ -310,6 +340,47 @@ impl WidgetStore {
                 ..
             }) => Some((*state, *value, buffer.as_str(), *caret)),
             _ => None,
+        }
+    }
+
+    /// Read the BlenderPicker state at `id`. Returns `None` for
+    /// non-picker widgets.
+    pub fn blender_picker(
+        &self,
+        id: NodeId,
+    ) -> Option<(ColorValue, ChannelMode, InterpolationMode, usize)> {
+        match self.states.get(&id) {
+            Some(InteractiveState::BlenderPicker {
+                value,
+                channel_mode,
+                interpolation,
+                active_palette,
+            }) => Some((*value, *channel_mode, *interpolation, *active_palette)),
+            _ => None,
+        }
+    }
+
+    /// Mutate the BlenderPicker's value (e.g. after a wheel click).
+    pub fn set_blender_value(&mut self, id: NodeId, new_value: ColorValue) {
+        if let Some(InteractiveState::BlenderPicker { value, .. }) = self.states.get_mut(&id) {
+            *value = new_value;
+        }
+    }
+
+    /// Mutate the BlenderPicker's channel mode (RGB↔HSV).
+    pub fn set_blender_channel_mode(&mut self, id: NodeId, mode: ChannelMode) {
+        if let Some(InteractiveState::BlenderPicker { channel_mode, .. }) = self.states.get_mut(&id)
+        {
+            *channel_mode = mode;
+        }
+    }
+
+    /// Mutate the BlenderPicker's interpolation (Linear↔Perceptual).
+    pub fn set_blender_interpolation(&mut self, id: NodeId, mode: InterpolationMode) {
+        if let Some(InteractiveState::BlenderPicker { interpolation, .. }) =
+            self.states.get_mut(&id)
+        {
+            *interpolation = mode;
         }
     }
 

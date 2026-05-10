@@ -120,7 +120,8 @@ pub fn dispatch_pointer<'frame>(
 
 /// Recompute slider value from pointer position relative to its
 /// active rect. Returns true iff the value actually changed (so
-/// dispatcher can decide whether to emit `ValueChanged`).
+/// dispatcher can decide whether to emit `ValueChanged`). Mirrors
+/// the new value into a linked NumberInput, if one is registered.
 fn update_drag_value(
     store: &mut WidgetStore,
     id: ph2d_a11y::NodeId,
@@ -128,34 +129,39 @@ fn update_drag_value(
     px: f32,
     py: f32,
 ) -> bool {
-    let Some(InteractiveState::Slider {
-        state,
-        value,
-        orientation,
-    }) = store.get_mut(id)
-    else {
-        return false;
-    };
-    let new_value = match *orientation {
-        SliderOrientation::Horizontal => {
-            if rect.w <= 0.0 {
-                0.0
-            } else {
-                ((px - rect.x) / rect.w).clamp(0.0, 1.0)
+    let (changed, propagated) = {
+        let Some(InteractiveState::Slider {
+            state,
+            value,
+            orientation,
+        }) = store.get_mut(id)
+        else {
+            return false;
+        };
+        let new_value = match *orientation {
+            SliderOrientation::Horizontal => {
+                if rect.w <= 0.0 {
+                    0.0
+                } else {
+                    ((px - rect.x) / rect.w).clamp(0.0, 1.0)
+                }
             }
-        }
-        SliderOrientation::Vertical => {
-            // Vertical slider: y=top → value=1, y=bottom → value=0.
-            if rect.h <= 0.0 {
-                0.0
-            } else {
-                (1.0 - (py - rect.y) / rect.h).clamp(0.0, 1.0)
+            SliderOrientation::Vertical => {
+                if rect.h <= 0.0 {
+                    0.0
+                } else {
+                    (1.0 - (py - rect.y) / rect.h).clamp(0.0, 1.0)
+                }
             }
-        }
+        };
+        let changed = (new_value - *value).abs() > f32::EPSILON;
+        *value = new_value;
+        *state = SliderState::Dragging;
+        (changed, new_value as f64)
     };
-    let changed = (new_value - *value).abs() > f32::EPSILON;
-    *value = new_value;
-    *state = SliderState::Dragging;
+    if changed && let Some(number_id) = store.linked_number(id) {
+        store.set_number_value(number_id, propagated);
+    }
     changed
 }
 
@@ -391,42 +397,53 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
 /// On focus departure (Blur, Tab away, Enter commit) from a
 /// NumberInput, parse `buffer.trim()`. On success → update `value` +
 /// `last_committed` and emit `ValueChanged`. On failure → revert the
-/// buffer to the formatted `last_committed`.
+/// buffer to the formatted `last_committed`. After committing,
+/// mirrors the new value into a linked Slider (clamped to [0..1]).
 pub(super) fn commit_number_buffer<'a>(
     store: &mut WidgetStore,
     id: ph2d_a11y::NodeId,
     events: &mut BumpVec<'a, WidgetEvent>,
 ) {
-    let Some(InteractiveState::NumberInput {
-        value,
-        buffer,
-        caret,
-        last_committed,
-        ..
-    }) = store.get_mut(id)
-    else {
-        return;
-    };
-    match buffer.trim().parse::<f64>() {
-        Ok(parsed) if parsed.is_finite() => {
-            if (parsed - *value).abs() > f64::EPSILON {
-                *value = parsed;
-                *last_committed = parsed;
-                events.push(WidgetEvent::ValueChanged(id));
+    let mut new_value: Option<f64> = None;
+    {
+        let Some(InteractiveState::NumberInput {
+            value,
+            buffer,
+            caret,
+            last_committed,
+            ..
+        }) = store.get_mut(id)
+        else {
+            return;
+        };
+        match buffer.trim().parse::<f64>() {
+            Ok(parsed) if parsed.is_finite() => {
+                if (parsed - *value).abs() > f64::EPSILON {
+                    *value = parsed;
+                    *last_committed = parsed;
+                    events.push(WidgetEvent::ValueChanged(id));
+                    new_value = Some(parsed);
+                }
+                buffer.clear();
+                use std::fmt::Write;
+                let _ = write!(buffer, "{}", super::state::format_number(*value));
+                *caret = buffer.len();
             }
-            buffer.clear();
-            use std::fmt::Write;
-            let _ = write!(buffer, "{}", super::state::format_number(*value));
-            *caret = buffer.len();
+            _ => {
+                buffer.clear();
+                use std::fmt::Write;
+                let _ = write!(buffer, "{}", super::state::format_number(*last_committed));
+                *value = *last_committed;
+                *caret = buffer.len();
+            }
         }
-        _ => {
-            // Unparsable — revert.
-            buffer.clear();
-            use std::fmt::Write;
-            let _ = write!(buffer, "{}", super::state::format_number(*last_committed));
-            *value = *last_committed;
-            *caret = buffer.len();
-        }
+    }
+    if let Some(v) = new_value
+        && let Some(slider_id) = store.linked_slider(id)
+        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
+    {
+        *value = (v as f32).clamp(0.0, 1.0);
+        events.push(WidgetEvent::ValueChanged(slider_id));
     }
 }
 
@@ -1313,6 +1330,114 @@ mod tests {
         let (_, value, buf, _) = store.number_input(NodeId(1)).unwrap();
         assert!((value - 9.99).abs() < 1e-9);
         assert_eq!(buf, "1.2");
+    }
+
+    #[test]
+    fn slider_drag_propagates_to_linked_number_input() {
+        let mut store = WidgetStore::with_capacity(8);
+        store.register(
+            NodeId(1),
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        store.register(
+            NodeId(2),
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: "0".into(),
+                caret: 1,
+                last_committed: 0.0,
+            },
+        );
+        store.link_slider_number(NodeId(1), NodeId(2));
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(1), Rect::new(0.0, 0.0, 100.0, 30.0));
+        let arena = Bump::new();
+        // Down at x=50 → value 0.5 → number value 0.5.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 50.0, 15.0),
+            &arena,
+        );
+        let (_, num_value, num_buf, _) = store.number_input(NodeId(2)).unwrap();
+        assert!((num_value - 0.5).abs() < 1e-6);
+        assert_eq!(num_buf, "0.500");
+    }
+
+    #[test]
+    fn number_commit_propagates_to_linked_slider() {
+        let mut store = WidgetStore::with_capacity(8);
+        store.register(
+            NodeId(1),
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        store.register(
+            NodeId(2),
+            InteractiveState::NumberInput {
+                state: TextInputState::Focused,
+                value: 0.0,
+                buffer: "0".into(),
+                caret: 1,
+                last_committed: 0.0,
+            },
+        );
+        store.link_slider_number(NodeId(1), NodeId(2));
+        store.set_focus(Some(NodeId(2)));
+        let arena = Bump::new();
+        // Erase '0' then type "0.75".
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE, false), &arena);
+        for ch in ['0', '.', '7', '5'] {
+            let _ = dispatch_text_input(&mut store, ch, &arena);
+        }
+        let _ = dispatch_key(&mut store, key(KEY_ENTER, false), &arena);
+        let (_, sv) = store.slider(NodeId(1)).unwrap();
+        assert!((sv - 0.75).abs() < 1e-5);
+    }
+
+    #[test]
+    fn linked_number_value_clamps_into_slider_range() {
+        // NumberInput accepts arbitrary f64; the slider snapshot
+        // clamps to [0..1] without panicking on out-of-range commits.
+        let mut store = WidgetStore::with_capacity(8);
+        store.register(
+            NodeId(1),
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.5,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        store.register(
+            NodeId(2),
+            InteractiveState::NumberInput {
+                state: TextInputState::Focused,
+                value: 0.5,
+                buffer: "0.5".into(),
+                caret: 3,
+                last_committed: 0.5,
+            },
+        );
+        store.link_slider_number(NodeId(1), NodeId(2));
+        store.set_focus(Some(NodeId(2)));
+        let arena = Bump::new();
+        for _ in 0..3 {
+            let _ = dispatch_key(&mut store, key(KEY_BACKSPACE, false), &arena);
+        }
+        for ch in ['9', '9'] {
+            let _ = dispatch_text_input(&mut store, ch, &arena);
+        }
+        let _ = dispatch_key(&mut store, key(KEY_ENTER, false), &arena);
+        let (_, sv) = store.slider(NodeId(1)).unwrap();
+        assert!((sv - 1.0).abs() < f32::EPSILON);
     }
 
     #[test]

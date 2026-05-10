@@ -274,6 +274,19 @@ impl HeroScreen {
             );
         }
 
+        // Slider × NumberInput two-way bindings (Phase 2).
+        // Drag the slider → number's chip follows. Type a new value
+        // into the number → slider thumb jumps to it on commit.
+        for (slider_id, number_id) in [
+            (ids::INSP_MOVE_SPEED, ids::INSP_NUM_MOVE_SPEED),
+            (ids::INSP_JUMP_HEIGHT, ids::INSP_NUM_JUMP_HEIGHT),
+            (ids::INSP_FRICTION, ids::INSP_NUM_FRICTION),
+            (ids::INSP_DAMPING, ids::INSP_NUM_DAMPING),
+            (ids::INSP_CAM_YAW, ids::INSP_NUM_CAM_YAW),
+        ] {
+            store.link_slider_number(slider_id, number_id);
+        }
+
         // Inspector Checkbox + Toggle.
         store.register(
             ids::INSP_HOT_RELOAD_CHECK,

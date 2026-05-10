@@ -143,6 +143,14 @@ pub struct WidgetStore {
     /// drag dispatch (Slider) to compute new value from pointer
     /// position relative to the original geometry.
     active_rect: Option<Rect>,
+    /// Slider id ↔ NumberInput id pairs that should mirror each
+    /// other's value. When the slider's value changes via drag, the
+    /// number input's `value` (and `buffer`, when not focused) is
+    /// updated; when the number input's buffer commits via Enter or
+    /// Blur, the slider's value is updated. Pre-populated by the
+    /// hosting screen at construction time.
+    slider_to_number: BTreeMap<NodeId, NodeId>,
+    number_to_slider: BTreeMap<NodeId, NodeId>,
 }
 
 impl WidgetStore {
@@ -157,7 +165,26 @@ impl WidgetStore {
             active_id: None,
             focus_id: None,
             active_rect: None,
+            slider_to_number: BTreeMap::new(),
+            number_to_slider: BTreeMap::new(),
         }
+    }
+
+    /// Register a bidirectional link: when `slider`'s value changes,
+    /// `number`'s value follows; when `number` commits a new value,
+    /// `slider` follows. Caller is responsible for both ids being
+    /// pre-registered as Slider and NumberInput respectively.
+    pub fn link_slider_number(&mut self, slider: NodeId, number: NodeId) {
+        self.slider_to_number.insert(slider, number);
+        self.number_to_slider.insert(number, slider);
+    }
+
+    pub fn linked_number(&self, slider: NodeId) -> Option<NodeId> {
+        self.slider_to_number.get(&slider).copied()
+    }
+
+    pub fn linked_slider(&self, number: NodeId) -> Option<NodeId> {
+        self.number_to_slider.get(&number).copied()
     }
 
     /// Register a widget at construction time. Idempotent — repeat

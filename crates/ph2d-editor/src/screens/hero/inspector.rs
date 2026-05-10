@@ -16,8 +16,7 @@ use crate::paint::{
 use crate::widget::{
     Checkbox, CheckboxState, CheckboxValue, ColorSwatch, NumberInput, SectionHeader, Slider,
     SliderState, SwatchSize, TabItem, Tabs, TabsVariant, Toggle, ToggleState, paint_checkbox,
-    paint_color_swatch, paint_number_input, paint_section_header, paint_slider, paint_tabs,
-    paint_toggle,
+    paint_color_swatch, paint_section_header, paint_slider, paint_tabs, paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -343,19 +342,34 @@ fn paint_inspector_field(
             // store-backed numeric value (if a sibling id exists) or
             // the fixture's display string as a fallback.
             let num_id = sibling_number_id(field_id);
-            let num_value = num_id
-                .and_then(|i| match store.get(i) {
-                    Some(crate::interaction::InteractiveState::NumberInput { value, .. }) => {
-                        Some(*value)
-                    }
-                    _ => None,
+            let (num_state, num_value, num_buf, num_caret) = num_id
+                .and_then(|i| {
+                    store
+                        .number_input(i)
+                        .map(|(s, v, b, c)| (s, v, Some(b), Some(c)))
                 })
-                .unwrap_or_else(|| display.parse::<f64>().unwrap_or(*value as f64));
+                .unwrap_or_else(|| {
+                    (
+                        crate::widget::TextInputState::Normal,
+                        display.parse::<f64>().unwrap_or(*value as f64),
+                        None,
+                        None,
+                    )
+                });
             if let Some(i) = num_id {
                 hit_index.register(i, val_rect);
             }
-            let ni = NumberInput::new(num_id.unwrap_or(NodeId(0)), &field.label, num_value);
-            paint_number_input(&ni, val_rect, scene, text_system, theme);
+            let mut ni = NumberInput::new(num_id.unwrap_or(NodeId(0)), &field.label, num_value);
+            ni.state = num_state;
+            crate::widget::paint_number_input_with_buffer(
+                &ni,
+                num_buf,
+                num_caret.unwrap_or(0),
+                val_rect,
+                scene,
+                text_system,
+                theme,
+            );
         }
         InspectorFieldKind::Select { current } => {
             let is_open = field_id

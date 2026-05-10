@@ -29,6 +29,7 @@
 pub mod floating_panel;
 pub mod icons;
 pub mod paint;
+pub mod screens;
 pub mod toast;
 pub mod tool;
 pub mod tools;
@@ -42,6 +43,7 @@ pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
     paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
 };
+pub use screens::{HeroScreen, HeroSelection, paint_hero_screen};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};
 // Re-export so the shell can name the dragging node id without

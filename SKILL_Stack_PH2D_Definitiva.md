@@ -550,6 +550,8 @@ Retained-mode próprio em Vello + parley. Não egui no produto final (HR-7).
   - **Compound**: Tabs (Ghost/Segmented), Dropdown, Combobox (filtered), Vector3Editor (R/G/B-tinted X/Y/Z labels), ListItem, Card, Tooltip, ContextMenu (com separators)
   - **Surfaces**: Modal (over `BgScrim`), Popover, restyled ToastQueue (severity icon + accent stripe + neutral body)
   - **Complex**: TreeView (BTreeSet expand/select), ColorPicker (5 modes; Classic ships v1)
+  - **Composição** (M13 hero sprint): PillGroup, ToolRail (icon+compound entries), StatusBar (segmented HUD), SectionHeader (count chip + collapsible) — primitivos da tela hero `02-editor-main`.
+- [`screens::hero`](crates/ph2d-editor/src/screens/hero.rs) — composição da tela `02-editor-main.html` em `paint_hero_screen`. Layout regions (TopBar/LeftRail/Inspector/Hierarchy/BottomHUD/canvas/overlay) renderizadas com fixture content em [`screens/hero/fixture.rs`](crates/ph2d-editor/src/screens/hero/fixture.rs). Habilitada via `PH2D_HERO_SCREEN=1 cargo run -p ph2d-host-desktop`.
 - [`Tool` + `ToolRegistry`](crates/ph2d-editor/src/tool.rs) — contrato canônico (id/label/icon/build_panel/activate/handle_panel_event)
 - [`tools::BrushTool`](crates/ph2d-editor/src/tools/brush.rs) + [`tools::MoveTool`](crates/ph2d-editor/src/tools/move_tool.rs) — implementações seed
 - [`ZenMode`](crates/ph2d-editor/src/zen.rs) + [`ToastQueue`](crates/ph2d-editor/src/toast.rs)
@@ -579,9 +581,10 @@ Pacote oficial em [`docs/design/`](docs/design/), gerado pelo Claude Design a pa
 1. ✅ Import do pacote em `docs/design/`.
 2. ✅ Codegen `ph2d-tokens` a partir de tokens.json (4 themes, OKLCH→sRGB, semantic slots).
 3. ✅ Port dos 89 SVGs para módulo `ph2d-editor::icons` (IconId enum + cmd_to_path).
-3.5. ✅ Biblioteca completa de componentes (27 widgets, 259 testes em ph2d-editor) — vide §11.9 lista por categoria.
-4. ⏳ Renderizar tela 02-editor-main (hero) pixel-a-pixel em Vello.
+3.5. ✅ Biblioteca completa de componentes (27 widgets, 259 testes) — vide §11.9 lista por categoria.
+4. ✅ Tela 02-editor-main composta em `screens::hero` (4 primitivos novos + composer + fixture). Render via `PH2D_HERO_SCREEN=1` env var.
 5. ⏳ Resolver P1/P2 do audit (telas não-canônicas).
+6. ⏳ Telas 03-17 (asset browser, hierarchy, inspector standalone, etc) — escopo aberto pós projeto-piloto.
 
 ### 11.10 Asset pipeline
 Pipeline **deterministic + reproducible**: mesmo input + mesma versão de cooker = mesmo blake3 do output.

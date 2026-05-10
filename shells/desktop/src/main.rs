@@ -39,8 +39,8 @@ use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
 use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{
-    BrushTool, Layout as EditorLayout, MoveTool, PanelControl, PanelEvent, Toast, ToastQueue,
-    ToolRegistry, ZenMode,
+    BrushTool, HeroScreen, Layout as EditorLayout, MoveTool, PanelControl, PanelEvent, Toast,
+    ToastQueue, ToolRegistry, ZenMode, paint_hero_screen,
 };
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
 use ph2d_editor::NodeId;
@@ -659,36 +659,47 @@ impl App {
             viewport,
             text: text_system,
         };
-        layout.paint(vector_scene, &mut paint_ctx);
 
-        // Tool palette in the CREATE zone (top-right). Always-visible
-        // chips; click switches active tool. Hidden in Zen mode by
-        // virtue of `tool_palette_rects` returning empty there.
-        let palette_rects = layout.tool_palette_rects(tools.tools().len());
-        let active_id = tools.active().map(|t| t.id());
-        let palette_icons: Vec<(EditorRect, &str, bool)> = palette_rects
-            .iter()
-            .zip(tools.tools().iter())
-            .map(|(r, tool)| {
-                let is_active = active_id.as_ref() == Some(&tool.id());
-                (*r, tool.label(), is_active)
-            })
-            .collect();
-        ph2d_editor::paint_tool_palette_icons(
-            paint_ctx.text,
-            vector_scene,
-            &palette_icons,
-            paint_ctx.theme,
-        );
+        // Opt-in hero screen mode: `PH2D_HERO_SCREEN=1 cargo run -p
+        // ph2d-host-desktop` swaps the default 4-zone editor chrome
+        // for the `02-editor-main` mockup composition. Useful for
+        // visual review of the M13 design system implementation.
+        if std::env::var("PH2D_HERO_SCREEN").as_deref() == Ok("1") {
+            let hero = HeroScreen::new(NodeId(1)).theme(*theme);
+            paint_hero_screen(&hero, viewport, vector_scene, paint_ctx.text);
+            toasts.paint(vector_scene, &mut paint_ctx);
+        } else {
+            layout.paint(vector_scene, &mut paint_ctx);
 
-        if !zen.is_active()
-            && let Some(active) = tools.active()
-        {
-            // Active tool's panel — built fresh each frame; cheap.
-            let panel = active.build_panel();
-            panel.paint(vector_scene, &mut paint_ctx);
+            // Tool palette in the CREATE zone (top-right). Always-visible
+            // chips; click switches active tool. Hidden in Zen mode by
+            // virtue of `tool_palette_rects` returning empty there.
+            let palette_rects = layout.tool_palette_rects(tools.tools().len());
+            let active_id = tools.active().map(|t| t.id());
+            let palette_icons: Vec<(EditorRect, &str, bool)> = palette_rects
+                .iter()
+                .zip(tools.tools().iter())
+                .map(|(r, tool)| {
+                    let is_active = active_id.as_ref() == Some(&tool.id());
+                    (*r, tool.label(), is_active)
+                })
+                .collect();
+            ph2d_editor::paint_tool_palette_icons(
+                paint_ctx.text,
+                vector_scene,
+                &palette_icons,
+                paint_ctx.theme,
+            );
+
+            if !zen.is_active()
+                && let Some(active) = tools.active()
+            {
+                // Active tool's panel — built fresh each frame; cheap.
+                let panel = active.build_panel();
+                panel.paint(vector_scene, &mut paint_ctx);
+            }
+            toasts.paint(vector_scene, &mut paint_ctx);
         }
-        toasts.paint(vector_scene, &mut paint_ctx);
 
         match surface.acquire_frame() {
             Ok(frame) => {

@@ -1,6 +1,6 @@
 ## Plano operacional — Editor input pipeline (ADR-0024 implementação)
 
-**Status:** Approved (Enio aprovou ADR-0024 + plano em 2026-05-10)
+**Status:** Done (executed 2026-05-10, all 5 phases shipped)
 **Owner:** Enio
 **Implementador:** Claude (continuação pós-M13 hero)
 **Branch:** `m13/design-library` (mesma da PR #31)
@@ -44,7 +44,7 @@ Sem exceção, ao fim de cada fase, validar todos os 5 grupos. Falha em qualquer
 - [ ] `PH2D_HERO_SCREEN=1 cargo run -p ph2d-host-desktop` abre janela e renderiza hero
 - [ ] Widgets shipados até essa fase respondem a hover/click/drag (visualmente perceptível)
 
-## Fase 0 — Infra zero-alloc + bench HR-3 (~5h)
+## Fase 0 ✅ — Infra zero-alloc + bench HR-3 (~5h)
 
 Foundation pass. Estabelecer infraestrutura que as fases A-D herdam. **Sem widget wire ainda** — só validar que a infra base honra HR-3 desde o primeiro frame.
 
@@ -65,7 +65,7 @@ Foundation pass. Estabelecer infraestrutura que as fases A-D herdam. **Sem widge
 ### Commit local Fase 0
 `feat(ph2d-editor): interaction module skeleton + HR-3 bench (Phase 0, ADR-0024)`
 
-## Fase A — Button + Toggle wired (~3h)
+## Fase A ✅ — Button + Toggle wired (~3h)
 
 Mais simples: hover/press/focus/click, sem drag.
 
@@ -86,7 +86,7 @@ Mais simples: hover/press/focus/click, sem drag.
 ### Commit local
 `feat(ph2d-editor): wire Button + Toggle to interaction store (Phase A)`
 
-## Fase B — Slider/RadioGroup/Checkbox + drag (~4h)
+## Fase B ✅ — Slider/RadioGroup/Checkbox + drag (~4h)
 
 Drag introduz `active_id` que persiste através de Move events.
 
@@ -108,7 +108,7 @@ Drag introduz `active_id` que persiste através de Move events.
 ### Commit local
 `feat(ph2d-editor): wire Slider drag + RadioGroup + Checkbox (Phase B)`
 
-## Fase C — TextInput/NumberInput/Combobox + focus chain real (~5h)
+## Fase C ✅ — TextInput/NumberInput/Combobox + focus chain real (~5h)
 
 Keyboard input mandatory aqui — character input + edit operations + focus traversal completo.
 
@@ -130,7 +130,7 @@ Keyboard input mandatory aqui — character input + edit operations + focus trav
 ### Commit local
 `feat(ph2d-editor): wire TextInput + NumberInput + Combobox + focus chain (Phase C)`
 
-## Fase D — TreeView/ContextMenu/ColorPicker/Modal/Tabs + final wiring (~3h)
+## Fase D ✅ — TreeView/ContextMenu/ColorPicker/Modal/Tabs + final wiring (~3h)
 
 Composite widgets.
 
@@ -191,4 +191,49 @@ Composite widgets.
 
 ## Lessons learned
 
-_(preencho ao fim de tudo.)_
+- **Pivot SlotMap → BTreeMap.** A ADR sketchou `slotmap::SlotMap<NodeId, _>`,
+  mas SlotMap controla suas próprias keys e nosso `NodeId` vem do AccessKit
+  (chave externa). HashMap está banido workspace-wide via clippy.toml
+  (HR-5/ADR-0022). Pivotamos pra BTreeMap: aloca por insert (custo só na
+  construção da tela, não no hot path), lookup O(log n) trivial em ~50
+  widgets. Estado HR-3 preservado.
+
+- **dhat-rs `#[global_allocator]` dá zero allocs limpo.** O bench
+  `interaction_dispatch_no_alloc` brackets a fase de medição (setup
+  antes do `Profiler::testing().build()`), e `Bump::reset()` não chama
+  o allocator global — só recicla pointers internos. Resultado: 0
+  blocks across 10 frames × 30 widgets × 5 events.
+
+- **Focus de Dropdown vs Blur de TextInput precisa de distinção.** ESC
+  numa Dropdown aberta deve fechar a popup *sem perder foco*; uma
+  segunda ESC perde foco. Idiom comum em formulários (Salesforce,
+  Linear). Hardcodei a exceção em `dispatch_key` por simplicidade —
+  poderia generalizar com `WidgetEscapeBehavior` enum se outro widget
+  pedir.
+
+- **Slider drag precisa de `active_rect`.** A pose do mouse durante
+  Move pode estar fora do rect original (drag agressivo); sem cachear
+  o rect no Down, perderíamos a referência geométrica para calcular
+  o novo valor. Adicionar `active_rect: Option<Rect>` no WidgetStore
+  resolveu sem complicar API.
+
+- **Selection sync via thread_local.** `paint_hierarchy` precisa do
+  `selection.label` pra desenhar a row destacada, mas a função vive
+  fora do `HeroScreen` impl block. Threadear mais um arg em todos os
+  painters seria invasivo. Usei `thread_local!` set por
+  `paint_hero_screen` antes do `paint_hierarchy`. Não é "lindo" mas
+  é local ao módulo e não vaza pra fora.
+
+- **Eventos sem payload pesado funcionou.** `WidgetEvent::Click(NodeId)`
+  + caller relê `store.text(id)` / `store.slider(id)` é mais barato que
+  `Click(NodeId, String)` e mantém o evento `Copy` (arena alloc é um
+  pointer bump). Único custo: caller precisa lembrar de reler logo
+  antes de processar — em código real, geralmente é instantâneo.
+
+- **Phase D foi mais leve que esperado.** O dispatcher já emite
+  `Click(id)` por default pra qualquer widget que não tem semântica
+  específica (Toggle/Checkbox/Slider já cobertos em A/B/C). Tabs,
+  TreeView, ContextMenu, Modal, ColorPicker recebem hit registration
+  + Click event natural — sem `apply_click` arm dedicada por kind.
+  Quando a tela wira esses widgets, o caller faz a tradução
+  (similar ao `HeroScreen::apply_event` pra Hierarchy).

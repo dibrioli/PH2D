@@ -1,11 +1,11 @@
 //! Z-stack layer tokens. Source: `docs/design/tokens.json` → `z.*`.
 //!
-//! Camadas canônicas — ordem é monotônica e estável. Widget que precisa
-//! de z arbitrário entre essas camadas é code smell.
+//! Canonical layers — order is monotonic and stable. A widget that
+//! needs an arbitrary z between these layers is a code smell.
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum Layer {
-    /// `canvas` (z=0) — viewport principal, sprites, scene render.
+    /// `canvas` (z=0) — main viewport, sprites, scene render.
     Canvas,
     /// `panel` (z=10) — floating panels, dock, sidebar.
     Panel,
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn enum_ord_matches_z_order() {
-        // Derive(Ord) sobre o enum precisa bater com a semântica de z.
+        // Derive(Ord) on the enum must match the z semantics.
         assert!(Layer::Canvas < Layer::Panel);
         assert!(Layer::Panel < Layer::Overlay);
         assert!(Layer::Tooltip > Layer::Modal);

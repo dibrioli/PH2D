@@ -1,23 +1,23 @@
 //! Border-radius tokens. Source: `docs/design/tokens.json` → `radius.*`.
 //!
-//! Tier-based ("soft" default em todos os themes); valores aqui são o
-//! tier soft. `full` (999) é círculo perfeito (avatares, pílulas).
+//! Tier-based ("soft" default across all themes); values here are the
+//! soft tier. `full` (999) yields a perfect circle (avatars, pills).
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Radius {
     /// `xs` — 4 px (chips, micro-tags).
     Xs,
-    /// `sm` — 6 px (buttons compactos, inputs densos).
+    /// `sm` — 6 px (compact buttons, dense inputs).
     Sm,
-    /// `md` — 8 px (default cards, panels internos).
+    /// `md` — 8 px (default cards, inner panels).
     Md,
-    /// `lg` — 12 px (floating panels, modais).
+    /// `lg` — 12 px (floating panels, modals).
     Lg,
     /// `xl` — 16 px (hero cards, splash).
     Xl,
-    /// `xl2` (`2xl` no JSON) — 20 px (large surfaces).
+    /// `xl2` (`2xl` in JSON) — 20 px (large surfaces).
     Xl2,
-    /// `full` — 999 px (círculo perfeito).
+    /// `full` — 999 px (perfect circle).
     Full,
 }
 

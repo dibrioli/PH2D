@@ -1,17 +1,17 @@
 //! Color token system.
 //!
-//! Pipeline: design tokens em OKLCH (`docs/design/tokens.json`) →
-//! `Color::from_oklch` → sRGB 8-bit → consumido pelos widgets.
+//! Pipeline: OKLCH design tokens (`docs/design/tokens.json`) →
+//! `Color::from_oklch` → sRGB 8-bit → consumed by widgets.
 //!
-//! ### Por quê OKLCH na fonte
+//! ### Why OKLCH at the source
 //!
-//! - Perceptualmente uniforme (mesmo `L` = mesmo brilho percebido entre matizes).
-//! - Facilita gerar variações de tema (mesma estrutura, só mudar `H`).
-//! - WCAG contrast continua sendo computado no espaço sRGB linear (per spec).
+//! - Perceptually uniform (same `L` ⇒ same perceived brightness across hues).
+//! - Easy theme variants (keep structure, change `H`).
+//! - WCAG contrast still computed in linear sRGB space (per spec).
 //!
-//! O design source-of-truth está em `docs/design/tokens.json`. Este módulo
-//! reproduz aqueles valores como Rust constants/expressões — mudanças
-//! ali precisam ser refletidas aqui (ou via codegen futuro).
+//! Source-of-truth lives in `docs/design/tokens.json`. This module mirrors
+//! those values as Rust constants/expressions — changes there must be
+//! reflected here (or via future codegen).
 
 use crate::theme::Theme;
 
@@ -47,9 +47,9 @@ impl Color {
     }
 
     /// Construct from OKLCH (L 0..1, C 0..0.4-ish, H 0..360 degrees).
-    /// Alpha defaults to opaque. Out-of-gamut colors são clamped para
-    /// sRGB [0,1] sem aviso — desenhar fora do gamut é problema do
-    /// design, não da função.
+    /// Alpha defaults to opaque. Out-of-gamut colors are clamped to
+    /// sRGB [0,1] without warning — drawing outside the gamut is a
+    /// design problem, not a function problem.
     pub fn from_oklch(l: f64, c: f64, h_deg: f64) -> Self {
         let [r, g, b] = oklch_to_srgb(l, c, h_deg);
         Self { r, g, b, a: 0xFF }
@@ -98,9 +98,9 @@ impl Color {
 
 /// Convert OKLCH → sRGB 8-bit per Björn Ottosson's algorithm
 /// (https://bottosson.github.io/posts/oklab/). Out-of-gamut colors
-/// são clamped por canal.
+/// are clamped per channel.
 ///
-/// `l` em 0..1, `c` ~0..0.4, `h_deg` em graus.
+/// `l` in 0..1, `c` ~0..0.4, `h_deg` in degrees.
 pub fn oklch_to_srgb(l: f64, c: f64, h_deg: f64) -> [u8; 3] {
     // OKLCH → OKLAB
     let h_rad = h_deg.to_radians();
@@ -141,13 +141,12 @@ fn linear_to_srgb_byte(linear: f64) -> u8 {
 /// Semantic color slot — every widget references one of these by name;
 /// literal `from_hex`/`from_oklch` outside this crate is a code smell.
 ///
-/// Variantes correspondem 1:1 às chaves de `color.*` em
-/// `docs/design/tokens.json`. Quando adicionar slot novo: edite
-/// tokens.json + adicione variant aqui + adicione branch em `resolve`
-/// para cada um dos 4 themes.
+/// Variants map 1:1 to `color.*` keys in `docs/design/tokens.json`.
+/// Adding a new slot: edit tokens.json + add a variant here + add a
+/// branch in `resolve` for each of the 4 themes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ColorToken {
-    // ── Background scale (4 níveis + elevated + scrim) ─────────────
+    // ── Background scale (4 levels + elevated + scrim) ─────────────
     /// `bg-0` — base canvas backdrop.
     Bg0,
     /// `bg-1` — first elevation (panels, sidebar).
@@ -161,7 +160,7 @@ pub enum ColorToken {
     /// `bg-scrim` — modal backdrop (heavy alpha).
     BgScrim,
 
-    // ── Borders (3 níveis) ─────────────────────────────────────────
+    // ── Borders (3 levels) ─────────────────────────────────────────
     /// `border` — low-contrast separators.
     Border,
     /// `border-strong` — visible dividers.
@@ -169,7 +168,7 @@ pub enum ColorToken {
     /// `border-emph` — focus rings, active selection borders.
     BorderEmph,
 
-    // ── Text scale (3 níveis + disabled) ───────────────────────────
+    // ── Text scale (3 levels + disabled) ───────────────────────────
     /// `text-1` — primary copy. ≥ 4.5:1 vs Bg1 (AA).
     Text1,
     /// `text-2` — labels, captions. ≥ 4.5:1 vs Bg1 (AA).
@@ -188,7 +187,7 @@ pub enum ColorToken {
     AccentPress,
     /// `accent-soft` — accent at low alpha (selection tints).
     AccentSoft,
-    /// `accent-fg` — foreground sobre accent (contraste guaranteed).
+    /// `accent-fg` — foreground on accent (contrast guaranteed).
     AccentFg,
 
     // ── Semantic states ────────────────────────────────────────────
@@ -216,11 +215,12 @@ pub enum ColorToken {
 
 impl ColorToken {
     /// Resolve token → concrete Color for the given Theme.
-    /// Valores espelham `docs/design/tokens.json`; mudou aqui sem
-    /// mudar lá → divergência. Tests deste crate verificam contraste.
+    /// Values mirror `docs/design/tokens.json`; changing here without
+    /// changing there causes divergence. Tests in this crate enforce
+    /// the WCAG contrast invariants.
     pub fn resolve(self, theme: Theme) -> Color {
-        // Per-theme tables. Each theme is its own block — repetição é
-        // intencional para diff legível e match exhaustivo no compilador.
+        // Per-theme tables. Each theme is its own block — repetition is
+        // deliberate for readable diffs and exhaustive compiler matching.
         match theme {
             Theme::ForgeSdf => self.resolve_forge_sdf(),
             Theme::PaintStudio => self.resolve_paint_studio(),
@@ -282,7 +282,7 @@ impl ColorToken {
             Self::Selection => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.24),
             Self::FocusRing => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.55),
             Self::GridAxis => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.32),
-            // Tudo o resto herda forge-sdf.
+            // Everything else inherits forge-sdf.
             other => other.resolve_forge_sdf(),
         }
     }
@@ -419,16 +419,16 @@ mod tests {
 
     #[test]
     fn oklch_mid_gray_is_neutral() {
-        // C=0 sempre yields R=G=B (achromatic). L=0.5 em OKLAB corresponde
-        // a sRGB ~99 (perceptualmente "metade do branco" — não é 128 porque
-        // OKLAB é perceptualmente uniforme, não linear em sRGB).
+        // C=0 always yields R=G=B (achromatic). L=0.5 in OKLAB maps to
+        // sRGB ~99 (perceptually "half of white" — not 128, because
+        // OKLAB is perceptually uniform, not linear in sRGB).
         let [r, g, b] = oklch_to_srgb(0.5, 0.0, 0.0);
         assert_eq!(r, g);
         assert_eq!(g, b);
         assert!((90..=110).contains(&r), "expected ~99, got {r}");
     }
 
-    /// **WCAG 2.2 AA gate** — text-on-bg1 contrast ≥ 4.5:1 nos 4 themes.
+    /// **WCAG 2.2 AA gate** — text-on-bg1 contrast ≥ 4.5:1 across the 4 themes.
     #[test]
     fn text1_on_bg1_meets_aa_in_all_themes() {
         for theme in [

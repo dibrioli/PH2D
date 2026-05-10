@@ -1,25 +1,25 @@
 //! Motion tokens. Source: `docs/design/tokens.json` → `motion.*`.
 //!
-//! Easing como cubic-bezier control points (4 floats); duration em ms
-//! como `f32`. Vello/animação é responsabilidade do consumidor — este
-//! módulo só fornece os parâmetros canônicos.
+//! Easing as cubic-bezier control points (4 floats); duration in ms
+//! as `f32`. Vello/animation playback is the consumer's responsibility
+//! — this module just supplies the canonical parameters.
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Easing {
-    /// `out` — cubic-bezier(0.2, 0.7, 0.1, 1). Padrão para entrada de
-    /// elementos / transições single-shot.
+    /// `out` — cubic-bezier(0.2, 0.7, 0.1, 1). Default for element
+    /// entry / one-shot transitions.
     Out,
     /// `inout` — cubic-bezier(0.4, 0.0, 0.2, 1). Material standard.
-    /// Usado em transições reversíveis (toggle, abertura/fechamento).
+    /// Use for reversible transitions (toggle, open/close).
     InOut,
-    /// `spring` — cubic-bezier(0.34, 1.56, 0.64, 1). Overshoot leve;
-    /// para feedback tátil de press / drop.
+    /// `spring` — cubic-bezier(0.34, 1.56, 0.64, 1). Slight overshoot;
+    /// tactile feedback for press / drop.
     Spring,
 }
 
 impl Easing {
     /// 4 control points (x1, y1, x2, y2) of the cubic-bezier curve.
-    /// Compatible com CSS `cubic-bezier(...)` e parley/vello custom
+    /// Compatible with CSS `cubic-bezier(...)` and parley/vello custom
     /// easing implementations.
     pub const fn bezier(self) -> [f32; 4] {
         match self {
@@ -70,8 +70,8 @@ mod tests {
 
     #[test]
     fn easing_bezier_in_unit_range_for_x() {
-        // x1 e x2 (índices 0 e 2) DEVEM estar em [0, 1] para cubic-bezier
-        // monotônico em CSS. y pode passar (spring overshoot).
+        // x1 and x2 (indices 0 and 2) MUST be in [0, 1] for a monotonic
+        // cubic-bezier in CSS. y can exceed (spring overshoot).
         for ease in [Easing::Out, Easing::InOut, Easing::Spring] {
             let [x1, _y1, x2, _y2] = ease.bezier();
             assert!((0.0..=1.0).contains(&x1), "{ease:?} x1={x1}");
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn spring_overshoots_y() {
-        // Spring deve ter y1 > 1.0 (passa do destino para voltar).
+        // Spring must have y1 > 1.0 (overshoots the target then returns).
         let [_, y1, _, _] = Easing::Spring.bezier();
         assert!(y1 > 1.0, "spring y1 = {y1}, expected > 1.0");
     }

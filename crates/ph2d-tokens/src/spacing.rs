@@ -1,7 +1,8 @@
 //! Spacing scale tokens. Source: `docs/design/tokens.json` → `spacing.*`.
 //!
-//! 8 px base scale with sub-base steps for tight UI density. Section
-//! gap canônico é 14 px (não-power-of-2 — design choice, ver tokens.json).
+//! 8 px base scale with sub-base steps for tight UI density. The
+//! canonical section gap is 14 px (non-power-of-2 — design choice;
+//! see tokens.json).
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Spacing {
@@ -17,11 +18,11 @@ pub enum Spacing {
     Lg,
     /// `xl` — 16 px (comfortable padding).
     Xl,
-    /// `xl2` (`2xl` no JSON) — 24 px (section separation).
+    /// `xl2` (`2xl` in JSON) — 24 px (section separation).
     Xl2,
-    /// `xl3` (`3xl` no JSON) — 32 px (major panel margin).
+    /// `xl3` (`3xl` in JSON) — 32 px (major panel margin).
     Xl3,
-    /// `xl4` (`4xl` no JSON) — 48 px (hero spacing).
+    /// `xl4` (`4xl` in JSON) — 48 px (hero spacing).
     Xl4,
 }
 
@@ -56,17 +57,17 @@ impl Spacing {
     }
 }
 
-/// Section gap fixo (não-power-of-2). Per tokens.json `section-gap`.
+/// Fixed section gap (non-power-of-2). Per tokens.json `section-gap`.
 pub const SECTION_GAP_PX: f32 = 14.0;
 
-/// Row height por densidade. Per tokens.json `row-h` (forge-sdf default).
+/// Row height by density. Per tokens.json `row-h` (forge-sdf default).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum Density {
-    /// 22 px row height — máxima densidade.
+    /// 22 px row height — max density.
     Compact,
-    /// 26 px row height — equilíbrio.
+    /// 26 px row height — balanced.
     Cozy,
-    /// 32 px row height — confortável (default tablet/Pencil).
+    /// 32 px row height — comfortable (default for tablet/Pencil).
     #[default]
     Comfortable,
 }

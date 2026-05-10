@@ -1,13 +1,13 @@
 //! Typography scale tokens. Source: `docs/design/tokens.json` →
 //! `typography.*`.
 //!
-//! Pixel sizes assumem 1.0 device pixel ratio; widget code multiplica
-//! por `dpr` em render time. OS text-scaling override (até 200 %) é
-//! honrado no mesmo passo.
+//! Pixel sizes assume 1.0 device pixel ratio; widget code multiplies
+//! by `dpr` at render time. OS text-scaling override (up to 200 %) is
+//! honored at the same step.
 //!
-//! Famílias canônicas: **Inter** (sans variable, com `Inter Display`
-//! para titles) + **JetBrains Mono** (mono). Fallbacks abaixo seguem
-//! a stack do design (Apple → BlinkMacSystemFont → system-ui).
+//! Canonical families: **Inter** (variable sans, with `Inter Display`
+//! for titles) + **JetBrains Mono** (mono). Fallbacks below follow
+//! the design stack (Apple → BlinkMacSystemFont → system-ui).
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TypeToken {
@@ -25,9 +25,9 @@ pub enum TypeToken {
     Lg,
     /// `xl` — 24 px (page headers).
     Xl,
-    /// `xl2` (`2xl` no JSON) — 32 px (section heroes).
+    /// `xl2` (`2xl` in JSON) — 32 px (section heroes).
     Xl2,
-    /// `xl3` (`3xl` no JSON) — 44 px (welcome screen hero).
+    /// `xl3` (`3xl` in JSON) — 44 px (welcome screen hero).
     Xl3,
 }
 

@@ -61,4 +61,12 @@ extend-exclude = [
     # When promoting any spike fixture to crates/ production code, rewrite
     # comments in English; remove the corresponding entry here.
     "tests/spike/**",
+    # docs/design/ é o pacote do Claude Design — HTML mockups + SVGs +
+    # CSS extraído. Contém:
+    # - CSS class abbreviations (`pn-` = panel) que typos quer trocar pra `on-`
+    # - Erros intencionais (`damge` em 10-script-editor.html demonstra UX
+    #   de erro do LSP num mockup do editor de código)
+    # - Strings em pt-BR + nomes de tokens + identifiers de design system
+    # Não é nosso source — design system handoff de terceiro.
+    "docs/design/**",
 ]

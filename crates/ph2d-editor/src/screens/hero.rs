@@ -253,6 +253,17 @@ impl HeroScreen {
                 },
             );
         }
+
+        // Inspector "Debug" select — Dropdown that toggles open/closed
+        // on click (Phase C wiring).
+        store.register(
+            ids::INSP_DEBUG_SELECT,
+            InteractiveState::Dropdown {
+                state: crate::widget::DropdownState::Normal,
+                open: false,
+                selected_index: Some(0),
+            },
+        );
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -890,6 +901,23 @@ fn paint_inspector_field(
             );
         }
         InspectorFieldKind::Select { current } => {
+            // Register the chip rect for hit-test when this Select
+            // has a canonical id wired in the store. Read `open`
+            // state from the Dropdown entry to flip the chevron.
+            let is_open = field_id
+                .and_then(|i| match store.get(i) {
+                    Some(InteractiveState::Dropdown { open, .. }) => Some(*open),
+                    _ => None,
+                })
+                .unwrap_or(false);
+            if let Some(i) = field_id {
+                hit_index.register(i, body_rect);
+            }
+            let border = if is_open {
+                ColorToken::Accent
+            } else {
+                ColorToken::Border
+            };
             fill_rounded_rect(
                 scene,
                 body_rect,
@@ -900,8 +928,8 @@ fn paint_inspector_field(
                 scene,
                 body_rect,
                 Radius::Sm.px(),
-                1.0,
-                resolve(ColorToken::Border, theme),
+                if is_open { 2.0 } else { 1.0 },
+                resolve(border, theme),
             );
             paint_text(
                 text_system,
@@ -919,9 +947,14 @@ fn paint_inspector_field(
                 16.0,
                 16.0,
             );
+            let chev = if is_open {
+                IconId::ChevronUp
+            } else {
+                IconId::ChevronDown
+            };
             paint_icon(
                 scene,
-                IconId::ChevronDown,
+                chev,
                 chev_rect,
                 resolve(ColorToken::Text3, theme),
                 1.5,

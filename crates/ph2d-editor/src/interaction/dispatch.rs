@@ -29,6 +29,11 @@ pub const KEY_TAB: u32 = 0x09;
 pub const KEY_ENTER: u32 = 0x0D;
 pub const KEY_SPACE: u32 = 0x20;
 pub const KEY_ESCAPE: u32 = 0x1B;
+pub const KEY_BACKSPACE: u32 = 0x08;
+pub const KEY_ARROW_UP: u32 = 0xF700;
+pub const KEY_ARROW_DOWN: u32 = 0xF701;
+pub const KEY_ARROW_LEFT: u32 = 0xF702;
+pub const KEY_ARROW_RIGHT: u32 = 0xF703;
 
 /// Entry point for pointer events. Updates [`WidgetStore`] hover /
 /// active / focus cursors based on the hit-test, transitions the
@@ -178,8 +183,59 @@ pub fn dispatch_key<'frame>(
         }
         KEY_ESCAPE => {
             if let Some(id) = store.focus_id() {
+                // Dropdowns close on ESC instead of losing focus.
+                if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(id)
+                    && *open
+                {
+                    *open = false;
+                    return events.into_bump_slice();
+                }
                 store.set_focus(None);
                 events.push(WidgetEvent::Blur(id));
+            }
+        }
+        KEY_BACKSPACE => {
+            if let Some(id) = store.focus_id()
+                && let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
+                && *caret > 0
+            {
+                // Decrement caret + remove preceding char (UTF-8 safe).
+                let new_caret = prev_char_boundary(text, *caret);
+                text.replace_range(new_caret..*caret, "");
+                *caret = new_caret;
+                events.push(WidgetEvent::TextChanged(id));
+            }
+        }
+        KEY_ARROW_LEFT => {
+            if let Some(id) = store.focus_id()
+                && let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
+                && *caret > 0
+            {
+                *caret = prev_char_boundary(text, *caret);
+            }
+        }
+        KEY_ARROW_RIGHT => {
+            if let Some(id) = store.focus_id()
+                && let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
+                && *caret < text.len()
+            {
+                *caret = next_char_boundary(text, *caret);
+            }
+        }
+        KEY_ARROW_UP => {
+            if let Some(id) = store.focus_id()
+                && let Some(InteractiveState::NumberInput { value, .. }) = store.get_mut(id)
+            {
+                *value += 1.0;
+                events.push(WidgetEvent::ValueChanged(id));
+            }
+        }
+        KEY_ARROW_DOWN => {
+            if let Some(id) = store.focus_id()
+                && let Some(InteractiveState::NumberInput { value, .. }) = store.get_mut(id)
+            {
+                *value -= 1.0;
+                events.push(WidgetEvent::ValueChanged(id));
             }
         }
         _ => {}
@@ -187,15 +243,58 @@ pub fn dispatch_key<'frame>(
     events.into_bump_slice()
 }
 
-/// Character input from the IME / keyboard. Phase C wires this to
-/// TextInput / Combobox; Phase A returns empty.
+fn prev_char_boundary(s: &str, mut i: usize) -> usize {
+    if i == 0 {
+        return 0;
+    }
+    i -= 1;
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+fn next_char_boundary(s: &str, mut i: usize) -> usize {
+    let len = s.len();
+    if i >= len {
+        return len;
+    }
+    i += 1;
+    while i < len && !s.is_char_boundary(i) {
+        i += 1;
+    }
+    i
+}
+
+/// Character input from the IME / keyboard. Inserts `ch` at the
+/// caret of a focused [`InteractiveState::TextInput`] or appends to
+/// a focused [`InteractiveState::Combobox::query`]. Other widget
+/// kinds ignore the character.
 pub fn dispatch_text_input<'frame>(
     store: &mut WidgetStore,
     ch: char,
     arena: &'frame Bump,
 ) -> &'frame [WidgetEvent] {
-    let _ = (store, ch);
-    let events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
+    let mut events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
+    // Filter control characters; only printable text gets inserted.
+    if ch.is_control() {
+        return events.into_bump_slice();
+    }
+    let Some(id) = store.focus_id() else {
+        return events.into_bump_slice();
+    };
+    match store.get_mut(id) {
+        Some(InteractiveState::TextInput { text, caret, .. }) => {
+            text.insert(*caret, ch);
+            *caret += ch.len_utf8();
+            events.push(WidgetEvent::TextChanged(id));
+        }
+        Some(InteractiveState::Combobox { query, .. }) => {
+            query.push(ch);
+            events.push(WidgetEvent::TextChanged(id));
+        }
+        _ => {}
+    }
     events.into_bump_slice()
 }
 
@@ -337,11 +436,18 @@ fn apply_click<'a>(
             };
             events.push(WidgetEvent::Toggled(id));
         }
+        Some(InteractiveState::Dropdown { open, .. }) => {
+            *open = !*open;
+            // No event — caller observes via store.get(id).
+        }
+        Some(InteractiveState::Combobox { open, .. }) => {
+            *open = !*open;
+        }
         Some(InteractiveState::Button { .. }) | Some(InteractiveState::Plain) => {
             events.push(WidgetEvent::Click(id));
         }
-        // Phases C-D add per-kind click semantics (Tabs select,
-        // Modal dismiss, Dropdown open, etc.).
+        // Phase D adds per-kind click semantics (Tabs select,
+        // Modal dismiss, TreeView select, ContextMenu item, etc.).
         _ => {
             events.push(WidgetEvent::Click(id));
         }
@@ -857,5 +963,180 @@ mod tests {
             &arena,
         );
         assert_eq!(evts, &[]);
+    }
+
+    // -----------------------------------------------------------------
+    // Phase C — TextInput / NumberInput / Combobox / Dropdown
+    // -----------------------------------------------------------------
+
+    use crate::widget::TextInputState;
+
+    fn text_input(text: &str) -> InteractiveState {
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: text.into(),
+            caret: text.len(),
+        }
+    }
+
+    #[test]
+    fn text_input_char_insert_advances_caret() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(NodeId(1), text_input(""));
+        store.set_focus(Some(NodeId(1)));
+        let arena = Bump::new();
+        let evts = dispatch_text_input(&mut store, 'a', &arena);
+        assert!(matches!(evts, [WidgetEvent::TextChanged(_)]));
+        let evts2 = dispatch_text_input(&mut store, 'b', &arena);
+        assert!(matches!(evts2, [WidgetEvent::TextChanged(_)]));
+        assert_eq!(store.text(NodeId(1)), Some("ab"));
+    }
+
+    #[test]
+    fn text_input_backspace_at_caret() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(NodeId(1), text_input("hello"));
+        store.set_focus(Some(NodeId(1)));
+        let arena = Bump::new();
+        let evts = dispatch_key(&mut store, key(KEY_BACKSPACE, false), &arena);
+        assert!(matches!(evts, [WidgetEvent::TextChanged(_)]));
+        assert_eq!(store.text(NodeId(1)), Some("hell"));
+    }
+
+    #[test]
+    fn text_input_arrow_left_moves_caret() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(NodeId(1), text_input("xyz"));
+        store.set_focus(Some(NodeId(1)));
+        let arena = Bump::new();
+        let _ = dispatch_key(&mut store, key(KEY_ARROW_LEFT, false), &arena);
+        // The caret moved (no text changed). Reading caret directly:
+        if let Some(InteractiveState::TextInput { caret, .. }) = store.get(NodeId(1)) {
+            assert_eq!(*caret, 2);
+        } else {
+            panic!("expected TextInput");
+        }
+    }
+
+    #[test]
+    fn text_input_unfocused_ignores_input() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(NodeId(1), text_input(""));
+        let arena = Bump::new();
+        let evts = dispatch_text_input(&mut store, 'x', &arena);
+        assert_eq!(evts, &[]);
+        assert_eq!(store.text(NodeId(1)), Some(""));
+    }
+
+    #[test]
+    fn number_input_arrow_up_increments() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(1),
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 5.0,
+            },
+        );
+        store.set_focus(Some(NodeId(1)));
+        let arena = Bump::new();
+        let evts = dispatch_key(&mut store, key(KEY_ARROW_UP, false), &arena);
+        assert!(matches!(evts, [WidgetEvent::ValueChanged(_)]));
+        if let Some(InteractiveState::NumberInput { value, .. }) = store.get(NodeId(1)) {
+            assert!((value - 6.0).abs() < f64::EPSILON);
+        } else {
+            panic!("expected NumberInput");
+        }
+    }
+
+    #[test]
+    fn dropdown_click_toggles_open() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(1),
+            InteractiveState::Dropdown {
+                state: crate::widget::DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(1), Rect::new(0.0, 0.0, 100.0, 30.0));
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 50.0, 15.0),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 50.0, 15.0),
+            &arena,
+        );
+        let open_after_first = matches!(
+            store.get(NodeId(1)),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        assert!(open_after_first);
+        // Second click closes it.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 50.0, 15.0),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 50.0, 15.0),
+            &arena,
+        );
+        let open_after_second = matches!(
+            store.get(NodeId(1)),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        assert!(!open_after_second);
+    }
+
+    #[test]
+    fn escape_closes_open_dropdown_without_blur() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(1),
+            InteractiveState::Dropdown {
+                state: crate::widget::DropdownState::Normal,
+                open: true,
+                selected_index: None,
+            },
+        );
+        store.set_focus(Some(NodeId(1)));
+        let arena = Bump::new();
+        let evts = dispatch_key(&mut store, key(KEY_ESCAPE, false), &arena);
+        assert_eq!(evts, &[]); // closing the dropdown does not blur
+        assert_eq!(store.focus_id(), Some(NodeId(1)));
+        assert!(matches!(
+            store.get(NodeId(1)),
+            Some(InteractiveState::Dropdown { open: false, .. })
+        ));
+    }
+
+    #[test]
+    fn combobox_text_input_appends_to_query() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(1),
+            InteractiveState::Combobox {
+                state: crate::widget::ComboboxState::Normal,
+                open: false,
+                query: String::new(),
+            },
+        );
+        store.set_focus(Some(NodeId(1)));
+        let arena = Bump::new();
+        let _ = dispatch_text_input(&mut store, 's', &arena);
+        let _ = dispatch_text_input(&mut store, 'p', &arena);
+        assert_eq!(store.text(NodeId(1)), Some("sp"));
     }
 }

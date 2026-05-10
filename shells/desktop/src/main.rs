@@ -857,7 +857,8 @@ impl ApplicationHandler for App {
         // ZenMode/ToastQueue/ToolRegistry model state, Layout computes
         // the 4 zones, VelloPass renders all widgets onto the surface
         // AFTER the sprite pass.
-        let theme = Theme::ForgeSdf;
+        let theme = parse_theme_env();
+        eprintln!("[ph2d] theme = {}", theme.id());
         let zen = ZenMode::new();
         let mut toasts = ToastQueue::new();
         toasts.push(Toast::success("Editor data layer wired (M12)"));
@@ -1138,6 +1139,30 @@ fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
     }
 }
 
+/// Resolve the editor theme from a name (typically read from the
+/// `PH2D_THEME` env var), falling back to [`Theme::ForgeSdf`] for
+/// missing/invalid values. Recognised names match `Theme::id()`
+/// (`forge-sdf`, `paint-studio`, `sunstone`, `blueprint`).
+fn resolve_theme(name: Option<&str>) -> Theme {
+    match name {
+        None => Theme::ForgeSdf,
+        Some("forge-sdf") => Theme::ForgeSdf,
+        Some("paint-studio") => Theme::PaintStudio,
+        Some("sunstone") => Theme::Sunstone,
+        Some("blueprint") => Theme::Blueprint,
+        Some(other) => {
+            eprintln!(
+                "[ph2d] PH2D_THEME={other:?} not recognized; falling back to forge-sdf. Valid: forge-sdf, paint-studio, sunstone, blueprint."
+            );
+            Theme::ForgeSdf
+        }
+    }
+}
+
+fn parse_theme_env() -> Theme {
+    resolve_theme(std::env::var("PH2D_THEME").ok().as_deref())
+}
+
 fn main() {
     install_panic_hook();
     let event_loop = EventLoop::new().expect("create EventLoop");
@@ -1147,4 +1172,27 @@ fn main() {
     println!("PH2D desktop shell starting (1000 sprites; close window to exit)…");
     event_loop.run_app(&mut app).expect("event loop crashed");
     println!("PH2D desktop shell exited cleanly.");
+}
+
+#[cfg(test)]
+mod theme_env_tests {
+    use super::*;
+
+    #[test]
+    fn unset_defaults_to_forge_sdf() {
+        assert_eq!(resolve_theme(None), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn known_names_resolve() {
+        assert_eq!(resolve_theme(Some("paint-studio")), Theme::PaintStudio);
+        assert_eq!(resolve_theme(Some("sunstone")), Theme::Sunstone);
+        assert_eq!(resolve_theme(Some("blueprint")), Theme::Blueprint);
+        assert_eq!(resolve_theme(Some("forge-sdf")), Theme::ForgeSdf);
+    }
+
+    #[test]
+    fn unknown_falls_back_to_default() {
+        assert_eq!(resolve_theme(Some("dracula")), Theme::ForgeSdf);
+    }
 }

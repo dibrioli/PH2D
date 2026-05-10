@@ -208,6 +208,11 @@ pub const SHOWCASE_PRIM_TABS_B: NodeId = NodeId(553);
 pub const SHOWCASE_PRIM_TABS_C: NodeId = NodeId(554);
 pub const SHOWCASE_PRIM_SWATCH: NodeId = NodeId(555);
 pub const SHOWCASE_PRIM_NUMBER: NodeId = NodeId(556);
+pub const SHOWCASE_PRIM_TREE: NodeId = NodeId(557);
+pub const SHOWCASE_PRIM_TREE_ROOT_A: NodeId = NodeId(558);
+pub const SHOWCASE_PRIM_TREE_LEAF_A1: NodeId = NodeId(559);
+pub const SHOWCASE_PRIM_TREE_LEAF_A2: NodeId = NodeId(580);
+pub const SHOWCASE_PRIM_TOOLTIP: NodeId = NodeId(581);
 
 /// Map fixture entity name to canonical hierarchy `NodeId`.
 pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {

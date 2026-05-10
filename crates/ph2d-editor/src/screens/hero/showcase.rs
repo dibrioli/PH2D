@@ -292,11 +292,50 @@ pub fn populate(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
+    // TreeView demo — interactive state slot with no pre-selected
+    // row; click handlers come later. Tooltip is purely visual.
+    store.register(
+        ids::SHOWCASE_PRIM_TREE,
+        InteractiveState::TreeView {
+            last_focused_index: None,
+        },
+    );
+    for id in [
+        ids::SHOWCASE_PRIM_TREE_ROOT_A,
+        ids::SHOWCASE_PRIM_TREE_LEAF_A1,
+        ids::SHOWCASE_PRIM_TREE_LEAF_A2,
+        ids::SHOWCASE_PRIM_TOOLTIP,
+    ] {
+        store.register(id, InteractiveState::Plain);
+    }
 }
 
 /// Apply a [`WidgetEvent`] against Showcase widgets. Returns true
-/// iff the event was consumed. Stub.
-pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+/// iff the event was consumed.
+pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
+    use crate::interaction::InteractiveState;
+    use crate::widget::ButtonState;
+    if let WidgetEvent::Click(id) = event {
+        // Primitives Tabs — radio behavior (only one Pressed at a
+        // time). Same pattern used by Inspector tabs.
+        let tab_ids = [
+            ids::SHOWCASE_PRIM_TABS_A,
+            ids::SHOWCASE_PRIM_TABS_B,
+            ids::SHOWCASE_PRIM_TABS_C,
+        ];
+        if tab_ids.contains(&id) {
+            for tab_id in tab_ids {
+                if let Some(InteractiveState::Button { state }) = store.get_mut(tab_id) {
+                    *state = if tab_id == id {
+                        ButtonState::Pressed
+                    } else {
+                        ButtonState::Normal
+                    };
+                }
+            }
+            return true;
+        }
+    }
     false
 }
 use crate::paint::{paint_text, paint_text_centered, resolve};
@@ -762,15 +801,16 @@ pub fn paint_components_showcase(
     // wasn't already covered by sections 1-10. Compact rows so the
     // panel total height stays under SHOWCASE_H. Drawn before the
     // Modal so Modal's scrim, when shown, overlays this section.
+    let prim_h = 270.0_f32;
     paint_primitives_section(
-        Rect::new(inner_x, y, inner_w, 200.0),
+        Rect::new(inner_x, y, inner_w, prim_h),
         scene,
         text_system,
         theme,
         hit_index,
         store,
     );
-    y += 200.0 + Spacing::Md.px();
+    y += prim_h + Spacing::Md.px();
 
     // 10. Modal mini paint at the showcase footer.
     let modal_h = (rect.y + rect.h - y - pad).max(0.0);
@@ -977,35 +1017,77 @@ fn paint_primitives_section(
         resolve(ColorToken::Text2, theme),
     );
 
-    // Tabs (3 buttons in a row, segmented-ish).
+    // Tabs — real segmented Tabs widget. Selected index is whichever
+    // of the three Buttons has `Pressed` state; `apply_event` flips
+    // them on click (radio behavior). See `docs/UI_Bugs/README.md`
+    // §2 — keep canonical widget paint, don't roll a one-off.
     let tabs_rect = Rect::new(rect.x + (cell_w + gap) * 2.0, y, cell_w, row_h);
-    let tab_count = 3.0_f32;
-    let tab_w = tabs_rect.w / tab_count;
     let tab_data = [
         (ids::SHOWCASE_PRIM_TABS_A, "A"),
         (ids::SHOWCASE_PRIM_TABS_B, "B"),
         (ids::SHOWCASE_PRIM_TABS_C, "C"),
     ];
-    for (i, (id, label)) in tab_data.iter().enumerate() {
-        let tx = tabs_rect.x + tab_w * i as f32;
-        let tr = Rect::new(tx, tabs_rect.y, tab_w, tabs_rect.h);
+    let selected_idx = tab_data
+        .iter()
+        .position(|(id, _)| {
+            matches!(
+                store.button_state(*id),
+                Some(crate::widget::ButtonState::Pressed)
+            )
+        })
+        .unwrap_or(0);
+    let tabs = crate::widget::Tabs::new(
+        ids::SHOWCASE_PRIM_TABS_A,
+        "Primitives tabs",
+        tab_data
+            .iter()
+            .map(|(id, label)| crate::widget::TabItem::new(*id, *label))
+            .collect(),
+    )
+    .variant(crate::widget::TabsVariant::Segmented)
+    .selected(selected_idx);
+    crate::widget::paint_tabs(&tabs, tabs_rect, scene, text_system, theme);
+    let tab_w = tabs_rect.w / tab_data.len() as f32;
+    for (i, (id, _)) in tab_data.iter().enumerate() {
+        let tr = Rect::new(
+            tabs_rect.x + tab_w * i as f32,
+            tabs_rect.y,
+            tab_w,
+            tabs_rect.h,
+        );
         hit_index.register(*id, tr);
-        let tb_state = store
-            .button_state(*id)
-            .unwrap_or(crate::widget::ButtonState::Normal);
-        let kind = if matches!(tb_state, crate::widget::ButtonState::Pressed) {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        let mut b = Button::new(*id, *label).kind(kind);
-        b.state = tb_state;
-        paint_button(&b, tr, scene, text_system, theme);
     }
     y += row_h + Spacing::Sm.px();
 
-    // Standalone NumberInput.
-    let num_rect = Rect::new(rect.x, y, rect.w * 0.5, row_h);
+    // TreeView demo — 1 root + 2 leaves expanded.
+    let tree_h = 80.0_f32;
+    let tree_rect = Rect::new(rect.x, y, rect.w, tree_h);
+    crate::paint::fill_rounded_rect(
+        scene,
+        tree_rect,
+        ph2d_tokens::Radius::Sm.px(),
+        resolve(ColorToken::Bg2, theme),
+    );
+    let tree = TreeView::new(
+        ids::SHOWCASE_PRIM_TREE,
+        "Tree demo",
+        vec![
+            TreeNode::new(ids::SHOWCASE_PRIM_TREE_ROOT_A, "Folder")
+                .icon(IconId::ChevronDown)
+                .children(vec![
+                    TreeNode::new(ids::SHOWCASE_PRIM_TREE_LEAF_A1, "leaf-1.lua"),
+                    TreeNode::new(ids::SHOWCASE_PRIM_TREE_LEAF_A2, "leaf-2.lua"),
+                ]),
+        ],
+    );
+    crate::widget::paint_tree_view(&tree, tree_rect, scene, text_system, theme, 22.0);
+    hit_index.register(ids::SHOWCASE_PRIM_TREE, tree_rect);
+    y += tree_h + Spacing::Sm.px();
+
+    // Standalone NumberInput (left half) + Tooltip (right half).
+    let half_gap = Spacing::Md.px();
+    let num_w = (rect.w - half_gap) * 0.5;
+    let num_rect = Rect::new(rect.x, y, num_w, row_h);
     hit_index.register(ids::SHOWCASE_PRIM_NUMBER, num_rect);
     let (num_state, num_value, num_buf, num_caret, num_anchor) = store
         .number_input(ids::SHOWCASE_PRIM_NUMBER)
@@ -1023,16 +1105,14 @@ fn paint_primitives_section(
         text_system,
         theme,
     );
-    paint_text(
-        text_system,
-        scene,
-        "Number",
-        num_rect.x + num_rect.w + Spacing::Sm.px(),
-        num_rect.y + (num_rect.h - TypeToken::Xs.px()) * 0.5,
-        TypeToken::Xs.px(),
-        rect.w - num_rect.w - Spacing::Sm.px(),
-        resolve(ColorToken::Text2, theme),
-    );
+
+    // Tooltip — static demo (always visible). Real usage attaches
+    // the tooltip to a hovered widget and renders it on top in a
+    // separate pass; here it's the canonical visual reference.
+    let tip_rect = Rect::new(num_rect.x + num_rect.w + half_gap, y, num_w, row_h);
+    let tip = crate::widget::Tooltip::new(ids::SHOWCASE_PRIM_TOOLTIP, "Tooltip example");
+    crate::widget::paint_tooltip(&tip, tip_rect, scene, text_system, theme);
+    hit_index.register(ids::SHOWCASE_PRIM_TOOLTIP, tip_rect);
 }
 
 pub fn paint_blender_picker_demo(

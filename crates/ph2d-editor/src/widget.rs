@@ -64,7 +64,7 @@ pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};
 pub use tabs::{TabItem, Tabs, TabsVariant, paint_tabs};
 pub use tag::{Tag, TagState, TagTone, paint_tag};
 pub use text_area::{TextArea, min_height as text_area_min_height, paint_text_area};
-pub use text_input::{TextInput, TextInputState, paint_text_input};
+pub use text_input::{TextInput, TextInputState, paint_text_input, paint_text_input_with_buffer};
 pub use toggle::{Toggle, ToggleState, paint_toggle};
 pub use tool_rail::{
     COMPOUND_TOTAL_H_PX, DIVIDER_GAP_PX, TOOL_CHIP_PX, TOOL_RAIL_WIDTH_PX, ToolRail, ToolRailEntry,

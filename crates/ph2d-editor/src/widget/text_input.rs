@@ -101,6 +101,24 @@ pub fn paint_text_input(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_text_input_with_buffer(input, None, None, rect, scene, text_system, theme)
+}
+
+/// Like [`paint_text_input`] but draws an override `buffer` and
+/// caret offset when the caller has a live
+/// [`crate::interaction::WidgetStore`] entry for the input. Reading
+/// from the store avoids per-frame allocations that would happen if
+/// the caller copied `store.text(id)` into `TextInput.value`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_text_input_with_buffer(
+    input: &TextInput,
+    buffer: Option<&str>,
+    caret: Option<usize>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     let radius = Radius::Sm.px();
     fill_rounded_rect(scene, rect, radius, resolve(fill_token(input.state), theme));
     let stroke_w = if input.state == TextInputState::Focused {
@@ -123,7 +141,10 @@ pub fn paint_text_input(
     let inner_y = rect.y + (rect.h - font_size) * 0.5 - pad_y * 0.0;
     let inner_w = (rect.w - pad_x * 2.0).max(0.0);
 
-    if input.value.is_empty() && !input.placeholder.is_empty() {
+    let displayed: &str = buffer.unwrap_or(input.value.as_str());
+    let displayed_caret = caret.unwrap_or(input.caret_byte);
+
+    if displayed.is_empty() && !input.placeholder.is_empty() {
         paint_text(
             text_system,
             scene,
@@ -134,7 +155,7 @@ pub fn paint_text_input(
             inner_w,
             resolve(ColorToken::Text3, theme),
         );
-    } else if !input.value.is_empty() {
+    } else if !displayed.is_empty() {
         let color = if input.state == TextInputState::Disabled {
             ColorToken::TextDisabled
         } else {
@@ -143,7 +164,7 @@ pub fn paint_text_input(
         paint_text(
             text_system,
             scene,
-            &input.value,
+            displayed,
             inner_x,
             inner_y,
             font_size,
@@ -153,17 +174,13 @@ pub fn paint_text_input(
     }
 
     if input.state == TextInputState::Focused {
-        // Static 1px caret at end-of-value position. Real metrics
-        // need parley layout; this approximation places the caret at
-        // an em-width per char, accurate enough for monospace and
-        // close enough for sans on inspector-width fields.
-        let caret_byte = input.caret_byte.min(input.value.len());
-        let prefix = &input.value[..caret_byte];
+        let caret_byte = displayed_caret.min(displayed.len());
+        let prefix = &displayed[..caret_byte];
         let approx_advance = prefix.chars().count() as f32 * font_size * 0.55;
-        let caret_x = inner_x + approx_advance;
-        let caret = Rect::new(caret_x, rect.y + pad_y, 1.0, rect.h - pad_y * 2.0);
+        let caret_x = inner_x + approx_advance.min(inner_w);
+        let caret_rect = Rect::new(caret_x, rect.y + pad_y, 1.0, rect.h - pad_y * 2.0);
         scene.fill_rect(
-            crate::paint::rect_to_vello(caret),
+            crate::paint::rect_to_vello(caret_rect),
             resolve(ColorToken::Accent, theme),
         );
     }
@@ -244,6 +261,41 @@ mod tests {
         smoke(
             fixture().value("locked").state(TextInputState::Disabled),
             Theme::PaintStudio,
+        );
+    }
+
+    #[test]
+    fn paint_with_buffer_overrides_value() {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        let t = fixture().value("stale").state(TextInputState::Focused);
+        // Pretend the WidgetStore has a freshly typed buffer.
+        paint_text_input_with_buffer(
+            &t,
+            Some("live edit"),
+            Some(4),
+            Rect::new(0.0, 0.0, 240.0, 32.0),
+            &mut scene,
+            &mut text,
+            Theme::ForgeSdf,
+        );
+    }
+
+    #[test]
+    fn paint_with_buffer_handles_empty_caret_oob() {
+        // Caret beyond buffer length should still paint without
+        // panic (clamped at draw time).
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        let t = fixture().state(TextInputState::Focused);
+        paint_text_input_with_buffer(
+            &t,
+            Some(""),
+            Some(99),
+            Rect::new(0.0, 0.0, 240.0, 32.0),
+            &mut scene,
+            &mut text,
+            Theme::Sunstone,
         );
     }
 }

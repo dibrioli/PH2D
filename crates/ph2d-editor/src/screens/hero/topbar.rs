@@ -6,9 +6,7 @@ use super::ids;
 use super::style::icon_button_fg;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::{
     Avatar, AvatarShape, ButtonState, PILL_PADDING_PX, Tooltip, paint_avatar, paint_tooltip,
 };
@@ -24,9 +22,11 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [
         ids::TOPBAR_THEME,
         ids::TOPBAR_SAVE,
+        ids::TOPBAR_SAVE_AS,
         ids::TOPBAR_PROJECT,
-        ids::TOPBAR_PLAY_TOGGLE,
         ids::TOPBAR_PLAY_BUTTON,
+        ids::TOPBAR_PAUSE,
+        ids::TOPBAR_RESET,
         ids::TOPBAR_RIGHT_LAYERS,
         ids::TOPBAR_RIGHT_ASSETS,
         ids::TOPBAR_RIGHT_SCRIPT,
@@ -49,9 +49,11 @@ pub fn populate(store: &mut WidgetStore) {
         // chain and rendered as tofu boxes. `Cmd+S` / `Cmd+Enter` are
         // legible on every theme without a special font.
         (ids::TOPBAR_SAVE, "Save \u{00b7} Cmd+S"),
+        (ids::TOPBAR_SAVE_AS, "Save As\u{2026} \u{00b7} Cmd+Shift+S"),
         (ids::TOPBAR_PROJECT, "Project"),
-        (ids::TOPBAR_PLAY_TOGGLE, "Theme mode"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),
+        (ids::TOPBAR_PAUSE, "Pause"),
+        (ids::TOPBAR_RESET, "Reset"),
         (ids::TOPBAR_RIGHT_LAYERS, "Layers"),
         (ids::TOPBAR_RIGHT_ASSETS, "Asset library"),
         (ids::TOPBAR_RIGHT_SCRIPT, "Code \u{00b7} Luau"),
@@ -158,15 +160,11 @@ pub fn paint_top_bar(
         right_w += cluster_width(c) + gap;
     }
     let right_x = layout.top_bar.x + layout.top_bar.w - right_w + gap.max(0.0);
-    let wordmark_rect = Rect::new(x, layout.top_bar.y, (right_x - x).max(0.0), row_h);
-    paint_text_centered(
-        text_system,
-        scene,
-        "PH2D \u{00b7} EDITOR",
-        wordmark_rect,
-        TypeToken::Sm.px(),
-        resolve(ColorToken::Text3, theme),
-    );
+    // The wordmark "PH2D · EDITOR" that used to fill the middle gap
+    // is intentionally absent now — the engine's identity is carried
+    // by the leftmost theme chip (also labelled "PH2D"). Leaving the
+    // gap transparent also keeps the topbar's bg fully see-through.
+    let _ = x; // silence unused-after-removal
     let mut rx = right_x;
     for (id, cluster) in right_clusters {
         let rect = Rect::new(rx, layout.top_bar.y, cluster_width(cluster), row_h);
@@ -190,7 +188,9 @@ fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
         TopBarCluster::Theme { .. } => 132.0,
         TopBarCluster::Single { .. } => 40.0 + PILL_PADDING_PX * 2.0,
         TopBarCluster::Project { .. } => 156.0,
-        TopBarCluster::Play => 92.0,
+        // Play cluster now holds 3 controls (Play 32 + Pause 24 +
+        // Reset 24) plus inner spacings. ~120px fits comfortably.
+        TopBarCluster::Play => 120.0,
         TopBarCluster::Right => 132.0,
     }
 }
@@ -221,11 +221,11 @@ fn paint_top_bar_cluster(
             // are hit-registered in their own arms below; we add it
             // here for Theme.
             hit_index.register(id, rect);
-            // Display the active theme's name, not the fixture's
-            // static label — the cluster acts as a "current theme"
-            // chip that opens the picker.
-            let label_string = theme.display_name().to_string();
-            let label = label_string.as_str();
+            // Display "PH2D" as the chip label — the cluster acts as
+            // the engine's identity chip + theme picker entry-point.
+            // (Theme's display name is still surfaced in the menu's
+            // own items.)
+            let label = "PH2D";
             let mut cx = rect.x + pad_x + 4.0;
             let cy = rect.y + rect.h * 0.5;
             for (i, token) in [ColorToken::Accent, ColorToken::AccentSoft]
@@ -311,23 +311,17 @@ fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Play => {
-            let toggle_rect = Rect::new(rect.x + pad_x, rect.y + (rect.h - 22.0) * 0.5, 22.0, 22.0);
-            hit_index.register(ids::TOPBAR_PLAY_TOGGLE, toggle_rect);
-            let toggle_state = store
-                .button_state(ids::TOPBAR_PLAY_TOGGLE)
-                .unwrap_or(ButtonState::Normal);
-            paint_icon(
-                scene,
-                IconId::Light,
-                toggle_rect,
-                resolve(icon_button_fg(toggle_state), theme),
-                1.5,
-            );
+            // Play / Pause / Reset transport. Play gets the
+            // Accent-tinted pill (primary action); Pause and Reset
+            // are flat icon buttons.
+            let pill_d = 32.0_f32;
+            let plain_d = 24.0_f32;
+            // Play (leftmost, primary pill).
             let play_rect = Rect::new(
-                rect.x + rect.w - pad_x - 32.0,
-                rect.y + (rect.h - 32.0) * 0.5,
-                32.0,
-                32.0,
+                rect.x + pad_x,
+                rect.y + (rect.h - pill_d) * 0.5,
+                pill_d,
+                pill_d,
             );
             hit_index.register(id, play_rect);
             let play_state = store.button_state(id).unwrap_or(ButtonState::Normal);
@@ -342,6 +336,42 @@ fn paint_top_bar_cluster(
                 IconId::Play,
                 play_rect,
                 resolve(ColorToken::AccentFg, theme),
+                1.5,
+            );
+            // Pause (middle, plain icon button).
+            let pause_rect = Rect::new(
+                play_rect.x + pill_d + Spacing::Sm.px(),
+                rect.y + (rect.h - plain_d) * 0.5,
+                plain_d,
+                plain_d,
+            );
+            hit_index.register(ids::TOPBAR_PAUSE, pause_rect);
+            let pause_state = store
+                .button_state(ids::TOPBAR_PAUSE)
+                .unwrap_or(ButtonState::Normal);
+            paint_icon(
+                scene,
+                IconId::Pause,
+                pause_rect,
+                resolve(icon_button_fg(pause_state), theme),
+                1.5,
+            );
+            // Reset (rightmost, plain icon button).
+            let reset_rect = Rect::new(
+                pause_rect.x + plain_d + Spacing::Sm.px(),
+                rect.y + (rect.h - plain_d) * 0.5,
+                plain_d,
+                plain_d,
+            );
+            hit_index.register(ids::TOPBAR_RESET, reset_rect);
+            let reset_state = store
+                .button_state(ids::TOPBAR_RESET)
+                .unwrap_or(ButtonState::Normal);
+            paint_icon(
+                scene,
+                IconId::Reset,
+                reset_rect,
+                resolve(icon_button_fg(reset_state), theme),
                 1.5,
             );
         }

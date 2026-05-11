@@ -23,6 +23,9 @@ pub const TOPBAR_PLAY_BUTTON: NodeId = NodeId(105);
 pub const TOPBAR_RIGHT_LAYERS: NodeId = NodeId(106);
 pub const TOPBAR_RIGHT_ASSETS: NodeId = NodeId(107);
 pub const TOPBAR_RIGHT_SCRIPT: NodeId = NodeId(108);
+pub const TOPBAR_PAUSE: NodeId = NodeId(109);
+pub const TOPBAR_RESET: NodeId = NodeId(110);
+pub const TOPBAR_SAVE_AS: NodeId = NodeId(111);
 
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 
@@ -184,6 +187,13 @@ pub const CTX_MENU_THEME_BLUEPRINT: NodeId = NodeId(913);
 pub const CTX_MENU_RADIUS_SHARP: NodeId = NodeId(914);
 pub const CTX_MENU_RADIUS_DEFAULT: NodeId = NodeId(915);
 pub const CTX_MENU_RADIUS_ROUND: NodeId = NodeId(916);
+/// "Mirror UI" entry in the theme menu — toggles
+/// `HeroScreen::ui_mirrored`, which swaps Hierarchy ↔ Inspector
+/// horizontally.
+pub const CTX_MENU_MIRROR_UI: NodeId = NodeId(917);
+// Save-button context menu (Save / Save As).
+pub const CTX_MENU_SAVE: NodeId = NodeId(920);
+pub const CTX_MENU_SAVE_AS: NodeId = NodeId(921);
 /// Floating `BlenderColorPicker` parent id. The picker is painted
 /// over the canvas (not inside the Inspector) — the historical
 /// `INSP_` prefix is kept to avoid churning every side-table key.

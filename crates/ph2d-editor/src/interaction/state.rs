@@ -475,6 +475,8 @@ pub enum ContextMenuKind {
     /// options plus 3 corner-radius scale presets (Sharp / Default
     /// / Round) — the standardized way to switch chrome look.
     ThemeSelector,
+    /// Clicked the TOPBAR Save chip. Menu offers Save + Save As.
+    SaveMenu,
 }
 
 impl WidgetStore {

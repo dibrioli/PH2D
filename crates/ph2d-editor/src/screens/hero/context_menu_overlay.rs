@@ -96,6 +96,15 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_RADIUS_SHARP, "— Corners: Sharp", None),
             (ids::CTX_MENU_RADIUS_DEFAULT, "— Corners: Default", None),
             (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
+            (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
+        ],
+        ContextMenuKind::SaveMenu => &[
+            (ids::CTX_MENU_SAVE, "Save \u{00b7} Cmd+S", None),
+            (
+                ids::CTX_MENU_SAVE_AS,
+                "Save As\u{2026} \u{00b7} Cmd+Shift+S",
+                None,
+            ),
         ],
     };
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;

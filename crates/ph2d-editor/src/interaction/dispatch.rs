@@ -278,6 +278,20 @@ pub fn dispatch_pointer_with_text<'frame>(
                 });
                 return events.into_bump_slice();
             }
+            // Same pattern for the Save chip — Primary opens the
+            // Save / Save As menu anchored below the chip.
+            if event.button == ph2d_host::PointerButton::Primary
+                && let Some((hit_id, hit_rect)) = hit
+                && hit_id == crate::screens::hero::ids::TOPBAR_SAVE
+                && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
+            {
+                store.open_context_menu(super::ContextMenuRequest {
+                    x: hit_rect.x,
+                    y: hit_rect.y + hit_rect.h + 4.0,
+                    kind: super::ContextMenuKind::SaveMenu,
+                });
+                return events.into_bump_slice();
+            }
             // Primary click elsewhere closes any open menu before
             // running the regular focus/click path.
             if store.context_menu().is_some() {

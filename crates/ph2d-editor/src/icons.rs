@@ -400,9 +400,17 @@ impl IconId {
                 IconCmd::Path("M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"),
                 IconCmd::Path("M17 21v-8H7v8M7 3v5h8"),
             ],
-            Self::Scale => &[IconCmd::Path(
-                "M3 17l4 4M3 21h4v-4M21 7l-4-4M21 3h-4v4M3 3l18 18",
-            )],
+            // Lucide `image-upscale` — frame + diagonal arrow.
+            Self::Scale => &[
+                IconCmd::Path("M16 3h5v5"),
+                IconCmd::Path("M17 21h2a2 2 0 0 0 2-2"),
+                IconCmd::Path("M21 12v3"),
+                IconCmd::Path("M21 3l-5 5"),
+                IconCmd::Path("M3 7V5a2 2 0 0 1 2-2"),
+                IconCmd::Path("M5 21l4.144-4.144a1.21 1.21 0 0 1 1.712 0L13 19"),
+                IconCmd::Path("M9 3h3"),
+                IconCmd::Rect(3.0, 11.0, 10.0, 10.0, 1.0),
+            ],
             Self::Scene => &[
                 IconCmd::Rect(2.0, 3.0, 20.0, 14.0, 2.0),
                 IconCmd::Line(8.0, 21.0, 16.0, 21.0),

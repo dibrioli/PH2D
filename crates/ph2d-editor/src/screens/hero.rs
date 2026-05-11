@@ -76,7 +76,16 @@ pub struct HeroLayout {
 }
 
 impl HeroLayout {
+    /// Default layout (mirrored = false): Hierarchy on the LEFT next
+    /// to the rail, Inspector pinned to the RIGHT edge. The canvas
+    /// sits between them. Pass `mirrored = true` to flip horizontally
+    /// (Inspector left of canvas, Hierarchy right) — used by the
+    /// "Mirror UI" theme-menu toggle.
     pub fn for_viewport(viewport: Rect) -> Self {
+        Self::for_viewport_mirrored(viewport, false)
+    }
+
+    pub fn for_viewport_mirrored(viewport: Rect, mirrored: bool) -> Self {
         use style::{
             EDGE_PAD, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H, INSPECTOR_W, RAIL_W, TOPBAR_GAP, TOPBAR_H,
         };
@@ -91,21 +100,39 @@ impl HeroLayout {
         let chrome_h = (chrome_bot - chrome_top).max(0.0);
 
         let left_rail = Rect::new(viewport.x + EDGE_PAD, chrome_top, RAIL_W, chrome_h);
-        let inspector = Rect::new(
-            viewport.x + EDGE_PAD + RAIL_W + EDGE_PAD,
-            chrome_top,
-            INSPECTOR_W,
-            chrome_h.min(880.0),
-        );
-        let hierarchy = Rect::new(
-            viewport.x + viewport.w - EDGE_PAD - HIERARCHY_W,
-            chrome_top,
-            HIERARCHY_W,
-            chrome_h,
-        );
-        let canvas_x = inspector.x + inspector.w + EDGE_PAD;
-        let canvas_w = (hierarchy.x - canvas_x - EDGE_PAD).max(0.0);
-        let canvas = Rect::new(canvas_x, chrome_top, canvas_w, chrome_h);
+        // Default panel sides (mirrored=false):
+        //   - Hierarchy LEFT (just past the rail)
+        //   - Inspector RIGHT (pinned to viewport edge)
+        // Mirrored flips both.
+        let (hierarchy_x, inspector_x) = if mirrored {
+            (
+                viewport.x + viewport.w - EDGE_PAD - HIERARCHY_W,
+                viewport.x + EDGE_PAD + RAIL_W + EDGE_PAD,
+            )
+        } else {
+            (
+                viewport.x + EDGE_PAD + RAIL_W + EDGE_PAD,
+                viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W,
+            )
+        };
+        let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h.min(880.0));
+        let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
+        // Canvas spans the gap between whichever panel is on the
+        // left side of it and whichever is on the right.
+        let (left_panel_right, right_panel_left) = if mirrored {
+            (inspector.x + inspector.w, hierarchy.x)
+        } else {
+            (hierarchy.x + hierarchy.w, inspector.x)
+        };
+        let canvas_x = left_panel_right + EDGE_PAD;
+        let canvas_w = (right_panel_left - canvas_x - EDGE_PAD).max(0.0);
+        // Canvas extends UPWARD to the viewport top so the topbar's
+        // bg reads as transparent — clicks in the gap between pills
+        // resolve to canvas (no widget hit), and the canvas tint
+        // (`Bg1`) is visible behind the floating chip clusters.
+        let canvas_y = viewport.y;
+        let canvas_h = chrome_bot - canvas_y;
+        let canvas = Rect::new(canvas_x, canvas_y, canvas_w, canvas_h.max(0.0));
 
         let bottom_hud = Rect::new(
             viewport.x + (viewport.w - 480.0) * 0.5,
@@ -146,6 +173,11 @@ pub struct HeroScreen {
     /// `paint_hero_screen` call and re-populated as painters emit
     /// geometry.
     pub hit_index: HitIndex,
+    /// When `true`, the Inspector and Hierarchy panels swap sides
+    /// (Inspector left, Hierarchy right). Toggled via the "Mirror
+    /// UI" entry in the theme context menu. Defaults to `false` —
+    /// Hierarchy left, Inspector right.
+    pub ui_mirrored: bool,
 }
 
 impl HeroScreen {
@@ -158,6 +190,7 @@ impl HeroScreen {
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),
+            ui_mirrored: false,
         }
     }
 
@@ -282,6 +315,18 @@ impl HeroScreen {
                 self.store.close_context_menu();
                 return true;
             }
+            if id == ids::CTX_MENU_MIRROR_UI {
+                self.ui_mirrored = !self.ui_mirrored;
+                self.store.close_context_menu();
+                return true;
+            }
+            // Save / Save As — placeholders until the pilot project
+            // wires the real save pipeline. Close the menu and
+            // return consumed so the click doesn't propagate.
+            if id == ids::CTX_MENU_SAVE || id == ids::CTX_MENU_SAVE_AS {
+                self.store.close_context_menu();
+                return true;
+            }
         }
         if topbar::apply_event(&mut self.store, event) {
             return true;
@@ -325,7 +370,7 @@ pub fn paint_hero_screen(
     // every frame so it stays in sync with the topbar's radius menu.
     crate::paint::set_radius_scale(hero.store.radius_scale());
 
-    let mut layout = HeroLayout::for_viewport(viewport);
+    let mut layout = HeroLayout::for_viewport_mirrored(viewport, hero.ui_mirrored);
     // Apply user-driven panel drag offsets to the Inspector +
     // Hierarchy rects. The offsets live on the WidgetStore's
     // `blender_picker_offset` side-table (panel-agnostic — the
@@ -580,22 +625,34 @@ mod tests {
     }
 
     #[test]
-    fn layout_inspector_after_rail() {
+    fn layout_hierarchy_after_rail_by_default() {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
-        assert!(layout.inspector.x > layout.left_rail.x + layout.left_rail.w);
-        assert!((layout.inspector.w - style::INSPECTOR_W).abs() < f32::EPSILON);
+        assert!(layout.hierarchy.x > layout.left_rail.x + layout.left_rail.w);
+        assert!((layout.hierarchy.w - style::HIERARCHY_W).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn layout_hierarchy_pinned_right() {
+    fn layout_inspector_pinned_right_by_default() {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
-        let right_edge = layout.hierarchy.x + layout.hierarchy.w;
+        let right_edge = layout.inspector.x + layout.inspector.w;
         assert!((right_edge - (HERO_VIEWPORT_W - style::EDGE_PAD)).abs() < 0.01);
     }
 
     #[test]
-    fn layout_canvas_between_inspector_and_hierarchy() {
+    fn layout_canvas_between_panels_default() {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
+        // Default: hierarchy left, inspector right.
+        assert!(layout.canvas.x > layout.hierarchy.x + layout.hierarchy.w);
+        assert!(layout.canvas.x + layout.canvas.w < layout.inspector.x);
+    }
+
+    #[test]
+    fn layout_mirror_swaps_sides() {
+        let layout = HeroLayout::for_viewport_mirrored(ipad12_viewport(), true);
+        // Mirrored: inspector after rail (left), hierarchy pinned right.
+        assert!(layout.inspector.x > layout.left_rail.x + layout.left_rail.w);
+        let hier_right = layout.hierarchy.x + layout.hierarchy.w;
+        assert!((hier_right - (HERO_VIEWPORT_W - style::EDGE_PAD)).abs() < 0.01);
         assert!(layout.canvas.x > layout.inspector.x + layout.inspector.w);
         assert!(layout.canvas.x + layout.canvas.w < layout.hierarchy.x);
     }
@@ -721,7 +778,12 @@ mod tests {
     }
 
     #[test]
-    fn hero_topbar_save_click_round_trip() {
+    fn hero_topbar_save_click_opens_save_menu() {
+        // Save chip on the topbar now opens the SaveMenu context
+        // menu (same pattern as the Theme chip → ThemeSelector). The
+        // pointer Down → menu-open short-circuits the Up's
+        // Click(TOPBAR_SAVE) emit, so we assert on the open menu's
+        // kind instead.
         let mut hero = HeroScreen::new(NodeId(1));
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
@@ -740,12 +802,10 @@ mod tests {
         }
         assert!(save_x > 0.0, "TOPBAR_SAVE rect not found in hit_index");
         let _ = hero.handle_pointer(down(save_x, save_y), &arena);
-        let evts = hero.handle_pointer(up(save_x, save_y), &arena);
-        assert!(
-            evts.iter()
-                .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::TOPBAR_SAVE)),
-            "expected Click event for TOPBAR_SAVE, got {evts:?}"
-        );
+        assert!(matches!(
+            hero.store.context_menu().map(|r| r.kind),
+            Some(crate::interaction::ContextMenuKind::SaveMenu)
+        ));
     }
 
     #[test]

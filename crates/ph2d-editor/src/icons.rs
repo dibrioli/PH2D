@@ -351,8 +351,9 @@ impl IconId {
                 IconCmd::Circle(12.0, 5.0, 1.0),
                 IconCmd::Circle(12.0, 19.0, 1.0),
             ],
+            // Lucide `folder-open` — folder with the front flap lifted.
             Self::Open => &[IconCmd::Path(
-                "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+                "M6 14 L 7.5 11.1 A 2 2 0 0 1 9.24 10 H 20 A 2 2 0 0 1 21.94 12.5 L 20.4 18.5 A 2 2 0 0 1 18.45 20 H 4 A 2 2 0 0 1 2 18 V 5 A 2 2 0 0 1 4 3 H 7.9 A 2 2 0 0 1 9.59 3.9 L 10.4 5.1 A 2 2 0 0 0 12.07 6 H 18 A 2 2 0 0 1 20 8 V 10",
             )],
             Self::Pan => &[
                 IconCmd::Path("M9 11V5a2 2 0 1 1 4 0v6"),

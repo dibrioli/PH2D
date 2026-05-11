@@ -292,6 +292,12 @@ pub struct WidgetStore {
     /// Camera-framing mode for the TOOL_HOME rail button.
     /// Cycle: 0 = Selected, 1 = Camera, 2 = All. Bumped on click.
     tool_view_mode: u8,
+    /// Per-panel Z order — last element paints LAST (= topmost).
+    /// Mutated by `bump_panel_z` whenever the user clicks inside a
+    /// panel, drags it, or it newly opens (color picker). Painters
+    /// walk this in order so the most-recently-touched panel sits
+    /// on top of any overlapping siblings.
+    panel_z_order: Vec<NodeId>,
     /// Eyedropper pending: when Some(parent), the next pointer Down
     /// (anywhere except on the eyedropper button itself) is intercepted
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
@@ -486,6 +492,9 @@ pub enum ContextMenuKind {
     ThemeSelector,
     /// Clicked the TOPBAR Save chip. Menu offers Save + Save As.
     SaveMenu,
+    /// Clicked the TOPBAR Open chip. Menu offers Open Project +
+    /// Import (and more later).
+    OpenMenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `WidgetStore::current_scene_name`.
@@ -520,6 +529,7 @@ impl WidgetStore {
             current_scene_name: String::from("Level_01"),
             tool_space_local: false,
             tool_view_mode: 0,
+            panel_z_order: Vec::new(),
             eyedropper_pending: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
@@ -777,6 +787,8 @@ impl WidgetStore {
     pub fn begin_blender_drag(&mut self, parent: NodeId, cursor_x: f32, cursor_y: f32) {
         let (off_x, off_y) = self.blender_picker_offset(parent);
         self.blender_drag_anchor = Some((parent, cursor_x, cursor_y, off_x, off_y));
+        // Dragged panel → topmost in z-order.
+        self.bump_panel_z(parent);
     }
 
     pub fn blender_drag_anchor(&self) -> Option<(NodeId, f32, f32, f32, f32)> {
@@ -871,6 +883,20 @@ impl WidgetStore {
 
     pub fn set_tool_view_mode(&mut self, mode: u8) {
         self.tool_view_mode = mode % 3;
+    }
+
+    /// Move `panel_id` to the end of the z-order (= topmost). If
+    /// the id isn't in the list yet, append it. Called by dispatch
+    /// whenever a panel is clicked, dragged, or first opened.
+    pub fn bump_panel_z(&mut self, panel_id: NodeId) {
+        self.panel_z_order.retain(|id| *id != panel_id);
+        self.panel_z_order.push(panel_id);
+    }
+
+    /// Read the current z-order. Bottom-first iteration (= paint
+    /// order); the last element is the topmost panel.
+    pub fn panel_z_order(&self) -> &[NodeId] {
+        &self.panel_z_order
     }
 
     pub fn eyedropper_pending(&self) -> Option<NodeId> {
@@ -1070,6 +1096,16 @@ impl WidgetStore {
     /// `widget_colors[target]` if it doesn't yet have a value.
     pub fn set_picker_target(&mut self, target: Option<NodeId>) {
         self.picker_target = target;
+        // Opening the picker → it's the most recently summoned panel.
+        if target.is_some() {
+            // Picker is keyed by INSP_BLENDER_PICKER in the z-order
+            // (canonical floating-panel id). Hard-coded here rather
+            // than re-exporting the screens::hero::ids const into the
+            // interaction crate, since the picker is the single
+            // floating panel for the whole editor.
+            const INSP_BLENDER_PICKER: NodeId = NodeId(380);
+            self.bump_panel_z(INSP_BLENDER_PICKER);
+        }
     }
 
     /// Read the current color of a color-target widget. Returns

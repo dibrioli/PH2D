@@ -21,6 +21,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_THEME,
         ids::TOPBAR_SAVE,
         ids::TOPBAR_SAVE_AS,
+        ids::TOPBAR_OPEN,
         ids::TOPBAR_PROJECT,
         ids::TOPBAR_PLAY_BUTTON,
         ids::TOPBAR_PAUSE,
@@ -61,6 +62,7 @@ pub fn populate(store: &mut WidgetStore) {
         // legible on every theme without a special font.
         (ids::TOPBAR_SAVE, "Save \u{00b7} Cmd+S"),
         (ids::TOPBAR_SAVE_AS, "Save As\u{2026} \u{00b7} Cmd+Shift+S"),
+        (ids::TOPBAR_OPEN, "Open \u{00b7} Cmd+O"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),
         (ids::TOPBAR_PAUSE, "Pause"),

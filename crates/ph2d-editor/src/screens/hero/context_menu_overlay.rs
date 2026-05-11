@@ -109,6 +109,18 @@ pub fn paint_context_menu_overlay(
                 None,
             ),
         ],
+        ContextMenuKind::OpenMenu => &[
+            (
+                ids::CTX_MENU_OPEN_PROJECT,
+                "Open Project\u{2026} \u{00b7} Cmd+O",
+                None,
+            ),
+            (
+                ids::CTX_MENU_IMPORT,
+                "Import\u{2026} \u{00b7} Cmd+Shift+I",
+                None,
+            ),
+        ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is
         // skipped.

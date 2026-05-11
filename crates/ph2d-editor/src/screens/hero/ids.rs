@@ -26,6 +26,7 @@ pub const TOPBAR_RIGHT_SCRIPT: NodeId = NodeId(108);
 pub const TOPBAR_PAUSE: NodeId = NodeId(109);
 pub const TOPBAR_RESET: NodeId = NodeId(110);
 pub const TOPBAR_SAVE_AS: NodeId = NodeId(111);
+pub const TOPBAR_OPEN: NodeId = NodeId(112);
 
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 
@@ -201,6 +202,9 @@ pub const CTX_MENU_SHOW_STATS: NodeId = NodeId(918);
 // Save-button context menu (Save / Save As).
 pub const CTX_MENU_SAVE: NodeId = NodeId(920);
 pub const CTX_MENU_SAVE_AS: NodeId = NodeId(921);
+// Open-button context menu (Open Project / Import…).
+pub const CTX_MENU_OPEN_PROJECT: NodeId = NodeId(922);
+pub const CTX_MENU_IMPORT: NodeId = NodeId(923);
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = NodeId(930);
 pub const CTX_SCENE_ROW_0: NodeId = NodeId(931);

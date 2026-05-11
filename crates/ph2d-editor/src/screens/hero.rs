@@ -132,16 +132,11 @@ impl HeroLayout {
         };
         // Canvas spans the FULL viewport — every other piece of
         // chrome (rail, top bar, side panels, bottom HUD) is a
-        // floating overlay on top. This lets canvas content extend
-        // edge-to-edge instead of being boxed in between the side
-        // panels' x range, and keeps clicks in the "dead space"
-        // between chrome elements resolving to the canvas. The
-        // unused locals below remain wired to keep the layout math
-        // legible — they're consumed only by the floating overlays
-        // (which place themselves relative to the viewport, not the
-        // canvas).
-        let _ = (left_panel_right, right_panel_left);
-        let canvas = Rect::new(viewport.x, viewport.y, viewport.w, chrome_bot - viewport.y);
+        // floating overlay on top. Includes the area BELOW the
+        // chrome bottom so the canvas tint reaches the screen's
+        // bottom edge; the stats HUD floats above it.
+        let _ = (left_panel_right, right_panel_left, chrome_bot);
+        let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
 
         let bottom_hud = Rect::new(
             viewport.x + (viewport.w - 480.0) * 0.5,
@@ -414,10 +409,16 @@ impl HeroScreen {
                 }
                 return true;
             }
-            // Save / Save As — placeholders until the pilot project
-            // wires the real save pipeline. Close the menu and
-            // return consumed so the click doesn't propagate.
-            if id == ids::CTX_MENU_SAVE || id == ids::CTX_MENU_SAVE_AS {
+            // Save / Save As / Open Project / Import — placeholders
+            // until the pilot project wires real file I/O. Close the
+            // menu and return consumed so the click doesn't propagate.
+            if matches!(
+                id,
+                x if x == ids::CTX_MENU_SAVE
+                    || x == ids::CTX_MENU_SAVE_AS
+                    || x == ids::CTX_MENU_OPEN_PROJECT
+                    || x == ids::CTX_MENU_IMPORT
+            ) {
                 self.store.close_context_menu();
                 return true;
             }
@@ -635,83 +636,17 @@ pub fn paint_hero_screen(
     } else {
         hero.store.clear_panel_rect(ids::HIER_PANEL);
     }
-    if hero.inspector_visible {
-        paint_inspector(
-            &layout,
-            hero.selection.as_ref(),
-            scene,
-            text_system,
-            hero.theme,
-            &mut hero.hit_index,
-            &hero.store,
-        );
-    }
-    // Publish the inspector's measured content height to the store
-    // so `dispatch_wheel` can clamp the next scroll event at the
-    // upper bound BEFORE the visible jump happens. Also clamp the
-    // current scroll value in case the previous paint left it
-    // overshooting (e.g. after collapsing a section).
-    {
-        let content_h = inspector::last_inspector_content_h();
-        let visible_h = inspector::last_inspector_visible_h();
-        hero.store.set_panel_content_h(ids::INSP_PANEL, content_h);
-        // Publish visible_h too so dispatch_wheel can clamp on the
-        // exact viewport instead of an approximate panel.h - 60.
-        hero.store.set_panel_visible_h(ids::INSP_PANEL, visible_h);
-        let max_scroll = (content_h - visible_h).max(0.0);
-        let cur = hero.store.panel_scroll(ids::INSP_PANEL);
-        if cur > max_scroll {
-            hero.store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
-        }
-    }
     // Mirror the global picker's current value into the target
-    // widget's `widget_colors` slot each frame so the section's
-    // color circle (and any other color-target painter) tracks
-    // live edits.
+    // widget's `widget_colors` slot before either panel paints so
+    // color circles inside the Inspector see this frame's value.
     if let Some(target) = hero.store.picker_target()
         && let Some((value, _, _, _)) = hero.store.blender_picker(ids::INSP_BLENDER_PICKER)
     {
         hero.store.set_widget_color(target, value.rgba);
     }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
-    if hero.hierarchy_visible {
-        paint_hierarchy(
-            &layout,
-            scene,
-            text_system,
-            hero.theme,
-            &mut hero.hit_index,
-            &hero.store,
-        );
-    }
-    // Publish hierarchy content_h + clamp scroll (same pattern as
-    // inspector). Headroom of 60 px covers the hierarchy header.
-    {
-        let content_h = hierarchy::last_hierarchy_content_h();
-        hero.store.set_panel_content_h(ids::HIER_PANEL, content_h);
-        let visible_h = (layout.hierarchy.h - 60.0).max(0.0);
-        let max_scroll = (content_h - visible_h).max(0.0);
-        let cur = hero.store.panel_scroll(ids::HIER_PANEL);
-        if cur > max_scroll {
-            hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
-        }
-    }
-    if hero.stats_visible {
-        paint_bottom_hud(&layout, scene, text_system, hero.theme);
-    }
-    // Floating BlenderColorPicker on top of the canvas. Pure
-    // function of `(layout, store)` — drag offset comes from the
-    // store. The Inspector keeps the picker's state under
-    // `INSP_BLENDER_PICKER` even though the picker is painted out
-    // here, not inside the Inspector chrome.
-    //
-    // Publish the picker's outer rect to the store so the dispatch's
-    // outside-click-closes logic can test against the FULL panel
-    // (not just its sub-control hit zones). Without this, clicking
-    // dead space INSIDE the picker (gaps between controls, padding
-    // areas) resolved to no BlenderHit and the picker closed — user
-    // reported "if I click inside the panel but not on any control,
-    // the picker closes".
+    // Publish the picker's outer rect so dispatch's "is the click
+    // inside the picker?" test can reason about its bounds.
     if hero.store.picker_target().is_some()
         && let Some(picker_rect) = color_picker_demo::current_picker_rect(&layout, &hero.store)
     {
@@ -720,14 +655,74 @@ pub fn paint_hero_screen(
     } else {
         hero.store.clear_panel_rect(ids::INSP_BLENDER_PICKER);
     }
-    color_picker_demo::paint_blender_picker_demo(
-        &layout,
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-    );
+
+    // Paint each panel in z-order — bottom-first, so the panel most
+    // recently clicked / dragged / opened sits on top.  Panels that
+    // haven't been touched yet inherit a default order at the bottom.
+    let mut z_order: Vec<ph2d_a11y::NodeId> = hero.store.panel_z_order().to_vec();
+    for &fallback in &[ids::HIER_PANEL, ids::INSP_PANEL, ids::INSP_BLENDER_PICKER] {
+        if !z_order.contains(&fallback) {
+            z_order.push(fallback);
+        }
+    }
+    for panel_id in z_order {
+        if panel_id == ids::INSP_PANEL && hero.inspector_visible {
+            paint_inspector(
+                &layout,
+                hero.selection.as_ref(),
+                scene,
+                text_system,
+                hero.theme,
+                &mut hero.hit_index,
+                &hero.store,
+            );
+            // Publish content_h + clamp scroll right after paint so
+            // `dispatch_wheel` sees the new bounds on the very next
+            // event (avoids a one-frame overshoot when a section
+            // collapses or notes are added).
+            let content_h = inspector::last_inspector_content_h();
+            let visible_h = inspector::last_inspector_visible_h();
+            hero.store.set_panel_content_h(ids::INSP_PANEL, content_h);
+            hero.store.set_panel_visible_h(ids::INSP_PANEL, visible_h);
+            let max_scroll = (content_h - visible_h).max(0.0);
+            let cur = hero.store.panel_scroll(ids::INSP_PANEL);
+            if cur > max_scroll {
+                hero.store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
+            }
+        } else if panel_id == ids::HIER_PANEL && hero.hierarchy_visible {
+            paint_hierarchy(
+                &layout,
+                scene,
+                text_system,
+                hero.theme,
+                &mut hero.hit_index,
+                &hero.store,
+            );
+            let content_h = hierarchy::last_hierarchy_content_h();
+            hero.store.set_panel_content_h(ids::HIER_PANEL, content_h);
+            let visible_h = (layout.hierarchy.h - 60.0).max(0.0);
+            let max_scroll = (content_h - visible_h).max(0.0);
+            let cur = hero.store.panel_scroll(ids::HIER_PANEL);
+            if cur > max_scroll {
+                hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
+            }
+        } else if panel_id == ids::INSP_BLENDER_PICKER && hero.store.picker_target().is_some() {
+            // The picker paint is a no-op if `picker_target` isn't
+            // set (early-out inside the demo painter); the visibility
+            // guard mirrors that so we don't waste an iteration.
+            color_picker_demo::paint_blender_picker_demo(
+                &layout,
+                scene,
+                text_system,
+                hero.theme,
+                &mut hero.hit_index,
+                &hero.store,
+            );
+        }
+    }
+    if hero.stats_visible {
+        paint_bottom_hud(&layout, scene, text_system, hero.theme);
+    }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);
     // Context menu overlay — last so the floating menu sits above

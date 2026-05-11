@@ -653,6 +653,8 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::CTX_MENU_SHOW_STATS,
         ids::CTX_MENU_SAVE,
         ids::CTX_MENU_SAVE_AS,
+        ids::CTX_MENU_OPEN_PROJECT,
+        ids::CTX_MENU_IMPORT,
         ids::CTX_SCENE_ROW_0,
         ids::CTX_SCENE_ROW_1,
         ids::CTX_SCENE_ROW_2,

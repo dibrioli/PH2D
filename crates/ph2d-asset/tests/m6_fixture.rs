@@ -120,32 +120,48 @@ fn watcher_emits_changed_event_on_modification() {
 
     // Drain events for up to 5 s. Some editor/save patterns produce
     // multiple events per write — collect them all.
+    //
+    // CRITICAL on macOS: FSEvents can coalesce + dispatch the first
+    // Modify event BEFORE the in-flight `std::fs::write` finishes
+    // flushing to disk. The watcher then reads the file mid-write
+    // and emits a Changed event whose hash matches the OLD content.
+    // A subsequent event with the new content arrives 10-300 ms
+    // later. Don't break on the first Changed — wait until we see
+    // one whose id has actually changed, or the deadline expires.
     let mut events = Vec::new();
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     while std::time::Instant::now() < deadline {
         let batch = watcher.drain_blocking(Duration::from_millis(250));
         events.extend(batch);
-        // Continue until we see a Changed event for our file
-        // (matched by canonical filename, since macOS reports
-        // /private/var/folders/... while tmp.path() is /var/folders/...).
-        if events.iter().any(|e| match e {
-            ReloadEvent::Changed { path: p, .. } => p.file_name() == path.file_name(),
+        let saw_new_id = events.iter().any(|e| match e {
+            ReloadEvent::Changed { path: p, id, .. } => {
+                p.file_name() == path.file_name() && *id != initial_id
+            }
             _ => false,
-        }) {
+        });
+        if saw_new_id {
             break;
         }
     }
     assert!(!events.is_empty(), "watcher must report the change");
 
-    let mut new_id_seen: Option<ph2d_asset::AssetId> = None;
-    for ev in &events {
-        if let ReloadEvent::Changed { path: p, id, .. } = ev
-            && p.file_name() == path.file_name()
-        {
-            new_id_seen = Some(*id);
-        }
-    }
-    let new_id = new_id_seen.expect("Changed event for our file");
+    // Pick the most recent Changed event whose id is NOT the
+    // pre-modification one — that's the watcher catching up to the
+    // committed write. Earlier events with the stale id are read-
+    // mid-write artifacts (see CRITICAL note above) and should be
+    // ignored, not treated as the canonical "new" state.
+    let new_id = events
+        .iter()
+        .rev()
+        .find_map(|ev| match ev {
+            ReloadEvent::Changed { path: p, id, .. }
+                if p.file_name() == path.file_name() && *id != initial_id =>
+            {
+                Some(*id)
+            }
+            _ => None,
+        })
+        .expect("Changed event with new (post-write) id");
     assert_ne!(new_id, initial_id, "content changed → id changed");
 
     db.apply_pending(events);

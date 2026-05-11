@@ -26,6 +26,10 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_SAVE,
             TopBarCluster::single("Save", IconId::Save),
         ),
+        (
+            ids::TOPBAR_OPEN,
+            TopBarCluster::single("Open", IconId::Open),
+        ),
         (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),

@@ -292,6 +292,19 @@ pub fn dispatch_pointer_with_text<'frame>(
                 });
                 return events.into_bump_slice();
             }
+            // Open chip — same anchor logic.
+            if event.button == ph2d_host::PointerButton::Primary
+                && let Some((hit_id, hit_rect)) = hit
+                && hit_id == crate::screens::hero::ids::TOPBAR_OPEN
+                && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
+            {
+                store.open_context_menu(super::ContextMenuRequest {
+                    x: hit_rect.x,
+                    y: hit_rect.y + hit_rect.h + 4.0,
+                    kind: super::ContextMenuKind::OpenMenu,
+                });
+                return events.into_bump_slice();
+            }
             // Project chip → SceneList popover (search + scenes).
             if event.button == ph2d_host::PointerButton::Primary
                 && let Some((hit_id, hit_rect)) = hit
@@ -392,6 +405,29 @@ pub fn dispatch_pointer_with_text<'frame>(
                 Some((id, _)) if is_focusable(store, id) => Some(id),
                 _ => None,
             };
+
+            // Bump the clicked panel to the top of the z-order so it
+            // paints over its siblings. Iterate the canonical panel
+            // ids and pick whichever one's published rect contains
+            // the click. The picker takes precedence because it's the
+            // only floating panel and visually overlaps the others
+            // when displayed.
+            {
+                use crate::screens::hero::ids as hero_ids;
+                const PANEL_IDS: [ph2d_a11y::NodeId; 3] = [
+                    hero_ids::INSP_BLENDER_PICKER,
+                    hero_ids::INSP_PANEL,
+                    hero_ids::HIER_PANEL,
+                ];
+                for panel_id in PANEL_IDS {
+                    if let Some(r) = store.panel_rect(panel_id)
+                        && r.contains(event.x, event.y)
+                    {
+                        store.bump_panel_z(panel_id);
+                        break;
+                    }
+                }
+            }
             let prev_focus = store.focus_id();
             if let Some(old) = prev_focus
                 && new_focus != Some(old)

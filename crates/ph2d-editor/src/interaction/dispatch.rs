@@ -87,10 +87,19 @@ pub fn dispatch_pointer_with_text<'frame>(
             // widget keeps its Pressed state regardless of where the
             // cursor went).
             // Picker drag — keep the picker stuck to the cursor.
-            if let Some((parent, down_x, down_y, off_x, off_y)) = store.blender_drag_anchor() {
-                let new_off_x = off_x + (event.x - down_x);
-                let new_off_y = off_y + (event.y - down_y);
+            // Incremental model: anchor stores the *last cursor* pos,
+            // not the down cursor. Each move applies a fresh delta to
+            // the *currently stored* offset (which paint may have
+            // clamped between frames), then re-anchors. This means a
+            // reversed drag direction moves the panel immediately —
+            // no "rubber band" of accumulated unbounded offset to
+            // drain first.
+            if let Some((parent, last_x, last_y, _off_x, _off_y)) = store.blender_drag_anchor() {
+                let (cur_off_x, cur_off_y) = store.blender_picker_offset(parent);
+                let new_off_x = cur_off_x + (event.x - last_x);
+                let new_off_y = cur_off_y + (event.y - last_y);
                 store.set_blender_picker_offset(parent, new_off_x, new_off_y);
+                store.update_blender_drag_cursor(event.x, event.y);
             }
             // Scrollbar drag — translate the cursor's y-delta into
             // a `panel_scroll` delta via `widget::scrollbar::

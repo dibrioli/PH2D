@@ -733,6 +733,15 @@ impl WidgetStore {
         self.blender_drag_anchor
     }
 
+    /// Update only the cursor coordinates in the drag anchor (used by
+    /// the incremental drag model — each move re-anchors so the next
+    /// move applies a fresh delta to the post-clamp offset).
+    pub fn update_blender_drag_cursor(&mut self, cursor_x: f32, cursor_y: f32) {
+        if let Some((parent, _, _, off_x, off_y)) = self.blender_drag_anchor {
+            self.blender_drag_anchor = Some((parent, cursor_x, cursor_y, off_x, off_y));
+        }
+    }
+
     pub fn end_blender_drag(&mut self) {
         self.blender_drag_anchor = None;
     }

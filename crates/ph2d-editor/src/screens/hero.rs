@@ -326,21 +326,56 @@ pub fn paint_hero_screen(
     // `blender_picker_offset` side-table (panel-agnostic — the
     // dispatch's BlenderHitKind::DragHandle path stores the
     // offset under the `parent` NodeId regardless of widget kind).
-    // Clamped so the drag handle stays inside the viewport (user
-    // can always grab it back).
-    let clamp_offset = |base: Rect, off: (f32, f32), viewport: Rect| -> Rect {
+    //
+    // Two clamps:
+    //   1. Horizontal: keep ≥60px of the panel inside the viewport
+    //      so the user can always grab the drag bar back.
+    //   2. Vertical: the panel's top stays inside the viewport and
+    //      its bottom never crosses `viewport.bottom - 8`. When the
+    //      user drags DOWN past where `base.h` fits, the panel
+    //      auto-shrinks (floor at MIN_H so the header + a row stay
+    //      visible). Dragging back up restores the natural height.
+    //
+    // The clamped offset is also written back into the store so
+    // subsequent drag-begins capture the visible offset rather than
+    // an accumulated raw value — eliminates the "rubber band" the
+    // user perceived as discrete jumps when reversing direction.
+    const MIN_H: f32 = 120.0;
+    let clamp_offset = |base: Rect, off: (f32, f32), viewport: Rect| -> (Rect, (f32, f32)) {
         let max_x = (viewport.x + viewport.w - 60.0) - base.x;
         let min_x = (viewport.x + 60.0) - (base.x + base.w);
-        let max_y = (viewport.y + viewport.h - 60.0) - base.y;
+        let max_bottom = viewport.y + viewport.h - 8.0;
         let min_y = viewport.y - base.y;
+        let max_y = (max_bottom - MIN_H) - base.y;
         let dx = off.0.clamp(min_x, max_x);
-        let dy = off.1.clamp(min_y, max_y);
-        Rect::new(base.x + dx, base.y + dy, base.w, base.h)
+        let dy = off.1.clamp(min_y.min(max_y), max_y);
+        let new_y = base.y + dy;
+        let natural_bottom = new_y + base.h;
+        let new_h = if natural_bottom > max_bottom {
+            (max_bottom - new_y).max(MIN_H)
+        } else {
+            base.h
+        };
+        (Rect::new(base.x + dx, new_y, base.w, new_h), (dx, dy))
     };
     let insp_off = hero.store.blender_picker_offset(ids::INSP_PANEL);
     let hier_off = hero.store.blender_picker_offset(ids::HIER_PANEL);
-    layout.inspector = clamp_offset(layout.inspector, insp_off, viewport);
-    layout.hierarchy = clamp_offset(layout.hierarchy, hier_off, viewport);
+    let (insp_rect, insp_clamped) = clamp_offset(layout.inspector, insp_off, viewport);
+    let (hier_rect, hier_clamped) = clamp_offset(layout.hierarchy, hier_off, viewport);
+    layout.inspector = insp_rect;
+    layout.hierarchy = hier_rect;
+    if (insp_clamped.0 - insp_off.0).abs() > f32::EPSILON
+        || (insp_clamped.1 - insp_off.1).abs() > f32::EPSILON
+    {
+        hero.store
+            .set_blender_picker_offset(ids::INSP_PANEL, insp_clamped.0, insp_clamped.1);
+    }
+    if (hier_clamped.0 - hier_off.0).abs() > f32::EPSILON
+        || (hier_clamped.1 - hier_off.1).abs() > f32::EPSILON
+    {
+        hero.store
+            .set_blender_picker_offset(ids::HIER_PANEL, hier_clamped.0, hier_clamped.1);
+    }
     hero.hit_index.clear_for_frame();
 
     paint_canvas_bg(&layout, scene, hero.theme);

@@ -27,20 +27,10 @@ pub fn populate(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
-    let entities = [
-        ids::HIER_PLAYER,
-        ids::HIER_SPRITE_IDLE,
-        ids::HIER_COLLIDER_BOX,
-        ids::HIER_SCRIPT_PLAYER,
-        ids::HIER_RIGIDBODY,
-        ids::HIER_TILEMAP_GROUND,
-        ids::HIER_TILEMAP_DECOR,
-        ids::HIER_SLIME_01,
-        ids::HIER_SLIME_02,
-        ids::HIER_TRIGGER_ZONE_A,
-        ids::HIER_AMBIENT_LIGHT,
-        ids::HIER_MAIN_CAMERA,
-    ];
+    // Placeholder: only Scene Root is registered. The pilot project
+    // populates real entities and reuses the reserved HIER_* ids
+    // (see screens/hero/ids.rs).
+    let entities = [ids::HIER_PLAYER];
     for id in entities {
         store.register(id, InteractiveState::Plain);
     }

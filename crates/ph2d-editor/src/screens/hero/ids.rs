@@ -269,21 +269,13 @@ pub const HIER_TRIGGER_ZONE_A: NodeId = NodeId(409);
 pub const HIER_AMBIENT_LIGHT: NodeId = NodeId(410);
 pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
 
-/// Map fixture entity name to canonical hierarchy `NodeId`.
+/// Map fixture entity name to canonical hierarchy `NodeId`. The
+/// placeholder fixture currently exposes only "Scene Root"; the
+/// other `HIER_*` ids are kept reserved for the pilot project's
+/// real entities.
 pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {
     Some(match name {
-        "Player" => HIER_PLAYER,
-        "Sprite_idle" => HIER_SPRITE_IDLE,
-        "Collider_box" => HIER_COLLIDER_BOX,
-        "Script_player" => HIER_SCRIPT_PLAYER,
-        "RigidBody" => HIER_RIGIDBODY,
-        "Tilemap_ground" => HIER_TILEMAP_GROUND,
-        "Tilemap_decor" => HIER_TILEMAP_DECOR,
-        "Slime_01" => HIER_SLIME_01,
-        "Slime_02" => HIER_SLIME_02,
-        "Trigger_zoneA" => HIER_TRIGGER_ZONE_A,
-        "Ambient_light" => HIER_AMBIENT_LIGHT,
-        "Main_Camera" => HIER_MAIN_CAMERA,
+        "Scene Root" => HIER_PLAYER,
         _ => return None,
     })
 }
@@ -292,35 +284,13 @@ pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {
 /// of [`hierarchy_id`].
 pub(crate) fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
     Some(match id {
-        x if x == HIER_PLAYER => "Player",
-        x if x == HIER_SPRITE_IDLE => "Sprite_idle",
-        x if x == HIER_COLLIDER_BOX => "Collider_box",
-        x if x == HIER_SCRIPT_PLAYER => "Script_player",
-        x if x == HIER_RIGIDBODY => "RigidBody",
-        x if x == HIER_TILEMAP_GROUND => "Tilemap_ground",
-        x if x == HIER_TILEMAP_DECOR => "Tilemap_decor",
-        x if x == HIER_SLIME_01 => "Slime_01",
-        x if x == HIER_SLIME_02 => "Slime_02",
-        x if x == HIER_TRIGGER_ZONE_A => "Trigger_zoneA",
-        x if x == HIER_AMBIENT_LIGHT => "Ambient_light",
-        x if x == HIER_MAIN_CAMERA => "Main_Camera",
+        x if x == HIER_PLAYER => "Scene Root",
         _ => return None,
     })
 }
 
-/// Best-effort 3-letter "kind" badge for the selection tag. Mirrors
-/// the badges shown by the hierarchy row painter (PRF / UNI / OUT /
-/// CAM).
-pub(crate) fn hierarchy_kind_for_label(label: &str) -> &'static str {
-    match label {
-        "Player" => "OUT",
-        "Sprite_idle" => "SPR",
-        "Collider_box" | "Script_player" | "RigidBody" => "UNI",
-        "Slime_01" | "Slime_02" => "PRF",
-        "Main_Camera" => "CAM",
-        "Tilemap_ground" | "Tilemap_decor" => "TIL",
-        "Trigger_zoneA" => "TRG",
-        "Ambient_light" => "LGT",
-        _ => "ENT",
-    }
+/// Best-effort 3-letter "kind" badge for the selection tag.
+/// Placeholder fixture has a single Scene Root; pilot replaces.
+pub(crate) fn hierarchy_kind_for_label(_label: &str) -> &'static str {
+    "ENT"
 }

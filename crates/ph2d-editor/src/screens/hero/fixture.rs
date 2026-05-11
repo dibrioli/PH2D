@@ -8,13 +8,11 @@
 use super::HeroSelection;
 use crate::icons::IconId;
 
-/// "Player · PRF · 124, −48" — the default selected entity.
+/// Default selection is empty — the working hero starts without any
+/// entity selected. The pilot project wires real scene state and
+/// updates this via `HeroScreen::selection`.
 pub fn default_selection() -> HeroSelection {
-    HeroSelection {
-        label: String::from("Player"),
-        kind: String::from("PRF"),
-        world_pos: (124.0, -48.0),
-    }
+    HeroSelection::default()
 }
 
 /// Top-bar pill clusters in left-to-right order, paired with the
@@ -83,133 +81,23 @@ pub struct HierarchyEntity {
     pub muted: bool,
 }
 
-/// Mockup hierarchy listing — Player + 4 children + 7 root entities.
+/// Placeholder hierarchy until the pilot project wires real entities.
+/// Returns a single `Scene Root` row so the panel chrome stays
+/// readable. The pilot replaces this with a live ECS query.
 pub fn hierarchy() -> Vec<HierarchyEntity> {
-    vec![
-        HierarchyEntity {
-            name: "Player".into(),
-            icon: IconId::Cube,
-            indent: 0,
-            badge: Some("OUT".into()),
-            swatch: None,
-            visible: true,
-            selected: true,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Sprite_idle".into(),
-            icon: IconId::Sprite,
-            indent: 1,
-            badge: None,
-            swatch: Some([220, 90, 200, 255]),
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Collider_box".into(),
-            icon: IconId::Collider,
-            indent: 1,
-            badge: Some("UNI".into()),
-            swatch: Some([100, 130, 220, 255]),
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Script_player".into(),
-            icon: IconId::Script,
-            indent: 1,
-            badge: Some("UNI".into()),
-            swatch: Some([220, 200, 80, 255]),
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "RigidBody".into(),
-            icon: IconId::Rigid,
-            indent: 1,
-            badge: Some("UNI".into()),
-            swatch: Some([130, 200, 130, 255]),
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Tilemap_ground".into(),
-            icon: IconId::Grid,
-            indent: 0,
-            badge: None,
-            swatch: None,
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Tilemap_decor".into(),
-            icon: IconId::Grid,
-            indent: 0,
-            badge: None,
-            swatch: None,
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Slime_01".into(),
-            icon: IconId::Cube,
-            indent: 0,
-            badge: Some("PRF".into()),
-            swatch: None,
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Slime_02".into(),
-            icon: IconId::Cube,
-            indent: 0,
-            badge: Some("PRF".into()),
-            swatch: None,
-            visible: false,
-            selected: false,
-            muted: true,
-        },
-        HierarchyEntity {
-            name: "Trigger_zoneA".into(),
-            icon: IconId::Bolt,
-            indent: 0,
-            badge: None,
-            swatch: None,
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Ambient_light".into(),
-            icon: IconId::Light,
-            indent: 0,
-            badge: None,
-            swatch: None,
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-        HierarchyEntity {
-            name: "Main_Camera".into(),
-            icon: IconId::Camera,
-            indent: 0,
-            badge: Some("CAM".into()),
-            swatch: None,
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-    ]
+    vec![HierarchyEntity {
+        name: "Scene Root".into(),
+        icon: IconId::Folder,
+        indent: 0,
+        badge: None,
+        swatch: None,
+        visible: true,
+        selected: false,
+        muted: false,
+    }]
 }
 
 /// `(entities_count, components_count)` shown in the Hierarchy header.
 pub fn hierarchy_counts() -> (u32, u32) {
-    (12, 8)
+    (1, 0)
 }

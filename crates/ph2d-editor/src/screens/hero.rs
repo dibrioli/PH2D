@@ -750,12 +750,15 @@ mod tests {
 
     #[test]
     fn hero_apply_event_hierarchy_click_changes_selection() {
+        // Placeholder fixture only registers Scene Root; the reserved
+        // HIER_* ids return None from `hierarchy_label_for_id` until
+        // the pilot project wires real entities.
         let mut hero = HeroScreen::new(NodeId(1));
-        let consumed = hero.apply_event(WidgetEvent::Click(ids::HIER_SLIME_01));
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::HIER_PLAYER));
         assert!(consumed);
         assert_eq!(
             hero.selection.as_ref().map(|s| s.label.as_str()),
-            Some("Slime_01")
+            Some("Scene Root")
         );
     }
 

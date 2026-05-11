@@ -1,22 +1,24 @@
-//! Inspector painter — gallery of canonical widget samples.
+//! Inspector painter.
 //!
-//! The placeholder fixture (fake Player params, Behavior section)
-//! was retired in the showcase teardown commit. This panel now hosts
-//! exactly one instance of each widget in [`crate::widget`], wired
-//! through the [`WidgetStore`] so the user can interact with samples
-//! and visually verify the standardized chrome.
+//! Header: panel title "Inspector" + a sub-row showing the
+//! currently-selected entity's name (or "(none)").
+//!
+//! Body: placeholder until the pilot project wires real per-component
+//! editors. The 10-section widget showcase that used to live here
+//! (Inputs / Slider / Switches / Lists / Vector / Status / Color /
+//! Actions / Identity / Card + notes) is preserved verbatim in the
+//! frozen reference snapshot at `screens/hero_ref/` and reachable
+//! via `reference.command`. The painters / helpers / NodeIds for
+//! that showcase are kept in this file under `#[allow(dead_code)]`
+//! so the canonical wiring is one rebase away if a future shell
+//! wants to reintroduce a widget gallery.
 //!
 //! The floating [`crate::widget::BlenderColorPicker`] (handled by
 //! [`super::color_picker_demo`]) is not duplicated here — its
 //! retained state still lives on this panel under
 //! [`ids::INSP_BLENDER_PICKER`], which is registered in
 //! [`populate`].
-//!
-//! Layout: every section uses [`crate::widget::SectionHeader`] as a
-//! divider; rows below are widget samples padded inside the panel
-//! body. Body is wrapped in a `push_clip` so wheel-scroll can shift
-//! the entire content cursor up/down without painting outside the
-//! panel chrome.
+#![allow(dead_code)]
 
 use super::HeroLayout;
 use super::HeroSelection;
@@ -920,32 +922,33 @@ pub fn paint_inspector(
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
 
-    // Header: title + subtitle + divider line.
-    let title = selection
-        .map(|s| s.label.as_str())
-        .unwrap_or("(no selection)");
+    // Header: panel title "Inspector" + a sub-field showing the
+    // currently-selected entity's name (or "(none)" when no entity
+    // is selected). The pilot project's selection wiring drives the
+    // sub-field; the panel title is constant.
     let title_y = rect.y + 18.0;
     paint_text(
         text_system,
         scene,
-        title,
+        "Inspector",
         rect.x + PANEL_HEAD_PAD,
         title_y,
         TypeToken::Md.px(),
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text1, theme),
     );
+    let selected_label = selection.map(|s| s.label.as_str()).unwrap_or("(none)");
     paint_text(
         text_system,
         scene,
-        "Widget samples",
+        selected_label,
         rect.x + PANEL_HEAD_PAD,
         title_y + TypeToken::Md.px() + 4.0,
-        TypeToken::Xs.px(),
+        TypeToken::Sm.px(),
         rect.w - PANEL_HEAD_PAD * 2.0,
-        resolve(ColorToken::Text3, theme),
+        resolve(ColorToken::Text2, theme),
     );
-    let div_y = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 16.0;
+    let div_y = title_y + TypeToken::Md.px() + TypeToken::Sm.px() + 16.0;
     let div = Rect::new(
         rect.x + PANEL_HEAD_PAD,
         div_y,
@@ -977,133 +980,34 @@ pub fn paint_inspector(
     let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
     let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
     let body_top_y = content_top - scroll_y + 4.0;
-    let mut y = body_top_y;
-    // Capture each section's body-relative top y so the right-click
-    // dispatch can compute `before_section` for new notes (the user
-    // wants notes inserted ABOVE the section the right-click landed
-    // in, not at the bottom).
-    let mut section_tops_y: Vec<f32> = Vec::with_capacity(SECTION_IDS.len());
+    let y;
+    // Body: placeholder until the pilot project wires real component
+    // editors. The showcase that used to live here (10 sections of
+    // widget samples + notes) is preserved in the frozen reference
+    // snapshot (`screens/hero_ref/`) — accessible via
+    // `reference.command`. The working hero now reflects the actual
+    // editor's job: inspect properties of the currently-selected
+    // entity. No selection → instructional prompt.
+    let section_tops_y: Vec<f32> = Vec::new();
     LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + 4.0));
-
-    // Inline the section sequence so each section gets a colored
-    // separator + inter-section gap immediately after. Closures over
-    // `&mut store` would conflict with the post-loop write to
-    // `set_last_inspector_content_h` and `panel_max_scroll`.
-    // Walk notes once, partitioning by `before_section`. A note
-    // with `before_section: Some(i)` paints just before
-    // `SECTION_IDS[i]`; notes with `None` queue for the tail.
-    // Each note also carries its original index in the panel's
-    // notes list (the "slot") so the painter can register the
-    // right `NOTE_SLOT_IDS[slot]` hit — which is what the
-    // right-click dispatch then maps to `note_index` on the
-    // `NoteBackground` context menu.
-    let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, &NoteData)>; 10] = Default::default();
-    let mut trailing_notes: Vec<(usize, &NoteData)> = Vec::new();
-    for (idx, note) in all_notes.iter().enumerate() {
-        match note.before_section {
-            Some(i) if (i as usize) < notes_per_section.len() => {
-                notes_per_section[i as usize].push((idx, note));
-            }
-            _ => trailing_notes.push((idx, note)),
-        }
-    }
-    let mut section_idx: usize = 0;
-    macro_rules! paint_pending_notes {
-        () => {
-            for (slot, note) in &notes_per_section[section_idx] {
-                paint_one_note(
-                    scene,
-                    text_system,
-                    hit_index,
-                    store,
-                    inner_x,
-                    inner_w,
-                    &mut y,
-                    note,
-                    *slot,
-                );
-            }
-        };
-    }
-    macro_rules! section {
-        ($f:ident, $section_id:expr) => {
-            paint_pending_notes!();
-            let y_before = y;
-            push_section_top_y(&mut section_tops_y, y_before - body_top_y);
-            let new_y = $f(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            );
-            // Outline: when the user picked an outline color via the
-            // right-click menu on this section header, stroke a
-            // colored rect spanning the header + body before the
-            // separator. Indexes the 5-color highlighter palette.
-            if let Some(color_idx) = store.section_outline_color($section_id) {
-                let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
-                    [color_idx.min(4) as usize];
-                // Inflate the block by 4 px so the outline doesn't
-                // hug the section content — gives the highlight a
-                // breathing margin (user's "outline precisa de
-                // padding"). The stroke sits OUTSIDE the section's
-                // hit rects so it never intercepts clicks.
-                let pad = 4.0_f32;
-                let block = Rect::new(
-                    inner_x - pad,
-                    y_before - pad,
-                    inner_w + pad * 2.0,
-                    (new_y - y_before + pad * 2.0).max(0.0),
-                );
-                let outline_color =
-                    ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
-                crate::paint::stroke_rounded_rect(
-                    scene,
-                    block,
-                    Radius::Md.px(),
-                    2.0,
-                    outline_color,
-                );
-            }
-            y = paint_section_separator(scene, theme, inner_x, inner_w, new_y);
-            // The last increment is unused (no section after Card),
-            // but bumping unconditionally keeps the loop body
-            // uniform. Allow the warning here.
-            #[allow(unused_assignments)]
-            {
-                section_idx += 1;
-            }
-        };
-    }
-    section!(paint_inputs_section, ids::INSP_SECTION_INPUTS);
-    section!(paint_slider_section, ids::INSP_SECTION_SLIDER);
-    section!(paint_switches_section, ids::INSP_SECTION_SWITCHES);
-    section!(paint_lists_section, ids::INSP_SECTION_LISTS);
-    section!(paint_vector_section, ids::INSP_SECTION_VECTOR);
-    section!(paint_status_section, ids::INSP_SECTION_STATUS);
-    section!(paint_color_section, ids::INSP_SECTION_COLOR);
-    section!(paint_actions_section, ids::INSP_SECTION_ACTIONS);
-    section!(paint_identity_section, ids::INSP_SECTION_IDENTITY);
-    section!(paint_card_section, ids::INSP_SECTION_CARD);
-    // Trailing notes (those without an explicit anchor).
-    for (slot, note) in &trailing_notes {
-        paint_one_note(
-            scene,
-            text_system,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            &mut y,
-            note,
-            *slot,
-        );
-    }
+    let placeholder = if selection.is_some() {
+        "No properties yet for the selected entity."
+    } else {
+        "Select an entity in the Hierarchy to inspect its properties."
+    };
+    let line_h = TypeToken::Sm.px() + 4.0;
+    let center_y = content_top + (content_bottom - content_top) * 0.5 - line_h * 0.5;
+    paint_text(
+        text_system,
+        scene,
+        placeholder,
+        inner_x + 8.0,
+        center_y,
+        TypeToken::Sm.px(),
+        (inner_w - 16.0).max(80.0),
+        resolve(ColorToken::Text3, theme),
+    );
+    y = body_top_y + 4.0;
 
     // Publish the total content height + the EXACT visible body
     // height for the wheel dispatch + hero clamp. visible_h must

@@ -314,21 +314,30 @@ impl ColorToken {
 
     /// `forge-sdf` (default): dark + magenta accent.
     fn resolve_forge_sdf(self) -> Color {
+        // Darker greys (user request "mais contraste, cinzas mais
+        // escuros"). Lightness values dropped ~0.04 across every
+        // Bg* + BgElev layer so the chrome reads as a noticeably
+        // deeper neutral while keeping the relative ordering
+        // (Bg0 < Bg1 < Bg2 < Bg3 < BgElev < Border).
         match self {
-            Self::Bg0 => Color::from_oklch(0.135, 0.006, 285.0),
-            Self::Bg1 => Color::from_oklch(0.170, 0.007, 285.0),
-            Self::Bg2 => Color::from_oklch(0.205, 0.008, 285.0),
-            Self::Bg3 => Color::from_oklch(0.250, 0.010, 285.0),
-            Self::BgElev => Color::from_oklch_alpha(0.220, 0.008, 285.0, 0.86),
-            Self::BgScrim => Color::from_oklch_alpha(0.080, 0.005, 285.0, 0.55),
+            Self::Bg0 => Color::from_oklch(0.090, 0.006, 285.0),
+            Self::Bg1 => Color::from_oklch(0.125, 0.007, 285.0),
+            Self::Bg2 => Color::from_oklch(0.160, 0.008, 285.0),
+            Self::Bg3 => Color::from_oklch(0.200, 0.010, 285.0),
+            Self::BgElev => Color::from_oklch_alpha(0.175, 0.008, 285.0, 0.96),
+            Self::BgScrim => Color::from_oklch_alpha(0.060, 0.005, 285.0, 0.60),
 
-            Self::Border => Color::from_oklch(0.295, 0.011, 285.0),
-            Self::BorderStrong => Color::from_oklch(0.500, 0.018, 285.0),
-            Self::BorderEmph => Color::from_oklch(0.560, 0.020, 285.0),
+            // Borders slightly lighter relative to the new dark bg
+            // so the 1 px outlines stay visible.
+            Self::Border => Color::from_oklch(0.270, 0.011, 285.0),
+            Self::BorderStrong => Color::from_oklch(0.480, 0.018, 285.0),
+            Self::BorderEmph => Color::from_oklch(0.550, 0.020, 285.0),
 
-            Self::Text1 => Color::from_oklch(0.965, 0.004, 285.0),
-            Self::Text2 => Color::from_oklch(0.745, 0.007, 285.0),
-            Self::Text3 => Color::from_oklch(0.560, 0.009, 285.0),
+            // Text bumped to pure white for stronger contrast vs
+            // the deeper bg layers.
+            Self::Text1 => Color::from_oklch(0.980, 0.004, 285.0),
+            Self::Text2 => Color::from_oklch(0.770, 0.007, 285.0),
+            Self::Text3 => Color::from_oklch(0.580, 0.009, 285.0),
             Self::TextDisabled => Color::from_oklch(0.420, 0.008, 285.0),
 
             Self::Accent => Color::from_oklch(0.740, 0.160, 340.0),

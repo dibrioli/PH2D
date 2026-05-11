@@ -292,10 +292,39 @@ pub fn dispatch_pointer_with_text<'frame>(
                 });
                 return events.into_bump_slice();
             }
+            // Project chip → SceneList popover (search + scenes).
+            if event.button == ph2d_host::PointerButton::Primary
+                && let Some((hit_id, hit_rect)) = hit
+                && hit_id == crate::screens::hero::ids::TOPBAR_PROJECT
+                && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
+            {
+                store.open_context_menu(super::ContextMenuRequest {
+                    x: hit_rect.x,
+                    y: hit_rect.y + hit_rect.h + 4.0,
+                    kind: super::ContextMenuKind::SceneList,
+                });
+                return events.into_bump_slice();
+            }
             // Primary click elsewhere closes any open menu before
-            // running the regular focus/click path.
+            // running the regular focus/click path. The SceneList
+            // popover hosts a TextInput (its search field) — clicks
+            // on that input must NOT close the menu so the user can
+            // type into it. Same for any scene row (the click is
+            // routed via apply_event which closes the menu after
+            // updating the chip).
             if store.context_menu().is_some() {
-                store.close_context_menu();
+                let hit_id = hit.map(|(id, _)| id);
+                let inside_scene_list = matches!(
+                    store.context_menu().map(|r| r.kind),
+                    Some(super::ContextMenuKind::SceneList)
+                ) && matches!(
+                    hit_id,
+                    Some(id) if id == crate::screens::hero::ids::CTX_SCENE_SEARCH
+                        || crate::screens::hero::ids::CTX_SCENE_ROWS.contains(&id)
+                );
+                if !inside_scene_list {
+                    store.close_context_menu();
+                }
             }
 
             // Close the global color picker when the click lands

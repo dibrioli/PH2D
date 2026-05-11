@@ -327,6 +327,35 @@ impl HeroScreen {
                 self.store.close_context_menu();
                 return true;
             }
+            // Scene row click in the SceneList popover → set the
+            // chip's name and close the menu. We re-filter the
+            // scene list with the same query the painter used so
+            // index→name maps correctly.
+            if let Some(slot) = ids::CTX_SCENE_ROWS.iter().position(|x| *x == id) {
+                let query = self
+                    .store
+                    .get(ids::CTX_SCENE_SEARCH)
+                    .and_then(|s| {
+                        if let crate::interaction::InteractiveState::TextInput { text, .. } = s {
+                            Some(text.as_str())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or("");
+                let lower_q = query.to_lowercase();
+                let visible: Vec<&'static str> = fixture::scenes()
+                    .iter()
+                    .copied()
+                    .filter(|s| lower_q.is_empty() || s.to_lowercase().contains(&lower_q))
+                    .take(ids::CTX_SCENE_ROWS.len())
+                    .collect();
+                if let Some(name) = visible.get(slot) {
+                    self.store.set_current_scene_name(*name);
+                }
+                self.store.close_context_menu();
+                return true;
+            }
         }
         if topbar::apply_event(&mut self.store, event) {
             return true;
@@ -737,6 +766,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     fn up(x: f32, y: f32) -> PointerEvent {
         PointerEvent {
             x,

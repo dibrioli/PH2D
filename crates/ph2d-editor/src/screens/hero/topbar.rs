@@ -38,6 +38,19 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Search input for the project-chip Scene List popover. Lives
+    // here so opening the menu doesn't have to allocate state on
+    // demand — its buffer is just filtered against the scene list
+    // at paint time.
+    store.register(
+        ids::CTX_SCENE_SEARCH,
+        InteractiveState::TextInput {
+            state: crate::widget::TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
     // Seed the generic tooltip side-table. Previously these strings
     // lived only in `tooltip_for(id)` and the hover painter matched
     // ids directly; now every widget can register its own tooltip
@@ -286,8 +299,11 @@ fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Project { name } => {
-            // Phase 3 polish: replace the folder glyph with an
-            // Avatar carrying the project owner's initial.
+            // Project chip is the entry-point for the SceneList
+            // popover (search + scene rows). Register the whole
+            // cluster as a clickable hit; dispatch opens the menu
+            // on Primary Down.
+            hit_index.register(id, rect);
             let avatar_size = 22.0_f32;
             let avatar_rect = Rect::new(
                 rect.x + pad_x,
@@ -297,12 +313,20 @@ fn paint_top_bar_cluster(
             );
             let av = Avatar::new(NodeId(0), "Enio", 'E').shape(AvatarShape::Circle);
             paint_avatar(&av, avatar_rect, scene, text_system, theme);
+            // Prefer the store's current scene name (mutated by
+            // SceneList row clicks); fall back to the fixture name.
+            let store_name = store.current_scene_name();
+            let display = if store_name.is_empty() {
+                name.as_str()
+            } else {
+                store_name
+            };
             let name_x = avatar_rect.x + avatar_size + Spacing::Md.px();
             let name_y = rect.y + (rect.h - font) * 0.5;
             paint_text(
                 text_system,
                 scene,
-                name,
+                display,
                 name_x,
                 name_y,
                 font,

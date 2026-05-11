@@ -980,7 +980,6 @@ pub fn paint_inspector(
     let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
     let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
     let body_top_y = content_top - scroll_y + 4.0;
-    let y;
     // Body: placeholder until the pilot project wires real component
     // editors. The showcase that used to live here (10 sections of
     // widget samples + notes) is preserved in the frozen reference
@@ -1007,7 +1006,7 @@ pub fn paint_inspector(
         (inner_w - 16.0).max(80.0),
         resolve(ColorToken::Text3, theme),
     );
-    y = body_top_y + 4.0;
+    let y = body_top_y + 4.0;
 
     // Publish the total content height + the EXACT visible body
     // height for the wheel dispatch + hero clamp. visible_h must

@@ -283,6 +283,9 @@ pub struct WidgetStore {
     /// widget; shell reads the OS clipboard and calls back into
     /// `apply_clipboard_paste` with the text.
     pending_clipboard_paste: Option<NodeId>,
+    /// Currently-loaded scene name shown on the TopBar project chip.
+    /// Mutated by `ContextMenuKind::SceneList` row clicks.
+    current_scene_name: String,
     /// Eyedropper pending: when Some(parent), the next pointer Down
     /// (anywhere except on the eyedropper button itself) is intercepted
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
@@ -477,6 +480,10 @@ pub enum ContextMenuKind {
     ThemeSelector,
     /// Clicked the TOPBAR Save chip. Menu offers Save + Save As.
     SaveMenu,
+    /// Clicked the TOPBAR Project chip. Menu offers a search input
+    /// plus a filtered list of scene names; selecting a row updates
+    /// the chip's label via `WidgetStore::current_scene_name`.
+    SceneList,
 }
 
 impl WidgetStore {
@@ -504,6 +511,7 @@ impl WidgetStore {
             panel_resize_anchor: None,
             pending_clipboard_copy: None,
             pending_clipboard_paste: None,
+            current_scene_name: String::from("Level_01"),
             eyedropper_pending: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
@@ -831,6 +839,14 @@ impl WidgetStore {
 
     pub fn set_clipboard_paste_request(&mut self, id: NodeId) {
         self.pending_clipboard_paste = Some(id);
+    }
+
+    pub fn current_scene_name(&self) -> &str {
+        &self.current_scene_name
+    }
+
+    pub fn set_current_scene_name(&mut self, name: impl Into<String>) {
+        self.current_scene_name = name.into();
     }
 
     pub fn eyedropper_pending(&self) -> Option<NodeId> {

@@ -194,6 +194,26 @@ pub const CTX_MENU_MIRROR_UI: NodeId = NodeId(917);
 // Save-button context menu (Save / Save As).
 pub const CTX_MENU_SAVE: NodeId = NodeId(920);
 pub const CTX_MENU_SAVE_AS: NodeId = NodeId(921);
+// Project-chip Scene List popover (search input + up to 8 result rows).
+pub const CTX_SCENE_SEARCH: NodeId = NodeId(930);
+pub const CTX_SCENE_ROW_0: NodeId = NodeId(931);
+pub const CTX_SCENE_ROW_1: NodeId = NodeId(932);
+pub const CTX_SCENE_ROW_2: NodeId = NodeId(933);
+pub const CTX_SCENE_ROW_3: NodeId = NodeId(934);
+pub const CTX_SCENE_ROW_4: NodeId = NodeId(935);
+pub const CTX_SCENE_ROW_5: NodeId = NodeId(936);
+pub const CTX_SCENE_ROW_6: NodeId = NodeId(937);
+pub const CTX_SCENE_ROW_7: NodeId = NodeId(938);
+pub const CTX_SCENE_ROWS: [NodeId; 8] = [
+    CTX_SCENE_ROW_0,
+    CTX_SCENE_ROW_1,
+    CTX_SCENE_ROW_2,
+    CTX_SCENE_ROW_3,
+    CTX_SCENE_ROW_4,
+    CTX_SCENE_ROW_5,
+    CTX_SCENE_ROW_6,
+    CTX_SCENE_ROW_7,
+];
 /// Floating `BlenderColorPicker` parent id. The picker is painted
 /// over the canvas (not inside the Inspector) — the historical
 /// `INSP_` prefix is kept to avoid churning every side-table key.

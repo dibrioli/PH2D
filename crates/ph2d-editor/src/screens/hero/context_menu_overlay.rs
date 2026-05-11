@@ -10,10 +10,12 @@
 //!   - [`ContextMenuKind::SectionOutline`] — 6 items: "No outline" +
 //!     5 highlighter colors (yellow / pink / green / blue / orange).
 
+use super::fixture;
 use super::ids;
 use crate::icons::IconId;
-use crate::interaction::{ContextMenuKind, HitIndex, WidgetStore};
+use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::widget::{TextInput, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -106,7 +108,16 @@ pub fn paint_context_menu_overlay(
                 None,
             ),
         ],
+        // The SceneList kind is rendered by its dedicated branch
+        // below — `items` stays empty so the simple-row loop is
+        // skipped.
+        ContextMenuKind::SceneList => &[],
     };
+
+    if matches!(req.kind, ContextMenuKind::SceneList) {
+        paint_scene_list(req, scene, text_system, theme, hit_index, store);
+        return;
+    }
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
     let rect = Rect::new(req.x, req.y, MENU_W, total_h);
 
@@ -160,5 +171,140 @@ pub fn paint_context_menu_overlay(
             (r.x + r.w - text_x - pad_x).max(0.0),
             resolve(ColorToken::Text1, theme),
         );
+    }
+}
+
+/// Paint the Scene List popover.
+///
+/// Layout: TextInput search field at the top + up to 8 filtered
+/// scene rows below. The search uses the regular TextInput state at
+/// `CTX_SCENE_SEARCH` (its buffer is the filter query). Each visible
+/// result row registers a unique `CTX_SCENE_ROWS[i]` hit so the
+/// dispatch / `apply_event` chain can route the selection.
+fn paint_scene_list(
+    req: crate::interaction::ContextMenuRequest,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    let menu_w = 260.0_f32;
+    let search_h = 30.0_f32;
+    let row_h = ROW_H;
+    let max_rows = ids::CTX_SCENE_ROWS.len();
+    // Read the current search query directly from the TextInput
+    // state at CTX_SCENE_SEARCH. Empty string when the user hasn't
+    // typed anything yet.
+    let (query, caret, anchor, ti_state) = match store.get(ids::CTX_SCENE_SEARCH) {
+        Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            state,
+        }) => (text.as_str(), *caret, *selection_anchor, *state),
+        _ => ("", 0, None, crate::widget::TextInputState::Normal),
+    };
+    // Filter scenes case-insensitively. Empty query matches all.
+    let lower_q = query.to_lowercase();
+    let filtered: Vec<&'static str> = fixture::scenes()
+        .iter()
+        .copied()
+        .filter(|s| lower_q.is_empty() || s.to_lowercase().contains(&lower_q))
+        .take(max_rows)
+        .collect();
+
+    let row_count = filtered.len().max(1); // reserve at least one row for "No matches"
+    let total_h = PAD_Y * 2.0 + search_h + Spacing::Xs.px() + row_count as f32 * row_h;
+    let rect = Rect::new(req.x, req.y, menu_w, total_h);
+
+    // Floating panel surface.
+    let radius = Radius::Md.px();
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+
+    // Search input row.
+    let inner_x = rect.x + Spacing::Xs.px();
+    let inner_w = rect.w - Spacing::Xs.px() * 2.0;
+    let search_rect = Rect::new(inner_x, rect.y + PAD_Y, inner_w, search_h);
+    hit_index.register(ids::CTX_SCENE_SEARCH, search_rect);
+    let ti = TextInput::new(ids::CTX_SCENE_SEARCH, "")
+        .placeholder("Search scenes\u{2026}")
+        .state(ti_state);
+    paint_text_input_with_buffer(
+        &ti,
+        Some(query),
+        Some(caret),
+        anchor,
+        search_rect,
+        scene,
+        text_system,
+        theme,
+    );
+
+    // Result rows.
+    let rows_y0 = search_rect.y + search_rect.h + Spacing::Xs.px();
+    let pad_x = Spacing::Md.px();
+    let font = TypeToken::Sm.px();
+    if filtered.is_empty() {
+        let r = Rect::new(inner_x, rows_y0, inner_w, row_h);
+        paint_text(
+            text_system,
+            scene,
+            "No matches",
+            r.x + pad_x,
+            r.y + (r.h - font) * 0.5,
+            font,
+            r.w - pad_x * 2.0,
+            resolve(ColorToken::Text3, theme),
+        );
+    } else {
+        for (i, name) in filtered.iter().enumerate() {
+            let row_id = ids::CTX_SCENE_ROWS[i];
+            let r = Rect::new(inner_x, rows_y0 + i as f32 * row_h, inner_w, row_h);
+            hit_index.register(row_id, r);
+            if Some(row_id) == store.hot_id() {
+                fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+            }
+            // Highlight the currently-active scene with an accent
+            // bullet so the user sees "this is what's loaded".
+            let is_current = *name == store.current_scene_name();
+            let bullet_x = r.x + pad_x;
+            let bullet_y = r.y + r.h * 0.5;
+            if is_current {
+                let dot = ph2d_vector::Circle::new(
+                    ph2d_vector::Point::new(bullet_x as f64, bullet_y as f64),
+                    3.0,
+                );
+                scene.inner_mut().fill(
+                    ph2d_vector::Fill::NonZero,
+                    ph2d_vector::Affine::IDENTITY,
+                    &ph2d_vector::Brush::Solid(resolve(ColorToken::Accent, theme)),
+                    None,
+                    &dot,
+                );
+            }
+            let text_x = bullet_x + 10.0;
+            let text_y = r.y + (r.h - font) * 0.5;
+            paint_text(
+                text_system,
+                scene,
+                name,
+                text_x,
+                text_y,
+                font,
+                r.w - (text_x - r.x) - pad_x,
+                resolve(
+                    if is_current {
+                        ColorToken::Text1
+                    } else {
+                        ColorToken::Text2
+                    },
+                    theme,
+                ),
+            );
+            let _ = VelloColor::from_rgba8(0, 0, 0, 0); // keep VelloColor import in scope
+            let _ = IconId::Search; // keep IconId import in scope
+        }
     }
 }

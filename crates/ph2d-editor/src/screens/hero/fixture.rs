@@ -101,3 +101,18 @@ pub fn hierarchy() -> Vec<HierarchyEntity> {
 pub fn hierarchy_counts() -> (u32, u32) {
     (1, 0)
 }
+
+/// Placeholder scene list shown in the project-chip Scene List
+/// popover. Replaced by the pilot project's real scene index.
+pub fn scenes() -> &'static [&'static str] {
+    &[
+        "Level_01",
+        "Level_02",
+        "Level_03",
+        "Main_Menu",
+        "Title_Screen",
+        "Boss_Arena",
+        "Credits",
+        "Test_Sandbox",
+    ]
+}

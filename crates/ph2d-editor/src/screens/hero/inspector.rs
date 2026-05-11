@@ -649,6 +649,18 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::CTX_MENU_RADIUS_SHARP,
         ids::CTX_MENU_RADIUS_DEFAULT,
         ids::CTX_MENU_RADIUS_ROUND,
+        ids::CTX_MENU_MIRROR_UI,
+        ids::CTX_MENU_SHOW_STATS,
+        ids::CTX_MENU_SAVE,
+        ids::CTX_MENU_SAVE_AS,
+        ids::CTX_SCENE_ROW_0,
+        ids::CTX_SCENE_ROW_1,
+        ids::CTX_SCENE_ROW_2,
+        ids::CTX_SCENE_ROW_3,
+        ids::CTX_SCENE_ROW_4,
+        ids::CTX_SCENE_ROW_5,
+        ids::CTX_SCENE_ROW_6,
+        ids::CTX_SCENE_ROW_7,
     ] {
         store.register(id, InteractiveState::Plain);
     }

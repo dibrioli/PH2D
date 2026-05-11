@@ -360,6 +360,30 @@ impl HeroScreen {
                 self.store.set_tool_view_mode(next);
                 return true;
             }
+            // Transform tools are an EXCLUSIVE toggle group (a radio
+            // group with no off-state): clicking any one activates
+            // it and de-activates the others. Mirrors Blender / Unity
+            // convention — only one transform tool is "current".
+            const TRANSFORM_TOOLS: [ph2d_a11y::NodeId; 4] = [
+                ids::TOOL_TRANSLATE,
+                ids::TOOL_ROTATE,
+                ids::TOOL_SCALE,
+                ids::TOOL_PIVOT,
+            ];
+            if TRANSFORM_TOOLS.contains(&id) {
+                for tool_id in TRANSFORM_TOOLS {
+                    if let Some(crate::interaction::InteractiveState::Button { state }) =
+                        self.store.get_mut(tool_id)
+                    {
+                        *state = if tool_id == id {
+                            crate::widget::ButtonState::Pressed
+                        } else {
+                            crate::widget::ButtonState::Normal
+                        };
+                    }
+                }
+                return true;
+            }
             // Panel-visibility toggles in the left rail. Flip the
             // hero-level visibility flag and the button's Pressed
             // state so the rail rendering reflects the new state

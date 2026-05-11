@@ -397,9 +397,10 @@ impl IconId {
                 IconCmd::Polyline("3.3 7 12 12 20.7 7"),
                 IconCmd::Line(12.0, 22.0, 12.0, 12.0),
             ],
+            // Lucide `redo-2` — arrow head + flat curve.
             Self::Redo => &[
-                IconCmd::Path("M21 7v6h-6"),
-                IconCmd::Path("M3 17a9 9 0 0 1 15-6.7L21 13"),
+                IconCmd::Path("M15 14 L 20 9 L 15 4"),
+                IconCmd::Path("M 20 9 H 9.5 A 5.5 5.5 0 0 0 4 14.5 A 5.5 5.5 0 0 0 9.5 20 H 13"),
             ],
             Self::Reset => &[
                 IconCmd::Path("M3 12a9 9 0 1 0 3-6.7L3 8"),
@@ -481,9 +482,10 @@ impl IconId {
             Self::Trash => &[IconCmd::Path(
                 "M3 6h18M19 6l-1.5 14a2 2 0 0 1-2 1.84H8.5a2 2 0 0 1-2-1.84L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2",
             )],
+            // Lucide `undo-2` — arrow head + flat curve (mirror of redo-2).
             Self::Undo => &[
-                IconCmd::Path("M3 7v6h6"),
-                IconCmd::Path("M21 17a9 9 0 0 0-15-6.7L3 13"),
+                IconCmd::Path("M9 14 L 4 9 L 9 4"),
+                IconCmd::Path("M 4 9 H 14.5 A 5.5 5.5 0 0 1 20 14.5 A 5.5 5.5 0 0 1 14.5 20 H 11"),
             ],
             Self::Unlink => &[IconCmd::Path(
                 "M18.8 13.2L14 18a5 5 0 0 1-7-7l1-1M5.2 10.8L10 6a5 5 0 0 1 7 7l-1 1M2 2l20 20",

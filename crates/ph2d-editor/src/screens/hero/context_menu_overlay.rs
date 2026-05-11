@@ -72,6 +72,19 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_OUTLINE_3, "Blue", Some(HIGHLIGHTER_RGBA[3])),
             (ids::CTX_MENU_OUTLINE_4, "Orange", Some(HIGHLIGHTER_RGBA[4])),
         ],
+        // Topbar theme cluster click: 4 themes + 3 radius presets,
+        // separated visually. Theme entries get a small accent
+        // swatch tinted with each theme's flavor so the user can
+        // recognize them at a glance.
+        ContextMenuKind::ThemeSelector => &[
+            (ids::CTX_MENU_THEME_FORGE, "Forge SDF (dark)", Some([0xc8, 0x4b, 0xa0, 0xFF])),
+            (ids::CTX_MENU_THEME_PAINT, "Paint Studio (dark)", Some([0x4b, 0xa0, 0xc8, 0xFF])),
+            (ids::CTX_MENU_THEME_SUNSTONE, "Sunstone (light)", Some([0xf0, 0xc0, 0x4f, 0xFF])),
+            (ids::CTX_MENU_THEME_BLUEPRINT, "Blueprint (light)", Some([0x6c, 0x8e, 0xc8, 0xFF])),
+            (ids::CTX_MENU_RADIUS_SHARP, "— Corners: Sharp", None),
+            (ids::CTX_MENU_RADIUS_DEFAULT, "— Corners: Default", None),
+            (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
+        ],
     };
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
     let rect = Rect::new(req.x, req.y, MENU_W, total_h);

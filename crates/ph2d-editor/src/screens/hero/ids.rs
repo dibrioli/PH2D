@@ -163,6 +163,15 @@ pub const CTX_MENU_OUTLINE_1: NodeId = NodeId(903);
 pub const CTX_MENU_OUTLINE_2: NodeId = NodeId(904);
 pub const CTX_MENU_OUTLINE_3: NodeId = NodeId(905);
 pub const CTX_MENU_OUTLINE_4: NodeId = NodeId(906);
+// Theme selector menu items — opened by clicking TOPBAR_THEME.
+pub const CTX_MENU_THEME_FORGE: NodeId = NodeId(910);
+pub const CTX_MENU_THEME_PAINT: NodeId = NodeId(911);
+pub const CTX_MENU_THEME_SUNSTONE: NodeId = NodeId(912);
+pub const CTX_MENU_THEME_BLUEPRINT: NodeId = NodeId(913);
+// Corner-radius scale presets — also exposed via the theme menu.
+pub const CTX_MENU_RADIUS_SHARP: NodeId = NodeId(914);
+pub const CTX_MENU_RADIUS_DEFAULT: NodeId = NodeId(915);
+pub const CTX_MENU_RADIUS_ROUND: NodeId = NodeId(916);
 /// Floating `BlenderColorPicker` parent id. The picker is painted
 /// over the canvas (not inside the Inspector) — the historical
 /// `INSP_` prefix is kept to avoid churning every side-table key.

@@ -344,6 +344,12 @@ pub struct WidgetStore {
     /// drag stays linear even if the painter republishes them
     /// mid-drag.
     scrollbar_drag: Option<ScrollbarDragAnchor>,
+    /// Editor-wide corner-radius scale. `1.0` = canonical, `0.0` =
+    /// sharp / squared, `1.6` = round. Painters that want to follow
+    /// the user's preset multiply their `Radius::*.px()` by this.
+    /// Centralized so the topbar theme menu drives the look in one
+    /// place.
+    radius_scale: f32,
 }
 
 /// State of an in-progress drag on a scrollbar thumb.
@@ -408,6 +414,10 @@ pub enum ContextMenuKind {
     /// background colors. `panel` is the note's host; `note_index`
     /// is the index into `notes_per_panel[panel]`.
     NoteBackground { panel: NodeId, note_index: u8 },
+    /// Clicked the TOPBAR theme cluster. Menu offers the 4 theme
+    /// options plus 3 corner-radius scale presets (Sharp / Default
+    /// / Round) — the standardized way to switch chrome look.
+    ThemeSelector,
 }
 
 impl WidgetStore {
@@ -445,6 +455,7 @@ impl WidgetStore {
             picker_target: None,
             widget_colors: BTreeMap::new(),
             scrollbar_drag: None,
+            radius_scale: 1.0,
         }
     }
 
@@ -914,6 +925,17 @@ impl WidgetStore {
 
     pub fn end_scrollbar_drag(&mut self) {
         self.scrollbar_drag = None;
+    }
+
+    /// Editor-wide corner-radius scale (1.0 = canonical, 0.0 =
+    /// sharp). Painters that want to honor the user's theme preset
+    /// multiply their `Radius::*.px()` by this factor.
+    pub fn radius_scale(&self) -> f32 {
+        self.radius_scale
+    }
+
+    pub fn set_radius_scale(&mut self, scale: f32) {
+        self.radius_scale = scale.max(0.0);
     }
 
     /// Append a new note with the given color index + section

@@ -549,7 +549,39 @@ pub fn dispatch_key<'frame>(
                     events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
                 }
-                apply_click(store, id, &mut events);
+                // SPACE while focus is on a text widget MUST insert a
+                // space character (handled by dispatch_text_input) —
+                // we used to also fire `apply_click` here, which
+                // emitted a stray Click event and made the user press
+                // SPACE twice before the char registered. Skip
+                // apply_click for TextInput / Combobox / NumberInput.
+                let is_text_widget = matches!(
+                    store.get(id),
+                    Some(InteractiveState::TextInput { .. })
+                        | Some(InteractiveState::Combobox { .. })
+                        | Some(InteractiveState::NumberInput { .. })
+                );
+                // Enter on a multi-line TextInput inserts a literal
+                // newline so notes can have body paragraphs. We use
+                // the same selection-replace helper as plain text
+                // input so Enter over a selected range REPLACES with
+                // a newline (standard editor behavior).
+                if event.keycode == KEY_ENTER
+                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
+                {
+                    delete_selection_if_any(store, id);
+                    if let Some(InteractiveState::TextInput { text, caret, .. }) =
+                        store.get_mut(id)
+                    {
+                        text.insert(*caret, '\n');
+                        *caret += 1;
+                        events.push(WidgetEvent::TextChanged(id));
+                    }
+                    return events.into_bump_slice();
+                }
+                if !is_text_widget {
+                    apply_click(store, id, &mut events);
+                }
             }
         }
         KEY_ESCAPE => {

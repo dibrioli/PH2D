@@ -1142,9 +1142,17 @@ fn paint_one_note(
     note: &NoteData,
     slot: usize,
 ) {
+    // Font sizes MUST match the dispatch's hardcoded `TypeToken::
+    // Base.px()` (13 px) so click→caret mapping uses the same
+    // glyph width as the painter. Using `Sm`/`Xs` caused the
+    // dispatch to measure prefixes at the wrong font size and put
+    // the caret 1–3 chars off (the user's "mapeamento errado do
+    // mouse"). Same lesson as docs/UI_Bugs §3.3.
     let pad = 8.0_f32;
-    let title_h = TypeToken::Sm.px() + 8.0;
-    let body_h = TypeToken::Xs.px() * 3.0 + 12.0; // ~3 lines worth
+    let title_font = TypeToken::Base.px();
+    let body_font = TypeToken::Base.px();
+    let title_h = title_font + 8.0;
+    let body_h = body_font * 3.0 + 12.0; // ~3 lines worth
     let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
     if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
@@ -1166,7 +1174,7 @@ fn paint_one_note(
             store,
             *title_id,
             title_rect,
-            TypeToken::Sm.px(),
+            title_font,
             dark,
             "Title",
         );
@@ -1181,7 +1189,7 @@ fn paint_one_note(
             store,
             *body_id,
             body_rect,
-            TypeToken::Xs.px(),
+            body_font,
             dark,
             "Notes…",
         );
@@ -1286,7 +1294,10 @@ fn paint_note_editable_multiline(
 ) {
     let (state, text, caret, _anchor) = read_text_input(store, id);
     let focused = state == TextInputState::Focused;
-    let line_h = font_size + 3.0;
+    // line_h MUST match the dispatch's TextArea math:
+    // `byte_offset_from_click_xy` uses `font_size + 4.0`. Drift
+    // breaks click-y → line index.
+    let line_h = font_size + 4.0;
     if text.is_empty() && !focused {
         paint_text(
             text_system,

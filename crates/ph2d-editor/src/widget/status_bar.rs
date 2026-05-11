@@ -140,9 +140,7 @@ pub fn paint_status_bar(
         .segments
         .iter()
         .map(|s| {
-            let measured = text_system
-                .layout(&s.text, font, f32::INFINITY)
-                .width();
+            let measured = text_system.layout(&s.text, font, f32::INFINITY).width();
             let mut w = measured + pad * 2.0;
             if s.leading_dot {
                 w += dot_extra;

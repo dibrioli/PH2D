@@ -19,9 +19,7 @@
 //! is a deterministic format, `BTreeMap` iteration is alphabetical,
 //! and no time/random/hash-seed enters the pipeline (HR-5 + HR-6).
 
-use ph2d_asset::{
-    ChildOfPair, ComponentBlob, PrefabDoc, PrefabInstance, PrefabRef, SceneDoc,
-};
+use ph2d_asset::{ChildOfPair, ComponentBlob, PrefabDoc, PrefabInstance, PrefabRef, SceneDoc};
 use ph2d_ecs::scene::stable_type_id;
 use serde::{Deserialize, Serialize};
 
@@ -129,13 +127,9 @@ pub fn cook_component(spec: &SourceComponent) -> Result<ComponentBlob, CookError
     // component is enumerated here so a `grep` for the canonical
     // name resolves to the cook path.
     match spec.type_name.as_str() {
-        "ph2d::ecs::Transform" => {
-            cook_typed::<ph2d_ecs::Transform>(&spec.type_name, &spec.data)
-        }
+        "ph2d::ecs::Transform" => cook_typed::<ph2d_ecs::Transform>(&spec.type_name, &spec.data),
         "ph2d::ecs::Name" => cook_typed::<ph2d_ecs::Name>(&spec.type_name, &spec.data),
-        "ph2d::render::Sprite" => {
-            cook_typed::<ph2d_render::Sprite>(&spec.type_name, &spec.data)
-        }
+        "ph2d::render::Sprite" => cook_typed::<ph2d_render::Sprite>(&spec.type_name, &spec.data),
         "ph2d::script::LuauScript" => {
             cook_typed::<ph2d_script::LuauScript>(&spec.type_name, &spec.data)
         }
@@ -162,10 +156,10 @@ fn parse_asset_id(hex: &str) -> Result<AssetId, CookError> {
     }
     let mut digest = [0u8; 32];
     for (i, chunk) in hex.as_bytes().chunks_exact(2).enumerate() {
-        let s = std::str::from_utf8(chunk)
-            .map_err(|_| CookError::InvalidAssetId(hex.to_owned()))?;
-        digest[i] = u8::from_str_radix(s, 16)
-            .map_err(|_| CookError::InvalidAssetId(hex.to_owned()))?;
+        let s =
+            std::str::from_utf8(chunk).map_err(|_| CookError::InvalidAssetId(hex.to_owned()))?;
+        digest[i] =
+            u8::from_str_radix(s, 16).map_err(|_| CookError::InvalidAssetId(hex.to_owned()))?;
     }
     Ok(AssetId::from_digest(digest))
 }
@@ -222,16 +216,16 @@ pub fn cook_scene(src: &SourceScene) -> Result<SceneDoc, CookError> {
 /// resulting `PrefabDoc`. Output bytes are content-addressable via
 /// `blake3` (HR-6).
 pub fn cook_prefab_json5(source: &str) -> Result<Vec<u8>, CookError> {
-    let src: SourcePrefab = serde_json5::from_str(source)
-        .map_err(|e| CookError::Json(format!("prefab: {e}")))?;
+    let src: SourcePrefab =
+        serde_json5::from_str(source).map_err(|e| CookError::Json(format!("prefab: {e}")))?;
     let doc = cook_prefab(&src)?;
     postcard::to_allocvec(&doc).map_err(CookError::Postcard)
 }
 
 /// Top-level entry: parse JSON5 scene source → cook → postcard.
 pub fn cook_scene_json5(source: &str) -> Result<Vec<u8>, CookError> {
-    let src: SourceScene = serde_json5::from_str(source)
-        .map_err(|e| CookError::Json(format!("scene: {e}")))?;
+    let src: SourceScene =
+        serde_json5::from_str(source).map_err(|e| CookError::Json(format!("scene: {e}")))?;
     let doc = cook_scene(&src)?;
     postcard::to_allocvec(&doc).map_err(CookError::Postcard)
 }
@@ -296,7 +290,10 @@ mod tests {
         }"#;
         let a = cook_prefab_json5(src).unwrap();
         let b = cook_prefab_json5(src).unwrap();
-        assert_eq!(a, b, "cooker must produce byte-identical output for the same input");
+        assert_eq!(
+            a, b,
+            "cooker must produce byte-identical output for the same input"
+        );
     }
 
     #[test]

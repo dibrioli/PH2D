@@ -28,6 +28,8 @@ use super::style::{
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
+use crate::widget::Dropdown;
+use crate::widget::DropdownOption;
 use crate::widget::{
     Avatar, AvatarShape, Button, ButtonKind, ButtonState, Card, ChannelMode, Checkbox,
     CheckboxState, CheckboxValue, ColorSwatch, Combobox, ComboboxOption, ComboboxState,
@@ -37,12 +39,10 @@ use crate::widget::{
     TextInputState, Toggle, ToggleState, TreeNode, TreeView, Vector3Editor, paint_avatar,
     paint_button, paint_card, paint_checkbox, paint_color_swatch, paint_combobox_with_state,
     paint_list_item, paint_number_input_with_buffer, paint_progress_bar,
-    paint_radio_group_with_labels, paint_section_header, paint_slider_with_chip,
-    paint_spinner, paint_tabs, paint_tag, paint_text_area_with_state,
-    paint_text_input_with_buffer, paint_toggle, paint_tree_view,
+    paint_radio_group_with_labels, paint_section_header, paint_slider_with_chip, paint_spinner,
+    paint_tabs, paint_tag, paint_text_area_with_state, paint_text_input_with_buffer, paint_toggle,
+    paint_tree_view,
 };
-use crate::widget::Dropdown;
-use crate::widget::DropdownOption;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -101,10 +101,8 @@ const TAB_GROUP_IDS: [ph2d_a11y::NodeId; 3] = [
     ids::INSP_SAMPLE_TAB_B,
     ids::INSP_SAMPLE_TAB_C,
 ];
-const TREE_LEAF_IDS: [ph2d_a11y::NodeId; 2] = [
-    ids::INSP_SAMPLE_TREE_LEAF_A,
-    ids::INSP_SAMPLE_TREE_LEAF_B,
-];
+const TREE_LEAF_IDS: [ph2d_a11y::NodeId; 2] =
+    [ids::INSP_SAMPLE_TREE_LEAF_A, ids::INSP_SAMPLE_TREE_LEAF_B];
 /// Hit-slot ids for the 12 possible notes per panel. The painter
 /// assigns slots by position (slot 0 = first painted note, etc.).
 pub(super) const NOTE_SLOT_IDS: [ph2d_a11y::NodeId; 12] = [
@@ -275,11 +273,26 @@ fn populate_blender_picker(store: &mut WidgetStore) {
         crate::widget::default_palette().swatches.clone(),
     );
     for (id, kind) in [
-        (ids::BLENDER_ADD_SWATCH, crate::interaction::BlenderHitKind::AddSwatch),
-        (ids::BLENDER_EYEDROPPER, crate::interaction::BlenderHitKind::Eyedropper),
-        (ids::BLENDER_DRAG_HANDLE, crate::interaction::BlenderHitKind::DragHandle),
-        (ids::BLENDER_WHEEL, crate::interaction::BlenderHitKind::Wheel),
-        (ids::BLENDER_VALUE_SLIDER, crate::interaction::BlenderHitKind::ValueSlider),
+        (
+            ids::BLENDER_ADD_SWATCH,
+            crate::interaction::BlenderHitKind::AddSwatch,
+        ),
+        (
+            ids::BLENDER_EYEDROPPER,
+            crate::interaction::BlenderHitKind::Eyedropper,
+        ),
+        (
+            ids::BLENDER_DRAG_HANDLE,
+            crate::interaction::BlenderHitKind::DragHandle,
+        ),
+        (
+            ids::BLENDER_WHEEL,
+            crate::interaction::BlenderHitKind::Wheel,
+        ),
+        (
+            ids::BLENDER_VALUE_SLIDER,
+            crate::interaction::BlenderHitKind::ValueSlider,
+        ),
     ] {
         store.register(
             id,
@@ -333,10 +346,22 @@ fn populate_blender_picker(store: &mut WidgetStore) {
     );
     store.link_blender_hex(ids::INSP_BLENDER_PICKER, ids::BLENDER_HEX);
     for (id, kind) in [
-        (ids::BLENDER_INTERP_LINEAR, crate::interaction::BlenderHitKind::InterpolationLinear),
-        (ids::BLENDER_INTERP_PERCEPTUAL, crate::interaction::BlenderHitKind::InterpolationPerceptual),
-        (ids::BLENDER_CHANNEL_RGB, crate::interaction::BlenderHitKind::ChannelRgb),
-        (ids::BLENDER_CHANNEL_HSV, crate::interaction::BlenderHitKind::ChannelHsv),
+        (
+            ids::BLENDER_INTERP_LINEAR,
+            crate::interaction::BlenderHitKind::InterpolationLinear,
+        ),
+        (
+            ids::BLENDER_INTERP_PERCEPTUAL,
+            crate::interaction::BlenderHitKind::InterpolationPerceptual,
+        ),
+        (
+            ids::BLENDER_CHANNEL_RGB,
+            crate::interaction::BlenderHitKind::ChannelRgb,
+        ),
+        (
+            ids::BLENDER_CHANNEL_HSV,
+            crate::interaction::BlenderHitKind::ChannelHsv,
+        ),
     ] {
         store.register(
             id,
@@ -663,8 +688,14 @@ fn populate_samples(store: &mut WidgetStore) {
     // Without this the Down handler skips the scrollbar-drag-
     // anchor seed and the drag never starts (user's "não está
     // arrastando com o mouse").
-    store.register(crate::widget::INSPECTOR_SCROLLBAR_ID, InteractiveState::Plain);
-    store.register(crate::widget::HIERARCHY_SCROLLBAR_ID, InteractiveState::Plain);
+    store.register(
+        crate::widget::INSPECTOR_SCROLLBAR_ID,
+        InteractiveState::Plain,
+    );
+    store.register(
+        crate::widget::HIERARCHY_SCROLLBAR_ID,
+        InteractiveState::Plain,
+    );
     // Drag handles for movable Inspector / Hierarchy. Reuse the
     // BlenderColorPicker's panel-agnostic drag infrastructure
     // (`apply_blender_hit` → `begin_blender_drag` keyed by the
@@ -787,10 +818,7 @@ pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
                     crate::interaction::ContextMenuKind::SectionOutline { section } => {
                         store.set_section_outline_color(section, *color_idx);
                     }
-                    crate::interaction::ContextMenuKind::NoteBackground {
-                        panel,
-                        note_index,
-                    } => {
+                    crate::interaction::ContextMenuKind::NoteBackground { panel, note_index } => {
                         if let Some(c) = color_idx {
                             store.note_set_color(panel, note_index as usize, *c);
                         }
@@ -1003,7 +1031,16 @@ pub fn paint_inspector(
             paint_pending_notes!();
             let y_before = y;
             push_section_top_y(&mut section_tops_y, y_before - body_top_y);
-            let new_y = $f(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
+            let new_y = $f(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            );
             // Outline: when the user picked an outline color via the
             // right-click menu on this section header, stroke a
             // colored rect spanning the header + body before the
@@ -1161,7 +1198,9 @@ fn paint_collapsible_header(
     hit_index.register(id, r);
     // Color circle replaces the legacy count chip. Default to a
     // neutral mid-gray when the user hasn't picked a color yet.
-    let rgba = store.widget_color(color_id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
+    let rgba = store
+        .widget_color(color_id)
+        .unwrap_or([0x88, 0x88, 0x88, 0xFF]);
     let header = SectionHeader::new(id, label)
         .color(rgba)
         .collapsible(!is_collapsed);
@@ -1323,7 +1362,16 @@ fn paint_note_editable_line(
     } else {
         fg
     };
-    paint_text(text_system, scene, displayed, text_x, text_y, font_size, text_w, display_color);
+    paint_text(
+        text_system,
+        scene,
+        displayed,
+        text_x,
+        text_y,
+        font_size,
+        text_w,
+        display_color,
+    );
     // Caret — only when focused.
     if focused {
         let caret_byte = caret.min(text.len());
@@ -1412,12 +1460,7 @@ fn paint_note_editable_multiline(
                 let sel_x = text_x + prefix_w;
                 let sel_w = mid_w.min(text_x + text_w - sel_x).max(0.0);
                 if sel_w > 0.0 {
-                    let sel = Rect::new(
-                        sel_x,
-                        text_y0 + i as f32 * line_h,
-                        sel_w,
-                        line_h,
-                    );
+                    let sel = Rect::new(sel_x, text_y0 + i as f32 * line_h, sel_w, line_h);
                     fill_rounded_rect(scene, sel, 1.0, sel_color);
                 }
             }
@@ -1470,13 +1513,7 @@ fn paint_note_editable_multiline(
 /// the line sits centered in its own gap, not lopsided against the
 /// content above. Owns the entire inter-section spacing — callers
 /// should NOT add `SECTION_GAP` on top.
-fn paint_section_separator(
-    scene: &mut VectorScene,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
+fn paint_section_separator(scene: &mut VectorScene, theme: Theme, x: f32, w: f32, y: f32) -> f32 {
     let pad_x = 2.0_f32;
     let pad_y = SEPARATOR_PAD_Y;
     let thickness = 1.0_f32;
@@ -1566,7 +1603,8 @@ fn paint_inputs_section(
     let area_h = 60.0_f32;
     let r = Rect::new(x, y, w, area_h);
     hit_index.register(ids::INSP_SAMPLE_TEXTAREA, r);
-    let (ta_state, ta_text, ta_caret, ta_anchor) = read_text_input(store, ids::INSP_SAMPLE_TEXTAREA);
+    let (ta_state, ta_text, ta_caret, ta_anchor) =
+        read_text_input(store, ids::INSP_SAMPLE_TEXTAREA);
     let mut ta = TextArea::new(ids::INSP_SAMPLE_TEXTAREA, "Notes")
         .placeholder("Notes…")
         .state(ta_state);
@@ -1717,18 +1755,30 @@ fn paint_switches_section(
         .state(tg_state)
         .on(tg_on);
     paint_toggle(&toggle, tr, scene, theme);
-    paint_left_label(scene, text_system, theme, x, "Snap to grid", w - toggle_w - 6.0, y, row_h);
+    paint_left_label(
+        scene,
+        text_system,
+        theme,
+        x,
+        "Snap to grid",
+        w - toggle_w - 6.0,
+        y,
+        row_h,
+    );
     y += row_h + ROW_GAP;
 
     // Segmented RadioGroup. We use the per-tab pressed-button trick
     // (mirrors the Inspector-tabs pattern in `paint_inspector_tabs`
     // pre-cleanup) so selection survives across frames without
     // adding a typed RadioGroup state to the store.
-    let selected = active_index(store, &[
-        ids::INSP_SAMPLE_RADIO_A,
-        ids::INSP_SAMPLE_RADIO_B,
-        ids::INSP_SAMPLE_RADIO_C,
-    ])
+    let selected = active_index(
+        store,
+        &[
+            ids::INSP_SAMPLE_RADIO_A,
+            ids::INSP_SAMPLE_RADIO_B,
+            ids::INSP_SAMPLE_RADIO_C,
+        ],
+    )
     .unwrap_or(0);
     let selected_label: &str = ["Low", "Mid", "High"][selected];
     let rg = RadioGroup::new(
@@ -1829,11 +1879,14 @@ fn paint_lists_section(
 
     // Tabs (segmented).
     let r = Rect::new(x, y, w, 28.0);
-    let selected = active_index(store, &[
-        ids::INSP_SAMPLE_TAB_A,
-        ids::INSP_SAMPLE_TAB_B,
-        ids::INSP_SAMPLE_TAB_C,
-    ])
+    let selected = active_index(
+        store,
+        &[
+            ids::INSP_SAMPLE_TAB_A,
+            ids::INSP_SAMPLE_TAB_B,
+            ids::INSP_SAMPLE_TAB_C,
+        ],
+    )
     .unwrap_or(0);
     let tabs = Tabs::new(
         NodeId(0),
@@ -1898,10 +1951,8 @@ fn paint_lists_section(
             TreeNode::new(ids::INSP_SAMPLE_TREE_ROOT, "Group")
                 .icon(IconId::Folder)
                 .children(vec![
-                    TreeNode::new(ids::INSP_SAMPLE_TREE_LEAF_A, "Item A")
-                        .icon(IconId::Sprite),
-                    TreeNode::new(ids::INSP_SAMPLE_TREE_LEAF_B, "Item B")
-                        .icon(IconId::Sprite),
+                    TreeNode::new(ids::INSP_SAMPLE_TREE_LEAF_A, "Item A").icon(IconId::Sprite),
+                    TreeNode::new(ids::INSP_SAMPLE_TREE_LEAF_B, "Item B").icon(IconId::Sprite),
                 ]),
         ],
     );
@@ -2155,7 +2206,11 @@ fn paint_actions_section(
     let trio_w = (w - gap * 2.0) / 3.0;
     let trio = [
         (ids::INSP_SAMPLE_BTN_PRIMARY, "Save", ButtonKind::Accent),
-        (ids::INSP_SAMPLE_BTN_SECONDARY, "Cancel", ButtonKind::Default),
+        (
+            ids::INSP_SAMPLE_BTN_SECONDARY,
+            "Cancel",
+            ButtonKind::Default,
+        ),
         (ids::INSP_SAMPLE_BTN_DANGER, "Delete", ButtonKind::Danger),
     ];
     for (i, (id, label, kind)) in trio.iter().enumerate() {
@@ -2183,7 +2238,12 @@ fn paint_actions_section(
 
     let tag_w = 80.0_f32;
     let tag_h = 22.0_f32;
-    let tr = Rect::new(x + icon_size + 8.0, y + (icon_size - tag_h) * 0.5, tag_w, tag_h);
+    let tr = Rect::new(
+        x + icon_size + 8.0,
+        y + (icon_size - tag_h) * 0.5,
+        tag_w,
+        tag_h,
+    );
     let tag_state = match store.get(ids::INSP_SAMPLE_TAG_REMOVE) {
         Some(InteractiveState::Tag { state }) => *state,
         _ => TagState::Normal,

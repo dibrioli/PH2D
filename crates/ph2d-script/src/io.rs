@@ -459,10 +459,8 @@ mod tests {
         let q = SpawnQueue::with_cap(2);
         assert!(q.push(SpawnCommand::SpawnEmpty).is_ok());
         assert!(
-            q.push(SpawnCommand::SpawnNamed {
-                name: "x".into()
-            })
-            .is_ok()
+            q.push(SpawnCommand::SpawnNamed { name: "x".into() })
+                .is_ok()
         );
         let err = q.push(SpawnCommand::SpawnEmpty).unwrap_err();
         assert_eq!(err, SpawnQueueFull { cap: 2 });

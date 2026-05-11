@@ -209,9 +209,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             if event.button == ph2d_host::PointerButton::Secondary {
                 let panel_under = store.panel_at(event.x, event.y);
                 let hit_id = hit.map(|(id, _)| id);
-                let is_section = hit_id
-                    .map(is_section_header_id)
-                    .unwrap_or(false);
+                let is_section = hit_id.map(is_section_header_id).unwrap_or(false);
                 // Note slot hit (id range 800..811): right-click on a
                 // painted note opens the NoteBackground menu for that
                 // slot's index. The inspector painter publishes the
@@ -239,7 +237,9 @@ pub fn dispatch_pointer_with_text<'frame>(
                     store.open_context_menu(super::ContextMenuRequest {
                         x: event.x,
                         y: event.y,
-                        kind: super::ContextMenuKind::SectionOutline { section: section_id },
+                        kind: super::ContextMenuKind::SectionOutline {
+                            section: section_id,
+                        },
                     });
                 } else if let Some(panel) = panel_under {
                     // `before_section` is filled in by apply_event
@@ -416,14 +416,8 @@ pub fn dispatch_pointer_with_text<'frame>(
                     // the clicked byte position and seed the
                     // selection anchor there. Subsequent Move events
                     // extend the selection from anchor → new caret.
-                    let offset = byte_offset_from_click_xy(
-                        store,
-                        id,
-                        rect,
-                        event.x,
-                        event.y,
-                        ts.take(),
-                    );
+                    let offset =
+                        byte_offset_from_click_xy(store, id, rect, event.x, event.y, ts.take());
                     place_text_caret(store, id, offset, true);
                 }
                 set_widget_pressed(store, id);
@@ -449,10 +443,8 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // below); the metrics come from the side-tables
                 // the painters publish each frame.
                 if let Some(panel) = scrollbar_panel_for_id(id)
-                    && let (Some(content_h), Some(visible_h)) = (
-                        store.panel_content_h(panel),
-                        store.panel_visible_h(panel),
-                    )
+                    && let (Some(content_h), Some(visible_h)) =
+                        (store.panel_content_h(panel), store.panel_visible_h(panel))
                 {
                     store.begin_scrollbar_drag(super::ScrollbarDragAnchor {
                         panel,
@@ -489,7 +481,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             if let Some(drag) = store.end_hierarchy_drag()
                 && drag.active
             {
-                match find_hierarchy_drop(hit_index, event.y, drag.dragged) {
+                match find_hierarchy_drop(hit_index, event.x, event.y, drag.dragged) {
                     HierDrop::Before(t) => {
                         store.hierarchy_move(drag.dragged, Some(t));
                         // Inherit the target's parent so siblings
@@ -546,9 +538,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // them would, e.g., toggle section collapse on
                 // right-click, which is exactly the bug the user
                 // reported.
-                if still_hot
-                    && !is_drag_widget
-                    && event.button == ph2d_host::PointerButton::Primary
+                if still_hot && !is_drag_widget && event.button == ph2d_host::PointerButton::Primary
                 {
                     apply_click(store, active, &mut events);
                 }
@@ -739,8 +729,7 @@ pub fn dispatch_key<'frame>(
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
                     delete_selection_if_any(store, id);
-                    if let Some(InteractiveState::TextInput { text, caret, .. }) =
-                        store.get_mut(id)
+                    if let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
                     {
                         text.insert(*caret, '\n');
                         *caret += 1;
@@ -1100,15 +1089,22 @@ pub(crate) enum HierDrop {
     End,
 }
 
-/// Resolve the drop position for a hierarchy DnD using cursor y vs
-/// each row rect. The row is split into three bands:
+/// Resolve the drop position for a hierarchy DnD using cursor (x, y)
+/// vs each row rect. Row y is split into three bands:
 ///   - top 30% → drop above this row (sibling)
 ///   - middle 40% → drop inside this row (child)
 ///   - bottom 30% → continue scanning (drop below this row)
 ///
+/// `cursor_x` is checked against the row's horizontal extent. Without
+/// this, a cursor far to the LEFT of an already-indented row was
+/// still resolved as `Inside(that row)`, making the dragged entity a
+/// grandchild instead of a root sibling — the user's "TAB fica tão
+/// grande que parece neto" bug. The fallback is `End` (drop at root).
+///
 /// When no row is hit, returns `End`. Skips the dragged row itself.
 fn find_hierarchy_drop(
     hit_index: &HitIndex,
+    cursor_x: f32,
     cursor_y: f32,
     dragged: ph2d_a11y::NodeId,
 ) -> HierDrop {
@@ -1123,14 +1119,29 @@ fn find_hierarchy_drop(
         let bot = rect.y + rect.h;
         let inside_top = top + rect.h * 0.3;
         let inside_bot = top + rect.h * 0.7;
+        // Cursor must overlap the row's horizontal extent to be a
+        // candidate target. Otherwise drops from the left margin
+        // accidentally re-parent the dragged entity into whatever
+        // indented row happens to share its y band.
+        let x_ok = cursor_x >= rect.x && cursor_x < rect.x + rect.w;
+        if cursor_y < top || cursor_y >= bot {
+            continue;
+        }
+        if !x_ok {
+            // Cursor is in this row's y band but off to the left
+            // (the indent gap). Treat as a sibling-Before for the
+            // row that VISUALLY occupies this y, but at root depth —
+            // the caller derives the new parent from the target so
+            // a `Before` whose target has no parent lands at root.
+            return HierDrop::Before(id);
+        }
         if cursor_y < inside_top {
             return HierDrop::Before(id);
         } else if cursor_y < inside_bot {
             return HierDrop::Inside(id);
-        } else if cursor_y < bot {
-            // Continue: bottom band of this row falls through so the
-            // next iteration may resolve as Before(next) — feels more
-            // natural at the seam between rows.
+        } else {
+            // Bottom band falls through to the next row's "before"
+            // at the seam.
             continue;
         }
     }
@@ -1171,9 +1182,7 @@ fn apply_number_stepper_if_hit(
 ) -> bool {
     use crate::widget::NumberInput;
     let (current_value, buffer) = match store.get(id) {
-        Some(InteractiveState::NumberInput { value, buffer, .. }) => {
-            (*value, buffer.clone())
-        }
+        Some(InteractiveState::NumberInput { value, buffer, .. }) => (*value, buffer.clone()),
         _ => return false,
     };
     let probe = NumberInput::new(id, "", current_value);
@@ -1186,7 +1195,11 @@ fn apply_number_stepper_if_hit(
     } else {
         return false;
     };
-    let step = if buffer.contains('.') { 0.01_f64 } else { 1.0_f64 };
+    let step = if buffer.contains('.') {
+        0.01_f64
+    } else {
+        1.0_f64
+    };
     let new_val = current_value + direction * step;
     if let Some(InteractiveState::NumberInput {
         value,
@@ -1343,13 +1356,8 @@ fn byte_offset_from_click_xy(
         for (i, line) in text.split('\n').enumerate() {
             let line_end = line_start + line.len();
             if i == line_idx {
-                let local = nearest_byte_on_line(
-                    line,
-                    font_size,
-                    text_start_x,
-                    click_x,
-                    text_system,
-                );
+                let local =
+                    nearest_byte_on_line(line, font_size, text_start_x, click_x, text_system);
                 return line_start + local;
             }
             line_start = line_end + 1; // +1 for the '\n'
@@ -1494,10 +1502,7 @@ pub(super) fn reset_focused_visual_state(store: &mut WidgetStore, id: ph2d_a11y:
 /// text widget or has no active selection. Caret is treated as a
 /// zero-length selection (returns `Some("")`) — caller decides
 /// whether empty copies are interesting.
-fn clipboard_extract_selection(
-    store: &WidgetStore,
-    id: ph2d_a11y::NodeId,
-) -> Option<String> {
+fn clipboard_extract_selection(store: &WidgetStore, id: ph2d_a11y::NodeId) -> Option<String> {
     let (text, caret, anchor) = match store.get(id) {
         Some(InteractiveState::TextInput {
             text,
@@ -1537,17 +1542,15 @@ fn clipboard_extract_selection(
 /// any active selection. Shell calls this after reading the OS
 /// clipboard in response to a pending paste request. Returns true
 /// when something was inserted.
-pub fn apply_clipboard_paste(
-    store: &mut WidgetStore,
-    id: ph2d_a11y::NodeId,
-    text: &str,
-) -> bool {
+pub fn apply_clipboard_paste(store: &mut WidgetStore, id: ph2d_a11y::NodeId, text: &str) -> bool {
     if text.is_empty() {
         return false;
     }
     let _ = delete_selection_if_any(store, id);
     match store.get_mut(id) {
-        Some(InteractiveState::TextInput { text: buf, caret, .. }) => {
+        Some(InteractiveState::TextInput {
+            text: buf, caret, ..
+        }) => {
             buf.insert_str(*caret, text);
             *caret += text.len();
             true
@@ -3440,7 +3443,9 @@ mod tests {
         let (mut store, hits, rect) = combobox_setup("spike");
         let arena = Bump::new();
         let probe = crate::widget::Combobox::new(NodeId(55), "", vec![]).query("spike");
-        let xr = probe.clear_button_rect(rect).expect("clear rect must exist");
+        let xr = probe
+            .clear_button_rect(rect)
+            .expect("clear rect must exist");
         let evts = dispatch_pointer(
             &mut store,
             &hits,
@@ -3451,7 +3456,10 @@ mod tests {
             Some(InteractiveState::Combobox { query, .. }) => query.clone(),
             _ => "<missing>".to_string(),
         };
-        assert!(q.is_empty(), "expected empty query after X click, got {q:?}");
+        assert!(
+            q.is_empty(),
+            "expected empty query after X click, got {q:?}"
+        );
         assert!(
             evts.iter()
                 .any(|e| matches!(e, WidgetEvent::TextChanged(id) if *id == NodeId(55))),
@@ -3469,7 +3477,11 @@ mod tests {
         let _ = dispatch_pointer(
             &mut store,
             &hits,
-            pointer(PointerKind::Down, rect.x + rect.w - 8.0, rect.y + rect.h * 0.5),
+            pointer(
+                PointerKind::Down,
+                rect.x + rect.w - 8.0,
+                rect.y + rect.h * 0.5,
+            ),
             &arena,
         );
         // Still empty.
@@ -3518,7 +3530,10 @@ mod tests {
             _ => -1.0,
         };
         assert!((v - 6.0).abs() < f64::EPSILON, "expected 6.0 got {v}");
-        assert!(evts.iter().any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(77))));
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(77)))
+        );
     }
 
     #[test]
@@ -3531,7 +3546,11 @@ mod tests {
         let _ = dispatch_pointer(
             &mut store,
             &hits,
-            pointer(PointerKind::Down, down.x + down.w * 0.5, down.y + down.h * 0.5),
+            pointer(
+                PointerKind::Down,
+                down.x + down.w * 0.5,
+                down.y + down.h * 0.5,
+            ),
             &arena,
         );
         let v = match store.get(NodeId(77)) {
@@ -3599,7 +3618,10 @@ mod tests {
             }
             _ => panic!("expected TextInput"),
         }
-        assert!(evts.iter().any(|e| matches!(e, WidgetEvent::TextChanged(_))));
+        assert!(
+            evts.iter()
+                .any(|e| matches!(e, WidgetEvent::TextChanged(_)))
+        );
     }
 
     #[test]

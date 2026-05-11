@@ -395,8 +395,11 @@ pub struct HierarchyDragState {
     /// distance threshold.
     pub down_x: f32,
     pub down_y: f32,
-    /// Latest cursor y (updated on Move) so the painter can render
-    /// a drop-indicator line at the current target.
+    /// Latest cursor x/y (updated on Move) so the painter can render
+    /// a drop-indicator that matches what the dispatch will resolve
+    /// on Up (x-aware to distinguish "inside indented row" from
+    /// "sibling at root level").
+    pub cursor_x: f32,
     pub cursor_y: f32,
     /// `true` once the cursor has moved past the threshold; until
     /// then the gesture is "maybe-click, maybe-drag".
@@ -1104,6 +1107,7 @@ impl WidgetStore {
             dragged,
             down_x,
             down_y,
+            cursor_x: down_x,
             cursor_y: down_y,
             active: false,
         });
@@ -1111,6 +1115,7 @@ impl WidgetStore {
 
     pub fn update_hierarchy_drag(&mut self, cursor_x: f32, cursor_y: f32) {
         if let Some(d) = self.hierarchy_drag.as_mut() {
+            d.cursor_x = cursor_x;
             d.cursor_y = cursor_y;
             let dx = cursor_x - d.down_x;
             let dy = cursor_y - d.down_y;

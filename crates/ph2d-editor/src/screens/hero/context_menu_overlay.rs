@@ -13,9 +13,7 @@
 use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{ContextMenuKind, HitIndex, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -50,9 +48,7 @@ pub fn paint_context_menu_overlay(
         return;
     };
     let items: &[(NodeId, &str, Option<[u8; 4]>)] = match req.kind {
-        ContextMenuKind::CreateNote { .. } => &[
-            (ids::CTX_MENU_CREATE_NOTE, "Create note", None),
-        ],
+        ContextMenuKind::CreateNote { .. } => &[(ids::CTX_MENU_CREATE_NOTE, "Create note", None)],
         ContextMenuKind::SectionOutline { .. } => &[
             (ids::CTX_MENU_OUTLINE_NONE, "No outline", None),
             (ids::CTX_MENU_OUTLINE_0, "Yellow", Some(HIGHLIGHTER_RGBA[0])),
@@ -77,10 +73,26 @@ pub fn paint_context_menu_overlay(
         // swatch tinted with each theme's flavor so the user can
         // recognize them at a glance.
         ContextMenuKind::ThemeSelector => &[
-            (ids::CTX_MENU_THEME_FORGE, "Forge SDF (dark)", Some([0xc8, 0x4b, 0xa0, 0xFF])),
-            (ids::CTX_MENU_THEME_PAINT, "Paint Studio (dark)", Some([0x4b, 0xa0, 0xc8, 0xFF])),
-            (ids::CTX_MENU_THEME_SUNSTONE, "Sunstone (light)", Some([0xf0, 0xc0, 0x4f, 0xFF])),
-            (ids::CTX_MENU_THEME_BLUEPRINT, "Blueprint (light)", Some([0x6c, 0x8e, 0xc8, 0xFF])),
+            (
+                ids::CTX_MENU_THEME_FORGE,
+                "Forge SDF (dark)",
+                Some([0xc8, 0x4b, 0xa0, 0xFF]),
+            ),
+            (
+                ids::CTX_MENU_THEME_PAINT,
+                "Paint Studio (dark)",
+                Some([0x4b, 0xa0, 0xc8, 0xFF]),
+            ),
+            (
+                ids::CTX_MENU_THEME_SUNSTONE,
+                "Sunstone (light)",
+                Some([0xf0, 0xc0, 0x4f, 0xFF]),
+            ),
+            (
+                ids::CTX_MENU_THEME_BLUEPRINT,
+                "Blueprint (light)",
+                Some([0x6c, 0x8e, 0xc8, 0xFF]),
+            ),
             (ids::CTX_MENU_RADIUS_SHARP, "— Corners: Sharp", None),
             (ids::CTX_MENU_RADIUS_DEFAULT, "— Corners: Default", None),
             (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),

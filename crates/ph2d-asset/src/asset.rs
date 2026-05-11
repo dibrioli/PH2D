@@ -36,26 +36,28 @@ impl Asset {
     pub fn byte_size(&self) -> usize {
         match self {
             Self::ImageRgba8 { pixels, .. } => pixels.len(),
-            Self::Prefab(p) => p
-                .components
-                .iter()
-                .map(|c| c.data.len() + std::mem::size_of_val(c))
-                .sum::<usize>()
-                + p.children.len() * std::mem::size_of_val(&p.children[0])
-                + std::mem::size_of_val(&**p),
-            Self::Scene(s) => s
-                .instances
-                .iter()
-                .map(|i| {
-                    i.overrides
-                        .iter()
-                        .map(|c| c.data.len() + std::mem::size_of_val(c))
-                        .sum::<usize>()
-                        + std::mem::size_of_val(i)
-                })
-                .sum::<usize>()
-                + s.relations.len() * std::mem::size_of::<crate::scene::ChildOfPair>()
-                + std::mem::size_of_val(&**s),
+            Self::Prefab(p) => {
+                p.components
+                    .iter()
+                    .map(|c| c.data.len() + std::mem::size_of_val(c))
+                    .sum::<usize>()
+                    + p.children.len() * std::mem::size_of_val(&p.children[0])
+                    + std::mem::size_of_val(&**p)
+            }
+            Self::Scene(s) => {
+                s.instances
+                    .iter()
+                    .map(|i| {
+                        i.overrides
+                            .iter()
+                            .map(|c| c.data.len() + std::mem::size_of_val(c))
+                            .sum::<usize>()
+                            + std::mem::size_of_val(i)
+                    })
+                    .sum::<usize>()
+                    + s.relations.len() * std::mem::size_of::<crate::scene::ChildOfPair>()
+                    + std::mem::size_of_val(&**s)
+            }
         }
     }
 }

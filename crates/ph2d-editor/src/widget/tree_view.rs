@@ -114,13 +114,7 @@ impl TreeView {
     /// row, given the host rect, depth, and row height. Hosts use
     /// this to register a dedicated hit so the chevron toggles
     /// expansion without triggering selection.
-    pub fn chevron_rect(
-        &self,
-        host: Rect,
-        visible_index: usize,
-        depth: usize,
-        row_h: f32,
-    ) -> Rect {
+    pub fn chevron_rect(&self, host: Rect, visible_index: usize, depth: usize, row_h: f32) -> Rect {
         let pad_x = Spacing::Md.px();
         let indent = Spacing::Lg.px();
         let chev_size = (row_h * 0.6).clamp(10.0, 16.0);

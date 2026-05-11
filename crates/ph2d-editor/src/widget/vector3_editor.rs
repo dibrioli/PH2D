@@ -92,7 +92,16 @@ pub fn paint_vector3_editor(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    paint_vector3_editor_with_state(v, [None; 3], [0; 3], [None; 3], rect, scene, text_system, theme);
+    paint_vector3_editor_with_state(
+        v,
+        [None; 3],
+        [0; 3],
+        [None; 3],
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
 }
 
 /// Like [`paint_vector3_editor`] but renders per-axis live edit

@@ -25,15 +25,7 @@ use ph2d_ecs::{PresentComponent, SimComponent};
 /// the `PrefabDoc` / `SceneDoc` postcard pipeline (M14.3). All fields
 /// are POD (`u32`, fixed-size `f32` arrays), so the wire format is
 /// stable across rustc versions.
-#[derive(
-    Component,
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Component, Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Sprite {
     /// Index into the texture atlas tile grid.
     pub atlas_index: u32,

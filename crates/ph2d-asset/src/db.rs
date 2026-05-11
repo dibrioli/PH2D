@@ -85,11 +85,10 @@ impl AssetDb {
     /// `crates/ph2d-asset/src/migration.rs` (lands when v2 ships).
     pub fn insert_prefab_bytes(&self, bytes: &[u8]) -> Result<AssetId, AssetError> {
         let id = AssetId::from_bytes(bytes);
-        let doc: PrefabDoc =
-            postcard::from_bytes(bytes).map_err(|e| AssetError::Decode {
-                path: None,
-                message: format!("PrefabDoc postcard: {e}"),
-            })?;
+        let doc: PrefabDoc = postcard::from_bytes(bytes).map_err(|e| AssetError::Decode {
+            path: None,
+            message: format!("PrefabDoc postcard: {e}"),
+        })?;
         if doc.version != PrefabDoc::VERSION {
             return Err(AssetError::VersionMismatch {
                 what: "PrefabDoc",
@@ -109,11 +108,10 @@ impl AssetDb {
     /// type-error is reported at the call site, not deferred.
     pub fn insert_scene_bytes(&self, bytes: &[u8]) -> Result<AssetId, AssetError> {
         let id = AssetId::from_bytes(bytes);
-        let doc: SceneDoc =
-            postcard::from_bytes(bytes).map_err(|e| AssetError::Decode {
-                path: None,
-                message: format!("SceneDoc postcard: {e}"),
-            })?;
+        let doc: SceneDoc = postcard::from_bytes(bytes).map_err(|e| AssetError::Decode {
+            path: None,
+            message: format!("SceneDoc postcard: {e}"),
+        })?;
         if doc.version != SceneDoc::VERSION {
             return Err(AssetError::VersionMismatch {
                 what: "SceneDoc",
@@ -251,9 +249,9 @@ mod tests {
             // Other variants are out of scope for this PNG-decode
             // test — they have dedicated insert_postcard_* helpers
             // and roundtrip tests in `prefab.rs` / `scene.rs`.
-            Asset::Prefab(_) | Asset::Scene(_) => unreachable!(
-                "insert_png_bytes can only produce Asset::ImageRgba8"
-            ),
+            Asset::Prefab(_) | Asset::Scene(_) => {
+                unreachable!("insert_png_bytes can only produce Asset::ImageRgba8")
+            }
         }
     }
 

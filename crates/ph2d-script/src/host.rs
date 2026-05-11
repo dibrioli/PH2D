@@ -328,14 +328,13 @@ fn wire_ph2d_api(
 
     // ph2d.spawn_named(name) — queue a spawn that will get a Name
     // component on application. Same caveats as `spawn`.
-    let spawn_named_fn =
-        lua.create_function(|lua, name: String| -> mlua::Result<()> {
-            let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
-                mlua::Error::RuntimeError("ph2d.spawn_named: SpawnQueue not registered".into())
-            })?;
-            q.push(SpawnCommand::SpawnNamed { name })
-                .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.spawn_named: {e}")))
+    let spawn_named_fn = lua.create_function(|lua, name: String| -> mlua::Result<()> {
+        let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
+            mlua::Error::RuntimeError("ph2d.spawn_named: SpawnQueue not registered".into())
         })?;
+        q.push(SpawnCommand::SpawnNamed { name })
+            .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.spawn_named: {e}")))
+    })?;
 
     // ph2d.despawn(entity) — queue an entity despawn.
     let despawn_fn = lua.create_function(|lua, entity: f64| -> mlua::Result<()> {
@@ -355,9 +354,7 @@ fn wire_ph2d_api(
     let attach_script_fn = lua.create_function(
         |lua, (entity, asset_hex): (f64, String)| -> mlua::Result<()> {
             let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
-                mlua::Error::RuntimeError(
-                    "ph2d.attach_script: SpawnQueue not registered".into(),
-                )
+                mlua::Error::RuntimeError("ph2d.attach_script: SpawnQueue not registered".into())
             })?;
             if asset_hex.len() != 64 {
                 return Err(mlua::Error::RuntimeError(
@@ -391,9 +388,7 @@ fn wire_ph2d_api(
     let find_by_name_fn =
         lua.create_function(|lua, name: String| -> mlua::Result<Option<f64>> {
             let s = lua.app_data_ref::<NameSnapshot>().ok_or_else(|| {
-                mlua::Error::RuntimeError(
-                    "ph2d.find_by_name: NameSnapshot not registered".into(),
-                )
+                mlua::Error::RuntimeError("ph2d.find_by_name: NameSnapshot not registered".into())
             })?;
             Ok(s.get(&name).map(|e| e as f64))
         })?;
@@ -416,9 +411,7 @@ fn wire_ph2d_api(
     // lateral state. Value is type-checked HR-16 POD; non-POD
     // (function, thread, userdata) returns a Luau error.
     let state_set_fn = lua.create_function(
-        |lua,
-         (entity, field, value): (f64, String, mlua::Value)|
-         -> mlua::Result<()> {
+        |lua, (entity, field, value): (f64, String, mlua::Value)| -> mlua::Result<()> {
             let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
                 mlua::Error::RuntimeError("ph2d.state_set: StateTable not registered".into())
             })?;
@@ -431,19 +424,18 @@ fn wire_ph2d_api(
     // ph2d.state_keys(entity) — alphabetically-sorted list of fields
     // for the given entity's lateral state. Returns an empty table
     // if the entity has no state.
-    let state_keys_fn =
-        lua.create_function(|lua, entity: f64| -> mlua::Result<mlua::Table> {
-            let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
-                mlua::Error::RuntimeError("ph2d.state_keys: StateTable not registered".into())
-            })?;
-            let keys = s.keys(entity as u64);
-            let out = lua.create_table_with_capacity(keys.len(), 0)?;
-            for (i, k) in keys.into_iter().enumerate() {
-                // Luau tables are 1-indexed.
-                out.set(i + 1, k)?;
-            }
-            Ok(out)
+    let state_keys_fn = lua.create_function(|lua, entity: f64| -> mlua::Result<mlua::Table> {
+        let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
+            mlua::Error::RuntimeError("ph2d.state_keys: StateTable not registered".into())
         })?;
+        let keys = s.keys(entity as u64);
+        let out = lua.create_table_with_capacity(keys.len(), 0)?;
+        for (i, k) in keys.into_iter().enumerate() {
+            // Luau tables are 1-indexed.
+            out.set(i + 1, k)?;
+        }
+        Ok(out)
+    })?;
 
     // ph2d.state_clear(entity) — drop every field for the given
     // entity. Idempotent.

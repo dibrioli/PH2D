@@ -84,17 +84,13 @@ impl HierarchySnapshot {
 /// app; constructed once at boot from `&mut SimWorld`.
 pub struct HierarchyWalkState {
     roots: QueryState<Entity, (With<Transform>, Without<ChildOf>)>,
-    chain: QueryState<(
-        Option<&'static Name>,
-        Option<&'static Children>,
-    )>,
+    chain: QueryState<(Option<&'static Name>, Option<&'static Children>)>,
 }
 
 impl HierarchyWalkState {
     pub fn new(world: &mut World) -> Self {
         Self {
-            roots: world
-                .query_filtered::<Entity, (With<Transform>, Without<ChildOf>)>(),
+            roots: world.query_filtered::<Entity, (With<Transform>, Without<ChildOf>)>(),
             chain: world.query::<(Option<&Name>, Option<&Children>)>(),
         }
     }
@@ -237,11 +233,7 @@ mod tests {
             .id();
         let _leaf = sim
             .world_mut()
-            .spawn((
-                Transform::IDENTITY,
-                Name::new("Leaf"),
-                ChildOf(mid),
-            ))
+            .spawn((Transform::IDENTITY, Name::new("Leaf"), ChildOf(mid)))
             .id();
         let mut state = HierarchyWalkState::new(sim.world_mut());
         let mut scratch = Vec::new();

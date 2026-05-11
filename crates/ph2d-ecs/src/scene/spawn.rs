@@ -36,26 +36,21 @@ pub enum SpawnError {
     /// runtime's `register_*_components()` call set.
     Registry(RegistryError),
     /// Scene relation references an `instance` index out of bounds.
-    RelationOutOfBounds {
-        instances: usize,
-        index: u32,
-    },
+    RelationOutOfBounds { instances: usize, index: u32 },
 }
 
 impl std::fmt::Display for SpawnError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MissingChildPrefab(id) => write!(
-                f,
-                "spawn_prefab: child prefab {id} missing from AssetDb"
-            ),
+            Self::MissingChildPrefab(id) => {
+                write!(f, "spawn_prefab: child prefab {id} missing from AssetDb")
+            }
             Self::AssetIsNotPrefab(id) => {
                 write!(f, "spawn_prefab: asset {id} is not Asset::Prefab")
             }
-            Self::MissingInstancePrefab(id) => write!(
-                f,
-                "spawn_scene: instance prefab {id} missing from AssetDb"
-            ),
+            Self::MissingInstancePrefab(id) => {
+                write!(f, "spawn_scene: instance prefab {id} missing from AssetDb")
+            }
             Self::Registry(e) => write!(f, "spawn: {e}"),
             Self::RelationOutOfBounds { instances, index } => write!(
                 f,

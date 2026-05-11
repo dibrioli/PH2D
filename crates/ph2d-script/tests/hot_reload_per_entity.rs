@@ -63,10 +63,7 @@ fn lua_written_state_survives_reload() {
         .load("return ph2d.state_get(7, 'counter')")
         .eval()
         .unwrap();
-    assert_eq!(
-        v2, 5.0,
-        "Lua-written lateral state lost across hot reload"
-    );
+    assert_eq!(v2, 5.0, "Lua-written lateral state lost across hot reload");
 }
 
 #[test]

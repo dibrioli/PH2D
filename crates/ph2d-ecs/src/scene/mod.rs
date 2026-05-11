@@ -14,12 +14,10 @@ pub use commands::{
     ApplyError, EditorCommand, EditorCommandQueue, EditorQueueFull, apply_editor_commands,
 };
 pub use registry::{
-    ComponentRegistry, ComponentTypeEntry, ComponentTypeId, RegistryError,
-    register_ecs_components, stable_type_id,
+    ComponentRegistry, ComponentTypeEntry, ComponentTypeId, RegistryError, register_ecs_components,
+    stable_type_id,
 };
-pub use save::{
-    EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot,
-};
+pub use save::{EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot};
 pub use snapshot::{
     ComponentEntry, ComponentSnapshot, HierarchyEntry, HierarchySnapshot, HierarchyWalkState,
     build_hierarchy_snapshot, extract_component_snapshot,

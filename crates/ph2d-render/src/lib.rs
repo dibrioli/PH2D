@@ -21,8 +21,8 @@ pub mod atlas;
 pub mod camera;
 pub mod instance_buffer;
 pub mod pipeline;
-pub mod renderer;
 pub mod registry;
+pub mod renderer;
 pub mod sprite;
 pub mod vello_pass;
 

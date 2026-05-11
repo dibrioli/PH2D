@@ -118,7 +118,12 @@ pub fn paint_card(
         // doesn't run into the rounded corners and create the same
         // ear artifact tracked in `docs/UI_Bugs/README.md` §3.1.
         let pad_x = Spacing::Md.px();
-        let div_rect = Rect::new(rect.x + pad_x, header.y + header.h - 1.0, rect.w - pad_x * 2.0, 1.0);
+        let div_rect = Rect::new(
+            rect.x + pad_x,
+            header.y + header.h - 1.0,
+            rect.w - pad_x * 2.0,
+            1.0,
+        );
         fill_rounded_rect(scene, div_rect, 0.5, resolve(ColorToken::Border, theme));
     }
     if let Some(footer) = card.footer_rect(rect) {

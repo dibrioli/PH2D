@@ -9,9 +9,7 @@
 //! `docs/UI_Bugs/README.md` §3.3) — char-count approximations land
 //! between glyphs on proportional fonts.
 
-use crate::paint::{
-    fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_rounded_rect};
 use crate::widget::text_input::{TextInputState, border_token, fill_token};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
@@ -146,7 +144,11 @@ pub fn paint_text_area_with_state(
                 let local_e = (e - line_start).min(line.len());
                 let prefix_w = text_system.prefix_width(&line[..local_s], font_size);
                 let mid_w = if local_s == local_e {
-                    if e > line_end { inner_right - (inner_x + prefix_w) } else { 0.0 }
+                    if e > line_end {
+                        inner_right - (inner_x + prefix_w)
+                    } else {
+                        0.0
+                    }
                 } else {
                     let measured = text_system.prefix_width(&line[local_s..local_e], font_size);
                     if e > line_end {
@@ -160,12 +162,7 @@ pub fn paint_text_area_with_state(
                 if sel_w > 0.0 {
                     let sel_y = inner_y + line_idx as f32 * line_h;
                     let sel_rect = Rect::new(sel_x, sel_y, sel_w, line_h);
-                    fill_rounded_rect(
-                        scene,
-                        sel_rect,
-                        1.0,
-                        resolve(ColorToken::AccentSoft, theme),
-                    );
+                    fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
                 }
             }
             line_start = line_end + 1; // +1 for the '\n'

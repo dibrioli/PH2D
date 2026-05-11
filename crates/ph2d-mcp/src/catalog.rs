@@ -86,8 +86,7 @@ pub const CATALOG: &[ToolSpec] = &[
         destructive: false,
         input_schema_json: r#"{"type":"object","properties":{"entity":{"type":"integer"},"bytecode":{"type":"string","pattern":"^[0-9a-f]{64}$"}},"required":["entity","bytecode"]}"#,
         output_schema_json: r#"{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"]}"#,
-        luau_signature:
-            "attach_script(entity: number, bytecode: string): { ok: boolean }",
+        luau_signature: "attach_script(entity: number, bytecode: string): { ok: boolean }",
     },
     ToolSpec {
         name: "find_by_name",

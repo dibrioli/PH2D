@@ -284,7 +284,12 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
     // RGB so the color still tracks the theme.
     let panel = dd.popover_rect(chip_rect);
     let panel_radius = Radius::Md.px();
-    fill_rounded_rect(scene, panel, panel_radius, opaque(ColorToken::BgElev, theme));
+    fill_rounded_rect(
+        scene,
+        panel,
+        panel_radius,
+        opaque(ColorToken::BgElev, theme),
+    );
     stroke_rounded_rect(
         scene,
         panel,
@@ -300,19 +305,21 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
             // Use the saturated `Accent` (alpha-255 by token) for
             // the selected row instead of `AccentSoft` (which is
             // intentionally semi-transparent for inline overlays).
-            fill_rounded_rect(
-                scene,
-                r,
-                Radius::Sm.px(),
-                opaque(ColorToken::Accent, theme),
-            );
+            fill_rounded_rect(scene, r, Radius::Sm.px(), opaque(ColorToken::Accent, theme));
         }
         let fg = if is_selected {
             ColorToken::AccentFg
         } else {
             ColorToken::Text1
         };
-        paint_text_centered(text_system, scene, &opt.label, r, font_size, opaque(fg, theme));
+        paint_text_centered(
+            text_system,
+            scene,
+            &opt.label,
+            r,
+            font_size,
+            opaque(fg, theme),
+        );
     }
 }
 

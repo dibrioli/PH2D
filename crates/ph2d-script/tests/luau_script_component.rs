@@ -52,9 +52,7 @@ fn luau_spawn_binding_queues_command() {
 #[test]
 fn luau_spawn_named_carries_name() {
     let host = ScriptHost::new().unwrap();
-    host.runtime()
-        .eval("ph2d.spawn_named('Player')")
-        .unwrap();
+    host.runtime().eval("ph2d.spawn_named('Player')").unwrap();
     let cmds = host.drain_spawns();
     assert_eq!(cmds.len(), 1);
     assert_eq!(

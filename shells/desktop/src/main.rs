@@ -1324,11 +1324,7 @@ fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
             .and_then(|cb| cb.get_text().ok())
             .unwrap_or_default();
         if !text.is_empty()
-            && ph2d_editor::interaction::apply_clipboard_paste(
-                &mut hero.store,
-                target,
-                &text,
-            )
+            && ph2d_editor::interaction::apply_clipboard_paste(&mut hero.store, target, &text)
         {
             // Mimic the TextChanged path so sliders/links update.
             let _ = hero.apply_event(WidgetEvent::TextChanged(target));

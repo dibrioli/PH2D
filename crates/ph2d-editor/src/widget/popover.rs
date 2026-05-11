@@ -63,9 +63,7 @@ pub fn pop_popover_clip(scene: &mut VectorScene) {
 pub fn anchor_below(trigger: Rect, content: (f32, f32), viewport: Rect, gap: f32) -> Rect {
     let (w, h) = content;
     let center_x = trigger.x + (trigger.w - w) * 0.5;
-    let clamped_x = center_x
-        .max(viewport.x)
-        .min(viewport.x + viewport.w - w);
+    let clamped_x = center_x.max(viewport.x).min(viewport.x + viewport.w - w);
     let y = trigger.y + trigger.h + gap;
     // Flip above the trigger if there isn't room below.
     let y = if y + h > viewport.y + viewport.h {

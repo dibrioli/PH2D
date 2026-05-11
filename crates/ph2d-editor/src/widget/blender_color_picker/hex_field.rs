@@ -142,8 +142,7 @@ pub fn paint_hex_field_with_state(
         };
         let sel_start = sel_start.min(display.len());
         let sel_end = sel_end.min(display.len());
-        let prefix_w =
-            text_system.prefix_width(&display[..sel_start], TypeToken::Sm.px());
+        let prefix_w = text_system.prefix_width(&display[..sel_start], TypeToken::Sm.px());
         let mid_w = if sel_start == sel_end {
             0.0
         } else {

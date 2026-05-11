@@ -134,9 +134,7 @@ pub fn world_to_snapshot(
     for entity in state.roots.iter(world) {
         worklist.stack.push((entity, crate::Transform::IDENTITY));
     }
-    worklist
-        .stack
-        .sort_unstable_by_key(|&(e, _)| e.to_bits());
+    worklist.stack.sort_unstable_by_key(|&(e, _)| e.to_bits());
 
     // Drain in DFS LIFO order, recording the visit sequence.
     let mut visit_order: Vec<Entity> = Vec::with_capacity(worklist.stack.len());
@@ -160,8 +158,7 @@ pub fn world_to_snapshot(
 
     // Phase 2: build the index map (Entity → snapshot index), then
     // emit rows.
-    let mut index_of: std::collections::BTreeMap<Entity, u32> =
-        std::collections::BTreeMap::new();
+    let mut index_of: std::collections::BTreeMap<Entity, u32> = std::collections::BTreeMap::new();
     for (i, e) in visit_order.iter().enumerate() {
         index_of.insert(*e, i as u32);
     }
@@ -211,13 +208,10 @@ pub fn snapshot_to_world(
     for row in &snapshot.entities {
         let entity = world.spawn_empty().id();
         for blob in &row.components {
-            let entry = registry
-                .get_by_id(blob.type_id)
-                .ok_or(SaveError::Registry(RegistryError::UnknownTypeId(
-                    blob.type_id,
-                )))?;
-            (entry.insert_from_bytes)(world, entity, &blob.data)
-                .map_err(SaveError::Registry)?;
+            let entry = registry.get_by_id(blob.type_id).ok_or(SaveError::Registry(
+                RegistryError::UnknownTypeId(blob.type_id),
+            ))?;
+            (entry.insert_from_bytes)(world, entity, &blob.data).map_err(SaveError::Registry)?;
         }
         entities.push(entity);
     }
@@ -274,8 +268,7 @@ mod tests {
         let mut state = TransformPropagationState::new(sim.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim.world(), &mut state, &mut worklist, &reg, &mut snap)
-            .unwrap();
+        world_to_snapshot(sim.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
         assert_eq!(snap.entities.len(), 3);
     }
 
@@ -285,8 +278,7 @@ mod tests {
         let mut state = TransformPropagationState::new(sim_a.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap)
-            .unwrap();
+        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
 
         let mut sim_b = SimWorld::new();
         let entities = snapshot_to_world(sim_b.world_mut(), &snap, &reg).unwrap();
@@ -295,7 +287,14 @@ mod tests {
         // Verify names + hierarchy in the restored world.
         let names: Vec<String> = entities
             .iter()
-            .map(|e| sim_b.world_mut().get::<Name>(*e).unwrap().as_str().to_owned())
+            .map(|e| {
+                sim_b
+                    .world_mut()
+                    .get::<Name>(*e)
+                    .unwrap()
+                    .as_str()
+                    .to_owned()
+            })
             .collect();
         assert!(names.contains(&"Root".to_string()));
         assert!(names.contains(&"Mid".to_string()));
@@ -317,14 +316,7 @@ mod tests {
         let mut state = TransformPropagationState::new(sim_a.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap_a = WorldSnapshot::new();
-        world_to_snapshot(
-            sim_a.world(),
-            &mut state,
-            &mut worklist,
-            &reg,
-            &mut snap_a,
-        )
-        .unwrap();
+        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap_a).unwrap();
         let hash_a = snap_a.state_hash();
 
         // Restore to a fresh world, snapshot again — hashes match.
@@ -353,8 +345,7 @@ mod tests {
         let mut state = TransformPropagationState::new(sim.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim.world(), &mut state, &mut worklist, &reg, &mut snap)
-            .unwrap();
+        world_to_snapshot(sim.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
         let bytes = postcard::to_allocvec(&snap).unwrap();
         let decoded: WorldSnapshot = postcard::from_bytes(&bytes).unwrap();
         assert_eq!(decoded, snap);

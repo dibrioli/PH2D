@@ -4,8 +4,7 @@
 //! payloads.
 
 use ph2d_asset::{
-    Asset, AssetDb, AssetError, ChildOfPair, ComponentBlob, PrefabDoc, PrefabInstance,
-    SceneDoc,
+    Asset, AssetDb, AssetError, ChildOfPair, ComponentBlob, PrefabDoc, PrefabInstance, SceneDoc,
 };
 
 fn sample_prefab_bytes() -> Vec<u8> {
@@ -58,7 +57,10 @@ fn insert_prefab_bytes_id_is_content_addressed() {
     let bytes = sample_prefab_bytes();
     let id_a = db.insert_prefab_bytes(&bytes).unwrap();
     let id_b = db.insert_prefab_bytes(&bytes).unwrap();
-    assert_eq!(id_a, id_b, "identical bytes must produce identical AssetIds");
+    assert_eq!(
+        id_a, id_b,
+        "identical bytes must produce identical AssetIds"
+    );
     // Modifying any byte produces a different id.
     let mut mutated = bytes.clone();
     mutated[0] ^= 0xFF;

@@ -61,11 +61,7 @@ pub struct EditorQueueFull {
 
 impl std::fmt::Display for EditorQueueFull {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "EditorCommandQueue full ({} pending commands)",
-            self.cap
-        )
+        write!(f, "EditorCommandQueue full ({} pending commands)", self.cap)
     }
 }
 
@@ -152,9 +148,9 @@ pub fn apply_editor_commands(
                 type_id,
                 data,
             } => {
-                let entry = registry.get_by_id(type_id).ok_or(ApplyError::Registry(
-                    RegistryError::UnknownTypeId(type_id),
-                ))?;
+                let entry = registry
+                    .get_by_id(type_id)
+                    .ok_or(ApplyError::Registry(RegistryError::UnknownTypeId(type_id)))?;
                 let bevy_entity = entity_from_bits(entity);
                 (entry.insert_from_bytes)(sim_w, bevy_entity, &data)
                     .map_err(ApplyError::Registry)?;
@@ -162,12 +158,9 @@ pub fn apply_editor_commands(
             EditorCommand::Spawn { components } => {
                 let entity = sim_w.spawn_empty().id();
                 for (type_id, data) in components {
-                    let entry =
-                        registry
-                            .get_by_id(type_id)
-                            .ok_or(ApplyError::Registry(
-                                RegistryError::UnknownTypeId(type_id),
-                            ))?;
+                    let entry = registry
+                        .get_by_id(type_id)
+                        .ok_or(ApplyError::Registry(RegistryError::UnknownTypeId(type_id)))?;
                     (entry.insert_from_bytes)(sim_w, entity, &data)
                         .map_err(ApplyError::Registry)?;
                 }
@@ -269,9 +262,7 @@ mod tests {
                 components: vec![
                     (
                         transform_type_id,
-                        transform_blob_bytes(Transform::from_translation(Vec2::new(
-                            1.0, 2.0,
-                        ))),
+                        transform_blob_bytes(Transform::from_translation(Vec2::new(1.0, 2.0))),
                     ),
                     (name_type_id, name_blob_bytes("New")),
                 ],

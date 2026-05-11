@@ -12,9 +12,8 @@
 
 use ph2d_asset_cooker::{cook_prefab_json5, cook_scene_json5};
 
-const SIMPLE_PREFAB_SOURCE: &str = include_str!(
-    "../../../tests/fixtures/prefab/simple_sprite.json5"
-);
+const SIMPLE_PREFAB_SOURCE: &str =
+    include_str!("../../../tests/fixtures/prefab/simple_sprite.json5");
 
 const TWO_SPRITES_SCENE_SOURCE: &str =
     include_str!("../../../tests/fixtures/scene/two_sprites.json5");

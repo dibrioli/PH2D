@@ -28,9 +28,7 @@ use ph2d_ecs::{
 };
 use ph2d_render::register_render_components;
 
-const PREFAB_JSON5: &str = include_str!(
-    "../../../tests/fixtures/prefab/simple_sprite.json5"
-);
+const PREFAB_JSON5: &str = include_str!("../../../tests/fixtures/prefab/simple_sprite.json5");
 
 fn build_registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::new();

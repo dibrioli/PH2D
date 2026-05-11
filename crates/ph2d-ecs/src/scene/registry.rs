@@ -159,8 +159,7 @@ impl ComponentRegistry {
                     .map_err(|_| RegistryError::EntityMissing(entity))?;
                 match e.get::<T>() {
                     Some(v) => {
-                        let bytes =
-                            postcard::to_allocvec(v).map_err(RegistryError::Encode)?;
+                        let bytes = postcard::to_allocvec(v).map_err(RegistryError::Encode)?;
                         Ok(Some(bytes))
                     }
                     None => Ok(None),

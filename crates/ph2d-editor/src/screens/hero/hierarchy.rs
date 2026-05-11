@@ -167,21 +167,18 @@ pub fn paint_hierarchy(
     // Build NodeId → entity lookup so we can iterate by the store's
     // drag-and-drop order (which can differ from `fixture::hierarchy()`'s
     // default order after a reorder).
-    let entities_by_id: std::collections::BTreeMap<
-        ph2d_a11y::NodeId,
-        fixture::HierarchyEntity,
-    > = fixture::hierarchy()
-        .into_iter()
-        .filter_map(|e| ids::hierarchy_id(&e.name).map(|id| (id, e)))
-        .collect();
+    let entities_by_id: std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity> =
+        fixture::hierarchy()
+            .into_iter()
+            .filter_map(|e| ids::hierarchy_id(&e.name).map(|id| (id, e)))
+            .collect();
     let order = store.hierarchy_order();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
     // First pass: paint rows + register hit zones. Rows indent
     // horizontally by `depth × INDENT_PX` to make tree structure
     // visible after a drop-inside DnD.
     const INDENT_PX: f32 = 16.0;
-    let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> =
-        Vec::with_capacity(order.len());
+    let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> = Vec::with_capacity(order.len());
     for id in order {
         let Some(entity_template) = entities_by_id.get(id) else {
             continue;
@@ -206,12 +203,20 @@ pub fn paint_hierarchy(
         row_rects.push((*id, row_rect));
         y += HIER_ROW_H + 2.0;
     }
-    // Second pass: drop indicator while dragging. Three drop modes:
-    //   - top 30% of a row → 2px Accent line ABOVE it (sibling)
-    //   - middle 40% of a row → Accent stroke around the row (inside)
-    //   - bottom 30% → falls through to the next row's "above"
+    // Second pass: drop indicator while dragging. Mirrors the
+    // dispatch's `find_hierarchy_drop` exactly (x-aware) so the user
+    // sees the same outcome the drop will produce. Three drop modes
+    // within a row whose y/x both contain the cursor:
+    //   - top 30% of y → 2px Accent line ABOVE the row (sibling)
+    //   - middle 40% of y → Accent stroke around the row (child)
+    //   - bottom 30% of y → falls through to the next row's "above"
+    // If cursor y is in a row's band but x is left of the row's
+    // indent (the gap), draw a sibling indicator at the row's TOP
+    // spanning the full row_w — the dispatch will drop at the depth
+    // of the row's parent (root if the row is root).
     if let Some(d) = dragging {
         let mut drew = false;
+        let x_now = d.cursor_x;
         for (id, rrect) in &row_rects {
             if *id == d.dragged {
                 continue;
@@ -220,6 +225,24 @@ pub fn paint_hierarchy(
             let bot = rrect.y + rrect.h;
             let inside_top = top + rrect.h * 0.3;
             let inside_bot = top + rrect.h * 0.7;
+            if d.cursor_y < top || d.cursor_y >= bot {
+                continue;
+            }
+            let x_inside = x_now >= rrect.x && x_now < rrect.x + rrect.w;
+            if !x_inside {
+                // Cursor is in this row's y band but left of its
+                // indented start — siblings-at-root indicator across
+                // the full body width.
+                let indicator = Rect::new(rect.x + body_pad, rrect.y - 1.0, row_w, 2.0);
+                crate::paint::fill_rounded_rect(
+                    scene,
+                    indicator,
+                    1.0,
+                    resolve(ColorToken::Accent, theme),
+                );
+                drew = true;
+                break;
+            }
             if d.cursor_y < inside_top {
                 let indicator = Rect::new(rrect.x, rrect.y - 1.0, rrect.w, 2.0);
                 crate::paint::fill_rounded_rect(
@@ -240,8 +263,6 @@ pub fn paint_hierarchy(
                 );
                 drew = true;
                 break;
-            } else if d.cursor_y < bot {
-                continue;
             }
         }
         if !drew {

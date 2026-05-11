@@ -593,6 +593,13 @@ fn populate_samples(store: &mut WidgetStore) {
     for id in NOTE_SLOT_IDS {
         store.register(id, InteractiveState::Plain);
     }
+    // Scrollbar thumb hits — must be in the store so `is_focusable`
+    // returns true and the dispatch's `set_active` block runs.
+    // Without this the Down handler skips the scrollbar-drag-
+    // anchor seed and the drag never starts (user's "não está
+    // arrastando com o mouse").
+    store.register(crate::widget::INSPECTOR_SCROLLBAR_ID, InteractiveState::Plain);
+    store.register(crate::widget::HIERARCHY_SCROLLBAR_ID, InteractiveState::Plain);
 
     // Per-widget tooltips so the generic registry shows hints when
     // the user hovers. Demonstrates the §9.8 lesson in practice.
@@ -810,7 +817,13 @@ pub fn paint_inspector(
     scene.push_clip(&clip);
 
     let inner_x = rect.x + BODY_PAD;
-    let inner_w = rect.w - BODY_PAD * 2.0;
+    // Reserve room on the right for the scrollbar's track even if
+    // the bar isn't visible this frame — keeps the content width
+    // stable so widgets don't reflow when notes/section toggles
+    // push content past the viewport. `SCROLLBAR_W + 6` covers the
+    // track (10) + the 2 px outer gap + a 4 px breathing margin.
+    let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
+    let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
     let body_top_y = content_top - scroll_y + 4.0;
     let mut y = body_top_y;
     // Capture each section's body-relative top y so the right-click

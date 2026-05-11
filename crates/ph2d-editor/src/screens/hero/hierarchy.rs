@@ -144,9 +144,14 @@ pub fn paint_hierarchy(
     scene.push_clip(&clip);
     let start_y = body_top - scroll_y;
     let mut y = start_y;
+    // Reserve room for the scrollbar on the right (same convention
+    // as the inspector — keeps row width stable regardless of
+    // whether the scrollbar is currently visible).
+    let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
+    let row_w = (rect.w - body_pad * 2.0 - scrollbar_reserve).max(0.0);
     let selected_label = current_selection_label();
     for mut entity in fixture::hierarchy() {
-        let row_rect = Rect::new(rect.x + body_pad, y, rect.w - body_pad * 2.0, HIER_ROW_H);
+        let row_rect = Rect::new(rect.x + body_pad, y, row_w, HIER_ROW_H);
         if let Some(ref sel_label) = selected_label {
             entity.selected = entity.name == *sel_label;
         }

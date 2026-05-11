@@ -21,7 +21,9 @@
 use super::HeroLayout;
 use super::HeroSelection;
 use super::ids;
-use super::style::{PANEL_HEAD_PAD, paint_panel_surface, paint_resize_gripper};
+use super::style::{
+    PANEL_HEAD_PAD, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
+};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
@@ -880,20 +882,14 @@ pub fn paint_inspector(
 ) {
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
-    // Register a wide hit zone over the top-center drag handle pill
-    // (40 px wide × 24 px tall) so it's grabbable on touch + mouse.
-    let drag_handle_rect = Rect::new(
-        rect.x + (rect.w - 80.0) * 0.5,
-        rect.y + 2.0,
-        80.0,
-        14.0,
-    );
+    // Standard panel chrome hit zones — visual is in
+    // `paint_panel_surface`; we just register hits against this
+    // panel's NodeIds. Re-registered after the body to outrank any
+    // scrolled widget that drifted into the chrome area.
+    let drag_handle_rect = panel_drag_handle_rect(rect);
+    let resize_handle_rect = panel_resize_handle_rect(rect);
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
-    // Bottom-right manual resize gripper (16 × 16 hit zone). Painted
-    // later under the scrollbar so it sits on top.
-    let resize_handle_rect = Rect::new(rect.x + rect.w - 16.0, rect.y + rect.h - 16.0, 16.0, 16.0);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
-    paint_resize_gripper(scene, resize_handle_rect, theme);
 
     // Header: title + subtitle + divider line.
     let title = selection
@@ -1124,6 +1120,16 @@ pub fn paint_inspector(
     }
 
     scene.pop_layer();
+
+    // Re-register panel chrome hits AFTER the body so they sit on
+    // top of any scrolled widget whose rect drifted into the chrome
+    // area. `HitIndex::hit` walks registrations in reverse — without
+    // this, scrolling the inspector body past the top lets the
+    // first row's rect cover the drag pill, blocking pointer Down on
+    // the drag handle (the user's "depois de scrollar não consigo
+    // mais arrastar"). Same for the bottom-right resize gripper.
+    hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
+    hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

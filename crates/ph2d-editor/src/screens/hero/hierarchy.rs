@@ -4,7 +4,10 @@ use super::HeroLayout;
 use super::HeroSelection;
 use super::fixture;
 use super::ids;
-use super::style::{HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_surface, paint_resize_gripper};
+use super::style::{
+    HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_surface, panel_drag_handle_rect,
+    panel_resize_handle_rect,
+};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
@@ -77,16 +80,13 @@ pub fn paint_hierarchy(
 ) {
     let rect = layout.hierarchy;
     paint_panel_surface(rect, scene, theme);
-    let drag_handle_rect = Rect::new(
-        rect.x + (rect.w - 80.0) * 0.5,
-        rect.y + 2.0,
-        80.0,
-        14.0,
-    );
+    // Standard panel chrome hit zones — visual is in
+    // `paint_panel_surface`. Re-registered after the body to outrank
+    // any scrolled row that drifted into the chrome area.
+    let drag_handle_rect = panel_drag_handle_rect(rect);
+    let resize_handle_rect = panel_resize_handle_rect(rect);
     hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
-    let resize_handle_rect = Rect::new(rect.x + rect.w - 16.0, rect.y + rect.h - 16.0, 16.0, 16.0);
     hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
-    paint_resize_gripper(scene, resize_handle_rect, theme);
 
     let title_y = rect.y + 18.0;
     paint_text(
@@ -256,6 +256,11 @@ pub fn paint_hierarchy(
         }
     }
     scene.pop_layer();
+    // Re-register panel chrome hits AFTER the body so they sit on
+    // top of any scrolled row whose rect drifted into the drag pill
+    // area. Same fix as paint_inspector.
+    hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
+    hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
     // Publish total content height for `dispatch_wheel` clamp.
     // `y` advances by full row + gap regardless of scroll offset
     // — the difference from `start_y` is the unscrolled content

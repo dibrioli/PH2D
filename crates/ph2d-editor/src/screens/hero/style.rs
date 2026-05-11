@@ -33,28 +33,31 @@ pub(super) const PANEL_RADIUS: f32 = 16.0;
 pub(super) const PANEL_HEAD_PAD: f32 = 18.0;
 pub(super) const HIER_ROW_H: f32 = 32.0;
 
-/// Floating-panel surface common to Inspector and Hierarchy: rounded
-/// `BgElev` rect + 1px `Border` outline + a tiny drag-handle pill at
-/// the top center.
+/// Pixel size (square) of every panel's bottom-right resize-gripper
+/// hit zone. Centralized so the painters + hit-zone registration use
+/// one value.
+pub(super) const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0;
+
+/// Floating-panel surface — standard chrome for every panel
+/// (Inspector, Hierarchy, and any future panel). Paints:
+///   1. rounded `BgElev` fill + 1px `Border` stroke
+///   2. drag-pill at the top center (`BorderEmph`)
+///   3. resize-gripper dot at the bottom-right corner (`Text2`)
+///
+/// Centralizing the visual here means a single source of truth for
+/// panel-chrome style; callers only register hit zones for the
+/// drag pill / resize gripper via [`panel_drag_handle_rect`] /
+/// [`panel_resize_handle_rect`].
 pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let radius = PANEL_RADIUS;
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    // Drag pill at the top center.
     let handle = Rect::new(rect.x + (rect.w - 36.0) * 0.5, rect.y + 6.0, 36.0, 4.0);
     fill_rounded_rect(scene, handle, 999.0, resolve(ColorToken::BorderEmph, theme));
-}
-
-/// Single discreet dot in the panel's bottom-right corner as a
-/// resize affordance. Sits along the diagonal of the panel's rounded
-/// corner so it reads as a corner accent (vs. the floating, awkward
-/// 3-pip grid which conflicted with the rounded edge). Uses
-/// `Text2` for a softer presence than `BorderEmph` — visible without
-/// shouting.
-pub(super) fn paint_resize_gripper(scene: &mut VectorScene, rect: Rect, theme: Theme) {
-    let color = resolve(ColorToken::Text2, theme);
-    // Position the dot ~6px in from the bottom-right edge along the
-    // 45° diagonal of the corner radius. Diameter 4px keeps it
-    // crisp without dominating.
+    // Resize-gripper dot at the bottom-right corner, on the 45°
+    // diagonal of the rounded edge. Soft `Text2` so it reads as a
+    // corner accent rather than a foreign visual element.
     let dot_d = 4.0_f32;
     let inset = 7.0_f32;
     let dot = Rect::new(
@@ -63,7 +66,25 @@ pub(super) fn paint_resize_gripper(scene: &mut VectorScene, rect: Rect, theme: T
         dot_d,
         dot_d,
     );
-    fill_rounded_rect(scene, dot, dot_d * 0.5, color);
+    fill_rounded_rect(scene, dot, dot_d * 0.5, resolve(ColorToken::Text2, theme));
+}
+
+/// Rect of the bottom-right resize-gripper hit zone for a panel
+/// whose outer rect is `panel`. Callers register this against the
+/// panel-specific `*_RESIZE_HANDLE` NodeId.
+pub(super) fn panel_resize_handle_rect(panel: Rect) -> Rect {
+    Rect::new(
+        panel.x + panel.w - PANEL_RESIZE_HANDLE_SIZE,
+        panel.y + panel.h - PANEL_RESIZE_HANDLE_SIZE,
+        PANEL_RESIZE_HANDLE_SIZE,
+        PANEL_RESIZE_HANDLE_SIZE,
+    )
+}
+
+/// Rect of the top-center drag-pill hit zone for a panel whose outer
+/// rect is `panel`. 80×14 — wide enough to grab on touch + mouse.
+pub(super) fn panel_drag_handle_rect(panel: Rect) -> Rect {
+    Rect::new(panel.x + (panel.w - 80.0) * 0.5, panel.y + 2.0, 80.0, 14.0)
 }
 
 /// Pick a chrome icon's foreground tint based on its interactive

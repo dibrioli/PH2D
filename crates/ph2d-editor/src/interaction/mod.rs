@@ -41,6 +41,6 @@ pub use dispatch::{
 };
 pub use hit::HitIndex;
 pub use state::{
-    BlenderHitKind, ContextMenuKind, ContextMenuRequest, InteractiveState, WidgetEvent,
-    WidgetStore, format_number,
+    BlenderHitKind, ContextMenuKind, ContextMenuRequest, InteractiveState, NoteData,
+    WidgetEvent, WidgetStore, format_number,
 };

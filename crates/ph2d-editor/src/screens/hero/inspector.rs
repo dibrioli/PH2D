@@ -494,25 +494,35 @@ fn populate_samples(store: &mut WidgetStore) {
 ///     option to `Hovered`/`Normal` after release, losing selection.
 pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
     if let WidgetEvent::Click(id) = event {
-        // Context menu items — close the menu first, then route the
-        // command (Create note / outline color). Returning true here
-        // means the orchestrator doesn't pass the Click to other
-        // panels (which would otherwise treat it as a stray click).
-        const CTX_ITEMS: [ph2d_a11y::NodeId; 7] = [
-            ids::CTX_MENU_CREATE_NOTE,
-            ids::CTX_MENU_OUTLINE_NONE,
-            ids::CTX_MENU_OUTLINE_0,
-            ids::CTX_MENU_OUTLINE_1,
-            ids::CTX_MENU_OUTLINE_2,
-            ids::CTX_MENU_OUTLINE_3,
-            ids::CTX_MENU_OUTLINE_4,
+        // Context menu items — route by id using the snapshot of
+        // the most recently closed menu request (dispatch closes the
+        // menu on the Down event; the Click arrives on Up after the
+        // snapshot landed in `last_context_menu`). Returns true so
+        // the orchestrator doesn't pass the Click to other panels.
+        const OUTLINE_ITEMS: [(ph2d_a11y::NodeId, Option<u8>); 6] = [
+            (ids::CTX_MENU_OUTLINE_NONE, None),
+            (ids::CTX_MENU_OUTLINE_0, Some(0)),
+            (ids::CTX_MENU_OUTLINE_1, Some(1)),
+            (ids::CTX_MENU_OUTLINE_2, Some(2)),
+            (ids::CTX_MENU_OUTLINE_3, Some(3)),
+            (ids::CTX_MENU_OUTLINE_4, Some(4)),
         ];
-        if CTX_ITEMS.iter().any(|c| *c == id) {
-            store.close_context_menu();
-            // Note creation + outline color application are deferred
-            // to the next implementation round (Note widget lands
-            // alongside its own side-table). The menu visually works
-            // today; clicking an item closes the menu.
+        if id == ids::CTX_MENU_CREATE_NOTE {
+            if let Some(req) = store.consume_last_context_menu()
+                && let crate::interaction::ContextMenuKind::CreateNote { panel } = req.kind
+            {
+                // Default to yellow (color_idx 0) — user changes
+                // color via right-click on the note (next round).
+                store.notes_push(panel, 0);
+            }
+            return true;
+        }
+        if let Some((_, color_idx)) = OUTLINE_ITEMS.iter().find(|(item_id, _)| *item_id == id) {
+            if let Some(req) = store.consume_last_context_menu()
+                && let crate::interaction::ContextMenuKind::SectionOutline { section } = req.kind
+            {
+                store.set_section_outline_color(section, *color_idx);
+            }
             return true;
         }
 
@@ -638,30 +648,90 @@ pub fn paint_inspector(
     // `&mut store` would conflict with the post-loop write to
     // `set_last_inspector_content_h` and `panel_max_scroll`.
     macro_rules! section {
-        ($f:ident) => {
+        ($f:ident, $section_id:expr) => {
+            let y_before = y;
             let new_y = $f(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-            // `paint_section_separator` owns the full inter-section
-            // gap (top pad + line + bottom pad); no extra spacing here.
+            // Outline: when the user picked an outline color via the
+            // right-click menu on this section header, stroke a
+            // colored rect spanning the header + body before the
+            // separator. Indexes the 5-color highlighter palette.
+            if let Some(color_idx) = store.section_outline_color($section_id) {
+                let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
+                    [color_idx.min(4) as usize];
+                let block = Rect::new(inner_x, y_before, inner_w, (new_y - y_before).max(0.0));
+                let outline_color = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+                crate::paint::stroke_rounded_rect(
+                    scene,
+                    block,
+                    Radius::Sm.px(),
+                    2.0,
+                    outline_color,
+                );
+            }
             y = paint_section_separator(scene, theme, inner_x, inner_w, new_y);
         };
     }
-    section!(paint_inputs_section);
-    section!(paint_slider_section);
-    section!(paint_switches_section);
-    section!(paint_lists_section);
-    section!(paint_vector_section);
-    section!(paint_status_section);
-    section!(paint_color_section);
-    section!(paint_actions_section);
-    section!(paint_identity_section);
-    section!(paint_card_section);
+    section!(paint_inputs_section, ids::INSP_SECTION_INPUTS);
+    section!(paint_slider_section, ids::INSP_SECTION_SLIDER);
+    section!(paint_switches_section, ids::INSP_SECTION_SWITCHES);
+    section!(paint_lists_section, ids::INSP_SECTION_LISTS);
+    section!(paint_vector_section, ids::INSP_SECTION_VECTOR);
+    section!(paint_status_section, ids::INSP_SECTION_STATUS);
+    section!(paint_color_section, ids::INSP_SECTION_COLOR);
+    section!(paint_actions_section, ids::INSP_SECTION_ACTIONS);
+    section!(paint_identity_section, ids::INSP_SECTION_IDENTITY);
+    section!(paint_card_section, ids::INSP_SECTION_CARD);
+
+    // Notes appended via right-click "Create note" stack at the
+    // bottom of the inspector body. Each note paints as a
+    // colored-bg pill with dark text. Editability + per-note color
+    // picker land in the next round.
+    let notes = store.notes_for_panel(ids::INSP_PANEL);
+    if !notes.is_empty() {
+        let pad = 8.0_f32;
+        let note_h = 64.0_f32;
+        for note in notes {
+            let r = Rect::new(inner_x, y, inner_w, note_h);
+            let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
+                [note.color_idx.min(4) as usize];
+            let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+            fill_rounded_rect(scene, r, Radius::Md.px(), bg);
+            // Dark text always (light highlighter bg makes Text1
+            // from dark themes invisible). Hardcode #212121.
+            let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF);
+            paint_text(
+                text_system,
+                scene,
+                &note.title,
+                r.x + pad,
+                r.y + pad,
+                TypeToken::Sm.px(),
+                r.w - pad * 2.0,
+                dark,
+            );
+            if !note.body.is_empty() {
+                paint_text(
+                    text_system,
+                    scene,
+                    &note.body,
+                    r.x + pad,
+                    r.y + pad + TypeToken::Sm.px() + 4.0,
+                    TypeToken::Xs.px(),
+                    r.w - pad * 2.0,
+                    dark,
+                );
+            }
+            y += note_h + 8.0;
+        }
+    }
 
     // Publish the total content height for the wheel dispatch to
-    // clamp scroll offsets against. `y` is in screen-space WITH the
-    // current scroll offset baked in, so `y + scroll_y` is the
-    // virtual "bottom of all content" position relative to the
-    // unscrolled origin.
-    let content_h = (y + scroll_y - body_top_y).max(0.0);
+    // clamp scroll offsets against. Each section advances `y` by
+    // its own height regardless of where it started, so the total
+    // painted height is simply `y_final - y_start` — DO NOT add
+    // `scroll_y` here (the previous version did and produced an
+    // ever-growing content_h that defeated the clamp).
+    let content_h = (y - body_top_y).max(0.0);
     set_last_inspector_content_h(content_h);
 
     // Second pass: open Dropdown popover paints on top of every

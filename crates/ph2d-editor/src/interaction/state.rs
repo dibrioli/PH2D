@@ -298,6 +298,33 @@ pub struct WidgetStore {
     /// menu over everything; clicking outside the menu or on a menu
     /// item clears the slot.
     context_menu: Option<ContextMenuRequest>,
+    /// Section-header id → highlighter color index (0..4 for the 5
+    /// canonical colors; missing entry == "no outline"). Painted by
+    /// the inspector as a colored stroke around the section block.
+    section_outline_color: BTreeMap<NodeId, u8>,
+    /// Per-panel list of user-created notes. Each note carries a
+    /// background color index into the highlighter palette. New
+    /// notes append; right-click → delete removes by index. The
+    /// painter walks this list once per panel each frame.
+    notes_per_panel: BTreeMap<NodeId, Vec<NoteData>>,
+    /// Sticky source of the most recently completed context-menu
+    /// request, captured at apply-event time so the inspector can
+    /// route the click → side-table mutation. The dispatch clears
+    /// `context_menu` on the same Down event that selects an item;
+    /// without this snapshot the inspector loses the request
+    /// before it can read it.
+    last_context_menu: Option<ContextMenuRequest>,
+}
+
+/// State of a user-created sticky note inside a panel.
+#[derive(Clone, Debug)]
+pub struct NoteData {
+    /// Highlighter color index (0..4) into the 5-color palette.
+    pub color_idx: u8,
+    /// Note title (single line).
+    pub title: String,
+    /// Note body (multi-line).
+    pub body: String,
 }
 
 /// Where + why a right-click opened a context menu. Painted as a
@@ -351,6 +378,9 @@ impl WidgetStore {
             tooltips: BTreeMap::new(),
             collapsed: BTreeMap::new(),
             context_menu: None,
+            section_outline_color: BTreeMap::new(),
+            notes_per_panel: BTreeMap::new(),
+            last_context_menu: None,
         }
     }
 
@@ -686,14 +716,76 @@ impl WidgetStore {
         self.context_menu = Some(request);
     }
 
-    /// Close any currently-open context menu.
+    /// Close any currently-open context menu. Snapshots the request
+    /// into `last_context_menu` so `apply_event` can still read the
+    /// menu's `kind` when handling the item-click that triggered
+    /// the close (the click → Click event arrives AFTER the close).
     pub fn close_context_menu(&mut self) {
-        self.context_menu = None;
+        if let Some(req) = self.context_menu.take() {
+            self.last_context_menu = Some(req);
+        }
     }
 
     /// Read the currently-open context menu request, if any.
     pub fn context_menu(&self) -> Option<ContextMenuRequest> {
         self.context_menu
+    }
+
+    /// Read the most recently closed context-menu request — used by
+    /// `apply_event` to recover the original `kind` when routing an
+    /// item Click into a side-table mutation. Cleared by
+    /// `consume_last_context_menu` once the click has been applied.
+    pub fn last_context_menu(&self) -> Option<ContextMenuRequest> {
+        self.last_context_menu
+    }
+
+    /// Take + clear the last-context-menu snapshot. Called by
+    /// `apply_event` after it has routed the click.
+    pub fn consume_last_context_menu(&mut self) -> Option<ContextMenuRequest> {
+        self.last_context_menu.take()
+    }
+
+    /// Read the outline-color index for a section header id (0..4
+    /// referencing the highlighter palette). `None` = no outline.
+    pub fn section_outline_color(&self, section: NodeId) -> Option<u8> {
+        self.section_outline_color.get(&section).copied()
+    }
+
+    /// Set the outline-color index for a section. Pass `None` to
+    /// clear (the "No outline" menu item).
+    pub fn set_section_outline_color(&mut self, section: NodeId, color: Option<u8>) {
+        match color {
+            Some(c) => {
+                self.section_outline_color.insert(section, c);
+            }
+            None => {
+                self.section_outline_color.remove(&section);
+            }
+        }
+    }
+
+    /// Read the per-panel note list. Returns an empty slice when no
+    /// notes have been created for the panel.
+    pub fn notes_for_panel(&self, panel: NodeId) -> &[NoteData] {
+        self.notes_per_panel
+            .get(&panel)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
+
+    /// Append a new note with the given color index to the panel's
+    /// note list. Cap at 12 notes per panel to keep paint bounded.
+    pub fn notes_push(&mut self, panel: NodeId, color_idx: u8) {
+        const CAP: usize = 12;
+        let list = self.notes_per_panel.entry(panel).or_default();
+        if list.len() >= CAP {
+            return;
+        }
+        list.push(NoteData {
+            color_idx,
+            title: format!("Note {}", list.len() + 1),
+            body: String::new(),
+        });
     }
 
     /// Append `color` to the BlenderPicker's palette. No-op if the

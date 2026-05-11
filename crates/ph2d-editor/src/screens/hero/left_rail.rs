@@ -65,18 +65,21 @@ pub fn paint_left_rail(
     // corresponding side panel is currently visible. Sit above
     // Move/Translate with their own divider so they read as
     // workspace-level controls, not transform tools.
+    // Short uppercase tags painted vertically alongside the chip
+    // (4-5 chars max — anything longer overruns the 44-px chip
+    // height once rotated 90° CCW).
     let panel_toggles = [
         (
             ids::RAIL_SHOW_INSPECTOR,
             "Show Inspector",
             IconId::LetterI,
-            "INSPECTOR",
+            "INSP",
         ),
         (
             ids::RAIL_SHOW_HIERARCHY,
             "Show Hierarchy",
             IconId::LetterH,
-            "HIERARCHY",
+            "HIER",
         ),
     ];
     let mut rail_entries: Vec<ToolRailEntry> = panel_toggles
@@ -92,7 +95,7 @@ pub fn paint_left_rail(
     rail_entries.push(ToolRailEntry::Divider);
     let entries = [
         (ids::TOOL_TRANSLATE, "Translate", IconId::Transform, "MOVE"),
-        (ids::TOOL_ROTATE, "Rotate", IconId::Rotate, "ROTATE"),
+        (ids::TOOL_ROTATE, "Rotate", IconId::Rotate, "ROT"),
         (ids::TOOL_SCALE, "Scale", IconId::Scale, "SCALE"),
         (ids::TOOL_PIVOT, "Pivot", IconId::Pivot, "PIVOT"),
     ];

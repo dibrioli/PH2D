@@ -283,9 +283,18 @@ pub fn paint_tool_rail(
 }
 
 /// Helper — paint a short uppercase tag vertically (CCW-rotated)
-/// in the column to the LEFT of `chip_rect`. The text's baseline
-/// sits at `rail_left_x + col_width / 2`; the rotation puts the
-/// glyphs running bottom-to-top.
+/// in the column to the LEFT of `chip_rect`.
+///
+/// Layout decisions (mirror user feedback):
+///   - Label hugs the LEFT edge of the rail (`LABEL_LEFT_PAD`).
+///   - Label is vertically centered with the chip — we measure the
+///     real text width via `prefix_width` and offset the bottom
+///     anchor by half that width so the rotated text's midpoint
+///     lands on `chip.center_y`.
+///   - The chip already sits at `rail.w - CHIP - CHIP_RIGHT_PAD`,
+///     so the gap between label right-edge and chip is the column
+///     width minus the label's rotated-thickness (≈ `font_size`).
+const LABEL_LEFT_PAD: f32 = 3.0;
 fn paint_sub_label_vertical(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
@@ -298,13 +307,16 @@ fn paint_sub_label_vertical(
     if text.is_empty() {
         return;
     }
-    let column_w = chip_rect.x - rail_left_x;
-    // Anchor: bottom-left of the rotated text. After 90° CCW the
-    // text's height (post-layout) becomes its horizontal extent,
-    // which we want to fit inside the column. The baseline ends up
-    // at `anchor_x` from the bottom of the chip going up.
-    let anchor_x = rail_left_x + (column_w * 0.5) + font_size * 0.5;
-    let anchor_y = chip_rect.y + chip_rect.h - 6.0;
+    // Measure the unrotated text width — after 90° CCW this is the
+    // text's VERTICAL extent on screen.
+    let text_w = text_system.prefix_width(text, font_size);
+    let chip_center_y = chip_rect.y + chip_rect.h * 0.5;
+    // After rotation, the parley layout's (0, 0) — i.e. our anchor —
+    // becomes the BOTTOM-LEFT of the rotated bbox. Center the text
+    // vertically on the chip by offsetting from `chip_center_y` by
+    // half the rotated extent (= text_w).
+    let anchor_x = rail_left_x + LABEL_LEFT_PAD;
+    let anchor_y = chip_center_y + text_w * 0.5;
     paint_text_rotated_ccw(
         text_system,
         scene,

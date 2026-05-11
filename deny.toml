@@ -59,6 +59,18 @@ name = "ittapi-sys"
 allow = ["MIT"]
 name = "r-efi"
 
+[[licenses.exceptions]]
+# error-code + clipboard-win are BSL-1.0 only (Boost Software
+# License — permissive, MIT-equivalent, OSI-approved + FSF-Free).
+# Both pulled by `arboard`, which shells/desktop uses for Cmd+C/V
+# clipboard integration.
+allow = ["BSL-1.0"]
+name = "error-code"
+
+[[licenses.exceptions]]
+allow = ["BSL-1.0"]
+name = "clipboard-win"
+
 # Grant clarification for crates whose embedded LICENSE files don't match
 # their Cargo.toml `license` field exactly.
 [[licenses.clarify]]

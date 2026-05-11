@@ -7,9 +7,7 @@ use super::style::icon_button_fg;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::{
-    Avatar, AvatarShape, ButtonState, PILL_PADDING_PX, Tooltip, paint_avatar, paint_tooltip,
-};
+use crate::widget::{ButtonState, PILL_PADDING_PX, Tooltip, paint_tooltip};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -304,15 +302,23 @@ fn paint_top_bar_cluster(
             // cluster as a clickable hit; dispatch opens the menu
             // on Primary Down.
             hit_index.register(id, rect);
-            let avatar_size = 22.0_f32;
-            let avatar_rect = Rect::new(
+            // Leading glyph: the Blender `scene_data` icon ("scene")
+            // — was an Avatar('E') initial; replaced because the
+            // chip now reads as "current scene", not "project owner".
+            let icon_size = 22.0_f32;
+            let icon_rect = Rect::new(
                 rect.x + pad_x,
-                rect.y + (rect.h - avatar_size) * 0.5,
-                avatar_size,
-                avatar_size,
+                rect.y + (rect.h - icon_size) * 0.5,
+                icon_size,
+                icon_size,
             );
-            let av = Avatar::new(NodeId(0), "Enio", 'E').shape(AvatarShape::Circle);
-            paint_avatar(&av, avatar_rect, scene, text_system, theme);
+            paint_icon(
+                scene,
+                IconId::Scene,
+                icon_rect,
+                resolve(ColorToken::Text2, theme),
+                1.5,
+            );
             // Prefer the store's current scene name (mutated by
             // SceneList row clicks); fall back to the fixture name.
             let store_name = store.current_scene_name();
@@ -321,8 +327,18 @@ fn paint_top_bar_cluster(
             } else {
                 store_name
             };
-            let name_x = avatar_rect.x + avatar_size + Spacing::Md.px();
+            // Reserve room on the right for the dropdown chevron so
+            // the name doesn't overlap it.
+            let chev_size = 14.0_f32;
+            let chev_rect = Rect::new(
+                rect.x + rect.w - pad_x - chev_size,
+                rect.y + (rect.h - chev_size) * 0.5,
+                chev_size,
+                chev_size,
+            );
+            let name_x = icon_rect.x + icon_size + Spacing::Md.px();
             let name_y = rect.y + (rect.h - font) * 0.5;
+            let name_w = (chev_rect.x - name_x - Spacing::Sm.px()).max(0.0);
             paint_text(
                 text_system,
                 scene,
@@ -330,8 +346,15 @@ fn paint_top_bar_cluster(
                 name_x,
                 name_y,
                 font,
-                rect.w - (name_x - rect.x) - pad_x,
+                name_w,
                 resolve(ColorToken::Text1, theme),
+            );
+            paint_icon(
+                scene,
+                IconId::ChevronDown,
+                chev_rect,
+                resolve(ColorToken::Text3, theme),
+                1.5,
             );
         }
         TopBarCluster::Play => {

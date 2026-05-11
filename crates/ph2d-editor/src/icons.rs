@@ -427,10 +427,15 @@ impl IconId {
                 IconCmd::Path("M9 3h3"),
                 IconCmd::Rect(3.0, 11.0, 10.0, 10.0, 1.0),
             ],
+            // Blender's `scene_data` icon — a "mountain" triangle on
+            // the left + a "sphere" on the lower-right, signalling
+            // "a 3D scene containing objects". Adapted from
+            // Resourses/icons/Icons_Flies/blender-icons/scene_data.svg
+            // (1600px viewBox + 100× transform) to our 24×24 grammar.
             Self::Scene => &[
-                IconCmd::Rect(2.0, 3.0, 20.0, 14.0, 2.0),
-                IconCmd::Line(8.0, 21.0, 16.0, 21.0),
-                IconCmd::Line(12.0, 17.0, 12.0, 21.0),
+                IconCmd::Path("M 7.5 4 L 3 14 L 12 14 Z"),
+                IconCmd::Circle(15.5, 15.5, 4.0),
+                IconCmd::Circle(14.0, 14.2, 0.8),
             ],
             Self::Script => &[
                 IconCmd::Path("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"),

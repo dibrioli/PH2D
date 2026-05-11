@@ -142,7 +142,8 @@ pub fn paint_hierarchy(
         content_bottom as f64,
     );
     scene.push_clip(&clip);
-    let mut y = body_top - scroll_y;
+    let start_y = body_top - scroll_y;
+    let mut y = start_y;
     let selected_label = current_selection_label();
     for mut entity in fixture::hierarchy() {
         let row_rect = Rect::new(rect.x + body_pad, y, rect.w - body_pad * 2.0, HIER_ROW_H);
@@ -156,6 +157,26 @@ pub fn paint_hierarchy(
         y += HIER_ROW_H + 2.0;
     }
     scene.pop_layer();
+    // Publish total content height for `dispatch_wheel` clamp.
+    // `y` advances by full row + gap regardless of scroll offset
+    // — the difference from `start_y` is the unscrolled content
+    // height (same trick the inspector uses).
+    set_last_hierarchy_content_h((y - start_y).max(0.0));
+}
+
+thread_local! {
+    /// Total height of the hierarchy entity list painted last
+    /// frame. Hero clamps the scroll offset against this each
+    /// frame so wheeling at the bottom doesn't overshoot.
+    static LAST_HIER_CONTENT_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+}
+
+pub fn last_hierarchy_content_h() -> f32 {
+    LAST_HIER_CONTENT_H.with(|c| c.get())
+}
+
+fn set_last_hierarchy_content_h(h: f32) {
+    LAST_HIER_CONTENT_H.with(|c| c.set(h));
 }
 
 // `paint_hierarchy` reads the current selection label via this

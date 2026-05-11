@@ -55,6 +55,13 @@ pub fn paint_blender_picker_demo(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
+    // Hidden by default — only painted when some widget explicitly
+    // opens it via `store.set_picker_target(...)`. The picker is
+    // the editor's single color-picking surface; clicking outside
+    // it (and outside another color target) closes it.
+    if store.picker_target().is_none() {
+        return;
+    }
     let Some(rect) = current_picker_rect(layout, store) else {
         return;
     };

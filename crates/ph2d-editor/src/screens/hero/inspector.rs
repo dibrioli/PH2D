@@ -68,6 +68,22 @@ const SECTION_IDS: [ph2d_a11y::NodeId; 10] = [
     ids::INSP_SECTION_CARD,
 ];
 
+/// Color-circle hit ids — one per section header, in the same
+/// order as `SECTION_IDS`. Clicking any of these opens the global
+/// color picker editing `widget_colors[circle_id]`.
+const SECTION_COLOR_IDS: [ph2d_a11y::NodeId; 10] = [
+    ids::INSP_SECTION_INPUTS_COLOR,
+    ids::INSP_SECTION_SLIDER_COLOR,
+    ids::INSP_SECTION_SWITCHES_COLOR,
+    ids::INSP_SECTION_LISTS_COLOR,
+    ids::INSP_SECTION_VECTOR_COLOR,
+    ids::INSP_SECTION_STATUS_COLOR,
+    ids::INSP_SECTION_COLOR_COLOR,
+    ids::INSP_SECTION_ACTIONS_COLOR,
+    ids::INSP_SECTION_IDENTITY_COLOR,
+    ids::INSP_SECTION_CARD_COLOR,
+];
+
 /// Ids of the three Radio buttons that form the Switches sample's
 /// segmented "Low / Mid / High" group. Same trick used for the
 /// "Edit / Play / Debug" tabs — exactly one button is `Pressed` at
@@ -460,6 +476,29 @@ fn populate_samples(store: &mut WidgetStore) {
     for id in SECTION_IDS {
         store.register(id, InteractiveState::Plain);
     }
+    // Section color-circle hits. Click → opens the global picker
+    // editing the circle's color. Registered as Plain (no own
+    // visual state — the painter just draws the rgba stored in
+    // `widget_colors[id]`).
+    for id in SECTION_COLOR_IDS {
+        store.register(id, InteractiveState::Plain);
+    }
+
+    // Context-menu items — must be registered for the dispatch to
+    // mark them as focusable + active and emit `Click` on Up. With
+    // no registration the menu paints but clicking does nothing
+    // (the user's "Create Note ainda não cria nada" report).
+    for id in [
+        ids::CTX_MENU_CREATE_NOTE,
+        ids::CTX_MENU_OUTLINE_NONE,
+        ids::CTX_MENU_OUTLINE_0,
+        ids::CTX_MENU_OUTLINE_1,
+        ids::CTX_MENU_OUTLINE_2,
+        ids::CTX_MENU_OUTLINE_3,
+        ids::CTX_MENU_OUTLINE_4,
+    ] {
+        store.register(id, InteractiveState::Plain);
+    }
 
     // Per-widget tooltips so the generic registry shows hints when
     // the user hovers. Demonstrates the §9.8 lesson in practice.
@@ -523,6 +562,25 @@ pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
             {
                 store.set_section_outline_color(section, *color_idx);
             }
+            return true;
+        }
+
+        // Color circle on a section header OR the ColorSwatch
+        // sample → open the global BlenderColorPicker editing this
+        // widget's color. The picker's value seeds from the
+        // widget's current color (defaulting to neutral gray for
+        // unseeded targets).
+        if SECTION_COLOR_IDS.iter().any(|c| *c == id) || id == ids::INSP_SAMPLE_SWATCH {
+            let seed = store.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
+            store.set_widget_color(id, seed);
+            store.set_picker_target(Some(id));
+            // Seed the picker's retained color from the target so
+            // the floating picker opens already showing the
+            // current color.
+            store.set_blender_value(
+                ids::INSP_BLENDER_PICKER,
+                ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+            );
             return true;
         }
 
@@ -783,16 +841,27 @@ fn paint_collapsible_header(
     w: f32,
     y: f32,
     id: NodeId,
+    color_id: NodeId,
     label: &str,
-    count: u32,
+    _count: u32,
 ) -> (f32, bool) {
     let r = Rect::new(x, y, w, SECTION_HEAD_H);
     let is_collapsed = store.is_collapsed(id);
     hit_index.register(id, r);
+    // Color circle replaces the legacy count chip. Default to a
+    // neutral mid-gray when the user hasn't picked a color yet.
+    let rgba = store.widget_color(color_id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
     let header = SectionHeader::new(id, label)
-        .count(count)
+        .color(rgba)
         .collapsible(!is_collapsed);
     paint_section_header(&header, r, scene, text_system, theme);
+    // Register the circle hit zone AFTER the header rect so the
+    // circle "wins" the back-to-front HitIndex lookup. Clicking the
+    // circle opens the picker for this section; clicking elsewhere
+    // on the header toggles collapse.
+    if let Some(circle_rect) = crate::widget::color_circle_hit_rect(&header, r) {
+        hit_index.register(color_id, circle_rect);
+    }
     (y + SECTION_HEAD_H + 4.0, !is_collapsed)
 }
 
@@ -867,6 +936,7 @@ fn paint_inputs_section(
         w,
         y,
         ids::INSP_SECTION_INPUTS,
+        ids::INSP_SECTION_INPUTS_COLOR,
         "Inputs",
         4,
     );
@@ -968,6 +1038,7 @@ fn paint_slider_section(
         w,
         y,
         ids::INSP_SECTION_SLIDER,
+        ids::INSP_SECTION_SLIDER_COLOR,
         "Slider",
         1,
     );
@@ -1015,6 +1086,7 @@ fn paint_switches_section(
         w,
         y,
         ids::INSP_SECTION_SWITCHES,
+        ids::INSP_SECTION_SWITCHES_COLOR,
         "Switches",
         3,
     );
@@ -1108,6 +1180,7 @@ fn paint_lists_section(
         w,
         y,
         ids::INSP_SECTION_LISTS,
+        ids::INSP_SECTION_LISTS_COLOR,
         "Lists",
         4,
     );
@@ -1288,6 +1361,7 @@ fn paint_vector_section(
         w,
         y,
         ids::INSP_SECTION_VECTOR,
+        ids::INSP_SECTION_VECTOR_COLOR,
         "Vector",
         3,
     );
@@ -1352,6 +1426,7 @@ fn paint_status_section(
         w,
         y,
         ids::INSP_SECTION_STATUS,
+        ids::INSP_SECTION_STATUS_COLOR,
         "Status",
         3,
     );
@@ -1422,6 +1497,7 @@ fn paint_color_section(
         w,
         y,
         ids::INSP_SECTION_COLOR,
+        ids::INSP_SECTION_COLOR_COLOR,
         "Color",
         1,
     );
@@ -1461,6 +1537,7 @@ fn paint_actions_section(
         w,
         y,
         ids::INSP_SECTION_ACTIONS,
+        ids::INSP_SECTION_ACTIONS_COLOR,
         "Actions",
         4,
     );
@@ -1538,6 +1615,7 @@ fn paint_identity_section(
         w,
         y,
         ids::INSP_SECTION_IDENTITY,
+        ids::INSP_SECTION_IDENTITY_COLOR,
         "Identity",
         2,
     );
@@ -1598,6 +1676,7 @@ fn paint_card_section(
         w,
         y,
         ids::INSP_SECTION_CARD,
+        ids::INSP_SECTION_CARD_COLOR,
         "Card",
         1,
     );

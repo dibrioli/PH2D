@@ -12,7 +12,7 @@ use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::VectorScene;
+use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, VectorScene};
 
 #[derive(Clone, Debug)]
 pub struct SectionHeader {
@@ -22,6 +22,11 @@ pub struct SectionHeader {
     /// When `Some(open)`, paints a chevron that flips on open/closed.
     /// `None` means the section is non-collapsible.
     pub collapsible: Option<bool>,
+    /// Right-edge color circle (RGBA bytes). When `Some`, replaces
+    /// the count chip — the user can click it to open the global
+    /// color picker for the section. When `None`, falls back to
+    /// the count chip (or nothing).
+    pub color: Option<[u8; 4]>,
 }
 
 impl SectionHeader {
@@ -31,6 +36,7 @@ impl SectionHeader {
             label: label.into(),
             count: None,
             collapsible: None,
+            color: None,
         }
     }
 
@@ -41,6 +47,11 @@ impl SectionHeader {
 
     pub fn collapsible(mut self, open: bool) -> Self {
         self.collapsible = Some(open);
+        self
+    }
+
+    pub fn color(mut self, rgba: [u8; 4]) -> Self {
+        self.color = Some(rgba);
         self
     }
 
@@ -112,8 +123,37 @@ pub fn paint_section_header(
         resolve(ColorToken::Text1, theme),
     );
 
-    // Count chip — right-aligned mono pill.
-    if let Some(n) = header.count {
+    // Right-edge ornament. Priority: color circle > count chip.
+    // The color circle is the user-clickable "open the picker for
+    // this section" affordance; the count chip is legacy and only
+    // shown when no color is configured.
+    if let Some(rgba) = header.color {
+        let radius_px = 7.0_f32;
+        let cx = rect.x + rect.w - pad_x - radius_px;
+        let cy = rect.y + rect.h * 0.5;
+        let circle = Circle::new(Point::new(cx as f64, cy as f64), radius_px as f64);
+        let fill = VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+        scene.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(fill),
+            None,
+            &circle,
+        );
+        // 1-px ring so the circle still reads against same-colored
+        // backgrounds (e.g. a light yellow circle on light theme).
+        let ring = Circle::new(
+            Point::new(cx as f64, cy as f64),
+            (radius_px + 0.5) as f64,
+        );
+        scene.inner_mut().stroke(
+            &ph2d_vector::Stroke::new(1.0),
+            Affine::IDENTITY,
+            &Brush::Solid(resolve(ColorToken::Border, theme)),
+            None,
+            &ring,
+        );
+    } else if let Some(n) = header.count {
         let chip_w = 36.0_f32;
         let chip_h = (rect.h - 4.0).max(14.0);
         let chip_rect = Rect::new(
@@ -138,6 +178,23 @@ pub fn paint_section_header(
             resolve(ColorToken::Text3, theme),
         );
     }
+}
+
+/// Rect of the color-circle hit zone in screen coordinates. Hosts
+/// register this rect for hit-testing the "open picker for this
+/// section" gesture. Returns `None` for headers that have no color
+/// circle (the painter falls back to the count chip / no ornament).
+pub fn color_circle_hit_rect(header: &SectionHeader, host: Rect) -> Option<Rect> {
+    header.color?;
+    let pad_x = Spacing::Md.px();
+    let radius_px = 7.0_f32;
+    let size = radius_px * 2.0 + 4.0;
+    Some(Rect::new(
+        host.x + host.w - pad_x - size,
+        host.y + (host.h - size) * 0.5,
+        size,
+        size,
+    ))
 }
 
 #[cfg(test)]

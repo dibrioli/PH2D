@@ -67,7 +67,7 @@ pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
 };
-pub use section_header::{SectionHeader, paint_section_header};
+pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider};
 pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,

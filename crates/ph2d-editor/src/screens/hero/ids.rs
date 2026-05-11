@@ -93,6 +93,21 @@ pub const INSP_SECTION_ACTIONS: NodeId = NodeId(357);
 pub const INSP_SECTION_IDENTITY: NodeId = NodeId(358);
 pub const INSP_SECTION_CARD: NodeId = NodeId(359);
 
+// Section header color-circle hit ids. Each section displays a
+// small colored circle on the right of its title (replacing the
+// old count chip); clicking the circle opens the global color
+// picker for that section. Index ordering matches `SECTION_IDS`.
+pub const INSP_SECTION_INPUTS_COLOR: NodeId = NodeId(360);
+pub const INSP_SECTION_SLIDER_COLOR: NodeId = NodeId(361);
+pub const INSP_SECTION_SWITCHES_COLOR: NodeId = NodeId(362);
+pub const INSP_SECTION_LISTS_COLOR: NodeId = NodeId(363);
+pub const INSP_SECTION_VECTOR_COLOR: NodeId = NodeId(364);
+pub const INSP_SECTION_STATUS_COLOR: NodeId = NodeId(365);
+pub const INSP_SECTION_COLOR_COLOR: NodeId = NodeId(366);
+pub const INSP_SECTION_ACTIONS_COLOR: NodeId = NodeId(367);
+pub const INSP_SECTION_IDENTITY_COLOR: NodeId = NodeId(368);
+pub const INSP_SECTION_CARD_COLOR: NodeId = NodeId(369);
+
 // ── Context menu item ids ──────────────────────────────────────────────────
 // The right-click context menu reuses these stable ids across both
 // inspector and hierarchy. Click dispatch routes by id to the

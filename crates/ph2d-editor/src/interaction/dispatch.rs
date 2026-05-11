@@ -190,6 +190,25 @@ pub fn dispatch_pointer_with_text<'frame>(
                 store.close_context_menu();
             }
 
+            // Close the global color picker when the click lands
+            // OUTSIDE the picker (any BlenderHit sub-rect) AND
+            // outside another color-target widget. Color-target ids
+            // are routed through `apply_event` which re-opens the
+            // picker on their own; clicking anywhere else dismisses
+            // it. The picker has no own NodeId in the hit_index —
+            // its sub-controls do (BlenderHit) — so a hit that
+            // resolves to a BlenderHit means "inside the picker".
+            if store.picker_target().is_some() {
+                let inside_picker = matches!(
+                    hit.and_then(|(id, _)| store.get(id)),
+                    Some(InteractiveState::BlenderHit { .. })
+                );
+                let is_color_target = hit.map(|(id, _)| is_color_target_id(id)).unwrap_or(false);
+                if !inside_picker && !is_color_target {
+                    store.set_picker_target(None);
+                }
+            }
+
             // Eyedropper interception: while a pick is pending and
             // the click isn't on the eyedropper button itself, emit
             // `EyedropperPick` for the host to read back the
@@ -632,10 +651,23 @@ pub fn dispatch_wheel<'frame>(
         // moves up. We store offset as "how far down content
         // pretends to be" — so positive delta increments the
         // offset (showing content further down).
-        let next = (cur - event.delta_y).max(0.0);
-        // Hero re-clamps to content_h - visible_h on the next paint
-        // (where the actual heights are known). This dispatch only
-        // enforces the lower bound here.
+        let mut next = (cur - event.delta_y).max(0.0);
+        // Clamp at the upper bound when the painter has published a
+        // content_h for this panel. Without this, wheeling past the
+        // last element pushes `next` arbitrarily high; the next
+        // paint pass clamps it back, producing a 1-frame "jump"
+        // (the user's "saltos indesejados se rodamos a roda no fim").
+        if let (Some(content_h), Some(panel_rect)) =
+            (store.panel_content_h(panel), store.panel_rect(panel))
+        {
+            // Approx header height = 60 px (matches inspector header).
+            // Subtract a bit more to leave room for the divider line.
+            let visible_h = (panel_rect.h - 60.0).max(0.0);
+            let max_scroll = (content_h - visible_h).max(0.0);
+            if next > max_scroll {
+                next = max_scroll;
+            }
+        }
         store.set_panel_scroll(panel, next);
     }
     events.into_bump_slice()
@@ -749,6 +781,15 @@ const APPROX_ADVANCE_RATIO: f32 = 0.55;
 pub(super) fn is_section_header_id(id: ph2d_a11y::NodeId) -> bool {
     let v = id.0;
     (350..=359).contains(&v)
+}
+
+/// Color-target widgets — clicking these opens the global color
+/// picker (and switches the target if it's already open). Includes
+/// all section color circles (360..369) plus the standalone tint
+/// ColorSwatch sample (328).
+fn is_color_target_id(id: ph2d_a11y::NodeId) -> bool {
+    let v = id.0;
+    (360..=369).contains(&v) || v == 328
 }
 
 /// Detect a Down landing on a `NumberInput`'s up/down stepper and

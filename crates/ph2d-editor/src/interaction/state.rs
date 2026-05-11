@@ -280,6 +280,13 @@ pub struct WidgetStore {
     /// under the cursor. Cleared together with `clear_for_frame` on
     /// the hit_index by the host (or hero) at frame start.
     panel_rects: BTreeMap<NodeId, Rect>,
+    /// Painter-published total content height per panel (sum of
+    /// every section's height + separators). `dispatch_wheel` reads
+    /// this to clamp scroll deltas at the upper bound (`content_h
+    /// - visible_h`) — without it, wheeling past the last element
+    /// produces a one-frame "jump" as the next paint clamps the
+    /// over-scroll back.
+    panel_content_h: BTreeMap<NodeId, f32>,
     /// Tooltip text per widget id. Read by `paint_hover_tooltip`
     /// when the user hovers over a registered widget. Populated by
     /// `populate` / paint passes via `set_tooltip`. Replaces the old
@@ -314,6 +321,18 @@ pub struct WidgetStore {
     /// without this snapshot the inspector loses the request
     /// before it can read it.
     last_context_menu: Option<ContextMenuRequest>,
+    /// Currently-active color picker target. `Some(id)` means the
+    /// floating BlenderColorPicker is open and editing the color
+    /// stored at `widget_colors[id]`. `None` hides the picker. Set
+    /// by clicks on color targets (section color circles, color
+    /// swatches, …) and cleared by any click outside the picker
+    /// and outside another color target.
+    picker_target: Option<NodeId>,
+    /// Per-widget current color. Keyed by the target widget's id
+    /// (section color circles, color swatches). The picker writes
+    /// here on every frame while editing; painters read here to
+    /// display the widget's current color.
+    widget_colors: BTreeMap<NodeId, [u8; 4]>,
 }
 
 /// State of a user-created sticky note inside a panel.
@@ -375,12 +394,15 @@ impl WidgetStore {
             eyedropper_pending: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
+            panel_content_h: BTreeMap::new(),
             tooltips: BTreeMap::new(),
             collapsed: BTreeMap::new(),
             context_menu: None,
             section_outline_color: BTreeMap::new(),
             notes_per_panel: BTreeMap::new(),
             last_context_menu: None,
+            picker_target: None,
+            widget_colors: BTreeMap::new(),
         }
     }
 
@@ -655,6 +677,28 @@ impl WidgetStore {
         self.panel_rects.insert(panel, rect);
     }
 
+    /// Read the published rect of a panel. Returns `None` when no
+    /// painter has registered it this frame.
+    pub fn panel_rect(&self, panel: NodeId) -> Option<Rect> {
+        self.panel_rects.get(&panel).copied()
+    }
+
+    /// Total height of all painted content in a panel (sum of
+    /// section heights + separators). Set by the painter each
+    /// frame; read by `dispatch_wheel` to clamp at the upper
+    /// bound. Missing entry = unknown content height = no upper
+    /// clamp (treated as infinite).
+    pub fn set_panel_content_h(&mut self, panel: NodeId, content_h: f32) {
+        self.panel_content_h.insert(panel, content_h);
+    }
+
+    /// Read the total content height for a panel. Returns `None`
+    /// when the painter hasn't published one yet (e.g. on the
+    /// first frame).
+    pub fn panel_content_h(&self, panel: NodeId) -> Option<f32> {
+        self.panel_content_h.get(&panel).copied()
+    }
+
     /// Find the panel whose rect contains `(x, y)`. Walks all
     /// registered panels and returns the first match. Acceptable
     /// because there are only a handful of panels (~3-5); for
@@ -771,6 +815,35 @@ impl WidgetStore {
             .get(&panel)
             .map(|v| v.as_slice())
             .unwrap_or(&[])
+    }
+
+    /// Currently-active color picker target. The floating
+    /// BlenderColorPicker is hidden when this is `None`.
+    pub fn picker_target(&self) -> Option<NodeId> {
+        self.picker_target
+    }
+
+    /// Open the picker editing the color at `target`. Pass `None`
+    /// to hide the picker. The caller is responsible for seeding
+    /// `widget_colors[target]` if it doesn't yet have a value.
+    pub fn set_picker_target(&mut self, target: Option<NodeId>) {
+        self.picker_target = target;
+    }
+
+    /// Read the current color of a color-target widget. Returns
+    /// `None` when no color has been stored for `id`. Default
+    /// colors are seeded lazily by callers (e.g. `apply_event`
+    /// inserts a neutral gray when first opening the picker).
+    pub fn widget_color(&self, id: NodeId) -> Option<[u8; 4]> {
+        self.widget_colors.get(&id).copied()
+    }
+
+    /// Set the current color of a color-target widget. Called by
+    /// the picker each frame to mirror its edits into the
+    /// target's stored color, and by `apply_event` to seed the
+    /// default when the picker first opens for that target.
+    pub fn set_widget_color(&mut self, id: NodeId, rgba: [u8; 4]) {
+        self.widget_colors.insert(id, rgba);
     }
 
     /// Append a new note with the given color index to the panel's

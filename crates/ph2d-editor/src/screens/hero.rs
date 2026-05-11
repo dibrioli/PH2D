@@ -321,17 +321,29 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
     );
-    // Clamp the inspector scroll to `[0, content_h - visible_h]` so
-    // the wheel can't push the body past the last element. The
-    // painter publishes content_h via a thread-local each frame.
+    // Publish the inspector's measured content height to the store
+    // so `dispatch_wheel` can clamp the next scroll event at the
+    // upper bound BEFORE the visible jump happens. Also clamp the
+    // current scroll value in case the previous paint left it
+    // overshooting (e.g. after collapsing a section).
     {
-        let visible_h = (layout.inspector.h - 60.0).max(0.0);
         let content_h = inspector::last_inspector_content_h();
+        hero.store.set_panel_content_h(ids::INSP_PANEL, content_h);
+        let visible_h = (layout.inspector.h - 60.0).max(0.0);
         let max_scroll = (content_h - visible_h).max(0.0);
         let cur = hero.store.panel_scroll(ids::INSP_PANEL);
         if cur > max_scroll {
             hero.store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
         }
+    }
+    // Mirror the global picker's current value into the target
+    // widget's `widget_colors` slot each frame so the section's
+    // color circle (and any other color-target painter) tracks
+    // live edits.
+    if let Some(target) = hero.store.picker_target()
+        && let Some((value, _, _, _)) = hero.store.blender_picker(ids::INSP_BLENDER_PICKER)
+    {
+        hero.store.set_widget_color(target, value.rgba);
     }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
     paint_hierarchy(
@@ -342,6 +354,18 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
     );
+    // Publish hierarchy content_h + clamp scroll (same pattern as
+    // inspector). Headroom of 60 px covers the hierarchy header.
+    {
+        let content_h = hierarchy::last_hierarchy_content_h();
+        hero.store.set_panel_content_h(ids::HIER_PANEL, content_h);
+        let visible_h = (layout.hierarchy.h - 60.0).max(0.0);
+        let max_scroll = (content_h - visible_h).max(0.0);
+        let cur = hero.store.panel_scroll(ids::HIER_PANEL);
+        if cur > max_scroll {
+            hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
+        }
+    }
     paint_bottom_hud(&layout, scene, text_system, hero.theme);
     // Floating BlenderColorPicker on top of the canvas. Pure
     // function of `(layout, store)` — drag offset comes from the

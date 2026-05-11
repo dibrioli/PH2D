@@ -40,8 +40,9 @@ pub fn track_rect(body_rect: Rect) -> Rect {
 }
 
 /// Compute the thumb rect inside `track`, given the panel's scroll
-/// + content / visible heights. Returns the full track when
-/// `content_h <= visible_h` (no scroll needed — caller should hide).
+/// position and the content / visible heights. Returns the full
+/// track when `content_h <= visible_h` (no scroll needed — caller
+/// should hide).
 pub fn thumb_rect(track: Rect, scroll_y: f32, content_h: f32, visible_h: f32) -> Rect {
     if content_h <= visible_h || track.h <= 0.0 {
         return track;

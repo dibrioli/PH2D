@@ -302,10 +302,10 @@ pub struct WidgetStore {
     panel_rects: BTreeMap<NodeId, Rect>,
     /// Painter-published total content height per panel (sum of
     /// every section's height + separators). `dispatch_wheel` reads
-    /// this to clamp scroll deltas at the upper bound (`content_h
-    /// - visible_h`) — without it, wheeling past the last element
-    /// produces a one-frame "jump" as the next paint clamps the
-    /// over-scroll back.
+    /// this to clamp scroll deltas at the upper bound
+    /// (`content_h - visible_h`) — without it, wheeling past the
+    /// last element produces a one-frame "jump" as the next paint
+    /// clamps the over-scroll back.
     panel_content_h: BTreeMap<NodeId, f32>,
     /// Exact visible body height per panel, also painter-published.
     /// Pairs with `panel_content_h` so `dispatch_wheel` can compute

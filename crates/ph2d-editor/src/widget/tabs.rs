@@ -156,9 +156,7 @@ pub fn paint_tabs_with_hover(
         }
         match tabs.variant {
             TabsVariant::Ghost => {
-                let fg = if is_selected {
-                    ColorToken::Text1
-                } else if is_hovered {
+                let fg = if is_selected || is_hovered {
                     ColorToken::Text1
                 } else {
                     ColorToken::Text2

@@ -1009,12 +1009,10 @@ impl ApplicationHandler for App {
             // in `KeyEvent::text` (the system text-input service
             // swallows the dead-key keystroke and emits the
             // composed char via `Ime::Commit`).
-            WindowEvent::Ime(ime) => {
-                if let winit::event::Ime::Commit(text) = ime {
-                    for ch in text.chars() {
-                        if !ch.is_control() {
-                            forward_text_to_hero(self.gfx.as_mut(), ch);
-                        }
+            WindowEvent::Ime(winit::event::Ime::Commit(text)) => {
+                for ch in text.chars() {
+                    if !ch.is_control() {
+                        forward_text_to_hero(self.gfx.as_mut(), ch);
                     }
                 }
                 // `Preedit` (in-progress composition) is ignored for

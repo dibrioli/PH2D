@@ -44,22 +44,26 @@ pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Th
     fill_rounded_rect(scene, handle, 999.0, resolve(ColorToken::BorderEmph, theme));
 }
 
-/// Three diagonal pips inside `rect` for a panel's bottom-right
-/// resize gripper. Conventional UI affordance.
+/// Single discreet dot in the panel's bottom-right corner as a
+/// resize affordance. Sits along the diagonal of the panel's rounded
+/// corner so it reads as a corner accent (vs. the floating, awkward
+/// 3-pip grid which conflicted with the rounded edge). Uses
+/// `Text2` for a softer presence than `BorderEmph` — visible without
+/// shouting.
 pub(super) fn paint_resize_gripper(scene: &mut VectorScene, rect: Rect, theme: Theme) {
-    let color = resolve(ColorToken::BorderEmph, theme);
-    let pip_size = 2.0;
-    let pip_radius = 1.0;
-    for i in 0..3 {
-        let offset = 3.0 + i as f32 * 4.0;
-        let r = Rect::new(
-            rect.x + rect.w - offset - pip_size,
-            rect.y + rect.h - offset - pip_size,
-            pip_size,
-            pip_size,
-        );
-        fill_rounded_rect(scene, r, pip_radius, color);
-    }
+    let color = resolve(ColorToken::Text2, theme);
+    // Position the dot ~6px in from the bottom-right edge along the
+    // 45° diagonal of the corner radius. Diameter 4px keeps it
+    // crisp without dominating.
+    let dot_d = 4.0_f32;
+    let inset = 7.0_f32;
+    let dot = Rect::new(
+        rect.x + rect.w - inset - dot_d,
+        rect.y + rect.h - inset - dot_d,
+        dot_d,
+        dot_d,
+    );
+    fill_rounded_rect(scene, dot, dot_d * 0.5, color);
 }
 
 /// Pick a chrome icon's foreground tint based on its interactive

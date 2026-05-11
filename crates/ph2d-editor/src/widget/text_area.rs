@@ -139,8 +139,7 @@ pub fn paint_text_area_with_state(
         e = e.min(displayed.len());
 
         let mut line_start: usize = 0;
-        let mut line_idx: usize = 0;
-        for line in displayed.split('\n') {
+        for (line_idx, line) in displayed.split('\n').enumerate() {
             let line_end = line_start + line.len();
             if e >= line_start && s <= line_end {
                 let local_s = s.saturating_sub(line_start).min(line.len());
@@ -170,7 +169,6 @@ pub fn paint_text_area_with_state(
                 }
             }
             line_start = line_end + 1; // +1 for the '\n'
-            line_idx += 1;
         }
     }
 

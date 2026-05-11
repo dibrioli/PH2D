@@ -154,7 +154,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                             rect,
                             event.x,
                             event.y,
-                            ts.as_deref_mut(),
+                            ts.take(),
                         );
                         place_text_caret(store, active, offset, false);
                     }
@@ -387,7 +387,25 @@ pub fn dispatch_pointer_with_text<'frame>(
                 } else if stepper_hit {
                     events.push(WidgetEvent::ValueChanged(id));
                 } else if is_double_click {
+                    let is_text_widget = matches!(
+                        store.get(id),
+                        Some(InteractiveState::TextInput { .. })
+                            | Some(InteractiveState::NumberInput { .. })
+                            | Some(InteractiveState::Combobox { .. })
+                    );
                     select_all_in_text_widget(store, id);
+                    if is_text_widget {
+                        // Clear active_rect so the next Move event
+                        // (almost always present from mouse jitter on
+                        // release) doesn't re-enter the text drag-to-
+                        // select branch and shrink the selection back
+                        // to (0..clicked_byte). The Up handler still
+                        // uses active_id for release/click cleanup.
+                        // Guarded to text widgets — clearing for
+                        // every widget breaks click-toggle handlers
+                        // that read active_rect on Up.
+                        store.set_active_rect(None);
+                    }
                 } else if matches!(
                     store.get(id),
                     Some(InteractiveState::TextInput { .. })
@@ -404,7 +422,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                         rect,
                         event.x,
                         event.y,
-                        ts.as_deref_mut(),
+                        ts.take(),
                     );
                     place_text_caret(store, id, offset, true);
                 }
@@ -430,20 +448,20 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // scrollbar id encodes its panel (see helper
                 // below); the metrics come from the side-tables
                 // the painters publish each frame.
-                if let Some(panel) = scrollbar_panel_for_id(id) {
-                    if let (Some(content_h), Some(visible_h)) = (
+                if let Some(panel) = scrollbar_panel_for_id(id)
+                    && let (Some(content_h), Some(visible_h)) = (
                         store.panel_content_h(panel),
                         store.panel_visible_h(panel),
-                    ) {
-                        store.begin_scrollbar_drag(super::ScrollbarDragAnchor {
-                            panel,
-                            cursor_y_at_down: event.y,
-                            scroll_at_down: store.panel_scroll(panel),
-                            track_h: rect.h,
-                            content_h,
-                            visible_h,
-                        });
-                    }
+                    )
+                {
+                    store.begin_scrollbar_drag(super::ScrollbarDragAnchor {
+                        panel,
+                        cursor_y_at_down: event.y,
+                        scroll_at_down: store.panel_scroll(panel),
+                        track_h: rect.h,
+                        content_h,
+                        visible_h,
+                    });
                 }
                 // BlenderColorPicker sub-control hits route into the
                 // parent's stored state mutation. Right-click on a
@@ -1087,6 +1105,7 @@ pub(crate) enum HierDrop {
 ///   - top 30% → drop above this row (sibling)
 ///   - middle 40% → drop inside this row (child)
 ///   - bottom 30% → continue scanning (drop below this row)
+///
 /// When no row is hit, returns `End`. Skips the dragged row itself.
 fn find_hierarchy_drop(
     hit_index: &HitIndex,
@@ -3366,7 +3385,7 @@ mod tests {
         // start of line 2 — exactly what the user wants when clicking
         // near the left of line 2.
         assert!(
-            caret >= 4 && caret <= 9,
+            (4..=9).contains(&caret),
             "expected caret on line 2 (>= byte 4), got {caret}"
         );
     }

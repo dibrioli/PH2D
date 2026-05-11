@@ -1206,7 +1206,11 @@ fn paint_one_note(
     let title_font = TypeToken::Base.px();
     let body_font = TypeToken::Base.px();
     let title_h = title_font + 8.0;
-    let body_h = body_font * 3.0 + 12.0; // ~3 lines worth
+    // Body holds ~3 lines. Painter starts at rect.y + NOTE_TEXT_PAD_Y
+    // (=8) and uses line_h = body_font + 4. Total height needs both
+    // the top inset and a small bottom buffer or the third line gets
+    // clipped under the note's rounded bottom edge.
+    let body_h = NOTE_TEXT_PAD_Y * 2.0 + (body_font + 4.0) * 3.0;
     let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
     if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
@@ -1253,8 +1257,15 @@ fn paint_one_note(
 
 /// Paint an editable single-line text field with no chrome —
 /// dark glyphs + caret + selection on a transparent background.
-/// Reads the TextInput state at `id` from the store. Used by the
-/// note painter so the colored note bg shows through.
+/// Reads the TextInput state at `id` from the store.
+///
+/// CRITICAL: text origin matches the TextInput dispatch contract
+/// (`text_start_x = rect.x + 12`, `text_start_y = rect.y`) — without
+/// this alignment, `byte_offset_from_click_xy` measures from a
+/// different origin than the painter and click→caret + drag-select
+/// land on the wrong byte. Vertical centering still happens, but
+/// click→byte ignores y for single-line widgets.
+#[allow(clippy::too_many_arguments)]
 fn paint_note_editable_line(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -1267,6 +1278,8 @@ fn paint_note_editable_line(
 ) {
     let (state, text, caret, anchor) = read_text_input(store, id);
     let focused = state == TextInputState::Focused;
+    let text_x = rect.x + NOTE_TEXT_PAD_X;
+    let text_w = (rect.w - NOTE_TEXT_PAD_X).max(0.0);
     let text_y = rect.y + (rect.h - font_size) * 0.5;
     // Selection highlight (drawn under glyphs).
     if focused
@@ -1283,16 +1296,15 @@ fn paint_note_editable_line(
         } else {
             text_system.prefix_width(&text[s..e], font_size)
         };
-        let sel = Rect::new(
-            rect.x + prefix_w,
-            rect.y + 2.0,
-            mid_w.min(rect.w - prefix_w),
-            (rect.h - 4.0).max(2.0),
-        );
-        // Translucent dark wash for the selection so the highlighter
-        // bg still shows through.
-        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33);
-        fill_rounded_rect(scene, sel, 1.0, sel_color);
+        let sel_x = text_x + prefix_w;
+        let sel_w = mid_w.min(text_x + text_w - sel_x).max(0.0);
+        if sel_w > 0.0 {
+            let sel = Rect::new(sel_x, rect.y + 2.0, sel_w, (rect.h - 4.0).max(2.0));
+            // Translucent dark wash for the selection so the highlighter
+            // bg still shows through.
+            let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33);
+            fill_rounded_rect(scene, sel, 1.0, sel_color);
+        }
     }
     // Visible text (or placeholder if empty and not focused).
     let displayed: &str = if text.is_empty() && !focused {
@@ -1305,13 +1317,13 @@ fn paint_note_editable_line(
     } else {
         fg
     };
-    paint_text(text_system, scene, displayed, rect.x, text_y, font_size, rect.w, display_color);
+    paint_text(text_system, scene, displayed, text_x, text_y, font_size, text_w, display_color);
     // Caret — only when focused.
     if focused {
         let caret_byte = caret.min(text.len());
         let prefix_w = text_system.prefix_width(&text[..caret_byte], font_size);
         let caret_rect = Rect::new(
-            (rect.x + prefix_w).min(rect.x + rect.w),
+            (text_x + prefix_w).min(text_x + text_w),
             rect.y + 2.0,
             1.5,
             (rect.h - 4.0).max(2.0),
@@ -1319,6 +1331,17 @@ fn paint_note_editable_line(
         fill_rounded_rect(scene, caret_rect, 0.75, fg);
     }
 }
+
+/// Horizontal inset between a note's rect edge and where text drawn
+/// inside it actually starts. Matches the non-hex `TextInput`
+/// dispatch math in `byte_offset_from_click_xy` (`rect.x + 12.0`) so
+/// click→caret + drag-select route to the byte under the visible
+/// cursor.
+const NOTE_TEXT_PAD_X: f32 = 12.0;
+
+/// Vertical inset for multi-line note body painting. Mirrors the
+/// `TextArea` dispatch math (`text_start_y = rect.y + 8.0`).
+const NOTE_TEXT_PAD_Y: f32 = 8.0;
 
 /// Paint an editable multi-line text region with no chrome. Splits
 /// the text on `\n` and renders each line; caret + selection mirror
@@ -1334,34 +1357,76 @@ fn paint_note_editable_multiline(
     fg: ph2d_vector::Color,
     placeholder: &str,
 ) {
-    let (state, text, caret, _anchor) = read_text_input(store, id);
+    let (state, text, caret, anchor) = read_text_input(store, id);
     let focused = state == TextInputState::Focused;
     // line_h MUST match the dispatch's TextArea math:
     // `byte_offset_from_click_xy` uses `font_size + 4.0`. Drift
-    // breaks click-y → line index.
+    // breaks click-y → line index. Origin offsets (text_x, text_y0)
+    // also MUST match dispatch (`rect.x + 12`, `rect.y + 8`) so
+    // click→caret lands at the visible glyph boundary.
     let line_h = font_size + 4.0;
+    let text_x = rect.x + NOTE_TEXT_PAD_X;
+    let text_y0 = rect.y + NOTE_TEXT_PAD_Y;
+    let text_w = (rect.w - NOTE_TEXT_PAD_X).max(0.0);
     if text.is_empty() && !focused {
         paint_text(
             text_system,
             scene,
             placeholder,
-            rect.x,
-            rect.y,
+            text_x,
+            text_y0,
             font_size,
-            rect.w,
+            text_w,
             ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80),
         );
         return;
+    }
+    // Selection highlight (drawn under glyphs). Supports spanning
+    // multiple lines: paints one box per visible line covered by the
+    // range. Mirrors `TextArea`'s widget selection math.
+    if focused
+        && let Some(a) = anchor
+        && a != caret
+    {
+        let (s, e) = if a < caret { (a, caret) } else { (caret, a) };
+        let s = s.min(text.len());
+        let e = e.min(text.len());
+        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33);
+        let mut line_start = 0_usize;
+        for (i, line) in text.split('\n').enumerate() {
+            let line_end = line_start + line.len();
+            // Overlap of [s, e] with this line's byte range.
+            let seg_s = s.max(line_start);
+            let seg_e = e.min(line_end);
+            if seg_s < seg_e {
+                let local_s = seg_s - line_start;
+                let local_e = seg_e - line_start;
+                let prefix_w = text_system.prefix_width(&line[..local_s], font_size);
+                let mid_w = text_system.prefix_width(&line[local_s..local_e], font_size);
+                let sel_x = text_x + prefix_w;
+                let sel_w = mid_w.min(text_x + text_w - sel_x).max(0.0);
+                if sel_w > 0.0 {
+                    let sel = Rect::new(
+                        sel_x,
+                        text_y0 + i as f32 * line_h,
+                        sel_w,
+                        line_h,
+                    );
+                    fill_rounded_rect(scene, sel, 1.0, sel_color);
+                }
+            }
+            line_start = line_end + 1;
+        }
     }
     for (i, line) in text.split('\n').enumerate() {
         paint_text(
             text_system,
             scene,
             line,
-            rect.x,
-            rect.y + i as f32 * line_h,
+            text_x,
+            text_y0 + i as f32 * line_h,
             font_size,
-            rect.w,
+            text_w,
             fg,
         );
     }
@@ -1383,8 +1448,8 @@ fn paint_note_editable_multiline(
         let local = caret_byte.saturating_sub(line_start).min(line_text.len());
         let prefix_w = text_system.prefix_width(&line_text[..local], font_size);
         let caret_rect = Rect::new(
-            (rect.x + prefix_w).min(rect.x + rect.w),
-            rect.y + line_idx as f32 * line_h,
+            (text_x + prefix_w).min(text_x + text_w),
+            text_y0 + line_idx as f32 * line_h,
             1.5,
             (line_h - 2.0).max(2.0),
         );
@@ -1419,6 +1484,7 @@ fn paint_section_separator(
 /// between two sections rather than glued to the previous one.
 const SEPARATOR_PAD_Y: f32 = 8.0;
 
+#[allow(clippy::too_many_arguments)]
 fn paint_left_label(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,

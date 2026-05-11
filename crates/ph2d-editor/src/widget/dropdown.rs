@@ -276,41 +276,54 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
     if !dd.open {
         return;
     }
-    // Floating popover panel: opaque `BgElev` fill + `Border`
-    // stroke + Md radius so the list reads unambiguously as a
-    // separate surface hovering above whatever sits behind it.
+    // Floating popover panel — fully opaque. The theme tokens
+    // (`BgElev`, `AccentSoft`, …) carry alpha < 255 on several themes
+    // so the list let underlying widgets bleed through; the user's
+    // call was "tire toda transparência da lista do dropdown".
+    // `opaque(token)` forces alpha to 255 while keeping the token's
+    // RGB so the color still tracks the theme.
     let panel = dd.popover_rect(chip_rect);
     let panel_radius = Radius::Md.px();
-    fill_rounded_rect(scene, panel, panel_radius, resolve(ColorToken::BgElev, theme));
+    fill_rounded_rect(scene, panel, panel_radius, opaque(ColorToken::BgElev, theme));
     stroke_rounded_rect(
         scene,
         panel,
         panel_radius,
         1.0,
-        resolve(ColorToken::Border, theme),
+        opaque(ColorToken::Border, theme),
     );
     let font_size = TypeToken::Base.px();
     for (i, opt) in dd.options.iter().enumerate() {
         let r = dd.option_rect(chip_rect, i);
         let is_selected = dd.selected.as_ref() == Some(&opt.value);
-        // Selected row gets `AccentSoft`; rows inherit the panel
-        // `BgElev` otherwise (no per-row fill so the panel reads
-        // as a single contiguous surface).
         if is_selected {
+            // Use the saturated `Accent` (alpha-255 by token) for
+            // the selected row instead of `AccentSoft` (which is
+            // intentionally semi-transparent for inline overlays).
             fill_rounded_rect(
                 scene,
                 r,
                 Radius::Sm.px(),
-                resolve(ColorToken::AccentSoft, theme),
+                opaque(ColorToken::Accent, theme),
             );
         }
         let fg = if is_selected {
-            ColorToken::Accent
+            ColorToken::AccentFg
         } else {
             ColorToken::Text1
         };
-        paint_text_centered(text_system, scene, &opt.label, r, font_size, resolve(fg, theme));
+        paint_text_centered(text_system, scene, &opt.label, r, font_size, opaque(fg, theme));
     }
+}
+
+/// Resolve `token` against `theme` and force the alpha channel to
+/// `255`. Used by the dropdown popover so the floating list never
+/// shows the content behind it through token-level alpha (e.g.
+/// `AccentSoft` is alpha 0x29 by design — fine for inline overlays,
+/// wrong for an opaque surface).
+fn opaque(token: ColorToken, theme: Theme) -> ph2d_vector::Color {
+    let c = token.resolve(theme);
+    ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, 0xFF)
 }
 
 #[cfg(test)]

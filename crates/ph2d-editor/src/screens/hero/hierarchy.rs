@@ -5,8 +5,8 @@ use super::HeroSelection;
 use super::fixture;
 use super::ids;
 use super::style::{
-    HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_surface, panel_drag_handle_rect,
-    panel_resize_handle_rect,
+    HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_corner_dot, paint_panel_surface,
+    panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
@@ -256,9 +256,9 @@ pub fn paint_hierarchy(
         }
     }
     scene.pop_layer();
-    // Re-register panel chrome hits AFTER the body so they sit on
-    // top of any scrolled row whose rect drifted into the drag pill
-    // area. Same fix as paint_inspector.
+    // Standard panel chrome — corner dot painted on top of the
+    // body, hit zones re-registered so they outrank scrolled rows.
+    paint_panel_corner_dot(rect, scene, theme);
     hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
     // Publish total content height for `dispatch_wheel` clamp.

@@ -38,16 +38,15 @@ pub(super) const HIER_ROW_H: f32 = 32.0;
 /// one value.
 pub(super) const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0;
 
-/// Floating-panel surface — standard chrome for every panel
-/// (Inspector, Hierarchy, and any future panel). Paints:
-///   1. rounded `BgElev` fill + 1px `Border` stroke
-///   2. drag-pill at the top center (`BorderEmph`)
-///   3. resize-gripper dot at the bottom-right corner (`Text2`)
+/// Floating-panel surface — standard BASE chrome for every panel
+/// (Inspector, Hierarchy, future panels). Paints the rounded
+/// `BgElev` fill + 1px `Border` stroke + a tiny drag-pill at the
+/// top center. Run BEFORE the panel body so the body renders on
+/// top of the surface.
 ///
-/// Centralizing the visual here means a single source of truth for
-/// panel-chrome style; callers only register hit zones for the
-/// drag pill / resize gripper via [`panel_drag_handle_rect`] /
-/// [`panel_resize_handle_rect`].
+/// The bottom-right resize-gripper dot is painted separately by
+/// [`paint_panel_corner_dot`] AFTER the body so body widgets don't
+/// cover it (the body's scrollable clip extends into the corner).
 pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let radius = PANEL_RADIUS;
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
@@ -55,9 +54,13 @@ pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Th
     // Drag pill at the top center.
     let handle = Rect::new(rect.x + (rect.w - 36.0) * 0.5, rect.y + 6.0, 36.0, 4.0);
     fill_rounded_rect(scene, handle, 999.0, resolve(ColorToken::BorderEmph, theme));
-    // Resize-gripper dot at the bottom-right corner, on the 45°
-    // diagonal of the rounded edge. Soft `Text2` so it reads as a
-    // corner accent rather than a foreign visual element.
+}
+
+/// Bottom-right resize-gripper corner accent. Painted at the END of
+/// each panel painter (after `pop_layer`) so it sits on top of any
+/// body widget whose rect drifted into the corner. Soft `Text2`
+/// reads as a corner accent rather than a foreign visual element.
+pub(super) fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let dot_d = 4.0_f32;
     let inset = 7.0_f32;
     let dot = Rect::new(

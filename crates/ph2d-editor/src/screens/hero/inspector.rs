@@ -22,7 +22,8 @@ use super::HeroLayout;
 use super::HeroSelection;
 use super::ids;
 use super::style::{
-    PANEL_HEAD_PAD, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
+    PANEL_HEAD_PAD, paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect,
+    panel_resize_handle_rect,
 };
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetEvent, WidgetStore};
@@ -1121,13 +1122,12 @@ pub fn paint_inspector(
 
     scene.pop_layer();
 
-    // Re-register panel chrome hits AFTER the body so they sit on
-    // top of any scrolled widget whose rect drifted into the chrome
-    // area. `HitIndex::hit` walks registrations in reverse — without
-    // this, scrolling the inspector body past the top lets the
-    // first row's rect cover the drag pill, blocking pointer Down on
-    // the drag handle (the user's "depois de scrollar não consigo
-    // mais arrastar"). Same for the bottom-right resize gripper.
+    // Standard panel chrome — painted AFTER the body so the
+    // corner dot sits on top of widgets that may overlap the
+    // bottom-right area. Same re-registration pattern keeps the
+    // drag pill + resize handle hit zones above any scrolled
+    // widget's rect.
+    paint_panel_corner_dot(rect, scene, theme);
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
 }

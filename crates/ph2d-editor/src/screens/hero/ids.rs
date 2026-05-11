@@ -124,6 +124,34 @@ pub const INSP_NOTE_SLOT_9: NodeId = NodeId(809);
 pub const INSP_NOTE_SLOT_10: NodeId = NodeId(810);
 pub const INSP_NOTE_SLOT_11: NodeId = NodeId(811);
 
+// Editable text fields for each note slot. NOTE_TITLE_N and
+// NOTE_BODY_N are the title TextInput and body TextArea for note N.
+// Click → focus → type to edit. Double-click → select all.
+pub const INSP_NOTE_TITLE_0: NodeId = NodeId(830);
+pub const INSP_NOTE_TITLE_1: NodeId = NodeId(831);
+pub const INSP_NOTE_TITLE_2: NodeId = NodeId(832);
+pub const INSP_NOTE_TITLE_3: NodeId = NodeId(833);
+pub const INSP_NOTE_TITLE_4: NodeId = NodeId(834);
+pub const INSP_NOTE_TITLE_5: NodeId = NodeId(835);
+pub const INSP_NOTE_TITLE_6: NodeId = NodeId(836);
+pub const INSP_NOTE_TITLE_7: NodeId = NodeId(837);
+pub const INSP_NOTE_TITLE_8: NodeId = NodeId(838);
+pub const INSP_NOTE_TITLE_9: NodeId = NodeId(839);
+pub const INSP_NOTE_TITLE_10: NodeId = NodeId(840);
+pub const INSP_NOTE_TITLE_11: NodeId = NodeId(841);
+pub const INSP_NOTE_BODY_0: NodeId = NodeId(850);
+pub const INSP_NOTE_BODY_1: NodeId = NodeId(851);
+pub const INSP_NOTE_BODY_2: NodeId = NodeId(852);
+pub const INSP_NOTE_BODY_3: NodeId = NodeId(853);
+pub const INSP_NOTE_BODY_4: NodeId = NodeId(854);
+pub const INSP_NOTE_BODY_5: NodeId = NodeId(855);
+pub const INSP_NOTE_BODY_6: NodeId = NodeId(856);
+pub const INSP_NOTE_BODY_7: NodeId = NodeId(857);
+pub const INSP_NOTE_BODY_8: NodeId = NodeId(858);
+pub const INSP_NOTE_BODY_9: NodeId = NodeId(859);
+pub const INSP_NOTE_BODY_10: NodeId = NodeId(860);
+pub const INSP_NOTE_BODY_11: NodeId = NodeId(861);
+
 // ── Context menu item ids ──────────────────────────────────────────────────
 // The right-click context menu reuses these stable ids across both
 // inspector and hierarchy. Click dispatch routes by id to the

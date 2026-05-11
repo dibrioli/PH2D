@@ -118,6 +118,34 @@ pub(super) const NOTE_SLOT_IDS: [ph2d_a11y::NodeId; 12] = [
     ids::INSP_NOTE_SLOT_10,
     ids::INSP_NOTE_SLOT_11,
 ];
+pub(super) const NOTE_TITLE_IDS: [ph2d_a11y::NodeId; 12] = [
+    ids::INSP_NOTE_TITLE_0,
+    ids::INSP_NOTE_TITLE_1,
+    ids::INSP_NOTE_TITLE_2,
+    ids::INSP_NOTE_TITLE_3,
+    ids::INSP_NOTE_TITLE_4,
+    ids::INSP_NOTE_TITLE_5,
+    ids::INSP_NOTE_TITLE_6,
+    ids::INSP_NOTE_TITLE_7,
+    ids::INSP_NOTE_TITLE_8,
+    ids::INSP_NOTE_TITLE_9,
+    ids::INSP_NOTE_TITLE_10,
+    ids::INSP_NOTE_TITLE_11,
+];
+pub(super) const NOTE_BODY_IDS: [ph2d_a11y::NodeId; 12] = [
+    ids::INSP_NOTE_BODY_0,
+    ids::INSP_NOTE_BODY_1,
+    ids::INSP_NOTE_BODY_2,
+    ids::INSP_NOTE_BODY_3,
+    ids::INSP_NOTE_BODY_4,
+    ids::INSP_NOTE_BODY_5,
+    ids::INSP_NOTE_BODY_6,
+    ids::INSP_NOTE_BODY_7,
+    ids::INSP_NOTE_BODY_8,
+    ids::INSP_NOTE_BODY_9,
+    ids::INSP_NOTE_BODY_10,
+    ids::INSP_NOTE_BODY_11,
+];
 
 // Thread-local stash for the open Dropdown's chip rect, captured by
 // `paint_lists_section` and consumed by `paint_inspector` AFTER the
@@ -593,6 +621,33 @@ fn populate_samples(store: &mut WidgetStore) {
     for id in NOTE_SLOT_IDS {
         store.register(id, InteractiveState::Plain);
     }
+    // Note title (TextInput) + body (TextInput multi-line via
+    // TextArea) editing slots. Painter syncs `NoteData.title/body`
+    // from these stores each frame, so `TextInput` is the live
+    // truth; `NoteData` is the snapshot for serialization /
+    // right-click menus.
+    for id in NOTE_TITLE_IDS {
+        store.register(
+            id,
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+    }
+    for id in NOTE_BODY_IDS {
+        store.register(
+            id,
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+    }
     // Scrollbar thumb hits — must be in the store so `is_focusable`
     // returns true and the dispatch's `set_active` block runs.
     // Without this the Down handler skips the scrollbar-drag-
@@ -661,7 +716,25 @@ pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
                 let body_y = req.y - body_top_screen + scroll_y;
                 let before = section_index_below_body_y(body_y);
                 // Default to yellow (color_idx 0).
+                let new_index = store.notes_for_panel(panel).len();
                 store.notes_push(panel, 0, before);
+                // Seed the editable title TextInput at the slot the
+                // painter will assign to this note. The body starts
+                // empty.
+                if let Some(title_id) = NOTE_TITLE_IDS.get(new_index)
+                    && let Some(InteractiveState::TextInput { text, caret, .. }) =
+                        store.get_mut(*title_id)
+                {
+                    *text = format!("Note {}", new_index + 1);
+                    *caret = text.len();
+                }
+                if let Some(body_id) = NOTE_BODY_IDS.get(new_index)
+                    && let Some(InteractiveState::TextInput { text, caret, .. }) =
+                        store.get_mut(*body_id)
+                {
+                    text.clear();
+                    *caret = 0;
+                }
             }
             return true;
         }
@@ -860,7 +933,17 @@ pub fn paint_inspector(
     macro_rules! paint_pending_notes {
         () => {
             for (slot, note) in &notes_per_section[section_idx] {
-                paint_one_note(scene, text_system, hit_index, inner_x, inner_w, &mut y, note, *slot);
+                paint_one_note(
+                    scene,
+                    text_system,
+                    hit_index,
+                    store,
+                    inner_x,
+                    inner_w,
+                    &mut y,
+                    note,
+                    *slot,
+                );
             }
         };
     }
@@ -921,7 +1004,17 @@ pub fn paint_inspector(
     section!(paint_card_section, ids::INSP_SECTION_CARD);
     // Trailing notes (those without an explicit anchor).
     for (slot, note) in &trailing_notes {
-        paint_one_note(scene, text_system, hit_index, inner_x, inner_w, &mut y, note, *slot);
+        paint_one_note(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            &mut y,
+            note,
+            *slot,
+        );
     }
 
     // Publish the total content height + the EXACT visible body
@@ -1023,16 +1116,26 @@ fn paint_collapsible_header(
     (y + SECTION_HEAD_H + 4.0, !is_collapsed)
 }
 
-/// Paint a single sticky-note inside the inspector body.
-/// Used by the inline "before each section" iterator + the
-/// "trailing notes" tail loop. Advances `y` past the note and
-/// registers a hit at the corresponding `NOTE_SLOT_IDS[slot]` so
-/// right-clicking the note opens its background-color menu.
+/// Paint a single sticky-note. Editable: the title + body each
+/// have their own TextInput state in the store
+/// (`NOTE_TITLE_IDS[slot]` + `NOTE_BODY_IDS[slot]`). Single click
+/// on either focuses it; double-click selects all; typing edits.
+/// Dark glyphs hardcoded `#212121` for contrast over the light
+/// highlighter bg regardless of theme.
+///
+/// Registers three hit rects:
+///   - The whole note slot (`NOTE_SLOT_IDS[slot]`) for right-click
+///     → background-color menu. Registered FIRST so the more
+///     specific title/body rects layered above win pointer hits
+///     within them.
+///   - The title sub-rect (`NOTE_TITLE_IDS[slot]`) for focus + edit.
+///   - The body sub-rect (`NOTE_BODY_IDS[slot]`).
 #[allow(clippy::too_many_arguments)]
 fn paint_one_note(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: &mut f32,
@@ -1040,7 +1143,9 @@ fn paint_one_note(
     slot: usize,
 ) {
     let pad = 8.0_f32;
-    let note_h = 64.0_f32;
+    let title_h = TypeToken::Sm.px() + 8.0;
+    let body_h = TypeToken::Xs.px() * 3.0 + 12.0; // ~3 lines worth
+    let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
     if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
         hit_index.register(*slot_id, r);
@@ -1049,32 +1154,195 @@ fn paint_one_note(
         [note.color_idx.min(4) as usize];
     let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
     fill_rounded_rect(scene, r, Radius::Md.px(), bg);
-    // Dark text always (light highlighter bg + dark theme `Text1`
-    // would be invisible). Hardcoded `#212121`.
+
     let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF);
-    paint_text(
-        text_system,
-        scene,
-        &note.title,
-        r.x + pad,
-        r.y + pad,
-        TypeToken::Sm.px(),
-        r.w - pad * 2.0,
-        dark,
-    );
-    if !note.body.is_empty() {
-        paint_text(
-            text_system,
+    // Title row.
+    let title_rect = Rect::new(r.x + pad, r.y + pad, r.w - pad * 2.0, title_h);
+    if let Some(title_id) = NOTE_TITLE_IDS.get(slot) {
+        hit_index.register(*title_id, title_rect);
+        paint_note_editable_line(
             scene,
-            &note.body,
-            r.x + pad,
-            r.y + pad + TypeToken::Sm.px() + 4.0,
-            TypeToken::Xs.px(),
-            r.w - pad * 2.0,
+            text_system,
+            store,
+            *title_id,
+            title_rect,
+            TypeToken::Sm.px(),
             dark,
+            "Title",
+        );
+    }
+    // Body region — multi-line below the title.
+    let body_rect = Rect::new(r.x + pad, r.y + pad + title_h, r.w - pad * 2.0, body_h);
+    if let Some(body_id) = NOTE_BODY_IDS.get(slot) {
+        hit_index.register(*body_id, body_rect);
+        paint_note_editable_multiline(
+            scene,
+            text_system,
+            store,
+            *body_id,
+            body_rect,
+            TypeToken::Xs.px(),
+            dark,
+            "Notes…",
         );
     }
     *y += note_h + 8.0;
+}
+
+/// Paint an editable single-line text field with no chrome —
+/// dark glyphs + caret + selection on a transparent background.
+/// Reads the TextInput state at `id` from the store. Used by the
+/// note painter so the colored note bg shows through.
+fn paint_note_editable_line(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    id: NodeId,
+    rect: Rect,
+    font_size: f32,
+    fg: ph2d_vector::Color,
+    placeholder: &str,
+) {
+    let (state, text, caret, anchor) = read_text_input(store, id);
+    let focused = state == TextInputState::Focused;
+    let text_y = rect.y + (rect.h - font_size) * 0.5;
+    // Selection highlight (drawn under glyphs).
+    if focused
+        && !text.is_empty()
+        && let Some(a) = anchor
+        && a != caret
+    {
+        let (s, e) = if a < caret { (a, caret) } else { (caret, a) };
+        let s = s.min(text.len());
+        let e = e.min(text.len());
+        let prefix_w = if s == 0 {
+            0.0
+        } else {
+            text_system.layout(&text[..s], font_size, f32::INFINITY).width()
+        };
+        let mid_w = if s == e {
+            0.0
+        } else {
+            text_system
+                .layout(&text[s..e], font_size, f32::INFINITY)
+                .width()
+        };
+        let sel = Rect::new(
+            rect.x + prefix_w,
+            rect.y + 2.0,
+            mid_w.min(rect.w - prefix_w),
+            (rect.h - 4.0).max(2.0),
+        );
+        // Translucent dark wash for the selection so the highlighter
+        // bg still shows through.
+        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33);
+        fill_rounded_rect(scene, sel, 1.0, sel_color);
+    }
+    // Visible text (or placeholder if empty and not focused).
+    let displayed: &str = if text.is_empty() && !focused {
+        placeholder
+    } else {
+        text
+    };
+    let display_color = if text.is_empty() && !focused {
+        ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80)
+    } else {
+        fg
+    };
+    paint_text(text_system, scene, displayed, rect.x, text_y, font_size, rect.w, display_color);
+    // Caret — only when focused.
+    if focused {
+        let caret_byte = caret.min(text.len());
+        let prefix_w = if caret_byte == 0 {
+            0.0
+        } else {
+            text_system
+                .layout(&text[..caret_byte], font_size, f32::INFINITY)
+                .width()
+        };
+        let caret_rect = Rect::new(
+            (rect.x + prefix_w).min(rect.x + rect.w),
+            rect.y + 2.0,
+            1.5,
+            (rect.h - 4.0).max(2.0),
+        );
+        fill_rounded_rect(scene, caret_rect, 0.75, fg);
+    }
+}
+
+/// Paint an editable multi-line text region with no chrome. Splits
+/// the text on `\n` and renders each line; caret + selection mirror
+/// the same per-line math the `TextArea` widget uses.
+#[allow(clippy::too_many_arguments)]
+fn paint_note_editable_multiline(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    id: NodeId,
+    rect: Rect,
+    font_size: f32,
+    fg: ph2d_vector::Color,
+    placeholder: &str,
+) {
+    let (state, text, caret, _anchor) = read_text_input(store, id);
+    let focused = state == TextInputState::Focused;
+    let line_h = font_size + 3.0;
+    if text.is_empty() && !focused {
+        paint_text(
+            text_system,
+            scene,
+            placeholder,
+            rect.x,
+            rect.y,
+            font_size,
+            rect.w,
+            ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80),
+        );
+        return;
+    }
+    for (i, line) in text.split('\n').enumerate() {
+        paint_text(
+            text_system,
+            scene,
+            line,
+            rect.x,
+            rect.y + i as f32 * line_h,
+            font_size,
+            rect.w,
+            fg,
+        );
+    }
+    if focused {
+        // Caret on the line containing the caret byte.
+        let caret_byte = caret.min(text.len());
+        let mut line_start = 0_usize;
+        let mut line_idx = 0_usize;
+        let mut line_text: &str = "";
+        for line in text.split('\n') {
+            let line_end = line_start + line.len();
+            if caret_byte <= line_end {
+                line_text = line;
+                break;
+            }
+            line_start = line_end + 1;
+            line_idx += 1;
+        }
+        let local = caret_byte.saturating_sub(line_start).min(line_text.len());
+        let prefix_w = if local == 0 {
+            0.0
+        } else {
+            text_system
+                .layout(&line_text[..local], font_size, f32::INFINITY)
+                .width()
+        };
+        let caret_rect = Rect::new(
+            (rect.x + prefix_w).min(rect.x + rect.w),
+            rect.y + line_idx as f32 * line_h,
+            1.5,
+            (line_h - 2.0).max(2.0),
+        );
+        fill_rounded_rect(scene, caret_rect, 0.75, fg);
+    }
 }
 
 /// Discreet colored separator painted at the end of each section's

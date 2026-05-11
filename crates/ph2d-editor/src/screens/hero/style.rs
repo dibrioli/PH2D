@@ -19,7 +19,10 @@ pub const HERO_VIEWPORT_H: f32 = 1024.0;
 pub(super) const EDGE_PAD: f32 = 14.0;
 pub(super) const TOPBAR_H: f32 = 40.0;
 pub(super) const TOPBAR_GAP: f32 = 16.0;
-pub(super) const RAIL_W: f32 = 68.0;
+/// Mirrors `crate::widget::TOOL_RAIL_WIDTH_PX`. The hero layout uses
+/// this for the rail's outer rect; the widget reuses it as a sizing
+/// hint. Keep them in lockstep.
+pub(super) const RAIL_W: f32 = crate::widget::TOOL_RAIL_WIDTH_PX;
 pub(super) const INSPECTOR_W: f32 = 304.0;
 pub(super) const HIERARCHY_W: f32 = 308.0;
 pub(super) const HUD_H: f32 = 34.0;

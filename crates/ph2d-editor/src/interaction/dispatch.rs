@@ -493,7 +493,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             if let Some(drag) = store.end_hierarchy_drag()
                 && drag.active
             {
-                match find_hierarchy_drop(hit_index, event.x, event.y, drag.dragged) {
+                match find_hierarchy_drop(hit_index, event.y, drag.dragged) {
                     HierDrop::Before(t) => {
                         store.hierarchy_move(drag.dragged, Some(t));
                         // Inherit the target's parent so siblings
@@ -1101,22 +1101,26 @@ pub(crate) enum HierDrop {
     End,
 }
 
-/// Resolve the drop position for a hierarchy DnD using cursor (x, y)
-/// vs each row rect. Row y is split into three bands:
+/// Resolve the drop position for a hierarchy DnD using the cursor's
+/// vertical position vs each row rect. Row y is split into three
+/// bands:
 ///   - top 30% → drop above this row (sibling)
 ///   - middle 40% → drop inside this row (child)
 ///   - bottom 30% → continue scanning (drop below this row)
 ///
-/// `cursor_x` is checked against the row's horizontal extent. Without
-/// this, a cursor far to the LEFT of an already-indented row was
-/// still resolved as `Inside(that row)`, making the dragged entity a
-/// grandchild instead of a root sibling — the user's "TAB fica tão
-/// grande que parece neto" bug. The fallback is `End` (drop at root).
+/// Horizontal position (cursor_x) is intentionally NOT used to gate
+/// `Inside` vs `Before` — that previous attempt blocked the common
+/// case "drag X onto Y to make X a child of Y when Y is already
+/// someone's child". Users naturally hold the cursor near where they
+/// pressed down, which may sit left of an indented target row;
+/// requiring `cursor_x >= row.x` then forced sibling semantics even
+/// when the user clearly aimed at the row vertically. Painter
+/// indicator mirrors this same y-only logic, so what the user sees
+/// is what they get.
 ///
 /// When no row is hit, returns `End`. Skips the dragged row itself.
 fn find_hierarchy_drop(
     hit_index: &HitIndex,
-    cursor_x: f32,
     cursor_y: f32,
     dragged: ph2d_a11y::NodeId,
 ) -> HierDrop {
@@ -1131,21 +1135,8 @@ fn find_hierarchy_drop(
         let bot = rect.y + rect.h;
         let inside_top = top + rect.h * 0.3;
         let inside_bot = top + rect.h * 0.7;
-        // Cursor must overlap the row's horizontal extent to be a
-        // candidate target. Otherwise drops from the left margin
-        // accidentally re-parent the dragged entity into whatever
-        // indented row happens to share its y band.
-        let x_ok = cursor_x >= rect.x && cursor_x < rect.x + rect.w;
         if cursor_y < top || cursor_y >= bot {
             continue;
-        }
-        if !x_ok {
-            // Cursor is in this row's y band but off to the left
-            // (the indent gap). Treat as a sibling-Before for the
-            // row that VISUALLY occupies this y, but at root depth —
-            // the caller derives the new parent from the target so
-            // a `Before` whose target has no parent lands at root.
-            return HierDrop::Before(id);
         }
         if cursor_y < inside_top {
             return HierDrop::Before(id);

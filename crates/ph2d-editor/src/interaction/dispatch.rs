@@ -285,20 +285,32 @@ pub fn dispatch_pointer_with_text<'frame>(
             }
 
             // Close the global color picker when the click lands
-            // OUTSIDE the picker (any BlenderHit sub-rect) AND
-            // outside another color-target widget. Color-target ids
-            // are routed through `apply_event` which re-opens the
-            // picker on their own; clicking anywhere else dismisses
-            // it. The picker has no own NodeId in the hit_index —
-            // its sub-controls do (BlenderHit) — so a hit that
-            // resolves to a BlenderHit means "inside the picker".
+            // OUTSIDE the picker's outer rect AND outside another
+            // color-target widget. Color-target ids re-open the
+            // picker via `apply_event`; clicking anywhere else
+            // dismisses it.
+            //
+            // Test the OUTER RECT (published each frame to
+            // `panel_rect(INSP_BLENDER_PICKER)`) rather than only
+            // the BlenderHit sub-controls. Without this, dead space
+            // INSIDE the picker (gaps between controls, padding
+            // bands, the drag bar's left/right ends) had no hit and
+            // the picker dismissed itself — user reported "se eu
+            // clicar dentro do painel sem acertar um controle ele
+            // fecha". Fallback to the sub-control test when the
+            // outer rect isn't published (e.g. first frame).
             if store.picker_target().is_some() {
-                let inside_picker = matches!(
+                use crate::screens::hero::ids as hero_ids;
+                let inside_outer = store
+                    .panel_rect(hero_ids::INSP_BLENDER_PICKER)
+                    .map(|r| r.contains(event.x, event.y))
+                    .unwrap_or(false);
+                let inside_sub = matches!(
                     hit.and_then(|(id, _)| store.get(id)),
                     Some(InteractiveState::BlenderHit { .. })
                 );
                 let is_color_target = hit.map(|(id, _)| is_color_target_id(id)).unwrap_or(false);
-                if !inside_picker && !is_color_target {
+                if !inside_outer && !inside_sub && !is_color_target {
                     store.set_picker_target(None);
                 }
             }

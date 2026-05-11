@@ -862,6 +862,15 @@ impl WidgetStore {
         self.panel_rects.get(&panel).copied()
     }
 
+    /// Drop the published rect for a panel. Used by transient
+    /// panels (e.g. the floating BlenderColorPicker) when they're
+    /// not currently visible — so dispatch's "is the click inside
+    /// this panel?" tests aren't fooled by a stale rect from a
+    /// previous frame.
+    pub fn clear_panel_rect(&mut self, panel: NodeId) {
+        self.panel_rects.remove(&panel);
+    }
+
     /// Total height of all painted content in a panel (sum of
     /// section heights + separators). Set by the painter each
     /// frame; read by `dispatch_wheel` to clamp at the upper

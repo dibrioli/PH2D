@@ -519,6 +519,22 @@ pub fn paint_hero_screen(
     // store. The Inspector keeps the picker's state under
     // `INSP_BLENDER_PICKER` even though the picker is painted out
     // here, not inside the Inspector chrome.
+    //
+    // Publish the picker's outer rect to the store so the dispatch's
+    // outside-click-closes logic can test against the FULL panel
+    // (not just its sub-control hit zones). Without this, clicking
+    // dead space INSIDE the picker (gaps between controls, padding
+    // areas) resolved to no BlenderHit and the picker closed —
+    // user's "se eu clicar dentro do painel mas fora de qualquer
+    // controle, o picker fecha".
+    if hero.store.picker_target().is_some()
+        && let Some(picker_rect) = color_picker_demo::current_picker_rect(&layout, &hero.store)
+    {
+        hero.store
+            .set_panel_rect(ids::INSP_BLENDER_PICKER, picker_rect);
+    } else {
+        hero.store.clear_panel_rect(ids::INSP_BLENDER_PICKER);
+    }
     color_picker_demo::paint_blender_picker_demo(
         &layout,
         scene,

@@ -235,6 +235,7 @@ pub fn paint_text(
 ///
 /// Used by the LeftRail to paint per-button sub-labels in the column
 /// to the left of the chips.
+#[allow(clippy::too_many_arguments)]
 pub fn paint_text_rotated_ccw(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,

@@ -124,15 +124,18 @@ impl HeroLayout {
         } else {
             (hierarchy.x + hierarchy.w, inspector.x)
         };
-        let canvas_x = left_panel_right + EDGE_PAD;
-        let canvas_w = (right_panel_left - canvas_x - EDGE_PAD).max(0.0);
-        // Canvas extends UPWARD to the viewport top so the topbar's
-        // bg reads as transparent — clicks in the gap between pills
-        // resolve to canvas (no widget hit), and the canvas tint
-        // (`Bg1`) is visible behind the floating chip clusters.
-        let canvas_y = viewport.y;
-        let canvas_h = chrome_bot - canvas_y;
-        let canvas = Rect::new(canvas_x, canvas_y, canvas_w, canvas_h.max(0.0));
+        // Canvas spans the FULL viewport — every other piece of
+        // chrome (rail, top bar, side panels, bottom HUD) is a
+        // floating overlay on top. This lets canvas content extend
+        // edge-to-edge instead of being boxed in between the side
+        // panels' x range, and keeps clicks in the "dead space"
+        // between chrome elements resolving to the canvas. The
+        // unused locals below remain wired to keep the layout math
+        // legible — they're consumed only by the floating overlays
+        // (which place themselves relative to the viewport, not the
+        // canvas).
+        let _ = (left_panel_right, right_panel_left);
+        let canvas = Rect::new(viewport.x, viewport.y, viewport.w, chrome_bot - viewport.y);
 
         let bottom_hud = Rect::new(
             viewport.x + (viewport.w - 480.0) * 0.5,
@@ -326,6 +329,20 @@ impl HeroScreen {
             if id == ids::CTX_MENU_MIRROR_UI {
                 self.ui_mirrored = !self.ui_mirrored;
                 self.store.close_context_menu();
+                return true;
+            }
+            // Rail compound toggles: SPACE flips Global↔Local, VIEW
+            // cycles Selected → Camera → All. The face label is read
+            // from the store every paint, so flipping the value here
+            // is enough — the next frame renders the new label.
+            if id == ids::TOOL_SPACE {
+                let next = !self.store.tool_space_local();
+                self.store.set_tool_space_local(next);
+                return true;
+            }
+            if id == ids::TOOL_HOME {
+                let next = (self.store.tool_view_mode() + 1) % 3;
+                self.store.set_tool_view_mode(next);
                 return true;
             }
             // Panel-visibility toggles in the left rail. Flip the
@@ -721,11 +738,15 @@ mod tests {
     }
 
     #[test]
-    fn layout_canvas_between_panels_default() {
+    fn layout_canvas_spans_full_viewport_default() {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
-        // Default: hierarchy left, inspector right.
-        assert!(layout.canvas.x > layout.hierarchy.x + layout.hierarchy.w);
-        assert!(layout.canvas.x + layout.canvas.w < layout.inspector.x);
+        // Canvas is the full-viewport backdrop; chrome floats over.
+        assert!((layout.canvas.x - layout.viewport.x).abs() < f32::EPSILON);
+        assert!((layout.canvas.w - layout.viewport.w).abs() < f32::EPSILON);
+        // Side panels still sit at their canonical positions.
+        assert!(layout.hierarchy.x > layout.left_rail.x + layout.left_rail.w);
+        let insp_right = layout.inspector.x + layout.inspector.w;
+        assert!((insp_right - (HERO_VIEWPORT_W - style::EDGE_PAD)).abs() < 0.01);
     }
 
     #[test]
@@ -735,8 +756,8 @@ mod tests {
         assert!(layout.inspector.x > layout.left_rail.x + layout.left_rail.w);
         let hier_right = layout.hierarchy.x + layout.hierarchy.w;
         assert!((hier_right - (HERO_VIEWPORT_W - style::EDGE_PAD)).abs() < 0.01);
-        assert!(layout.canvas.x > layout.inspector.x + layout.inspector.w);
-        assert!(layout.canvas.x + layout.canvas.w < layout.hierarchy.x);
+        // Canvas is full-viewport in either orientation.
+        assert!((layout.canvas.w - layout.viewport.w).abs() < f32::EPSILON);
     }
 
     #[test]

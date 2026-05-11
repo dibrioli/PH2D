@@ -286,6 +286,12 @@ pub struct WidgetStore {
     /// Currently-loaded scene name shown on the TopBar project chip.
     /// Mutated by `ContextMenuKind::SceneList` row clicks.
     current_scene_name: String,
+    /// Coordinate-space toggle for the TOOL_SPACE rail button.
+    /// `false` = Global, `true` = Local. Flipped on click.
+    tool_space_local: bool,
+    /// Camera-framing mode for the TOOL_HOME rail button.
+    /// Cycle: 0 = Selected, 1 = Camera, 2 = All. Bumped on click.
+    tool_view_mode: u8,
     /// Eyedropper pending: when Some(parent), the next pointer Down
     /// (anywhere except on the eyedropper button itself) is intercepted
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
@@ -512,6 +518,8 @@ impl WidgetStore {
             pending_clipboard_copy: None,
             pending_clipboard_paste: None,
             current_scene_name: String::from("Level_01"),
+            tool_space_local: false,
+            tool_view_mode: 0,
             eyedropper_pending: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
@@ -847,6 +855,22 @@ impl WidgetStore {
 
     pub fn set_current_scene_name(&mut self, name: impl Into<String>) {
         self.current_scene_name = name.into();
+    }
+
+    pub fn tool_space_local(&self) -> bool {
+        self.tool_space_local
+    }
+
+    pub fn set_tool_space_local(&mut self, local: bool) {
+        self.tool_space_local = local;
+    }
+
+    pub fn tool_view_mode(&self) -> u8 {
+        self.tool_view_mode
+    }
+
+    pub fn set_tool_view_mode(&mut self, mode: u8) {
+        self.tool_view_mode = mode % 3;
     }
 
     pub fn eyedropper_pending(&self) -> Option<NodeId> {

@@ -82,7 +82,7 @@ pub fn paint_left_rail(
     let mut rail_entries: Vec<ToolRailEntry> = panel_toggles
         .iter()
         .map(|(id, label, icon, sub)| {
-            let mut e = ToolRailEntry::icon(*id, *label, *icon).sub(*sub);
+            let mut e = ToolRailEntry::icon(*id, *label, *icon).with_sub(*sub);
             if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
                 e = e.active();
             }
@@ -97,29 +97,41 @@ pub fn paint_left_rail(
         (ids::TOOL_PIVOT, "Pivot", IconId::Pivot, "PIVOT"),
     ];
     for (id, label, icon, sub) in entries.iter() {
-        let mut e = ToolRailEntry::icon(*id, *label, *icon).sub(*sub);
+        let mut e = ToolRailEntry::icon(*id, *label, *icon).with_sub(*sub);
         if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
             e = e.active();
         }
         rail_entries.push(e);
     }
     rail_entries.push(ToolRailEntry::Divider);
+    // Face label reflects the live store state: SPACE toggles
+    // Global ↔ Local on click; VIEW cycles Selected → Camera → All.
+    let space_face = if store.tool_space_local() {
+        "Local"
+    } else {
+        "Global"
+    };
     rail_entries.push(ToolRailEntry::compound(
         ids::TOOL_SPACE,
         "Coordinate space",
-        "Global",
+        space_face,
         "SPACE",
     ));
     // TOOL_PROJECTION ("Persp / PROJ") hidden — not used yet.
+    let view_face = match store.tool_view_mode() {
+        1 => "Camera",
+        2 => "All",
+        _ => "Selected",
+    };
     rail_entries.push(ToolRailEntry::compound(
         ids::TOOL_HOME,
-        "Frame to home",
-        "Home",
+        "Frame view",
+        view_face,
         "VIEW",
     ));
     rail_entries.push(ToolRailEntry::Divider);
-    rail_entries.push(ToolRailEntry::icon(ids::TOOL_UNDO, "Undo", IconId::Undo).sub("UNDO"));
-    rail_entries.push(ToolRailEntry::icon(ids::TOOL_REDO, "Redo", IconId::Redo).sub("REDO"));
+    rail_entries.push(ToolRailEntry::icon(ids::TOOL_UNDO, "Undo", IconId::Undo).with_sub("UNDO"));
+    rail_entries.push(ToolRailEntry::icon(ids::TOOL_REDO, "Redo", IconId::Redo).with_sub("REDO"));
 
     let rail = ToolRail::new(NodeId(200), "Editor tools", rail_entries);
     let rail_rect = Rect::new(

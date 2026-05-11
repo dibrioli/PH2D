@@ -67,7 +67,9 @@ impl ToolRailEntry {
 
     /// Builder shortcut for the Icon variant — sets the vertical
     /// sub-label tag (short uppercase, e.g. "MOVE", "ROT", "UNDO").
-    pub fn sub(mut self, sub: impl Into<String>) -> Self {
+    /// (Named `with_sub` rather than `sub` to avoid colliding with
+    /// `std::ops::Sub::sub`.)
+    pub fn with_sub(mut self, sub: impl Into<String>) -> Self {
         if let Self::Icon { sub: s, .. } = &mut self {
             *s = sub.into();
         }

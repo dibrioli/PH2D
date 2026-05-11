@@ -27,6 +27,13 @@ ph2d-host = { path = "../ph2d-host" }
 smallvec = "1"
 bumpalo = { version = "3", features = ["collections"] }
 
+[features]
+# When enabled, `screens::hero` resolves to a frozen verbatim copy of
+# the hero module at `screens::hero_ref/` instead of the working
+# `screens::hero/`. Used by `reference.command` as a visual baseline
+# while iterating on the working hero. See `screens/mod.rs`.
+reference-snapshot = []
+
 [dev-dependencies]
 # dhat-rs: HR-3 enforcement bench — counts allocations in
 # `interaction_dispatch_no_alloc` test to assert hot path is

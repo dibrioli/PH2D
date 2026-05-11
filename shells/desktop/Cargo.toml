@@ -54,6 +54,11 @@ arboard = "3"
 # frame after dispatch.
 bumpalo = "3"
 
+[features]
+# Forwarded to ph2d-editor to swap `screens::hero` for the frozen
+# `screens::hero_ref` snapshot. Used by `reference.command`.
+reference-snapshot = ["ph2d-editor/reference-snapshot"]
+
 [package.metadata.cargo-machete]
 # `bevy_ecs` is reached only through `#[derive(Component)]` expansion,
 # which machete can't see. See dep comment above.

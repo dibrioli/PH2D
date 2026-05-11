@@ -561,11 +561,40 @@ pub fn dispatch_key<'frame>(
                         | Some(InteractiveState::Combobox { .. })
                         | Some(InteractiveState::NumberInput { .. })
                 );
+                // SPACE on a text widget inserts a literal ' '
+                // directly here, bypassing winit's text-input
+                // pipeline. The shell's IME path delivers ' ' as a
+                // text event AFTER the key event, but on macOS the
+                // FIRST press's text-event sometimes arrives empty
+                // (IME init) — so the user had to press SPACE twice.
+                // Insert it ourselves on the key event; the shell
+                // suppresses the matching text-event for KEY_SPACE
+                // so we never double-insert.
+                if event.keycode == KEY_SPACE
+                    && matches!(
+                        store.get(id),
+                        Some(InteractiveState::TextInput { .. })
+                            | Some(InteractiveState::Combobox { .. })
+                    )
+                {
+                    delete_selection_if_any(store, id);
+                    match store.get_mut(id) {
+                        Some(InteractiveState::TextInput { text, caret, .. }) => {
+                            text.insert(*caret, ' ');
+                            *caret += 1;
+                            events.push(WidgetEvent::TextChanged(id));
+                        }
+                        Some(InteractiveState::Combobox { query, caret, .. }) => {
+                            query.insert(*caret, ' ');
+                            *caret += 1;
+                            events.push(WidgetEvent::TextChanged(id));
+                        }
+                        _ => {}
+                    }
+                    return events.into_bump_slice();
+                }
                 // Enter on a multi-line TextInput inserts a literal
-                // newline so notes can have body paragraphs. We use
-                // the same selection-replace helper as plain text
-                // input so Enter over a selected range REPLACES with
-                // a newline (standard editor behavior).
+                // newline so notes can have body paragraphs.
                 if event.keycode == KEY_ENTER
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {

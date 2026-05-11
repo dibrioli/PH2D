@@ -1114,13 +1114,31 @@ impl ApplicationHandler for App {
                 // resolved layout + dead-keys + shift). Send each
                 // char through the text-input dispatcher so focused
                 // TextInput/NumberInput/Combobox buffers update.
+                // EXCEPT for ' ' coming from the physical Space key
+                // and 'a'/'A' coming from KeyA with Cmd/Ctrl held —
+                // those are inserted by the dispatch's key handler
+                // directly (SPACE bug: winit's first text-event for
+                // SPACE on macOS arrived empty; Cmd+A: text-event
+                // would replace the just-selected range with 'a').
                 if state == ElementState::Pressed
                     && let Some(s) = text.as_ref()
                 {
+                    let is_space_key = matches!(physical_key, PhysicalKey::Code(KeyCode::Space));
+                    let cmd_held = self.modifiers.super_key() || self.modifiers.control_key();
                     for ch in s.chars() {
-                        if !ch.is_control() {
-                            forward_text_to_hero(self.gfx.as_mut(), ch);
+                        if ch.is_control() {
+                            continue;
                         }
+                        if is_space_key && ch == ' ' {
+                            continue;
+                        }
+                        // Cmd/Ctrl chord with a letter: skip the
+                        // text-event so Cmd+A's select-all isn't
+                        // overwritten by 'a' insertion.
+                        if cmd_held && ch.is_ascii_alphabetic() {
+                            continue;
+                        }
+                        forward_text_to_hero(self.gfx.as_mut(), ch);
                     }
                 }
 

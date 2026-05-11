@@ -95,7 +95,15 @@ fn ensure_parent(p: &Path) {
 fn drift_detected(label: &str, path: &Path, fresh: &str) -> bool {
     match std::fs::read_to_string(path) {
         Ok(committed) => {
-            if committed == fresh {
+            // Normalize line endings before comparison: Windows git
+            // checkouts may rewrite LF → CRLF (the default without an
+            // `.gitattributes` directive), while bindgen emits raw LF.
+            // The bytes-on-disk diverge from what bindgen would write
+            // even though the semantic content is identical; HR-10
+            // parity cares about content, not byte-level equality.
+            let committed_norm = committed.replace("\r\n", "\n");
+            let fresh_norm = fresh.replace("\r\n", "\n");
+            if committed_norm == fresh_norm {
                 false
             } else {
                 eprintln!(

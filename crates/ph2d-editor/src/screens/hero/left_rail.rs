@@ -16,6 +16,8 @@ use ph2d_vector::VectorScene;
 /// Translate is the default-pressed tool (matches the M13 fixture).
 pub fn populate(store: &mut WidgetStore) {
     for id in [
+        ids::RAIL_SHOW_INSPECTOR,
+        ids::RAIL_SHOW_HIERARCHY,
         ids::TOOL_TRANSLATE,
         ids::TOOL_ROTATE,
         ids::TOOL_SCALE,
@@ -36,6 +38,12 @@ pub fn populate(store: &mut WidgetStore) {
     if let Some(InteractiveState::Button { state }) = store.get_mut(ids::TOOL_TRANSLATE) {
         *state = ButtonState::Pressed;
     }
+    // Both panels start visible → Show toggles start Pressed.
+    for id in [ids::RAIL_SHOW_INSPECTOR, ids::RAIL_SHOW_HIERARCHY] {
+        if let Some(InteractiveState::Button { state }) = store.get_mut(id) {
+            *state = ButtonState::Pressed;
+        }
+    }
 }
 
 /// Apply a [`WidgetEvent`] against LeftRail widgets. Returns true
@@ -53,13 +61,15 @@ pub fn paint_left_rail(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let entries = [
-        (ids::TOOL_TRANSLATE, "Translate", IconId::Transform),
-        (ids::TOOL_ROTATE, "Rotate", IconId::Rotate),
-        (ids::TOOL_SCALE, "Scale", IconId::Scale),
-        (ids::TOOL_PIVOT, "Pivot", IconId::Pivot),
+    // Top section: panel visibility toggles. `Pressed` ⇒ the
+    // corresponding side panel is currently visible. Sit above
+    // Move/Translate with their own divider so they read as
+    // workspace-level controls, not transform tools.
+    let panel_toggles = [
+        (ids::RAIL_SHOW_INSPECTOR, "Show Inspector", IconId::LetterI),
+        (ids::RAIL_SHOW_HIERARCHY, "Show Hierarchy", IconId::LetterH),
     ];
-    let mut rail_entries: Vec<ToolRailEntry> = entries
+    let mut rail_entries: Vec<ToolRailEntry> = panel_toggles
         .iter()
         .map(|(id, label, icon)| {
             let mut e = ToolRailEntry::icon(*id, *label, *icon);
@@ -69,6 +79,20 @@ pub fn paint_left_rail(
             e
         })
         .collect();
+    rail_entries.push(ToolRailEntry::Divider);
+    let entries = [
+        (ids::TOOL_TRANSLATE, "Translate", IconId::Transform),
+        (ids::TOOL_ROTATE, "Rotate", IconId::Rotate),
+        (ids::TOOL_SCALE, "Scale", IconId::Scale),
+        (ids::TOOL_PIVOT, "Pivot", IconId::Pivot),
+    ];
+    for (id, label, icon) in entries.iter() {
+        let mut e = ToolRailEntry::icon(*id, *label, *icon);
+        if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
+            e = e.active();
+        }
+        rail_entries.push(e);
+    }
     rail_entries.push(ToolRailEntry::Divider);
     rail_entries.push(ToolRailEntry::compound(
         ids::TOOL_SPACE,

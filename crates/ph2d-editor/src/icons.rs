@@ -79,6 +79,10 @@ pub enum IconId {
     Kbd,
     Layer,
     Layers,
+    /// "H" inside a circle — Show Hierarchy panel toggle.
+    LetterH,
+    /// "I" inside a circle — Show Inspector panel toggle.
+    LetterI,
     Light,
     Link,
     Lock,
@@ -288,6 +292,18 @@ impl IconId {
             Self::Layers => &[
                 IconCmd::Path("M12 2L2 7l10 5 10-5-10-5z"),
                 IconCmd::Path("M2 17l10 5 10-5M2 12l10 5 10-5"),
+            ],
+            // Letter "H" inside a circle — Show Hierarchy toggle.
+            // Inspired by emojione-monotone/letter-h.svg but redrawn
+            // in our stroke-based icon grammar (24x24 viewBox).
+            Self::LetterH => &[
+                IconCmd::Circle(12.0, 12.0, 10.0),
+                IconCmd::Path("M8 6 V 18 M16 6 V 18 M8 12 H 16"),
+            ],
+            // Letter "I" inside a circle — Show Inspector toggle.
+            Self::LetterI => &[
+                IconCmd::Circle(12.0, 12.0, 10.0),
+                IconCmd::Path("M9 6 H 15 M12 6 V 18 M9 18 H 15"),
             ],
             Self::Light => &[IconCmd::Path(
                 "M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z",
@@ -671,6 +687,8 @@ mod tests {
         IconId::Kbd,
         IconId::Layer,
         IconId::Layers,
+        IconId::LetterH,
+        IconId::LetterI,
         IconId::Light,
         IconId::Link,
         IconId::Lock,

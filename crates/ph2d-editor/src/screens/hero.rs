@@ -178,6 +178,12 @@ pub struct HeroScreen {
     /// UI" entry in the theme context menu. Defaults to `false` —
     /// Hierarchy left, Inspector right.
     pub ui_mirrored: bool,
+    /// Visibility of the Inspector panel — toggled by the
+    /// `RAIL_SHOW_INSPECTOR` button in the left rail.
+    pub inspector_visible: bool,
+    /// Visibility of the Hierarchy panel — toggled by the
+    /// `RAIL_SHOW_HIERARCHY` button in the left rail.
+    pub hierarchy_visible: bool,
 }
 
 impl HeroScreen {
@@ -191,6 +197,8 @@ impl HeroScreen {
             store,
             hit_index: HitIndex::new(),
             ui_mirrored: false,
+            inspector_visible: true,
+            hierarchy_visible: true,
         }
     }
 
@@ -318,6 +326,36 @@ impl HeroScreen {
             if id == ids::CTX_MENU_MIRROR_UI {
                 self.ui_mirrored = !self.ui_mirrored;
                 self.store.close_context_menu();
+                return true;
+            }
+            // Panel-visibility toggles in the left rail. Flip the
+            // hero-level visibility flag and the button's Pressed
+            // state so the rail rendering reflects the new state
+            // on the next frame.
+            if id == ids::RAIL_SHOW_INSPECTOR {
+                self.inspector_visible = !self.inspector_visible;
+                if let Some(crate::interaction::InteractiveState::Button { state }) =
+                    self.store.get_mut(ids::RAIL_SHOW_INSPECTOR)
+                {
+                    *state = if self.inspector_visible {
+                        crate::widget::ButtonState::Pressed
+                    } else {
+                        crate::widget::ButtonState::Normal
+                    };
+                }
+                return true;
+            }
+            if id == ids::RAIL_SHOW_HIERARCHY {
+                self.hierarchy_visible = !self.hierarchy_visible;
+                if let Some(crate::interaction::InteractiveState::Button { state }) =
+                    self.store.get_mut(ids::RAIL_SHOW_HIERARCHY)
+                {
+                    *state = if self.hierarchy_visible {
+                        crate::widget::ButtonState::Pressed
+                    } else {
+                        crate::widget::ButtonState::Normal
+                    };
+                }
                 return true;
             }
             // Save / Save As — placeholders until the pilot project
@@ -528,17 +566,30 @@ pub fn paint_hero_screen(
     );
     // Publish Inspector + Hierarchy panel rects so wheel-event
     // dispatch can route to them. Both are static (no drag offset).
-    hero.store.set_panel_rect(ids::INSP_PANEL, layout.inspector);
-    hero.store.set_panel_rect(ids::HIER_PANEL, layout.hierarchy);
-    paint_inspector(
-        &layout,
-        hero.selection.as_ref(),
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-    );
+    // When a panel is hidden via its left-rail toggle we DROP the
+    // published rect so dispatch's "inside panel" tests don't match
+    // a stale geometry.
+    if hero.inspector_visible {
+        hero.store.set_panel_rect(ids::INSP_PANEL, layout.inspector);
+    } else {
+        hero.store.clear_panel_rect(ids::INSP_PANEL);
+    }
+    if hero.hierarchy_visible {
+        hero.store.set_panel_rect(ids::HIER_PANEL, layout.hierarchy);
+    } else {
+        hero.store.clear_panel_rect(ids::HIER_PANEL);
+    }
+    if hero.inspector_visible {
+        paint_inspector(
+            &layout,
+            hero.selection.as_ref(),
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+        );
+    }
     // Publish the inspector's measured content height to the store
     // so `dispatch_wheel` can clamp the next scroll event at the
     // upper bound BEFORE the visible jump happens. Also clamp the
@@ -567,14 +618,16 @@ pub fn paint_hero_screen(
         hero.store.set_widget_color(target, value.rgba);
     }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
-    paint_hierarchy(
-        &layout,
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-    );
+    if hero.hierarchy_visible {
+        paint_hierarchy(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+        );
+    }
     // Publish hierarchy content_h + clamp scroll (same pattern as
     // inspector). Headroom of 60 px covers the hierarchy header.
     {

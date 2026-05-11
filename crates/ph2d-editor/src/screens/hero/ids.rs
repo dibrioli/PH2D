@@ -38,6 +38,10 @@ pub const TOOL_PROJECTION: NodeId = NodeId(206);
 pub const TOOL_HOME: NodeId = NodeId(207);
 pub const TOOL_UNDO: NodeId = NodeId(208);
 pub const TOOL_REDO: NodeId = NodeId(209);
+/// Show/Hide toggles for the side panels — top of the left rail.
+/// `Pressed` state == panel currently visible.
+pub const RAIL_SHOW_INSPECTOR: NodeId = NodeId(210);
+pub const RAIL_SHOW_HIERARCHY: NodeId = NodeId(211);
 
 /// Inspector panel container — used as the wheel-scroll key.
 pub const INSP_PANEL: NodeId = NodeId(371);

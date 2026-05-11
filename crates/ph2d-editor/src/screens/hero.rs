@@ -320,6 +320,11 @@ pub fn paint_hero_screen(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
 ) {
+    // Publish the user-picked radius scale to the thread-local read
+    // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
+    // every frame so it stays in sync with the topbar's radius menu.
+    crate::paint::set_radius_scale(hero.store.radius_scale());
+
     let mut layout = HeroLayout::for_viewport(viewport);
     // Apply user-driven panel drag offsets to the Inspector +
     // Hierarchy rects. The offsets live on the WidgetStore's

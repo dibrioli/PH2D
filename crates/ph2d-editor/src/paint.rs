@@ -64,8 +64,41 @@ pub fn rect_to_vello(r: Rect) -> VelloRect {
     )
 }
 
+// Thread-local global radius multiplier. Lets the user pick Sharp /
+// Default / Round in the topbar context menu and have every rounded
+// surface (200+ sites) scale uniformly without threading the value
+// through every painter signature. Set via `set_radius_scale` before
+// paint, read via `radius_scale`. Defaults to 1.0.
+thread_local! {
+    static RADIUS_SCALE: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
+}
+
+/// Set the global radius scale for the current thread (paint runs).
+/// Clamped to non-negative; pass `1.0` to reset.
+pub fn set_radius_scale(scale: f32) {
+    RADIUS_SCALE.with(|s| s.set(scale.max(0.0)));
+}
+
+/// Read the current global radius scale.
+pub fn radius_scale() -> f32 {
+    RADIUS_SCALE.with(|s| s.get())
+}
+
+fn scale_radius(r: f32) -> f32 {
+    let s = radius_scale();
+    if s == 1.0 {
+        r
+    } else {
+        // Preserve perfect-circle / pill semantics — `Radius::Full`
+        // (999) was chosen specifically so it always wraps to the
+        // shortest axis. Scaling it would un-pill pills at scale < 1.
+        if r >= 999.0 { r } else { r * s }
+    }
+}
+
 /// Fill a rect with rounded corners. Pass `radius == 0` for sharp.
 pub fn fill_rounded_rect(scene: &mut VectorScene, rect: Rect, radius: f32, color: Color) {
+    let radius = scale_radius(radius);
     if radius <= 0.0 {
         scene.fill_rect(rect_to_vello(rect), color);
         return;
@@ -100,6 +133,7 @@ pub fn stroke_rounded_rect(
     width: f32,
     color: Color,
 ) {
+    let radius = scale_radius(radius);
     if radius <= 0.0 {
         stroke_rect(scene, rect, width, color);
         return;
@@ -565,6 +599,20 @@ impl Paint for ToastQueue {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `radius_scale` is a thread-local — paint_rounded_rect helpers
+    /// scale by it, but `Radius::Full` (999) is preserved exactly so
+    /// pill / circle shapes stay perfect even at scale < 1.
+    #[test]
+    fn radius_scale_preserves_full_pill() {
+        set_radius_scale(0.2);
+        assert!((scale_radius(999.0) - 999.0).abs() < f32::EPSILON);
+        assert!((scale_radius(12.0) - 2.4).abs() < 1e-4);
+        set_radius_scale(1.6);
+        assert!((scale_radius(999.0) - 999.0).abs() < f32::EPSILON);
+        assert!((scale_radius(8.0) - 12.8).abs() < 1e-4);
+        set_radius_scale(1.0);
+    }
 
     /// Token → Vello color round-trips bytes accurately enough for
     /// our 8-bit palette (no banding from the sRGB linearization).

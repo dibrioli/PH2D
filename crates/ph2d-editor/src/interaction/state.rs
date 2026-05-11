@@ -274,6 +274,15 @@ pub struct WidgetStore {
     /// last_cursor_y). Move events apply (cursor − last) to the
     /// stored `panel_resize_delta`, then re-anchor.
     panel_resize_anchor: Option<(NodeId, f32, f32)>,
+    /// Clipboard outbox — set by Cmd+C/X handlers; shell drains each
+    /// frame via `take_clipboard_copy` and writes to the OS
+    /// clipboard. `String` rather than a reference so the data lives
+    /// independently of any widget buffer that might mutate next.
+    pending_clipboard_copy: Option<String>,
+    /// Clipboard paste request — set by Cmd+V on a focused text
+    /// widget; shell reads the OS clipboard and calls back into
+    /// `apply_clipboard_paste` with the text.
+    pending_clipboard_paste: Option<NodeId>,
     /// Eyedropper pending: when Some(parent), the next pointer Down
     /// (anywhere except on the eyedropper button itself) is intercepted
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
@@ -488,6 +497,8 @@ impl WidgetStore {
             blender_drag_anchor: None,
             panel_resize_delta: BTreeMap::new(),
             panel_resize_anchor: None,
+            pending_clipboard_copy: None,
+            pending_clipboard_paste: None,
             eyedropper_pending: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
@@ -793,6 +804,28 @@ impl WidgetStore {
 
     pub fn end_panel_resize(&mut self) {
         self.panel_resize_anchor = None;
+    }
+
+    /// Drain the pending clipboard-copy text (set by a Cmd+C / Cmd+X
+    /// dispatch); shell should call once per frame and write to OS
+    /// clipboard when non-None.
+    pub fn take_clipboard_copy(&mut self) -> Option<String> {
+        self.pending_clipboard_copy.take()
+    }
+
+    pub fn set_clipboard_copy(&mut self, text: String) {
+        self.pending_clipboard_copy = Some(text);
+    }
+
+    /// Drain the pending clipboard-paste request; shell should read
+    /// the OS clipboard and call `apply_clipboard_paste` with the
+    /// result when non-None.
+    pub fn take_clipboard_paste_request(&mut self) -> Option<NodeId> {
+        self.pending_clipboard_paste.take()
+    }
+
+    pub fn set_clipboard_paste_request(&mut self, id: NodeId) {
+        self.pending_clipboard_paste = Some(id);
     }
 
     pub fn eyedropper_pending(&self) -> Option<NodeId> {

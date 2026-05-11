@@ -45,6 +45,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 wgpu = "28"
 winit = "0.30"
 gilrs = "0.11"
+# arboard: system clipboard read/write for the Cmd+C/V/X handlers in
+# ph2d-editor's dispatch. Constructed once at startup; pasted text is
+# fed back to the store via `apply_clipboard_paste`.
+arboard = "3"
 # bumpalo: per-frame arena for HeroScreen interaction events
 # (ADR-0024). Allocated once at AppGfx construction; reset every
 # frame after dispatch.

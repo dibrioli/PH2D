@@ -32,6 +32,9 @@ pub const KEY_SPACE: u32 = 0x20;
 pub const KEY_ESCAPE: u32 = 0x1B;
 pub const KEY_BACKSPACE: u32 = 0x08;
 pub const KEY_KEY_A: u32 = 0x41;
+pub const KEY_KEY_C: u32 = 0x43;
+pub const KEY_KEY_V: u32 = 0x56;
+pub const KEY_KEY_X: u32 = 0x58;
 pub const KEY_ARROW_UP: u32 = 0xF700;
 pub const KEY_ARROW_DOWN: u32 = 0xF701;
 pub const KEY_ARROW_LEFT: u32 = 0xF702;
@@ -612,6 +615,34 @@ pub fn dispatch_key<'frame>(
             // the whole buffer (same effect as double-click).
             if let Some(id) = store.focus_id() {
                 select_all_in_text_widget(store, id);
+            }
+        }
+        KEY_KEY_C if event.modifiers.meta || event.modifiers.ctrl => {
+            if let Some(id) = store.focus_id()
+                && let Some(text) = clipboard_extract_selection(store, id)
+            {
+                store.set_clipboard_copy(text);
+            }
+        }
+        KEY_KEY_X if event.modifiers.meta || event.modifiers.ctrl => {
+            if let Some(id) = store.focus_id()
+                && let Some(text) = clipboard_extract_selection(store, id)
+            {
+                store.set_clipboard_copy(text);
+                delete_selection_if_any(store, id);
+                events.push(WidgetEvent::TextChanged(id));
+            }
+        }
+        KEY_KEY_V if event.modifiers.meta || event.modifiers.ctrl => {
+            if let Some(id) = store.focus_id()
+                && matches!(
+                    store.get(id),
+                    Some(InteractiveState::TextInput { .. })
+                        | Some(InteractiveState::Combobox { .. })
+                        | Some(InteractiveState::NumberInput { .. })
+                )
+            {
+                store.set_clipboard_paste_request(id);
             }
         }
         KEY_ENTER | KEY_SPACE => {
@@ -1439,6 +1470,92 @@ pub(super) fn reset_focused_visual_state(store: &mut WidgetStore, id: ph2d_a11y:
 /// Set `selection_anchor = Some(0)` and `caret = text.len()` on the
 /// focused TextInput / NumberInput widget at `id`. Triggered by
 /// double-click and by Cmd/Ctrl+A. No-op for any other widget kind.
+/// Read the currently selected text from a focused TextInput /
+/// NumberInput / Combobox. Returns `None` when the widget isn't a
+/// text widget or has no active selection. Caret is treated as a
+/// zero-length selection (returns `Some("")`) — caller decides
+/// whether empty copies are interesting.
+fn clipboard_extract_selection(
+    store: &WidgetStore,
+    id: ph2d_a11y::NodeId,
+) -> Option<String> {
+    let (text, caret, anchor) = match store.get(id) {
+        Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) => (text.as_str(), *caret, *selection_anchor),
+        Some(InteractiveState::NumberInput {
+            buffer,
+            caret,
+            selection_anchor,
+            ..
+        }) => (buffer.as_str(), *caret, *selection_anchor),
+        Some(InteractiveState::Combobox {
+            query,
+            caret,
+            selection_anchor,
+            ..
+        }) => (query.as_str(), *caret, *selection_anchor),
+        _ => return None,
+    };
+    let anchor = anchor?;
+    let (start, end) = if anchor < caret {
+        (anchor, caret)
+    } else {
+        (caret, anchor)
+    };
+    if start == end {
+        return None;
+    }
+    let start = start.min(text.len());
+    let end = end.min(text.len());
+    Some(text[start..end].to_string())
+}
+
+/// Insert `text` at the caret of a focused text widget, replacing
+/// any active selection. Shell calls this after reading the OS
+/// clipboard in response to a pending paste request. Returns true
+/// when something was inserted.
+pub fn apply_clipboard_paste(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    text: &str,
+) -> bool {
+    if text.is_empty() {
+        return false;
+    }
+    let _ = delete_selection_if_any(store, id);
+    match store.get_mut(id) {
+        Some(InteractiveState::TextInput { text: buf, caret, .. }) => {
+            buf.insert_str(*caret, text);
+            *caret += text.len();
+            true
+        }
+        Some(InteractiveState::Combobox { query, caret, .. }) => {
+            query.insert_str(*caret, text);
+            *caret += text.len();
+            true
+        }
+        Some(InteractiveState::NumberInput { buffer, caret, .. }) => {
+            // Filter non-numeric chars so paste can't put a NumberInput
+            // into an unparseable state. Allowed: digits, '.', '-', '+'.
+            let filtered: String = text
+                .chars()
+                .filter(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '+'))
+                .collect();
+            if filtered.is_empty() {
+                return false;
+            }
+            buffer.insert_str(*caret, &filtered);
+            *caret += filtered.len();
+            true
+        }
+        _ => false,
+    }
+}
+
 pub(super) fn select_all_in_text_widget(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     match store.get_mut(id) {
         Some(InteractiveState::TextInput {
@@ -3403,5 +3520,101 @@ mod tests {
             _ => -1.0,
         };
         assert!((v - 0.49).abs() < 1e-6, "expected 0.49 got {v}");
+    }
+
+    fn meta_key(kc: u32) -> KeyEvent {
+        KeyEvent {
+            keycode: kc,
+            modifiers: Modifiers {
+                shift: false,
+                ctrl: false,
+                alt: false,
+                meta: true,
+            },
+            kind: KeyKind::Down,
+            timestamp_ns: 0,
+        }
+    }
+
+    fn focused_text_input(text: &str, caret: usize, anchor: Option<usize>) -> WidgetStore {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(50),
+            InteractiveState::TextInput {
+                state: crate::widget::TextInputState::Focused,
+                text: text.to_string(),
+                caret,
+                selection_anchor: anchor,
+            },
+        );
+        store.set_focus(Some(NodeId(50)));
+        store
+    }
+
+    #[test]
+    fn cmd_c_copies_selection_to_outbox() {
+        let mut store = focused_text_input("hello world", 5, Some(0));
+        let arena = Bump::new();
+        let _ = dispatch_key(&mut store, meta_key(KEY_KEY_C), &arena);
+        assert_eq!(store.take_clipboard_copy().as_deref(), Some("hello"));
+    }
+
+    #[test]
+    fn cmd_c_without_selection_emits_nothing() {
+        let mut store = focused_text_input("hello", 3, None);
+        let arena = Bump::new();
+        let _ = dispatch_key(&mut store, meta_key(KEY_KEY_C), &arena);
+        assert!(store.take_clipboard_copy().is_none());
+    }
+
+    #[test]
+    fn cmd_x_cuts_selection_and_emits_text_changed() {
+        let mut store = focused_text_input("hello world", 11, Some(5));
+        let arena = Bump::new();
+        let evts = dispatch_key(&mut store, meta_key(KEY_KEY_X), &arena);
+        assert_eq!(store.take_clipboard_copy().as_deref(), Some(" world"));
+        match store.get(NodeId(50)) {
+            Some(InteractiveState::TextInput { text, caret, .. }) => {
+                assert_eq!(text, "hello");
+                assert_eq!(*caret, 5);
+            }
+            _ => panic!("expected TextInput"),
+        }
+        assert!(evts.iter().any(|e| matches!(e, WidgetEvent::TextChanged(_))));
+    }
+
+    #[test]
+    fn cmd_v_sets_paste_request() {
+        let mut store = focused_text_input("abc", 3, None);
+        let arena = Bump::new();
+        let _ = dispatch_key(&mut store, meta_key(KEY_KEY_V), &arena);
+        assert_eq!(store.take_clipboard_paste_request(), Some(NodeId(50)));
+    }
+
+    #[test]
+    fn apply_clipboard_paste_inserts_at_caret() {
+        let mut store = focused_text_input("abxy", 2, None);
+        let ok = apply_clipboard_paste(&mut store, NodeId(50), "cd");
+        assert!(ok);
+        match store.get(NodeId(50)) {
+            Some(InteractiveState::TextInput { text, caret, .. }) => {
+                assert_eq!(text, "abcdxy");
+                assert_eq!(*caret, 4);
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn apply_clipboard_paste_replaces_selection() {
+        let mut store = focused_text_input("hello world", 5, Some(0));
+        apply_clipboard_paste(&mut store, NodeId(50), "Hi");
+        match store.get(NodeId(50)) {
+            Some(InteractiveState::TextInput { text, caret, .. }) => {
+                assert_eq!(text, "Hi world");
+                assert_eq!(*caret, 2);
+            }
+            _ => panic!(),
+        }
     }
 }

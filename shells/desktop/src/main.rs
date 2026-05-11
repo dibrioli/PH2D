@@ -218,6 +218,9 @@ struct AppGfx {
     /// Per-frame arena for [`WidgetEvent`]s emitted by the hero
     /// dispatcher. Reset at end-of-frame.
     hero_arena: Bump,
+    /// OS clipboard handle — used by Cmd+C/V/X. `None` when the OS
+    /// rejected our request (rare; we just no-op those keys then).
+    clipboard: Option<arboard::Clipboard>,
     /// M14.1 — cached `QueryState` pair for hierarchical transform
     /// propagation. Built once after `populate_sim`; used every frame
     /// inside the extract phase. The only way to iterate `&World`
@@ -571,6 +574,7 @@ impl App {
             text_system,
             hero_screen,
             hero_arena,
+            clipboard: _,
             prop_state,
             worklist,
         } = gfx;
@@ -959,6 +963,9 @@ impl ApplicationHandler for App {
             text_system,
             hero_screen,
             hero_arena: Bump::with_capacity(4096),
+            clipboard: arboard::Clipboard::new()
+                .map_err(|e| eprintln!("[ph2d] clipboard init failed: {e}"))
+                .ok(),
             prop_state,
             worklist,
         });
@@ -1292,6 +1299,8 @@ fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
 /// Forward a translated [`KeyEvent`] (with editor-canonical
 /// `keycode` from [`winit_to_editor_keycode`]) into the hero
 /// dispatcher so focused widgets see Tab/Enter/Backspace/arrows etc.
+/// Also drains any clipboard copy/paste requests the dispatcher set
+/// for this key event and bridges to `arboard`.
 fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
     let Some(gfx) = gfx else { return };
     let Some(hero) = gfx.hero_screen.as_mut() else {
@@ -1301,6 +1310,30 @@ fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
     for e in snapshot {
         if !hero.apply_event(e) {
             eprintln!("[hero] unhandled key event: {e:?}");
+        }
+    }
+    // Drain clipboard requests set by Cmd+C / Cmd+X / Cmd+V.
+    if let Some(text) = hero.store.take_clipboard_copy()
+        && let Some(cb) = gfx.clipboard.as_mut()
+        && let Err(err) = cb.set_text(text)
+    {
+        eprintln!("[ph2d] clipboard set_text failed: {err}");
+    }
+    if let Some(target) = hero.store.take_clipboard_paste_request() {
+        let text = gfx
+            .clipboard
+            .as_mut()
+            .and_then(|cb| cb.get_text().ok())
+            .unwrap_or_default();
+        if !text.is_empty()
+            && ph2d_editor::interaction::apply_clipboard_paste(
+                &mut hero.store,
+                target,
+                &text,
+            )
+        {
+            // Mimic the TextChanged path so sliders/links update.
+            let _ = hero.apply_event(WidgetEvent::TextChanged(target));
         }
     }
 }
@@ -1336,7 +1369,7 @@ fn forward_text_to_hero(gfx: Option<&mut AppGfx>, ch: char) {
 fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
     use ph2d_editor::interaction::{
         KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
-        KEY_ESCAPE, KEY_KEY_A, KEY_SPACE, KEY_TAB,
+        KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
     };
     Some(match code {
         KeyCode::Tab => KEY_TAB,
@@ -1349,6 +1382,9 @@ fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
         KeyCode::ArrowLeft => KEY_ARROW_LEFT,
         KeyCode::ArrowRight => KEY_ARROW_RIGHT,
         KeyCode::KeyA => KEY_KEY_A,
+        KeyCode::KeyC => KEY_KEY_C,
+        KeyCode::KeyV => KEY_KEY_V,
+        KeyCode::KeyX => KEY_KEY_X,
         _ => return None,
     })
 }

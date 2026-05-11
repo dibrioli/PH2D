@@ -38,6 +38,13 @@ pub const TOOL_REDO: NodeId = NodeId(209);
 
 /// Inspector panel container — used as the wheel-scroll key.
 pub const INSP_PANEL: NodeId = NodeId(371);
+/// Drag handle at the top of the Inspector — click+drag moves the
+/// panel. Registered as `BlenderHit { parent: INSP_PANEL, kind:
+/// DragHandle }` so the existing picker-drag dispatch infra
+/// (panel-agnostic on parent NodeId) drives it.
+pub const INSP_DRAG_HANDLE: NodeId = NodeId(372);
+/// Drag handle at the top of the Hierarchy.
+pub const HIER_DRAG_HANDLE: NodeId = NodeId(398);
 
 // ── Inspector widget samples ───────────────────────────────────────────────
 // One of each canonical widget, parented to the Inspector panel.

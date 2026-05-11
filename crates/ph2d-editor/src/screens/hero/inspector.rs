@@ -662,6 +662,25 @@ fn populate_samples(store: &mut WidgetStore) {
     // arrastando com o mouse").
     store.register(crate::widget::INSPECTOR_SCROLLBAR_ID, InteractiveState::Plain);
     store.register(crate::widget::HIERARCHY_SCROLLBAR_ID, InteractiveState::Plain);
+    // Drag handles for movable Inspector / Hierarchy. Reuse the
+    // BlenderColorPicker's panel-agnostic drag infrastructure
+    // (`apply_blender_hit` → `begin_blender_drag` keyed by the
+    // `parent` NodeId; the painter reads
+    // `store.blender_picker_offset(parent)` to apply the offset).
+    store.register(
+        ids::INSP_DRAG_HANDLE,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_PANEL,
+            kind: crate::interaction::BlenderHitKind::DragHandle,
+        },
+    );
+    store.register(
+        ids::HIER_DRAG_HANDLE,
+        InteractiveState::BlenderHit {
+            parent: ids::HIER_PANEL,
+            kind: crate::interaction::BlenderHitKind::DragHandle,
+        },
+    );
 
     // Per-widget tooltips so the generic registry shows hints when
     // the user hovers. Demonstrates the §9.8 lesson in practice.
@@ -847,6 +866,15 @@ pub fn paint_inspector(
 ) {
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
+    // Register a wide hit zone over the top-center drag handle pill
+    // (40 px wide × 24 px tall) so it's grabbable on touch + mouse.
+    let drag_handle_rect = Rect::new(
+        rect.x + (rect.w - 80.0) * 0.5,
+        rect.y + 2.0,
+        80.0,
+        14.0,
+    );
+    hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
 
     // Header: title + subtitle + divider line.
     let title = selection

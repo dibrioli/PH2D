@@ -73,6 +73,13 @@ pub fn paint_hierarchy(
 ) {
     let rect = layout.hierarchy;
     paint_panel_surface(rect, scene, theme);
+    let drag_handle_rect = Rect::new(
+        rect.x + (rect.w - 80.0) * 0.5,
+        rect.y + 2.0,
+        80.0,
+        14.0,
+    );
+    hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
 
     let title_y = rect.y + 18.0;
     paint_text(

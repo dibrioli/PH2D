@@ -320,7 +320,27 @@ pub fn paint_hero_screen(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
 ) {
-    let layout = HeroLayout::for_viewport(viewport);
+    let mut layout = HeroLayout::for_viewport(viewport);
+    // Apply user-driven panel drag offsets to the Inspector +
+    // Hierarchy rects. The offsets live on the WidgetStore's
+    // `blender_picker_offset` side-table (panel-agnostic — the
+    // dispatch's BlenderHitKind::DragHandle path stores the
+    // offset under the `parent` NodeId regardless of widget kind).
+    // Clamped so the drag handle stays inside the viewport (user
+    // can always grab it back).
+    let clamp_offset = |base: Rect, off: (f32, f32), viewport: Rect| -> Rect {
+        let max_x = (viewport.x + viewport.w - 60.0) - base.x;
+        let min_x = (viewport.x + 60.0) - (base.x + base.w);
+        let max_y = (viewport.y + viewport.h - 60.0) - base.y;
+        let min_y = viewport.y - base.y;
+        let dx = off.0.clamp(min_x, max_x);
+        let dy = off.1.clamp(min_y, max_y);
+        Rect::new(base.x + dx, base.y + dy, base.w, base.h)
+    };
+    let insp_off = hero.store.blender_picker_offset(ids::INSP_PANEL);
+    let hier_off = hero.store.blender_picker_offset(ids::HIER_PANEL);
+    layout.inspector = clamp_offset(layout.inspector, insp_off, viewport);
+    layout.hierarchy = clamp_offset(layout.hierarchy, hier_off, viewport);
     hero.hit_index.clear_for_frame();
 
     paint_canvas_bg(&layout, scene, hero.theme);

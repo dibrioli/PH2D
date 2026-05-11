@@ -470,6 +470,78 @@ estava implícito nos §1–§8.
   `tree.expand(ROOT)` somente quando não colapsado.
 - **Código**: [`screens/hero/inspector.rs apply_event + pin_button_selection`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
 
+### 9.16 Click→caret com medição real (pixel-perfect)
+
+- **Sintoma**: clicar no meio de uma palavra colocava o caret 1-2
+  caracteres antes/depois — em texto multi-linha pior porque o
+  erro acumulava por linha.
+- **Causa**: `byte_offset_from_click_x` usava `font_size *
+  APPROX_ADVANCE_RATIO` para mapear pixel→char (heurística para
+  fonts proporcionais).
+- **Fix**: `dispatch_pointer_with_text(text_system: Some(...))`
+  threadando o `TextSystem` desde o shell. `nearest_byte_on_line`
+  itera os char boundaries da linha, mede cada prefixo com
+  `text_system.layout(prefix).width()`, e devolve o byte cuja
+  posição pixel está mais próxima do clique. Pixel-perfect. Testes
+  caem na variante antiga (sem TS) para evitar 50ms por test.
+- **Código**: [`interaction/dispatch.rs nearest_byte_on_line`](../../crates/ph2d-editor/src/interaction/dispatch.rs);
+  [`screens/hero.rs HeroScreen::handle_pointer_with_text`](../../crates/ph2d-editor/src/screens/hero.rs);
+  [`shells/desktop/src/main.rs forward_pointer_to_hero`](../../shells/desktop/src/main.rs).
+
+### 9.17 Dropdown popover em segunda passada + geometria apertada
+
+- **Sintoma 1**: lista do Dropdown sumia atrás das seções pintadas
+  depois dela na mesma frame.
+- **Sintoma 2**: itens visualmente "deslocados para baixo" dentro
+  do popover (padding interno excessivo).
+- **Fix**: `paint_dropdown` virou um wrapper sobre `paint_dropdown_chip`
+  + `paint_dropdown_popover`. Inspector chama o chip in-place e
+  stasha o rect num thread-local; ao FIM de `paint_inspector`
+  (depois de TODAS as seções) chama `paint_dropdown_popover` —
+  z-order correto sem precisar de cena multi-layer. Padding
+  interno reduzido para 2 px (era 6 px).
+- **Código**: [`widget/dropdown.rs paint_dropdown_chip + paint_dropdown_popover`](../../crates/ph2d-editor/src/widget/dropdown.rs);
+  [`screens/hero/inspector.rs PENDING_DROPDOWN_CHIP`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
+
+### 9.18 NumberInput stepper handlers no dispatch
+
+- **Sintoma**: as setinhas ▲▼ no chip do NumberInput eram
+  decorativas — clicar não fazia nada.
+- **Fix**: `apply_number_stepper_if_hit` no Down handler detecta
+  click dentro de `NumberInput::up_rect/down_rect` (geometria do
+  próprio widget) e aplica +/- step. Step heurístico: `0.01`
+  quando buffer contém `.` (fractional), `1.0` caso contrário.
+  Espelha pro slider linkado se houver. Emite `ValueChanged`.
+- **Código**: [`interaction/dispatch.rs apply_number_stepper_if_hit`](../../crates/ph2d-editor/src/interaction/dispatch.rs).
+
+### 9.19 Glifos macOS Cmd/Return → tofu
+
+- **Sintoma**: tooltips e o ListItem sample mostravam `□S` / `□O`
+  em vez de `⌘S` / `⌘O`.
+- **Causa**: o font stack default do parley (system sans-serif)
+  não cobre o Unicode Technical Symbols block (U+2300..U+23FF) —
+  glifos U+2318 (⌘) e U+21B5 (↵) caem em tofu.
+- **Fix**: substituir por ASCII (`Cmd+S`, `Cmd+Enter`, `Cmd+O`).
+  O dígito-de-meio U+00B7 (·) está em Latin-1 Supplement, é
+  seguro manter.
+- **Código**: [`screens/hero/topbar.rs populate tooltips`](../../crates/ph2d-editor/src/screens/hero/topbar.rs);
+  [`screens/hero/inspector.rs ListItem value`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
+
+### 9.20 Inspector scroll clamp + separador colorido por seção
+
+- **Sintoma**: scroll do wheel era ilimitado — passava o último
+  elemento por centenas de pixels.
+- **Fix**: `paint_inspector` publica `last_inspector_content_h`
+  num thread-local; `paint_hero_screen` clamps `panel_scroll` ao
+  `content_h - visible_h` antes da próxima frame de paint
+  (one-frame stale OK — invisível).
+- **Sintoma 2**: seções sem divisor visual ficavam coladas
+  visualmente.
+- **Fix**: `paint_section_separator` desenha um `Accent`-tinted
+  pill de 2 px alto, inset 16 px horizontal, ao fim de cada
+  section block.
+- **Código**: [`screens/hero/inspector.rs paint_section_separator + LAST_CONTENT_H`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
+
 ### 9.15 Vector3Editor com buffer vivo
 
 - **Sintoma**: clicar nos chips X/Y/Z focava (border accent) mas

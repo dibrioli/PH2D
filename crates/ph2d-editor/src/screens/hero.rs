@@ -47,7 +47,9 @@ pub use selection::paint_selection_overlay;
 pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 pub use topbar::paint_top_bar;
 
-use crate::interaction::{HitIndex, WidgetEvent, WidgetStore, dispatch_pointer};
+use crate::interaction::{
+    HitIndex, WidgetEvent, WidgetStore, dispatch_pointer, dispatch_pointer_with_text,
+};
 use crate::zones::Rect;
 use bumpalo::Bump;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
@@ -186,6 +188,27 @@ impl HeroScreen {
         dispatch_pointer(&mut self.store, &self.hit_index, event, arena)
     }
 
+    /// Like [`Self::handle_pointer`] but threads a live `TextSystem`
+    /// so click→caret mapping snaps to the nearest glyph boundary
+    /// instead of the `font_size * APPROX_ADVANCE_RATIO` heuristic.
+    /// The shell calls this from its winit handler where it already
+    /// owns the `TextSystem` for paint; pixel-perfect caret placement
+    /// on text widgets requires this path.
+    pub fn handle_pointer_with_text<'frame>(
+        &mut self,
+        event: PointerEvent,
+        text_system: &mut TextSystem,
+        arena: &'frame Bump,
+    ) -> &'frame [WidgetEvent] {
+        dispatch_pointer_with_text(
+            &mut self.store,
+            &self.hit_index,
+            event,
+            Some(text_system),
+            arena,
+        )
+    }
+
     pub fn handle_key<'frame>(
         &mut self,
         event: KeyEvent,
@@ -297,6 +320,18 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
     );
+    // Clamp the inspector scroll to `[0, content_h - visible_h]` so
+    // the wheel can't push the body past the last element. The
+    // painter publishes content_h via a thread-local each frame.
+    {
+        let visible_h = (layout.inspector.h - 60.0).max(0.0);
+        let content_h = inspector::last_inspector_content_h();
+        let max_scroll = (content_h - visible_h).max(0.0);
+        let cur = hero.store.panel_scroll(ids::INSP_PANEL);
+        if cur > max_scroll {
+            hero.store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
+        }
+    }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
     paint_hierarchy(
         &layout,

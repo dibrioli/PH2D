@@ -33,7 +33,7 @@ use crate::widget::{
     Spinner, SwatchSize, TabItem, Tabs, TabsVariant, Tag, TagState, TagTone, TextArea, TextInput,
     TextInputState, Toggle, ToggleState, TreeNode, TreeView, Vector3Editor, paint_avatar,
     paint_button, paint_card, paint_checkbox, paint_color_swatch, paint_combobox_with_state,
-    paint_dropdown, paint_list_item, paint_number_input_with_buffer, paint_progress_bar,
+    paint_list_item, paint_number_input_with_buffer, paint_progress_bar,
     paint_radio_group_with_labels, paint_section_header, paint_slider_with_chip,
     paint_spinner, paint_tabs, paint_tag, paint_text_area_with_state,
     paint_text_input_with_buffer, paint_toggle, paint_tree_view,
@@ -87,6 +87,39 @@ const TREE_LEAF_IDS: [ph2d_a11y::NodeId; 2] = [
     ids::INSP_SAMPLE_TREE_LEAF_A,
     ids::INSP_SAMPLE_TREE_LEAF_B,
 ];
+
+// Thread-local stash for the open Dropdown's chip rect, captured by
+// `paint_lists_section` and consumed by `paint_inspector` AFTER the
+// section loop so the open list paints above every other section
+// (single dropdown per panel — see `docs/UI_Bugs/README.md` §9.16).
+thread_local! {
+    static PENDING_DROPDOWN_CHIP: std::cell::RefCell<Option<(usize, Rect)>> =
+        const { std::cell::RefCell::new(None) };
+    /// Content height measured during the previous paint pass. The
+    /// wheel dispatch reads this via [`last_inspector_content_h`] to
+    /// clamp `scroll_y` to `[0, content_h - visible_h]`. One frame of
+    /// staleness is invisible since paint runs every frame.
+    static LAST_CONTENT_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+}
+
+fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {
+    PENDING_DROPDOWN_CHIP.with(|c| *c.borrow_mut() = chip);
+}
+
+fn take_pending_dropdown_chip() -> Option<(usize, Rect)> {
+    PENDING_DROPDOWN_CHIP.with(|c| c.borrow_mut().take())
+}
+
+/// Last-known total content height of the inspector body (sum of all
+/// section heights + gaps). Used by `dispatch_wheel` to clamp the
+/// scroll offset so the user can't scroll past the last element.
+pub(super) fn last_inspector_content_h() -> f32 {
+    LAST_CONTENT_H.with(|c| c.get())
+}
+
+fn set_last_inspector_content_h(h: f32) {
+    LAST_CONTENT_H.with(|c| c.set(h));
+}
 
 /// Register every sample widget + the floating BlenderColorPicker's
 /// retained state. Called once at screen construction time.
@@ -576,27 +609,63 @@ pub fn paint_inspector(
 
     let inner_x = rect.x + BODY_PAD;
     let inner_w = rect.w - BODY_PAD * 2.0;
-    let mut y = content_top - scroll_y + 4.0;
+    let body_top_y = content_top - scroll_y + 4.0;
+    let mut y = body_top_y;
 
-    y = paint_inputs_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_slider_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_switches_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_lists_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_vector_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_status_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_color_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_actions_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    y = paint_identity_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-    y += SECTION_GAP;
-    let _ = paint_card_section(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
+    // Inline the section sequence so each section gets a colored
+    // separator + inter-section gap immediately after. Closures over
+    // `&mut store` would conflict with the post-loop write to
+    // `set_last_inspector_content_h` and `panel_max_scroll`.
+    macro_rules! section {
+        ($f:ident) => {
+            let new_y = $f(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
+            y = paint_section_separator(scene, theme, inner_x, inner_w, new_y) + SECTION_GAP;
+        };
+    }
+    section!(paint_inputs_section);
+    section!(paint_slider_section);
+    section!(paint_switches_section);
+    section!(paint_lists_section);
+    section!(paint_vector_section);
+    section!(paint_status_section);
+    section!(paint_color_section);
+    section!(paint_actions_section);
+    section!(paint_identity_section);
+    section!(paint_card_section);
+
+    // Publish the total content height for the wheel dispatch to
+    // clamp scroll offsets against. `y` is in screen-space WITH the
+    // current scroll offset baked in, so `y + scroll_y` is the
+    // virtual "bottom of all content" position relative to the
+    // unscrolled origin.
+    let content_h = (y + scroll_y - body_top_y).max(0.0);
+    set_last_inspector_content_h(content_h);
+
+    // Second pass: open Dropdown popover paints on top of every
+    // section that ran before it. We reconstruct the Dropdown
+    // (cheap — fixed option list) and call the popover-only painter
+    // at the chip rect captured during the Lists section.
+    if let Some((sel_idx, chip)) = take_pending_dropdown_chip() {
+        let labels = ["Front", "Side", "Top"];
+        let selected_label = labels.get(sel_idx).copied().unwrap_or("Front");
+        let dd = Dropdown::new(
+            ids::INSP_SAMPLE_DROPDOWN,
+            "View",
+            vec![
+                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_A, "front", "Front"),
+                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_B, "side", "Side"),
+                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_C, "top", "Top"),
+            ],
+        )
+        .selected(selected_label)
+        .open(true);
+        crate::widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        // Re-register the option hits AFTER the popover paint so
+        // they sit on top of the section hits painted earlier.
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect(chip, i));
+        }
+    }
 
     scene.pop_layer();
 }
@@ -632,6 +701,24 @@ fn paint_collapsible_header(
         .collapsible(!is_collapsed);
     paint_section_header(&header, r, scene, text_system, theme);
     (y + SECTION_HEAD_H + 4.0, !is_collapsed)
+}
+
+/// Discreet colored separator painted at the end of each section's
+/// content (when expanded). 2 px tall, `Accent` token, slightly inset
+/// horizontally so it doesn't run into the panel's rounded chrome.
+/// Skipped when the section is collapsed (the header already ends the
+/// section visually).
+fn paint_section_separator(
+    scene: &mut VectorScene,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let pad_x = 16.0_f32;
+    let line = Rect::new(x + pad_x, y + 4.0, (w - pad_x * 2.0).max(0.0), 2.0);
+    fill_rounded_rect(scene, line, 1.0, resolve(ColorToken::Accent, theme));
+    y + 4.0 + 2.0
 }
 
 fn paint_left_label(
@@ -953,7 +1040,17 @@ fn paint_lists_section(
     .selected(selected_label)
     .open(dd_open)
     .state(dd_state);
-    paint_dropdown(&dd, r, scene, text_system, theme);
+    // Chip first; popover is painted at the END of paint_inspector
+    // (after every other section) so it lands ABOVE every other
+    // widget. Without this, sections painted later in the loop
+    // (Vector/Status/Color) covered the open list. Stash the open
+    // dropdown + its chip rect via a thread-local for the second
+    // pass — paint_inspector reads it after the section loop and
+    // before pop_layer.
+    crate::widget::paint_dropdown_chip(&dd, r, scene, text_system, theme);
+    if dd_open {
+        set_pending_dropdown_chip(Some((dd_sel.unwrap_or(0), r)));
+    }
     y += FIELD_H + ROW_GAP;
 
     // Tabs (segmented).
@@ -1056,7 +1153,12 @@ fn paint_lists_section(
     };
     let item = ListItem::new(ids::INSP_SAMPLE_LIST_ITEM, "Open file")
         .icon(IconId::Open)
-        .value("\u{2318}O")
+        // ASCII shortcut — the Command glyph U+2318 (⌘) isn't in the
+        // editor's font fallback chain (parley GenericFamily::SansSerif
+        // resolves to system fonts that don't include the Unicode
+        // technical-symbol block). Showing `Cmd+O` instead of the
+        // tofu `□O` for the keyboard hint.
+        .value("Cmd+O")
         .chevron(true)
         .state(li_state);
     paint_list_item(&item, r, scene, text_system, theme);

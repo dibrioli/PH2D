@@ -47,6 +47,11 @@ pub enum DropdownState {
 /// distinct (without it the chip's border merges into the panel
 /// border on themes where both use the same Border token).
 const POPOVER_GAP: f32 = 4.0;
+/// Inner padding inside the open popover panel — option rows live
+/// inside this margin. Tight on purpose so the list doesn't look
+/// "shifted down" inside an oversized panel (per the user's report).
+const POPOVER_PANEL_PAD_X: f32 = 2.0;
+const POPOVER_PANEL_PAD_Y: f32 = 2.0;
 
 #[derive(Clone, Debug)]
 pub struct Dropdown<T: Clone + PartialEq> {
@@ -109,29 +114,27 @@ impl<T: Clone + PartialEq> Dropdown<T> {
     /// Floating popover panel that wraps every option row when the
     /// dropdown is open. Sits just below the chip with a small
     /// breathing gap so the chip's bottom border + the panel's top
-    /// border don't fuse into a single line. Returns the panel rect
-    /// — option rows are inset inside it.
+    /// border don't fuse into a single line. Tight: only the
+    /// `POPOVER_PANEL_PAD_Y` of internal vertical room — option rows
+    /// touch the panel chrome edge-to-edge minus that small pad.
     pub fn popover_rect(&self, chip: Rect) -> Rect {
         let row_h = chip.h;
         let count = self.options.len().max(1) as f32;
-        let pad_y = 6.0_f32;
-        let h = row_h * count + pad_y * 2.0;
+        let h = row_h * count + POPOVER_PANEL_PAD_Y * 2.0;
         Rect::new(chip.x, chip.y + chip.h + POPOVER_GAP, chip.w, h)
     }
 
     /// Open-list option row rect. The host rect is the *closed* chip;
-    /// rows live INSIDE the popover panel (see [`Self::popover_rect`])
-    /// — inset by the panel's own padding so they don't touch the
-    /// popover border.
+    /// rows live INSIDE the popover panel (see [`Self::popover_rect`]).
+    /// Tight horizontal inset so each row reads as part of the panel,
+    /// not a free-floating sub-rect.
     pub fn option_rect(&self, chip: Rect, index: usize) -> Rect {
         let panel = self.popover_rect(chip);
-        let pad_x = 6.0_f32;
-        let pad_y = 6.0_f32;
         let row_h = chip.h;
         Rect::new(
-            panel.x + pad_x,
-            panel.y + pad_y + row_h * index as f32,
-            (panel.w - pad_x * 2.0).max(0.0),
+            panel.x + POPOVER_PANEL_PAD_X,
+            panel.y + POPOVER_PANEL_PAD_Y + row_h * index as f32,
+            (panel.w - POPOVER_PANEL_PAD_X * 2.0).max(0.0),
             row_h,
         )
     }
@@ -161,7 +164,27 @@ impl<T: Clone + PartialEq> Dropdown<T> {
     }
 }
 
+/// Convenience: paint the chip AND, if open, the popover in one
+/// call. Most call sites use this. The Inspector splits the two via
+/// [`paint_dropdown_chip`] + [`paint_dropdown_popover`] so the
+/// popover lands on top of every later section (paint order matters
+/// — see `docs/UI_Bugs/README.md` §9.16).
 pub fn paint_dropdown<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    paint_dropdown_chip(dd, rect, scene, text_system, theme);
+    if dd.open {
+        paint_dropdown_popover(dd, rect, scene, text_system, theme);
+    }
+}
+
+/// Paint just the chip (no popover) so the caller can defer the
+/// popover to a later z-order pass.
+pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     dd: &Dropdown<T>,
     rect: Rect,
     scene: &mut VectorScene,
@@ -235,47 +258,58 @@ pub fn paint_dropdown<T: Clone + PartialEq>(
         IconId::ChevronDown
     };
     paint_icon(scene, icon, chevron_rect, chevron_color, 1.5);
+}
 
-    if dd.open {
-        // Floating popover panel: opaque `BgElev` fill + `Border`
-        // stroke + Md radius so the list reads unambiguously as a
-        // separate surface hovering above whatever sits behind it.
-        // The previous painter dropped each row directly on the
-        // canvas (per-row BgElev tile, no enclosing panel) and on
-        // themes where the inspector itself is BgElev the list
-        // visually merged with the background. See
-        // `docs/UI_Bugs/README.md` §9.12.
-        let panel = dd.popover_rect(rect);
-        let panel_radius = Radius::Md.px();
-        fill_rounded_rect(scene, panel, panel_radius, resolve(ColorToken::BgElev, theme));
-        stroke_rounded_rect(
-            scene,
-            panel,
-            panel_radius,
-            1.0,
-            resolve(ColorToken::Border, theme),
-        );
-        for (i, opt) in dd.options.iter().enumerate() {
-            let r = dd.option_rect(rect, i);
-            let is_selected = dd.selected.as_ref() == Some(&opt.value);
-            // Selected row gets `AccentSoft`; rows inherit the panel
-            // `BgElev` otherwise (no per-row fill so the panel reads
-            // as a single contiguous surface).
-            if is_selected {
-                fill_rounded_rect(
-                    scene,
-                    r,
-                    Radius::Sm.px(),
-                    resolve(ColorToken::AccentSoft, theme),
-                );
-            }
-            let fg = if is_selected {
-                ColorToken::Accent
-            } else {
-                ColorToken::Text1
-            };
-            paint_text_centered(text_system, scene, &opt.label, r, font_size, resolve(fg, theme));
+/// Paint only the open option list (no chip). Caller is responsible
+/// for invoking this AFTER any other content that might sit at the
+/// same Y so the popover stays on top (the inspector calls this in
+/// its second pass, after every section has painted).
+///
+/// No-op when `!dd.open`.
+pub fn paint_dropdown_popover<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    chip_rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    if !dd.open {
+        return;
+    }
+    // Floating popover panel: opaque `BgElev` fill + `Border`
+    // stroke + Md radius so the list reads unambiguously as a
+    // separate surface hovering above whatever sits behind it.
+    let panel = dd.popover_rect(chip_rect);
+    let panel_radius = Radius::Md.px();
+    fill_rounded_rect(scene, panel, panel_radius, resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(
+        scene,
+        panel,
+        panel_radius,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
+    let font_size = TypeToken::Base.px();
+    for (i, opt) in dd.options.iter().enumerate() {
+        let r = dd.option_rect(chip_rect, i);
+        let is_selected = dd.selected.as_ref() == Some(&opt.value);
+        // Selected row gets `AccentSoft`; rows inherit the panel
+        // `BgElev` otherwise (no per-row fill so the panel reads
+        // as a single contiguous surface).
+        if is_selected {
+            fill_rounded_rect(
+                scene,
+                r,
+                Radius::Sm.px(),
+                resolve(ColorToken::AccentSoft, theme),
+            );
         }
+        let fg = if is_selected {
+            ColorToken::Accent
+        } else {
+            ColorToken::Text1
+        };
+        paint_text_centered(text_system, scene, &opt.label, r, font_size, resolve(fg, theme));
     }
 }
 

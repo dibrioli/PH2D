@@ -1187,7 +1187,12 @@ fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
     };
     // Snapshot events before applying — apply_event may mutate hero,
     // but the events slice itself lives in the arena (immutable view).
-    let snapshot: Vec<WidgetEvent> = hero.handle_pointer(event, &gfx.hero_arena).to_vec();
+    // Threads the live TextSystem so click→caret on text widgets
+    // snaps to the nearest glyph boundary (real measurement) instead
+    // of the dispatch's char-count heuristic.
+    let snapshot: Vec<WidgetEvent> = hero
+        .handle_pointer_with_text(event, &mut gfx.text_system, &gfx.hero_arena)
+        .to_vec();
     for e in snapshot {
         // Eyedropper pick — read the rendered pixel at the click
         // position from vello_pass's intermediate texture and apply

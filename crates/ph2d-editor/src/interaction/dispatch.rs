@@ -19,6 +19,7 @@ use crate::zones::Rect;
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::{KeyEvent, KeyKind, PointerEvent, PointerKind};
+use ph2d_text::TextSystem;
 
 /// Keycodes the editor cares about. We don't pull in winit here —
 /// the shell normalizes its keycodes to these constants before
@@ -44,12 +45,38 @@ pub const KEY_ARROW_RIGHT: u32 = 0xF703;
 /// Returns the events emitted for this single dispatch call. Caller
 /// drains synchronously; after the frame ends, caller resets the
 /// arena (deallocates events for the next frame).
+///
+/// Approximate click→byte mapping (no real glyph measurement). For
+/// pixel-accurate caret placement on text widgets, prefer
+/// [`dispatch_pointer_with_text`] and pass a live [`TextSystem`].
 pub fn dispatch_pointer<'frame>(
     store: &mut WidgetStore,
     hit_index: &HitIndex,
     event: PointerEvent,
     arena: &'frame Bump,
 ) -> &'frame [WidgetEvent] {
+    dispatch_pointer_with_text(store, hit_index, event, None, arena)
+}
+
+/// Like [`dispatch_pointer`] but takes an optional `TextSystem`. When
+/// `Some`, the click→byte mapping uses real glyph layout (binary
+/// search the nearest glyph boundary) so the caret lands exactly
+/// where the user clicked. When `None`, falls back to the
+/// `font_size * APPROX_ADVANCE_RATIO` heuristic — adequate for
+/// tests, but visibly off on long lines or proportional content.
+pub fn dispatch_pointer_with_text<'frame>(
+    store: &mut WidgetStore,
+    hit_index: &HitIndex,
+    event: PointerEvent,
+    text_system: Option<&mut TextSystem>,
+    arena: &'frame Bump,
+) -> &'frame [WidgetEvent] {
+    // Borrow-checker tap dance: text_system is `&mut`; we need to
+    // read it inside two separate branches (Move drag, Down place),
+    // so we wrap in an `Option` we can `take()` and put back. In
+    // practice each event is exactly one branch so the borrow only
+    // crosses once.
+    let mut ts = text_system;
     let mut events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
 
     match event.kind {
@@ -75,8 +102,14 @@ pub fn dispatch_pointer<'frame>(
                             | Some(InteractiveState::NumberInput { .. })
                             | Some(InteractiveState::Combobox { .. })
                     ) {
-                        let offset =
-                            byte_offset_from_click_xy(store, active, rect, event.x, event.y);
+                        let offset = byte_offset_from_click_xy(
+                            store,
+                            active,
+                            rect,
+                            event.x,
+                            event.y,
+                            ts.as_deref_mut(),
+                        );
                         place_text_caret(store, active, offset, false);
                     }
                     // Plain slider drag.
@@ -190,8 +223,15 @@ pub fn dispatch_pointer<'frame>(
                 // double-click select-all: clicking the X is the
                 // unambiguous "wipe the query" gesture.
                 let combo_cleared = clear_combobox_if_button_hit(store, id, rect, event.x, event.y);
+                // NumberInput up/down steppers — same precedence
+                // (click on a stepper bumps the value; doesn't move
+                // the caret or trigger select-all).
+                let stepper_hit = !combo_cleared
+                    && apply_number_stepper_if_hit(store, id, rect, event.x, event.y);
                 if combo_cleared {
                     events.push(WidgetEvent::TextChanged(id));
+                } else if stepper_hit {
+                    events.push(WidgetEvent::ValueChanged(id));
                 } else if is_double_click {
                     select_all_in_text_widget(store, id);
                 } else if matches!(
@@ -204,8 +244,14 @@ pub fn dispatch_pointer<'frame>(
                     // the clicked byte position and seed the
                     // selection anchor there. Subsequent Move events
                     // extend the selection from anchor → new caret.
-                    let offset =
-                        byte_offset_from_click_xy(store, id, rect, event.x, event.y);
+                    let offset = byte_offset_from_click_xy(
+                        store,
+                        id,
+                        rect,
+                        event.x,
+                        event.y,
+                        ts.as_deref_mut(),
+                    );
                     place_text_caret(store, id, offset, true);
                 }
                 set_widget_pressed(store, id);
@@ -535,7 +581,11 @@ pub fn dispatch_wheel<'frame>(
         // moves up. We store offset as "how far down content
         // pretends to be" — so positive delta increments the
         // offset (showing content further down).
-        store.set_panel_scroll(panel, (cur - event.delta_y).max(0.0));
+        let next = (cur - event.delta_y).max(0.0);
+        // Hero re-clamps to content_h - visible_h on the next paint
+        // (where the actual heights are known). This dispatch only
+        // enforces the lower bound here.
+        store.set_panel_scroll(panel, next);
     }
     events.into_bump_slice()
 }
@@ -640,6 +690,64 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
 /// computation without dragging text_system through dispatch.
 const APPROX_ADVANCE_RATIO: f32 = 0.55;
 
+/// Detect a Down landing on a `NumberInput`'s up/down stepper and
+/// apply +/- one step to the value + buffer. Returns true iff the
+/// click landed on a stepper (caller emits `ValueChanged` and skips
+/// the default caret-placement path so the click doesn't also move
+/// the caret).
+///
+/// Step heuristic: `0.01` when the current buffer contains a `.`
+/// (fractional value), `1.0` otherwise (integer). Dispatch has no
+/// access to the widget's `step` field — that lives on the
+/// `NumberInput` struct, not on the store's `InteractiveState`.
+fn apply_number_stepper_if_hit(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    host: Rect,
+    click_x: f32,
+    click_y: f32,
+) -> bool {
+    use crate::widget::NumberInput;
+    let (current_value, buffer) = match store.get(id) {
+        Some(InteractiveState::NumberInput { value, buffer, .. }) => {
+            (*value, buffer.clone())
+        }
+        _ => return false,
+    };
+    let probe = NumberInput::new(id, "", current_value);
+    let up = probe.up_rect(host);
+    let down = probe.down_rect(host);
+    let direction = if up.contains(click_x, click_y) {
+        1.0_f64
+    } else if down.contains(click_x, click_y) {
+        -1.0_f64
+    } else {
+        return false;
+    };
+    let step = if buffer.contains('.') { 0.01_f64 } else { 1.0_f64 };
+    let new_val = current_value + direction * step;
+    if let Some(InteractiveState::NumberInput {
+        value,
+        buffer,
+        last_committed,
+        ..
+    }) = store.get_mut(id)
+    {
+        *value = new_val;
+        *buffer = super::format_number(new_val);
+        *last_committed = new_val;
+    }
+    // Mirror to a linked slider if there is one. The store doesn't
+    // currently expose a typed `set_slider_value`, so we mutate the
+    // variant directly.
+    if let Some(slider_id) = store.linked_slider(id)
+        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
+    {
+        *value = (new_val as f32).clamp(0.0, 1.0);
+    }
+    true
+}
+
 /// Detect a Down landing on the Combobox's inline clear-✕ icon. When
 /// the widget at `id` is a Combobox with a non-empty query and the
 /// click coordinates fall inside `Combobox::clear_button_rect(host)`,
@@ -692,18 +800,23 @@ fn clear_combobox_if_button_hit(
 /// channel chips are centered; multi-line `TextInput` content split
 /// on `\n` is line-aware via the y-coordinate).
 ///
-/// Approximate — uses a fixed advance ratio because the dispatch has
-/// no `TextSystem`. Off by 1–2 chars at worst, which is fine for the
-/// "click to place caret + drag to extend selection" UX. Snaps to
-/// **end-of-line** when the click lands past the last glyph on a
-/// line (per `docs/UI_Bugs/README.md` §3.3 lesson: don't let click→
-/// byte cross visible line boundaries).
+/// When `text_system: Some(ts)`, walks the per-line glyph layout to
+/// find the byte whose pixel position is **closest** to `click_x`
+/// — pixel-perfect, "caret appears where you clicked". When `None`,
+/// falls back to the `font_size * APPROX_ADVANCE_RATIO` heuristic
+/// (acceptable for tests; visibly off on real fonts).
+///
+/// Always snaps to **end-of-line** when the click lands past the
+/// last glyph on a multi-line widget's line (per
+/// `docs/UI_Bugs/README.md` §3.3 lesson: don't let click→byte cross
+/// visible line boundaries).
 fn byte_offset_from_click_xy(
     store: &WidgetStore,
     id: ph2d_a11y::NodeId,
     rect: Rect,
     click_x: f32,
     click_y: f32,
+    text_system: Option<&mut TextSystem>,
 ) -> usize {
     // Per-widget text + layout parameters. `multiline` = true when
     // the painter is the `TextArea` 3+ row layout (the dispatch has
@@ -742,11 +855,6 @@ fn byte_offset_from_click_xy(
         }
         _ => return 0,
     };
-    let advance = font_size * APPROX_ADVANCE_RATIO;
-    if advance <= 0.0 {
-        return 0;
-    }
-
     if multiline {
         // Determine which `\n`-separated line was clicked from the
         // y-coordinate relative to the text-area inner top. Then
@@ -766,12 +874,13 @@ fn byte_offset_from_click_xy(
         for (i, line) in text.split('\n').enumerate() {
             let line_end = line_start + line.len();
             if i == line_idx {
-                let rel_x = (click_x - text_start_x).max(0.0);
-                let approx_chars = (rel_x / advance).round() as usize;
-                // Snap into [0, line.len()] — clicking past the
-                // right edge of THIS LINE goes to the line's end,
-                // not the end of the whole buffer.
-                let local = approx_chars.min(line.len());
+                let local = nearest_byte_on_line(
+                    line,
+                    font_size,
+                    text_start_x,
+                    click_x,
+                    text_system,
+                );
                 return line_start + local;
             }
             line_start = line_end + 1; // +1 for the '\n'
@@ -779,6 +888,64 @@ fn byte_offset_from_click_xy(
         return text.len();
     }
 
+    nearest_byte_on_line(text, font_size, text_start_x, click_x, text_system)
+}
+
+/// For a single line `text` rendered at `font_size` starting at
+/// pixel `text_start_x`, return the byte offset whose glyph boundary
+/// is closest to `click_x`. With a real `TextSystem`, this means
+/// pixel-perfect "caret lands where you clicked" UX. Without one,
+/// falls back to a `font_size * APPROX_ADVANCE_RATIO` heuristic
+/// (off by 1–2 chars on proportional fonts but tolerable for tests).
+///
+/// Snaps to **end-of-line** when `click_x` is past the last glyph —
+/// never returns a byte past `text.len()`.
+fn nearest_byte_on_line(
+    text: &str,
+    font_size: f32,
+    text_start_x: f32,
+    click_x: f32,
+    text_system: Option<&mut TextSystem>,
+) -> usize {
+    if let Some(ts) = text_system {
+        // Walk every char boundary, layout the prefix, and pick the
+        // boundary whose right edge is closest to click_x. O(n²)
+        // for an n-char line but n is small (single-line content
+        // for any reasonable input) and the parley LayoutContext
+        // pools its allocations, so the actual cost per click is
+        // microseconds.
+        let target = (click_x - text_start_x).max(0.0);
+        let mut best_byte: usize = 0;
+        let mut best_dist = f32::INFINITY;
+        for (idx, _) in text.char_indices() {
+            let w = if idx == 0 {
+                0.0
+            } else {
+                ts.layout(&text[..idx], font_size, f32::INFINITY).width()
+            };
+            let dist = (w - target).abs();
+            if dist < best_dist {
+                best_dist = dist;
+                best_byte = idx;
+            }
+        }
+        // Also consider the end-of-string boundary.
+        let end_w = if text.is_empty() {
+            0.0
+        } else {
+            ts.layout(text, font_size, f32::INFINITY).width()
+        };
+        let dist = (end_w - target).abs();
+        if dist < best_dist {
+            best_byte = text.len();
+        }
+        return best_byte;
+    }
+    // Fallback heuristic (no text_system).
+    let advance = font_size * APPROX_ADVANCE_RATIO;
+    if advance <= 0.0 {
+        return 0;
+    }
     let rel_x = (click_x - text_start_x).max(0.0);
     let approx_chars = (rel_x / advance).round() as usize;
     approx_chars.min(text.len())
@@ -2754,5 +2921,66 @@ mod tests {
             _ => "<missing>".to_string(),
         };
         assert!(q.is_empty());
+    }
+
+    // ── NumberInput stepper buttons ────────────────────────────────────────
+
+    fn number_input_setup(initial: f64) -> (WidgetStore, HitIndex, Rect) {
+        let mut store = WidgetStore::with_capacity(4);
+        store.register(
+            NodeId(77),
+            InteractiveState::NumberInput {
+                state: crate::widget::TextInputState::Normal,
+                value: initial,
+                buffer: super::super::format_number(initial),
+                caret: 0,
+                last_committed: initial,
+                selection_anchor: None,
+            },
+        );
+        let rect = Rect::new(0.0, 0.0, 80.0, 28.0);
+        let mut hits = HitIndex::new();
+        hits.register(NodeId(77), rect);
+        (store, hits, rect)
+    }
+
+    #[test]
+    fn number_input_up_arrow_increments_integer() {
+        let (mut store, hits, rect) = number_input_setup(5.0);
+        let arena = Bump::new();
+        let probe = crate::widget::NumberInput::new(NodeId(77), "", 5.0);
+        let up = probe.up_rect(rect);
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, up.x + up.w * 0.5, up.y + up.h * 0.5),
+            &arena,
+        );
+        let v = match store.get(NodeId(77)) {
+            Some(InteractiveState::NumberInput { value, .. }) => *value,
+            _ => -1.0,
+        };
+        assert!((v - 6.0).abs() < f64::EPSILON, "expected 6.0 got {v}");
+        assert!(evts.iter().any(|e| matches!(e, WidgetEvent::ValueChanged(id) if *id == NodeId(77))));
+    }
+
+    #[test]
+    fn number_input_down_arrow_decrements_fractional_by_001() {
+        // Buffer "0.50" contains '.', so the step heuristic picks 0.01.
+        let (mut store, hits, rect) = number_input_setup(0.5);
+        let arena = Bump::new();
+        let probe = crate::widget::NumberInput::new(NodeId(77), "", 0.5);
+        let down = probe.down_rect(rect);
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, down.x + down.w * 0.5, down.y + down.h * 0.5),
+            &arena,
+        );
+        let v = match store.get(NodeId(77)) {
+            Some(InteractiveState::NumberInput { value, .. }) => *value,
+            _ => -1.0,
+        };
+        assert!((v - 0.49).abs() < 1e-6, "expected 0.49 got {v}");
     }
 }

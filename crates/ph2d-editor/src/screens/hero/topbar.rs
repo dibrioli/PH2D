@@ -44,7 +44,11 @@ pub fn populate(store: &mut WidgetStore) {
     // via `store.set_tooltip(id, text)` — keeps screens cohesive
     // with no boilerplate per-id lookup.
     for (id, text) in [
-        (ids::TOPBAR_SAVE, "Save \u{00b7} \u{2318}S"),
+        // ASCII shortcuts — the macOS Command glyph U+2318 (⌘) and
+        // Return glyph U+21B5 (↵) aren't in our parley font fallback
+        // chain and rendered as tofu boxes. `Cmd+S` / `Cmd+Enter` are
+        // legible on every theme without a special font.
+        (ids::TOPBAR_SAVE, "Save \u{00b7} Cmd+S"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_TOGGLE, "Theme mode"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),

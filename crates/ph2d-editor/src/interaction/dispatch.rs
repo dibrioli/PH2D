@@ -109,6 +109,11 @@ pub fn dispatch_pointer_with_text<'frame>(
                 let new_scroll = (anchor.scroll_at_down + scroll_delta).clamp(0.0, max);
                 store.set_panel_scroll(anchor.panel, new_scroll);
             }
+            // Hierarchy drag — keep cursor + active flag updated
+            // each Move so the painter can render the drop indicator.
+            if store.hierarchy_drag().is_some() {
+                store.update_hierarchy_drag(event.x, event.y);
+            }
             if let Some(active) = store.active_id() {
                 if let Some(rect) = store.active_rect() {
                     // Text drag-to-select: extend the selection from
@@ -387,6 +392,14 @@ pub fn dispatch_pointer_with_text<'frame>(
                 {
                     events.push(WidgetEvent::ValueChanged(id));
                 }
+                // Hierarchy row Down → seed a drag candidate. Up
+                // without movement is treated as a click (selection);
+                // Up after the threshold is exceeded reorders the
+                // entity. The threshold check is in
+                // `update_hierarchy_drag` (Move handler).
+                if is_hierarchy_entity_id(id) {
+                    store.begin_hierarchy_drag(id, event.x, event.y);
+                }
                 // Scrollbar thumb drag — snapshot the panel
                 // metrics so subsequent Move events can compute a
                 // proportional `panel_scroll` delta. The
@@ -424,6 +437,17 @@ pub fn dispatch_pointer_with_text<'frame>(
             store.end_blender_drag();
             // Same for scrollbar drag.
             store.end_scrollbar_drag();
+            // Hierarchy drag ends on Up. If the drag was active
+            // (cursor moved past the threshold), find the drop
+            // target by cursor y vs each row rect and reorder.
+            // Otherwise treat as a regular click (selection,
+            // handled by the Click event from `apply_click`).
+            if let Some(drag) = store.end_hierarchy_drag()
+                && drag.active
+            {
+                let target = find_hierarchy_drop_target(store, hit_index, event.y, drag.dragged);
+                store.hierarchy_move(drag.dragged, target);
+            }
             if let Some(active) = store.active_id() {
                 // "still_hot" is whether the pointer is still inside
                 // the widget's rect captured on Down. Using the live
@@ -957,6 +981,41 @@ pub(super) fn is_section_header_id(id: ph2d_a11y::NodeId) -> bool {
 fn is_color_target_id(id: ph2d_a11y::NodeId) -> bool {
     let v = id.0;
     (360..=369).contains(&v) || v == 328
+}
+
+/// True iff `id` is one of the hierarchy entity rows (range
+/// 400..411). Used by the drag-and-drop Down handler to detect
+/// "the user is starting to drag a hierarchy row".
+fn is_hierarchy_entity_id(id: ph2d_a11y::NodeId) -> bool {
+    let v = id.0;
+    (400..=411).contains(&v)
+}
+
+/// Find the hierarchy row whose top half the cursor y currently
+/// hovers over. The reorder semantics: dropped row lands JUST
+/// BEFORE the returned id; `None` = "drop at the end of the list".
+/// Skips the dragged row itself (can't drop a row above itself).
+fn find_hierarchy_drop_target(
+    _store: &WidgetStore,
+    hit_index: &HitIndex,
+    cursor_y: f32,
+    dragged: ph2d_a11y::NodeId,
+) -> Option<ph2d_a11y::NodeId> {
+    // Walk the hit_index entries in registration order (each row
+    // was registered in display order). Pick the first whose
+    // mid-y is below the cursor y — that's "drop above this one".
+    for (id, rect) in hit_index.iter_registrations() {
+        if !is_hierarchy_entity_id(id) {
+            continue;
+        }
+        if id == dragged {
+            continue;
+        }
+        if cursor_y < rect.y + rect.h * 0.5 {
+            return Some(id);
+        }
+    }
+    None
 }
 
 /// Maps a scrollbar thumb's hit id back to the panel it scrolls.

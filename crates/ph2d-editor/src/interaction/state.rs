@@ -350,6 +350,33 @@ pub struct WidgetStore {
     /// Centralized so the topbar theme menu drives the look in one
     /// place.
     radius_scale: f32,
+    /// Hierarchy row display order. When non-empty, the hierarchy
+    /// painter walks this list instead of the fixture's default
+    /// order. Mutated by drag-and-drop (`Down + Move > threshold +
+    /// Up`) to reorder rows.
+    hierarchy_order: Vec<NodeId>,
+    /// In-progress hierarchy drag. `Some` when a Primary Down landed
+    /// on a hierarchy row and the cursor has moved past the drag
+    /// threshold; cleared on Up (with reorder applied) or on Up at
+    /// the original position (treated as a regular click).
+    hierarchy_drag: Option<HierarchyDragState>,
+}
+
+/// Internal state of an in-progress hierarchy drag.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct HierarchyDragState {
+    /// Row being dragged.
+    pub dragged: NodeId,
+    /// Cursor x/y at Down — used to detect "drag started" via the
+    /// distance threshold.
+    pub down_x: f32,
+    pub down_y: f32,
+    /// Latest cursor y (updated on Move) so the painter can render
+    /// a drop-indicator line at the current target.
+    pub cursor_y: f32,
+    /// `true` once the cursor has moved past the threshold; until
+    /// then the gesture is "maybe-click, maybe-drag".
+    pub active: bool,
 }
 
 /// State of an in-progress drag on a scrollbar thumb.
@@ -456,6 +483,8 @@ impl WidgetStore {
             widget_colors: BTreeMap::new(),
             scrollbar_drag: None,
             radius_scale: 1.0,
+            hierarchy_order: Vec::new(),
+            hierarchy_drag: None,
         }
     }
 
@@ -936,6 +965,69 @@ impl WidgetStore {
 
     pub fn set_radius_scale(&mut self, scale: f32) {
         self.radius_scale = scale.max(0.0);
+    }
+
+    /// Read the hierarchy display order (empty = use fixture's
+    /// default order).
+    pub fn hierarchy_order(&self) -> &[NodeId] {
+        &self.hierarchy_order
+    }
+
+    /// Seed the hierarchy order with the fixture's default. Called
+    /// at populate time if not already populated.
+    pub fn init_hierarchy_order(&mut self, ids: Vec<NodeId>) {
+        if self.hierarchy_order.is_empty() {
+            self.hierarchy_order = ids;
+        }
+    }
+
+    /// Move `dragged` to land just before `target` (or at the end
+    /// when `target == None`). No-op when `dragged` isn't in the
+    /// order list.
+    pub fn hierarchy_move(&mut self, dragged: NodeId, target: Option<NodeId>) {
+        let Some(from) = self.hierarchy_order.iter().position(|i| *i == dragged) else {
+            return;
+        };
+        let item = self.hierarchy_order.remove(from);
+        let to = match target {
+            Some(t) => self
+                .hierarchy_order
+                .iter()
+                .position(|i| *i == t)
+                .unwrap_or(self.hierarchy_order.len()),
+            None => self.hierarchy_order.len(),
+        };
+        self.hierarchy_order.insert(to.min(self.hierarchy_order.len()), item);
+    }
+
+    pub fn hierarchy_drag(&self) -> Option<HierarchyDragState> {
+        self.hierarchy_drag
+    }
+
+    pub fn begin_hierarchy_drag(&mut self, dragged: NodeId, down_x: f32, down_y: f32) {
+        self.hierarchy_drag = Some(HierarchyDragState {
+            dragged,
+            down_x,
+            down_y,
+            cursor_y: down_y,
+            active: false,
+        });
+    }
+
+    pub fn update_hierarchy_drag(&mut self, cursor_x: f32, cursor_y: f32) {
+        if let Some(d) = self.hierarchy_drag.as_mut() {
+            d.cursor_y = cursor_y;
+            let dx = cursor_x - d.down_x;
+            let dy = cursor_y - d.down_y;
+            if (dx * dx + dy * dy) > 25.0 {
+                // 5 px threshold²
+                d.active = true;
+            }
+        }
+    }
+
+    pub fn end_hierarchy_drag(&mut self) -> Option<HierarchyDragState> {
+        self.hierarchy_drag.take()
     }
 
     /// Append a new note with the given color index + section

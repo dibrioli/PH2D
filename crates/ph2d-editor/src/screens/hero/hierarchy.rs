@@ -24,7 +24,7 @@ pub fn populate(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
-    for id in [
+    let entities = [
         ids::HIER_PLAYER,
         ids::HIER_SPRITE_IDLE,
         ids::HIER_COLLIDER_BOX,
@@ -37,9 +37,13 @@ pub fn populate(store: &mut WidgetStore) {
         ids::HIER_TRIGGER_ZONE_A,
         ids::HIER_AMBIENT_LIGHT,
         ids::HIER_MAIN_CAMERA,
-    ] {
+    ];
+    for id in entities {
         store.register(id, InteractiveState::Plain);
     }
+    // Seed the hierarchy display order (drag-and-drop reorders this
+    // list at runtime).
+    store.init_hierarchy_order(entities.to_vec());
 }
 
 /// Apply a [`WidgetEvent`] against hierarchy widgets. A click on an
@@ -157,16 +161,64 @@ pub fn paint_hierarchy(
     let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
     let row_w = (rect.w - body_pad * 2.0 - scrollbar_reserve).max(0.0);
     let selected_label = current_selection_label();
-    for mut entity in fixture::hierarchy() {
+    // Build NodeId → entity lookup so we can iterate by the store's
+    // drag-and-drop order (which can differ from `fixture::hierarchy()`'s
+    // default order after a reorder).
+    let entities_by_id: std::collections::BTreeMap<
+        ph2d_a11y::NodeId,
+        fixture::HierarchyEntity,
+    > = fixture::hierarchy()
+        .into_iter()
+        .filter_map(|e| ids::hierarchy_id(&e.name).map(|id| (id, e)))
+        .collect();
+    let order = store.hierarchy_order();
+    let dragging = store.hierarchy_drag().filter(|d| d.active);
+    // First pass: paint rows + register hit zones.
+    let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> =
+        Vec::with_capacity(order.len());
+    for id in order {
+        let Some(entity_template) = entities_by_id.get(id) else {
+            continue;
+        };
+        let mut entity = entity_template.clone();
         let row_rect = Rect::new(rect.x + body_pad, y, row_w, HIER_ROW_H);
         if let Some(ref sel_label) = selected_label {
             entity.selected = entity.name == *sel_label;
         }
-        if let Some(id) = ids::hierarchy_id(&entity.name) {
-            hit_index.register(id, row_rect);
-        }
+        // Dim the row currently being dragged so the user sees
+        // "this is what's moving".
+        entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);
+        hit_index.register(*id, row_rect);
         paint_hierarchy_row(&entity, row_rect, scene, text_system, theme);
+        row_rects.push((*id, row_rect));
         y += HIER_ROW_H + 2.0;
+    }
+    // Second pass: drop indicator while dragging — a 2 px Accent
+    // line above the row under the cursor (or below the last row
+    // when the cursor is past the bottom).
+    if let Some(d) = dragging {
+        let mut target_y = y; // append at the end by default
+        for (id, rect) in &row_rects {
+            if *id == d.dragged {
+                continue;
+            }
+            if d.cursor_y < rect.y + rect.h * 0.5 {
+                target_y = rect.y;
+                break;
+            }
+        }
+        let indicator = Rect::new(
+            rect.x + body_pad,
+            target_y - 1.0,
+            row_w,
+            2.0,
+        );
+        crate::paint::fill_rounded_rect(
+            scene,
+            indicator,
+            1.0,
+            resolve(ColorToken::Accent, theme),
+        );
     }
     scene.pop_layer();
     // Publish total content height for `dispatch_wheel` clamp.

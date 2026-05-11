@@ -99,6 +99,14 @@ impl HitIndex {
     pub fn is_inline(&self) -> bool {
         !self.rects.spilled()
     }
+
+    /// Iterate every (id, rect) registered this frame in
+    /// registration order. Used by the hierarchy drag-and-drop
+    /// dispatcher to find a drop target by scanning all rows
+    /// without rebuilding state from the store.
+    pub fn iter_registrations(&self) -> impl Iterator<Item = (NodeId, Rect)> + '_ {
+        self.rects.iter().copied()
+    }
 }
 
 #[cfg(test)]

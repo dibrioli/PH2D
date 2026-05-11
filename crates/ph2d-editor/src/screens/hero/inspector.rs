@@ -436,9 +436,13 @@ fn populate_samples(store: &mut WidgetStore) {
         );
     }
 
-    // ColorSwatch (decorative — uses Plain so a click can be picked
-    // up but no swatch-specific state is needed for the sample).
+    // ColorSwatch — Plain hit; the painter reads the live color
+    // from `widget_colors[INSP_SAMPLE_SWATCH]` each frame, and the
+    // global picker opens / writes back through the same slot.
+    // Seed the default purple here so the initial visual + the
+    // picker's first-open value both match.
     store.register(ids::INSP_SAMPLE_SWATCH, InteractiveState::Plain);
+    store.set_widget_color(ids::INSP_SAMPLE_SWATCH, [120, 60, 200, 255]);
 
     // Buttons.
     for id in [
@@ -1510,7 +1514,13 @@ fn paint_color_section(
     let sw_size = 32.0_f32;
     let sr = Rect::new(x + w - sw_size, y, sw_size, sw_h);
     hit_index.register(ids::INSP_SAMPLE_SWATCH, sr);
-    let mut tint = ColorSwatch::new(ids::INSP_SAMPLE_SWATCH, "Tint", [120, 60, 200, 255]);
+    // Read the swatch's live color from `widget_colors` so the
+    // picker's edits propagate back through hero's per-frame
+    // mirror. Fallback to the initial purple if nothing was seeded.
+    let rgba = store
+        .widget_color(ids::INSP_SAMPLE_SWATCH)
+        .unwrap_or([120, 60, 200, 255]);
+    let mut tint = ColorSwatch::new(ids::INSP_SAMPLE_SWATCH, "Tint", rgba);
     tint.size = SwatchSize::Md;
     paint_color_swatch(&tint, sr, scene, theme);
     y + sw_h

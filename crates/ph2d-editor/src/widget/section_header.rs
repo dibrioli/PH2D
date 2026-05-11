@@ -82,6 +82,13 @@ pub fn paint_section_header(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    // Collapsed sections get a darker background plate so the
+    // visual hierarchy (open = transparent on panel; closed =
+    // tinted) reads as "this block is folded". Centralized here so
+    // every panel using `SectionHeader` gets the same affordance.
+    if matches!(header.collapsible, Some(false)) {
+        fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+    }
     let pad_x = Spacing::Md.px();
     let mut cursor_x = rect.x + pad_x;
     let icon_w = (rect.h * 0.7).clamp(12.0, 18.0);

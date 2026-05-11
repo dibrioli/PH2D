@@ -337,8 +337,22 @@ pub fn dispatch_pointer_with_text<'frame>(
             // Move after release doesn't drag the picker further.
             store.end_blender_drag();
             if let Some(active) = store.active_id() {
-                let hit = hit_index.hit(event.x, event.y);
-                let still_hot = hit == Some(active);
+                // "still_hot" is whether the pointer is still inside
+                // the widget's rect captured on Down. Using the live
+                // `hit_index` for this check breaks transient widgets
+                // (e.g. context-menu items): Down opens, hit_index
+                // updates, by Up the menu is gone and the hit
+                // resolves to whatever sits behind it — `still_hot`
+                // would be false and `apply_click` would never fire.
+                // The `active_rect` snapshot was taken at Down and
+                // doesn't depend on the current frame's hit_index.
+                let still_hot = store
+                    .active_rect()
+                    .map(|r| r.contains(event.x, event.y))
+                    .unwrap_or(false);
+                // Some downstream branches still need to know the
+                // current hit (e.g. for drag-release routing).
+                let _ = hit_index.hit(event.x, event.y);
                 // Sliders emit no Click on release — they emitted
                 // ValueChanged events throughout the drag. Buttons,
                 // Toggles, and Checkboxes only count Click if the

@@ -709,9 +709,9 @@ pub fn paint_hero_screen(
     // outside-click-closes logic can test against the FULL panel
     // (not just its sub-control hit zones). Without this, clicking
     // dead space INSIDE the picker (gaps between controls, padding
-    // areas) resolved to no BlenderHit and the picker closed —
-    // user's "se eu clicar dentro do painel mas fora de qualquer
-    // controle, o picker fecha".
+    // areas) resolved to no BlenderHit and the picker closed — user
+    // reported "if I click inside the panel but not on any control,
+    // the picker closes".
     if hero.store.picker_target().is_some()
         && let Some(picker_rect) = color_picker_demo::current_picker_rect(&layout, &hero.store)
     {

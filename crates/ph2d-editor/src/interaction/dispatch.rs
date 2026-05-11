@@ -338,9 +338,9 @@ pub fn dispatch_pointer_with_text<'frame>(
             // the BlenderHit sub-controls. Without this, dead space
             // INSIDE the picker (gaps between controls, padding
             // bands, the drag bar's left/right ends) had no hit and
-            // the picker dismissed itself — user reported "se eu
-            // clicar dentro do painel sem acertar um controle ele
-            // fecha". Fallback to the sub-control test when the
+            // the picker dismissed itself — user reported "if I
+            // click inside the panel but not on any control, it
+            // closes". Fallback to the sub-control test when the
             // outer rect isn't published (e.g. first frame).
             if store.picker_target().is_some() {
                 use crate::screens::hero::ids as hero_ids;

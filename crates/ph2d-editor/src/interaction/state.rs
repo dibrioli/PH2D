@@ -433,7 +433,10 @@ pub enum ContextMenuKind {
     /// the new note is parented to `panel`. `before_section`, when
     /// `Some(i)`, anchors the new note above `SECTION_IDS[i]`
     /// (computed at right-click time from the cursor y).
-    CreateNote { panel: NodeId, before_section: Option<u8> },
+    CreateNote {
+        panel: NodeId,
+        before_section: Option<u8>,
+    },
     /// Right-clicked on a section header. Menu offers 5 highlight
     /// outline colors for the section.
     SectionOutline { section: NodeId },
@@ -997,7 +1000,8 @@ impl WidgetStore {
                 .unwrap_or(self.hierarchy_order.len()),
             None => self.hierarchy_order.len(),
         };
-        self.hierarchy_order.insert(to.min(self.hierarchy_order.len()), item);
+        self.hierarchy_order
+            .insert(to.min(self.hierarchy_order.len()), item);
     }
 
     pub fn hierarchy_drag(&self) -> Option<HierarchyDragState> {

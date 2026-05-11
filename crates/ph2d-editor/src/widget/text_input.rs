@@ -159,19 +159,11 @@ pub fn paint_text_input_with_buffer(
         };
         let sel_start = sel_start.min(displayed.len());
         let sel_end = sel_end.min(displayed.len());
-        let prefix_w = if sel_start == 0 {
-            0.0
-        } else {
-            text_system
-                .layout(&displayed[..sel_start], font_size, f32::INFINITY)
-                .width()
-        };
+        let prefix_w = text_system.prefix_width(&displayed[..sel_start], font_size);
         let mid_w = if sel_start == sel_end {
             0.0
         } else {
-            text_system
-                .layout(&displayed[sel_start..sel_end], font_size, f32::INFINITY)
-                .width()
+            text_system.prefix_width(&displayed[sel_start..sel_end], font_size)
         };
         let sel_x = (inner_x + prefix_w).min(inner_x + inner_w);
         let sel_w = mid_w.min(inner_x + inner_w - sel_x);
@@ -216,7 +208,7 @@ pub fn paint_text_input_with_buffer(
         let prefix_w = if prefix.is_empty() {
             0.0
         } else {
-            text_system.layout(prefix, font_size, f32::INFINITY).width()
+            text_system.prefix_width(prefix, font_size)
         };
         let caret_x = (inner_x + prefix_w).min(inner_x + inner_w);
         let caret_rect = Rect::new(caret_x, rect.y + pad_y, 1.0, rect.h - pad_y * 2.0);

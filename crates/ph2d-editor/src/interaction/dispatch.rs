@@ -1268,11 +1268,10 @@ fn nearest_byte_on_line(
         let mut best_byte: usize = 0;
         let mut best_dist = f32::INFINITY;
         for (idx, _) in text.char_indices() {
-            let w = if idx == 0 {
-                0.0
-            } else {
-                ts.layout(&text[..idx], font_size, f32::INFINITY).width()
-            };
+            // `prefix_width` includes trailing whitespace; the
+            // naked `layout(...).width()` trimmed it, which broke
+            // click→caret on lines that contained spaces.
+            let w = ts.prefix_width(&text[..idx], font_size);
             let dist = (w - target).abs();
             if dist < best_dist {
                 best_dist = dist;
@@ -1280,11 +1279,7 @@ fn nearest_byte_on_line(
             }
         }
         // Also consider the end-of-string boundary.
-        let end_w = if text.is_empty() {
-            0.0
-        } else {
-            ts.layout(text, font_size, f32::INFINITY).width()
-        };
+        let end_w = ts.prefix_width(text, font_size);
         let dist = (end_w - target).abs();
         if dist < best_dist {
             best_byte = text.len();

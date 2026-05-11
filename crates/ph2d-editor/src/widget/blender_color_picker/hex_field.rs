@@ -142,23 +142,12 @@ pub fn paint_hex_field_with_state(
         };
         let sel_start = sel_start.min(display.len());
         let sel_end = sel_end.min(display.len());
-        let prefix_w = if sel_start == 0 {
-            0.0
-        } else {
-            text_system
-                .layout(&display[..sel_start], TypeToken::Sm.px(), f32::INFINITY)
-                .width()
-        };
+        let prefix_w =
+            text_system.prefix_width(&display[..sel_start], TypeToken::Sm.px());
         let mid_w = if sel_start == sel_end {
             0.0
         } else {
-            text_system
-                .layout(
-                    &display[sel_start..sel_end],
-                    TypeToken::Sm.px(),
-                    f32::INFINITY,
-                )
-                .width()
+            text_system.prefix_width(&display[sel_start..sel_end], TypeToken::Sm.px())
         };
         let sel_x = (text_x + prefix_w).min(text_x + text_w);
         let sel_w = mid_w.min(text_x + text_w - sel_x);
@@ -185,13 +174,7 @@ pub fn paint_hex_field_with_state(
         // glyph edges (and worse for proportional fonts).
         let caret_clamped = caret.min(display.len());
         let prefix = &display[..caret_clamped];
-        let advance = if prefix.is_empty() {
-            0.0
-        } else {
-            text_system
-                .layout(prefix, TypeToken::Sm.px(), f32::INFINITY)
-                .width()
-        };
+        let advance = text_system.prefix_width(prefix, TypeToken::Sm.px());
         let caret_x = (text_x + advance).min(text_x + text_w);
         let caret_top = rect.y + 4.0;
         let caret_bot = rect.y + rect.h - 4.0;

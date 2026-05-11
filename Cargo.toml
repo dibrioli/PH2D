@@ -28,6 +28,7 @@ members = [
     "tests/spike",
     "shells/desktop",
     "tools/ph2d-bindgen",
+    "tools/asset-cooker",
 ]
 
 [workspace.package]

@@ -3,13 +3,37 @@
 //! [`Sprite`] is a SimComponent (lives in SimWorld; canonical state).
 //! [`RenderInstance`] is a PresentComponent (built each frame from
 //! Sprite via the extract phase; uploaded to instance buffer).
+//!
+//! ## World position lives in `Transform`
+//!
+//! Since ADR-0025 (M14.1) the canonical world-space pose for a sprite
+//! comes from [`ph2d_ecs::Transform`] + the hierarchical
+//! [`ph2d_ecs::propagate_transforms`] pass — **not** from a separate
+//! `WorldPos`/`Position` component. The extract closure reads the
+//! freshly computed `GlobalTransform.translation()` and stamps it
+//! into `RenderInstance.world_pos` so the renderer stays a pure
+//! PresentWorld consumer.
 
 use bevy_ecs::component::Component;
 use ph2d_ecs::{PresentComponent, SimComponent};
 
-/// Canonical sprite description in simulation state.
-/// Position lives separately as `ph2d_core::WorldPos` (Y-up, meters).
-#[derive(Component, Copy, Clone, Debug)]
+/// Canonical sprite description in simulation state. World position
+/// is read from the entity's [`ph2d_ecs::Transform`] during the
+/// extract phase (ADR-0025).
+///
+/// `Serialize`/`Deserialize` derives let `Sprite` round-trip through
+/// the `PrefabDoc` / `SceneDoc` postcard pipeline (M14.3). All fields
+/// are POD (`u32`, fixed-size `f32` arrays), so the wire format is
+/// stable across rustc versions.
+#[derive(
+    Component,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct Sprite {
     /// Index into the texture atlas tile grid.
     pub atlas_index: u32,
@@ -17,6 +41,13 @@ pub struct Sprite {
     pub size: [f32; 2],
     /// RGBA tint multiplied with the texel color in the fragment shader.
     pub tint: [f32; 4],
+}
+
+impl Sprite {
+    /// Schema version for the cooked-prefab pipeline (HR-14
+    /// mitigation; consumed by `ComponentRegistry` until the
+    /// `Saveable` derive macro lands).
+    pub const VERSION: u32 = 1;
 }
 
 impl SimComponent for Sprite {}

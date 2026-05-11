@@ -145,19 +145,11 @@ pub fn paint_text_area_with_state(
             if e >= line_start && s <= line_end {
                 let local_s = s.saturating_sub(line_start).min(line.len());
                 let local_e = (e - line_start).min(line.len());
-                let prefix_w = if local_s == 0 {
-                    0.0
-                } else {
-                    text_system
-                        .layout(&line[..local_s], font_size, f32::INFINITY)
-                        .width()
-                };
+                let prefix_w = text_system.prefix_width(&line[..local_s], font_size);
                 let mid_w = if local_s == local_e {
                     if e > line_end { inner_right - (inner_x + prefix_w) } else { 0.0 }
                 } else {
-                    let measured = text_system
-                        .layout(&line[local_s..local_e], font_size, f32::INFINITY)
-                        .width();
+                    let measured = text_system.prefix_width(&line[local_s..local_e], font_size);
                     if e > line_end {
                         (inner_right - (inner_x + prefix_w)).max(measured)
                     } else {
@@ -237,7 +229,7 @@ pub fn paint_text_area_with_state(
         let prefix_w = if prefix.is_empty() {
             0.0
         } else {
-            text_system.layout(prefix, font_size, f32::INFINITY).width()
+            text_system.prefix_width(prefix, font_size)
         };
         let caret_x = (inner_x + prefix_w).min(inner_right);
         let caret_y = inner_y + line_idx as f32 * line_h;

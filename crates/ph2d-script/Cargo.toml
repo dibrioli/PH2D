@@ -15,6 +15,24 @@ mlua = { version = "0.10", features = ["luau"] }
 # decision in `ScriptHost::load_script` (HR-16: hot-reload only when
 # bytes actually changed, not on every save).
 blake3 = "1"
+# M14.2 — LuauScript Component lives in this crate because it ties an
+# ECS entity to a script bytecode asset. ph2d-ecs gives us Component,
+# Entity, SimComponent; ph2d-asset gives us AssetId.
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-asset = { path = "../ph2d-asset" }
+# bevy_ecs as a direct dep is required because `#[derive(Component)]`
+# expands to absolute paths into `bevy_ecs::*`. ph2d-ecs re-exports
+# don't satisfy the macro lookup. Same pattern documented in
+# shells/desktop/Cargo.toml.
+bevy_ecs = "0.18"
+# serde derives on LuauScript + PodValue so they round-trip through
+# the postcard pipeline that PrefabDoc/SceneDoc consume in M14.3.
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 proptest = "1.11.0"
+
+[package.metadata.cargo-machete]
+# bevy_ecs is reached only through `#[derive(Component)]` expansion,
+# which machete can't see. See dep comment above.
+ignored = ["bevy_ecs"]

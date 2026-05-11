@@ -36,7 +36,10 @@ mod integration;
 use bumpalo::Bump;
 use ph2d_asset::AssetDb;
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
-use ph2d_ecs::{Component, PresentWorld, SimComponent, SimWorld};
+use ph2d_ecs::{
+    Component, PresentWorld, SimComponent, SimRef, SimWorld, Transform, TransformPropagationState,
+    WorklistBuf, propagate_transforms,
+};
 use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{
@@ -73,10 +76,9 @@ const SPRITE_COUNT: u32 = 1000;
 /// X depends on aspect (narrower than visible at 4:3+).
 const WORLD_HALF: f32 = 5.0;
 
-#[derive(Component, Copy, Clone, Debug)]
-struct Position(Vec2);
-impl SimComponent for Position {}
-
+// ADR-0025: `Position(Vec2)` removed — `Transform` from `ph2d_ecs` is
+// the canonical pose component now. `Velocity` stays local to the
+// demo because no other crate consumes it yet (M14.2+ may promote it).
 #[derive(Component, Copy, Clone, Debug)]
 struct Velocity(Vec2);
 impl SimComponent for Velocity {}
@@ -216,6 +218,16 @@ struct AppGfx {
     /// Per-frame arena for [`WidgetEvent`]s emitted by the hero
     /// dispatcher. Reset at end-of-frame.
     hero_arena: Bump,
+    /// M14.1 — cached `QueryState` pair for hierarchical transform
+    /// propagation. Built once after `populate_sim`; used every frame
+    /// inside the extract phase. The only way to iterate `&World`
+    /// from inside `extract!`.
+    prop_state: TransformPropagationState,
+    /// M14.1 — pre-allocated DFS worklist for `propagate_transforms`.
+    /// Capacity sized to `WorklistBuf::DEFAULT_CAPACITY` (8 192
+    /// entities) — comfortably above `SPRITE_COUNT = 1000`. HR-3
+    /// zero-alloc verified by `crates/ph2d-ecs/tests/propagate_no_alloc.rs`.
+    worklist: WorklistBuf,
 }
 
 struct App {
@@ -519,7 +531,7 @@ impl App {
             let vx = ((f * 12.9898).sin() * 43758.547).fract() * 3.0 - 1.5;
             let vy = ((f * 78.233).sin() * 12345.678).fract() * 3.0 - 1.5;
             sim.world_mut().spawn((
-                Position(pos),
+                Transform::from_translation(pos),
                 Velocity(Vec2::new(vx, vy)),
                 Sprite {
                     atlas_index: i % 16,
@@ -559,6 +571,8 @@ impl App {
             text_system,
             hero_screen,
             hero_arena,
+            prop_state,
+            worklist,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -610,9 +624,9 @@ impl App {
         // gameplay — that lands in M10 with the physics integrator).
         let dt = self.fixed_step.fixed_dt() as f32;
         {
-            let mut q = sim.world_mut().query::<(&mut Position, &mut Velocity)>();
-            for (mut pos, mut vel) in q.iter_mut(sim.world_mut()) {
-                let mut p = pos.0;
+            let mut q = sim.world_mut().query::<(&mut Transform, &mut Velocity)>();
+            for (mut t, mut vel) in q.iter_mut(sim.world_mut()) {
+                let mut p = t.translation;
                 let mut v = vel.0;
                 p += v * dt;
                 if p.x.abs() > WORLD_HALF {
@@ -623,28 +637,42 @@ impl App {
                     v.y = -v.y;
                     p.y = p.y.clamp(-WORLD_HALF, WORLD_HALF);
                 }
-                pos.0 = p;
+                t.translation = p;
                 vel.0 = v;
             }
         }
 
-        // Extract: rebuild RenderInstance set in PresentWorld each
-        // frame. Per ADR-0021: this is the only legal sim → present
-        // bridge. Pre-build the QueryState because `bevy_ecs::query()`
-        // needs `&mut World`, but inside `extract!` the sim handle is
-        // immutable.
+        // Extract (ADR-0021 + ADR-0025): hierarchical Transform →
+        // GlobalTransform propagation plus per-entity sprite emit.
+        // `propagate_transforms` walks the `ChildOf` tree once, and
+        // the closure spawns one mirror entity per sim entity in
+        // PresentWorld carrying `(SimRef, GlobalTransform)` plus an
+        // optional `RenderInstance` for sprite-bearing entities.
+        //
+        // HR-3: WorklistBuf reuses its capacity across frames so this
+        // hot path is zero-alloc after warm-up
+        // (`tests/propagate_no_alloc.rs`).
         let atlas = renderer.atlas();
-        let mut sim_q = sim.world_mut().query::<(&Position, &Sprite)>();
+        present.world_mut().clear_entities();
         ph2d_ecs::extract!(*sim => *present, |sim_w, present_w| {
-            present_w.clear_entities();
-            for (pos, spr) in sim_q.iter(sim_w) {
-                present_w.spawn(RenderInstance {
-                    world_pos: [pos.0.x, pos.0.y],
-                    size: spr.size,
-                    atlas_uv: atlas.dummy_uv(spr.atlas_index),
-                    tint: spr.tint,
-                });
-            }
+            propagate_transforms(
+                sim_w,
+                prop_state,
+                present_w,
+                worklist,
+                |sim, present, sim_entity, gt| {
+                    let mut builder = present.spawn((SimRef(sim_entity), gt));
+                    if let Some(spr) = sim.get::<Sprite>(sim_entity) {
+                        let p = gt.translation();
+                        builder.insert(RenderInstance {
+                            world_pos: [p.x, p.y],
+                            size: spr.size,
+                            atlas_uv: atlas.dummy_uv(spr.atlas_index),
+                            tint: spr.tint,
+                        });
+                    }
+                },
+            );
         });
 
         // Animated background tint (proves the sim clock drives the
@@ -785,6 +813,11 @@ impl ApplicationHandler for App {
                 .create_window(attrs)
                 .expect("create_window must succeed"),
         );
+        // Enable IME so dead-key + composition sequences (PT-BR
+        // accents `á`, `ç`, `ñ`, …) reach us via `WindowEvent::Ime`.
+        // Without this the macOS text-input service swallows the
+        // dead-key keystroke and `KeyEvent::text` arrives empty.
+        window.set_ime_allowed(true);
         let host = WinitHost::new(window.clone());
         let size = host.window_size();
         let scale = host.scale_factor();
@@ -832,6 +865,13 @@ impl ApplicationHandler for App {
         let mut sim = SimWorld::new();
         Self::populate_sim(&mut sim);
         let present = PresentWorld::new();
+        // ADR-0025 M14.1: build the cached propagation queries AFTER
+        // populate_sim so bevy_ecs has already seen the Transform
+        // archetype. QueryState::new on `&mut World` is fine here
+        // (one-shot at boot); inside the extract phase the queries
+        // iterate via `&World` only.
+        let prop_state = TransformPropagationState::new(sim.world_mut());
+        let worklist = WorklistBuf::new();
         let camera = Camera2d::default();
 
         // M7: ScriptHost. Failure here is also non-fatal (script is
@@ -919,6 +959,8 @@ impl ApplicationHandler for App {
             text_system,
             hero_screen,
             hero_arena: Bump::with_capacity(4096),
+            prop_state,
+            worklist,
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -953,6 +995,24 @@ impl ApplicationHandler for App {
 
             WindowEvent::ModifiersChanged(mods) => {
                 self.modifiers = mods.state();
+            }
+
+            // IME composition commits — PT-BR / Spanish / French
+            // accent dead-key sequences arrive here on macOS, NOT
+            // in `KeyEvent::text` (the system text-input service
+            // swallows the dead-key keystroke and emits the
+            // composed char via `Ime::Commit`).
+            WindowEvent::Ime(ime) => {
+                if let winit::event::Ime::Commit(text) = ime {
+                    for ch in text.chars() {
+                        if !ch.is_control() {
+                            forward_text_to_hero(self.gfx.as_mut(), ch);
+                        }
+                    }
+                }
+                // `Preedit` (in-progress composition) is ignored for
+                // now — no visible preedit caret yet. Future:
+                // render the preedit text in italics at the caret.
             }
 
             WindowEvent::CursorMoved { position, .. } => {

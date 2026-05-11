@@ -29,10 +29,14 @@ pub mod db;
 pub mod error;
 pub mod id;
 mod loader;
+pub mod prefab;
+pub mod scene;
 pub mod watcher;
 
 pub use asset::Asset;
 pub use db::AssetDb;
 pub use error::AssetError;
 pub use id::AssetId;
+pub use prefab::{ComponentBlob, ComponentTypeId, PrefabDoc, PrefabRef};
+pub use scene::{ChildOfPair, PrefabInstance, SceneDoc};
 pub use watcher::{AssetWatcher, ReloadEvent};

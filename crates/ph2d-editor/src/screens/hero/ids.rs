@@ -319,4 +319,3 @@ pub(crate) fn hierarchy_kind_for_label(label: &str) -> &'static str {
         _ => "ENT",
     }
 }
-

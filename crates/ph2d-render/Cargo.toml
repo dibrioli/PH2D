@@ -23,3 +23,7 @@ bytemuck = { version = "1", features = ["derive"] }
 # `&vello::Scene` directly so we don't need ph2d-vector here; the
 # editor builds the Scene via ph2d-vector and passes it through.
 vello = "0.8"
+# serde derives on `Sprite` so it can be carried by `PrefabDoc` /
+# `SceneDoc` through the postcard pipeline (M14.3). HR-14 mitigation
+# until `#[derive(Saveable)]` lands.
+serde = { version = "1", features = ["derive"] }

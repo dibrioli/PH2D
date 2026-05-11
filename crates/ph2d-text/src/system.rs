@@ -65,6 +65,34 @@ impl TextSystem {
         );
         layout
     }
+
+    /// Measure the width of `prefix` for caret / selection
+    /// positioning. Unlike `layout(prefix).width()`, this includes
+    /// trailing whitespace — parley's line layout trims trailing
+    /// spaces from the measured width, which made the caret appear
+    /// stuck after the user pressed SPACE (the space was inserted
+    /// into the buffer but the visual caret didn't advance).
+    ///
+    /// Strategy: layout `prefix + SENTINEL`, then subtract the
+    /// sentinel's width measured in isolation. The sentinel is a
+    /// non-whitespace glyph so parley never trims it.
+    pub fn prefix_width(&mut self, prefix: &str, font_size: f32) -> f32 {
+        if prefix.is_empty() {
+            return 0.0;
+        }
+        // Fast path: prefix has no trailing space → the plain
+        // layout already returns the correct width.
+        if !prefix.ends_with(' ') && !prefix.ends_with('\t') {
+            return self.layout(prefix, font_size, f32::INFINITY).width();
+        }
+        const SENTINEL: &str = "|";
+        let mut combined = String::with_capacity(prefix.len() + SENTINEL.len());
+        combined.push_str(prefix);
+        combined.push_str(SENTINEL);
+        let w_with = self.layout(&combined, font_size, f32::INFINITY).width();
+        let w_sentinel = self.layout(SENTINEL, font_size, f32::INFINITY).width();
+        (w_with - w_sentinel).max(0.0)
+    }
 }
 
 impl Default for TextSystem {

@@ -2,6 +2,12 @@
 source: crates/ph2d-mcp/tests/schema_snapshot.rs
 expression: tools
 ---
+- name: attach_script
+  description: Attach a LuauScript component to an entity. bytecode is the 64-char hex AssetId of compiled Luau.
+  destructive: false
+- name: find_by_name
+  description: Resolve a Name component to its Entity id. Returns null when absent.
+  destructive: false
 - name: message.send
   description: Send a Defold-style message to a target entity.
   destructive: false
@@ -16,4 +22,13 @@ expression: tools
   destructive: false
 - name: scene.spawn_entity
   description: Spawn empty entity in current scene; returns Entity handle.
+  destructive: false
+- name: state_get
+  description: Read a per-entity lateral state field (HR-16 POD value). Returns null when absent.
+  destructive: false
+- name: state_keys
+  description: Alphabetically-sorted list of lateral state field names for an entity.
+  destructive: false
+- name: state_set
+  description: "Write a per-entity lateral state field. Value must be POD (HR-16): number/string/bool/nil or nested table thereof."
   destructive: false

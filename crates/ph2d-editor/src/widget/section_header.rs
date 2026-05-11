@@ -87,7 +87,12 @@ pub fn paint_section_header(
     // tinted) reads as "this block is folded". Centralized here so
     // every panel using `SectionHeader` gets the same affordance.
     if matches!(header.collapsible, Some(false)) {
-        fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+        fill_rounded_rect(
+            scene,
+            rect,
+            Radius::Sm.px(),
+            resolve(ColorToken::Bg3, theme),
+        );
     }
     let pad_x = Spacing::Md.px();
     let mut cursor_x = rect.x + pad_x;
@@ -102,7 +107,13 @@ pub fn paint_section_header(
     } else {
         IconId::ChevronRight
     };
-    paint_icon(scene, icon, chev_rect, resolve(ColorToken::Text2, theme), 1.5);
+    paint_icon(
+        scene,
+        icon,
+        chev_rect,
+        resolve(ColorToken::Text2, theme),
+        1.5,
+    );
     cursor_x += icon_w + Spacing::Sm.px();
 
     // Bigger, bolder label in UPPERCASE — the §x.x design refresh
@@ -149,10 +160,7 @@ pub fn paint_section_header(
         );
         // 1-px ring so the circle still reads against same-colored
         // backgrounds (e.g. a light yellow circle on light theme).
-        let ring = Circle::new(
-            Point::new(cx as f64, cy as f64),
-            (radius_px + 0.5) as f64,
-        );
+        let ring = Circle::new(Point::new(cx as f64, cy as f64), (radius_px + 0.5) as f64);
         scene.inner_mut().stroke(
             &ph2d_vector::Stroke::new(1.0),
             Affine::IDENTITY,
@@ -220,7 +228,9 @@ mod tests {
     fn paint_emits_no_panic_for_uppercase_label_and_chevron() {
         // Smoke: header with all the new chrome bits (chevron +
         // uppercase + count chip) renders without geometry asserts.
-        let h = SectionHeader::new(NodeId(1), "vector").count(3).collapsible(true);
+        let h = SectionHeader::new(NodeId(1), "vector")
+            .count(3)
+            .collapsible(true);
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         paint_section_header(

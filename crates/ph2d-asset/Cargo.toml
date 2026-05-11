@@ -22,6 +22,13 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 # macOS, inotify on Linux, ReadDirectoryChangesW on Windows) and keeps
 # its own background thread.
 notify = "8"
+# serde derives on AssetId so it can cross the postcard pipeline that
+# PrefabDoc/SceneDoc (M14.3) and LuauScript (M14.2) consume.
+serde = { version = "1", features = ["derive"] }
+# postcard wire format for cooked Prefab/Scene assets (HR-6 + HR-14).
+# The same crate `tests/spike/src/bin/c13_migration.rs` uses for
+# save/replay snapshots — single canonical wire format.
+postcard = { version = "1", features = ["alloc"] }
 
 [dev-dependencies]
 tempfile = "3"

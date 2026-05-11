@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-asset-cooker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "cooker"
+path = "src/main.rs"
+
+[dependencies]
+# Crates that own the cookable Components — the cooker dispatches by
+# canonical name to each type's serde Deserializer.
+ph2d-asset = { path = "../../crates/ph2d-asset" }
+ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+ph2d-render = { path = "../../crates/ph2d-render" }
+ph2d-script = { path = "../../crates/ph2d-script" }
+ph2d-core = { path = "../../crates/ph2d-core" }
+# Cooker wire format: JSON5 source → postcard cooked. serde_json5 has
+# JSON-compatible parsing plus comments + trailing commas (ergonomic
+# for hand-authored prefab files). serde_json is needed because
+# serde_json5's `Value` type uses serde_json::Value underneath.
+serde_json5 = "0.2"
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+clap = { version = "4", features = ["derive"] }

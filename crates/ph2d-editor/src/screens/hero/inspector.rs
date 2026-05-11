@@ -1258,17 +1258,11 @@ fn paint_note_editable_line(
         let (s, e) = if a < caret { (a, caret) } else { (caret, a) };
         let s = s.min(text.len());
         let e = e.min(text.len());
-        let prefix_w = if s == 0 {
-            0.0
-        } else {
-            text_system.layout(&text[..s], font_size, f32::INFINITY).width()
-        };
+        let prefix_w = text_system.prefix_width(&text[..s], font_size);
         let mid_w = if s == e {
             0.0
         } else {
-            text_system
-                .layout(&text[s..e], font_size, f32::INFINITY)
-                .width()
+            text_system.prefix_width(&text[s..e], font_size)
         };
         let sel = Rect::new(
             rect.x + prefix_w,
@@ -1296,13 +1290,7 @@ fn paint_note_editable_line(
     // Caret — only when focused.
     if focused {
         let caret_byte = caret.min(text.len());
-        let prefix_w = if caret_byte == 0 {
-            0.0
-        } else {
-            text_system
-                .layout(&text[..caret_byte], font_size, f32::INFINITY)
-                .width()
-        };
+        let prefix_w = text_system.prefix_width(&text[..caret_byte], font_size);
         let caret_rect = Rect::new(
             (rect.x + prefix_w).min(rect.x + rect.w),
             rect.y + 2.0,
@@ -1374,13 +1362,7 @@ fn paint_note_editable_multiline(
             line_idx += 1;
         }
         let local = caret_byte.saturating_sub(line_start).min(line_text.len());
-        let prefix_w = if local == 0 {
-            0.0
-        } else {
-            text_system
-                .layout(&line_text[..local], font_size, f32::INFINITY)
-                .width()
-        };
+        let prefix_w = text_system.prefix_width(&line_text[..local], font_size);
         let caret_rect = Rect::new(
             (rect.x + prefix_w).min(rect.x + rect.w),
             rect.y + line_idx as f32 * line_h,

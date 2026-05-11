@@ -21,13 +21,21 @@
 //! pattern; populated by shells from `ph2d_input::InputState` per
 //! frame.
 
+pub mod component;
 pub mod host;
 pub mod io;
+pub mod lateral;
 pub mod messaging;
+pub mod registry;
 
+pub use component::LuauScript;
 pub use host::ScriptHost;
-pub use io::{EntityWrite, InputSnapshot, QueueFull, ReadSnapshot, WriteQueue};
+pub use io::{
+    EntityWrite, InputSnapshot, QueueFull, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,
+};
+pub use lateral::{PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
+pub use registry::register_script_components;
 
 use mlua::{Function, IntoLuaMulti, Lua, Thread, ThreadStatus, Value};
 

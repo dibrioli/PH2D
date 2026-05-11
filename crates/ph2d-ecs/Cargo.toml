@@ -11,3 +11,32 @@ authors.workspace = true
 
 [dependencies]
 bevy_ecs = "0.18"
+# ph2d-core re-exports glam math types (Vec2, Vec3, Mat3) that the
+# Transform/GlobalTransform components store. Keeps ph2d-core math-only
+# and ph2d-ecs the single owner of the Component-shaped wrappers.
+ph2d-core = { path = "../ph2d-core" }
+# ph2d-asset is consumed by `scene::spawn_prefab` (M14.3b) to resolve
+# ComponentBlob bytes into typed Components via ComponentRegistry.
+ph2d-asset = { path = "../ph2d-asset" }
+# serde derives on every SimComponent (HR-14 mitigation while
+# `#[derive(Saveable)]` macro is pending). PrefabDoc/SceneDoc in
+# ph2d-asset (M14.3) consume these via postcard.
+serde = { version = "1", features = ["derive"] }
+# postcard wire format for ComponentBlob serialization in the
+# ComponentRegistry (M14.3a). Same crate as ph2d-asset uses for the
+# cooked Prefab/Scene format — single canonical wire format.
+postcard = { version = "1", features = ["alloc"] }
+# blake3 for `stable_type_id`: blake3(canonical_name).first_8_bytes().
+# Stable across rustc versions (unlike `std::any::TypeId`), so cooked
+# prefabs survive a compiler upgrade.
+blake3 = "1"
+
+[dev-dependencies]
+# dhat-rs for HR-3 zero-alloc verification in propagate_no_alloc.rs.
+# Heap-profiling allocator wrapper; only compiled in tests.
+dhat = "0.3"
+# Sibling crates only needed by the end-to-end M14 pipeline test.
+# Production code in ph2d-ecs does NOT depend on render / script /
+# cooker — those layer up, not the other way around.
+ph2d-render = { path = "../ph2d-render" }
+ph2d-asset-cooker = { path = "../../tools/asset-cooker" }

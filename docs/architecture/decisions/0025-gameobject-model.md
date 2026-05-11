@@ -1,8 +1,8 @@
 # ADR-0025: Modelo de GameObject — ECS-composition (Unity-style) sobre bevy_ecs
 
-**Status:** Proposed
-**Data:** 2026-05-10
-**Decisor:** Enio Oliveira Dias Brito (pending)
+**Status:** Accepted
+**Data:** 2026-05-10 (proposto), 2026-05-11 (ratificado)
+**Decisor:** Enio Oliveira Dias Brito
 **Implementador:** Claude Opus 4.7 (1M context)
 **Depende de:** [ADR-0003 (bevy_ecs 0.18)](0003-ecs-choice.md), [ADR-0021 (Sim ↔ Present)](0021-simulation-presentation-boundary.md), [ADR-0019 (Luau ratificado)](0019-spike-scripting-output.md)
 

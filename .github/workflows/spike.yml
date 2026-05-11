@@ -171,11 +171,28 @@ jobs:
       - name: ph2d-ecs doc tests (extract! compile_fail proof)
         run: cargo test --doc -p ph2d-ecs --release --locked
 
+      - name: ph2d-asset tests (nextest — Prefab/Scene roundtrip + insert helpers)
+        run: cargo nextest run -p ph2d-asset --release --locked
+
+      - name: ph2d-render tests (nextest — Sprite serde + registry)
+        run: cargo nextest run -p ph2d-render --release --locked
+
       - name: ph2d-script tests (nextest)
         run: cargo nextest run -p ph2d-script --release --locked
 
       - name: ph2d-mcp tests (nextest)
         run: cargo nextest run -p ph2d-mcp --release --locked
+
+      # ADR-0025 M14.3d: cooker determinism includes a locked hash
+      # assertion (`prefab_cook_hash_is_locked`) — if Linux / macOS /
+      # Windows produce different cooked bytes, this test fails on
+      # the divergent runner. That's the HR-5 + HR-6 enforcement
+      # surface for the cooker pipeline.
+      - name: ph2d-asset-cooker tests (nextest — cross-OS cook determinism)
+        run: cargo nextest run -p ph2d-asset-cooker --release --locked
+
+      - name: ph2d-bindgen drift check (HR-10 parity)
+        run: cargo run --release --locked -p ph2d-bindgen
 
       - name: build ph2d-host-desktop (M1 — verifies winit links cross-OS)
         run: cargo build --release --locked -p ph2d-host-desktop

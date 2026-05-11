@@ -7,6 +7,11 @@
 -- ============================================================
 
 export type Ph2d = {
+    attach_script: (entity: number, bytecode: string) -> { ok: boolean },
+    find_by_name: (name: string) -> number?,
+    state_get: (entity: number, field: string) -> any,
+    state_keys: (entity: number) -> { string },
+    state_set: (entity: number, field: string, value: any) -> (),
     message: {
         send: (target: number, message: string, payload: any) -> { ok: boolean },
     },

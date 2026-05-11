@@ -6,7 +6,12 @@
 //! lookup.
 
 /// 32-byte blake3 digest. Used as the cache key in [`crate::AssetDb`].
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+///
+/// `Serialize`/`Deserialize` derives let `AssetId` cross the postcard
+/// pipeline that `PrefabDoc`/`SceneDoc` consume (M14.3) and the
+/// `LuauScript` component carries (M14.2). The 32-byte tuple is
+/// encoded as a fixed-length byte array — no length prefix overhead.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 pub struct AssetId([u8; 32]);
 
 impl AssetId {

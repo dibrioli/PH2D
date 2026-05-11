@@ -144,6 +144,149 @@
         ],
         "type": "object"
       }
+    },
+    {
+      "description": "Attach a LuauScript component to an entity. bytecode is the 64-char hex AssetId of compiled Luau.",
+      "input_schema": {
+        "properties": {
+          "bytecode": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "entity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity",
+          "bytecode"
+        ],
+        "type": "object"
+      },
+      "name": "attach_script",
+      "output_schema": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Resolve a Name component to its Entity id. Returns null when absent.",
+      "input_schema": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "find_by_name",
+      "output_schema": {
+        "properties": {
+          "entity": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "description": "Read a per-entity lateral state field (HR-16 POD value). Returns null when absent.",
+      "input_schema": {
+        "properties": {
+          "entity": {
+            "type": "integer"
+          },
+          "field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "field"
+        ],
+        "type": "object"
+      },
+      "name": "state_get",
+      "output_schema": {
+        "properties": {
+          "value": {}
+        },
+        "type": "object"
+      }
+    },
+    {
+      "description": "Write a per-entity lateral state field. Value must be POD (HR-16): number/string/bool/nil or nested table thereof.",
+      "input_schema": {
+        "properties": {
+          "entity": {
+            "type": "integer"
+          },
+          "field": {
+            "type": "string"
+          },
+          "value": {}
+        },
+        "required": [
+          "entity",
+          "field",
+          "value"
+        ],
+        "type": "object"
+      },
+      "name": "state_set",
+      "output_schema": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Alphabetically-sorted list of lateral state field names for an entity.",
+      "input_schema": {
+        "properties": {
+          "entity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity"
+        ],
+        "type": "object"
+      },
+      "name": "state_keys",
+      "output_schema": {
+        "properties": {
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -17,6 +17,8 @@ use crate::asset::Asset;
 use crate::error::AssetError;
 use crate::id::AssetId;
 use crate::loader::decode_png_bytes;
+use crate::prefab::PrefabDoc;
+use crate::scene::SceneDoc;
 use crate::watcher::ReloadEvent;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -69,6 +71,60 @@ impl AssetDb {
         let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
         g.by_id.entry(id).or_insert_with(|| Arc::new(asset));
         g.by_path.insert(path.to_path_buf(), id);
+        Ok(id)
+    }
+
+    /// Decode `bytes` as a postcard-encoded [`PrefabDoc`], hash the
+    /// raw bytes, and store under the resulting [`AssetId`].
+    /// Idempotent (HR-6 content-addressed).
+    ///
+    /// `bytes` is the **cooked** payload: the cooker
+    /// (`tools/asset-cooker`) consumed a JSON5 source file and
+    /// produced these bytes. They are not parsed for schema-version
+    /// migration here — that responsibility lives in
+    /// `crates/ph2d-asset/src/migration.rs` (lands when v2 ships).
+    pub fn insert_prefab_bytes(&self, bytes: &[u8]) -> Result<AssetId, AssetError> {
+        let id = AssetId::from_bytes(bytes);
+        let doc: PrefabDoc =
+            postcard::from_bytes(bytes).map_err(|e| AssetError::Decode {
+                path: None,
+                message: format!("PrefabDoc postcard: {e}"),
+            })?;
+        if doc.version != PrefabDoc::VERSION {
+            return Err(AssetError::VersionMismatch {
+                what: "PrefabDoc",
+                got: doc.version,
+                expected: PrefabDoc::VERSION,
+            });
+        }
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
+        g.by_id
+            .entry(id)
+            .or_insert_with(|| Arc::new(Asset::Prefab(Arc::new(doc))));
+        Ok(id)
+    }
+
+    /// Same shape as [`AssetDb::insert_prefab_bytes`] but decodes a
+    /// [`SceneDoc`]. Separate method (vs an `AssetKind` enum) so the
+    /// type-error is reported at the call site, not deferred.
+    pub fn insert_scene_bytes(&self, bytes: &[u8]) -> Result<AssetId, AssetError> {
+        let id = AssetId::from_bytes(bytes);
+        let doc: SceneDoc =
+            postcard::from_bytes(bytes).map_err(|e| AssetError::Decode {
+                path: None,
+                message: format!("SceneDoc postcard: {e}"),
+            })?;
+        if doc.version != SceneDoc::VERSION {
+            return Err(AssetError::VersionMismatch {
+                what: "SceneDoc",
+                got: doc.version,
+                expected: SceneDoc::VERSION,
+            });
+        }
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
+        g.by_id
+            .entry(id)
+            .or_insert_with(|| Arc::new(Asset::Scene(Arc::new(doc))));
         Ok(id)
     }
 
@@ -192,6 +248,12 @@ mod tests {
                 assert_eq!((*width, *height), (1, 1));
                 assert_eq!(&pixels[..], &[10, 20, 30, 255]);
             }
+            // Other variants are out of scope for this PNG-decode
+            // test — they have dedicated insert_postcard_* helpers
+            // and roundtrip tests in `prefab.rs` / `scene.rs`.
+            Asset::Prefab(_) | Asset::Scene(_) => unreachable!(
+                "insert_png_bytes can only produce Asset::ImageRgba8"
+            ),
         }
     }
 

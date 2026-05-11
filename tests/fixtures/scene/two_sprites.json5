@@ -1,0 +1,29 @@
+// PH2D Scene — JSON5 source (cooked into postcard by tools/asset-cooker).
+//
+// Two prefab instances referencing the same cooked prefab; the
+// second instance overrides the Name component so it shows as
+// "Hero2" instead of "Hero". A ChildOf relation parents the second
+// to the first.
+//
+// The `prefab` field is the 64-char hex AssetId of
+// `simple_sprite.json5` cooked with the current canonical schema.
+// Run `cargo run -p ph2d-asset-cooker -- prefab tests/fixtures/prefab/simple_sprite.json5 /tmp/x.cooked`
+// to recompute it.
+{
+    version: 1,
+    instances: [
+        {
+            prefab: "767a80b830bdd9fe619d3392f0215a4ea917291f869a20956f4fec4fe9f966c8",
+            overrides: [],
+        },
+        {
+            prefab: "767a80b830bdd9fe619d3392f0215a4ea917291f869a20956f4fec4fe9f966c8",
+            overrides: [
+                { type: "ph2d::ecs::Name", data: "Hero2" },
+            ],
+        },
+    ],
+    relations: [
+        { parent_index: 0, child_index: 1 },
+    ],
+}

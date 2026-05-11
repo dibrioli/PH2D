@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! ph2d-ecs — wrapper sobre `bevy_ecs` 0.18 implementing ADR-0021
-//! (simulation ↔ presentation boundary).
+//! (simulation ↔ presentation boundary) and ADR-0025 (GameObject =
+//! Entity + Components, hierarchy via `ChildOf`).
 //!
 //! Two opaque newtype `World`s + an `extract!` macro that's the only
 //! ergonomic bridge from sim → present.
@@ -20,22 +21,45 @@
 //! `PresentWorld`) lands in M5+ via a custom clippy lint
 //! `ph2d-clippy::wrong-world-component`.
 //!
-//! Re-exports the bevy_ecs prelude for convenience — downstream
-//! crates use `ph2d_ecs::*` and never import `bevy_ecs` directly,
+//! ## GameObject model (ADR-0025)
+//!
+//! - [`Transform`] (SimComponent) is local-space pos/rot/scale.
+//! - [`GlobalTransform`] (PresentComponent) is world-space, rebuilt
+//!   each frame by [`propagate_transforms`].
+//! - [`Name`] (SimComponent) is the human-readable label.
+//! - [`SimRef`] (PresentComponent) is the back-pointer from a
+//!   present entity to its source sim entity (entity ids are
+//!   per-`World`; this is the canonical bridge).
+//! - Hierarchy is `bevy_ecs::hierarchy::ChildOf` + `Children` (re-
+//!   exported below). PH2D does **not** define its own `Node` /
+//!   `Parent` types — those would diverge from the upstream
+//!   relationship machinery.
+//!
+//! Re-exports the bevy_ecs prelude essentials. Downstream crates use
+//! `ph2d_ecs::*` and rarely need to import `bevy_ecs` directly,
 //! preserving the ability to swap or version-bump bevy_ecs without
 //! cascading import churn.
 
+pub mod name;
 pub mod present;
+pub mod scene;
 pub mod sim;
+pub mod transform;
 
+pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};
 pub use sim::{SimComponent, SimWorld};
+pub use transform::{
+    GlobalTransform, SimRef, Transform, TransformPropagationState, WorklistBuf,
+    propagate_transforms, propagate_transforms_into_present,
+};
 
-// Re-export bevy_ecs essentials. Don't include the entire prelude —
-// keep the surface small per LLM1 audit anti-pattern "Acoplar API
-// pública a tipos wgpu::* ou winit::*" (same principle here).
+// Re-export bevy_ecs essentials. Keep the surface small per LLM1
+// audit anti-pattern "Acoplar API pública a tipos wgpu::* ou
+// winit::*" (same principle here).
 pub use bevy_ecs::component::Component;
 pub use bevy_ecs::entity::Entity;
+pub use bevy_ecs::hierarchy::{ChildOf, Children};
 pub use bevy_ecs::query::{With, Without};
 pub use bevy_ecs::resource::Resource;
 pub use bevy_ecs::schedule::Schedule;

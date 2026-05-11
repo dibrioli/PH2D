@@ -22,6 +22,7 @@ pub mod camera;
 pub mod instance_buffer;
 pub mod pipeline;
 pub mod renderer;
+pub mod registry;
 pub mod sprite;
 pub mod vello_pass;
 
@@ -29,6 +30,7 @@ pub use atlas::TextureAtlas;
 pub use camera::{Camera2d, CameraUniform};
 pub use instance_buffer::InstanceBuffer;
 pub use pipeline::SpritePipeline;
+pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{QuadVertex, RenderInstance, Sprite};
 pub use vello_pass::VelloPass;

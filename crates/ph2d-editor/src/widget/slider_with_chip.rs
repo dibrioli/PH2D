@@ -234,19 +234,11 @@ pub fn paint_number_chip(
         };
         let sel_start = sel_start.min(display.len());
         let sel_end = sel_end.min(display.len());
-        let prefix_w = if sel_start == 0 {
-            0.0
-        } else {
-            text_system
-                .layout(&display[..sel_start], font_size, f32::INFINITY)
-                .width()
-        };
+        let prefix_w = text_system.prefix_width(&display[..sel_start], font_size);
         let mid_w = if sel_start == sel_end {
             0.0
         } else {
-            text_system
-                .layout(&display[sel_start..sel_end], font_size, f32::INFINITY)
-                .width()
+            text_system.prefix_width(&display[sel_start..sel_end], font_size)
         };
         let sel_top = rect.y + 4.0;
         let sel_bot = rect.y + rect.h - 4.0;
@@ -271,7 +263,7 @@ pub fn paint_number_chip(
         let prefix_w = if prefix.is_empty() {
             0.0
         } else {
-            text_system.layout(prefix, font_size, f32::INFINITY).width()
+            text_system.prefix_width(prefix, font_size)
         };
         let caret_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0);
         let caret_top = rect.y + 4.0;

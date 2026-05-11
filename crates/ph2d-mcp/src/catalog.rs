@@ -76,6 +76,51 @@ pub const CATALOG: &[ToolSpec] = &[
         output_schema_json: r#"{"type":"object","properties":{"removed":{"type":"boolean"}},"required":["removed"]}"#,
         luau_signature: "delete_entity(entity: number, confirmation_token: string): { removed: boolean }",
     },
+    // ─── ADR-0025 M14.2: LuauScript Component + lateral state ────────
+    // These are top-level (no dot in name) so the generated `Ph2d`
+    // type exposes them flat as `ph2d.attach_script(...)` matching the
+    // runtime API in `crates/ph2d-script/src/host.rs::wire_ph2d_api`.
+    ToolSpec {
+        name: "attach_script",
+        description: "Attach a LuauScript component to an entity. bytecode is the 64-char hex AssetId of compiled Luau.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"entity":{"type":"integer"},"bytecode":{"type":"string","pattern":"^[0-9a-f]{64}$"}},"required":["entity","bytecode"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"]}"#,
+        luau_signature:
+            "attach_script(entity: number, bytecode: string): { ok: boolean }",
+    },
+    ToolSpec {
+        name: "find_by_name",
+        description: "Resolve a Name component to its Entity id. Returns null when absent.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"entity":{"type":["integer","null"]}}}"#,
+        luau_signature: "find_by_name(name: string): number?",
+    },
+    ToolSpec {
+        name: "state_get",
+        description: "Read a per-entity lateral state field (HR-16 POD value). Returns null when absent.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"entity":{"type":"integer"},"field":{"type":"string"}},"required":["entity","field"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"value":{}}}"#,
+        luau_signature: "state_get(entity: number, field: string): any",
+    },
+    ToolSpec {
+        name: "state_set",
+        description: "Write a per-entity lateral state field. Value must be POD (HR-16): number/string/bool/nil or nested table thereof.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"entity":{"type":"integer"},"field":{"type":"string"},"value":{}},"required":["entity","field","value"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"]}"#,
+        luau_signature: "state_set(entity: number, field: string, value: any): ()",
+    },
+    ToolSpec {
+        name: "state_keys",
+        description: "Alphabetically-sorted list of lateral state field names for an entity.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"entity":{"type":"integer"}},"required":["entity"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"keys":{"type":"array","items":{"type":"string"}}},"required":["keys"]}"#,
+        luau_signature: "state_keys(entity: number): { string }",
+    },
 ];
 
 #[cfg(test)]
@@ -83,11 +128,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn catalog_has_five_tools() {
-        // Locked at 5 for M9 — c6-prompts.md gate. Adding a 6th is
-        // fine but should be intentional; this guard catches accidental
-        // duplication via copy-paste edits.
-        assert_eq!(CATALOG.len(), 5);
+    fn catalog_has_expected_tool_count() {
+        // 5 base (M9, c6-prompts.md gate) + 5 M14.2 additions
+        // (script.attach + scene.find_by_name + state.get/set/keys).
+        // Adjust this number deliberately when adding tools so PRs
+        // surface API surface changes for review (HR-10 parity).
+        assert_eq!(CATALOG.len(), 10);
     }
 
     #[test]

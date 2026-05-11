@@ -19,6 +19,15 @@ pub enum AssetError {
         message: String,
     },
     Watch(String),
+    /// HR-14: schema version mismatch when loading a cooked
+    /// PrefabDoc / SceneDoc. The decode succeeded but the `version`
+    /// field is unknown — caller should run a migration or refuse
+    /// the asset rather than spawn corrupt entities.
+    VersionMismatch {
+        what: &'static str,
+        got: u32,
+        expected: u32,
+    },
 }
 
 impl std::fmt::Display for AssetError {
@@ -36,6 +45,15 @@ impl std::fmt::Display for AssetError {
                 message,
             } => write!(f, "decode error: {message}"),
             Self::Watch(s) => write!(f, "watcher error: {s}"),
+            Self::VersionMismatch {
+                what,
+                got,
+                expected,
+            } => write!(
+                f,
+                "{what}: on-disk version {got} unsupported (expected {expected}; \
+                 migration not yet implemented)"
+            ),
         }
     }
 }

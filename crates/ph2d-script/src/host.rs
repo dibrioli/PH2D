@@ -13,11 +13,22 @@
 //!   canonical store, scripts are derived behavior).
 
 use crate::ScriptRuntime;
-use crate::io::{EntityWrite, InputSnapshot, ReadSnapshot, WriteQueue};
+use crate::io::{
+    EntityWrite, InputSnapshot, NameSnapshot, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,
+};
+use crate::lateral::{PodValue, StateTable};
 use mlua::Function;
 
 /// Public host facade. One per app. Held by the shell; passed
 /// `provide_read` / `tick` / `drain_writes` from the per-frame loop.
+///
+/// M14.2 additions:
+/// - [`SpawnQueue`] receives `ph2d.spawn` / `despawn` / `attach_script`.
+/// - [`NameSnapshot`] is populated by the host each frame so
+///   `ph2d.find_by_name(name)` resolves without crossing the world
+///   handle.
+/// - [`StateTable`] holds per-entity lateral state (HR-16). Survives
+///   `load_script` resets — that's the whole point.
 pub struct ScriptHost {
     runtime: ScriptRuntime,
     last_source_hash: Option<[u8; 32]>,
@@ -27,6 +38,9 @@ pub struct ScriptHost {
     write_queue: WriteQueue,
     read_snapshot: ReadSnapshot,
     input_snapshot: InputSnapshot,
+    spawn_queue: SpawnQueue,
+    name_snapshot: NameSnapshot,
+    state_table: StateTable,
 }
 
 impl ScriptHost {
@@ -34,7 +48,17 @@ impl ScriptHost {
         let write_queue = WriteQueue::new();
         let read_snapshot = ReadSnapshot::new();
         let input_snapshot = InputSnapshot::new();
-        let runtime = build_runtime(&write_queue, &read_snapshot, &input_snapshot)?;
+        let spawn_queue = SpawnQueue::new();
+        let name_snapshot = NameSnapshot::new();
+        let state_table = StateTable::new();
+        let runtime = build_runtime(
+            &write_queue,
+            &read_snapshot,
+            &input_snapshot,
+            &spawn_queue,
+            &name_snapshot,
+            &state_table,
+        )?;
         Ok(Self {
             runtime,
             last_source_hash: None,
@@ -42,6 +66,9 @@ impl ScriptHost {
             write_queue,
             read_snapshot,
             input_snapshot,
+            spawn_queue,
+            name_snapshot,
+            state_table,
         })
     }
 
@@ -65,7 +92,18 @@ impl ScriptHost {
         }
         // Source actually changed → tear down + rebuild. The previous
         // VM (with its coroutines, globals, GC heap) is dropped here.
-        self.runtime = build_runtime(&self.write_queue, &self.read_snapshot, &self.input_snapshot)?;
+        // The shared Arc-backed handles (WriteQueue, ReadSnapshot,
+        // InputSnapshot, SpawnQueue, NameSnapshot, StateTable) all
+        // survive the reset — that's how per-entity state stays put
+        // across a Luau hot reload (HR-16 + ADR-0025 M14.2 contract).
+        self.runtime = build_runtime(
+            &self.write_queue,
+            &self.read_snapshot,
+            &self.input_snapshot,
+            &self.spawn_queue,
+            &self.name_snapshot,
+            &self.state_table,
+        )?;
         self.runtime.eval(source)?;
         self.last_source_hash = Some(hash);
         self.reset_count += 1;
@@ -132,9 +170,57 @@ impl ScriptHost {
         let f: Function = self.runtime.lua().globals().get(name)?;
         self.runtime.spawn(f)
     }
+
+    /// Drain pending `ph2d.spawn` / `despawn` / `attach_script`
+    /// commands queued by Luau callbacks. Host applies these to the
+    /// SimWorld between ticks.
+    pub fn drain_spawns(&self) -> Vec<SpawnCommand> {
+        self.spawn_queue.drain()
+    }
+
+    /// Inject one `(name → entity_id)` mapping into the snapshot
+    /// `ph2d.find_by_name` reads. Host re-populates each frame
+    /// before tick (analogous to `provide_read`).
+    pub fn provide_name(&self, name: &str, entity: u64) {
+        self.name_snapshot.set(name, entity);
+    }
+
+    /// Drop every name from the snapshot. Call before re-populating
+    /// per-frame so stale mappings from the previous tick don't leak.
+    pub fn clear_names(&self) {
+        self.name_snapshot.clear();
+    }
+
+    /// Set a single field on `lateral_key`'s state table directly
+    /// from Rust (e.g. when the host wants to seed initial state
+    /// for an entity it just attached a script to).
+    pub fn provide_state(&self, lateral_key: u64, field: &str, value: PodValue) {
+        self.state_table.set(lateral_key, field, value);
+    }
+
+    /// Read a single field from the lateral state table. Returns
+    /// `None` if the entity has no entry for that field.
+    pub fn read_state(&self, lateral_key: u64, field: &str) -> Option<PodValue> {
+        self.state_table.get(lateral_key, field)
+    }
+
+    /// Borrow the lateral state table (e.g. for snapshot / inspection).
+    pub fn state_table(&self) -> &StateTable {
+        &self.state_table
+    }
+
+    /// Borrow the spawn queue (for tests + debug overlays).
+    pub fn spawn_queue(&self) -> &SpawnQueue {
+        &self.spawn_queue
+    }
+
+    /// Borrow the name snapshot (for tests + debug overlays).
+    pub fn name_snapshot(&self) -> &NameSnapshot {
+        &self.name_snapshot
+    }
 }
 
-/// Build a fresh `ScriptRuntime` with `ph2d.set`/`ph2d.get`/`ph2d.input`
+/// Build a fresh `ScriptRuntime` with the `ph2d.*` Luau bindings
 /// wired against the supplied bridge handles, then activate
 /// `Lua::sandbox(true)`. Order is load-bearing: sandbox freezes the
 /// globals + the `ph2d` namespace, so the API must be installed
@@ -144,9 +230,20 @@ fn build_runtime(
     write_queue: &WriteQueue,
     read_snapshot: &ReadSnapshot,
     input_snapshot: &InputSnapshot,
+    spawn_queue: &SpawnQueue,
+    name_snapshot: &NameSnapshot,
+    state_table: &StateTable,
 ) -> mlua::Result<ScriptRuntime> {
     let runtime = ScriptRuntime::new()?;
-    wire_ph2d_api(&runtime, write_queue, read_snapshot, input_snapshot)?;
+    wire_ph2d_api(
+        &runtime,
+        write_queue,
+        read_snapshot,
+        input_snapshot,
+        spawn_queue,
+        name_snapshot,
+        state_table,
+    )?;
     runtime.lua().sandbox(true)?;
     Ok(runtime)
 }
@@ -156,6 +253,9 @@ fn wire_ph2d_api(
     write_queue: &WriteQueue,
     read_snapshot: &ReadSnapshot,
     input_snapshot: &InputSnapshot,
+    spawn_queue: &SpawnQueue,
+    name_snapshot: &NameSnapshot,
+    state_table: &StateTable,
 ) -> mlua::Result<()> {
     let lua = runtime.lua();
     // Stash clones of the SHARED handles in app-data so the closures
@@ -163,10 +263,14 @@ fn wire_ph2d_api(
     // requires `Send + 'static` bodies; app-data sidesteps the
     // closure-capture lifetimes. The clones share inner Arc storage,
     // so values the host pushes via `provide_read` / `provide_input`
-    // are observable here even after a VM rebuild.
+    // / `provide_name` / `provide_state` are observable here even
+    // after a VM rebuild.
     lua.set_app_data(write_queue.clone());
     lua.set_app_data(read_snapshot.clone());
     lua.set_app_data(input_snapshot.clone());
+    lua.set_app_data(spawn_queue.clone());
+    lua.set_app_data(name_snapshot.clone());
+    lua.set_app_data(state_table.clone());
 
     let set_fn = lua.create_function(
         |lua, (entity, field, value): (u32, String, f64)| -> mlua::Result<()> {
@@ -206,10 +310,164 @@ fn wire_ph2d_api(
         Ok(s.get(&key))
     })?;
 
+    // M14.2 additions ----------------------------------------------------
+
+    // ph2d.spawn() — queue an empty entity spawn. Returns nil; the
+    // assigned entity id appears in `ph2d.find_by_name(name)` next
+    // tick if the spawn was named via `ph2d.spawn_named`.
+    //
+    // Prefab-aware variant `ph2d.spawn(prefab_id)` arrives in M14.3
+    // when `Asset::Prefab` exists.
+    let spawn_fn = lua.create_function(|lua, ()| -> mlua::Result<()> {
+        let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
+            mlua::Error::RuntimeError("ph2d.spawn: SpawnQueue not registered".into())
+        })?;
+        q.push(SpawnCommand::SpawnEmpty)
+            .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.spawn: {e}")))
+    })?;
+
+    // ph2d.spawn_named(name) — queue a spawn that will get a Name
+    // component on application. Same caveats as `spawn`.
+    let spawn_named_fn =
+        lua.create_function(|lua, name: String| -> mlua::Result<()> {
+            let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
+                mlua::Error::RuntimeError("ph2d.spawn_named: SpawnQueue not registered".into())
+            })?;
+            q.push(SpawnCommand::SpawnNamed { name })
+                .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.spawn_named: {e}")))
+        })?;
+
+    // ph2d.despawn(entity) — queue an entity despawn.
+    let despawn_fn = lua.create_function(|lua, entity: f64| -> mlua::Result<()> {
+        let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
+            mlua::Error::RuntimeError("ph2d.despawn: SpawnQueue not registered".into())
+        })?;
+        q.push(SpawnCommand::Despawn {
+            entity: entity as u64,
+        })
+        .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.despawn: {e}")))
+    })?;
+
+    // ph2d.attach_script(entity, asset_id_hex) — queue a LuauScript
+    // component attachment. Accepts the 64-char hex form of the
+    // bytecode AssetId (the only stable, script-visible form);
+    // host parses it back to a 32-byte digest on apply.
+    let attach_script_fn = lua.create_function(
+        |lua, (entity, asset_hex): (f64, String)| -> mlua::Result<()> {
+            let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
+                mlua::Error::RuntimeError(
+                    "ph2d.attach_script: SpawnQueue not registered".into(),
+                )
+            })?;
+            if asset_hex.len() != 64 {
+                return Err(mlua::Error::RuntimeError(
+                    "ph2d.attach_script: bytecode id must be 64-char hex".into(),
+                ));
+            }
+            let mut digest = [0u8; 32];
+            for (i, chunk) in asset_hex.as_bytes().chunks_exact(2).enumerate() {
+                let s = std::str::from_utf8(chunk).map_err(|_| {
+                    mlua::Error::RuntimeError(
+                        "ph2d.attach_script: bytecode id is not ASCII hex".into(),
+                    )
+                })?;
+                digest[i] = u8::from_str_radix(s, 16).map_err(|_| {
+                    mlua::Error::RuntimeError(
+                        "ph2d.attach_script: bytecode id is not valid hex".into(),
+                    )
+                })?;
+            }
+            q.push(SpawnCommand::AttachScript {
+                entity: entity as u64,
+                bytecode: digest,
+            })
+            .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.attach_script: {e}")))
+        },
+    )?;
+
+    // ph2d.find_by_name(name) — resolve a Name component to an
+    // entity id. Reads from a NameSnapshot the host populates each
+    // tick.
+    let find_by_name_fn =
+        lua.create_function(|lua, name: String| -> mlua::Result<Option<f64>> {
+            let s = lua.app_data_ref::<NameSnapshot>().ok_or_else(|| {
+                mlua::Error::RuntimeError(
+                    "ph2d.find_by_name: NameSnapshot not registered".into(),
+                )
+            })?;
+            Ok(s.get(&name).map(|e| e as f64))
+        })?;
+
+    // ph2d.state_get(entity, field) — read per-instance lateral state.
+    // Returns nil if either the entity or field is absent.
+    let state_get_fn = lua.create_function(
+        |lua, (entity, field): (f64, String)| -> mlua::Result<mlua::Value> {
+            let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
+                mlua::Error::RuntimeError("ph2d.state_get: StateTable not registered".into())
+            })?;
+            match s.get(entity as u64, &field) {
+                Some(v) => v.to_lua(lua),
+                None => Ok(mlua::Value::Nil),
+            }
+        },
+    )?;
+
+    // ph2d.state_set(entity, field, value) — write per-instance
+    // lateral state. Value is type-checked HR-16 POD; non-POD
+    // (function, thread, userdata) returns a Luau error.
+    let state_set_fn = lua.create_function(
+        |lua,
+         (entity, field, value): (f64, String, mlua::Value)|
+         -> mlua::Result<()> {
+            let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
+                mlua::Error::RuntimeError("ph2d.state_set: StateTable not registered".into())
+            })?;
+            let pod = PodValue::from_lua(value, 0)?;
+            s.set(entity as u64, &field, pod);
+            Ok(())
+        },
+    )?;
+
+    // ph2d.state_keys(entity) — alphabetically-sorted list of fields
+    // for the given entity's lateral state. Returns an empty table
+    // if the entity has no state.
+    let state_keys_fn =
+        lua.create_function(|lua, entity: f64| -> mlua::Result<mlua::Table> {
+            let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
+                mlua::Error::RuntimeError("ph2d.state_keys: StateTable not registered".into())
+            })?;
+            let keys = s.keys(entity as u64);
+            let out = lua.create_table_with_capacity(keys.len(), 0)?;
+            for (i, k) in keys.into_iter().enumerate() {
+                // Luau tables are 1-indexed.
+                out.set(i + 1, k)?;
+            }
+            Ok(out)
+        })?;
+
+    // ph2d.state_clear(entity) — drop every field for the given
+    // entity. Idempotent.
+    let state_clear_fn = lua.create_function(|lua, entity: f64| -> mlua::Result<()> {
+        let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
+            mlua::Error::RuntimeError("ph2d.state_clear: StateTable not registered".into())
+        })?;
+        s.clear(entity as u64);
+        Ok(())
+    })?;
+
     let ph2d: mlua::Table = lua.globals().get("ph2d")?;
     ph2d.set("set", set_fn)?;
     ph2d.set("get", get_fn)?;
     ph2d.set("input", input_fn)?;
+    ph2d.set("spawn", spawn_fn)?;
+    ph2d.set("spawn_named", spawn_named_fn)?;
+    ph2d.set("despawn", despawn_fn)?;
+    ph2d.set("attach_script", attach_script_fn)?;
+    ph2d.set("find_by_name", find_by_name_fn)?;
+    ph2d.set("state_get", state_get_fn)?;
+    ph2d.set("state_set", state_set_fn)?;
+    ph2d.set("state_keys", state_keys_fn)?;
+    ph2d.set("state_clear", state_clear_fn)?;
 
     Ok(())
 }

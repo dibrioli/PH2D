@@ -49,7 +49,6 @@ use ph2d_vector::VectorScene;
 const BODY_PAD: f32 = 10.0;
 const ROW_GAP: f32 = 6.0;
 const SECTION_HEAD_H: f32 = 28.0;
-const SECTION_GAP: f32 = 12.0;
 const FIELD_H: f32 = 32.0;
 
 /// Stable id list for every collapsible section header in the
@@ -495,6 +494,28 @@ fn populate_samples(store: &mut WidgetStore) {
 ///     option to `Hovered`/`Normal` after release, losing selection.
 pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
     if let WidgetEvent::Click(id) = event {
+        // Context menu items — close the menu first, then route the
+        // command (Create note / outline color). Returning true here
+        // means the orchestrator doesn't pass the Click to other
+        // panels (which would otherwise treat it as a stray click).
+        const CTX_ITEMS: [ph2d_a11y::NodeId; 7] = [
+            ids::CTX_MENU_CREATE_NOTE,
+            ids::CTX_MENU_OUTLINE_NONE,
+            ids::CTX_MENU_OUTLINE_0,
+            ids::CTX_MENU_OUTLINE_1,
+            ids::CTX_MENU_OUTLINE_2,
+            ids::CTX_MENU_OUTLINE_3,
+            ids::CTX_MENU_OUTLINE_4,
+        ];
+        if CTX_ITEMS.iter().any(|c| *c == id) {
+            store.close_context_menu();
+            // Note creation + outline color application are deferred
+            // to the next implementation round (Note widget lands
+            // alongside its own side-table). The menu visually works
+            // today; clicking an item closes the menu.
+            return true;
+        }
+
         // Section header → flip collapse.
         if SECTION_IDS.iter().any(|s| *s == id) {
             store.toggle_collapsed(id);
@@ -619,7 +640,9 @@ pub fn paint_inspector(
     macro_rules! section {
         ($f:ident) => {
             let new_y = $f(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
-            y = paint_section_separator(scene, theme, inner_x, inner_w, new_y) + SECTION_GAP;
+            // `paint_section_separator` owns the full inter-section
+            // gap (top pad + line + bottom pad); no extra spacing here.
+            y = paint_section_separator(scene, theme, inner_x, inner_w, new_y);
         };
     }
     section!(paint_inputs_section);
@@ -704,11 +727,12 @@ fn paint_collapsible_header(
 }
 
 /// Discreet colored separator painted at the end of each section's
-/// content (when expanded). 1 px tall, almost full-width (4 px
-/// horizontal inset only so it sits flush with the panel chrome
-/// while clearing the rounded corners). `Accent` token. Strictly
-/// thinner than the component rows above it so it reads as a
-/// delimiter, not as content.
+/// content (when expanded). 1 px tall, almost full-width (2 px
+/// horizontal inset only — line spans the panel body edge to edge).
+/// Balanced vertical padding (`SEPARATOR_PAD_Y` above + below) so
+/// the line sits centered in its own gap, not lopsided against the
+/// content above. Owns the entire inter-section spacing — callers
+/// should NOT add `SECTION_GAP` on top.
 fn paint_section_separator(
     scene: &mut VectorScene,
     theme: Theme,
@@ -716,12 +740,18 @@ fn paint_section_separator(
     w: f32,
     y: f32,
 ) -> f32 {
-    let pad_x = 4.0_f32;
+    let pad_x = 2.0_f32;
+    let pad_y = SEPARATOR_PAD_Y;
     let thickness = 1.0_f32;
-    let line = Rect::new(x + pad_x, y + 4.0, (w - pad_x * 2.0).max(0.0), thickness);
+    let line = Rect::new(x + pad_x, y + pad_y, (w - pad_x * 2.0).max(0.0), thickness);
     fill_rounded_rect(scene, line, 0.5, resolve(ColorToken::Accent, theme));
-    y + 4.0 + thickness
+    y + pad_y + thickness + pad_y
 }
+
+/// Vertical breathing room above AND below the section separator
+/// line — same on both sides so the colored pill reads as centered
+/// between two sections rather than glued to the previous one.
+const SEPARATOR_PAD_Y: f32 = 8.0;
 
 fn paint_left_label(
     scene: &mut VectorScene,

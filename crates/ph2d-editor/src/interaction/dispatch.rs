@@ -149,6 +149,47 @@ pub fn dispatch_pointer_with_text<'frame>(
         PointerKind::Down => {
             let hit = hit_index.hit_with_rect(event.x, event.y);
 
+            // Right-click → open a context menu. We dispatch in two
+            // shapes:
+            //   - Secondary on a registered widget id whose role is
+            //     "section header" (the inspector marks these via
+            //     `is_collapsible_section_id` — currently any id in
+            //     the `INSP_SECTION_*` range) → `SectionOutline` menu.
+            //   - Secondary anywhere inside a panel rect → "CreateNote"
+            //     menu parented to that panel.
+            // Primary clicks fall through to the regular focus/click
+            // path below. A right-click on a non-panel area closes any
+            // currently-open menu.
+            if event.button == ph2d_host::PointerButton::Secondary {
+                let panel_under = store.panel_at(event.x, event.y);
+                let hit_id = hit.map(|(id, _)| id);
+                let is_section = hit_id
+                    .map(is_section_header_id)
+                    .unwrap_or(false);
+                if is_section {
+                    let section_id = hit_id.unwrap();
+                    store.open_context_menu(super::ContextMenuRequest {
+                        x: event.x,
+                        y: event.y,
+                        kind: super::ContextMenuKind::SectionOutline { section: section_id },
+                    });
+                } else if let Some(panel) = panel_under {
+                    store.open_context_menu(super::ContextMenuRequest {
+                        x: event.x,
+                        y: event.y,
+                        kind: super::ContextMenuKind::CreateNote { panel },
+                    });
+                } else {
+                    store.close_context_menu();
+                }
+                return events.into_bump_slice();
+            }
+            // Primary click elsewhere closes any open menu before
+            // running the regular focus/click path.
+            if store.context_menu().is_some() {
+                store.close_context_menu();
+            }
+
             // Eyedropper interception: while a pick is pending and
             // the click isn't on the eyedropper button itself, emit
             // `EyedropperPick` for the host to read back the
@@ -285,7 +326,17 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // pointer ended inside the original widget.
                 let is_drag_widget =
                     matches!(store.get(active), Some(InteractiveState::Slider { .. }));
-                if still_hot && !is_drag_widget {
+                // Only Primary releases emit Click. Secondary clicks
+                // are reserved for context-menu / right-click-deletes
+                // (handled in the Down branch via the request side-
+                // table + `apply_blender_hit`) — emitting Click for
+                // them would, e.g., toggle section collapse on
+                // right-click, which is exactly the bug the user
+                // reported.
+                if still_hot
+                    && !is_drag_widget
+                    && event.button == ph2d_host::PointerButton::Primary
+                {
                     apply_click(store, active, &mut events);
                 }
                 set_widget_released(store, active, still_hot);
@@ -689,6 +740,16 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
 /// caret-position formula. Used for drag-to-select byte-offset
 /// computation without dragging text_system through dispatch.
 const APPROX_ADVANCE_RATIO: f32 = 0.55;
+
+/// True iff `id` belongs to the Inspector's collapsible section
+/// header range. Used by the right-click dispatcher to decide
+/// whether to open the section-outline menu vs the create-note
+/// menu. Keeps the screen-specific knowledge in one place; if more
+/// panels gain section headers, extend this match.
+pub(super) fn is_section_header_id(id: ph2d_a11y::NodeId) -> bool {
+    let v = id.0;
+    (350..=359).contains(&v)
+}
 
 /// Detect a Down landing on a `NumberInput`'s up/down stepper and
 /// apply +/- one step to the value + buffer. Returns true iff the

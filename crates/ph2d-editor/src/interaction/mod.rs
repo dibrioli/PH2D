@@ -40,4 +40,7 @@ pub use dispatch::{
     dispatch_pointer_with_text, dispatch_text_input, dispatch_wheel,
 };
 pub use hit::HitIndex;
-pub use state::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore, format_number};
+pub use state::{
+    BlenderHitKind, ContextMenuKind, ContextMenuRequest, InteractiveState, WidgetEvent,
+    WidgetStore, format_number,
+};

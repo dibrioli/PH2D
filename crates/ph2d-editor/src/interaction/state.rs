@@ -291,6 +291,37 @@ pub struct WidgetStore {
     /// open by default. Toggled by `apply_event` on Click and
     /// consumed by section painters that early-out when collapsed.
     collapsed: BTreeMap<NodeId, bool>,
+    /// Pending right-click context menu. `Some` when a Secondary
+    /// Down landed somewhere a menu should appear (e.g. an empty
+    /// inspector panel or a section header); `None` when no menu
+    /// is open. The hero painter consumes this to render a floating
+    /// menu over everything; clicking outside the menu or on a menu
+    /// item clears the slot.
+    context_menu: Option<ContextMenuRequest>,
+}
+
+/// Where + why a right-click opened a context menu. Painted as a
+/// floating overlay by `paint_inspector` (or any host); items are
+/// hit-registered with the same `NodeId`s the dispatch checks for in
+/// the next click cycle.
+// `f32` is `PartialEq` but not `Eq`, so the request can only be
+// `PartialEq`. That's fine — context menu state never goes into a
+// hash set, only Option<...> comparisons.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ContextMenuRequest {
+    pub x: f32,
+    pub y: f32,
+    pub kind: ContextMenuKind,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ContextMenuKind {
+    /// Right-clicked on an empty area of a panel. Menu offers
+    /// "Create note" — the new note is parented to `panel`.
+    CreateNote { panel: NodeId },
+    /// Right-clicked on a section header. Menu offers 5 highlight
+    /// outline colors for the section.
+    SectionOutline { section: NodeId },
 }
 
 impl WidgetStore {
@@ -319,6 +350,7 @@ impl WidgetStore {
             panel_rects: BTreeMap::new(),
             tooltips: BTreeMap::new(),
             collapsed: BTreeMap::new(),
+            context_menu: None,
         }
     }
 
@@ -645,6 +677,23 @@ impl WidgetStore {
     pub fn toggle_collapsed(&mut self, id: NodeId) {
         let was = self.is_collapsed(id);
         self.collapsed.insert(id, !was);
+    }
+
+    /// Open a right-click context menu at `(x, y)` with the given
+    /// `kind`. Replaces any previously-open menu (only one menu
+    /// can be visible at a time).
+    pub fn open_context_menu(&mut self, request: ContextMenuRequest) {
+        self.context_menu = Some(request);
+    }
+
+    /// Close any currently-open context menu.
+    pub fn close_context_menu(&mut self) {
+        self.context_menu = None;
+    }
+
+    /// Read the currently-open context menu request, if any.
+    pub fn context_menu(&self) -> Option<ContextMenuRequest> {
+        self.context_menu
     }
 
     /// Append `color` to the BlenderPicker's palette. No-op if the

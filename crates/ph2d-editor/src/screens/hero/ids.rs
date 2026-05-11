@@ -92,6 +92,18 @@ pub const INSP_SECTION_COLOR: NodeId = NodeId(356);
 pub const INSP_SECTION_ACTIONS: NodeId = NodeId(357);
 pub const INSP_SECTION_IDENTITY: NodeId = NodeId(358);
 pub const INSP_SECTION_CARD: NodeId = NodeId(359);
+
+// ── Context menu item ids ──────────────────────────────────────────────────
+// The right-click context menu reuses these stable ids across both
+// inspector and hierarchy. Click dispatch routes by id to the
+// inspector's `apply_event`.
+pub const CTX_MENU_CREATE_NOTE: NodeId = NodeId(900);
+pub const CTX_MENU_OUTLINE_NONE: NodeId = NodeId(901);
+pub const CTX_MENU_OUTLINE_0: NodeId = NodeId(902);
+pub const CTX_MENU_OUTLINE_1: NodeId = NodeId(903);
+pub const CTX_MENU_OUTLINE_2: NodeId = NodeId(904);
+pub const CTX_MENU_OUTLINE_3: NodeId = NodeId(905);
+pub const CTX_MENU_OUTLINE_4: NodeId = NodeId(906);
 /// Floating `BlenderColorPicker` parent id. The picker is painted
 /// over the canvas (not inside the Inspector) — the historical
 /// `INSP_` prefix is kept to avoid churning every side-table key.

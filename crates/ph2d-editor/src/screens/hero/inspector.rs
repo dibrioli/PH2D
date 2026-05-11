@@ -770,7 +770,7 @@ pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
         // widget's color. The picker's value seeds from the
         // widget's current color (defaulting to neutral gray for
         // unseeded targets).
-        if SECTION_COLOR_IDS.iter().any(|c| *c == id) || id == ids::INSP_SAMPLE_SWATCH {
+        if SECTION_COLOR_IDS.contains(&id) || id == ids::INSP_SAMPLE_SWATCH {
             let seed = store.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
             store.set_widget_color(id, seed);
             store.set_picker_target(Some(id));
@@ -785,7 +785,7 @@ pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
         }
 
         // Section header → flip collapse.
-        if SECTION_IDS.iter().any(|s| *s == id) {
+        if SECTION_IDS.contains(&id) {
             store.toggle_collapsed(id);
             return true;
         }
@@ -797,17 +797,17 @@ pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
             return true;
         }
         // Tree leaf selection — same pin-pressed trick as radio/tabs.
-        if TREE_LEAF_IDS.iter().any(|l| *l == id) {
+        if TREE_LEAF_IDS.contains(&id) {
             pin_button_selection(store, id, &TREE_LEAF_IDS);
             return true;
         }
         // Radio group selection lock — pin clicked, clear siblings.
-        if RADIO_GROUP_IDS.iter().any(|r| *r == id) {
+        if RADIO_GROUP_IDS.contains(&id) {
             pin_button_selection(store, id, &RADIO_GROUP_IDS);
             return true;
         }
         // Tabs sample — same shape, different ids.
-        if TAB_GROUP_IDS.iter().any(|t| *t == id) {
+        if TAB_GROUP_IDS.contains(&id) {
             pin_button_selection(store, id, &TAB_GROUP_IDS);
             return true;
         }

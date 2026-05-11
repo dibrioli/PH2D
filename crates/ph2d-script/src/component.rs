@@ -1,6 +1,6 @@
 //! `LuauScript` Component — the canonical way to attach gameplay
-//! script behavior to a SimWorld entity (ADR-0025 §"Script de
-//! gameplay = Component, não classe").
+//! script behavior to a SimWorld entity (ADR-0025 §"Gameplay script
+//! is a Component, not a class").
 //!
 //! Unity's `MonoBehaviour` model is a class hierarchy that PH2D
 //! deliberately doesn't have. Instead, a `LuauScript` is a

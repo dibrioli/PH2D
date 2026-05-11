@@ -216,8 +216,8 @@ fn set_last_inspector_visible_h(h: f32) {
 /// Previous version returned "the first section whose top > y" —
 /// which for clicks INSIDE section A returned the index of
 /// section B, so the new note went BELOW A's separator instead of
-/// above A's header (user's "nota foi criada abaixo do separador
-/// da sessão onde o componente foi escolhido").
+/// above A's header (user reported "note created below the separator
+/// of the section the right-click landed in").
 pub(super) fn section_index_below_body_y(body_y: f32) -> Option<u8> {
     LAST_SECTION_TOPS_Y.with(|tops| {
         let tops = tops.borrow();
@@ -1109,8 +1109,8 @@ pub fn paint_inspector(
     // height for the wheel dispatch + hero clamp. visible_h must
     // match the actual content viewport, not a rough panel.h - 60
     // heuristic — the latter overestimated by ~20-30 px and
-    // prevented scrolling to reach the last note (user's
-    // "limite do scroll não se adaptou a nota nova").
+    // prevented scrolling to reach the last note (user reported the
+    // scroll bound didn't adapt to a newly-added note).
     let content_h = (y - body_top_y).max(0.0);
     let visible_h = (content_bottom - content_top).max(0.0);
     set_last_inspector_content_h(content_h);

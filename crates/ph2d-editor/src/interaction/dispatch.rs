@@ -1562,7 +1562,7 @@ pub fn apply_clipboard_paste(store: &mut WidgetStore, id: ph2d_a11y::NodeId, tex
         }
         Some(InteractiveState::NumberInput { buffer, caret, .. }) => {
             // Filter non-numeric chars so paste can't put a NumberInput
-            // into an unparseable state. Allowed: digits, '.', '-', '+'.
+            // into an unparsable state. Allowed: digits, '.', '-', '+'.
             let filtered: String = text
                 .chars()
                 .filter(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '+'))

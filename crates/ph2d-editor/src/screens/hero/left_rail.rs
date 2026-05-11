@@ -66,13 +66,23 @@ pub fn paint_left_rail(
     // Move/Translate with their own divider so they read as
     // workspace-level controls, not transform tools.
     let panel_toggles = [
-        (ids::RAIL_SHOW_INSPECTOR, "Show Inspector", IconId::LetterI),
-        (ids::RAIL_SHOW_HIERARCHY, "Show Hierarchy", IconId::LetterH),
+        (
+            ids::RAIL_SHOW_INSPECTOR,
+            "Show Inspector",
+            IconId::LetterI,
+            "INSPECTOR",
+        ),
+        (
+            ids::RAIL_SHOW_HIERARCHY,
+            "Show Hierarchy",
+            IconId::LetterH,
+            "HIERARCHY",
+        ),
     ];
     let mut rail_entries: Vec<ToolRailEntry> = panel_toggles
         .iter()
-        .map(|(id, label, icon)| {
-            let mut e = ToolRailEntry::icon(*id, *label, *icon);
+        .map(|(id, label, icon, sub)| {
+            let mut e = ToolRailEntry::icon(*id, *label, *icon).sub(*sub);
             if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
                 e = e.active();
             }
@@ -81,13 +91,13 @@ pub fn paint_left_rail(
         .collect();
     rail_entries.push(ToolRailEntry::Divider);
     let entries = [
-        (ids::TOOL_TRANSLATE, "Translate", IconId::Transform),
-        (ids::TOOL_ROTATE, "Rotate", IconId::Rotate),
-        (ids::TOOL_SCALE, "Scale", IconId::Scale),
-        (ids::TOOL_PIVOT, "Pivot", IconId::Pivot),
+        (ids::TOOL_TRANSLATE, "Translate", IconId::Transform, "MOVE"),
+        (ids::TOOL_ROTATE, "Rotate", IconId::Rotate, "ROTATE"),
+        (ids::TOOL_SCALE, "Scale", IconId::Scale, "SCALE"),
+        (ids::TOOL_PIVOT, "Pivot", IconId::Pivot, "PIVOT"),
     ];
-    for (id, label, icon) in entries.iter() {
-        let mut e = ToolRailEntry::icon(*id, *label, *icon);
+    for (id, label, icon, sub) in entries.iter() {
+        let mut e = ToolRailEntry::icon(*id, *label, *icon).sub(*sub);
         if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
             e = e.active();
         }
@@ -100,12 +110,7 @@ pub fn paint_left_rail(
         "Global",
         "SPACE",
     ));
-    rail_entries.push(ToolRailEntry::compound(
-        ids::TOOL_PROJECTION,
-        "Camera projection",
-        "Persp",
-        "PROJ",
-    ));
+    // TOOL_PROJECTION ("Persp / PROJ") hidden — not used yet.
     rail_entries.push(ToolRailEntry::compound(
         ids::TOOL_HOME,
         "Frame to home",
@@ -113,8 +118,8 @@ pub fn paint_left_rail(
         "VIEW",
     ));
     rail_entries.push(ToolRailEntry::Divider);
-    rail_entries.push(ToolRailEntry::icon(ids::TOOL_UNDO, "Undo", IconId::Undo));
-    rail_entries.push(ToolRailEntry::icon(ids::TOOL_REDO, "Redo", IconId::Redo));
+    rail_entries.push(ToolRailEntry::icon(ids::TOOL_UNDO, "Undo", IconId::Undo).sub("UNDO"));
+    rail_entries.push(ToolRailEntry::icon(ids::TOOL_REDO, "Redo", IconId::Redo).sub("REDO"));
 
     let rail = ToolRail::new(NodeId(200), "Editor tools", rail_entries);
     let rail_rect = Rect::new(

@@ -13,7 +13,8 @@
 use crate::icons::IconId;
 use crate::interaction::WidgetStore;
 use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text_centered, paint_text_rotated_ccw, rect_to_vello,
+    resolve, stroke_rounded_rect,
 };
 use crate::widget::ButtonState;
 use crate::zones::Rect;
@@ -22,10 +23,16 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-pub const TOOL_RAIL_WIDTH_PX: f32 = 56.0;
+/// Width of the LeftRail. Holds a vertical sub-label column on the
+/// left + a 44×44 chip on the right; sized to accommodate both
+/// without crowding.
+pub const TOOL_RAIL_WIDTH_PX: f32 = 68.0;
 pub const TOOL_CHIP_PX: f32 = 44.0;
-pub const COMPOUND_TOTAL_H_PX: f32 = 60.0; // chip + sub-label gap
+pub const COMPOUND_TOTAL_H_PX: f32 = TOOL_CHIP_PX; // sub-label moved to vertical-left
 pub const DIVIDER_GAP_PX: f32 = 8.0;
+/// Right margin reserved for the chip; the rest of the rail width is
+/// the vertical sub-label column.
+const CHIP_RIGHT_PAD_PX: f32 = 4.0;
 
 #[derive(Clone, Debug)]
 pub enum ToolRailEntry {
@@ -34,6 +41,9 @@ pub enum ToolRailEntry {
         label: String,
         icon: IconId,
         active: bool,
+        /// Short UPPERCASE tag painted vertically to the LEFT of
+        /// the chip. Empty string means "no sub-label".
+        sub: String,
     },
     Compound {
         id: NodeId,
@@ -51,7 +61,17 @@ impl ToolRailEntry {
             label: label.into(),
             icon,
             active: false,
+            sub: String::new(),
         }
+    }
+
+    /// Builder shortcut for the Icon variant — sets the vertical
+    /// sub-label tag (short uppercase, e.g. "MOVE", "ROT", "UNDO").
+    pub fn sub(mut self, sub: impl Into<String>) -> Self {
+        if let Self::Icon { sub: s, .. } = &mut self {
+            *s = sub.into();
+        }
+        self
     }
 
     pub fn compound(
@@ -157,6 +177,10 @@ pub fn paint_tool_rail(
     theme: Theme,
     store: &WidgetStore,
 ) {
+    // Chip is right-anchored so the column to its LEFT can carry a
+    // small vertical sub-label per entry.
+    let chip_x = rect.x + rect.w - TOOL_CHIP_PX - CHIP_RIGHT_PAD_PX;
+    let sub_font = (TypeToken::Xs.px() - 2.0).max(8.0);
     let gap = Spacing::Xs.px();
     let mut y = rect.y;
     for (i, entry) in rail.entries.iter().enumerate() {
@@ -165,14 +189,13 @@ pub fn paint_tool_rail(
         }
         match entry {
             ToolRailEntry::Icon {
-                id, icon, active, ..
+                id,
+                icon,
+                active,
+                sub,
+                ..
             } => {
-                let chip_rect = Rect::new(
-                    rect.x + (rect.w - TOOL_CHIP_PX) * 0.5,
-                    y,
-                    TOOL_CHIP_PX,
-                    TOOL_CHIP_PX,
-                );
+                let chip_rect = Rect::new(chip_x, y, TOOL_CHIP_PX, TOOL_CHIP_PX);
                 let radius = Radius::Lg.px();
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
@@ -197,15 +220,19 @@ pub fn paint_tool_rail(
                     _ => ColorToken::Text2,
                 };
                 paint_icon(scene, *icon, chip_rect, resolve(fg, theme), 1.5);
+                paint_sub_label_vertical(
+                    text_system,
+                    scene,
+                    sub,
+                    sub_font,
+                    rect.x,
+                    chip_rect,
+                    resolve(ColorToken::Text3, theme),
+                );
                 y += TOOL_CHIP_PX;
             }
             ToolRailEntry::Compound { id, face, sub, .. } => {
-                let chip_rect = Rect::new(
-                    rect.x + (rect.w - TOOL_CHIP_PX) * 0.5,
-                    y,
-                    TOOL_CHIP_PX,
-                    TOOL_CHIP_PX,
-                );
+                let chip_rect = Rect::new(chip_x, y, TOOL_CHIP_PX, TOOL_CHIP_PX);
                 let radius = Radius::Lg.px();
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let bg = match state {
@@ -232,18 +259,13 @@ pub fn paint_tool_rail(
                     TypeToken::Xs.px(),
                     resolve(face_color, theme),
                 );
-                let sub_rect = Rect::new(
-                    rect.x,
-                    y + TOOL_CHIP_PX + 2.0,
-                    rect.w,
-                    COMPOUND_TOTAL_H_PX - TOOL_CHIP_PX - 2.0,
-                );
-                paint_text_centered(
+                paint_sub_label_vertical(
                     text_system,
                     scene,
                     sub,
-                    sub_rect,
-                    TypeToken::Xs.px() - 2.0,
+                    sub_font,
+                    rect.x,
+                    chip_rect,
                     resolve(ColorToken::Text3, theme),
                 );
                 y += COMPOUND_TOTAL_H_PX;
@@ -256,6 +278,41 @@ pub fn paint_tool_rail(
             }
         }
     }
+}
+
+/// Helper — paint a short uppercase tag vertically (CCW-rotated)
+/// in the column to the LEFT of `chip_rect`. The text's baseline
+/// sits at `rail_left_x + col_width / 2`; the rotation puts the
+/// glyphs running bottom-to-top.
+fn paint_sub_label_vertical(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    font_size: f32,
+    rail_left_x: f32,
+    chip_rect: Rect,
+    color: ph2d_vector::Color,
+) {
+    if text.is_empty() {
+        return;
+    }
+    let column_w = chip_rect.x - rail_left_x;
+    // Anchor: bottom-left of the rotated text. After 90° CCW the
+    // text's height (post-layout) becomes its horizontal extent,
+    // which we want to fit inside the column. The baseline ends up
+    // at `anchor_x` from the bottom of the chip going up.
+    let anchor_x = rail_left_x + (column_w * 0.5) + font_size * 0.5;
+    let anchor_y = chip_rect.y + chip_rect.h - 6.0;
+    paint_text_rotated_ccw(
+        text_system,
+        scene,
+        text,
+        anchor_x,
+        anchor_y,
+        font_size,
+        chip_rect.h,
+        color,
+    );
 }
 
 #[cfg(test)]

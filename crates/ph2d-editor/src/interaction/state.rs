@@ -337,6 +337,30 @@ pub struct WidgetStore {
     /// here on every frame while editing; painters read here to
     /// display the widget's current color.
     widget_colors: BTreeMap<NodeId, [u8; 4]>,
+    /// In-progress scrollbar drag. Captured on Down inside a
+    /// scrollbar thumb's hit rect; consumed by Move events to
+    /// translate cursor delta into a `panel_scroll` delta; cleared
+    /// on Up. `track_h` and `content_h` are snapshotted so the
+    /// drag stays linear even if the painter republishes them
+    /// mid-drag.
+    scrollbar_drag: Option<ScrollbarDragAnchor>,
+}
+
+/// State of an in-progress drag on a scrollbar thumb.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ScrollbarDragAnchor {
+    /// Panel whose `panel_scroll` the drag updates.
+    pub panel: NodeId,
+    /// Cursor y at the moment of Down.
+    pub cursor_y_at_down: f32,
+    /// `panel_scroll(panel)` at the moment of Down.
+    pub scroll_at_down: f32,
+    /// Track height used to convert cursor delta → scroll delta.
+    pub track_h: f32,
+    /// Total content height (= `panel_content_h(panel)`).
+    pub content_h: f32,
+    /// Visible body height (= `panel_visible_h(panel)`).
+    pub visible_h: f32,
 }
 
 /// State of a user-created sticky note inside a panel.
@@ -420,6 +444,7 @@ impl WidgetStore {
             last_context_menu: None,
             picker_target: None,
             widget_colors: BTreeMap::new(),
+            scrollbar_drag: None,
         }
     }
 
@@ -873,6 +898,22 @@ impl WidgetStore {
     /// default when the picker first opens for that target.
     pub fn set_widget_color(&mut self, id: NodeId, rgba: [u8; 4]) {
         self.widget_colors.insert(id, rgba);
+    }
+
+    /// Begin a scrollbar drag at the given anchor. Stores the
+    /// cursor / scroll / metrics snapshot until `end_scrollbar_drag`
+    /// is called. Move events while this is set update
+    /// `panel_scroll` proportionally.
+    pub fn begin_scrollbar_drag(&mut self, anchor: ScrollbarDragAnchor) {
+        self.scrollbar_drag = Some(anchor);
+    }
+
+    pub fn scrollbar_drag(&self) -> Option<ScrollbarDragAnchor> {
+        self.scrollbar_drag
+    }
+
+    pub fn end_scrollbar_drag(&mut self) {
+        self.scrollbar_drag = None;
     }
 
     /// Append a new note with the given color index + section

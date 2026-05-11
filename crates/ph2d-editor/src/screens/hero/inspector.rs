@@ -178,16 +178,34 @@ fn set_last_inspector_visible_h(h: f32) {
     LAST_VISIBLE_H.with(|c| c.set(h));
 }
 
-/// Find the section index whose header is the first one BELOW a
-/// given body-relative y. Returns `Some(i)` so callers know a new
-/// note should be inserted above `SECTION_IDS[i]`; returns `None`
-/// when y is past the last section (note appends to the bottom).
+/// Find the section index whose body the given body-relative y
+/// lies INSIDE. Returns `Some(i)` so callers know a new note
+/// should be inserted above `SECTION_IDS[i]` (i.e. above the
+/// section the user right-clicked into). Returns `None` when y is
+/// past the last section's content (note appends to the bottom).
+///
+/// Previous version returned "the first section whose top > y" —
+/// which for clicks INSIDE section A returned the index of
+/// section B, so the new note went BELOW A's separator instead of
+/// above A's header (user's "nota foi criada abaixo do separador
+/// da sessão onde o componente foi escolhido").
 pub(super) fn section_index_below_body_y(body_y: f32) -> Option<u8> {
     LAST_SECTION_TOPS_Y.with(|tops| {
         let tops = tops.borrow();
-        for (i, &top) in tops.iter().enumerate() {
-            if body_y < top {
+        // Walk pairs (top[i], top[i+1]); the click is "inside"
+        // section i when top[i] <= y < top[i+1]. The last section
+        // has no successor — clicks past its top fall through to
+        // `None` (trailing note).
+        for i in 0..tops.len() {
+            let top = tops[i];
+            let next = tops.get(i + 1).copied().unwrap_or(f32::INFINITY);
+            if body_y >= top && body_y < next {
                 return Some(i as u8);
+            }
+            // Click ABOVE the very first section's top → insert
+            // before that section.
+            if i == 0 && body_y < top {
+                return Some(0);
             }
         }
         None
@@ -900,9 +918,24 @@ pub fn paint_inspector(
     // prevented scrolling to reach the last note (user's
     // "limite do scroll não se adaptou a nota nova").
     let content_h = (y - body_top_y).max(0.0);
+    let visible_h = (content_bottom - content_top).max(0.0);
     set_last_inspector_content_h(content_h);
-    set_last_inspector_visible_h((content_bottom - content_top).max(0.0));
+    set_last_inspector_visible_h(visible_h);
     LAST_SECTION_TOPS_Y.with(|t| *t.borrow_mut() = section_tops_y);
+
+    // Scrollbar (right edge of body). Hit-registered with the
+    // canonical inspector scrollbar id; dispatch handles drag.
+    if crate::widget::scrollbar_is_needed(content_h, visible_h) {
+        let body = Rect::new(rect.x, content_top, rect.w, visible_h);
+        let track = crate::widget::scrollbar_track_rect(body);
+        let thumb = crate::widget::scrollbar_thumb_rect(track, scroll_y, content_h, visible_h);
+        let is_active = matches!(store.scrollbar_drag(), Some(d) if d.panel == ids::INSP_PANEL);
+        crate::widget::paint_scrollbar(
+            body, scroll_y, content_h, visible_h, is_active, scene, theme,
+        );
+        // Register the thumb hit so Down on it starts a drag.
+        hit_index.register(crate::widget::INSPECTOR_SCROLLBAR_ID, thumb);
+    }
 
     // Second pass: open Dropdown popover paints on top of every
     // section that ran before it. We reconstruct the Dropdown

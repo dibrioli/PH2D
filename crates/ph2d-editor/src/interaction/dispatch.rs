@@ -92,6 +92,23 @@ pub fn dispatch_pointer_with_text<'frame>(
                 let new_off_y = off_y + (event.y - down_y);
                 store.set_blender_picker_offset(parent, new_off_x, new_off_y);
             }
+            // Scrollbar drag — translate the cursor's y-delta into
+            // a `panel_scroll` delta via `widget::scrollbar::
+            // delta_for_drag`. Snapshot of metrics taken at Down so
+            // the drag stays linear even if the painter republishes
+            // mid-drag.
+            if let Some(anchor) = store.scrollbar_drag() {
+                let dy = event.y - anchor.cursor_y_at_down;
+                let scroll_delta = crate::widget::scrollbar_delta_for_drag(
+                    dy,
+                    anchor.track_h,
+                    anchor.content_h,
+                    anchor.visible_h,
+                );
+                let max = (anchor.content_h - anchor.visible_h).max(0.0);
+                let new_scroll = (anchor.scroll_at_down + scroll_delta).clamp(0.0, max);
+                store.set_panel_scroll(anchor.panel, new_scroll);
+            }
             if let Some(active) = store.active_id() {
                 if let Some(rect) = store.active_rect() {
                     // Text drag-to-select: extend the selection from
@@ -350,6 +367,27 @@ pub fn dispatch_pointer_with_text<'frame>(
                 {
                     events.push(WidgetEvent::ValueChanged(id));
                 }
+                // Scrollbar thumb drag — snapshot the panel
+                // metrics so subsequent Move events can compute a
+                // proportional `panel_scroll` delta. The
+                // scrollbar id encodes its panel (see helper
+                // below); the metrics come from the side-tables
+                // the painters publish each frame.
+                if let Some(panel) = scrollbar_panel_for_id(id) {
+                    if let (Some(content_h), Some(visible_h)) = (
+                        store.panel_content_h(panel),
+                        store.panel_visible_h(panel),
+                    ) {
+                        store.begin_scrollbar_drag(super::ScrollbarDragAnchor {
+                            panel,
+                            cursor_y_at_down: event.y,
+                            scroll_at_down: store.panel_scroll(panel),
+                            track_h: rect.h,
+                            content_h,
+                            visible_h,
+                        });
+                    }
+                }
                 // BlenderColorPicker sub-control hits route into the
                 // parent's stored state mutation. Right-click on a
                 // palette swatch removes it instead of picking it.
@@ -364,6 +402,8 @@ pub fn dispatch_pointer_with_text<'frame>(
             // Picker drag ends on Up — clear the anchor so a stray
             // Move after release doesn't drag the picker further.
             store.end_blender_drag();
+            // Same for scrollbar drag.
+            store.end_scrollbar_drag();
             if let Some(active) = store.active_id() {
                 // "still_hot" is whether the pointer is still inside
                 // the widget's rect captured on Down. Using the live
@@ -836,6 +876,21 @@ pub(super) fn is_section_header_id(id: ph2d_a11y::NodeId) -> bool {
 fn is_color_target_id(id: ph2d_a11y::NodeId) -> bool {
     let v = id.0;
     (360..=369).contains(&v) || v == 328
+}
+
+/// Maps a scrollbar thumb's hit id back to the panel it scrolls.
+/// Returns `None` for non-scrollbar ids. Keeps the panel↔scrollbar
+/// mapping in one place — hosts that add new scrollable panels
+/// extend this match.
+fn scrollbar_panel_for_id(id: ph2d_a11y::NodeId) -> Option<ph2d_a11y::NodeId> {
+    use crate::screens::hero::ids;
+    if id == crate::widget::INSPECTOR_SCROLLBAR_ID {
+        Some(ids::INSP_PANEL)
+    } else if id == crate::widget::HIERARCHY_SCROLLBAR_ID {
+        Some(ids::HIER_PANEL)
+    } else {
+        None
+    }
 }
 
 /// Detect a Down landing on a `NumberInput`'s up/down stepper and

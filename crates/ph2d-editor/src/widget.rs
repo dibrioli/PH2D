@@ -22,6 +22,7 @@ mod pill_group;
 mod popover;
 mod progress_bar;
 mod radio_group;
+mod scrollbar;
 mod section_header;
 mod slider;
 mod slider_with_chip;
@@ -66,6 +67,11 @@ pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_p
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
+};
+pub use scrollbar::{
+    HIERARCHY_SCROLLBAR_ID, INSPECTOR_SCROLLBAR_ID, SCROLLBAR_W,
+    delta_for_drag as scrollbar_delta_for_drag, is_needed as scrollbar_is_needed, paint_scrollbar,
+    thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
 };
 pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider};

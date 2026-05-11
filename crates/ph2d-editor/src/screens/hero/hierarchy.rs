@@ -161,7 +161,23 @@ pub fn paint_hierarchy(
     // `y` advances by full row + gap regardless of scroll offset
     // — the difference from `start_y` is the unscrolled content
     // height (same trick the inspector uses).
-    set_last_hierarchy_content_h((y - start_y).max(0.0));
+    let content_h = (y - start_y).max(0.0);
+    set_last_hierarchy_content_h(content_h);
+
+    // Scrollbar (right edge of the entity body region). Same
+    // centralized widget as the inspector — single hit id reused
+    // by the dispatch.
+    let visible_h = (content_bottom - body_top).max(0.0);
+    if crate::widget::scrollbar_is_needed(content_h, visible_h) {
+        let body = Rect::new(rect.x, body_top, rect.w, visible_h);
+        let track = crate::widget::scrollbar_track_rect(body);
+        let thumb = crate::widget::scrollbar_thumb_rect(track, scroll_y, content_h, visible_h);
+        let is_active = matches!(store.scrollbar_drag(), Some(d) if d.panel == ids::HIER_PANEL);
+        crate::widget::paint_scrollbar(
+            body, scroll_y, content_h, visible_h, is_active, scene, theme,
+        );
+        hit_index.register(crate::widget::HIERARCHY_SCROLLBAR_ID, thumb);
+    }
 }
 
 thread_local! {

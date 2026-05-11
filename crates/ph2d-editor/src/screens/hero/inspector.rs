@@ -23,7 +23,7 @@ use super::HeroSelection;
 use super::ids;
 use super::style::{PANEL_HEAD_PAD, paint_panel_surface};
 use crate::icons::IconId;
-use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
+use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use crate::widget::{
     Avatar, AvatarShape, Button, ButtonKind, ButtonState, Card, ChannelMode, Checkbox,
@@ -102,6 +102,22 @@ const TREE_LEAF_IDS: [ph2d_a11y::NodeId; 2] = [
     ids::INSP_SAMPLE_TREE_LEAF_A,
     ids::INSP_SAMPLE_TREE_LEAF_B,
 ];
+/// Hit-slot ids for the 12 possible notes per panel. The painter
+/// assigns slots by position (slot 0 = first painted note, etc.).
+pub(super) const NOTE_SLOT_IDS: [ph2d_a11y::NodeId; 12] = [
+    ids::INSP_NOTE_SLOT_0,
+    ids::INSP_NOTE_SLOT_1,
+    ids::INSP_NOTE_SLOT_2,
+    ids::INSP_NOTE_SLOT_3,
+    ids::INSP_NOTE_SLOT_4,
+    ids::INSP_NOTE_SLOT_5,
+    ids::INSP_NOTE_SLOT_6,
+    ids::INSP_NOTE_SLOT_7,
+    ids::INSP_NOTE_SLOT_8,
+    ids::INSP_NOTE_SLOT_9,
+    ids::INSP_NOTE_SLOT_10,
+    ids::INSP_NOTE_SLOT_11,
+];
 
 // Thread-local stash for the open Dropdown's chip rect, captured by
 // `paint_lists_section` and consumed by `paint_inspector` AFTER the
@@ -115,6 +131,24 @@ thread_local! {
     /// clamp `scroll_y` to `[0, content_h - visible_h]`. One frame of
     /// staleness is invisible since paint runs every frame.
     static LAST_CONTENT_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+    /// Exact visible body height (`content_bottom - content_top`) of
+    /// the inspector's last paint. Used together with content_h to
+    /// derive max_scroll. Bypasses the rough `panel.h - 60` heuristic
+    /// which over-estimated visible_h and clamped the scroll too
+    /// early — last few px of new notes weren't reachable.
+    static LAST_VISIBLE_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+    /// Body-relative top-Y of each painted section's header, indexed
+    /// by section position in `SECTION_IDS`. The right-click dispatch
+    /// uses this to pick which section a new note should be inserted
+    /// ABOVE (the user's "nota deve ser inserida acima do objeto
+    /// selecionado"). Body-relative so it stays stable across
+    /// scroll offsets — the lookup converts the click's screen y
+    /// into body-y via `event.y - body_top_screen + scroll_y`.
+    static LAST_SECTION_TOPS_Y: std::cell::RefCell<Vec<f32>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+    /// Body-relative top-Y in screen coords reference, captured each
+    /// frame so callers (the hero) can convert screen-y → body-y.
+    static LAST_BODY_TOP_SCREEN_Y: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
 }
 
 fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {
@@ -134,6 +168,38 @@ pub(super) fn last_inspector_content_h() -> f32 {
 
 fn set_last_inspector_content_h(h: f32) {
     LAST_CONTENT_H.with(|c| c.set(h));
+}
+
+pub(super) fn last_inspector_visible_h() -> f32 {
+    LAST_VISIBLE_H.with(|c| c.get())
+}
+
+fn set_last_inspector_visible_h(h: f32) {
+    LAST_VISIBLE_H.with(|c| c.set(h));
+}
+
+/// Find the section index whose header is the first one BELOW a
+/// given body-relative y. Returns `Some(i)` so callers know a new
+/// note should be inserted above `SECTION_IDS[i]`; returns `None`
+/// when y is past the last section (note appends to the bottom).
+pub(super) fn section_index_below_body_y(body_y: f32) -> Option<u8> {
+    LAST_SECTION_TOPS_Y.with(|tops| {
+        let tops = tops.borrow();
+        for (i, &top) in tops.iter().enumerate() {
+            if body_y < top {
+                return Some(i as u8);
+            }
+        }
+        None
+    })
+}
+
+pub(super) fn last_body_top_screen_y() -> f32 {
+    LAST_BODY_TOP_SCREEN_Y.with(|c| c.get())
+}
+
+fn push_section_top_y(tops: &mut Vec<f32>, body_y: f32) {
+    tops.push(body_y);
 }
 
 /// Register every sample widget + the floating BlenderColorPicker's
@@ -503,6 +569,12 @@ fn populate_samples(store: &mut WidgetStore) {
     ] {
         store.register(id, InteractiveState::Plain);
     }
+    // Pre-allocated note slot hits. Each painted note registers a
+    // hit at one of these ids by position; right-clicking the
+    // slot opens the `NoteBackground` menu for that index.
+    for id in NOTE_SLOT_IDS {
+        store.register(id, InteractiveState::Plain);
+    }
 
     // Per-widget tooltips so the generic registry shows hints when
     // the user hovers. Demonstrates the §9.8 lesson in practice.
@@ -552,19 +624,38 @@ pub fn apply_event(store: &mut WidgetStore, event: WidgetEvent) -> bool {
         ];
         if id == ids::CTX_MENU_CREATE_NOTE {
             if let Some(req) = store.consume_last_context_menu()
-                && let crate::interaction::ContextMenuKind::CreateNote { panel } = req.kind
+                && let crate::interaction::ContextMenuKind::CreateNote { panel, .. } = req.kind
             {
-                // Default to yellow (color_idx 0) — user changes
-                // color via right-click on the note (next round).
-                store.notes_push(panel, 0);
+                // Convert the click's screen y into body-relative y
+                // and look up which section sits below it; the new
+                // note slots in just above that section. Returns
+                // `None` when the click was past the last section,
+                // in which case the note appends at the bottom.
+                let scroll_y = store.panel_scroll(panel);
+                let body_top_screen = last_body_top_screen_y();
+                let body_y = req.y - body_top_screen + scroll_y;
+                let before = section_index_below_body_y(body_y);
+                // Default to yellow (color_idx 0).
+                store.notes_push(panel, 0, before);
             }
             return true;
         }
         if let Some((_, color_idx)) = OUTLINE_ITEMS.iter().find(|(item_id, _)| *item_id == id) {
-            if let Some(req) = store.consume_last_context_menu()
-                && let crate::interaction::ContextMenuKind::SectionOutline { section } = req.kind
-            {
-                store.set_section_outline_color(section, *color_idx);
+            if let Some(req) = store.consume_last_context_menu() {
+                match req.kind {
+                    crate::interaction::ContextMenuKind::SectionOutline { section } => {
+                        store.set_section_outline_color(section, *color_idx);
+                    }
+                    crate::interaction::ContextMenuKind::NoteBackground {
+                        panel,
+                        note_index,
+                    } => {
+                        if let Some(c) = color_idx {
+                            store.note_set_color(panel, note_index as usize, *c);
+                        }
+                    }
+                    _ => {}
+                }
             }
             return true;
         }
@@ -704,14 +795,49 @@ pub fn paint_inspector(
     let inner_w = rect.w - BODY_PAD * 2.0;
     let body_top_y = content_top - scroll_y + 4.0;
     let mut y = body_top_y;
+    // Capture each section's body-relative top y so the right-click
+    // dispatch can compute `before_section` for new notes (the user
+    // wants notes inserted ABOVE the section the right-click landed
+    // in, not at the bottom).
+    let mut section_tops_y: Vec<f32> = Vec::with_capacity(SECTION_IDS.len());
+    LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + 4.0));
 
     // Inline the section sequence so each section gets a colored
     // separator + inter-section gap immediately after. Closures over
     // `&mut store` would conflict with the post-loop write to
     // `set_last_inspector_content_h` and `panel_max_scroll`.
+    // Walk notes once, partitioning by `before_section`. A note
+    // with `before_section: Some(i)` paints just before
+    // `SECTION_IDS[i]`; notes with `None` queue for the tail.
+    // Each note also carries its original index in the panel's
+    // notes list (the "slot") so the painter can register the
+    // right `NOTE_SLOT_IDS[slot]` hit — which is what the
+    // right-click dispatch then maps to `note_index` on the
+    // `NoteBackground` context menu.
+    let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
+    let mut notes_per_section: [Vec<(usize, &NoteData)>; 10] = Default::default();
+    let mut trailing_notes: Vec<(usize, &NoteData)> = Vec::new();
+    for (idx, note) in all_notes.iter().enumerate() {
+        match note.before_section {
+            Some(i) if (i as usize) < notes_per_section.len() => {
+                notes_per_section[i as usize].push((idx, note));
+            }
+            _ => trailing_notes.push((idx, note)),
+        }
+    }
+    let mut section_idx: usize = 0;
+    macro_rules! paint_pending_notes {
+        () => {
+            for (slot, note) in &notes_per_section[section_idx] {
+                paint_one_note(scene, text_system, hit_index, inner_x, inner_w, &mut y, note, *slot);
+            }
+        };
+    }
     macro_rules! section {
         ($f:ident, $section_id:expr) => {
+            paint_pending_notes!();
             let y_before = y;
+            push_section_top_y(&mut section_tops_y, y_before - body_top_y);
             let new_y = $f(scene, text_system, theme, hit_index, store, inner_x, inner_w, y);
             // Outline: when the user picked an outline color via the
             // right-click menu on this section header, stroke a
@@ -720,17 +846,36 @@ pub fn paint_inspector(
             if let Some(color_idx) = store.section_outline_color($section_id) {
                 let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
                     [color_idx.min(4) as usize];
-                let block = Rect::new(inner_x, y_before, inner_w, (new_y - y_before).max(0.0));
-                let outline_color = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+                // Inflate the block by 4 px so the outline doesn't
+                // hug the section content — gives the highlight a
+                // breathing margin (user's "outline precisa de
+                // padding"). The stroke sits OUTSIDE the section's
+                // hit rects so it never intercepts clicks.
+                let pad = 4.0_f32;
+                let block = Rect::new(
+                    inner_x - pad,
+                    y_before - pad,
+                    inner_w + pad * 2.0,
+                    (new_y - y_before + pad * 2.0).max(0.0),
+                );
+                let outline_color =
+                    ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
                 crate::paint::stroke_rounded_rect(
                     scene,
                     block,
-                    Radius::Sm.px(),
+                    Radius::Md.px(),
                     2.0,
                     outline_color,
                 );
             }
             y = paint_section_separator(scene, theme, inner_x, inner_w, new_y);
+            // The last increment is unused (no section after Card),
+            // but bumping unconditionally keeps the loop body
+            // uniform. Allow the warning here.
+            #[allow(unused_assignments)]
+            {
+                section_idx += 1;
+            }
         };
     }
     section!(paint_inputs_section, ids::INSP_SECTION_INPUTS);
@@ -743,58 +888,21 @@ pub fn paint_inspector(
     section!(paint_actions_section, ids::INSP_SECTION_ACTIONS);
     section!(paint_identity_section, ids::INSP_SECTION_IDENTITY);
     section!(paint_card_section, ids::INSP_SECTION_CARD);
-
-    // Notes appended via right-click "Create note" stack at the
-    // bottom of the inspector body. Each note paints as a
-    // colored-bg pill with dark text. Editability + per-note color
-    // picker land in the next round.
-    let notes = store.notes_for_panel(ids::INSP_PANEL);
-    if !notes.is_empty() {
-        let pad = 8.0_f32;
-        let note_h = 64.0_f32;
-        for note in notes {
-            let r = Rect::new(inner_x, y, inner_w, note_h);
-            let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
-                [note.color_idx.min(4) as usize];
-            let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
-            fill_rounded_rect(scene, r, Radius::Md.px(), bg);
-            // Dark text always (light highlighter bg makes Text1
-            // from dark themes invisible). Hardcode #212121.
-            let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF);
-            paint_text(
-                text_system,
-                scene,
-                &note.title,
-                r.x + pad,
-                r.y + pad,
-                TypeToken::Sm.px(),
-                r.w - pad * 2.0,
-                dark,
-            );
-            if !note.body.is_empty() {
-                paint_text(
-                    text_system,
-                    scene,
-                    &note.body,
-                    r.x + pad,
-                    r.y + pad + TypeToken::Sm.px() + 4.0,
-                    TypeToken::Xs.px(),
-                    r.w - pad * 2.0,
-                    dark,
-                );
-            }
-            y += note_h + 8.0;
-        }
+    // Trailing notes (those without an explicit anchor).
+    for (slot, note) in &trailing_notes {
+        paint_one_note(scene, text_system, hit_index, inner_x, inner_w, &mut y, note, *slot);
     }
 
-    // Publish the total content height for the wheel dispatch to
-    // clamp scroll offsets against. Each section advances `y` by
-    // its own height regardless of where it started, so the total
-    // painted height is simply `y_final - y_start` — DO NOT add
-    // `scroll_y` here (the previous version did and produced an
-    // ever-growing content_h that defeated the clamp).
+    // Publish the total content height + the EXACT visible body
+    // height for the wheel dispatch + hero clamp. visible_h must
+    // match the actual content viewport, not a rough panel.h - 60
+    // heuristic — the latter overestimated by ~20-30 px and
+    // prevented scrolling to reach the last note (user's
+    // "limite do scroll não se adaptou a nota nova").
     let content_h = (y - body_top_y).max(0.0);
     set_last_inspector_content_h(content_h);
+    set_last_inspector_visible_h((content_bottom - content_top).max(0.0));
+    LAST_SECTION_TOPS_Y.with(|t| *t.borrow_mut() = section_tops_y);
 
     // Second pass: open Dropdown popover paints on top of every
     // section that ran before it. We reconstruct the Dropdown
@@ -867,6 +975,60 @@ fn paint_collapsible_header(
         hit_index.register(color_id, circle_rect);
     }
     (y + SECTION_HEAD_H + 4.0, !is_collapsed)
+}
+
+/// Paint a single sticky-note inside the inspector body.
+/// Used by the inline "before each section" iterator + the
+/// "trailing notes" tail loop. Advances `y` past the note and
+/// registers a hit at the corresponding `NOTE_SLOT_IDS[slot]` so
+/// right-clicking the note opens its background-color menu.
+#[allow(clippy::too_many_arguments)]
+fn paint_one_note(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    x: f32,
+    w: f32,
+    y: &mut f32,
+    note: &NoteData,
+    slot: usize,
+) {
+    let pad = 8.0_f32;
+    let note_h = 64.0_f32;
+    let r = Rect::new(x, *y, w, note_h);
+    if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
+        hit_index.register(*slot_id, r);
+    }
+    let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
+        [note.color_idx.min(4) as usize];
+    let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+    fill_rounded_rect(scene, r, Radius::Md.px(), bg);
+    // Dark text always (light highlighter bg + dark theme `Text1`
+    // would be invisible). Hardcoded `#212121`.
+    let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF);
+    paint_text(
+        text_system,
+        scene,
+        &note.title,
+        r.x + pad,
+        r.y + pad,
+        TypeToken::Sm.px(),
+        r.w - pad * 2.0,
+        dark,
+    );
+    if !note.body.is_empty() {
+        paint_text(
+            text_system,
+            scene,
+            &note.body,
+            r.x + pad,
+            r.y + pad + TypeToken::Sm.px() + 4.0,
+            TypeToken::Xs.px(),
+            r.w - pad * 2.0,
+            dark,
+        );
+    }
+    *y += note_h + 8.0;
 }
 
 /// Discreet colored separator painted at the end of each section's

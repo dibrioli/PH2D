@@ -166,7 +166,29 @@ pub fn dispatch_pointer_with_text<'frame>(
                 let is_section = hit_id
                     .map(is_section_header_id)
                     .unwrap_or(false);
-                if is_section {
+                // Note slot hit (id range 800..811): right-click on a
+                // painted note opens the NoteBackground menu for that
+                // slot's index. The inspector painter publishes the
+                // slot→note-index mapping by always painting note
+                // `i` at `NOTE_SLOT_IDS[i]`, so slot id - 800 IS the
+                // note index.
+                let note_slot = hit_id.and_then(|id| {
+                    let v = id.0;
+                    if (800..=811).contains(&v) {
+                        Some((v - 800) as u8)
+                    } else {
+                        None
+                    }
+                });
+                if let Some(note_index) = note_slot
+                    && let Some(panel) = panel_under
+                {
+                    store.open_context_menu(super::ContextMenuRequest {
+                        x: event.x,
+                        y: event.y,
+                        kind: super::ContextMenuKind::NoteBackground { panel, note_index },
+                    });
+                } else if is_section {
                     let section_id = hit_id.unwrap();
                     store.open_context_menu(super::ContextMenuRequest {
                         x: event.x,
@@ -174,10 +196,16 @@ pub fn dispatch_pointer_with_text<'frame>(
                         kind: super::ContextMenuKind::SectionOutline { section: section_id },
                     });
                 } else if let Some(panel) = panel_under {
+                    // `before_section` is filled in by apply_event
+                    // — only the inspector knows the screen→body
+                    // conversion + section y-ranges.
                     store.open_context_menu(super::ContextMenuRequest {
                         x: event.x,
                         y: event.y,
-                        kind: super::ContextMenuKind::CreateNote { panel },
+                        kind: super::ContextMenuKind::CreateNote {
+                            panel,
+                            before_section: None,
+                        },
                     });
                 } else {
                     store.close_context_menu();
@@ -671,12 +699,16 @@ pub fn dispatch_wheel<'frame>(
         // last element pushes `next` arbitrarily high; the next
         // paint pass clamps it back, producing a 1-frame "jump"
         // (the user's "saltos indesejados se rodamos a roda no fim").
-        if let (Some(content_h), Some(panel_rect)) =
-            (store.panel_content_h(panel), store.panel_rect(panel))
-        {
-            // Approx header height = 60 px (matches inspector header).
-            // Subtract a bit more to leave room for the divider line.
-            let visible_h = (panel_rect.h - 60.0).max(0.0);
+        if let Some(content_h) = store.panel_content_h(panel) {
+            // Prefer the painter-published visible_h (exact body
+            // height); fall back to `panel.h - 60` only when the
+            // painter hasn't seeded one yet (first frame).
+            let visible_h = store.panel_visible_h(panel).unwrap_or_else(|| {
+                store
+                    .panel_rect(panel)
+                    .map(|r| (r.h - 60.0).max(0.0))
+                    .unwrap_or(0.0)
+            });
             let max_scroll = (content_h - visible_h).max(0.0);
             if next > max_scroll {
                 next = max_scroll;

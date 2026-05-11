@@ -108,6 +108,22 @@ pub const INSP_SECTION_ACTIONS_COLOR: NodeId = NodeId(367);
 pub const INSP_SECTION_IDENTITY_COLOR: NodeId = NodeId(368);
 pub const INSP_SECTION_CARD_COLOR: NodeId = NodeId(369);
 
+// Pre-allocated note hit-slot ids. Each note in `notes_per_panel`
+// gets one of these slots assigned by position. Right-clicking a
+// slot opens the `NoteBackground` context menu for that index.
+pub const INSP_NOTE_SLOT_0: NodeId = NodeId(800);
+pub const INSP_NOTE_SLOT_1: NodeId = NodeId(801);
+pub const INSP_NOTE_SLOT_2: NodeId = NodeId(802);
+pub const INSP_NOTE_SLOT_3: NodeId = NodeId(803);
+pub const INSP_NOTE_SLOT_4: NodeId = NodeId(804);
+pub const INSP_NOTE_SLOT_5: NodeId = NodeId(805);
+pub const INSP_NOTE_SLOT_6: NodeId = NodeId(806);
+pub const INSP_NOTE_SLOT_7: NodeId = NodeId(807);
+pub const INSP_NOTE_SLOT_8: NodeId = NodeId(808);
+pub const INSP_NOTE_SLOT_9: NodeId = NodeId(809);
+pub const INSP_NOTE_SLOT_10: NodeId = NodeId(810);
+pub const INSP_NOTE_SLOT_11: NodeId = NodeId(811);
+
 // ── Context menu item ids ──────────────────────────────────────────────────
 // The right-click context menu reuses these stable ids across both
 // inspector and hierarchy. Click dispatch routes by id to the

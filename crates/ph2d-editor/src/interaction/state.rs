@@ -287,6 +287,10 @@ pub struct WidgetStore {
     /// produces a one-frame "jump" as the next paint clamps the
     /// over-scroll back.
     panel_content_h: BTreeMap<NodeId, f32>,
+    /// Exact visible body height per panel, also painter-published.
+    /// Pairs with `panel_content_h` so `dispatch_wheel` can compute
+    /// `max_scroll = content_h - visible_h` precisely (no heuristic).
+    panel_visible_h: BTreeMap<NodeId, f32>,
     /// Tooltip text per widget id. Read by `paint_hover_tooltip`
     /// when the user hovers over a registered widget. Populated by
     /// `populate` / paint passes via `set_tooltip`. Replaces the old
@@ -344,6 +348,12 @@ pub struct NoteData {
     pub title: String,
     /// Note body (multi-line).
     pub body: String,
+    /// Inspector-section index this note should appear ABOVE.
+    /// `Some(i)` means "paint this note just before
+    /// `SECTION_IDS[i]`"; `None` appends at the bottom (the legacy
+    /// fallback for notes created via context menu hitting the
+    /// empty area below all sections).
+    pub before_section: Option<u8>,
 }
 
 /// Where + why a right-click opened a context menu. Painted as a
@@ -362,12 +372,18 @@ pub struct ContextMenuRequest {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ContextMenuKind {
-    /// Right-clicked on an empty area of a panel. Menu offers
-    /// "Create note" — the new note is parented to `panel`.
-    CreateNote { panel: NodeId },
+    /// Right-clicked inside a panel. Menu offers "Create note" —
+    /// the new note is parented to `panel`. `before_section`, when
+    /// `Some(i)`, anchors the new note above `SECTION_IDS[i]`
+    /// (computed at right-click time from the cursor y).
+    CreateNote { panel: NodeId, before_section: Option<u8> },
     /// Right-clicked on a section header. Menu offers 5 highlight
     /// outline colors for the section.
     SectionOutline { section: NodeId },
+    /// Right-clicked on an existing note. Menu offers 5 highlight
+    /// background colors. `panel` is the note's host; `note_index`
+    /// is the index into `notes_per_panel[panel]`.
+    NoteBackground { panel: NodeId, note_index: u8 },
 }
 
 impl WidgetStore {
@@ -395,6 +411,7 @@ impl WidgetStore {
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
             panel_content_h: BTreeMap::new(),
+            panel_visible_h: BTreeMap::new(),
             tooltips: BTreeMap::new(),
             collapsed: BTreeMap::new(),
             context_menu: None,
@@ -699,6 +716,18 @@ impl WidgetStore {
         self.panel_content_h.get(&panel).copied()
     }
 
+    /// Set the exact visible body height for a panel. Painters
+    /// publish this each frame; `dispatch_wheel` uses it (instead
+    /// of a `panel.h - 60` heuristic) to compute `max_scroll`.
+    pub fn set_panel_visible_h(&mut self, panel: NodeId, visible_h: f32) {
+        self.panel_visible_h.insert(panel, visible_h);
+    }
+
+    /// Read the visible body height for a panel.
+    pub fn panel_visible_h(&self, panel: NodeId) -> Option<f32> {
+        self.panel_visible_h.get(&panel).copied()
+    }
+
     /// Find the panel whose rect contains `(x, y)`. Walks all
     /// registered panels and returns the first match. Acceptable
     /// because there are only a handful of panels (~3-5); for
@@ -846,9 +875,12 @@ impl WidgetStore {
         self.widget_colors.insert(id, rgba);
     }
 
-    /// Append a new note with the given color index to the panel's
-    /// note list. Cap at 12 notes per panel to keep paint bounded.
-    pub fn notes_push(&mut self, panel: NodeId, color_idx: u8) {
+    /// Append a new note with the given color index + section
+    /// anchor to the panel's note list. Cap at 12 notes per panel
+    /// to keep paint bounded. `before_section: Some(i)` makes the
+    /// painter slot the note immediately above `SECTION_IDS[i]`;
+    /// `None` appends at the bottom.
+    pub fn notes_push(&mut self, panel: NodeId, color_idx: u8, before_section: Option<u8>) {
         const CAP: usize = 12;
         let list = self.notes_per_panel.entry(panel).or_default();
         if list.len() >= CAP {
@@ -858,7 +890,17 @@ impl WidgetStore {
             color_idx,
             title: format!("Note {}", list.len() + 1),
             body: String::new(),
+            before_section,
         });
+    }
+
+    /// Update an existing note's color index.
+    pub fn note_set_color(&mut self, panel: NodeId, index: usize, color_idx: u8) {
+        if let Some(list) = self.notes_per_panel.get_mut(&panel)
+            && let Some(note) = list.get_mut(index)
+        {
+            note.color_idx = color_idx.min(4);
+        }
     }
 
     /// Append `color` to the BlenderPicker's palette. No-op if the

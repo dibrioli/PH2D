@@ -328,8 +328,11 @@ pub fn paint_hero_screen(
     // overshooting (e.g. after collapsing a section).
     {
         let content_h = inspector::last_inspector_content_h();
+        let visible_h = inspector::last_inspector_visible_h();
         hero.store.set_panel_content_h(ids::INSP_PANEL, content_h);
-        let visible_h = (layout.inspector.h - 60.0).max(0.0);
+        // Publish visible_h too so dispatch_wheel can clamp on the
+        // exact viewport instead of an approximate panel.h - 60.
+        hero.store.set_panel_visible_h(ids::INSP_PANEL, visible_h);
         let max_scroll = (content_h - visible_h).max(0.0);
         let cur = hero.store.panel_scroll(ids::INSP_PANEL);
         if cur > max_scroll {

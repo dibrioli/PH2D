@@ -61,6 +61,17 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_OUTLINE_3, "Blue", Some(HIGHLIGHTER_RGBA[3])),
             (ids::CTX_MENU_OUTLINE_4, "Orange", Some(HIGHLIGHTER_RGBA[4])),
         ],
+        // Right-clicked on a note: 5 background-color options
+        // (reuses the outline color slot ids; apply_event branches
+        // on `last_context_menu.kind` to decide whether to set the
+        // section outline or the note bg).
+        ContextMenuKind::NoteBackground { .. } => &[
+            (ids::CTX_MENU_OUTLINE_0, "Yellow", Some(HIGHLIGHTER_RGBA[0])),
+            (ids::CTX_MENU_OUTLINE_1, "Pink", Some(HIGHLIGHTER_RGBA[1])),
+            (ids::CTX_MENU_OUTLINE_2, "Green", Some(HIGHLIGHTER_RGBA[2])),
+            (ids::CTX_MENU_OUTLINE_3, "Blue", Some(HIGHLIGHTER_RGBA[3])),
+            (ids::CTX_MENU_OUTLINE_4, "Orange", Some(HIGHLIGHTER_RGBA[4])),
+        ],
     };
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
     let rect = Rect::new(req.x, req.y, MENU_W, total_h);

@@ -366,6 +366,10 @@ pub struct WidgetStore {
     /// order. Mutated by drag-and-drop (`Down + Move > threshold +
     /// Up`) to reorder rows.
     hierarchy_order: Vec<NodeId>,
+    /// Parent map for tree-style hierarchy. `child → parent`; absent
+    /// entries are roots. Mutated by drop-inside DnD; consumed by the
+    /// painter to indent rows by depth.
+    hierarchy_parent: BTreeMap<NodeId, NodeId>,
     /// In-progress hierarchy drag. `Some` when a Primary Down landed
     /// on a hierarchy row and the cursor has moved past the drag
     /// threshold; cleared on Up (with reorder applied) or on Up at
@@ -500,6 +504,7 @@ impl WidgetStore {
             scrollbar_drag: None,
             radius_scale: 1.0,
             hierarchy_order: Vec::new(),
+            hierarchy_parent: BTreeMap::new(),
             hierarchy_drag: None,
         }
     }
@@ -1087,6 +1092,68 @@ impl WidgetStore {
         self.hierarchy_drag.take()
     }
 
+    /// Parent NodeId of `child` if it's been re-parented via DnD;
+    /// `None` for root rows.
+    pub fn hierarchy_parent_of(&self, child: NodeId) -> Option<NodeId> {
+        self.hierarchy_parent.get(&child).copied()
+    }
+
+    /// Depth in the parent tree (0 = root). Capped at 32 levels as
+    /// a cycle guard — re-parent operations already reject cycles,
+    /// so the cap should be unreachable in practice.
+    pub fn hierarchy_depth_of(&self, id: NodeId) -> u32 {
+        let mut depth = 0u32;
+        let mut cur = id;
+        for _ in 0..32 {
+            match self.hierarchy_parent.get(&cur).copied() {
+                Some(p) => {
+                    depth += 1;
+                    cur = p;
+                }
+                None => return depth,
+            }
+        }
+        depth
+    }
+
+    /// True if `candidate` is a (strict or non-strict) descendant of
+    /// `ancestor`. Used to reject DnD operations that would create a
+    /// cycle (you can't drop a parent inside its own child).
+    pub fn hierarchy_is_descendant_of(&self, candidate: NodeId, ancestor: NodeId) -> bool {
+        if candidate == ancestor {
+            return true;
+        }
+        let mut cur = candidate;
+        for _ in 0..32 {
+            match self.hierarchy_parent.get(&cur).copied() {
+                Some(p) if p == ancestor => return true,
+                Some(p) => cur = p,
+                None => return false,
+            }
+        }
+        false
+    }
+
+    /// Re-parent `child` under `parent`. Pass `None` to detach the
+    /// child to the root level. Returns `false` (no change) when the
+    /// operation would create a cycle (parent is a descendant of
+    /// child).
+    pub fn hierarchy_set_parent(&mut self, child: NodeId, parent: Option<NodeId>) -> bool {
+        match parent {
+            None => {
+                self.hierarchy_parent.remove(&child);
+                true
+            }
+            Some(p) => {
+                if p == child || self.hierarchy_is_descendant_of(p, child) {
+                    return false;
+                }
+                self.hierarchy_parent.insert(child, p);
+                true
+            }
+        }
+    }
+
     /// Append a new note with the given color index + section
     /// anchor to the panel's note list. Cap at 12 notes per panel
     /// to keep paint bounded. `before_section: Some(i)` makes the
@@ -1435,5 +1502,41 @@ mod tests {
         let (st, v) = store.slider(NodeId(1)).unwrap();
         assert_eq!(st, SliderState::Normal);
         assert!((v - 0.42).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn hierarchy_parent_round_trip_and_depth() {
+        let mut store = WidgetStore::with_capacity(4);
+        assert_eq!(store.hierarchy_depth_of(NodeId(10)), 0);
+        assert!(store.hierarchy_set_parent(NodeId(11), Some(NodeId(10))));
+        assert!(store.hierarchy_set_parent(NodeId(12), Some(NodeId(11))));
+        assert_eq!(store.hierarchy_parent_of(NodeId(11)), Some(NodeId(10)));
+        assert_eq!(store.hierarchy_parent_of(NodeId(12)), Some(NodeId(11)));
+        assert_eq!(store.hierarchy_depth_of(NodeId(10)), 0);
+        assert_eq!(store.hierarchy_depth_of(NodeId(11)), 1);
+        assert_eq!(store.hierarchy_depth_of(NodeId(12)), 2);
+    }
+
+    #[test]
+    fn hierarchy_set_parent_rejects_cycles() {
+        let mut store = WidgetStore::with_capacity(4);
+        // Build: 12 → 11 → 10 (12 is grandchild of 10)
+        store.hierarchy_set_parent(NodeId(11), Some(NodeId(10)));
+        store.hierarchy_set_parent(NodeId(12), Some(NodeId(11)));
+        // Attempt to parent 10 under 12 (a descendant) → rejected.
+        assert!(!store.hierarchy_set_parent(NodeId(10), Some(NodeId(12))));
+        assert_eq!(store.hierarchy_parent_of(NodeId(10)), None);
+        // Self-parent is also rejected.
+        assert!(!store.hierarchy_set_parent(NodeId(11), Some(NodeId(11))));
+    }
+
+    #[test]
+    fn hierarchy_set_parent_none_detaches() {
+        let mut store = WidgetStore::with_capacity(4);
+        store.hierarchy_set_parent(NodeId(11), Some(NodeId(10)));
+        assert_eq!(store.hierarchy_depth_of(NodeId(11)), 1);
+        assert!(store.hierarchy_set_parent(NodeId(11), None));
+        assert_eq!(store.hierarchy_parent_of(NodeId(11)), None);
+        assert_eq!(store.hierarchy_depth_of(NodeId(11)), 0);
     }
 }

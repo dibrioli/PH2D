@@ -176,7 +176,10 @@ pub fn paint_hierarchy(
         .collect();
     let order = store.hierarchy_order();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
-    // First pass: paint rows + register hit zones.
+    // First pass: paint rows + register hit zones. Rows indent
+    // horizontally by `depth × INDENT_PX` to make tree structure
+    // visible after a drop-inside DnD.
+    const INDENT_PX: f32 = 16.0;
     let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> =
         Vec::with_capacity(order.len());
     for id in order {
@@ -184,7 +187,14 @@ pub fn paint_hierarchy(
             continue;
         };
         let mut entity = entity_template.clone();
-        let row_rect = Rect::new(rect.x + body_pad, y, row_w, HIER_ROW_H);
+        let depth = store.hierarchy_depth_of(*id);
+        let indent = (depth as f32) * INDENT_PX;
+        let row_rect = Rect::new(
+            rect.x + body_pad + indent,
+            y,
+            (row_w - indent).max(80.0),
+            HIER_ROW_H,
+        );
         if let Some(ref sel_label) = selected_label {
             entity.selected = entity.name == *sel_label;
         }
@@ -196,32 +206,54 @@ pub fn paint_hierarchy(
         row_rects.push((*id, row_rect));
         y += HIER_ROW_H + 2.0;
     }
-    // Second pass: drop indicator while dragging — a 2 px Accent
-    // line above the row under the cursor (or below the last row
-    // when the cursor is past the bottom).
+    // Second pass: drop indicator while dragging. Three drop modes:
+    //   - top 30% of a row → 2px Accent line ABOVE it (sibling)
+    //   - middle 40% of a row → Accent stroke around the row (inside)
+    //   - bottom 30% → falls through to the next row's "above"
     if let Some(d) = dragging {
-        let mut target_y = y; // append at the end by default
-        for (id, rect) in &row_rects {
+        let mut drew = false;
+        for (id, rrect) in &row_rects {
             if *id == d.dragged {
                 continue;
             }
-            if d.cursor_y < rect.y + rect.h * 0.5 {
-                target_y = rect.y;
+            let top = rrect.y;
+            let bot = rrect.y + rrect.h;
+            let inside_top = top + rrect.h * 0.3;
+            let inside_bot = top + rrect.h * 0.7;
+            if d.cursor_y < inside_top {
+                let indicator = Rect::new(rrect.x, rrect.y - 1.0, rrect.w, 2.0);
+                crate::paint::fill_rounded_rect(
+                    scene,
+                    indicator,
+                    1.0,
+                    resolve(ColorToken::Accent, theme),
+                );
+                drew = true;
                 break;
+            } else if d.cursor_y < inside_bot {
+                crate::paint::stroke_rounded_rect(
+                    scene,
+                    *rrect,
+                    6.0,
+                    2.0,
+                    resolve(ColorToken::Accent, theme),
+                );
+                drew = true;
+                break;
+            } else if d.cursor_y < bot {
+                continue;
             }
         }
-        let indicator = Rect::new(
-            rect.x + body_pad,
-            target_y - 1.0,
-            row_w,
-            2.0,
-        );
-        crate::paint::fill_rounded_rect(
-            scene,
-            indicator,
-            1.0,
-            resolve(ColorToken::Accent, theme),
-        );
+        if !drew {
+            // Past the last row — append at the end indicator.
+            let indicator = Rect::new(rect.x + body_pad, y - 1.0, row_w, 2.0);
+            crate::paint::fill_rounded_rect(
+                scene,
+                indicator,
+                1.0,
+                resolve(ColorToken::Accent, theme),
+            );
+        }
     }
     scene.pop_layer();
     // Publish total content height for `dispatch_wheel` clamp.

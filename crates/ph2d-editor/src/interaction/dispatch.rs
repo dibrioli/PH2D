@@ -468,8 +468,32 @@ pub fn dispatch_pointer_with_text<'frame>(
             if let Some(drag) = store.end_hierarchy_drag()
                 && drag.active
             {
-                let target = find_hierarchy_drop_target(store, hit_index, event.y, drag.dragged);
-                store.hierarchy_move(drag.dragged, target);
+                match find_hierarchy_drop(hit_index, event.y, drag.dragged) {
+                    HierDrop::Before(t) => {
+                        store.hierarchy_move(drag.dragged, Some(t));
+                        // Inherit the target's parent so siblings
+                        // stay siblings after a reorder.
+                        let new_parent = store.hierarchy_parent_of(t);
+                        let _ = store.hierarchy_set_parent(drag.dragged, new_parent);
+                    }
+                    HierDrop::Inside(t) => {
+                        if store.hierarchy_set_parent(drag.dragged, Some(t)) {
+                            // Move dragged immediately after target
+                            // in the order list so the child sits
+                            // visually next to its new parent.
+                            let order = store.hierarchy_order();
+                            let after_idx = order.iter().position(|i| *i == t);
+                            if let Some(idx) = after_idx {
+                                let next_id = order.get(idx + 1).copied();
+                                store.hierarchy_move(drag.dragged, next_id);
+                            }
+                        }
+                    }
+                    HierDrop::End => {
+                        store.hierarchy_move(drag.dragged, None);
+                        let _ = store.hierarchy_set_parent(drag.dragged, None);
+                    }
+                }
             }
             if let Some(active) = store.active_id() {
                 // "still_hot" is whether the pointer is still inside
@@ -1014,19 +1038,30 @@ fn is_hierarchy_entity_id(id: ph2d_a11y::NodeId) -> bool {
     (400..=411).contains(&v)
 }
 
-/// Find the hierarchy row whose top half the cursor y currently
-/// hovers over. The reorder semantics: dropped row lands JUST
-/// BEFORE the returned id; `None` = "drop at the end of the list".
-/// Skips the dragged row itself (can't drop a row above itself).
-fn find_hierarchy_drop_target(
-    _store: &WidgetStore,
+/// Drop kind resolved at the end of a hierarchy DnD: a sibling
+/// insertion (above the given row, or at the very end of the list),
+/// or a re-parent inside the given row.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum HierDrop {
+    /// Drop dragged just before this row as a sibling.
+    Before(ph2d_a11y::NodeId),
+    /// Drop dragged as a child of this row.
+    Inside(ph2d_a11y::NodeId),
+    /// Drop at the very bottom (root level, end of list).
+    End,
+}
+
+/// Resolve the drop position for a hierarchy DnD using cursor y vs
+/// each row rect. The row is split into three bands:
+///   - top 30% → drop above this row (sibling)
+///   - middle 40% → drop inside this row (child)
+///   - bottom 30% → continue scanning (drop below this row)
+/// When no row is hit, returns `End`. Skips the dragged row itself.
+fn find_hierarchy_drop(
     hit_index: &HitIndex,
     cursor_y: f32,
     dragged: ph2d_a11y::NodeId,
-) -> Option<ph2d_a11y::NodeId> {
-    // Walk the hit_index entries in registration order (each row
-    // was registered in display order). Pick the first whose
-    // mid-y is below the cursor y — that's "drop above this one".
+) -> HierDrop {
     for (id, rect) in hit_index.iter_registrations() {
         if !is_hierarchy_entity_id(id) {
             continue;
@@ -1034,11 +1069,22 @@ fn find_hierarchy_drop_target(
         if id == dragged {
             continue;
         }
-        if cursor_y < rect.y + rect.h * 0.5 {
-            return Some(id);
+        let top = rect.y;
+        let bot = rect.y + rect.h;
+        let inside_top = top + rect.h * 0.3;
+        let inside_bot = top + rect.h * 0.7;
+        if cursor_y < inside_top {
+            return HierDrop::Before(id);
+        } else if cursor_y < inside_bot {
+            return HierDrop::Inside(id);
+        } else if cursor_y < bot {
+            // Continue: bottom band of this row falls through so the
+            // next iteration may resolve as Before(next) — feels more
+            // natural at the seam between rows.
+            continue;
         }
     }
-    None
+    HierDrop::End
 }
 
 /// Maps a scrollbar thumb's hit id back to the panel it scrolls.

@@ -44,6 +44,24 @@ pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Th
     fill_rounded_rect(scene, handle, 999.0, resolve(ColorToken::BorderEmph, theme));
 }
 
+/// Three diagonal pips inside `rect` for a panel's bottom-right
+/// resize gripper. Conventional UI affordance.
+pub(super) fn paint_resize_gripper(scene: &mut VectorScene, rect: Rect, theme: Theme) {
+    let color = resolve(ColorToken::BorderEmph, theme);
+    let pip_size = 2.0;
+    let pip_radius = 1.0;
+    for i in 0..3 {
+        let offset = 3.0 + i as f32 * 4.0;
+        let r = Rect::new(
+            rect.x + rect.w - offset - pip_size,
+            rect.y + rect.h - offset - pip_size,
+            pip_size,
+            pip_size,
+        );
+        fill_rounded_rect(scene, r, pip_radius, color);
+    }
+}
+
 /// Pick a chrome icon's foreground tint based on its interactive
 /// state. Used by TopBar single-icon clusters and the LeftRail tools.
 pub(super) fn icon_button_fg(state: ButtonState) -> ColorToken {

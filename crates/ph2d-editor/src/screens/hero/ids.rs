@@ -43,8 +43,13 @@ pub const INSP_PANEL: NodeId = NodeId(371);
 /// DragHandle }` so the existing picker-drag dispatch infra
 /// (panel-agnostic on parent NodeId) drives it.
 pub const INSP_DRAG_HANDLE: NodeId = NodeId(372);
+/// Resize gripper at the Inspector's bottom-right corner. Registered
+/// as `BlenderHit { parent: INSP_PANEL, kind: ResizeHandle }`.
+pub const INSP_RESIZE_HANDLE: NodeId = NodeId(373);
 /// Drag handle at the top of the Hierarchy.
 pub const HIER_DRAG_HANDLE: NodeId = NodeId(398);
+/// Resize gripper at the Hierarchy's bottom-right corner.
+pub const HIER_RESIZE_HANDLE: NodeId = NodeId(397);
 
 // ── Inspector widget samples ───────────────────────────────────────────────
 // One of each canonical widget, parented to the Inspector panel.

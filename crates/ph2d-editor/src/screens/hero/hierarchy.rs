@@ -4,7 +4,7 @@ use super::HeroLayout;
 use super::HeroSelection;
 use super::fixture;
 use super::ids;
-use super::style::{HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_surface};
+use super::style::{HIER_ROW_H, PANEL_HEAD_PAD, paint_panel_surface, paint_resize_gripper};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
@@ -84,6 +84,9 @@ pub fn paint_hierarchy(
         14.0,
     );
     hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
+    let resize_handle_rect = Rect::new(rect.x + rect.w - 16.0, rect.y + rect.h - 16.0, 16.0, 16.0);
+    hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
+    paint_resize_gripper(scene, resize_handle_rect, theme);
 
     let title_y = rect.y + 18.0;
     paint_text(

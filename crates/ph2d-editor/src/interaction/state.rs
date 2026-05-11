@@ -49,6 +49,9 @@ pub enum BlenderHitKind {
     /// Drag handle bar at the top of the picker — Down begins a
     /// drag, Move updates the picker offset, Up ends it.
     DragHandle,
+    /// Bottom-right resize gripper. Down begins a resize; Move
+    /// adjusts the parent's stored `(dw, dh)`; Up ends it.
+    ResizeHandle,
 }
 
 use crate::widget::{
@@ -263,6 +266,14 @@ pub struct WidgetStore {
     /// events compute `new_offset = offset_at_down + (cursor − down_cursor)`.
     /// Cleared on pointer Up.
     blender_drag_anchor: Option<(NodeId, f32, f32, f32, f32)>,
+    /// Per-panel manual resize delta (dw, dh) applied on top of the
+    /// layout's base width/height. Mutated by dragging the bottom-
+    /// right resize gripper.
+    panel_resize_delta: BTreeMap<NodeId, (f32, f32)>,
+    /// In-progress panel resize: (parent_id, last_cursor_x,
+    /// last_cursor_y). Move events apply (cursor − last) to the
+    /// stored `panel_resize_delta`, then re-anchor.
+    panel_resize_anchor: Option<(NodeId, f32, f32)>,
     /// Eyedropper pending: when Some(parent), the next pointer Down
     /// (anywhere except on the eyedropper button itself) is intercepted
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
@@ -471,6 +482,8 @@ impl WidgetStore {
             blender_palettes: BTreeMap::new(),
             blender_picker_offset: BTreeMap::new(),
             blender_drag_anchor: None,
+            panel_resize_delta: BTreeMap::new(),
+            panel_resize_anchor: None,
             eyedropper_pending: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
@@ -744,6 +757,37 @@ impl WidgetStore {
 
     pub fn end_blender_drag(&mut self) {
         self.blender_drag_anchor = None;
+    }
+
+    /// Read the manual-resize delta `(dw, dh)` for a panel. Defaults
+    /// to `(0, 0)` if no resize has happened.
+    pub fn panel_resize_delta(&self, panel: NodeId) -> (f32, f32) {
+        self.panel_resize_delta
+            .get(&panel)
+            .copied()
+            .unwrap_or((0.0, 0.0))
+    }
+
+    pub fn set_panel_resize_delta(&mut self, panel: NodeId, dw: f32, dh: f32) {
+        self.panel_resize_delta.insert(panel, (dw, dh));
+    }
+
+    pub fn begin_panel_resize(&mut self, panel: NodeId, cursor_x: f32, cursor_y: f32) {
+        self.panel_resize_anchor = Some((panel, cursor_x, cursor_y));
+    }
+
+    pub fn panel_resize_anchor(&self) -> Option<(NodeId, f32, f32)> {
+        self.panel_resize_anchor
+    }
+
+    pub fn update_panel_resize_cursor(&mut self, cursor_x: f32, cursor_y: f32) {
+        if let Some((panel, _, _)) = self.panel_resize_anchor {
+            self.panel_resize_anchor = Some((panel, cursor_x, cursor_y));
+        }
+    }
+
+    pub fn end_panel_resize(&mut self) {
+        self.panel_resize_anchor = None;
     }
 
     pub fn eyedropper_pending(&self) -> Option<NodeId> {

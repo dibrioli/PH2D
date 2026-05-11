@@ -101,6 +101,18 @@ pub fn dispatch_pointer_with_text<'frame>(
                 store.set_blender_picker_offset(parent, new_off_x, new_off_y);
                 store.update_blender_drag_cursor(event.x, event.y);
             }
+            // Panel manual resize — same incremental model. Each Move
+            // applies (cursor − last_cursor) to the panel's stored
+            // resize delta, then re-anchors so the next clamp happens
+            // against current state. The painter clamps to (MIN_W,
+            // MIN_H) and viewport bounds.
+            if let Some((panel, last_x, last_y)) = store.panel_resize_anchor() {
+                let (cur_dw, cur_dh) = store.panel_resize_delta(panel);
+                let new_dw = cur_dw + (event.x - last_x);
+                let new_dh = cur_dh + (event.y - last_y);
+                store.set_panel_resize_delta(panel, new_dw, new_dh);
+                store.update_panel_resize_cursor(event.x, event.y);
+            }
             // Scrollbar drag — translate the cursor's y-delta into
             // a `panel_scroll` delta via `widget::scrollbar::
             // delta_for_drag`. Snapshot of metrics taken at Down so
@@ -444,6 +456,8 @@ pub fn dispatch_pointer_with_text<'frame>(
             // Picker drag ends on Up — clear the anchor so a stray
             // Move after release doesn't drag the picker further.
             store.end_blender_drag();
+            // Panel-resize drag also ends on Up.
+            store.end_panel_resize();
             // Same for scrollbar drag.
             store.end_scrollbar_drag();
             // Hierarchy drag ends on Up. If the drag was active
@@ -2013,6 +2027,13 @@ fn apply_blender_hit(
             // offset so Move events can apply (cursor − down_cursor)
             // as the new delta. Up clears the anchor.
             store.begin_blender_drag(parent, px, py);
+            None
+        }
+        BlenderHitKind::ResizeHandle => {
+            // Down on the bottom-right gripper — anchor the cursor so
+            // subsequent Moves apply incremental delta to the panel's
+            // stored (dw, dh). Up clears the anchor.
+            store.begin_panel_resize(parent, px, py);
             None
         }
     }

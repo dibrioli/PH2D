@@ -340,41 +340,90 @@ pub fn paint_hero_screen(
     // subsequent drag-begins capture the visible offset rather than
     // an accumulated raw value — eliminates the "rubber band" the
     // user perceived as discrete jumps when reversing direction.
+    const MIN_W: f32 = 220.0;
     const MIN_H: f32 = 120.0;
-    let clamp_offset = |base: Rect, off: (f32, f32), viewport: Rect| -> (Rect, (f32, f32)) {
+    // `resize` lets the user manually grow/shrink the panel via the
+    // bottom-right gripper (state `panel_resize_delta`). Manual size
+    // is computed FIRST so the auto-shrink-on-drag-down logic below
+    // sees the user's chosen base height.
+    let clamp_panel = |base: Rect,
+                       off: (f32, f32),
+                       resize: (f32, f32),
+                       viewport: Rect|
+     -> (Rect, (f32, f32), (f32, f32)) {
+        let raw_w = (base.w + resize.0).max(MIN_W);
+        let raw_h = (base.h + resize.1).max(MIN_H);
+        let max_w = (viewport.w * 0.7).max(MIN_W);
+        let new_w = raw_w.min(max_w);
+        let new_h_user = raw_h.min(viewport.h.max(MIN_H));
+        let clamped_dw = new_w - base.w;
+        let clamped_dh = new_h_user - base.h;
+
         let max_x = (viewport.x + viewport.w - 60.0) - base.x;
-        let min_x = (viewport.x + 60.0) - (base.x + base.w);
+        let min_x = (viewport.x + 60.0) - (base.x + new_w);
         let max_bottom = viewport.y + viewport.h - 8.0;
         let min_y = viewport.y - base.y;
         let max_y = (max_bottom - MIN_H) - base.y;
         let dx = off.0.clamp(min_x, max_x);
         let dy = off.1.clamp(min_y.min(max_y), max_y);
         let new_y = base.y + dy;
-        let natural_bottom = new_y + base.h;
-        let new_h = if natural_bottom > max_bottom {
+        let natural_bottom = new_y + new_h_user;
+        let final_h = if natural_bottom > max_bottom {
             (max_bottom - new_y).max(MIN_H)
         } else {
-            base.h
+            new_h_user
         };
-        (Rect::new(base.x + dx, new_y, base.w, new_h), (dx, dy))
+        (
+            Rect::new(base.x + dx, new_y, new_w, final_h),
+            (dx, dy),
+            (clamped_dw, clamped_dh),
+        )
     };
     let insp_off = hero.store.blender_picker_offset(ids::INSP_PANEL);
     let hier_off = hero.store.blender_picker_offset(ids::HIER_PANEL);
-    let (insp_rect, insp_clamped) = clamp_offset(layout.inspector, insp_off, viewport);
-    let (hier_rect, hier_clamped) = clamp_offset(layout.hierarchy, hier_off, viewport);
+    let insp_resize = hero.store.panel_resize_delta(ids::INSP_PANEL);
+    let hier_resize = hero.store.panel_resize_delta(ids::HIER_PANEL);
+    let (insp_rect, insp_clamped_off, insp_clamped_resize) =
+        clamp_panel(layout.inspector, insp_off, insp_resize, viewport);
+    let (hier_rect, hier_clamped_off, hier_clamped_resize) =
+        clamp_panel(layout.hierarchy, hier_off, hier_resize, viewport);
     layout.inspector = insp_rect;
     layout.hierarchy = hier_rect;
-    if (insp_clamped.0 - insp_off.0).abs() > f32::EPSILON
-        || (insp_clamped.1 - insp_off.1).abs() > f32::EPSILON
+    if (insp_clamped_off.0 - insp_off.0).abs() > f32::EPSILON
+        || (insp_clamped_off.1 - insp_off.1).abs() > f32::EPSILON
     {
-        hero.store
-            .set_blender_picker_offset(ids::INSP_PANEL, insp_clamped.0, insp_clamped.1);
+        hero.store.set_blender_picker_offset(
+            ids::INSP_PANEL,
+            insp_clamped_off.0,
+            insp_clamped_off.1,
+        );
     }
-    if (hier_clamped.0 - hier_off.0).abs() > f32::EPSILON
-        || (hier_clamped.1 - hier_off.1).abs() > f32::EPSILON
+    if (hier_clamped_off.0 - hier_off.0).abs() > f32::EPSILON
+        || (hier_clamped_off.1 - hier_off.1).abs() > f32::EPSILON
     {
-        hero.store
-            .set_blender_picker_offset(ids::HIER_PANEL, hier_clamped.0, hier_clamped.1);
+        hero.store.set_blender_picker_offset(
+            ids::HIER_PANEL,
+            hier_clamped_off.0,
+            hier_clamped_off.1,
+        );
+    }
+    if (insp_clamped_resize.0 - insp_resize.0).abs() > f32::EPSILON
+        || (insp_clamped_resize.1 - insp_resize.1).abs() > f32::EPSILON
+    {
+        hero.store.set_panel_resize_delta(
+            ids::INSP_PANEL,
+            insp_clamped_resize.0,
+            insp_clamped_resize.1,
+        );
+    }
+    if (hier_clamped_resize.0 - hier_resize.0).abs() > f32::EPSILON
+        || (hier_clamped_resize.1 - hier_resize.1).abs() > f32::EPSILON
+    {
+        hero.store.set_panel_resize_delta(
+            ids::HIER_PANEL,
+            hier_clamped_resize.0,
+            hier_clamped_resize.1,
+        );
     }
     hero.hit_index.clear_for_frame();
 

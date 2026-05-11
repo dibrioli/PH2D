@@ -21,7 +21,7 @@
 use super::HeroLayout;
 use super::HeroSelection;
 use super::ids;
-use super::style::{PANEL_HEAD_PAD, paint_panel_surface};
+use super::style::{PANEL_HEAD_PAD, paint_panel_surface, paint_resize_gripper};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
@@ -681,6 +681,20 @@ fn populate_samples(store: &mut WidgetStore) {
             kind: crate::interaction::BlenderHitKind::DragHandle,
         },
     );
+    store.register(
+        ids::INSP_RESIZE_HANDLE,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_PANEL,
+            kind: crate::interaction::BlenderHitKind::ResizeHandle,
+        },
+    );
+    store.register(
+        ids::HIER_RESIZE_HANDLE,
+        InteractiveState::BlenderHit {
+            parent: ids::HIER_PANEL,
+            kind: crate::interaction::BlenderHitKind::ResizeHandle,
+        },
+    );
 
     // Per-widget tooltips so the generic registry shows hints when
     // the user hovers. Demonstrates the §9.8 lesson in practice.
@@ -875,6 +889,11 @@ pub fn paint_inspector(
         14.0,
     );
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
+    // Bottom-right manual resize gripper (16 × 16 hit zone). Painted
+    // later under the scrollbar so it sits on top.
+    let resize_handle_rect = Rect::new(rect.x + rect.w - 16.0, rect.y + rect.h - 16.0, 16.0, 16.0);
+    hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
+    paint_resize_gripper(scene, resize_handle_rect, theme);
 
     // Header: title + subtitle + divider line.
     let title = selection

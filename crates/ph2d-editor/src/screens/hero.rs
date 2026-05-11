@@ -248,6 +248,41 @@ impl HeroScreen {
     /// `apply_event` in z-order; first region that consumes the
     /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
+        // Theme + radius selector from the TopBar theme menu —
+        // intercepted at the Hero level because `self.theme` lives
+        // here, not on the WidgetStore.
+        if let WidgetEvent::Click(id) = event {
+            let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
+                Some(Theme::ForgeSdf)
+            } else if id == ids::CTX_MENU_THEME_PAINT {
+                Some(Theme::PaintStudio)
+            } else if id == ids::CTX_MENU_THEME_SUNSTONE {
+                Some(Theme::Sunstone)
+            } else if id == ids::CTX_MENU_THEME_BLUEPRINT {
+                Some(Theme::Blueprint)
+            } else {
+                None
+            };
+            if let Some(t) = new_theme {
+                self.theme = t;
+                self.store.close_context_menu();
+                return true;
+            }
+            let new_radius_scale = if id == ids::CTX_MENU_RADIUS_SHARP {
+                Some(0.2_f32)
+            } else if id == ids::CTX_MENU_RADIUS_DEFAULT {
+                Some(1.0_f32)
+            } else if id == ids::CTX_MENU_RADIUS_ROUND {
+                Some(1.6_f32)
+            } else {
+                None
+            };
+            if let Some(s) = new_radius_scale {
+                self.store.set_radius_scale(s);
+                self.store.close_context_menu();
+                return true;
+            }
+        }
         if topbar::apply_event(&mut self.store, event) {
             return true;
         }

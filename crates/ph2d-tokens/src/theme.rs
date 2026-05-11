@@ -64,6 +64,17 @@ impl Theme {
             Self::Blueprint => "blueprint",
         }
     }
+
+    /// Human-readable display name (used by the topbar theme
+    /// cluster + the theme menu items).
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::ForgeSdf => "Forge SDF",
+            Self::PaintStudio => "Paint Studio",
+            Self::Sunstone => "Sunstone",
+            Self::Blueprint => "Blueprint",
+        }
+    }
 }
 
 #[cfg(test)]

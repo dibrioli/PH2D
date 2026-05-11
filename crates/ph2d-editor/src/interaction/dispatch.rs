@@ -229,6 +229,26 @@ pub fn dispatch_pointer_with_text<'frame>(
                 }
                 return events.into_bump_slice();
             }
+            // Primary click on the TopBar theme cluster opens the
+            // ThemeSelector context menu (4 themes + 3 corner-radius
+            // presets). Anchored just below the cluster's hit rect
+            // so the popover doesn't overlap the cluster itself.
+            // The `Plain` state check disambiguates from other
+            // widgets that may happen to share the TOPBAR_THEME
+            // NodeId numeric value in isolated unit tests (the
+            // hero's real `populate` registers it as Plain).
+            if event.button == ph2d_host::PointerButton::Primary
+                && let Some((hit_id, hit_rect)) = hit
+                && hit_id == crate::screens::hero::ids::TOPBAR_THEME
+                && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
+            {
+                store.open_context_menu(super::ContextMenuRequest {
+                    x: hit_rect.x,
+                    y: hit_rect.y + hit_rect.h + 4.0,
+                    kind: super::ContextMenuKind::ThemeSelector,
+                });
+                return events.into_bump_slice();
+            }
             // Primary click elsewhere closes any open menu before
             // running the regular focus/click path.
             if store.context_menu().is_some() {

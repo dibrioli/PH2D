@@ -214,7 +214,18 @@ fn paint_top_bar_cluster(
     let icon_w = 18.0;
     let font = TypeToken::Sm.px();
     match cluster {
-        TopBarCluster::Theme { label } => {
+        TopBarCluster::Theme { label: _ } => {
+            // Register the whole cluster as a clickable hit so the
+            // dispatch can open the ThemeSelector context menu on
+            // Primary Down. Other clusters (Single, Project, ...)
+            // are hit-registered in their own arms below; we add it
+            // here for Theme.
+            hit_index.register(id, rect);
+            // Display the active theme's name, not the fixture's
+            // static label — the cluster acts as a "current theme"
+            // chip that opens the picker.
+            let label_string = theme.display_name().to_string();
+            let label = label_string.as_str();
             let mut cx = rect.x + pad_x + 4.0;
             let cy = rect.y + rect.h * 0.5;
             for (i, token) in [ColorToken::Accent, ColorToken::AccentSoft]

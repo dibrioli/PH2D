@@ -571,3 +571,268 @@ estava implícito nos §1–§8.
   emitindo `TextChanged`.
 - **Código**: [`widget/combobox.rs Combobox::clear_button_rect`](../../crates/ph2d-editor/src/widget/combobox.rs);
   [`interaction/dispatch.rs clear_combobox_if_button_hit`](../../crates/ph2d-editor/src/interaction/dispatch.rs).
+
+---
+
+## 10. Auditoria pós-M13 (sprint 2026-05-09 → 2026-05-11)
+
+Segunda rodada de polish — input pipeline maduro, paineis flutuantes,
+DnD parenting, clipboard e snapshot de referência. Cada item segue o
+mesmo formato (sintoma / causa / fix / código).
+
+### 10.1 Caret não acompanha espaço final (parley trim)
+
+- **Sintoma**: ao apertar SPACE em `TextInput`/`TextArea`/`Combobox`/
+  `NumberInput`/hex/note, a letra entra no buffer mas o caret fica
+  parado visualmente; o efeito repete a cada espaço.
+- **Causa**: `parley::Layout::width()` corta whitespace à direita.
+  Todo painter de caret/seleção media o prefixo via `text_system
+  .layout(prefix, font_size, INF).width()` — para prefixos terminando
+  em espaço, a medição era idêntica ao prefixo sem o espaço.
+- **Fix**: novo helper `TextSystem::prefix_width(prefix, font_size)`
+  em [`ph2d-text/src/system.rs`](../../crates/ph2d-text/src/system.rs)
+  que mede `prefix + sentinel('|')`, mede só o sentinel, e subtrai.
+  Branch fast-path quando `!ends_with(' '|'\t')`. Aplicado em todos
+  os painters de caret/seleção (text_input, text_area, combobox,
+  number_input, slider_with_chip, hex_field, inspector note painters)
+  e em `nearest_byte_on_line` no dispatch.
+- **Lição**: NUNCA chame `.layout(...).width()` direto pra medir
+  prefixos em texto editável. Use sempre `prefix_width`.
+
+### 10.2 Letras acentuadas PT-BR (é, á, ç) não aparecem no macOS
+
+- **Sintoma**: dead-key sequences (`'` + `a` = `á`) não inserem nada
+  no buffer.
+- **Causa**: macOS NSTextInputClient engole o keystroke dead-key e
+  emite o glifo composto via `Ime::Commit`. O shell escutava só
+  `WindowEvent::KeyboardInput` (cuja `text` chega vazia pro dead-key).
+- **Fix**: shell habilita IME no construtor da janela
+  (`window.set_ime_allowed(true)`) e adiciona um arm
+  `WindowEvent::Ime(Ime::Commit(text))` que itera `text.chars()` e
+  chama `forward_text_to_hero` por char não-controle. `Preedit`
+  ignorado por ora (sem caret preedit italic ainda).
+- **Código**: [`shells/desktop/src/main.rs`](../../shells/desktop/src/main.rs).
+
+### 10.3 Painéis flutuantes — auto-resize ao arrastar para baixo
+
+- **Sintoma**: arrastando Inspector ou Hierarchy para baixo, o painel
+  vazava o viewport e o conteúdo no rodapé ficava cortado.
+- **Causa**: o clamp original em `paint_hero_screen` só ajustava x/y,
+  mantendo `base.h` invariável.
+- **Fix**: `clamp_panel` (em `screens/hero.rs`) auto-encolhe `h` quando
+  `natural_bottom > max_bottom = viewport.bottom - 8`. Floor de
+  `MIN_H = 120`. Quando o usuário arrasta de volta pra cima, h volta
+  ao `base.h`. O clamp também é escrito de volta no
+  `blender_picker_offset` para que próximos drag-begins capturem o
+  valor visível.
+- **Código**: [`screens/hero.rs paint_hero_screen` — `clamp_panel`](../../crates/ph2d-editor/src/screens/hero.rs).
+
+### 10.4 "Saltos discretos" no drag (rubber band)
+
+- **Sintoma**: arrastando um painel pra fora do clamp, depois voltando,
+  o usuário precisa "puxar" um trecho invisível antes do painel
+  responder.
+- **Causa**: modelo de drag cumulativo. O anchor guardava
+  `cursor_at_down + offset_at_down`; cada Move computava
+  `offset = anchor_off + (cursor_now − cursor_down)`. Sem clamp no
+  store, o offset crescia além do clamp visível.
+- **Fix**: modelo INCREMENTAL. O anchor passa a guardar apenas o
+  `last_cursor`; cada Move computa
+  `delta = cursor − last_cursor`, aplica em `cur_off` (que já está
+  clamped pelo paint anterior), e re-ancora. Reverso de direção
+  move imediatamente. Novo método
+  `WidgetStore::update_blender_drag_cursor`.
+- **Código**: [`interaction/dispatch.rs PointerKind::Move`](../../crates/ph2d-editor/src/interaction/dispatch.rs);
+  [`interaction/state.rs update_blender_drag_cursor`](../../crates/ph2d-editor/src/interaction/state.rs).
+
+### 10.5 Resize handles manuais nos painéis
+
+- **Sintoma**: usuário só conseguia mover painéis; faltava redimensionar.
+- **Solução**: novo `BlenderHitKind::ResizeHandle` + side-tables
+  `panel_resize_delta: BTreeMap<NodeId, (f32, f32)>` e
+  `panel_resize_anchor: Option<(NodeId, f32, f32)>`. Down em hit zone
+  16×16 no canto inferior-direito chama `begin_panel_resize`; Move
+  aplica incremental delta (mesma lição do §10.4); Up chama
+  `end_panel_resize`. `clamp_panel` em `paint_hero_screen` consome
+  o delta antes do auto-resize. Constraints:
+  `MIN_W = 220`, `MIN_H = 120`, `max_w = viewport.w * 0.7`.
+- **Código**: [`interaction/state.rs panel_resize_*`](../../crates/ph2d-editor/src/interaction/state.rs);
+  [`screens/hero.rs clamp_panel`](../../crates/ph2d-editor/src/screens/hero.rs).
+
+### 10.6 Hierarchy DnD — drop-inside (parenting) + indentação
+
+- **Sintoma**: drag de uma entity em cima de outra só reordenava;
+  faltava criar relações pai-filho.
+- **Solução**: side-table `hierarchy_parent: BTreeMap<NodeId, NodeId>`.
+  Cycle detection em `hierarchy_set_parent` (self-parent ou
+  descendente como ancestor → rejeitado). `hierarchy_depth_of`
+  com cap=32 (defense in depth). O dispatch resolve o drop em 3
+  bandas verticais (30/40/30) via `enum HierDrop {Before, Inside, End}`:
+  top=sibling-acima, middle=child, bottom=cai pra próxima row. Painter
+  indenta cada row por `depth × 16px`; indicator mostra linha 2px no
+  topo (sibling) OU stroke de Accent ao redor da row (inside).
+- **Código**: [`interaction/dispatch.rs find_hierarchy_drop + HierDrop`](../../crates/ph2d-editor/src/interaction/dispatch.rs);
+  [`interaction/state.rs hierarchy_set_parent + hierarchy_depth_of`](../../crates/ph2d-editor/src/interaction/state.rs);
+  [`screens/hero/hierarchy.rs paint_hierarchy`](../../crates/ph2d-editor/src/screens/hero/hierarchy.rs).
+
+### 10.7 DnD ignorando cursor X → grandchild acidental
+
+- **Sintoma**: usuário queria fazer X virar filho de root Y, mas o
+  TAB de indentação ficou tão grande que parecia neto.
+- **Causa**: `find_hierarchy_drop` testava só `cursor_y` vs row rect.
+  Cursor à esquerda de uma row já indentada (depth ≥ 1) ainda casava
+  como `Inside(esa row)` se o y caísse na faixa — `dragged` virava
+  child da indentada (depth+1) em vez de sibling no root.
+- **Fix**: cursor_x deve estar dentro do `[rect.x, rect.x + rect.w]`
+  para `Inside`/`Before`; se y bate mas x está à esquerda do indent,
+  retorna `Before(row)` com a row's parent como new parent
+  (sibling-at-root quando a row é root). `HierarchyDragState` ganhou
+  `cursor_x` (atualizado no Move) pra que o indicator do painter
+  espelhe exatamente o resolve do dispatch.
+- **Lição**: drop targets em listas com indentação SEMPRE precisam
+  considerar X. Sem isso, drops ambíguos viram bug de profundidade.
+
+### 10.8 radius_scale finalmente consumido
+
+- **Sintoma**: menu de tema oferece Sharp / Default / Round mas a
+  escolha não mudava nada visualmente.
+- **Causa**: `WidgetStore::radius_scale` armazenava o valor mas
+  nenhum painter consultava. Threadar via cada painter (200+ call
+  sites) seria caro.
+- **Fix**: thread-local em [`paint.rs`](../../crates/ph2d-editor/src/paint.rs);
+  `fill_rounded_rect` / `stroke_rounded_rect` multiplicam por ele
+  internamente. `paint_hero_screen` chama `set_radius_scale` no
+  início de cada frame. `Radius::Full` (999) é PRESERVADO exato
+  para que pills/circles continuem perfeitos mesmo com scale < 1.
+
+### 10.9 Cmd+C / Cmd+V / Cmd+X clipboard
+
+- **Solução**: side-tables `pending_clipboard_copy: Option<String>` e
+  `pending_clipboard_paste: Option<NodeId>` no store. Dispatch:
+  Cmd+C extrai a seleção do focused text widget e empurra; Cmd+X
+  igual + delete + emit TextChanged; Cmd+V grava request com o id
+  focado. Shell drena via `take_clipboard_*` após handle_key e
+  bridgeia ao `arboard::Clipboard` (uma instância no `AppGfx`).
+  Função pública `apply_clipboard_paste(store, id, text)` insere no
+  caret (replacing selection); filtra non-numeric chars para
+  `NumberInput` para que paste não desync o buffer.
+- **Dep**: `arboard = "3"` em `shells/desktop`. As transitive deps
+  `clipboard-win` e `error-code` são BSL-1.0 — `deny.toml` ganha
+  per-crate exceptions explícitas (preferido a global allow).
+
+### 10.10 Note painters não alinhavam com o contrato do dispatch
+
+- **Sintoma**: drag-to-select em notas selecionava bytes errados;
+  duplo-clique em multi-line não pintava seleção alguma.
+- **Causa**: `paint_note_editable_line` / `_multiline` desenhavam
+  texto a partir de `rect.x` / `rect.y`. Mas
+  `byte_offset_from_click_xy` no dispatch assume convenção
+  `TextInput`: `text_start_x = rect.x + 12`,
+  `text_start_y = rect.y + 8` (multi-line). Painter e dispatch viam
+  origens diferentes → caret/seleção em byte errado.
+- **Fix**: novas constantes `NOTE_TEXT_PAD_X = 12`,
+  `NOTE_TEXT_PAD_Y = 8` em `inspector.rs`. Painters realinhados.
+  Multi-line agora pinta seleção (uma caixa por linha visível).
+  Altura do body recalculada para acomodar o inset top.
+- **Lição**: hard rule — qualquer painter de campo editável DEVE
+  usar a mesma origem que `byte_offset_from_click_xy`. Se não estiver
+  no contrato padrão, ou alinha visual com o contrato OU publica
+  origem em side-table.
+
+### 10.11 Duplo-clique "select all" encolhe na soltura
+
+- **Sintoma**: DC seleciona tudo, depois deseleciona a parte à direita
+  do cursor.
+- **Causa**: depois de `select_all_in_text_widget` (anchor=0,
+  caret=len), o Move event do mouse-jitter na soltura re-entrava no
+  branch text drag-to-select e setava `caret = clicked_byte` com
+  anchor=0 → seleção shrunk para 0..clicked_byte.
+- **Fix**: depois do DC, `store.set_active_rect(None)`. Move skipa
+  o block porque `if let Some(rect) = store.active_rect()` falha.
+  Up ainda usa `active_id` pra cleanup. **Guardado a text widgets**
+  apenas — limpar pra qualquer widget quebrou teste de Dropdown
+  toggle (DC fechava em vez de toggle).
+
+### 10.12 Scroll bloqueando drag handle
+
+- **Sintoma**: depois de rolar o Inspector, a pílula de drag no topo
+  não responde mais; só de voltar o scroll ao começo o drag volta.
+- **Causa**: `HitIndex::hit()` faz reverse-walk (last-registered
+  vence). A drag pill era registrada PRIMEIRO; depois os widgets do
+  body. Com scroll, a primeira row do body subia e sua hit zone caía
+  na faixa y da drag pill — sombreando-a.
+- **Fix**: re-registrar drag handle + resize handle DEPOIS do
+  `pop_layer` do body, em ambos Inspector e Hierarchy. Chrome sempre
+  vence body.
+- **Lição**: hit zones de chrome (drag, resize, close buttons) DEVEM
+  ser as ÚLTIMAS registradas no `HitIndex` do seu container. Senão
+  qualquer scroll/redimensionamento pode sombrear.
+
+### 10.13 Dot do canto coberto por widget do body
+
+- **Sintoma**: o accent dot no canto inferior-direito aparece em
+  Hierarchy (sem widget no canto) mas some em Inspector (ListItem /
+  TreeView na última posição).
+- **Causa**: `paint_panel_surface` pintava o dot ANTES do body. Body
+  desenha por cima dele.
+- **Fix**: split em duas funções em `style.rs` —
+  `paint_panel_surface` (rounded fill + border + drag pill,
+  chamado ANTES) e `paint_panel_corner_dot` (só o dot, chamado
+  DEPOIS do `pop_layer`). Ambos os painters de painel consomem as
+  duas, na ordem certa.
+- **Lição**: chrome com z-order acima do conteúdo NUNCA pode ser
+  pintado antes do conteúdo num single-pass painter. Split.
+
+### 10.14 Centralização de chrome de painel
+
+- **Solução**: helpers canônicos em `screens/hero/style.rs`:
+  - `paint_panel_surface(rect, scene, theme)` — base chrome
+  - `paint_panel_corner_dot(rect, scene, theme)` — corner dot
+  - `panel_drag_handle_rect(panel) -> Rect` — top center 80×14
+  - `panel_resize_handle_rect(panel) -> Rect` — bottom-right 16×16
+  - `const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0`
+- Qualquer painel novo só precisa: 1) chamar `paint_panel_surface`,
+  2) registrar suas hit zones com os 2 helpers, 3) chamar
+  `paint_panel_corner_dot` depois do conteúdo. Geometria, cor e
+  tamanho são iguais por construção.
+
+### 10.15 Workaround: drift de bindgen no Windows CI (CRLF/LF)
+
+- **Sintoma**: `ph2d-bindgen --check` falhou só no Windows CI; os
+  outros runners aprovavam. `committed != generated` em
+  `runtime/luau/ph2d.d.luau` e `runtime/mcp/schema.json`.
+- **Causa**: sem `.gitattributes` no projeto, o git checkout no
+  Windows aplica `core.autocrlf=true` reescrevendo LF → CRLF.
+  Bindgen gera LF puro. `read_to_string() != fresh_string` byte-wise
+  mesmo com conteúdo semanticamente idêntico.
+- **Fix**: `drift_detected` normaliza `\r\n` → `\n` em ambos os
+  lados antes de comparar. HR-10 (paridade gerado↔commitado) é
+  semântica, não byte-level.
+- **Código**: [`tools/ph2d-bindgen/src/main.rs drift_detected`](../../tools/ph2d-bindgen/src/main.rs).
+
+### 10.16 Workaround: comentários PT-BR em .rs flagrados pelo typos
+
+- **Sintoma**: CI typos detectou `componente`, `classe`, `limite` em
+  .rs files como typos en-US (`componente` → `components` etc.).
+- **Causa**: SKILL §10.1 manda comentários em inglês; `.typos.toml`
+  exclui markdown PT-BR mas não `.rs`.
+- **Fix**: reescrever os fragmentos PT-BR em inglês preservando a
+  attribution do feedback do usuário. NÃO adicionar `.rs` ao excludes
+  do typos — o problema é o comentário PT-BR em lugar errado, não a
+  ferramenta.
+
+### 10.17 Snapshot congelado (`hero_ref/` + `reference.command`)
+
+- **Setup**: cópia verbatim de `screens/hero/` → `screens/hero_ref/`,
+  selecionada via cargo feature `reference-snapshot` em ph2d-editor
+  (forwardada por shells/desktop). Em `screens/mod.rs`:
+  ```rust
+  #[cfg(not(feature = "reference-snapshot"))] pub mod hero;
+  #[cfg(feature = "reference-snapshot")]     pub mod hero_ref;
+  #[cfg(feature = "reference-snapshot")]     pub use hero_ref as hero;
+  ```
+  O alias mantém `crate::screens::hero::HeroScreen` apontando
+  corretamente em ambos os modos — zero adaptação no shell.
+- **Launchers**: `play.command` (working hero) +
+  `reference.command` (snapshot). Alternar recompila o binário uma
+  vez; runs sequenciais do mesmo são cacheados.

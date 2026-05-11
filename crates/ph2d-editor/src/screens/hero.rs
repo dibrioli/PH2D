@@ -99,19 +99,25 @@ impl HeroLayout {
         let chrome_bot = viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H - 8.0;
         let chrome_h = (chrome_bot - chrome_top).max(0.0);
 
-        let left_rail = Rect::new(viewport.x + EDGE_PAD, chrome_top, RAIL_W, chrome_h);
+        // Rail is FLUSH with the viewport's left edge — the
+        // sub-labels paint at `rail.x + LABEL_LEFT_PAD` so this
+        // gives them an exact 3-px gap from the screen edge.
+        let left_rail = Rect::new(viewport.x, chrome_top, RAIL_W, chrome_h);
         // Default panel sides (mirrored=false):
         //   - Hierarchy LEFT (just past the rail)
         //   - Inspector RIGHT (pinned to viewport edge)
         // Mirrored flips both.
+        // Side panels sit just past the rail (now flush at viewport.x)
+        // — `RAIL_W + EDGE_PAD` from the screen's left edge gives the
+        // canonical breathing room.
         let (hierarchy_x, inspector_x) = if mirrored {
             (
                 viewport.x + viewport.w - EDGE_PAD - HIERARCHY_W,
-                viewport.x + EDGE_PAD + RAIL_W + EDGE_PAD,
+                viewport.x + RAIL_W + EDGE_PAD,
             )
         } else {
             (
-                viewport.x + EDGE_PAD + RAIL_W + EDGE_PAD,
+                viewport.x + RAIL_W + EDGE_PAD,
                 viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W,
             )
         };

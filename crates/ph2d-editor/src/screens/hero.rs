@@ -187,6 +187,9 @@ pub struct HeroScreen {
     /// Visibility of the Hierarchy panel — toggled by the
     /// `RAIL_SHOW_HIERARCHY` button in the left rail.
     pub hierarchy_visible: bool,
+    /// Visibility of the bottom statistics HUD — toggled by the
+    /// "Show Statistics" entry in the theme context menu.
+    pub stats_visible: bool,
 }
 
 impl HeroScreen {
@@ -202,6 +205,7 @@ impl HeroScreen {
             ui_mirrored: false,
             inspector_visible: true,
             hierarchy_visible: true,
+            stats_visible: true,
         }
     }
 
@@ -328,6 +332,11 @@ impl HeroScreen {
             }
             if id == ids::CTX_MENU_MIRROR_UI {
                 self.ui_mirrored = !self.ui_mirrored;
+                self.store.close_context_menu();
+                return true;
+            }
+            if id == ids::CTX_MENU_SHOW_STATS {
+                self.stats_visible = !self.stats_visible;
                 self.store.close_context_menu();
                 return true;
             }
@@ -657,7 +666,9 @@ pub fn paint_hero_screen(
             hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
         }
     }
-    paint_bottom_hud(&layout, scene, text_system, hero.theme);
+    if hero.stats_visible {
+        paint_bottom_hud(&layout, scene, text_system, hero.theme);
+    }
     // Floating BlenderColorPicker on top of the canvas. Pure
     // function of `(layout, store)` — drag offset comes from the
     // store. The Inspector keeps the picker's state under

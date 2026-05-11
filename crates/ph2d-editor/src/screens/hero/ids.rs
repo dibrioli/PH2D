@@ -195,6 +195,9 @@ pub const CTX_MENU_RADIUS_ROUND: NodeId = NodeId(916);
 /// `HeroScreen::ui_mirrored`, which swaps Hierarchy ↔ Inspector
 /// horizontally.
 pub const CTX_MENU_MIRROR_UI: NodeId = NodeId(917);
+/// "Show Statistics" entry in the theme menu — toggles
+/// `HeroScreen::stats_visible`, which gates the bottom HUD.
+pub const CTX_MENU_SHOW_STATS: NodeId = NodeId(918);
 // Save-button context menu (Save / Save As).
 pub const CTX_MENU_SAVE: NodeId = NodeId(920);
 pub const CTX_MENU_SAVE_AS: NodeId = NodeId(921);

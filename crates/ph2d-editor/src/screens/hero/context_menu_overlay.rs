@@ -99,6 +99,7 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_RADIUS_DEFAULT, "— Corners: Default", None),
             (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
             (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
+            (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
         ],
         ContextMenuKind::SaveMenu => &[
             (ids::CTX_MENU_SAVE, "Save \u{00b7} Cmd+S", None),

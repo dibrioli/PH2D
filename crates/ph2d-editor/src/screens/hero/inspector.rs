@@ -704,10 +704,11 @@ fn paint_collapsible_header(
 }
 
 /// Discreet colored separator painted at the end of each section's
-/// content (when expanded). 2 px tall, `Accent` token, slightly inset
-/// horizontally so it doesn't run into the panel's rounded chrome.
-/// Skipped when the section is collapsed (the header already ends the
-/// section visually).
+/// content (when expanded). 1 px tall, almost full-width (4 px
+/// horizontal inset only so it sits flush with the panel chrome
+/// while clearing the rounded corners). `Accent` token. Strictly
+/// thinner than the component rows above it so it reads as a
+/// delimiter, not as content.
 fn paint_section_separator(
     scene: &mut VectorScene,
     theme: Theme,
@@ -715,10 +716,11 @@ fn paint_section_separator(
     w: f32,
     y: f32,
 ) -> f32 {
-    let pad_x = 16.0_f32;
-    let line = Rect::new(x + pad_x, y + 4.0, (w - pad_x * 2.0).max(0.0), 2.0);
-    fill_rounded_rect(scene, line, 1.0, resolve(ColorToken::Accent, theme));
-    y + 4.0 + 2.0
+    let pad_x = 4.0_f32;
+    let thickness = 1.0_f32;
+    let line = Rect::new(x + pad_x, y + 4.0, (w - pad_x * 2.0).max(0.0), thickness);
+    fill_rounded_rect(scene, line, 0.5, resolve(ColorToken::Accent, theme));
+    y + 4.0 + thickness
 }
 
 fn paint_left_label(

@@ -818,21 +818,30 @@ fn byte_offset_from_click_xy(
     click_y: f32,
     text_system: Option<&mut TextSystem>,
 ) -> usize {
-    // Per-widget text + layout parameters. `multiline` = true when
-    // the painter is the `TextArea` 3+ row layout (the dispatch has
-    // no widget-kind discriminator, so we infer from `\n` content).
+    // Per-widget text + layout parameters. Font sizes MUST match
+    // the painters' tokens exactly — a 1 px mismatch shifts every
+    // measured prefix and the caret lands on the wrong byte. All
+    // text widgets paint at `TypeToken::Base.px()` except the hex
+    // field which uses `TypeToken::Sm.px()`.
+    //
+    // `multiline` = true when the painter is the `TextArea` 3+ row
+    // layout (inferred from `\n` content since the dispatch has no
+    // widget-kind discriminator).
+    use ph2d_tokens::TypeToken;
+    let font_base = TypeToken::Base.px();
+    let font_sm = TypeToken::Sm.px();
     let (text, text_start_x, text_start_y, font_size, multiline) = match store.get(id) {
         Some(InteractiveState::TextInput { text, .. }) => {
             let is_hex = store.blender_hex_parent(id).is_some();
             if is_hex {
-                // Hex field: pad_md + 36 px label, single-line.
-                (text.as_str(), rect.x + 8.0 + 36.0, rect.y, 13.0_f32, false)
+                // Hex field paints label "Hex" + value text at Sm.
+                (text.as_str(), rect.x + 8.0 + 36.0, rect.y, font_sm, false)
             } else if text.contains('\n') {
                 // TextArea: pad_x = Spacing::Lg, pad_y = Spacing::Md,
                 // line_h = font_size + 4 (matches the painter).
-                (text.as_str(), rect.x + 12.0, rect.y + 8.0, 14.0_f32, true)
+                (text.as_str(), rect.x + 12.0, rect.y + 8.0, font_base, true)
             } else {
-                (text.as_str(), rect.x + 12.0, rect.y, 14.0_f32, false)
+                (text.as_str(), rect.x + 12.0, rect.y, font_base, false)
             }
         }
         Some(InteractiveState::NumberInput { buffer, .. }) => {
@@ -841,17 +850,15 @@ fn byte_offset_from_click_xy(
             // current text width which we don't measure here, so we
             // approximate by treating the chip as if text starts at
             // its left padding.
-            (buffer.as_str(), rect.x + 12.0, rect.y, 14.0_f32, false)
+            (buffer.as_str(), rect.x + 12.0, rect.y, font_base, false)
         }
         Some(InteractiveState::Combobox { query, .. }) => {
             // Combobox text sits AFTER the search icon + gap, not at
             // the left edge of the pill. Mirrors the painter math
             // `inner_x = rect.x + pad_x + icon_size + Spacing::Md`.
-            // Previously this read `rect.x + 12.0` which was off by
-            // ~24 px and made click→caret feel "slipped right".
             let icon_size = (rect.h * 0.5).clamp(14.0, 18.0);
             let inner_x = rect.x + 12.0 + icon_size + 8.0;
-            (query.as_str(), inner_x, rect.y, 14.0_f32, false)
+            (query.as_str(), inner_x, rect.y, font_base, false)
         }
         _ => return 0,
     };

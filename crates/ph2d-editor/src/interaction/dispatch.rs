@@ -458,6 +458,23 @@ pub fn dispatch_pointer_with_text<'frame>(
             // double-click window (and on the same id) selects all.
             let is_double_click = store.record_pointer_down(new_focus, event.timestamp_ns);
 
+            // Hierarchy chrome companions (eye toggle, chevron toggle)
+            // are registered in HitIndex but NOT in WidgetStore — the
+            // painter has no &mut WidgetStore. The `is_focusable` gate
+            // below would reject them. Capture them as ephemeral
+            // buttons: set active+rect on Down so the Up branch fires
+            // `apply_click`, whose `_` fallthrough pushes a generic
+            // `WidgetEvent::Click(id)` for unregistered ids. Hero's
+            // `apply_event` then routes by companion bit pattern.
+            if let Some((id, rect)) = hit
+                && (crate::screens::hero::ids::hier_eye_companion_to_row(id).is_some()
+                    || crate::screens::hero::ids::hier_expand_companion_to_row(id).is_some())
+            {
+                store.set_active(Some(id));
+                store.set_active_rect(Some(rect));
+                return events.into_bump_slice();
+            }
+
             if let Some((id, rect)) = hit
                 && is_focusable(store, id)
             {
@@ -2464,6 +2481,76 @@ mod tests {
         );
         assert_eq!(evts, &[]);
         assert_eq!(store.active_id(), None);
+    }
+
+    #[test]
+    fn hierarchy_eye_companion_click_emits_click_event() {
+        // Regression: companion NodeIds for the hierarchy eye-toggle
+        // (and chevron) are registered in HitIndex only — never in
+        // WidgetStore (the painter has no &mut store). Before the
+        // M14.6A bugfix, the `is_focusable` gate in PointerKind::Down
+        // rejected unregistered ids, so no `active` was captured and
+        // Up emitted nothing. Now the dispatcher special-cases these
+        // companions and routes them through the regular Up→Click
+        // path; this test pins that behavior.
+        use crate::screens::hero::ids;
+        let mut store = WidgetStore::with_capacity(4);
+        // Simulate a live hierarchy row (registered as Plain by
+        // `hierarchy::populate_live`); only the companion is missing
+        // from the store — which is the realistic scenario.
+        let row_id = ph2d_a11y::NodeId(412);
+        store.register(row_id, InteractiveState::Plain);
+        let eye_id = ids::hier_eye_companion(row_id);
+        let mut hits = HitIndex::new();
+        hits.register(row_id, Rect::new(0.0, 0.0, 200.0, 20.0));
+        hits.register(eye_id, Rect::new(170.0, 0.0, 24.0, 20.0));
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 182.0, 10.0),
+            &arena,
+        );
+        // Active must be set even though the companion isn't in store.
+        assert_eq!(store.active_id(), Some(eye_id));
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 182.0, 10.0),
+            &arena,
+        );
+        assert_eq!(evts, &[WidgetEvent::Click(eye_id)]);
+        assert_eq!(store.active_id(), None);
+    }
+
+    #[test]
+    fn hierarchy_expand_companion_click_emits_click_event() {
+        // Same contract as the eye test above, for the chevron
+        // companion (collapse/expand). Lives separately so a
+        // regression on one toggle bit doesn't silently break both.
+        use crate::screens::hero::ids;
+        let mut store = WidgetStore::with_capacity(4);
+        let row_id = ph2d_a11y::NodeId(413);
+        store.register(row_id, InteractiveState::Plain);
+        let chev_id = ids::hier_expand_companion(row_id);
+        let mut hits = HitIndex::new();
+        hits.register(row_id, Rect::new(0.0, 0.0, 200.0, 20.0));
+        hits.register(chev_id, Rect::new(4.0, 4.0, 12.0, 12.0));
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 10.0, 10.0),
+            &arena,
+        );
+        assert_eq!(store.active_id(), Some(chev_id));
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 10.0, 10.0),
+            &arena,
+        );
+        assert_eq!(evts, &[WidgetEvent::Click(chev_id)]);
     }
 
     #[test]

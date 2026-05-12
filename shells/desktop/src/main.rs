@@ -314,7 +314,7 @@ struct App {
     /// dragged together). Cleared on `HoveredFileCancelled` or after
     /// `DroppedFile` is handled.
     hovered_files: Vec<std::path::PathBuf>,
-    /// M14.4g Telemetria Fase A: EWMA-smoothed frame time pushed to
+    /// M14.4g Telemetry Phase A: EWMA-smoothed frame time pushed to
     /// the hero's `BottomHudStats` each frame so the status bar shows
     /// real fps/ms instead of the M5 placeholder strings. α=0.1 —
     /// canonical "smooth without dormant" value used by RTSS / Unity
@@ -1047,7 +1047,7 @@ impl App {
                 window_h: window_size.height as f32,
                 canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
             }));
-            // M14.4g Telemetria Fase A: publish real stats. Sprite
+            // M14.4g Telemetry Phase A: publish real stats. Sprite
             // and entity counts come from PresentWorld (the source of
             // truth for "what we shipped to the GPU this frame"); fps
             // is derived from the EWMA frame_ms.

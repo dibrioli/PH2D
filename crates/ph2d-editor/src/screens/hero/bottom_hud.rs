@@ -23,10 +23,10 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 /// Per-frame render statistics surfaced in the bottom HUD.
-/// Fase A (M14.4g): fps, frame_ms, draws, sprite_count, entity_count
+/// Phase A (M14.4g): fps, frame_ms, draws, sprite_count, entity_count
 /// are real (host writes via [`crate::HeroScreen::set_stats`]); the
 /// memory / physics / network slots stay stub strings until those
-/// subsystems land. Fase B will add GPU timestamp queries from
+/// subsystems land. Phase B will add GPU timestamp queries from
 /// `wgpu::QuerySet` for per-pass breakdown.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct BottomHudStats {

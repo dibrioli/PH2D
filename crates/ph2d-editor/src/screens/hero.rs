@@ -236,7 +236,7 @@ pub struct HeroScreen {
     /// Cleared on `on_file_hover_cancel` or after `on_file_drop` is
     /// processed.
     pub dragging_files: Option<(Vec<std::path::PathBuf>, (f32, f32))>,
-    /// M14.4g Telemetria Fase A: real render statistics surfaced in
+    /// M14.4g Telemetry Phase A: real render statistics surfaced in
     /// the bottom HUD. Host assigns directly (`hero.stats = ...`)
     /// once per frame; painter reads them in `paint_bottom_hud`.
     pub stats: BottomHudStats,

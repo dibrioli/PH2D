@@ -70,6 +70,27 @@ pub trait HostHandler {
     /// User asked to close the window. Returning [`CloseAction::Cancel`]
     /// keeps the window open (e.g., to prompt "save changes?").
     fn on_close_request(&mut self) -> CloseAction;
+
+    /// External file is being dragged OVER the window — paths the OS
+    /// expects us to know about for hit-target highlighting. Called
+    /// once per `HoveredFile` event from the platform (winit emits one
+    /// per file when multiple are dragged together).
+    ///
+    /// Default: no-op. Shells that show drag-preview overlays implement
+    /// this to push the path list to the editor UI.
+    fn on_file_hover(&mut self, _paths: &[std::path::PathBuf]) {}
+
+    /// The OS-level drag operation was cancelled (user dragged out of
+    /// the window or hit ESC). Default: no-op.
+    fn on_file_hover_cancel(&mut self) {}
+
+    /// User dropped one or more files into the window. Implementations
+    /// process the paths (decode + spawn for image imports, route by
+    /// extension for other asset types, etc.).
+    ///
+    /// Default: no-op. The desktop shell wires this to the M14.4e
+    /// drag-and-drop image import path.
+    fn on_file_drop(&mut self, _paths: &[std::path::PathBuf]) {}
 }
 
 #[cfg(test)]

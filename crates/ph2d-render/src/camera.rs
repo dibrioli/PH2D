@@ -86,12 +86,19 @@ impl Camera2d {
         let pixels_per_meter = window_h / self.height_world.max(f32::EPSILON);
         let dx_world = dx_px / pixels_per_meter;
         let dy_world = dy_px / pixels_per_meter;
-        // Camera moves OPPOSITE to the cursor drag (standard "hand"
-        // pan), and the world Y axis is flipped relative to screen:
-        //   - cursor +x (right) → camera center -x (world scrolls left under cursor)
-        //   - cursor +y (down on screen, Y-down) → camera center +y (world Y-up; scrolls up under cursor)
+        // "Hand-pan" semantics: the world content under the cursor
+        // follows the cursor. Drag right → world content goes right
+        // (camera moves left). Drag down → world content goes down
+        // (camera moves up in world Y-up). Both axes use the SAME
+        // sign because the camera projection already flips world-Y
+        // to screen-Y (see `view_proj`'s swapped bottom/top), so the
+        // perceived screen-space drag direction matches Camera.center
+        // movement in world coordinates 1:1 after `-=`.
+        //
+        // M14.4e bugfix: the prior `center[1] += dy_world` produced
+        // an inverted-Y pan (user dragging down saw sprites go up).
         self.center[0] -= dx_world;
-        self.center[1] += dy_world;
+        self.center[1] -= dy_world;
     }
 
     /// Project a screen-pixel cursor position to a world-space point
@@ -249,13 +256,18 @@ mod tests {
     }
 
     #[test]
-    fn pan_screen_down_moves_camera_up_world() {
-        // Y-down screen drag (cursor moves DOWN) translates to
-        // Y-up world camera moving UP. cursor +60 px (= 1 m at 60
-        // px/m) → camera.center.y += 1.
+    fn pan_screen_down_moves_camera_down_world() {
+        // Hand-pan: cursor +y (drag DOWN on screen) → camera moves
+        // DOWN in world (center.y decreases). The visible content
+        // follows the cursor (content under cursor goes down with
+        // the drag). cursor +60 px @ 60 px/m → center.y -= 1.
         let mut cam = Camera2d::default();
         cam.pan_screen_delta(0.0, 60.0, 800.0, 600.0);
-        assert!((cam.center[1] - 1.0).abs() < 1e-3);
+        assert!(
+            (cam.center[1] - -1.0).abs() < 1e-3,
+            "expected center.y = -1.0, got {}",
+            cam.center[1]
+        );
     }
 
     #[test]

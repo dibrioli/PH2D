@@ -304,6 +304,16 @@ struct App {
     /// `Some(anchor)` while a middle-drag is in progress; subsequent
     /// `CursorMoved` events feed `Camera2d::pan_screen_delta`.
     pan_anchor: Option<(f32, f32)>,
+    /// M14.4e: most recent cursor position (in physical px, top-left
+    /// origin). Cached on every `CursorMoved` so `DroppedFile` can
+    /// project the drop point to world coords — winit's `DroppedFile`
+    /// event itself carries no position.
+    last_cursor: (f32, f32),
+    /// M14.4e: paths buffered between `HoveredFile` and `DroppedFile`
+    /// (winit emits one `HoveredFile` per file when multiple are
+    /// dragged together). Cleared on `HoveredFileCancelled` or after
+    /// `DroppedFile` is handled.
+    hovered_files: Vec<std::path::PathBuf>,
 }
 
 impl App {
@@ -344,6 +354,8 @@ impl App {
             gilrs,
             input: InputState::new(),
             pan_anchor: None,
+            last_cursor: (0.0, 0.0),
+            hovered_files: Vec::new(),
         }
     }
 
@@ -390,6 +402,75 @@ impl App {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0)
+    }
+
+    /// M14.4e: process files the user dropped onto the window.
+    /// Each call handles exactly the paths in this drop event (winit
+    /// fires DroppedFile once per path).
+    ///
+    /// - Image extensions go through `import_image_at_camera` with
+    ///   the drop point converted to world coords via
+    ///   `Camera2d::screen_to_world(last_cursor, surface_size)`.
+    /// - Non-image files raise a "Skipped" toast each — non-fatal.
+    /// - Sprite spawn position = the cursor's world coordinate; the
+    ///   sprite quad is center-anchored (see sprite.wgsl) so the
+    ///   image visually centers on the cursor.
+    /// - Batch drops (multiple paths in one DroppedFile sequence)
+    ///   stack at the same point — user can fan them out via the
+    ///   M14.7 gizmo after spawn.
+    fn handle_dropped_files(&mut self, paths: &[std::path::PathBuf]) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let Some(hero) = gfx.hero_screen.as_ref() else {
+            return;
+        };
+        let pixels_per_meter = hero.project.pixels_per_meter;
+        let win = gfx.surface.size();
+        let drop_world = gfx.camera.screen_to_world(self.last_cursor, win);
+        for path in paths {
+            if !ph2d_asset::is_supported_image_extension(path) {
+                let name = path
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("(unnamed)");
+                gfx.toasts
+                    .push(Toast::warning(format!("Skipped non-image: {name}")));
+                self.title_dirty = true;
+                continue;
+            }
+            // The import helper currently anchors the spawn at
+            // `camera.center`. Temporarily move the camera so the
+            // sprite Transform lands at the cursor world point;
+            // restore afterward so pan/zoom state is preserved.
+            // Cleaner alternative: `import_image_at_world(pos, ...)`
+            // — defer to M14.5 when the import path is touched.
+            let saved_center = gfx.camera.center;
+            gfx.camera.center = drop_world;
+            let next_key = gfx.next_import_cell;
+            let result = import_image_at_camera(
+                &mut gfx.sim,
+                &mut gfx.renderer,
+                &gfx.asset_db,
+                &gfx.camera,
+                next_key,
+                path,
+                pixels_per_meter,
+            );
+            gfx.camera.center = saved_center;
+            match result {
+                Ok(label) => {
+                    gfx.next_import_cell = gfx.next_import_cell.saturating_add(1);
+                    gfx.toasts.push(Toast::success(format!("Imported {label}")));
+                    self.title_dirty = true;
+                }
+                Err(e) => {
+                    eprintln!("M14.4e drop failed: {e}");
+                    gfx.toasts.push(Toast::error(format!("Drop failed: {e}")));
+                    self.title_dirty = true;
+                }
+            }
+        }
     }
 
     /// M12 demo control router.
@@ -1308,6 +1389,50 @@ impl ApplicationHandler for App {
                 self.pending_resize = Some(WindowSize::new(size.width, size.height));
             }
 
+            // M14.4e drag-and-drop. winit emits one HoveredFile per
+            // path when multiple files are dragged together. We
+            // buffer paths into `self.hovered_files` and push them to
+            // the hero (for the overlay) on every HoveredFile event.
+            WindowEvent::HoveredFile(path) => {
+                self.hovered_files.push(path.clone());
+                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    hero.dragging_files = Some((self.hovered_files.clone(), self.last_cursor));
+                }
+                self.handler.on_file_hover(&self.hovered_files);
+                if let Some(host) = self.host.as_ref() {
+                    host.request_redraw();
+                }
+            }
+            WindowEvent::HoveredFileCancelled => {
+                self.hovered_files.clear();
+                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    hero.dragging_files = None;
+                }
+                self.handler.on_file_hover_cancel();
+                if let Some(host) = self.host.as_ref() {
+                    host.request_redraw();
+                }
+            }
+            WindowEvent::DroppedFile(path) => {
+                // winit fires DroppedFile once PER FILE — and the
+                // matching HoveredFile already populated
+                // `hovered_files` for the overlay. We must NOT
+                // accumulate the dropped path again (that was the
+                // M14.4e v1 bug that double-imported every drop).
+                // Process exactly this one path here; the overlay
+                // buffer is cleared so the next drop starts fresh.
+                self.hovered_files.clear();
+                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    hero.dragging_files = None;
+                }
+                let paths = vec![path];
+                self.handler.on_file_drop(&paths);
+                self.handle_dropped_files(&paths);
+                if let Some(host) = self.host.as_ref() {
+                    host.request_redraw();
+                }
+            }
+
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 if let Some(host) = &self.host {
                     host.scale.set(scale_factor as f32);
@@ -1340,6 +1465,10 @@ impl ApplicationHandler for App {
             WindowEvent::CursorMoved { position, .. } => {
                 let prev = self.last_pointer;
                 self.last_pointer = (position.x as f32, position.y as f32);
+                // M14.4e: cache the latest cursor for DroppedFile —
+                // winit's DroppedFile carries no position, so we
+                // project the most-recently-seen cursor to world.
+                self.last_cursor = self.last_pointer;
                 // M14.4b.bis: middle-drag camera pan. Applied BEFORE
                 // pointer forwarding so widgets receive the move
                 // event but the camera also follows.

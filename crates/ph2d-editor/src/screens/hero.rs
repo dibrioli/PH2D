@@ -39,7 +39,7 @@ pub mod style;
 pub mod topbar;
 
 pub use bottom_hud::paint_bottom_hud;
-pub use canvas::paint_canvas_bg;
+pub use canvas::{paint_canvas_bg, paint_drop_overlay};
 pub use color_picker_demo::paint_blender_picker_demo;
 pub use hierarchy::paint_hierarchy;
 pub use inspector::paint_inspector;
@@ -229,6 +229,13 @@ pub struct HeroScreen {
     /// during image import to convert source-pixel dimensions to
     /// world meters.
     pub project: crate::project::ProjectSettings,
+    /// M14.4e: when the OS is hovering external files over the
+    /// window, the host pushes the `(paths, cursor_px)` tuple here so
+    /// the canvas painter can render a "Drop to import" overlay
+    /// (translucent blue band + caption with file count + first name).
+    /// Cleared on `on_file_hover_cancel` or after `on_file_drop` is
+    /// processed.
+    pub dragging_files: Option<(Vec<std::path::PathBuf>, (f32, f32))>,
 }
 
 impl HeroScreen {
@@ -252,6 +259,7 @@ impl HeroScreen {
             camera_reset_pending: false,
             import_requested: false,
             project: crate::project::ProjectSettings::default(),
+            dragging_files: None,
         }
     }
 
@@ -910,6 +918,12 @@ pub fn paint_hero_screen(
         &mut hero.hit_index,
         &hero.store,
     );
+    // M14.4e: file-drop overlay sits above EVERY layer (chrome,
+    // tooltips, context menus) so the user always sees the "Drop to
+    // import" hint while the OS drag is active.
+    if let Some((paths, cursor)) = hero.dragging_files.as_ref() {
+        paint_drop_overlay(&layout, paths, *cursor, scene, text_system, hero.theme);
+    }
 }
 
 #[cfg(test)]

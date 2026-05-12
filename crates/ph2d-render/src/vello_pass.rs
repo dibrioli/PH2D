@@ -25,7 +25,7 @@ use wgpu::util::{TextureBlitter, TextureBlitterBuilder};
 pub struct VelloPass {
     renderer: Renderer,
     /// Intermediate Rgba8Unorm storage texture; Vello compute writes
-    /// here. Recreated on resize.
+    /// here. Sized at the surface dimensions. Recreated on resize.
     intermediate: wgpu::Texture,
     intermediate_view: wgpu::TextureView,
     /// Blitter samples `intermediate` and draws into the surface view.
@@ -89,6 +89,57 @@ impl VelloPass {
 
     pub fn surface_format(&self) -> wgpu::TextureFormat {
         self.surface_format
+    }
+
+    /// Intermediate texture view. Bound by the
+    /// [`Compositor`](crate::Compositor) as its "UI layer" input.
+    pub fn intermediate_view(&self) -> &wgpu::TextureView {
+        &self.intermediate_view
+    }
+
+    /// Underlying intermediate texture. Exposed so the
+    /// [`Compositor`](crate::Compositor) can create extra views —
+    /// `wgpu::TextureView` is not `Clone` in wgpu 28.
+    pub fn intermediate_texture(&self) -> &wgpu::Texture {
+        &self.intermediate
+    }
+
+    /// M14.5: render the Vello `scene` into the intermediate texture
+    /// **without** the final blit onto a surface view. The intermediate
+    /// stays available via [`intermediate_view`](Self::intermediate_view)
+    /// so a downstream compositor can read it as a texture binding.
+    pub fn render_to_intermediate(
+        &mut self,
+        gpu: &GpuContext,
+        scene: &Scene,
+        size: (u32, u32),
+        bg_color: Color,
+    ) -> Result<(), String> {
+        self.ensure_size(gpu, size);
+        let params = RenderParams {
+            base_color: bg_color,
+            width: self.last_size.0,
+            height: self.last_size.1,
+            // M14.5 round 8: `Area` analytical coverage. MSAA16
+            // produced visible stippling on thin (1-1.5 px) strokes
+            // at near-axis angles — the 16 fixed sample positions
+            // hit-or-miss the stroke in patterns that read as
+            // pixelation. `Area` integrates coverage analytically
+            // per pixel, smoother for thin strokes and cheaper
+            // than MSAA16. The earlier "Area looks low-rez" note
+            // pre-dated the gamma-correct compositor + glyph-snap
+            // fixes; in the current pipeline Area wins.
+            antialiasing_method: AaConfig::Area,
+        };
+        self.renderer
+            .render_to_texture(
+                &gpu.device,
+                &gpu.queue,
+                scene,
+                &self.intermediate_view,
+                &params,
+            )
+            .map_err(|e| format!("vello render_to_texture: {e}"))
     }
 
     /// Synchronously read the sRGB-encoded RGBA byte at `(x, y)`
@@ -183,6 +234,15 @@ impl VelloPass {
             base_color: bg_color,
             width: self.last_size.0,
             height: self.last_size.1,
+            // M14.5 round 8: `Area` analytical coverage. MSAA16
+            // produced visible stippling on thin (1-1.5 px) strokes
+            // at near-axis angles — the 16 fixed sample positions
+            // hit-or-miss the stroke in patterns that read as
+            // pixelation. `Area` integrates coverage analytically
+            // per pixel, smoother for thin strokes and cheaper
+            // than MSAA16. The earlier "Area looks low-rez" note
+            // pre-dated the gamma-correct compositor + glyph-snap
+            // fixes; in the current pipeline Area wins.
             antialiasing_method: AaConfig::Area,
         };
         self.renderer
@@ -222,9 +282,11 @@ fn create_intermediate(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         // Vello requires Rgba8Unorm + STORAGE_BINDING; we add
-        // TEXTURE_BINDING so the blitter can sample it back out,
-        // and COPY_SRC so the eyedropper can copy a single pixel
-        // back to a CPU-mappable buffer for color readback.
+        // TEXTURE_BINDING so the compositor can `textureLoad`
+        // individual super-samples, and COPY_SRC so the eyedropper
+        // can copy a single pixel back to a CPU-mappable buffer for
+        // color readback. No sRGB view sibling — STORAGE_BINDING
+        // forbids that combination per wgpu validation.
         format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::STORAGE_BINDING
             | wgpu::TextureUsages::TEXTURE_BINDING

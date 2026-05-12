@@ -17,7 +17,7 @@ use crate::instance_buffer::InstanceBuffer;
 use crate::pipeline::SpritePipeline;
 use crate::sprite::{QuadVertex, RenderInstance};
 use ph2d_ecs::PresentWorld;
-use ph2d_gpu::{FrameTarget, GpuContext};
+use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 
 pub struct SpriteRenderer {
@@ -105,11 +105,39 @@ impl SpriteRenderer {
         &self.atlas
     }
 
+    /// Insert a freshly-decoded source image into the renderer's
+    /// atlas at native resolution, returning the packed region on
+    /// success. Wraps [`TextureAtlas::insert`] so callers (the
+    /// image-import path in `shells/desktop`) don't need to thread
+    /// the [`GpuContext`] themselves.
+    ///
+    /// `rgba` must be tightly-packed `width * height * 4` bytes.
+    /// Errors when the source is bigger than the atlas, or when
+    /// the packer's skyline is exhausted. See
+    /// [`AtlasInsertError`](crate::atlas::AtlasInsertError).
+    pub fn insert_atlas_sprite(
+        &mut self,
+        key: u32,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<crate::atlas::AtlasRegion, crate::atlas::AtlasInsertError> {
+        self.atlas.insert(&self.gpu, key, width, height, rgba)
+    }
+
     /// Render every `RenderInstance` in `present` into `target`.
     /// Loads with `clear_color` (single pass; M6+ may compose multiple).
+    ///
+    /// M14.5: `target` is now a generic `&wgpu::TextureView` so the
+    /// caller can route the output into either the swap chain (legacy
+    /// fixture demo) or an offscreen [`GameRt`](crate::GameRt) (live
+    /// editor mode with compositor pass). The pipeline's color format
+    /// (`color_format` passed to `SpritePipeline::new`) MUST match
+    /// whatever this view points at — mismatch is a wgpu validation
+    /// error caught at first draw.
     pub fn render(
         &mut self,
-        target: &FrameTarget,
+        target: &wgpu::TextureView,
         present: &mut PresentWorld,
         camera: &Camera2d,
         window: WindowSize,
@@ -139,7 +167,7 @@ impl SpriteRenderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ph2d-render sprite pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: target.view(),
+                    view: target,
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {

@@ -19,18 +19,27 @@
 
 pub mod atlas;
 pub mod camera;
+pub mod compositor;
+pub mod game_rt;
 pub mod instance_buffer;
 pub mod pipeline;
 pub mod registry;
 pub mod renderer;
 pub mod sprite;
+pub mod tonemap;
 pub mod vello_pass;
 
-pub use atlas::TextureAtlas;
+pub use atlas::{
+    ATLAS_DEFAULT_SIZE_PX, AtlasInsertError, AtlasRegion, DEMO_TILE_COUNT, DEMO_TILE_PX,
+    FIRST_IMPORT_KEY, TextureAtlas,
+};
 pub use camera::{Camera2d, CameraUniform};
+pub use compositor::Compositor;
+pub use game_rt::GameRt;
 pub use instance_buffer::InstanceBuffer;
 pub use pipeline::SpritePipeline;
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{QuadVertex, RenderInstance, Sprite};
+pub use tonemap::Tonemap;
 pub use vello_pass::VelloPass;

@@ -27,3 +27,9 @@ vello = "0.8"
 # `SceneDoc` through the postcard pipeline (M14.3). HR-14 mitigation
 # until `#[derive(Saveable)]` lands.
 serde = { version = "1", features = ["derive"] }
+# Skyline rectangle-packing for the dynamic atlas (M14.4d retrofit).
+# Lightweight (no image-data wrapping like `texture_packer`'s Texture
+# trait): we keep RGBA bytes in our own buffers and use rect_packer
+# purely for the (x, y) placement decision. Skyline is the same
+# algorithm `texture_packer` uses under the hood.
+rect_packer = "0.2"

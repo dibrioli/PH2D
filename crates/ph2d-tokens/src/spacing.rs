@@ -60,7 +60,7 @@ impl Spacing {
 /// Fixed section gap (non-power-of-2). Per tokens.json `section-gap`.
 pub const SECTION_GAP_PX: f32 = 14.0;
 
-/// Row height by density. Per tokens.json `row-h` (forge-sdf default).
+/// Row height by density. Per tokens.json `row-h` (forge default).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum Density {
     /// 22 px row height — max density.
@@ -82,10 +82,10 @@ impl Density {
     }
 }
 
-/// Default icon-button square size (forge-sdf default = 36 px).
+/// Default icon-button square size (forge default = 36 px).
 pub const ICON_BTN_SIZE_PX: f32 = 36.0;
 
-/// Default body row height (matches forge-sdf `row-h` = 28).
+/// Default body row height (matches forge `row-h` = 28).
 pub const ROW_H_PX: f32 = 28.0;
 
 #[cfg(test)]

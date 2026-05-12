@@ -91,7 +91,14 @@ impl SpritePipeline {
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: color_format,
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        // M14.5: premultiplied alpha throughout the
+                        // pipeline (game_rt → tonemap → compositor).
+                        // The fragment shader is responsible for
+                        // emitting `color.rgb *= color.a` before
+                        // return so sprites with α<1 composite
+                        // correctly when multiple draw on top of
+                        // each other inside the RT.
+                        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),

@@ -20,7 +20,7 @@
 //!
 //! ### Why
 //!
-//! - **4 themes** (`forge-sdf` default, `paint-studio`, `sunstone`,
+//! - **4 themes** (`forge` default, `workshop`, `sunstone`,
 //!   `blueprint`) become a lookup, not a code fork.
 //! - **WCAG 2.2 AA contrast** validated by tests in this crate (not
 //!   scattered). Tweaking one value ⇒ contrast test fails immediately.

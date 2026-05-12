@@ -56,5 +56,11 @@ fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let tex = textureSample(atlas_tex, atlas_sampler, in.uv);
-    return tex * in.tint;
+    // M14.5: sprite atlas is straight (non-premultiplied) sRGB; the
+    // pipeline blend is `PREMULTIPLIED_ALPHA_BLENDING` (pipeline.rs),
+    // so we premultiply here before returning. This makes overlap
+    // composite linearly without the dark-fringe artifact seen with
+    // straight alpha + premultiplied blend.
+    let color = tex * in.tint;
+    return vec4<f32>(color.rgb * color.a, color.a);
 }

@@ -1160,11 +1160,27 @@ impl App {
             // vanish if the user deleted it between frames) we build a
             // `GizmoView` from the world-space bbox + camera. Empty
             // selection → clear the view so the painter skips.
+            // M14.7 polish: build the gizmo view from the entity's
+            // unrotated rect + rotation so the painter can draw the
+            // oriented bbox. `selection_bbox_world` returns the
+            // axis-aligned bbox of the (already scaled) RenderInstance
+            // — fine for picking but wrong for the gizmo's outline
+            // when the sprite is rotated. We pull `Sprite` + Transform
+            // directly from SimWorld to get the LOCAL rect + the
+            // canonical rotation.
             hero.gizmo_view = hero.gizmo_selection.and_then(|bits| {
-                let bbox = ph2d_render::selection_bbox_world(present.world_mut(), bits)?;
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                let world = sim.world();
+                let sprite = world.get::<Sprite>(entity)?;
+                let transform = world.get::<Transform>(entity)?;
+                let half_w = sprite.size[0] * transform.scale.x * 0.5;
+                let half_h = sprite.size[1] * transform.scale.y * 0.5;
+                let cx = transform.translation.x;
+                let cy = transform.translation.y;
                 Some(ph2d_editor::GizmoView {
-                    bbox_min_world: bbox.min,
-                    bbox_max_world: bbox.max,
+                    bbox_min_world: [cx - half_w, cy - half_h],
+                    bbox_max_world: [cx + half_w, cy + half_h],
+                    rotation: transform.rotation,
                     camera_center: camera.center,
                     camera_height_world: camera.height_world,
                     window_w: window_size.width as f32,
@@ -1175,6 +1191,7 @@ impl App {
                         window_size.width as f32,
                         window_size.height as f32,
                     ),
+                    cursor_screen: Some(self.last_pointer),
                 })
             });
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);

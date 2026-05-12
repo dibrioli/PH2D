@@ -27,6 +27,7 @@
 pub mod asset;
 pub mod db;
 pub mod error;
+pub mod hand_packed;
 pub mod id;
 pub mod loader;
 pub mod prefab;
@@ -36,6 +37,7 @@ pub mod watcher;
 pub use asset::Asset;
 pub use db::AssetDb;
 pub use error::AssetError;
+pub use hand_packed::{AtlasMeta, AtlasMetaError, AtlasRegion, parse_atlas_meta};
 pub use id::AssetId;
 pub use loader::is_supported_image_extension;
 pub use prefab::{ComponentBlob, ComponentTypeId, PrefabDoc, PrefabRef};

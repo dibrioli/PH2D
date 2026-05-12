@@ -30,6 +30,9 @@ serde = { version = "1", features = ["derive"] }
 # The same crate `tests/spike/src/bin/c13_migration.rs` uses for
 # save/replay snapshots — single canonical wire format.
 postcard = { version = "1", features = ["alloc"] }
+# JSON parser for M14.5 B hand-packed atlases (Aseprite + TexturePacker
+# both export JSON). Aligned with ph2d-mcp's serde_json major.
+serde_json = "1"
 
 [dev-dependencies]
 tempfile = "3"

@@ -1135,15 +1135,11 @@ impl App {
                         if c == dragged {
                             return true;
                         }
-                        current = sim_w
-                            .get::<ph2d_ecs::ChildOf>(c)
-                            .map(|c| c.parent());
+                        current = sim_w.get::<ph2d_ecs::ChildOf>(c).map(|c| c.parent());
                     }
                     false
                 });
-                if !would_cycle
-                    && let Ok(mut entry) = sim_w.get_entity_mut(dragged)
-                {
+                if !would_cycle && let Ok(mut entry) = sim_w.get_entity_mut(dragged) {
                     match new_parent_entity {
                         Some(p) => {
                             entry.insert(ph2d_ecs::ChildOf(p));

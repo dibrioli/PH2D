@@ -459,17 +459,22 @@ pub struct SnapSettings {
 (M14.1), screen_to_world já existe (M14.4b.bis), selection picking
 precisa de hit-test em world (M14.5 sprite strategies cobre parte).
 
-## M14.4e v2 — Bugs reportados em uso real (planned)
+## M14.4e v2 — Bugs reportados em uso real (shipped 2026-05-12, commit `956e3bc`)
 
-A v1 do M14.4e shipou drag-and-drop funcional + 3 bugfixes mas o
-usuário reportou um quarto sintoma depois do commit:
+A v1 do M14.4e shipou drag-and-drop funcional + 3 bugfixes; v2 fechou
+dois sintomas pós-commit:
 
-- **"Imagens importadas por drag são agrupadas na hierarquia"** —
-  precisa de investigação. Hipóteses: bridge realocando NodeIds
-  inconsistentes, ChildOf default sendo aplicado em algum lugar,
-  indent visual da hierarchy fora-de-sync. Validar com print do
-  `live_hierarchy_entries` durante drop. Fix < 50 linhas
-  esperado.
+- **Y-axis inversion** (camera/grid/sprite Y consumers desencontrados)
+  — view_proj normalizada (sem swap bottom/top), pan_screen_delta +=,
+  screen_to_world `cy - ny*half_h`. Testes pinned em `camera.rs`
+  (`pan_screen_down_moves_camera_up_world`,
+  `y_up_world_maps_to_positive_clip_y`, etc).
+- **Imagens importadas "agrupadas" na hierarquia** — root cause em
+  [`hierarchy.rs:248`](../../crates/ph2d-editor/src/screens/hero/hierarchy.rs#L248):
+  o painter chamava `store.hierarchy_depth_of(id)` que lê estado de
+  DnD residual; trocado para `entity.indent` (snapshot autoritativo
+  do `build_hierarchy_snapshot`) em live mode. Fixture mode continua
+  usando o depth do store.
 
 ## Processo do loop de implementação (regra ativa)
 

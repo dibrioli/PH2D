@@ -13,7 +13,10 @@ use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_title, resolve, stroke_rounded_rect,
 };
-use crate::widget::{ButtonState, Tag, TagState, TagTone, paint_tag};
+use crate::widget::{
+    ButtonState, Tag, TagState, TagTone, TextInput, TextInputState, paint_tag,
+    paint_text_input_with_buffer,
+};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
@@ -27,6 +30,17 @@ pub fn populate(store: &mut WidgetStore) {
         ids::HIERARCHY_ADD,
         InteractiveState::Button {
             state: ButtonState::Normal,
+        },
+    );
+    // M14.6 E: search/filter TextInput in the header. Pre-registered so
+    // the dispatcher can route clicks/typing without per-frame allocs.
+    store.register(
+        ids::HIER_SEARCH,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
         },
     );
     // Placeholder: only Scene Root is registered. The pilot project
@@ -62,6 +76,19 @@ pub fn repopulate(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
         super::ids::HIERARCHY_ADD,
         InteractiveState::Button {
             state: ButtonState::Normal,
+        },
+    );
+    // M14.6 E: idempotent search-field registration. Live mode re-enters
+    // `repopulate` every frame the bridge is awake; `WidgetStore::register`
+    // is a no-op for ids already present, so the user's typed query
+    // survives intact.
+    store.register(
+        super::ids::HIER_SEARCH,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
         },
     );
     for &id in ids {
@@ -187,8 +214,45 @@ pub fn paint_hierarchy(
     };
     paint_icon(scene, IconId::Add, add_rect, resolve(add_fg, theme), 1.5);
 
-    let body_top = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0;
+    let header_bottom = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0;
     let body_pad = 8.0_f32;
+
+    // M14.6 E: search/filter TextInput. Sits between the header and the
+    // entity rows; its current buffer drives a case-insensitive name
+    // filter with ancestor-path preservation (see `match_filter`).
+    let search_h = 28.0_f32;
+    let search_rect = Rect::new(
+        rect.x + body_pad,
+        header_bottom,
+        (rect.w - body_pad * 2.0).max(0.0),
+        search_h,
+    );
+    hit_index.register(ids::HIER_SEARCH, search_rect);
+    let (search_state, search_text, search_caret, search_anchor) = match store.get(ids::HIER_SEARCH)
+    {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, text.clone(), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, String::new(), 0, None),
+    };
+    let search_input = TextInput::new(ids::HIER_SEARCH, "")
+        .placeholder("Search\u{2026}")
+        .state(search_state);
+    paint_text_input_with_buffer(
+        &search_input,
+        Some(search_text.as_str()),
+        Some(search_caret),
+        search_anchor,
+        search_rect,
+        scene,
+        text_system,
+        theme,
+    );
+
+    let body_top = search_rect.y + search_rect.h + 6.0;
     // Scrollable content area below the header. Clip layer + wheel
     // offset so the entity list can grow past the panel bottom.
     let content_bottom = rect.y + rect.h - 4.0;
@@ -252,6 +316,20 @@ pub fn paint_hierarchy(
             }
         })
         .collect();
+    // M14.6 E: compute the search-filter visibility mask once per
+    // frame. Empty query → every row stays visible; non-empty query
+    // marks rows whose `name` matches (case-insensitive) AND every
+    // ancestor of a match so the path to the hit stays painted.
+    // While a non-empty query is active, collapse state is bypassed
+    // — the user expects search to reveal the matching subtree even
+    // if its parent was collapsed.
+    let query = search_text.trim().to_lowercase();
+    let search_active = !query.is_empty();
+    let (display_mask, direct_match_mask): (Vec<bool>, Vec<bool>) = if search_active {
+        compute_match_filter(&order, &depths, &entities_by_id, &query)
+    } else {
+        (Vec::new(), Vec::new())
+    };
     let mut collapsed_gate: Option<u32> = None;
     for (i, id) in order.iter().enumerate() {
         let Some(entity_template) = entities_by_id.get(id) else {
@@ -268,10 +346,24 @@ pub fn paint_hierarchy(
         if collapsed_gate.is_some() {
             continue;
         }
+        // M14.6 E: drop rows the search query has filtered out. The
+        // mask is computed in DFS order so per-index lookup is O(1).
+        // Fallback to `false` (hide) on the off chance the mask is
+        // shorter than `order` — under an active search, the safe
+        // default is "show only what matched", not "show everything".
+        if search_active && !display_mask.get(i).copied().unwrap_or(false) {
+            continue;
+        }
         let has_children = depths.get(i + 1).is_some_and(|&d| d > depth);
-        let is_collapsed = has_children && store.is_hierarchy_collapsed(*id);
+        // Search overrides collapse: while filtering, parents whose
+        // descendants matched must reveal their subtree.
+        let is_collapsed = has_children && !search_active && store.is_hierarchy_collapsed(*id);
         let mut entity = entity_template.clone();
         let indent = (depth as f32) * INDENT_PX;
+        // Highlight rows whose name literally matched the query; the
+        // ancestors retained for context render with the standard
+        // Text1 color so the eye can follow the path.
+        let direct_match = search_active && direct_match_mask.get(i).copied().unwrap_or(false);
         let row_rect = Rect::new(
             rect.x + body_pad + indent,
             y,
@@ -295,6 +387,7 @@ pub fn paint_hierarchy(
             Some(hit_index),
             has_children,
             is_collapsed,
+            direct_match,
         );
         row_rects.push((*id, row_rect));
         if is_collapsed {
@@ -454,6 +547,7 @@ fn paint_hierarchy_row(
     mut hit_index: Option<&mut HitIndex>,
     has_children: bool,
     is_collapsed: bool,
+    direct_match: bool,
 ) {
     if entity.selected {
         fill_rounded_rect(
@@ -492,7 +586,7 @@ fn paint_hierarchy_row(
             resolve(ColorToken::Text2, theme),
             1.5,
         );
-        if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_deref_mut()) {
+        if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
             // Hit-rect: chevron glyph + padding for 24×24 click target.
             let hit_rect = Rect::new(
                 chev_rect.x - 6.0,
@@ -545,7 +639,7 @@ fn paint_hierarchy_row(
         eye_size,
     );
     paint_icon(scene, eye_icon, eye_rect, resolve(eye_color, theme), 1.5);
-    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_deref_mut()) {
+    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
         let hit_pad = 4.0_f32;
         let hit_rect = Rect::new(
             eye_rect.x - hit_pad,
@@ -605,6 +699,11 @@ fn paint_hierarchy_row(
     let name_x = icon_rect.x + icon_w + 8.0;
     let name_color = if entity.muted {
         ColorToken::TextDisabled
+    } else if direct_match {
+        // M14.6 E: rows whose name literally matched the search query
+        // get the Accent color so the eye locks onto hits even when
+        // ancestors are painted alongside them for context.
+        ColorToken::Accent
     } else {
         ColorToken::Text1
     };
@@ -618,4 +717,176 @@ fn paint_hierarchy_row(
         (right_x - name_x).max(0.0),
         resolve(name_color, theme),
     );
+}
+
+/// Compute which rows survive the M14.6 E hierarchy search filter.
+///
+/// Inputs are arrays in the DFS visit order produced by
+/// [`build_hierarchy_snapshot`] (and threaded through the bridge):
+/// `order[i]` is the row's `NodeId`, `depths[i]` is its depth from
+/// root, and `entities_by_id` carries the per-row name. `query` is the
+/// pre-lowercased search string the user typed; callers handle the
+/// "empty query → show all" case before invoking this function.
+///
+/// Returns two parallel vectors of the same length as `order`:
+/// - `display[i] == true` when row `i` should remain painted (either
+///   it matched the query directly, or one of its descendants did)
+/// - `direct[i] == true` when row `i` matched the query literally
+///   (used by `paint_hierarchy_row` to render the name in Accent).
+///
+/// Algorithm: O(N × max_depth) worst case, O(N) when the matched
+/// rows are sparse. A running stack of open-ancestor indices lets
+/// each match propagate "visible" up to every parent of the match
+/// without revisiting subtrees.
+pub(crate) fn compute_match_filter(
+    order: &[ph2d_a11y::NodeId],
+    depths: &[u32],
+    entities_by_id: &std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>,
+    query: &str,
+) -> (Vec<bool>, Vec<bool>) {
+    let n = order.len();
+    let mut display = vec![false; n];
+    let mut direct = vec![false; n];
+    // Stack of (index, depth) for ancestors whose subtree is still
+    // open. Popped when the next row's depth dips back to or below
+    // the ancestor — at which point the ancestor's subtree is sealed.
+    let mut stack: Vec<usize> = Vec::with_capacity(16);
+    for i in 0..n {
+        let d = depths[i];
+        while let Some(&top) = stack.last() {
+            if depths[top] >= d {
+                stack.pop();
+            } else {
+                break;
+            }
+        }
+        let name_lower = entities_by_id
+            .get(&order[i])
+            .map(|e| e.name.to_lowercase())
+            .unwrap_or_default();
+        let is_match = !name_lower.is_empty() && name_lower.contains(query);
+        if is_match {
+            direct[i] = true;
+            display[i] = true;
+            // Mark every open ancestor so the path to the hit stays
+            // painted even when the ancestor name itself doesn't
+            // contain the query.
+            for &a in &stack {
+                display[a] = true;
+            }
+        }
+        stack.push(i);
+    }
+    (display, direct)
+}
+
+#[cfg(test)]
+mod search_tests {
+    use super::*;
+    use crate::icons::IconId;
+    use crate::screens::hero::fixture::HierarchyEntity;
+    use ph2d_a11y::NodeId;
+    use std::collections::BTreeMap;
+
+    fn entity(name: &str, indent: u8) -> HierarchyEntity {
+        HierarchyEntity {
+            name: name.to_string(),
+            icon: IconId::Sprite,
+            indent,
+            badge: None,
+            swatch: None,
+            visible: true,
+            selected: false,
+            muted: false,
+        }
+    }
+
+    fn build_tree() -> (Vec<NodeId>, Vec<u32>, BTreeMap<NodeId, HierarchyEntity>) {
+        // group_a (0)
+        //   ├── sprite_alpha (1)
+        //   └── sprite_beta  (1)
+        // group_b (0)
+        //   └── sprite_gamma (1)
+        let order = vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4), NodeId(5)];
+        let depths = vec![0, 1, 1, 0, 1];
+        let mut map = BTreeMap::new();
+        map.insert(NodeId(1), entity("group_a", 0));
+        map.insert(NodeId(2), entity("sprite_alpha", 1));
+        map.insert(NodeId(3), entity("sprite_beta", 1));
+        map.insert(NodeId(4), entity("group_b", 0));
+        map.insert(NodeId(5), entity("sprite_gamma", 1));
+        (order, depths, map)
+    }
+
+    #[test]
+    fn direct_match_keeps_ancestor_visible() {
+        let (order, depths, map) = build_tree();
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "alpha");
+        // alpha matched directly
+        assert!(direct[1]);
+        // group_a is its ancestor → kept visible for context
+        assert!(display[0]);
+        assert!(display[1]);
+        // beta is a sibling, not on the matched path → hidden
+        assert!(!display[2]);
+        // group_b + gamma in a sibling subtree → hidden
+        assert!(!display[3]);
+        assert!(!display[4]);
+        // ancestors don't get the "direct" highlight
+        assert!(!direct[0]);
+    }
+
+    #[test]
+    fn ancestor_match_does_not_pull_descendants() {
+        let (order, depths, map) = build_tree();
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "group_a");
+        // Only group_a matches directly
+        assert!(direct[0]);
+        assert!(display[0]);
+        // Its children stay hidden — search is not a tree-expander
+        // for parents, only a path-preserver for descendants.
+        assert!(!display[1]);
+        assert!(!display[2]);
+        // group_b's subtree is untouched
+        assert!(!display[3]);
+        assert!(!display[4]);
+    }
+
+    #[test]
+    fn case_insensitive_and_substring() {
+        let (order, depths, map) = build_tree();
+        // Caller normalizes to lowercase before invoking; verify a
+        // partial substring across casing works once lowered.
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "gamm");
+        assert!(direct[4]);
+        // group_b is gamma's ancestor → visible
+        assert!(display[3]);
+        assert!(display[4]);
+    }
+
+    #[test]
+    fn no_match_hides_everything() {
+        let (order, depths, map) = build_tree();
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "zzz_does_not_exist");
+        assert!(display.iter().all(|&b| !b));
+        assert!(direct.iter().all(|&b| !b));
+    }
+
+    #[test]
+    fn deep_chain_marks_every_ancestor() {
+        // root → mid → leaf (depths 0, 1, 2)
+        let order = vec![NodeId(10), NodeId(11), NodeId(12)];
+        let depths = vec![0, 1, 2];
+        let mut map = BTreeMap::new();
+        map.insert(NodeId(10), entity("root", 0));
+        map.insert(NodeId(11), entity("mid", 1));
+        map.insert(NodeId(12), entity("leaf_xyz", 2));
+        let (display, direct) = compute_match_filter(&order, &depths, &map, "xyz");
+        assert!(display[0]);
+        assert!(display[1]);
+        assert!(display[2]);
+        assert!(direct[2]);
+        assert!(!direct[0]);
+        assert!(!direct[1]);
+    }
 }

@@ -333,6 +333,13 @@ pub const HIER_TRIGGER_ZONE_A: NodeId = NodeId(409);
 pub const HIER_AMBIENT_LIGHT: NodeId = NodeId(410);
 pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
 
+/// M14.6 E: search/filter TextInput in the Hierarchy header. Empty
+/// query shows every row; non-empty case-insensitively filters by
+/// `name.contains(query)` with ancestor-path preservation (a parent
+/// stays visible if any descendant matches, so the user sees where
+/// the hit lives in the tree).
+pub const HIER_SEARCH: NodeId = NodeId(412);
+
 /// Map fixture entity name to canonical hierarchy `NodeId`. The
 /// placeholder fixture currently exposes only "Scene Root"; the
 /// other `HIER_*` ids are kept reserved for the pilot project's

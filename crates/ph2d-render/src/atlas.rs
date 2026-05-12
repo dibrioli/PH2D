@@ -131,6 +131,19 @@ pub struct TextureAtlas {
     pub size_px: u32,
     packer: rect_packer::DensePacker,
     regions: BTreeMap<u32, AtlasRegion>,
+    /// Atlas V2 (M14.4f): free-list of regions made available by
+    /// [`Self::remove`] (and by replace-with-different-size, which
+    /// would otherwise leak the slot). Indexed by `(width, height)`
+    /// so an `insert` of matching dimensions can reuse a slot without
+    /// touching the Skyline packer. BTreeMap (not HashMap) per HR-5.
+    free_slots: BTreeMap<(u32, u32), Vec<AtlasRegion>>,
+    /// Hard cap for [`Self::regrow_inplace`]. Read from
+    /// `gpu.device.limits().max_texture_dimension_2d` at construction
+    /// so weaker adapters (mobile/WebGL) don't try to allocate
+    /// textures their hardware refuses. Capped at 8192 even when the
+    /// adapter exposes 16384 — packer + bind-group cost grows
+    /// quadratically with side length.
+    max_size_px: u32,
 }
 
 impl TextureAtlas {
@@ -139,7 +152,9 @@ impl TextureAtlas {
     /// only the regions touched by [`Self::insert`] /
     /// [`Self::update_region`] are deterministic.
     pub fn new(gpu: &GpuContext, size_px: u32) -> Self {
-        let size_px = size_px.max(1);
+        let adapter_cap = gpu.device.limits().max_texture_dimension_2d;
+        let max_size_px = adapter_cap.min(8192);
+        let size_px = size_px.max(1).min(max_size_px);
         let (texture, view) = create_texture(&gpu.device, size_px);
         let sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ph2d-render atlas sampler"),
@@ -163,7 +178,16 @@ impl TextureAtlas {
             size_px,
             packer: rect_packer::DensePacker::new(size_px as i32, size_px as i32),
             regions: BTreeMap::new(),
+            free_slots: BTreeMap::new(),
+            max_size_px,
         }
+    }
+
+    /// Maximum side length [`Self::regrow_inplace`] will allow.
+    /// Caller-visible so the shell can pre-emptively refuse imports
+    /// larger than this without waiting for the atlas to fail.
+    pub fn max_size_px(&self) -> u32 {
+        self.max_size_px
     }
 
     /// Build the demo atlas — empty atlas + 16 HSV-tinted 64×64
@@ -190,10 +214,10 @@ impl TextureAtlas {
     ///
     /// If `key` was already inserted this is treated as a *replace*
     /// — the existing region is reused (no re-pack) and only the
-    /// pixels are rewritten. Source dimensions in the replace path
-    /// MUST equal the original `(w, h)` or `AtlasInsertError`
-    /// surfaces. Callers wanting to swap a sprite for a different-
-    /// sized source should `remove` first (TODO when regrow lands).
+    /// pixels are rewritten. If the replace dimensions DIFFER from
+    /// the original, M14.4f releases the old slot into `free_slots`
+    /// and falls through to a fresh pack attempt — the slot will be
+    /// reclaimed by the next matching-size insert.
     pub fn insert(
         &mut self,
         gpu: &GpuContext,
@@ -221,16 +245,36 @@ impl TextureAtlas {
         );
 
         // Replace path: same key + same size → rewrite pixels in
-        // the existing region. Different size invalidates the
-        // packer's reservation, so we surface an error rather than
-        // silently leaking the slot. Callers can `remove(key)` once
-        // that API exists (post-regrow).
-        if let Some(existing) = self.regions.get(&key).copied() {
+        // the existing region. M14.4f: when sizes DIFFER we now
+        // release the old slot into `free_slots` (rather than
+        // leaking it) and fall through to the fresh-insert flow
+        // below, which may consume that same slot if dimensions
+        // match a later sprite.
+        if let Some(existing) = self.regions.remove(&key) {
             if existing.w == width && existing.h == height {
                 upload_region(gpu, &self.texture, existing, rgba);
+                self.regions.insert(key, existing);
                 return Ok(existing);
             }
-            return Err(AtlasInsertError::AtlasFull { width, height });
+            self.free_slots
+                .entry((existing.w, existing.h))
+                .or_default()
+                .push(existing);
+        }
+
+        // Fast path: a previously-freed slot of identical dimensions
+        // can host this sprite without consulting the Skyline packer.
+        // This is what makes `despawn → re-import` cycles survive
+        // long sessions without saturating the packer.
+        if let Some(bucket) = self.free_slots.get_mut(&(width, height))
+            && let Some(region) = bucket.pop()
+        {
+            if bucket.is_empty() {
+                self.free_slots.remove(&(width, height));
+            }
+            upload_region(gpu, &self.texture, region, rgba);
+            self.regions.insert(key, region);
+            return Ok(region);
         }
 
         // Fresh insert — ask the packer for a free slot. `false`
@@ -248,6 +292,84 @@ impl TextureAtlas {
         upload_region(gpu, &self.texture, region, rgba);
         self.regions.insert(key, region);
         Ok(region)
+    }
+
+    /// Release `key`'s region back into the free-list. The next
+    /// [`Self::insert`] of matching dimensions will reuse the slot
+    /// (skipping the Skyline packer). Returns the freed region for
+    /// the caller's inspection, or `None` if `key` wasn't inserted.
+    ///
+    /// **Refcount contract**: each `key` is currently owned by
+    /// exactly one sprite (the M14.4d `next_import_cell` allocator
+    /// guarantees uniqueness). Calling `remove` while another sprite
+    /// still references the key is undefined behavior at the user
+    /// level (the still-referenced sprite will sample garbage / a
+    /// future unrelated sprite's pixels). Refcount tracking lands
+    /// when M14.5 introduces prefab/clone semantics that can share
+    /// keys.
+    pub fn remove(&mut self, key: u32) -> Option<AtlasRegion> {
+        let region = self.regions.remove(&key)?;
+        self.free_slots
+            .entry((region.w, region.h))
+            .or_default()
+            .push(region);
+        Some(region)
+    }
+
+    /// Re-pack into a fresh texture of `new_size_px × new_size_px`,
+    /// preserving every currently-reserved region. `new_size_px` is
+    /// clamped to `[self.size_px, self.max_size_px]`.
+    ///
+    /// `fetch_pixels(key) -> Option<Vec<u8>>` is called for each
+    /// surviving region to re-upload its pixel data. The closure is
+    /// the caller's responsibility because the atlas itself does not
+    /// cache the source bytes (they live in [`ph2d_asset::AssetDb`]
+    /// or — for demo HSV tiles — are regeneratable from the key
+    /// index). Returning `None` drops the region from the new atlas.
+    ///
+    /// Free-list is cleared (old freed slots can't be remapped onto
+    /// the new packer's skyline; they'd produce phantom overlaps).
+    /// New regions inherit the keys they had pre-regrow so callers
+    /// (sprites, render instances) don't need to update.
+    ///
+    /// Returns the new atlas-internal `size_px`. Errors only when a
+    /// surviving region exceeds the new size (which can happen if
+    /// the caller passes a smaller size).
+    pub fn regrow_inplace<F>(
+        &mut self,
+        gpu: &GpuContext,
+        new_size_px: u32,
+        fetch_pixels: F,
+    ) -> Result<u32, AtlasInsertError>
+    where
+        F: Fn(u32) -> Option<Vec<u8>>,
+    {
+        let new_size_px = new_size_px.clamp(self.size_px, self.max_size_px);
+        let old_regions = std::mem::take(&mut self.regions);
+        self.free_slots.clear();
+        let (texture, view) = create_texture(&gpu.device, new_size_px);
+        self.texture = texture;
+        self.view = view;
+        self.size_px = new_size_px;
+        self.packer = rect_packer::DensePacker::new(new_size_px as i32, new_size_px as i32);
+        // Re-insert in BTreeMap key order so re-pack is deterministic
+        // even when the underlying packer is sensitive to insert
+        // sequence (HR-5: identical input → identical layout across
+        // runs of the same session, and across machines via blake3
+        // hash invariants).
+        for (key, region) in old_regions {
+            let Some(rgba) = fetch_pixels(key) else {
+                continue;
+            };
+            self.insert(gpu, key, region.w, region.h, &rgba)?;
+        }
+        Ok(new_size_px)
+    }
+
+    /// Free-list size (for tests + diagnostics). Number of regions
+    /// currently available for matching-size reuse.
+    pub fn free_slot_count(&self) -> usize {
+        self.free_slots.values().map(Vec::len).sum()
     }
 
     /// Lookup the reserved region for `key` (returned by an earlier
@@ -520,5 +642,165 @@ mod tests {
             assert_eq!(region.w, DEMO_TILE_PX);
             assert_eq!(region.h, DEMO_TILE_PX);
         }
+    }
+
+    // ── M14.4f Atlas V2: free-list + remove + regrow ────────────────
+
+    #[test]
+    fn remove_returns_region_and_pushes_into_free_list() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let rgba = vec![0u8; (64 * 64 * 4) as usize];
+        let region = atlas.insert(&gpu, 7, 64, 64, &rgba).unwrap();
+        assert_eq!(atlas.free_slot_count(), 0);
+        let removed = atlas.remove(7).expect("region present");
+        assert_eq!(removed, region);
+        assert_eq!(atlas.region_count(), 0);
+        assert_eq!(atlas.free_slot_count(), 1);
+    }
+
+    #[test]
+    fn remove_of_missing_key_returns_none() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        assert!(atlas.remove(123).is_none());
+        assert_eq!(atlas.free_slot_count(), 0);
+    }
+
+    #[test]
+    fn insert_reuses_freed_slot_for_matching_size() {
+        // After remove, an insert of the SAME dimensions must reuse
+        // the freed slot — no new packer.pack() call. We verify by
+        // confirming the new region equals the old region.
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let rgba = vec![0u8; (64 * 64 * 4) as usize];
+        let region_a = atlas.insert(&gpu, 1, 64, 64, &rgba).unwrap();
+        atlas.remove(1).unwrap();
+        let region_b = atlas.insert(&gpu, 2, 64, 64, &rgba).unwrap();
+        assert_eq!(region_a, region_b, "free-list slot reused");
+        assert_eq!(atlas.free_slot_count(), 0);
+    }
+
+    #[test]
+    fn insert_skips_free_list_when_size_mismatches() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let rgba_64 = vec![0u8; (64 * 64 * 4) as usize];
+        let region_64 = atlas.insert(&gpu, 1, 64, 64, &rgba_64).unwrap();
+        atlas.remove(1).unwrap();
+        // Insert a 32×32 — the free-list has a 64×64 entry, which is
+        // ignored (no fit, no over-allocation: the slot stays in the
+        // free-list waiting for another 64×64 caller).
+        let rgba_32 = vec![0u8; (32 * 32 * 4) as usize];
+        let region_32 = atlas.insert(&gpu, 2, 32, 32, &rgba_32).unwrap();
+        assert_ne!(region_32, region_64);
+        assert_eq!(atlas.free_slot_count(), 1, "64×64 slot still free");
+    }
+
+    #[test]
+    fn replace_with_different_size_releases_old_slot() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let rgba_a = vec![0u8; (64 * 64 * 4) as usize];
+        atlas.insert(&gpu, 7, 64, 64, &rgba_a).unwrap();
+        // Same key, DIFFERENT size — the old 64×64 region must end
+        // up in the free-list (M14.4f bug fix: previously this
+        // returned AtlasFull and leaked the slot).
+        let rgba_b = vec![0u8; (32 * 32 * 4) as usize];
+        atlas.insert(&gpu, 7, 32, 32, &rgba_b).unwrap();
+        assert_eq!(atlas.free_slot_count(), 1);
+    }
+
+    #[test]
+    fn regrow_inplace_doubles_size_and_preserves_regions() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let rgba = vec![0u8; (64 * 64 * 4) as usize];
+        atlas.insert(&gpu, 0, 64, 64, &rgba).unwrap();
+        atlas.insert(&gpu, 1, 64, 64, &rgba).unwrap();
+        // Fake fetch_pixels — just return zero buffers of the right
+        // size. Real callers route through AssetDb.
+        let new = atlas
+            .regrow_inplace(&gpu, 512, |_key| Some(vec![0u8; 64 * 64 * 4]))
+            .unwrap();
+        assert_eq!(new, 512);
+        assert_eq!(atlas.size_px, 512);
+        assert_eq!(atlas.region_count(), 2);
+        assert!(atlas.region(0).is_some());
+        assert!(atlas.region(1).is_some());
+        // Free-list cleared on regrow — old freed slots can't be
+        // mapped onto the new skyline without overlap risk.
+        assert_eq!(atlas.free_slot_count(), 0);
+    }
+
+    #[test]
+    fn regrow_inplace_caps_at_max_size_px() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let cap = atlas.max_size_px();
+        let actual = atlas
+            .regrow_inplace(&gpu, cap * 4, |_key| Some(Vec::new()))
+            .unwrap();
+        assert_eq!(actual, cap, "regrow capped at max_size_px");
+    }
+
+    #[test]
+    fn regrow_inplace_drops_regions_whose_fetcher_returns_none() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let rgba = vec![0u8; (32 * 32 * 4) as usize];
+        atlas.insert(&gpu, 1, 32, 32, &rgba).unwrap();
+        atlas.insert(&gpu, 2, 32, 32, &rgba).unwrap();
+        // fetcher returns pixels only for key 1; key 2 should drop.
+        atlas
+            .regrow_inplace(&gpu, 512, |key| {
+                if key == 1 {
+                    Some(vec![0u8; 32 * 32 * 4])
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(atlas.region_count(), 1);
+        assert!(atlas.region(1).is_some());
+        assert!(atlas.region(2).is_none());
+    }
+
+    #[test]
+    fn region_uv_recomputes_against_new_size_after_regrow() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let rgba = vec![0u8; (128 * 128 * 4) as usize];
+        atlas.insert(&gpu, 0, 128, 128, &rgba).unwrap();
+        let uv_before = atlas.region_uv(0);
+        atlas
+            .regrow_inplace(&gpu, 512, |_key| Some(vec![0u8; 128 * 128 * 4]))
+            .unwrap();
+        let uv_after = atlas.region_uv(0);
+        // Same region placement (Skyline picks (0,0) deterministically
+        // for the first insert) so x/y stay zero; but the UV math
+        // divides by the new `size_px = 512`, halving the
+        // normalized width compared to the old `size_px = 256`.
+        assert!(uv_before[2] > uv_after[2], "UV must shrink post-regrow");
+        assert!((uv_after[2] - 128.0 / 512.0).abs() < 1e-4);
     }
 }

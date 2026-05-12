@@ -125,6 +125,89 @@ impl SpriteRenderer {
         self.atlas.insert(&self.gpu, key, width, height, rgba)
     }
 
+    /// Atlas V2 (M14.4f): insert with automatic regrow on
+    /// `AtlasFull`. The atlas doubles its texture (capped at
+    /// `atlas.max_size_px()`), re-packs every existing region using
+    /// `fetch_pixels(key)` to recover the source bytes, rebuilds the
+    /// material bind group to point at the new texture, then retries
+    /// the original insert.
+    ///
+    /// `fetch_pixels` is the caller's hook into wherever it stores
+    /// the asset source bytes (typically `AssetDb::get(asset_id) →
+    /// Asset::ImageRgba8 { pixels, ... }`). Returning `None` for a
+    /// key drops that region from the post-regrow atlas; surviving
+    /// keys keep their old indices so render instances need no
+    /// patching.
+    ///
+    /// Errors when the atlas is already at its cap, or when the
+    /// caller's source dimensions exceed `max_size_px`.
+    pub fn insert_atlas_sprite_with_regrow<F>(
+        &mut self,
+        key: u32,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        fetch_pixels: F,
+    ) -> Result<crate::atlas::AtlasRegion, crate::atlas::AtlasInsertError>
+    where
+        F: Fn(u32) -> Option<Vec<u8>>,
+    {
+        match self.atlas.insert(&self.gpu, key, width, height, rgba) {
+            Ok(region) => Ok(region),
+            Err(crate::atlas::AtlasInsertError::AtlasFull { .. }) => {
+                let cap = self.atlas.max_size_px();
+                let target = (self.atlas.size_px.saturating_mul(2)).min(cap);
+                if target <= self.atlas.size_px {
+                    // Already at cap — surface the original error so
+                    // the shell can toast something actionable.
+                    return Err(crate::atlas::AtlasInsertError::AtlasFull { width, height });
+                }
+                self.atlas.regrow_inplace(&self.gpu, target, fetch_pixels)?;
+                self.rebuild_material_bind_group();
+                // Retry — pure path now (no further regrow needed at
+                // this granularity; the source that triggered full
+                // necessarily fits in a 2× atlas if it fit pre-regrow
+                // at all).
+                self.atlas.insert(&self.gpu, key, width, height, rgba)
+            }
+            Err(other) => Err(other),
+        }
+    }
+
+    /// Release `key`'s atlas slot back into the free-list. The next
+    /// `insert_atlas_sprite` of the same dimensions will reuse the
+    /// slot without re-packing. Returns the freed region for the
+    /// caller's diagnostics, or `None` if `key` wasn't inserted.
+    pub fn remove_atlas_sprite(&mut self, key: u32) -> Option<crate::atlas::AtlasRegion> {
+        self.atlas.remove(key)
+    }
+
+    /// Rebuild the material bind group against the current
+    /// `atlas.view`. Called internally after
+    /// [`Self::insert_atlas_sprite_with_regrow`] re-creates the
+    /// atlas texture; if a future path mutates the atlas externally
+    /// (e.g. hot-reload swapping the whole texture) it can call this
+    /// to keep the renderer pointing at fresh pixels.
+    pub fn rebuild_material_bind_group(&mut self) {
+        self.material_bind_group = self
+            .gpu
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render material bg (regrown)"),
+                layout: &self.pipeline.material_bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&self.atlas.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.atlas.sampler),
+                    },
+                ],
+            });
+    }
+
     /// Render every `RenderInstance` in `present` into `target`.
     /// Loads with `clear_color` (single pass; M6+ may compose multiple).
     ///

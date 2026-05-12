@@ -42,7 +42,10 @@ pub mod zen;
 pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
-pub use gizmo::{GizmoView, paint_sprite_gizmo};
+pub use gizmo::{
+    GizmoCamera, GizmoDragKind, GizmoDragState, GizmoView, TransformSnapshot,
+    compute_gizmo_transform, gizmo_kind_for_id, is_gizmo_handle_id, paint_sprite_gizmo,
+};
 pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
 pub use interaction::{

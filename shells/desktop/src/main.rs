@@ -1738,6 +1738,33 @@ impl ApplicationHandler for App {
                 };
                 self.handler.on_pointer(evt);
                 forward_to_hero(self.gfx.as_mut(), evt);
+                // M14.7 C: advance the gizmo drag if one is open. We
+                // update the cursor on the snapshot, derive the new
+                // Transform via the pure math in `compute_gizmo_
+                // transform`, and write it back to SimWorld. The next
+                // frame's extract+paint mirror the change visually.
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some(hero) = gfx.hero_screen.as_mut()
+                    && let Some(mut drag) = hero.gizmo_drag
+                {
+                    drag.cursor_screen = (self.last_pointer.0, self.last_pointer.1);
+                    hero.gizmo_drag = Some(drag);
+                    let window_size = gfx.surface.size();
+                    let cam = ph2d_editor::GizmoCamera {
+                        center: gfx.camera.center,
+                        height_world: gfx.camera.height_world,
+                        window_w: window_size.width as f32,
+                        window_h: window_size.height as f32,
+                    };
+                    let new_t = ph2d_editor::compute_gizmo_transform(&drag, &cam);
+                    let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
+                    if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
+                        t.translation =
+                            ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);
+                        t.rotation = new_t.rotation;
+                        t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
+                    }
+                }
                 // Drag-in-progress: forward pointer to active tool
                 // panel hit-test → updates slider value continuously.
                 if self.dragging.is_some() {
@@ -1797,24 +1824,76 @@ impl ApplicationHandler for App {
                 };
                 self.handler.on_pointer(evt);
                 forward_to_hero(self.gfx.as_mut(), evt);
-                // M14.7 A: canvas pick. A Primary Down that lands
-                // OUTSIDE every chrome panel runs `pick_sprite_at_world`
-                // on PresentWorld and writes the result into
-                // `hero.gizmo_selection`. Clicks ON a panel were
-                // already consumed by `forward_to_hero` → we'd hijack
-                // widget interaction if we ran picking there too.
-                if kind == PointerKind::Down
-                    && mapped_button == ph2d_host::PointerButton::Primary
+                // M14.7 C: gizmo drag begin/end. A Primary Down that
+                // lands on a gizmo handle starts a drag (snapshot
+                // Transform + cursor world pos); Up clears it. Move
+                // handling lives in CursorMoved so every motion event
+                // gets the live cursor.
+                if mapped_button == ph2d_host::PointerButton::Primary
                     && let Some(gfx) = self.gfx.as_mut()
                     && let Some(hero) = gfx.hero_screen.as_mut()
-                    && hero.store.panel_at(evt.x, evt.y).is_none()
                 {
-                    let window_size = gfx.surface.size();
-                    let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                    let picked =
-                        ph2d_render::pick_sprite_at_world(gfx.present.world_mut(), world_pos);
-                    hero.gizmo_selection = picked;
-                    self.title_dirty = true;
+                    match kind {
+                        PointerKind::Down => {
+                            let hit_id = hero.hit_index.hit(evt.x, evt.y);
+                            let gizmo_kind = hit_id.and_then(ph2d_editor::gizmo_kind_for_id);
+                            if let Some(gkind) = gizmo_kind
+                                && let Some(entity_bits) = hero.gizmo_selection
+                            {
+                                // Snapshot the entity's Transform + the
+                                // bbox pivot (center) for the math.
+                                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                                let window_size = gfx.surface.size();
+                                let start_world =
+                                    gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                                if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
+                                    // Pivot defaults to the entity
+                                    // translation (sprite center).
+                                    // M14.7 D will swap this when Alt
+                                    // is held.
+                                    let pivot = [t.translation.x, t.translation.y];
+                                    let snap = ph2d_editor::TransformSnapshot {
+                                        translation: [t.translation.x, t.translation.y],
+                                        rotation: t.rotation,
+                                        scale: [t.scale.x, t.scale.y],
+                                    };
+                                    hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
+                                        kind: gkind,
+                                        entity_bits,
+                                        start_screen: (evt.x, evt.y),
+                                        cursor_screen: (evt.x, evt.y),
+                                        start_transform: snap,
+                                        pivot_world: pivot,
+                                        start_cursor_world: start_world,
+                                    });
+                                }
+                            } else if hero.store.panel_at(evt.x, evt.y).is_none()
+                                && hit_id
+                                    .map(ph2d_editor::is_gizmo_handle_id)
+                                    .map(|b| !b)
+                                    .unwrap_or(true)
+                            {
+                                // Canvas pick (M14.7 A) — but only when
+                                // the click did NOT begin a gizmo drag
+                                // and the cursor is outside chrome.
+                                let window_size = gfx.surface.size();
+                                let world_pos =
+                                    gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                                let picked = ph2d_render::pick_sprite_at_world(
+                                    gfx.present.world_mut(),
+                                    world_pos,
+                                );
+                                hero.gizmo_selection = picked;
+                                self.title_dirty = true;
+                            }
+                        }
+                        PointerKind::Up => {
+                            // Drop the drag — Transform is already
+                            // committed up to the latest Move position.
+                            hero.gizmo_drag = None;
+                        }
+                        _ => {}
+                    }
                 }
                 // M14.4b.bis: middle button = camera pan anchor.
                 // Tracked here so CursorMoved can drive the pan.

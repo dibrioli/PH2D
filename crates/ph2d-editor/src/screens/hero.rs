@@ -275,6 +275,12 @@ pub struct HeroScreen {
     /// here just before `paint_hero_screen`. `None` ⇒ no gizmo
     /// painted this frame (selection is empty, or the entity vanished).
     pub gizmo_view: Option<crate::gizmo::GizmoView>,
+    /// M14.7 C: in-progress drag on the gizmo. Host's MouseInput
+    /// handler fills this when a Mouse Down lands on a gizmo handle;
+    /// the Move handler advances `cursor_screen`, calls
+    /// [`crate::gizmo::compute_gizmo_transform`], and writes the
+    /// result back to SimWorld; Up clears the field.
+    pub gizmo_drag: Option<crate::gizmo::GizmoDragState>,
 }
 
 /// M14.6B host-side reparent intent. Mirrors the
@@ -320,6 +326,7 @@ impl HeroScreen {
             pending_add_child: None,
             gizmo_selection: None,
             gizmo_view: None,
+            gizmo_drag: None,
         }
     }
 

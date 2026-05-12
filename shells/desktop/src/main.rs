@@ -1775,6 +1775,25 @@ impl ApplicationHandler for App {
                 };
                 self.handler.on_pointer(evt);
                 forward_to_hero(self.gfx.as_mut(), evt);
+                // M14.7 A: canvas pick. A Primary Down that lands
+                // OUTSIDE every chrome panel runs `pick_sprite_at_world`
+                // on PresentWorld and writes the result into
+                // `hero.gizmo_selection`. Clicks ON a panel were
+                // already consumed by `forward_to_hero` → we'd hijack
+                // widget interaction if we ran picking there too.
+                if kind == PointerKind::Down
+                    && mapped_button == ph2d_host::PointerButton::Primary
+                    && let Some(gfx) = self.gfx.as_mut()
+                    && let Some(hero) = gfx.hero_screen.as_mut()
+                    && hero.store.panel_at(evt.x, evt.y).is_none()
+                {
+                    let window_size = gfx.surface.size();
+                    let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                    let picked =
+                        ph2d_render::pick_sprite_at_world(gfx.present.world_mut(), world_pos);
+                    hero.gizmo_selection = picked;
+                    self.title_dirty = true;
+                }
                 // M14.4b.bis: middle button = camera pan anchor.
                 // Tracked here so CursorMoved can drive the pan.
                 if button == winit::event::MouseButton::Middle {

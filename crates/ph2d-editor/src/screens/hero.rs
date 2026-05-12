@@ -261,6 +261,14 @@ pub struct HeroScreen {
     pub pending_delete: Option<NodeId>,
     pub pending_reset_transform: Option<NodeId>,
     pub pending_add_child: Option<NodeId>,
+    /// M14.7 A: sim-entity bits of the sprite currently selected for
+    /// gizmo manipulation. The host's canvas-click handler runs
+    /// `pick_sprite_at_world` against PresentWorld and writes the
+    /// result here; the gizmo painter (M14.7 B) and the inspector
+    /// (M14.5) read it on the next frame. `None` = nothing selected
+    /// (click landed on empty canvas, or the entity was just
+    /// despawned).
+    pub gizmo_selection: Option<u64>,
 }
 
 /// M14.6B host-side reparent intent. Mirrors the
@@ -304,6 +312,7 @@ impl HeroScreen {
             pending_delete: None,
             pending_reset_transform: None,
             pending_add_child: None,
+            gizmo_selection: None,
         }
     }
 

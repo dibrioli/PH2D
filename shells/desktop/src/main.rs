@@ -1328,13 +1328,13 @@ impl App {
             // M14.6B: drain pending hierarchy reparent intent —
             // translate dragged + new_parent NodeIds via the bridge,
             // then either `insert(ChildOf(p))` or remove the
-            // `ChildOf` component for a root-level drop. The `before`
-            // sibling is ignored on the ECS side for now: bevy_ecs's
-            // canonical `Children` is unordered, and the hierarchy
-            // panel's display order in live mode follows the
-            // snapshot walk (which itself follows the ECS
-            // `Children` slot order). Phase D will add an explicit
-            // sibling-order side-table when that becomes necessary.
+            // `ChildOf` component for a root-level drop. With M14.7
+            // polish (14.3 continuation) we also honor `intent.before`
+            // to position the dragged entity at a specific slot in
+            // the new parent's `Children` list — bevy_ecs 0.18
+            // `Children` preserves insertion order, so we rebuild the
+            // ordering by re-inserting every relevant child's
+            // ChildOf in the desired sequence.
             if let Some(intent) = hero.pending_reparent.take()
                 && let Some(live) = hero_live.as_ref()
                 && let Some(dragged_bits) = live.bridge.entity_for(intent.dragged)
@@ -1381,13 +1381,78 @@ impl App {
                     }
                     false
                 });
-                if !would_cycle && let Ok(mut entry) = sim_w.get_entity_mut(dragged) {
-                    match new_parent_entity {
-                        Some(p) => {
-                            entry.insert(ph2d_ecs::ChildOf(p));
+                if !would_cycle {
+                    // Step 1: pick the new ChildOf relation. We need
+                    // this BEFORE rebuilding the child order so
+                    // step 2 sees the up-to-date Children list.
+                    if let Ok(mut entry) = sim_w.get_entity_mut(dragged) {
+                        match new_parent_entity {
+                            Some(p) => {
+                                entry.insert(ph2d_ecs::ChildOf(p));
+                            }
+                            None => {
+                                entry.remove::<ph2d_ecs::ChildOf>();
+                            }
                         }
-                        None => {
-                            entry.remove::<ph2d_ecs::ChildOf>();
+                    }
+                    // Step 2: enforce sibling order. When dropping
+                    // "before t" (intent.before = Some(target)), the
+                    // dragged entity should sit RIGHT BEFORE target
+                    // in the parent's `Children`. We walk the parent's
+                    // current children, build the desired order by
+                    // inserting `dragged` at the slot just ahead of
+                    // `target`, then re-apply ChildOf to each child in
+                    // sequence — every fresh `insert(ChildOf)` pushes
+                    // the entity to the END of Children, so the loop
+                    // ends with the children laid out in our intended
+                    // order. Skipped when:
+                    //   - new_parent is None (root drop; root order is
+                    //     decided by `Entity::to_bits` sorting in
+                    //     `build_hierarchy_snapshot`, not by us).
+                    //   - intent.before is None ("append at end" is
+                    //     what the bare insert already did).
+                    if let (Some(parent), Some(before_node)) = (new_parent_entity, intent.before)
+                        && let Some(target_bits) = live.bridge.entity_for(before_node)
+                    {
+                        let target = ph2d_ecs::Entity::from_bits(target_bits);
+                        // Snapshot current Children (excluding the
+                        // dragged entity — we'll re-insert it at the
+                        // chosen slot). `Children::iter` returns
+                        // entities in insertion order.
+                        let current: Vec<ph2d_ecs::Entity> = sim_w
+                            .get::<bevy_ecs::hierarchy::Children>(parent)
+                            .map(|c| c.iter().copied().filter(|e| *e != dragged).collect())
+                            .unwrap_or_default();
+                        // Build new desired order: everything BEFORE
+                        // target (in current order), then dragged,
+                        // then everything FROM target onward.
+                        let mut desired: Vec<ph2d_ecs::Entity> =
+                            Vec::with_capacity(current.len() + 1);
+                        let mut inserted = false;
+                        for &c in &current {
+                            if c == target && !inserted {
+                                desired.push(dragged);
+                                inserted = true;
+                            }
+                            desired.push(c);
+                        }
+                        if !inserted {
+                            // Target wasn't actually a child of parent
+                            // (concurrent mutation or stale snapshot)
+                            // → append as fallback so we don't lose
+                            // the dragged entity from the list.
+                            desired.push(dragged);
+                        }
+                        // Re-insert ChildOf for each entity in order.
+                        // Every insert moves the entity to the END of
+                        // `Children`, so iterating `desired` in
+                        // sequence rebuilds the list in that exact
+                        // order.
+                        for &child in &desired {
+                            if let Ok(mut entry) = sim_w.get_entity_mut(child) {
+                                entry.remove::<ph2d_ecs::ChildOf>();
+                                entry.insert(ph2d_ecs::ChildOf(parent));
+                            }
                         }
                     }
                 }
@@ -1558,8 +1623,18 @@ impl App {
             toasts.paint(vector_scene, &mut paint_ctx);
         }
 
+        // M14.7 polish (10.1 fix): `surface.acquire_frame()` blocks
+        // until the next swap-chain texture is ready — under
+        // `PresentMode::Fifo` (the wgpu default + the macOS default)
+        // that wait IS the vsync interval, ~16.7 ms at 60 Hz.
+        // Including it in the raw-fps measurement caps the reading
+        // at the refresh rate, which is exactly what we DON'T want
+        // ("Unity shows 2000 fps"). Pause the clock around the
+        // acquire, then resume for the actual encode + submit work.
+        let work_before_acquire = cpu_start.elapsed();
         match surface.acquire_frame() {
             Ok(frame) => {
+                let after_acquire = Instant::now();
                 // M14.5 — viewport / RT pipeline. Four GPU submissions
                 // each frame, all independent.
                 //
@@ -1595,6 +1670,12 @@ impl App {
                 //   target: swap chain
                 compositor.run(surface.gpu(), frame.view());
                 // FrameTarget presents on Drop.
+                let work_after_acquire = after_acquire.elapsed();
+                let cpu_total = work_before_acquire + work_after_acquire;
+                let cpu_ms_now = cpu_total.as_secs_f64() * 1000.0;
+                const ALPHA_CPU: f32 = 0.1;
+                self.frame_cpu_ms_ewma =
+                    ALPHA_CPU * (cpu_ms_now as f32) + (1.0 - ALPHA_CPU) * self.frame_cpu_ms_ewma;
             }
             Err(AcquireError::AwaitingReconfigure) => {
                 surface.reconfigure_after_lost();
@@ -1605,17 +1686,6 @@ impl App {
                 eprintln!("acquire_frame other error: {s}");
             }
         }
-
-        // M14.7 polish (10.1): stop the raw-fps clock once every GPU
-        // submission for this frame is queued. The `FrameTarget`
-        // present (on Drop above) blocks on vsync, which would skew
-        // the measurement toward `1 / refresh_rate`; reading the
-        // clock HERE gives the pure CPU+command-encode time the
-        // user wants ("Unity shows 2000 fps").
-        let cpu_ms_now = cpu_start.elapsed().as_secs_f64() * 1000.0;
-        const ALPHA_CPU: f32 = 0.1;
-        self.frame_cpu_ms_ewma =
-            ALPHA_CPU * (cpu_ms_now as f32) + (1.0 - ALPHA_CPU) * self.frame_cpu_ms_ewma;
 
         // Window title carries editor state. Refresh only when state
         // actually changes — winit set_title triggers a platform call.
@@ -2104,7 +2174,26 @@ impl ApplicationHandler for App {
                         PointerKind::Down => {
                             let hit_id = hero.hit_index.hit(evt.x, evt.y);
                             let gizmo_kind = hit_id.and_then(ph2d_editor::gizmo_kind_for_id);
-                            if let Some(gkind) = gizmo_kind
+                            // M14.7 polish (19.3 fix): only the SPECIFIC
+                            // handles (corner / edge / rotate) bypass
+                            // canvas picking. `BBOX_INTERIOR` resolves
+                            // to `Translate`, which previously absorbed
+                            // every click inside the current selection's
+                            // rect — that blocked the overlap-cycle path
+                            // when a back sprite was selected and the
+                            // user clicked the front sprite's visible
+                            // area. The bbox_interior click now falls
+                            // through to picking, which selects the
+                            // topmost sprite first AND starts a translate
+                            // drag on it via the canvas-pick branch.
+                            let is_specific_handle = matches!(
+                                gizmo_kind,
+                                Some(ph2d_editor::GizmoDragKind::ScaleCorner { .. })
+                                    | Some(ph2d_editor::GizmoDragKind::ScaleEdge { .. })
+                                    | Some(ph2d_editor::GizmoDragKind::Rotate)
+                            );
+                            if is_specific_handle
+                                && let Some(gkind) = gizmo_kind
                                 && let Some(entity_bits) = hero.gizmo_selection
                             {
                                 // Snapshot the entity's Transform + the
@@ -2136,7 +2225,22 @@ impl ApplicationHandler for App {
                                 }
                             } else if hero.store.panel_at(evt.x, evt.y).is_none()
                                 && hero.store.context_menu().is_none()
-                                && hit_id.is_none()
+                                && (
+                                    // No widget under cursor: clean
+                                    // canvas click.
+                                    hit_id.is_none()
+                                    // Gizmo bbox interior or pivot:
+                                    // user clicked inside the
+                                    // selection's footprint. Still
+                                    // a canvas click — picking may
+                                    // promote a different sprite to
+                                    // the selection (overlap-cycle).
+                                    || matches!(
+                                        gizmo_kind,
+                                        Some(ph2d_editor::GizmoDragKind::Translate),
+                                    )
+                                    || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT)
+                                )
                             {
                                 // Canvas pick (M14.7 A) — but only when:
                                 // 1. The click did NOT begin a gizmo drag.

@@ -70,19 +70,22 @@ pub fn populate(store: &mut WidgetStore) {
 /// session). M15+ may add a `WidgetStore::retain` if it ever
 /// matters.
 pub fn repopulate(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
-    // Register the `+` button once (idempotent) so the header still
-    // works when this replaces the fixture `populate` mid-session.
-    store.register(
+    // Register the `+` button once. `register_if_absent` so the
+    // button's Pressed / Hovered transitions survive re-entry — a
+    // plain `register` would reset to `Normal` every frame.
+    store.register_if_absent(
         super::ids::HIERARCHY_ADD,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
     );
-    // M14.6 E: idempotent search-field registration. Live mode re-enters
-    // `repopulate` every frame the bridge is awake; `WidgetStore::register`
-    // is a no-op for ids already present, so the user's typed query
-    // survives intact.
-    store.register(
+    // M14.6 E search-field state: must NOT clobber. Plain
+    // `register` (which `states.insert` always replaces) was
+    // resetting `text` / `caret` to empty every frame in live mode
+    // → user couldn't type. `register_if_absent` inserts on the
+    // first frame and is a true no-op thereafter, preserving the
+    // typed query across the per-frame `repopulate`.
+    store.register_if_absent(
         super::ids::HIER_SEARCH,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
@@ -92,7 +95,7 @@ pub fn repopulate(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
         },
     );
     for &id in ids {
-        store.register(id, InteractiveState::Plain);
+        store.register_if_absent(id, InteractiveState::Plain);
     }
     // Use `set_hierarchy_order` (force-overwrite), NOT
     // `init_hierarchy_order` (idempotent guard) — the latter is a

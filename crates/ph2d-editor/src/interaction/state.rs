@@ -687,6 +687,21 @@ impl WidgetStore {
         }
     }
 
+    /// Register `id` only when it isn't already in the store. Unlike
+    /// [`Self::register`] (which always replaces and is the right call
+    /// for one-shot construction-time wiring), this is safe to call
+    /// every frame from live-mode `repopulate` paths without
+    /// clobbering user-typed text / cursor state. Returns true iff
+    /// the entry was freshly inserted.
+    pub fn register_if_absent(&mut self, id: NodeId, initial: InteractiveState) -> bool {
+        if self.states.contains_key(&id) {
+            return false;
+        }
+        self.states.insert(id, initial);
+        self.focus_order.push(id);
+        true
+    }
+
     pub fn get(&self, id: NodeId) -> Option<&InteractiveState> {
         self.states.get(&id)
     }

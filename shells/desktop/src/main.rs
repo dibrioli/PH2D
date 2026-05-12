@@ -1238,8 +1238,25 @@ impl App {
                 // cascades_via_child_of`).
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 sim.world_mut().despawn(entity);
+                // Clear gizmo selection if it pointed at the deleted
+                // entity — the bbox lookup would otherwise dangle for
+                // a frame until the next snapshot rebuilds.
+                if hero.gizmo_selection == Some(entity_bits) {
+                    hero.gizmo_selection = None;
+                }
                 toasts.push(Toast::warning("Deleted entity"));
                 self.title_dirty = true;
+            }
+            // M14.6 D: drain pending hierarchy-row click → sync
+            // `gizmo_selection` to whichever entity the user just
+            // picked in the hierarchy panel. Inverse of the M14.7 A
+            // canvas-pick path (canvas → label sync runs further down
+            // when we publish gizmo_view).
+            if let Some(row) = hero.pending_hierarchy_row_click.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(entity_bits) = live.bridge.entity_for(row)
+            {
+                hero.gizmo_selection = Some(entity_bits);
             }
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/
@@ -1898,6 +1915,28 @@ impl ApplicationHandler for App {
                                     world_pos,
                                 );
                                 hero.gizmo_selection = picked;
+                                // M14.6 D: canvas-pick → hierarchy sync.
+                                // Resolve entity bits → bridge NodeId →
+                                // live entry → update `hero.selection`
+                                // so the hierarchy row paints as selected
+                                // (the panel matches by name label).
+                                if let Some(live) = gfx.hero_live.as_ref()
+                                    && let Some(bits) = picked
+                                    && let Some(node_id) = live.bridge.node_for(bits)
+                                    && let Some(entries) = hero.live_hierarchy_entries.as_ref()
+                                    && let Some(entry) = entries.get(&node_id)
+                                {
+                                    hero.selection = Some(ph2d_editor::HeroSelection {
+                                        label: entry.name.clone(),
+                                        kind: entry
+                                            .badge
+                                            .clone()
+                                            .unwrap_or_else(|| "ENT".to_string()),
+                                        world_pos: (0.0, 0.0),
+                                    });
+                                } else if picked.is_none() {
+                                    hero.selection = None;
+                                }
                                 self.title_dirty = true;
                             }
                         }

@@ -281,6 +281,13 @@ pub struct HeroScreen {
     /// [`crate::gizmo::compute_gizmo_transform`], and writes the
     /// result back to SimWorld; Up clears the field.
     pub gizmo_drag: Option<crate::gizmo::GizmoDragState>,
+    /// M14.6 D: hierarchy-row click intent for cross-panel selection
+    /// sync. When the user clicks a live row in the hierarchy panel,
+    /// `apply_event` raises this; the host drains it on the next
+    /// frame, resolves the row NodeId → sim entity via the bridge,
+    /// and updates `gizmo_selection` so the canvas gizmo follows
+    /// the hierarchy click.
+    pub pending_hierarchy_row_click: Option<NodeId>,
 }
 
 /// M14.6B host-side reparent intent. Mirrors the
@@ -327,6 +334,7 @@ impl HeroScreen {
             gizmo_selection: None,
             gizmo_view: None,
             gizmo_drag: None,
+            pending_hierarchy_row_click: None,
         }
     }
 
@@ -728,6 +736,19 @@ impl HeroScreen {
         }
         if left_rail::apply_event(&mut self.store, event) {
             return true;
+        }
+        // M14.6 D: when a click lands on a live hierarchy row, raise
+        // `pending_hierarchy_row_click` BEFORE the hierarchy itself
+        // consumes the event. The host drains and resolves the row →
+        // sim entity, then updates `gizmo_selection` so the canvas
+        // gizmo follows the hierarchy click. This runs before
+        // `hierarchy::apply_event` so the existing selection-label
+        // update still happens too.
+        if let WidgetEvent::Click(id) = event
+            && let Some(live) = self.live_hierarchy_entries.as_ref()
+            && live.contains_key(&id)
+        {
+            self.pending_hierarchy_row_click = Some(id);
         }
         if hierarchy::apply_event(
             &mut self.store,
@@ -1474,6 +1495,43 @@ mod tests {
         let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
         assert!(consumed);
         assert!(hero.pending_duplicate.is_none());
+    }
+
+    #[test]
+    fn hierarchy_row_click_raises_pending_for_live_entries() {
+        // Build a live-mode hierarchy with one entry, then click the
+        // matching NodeId. `pending_hierarchy_row_click` should fire
+        // so the host can sync `gizmo_selection`.
+        let mut hero = HeroScreen::new(NodeId(1));
+        let row_id = NodeId(100_500);
+        let mut entries = std::collections::BTreeMap::new();
+        entries.insert(
+            row_id,
+            fixture::HierarchyEntity {
+                name: "hero_001".into(),
+                icon: crate::icons::IconId::Sprite,
+                indent: 0,
+                badge: None,
+                swatch: None,
+                visible: true,
+                selected: false,
+                muted: false,
+            },
+        );
+        hero.sync_from_hierarchy(&[row_id], entries);
+        let consumed = hero.apply_event(WidgetEvent::Click(row_id));
+        assert!(consumed, "live-mode row click should consume");
+        assert_eq!(hero.pending_hierarchy_row_click, Some(row_id));
+    }
+
+    #[test]
+    fn hierarchy_row_click_silent_for_fixture_only_rows() {
+        // Fixture-mode click (no `sync_from_hierarchy`) shouldn't
+        // raise `pending_hierarchy_row_click` — the M14.6 D path is
+        // live-only.
+        let mut hero = HeroScreen::new(NodeId(1));
+        let _ = hero.apply_event(WidgetEvent::Click(ids::HIER_PLAYER));
+        assert_eq!(hero.pending_hierarchy_row_click, None);
     }
 
     #[test]

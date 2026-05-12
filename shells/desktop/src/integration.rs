@@ -79,8 +79,9 @@ pub fn load_demo_assets(asset_db: &AssetDb, dir: &Path) -> Result<Vec<AssetId>, 
 }
 
 /// Compose a 256×256 RGBA8 atlas from a 4×4 grid of 64×64 sprite
-/// images loaded by [`load_demo_assets`]. Layout is row-major to
-/// match `TextureAtlas::dummy_uv`.
+/// images loaded by [`load_demo_assets`]. Layout is row-major and
+/// matches the ordering used to seed demo keys 0..16 in
+/// `TextureAtlas::dummy` (see `ph2d-render::atlas`).
 pub fn compose_atlas_rgba(asset_db: &AssetDb, ids: &[AssetId]) -> Result<Vec<u8>, String> {
     if ids.len() != (ATLAS_GRID * ATLAS_GRID) as usize {
         return Err(format!(

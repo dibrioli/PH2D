@@ -53,6 +53,11 @@ arboard = "3"
 # (ADR-0024). Allocated once at AppGfx construction; reset every
 # frame after dispatch.
 bumpalo = "3"
+# rfd: native file picker (M14.4c "Import…" button + future Save As).
+# Cross-platform (macOS / Windows / Linux); modal `pick_files()`
+# blocks the main thread for the duration of the dialog — acceptable
+# for a user-initiated import flow.
+rfd = "0.15"
 
 [features]
 # Forwarded to ph2d-editor to swap `screens::hero` for the frozen

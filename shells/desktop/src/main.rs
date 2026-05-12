@@ -31,14 +31,16 @@
 //!   `ph2d.input` Luau snapshot is a follow-up.
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
+mod hero_bridge;
 mod integration;
 
 use bumpalo::Bump;
 use ph2d_asset::AssetDb;
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
+use ph2d_ecs::scene::{HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot};
 use ph2d_ecs::{
-    Component, PresentWorld, SimComponent, SimRef, SimWorld, Transform, TransformPropagationState,
-    WorklistBuf, propagate_transforms,
+    Component, Name, PresentWorld, SimComponent, SimRef, SimWorld, Transform,
+    TransformPropagationState, WorklistBuf, propagate_transforms,
 };
 use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
@@ -54,7 +56,10 @@ use ph2d_host::{
     PointerKind, PointerSource, WindowSize,
 };
 use ph2d_input::{Event as InputEvent, InputState};
-use ph2d_render::{Camera2d, RenderInstance, Sprite, SpriteRenderer, TextureAtlas, VelloPass};
+use ph2d_render::{
+    Camera2d, Compositor, GameRt, RenderInstance, Sprite, SpriteRenderer, TextureAtlas, Tonemap,
+    VelloPass,
+};
 use ph2d_script::ScriptHost;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -200,9 +205,24 @@ struct AppGfx {
     /// 4-zone editor layout (ADR-0023 §3). Sized from window each
     /// resize; the M11 paint pass walks this to draw zone backdrops.
     layout: EditorLayout,
-    /// Vello pipeline + intermediate texture + blitter for the
-    /// widget paint pass. Runs AFTER the sprite pass on the same
-    /// surface frame, so widgets sit on top of game content.
+    /// M14.5: offscreen HDR (Rgba16Float) render target for the game
+    /// world. Sprite + future light/particle/material passes write
+    /// here; the tonemap pass reads here and writes to LDR. Recreated
+    /// on resize.
+    game_rt: GameRt,
+    /// M14.5: AgX tonemap pass — owns its own LDR output texture
+    /// (`game_rt_ldr`). Sampled by the compositor as the "game layer"
+    /// input. Identity LUT by default; swap in real AgX via
+    /// `set_lut`.
+    tonemap: Tonemap,
+    /// M14.5: compositor that composes `tonemap.output_view()` (game)
+    /// and `vello_pass.intermediate_view()` (UI chrome) onto the swap
+    /// chain. Replaces the old `vello_pass.blitter` direct-to-surface
+    /// blit so chrome and game live in fully isolated RTs.
+    compositor: Compositor,
+    /// Vello pipeline + intermediate texture for the widget paint
+    /// pass. In M14.5 the intermediate is sampled by `compositor`
+    /// (not blitted directly to the surface).
     vello_pass: VelloPass,
     /// Reused [`VectorScene`] — encoded fresh each frame; allocations
     /// pool inside Vello so this is cheap.
@@ -231,6 +251,31 @@ struct AppGfx {
     /// entities) — comfortably above `SPRITE_COUNT = 1000`. HR-3
     /// zero-alloc verified by `crates/ph2d-ecs/tests/propagate_no_alloc.rs`.
     worklist: WorklistBuf,
+    /// M14.4a live-bridge state. Present iff `PH2D_HERO_LIVE=1` at
+    /// boot; otherwise the hero renders fixture data and bridge is
+    /// untouched.
+    hero_live: Option<HeroLive>,
+    /// M14.4c+M14.4d: next free atlas key for imported images.
+    /// Starts at `FIRST_IMPORT_KEY` (= 16) so it sits past the
+    /// demo's seeded HSV tile keys (0..15). With the Skyline atlas
+    /// the key space is effectively unbounded (the underlying packer
+    /// runs out of pixel space before `u32` does), so we just
+    /// increment monotonically — no cycling, no overwrite. When
+    /// the atlas does run out of room the `insert_atlas_sprite`
+    /// call surfaces `AtlasInsertError::AtlasFull` as a toast.
+    next_import_cell: u32,
+}
+
+/// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
+struct HeroLive {
+    bridge: hero_bridge::EntityNodeMap,
+    walk_state: HierarchyWalkState,
+    /// Scratch buffer for `build_hierarchy_snapshot`'s DFS stack.
+    /// Preserved across frames so HR-3 zero-alloc invariant holds.
+    walk_scratch: Vec<(ph2d_ecs::Entity, u8, Option<ph2d_ecs::Entity>)>,
+    /// Reused per-frame snapshot. `build_hierarchy_snapshot` clears
+    /// the inner Vec without releasing capacity.
+    snapshot: HierarchySnapshot,
 }
 
 struct App {
@@ -255,6 +300,10 @@ struct App {
     gilrs: Option<gilrs::Gilrs>,
     /// Input snapshot pumped by the gilrs adapter each frame.
     input: InputState,
+    /// M14.4b.bis: middle-button camera pan state.
+    /// `Some(anchor)` while a middle-drag is in progress; subsequent
+    /// `CursorMoved` events feed `Camera2d::pan_screen_delta`.
+    pan_anchor: Option<(f32, f32)>,
 }
 
 impl App {
@@ -294,6 +343,7 @@ impl App {
             title_dirty: true,
             gilrs,
             input: InputState::new(),
+            pan_anchor: None,
         }
     }
 
@@ -379,6 +429,30 @@ impl App {
             KeyCode::Digit2 if gfx.tools.set_active(&ph2d_editor::ToolId::new("move")) => {
                 gfx.toasts.push(Toast::info("Tool → Move"));
                 self.title_dirty = true;
+            }
+            // M14.4b.bis: reset camera (pan + zoom) to default. Home
+            // is the conventional "go to origin" key; F is the
+            // Blender / Maya "frame view" shortcut.
+            KeyCode::Home | KeyCode::KeyF => {
+                gfx.camera = Camera2d::default();
+                gfx.toasts.push(Toast::info("Camera → reset"));
+                self.title_dirty = true;
+            }
+            // M14.4b: toggle grid visibility. The context-menu entry
+            // promises "Show Grid · G" — this is the shortcut. Affects
+            // only the hero's grid_visible flag; grid_view publishing
+            // by the host continues regardless.
+            KeyCode::KeyG => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.grid_visible = !hero.grid_visible;
+                    let msg = if hero.grid_visible {
+                        "Grid → on"
+                    } else {
+                        "Grid → off"
+                    };
+                    gfx.toasts.push(Toast::info(msg));
+                    self.title_dirty = true;
+                }
             }
             _ => {}
         }
@@ -511,13 +585,33 @@ impl App {
             );
         }
         let ids = integration::load_demo_assets(asset_db, dir)?;
-        let rgba = integration::compose_atlas_rgba(asset_db, &ids)?;
-        Ok(TextureAtlas::from_rgba8(
-            gpu,
-            integration::ATLAS_PX,
-            integration::ATLAS_PX,
-            &rgba,
-        ))
+        let composed = integration::compose_atlas_rgba(asset_db, &ids)?;
+        // M14.4d retrofit: the demo atlas used to be a single 256×256
+        // texture mirroring the `compose_atlas_rgba` layout. With the
+        // Skyline packer it's a dynamic atlas seeded by 16 inserts of
+        // the per-tile slices — keys 0..16 reproduce the same
+        // (col, row) ordering the dummy HSV path uses, so the rest of
+        // the demo (which addresses tiles by `i % 16`) needs no
+        // change.
+        let mut atlas = TextureAtlas::new(gpu, ph2d_render::ATLAS_DEFAULT_SIZE_PX);
+        let tile_px = ph2d_render::DEMO_TILE_PX;
+        let composed_px = integration::ATLAS_PX;
+        for i in 0..ph2d_render::DEMO_TILE_COUNT {
+            let col = i % integration::ATLAS_GRID;
+            let row = i / integration::ATLAS_GRID;
+            let mut tile = Vec::with_capacity((tile_px * tile_px * 4) as usize);
+            for ty in 0..tile_px {
+                let src_y = row * tile_px + ty;
+                let src_x = col * tile_px;
+                let row_start = ((src_y * composed_px + src_x) * 4) as usize;
+                let row_end = row_start + (tile_px * 4) as usize;
+                tile.extend_from_slice(&composed[row_start..row_end]);
+            }
+            atlas
+                .insert(gpu, i, tile_px, tile_px, &tile)
+                .map_err(|e| format!("demo tile {i}: {e}"))?;
+        }
+        Ok(atlas)
     }
 
     /// Spawn `SPRITE_COUNT` sprites on a Vogel (golden-angle) spiral
@@ -541,6 +635,30 @@ impl App {
                     size: [0.18, 0.18],
                     tint: [1.0, 1.0, 1.0, 1.0],
                 },
+            ));
+        }
+    }
+
+    /// Spawn 8 named entities in a horizontal line — used when
+    /// `PH2D_HERO_LIVE=1`. Smaller count + `Name` components let the
+    /// hierarchy panel display readable rows ("sprite_001" through
+    /// "sprite_008") instead of a wall of `Entity_…` hex strings.
+    fn populate_sim_live(sim: &mut SimWorld) {
+        const N: u32 = 8;
+        for i in 0..N {
+            let f = i as f32;
+            let x = (f - (N as f32 - 1.0) * 0.5) * 1.0; // 1m spacing
+            let pos = Vec2::new(x, 0.0);
+            let vx = ((f * 12.9898).sin() * 43758.547).fract() * 1.0 - 0.5;
+            sim.world_mut().spawn((
+                Transform::from_translation(pos),
+                Velocity(Vec2::new(vx, 0.0)),
+                Sprite {
+                    atlas_index: i % 16,
+                    size: [0.4, 0.4],
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                },
+                Name::new(format!("sprite_{:03}", i + 1)),
             ));
         }
     }
@@ -569,6 +687,9 @@ impl App {
             toasts,
             tools,
             layout,
+            game_rt,
+            tonemap,
+            compositor,
             vello_pass,
             vector_scene,
             text_system,
@@ -577,6 +698,8 @@ impl App {
             clipboard: _,
             prop_state,
             worklist,
+            hero_live,
+            next_import_cell,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -603,9 +726,30 @@ impl App {
         // Apply coalesced resize once per frame.
         if let Some(size) = self.pending_resize.take() {
             surface.resize(size);
-            // Layout + Vello intermediate must follow surface size.
+            // Layout + every offscreen RT in the pipeline must follow
+            // surface size. M14.5: game_rt, tonemap output, vello
+            // intermediate — all three; then the compositor's bind
+            // group must be rebuilt against the new texture views.
             *layout = EditorLayout::new(size.width as f32, size.height as f32);
-            vello_pass.ensure_size(surface.gpu(), (size.width, size.height));
+            let dim = (size.width, size.height);
+            game_rt.ensure_size(surface.gpu(), dim);
+            tonemap.ensure_size(surface.gpu(), dim);
+            tonemap.rebind_game_view(
+                surface.gpu(),
+                game_rt
+                    .texture()
+                    .create_view(&wgpu::TextureViewDescriptor::default()),
+            );
+            vello_pass.ensure_size(surface.gpu(), dim);
+            compositor.rebind(
+                surface.gpu(),
+                tonemap
+                    .output_texture()
+                    .create_view(&wgpu::TextureViewDescriptor::default()),
+                vello_pass
+                    .intermediate_texture()
+                    .create_view(&wgpu::TextureViewDescriptor::default()),
+            );
             self.handler.on_resize(size, host.scale_factor());
             self.title_dirty = true;
         }
@@ -671,7 +815,13 @@ impl App {
                         builder.insert(RenderInstance {
                             world_pos: [p.x, p.y],
                             size: spr.size,
-                            atlas_uv: atlas.dummy_uv(spr.atlas_index),
+                            // Skyline atlas: look up the packed region
+                            // by sprite key. Missing keys produce a
+                            // zero-area UV (visually inert) — the
+                            // expected pre-condition is that the key
+                            // was inserted via `insert_atlas_sprite`
+                            // before extract sees the Sprite.
+                            atlas_uv: atlas.region_uv(spr.atlas_index),
                             tint: spr.tint,
                         });
                     }
@@ -679,12 +829,34 @@ impl App {
             );
         });
 
-        // Animated background tint (proves the sim clock drives the
-        // frame). Subtle so the sprites stay readable.
-        let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
-        let r = (t.sin() * 0.05 + 0.05).clamp(0.0, 1.0);
-        let g = ((t + 2.094).sin() * 0.05 + 0.05).clamp(0.0, 1.0);
-        let b = ((t + 4.188).sin() * 0.05 + 0.05).clamp(0.0, 1.0);
+        // Sprite-layer clear color = backdrop visible in the canvas
+        // area through the transparent regions of `vello_rt`. Live
+        // editor mode wants a static neutral surface so it doesn't
+        // pulse rainbow under the chrome.
+        //
+        // Why 0.047 instead of the theme-canonical 0.012:
+        // pre-M14.5 the chrome AA edges were rendered against a
+        // backdrop of `Bg1` painted by Vello as sRGB byte ~12,
+        // which the legacy wgpu blitter sampled as 12/255 ≈ 0.047
+        // *treated as linear* (the documented vello-blitter gamma
+        // confusion in `vello_pass.rs`). Anti-aliased chrome edges
+        // in `ph2d-tokens` are calibrated against that 0.047
+        // backdrop. Setting `game_rt` clear to the theme's true
+        // linear 0.012 would make the AA halos contrast strongly
+        // against the now-much-darker dst — that's exactly the
+        // "pixelated borders" regression seen in M14.5 round 2.
+        // Match the legacy backdrop value here; the chrome edges
+        // composite identically.
+        let (r, g, b) = if hero_live.is_some() {
+            (0.047, 0.047, 0.055)
+        } else {
+            let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
+            (
+                (t.sin() * 0.05 + 0.05).clamp(0.0, 1.0),
+                ((t + 2.094).sin() * 0.05 + 0.05).clamp(0.0, 1.0),
+                ((t + 4.188).sin() * 0.05 + 0.05).clamp(0.0, 1.0),
+            )
+        };
 
         let window_size = surface.size();
         // M11: build the widget scene up-front (no GPU work yet — just
@@ -709,7 +881,79 @@ impl App {
         // each frame; pointer/key events are forwarded to it from
         // window_event handlers via `hero_screen.handle_*`.
         if let Some(hero) = hero_screen.as_mut() {
+            // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
+            // from SimWorld + push into HeroScreen BEFORE paint. The
+            // snapshot's DFS visit order = hierarchy panel display
+            // order. `paint_hero_screen` reads `live_hierarchy_entries`
+            // via thread-local in `hierarchy::set_live_entries`.
+            if let Some(live) = hero_live.as_mut() {
+                build_hierarchy_snapshot(
+                    sim.world(),
+                    &mut live.walk_state,
+                    &mut live.walk_scratch,
+                    &mut live.snapshot,
+                );
+                let (ordered, entries) = live.bridge.sync_from_snapshot(&live.snapshot);
+                hero.sync_from_hierarchy(&ordered, entries);
+            }
+            // M14.4b: publish the demo camera + window dims so the
+            // hero paints its world grid overlay. `canvas` is a
+            // placeholder — `paint_hero_screen` overrides it with
+            // the layout-computed canvas rect.
+            hero.set_grid_view(Some(ph2d_editor::GridView {
+                camera_center: camera.center,
+                camera_height_world: camera.height_world,
+                window_w: window_size.width as f32,
+                window_h: window_size.height as f32,
+                canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
+            }));
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
+            // M14.4b.bis: drain pending camera-reset request from
+            // the VIEW button (TOOL_HOME → Zero mode).
+            if hero.camera_reset_pending {
+                hero.camera_reset_pending = false;
+                *camera = Camera2d::default();
+                toasts.push(Toast::info("View → Zero (camera reset)"));
+                self.title_dirty = true;
+            }
+            // M14.4c: drain pending import request → open native
+            // file picker, import every selected image (PNG/WEBP/
+            // JPEG), spawn a sprite per image at the camera center.
+            if hero.import_requested {
+                hero.import_requested = false;
+                let picked = rfd::FileDialog::new()
+                    .add_filter("Image (PNG / WEBP / JPEG)", &["png", "webp", "jpg", "jpeg"])
+                    .pick_files();
+                let pixels_per_meter = hero.project.pixels_per_meter;
+                if let Some(paths) = picked {
+                    for path in paths {
+                        match import_image_at_camera(
+                            sim,
+                            &mut *renderer,
+                            asset_db,
+                            camera,
+                            *next_import_cell,
+                            &path,
+                            pixels_per_meter,
+                        ) {
+                            Ok(spawned_label) => {
+                                // Monotonic increment — the Skyline atlas
+                                // grows up to 4096²; no slot reuse cycle
+                                // (the old `% 8 + 8` math was for the
+                                // M5 grid placeholder).
+                                *next_import_cell = next_import_cell.saturating_add(1);
+                                toasts.push(Toast::success(format!("Imported {spawned_label}")));
+                                self.title_dirty = true;
+                            }
+                            Err(e) => {
+                                eprintln!("M14.4c import failed: {e}");
+                                toasts.push(Toast::error(format!("Import failed: {e}")));
+                                self.title_dirty = true;
+                            }
+                        }
+                    }
+                }
+            }
             toasts.paint(vector_scene, &mut paint_ctx);
             // Drain frame-local arena AFTER the dispatch + paint pass
             // so any events emitted earlier this frame are still alive
@@ -751,27 +995,40 @@ impl App {
 
         match surface.acquire_frame() {
             Ok(frame) => {
-                // Pass 1: sprite renderer clears + draws game content.
+                // M14.5 — viewport / RT pipeline. Four GPU submissions
+                // each frame, all independent.
+                //
+                // Pass 1: sprite (+ future light/particle/material)
+                //   target: `game_rt` (Rgba16Float HDR offscreen)
+                //   ↳ clear color is opaque so the canvas reads as a
+                //   single tinted surface beneath sprites + grid.
                 renderer.render(
-                    &frame,
+                    game_rt.view(),
                     present,
                     camera,
                     window_size,
                     wgpu::Color { r, g, b, a: 1.0 },
                 );
-                // Pass 2: Vello widgets composite over the surface.
-                // bg_color = TRANSPARENT so sprite content shows
-                // through where the editor scene is empty (the canvas
-                // Center zone is the whole sprite layer).
-                if let Err(e) = vello_pass.render(
+                // Pass 2: AgX tonemap
+                //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)
+                tonemap.run(surface.gpu());
+                // Pass 3: Vello chrome
+                //   target: `vello_pass.intermediate_view()`
+                //   ↳ TRANSPARENT clear so any pixel the editor scene
+                //   doesn't paint stays α=0 and the compositor reveals
+                //   `game_rt_ldr` through it.
+                if let Err(e) = vello_pass.render_to_intermediate(
                     surface.gpu(),
                     vector_scene.inner(),
-                    frame.view(),
                     (window_size.width, window_size.height),
                     VelloColor::TRANSPARENT,
                 ) {
-                    eprintln!("M11 vello_pass.render error: {e}");
+                    eprintln!("M14.5 vello_pass.render_to_intermediate error: {e}");
                 }
+                // Pass 4: compositor
+                //   reads: tonemap output + vello intermediate
+                //   target: swap chain
+                compositor.run(surface.gpu(), frame.view());
                 // FrameTarget presents on Drop.
             }
             Err(AcquireError::AwaitingReconfigure) => {
@@ -859,15 +1116,32 @@ impl ApplicationHandler for App {
                     (TextureAtlas::dummy(surface.gpu()), false)
                 }
             };
+        // M14.5: sprite pipeline now targets the offscreen HDR game RT
+        // (Rgba16Float) instead of the swap chain. The tonemap +
+        // compositor passes carry pixels through to the surface.
         let renderer = SpriteRenderer::new(
             surface.gpu().clone(),
-            surface.format(),
+            GameRt::FORMAT,
             atlas,
             SPRITE_COUNT.next_power_of_two(),
         );
 
+        let hero_live_enabled = std::env::var("PH2D_HERO_LIVE").as_deref() == Ok("1");
         let mut sim = SimWorld::new();
-        Self::populate_sim(&mut sim);
+        if hero_live_enabled {
+            // M14.4a: spawn a small named set so the hierarchy
+            // panel renders readable rows. The 1000-sprite Vogel
+            // spiral demo is fixture-only; live mode is for the
+            // editor's hierarchy/inspector pipeline.
+            Self::populate_sim_live(&mut sim);
+            println!(
+                "[{:>6}ms] M14.4a: live hero mode (8 named entities; \
+                 hierarchy panel binds to ECS)",
+                self.handler.elapsed_ms()
+            );
+        } else {
+            Self::populate_sim(&mut sim);
+        }
         let present = PresentWorld::new();
         // ADR-0025 M14.1: build the cached propagation queries AFTER
         // populate_sim so bevy_ecs has already seen the Transform
@@ -876,6 +1150,17 @@ impl ApplicationHandler for App {
         // iterate via `&World` only.
         let prop_state = TransformPropagationState::new(sim.world_mut());
         let worklist = WorklistBuf::new();
+        let hero_live = if hero_live_enabled {
+            let walk_state = HierarchyWalkState::new(sim.world_mut());
+            Some(HeroLive {
+                bridge: hero_bridge::EntityNodeMap::new(),
+                walk_state,
+                walk_scratch: Vec::with_capacity(64),
+                snapshot: HierarchySnapshot::new(),
+            })
+        } else {
+            None
+        };
         let camera = Camera2d::default();
 
         // M7: ScriptHost. Failure here is also non-fatal (script is
@@ -928,6 +1213,33 @@ impl ApplicationHandler for App {
                     panic!("VelloPass::new failed: {e}");
                 }
             };
+
+        // M14.5: viewport / RT pipeline construction. game_rt → tonemap
+        // → compositor (which also reads vello_pass intermediate). The
+        // sample views are extracted here at boot; rebound on resize
+        // alongside game_rt/tonemap output recreation.
+        let game_rt = GameRt::new(surface.gpu(), (size.width, size.height));
+        let tonemap = Tonemap::new(
+            surface.gpu(),
+            game_rt
+                .texture()
+                .create_view(&wgpu::TextureViewDescriptor::default()),
+            (size.width, size.height),
+        );
+        let compositor = Compositor::new(
+            surface.gpu(),
+            surface.format(),
+            tonemap
+                .output_texture()
+                .create_view(&wgpu::TextureViewDescriptor::default()),
+            vello_pass
+                .intermediate_texture()
+                .create_view(&wgpu::TextureViewDescriptor::default()),
+        );
+        println!(
+            "[{:>6}ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)",
+            self.handler.elapsed_ms()
+        );
         let vector_scene = VectorScene::new();
         let text_system = TextSystem::new();
 
@@ -958,6 +1270,9 @@ impl ApplicationHandler for App {
             toasts,
             tools,
             layout,
+            game_rt,
+            tonemap,
+            compositor,
             vello_pass,
             vector_scene,
             text_system,
@@ -968,6 +1283,8 @@ impl ApplicationHandler for App {
                 .ok(),
             prop_state,
             worklist,
+            hero_live,
+            next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -1021,7 +1338,22 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::CursorMoved { position, .. } => {
+                let prev = self.last_pointer;
                 self.last_pointer = (position.x as f32, position.y as f32);
+                // M14.4b.bis: middle-drag camera pan. Applied BEFORE
+                // pointer forwarding so widgets receive the move
+                // event but the camera also follows.
+                if let Some(anchor) = self.pan_anchor
+                    && let Some(gfx) = self.gfx.as_mut()
+                {
+                    let dx = self.last_pointer.0 - anchor.0;
+                    let dy = self.last_pointer.1 - anchor.1;
+                    let size = gfx.surface.size();
+                    gfx.camera
+                        .pan_screen_delta(dx, dy, size.width as f32, size.height as f32);
+                    self.pan_anchor = Some(self.last_pointer);
+                    let _ = prev; // silence unused warning when feature shifts
+                }
                 let evt = PointerEvent {
                     x: self.last_pointer.0,
                     y: self.last_pointer.1,
@@ -1045,15 +1377,29 @@ impl ApplicationHandler for App {
                     winit::event::MouseScrollDelta::LineDelta(x, y) => (x * 16.0, y * 16.0),
                     winit::event::MouseScrollDelta::PixelDelta(p) => (p.x as f32, p.y as f32),
                 };
-                let evt = ph2d_host::WheelEvent {
-                    x: self.last_pointer.0,
-                    y: self.last_pointer.1,
-                    delta_x: dx,
-                    delta_y: dy,
-                    modifiers: Self::convert_modifiers(self.modifiers),
-                    timestamp_ns: Self::timestamp_ns(),
-                };
-                forward_wheel_to_hero(self.gfx.as_mut(), evt);
+                // M14.4b.bis: wheel over the canvas zooms the camera.
+                // Wheel over a hero panel keeps the existing
+                // panel-scroll behavior (forward to hero).
+                let over_panel = cursor_over_hero_panel(
+                    self.gfx.as_ref(),
+                    self.last_pointer.0,
+                    self.last_pointer.1,
+                );
+                if !over_panel && let Some(gfx) = self.gfx.as_mut() {
+                    // Wheel up (positive dy) zooms IN (smaller height_world).
+                    let factor = 0.9_f32.powf(dy / 16.0);
+                    gfx.camera.zoom(factor);
+                } else {
+                    let evt = ph2d_host::WheelEvent {
+                        x: self.last_pointer.0,
+                        y: self.last_pointer.1,
+                        delta_x: dx,
+                        delta_y: dy,
+                        modifiers: Self::convert_modifiers(self.modifiers),
+                        timestamp_ns: Self::timestamp_ns(),
+                    };
+                    forward_wheel_to_hero(self.gfx.as_mut(), evt);
+                }
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
@@ -1078,6 +1424,18 @@ impl ApplicationHandler for App {
                 };
                 self.handler.on_pointer(evt);
                 forward_to_hero(self.gfx.as_mut(), evt);
+                // M14.4b.bis: middle button = camera pan anchor.
+                // Tracked here so CursorMoved can drive the pan.
+                if button == winit::event::MouseButton::Middle {
+                    match state {
+                        ElementState::Pressed => {
+                            self.pan_anchor = Some(self.last_pointer);
+                        }
+                        ElementState::Released => {
+                            self.pan_anchor = None;
+                        }
+                    }
+                }
                 match state {
                     ElementState::Pressed => {
                         // Mirror-sidebar chip takes precedence over the
@@ -1342,6 +1700,113 @@ fn forward_wheel_to_hero(gfx: Option<&mut AppGfx>, event: ph2d_host::WheelEvent)
     let _ = hero.handle_wheel(event, &gfx.hero_arena);
 }
 
+/// M14.4c+M14.4d retrofit: full pipeline for importing one image
+/// file into the running demo.
+///
+/// 1. Read bytes from disk.
+/// 2. `AssetDb::insert_image_bytes` (auto-detects PNG/WEBP/JPEG,
+///    hashes blake3 per HR-6).
+/// 3. `SpriteRenderer::insert_atlas_sprite` packs the native-
+///    resolution RGBA into the atlas via the Skyline rect packer
+///    — no resize, no aspect-ratio squash.
+/// 4. Spawn `(Transform at camera center, Sprite { atlas_index:
+///    cell_idx, size: source_pixels / pixels_per_meter }, Name)`.
+///
+/// Returns the human-readable label that was assigned to the
+/// spawned entity (so the host can show it in a toast).
+fn import_image_at_camera(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    camera: &Camera2d,
+    cell_idx: u32,
+    path: &std::path::Path,
+    pixels_per_meter: f32,
+) -> Result<String, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let asset_id = asset_db
+        .insert_image_bytes(&bytes)
+        .map_err(|e| format!("decode {}: {e}", path.display()))?;
+    let decoded = asset_db
+        .get(&asset_id)
+        .ok_or_else(|| format!("asset {asset_id} missing after insert"))?;
+    let (width, height, pixels) = match &*decoded {
+        ph2d_asset::Asset::ImageRgba8 {
+            width,
+            height,
+            pixels,
+        } => (*width, *height, pixels.clone()),
+        _ => return Err(format!("{asset_id} is not ImageRgba8 after decode")),
+    };
+    // Pack at native resolution. The Skyline atlas reserves a
+    // `width × height` region; no resize is applied so the source
+    // keeps full pixel fidelity. Errors here are atlas-full /
+    // source-too-large — surface them to the toast caller.
+    renderer
+        .insert_atlas_sprite(cell_idx, width, height, &pixels)
+        .map_err(|e| format!("atlas insert {}: {e}", path.display()))?;
+
+    let label = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_owned())
+        .unwrap_or_else(|| format!("imported_{cell_idx}"));
+    let spawn_pos = Vec2::new(camera.center[0], camera.center[1]);
+    // Sprite world size = source pixels / pixels_per_meter. With the
+    // Skyline atlas the source bytes are stored at full resolution,
+    // so the world quad's aspect ratio matches the file exactly
+    // (a 256×128 PNG renders as a 2:1 rect in world space).
+    let safe_px_per_m = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
+    let world_w = (width as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
+    let world_h = (height as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
+    sim.world_mut().spawn((
+        Transform::from_translation(spawn_pos),
+        Sprite {
+            atlas_index: cell_idx,
+            size: [world_w, world_h],
+            tint: [1.0, 1.0, 1.0, 1.0],
+        },
+        Name::new(label.clone()),
+    ));
+    Ok(label)
+}
+
+/// Floor for `pixels_per_meter` used inside the import math; below
+/// this a single sprite would span kilometers and break camera math.
+/// The UI clamps to a higher floor (`MIN_PIXELS_PER_METER = 1.0` in
+/// `ph2d_editor::project`) but defense-in-depth here keeps the shell
+/// safe even if a future config path skips that clamp.
+const EPS_PIXELS_PER_METER: f32 = 0.01;
+
+/// Floor for the world-space side length of an imported sprite.
+/// Guarantees the quad is selectable even if the user picks an
+/// absurd `pixels_per_meter` value combined with a 1-pixel image.
+const MIN_SPRITE_SIZE: f32 = 0.001;
+
+/// M14.4b.bis: true when `(x, y)` lies inside either the Inspector
+/// or Hierarchy panel rect published by the most-recent
+/// `paint_hero_screen` pass. Used to decide whether a mouse-wheel
+/// event should zoom the camera (over canvas) or scroll a panel
+/// (over a panel).
+///
+/// Returns false when no hero is active — the demo's fixture mode
+/// shows raw sprites with no panels, so the whole window is "canvas"
+/// and wheel zooms the camera.
+fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
+    let Some(gfx) = gfx else { return false };
+    let Some(hero) = gfx.hero_screen.as_ref() else {
+        return false;
+    };
+    use ph2d_editor::screens::hero::ids::{HIER_PANEL, INSP_PANEL};
+    let inside = |panel_id| {
+        hero.store
+            .panel_rect(panel_id)
+            .map(|r| r.contains(x, y))
+            .unwrap_or(false)
+    };
+    inside(INSP_PANEL) || inside(HIER_PANEL)
+}
+
 /// Forward a single printable character into the hero text-input
 /// dispatcher (focused TextInput/NumberInput/Combobox buffer).
 fn forward_text_to_hero(gfx: Option<&mut AppGfx>, ch: char) {
@@ -1384,21 +1849,21 @@ fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
 }
 
 /// Resolve the editor theme from a name (typically read from the
-/// `PH2D_THEME` env var), falling back to [`Theme::ForgeSdf`] for
+/// `PH2D_THEME` env var), falling back to [`Theme::Forge`] for
 /// missing/invalid values. Recognised names match `Theme::id()`
-/// (`forge-sdf`, `paint-studio`, `sunstone`, `blueprint`).
+/// (`forge`, `workshop`, `sunstone`, `blueprint`).
 fn resolve_theme(name: Option<&str>) -> Theme {
     match name {
-        None => Theme::ForgeSdf,
-        Some("forge-sdf") => Theme::ForgeSdf,
-        Some("paint-studio") => Theme::PaintStudio,
+        None => Theme::Forge,
+        Some("forge") => Theme::Forge,
+        Some("workshop") => Theme::Workshop,
         Some("sunstone") => Theme::Sunstone,
         Some("blueprint") => Theme::Blueprint,
         Some(other) => {
             eprintln!(
-                "[ph2d] PH2D_THEME={other:?} not recognized; falling back to forge-sdf. Valid: forge-sdf, paint-studio, sunstone, blueprint."
+                "[ph2d] PH2D_THEME={other:?} not recognized; falling back to forge. Valid: forge, workshop, sunstone, blueprint."
             );
-            Theme::ForgeSdf
+            Theme::Forge
         }
     }
 }
@@ -1423,20 +1888,20 @@ mod theme_env_tests {
     use super::*;
 
     #[test]
-    fn unset_defaults_to_forge_sdf() {
-        assert_eq!(resolve_theme(None), Theme::ForgeSdf);
+    fn unset_defaults_to_forge() {
+        assert_eq!(resolve_theme(None), Theme::Forge);
     }
 
     #[test]
     fn known_names_resolve() {
-        assert_eq!(resolve_theme(Some("paint-studio")), Theme::PaintStudio);
+        assert_eq!(resolve_theme(Some("workshop")), Theme::Workshop);
         assert_eq!(resolve_theme(Some("sunstone")), Theme::Sunstone);
         assert_eq!(resolve_theme(Some("blueprint")), Theme::Blueprint);
-        assert_eq!(resolve_theme(Some("forge-sdf")), Theme::ForgeSdf);
+        assert_eq!(resolve_theme(Some("forge")), Theme::Forge);
     }
 
     #[test]
     fn unknown_falls_back_to_default() {
-        assert_eq!(resolve_theme(Some("dracula")), Theme::ForgeSdf);
+        assert_eq!(resolve_theme(Some("dracula")), Theme::Forge);
     }
 }

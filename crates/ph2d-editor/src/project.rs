@@ -26,6 +26,17 @@ pub const DEFAULT_PIXELS_PER_METER: f32 = 100.0;
 pub const MIN_PIXELS_PER_METER: f32 = 1.0;
 pub const MAX_PIXELS_PER_METER: f32 = 4096.0;
 
+/// M14.7 F: snap-to-grid step in world meters used by the gizmo's
+/// Ctrl/Cmd-translate path. 0.16 m = 16 px @ default 100 px/m, a
+/// reasonable pixel-art tile size. `0.0` disables snap.
+pub const DEFAULT_SNAP_MOVE_METERS: f32 = 0.16;
+
+/// M14.7 F: snap-to-angle step in degrees used by the gizmo's
+/// Shift-rotate path. 15° matches Figma/Affinity convention (15°,
+/// 30°, 45°, … as the user holds Shift while rotating). `0.0`
+/// disables rotation snap.
+pub const DEFAULT_SNAP_ROTATE_DEG: f32 = 15.0;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectSettings {
     /// Source-image pixels per world meter. Default `100.0` matches
@@ -34,6 +45,15 @@ pub struct ProjectSettings {
     /// 1080p assets); decrease for pixel art with large tile-to-meter
     /// ratios (16–32 for classic tile-based games).
     pub pixels_per_meter: f32,
+    /// M14.7 F: snap step in world meters for Ctrl/Cmd-modified
+    /// gizmo translate. Setting to `0.0` disables the snap (the
+    /// modifier becomes a no-op). Configurable per-project so a
+    /// pixel-art project can pin to 16/100 = 0.16 while a HD scene
+    /// can crank it to 1.0 (= 1 m grid).
+    pub snap_move_meters: f32,
+    /// M14.7 F: snap step in degrees for Shift-modified gizmo
+    /// rotate. `0.0` disables the snap.
+    pub snap_rotate_deg: f32,
 }
 
 impl ProjectSettings {
@@ -51,6 +71,8 @@ impl Default for ProjectSettings {
     fn default() -> Self {
         Self {
             pixels_per_meter: DEFAULT_PIXELS_PER_METER,
+            snap_move_meters: DEFAULT_SNAP_MOVE_METERS,
+            snap_rotate_deg: DEFAULT_SNAP_ROTATE_DEG,
         }
     }
 }

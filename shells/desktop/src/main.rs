@@ -1756,7 +1756,21 @@ impl ApplicationHandler for App {
                         window_w: window_size.width as f32,
                         window_h: window_size.height as f32,
                     };
-                    let new_t = ph2d_editor::compute_gizmo_transform(&drag, &cam);
+                    // M14.7 D: sample winit's tracked modifier state
+                    // (updated on ModifiersChanged). Shift / Ctrl /
+                    // Alt feed AR lock + snap + mirror-anchor. On
+                    // macOS we treat Cmd as Ctrl (industry convention
+                    // for snap-to-grid).
+                    let mods = ph2d_editor::GizmoModifiers {
+                        shift: self.modifiers.shift_key(),
+                        ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
+                        alt: self.modifiers.alt_key(),
+                    };
+                    let snap = ph2d_editor::GizmoSnap {
+                        move_meters: hero.project.snap_move_meters,
+                        rotate_deg: hero.project.snap_rotate_deg,
+                    };
+                    let new_t = ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap);
                     let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
                     if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                         t.translation =

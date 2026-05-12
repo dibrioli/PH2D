@@ -110,6 +110,41 @@ pub struct GizmoCamera {
     pub window_h: f32,
 }
 
+/// M14.7 D: which modifier keys are held during a gizmo drag. The
+/// host samples the live keyboard state on every Move and pipes the
+/// result through to [`compute_gizmo_transform`].
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct GizmoModifiers {
+    /// Shift held: lock aspect ratio on corner scales, snap to
+    /// `snap_rotate_deg` on rotate.
+    pub shift: bool,
+    /// Ctrl/Cmd held: snap translate to `snap_move_meters` grid.
+    pub ctrl: bool,
+    /// Alt held: pivot rotation/scale around the opposite anchor
+    /// (Figma "mirror anchor"). Wired into the math via the host
+    /// swapping `pivot_world` at Down — this flag is reserved for
+    /// future cursor-hint changes.
+    pub alt: bool,
+}
+
+/// M14.7 F: snap step config sourced from `ProjectSettings`. Empty
+/// values (`0.0`) disable the corresponding modifier path; the math
+/// in [`compute_gizmo_transform`] checks this before quantizing.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct GizmoSnap {
+    pub move_meters: f32,
+    pub rotate_deg: f32,
+}
+
+impl Default for GizmoSnap {
+    fn default() -> Self {
+        Self {
+            move_meters: crate::project::DEFAULT_SNAP_MOVE_METERS,
+            rotate_deg: crate::project::DEFAULT_SNAP_ROTATE_DEG,
+        }
+    }
+}
+
 impl GizmoCamera {
     /// Reverse-project a screen pixel to world coords. Mirrors
     /// `Camera2d::screen_to_world` from `ph2d-render` exactly —
@@ -129,19 +164,37 @@ impl GizmoCamera {
 /// Given the in-progress drag + the live camera state, compute the
 /// new Transform the host should write into SimWorld this frame.
 ///
+/// `modifiers` carries the live keyboard modifier state (Shift / Ctrl
+/// / Alt). `snap` carries per-project quantization steps from
+/// `ProjectSettings`. Both arguments default to "no behavior change"
+/// when constructed via `Default::default()`.
+///
 /// Pure function — no I/O, no allocation. Tested directly against
 /// canonical input/output cases in `tests::*` below.
-pub fn compute_gizmo_transform(drag: &GizmoDragState, camera: &GizmoCamera) -> TransformSnapshot {
+pub fn compute_gizmo_transform(
+    drag: &GizmoDragState,
+    camera: &GizmoCamera,
+    modifiers: GizmoModifiers,
+    snap: GizmoSnap,
+) -> TransformSnapshot {
     let now_world = camera.screen_to_world(drag.cursor_screen);
     match drag.kind {
         GizmoDragKind::Translate => {
             let dx = now_world[0] - drag.start_cursor_world[0];
             let dy = now_world[1] - drag.start_cursor_world[1];
+            let mut new_x = drag.start_transform.translation[0] + dx;
+            let mut new_y = drag.start_transform.translation[1] + dy;
+            // Ctrl/Cmd: quantize the resulting position (NOT the
+            // delta) to the snap_move grid. Snapping the delta would
+            // drift with cursor jitter near the threshold; snapping
+            // the final position is what Photoshop/Figma users
+            // expect.
+            if modifiers.ctrl && snap.move_meters > 0.0 {
+                new_x = quantize(new_x, snap.move_meters);
+                new_y = quantize(new_y, snap.move_meters);
+            }
             TransformSnapshot {
-                translation: [
-                    drag.start_transform.translation[0] + dx,
-                    drag.start_transform.translation[1] + dy,
-                ],
+                translation: [new_x, new_y],
                 rotation: drag.start_transform.rotation,
                 scale: drag.start_transform.scale,
             }
@@ -159,20 +212,27 @@ pub fn compute_gizmo_transform(drag: &GizmoDragState, camera: &GizmoCamera) -> T
             // case where the user clicks exactly on the pivot —
             // shouldn't be reachable through normal UI but defensive
             // either way).
-            let ratio_x = if start_vec_x.abs() > 1e-6 {
+            let mut ratio_x = if start_vec_x.abs() > 1e-6 {
                 now_vec_x / start_vec_x
             } else {
                 1.0
             };
-            let ratio_y = if start_vec_y.abs() > 1e-6 {
+            let mut ratio_y = if start_vec_y.abs() > 1e-6 {
                 now_vec_y / start_vec_y
             } else {
                 1.0
             };
-            // Honor the corner sign: a negative ratio means the user
-            // dragged through the pivot (flip). For now clamp to a
-            // minimum so the sprite doesn't invert (Figma-like
-            // behavior; flip would need Shift + extra UX work).
+            // Shift: lock aspect ratio. Pick the ratio with the
+            // larger absolute deviation from 1.0 so a small drag on
+            // one axis doesn't override the user's intent on the
+            // other.
+            if modifiers.shift {
+                let dev_x = (ratio_x - 1.0).abs();
+                let dev_y = (ratio_y - 1.0).abs();
+                let chosen = if dev_x > dev_y { ratio_x } else { ratio_y };
+                ratio_x = chosen;
+                ratio_y = chosen;
+            }
             let scale_x = (drag.start_transform.scale[0] * ratio_x).max(0.001);
             let scale_y = (drag.start_transform.scale[1] * ratio_y).max(0.001);
             let _ = (dx_sign, dy_sign);
@@ -195,6 +255,12 @@ pub fn compute_gizmo_transform(drag: &GizmoDragState, camera: &GizmoCamera) -> T
             };
             let mut scale = drag.start_transform.scale;
             scale[axis] = (drag.start_transform.scale[axis] * ratio).max(0.001);
+            // Shift on an edge handle also locks AR — copy the
+            // ratio to the other axis (Figma semantics).
+            if modifiers.shift {
+                let other = (axis + 1) % 2;
+                scale[other] = (drag.start_transform.scale[other] * ratio).max(0.001);
+            }
             let _ = sign;
             TransformSnapshot {
                 translation: drag.start_transform.translation,
@@ -209,12 +275,30 @@ pub fn compute_gizmo_transform(drag: &GizmoDragState, camera: &GizmoCamera) -> T
                 .atan2(drag.start_cursor_world[0] - drag.pivot_world[0]);
             let now_angle =
                 (now_world[1] - drag.pivot_world[1]).atan2(now_world[0] - drag.pivot_world[0]);
+            let mut rotation = drag.start_transform.rotation + (now_angle - start_angle);
+            // Shift: snap to `snap.rotate_deg` increments. Converts
+            // degrees to radians once before quantize.
+            if modifiers.shift && snap.rotate_deg > 0.0 {
+                let step_rad = snap.rotate_deg.to_radians();
+                rotation = quantize(rotation, step_rad);
+            }
             TransformSnapshot {
                 translation: drag.start_transform.translation,
-                rotation: drag.start_transform.rotation + (now_angle - start_angle),
+                rotation,
                 scale: drag.start_transform.scale,
             }
         }
+    }
+}
+
+/// Quantize `value` to the nearest multiple of `step`. `step <= 0`
+/// returns the value unchanged (defensive — the UI gates the
+/// modifier on a positive step before reaching here).
+fn quantize(value: f32, step: f32) -> f32 {
+    if step > 0.0 {
+        (value / step).round() * step
+    } else {
+        value
     }
 }
 
@@ -581,7 +665,7 @@ mod tests {
             pivot_world: [0.0, 0.0],
             start_cursor_world: start,
         };
-        let t = compute_gizmo_transform(&drag, &c);
+        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
         let now = c.screen_to_world((480.0, 300.0));
         // New translation must equal start + (now - start_cursor_world).
         assert!((t.translation[0] - (now[0] - start[0])).abs() < 1e-3);
@@ -628,7 +712,7 @@ mod tests {
         let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
         let mut drag = drag;
         drag.cursor_screen = (cursor_x, cursor_y);
-        let t = compute_gizmo_transform(&drag, &c);
+        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
         // Doubling along both axes → scale becomes 2× start.
         assert!(
             (t.scale[0] - 2.0).abs() < 1e-3,
@@ -669,7 +753,7 @@ mod tests {
         let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
         let mut drag = drag;
         drag.cursor_screen = (cursor_x, cursor_y);
-        let t = compute_gizmo_transform(&drag, &c);
+        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
         assert!((t.scale[0] - 3.0).abs() < 1e-3);
         // Y axis untouched.
         assert!((t.scale[1] - 1.0).abs() < 1e-3);
@@ -703,7 +787,7 @@ mod tests {
         let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
         let mut drag = drag;
         drag.cursor_screen = (cursor_x, cursor_y);
-        let t = compute_gizmo_transform(&drag, &c);
+        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
         let pi_over_2 = std::f32::consts::FRAC_PI_2;
         assert!(
             (t.rotation - pi_over_2).abs() < 1e-3,
@@ -713,6 +797,169 @@ mod tests {
         // Translation + scale untouched.
         assert_eq!(t.translation, [0.0, 0.0]);
         assert_eq!(t.scale, [1.0, 1.0]);
+    }
+
+    #[test]
+    fn translate_with_ctrl_snaps_to_grid() {
+        let c = cam();
+        let start = c.screen_to_world((400.0, 300.0));
+        // Drag ~80 px right → ~0.83 m world delta (camera_width / w
+        // ≈ 13.33/800 m/px). Default snap = 0.16 m → snapped to
+        // round(0.83/0.16)*0.16 = 5 * 0.16 = 0.80 m (approximately).
+        let drag = GizmoDragState {
+            kind: GizmoDragKind::Translate,
+            entity_bits: 1,
+            start_screen: (400.0, 300.0),
+            cursor_screen: (480.0, 300.0),
+            start_transform: snapshot(0.0, 0.0),
+            pivot_world: [0.0, 0.0],
+            start_cursor_world: start,
+        };
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers {
+                shift: false,
+                ctrl: true,
+                alt: false,
+            },
+            GizmoSnap {
+                move_meters: 0.16,
+                rotate_deg: 0.0,
+            },
+        );
+        // Result must be a multiple of 0.16.
+        let rem = (t.translation[0] / 0.16).fract().abs();
+        assert!(
+            rem < 1e-3 || (1.0 - rem) < 1e-3,
+            "translation_x {} should be a multiple of 0.16",
+            t.translation[0]
+        );
+    }
+
+    #[test]
+    fn scale_corner_with_shift_locks_aspect_ratio() {
+        // Asymmetric drag — natural ratio_x ≠ ratio_y. Shift forces
+        // both to share the larger-deviation ratio.
+        let c = cam();
+        let start_corner_world = [1.0, -1.0];
+        let drag = GizmoDragState {
+            kind: GizmoDragKind::ScaleCorner {
+                dx_sign: 1.0,
+                dy_sign: -1.0,
+            },
+            entity_bits: 1,
+            start_screen: (0.0, 0.0),
+            cursor_screen: (0.0, 0.0),
+            start_transform: TransformSnapshot {
+                translation: [0.0, 0.0],
+                rotation: 0.0,
+                scale: [1.0, 1.0],
+            },
+            pivot_world: [0.0, 0.0],
+            start_cursor_world: start_corner_world,
+        };
+        // Drag to (3, -1.5) world → ratio_x = 3, ratio_y = 1.5.
+        // With Shift, both axes lock to the largest deviation, ratio_x=3.
+        let target_world = [3.0, -1.5];
+        let aspect = c.window_w / c.window_h;
+        let half_w = c.height_world * 0.5 * aspect;
+        let half_h = c.height_world * 0.5;
+        let nx = target_world[0] / half_w;
+        let ny = (c.center[1] - target_world[1]) / half_h;
+        let cursor_x = (nx + 1.0) * 0.5 * c.window_w;
+        let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
+        let mut drag = drag;
+        drag.cursor_screen = (cursor_x, cursor_y);
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers {
+                shift: true,
+                ctrl: false,
+                alt: false,
+            },
+            GizmoSnap::default(),
+        );
+        // Uniform scale — both axes equal.
+        assert!(
+            (t.scale[0] - t.scale[1]).abs() < 1e-3,
+            "shift should lock AR — scale={:?}",
+            t.scale
+        );
+        // And the dominant ratio (3) wins.
+        assert!((t.scale[0] - 3.0).abs() < 1e-2, "got {}", t.scale[0]);
+    }
+
+    #[test]
+    fn rotate_with_shift_snaps_to_step() {
+        // Drag to a non-aligned angle (~30 degrees off from start);
+        // Shift + 15° step should round to nearest 15°.
+        let c = cam();
+        let drag = GizmoDragState {
+            kind: GizmoDragKind::Rotate,
+            entity_bits: 1,
+            start_screen: (0.0, 0.0),
+            cursor_screen: (0.0, 0.0),
+            start_transform: TransformSnapshot {
+                translation: [0.0, 0.0],
+                rotation: 0.0,
+                scale: [1.0, 1.0],
+            },
+            pivot_world: [0.0, 0.0],
+            start_cursor_world: [1.0, 0.0],
+        };
+        // Target angle ~32° (between 30° and 45°). Snap to 15° →
+        // 30° = π/6 ≈ 0.5236.
+        let target_angle_deg = 32.0_f32;
+        let target_world = [
+            (target_angle_deg.to_radians()).cos(),
+            (target_angle_deg.to_radians()).sin(),
+        ];
+        let aspect = c.window_w / c.window_h;
+        let half_w = c.height_world * 0.5 * aspect;
+        let half_h = c.height_world * 0.5;
+        let nx = target_world[0] / half_w;
+        let ny = (c.center[1] - target_world[1]) / half_h;
+        let cursor_x = (nx + 1.0) * 0.5 * c.window_w;
+        let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
+        let mut drag = drag;
+        drag.cursor_screen = (cursor_x, cursor_y);
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers {
+                shift: true,
+                ctrl: false,
+                alt: false,
+            },
+            GizmoSnap {
+                move_meters: 0.0,
+                rotate_deg: 15.0,
+            },
+        );
+        // Expected: round(32°/15°) * 15° = round(2.13) * 15° = 30°
+        // = π/6 ≈ 0.5236.
+        let expected = 30.0_f32.to_radians();
+        assert!(
+            (t.rotation - expected).abs() < 1e-3,
+            "expected ~30°, got {} rad ({}°)",
+            t.rotation,
+            t.rotation.to_degrees()
+        );
+    }
+
+    #[test]
+    fn quantize_zero_step_is_noop() {
+        assert_eq!(quantize(0.5, 0.0), 0.5);
+        assert_eq!(quantize(-2.5, 0.0), -2.5);
+    }
+
+    #[test]
+    fn quantize_rounds_to_nearest_multiple() {
+        assert_eq!(quantize(0.33, 0.16), 0.32);
+        assert_eq!(quantize(0.40, 0.16), 0.48);
+        assert_eq!(quantize(-0.40, 0.16), -0.48);
     }
 
     #[test]

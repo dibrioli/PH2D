@@ -54,7 +54,7 @@ pub use paint::{
 pub use project::{
     DEFAULT_PIXELS_PER_METER, MAX_PIXELS_PER_METER, MIN_PIXELS_PER_METER, ProjectSettings,
 };
-pub use screens::{HeroScreen, HeroSelection, paint_hero_screen};
+pub use screens::{BottomHudStats, HeroScreen, HeroSelection, paint_hero_screen};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};
 // Re-export so the shell can name the dragging node id without

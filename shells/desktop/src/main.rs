@@ -314,6 +314,12 @@ struct App {
     /// dragged together). Cleared on `HoveredFileCancelled` or after
     /// `DroppedFile` is handled.
     hovered_files: Vec<std::path::PathBuf>,
+    /// M14.4g Telemetria Fase A: EWMA-smoothed frame time pushed to
+    /// the hero's `BottomHudStats` each frame so the status bar shows
+    /// real fps/ms instead of the M5 placeholder strings. α=0.1 —
+    /// canonical "smooth without dormant" value used by RTSS / Unity
+    /// stats / Tracy.
+    frame_ms_ewma: f32,
 }
 
 impl App {
@@ -356,6 +362,9 @@ impl App {
             pan_anchor: None,
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),
+            frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
+                                 // frame's status bar doesn't display
+                                 // a wild value while the EWMA seeds.
         }
     }
 
@@ -839,6 +848,13 @@ impl App {
         let now = Instant::now();
         let wall_dt = now.duration_since(self.last_frame).as_secs_f64();
         self.last_frame = now;
+        // M14.4g: feed EWMA frame-time using the same `wall_dt` —
+        // single source of truth for "how long did the last frame
+        // take". α=0.1 smooths over jitter while still tracking
+        // sustained changes in ~10 frames.
+        let frame_ms_now = (wall_dt * 1000.0) as f32;
+        const ALPHA: f32 = 0.1;
+        self.frame_ms_ewma = ALPHA * frame_ms_now + (1.0 - ALPHA) * self.frame_ms_ewma;
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             eprintln!(
@@ -988,6 +1004,32 @@ impl App {
                 window_h: window_size.height as f32,
                 canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
             }));
+            // M14.4g Telemetria Fase A: publish real stats. Sprite
+            // and entity counts come from PresentWorld (the source of
+            // truth for "what we shipped to the GPU this frame"); fps
+            // is derived from the EWMA frame_ms.
+            let sprite_count = present
+                .world_mut()
+                .query::<&ph2d_render::RenderInstance>()
+                .iter(present.world_mut())
+                .count() as u32;
+            let entity_count = present
+                .world_mut()
+                .query::<&ph2d_ecs::SimRef>()
+                .iter(present.world_mut())
+                .count() as u32;
+            let fps = if self.frame_ms_ewma > 0.001 {
+                1000.0 / self.frame_ms_ewma
+            } else {
+                0.0
+            };
+            hero.stats = ph2d_editor::BottomHudStats {
+                fps,
+                frame_ms: self.frame_ms_ewma,
+                draws: 1,
+                sprite_count,
+                entity_count,
+            };
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // M14.4b.bis: drain pending camera-reset request from
             // the VIEW button (TOOL_HOME → Zero mode).

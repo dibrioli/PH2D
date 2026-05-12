@@ -22,12 +22,50 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
+/// Per-frame render statistics surfaced in the bottom HUD.
+/// Fase A (M14.4g): fps, frame_ms, draws, sprite_count, entity_count
+/// are real (host writes via [`crate::HeroScreen::set_stats`]); the
+/// memory / physics / network slots stay stub strings until those
+/// subsystems land. Fase B will add GPU timestamp queries from
+/// `wgpu::QuerySet` for per-pass breakdown.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct BottomHudStats {
+    /// Frames per second (derived from `frame_ms`).
+    pub fps: f32,
+    /// Frame time in milliseconds, EWMA-smoothed by the host.
+    pub frame_ms: f32,
+    /// GPU draw-calls per frame. For the M14.4d sprite pipeline this
+    /// is 1 (one instanced draw per atlas). Tonemap, Vello chrome,
+    /// and compositor are fullscreen blits and don't count as draws
+    /// in the sprite-batching sense.
+    pub draws: u32,
+    /// Sprite instances submitted to the GPU this frame.
+    pub sprite_count: u32,
+    /// Total entity count in the live `SimWorld` (only meaningful in
+    /// `PH2D_HERO_LIVE=1` mode; fixture demo reports the populator's
+    /// constant).
+    pub entity_count: u32,
+}
+
 pub fn paint_bottom_hud(
     layout: &HeroLayout,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    stats: BottomHudStats,
 ) {
+    // Format `entity_count` with a `K` suffix above 999 so the
+    // segment width stays predictable when the scene scales up.
+    let sprite_label = if stats.sprite_count >= 1_000 {
+        format!("{:.1}K sprites", stats.sprite_count as f32 / 1_000.0)
+    } else {
+        format!("{} sprites", stats.sprite_count)
+    };
+    let draws_label = if stats.draws <= 1 {
+        format!("1 draw · {} inst", stats.sprite_count)
+    } else {
+        format!("{} draws", stats.draws)
+    };
     let bar = StatusBar::new(
         NodeId(300),
         "Editor statistics",
@@ -35,12 +73,19 @@ pub fn paint_bottom_hud(
             StatusSegment::new("EDIT")
                 .dot(true)
                 .tone(SegmentTone::Neutral),
-            StatusSegment::new("60 fps \u{00b7} 16.7 ms"),
-            StatusSegment::new("42 draws"),
-            StatusSegment::new("1.2K sprites").tone(SegmentTone::Accent),
-            StatusSegment::new("256 / 1024 ent"),
-            StatusSegment::new("32 bodies \u{00b7} 18 coll"),
-            StatusSegment::new("128 MB"),
+            StatusSegment::new(format!(
+                "{} fps \u{00b7} {:.1} ms",
+                stats.fps as u32, stats.frame_ms
+            )),
+            StatusSegment::new(draws_label),
+            StatusSegment::new(sprite_label).tone(SegmentTone::Accent),
+            StatusSegment::new(format!("{} ent", stats.entity_count)),
+            // Physics / memory / network slots stay placeholder until
+            // those subsystems land (M14.2 Luau + M10 Rapier are the
+            // next major milestones; memory needs a `wgpu::Device`
+            // global-memory query that's adapter-specific).
+            StatusSegment::new("\u{2013} bodies"),
+            StatusSegment::new("\u{2013} MB"),
             StatusSegment::new("100%"),
             StatusSegment::new("default-scene").tone(SegmentTone::Muted),
         ],

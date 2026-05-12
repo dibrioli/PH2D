@@ -38,7 +38,7 @@ pub mod selection;
 pub mod style;
 pub mod topbar;
 
-pub use bottom_hud::paint_bottom_hud;
+pub use bottom_hud::{BottomHudStats, paint_bottom_hud};
 pub use canvas::{paint_canvas_bg, paint_drop_overlay};
 pub use color_picker_demo::paint_blender_picker_demo;
 pub use hierarchy::paint_hierarchy;
@@ -236,6 +236,10 @@ pub struct HeroScreen {
     /// Cleared on `on_file_hover_cancel` or after `on_file_drop` is
     /// processed.
     pub dragging_files: Option<(Vec<std::path::PathBuf>, (f32, f32))>,
+    /// M14.4g Telemetria Fase A: real render statistics surfaced in
+    /// the bottom HUD. Host assigns directly (`hero.stats = ...`)
+    /// once per frame; painter reads them in `paint_bottom_hud`.
+    pub stats: BottomHudStats,
 }
 
 impl HeroScreen {
@@ -260,6 +264,7 @@ impl HeroScreen {
             import_requested: false,
             project: crate::project::ProjectSettings::default(),
             dragging_files: None,
+            stats: BottomHudStats::default(),
         }
     }
 
@@ -905,7 +910,7 @@ pub fn paint_hero_screen(
         }
     }
     if hero.stats_visible {
-        paint_bottom_hud(&layout, scene, text_system, hero.theme);
+        paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
     }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);
@@ -1252,7 +1257,13 @@ mod tests {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_bottom_hud(&layout, &mut scene, &mut text, Theme::Workshop);
+        paint_bottom_hud(
+            &layout,
+            &mut scene,
+            &mut text,
+            Theme::Workshop,
+            BottomHudStats::default(),
+        );
     }
 
     #[test]

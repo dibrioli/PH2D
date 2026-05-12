@@ -23,4 +23,4 @@ pub mod hero_ref;
 #[cfg(feature = "reference-snapshot")]
 pub use hero_ref as hero;
 
-pub use hero::{HeroScreen, HeroSelection, paint_hero_screen};
+pub use hero::{BottomHudStats, HeroScreen, HeroSelection, paint_hero_screen};

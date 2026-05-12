@@ -86,7 +86,18 @@ pub fn pick_sprite_at_world(present: &mut World, world_pos: [f32; 2]) -> Option<
         let half_h = ri.size[1] * 0.5;
         let dx = world_pos[0] - pos.x;
         let dy = world_pos[1] - pos.y;
-        if dx.abs() <= half_w && dy.abs() <= half_h {
+        // Rotate the cursor delta into the sprite's local frame so the
+        // axis-aligned bbox test matches what the user sees on screen.
+        // Without the inverse rotation, the picking AABB tracks the
+        // unrotated rect — a click on the visible corner of a rotated
+        // sprite would miss. ri.rotation comes from the M14.7 polish
+        // extract path; zero for legacy entities means this collapses
+        // to the original axis-aligned test.
+        let cos_r = ri.rotation.cos();
+        let sin_r = ri.rotation.sin();
+        let local_dx = dx * cos_r + dy * sin_r;
+        let local_dy = -dx * sin_r + dy * cos_r;
+        if local_dx.abs() <= half_w && local_dy.abs() <= half_h {
             // Last hit wins — within an archetype bevy_ecs walks in
             // insertion order, so the most recently spawned sprite
             // overrides earlier ones (intuitive "top of the pile").

@@ -203,22 +203,33 @@ pub fn compute_gizmo_transform(
             // Pivot stays fixed at the opposite-corner location.
             // We let the user drag the corner to where the cursor
             // is; the scale factor is the ratio of the new corner-
-            // pivot vector vs the original one.
-            let start_vec_x = drag.start_cursor_world[0] - drag.pivot_world[0];
-            let start_vec_y = drag.start_cursor_world[1] - drag.pivot_world[1];
-            let now_vec_x = now_world[0] - drag.pivot_world[0];
-            let now_vec_y = now_world[1] - drag.pivot_world[1];
+            // pivot vector vs the original one — measured along the
+            // sprite's LOCAL axes (rotated by `start_transform.
+            // rotation`), not world axes. Without the inverse-rot
+            // step a rotated sprite scales uniformly even when the
+            // user drags along one local axis only.
+            let rot = drag.start_transform.rotation;
+            let cos_r = rot.cos();
+            let sin_r = rot.sin();
+            let start_dx = drag.start_cursor_world[0] - drag.pivot_world[0];
+            let start_dy = drag.start_cursor_world[1] - drag.pivot_world[1];
+            let now_dx = now_world[0] - drag.pivot_world[0];
+            let now_dy = now_world[1] - drag.pivot_world[1];
+            let start_local_x = start_dx * cos_r + start_dy * sin_r;
+            let start_local_y = -start_dx * sin_r + start_dy * cos_r;
+            let now_local_x = now_dx * cos_r + now_dy * sin_r;
+            let now_local_y = -now_dx * sin_r + now_dy * cos_r;
             // Guard against zero-length start vector (degenerate
             // case where the user clicks exactly on the pivot —
             // shouldn't be reachable through normal UI but defensive
             // either way).
-            let mut ratio_x = if start_vec_x.abs() > 1e-6 {
-                now_vec_x / start_vec_x
+            let mut ratio_x = if start_local_x.abs() > 1e-6 {
+                now_local_x / start_local_x
             } else {
                 1.0
             };
-            let mut ratio_y = if start_vec_y.abs() > 1e-6 {
-                now_vec_y / start_vec_y
+            let mut ratio_y = if start_local_y.abs() > 1e-6 {
+                now_local_y / start_local_y
             } else {
                 1.0
             };
@@ -244,12 +255,30 @@ pub fn compute_gizmo_transform(
         }
         GizmoDragKind::ScaleEdge { axis, sign } => {
             // Axis-only scale: one component changes, the other
-            // sticks to its start value.
+            // sticks to its start value. Like ScaleCorner, the ratio
+            // is measured in the sprite's LOCAL frame so the active
+            // axis matches the user's perceived "X edge" / "Y edge"
+            // even when the sprite is rotated.
             let axis = axis.min(1) as usize;
-            let start_vec = drag.start_cursor_world[axis] - drag.pivot_world[axis];
-            let now_vec = now_world[axis] - drag.pivot_world[axis];
-            let ratio = if start_vec.abs() > 1e-6 {
-                now_vec / start_vec
+            let rot = drag.start_transform.rotation;
+            let cos_r = rot.cos();
+            let sin_r = rot.sin();
+            let start_dx = drag.start_cursor_world[0] - drag.pivot_world[0];
+            let start_dy = drag.start_cursor_world[1] - drag.pivot_world[1];
+            let now_dx = now_world[0] - drag.pivot_world[0];
+            let now_dy = now_world[1] - drag.pivot_world[1];
+            let start_local = if axis == 0 {
+                start_dx * cos_r + start_dy * sin_r
+            } else {
+                -start_dx * sin_r + start_dy * cos_r
+            };
+            let now_local = if axis == 0 {
+                now_dx * cos_r + now_dy * sin_r
+            } else {
+                -now_dx * sin_r + now_dy * cos_r
+            };
+            let ratio = if start_local.abs() > 1e-6 {
+                now_local / start_local
             } else {
                 1.0
             };
@@ -700,17 +729,23 @@ fn corner_outer_rect_oriented(
 ) -> Rect {
     let half_handle = HANDLE_SIZE_PX * 0.5;
     let offset = half_handle + ROTATE_HANDLE_OFFSET * 0.5;
-    // Local axes in screen space. Note `world_to_screen` flips Y,
-    // so the screen-space local +Y axis is `(-sin(r), -cos(r))` —
-    // the world-Y component is negated by the projection.
+    // Local axes in SCREEN space. `world_to_screen` flips Y (world
+    // +Y → screen -Y), so each world-Y component picks up a sign
+    // flip when projected.
+    //   World local +X = (cos r, sin r)  → screen (cos r, -sin r)
+    //   World local +Y = (-sin r, cos r) → screen (-sin r, -cos r)
+    // The earlier version dropped the negation on local_x; at any
+    // non-zero rotation the hover rect drifted ROTATE_HANDLE_OFFSET
+    // px off the visible corner — user reported "área que detecta a
+    // rot não ficou bem posicionada na quina".
     let cos_r = rotation.cos();
     let sin_r = rotation.sin();
-    let local_x = (cos_r, sin_r);
+    let local_x_screen = (cos_r, -sin_r);
     let local_y_screen = (-sin_r, -cos_r);
     let off_x = lx_sign * offset;
     let off_y = ly_sign * offset;
-    let center_x = corner_screen[0] + local_x.0 * off_x + local_y_screen.0 * off_y;
-    let center_y = corner_screen[1] + local_x.1 * off_x + local_y_screen.1 * off_y;
+    let center_x = corner_screen[0] + local_x_screen.0 * off_x + local_y_screen.0 * off_y;
+    let center_y = corner_screen[1] + local_x_screen.1 * off_x + local_y_screen.1 * off_y;
     Rect::new(
         center_x - ROTATE_HANDLE_OFFSET * 0.5,
         center_y - ROTATE_HANDLE_OFFSET * 0.5,

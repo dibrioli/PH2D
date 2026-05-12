@@ -253,6 +253,14 @@ pub struct HeroScreen {
     /// matching `ChildOf` mutation on `SimWorld`. Carries only
     /// NodeIds — staying `Copy + Eq` keeps the field cheap to clear.
     pub pending_reparent: Option<HierReparentIntent>,
+    /// M14.6 F: per-row context-menu action intents. Each is a
+    /// `Some(row_node_id)` once the user picks the matching menu
+    /// entry; the host drains and applies the matching ECS mutation,
+    /// then re-snapshots the hierarchy on the next frame.
+    pub pending_duplicate: Option<NodeId>,
+    pub pending_delete: Option<NodeId>,
+    pub pending_reset_transform: Option<NodeId>,
+    pub pending_add_child: Option<NodeId>,
 }
 
 /// M14.6B host-side reparent intent. Mirrors the
@@ -292,6 +300,10 @@ impl HeroScreen {
             stats: BottomHudStats::default(),
             pending_visibility_toggle: None,
             pending_reparent: None,
+            pending_duplicate: None,
+            pending_delete: None,
+            pending_reset_transform: None,
+            pending_add_child: None,
         }
     }
 
@@ -596,6 +608,33 @@ impl HeroScreen {
             if id == ids::CTX_MENU_IMPORT {
                 self.import_requested = true;
                 self.store.close_context_menu();
+                return true;
+            }
+            // M14.6 F: per-row Hierarchy actions. Each menu entry
+            // pulls the target `row` NodeId from the most-recently
+            // closed `HierarchyRow { row }` snapshot (dispatch moves
+            // the request from `context_menu` to `last_context_menu`
+            // on the menu-closing Down event), raises the matching
+            // `pending_*` flag, and exits. The host drains the flag
+            // next frame and runs the ECS mutation.
+            if id == ids::CTX_MENU_HIER_DUPLICATE
+                || id == ids::CTX_MENU_HIER_ADD_CHILD
+                || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
+                || id == ids::CTX_MENU_HIER_DELETE
+            {
+                if let Some(req) = self.store.consume_last_context_menu()
+                    && let crate::interaction::ContextMenuKind::HierarchyRow { row } = req.kind
+                {
+                    if id == ids::CTX_MENU_HIER_DUPLICATE {
+                        self.pending_duplicate = Some(row);
+                    } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
+                        self.pending_add_child = Some(row);
+                    } else if id == ids::CTX_MENU_HIER_RESET_TRANSFORM {
+                        self.pending_reset_transform = Some(row);
+                    } else if id == ids::CTX_MENU_HIER_DELETE {
+                        self.pending_delete = Some(row);
+                    }
+                }
                 return true;
             }
             // Pixels-per-meter presets (Settings cluster). Writes
@@ -1334,5 +1373,90 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         paint_selection_overlay(&layout, &sel, &mut scene, &mut text, Theme::Forge);
+    }
+
+    // ─────────────── M14.6 F: per-row context-menu apply_event ────────────────
+
+    /// Stage a closed HierarchyRow snapshot so `apply_event` can read
+    /// it via `consume_last_context_menu`. Mirrors what dispatch does
+    /// on the menu-closing Down → next-frame-Click sequence.
+    fn stage_hierarchy_row_snapshot(hero: &mut HeroScreen, row: NodeId) {
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::HierarchyRow { row },
+            });
+        // Closing copies the request into `last_context_menu`, which
+        // is what `consume_last_context_menu` returns.
+        hero.store.close_context_menu();
+    }
+
+    #[test]
+    fn hier_menu_duplicate_sets_pending_duplicate() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        let row = NodeId(100_500);
+        stage_hierarchy_row_snapshot(&mut hero, row);
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
+        assert!(consumed);
+        assert_eq!(hero.pending_duplicate, Some(row));
+        // Snapshot was consumed.
+        assert!(hero.store.last_context_menu().is_none());
+    }
+
+    #[test]
+    fn hier_menu_add_child_sets_pending_add_child() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        let row = NodeId(100_501);
+        stage_hierarchy_row_snapshot(&mut hero, row);
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_ADD_CHILD));
+        assert!(consumed);
+        assert_eq!(hero.pending_add_child, Some(row));
+    }
+
+    #[test]
+    fn hier_menu_reset_transform_sets_pending() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        let row = NodeId(100_502);
+        stage_hierarchy_row_snapshot(&mut hero, row);
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_RESET_TRANSFORM));
+        assert!(consumed);
+        assert_eq!(hero.pending_reset_transform, Some(row));
+    }
+
+    #[test]
+    fn hier_menu_delete_sets_pending_delete() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        let row = NodeId(100_503);
+        stage_hierarchy_row_snapshot(&mut hero, row);
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DELETE));
+        assert!(consumed);
+        assert_eq!(hero.pending_delete, Some(row));
+    }
+
+    #[test]
+    fn hier_menu_click_without_snapshot_consumes_but_no_pending() {
+        // Defensive case: stray Click without any prior right-click
+        // snapshot still consumes the event so the click doesn't
+        // bubble to row selection, but no pending action is raised.
+        let mut hero = HeroScreen::new(NodeId(1));
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
+        assert!(consumed);
+        assert!(hero.pending_duplicate.is_none());
+    }
+
+    #[test]
+    fn hier_menu_one_action_per_drain() {
+        // Two consecutive clicks (Duplicate then Delete) only fire
+        // the first — the snapshot is consumed and the second click
+        // sees an empty `last_context_menu`. This protects against
+        // double-trigger if a synthetic event stream emits both.
+        let mut hero = HeroScreen::new(NodeId(1));
+        let row = NodeId(100_504);
+        stage_hierarchy_row_snapshot(&mut hero, row);
+        let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
+        let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DELETE));
+        assert_eq!(hero.pending_duplicate, Some(row));
+        assert!(hero.pending_delete.is_none());
     }
 }

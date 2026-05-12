@@ -228,6 +228,16 @@ pub const CTX_MENU_PPM_32: NodeId = NodeId(941);
 pub const CTX_MENU_PPM_100: NodeId = NodeId(942);
 pub const CTX_MENU_PPM_256: NodeId = NodeId(943);
 pub const CTX_MENU_PPM_1024: NodeId = NodeId(944);
+
+// M14.6 F: per-row Hierarchy context menu entries. Triggered by a
+// secondary (right-button) click on any hierarchy row in live mode;
+// `ContextMenuKind::HierarchyRow { row }` carries the target row's
+// NodeId so dispatch can attach the action to the right entity when
+// any of these ids fires.
+pub const CTX_MENU_HIER_DUPLICATE: NodeId = NodeId(945);
+pub const CTX_MENU_HIER_DELETE: NodeId = NodeId(946);
+pub const CTX_MENU_HIER_RESET_TRANSFORM: NodeId = NodeId(947);
+pub const CTX_MENU_HIER_ADD_CHILD: NodeId = NodeId(948);
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = NodeId(930);
 pub const CTX_SCENE_ROW_0: NodeId = NodeId(931);

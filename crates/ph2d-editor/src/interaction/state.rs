@@ -536,6 +536,14 @@ pub enum ContextMenuKind {
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `WidgetStore::current_scene_name`.
     SceneList,
+    /// M14.6 F: right-clicked on a hierarchy row. Menu offers per-
+    /// entity actions (Duplicate, Delete, Reset Transform, Add Child).
+    /// The dispatcher routes each menu item click into a
+    /// `HeroScreen.pending_*` slot keyed by `row`; the host drains
+    /// those slots each frame and applies the ECS mutation. Rename
+    /// is deferred (needs inline TextInput state-machine) and not
+    /// surfaced in this menu yet.
+    HierarchyRow { row: NodeId },
 }
 
 impl WidgetStore {

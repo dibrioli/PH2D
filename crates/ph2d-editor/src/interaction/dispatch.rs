@@ -224,7 +224,32 @@ pub fn dispatch_pointer_with_text<'frame>(
                         None
                     }
                 });
-                if let Some(note_index) = note_slot
+                // M14.6 F: right-click on a hierarchy row opens the
+                // per-entity actions menu. Resolved BEFORE the broader
+                // panel-under fallback because the row lives inside
+                // the hierarchy panel — the CreateNote menu must not
+                // win over this more specific kind. Eye/chevron
+                // companion ids are stripped first so a right-click on
+                // those toggles still reaches the parent row.
+                let hier_row_id = hit_id.and_then(|id| {
+                    if let Some(row) = crate::screens::hero::ids::hier_eye_companion_to_row(id) {
+                        Some(row)
+                    } else if let Some(row) =
+                        crate::screens::hero::ids::hier_expand_companion_to_row(id)
+                    {
+                        Some(row)
+                    } else {
+                        Some(id)
+                    }
+                    .filter(|row| store.is_hierarchy_row(*row))
+                });
+                if let Some(row) = hier_row_id {
+                    store.open_context_menu(super::ContextMenuRequest {
+                        x: event.x,
+                        y: event.y,
+                        kind: super::ContextMenuKind::HierarchyRow { row },
+                    });
+                } else if let Some(note_index) = note_slot
                     && let Some(panel) = panel_under
                 {
                     store.open_context_menu(super::ContextMenuRequest {

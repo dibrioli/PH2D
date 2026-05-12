@@ -142,6 +142,17 @@ pub fn paint_context_menu_overlay(
         // below — `items` stays empty so the simple-row loop is
         // skipped.
         ContextMenuKind::SceneList => &[],
+        // M14.6 F: per-row Hierarchy actions. "Rename…" is omitted
+        // until the inline-edit state-machine lands (deferred to a
+        // follow-up). Order matches Unity/Godot/Blender conventions:
+        // additive ops first (Duplicate / Add Child), then destructive
+        // (Delete), with Reset Transform last as a milder revert.
+        ContextMenuKind::HierarchyRow { .. } => &[
+            (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),
+            (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
+            (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),
+            (ids::CTX_MENU_HIER_DELETE, "Delete", None),
+        ],
     };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {

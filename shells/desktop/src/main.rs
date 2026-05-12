@@ -1150,6 +1150,77 @@ impl App {
                     }
                 }
             }
+            // M14.6 F: drain per-row Hierarchy context-menu actions.
+            // Each is a `Some(row_id)` — bridge resolves to Entity,
+            // then we apply the corresponding ECS mutation. Order is
+            // intentional: Delete last, so a (degenerate) frame that
+            // queues "duplicate then delete" leaves the duplicate in
+            // place and removes the original. The next snapshot rebuild
+            // picks up the result automatically.
+            if let Some(row) = hero.pending_duplicate.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(entity_bits) = live.bridge.entity_for(row)
+            {
+                let src = ph2d_ecs::Entity::from_bits(entity_bits);
+                let sim_w = sim.world_mut();
+                let transform = sim_w.get::<Transform>(src).copied();
+                let sprite = sim_w.get::<Sprite>(src).copied();
+                let name = sim_w.get::<Name>(src).map(|n| n.as_str().to_owned());
+                let parent = sim_w.get::<ph2d_ecs::ChildOf>(src).map(|c| c.parent());
+                let copy_name = name
+                    .map(|n| format!("{n}_copy"))
+                    .unwrap_or_else(|| "copy".to_string());
+                let mut builder = sim_w.spawn_empty();
+                if let Some(t) = transform {
+                    builder.insert(t);
+                }
+                if let Some(s) = sprite {
+                    builder.insert(s);
+                }
+                builder.insert(Name::new(copy_name));
+                if let Some(p) = parent {
+                    builder.insert(ph2d_ecs::ChildOf(p));
+                }
+                toasts.push(Toast::success("Duplicated entity"));
+                self.title_dirty = true;
+            }
+            if let Some(row) = hero.pending_add_child.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(parent_bits) = live.bridge.entity_for(row)
+            {
+                let parent = ph2d_ecs::Entity::from_bits(parent_bits);
+                sim.world_mut().spawn((
+                    Transform::IDENTITY,
+                    Name::new("Child"),
+                    ph2d_ecs::ChildOf(parent),
+                ));
+                toasts.push(Toast::success("Added child entity"));
+                self.title_dirty = true;
+            }
+            if let Some(row) = hero.pending_reset_transform.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(entity_bits) = live.bridge.entity_for(row)
+            {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
+                    *t = Transform::IDENTITY;
+                    toasts.push(Toast::info("Transform reset"));
+                    self.title_dirty = true;
+                }
+            }
+            if let Some(row) = hero.pending_delete.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(entity_bits) = live.bridge.entity_for(row)
+            {
+                // bevy_ecs 0.18 `ChildOf` cascade: despawning a parent
+                // takes its descendants with it. No manual recursion
+                // here (see `transform_hierarchy.rs::despawn_root_
+                // cascades_via_child_of`).
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                sim.world_mut().despawn(entity);
+                toasts.push(Toast::warning("Deleted entity"));
+                self.title_dirty = true;
+            }
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/
             // JPEG), spawn a sprite per image at the camera center.

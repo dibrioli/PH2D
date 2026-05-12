@@ -45,11 +45,17 @@ Lista curta. Tocar qualquer item desta lista **paralisa seu trabalho** — sinal
 
 ## Fluxo de 5 passos
 
-1. **Enio cria worktree** para você em branch `feature/<nome>` partindo de `main`.
-2. **Você implementa** a feature dentro da whitelist. Compila local, testes passam, clippy clean.
-3. **Você reporta** "pronto, esperando integração" — não faz push ainda, ou faz push pro branch mas não abre PR.
+Tudo acontece **localmente no Mac do Enio**. GitHub é destino final, não infraestrutura de coordenação.
+
+1. **Enio cria worktree** para você em branch local `feature/<nome>` partindo de `main` ou da branch ativa do marco.
+2. **Você implementa** a feature dentro da whitelist. Compila local, testes passam, clippy clean, fmt OK.
+3. **Você commita local** e reporta "pronto, esperando integração". **Não faça `git push`.**
 4. **Enio confirma** que nenhum outro agente está ativo (checa worktrees) e abre janela de integração.
-5. **Você (ou agente novo) integra**: rebase em main, ajusta Cargo.toml raiz se feature exigir nova dep, regenera bindings via `cargo run -p ph2d-bindgen` se mudou catálogo, atualiza SKILL + plans, merge.
+5. **Você (ou agente novo) integra localmente**: rebase na branch destino, ajusta `Cargo.toml` raiz se feature exigir nova dep, regenera bindings via `cargo run -p ph2d-bindgen` se mudou catálogo, atualiza SKILL + plans, merge local. Roda `cargo test --workspace` pra validar a integração antes de declarar pronto.
+
+## Quando push e GitHub entram
+
+**Passo separado, posterior, na cadência que o Enio decidir.** Push pro GitHub e abertura de PR não fazem parte do fluxo do agente — são decisão operacional do Enio depois que uma ou mais integrações locais estiverem concluídas e testadas. O agente nunca pusha sozinho.
 
 ## Quando você descobre que precisa tocar a blacklist
 

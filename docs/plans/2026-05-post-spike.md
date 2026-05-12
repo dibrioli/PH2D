@@ -148,7 +148,24 @@ código) endereçou os 3 bugs sem rebuilds maiores:
 - Per-asset `pixels_per_meter` override no Inspector (hoje só project-level)
 - NumberInput livre no Settings panel (hoje só 5 presets)
 
-## M14.5 — Pluggable sprite source strategies (planned)
+## M14.5 — Pluggable sprite source strategies (in progress)
+
+**Status 2026-05-12:**
+- ✅ **A — Dynamic Atlas (Skyline)**: shipped M14.4d/4f (commits before this sprint).
+- ✅ **C — Individual Textures + draw-call batching**: shipped (commit `9e6c901`).
+  - `Sprite::source: SpriteSource` enum; `RenderInstance` ganha `texture_id`;
+  - `IndividualTextureStore { acquire/retain/release/bind_group/replace_pixels }`;
+  - Renderer sort+walk_runs+multi-draw em `SpriteRenderer::render`.
+- ✅ **B — Hand-packed Atlas (loader half)**: shipped (commit `32a9404`).
+  - `parse_atlas_meta` Aseprite Hash + TexturePacker JSON parsers em
+    `crates/ph2d-asset/src/hand_packed.rs`;
+  - `AtlasMeta { regions: BTreeMap<String, AtlasRegion>, image_size, image_filename }`;
+  - Renderer integration deferred to M14.5 inspector phase.
+- ⏳ **M14.5 inspector**: Render Source dropdown per sprite. Needs the
+  selected-entity surface from M14.7 A (now shipped) — picks up next.
+- ADR-0026 ratifies the model: `docs/architecture/decisions/0026-sprite-source-strategies.md`.
+
+
 
 O Skyline atlas shipado em M14.4d cobre o caso amplo (muitos sprites
 pequenos, auto-packing) mas não é o único pattern usado em engines
@@ -243,7 +260,22 @@ Justifica seu próprio marco (M14.5) em vez de retrofit. Provável
 ordem: A já feita → C (Godot-style, menor unknowns) → B (loader
 parser).
 
-## M14.6 — Hierarchy panel polish (planned)
+## M14.6 — Hierarchy panel polish (mostly shipped)
+
+**Status 2026-05-12:**
+- ✅ **A — Per-entity hide/show (eye toggle)**: shipped (commit `3e2fdf7`).
+- ✅ **B — Drag-to-reparent**: shipped (commit `2519125`).
+- ✅ **C — Expand/collapse**: shipped (commit `bd7eb49`).
+- ✅ **D — Selection sync bidirecional**: shipped (commit `88d9849`).
+  Hierarchy row click sets `gizmo_selection`; canvas pick writes
+  `selection.label` so the matching row highlights.
+- ✅ **E — Search / filter**: shipped (commit `a8f5e25`). `HIER_SEARCH`
+  TextInput + `compute_match_filter` with ancestor-path preservation.
+- ✅ **F — Right-click context menu**: shipped (commit `cb65a36`).
+  Duplicate / Add Child / Reset Transform / Delete. Rename inline-
+  edit deferred to a follow-up.
+
+
 
 A Hierarchy panel hoje lista entities em ordem DFS (M14.4a) com seleção
 via click, mas é read-only — não permite editar a hierarquia nem
@@ -357,7 +389,38 @@ ou single PR organizada por commits per-feature.
   no ECS (test `despawn_root_cascades_via_child_of` em
   [transform_hierarchy.rs](../../crates/ph2d-ecs/tests/transform_hierarchy.rs))
 
-## M14.7 — Sprite gizmo (move/rotate/scale, mouse + touch) (planned)
+## M14.7 — Sprite gizmo (mouse path shipped)
+
+**Status 2026-05-12:**
+- ✅ **A — Selection state + bbox compute + world picking**: shipped
+  (commit `7ef6e79`). `pick_sprite_at_world` / `selection_bbox_world` em
+  `ph2d-render/src/picking.rs`; `HeroScreen.gizmo_selection: Option<u64>`;
+  canvas-click picking no host.
+- ✅ **B — Gizmo visual painter**: shipped (commit `1e922c3`). Bbox
+  stroke + 8 handles + pivot dot + 4 rotate-hover rings em
+  `ph2d-editor/src/gizmo.rs`.
+- ✅ **C — Mouse hit-test + state machine + ECS write-back**: shipped
+  (commit `2959e97`). `GizmoDragKind` (Translate / ScaleCorner / ScaleEdge
+  / Rotate) + `compute_gizmo_transform` pure math + host Down/Move/Up
+  wiring com Transform write-back.
+- ✅ **D — Mouse modifier keys**: shipped (commit `130a57e`). Shift
+  (AR lock + rotate snap), Ctrl/Cmd (translate snap-to-grid), Alt
+  reserved for mirror-anchor.
+- ✅ **F — `ProjectSettings.snap_*` config**: shipped same commit.
+  `snap_move_meters` + `snap_rotate_deg` per-project; `0.0` disables
+  the corresponding modifier. UI preset dropdown (Settings cluster
+  customization) deferred — keeps current 0.16 m / 15° defaults
+  unless a project overrides directly.
+- ⏳ **E — Touch gestures (2-finger pinch/twist)**: **deferred** —
+  desktop shell has no touch source; lands with iPad shell (M11+ or
+  separate phase) using `PointerSource::Touch` events that the
+  desktop path already routes through `PointerEvent`.
+- ⏳ **G — additional tests + polish**: snap quantize, gesture-
+  recognition, etc. Most G-scoped tests already landed inline with
+  A-D commits (17 unit tests in `gizmo::tests` + 8 in
+  `picking::tests`).
+
+
 
 `Transform` shipped em M14.1; M14.4e spawna sprites no canvas via
 drag-drop. **Falta o tool de manipulação direta** — gizmo visual sobre

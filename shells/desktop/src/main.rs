@@ -985,6 +985,27 @@ impl App {
                         && let Some(spr) = sim.get::<Sprite>(sim_entity)
                     {
                         let p = gt.translation();
+                        // M14.7 polish: extract scale + rotation from
+                        // the entity's `GlobalTransform` matrix so the
+                        // gizmo's scale handles AND rotation reach the
+                        // shader. Column-major affine:
+                        //   col0 = (cos*sx, sin*sx)
+                        //   col1 = (-sin*sy, cos*sy)
+                        //   col2 = (tx, ty)
+                        // Scale magnitudes come from column lengths;
+                        // rotation comes from atan2(col0.y, col0.x).
+                        // The Sprite's raw `size` is the import-time
+                        // world rect; multiplying here keeps the gizmo
+                        // pipeline orthogonal to the import pipeline
+                        // (no double-scaling).
+                        let affine = gt.affine();
+                        let col0_x = affine[0];
+                        let col0_y = affine[1];
+                        let col1_x = affine[2];
+                        let col1_y = affine[3];
+                        let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
+                        let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
+                        let rotation = col0_y.atan2(col0_x);
                         // M14.5 C: branch on the sprite source. Atlas
                         // sprites resolve UV via `region_uv`; individual
                         // sprites use the full (0..1) UV rect and carry
@@ -1001,11 +1022,12 @@ impl App {
                         };
                         builder.insert(RenderInstance {
                             world_pos: [p.x, p.y],
-                            size: spr.size,
+                            size: [spr.size[0] * scale_x, spr.size[1] * scale_y],
                             atlas_uv,
                             tint: spr.tint,
+                            rotation,
                             texture_id,
-                            _pad: [0; 3],
+                            _pad: [0; 2],
                         });
                     }
                 },

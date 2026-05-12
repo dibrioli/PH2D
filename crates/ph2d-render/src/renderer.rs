@@ -391,8 +391,9 @@ mod tests {
             size: [1.0, 1.0],
             atlas_uv: [0.0, 0.0, 1.0, 1.0],
             tint: [1.0, 1.0, 1.0, 1.0],
+            rotation: 0.0,
             texture_id,
-            _pad: [0; 3],
+            _pad: [0; 2],
         }
     }
 

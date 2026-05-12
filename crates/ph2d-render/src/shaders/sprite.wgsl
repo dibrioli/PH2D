@@ -28,6 +28,7 @@ struct InstanceInput {
     @location(3) size:      vec2<f32>,
     @location(4) atlas_uv:  vec4<f32>,  // u_min, v_min, u_max, v_max
     @location(5) tint:      vec4<f32>,
+    @location(6) rotation:  f32,        // radians; M14.7 gizmo
 };
 
 struct VertexOutput {
@@ -38,10 +39,18 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
-    let world = vec2<f32>(
-        i.world_pos.x + v.quad_pos.x * i.size.x,
-        i.world_pos.y + v.quad_pos.y * i.size.y,
+    // Local-space sprite corner (centered at origin, scaled by size).
+    // `size` already carries `Transform.scale` baked at extract time;
+    // the rotation here applies the gizmo's `Transform.rotation`
+    // before the world translate.
+    let local = vec2<f32>(v.quad_pos.x * i.size.x, v.quad_pos.y * i.size.y);
+    let cos_r = cos(i.rotation);
+    let sin_r = sin(i.rotation);
+    let rotated = vec2<f32>(
+        local.x * cos_r - local.y * sin_r,
+        local.x * sin_r + local.y * cos_r,
     );
+    let world = i.world_pos + rotated;
     let uv = vec2<f32>(
         i.atlas_uv.x + v.quad_uv.x * (i.atlas_uv.z - i.atlas_uv.x),
         i.atlas_uv.y + v.quad_uv.y * (i.atlas_uv.w - i.atlas_uv.y),

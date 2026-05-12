@@ -121,11 +121,20 @@ impl SimComponent for Sprite {}
 #[repr(C)]
 pub struct RenderInstance {
     pub world_pos: [f32; 2],
+    /// Sprite size in world meters. Extract MULTIPLIES the raw
+    /// `Sprite.size` by the entity's `GlobalTransform` scale before
+    /// stamping this field, so the gizmo's scale handles
+    /// (`Transform.scale`) reach the rendered quad.
     pub size: [f32; 2],
     pub atlas_uv: [f32; 4],
     pub tint: [f32; 4],
+    /// World-space rotation in radians, decomposed from
+    /// `GlobalTransform`. Read by the shader to rotate the local
+    /// quad before the world translate. Defaults to 0 for legacy
+    /// extract paths that don't set it.
+    pub rotation: f32,
     pub texture_id: u32,
-    pub _pad: [u32; 3],
+    pub _pad: [u32; 2],
 }
 
 impl PresentComponent for RenderInstance {}
@@ -136,6 +145,7 @@ impl RenderInstance {
         3 => Float32x2,  // size
         4 => Float32x4,  // atlas_uv
         5 => Float32x4,  // tint
+        6 => Float32,    // rotation (M14.7)
     ];
 
     pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -215,12 +225,14 @@ mod tests {
             size: [10.0, 10.0],
             atlas_uv: [0.0, 0.0, 0.25, 0.25],
             tint: [1.0, 1.0, 1.0, 1.0],
+            rotation: 0.0,
             texture_id: RenderInstance::ATLAS_TEXTURE_ID,
-            _pad: [0; 3],
+            _pad: [0; 2],
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
-        // 2 + 2 + 4 + 4 = 12 floats = 48 bytes + texture_id u32 + 3 pad u32 = 64 bytes
+        // 12 floats (world_pos+size+atlas_uv+tint) = 48 bytes
+        // + rotation f32 (4) + texture_id u32 (4) + 2 pad u32 (8) = 64 bytes
         assert_eq!(bytes.len(), 64);
     }
 

@@ -123,15 +123,13 @@ pub fn paint_context_menu_overlay(
             ),
         ],
         // Settings cluster (gear) — TOP-LEVEL categories. Each entry
-        // ending in "\u{2003}\u{25b8}" (em-space + right-pointing
-        // triangle) opens its dedicated submenu (replaces this menu).
+        // ending in " >" (ASCII greater-than) opens its dedicated
+        // submenu (replaces this menu). We avoided U+25B8 / U+25B6
+        // (right-pointing triangle) because Inter doesn't ship a
+        // glyph for either codepoint — the user saw a tofu □ box.
         // Future categories (Snap, Theme, etc.) line up here.
         ContextMenuKind::SettingsMenu => &[
-            (
-                ids::CTX_MENU_SETTINGS_PPM,
-                "Pixels per meter\u{2003}\u{25b8}",
-                None,
-            ),
+            (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter  >", None),
         ],
         // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
         // presets as before the cascade, just one click deeper.

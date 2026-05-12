@@ -670,10 +670,30 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::CTX_MENU_RADIUS_ROUND,
         ids::CTX_MENU_MIRROR_UI,
         ids::CTX_MENU_SHOW_STATS,
+        ids::CTX_MENU_SHOW_GRID,
         ids::CTX_MENU_SAVE,
         ids::CTX_MENU_SAVE_AS,
         ids::CTX_MENU_OPEN_PROJECT,
         ids::CTX_MENU_IMPORT,
+        // M14.7 polish (6.3): Settings cascade entry + px/m submenu
+        // entries. Without these the cascade click does nothing —
+        // the menu paints but the dispatch's `is_focusable` gate
+        // rejects them and no `Click` event ever fires.
+        ids::CTX_MENU_SETTINGS_PPM,
+        ids::CTX_MENU_PPM_16,
+        ids::CTX_MENU_PPM_32,
+        ids::CTX_MENU_PPM_100,
+        ids::CTX_MENU_PPM_256,
+        ids::CTX_MENU_PPM_1024,
+        // M14.6 F: HierarchyRow per-entity menu entries. Same
+        // registration requirement as the rest — otherwise the
+        // dispatch's `set_active` skips them on Down and the Up
+        // handler never calls `apply_click`.
+        ids::CTX_MENU_HIER_RENAME,
+        ids::CTX_MENU_HIER_DUPLICATE,
+        ids::CTX_MENU_HIER_ADD_CHILD,
+        ids::CTX_MENU_HIER_RESET_TRANSFORM,
+        ids::CTX_MENU_HIER_DELETE,
         ids::CTX_SCENE_ROW_0,
         ids::CTX_SCENE_ROW_1,
         ids::CTX_SCENE_ROW_2,
@@ -718,6 +738,30 @@ fn populate_samples(store: &mut WidgetStore) {
             },
         );
     }
+    // M14.5 inspector phase: pixel-format segmented picker. RGBA8 is
+    // pressed by default; RGBA16 is disabled until the asset crate
+    // supports 16-bit-channel decoding. Pre-registered so the
+    // dispatch can mark them focusable + active and emit `Click` on
+    // Up. The Reimport button reads which one is `Pressed` to choose
+    // the target format at drain time.
+    store.register(
+        ids::INSP_RENDER_FORMAT_RGBA8,
+        InteractiveState::Button {
+            state: crate::widget::ButtonState::Pressed,
+        },
+    );
+    store.register(
+        ids::INSP_RENDER_FORMAT_RGBA16,
+        InteractiveState::Button {
+            state: crate::widget::ButtonState::Disabled,
+        },
+    );
+    store.register(
+        ids::INSP_RENDER_SOURCE_REIMPORT,
+        InteractiveState::Button {
+            state: crate::widget::ButtonState::Normal,
+        },
+    );
     // Scrollbar thumb hits — must be in the store so `is_focusable`
     // returns true and the dispatch's `set_active` block runs.
     // Without this the Down handler skips the scrollbar-drag-
@@ -1210,11 +1254,50 @@ fn paint_render_source_section(
         cur_y = paint_pair(scene, text_system, "Source", &px_str, cur_y);
     }
 
+    // Pixel-format segmented picker — RGBA8 (default, supported) +
+    // RGBA16 (disabled until the asset layer grows 16-bit storage).
+    // Pressed = current choice; clicking the alternative flips the
+    // pin via `pin_button_selection` in `apply_event`. Reimport
+    // reads the pressed id at drain time.
+    paint_text(
+        text_system,
+        scene,
+        "Pixel format",
+        x,
+        cur_y,
+        label_font,
+        w,
+        resolve(ColorToken::Text3, theme),
+    );
+    cur_y += label_font + 4.0;
+    let btn_h = 28.0_f32;
+    let gap = 6.0_f32;
+    let half_w = (w - gap) * 0.5;
+    let rgba8_rect = Rect::new(x, cur_y, half_w, btn_h);
+    let rgba16_rect = Rect::new(x + half_w + gap, cur_y, half_w, btn_h);
+    let rgba8_state = store
+        .button_state(ids::INSP_RENDER_FORMAT_RGBA8)
+        .unwrap_or(ButtonState::Pressed);
+    // RGBA16 stays Disabled regardless of stored state until the
+    // asset crate adds half-float decode — the click handler skips
+    // pinning Disabled buttons, so the user can't even land on it.
+    let rgba16_state = ButtonState::Disabled;
+    hit_index.register(ids::INSP_RENDER_FORMAT_RGBA8, rgba8_rect);
+    hit_index.register(ids::INSP_RENDER_FORMAT_RGBA16, rgba16_rect);
+    let rgba8_btn = Button::new(ids::INSP_RENDER_FORMAT_RGBA8, "RGBA8")
+        .kind(ButtonKind::Default)
+        .state(rgba8_state);
+    let rgba16_btn = Button::new(ids::INSP_RENDER_FORMAT_RGBA16, "RGBA16")
+        .kind(ButtonKind::Default)
+        .state(rgba16_state);
+    paint_button(&rgba8_btn, rgba8_rect, scene, text_system, theme);
+    paint_button(&rgba16_btn, rgba16_rect, scene, text_system, theme);
+    cur_y += btn_h + 8.0;
+
     // Reimport button — disabled when the snapshot says the source
     // doesn't resolve to a re-decodable asset (procedural / lost).
-    cur_y += 4.0;
-    let btn_h = 30.0_f32;
-    let btn_rect = Rect::new(x, cur_y, w, btn_h);
+    let reimport_h = 30.0_f32;
+    let btn_rect = Rect::new(x, cur_y, w, reimport_h);
     let id = ids::INSP_RENDER_SOURCE_REIMPORT;
     let state = if !info.can_reimport {
         ButtonState::Disabled
@@ -1226,7 +1309,7 @@ fn paint_render_source_section(
         .kind(ButtonKind::Default)
         .state(state);
     paint_button(&btn, btn_rect, scene, text_system, theme);
-    cur_y + btn_h + 4.0
+    cur_y + reimport_h + 4.0
 }
 
 /// Paint a collapsible section header at `(x, y)` and register its

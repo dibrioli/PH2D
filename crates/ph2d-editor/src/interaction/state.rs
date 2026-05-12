@@ -211,6 +211,13 @@ pub enum WidgetEvent {
     /// M14.7 polish: Esc pressed on a "cancel-on-escape" TextInput.
     /// Same id semantics as `Submit` — caller drops the buffer.
     Cancel(NodeId),
+    /// M14.7 polish: pointer held down on a hierarchy row for
+    /// `LONG_PRESS_THRESHOLD_NS` (600 ms) without the drag threshold
+    /// being exceeded. Hero apply_event interprets this as
+    /// "enter inline rename mode for this row" — mirrors the
+    /// right-click → "Rename…" path so touch / pen users get a
+    /// modeless rename gesture without needing a context menu.
+    LongPress(NodeId),
     /// Toggle / Checkbox / Switch — caller reads the new state from
     /// `store.get(id)`.
     Toggled(NodeId),
@@ -476,7 +483,17 @@ pub struct HierarchyDragState {
     /// `true` once the cursor has moved past the threshold; until
     /// then the gesture is "maybe-click, maybe-drag".
     pub active: bool,
+    /// Wall-clock timestamp the Down event landed at (ns). Used by
+    /// the Up handler to detect long-press (Up - Down >= 600 ms with
+    /// `!active`) → emits `WidgetEvent::LongPress` for inline rename.
+    pub down_timestamp_ns: u128,
 }
+
+/// Hold duration that turns a still pointer-Down on a hierarchy row
+/// into a `WidgetEvent::LongPress`. 600 ms matches macOS Finder /
+/// iOS rename gestures — short enough to feel responsive, long
+/// enough that a regular slow click doesn't accidentally fire it.
+pub const LONG_PRESS_THRESHOLD_NS: u128 = 600_000_000;
 
 /// State of an in-progress drag on a scrollbar thumb.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -1308,7 +1325,13 @@ impl WidgetStore {
         self.hierarchy_drag
     }
 
-    pub fn begin_hierarchy_drag(&mut self, dragged: NodeId, down_x: f32, down_y: f32) {
+    pub fn begin_hierarchy_drag(
+        &mut self,
+        dragged: NodeId,
+        down_x: f32,
+        down_y: f32,
+        timestamp_ns: u128,
+    ) {
         self.hierarchy_drag = Some(HierarchyDragState {
             dragged,
             down_x,
@@ -1316,6 +1339,7 @@ impl WidgetStore {
             cursor_x: down_x,
             cursor_y: down_y,
             active: false,
+            down_timestamp_ns: timestamp_ns,
         });
     }
 

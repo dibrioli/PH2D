@@ -370,6 +370,14 @@ pub const HIER_RENAME_INPUT: NodeId = NodeId(413);
 /// `Sprite.size` against the current `ProjectSettings.pixels_per_meter`.
 pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = NodeId(414);
 
+/// M14.5 inspector phase: pixel-format segmented picker in the
+/// Render Source section. Pressed = current choice, Normal = the
+/// alternative. RGBA16 is `Disabled` until the asset crate gains
+/// half-float / 16-bit-channel storage (currently only `ImageRgba8`).
+/// Reimport reads the pressed button to decide the target format.
+pub const INSP_RENDER_FORMAT_RGBA8: NodeId = NodeId(415);
+pub const INSP_RENDER_FORMAT_RGBA16: NodeId = NodeId(416);
+
 /// Map fixture entity name to canonical hierarchy `NodeId`. The
 /// placeholder fixture currently exposes only "Scene Root"; the
 /// other `HIER_*` ids are kept reserved for the pilot project's

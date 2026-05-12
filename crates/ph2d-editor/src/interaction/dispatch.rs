@@ -587,7 +587,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // Now we ask the store, which the hierarchy painter
                 // updates per-frame in both modes.
                 if store.is_hierarchy_row(id) {
-                    store.begin_hierarchy_drag(id, event.x, event.y);
+                    store.begin_hierarchy_drag(id, event.x, event.y, event.timestamp_ns);
                 }
                 // Scrollbar thumb drag — snapshot the panel
                 // metrics so subsequent Move events can compute a
@@ -630,8 +630,21 @@ pub fn dispatch_pointer_with_text<'frame>(
             // (cursor moved past the threshold), find the drop
             // target by cursor y vs each row rect and reorder.
             // Otherwise treat as a regular click (selection,
-            // handled by the Click event from `apply_click`).
-            if let Some(drag) = store.end_hierarchy_drag()
+            // handled by the Click event from `apply_click`), or,
+            // when the Down→Up hold exceeded `LONG_PRESS_THRESHOLD_NS`
+            // without movement, emit `LongPress` so the hierarchy
+            // row enters inline rename.
+            let drag_end = store.end_hierarchy_drag();
+            if let Some(drag) = drag_end
+                && !drag.active
+                && event
+                    .timestamp_ns
+                    .saturating_sub(drag.down_timestamp_ns)
+                    >= super::LONG_PRESS_THRESHOLD_NS
+            {
+                events.push(WidgetEvent::LongPress(drag.dragged));
+            }
+            if let Some(drag) = drag_end
                 && drag.active
             {
                 let drop = find_hierarchy_drop(hit_index, store, event.y, drag.dragged);

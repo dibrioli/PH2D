@@ -43,5 +43,6 @@ pub use dispatch::{
 pub use hit::HitIndex;
 pub use state::{
     BlenderHitKind, ContextMenuKind, ContextMenuRequest, HierarchyDragState, InteractiveState,
-    NoteData, ScrollbarDragAnchor, WidgetEvent, WidgetStore, format_number,
+    LONG_PRESS_THRESHOLD_NS, NoteData, ScrollbarDragAnchor, WidgetEvent, WidgetStore,
+    format_number,
 };

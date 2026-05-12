@@ -897,6 +897,27 @@ impl HeroScreen {
             self.pending_view_focus = Some(ViewFocusKind::Selected);
             return true;
         }
+        // M14.7 polish: long-press on a hierarchy row → enter inline
+        // rename mode. Same effect as right-click → "Rename..." but
+        // modeless — works on touch / pen where a context menu isn't
+        // the natural gesture.
+        if let WidgetEvent::LongPress(id) = event
+            && let Some(live) = self.live_hierarchy_entries.as_ref()
+            && live.contains_key(&id)
+        {
+            self.rename_target_row = Some(id);
+            self.store.register_if_absent(
+                ids::HIER_RENAME_INPUT,
+                crate::interaction::InteractiveState::TextInput {
+                    state: crate::widget::TextInputState::Focused,
+                    text: String::new(),
+                    caret: 0,
+                    selection_anchor: None,
+                },
+            );
+            self.store.set_focus(Some(ids::HIER_RENAME_INPUT));
+            return true;
+        }
         // M14.7 polish: inline-rename commit / cancel for the
         // hierarchy row in rename mode. The dispatch's Enter / Esc
         // path emits these on `HIER_RENAME_INPUT`.

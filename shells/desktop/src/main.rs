@@ -335,6 +335,23 @@ struct App {
     /// canonical "smooth without dormant" value used by RTSS / Unity
     /// stats / Tracy.
     frame_ms_ewma: f32,
+    /// M14.7 polish (10.1): EWMA-smoothed "raw" frame work time —
+    /// measured from start of `render_frame` to end of
+    /// `queue.submit`, excluding the vsync wait. Same α as
+    /// `frame_ms_ewma`. Surfaced as `BottomHudStats.raw_fps` so the
+    /// status bar shows hardware capacity alongside the synced fps.
+    frame_cpu_ms_ewma: f32,
+    /// M14.7 polish (19.3): overlap-cycle state for the canvas-pick
+    /// path. Each Primary Down at the same world position increments
+    /// `cycle_count`; on every ODD count we advance `cycle_idx` so
+    /// the user can step DOWN the stack at a fixed cursor location.
+    /// Even counts leave the selection alone (allowing drag without
+    /// re-cycling). Reset when the click moves > 4 px in world space
+    /// or the hit list shape changes.
+    cycle_pick_world: Option<[f32; 2]>,
+    cycle_pick_hits: Vec<u64>,
+    cycle_pick_idx: usize,
+    cycle_pick_count: u32,
 }
 
 impl App {
@@ -378,6 +395,12 @@ impl App {
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),
             pending_drops: Vec::new(),
+            frame_cpu_ms_ewma: 1.0, // optimistic baseline; reseeds on
+            // the first frame's measurement
+            cycle_pick_world: None,
+            cycle_pick_hits: Vec::new(),
+            cycle_pick_idx: 0,
+            cycle_pick_count: 0,
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.
@@ -805,6 +828,11 @@ impl App {
     }
 
     fn render_frame(&mut self) {
+        // M14.7 polish (10.1): tag the start of CPU work for the
+        // raw-fps measurement. Stopped after `queue.submit` (before
+        // the present blocks on vsync) so the EWMA tracks pure
+        // hardware capacity, independent of refresh rate.
+        let cpu_start = Instant::now();
         // Pump gamepad events first so InputState reflects the latest
         // state by the time sim/extract run. Order: input → script
         // input snapshot → sim → extract → render.
@@ -1131,12 +1159,18 @@ impl App {
             } else {
                 0.0
             };
+            // M14.7 polish (10.1): raw fps = inverse of pure
+            // CPU/command-encode time. Floored at 1 ms (1000 fps) so
+            // a startup-edge measurement of 0 doesn't blow up to
+            // `inf`; real workloads stabilize within a few frames.
+            let raw_fps = 1000.0 / self.frame_cpu_ms_ewma.max(0.001);
             hero.stats = ph2d_editor::BottomHudStats {
                 fps,
                 frame_ms: self.frame_ms_ewma,
                 draws: 1,
                 sprite_count,
                 entity_count,
+                raw_fps,
             };
             // Hierarchy counts use PresentWorld's archetype components
             // (Transform + Sprite + Visibility + ChildOf + Children).
@@ -1306,10 +1340,29 @@ impl App {
                 && let Some(dragged_bits) = live.bridge.entity_for(intent.dragged)
             {
                 let dragged = ph2d_ecs::Entity::from_bits(dragged_bits);
-                let new_parent_entity = intent
-                    .new_parent
-                    .and_then(|p| live.bridge.entity_for(p))
-                    .map(ph2d_ecs::Entity::from_bits);
+                // M14.7 polish (14.3 fix): the dispatcher computes
+                // `new_parent` via `store.hierarchy_parent_of(target)`,
+                // which only knows about fixture-mode DnD mutations.
+                // In LIVE mode the parent comes from the ECS snapshot,
+                // so "Before(t)" arrives with `new_parent = None` even
+                // when t is a child row — drops then turned into root
+                // promotions. Fallback: when the intent has a `before`
+                // target but no resolved parent, inherit the target's
+                // actual `ChildOf` parent from SimWorld.
+                let new_parent_entity = if let Some(parent_node) = intent.new_parent
+                    && let Some(parent_bits) = live.bridge.entity_for(parent_node)
+                {
+                    Some(ph2d_ecs::Entity::from_bits(parent_bits))
+                } else if let Some(before_node) = intent.before
+                    && let Some(target_bits) = live.bridge.entity_for(before_node)
+                {
+                    let target = ph2d_ecs::Entity::from_bits(target_bits);
+                    sim.world()
+                        .get::<ph2d_ecs::ChildOf>(target)
+                        .map(|c| c.parent())
+                } else {
+                    None
+                };
                 let sim_w = sim.world_mut();
                 // Cycle guard: refuse to make dragged a child of
                 // itself or any of its descendants. Walk up
@@ -1552,6 +1605,17 @@ impl App {
                 eprintln!("acquire_frame other error: {s}");
             }
         }
+
+        // M14.7 polish (10.1): stop the raw-fps clock once every GPU
+        // submission for this frame is queued. The `FrameTarget`
+        // present (on Drop above) blocks on vsync, which would skew
+        // the measurement toward `1 / refresh_rate`; reading the
+        // clock HERE gives the pure CPU+command-encode time the
+        // user wants ("Unity shows 2000 fps").
+        let cpu_ms_now = cpu_start.elapsed().as_secs_f64() * 1000.0;
+        const ALPHA_CPU: f32 = 0.1;
+        self.frame_cpu_ms_ewma =
+            ALPHA_CPU * (cpu_ms_now as f32) + (1.0 - ALPHA_CPU) * self.frame_cpu_ms_ewma;
 
         // Window title carries editor state. Refresh only when state
         // actually changes — winit set_title triggers a platform call.
@@ -2090,10 +2154,53 @@ impl ApplicationHandler for App {
                                 let window_size = gfx.surface.size();
                                 let world_pos =
                                     gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                                let picked = ph2d_render::pick_sprite_at_world(
+                                // M14.7 polish (19.3): alternate-click
+                                // overlap cycling. Each Primary Down at
+                                // (≈) the same world position increments
+                                // `cycle_pick_count`; on odd counts we
+                                // advance the index so the user steps
+                                // DOWN the stack, on even counts the
+                                // selection stays put (drag without
+                                // re-cycling). Anchor / threshold:
+                                //   - position drift > 4 px in world →
+                                //     reset (treat as a fresh click)
+                                //   - hit list shape changed → reset
+                                let hits = ph2d_render::pick_sprites_at_world(
                                     gfx.present.world_mut(),
                                     world_pos,
                                 );
+                                let same_spot = self
+                                    .cycle_pick_world
+                                    .map(|prev| {
+                                        let dx = prev[0] - world_pos[0];
+                                        let dy = prev[1] - world_pos[1];
+                                        (dx * dx + dy * dy).sqrt() < 0.04
+                                    })
+                                    .unwrap_or(false);
+                                let same_list = same_spot && hits == self.cycle_pick_hits;
+                                if !same_list {
+                                    // Fresh click — reset the cycle.
+                                    self.cycle_pick_world = Some(world_pos);
+                                    self.cycle_pick_hits = hits.clone();
+                                    self.cycle_pick_idx = 0;
+                                    self.cycle_pick_count = 1;
+                                } else {
+                                    // Same overlap stack as before —
+                                    // increment counter; advance idx on
+                                    // every odd count past the first.
+                                    self.cycle_pick_count = self.cycle_pick_count.saturating_add(1);
+                                    if self.cycle_pick_count.is_multiple_of(2) {
+                                        // Even count → selection stays.
+                                    } else if !hits.is_empty() {
+                                        self.cycle_pick_idx =
+                                            (self.cycle_pick_idx + 1) % hits.len();
+                                    }
+                                }
+                                let picked = if hits.is_empty() {
+                                    None
+                                } else {
+                                    hits.get(self.cycle_pick_idx).copied()
+                                };
                                 hero.gizmo_selection = picked;
                                 // M14.7 polish: same-click select +
                                 // drag. Without this the user has to

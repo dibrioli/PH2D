@@ -77,6 +77,37 @@ impl WorldBbox {
 /// `present`. RenderInstance carries the already-extracted size and
 /// matches exactly what the renderer painted on the screen, so a
 /// click that visually lands on the sprite is guaranteed to pick.
+/// Return every sprite whose oriented bbox contains `world_pos`,
+/// ordered top → bottom. Top = last in archetype iteration order
+/// (= most recently spawned within an archetype, which matches the
+/// "topmost = last hit" heuristic used by [`pick_sprite_at_world`]).
+///
+/// Used by the alternate-click cycling UX (M14.7 polish 19.3): the
+/// host caches this list per click position and walks it on every
+/// other click so the user can step down the stack at a single spot
+/// without losing their cursor location.
+pub fn pick_sprites_at_world(present: &mut World, world_pos: [f32; 2]) -> Vec<u64> {
+    let mut hits: Vec<u64> = Vec::new();
+    let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();
+    for (sim_ref, gt, ri) in q.iter(present) {
+        let pos = gt.translation();
+        let half_w = ri.size[0] * 0.5;
+        let half_h = ri.size[1] * 0.5;
+        let dx = world_pos[0] - pos.x;
+        let dy = world_pos[1] - pos.y;
+        let cos_r = ri.rotation.cos();
+        let sin_r = ri.rotation.sin();
+        let local_dx = dx * cos_r + dy * sin_r;
+        let local_dy = -dx * sin_r + dy * cos_r;
+        if local_dx.abs() <= half_w && local_dy.abs() <= half_h {
+            hits.push(sim_ref.0.to_bits());
+        }
+    }
+    // Reverse → top-of-pile (last spawned) ends up at index 0.
+    hits.reverse();
+    hits
+}
+
 pub fn pick_sprite_at_world(present: &mut World, world_pos: [f32; 2]) -> Option<u64> {
     let mut best: Option<u64> = None;
     let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();

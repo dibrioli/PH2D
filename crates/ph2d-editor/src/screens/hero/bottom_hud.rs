@@ -45,6 +45,14 @@ pub struct BottomHudStats {
     /// `PH2D_HERO_LIVE=1` mode; fixture demo reports the populator's
     /// constant).
     pub entity_count: u32,
+    /// M14.7 polish (10.1): "raw" fps derived from the CPU-side
+    /// frame work time (start of `render_frame` → end of
+    /// `queue.submit`), with the vsync wait excluded. Useful as a
+    /// hardware-capacity gauge — Unity / Godot expose the same
+    /// reading. Status bar renders it alongside the synced fps so
+    /// the user can see "60 fps synced · 2400 raw" and gauge how
+    /// much headroom each new sprite costs.
+    pub raw_fps: f32,
 }
 
 pub fn paint_bottom_hud(
@@ -74,8 +82,8 @@ pub fn paint_bottom_hud(
                 .dot(true)
                 .tone(SegmentTone::Neutral),
             StatusSegment::new(format!(
-                "{} fps \u{00b7} {:.1} ms",
-                stats.fps as u32, stats.frame_ms
+                "{} fps \u{00b7} {:.1} ms \u{00b7} {} raw",
+                stats.fps as u32, stats.frame_ms, stats.raw_fps as u32
             )),
             StatusSegment::new(draws_label),
             StatusSegment::new(sprite_label).tone(SegmentTone::Accent),

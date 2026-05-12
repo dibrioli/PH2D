@@ -204,6 +204,13 @@ pub enum WidgetEvent {
     /// branch on intent (e.g. hierarchy row → focus the entity
     /// instead of selecting it again).
     DoubleClick(NodeId),
+    /// M14.7 polish: Enter pressed while a "commit-on-enter"
+    /// TextInput owns focus (currently just `HIER_RENAME_INPUT`).
+    /// Carries the id so apply_event can read the buffer + apply.
+    Submit(NodeId),
+    /// M14.7 polish: Esc pressed on a "cancel-on-escape" TextInput.
+    /// Same id semantics as `Submit` — caller drops the buffer.
+    Cancel(NodeId),
     /// Toggle / Checkbox / Switch — caller reads the new state from
     /// `store.get(id)`.
     Toggled(NodeId),
@@ -545,11 +552,17 @@ pub enum ContextMenuKind {
     /// Clicked the TOPBAR Open chip. Menu offers Open Project +
     /// Import (and more later).
     OpenMenu,
-    /// Clicked the TOPBAR Settings (gear) cluster. Menu offers
-    /// project-level toggles — currently `pixels_per_meter` presets
-    /// (16 / 32 / 100 / 256 / 1024). Selected entry writes
-    /// `HeroScreen.project.pixels_per_meter`.
+    /// Clicked the TOPBAR Settings (gear) cluster. Top-level menu
+    /// listing project-setting categories (Pixels per meter, etc.).
+    /// Clicking a category opens its dedicated submenu (the parent
+    /// gets replaced — simpler than a true cascade, same flow as
+    /// macOS native preferences).
     SettingsMenu,
+    /// Submenu opened when the user picks "Pixels per meter" from
+    /// the top-level Settings menu. Shows the 5 canonical presets;
+    /// selecting one writes `HeroScreen.project.pixels_per_meter`
+    /// and closes the menu.
+    SettingsPpmSubmenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `WidgetStore::current_scene_name`.

@@ -1228,6 +1228,54 @@ impl App {
                     cursor_screen: Some(self.last_pointer),
                 })
             });
+            // M14.5 inspector phase (6.4/§9): publish a per-frame
+            // snapshot of the selected sprite so `paint_inspector` can
+            // surface the Render Source section + Reimport button
+            // without crossing the ADR-0021 boundary into SimWorld.
+            hero.inspector_sprite = hero.gizmo_selection.and_then(|bits| {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                let world = sim.world();
+                let sprite = world.get::<Sprite>(entity)?;
+                let transform = world.get::<Transform>(entity)?;
+                let name = world
+                    .get::<Name>(entity)
+                    .map(|n| n.0.clone())
+                    .unwrap_or_else(|| format!("Entity_{bits:x}"));
+                let (source_kind, source_pixels, can_reimport) = match sprite.source {
+                    ph2d_render::SpriteSource::Atlas { key } => {
+                        let dims = atlas_asset_map.get(&key).and_then(|aid| {
+                            asset_db.get(aid).and_then(|asset| match &*asset {
+                                ph2d_asset::Asset::ImageRgba8 { width, height, .. } => {
+                                    Some((*width, *height))
+                                }
+                                _ => None,
+                            })
+                        });
+                        (
+                            ph2d_editor::InspectorSpriteSource::Atlas { key },
+                            dims,
+                            dims.is_some(),
+                        )
+                    }
+                    ph2d_render::SpriteSource::Individual { texture_id } => (
+                        ph2d_editor::InspectorSpriteSource::Individual { texture_id },
+                        None,
+                        false,
+                    ),
+                };
+                let world_size = [
+                    sprite.size[0] * transform.scale.x,
+                    sprite.size[1] * transform.scale.y,
+                ];
+                Some(ph2d_editor::InspectorSpriteInfo {
+                    entity_bits: bits,
+                    name,
+                    world_size,
+                    source_kind,
+                    source_pixels,
+                    can_reimport,
+                })
+            });
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // M14.4b.bis: drain pending camera-reset request from
             // the VIEW button (legacy "Zero" mode — kept around for
@@ -1574,6 +1622,108 @@ impl App {
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {
                 hero.gizmo_selection = Some(entity_bits);
+            }
+            // M14.7 polish: when inline rename opens, seed the
+            // TextInput's buffer with the entity's current Name so
+            // the user starts editing the live value, not an empty
+            // string. We detect "just opened" via the buffer being
+            // empty AND `rename_target_row` Some — happens only on
+            // the first frame after the menu click sets it.
+            if let Some(row) = hero.rename_target_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(entity_bits) = live.bridge.entity_for(row)
+            {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let buffer_empty = matches!(
+                    hero.store.get(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT),
+                    Some(ph2d_editor::interaction::InteractiveState::TextInput { text, .. })
+                        if text.is_empty()
+                );
+                if buffer_empty
+                    && let Some(name) = sim.world().get::<Name>(entity)
+                {
+                    let value = name.as_str().to_owned();
+                    if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
+                        text,
+                        caret,
+                        selection_anchor,
+                        ..
+                    }) = hero
+                        .store
+                        .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
+                    {
+                        let len = value.len();
+                        *text = value;
+                        *caret = len;
+                        *selection_anchor = Some(0); // select all
+                    }
+                }
+            }
+            // Drain a finalized rename commit (Enter pressed in
+            // rename input). Write the new Name component on the
+            // entity; toast confirms.
+            if let Some((row, new_name)) = hero.pending_rename_commit.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(entity_bits) = live.bridge.entity_for(row)
+            {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let sim_w = sim.world_mut();
+                if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
+                    entry.insert(Name::new(new_name.clone()));
+                    toasts.push(Toast::success(format!("Renamed to {new_name}")));
+                    self.title_dirty = true;
+                }
+                // Clear the rename TextInput buffer for next session.
+                if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
+                    text,
+                    caret,
+                    selection_anchor,
+                    ..
+                }) = hero
+                    .store
+                    .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
+                {
+                    text.clear();
+                    *caret = 0;
+                    *selection_anchor = None;
+                }
+            }
+            // M14.5 inspector phase (6.4): drain pending reimport →
+            // re-decode the atlas source's pixel dimensions at the
+            // current `project.pixels_per_meter` and write the new
+            // world size back to the Sprite component. The texture
+            // itself is unchanged; only `Sprite.size` is recomputed.
+            if let Some(entity_bits) = hero.pending_reimport.take() {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
+                let new_size = sim.world().get::<Sprite>(entity).and_then(|sprite| {
+                    let ph2d_render::SpriteSource::Atlas { key } = sprite.source else {
+                        return None;
+                    };
+                    let aid = atlas_asset_map.get(&key)?;
+                    let asset = asset_db.get(aid)?;
+                    match &*asset {
+                        ph2d_asset::Asset::ImageRgba8 { width, height, .. } => Some([
+                            *width as f32 / px_per_m,
+                            *height as f32 / px_per_m,
+                        ]),
+                        _ => None,
+                    }
+                });
+                if let Some(size) = new_size {
+                    let sim_w = sim.world_mut();
+                    if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                        sprite.size = size;
+                        toasts.push(Toast::success(format!(
+                            "Reimported at {:.0} px/m → {:.3} × {:.3} m",
+                            px_per_m, size[0], size[1]
+                        )));
+                        self.title_dirty = true;
+                    }
+                } else {
+                    toasts.push(Toast::error("Reimport unavailable for this source"));
+                    self.title_dirty = true;
+                }
             }
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/

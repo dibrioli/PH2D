@@ -915,6 +915,22 @@ pub fn dispatch_key<'frame>(
                     }
                     return events.into_bump_slice();
                 }
+                // M14.7 polish: Enter on the rename TextInput
+                // commits via `WidgetEvent::Submit` instead of
+                // inserting a newline. Caller (hero apply_event)
+                // reads the buffer and applies the rename.
+                if event.keycode == KEY_ENTER
+                    && id == crate::screens::hero::ids::HIER_RENAME_INPUT
+                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
+                {
+                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
+                        *state = crate::widget::TextInputState::Normal;
+                    }
+                    store.set_focus(None);
+                    events.push(WidgetEvent::Submit(id));
+                    events.push(WidgetEvent::Blur(id));
+                    return events.into_bump_slice();
+                }
                 // Enter on a multi-line TextInput inserts a literal
                 // newline so notes can have body paragraphs.
                 if event.keycode == KEY_ENTER
@@ -941,6 +957,20 @@ pub fn dispatch_key<'frame>(
                     && *open
                 {
                     *open = false;
+                    return events.into_bump_slice();
+                }
+                // M14.7 polish: Esc on the rename TextInput emits
+                // `Cancel` so hero can drop the rename mode without
+                // committing.
+                if id == crate::screens::hero::ids::HIER_RENAME_INPUT
+                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
+                {
+                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
+                        *state = crate::widget::TextInputState::Normal;
+                    }
+                    store.set_focus(None);
+                    events.push(WidgetEvent::Cancel(id));
+                    events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
                 }
                 // NumberInput: revert buffer to last committed value.

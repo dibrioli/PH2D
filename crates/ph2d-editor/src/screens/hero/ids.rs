@@ -229,6 +229,11 @@ pub const CTX_MENU_PPM_100: NodeId = NodeId(942);
 pub const CTX_MENU_PPM_256: NodeId = NodeId(943);
 pub const CTX_MENU_PPM_1024: NodeId = NodeId(944);
 
+/// M14.7 polish (6.3): top-level Settings cascade entry that opens
+/// the Pixels-per-meter submenu. Sits between `CTX_MENU_HIER_*`
+/// (945-948) and the SAVE/OPEN range — id 949.
+pub const CTX_MENU_SETTINGS_PPM: NodeId = NodeId(949);
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's
@@ -238,6 +243,9 @@ pub const CTX_MENU_HIER_DUPLICATE: NodeId = NodeId(945);
 pub const CTX_MENU_HIER_DELETE: NodeId = NodeId(946);
 pub const CTX_MENU_HIER_RESET_TRANSFORM: NodeId = NodeId(947);
 pub const CTX_MENU_HIER_ADD_CHILD: NodeId = NodeId(948);
+/// M14.7 polish: per-row "Rename..." entry. Opens inline rename
+/// mode (the row's name turns into a TextInput).
+pub const CTX_MENU_HIER_RENAME: NodeId = NodeId(970);
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = NodeId(930);
 pub const CTX_SCENE_ROW_0: NodeId = NodeId(931);
@@ -349,6 +357,18 @@ pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
 /// stays visible if any descendant matches, so the user sees where
 /// the hit lives in the tree).
 pub const HIER_SEARCH: NodeId = NodeId(412);
+
+/// M14.7 polish: inline rename TextInput on a hierarchy row.
+/// Painted only when `HeroScreen.rename_target_row` is `Some(id)`
+/// — replaces the matching row's name label with an editable input.
+pub const HIER_RENAME_INPUT: NodeId = NodeId(413);
+
+/// M14.5 inspector phase (6.4/§9): "Reimport at current px/m" button
+/// shown in the Render Source section when the selected sprite has a
+/// live atlas-backed source. Click → `HeroScreen.pending_reimport`
+/// gets set with the entity bits the host then drains to recompute
+/// `Sprite.size` against the current `ProjectSettings.pixels_per_meter`.
+pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = NodeId(414);
 
 /// Map fixture entity name to canonical hierarchy `NodeId`. The
 /// placeholder fixture currently exposes only "Scene Root"; the

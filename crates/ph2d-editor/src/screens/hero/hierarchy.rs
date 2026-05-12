@@ -395,6 +395,13 @@ pub fn paint_hierarchy(
         // "this is what's moving".
         entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);
         hit_index.register(*id, row_rect);
+        let is_renaming = current_rename_target() == Some(*id);
+        // Skip the row's name label when in rename mode — the
+        // TextInput overlay below replaces it. Other row chrome
+        // (chevron, icon, eye, badge) still paints normally.
+        if is_renaming {
+            entity.name = String::new();
+        }
         paint_hierarchy_row(
             &entity,
             row_rect,
@@ -407,6 +414,41 @@ pub fn paint_hierarchy(
             is_collapsed,
             direct_match,
         );
+        if is_renaming {
+            // Overlay TextInput at the row's name area. Width spans
+            // from the row's name x to the right edge minus the
+            // existing chrome (eye / badge / swatch reserved space).
+            let icon_x_local = rect.x + 8.0 + (depth as f32) * INDENT_PX + 12.0 + 4.0;
+            let name_x = icon_x_local + 16.0 + 8.0;
+            let name_right = row_rect.x + row_rect.w - 10.0 - 16.0 - 6.0;
+            let input_rect = Rect::new(
+                name_x - 4.0,
+                row_rect.y + 1.0,
+                (name_right - name_x + 8.0).max(80.0),
+                row_rect.h - 2.0,
+            );
+            hit_index.register(super::ids::HIER_RENAME_INPUT, input_rect);
+            let (state, text, caret, anchor) = match store.get(super::ids::HIER_RENAME_INPUT) {
+                Some(InteractiveState::TextInput {
+                    state,
+                    text,
+                    caret,
+                    selection_anchor,
+                }) => (*state, text.clone(), *caret, *selection_anchor),
+                _ => (TextInputState::Focused, String::new(), 0, None),
+            };
+            let input = TextInput::new(super::ids::HIER_RENAME_INPUT, "").state(state);
+            paint_text_input_with_buffer(
+                &input,
+                Some(text.as_str()),
+                Some(caret),
+                anchor,
+                input_rect,
+                scene,
+                text_system,
+                theme,
+            );
+        }
         row_rects.push((*id, row_rect));
         if is_collapsed {
             collapsed_gate = Some(depth);
@@ -560,6 +602,21 @@ thread_local! {
 fn current_live_entries()
 -> Option<std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>> {
     CURRENT_LIVE_ENTRIES.with(|c| c.borrow().clone())
+}
+
+// M14.7 polish: row currently in inline-rename mode. Painter uses
+// this to replace that row's name label with a TextInput overlay.
+thread_local! {
+    static CURRENT_RENAME_TARGET: std::cell::Cell<Option<ph2d_a11y::NodeId>> =
+        const { std::cell::Cell::new(None) };
+}
+
+fn current_rename_target() -> Option<ph2d_a11y::NodeId> {
+    CURRENT_RENAME_TARGET.with(|c| c.get())
+}
+
+pub(super) fn set_rename_target(target: Option<ph2d_a11y::NodeId>) {
+    CURRENT_RENAME_TARGET.with(|c| c.set(target));
 }
 
 pub(super) fn set_live_entries(

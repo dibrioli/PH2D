@@ -293,6 +293,63 @@ pub struct HeroScreen {
     /// drains and updates `Camera2d::center` (and `height_world` for
     /// `All`) on the next frame.
     pub pending_view_focus: Option<ViewFocusKind>,
+    /// M14.7 polish: row currently in inline-rename mode. The
+    /// hierarchy painter replaces the row's name label with a
+    /// TextInput when this matches; user typing flows through the
+    /// usual TextInput dispatch. `None` = no row in rename.
+    pub rename_target_row: Option<NodeId>,
+    /// Pending Name commit. Host drains on the next frame,
+    /// resolves bridge NodeId → Entity, and writes the new `Name`
+    /// component. `text` is the buffer contents at commit time.
+    pub pending_rename_commit: Option<(NodeId, String)>,
+    /// M14.5 inspector phase (6.4): pending request to re-import
+    /// the currently-selected sprite at the current
+    /// `project.pixels_per_meter`. Host drains, recomputes the
+    /// sprite's world size from the source PNG dims / px-per-m, and
+    /// updates the `Sprite` component. `Some(entity_bits)` keeps the
+    /// host independent of `gizmo_selection`'s value at drain time
+    /// (avoids races with a concurrent selection change).
+    pub pending_reimport: Option<u64>,
+    /// M14.5 inspector phase: snapshot of the selected sprite's
+    /// data the host publishes each frame so `paint_inspector` can
+    /// surface a "Render Source" section without crossing the
+    /// ADR-0021 / HR-8 boundary into SimWorld directly. `None`
+    /// when nothing is selected or the selection isn't a sprite.
+    pub inspector_sprite: Option<InspectorSpriteInfo>,
+}
+
+/// Snapshot of the selected sprite's editor-facing fields. Host
+/// rebuilds this each frame from `gizmo_selection` + SimWorld;
+/// inspector renders read-only display + a Reimport button.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorSpriteInfo {
+    /// Entity bits (= same shape `gizmo_selection` carries).
+    pub entity_bits: u64,
+    /// Display label — entity's `Name` component, or
+    /// `Entity_{hex_bits}` when nameless.
+    pub name: String,
+    /// World-space size in meters at the current Transform scale.
+    pub world_size: [f32; 2],
+    /// Which storage strategy backs the sprite (Atlas / Hand-packed
+    /// / Individual). Surfaced as a read-only display for now;
+    /// switching strategies is M14.5 follow-up.
+    pub source_kind: InspectorSpriteSource,
+    /// Source-image dimensions (pixels). `None` for procedural /
+    /// generated sprites that don't trace back to an `AssetId`.
+    pub source_pixels: Option<(u32, u32)>,
+    /// `true` when Reimport is meaningful — the entity's source
+    /// resolves to an `AssetId` we can re-decode at the new px/m.
+    pub can_reimport: bool,
+}
+
+/// Mirror of `ph2d_render::SpriteSource` that doesn't depend on
+/// the renderer crate. Stays small (1 enum tag + opt u32) so the
+/// `Inspector*` struct is cheap to clone per frame.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InspectorSpriteSource {
+    Atlas { key: u32 },
+    Individual { texture_id: u32 },
+    HandPacked,
 }
 
 /// Which framing action the VIEW button (TOOL_HOME) + F/Home key
@@ -363,6 +420,10 @@ impl HeroScreen {
             gizmo_drag: None,
             pending_hierarchy_row_click: None,
             pending_view_focus: None,
+            rename_target_row: None,
+            pending_rename_commit: None,
+            pending_reimport: None,
+            inspector_sprite: None,
         }
     }
 
@@ -685,6 +746,7 @@ impl HeroScreen {
                 || id == ids::CTX_MENU_HIER_ADD_CHILD
                 || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
                 || id == ids::CTX_MENU_HIER_DELETE
+                || id == ids::CTX_MENU_HIER_RENAME
             {
                 if let Some(req) = self.store.consume_last_context_menu()
                     && let crate::interaction::ContextMenuKind::HierarchyRow { row } = req.kind
@@ -697,8 +759,47 @@ impl HeroScreen {
                         self.pending_reset_transform = Some(row);
                     } else if id == ids::CTX_MENU_HIER_DELETE {
                         self.pending_delete = Some(row);
+                    } else if id == ids::CTX_MENU_HIER_RENAME {
+                        // M14.7 polish: enter inline-rename mode for
+                        // this row. Painter swaps the name label for
+                        // a TextInput; host seeds the buffer with the
+                        // current entity name on the next frame drain
+                        // (via `pending_rename_open` semantics — same
+                        // slot as `rename_target_row` set to Some).
+                        self.rename_target_row = Some(row);
+                        // Seed an empty TextInput state so the painter
+                        // has something to read on the first frame —
+                        // the host overwrites `text` with the live
+                        // entity Name on its drain.
+                        self.store.register_if_absent(
+                            ids::HIER_RENAME_INPUT,
+                            crate::interaction::InteractiveState::TextInput {
+                                state: crate::widget::TextInputState::Focused,
+                                text: String::new(),
+                                caret: 0,
+                                selection_anchor: None,
+                            },
+                        );
+                        self.store.set_focus(Some(ids::HIER_RENAME_INPUT));
                     }
                 }
+                return true;
+            }
+            // M14.7 polish (6.3): top-level Settings cascade entry.
+            // Clicking "Pixels per meter \u{25b8}" REPLACES the top-
+            // level menu with the px/m presets submenu. Anchored at
+            // the same x/y so the user's mouse stays on the choice.
+            if id == ids::CTX_MENU_SETTINGS_PPM {
+                let anchor = self
+                    .store
+                    .last_context_menu()
+                    .map(|r| (r.x, r.y))
+                    .unwrap_or((0.0, 0.0));
+                self.store.open_context_menu(crate::interaction::ContextMenuRequest {
+                    x: anchor.0,
+                    y: anchor.1,
+                    kind: crate::interaction::ContextMenuKind::SettingsPpmSubmenu,
+                });
                 return true;
             }
             // Pixels-per-meter presets (Settings cluster). Writes
@@ -796,12 +897,50 @@ impl HeroScreen {
             self.pending_view_focus = Some(ViewFocusKind::Selected);
             return true;
         }
+        // M14.7 polish: inline-rename commit / cancel for the
+        // hierarchy row in rename mode. The dispatch's Enter / Esc
+        // path emits these on `HIER_RENAME_INPUT`.
+        if let WidgetEvent::Submit(id) = event
+            && id == ids::HIER_RENAME_INPUT
+            && let Some(row) = self.rename_target_row.take()
+        {
+            let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
+                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => {
+                    text.clone()
+                }
+                _ => String::new(),
+            };
+            let trimmed = buf.trim().to_owned();
+            if !trimmed.is_empty() {
+                self.pending_rename_commit = Some((row, trimmed));
+            }
+            return true;
+        }
+        if let WidgetEvent::Cancel(id) = event
+            && id == ids::HIER_RENAME_INPUT
+        {
+            self.rename_target_row = None;
+            return true;
+        }
         if hierarchy::apply_event(
             &mut self.store,
             &mut self.selection,
             self.live_hierarchy_entries.as_ref(),
             event,
         ) {
+            return true;
+        }
+        // M14.5 inspector phase (6.4): Reimport button → raise
+        // `pending_reimport` so the host re-decodes the source asset
+        // at the current `project.pixels_per_meter`. Captured BEFORE
+        // delegating to `inspector::apply_event` because that helper
+        // doesn't know about HeroScreen-level pending fields.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::INSP_RENDER_SOURCE_REIMPORT
+            && let Some(info) = self.inspector_sprite.as_ref()
+            && info.can_reimport
+        {
+            self.pending_reimport = Some(info.entity_bits);
             return true;
         }
         if inspector::apply_event(&mut self.store, event) {
@@ -1032,6 +1171,7 @@ pub fn paint_hero_screen(
     // overrides `fixture::hierarchy()`. Cleared at the end of paint
     // so the next frame's `sync_from_hierarchy` is the single source.
     hierarchy::set_live_entries(hero.live_hierarchy_entries.clone());
+    hierarchy::set_rename_target(hero.rename_target_row);
     // Publish the picker's outer rect so dispatch's "is the click
     // inside the picker?" test can reason about its bounds.
     if hero.store.picker_target().is_some()
@@ -1054,6 +1194,10 @@ pub fn paint_hero_screen(
     }
     for panel_id in z_order {
         if panel_id == ids::INSP_PANEL && hero.inspector_visible {
+            // Publish the host-supplied sprite snapshot for the
+            // Render Source section. Cleared after paint so a stale
+            // snapshot can't leak into the next frame.
+            inspector::set_current_inspector_sprite(hero.inspector_sprite.clone());
             paint_inspector(
                 &layout,
                 hero.selection.as_ref(),
@@ -1063,6 +1207,7 @@ pub fn paint_hero_screen(
                 &mut hero.hit_index,
                 &hero.store,
             );
+            inspector::set_current_inspector_sprite(None);
             // Publish content_h + clamp scroll right after paint so
             // `dispatch_wheel` sees the new bounds on the very next
             // event (avoids a one-frame overshoot when a section

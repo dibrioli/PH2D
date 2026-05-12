@@ -23,6 +23,7 @@
 use super::HeroLayout;
 use super::HeroSelection;
 use super::ids;
+use super::{InspectorSpriteInfo, InspectorSpriteSource};
 use super::style::{
     PANEL_HEAD_PAD, paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect,
     panel_resize_handle_rect,
@@ -180,6 +181,24 @@ thread_local! {
     /// Body-relative top-Y in screen coords reference, captured each
     /// frame so callers (the hero) can convert screen-y → body-y.
     static LAST_BODY_TOP_SCREEN_Y: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+    /// M14.5 inspector phase (6.4/§9): live snapshot the host
+    /// publishes each frame so `paint_inspector` can render the
+    /// Render Source section + Reimport button without crossing the
+    /// ADR-0021 / HR-8 boundary into SimWorld. `None` when nothing is
+    /// selected or selection isn't a sprite.
+    static CURRENT_INSPECTOR_SPRITE: std::cell::RefCell<Option<InspectorSpriteInfo>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Set the inspector sprite snapshot for the current paint. Hero
+/// publishes this before `paint_inspector` runs and clears it after,
+/// matching the [[hierarchy_live_entries]] thread-local pattern.
+pub(super) fn set_current_inspector_sprite(info: Option<InspectorSpriteInfo>) {
+    CURRENT_INSPECTOR_SPRITE.with(|c| *c.borrow_mut() = info);
+}
+
+fn current_inspector_sprite() -> Option<InspectorSpriteInfo> {
+    CURRENT_INSPECTOR_SPRITE.with(|c| c.borrow().clone())
 }
 
 fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {
@@ -1003,24 +1022,39 @@ pub fn paint_inspector(
     // entity. No selection → instructional prompt.
     let section_tops_y: Vec<f32> = Vec::new();
     LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + 4.0));
-    let placeholder = if selection.is_some() {
-        "No properties yet for the selected entity."
+    let sprite_info = current_inspector_sprite();
+    let y = if let Some(info) = sprite_info.as_ref() {
+        paint_render_source_section(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            body_top_y + 4.0,
+            info,
+        )
     } else {
-        "Select an entity in the Hierarchy to inspect its properties."
+        let placeholder = if selection.is_some() {
+            "No properties yet for the selected entity."
+        } else {
+            "Select an entity in the Hierarchy to inspect its properties."
+        };
+        let line_h = TypeToken::Sm.px() + 4.0;
+        let center_y = content_top + (content_bottom - content_top) * 0.5 - line_h * 0.5;
+        paint_text(
+            text_system,
+            scene,
+            placeholder,
+            inner_x + 8.0,
+            center_y,
+            TypeToken::Sm.px(),
+            (inner_w - 16.0).max(80.0),
+            resolve(ColorToken::Text3, theme),
+        );
+        body_top_y + 4.0
     };
-    let line_h = TypeToken::Sm.px() + 4.0;
-    let center_y = content_top + (content_bottom - content_top) * 0.5 - line_h * 0.5;
-    paint_text(
-        text_system,
-        scene,
-        placeholder,
-        inner_x + 8.0,
-        center_y,
-        TypeToken::Sm.px(),
-        (inner_w - 16.0).max(80.0),
-        resolve(ColorToken::Text3, theme),
-    );
-    let y = body_top_y + 4.0;
 
     // Publish the total content height + the EXACT visible body
     // height for the wheel dispatch + hero clamp. visible_h must
@@ -1087,6 +1121,113 @@ pub fn paint_inspector(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/// M14.5 inspector phase (6.4/§9): paint the "Render Source" section
+/// when a sprite entity is selected. Shows the entity name, world
+/// size, source kind (Atlas / Hand-packed / Individual), source-image
+/// pixels, and a "Reimport at current px/m" button that re-decodes
+/// the source asset at the project's current `pixels_per_meter`.
+///
+/// Read-only display except for the Reimport button — the strategy
+/// switcher is a later milestone (M14.5 follow-up); the picker shows
+/// the current strategy without offering a swap so callers can already
+/// see which storage backs each sprite.
+#[allow(clippy::too_many_arguments)]
+fn paint_render_source_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorSpriteInfo,
+) -> f32 {
+    let line_font = TypeToken::Sm.px();
+    let label_font = TypeToken::Xs.px();
+    let row_gap = 4.0_f32;
+    let row_h = line_font + row_gap;
+    // Section title.
+    paint_text_title(
+        text_system,
+        scene,
+        "Render Source",
+        x,
+        y,
+        TypeToken::Md.px(),
+        w,
+        resolve(ColorToken::Text1, theme),
+    );
+    let mut cur_y = y + TypeToken::Md.px() + 8.0;
+    // Separator under the title.
+    cur_y = paint_section_separator(scene, theme, x, w, cur_y);
+
+    // Helper: paint "label · value" two-line row.
+    let paint_pair = |scene: &mut VectorScene,
+                          text_system: &mut TextSystem,
+                          label: &str,
+                          value: &str,
+                          mut yy: f32|
+     -> f32 {
+        paint_text(
+            text_system,
+            scene,
+            label,
+            x,
+            yy,
+            label_font,
+            w,
+            resolve(ColorToken::Text3, theme),
+        );
+        yy += label_font + 2.0;
+        paint_text(
+            text_system,
+            scene,
+            value,
+            x,
+            yy,
+            line_font,
+            w,
+            resolve(ColorToken::Text1, theme),
+        );
+        yy + row_h + row_gap
+    };
+
+    cur_y = paint_pair(scene, text_system, "Name", &info.name, cur_y);
+    let size_str = format!("{:.3} × {:.3} m", info.world_size[0], info.world_size[1]);
+    cur_y = paint_pair(scene, text_system, "World size", &size_str, cur_y);
+    let strategy = match info.source_kind {
+        InspectorSpriteSource::Atlas { key } => format!("Atlas (key {})", key),
+        InspectorSpriteSource::Individual { texture_id } => {
+            format!("Individual (texture {})", texture_id)
+        }
+        InspectorSpriteSource::HandPacked => "Hand-packed".to_string(),
+    };
+    cur_y = paint_pair(scene, text_system, "Strategy", &strategy, cur_y);
+    if let Some((pw, ph)) = info.source_pixels {
+        let px_str = format!("{} × {} px", pw, ph);
+        cur_y = paint_pair(scene, text_system, "Source", &px_str, cur_y);
+    }
+
+    // Reimport button — disabled when the snapshot says the source
+    // doesn't resolve to a re-decodable asset (procedural / lost).
+    cur_y += 4.0;
+    let btn_h = 30.0_f32;
+    let btn_rect = Rect::new(x, cur_y, w, btn_h);
+    let id = ids::INSP_RENDER_SOURCE_REIMPORT;
+    let state = if !info.can_reimport {
+        ButtonState::Disabled
+    } else {
+        store.button_state(id).unwrap_or(ButtonState::Normal)
+    };
+    hit_index.register(id, btn_rect);
+    let btn = Button::new(id, "Reimport at current px/m")
+        .kind(ButtonKind::Default)
+        .state(state);
+    paint_button(&btn, btn_rect, scene, text_system, theme);
+    cur_y + btn_h + 4.0
+}
 
 /// Paint a collapsible section header at `(x, y)` and register its
 /// click hit. Returns `(next_y, is_open)` where `is_open` controls

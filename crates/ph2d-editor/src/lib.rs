@@ -61,8 +61,8 @@ pub use project::{
     DEFAULT_PIXELS_PER_METER, MAX_PIXELS_PER_METER, MIN_PIXELS_PER_METER, ProjectSettings,
 };
 pub use screens::{
-    BottomHudStats, HeroScreen, HeroSelection, ViewFocusKind, paint_hero_screen,
-    set_live_component_count,
+    BottomHudStats, HeroScreen, HeroSelection, InspectorSpriteInfo, InspectorSpriteSource,
+    ViewFocusKind, paint_hero_screen, set_live_component_count,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

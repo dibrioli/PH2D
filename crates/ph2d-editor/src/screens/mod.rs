@@ -24,6 +24,6 @@ pub mod hero_ref;
 pub use hero_ref as hero;
 
 pub use hero::{
-    BottomHudStats, HeroScreen, HeroSelection, ViewFocusKind, paint_hero_screen,
-    set_live_component_count,
+    BottomHudStats, HeroScreen, HeroSelection, InspectorSpriteInfo, InspectorSpriteSource,
+    ViewFocusKind, paint_hero_screen, set_live_component_count,
 };

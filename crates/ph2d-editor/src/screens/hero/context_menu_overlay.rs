@@ -122,8 +122,19 @@ pub fn paint_context_menu_overlay(
                 None,
             ),
         ],
-        // Settings cluster (gear) — px/m presets that scale source
-        // image pixels to world meters during import.
+        // Settings cluster (gear) — TOP-LEVEL categories. Each entry
+        // ending in "\u{2003}\u{25b8}" (em-space + right-pointing
+        // triangle) opens its dedicated submenu (replaces this menu).
+        // Future categories (Snap, Theme, etc.) line up here.
+        ContextMenuKind::SettingsMenu => &[
+            (
+                ids::CTX_MENU_SETTINGS_PPM,
+                "Pixels per meter\u{2003}\u{25b8}",
+                None,
+            ),
+        ],
+        // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
+        // presets as before the cascade, just one click deeper.
         //
         // 16   — classic retro tile (Stardew, 16-bit-era)
         // 32   — Unity 2D default (a 32-px tile = 1 world meter)
@@ -131,12 +142,12 @@ pub fn paint_context_menu_overlay(
         //        mixed-resolution indie work)
         // 256  — Hand-drawn HD 2D (Cuphead-tier)
         // 1024 — 4K reference sprites (1 quad fits on a 1×1 unit)
-        ContextMenuKind::SettingsMenu => &[
-            (ids::CTX_MENU_PPM_16, "Pixels/meter: 16 (retro tile)", None),
-            (ids::CTX_MENU_PPM_32, "Pixels/meter: 32 (Unity 2D)", None),
-            (ids::CTX_MENU_PPM_100, "Pixels/meter: 100 (Godot)", None),
-            (ids::CTX_MENU_PPM_256, "Pixels/meter: 256 (HD 2D)", None),
-            (ids::CTX_MENU_PPM_1024, "Pixels/meter: 1024 (4K ref)", None),
+        ContextMenuKind::SettingsPpmSubmenu => &[
+            (ids::CTX_MENU_PPM_16, "16 (retro tile)", None),
+            (ids::CTX_MENU_PPM_32, "32 (Unity 2D)", None),
+            (ids::CTX_MENU_PPM_100, "100 (Godot)", None),
+            (ids::CTX_MENU_PPM_256, "256 (HD 2D)", None),
+            (ids::CTX_MENU_PPM_1024, "1024 (4K ref)", None),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is
@@ -148,6 +159,7 @@ pub fn paint_context_menu_overlay(
         // additive ops first (Duplicate / Add Child), then destructive
         // (Delete), with Reset Transform last as a milder revert.
         ContextMenuKind::HierarchyRow { .. } => &[
+            (ids::CTX_MENU_HIER_RENAME, "Rename\u{2026}", None),
             (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),
             (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),

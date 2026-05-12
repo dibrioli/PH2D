@@ -221,6 +221,19 @@ pub enum WidgetEvent {
         px: u32,
         py: u32,
     },
+    /// M14.6B: hierarchy drag-reparent intent. Emitted on Up when a
+    /// hierarchy DnD resolves to a drop position. `new_parent` is
+    /// `None` for a root-level drop. `before` is the sibling the
+    /// dragged row should be inserted *above* (`None` means "append
+    /// at the end of siblings"). Carries only `NodeId`s so the event
+    /// stays `Copy`. Fixture mode applies it directly to the panel
+    /// store; live (ECS) mode routes it to the host which translates
+    /// `NodeId → Entity` via the bridge and applies `ChildOf`.
+    HierReparent {
+        dragged: NodeId,
+        new_parent: Option<NodeId>,
+        before: Option<NodeId>,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -409,6 +422,15 @@ pub struct WidgetStore {
     /// threshold; cleared on Up (with reorder applied) or on Up at
     /// the original position (treated as a regular click).
     hierarchy_drag: Option<HierarchyDragState>,
+    /// M14.6B: every NodeId currently displayed as a hierarchy row.
+    /// Painter republishes the set each frame (fixture + live
+    /// modes). Dispatch reads this to decide "this Down is on a
+    /// draggable hierarchy row" without hardcoding any id range —
+    /// the static `is_hierarchy_entity_id(400..=411)` check covers
+    /// only the fixture range; live (ECS-bridge) rows start at
+    /// `100_000+` and would silently fall through to "click,
+    /// no drag" without this set.
+    hierarchy_row_ids: std::collections::BTreeSet<NodeId>,
 }
 
 /// Internal state of an in-progress hierarchy drag.
@@ -564,6 +586,7 @@ impl WidgetStore {
             hierarchy_parent: BTreeMap::new(),
             hierarchy_collapsed: std::collections::BTreeSet::new(),
             hierarchy_drag: None,
+            hierarchy_row_ids: std::collections::BTreeSet::new(),
         }
     }
 
@@ -1263,6 +1286,24 @@ impl WidgetStore {
         if !self.hierarchy_collapsed.insert(id) {
             self.hierarchy_collapsed.remove(&id);
         }
+    }
+
+    /// M14.6B: republish the set of NodeIds currently displayed as
+    /// hierarchy rows. The painter calls this once per frame after
+    /// registering its row hit-rects. Cleared and replaced wholesale
+    /// — no merge — so stale ids from the previous frame (e.g. an
+    /// entity that despawned) drop out automatically.
+    pub fn set_hierarchy_row_ids(&mut self, ids: std::collections::BTreeSet<NodeId>) {
+        self.hierarchy_row_ids = ids;
+    }
+
+    /// True iff `id` is currently displayed as a hierarchy row.
+    /// Covers both fixture HIER_* ids and live ECS-bridge ids in
+    /// one query — dispatch uses this to decide whether to start a
+    /// drag candidate on Primary Down (replaces the static range
+    /// check that used to silently reject every live row).
+    pub fn is_hierarchy_row(&self, id: NodeId) -> bool {
+        self.hierarchy_row_ids.contains(&id)
     }
 
     /// Depth in the parent tree (0 = root). Capped at 32 levels as

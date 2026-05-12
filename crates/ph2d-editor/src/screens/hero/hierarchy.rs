@@ -120,7 +120,7 @@ pub fn paint_hierarchy(
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
-    store: &WidgetStore,
+    store: &mut WidgetStore,
 ) {
     let rect = layout.hierarchy;
     paint_panel_surface(rect, scene, theme);
@@ -225,7 +225,12 @@ pub fn paint_hierarchy(
                 .filter_map(|e| ids::hierarchy_id(&e.name).map(|id| (id, e)))
                 .collect()
         };
-    let order = store.hierarchy_order();
+    // Copy the order into an owned Vec so the borrow on `store`
+    // dies before the `set_hierarchy_row_ids` mutation at the end
+    // of this function. Per-frame allocation cost is a single Vec
+    // of NodeIds — negligible against the hierarchy panel's overall
+    // paint budget.
+    let order: Vec<ph2d_a11y::NodeId> = store.hierarchy_order().to_vec();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
     // First pass: paint rows + register hit zones. Rows indent
     // horizontally by `depth × INDENT_PX` to make tree structure
@@ -376,6 +381,13 @@ pub fn paint_hierarchy(
         );
         hit_index.register(crate::widget::HIERARCHY_SCROLLBAR_ID, thumb);
     }
+    // M14.6B: publish the row set for the dispatcher. Both fixture
+    // and live ids land in `order`; the dispatcher's
+    // `is_hierarchy_row` check now resolves correctly in either
+    // mode. Cleared and replaced wholesale every frame so stale
+    // entries (e.g. a row that despawned) drop out automatically.
+    let row_set: std::collections::BTreeSet<ph2d_a11y::NodeId> = order.iter().copied().collect();
+    store.set_hierarchy_row_ids(row_set);
 }
 
 thread_local! {

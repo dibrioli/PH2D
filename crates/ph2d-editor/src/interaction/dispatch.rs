@@ -555,7 +555,13 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // Up after the threshold is exceeded reorders the
                 // entity. The threshold check is in
                 // `update_hierarchy_drag` (Move handler).
-                if is_hierarchy_entity_id(id) {
+                //
+                // Pre-M14.6B: the criterion was `is_hierarchy_entity_id`
+                // (fixture range 400..=411), which silently dropped
+                // every live ECS-bridge row (ids start at 100_000+).
+                // Now we ask the store, which the hierarchy painter
+                // updates per-frame in both modes.
+                if store.is_hierarchy_row(id) {
                     store.begin_hierarchy_drag(id, event.x, event.y);
                 }
                 // Scrollbar thumb drag — snapshot the panel
@@ -603,13 +609,19 @@ pub fn dispatch_pointer_with_text<'frame>(
             if let Some(drag) = store.end_hierarchy_drag()
                 && drag.active
             {
-                match find_hierarchy_drop(hit_index, event.y, drag.dragged) {
+                let drop = find_hierarchy_drop(hit_index, store, event.y, drag.dragged);
+                match drop {
                     HierDrop::Before(t) => {
                         store.hierarchy_move(drag.dragged, Some(t));
                         // Inherit the target's parent so siblings
                         // stay siblings after a reorder.
                         let new_parent = store.hierarchy_parent_of(t);
                         let _ = store.hierarchy_set_parent(drag.dragged, new_parent);
+                        events.push(WidgetEvent::HierReparent {
+                            dragged: drag.dragged,
+                            new_parent,
+                            before: Some(t),
+                        });
                     }
                     HierDrop::Inside(t) => {
                         if store.hierarchy_set_parent(drag.dragged, Some(t)) {
@@ -623,10 +635,20 @@ pub fn dispatch_pointer_with_text<'frame>(
                                 store.hierarchy_move(drag.dragged, next_id);
                             }
                         }
+                        events.push(WidgetEvent::HierReparent {
+                            dragged: drag.dragged,
+                            new_parent: Some(t),
+                            before: None,
+                        });
                     }
                     HierDrop::End => {
                         store.hierarchy_move(drag.dragged, None);
                         let _ = store.hierarchy_set_parent(drag.dragged, None);
+                        events.push(WidgetEvent::HierReparent {
+                            dragged: drag.dragged,
+                            new_parent: None,
+                            before: None,
+                        });
                     }
                 }
             }
@@ -1190,14 +1212,6 @@ fn is_color_target_id(id: ph2d_a11y::NodeId) -> bool {
     (360..=369).contains(&v) || v == 328
 }
 
-/// True iff `id` is one of the hierarchy entity rows (range
-/// 400..411). Used by the drag-and-drop Down handler to detect
-/// "the user is starting to drag a hierarchy row".
-fn is_hierarchy_entity_id(id: ph2d_a11y::NodeId) -> bool {
-    let v = id.0;
-    (400..=411).contains(&v)
-}
-
 /// Drop kind resolved at the end of a hierarchy DnD: a sibling
 /// insertion (above the given row, or at the very end of the list),
 /// or a re-parent inside the given row.
@@ -1231,11 +1245,18 @@ pub(crate) enum HierDrop {
 /// When no row is hit, returns `End`. Skips the dragged row itself.
 fn find_hierarchy_drop(
     hit_index: &HitIndex,
+    store: &WidgetStore,
     cursor_y: f32,
     dragged: ph2d_a11y::NodeId,
 ) -> HierDrop {
     for (id, rect) in hit_index.iter_registrations() {
-        if !is_hierarchy_entity_id(id) {
+        // Live mode: the static fixture range (400..=411) misses
+        // every ECS-bridge row, so consult the store's per-frame
+        // row set instead. The fixture range stays valid for the
+        // demo's prepopulated ids — both pass `is_hierarchy_row`
+        // because `populate_live` and `populate` both call
+        // `set_hierarchy_row_ids`.
+        if !store.is_hierarchy_row(id) {
             continue;
         }
         if id == dragged {
@@ -2551,6 +2572,68 @@ mod tests {
             &arena,
         );
         assert_eq!(evts, &[WidgetEvent::Click(chev_id)]);
+    }
+
+    #[test]
+    fn hierarchy_drag_in_live_mode_emits_reparent_intent() {
+        // Pre-M14.6B regression: dragging a live (ECS-bridge) row
+        // used `is_hierarchy_entity_id` which only matched the
+        // fixture range 400..=411 — so live rows (NodeIds in the
+        // 100_000+ range) never became drag candidates and Up
+        // emitted no `HierReparent`. This test pins the new
+        // contract: the row set published via
+        // `set_hierarchy_row_ids` is the single source of truth.
+        let mut store = WidgetStore::with_capacity(8);
+        // Two "live" rows from the bridge — far outside the
+        // fixture range that the old code looked at.
+        let parent_id = ph2d_a11y::NodeId(100_000);
+        let dragged_id = ph2d_a11y::NodeId(100_001);
+        store.register(parent_id, InteractiveState::Plain);
+        store.register(dragged_id, InteractiveState::Plain);
+        let mut row_set = std::collections::BTreeSet::new();
+        row_set.insert(parent_id);
+        row_set.insert(dragged_id);
+        store.set_hierarchy_row_ids(row_set);
+        store.set_hierarchy_order(vec![parent_id, dragged_id]);
+        let mut hits = HitIndex::new();
+        // Parent row at y=0..20, dragged row at y=30..50.
+        hits.register(parent_id, Rect::new(0.0, 0.0, 200.0, 20.0));
+        hits.register(dragged_id, Rect::new(0.0, 30.0, 200.0, 20.0));
+        let arena = Bump::new();
+        // Down on dragged row.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, 100.0, 40.0),
+            &arena,
+        );
+        // Move enough to cross the drag threshold (8 px in any axis;
+        // bumping the cursor 50 px up clears it comfortably).
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, 100.0, 10.0),
+            &arena,
+        );
+        // Up over the middle of the parent row → HierDrop::Inside,
+        // which emits HierReparent { dragged, new_parent: Some(parent), before: None }.
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, 100.0, 10.0),
+            &arena,
+        );
+        assert!(
+            evts.iter().any(|e| matches!(
+                e,
+                WidgetEvent::HierReparent {
+                    dragged,
+                    new_parent: Some(np),
+                    before: None,
+                } if *dragged == dragged_id && *np == parent_id
+            )),
+            "expected HierReparent Inside({parent_id:?}); got {evts:?}"
+        );
     }
 
     #[test]

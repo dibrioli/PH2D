@@ -1102,6 +1102,58 @@ impl App {
                     });
                 }
             }
+            // M14.6B: drain pending hierarchy reparent intent —
+            // translate dragged + new_parent NodeIds via the bridge,
+            // then either `insert(ChildOf(p))` or remove the
+            // `ChildOf` component for a root-level drop. The `before`
+            // sibling is ignored on the ECS side for now: bevy_ecs's
+            // canonical `Children` is unordered, and the hierarchy
+            // panel's display order in live mode follows the
+            // snapshot walk (which itself follows the ECS
+            // `Children` slot order). Phase D will add an explicit
+            // sibling-order side-table when that becomes necessary.
+            if let Some(intent) = hero.pending_reparent.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(dragged_bits) = live.bridge.entity_for(intent.dragged)
+            {
+                let dragged = ph2d_ecs::Entity::from_bits(dragged_bits);
+                let new_parent_entity = intent
+                    .new_parent
+                    .and_then(|p| live.bridge.entity_for(p))
+                    .map(ph2d_ecs::Entity::from_bits);
+                let sim_w = sim.world_mut();
+                // Cycle guard: refuse to make dragged a child of
+                // itself or any of its descendants. Walk up
+                // new_parent's ancestors looking for `dragged`; if
+                // found, skip the mutation. Without this, a user
+                // dropping a parent inside one of its own children
+                // would corrupt the hierarchy (infinite loop in any
+                // ancestor walk).
+                let would_cycle = new_parent_entity.is_some_and(|np| {
+                    let mut current = Some(np);
+                    while let Some(c) = current {
+                        if c == dragged {
+                            return true;
+                        }
+                        current = sim_w
+                            .get::<ph2d_ecs::ChildOf>(c)
+                            .map(|c| c.parent());
+                    }
+                    false
+                });
+                if !would_cycle
+                    && let Ok(mut entry) = sim_w.get_entity_mut(dragged)
+                {
+                    match new_parent_entity {
+                        Some(p) => {
+                            entry.insert(ph2d_ecs::ChildOf(p));
+                        }
+                        None => {
+                            entry.remove::<ph2d_ecs::ChildOf>();
+                        }
+                    }
+                }
+            }
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/
             // JPEG), spawn a sprite per image at the camera center.

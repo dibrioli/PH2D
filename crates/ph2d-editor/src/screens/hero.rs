@@ -246,6 +246,25 @@ pub struct HeroScreen {
     /// `SimWorld`. Cleared by `apply_event` after dispatch sets it
     /// when the host reads + applies the toggle.
     pub pending_visibility_toggle: Option<NodeId>,
+    /// M14.6B: hierarchy drag-reparent intent emitted by the
+    /// dispatcher when a DnD drop resolves. Same drain semantics as
+    /// `pending_visibility_toggle`: host reads on the next frame,
+    /// translates NodeIds → Entities via the bridge, then issues the
+    /// matching `ChildOf` mutation on `SimWorld`. Carries only
+    /// NodeIds — staying `Copy + Eq` keeps the field cheap to clear.
+    pub pending_reparent: Option<HierReparentIntent>,
+}
+
+/// M14.6B host-side reparent intent. Mirrors the
+/// `WidgetEvent::HierReparent` payload one-to-one. `new_parent =
+/// None` is a root-level drop; `before = None` means "append at end
+/// of siblings" (or, when `new_parent` is also `None`, "end of root
+/// list").
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct HierReparentIntent {
+    pub dragged: NodeId,
+    pub new_parent: Option<NodeId>,
+    pub before: Option<NodeId>,
 }
 
 impl HeroScreen {
@@ -272,6 +291,7 @@ impl HeroScreen {
             dragging_files: None,
             stats: BottomHudStats::default(),
             pending_visibility_toggle: None,
+            pending_reparent: None,
         }
     }
 
@@ -411,6 +431,24 @@ impl HeroScreen {
     /// `apply_event` in z-order; first region that consumes the
     /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
+        // M14.6B: hierarchy drag-reparent. Dispatcher emits one
+        // `HierReparent` per drop in addition to mutating the panel
+        // store. Live (ECS) mode reads it via `pending_reparent` and
+        // the host applies `ChildOf` accordingly. Fixture mode can
+        // ignore it (the store mutation is already in place).
+        if let WidgetEvent::HierReparent {
+            dragged,
+            new_parent,
+            before,
+        } = event
+        {
+            self.pending_reparent = Some(HierReparentIntent {
+                dragged,
+                new_parent,
+                before,
+            });
+            return true;
+        }
         // Theme + radius selector from the TopBar theme menu —
         // intercepted at the Hero level because `self.theme` lives
         // here, not on the WidgetStore.
@@ -908,7 +946,7 @@ pub fn paint_hero_screen(
                 text_system,
                 hero.theme,
                 &mut hero.hit_index,
-                &hero.store,
+                &mut hero.store,
             );
             let content_h = hierarchy::last_hierarchy_content_h();
             hero.store.set_panel_content_h(ids::HIER_PANEL, content_h);
@@ -1264,14 +1302,14 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         let mut hits = HitIndex::new();
-        let store = WidgetStore::with_capacity(32);
+        let mut store = WidgetStore::with_capacity(32);
         paint_hierarchy(
             &layout,
             &mut scene,
             &mut text,
             Theme::Forge,
             &mut hits,
-            &store,
+            &mut store,
         );
     }
 

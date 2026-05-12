@@ -70,7 +70,7 @@ fn prefab_cook_hash_is_locked() {
     // as a referenced prefab id. Keep them in sync.
     assert_eq!(hex.len(), 64);
     assert_eq!(
-        hex, "767a80b830bdd9fe619d3392f0215a4ea917291f869a20956f4fec4fe9f966c8",
+        hex, "de29d93daa3d5866c575d5716953a5e8616a7e2ccee162ddb024861b91eb1476",
         "simple_sprite.json5 cook hash changed — update scene fixtures + this assertion"
     );
 }

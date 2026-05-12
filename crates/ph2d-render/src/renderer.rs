@@ -13,6 +13,7 @@
 
 use crate::atlas::TextureAtlas;
 use crate::camera::{Camera2d, CameraUniform};
+use crate::individual::{IndividualTextureError, IndividualTextureStore};
 use crate::instance_buffer::InstanceBuffer;
 use crate::pipeline::SpritePipeline;
 use crate::sprite::{QuadVertex, RenderInstance};
@@ -20,10 +21,25 @@ use ph2d_ecs::PresentWorld;
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 
+/// One contiguous run of instances that share the same `texture_id`
+/// in the sorted scratch buffer. Reused frame-to-frame to keep
+/// `render()` allocation-free (HR-3). `start` and `end` index into the
+/// instance buffer.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+struct DrawRun {
+    texture_id: u32,
+    start: u32,
+    end: u32,
+}
+
 pub struct SpriteRenderer {
     gpu: GpuContext,
     pipeline: SpritePipeline,
     atlas: TextureAtlas,
+    /// M14.5 C: per-sprite individually-owned textures. Reuses the
+    /// pipeline's `material_bgl` so each entry's bind group can drop
+    /// straight into `set_bind_group(1, ...)` at draw time.
+    individual: IndividualTextureStore,
     instance_buffer: InstanceBuffer,
     quad_buffer: wgpu::Buffer,
     camera_buffer: wgpu::Buffer,
@@ -32,6 +48,10 @@ pub struct SpriteRenderer {
     /// Reused scratch to avoid per-frame allocation when sprite count
     /// is stable (typical case).
     scratch: Vec<RenderInstance>,
+    /// Reused run buffer for the M14.5 C batching pass. Each entry is
+    /// one draw call's worth of instances; the renderer walks them in
+    /// order, swaps bind group 1 per run, and emits the draw.
+    runs: Vec<DrawRun>,
 }
 
 impl SpriteRenderer {
@@ -87,18 +107,51 @@ impl SpriteRenderer {
         });
 
         let instance_buffer = InstanceBuffer::new(&gpu, initial_instance_capacity);
+        let individual = IndividualTextureStore::new(&gpu);
 
         Self {
             gpu,
             pipeline,
             atlas,
+            individual,
             instance_buffer,
             quad_buffer,
             camera_buffer,
             frame_bind_group,
             material_bind_group,
             scratch: Vec::with_capacity(initial_instance_capacity as usize),
+            // Real workloads keep distinct textures small (typically
+            // 1 atlas + a few individuals); 16 is a reasonable seed.
+            runs: Vec::with_capacity(16),
         }
+    }
+
+    /// Read access to the individual-texture store. Hosts call
+    /// `acquire`/`release` directly on this; the renderer itself only
+    /// reads `bind_group()` at draw time.
+    pub fn individual(&self) -> &IndividualTextureStore {
+        &self.individual
+    }
+
+    /// Mutable handle to the individual-texture store. The host's
+    /// image-import path acquires textures here when the user
+    /// selects the Individual source strategy for a sprite (M14.5
+    /// inspector — separate phase).
+    pub fn individual_mut(&mut self) -> &mut IndividualTextureStore {
+        &mut self.individual
+    }
+
+    /// Convenience for the import path: acquire an individual texture
+    /// from raw RGBA bytes and return the renderer-side `texture_id`
+    /// the caller stamps into `SpriteSource::Individual`.
+    pub fn acquire_individual(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<u32, IndividualTextureError> {
+        self.individual
+            .acquire(&self.gpu, &self.pipeline.material_bgl, width, height, rgba)
     }
 
     pub fn atlas(&self) -> &TextureAtlas {
@@ -231,6 +284,14 @@ impl SpriteRenderer {
         for inst in q.iter(present.world()) {
             self.scratch.push(*inst);
         }
+        // M14.5 C: sort by texture_id so individually-textured sprites
+        // group into contiguous runs. Stable sort keeps insertion
+        // order within each texture (matters once a Z-sort lands and
+        // tie-breaking has to preserve same-z ordering). For the
+        // typical workload (≤ a few thousand instances, < 10 distinct
+        // textures) the O(N log N) cost is dwarfed by GPU work.
+        self.scratch.sort_by_key(|i| i.texture_id);
+        compute_runs(&self.scratch, &mut self.runs);
         let count = self
             .instance_buffer
             .upload(&self.gpu, self.scratch.as_slice());
@@ -266,12 +327,140 @@ impl SpriteRenderer {
             if count > 0 {
                 pass.set_pipeline(&self.pipeline.pipeline);
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
-                pass.set_bind_group(1, &self.material_bind_group, &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.buffer().slice(..));
-                pass.draw(0..4, 0..count);
+                for run in &self.runs {
+                    // Pick the right material bind group per run.
+                    // Atlas (texture_id == 0) uses the shared one;
+                    // individual textures look up the pre-built bind
+                    // group in the store. Missing individuals (id
+                    // released before render saw it) silently skip
+                    // — the renderer is allowed to drop those.
+                    let bg = if run.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+                        Some(&self.material_bind_group)
+                    } else {
+                        self.individual.bind_group(run.texture_id)
+                    };
+                    let Some(bg) = bg else { continue };
+                    pass.set_bind_group(1, bg, &[]);
+                    pass.draw(0..4, run.start..run.end);
+                }
             }
         }
         self.gpu.queue.submit(Some(encoder.finish()));
+    }
+}
+
+/// Walk the sorted instance slice and emit one [`DrawRun`] per
+/// maximal contiguous run of the same `texture_id`. Reuses `runs`'s
+/// capacity. `scratch` MUST already be sorted by `texture_id` —
+/// callers do this via `scratch.sort_by_key(|i| i.texture_id)`
+/// immediately before invoking.
+fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
+    runs.clear();
+    if scratch.is_empty() {
+        return;
+    }
+    let mut start = 0u32;
+    let mut current = scratch[0].texture_id;
+    for (i, inst) in scratch.iter().enumerate().skip(1) {
+        if inst.texture_id != current {
+            runs.push(DrawRun {
+                texture_id: current,
+                start,
+                end: i as u32,
+            });
+            current = inst.texture_id;
+            start = i as u32;
+        }
+    }
+    runs.push(DrawRun {
+        texture_id: current,
+        start,
+        end: scratch.len() as u32,
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn inst(texture_id: u32) -> RenderInstance {
+        RenderInstance {
+            world_pos: [0.0, 0.0],
+            size: [1.0, 1.0],
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            texture_id,
+            _pad: [0; 3],
+        }
+    }
+
+    #[test]
+    fn compute_runs_empty_input_emits_no_runs() {
+        let mut runs = Vec::new();
+        compute_runs(&[], &mut runs);
+        assert!(runs.is_empty());
+    }
+
+    #[test]
+    fn compute_runs_groups_consecutive_same_texture() {
+        // Pre-sorted: [0, 0, 0, 7, 7, 12]
+        let scratch = [inst(0), inst(0), inst(0), inst(7), inst(7), inst(12)];
+        let mut runs = Vec::new();
+        compute_runs(&scratch, &mut runs);
+        assert_eq!(
+            runs,
+            vec![
+                DrawRun {
+                    texture_id: 0,
+                    start: 0,
+                    end: 3
+                },
+                DrawRun {
+                    texture_id: 7,
+                    start: 3,
+                    end: 5
+                },
+                DrawRun {
+                    texture_id: 12,
+                    start: 5,
+                    end: 6
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn compute_runs_singleton_per_instance() {
+        // All distinct textures → N runs of 1.
+        let scratch = [inst(1), inst(2), inst(3)];
+        let mut runs = Vec::new();
+        compute_runs(&scratch, &mut runs);
+        assert_eq!(runs.len(), 3);
+        for r in &runs {
+            assert_eq!(r.end - r.start, 1);
+        }
+    }
+
+    #[test]
+    fn compute_runs_reuses_vec_capacity() {
+        // First call grows the vec; second call with a different
+        // shape must NOT allocate again (HR-3 alloc-free hot path).
+        let mut runs = Vec::with_capacity(8);
+        let cap = runs.capacity();
+        compute_runs(&[inst(0), inst(0)], &mut runs);
+        compute_runs(&[inst(5), inst(6), inst(7), inst(7)], &mut runs);
+        assert!(runs.capacity() >= cap, "capacity must not shrink");
+        assert_eq!(runs.len(), 3);
+    }
+
+    #[test]
+    fn compute_runs_atlas_constant() {
+        let scratch = [inst(RenderInstance::ATLAS_TEXTURE_ID)];
+        let mut runs = Vec::new();
+        compute_runs(&scratch, &mut runs);
+        assert_eq!(runs[0].texture_id, RenderInstance::ATLAS_TEXTURE_ID);
+        assert_eq!(runs[0].texture_id, 0);
     }
 }

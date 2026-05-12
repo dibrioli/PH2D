@@ -17,18 +17,52 @@
 use bevy_ecs::component::Component;
 use ph2d_ecs::{PresentComponent, SimComponent};
 
+/// Which texture source a [`Sprite`] reads its pixels from. M14.5
+/// introduces the multi-strategy model documented in the post-spike
+/// plan §M14.5:
+///
+/// - [`SpriteSource::Atlas`] — shared dynamic atlas (the M14.4d/4f
+///   Skyline packer). Many sprites in one 4096² texture; 1 draw call
+///   for every atlas-backed sprite per frame.
+/// - [`SpriteSource::Individual`] — sprite owns its own
+///   `wgpu::Texture` at native resolution. The renderer groups
+///   contiguous same-texture instances into one draw call each
+///   (Godot 4 `RenderingServer` pattern). Use when packing-or-stretch
+///   trade-offs don't suit the content (large HD sprites, procedural
+///   textures, or content that gets hot-reloaded independently).
+///
+/// `Hand-packed` (artist-authored atlas + JSON) is M14.5 B — separate
+/// variant, separate PR.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SpriteSource {
+    /// Index into the shared atlas. The atlas resolves to a UV
+    /// rectangle via `TextureAtlas::region_uv` at extract time.
+    Atlas { key: u32 },
+    /// Renderer-assigned id for an individually-owned texture, handed
+    /// out by [`crate::individual::IndividualTextureStore::acquire`].
+    /// Stable for the lifetime of the texture in the store.
+    Individual { texture_id: u32 },
+}
+
+impl SpriteSource {
+    /// Convenience for the common "atlas key 0" case used in fixture
+    /// tests and the demo's HSV tiles.
+    pub const ATLAS_ZERO: Self = Self::Atlas { key: 0 };
+}
+
 /// Canonical sprite description in simulation state. World position
 /// is read from the entity's [`ph2d_ecs::Transform`] during the
 /// extract phase (ADR-0025).
 ///
 /// `Serialize`/`Deserialize` derives let `Sprite` round-trip through
 /// the `PrefabDoc` / `SceneDoc` postcard pipeline (M14.3). All fields
-/// are POD (`u32`, fixed-size `f32` arrays), so the wire format is
-/// stable across rustc versions.
+/// are POD-shaped (`SpriteSource` is `#[repr(Rust)]` enum with `u32`
+/// payloads), so the wire format stays stable across rustc versions
+/// as long as `SpriteSource`'s variant order doesn't change.
 #[derive(Component, Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Sprite {
-    /// Index into the texture atlas tile grid.
-    pub atlas_index: u32,
+    /// Where the pixels come from — shared atlas or individual texture.
+    pub source: SpriteSource,
     /// Sprite size in world units (meters).
     pub size: [f32; 2],
     /// RGBA tint multiplied with the texel color in the fragment shader.
@@ -38,8 +72,32 @@ pub struct Sprite {
 impl Sprite {
     /// Schema version for the cooked-prefab pipeline (HR-14
     /// mitigation; consumed by `ComponentRegistry` until the
-    /// `Saveable` derive macro lands).
-    pub const VERSION: u32 = 1;
+    /// `Saveable` derive macro lands). Bumped to 2 when
+    /// `atlas_index` became `source` in M14.5 C.
+    pub const VERSION: u32 = 2;
+
+    /// Convenience constructor for atlas-backed sprites — the
+    /// dominant case after M14.4d. Preserves the pre-M14.5 ergonomics
+    /// (`Sprite { atlas_index: K, size, tint }`) under a slightly
+    /// different name.
+    pub fn atlas(key: u32, size: [f32; 2], tint: [f32; 4]) -> Self {
+        Self {
+            source: SpriteSource::Atlas { key },
+            size,
+            tint,
+        }
+    }
+
+    /// Convenience constructor for individual-texture sprites.
+    /// `texture_id` must come from
+    /// `IndividualTextureStore::acquire`.
+    pub fn individual(texture_id: u32, size: [f32; 2], tint: [f32; 4]) -> Self {
+        Self {
+            source: SpriteSource::Individual { texture_id },
+            size,
+            tint,
+        }
+    }
 }
 
 impl SimComponent for Sprite {}
@@ -47,6 +105,18 @@ impl SimComponent for Sprite {}
 /// Per-frame instance data uploaded to the GPU. Layout matches the
 /// `InstanceInput` struct in `shaders/sprite.wgsl`. `#[repr(C)]` +
 /// `bytemuck::Pod` for zero-copy upload via `Queue::write_buffer`.
+///
+/// M14.5 C: `texture_id` is CPU-side metadata used by the renderer
+/// to group same-texture instances into one draw call each. The
+/// shader's vertex layout doesn't reference it, so it's ignored on
+/// the GPU side — the byte stride still includes it (Pod size = 52
+/// bytes, 4-byte aligned).
+///
+/// - `texture_id == 0` → the instance reads from the shared atlas
+///   bound at material bind group 1.
+/// - `texture_id > 0` → the renderer rebinds material 1 to the
+///   individually-cached texture handed out by
+///   `IndividualTextureStore::acquire`.
 #[derive(Component, Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct RenderInstance {
@@ -54,6 +124,8 @@ pub struct RenderInstance {
     pub size: [f32; 2],
     pub atlas_uv: [f32; 4],
     pub tint: [f32; 4],
+    pub texture_id: u32,
+    pub _pad: [u32; 3],
 }
 
 impl PresentComponent for RenderInstance {}
@@ -73,6 +145,10 @@ impl RenderInstance {
             attributes: Self::VERTEX_ATTRIBUTES,
         }
     }
+
+    /// Sentinel for `texture_id` meaning "sample from the shared
+    /// atlas at material bind group 1".
+    pub const ATLAS_TEXTURE_ID: u32 = 0;
 }
 
 /// Vertex of the unit quad used as the geometry for every sprite
@@ -139,11 +215,31 @@ mod tests {
             size: [10.0, 10.0],
             atlas_uv: [0.0, 0.0, 0.25, 0.25],
             tint: [1.0, 1.0, 1.0, 1.0],
+            texture_id: RenderInstance::ATLAS_TEXTURE_ID,
+            _pad: [0; 3],
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
-        // 2 + 2 + 4 + 4 = 12 floats = 48 bytes
-        assert_eq!(bytes.len(), 48);
+        // 2 + 2 + 4 + 4 = 12 floats = 48 bytes + texture_id u32 + 3 pad u32 = 64 bytes
+        assert_eq!(bytes.len(), 64);
+    }
+
+    #[test]
+    fn sprite_source_atlas_zero_const() {
+        assert_eq!(SpriteSource::ATLAS_ZERO, SpriteSource::Atlas { key: 0 });
+    }
+
+    #[test]
+    fn sprite_atlas_constructor_round_trip() {
+        let s = Sprite::atlas(7, [1.0, 2.0], [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(s.source, SpriteSource::Atlas { key: 7 });
+        assert_eq!(s.size, [1.0, 2.0]);
+    }
+
+    #[test]
+    fn sprite_individual_constructor_round_trip() {
+        let s = Sprite::individual(42, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(s.source, SpriteSource::Individual { texture_id: 42 });
     }
 
     #[test]

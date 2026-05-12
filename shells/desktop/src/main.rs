@@ -734,11 +734,7 @@ impl App {
             sim.world_mut().spawn((
                 Transform::from_translation(pos),
                 Velocity(Vec2::new(vx, vy)),
-                Sprite {
-                    atlas_index: i % 16,
-                    size: [0.18, 0.18],
-                    tint: [1.0, 1.0, 1.0, 1.0],
-                },
+                Sprite::atlas(i % 16, [0.18, 0.18], [1.0, 1.0, 1.0, 1.0]),
             ));
         }
     }
@@ -762,11 +758,7 @@ impl App {
             let root_entity = world
                 .spawn((
                     Transform::from_translation(Vec2::new(-1.5, y_root)),
-                    Sprite {
-                        atlas_index: sprite_idx % 16,
-                        size: [0.4, 0.4],
-                        tint: [1.0, 1.0, 1.0, 1.0],
-                    },
+                    Sprite::atlas(sprite_idx % 16, [0.4, 0.4], [1.0, 1.0, 1.0, 1.0]),
                     Name::new(format!("group_{:02}", group + 1)),
                 ))
                 .id();
@@ -777,11 +769,7 @@ impl App {
                 world.spawn((
                     Transform::from_translation(Vec2::new(-0.5 + f, y_root)),
                     Velocity(Vec2::new(vx, 0.0)),
-                    Sprite {
-                        atlas_index: sprite_idx % 16,
-                        size: [0.4, 0.4],
-                        tint: [1.0, 1.0, 1.0, 1.0],
-                    },
+                    Sprite::atlas(sprite_idx % 16, [0.4, 0.4], [1.0, 1.0, 1.0, 1.0]),
                     Name::new(format!("sprite_{:03}", sprite_idx)),
                     ph2d_ecs::ChildOf(root_entity),
                 ));
@@ -954,17 +942,27 @@ impl App {
                         && let Some(spr) = sim.get::<Sprite>(sim_entity)
                     {
                         let p = gt.translation();
+                        // M14.5 C: branch on the sprite source. Atlas
+                        // sprites resolve UV via `region_uv`; individual
+                        // sprites use the full (0..1) UV rect and carry
+                        // the renderer-side texture_id so the batcher
+                        // can pick the right bind group at draw time.
+                        let (atlas_uv, texture_id) = match spr.source {
+                            ph2d_render::SpriteSource::Atlas { key } => (
+                                atlas.region_uv(key),
+                                ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
+                            ),
+                            ph2d_render::SpriteSource::Individual { texture_id } => {
+                                ([0.0, 0.0, 1.0, 1.0], texture_id)
+                            }
+                        };
                         builder.insert(RenderInstance {
                             world_pos: [p.x, p.y],
                             size: spr.size,
-                            // Skyline atlas: look up the packed region
-                            // by sprite key. Missing keys produce a
-                            // zero-area UV (visually inert) — the
-                            // expected pre-condition is that the key
-                            // was inserted via `insert_atlas_sprite`
-                            // before extract sees the Sprite.
-                            atlas_uv: atlas.region_uv(spr.atlas_index),
+                            atlas_uv,
                             tint: spr.tint,
+                            texture_id,
+                            _pad: [0; 3],
                         });
                     }
                 },
@@ -2114,11 +2112,7 @@ fn import_image_at_camera(
     let world_h = (height as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
     sim.world_mut().spawn((
         Transform::from_translation(spawn_pos),
-        Sprite {
-            atlas_index: cell_idx,
-            size: [world_w, world_h],
-            tint: [1.0, 1.0, 1.0, 1.0],
-        },
+        Sprite::atlas(cell_idx, [world_w, world_h], [1.0, 1.0, 1.0, 1.0]),
         Name::new(label.clone()),
     ));
     Ok(label)

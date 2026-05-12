@@ -3,13 +3,17 @@
 // One entity with three components:
 //   - Transform at (1, 2), no rotation, unit scale.
 //   - Name "Hero".
-//   - Sprite with atlas_index 0 and a white tint.
+//   - Sprite from atlas key 0 with a white tint.
 //
 // Canonical type names map to `ph2d_*` Rust types via the cooker's
 // dispatch table (see `tools/asset-cooker/src/lib.rs::cook_component`).
 // Adding a new component type requires both the dispatch entry and the
 // matching `register_*_components` registration in the runtime
 // ComponentRegistry — HR-10 parity.
+//
+// M14.5 C: `atlas_index: 0` became `source: { Atlas: { key: 0 } }` when
+// `Sprite` gained `SpriteSource`. Postcard's enum tag is the variant
+// index — serde-json's externally-tagged shape matches the JSON5 here.
 {
     version: 1,
     components: [
@@ -25,7 +29,7 @@
         {
             type: "ph2d::render::Sprite",
             data: {
-                atlas_index: 0,
+                source: { Atlas: { key: 0 } },
                 size: [0.5, 0.5],
                 tint: [1.0, 1.0, 1.0, 1.0],
             },

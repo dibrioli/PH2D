@@ -369,6 +369,12 @@ pub(crate) fn hierarchy_kind_for_label(_label: &str) -> &'static str {
 /// the `WidgetStore`.
 pub const EYE_TOGGLE_BIT: u64 = 1u64 << 62;
 
+/// M14.6C: high-bit offset for the expand/collapse chevron companion
+/// NodeId on parent rows in the Hierarchy panel. Uses a different
+/// bit from `EYE_TOGGLE_BIT` so the two companions stay
+/// distinguishable in `apply_event`.
+pub const EXPAND_TOGGLE_BIT: u64 = 1u64 << 61;
+
 /// Derive the eye-toggle companion NodeId for a hierarchy row.
 /// Inverse: [`hier_eye_companion_to_row`].
 #[inline]
@@ -384,6 +390,24 @@ pub fn hier_eye_companion(row_id: NodeId) -> NodeId {
 pub fn hier_eye_companion_to_row(id: NodeId) -> Option<NodeId> {
     if id.0 & EYE_TOGGLE_BIT != 0 {
         Some(NodeId(id.0 & !EYE_TOGGLE_BIT))
+    } else {
+        None
+    }
+}
+
+/// M14.6C: derive the chevron-companion NodeId for the
+/// expand/collapse hit-rect at the start of a hierarchy row.
+#[inline]
+pub fn hier_expand_companion(row_id: NodeId) -> NodeId {
+    NodeId(row_id.0 | EXPAND_TOGGLE_BIT)
+}
+
+/// Inverse of [`hier_expand_companion`]. Returns `Some(row_id)` when
+/// the high `EXPAND_TOGGLE_BIT` is set, `None` otherwise.
+#[inline]
+pub fn hier_expand_companion_to_row(id: NodeId) -> Option<NodeId> {
+    if id.0 & EXPAND_TOGGLE_BIT != 0 {
+        Some(NodeId(id.0 & !EXPAND_TOGGLE_BIT))
     } else {
         None
     }

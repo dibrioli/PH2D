@@ -424,6 +424,13 @@ impl HeroScreen {
                 self.pending_visibility_toggle = Some(row_id);
                 return true;
             }
+            // M14.6C: chevron click on a hierarchy parent row.
+            // Toggles the panel's view-only collapse state — does
+            // not touch the ECS `ChildOf` hierarchy.
+            if let Some(row_id) = ids::hier_expand_companion_to_row(id) {
+                self.store.toggle_hierarchy_collapsed(row_id);
+                return true;
+            }
             let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
                 Some(Theme::Forge)
             } else if id == ids::CTX_MENU_THEME_PAINT {

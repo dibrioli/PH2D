@@ -399,6 +399,11 @@ pub struct WidgetStore {
     /// entries are roots. Mutated by drop-inside DnD; consumed by the
     /// painter to indent rows by depth.
     hierarchy_parent: BTreeMap<NodeId, NodeId>,
+    /// M14.6C: parents whose subtree is collapsed in the panel.
+    /// View-only state (does NOT touch ECS hierarchy); just hides
+    /// descendants in the row list. Click on the chevron toggles
+    /// membership.
+    hierarchy_collapsed: std::collections::BTreeSet<NodeId>,
     /// In-progress hierarchy drag. `Some` when a Primary Down landed
     /// on a hierarchy row and the cursor has moved past the drag
     /// threshold; cleared on Up (with reorder applied) or on Up at
@@ -557,6 +562,7 @@ impl WidgetStore {
             radius_scale: 1.0,
             hierarchy_order: Vec::new(),
             hierarchy_parent: BTreeMap::new(),
+            hierarchy_collapsed: std::collections::BTreeSet::new(),
             hierarchy_drag: None,
         }
     }
@@ -1242,6 +1248,21 @@ impl WidgetStore {
     /// `None` for root rows.
     pub fn hierarchy_parent_of(&self, child: NodeId) -> Option<NodeId> {
         self.hierarchy_parent.get(&child).copied()
+    }
+
+    /// M14.6C: true when `id`'s subtree is collapsed in the panel.
+    /// The ECS hierarchy is untouched — this is purely a view filter
+    /// applied by `paint_hierarchy`.
+    pub fn is_hierarchy_collapsed(&self, id: NodeId) -> bool {
+        self.hierarchy_collapsed.contains(&id)
+    }
+
+    /// Flip the collapsed flag for `id`. Called by `apply_event` when
+    /// the chevron companion NodeId is clicked.
+    pub fn toggle_hierarchy_collapsed(&mut self, id: NodeId) {
+        if !self.hierarchy_collapsed.insert(id) {
+            self.hierarchy_collapsed.remove(&id);
+        }
     }
 
     /// Depth in the parent tree (0 = root). Capped at 32 levels as

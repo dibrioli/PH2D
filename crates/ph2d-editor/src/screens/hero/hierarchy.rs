@@ -232,29 +232,40 @@ pub fn paint_hierarchy(
     // visible after a drop-inside DnD.
     const INDENT_PX: f32 = 16.0;
     let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> = Vec::with_capacity(order.len());
-    for id in order {
+    // M14.6C: precompute depth per row + collapsed-gate. With DFS
+    // order, `has_children` is just "next row's depth is greater";
+    // a parent in `hierarchy_collapsed` skips ALL its descendants
+    // until depth drops back to ≤ its own.
+    let live_mode = current_live_entries().is_some();
+    let depths: Vec<u32> = order
+        .iter()
+        .map(|id| {
+            if live_mode {
+                entities_by_id.get(id).map(|e| e.indent as u32).unwrap_or(0)
+            } else {
+                store.hierarchy_depth_of(*id)
+            }
+        })
+        .collect();
+    let mut collapsed_gate: Option<u32> = None;
+    for (i, id) in order.iter().enumerate() {
         let Some(entity_template) = entities_by_id.get(id) else {
             continue;
         };
+        let depth = depths[i];
+        // Exit a collapsed subtree when depth returns to ≤ the gate.
+        if let Some(gate) = collapsed_gate
+            && depth <= gate
+        {
+            collapsed_gate = None;
+        }
+        // Skip descendants while inside a collapsed subtree.
+        if collapsed_gate.is_some() {
+            continue;
+        }
+        let has_children = depths.get(i + 1).is_some_and(|&d| d > depth);
+        let is_collapsed = has_children && store.is_hierarchy_collapsed(*id);
         let mut entity = entity_template.clone();
-        // M14.4e v2 bugfix: previously this used
-        // `store.hierarchy_depth_of(id)` which walks the WidgetStore's
-        // DnD-reparent state. For live ECS entities (M14.4a) the DnD
-        // state is empty and depth_of returned 0 for everything; for
-        // newly-imported sprites however the store's
-        // `hierarchy_parent` map could have a residual entry from a
-        // prior drag, causing imports to render visually nested
-        // ("agrupadas") even though their ChildOf component said root.
-        //
-        // The entity's own `indent` field comes from
-        // `build_hierarchy_snapshot` which IS the authoritative ECS
-        // depth — reuse it directly so DnD state stays orthogonal to
-        // the source-of-truth hierarchy.
-        let depth = if current_live_entries().is_some() {
-            entity_template.indent as u32
-        } else {
-            store.hierarchy_depth_of(*id)
-        };
         let indent = (depth as f32) * INDENT_PX;
         let row_rect = Rect::new(
             rect.x + body_pad + indent,
@@ -277,8 +288,13 @@ pub fn paint_hierarchy(
             theme,
             Some(*id),
             Some(hit_index),
+            has_children,
+            is_collapsed,
         );
         row_rects.push((*id, row_rect));
+        if is_collapsed {
+            collapsed_gate = Some(depth);
+        }
         y += HIER_ROW_H + 2.0;
     }
     // Second pass: drop indicator while dragging. Mirrors the
@@ -423,7 +439,9 @@ fn paint_hierarchy_row(
     text_system: &mut TextSystem,
     theme: Theme,
     row_id: Option<ph2d_a11y::NodeId>,
-    hit_index: Option<&mut HitIndex>,
+    mut hit_index: Option<&mut HitIndex>,
+    has_children: bool,
+    is_collapsed: bool,
 ) {
     if entity.selected {
         fill_rounded_rect(
@@ -442,8 +460,42 @@ fn paint_hierarchy_row(
     }
     let indent_w = 16.0 * entity.indent as f32;
     let pad = 10.0_f32;
+    // M14.6C: chevron column. Always reserves 16 px so child rows
+    // align with their parents' entity-icon column. Painted only when
+    // `has_children` (otherwise the slot is empty whitespace).
+    let chev_w = 12.0_f32;
+    let chev_pad = 4.0_f32;
+    let chev_x = rect.x + pad + indent_w;
+    if has_children {
+        let chev_rect = Rect::new(chev_x, rect.y + (rect.h - chev_w) * 0.5, chev_w, chev_w);
+        let chev_icon = if is_collapsed {
+            IconId::ChevronRight
+        } else {
+            IconId::ChevronDown
+        };
+        paint_icon(
+            scene,
+            chev_icon,
+            chev_rect,
+            resolve(ColorToken::Text2, theme),
+            1.5,
+        );
+        if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_deref_mut()) {
+            // Hit-rect: chevron glyph + padding for 24×24 click target.
+            let hit_rect = Rect::new(
+                chev_rect.x - 6.0,
+                chev_rect.y - 6.0,
+                chev_w + 12.0,
+                chev_w + 12.0,
+            );
+            idx.register(
+                crate::screens::hero::ids::hier_expand_companion(row_id),
+                hit_rect,
+            );
+        }
+    }
     let icon_w = 16.0_f32;
-    let icon_x = rect.x + pad + indent_w;
+    let icon_x = chev_x + chev_w + chev_pad;
     let icon_rect = Rect::new(icon_x, rect.y + (rect.h - icon_w) * 0.5, icon_w, icon_w);
     let icon_color = if entity.selected {
         ColorToken::Accent
@@ -481,15 +533,7 @@ fn paint_hierarchy_row(
         eye_size,
     );
     paint_icon(scene, eye_icon, eye_rect, resolve(eye_color, theme), 1.5);
-    if let (Some(row_id), Some(hit_index)) = (row_id, hit_index) {
-        // Hit-rect is the visible eye glyph plus padding so the
-        // click target is at least 24×24 px (Apple HIG minimum).
-        // Registered AFTER the row-body hit (line 271) so the eye
-        // wins for clicks within its rect — HitIndex::hit walks
-        // back-to-front. The companion NodeId derives from the
-        // row's via [`ids::hier_eye_companion`] so dispatch can
-        // reverse-map without an explicit BlenderHit registration
-        // in the WidgetStore (which the picker pattern requires).
+    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_deref_mut()) {
         let hit_pad = 4.0_f32;
         let hit_rect = Rect::new(
             eye_rect.x - hit_pad,
@@ -497,7 +541,7 @@ fn paint_hierarchy_row(
             eye_rect.w + hit_pad * 2.0,
             eye_rect.h + hit_pad * 2.0,
         );
-        hit_index.register(
+        idx.register(
             crate::screens::hero::ids::hier_eye_companion(row_id),
             hit_rect,
         );

@@ -42,6 +42,21 @@ pub use bottom_hud::paint_bottom_hud;
 pub use canvas::paint_canvas_bg;
 pub use color_picker_demo::paint_blender_picker_demo;
 pub use hierarchy::paint_hierarchy;
+
+/// No-op stub on the reference snapshot — the frozen baseline doesn't
+/// render live component counts. Kept so the screens-level re-export
+/// compiles under both `reference-snapshot` and default builds.
+pub fn set_live_component_count(_count: u32) {}
+
+/// Stub mirror of `hero::ViewFocusKind`. The reference snapshot has
+/// no view-focus pipeline, but the screens re-export needs the same
+/// path under both build modes.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ViewFocusKind {
+    Selected,
+    Camera,
+    All,
+}
 pub use inspector::paint_inspector;
 pub use left_rail::paint_left_rail;
 pub use selection::paint_selection_overlay;

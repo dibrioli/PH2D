@@ -170,8 +170,23 @@ pub fn paint_hierarchy(
         rect.w - PANEL_HEAD_PAD * 2.0 - 40.0,
         resolve(ColorToken::Text1, theme),
     );
-    let (entities, components) = fixture::hierarchy_counts();
-    let counts = format!("{entities} entities \u{00b7} {components} components");
+    // Live counts in live-ECS mode (real entries from the host
+    // bridge); fall back to the fixture's placeholder pair otherwise.
+    // Components count is derived from the bottom-HUD stats the host
+    // already publishes — when stats are zero we hide the segment so
+    // we don't lie with "0 components" during fixture mode.
+    let (entities, components) = if let Some(live) = current_live_entries() {
+        let entity_count = live.len() as u32;
+        let comp_count = current_component_count();
+        (entity_count, comp_count)
+    } else {
+        fixture::hierarchy_counts()
+    };
+    let counts = if components > 0 {
+        format!("{entities} entities \u{00b7} {components} components")
+    } else {
+        format!("{entities} entities")
+    };
     paint_text(
         text_system,
         scene,
@@ -534,6 +549,23 @@ pub(super) fn set_live_entries(
     entries: Option<std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>>,
 ) {
     CURRENT_LIVE_ENTRIES.with(|c| *c.borrow_mut() = entries);
+}
+
+// Total component count across the live SimWorld, surfaced into the
+// hierarchy header next to the entity count. Host writes this once
+// per frame before `paint_hero_screen`; defaults to 0 when no host
+// is publishing (e.g. fixture-only smoke tests).
+thread_local! {
+    static CURRENT_COMPONENT_COUNT: std::cell::Cell<u32> =
+        const { std::cell::Cell::new(0) };
+}
+
+pub(crate) fn current_component_count() -> u32 {
+    CURRENT_COMPONENT_COUNT.with(|c| c.get())
+}
+
+pub fn set_live_component_count(count: u32) {
+    CURRENT_COMPONENT_COUNT.with(|c| c.set(count));
 }
 
 #[allow(clippy::too_many_arguments)]

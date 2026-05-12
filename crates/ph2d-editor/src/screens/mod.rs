@@ -23,4 +23,7 @@ pub mod hero_ref;
 #[cfg(feature = "reference-snapshot")]
 pub use hero_ref as hero;
 
-pub use hero::{BottomHudStats, HeroScreen, HeroSelection, paint_hero_screen};
+pub use hero::{
+    BottomHudStats, HeroScreen, HeroSelection, ViewFocusKind, paint_hero_screen,
+    set_live_component_count,
+};

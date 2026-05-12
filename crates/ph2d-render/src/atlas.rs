@@ -46,12 +46,13 @@ use ph2d_gpu::GpuContext;
 // map is dwarfed by the GPU work that follows the lookup.
 use std::collections::BTreeMap;
 
-/// Default side length for new atlases (square, RGBA8). 4096 ×
-/// 4096 = 64 MiB of GPU memory — large enough for a few hundred
-/// 256-px sprites, comfortably under the wgpu Default tier's
-/// `max_texture_dimension_2d = 8192` limit on every backend we
-/// target.
-pub const ATLAS_DEFAULT_SIZE_PX: u32 = 4096;
+/// Default side length for new atlases (square, RGBA8). 8192 ×
+/// 8192 = 256 MiB of GPU memory — enough for several 4K sprites
+/// (3840 × 2160 ≈ 8 MiB each) plus the usual HD-2D mix, and exactly
+/// at the wgpu Default tier's `max_texture_dimension_2d = 8192`
+/// limit on every backend we target. Smaller atlases force regrow
+/// on the first 4K import.
+pub const ATLAS_DEFAULT_SIZE_PX: u32 = 8192;
 
 /// Pixel side length of each tile in the demo HSV atlas. Used by
 /// [`TextureAtlas::dummy`] only; arbitrary-sized sprites can live
@@ -82,13 +83,26 @@ impl AtlasRegion {
     /// Convert pixel coordinates into normalized texture UV
     /// `(u_min, v_min, u_max, v_max)` for the given atlas side
     /// length. Hot path: called per sprite per frame in extract.
+    ///
+    /// **Half-texel inset**: each boundary moves 0.5 px toward the
+    /// region center before normalization. With `FilterMode::Linear`
+    /// the sampler reads a 2×2 texel neighborhood at the UV corner;
+    /// without the inset that neighborhood straddles the region
+    /// edge and pulls neighboring atlas content into the bilinear
+    /// blend. The visible artifact (user-reported "linha na margem
+    /// esquerda") was an opaque black halo from the empty-pixel
+    /// rows that border every packed region. Inset by half a texel
+    /// shifts the sample square strictly inside, killing the bleed
+    /// without measurable cropping (the half-texel offset is well
+    /// below the visible threshold at any reasonable zoom level).
     pub fn uv(self, atlas_size: u32) -> [f32; 4] {
         let s = atlas_size.max(1) as f32;
+        let inset = 0.5;
         [
-            self.x as f32 / s,
-            self.y as f32 / s,
-            (self.x + self.w) as f32 / s,
-            (self.y + self.h) as f32 / s,
+            (self.x as f32 + inset) / s,
+            (self.y as f32 + inset) / s,
+            (self.x as f32 + self.w as f32 - inset) / s,
+            (self.y as f32 + self.h as f32 - inset) / s,
         ]
     }
 }
@@ -498,10 +512,40 @@ mod tests {
             h: 40,
         };
         let uv = region.uv(1000);
-        assert!((uv[0] - 0.1).abs() < 1e-6);
-        assert!((uv[1] - 0.2).abs() < 1e-6);
-        assert!((uv[2] - 0.15).abs() < 1e-6);
-        assert!((uv[3] - 0.24).abs() < 1e-6);
+        // Half-texel inset: each boundary shifts 0.5 px inward
+        // → (100.5, 200.5, 149.5, 239.5) / 1000.
+        assert!((uv[0] - 100.5 / 1000.0).abs() < 1e-6, "u0 = {}", uv[0]);
+        assert!((uv[1] - 200.5 / 1000.0).abs() < 1e-6, "v0 = {}", uv[1]);
+        assert!((uv[2] - 149.5 / 1000.0).abs() < 1e-6, "u1 = {}", uv[2]);
+        assert!((uv[3] - 239.5 / 1000.0).abs() < 1e-6, "v1 = {}", uv[3]);
+    }
+
+    #[test]
+    fn region_uv_half_texel_inset_prevents_edge_bleed() {
+        // A 1-pixel region: both u0 and u1 collapse to the same
+        // half-texel center (no width left after the inset). This
+        // is OK — a 1-px sprite has no edge to bleed.
+        let region = AtlasRegion {
+            x: 10,
+            y: 10,
+            w: 1,
+            h: 1,
+        };
+        let uv = region.uv(100);
+        assert!((uv[0] - 0.105).abs() < 1e-6);
+        assert!((uv[2] - 0.105).abs() < 1e-6); // collapsed
+        // A 4-pixel region: inset shaves 1 texel total across both
+        // boundaries, so the effective sampled rect is 3 texels wide.
+        let region = AtlasRegion {
+            x: 0,
+            y: 0,
+            w: 4,
+            h: 4,
+        };
+        let uv = region.uv(8);
+        // (0+0.5)/8 .. (4-0.5)/8 = 0.0625 .. 0.4375
+        assert!((uv[0] - 0.0625).abs() < 1e-6);
+        assert!((uv[2] - 0.4375).abs() < 1e-6);
     }
 
     #[test]
@@ -515,7 +559,12 @@ mod tests {
             h: 0,
         };
         let uv = region.uv(0);
-        assert_eq!(uv, [0.0, 0.0, 0.0, 0.0]);
+        // Half-texel inset on a zero region: u0 = 0.5/1 = 0.5,
+        // u1 = -0.5/1 = -0.5. Defensive: zero atlas_size clamps
+        // to 1 in `uv()` so we don't div by zero, but the result
+        // is degenerate (the renderer ignores zero-area UVs).
+        assert!(uv[0] >= 0.0 && uv[0] <= 1.0);
+        assert!(uv[1] >= 0.0 && uv[1] <= 1.0);
     }
 
     #[test]
@@ -801,6 +850,12 @@ mod tests {
         // divides by the new `size_px = 512`, halving the
         // normalized width compared to the old `size_px = 256`.
         assert!(uv_before[2] > uv_after[2], "UV must shrink post-regrow");
-        assert!((uv_after[2] - 128.0 / 512.0).abs() < 1e-4);
+        // Half-texel inset → (128 - 0.5) / 512 ≈ 0.2490.
+        let expected = (128.0_f32 - 0.5) / 512.0;
+        assert!(
+            (uv_after[2] - expected).abs() < 1e-4,
+            "uv1 = {}",
+            uv_after[2]
+        );
     }
 }

@@ -122,13 +122,12 @@ pub fn paint_left_rail(
         "SPACE",
     ));
     // TOOL_PROJECTION ("Persp / PROJ") hidden — not used yet.
-    // ADR-0025 M14.4b.bis: mode 3 = "Zero" → clicking the button
-    // while landing on this mode resets the camera to origin (see
-    // `HeroScreen::apply_event` TOOL_HOME branch).
+    // M14.7 polish: 3-mode cycle (Selected → Camera → All). Click
+    // executes the current mode AND advances the label. F/Home key
+    // is a shortcut that always runs Selected.
     let view_face = match store.tool_view_mode() {
         1 => "Camera",
         2 => "All",
-        3 => "Zero",
         _ => "Selected",
     };
     rail_entries.push(ToolRailEntry::compound(

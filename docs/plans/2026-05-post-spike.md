@@ -560,6 +560,81 @@ antes de cada fase do loop:
 Aplica a Atlas V2 (D), M14.5, M14.6, M14.7, Telemetria (F), Inspector
 polish (E). Skip pra fixes de bug menores.
 
+## M14.5 inspector phase — Sprite Render Source + Reimport (planned)
+
+A spec adicional pra quando o Inspector ganhar live-binding na entidade selecionada (depende de `gizmo_selection` já estar em produção — feito em M14.7 A).
+
+### Sub-panel "Render Source" (dropdown 3 strategies)
+
+Quando uma entity com `Sprite` é selecionada, surge "Render Source" no Inspector:
+```
+Strategy: [Dynamic Atlas ▾]
+          • Dynamic Atlas (auto)
+          • Hand-packed Atlas (manual JSON+PNG)
+          • Individual Texture (Godot-style)
+```
+
+Cada escolha troca `Sprite::source` na entity:
+- **Dynamic Atlas** (M14.4d): `SpriteSource::Atlas { key }` — atlas compartilhado, packing runtime
+- **Hand-packed Atlas** (M14.5 B + futuro renderer integration): `SpriteSource::HandPacked { atlas_id, region_index }` — sheet curado
+- **Individual Texture** (M14.5 C): `SpriteSource::Individual { texture_id }` — textura própria, Godot-style batching
+
+Trocar de strategy:
+1. Strategy atual: chamar `release` se Individual ou liberar slot atlas
+2. Strategy nova: `acquire` no store apropriado
+3. Atualizar Sprite component
+
+### Botão "Reimport"
+
+Abaixo do dropdown:
+```
+[ Reimport at current px/m ]
+```
+
+Quando o user altera `pixels_per_meter` global (M14.4d Settings) mas o sprite foi importado com o valor anterior, o `Sprite.size` ficou stale. Reimport:
+1. Lê o `Asset::ImageRgba8` original do AssetDb (via `atlas_asset_map[key]`)
+2. Recalcula `size = source_pixels / current_pixels_per_meter`
+3. Atualiza o `Sprite` component em SimWorld (sem reimportar bytes — só recalcula world size)
+
+Implementação estimada: ~200 linhas (Inspector binding + Sprite refactor) + ~80 linhas (reimport handler).
+
+## M14.7 polish — rename mode + long-press (planned)
+
+A hierarchy row's right-click menu currently lists Duplicate / Add Child / Reset Transform / Delete (M14.6 F shipped). Two more interactions remain:
+
+- **Double-click on row** → focus on entity (shipped M14.7 polish — uses `WidgetEvent::DoubleClick`).
+- **Long-press (≥ 500 ms hold) on row** → enter inline rename mode. Replaces the row's name label with a TextInput; Enter commits the new name, Esc cancels. Estimated ~250 linhas (state machine + inline TextInput + Name component write-back).
+
+## M14.4g+ telemetry — raw fps (planned)
+
+Status bar currently shows fps + frame_ms derived from wall-clock between frames. With vsync on (default), this caps at the display refresh rate (60 Hz / 120 Hz). Per user feedback, add a "raw" fps reading derived from CPU+GPU work time per frame (excludes vsync wait), so the user can gauge headroom for new sprites/effects.
+
+- `BottomHudStats.frame_cpu_ms: f32` — host measures `Instant::now()` delta between start of `render_frame` and end of `queue.submit` (before `present`)
+- Status bar shows: `60 fps · 16.7 ms · ~2400 raw`
+- Useful for: "I added 1000 sprites and raw fps dropped to 800 — that's a 0.4 ms cost per sprite"
+
+Estimated: ~30 linhas (instrumentation + new BottomHudStats field + paint format).
+
+## M14 settings UX — cascade submenu (planned)
+
+The TopBar gear icon (`TOPBAR_SETTINGS`) currently opens a flat menu with 5 `pixels_per_meter` presets. As more global settings land (snap_move / snap_rotate / theme tokens / etc.), the flat list won't scale. Planned restructure:
+
+```
+[gear icon] → SettingsMenu (top-level categories)
+    ├─ Pixels per meter ▸  → submenu (the 5 presets)
+    ├─ Snap settings ▸     → submenu (move + rotate steps)
+    ├─ Theme ▸             → submenu (4 themes + radius scale)
+    └─ Show grid · G       → toggle inline
+```
+
+Implementation:
+- New `ContextMenuKind::SubmenuRequest { parent_kind, anchor }` variant
+- Painter for top-level entries reserves a right-side chevron when item has submenu
+- Click on a parent entry opens submenu adjacent (mirrors macOS native menu pattern shown in user's reference)
+- Menu items with no submenu fire their action as before
+
+Estimated: ~400 linhas (menu state-machine + painter + dispatch).
+
 ## Backlog técnico (sem marco assignado)
 
 ### Telemetria de render real (substituir placeholder da status bar)

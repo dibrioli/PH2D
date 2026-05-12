@@ -8,7 +8,7 @@ use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::VectorScene;
+use ph2d_vector::{Color as VelloColor, VectorScene};
 
 pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
     scene.fill_rect(
@@ -37,12 +37,19 @@ pub fn paint_drop_overlay(
     if paths.is_empty() {
         return;
     }
-    // Scrim: accent-tinted soft fill covering the canvas. Uses
-    // `AccentSoft` so the user gets a brand-coherent hint rather than
-    // a generic gray. Lower α than the design tokens supply so the
-    // canvas content stays partially visible underneath.
+    // Scrim: translucent dark-gray fill covering the canvas. We use
+    // a literal RGBA so the result reads the same across all themes
+    // (the AccentSoft token varies hue per theme, which made the
+    // overlay flash red on the Forge theme — user reported it as
+    // "not translucent + uses accent color"). 50% α is high enough
+    // to dim the content but still lets the user verify where the
+    // sprite will land.
     let scrim = layout.canvas;
-    scene.fill_rect(rect_to_vello(scrim), resolve(ColorToken::AccentSoft, theme));
+    let _ = theme; // overlay color is theme-independent on purpose
+    scene.fill_rect(
+        rect_to_vello(scrim),
+        VelloColor::from_rgba8(0x12, 0x14, 0x18, 0x80),
+    );
 
     // Centered card with file count + first filename. The card sits
     // in the canvas center; size auto-grows with the filename but is
@@ -78,7 +85,7 @@ pub fn paint_drop_overlay(
         card,
         Radius::Md.px(),
         1.0,
-        resolve(ColorToken::Accent, theme),
+        resolve(ColorToken::Border, theme),
     );
 
     let label_y = card.y + (card.h - TypeToken::Base.px()) * 0.5;

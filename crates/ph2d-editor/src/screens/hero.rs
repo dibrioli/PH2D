@@ -41,7 +41,7 @@ pub mod topbar;
 pub use bottom_hud::{BottomHudStats, paint_bottom_hud};
 pub use canvas::{paint_canvas_bg, paint_drop_overlay};
 pub use color_picker_demo::paint_blender_picker_demo;
-pub use hierarchy::paint_hierarchy;
+pub use hierarchy::{paint_hierarchy, set_live_component_count};
 pub use inspector::paint_inspector;
 pub use left_rail::paint_left_rail;
 pub use selection::paint_selection_overlay;
@@ -288,6 +288,28 @@ pub struct HeroScreen {
     /// and updates `gizmo_selection` so the canvas gizmo follows
     /// the hierarchy click.
     pub pending_hierarchy_row_click: Option<NodeId>,
+    /// M14.7 polish: pending request to reframe the camera. Raised by
+    /// the F/Home key or the VIEW button on the left rail; the host
+    /// drains and updates `Camera2d::center` (and `height_world` for
+    /// `All`) on the next frame.
+    pub pending_view_focus: Option<ViewFocusKind>,
+}
+
+/// Which framing action the VIEW button (TOOL_HOME) + F/Home key
+/// should run when the user triggers a reframe.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ViewFocusKind {
+    /// Focus on the currently selected sprite. Falls back to (0,0)
+    /// when no selection. Doesn't change zoom.
+    Selected,
+    /// Focus the active camera. No camera-object exists yet, so the
+    /// host pans to (0,0). Doesn't change zoom.
+    Camera,
+    /// Frame all sprites in the scene. Walks PresentWorld for every
+    /// `(GlobalTransform, RenderInstance)` and adjusts both center +
+    /// height_world so they all fit (with a 10% padding margin).
+    /// Empty scene falls back to (0,0) + default zoom.
+    All,
 }
 
 /// M14.6B host-side reparent intent. Mirrors the
@@ -335,6 +357,7 @@ impl HeroScreen {
             gizmo_view: None,
             gizmo_drag: None,
             pending_hierarchy_row_click: None,
+            pending_view_focus: None,
         }
     }
 
@@ -567,16 +590,19 @@ impl HeroScreen {
                 return true;
             }
             if id == ids::TOOL_HOME {
-                // M14.4b.bis: 4-mode cycle (Selected → Camera → All
-                // → Zero). When landing on Zero (mode 3), raise
-                // `camera_reset_pending` so the host resets its
-                // `Camera2d`. Other modes are placeholders for
-                // future frame-selection / frame-all actions.
-                let next = (self.store.tool_view_mode() + 1) % 4;
+                // M14.7 polish: 3-mode cycle (Selected → Camera →
+                // All). Each click EXECUTES the current mode and
+                // then advances the label so the user can chain
+                // actions or see what's next.
+                let current = self.store.tool_view_mode();
+                let kind = match current {
+                    1 => ViewFocusKind::Camera,
+                    2 => ViewFocusKind::All,
+                    _ => ViewFocusKind::Selected,
+                };
+                self.pending_view_focus = Some(kind);
+                let next = (current + 1) % 3;
                 self.store.set_tool_view_mode(next);
-                if next == 3 {
-                    self.camera_reset_pending = true;
-                }
                 return true;
             }
             // Transform tools are an EXCLUSIVE toggle group (a radio
@@ -749,6 +775,19 @@ impl HeroScreen {
             && live.contains_key(&id)
         {
             self.pending_hierarchy_row_click = Some(id);
+        }
+        // M14.7 polish: double-click on a hierarchy row → focus the
+        // entity (same intent as F/Home, but explicit gesture on the
+        // panel). We still raise `pending_hierarchy_row_click` so the
+        // gizmo selection updates first; then the view-focus drain
+        // pans the camera onto the freshly-selected entity.
+        if let WidgetEvent::DoubleClick(id) = event
+            && let Some(live) = self.live_hierarchy_entries.as_ref()
+            && live.contains_key(&id)
+        {
+            self.pending_hierarchy_row_click = Some(id);
+            self.pending_view_focus = Some(ViewFocusKind::Selected);
+            return true;
         }
         if hierarchy::apply_event(
             &mut self.store,

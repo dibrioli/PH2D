@@ -2177,6 +2177,15 @@ fn apply_click<'a>(
     id: ph2d_a11y::NodeId,
     events: &mut BumpVec<'a, WidgetEvent>,
 ) {
+    // Upgrade to `DoubleClick(id)` when the matching Down flagged
+    // this as a double-click on the same id. Consumed once per
+    // gesture so a single click after that doesn't carry the flag.
+    let pending = store.take_pending_double_click();
+    let click_event = if pending == Some(id) {
+        WidgetEvent::DoubleClick(id)
+    } else {
+        WidgetEvent::Click(id)
+    };
     match store.get_mut(id) {
         Some(InteractiveState::Toggle { on, .. }) => {
             *on = !*on;
@@ -2197,12 +2206,12 @@ fn apply_click<'a>(
             *open = !*open;
         }
         Some(InteractiveState::Button { .. }) | Some(InteractiveState::Plain) => {
-            events.push(WidgetEvent::Click(id));
+            events.push(click_event);
         }
         // Phase D adds per-kind click semantics (Tabs select,
         // Modal dismiss, TreeView select, ContextMenu item, etc.).
         _ => {
-            events.push(WidgetEvent::Click(id));
+            events.push(click_event);
         }
     }
 }

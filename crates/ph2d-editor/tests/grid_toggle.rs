@@ -54,31 +54,37 @@ fn show_grid_menu_entry_toggles_visibility() {
     assert!(hero.grid_visible);
 }
 
-/// M14.4b.bis: View button (TOOL_HOME) advances through 4 modes;
-/// landing on mode 3 ("Zero") raises `camera_reset_pending` so the
-/// host knows to reset its Camera2d. Modes 0/1/2 are placeholders
-/// (frame selected / camera / all) and do NOT raise the flag.
+/// M14.7 polish: VIEW button (TOOL_HOME) cycles through 3 modes —
+/// Selected → Camera → All → Selected — and raises a
+/// `pending_view_focus` intent each click for the host to apply.
+/// `camera_reset_pending` is no longer used by this path (kept for
+/// shells that still raise it directly).
 #[test]
-fn view_button_zero_mode_raises_camera_reset() {
+fn view_button_cycles_through_three_modes() {
+    use ph2d_editor::ViewFocusKind;
     use ph2d_editor::screens::hero::ids::TOOL_HOME;
 
     let mut hero = HeroScreen::new(NodeId(1));
-    assert!(!hero.camera_reset_pending);
+    assert!(hero.pending_view_focus.is_none());
 
-    // Click 1: 0 → 1 (Camera). No reset.
+    // Click 1: 0 (Selected). Mode advances to 1.
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert!(!hero.camera_reset_pending);
-    // Click 2: 1 → 2 (All). No reset.
+    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::Selected));
+    hero.pending_view_focus = None;
+
+    // Click 2: 1 (Camera).
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert!(!hero.camera_reset_pending);
-    // Click 3: 2 → 3 (Zero). Reset flag raised.
+    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::Camera));
+    hero.pending_view_focus = None;
+
+    // Click 3: 2 (All).
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert!(hero.camera_reset_pending);
-    // Caller is responsible for clearing after acting.
-    hero.camera_reset_pending = false;
-    // Click 4: 3 → 0 (Selected). Cycle wraps; no reset.
+    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::All));
+    hero.pending_view_focus = None;
+
+    // Click 4 wraps back to Selected.
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert!(!hero.camera_reset_pending);
+    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::Selected));
 }
 
 #[test]

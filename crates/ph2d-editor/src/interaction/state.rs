@@ -198,6 +198,12 @@ pub enum InteractiveState {
 pub enum WidgetEvent {
     /// Button / Tag remove / ContextMenu item / Modal cancel|confirm.
     Click(NodeId),
+    /// Two `Click(id)` events on the same widget within
+    /// `DOUBLE_CLICK_WINDOW_NS` (350 ms). Dispatcher emits this
+    /// instead of the second `Click(id)` so apply_event handlers can
+    /// branch on intent (e.g. hierarchy row → focus the entity
+    /// instead of selecting it again).
+    DoubleClick(NodeId),
     /// Toggle / Checkbox / Switch — caller reads the new state from
     /// `store.get(id)`.
     Toggled(NodeId),
@@ -269,6 +275,10 @@ pub struct WidgetStore {
     /// missed every widget) and the event timestamp.
     last_down_id: Option<NodeId>,
     last_down_at_ns: u128,
+    /// `Some(id)` between a double-click Mouse Down and the matching
+    /// Up — `apply_click` consumes this to upgrade `Click(id)` →
+    /// `DoubleClick(id)`. Reset on every confirmed take.
+    pending_double_click: Option<NodeId>,
     /// Mutable color palettes per BlenderPicker — one Vec of swatches
     /// per parent picker id. Initialized at populate time; mutated by
     /// "+ swatch" / right-click-delete dispatch paths.
@@ -564,6 +574,7 @@ impl WidgetStore {
             blender_channel_chip: BTreeMap::new(),
             last_down_id: None,
             last_down_at_ns: 0,
+            pending_double_click: None,
             blender_palettes: BTreeMap::new(),
             blender_picker_offset: BTreeMap::new(),
             blender_drag_anchor: None,
@@ -650,7 +661,21 @@ impl WidgetStore {
         // rapid click doesn't register as another double.
         self.last_down_id = if is_double { None } else { id };
         self.last_down_at_ns = timestamp_ns;
+        // Stash the upgrade hint so the matching Up emits
+        // `WidgetEvent::DoubleClick(id)` in place of the regular
+        // `Click(id)`. Cleared by `take_pending_double_click`.
+        if is_double {
+            self.pending_double_click = id;
+        }
         is_double
+    }
+
+    /// Take + clear the `pending_double_click` slot, returning the
+    /// id stored on the matching Mouse Down. `apply_click` consumes
+    /// this to upgrade `Click(id)` → `DoubleClick(id)` when the id
+    /// matches the click target.
+    pub fn take_pending_double_click(&mut self) -> Option<NodeId> {
+        self.pending_double_click.take()
     }
 
     /// Register a widget at construction time. Idempotent — repeat

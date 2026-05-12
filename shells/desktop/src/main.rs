@@ -35,7 +35,7 @@ mod hero_bridge;
 mod integration;
 
 use bumpalo::Bump;
-use ph2d_asset::AssetDb;
+use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::scene::{HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot};
 use ph2d_ecs::{
@@ -48,6 +48,7 @@ use ph2d_editor::{
     BrushTool, HeroScreen, Layout as EditorLayout, MoveTool, PanelControl, PanelEvent, Toast,
     ToastQueue, ToolRegistry, WidgetEvent, ZenMode, paint_hero_screen,
 };
+use std::collections::BTreeMap;
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
 use ph2d_editor::NodeId;
 use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
@@ -261,9 +262,15 @@ struct AppGfx {
     /// the key space is effectively unbounded (the underlying packer
     /// runs out of pixel space before `u32` does), so we just
     /// increment monotonically — no cycling, no overwrite. When
-    /// the atlas does run out of room the `insert_atlas_sprite`
-    /// call surfaces `AtlasInsertError::AtlasFull` as a toast.
+    /// the atlas does run out of room the regrow path
+    /// (`insert_atlas_sprite_with_regrow`) uses `atlas_asset_map` to
+    /// recover each existing region's source bytes from `asset_db`.
     next_import_cell: u32,
+    /// M14.7 polish: atlas-key → AssetId map kept in sync with each
+    /// import. Drives the regrow callback so doubling the atlas
+    /// texture preserves every previously-imported sprite. BTreeMap
+    /// per HR-5 / ADR-0022.
+    atlas_asset_map: BTreeMap<u32, AssetId>,
 }
 
 /// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
@@ -314,6 +321,14 @@ struct App {
     /// dragged together). Cleared on `HoveredFileCancelled` or after
     /// `DroppedFile` is handled.
     hovered_files: Vec<std::path::PathBuf>,
+    /// M14.7 polish (7.3 fix): paths queued by `DroppedFile` events.
+    /// winit fires `DroppedFile` once per file when the user drops
+    /// multiple, but if any one event is lost (e.g. another window
+    /// event consumes the loop iteration) sprites silently go missing.
+    /// We buffer here and drain at the start of `render_frame` so
+    /// every path that reached us imports atomically, regardless of
+    /// event interleaving.
+    pending_drops: Vec<std::path::PathBuf>,
     /// M14.4g Telemetry Phase A: EWMA-smoothed frame time pushed to
     /// the hero's `BottomHudStats` each frame so the status bar shows
     /// real fps/ms instead of the M5 placeholder strings. α=0.1 —
@@ -362,6 +377,7 @@ impl App {
             pan_anchor: None,
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),
+            pending_drops: Vec::new(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.
@@ -479,6 +495,7 @@ impl App {
                 next_key,
                 path,
                 pixels_per_meter,
+                &mut gfx.atlas_asset_map,
             );
             gfx.camera.center = saved_center;
             match result {
@@ -534,12 +551,21 @@ impl App {
                 gfx.toasts.push(Toast::info("Tool → Move"));
                 self.title_dirty = true;
             }
-            // M14.4b.bis: reset camera (pan + zoom) to default. Home
-            // is the conventional "go to origin" key; F is the
-            // Blender / Maya "frame view" shortcut.
+            // M14.7 polish: F / Home = frame the currently selected
+            // sprite. Falls back to (0, 0) when nothing is selected
+            // (Blender / Maya "frame view" semantics). Raises a
+            // pending intent on the hero — the render_frame drain
+            // resolves the selection and updates `gfx.camera`.
             KeyCode::Home | KeyCode::KeyF => {
-                gfx.camera = Camera2d::default();
-                gfx.toasts.push(Toast::info("Camera → reset"));
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.pending_view_focus = Some(ph2d_editor::ViewFocusKind::Selected);
+                } else {
+                    // No hero panel — fall back to legacy "reset
+                    // camera" so the non-editor demo mode still has
+                    // a way to recover from a bad pan/zoom.
+                    gfx.camera = Camera2d::default();
+                    gfx.toasts.push(Toast::info("Camera → reset"));
+                }
                 self.title_dirty = true;
             }
             // M14.4b: toggle grid visibility. The context-menu entry
@@ -785,6 +811,22 @@ impl App {
         self.pump_gamepad();
         self.push_input_to_script();
 
+        // M14.7 polish (7.3 fix): drain `pending_drops` atomically
+        // BEFORE the render walks PresentWorld. Each path imports
+        // exactly once, so a batch drop of N files always produces
+        // exactly N sprites (winit's per-event timing no longer
+        // matters). Clear the hover overlay here too — the gesture
+        // is over the moment the first DroppedFile arrived.
+        if !self.pending_drops.is_empty() {
+            let paths = std::mem::take(&mut self.pending_drops);
+            self.hovered_files.clear();
+            if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                hero.dragging_files = None;
+            }
+            self.handler.on_file_drop(&paths);
+            self.handle_dropped_files(&paths);
+        }
+
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -815,6 +857,7 @@ impl App {
             worklist,
             hero_live,
             next_import_cell,
+            atlas_asset_map,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -1073,6 +1116,23 @@ impl App {
                 sprite_count,
                 entity_count,
             };
+            // Hierarchy counts use PresentWorld's archetype components
+            // (Transform + Sprite + Visibility + ChildOf + Children).
+            // It's a proxy — exactly the components the editor's
+            // snapshot pipeline observes per entity. Multiplying by
+            // entity count is a rough estimate; counting via archetype
+            // walk is cheap enough at editor scales.
+            let component_count = {
+                let world = sim.world();
+                let mut total = 0u32;
+                for archetype in world.archetypes().iter() {
+                    let len = archetype.len();
+                    let comps = archetype.components().len() as u32;
+                    total = total.saturating_add(len.saturating_mul(comps));
+                }
+                total
+            };
+            ph2d_editor::set_live_component_count(component_count);
             // M14.7 B: publish the gizmo's per-frame projection. When
             // the selection still resolves to a present entity (it can
             // vanish if the user deleted it between frames) we build a
@@ -1097,11 +1157,81 @@ impl App {
             });
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // M14.4b.bis: drain pending camera-reset request from
-            // the VIEW button (TOOL_HOME → Zero mode).
+            // the VIEW button (legacy "Zero" mode — kept around for
+            // shells that still raise it).
             if hero.camera_reset_pending {
                 hero.camera_reset_pending = false;
                 *camera = Camera2d::default();
                 toasts.push(Toast::info("View → Zero (camera reset)"));
+                self.title_dirty = true;
+            }
+            // M14.7 polish: drain pending view-focus intent (F/Home
+            // key OR VIEW button click). Per `ViewFocusKind`:
+            //   - `Selected`: pan to gizmo_selection or (0,0).
+            //   - `Camera`: pan to (0,0) until camera-object exists.
+            //   - `All`: pan + zoom to fit all sprites.
+            if let Some(kind) = hero.pending_view_focus.take() {
+                let label = match kind {
+                    ph2d_editor::ViewFocusKind::Selected => {
+                        let target = hero.gizmo_selection.and_then(|bits| {
+                            ph2d_render::selection_bbox_world(present.world_mut(), bits)
+                        });
+                        if let Some(bbox) = target {
+                            let ([cx, cy], _) = bbox.center_half();
+                            camera.center = [cx, cy];
+                            "View → Selected"
+                        } else {
+                            camera.center = [0.0, 0.0];
+                            "View → Selected (no selection → origin)"
+                        }
+                    }
+                    ph2d_editor::ViewFocusKind::Camera => {
+                        // No camera-object yet — frame the origin.
+                        camera.center = [0.0, 0.0];
+                        "View → Camera (origin)"
+                    }
+                    ph2d_editor::ViewFocusKind::All => {
+                        // Walk PresentWorld for every sprite's bbox
+                        // and fit camera around the union. 10% pad
+                        // so handles + the bbox stroke have room.
+                        let mut q = present
+                            .world_mut()
+                            .query::<(&ph2d_ecs::GlobalTransform, &ph2d_render::RenderInstance)>();
+                        let mut min_x = f32::INFINITY;
+                        let mut min_y = f32::INFINITY;
+                        let mut max_x = f32::NEG_INFINITY;
+                        let mut max_y = f32::NEG_INFINITY;
+                        let mut count = 0u32;
+                        for (gt, ri) in q.iter(present.world()) {
+                            let p = gt.translation();
+                            let hw = ri.size[0] * 0.5;
+                            let hh = ri.size[1] * 0.5;
+                            min_x = min_x.min(p.x - hw);
+                            min_y = min_y.min(p.y - hh);
+                            max_x = max_x.max(p.x + hw);
+                            max_y = max_y.max(p.y + hh);
+                            count += 1;
+                        }
+                        if count > 0 {
+                            let cx = (min_x + max_x) * 0.5;
+                            let cy = (min_y + max_y) * 0.5;
+                            let span_x = max_x - min_x;
+                            let span_y = max_y - min_y;
+                            // Height needed = max of (span_y,
+                            // span_x/aspect) × 1.1 for padding.
+                            let aspect =
+                                (window_size.width as f32) / (window_size.height.max(1) as f32);
+                            let need_h = span_y.max(span_x / aspect.max(1e-3));
+                            camera.center = [cx, cy];
+                            camera.height_world = (need_h * 1.1).max(0.5);
+                            "View → All"
+                        } else {
+                            *camera = Camera2d::default();
+                            "View → All (empty scene → reset)"
+                        }
+                    }
+                };
+                toasts.push(Toast::info(label));
                 self.title_dirty = true;
             }
             // M14.6A: drain pending hierarchy visibility toggle —
@@ -1277,6 +1407,7 @@ impl App {
                             *next_import_cell,
                             &path,
                             pixels_per_meter,
+                            atlas_asset_map,
                         ) {
                             Ok(spawned_label) => {
                                 // Monotonic increment — the Skyline atlas
@@ -1590,7 +1721,15 @@ impl ApplicationHandler for App {
         // chrome is replaced with the `02-editor-main` mockup
         // composition, and pointer/key events flow through the
         // ADR-0024 interaction pipeline.
-        let hero_screen = if std::env::var("PH2D_HERO_SCREEN").as_deref() == Ok("1") {
+        //
+        // M14.4a+: `PH2D_HERO_LIVE=1` implies `PH2D_HERO_SCREEN=1`.
+        // The live ECS bridge can't render without the hero panel
+        // owning the WidgetStore + HitIndex; requiring both env vars
+        // separately was a footgun (G shortcut + grid toggle silently
+        // no-op'd when only `LIVE` was set).
+        let hero_screen_enabled =
+            std::env::var("PH2D_HERO_SCREEN").as_deref() == Ok("1") || hero_live_enabled;
+        let hero_screen = if hero_screen_enabled {
             Some(HeroScreen::new(NodeId(1)).theme(theme))
         } else {
             None
@@ -1627,6 +1766,7 @@ impl ApplicationHandler for App {
             worklist,
             hero_live,
             next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
+            atlas_asset_map: BTreeMap::new(),
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -1675,20 +1815,13 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::DroppedFile(path) => {
-                // winit fires DroppedFile once PER FILE — and the
-                // matching HoveredFile already populated
-                // `hovered_files` for the overlay. We must NOT
-                // accumulate the dropped path again (that was the
-                // M14.4e v1 bug that double-imported every drop).
-                // Process exactly this one path here; the overlay
-                // buffer is cleared so the next drop starts fresh.
-                self.hovered_files.clear();
-                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                    hero.dragging_files = None;
-                }
-                let paths = vec![path];
-                self.handler.on_file_drop(&paths);
-                self.handle_dropped_files(&paths);
+                // M14.7 polish (7.3 fix): winit fires `DroppedFile`
+                // once PER FILE on macOS but the events arrive across
+                // multiple loop iterations. Importing inline on each
+                // event was racy — some imports silently dropped when
+                // an event came in mid-render. Buffer the path here;
+                // `render_frame` drains `pending_drops` atomically.
+                self.pending_drops.push(path);
                 if let Some(host) = self.host.as_ref() {
                     host.request_redraw();
                 }
@@ -1899,14 +2032,22 @@ impl ApplicationHandler for App {
                                     });
                                 }
                             } else if hero.store.panel_at(evt.x, evt.y).is_none()
-                                && hit_id
-                                    .map(ph2d_editor::is_gizmo_handle_id)
-                                    .map(|b| !b)
-                                    .unwrap_or(true)
+                                && hero.store.context_menu().is_none()
+                                && hit_id.is_none()
                             {
-                                // Canvas pick (M14.7 A) — but only when
-                                // the click did NOT begin a gizmo drag
-                                // and the cursor is outside chrome.
+                                // Canvas pick (M14.7 A) — but only when:
+                                // 1. The click did NOT begin a gizmo drag.
+                                // 2. The cursor is outside chrome panels.
+                                // 3. NO context menu is currently open
+                                //    (clicking on a menu item must not
+                                //    also hijack as a canvas click → was
+                                //    the M14.6 F regression user reported).
+                                // 4. No widget id was hit at all
+                                //    (search field, menu item, etc. all
+                                //    register hit rects in HitIndex; if
+                                //    any of those resolves, the dispatch
+                                //    consumes the click and canvas pick
+                                //    must stay out of the way).
                                 let window_size = gfx.surface.size();
                                 let world_pos =
                                     gfx.camera.screen_to_world((evt.x, evt.y), window_size);
@@ -1915,6 +2056,39 @@ impl ApplicationHandler for App {
                                     world_pos,
                                 );
                                 hero.gizmo_selection = picked;
+                                // M14.7 polish: same-click select +
+                                // drag. Without this the user has to
+                                // click twice — once to select, once
+                                // to grab the bbox-interior handle —
+                                // because the gizmo isn't painted (so
+                                // its handles aren't in hit_index) on
+                                // the frame of the initial pick. We
+                                // start a Translate drag using the
+                                // picked sprite's Transform snapshot;
+                                // if the user releases without moving,
+                                // the math returns delta=0 → Transform
+                                // unchanged → visually identical to a
+                                // pure selection click.
+                                if let Some(bits) = picked {
+                                    let entity = ph2d_ecs::Entity::from_bits(bits);
+                                    if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
+                                        let snap_t = ph2d_editor::TransformSnapshot {
+                                            translation: [t.translation.x, t.translation.y],
+                                            rotation: t.rotation,
+                                            scale: [t.scale.x, t.scale.y],
+                                        };
+                                        let pivot = [t.translation.x, t.translation.y];
+                                        hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
+                                            kind: ph2d_editor::GizmoDragKind::Translate,
+                                            entity_bits: bits,
+                                            start_screen: (evt.x, evt.y),
+                                            cursor_screen: (evt.x, evt.y),
+                                            start_transform: snap_t,
+                                            pivot_world: pivot,
+                                            start_cursor_world: world_pos,
+                                        });
+                                    }
+                                }
                                 // M14.6 D: canvas-pick → hierarchy sync.
                                 // Resolve entity bits → bridge NodeId →
                                 // live entry → update `hero.selection`
@@ -2238,6 +2412,11 @@ fn forward_wheel_to_hero(gfx: Option<&mut AppGfx>, event: ph2d_host::WheelEvent)
 ///
 /// Returns the human-readable label that was assigned to the
 /// spawned entity (so the host can show it in a toast).
+// Helper has 8 args because the import path is a top-level fixture
+// orchestrator that needs full access to sim/renderer/asset_db plus
+// the camera + per-import inputs. Splitting into a struct would just
+// move the noise — every call site already destructures `AppGfx`.
+#[allow(clippy::too_many_arguments)]
 fn import_image_at_camera(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -2246,6 +2425,7 @@ fn import_image_at_camera(
     cell_idx: u32,
     path: &std::path::Path,
     pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
 ) -> Result<String, String> {
     let bytes = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
     let asset_id = asset_db
@@ -2262,19 +2442,56 @@ fn import_image_at_camera(
         } => (*width, *height, pixels.clone()),
         _ => return Err(format!("{asset_id} is not ImageRgba8 after decode")),
     };
-    // Pack at native resolution. The Skyline atlas reserves a
-    // `width × height` region; no resize is applied so the source
-    // keeps full pixel fidelity. Errors here are atlas-full /
-    // source-too-large — surface them to the toast caller.
-    renderer
-        .insert_atlas_sprite(cell_idx, width, height, &pixels)
-        .map_err(|e| format!("atlas insert {}: {e}", path.display()))?;
+    // M14.7 polish: pack via the regrow path so a 2nd / 3rd 4K
+    // import doubles the atlas instead of failing with AtlasFull.
+    // The closure recovers each existing region's source bytes from
+    // `asset_db` via `atlas_asset_map[key] → AssetId`. Track this
+    // import's mapping BEFORE the insert so a regrow triggered by
+    // it sees the new key.
+    atlas_asset_map.insert(cell_idx, asset_id);
+    let fetch_pixels = |key: u32| -> Option<Vec<u8>> {
+        let aid = atlas_asset_map.get(&key)?;
+        let asset = asset_db.get(aid)?;
+        match &*asset {
+            // `pixels` is `Arc<[u8]>`; the regrow callback wants an
+            // owned `Vec<u8>` because the underlying packer may
+            // outlive the asset borrow.
+            ph2d_asset::Asset::ImageRgba8 { pixels, .. } => Some(pixels.to_vec()),
+            _ => None,
+        }
+    };
+    if let Err(e) =
+        renderer.insert_atlas_sprite_with_regrow(cell_idx, width, height, &pixels, fetch_pixels)
+    {
+        // On failure, roll back the map insert so the next import
+        // doesn't see a dangling key → nonexistent atlas region.
+        atlas_asset_map.remove(&cell_idx);
+        return Err(format!("atlas insert {}: {e}", path.display()));
+    }
 
-    let label = path
+    let base_label = path
         .file_stem()
         .and_then(|s| s.to_str())
         .map(|s| s.to_owned())
         .unwrap_or_else(|| format!("imported_{cell_idx}"));
+    // M14.7 polish: enforce unique entity names. Without this, the
+    // same image imported N times produced N rows all sharing the
+    // same `Name`, and the M14.6 D selection-by-label sync would
+    // highlight every row when one of the duplicates was canvas-
+    // picked. We scan the SimWorld for an existing match and append
+    // `_{cell_idx}` (monotonic, never repeats) on collision.
+    let label = {
+        let world = sim.world_mut();
+        let mut q = world.query::<&Name>();
+        let collides = q
+            .iter(world)
+            .any(|n: &Name| n.as_str() == base_label.as_str());
+        if collides {
+            format!("{base_label}_{cell_idx}")
+        } else {
+            base_label
+        }
+    };
     let spawn_pos = Vec2::new(camera.center[0], camera.center[1]);
     // Sprite world size = source pixels / pixels_per_meter. With the
     // Skyline atlas the source bytes are stored at full resolution,

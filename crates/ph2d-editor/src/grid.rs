@@ -58,11 +58,19 @@ pub struct GridConfig {
     pub color_minor: ColorToken,
     /// Color token for major lines.
     pub color_major: ColorToken,
-    /// Color token for the world axes (X and Y == 0).
+    /// Color token for the world axes when no per-axis override is
+    /// set. Kept for backward compat — `paint_grid` prefers the
+    /// per-axis RGBA fields below when they're set.
     pub color_axis: ColorToken,
     /// Stroke width of the world axes (always painted, regardless
     /// of LOD).
     pub stroke_axis: f32,
+    /// X-axis color (Blender / Maya convention: red). Bypasses the
+    /// `color_axis` token so the axis cue stays consistent regardless
+    /// of the active theme.
+    pub color_axis_x_rgba: [u8; 4],
+    /// Y-axis color (Blender / Maya convention: green).
+    pub color_axis_y_rgba: [u8; 4],
 }
 
 impl Default for GridConfig {
@@ -76,6 +84,11 @@ impl Default for GridConfig {
             color_major: ColorToken::GridAxis,
             color_axis: ColorToken::GridAxis,
             stroke_axis: 1.4,
+            // Blender / Maya convention: X red, Y green. Tuned a
+            // little darker than pure (255, 0, 0) / (0, 255, 0) so
+            // the axis lines don't blow out HDR tonemap.
+            color_axis_x_rgba: [0xD0, 0x40, 0x40, 0xFF],
+            color_axis_y_rgba: [0x40, 0xC0, 0x60, 0xFF],
         }
     }
 }
@@ -208,24 +221,36 @@ pub fn paint_grid(scene: &mut VectorScene, theme: Theme, view: &GridView, config
         resolve(config.color_major, theme),
     );
 
-    // Axis pass: only paint when the camera actually sees x=0 or y=0.
-    let mut axis_path = BezPath::new();
+    // Axis pass: paint X and Y separately so each gets its canonical
+    // color (Blender/Maya convention: X red, Y green). Only emits a
+    // path when the camera actually sees that axis.
+    let _ = theme; // axis colors come from the RGBA literals, not the theme
     if bounds.left <= 0.0 && bounds.right >= 0.0 {
+        // The vertical line at world x=0 IS the Y axis.
         let sx = world_to_screen_x(0.0, &bounds, view);
-        axis_path.move_to((sx as f64, view.canvas.y as f64));
-        axis_path.line_to((sx as f64, (view.canvas.y + view.canvas.h) as f64));
-    }
-    if bounds.bottom <= 0.0 && bounds.top >= 0.0 {
-        let sy = world_to_screen_y(0.0, &bounds, view);
-        axis_path.move_to((view.canvas.x as f64, sy as f64));
-        axis_path.line_to(((view.canvas.x + view.canvas.w) as f64, sy as f64));
-    }
-    if !axis_path.is_empty() {
+        let mut path = BezPath::new();
+        path.move_to((sx as f64, view.canvas.y as f64));
+        path.line_to((sx as f64, (view.canvas.y + view.canvas.h) as f64));
+        let [r, g, b, a] = config.color_axis_y_rgba;
         stroke_path(
             scene,
-            &axis_path,
+            &path,
             config.stroke_axis,
-            resolve(config.color_axis, theme),
+            ph2d_vector::Color::from_rgba8(r, g, b, a),
+        );
+    }
+    if bounds.bottom <= 0.0 && bounds.top >= 0.0 {
+        // The horizontal line at world y=0 IS the X axis.
+        let sy = world_to_screen_y(0.0, &bounds, view);
+        let mut path = BezPath::new();
+        path.move_to((view.canvas.x as f64, sy as f64));
+        path.line_to(((view.canvas.x + view.canvas.w) as f64, sy as f64));
+        let [r, g, b, a] = config.color_axis_x_rgba;
+        stroke_path(
+            scene,
+            &path,
+            config.stroke_axis,
+            ph2d_vector::Color::from_rgba8(r, g, b, a),
         );
     }
 

@@ -417,7 +417,12 @@ const HANDLE_SIZE_PX: f32 = 12.0;
 /// hover ring sits.
 const ROTATE_HANDLE_OFFSET: f32 = 12.0;
 /// Side length of the pivot dot.
-const PIVOT_DOT_SIZE: f32 = 6.0;
+/// Diameter of the pivot ring drawn at the bbox center. 12 px per
+/// user feedback — visible enough to grab with the cursor without
+/// overlapping the interior bbox-translate hit. Rendered as a
+/// hollow ring (stroke, not fill) in a fixed red color across all
+/// themes for unambiguous rotation-anchor identity.
+const PIVOT_DOT_SIZE: f32 = 12.0;
 
 /// Project a world-space point to screen pixels using the same Y-flip
 /// math the grid painter uses ([`crate::grid`]). Inlined here so the
@@ -535,20 +540,23 @@ pub fn paint_sprite_gizmo(
         PIVOT_DOT_SIZE,
     );
     hit_index.register(ids::GIZMO_PIVOT, pivot_rect);
-    let pivot_color = resolve(ColorToken::Accent, theme);
+    // Pivot ring: hollow red circle, fixed color across themes.
+    // Theme-independent so the rotation anchor reads the same on
+    // Forge / Workshop / Sunstone / Blueprint without changing
+    // semantic meaning.
+    let _ = theme;
+    let pivot_red = VelloColor::from_rgba8(0xE0, 0x40, 0x40, 0xFF);
     let pivot_circle = Circle::new(
         Point::new(pivot_cx as f64, pivot_cy as f64),
         (PIVOT_DOT_SIZE * 0.5) as f64,
     );
-    scene.inner_mut().fill(
-        ph2d_vector::Fill::NonZero,
+    // Stroke (not fill) so the dot is a ring with the bbox interior
+    // visible through the hole — user explicitly asked for "vazado
+    // no meio".
+    scene.inner_mut().stroke(
+        &ph2d_vector::Stroke::new(1.5),
         ph2d_vector::Affine::IDENTITY,
-        VelloColor::new([
-            pivot_color.components[0],
-            pivot_color.components[1],
-            pivot_color.components[2],
-            pivot_color.components[3],
-        ]),
+        pivot_red,
         None,
         &pivot_circle,
     );

@@ -150,7 +150,7 @@ impl EntityNodeMap {
                     indent: entry.depth,
                     badge: None,
                     swatch: None,
-                    visible: true,
+                    visible: entry.visible,
                     selected: false,
                     muted: false,
                 },
@@ -177,6 +177,7 @@ mod tests {
             name: Some(name.to_owned()),
             parent,
             depth,
+            visible: true,
         }
     }
 
@@ -257,6 +258,7 @@ mod tests {
                 name: None,
                 parent: None,
                 depth: 0,
+                visible: true,
             }],
         };
         let (ordered, entries) = m.sync_from_snapshot(&snap);

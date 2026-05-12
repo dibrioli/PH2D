@@ -64,6 +64,10 @@ pub enum IconId {
     Error,
     Export,
     EyePencil,
+    /// Lucide `eye` (M14.6A hierarchy visibility toggle, ON state).
+    Eye,
+    /// Lucide `eye-closed` (M14.6A hierarchy visibility toggle, OFF state).
+    EyeClosed,
     File,
     Folder,
     Fps,
@@ -230,6 +234,21 @@ impl IconId {
                 IconCmd::Path("M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"),
                 IconCmd::Path("M2 2l7.6 7.6"),
                 IconCmd::Circle(11.0, 11.0, 2.0),
+            ],
+            // Lucide `eye.svg` — elliptical eye outline + pupil.
+            Self::Eye => &[
+                IconCmd::Path(
+                    "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0",
+                ),
+                IconCmd::Circle(12.0, 12.0, 3.0),
+            ],
+            // Lucide `eye-closed.svg` — four lash-rays + eyelid arc.
+            Self::EyeClosed => &[
+                IconCmd::Path("M15 18l-.722-3.25"),
+                IconCmd::Path("M2 8a10.645 10.645 0 0 0 20 0"),
+                IconCmd::Path("M20 15l-1.726-2.05"),
+                IconCmd::Path("M4 15l1.726-2.05"),
+                IconCmd::Path("M9 18l.722-3.25"),
             ],
             Self::File => &[
                 IconCmd::Path("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"),
@@ -710,6 +729,8 @@ mod tests {
         IconId::Error,
         IconId::Export,
         IconId::EyePencil,
+        IconId::Eye,
+        IconId::EyeClosed,
         IconId::File,
         IconId::Folder,
         IconId::Fps,

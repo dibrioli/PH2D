@@ -240,6 +240,12 @@ pub struct HeroScreen {
     /// the bottom HUD. Host assigns directly (`hero.stats = ...`)
     /// once per frame; painter reads them in `paint_bottom_hud`.
     pub stats: BottomHudStats,
+    /// M14.6A: row NodeId whose visibility eye-icon was just clicked.
+    /// The host drains this each frame, resolves NodeId → Entity via
+    /// the bridge, and flips the `Visibility` component on
+    /// `SimWorld`. Cleared by `apply_event` after dispatch sets it
+    /// when the host reads + applies the toggle.
+    pub pending_visibility_toggle: Option<NodeId>,
 }
 
 impl HeroScreen {
@@ -265,6 +271,7 @@ impl HeroScreen {
             project: crate::project::ProjectSettings::default(),
             dragging_files: None,
             stats: BottomHudStats::default(),
+            pending_visibility_toggle: None,
         }
     }
 
@@ -408,6 +415,15 @@ impl HeroScreen {
         // intercepted at the Hero level because `self.theme` lives
         // here, not on the WidgetStore.
         if let WidgetEvent::Click(id) = event {
+            // M14.6A: hierarchy eye-toggle clicks arrive as a
+            // companion NodeId with the EYE_TOGGLE_BIT set. Route
+            // them to `pending_visibility_toggle` for the host to
+            // drain, then short-circuit so the row's regular click
+            // (selection / inspector focus) does NOT also fire.
+            if let Some(row_id) = ids::hier_eye_companion_to_row(id) {
+                self.pending_visibility_toggle = Some(row_id);
+                return true;
+            }
             let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
                 Some(Theme::Forge)
             } else if id == ids::CTX_MENU_THEME_PAINT {

@@ -52,6 +52,11 @@ pub enum BlenderHitKind {
     /// Bottom-right resize gripper. Down begins a resize; Move
     /// adjusts the parent's stored `(dw, dh)`; Up ends it.
     ResizeHandle,
+    /// M14.6A: eye icon on a hierarchy row — toggles the entity's
+    /// `Visibility` component. Parent NodeId on the `BlenderHit` is
+    /// the row's id; dispatcher sets `HeroScreen.pending_visibility_toggle`
+    /// for the host to drain and apply on `SimWorld`.
+    VisibilityToggle,
 }
 
 use crate::widget::{

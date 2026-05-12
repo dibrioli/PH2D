@@ -43,6 +43,10 @@ pub struct HierarchyEntry {
     /// Depth from root (0 = root). Caps at `u8::MAX` — deeper
     /// hierarchies saturate.
     pub depth: u8,
+    /// M14.6A: `true` when the entity is rendered; `false` when the
+    /// user has toggled the hierarchy eye-icon. Default `true` for
+    /// entities without a [`Visibility`](crate::Visibility) component.
+    pub visible: bool,
 }
 
 /// DFS-ordered flat view of the sim hierarchy. Each `build_*` pass
@@ -84,14 +88,18 @@ impl HierarchySnapshot {
 /// app; constructed once at boot from `&mut SimWorld`.
 pub struct HierarchyWalkState {
     roots: QueryState<Entity, (With<Transform>, Without<ChildOf>)>,
-    chain: QueryState<(Option<&'static Name>, Option<&'static Children>)>,
+    chain: QueryState<(
+        Option<&'static Name>,
+        Option<&'static Children>,
+        Option<&'static crate::Visibility>,
+    )>,
 }
 
 impl HierarchyWalkState {
     pub fn new(world: &mut World) -> Self {
         Self {
             roots: world.query_filtered::<Entity, (With<Transform>, Without<ChildOf>)>(),
-            chain: world.query::<(Option<&Name>, Option<&Children>)>(),
+            chain: world.query::<(Option<&Name>, Option<&Children>, Option<&crate::Visibility>)>(),
         }
     }
 }
@@ -121,7 +129,7 @@ pub fn build_hierarchy_snapshot(
     scratch.sort_unstable_by_key(|&(e, _, _)| e.to_bits());
 
     while let Some((entity, depth, parent)) = scratch.pop() {
-        let Ok((name, children)) = state.chain.get(sim_w, entity) else {
+        let Ok((name, children, vis)) = state.chain.get(sim_w, entity) else {
             continue;
         };
         out.entries.push(HierarchyEntry {
@@ -129,6 +137,7 @@ pub fn build_hierarchy_snapshot(
             name: name.map(|n| n.as_str().to_owned()),
             parent: parent.map(|p| p.to_bits()),
             depth,
+            visible: !vis.is_some_and(|v| v.hidden),
         });
         if let Some(children) = children {
             // Push children in reverse so DFS visits the first child

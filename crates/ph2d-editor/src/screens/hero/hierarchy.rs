@@ -17,7 +17,7 @@ use crate::widget::{ButtonState, Tag, TagState, TagTone, paint_tag};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
-use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, VectorScene};
+use ph2d_vector::{Color as VelloColor, VectorScene};
 
 /// Register the hierarchy header `+` button + every entity row's hit
 /// id. Entity rows are `Plain` (focusable; no per-state visual
@@ -269,7 +269,15 @@ pub fn paint_hierarchy(
         // "this is what's moving".
         entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);
         hit_index.register(*id, row_rect);
-        paint_hierarchy_row(&entity, row_rect, scene, text_system, theme);
+        paint_hierarchy_row(
+            &entity,
+            row_rect,
+            scene,
+            text_system,
+            theme,
+            Some(*id),
+            Some(hit_index),
+        );
         row_rects.push((*id, row_rect));
         y += HIER_ROW_H + 2.0;
     }
@@ -407,12 +415,15 @@ pub(super) fn set_live_entries(
     CURRENT_LIVE_ENTRIES.with(|c| *c.borrow_mut() = entries);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_hierarchy_row(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    row_id: Option<ph2d_a11y::NodeId>,
+    hit_index: Option<&mut HitIndex>,
 ) {
     if entity.selected {
         fill_rounded_rect(
@@ -450,23 +461,48 @@ fn paint_hierarchy_row(
     );
 
     let mut right_x = rect.x + rect.w - pad;
-    let visibility_color = if entity.visible {
-        ColorToken::Success
+    // M14.6A: clickable eye icon replaces the legacy visibility dot.
+    // Open eye = visible (Text2), closed eye = hidden (TextDisabled).
+    let eye_icon = if entity.visible {
+        IconId::Eye
     } else {
-        ColorToken::Border
+        IconId::EyeClosed
     };
-    let vis_r = 5.0_f32;
-    let vis_cx = right_x - vis_r;
-    let vis_cy = rect.y + rect.h * 0.5;
-    let vis_dot = Circle::new(Point::new(vis_cx as f64, vis_cy as f64), vis_r as f64);
-    scene.inner_mut().fill(
-        Fill::NonZero,
-        Affine::IDENTITY,
-        &Brush::Solid(resolve(visibility_color, theme)),
-        None,
-        &vis_dot,
+    let eye_color = if entity.visible {
+        ColorToken::Text2
+    } else {
+        ColorToken::TextDisabled
+    };
+    let eye_size = 16.0_f32;
+    let eye_rect = Rect::new(
+        right_x - eye_size,
+        rect.y + (rect.h - eye_size) * 0.5,
+        eye_size,
+        eye_size,
     );
-    right_x -= vis_r * 2.0 + 8.0;
+    paint_icon(scene, eye_icon, eye_rect, resolve(eye_color, theme), 1.5);
+    if let (Some(row_id), Some(hit_index)) = (row_id, hit_index) {
+        // Hit-rect is the visible eye glyph plus padding so the
+        // click target is at least 24×24 px (Apple HIG minimum).
+        // Registered AFTER the row-body hit (line 271) so the eye
+        // wins for clicks within its rect — HitIndex::hit walks
+        // back-to-front. The companion NodeId derives from the
+        // row's via [`ids::hier_eye_companion`] so dispatch can
+        // reverse-map without an explicit BlenderHit registration
+        // in the WidgetStore (which the picker pattern requires).
+        let hit_pad = 4.0_f32;
+        let hit_rect = Rect::new(
+            eye_rect.x - hit_pad,
+            eye_rect.y - hit_pad,
+            eye_rect.w + hit_pad * 2.0,
+            eye_rect.h + hit_pad * 2.0,
+        );
+        hit_index.register(
+            crate::screens::hero::ids::hier_eye_companion(row_id),
+            hit_rect,
+        );
+    }
+    right_x -= eye_size + 6.0;
     if let Some(swatch) = entity.swatch {
         let sw = 14.0_f32;
         let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);

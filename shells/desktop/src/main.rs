@@ -907,7 +907,15 @@ impl App {
                 worklist,
                 |sim, present, sim_entity, gt| {
                     let mut builder = present.spawn((SimRef(sim_entity), gt));
-                    if let Some(spr) = sim.get::<Sprite>(sim_entity) {
+                    // M14.6A: respect the Visibility component (eye
+                    // toggle in the Hierarchy panel). Absence of the
+                    // component = visible by default.
+                    let hidden = sim
+                        .get::<ph2d_ecs::Visibility>(sim_entity)
+                        .is_some_and(|v| v.hidden);
+                    if !hidden
+                        && let Some(spr) = sim.get::<Sprite>(sim_entity)
+                    {
                         let p = gt.translation();
                         builder.insert(RenderInstance {
                             world_pos: [p.x, p.y],
@@ -1038,6 +1046,24 @@ impl App {
                 *camera = Camera2d::default();
                 toasts.push(Toast::info("View → Zero (camera reset)"));
                 self.title_dirty = true;
+            }
+            // M14.6A: drain pending hierarchy visibility toggle —
+            // resolve row NodeId → ECS Entity via the bridge, flip
+            // the `Visibility` component on SimWorld.
+            if let Some(row_id) = hero.pending_visibility_toggle.take()
+                && let Some(live) = hero_live.as_ref()
+                && let Some(entity_bits) = live.bridge.entity_for(row_id)
+            {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let sim_w = sim.world_mut();
+                if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
+                    let was_hidden = entry
+                        .get::<ph2d_ecs::Visibility>()
+                        .is_some_and(|v| v.hidden);
+                    entry.insert(ph2d_ecs::Visibility {
+                        hidden: !was_hidden,
+                    });
+                }
             }
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/

@@ -45,6 +45,7 @@ pub mod present;
 pub mod scene;
 pub mod sim;
 pub mod transform;
+pub mod visibility;
 
 pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};
@@ -53,6 +54,7 @@ pub use transform::{
     GlobalTransform, SimRef, Transform, TransformPropagationState, WorklistBuf,
     propagate_transforms, propagate_transforms_into_present,
 };
+pub use visibility::Visibility;
 
 // Re-export bevy_ecs essentials. Keep the surface small per LLM1
 // audit anti-pattern "Acoplar API pública a tipos wgpu::* ou

@@ -2317,6 +2317,15 @@ fn apply_blender_hit(
             store.begin_panel_resize(parent, px, py);
             None
         }
+        BlenderHitKind::VisibilityToggle => {
+            // M14.6A: not dispatched through this `BlenderHit` arm —
+            // the hierarchy eye uses an offset-NodeId companion
+            // (see `hier_eye_companion` in `screens/hero/ids.rs`)
+            // and routes via the regular `WidgetEvent::Click` path
+            // in `HeroScreen::apply_event`. This match arm exists
+            // only to keep the enum exhaustive; left as no-op.
+            None
+        }
     }
 }
 

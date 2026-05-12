@@ -358,3 +358,33 @@ pub(crate) fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
 pub(crate) fn hierarchy_kind_for_label(_label: &str) -> &'static str {
     "ENT"
 }
+
+/// M14.6A: high-bit offset for the eye-toggle companion NodeId on
+/// each hierarchy row. The row's primary NodeId is allocated by the
+/// host bridge in the low 32-bit range
+/// ([`shells/desktop/src/hero_bridge.rs`](shells/desktop/src/hero_bridge.rs)
+/// uses `BASE_NODE_ID = 100_000`); the eye companion sits at
+/// `row_id.0 | EYE_TOGGLE_BIT` so dispatch can recognize a click as
+/// an eye-toggle without an explicit `BlenderHit` registration in
+/// the `WidgetStore`.
+pub const EYE_TOGGLE_BIT: u64 = 1u64 << 62;
+
+/// Derive the eye-toggle companion NodeId for a hierarchy row.
+/// Inverse: [`hier_eye_companion_to_row`].
+#[inline]
+pub fn hier_eye_companion(row_id: NodeId) -> NodeId {
+    NodeId(row_id.0 | EYE_TOGGLE_BIT)
+}
+
+/// Recognize whether `id` is an eye-toggle companion and recover the
+/// row NodeId. Returns `Some(row_id)` if the high bit is set,
+/// `None` otherwise. Used by `apply_event` to route eye clicks
+/// without touching the BlenderHit pattern.
+#[inline]
+pub fn hier_eye_companion_to_row(id: NodeId) -> Option<NodeId> {
+    if id.0 & EYE_TOGGLE_BIT != 0 {
+        Some(NodeId(id.0 & !EYE_TOGGLE_BIT))
+    } else {
+        None
+    }
+}

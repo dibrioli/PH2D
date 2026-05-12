@@ -16,7 +16,7 @@
 use crate::asset::Asset;
 use crate::error::AssetError;
 use crate::id::AssetId;
-use crate::loader::decode_png_bytes;
+use crate::loader::{decode_image_bytes, decode_png_bytes};
 use crate::prefab::PrefabDoc;
 use crate::scene::SceneDoc;
 use crate::watcher::ReloadEvent;
@@ -71,6 +71,22 @@ impl AssetDb {
         let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
         g.by_id.entry(id).or_insert_with(|| Arc::new(asset));
         g.by_path.insert(path.to_path_buf(), id);
+        Ok(id)
+    }
+
+    /// Decode `bytes` as any supported image format (PNG / WEBP /
+    /// JPEG; auto-detected via `image::guess_format`), hash the
+    /// raw bytes, and store under the resulting [`AssetId`].
+    /// Idempotent (HR-6 content-addressed).
+    ///
+    /// Used by the M14.4c "Import…" button + the M14.4d drag-and-drop
+    /// path. PNG-only callers can keep using
+    /// [`AssetDb::insert_png_bytes`] for a tighter error type.
+    pub fn insert_image_bytes(&self, bytes: &[u8]) -> Result<AssetId, AssetError> {
+        let id = AssetId::from_bytes(bytes);
+        let asset = decode_image_bytes(bytes, None)?;
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
+        g.by_id.entry(id).or_insert_with(|| Arc::new(asset));
         Ok(id)
     }
 

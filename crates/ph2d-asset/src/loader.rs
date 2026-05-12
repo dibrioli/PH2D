@@ -76,6 +76,104 @@ pub(crate) fn is_png_extension(path: &Path) -> bool {
         .is_some_and(|s| s.eq_ignore_ascii_case("png"))
 }
 
+/// True if `path` has a supported image extension (PNG / WEBP / JPEG /
+/// JPG, case-insensitive). Used by the import filter and the M14.4d
+/// drag-and-drop filter to accept user-supplied sprites without
+/// reaching for the actual bytes.
+pub fn is_supported_image_extension(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_ascii_lowercase())
+            .as_deref(),
+        Some("png" | "webp" | "jpg" | "jpeg")
+    )
+}
+
+/// Decode an in-memory image buffer (PNG / WEBP / JPEG) to
+/// [`Asset::ImageRgba8`]. Format is auto-detected by `image::guess_format`.
+/// `path_hint` only annotates error messages.
+///
+/// HR-6 friendly: the returned `Asset` is content-only — the
+/// caller's blake3 over the input bytes is the canonical `AssetId`.
+pub(crate) fn decode_image_bytes(
+    bytes: &[u8],
+    path_hint: Option<&Path>,
+) -> Result<Asset, AssetError> {
+    let format = image::guess_format(bytes).map_err(|e| AssetError::Decode {
+        path: path_hint.map(Path::to_path_buf),
+        message: format!("guess_format: {e}"),
+    })?;
+    let cursor = Cursor::new(bytes);
+    let img = match format {
+        image::ImageFormat::Png => {
+            let mut decoder =
+                image::codecs::png::PngDecoder::new(cursor).map_err(|e| AssetError::Decode {
+                    path: path_hint.map(Path::to_path_buf),
+                    message: e.to_string(),
+                })?;
+            decoder
+                .set_limits(limits())
+                .map_err(|e| AssetError::Decode {
+                    path: path_hint.map(Path::to_path_buf),
+                    message: format!("declared dimensions exceed limit: {e}"),
+                })?;
+            image::DynamicImage::from_decoder(decoder).map_err(|e| AssetError::Decode {
+                path: path_hint.map(Path::to_path_buf),
+                message: e.to_string(),
+            })?
+        }
+        image::ImageFormat::WebP => {
+            let mut decoder =
+                image::codecs::webp::WebPDecoder::new(cursor).map_err(|e| AssetError::Decode {
+                    path: path_hint.map(Path::to_path_buf),
+                    message: e.to_string(),
+                })?;
+            decoder
+                .set_limits(limits())
+                .map_err(|e| AssetError::Decode {
+                    path: path_hint.map(Path::to_path_buf),
+                    message: format!("declared dimensions exceed limit: {e}"),
+                })?;
+            image::DynamicImage::from_decoder(decoder).map_err(|e| AssetError::Decode {
+                path: path_hint.map(Path::to_path_buf),
+                message: e.to_string(),
+            })?
+        }
+        image::ImageFormat::Jpeg => {
+            let mut decoder =
+                image::codecs::jpeg::JpegDecoder::new(cursor).map_err(|e| AssetError::Decode {
+                    path: path_hint.map(Path::to_path_buf),
+                    message: e.to_string(),
+                })?;
+            decoder
+                .set_limits(limits())
+                .map_err(|e| AssetError::Decode {
+                    path: path_hint.map(Path::to_path_buf),
+                    message: format!("declared dimensions exceed limit: {e}"),
+                })?;
+            image::DynamicImage::from_decoder(decoder).map_err(|e| AssetError::Decode {
+                path: path_hint.map(Path::to_path_buf),
+                message: e.to_string(),
+            })?
+        }
+        other => {
+            return Err(AssetError::Decode {
+                path: path_hint.map(Path::to_path_buf),
+                message: format!("unsupported image format: {other:?}"),
+            });
+        }
+    };
+    let rgba = img.to_rgba8();
+    let (width, height) = rgba.dimensions();
+    let pixels: Arc<[u8]> = Arc::from(rgba.into_raw().into_boxed_slice());
+    Ok(Asset::ImageRgba8 {
+        width,
+        height,
+        pixels,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,5 +187,19 @@ mod tests {
         assert!(!is_png_extension(Path::new("a.jpg")));
         assert!(!is_png_extension(Path::new("a")));
         assert!(!is_png_extension(Path::new("a.png.bak")));
+    }
+
+    #[test]
+    fn supported_image_filter_covers_png_webp_jpeg() {
+        assert!(is_supported_image_extension(Path::new("a.png")));
+        assert!(is_supported_image_extension(Path::new("a.PNG")));
+        assert!(is_supported_image_extension(Path::new("a.webp")));
+        assert!(is_supported_image_extension(Path::new("a.WEBP")));
+        assert!(is_supported_image_extension(Path::new("a.jpg")));
+        assert!(is_supported_image_extension(Path::new("a.JPG")));
+        assert!(is_supported_image_extension(Path::new("a.jpeg")));
+        assert!(!is_supported_image_extension(Path::new("a.gif")));
+        assert!(!is_supported_image_extension(Path::new("a.txt")));
+        assert!(!is_supported_image_extension(Path::new("a")));
     }
 }

@@ -12,21 +12,58 @@
 //! for a `&str` at a given size with the default font stack (system
 //! sans-serif + emoji fallback).
 
+use std::sync::Arc;
+
+use std::borrow::Cow;
+
 use parley::{
-    Alignment, FontContext, FontFamily, GenericFamily, Layout, LayoutContext, StyleProperty,
+    Alignment, FontContext, FontSettings, FontStack, FontVariation, FontWeight, Layout,
+    LayoutContext, StyleProperty, fontique::Blob, swash::tag_from_bytes,
 };
+
+/// OpenType axis tag for "Optical Size" (`opsz`). Inter 4.x supports
+/// the range 14–32: at smaller `opsz` Inter substitutes a "Text" cut
+/// (heavier strokes, more open counters) so glyphs hold up under
+/// GPU rasterization at 12-14 px; at larger `opsz` it shifts toward
+/// a "Display" cut (tighter spacing, finer details). Values outside
+/// the axis range are clamped by skrifa.
+const OPSZ_TAG: u32 = tag_from_bytes(b"opsz");
+
+/// Inter Variable (v4.0, SIL OFL) — bundled so chrome text rasterizes
+/// to the same glyphs everywhere, independent of installed system fonts.
+/// Inter was designed for screen rendering without LCD subpixel AA,
+/// which matches Vello's glyph pipeline (vs. system fonts like SF that
+/// are tuned for CoreText's subpixel rendering and look soft here).
+/// Source: <https://github.com/rsms/inter/releases/tag/v4.0> (LICENSE.txt
+/// in this directory).
+const INTER_VARIABLE_TTF: &[u8] = include_bytes!("../fonts/InterVariable.ttf");
+
+/// Family name registered when bundled Inter loads successfully.
+/// Falls back to `sans-serif` if registration fails (corrupted bytes,
+/// future fontique breaking change, etc.) so we never panic at startup.
+const INTER_FAMILY: &str = "InterVariable";
 
 pub struct TextSystem {
     font_context: FontContext,
     layout_context: LayoutContext<()>,
+    /// Resolved primary stack — "InterVariable, sans-serif" when the
+    /// bundled font registered, plain "sans-serif" otherwise.
+    primary_stack: String,
 }
 
 impl TextSystem {
-    /// Build a new TextSystem. Loads system fonts (50-200 ms cold).
+    /// Build a new TextSystem. Loads system fonts (50-200 ms cold) and
+    /// registers bundled Inter Variable.
     pub fn new() -> Self {
+        let mut font_context = FontContext::new();
+        let primary_stack = match register_inter(&mut font_context) {
+            Some(name) => format!("{name}, sans-serif"),
+            None => "sans-serif".to_string(),
+        };
         Self {
-            font_context: FontContext::new(),
+            font_context,
             layout_context: LayoutContext::new(),
+            primary_stack,
         }
     }
 
@@ -39,23 +76,60 @@ impl TextSystem {
     }
 
     /// Build a single-line layout for `text` at `font_size` (in
-    /// device-independent pixels). Uses the system sans-serif
-    /// fallback chain — works for ASCII, CJK, and emoji as long
-    /// as the OS has appropriate fonts installed.
+    /// device-independent pixels). Uses Inter Variable @ Medium (500)
+    /// — see [`Self::layout_with_weight`] for the weight rationale.
     ///
     /// The `max_width` parameter is the layout's wrap budget; pass
     /// `f32::INFINITY` for single-line "as wide as needed".
     pub fn layout(&mut self, text: &str, font_size: f32, max_width: f32) -> Layout<()> {
+        self.layout_with_weight(text, font_size, max_width, FontWeight::MEDIUM)
+    }
+
+    /// Like [`Self::layout`] but with an explicit `weight`. Use for
+    /// titles (SemiBold 600) — diagonals in glyphs like "y" / "k" /
+    /// "v" don't hint to the pixel grid cleanly at small sizes without
+    /// LCD subpixel AA, so they read softer than vertical-stem
+    /// letters. SemiBold adds ~25 % more pen weight on those
+    /// diagonals, closing the perceptual gap. Linear / Notion use
+    /// this exact split (body 500 / titles 600).
+    pub fn layout_with_weight(
+        &mut self,
+        text: &str,
+        font_size: f32,
+        max_width: f32,
+        weight: FontWeight,
+    ) -> Layout<()> {
         let mut builder = self.layout_context.ranged_builder(
             &mut self.font_context,
             text,
             1.0,  // device pixel ratio
             true, // quantize
         );
-        builder.push_default(StyleProperty::FontStack(parley::FontStack::Single(
-            FontFamily::Generic(GenericFamily::SansSerif),
-        )));
+        builder.push_default(StyleProperty::FontStack(FontStack::Source(Cow::Borrowed(
+            self.primary_stack.as_str(),
+        ))));
         builder.push_default(StyleProperty::FontSize(font_size));
+        // Inter at Regular 400 looks washed out at small UI sizes
+        // without LCD subpixel AA — the strokes are too thin to
+        // hold opacity in partial-coverage edge pixels, so glyphs
+        // read as "soft gray haze" instead of "solid letterform".
+        // Default body weight (500) adds ~12 % pen mass; titles
+        // bump to 600 for crisp diagonals. The variable axis lets
+        // skrifa interpolate exactly without a separate font file.
+        builder.push_default(StyleProperty::FontWeight(weight));
+        // Drive Inter's optical-size axis from the actual render
+        // size: at 12-14 px we get the heavier "Text" cut (better
+        // GPU rasterization without subpixel AA), at 20+ px the
+        // "Display" cut (tighter, more elegant proportions).
+        // `font_size` falls outside [14, 32] for headings/sub-text;
+        // skrifa clamps to the axis range so this is safe.
+        let variations = [FontVariation {
+            tag: OPSZ_TAG,
+            value: font_size,
+        }];
+        builder.push_default(StyleProperty::FontVariations(FontSettings::List(
+            Cow::Borrowed(&variations),
+        )));
         let mut layout: Layout<()> = builder.build(text);
         layout.break_all_lines(Some(max_width));
         layout.align(
@@ -99,6 +173,19 @@ impl Default for TextSystem {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Register the bundled Inter Variable into `font_context.collection`.
+/// Returns the family name to reference in `FontStack` on success,
+/// `None` if registration produced no usable family (e.g. fontique
+/// rejected the bytes). Callers fall back to `sans-serif`.
+fn register_inter(font_context: &mut FontContext) -> Option<&'static str> {
+    let blob = Blob::new(Arc::new(INTER_VARIABLE_TTF));
+    let registered = font_context.collection.register_fonts(blob, None);
+    if registered.is_empty() {
+        return None;
+    }
+    Some(INTER_FAMILY)
 }
 
 #[cfg(test)]

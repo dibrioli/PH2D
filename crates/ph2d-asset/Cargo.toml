@@ -15,9 +15,10 @@ authors.workspace = true
 # C9 cross-OS replay determinism, so we get one hash crate, not two.
 blake3 = "1"
 # PNG decode for the M6 visual gate. `default-features = false` +
-# explicit `png` opt-in keeps the dep slim (no jpeg/webp/gif until a
-# scene actually needs them).
-image = { version = "0.25", default-features = false, features = ["png"] }
+# explicit format opt-ins keep the dep slim. M14.4c added webp +
+# jpeg to support the Import… button + drag-and-drop (M14.4d) of
+# the most common sprite formats.
+image = { version = "0.25", default-features = false, features = ["png", "webp", "jpeg"] }
 # Off-thread file watcher. notify wraps OS-native watchers (FSEvents on
 # macOS, inotify on Linux, ReadDirectoryChangesW on Windows) and keeps
 # its own background thread.

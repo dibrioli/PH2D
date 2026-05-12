@@ -75,12 +75,12 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::ThemeSelector => &[
             (
                 ids::CTX_MENU_THEME_FORGE,
-                "Forge SDF (dark)",
+                "Forge (dark)",
                 Some([0xc8, 0x4b, 0xa0, 0xFF]),
             ),
             (
                 ids::CTX_MENU_THEME_PAINT,
-                "Paint Studio (dark)",
+                "Workshop (dark)",
                 Some([0x4b, 0xa0, 0xc8, 0xFF]),
             ),
             (

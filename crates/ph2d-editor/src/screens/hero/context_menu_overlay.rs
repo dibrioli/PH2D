@@ -77,12 +77,12 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::ThemeSelector => &[
             (
                 ids::CTX_MENU_THEME_FORGE,
-                "Forge SDF (dark)",
+                "Forge (dark)",
                 Some([0xc8, 0x4b, 0xa0, 0xFF]),
             ),
             (
                 ids::CTX_MENU_THEME_PAINT,
-                "Paint Studio (dark)",
+                "Workshop (dark)",
                 Some([0x4b, 0xa0, 0xc8, 0xFF]),
             ),
             (
@@ -100,6 +100,7 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
             (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
             (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
+            (ids::CTX_MENU_SHOW_GRID, "— Show Grid \u{00b7} G", None),
         ],
         ContextMenuKind::SaveMenu => &[
             (ids::CTX_MENU_SAVE, "Save \u{00b7} Cmd+S", None),
@@ -120,6 +121,22 @@ pub fn paint_context_menu_overlay(
                 "Import\u{2026} \u{00b7} Cmd+Shift+I",
                 None,
             ),
+        ],
+        // Settings cluster (gear) — px/m presets that scale source
+        // image pixels to world meters during import.
+        //
+        // 16   — classic retro tile (Stardew, 16-bit-era)
+        // 32   — Unity 2D default (a 32-px tile = 1 world meter)
+        // 100  — Godot default (project-level scale that suits
+        //        mixed-resolution indie work)
+        // 256  — Hand-drawn HD 2D (Cuphead-tier)
+        // 1024 — 4K reference sprites (1 quad fits on a 1×1 unit)
+        ContextMenuKind::SettingsMenu => &[
+            (ids::CTX_MENU_PPM_16, "Pixels/meter: 16 (retro tile)", None),
+            (ids::CTX_MENU_PPM_32, "Pixels/meter: 32 (Unity 2D)", None),
+            (ids::CTX_MENU_PPM_100, "Pixels/meter: 100 (Godot)", None),
+            (ids::CTX_MENU_PPM_256, "Pixels/meter: 256 (HD 2D)", None),
+            (ids::CTX_MENU_PPM_1024, "Pixels/meter: 1024 (4K ref)", None),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is

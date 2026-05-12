@@ -229,8 +229,8 @@ mod tests {
     fn default_button_uses_text_primary_for_fg() {
         let b = fixture();
         assert_eq!(
-            b.fg_color(Theme::ForgeSdf),
-            ColorToken::Text1.resolve(Theme::ForgeSdf)
+            b.fg_color(Theme::Forge),
+            ColorToken::Text1.resolve(Theme::Forge)
         );
     }
 
@@ -238,8 +238,8 @@ mod tests {
     fn accent_button_paints_accent_fg() {
         let b = fixture().accent();
         assert_eq!(
-            b.fg_color(Theme::ForgeSdf),
-            ColorToken::AccentFg.resolve(Theme::ForgeSdf)
+            b.fg_color(Theme::Forge),
+            ColorToken::AccentFg.resolve(Theme::Forge)
         );
     }
 
@@ -247,8 +247,8 @@ mod tests {
     fn danger_button_paints_danger_bg() {
         let b = fixture().danger();
         assert_eq!(
-            b.bg_color(Theme::ForgeSdf),
-            Some(ColorToken::Danger.resolve(Theme::ForgeSdf))
+            b.bg_color(Theme::Forge),
+            Some(ColorToken::Danger.resolve(Theme::Forge))
         );
     }
 
@@ -256,8 +256,8 @@ mod tests {
     fn danger_hover_softens() {
         let b = fixture().danger().state(ButtonState::Hovered);
         assert_eq!(
-            b.bg_color(Theme::ForgeSdf),
-            Some(ColorToken::DangerSoft.resolve(Theme::ForgeSdf))
+            b.bg_color(Theme::Forge),
+            Some(ColorToken::DangerSoft.resolve(Theme::Forge))
         );
     }
 
@@ -281,15 +281,15 @@ mod tests {
 
     #[test]
     fn default_normal_has_no_bg() {
-        assert!(fixture().bg_color(Theme::ForgeSdf).is_none());
+        assert!(fixture().bg_color(Theme::Forge).is_none());
     }
 
     #[test]
     fn default_hover_lifts_to_bg_elev() {
         let b = fixture().state(ButtonState::Hovered);
         assert_eq!(
-            b.bg_color(Theme::ForgeSdf),
-            Some(ColorToken::BgElev.resolve(Theme::ForgeSdf))
+            b.bg_color(Theme::Forge),
+            Some(ColorToken::BgElev.resolve(Theme::Forge))
         );
     }
 
@@ -326,27 +326,27 @@ mod tests {
 
     #[test]
     fn paint_smoke_normal() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]
     fn paint_smoke_hovered() {
-        smoke(fixture().state(ButtonState::Hovered), Theme::ForgeSdf);
+        smoke(fixture().state(ButtonState::Hovered), Theme::Forge);
     }
 
     #[test]
     fn paint_smoke_pressed() {
-        smoke(fixture().state(ButtonState::Pressed), Theme::ForgeSdf);
+        smoke(fixture().state(ButtonState::Pressed), Theme::Forge);
     }
 
     #[test]
     fn paint_smoke_focused() {
-        smoke(fixture().state(ButtonState::Focused), Theme::ForgeSdf);
+        smoke(fixture().state(ButtonState::Focused), Theme::Forge);
     }
 
     #[test]
     fn paint_smoke_disabled() {
-        smoke(fixture().state(ButtonState::Disabled), Theme::ForgeSdf);
+        smoke(fixture().state(ButtonState::Disabled), Theme::Forge);
     }
 
     #[test]
@@ -361,14 +361,11 @@ mod tests {
 
     #[test]
     fn paint_smoke_icon_only() {
-        smoke(fixture().icon_only(IconId::Settings), Theme::ForgeSdf);
+        smoke(fixture().icon_only(IconId::Settings), Theme::Forge);
     }
 
     #[test]
     fn paint_smoke_loading_renders_spinner() {
-        smoke(
-            fixture().accent().state(ButtonState::Loading),
-            Theme::ForgeSdf,
-        );
+        smoke(fixture().accent().state(ButtonState::Loading), Theme::Forge);
     }
 }

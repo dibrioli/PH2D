@@ -238,7 +238,7 @@ mod tests {
             Rect::new(0.0, 0.0, 280.0, 28.0),
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_plain() {
-        smoke(SectionHeader::new(NodeId(1), "Params"), Theme::ForgeSdf);
+        smoke(SectionHeader::new(NodeId(1), "Params"), Theme::Forge);
     }
 
     #[test]
@@ -309,7 +309,7 @@ mod tests {
             SectionHeader::new(NodeId(1), "Inputs")
                 .count(24)
                 .collapsible(true),
-            Theme::PaintStudio,
+            Theme::Workshop,
         );
     }
 }

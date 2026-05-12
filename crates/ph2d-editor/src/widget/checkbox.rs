@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_normal_unchecked() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]
@@ -250,7 +250,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_focused_unchecked() {
-        smoke(fixture().state(CheckboxState::Focused), Theme::PaintStudio);
+        smoke(fixture().state(CheckboxState::Focused), Theme::Workshop);
     }
 
     #[test]
@@ -259,7 +259,7 @@ mod tests {
             fixture()
                 .value(CheckboxValue::Checked)
                 .state(CheckboxState::Disabled),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 }

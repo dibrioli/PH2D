@@ -21,7 +21,7 @@ pub fn default_selection() -> HeroSelection {
 pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
     use crate::screens::hero::ids;
     vec![
-        (ids::TOPBAR_THEME, TopBarCluster::theme("Forge SDF")),
+        (ids::TOPBAR_THEME, TopBarCluster::theme("Forge")),
         (
             ids::TOPBAR_SAVE,
             TopBarCluster::single("Save", IconId::Save),
@@ -29,6 +29,13 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         (
             ids::TOPBAR_OPEN,
             TopBarCluster::single("Open", IconId::Open),
+        ),
+        // Settings (gear) — opens SettingsMenu with px/m presets and
+        // future project-level toggles. Sits between Open and Project
+        // so the "config / project metadata" clusters group visually.
+        (
+            ids::TOPBAR_SETTINGS,
+            TopBarCluster::single("Settings", IconId::Settings),
         ),
         (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),

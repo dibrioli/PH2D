@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_default() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]

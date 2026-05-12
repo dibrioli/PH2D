@@ -258,11 +258,21 @@ impl IconId {
                 ),
                 IconCmd::Line(1.0, 1.0, 23.0, 23.0),
             ],
+            // Lucide `folder-tree` — two folder glyphs hanging off
+            // an L-shaped tree spine. Reads as "file/scene hierarchy"
+            // far more naturally than the LetterH-in-a-circle it
+            // replaces (circles at icon scale produce visible polygon
+            // facets; the Lucide path is all straight + arc segments
+            // that stroke crisply).
             Self::Hierarchy => &[
-                IconCmd::Rect(3.0, 3.0, 6.0, 6.0, 1.0),
-                IconCmd::Rect(15.0, 3.0, 6.0, 6.0, 1.0),
-                IconCmd::Rect(9.0, 15.0, 6.0, 6.0, 1.0),
-                IconCmd::Path("M6 9v3h12V9M12 12v3"),
+                IconCmd::Path(
+                    "M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z",
+                ),
+                IconCmd::Path(
+                    "M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z",
+                ),
+                IconCmd::Path("M3 5a2 2 0 0 0 2 2h3"),
+                IconCmd::Path("M3 3v13a2 2 0 0 0 2 2h3"),
             ],
             Self::History => &[
                 IconCmd::Path("M3 3v5h5"),
@@ -277,9 +287,19 @@ impl IconId {
                 IconCmd::Line(12.0, 16.0, 12.0, 12.0),
                 IconCmd::Line(12.0, 8.0, 12.01, 8.0),
             ],
+            // Lucide `inspection-panel` — a rounded panel with a dot
+            // in each corner. Reads as "panel of inspectable cells"
+            // (Lucide's exact metaphor). Replaces a search-magnifier
+            // glyph that's a poor fit for the Inspector pane. Dots
+            // are zero-length strokes (`h.01`) that rely on round
+            // caps to render as circles — kurbo's `Stroke::default()`
+            // is already round, so this matches Lucide's intent.
             Self::Inspector => &[
-                IconCmd::Circle(11.0, 11.0, 8.0),
-                IconCmd::Path("M21 21l-4.35-4.35M11 8v6M8 11h6"),
+                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0),
+                IconCmd::Path("M7 7h.01"),
+                IconCmd::Path("M17 7h.01"),
+                IconCmd::Path("M7 17h.01"),
+                IconCmd::Path("M17 17h.01"),
             ],
             Self::Kbd => &[
                 IconCmd::Rect(2.0, 6.0, 20.0, 12.0, 2.0),
@@ -548,7 +568,15 @@ pub fn cmd_to_path(cmd: IconCmd) -> BezPath {
             p
         }
         IconCmd::Circle(cx, cy, r) => {
-            Circle::new(Point::new(cx as f64, cy as f64), r as f64).into_path(0.1)
+            // Tolerance is in viewbox units (24-unit grid). After
+            // scaling to a 32-px icon the factor is ~1.33×, so a
+            // 0.1 tolerance bleeds ~0.13 px of polygon facetting
+            // into the stroke — visibly stepped on the larger
+            // circles (LetterH/I, Settings: r=10). 0.005 is below
+            // half a sub-pixel even on 2× SSAA pipelines and
+            // produces a smoother cubic approximation; the extra
+            // segments are free for Vello.
+            Circle::new(Point::new(cx as f64, cy as f64), r as f64).into_path(0.005)
         }
         IconCmd::Rect(x, y, w, h, rx) => {
             let x0 = x as f64;
@@ -564,7 +592,9 @@ pub fn cmd_to_path(cmd: IconCmd) -> BezPath {
                 p.close_path();
                 p
             } else {
-                RoundedRect::new(x0, y0, x1, y1, rx as f64).into_path(0.1)
+                // Same reasoning as `Circle` above — tight tolerance
+                // for the rounded corners.
+                RoundedRect::new(x0, y0, x1, y1, rx as f64).into_path(0.005)
             }
         }
     }

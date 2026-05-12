@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_classic() {
-        smoke(fixture().rgba([240, 32, 96, 255]), Theme::ForgeSdf);
+        smoke(fixture().rgba([240, 32, 96, 255]), Theme::Forge);
     }
 
     #[test]

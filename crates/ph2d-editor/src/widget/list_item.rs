@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_plain() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]
@@ -251,6 +251,6 @@ mod tests {
 
     #[test]
     fn paint_smoke_disabled() {
-        smoke(fixture().state(ListItemState::Disabled), Theme::PaintStudio);
+        smoke(fixture().state(ListItemState::Disabled), Theme::Workshop);
     }
 }

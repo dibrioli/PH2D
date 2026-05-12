@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_closed_empty() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]
@@ -439,6 +439,6 @@ mod tests {
 
     #[test]
     fn paint_smoke_disabled() {
-        smoke(fixture().state(DropdownState::Disabled), Theme::PaintStudio);
+        smoke(fixture().state(DropdownState::Disabled), Theme::Workshop);
     }
 }

@@ -52,7 +52,9 @@ pub(super) const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0;
 /// cover it (the body's scrollable clip extends into the corner).
 pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let radius = PANEL_RADIUS;
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    // PanelBg = BgElev hue/L with ~0.92 alpha → panel reads as
+    // floating glass over canvas while text contrast holds.
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::PanelBg, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
     // Drag pill at the top center.
     let handle = Rect::new(rect.x + (rect.w - 36.0) * 0.5, rect.y + 6.0, 36.0, 4.0);

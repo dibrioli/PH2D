@@ -10,7 +10,9 @@ use super::style::{
 };
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{
+    fill_rounded_rect, paint_icon, paint_text, paint_text_title, resolve, stroke_rounded_rect,
+};
 use crate::widget::{ButtonState, Tag, TagState, TagTone, paint_tag};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
@@ -29,7 +31,8 @@ pub fn populate(store: &mut WidgetStore) {
     );
     // Placeholder: only Scene Root is registered. The pilot project
     // populates real entities and reuses the reserved HIER_* ids
-    // (see screens/hero/ids.rs).
+    // (see screens/hero/ids.rs). Live-data mode swaps this out via
+    // [`repopulate`] at runtime (ADR-0025 M14.4a).
     let entities = [ids::HIER_PLAYER];
     for id in entities {
         store.register(id, InteractiveState::Plain);
@@ -39,23 +42,74 @@ pub fn populate(store: &mut WidgetStore) {
     store.init_hierarchy_order(entities.to_vec());
 }
 
+/// Live-data variant of [`populate`]: register every id in `ids` as a
+/// `Plain` interactive row + seed the hierarchy display order. Called
+/// from [`crate::screens::hero::HeroScreen::sync_from_hierarchy`] per
+/// frame with the entity-id list produced by the host's
+/// `EntityNodeMap` bridge.
+///
+/// **Stale-id behavior:** `WidgetStore::register` is idempotent and
+/// monotonic — stale rows from a previous frame remain in the store's
+/// `states` map but are absent from `init_hierarchy_order`, so the
+/// painter never iterates them. This is an acceptable bounded leak
+/// for a session-long editor (typical: < 10k entity creates per
+/// session). M15+ may add a `WidgetStore::retain` if it ever
+/// matters.
+pub fn repopulate(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
+    // Register the `+` button once (idempotent) so the header still
+    // works when this replaces the fixture `populate` mid-session.
+    store.register(
+        super::ids::HIERARCHY_ADD,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    for &id in ids {
+        store.register(id, InteractiveState::Plain);
+    }
+    // Use `set_hierarchy_order` (force-overwrite), NOT
+    // `init_hierarchy_order` (idempotent guard) — the latter is a
+    // no-op after `populate()` seeded `[HIER_PLAYER]` at boot, so
+    // live mode would paint zero rows.
+    store.set_hierarchy_order(ids.to_vec());
+}
+
 /// Apply a [`WidgetEvent`] against hierarchy widgets. A click on an
 /// entity row updates `selection`; everything else is ignored.
 /// Returns true iff the event was consumed.
+///
+/// When `live_entries` is `Some`, click-id resolution prefers it over
+/// the static `ids::hierarchy_label_for_id` table — this is how
+/// live-ECS mode (ADR-0025 M14.4a) names rows that don't have a
+/// hardcoded `HIER_*` constant.
 pub fn apply_event(
     _store: &mut WidgetStore,
     selection: &mut Option<HeroSelection>,
+    live_entries: Option<&std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>>,
     event: WidgetEvent,
 ) -> bool {
-    if let WidgetEvent::Click(id) = event
-        && let Some(label) = ids::hierarchy_label_for_id(id)
-    {
-        *selection = Some(HeroSelection {
-            label: label.into(),
-            kind: ids::hierarchy_kind_for_label(label).into(),
-            world_pos: (0.0, 0.0),
-        });
-        return true;
+    if let WidgetEvent::Click(id) = event {
+        // Live mode first: looking up `id` in the live entries gives
+        // us the entity's own Name (which the host writes there).
+        if let Some(live) = live_entries
+            && let Some(entry) = live.get(&id)
+        {
+            *selection = Some(HeroSelection {
+                label: entry.name.clone(),
+                kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
+                world_pos: (0.0, 0.0),
+            });
+            return true;
+        }
+        // Fixture fallback (single Scene Root row).
+        if let Some(label) = ids::hierarchy_label_for_id(id) {
+            *selection = Some(HeroSelection {
+                label: label.into(),
+                kind: ids::hierarchy_kind_for_label(label).into(),
+                world_pos: (0.0, 0.0),
+            });
+            return true;
+        }
     }
     false
 }
@@ -79,7 +133,7 @@ pub fn paint_hierarchy(
     hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
 
     let title_y = rect.y + 18.0;
-    paint_text(
+    paint_text_title(
         text_system,
         scene,
         "Hierarchy",
@@ -157,11 +211,20 @@ pub fn paint_hierarchy(
     // Build NodeId → entity lookup so we can iterate by the store's
     // drag-and-drop order (which can differ from `fixture::hierarchy()`'s
     // default order after a reorder).
+    //
+    // Live mode (ADR-0025 M14.4a): when the host has called
+    // `HeroScreen::sync_from_hierarchy`, the thread-local
+    // [`current_live_entries`] holds the live ECS-derived entries —
+    // those take precedence over `fixture::hierarchy()`.
     let entities_by_id: std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity> =
-        fixture::hierarchy()
-            .into_iter()
-            .filter_map(|e| ids::hierarchy_id(&e.name).map(|id| (id, e)))
-            .collect();
+        if let Some(live) = current_live_entries() {
+            live
+        } else {
+            fixture::hierarchy()
+                .into_iter()
+                .filter_map(|e| ids::hierarchy_id(&e.name).map(|id| (id, e)))
+                .collect()
+        };
     let order = store.hierarchy_order();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
     // First pass: paint rows + register hit zones. Rows indent
@@ -304,6 +367,27 @@ fn current_selection_label() -> Option<String> {
 
 pub(super) fn set_selection_label(label: Option<String>) {
     CURRENT_SELECTION_LABEL.with(|c| *c.borrow_mut() = label);
+}
+
+// Live-mode entity rows published by `HeroScreen::sync_from_hierarchy`
+// (ADR-0025 M14.4a). When set, `paint_hierarchy` uses these instead of
+// `fixture::hierarchy()`. Cleared by `paint_hero_screen` after the
+// hierarchy paint so the next frame's `set_*` is the single source.
+thread_local! {
+    static CURRENT_LIVE_ENTRIES: std::cell::RefCell<
+        Option<std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>>,
+    > = const { std::cell::RefCell::new(None) };
+}
+
+fn current_live_entries()
+-> Option<std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>> {
+    CURRENT_LIVE_ENTRIES.with(|c| c.borrow().clone())
+}
+
+pub(super) fn set_live_entries(
+    entries: Option<std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity>>,
+) {
+    CURRENT_LIVE_ENTRIES.with(|c| *c.borrow_mut() = entries);
 }
 
 fn paint_hierarchy_row(

@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_circle() {
-        smoke(Avatar::new(NodeId(1), "x", 'X'), Theme::ForgeSdf);
+        smoke(Avatar::new(NodeId(1), "x", 'X'), Theme::Forge);
     }
 
     #[test]

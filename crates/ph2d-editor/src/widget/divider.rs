@@ -99,7 +99,7 @@ mod tests {
             &d,
             Rect::new(0.0, 0.0, 200.0, 8.0),
             &mut scene,
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 

@@ -154,7 +154,7 @@ impl HeroScreen {
         Self::pre_populate_store(&mut store);
         Self {
             id,
-            theme: Theme::ForgeSdf,
+            theme: Theme::Forge,
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),
@@ -253,9 +253,9 @@ impl HeroScreen {
         // here, not on the WidgetStore.
         if let WidgetEvent::Click(id) = event {
             let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
-                Some(Theme::ForgeSdf)
+                Some(Theme::Forge)
             } else if id == ids::CTX_MENU_THEME_PAINT {
-                Some(Theme::PaintStudio)
+                Some(Theme::Workshop)
             } else if id == ids::CTX_MENU_THEME_SUNSTONE {
                 Some(Theme::Sunstone)
             } else if id == ids::CTX_MENU_THEME_BLUEPRINT {
@@ -637,8 +637,8 @@ mod tests {
     #[test]
     fn paint_hero_smoke_all_themes() {
         for theme in [
-            Theme::ForgeSdf,
-            Theme::PaintStudio,
+            Theme::Forge,
+            Theme::Workshop,
             Theme::Sunstone,
             Theme::Blueprint,
         ] {
@@ -761,7 +761,7 @@ mod tests {
             &layout,
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
             &mut hits,
             &store,
         );
@@ -778,7 +778,7 @@ mod tests {
             &layout,
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
             &mut hits,
             &store,
         );
@@ -832,7 +832,7 @@ mod tests {
             &layout,
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
             &mut hits,
             &store,
         );
@@ -843,7 +843,7 @@ mod tests {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_bottom_hud(&layout, &mut scene, &mut text, Theme::PaintStudio);
+        paint_bottom_hud(&layout, &mut scene, &mut text, Theme::Workshop);
     }
 
     #[test]
@@ -852,6 +852,6 @@ mod tests {
         let sel = fixture::default_selection();
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_selection_overlay(&layout, &sel, &mut scene, &mut text, Theme::ForgeSdf);
+        paint_selection_overlay(&layout, &sel, &mut scene, &mut text, Theme::Forge);
     }
 }

@@ -239,7 +239,13 @@ pub fn paint_tool_rail(
                     sub_font,
                     rect.x,
                     chip_rect,
-                    resolve(ColorToken::Text3, theme),
+                    // M14.5 round 4: labels sit directly on the canvas
+                    // when chrome floats over the game RT — `Text3`
+                    // (dim grey) reads almost invisibly against any
+                    // mid-luminance backdrop. `Text2` keeps the
+                    // hierarchy below the chip's primary content but
+                    // is legible on canvas.
+                    resolve(ColorToken::Text2, theme),
                 );
                 y += TOOL_CHIP_PX;
             }
@@ -278,7 +284,13 @@ pub fn paint_tool_rail(
                     sub_font,
                     rect.x,
                     chip_rect,
-                    resolve(ColorToken::Text3, theme),
+                    // M14.5 round 4: labels sit directly on the canvas
+                    // when chrome floats over the game RT — `Text3`
+                    // (dim grey) reads almost invisibly against any
+                    // mid-luminance backdrop. `Text2` keeps the
+                    // hierarchy below the chip's primary content but
+                    // is legible on canvas.
+                    resolve(ColorToken::Text2, theme),
                 );
                 y += COMPOUND_TOTAL_H_PX;
             }
@@ -401,7 +413,7 @@ mod tests {
         let rail = fixture();
         let host = Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height());
         let store = crate::interaction::WidgetStore::with_capacity(0);
-        paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::ForgeSdf, &store);
+        paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::Forge, &store);
     }
 
     #[test]

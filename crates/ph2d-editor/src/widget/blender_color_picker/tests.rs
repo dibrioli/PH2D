@@ -89,7 +89,7 @@ fn smoke(cp: BlenderColorPicker, theme: Theme) {
 
 #[test]
 fn paint_smoke_default() {
-    smoke(BlenderColorPicker::new(NodeId(1), "x"), Theme::ForgeSdf);
+    smoke(BlenderColorPicker::new(NodeId(1), "x"), Theme::Forge);
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn paint_smoke_red_value() {
 fn paint_smoke_with_alpha() {
     smoke(
         BlenderColorPicker::new(NodeId(1), "x").value(ColorValue::from_rgba8(40, 40, 220, 128)),
-        Theme::PaintStudio,
+        Theme::Workshop,
     );
 }
 

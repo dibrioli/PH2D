@@ -29,7 +29,7 @@ use super::style::{
 };
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
+use crate::paint::{fill_rounded_rect, paint_text, paint_text_title, rect_to_vello, resolve};
 use crate::widget::Dropdown;
 use crate::widget::DropdownOption;
 use crate::widget::{
@@ -941,7 +941,7 @@ pub fn paint_inspector(
     // is selected). The pilot project's selection wiring drives the
     // sub-field; the panel title is constant.
     let title_y = rect.y + 18.0;
-    paint_text(
+    paint_text_title(
         text_system,
         scene,
         "Inspector",

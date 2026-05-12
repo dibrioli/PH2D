@@ -118,7 +118,7 @@ mod tests {
             &Popover::new(NodeId(1)),
             Rect::new(10.0, 10.0, 200.0, 100.0),
             &mut scene,
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 }

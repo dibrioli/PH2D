@@ -5,11 +5,12 @@ use super::HeroLayout;
 use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::{ButtonState, ToolRail, ToolRailEntry, paint_tool_rail};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Register every LeftRail tool button into the [`WidgetStore`].
@@ -72,13 +73,13 @@ pub fn paint_left_rail(
         (
             ids::RAIL_SHOW_INSPECTOR,
             "Show Inspector",
-            IconId::LetterI,
+            IconId::Inspector,
             "INSP",
         ),
         (
             ids::RAIL_SHOW_HIERARCHY,
             "Show Hierarchy",
-            IconId::LetterH,
+            IconId::Hierarchy,
             "HIER",
         ),
     ];
@@ -121,9 +122,13 @@ pub fn paint_left_rail(
         "SPACE",
     ));
     // TOOL_PROJECTION ("Persp / PROJ") hidden — not used yet.
+    // ADR-0025 M14.4b.bis: mode 3 = "Zero" → clicking the button
+    // while landing on this mode resets the camera to origin (see
+    // `HeroScreen::apply_event` TOOL_HOME branch).
     let view_face = match store.tool_view_mode() {
         1 => "Camera",
         2 => "All",
+        3 => "Zero",
         _ => "Selected",
     };
     rail_entries.push(ToolRailEntry::compound(
@@ -142,6 +147,23 @@ pub fn paint_left_rail(
         layout.left_rail.y,
         layout.left_rail.w,
         rail.preferred_height(),
+    );
+    // Frosted-glass backing so the vertical labels (INSP / HIER /
+    // MOVE / …) have a stable contrast platform when the rail sits
+    // directly on canvas content. Slight vertical inset matches the
+    // chip column's breathing room; rounded right edge only — the
+    // left edge is flush with the viewport.
+    let bg_rect = Rect::new(
+        rail_rect.x,
+        rail_rect.y - Spacing::Sm.px(),
+        rail_rect.w,
+        rail_rect.h + Spacing::Sm.px() * 2.0,
+    );
+    fill_rounded_rect(
+        scene,
+        bg_rect,
+        Radius::Md.px(),
+        resolve(ColorToken::RailBg, theme),
     );
     paint_tool_rail(&rail, rail_rect, scene, text_system, theme, store);
 

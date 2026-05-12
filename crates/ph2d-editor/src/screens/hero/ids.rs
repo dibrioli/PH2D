@@ -27,6 +27,10 @@ pub const TOPBAR_PAUSE: NodeId = NodeId(109);
 pub const TOPBAR_RESET: NodeId = NodeId(110);
 pub const TOPBAR_SAVE_AS: NodeId = NodeId(111);
 pub const TOPBAR_OPEN: NodeId = NodeId(112);
+/// Settings cluster (gear icon) — opens the SettingsMenu context menu
+/// with project-level toggles (pixels-per-meter presets, future
+/// global config). Added M14.4d retrofit.
+pub const TOPBAR_SETTINGS: NodeId = NodeId(113);
 
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 
@@ -199,12 +203,31 @@ pub const CTX_MENU_MIRROR_UI: NodeId = NodeId(917);
 /// "Show Statistics" entry in the theme menu — toggles
 /// `HeroScreen::stats_visible`, which gates the bottom HUD.
 pub const CTX_MENU_SHOW_STATS: NodeId = NodeId(918);
+/// "Show Grid" entry in the theme menu — toggles
+/// `HeroScreen::grid_visible`, which gates the world-space grid
+/// overlay (ADR-0025 M14.4b).
+pub const CTX_MENU_SHOW_GRID: NodeId = NodeId(919);
 // Save-button context menu (Save / Save As).
 pub const CTX_MENU_SAVE: NodeId = NodeId(920);
 pub const CTX_MENU_SAVE_AS: NodeId = NodeId(921);
 // Open-button context menu (Open Project / Import…).
 pub const CTX_MENU_OPEN_PROJECT: NodeId = NodeId(922);
 pub const CTX_MENU_IMPORT: NodeId = NodeId(923);
+
+// Pixels-per-meter presets — opened from the Settings cluster (gear).
+// Drives `HeroScreen.project.pixels_per_meter`. The values are the
+// canonical presets surfaced as labels in `SettingsMenu`.
+//
+// Range 940..945 — sits PAST `CTX_SCENE_ROW_0..7` (931-938) to
+// avoid the NodeId collision that the M14.4d audit caught: an
+// initial draft of these IDs reused 930-934, which mirrored the
+// SceneList popover rows and made dispatch ambiguous (a click on
+// `CTX_MENU_PPM_16` would also fire `CTX_SCENE_SEARCH`).
+pub const CTX_MENU_PPM_16: NodeId = NodeId(940);
+pub const CTX_MENU_PPM_32: NodeId = NodeId(941);
+pub const CTX_MENU_PPM_100: NodeId = NodeId(942);
+pub const CTX_MENU_PPM_256: NodeId = NodeId(943);
+pub const CTX_MENU_PPM_1024: NodeId = NodeId(944);
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = NodeId(930);
 pub const CTX_SCENE_ROW_0: NodeId = NodeId(931);

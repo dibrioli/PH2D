@@ -121,3 +121,258 @@ Adicionar ao SKILL §15 quando este plano for aprovado e iniciado:
 3. 🟡 Implementar widgets em Vello sobre `ph2d-editor` seguindo design canônico.
 4. ⏳ Pós-design: escolher projeto-piloto que dite ordem de população dos crates stub do M13 (audio? net? save?).
 5. ⏳ Hardening sprint pós-auditoria multi-agêntica (branch `hardening/post-audit` no remote, parallel timeline) — a decidir se mergeia, rebasea ou descarta após M13 estabilizar.
+
+## M14.4d (retrofit M6 atlas) — shipped 2026-05-11
+
+Após M14.4c (image import via Open menu) descobrimos que o atlas
+herdado de M5 ainda era o placeholder de 4×4×64 px → toda imagem
+importada perdia 99 % da resolução, era forçada a square 1:1, e
+renderizava Y-invertida. O retrofit M14.4d (descritivo M14.4c+ no
+código) endereçou os 3 bugs sem rebuilds maiores:
+
+| Fase | Arquivos tocados | Resultado |
+|---|---|---|
+| **1. Y-flip** | [crates/ph2d-render/src/sprite.rs](../../crates/ph2d-render/src/sprite.rs) | `QUAD_STRIP` UV.v invertido pra compensar o Y-flip do `Camera2d::view_proj`. Pinned test `quad_strip_uv_compensates_camera_y_flip`. |
+| **2. ProjectSettings** | [crates/ph2d-editor/src/project.rs](../../crates/ph2d-editor/src/project.rs), `hero.rs`, `shells/desktop/src/main.rs` | `pixels_per_meter` (default 100, Godot-style) thread-eado do import path; sprite world size agora derivado do source pixel × `1/px_per_m`. Per-asset override deferred. |
+| **3. TopBar Settings cluster** | `topbar.rs`, `fixture.rs`, `ids.rs`, `interaction/{state,dispatch}.rs`, `context_menu_overlay.rs`, `hero.rs` | Gear icon entre Open e Project; click abre `ContextMenuKind::SettingsMenu` com 5 presets (16 / 32 / 100 / 256 / 1024 px/m). |
+| **4. Skyline atlas** | [crates/ph2d-render/Cargo.toml](../../crates/ph2d-render/Cargo.toml) (dep `rect_packer = "0.2"`), [atlas.rs](../../crates/ph2d-render/src/atlas.rs) (rewrite), `renderer.rs`, `lib.rs`, `shells/desktop/src/main.rs` (extract + import + demo bootstrap) | Grid fixo substituído por `rect_packer::DensePacker` (4096²). `TextureAtlas::insert(key, w, h, rgba)` reserva região nativa; replace path detecta same-size hot-reload sem re-pack. APIs antigas (`dummy_uv`, `cell_px`, `update_cell`, `from_rgba8`, `DUMMY_*`) removidas. `BTreeMap` (HR-5/ADR-0022). |
+| **5. Tests + verification** | `atlas.rs` mod tests (10 novos), `sprite.rs` (1 novo), `project.rs` (4 novos) | `cargo test --workspace`: 783 passed / 0 failed. `cargo clippy --all-targets`: clean. `cargo fmt -- --check`: clean. |
+
+**Decisão de packer**: avaliado `texture_packer = "0.30"` vs `rect_packer = "0.2"`. Escolhido `rect_packer` — mais leve (não força Texture trait sobre nossos rgba buffers), mesmo algoritmo Skyline. Bake substituirá em V2 com algo mais sofisticado se necessário.
+
+**Bug crítico capturado pela auditoria**: NodeIds `CTX_MENU_PPM_16..1024` (`930-934`) colidiam com `CTX_SCENE_SEARCH` (`930`) + `CTX_SCENE_ROW_0..7` (`931-938`). Movido pra range `940-944` antes do ship. Auditoria multi-agente identificou; correção em [ids.rs:220-229](../../crates/ph2d-editor/src/screens/hero/ids.rs#L220).
+
+**Aberto pra V2 do atlas (futuro)**:
+- Atlas growth strategy: re-pack + grow para 8192² quando full (hoje retorna `AtlasFull` como toast)
+- `remove(key)` API para liberar slot quando sprite é despawned (hoje slot fica reservado até atlas reset)
+- Per-asset `pixels_per_meter` override no Inspector (hoje só project-level)
+- NumberInput livre no Settings panel (hoje só 5 presets)
+
+## M14.5 — Pluggable sprite source strategies (planned)
+
+O Skyline atlas shipado em M14.4d cobre o caso amplo (muitos sprites
+pequenos, auto-packing) mas não é o único pattern usado em engines
+2D pro. **A meta de M14.5 é expor 3 estratégias lado a lado, com a
+escolha surfaceada per-sprite no Inspector.** Cada estratégia tem
+trade-off de workflow vs perf que casa com diferentes content
+pipelines.
+
+### Estratégia A — Dynamic Atlas (Skyline) — current (M14.4d)
+
+Já implementada. Sprite é empacotado on-demand no atlas compartilhado
+de 4096² via `rect_packer::DensePacker`. **Use case**: sprites
+diversos importados ad-hoc, sem pipeline de art fora da engine.
+**Trade-off**: 1 draw call por frame para todos os sprites; mas
+packing decisions são runtime (não-determinístico cross-session se
+ordem de import mudar) e atlas pode esgotar.
+
+### Estratégia B — Hand-packed atlas (artist-authored)
+
+Artist usa ferramenta externa (Aseprite, TexturePacker, ShoeBox,
+free-texture-packer) pra produzir UM PNG + metadata JSON/XML que
+descreve cada sub-sprite (`name → pixel rect`). Engine carrega o PNG
+inteiro como uma textura wgpu e usa o metadata pra resolver UVs no
+extract.
+
+**Implementação prevista:**
+- Asset loader: parser pra Aseprite JSON Hash format (de facto
+  standard) + TexturePacker JSON. ~100 linhas em `ph2d-asset`.
+- `HandPackedAtlas { texture: wgpu::Texture, regions: BTreeMap<String, AtlasRegion> }`
+  paralelo ao `TextureAtlas` existente.
+- Sprite component referencia atlas asset id + sprite name; extract
+  resolve para UV via lookup do nome.
+
+**Vantagens**: packing ótimo (artist controla), determinístico
+cross-session, hot-reload trivial (1 arquivo), formato industry-
+standard (compatível com Spine, DragonBones, etc.). **Desvantagens**:
+exige tooling externo, workflow manual. **Use case**: jogo com art
+pipeline definido, tile-sets, character sheets, UI icons curados.
+
+### Estratégia C — Individual textures + draw-call batching (Godot-style)
+
+Cada sprite tem sua própria `wgpu::Texture` em resolução nativa
+(sem packing). Renderer agrupa sprites consecutivos que compartilham
+textura num único `instanced draw call` (igual a `RenderingServer`
+do Godot 4 — sort por texture/material, batch consecutivos).
+
+**Implementação prevista:**
+- Refator do extract: emit `(SimRef, GlobalTransform, RenderInstance, TextureRef)` em vez de só o RenderInstance; TextureRef é Arc da textura ou bind group cacheado.
+- Renderer: sort instances por `TextureRef`, group consecutivos, emit 1 draw call por group com seu próprio bind group bound.
+- LRU cache de bind groups por texture (rebuild eviction é raro).
+- ~300 linhas em `ph2d-render` (sprite pipeline branch + bind group cache).
+
+**Vantagens**: zero atlas-full (cada sprite vive em sua textura),
+sempre full resolution, sem packing overhead runtime, mental model
+simples (1 sprite = 1 texture). **Desvantagens**: mais state changes
+GPU se sprites são todos distintos (mitigado por sort+batch),
+overhead de alignment por textura pequena, pior para muitos sprites
+diversos numa mesma cena vs atlas único. **Use case**: HD 2D
+modern (Cuphead-tier), poucos sprites grandes, ou content
+procedural onde packing seria mais custoso que batching.
+
+### Inspector UI (Sprite selected)
+
+Quando uma entity com `Sprite` component é selecionada, a sub-
+painel "Render Source" do Inspector mostra:
+
+```
+┌─ Render Source ────────────────────┐
+│ Strategy:  [Dynamic Atlas ▾]       │
+│            Dynamic Atlas           │
+│            Hand-packed Atlas       │
+│            Individual Texture      │
+│                                    │
+│ [strategy-specific fields below]   │
+└────────────────────────────────────┘
+```
+
+**Strategy-specific fields:**
+- **Dynamic Atlas**: read-only `Atlas key: 16` + `Region: x=42 y=88 w=256 h=256`
+- **Hand-packed Atlas**: dropdown `Atlas asset: [hud_main.json ▾]` + dropdown `Sprite name: [heart_full ▾]`
+- **Individual Texture**: file picker `Source: [...] sprites/player.png`
+
+Switching strategy reassigns the source. Atlas slot do dynamic é
+liberado (precisa do `remove(key)` API listado em V2 do M14.4d).
+
+### Implementation impact
+
+Estimativa: ~600-900 linhas total entre `ph2d-render` (pipeline
+branch + bind group cache), `ph2d-asset` (Aseprite JSON loader),
+`ph2d-ecs` (Sprite enum variant), `ph2d-editor` (Inspector widget).
+Justifica seu próprio marco (M14.5) em vez de retrofit. Provável
+ordem: A já feita → C (Godot-style, menor unknowns) → B (loader
+parser).
+
+## M14.6 — Hierarchy panel polish (planned)
+
+A Hierarchy panel hoje lista entities em ordem DFS (M14.4a) com seleção
+via click, mas é read-only — não permite editar a hierarquia nem
+controlar visibilidade. M14.6 leva o painel ao nível do que Unity /
+Godot / Blender oferecem em outliners de cena.
+
+### A. Per-entity hide/show (eye toggle)
+
+Cada row mostra um ícone de olho (Lucide [`eye.svg`](../../crates/ph2d-editor/src/icons.rs) /
+[`eye-closed.svg`](../../crates/ph2d-editor/src/icons.rs)) na coluna
+da direita. Click toggle a visibilidade do sprite no canvas.
+
+**Modelo:**
+- Adicionar `Visibility` component em `ph2d-ecs` (ou flag em `Sprite`):
+  ```rust
+  pub struct Visibility { pub hidden: bool }
+  ```
+- Extract path: se `hidden == true`, skip o emit de `RenderInstance` em
+  PresentWorld (sprite some do canvas sem despawn da entity)
+- Children herdam por default (parent oculto → children ocultos visualmente);
+  flag explícita por entity overrides (Blender-style)
+
+**UI:**
+- Adicionar `IconId::Eye` + `IconId::EyeClosed` em [icons.rs](../../crates/ph2d-editor/src/icons.rs)
+  com paths Lucide. EyeClosed tem 5 path segments (rays + eye shape)
+- `paint_hierarchy_row` recebe um trailing icon button no extreme-right
+  alinhado com a row height
+- Hit-test: novo `BlenderHit { parent: row_id, kind: VisibilityToggle }`
+- Click dispatch: `apply_event` toggle `entity.Visibility.hidden`
+- Visual state: opacity da row reduzida quando `hidden` (Text2 → TextDisabled)
+
+### B. Drag-to-reparent
+
+Drag uma row sobre outra → reparenta a entity arrastada como child da target.
+
+**Behavior:**
+- Mouse down em hierarchy row começa potencial drag (threshold 4px)
+- Past threshold: render "ghost" da row arrastada flutuando no cursor
+- Highlight visual da target row enquanto hovering:
+  - **Sobre row**: reparenta como child (border-emph na target)
+  - **Acima/abaixo de row**: insert sibling no mesmo parent (linha horizontal indicator)
+  - **Sobre área vazia do panel**: detach (root-level child de Scene)
+- Mouse up commits o reparent via `ChildOf` component mutation em SimWorld
+- ESC cancels mid-drag
+
+**Edge cases:**
+- Drop em descendant próprio = no-op + toast `"Cannot parent X to its own descendant"`
+- Drop em si próprio = no-op silencioso
+- Cycle detection antes do commit
+
+**Implementação:**
+- `WidgetStore::active_drag` state machine (já existe pra Inspector, reusar pattern)
+- Nova `BlenderHit { kind: HierarchyDragSource }` em cada row
+- Paint do ghost: copy do row paint com α=0.6, transform=cursor
+- Indicador de drop position: thin line entre rows (sibling) ou border-emph na row (child)
+- ECS commit via `world.entity_mut(child).insert(ChildOf(new_parent))`
+
+### C. Expand/collapse de subárvores
+
+Click no chevron `>`/`v` antes do nome → toggle children visibility na lista
+(sem alterar o ECS — só esconde rows). Padrão: tudo expandido inicialmente.
+
+- `WidgetStore.hierarchy_collapsed: BTreeSet<NodeId>` — set de parents collapsed
+- DFS walk skipa subtrees quando parent in `hierarchy_collapsed`
+- Recompute hierarchy_order quando set muda (não é hot, OK na main thread)
+- IconId::ChevronRight / ChevronDown já existem
+
+### D. Selection sync bidirecional
+
+Hoje click em hierarchy row dispara `HeroSelection.label` update. M14.6 adiciona:
+- Canvas click em sprite (post-M14.5 picking) → seleciona row na hierarchy
+- Visualmente: row selected ganha `Selection` background fill + scroll into view
+- Multi-select (Cmd/Ctrl-click) — defere pra M14.7
+
+### E. Search / filter
+
+Search bar no header da Hierarchy (similar ao Project chip SceneList):
+- TextInput vazio = mostra tudo
+- Query string filtra rows cujo `Name` contém substring (case-insensitive)
+- Hits highlightados em `Accent` color
+- Parents de hits permanecem visíveis mesmo se não matcham
+
+### F. Right-click context menu
+
+Per-row context menu (right-click em row):
+- "Rename…" → inline TextInput sobre o label
+- "Duplicate" → spawn copy com `_copy` suffix
+- "Delete" → despawn entity + descendants (com confirmação se subtree > 5 entities)
+- "Reset Transform" → set Translation=0, Rotation=0, Scale=1
+- "Add Child" → spawn empty entity as child
+
+### Implementation impact
+
+Estimativa por sub-feature:
+- A (visibility toggle): ~150 linhas, ~1h
+- B (drag-reparent): ~400 linhas, ~3h (state machine + indicators + cycle check)
+- C (expand/collapse): ~120 linhas, ~1h
+- D (selection sync): ~80 linhas, ~30 min (post-M14.5 picking dependency)
+- E (search/filter): ~150 linhas, ~1h (reuse SceneList TextInput pattern)
+- F (context menu): ~200 linhas, ~2h (5 menu actions, rename inline edit)
+
+**Total: ~1100 linhas / ~8h.** Ship em sub-PRs por feature (A-F = 6 sub-PRs)
+ou single PR organizada por commits per-feature.
+
+**Dependências:**
+- B (drag) precisa do M14.4e (drag-and-drop infra do host) — ou rola próprio
+  state machine localmente
+- D (selection sync) precisa de canvas picking (M14.5 sprite strategies tem
+  parte disso quando AtlasRegion permite hit-testing por sprite)
+- F (delete with subtree) precisa de cascade despawn — já existe via ChildOf
+  no ECS (test `despawn_root_cascades_via_child_of` em
+  [transform_hierarchy.rs](../../crates/ph2d-ecs/tests/transform_hierarchy.rs))
+
+## Backlog técnico (sem marco assignado)
+
+### Telemetria de render real (substituir placeholder da status bar)
+
+[`crates/ph2d-editor/src/screens/hero/bottom_hud.rs`](../../crates/ph2d-editor/src/screens/hero/bottom_hud.rs) atualmente paint segments com strings hardcoded (`"60 fps · 16.7 ms"`, `"42 draws"`, `"1.2K sprites"`, etc.). Não há telemetria real plumada. Implementar em duas fases:
+
+**Fase A (CPU-side, ~30 linhas, baixo risco):**
+- `Instant::now()` delta entre frames no `App::render_frame` + EWMA (α=0.1) → `frame_ms` real.
+- `fps = 1000.0 / frame_ms` derivado.
+- `sim.world().entity_count()` real.
+- `present.world().query::<&RenderInstance>().iter().count()` real.
+- Plumb via `HeroScreen.stats: RenderStats` struct → `bottom_hud` lê.
+
+**Fase B (GPU timestamps, ~1h, mais plumbing):**
+- `wgpu::QuerySet` com `wgpu::QueryType::Timestamp` em cada pass (sprite, tonemap, vello, compositor).
+- `resolve_query_set` + readback assíncrono (uma frame de latência aceitável).
+- `RenderStats.gpu_ms_breakdown: [f32; 4]` → segments do status bar.
+
+**Quando fazer:** após M14.4d ou no próximo hardening sprint. Útil pra responder objetivamente "está pesada?" e detectar regressões perf por marco futuro (CI integration possível via frame budget gate, vide §"Definition of done").

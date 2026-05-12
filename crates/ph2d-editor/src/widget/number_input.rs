@@ -330,7 +330,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_default() {
-        smoke(NumberInput::new(NodeId(1), "x", 42.0), Theme::ForgeSdf);
+        smoke(NumberInput::new(NodeId(1), "x", 42.0), Theme::Forge);
     }
 
     #[test]
@@ -353,7 +353,7 @@ mod tests {
     fn paint_smoke_error() {
         smoke(
             NumberInput::new(NodeId(1), "x", 99.0).state(TextInputState::Error),
-            Theme::PaintStudio,
+            Theme::Workshop,
         );
     }
 }

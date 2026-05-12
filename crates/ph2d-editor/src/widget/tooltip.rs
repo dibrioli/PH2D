@@ -79,7 +79,7 @@ mod tests {
             Rect::new(0.0, 0.0, 120.0, 24.0),
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 }

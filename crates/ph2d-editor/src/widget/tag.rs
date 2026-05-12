@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_neutral() {
-        smoke(Tag::new(NodeId(1), "x"), Theme::ForgeSdf);
+        smoke(Tag::new(NodeId(1), "x"), Theme::Forge);
     }
 
     #[test]
@@ -254,7 +254,7 @@ mod tests {
             Tag::new(NodeId(1), "x")
                 .tone(TagTone::Danger)
                 .state(TagState::Pressed),
-            Theme::PaintStudio,
+            Theme::Workshop,
         );
     }
 
@@ -262,7 +262,7 @@ mod tests {
     fn paint_smoke_disabled() {
         smoke(
             Tag::new(NodeId(1), "x").state(TagState::Disabled),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 }

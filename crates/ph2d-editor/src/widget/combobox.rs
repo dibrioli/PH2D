@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_empty_closed() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]

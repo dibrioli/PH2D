@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_empty_with_placeholder() {
-        smoke(fixture().placeholder("Untitled"), Theme::ForgeSdf);
+        smoke(fixture().placeholder("Untitled"), Theme::Forge);
     }
 
     #[test]
@@ -272,7 +272,7 @@ mod tests {
             fixture()
                 .value("hello world")
                 .state(TextInputState::Focused),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 
@@ -293,7 +293,7 @@ mod tests {
     fn paint_smoke_disabled() {
         smoke(
             fixture().value("locked").state(TextInputState::Disabled),
-            Theme::PaintStudio,
+            Theme::Workshop,
         );
     }
 
@@ -311,7 +311,7 @@ mod tests {
             Rect::new(0.0, 0.0, 240.0, 32.0),
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 

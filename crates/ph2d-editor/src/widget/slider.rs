@@ -293,14 +293,14 @@ mod tests {
 
     #[test]
     fn paint_smoke_horizontal_default() {
-        smoke(fixture(), Rect::new(0.0, 0.0, 200.0, 24.0), Theme::ForgeSdf);
+        smoke(fixture(), Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Forge);
     }
 
     #[test]
     fn paint_smoke_horizontal_zero() {
         let mut s = fixture();
         s.set_value(0.0);
-        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::ForgeSdf);
+        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Forge);
     }
 
     #[test]
@@ -325,7 +325,7 @@ mod tests {
             .accent(true)
             .ticks(vec![0.0, 0.25, 0.5, 0.75, 1.0])
             .state(SliderState::Dragging);
-        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::ForgeSdf);
+        smoke(s, Rect::new(0.0, 0.0, 200.0, 24.0), Theme::Forge);
     }
 
     #[test]
@@ -333,7 +333,7 @@ mod tests {
         smoke(
             fixture().state(SliderState::Focused),
             Rect::new(0.0, 0.0, 200.0, 24.0),
-            Theme::PaintStudio,
+            Theme::Workshop,
         );
     }
 
@@ -342,7 +342,7 @@ mod tests {
         smoke(
             fixture().state(SliderState::Disabled),
             Rect::new(0.0, 0.0, 200.0, 24.0),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 }

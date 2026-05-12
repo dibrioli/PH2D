@@ -19,7 +19,7 @@ use crate::icons::{IconId, cmd_to_path};
 use crate::toast::ToastQueue;
 use crate::widget::{paint_color_swatch, paint_radio_group, paint_slider, paint_toggle};
 use crate::zones::{Layout, Rect, Zone};
-use ph2d_text::{PositionedLayoutItem, TextSystem};
+use ph2d_text::{FontWeight, PositionedLayoutItem, TextSystem};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
 use ph2d_vector::{
     Affine, BezPath, Brush, Color, Fill, Glyph, Rect as VelloRect, RoundedRect, Stroke, VectorScene,
@@ -170,8 +170,14 @@ pub fn paint_icon(
     }
     let scale = (avail_w / VIEWBOX).min(avail_h / VIEWBOX);
     let drawn = VIEWBOX * scale;
-    let tx = rect.x as f64 + (rect.w as f64 - drawn) * 0.5;
-    let ty = rect.y as f64 + (rect.h as f64 - drawn) * 0.5;
+    // Pixel-snap the icon origin: with `stroke_width = 1.5px`, sub-pixel
+    // translation makes MSAA16 stipple the stroke across two rows of
+    // pixels. Rounding to the nearest integer pixel keeps strokes
+    // anchored to a predictable grid position (up to 0.5 px visual
+    // shift from "ideal" centering — invisible at icon sizes, big
+    // crispness win on near-horizontal/vertical strokes).
+    let tx = (rect.x as f64 + (rect.w as f64 - drawn) * 0.5).round();
+    let ty = (rect.y as f64 + (rect.h as f64 - drawn) * 0.5).round();
     let transform = Affine::translate((tx, ty)) * Affine::scale(scale);
     let stroke = Stroke::new(stroke_width as f64);
     let brush = Brush::Solid(color);
@@ -199,9 +205,70 @@ pub fn paint_text(
     max_width: f32,
     color: Color,
 ) {
-    let layout = text_system.layout(text, font_size, max_width);
+    paint_text_weighted(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        FontWeight::MEDIUM,
+    );
+}
+
+/// SemiBold (600) variant of [`paint_text`] for panel titles and
+/// other prominent headings. See [`TextSystem::layout_with_weight`]
+/// for why titles need the extra weight: diagonals in glyphs like
+/// "y" hint poorly at small sizes without LCD subpixel AA, and the
+/// extra pen mass closes the perceptual gap with vertical-stem
+/// letters in the same word.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_text_title(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+) {
+    paint_text_weighted(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        FontWeight::SEMI_BOLD,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_text_weighted(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    weight: FontWeight,
+) {
+    let layout = text_system.layout_with_weight(text, font_size, max_width, weight);
     let inner = scene.inner_mut();
-    let translate = Affine::translate((x as f64, y as f64));
+    // Snap the text origin to integer pixels: hinting snaps stems to the
+    // glyph's local pixel grid, but if the *baseline* lands at a
+    // fractional Y the snapped grid is itself offset → soft. Callers
+    // routinely produce fractional Y from vertical centering math like
+    // `rect.y + (rect.h - font_size) * 0.5`. Rounding here makes every
+    // caller crisp without each one having to remember to align.
+    let translate = Affine::translate((x.round() as f64, y.round() as f64));
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
@@ -213,14 +280,22 @@ pub fn paint_text(
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
+                // Vello 0.8 defaults to `hint: false` — glyphs are
+                // rendered at floating-point positions which looks
+                // soft at UI sizes. Auto-hinting (skrifa) snaps stems
+                // to the pixel grid for crisp small-text rendering.
+                .hint(true)
                 .brush(color)
                 .transform(translate)
                 .draw(
                     Fill::NonZero,
                     glyph_run.positioned_glyphs().map(|g| Glyph {
                         id: g.id,
+                        // Snap glyph Y to integer to keep the baseline
+                        // pixel-aligned per glyph. X stays fractional
+                        // to preserve parley's kerning subtleties.
                         x: g.x,
-                        y: g.y,
+                        y: g.y.round(),
                     }),
                 );
         }
@@ -262,6 +337,12 @@ pub fn paint_text_rotated_ccw(
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
+                // Hinting under a 90° rotation: skrifa's autohinter
+                // snaps to the *layout* pixel grid (pre-rotation),
+                // which still gives crisper stems than no hinting —
+                // the post-rotation result aligns to the rotated
+                // pixel grid 1:1 since the rotation is axis-aligned.
+                .hint(true)
                 .brush(color)
                 .transform(transform)
                 .draw(
@@ -667,8 +748,8 @@ mod tests {
     /// our 8-bit palette (no banding from the sRGB linearization).
     #[test]
     fn token_to_vello_preserves_visible_difference() {
-        let bg0 = ColorToken::Bg0.resolve(Theme::ForgeSdf);
-        let bg1 = ColorToken::Bg1.resolve(Theme::ForgeSdf);
+        let bg0 = ColorToken::Bg0.resolve(Theme::Forge);
+        let bg1 = ColorToken::Bg1.resolve(Theme::Forge);
         // Tokens are different ⇒ vello colors must differ.
         assert_ne!(token_to_vello(bg0), token_to_vello(bg1));
     }
@@ -681,7 +762,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         let mut ctx = PaintCtx {
-            theme: Theme::ForgeSdf,
+            theme: Theme::Forge,
             viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
             text: &mut text,
         };
@@ -698,7 +779,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         let mut ctx = PaintCtx {
-            theme: Theme::ForgeSdf,
+            theme: Theme::Forge,
             viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
             text: &mut text,
         };

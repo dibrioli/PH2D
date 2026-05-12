@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn paint_smoke() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]

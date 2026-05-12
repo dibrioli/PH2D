@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_ghost() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]

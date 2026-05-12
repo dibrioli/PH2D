@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_plain() {
-        smoke(Card::new(NodeId(1)), Theme::ForgeSdf);
+        smoke(Card::new(NodeId(1)), Theme::Forge);
     }
 
     #[test]

@@ -187,12 +187,12 @@ mod tests {
 
     #[test]
     fn paint_smoke_off() {
-        smoke(Toggle::new(NodeId(1), "x"), Theme::ForgeSdf);
+        smoke(Toggle::new(NodeId(1), "x"), Theme::Forge);
     }
 
     #[test]
     fn paint_smoke_on() {
-        smoke(Toggle::new(NodeId(1), "x").on(true), Theme::ForgeSdf);
+        smoke(Toggle::new(NodeId(1), "x").on(true), Theme::Forge);
     }
 
     #[test]
@@ -225,7 +225,7 @@ mod tests {
     fn paint_smoke_disabled() {
         smoke(
             Toggle::new(NodeId(1), "x").state(ToggleState::Disabled),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 }

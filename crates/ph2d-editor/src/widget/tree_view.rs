@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_collapsed() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]

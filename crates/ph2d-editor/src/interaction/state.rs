@@ -495,6 +495,11 @@ pub enum ContextMenuKind {
     /// Clicked the TOPBAR Open chip. Menu offers Open Project +
     /// Import (and more later).
     OpenMenu,
+    /// Clicked the TOPBAR Settings (gear) cluster. Menu offers
+    /// project-level toggles — currently `pixels_per_meter` presets
+    /// (16 / 32 / 100 / 256 / 1024). Selected entry writes
+    /// `HeroScreen.project.pixels_per_meter`.
+    SettingsMenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `WidgetStore::current_scene_name`.
@@ -1163,6 +1168,17 @@ impl WidgetStore {
         if self.hierarchy_order.is_empty() {
             self.hierarchy_order = ids;
         }
+    }
+
+    /// Forcibly overwrite the hierarchy order. Used by the live-data
+    /// bridge (ADR-0025 M14.4a, [`crate::screens::hero::HeroScreen::sync_from_hierarchy`])
+    /// to swap the fixture's `[HIER_PLAYER]` placeholder for the
+    /// host's per-frame entity list. Also clears any drag-induced
+    /// `hierarchy_parent` re-parents — the host owns the tree shape
+    /// when live mode is active.
+    pub fn set_hierarchy_order(&mut self, ids: Vec<NodeId>) {
+        self.hierarchy_order = ids;
+        self.hierarchy_parent.clear();
     }
 
     /// Move `dragged` to land just before `target` (or at the end

@@ -231,7 +231,7 @@ mod tests {
         smoke(
             ColorSwatch::new(NodeId(1), "x", [200, 100, 50, 255]).size(SwatchSize::Sm),
             Rect::new(0.0, 0.0, 24.0, 24.0),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 
@@ -240,7 +240,7 @@ mod tests {
         smoke(
             ColorSwatch::new(NodeId(1), "x", [0, 0, 0, 0]),
             Rect::new(0.0, 0.0, 32.0, 32.0),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 
@@ -267,7 +267,7 @@ mod tests {
         smoke(
             ColorSwatch::new(NodeId(1), "x", [255, 0, 0, 255]).state(SwatchState::Focused),
             Rect::new(0.0, 0.0, 32.0, 32.0),
-            Theme::PaintStudio,
+            Theme::Workshop,
         );
     }
 }

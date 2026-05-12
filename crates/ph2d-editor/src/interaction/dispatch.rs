@@ -305,6 +305,20 @@ pub fn dispatch_pointer_with_text<'frame>(
                 });
                 return events.into_bump_slice();
             }
+            // Settings cluster (gear) — opens the SettingsMenu with
+            // px/m presets. Same anchor convention as Save/Open.
+            if event.button == ph2d_host::PointerButton::Primary
+                && let Some((hit_id, hit_rect)) = hit
+                && hit_id == crate::screens::hero::ids::TOPBAR_SETTINGS
+                && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
+            {
+                store.open_context_menu(super::ContextMenuRequest {
+                    x: hit_rect.x,
+                    y: hit_rect.y + hit_rect.h + 4.0,
+                    kind: super::ContextMenuKind::SettingsMenu,
+                });
+                return events.into_bump_slice();
+            }
             // Project chip → SceneList popover (search + scenes).
             if event.button == ph2d_host::PointerButton::Primary
                 && let Some((hit_id, hit_rect)) = hit

@@ -169,7 +169,7 @@ mod tests {
             ProgressBar::new(NodeId(1), "x")
                 .determinate(0.5)
                 .show_percent(true),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 
@@ -193,7 +193,7 @@ mod tests {
     fn paint_smoke_indeterminate() {
         smoke(
             ProgressBar::new(NodeId(1), "x").indeterminate(),
-            Theme::PaintStudio,
+            Theme::Workshop,
         );
     }
 }

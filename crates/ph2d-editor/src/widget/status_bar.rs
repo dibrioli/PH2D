@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn paint_smoke_full_hud() {
-        smoke(fixture(), Theme::ForgeSdf);
+        smoke(fixture(), Theme::Forge);
     }
 
     #[test]

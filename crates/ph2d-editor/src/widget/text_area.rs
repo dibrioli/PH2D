@@ -275,7 +275,7 @@ mod tests {
     fn paint_smoke_empty_with_placeholder() {
         smoke(
             TextArea::new(NodeId(1), "x").placeholder("Notes…"),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 

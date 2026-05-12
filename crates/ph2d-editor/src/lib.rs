@@ -27,9 +27,11 @@
 //! - Single-Touch Companion overlay
 
 pub mod floating_panel;
+pub mod grid;
 pub mod icons;
 pub mod interaction;
 pub mod paint;
+pub mod project;
 pub mod screens;
 pub mod toast;
 pub mod tool;
@@ -39,6 +41,7 @@ pub mod zen;
 pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
+pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
 pub use interaction::{
     HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
@@ -46,7 +49,10 @@ pub use interaction::{
 };
 pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
-    paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
+    paint_text_title, paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
+};
+pub use project::{
+    DEFAULT_PIXELS_PER_METER, MAX_PIXELS_PER_METER, MIN_PIXELS_PER_METER, ProjectSettings,
 };
 pub use screens::{HeroScreen, HeroSelection, paint_hero_screen};
 pub use toast::{Toast, ToastQueue, ToastSeverity};

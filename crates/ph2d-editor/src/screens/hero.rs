@@ -191,6 +191,44 @@ pub struct HeroScreen {
     /// Visibility of the bottom statistics HUD — toggled by the
     /// "Show Statistics" entry in the theme context menu.
     pub stats_visible: bool,
+    /// Live-mode entity rows published by the host via
+    /// [`HeroScreen::sync_from_hierarchy`] (ADR-0025 M14.4a).
+    ///
+    /// When `Some`, the hierarchy panel renders these entries instead
+    /// of `fixture::hierarchy()`, and `apply_event` resolves click
+    /// ids against this map. `None` keeps the fixture behavior (used
+    /// by tests + the standalone hero demo).
+    pub live_hierarchy_entries:
+        Option<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>,
+    /// World-space grid overlay toggle (ADR-0025 M14.4b). Default
+    /// `true`. Toggled via the "Show Grid" context-menu entry and
+    /// the `G` key.
+    pub grid_visible: bool,
+    /// Per-frame grid projection state. `None` means the host hasn't
+    /// supplied a view yet → grid stays hidden even if
+    /// `grid_visible` is `true`. Set each frame via
+    /// [`HeroScreen::set_grid_view`].
+    pub grid_view: Option<crate::grid::GridView>,
+    /// Spacing + color config for the grid painter. Mutate via
+    /// [`HeroScreen::grid_config_mut`] for project-level
+    /// customization.
+    pub grid_config: crate::grid::GridConfig,
+    /// M14.4b.bis: set by the VIEW button (`TOOL_HOME`) when its
+    /// cycle lands on the "Zero" mode, signaling the host to reset
+    /// `Camera2d` to its default (`center=(0,0)`, `height_world=10`).
+    /// The shell polls this flag after `paint_hero_screen` and
+    /// clears it after acting.
+    pub camera_reset_pending: bool,
+    /// M14.4c: set by the "Import…" context-menu entry
+    /// (`CTX_MENU_IMPORT`). The shell polls this flag, opens the
+    /// native file picker, and processes any selected images
+    /// (PNG/WEBP/JPEG). Cleared by the shell after handling.
+    pub import_requested: bool,
+    /// Project-level configuration (px/meter, future global toggles).
+    /// Edited via the TopBar Settings cluster; read by the shell
+    /// during image import to convert source-pixel dimensions to
+    /// world meters.
+    pub project: crate::project::ProjectSettings,
 }
 
 impl HeroScreen {
@@ -199,7 +237,7 @@ impl HeroScreen {
         Self::pre_populate_store(&mut store);
         Self {
             id,
-            theme: Theme::ForgeSdf,
+            theme: Theme::Forge,
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),
@@ -207,6 +245,13 @@ impl HeroScreen {
             inspector_visible: true,
             hierarchy_visible: true,
             stats_visible: true,
+            live_hierarchy_entries: None,
+            grid_visible: true,
+            grid_view: None,
+            grid_config: crate::grid::GridConfig::default(),
+            camera_reset_pending: false,
+            import_requested: false,
+            project: crate::project::ProjectSettings::default(),
         }
     }
 
@@ -228,6 +273,55 @@ impl HeroScreen {
     pub fn selection(mut self, sel: Option<HeroSelection>) -> Self {
         self.selection = sel;
         self
+    }
+
+    /// Inject host-supplied live entity rows into the hierarchy panel
+    /// (ADR-0025 M14.4a). Each call:
+    ///
+    /// 1. Re-registers the `ordered` `NodeId`s on the `WidgetStore`
+    ///    as plain interactive rows (idempotent — repeat calls cost
+    ///    nothing for ids already seen this session).
+    /// 2. Replaces the `WidgetStore::init_hierarchy_order` list so
+    ///    the painter iterates in the order the host supplies (the
+    ///    bridge's `HierarchySnapshot` walk order = DFS root-first).
+    /// 3. Stores `entries` so `paint_hero_screen` can publish them
+    ///    to the hierarchy painter's thread-local before paint, and
+    ///    so `apply_event` can resolve click ids back to entity
+    ///    names without crossing the `bevy_ecs::World` boundary
+    ///    (HR-8).
+    ///
+    /// Call once per frame from the host's `render_frame` loop
+    /// before `paint_hero_screen`. Passing an empty `ordered` slice
+    /// is valid (renders an empty hierarchy).
+    pub fn sync_from_hierarchy(
+        &mut self,
+        ordered: &[NodeId],
+        entries: std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>,
+    ) {
+        hierarchy::repopulate(&mut self.store, ordered);
+        self.live_hierarchy_entries = Some(entries);
+    }
+
+    /// Drop any host-supplied hierarchy state, reverting to the
+    /// fixture data set in `hierarchy::populate`. The host calls
+    /// this when leaving live-edit mode (e.g. user pressed
+    /// `PH2D_HERO_LIVE` toggle off).
+    pub fn clear_live_hierarchy(&mut self) {
+        self.live_hierarchy_entries = None;
+    }
+
+    /// Inject the host's per-frame grid projection (ADR-0025 M14.4b).
+    /// Pass `None` to suppress the grid even when `grid_visible` is
+    /// true — useful while the host is between scenes and no
+    /// camera is established.
+    pub fn set_grid_view(&mut self, view: Option<crate::grid::GridView>) {
+        self.grid_view = view;
+    }
+
+    /// Mutable access to the grid configuration (spacing, colors,
+    /// stroke widths). Changes apply on the next paint.
+    pub fn grid_config_mut(&mut self) -> &mut crate::grid::GridConfig {
+        &mut self.grid_config
     }
 
     pub fn handle_pointer<'frame>(
@@ -302,9 +396,9 @@ impl HeroScreen {
         // here, not on the WidgetStore.
         if let WidgetEvent::Click(id) = event {
             let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
-                Some(Theme::ForgeSdf)
+                Some(Theme::Forge)
             } else if id == ids::CTX_MENU_THEME_PAINT {
-                Some(Theme::PaintStudio)
+                Some(Theme::Workshop)
             } else if id == ids::CTX_MENU_THEME_SUNSTONE {
                 Some(Theme::Sunstone)
             } else if id == ids::CTX_MENU_THEME_BLUEPRINT {
@@ -341,6 +435,11 @@ impl HeroScreen {
                 self.store.close_context_menu();
                 return true;
             }
+            if id == ids::CTX_MENU_SHOW_GRID {
+                self.grid_visible = !self.grid_visible;
+                self.store.close_context_menu();
+                return true;
+            }
             // Rail compound toggles: SPACE flips Global↔Local, VIEW
             // cycles Selected → Camera → All. The face label is read
             // from the store every paint, so flipping the value here
@@ -351,8 +450,16 @@ impl HeroScreen {
                 return true;
             }
             if id == ids::TOOL_HOME {
-                let next = (self.store.tool_view_mode() + 1) % 3;
+                // M14.4b.bis: 4-mode cycle (Selected → Camera → All
+                // → Zero). When landing on Zero (mode 3), raise
+                // `camera_reset_pending` so the host resets its
+                // `Camera2d`. Other modes are placeholders for
+                // future frame-selection / frame-all actions.
+                let next = (self.store.tool_view_mode() + 1) % 4;
                 self.store.set_tool_view_mode(next);
+                if next == 3 {
+                    self.camera_reset_pending = true;
+                }
                 return true;
             }
             // Transform tools are an EXCLUSIVE toggle group (a radio
@@ -409,15 +516,43 @@ impl HeroScreen {
                 }
                 return true;
             }
-            // Save / Save As / Open Project / Import — placeholders
-            // until the pilot project wires real file I/O. Close the
-            // menu and return consumed so the click doesn't propagate.
+            // M14.4c: Import… raises a host-polled flag so the
+            // shell can open the native file picker. Other I/O
+            // menu items remain placeholders.
+            if id == ids::CTX_MENU_IMPORT {
+                self.import_requested = true;
+                self.store.close_context_menu();
+                return true;
+            }
+            // Pixels-per-meter presets (Settings cluster). Writes
+            // `project.pixels_per_meter` and closes the menu; the
+            // shell will read the new value on the next import.
+            let ppm_preset = if id == ids::CTX_MENU_PPM_16 {
+                Some(16.0)
+            } else if id == ids::CTX_MENU_PPM_32 {
+                Some(32.0)
+            } else if id == ids::CTX_MENU_PPM_100 {
+                Some(100.0)
+            } else if id == ids::CTX_MENU_PPM_256 {
+                Some(256.0)
+            } else if id == ids::CTX_MENU_PPM_1024 {
+                Some(1024.0)
+            } else {
+                None
+            };
+            if let Some(v) = ppm_preset {
+                self.project.set_pixels_per_meter(v);
+                self.store.close_context_menu();
+                return true;
+            }
+            // Save / Save As / Open Project — placeholders until the
+            // pilot project wires real file I/O. Close the menu and
+            // return consumed so the click doesn't propagate.
             if matches!(
                 id,
                 x if x == ids::CTX_MENU_SAVE
                     || x == ids::CTX_MENU_SAVE_AS
                     || x == ids::CTX_MENU_OPEN_PROJECT
-                    || x == ids::CTX_MENU_IMPORT
             ) {
                 self.store.close_context_menu();
                 return true;
@@ -458,7 +593,12 @@ impl HeroScreen {
         if left_rail::apply_event(&mut self.store, event) {
             return true;
         }
-        if hierarchy::apply_event(&mut self.store, &mut self.selection, event) {
+        if hierarchy::apply_event(
+            &mut self.store,
+            &mut self.selection,
+            self.live_hierarchy_entries.as_ref(),
+            event,
+        ) {
             return true;
         }
         if inspector::apply_event(&mut self.store, event) {
@@ -601,8 +741,40 @@ pub fn paint_hero_screen(
     }
     hero.hit_index.clear_for_frame();
 
-    paint_canvas_bg(&layout, scene, hero.theme);
-    if let Some(sel) = hero.selection.as_ref() {
+    // M14.5: in live mode (`grid_view` published) the compositor pass
+    // shows `game_rt` underneath wherever vello_rt has α=0, so we
+    // **skip** the opaque canvas Bg1 fill. Chrome panels (BgElev,
+    // panels, topbar) paint their own backdrops — verified in the
+    // M14.5 audit. Fixture mode keeps the canvas tint so mockup
+    // screenshots stay theme-correct.
+    if hero.grid_view.is_none() {
+        paint_canvas_bg(&layout, scene, hero.theme);
+    }
+    // M14.4b: world-space grid overlay. Painted between the canvas
+    // background and the selection marquee so the marquee remains
+    // legible over the grid. Skipped when toggle is off or host
+    // hasn't published a camera view. We substitute the layout's
+    // computed canvas rect into the view so the host doesn't have
+    // to mirror layout math — it only owns camera + window dims.
+    if hero.grid_visible
+        && let Some(view) = hero.grid_view
+    {
+        let view = crate::grid::GridView {
+            canvas: layout.canvas,
+            ..view
+        };
+        crate::grid::paint_grid(scene, hero.theme, &view, &hero.grid_config);
+    }
+    // M14.4c: the legacy mockup selection marquee draws a fixed-size
+    // dashed rect at the CANVAS center in screen pixels — it has no
+    // world-space coupling and so doesn't follow pan/zoom. Skip it
+    // when a `grid_view` is published (live ECS mode) so we don't
+    // mislead users into thinking the marquee tracks an entity.
+    // Fixture mode keeps the placeholder marquee for the mockup
+    // screenshots. Replace with a real world-space gizmo in M14.5+.
+    if hero.grid_view.is_none()
+        && let Some(sel) = hero.selection.as_ref()
+    {
         paint_selection_overlay(&layout, sel, scene, text_system, hero.theme);
     }
     paint_top_bar(
@@ -645,6 +817,10 @@ pub fn paint_hero_screen(
         hero.store.set_widget_color(target, value.rgba);
     }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
+    // Publish live entries (if any) to the hierarchy painter so it
+    // overrides `fixture::hierarchy()`. Cleared at the end of paint
+    // so the next frame's `sync_from_hierarchy` is the single source.
+    hierarchy::set_live_entries(hero.live_hierarchy_entries.clone());
     // Publish the picker's outer rect so dispatch's "is the click
     // inside the picker?" test can reason about its bounds.
     if hero.store.picker_target().is_some()
@@ -849,8 +1025,8 @@ mod tests {
     #[test]
     fn paint_hero_smoke_all_themes() {
         for theme in [
-            Theme::ForgeSdf,
-            Theme::PaintStudio,
+            Theme::Forge,
+            Theme::Workshop,
             Theme::Sunstone,
             Theme::Blueprint,
         ] {
@@ -980,7 +1156,7 @@ mod tests {
             &layout,
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
             &mut hits,
             &store,
         );
@@ -997,7 +1173,7 @@ mod tests {
             &layout,
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
             &mut hits,
             &store,
         );
@@ -1051,7 +1227,7 @@ mod tests {
             &layout,
             &mut scene,
             &mut text,
-            Theme::ForgeSdf,
+            Theme::Forge,
             &mut hits,
             &store,
         );
@@ -1062,7 +1238,7 @@ mod tests {
         let layout = HeroLayout::for_viewport(ipad12_viewport());
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_bottom_hud(&layout, &mut scene, &mut text, Theme::PaintStudio);
+        paint_bottom_hud(&layout, &mut scene, &mut text, Theme::Workshop);
     }
 
     #[test]
@@ -1071,6 +1247,6 @@ mod tests {
         let sel = fixture::default_selection();
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
-        paint_selection_overlay(&layout, &sel, &mut scene, &mut text, Theme::ForgeSdf);
+        paint_selection_overlay(&layout, &sel, &mut scene, &mut text, Theme::Forge);
     }
 }

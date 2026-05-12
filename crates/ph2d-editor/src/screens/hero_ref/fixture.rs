@@ -23,7 +23,7 @@ pub fn default_selection() -> HeroSelection {
 pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
     use crate::screens::hero::ids;
     vec![
-        (ids::TOPBAR_THEME, TopBarCluster::theme("Forge SDF")),
+        (ids::TOPBAR_THEME, TopBarCluster::theme("Forge")),
         (
             ids::TOPBAR_SAVE,
             TopBarCluster::single("Save", IconId::Save),

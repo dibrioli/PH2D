@@ -319,7 +319,7 @@ mod tests {
         smoke(
             sample_group(),
             Rect::new(0.0, 0.0, 300.0, 30.0),
-            Theme::ForgeSdf,
+            Theme::Forge,
         );
     }
 
@@ -327,7 +327,7 @@ mod tests {
     fn paint_smoke_horizontal_selected() {
         let mut g = sample_group();
         g.select("erase");
-        smoke(g, Rect::new(0.0, 0.0, 300.0, 30.0), Theme::ForgeSdf);
+        smoke(g, Rect::new(0.0, 0.0, 300.0, 30.0), Theme::Forge);
     }
 
     #[test]

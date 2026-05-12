@@ -100,34 +100,30 @@ impl QuadVertex {
 
     /// Unit quad as triangle strip, centered at origin.
     ///
-    /// UV V coords compensate the world→clip Y-flip in
-    /// [`Camera2d::view_proj`](crate::camera::Camera2d::view_proj):
-    /// the camera maps world-up to clip-down (Y-down NDC), so a quad
-    /// vertex at `pos.y = +0.5` (world-up) renders at screen-bottom.
-    /// To keep an imported image visually upright (its top row at
-    /// screen-top), the world-up corner must sample the **bottom** of
-    /// the source texture, so the V on world-up vertices is `1.0` and
-    /// V on world-down is `0.0`. (The previous mapping was the
-    /// opposite, which inverted asymmetric textures vertically — the
-    /// `M5` HSV dummy tiles hid this because solid colors are flip-
-    /// invariant.) Tested in
-    /// [`tests/sprite_quad_uv.rs`](../tests/sprite_quad_uv.rs).
+    /// UV mapping is "natural": world-up vertex (`pos.y = +0.5`)
+    /// samples texture top (V=0); world-down vertex samples texture
+    /// bottom (V=1). This works directly because
+    /// [`Camera2d::view_proj`](crate::camera::Camera2d::view_proj)
+    /// uses standard orthographic with no Y-flip (M14.4e v2 removed
+    /// the prior `bottom`/`top` swap that had inverted everything).
+    /// World Y-up therefore maps to screen Y-up, and a texture
+    /// uploaded in image-crate's top-down byte order displays upright.
     pub const QUAD_STRIP: [Self; 4] = [
         Self {
             pos: [-0.5, -0.5],
-            uv: [0.0, 0.0],
-        },
-        Self {
-            pos: [0.5, -0.5],
-            uv: [1.0, 0.0],
-        },
-        Self {
-            pos: [-0.5, 0.5],
             uv: [0.0, 1.0],
         },
         Self {
-            pos: [0.5, 0.5],
+            pos: [0.5, -0.5],
             uv: [1.0, 1.0],
+        },
+        Self {
+            pos: [-0.5, 0.5],
+            uv: [0.0, 0.0],
+        },
+        Self {
+            pos: [0.5, 0.5],
+            uv: [1.0, 0.0],
         },
     ];
 }
@@ -159,27 +155,18 @@ mod tests {
     }
 
     #[test]
-    fn quad_strip_uv_compensates_camera_y_flip() {
-        // Regression for the M14.4c bug: imported sprites were
-        // rendering Y-inverted because the camera's view_proj flips
-        // Y (world-up → clip-down per Y-down NDC) but QUAD_STRIP UVs
-        // mapped world-up to texture-up. Net: texture-top ended up at
-        // screen-bottom for asymmetric content.
-        //
-        // Invariant now: world-DOWN vertices sample texture-TOP (V=0),
-        // world-UP vertices sample texture-BOTTOM (V=1). After the
-        // camera Y-flip this places texture-top at screen-top — the
-        // image displays upright. X mapping is straight (no flip).
+    fn quad_strip_uv_natural_mapping() {
+        // M14.4e v2: camera projection no longer Y-flips, so the UV
+        // mapping is straightforward — world-up vertex (pos.y > 0)
+        // samples texture top (V=0), world-down samples texture
+        // bottom (V=1). X is straight (no flip).
         for v in QuadVertex::QUAD_STRIP {
-            // pos.y < 0 (world-down)  → uv.v == 0  (texture-top)
-            // pos.y > 0 (world-up)    → uv.v == 1  (texture-bottom)
-            let expected_v = if v.pos[1] < 0.0 { 0.0 } else { 1.0 };
+            let expected_v = if v.pos[1] < 0.0 { 1.0 } else { 0.0 };
             assert_eq!(
                 v.uv[1], expected_v,
                 "pos {:?} expected V={expected_v} got V={}",
                 v.pos, v.uv[1]
             );
-            // X straight: pos.x sign matches uv.u value.
             let expected_u = if v.pos[0] < 0.0 { 0.0 } else { 1.0 };
             assert_eq!(v.uv[0], expected_u);
         }

@@ -357,6 +357,141 @@ ou single PR organizada por commits per-feature.
   no ECS (test `despawn_root_cascades_via_child_of` em
   [transform_hierarchy.rs](../../crates/ph2d-ecs/tests/transform_hierarchy.rs))
 
+## M14.7 — Sprite gizmo (move/rotate/scale, mouse + touch) (planned)
+
+`Transform` shipped em M14.1; M14.4e spawna sprites no canvas via
+drag-drop. **Falta o tool de manipulação direta** — gizmo visual sobre
+o sprite selecionado pra translate/rotate/scale com mouse e touch.
+
+### Estudo de UX (2D engines de referência)
+
+| Engine | Modelo | Atalhos mouse | Touch |
+|---|---|---|---|
+| Unity 2D | Modal: Q/W/E/R/T separa ferramentas; gizmo dedicado por modo | Shift = constrain axis; Ctrl = grid snap; V = vertex snap | Limited (touch reuses mouse) |
+| Godot 4 | Combined: handles de move+rotate+scale visíveis simultaneamente | Shift = AR no scale; Ctrl = snap; Alt = pivot oposto | Touch native (1 finger move, 2 fingers pinch/twist) |
+| Aseprite | Selection-based: corner handles + rotation arrow | Shift = AR; Alt = pivot center | n/a |
+| **Figma** | **Bbox 8-handles**: 4 corners (scale uniforme) + 4 edges (axis scale); hover outside corner = rotate | **Shift = AR; Alt = mirror anchor; Ctrl = integer % snap; Cmd = snap to grid** | Touch native (single sprite manipulation; multi-finger zoom view) |
+| Affinity Designer | Figma-style, mesmas 8 handles + rotation indicator | Idem Figma | Native (iPad) |
+| Spine 2D | Translation handles + dedicated rotation ring | Shift = 15° snap | n/a |
+| Procreate | Touch-first: 1-finger move, 2-finger pinch/twist no objeto selecionado | n/a (touch-only) | **Best touch UX**: gesture-recognition combinada |
+
+### Decisão pra PH2D (target: mouse desktop + iPad/tablet touch)
+
+**Modelo: Figma/Affinity bbox combined gizmo, com gesture extension pra touch.**
+
+Razões:
+- Não-modal (todos os 3 ops visíveis simultaneamente) — economiza
+  toolbar real estate e reduz cliques de modo-switch
+- Padrão Figma é familiar pra design crowd, padrão Godot pra game dev
+  crowd; ambos convergem em bbox+handles
+- Touch funciona elegante (1-finger handle drag = mouse handle drag;
+  2-finger pinch+twist no sprite = scale+rotate sem precisar handles)
+- AR-preservation é Shift universal — não precisa explicar
+
+### Arquitetura
+
+**Visual layer (canvas overlay, painted após sprites + chrome):**
+- Bbox: stroke 1.5 px em `Selection` color, rounded corners 4 px
+- 8 handles: 12×12 px squares preenchidos com `Accent`, stroke 1 px
+  `BorderEmph`. Cantos = scale uniforme; arestas centrais = axis-only
+- Rotation: hover sobre região **outside** corner handles (raio +12 px)
+  vira cursor de rotação; drag rotaciona around pivot
+- Pivot indicator: dot 6 px em `Accent` no Transform.translation
+  (sprite center por default; M14.5+ pode mover pivot)
+- Active handle: highlight em `AccentHover` durante drag
+
+**State machine (`GizmoState` em ph2d-editor):**
+```
+Idle
+  → Hovering(handle) — cursor sobre handle/bbox; preview tint
+    → DraggingTranslate(start_world, start_transform)
+    → DraggingRotate(start_angle, start_transform)
+    → DraggingScale(handle_kind, start_size, start_transform)
+  → Released (commit ECS write)
+```
+
+**Mouse shortcuts:**
+- **Click+drag em handle de canto** → scale uniforme (`Shift` mantém AR)
+- **Click+drag em handle de aresta** → axis-only scale
+- **Hover fora dos cantos + drag** → rotate
+- **Click+drag em bbox interior** → translate
+- **Shift + scale** → mantém AR
+- **Shift + rotate** → snap 15° (configurável: `project.snap_rotate_deg`)
+- **Ctrl/Cmd + translate** → snap to grid (`project.snap_move`, default
+  16 px ou 1 m)
+- **Alt + scale** → pivot oposto (Figma "mirror anchor")
+- **Alt + rotate** → rotate around opposite anchor
+- **Esc** → cancela drag, restaura transform inicial
+
+**Touch gestures (PointerEvent::source == Touch):**
+- **1-finger drag em bbox** → translate (sem snap por default; tap-hold
+  ativa snap mode com haptic feedback se disponível)
+- **2-finger pinch** → scale uniforme (centroid = pivot)
+- **2-finger twist** → rotate (centroid = pivot, angle = relative
+  angle change)
+- **2-finger pinch + twist simultâneo** → composite scale+rotate
+  (Procreate-style)
+- Cancel: lift fingers ou tap fora do sprite
+
+**Snap config (ProjectSettings extension):**
+```rust
+pub struct SnapSettings {
+    pub move_meters: f32,      // default 0.16 (16 px @ 100 px/m)
+    pub rotate_deg: f32,       // default 15.0
+    pub scale_percentages: Vec<f32>, // [50, 75, 100, 125, 150, 200]
+}
+```
+
+**Implementação dividida em sub-PRs:**
+- 7.A: Selection state + Transform-coupled bbox compute (~150 linhas)
+- 7.B: Gizmo visual painter (bbox + 8 handles + rotate hover ring,
+  ~250 linhas)
+- 7.C: Mouse hit-test + state machine + ECS write-back (~400 linhas)
+- 7.D: Mouse modifier keys (Shift/Ctrl/Alt for AR/snap/anchor) (~200
+  linhas)
+- 7.E: Touch gestures (2-finger pinch/twist recognition) (~300 linhas)
+- 7.F: ProjectSettings.snap_* + UI in TopBar Settings cluster (~100
+  linhas)
+- 7.G: Tests (transform math, snap quantize, gesture recognition) (~200
+  linhas)
+
+**Total: ~1600 linhas / 10-12 h.** Dependências: Transform já existe
+(M14.1), screen_to_world já existe (M14.4b.bis), selection picking
+precisa de hit-test em world (M14.5 sprite strategies cobre parte).
+
+## M14.4e v2 — Bugs reportados em uso real (planned)
+
+A v1 do M14.4e shipou drag-and-drop funcional + 3 bugfixes mas o
+usuário reportou um quarto sintoma depois do commit:
+
+- **"Imagens importadas por drag são agrupadas na hierarquia"** —
+  precisa de investigação. Hipóteses: bridge realocando NodeIds
+  inconsistentes, ChildOf default sendo aplicado em algum lugar,
+  indent visual da hierarchy fora-de-sync. Validar com print do
+  `live_hierarchy_entries` durante drop. Fix < 50 linhas
+  esperado.
+
+## Processo do loop de implementação (regra ativa)
+
+A partir de 2026-05-12 o usuário pediu uma camada extra de revisão
+antes de cada fase do loop:
+
+1. **Draft**: agente principal escreve plano de implementação da fase
+   (modelo de dados, arquivos tocados, sub-passos, teste estratégia)
+2. **Pre-review**: spawn de Plan agent recebendo o draft + critical
+   files do repo; agent retorna parecer (gaps, simplificações,
+   alternativas)
+3. **Decision**: agente principal consolida feedback, ajusta plano se
+   pertinente
+4. **Implementation**: código + tests
+5. **Post-audit**: spawn de Explore agent valida implementação contra
+   plano + procura bugs/inconsistências
+6. **Fix**: corrige gaps reportados, re-build + tests verde
+7. **Commit**: PR atômico
+
+Aplica a Atlas V2 (D), M14.5, M14.6, M14.7, Telemetria (F), Inspector
+polish (E). Skip pra fixes de bug menores.
+
 ## Backlog técnico (sem marco assignado)
 
 ### Telemetria de render real (substituir placeholder da status bar)

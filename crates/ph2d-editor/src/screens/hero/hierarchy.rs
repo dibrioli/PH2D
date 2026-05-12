@@ -237,7 +237,24 @@ pub fn paint_hierarchy(
             continue;
         };
         let mut entity = entity_template.clone();
-        let depth = store.hierarchy_depth_of(*id);
+        // M14.4e v2 bugfix: previously this used
+        // `store.hierarchy_depth_of(id)` which walks the WidgetStore's
+        // DnD-reparent state. For live ECS entities (M14.4a) the DnD
+        // state is empty and depth_of returned 0 for everything; for
+        // newly-imported sprites however the store's
+        // `hierarchy_parent` map could have a residual entry from a
+        // prior drag, causing imports to render visually nested
+        // ("agrupadas") even though their ChildOf component said root.
+        //
+        // The entity's own `indent` field comes from
+        // `build_hierarchy_snapshot` which IS the authoritative ECS
+        // depth — reuse it directly so DnD state stays orthogonal to
+        // the source-of-truth hierarchy.
+        let depth = if current_live_entries().is_some() {
+            entity_template.indent as u32
+        } else {
+            store.hierarchy_depth_of(*id)
+        };
         let indent = (depth as f32) * INDENT_PX;
         let row_rect = Rect::new(
             rect.x + body_pad + indent,

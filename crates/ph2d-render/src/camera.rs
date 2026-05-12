@@ -86,19 +86,23 @@ impl Camera2d {
         let pixels_per_meter = window_h / self.height_world.max(f32::EPSILON);
         let dx_world = dx_px / pixels_per_meter;
         let dy_world = dy_px / pixels_per_meter;
-        // "Hand-pan" semantics: the world content under the cursor
-        // follows the cursor. Drag right → world content goes right
-        // (camera moves left). Drag down → world content goes down
-        // (camera moves up in world Y-up). Both axes use the SAME
-        // sign because the camera projection already flips world-Y
-        // to screen-Y (see `view_proj`'s swapped bottom/top), so the
-        // perceived screen-space drag direction matches Camera.center
-        // movement in world coordinates 1:1 after `-=`.
+        // Pan semantics: world content under the cursor follows the
+        // cursor drag direction (Photoshop/Figma "hand" pan). With
+        // the projection's Y-flip (`view_proj` swaps bottom/top so
+        // world Y-up maps to screen Y-down NDC), the perceived
+        // screen-down drag corresponds to camera UP in world coords.
         //
-        // M14.4e bugfix: the prior `center[1] += dy_world` produced
-        // an inverted-Y pan (user dragging down saw sprites go up).
+        // Empirical result the user validated: cursor down → camera
+        // center[1] increases. X is straight (cursor right → camera
+        // left in world).
+        //
+        // History: M14.4e shipped with `center[1] -= dy_world`
+        // assuming a different projection convention; the user
+        // reported Y still inverted in two consecutive builds, which
+        // pointed at the actual Y-flip direction being opposite to
+        // the textbook expectation. Sign reverted to `+=` here.
         self.center[0] -= dx_world;
-        self.center[1] -= dy_world;
+        self.center[1] += dy_world;
     }
 
     /// Project a screen-pixel cursor position to a world-space point
@@ -122,13 +126,12 @@ impl Camera2d {
         let w = window.width.max(1) as f32;
         let h = window.height.max(1) as f32;
         let (cx_px, cy_px) = cursor_px;
-        // Normalize to [-1, +1] in clip space (Y-DOWN since wgpu NDC).
+        // Cursor coords are Y-down (top of window = cy_px=0). World
+        // is Y-up. Cursor at screen TOP must map to world's HIGH Y
+        // (top of camera view) — so we subtract `ny * half_h` to
+        // invert the Y direction during the projection inverse.
         let nx = (cx_px / w) * 2.0 - 1.0;
         let ny = (cy_px / h) * 2.0 - 1.0;
-        // Reverse the orthographic: clip → world. half_h/half_w come
-        // from height_world + aspect, same as in `view_proj`. The
-        // Y-flip in `view_proj` swaps `bottom`/`top` so the inverse
-        // here is: world_y = center_y - ny * half_h (note the SIGN).
         let aspect = w / h;
         let half_h = self.height_world * 0.5;
         let half_w = half_h * aspect;
@@ -138,20 +141,31 @@ impl Camera2d {
     }
 
     /// Build the view-projection matrix for the given window.
-    /// Includes the Y-flip from world (Y-up) to clip (Y-down NDC).
+    /// Standard right-handed orthographic — world Y-up maps to wgpu
+    /// clip space Y-up (per WebGPU spec §3.4), which means world top
+    /// renders at screen top with no extra inversion.
+    ///
+    /// History (M14.4e v2): an earlier swap of `bottom`/`top` here
+    /// produced a Y-flip ("world Y-up → clip Y-down NDC") that
+    /// caused sprites to render mirrored relative to the grid + the
+    /// drag cursor — the user reported "mouse e grid descem enquanto
+    /// sprites sobem". Removing the swap aligns ALL Y consumers
+    /// (sprites, grid painter, screen_to_world inverse, pan delta)
+    /// to the same direction, and the QUAD_STRIP UV in
+    /// `crates/ph2d-render/src/sprite.rs` is restored to its
+    /// pre-M14.4d mapping (world-up → tex-top, V=0) so imported
+    /// images still render upright.
     pub fn view_proj(&self, window: WindowSize) -> Mat4 {
         let aspect = window.width.max(1) as f32 / window.height.max(1) as f32;
         let half_h = self.height_world * 0.5;
         let half_w = half_h * aspect;
         let cx = self.center[0];
         let cy = self.center[1];
-        // Orthographic: world (Y-up) → clip (Y-down). Y-axis flipped
-        // by swapping `bottom` and `top` arguments.
         Mat4::orthographic_rh(
             cx - half_w,
             cx + half_w,
-            cy + half_h, // bottom (was top)
-            cy - half_h, // top    (was bottom)
+            cy - half_h,
+            cy + half_h,
             -1.0,
             1.0,
         )
@@ -256,16 +270,17 @@ mod tests {
     }
 
     #[test]
-    fn pan_screen_down_moves_camera_down_world() {
-        // Hand-pan: cursor +y (drag DOWN on screen) → camera moves
-        // DOWN in world (center.y decreases). The visible content
-        // follows the cursor (content under cursor goes down with
-        // the drag). cursor +60 px @ 60 px/m → center.y -= 1.
+    fn pan_screen_down_moves_camera_up_world() {
+        // With the projection's Y-flip (view_proj swaps bottom/top so
+        // world Y-up renders as screen Y-down), cursor moving DOWN on
+        // screen corresponds to camera moving UP in world Y-up coords
+        // — keeping the visible world point under the cursor (Photoshop
+        // "hand" pan). cursor +60 px @ 60 px/m → center.y += 1.
         let mut cam = Camera2d::default();
         cam.pan_screen_delta(0.0, 60.0, 800.0, 600.0);
         assert!(
-            (cam.center[1] - -1.0).abs() < 1e-3,
-            "expected center.y = -1.0, got {}",
+            (cam.center[1] - 1.0).abs() < 1e-3,
+            "expected center.y = +1.0, got {}",
             cam.center[1]
         );
     }
@@ -293,24 +308,18 @@ mod tests {
     }
 
     #[test]
-    fn y_up_world_maps_to_top_of_clip() {
-        // Sprite at world (0, +5) with default camera (height_world 10,
-        // centered at origin) should appear at clip y > 0 if Y-up
-        // world is correctly flipped to Y-down clip... wait, that's
-        // wrong. Y-down clip means top of screen is y < 0 in NDC.
-        // Actually wgpu/WebGPU NDC has Y-up: top is +1, bottom is -1.
-        // The flip we want is "world Y-up → screen Y-down" only matters
-        // for where the world origin sits visually. Let me re-derive:
+    fn y_up_world_maps_to_positive_clip_y() {
+        // Standard ortho (no Y-flip post-M14.4e v2): world Y-up
+        // maps to clip Y-up (wgpu NDC has +1 at top per WebGPU spec).
         let cam = Camera2d::new([0.0, 0.0], 10.0);
         let win = WindowSize::new(800, 800);
         let m = cam.view_proj(win);
-        // In WebGPU NDC Y-up, +y is top of screen. Our world Y-up:
-        // +y also "up". With our flip (bottom>top swap), +5 world
-        // should map to **negative** clip y (showing at bottom). That
-        // is the convention used by Y-down screen-space libraries
-        // (Vello, parley, kurbo), which we standardize on (§11.1).
         let p = m * ph2d_core::Vec4::new(0.0, 5.0, 0.0, 1.0);
-        assert!(p.y < 0.0, "world +Y should map to negative clip Y");
+        assert!(
+            p.y > 0.0,
+            "world +Y should map to positive clip Y, got {}",
+            p.y
+        );
     }
 
     #[test]
@@ -323,26 +332,23 @@ mod tests {
     }
 
     #[test]
-    fn screen_to_world_top_pixel_maps_to_world_top() {
-        // Cursor at top of screen (y_px = 0) → world Y above center
-        // (world is Y-up; screen Y=0 = visually top = world max Y).
+    fn screen_to_world_top_pixel_maps_to_positive_world_y() {
+        // World Y-up, standard projection (no Y-flip): cursor at
+        // screen top maps to the TOP of the camera view in world
+        // coords = cy + half_h.
         let cam = Camera2d::new([0.0, 0.0], 10.0);
         let win = WindowSize::new(800, 600);
         let [_, wy] = cam.screen_to_world((400.0, 0.0), win);
-        assert!(wy > 0.0, "screen-top cursor must yield world +Y, got {wy}");
-        // Expected: half_h = 5 → world_y = +5 exactly.
+        assert!(wy > 0.0, "screen-top maps to world +Y, got {wy}");
         assert!((wy - 5.0).abs() < 1e-4);
     }
 
     #[test]
-    fn screen_to_world_bottom_pixel_maps_to_world_bottom() {
+    fn screen_to_world_bottom_pixel_maps_to_negative_world_y() {
         let cam = Camera2d::new([0.0, 0.0], 10.0);
         let win = WindowSize::new(800, 600);
         let [_, wy] = cam.screen_to_world((400.0, 600.0), win);
-        assert!(
-            wy < 0.0,
-            "screen-bottom cursor must yield world -Y, got {wy}"
-        );
+        assert!(wy < 0.0, "screen-bottom maps to world -Y, got {wy}");
         assert!((wy - -5.0).abs() < 1e-4);
     }
 

@@ -1073,6 +1073,28 @@ impl App {
                 sprite_count,
                 entity_count,
             };
+            // M14.7 B: publish the gizmo's per-frame projection. When
+            // the selection still resolves to a present entity (it can
+            // vanish if the user deleted it between frames) we build a
+            // `GizmoView` from the world-space bbox + camera. Empty
+            // selection → clear the view so the painter skips.
+            hero.gizmo_view = hero.gizmo_selection.and_then(|bits| {
+                let bbox = ph2d_render::selection_bbox_world(present.world_mut(), bits)?;
+                Some(ph2d_editor::GizmoView {
+                    bbox_min_world: bbox.min,
+                    bbox_max_world: bbox.max,
+                    camera_center: camera.center,
+                    camera_height_world: camera.height_world,
+                    window_w: window_size.width as f32,
+                    window_h: window_size.height as f32,
+                    canvas: ph2d_editor::zones::Rect::new(
+                        0.0,
+                        0.0,
+                        window_size.width as f32,
+                        window_size.height as f32,
+                    ),
+                })
+            });
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // M14.4b.bis: drain pending camera-reset request from
             // the VIEW button (TOOL_HOME → Zero mode).

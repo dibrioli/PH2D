@@ -269,6 +269,12 @@ pub struct HeroScreen {
     /// (click landed on empty canvas, or the entity was just
     /// despawned).
     pub gizmo_selection: Option<u64>,
+    /// M14.7 B: per-frame projection input for the gizmo painter.
+    /// Host computes this from `selection_bbox_world(present,
+    /// gizmo_selection)` + the current camera/window and pushes it
+    /// here just before `paint_hero_screen`. `None` ⇒ no gizmo
+    /// painted this frame (selection is empty, or the entity vanished).
+    pub gizmo_view: Option<crate::gizmo::GizmoView>,
 }
 
 /// M14.6B host-side reparent intent. Mirrors the
@@ -313,6 +319,7 @@ impl HeroScreen {
             pending_reset_transform: None,
             pending_add_child: None,
             gizmo_selection: None,
+            gizmo_view: None,
         }
     }
 
@@ -893,11 +900,19 @@ pub fn paint_hero_screen(
     // when a `grid_view` is published (live ECS mode) so we don't
     // mislead users into thinking the marquee tracks an entity.
     // Fixture mode keeps the placeholder marquee for the mockup
-    // screenshots. Replace with a real world-space gizmo in M14.5+.
+    // screenshots.
     if hero.grid_view.is_none()
         && let Some(sel) = hero.selection.as_ref()
     {
         paint_selection_overlay(&layout, sel, scene, text_system, hero.theme);
+    }
+    // M14.7 B: live-mode sprite gizmo. The host publishes a
+    // `gizmo_view` carrying the selected sprite's world-space bbox +
+    // current camera; the painter projects to screen pixels with the
+    // same math the grid uses (so the gizmo and grid stay aligned
+    // across pan/zoom).
+    if let Some(view) = hero.gizmo_view {
+        crate::gizmo::paint_sprite_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
     }
     paint_top_bar(
         &layout,

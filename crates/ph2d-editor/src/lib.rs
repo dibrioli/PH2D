@@ -27,6 +27,7 @@
 //! - Single-Touch Companion overlay
 
 pub mod floating_panel;
+pub mod gizmo;
 pub mod grid;
 pub mod icons;
 pub mod interaction;
@@ -41,6 +42,7 @@ pub mod zen;
 pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
+pub use gizmo::{GizmoView, paint_sprite_gizmo};
 pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
 pub use interaction::{

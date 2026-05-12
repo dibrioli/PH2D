@@ -1360,6 +1360,15 @@ impl App {
                     sim.world()
                         .get::<ph2d_ecs::ChildOf>(target)
                         .map(|c| c.parent())
+                } else if let Some(after_node) = intent.after
+                    && let Some(target_bits) = live.bridge.entity_for(after_node)
+                {
+                    // "After t" inherits t's parent (or root when t
+                    // itself is root).
+                    let target = ph2d_ecs::Entity::from_bits(target_bits);
+                    sim.world()
+                        .get::<ph2d_ecs::ChildOf>(target)
+                        .map(|c| c.parent())
                 } else {
                     None
                 };
@@ -1411,10 +1420,27 @@ impl App {
                     //     `build_hierarchy_snapshot`, not by us).
                     //   - intent.before is None ("append at end" is
                     //     what the bare insert already did).
-                    if let (Some(parent), Some(before_node)) = (new_parent_entity, intent.before)
-                        && let Some(target_bits) = live.bridge.entity_for(before_node)
+                    // Pick the sibling pivot for the reorder:
+                    //   - Before(t): insert dragged just before t
+                    //   - After(t):  insert dragged just after t
+                    // Either resolves to a target NodeId in
+                    // `intent.before` / `intent.after`; from there we
+                    // map to the ECS entity and pick the insert side.
+                    let target_kind: Option<(ph2d_ecs::Entity, bool /* place_before */)> =
+                        if let Some(before_node) = intent.before
+                            && let Some(b) = live.bridge.entity_for(before_node)
+                        {
+                            Some((ph2d_ecs::Entity::from_bits(b), true))
+                        } else if let Some(after_node) = intent.after
+                            && let Some(a) = live.bridge.entity_for(after_node)
+                        {
+                            Some((ph2d_ecs::Entity::from_bits(a), false))
+                        } else {
+                            None
+                        };
+                    if let (Some(parent), Some((target, place_before))) =
+                        (new_parent_entity, target_kind)
                     {
-                        let target = ph2d_ecs::Entity::from_bits(target_bits);
                         // Snapshot current Children (excluding the
                         // dragged entity — we'll re-insert it at the
                         // chosen slot). `Children::iter` returns
@@ -1423,18 +1449,22 @@ impl App {
                             .get::<bevy_ecs::hierarchy::Children>(parent)
                             .map(|c| c.iter().copied().filter(|e| *e != dragged).collect())
                             .unwrap_or_default();
-                        // Build new desired order: everything BEFORE
-                        // target (in current order), then dragged,
-                        // then everything FROM target onward.
+                        // Build new desired order:
+                        //   place_before = true  → [..target) + dragged + [target..end)
+                        //   place_before = false → [..target] + dragged + [target+1..end)
                         let mut desired: Vec<ph2d_ecs::Entity> =
                             Vec::with_capacity(current.len() + 1);
                         let mut inserted = false;
                         for &c in &current {
-                            if c == target && !inserted {
+                            if !inserted && c == target && place_before {
                                 desired.push(dragged);
                                 inserted = true;
                             }
                             desired.push(c);
+                            if !inserted && c == target && !place_before {
+                                desired.push(dragged);
+                                inserted = true;
+                            }
                         }
                         if !inserted {
                             // Target wasn't actually a child of parent
@@ -2259,29 +2289,23 @@ impl ApplicationHandler for App {
                                 let world_pos =
                                     gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                                 // M14.7 polish (19.3): alternate-click
-                                // overlap cycling. Each Primary Down at
-                                // (≈) the same world position increments
-                                // `cycle_pick_count`; on odd counts we
-                                // advance the index so the user steps
-                                // DOWN the stack, on even counts the
-                                // selection stays put (drag without
-                                // re-cycling). Anchor / threshold:
-                                //   - position drift > 4 px in world →
-                                //     reset (treat as a fresh click)
-                                //   - hit list shape changed → reset
+                                // overlap cycling — anchored by the
+                                // SAME HIT SET, not the same pixel.
+                                // Touch + stylus inputs can't reliably
+                                // hit the same world point twice; tying
+                                // the cycle to the entity set instead
+                                // lets the user tap anywhere inside the
+                                // overlap region and still walk the
+                                // stack. Reset triggers:
+                                //   - hit list shape changed (cursor
+                                //     moved to a different overlap)
+                                //   - hit list empty (= empty canvas
+                                //     click → deselect)
                                 let hits = ph2d_render::pick_sprites_at_world(
                                     gfx.present.world_mut(),
                                     world_pos,
                                 );
-                                let same_spot = self
-                                    .cycle_pick_world
-                                    .map(|prev| {
-                                        let dx = prev[0] - world_pos[0];
-                                        let dy = prev[1] - world_pos[1];
-                                        (dx * dx + dy * dy).sqrt() < 0.04
-                                    })
-                                    .unwrap_or(false);
-                                let same_list = same_spot && hits == self.cycle_pick_hits;
+                                let same_list = !hits.is_empty() && hits == self.cycle_pick_hits;
                                 if !same_list {
                                     // Fresh click — reset the cycle.
                                     self.cycle_pick_world = Some(world_pos);

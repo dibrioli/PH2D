@@ -646,6 +646,27 @@ pub fn dispatch_pointer_with_text<'frame>(
                             dragged: drag.dragged,
                             new_parent,
                             before: Some(t),
+                            after: None,
+                        });
+                    }
+                    HierDrop::After(t) => {
+                        // Fixture-mode store move: insert just after
+                        // target. Live mode delegates to the host
+                        // which resolves the after target into the
+                        // matching parent + before-next-sibling slot.
+                        let order = store.hierarchy_order();
+                        let next_id = order
+                            .iter()
+                            .position(|i| *i == t)
+                            .and_then(|idx| order.get(idx + 1).copied());
+                        store.hierarchy_move(drag.dragged, next_id);
+                        let new_parent = store.hierarchy_parent_of(t);
+                        let _ = store.hierarchy_set_parent(drag.dragged, new_parent);
+                        events.push(WidgetEvent::HierReparent {
+                            dragged: drag.dragged,
+                            new_parent,
+                            before: None,
+                            after: Some(t),
                         });
                     }
                     HierDrop::Inside(t) => {
@@ -664,6 +685,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                             dragged: drag.dragged,
                             new_parent: Some(t),
                             before: None,
+                            after: None,
                         });
                     }
                     HierDrop::End => {
@@ -673,6 +695,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                             dragged: drag.dragged,
                             new_parent: None,
                             before: None,
+                            after: None,
                         });
                     }
                 }
@@ -1238,12 +1261,19 @@ fn is_color_target_id(id: ph2d_a11y::NodeId) -> bool {
 }
 
 /// Drop kind resolved at the end of a hierarchy DnD: a sibling
-/// insertion (above the given row, or at the very end of the list),
-/// or a re-parent inside the given row.
+/// insertion (above or below the given row), or a re-parent inside
+/// the given row.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum HierDrop {
     /// Drop dragged just before this row as a sibling.
     Before(ph2d_a11y::NodeId),
+    /// Drop dragged just after this row as a sibling. Resolved by
+    /// the host to `(target's parent, before = target's next
+    /// sibling, or None for "append at end")`. Used for the bottom-
+    /// 30% drop band on the LAST visible child of a parent — the
+    /// pre-M14.7-polish `End` fallthrough turned that into a root
+    /// promotion instead of "append in this parent".
+    After(ph2d_a11y::NodeId),
     /// Drop dragged as a child of this row.
     Inside(ph2d_a11y::NodeId),
     /// Drop at the very bottom (root level, end of list).
@@ -1299,9 +1329,13 @@ fn find_hierarchy_drop(
         } else if cursor_y < inside_bot {
             return HierDrop::Inside(id);
         } else {
-            // Bottom band falls through to the next row's "before"
-            // at the seam.
-            continue;
+            // Bottom band: drop AS THE NEXT SIBLING of this row.
+            // Host resolves "after t" to t's parent + slot just past
+            // t in the Children list. Last-child-of-parent + drop
+            // here = append to parent's Children (the bug the user
+            // hit: previously bottom-band fall-through eventually
+            // returned `End`, which is a root promotion).
+            return HierDrop::After(id);
         }
     }
     HierDrop::End
@@ -2664,6 +2698,7 @@ mod tests {
                     dragged,
                     new_parent: Some(np),
                     before: None,
+                    after: _,
                 } if *dragged == dragged_id && *np == parent_id
             )),
             "expected HierReparent Inside({parent_id:?}); got {evts:?}"

@@ -322,6 +322,11 @@ pub struct HierReparentIntent {
     pub dragged: NodeId,
     pub new_parent: Option<NodeId>,
     pub before: Option<NodeId>,
+    /// M14.7 polish: when set, the host inserts `dragged` AFTER this
+    /// target sibling. Mirrors the `WidgetEvent::HierReparent.after`
+    /// field. Mutually exclusive with `before` — only one resolution
+    /// fires per drop.
+    pub after: Option<NodeId>,
 }
 
 impl HeroScreen {
@@ -506,12 +511,14 @@ impl HeroScreen {
             dragged,
             new_parent,
             before,
+            after,
         } = event
         {
             self.pending_reparent = Some(HierReparentIntent {
                 dragged,
                 new_parent,
                 before,
+                after,
             });
             return true;
         }

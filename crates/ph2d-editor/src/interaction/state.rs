@@ -239,6 +239,14 @@ pub enum WidgetEvent {
         dragged: NodeId,
         new_parent: Option<NodeId>,
         before: Option<NodeId>,
+        /// M14.7 polish: when set, the host inserts `dragged` AFTER
+        /// this target sibling (= "next sibling of target in
+        /// target's parent's Children"). Mutually exclusive with
+        /// `before` in normal use; the host prefers `before` if both
+        /// are accidentally Some. Lets the bottom-30% drop band land
+        /// the dragged row as the new last child of a parent without
+        /// resolving the next-sibling slot in the dispatcher.
+        after: Option<NodeId>,
     },
 }
 

@@ -452,6 +452,20 @@ pub fn paint_hierarchy(
                 );
                 drew = true;
                 break;
+            } else {
+                // M14.7 polish: bottom 30% → "After this row" sibling
+                // insertion. Indicator is a thin Accent line at the
+                // row's bottom edge — mirrors the Before indicator at
+                // the top so the user sees a clear "drop slot" cue.
+                let indicator = Rect::new(rrect.x, rrect.y + rrect.h - 1.0, rrect.w, 2.0);
+                crate::paint::fill_rounded_rect(
+                    scene,
+                    indicator,
+                    1.0,
+                    resolve(ColorToken::Accent, theme),
+                );
+                drew = true;
+                break;
             }
         }
         if !drew {

@@ -3933,6 +3933,7 @@ dependencies = [
  "arboard",
  "bevy_ecs",
  "bumpalo",
+ "core-graphics",
  "gilrs",
  "image",
  "ph2d-asset",

@@ -59,6 +59,16 @@ bumpalo = "3"
 # for a user-initiated import flow.
 rfd = "0.15"
 
+# core-graphics: macOS-only live cursor query. winit 0.30 does NOT
+# emit `CursorMoved` during external file drag operations, so the
+# cached cursor is stale by the time `DroppedFile` fires. We ask
+# CoreGraphics for the live cursor instead. Already a transitive
+# dep via winit/macos; promoting to a direct dep is free (no extra
+# compile unit) and keeps the crate `forbid(unsafe_code)`-clean
+# because all wrapping is inside the core-graphics crate itself.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.23"
+
 [features]
 # Forwarded to ph2d-editor to swap `screens::hero` for the frozen
 # `screens::hero_ref` snapshot. Used by `reference.command`.

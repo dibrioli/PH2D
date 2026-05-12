@@ -436,7 +436,21 @@ impl App {
         };
         let pixels_per_meter = hero.project.pixels_per_meter;
         let win = gfx.surface.size();
-        let drop_world = gfx.camera.screen_to_world(self.last_cursor, win);
+        // macOS-only: winit 0.30 does NOT emit `CursorMoved` during
+        // external file drag operations (see
+        // winit-0.30.13/src/platform_impl/macos/window_delegate.rs —
+        // `draggingEntered:` doesn't extract `draggingLocation`, no
+        // `draggingUpdated:` is implemented at all). So `last_cursor`
+        // is whatever it was BEFORE the drag started, not where the
+        // file was actually dropped. Query the live cursor from
+        // CoreGraphics (`macos_cursor_query`) to override; fall back
+        // to `last_cursor` on other platforms.
+        let cursor_px = self
+            .host
+            .as_ref()
+            .and_then(|h| live_cursor_in_window(h.window()))
+            .unwrap_or(self.last_cursor);
+        let drop_world = gfx.camera.screen_to_world(cursor_px, win);
         for path in paths {
             if !ph2d_asset::is_supported_image_extension(path) {
                 let name = path
@@ -734,22 +748,45 @@ impl App {
     /// hierarchy panel display readable rows ("sprite_001" through
     /// "sprite_008") instead of a wall of `Entity_…` hex strings.
     fn populate_sim_live(sim: &mut SimWorld) {
-        const N: u32 = 8;
-        for i in 0..N {
-            let f = i as f32;
-            let x = (f - (N as f32 - 1.0) * 0.5) * 1.0; // 1m spacing
-            let pos = Vec2::new(x, 0.0);
-            let vx = ((f * 12.9898).sin() * 43758.547).fract() * 1.0 - 0.5;
-            sim.world_mut().spawn((
-                Transform::from_translation(pos),
-                Velocity(Vec2::new(vx, 0.0)),
-                Sprite {
-                    atlas_index: i % 16,
-                    size: [0.4, 0.4],
-                    tint: [1.0, 1.0, 1.0, 1.0],
-                },
-                Name::new(format!("sprite_{:03}", i + 1)),
-            ));
+        // 2 roots × 3 children = 8 entities arranged as a depth-2
+        // tree. Lets the user exercise the M14.6C hierarchy
+        // expand/collapse chevron (which only appears on parents)
+        // and M14.6A hide/show propagation as soon as the demo
+        // boots — without that, every row is a root and there's
+        // nothing to collapse. Layout: roots on Y=+0.5/-0.5 with
+        // their 3 children fanned out on the same row, 0.5 m apart.
+        let mut sprite_idx = 0u32;
+        let world = sim.world_mut();
+        for group in 0..2 {
+            let y_root = if group == 0 { 0.5 } else { -0.5 };
+            let root_entity = world
+                .spawn((
+                    Transform::from_translation(Vec2::new(-1.5, y_root)),
+                    Sprite {
+                        atlas_index: sprite_idx % 16,
+                        size: [0.4, 0.4],
+                        tint: [1.0, 1.0, 1.0, 1.0],
+                    },
+                    Name::new(format!("group_{:02}", group + 1)),
+                ))
+                .id();
+            sprite_idx += 1;
+            for child in 0..3 {
+                let f = child as f32;
+                let vx = ((sprite_idx as f32 * 12.9898).sin() * 43758.547).fract() * 1.0 - 0.5;
+                world.spawn((
+                    Transform::from_translation(Vec2::new(-0.5 + f, y_root)),
+                    Velocity(Vec2::new(vx, 0.0)),
+                    Sprite {
+                        atlas_index: sprite_idx % 16,
+                        size: [0.4, 0.4],
+                        tint: [1.0, 1.0, 1.0, 1.0],
+                    },
+                    Name::new(format!("sprite_{:03}", sprite_idx)),
+                    ph2d_ecs::ChildOf(root_entity),
+                ));
+                sprite_idx += 1;
+            }
         }
     }
 
@@ -1979,6 +2016,65 @@ const EPS_PIXELS_PER_METER: f32 = 0.01;
 /// Guarantees the quad is selectable even if the user picks an
 /// absurd `pixels_per_meter` value combined with a 1-pixel image.
 const MIN_SPRITE_SIZE: f32 = 0.001;
+
+/// Query the live cursor position relative to `window` in physical
+/// pixels (top-left origin). Returns `None` if the platform path
+/// fails; callers fall back to a cached value.
+///
+/// Existence rationale: winit 0.30 on macOS does not emit
+/// `CursorMoved` during external file drag operations, so by the
+/// time `DroppedFile` fires the cached cursor is stale. We bypass
+/// the event stream by asking CoreGraphics for the live cursor
+/// directly. Other platforms reach here only as a no-op stub.
+fn live_cursor_in_window(window: &winit::window::Window) -> Option<(f32, f32)> {
+    #[cfg(target_os = "macos")]
+    {
+        let cursor_pts = macos_cursor::screen_position_points()?;
+        let scale = window.scale_factor() as f32;
+        // CGEventGetLocation returns screen-space points (logical
+        // pixels, top-left origin). Window's `outer_position` is
+        // physical pixels; bring cursor to the same space first.
+        let cursor_phys_x = (cursor_pts.0 as f32) * scale;
+        let cursor_phys_y = (cursor_pts.1 as f32) * scale;
+        let outer = window.outer_position().ok()?;
+        // `outer_position` is the window frame's upper-left in screen
+        // coords. `inner_size` differs from outer because of the
+        // titlebar — winit gives no `inner_position` accessor, so
+        // approximate by subtracting (outer_size - inner_size) /
+        // 2 vertically (titlebar height). This matches macOS's
+        // standard chrome: equal margin on all four sides except the
+        // top which carries the titlebar.
+        let outer_size = window.outer_size();
+        let inner_size = window.inner_size();
+        let titlebar_h = outer_size.height.saturating_sub(inner_size.height) as f32;
+        let rel_x = cursor_phys_x - outer.x as f32;
+        let rel_y = cursor_phys_y - outer.y as f32 - titlebar_h;
+        Some((rel_x, rel_y))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+        None
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod macos_cursor {
+    use core_graphics::event::CGEvent;
+    use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+
+    /// Current cursor position in global screen points (logical
+    /// pixels, top-left origin). Always available — does not depend
+    /// on any cocoa event being in flight, which is what makes it
+    /// the right tool for `DroppedFile` (where winit's event stream
+    /// is paused).
+    pub fn screen_position_points() -> Option<(f64, f64)> {
+        let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState).ok()?;
+        let event = CGEvent::new(source).ok()?;
+        let p = event.location();
+        Some((p.x, p.y))
+    }
+}
 
 /// M14.4b.bis: true when `(x, y)` lies inside either the Inspector
 /// or Hierarchy panel rect published by the most-recent

@@ -183,6 +183,49 @@ fn despawn_root_cascades_via_child_of() {
     );
 }
 
+/// Regression for ADR-0025 M14.4c "imported sprite invisible":
+/// `TransformPropagationState` is built once at boot (typical
+/// pattern in shell main loops). When the host spawns NEW entities
+/// of a NEW archetype (e.g. M14.4c imports add (Transform, Sprite,
+/// Name) while the demo's seed had (Transform, Velocity, Sprite,
+/// Name)), `propagate_transforms` must still pick them up.
+///
+/// The fix: `propagate_transforms` calls `update_archetypes` on
+/// both `roots` and `chain` query states at the top of each pass.
+/// This test would catch a regression where that call was removed.
+#[test]
+fn propagation_discovers_entities_of_new_archetype_after_init() {
+    let mut sim = SimWorld::new();
+    // Seed archetype A: (Transform).
+    let a = sim.world_mut().spawn(Transform::IDENTITY).id();
+    // Build QueryState cache from CURRENT archetypes only.
+    let mut state = TransformPropagationState::new(sim.world_mut());
+    let mut worklist = WorklistBuf::new();
+
+    // Now spawn a brand-new archetype B: (Transform, Marker) where
+    // Marker is a fresh local component the cache has never seen.
+    #[derive(bevy_ecs::component::Component)]
+    struct Marker;
+    let b = sim.world_mut().spawn((Transform::IDENTITY, Marker)).id();
+
+    let mut present = PresentWorld::new();
+    ph2d_ecs::extract!(sim => present, |sim_w, present_w| {
+        propagate_transforms_into_present(sim_w, &mut state, present_w, &mut worklist);
+    });
+    let mut q = present.world_mut().query::<&SimRef>();
+    let mut found: Vec<bevy_ecs::entity::Entity> = q.iter(present.world()).map(|s| s.0).collect();
+    found.sort_by_key(|e| e.to_bits());
+    assert!(
+        found.contains(&a),
+        "missing original-archetype entity {a:?} (got {found:?})"
+    );
+    assert!(
+        found.contains(&b),
+        "missing new-archetype entity {b:?} — update_archetypes regression \
+         (got {found:?})"
+    );
+}
+
 #[test]
 fn multiple_roots_are_independent() {
     let mut sim = SimWorld::new();

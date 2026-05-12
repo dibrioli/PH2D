@@ -337,6 +337,16 @@ pub fn propagate_transforms<F>(
 {
     worklist.clear();
 
+    // Refresh both QueryStates' archetype caches against the current
+    // world. `iter`/`get` would do this automatically per call, but
+    // doing it once up-front is cheaper than per-iteration validation
+    // and defends against any future bevy_ecs change that drops the
+    // auto-update from a specific access path. Critical when new
+    // entities of new archetypes spawn between propagations (e.g.
+    // M14.4c imports add (Transform, Sprite, Name) without Velocity).
+    state.roots.update_archetypes(sim_w);
+    state.chain.update_archetypes(sim_w);
+
     // Phase 1 — seed roots via the pre-built filter.
     for entity in state.roots.iter(sim_w) {
         worklist.stack.push((entity, Transform::IDENTITY));

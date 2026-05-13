@@ -18,6 +18,11 @@ pub fn default_selection() -> HeroSelection {
 /// Top-bar pill clusters in left-to-right order, paired with the
 /// `NodeId` used in [`crate::screens::hero::ids`] for hit-test +
 /// store lookup.
+///
+/// Layout note: `paint_top_bar` splits this list at index 4 — the
+/// first 4 clusters paint left-aligned; the rest paint right-aligned
+/// against the viewport edge. New entries should respect that split
+/// (8-cluster default: 4 left + 4 right).
 pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
     use crate::screens::hero::ids;
     vec![
@@ -30,16 +35,25 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_OPEN,
             TopBarCluster::single("Open", IconId::Open),
         ),
-        // Settings (gear) — opens SettingsMenu with px/m presets and
-        // future project-level toggles. Sits between Open and Project
-        // so the "config / project metadata" clusters group visually.
+        // Image Tools — toggle entry-point for the image-editing
+        // action row (Trim, BG Removal, Equalize, etc.). Placed
+        // immediately to the right of Open per ImageToolsV1 spec.
+        // Click is currently no-op (visual only); modal toggle +
+        // action row land in a follow-up.
         (
-            ids::TOPBAR_SETTINGS,
-            TopBarCluster::single("Settings", IconId::Settings),
+            ids::TOPBAR_IMAGE_TOOLS,
+            TopBarCluster::single("Image Tools", IconId::Image),
         ),
         (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
+        // Settings (gear) — moved to the end of the bar per
+        // ImageToolsV1 spec. Still opens SettingsMenu context with
+        // px/m presets and project-level toggles.
+        (
+            ids::TOPBAR_SETTINGS,
+            TopBarCluster::single("Settings", IconId::Settings),
+        ),
     ]
 }
 

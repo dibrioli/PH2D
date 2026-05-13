@@ -31,6 +31,12 @@ pub const TOPBAR_OPEN: NodeId = NodeId(112);
 /// with project-level toggles (pixels-per-meter presets, future
 /// global config). Added M14.4d retrofit.
 pub const TOPBAR_SETTINGS: NodeId = NodeId(113);
+/// Image Tools cluster — toggle entry-point for the image-editing
+/// action row (Trim Transparency in V1; BG Removal / Equalize / etc.
+/// to follow). Click flips the TopBar between Edit mode and
+/// ImageTools mode (planned). Currently click is no-op visual only —
+/// modal behaviour lands in a follow-up Implementer PR.
+pub const TOPBAR_IMAGE_TOOLS: NodeId = NodeId(114);
 
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 

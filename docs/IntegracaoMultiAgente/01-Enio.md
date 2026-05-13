@@ -142,3 +142,31 @@ decida: "manda PR pro GitHub".
 - **`SKILL_Stack_PH2D_Definitiva.md`** + **`CLAUDE.md`** — leitura
   obrigatória de Coordenador e Agentes; você só consulta se quiser
   entender uma dúvida arquitetural.
+
+## Cheat sheet — seu modo de agir
+
+**Início do dia / nova sessão de trabalho:**
+1. Sessão #1 Claude Code → cola `02-Coordenador.md` → "Você é o Coordenador. Inicialize."
+
+**Para cada feature nova:**
+2. Na Sessão #1 → "Quero feature X. Atribua slot." → recebe briefing.
+3. Nova sessão Claude Code (mesmo path) → cola o briefing.
+4. Agente propõe pasta → você relay pro Coordenador → Coordenador aprova/ajusta → você relay de volta.
+5. Agente pede algo fora (dep, ícone, etc.) → relay pro Coordenador → ele faz → relay de volta.
+6. Agente reporta "pronto" → relay pro Coordenador → ele enfileira e integra.
+
+**Final do ciclo:**
+7. Tudo integrado → diz pro Coordenador "manda pro GitHub" → recebe link do PR + run de CI.
+8. Confere CI visualmente no GitHub.
+9. Coordenador reseta STATE.md pra próxima operação.
+
+**O que você NUNCA faz:**
+- Roda git, cargo ou qualquer comando.
+- Edita arquivos do projeto direto.
+- Decide slug, pasta, ou wiring.
+- Push pro GitHub manualmente (Coordenador/PRCI faz).
+
+**O que você SEMPRE faz:**
+- Copia/cola mensagens entre sessões.
+- Decide quando começar feature, quando integrar, quando pushar.
+- Resolve impasses quando Coordenador apresenta opções.

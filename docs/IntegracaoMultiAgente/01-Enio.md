@@ -37,7 +37,7 @@ Pode ser bem informal — "Quero uma Tool de Background Removal com 4
 algoritmos" ou só "quero uma Tool nova, vou descrever". Se faltar
 detalhe, o agente te pergunta.
 
-### Passo 3 — O agente prepara o ambiente sozinho
+### Passo 3 — O agente faz setup E implementa, tudo na mesma sessão
 
 Vendo que está no diretório principal (§2.1 da diretriz dele), o
 agente:
@@ -46,30 +46,23 @@ agente:
   opções concretas. Você decide.
 - Deriva o slug (kebab-case curto, ex: `bgremoval`).
 - Cria worktree + branch (`git worktree add ...`).
-- Te entrega o path absoluto da worktree + o ESCOPO acordado.
+- Entra na worktree via `cd .claude/worktrees/agent-<slug>` (o Bash
+  do Claude Code persiste cwd entre comandos).
+- **Continua trabalhando ali na mesma sessão**: lê SKILL, implementa
+  a feature completa, roda testes, commita local na branch.
+- Reporta "feature pronta na worktree, aguardando integração".
 
-### Passo 4 — Abra nova sessão Claude Code na worktree
+Você não abre nova sessão. Você não cola briefing duas vezes.
 
-Tudo o que você faz:
-1. Abre nova janela Claude Code apontando para o **path da worktree**
-   que ele te deu (ex: `~/.claude/worktrees/agent-bgremoval/`).
-   Isso é uma operação só do Claude Code (escolher diretório ao
-   abrir).
-2. Cola o mesmo `02-Implementador.md` + o ESCOPO que o agente
-   anterior consolidou.
-3. A nova instância verifica (§2) que está em worktree dedicada e
-   começa a codar.
-
-A sessão antiga (no path principal) pode ser fechada.
-
-### Passo 5 — Implementador reporta "pronto"
+### Passo 4 — Implementador reporta "pronto"
 
 Quando ele reportar "pronto pra integração", a feature está
-esperando. Você pode rodar outras features em paralelo (volta ao
-Passo 1, descrevendo outra feature — cada uma vai virar sua
+esperando na worktree dele. Você pode rodar outras features em
+paralelo (volta ao Passo 1 noutra janela Claude Code no diretório
+principal, descrevendo outra feature — cada uma vai virar sua
 worktree isolada).
 
-### Passo 6 — Integração local (quando vários estão prontos)
+### Passo 5 — Integração local (quando vários estão prontos)
 
 Quando uma ou mais features estão prontas E nenhum Implementador
 está mais ativo:
@@ -80,7 +73,7 @@ está mais ativo:
   atualizações de docs.
 - Reporta "integração local pronta".
 
-### Passo 7 — Push e PR (quando você decide enviar pro GitHub)
+### Passo 6 — Push e PR (quando você decide enviar pro GitHub)
 
 - Abre Claude Code no diretório principal (ou na branch integrada).
 - Cola [`04-Agente-PRCI.md`](04-Agente-PRCI.md) + diga "Manda PR

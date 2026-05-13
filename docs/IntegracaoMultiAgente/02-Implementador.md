@@ -34,14 +34,14 @@ Use a tabela pra decidir:
 | Estado | O que fazer |
 |---|---|
 | `pwd` contém `.claude/worktrees/agent-<slug>` E branch é `feature/<slug>` E working tree clean | Você está no lugar certo pra codar. **Pule para §3.** |
-| `pwd` é o diretório principal do projeto (sem `.claude/worktrees/` no caminho) | Você precisa montar a worktree primeiro. **Vá para §2.1.** |
-| `pwd` é worktree mas branch ou working tree diverge | **Pare e reporte ao Enio.** Algo está fora do esperado. |
+| `pwd` é o diretório principal do projeto (sem `.claude/worktrees/` no caminho) | Você precisa montar a worktree primeiro, **e depois continuar trabalhando ali nesta mesma sessão**. Vá para §2.1. |
+| Estado divergente (working tree dirty na branch principal, branch errada na worktree, etc.) | **Pare e reporte ao Enio.** Algo está fora do esperado. |
 
 ### 2.1 Fase de setup — você está no diretório principal
 
-Sua primeira tarefa é montar a worktree dedicada **antes** de codar.
-Você NÃO escreve código nessa sessão atual — só cria o ambiente e
-encaminha o Enio pra nova sessão Claude Code naquela worktree.
+Você vai (a) preparar a worktree dedicada, (b) entrar nela via `cd`,
+(c) **continuar trabalhando nela nesta mesma sessão**. Você é o
+Implementador integral — não delega pra outra instância.
 
 #### Passo 1 — Pergunte ao Enio sobre a feature
 
@@ -56,9 +56,9 @@ algoritmo colorkey ou edge-grow"), **guie-o** oferecendo 2-3 opções
 concretas com prós/contras curtos. Use o SKILL §1-§11 como base
 arquitetural. Decisão final é sempre dele.
 
-Se a descrição estiver ambígua ou tiver implicações arquiteturais
-não-óbvias (ex: precisa de hook do canvas que não existe — vide
-§5.2), aponte e pergunte como ele quer resolver.
+Se a descrição tiver implicações arquiteturais não-óbvias (ex:
+precisa de hook do canvas que não existe — vide §5.2), aponte e
+pergunte como ele quer resolver.
 
 #### Passo 2 — Derive o slug e crie a worktree
 
@@ -77,52 +77,50 @@ marco ativo):
 git worktree add .claude/worktrees/agent-<slug> -b feature/<slug> main
 ```
 
-Confirme que criou:
-
+Confirme:
 ```
 git worktree list | grep <slug>
 ```
 
-Se o `git worktree add` falhar (slug colide com worktree existente,
-ou branch já existe), reporte ao Enio.
+Se o comando falhar (slug colide, branch já existe), reporte ao Enio.
 
-#### Passo 3 — Encaminhe o Enio pra nova sessão
+#### Passo 3 — Entre na worktree
 
-Reporte ao Enio neste formato:
+Mude o working directory para a worktree:
 
 ```
-Worktree criada em:
-<path absoluto, ex: /Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva/.claude/worktrees/agent-<slug>>
-
-Branch: feature/<slug>
-
-ESCOPO acordado:
-<escopo da feature em 2-5 linhas, com qualquer decisão tomada no Passo 1>
-
-Próximos passos pra você (Enio):
-1. Abra nova janela Claude Code apontando para o path acima.
-2. Na primeira mensagem dessa nova sessão, cole:
-   - o conteúdo completo de docs/IntegracaoMultiAgente/02-Implementador.md
-   - logo abaixo, a seção "ESCOPO acordado" deste relatório
-3. A instância lá vai verificar (§2 da diretriz) que está em
-   worktree dedicada e começar a codar.
-
-Meu trabalho aqui terminou. Esta sessão atual pode ser fechada
-assim que você abrir a nova lá na worktree.
+cd .claude/worktrees/agent-<slug>
 ```
 
-**Pare aqui.** NÃO codifique nesta sessão atual. NÃO comite. NÃO
-faça push. NÃO continue como Implementador — outra instância vai
-assumir esse papel na worktree dedicada.
+A partir daqui, **todos os comandos** (cargo, git, etc.) rodam
+dentro da worktree, porque o Bash persiste o cwd entre chamadas.
+
+Re-confirme:
+```
+pwd                        # deve mostrar .../.claude/worktrees/agent-<slug>
+git branch --show-current  # deve mostrar feature/<slug>
+git status                 # clean
+```
+
+#### Passo 4 — Prossiga para §3 (Leitura obrigatória)
+
+Setup concluído. Você está na worktree, na branch certa, com working
+tree limpa. Agora segue o fluxo normal do Implementador: leitura
+obrigatória, implementação da feature completa, commit local,
+reporte de "pronto".
+
+**NÃO encerre a sessão. NÃO delegue pra outra instância. Você
+implementa a feature inteira nesta mesma sessão.**
 
 ### 2.2 Regras invioláveis (em qualquer fase)
 
 Você nunca:
-- Sai da sua worktree (`cd` para fora).
-- Faz push (`git push`).
-- Modifica arquivos do diretório principal quando está na fase de
-  setup (§2.1) — você só roda `git worktree add`, nada mais.
-- Trabalha em duas worktrees ao mesmo tempo.
+- **Sai da sua worktree** depois do `cd` no Passo 3.
+- **Faz push** (`git push`) — isso é do agente PRCI.
+- **Trabalha em duas worktrees** ao mesmo tempo.
+- **Modifica arquivos do diretório principal** durante o setup —
+  só roda `git worktree add` lá. Toda criação/edição de código
+  acontece depois do `cd` (Passo 3), na worktree.
 
 ## 3. Leitura obrigatória ANTES de tocar código
 
@@ -142,13 +140,13 @@ Não pule. Não pergunte ao Enio se deve ler — sempre deve.
 ## 4. Sua tarefa
 
 O Enio cola abaixo desta linha, no turno em que apresenta este doc,
-**apenas o ESCOPO** da feature (2-5 linhas).
+**apenas o ESCOPO** da feature (2-5 linhas) — ou nada, se ele
+preferiu que você descobrisse perguntando (§2.1 Passo 1 cobre).
 
-Se o ESCOPO NÃO estiver presente (você foi instanciado sem briefing),
-combine com §2.1 (Fase de setup) — pergunte a feature ao Enio.
-
-Se o ESCOPO está presente E §2 confirmou que você está numa worktree
-dedicada, prossiga.
+Esta sessão inteira é sua: faz setup se §2 indicou, implementa a
+feature completa, commita local na worktree, reporta "pronto pra
+integração". Não há outra instância no fluxo — você é o Implementador
+integral.
 
 ### 4.1 Princípio: feature COMPLETA como ILHA ISOLADA
 

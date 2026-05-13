@@ -60,6 +60,11 @@ extend-exclude = [
     "README.md",
     "CLAUDE.md",
     "**/HANDOFF.md",
+    # Per-feature INTEGRATION.md handoff docs colocated with island source
+    # (e.g. crates/ph2d-editor/src/tools/<tool>/INTEGRATION.md). Same PT-BR
+    # exception as `docs/**/*.md` — they're handoff notes between agents,
+    # not user-facing strings.
+    "**/INTEGRATION.md",
     # tests/spike/ has many pt-BR comments (debt — violation of §10.1).
     # When promoting any spike fixture to crates/ production code, rewrite
     # comments in English; remove the corresponding entry here.

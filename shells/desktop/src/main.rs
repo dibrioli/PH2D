@@ -1217,9 +1217,13 @@ impl App {
                 let mut q = present
                     .world_mut()
                     .query::<(&ph2d_ecs::SimRef, &ph2d_ecs::GlobalTransform)>();
-                let gt = q
-                    .iter(present.world())
-                    .find_map(|(sref, gt)| if sref.0 == sim_entity { Some(*gt) } else { None })?;
+                let gt = q.iter(present.world()).find_map(|(sref, gt)| {
+                    if sref.0 == sim_entity {
+                        Some(*gt)
+                    } else {
+                        None
+                    }
+                })?;
                 // Decompose the affine matrix the same way the
                 // extract path does — column lengths for scale,
                 // atan2(col0.y, col0.x) for rotation. Keeps gizmo

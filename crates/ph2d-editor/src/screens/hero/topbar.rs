@@ -31,6 +31,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_RIGHT_LAYERS,
         ids::TOPBAR_RIGHT_ASSETS,
         ids::TOPBAR_RIGHT_SCRIPT,
+        ids::IMAGE_ACTION_TRIM,
     ] {
         store.register(
             id,
@@ -66,6 +67,7 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::TOPBAR_SAVE_AS, "Save As\u{2026} \u{00b7} Cmd+Shift+S"),
         (ids::TOPBAR_OPEN, "Open \u{00b7} Cmd+O"),
         (ids::TOPBAR_IMAGE_TOOLS, "Image Tools"),
+        (ids::IMAGE_ACTION_TRIM, "Trim Transparency"),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),
@@ -144,6 +146,7 @@ pub fn paint_hover_tooltip(
     paint_tooltip(&tip, tip_rect, scene, text_system, theme);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn paint_top_bar(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -151,12 +154,16 @@ pub fn paint_top_bar(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    image_tools_mode: bool,
 ) {
     let clusters = fixture::topbar_clusters();
     let row_h = layout.top_bar.h;
     let mut x = layout.top_bar.x;
     let gap = Spacing::Md.px();
     let split = 4.min(clusters.len());
+    // Left half is always painted — the Image Tools mode keeps the
+    // identity / Save / Open / ImageTools cluster visible so the user
+    // can exit the mode by clicking ImageTools again.
     for (id, cluster) in &clusters[..split] {
         let rect = Rect::new(x, layout.top_bar.y, cluster_width(cluster), row_h);
         paint_top_bar_cluster(
@@ -169,19 +176,39 @@ pub fn paint_top_bar(
             hit_index,
             store,
         );
+        // Active-state ring on the ImageTools pill when the mode is on
+        // — uses the theme's Accent token so it reads on every theme.
+        if image_tools_mode && *id == ids::TOPBAR_IMAGE_TOOLS {
+            stroke_rounded_rect(
+                scene,
+                rect,
+                Radius::Xl.px(),
+                2.0,
+                resolve(ColorToken::Accent, theme),
+            );
+        }
         x = rect.x + rect.w + gap;
     }
+    // The wordmark "PH2D · EDITOR" that used to fill the middle gap
+    // is intentionally absent now — the engine's identity is carried
+    // by the leftmost theme chip (also labelled "PH2D"). Leaving the
+    // gap transparent also keeps the topbar's bg fully see-through.
+    let _ = x; // silence unused-after-removal
+
+    if image_tools_mode {
+        // Mode on — replace the right half with the image-action row.
+        paint_image_action_row(layout, scene, theme, hit_index, store, gap);
+        return;
+    }
+
+    // Default mode — paint the right clusters (Project / Play / Right /
+    // Settings) right-aligned to the bar.
     let right_clusters = &clusters[split..];
     let mut right_w = 0.0_f32;
     for (_, c) in right_clusters {
         right_w += cluster_width(c) + gap;
     }
     let right_x = layout.top_bar.x + layout.top_bar.w - right_w + gap.max(0.0);
-    // The wordmark "PH2D · EDITOR" that used to fill the middle gap
-    // is intentionally absent now — the engine's identity is carried
-    // by the leftmost theme chip (also labelled "PH2D"). Leaving the
-    // gap transparent also keeps the topbar's bg fully see-through.
-    let _ = x; // silence unused-after-removal
     let mut rx = right_x;
     for (id, cluster) in right_clusters {
         let rect = Rect::new(rx, layout.top_bar.y, cluster_width(cluster), row_h);
@@ -194,6 +221,57 @@ pub fn paint_top_bar(
             theme,
             hit_index,
             store,
+        );
+        rx = rect.x + rect.w + gap;
+    }
+}
+
+/// Paint the image-action row that occupies the right half of the
+/// TopBar when [`HeroScreen::image_tools_mode`] is `true`. Each pill
+/// is registered in the hit index so dispatch can route clicks; tooltips
+/// are seeded by [`populate`].
+///
+/// V1 contains a single action — `[Trim Transparency]`. Adding more
+/// actions later (BG Removal, Equalize, etc.) means extending the
+/// `ACTIONS` slice below + adding the corresponding `IconId` /
+/// `IMAGE_ACTION_*` NodeId pair.
+fn paint_image_action_row(
+    layout: &HeroLayout,
+    scene: &mut VectorScene,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    gap: f32,
+) {
+    use crate::screens::hero::style::icon_button_fg;
+    let row_h = layout.top_bar.h;
+    let radius = Radius::Xl.px();
+    // Each action paints as a Single-style pill (matches Save/Open/
+    // ImageTools width) so the row visually rhymes with the left half.
+    let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
+    // V1 actions — extend this slice to add more pills.
+    const ACTIONS: &[(NodeId, IconId)] = &[(ids::IMAGE_ACTION_TRIM, IconId::TrimTransparency)];
+    let total_w = pill_w * ACTIONS.len() as f32 + gap * ACTIONS.len().saturating_sub(1) as f32;
+    let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
+    let mut rx = start_x;
+    for (id, icon) in ACTIONS {
+        let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
+        fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+        stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+        hit_index.register(*id, rect);
+        let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+        let chip = Rect::new(
+            rect.x + (rect.w - 32.0) * 0.5,
+            rect.y + (rect.h - 32.0) * 0.5,
+            32.0,
+            32.0,
+        );
+        paint_icon(
+            scene,
+            *icon,
+            chip,
+            resolve(icon_button_fg(state), theme),
+            1.5,
         );
         rx = rect.x + rect.w + gap;
     }

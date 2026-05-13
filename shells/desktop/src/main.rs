@@ -1817,18 +1817,28 @@ impl App {
             // sprites would need a GPU readback to fetch their current
             // pixels — unsupported in V1; surface a toast and bail.
             //
-            // Note: world position is the entity's `Transform.translation`
-            // (center-anchored). After the trim the sprite re-centers
-            // on whatever opaque content survived. Pivot-preserving
-            // translation offset is a follow-up enhancement; documented
-            // alongside the `trim_transparency()` API.
+            // World-position preservation: after the crop, the entity's
+            // `Transform.translation` is shifted by
+            // `ph2d_editor::recenter_after_crop` so the *visual* center
+            // of the surviving opaque content stays put even when it
+            // lived off-center inside the original frame. The shift
+            // happens in pure-CPU pixel math (Y-flip handled inside
+            // `recenter_after_crop`); HR-5-deterministic.
             if let Some(entity_bits) = hero.pending_trim_transparency.take() {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
-                let snapshot =
-                    sim.world()
-                        .get::<Sprite>(entity)
-                        .and_then(|sprite| match sprite.source {
+                // Snapshot `Sprite` (for size + source) and `Transform`
+                // (for translation) in one read pass so we can drop the
+                // immutable borrow before the mutable `world_mut()` later.
+                let snapshot = {
+                    let world = sim.world();
+                    world.get::<Sprite>(entity).and_then(|sprite| {
+                        let old_size_world = sprite.size;
+                        let old_translation = world
+                            .get::<ph2d_ecs::Transform>(entity)
+                            .map(|t| [t.translation.x, t.translation.y])
+                            .unwrap_or([0.0, 0.0]);
+                        match sprite.source {
                             ph2d_render::SpriteSource::Atlas { key } => {
                                 let aid = atlas_asset_map.get(&key)?;
                                 let asset = asset_db.get(aid)?;
@@ -1837,18 +1847,26 @@ impl App {
                                         width,
                                         height,
                                         pixels,
-                                    } => Some((*width, *height, pixels.clone())),
+                                    } => Some((
+                                        *width,
+                                        *height,
+                                        pixels.clone(),
+                                        old_size_world,
+                                        old_translation,
+                                    )),
                                     _ => None,
                                 }
                             }
                             ph2d_render::SpriteSource::Individual { .. } => None,
-                        });
+                        }
+                    })
+                };
                 match snapshot {
                     None => {
                         toasts.push(Toast::error("Trim unavailable for this sprite"));
                         self.title_dirty = true;
                     }
-                    Some((width, height, pixels)) => {
+                    Some((width, height, pixels, old_size_world, old_translation)) => {
                         let result = ph2d_editor::trim_transparency(&pixels, width, height, 0);
                         if !result.trimmed {
                             toasts.push(Toast::info("Nothing to trim"));
@@ -1868,17 +1886,34 @@ impl App {
                                         result.width as f32 / px_per_m,
                                         result.height as f32 / px_per_m,
                                     ];
+                                    // Pivot-preserving recenter (F1).
+                                    // Shifts the entity's translation so
+                                    // the cropped sprite's new center
+                                    // aligns with where the surviving
+                                    // content visually sat.
+                                    let new_translation = ph2d_editor::recenter_after_crop(
+                                        old_translation,
+                                        old_size_world,
+                                        [width, height],
+                                        ph2d_editor::PixelBounds::from_trim(result.bounds.clone()),
+                                    );
                                     let sim_w = sim.world_mut();
                                     if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                                         sprite.source =
                                             ph2d_render::SpriteSource::Individual { texture_id };
                                         sprite.size = new_size;
-                                        toasts.push(Toast::success(format!(
-                                            "Trimmed → {} × {} px",
-                                            result.width, result.height
-                                        )));
-                                        self.title_dirty = true;
                                     }
+                                    if let Some(mut transform) =
+                                        sim_w.get_mut::<ph2d_ecs::Transform>(entity)
+                                    {
+                                        transform.translation.x = new_translation[0];
+                                        transform.translation.y = new_translation[1];
+                                    }
+                                    toasts.push(Toast::success(format!(
+                                        "Trimmed → {} × {} px",
+                                        result.width, result.height
+                                    )));
+                                    self.title_dirty = true;
                                 }
                             }
                         }

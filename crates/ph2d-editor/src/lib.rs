@@ -30,6 +30,7 @@ pub mod floating_panel;
 pub mod gizmo;
 pub mod grid;
 pub mod icons;
+pub mod image_edit;
 pub mod interaction;
 pub mod paint;
 pub mod project;
@@ -49,6 +50,7 @@ pub use gizmo::{
 };
 pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
+pub use image_edit::{PixelBounds, recenter_after_crop};
 pub use interaction::{
     HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
     dispatch_text_input,

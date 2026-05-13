@@ -154,6 +154,21 @@ impl SpriteRenderer {
             .acquire(&self.gpu, &self.pipeline.material_bgl, width, height, rgba)
     }
 
+    /// Convenience for the image-edit path: copy an individual
+    /// texture's GPU contents back to a `Vec<u8>` (RGBA8, tightly
+    /// packed). Used by Trim Transparency / Background Removal when
+    /// the source sprite is already on an individual texture and the
+    /// shell needs the current pixels to feed the next edit.
+    ///
+    /// One-shot, blocking — see [`IndividualTextureStore::readback`]
+    /// for the cost model. Not for per-frame use.
+    pub fn readback_individual(
+        &self,
+        texture_id: u32,
+    ) -> Result<(u32, u32, Vec<u8>), IndividualTextureError> {
+        self.individual.readback(&self.gpu, texture_id)
+    }
+
     pub fn atlas(&self) -> &TextureAtlas {
         &self.atlas
     }

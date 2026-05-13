@@ -65,10 +65,21 @@ pub struct IndividualTextureStore {
     sampler: wgpu::Sampler,
 }
 
-/// Errors returned by [`IndividualTextureStore::acquire`].
+/// Errors returned by [`IndividualTextureStore::acquire`] and
+/// [`IndividualTextureStore::readback`].
 #[derive(Debug)]
 pub enum IndividualTextureError {
-    PixelLengthMismatch { got: usize, expected: usize },
+    PixelLengthMismatch {
+        got: usize,
+        expected: usize,
+    },
+    /// `readback`'s requested texture id has no entry in the store.
+    NotFound(u32),
+    /// The GPU command queue accepted the copy but the buffer never
+    /// finished mapping. Worth surfacing distinctly from a generic
+    /// I/O error so the caller can decide whether to retry (device
+    /// likely lost — see ADR-0020) or fail loudly.
+    ReadbackFailed(String),
 }
 
 impl std::fmt::Display for IndividualTextureError {
@@ -78,6 +89,8 @@ impl std::fmt::Display for IndividualTextureError {
                 f,
                 "rgba buffer length {got} doesn't match width*height*4 = {expected}"
             ),
+            Self::NotFound(id) => write!(f, "no individual texture with id {id}"),
+            Self::ReadbackFailed(detail) => write!(f, "GPU readback failed: {detail}"),
         }
     }
 }
@@ -181,6 +194,32 @@ impl IndividualTextureStore {
         self.entries.get(&id).map(|e| &e.bind_group)
     }
 
+    /// Copy the GPU pixel contents of an entry back into a fresh
+    /// `Vec<u8>` (RGBA8, tightly packed `width * height * 4`).
+    ///
+    /// Submits a one-shot copy-texture-to-buffer + map, blocks on
+    /// `device.poll(Wait)`, then strips row padding (`copy_texture_to_buffer`
+    /// requires rows aligned to
+    /// [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`]). Allocates one staging
+    /// `wgpu::Buffer` and one output `Vec<u8>` — fine for one-shot
+    /// editor actions (Trim / BG Removal); **not** acceptable in any
+    /// per-frame path (HR-3).
+    ///
+    /// HR-1: stays in `ph2d-render`, never crosses to `ph2d-core`.
+    /// HR-13: peak transient memory is `~ width * (padded_row + 4)`
+    /// — for a 2k² sprite, ≈ 16 MB staging + 16 MB output.
+    pub fn readback(
+        &self,
+        gpu: &GpuContext,
+        id: u32,
+    ) -> Result<(u32, u32, Vec<u8>), IndividualTextureError> {
+        let entry = self
+            .entries
+            .get(&id)
+            .ok_or(IndividualTextureError::NotFound(id))?;
+        readback_texture(gpu, &entry.texture, entry.width, entry.height)
+    }
+
     /// Replace the pixel contents of an existing entry in place.
     /// Used by the M6 hot-reload bridge when an `AssetId` underlying
     /// an individual sprite changes on disk.
@@ -244,7 +283,12 @@ fn create_entry(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        // COPY_SRC required for `readback()` to copy this texture's
+        // contents back into a staging buffer (F2 — Image Tools edit
+        // path on Individual-source sprites).
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     });
     write_pixels(gpu, &texture, width, height, rgba);
@@ -293,6 +337,89 @@ fn write_pixels(gpu: &GpuContext, texture: &wgpu::Texture, width: u32, height: u
             depth_or_array_layers: 1,
         },
     );
+}
+
+/// Copy a 2D RGBA8 texture out of GPU memory into a tightly-packed
+/// `Vec<u8>`. `copy_texture_to_buffer` requires the destination row
+/// pitch to be a multiple of [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`]
+/// (256 on every backend), so the staging buffer is padded and the
+/// output is unpadded row-by-row.
+fn readback_texture(
+    gpu: &GpuContext,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+) -> Result<(u32, u32, Vec<u8>), IndividualTextureError> {
+    if width == 0 || height == 0 {
+        return Ok((width, height, Vec::new()));
+    }
+    let bytes_per_pixel: u32 = 4;
+    let unpadded_bpr = width * bytes_per_pixel;
+    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let padded_bpr = unpadded_bpr.div_ceil(align) * align;
+    let buffer_size = (padded_bpr as u64) * (height as u64);
+
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("ph2d-render individual readback staging"),
+        size: buffer_size,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+
+    let mut encoder = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ph2d-render individual readback encoder"),
+        });
+    encoder.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &staging,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(padded_bpr),
+                rows_per_image: Some(height),
+            },
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    gpu.queue.submit([encoder.finish()]);
+
+    // Map + block-on-wait. `device.poll(PollType::Wait)` drives the
+    // queue forward until the buffer's map operation completes. We
+    // own the channel both ends so the closure's `Send` bound is
+    // satisfied without a runtime.
+    let (tx, rx) = std::sync::mpsc::channel();
+    let slice = staging.slice(..);
+    slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = tx.send(result);
+    });
+    gpu.device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .map_err(|e| IndividualTextureError::ReadbackFailed(format!("poll: {e}")))?;
+    rx.recv()
+        .map_err(|e| IndividualTextureError::ReadbackFailed(format!("channel: {e}")))?
+        .map_err(|e| IndividualTextureError::ReadbackFailed(format!("map_async: {e}")))?;
+
+    let mapped = slice.get_mapped_range();
+    let mut out = Vec::with_capacity((unpadded_bpr as usize) * (height as usize));
+    for row in 0..height as usize {
+        let start = row * padded_bpr as usize;
+        let end = start + unpadded_bpr as usize;
+        out.extend_from_slice(&mapped[start..end]);
+    }
+    drop(mapped);
+    staging.unmap();
+    Ok((width, height, out))
 }
 
 // Tests that exercise the GPU paths live alongside `SpriteRenderer`

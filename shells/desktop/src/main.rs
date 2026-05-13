@@ -1830,6 +1830,10 @@ impl App {
                 // Snapshot `Sprite` (for size + source) and `Transform`
                 // (for translation) in one read pass so we can drop the
                 // immutable borrow before the mutable `world_mut()` later.
+                // Individual-source sprites go through a GPU readback —
+                // safe here because Trim is a one-shot user action
+                // (HR-3 only applies inside render/physics/audio hot
+                // paths, not user-initiated edit actions).
                 let snapshot = {
                     let world = sim.world();
                     world.get::<Sprite>(entity).and_then(|sprite| {
@@ -1857,7 +1861,18 @@ impl App {
                                     _ => None,
                                 }
                             }
-                            ph2d_render::SpriteSource::Individual { .. } => None,
+                            ph2d_render::SpriteSource::Individual { texture_id } => {
+                                match renderer.readback_individual(texture_id) {
+                                    Ok((w, h, pixels)) => Some((
+                                        w,
+                                        h,
+                                        pixels.into(),
+                                        old_size_world,
+                                        old_translation,
+                                    )),
+                                    Err(_) => None,
+                                }
+                            }
                         }
                     })
                 };

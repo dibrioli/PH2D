@@ -644,9 +644,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             let mut suppress_click = false;
             if let Some(drag) = drag_end
                 && !drag.active
-                && event
-                    .timestamp_ns
-                    .saturating_sub(drag.down_timestamp_ns)
+                && event.timestamp_ns.saturating_sub(drag.down_timestamp_ns)
                     >= super::LONG_PRESS_THRESHOLD_NS
             {
                 events.push(WidgetEvent::LongPress(drag.dragged));
@@ -665,7 +663,10 @@ pub fn dispatch_pointer_with_text<'frame>(
                     .iter_registrations()
                     .find(|(id, _)| *id == drag.dragged)
                     .map(|(_, r)| {
-                        event.y >= r.y && event.y < r.y + r.h && event.x >= r.x && event.x < r.x + r.w
+                        event.y >= r.y
+                            && event.y < r.y + r.h
+                            && event.x >= r.x
+                            && event.x < r.x + r.w
                     })
                     .unwrap_or(false);
                 if over_self {

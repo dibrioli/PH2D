@@ -23,11 +23,11 @@
 use super::HeroLayout;
 use super::HeroSelection;
 use super::ids;
-use super::{InspectorSpriteInfo, InspectorSpriteSource};
 use super::style::{
     PANEL_HEAD_PAD, paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect,
     panel_resize_handle_rect,
 };
+use super::{InspectorSpriteInfo, InspectorSpriteSource};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, paint_text_title, rect_to_vello, resolve};
@@ -1209,10 +1209,10 @@ fn paint_render_source_section(
 
     // Helper: paint "label · value" two-line row.
     let paint_pair = |scene: &mut VectorScene,
-                          text_system: &mut TextSystem,
-                          label: &str,
-                          value: &str,
-                          mut yy: f32|
+                      text_system: &mut TextSystem,
+                      label: &str,
+                      value: &str,
+                      mut yy: f32|
      -> f32 {
         paint_text(
             text_system,

@@ -140,7 +140,10 @@ pub fn build_hierarchy_snapshot(
             .unwrap_or(u32::MAX);
         roots.push((entity, order));
     }
-    roots.sort_unstable_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.to_bits().cmp(&b.0.to_bits())));
+    roots.sort_unstable_by(|a, b| {
+        a.1.cmp(&b.1)
+            .then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
+    });
     // Reverse before pushing: DFS pops LIFO, so the LAST scratch
     // entry becomes the FIRST entry in the snapshot.
     for (entity, _) in roots.into_iter().rev() {

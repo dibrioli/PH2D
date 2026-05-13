@@ -129,9 +129,11 @@ pub fn paint_context_menu_overlay(
         // U+25B8 (smaller triangle) is not, which was the earlier
         // tofu the user reported. Future categories (Snap, Theme,
         // etc.) line up here.
-        ContextMenuKind::SettingsMenu => &[
-            (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter\u{2003}\u{25b6}", None),
-        ],
+        ContextMenuKind::SettingsMenu => &[(
+            ids::CTX_MENU_SETTINGS_PPM,
+            "Pixels per meter\u{2003}\u{25b6}",
+            None,
+        )],
         // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
         // presets as before the cascade, just one click deeper.
         //

@@ -801,11 +801,12 @@ impl HeroScreen {
                         .map(|r| (r.x, r.y))
                         .unwrap_or((0.0, 0.0))
                 };
-                self.store.open_context_menu(crate::interaction::ContextMenuRequest {
-                    x: anchor.0,
-                    y: anchor.1,
-                    kind: crate::interaction::ContextMenuKind::SettingsPpmSubmenu,
-                });
+                self.store
+                    .open_context_menu(crate::interaction::ContextMenuRequest {
+                        x: anchor.0,
+                        y: anchor.1,
+                        kind: crate::interaction::ContextMenuKind::SettingsPpmSubmenu,
+                    });
                 return true;
             }
             // Pixels-per-meter presets (Settings cluster). Writes
@@ -924,9 +925,7 @@ impl HeroScreen {
             && let Some(row) = self.rename_target_row.take()
         {
             let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
-                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => {
-                    text.clone()
-                }
+                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => text.clone(),
                 _ => String::new(),
             };
             let trimmed = buf.trim().to_owned();
@@ -952,9 +951,7 @@ impl HeroScreen {
             && let Some(row) = self.rename_target_row.take()
         {
             let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
-                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => {
-                    text.clone()
-                }
+                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => text.clone(),
                 _ => String::new(),
             };
             let trimmed = buf.trim().to_owned();

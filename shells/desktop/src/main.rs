@@ -1463,13 +1463,10 @@ impl App {
                     // handled by step 2's ChildOf re-insert pass.
                     if new_parent_entity.is_none() {
                         let mut roots: Vec<ph2d_ecs::Entity> = {
-                            let mut q = sim_w.query_filtered::<
-                                ph2d_ecs::Entity,
-                                (
-                                    ph2d_ecs::With<Transform>,
-                                    ph2d_ecs::Without<ph2d_ecs::ChildOf>,
-                                ),
-                            >();
+                            let mut q = sim_w.query_filtered::<ph2d_ecs::Entity, (
+                                ph2d_ecs::With<Transform>,
+                                ph2d_ecs::Without<ph2d_ecs::ChildOf>,
+                            )>();
                             let mut acc: Vec<(ph2d_ecs::Entity, u32)> = Vec::new();
                             for entity in q.iter(sim_w) {
                                 if entity == dragged {
@@ -1482,7 +1479,8 @@ impl App {
                                 acc.push((entity, order));
                             }
                             acc.sort_unstable_by(|a, b| {
-                                a.1.cmp(&b.1).then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
+                                a.1.cmp(&b.1)
+                                    .then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
                             });
                             acc.into_iter().map(|(e, _)| e).collect()
                         };
@@ -1758,10 +1756,9 @@ impl App {
                     let aid = atlas_asset_map.get(&key)?;
                     let asset = asset_db.get(aid)?;
                     match &*asset {
-                        ph2d_asset::Asset::ImageRgba8 { width, height, .. } => Some([
-                            *width as f32 / px_per_m,
-                            *height as f32 / px_per_m,
-                        ]),
+                        ph2d_asset::Asset::ImageRgba8 { width, height, .. } => {
+                            Some([*width as f32 / px_per_m, *height as f32 / px_per_m])
+                        }
                         _ => None,
                     }
                 });

@@ -1806,6 +1806,85 @@ impl App {
                     self.title_dirty = true;
                 }
             }
+            // ImageToolsV1: drain Trim Transparency request — read the
+            // sprite's atlas-source RGBA pixels, run the trim algorithm,
+            // and (if any transparent border was found) re-source the
+            // sprite to a fresh `IndividualTextureStore` entry at the
+            // trimmed dimensions. Atlas-shared sprites cannot be edited
+            // in-place (would corrupt every sibling sharing the same
+            // key); we materialise the trim result as a NEW individual
+            // texture and repoint only this entity. Individual-source
+            // sprites would need a GPU readback to fetch their current
+            // pixels — unsupported in V1; surface a toast and bail.
+            //
+            // Note: world position is the entity's `Transform.translation`
+            // (center-anchored). After the trim the sprite re-centers
+            // on whatever opaque content survived. Pivot-preserving
+            // translation offset is a follow-up enhancement; documented
+            // alongside the `trim_transparency()` API.
+            if let Some(entity_bits) = hero.pending_trim_transparency.take() {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
+                let snapshot =
+                    sim.world()
+                        .get::<Sprite>(entity)
+                        .and_then(|sprite| match sprite.source {
+                            ph2d_render::SpriteSource::Atlas { key } => {
+                                let aid = atlas_asset_map.get(&key)?;
+                                let asset = asset_db.get(aid)?;
+                                match &*asset {
+                                    ph2d_asset::Asset::ImageRgba8 {
+                                        width,
+                                        height,
+                                        pixels,
+                                    } => Some((*width, *height, pixels.clone())),
+                                    _ => None,
+                                }
+                            }
+                            ph2d_render::SpriteSource::Individual { .. } => None,
+                        });
+                match snapshot {
+                    None => {
+                        toasts.push(Toast::error("Trim unavailable for this sprite"));
+                        self.title_dirty = true;
+                    }
+                    Some((width, height, pixels)) => {
+                        let result = ph2d_editor::trim_transparency(&pixels, width, height, 0);
+                        if !result.trimmed {
+                            toasts.push(Toast::info("Nothing to trim"));
+                            self.title_dirty = true;
+                        } else {
+                            match renderer.acquire_individual(
+                                result.width,
+                                result.height,
+                                &result.pixels,
+                            ) {
+                                Err(err) => {
+                                    toasts.push(Toast::error(format!("Trim failed: {err}")));
+                                    self.title_dirty = true;
+                                }
+                                Ok(texture_id) => {
+                                    let new_size = [
+                                        result.width as f32 / px_per_m,
+                                        result.height as f32 / px_per_m,
+                                    ];
+                                    let sim_w = sim.world_mut();
+                                    if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                                        sprite.source =
+                                            ph2d_render::SpriteSource::Individual { texture_id };
+                                        sprite.size = new_size;
+                                        toasts.push(Toast::success(format!(
+                                            "Trimmed → {} × {} px",
+                                            result.width, result.height
+                                        )));
+                                        self.title_dirty = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/
             // JPEG), spawn a sprite per image at the camera center.

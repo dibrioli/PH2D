@@ -191,6 +191,14 @@ pub struct HeroScreen {
     /// Visibility of the bottom statistics HUD — toggled by the
     /// "Show Statistics" entry in the theme context menu.
     pub stats_visible: bool,
+    /// Whether the TopBar is in **Image Tools mode**. When `true`,
+    /// the right-side clusters (Project / Play / Right / Settings)
+    /// are hidden and replaced by an action row of image-editing
+    /// pills (`[Trim Transparency]` in V1; more to follow). Toggled
+    /// by clicks on the `TOPBAR_IMAGE_TOOLS` button — handled in
+    /// [`HeroScreen::apply_event`] before the topbar's stub
+    /// `apply_event` runs. Default `false`.
+    pub image_tools_mode: bool,
     /// Live-mode entity rows published by the host via
     /// [`HeroScreen::sync_from_hierarchy`] (ADR-0025 M14.4a).
     ///
@@ -318,6 +326,18 @@ pub struct HeroScreen {
     /// host independent of `gizmo_selection`'s value at drain time
     /// (avoids races with a concurrent selection change).
     pub pending_reimport: Option<u64>,
+    /// Pending request to apply Trim Transparency to the selected
+    /// sprite. Raised by clicking `IMAGE_ACTION_TRIM` on the Image
+    /// Tools action row while in `image_tools_mode`. Host drains,
+    /// reads the sprite's atlas-source RGBA pixels via the asset_db,
+    /// runs [`crate::trim_transparency`] (alpha threshold 0), and
+    /// — when the result is `trimmed = true` — acquires a fresh
+    /// `IndividualTextureStore` entry, repoints the sprite source
+    /// to it, and rewrites `Sprite::size` to the new dims at the
+    /// current `project.pixels_per_meter`. Source remains snapshot
+    /// here (not read via `gizmo_selection` at drain time) so a
+    /// concurrent selection change doesn't retarget the action.
+    pub pending_trim_transparency: Option<u64>,
     /// M14.5 inspector phase: snapshot of the selected sprite's
     /// data the host publishes each frame so `paint_inspector` can
     /// surface a "Render Source" section without crossing the
@@ -408,6 +428,7 @@ impl HeroScreen {
             inspector_visible: true,
             hierarchy_visible: true,
             stats_visible: true,
+            image_tools_mode: false,
             live_hierarchy_entries: None,
             grid_visible: true,
             grid_view: None,
@@ -432,6 +453,7 @@ impl HeroScreen {
             pending_rename_seed: None,
             pending_rename_commit: None,
             pending_reimport: None,
+            pending_trim_transparency: None,
             inspector_sprite: None,
         }
     }
@@ -872,6 +894,30 @@ impl HeroScreen {
                 return true;
             }
         }
+        // Image Tools mode toggle — intercepted at Hero level because
+        // `image_tools_mode` lives on `HeroScreen`, not on the
+        // WidgetStore. Same pattern as the theme menu / eye-toggle
+        // branches above. Runs BEFORE the topbar's stub `apply_event`
+        // so a click on the Image Tools pill flips the mode (and
+        // doesn't fall through to the still-empty topbar handler).
+        if let WidgetEvent::Click(id) = event
+            && id == ids::TOPBAR_IMAGE_TOOLS
+        {
+            self.image_tools_mode = !self.image_tools_mode;
+            return true;
+        }
+        // Trim Transparency action — raise the `pending_trim_transparency`
+        // intent with whatever entity the gizmo currently has selected.
+        // Host drains next frame. When nothing is selected we still
+        // consume the click (so the dispatcher doesn't keep walking
+        // regions) but raise nothing — the host can no-op silently or
+        // surface a toast on its side.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::IMAGE_ACTION_TRIM
+        {
+            self.pending_trim_transparency = self.gizmo_selection;
+            return true;
+        }
         if topbar::apply_event(&mut self.store, event) {
             return true;
         }
@@ -1197,6 +1243,7 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
+        hero.image_tools_mode,
     );
     paint_left_rail(
         &layout,
@@ -1584,7 +1631,80 @@ mod tests {
             Theme::Forge,
             &mut hits,
             &store,
+            false,
         );
+    }
+
+    /// With `image_tools_mode = true`, the painter must register the
+    /// `IMAGE_ACTION_TRIM` hit and must NOT register the right-side
+    /// default clusters (Project/Play/Right/Settings).
+    #[test]
+    fn paint_top_bar_image_tools_mode_swaps_right_side() {
+        let layout = HeroLayout::for_viewport(ipad12_viewport());
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        let mut hits = HitIndex::new();
+        let store = WidgetStore::with_capacity(32);
+        paint_top_bar(
+            &layout,
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+            &mut hits,
+            &store,
+            true,
+        );
+        assert!(
+            hits.rect_for(ids::IMAGE_ACTION_TRIM).is_some(),
+            "trim action pill must be hit-registered when image_tools_mode is on",
+        );
+        for default_right in [
+            ids::TOPBAR_PROJECT,
+            ids::TOPBAR_PLAY_BUTTON,
+            ids::TOPBAR_RIGHT_LAYERS,
+            ids::TOPBAR_SETTINGS,
+        ] {
+            assert!(
+                hits.rect_for(default_right).is_none(),
+                "right-side default cluster {default_right:?} must NOT be registered in image_tools mode",
+            );
+        }
+        // Left half stays intact — Save/Open/ImageTools are still hit-able.
+        assert!(hits.rect_for(ids::TOPBAR_SAVE).is_some());
+        assert!(hits.rect_for(ids::TOPBAR_OPEN).is_some());
+        assert!(hits.rect_for(ids::TOPBAR_IMAGE_TOOLS).is_some());
+    }
+
+    /// Clicking the Image Tools pill flips `image_tools_mode`; clicking
+    /// again flips it back. Verified through `HeroScreen::apply_event`
+    /// so the dispatcher hook is exercised end-to-end.
+    #[test]
+    fn click_on_image_tools_pill_toggles_mode() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        assert!(!hero.image_tools_mode);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
+        assert!(hero.image_tools_mode);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
+        assert!(!hero.image_tools_mode);
+    }
+
+    /// Clicking the Trim Transparency action pill captures the
+    /// current `gizmo_selection` into `pending_trim_transparency`
+    /// so the host can drain it next frame. When nothing is
+    /// selected, the pending stays `None` (click still consumed so
+    /// the dispatcher doesn't keep walking).
+    #[test]
+    fn click_on_trim_pill_raises_pending_with_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        // No selection → nothing pending after click.
+        hero.gizmo_selection = None;
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
+        assert_eq!(hero.pending_trim_transparency, None);
+
+        // With selection → pending mirrors gizmo_selection.
+        hero.gizmo_selection = Some(0xDEAD_BEEF);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
+        assert_eq!(hero.pending_trim_transparency, Some(0xDEAD_BEEF));
     }
 
     #[test]

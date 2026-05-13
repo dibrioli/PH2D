@@ -1863,13 +1863,9 @@ impl App {
                             }
                             ph2d_render::SpriteSource::Individual { texture_id } => {
                                 match renderer.readback_individual(texture_id) {
-                                    Ok((w, h, pixels)) => Some((
-                                        w,
-                                        h,
-                                        pixels.into(),
-                                        old_size_world,
-                                        old_translation,
-                                    )),
+                                    Ok((w, h, pixels)) => {
+                                        Some((w, h, pixels.into(), old_size_world, old_translation))
+                                    }
                                     Err(_) => None,
                                 }
                             }

@@ -129,6 +129,7 @@ pub enum IconId {
     Text,
     Transform,
     Trash,
+    TrimTransparency,
     Undo,
     Unlink,
     Unlock,
@@ -522,6 +523,14 @@ impl IconId {
             Self::Trash => &[IconCmd::Path(
                 "M3 6h18M19 6l-1.5 14a2 2 0 0 1-2 1.84H8.5a2 2 0 0 1-2-1.84L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2",
             )],
+            // Lucide `crop.svg` — two mirrored L-brackets framing the
+            // tight non-transparent bounds. Used by the Image Tools row's
+            // Trim Transparency action; algorithm in
+            // `tools/trim_transparency/algorithm.rs`.
+            Self::TrimTransparency => &[
+                IconCmd::Path("M6 2v14a2 2 0 0 0 2 2h14"),
+                IconCmd::Path("M18 22V8a2 2 0 0 0-2-2H2"),
+            ],
             // Lucide `undo-2` — arrow head + flat curve (mirror of redo-2).
             Self::Undo => &[
                 IconCmd::Path("M9 14 L 4 9 L 9 4"),
@@ -789,6 +798,7 @@ mod tests {
         IconId::Text,
         IconId::Transform,
         IconId::Trash,
+        IconId::TrimTransparency,
         IconId::Undo,
         IconId::Unlink,
         IconId::Unlock,

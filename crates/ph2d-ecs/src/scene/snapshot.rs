@@ -110,10 +110,16 @@ impl HierarchyWalkState {
 /// its DFS stack. Holding it externally lets the editor reuse it
 /// frame-to-frame without re-allocating (HR-3 substrate).
 ///
-/// Determinism (HR-5): roots are sorted by `Entity::to_bits()`;
-/// children are pushed in reverse so DFS visits them in `Children`-
-/// insertion order. Names are cloned into the entry — there's no
-/// shared-borrow lifetime hazard for editor consumers.
+/// Determinism (HR-5): roots are sorted by `(RootOrder.0,
+/// entity.to_bits())`. Entities without `RootOrder` collate AFTER
+/// every explicitly-ordered one (via `u32::MAX`) so freshly-spawned
+/// roots show up at the bottom of the panel by default — matching
+/// user intuition that "the new one lands last." The editor's
+/// `pending_reparent` drain assigns sequential indices when the
+/// user drops a root before/after another root. Children are pushed
+/// in reverse so DFS visits them in `Children`-insertion order.
+/// Names are cloned into the entry — there's no shared-borrow
+/// lifetime hazard for editor consumers.
 pub fn build_hierarchy_snapshot(
     sim_w: &World,
     state: &mut HierarchyWalkState,
@@ -123,10 +129,23 @@ pub fn build_hierarchy_snapshot(
     out.clear();
     scratch.clear();
 
+    // Collect roots with their explicit ordering key (if any). The
+    // sort runs ascending, but the DFS pops from the END of `scratch`
+    // — so push in REVERSE of the desired display order.
+    let mut roots: Vec<(Entity, u32)> = Vec::new();
     for entity in state.roots.iter(sim_w) {
+        let order = sim_w
+            .get::<crate::RootOrder>(entity)
+            .map(|r| r.0)
+            .unwrap_or(u32::MAX);
+        roots.push((entity, order));
+    }
+    roots.sort_unstable_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.to_bits().cmp(&b.0.to_bits())));
+    // Reverse before pushing: DFS pops LIFO, so the LAST scratch
+    // entry becomes the FIRST entry in the snapshot.
+    for (entity, _) in roots.into_iter().rev() {
         scratch.push((entity, 0, None));
     }
-    scratch.sort_unstable_by_key(|&(e, _, _)| e.to_bits());
 
     while let Some((entity, depth, parent)) = scratch.pop() {
         let Ok((name, children, vis)) = state.chain.get(sim_w, entity) else {

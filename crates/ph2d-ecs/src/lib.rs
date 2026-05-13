@@ -42,6 +42,7 @@
 
 pub mod name;
 pub mod present;
+pub mod root_order;
 pub mod scene;
 pub mod sim;
 pub mod transform;
@@ -49,6 +50,7 @@ pub mod visibility;
 
 pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};
+pub use root_order::RootOrder;
 pub use sim::{SimComponent, SimWorld};
 pub use transform::{
     GlobalTransform, SimRef, Transform, TransformPropagationState, WorklistBuf,

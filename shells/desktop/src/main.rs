@@ -1452,6 +1452,66 @@ impl App {
                             }
                         }
                     }
+                    // M14.7 polish: root drops need an explicit
+                    // `RootOrder` so `build_hierarchy_snapshot` sorts
+                    // them at the user-chosen slot instead of falling
+                    // back to `Entity::to_bits()`. Walk the current
+                    // root list with the dragged entity inserted at
+                    // the desired position (before / after a target,
+                    // or at the end), then assign sequential indices.
+                    // Non-root drops skip this — child order is
+                    // handled by step 2's ChildOf re-insert pass.
+                    if new_parent_entity.is_none() {
+                        let mut roots: Vec<ph2d_ecs::Entity> = {
+                            let mut q = sim_w.query_filtered::<
+                                ph2d_ecs::Entity,
+                                (
+                                    ph2d_ecs::With<Transform>,
+                                    ph2d_ecs::Without<ph2d_ecs::ChildOf>,
+                                ),
+                            >();
+                            let mut acc: Vec<(ph2d_ecs::Entity, u32)> = Vec::new();
+                            for entity in q.iter(sim_w) {
+                                if entity == dragged {
+                                    continue;
+                                }
+                                let order = sim_w
+                                    .get::<ph2d_ecs::RootOrder>(entity)
+                                    .map(|r| r.0)
+                                    .unwrap_or(u32::MAX);
+                                acc.push((entity, order));
+                            }
+                            acc.sort_unstable_by(|a, b| {
+                                a.1.cmp(&b.1).then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
+                            });
+                            acc.into_iter().map(|(e, _)| e).collect()
+                        };
+                        let before_target = intent
+                            .before
+                            .and_then(|n| live.bridge.entity_for(n))
+                            .map(ph2d_ecs::Entity::from_bits);
+                        let after_target = intent
+                            .after
+                            .and_then(|n| live.bridge.entity_for(n))
+                            .map(ph2d_ecs::Entity::from_bits);
+                        let insert_at = if let Some(b) = before_target {
+                            roots.iter().position(|e| *e == b).unwrap_or(roots.len())
+                        } else if let Some(a) = after_target {
+                            roots
+                                .iter()
+                                .position(|e| *e == a)
+                                .map(|i| i + 1)
+                                .unwrap_or(roots.len())
+                        } else {
+                            roots.len()
+                        };
+                        roots.insert(insert_at.min(roots.len()), dragged);
+                        for (idx, e) in roots.iter().enumerate() {
+                            if let Ok(mut entry) = sim_w.get_entity_mut(*e) {
+                                entry.insert(ph2d_ecs::RootOrder(idx as u32));
+                            }
+                        }
+                    }
                     // Step 2: enforce sibling order. When dropping
                     // "before t" (intent.before = Some(target)), the
                     // dragged entity should sit RIGHT BEFORE target

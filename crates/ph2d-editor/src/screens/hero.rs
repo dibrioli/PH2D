@@ -326,6 +326,18 @@ pub struct HeroScreen {
     /// host independent of `gizmo_selection`'s value at drain time
     /// (avoids races with a concurrent selection change).
     pub pending_reimport: Option<u64>,
+    /// Pending request to apply Trim Transparency to the selected
+    /// sprite. Raised by clicking `IMAGE_ACTION_TRIM` on the Image
+    /// Tools action row while in `image_tools_mode`. Host drains,
+    /// reads the sprite's atlas-source RGBA pixels via the asset_db,
+    /// runs [`crate::trim_transparency`] (alpha threshold 0), and
+    /// — when the result is `trimmed = true` — acquires a fresh
+    /// `IndividualTextureStore` entry, repoints the sprite source
+    /// to it, and rewrites `Sprite::size` to the new dims at the
+    /// current `project.pixels_per_meter`. Source remains snapshot
+    /// here (not read via `gizmo_selection` at drain time) so a
+    /// concurrent selection change doesn't retarget the action.
+    pub pending_trim_transparency: Option<u64>,
     /// M14.5 inspector phase: snapshot of the selected sprite's
     /// data the host publishes each frame so `paint_inspector` can
     /// surface a "Render Source" section without crossing the
@@ -441,6 +453,7 @@ impl HeroScreen {
             pending_rename_seed: None,
             pending_rename_commit: None,
             pending_reimport: None,
+            pending_trim_transparency: None,
             inspector_sprite: None,
         }
     }
@@ -891,6 +904,18 @@ impl HeroScreen {
             && id == ids::TOPBAR_IMAGE_TOOLS
         {
             self.image_tools_mode = !self.image_tools_mode;
+            return true;
+        }
+        // Trim Transparency action — raise the `pending_trim_transparency`
+        // intent with whatever entity the gizmo currently has selected.
+        // Host drains next frame. When nothing is selected we still
+        // consume the click (so the dispatcher doesn't keep walking
+        // regions) but raise nothing — the host can no-op silently or
+        // surface a toast on its side.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::IMAGE_ACTION_TRIM
+        {
+            self.pending_trim_transparency = self.gizmo_selection;
             return true;
         }
         if topbar::apply_event(&mut self.store, event) {
@@ -1661,6 +1686,25 @@ mod tests {
         assert!(hero.image_tools_mode);
         assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
         assert!(!hero.image_tools_mode);
+    }
+
+    /// Clicking the Trim Transparency action pill captures the
+    /// current `gizmo_selection` into `pending_trim_transparency`
+    /// so the host can drain it next frame. When nothing is
+    /// selected, the pending stays `None` (click still consumed so
+    /// the dispatcher doesn't keep walking).
+    #[test]
+    fn click_on_trim_pill_raises_pending_with_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        // No selection → nothing pending after click.
+        hero.gizmo_selection = None;
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
+        assert_eq!(hero.pending_trim_transparency, None);
+
+        // With selection → pending mirrors gizmo_selection.
+        hero.gizmo_selection = Some(0xDEAD_BEEF);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
+        assert_eq!(hero.pending_trim_transparency, Some(0xDEAD_BEEF));
     }
 
     #[test]

@@ -214,30 +214,66 @@ dela** — limitado a:
 - `Toggle(NodeId, bool)` — toggle flipado
 - `SelectOption(NodeId, String)` — opção de radiogroup selecionada
 
-### 5.2 O que uma Tool faz HOJE — e o que ela NÃO faz ainda
+### 5.2 O que VAI e o que NÃO VAI no seu entregável
 
-**Faz:**
-- Mantém **estado interno** (modelo: parâmetros, configurações).
-- Constrói o **painel de configuração** Procreate-style (`build_panel()`).
-- Reage a eventos do **próprio painel** (`handle_panel_event()`).
+**Princípio do corte:** o **painel** é território seu; o **canvas**
+não é. Hoje no editor PH2D, uma Tool recebe eventos do painel dela
+(`handle_panel_event`), mas **não recebe nenhum pointer/drag event
+vindo do canvas**, e não tem hook pra ler/escrever pixels do asset
+sob o canvas. O próprio `tool.rs` documenta no topo: *"Vello paint
+impls and pointer dispatch land in follow-up PRs."*
 
-**NÃO faz (ainda, no estado atual do editor):**
-- Recebe pointer events do **canvas**. O `tool.rs` documenta no topo:
-  *"Vello paint impls and pointer dispatch land in follow-up PRs."*
-- Aplica transformações em assets/imagens. O canvas é "burro" pra
-  Tools no momento.
+Use a tabela abaixo pra decidir o que entra na sua entrega e o que
+fica como API pública pro Integrador amarrar depois:
 
-**Implicação prática para sua feature:** se sua Tool precisa
-**aplicar** algo (pintar, remover background, transformar), você
-entrega:
-- Painel + estado interno (via trait `Tool`).
-- **Algoritmo puro** como função/struct pública separada
-  (`fn apply(input: &Image, params: &Params) -> Image` ou similar).
+| ✅ ENTREGÁVEL como ilha pura | ❌ NÃO ENTREGÁVEL (precisa hook inexistente) |
+|---|---|
+| Algorítmica core em Rust puro (qualquer função `fn` que recebe buffer + params e retorna buffer/máscara/etc.) | Drag/click vindo do **canvas** (não do painel — esses funcionam) |
+| API pública `apply(rgba: &[u8], w: u32, h: u32, params: &Params) -> Vec<u8>` ou variantes | Eyedropper interativo (sample pixel sob o mouse no canvas) |
+| Estado interno da Tool (struct com fields: parâmetros, lista de cores amostradas, máscaras) | Brush interativo no canvas (paint/erase com dabs interpolados sobre o sprite) |
+| Painel completo via `build_panel()` — sliders, toggles, radiogroups, botões, swatches | Live preview sobreposto ao sprite no canvas |
+| Reação a eventos do painel via `handle_panel_event()` — fold de valor de slider em field do modelo, click em botão dispara função pura | Overlay visual no canvas (cursor customizado, magenta mask, gizmo) |
+| Testes unitários da algorítmica (in/out de buffers conhecidos → hash esperado) | Aplicação efetiva da transformação ao asset selecionado (mutação do pixel buffer do sprite) |
+| Smoke tests do painel (verificar que `build_panel()` retorna estrutura correta) | Seleção espacial baseada no canvas (clique pra escolher sprite-alvo, etc.) |
 
-A AMARRAÇÃO "Tool aplica seu algoritmo no asset do canvas" é
-trabalho do **Integrador** em janela posterior. Você expõe a API; o
-Integrador decide como invocar (botão Apply no painel? hook de
-seleção? command queue?). Você **não amarra**.
+**Como entregar features que dependem de hooks inexistentes:**
+
+Se sua Tool tem componentes do lado "❌" (típico em Painter,
+BgRemoval, FloodFill, etc.), você:
+
+1. **Implementa a parte do "✅" completa** — todo o algoritmo, toda
+   a UI do painel, todo o estado interno. Testa em isolamento.
+2. **Expõe APIs públicas** que o Integrador vai usar pra amarrar
+   o lado "❌". Documente cada uma com `///` clarificando assinatura,
+   pré-condições, pós-condições. Exemplos:
+   ```rust
+   /// Aplica BG removal a um buffer RGBA. Chamado pelo Integrador
+   /// quando o usuário clica "Apply" — o Integrador resolve qual
+   /// asset/sprite é o alvo e fornece o buffer.
+   pub fn apply(rgba: &[u8], w: u32, h: u32, params: &Params) -> Vec<u8>;
+
+   /// Recebe um pixel amostrado do canvas (pelo Integrador, quando
+   /// o eyedropper estiver wirado no futuro) e adiciona à lista de
+   /// cores-chave.
+   pub fn push_sampled_color(&mut self, rgba: [u8; 4]);
+
+   /// Marca/desmarca pixel da protection mask. Mesmo padrão:
+   /// Integrador chama quando o brush no canvas estiver wirado.
+   pub fn paint_mask(&mut self, x: u32, y: u32, on: bool);
+   ```
+3. **Reporta as APIs públicas no relatório de "pronto"**, na seção
+   "API pública pro Integrador" (vide §11). Cada uma é um contrato
+   que o Integrador vai consumir.
+
+O Integrador, na janela de integração, decide **como** invocar
+suas APIs: botão "Apply" no painel disparando `apply()` no asset
+selecionado? Atalho de teclado? Hook futuro de pointer-no-canvas
+quando essa camada nascer? Não é problema seu.
+
+**O que NÃO fazer:** simular o lado "❌" inventando hooks falsos,
+mocks de canvas, ou stubs de pointer event. Isso atrapalha a
+integração futura. Se o hook não existe, sua API fica esperando
+pelo Integrador — pacificamente.
 
 ### 5.3 Estrutura de arquivos típica de uma Tool
 

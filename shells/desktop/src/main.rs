@@ -1194,27 +1194,52 @@ impl App {
             // vanish if the user deleted it between frames) we build a
             // `GizmoView` from the world-space bbox + camera. Empty
             // selection → clear the view so the painter skips.
-            // M14.7 polish: build the gizmo view from the entity's
-            // unrotated rect + rotation so the painter can draw the
-            // oriented bbox. `selection_bbox_world` returns the
-            // axis-aligned bbox of the (already scaled) RenderInstance
-            // — fine for picking but wrong for the gizmo's outline
-            // when the sprite is rotated. We pull `Sprite` + Transform
-            // directly from SimWorld to get the LOCAL rect + the
-            // canonical rotation.
+            //
+            // M14.7 polish (parent-fix): the gizmo MUST read
+            // `GlobalTransform` from PresentWorld — not the entity's
+            // local `Transform` in SimWorld. After a hierarchy reparent
+            // the child's local Transform stays the same but its world
+            // position is now parent.world ∘ local; the sprite renders
+            // at the new world position via the extract path (which
+            // reads GlobalTransform), so the gizmo has to do the same
+            // or it drifts away from the sprite by exactly the parent's
+            // world offset. The Sprite's local `size` is still pulled
+            // from SimWorld — it's the import-time author rect,
+            // multiplied here by the world scale extracted from the
+            // matrix to match the renderer's RenderInstance build.
             hero.gizmo_view = hero.gizmo_selection.and_then(|bits| {
-                let entity = ph2d_ecs::Entity::from_bits(bits);
-                let world = sim.world();
-                let sprite = world.get::<Sprite>(entity)?;
-                let transform = world.get::<Transform>(entity)?;
-                let half_w = sprite.size[0] * transform.scale.x * 0.5;
-                let half_h = sprite.size[1] * transform.scale.y * 0.5;
-                let cx = transform.translation.x;
-                let cy = transform.translation.y;
+                let sim_entity = ph2d_ecs::Entity::from_bits(bits);
+                let sprite = sim.world().get::<Sprite>(sim_entity)?;
+                // Look up the present entity that mirrors this sim
+                // entity via `SimRef`. We can't reuse the sim
+                // `Entity` directly because entity ids are
+                // per-`World` (ADR-0021).
+                let mut q = present
+                    .world_mut()
+                    .query::<(&ph2d_ecs::SimRef, &ph2d_ecs::GlobalTransform)>();
+                let gt = q
+                    .iter(present.world())
+                    .find_map(|(sref, gt)| if sref.0 == sim_entity { Some(*gt) } else { None })?;
+                // Decompose the affine matrix the same way the
+                // extract path does — column lengths for scale,
+                // atan2(col0.y, col0.x) for rotation. Keeps gizmo
+                // math in lockstep with the render path so any
+                // future change has one canonical place.
+                let affine = gt.affine();
+                let col0_x = affine[0];
+                let col0_y = affine[1];
+                let col1_x = affine[2];
+                let col1_y = affine[3];
+                let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
+                let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
+                let rotation = col0_y.atan2(col0_x);
+                let p = gt.translation();
+                let half_w = sprite.size[0] * scale_x * 0.5;
+                let half_h = sprite.size[1] * scale_y * 0.5;
                 Some(ph2d_editor::GizmoView {
-                    bbox_min_world: [cx - half_w, cy - half_h],
-                    bbox_max_world: [cx + half_w, cy + half_h],
-                    rotation: transform.rotation,
+                    bbox_min_world: [p.x - half_w, p.y - half_h],
+                    bbox_max_world: [p.x + half_w, p.y + half_h],
+                    rotation,
                     camera_center: camera.center,
                     camera_height_world: camera.height_world,
                     window_w: window_size.width as f32,

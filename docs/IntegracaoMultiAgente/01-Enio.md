@@ -1,141 +1,140 @@
-# Diretriz de implementação Multi-Agente — Enio
+# Diretriz Multi-Agente — Enio (modelo Coordenador + Periféricos)
 
-**Versão:** 3.0 — 2026-05-12
-**Audiência:** Enio (coordenador da operação).
+**Versão:** 4.0 — 2026-05-13
+**Modelo:** sem branches feature/, sem worktrees, tudo local em main,
+push pro GitHub só no final.
+
+## Topologia
+
+```
+Você (Enio) — relay humano
+ │
+ ├─ Coordenador  (sessão Claude Code #1 — dedicada, sempre ativa)
+ │   • Mantém STATE.md como fonte de verdade
+ │   • Único que toca arquivos compartilhados
+ │   • Atribui slots, valida pastas, integra features
+ │
+ └─ Agentes Periféricos (até 4 sessões Claude Code paralelas)
+     • Cada um numa sessão separada, MESMO path do projeto
+     • Cada um trabalha em pasta(s) exclusiva(s)
+     • Comunicam via você ↔ Coordenador
+```
+
+Todas as sessões abertas no mesmo diretório principal do projeto.
+Sem `git worktree add`. Sem `git checkout -b`. Sem `git push`. Tudo
+local em main até o ciclo terminar.
 
 ## Seu papel
 
-Você é o único decisor humano. Não escreve código, não roda comandos
-git, não pensa em worktrees, branches, slugs ou paths. Você só:
+Você é o **relay humano**: copia/cola mensagens entre Coordenador e
+Agentes Periféricos. Não roda código, não roda git, não toma
+decisões técnicas. Você decide:
+- Quando iniciar nova feature.
+- Quando parar e mandar pro GitHub.
+- Resolver impasses (quando Coordenador apresenta opções).
 
-1. Descreve features que quer.
-2. Aprova ou redireciona o que volta.
-3. Confere o CI visualmente quando o PR sai.
+## Fluxo padrão
 
-O resto, o agente faz — incluindo criar worktree, descobrir slug,
-preparar ambiente. Se ele tiver dúvida sobre escopo ou direção, ele
-te pergunta.
+### Setup inicial (uma vez por sessão de trabalho)
 
-## Fluxo padrão pra desenvolver uma feature
+1. Abra **Sessão #1** Claude Code no path principal do projeto.
+2. Cole o conteúdo inteiro de [`02-Coordenador.md`](02-Coordenador.md)
+   + "Você é o Coordenador. Inicialize a operação."
+3. Coordenador lê tudo, inicializa STATE.md, reporta pronto.
 
-### Passo 1 — Abra Claude Code no diretório principal do projeto
+### Para cada feature nova
 
-Path: `/Volumes/MAC_EXTERNO/PROJETOS/_PH2D_definitiva` (ou o que
-estiver).
+1. Diga ao Coordenador: "Quero feature X. Atribua slot."
+2. Coordenador prepara briefing personalizado (cola de
+   [`03-Agente-Periferico.md`](03-Agente-Periferico.md) + escopo +
+   slot). Atualiza STATE.md.
+3. Você abre **nova Sessão Claude Code** (mesmo path), cola o briefing
+   que o Coordenador te deu.
+4. Agente Periférico lê briefing + SKILL + STATE.md. **Decide pasta(s)
+   exclusiva(s)** baseado em natureza da feature + arquitetura do app.
+5. Agente comunica a você: "Vou trabalhar em <pastas>. Faz sentido?"
+6. Você cola essa mensagem na sessão do Coordenador.
+7. Coordenador valida (pasta livre? bate com arquitetura?), atualiza
+   STATE.md, te devolve "aprovado" ou "use Y em vez de X".
+8. Você cola a resposta de volta na sessão do Agente.
+9. Agente começa a codificar SÓ na pasta aprovada.
 
-### Passo 2 — Cole o doc do Implementador + diga o que quer
+### Durante o trabalho do Agente
 
-Na primeira mensagem dessa sessão Claude Code, cole o conteúdo
-inteiro de [`02-Implementador.md`](02-Implementador.md), e logo
-abaixo:
+Casos típicos onde o Agente para e pede ajuda (via você):
 
-```
-Quero implementar: <descrição da feature em 1-5 linhas>
-```
+- **Precisa adicionar dep externa** (Cargo.toml fora da pasta dele).
+- **Precisa de variant nova em IconId.**
+- **Precisa de wiring inicial pra testar visualmente.**
+- **Detectou bug em código fora da pasta exclusiva.**
 
-Pode ser bem informal — "Quero uma Tool de Background Removal com 4
-algoritmos" ou só "quero uma Tool nova, vou descrever". Se faltar
-detalhe, o agente te pergunta.
+Em qualquer caso:
+1. Agente reporta a você com justificativa.
+2. Você cola pra Coordenador.
+3. Coordenador atende (faz a mudança ele mesmo se autorizado, ou
+   pergunta a você se exige ADR).
+4. Você cola resposta pra Agente.
+5. Agente prossegue.
 
-### Passo 3 — O agente faz setup E implementa, tudo na mesma sessão
+### Quando Agente termina
 
-Vendo que está no diretório principal (§2.1 da diretriz dele), o
-agente:
-- Pergunta o nome/escopo da feature se você ainda não descreveu.
-- Se tiver dúvidas sobre arquitetura ou abordagem, te apresenta
-  opções concretas. Você decide.
-- Deriva o slug (kebab-case curto, ex: `bgremoval`).
-- Cria worktree + branch (`git worktree add ...`).
-- Entra na worktree via `cd .claude/worktrees/agent-<slug>` (o Bash
-  do Claude Code persiste cwd entre comandos).
-- **Continua trabalhando ali na mesma sessão**: lê SKILL, implementa
-  a feature completa, roda testes, commita local na branch.
-- Reporta "feature pronta na worktree, aguardando integração".
+1. Agente reporta: "Feature pronta. APIs públicas: A, B, C. Wiring
+   pendente: D, E."
+2. Você cola pra Coordenador.
+3. Coordenador adiciona à fila no STATE.md.
+4. Quando vez do Agente chega: Coordenador integra (toca arquivos
+   compartilhados), valida, comita, atualiza STATE.md.
+5. Coordenador reporta: "Integrado. Slot livre."
 
-Você não abre nova sessão. Você não cola briefing duas vezes.
+### Final do ciclo — passa pro GitHub
 
-### Passo 4 — Implementador reporta "pronto"
+Quando todas as features estão integradas e estáveis em main local,
+decida: "manda PR pro GitHub".
 
-Quando ele reportar "pronto pra integração", a feature está
-esperando na worktree dele. Você pode rodar outras features em
-paralelo (volta ao Passo 1 noutra janela Claude Code no diretório
-principal, descrevendo outra feature — cada uma vai virar sua
-worktree isolada).
+- Coordenador pode assumir esse papel (lê [`04-Agente-PRCI.md`](04-Agente-PRCI.md))
+  ou você abre sessão dedicada nova com esse doc.
+- Push da main local + abertura de PR + link da run de CI.
+- Daqui pra frente é o fluxo padrão GitHub.
 
-### Passo 5 — Integração local (quando vários estão prontos)
-
-Quando uma ou mais features estão prontas E nenhum Implementador
-está mais ativo:
-- Abre Claude Code no diretório principal.
-- Cola [`03-Integrador.md`](03-Integrador.md) + diga "Integra as
-  branches `feature/X` e `feature/Y` na `main`."
-- Agente confere `ls .claude/worktrees/`, faz merge + wiring +
-  atualizações de docs.
-- Reporta "integração local pronta".
-
-### Passo 6 — Push e PR (quando você decide enviar pro GitHub)
-
-- Abre Claude Code no diretório principal (ou na branch integrada).
-- Cola [`04-Agente-PRCI.md`](04-Agente-PRCI.md) + diga "Manda PR
-  da branch `<nome>` pra main."
-- Recebe link do PR + link da run de CI. Confere visualmente no
-  GitHub.
-
-## Os 3 tipos de agente
+## Tabela de papéis × documento
 
 | Papel | Doc que você cola | Pode pushar? |
 |---|---|---|
-| Implementador (1-N em paralelo, cada um na sua worktree) | [`02-Implementador.md`](02-Implementador.md) | ❌ |
-| Integrador (1 por vez, sem Implementador ativo) | [`03-Integrador.md`](03-Integrador.md) | ❌ |
-| Agente PRCI (1 por vez, após integração) | [`04-Agente-PRCI.md`](04-Agente-PRCI.md) | ✅ |
-
-**Papéis ≠ sessões.** Uma mesma sessão Claude Code pode passar pelos
-3 papéis em sequência (Implementador → Integrador → PRCI), se você
-preferir continuidade de contexto. Para isso basta colar o próximo
-doc após o agente terminar a etapa anterior. Alternativamente, você
-pode usar sessões dedicadas pra cada etapa. Os dois caminhos
-funcionam — o procedimento operacional dos docs é o mesmo.
-
-Quando preferir cada um:
-- **Mesma sessão pra tudo:** features pequenas/médias onde o
-  contexto técnico ajuda a continuar; menos overhead de re-leitura.
-- **Sessões dedicadas:** features grandes ou paralelismo real
-  (vários Implementadores em features distintas, Integrador
-  serializa depois).
+| Coordenador (Sessão #1, sempre ativa) | [`02-Coordenador.md`](02-Coordenador.md) | só no final |
+| Agente Periférico (Sessões #2-5, 1-4 paralelos) | [`03-Agente-Periferico.md`](03-Agente-Periferico.md) | ❌ |
+| Agente PRCI (só ativado no final) | [`04-Agente-PRCI.md`](04-Agente-PRCI.md) | ✅ |
 
 ## Regras de ouro
 
-- **Nunca rode mais que 1 Integrador OU 1 PRCI por vez.**
-- **Nunca rode Integrador enquanto há Implementador ativo** (em
-  outra worktree). Se é a mesma sessão que vai migrar
-  Implementador → Integrador, o "Implementador ativo" é você
-  mesmo, e a transição é segura porque você termina a fase de
-  Implementação antes de assumir Integração.
-- `ls .claude/worktrees/` é a fonte de verdade sobre worktrees ativas.
-- **Implementadores não se comunicam entre si** — comunicam só com você.
-- **Você não roda comandos git.** Os agentes rodam.
-- **Você não nomeia paths nem branches.** Os agentes nomeiam.
+- **STATE.md é a fonte de verdade.** Confia mais nele do que em
+  sua memória.
+- **Apenas Coordenador escreve em arquivos compartilhados.**
+- **Apenas Coordenador escreve em STATE.md.**
+- **Cada Agente Periférico escreve só na pasta exclusiva dele.**
+- **Sem branches.** Sem `git checkout -b`. Tudo em main local.
+- **Sem push** até toda fila local estar resolvida.
+- **Máximo 4 Agentes Periféricos simultâneos** (limite do STATE.md).
 
 ## Quando algo dá errado
 
-- **Implementador sinaliza que precisa tocar a blacklist** (§7 da
-  diretriz dele) → ele te explica o porquê e propõe alternativas.
-  Você decide: ajustar escopo, virar tarefa de Integrador, abrir ADR.
-- **Implementador identifica hook arquitetural faltando** (ex:
-  canvas não envia pointer pra Tool) → ele te diz e propõe entregar
-  só painel + API; Integrador projeta a amarração depois.
-- **Integrador encontra conflitos não-óbvios** → ele te explica.
-  Pode pedir Implementador a corrigir feature na worktree dele.
-- **PRCI reporta CI vermelho** → você lê o link da run, decide se
-  vale pedir investigação. Cola novo briefing pra agente diagnóstico
-  se quiser.
+- **2 agentes querem mesma pasta:** Coordenador propõe ajuste de slug
+  (`painter` → `painter-v2`).
+- **Agente tenta tocar arquivo fora da pasta:** o briefing dele pede
+  pra parar e reportar; se chegou a editar, Coordenador reverte.
+- **Build quebra em main local:** Coordenador detecta no `cargo check`
+  após integração; se grave, reverte ao "sha conhecido bom" no STATE.md.
+- **Coordenador "morre" (você fecha a sessão):** STATE.md persiste no
+  disco; abra nova sessão de Coordenador, ele lê STATE.md e continua.
 
-## Hierarquia de docs
+## Hierarquia de docs neste fluxo
 
-- Este doc (`01-Enio.md`) — seu manual de bolso.
-- `02-Implementador.md`, `03-Integrador.md`, `04-Agente-PRCI.md` —
-  você cola um deles ao iniciar cada agente. Não precisa ler na
-  íntegra; basta saber qual usar.
-- `docs/PARALLEL_AGENTS.md` — política referenciada pelos 3.
-- `SKILL_Stack_PH2D_Definitiva.md` + `CLAUDE.md` — leitura obrigatória
-  dos agentes; você só consulta se quiser entender uma dúvida deles.
+- **Este doc** (`01-Enio.md`) — seu manual.
+- **`02-Coordenador.md`** — você cola na Sessão #1 (Coordenador).
+- **`03-Agente-Periferico.md`** — Coordenador cola na sessão de cada
+  Agente (após adicionar escopo + slot).
+- **`04-Agente-PRCI.md`** — só ativado no final.
+- **`STATE.md`** — fonte de verdade do estado da operação (Coordenador
+  mantém).
+- **`SKILL_Stack_PH2D_Definitiva.md`** + **`CLAUDE.md`** — leitura
+  obrigatória de Coordenador e Agentes; você só consulta se quiser
+  entender uma dúvida arquitetural.

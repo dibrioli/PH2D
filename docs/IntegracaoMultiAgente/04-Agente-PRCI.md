@@ -169,9 +169,10 @@ Identifique a causa raiz. Reporte com:
 - Sugestão de correção.
 
 **Você não corrige código nesta etapa.** Diagnóstico é sua entrega.
-A correção é trabalho da etapa de Implementação — mesma sessão
-troca de papel voltando ao `02-Implementador.md` se o Enio pedir,
-ou outra sessão assume.
+A correção é trabalho da etapa de Implementação — uma sessão de
+Agente Periférico (`03-Agente-Periferico.md`) é instanciada
+pelo Coordenador (`02-Coordenador.md`) pra corrigir, depois nova
+rodada de PRCI.
 
 ## 8. Regras de ouro
 
@@ -179,8 +180,8 @@ ou outra sessão assume.
 - **Nunca force push** em main/master. Em geral, evite force push.
 - **Nunca polle CI em loop** após reportar o link.
 - **Nunca commite código de produção.** Você só faz push + `gh`.
-  Se houve correção necessária, ela já está nos commits do
-  Implementador ou Integrador.
+  Se houve correção necessária, ela já está nos commits do Agente
+  Periférico (que implementou) ou do Coordenador (que integrou).
 - **Nunca rode `git config`** mudando settings globais ou do repo.
 
 ## 9. Tom de comunicação

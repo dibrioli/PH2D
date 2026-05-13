@@ -123,13 +123,14 @@ pub fn paint_context_menu_overlay(
             ),
         ],
         // Settings cluster (gear) — TOP-LEVEL categories. Each entry
-        // ending in " >" (ASCII greater-than) opens its dedicated
-        // submenu (replaces this menu). We avoided U+25B8 / U+25B6
-        // (right-pointing triangle) because Inter doesn't ship a
-        // glyph for either codepoint — the user saw a tofu □ box.
-        // Future categories (Snap, Theme, etc.) line up here.
+        // ending in "\u{2003}\u{25b6}" (em-space + black right-
+        // pointing triangle) opens its dedicated submenu (replaces
+        // this menu). U+25B6 IS present in `InterVariable.ttf` —
+        // U+25B8 (smaller triangle) is not, which was the earlier
+        // tofu the user reported. Future categories (Snap, Theme,
+        // etc.) line up here.
         ContextMenuKind::SettingsMenu => &[
-            (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter  >", None),
+            (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter\u{2003}\u{25b6}", None),
         ],
         // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
         // presets as before the cascade, just one click deeper.
@@ -151,11 +152,11 @@ pub fn paint_context_menu_overlay(
         // below — `items` stays empty so the simple-row loop is
         // skipped.
         ContextMenuKind::SceneList => &[],
-        // M14.6 F: per-row Hierarchy actions. "Rename…" is omitted
-        // until the inline-edit state-machine lands (deferred to a
-        // follow-up). Order matches Unity/Godot/Blender conventions:
-        // additive ops first (Duplicate / Add Child), then destructive
-        // (Delete), with Reset Transform last as a milder revert.
+        // M14.6 F + M14.7: per-row Hierarchy actions. Order follows
+        // the Unity / Godot / Blender convention: Rename first (the
+        // most common edit), then additive ops (Duplicate, Add
+        // Child), then the milder revert (Reset Transform), with
+        // Delete last as the destructive endpoint.
         ContextMenuKind::HierarchyRow { .. } => &[
             (ids::CTX_MENU_HIER_RENAME, "Rename\u{2026}", None),
             (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),

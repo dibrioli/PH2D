@@ -635,6 +635,13 @@ pub fn dispatch_pointer_with_text<'frame>(
             // without movement, emit `LongPress` so the hierarchy
             // row enters inline rename.
             let drag_end = store.end_hierarchy_drag();
+            // Long-press detection: still pointer-Down (`!active`) for
+            // ≥ 600 ms emits LongPress. The Click that `apply_click`
+            // would otherwise also emit on this same Up is suppressed
+            // below (`suppress_click`) so the long-press doesn't
+            // silently mutate hierarchy selection on top of the rename
+            // mode it just opened.
+            let mut suppress_click = false;
             if let Some(drag) = drag_end
                 && !drag.active
                 && event
@@ -643,10 +650,27 @@ pub fn dispatch_pointer_with_text<'frame>(
                     >= super::LONG_PRESS_THRESHOLD_NS
             {
                 events.push(WidgetEvent::LongPress(drag.dragged));
+                suppress_click = true;
             }
             if let Some(drag) = drag_end
                 && drag.active
             {
+                // Drop-on-self short-circuit: if the cursor at Up is
+                // back inside the dragged row's own rect (user almost
+                // dragged, then drifted back), don't fire a
+                // HierReparent. Pre-fix: the drag-active path
+                // unconditionally resolved to End and silently
+                // root-promoted the entity.
+                let over_self = hit_index
+                    .iter_registrations()
+                    .find(|(id, _)| *id == drag.dragged)
+                    .map(|(_, r)| {
+                        event.y >= r.y && event.y < r.y + r.h && event.x >= r.x && event.x < r.x + r.w
+                    })
+                    .unwrap_or(false);
+                if over_self {
+                    return events.into_bump_slice();
+                }
                 let drop = find_hierarchy_drop(hit_index, store, event.y, drag.dragged);
                 match drop {
                     HierDrop::Before(t) => {
@@ -743,7 +767,10 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // them would, e.g., toggle section collapse on
                 // right-click, which is exactly the bug the user
                 // reported.
-                if still_hot && !is_drag_widget && event.button == ph2d_host::PointerButton::Primary
+                if still_hot
+                    && !is_drag_widget
+                    && !suppress_click
+                    && event.button == ph2d_host::PointerButton::Primary
                 {
                     apply_click(store, active, &mut events);
                 }

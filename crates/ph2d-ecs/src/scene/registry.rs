@@ -202,12 +202,15 @@ impl Default for ComponentRegistry {
     }
 }
 
-/// Register the components owned by `ph2d-ecs` (Transform, Name).
-/// Other crates contribute via their own `register_*_components`
-/// functions, called once at boot from the shell.
+/// Register the components owned by `ph2d-ecs` (Transform, Name,
+/// Visibility, RootOrder). Other crates contribute via their own
+/// `register_*_components` functions, called once at boot from the
+/// shell.
 pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::Transform>("ph2d::ecs::Transform");
     reg.register::<crate::Name>("ph2d::ecs::Name");
+    reg.register::<crate::Visibility>("ph2d::ecs::Visibility");
+    reg.register::<crate::RootOrder>("ph2d::ecs::RootOrder");
 }
 
 #[cfg(test)]
@@ -237,9 +240,11 @@ mod tests {
     fn register_ecs_components_populates_registry() {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
-        assert_eq!(reg.len(), 2);
+        assert_eq!(reg.len(), 4);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::RootOrder").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Missing").is_none());
     }
 

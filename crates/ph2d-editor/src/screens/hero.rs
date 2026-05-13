@@ -776,7 +776,7 @@ impl HeroScreen {
                         // current Name on the next frame (one-shot —
                         // re-seeding every frame would clobber the
                         // user's Backspace edits).
-                        open_rename(&mut self.store, row);
+                        open_rename(&mut self.store);
                         self.rename_target_row = Some(row);
                         self.pending_rename_seed = Some(row);
                     }
@@ -784,15 +784,23 @@ impl HeroScreen {
                 return true;
             }
             // M14.7 polish (6.3): top-level Settings cascade entry.
-            // Clicking "Pixels per meter \u{25b8}" REPLACES the top-
-            // level menu with the px/m presets submenu. Anchored at
-            // the same x/y so the user's mouse stays on the choice.
+            // Clicking "Pixels per meter \u{25b6}" REPLACES the top-
+            // level menu with the px/m presets submenu. Anchored to
+            // the right edge of the clicked cascade row so the
+            // submenu lands next to the chevron — Unity / Godot /
+            // Blender convention. Falls back to the closed parent
+            // menu's anchor when the hit rect isn't published yet
+            // (defensive — shouldn't happen during normal flow).
             if id == ids::CTX_MENU_SETTINGS_PPM {
-                let anchor = self
-                    .store
-                    .last_context_menu()
-                    .map(|r| (r.x, r.y))
-                    .unwrap_or((0.0, 0.0));
+                let row_rect = self.hit_index.rect_for(id);
+                let anchor = if let Some(r) = row_rect {
+                    (r.x + r.w, r.y)
+                } else {
+                    self.store
+                        .last_context_menu()
+                        .map(|r| (r.x, r.y))
+                        .unwrap_or((0.0, 0.0))
+                };
                 self.store.open_context_menu(crate::interaction::ContextMenuRequest {
                     x: anchor.0,
                     y: anchor.1,
@@ -903,7 +911,7 @@ impl HeroScreen {
             && let Some(live) = self.live_hierarchy_entries.as_ref()
             && live.contains_key(&id)
         {
-            open_rename(&mut self.store, id);
+            open_rename(&mut self.store);
             self.rename_target_row = Some(id);
             self.pending_rename_seed = Some(id);
             return true;
@@ -1002,12 +1010,12 @@ impl HeroScreen {
 /// TextInput state as `Focused`, and parks focus on the field. The
 /// host's `pending_rename_seed` drain fills the buffer with the
 /// entity's current `Name` on the next frame.
-fn open_rename(store: &mut crate::interaction::WidgetStore, _row: NodeId) {
-    // Force-reset the TextInput state — `register_if_absent` is a
-    // no-op when the widget was already registered (e.g. from a
-    // previous rename session), so the buffer / state would persist
-    // from the last use and seed-detection would mistake leftover
-    // text for "user is editing." Plain `register` overwrites.
+///
+/// Side-table safety: `HIER_RENAME_INPUT` has no associated
+/// `widget_color` / `panel_z` / `panel_scroll` / `tooltip` entries,
+/// so the force-overwrite `store.register` (vs `register_if_absent`)
+/// only resets buffer / caret / state — the intended effect.
+fn open_rename(store: &mut crate::interaction::WidgetStore) {
     store.register(
         ids::HIER_RENAME_INPUT,
         crate::interaction::InteractiveState::TextInput {

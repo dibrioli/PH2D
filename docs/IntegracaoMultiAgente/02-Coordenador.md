@@ -42,18 +42,34 @@ Quando o Enio te apresenta este doc:
      pedidos deles)
    - [`docs/IntegracaoMultiAgente/STATE.md`](STATE.md) (template ou
      estado atual, dependendo se há operação em curso)
-3. **Inicialize ou recupere STATE.md:**
-   - Se STATE.md está no template: substitua placeholders com
-     timestamp atual, sha conhecido bom = `git rev-parse HEAD`,
-     todos os slots vagos.
-   - Se STATE.md já tem operação em curso: respeite o estado,
-     continue de onde parou.
-4. Comite a inicialização (se aplicável):
+3. **Inicialize STATE.md a partir do template:**
+
+   Verifique se já existe `STATE.md`:
+   ```
+   ls docs/IntegracaoMultiAgente/STATE.md 2>/dev/null
+   ```
+
+   - **Se NÃO existe** (primeira operação OU pós-reset): crie a
+     partir do template:
+     ```
+     cp docs/IntegracaoMultiAgente/STATE.md.template \
+        docs/IntegracaoMultiAgente/STATE.md
+     ```
+     Depois edite `STATE.md` (não o template): preencha timestamp
+     atual, sha conhecido bom = `git rev-parse HEAD`, slots todos
+     vagos.
+
+   - **Se EXISTE com operação em curso**: respeite o estado, leia
+     o que está lá, continue de onde parou. Não sobrescreva com
+     template — você perderia trabalho em andamento.
+
+4. Comita a inicialização (se houve criação/edição):
    ```
    git add docs/IntegracaoMultiAgente/STATE.md
    git commit -m "chore(coordenador): initialize multi-agent state"
    ```
-5. Reporte ao Enio: `Coordenador pronto. STATE.md inicializado.
+
+5. Reporta ao Enio: `Coordenador pronto. STATE.md inicializado.
    Slots livres: 4. Aguardando pedidos.`
 
 ## 3. Suas responsabilidades
@@ -254,7 +270,7 @@ sobrevive. Mas pode estar referenciando uma API revertida — comunique.
   slot/pasta + integra. A feature em si é decisão do Agente.
 - **Não fala direto com Agente.** Só via Enio.
 
-## 5. Final do ciclo — passar a PRCI
+## 5. Final do ciclo — passar a PRCI e resetar STATE.md
 
 Quando fila está vazia E todos os slots concluíram suas features
 E o Enio decide enviar pro GitHub:
@@ -267,6 +283,18 @@ E o Enio decide enviar pro GitHub:
 2. Você pode assumir o papel de PRCI: leia
    [`04-Agente-PRCI.md`](04-Agente-PRCI.md) e siga aquele doc.
    Alternativamente, o Enio abre sessão dedicada com `04-Agente-PRCI.md`.
+3. **Após o push concluir com sucesso, resete `STATE.md`** pra deixar
+   pronto pra próxima operação:
+   ```
+   cp docs/IntegracaoMultiAgente/STATE.md.template \
+      docs/IntegracaoMultiAgente/STATE.md
+   git add docs/IntegracaoMultiAgente/STATE.md
+   git commit -m "chore(coordenador): reset STATE.md after cycle complete"
+   ```
+   O histórico de operações anteriores fica preservado no git via
+   `git log docs/IntegracaoMultiAgente/STATE.md`. O template em
+   `STATE.md.template` **nunca é tocado** durante operação — só
+   quando o schema do STATE.md evolui (mudança arquitetural rara).
 
 ## 6. Tom
 

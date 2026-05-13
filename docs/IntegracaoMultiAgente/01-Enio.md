@@ -133,8 +133,12 @@ decida: "manda PR pro GitHub".
 - **`03-Agente-Periferico.md`** — Coordenador cola na sessão de cada
   Agente (após adicionar escopo + slot).
 - **`04-Agente-PRCI.md`** — só ativado no final.
-- **`STATE.md`** — fonte de verdade do estado da operação (Coordenador
-  mantém).
+- **`STATE.md`** — fonte de verdade do estado da operação **atual**
+  (Coordenador mantém; criado a partir de `STATE.md.template` no
+  setup; resetado pra template ao final do ciclo).
+- **`STATE.md.template`** — backup imutável do formato de estado.
+  Não é editado durante operação. Coordenador copia sobre `STATE.md`
+  ao inicializar nova operação e ao resetar no fim do ciclo.
 - **`SKILL_Stack_PH2D_Definitiva.md`** + **`CLAUDE.md`** — leitura
   obrigatória de Coordenador e Agentes; você só consulta se quiser
   entender uma dúvida arquitetural.

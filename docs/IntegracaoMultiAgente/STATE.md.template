@@ -1,9 +1,31 @@
-# STATE — Operação Multi-Agente PH2D
+# STATE — Operação Multi-Agente PH2D (TEMPLATE)
 
-**Atualizado por:** Coordenador (única sessão autorizada a escrever neste arquivo)
-**Última atualização:** _(template — substituir ao iniciar operação)_
+**⚠ Este é o arquivo TEMPLATE. Nunca é editado durante a operação.**
 
-Este arquivo é a **fonte de verdade** sobre a operação multi-agente.
+O **estado vivo** da operação fica em `STATE.md` (irmão deste
+arquivo). Quando o Coordenador inicia uma nova operação, ele copia
+este template sobre `STATE.md`:
+
+```sh
+cp docs/IntegracaoMultiAgente/STATE.md.template \
+   docs/IntegracaoMultiAgente/STATE.md
+```
+
+A partir daí o Coordenador edita `STATE.md`, **não toca este arquivo**.
+
+Quando uma operação completa termina (todos slots `done`, fila vazia,
+push pro GitHub feito), o Coordenador **reseta** copiando o template
+de novo sobre `STATE.md`. O histórico de operações anteriores fica
+preservado no git via `git log docs/IntegracaoMultiAgente/STATE.md`.
+
+Este template só muda quando a estrutura/schema do STATE.md evolui.
+
+---
+
+**Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
+**Última atualização:** _(preencher com timestamp ao copiar pra STATE.md)_
+
+`STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
 
 ## Slots ativos (máx 4)

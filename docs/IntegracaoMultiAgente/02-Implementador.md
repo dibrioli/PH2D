@@ -129,7 +129,14 @@ Não pergunte ao Enio se ele quer MVP — ele não quer.
 **Regra 2 — A entrega é uma ILHA ISOLADA.**
 Arquivos NOVOS em locais NOVOS. Não modifica `widget/mod.rs`, não
 adiciona variant em enum global, não amarra ao editor. A AMARRAÇÃO
-é trabalho do **Integrador** em janela posterior.
+é a **etapa de Integração** (vide `03-Integrador.md`).
+
+A etapa de Integração pode ser feita por **outra sessão de agente**
+ou **por você mesmo trocando de papel** — quem decide é o Enio.
+Durante a Implementação, foque em entregar a ilha isolada e parar
+quando reportar "pronto". Se o Enio te pedir pra seguir como
+Integrador, leia `03-Integrador.md` e prossiga; senão, espera nova
+sessão assumir.
 
 ### 5.2 Antes de fazer perguntas
 
@@ -542,8 +549,10 @@ Confirme:
   código (ex: feature flag dev): confirme que ele pinta corretamente.
 
 Você NÃO vai ver o botão da sua Action na TopBar nem o ícone da
-sua Tool no LeftRail — esse wiring é do Integrador. Mas o app
-tem que abrir e funcionar.
+sua Tool no LeftRail durante a Implementação — esse wiring acontece
+na etapa de Integração (mesma sessão troca de papel para
+`03-Integrador.md`, ou outra sessão assume — decisão do Enio). Mas
+o app tem que abrir e funcionar.
 
 Reporte no relatório qual smoke você fez ("rodei PH2D_HERO_LIVE,
 TopBar OK, LeftRail OK, nenhuma regressão visível").
@@ -590,7 +599,10 @@ Smoke visual rodado: PH2D_HERO_LIVE=1 cargo run -p ph2d-host-desktop
 Resultado: <"app abriu, UI intacta, nenhuma regressão" ou descrição da regressão>
 
 Testes verdes: cargo test, clippy, fmt todos passam.
-Aguardando janela de integração.
+
+Próxima etapa (Integração): aguardando decisão do Enio sobre como
+prosseguir — sigo eu mesmo (lendo 03-Integrador.md) ou outra sessão
+assume. Se for eu, preciso só de "go" e da branch destino.
 ```
 
 ## 14. Quando algo dá errado
@@ -603,7 +615,8 @@ Aguardando janela de integração.
   reporte (blacklist).
 - **A feature exige hook do canvas que não existe** (pointer events
   no canvas → Tool): pare. Reporte com proposta: feature entrega
-  API pública + painel; Integrador projeta hook.
+  API pública + painel; o hook é projetado na etapa de Integração
+  (mesma sessão troca de papel ou outra sessão assume).
 - **`screens/hero/` ou outras seções de §6 não batem com o repo
   atual** (§3 drift check): pare, reporte.
 

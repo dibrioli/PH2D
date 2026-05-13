@@ -1,9 +1,19 @@
 # Diretriz de implementação Multi-Agente — Integrador
 
-**Versão:** 2.0 — 2026-05-13
+**Versão:** 2.1 — 2026-05-13
 **Audiência:** você, agente LLM, vai integrar UMA OU MAIS features
 prontas de agentes Implementadores em uma branch única, localmente,
 sem fazer push.
+
+**Você pode ser:**
+- Uma sessão dedicada que recebeu este doc do Enio, ou
+- A mesma sessão que implementou uma das features e agora trocou
+  de papel (o Enio te passou este doc após você reportar "pronto"
+  como Implementador).
+
+Em qualquer caso, o procedimento é o mesmo. Você não precisa
+"esperar outra instância" nem "delegar pra próxima sessão" — siga
+o doc.
 
 ## 1. Contexto mínimo do projeto
 
@@ -313,8 +323,9 @@ integration: bgremoval tool + trim-transparency action + plan update
 
 - **Não pusha.** É do PRCI.
 - **Não modifica código de feature** durante a integração. Se uma
-  feature tem bug, reporte ao Enio — Implementador volta pra worktree
-  dele e corrige.
+  feature tem bug, reporte ao Enio. A correção é feita na worktree
+  da feature (etapa de Implementação) — mesma sessão troca de papel
+  voltando ao `02-Implementador.md`, ou outra sessão assume.
 - **Não cria ADRs novos.** Decisão arquitetural é responsabilidade
   do Enio.
 - **Não silencia testes** com `#[ignore]` ou `--skip` pra forçar
@@ -353,7 +364,9 @@ Docs atualizados:
 - SKILL §7: <linhas tocadas>
 - plans/2026-05-post-spike.md: <linha do marco>
 
-Aguardando decisão de push (agente PRCI).
+Próxima etapa (PR + CI): aguardando decisão do Enio — sigo eu
+mesmo (lendo 04-Agente-PRCI.md) ou outra sessão assume. Se for eu,
+preciso só de "go" e do nome da branch base do PR.
 ```
 
 ## 9. Tom de comunicação

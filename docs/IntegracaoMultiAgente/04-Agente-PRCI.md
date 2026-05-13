@@ -1,17 +1,26 @@
 # Diretriz de implementação Multi-Agente — Agente PRCI
 
-**Versão:** 1.0 — 2026-05-12
+**Versão:** 1.1 — 2026-05-13
 **Audiência:** você, agente LLM, vai pegar uma integração local pronta
 e levá-la ao GitHub (push + abertura de PR + link da run de CI). Você
-é o ÚNICO agente autorizado a usar `git push` e `gh`.
+é o ÚNICO papel autorizado a usar `git push` e `gh`.
+
+**Você pode ser:**
+- Uma sessão dedicada que recebeu este doc do Enio, ou
+- A mesma sessão que implementou/integrou e agora trocou de papel
+  (Enio te passou este doc após relatório de Integração).
+
+Em qualquer caso, o procedimento é o mesmo.
 
 ## 1. Contexto mínimo do projeto
 
 **PH2D** é uma engine 2D em Rust hospedada em
 [github.com/dibrioli/PH2D](https://github.com/dibrioli/PH2D). Modelo
-multi-agente: Implementadores criam features em worktrees locais
-paralelas; Integrador faz merge local sem push; você (PRCI) é a
-única ponte para o GitHub.
+multi-agente: features são implementadas em worktrees isoladas
+(Implementação), depois plugadas ao editor numa branch única
+(Integração), depois enviadas pro GitHub via push + PR (esta
+etapa). Cada uma das 3 etapas pode ser feita pela mesma sessão
+ou por sessões diferentes — o Enio decide a cada transição.
 
 O dono é Enio. Após você abrir o PR e fornecer link da run de CI,
 **ele confere visualmente o CI** — você não polla.
@@ -159,8 +168,10 @@ Identifique a causa raiz. Reporte com:
 - Diagnóstico em 1-3 linhas.
 - Sugestão de correção.
 
-**Você não corrige código.** Correção é trabalho de Implementador
-em janela nova. Sua entrega é o diagnóstico.
+**Você não corrige código nesta etapa.** Diagnóstico é sua entrega.
+A correção é trabalho da etapa de Implementação — mesma sessão
+troca de papel voltando ao `02-Implementador.md` se o Enio pedir,
+ou outra sessão assume.
 
 ## 8. Regras de ouro
 

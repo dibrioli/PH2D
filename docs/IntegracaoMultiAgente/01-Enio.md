@@ -89,11 +89,29 @@ está mais ativo:
 | Integrador (1 por vez, sem Implementador ativo) | [`03-Integrador.md`](03-Integrador.md) | ❌ |
 | Agente PRCI (1 por vez, após integração) | [`04-Agente-PRCI.md`](04-Agente-PRCI.md) | ✅ |
 
+**Papéis ≠ sessões.** Uma mesma sessão Claude Code pode passar pelos
+3 papéis em sequência (Implementador → Integrador → PRCI), se você
+preferir continuidade de contexto. Para isso basta colar o próximo
+doc após o agente terminar a etapa anterior. Alternativamente, você
+pode usar sessões dedicadas pra cada etapa. Os dois caminhos
+funcionam — o procedimento operacional dos docs é o mesmo.
+
+Quando preferir cada um:
+- **Mesma sessão pra tudo:** features pequenas/médias onde o
+  contexto técnico ajuda a continuar; menos overhead de re-leitura.
+- **Sessões dedicadas:** features grandes ou paralelismo real
+  (vários Implementadores em features distintas, Integrador
+  serializa depois).
+
 ## Regras de ouro
 
 - **Nunca rode mais que 1 Integrador OU 1 PRCI por vez.**
-- **Nunca rode Integrador enquanto há Implementador ativo.**
-  `ls .claude/worktrees/` é a fonte de verdade.
+- **Nunca rode Integrador enquanto há Implementador ativo** (em
+  outra worktree). Se é a mesma sessão que vai migrar
+  Implementador → Integrador, o "Implementador ativo" é você
+  mesmo, e a transição é segura porque você termina a fase de
+  Implementação antes de assumir Integração.
+- `ls .claude/worktrees/` é a fonte de verdade sobre worktrees ativas.
 - **Implementadores não se comunicam entre si** — comunicam só com você.
 - **Você não roda comandos git.** Os agentes rodam.
 - **Você não nomeia paths nem branches.** Os agentes nomeiam.

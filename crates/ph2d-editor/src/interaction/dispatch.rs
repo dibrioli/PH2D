@@ -1340,24 +1340,19 @@ pub(crate) enum HierDrop {
 /// indicator mirrors this same y-only logic, so what the user sees
 /// is what they get.
 ///
-/// When no row is hit, returns `End`. Skips the dragged row itself.
+/// When the cursor lands below every row, returns `End` — a true
+/// root append (now safe thanks to the `RootOrder` component; before
+/// that, `End` snapped back to `Entity::to_bits` sort). The
+/// in-row bottom-30% band still resolves to `After(id)` so dropping
+/// at the foot of a nested last-child still appends inside that
+/// child's parent — the user's "drop after t preserves parent"
+/// behavior. Skips the dragged row itself.
 fn find_hierarchy_drop(
     hit_index: &HitIndex,
     store: &WidgetStore,
     cursor_y: f32,
     dragged: ph2d_a11y::NodeId,
 ) -> HierDrop {
-    // Track the deepest-y row we saw (= bottom-most visible row that
-    // isn't the dragged one). If the cursor lands past every row, we
-    // fall back to `After(last_visible_row)` instead of `End`. The
-    // previous `End` semantics were a root drop, but root order in
-    // live mode is decided by `Entity::to_bits` sorting → the
-    // dragged sprite never actually moved to the visual last
-    // position. Treating "past the last row" as `After(last)` makes
-    // it append in that row's parent (which is what the user wants
-    // when they drop "into the last slot" of the hierarchy).
-    let mut last_row_id: Option<ph2d_a11y::NodeId> = None;
-    let mut last_row_bottom: f32 = f32::NEG_INFINITY;
     for (id, rect) in hit_index.iter_registrations() {
         // Live mode: the static fixture range (400..=411) misses
         // every ECS-bridge row, so consult the store's per-frame
@@ -1373,10 +1368,6 @@ fn find_hierarchy_drop(
         }
         let top = rect.y;
         let bot = rect.y + rect.h;
-        if bot > last_row_bottom {
-            last_row_bottom = bot;
-            last_row_id = Some(id);
-        }
         let inside_top = top + rect.h * 0.3;
         let inside_bot = top + rect.h * 0.7;
         if cursor_y < top || cursor_y >= bot {
@@ -1394,15 +1385,11 @@ fn find_hierarchy_drop(
             return HierDrop::After(id);
         }
     }
-    // No row matched the cursor y. If we ever saw a row at all, drop
-    // BELOW it (After) — that's what "drag past the last row" should
-    // do. Pure root promotion only fires when the hierarchy is empty
-    // (no rows registered at all).
-    if let Some(last) = last_row_id {
-        HierDrop::After(last)
-    } else {
-        HierDrop::End
-    }
+    // Cursor is below every visible row → root append. Host clears
+    // `ChildOf` on the dragged entity and writes a fresh `RootOrder`
+    // index past the last existing root, so the panel will paint it
+    // at the very bottom on the next frame.
+    HierDrop::End
 }
 
 /// Maps a scrollbar thumb's hit id back to the panel it scrolls.

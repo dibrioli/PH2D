@@ -1683,40 +1683,35 @@ impl App {
             {
                 hero.gizmo_selection = Some(entity_bits);
             }
-            // M14.7 polish: when inline rename opens, seed the
-            // TextInput's buffer with the entity's current Name so
-            // the user starts editing the live value, not an empty
-            // string. We detect "just opened" via the buffer being
-            // empty AND `rename_target_row` Some — happens only on
-            // the first frame after the menu click sets it.
-            if let Some(row) = hero.rename_target_row
+            // M14.7 polish: one-shot seed of the rename TextInput
+            // when rename mode opens. `pending_rename_seed` is set by
+            // hero on the open path (right-click Rename / long-press)
+            // and taken here exactly once — so subsequent Backspace
+            // edits that empty the buffer don't get clobbered back
+            // to the original name on the next frame.
+            if let Some(row) = hero.pending_rename_seed.take()
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-                let buffer_empty = matches!(
-                    hero.store.get(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT),
-                    Some(ph2d_editor::interaction::InteractiveState::TextInput { text, .. })
-                        if text.is_empty()
-                );
-                if buffer_empty
-                    && let Some(name) = sim.world().get::<Name>(entity)
+                let value = sim
+                    .world()
+                    .get::<Name>(entity)
+                    .map(|n| n.as_str().to_owned())
+                    .unwrap_or_default();
+                if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
+                    text,
+                    caret,
+                    selection_anchor,
+                    ..
+                }) = hero
+                    .store
+                    .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
                 {
-                    let value = name.as_str().to_owned();
-                    if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
-                        text,
-                        caret,
-                        selection_anchor,
-                        ..
-                    }) = hero
-                        .store
-                        .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
-                    {
-                        let len = value.len();
-                        *text = value;
-                        *caret = len;
-                        *selection_anchor = Some(0); // select all
-                    }
+                    let len = value.len();
+                    *text = value;
+                    *caret = len;
+                    *selection_anchor = Some(0); // select all
                 }
             }
             // Drain a finalized rename commit (Enter pressed in

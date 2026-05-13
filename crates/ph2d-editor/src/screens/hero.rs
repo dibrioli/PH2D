@@ -298,6 +298,14 @@ pub struct HeroScreen {
     /// TextInput when this matches; user typing flows through the
     /// usual TextInput dispatch. `None` = no row in rename.
     pub rename_target_row: Option<NodeId>,
+    /// One-shot seed signal raised when rename mode opens. Host takes
+    /// it on the next frame, fills `HIER_RENAME_INPUT.text` with the
+    /// entity's current `Name`, and selects all. Without this flag,
+    /// the host can't tell "rename just opened (seed once)" from
+    /// "user typed Backspace and emptied the buffer (don't re-seed)"
+    /// — the previous `buffer_empty` heuristic clobbered every
+    /// keystroke once the field hit zero chars.
+    pub pending_rename_seed: Option<NodeId>,
     /// Pending Name commit. Host drains on the next frame,
     /// resolves bridge NodeId → Entity, and writes the new `Name`
     /// component. `text` is the buffer contents at commit time.
@@ -421,6 +429,7 @@ impl HeroScreen {
             pending_hierarchy_row_click: None,
             pending_view_focus: None,
             rename_target_row: None,
+            pending_rename_seed: None,
             pending_rename_commit: None,
             pending_reimport: None,
             inspector_sprite: None,
@@ -762,25 +771,14 @@ impl HeroScreen {
                     } else if id == ids::CTX_MENU_HIER_RENAME {
                         // M14.7 polish: enter inline-rename mode for
                         // this row. Painter swaps the name label for
-                        // a TextInput; host seeds the buffer with the
-                        // current entity name on the next frame drain
-                        // (via `pending_rename_open` semantics — same
-                        // slot as `rename_target_row` set to Some).
+                        // a TextInput; `pending_rename_seed` tells the
+                        // host to fill the buffer with the entity's
+                        // current Name on the next frame (one-shot —
+                        // re-seeding every frame would clobber the
+                        // user's Backspace edits).
+                        open_rename(&mut self.store, row);
                         self.rename_target_row = Some(row);
-                        // Seed an empty TextInput state so the painter
-                        // has something to read on the first frame —
-                        // the host overwrites `text` with the live
-                        // entity Name on its drain.
-                        self.store.register_if_absent(
-                            ids::HIER_RENAME_INPUT,
-                            crate::interaction::InteractiveState::TextInput {
-                                state: crate::widget::TextInputState::Focused,
-                                text: String::new(),
-                                caret: 0,
-                                selection_anchor: None,
-                            },
-                        );
-                        self.store.set_focus(Some(ids::HIER_RENAME_INPUT));
+                        self.pending_rename_seed = Some(row);
                     }
                 }
                 return true;
@@ -905,17 +903,9 @@ impl HeroScreen {
             && let Some(live) = self.live_hierarchy_entries.as_ref()
             && live.contains_key(&id)
         {
+            open_rename(&mut self.store, id);
             self.rename_target_row = Some(id);
-            self.store.register_if_absent(
-                ids::HIER_RENAME_INPUT,
-                crate::interaction::InteractiveState::TextInput {
-                    state: crate::widget::TextInputState::Focused,
-                    text: String::new(),
-                    caret: 0,
-                    selection_anchor: None,
-                },
-            );
-            self.store.set_focus(Some(ids::HIER_RENAME_INPUT));
+            self.pending_rename_seed = Some(id);
             return true;
         }
         // M14.7 polish: inline-rename commit / cancel for the
@@ -942,6 +932,29 @@ impl HeroScreen {
         {
             self.rename_target_row = None;
             return true;
+        }
+        // M14.7 polish: click outside the rename TextInput → commit
+        // (Finder / macOS convention). Without this, focus left
+        // HIER_RENAME_INPUT but `rename_target_row` stayed Some, so
+        // the row remained in edit mode visually with no caret.
+        // Treat the Blur as an implicit Submit: stage the current
+        // buffer as a pending commit, drop rename mode.
+        if let WidgetEvent::Blur(id) = event
+            && id == ids::HIER_RENAME_INPUT
+            && let Some(row) = self.rename_target_row.take()
+        {
+            let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
+                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => {
+                    text.clone()
+                }
+                _ => String::new(),
+            };
+            let trimmed = buf.trim().to_owned();
+            if !trimmed.is_empty() {
+                self.pending_rename_commit = Some((row, trimmed));
+            }
+            // Don't return true — Blur isn't "consumed" exclusively
+            // by rename; other panels may want to observe it too.
         }
         if hierarchy::apply_event(
             &mut self.store,
@@ -981,6 +994,30 @@ impl HeroScreen {
             )
             .build()
     }
+}
+
+/// Shared entry-path for rename mode (right-click "Rename..." +
+/// long-press). Wipes any leftover text from a prior rename session
+/// (Cancel / Blur paths don't necessarily clear), reinstalls the
+/// TextInput state as `Focused`, and parks focus on the field. The
+/// host's `pending_rename_seed` drain fills the buffer with the
+/// entity's current `Name` on the next frame.
+fn open_rename(store: &mut crate::interaction::WidgetStore, _row: NodeId) {
+    // Force-reset the TextInput state — `register_if_absent` is a
+    // no-op when the widget was already registered (e.g. from a
+    // previous rename session), so the buffer / state would persist
+    // from the last use and seed-detection would mistake leftover
+    // text for "user is editing." Plain `register` overwrites.
+    store.register(
+        ids::HIER_RENAME_INPUT,
+        crate::interaction::InteractiveState::TextInput {
+            state: crate::widget::TextInputState::Focused,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    store.set_focus(Some(ids::HIER_RENAME_INPUT));
 }
 
 /// Top-level hero paint orchestrator. Clears + re-populates the

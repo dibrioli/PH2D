@@ -78,6 +78,7 @@ pub enum IconId {
     Hierarchy,
     History,
     HotReload,
+    Image,
     Info,
     Inspector,
     Kbd,
@@ -129,6 +130,7 @@ pub enum IconId {
     Text,
     Transform,
     Trash,
+    TrimTransparency,
     Undo,
     Unlink,
     Unlock,
@@ -301,6 +303,13 @@ impl IconId {
             Self::HotReload => &[IconCmd::Path(
                 "M14.5 5l4 4M3 21l4.5-1L20 7.5 16.5 4 4 16.5 3 21z",
             )],
+            // Lucide `image.svg` — rounded frame + sun (small circle) +
+            // mountain path. Used by the TopBar Image Tools toggle cluster.
+            Self::Image => &[
+                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0),
+                IconCmd::Circle(9.0, 9.0, 2.0),
+                IconCmd::Path("m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"),
+            ],
             Self::Info => &[
                 IconCmd::Circle(12.0, 12.0, 10.0),
                 IconCmd::Line(12.0, 16.0, 12.0, 12.0),
@@ -522,6 +531,14 @@ impl IconId {
             Self::Trash => &[IconCmd::Path(
                 "M3 6h18M19 6l-1.5 14a2 2 0 0 1-2 1.84H8.5a2 2 0 0 1-2-1.84L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2",
             )],
+            // Lucide `crop.svg` — two mirrored L-brackets framing the
+            // tight non-transparent bounds. Used by the Image Tools row's
+            // Trim Transparency action; algorithm in
+            // `tools/trim_transparency/algorithm.rs`.
+            Self::TrimTransparency => &[
+                IconCmd::Path("M6 2v14a2 2 0 0 0 2 2h14"),
+                IconCmd::Path("M18 22V8a2 2 0 0 0-2-2H2"),
+            ],
             // Lucide `undo-2` — arrow head + flat curve (mirror of redo-2).
             Self::Undo => &[
                 IconCmd::Path("M9 14 L 4 9 L 9 4"),
@@ -741,6 +758,7 @@ mod tests {
         IconId::Hierarchy,
         IconId::History,
         IconId::HotReload,
+        IconId::Image,
         IconId::Info,
         IconId::Inspector,
         IconId::Kbd,
@@ -789,6 +807,7 @@ mod tests {
         IconId::Text,
         IconId::Transform,
         IconId::Trash,
+        IconId::TrimTransparency,
         IconId::Undo,
         IconId::Unlink,
         IconId::Unlock,

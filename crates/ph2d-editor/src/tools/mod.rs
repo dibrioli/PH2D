@@ -7,6 +7,8 @@
 
 pub mod brush;
 pub mod move_tool;
+pub mod trim_transparency;
 
 pub use brush::BrushTool;
 pub use move_tool::MoveTool;
+pub use trim_transparency::{Bounds, TrimResult, crop_bezpath, trim_transparency};

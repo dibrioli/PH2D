@@ -31,6 +31,19 @@ pub const TOPBAR_OPEN: NodeId = NodeId(112);
 /// with project-level toggles (pixels-per-meter presets, future
 /// global config). Added M14.4d retrofit.
 pub const TOPBAR_SETTINGS: NodeId = NodeId(113);
+/// Image Tools cluster — toggle entry-point for the image-editing
+/// action row (Trim Transparency in V1; BG Removal / Equalize / etc.
+/// to follow). Click flips the TopBar between Edit mode and
+/// ImageTools mode; the state lives on
+/// [`crate::screens::HeroScreen::image_tools_mode`].
+pub const TOPBAR_IMAGE_TOOLS: NodeId = NodeId(114);
+
+/// Image Tools action — Trim Transparency pill. Lives in the action
+/// row that replaces the right-side TopBar clusters when
+/// `image_tools_mode` is on. Click is no-op for now — wiring to the
+/// `ph2d_editor::trim_transparency()` algorithm on a selected sprite
+/// requires the live asset model (out of scope for this PR).
+pub const IMAGE_ACTION_TRIM: NodeId = NodeId(115);
 
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 

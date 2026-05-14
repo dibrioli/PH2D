@@ -7,21 +7,32 @@ quem faz o quê, quem confere o quê.
 
 ## CI / GitHub Actions
 
-- **Conferência visual do status do CI é responsabilidade do Enio.** Ele
-  tem a aba do GitHub aberta e verifica direto. LLM não polla.
+**Default (todos os papéis exceto PRCI):**
 - Após `git push`, **forneça SEMPRE o link da run**:
   `https://github.com/dibrioli/PH2D/actions/runs/<run-id>`.
   Use `gh run list --workflow=spike.yml --limit=1` para pegar o ID.
 - Se um job falhar, forneça também link direto do job que falhou
   (`gh run view --job=<job-id>`).
-- **Não monitore CI em loop** quando não há próxima ação dependente do
-  resultado. Push, fornece link, prossegue para o próximo trabalho.
-- Se a próxima ação realmente depende de CI verde (ex: merge automático
-  via `gh pr merge --auto`), perguntar a Enio antes de bloquear.
+- **Não monitore CI em loop** se você NÃO é o agente PRCI. Push,
+  fornece link, prossegue para o próximo trabalho.
 
-**Quando monitorar é OK:**
-- Enio explicitamente pediu ("monitore o CI")
-- Próxima ação exige CI verde e Enio confirmou que está OK aguardar
+**Exceção — papel PRCI (fim de jornada diária):**
+A run completa de CI demora ~30min (matrix linux + macOS + windows
++ replay hash + bench). Por isso o push pro GitHub é feito **uma
+vez por dia, ao final da jornada**, e o **agente PRCI fica
+responsável por babysit da CI até ela passar** — não é o Enio que
+confere visualmente nesse fluxo. Protocolo detalhado em
+[`docs/IntegracaoMultiAgente/04-Agente-PRCI.md`](docs/IntegracaoMultiAgente/04-Agente-PRCI.md) §10:
+1. Após `git push`, PRCI entra em loop de polling com intervalo
+   de **15min** (`Monitor` com `sleep 900` ou `gh run watch`).
+2. Se a run falhar, PRCI diagnostica + corrige + push + retoma o
+   polling com a nova run.
+3. Loop fecha quando CI conclui `success` ou após **3 ciclos
+   consecutivos de falha do mesmo job** (aí escalona pro Enio).
+
+**Quando monitorar é OK fora do PRCI:**
+- Enio explicitamente pediu ("monitore o CI").
+- Próxima ação exige CI verde e Enio confirmou que está OK aguardar.
 
 ## Memória persistente da LLM
 

@@ -251,7 +251,11 @@ escopo da mudança:
 Coordenador integrando = T2 obrigatório. Agente em pasta isolada
 = T1 ou bypass após validação local.
 
-### Final do ciclo — passa pro GitHub
+### Final do ciclo — passa pro GitHub (UMA VEZ POR DIA)
+
+CI roda matrix completa (linux + macOS + windows + replay hash +
+bench) e demora **~30min**. Por isso esse fluxo é **uma vez por
+dia, ao final da jornada**:
 
 1. **Você → Coordenador:** "Manda pro GitHub."
 2. Coordenador valida (`cargo test --workspace`, smoke visual)
@@ -262,9 +266,28 @@ Coordenador integrando = T2 obrigatório. Agente em pasta isolada
 4. PRCI faz `git push` + abre PR + entrega URLs:
    - URL do PR
    - URL da run de CI
-5. **Você confere CI visualmente** no GitHub.
-6. CI verde → PRCI faz fast-forward merge para main.
-7. CI vermelha → PRCI diagnostica + fix + re-push.
+5. **PRCI entra em modo babysit** (§7 de
+   [`04-Agente-PRCI.md`](04-Agente-PRCI.md)): polling de **15min**,
+   diagnostica + corrige + re-push se falhar, até CI ficar verde.
+6. Você NÃO confere CI visualmente neste fluxo — é PRCI quem
+   cuida. Vê os reports dele quando voltar pro app.
+7. PRCI fecha o ciclo com 1 de 3 mensagens:
+   - **"CI conclui success"** → tudo OK; jornada fechada.
+   - **"Falha 3× no mesmo job — escalando"** → você precisa
+     decidir (continuar tentando, reverter pra `backup/...`,
+     dropar o esforço).
+   - **"Você cancelou o babysit"** → você pediu explicitamente
+     pra parar; problema fica pra próxima jornada.
+
+**Importante:** **um único PR por dia** (matrix de CI é cara). Se
+durante a jornada surge feature urgente que precisaria de push
+imediato, prefira:
+- Trabalhar localmente até estável + integrar no Coordenador
+- Push só ao final da jornada (junto com outras features que
+  vieram no dia)
+
+Push fora desse fluxo é exceção rara (hotfix de produção, etc.) —
+neste caso, peça explicitamente "push hotfix agora" ao PRCI.
 
 ### O que você NUNCA faz
 
@@ -281,19 +304,22 @@ Coordenador integrando = T2 obrigatório. Agente em pasta isolada
 ### O que você SEMPRE faz
 
 - Copia/cola mensagens entre sessões — verbatim, sem editar.
-- Decide quando começar feature, quando integrar, quando pushar.
+- Decide quando começar feature, quando integrar, quando pushar
+  (fim de jornada).
 - Para tudo na primeira mensagem de colisão.
-- Confere CI visualmente após PRCI entregar o link.
+- Decide escalação quando PRCI reporta "3 ciclos de falha" no
+  babysit (continuar, reverter, dropar).
 
 ### Decisões só suas (Coordenador não decide por você)
 
 | Decisão | Quando aparece |
 |---|---|
 | "Quero feature X" | Início de cada feature |
-| "Manda pro GitHub agora?" | Quando fila local vazia + main estável |
+| "Manda pro GitHub" | Final da jornada (1× por dia) |
 | "Aceito este ADR? `<decisão>`" | Mudança arquitetural não-trivial |
 | "Reverter ao sha bom?" | Integração quebrou main + fix mínimo não é possível |
 | "Slot <N> fecha ou pega próxima feature?" | Após Agente reportar pronto |
+| "PRCI escalou — continuar tentando / reverter / dropar?" | Quando CI falha 3× consecutivas no babysit |
 
 ### Exemplo concreto — sequência canônica
 
@@ -337,11 +363,28 @@ Coordenador integrando = T2 obrigatório. Agente em pasta isolada
 
 [Sessão#1 → você]   Integrado. Slot #1: trim-transparency done. Fila vazia.
 
-[Você → Sessão#1]   Manda pro GitHub.
+[Você → Sessão#1]   (fim de jornada) Manda pro GitHub.
 
 [Sessão#1 → você]   (assume PRCI, push, PR #42 aberto)
                     PR: github.com/.../pull/42
                     CI: github.com/.../runs/12345
+                    Entrando em modo babysit (polling 15min).
 
-[Você]              (confere CI visualmente)
+[Sessão#1]          (polling em background; pode demorar 30-60min)
+
+[Sessão#1 → você]   ✓ CI conclui success em 32min. PR mergeado por
+                    fast-forward. Modo babysit fechado. Jornada
+                    encerrada.
+
+OU (cenário de falha):
+
+[Sessão#1 → você]   ✗ Job macos falhou (lint typos: edge_thr).
+                    Adicionei thr ao .typos.toml, push, nova run.
+                    CI run: github.com/.../runs/12346
+                    Continuando babysit.
+
+[Sessão#1]          (mais 30min)
+
+[Sessão#1 → você]   ✓ CI conclui success na 2ª tentativa.
+                    Jornada encerrada.
 ```

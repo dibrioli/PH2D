@@ -196,48 +196,168 @@ gh run list --workflow=spike.yml --limit=1
 Pegue o run ID da run mais recente. Monte o link:
 `https://github.com/dibrioli/PH2D/actions/runs/<run-id>`
 
-## 6. Reporte ao Enio
+## 6. Reporte ao Enio + entrada no babysit
 
 Formato exato:
 
 ```
 PR aberto: <URL retornado pelo gh pr create>
 CI run:    https://github.com/dibrioli/PH2D/actions/runs/<id>
+
+Entrando em modo babysit da CI (polling a cada 15min). Reporto
+quando concluir success ou após 3 ciclos de falha do mesmo job.
 ```
 
-**Pare aqui.** Não monitore CI. Não pergunte "quer que eu acompanhe?".
-O Enio confere visualmente e te aciona se precisar.
+Agora vá direto pra §7. Não pergunte "quer que eu acompanhe?" — o
+modelo já te designou pra isso (CI ~30min é longo demais pro Enio
+ficar de olho; é fim de jornada).
 
-## 7. Se Enio pede investigação de falha
+## 7. Modo babysit da CI
 
-**Só nesse caso** (Enio pediu explicitamente):
+CI roda matrix completa (linux + macOS + windows + replay hash +
+bench) e demora **~30min**. O push é fim de jornada diária; sua
+responsabilidade agora é **ficar até a CI passar**, corrigindo
+falhas que aparecerem.
+
+### 7.1 Loop de polling — intervalo de 15min
+
+Você pode usar `Monitor` com `sleep 900` (preferido — emite
+notificação quando estado muda) OU `gh run watch <id>` (bloqueia
+até a run terminar). Exemplo com Monitor:
+
+```bash
+bash -c '
+RUN_ID=<id-da-run>
+prev_st=""
+prev_failed=""
+while true; do
+  out=$(gh run view "$RUN_ID" --json status,conclusion,jobs 2>&1)
+  st=$(echo "$out" | jq -r ".status // \"unknown\"")
+  cc=$(echo "$out" | jq -r ".conclusion // \"null\"")
+  failed=$(echo "$out" | jq -r ".jobs[]? | select(.conclusion==\"failure\" or .conclusion==\"cancelled\") | .name + \"(\" + .conclusion + \")\"" | sort -u | paste -sd "," -)
+  if [ "$st" != "$prev_st" ] || [ "$failed" != "$prev_failed" ]; then
+    if [ -n "$failed" ]; then
+      echo "[$(date +%H:%M:%S)] status=$st conclusion=$cc FAILED=$failed"
+    else
+      echo "[$(date +%H:%M:%S)] status=$st conclusion=$cc"
+    fi
+    prev_st="$st"; prev_failed="$failed"
+  fi
+  if [ "$st" = "completed" ]; then
+    echo "[$(date +%H:%M:%S)] DONE conclusion=$cc"
+    break
+  fi
+  sleep 900
+done
+'
+```
+
+Quinze minutos é o sweet-spot: CI evolui o suficiente entre
+checks pra você ter sinal novo, e você não queima contexto LLM
+fazendo polling de minuto em minuto.
+
+### 7.2 Cenários e respostas
+
+**Cenário A — CI termina success:**
+```
+✓ CI conclui success em <duração>. Run: <URL>
+Modo babysit fechado. Disponível para próxima ordem.
+```
+
+Aí PRCI vai pra modo de espera (próxima jornada).
+
+**Cenário B — Falha em algum job:**
+
+1. **Diagnostique a causa raiz:**
+   ```bash
+   gh run view <run-id>                                      # overview
+   gh run view --job=<job-id-falho>                          # detalhes
+   gh api repos/dibrioli/PH2D/actions/jobs/<job-id>/logs \
+     | grep -iE "error|FAIL|panic|test result.*failed" | tail -30
+   ```
+
+2. **Aplique fix mínimo localmente:**
+   - Typo / fmt / clippy → corrigir o ponto exato; commit T0/T1.
+   - Teste flaky em runner específico (mac/windows) sem mudança
+     de código → `gh run rerun <run-id> --failed`; aguarde nova
+     run; volte ao polling.
+   - Test real → corrigir ou whitelist em `.typos.toml`;
+     commit no tier apropriado.
+   - Erro em config / CI / Cargo → ajuste cirúrgico; commit T2.
+
+3. **Não simule fix sem entender:** se o erro é misterioso
+   (ex: "unexpected argument 'check' found / rustup-init"),
+   PARE e use as ferramentas de diagnóstico. Não force `--no-verify`
+   nem `git push --force` na esperança de "limpar".
+
+4. **Re-push:**
+   ```bash
+   git push origin <branch>
+   # ou (raro, só em main com colisão já documentada):
+   git push --force-with-lease origin main
+   ```
+
+5. **Cancele a run antiga** se ainda tem jobs in-progress
+   pendurados:
+   ```bash
+   gh run cancel <run-id-antiga>
+   ```
+   Isso economiza minutos de runner.
+
+6. **Pegue o novo run id** e volte ao polling §7.1.
+
+**Cenário C — Falha repetida no mesmo job 3× consecutivas:**
 
 ```
-gh run view <run-id>                  # overview da run
-gh run view --job=<job-id>            # detalhes do job que falhou
-gh run view --log-failed              # só os logs de jobs que falharam
+✗ CI falhou 3× consecutivas no job <nome>. Erros idênticos.
+Run histórico:
+- Run #1: <URL>
+- Run #2: <URL>
+- Run #3: <URL>
+
+Diagnóstico: <causa raiz>
+Fix tentado: <descrição>
+Por que não funciona: <hipótese>
+
+Escalando — preciso de orientação do Enio.
 ```
 
-Identifique a causa raiz. Reporte com:
-- Job que falhou (nome + link).
-- Linha/teste/check específico.
-- Diagnóstico em 1-3 linhas.
-- Sugestão de correção.
+Aí PRCI **PARA**. Não tente uma 4ª vez sem input do Enio.
 
-**Você não corrige código nesta etapa.** Diagnóstico é sua entrega.
-A correção é trabalho da etapa de Implementação — uma sessão de
-Agente Periférico (`03-Agente-Periferico.md`) é instanciada
-pelo Coordenador (`02-Coordenador.md`) pra corrigir, depois nova
-rodada de PRCI.
+### 7.3 O que conta como "ciclo de falha"
+
+- **Falha de código** (clippy / fmt / test / lint) = ciclo conta.
+- **Falha de infra do runner** (cache restore, network, "rustup-init
+  unexpected argument", post-job cleanup) = NÃO conta. Re-rode o
+  job (`gh run rerun --failed`) e siga o polling — flaky de infra
+  é comum e auto-resolve.
+- **Falha cancelada por você** (rerun → run antiga vira cancelled)
+  = NÃO conta.
+
+A escalação de 3 ciclos é pra **falhas reais de código** que você
+tentou corrigir e ainda falham.
+
+### 7.4 Quando o modo babysit termina
+
+| Termina | O que faz |
+|---|---|
+| CI success | Reporta + entra em modo espera (próxima jornada) |
+| 3 ciclos de falha real | Escala pro Enio + entra em modo espera |
+| Enio explicitamente cancela ("para de babysit") | Reporta status atual + entra em modo espera |
+| Working day acabou pro Enio | Continua babysit em background; reporta o que aconteceu no início da próxima sessão |
 
 ## 8. Regras de ouro
 
-- **Nunca skipe hooks** (`--no-verify`) sem aprovação explícita.
-- **Nunca force push** em main/master. Em geral, evite force push.
-- **Nunca polle CI em loop** após reportar o link.
-- **Nunca commite código de produção.** Você só faz push + `gh`.
-  Se houve correção necessária, ela já está nos commits do Agente
-  Periférico (que implementou) ou do Coordenador (que integrou).
+- **Nunca skipe hooks** (`--no-verify`) sem aprovação explícita
+  E sem ter feito validação manual equivalente (`cargo check/
+  clippy/nextest -p <crate>` no crate tocado).
+- **Nunca force push** em main/master, EXCETO em §7.2 cenário B
+  quando você documentou explicitamente o "force-with-lease" no
+  fix loop e ninguém baseou trabalho em cima do SHA ruim.
+- **Polle CI APENAS no modo babysit (§7).** Fora do babysit, não.
+- **Nunca commite código não-relacionado** ao fix que está
+  aplicando. Cada commit faz uma coisa só (typo → 1 commit,
+  flaky-job-only → rerun sem commit).
 - **Nunca rode `git config`** mudando settings globais ou do repo.
 
 ## 9. Sintomas de colisão entre sessões — diagnóstico

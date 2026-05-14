@@ -49,6 +49,18 @@ cargo nextest run -p <crate-tocado>     # ou cargo test --lib se nextest indispo
 Use `-p <crate>` enquanto itera. NÃO use `--workspace` no inner loop —
 custa 5–10× mais e o gate workspace roda no pre-commit.
 
+**Local-only speedup opcional (não-committed):** se quiser link
+incremental ~30–50% mais rápido em rebuilds, instale `brew install lld`
+e crie `~/.cargo/config.toml` (user-level, fora do repo):
+```toml
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/bin/ld64.lld"]
+```
+Foi tentado committar `.cargo/config.toml` no repo, mas CI macOS não
+tem Homebrew lld → rustc falha estranho ("rustup-init unexpected
+argument 'check'"). Por isso fica user-level.
+
 **Pré-commit (já instalado como hook git) — workspace, ~3–5min:**
 ```bash
 scripts/pre-commit.sh

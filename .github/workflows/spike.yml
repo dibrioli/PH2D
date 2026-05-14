@@ -128,13 +128,23 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [lint, msrv]
     # Workspace check + per-crate nextest + spike fixtures.
-    # Observed ~7-9 min on Linux/Mac, ~22-25 min on Windows (linker
-    # cost dominates; Defender exclusion below shaves the worst of
-    # it). 30 min cap. Tried `cargo nextest run --workspace` once to
-    # avoid the 9 cold-starts per OS — backfired because it pulled
-    # in compilation of ~25 member crates (most stubs with zero
-    # tests), doubling Linux/Mac wall clock. Explicit per-crate list
-    # is the honest scope for now.
+    # Phase 1 speed tuning (commit applying this comment):
+    #   - Unit nextest steps run with `--cargo-profile ci-test`
+    #     instead of `--release`. ci-test has LTO off and
+    #     codegen-units=16, with deps still at opt-level=3 (test
+    #     runtime stays fast). Distribution-grade link cost
+    #     (thin-LTO + codegen-units=1) was the dominant Windows
+    #     bottleneck.
+    #   - Spike fixtures and the desktop binary build keep
+    #     `--release` because they're perf-sensitive.
+    #   - Windows uses `rust-lld.exe` instead of MSVC `link.exe`
+    #     via `.cargo/config.toml` target-specific linker setting.
+    #     Linux/macOS unaffected (target-gated).
+    #   - Windows Defender exclusion (below) shaves the
+    #     real-time-scan overhead on `target/` rebuilds.
+    # Expected times after Phase 1: ubuntu ~5-7m, macos ~6-8m,
+    # windows ~12-18m. Previously: 30 min cap was the practical
+    # ceiling on Windows.
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -178,45 +188,48 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
-      # Per-crate nextest. Tried `cargo nextest run --workspace` to
-      # consolidate cold-starts, but `--workspace` forced compilation
-      # of test binaries for every member crate (~25 of them — most
-      # stubs with zero tests), doubling Linux/macOS wall clock.
-      # Explicit per-crate list keeps compile scope to what actually
-      # has tests. Cold-start cost per call is the trade-off accepted.
+      # Per-crate nextest. Each call uses `--cargo-profile ci-test`
+      # (NOT `--release`). Reason: profile.release has thin LTO +
+      # codegen-units=1 — fine for distribution builds, but on every
+      # CI invocation the Windows MSVC linker paid distribution-grade
+      # link cost 10× and hit the 30 min cap. `ci-test` keeps deps at
+      # opt-level=3 (test runtime stays fast) while workspace-local
+      # code drops to opt-level=1 (~50% less link work).
+      #
+      # Note: nextest uses `--cargo-profile` for the build profile.
+      # `--profile` in nextest is a SEPARATE flag for test settings
+      # (retries, parallelism). They're not interchangeable.
       - name: ph2d-core tests (nextest)
-        run: cargo nextest run -p ph2d-core --release --locked
+        run: cargo nextest run -p ph2d-core --cargo-profile ci-test --locked
 
       - name: ph2d-host tests (nextest)
-        run: cargo nextest run -p ph2d-host --release --locked
+        run: cargo nextest run -p ph2d-host --cargo-profile ci-test --locked
 
       - name: ph2d-gpu tests (nextest — surface state machine + transient pool)
-        run: cargo nextest run -p ph2d-gpu --release --locked
+        run: cargo nextest run -p ph2d-gpu --cargo-profile ci-test --locked
 
       - name: ph2d-ecs tests (nextest — sim/present flow + extract macro)
-        run: cargo nextest run -p ph2d-ecs --release --locked
+        run: cargo nextest run -p ph2d-ecs --cargo-profile ci-test --locked
 
       - name: ph2d-ecs doc tests (extract! compile_fail proof)
-        run: cargo test --doc -p ph2d-ecs --release --locked
+        run: cargo test --doc -p ph2d-ecs --profile ci-test --locked
 
       - name: ph2d-asset tests (nextest — Prefab/Scene roundtrip + insert helpers)
-        run: cargo nextest run -p ph2d-asset --release --locked
+        run: cargo nextest run -p ph2d-asset --cargo-profile ci-test --locked
 
       - name: ph2d-render tests (nextest — Sprite serde + registry)
-        run: cargo nextest run -p ph2d-render --release --locked
+        run: cargo nextest run -p ph2d-render --cargo-profile ci-test --locked
 
       - name: ph2d-script tests (nextest)
-        run: cargo nextest run -p ph2d-script --release --locked
+        run: cargo nextest run -p ph2d-script --cargo-profile ci-test --locked
 
       - name: ph2d-mcp tests (nextest)
-        run: cargo nextest run -p ph2d-mcp --release --locked
+        run: cargo nextest run -p ph2d-mcp --cargo-profile ci-test --locked
 
       # ph2d-editor has the largest test surface (~480 tests covering
-      # widgets / interaction / hero screens). Was missing from CI
-      # entirely before this — coverage gap closed by the workspace
-      # consolidation attempt, kept here as explicit per-crate now.
+      # widgets / interaction / hero screens).
       - name: ph2d-editor tests (nextest — widgets / interaction / screens)
-        run: cargo nextest run -p ph2d-editor --release --locked
+        run: cargo nextest run -p ph2d-editor --cargo-profile ci-test --locked
 
       # ADR-0025 M14.3d: cooker determinism includes a locked hash
       # assertion (`prefab_cook_hash_is_locked`) — if Linux / macOS /
@@ -224,7 +237,7 @@ jobs:
       # the divergent runner. That's the HR-5 + HR-6 enforcement
       # surface for the cooker pipeline.
       - name: ph2d-asset-cooker tests (nextest — cross-OS cook determinism)
-        run: cargo nextest run -p ph2d-asset-cooker --release --locked
+        run: cargo nextest run -p ph2d-asset-cooker --cargo-profile ci-test --locked
 
       - name: ph2d-bindgen drift check (HR-10 parity)
         run: cargo run --release --locked -p ph2d-bindgen

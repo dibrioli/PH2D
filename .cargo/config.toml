@@ -1,0 +1,12 @@
+# Project-scoped Cargo config. Currently used only to swap the
+# linker for Windows MSVC targets, where the default `link.exe`
+# is dramatically slower than `rust-lld.exe` (the LLD that ships
+# with the standard Rust toolchain since 1.70+).
+#
+# Target-gated so Linux/macOS see no change. Earlier attempt to
+# pin a Homebrew lld path here broke macOS CI (path didn't exist
+# on the runner) — keeping the config gated by target prevents
+# that class of regression.
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"

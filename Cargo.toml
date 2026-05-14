@@ -53,3 +53,29 @@ strip = "symbols"
 [profile.bench]
 inherits = "release"
 debug = true
+
+# CI-tuned test profile. Used by the workflow's `cargo nextest run
+# --cargo-profile ci-test` and `cargo test --doc --profile ci-test`
+# calls instead of `--release`.
+#
+# Why: profile.release has `lto = "thin"` + `codegen-units = 1` for
+# distribution builds. Running tests under that profile pays the
+# distribution-grade link cost on every CI call — the dominant
+# contributor to the Windows job hitting the 30 min timeout.
+#
+# Trade-off accepted: workspace-local code compiles unoptimized
+# (debug-grade speed), but dependencies (wgpu, wasmtime, bevy_ecs,
+# vello, etc.) stay at opt-level=3 so test runtime stays fast.
+# `package."*"` matches only direct dependencies, NOT workspace
+# members — workspace members inherit the top-level `opt-level=1`.
+# Performance-sensitive spike fixtures (c4_hot_reload, c14_memory,
+# c11_bevy) still use `--release` in their dedicated steps.
+[profile.ci-test]
+inherits = "dev"
+opt-level = 1
+debug = false
+lto = "off"
+codegen-units = 16
+
+[profile.ci-test.package."*"]
+opt-level = 3

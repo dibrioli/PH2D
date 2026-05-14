@@ -5,15 +5,10 @@
 //! controls (sliders, color swatches, axis radios) lazy-bind once
 //! the widget-primitives PR lands.
 
-pub mod bgremoval;
 pub mod brush;
 pub mod move_tool;
 pub mod trim_transparency;
 
-pub use bgremoval::{
-    BgRemovalAlgorithm, BgRemovalParams, BgRemovalTool, InteractionMode, Island, IslandOpts,
-    RgbColor, Workspace, apply as bgremoval_apply, separate_islands,
-};
 pub use brush::BrushTool;
 pub use move_tool::MoveTool;
 pub use trim_transparency::{Bounds, TrimResult, crop_bezpath, trim_transparency};

@@ -161,7 +161,14 @@ jobs:
     # 25840452466 ("Our services aren't available right now") and
     # sccache crashed all rustc invocations. Reverted; deferred until
     # GHA cache is reliable.
-    timeout-minutes: 30
+    #
+    # Cap bumped from 30 to 45 min after Phase 2. First green run
+    # (25841492076) clocked Windows at 29m37s — only 23s under the
+    # old cap. 45 min gives breathing room for normal variance + any
+    # future bump in heavy deps (wgpu, wasmtime, bevy_ecs). If
+    # Windows ever creeps past 40 min, re-enter the speed-up loop
+    # (scope reduction or self-hosted runner).
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:

@@ -220,6 +220,11 @@ jobs:
       # stubs with zero tests — Linux/Mac doubled. The explicit
       # `-p` list keeps scope to crates that actually have tests.
       - name: workspace unit tests (multi-package nextest)
+        # `shell: bash` explicit — default on Windows runners is
+        # pwsh, which treats `\` line continuations as the unary
+        # operator `--` followed by garbage. bash is available on
+        # all 3 OSes (git bash on Windows).
+        shell: bash
         run: |
           cargo nextest run \
             -p ph2d-core \

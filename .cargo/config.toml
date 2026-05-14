@@ -1,0 +1,17 @@
+# Project-scoped Cargo config — applied only when building inside
+# this workspace. Keeps the linker choice out of `~/.cargo/config.toml`
+# so other Rust projects on this machine aren't affected.
+#
+# Speed tuning: use Homebrew's `ld64.lld` instead of Apple's default
+# `ld-prime`. Cuts incremental link time by ~30-50% on this workspace's
+# 30+ test binaries (the wgpu/wasmtime/bevy_ecs deps make each link
+# heavy enough that the linker swap matters).
+#
+# Reversal: delete this file. Pre-req: `brew install lld` (provides
+# `/opt/homebrew/bin/ld64.lld`).
+
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = [
+    "-C", "link-arg=-fuse-ld=/opt/homebrew/bin/ld64.lld",
+]

@@ -31,12 +31,48 @@ Antes de fazer qualquer coisa:
 
 1. **Working tree limpa:** `git status` retorna "nothing to commit".
 2. **Branch local tem commits prontos:** confira `git log --oneline -5`.
-3. **Validação local passa:** `cargo test --workspace`, clippy
-   workspace, fmt — todos verdes (uma última verificação antes do push).
+3. **Validação local passa:** as gates abaixo. O hook `pre-commit`
+   (instalado em `.git/hooks/pre-commit` → `scripts/pre-commit.sh`)
+   já bloqueia o commit em caso de falha — mas você confere manualmente
+   uma última vez antes do push.
 4. **Você sabe a branch base do PR.** Normalmente `main`. Se não foi
    informado pelo Enio, pergunte.
 
-Se qualquer falhar, **pare e reporte** ao Enio.
+### 2.1 Pipeline de validação (rápida → completa)
+
+**Loop interno (durante implementação) — escopado, ~30s:**
+```bash
+cargo check -p <crate-tocado>
+cargo clippy -p <crate-tocado> --all-targets -- -D warnings
+cargo nextest run -p <crate-tocado>     # ou cargo test --lib se nextest indisponível
+```
+Use `-p <crate>` enquanto itera. NÃO use `--workspace` no inner loop —
+custa 5–10× mais e o gate workspace roda no pre-commit.
+
+**Pré-commit (já instalado como hook git) — workspace, ~3–5min:**
+```bash
+scripts/pre-commit.sh
+```
+Executa em ordem:
+1. `cargo fmt --all -- --check`
+2. `cargo clippy --workspace --all-targets -- -D warnings`
+3. `cargo nextest run --workspace` (paraleliza por binário)
+4. `cargo test --doc --workspace` (nextest pula doctests; este passo
+   pega o `compile_fail` proof do `extract!` macro e similares)
+
+O hook dispara automático em `git commit`; rode manualmente se quiser
+checar antes de stagingar. `--no-verify` pula (uso parco e justificado).
+
+**Agregação de resultados (quando precisar inspecionar):**
+```bash
+cargo test --workspace 2>&1 | tee /tmp/tests.log
+grep "test result" /tmp/tests.log | sort | uniq -c | sort -rn
+grep "FAILED\|failed" /tmp/tests.log
+```
+NÃO rode `cargo test --workspace` mais de uma vez por sessão de
+inspeção — re-execução dos ~1500 testes desperdiça minutos.
+
+Se qualquer gate falhar, **pare e reporte** ao Enio.
 
 ## 3. Leitura obrigatória ANTES de operar
 
@@ -49,10 +85,11 @@ Se qualquer falhar, **pare e reporte** ao Enio.
    - Não monitore CI em loop quando não há próxima ação dependente
      do resultado.
 2. **`SKILL_Stack_PH2D_Definitiva.md` §17** — Definition of Done.
-   Confirme mentalmente que checklist passou antes de pushar:
+   Confirme mentalmente que checklist passou antes de pushar (o
+   `pre-commit` hook já checa os 3 primeiros, mas re-confira):
    - Compila sem warnings.
-   - `cargo test` passa, incluindo doctests.
-   - `cargo clippy -- -D warnings` clean.
+   - `cargo nextest run --workspace` + `cargo test --doc --workspace` passam.
+   - `cargo clippy --workspace --all-targets -- -D warnings` clean.
    - Schema MCP regenerado se mudou `#[lua_export]` (HR-10).
    - Migration script se mudou save format (HR-14).
    - Strings novas em UI passam por Fluent (HR-15).

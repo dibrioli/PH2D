@@ -43,6 +43,11 @@ a11y = "a11y"
 # Level of Detail — standard graphics acronym; typos-cli wants "LOAD".
 LOD = "LOD"
 lod = "lod"
+# `edge_thr` = local shorthand for `edge_threshold` (already-scaled) inside
+# bgremoval::edge_aware. typos-cli wants "the". Variable name is
+# intentional — full `edge_threshold` is the input param, the suffix
+# `_thr` distinguishes the post-scale value used in inner-loop comparisons.
+thr = "thr"
 
 [files]
 extend-exclude = [

@@ -156,28 +156,192 @@ decida: "manda PR pro GitHub".
 
 ## Cheat sheet — seu modo de agir
 
-**Início do dia / nova sessão de trabalho:**
-1. Sessão #1 Claude Code → cola `02-Coordenador.md` → "Você é o Coordenador. Inicialize."
+### Início do dia / nova sessão de trabalho
 
-**Para cada feature nova:**
-2. Na Sessão #1 → "Quero feature X. Atribua slot." → recebe briefing.
-3. Nova sessão Claude Code (mesmo path) → cola o briefing.
-4. Agente propõe pasta → você relay pro Coordenador → Coordenador aprova/ajusta → você relay de volta.
-5. Agente pede algo fora (dep, ícone, etc.) → relay pro Coordenador → ele faz → relay de volta.
-6. Agente reporta "pronto" → relay pro Coordenador → ele enfileira e integra.
+1. Abra **Sessão #1** Claude Code no path principal do projeto.
+2. Cole o conteúdo de [`02-Coordenador.md`](02-Coordenador.md) +
+   "Você é o Coordenador. Inicialize a operação."
+3. Coordenador deve reportar em ~30s:
+   ```
+   Coordenador pronto. STATE.md inicializado.
+   Slots livres: 4. Aguardando pedidos.
+   ```
+4. **Se NÃO reporta isso**, peça pra ele diagnosticar:
+   - `git status` mostra mudanças não-commitadas (você fechou
+     no meio de algo)
+   - STATE.md inconsistente com main local
 
-**Final do ciclo:**
-7. Tudo integrado → diz pro Coordenador "manda pro GitHub" → recebe link do PR + run de CI.
-8. Confere CI visualmente no GitHub.
-9. Coordenador reseta STATE.md pra próxima operação.
+### Para cada feature nova — fluxo padrão
 
-**O que você NUNCA faz:**
-- Roda git, cargo ou qualquer comando.
+1. **Você → Sessão #1 (Coordenador):**
+   > "Quero feature X — `<descrição em 2-3 linhas>`. Atribua slot."
+2. **Coordenador → você:** entrega um briefing pra colar na
+   nova sessão (ESCOPO + SLOT + cola integral de
+   [`03-Agente-Periferico.md`](03-Agente-Periferico.md)).
+3. **Você:** abre **nova Sessão Claude Code** (mesmo path,
+   NÃO worktree), cola o briefing.
+4. **Agente → você:** pasta proposta + justificativa + tipo
+   (Tool stateful / Action one-shot / crate stub).
+5. **Você → Coordenador:** cola.
+6. **Coordenador → você:** "aprovado" ou "use Y em vez".
+7. **Você → Agente:** cola resposta.
+8. **Agente** trabalha 10min–2h.
+
+### Durante o trabalho — sinais que você relay
+
+| Mensagem do Agente | Sua ação |
+|---|---|
+| "Preciso de dep externa `<crate>=<versão>`" | relay → Coordenador edita Cargo.toml + comita |
+| "Preciso de variant nova em IconId" | relay → Coordenador cria + comita |
+| "Detectei bug em arquivo fora da minha pasta" | relay → Coordenador investiga |
+| "Outro agente está mexendo na minha pasta exclusiva" | **PARE TUDO.** relay imediato. Violação grave do modelo. |
+| "git status mostra arquivos M que não toquei" | possível colisão. Pause o Agente até saber qual outra sessão tem staged |
+| "cargo nextest passa, feature pronta" | relay → Coordenador enfileira |
+
+### Sintomas de colisão — alerta vermelho
+
+Se algum agente reportar:
+
+- `fatal: cannot lock ref 'HEAD'` no terminal dele
+- `git log` mostrando commit com mensagem fundida (dois títulos
+  colados, dois `Co-Authored-By`)
+- `git status --cached` mostrando arquivos que ele não estaviou
+
+**Sua ação imediata:** pause TODAS as sessões. Relay pro
+Coordenador → ele segue protocolo de recovery em §3.6 do
+[`02-Coordenador.md`](02-Coordenador.md). Não autorize novos
+commits até ele dar "limpo".
+
+### Sinais de saúde — pergunte 1× por hora
+
+Pra Coordenador (uma vez a cada hora ou após integração pesada):
+
+> "Status de saúde? git status, STATE.md, último cargo check."
+
+Resposta esperada:
+- Working tree clean
+- STATE.md reflete slots vivos
+- `cargo check --workspace` verde no último commit
+
+Sinal vermelho → Coordenador investiga e reverte se grave.
+
+### Quando Agente termina
+
+1. **Agente → você:** relatório (formato em §12 de
+   [`03-Agente-Periferico.md`](03-Agente-Periferico.md)).
+2. **Você → Coordenador:** cola.
+3. **Coordenador:** integra (5–10min — hook T2 ~5min + smoke
+   `cargo run`).
+4. **Coordenador → você:** "Integrado. Slot <N>: done."
+5. Você pode fechar a sessão do Agente ou mantê-la pra
+   próxima feature dele.
+
+### Velocidade dos commits por tier
+
+O pre-commit hook é tiered — o tempo varia muito conforme o
+escopo da mudança:
+
+| Mudança | Tier | Tempo |
+|---|---|---|
+| Só docs / scripts / `.md` | T0 | ~5s |
+| Só 1 pasta de Agente | T1 | ~30s |
+| Cargo.toml / shells/desktop / multi-crate / foundational | T2 | **~3–5min** |
+| Bypass `--no-verify` (após validação manual) | — | ~1s |
+
+Coordenador integrando = T2 obrigatório. Agente em pasta isolada
+= T1 ou bypass após validação local.
+
+### Final do ciclo — passa pro GitHub
+
+1. **Você → Coordenador:** "Manda pro GitHub."
+2. Coordenador valida (`cargo test --workspace`, smoke visual)
+   e reseta STATE.md.
+3. Coordenador assume papel de PRCI (lê
+   [`04-Agente-PRCI.md`](04-Agente-PRCI.md)) OU você abre nova
+   sessão com esse doc.
+4. PRCI faz `git push` + abre PR + entrega URLs:
+   - URL do PR
+   - URL da run de CI
+5. **Você confere CI visualmente** no GitHub.
+6. CI verde → PRCI faz fast-forward merge para main.
+7. CI vermelha → PRCI diagnostica + fix + re-push.
+
+### O que você NUNCA faz
+
+- Roda git, cargo, brew, ou qualquer comando.
 - Edita arquivos do projeto direto.
-- Decide slug, pasta, ou wiring.
-- Push pro GitHub manualmente (Coordenador/PRCI faz).
+- Decide slug, pasta, ou wiring (Agente propõe, Coordenador valida).
+- Push pro GitHub manualmente (Coordenador / PRCI faz).
+- **Tem duas sessões ativas como Coordenador ao mesmo tempo.**
+  Uma só. Periféricos podem ser 1–4 em paralelo.
+- Autoriza Periférico a `git push`.
+- Autoriza Periférico a tocar arquivos fora da pasta exclusiva
+  dele (sempre relay pro Coordenador fazer).
 
-**O que você SEMPRE faz:**
-- Copia/cola mensagens entre sessões.
+### O que você SEMPRE faz
+
+- Copia/cola mensagens entre sessões — verbatim, sem editar.
 - Decide quando começar feature, quando integrar, quando pushar.
-- Resolve impasses quando Coordenador apresenta opções.
+- Para tudo na primeira mensagem de colisão.
+- Confere CI visualmente após PRCI entregar o link.
+
+### Decisões só suas (Coordenador não decide por você)
+
+| Decisão | Quando aparece |
+|---|---|
+| "Quero feature X" | Início de cada feature |
+| "Manda pro GitHub agora?" | Quando fila local vazia + main estável |
+| "Aceito este ADR? `<decisão>`" | Mudança arquitetural não-trivial |
+| "Reverter ao sha bom?" | Integração quebrou main + fix mínimo não é possível |
+| "Slot <N> fecha ou pega próxima feature?" | Após Agente reportar pronto |
+
+### Exemplo concreto — sequência canônica
+
+```
+[Você → Sessão#1]   Quero feature "trim transparency". Action one-shot. Atribua slot.
+
+[Sessão#1 → você]   Slot #1 atribuído: slug `trim-transparency`. Briefing:
+                    <ESCOPO + cola de 03-Agente-Periferico.md>
+
+[Você]              (abre Sessão#2, cola briefing)
+
+[Sessão#2 → você]   Pasta proposta: crates/ph2d-editor/src/tools/trim_transparency/
+                    Tipo: Action one-shot.
+
+[Você → Sessão#1]   (cola)
+
+[Sessão#1 → você]   Aprovado. Slot #1 = working.
+
+[Você → Sessão#2]   Aprovado.
+
+[Sessão#2]          (trabalha 20min)
+
+[Sessão#2 → você]   Preciso de IconId::TrimTransparency, SVG path "M 4 4 L 20 4...".
+
+[Você → Sessão#1]   (cola)
+
+[Sessão#1 → você]   Criado em icons.rs. Comitado.
+
+[Você → Sessão#2]   Feito.
+
+[Sessão#2]          (trabalha mais 30min)
+
+[Sessão#2 → você]   Feature pronta. APIs: pub fn apply(img). Wiring pendente:
+                    TopBar cluster, click handler em shells/desktop.
+
+[Você → Sessão#1]   (cola)
+
+[Sessão#1 → você]   Integrando. ~5min (hook T2).
+
+[Sessão#1]          (5min)
+
+[Sessão#1 → você]   Integrado. Slot #1: trim-transparency done. Fila vazia.
+
+[Você → Sessão#1]   Manda pro GitHub.
+
+[Sessão#1 → você]   (assume PRCI, push, PR #42 aberto)
+                    PR: github.com/.../pull/42
+                    CI: github.com/.../runs/12345
+
+[Você]              (confere CI visualmente)
+```

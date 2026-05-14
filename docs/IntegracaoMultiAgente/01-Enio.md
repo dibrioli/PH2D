@@ -114,6 +114,17 @@ decida: "manda PR pro GitHub".
 - **Sem branches.** Sem `git checkout -b`. Tudo em main local.
 - **Sem push** até toda fila local estar resolvida.
 - **Máximo 4 Agentes Periféricos simultâneos** (limite do STATE.md).
+- **Um único Coordenador ativo por vez.** Se você se pegar
+  pedindo a duas sessões diferentes pra "atuar como Coordenador"
+  em paralelo, PARE — colisão de commits garantida (vide
+  `feedback_parallel_agent_collision.md` na memória LLM). Uma
+  sessão Coordenador, várias sessões Periféricas.
+- **Commits são serializados, não paralelos.** Stage + commit
+  são operação atômica. Se uma sessão acabou de `git add`,
+  nenhuma outra deve `git commit` até a primeira terminar o
+  ciclo dela (incluindo a janela do pre-commit hook, ~30s a
+  ~5min dependendo do tier). Em caso de dúvida, sinalize via
+  você (relay) antes de iniciar um commit pesado.
 
 ## Quando algo dá errado
 

@@ -61,19 +61,26 @@ Foi tentado committar `.cargo/config.toml` no repo, mas CI macOS não
 tem Homebrew lld → rustc falha estranho ("rustup-init unexpected
 argument 'check'"). Por isso fica user-level.
 
-**Pré-commit (já instalado como hook git) — workspace, ~3–5min:**
-```bash
-scripts/pre-commit.sh
-```
-Executa em ordem:
-1. `cargo fmt --all -- --check`
-2. `cargo clippy --workspace --all-targets -- -D warnings`
-3. `cargo nextest run --workspace` (paraleliza por binário)
-4. `cargo test --doc --workspace` (nextest pula doctests; este passo
-   pega o `compile_fail` proof do `extract!` macro e similares)
+**Pré-commit hook TIERED — auto-detecta tier pelo diff staged:**
 
-O hook dispara automático em `git commit`; rode manualmente se quiser
-checar antes de stagingar. `--no-verify` pula (uso parco e justificado).
+| Tier | O que ativa | Etapas | Tempo |
+|---|---|---|---|
+| **T0** | só docs / `*.md` / `.gitignore` / scripts / `.github/` | fmt + typos | ~5s |
+| **T1** | só uma pasta sob `crates/<X>` ou `tools/<X>` ou `tests/spike` ou `shells/<X>` (exceto desktop) | fmt + typos + `check/clippy/nextest -p <X>` | ~30s |
+| **T2** | Cargo.toml/lock, `.cargo/`, `shells/desktop/`, multi-crate, foundational (`ph2d-core`/`ecs`/`host`/`tokens`/`a11y`) | fmt + typos + workspace clippy + workspace nextest + doctests | ~3-5min |
+
+O hook está em `scripts/pre-commit.sh`, instalado em
+`.git/hooks/pre-commit`. Dispara automático em `git commit`.
+
+**Janela vulnerável a colisão entre sessões:** o tempo entre seu
+`git add` e o fim do `git commit` (incluindo o hook) é janela onde
+outra sessão Claude paralela que rode `git commit` pode agarrar
+seus arquivos staged junto. Coordene via Enio antes de commitar
+algo que dispare T2.
+
+**Bypass** (`--no-verify`): pula tudo. Use APÓS validação manual
+com `cargo check/clippy/nextest -p <crate>`. Comum em iteração
+rápida de uma só pasta. Em pré-push final (você, PRCI), evite.
 
 **Agregação de resultados (quando precisar inspecionar):**
 ```bash
@@ -233,7 +240,24 @@ rodada de PRCI.
   Periférico (que implementou) ou do Coordenador (que integrou).
 - **Nunca rode `git config`** mudando settings globais ou do repo.
 
-## 9. Tom de comunicação
+## 9. Sintomas de colisão entre sessões — diagnóstico
+
+Antes de cada `git add` / `git commit`, rode `git status` e
+`git status --cached`. Se algo nesses outputs te surpreender, é
+provavelmente colisão.
+
+| Sintoma | Causa | Recuperação |
+|---|---|---|
+| `fatal: cannot lock ref 'HEAD': is at X but expected Y` no `git commit` | Outra sessão fez commit no meio do seu (durante hook ou na janela stage→commit) | `git status`. Se working tree clean = arquivos seus já foram parar no commit do outro (vide próxima linha). Se staged ainda lá = re-tente commit, vai dar fast-forward. |
+| `git log -1` mostra mensagem fundida (dois títulos colados, corpo truncado, dois `Co-Authored-By`) | Sua sessão e outra commitaram em paralelo, segundo `git commit` vacuou o índice global todo | Se NÃO pushado: `git reset --soft HEAD~1` → `git restore --staged <não-meus>` → re-commit com mensagem limpa → re-commit deles separado. Se pushado: avalie `git push --force-with-lease` IFF ninguém baseou trabalho em cima do SHA ruim. Coordene com Enio. |
+| `git status` mostra `M`/`??` que você não tocou | Outro agente paralelo na mesma working tree fez mudanças | Não comite. Reporte ao Enio pra serializar. |
+| Hook do pre-commit roda T2 (~5min) num commit que você esperava T1 (~30s) | Provavelmente arquivos staged de outro agente entraram pelo seu `git add` global ou pela janela vulnerável | Cancele com Ctrl+C. `git restore --staged <não-meus>` e re-comite. |
+
+Referência adicional: memória da sessão LLM em
+`feedback_parallel_agent_collision.md` (não está no repo, mora
+no `~/.claude/projects/.../memory/`).
+
+## 10. Tom de comunicação
 
 - pt-BR direto, conciso. Sem hedging.
 - Reporte resultados, não atividade ("PR aberto: link" > "Tentando

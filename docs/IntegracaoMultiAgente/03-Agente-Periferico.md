@@ -262,15 +262,60 @@ contornar a regra. Não simule com mock.
 Sem branches. Você comita direto em main local quando atinge
 estado estável (cargo check verde no crate da sua pasta).
 
-```
-git add <arquivos só da sua pasta>          # nunca git add -A
+**Protocolo atômico stage→commit (previne colisão com outras sessões):**
+
+```bash
+# 1) ANTES de git add: confira o working tree.
+git status
+
+#    Se houver arquivos M/?? que NÃO são seus → PARE. Outro agente
+#    está com mudanças em paralelo; aguarde ou reporte ao Enio.
+#    Especialmente perigoso: arquivos staged por outro agente que
+#    seu `git commit` vai vacuar junto.
+
+# 2) Stage só os SEUS arquivos. Nunca -A, nunca -a, nunca `git add .`
+git add <arquivos só da sua pasta>
+
+# 3) ANTES de git commit: confira o ÍNDICE.
+git status --cached
+#    Se aparecer arquivo que você não estaviou → vazamento de outra
+#    sessão. Faça `git restore --staged <não-meus>` para devolver,
+#    DEPOIS comite.
+
+# 4) Commit. Hook tiered roda automaticamente (~30s pra mudança
+#    em pasta única, ~5s pra docs-only). Stage→commit é UMA operação
+#    contínua — não pause entre os dois passos.
 git commit -m "feat(<slug>): <descrição curta>"
 ```
 
 Mensagem em inglês, imperativo, < 70 char. Cite HR aplicável
 ("HR-3: pool pré-alocado").
 
+**Velocidade do hook por tier:**
+
+| Tier | O que ativa | Tempo | Quando esperar |
+|---|---|---|---|
+| T0 | só docs / README / `.gitignore` / scripts | ~5s | Commits de doc/HANDOFF |
+| T1 | só arquivos da SUA pasta exclusiva | ~30s | Commits normais seus |
+| T2 | Cargo.toml, multi-crate, shells/desktop, foundational crates | ~5min | Não deveria ser seu caso — se for, parou pra pensar antes de commitar |
+
+Se você acidentalmente trigara T2 numa pasta isolada, está
+provavelmente staged junto com algo de outro agente — re-confira
+`git status --cached`.
+
+**Bypass do hook** (`--no-verify`): permitido APÓS validação manual
+com `cargo check/clippy/nextest -p <crate>` no seu crate. Comum em
+loops de iteração rápida. Não use sem validar antes.
+
 **NUNCA `git push`.** GitHub é o final do ciclo, fora do seu escopo.
+
+### 7.5 Sintomas de colisão entre sessões — diagnóstico
+
+| Sintoma | Recuperação |
+|---|---|
+| `fatal: cannot lock ref 'HEAD': is at X but expected Y` | Outra sessão commitou enquanto você estava na janela. `git status` para ver onde parou. Se working tree clean = outro agente agarrou seus arquivos junto (reporte ao Enio); se staged ainda lá = re-tente. |
+| Seu `git status` mostra arquivos M que você não tocou | Outro agente paralelo na mesma working tree. NÃO comite. Reporte ao Enio. |
+| `git log -1` mostra um commit com mensagem fundida (dois títulos, dois Co-Authored-By, corpo truncado) | Você foi vítima de colisão. Reporte ao Enio. Coordenador faz `git reset --soft HEAD~1` + split. |
 
 ## 8. Como rodar o app e ver sua feature
 

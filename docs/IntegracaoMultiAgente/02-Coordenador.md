@@ -245,6 +245,56 @@ Cada mudança operacional gera commit pequeno:
 
 Sempre: `chore(coordenador): <descrição>`.
 
+### 3.4 Disciplina de commit — evita colisão entre sessões
+
+O modelo permite múltiplas sessões Claude ativas (Periféricos +
+você). Cada `git commit` é serializado pelo índice global do git
+— se duas sessões têm arquivos staged e a segunda roda `git commit`,
+ela agarra os arquivos da primeira junto, mensagem fundida.
+
+Protocolo defensivo:
+
+1. **Antes de cada `git add`**, rode `git status`. Se houver
+   arquivos `M`/`??` que não são seus, **PARE** — outro agente está
+   no meio de um commit. Aguarde até `git status` ficar limpo do que
+   não é seu.
+2. **Antes de cada `git commit`**, rode `git status --cached`. Se
+   o índice tem arquivo que você não estaviou, **PARE** — vazamento
+   de outra sessão. Faça `git restore --staged <arquivo-deles>`
+   pra devolver pra eles antes de commitar.
+3. **Stage + commit como operação atômica.** Não estagie agora e
+   commit "daqui a pouco". Período entre `git add` e `git commit`
+   é a janela vulnerável.
+4. **Pre-commit hook tiered (~5s–5min dependendo do tier).** Durante
+   essa janela, NENHUMA outra sessão deve `git commit`. Se vai
+   rodar tier T2 (workspace, 3-5min), avise via Enio antes.
+5. **Erro `cannot lock ref 'HEAD'`** = outra sessão fez commit no
+   meio do seu. Não force; investigue (vide §3.6 Sintomas de
+   colisão).
+
+### 3.5 Disciplina antes de commitar arquivo compartilhado
+
+Quando você (Coordenador) vai editar shared (`Cargo.toml`,
+`shells/desktop/`, `crates/ph2d-editor/src/screens/`, etc.):
+
+1. Anuncia via Enio: "Vou commitar `<arquivo>`. Periféricos:
+   segurem `git add`/`commit` até eu reportar `done`."
+2. Faz a edição.
+3. `git add <paths específicos>` (nunca `-A`).
+4. `git status --cached` — confirma só os seus.
+5. `git commit -m "chore(coordenador): <descrição>"` — hook
+   tiered T2 roda ~5min se tocar shared.
+6. Quando terminar (sucesso ou falha), avise: "Coordenador
+   livre — Periféricos podem retomar."
+
+### 3.6 Sintomas de colisão (e como recuperar)
+
+| Sintoma | Causa provável | Recuperação |
+|---|---|---|
+| `fatal: cannot lock ref 'HEAD': is at X but expected Y` no `git commit` | Outra sessão fez commit no meio do seu | Rode `git status`. Se ainda há staged: outro agente roubou só o ref, não os arquivos. Re-tente commit (vai dar fast-forward limpo). Se working tree clean: outro agente agarrou seus arquivos junto — vide próximo item. |
+| Commit existe mas mensagem fundida (dois títulos colados, corpo truncado, dois `Co-Authored-By`) | Outra sessão fez commit enquanto você estava na janela vulnerável (stage→commit ou hook→ref-update) | Se não pushou ainda: `git reset --soft HEAD~1` → split em 2 commits limpos → re-commit. Se já pushou: avalie `git push --force-with-lease` IFF nenhum agente baseou trabalho em cima do SHA ruim. Coordene com Enio. |
+| `git status` mostra arquivos que você não tocou como modificados/staged | Outro agente em paralelo na mesma working tree | Não comite. Reporte via Enio pra pausar a outra sessão antes de prosseguir. |
+
 ### 3.4 Garantir main local sempre verde
 
 Após cada integração: `cargo check --workspace` precisa passar.

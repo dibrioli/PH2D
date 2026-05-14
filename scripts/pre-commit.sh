@@ -100,8 +100,10 @@ while IFS= read -r path; do
     classify_path "$path"
 done <<< "$STAGED"
 
-# Count distinct crate dirs
-crate_count=$(echo "$crate_dirs_set" | tr '|' '\n' | grep -v '^$' | sort -u | wc -l | tr -d ' ')
+# Count distinct crate dirs. `set -euo pipefail` requires we avoid
+# `grep -v '^$'` here — `grep` exits 1 when no matches and that kills
+# the pipeline. Use awk to skip blanks instead (always exits 0).
+crate_count=$(echo "$crate_dirs_set" | tr '|' '\n' | awk 'NF' | sort -u | wc -l | tr -d ' ')
 
 # Decide tier
 if [ "$has_workspace_trigger" = "1" ] || [ "$crate_count" -gt 1 ]; then
@@ -115,7 +117,7 @@ fi
 # Resolve the single crate dir → package name (last path segment).
 single_crate=""
 if [ "$tier" = "T1" ]; then
-    single_crate_dir=$(echo "$crate_dirs_set" | tr '|' '\n' | grep -v '^$' | head -1)
+    single_crate_dir=$(echo "$crate_dirs_set" | tr '|' '\n' | awk 'NF' | head -1)
     single_crate=$(basename "$single_crate_dir")
 fi
 
@@ -151,7 +153,9 @@ if [ "$tier" = "T1" ]; then
     cargo clippy -p "$single_crate" --all-targets -- -D warnings || die "clippy failed"
     if command -v cargo-nextest >/dev/null 2>&1; then
         step "cargo nextest run -p $single_crate"
-        cargo nextest run -p "$single_crate" || die "nextest failed"
+        # --no-tests=warn: stub crates (i18n, audio etc.) have no tests
+        # yet; that shouldn't fail the hook. Real failures still fail.
+        cargo nextest run -p "$single_crate" --no-tests=warn || die "nextest failed"
     else
         step "cargo test -p $single_crate (nextest not installed)"
         cargo test -p "$single_crate" || die "tests failed"

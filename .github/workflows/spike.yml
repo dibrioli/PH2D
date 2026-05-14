@@ -127,14 +127,17 @@ jobs:
     name: ${{ matrix.os }} — workspace check + tests
     runs-on: ${{ matrix.os }}
     needs: [lint, msrv]
-    env:
-      # sccache wrapper — only on this job (other jobs don't install
-      # sccache, would error). GHA cache used as storage backend.
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
+    # sccache was added in Phase 2 but caused all 3 OSes to fail
+    # (run 25840452466): GitHub Actions artifact-cache service
+    # returned HTTP 400 ("Our services aren't available right now"),
+    # sccache crashed instead of falling back, RUSTC_WRAPPER then
+    # broke every cargo invocation. Disabled until GHA artifact-cache
+    # is reliably available — Phase 2's other improvements (multi-
+    # package nextest, dropped cargo check, dropped --release on
+    # desktop build) deliver speed-up independently.
     # Workspace check + multi-package nextest + spike fixtures.
-    # Phase 2 (this commit): tackles the actual Windows bottlenecks
-    # revealed by the run 25839341394 logs:
+    # Phase 2 (this commit), tackles Windows bottlenecks from run
+    # 25839341394 logs:
     #   - ph2d-ecs (bevy_ecs dep): 6m 43s
     #   - desktop --release build: 4m 59s
     #   - ph2d-gpu (wgpu dep): 2m 26s
@@ -143,10 +146,6 @@ jobs:
     # = ~20 min of compile time on Windows alone, before spike fixtures.
     #
     # Changes:
-    #   - sccache (mozilla-actions/sccache-action) as RUSTC_WRAPPER.
-    #     Compile-unit-level cache stored in GitHub Actions cache
-    #     storage. Hits independently of Cargo.lock changes, so even
-    #     workspace-local edits keep dep compilation cached.
     #   - Collapse 10 per-crate `cargo nextest run -p X` into ONE
     #     multi-package call. Single cargo invocation = single graph
     #     resolution + shared compile setup. Critical on Windows
@@ -156,11 +155,12 @@ jobs:
     #   - Move desktop build from `--release` to default profile.
     #     Step exists to verify winit/wgpu link cross-OS, not to
     #     produce a distribution binary. Saves ~3-4 min on Windows.
-    #   - Swatinem cache: keep `shared-key: ${{ matrix.os }}`. Cache
-    #     still saves on every push to main (we don't have a PR
-    #     workflow), so each subsequent run benefits.
-    # Expected after Phase 2: ubuntu ~5-7m, macos ~6-8m, windows
-    # ~15-20m (first run cold; ~10-12m warm).
+    #
+    # Note: an earlier attempt also added sccache (RUSTC_WRAPPER) but
+    # GitHub Actions artifact-cache service returned HTTP 400 in run
+    # 25840452466 ("Our services aren't available right now") and
+    # sccache crashed all rustc invocations. Reverted; deferred until
+    # GHA cache is reliable.
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -188,16 +188,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.os }}
-
-      # sccache — compile-unit-level cache, complements rust-cache.
-      # rust-cache stores `target/` keyed by Cargo.lock hash. Any
-      # workspace member edit invalidates Cargo.lock, drops the
-      # whole cache. sccache caches each rustc invocation's output
-      # keyed by inputs (source + flags + rustc version) — survives
-      # Cargo.lock churn and unrelated workspace edits. Stored in
-      # GHA cache via `SCCACHE_GHA_ENABLED`.
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.6
 
       - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
         if: runner.os == 'Linux'
@@ -264,11 +254,6 @@ jobs:
       # producing a distribution binary. Saved ~3-4 min on Windows.
       - name: build ph2d-host-desktop (M1 — verifies winit links cross-OS)
         run: cargo build --locked -p ph2d-host-desktop
-
-      # Show sccache stats at end of job for diagnostics.
-      - name: sccache stats
-        run: sccache --show-stats
-        if: always()
 
       # Correctness fixtures only — no perf-gated benches in CI.
       # Bench fixtures (c2_1_messaging, c3_coro_timing, c10_gc_stress,

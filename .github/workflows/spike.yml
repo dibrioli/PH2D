@@ -127,24 +127,40 @@ jobs:
     name: ${{ matrix.os }} — workspace check + tests
     runs-on: ${{ matrix.os }}
     needs: [lint, msrv]
-    # Workspace check + per-crate nextest + spike fixtures.
-    # Phase 1 speed tuning (commit applying this comment):
-    #   - Unit nextest steps run with `--cargo-profile ci-test`
-    #     instead of `--release`. ci-test has LTO off and
-    #     codegen-units=16, with deps still at opt-level=3 (test
-    #     runtime stays fast). Distribution-grade link cost
-    #     (thin-LTO + codegen-units=1) was the dominant Windows
-    #     bottleneck.
-    #   - Spike fixtures and the desktop binary build keep
-    #     `--release` because they're perf-sensitive.
-    #   - Windows uses `rust-lld.exe` instead of MSVC `link.exe`
-    #     via `.cargo/config.toml` target-specific linker setting.
-    #     Linux/macOS unaffected (target-gated).
-    #   - Windows Defender exclusion (below) shaves the
-    #     real-time-scan overhead on `target/` rebuilds.
-    # Expected times after Phase 1: ubuntu ~5-7m, macos ~6-8m,
-    # windows ~12-18m. Previously: 30 min cap was the practical
-    # ceiling on Windows.
+    env:
+      # sccache wrapper — only on this job (other jobs don't install
+      # sccache, would error). GHA cache used as storage backend.
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    # Workspace check + multi-package nextest + spike fixtures.
+    # Phase 2 (this commit): tackles the actual Windows bottlenecks
+    # revealed by the run 25839341394 logs:
+    #   - ph2d-ecs (bevy_ecs dep): 6m 43s
+    #   - desktop --release build: 4m 59s
+    #   - ph2d-gpu (wgpu dep): 2m 26s
+    #   - ph2d-editor: 2m 47s
+    #   - cargo check workspace: 3m 16s (redundant — nextest checks)
+    # = ~20 min of compile time on Windows alone, before spike fixtures.
+    #
+    # Changes:
+    #   - sccache (mozilla-actions/sccache-action) as RUSTC_WRAPPER.
+    #     Compile-unit-level cache stored in GitHub Actions cache
+    #     storage. Hits independently of Cargo.lock changes, so even
+    #     workspace-local edits keep dep compilation cached.
+    #   - Collapse 10 per-crate `cargo nextest run -p X` into ONE
+    #     multi-package call. Single cargo invocation = single graph
+    #     resolution + shared compile setup. Critical on Windows
+    #     where each cold-start costs ~10-15s.
+    #   - Drop redundant `cargo check --workspace` (nextest does its
+    #     own check on the test target during build).
+    #   - Move desktop build from `--release` to default profile.
+    #     Step exists to verify winit/wgpu link cross-OS, not to
+    #     produce a distribution binary. Saves ~3-4 min on Windows.
+    #   - Swatinem cache: keep `shared-key: ${{ matrix.os }}`. Cache
+    #     still saves on every push to main (we don't have a PR
+    #     workflow), so each subsequent run benefits.
+    # Expected after Phase 2: ubuntu ~5-7m, macos ~6-8m, windows
+    # ~15-20m (first run cold; ~10-12m warm).
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -173,6 +189,16 @@ jobs:
         with:
           shared-key: ${{ matrix.os }}
 
+      # sccache — compile-unit-level cache, complements rust-cache.
+      # rust-cache stores `target/` keyed by Cargo.lock hash. Any
+      # workspace member edit invalidates Cargo.lock, drops the
+      # whole cache. sccache caches each rustc invocation's output
+      # keyed by inputs (source + flags + rustc version) — survives
+      # Cargo.lock churn and unrelated workspace edits. Stored in
+      # GHA cache via `SCCACHE_GHA_ENABLED`.
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
       - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
@@ -182,68 +208,67 @@ jobs:
         with:
           tool: nextest
 
-      - name: cargo check (workspace, default features) --locked
-        run: cargo check --workspace --locked
-
-      - name: cargo check (workspace, --features bevy_ecs) --locked
-        run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
-
-      # Per-crate nextest. Each call uses `--cargo-profile ci-test`
-      # (NOT `--release`). Reason: profile.release has thin LTO +
-      # codegen-units=1 — fine for distribution builds, but on every
-      # CI invocation the Windows MSVC linker paid distribution-grade
-      # link cost 10× and hit the 30 min cap. `ci-test` keeps deps at
-      # opt-level=3 (test runtime stays fast) while workspace-local
-      # code drops to opt-level=1 (~50% less link work).
+      # Workspace unit tests in a single multi-package nextest call.
+      # One cargo invocation = one graph resolution + one build setup
+      # shared across all listed packages. Previously 10 separate
+      # `cargo nextest run -p X --cargo-profile ci-test` calls paid
+      # ~10-15s cold-start overhead each on Windows (~2-3 min total
+      # waste).
+      #
+      # `--cargo-profile ci-test`: deps at opt-level=3 (test runtime
+      # stays fast), workspace-local code at opt-level=1, NO LTO,
+      # codegen-units=16. Distribution-grade link cost (thin-LTO +
+      # codegen-units=1 in profile.release) was the dominant Windows
+      # bottleneck before; ci-test cuts that out.
       #
       # Note: nextest uses `--cargo-profile` for the build profile.
       # `--profile` in nextest is a SEPARATE flag for test settings
       # (retries, parallelism). They're not interchangeable.
-      - name: ph2d-core tests (nextest)
-        run: cargo nextest run -p ph2d-core --cargo-profile ci-test --locked
+      #
+      # `--workspace` was tried earlier and forced compilation of
+      # test binaries for every workspace member, including ~14
+      # stubs with zero tests — Linux/Mac doubled. The explicit
+      # `-p` list keeps scope to crates that actually have tests.
+      - name: workspace unit tests (multi-package nextest)
+        run: |
+          cargo nextest run \
+            -p ph2d-core \
+            -p ph2d-host \
+            -p ph2d-gpu \
+            -p ph2d-ecs \
+            -p ph2d-asset \
+            -p ph2d-render \
+            -p ph2d-script \
+            -p ph2d-mcp \
+            -p ph2d-editor \
+            -p ph2d-asset-cooker \
+            --cargo-profile ci-test --locked
 
-      - name: ph2d-host tests (nextest)
-        run: cargo nextest run -p ph2d-host --cargo-profile ci-test --locked
-
-      - name: ph2d-gpu tests (nextest — surface state machine + transient pool)
-        run: cargo nextest run -p ph2d-gpu --cargo-profile ci-test --locked
-
-      - name: ph2d-ecs tests (nextest — sim/present flow + extract macro)
-        run: cargo nextest run -p ph2d-ecs --cargo-profile ci-test --locked
-
+      # Doctests aren't covered by nextest. ph2d-ecs has the
+      # `extract!` compile_fail proof that catches mutable-sim
+      # regressions; that's the only doctest worth gating on for now.
       - name: ph2d-ecs doc tests (extract! compile_fail proof)
         run: cargo test --doc -p ph2d-ecs --profile ci-test --locked
 
-      - name: ph2d-asset tests (nextest — Prefab/Scene roundtrip + insert helpers)
-        run: cargo nextest run -p ph2d-asset --cargo-profile ci-test --locked
-
-      - name: ph2d-render tests (nextest — Sprite serde + registry)
-        run: cargo nextest run -p ph2d-render --cargo-profile ci-test --locked
-
-      - name: ph2d-script tests (nextest)
-        run: cargo nextest run -p ph2d-script --cargo-profile ci-test --locked
-
-      - name: ph2d-mcp tests (nextest)
-        run: cargo nextest run -p ph2d-mcp --cargo-profile ci-test --locked
-
-      # ph2d-editor has the largest test surface (~480 tests covering
-      # widgets / interaction / hero screens).
-      - name: ph2d-editor tests (nextest — widgets / interaction / screens)
-        run: cargo nextest run -p ph2d-editor --cargo-profile ci-test --locked
-
-      # ADR-0025 M14.3d: cooker determinism includes a locked hash
-      # assertion (`prefab_cook_hash_is_locked`) — if Linux / macOS /
-      # Windows produce different cooked bytes, this test fails on
-      # the divergent runner. That's the HR-5 + HR-6 enforcement
-      # surface for the cooker pipeline.
-      - name: ph2d-asset-cooker tests (nextest — cross-OS cook determinism)
-        run: cargo nextest run -p ph2d-asset-cooker --cargo-profile ci-test --locked
+      # Smoke compile check with bevy_ecs feature flag — verifies
+      # the conditional code paths still type-check.
+      - name: cargo check (workspace, --features bevy_ecs) --locked
+        run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
       - name: ph2d-bindgen drift check (HR-10 parity)
         run: cargo run --release --locked -p ph2d-bindgen
 
+      # Build (not run) the desktop shell — verifies winit + wgpu
+      # link cross-OS. Was `--release` before; switched to default
+      # because the step's purpose is link verification, not
+      # producing a distribution binary. Saved ~3-4 min on Windows.
       - name: build ph2d-host-desktop (M1 — verifies winit links cross-OS)
-        run: cargo build --release --locked -p ph2d-host-desktop
+        run: cargo build --locked -p ph2d-host-desktop
+
+      # Show sccache stats at end of job for diagnostics.
+      - name: sccache stats
+        run: sccache --show-stats
+        if: always()
 
       # Correctness fixtures only — no perf-gated benches in CI.
       # Bench fixtures (c2_1_messaging, c3_coro_timing, c10_gc_stress,

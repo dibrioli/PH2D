@@ -16,8 +16,12 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+# Resolve the repo root robustly. When git invokes the hook via the
+# symlink in .git/hooks, BASH_SOURCE[0] is the symlink path; we need
+# the real target to compute the workspace root. `git rev-parse
+# --show-toplevel` sidesteps all symlink + cwd issues by asking git
+# directly.
+ROOT_DIR="$(git rev-parse --show-toplevel)"
 cd "$ROOT_DIR"
 
 if [ -t 1 ]; then

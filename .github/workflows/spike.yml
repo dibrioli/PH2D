@@ -127,8 +127,12 @@ jobs:
     name: ${{ matrix.os }} — workspace check + tests
     runs-on: ${{ matrix.os }}
     needs: [lint, msrv]
-    # Workspace check + per-crate nextest + spike fixtures; observed
-    # ~8-12 min on Linux/Win, longer on Mac cold cache. 30 min cap.
+    # Workspace check + workspace-wide nextest + spike fixtures.
+    # Observed ~6-10 min on Linux/Mac, ~15-20 min on Windows (linker
+    # cost). 30 min cap. Earlier per-crate nextest pattern (9 calls)
+    # was consolidated to one workspace run: nextest's process pool
+    # reuses test binaries across the matrix and avoids 9 cold-starts
+    # per OS — biggest Windows win (cold-start there is ~3× Linux).
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -137,6 +141,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
+      # Windows-only: exclude `target/` and Cargo home from Defender
+      # real-time scan. Defender scanning every .o / .rlib / linker
+      # intermediate adds ~15-25 % to the Windows wall clock. This
+      # shrinks the matrix gap from ~5× to ~2-3× vs Linux/Mac.
+      - name: Disable Windows Defender on target/ + cargo home
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}\target"
+          Add-MpPreference -ExclusionPath "$env:USERPROFILE\.cargo"
+          Add-MpPreference -ExclusionPath "$env:USERPROFILE\.rustup"
+          Add-MpPreference -ExclusionProcess "rustc.exe"
+          Add-MpPreference -ExclusionProcess "cargo.exe"
+          Add-MpPreference -ExclusionProcess "link.exe"
+
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.os }}
@@ -156,40 +176,23 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
-      - name: ph2d-core tests (nextest)
-        run: cargo nextest run -p ph2d-core --release --locked
+      # Workspace-wide nextest run. Replaces the previous 9 per-crate
+      # calls — nextest auto-discovers every crate in the workspace
+      # that has tests, parallelizes by binary, and reuses the test
+      # executor across crates. Same coverage (ph2d-core, ph2d-host,
+      # ph2d-gpu, ph2d-ecs, ph2d-asset, ph2d-render, ph2d-script,
+      # ph2d-mcp, ph2d-asset-cooker, plus any future tests) but one
+      # cold-start instead of nine. ADR-0025 M14.3d's cooker hash
+      # assertion still runs here as part of ph2d-asset-cooker.
+      - name: workspace tests (nextest)
+        run: cargo nextest run --workspace --release --locked --no-tests=warn
 
-      - name: ph2d-host tests (nextest)
-        run: cargo nextest run -p ph2d-host --release --locked
-
-      - name: ph2d-gpu tests (nextest — surface state machine + transient pool)
-        run: cargo nextest run -p ph2d-gpu --release --locked
-
-      - name: ph2d-ecs tests (nextest — sim/present flow + extract macro)
-        run: cargo nextest run -p ph2d-ecs --release --locked
-
-      - name: ph2d-ecs doc tests (extract! compile_fail proof)
-        run: cargo test --doc -p ph2d-ecs --release --locked
-
-      - name: ph2d-asset tests (nextest — Prefab/Scene roundtrip + insert helpers)
-        run: cargo nextest run -p ph2d-asset --release --locked
-
-      - name: ph2d-render tests (nextest — Sprite serde + registry)
-        run: cargo nextest run -p ph2d-render --release --locked
-
-      - name: ph2d-script tests (nextest)
-        run: cargo nextest run -p ph2d-script --release --locked
-
-      - name: ph2d-mcp tests (nextest)
-        run: cargo nextest run -p ph2d-mcp --release --locked
-
-      # ADR-0025 M14.3d: cooker determinism includes a locked hash
-      # assertion (`prefab_cook_hash_is_locked`) — if Linux / macOS /
-      # Windows produce different cooked bytes, this test fails on
-      # the divergent runner. That's the HR-5 + HR-6 enforcement
-      # surface for the cooker pipeline.
-      - name: ph2d-asset-cooker tests (nextest — cross-OS cook determinism)
-        run: cargo nextest run -p ph2d-asset-cooker --release --locked
+      # Doctests aren't covered by nextest. `--doc --workspace` runs
+      # every crate's doc-tests — including ph2d-ecs's
+      # `extract!` `compile_fail` proof that catches mutable-sim
+      # regressions in the boundary macro.
+      - name: workspace doc tests
+        run: cargo test --doc --workspace --release --locked
 
       - name: ph2d-bindgen drift check (HR-10 parity)
         run: cargo run --release --locked -p ph2d-bindgen

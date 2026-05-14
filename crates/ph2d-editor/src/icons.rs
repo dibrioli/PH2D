@@ -101,6 +101,7 @@ pub enum IconId {
     MoreHorizontal,
     MoreVertical,
     Open,
+    Palette,
     Pan,
     Particle,
     Pause,
@@ -403,6 +404,17 @@ impl IconId {
             Self::Open => &[IconCmd::Path(
                 "M6 14 L 7.5 11.1 A 2 2 0 0 1 9.24 10 H 20 A 2 2 0 0 1 21.94 12.5 L 20.4 18.5 A 2 2 0 0 1 18.45 20 H 4 A 2 2 0 0 1 2 18 V 5 A 2 2 0 0 1 4 3 H 7.9 A 2 2 0 0 1 9.59 3.9 L 10.4 5.1 A 2 2 0 0 0 12.07 6 H 18 A 2 2 0 0 1 20 8 V 10",
             )],
+            Self::Palette => &[
+                // Lucide palette.svg — outline + 4 dots for the paint
+                // wells. Used by the TopBar Widget Gallery button.
+                IconCmd::Path(
+                    "M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z",
+                ),
+                IconCmd::Circle(13.5, 6.5, 0.6),
+                IconCmd::Circle(17.5, 10.5, 0.6),
+                IconCmd::Circle(6.5, 12.5, 0.6),
+                IconCmd::Circle(8.5, 7.5, 0.6),
+            ],
             Self::Pan => &[
                 IconCmd::Path("M9 11V5a2 2 0 1 1 4 0v6"),
                 IconCmd::Path("M13 11V4a2 2 0 1 1 4 0v8"),
@@ -778,6 +790,7 @@ mod tests {
         IconId::MoreHorizontal,
         IconId::MoreVertical,
         IconId::Open,
+        IconId::Palette,
         IconId::Pan,
         IconId::Particle,
         IconId::Pause,

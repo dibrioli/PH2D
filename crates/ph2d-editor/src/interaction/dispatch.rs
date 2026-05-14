@@ -1430,6 +1430,8 @@ fn scrollbar_panel_for_id(id: ph2d_a11y::NodeId) -> Option<ph2d_a11y::NodeId> {
         Some(ids::INSP_PANEL)
     } else if id == crate::widget::HIERARCHY_SCROLLBAR_ID {
         Some(ids::HIER_PANEL)
+    } else if id == crate::widget::GALLERY_SCROLLBAR_ID {
+        Some(ids::GAL_PANEL)
     } else {
         None
     }

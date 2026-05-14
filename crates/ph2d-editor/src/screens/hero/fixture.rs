@@ -47,6 +47,15 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
+        // Widget Gallery (palette) — toggles a floating reference
+        // panel that hosts the canonical widget showcase. Peripheral
+        // agents run `./play.command`, open this gallery, and see
+        // every editor widget in use as the single in-app UI
+        // ground-truth. State on `HeroScreen::widget_gallery_visible`.
+        (
+            ids::TOPBAR_WIDGET_GALLERY,
+            TopBarCluster::single("Widget Gallery", IconId::Palette),
+        ),
         // Settings (gear) — moved to the end of the bar per
         // ImageToolsV1 spec. Still opens SettingsMenu context with
         // px/m presets and project-level toggles.

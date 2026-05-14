@@ -23,6 +23,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_SAVE_AS,
         ids::TOPBAR_OPEN,
         ids::TOPBAR_IMAGE_TOOLS,
+        ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_SETTINGS,
         ids::TOPBAR_PROJECT,
         ids::TOPBAR_PLAY_BUTTON,
@@ -67,6 +68,10 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::TOPBAR_SAVE_AS, "Save As\u{2026} \u{00b7} Cmd+Shift+S"),
         (ids::TOPBAR_OPEN, "Open \u{00b7} Cmd+O"),
         (ids::TOPBAR_IMAGE_TOOLS, "Image Tools"),
+        (
+            ids::TOPBAR_WIDGET_GALLERY,
+            "Widget Gallery \u{00b7} reference",
+        ),
         (ids::IMAGE_ACTION_TRIM, "Trim Transparency"),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),

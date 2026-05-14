@@ -35,5 +35,9 @@ if [[ "$PROFILE" == "release" ]]; then
 fi
 
 echo "[run-shell] cargo run -p ph2d-host-desktop $PROFILE_FLAG"
-echo "[run-shell] (close window or Cmd+Q to exit)"
+echo "[run-shell] (PH2D editor — close window or Cmd+Q to exit)"
+# Default mode = full editor (TopBar / LeftRail / Hierarchy /
+# Inspector / BottomHUD) with the M14.4a live ECS bridge wired since
+# the 2026-05-14 gate inversion. The legacy 1000-sprite M5 perf demo
+# is opt-in via `PH2D_M5_DEMO=1` for HR-4 bench / stress work.
 exec cargo run -p ph2d-host-desktop $PROFILE_FLAG

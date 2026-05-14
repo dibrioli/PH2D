@@ -231,8 +231,9 @@ struct AppGfx {
     /// parley font + layout context (heavy state). Threaded through
     /// `PaintCtx` so future text passes don't re-load fonts.
     text_system: TextSystem,
-    /// Hero screen (`02-editor-main` mockup) — populated when
-    /// `PH2D_HERO_SCREEN=1`. Owns the [`WidgetStore`] + [`HitIndex`]
+    /// Hero screen (`02-editor-main` mockup) — populated by default;
+    /// `None` only when `PH2D_M5_DEMO=1` selects the legacy
+    /// 1000-sprite perf demo. Owns the [`WidgetStore`] + [`HitIndex`]
     /// so input pipeline (ADR-0024) can route pointer/key events
     /// through `dispatch_*`.
     hero_screen: Option<HeroScreen>,
@@ -252,8 +253,8 @@ struct AppGfx {
     /// entities) — comfortably above `SPRITE_COUNT = 1000`. HR-3
     /// zero-alloc verified by `crates/ph2d-ecs/tests/propagate_no_alloc.rs`.
     worklist: WorklistBuf,
-    /// M14.4a live-bridge state. Present iff `PH2D_HERO_LIVE=1` at
-    /// boot; otherwise the hero renders fixture data and bridge is
+    /// M14.4a live-bridge state. Present in the default editor mode
+    /// (i.e. always unless `PH2D_M5_DEMO=1` switched to the legacy
     /// untouched.
     hero_live: Option<HeroLive>,
     /// M14.4c+M14.4d: next free atlas key for imported images.
@@ -788,10 +789,10 @@ impl App {
         }
     }
 
-    /// Spawn 8 named entities in a horizontal line — used when
-    /// `PH2D_HERO_LIVE=1`. Smaller count + `Name` components let the
-    /// hierarchy panel display readable rows ("sprite_001" through
-    /// "sprite_008") instead of a wall of `Entity_…` hex strings.
+    /// Spawn 8 named entities in a depth-2 tree — used in the default
+    /// editor mode. `Name` components let the hierarchy panel display
+    /// readable rows ("sprite_001" through "sprite_008") instead of a
+    /// wall of `Entity_…` hex strings.
     fn populate_sim_live(sim: &mut SimWorld) {
         // 2 roots × 3 children = 8 entities arranged as a depth-2
         // tree. Lets the user exercise the M14.6C hierarchy
@@ -1108,11 +1109,11 @@ impl App {
             text: text_system,
         };
 
-        // Opt-in hero screen mode: when `PH2D_HERO_SCREEN=1` was set
-        // at startup the AppGfx owns a HeroScreen with a retained
-        // WidgetStore (ADR-0024). Paint reads + writes its hit_index
-        // each frame; pointer/key events are forwarded to it from
-        // window_event handlers via `hero_screen.handle_*`.
+        // Default editor mode: AppGfx owns a HeroScreen with a
+        // retained WidgetStore (ADR-0024). Paint reads + writes its
+        // hit_index each frame; pointer/key events are forwarded to
+        // it from window_event handlers via `hero_screen.handle_*`.
+        // `hero_screen` is `None` only under `PH2D_M5_DEMO=1`.
         if let Some(hero) = hero_screen.as_mut() {
             // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
             // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -2099,7 +2100,7 @@ impl App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let attrs = Window::default_attributes()
-            .with_title("PH2D — desktop shell (M5 — 1000 sprites)")
+            .with_title("PH2D — editor")
             .with_inner_size(winit::dpi::LogicalSize::new(1024, 768));
         let window = Arc::new(
             event_loop
@@ -2158,7 +2159,14 @@ impl ApplicationHandler for App {
             SPRITE_COUNT.next_power_of_two(),
         );
 
-        let hero_live_enabled = std::env::var("PH2D_HERO_LIVE").as_deref() == Ok("1");
+        // Mode gate inverted 2026-05-14: hero live is the **default**
+        // user-facing experience. `PH2D_M5_DEMO=1` opts into the legacy
+        // M5 perf-validation demo (1000-sprite Vogel spiral, no editor
+        // chrome) — kept reachable for HR-4 frame-budget validation,
+        // 100k-sprite stress tests, and future bench work without
+        // forcing users through it on first launch.
+        let m5_demo_enabled = std::env::var("PH2D_M5_DEMO").as_deref() == Ok("1");
+        let hero_live_enabled = !m5_demo_enabled;
         let mut sim = SimWorld::new();
         if hero_live_enabled {
             // M14.4a: spawn a small named set so the hierarchy
@@ -2167,12 +2175,17 @@ impl ApplicationHandler for App {
             // editor's hierarchy/inspector pipeline.
             Self::populate_sim_live(&mut sim);
             println!(
-                "[{:>6}ms] M14.4a: live hero mode (8 named entities; \
+                "[{:>6}ms] live hero mode (8 named entities; \
                  hierarchy panel binds to ECS)",
                 self.handler.elapsed_ms()
             );
         } else {
             Self::populate_sim(&mut sim);
+            println!(
+                "[{:>6}ms] M5 demo mode (PH2D_M5_DEMO=1; 1000-sprite \
+                 Vogel spiral, no editor chrome)",
+                self.handler.elapsed_ms()
+            );
         }
         let present = PresentWorld::new();
         // ADR-0025 M14.1: build the cached propagation queries AFTER
@@ -2275,19 +2288,12 @@ impl ApplicationHandler for App {
         let vector_scene = VectorScene::new();
         let text_system = TextSystem::new();
 
-        // Hero screen mode opt-in via env var (set ONCE at startup,
-        // not per frame). When set, the editor's default 4-zone
-        // chrome is replaced with the `02-editor-main` mockup
-        // composition, and pointer/key events flow through the
-        // ADR-0024 interaction pipeline.
-        //
-        // M14.4a+: `PH2D_HERO_LIVE=1` implies `PH2D_HERO_SCREEN=1`.
-        // The live ECS bridge can't render without the hero panel
-        // owning the WidgetStore + HitIndex; requiring both env vars
-        // separately was a footgun (G shortcut + grid toggle silently
-        // no-op'd when only `LIVE` was set).
-        let hero_screen_enabled =
-            std::env::var("PH2D_HERO_SCREEN").as_deref() == Ok("1") || hero_live_enabled;
+        // Hero screen (TopBar / LeftRail / Hierarchy / Inspector /
+        // BottomHUD) is always-on in the default mode and disabled
+        // in the M5 demo path. The legacy `PH2D_HERO_SCREEN=1` env
+        // var is kept as a no-op alias — anyone with it in their
+        // shell rc still gets the editor instead of an error.
+        let hero_screen_enabled = hero_live_enabled;
         let hero_screen = if hero_screen_enabled {
             Some(HeroScreen::new(NodeId(1)).theme(theme))
         } else {
@@ -3223,14 +3229,19 @@ fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     let Some(hero) = gfx.hero_screen.as_ref() else {
         return false;
     };
-    use ph2d_editor::screens::hero::ids::{HIER_PANEL, INSP_PANEL};
+    use ph2d_editor::screens::hero::ids::{GAL_PANEL, HIER_PANEL, INSP_PANEL};
     let inside = |panel_id| {
         hero.store
             .panel_rect(panel_id)
             .map(|r| r.contains(x, y))
             .unwrap_or(false)
     };
-    inside(INSP_PANEL) || inside(HIER_PANEL)
+    // GAL_PANEL is the floating Widget Gallery — must intercept the
+    // wheel here so it scrolls the panel body instead of zooming the
+    // camera underneath. `panel_rect(GAL_PANEL)` is only published
+    // when the gallery is visible, so this check returns false in
+    // its default closed state.
+    inside(INSP_PANEL) || inside(HIER_PANEL) || inside(GAL_PANEL)
 }
 
 /// Forward a single printable character into the hero text-input
@@ -3304,7 +3315,7 @@ fn main() {
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::new();
-    println!("PH2D desktop shell starting (1000 sprites; close window to exit)…");
+    println!("PH2D desktop shell starting (close window or Cmd+Q to exit)…");
     event_loop.run_app(&mut app).expect("event loop crashed");
     println!("PH2D desktop shell exited cleanly.");
 }

@@ -37,6 +37,13 @@ pub const TOPBAR_SETTINGS: NodeId = NodeId(113);
 /// ImageTools mode; the state lives on
 /// [`crate::screens::HeroScreen::image_tools_mode`].
 pub const TOPBAR_IMAGE_TOOLS: NodeId = NodeId(114);
+/// Widget Gallery cluster — toggles the floating reference panel
+/// that showcases every canonical widget (Inputs / Slider /
+/// Switches / Lists / Vector / Status / Color / Actions / Identity /
+/// Card). Peripheral agents open this from the live app as the
+/// single in-app source of truth for UI decoration. State lives on
+/// [`crate::screens::HeroScreen::widget_gallery_visible`].
+pub const TOPBAR_WIDGET_GALLERY: NodeId = NodeId(116);
 
 /// Image Tools action — Trim Transparency pill. Lives in the action
 /// row that replaces the right-side TopBar clusters when
@@ -71,6 +78,17 @@ pub const INSP_DRAG_HANDLE: NodeId = NodeId(372);
 /// Resize gripper at the Inspector's bottom-right corner. Registered
 /// as `BlenderHit { parent: INSP_PANEL, kind: ResizeHandle }`.
 pub const INSP_RESIZE_HANDLE: NodeId = NodeId(373);
+/// Widget Gallery floating panel — root id. The gallery is a Procreate-
+/// style floating reference panel that hosts the canonical widget
+/// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].
+pub const GAL_PANEL: NodeId = NodeId(950);
+/// Drag handle pill at the top of the Widget Gallery panel.
+pub const GAL_DRAG_HANDLE: NodeId = NodeId(951);
+/// Resize gripper at the Widget Gallery's bottom-right corner.
+pub const GAL_RESIZE_HANDLE: NodeId = NodeId(952);
+/// Close (X) button at the top-right of the Widget Gallery — alternate
+/// way to dismiss the panel beyond clicking the TopBar palette pill.
+pub const GAL_CLOSE: NodeId = NodeId(953);
 /// Drag handle at the top of the Hierarchy.
 pub const HIER_DRAG_HANDLE: NodeId = NodeId(398);
 /// Resize gripper at the Hierarchy's bottom-right corner.

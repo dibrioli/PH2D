@@ -118,6 +118,10 @@ pub fn delta_for_drag(cursor_delta_y: f32, track_h: f32, content_h: f32, visible
 /// lookup. Hierarchy gets a separate id.)
 pub const INSPECTOR_SCROLLBAR_ID: NodeId = NodeId(820);
 pub const HIERARCHY_SCROLLBAR_ID: NodeId = NodeId(821);
+/// Widget Gallery floating panel scrollbar — mirrors the Inspector's
+/// behavior with an independent thumb id so dispatch can route
+/// drag-scroll events without aliasing the Inspector's scroll state.
+pub const GALLERY_SCROLLBAR_ID: NodeId = NodeId(822);
 
 #[cfg(test)]
 mod tests {

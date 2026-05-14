@@ -37,6 +37,7 @@ pub mod left_rail;
 pub mod selection;
 pub mod style;
 pub mod topbar;
+pub mod widget_gallery;
 
 pub use bottom_hud::{BottomHudStats, paint_bottom_hud};
 pub use canvas::{paint_canvas_bg, paint_drop_overlay};
@@ -199,6 +200,17 @@ pub struct HeroScreen {
     /// [`HeroScreen::apply_event`] before the topbar's stub
     /// `apply_event` runs. Default `false`.
     pub image_tools_mode: bool,
+    /// Visibility of the floating **Widget Gallery** panel — toggled
+    /// by clicks on the `TOPBAR_WIDGET_GALLERY` palette button.
+    /// Painted as an overlay on top of the canvas (NOT in the panel
+    /// z-order list, since it doesn't dock). Default `false`.
+    pub widget_gallery_visible: bool,
+    /// Rect of the Widget Gallery panel in viewport pixels. Set on
+    /// first toggle to a centered default; persisted across frames so
+    /// dragging keeps the position. Width and height match the
+    /// reference snapshot's Inspector dimensions so the showcase fits
+    /// without scroll.
+    pub widget_gallery_rect: Option<crate::zones::Rect>,
     /// Live-mode entity rows published by the host via
     /// [`HeroScreen::sync_from_hierarchy`] (ADR-0025 M14.4a).
     ///
@@ -429,6 +441,8 @@ impl HeroScreen {
             hierarchy_visible: true,
             stats_visible: true,
             image_tools_mode: false,
+            widget_gallery_visible: false,
+            widget_gallery_rect: None,
             live_hierarchy_entries: None,
             grid_visible: true,
             grid_view: None,
@@ -466,6 +480,7 @@ impl HeroScreen {
         left_rail::populate(store);
         hierarchy::populate(store);
         inspector::populate(store);
+        widget_gallery::populate(store);
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -904,6 +919,19 @@ impl HeroScreen {
             && id == ids::TOPBAR_IMAGE_TOOLS
         {
             self.image_tools_mode = !self.image_tools_mode;
+            return true;
+        }
+        // Widget Gallery toggle — palette pill in the TopBar opens /
+        // closes the floating reference panel. State lives on
+        // `HeroScreen::widget_gallery_visible`; geometry is materialized
+        // lazily on the first show against the current viewport (see
+        // `paint_hero_screen`). Same handler covers the panel's own
+        // close (X) hit registered at `GAL_CLOSE` so dismissing from
+        // either entry point goes through one code path.
+        if let WidgetEvent::Click(id) = event
+            && (id == ids::TOPBAR_WIDGET_GALLERY || id == ids::GAL_CLOSE)
+        {
+            self.widget_gallery_visible = !self.widget_gallery_visible;
             return true;
         }
         // Trim Transparency action — raise the `pending_trim_transparency`
@@ -1365,6 +1393,74 @@ pub fn paint_hero_screen(
     if hero.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
     }
+    // Widget Gallery floating panel. Sits above every docked panel
+    // and the bottom HUD but below tooltips + context menus so a
+    // user inspecting the gallery can still summon menus / hover
+    // helpers. Geometry materialized lazily on first show; once set,
+    // the base rect persists and drag / resize deltas come from the
+    // store (`blender_picker_offset` + `panel_resize_delta`) so the
+    // gallery is movable + resizable like the Inspector.
+    if hero.widget_gallery_visible {
+        let base_rect = match hero.widget_gallery_rect {
+            Some(r) => r,
+            None => {
+                let r = widget_gallery::default_rect(
+                    layout.viewport.w,
+                    layout.viewport.h,
+                    layout.inspector.w,
+                );
+                hero.widget_gallery_rect = Some(r);
+                r
+            }
+        };
+        let gal_off = hero.store.blender_picker_offset(ids::GAL_PANEL);
+        let gal_resize = hero.store.panel_resize_delta(ids::GAL_PANEL);
+        let (gallery_rect, gal_clamped_off, gal_clamped_resize) =
+            clamp_panel(base_rect, gal_off, gal_resize, viewport);
+        if (gal_clamped_off.0 - gal_off.0).abs() > f32::EPSILON
+            || (gal_clamped_off.1 - gal_off.1).abs() > f32::EPSILON
+        {
+            hero.store.set_blender_picker_offset(
+                ids::GAL_PANEL,
+                gal_clamped_off.0,
+                gal_clamped_off.1,
+            );
+        }
+        if (gal_clamped_resize.0 - gal_resize.0).abs() > f32::EPSILON
+            || (gal_clamped_resize.1 - gal_resize.1).abs() > f32::EPSILON
+        {
+            hero.store.set_panel_resize_delta(
+                ids::GAL_PANEL,
+                gal_clamped_resize.0,
+                gal_clamped_resize.1,
+            );
+        }
+        // Publish the panel rect so wheel-event dispatch + chrome
+        // routing recognize "inside the gallery". Independent panel
+        // id (`GAL_PANEL`) keeps Inspector's `INSP_PANEL` state
+        // untouched.
+        hero.store.set_panel_rect(ids::GAL_PANEL, gallery_rect);
+        widget_gallery::paint(
+            gallery_rect,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+        );
+        // Publish content + visible heights so `dispatch_wheel` knows
+        // the scroll bound for `GAL_PANEL`. Clamp scroll here too so
+        // a shrunken panel can't leave scroll past max.
+        let content_h = widget_gallery::last_content_h();
+        let visible_h = widget_gallery::last_visible_h();
+        hero.store.set_panel_content_h(ids::GAL_PANEL, content_h);
+        hero.store.set_panel_visible_h(ids::GAL_PANEL, visible_h);
+        let max_scroll = (content_h - visible_h).max(0.0);
+        let cur = hero.store.panel_scroll(ids::GAL_PANEL);
+        if cur > max_scroll {
+            hero.store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
+        }
+    }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);
     // Context menu overlay — last so the floating menu sits above
@@ -1615,6 +1711,166 @@ mod tests {
         let mut hero = HeroScreen::new(NodeId(1));
         let consumed = hero.apply_event(WidgetEvent::Click(ids::TOPBAR_SAVE));
         assert!(!consumed);
+    }
+
+    /// Regression: the Widget Gallery must publish content_h /
+    /// visible_h to the store after painting so the wheel dispatch
+    /// can clamp the scroll bound on `GAL_PANEL`. Without this the
+    /// user reports "scroll doesn't work" — wheel events would either
+    /// be ignored (no panel match) or fail to advance (max_scroll = 0).
+    #[test]
+    fn gallery_publishes_scroll_bounds_after_paint() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.widget_gallery_visible = true;
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let content_h = hero
+            .store
+            .panel_content_h(ids::GAL_PANEL)
+            .expect("GAL_PANEL content_h must be published after paint");
+        let visible_h = hero
+            .store
+            .panel_visible_h(ids::GAL_PANEL)
+            .expect("GAL_PANEL visible_h must be published after paint");
+        assert!(
+            content_h > 0.0,
+            "gallery content_h should be positive (sections painted), got {content_h}"
+        );
+        assert!(
+            visible_h > 0.0,
+            "gallery visible_h should be positive (body region), got {visible_h}"
+        );
+        assert!(
+            content_h > visible_h,
+            "gallery should overflow (content_h={content_h} > visible_h={visible_h}) \
+             so scroll has effect — otherwise wheel is a no-op"
+        );
+        let panel_rect = hero
+            .store
+            .panel_rect(ids::GAL_PANEL)
+            .expect("GAL_PANEL rect must be registered for panel_at");
+        // The cursor at the center of the panel must select GAL_PANEL
+        // when dispatch_wheel calls `panel_at`.
+        let cx = panel_rect.x + panel_rect.w * 0.5;
+        let cy = panel_rect.y + panel_rect.h * 0.5;
+        assert_eq!(
+            hero.store.panel_at(cx, cy),
+            Some(ids::GAL_PANEL),
+            "cursor over gallery center should resolve to GAL_PANEL"
+        );
+        // End-to-end wheel: dispatch a wheel event at the gallery
+        // center with a negative delta (macOS "swipe up" / scroll
+        // forward) and assert panel_scroll advanced.
+        let arena = bumpalo::Bump::new();
+        let before = hero.store.panel_scroll(ids::GAL_PANEL);
+        let _ = crate::interaction::dispatch_wheel(
+            &mut hero.store,
+            ph2d_host::WheelEvent {
+                x: cx,
+                y: cy,
+                delta_x: 0.0,
+                delta_y: -40.0,
+                modifiers: ph2d_host::Modifiers::default(),
+                timestamp_ns: 0,
+            },
+            &arena,
+        );
+        let after = hero.store.panel_scroll(ids::GAL_PANEL);
+        assert!(
+            after > before,
+            "wheel down on gallery should increase panel_scroll \
+             (before={before}, after={after})"
+        );
+    }
+
+    /// Regression: right-clicking inside the gallery body → choosing
+    /// "Create note" must push a `NoteData` keyed on `GAL_PANEL` (NOT
+    /// `INSP_PANEL`) so the gallery renders it on the next frame. The
+    /// gallery is the canonical UI ground-truth for peripheral agents
+    /// — features the showcase advertises (sticky notes, section
+    /// outline) need to work in the in-app gallery, not just in the
+    /// retired reference snapshot.
+    #[test]
+    fn gallery_create_note_targets_gal_panel() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.widget_gallery_visible = true;
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        // Paint once so `panel_rect(GAL_PANEL)` is published and
+        // `LAST_BODY_TOP_SCREEN_Y` is set for the upcoming dispatch.
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let gallery_rect = hero.store.panel_rect(ids::GAL_PANEL).unwrap();
+        let cx = gallery_rect.x + gallery_rect.w * 0.5;
+        let cy = gallery_rect.y + gallery_rect.h * 0.5;
+        // Open the CreateNote context menu via the same path the
+        // pointer dispatch uses for a secondary-button down at the
+        // gallery center.
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: cx,
+                y: cy,
+                kind: crate::interaction::ContextMenuKind::CreateNote {
+                    panel: ids::GAL_PANEL,
+                    before_section: None,
+                },
+            });
+        // The real pointer dispatch closes the menu on the Down that
+        // hit the menu item, snapshotting the request into
+        // `last_context_menu` before the Click reaches `apply_event`.
+        // Skipping this step would leave the request in the still-open
+        // `context_menu` slot where `consume_last_context_menu` can't
+        // see it.
+        hero.store.close_context_menu();
+        // Click "Create note" — inspector::apply_event handles it.
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_CREATE_NOTE));
+        assert!(consumed, "CTX_MENU_CREATE_NOTE click should be consumed");
+        assert_eq!(
+            hero.store.notes_for_panel(ids::GAL_PANEL).len(),
+            1,
+            "exactly one note should be pushed against GAL_PANEL"
+        );
+        assert_eq!(
+            hero.store.notes_for_panel(ids::INSP_PANEL).len(),
+            0,
+            "INSP_PANEL should be untouched — the gallery's note must \
+             not leak into the live Inspector"
+        );
+    }
+
+    /// Regression: right-clicking on a gallery section header →
+    /// choosing a color must write `section_outline_color` so the
+    /// gallery's next paint draws the colored ring around that
+    /// section's body. Mirror of the live Inspector's right-click
+    /// outline path — same NodeIds (`INSP_SECTION_*`) because the
+    /// gallery re-uses the section painters.
+    #[test]
+    fn gallery_section_outline_color_writes_through() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.widget_gallery_visible = true;
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        // Open the SectionOutline menu for the Inputs section header.
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SectionOutline {
+                    section: ids::INSP_SECTION_INPUTS,
+                },
+            });
+        // Mirror the real Down-on-menu-item path that snapshots the
+        // request into `last_context_menu` before the Click fires.
+        hero.store.close_context_menu();
+        // Pick "Yellow" (color_idx 0).
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_OUTLINE_0));
+        assert!(consumed, "CTX_MENU_OUTLINE_0 click should be consumed");
+        assert_eq!(
+            hero.store.section_outline_color(ids::INSP_SECTION_INPUTS),
+            Some(0),
+            "Inputs section should have outline color 0 (Yellow) set"
+        );
     }
 
     #[test]

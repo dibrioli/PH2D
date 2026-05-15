@@ -13,6 +13,7 @@
 
 mod blender;
 pub mod clipboard;
+mod hover;
 pub mod keymap;
 mod number_input;
 mod text_ops;
@@ -20,6 +21,7 @@ mod text_ops;
 use blender::{apply_blender_channel_value, apply_blender_hit, derive_blender_channel_value};
 pub use clipboard::apply_clipboard_paste;
 use clipboard::{clipboard_extract_selection, collapse_selection, delete_selection_if_any};
+use hover::{set_widget_pressed, set_widget_released, update_hover};
 pub use keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
     KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
@@ -1836,107 +1838,6 @@ fn is_focusable(store: &WidgetStore, id: ph2d_a11y::NodeId) -> bool {
         // Phases C-D add per-kind focusability for the rest.
         Some(_) => true,
         None => false,
-    }
-}
-
-fn update_hover(store: &mut WidgetStore, hit: Option<ph2d_a11y::NodeId>) {
-    let prev = store.hot_id();
-    if prev == hit {
-        return;
-    }
-    if let Some(old) = prev {
-        // Revert previous widget's state from Hovered → Normal
-        // (unless it's currently Pressed/Disabled, which we leave
-        // alone).
-        leave_hover(store, old);
-    }
-    if let Some(new) = hit {
-        // Skip hover state on the active (dragging) widget — its
-        // state stays Pressed.
-        if store.active_id() != Some(new) {
-            enter_hover(store, new);
-        }
-    }
-    store.set_hot(hit);
-}
-
-fn enter_hover(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    match store.get_mut(id) {
-        Some(InteractiveState::Button { state }) if *state == ButtonState::Normal => {
-            *state = ButtonState::Hovered
-        }
-        Some(InteractiveState::Toggle { state, .. }) if *state == ToggleState::Normal => {
-            *state = ToggleState::Hovered
-        }
-        Some(InteractiveState::Slider { state, .. }) if *state == SliderState::Normal => {
-            *state = SliderState::Hovered
-        }
-        Some(InteractiveState::Checkbox { state, .. }) if *state == CheckboxState::Normal => {
-            *state = CheckboxState::Hovered
-        }
-        _ => {}
-    }
-}
-
-fn leave_hover(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    match store.get_mut(id) {
-        Some(InteractiveState::Button { state }) if *state == ButtonState::Hovered => {
-            *state = ButtonState::Normal
-        }
-        Some(InteractiveState::Toggle { state, .. }) if *state == ToggleState::Hovered => {
-            *state = ToggleState::Normal
-        }
-        Some(InteractiveState::Slider { state, .. }) if *state == SliderState::Hovered => {
-            *state = SliderState::Normal
-        }
-        Some(InteractiveState::Checkbox { state, .. }) if *state == CheckboxState::Hovered => {
-            *state = CheckboxState::Normal
-        }
-        _ => {}
-    }
-}
-
-fn set_widget_pressed(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    match store.get_mut(id) {
-        Some(InteractiveState::Button { state }) => *state = ButtonState::Pressed,
-        Some(InteractiveState::Toggle { state, .. }) => *state = ToggleState::Pressed,
-        Some(InteractiveState::Slider { state, .. }) => *state = SliderState::Dragging,
-        Some(InteractiveState::Checkbox { state, .. }) => *state = CheckboxState::Pressed,
-        _ => {}
-    }
-}
-
-fn set_widget_released(store: &mut WidgetStore, id: ph2d_a11y::NodeId, still_hot: bool) {
-    match store.get_mut(id) {
-        Some(InteractiveState::Button { state }) => {
-            *state = if still_hot {
-                ButtonState::Hovered
-            } else {
-                ButtonState::Normal
-            };
-        }
-        Some(InteractiveState::Toggle { state, .. }) => {
-            *state = if still_hot {
-                ToggleState::Hovered
-            } else {
-                ToggleState::Normal
-            };
-        }
-        Some(InteractiveState::Slider { state, .. }) => {
-            *state = if still_hot {
-                SliderState::Hovered
-            } else {
-                SliderState::Normal
-            };
-        }
-        Some(InteractiveState::Checkbox { state, .. }) => {
-            *state = if still_hot {
-                CheckboxState::Hovered
-            } else {
-                CheckboxState::Normal
-            };
-        }
-        _ => {}
     }
 }
 

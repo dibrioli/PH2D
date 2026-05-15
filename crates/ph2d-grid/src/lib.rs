@@ -76,4 +76,42 @@ pub trait GridMath {
     /// including `center`. Clears + pushes. Order is implementation-
     /// defined but stable.
     fn range(&self, center: Self::Cell, radius: u32, out: &mut Vec<Self::Cell>);
+
+    /// Snap `world` to the center of its containing cell.
+    ///
+    /// Default impl composes `cell_to_world_center(world_to_cell(world))`
+    /// — overrides should be rare. Zero-alloc (no buffers used).
+    fn snap_to_center(&self, world: Vec2) -> Vec2 {
+        self.cell_to_world_center(self.world_to_cell(world))
+    }
+
+    /// Snap `world` to the nearest cell vertex (corner / intersection).
+    ///
+    /// Default impl enumerates the containing cell's vertices via
+    /// [`cell_to_world_vertices`] and returns the closest one. Uses
+    /// a scratch buffer the caller owns; pass an empty `Vec` for
+    /// one-off snaps, or reuse across calls for zero alloc.
+    ///
+    /// [`cell_to_world_vertices`]: GridMath::cell_to_world_vertices
+    fn snap_to_nearest_vertex(&self, world: Vec2, scratch: &mut Vec<Vec2>) -> Vec2 {
+        let cell = self.world_to_cell(world);
+        self.cell_to_world_vertices(cell, scratch);
+        debug_assert!(
+            !scratch.is_empty(),
+            "cell_to_world_vertices must produce ≥ 1 vertex"
+        );
+        let mut best = scratch[0];
+        let mut best_d2 = f32::INFINITY;
+        for v in scratch.iter() {
+            let d2 = (v[0] - world[0]).powi(2) + (v[1] - world[1]).powi(2);
+            if d2 < best_d2 {
+                best_d2 = d2;
+                best = *v;
+            }
+        }
+        best
+    }
 }
+
+pub mod astar;
+pub mod snap;

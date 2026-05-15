@@ -29,6 +29,7 @@ pub mod quadtree;
 pub mod square;
 pub mod staggered;
 pub mod tri;
+pub mod voronoi;
 
 /// 2D world position in meters. Matches the editor's existing
 /// `[f32; 2]` convention (see `crates/ph2d-editor/src/grid.rs`).

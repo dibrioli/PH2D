@@ -33,12 +33,14 @@
 
 mod cursor_pos;
 mod hero_bridge;
+mod image_import;
 mod input_log;
 mod integration;
 mod keymap;
 mod theme;
 
 use cursor_pos::live_cursor_in_window;
+use image_import::import_image_at_camera;
 use input_log::log_input_event;
 use keymap::winit_to_editor_keycode;
 use theme::parse_theme_env;
@@ -3407,127 +3409,17 @@ fn forward_wheel_to_hero(gfx: Option<&mut AppGfx>, event: ph2d_host::WheelEvent)
     let _ = hero.handle_wheel(event, &gfx.hero_arena);
 }
 
-/// M14.4c+M14.4d retrofit: full pipeline for importing one image
-/// file into the running demo.
-///
-/// 1. Read bytes from disk.
-/// 2. `AssetDb::insert_image_bytes` (auto-detects PNG/WEBP/JPEG,
-///    hashes blake3 per HR-6).
-/// 3. `SpriteRenderer::insert_atlas_sprite` packs the native-
-///    resolution RGBA into the atlas via the Skyline rect packer
-///    — no resize, no aspect-ratio squash.
-/// 4. Spawn `(Transform at camera center, Sprite { atlas_index:
-///    cell_idx, size: source_pixels / pixels_per_meter }, Name)`.
-///
-/// Returns the human-readable label that was assigned to the
-/// spawned entity (so the host can show it in a toast).
-// Helper has 8 args because the import path is a top-level fixture
-// orchestrator that needs full access to sim/renderer/asset_db plus
-// the camera + per-import inputs. Splitting into a struct would just
-// move the noise — every call site already destructures `AppGfx`.
-#[allow(clippy::too_many_arguments)]
-fn import_image_at_camera(
-    sim: &mut SimWorld,
-    renderer: &mut SpriteRenderer,
-    asset_db: &AssetDb,
-    camera: &Camera2d,
-    cell_idx: u32,
-    path: &std::path::Path,
-    pixels_per_meter: f32,
-    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
-) -> Result<String, String> {
-    let bytes = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
-    let asset_id = asset_db
-        .insert_image_bytes(&bytes)
-        .map_err(|e| format!("decode {}: {e}", path.display()))?;
-    let decoded = asset_db
-        .get(&asset_id)
-        .ok_or_else(|| format!("asset {asset_id} missing after insert"))?;
-    let (width, height, pixels) = match &*decoded {
-        ph2d_asset::Asset::ImageRgba8 {
-            width,
-            height,
-            pixels,
-        } => (*width, *height, pixels.clone()),
-        _ => return Err(format!("{asset_id} is not ImageRgba8 after decode")),
-    };
-    // M14.7 polish: pack via the regrow path so a 2nd / 3rd 4K
-    // import doubles the atlas instead of failing with AtlasFull.
-    // The closure recovers each existing region's source bytes from
-    // `asset_db` via `atlas_asset_map[key] → AssetId`. Track this
-    // import's mapping BEFORE the insert so a regrow triggered by
-    // it sees the new key.
-    atlas_asset_map.insert(cell_idx, asset_id);
-    let fetch_pixels = |key: u32| -> Option<Vec<u8>> {
-        let aid = atlas_asset_map.get(&key)?;
-        let asset = asset_db.get(aid)?;
-        match &*asset {
-            // `pixels` is `Arc<[u8]>`; the regrow callback wants an
-            // owned `Vec<u8>` because the underlying packer may
-            // outlive the asset borrow.
-            ph2d_asset::Asset::ImageRgba8 { pixels, .. } => Some(pixels.to_vec()),
-            _ => None,
-        }
-    };
-    if let Err(e) =
-        renderer.insert_atlas_sprite_with_regrow(cell_idx, width, height, &pixels, fetch_pixels)
-    {
-        // On failure, roll back the map insert so the next import
-        // doesn't see a dangling key → nonexistent atlas region.
-        atlas_asset_map.remove(&cell_idx);
-        return Err(format!("atlas insert {}: {e}", path.display()));
-    }
-
-    let base_label = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_owned())
-        .unwrap_or_else(|| format!("imported_{cell_idx}"));
-    // M14.7 polish: enforce unique entity names. Without this, the
-    // same image imported N times produced N rows all sharing the
-    // same `Name`, and the M14.6 D selection-by-label sync would
-    // highlight every row when one of the duplicates was canvas-
-    // picked. We scan the SimWorld for an existing match and append
-    // `_{cell_idx}` (monotonic, never repeats) on collision.
-    let label = {
-        let world = sim.world_mut();
-        let mut q = world.query::<&Name>();
-        let collides = q
-            .iter(world)
-            .any(|n: &Name| n.as_str() == base_label.as_str());
-        if collides {
-            format!("{base_label}_{cell_idx}")
-        } else {
-            base_label
-        }
-    };
-    let spawn_pos = Vec2::new(camera.center[0], camera.center[1]);
-    // Sprite world size = source pixels / pixels_per_meter. With the
-    // Skyline atlas the source bytes are stored at full resolution,
-    // so the world quad's aspect ratio matches the file exactly
-    // (a 256×128 PNG renders as a 2:1 rect in world space).
-    let safe_px_per_m = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
-    let world_w = (width as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
-    let world_h = (height as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
-    sim.world_mut().spawn((
-        Transform::from_translation(spawn_pos),
-        Sprite::atlas(cell_idx, [world_w, world_h], [1.0, 1.0, 1.0, 1.0]),
-        Name::new(label.clone()),
-    ));
-    Ok(label)
-}
-
 /// Floor for `pixels_per_meter` used inside the import math; below
 /// this a single sprite would span kilometers and break camera math.
 /// The UI clamps to a higher floor (`MIN_PIXELS_PER_METER = 1.0` in
 /// `ph2d_editor::project`) but defense-in-depth here keeps the shell
 /// safe even if a future config path skips that clamp.
-const EPS_PIXELS_PER_METER: f32 = 0.01;
+pub(crate) const EPS_PIXELS_PER_METER: f32 = 0.01;
 
 /// Floor for the world-space side length of an imported sprite.
 /// Guarantees the quad is selectable even if the user picks an
 /// absurd `pixels_per_meter` value combined with a 1-pixel image.
-const MIN_SPRITE_SIZE: f32 = 0.001;
+pub(crate) const MIN_SPRITE_SIZE: f32 = 0.001;
 
 /// Query the live cursor position relative to `window` in physical
 /// pixels (top-left origin). Returns `None` if the platform path

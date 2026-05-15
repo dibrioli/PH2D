@@ -13,6 +13,7 @@
 
 mod blender;
 pub mod clipboard;
+mod focus;
 mod hover;
 pub mod keymap;
 mod number_input;
@@ -21,6 +22,7 @@ mod text_ops;
 use blender::{apply_blender_channel_value, apply_blender_hit, derive_blender_channel_value};
 pub use clipboard::apply_clipboard_paste;
 use clipboard::{clipboard_extract_selection, collapse_selection, delete_selection_if_any};
+use focus::{apply_click, cycle_focus, is_focusable};
 use hover::{set_widget_pressed, set_widget_released, update_hover};
 pub use keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
@@ -32,7 +34,6 @@ use text_ops::{
 };
 
 use super::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::widget::{ButtonState, CheckboxState, CheckboxValue, SliderState, ToggleState};
 use crate::zones::Rect;
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
@@ -1821,130 +1822,13 @@ pub(super) fn write_hex_canonical(store: &mut WidgetStore, id: ph2d_a11y::NodeId
     }
 }
 
-// ---------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------
-
-fn is_focusable(store: &WidgetStore, id: ph2d_a11y::NodeId) -> bool {
-    match store.get(id) {
-        Some(InteractiveState::Button { state }) => *state != ButtonState::Disabled,
-        Some(InteractiveState::Toggle { state, .. }) => *state != ToggleState::Disabled,
-        Some(InteractiveState::Slider { state, .. }) => *state != SliderState::Disabled,
-        Some(InteractiveState::Checkbox { state, .. }) => *state != CheckboxState::Disabled,
-        // Plain rects (section headers without collapsibility, etc.)
-        // are still focusable for keyboard nav purposes — they don't
-        // emit click events but accept Tab focus.
-        Some(InteractiveState::Plain) => true,
-        // Phases C-D add per-kind focusability for the rest.
-        Some(_) => true,
-        None => false,
-    }
-}
-
-fn apply_click<'a>(
-    store: &mut WidgetStore,
-    id: ph2d_a11y::NodeId,
-    events: &mut BumpVec<'a, WidgetEvent>,
-) {
-    // Upgrade to `DoubleClick(id)` when the matching Down flagged
-    // this as a double-click on the same id. Consumed once per
-    // gesture so a single click after that doesn't carry the flag.
-    let pending = store.take_pending_double_click();
-    let click_event = if pending == Some(id) {
-        WidgetEvent::DoubleClick(id)
-    } else {
-        WidgetEvent::Click(id)
-    };
-    match store.get_mut(id) {
-        Some(InteractiveState::Toggle { on, .. }) => {
-            *on = !*on;
-            events.push(WidgetEvent::Toggled(id));
-        }
-        Some(InteractiveState::Checkbox { value, .. }) => {
-            *value = match *value {
-                CheckboxValue::Unchecked | CheckboxValue::Indeterminate => CheckboxValue::Checked,
-                CheckboxValue::Checked => CheckboxValue::Unchecked,
-            };
-            events.push(WidgetEvent::Toggled(id));
-        }
-        Some(InteractiveState::Dropdown { open, .. }) => {
-            *open = !*open;
-            // No event — caller observes via store.get(id).
-        }
-        Some(InteractiveState::Combobox { open, .. }) => {
-            *open = !*open;
-        }
-        Some(InteractiveState::Button { .. }) | Some(InteractiveState::Plain) => {
-            events.push(click_event);
-        }
-        // Phase D adds per-kind click semantics (Tabs select,
-        // Modal dismiss, TreeView select, ContextMenu item, etc.).
-        _ => {
-            events.push(click_event);
-        }
-    }
-}
-
-fn cycle_focus<'a>(store: &mut WidgetStore, forward: bool, events: &mut BumpVec<'a, WidgetEvent>) {
-    let order = store.focus_order();
-    if order.is_empty() {
-        return;
-    }
-    let current_pos = match store.focus_id() {
-        Some(id) => order.iter().position(|x| *x == id),
-        None => None,
-    };
-    let len = order.len();
-    let start = match current_pos {
-        Some(p) => {
-            if forward {
-                (p + 1) % len
-            } else {
-                (p + len - 1) % len
-            }
-        }
-        None => {
-            if forward {
-                0
-            } else {
-                len - 1
-            }
-        }
-    };
-    // Walk forward until we find a focusable widget. Stop after one
-    // full cycle to avoid infinite loop if nothing is focusable.
-    let mut idx = start;
-    for _ in 0..len {
-        let id = order[idx];
-        if is_focusable(store, id) {
-            if let Some(old) = store.focus_id()
-                && old != id
-            {
-                commit_number_buffer(store, old, events);
-                commit_hex_buffer(store, old, events);
-                reset_focused_visual_state(store, old);
-                events.push(WidgetEvent::Blur(old));
-            }
-            if store.focus_id() != Some(id) {
-                store.set_focus(Some(id));
-                init_number_buffer(store, id);
-                events.push(WidgetEvent::Focus(id));
-            }
-            return;
-        }
-        idx = if forward {
-            (idx + 1) % len
-        } else {
-            (idx + len - 1) % len
-        };
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::interaction::InteractiveState;
-    use crate::widget::{ButtonState, SliderOrientation};
+    use crate::widget::{
+        ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, ToggleState,
+    };
     use crate::zones::Rect;
     use ph2d_a11y::NodeId;
     use ph2d_host::{Modifiers, PointerSource};

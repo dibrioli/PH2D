@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 22:45 BRT
+**Última atualização:** 2026-05-15 23:00 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -15,7 +15,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Tier-1c ColorPicker + AABB rows + snap subdivisions UI landed `3e14149`+`3e1ffea`) | 2026-05-15 22:30 |
+| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | done (final wiring `1d4a0d7` — snap_world em gizmo Translate + drag-drop) | 2026-05-15 23:00 |
 | 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | session-closed M1+M2-scaffold (M1 chroma+flood Oklab `27d6544` · M2 grabcut subfolder stubs `01ba55f` · 46 inline tests) — M2 body ~1200 LOC pendente próxima sessão | 2026-05-15 22:45 |
 | 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | done | 2026-05-15 20:45 |
 | 4 | (vago) | — | — | — |
@@ -89,7 +89,7 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `67df530` — 2026-05-15 22:30 — feat(image-edit) i18n stub + AccessKit Button a11y + single-level Undo (Trim + Make Square; Cmd+Z + TOOL_UNDO click + toast hint; ph2d-i18n stub para HR-15 partial). Workspace verde: 1131 nextest pass.
+main @ `1d4a0d7` — 2026-05-15 23:00 — feat(grid-snap) wire snap_world at gizmo Translate + drag-drop sites (slot 1 fully end-to-end). Workspace verde: 1135 nextest pass.
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -100,6 +100,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 23:00 | slot 1 (grid-snap) fechado `done`. Agente reportou feature completa em `3e1ffea` com 5 itens "wiring pendente" — investigação Coord mostrou que 4/5 já estavam wirados em commits anteriores (IconId::GridSettings + TOPBAR_GRID_SETTINGS + paint_grid → grid_snap::render::paint em `799fb82`; canvas-pointer hook é out-of-scope). Único pendente real: `snap_world` call-sites em shells/desktop/main.rs. Coord wirou em commit `1d4a0d7`: gizmo Translate (após compute_gizmo_transform, antes do write em Transform) + drag-drop spawn (após screen_to_world, antes do import_image_at_camera). Workspace verde 1135 nextest pass. Paste handler fica pra quando paste pipeline existir. Slot 1 entrega final: 11 GridKinds + A* + painel flutuante completo + origin/subdivisions/snap/inspect/colorpicker + agora SNAP REAL FUNCIONA. Smoke visual do Enio recomendado: `./play.command` ciclar 9 kinds, mover sprite com Gizmo + snap_enabled=true, validar alinhamento ao overlay. |
 | 2026-05-15 22:45 | slot 2 (bgremoval) fechou sessão estável: M1 chroma+flood Oklab completo em `27d6544` (35 inline tests, peer-reviewed Oklab > LAB + downscale 1024² + alpha-aware + FP noise floor) + M2 grabcut subfolder scaffolded em `01ba55f` (mod.rs orquestrador + gmm/graph/maxflow stubs com Apache-2.0 headers OpenCV, 11 inline tests). Total ~2750 LOC, 46 inline tests bgremoval, 669/669 ph2d-editor pass. Bypassou hook com `--no-verify` documentado por 2 clippy errors pré-existentes em grid_snap/ (slot 1) — já fixos em `3e14149`/`3e1ffea` (drive-by slot 1 antes do Coord precisar agir). M2 body ~1200 LOC numéricos pendente próxima sessão: maxflow.rs BK ~600 LOC com oracle pathfinding::edmonds_karp 8×8 tests, gmm.rs ~280 LOC k-means++ E/M + 3×3 cov via Cramer inline, graph.rs ~180 LOC β + n-links + t-links clamping, mod.rs wiring real com image::imageops::resize Triangle + loop iterativo max 2 default cap 5 + early-exit mask-flip <0.1%. Status `working` → `session-closed`. |
 | 2026-05-15 22:30 | image-edit cross-feature fechados (i18n stub + a11y + Undo single-level). `ph2d-i18n` saiu de vazio (string table en-US keyed por Fluent-style ids — Fluent real M13). `screens/hero/topbar.rs` ganhou `image_action_a11y_nodes()` publicando `Role::Button` + label + Action::Click para Trim+MS (shell TreeUpdate consume M14.x). `AppGfx::image_edit_undo: Option<ImageEditSnapshot>` + drainer no render loop + Cmd+Z handler + `pending_undo_image_edit` em HeroScreen. C1's release-imediato substituído por refcount-hold no snapshot (release on overwrite/undo). 2 a11y tests + workspace verde 1131. Commit `67df530`. |
 | 2026-05-15 21:40 | slot 1 reportou bloqueio externo (cargo check editor falhando por `use kurbo::BezPath` em bgremoval/icon.rs slot 2). Coord confirmou que slot 2 já corrigiu para `use ph2d_vector::BezPath` antes do report; working tree do editor compila verde (1 warning não-fatal). Slot 1 destravado sem ação Coord. `cargo nextest -p ph2d-editor -E 'not test(/bgremoval/)'` = 661 pass. ph2d-grid = 96 pass. Tier-1 (origin offset + subdivisions) já landed em `fc983c3` — não é blocked-waiting-coord, é working. |

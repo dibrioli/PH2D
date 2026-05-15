@@ -20,10 +20,11 @@ use crate::screens::hero::style::{
     paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use crate::widget::{
-    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, NumberInput,
-    SectionHeader, Slider, SliderOrientation, SliderState, TextInputState, Toggle, ToggleState,
-    paint_button, paint_dropdown_chip, paint_dropdown_popover, paint_number_input_with_buffer,
-    paint_section_header, paint_slider, paint_toggle,
+    Button, ButtonKind, ButtonState, ColorSwatch, Dropdown, DropdownOption, DropdownState,
+    NumberInput, SectionHeader, Slider, SliderOrientation, SliderState, SwatchSize, SwatchState,
+    TextInputState, Toggle, ToggleState, paint_button, paint_color_swatch, paint_dropdown_chip,
+    paint_dropdown_popover, paint_number_input_with_buffer, paint_section_header, paint_slider,
+    paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_grid::hex::{HexOffset, HexOrientation};
@@ -182,6 +183,11 @@ pub fn populate(store: &mut WidgetStore) {
             ids::GS_CFG_SPACING_MAJOR,
             defaults.square_cfg.spacing_major as f64,
         ),
+        // Grid color RGB — alpha stays implicit (controlled by the
+        // opacity slider).
+        (ids::GS_CFG_COLOR_R, defaults.color_rgba[0] as f64),
+        (ids::GS_CFG_COLOR_G, defaults.color_rgba[1] as f64),
+        (ids::GS_CFG_COLOR_B, defaults.color_rgba[2] as f64),
     ];
     for (id, value) in number_specs {
         store.register(
@@ -311,6 +317,17 @@ pub fn paint(
     let opacity_row = Rect::new(inner_x, y, inner_w, ROW_H);
     paint_opacity_slider_row(
         opacity_row,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+    );
+    y += ROW_H + ROW_GAP;
+    let color_row = Rect::new(inner_x, y, inner_w, ROW_H);
+    paint_color_row(
+        color_row,
         scene,
         text_system,
         theme,
@@ -1224,6 +1241,91 @@ fn paint_opacity_slider_row(
     hit_index.register(ids::GS_OPACITY_SLIDER, slider_rect);
 }
 
+/// "Color" row: 3 small R/G/B NumberInputs + a swatch preview.
+/// Alpha is owned by the opacity slider; we never expose it as a
+/// separate channel here so the two controls stay orthogonal.
+#[allow(clippy::too_many_arguments)]
+fn paint_color_row(
+    row: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) {
+    paint_text(
+        text_system,
+        scene,
+        "Color",
+        row.x,
+        row.y + (row.h - LABEL_FONT_SIZE) * 0.5,
+        LABEL_FONT_SIZE,
+        LABEL_COL_W - Spacing::Sm.px(),
+        resolve(ColorToken::Text1, theme),
+    );
+    // Three NumberInputs (R, G, B) side-by-side + a swatch preview.
+    // Widget area = row.w - LABEL_COL_W. Reserve 28px for the swatch
+    // at the right edge; split the remainder across 3 inputs with
+    // 4px gaps.
+    let widget_area = row.w - LABEL_COL_W;
+    let swatch_size = 24.0;
+    let inputs_area = widget_area - swatch_size - Spacing::Sm.px();
+    let gap = 4.0;
+    let input_w = (inputs_area - gap * 2.0) / 3.0;
+    let start_x = row.x + LABEL_COL_W;
+    for (i, (id, channel)) in [
+        (ids::GS_CFG_COLOR_R, state.color_rgba[0]),
+        (ids::GS_CFG_COLOR_G, state.color_rgba[1]),
+        (ids::GS_CFG_COLOR_B, state.color_rgba[2]),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let r = Rect::new(start_x + i as f32 * (input_w + gap), row.y, input_w, row.h);
+        let (ti_state, _, buffer, caret, anchor) = read_number_input(store, *id);
+        let buffer_arg = if ti_state == TextInputState::Focused {
+            Some(buffer)
+        } else {
+            None
+        };
+        let input = NumberInput::new(*id, "", *channel as f64).state(ti_state);
+        paint_number_input_with_buffer(
+            &input,
+            buffer_arg,
+            caret,
+            anchor,
+            r,
+            scene,
+            text_system,
+            theme,
+        );
+        hit_index.register(*id, r);
+    }
+    // Swatch preview — non-interactive, just shows the resulting
+    // color (alpha = full so the user sees pure RGB; the opacity
+    // slider is the orthogonal control).
+    let swatch_rect = Rect::new(
+        row.x + row.w - swatch_size,
+        row.y + (row.h - swatch_size) * 0.5,
+        swatch_size,
+        swatch_size,
+    );
+    let swatch = ColorSwatch {
+        id: crate::NodeId(0),
+        label: String::new(),
+        rgba: [
+            state.color_rgba[0],
+            state.color_rgba[1],
+            state.color_rgba[2],
+            0xFF,
+        ],
+        state: SwatchState::Normal,
+        size: SwatchSize::Md,
+    };
+    paint_color_swatch(&swatch, swatch_rect, scene, theme);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn paint_labeled_toggle(
     label: &str,
@@ -1399,6 +1501,22 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
     // Major-line spacing — Square only (other kinds ignore the id).
     if id == ids::GS_CFG_SPACING_MAJOR && state.kind == GridKind::Square {
         state.square_cfg.spacing_major = v_f32.max(state.square_cfg.cell_size);
+        return true;
+    }
+    // Grid color RGB — clamp each channel to 0..=255 and write
+    // into state.color_rgba. Alpha (index 3) is owned by the
+    // opacity slider; leave it untouched.
+    let to_u8 = |v: f64| v.clamp(0.0, 255.0) as u8;
+    if id == ids::GS_CFG_COLOR_R {
+        state.color_rgba[0] = to_u8(v);
+        return true;
+    }
+    if id == ids::GS_CFG_COLOR_G {
+        state.color_rgba[1] = to_u8(v);
+        return true;
+    }
+    if id == ids::GS_CFG_COLOR_B {
+        state.color_rgba[2] = to_u8(v);
         return true;
     }
     false
@@ -1683,6 +1801,45 @@ mod tests {
             );
             assert_eq!(s.hex_cfg.offset_variant, *expected);
         }
+    }
+
+    #[test]
+    fn apply_event_color_r_writes_state() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        if let Some(InteractiveState::NumberInput { value, .. }) =
+            store.get_mut(ids::GS_CFG_COLOR_R)
+        {
+            *value = 200.0;
+        }
+        apply_event(
+            &mut s,
+            WidgetEvent::ValueChanged(ids::GS_CFG_COLOR_R),
+            &store,
+        );
+        assert_eq!(s.color_rgba[0], 200);
+        // Other channels untouched.
+        let defaults = GridSnapState::default();
+        assert_eq!(s.color_rgba[1], defaults.color_rgba[1]);
+        assert_eq!(s.color_rgba[2], defaults.color_rgba[2]);
+        assert_eq!(s.color_rgba[3], defaults.color_rgba[3]);
+    }
+
+    #[test]
+    fn apply_event_color_clamps_above_255() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        if let Some(InteractiveState::NumberInput { value, .. }) =
+            store.get_mut(ids::GS_CFG_COLOR_B)
+        {
+            *value = 999.0;
+        }
+        apply_event(
+            &mut s,
+            WidgetEvent::ValueChanged(ids::GS_CFG_COLOR_B),
+            &store,
+        );
+        assert_eq!(s.color_rgba[2], 255);
     }
 
     #[test]

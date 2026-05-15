@@ -66,6 +66,14 @@ pub const GS_CFG_ORIGIN_Y: NodeId = NodeId(1040);
 /// with a thicker stroke).
 pub const GS_CFG_SPACING_MAJOR: NodeId = NodeId(1041);
 
+// ─── Grid color (R/G/B NumberInputs + ColorSwatch preview) ─────
+/// Red channel 0..=255.
+pub const GS_CFG_COLOR_R: NodeId = NodeId(1042);
+/// Green channel 0..=255.
+pub const GS_CFG_COLOR_G: NodeId = NodeId(1043);
+/// Blue channel 0..=255.
+pub const GS_CFG_COLOR_B: NodeId = NodeId(1044);
+
 // ─── Snap policy ───────────────────────────────────────────────
 pub const GS_SNAP_ENABLED: NodeId = NodeId(1060);
 pub const GS_SNAP_CENTER: NodeId = NodeId(1061);

@@ -371,6 +371,19 @@ pub struct HeroScreen {
     /// time) so a concurrent selection change doesn't retarget the
     /// action — same contract as `pending_trim_transparency`.
     pub pending_make_square: Option<u64>,
+    /// One-shot intent: undo the most recent image-edit action
+    /// (Trim Transparency / Make Square). Raised by clicking
+    /// `TOOL_UNDO` on the LeftRail or pressing Cmd+Z. The host holds
+    /// the actual snapshot (Sprite source + size + Transform
+    /// translation captured pre-edit) and drains this flag on the
+    /// next frame to restore. Image edits are the only consumer in
+    /// V1 — the broader editor undo system is M14.x scope.
+    pub pending_undo_image_edit: bool,
+    /// Read-only signal from the host: `true` when the host has a
+    /// stored image-edit snapshot that Cmd+Z would restore. Lets the
+    /// UI dim the `TOOL_UNDO` chip when no undo is available. The
+    /// shell writes this each frame after its drain pass.
+    pub has_undoable_image_edit: bool,
     /// M14.5 inspector phase: snapshot of the selected sprite's
     /// data the host publishes each frame so `paint_inspector` can
     /// surface a "Render Source" section without crossing the
@@ -630,6 +643,8 @@ impl HeroScreen {
             pending_reimport: None,
             pending_trim_transparency: None,
             pending_make_square: None,
+            pending_undo_image_edit: false,
+            has_undoable_image_edit: false,
             inspector_sprite: None,
             inspector_transform: None,
             last_inspector_entity: None,
@@ -1142,6 +1157,19 @@ impl HeroScreen {
             && id == ids::IMAGE_ACTION_MAKE_SQUARE
         {
             self.pending_make_square = self.gizmo_selection;
+            return true;
+        }
+        // Image-edit Undo — TOOL_UNDO chip on the LeftRail (also
+        // bound to Cmd+Z in the desktop shell). Raises a one-shot
+        // intent; host drains and restores the most recent Trim /
+        // Make Square snapshot. When `has_undoable_image_edit == false`
+        // (host published no snapshot), the click still consumes (so
+        // the dispatcher doesn't keep walking) but the host's drainer
+        // surfaces a "Nothing to undo" toast.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::TOOL_UNDO
+        {
+            self.pending_undo_image_edit = true;
             return true;
         }
         if topbar::apply_event(&mut self.store, event) {

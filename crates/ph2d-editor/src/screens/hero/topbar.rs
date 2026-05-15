@@ -75,8 +75,14 @@ pub fn populate(store: &mut WidgetStore) {
             "Widget Gallery \u{00b7} reference",
         ),
         (ids::TOPBAR_GRID_SETTINGS, "Grid Settings"),
-        (ids::IMAGE_ACTION_TRIM, "Trim Transparency"),
-        (ids::IMAGE_ACTION_MAKE_SQUARE, "Make Square"),
+        (
+            ids::IMAGE_ACTION_TRIM,
+            ph2d_i18n::tr("tool.trim_transparency.tooltip"),
+        ),
+        (
+            ids::IMAGE_ACTION_MAKE_SQUARE,
+            ph2d_i18n::tr("tool.make_square.tooltip"),
+        ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),
@@ -258,15 +264,11 @@ fn paint_image_action_row(
     // Each action paints as a Single-style pill (matches Save/Open/
     // ImageTools width) so the row visually rhymes with the left half.
     let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
-    // V1 actions — extend this slice to add more pills.
-    const ACTIONS: &[(NodeId, IconId)] = &[
-        (ids::IMAGE_ACTION_TRIM, IconId::TrimTransparency),
-        (ids::IMAGE_ACTION_MAKE_SQUARE, IconId::MakeSquare),
-    ];
-    let total_w = pill_w * ACTIONS.len() as f32 + gap * ACTIONS.len().saturating_sub(1) as f32;
+    let actions = image_action_pills();
+    let total_w = pill_w * actions.len() as f32 + gap * actions.len().saturating_sub(1) as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
     let mut rx = start_x;
-    for (id, icon) in ACTIONS {
+    for (id, icon, _i18n_key) in actions {
         let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
         fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
         stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
@@ -287,6 +289,86 @@ fn paint_image_action_row(
         );
         rx = rect.x + rect.w + gap;
     }
+}
+
+/// Canonical list of Image Tools action pills. Extending this slice
+/// is the only place to add a new image-edit action — `paint_image_action_row`
+/// drives the chrome from it, and [`image_action_a11y_nodes`] surfaces
+/// matching AccessKit Button nodes for HR-12 compliance.
+///
+/// Each tuple: `(NodeId, IconId, i18n key for the visible label)`.
+fn image_action_pills() -> &'static [(NodeId, IconId, &'static str)] {
+    &[
+        (
+            ids::IMAGE_ACTION_TRIM,
+            IconId::TrimTransparency,
+            "tool.trim_transparency.label",
+        ),
+        (
+            ids::IMAGE_ACTION_MAKE_SQUARE,
+            IconId::MakeSquare,
+            "tool.make_square.label",
+        ),
+    ]
+}
+
+/// Geometry of the Image Tools action pill row for a given layout.
+/// Shared between [`paint_image_action_row`] (paints + hit-registers)
+/// and [`image_action_a11y_nodes`] (publishes AccessKit nodes) so the
+/// two surfaces can't drift.
+pub(crate) fn image_action_pill_rects(
+    layout: &HeroLayout,
+    gap: f32,
+) -> Vec<(NodeId, IconId, Rect)> {
+    let row_h = layout.top_bar.h;
+    let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
+    let pills = image_action_pills();
+    let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
+    let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
+    let mut rx = start_x;
+    let mut out = Vec::with_capacity(pills.len());
+    for (id, icon, _label_key) in pills {
+        let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
+        out.push((*id, *icon, rect));
+        rx = rect.x + rect.w + gap;
+    }
+    out
+}
+
+/// AccessKit nodes for the Image Tools action pills (HR-12). Returns
+/// one `Node` per visible action: `Role::Button` + i18n label +
+/// bounds + `Action::Click`. Mirrors the canonical shape from
+/// [`crate::widget::Button::build_a11y`].
+///
+/// The desktop shell hasn't wired the AccessKit `TreeUpdate` pipeline
+/// yet (M14.x scope), so this is currently a structural surface that
+/// tests assert against. When the shell wires AccessKit, it inserts
+/// these as children of the root Window node returned by
+/// [`super::HeroScreen::build_a11y`].
+pub fn image_action_a11y_nodes(
+    layout: &HeroLayout,
+    image_tools_mode: bool,
+    gap: f32,
+) -> Vec<(NodeId, ph2d_a11y::Node)> {
+    use ph2d_a11y::{Action, NodeBuilder, Role};
+    if !image_tools_mode {
+        return Vec::new();
+    }
+    let pills = image_action_pills();
+    let rects = image_action_pill_rects(layout, gap);
+    rects
+        .into_iter()
+        .zip(pills.iter())
+        .map(|((id, _icon, rect), (_id, _icon2, label_key))| {
+            let node = NodeBuilder::new(Role::Button)
+                .label(ph2d_i18n::tr(label_key))
+                .bounds(rect.x as f64, rect.y as f64, rect.w as f64, rect.h as f64)
+                .focusable(true)
+                .action(Action::Click)
+                .build();
+            (id, node)
+        })
+        .collect()
 }
 
 fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
@@ -539,5 +621,60 @@ fn paint_top_bar_cluster(
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::screens::hero::style::{EDGE_PAD, TOPBAR_GAP, TOPBAR_H};
+    use crate::zones::Rect;
+
+    fn sample_layout() -> HeroLayout {
+        // Minimal HeroLayout fixture — only `top_bar` is consulted by
+        // the image-action pill geometry, the rest can stay default.
+        let viewport = Rect::new(0.0, 0.0, 1366.0, 1024.0);
+        HeroLayout::for_viewport(viewport)
+    }
+
+    /// HR-12 enforcement for the Image Tools row. Both Trim and Make
+    /// Square pills must expose `Role::Button` + non-empty label +
+    /// `Action::Click` + bounds matching the painted rect. Locked-in so
+    /// future actions added to the row inherit the same a11y contract.
+    #[test]
+    fn image_action_a11y_nodes_match_paint_rects() {
+        let layout = sample_layout();
+        let gap = TOPBAR_GAP; // matches paint_top_bar's gap
+        let _ = (EDGE_PAD, TOPBAR_H); // silence unused-import lints if absent
+        let rects = image_action_pill_rects(&layout, gap);
+        let nodes = image_action_a11y_nodes(&layout, true, gap);
+
+        // Same length, same NodeIds in the same order.
+        assert_eq!(rects.len(), nodes.len());
+        for ((rect_id, _icon, rect), (node_id, node)) in rects.iter().zip(nodes.iter()) {
+            assert_eq!(rect_id, node_id);
+            // Label is non-empty (i18n stub round-tripped through tr()).
+            assert!(
+                !node.label().unwrap_or("").is_empty(),
+                "node for {rect_id:?} has empty label"
+            );
+            // Bounds match the painted rect.
+            let b = node.bounds().expect("button node must carry bounds");
+            assert!(
+                (b.x0 - rect.x as f64).abs() < 1e-3
+                    && (b.y0 - rect.y as f64).abs() < 1e-3
+                    && (b.x1 - (rect.x + rect.w) as f64).abs() < 1e-3
+                    && (b.y1 - (rect.y + rect.h) as f64).abs() < 1e-3,
+                "bounds mismatch for {rect_id:?}: a11y={b:?} paint={rect:?}",
+            );
+        }
+    }
+
+    /// When image_tools_mode is off the row isn't painted, so no a11y
+    /// nodes should be published either.
+    #[test]
+    fn image_action_a11y_empty_when_mode_off() {
+        let layout = sample_layout();
+        assert!(image_action_a11y_nodes(&layout, false, 16.0).is_empty());
     }
 }

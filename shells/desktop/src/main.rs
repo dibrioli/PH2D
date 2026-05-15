@@ -241,6 +241,41 @@ pub(crate) struct AppGfx {
     /// Visibility / Name). Loaded into the registry via
     /// `register_render_components` at boot.
     pub(crate) sprite_type_id: u64,
+    /// Single-level undo for image-edit actions (Trim Transparency,
+    /// Make Square). Captures the pre-edit Sprite source / size /
+    /// Transform translation so Cmd+Z (or TOOL_UNDO click) restores
+    /// the previous state. The full editor undo system is M14.x scope;
+    /// image-edits are the only path that ships undo in this milestone.
+    ///
+    /// Single-level by design: each new image-edit overwrites the
+    /// snapshot (releasing the now-orphaned individual texture if the
+    /// PRE-edit state was on one). Future M14.x replaces this with a
+    /// proper command stack rooted in `EditorCommandQueue`.
+    pub(crate) image_edit_undo: Option<ImageEditSnapshot>,
+}
+
+/// Pre-edit snapshot of a sprite that an image-edit action mutated.
+/// Owned by [`AppGfx::image_edit_undo`]; populated by the Trim / Make
+/// Square drainers, consumed by [`AppGfx::undo_image_edit`].
+pub(crate) struct ImageEditSnapshot {
+    /// Bevy entity bits of the sprite the edit targeted.
+    pub(crate) entity_bits: u64,
+    /// `Sprite.source` before the edit. When this is
+    /// `Individual { texture_id }`, the texture is **retained**
+    /// (refcount + 1 vs the natural acquire-by-the-edit path) so the
+    /// undo restore can repoint without re-uploading pixels. The
+    /// drainer that captured the snapshot is responsible for the
+    /// matching `acquire`/refcount bump.
+    pub(crate) pre_source: ph2d_render::SpriteSource,
+    /// `Sprite.size` before the edit (world meters).
+    pub(crate) pre_size: [f32; 2],
+    /// `Transform.translation` before the edit (world meters).
+    pub(crate) pre_translation: [f32; 2],
+    /// The new individual texture id that the edit acquired. Released
+    /// on undo so the now-orphaned post-edit texture doesn't leak.
+    pub(crate) post_individual_id: u32,
+    /// Human-readable label for the toast: "Trim" / "Make square".
+    pub(crate) label: &'static str,
 }
 
 /// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
@@ -535,6 +570,13 @@ impl App {
             KeyCode::KeyT => {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;
+            }
+            // Cmd+Z / Ctrl+Z — image-edit undo (Trim, Make Square).
+            // Single-level by design; broader editor undo is M14.x.
+            KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.pending_undo_image_edit = true;
+                }
             }
             KeyCode::Digit1 if gfx.tools.set_active(&ph2d_editor::ToolId::new("brush")) => {
                 gfx.toasts.push(Toast::info("Tool → Brush"));
@@ -862,6 +904,7 @@ impl App {
             visibility_type_id,
             name_type_id,
             sprite_type_id,
+            image_edit_undo,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -2140,16 +2183,11 @@ impl App {
                     let world = sim.world();
                     world.get::<Sprite>(entity).and_then(|sprite| {
                         let old_size_world = sprite.size;
+                        let old_source = sprite.source;
                         let old_translation = world
                             .get::<ph2d_ecs::Transform>(entity)
                             .map(|t| [t.translation.x, t.translation.y])
                             .unwrap_or([0.0, 0.0]);
-                        // old_individual: Some(id) when the sprite was
-                        // already on an Individual texture and we must
-                        // release `id` after a successful re-acquire so
-                        // the IndividualTextureStore refcount doesn't
-                        // leak. Atlas-backed sprites share their texture
-                        // via the asset_db and never need a release here.
                         match sprite.source {
                             ph2d_render::SpriteSource::Atlas { key } => {
                                 let aid = atlas_asset_map.get(&key)?;
@@ -2165,7 +2203,7 @@ impl App {
                                         pixels.clone(),
                                         old_size_world,
                                         old_translation,
-                                        None,
+                                        old_source,
                                     )),
                                     _ => None,
                                 }
@@ -2178,7 +2216,7 @@ impl App {
                                         pixels.into(),
                                         old_size_world,
                                         old_translation,
-                                        Some(texture_id),
+                                        old_source,
                                     )),
                                     Err(_) => None,
                                 }
@@ -2188,20 +2226,17 @@ impl App {
                 };
                 match snapshot {
                     None => {
-                        toasts.push(Toast::error("Trim unavailable for this sprite"));
+                        toasts.push(Toast::error(ph2d_i18n::tr(
+                            "tool.trim_transparency.toast.unavailable",
+                        )));
                         self.title_dirty = true;
                     }
-                    Some((
-                        width,
-                        height,
-                        pixels,
-                        old_size_world,
-                        old_translation,
-                        old_individual,
-                    )) => {
+                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
                         let result = ph2d_editor::trim_transparency(&pixels, width, height, 0);
                         if !result.trimmed {
-                            toasts.push(Toast::info("Nothing to trim"));
+                            toasts.push(Toast::info(ph2d_i18n::tr(
+                                "tool.trim_transparency.toast.nothing",
+                            )));
                             self.title_dirty = true;
                         } else {
                             match renderer.acquire_individual(
@@ -2241,17 +2276,24 @@ impl App {
                                         transform.translation.x = new_translation[0];
                                         transform.translation.y = new_translation[1];
                                     }
-                                    // C1 fix: release the OLD individual
-                                    // texture now that the sprite points
-                                    // at the new one. Refcount-aware:
-                                    // safe even if another sprite still
-                                    // references the same id (release
-                                    // only drops the entry at refcount 0).
-                                    if let Some(old_id) = old_individual {
-                                        renderer.individual_mut().release(old_id);
-                                    }
+                                    // Undo snapshot capture. The PRE-edit
+                                    // texture (if Individual) is owned by
+                                    // the snapshot — refcount held; release
+                                    // happens when the snapshot is
+                                    // overwritten by the next edit OR
+                                    // consumed by an undo. Replaces C1's
+                                    // immediate-release semantics.
+                                    drop_undo_pre_source_if_individual(renderer, image_edit_undo);
+                                    *image_edit_undo = Some(ImageEditSnapshot {
+                                        entity_bits,
+                                        pre_source: old_source,
+                                        pre_size: old_size_world,
+                                        pre_translation: old_translation,
+                                        post_individual_id: texture_id,
+                                        label: "Trim",
+                                    });
                                     toasts.push(Toast::success(format!(
-                                        "Trimmed → {} × {} px",
+                                        "Trimmed → {} × {} px · Cmd+Z to undo",
                                         result.width, result.height
                                     )));
                                     self.title_dirty = true;
@@ -2280,6 +2322,8 @@ impl App {
                 let snapshot = {
                     let world = sim.world();
                     world.get::<Sprite>(entity).and_then(|sprite| {
+                        let old_size_world = sprite.size;
+                        let old_source = sprite.source;
                         let old_translation = world
                             .get::<ph2d_ecs::Transform>(entity)
                             .map(|t| [t.translation.x, t.translation.y])
@@ -2297,8 +2341,9 @@ impl App {
                                         *width,
                                         *height,
                                         pixels.clone(),
+                                        old_size_world,
                                         old_translation,
-                                        None,
+                                        old_source,
                                     )),
                                     _ => None,
                                 }
@@ -2309,8 +2354,9 @@ impl App {
                                         w,
                                         h,
                                         pixels.into(),
+                                        old_size_world,
                                         old_translation,
-                                        Some(texture_id),
+                                        old_source,
                                     )),
                                     Err(_) => None,
                                 }
@@ -2320,13 +2366,17 @@ impl App {
                 };
                 match snapshot {
                     None => {
-                        toasts.push(Toast::error("Make Square unavailable for this sprite"));
+                        toasts.push(Toast::error(ph2d_i18n::tr(
+                            "tool.make_square.toast.unavailable",
+                        )));
                         self.title_dirty = true;
                     }
-                    Some((width, height, pixels, old_translation, old_individual)) => {
+                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
                         let result = ph2d_editor::make_square(&pixels, width, height);
                         if !result.made_square {
-                            toasts.push(Toast::info("Sprite is already square"));
+                            toasts.push(Toast::info(ph2d_i18n::tr(
+                                "tool.make_square.toast.already_square",
+                            )));
                             self.title_dirty = true;
                         } else if result.size > renderer.max_texture_dimension_2d() {
                             // M1: pre-acquire cap. Without this, the
@@ -2383,13 +2433,18 @@ impl App {
                                         transform.translation.x = new_translation[0];
                                         transform.translation.y = new_translation[1];
                                     }
-                                    // C1 fix: release the OLD individual
-                                    // texture (same pattern as Trim).
-                                    if let Some(old_id) = old_individual {
-                                        renderer.individual_mut().release(old_id);
-                                    }
+                                    // Undo snapshot — same pattern as Trim.
+                                    drop_undo_pre_source_if_individual(renderer, image_edit_undo);
+                                    *image_edit_undo = Some(ImageEditSnapshot {
+                                        entity_bits,
+                                        pre_source: old_source,
+                                        pre_size: old_size_world,
+                                        pre_translation: old_translation,
+                                        post_individual_id: texture_id,
+                                        label: "Make square",
+                                    });
                                     toasts.push(Toast::success(format!(
-                                        "Made square → {} × {} px",
+                                        "Made square → {} × {} px · Cmd+Z to undo",
                                         result.size, result.size
                                     )));
                                     self.title_dirty = true;
@@ -2399,6 +2454,52 @@ impl App {
                     }
                 }
             }
+            // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click) raises
+            // `pending_undo_image_edit` on the hero; the host owns the
+            // snapshot. Single-level: each new edit overwrites the slot
+            // (releasing the previous pre-source), so undo restores at
+            // most the MOST RECENT Trim / Make Square.
+            if hero.pending_undo_image_edit {
+                hero.pending_undo_image_edit = false;
+                match image_edit_undo.take() {
+                    None => {
+                        toasts.push(Toast::info(ph2d_i18n::tr(
+                            "edit.undo.image_edit.toast_nothing_to_undo",
+                        )));
+                        self.title_dirty = true;
+                    }
+                    Some(snap) => {
+                        let entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
+                        let sim_w = sim.world_mut();
+                        // Restore sprite source + size + transform
+                        // translation. The pre-source's individual id
+                        // (if any) keeps its refcount — we don't
+                        // re-acquire because the snapshot held it
+                        // through the post-edit period.
+                        if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                            sprite.source = snap.pre_source;
+                            sprite.size = snap.pre_size;
+                        }
+                        if let Some(mut transform) = sim_w.get_mut::<ph2d_ecs::Transform>(entity) {
+                            transform.translation.x = snap.pre_translation[0];
+                            transform.translation.y = snap.pre_translation[1];
+                        }
+                        // Release the POST-edit texture (the one the
+                        // edit created); the sprite no longer references
+                        // it and no other edit holds it.
+                        renderer.individual_mut().release(snap.post_individual_id);
+                        toasts.push(Toast::success(format!(
+                            "{} · {}",
+                            ph2d_i18n::tr("edit.undo.image_edit.toast_done"),
+                            snap.label,
+                        )));
+                        self.title_dirty = true;
+                    }
+                }
+            }
+            // Publish whether a snapshot is currently stored so the UI
+            // can dim the TOOL_UNDO chip when there's nothing to undo.
+            hero.has_undoable_image_edit = image_edit_undo.is_some();
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/
             // JPEG), spawn a sprite per image at the camera center.
@@ -2814,6 +2915,7 @@ impl ApplicationHandler for App {
             visibility_type_id: stable_type_id("ph2d::ecs::Visibility"),
             name_type_id: stable_type_id("ph2d::ecs::Name"),
             sprite_type_id: stable_type_id("ph2d::render::Sprite"),
+            image_edit_undo: None,
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -3415,6 +3517,22 @@ impl ApplicationHandler for App {
 /// `ph2d_editor::project`) but defense-in-depth here keeps the shell
 /// safe even if a future config path skips that clamp.
 pub(crate) const EPS_PIXELS_PER_METER: f32 = 0.01;
+
+/// When the image-edit undo slot is being overwritten by a new edit,
+/// release the previous snapshot's pre-edit Individual texture (if
+/// any) so the now-orphaned texture doesn't leak. Atlas-backed
+/// pre-sources don't need release — they share the texture via the
+/// asset_db. No-op when the slot is empty.
+pub(crate) fn drop_undo_pre_source_if_individual(
+    renderer: &mut SpriteRenderer,
+    slot: &mut Option<ImageEditSnapshot>,
+) {
+    if let Some(prev) = slot.take()
+        && let ph2d_render::SpriteSource::Individual { texture_id } = prev.pre_source
+    {
+        renderer.individual_mut().release(texture_id);
+    }
+}
 
 /// Floor for the world-space side length of an imported sprite.
 /// Guarantees the quad is selectable even if the user picks an

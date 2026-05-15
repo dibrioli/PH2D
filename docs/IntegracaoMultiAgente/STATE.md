@@ -15,7 +15,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | _(a propor pelo Agente)_ | pending-start | 2026-05-15 17:35 |
+| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working | 2026-05-15 17:55 |
 | 2 | (vago) | — | — | — |
 | 3 | (vago) | — | — | — |
 | 4 | (vago) | — | — | — |
@@ -63,6 +63,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 17:55 | grid-snap pastas aprovadas; esqueleto ph2d-grid criado pelo Coordenador (Cargo.toml + lib.rs stub + workspace member + dep path em ph2d-editor); status → working |
 | 2026-05-15 17:42 | polish fix Inspector-name validado pelo Enio; commit `09903fc` aguarda push no fim do ciclo |
 | 2026-05-15 17:35 | slot 1 atribuído a grid-snap (Grid PRO + Snap módulo) |
 | 2026-05-15 17:35 | STATE.md inicializado a partir do template; sha bom = `09903fc` |

@@ -21,6 +21,9 @@ ph2d-text = { path = "../ph2d-text" }
 # ph2d-host — PointerEvent / KeyEvent types consumed by the
 # interaction dispatcher (ADR-0024).
 ph2d-host = { path = "../ph2d-host" }
+# ph2d-grid — grid kinds (Square/Hex/Iso/Staggered/Tri) + snap math
+# consumed by `grid_snap/` editor module (slot 1 agent grid-snap).
+ph2d-grid = { path = "../ph2d-grid" }
 # Interaction infrastructure (ADR-0024 plan, HR-3 zero-alloc):
 # - smallvec: HitIndex inline storage (no heap until > 128 widgets).
 # - bumpalo: per-frame arena for emitted WidgetEvents.

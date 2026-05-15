@@ -31,6 +31,7 @@
 //! `dhat-rs`.
 
 pub mod dispatch;
+pub mod drag;
 pub mod hit;
 pub mod state;
 
@@ -40,9 +41,13 @@ pub use dispatch::{
     apply_clipboard_paste, dispatch_key, dispatch_pointer, dispatch_pointer_with_text,
     dispatch_text_input, dispatch_tick, dispatch_wheel,
 };
+pub use drag::{
+    DRAG_RATE_X, DRAG_RATE_Y, DRAG_SHIFT_MUL, HierarchyDragState, LONG_PRESS_THRESHOLD_NS,
+    NUMBER_INPUT_DRAG_THRESHOLD_PX, NumberInputDragState, NumberStepperHoldState,
+    STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS, ScrollbarDragAnchor,
+};
 pub use hit::HitIndex;
 pub use state::{
-    BlenderHitKind, ContextMenuKind, ContextMenuRequest, HierarchyDragState, InteractiveState,
-    LONG_PRESS_THRESHOLD_NS, NoteData, ScrollbarDragAnchor, WidgetEvent, WidgetStore,
-    format_number,
+    BlenderHitKind, ContextMenuKind, ContextMenuRequest, InteractiveState, NoteData, WidgetEvent,
+    WidgetStore, format_number,
 };

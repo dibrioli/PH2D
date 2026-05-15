@@ -166,7 +166,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                 let dy_total = event.y - drag.start_y;
                 if !drag.crossed_threshold {
                     let dist_sq = dx_total * dx_total + dy_total * dy_total;
-                    let thr = super::state::NUMBER_INPUT_DRAG_THRESHOLD_PX;
+                    let thr = super::drag::NUMBER_INPUT_DRAG_THRESHOLD_PX;
                     if dist_sq >= thr * thr {
                         // Decide the locked axis at THIS Move based
                         // on which delta is larger. `>=` so a perfect
@@ -190,12 +190,12 @@ pub fn dispatch_pointer_with_text<'frame>(
                         (0.0, dy_total)
                     };
                     let shift_mul = if store.shift_held() {
-                        super::state::DRAG_SHIFT_MUL
+                        super::drag::DRAG_SHIFT_MUL
                     } else {
                         1.0
                     };
-                    let delta = (dom_dx as f64 * super::state::DRAG_RATE_X
-                        - dom_dy as f64 * super::state::DRAG_RATE_Y)
+                    let delta = (dom_dx as f64 * super::drag::DRAG_RATE_X
+                        - dom_dy as f64 * super::drag::DRAG_RATE_Y)
                         * shift_mul;
                     let new_value = d.start_value + delta * d.step;
                     // Audit fix #2 (CRITICAL): mutate `value` and
@@ -643,7 +643,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                     && let Some(InteractiveState::NumberInput { value, buffer, .. }) = store.get(id)
                 {
                     let step = if buffer.contains('.') { 0.01 } else { 1.0 };
-                    let drag = super::state::NumberInputDragState {
+                    let drag = super::drag::NumberInputDragState {
                         id,
                         start_x: event.x,
                         start_y: event.y,
@@ -1474,11 +1474,11 @@ pub fn dispatch_tick<'frame>(
     };
     // Initial delay: wait `STEPPER_HOLD_INITIAL_DELAY_NS` after the
     // press before the first repeat tick fires (matches macOS Aqua).
-    if now_ns.saturating_sub(hold.press_ns) < super::state::STEPPER_HOLD_INITIAL_DELAY_NS {
+    if now_ns.saturating_sub(hold.press_ns) < super::drag::STEPPER_HOLD_INITIAL_DELAY_NS {
         return events.into_bump_slice();
     }
     // After the initial delay, gate by the repeat interval.
-    if now_ns.saturating_sub(hold.last_tick_ns) < super::state::STEPPER_REPEAT_INTERVAL_NS {
+    if now_ns.saturating_sub(hold.last_tick_ns) < super::drag::STEPPER_REPEAT_INTERVAL_NS {
         return events.into_bump_slice();
     }
     let new_value = match store.get(hold.id) {
@@ -1746,7 +1746,7 @@ fn apply_number_stepper_if_hit(
     // the user keeps the arrow pressed. The Down itself counts as the
     // first tick (already applied above) — `last_tick_ns == press_ns`
     // makes the initial-delay guard in `dispatch_tick` fire correctly.
-    store.begin_number_stepper_hold(super::state::NumberStepperHoldState {
+    store.begin_number_stepper_hold(super::drag::NumberStepperHoldState {
         id,
         direction,
         step,
@@ -4498,9 +4498,7 @@ mod tests {
     /// then fires repeats every 30 ms.
     #[test]
     fn number_stepper_hold_repeats_after_initial_delay() {
-        use crate::interaction::state::{
-            STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS,
-        };
+        use crate::interaction::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
         let (mut store, hits, rect) = number_input_setup(10.0);
         let arena = Bump::new();
         let probe = crate::widget::NumberInput::new(NodeId(77), "", 10.0);
@@ -4671,7 +4669,7 @@ mod tests {
     /// previous test minus the trailing ticks.
     #[test]
     fn number_stepper_hold_ends_on_pointer_up() {
-        use crate::interaction::state::STEPPER_HOLD_INITIAL_DELAY_NS;
+        use crate::interaction::drag::STEPPER_HOLD_INITIAL_DELAY_NS;
         let (mut store, hits, rect) = number_input_setup(0.0);
         let arena = Bump::new();
         let probe = crate::widget::NumberInput::new(NodeId(77), "", 0.0);

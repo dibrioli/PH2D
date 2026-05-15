@@ -7,21 +7,13 @@
 //! state. Caller wires real entities/scene state when integrating
 //! the screen into a project.
 //!
-//! ## Reference snapshot
-//!
-//! Building with the `reference-snapshot` feature swaps the `hero`
-//! module for `hero_ref` — a frozen verbatim copy used as a visual
-//! baseline while iterating on the working hero. Default builds use
-//! `hero`. The launcher script `reference.command` enables the
-//! feature; `play.command` does not.
+//! The canonical UI reference for peripheral agents is the
+//! **Widget Gallery** floating panel inside the live hero, toggled
+//! by the palette pill in the TopBar. It re-uses the section
+//! painters preserved in [`hero::inspector`] so there is no separate
+//! "frozen reference" build to maintain.
 
-#[cfg(not(feature = "reference-snapshot"))]
 pub mod hero;
-
-#[cfg(feature = "reference-snapshot")]
-pub mod hero_ref;
-#[cfg(feature = "reference-snapshot")]
-pub use hero_ref as hero;
 
 pub use hero::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorSpriteInfo, InspectorSpriteSource,

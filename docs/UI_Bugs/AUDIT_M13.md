@@ -165,12 +165,15 @@ Gaps remanescentes (não bloqueantes):
   toca scene-graph).
 - Hierarchy não tem fold/unfold de subtrees ainda.
 
-## Snapshot congelado
+## Snapshot congelado (aposentado 2026-05-14)
 
-`screens/hero_ref/` é uma cópia verbatim de `screens/hero/` no
-fim deste round, ativada via cargo feature `reference-snapshot`.
-Launcher: `reference.command`. Permite A/B visual contra o working
-hero enquanto a iteração continua. Vide §10.17.
+O par `screens/hero_ref/` + `reference.command` + feature
+`reference-snapshot` foi **aposentado** em 2026-05-14. O showcase
+de 10 seções vive agora dentro do app principal como o painel
+flutuante **Widget Gallery** (paint via
+[`screens::hero::inspector::paint_showcase_body`], toggle pela
+paleta no TopBar). Histórico do snapshot preservado via
+`git log -- crates/ph2d-editor/src/screens/hero_ref/`.
 
 ## Próximos passos do loop
 

@@ -69,11 +69,6 @@ rfd = "0.15"
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.23"
 
-[features]
-# Forwarded to ph2d-editor to swap `screens::hero` for the frozen
-# `screens::hero_ref` snapshot. Used by `reference.command`.
-reference-snapshot = ["ph2d-editor/reference-snapshot"]
-
 [package.metadata.cargo-machete]
 # `bevy_ecs` is reached only through `#[derive(Component)]` expansion,
 # which machete can't see. See dep comment above.

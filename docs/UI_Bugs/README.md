@@ -821,18 +821,21 @@ mesmo formato (sintoma / causa / fix / código).
   do typos — o problema é o comentário PT-BR em lugar errado, não a
   ferramenta.
 
-### 10.17 Snapshot congelado (`hero_ref/` + `reference.command`)
+### 10.17 Widget Gallery embutida (substitui o snapshot aposentado em 2026-05-14)
 
-- **Setup**: cópia verbatim de `screens/hero/` → `screens/hero_ref/`,
-  selecionada via cargo feature `reference-snapshot` em ph2d-editor
-  (forwardada por shells/desktop). Em `screens/mod.rs`:
-  ```rust
-  #[cfg(not(feature = "reference-snapshot"))] pub mod hero;
-  #[cfg(feature = "reference-snapshot")]     pub mod hero_ref;
-  #[cfg(feature = "reference-snapshot")]     pub use hero_ref as hero;
-  ```
-  O alias mantém `crate::screens::hero::HeroScreen` apontando
-  corretamente em ambos os modos — zero adaptação no shell.
-- **Launchers**: `play.command` (working hero) +
-  `reference.command` (snapshot). Alternar recompila o binário uma
-  vez; runs sequenciais do mesmo são cacheados.
+- **Histórico**: até 2026-05-13 existia um snapshot `screens/hero_ref/`
+  (cópia verbatim de `screens/hero/`) acessível via
+  `reference.command` + feature `reference-snapshot`. O snapshot
+  drifted, o duplo binário causou confusão, e o painel
+  Inspector / Hierarchy / TopBar do snapshot ficaram desatualizados.
+- **Substituto**: o showcase de 10 seções vive agora como painel
+  flutuante **Widget Gallery** dentro do app principal — paint via
+  [`screens::hero::inspector::paint_showcase_body`], toggle pela
+  paleta no TopBar (`ids::TOPBAR_WIDGET_GALLERY`). Drag, resize,
+  scroll, sticky notes e section outline funcionam dentro do app
+  real, sem rebuild de feature.
+- **Launcher único**: `./play.command`. O `reference.command`,
+  `scripts/run-shell-reference.sh`, a feature `reference-snapshot`,
+  `screens/hero_ref/` e `screens/hero_ref.rs` foram removidos.
+  Histórico preservado via
+  `git log -- crates/ph2d-editor/src/screens/hero_ref/`.

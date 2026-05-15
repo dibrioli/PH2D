@@ -88,7 +88,7 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `49dfcb8` — 2026-05-15 20:45 — feat(integration) make-square wired into Image Tools row (workspace verde: fmt+clippy+nextest 634 tests)
+main @ `e3e1671` — 2026-05-15 20:55 — fix(shell) drain pending_make_square in render loop (workspace verde: fmt+clippy+nextest 1098 tests)
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -99,6 +99,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 20:55 | make-square fix(shell): drainer pending_make_square em shells/desktop/main.rs (paralelo Trim — readback → algorithm → acquire_individual → repoint Sprite.source/size, sem mexer em Transform). Usuário reportou "sem efeito"; a integração v1 só wirou a UI mas esqueceu o host drain. Commit `e3e1671`, 1098 tests verdes. |
 | 2026-05-15 20:45 | make-square integrado v1 (IconId::MakeSquare + IMAGE_ACTION_MAKE_SQUARE=118 + cluster Image Tools + pending_make_square em HeroScreen + click handler); workspace verde 634 tests — commit `49dfcb8`. Slot 3 → done. |
 | 2026-05-15 20:40 | grid-snap Stage 12 landou (per-kind config widgets + Opacity Slider + Kind Dropdown) — commit `bd60316`. Stage 13 (RNG fix) já tinha landado em `a567604`. Slot 1 segue working (próxima fase aberta a critério do agente). |
 | 2026-05-15 20:25 | bgremoval unblock: criado `THIRD_PARTY_LICENSES.md` na raiz (Apache 2.0 full text + atribuição OpenCV gcgraph.hpp/grabcut.cpp → maxflow.rs) — atende pedido pós-peer-review do agente slot 2; status mantém `working` |

@@ -177,6 +177,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
+      # Force-install the toolchain pinned in `rust-toolchain.toml`
+      # (channel 1.95). Without this, `cargo nextest …` on macos-latest
+      # has been hitting `rustup-init`'s "unexpected argument 'nextest'"
+      # failure path — the rustup proxy can't auto-install the pinned
+      # toolchain on first invocation, so the binary falls back to its
+      # bare-init CLI. Linux + Windows runners auto-install transparently;
+      # macos-latest (Apple Silicon) needs the explicit pre-step.
+      - name: Ensure rust-toolchain.toml channel is installed
+        run: rustup show active-toolchain || rustup show
+
       # Windows-only: exclude `target/` and Cargo home from Defender
       # real-time scan. Defender scanning every .o / .rlib / linker
       # intermediate adds ~15-25 % to the Windows wall clock. This

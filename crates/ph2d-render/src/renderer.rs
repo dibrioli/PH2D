@@ -133,6 +133,16 @@ impl SpriteRenderer {
         &self.individual
     }
 
+    /// Maximum 2D texture dimension supported by the active adapter
+    /// (`wgpu::Limits::max_texture_dimension_2d`). Image-edit actions
+    /// (Trim, Make Square, future BG Removal) should cap their output
+    /// dims against this before calling [`Self::acquire_individual`]
+    /// so the user gets a clean toast instead of a deferred device-loss
+    /// on the first render that touches the oversize texture.
+    pub fn max_texture_dimension_2d(&self) -> u32 {
+        self.gpu.device.limits().max_texture_dimension_2d
+    }
+
     /// Mutable handle to the individual-texture store. The host's
     /// image-import path acquires textures here when the user
     /// selects the Individual source strategy for a sprite (M14.5

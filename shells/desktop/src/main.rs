@@ -2131,13 +2131,11 @@ impl App {
             if let Some(entity_bits) = hero.pending_trim_transparency.take() {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
-                // Snapshot `Sprite` (for size + source) and `Transform`
-                // (for translation) in one read pass so we can drop the
+                // Snapshot `Sprite` (for size + source + the OLD
+                // individual texture id, if any, so we can release it
+                // after the swap — audit fix C1) and `Transform` (for
+                // translation) in one read pass so we can drop the
                 // immutable borrow before the mutable `world_mut()` later.
-                // Individual-source sprites go through a GPU readback —
-                // safe here because Trim is a one-shot user action
-                // (HR-3 only applies inside render/physics/audio hot
-                // paths, not user-initiated edit actions).
                 let snapshot = {
                     let world = sim.world();
                     world.get::<Sprite>(entity).and_then(|sprite| {
@@ -2146,6 +2144,12 @@ impl App {
                             .get::<ph2d_ecs::Transform>(entity)
                             .map(|t| [t.translation.x, t.translation.y])
                             .unwrap_or([0.0, 0.0]);
+                        // old_individual: Some(id) when the sprite was
+                        // already on an Individual texture and we must
+                        // release `id` after a successful re-acquire so
+                        // the IndividualTextureStore refcount doesn't
+                        // leak. Atlas-backed sprites share their texture
+                        // via the asset_db and never need a release here.
                         match sprite.source {
                             ph2d_render::SpriteSource::Atlas { key } => {
                                 let aid = atlas_asset_map.get(&key)?;
@@ -2161,15 +2165,21 @@ impl App {
                                         pixels.clone(),
                                         old_size_world,
                                         old_translation,
+                                        None,
                                     )),
                                     _ => None,
                                 }
                             }
                             ph2d_render::SpriteSource::Individual { texture_id } => {
                                 match renderer.readback_individual(texture_id) {
-                                    Ok((w, h, pixels)) => {
-                                        Some((w, h, pixels.into(), old_size_world, old_translation))
-                                    }
+                                    Ok((w, h, pixels)) => Some((
+                                        w,
+                                        h,
+                                        pixels.into(),
+                                        old_size_world,
+                                        old_translation,
+                                        Some(texture_id),
+                                    )),
                                     Err(_) => None,
                                 }
                             }
@@ -2181,7 +2191,14 @@ impl App {
                         toasts.push(Toast::error("Trim unavailable for this sprite"));
                         self.title_dirty = true;
                     }
-                    Some((width, height, pixels, old_size_world, old_translation)) => {
+                    Some((
+                        width,
+                        height,
+                        pixels,
+                        old_size_world,
+                        old_translation,
+                        old_individual,
+                    )) => {
                         let result = ph2d_editor::trim_transparency(&pixels, width, height, 0);
                         if !result.trimmed {
                             toasts.push(Toast::info("Nothing to trim"));
@@ -2224,6 +2241,15 @@ impl App {
                                         transform.translation.x = new_translation[0];
                                         transform.translation.y = new_translation[1];
                                     }
+                                    // C1 fix: release the OLD individual
+                                    // texture now that the sprite points
+                                    // at the new one. Refcount-aware:
+                                    // safe even if another sprite still
+                                    // references the same id (release
+                                    // only drops the entry at refcount 0).
+                                    if let Some(old_id) = old_individual {
+                                        renderer.individual_mut().release(old_id);
+                                    }
                                     toasts.push(Toast::success(format!(
                                         "Trimmed → {} × {} px",
                                         result.width, result.height
@@ -2241,20 +2267,24 @@ impl App {
             // repoints the sprite to a fresh IndividualTextureStore
             // entry and updates Sprite::size at the current px/m.
             //
-            // Transform.translation is NOT adjusted: make_square uses
-            // centered padding, so the original content's visual center
-            // already maps to the new canvas center (even diff). For
-            // odd diffs there is a ≤ 0.5 px sub-pixel drift that we
-            // accept in V1 — the simpler invariant (no translation
-            // edit) keeps the user's mental model "padding only" intact.
+            // Audit fixes applied: M1 (cap output dim against
+            // device.max_texture_dimension_2d BEFORE acquire — was
+            // deferred device-loss); M2 (sub-pixel recenter via
+            // recenter_after_pad for odd-diff parity with Trim — was
+            // accumulating 0.5 px drift across Trim↔Square cycles);
+            // C1 (release OLD individual texture id after a successful
+            // re-acquire — was leaking GPU memory on repeated edits).
             if let Some(entity_bits) = hero.pending_make_square.take() {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
                 let snapshot = {
                     let world = sim.world();
-                    world
-                        .get::<Sprite>(entity)
-                        .and_then(|sprite| match sprite.source {
+                    world.get::<Sprite>(entity).and_then(|sprite| {
+                        let old_translation = world
+                            .get::<ph2d_ecs::Transform>(entity)
+                            .map(|t| [t.translation.x, t.translation.y])
+                            .unwrap_or([0.0, 0.0]);
+                        match sprite.source {
                             ph2d_render::SpriteSource::Atlas { key } => {
                                 let aid = atlas_asset_map.get(&key)?;
                                 let asset = asset_db.get(aid)?;
@@ -2263,27 +2293,52 @@ impl App {
                                         width,
                                         height,
                                         pixels,
-                                    } => Some((*width, *height, pixels.clone())),
+                                    } => Some((
+                                        *width,
+                                        *height,
+                                        pixels.clone(),
+                                        old_translation,
+                                        None,
+                                    )),
                                     _ => None,
                                 }
                             }
                             ph2d_render::SpriteSource::Individual { texture_id } => {
                                 match renderer.readback_individual(texture_id) {
-                                    Ok((w, h, pixels)) => Some((w, h, pixels.into())),
+                                    Ok((w, h, pixels)) => Some((
+                                        w,
+                                        h,
+                                        pixels.into(),
+                                        old_translation,
+                                        Some(texture_id),
+                                    )),
                                     Err(_) => None,
                                 }
                             }
-                        })
+                        }
+                    })
                 };
                 match snapshot {
                     None => {
                         toasts.push(Toast::error("Make Square unavailable for this sprite"));
                         self.title_dirty = true;
                     }
-                    Some((width, height, pixels)) => {
+                    Some((width, height, pixels, old_translation, old_individual)) => {
                         let result = ph2d_editor::make_square(&pixels, width, height);
                         if !result.made_square {
                             toasts.push(Toast::info("Sprite is already square"));
+                            self.title_dirty = true;
+                        } else if result.size > renderer.max_texture_dimension_2d() {
+                            // M1: pre-acquire cap. Without this, the
+                            // toast would only surface on the first
+                            // render that tried to bind the oversize
+                            // texture — looks like a silent device-loss
+                            // to the user.
+                            toasts.push(Toast::error(format!(
+                                "Make Square would exceed GPU texture limit ({} px max, would need {} px)",
+                                renderer.max_texture_dimension_2d(),
+                                result.size,
+                            )));
                             self.title_dirty = true;
                         } else {
                             match renderer.acquire_individual(
@@ -2297,11 +2352,41 @@ impl App {
                                 }
                                 Ok(texture_id) => {
                                     let new_side = result.size as f32 / px_per_m;
+                                    // M2: sub-pixel recenter. Even
+                                    // diffs return the input unchanged
+                                    // (offset is exactly diff/2 → 0.5
+                                    // factor cancels); odd diffs shift
+                                    // translation by 0.5/ppm in the
+                                    // odd-diff dimension so the
+                                    // content's world center stays put
+                                    // across Trim↔Square cycles.
+                                    let new_translation = ph2d_editor::recenter_after_pad(
+                                        old_translation,
+                                        [new_side, new_side],
+                                        [result.size, result.size],
+                                        ph2d_editor::PixelBounds {
+                                            x: result.offset_x,
+                                            y: result.offset_y,
+                                            width,
+                                            height,
+                                        },
+                                    );
                                     let sim_w = sim.world_mut();
                                     if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                                         sprite.source =
                                             ph2d_render::SpriteSource::Individual { texture_id };
                                         sprite.size = [new_side, new_side];
+                                    }
+                                    if let Some(mut transform) =
+                                        sim_w.get_mut::<ph2d_ecs::Transform>(entity)
+                                    {
+                                        transform.translation.x = new_translation[0];
+                                        transform.translation.y = new_translation[1];
+                                    }
+                                    // C1 fix: release the OLD individual
+                                    // texture (same pattern as Trim).
+                                    if let Some(old_id) = old_individual {
+                                        renderer.individual_mut().release(old_id);
                                     }
                                     toasts.push(Toast::success(format!(
                                         "Made square → {} × {} px",

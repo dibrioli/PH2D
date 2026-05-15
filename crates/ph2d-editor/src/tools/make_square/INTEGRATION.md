@@ -52,58 +52,77 @@ A trait `Tool` **não** se aplica (mesma justificativa de Trim — vide
 estado, sem painel; implementar `Tool` infla a superfície e gera
 painel-zumbi).
 
-Pseudocódigo do handler que o Coordenador implementa (paralelo direto
-ao `on_trim_transparency_clicked`):
+> **Atualização pós-integração (Coord, 2026-05-15):** a versão original
+> deste §3 apresentava um pseudocódigo com `sprite.pivot_x/pivot_y` e
+> `sprite.set_image()` — APIs **que não existem** no modelo
+> `ph2d_render::Sprite` atual. O modelo real é **center-anchored**: a
+> sprite é renderizada com seu centro na `Transform.translation`; não
+> há campo de pivot explícito. O texto abaixo reflete o drainer
+> efetivamente implementado em `shells/desktop/src/main.rs` (search:
+> `pending_make_square`).
+
+### Drainer real (host `shells/desktop/src/main.rs`)
 
 ```rust
-fn on_make_square_clicked(editor: &mut Editor) {
-    let selection = editor.selected_sprites();
-    if selection.is_empty() { return; }
-    let mut any_changed = false;
-    for sprite in selection {
-        let rgba = sprite.image_data();
-        let (w, h) = sprite.dimensions();
-        let result = make_square(rgba, w, h);
-        if !result.made_square { continue; }
+// 1. Click handler em HeroScreen::apply_event raises pending_make_square
+//    com o gizmo_selection atual (entity_bits).
+// 2. Render loop drena pending_make_square uma vez por frame:
 
-        // 1. Replace pixels.
-        sprite.set_image(result.pixels, result.size, result.size);
+if let Some(entity_bits) = hero.pending_make_square.take() {
+    // Snapshot do sprite + Transform.translation + texture_id antigo
+    // (se source = Individual — usado pra release pós-swap, evita
+    // texture leak no IndividualTextureStore).
+    let snapshot = read_sprite_pixels(sim, entity, asset_db, renderer);
 
-        // 2. Reproject pivot to preserve world position.
-        //    new_px = (old_w * old_px + offset_x) / new_size
-        let new_pivot_x = ((sprite.w as f32 * sprite.pivot_x)
-                           + result.offset_x as f32)
-                          / result.size as f32;
-        sprite.pivot_x = new_pivot_x.clamp(0.0, 1.0);
-        let new_pivot_y = ((sprite.h as f32 * sprite.pivot_y)
-                           + result.offset_y as f32)
-                          / result.size as f32;
-        sprite.pivot_y = new_pivot_y.clamp(0.0, 1.0);
-
-        // 3. Events.
-        editor.events.push(SpriteImageChanged { id: sprite.id });
-        editor.events.push(TransformUpdated { id: sprite.id });
-        any_changed = true;
+    let result = make_square(&pixels, width, height);
+    if !result.made_square { /* toast info */ }
+    else if result.size > renderer.max_texture_dimension_2d() {
+        // M1: cap GPU pré-acquire para não cair em device-loss
+        // silencioso no primeiro render. Toast preventivo.
     }
-    if any_changed {
-        editor.history.push("Make square");
-        editor.request_redraw();
+    else {
+        let texture_id = renderer.acquire_individual(result.size, result.size, &result.pixels)?;
+
+        // M2: sub-pixel recenter via image_edit::recenter_after_pad.
+        // Para diff par, é no-op (offset = diff/2 → delta=0). Para diff
+        // ímpar, ajusta translation em 0.5/ppm no eixo do diff ímpar
+        // para preservar o centro VISUAL do conteúdo em world space.
+        let new_translation = recenter_after_pad(
+            old_translation,
+            [size_world, size_world],
+            [result.size, result.size],
+            PixelBounds { x: offset_x, y: offset_y, width, height },
+        );
+
+        // Apply: substitui source + size + translation. C1: libera
+        // texture_id antigo (refcount-aware via individual_mut().release).
+        sprite.source = Individual { texture_id };
+        sprite.size = [size_world, size_world];
+        transform.translation = new_translation;
+        if let Some(old_id) = old_individual { renderer.individual_mut().release(old_id); }
     }
 }
 ```
 
-**Importante (paralelo direto com Trim Transparency):** a reprojeção
-de pivô NÃO está no algoritmo. O algoritmo só devolve `offset_x` e
-`offset_y` (quanto a imagem original ficou deslocada dentro do novo
-canvas). A matemática de pivô depende do modelo `Sprite` que o
-Coordenador definir.
+### Por que centered-padding + sub-pixel recenter preserva world position
 
-A fórmula `(old_dim * old_pivot + offset) / new_size` é o **inverso
-exato** da usada pelo Trim — onde Trim *subtrai* `bounds.{x,y}` e
-divide por dimensão reduzida, Make Square *adiciona* `offset_{x,y}` e
-divide por dimensão expandida. Isso garante que um sprite que passe
-por Trim → Make Square mantém o pivô na mesma posição absoluta em
-world space ao longo das duas operações.
+O modelo PH2D usa center-anchor (`translation` = centro geométrico do
+sprite render). `make_square` faz padding **centrado** com `floor(diff/2)`
+no leading edge:
+
+- **Diff par (e.g., 64×32 → 64×64):** offset = 16 = diff/2 exato. O
+  centro pixel do conteúdo original mapeia para o centro pixel do novo
+  canvas. Translation não precisa mudar.
+- **Diff ímpar (e.g., 65×32 → 65×65):** offset = floor(33/2) = 16,
+  leaving 17 no trailing edge. Centro pixel do conteúdo (32) está
+  0.5 px do centro pixel do canvas (32.5). Sem correção, o conteúdo
+  visualmente desliza 0.5/ppm em world coords após cada Make Square em
+  dim ímpar — driftando ao longo do ciclo Trim↔Square↔Trim. O
+  `recenter_after_pad` compensa exatamente esse meio-pixel.
+
+A garantia "Trim → MakeSquare → Trim preserva pixels" é coberta pelo
+teste `round_trip_trim_then_make_square_then_trim_preserves_bbox_and_pixels`
+em `tests/make_square_algorithm.rs` (audit fix N1).
 
 ## 4. Wiring esperado
 
@@ -126,25 +145,30 @@ world space ao longo das duas operações.
 
 ## 5. Checklist do Coordenador
 
-- [ ] Add `pub mod make_square;` em
-      `crates/ph2d-editor/src/tools/mod.rs` (ao lado do
-      `pub mod trim_transparency;`).
-- [ ] Re-export `MakeSquareResult`, `make_square`, `square_bezpath` em
-      `lib.rs` se pertinente (mesmo critério do trim).
-- [ ] `IconId::MakeSquare` em `icons.rs` com o glyph acima.
-- [ ] Item `MakeSquare` no cluster Image Tools, lado a lado com
-      `Trim`.
-- [ ] Render do ícone: `square_bezpath()` com
-      `Affine::scale(chip_px / 24.0)` + `Stroke::new(2.0)` +
-      `Stroke::with_caps(Round, Round)`.
-- [ ] Label: chave i18n `tool.make_square.label` (HR-15) — fallback
-      `"Make Square"` até bundle Fluent existir.
-- [ ] A11y: `AccessKit::Button` com label da chave acima, role
-      `Role::Button`, action `Action::Default` (HR-12).
-- [ ] On-click handler conforme §3.
-- [ ] Undo: empilhar entry `"Make square"` no history.
-- [ ] Smoke test cobrindo image-tools → click → asset modificado →
-      render redrawed.
+Estado pós-integração (commits `49dfcb8` + `e3e1671` + audit fixes):
+
+- [x] `pub mod make_square;` em `tools/mod.rs` + re-exports em `lib.rs`.
+- [x] `IconId::MakeSquare` em `icons.rs` (via `IconCmd::Rect`, paralelo
+      Trim — `square_bezpath()` segue exportada para consumidores diretos).
+- [x] Item `MakeSquare` na `ACTIONS` slice do `paint_image_action_row`
+      em `screens/hero/topbar.rs`, lado a lado com Trim.
+- [x] `IMAGE_ACTION_MAKE_SQUARE = NodeId(118)` em `screens/hero/ids.rs`.
+- [x] `pending_make_square: Option<u64>` em `HeroScreen` + click handler
+      em `apply_event` (mirror Trim).
+- [x] Drainer em `shells/desktop/src/main.rs` com C1 (texture leak fix
+      conjunto Trim+MS) + M1 (cap pré-render) + M2 (sub-pixel recenter
+      via `recenter_after_pad`).
+- [x] Tooltip "Make Square" registrado em `topbar.rs::populate()`.
+- [ ] **Pendente — follow-up Trim+MS conjunto:** Label i18n
+      `tool.make_square.label` (HR-15 — bundle Fluent não existe ainda;
+      Trim tem mesma pendência).
+- [ ] **Pendente — follow-up Trim+MS conjunto:** A11y `AccessKit::Button`
+      com label + role + action `Default` (HR-12 — Trim idem).
+- [ ] **Pendente — follow-up Trim+MS conjunto:** Undo entry
+      `"Make square"` via `EditorCommandQueue` (drainer atual muta
+      `Sprite` + `Transform` direto; Trim idem; refactor pra
+      `EditorCommand::SetComponent` cobre os dois drainers de uma vez).
+- [x] Smoke test e2e (validado manualmente pelo Enio post-`e3e1671`).
 
 ## 6. Caso de teste manual após integração
 

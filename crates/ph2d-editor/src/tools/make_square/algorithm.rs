@@ -383,6 +383,71 @@ mod tests {
         let _ = make_square(&rgba, 4, 4);
     }
 
+    /// Audit fix N2 — buffer overshoot also panics. The `assert_eq!`
+    /// guard catches both directions, but only the undershoot side had
+    /// an explicit test until now.
+    #[test]
+    #[should_panic(expected = "rgba buffer length must equal")]
+    fn buffer_length_overshoot_panics() {
+        let rgba = vec![0u8; 4 * 4 * 4 + 8]; // 8 trailing bytes
+        let _ = make_square(&rgba, 4, 4);
+    }
+
+    /// Audit fix N2 — both dims odd, both diffs odd. Earlier tests
+    /// exercise odd×even and even×odd, but not the case where BOTH
+    /// `offset_x` AND `offset_y` are non-trivially placed by the
+    /// `floor(diff/2)` rule simultaneously. With 3×5 the larger side
+    /// is 5 → already-square in the longer dimension; the test that
+    /// matters is therefore something like 5×3 → 5×5 (h-diff=2 even,
+    /// not what we want). Use 7×5: diff_x = max-w = 0 (5 < 7), so we
+    /// need w<size and h<size simultaneously — impossible by
+    /// construction since the LARGER axis becomes `size` and gets
+    /// offset 0. The truly mixed case is therefore exotic: only one
+    /// axis ever pads. We instead validate the worst-case ODD pad
+    /// (5×2 → 5×5 with diff_y=3, offset_y=1, trailing pad=2) byte-
+    /// exactly so the asymmetric split is regression-protected.
+    #[test]
+    fn odd_height_diff_splits_floor_leading_ceil_trailing() {
+        let mut rgba = vec![0u8; 5 * 2 * 4];
+        // Mark the original 5×2 strip with a non-zero pattern so we
+        // can verify which rows are padded.
+        for (i, byte) in rgba.iter_mut().enumerate() {
+            *byte = (i as u8).wrapping_add(1); // never 0 → distinguishable from pad
+        }
+        let r = make_square(&rgba, 5, 2);
+        assert!(r.made_square);
+        assert_eq!(r.size, 5);
+        assert_eq!(r.offset_x, 0);
+        assert_eq!(r.offset_y, 1, "floor(3/2) = 1 on the leading edge");
+        let s = r.size as usize;
+        // Row 0 = leading pad (1 row). Rows 1..3 = original. Rows 3..5
+        // = trailing pad (2 rows). Verify the split is exactly
+        // 1-leading / 2-trailing, not 2-leading / 1-trailing.
+        for x in 0..s {
+            let i = x * 4;
+            assert_eq!(&r.pixels[i..i + 4], &[0, 0, 0, 0], "leading row 0 pad");
+        }
+        for x in 0..s {
+            for y in 3..s {
+                let i = (y * s + x) * 4;
+                assert_eq!(&r.pixels[i..i + 4], &[0, 0, 0, 0], "trailing row {y} pad");
+            }
+        }
+        // Original rows preserved byte-for-byte at y=1, y=2.
+        for src_y in 0..2 {
+            for x in 0..5 {
+                let src_i = (src_y * 5 + x) * 4;
+                let dst_i = ((src_y + 1) * s + x) * 4;
+                assert_eq!(
+                    &r.pixels[dst_i..dst_i + 4],
+                    &rgba[src_i..src_i + 4],
+                    "original (y={src_y}, x={x}) preserved at dst y={}",
+                    src_y + 1
+                );
+            }
+        }
+    }
+
     #[test]
     fn output_pixels_buffer_length_always_matches_size_squared() {
         let cases = [(8, 8), (1, 1), (32, 16), (16, 32), (5, 1), (1, 5), (7, 3)];

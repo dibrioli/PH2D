@@ -19,7 +19,11 @@ mod algorithm;
 #[path = "../src/tools/make_square/icon.rs"]
 mod icon;
 
+#[path = "../src/tools/trim_transparency/algorithm.rs"]
+mod trim_algorithm;
+
 use algorithm::make_square;
+use trim_algorithm::trim_transparency;
 
 #[test]
 fn behaviour_wider_than_tall_preserves_original_pixels_at_centered_offset() {
@@ -88,4 +92,58 @@ fn icon_module_compiles_and_returns_non_empty_path() {
     // in the unit tests inside `icon.rs`.
     let path = icon::square_bezpath();
     assert!(!path.elements().is_empty());
+}
+
+/// Audit fix N1 — cross-island invariant. A sprite with opaque content
+/// surrounded by transparent padding should survive a
+/// Trim → MakeSquare → Trim cycle with the **same** bounding box and
+/// **byte-identical opaque pixels** as the input. This is the
+/// regression test for the "inverso exato" claim in `INTEGRATION.md` —
+/// pad expands by transparent rows/cols only, trim recovers the bbox,
+/// and the second trim should be a no-op (already-trimmed input).
+#[test]
+fn round_trip_trim_then_make_square_then_trim_preserves_bbox_and_pixels() {
+    // 16×16 canvas with a 5×3 opaque rectangle at (4, 6).
+    let w = 16usize;
+    let h = 16usize;
+    let mut rgba = vec![0u8; w * h * 4];
+    let rect = (4usize, 6usize, 5usize, 3usize); // x, y, w, h
+    for y in rect.1..rect.1 + rect.3 {
+        for x in rect.0..rect.0 + rect.2 {
+            let i = (y * w + x) * 4;
+            rgba[i] = 0xAA;
+            rgba[i + 1] = 0xBB;
+            rgba[i + 2] = 0xCC;
+            rgba[i + 3] = 0xFF;
+        }
+    }
+
+    // Trim 1 — crops to the 5×3 bbox.
+    let t1 = trim_transparency(&rgba, w as u32, h as u32, 0);
+    assert!(t1.trimmed);
+    assert_eq!(t1.width, rect.2 as u32);
+    assert_eq!(t1.height, rect.3 as u32);
+    // Every pixel of the trimmed buffer should be opaque (the bbox
+    // contains only the rectangle).
+    for chunk in t1.pixels.chunks_exact(4) {
+        assert_eq!(chunk, &[0xAA, 0xBB, 0xCC, 0xFF]);
+    }
+
+    // MakeSquare — pad 5×3 → 5×5 (height diff = 2, even).
+    let ms = make_square(&t1.pixels, t1.width, t1.height);
+    assert!(ms.made_square);
+    assert_eq!(ms.size, 5);
+    assert_eq!(ms.offset_x, 0);
+    assert_eq!(ms.offset_y, 1);
+
+    // Trim 2 — should recover the original 5×3 bbox with identical
+    // pixels (round-trip invariant).
+    let t2 = trim_transparency(&ms.pixels, ms.size, ms.size, 0);
+    assert!(t2.trimmed);
+    assert_eq!(t2.width, rect.2 as u32, "width after round-trip");
+    assert_eq!(t2.height, rect.3 as u32, "height after round-trip");
+    assert_eq!(
+        t2.pixels, t1.pixels,
+        "pixels byte-identical after round-trip"
+    );
 }

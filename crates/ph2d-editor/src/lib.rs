@@ -51,7 +51,7 @@ pub use gizmo::{
 };
 pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
-pub use image_edit::{PixelBounds, recenter_after_crop};
+pub use image_edit::{PixelBounds, recenter_after_crop, recenter_after_pad};
 pub use interaction::{
     HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
     dispatch_text_input, dispatch_tick,

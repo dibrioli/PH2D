@@ -105,6 +105,57 @@ pub fn recenter_after_crop(
     [old_translation[0] + dx, old_translation[1] + dy]
 }
 
+/// Compute the new world-space translation a sprite needs after a
+/// pad-style image edit (Make Square today; future "Add transparent
+/// border", "Frame to N pixels") so the visual position of the
+/// original content is preserved.
+///
+/// Pads are the inverse of crops: the original image becomes a
+/// sub-region of a larger canvas. With centered padding and an EVEN
+/// diff the content's pixel center coincides with the new canvas
+/// pixel center → translation needs no adjustment. With an ODD diff
+/// the leading edge gets `floor(diff/2)` and the trailing edge gets
+/// `ceil(diff/2)`, so the content's pixel center sits 0.5 px toward
+/// the LEADING edge of the canvas. This helper computes the corrective
+/// translation so the content's WORLD center stays put.
+///
+/// - `old_translation` — current `Transform.translation` (Y-up, meters).
+/// - `new_size_world` — sprite size AFTER the pad (world meters).
+/// - `new_size_px` — texture pixel dims AFTER the pad. For Make Square
+///   that's `[size, size]`.
+/// - `original_in_new_px` — where the ORIGINAL content now lives inside
+///   the new canvas, in NEW-canvas pixel space (Y-down).
+///
+/// Returns the new translation. Degenerate inputs (zero new pixel dim)
+/// short-circuit to `old_translation`.
+///
+/// HR-5: pure f32 in a fixed evaluation order. HR-3: zero alloc.
+pub fn recenter_after_pad(
+    old_translation: [f32; 2],
+    new_size_world: [f32; 2],
+    new_size_px: [u32; 2],
+    original_in_new_px: PixelBounds,
+) -> [f32; 2] {
+    if new_size_px[0] == 0 || new_size_px[1] == 0 {
+        return old_translation;
+    }
+    // Bounds-center → canvas-center delta in world meters. This is the
+    // SAME math `recenter_after_crop` does (the formula is symmetric);
+    // the semantic difference is the SIGN of the correction: a crop's
+    // new sprite IS the bounds (translation moves TOWARD bounds center),
+    // a pad's new sprite is the LARGER canvas with the original sitting
+    // inside it (translation moves AWAY from the bounds center to keep
+    // content world-fixed).
+    let px_w = new_size_px[0] as f32;
+    let px_h = new_size_px[1] as f32;
+    let center_px_x = original_in_new_px.x as f32 + original_in_new_px.width as f32 * 0.5;
+    let center_px_y = original_in_new_px.y as f32 + original_in_new_px.height as f32 * 0.5;
+    let dx = new_size_world[0] * (center_px_x / px_w - 0.5);
+    let dy = new_size_world[1] * (0.5 - center_px_y / px_h);
+    // Subtract (vs the crop helper's add) to keep content fixed.
+    [old_translation[0] - dx, old_translation[1] - dy]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -255,5 +306,120 @@ mod tests {
         assert_eq!(bounds.y, 8);
         assert_eq!(bounds.width, 12);
         assert_eq!(bounds.height, 16);
+    }
+
+    // ── recenter_after_pad ─────────────────────────────────────────
+
+    #[test]
+    fn pad_even_diff_is_noop() {
+        // 64×32 image padded to 64×64 (height diff = 32, even).
+        // offset_y = 16, bounds = (0, 16, 64, 32). Content center
+        // px = (32, 32) == canvas center (32, 32). Translation unchanged.
+        let out = recenter_after_pad(
+            [5.0, 10.0],
+            [0.64, 0.64],
+            [64, 64],
+            PixelBounds {
+                x: 0,
+                y: 16,
+                width: 64,
+                height: 32,
+            },
+        );
+        assert!(approx(out, [5.0, 10.0], 1e-6));
+    }
+
+    #[test]
+    fn pad_odd_height_diff_moves_translation_down() {
+        // 65×32 image padded to 65×65. diff_y = 33 odd → offset_y =
+        // floor(33/2) = 16. Bounds = (0, 16, 65, 32). Content center
+        // px = (32.5, 32); canvas center px = (32.5, 32.5). Content
+        // is 0.5 px ABOVE canvas pixel center (Y-down). To keep
+        // content world-fixed: translation moves DOWN by 0.5/ppm.
+        // With new_size_world = (0.65, 0.65) at ppm=100, that's 0.005.
+        let out = recenter_after_pad(
+            [1.0, 2.0],
+            [0.65, 0.65],
+            [65, 65],
+            PixelBounds {
+                x: 0,
+                y: 16,
+                width: 65,
+                height: 32,
+            },
+        );
+        // dy = 0.65 * (0.5 - 32/65) = 0.65 * 0.5/65 = 0.005
+        // T_new_y = T_old_y - dy = 2.0 - 0.005 = 1.995
+        assert!(approx(out, [1.0, 1.995], 1e-5));
+    }
+
+    #[test]
+    fn pad_odd_width_diff_moves_translation_right() {
+        // 32×65 image padded to 65×65. diff_x = 33 → offset_x = 16.
+        // Bounds = (16, 0, 32, 65). Content center px = (32, 32.5);
+        // canvas center px = (32.5, 32.5). Content is 0.5 px LEFT of
+        // canvas. Translation moves RIGHT by 0.5/ppm.
+        let out = recenter_after_pad(
+            [1.0, 2.0],
+            [0.65, 0.65],
+            [65, 65],
+            PixelBounds {
+                x: 16,
+                y: 0,
+                width: 32,
+                height: 65,
+            },
+        );
+        // dx = 0.65 * (32/65 - 0.5) = -0.005
+        // T_new_x = T_old_x - dx = 1.0 - (-0.005) = 1.005
+        assert!(approx(out, [1.005, 2.0], 1e-5));
+    }
+
+    #[test]
+    fn pad_zero_new_dim_returns_old_translation() {
+        let out = recenter_after_pad(
+            [7.0, 3.0],
+            [4.0, 4.0],
+            [0, 100],
+            PixelBounds {
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+            },
+        );
+        assert_eq!(out, [7.0, 3.0]);
+    }
+
+    #[test]
+    fn pad_then_crop_round_trips_for_odd_diff() {
+        // Critical invariant: pad → crop the same band should restore
+        // the original translation exactly (modulo f32 epsilon).
+        // 65×32 → pad to 65×65 → crop back to bounds (0, 16, 65, 32).
+        let t_old = [1.0, 2.0];
+        let t_padded = recenter_after_pad(
+            t_old,
+            [0.65, 0.65],
+            [65, 65],
+            PixelBounds {
+                x: 0,
+                y: 16,
+                width: 65,
+                height: 32,
+            },
+        );
+        let t_cropped = recenter_after_crop(
+            t_padded,
+            [0.65, 0.65],
+            [65, 65],
+            PixelBounds {
+                x: 0,
+                y: 16,
+                width: 65,
+                height: 32,
+            },
+        );
+        // Crop's delta == -pad's delta, so the round-trip cancels.
+        assert!(approx(t_cropped, t_old, 1e-5));
     }
 }

@@ -9,4 +9,4 @@
 
 pub mod recenter;
 
-pub use recenter::{PixelBounds, recenter_after_crop};
+pub use recenter::{PixelBounds, recenter_after_crop, recenter_after_pad};

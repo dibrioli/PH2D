@@ -78,8 +78,8 @@ pub struct SquareCfg {
     pub origin: Vec2,
     /// Spacing in world units between **major** grid lines. Minor
     /// lines are at `cell_size`. Default = `cell_size * 5` (Photoshop
-    /// + Blender canonical "every 5 minor". Set to `cell_size` to
-    /// disable the major/minor distinction.
+    /// and Blender canonical "every 5 minor"). Set to `cell_size`
+    /// to disable the major/minor distinction.
     pub spacing_major: f32,
 }
 impl Default for SquareCfg {

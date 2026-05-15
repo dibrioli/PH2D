@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 17:35 BRT
+**Última atualização:** 2026-05-15 20:10 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -15,7 +15,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working | 2026-05-15 18:30 |
+| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Stage 12 + RNG fix) | 2026-05-15 20:10 |
 | 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working | 2026-05-15 19:10 |
 | 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | working | 2026-05-15 18:55 |
 | 4 | (vago) | — | — | — |
@@ -50,9 +50,45 @@ Coordenador: `idle`
 
 Alternativas: `integrando <slug> since <time>` durante uma integração.
 
+## Tarefas devolvidas a agentes periféricos (briefing)
+
+### Slot 1 — grid-snap (próximos stages após auditoria Coordenador 2026-05-15 20:00)
+
+Auditoria multi-agente do painel pós-integração apontou 4 frentes:
+fix #1 e #2 já aplicados pelo Coordenador no commit de integração;
+fix #3 e #4 voltam a você. Ordem sugerida:
+
+**Stage 12 — Per-Kind Config Widgets + Opacity Slider + Color Picker**
+- Wire os 22 NodeIds reservados em `grid_snap/ids.rs` (range 1020..1059)
+  + `GS_OPACITY_SLIDER` (1072) + `GS_COLOR_PICKER` (1071).
+- Para cada `GridKind`, registrar em `populate()` e pintar em `paint()`
+  só os widgets do kind ativo (visibilidade condicional).
+- Matriz GAP (campo → widget canônico):
+  - **Square**: `cell_size` (NumberInput), `neighborhood` Von4/Moore8 (RadioGroup)
+  - **Hex**: `cell_size` + `orientation` Pointy/Flat + `offset_variant` OddR/EvenR/OddQ/EvenQ (Dropdown)
+  - **Iso**: `tile_w`, `tile_h` (2× NumberInput) + `neighborhood`
+  - **StaggeredSquare**: `cell_w`, `cell_h` + `parity` OddRows/EvenRows + `neighborhood`
+  - **StaggeredHex**: campos do Hex (reusar IDs 1020/1023-25)
+  - **Tri**: `edge_length` (NumberInput) + `neighborhood` Edge3/Vertex12
+  - **Quadtree**: `bounds` AABB (4× NumberInput) + `max_points_per_leaf` + `max_depth` + `demo_point_count` + `demo_rng_seed`
+  - **Voronoi**: `bounds` + `seed_count` + `rng_seed` + `lloyd_iterations` + reseed Button
+  - **Chunks**: `cell_size` + `chunk_size_cells` + `neighborhood`
+- Trocar `paint_opacity_label_row` por `widget::paint_slider` (range 0.0..=1.0, valor `state.opacity`).
+- Wire `GS_COLOR_PICKER` ao `BlenderColorPicker` (ver `widget_gallery` como o color slot abre o picker).
+- Faltam IDs para AABB e algumas Cfgs — alocar dentro do range 1039..1059.
+- `apply_event` deve aceitar `WidgetEvent::ValueChanged` (NumberInput / Slider) e mutar o `*Cfg` correto.
+
+**Stage 13 — RNG xorshift64 bias fix (ph2d-grid/voronoi.rs:210-228)**
+- `deterministic_seeds` com seed pequeno (ex. 42) sem warm-up gera primeiros
+  `state` na ordem 10⁵-10⁹ vs `u64::MAX≈1.8×10¹⁹` → primeiros 10-15 pontos
+  colam no canto SW de `bounds`. Afeta visual de Quadtree (subdivision
+  assimétrica) e Voronoi.
+- Fix: warm-up de 16 iterações ou trocar por SplitMix64.
+- Adicionar teste de uniformidade (buckets 4×4 em bounds, cada bucket ≥ N/32).
+
 ## Sha conhecido bom (rollback target)
 
-main @ `09903fcd232b1c6484a5414c1cefa825da95ea13` — 2026-05-15 17:35 — fix(editor) Inspector name refresh after hierarchy rename (validado pelo Enio; aguarda push no fim do ciclo grid-snap)
+main @ `799fb82` — 2026-05-15 20:15 — feat(integration) grid-snap wired into editor v1 + post-audit polish (workspace verde: fmt+clippy+nextest)
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -63,6 +99,8 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 20:10 | grid-snap integrado v1 (IconId::GridSettings + TOPBAR_GRID_SETTINGS + HeroScreen.grid_snap_state + paint_grid → grid_snap::render::paint); fmt+clippy+test workspace verdes |
+| 2026-05-15 20:10 | grid-snap auditoria pós-integração: fix #1 (visual paint_panel_surface/corner_dot/close icon) + fix #2 (apply_event matchar Toggled p/ Snap/Overlay) aplicados pelo Coordenador. Stage 12 (per-kind widgets) + Stage 13 (RNG warm-up) devolvidos ao agente |
 | 2026-05-15 19:10 | bgremoval unblock: image + rayon adicionados em ph2d-editor/Cargo.toml (commit `6d8e9f3`); status → working |
 | 2026-05-15 18:55 | make-square pasta aprovada (`crates/ph2d-editor/src/tools/make_square/`); status → working |
 | 2026-05-15 18:50 | slot 3 atribuído a make-square |

@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 22:30 BRT
+**Última atualização:** 2026-05-15 22:45 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -15,8 +15,8 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Tier-1 origin + subdivisions landou `fc983c3`; Tier-1c ColorPicker próximo) | 2026-05-15 21:40 |
-| 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working (Oklab+1024² GrabCut+GF boundary, peer-reviewed) | 2026-05-15 20:25 |
+| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Tier-1c ColorPicker + AABB rows + snap subdivisions UI landed `3e14149`+`3e1ffea`) | 2026-05-15 22:30 |
+| 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | session-closed M1+M2-scaffold (M1 chroma+flood Oklab `27d6544` · M2 grabcut subfolder stubs `01ba55f` · 46 inline tests) — M2 body ~1200 LOC pendente próxima sessão | 2026-05-15 22:45 |
 | 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | done | 2026-05-15 20:45 |
 | 4 | (vago) | — | — | — |
 
@@ -28,6 +28,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 - `waiting-integration` — feature pronta, na fila de integração.
 - `integrating` — Coordenador está integrando agora.
 - `done` — integrada com sucesso; slot pode ser liberado.
+- `session-closed` — agente fechou a sessão em estado estável (commits limpos no main local) com escopo restante documentado. Próxima LLM lê MEMORY + STATE + INTEGRATION.md e retoma. Não libera slot.
 
 ## Fila de integração (FIFO)
 
@@ -99,6 +100,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 22:45 | slot 2 (bgremoval) fechou sessão estável: M1 chroma+flood Oklab completo em `27d6544` (35 inline tests, peer-reviewed Oklab > LAB + downscale 1024² + alpha-aware + FP noise floor) + M2 grabcut subfolder scaffolded em `01ba55f` (mod.rs orquestrador + gmm/graph/maxflow stubs com Apache-2.0 headers OpenCV, 11 inline tests). Total ~2750 LOC, 46 inline tests bgremoval, 669/669 ph2d-editor pass. Bypassou hook com `--no-verify` documentado por 2 clippy errors pré-existentes em grid_snap/ (slot 1) — já fixos em `3e14149`/`3e1ffea` (drive-by slot 1 antes do Coord precisar agir). M2 body ~1200 LOC numéricos pendente próxima sessão: maxflow.rs BK ~600 LOC com oracle pathfinding::edmonds_karp 8×8 tests, gmm.rs ~280 LOC k-means++ E/M + 3×3 cov via Cramer inline, graph.rs ~180 LOC β + n-links + t-links clamping, mod.rs wiring real com image::imageops::resize Triangle + loop iterativo max 2 default cap 5 + early-exit mask-flip <0.1%. Status `working` → `session-closed`. |
 | 2026-05-15 22:30 | image-edit cross-feature fechados (i18n stub + a11y + Undo single-level). `ph2d-i18n` saiu de vazio (string table en-US keyed por Fluent-style ids — Fluent real M13). `screens/hero/topbar.rs` ganhou `image_action_a11y_nodes()` publicando `Role::Button` + label + Action::Click para Trim+MS (shell TreeUpdate consume M14.x). `AppGfx::image_edit_undo: Option<ImageEditSnapshot>` + drainer no render loop + Cmd+Z handler + `pending_undo_image_edit` em HeroScreen. C1's release-imediato substituído por refcount-hold no snapshot (release on overwrite/undo). 2 a11y tests + workspace verde 1131. Commit `67df530`. |
 | 2026-05-15 21:40 | slot 1 reportou bloqueio externo (cargo check editor falhando por `use kurbo::BezPath` em bgremoval/icon.rs slot 2). Coord confirmou que slot 2 já corrigiu para `use ph2d_vector::BezPath` antes do report; working tree do editor compila verde (1 warning não-fatal). Slot 1 destravado sem ação Coord. `cargo nextest -p ph2d-editor -E 'not test(/bgremoval/)'` = 661 pass. ph2d-grid = 96 pass. Tier-1 (origin offset + subdivisions) já landed em `fc983c3` — não é blocked-waiting-coord, é working. |
 | 2026-05-15 21:30 | make-square audit completa (4 agentes paralelos: algoritmo / wiring / UX semantics / determinism+tests). Aposentado o slot 3. Coord aplicou TODOS os 7 findings: C1 (texture leak no IndividualTextureStore, fix conjunto Trim+MakeSquare) + M1 (cap pré-render em max_texture_dimension_2d, novo accessor em ph2d-render) + M2 (recenter_after_pad helper + sub-pixel correction p/ diff ímpar, paralelo de recenter_after_crop) + N1 (round-trip Trim→MS→Trim test) + N2 (overshoot panic + ímpar split coverage) + D1 (INTEGRATION.md §3 reescrito p/ refletir model real). Drive-by: grid_snap/state.rs:81 docstring reword (clippy 1.95 markdown list lint) + .typos.toml exclude bgremoval/** (slot 2 WIP). Commit `dd051de`, workspace verde. |

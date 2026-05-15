@@ -33,6 +33,9 @@
 
 mod hero_bridge;
 mod integration;
+mod theme;
+
+use theme::parse_theme_env;
 
 use bumpalo::Bump;
 use ph2d_asset::{AssetDb, AssetId};
@@ -3687,26 +3690,6 @@ fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
 /// `PH2D_THEME` env var), falling back to [`Theme::Forge`] for
 /// missing/invalid values. Recognised names match `Theme::id()`
 /// (`forge`, `workshop`, `sunstone`, `blueprint`).
-fn resolve_theme(name: Option<&str>) -> Theme {
-    match name {
-        None => Theme::Forge,
-        Some("forge") => Theme::Forge,
-        Some("workshop") => Theme::Workshop,
-        Some("sunstone") => Theme::Sunstone,
-        Some("blueprint") => Theme::Blueprint,
-        Some(other) => {
-            eprintln!(
-                "[ph2d] PH2D_THEME={other:?} not recognized; falling back to forge. Valid: forge, workshop, sunstone, blueprint."
-            );
-            Theme::Forge
-        }
-    }
-}
-
-fn parse_theme_env() -> Theme {
-    resolve_theme(std::env::var("PH2D_THEME").ok().as_deref())
-}
-
 fn main() {
     install_panic_hook();
     let event_loop = EventLoop::new().expect("create EventLoop");
@@ -3721,6 +3704,7 @@ fn main() {
 #[cfg(test)]
 mod theme_env_tests {
     use super::*;
+    use crate::theme::resolve_theme;
 
     #[test]
     fn unset_defaults_to_forge() {

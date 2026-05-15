@@ -132,16 +132,9 @@ impl Default for StaggeredSquareCfg {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct StaggeredHexCfg {
     pub hex: HexCfg,
-}
-impl Default for StaggeredHexCfg {
-    fn default() -> Self {
-        Self {
-            hex: HexCfg::default(),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -343,9 +336,12 @@ impl GridSnapState {
             GridKind::Square => gsw(&self.make_square(), world, target, &mut self.scratch),
             GridKind::Hex => gsw(&self.make_hex(), world, target, &mut self.scratch),
             GridKind::Iso => gsw(&self.make_iso(), world, target, &mut self.scratch),
-            GridKind::StaggeredSquare => {
-                gsw(&self.make_staggered_square(), world, target, &mut self.scratch)
-            }
+            GridKind::StaggeredSquare => gsw(
+                &self.make_staggered_square(),
+                world,
+                target,
+                &mut self.scratch,
+            ),
             GridKind::StaggeredHex => {
                 gsw(&self.make_staggered_hex(), world, target, &mut self.scratch)
             }
@@ -371,10 +367,12 @@ mod tests {
 
     #[test]
     fn enabled_snap_pulls_to_cell_center_for_square() {
-        let mut s = GridSnapState::default();
-        s.snap_enabled = true;
-        s.kind = GridKind::Square;
-        s.snap_target = SnapTarget::Center;
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::Center,
+            ..Default::default()
+        };
         let p = s.snap_world([0.1, 0.1]);
         // Default square cell size = 1.0 → cell (0,0) center = (0.5, 0.5).
         assert_eq!(p, [0.5, 0.5]);
@@ -382,10 +380,12 @@ mod tests {
 
     #[test]
     fn snap_intersection_picks_corner_for_hex() {
-        let mut s = GridSnapState::default();
-        s.snap_enabled = true;
-        s.kind = GridKind::Hex;
-        s.snap_target = SnapTarget::Intersection;
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Hex,
+            snap_target: SnapTarget::Intersection,
+            ..Default::default()
+        };
         // Hex point near origin — must land on one of the 6 corners
         // of the containing hex. Verify the result is at distance
         // ≈ cell_size (= 1.0) from the cell center.
@@ -403,9 +403,11 @@ mod tests {
 
     #[test]
     fn quadtree_and_voronoi_passthrough_even_when_enabled() {
-        let mut s = GridSnapState::default();
-        s.snap_enabled = true;
-        s.kind = GridKind::Quadtree;
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Quadtree,
+            ..Default::default()
+        };
         assert_eq!(s.snap_world([3.7, 2.1]), [3.7, 2.1]);
         s.kind = GridKind::Voronoi;
         assert_eq!(s.snap_world([3.7, 2.1]), [3.7, 2.1]);

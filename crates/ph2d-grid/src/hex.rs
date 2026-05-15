@@ -123,7 +123,7 @@ impl CubeCoord {
 
 /// Offset-coord cell `(col, row)` for array layout. Interpretation
 /// depends on the [`HexOffset`] variant passed alongside.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct OffsetCell {
     pub col: i32,
     pub row: i32,

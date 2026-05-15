@@ -52,7 +52,7 @@ Alternativas: `integrando <slug> since <time>` durante uma integração.
 
 ## Sha conhecido bom (rollback target)
 
-main @ `09903fcd232b1c6484a5414c1cefa825da95ea13` — 2026-05-15 17:35 — fix(editor) Inspector name refresh after hierarchy rename (HEAD; refactor wave 36 commits + polish fix committed locally, push pendente)
+main @ `09903fcd232b1c6484a5414c1cefa825da95ea13` — 2026-05-15 17:35 — fix(editor) Inspector name refresh after hierarchy rename (validado pelo Enio; aguarda push no fim do ciclo grid-snap)
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -63,6 +63,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 17:42 | polish fix Inspector-name validado pelo Enio; commit `09903fc` aguarda push no fim do ciclo |
 | 2026-05-15 17:35 | slot 1 atribuído a grid-snap (Grid PRO + Snap módulo) |
 | 2026-05-15 17:35 | STATE.md inicializado a partir do template; sha bom = `09903fc` |
 

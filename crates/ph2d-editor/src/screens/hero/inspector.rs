@@ -200,6 +200,11 @@ thread_local! {
     static CURRENT_INSPECTOR_VISIBILITY:
         std::cell::Cell<Option<super::InspectorVisibilityInfo>> =
         const { std::cell::Cell::new(None) };
+    /// M14.E: editable entity-name snapshot. `RefCell` because the
+    /// inner `InspectorNameInfo` carries an owned `String` (entity
+    /// names can be longer than `Copy` is convenient for).
+    static CURRENT_INSPECTOR_NAME: std::cell::RefCell<Option<super::InspectorNameInfo>> =
+        const { std::cell::RefCell::new(None) };
     /// Mirror of `LAST_CONTENT_H` / `LAST_VISIBLE_H` for the floating
     /// Widget Gallery panel painted by [`paint_showcase_body`]. Tracked
     /// independently so the gallery and Inspector scroll without
@@ -238,6 +243,15 @@ pub(super) fn set_current_inspector_visibility(info: Option<super::InspectorVisi
 
 fn current_inspector_visibility() -> Option<super::InspectorVisibilityInfo> {
     CURRENT_INSPECTOR_VISIBILITY.with(|c| c.get())
+}
+
+/// M14.E: same shape for the editable entity-name field.
+pub(super) fn set_current_inspector_name(info: Option<super::InspectorNameInfo>) {
+    CURRENT_INSPECTOR_NAME.with(|c| *c.borrow_mut() = info);
+}
+
+fn current_inspector_name() -> Option<super::InspectorNameInfo> {
+    CURRENT_INSPECTOR_NAME.with(|c| c.borrow().clone())
 }
 
 fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {
@@ -335,6 +349,43 @@ pub fn populate(store: &mut WidgetStore) {
     populate_samples(store);
     populate_transform_editor(store);
     populate_visibility_editor(store);
+    populate_render_strategy(store);
+    populate_name_editor(store);
+}
+
+/// M14.E: register the editable entity-name TextInput. Buffer starts
+/// empty; the host seeds it from `InspectorNameInfo` on the first
+/// frame an entity is selected.
+fn populate_name_editor(store: &mut WidgetStore) {
+    store.register(
+        ids::INSP_ENTITY_NAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+}
+
+/// M14.C: register the 3 segmented Strategy buttons in the Render
+/// Source section. Default `Normal`; the painter re-pins the
+/// matching button to `Pressed` each frame from the snapshot, so the
+/// stored state only matters for hover/idle transitions on inactive
+/// options.
+fn populate_render_strategy(store: &mut WidgetStore) {
+    for id in [
+        ids::INSP_RENDER_STRATEGY_ATLAS,
+        ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+        ids::INSP_RENDER_STRATEGY_HANDPACKED,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
 }
 
 /// M14.D: register the Visibility checkbox state. Default Checked
@@ -1124,16 +1175,29 @@ pub fn paint_inspector(
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text1, theme),
     );
-    let selected_label = selection.map(|s| s.label.as_str()).unwrap_or("(none)");
+    // M14.E: header subtitle is now the sprite's world size (when a
+    // sprite is selected). The entity name moved to the editable
+    // TextInput at the top of the body (see `paint_entity_name_row`).
+    // For non-sprite entities the subtitle is empty — Transform's own
+    // section + the editable name row carry the identification.
+    let sprite_for_header = current_inspector_sprite();
+    let subtitle_owned;
+    let subtitle: &str = match sprite_for_header.as_ref() {
+        Some(info) => {
+            subtitle_owned = format!("{:.3} × {:.3} m", info.world_size[0], info.world_size[1]);
+            subtitle_owned.as_str()
+        }
+        None => "",
+    };
     paint_text(
         text_system,
         scene,
-        selected_label,
+        subtitle,
         rect.x + PANEL_HEAD_PAD,
         title_y + TypeToken::Md.px() + 4.0,
         TypeToken::Sm.px(),
         rect.w - PANEL_HEAD_PAD * 2.0,
-        resolve(ColorToken::Text2, theme),
+        resolve(ColorToken::Text3, theme),
     );
     let div_y = title_y + TypeToken::Md.px() + TypeToken::Sm.px() + 16.0;
     let div = Rect::new(
@@ -1179,14 +1243,33 @@ pub fn paint_inspector(
     let transform_info = current_inspector_transform();
     let sprite_info = current_inspector_sprite();
     let visibility_info = current_inspector_visibility();
-    let any_section =
-        transform_info.is_some() || sprite_info.is_some() || visibility_info.is_some();
+    let name_info = current_inspector_name();
+    let any_section = transform_info.is_some()
+        || sprite_info.is_some()
+        || visibility_info.is_some()
+        || name_info.is_some();
     let mut y = body_top_y + 4.0;
-    // ── Visibility row (M14.D) — painted first so the eye toggle
-    // sits at the top of the Inspector, mirroring "GameObject active"
-    // in Unity / "visible" eye-icon in Blender. Drives the same
-    // `ph2d_ecs::Visibility` component as the Hierarchy panel's eye
-    // toggle (M14.6 A) via `EditorCommand::SetComponent`.
+    // ── Entity name (M14.E) — editable TextInput at the very top
+    // of the body. Replaces the read-only name displays that used to
+    // live in the header subtitle (now world size) and the Render
+    // Source "Name" row (now removed).
+    if name_info.is_some() {
+        y = paint_entity_name_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
+        );
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+    }
+    // ── Visibility row (M14.D) — checkbox below the name field.
+    // Drives the same `ph2d_ecs::Visibility` component as the
+    // Hierarchy panel's eye toggle (M14.6 A) via
+    // `EditorCommand::SetComponent`.
     if visibility_info.is_some() {
         y = paint_visibility_row(
             scene,
@@ -1609,6 +1692,47 @@ pub(super) fn paint_showcase_body(
 ///
 /// Returns the y-coordinate of the bottom of the painted row.
 #[allow(clippy::too_many_arguments)]
+pub(super) fn paint_entity_name_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let row_h = 28.0_f32;
+    let host = Rect::new(x, y, w, row_h);
+    hit_index.register(ids::INSP_ENTITY_NAME, host);
+    let (state, text, caret, anchor) = match store.get(ids::INSP_ENTITY_NAME) {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, None, 0, None),
+    };
+    let input = TextInput::new(ids::INSP_ENTITY_NAME, "")
+        .placeholder("Name\u{2026}")
+        .state(state);
+    paint_text_input_with_buffer(
+        &input,
+        text,
+        Some(caret),
+        anchor,
+        host,
+        scene,
+        text_system,
+        theme,
+    );
+    y + row_h + 6.0
+}
+
+/// M14.D: paint the live Visibility checkbox row above the Transform
+/// section. Mirrors the eye toggle in the Hierarchy panel.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn paint_visibility_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -1929,17 +2053,76 @@ fn paint_render_source_section(
         yy + row_h + row_gap
     };
 
-    cur_y = paint_pair(scene, text_system, "Name", &info.name, cur_y);
-    let size_str = format!("{:.3} × {:.3} m", info.world_size[0], info.world_size[1]);
-    cur_y = paint_pair(scene, text_system, "World size", &size_str, cur_y);
-    let strategy = match info.source_kind {
-        InspectorSpriteSource::Atlas { key } => format!("Atlas (key {})", key),
+    // M14.E: "Name" and "World size" rows previously lived here.
+    // They moved to the editable name TextInput at the top of the
+    // Inspector body and the header subtitle, respectively. Render
+    // Source now focuses on the actual storage strategy + identifier.
+    // M14.C: 3-segment Strategy switcher. Each button is `Pressed`
+    // when its strategy matches the current source_kind; the painter
+    // computes this from the snapshot each frame so the buttons
+    // always agree with the underlying ECS (no in-progress edit
+    // state to worry about — click → host swap → snapshot
+    // republishes → painter re-pins). HandPacked stays clickable
+    // but the host shows a toast and skips the swap in v1.
+    paint_text(
+        text_system,
+        scene,
+        "Strategy",
+        x,
+        cur_y,
+        label_font,
+        w,
+        resolve(ColorToken::Text3, theme),
+    );
+    cur_y += label_font + 4.0;
+    let strategy_btn_h = 28.0_f32;
+    let strategy_gap = 6.0_f32;
+    let strategy_btn_w = ((w - strategy_gap * 2.0) / 3.0).max(40.0);
+    let strategy_buttons = [
+        (
+            ids::INSP_RENDER_STRATEGY_ATLAS,
+            "Atlas",
+            matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
+        ),
+        (
+            ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+            "Individual",
+            matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
+        ),
+        (
+            ids::INSP_RENDER_STRATEGY_HANDPACKED,
+            "Hand-packed",
+            matches!(info.source_kind, InspectorSpriteSource::HandPacked),
+        ),
+    ];
+    for (i, (id, label, pressed)) in strategy_buttons.into_iter().enumerate() {
+        let bx = x + (strategy_btn_w + strategy_gap) * i as f32;
+        let r = Rect::new(bx, cur_y, strategy_btn_w, strategy_btn_h);
+        hit_index.register(id, r);
+        // Driven from the snapshot — hover/normal/pressed otherwise
+        // mirror the canonical button states.
+        let state = if pressed {
+            ButtonState::Pressed
+        } else {
+            store.button_state(id).unwrap_or(ButtonState::Normal)
+        };
+        let btn = Button::new(id, label)
+            .kind(ButtonKind::Default)
+            .state(state);
+        paint_button(&btn, r, scene, text_system, theme);
+    }
+    cur_y += strategy_btn_h + 8.0;
+    // Storage detail (atlas key / texture id) — kept as a small
+    // line under the switcher so the user can still see the
+    // identifier without it cluttering the buttons.
+    let storage_detail = match info.source_kind {
+        InspectorSpriteSource::Atlas { key } => format!("Atlas key: {}", key),
         InspectorSpriteSource::Individual { texture_id } => {
-            format!("Individual (texture {})", texture_id)
+            format!("Texture id: {}", texture_id)
         }
-        InspectorSpriteSource::HandPacked => "Hand-packed".to_string(),
+        InspectorSpriteSource::HandPacked => "Hand-packed (atlas asset)".to_string(),
     };
-    cur_y = paint_pair(scene, text_system, "Strategy", &strategy, cur_y);
+    cur_y = paint_pair(scene, text_system, "Storage", &storage_detail, cur_y);
     if let Some((pw, ph)) = info.source_pixels {
         let px_str = format!("{} × {} px", pw, ph);
         cur_y = paint_pair(scene, text_system, "Source", &px_str, cur_y);

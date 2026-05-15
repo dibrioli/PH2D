@@ -108,6 +108,25 @@ pub const INSP_TRANSFORM_RESET: NodeId = NodeId(380);
 // `ph2d_ecs::Visibility` component (same pipeline as Transform).
 /// Visibility checkbox in the Inspector header strip.
 pub const INSP_VISIBILITY_CHECK: NodeId = NodeId(381);
+
+// ── Inspector Render Source — Strategy switcher (M14.C) ─────────────────────
+// Three segmented buttons in the Render Source section that let the
+// user switch the sprite's source-storage strategy. Pressed = current
+// strategy (driven from the host snapshot every frame). Click on a
+// non-pressed button raises `pending_sprite_source_change`; the shell
+// does the renderer-side swap. Atlas ↔ Individual is wired in v1;
+// HandPacked transitions surface a toast (asset-picker arrives in
+// M14.C+).
+pub const INSP_RENDER_STRATEGY_ATLAS: NodeId = NodeId(382);
+pub const INSP_RENDER_STRATEGY_INDIVIDUAL: NodeId = NodeId(383);
+pub const INSP_RENDER_STRATEGY_HANDPACKED: NodeId = NodeId(384);
+
+/// M14.E: editable entity-name TextInput at the top of the Inspector
+/// body. Replaces the read-only name display that previously lived in
+/// the Inspector header subtitle and again as a "Name" row inside the
+/// Render Source section. Edits commit live via `TextChanged` →
+/// `EditorCommand::SetComponent` for `ph2d_ecs::Name`.
+pub const INSP_ENTITY_NAME: NodeId = NodeId(385);
 /// Widget Gallery floating panel — root id. The gallery is a Procreate-
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].

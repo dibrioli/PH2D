@@ -713,6 +713,168 @@ Transform in M14.A, no new boundary.
 **Workspace check**: 525 lib tests + 20 integration tests pass;
 clippy + fmt clean.
 
+## M14.C — Sprite Strategy switcher in Render Source (shipped, v1)
+
+The Render Source section's "Strategy" row, previously a read-only
+text line ("Atlas (key 7)"), becomes a **3-button segmented switcher**
+in the Inspector: Atlas / Individual / Hand-packed. The button whose
+strategy matches the entity's current `Sprite.source` is rendered
+`Pressed`; clicking a different button requests a strategy swap.
+
+**UI**:
+- New NodeIds `INSP_RENDER_STRATEGY_{ATLAS,INDIVIDUAL,HANDPACKED}`
+  (382-384). Registered as `InteractiveState::Button` in
+  `inspector::populate_render_strategy`.
+- `paint_render_source_section` replaces the old "Strategy" text
+  pair with a 3-segment row driven directly from
+  `info.source_kind`. The painter re-pins `Pressed` each frame —
+  there's no in-progress edit state to worry about (clicks are
+  atomic), so the snapshot always wins.
+- Storage detail (atlas key / texture id) remains visible as a small
+  "Storage:" pair under the buttons so the user can still see the
+  numeric identifier.
+
+**Commit path**:
+- New `RequestedSpriteStrategy { Atlas, Individual, HandPacked }` enum
+  in `ph2d-editor::screens::hero` (the variants drop the inner key /
+  texture_id because the user is requesting a *kind* swap; the host
+  picks/allocates the new identifier).
+- `pending_sprite_source_change: Option<(u64, RequestedSpriteStrategy)>`
+  channel on `HeroScreen`. `HeroScreen::apply_event` catches the
+  Click on any of the 3 strategy buttons, compares against the
+  current `source_kind` from `inspector_sprite`, and publishes only
+  when the requested kind differs.
+
+**Shell drain (v1 scope — direct world mutation, same pattern as
+M14.5 Trim Transparency; queue parity arrives when `register_render_components`
+is wired into the editor `ComponentRegistry`)**:
+
+- **Atlas → Individual**: re-decodes the source pixels via
+  `atlas_asset_map[key] → AssetId → AssetDb`, then
+  `renderer.acquire_individual(w, h, &pixels)` → new `texture_id`,
+  then writes `sprite.source = SpriteSource::Individual { texture_id }`.
+  Same code path Reimport (M14.5) and Trim use.
+- **Individual → Atlas**: surfaces a toast
+  *"Individual → Atlas swap is M14.C+ (atlas re-insert path)"*.
+  The renderer's `TextureAtlas::insert(key, w, h, rgba)` exists but
+  reusing keys after a free needs the M14.4d V2 `remove(key)` API.
+- **HandPacked (any direction)**: surfaces a toast
+  *"Hand-packed strategy needs an atlas asset — M14.C+ asset picker"*.
+  M14.5 B shipped the loader half (`parse_atlas_meta`); the renderer
+  integration + an asset picker UI land in M14.C+.
+
+**Tests**: `strategy_click_raises_pending_when_kind_differs` and
+`strategy_click_no_pending_without_sprite_selection` in
+`screens::hero::tests`.
+
+**Workspace check**: 527 lib tests + 20 integration tests pass;
+clippy + fmt clean.
+
+## M14.E — Editable entity name + Inspector header relayout (shipped)
+
+The Inspector header subtitle (previously the entity's name from
+`HeroSelection.label`) and the body's "Name" row inside the Render
+Source section both showed the same string twice. M14.E **consolidates
+both into a single editable TextInput at the top of the Inspector
+body** and **promotes World Size into the header subtitle slot**.
+
+UI changes:
+- New `paint_entity_name_row` (canonical `paint_text_input_with_buffer`)
+  painted before the Visibility row.
+- Header subtitle replaced: `selection.label` → world size from
+  `inspector_sprite` (when a sprite is selected; non-sprite entities
+  get an empty subtitle).
+- Render Source section: "Name" and "World size" `paint_pair` rows
+  removed (they used to lead the section).
+
+State plumbing (mirrors the M14.A / M14.D / M14.C snapshot pattern):
+- `InspectorNameInfo { entity_bits, name: String }` struct on
+  `HeroScreen`.
+- `inspector_name: Option<InspectorNameInfo>` snapshot + `pending_name_edit`
+  channel.
+- New `INSP_ENTITY_NAME` NodeId (385), registered as
+  `InteractiveState::TextInput` in `inspector::populate_name_editor`.
+- `paint_hero_screen` force-rewrites the TextInput buffer on selection
+  change (same `last_inspector_entity` check that already gated the
+  Transform fields).
+- Live commit on every `TextChanged`: the host drains
+  `pending_name_edit` per frame and pushes
+  `EditorCommand::SetComponent` for `ph2d::ecs::Name`. Option
+  coalescing keeps the queue cost to one push per frame even when the
+  user types fast.
+- Shell caches `name_type_id` at boot alongside the existing
+  `transform_type_id` / `visibility_type_id` cache.
+
+Tests: `entity_name_text_changed_raises_pending_with_selection` in
+`screens::hero::tests`.
+
+**Workspace check**: 535 lib tests + 20 integration tests pass;
+clippy + fmt clean.
+
+## M14.A/D/C audit hardening pass (shipped together with M14.E)
+
+A multi-agent audit (4 parallel reviewers: correctness, HR/ADR
+compliance, test coverage, architecture) surfaced **4 CRITICAL** data-
+correctness bugs and **5 HIGH** UX/perf issues across the M14.A,
+M14.D, and M14.C work. All resolved in this commit:
+
+**Fix #1 (CRITICAL) — Esc cancels in-flight drag/hold**
+`dispatch.rs` `KEY_ESCAPE` branch now unconditionally calls
+`store.end_number_input_drag()` + `store.end_number_stepper_hold()`
+BEFORE the focus-conditional revert path. Pre-fix, Esc only reset the
+buffer; the drag state stayed armed and the next pointer-Move advanced
+`last_committed` from a stale `start_value`, neutralizing the Esc
+rollback semantics.
+
+**Fix #2 (CRITICAL) — `last_committed` only on Up, not per Move**
+The drag-slider Move branch in `dispatch.rs` now writes `*value` +
+`*buffer` only; `*last_committed = new_value` moved to the Up commit
+branch. The rollback anchor now correctly points at the pre-Down
+value during a scrub. Test:
+`drag_move_does_not_advance_last_committed`.
+
+**Fix #3 (CRITICAL) — selection-switch clears drag/hold orphans**
+`paint_hero_screen` selection-change block now calls
+`end_number_input_drag()` + `end_number_stepper_hold()` before the
+focus reset + buffer rewrite. Pre-fix, a drag started on entity A
+would keep applying its `start_value` delta against entity B after a
+selection switch (a `dispatch_tick` against the wrong entity).
+
+**Fix #4 (CRITICAL) — Visibility one-frame stomp**
+The Visibility sync in `paint_hero_screen` now skips the snapshot
+write when `pending_visibility_edit.is_some()`. Pre-fix, a click on
+the checkbox would correctly toggle the store value AND set the
+pending channel, but the next frame's sync would stomp the freshly-
+toggled value back to the pre-click state until the shell drained.
+
+**Fix #6 (HIGH) — `apply_number_stepper_if_hit` `buffer.clone` removed**
+The single-character `.contains('.')` check now runs under the
+immutable borrow; no per-click allocation. Material for continuous-
+hold (every tick was allocating).
+
+**Fix #7 (HIGH) — Strategy click resets ButtonState to Normal**
+The Strategy switcher's click handler now forces the stored
+`ButtonState` to `Normal` after raising `pending_sprite_source_change`.
+The painter re-pins the matching strategy to `Pressed` from the
+snapshot each frame, so the dispatch-set Pressed state was visually
+claiming "active" on whichever button the user just clicked,
+including swap-rejected ones. Test:
+`strategy_click_resets_button_state_to_normal`.
+
+**Fix #8 (HIGH) — Sprite TypeId cached + Strategy via EditorCommandQueue**
+`register_render_components` now runs at AppGfx boot alongside
+`register_ecs_components`; `sprite_type_id` is cached. The Strategy
+swap drain (Atlas → Individual) now goes through
+`EditorCommand::SetComponent` for parity with Transform / Visibility /
+Name. MCP / Luau / future audit-log consumers see the same shape of
+mutation regardless of which editor surface raised it.
+
+Documented as deferred follow-up: atlas slot reuse (`atlas.remove(key)`
+API — M14.4d V2), Individual → Atlas swap (needs the V2 API),
+HandPacked transition (needs an atlas-asset picker UI), HR-3
+allocations in `paint_render_source_section` storage-detail row
+(under editor 1 ms budget; not in render/physics/audio hot path).
+
 ## M14.7 polish — rename mode + long-press (planned)
 
 A hierarchy row's right-click menu currently lists Duplicate / Add Child / Reset Transform / Delete (M14.6 F shipped). Two more interactions remain:

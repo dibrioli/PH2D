@@ -198,18 +198,17 @@ pub fn dispatch_pointer_with_text<'frame>(
                         - dom_dy as f64 * super::state::DRAG_RATE_Y)
                         * shift_mul;
                     let new_value = d.start_value + delta * d.step;
-                    // Direct mutation: refresh value + buffer +
-                    // last_committed so the focused field's painter
-                    // shows the new number this frame.
-                    if let Some(InteractiveState::NumberInput {
-                        value,
-                        buffer,
-                        last_committed,
-                        ..
-                    }) = store.get_mut(d.id)
+                    // Audit fix #2 (CRITICAL): mutate `value` and
+                    // `buffer` for live display, but DO NOT touch
+                    // `last_committed` — that anchor must keep
+                    // pointing at the pre-drag value so Esc can
+                    // revert. The Up handler commits
+                    // `last_committed = new_value` on a successful
+                    // drag release.
+                    if let Some(InteractiveState::NumberInput { value, buffer, .. }) =
+                        store.get_mut(d.id)
                     {
                         *value = new_value;
-                        *last_committed = new_value;
                         *buffer = super::format_number(new_value);
                     }
                     // Mirror to a linked slider if any (same pattern
@@ -774,8 +773,20 @@ pub fn dispatch_pointer_with_text<'frame>(
             if let Some(drag) = store.end_number_input_drag()
                 && drag.crossed_threshold
             {
-                // Clear the focused state — drag-completed = no edit.
-                if let Some(InteractiveState::NumberInput { state, .. }) = store.get_mut(drag.id) {
+                // Audit fix #2 (CRITICAL): commit `last_committed` to
+                // the final scrubbed value here, on Up. The per-Move
+                // path mutates `value` + `buffer` only; the rollback
+                // anchor lives until this release point so Esc
+                // mid-drag can restore the pre-Down value.
+                if let Some(InteractiveState::NumberInput {
+                    state,
+                    value,
+                    last_committed,
+                    ..
+                }) = store.get_mut(drag.id)
+                {
+                    *last_committed = *value;
+                    // Clear the focused state — drag-completed = no edit.
                     *state = crate::widget::TextInputState::Normal;
                 }
                 if store.focus_id() == Some(drag.id) {
@@ -1151,6 +1162,16 @@ pub fn dispatch_key<'frame>(
             }
         }
         KEY_ESCAPE => {
+            // Audit fix #1 (CRITICAL): Esc must also abort any
+            // in-flight NumberInput drag-slider OR stepper-hold,
+            // regardless of focus. Without this the drag state stays
+            // armed; the next Move would continue advancing
+            // `last_committed` from a stale `start_value`, and Esc
+            // (which is supposed to revert) would no longer work.
+            // Cleared unconditionally — these `end_*` calls are no-ops
+            // when nothing is in flight.
+            let _ = store.end_number_input_drag();
+            store.end_number_stepper_hold();
             if let Some(id) = store.focus_id() {
                 // Dropdowns close on ESC instead of losing focus.
                 if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(id)
@@ -1676,8 +1697,19 @@ fn apply_number_stepper_if_hit(
     press_ns: u128,
 ) -> bool {
     use crate::widget::NumberInput;
-    let (current_value, buffer) = match store.get(id) {
-        Some(InteractiveState::NumberInput { value, buffer, .. }) => (*value, buffer.clone()),
+    // Audit fix #6 (HIGH): peek value + step heuristic with an
+    // immutable borrow — no `buffer.clone()` per click. Old path
+    // allocated a fresh `String` every stepper-Down (every continuous-
+    // hold tick), wasted work for a single-char membership test.
+    let (current_value, step) = match store.get(id) {
+        Some(InteractiveState::NumberInput { value, buffer, .. }) => (
+            *value,
+            if buffer.contains('.') {
+                0.01_f64
+            } else {
+                1.0_f64
+            },
+        ),
         _ => return false,
     };
     let probe = NumberInput::new(id, "", current_value);
@@ -1689,11 +1721,6 @@ fn apply_number_stepper_if_hit(
         -1.0_f64
     } else {
         return false;
-    };
-    let step = if buffer.contains('.') {
-        0.01_f64
-    } else {
-        1.0_f64
     };
     let new_val = current_value + direction * step;
     if let Some(InteractiveState::NumberInput {
@@ -4504,6 +4531,104 @@ mod tests {
         assert!((read_value(&store, NodeId(77)) - 13.0).abs() < f64::EPSILON);
     }
 
+    /// M14.A audit fix #1 (CRITICAL): Esc mid-drag must abort the
+    /// in-flight `number_input_drag` and `number_stepper_hold`. Old
+    /// behavior: Esc reverted the buffer but the drag stayed armed,
+    /// so the next Move would continue overwriting the value from a
+    /// stale `start_value`. This regression test pins the new
+    /// invariant.
+    #[test]
+    fn esc_clears_in_flight_number_input_drag() {
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        // Down on body — drag candidate seeded (focus also lands).
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        // Move past 4 px threshold — drag promoted to slider.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, rect.x + 30.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        assert!(store.number_input_drag().is_some(), "drag armed before Esc");
+        // Esc clears it.
+        let _ = dispatch_key(&mut store, key(KEY_ESCAPE, false), &arena);
+        assert!(
+            store.number_input_drag().is_none(),
+            "Esc must clear in-flight drag"
+        );
+        assert!(
+            store.number_stepper_hold().is_none(),
+            "Esc must also clear any stepper hold"
+        );
+    }
+
+    /// M14.A audit fix #2 (CRITICAL): while the drag-slider is
+    /// scrubbing, `last_committed` must stay anchored on the
+    /// pre-Down value so Esc rollback works. Only the Up commit
+    /// updates `last_committed`. Old behavior overwrote it on every
+    /// Move and silently destroyed the rollback target.
+    #[test]
+    fn drag_slider_last_committed_anchors_until_up_commits() {
+        let (mut store, hits, rect) = number_input_setup(7.0);
+        let arena = Bump::new();
+        // Down + Move past threshold → drag in flight.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, rect.x + 30.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        match store.get(NodeId(77)) {
+            Some(InteractiveState::NumberInput {
+                value,
+                last_committed,
+                ..
+            }) => {
+                assert!(
+                    (*last_committed - 7.0).abs() < f64::EPSILON,
+                    "last_committed must stay at the pre-drag value during Move, got {last_committed}"
+                );
+                assert!(
+                    (*value - 7.0).abs() > f64::EPSILON,
+                    "value should already have moved during drag"
+                );
+            }
+            _ => panic!("expected NumberInput state"),
+        }
+        // Up commits — last_committed now matches value.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, rect.x + 30.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        match store.get(NodeId(77)) {
+            Some(InteractiveState::NumberInput {
+                value,
+                last_committed,
+                ..
+            }) => {
+                assert!(
+                    (*last_committed - *value).abs() < f64::EPSILON,
+                    "Up must commit last_committed = value"
+                );
+            }
+            _ => panic!("expected NumberInput state"),
+        }
+    }
+
     /// M14.A: pointer-Up clears the continuous-hold so subsequent
     /// ticks (even at a time past the delay) do nothing — release
     /// stops the repeat. Verified against the same fixture as the
@@ -4535,6 +4660,116 @@ mod tests {
         );
         // Value remained at the single Down-increment.
         assert!((read_value(&store, NodeId(77)) - 1.0).abs() < f64::EPSILON);
+    }
+
+    /// Audit fix #1 (CRITICAL): Esc clears any in-flight
+    /// `number_input_drag` AND `number_stepper_hold` regardless of
+    /// focus. Without this, the drag state stays armed and the next
+    /// Move would continue advancing `last_committed` from a stale
+    /// `start_value`.
+    #[test]
+    fn esc_clears_in_flight_drag_and_stepper_hold() {
+        let (mut store, hits, rect) = number_input_setup(7.0);
+        let arena = Bump::new();
+        // 1) Start a drag-slider mid-scrub.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, rect.x + 30.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        assert!(store.number_input_drag().is_some());
+        // 2) Esc cancels.
+        let evts = dispatch_key(&mut store, key(KEY_ESCAPE, false), &arena);
+        let _ = evts;
+        assert!(
+            store.number_input_drag().is_none(),
+            "Esc must clear number_input_drag"
+        );
+
+        // Same coverage for stepper hold.
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        let probe = crate::widget::NumberInput::new(NodeId(77), "", 0.0);
+        let up = probe.up_rect(rect);
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, up.x + up.w * 0.5, up.y + up.h * 0.5),
+            &arena,
+        );
+        assert!(store.number_stepper_hold().is_some());
+        let _ = dispatch_key(&mut store, key(KEY_ESCAPE, false), &arena);
+        assert!(
+            store.number_stepper_hold().is_none(),
+            "Esc must clear number_stepper_hold"
+        );
+    }
+
+    /// Audit fix #2 (CRITICAL): per-Move drag updates `value` +
+    /// `buffer` but leaves `last_committed` untouched until Up.
+    /// Otherwise Esc-revert would only roll back to the most recent
+    /// scrubbed value, not to the pre-Down anchor.
+    #[test]
+    fn drag_move_does_not_advance_last_committed() {
+        let (mut store, hits, rect) = number_input_setup(42.0);
+        let arena = Bump::new();
+        // Pre-Down anchor is `last_committed = 42.0`.
+        let initial_last_committed = match store.get(NodeId(77)) {
+            Some(InteractiveState::NumberInput { last_committed, .. }) => *last_committed,
+            _ => -1.0,
+        };
+        assert_eq!(initial_last_committed, 42.0);
+        // Down → Move past threshold → value advances, last_committed
+        // must NOT.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, rect.x + 30.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        if let Some(InteractiveState::NumberInput {
+            value,
+            last_committed,
+            ..
+        }) = store.get(NodeId(77))
+        {
+            assert!(
+                (*value - 42.0).abs() > 1e-3,
+                "value should have advanced during drag"
+            );
+            assert_eq!(
+                *last_committed, 42.0,
+                "last_committed must remain pre-Down anchor until Up"
+            );
+        }
+        // Up commits last_committed to the scrubbed value.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, rect.x + 30.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        if let Some(InteractiveState::NumberInput {
+            value,
+            last_committed,
+            ..
+        }) = store.get(NodeId(77))
+        {
+            assert_eq!(*value, *last_committed);
+        }
     }
 
     fn meta_key(kc: u32) -> KeyEvent {

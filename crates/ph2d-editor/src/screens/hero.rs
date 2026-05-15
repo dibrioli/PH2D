@@ -399,6 +399,27 @@ pub struct HeroScreen {
     /// [`ph2d_ecs::Visibility`] to its `EditorCommandQueue` — same
     /// pipeline as `pending_transform_edit`.
     pub pending_visibility_edit: Option<InspectorVisibilityInfo>,
+    /// M14.C: editor → host channel for Sprite source-strategy
+    /// switches. The inspector publishes `(entity_bits, requested)`
+    /// when the user picks a different strategy in the Render Source
+    /// section's segmented switcher. The shell does the actual swap:
+    /// Atlas → Individual re-decodes the source asset via
+    /// `atlas_asset_map` and `acquire_individual`; Individual → Atlas
+    /// and HandPacked transitions surface a toast in v1
+    /// (renderer-side parity arrives in M14.C+).
+    pub pending_sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
+    /// M14.E: snapshot of the selected entity's `Name` component.
+    /// Host publishes this per frame so the editable name field at
+    /// the top of the Inspector body can seed its TextInput buffer.
+    /// `None` when nothing is selected.
+    pub inspector_name: Option<InspectorNameInfo>,
+    /// M14.E: editor → host channel for entity-name edits. The
+    /// inspector publishes the full snapshot (entity_bits + new name)
+    /// on every `TextChanged` — `Option` coalescing means the shell
+    /// drains at most once per frame, even when the user is typing
+    /// fast. Drained via `EditorCommand::SetComponent` for
+    /// `ph2d_ecs::Name`, same pipeline as Transform / Visibility.
+    pub pending_name_edit: Option<InspectorNameInfo>,
 }
 
 /// Snapshot of the selected sprite's editor-facing fields. Host
@@ -477,6 +498,38 @@ pub struct InspectorTransformInfo {
 pub struct InspectorVisibilityInfo {
     pub entity_bits: u64,
     pub visible: bool,
+}
+
+/// M14.E: snapshot of the selected entity's `Name` component.
+///
+/// Mirrors the M14.A / M14.D snapshot pattern. The Inspector renders
+/// this as the editable name field at the very top of the panel body
+/// (above the Visibility row + Transform section). Loose-coupled
+/// (the editor crate doesn't depend on `ph2d-ecs::Name`); the shell
+/// converts to/from `Name(String)` at the boundary.
+///
+/// `name` is the human-readable label. The host falls back to
+/// `format!("Entity_{hex_bits}")` when the entity has no `Name`
+/// component yet, so the field is always non-empty for a selected
+/// entity (matches the existing `InspectorSpriteInfo::name` shape).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InspectorNameInfo {
+    pub entity_bits: u64,
+    pub name: String,
+}
+
+/// M14.C: which sprite render-source strategy the user requested via
+/// the Render Source segmented switcher in the Inspector. The host
+/// translates this into the actual renderer + ECS mutations.
+///
+/// The variants intentionally drop the inner `key` / `texture_id`
+/// fields of [`InspectorSpriteSource`] — the user is asking for a
+/// *kind* change; the host picks (or allocates) the new identifier.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RequestedSpriteStrategy {
+    Atlas,
+    Individual,
+    HandPacked,
 }
 
 /// Which framing action the VIEW button (TOOL_HOME) + F/Home key
@@ -561,6 +614,9 @@ impl HeroScreen {
             pending_transform_edit: None,
             inspector_visibility: None,
             pending_visibility_edit: None,
+            pending_sprite_source_change: None,
+            inspector_name: None,
+            pending_name_edit: None,
         }
     }
 
@@ -1229,6 +1285,58 @@ impl HeroScreen {
             });
             return true;
         }
+        // M14.C: Render Source Strategy switcher. A click on a
+        // non-pressed button raises `pending_sprite_source_change`
+        // with the requested kind; the shell does the renderer-side
+        // swap on drain. Clicks on the already-Pressed button are
+        // consumed silently (no-op).
+        if let WidgetEvent::Click(id) = event
+            && let Some(requested) = match id {
+                ids::INSP_RENDER_STRATEGY_ATLAS => Some(RequestedSpriteStrategy::Atlas),
+                ids::INSP_RENDER_STRATEGY_INDIVIDUAL => Some(RequestedSpriteStrategy::Individual),
+                ids::INSP_RENDER_STRATEGY_HANDPACKED => Some(RequestedSpriteStrategy::HandPacked),
+                _ => None,
+            }
+            && let Some(info) = self.inspector_sprite.as_ref()
+        {
+            let current = match info.source_kind {
+                InspectorSpriteSource::Atlas { .. } => RequestedSpriteStrategy::Atlas,
+                InspectorSpriteSource::Individual { .. } => RequestedSpriteStrategy::Individual,
+                InspectorSpriteSource::HandPacked => RequestedSpriteStrategy::HandPacked,
+            };
+            if requested != current {
+                self.pending_sprite_source_change = Some((info.entity_bits, requested));
+            }
+            // Audit fix #7 (HIGH): reset the just-clicked button's
+            // stored state back to Normal regardless of whether the
+            // swap will succeed. The painter re-pins the matching
+            // strategy to Pressed each frame from the snapshot, so
+            // leaving the clicked button in the dispatch-set
+            // Pressed/Hovered state would visually claim "active" on
+            // a button that the host either rejected (toast path) or
+            // is about to overwrite anyway. Clearing here keeps the
+            // painter's snapshot-driven pin as the single source of
+            // visual truth for which strategy is "current".
+            if let Some(InteractiveState::Button { state }) = self.store.get_mut(id) {
+                *state = crate::widget::ButtonState::Normal;
+            }
+            return true;
+        }
+        // M14.E: entity-name TextInput edits. Live commit on every
+        // `TextChanged` — `Option` coalescing in `pending_name_edit`
+        // means the shell drains at most once per frame regardless of
+        // typing speed.
+        if let WidgetEvent::TextChanged(id) = event
+            && id == ids::INSP_ENTITY_NAME
+            && let Some(info) = self.inspector_name.as_ref()
+        {
+            let text = self.store.text(id).unwrap_or("").to_string();
+            self.pending_name_edit = Some(InspectorNameInfo {
+                entity_bits: info.entity_bits,
+                name: text,
+            });
+            return true;
+        }
         if inspector::apply_event(&mut self.store, event) {
             return true;
         }
@@ -1507,17 +1615,24 @@ pub fn paint_hero_screen(
         if panel_id == ids::INSP_PANEL && hero.inspector_visible {
             // M14.A: when the selected entity changes, force-rewrite
             // the 5 Transform NumberInput buffers from the new
-            // snapshot. Without this an in-progress edit on entity A
-            // (focused field) survives a selection switch and gets
-            // silently applied to entity B on commit — a subtle data
-            // corruption bug Plan agent flagged.
-            let new_entity = hero.inspector_transform.map(|i| i.entity_bits);
+            // snapshot AND end any in-flight drag/stepper-hold —
+            // otherwise the orphaned state would keep ticking against
+            // the new entity with the old `start_value` (audit fix #3).
+            // Same selection-id is reused for Name and Visibility so
+            // any of those snapshots can drive the entity_changed flag.
+            let new_entity = hero
+                .inspector_transform
+                .map(|i| i.entity_bits)
+                .or_else(|| hero.inspector_name.as_ref().map(|i| i.entity_bits))
+                .or_else(|| hero.inspector_visibility.map(|i| i.entity_bits));
             let entity_changed = new_entity != hero.last_inspector_entity;
             if entity_changed {
-                // Drop focus so `set_number_value` rewrites every
-                // buffer including the one that WAS focused on the
-                // previous entity.
+                // Drop focus + cancel any drag/stepper-hold so the
+                // next force-rewrite isn't fighting in-progress state
+                // from the previous entity.
                 hero.store.set_focus(None);
+                let _ = hero.store.end_number_input_drag();
+                hero.store.end_number_stepper_hold();
                 if let Some(info) = hero.inspector_transform {
                     hero.store
                         .set_number_value(ids::INSP_TRANSFORM_POS_X, info.translation[0] as f64);
@@ -1531,6 +1646,24 @@ pub fn paint_hero_screen(
                         .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
                     hero.store
                         .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
+                }
+                // M14.E: force-rewrite the editable name TextInput buffer
+                // on selection change so the previous entity's
+                // in-progress typed-but-uncommitted edit can't leak
+                // onto the new entity.
+                if let Some(InteractiveState::TextInput {
+                    text,
+                    caret,
+                    selection_anchor,
+                    ..
+                }) = hero.store.get_mut(ids::INSP_ENTITY_NAME)
+                {
+                    text.clear();
+                    if let Some(info) = hero.inspector_name.as_ref() {
+                        text.push_str(&info.name);
+                    }
+                    *caret = text.len();
+                    *selection_anchor = None;
                 }
                 hero.last_inspector_entity = new_entity;
             } else if let Some(info) = hero.inspector_transform {
@@ -1550,13 +1683,14 @@ pub fn paint_hero_screen(
                 hero.store
                     .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
             }
-            // M14.D: sync the Visibility checkbox value from the
-            // current snapshot. Always overwrite — Checkbox has no
-            // "in-progress edit" the user might be authoring (Click
-            // is atomic), so unlike NumberInput buffers there's no
-            // focus-guard to honor. Skipped silently when the
-            // selection has no Visibility snapshot.
-            if let Some(vis) = hero.inspector_visibility
+            // M14.D + audit fix #4: sync the Visibility checkbox
+            // value from the snapshot UNLESS a `pending_visibility_edit`
+            // is already queued — that means the user just clicked the
+            // checkbox AND the shell hasn't drained yet. Without the
+            // skip we'd stomp the just-toggled UI state back to the
+            // pre-click value for one frame.
+            if hero.pending_visibility_edit.is_none()
+                && let Some(vis) = hero.inspector_visibility
                 && let Some(InteractiveState::Checkbox { value, .. }) =
                     hero.store.get_mut(ids::INSP_VISIBILITY_CHECK)
             {
@@ -1572,6 +1706,7 @@ pub fn paint_hero_screen(
             inspector::set_current_inspector_sprite(hero.inspector_sprite.clone());
             inspector::set_current_inspector_transform(hero.inspector_transform);
             inspector::set_current_inspector_visibility(hero.inspector_visibility);
+            inspector::set_current_inspector_name(hero.inspector_name.clone());
             paint_inspector(
                 &layout,
                 hero.selection.as_ref(),
@@ -1584,6 +1719,7 @@ pub fn paint_hero_screen(
             inspector::set_current_inspector_sprite(None);
             inspector::set_current_inspector_transform(None);
             inspector::set_current_inspector_visibility(None);
+            inspector::set_current_inspector_name(None);
             // Publish content_h + clamp scroll right after paint so
             // `dispatch_wheel` sees the new bounds on the very next
             // event (avoids a one-frame overshoot when a section
@@ -2279,6 +2415,149 @@ mod tests {
         let pending = hero.pending_visibility_edit.expect("pending populated");
         assert_eq!(pending.entity_bits, 0xBABE_BEEF);
         assert!(!pending.visible, "toggle should commit visible=false");
+    }
+
+    /// M14.C: Click on a Strategy button different from the current
+    /// `source_kind` publishes `pending_sprite_source_change` with
+    /// the requested kind. Same-kind click is consumed silently.
+    #[test]
+    fn strategy_click_raises_pending_when_kind_differs() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_sprite = Some(InspectorSpriteInfo {
+            entity_bits: 0xC0FF_EE00,
+            name: "Player".into(),
+            world_size: [1.0, 1.0],
+            source_kind: InspectorSpriteSource::Atlas { key: 7 },
+            source_pixels: Some((256, 256)),
+            can_reimport: true,
+        });
+        // Current = Atlas → click on Individual button publishes.
+        assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
+        assert_eq!(
+            hero.pending_sprite_source_change,
+            Some((0xC0FF_EE00, RequestedSpriteStrategy::Individual))
+        );
+
+        // Click on Atlas (already-current) is consumed but no pending.
+        hero.pending_sprite_source_change = None;
+        assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_ATLAS)));
+        assert_eq!(hero.pending_sprite_source_change, None);
+
+        // HandPacked → publishes too (shell decides to skip with toast).
+        assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_HANDPACKED)));
+        assert_eq!(
+            hero.pending_sprite_source_change,
+            Some((0xC0FF_EE00, RequestedSpriteStrategy::HandPacked))
+        );
+    }
+
+    /// M14.C: Without `inspector_sprite` (nothing selected), Strategy
+    /// clicks are no-ops — apply_event returns false so the dispatcher
+    /// keeps walking and pending stays `None`.
+    #[test]
+    fn strategy_click_no_pending_without_sprite_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_sprite = None;
+        assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
+        assert_eq!(hero.pending_sprite_source_change, None);
+    }
+
+    /// M14.E: `TextChanged` on the editable entity-name field
+    /// publishes the current store text via `pending_name_edit`. The
+    /// `Option` coalesces multi-keystroke spans — only the latest
+    /// value survives until the shell drains.
+    #[test]
+    fn name_text_changed_publishes_pending_with_current_text() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_name = Some(InspectorNameInfo {
+            entity_bits: 0xDEAD_BEEF,
+            name: "Old".to_string(),
+        });
+        // Simulate the dispatch having mutated the TextInput buffer
+        // to "Player" via a sequence of keystrokes.
+        if let Some(InteractiveState::TextInput { text, caret, .. }) =
+            hero.store.get_mut(ids::INSP_ENTITY_NAME)
+        {
+            text.clear();
+            text.push_str("Player");
+            *caret = text.len();
+        }
+        assert!(hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
+        let pending = hero
+            .pending_name_edit
+            .as_ref()
+            .expect("pending populated after TextChanged");
+        assert_eq!(pending.entity_bits, 0xDEAD_BEEF);
+        assert_eq!(pending.name, "Player");
+    }
+
+    /// M14.E: without an `inspector_name` snapshot (no selection),
+    /// `TextChanged` is a no-op — apply_event returns false so the
+    /// dispatcher keeps walking.
+    #[test]
+    fn name_text_changed_no_pending_without_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_name = None;
+        assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
+        assert_eq!(hero.pending_name_edit, None);
+    }
+
+    /// M14.E: TextChanged on the entity-name field with a selection
+    /// publishes `pending_name_edit` with the current store buffer.
+    /// Without a selection, returns false and pending stays None.
+    #[test]
+    fn entity_name_text_changed_raises_pending_with_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        // Seed the TextInput buffer with what the user just typed.
+        if let Some(InteractiveState::TextInput { text, caret, .. }) =
+            hero.store.get_mut(ids::INSP_ENTITY_NAME)
+        {
+            *text = "Player Two".to_string();
+            *caret = text.len();
+        }
+        hero.inspector_name = Some(InspectorNameInfo {
+            entity_bits: 0xDEAD_F00D,
+            name: "Player".into(),
+        });
+        assert!(hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
+        let p = hero.pending_name_edit.as_ref().expect("pending populated");
+        assert_eq!(p.entity_bits, 0xDEAD_F00D);
+        assert_eq!(p.name, "Player Two");
+
+        // No selection → no pending.
+        hero.inspector_name = None;
+        hero.pending_name_edit = None;
+        assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
+        assert_eq!(hero.pending_name_edit, None);
+    }
+
+    /// Audit fix #7 (HIGH): clicking a strategy button resets the
+    /// stored ButtonState to Normal so the painter's snapshot-driven
+    /// `Pressed` pin is the single visual source of truth.
+    #[test]
+    fn strategy_click_resets_button_state_to_normal() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_sprite = Some(InspectorSpriteInfo {
+            entity_bits: 0x00C0_FFEE,
+            name: "S".into(),
+            world_size: [1.0, 1.0],
+            source_kind: InspectorSpriteSource::Individual { texture_id: 1 },
+            source_pixels: Some((64, 64)),
+            can_reimport: true,
+        });
+        // Simulate dispatch having set Pressed on the click target.
+        if let Some(InteractiveState::Button { state }) =
+            hero.store.get_mut(ids::INSP_RENDER_STRATEGY_ATLAS)
+        {
+            *state = crate::widget::ButtonState::Pressed;
+        }
+        assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_ATLAS)));
+        // After apply_event: pending raised AND button state forced
+        // back to Normal so the painter's pin re-runs cleanly.
+        assert!(matches!(
+            hero.store.button_state(ids::INSP_RENDER_STRATEGY_ATLAS),
+            Some(crate::widget::ButtonState::Normal),
+        ));
     }
 
     /// M14.D: Toggled without an `inspector_visibility` snapshot

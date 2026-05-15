@@ -88,6 +88,18 @@ O Enio te repassa pedidos vindos das sessões dos Agentes. Categorias:
 3. Prepara **briefing personalizado**:
    - Cabeçalho: "ESCOPO: <descrição que o Enio te deu>"
    - Cabeçalho: "SLOT ATRIBUÍDO: #<N> — slug `<slug>`"
+   - **Se a feature tem qualquer painel/widget de UI:** acrescente o
+     bloco abaixo logo após os cabeçalhos (antes do conteúdo de
+     `03-Agente-Periferico.md`):
+
+     > **UI canônica — obrigatório consultar antes de pintar widget:**
+     > Rode `./play.command`, clique no ícone **palette** na TopBar
+     > (entre Layers e Settings) e estude a Widget Gallery. Cada
+     > widget que você pintar precisa usar o helper
+     > `crate::widget::paint_<nome>(...)` correspondente — mesma
+     > fonte, tokens, a11y. Veja §5.6 deste doc. Widget novo do zero
+     > exige aprovação prévia (peça via Enio).
+
    - Em seguida, cola integral de [`03-Agente-Periferico.md`](03-Agente-Periferico.md).
 4. Atualiza STATE.md:
    - Slot `<N>`: slug, pastas reservadas = `(a propor pelo Agente)`,

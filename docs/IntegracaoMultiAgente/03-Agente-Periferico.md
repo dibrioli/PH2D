@@ -160,6 +160,49 @@ hook ainda não existe.
    precisa fazer pra plugar.
 4. **NÃO simule** o ❌ com mocks ou hooks falsos.
 
+### 5.6 Widget Gallery — referência visual canônica de UI
+
+**Antes de pintar QUALQUER widget novo, abra a Widget Gallery e veja
+como os widgets canônicos ficam.** É a fonte única de verdade visual
+para decoração de UI no PH2D — substitui o antigo `reference.command`
+(retirado em 2026-05-14, commit `7418bab`).
+
+**Como abrir:**
+```
+./play.command
+```
+Depois, na TopBar, clique no ícone de **paleta** (entre o cluster
+Layers e o Settings/gear). Abre painel flutuante com 10 seções
+exibindo cada widget canônico do editor: Inputs, Slider, Switches,
+Lists, Vector, Status, Color, Actions, Identity, Card. Fecha pelo X
+do painel ou clicando o palette de novo.
+
+**O que você verá lá** (cada um é um `pub fn paint_*` em
+[`crates/ph2d-editor/src/widget/`](../../crates/ph2d-editor/src/widget/)):
+- **Inputs:** Button (Default/Accent/Danger/IconOnly + Loading),
+  Checkbox 3-state, TextInput, TextArea, NumberInput
+- **Slider:** Horizontal/Vertical + ticks, mirror com NumberInput
+- **Switches:** Toggle, RadioGroup (Horizontal/Vertical/Segmented)
+- **Lists:** Tabs (Ghost/Segmented), Dropdown, Combobox (filtered),
+  ListItem, TreeView (BTreeSet expand/select)
+- **Vector:** Vector3Editor (R/G/B-tinted X/Y/Z labels)
+- **Status:** ProgressBar (Determinate/Indeterminate), Spinner, Tag
+  (5 tones), Avatar (Circle/Square)
+- **Color:** ColorSwatch (3 sizes + alpha checker),
+  BlenderColorPicker (wheel HSV, sliders, paletas)
+- **Actions:** Button kinds + IconButton variants
+- **Identity:** SectionHeader, PillGroup, ToolRail, StatusBar
+- **Card:** Card + Divider + Tooltip + ContextMenu + Modal/Popover
+
+**Regra de ouro:** se o widget que você precisa está na gallery, **use
+o helper já existente** em `crate::widget::paint_<nome>(...)` em vez
+de pintar do zero. Mesma fonte (Inter/JetBrains Mono), mesmos tokens
+(OKLCH semânticos), mesma a11y (`Node`/`NodeBuilder`).
+
+**Não está na gallery?** Avisa o Coordenador antes de criar widget
+novo do zero — pode ser que outro agente já esteja preparando um, ou
+que faça sentido tratar como aliasing/composição do existente.
+
 ## 6. Decida a(s) pasta(s) exclusiva(s) e comunique ao Coordenador
 
 Antes de tocar qualquer arquivo, **decida onde sua feature vive**
@@ -319,28 +362,42 @@ loops de iteração rápida. Não use sem validar antes.
 
 ## 8. Como rodar o app e ver sua feature
 
-`cargo run -p ph2d-host-desktop` cru abre o **demo M5 antigo**
-(1000 sprites, sem UI real). NÃO é onde sua feature aparece.
+**Comando padrão (2026-05-14+):**
+```
+./play.command
+```
+Abre o editor real direto — TopBar, LeftRail, Hierarchy live, Inspector
+live binding, BottomHUD. É o ground-truth visual do que você está
+construindo. (Por baixo: `PH2D_HERO_LIVE=1 cargo run -p
+ph2d-host-desktop --release`.)
 
-**Env vars que importam:**
+**Default mudou em 2026-05-14 (commit `24c4d4d`):** `cargo run -p
+ph2d-host-desktop` cru ANTES abria o demo M5 1000-sprite; AGORA abre
+direto o editor. O demo M5 (perf bench HR-4) virou opt-in:
+```
+PH2D_M5_DEMO=1 cargo run -p ph2d-host-desktop
+```
+
+**Env vars relevantes:**
 
 | Env var | Efeito |
 |---|---|
-| `PH2D_HERO_LIVE=1` | UI real (TopBar, LeftRail, Hierarchy, Inspector). Use pra validar visualmente. |
-| `PH2D_HERO_SCREEN=1` | HeroScreen sem live bridge ao ECS. |
+| (nenhuma) | Editor com live ECS bridge — default. |
+| `PH2D_M5_DEMO=1` | Demo M5 1000-sprite (perf bench, opt-in). |
+| `PH2D_HERO_SCREEN=1` | HeroScreen sem live bridge ECS (fixture mode, raramente útil). |
 | `PH2D_THEME=forge` | Tema escuro padrão. Outros: `workshop`, `sunstone`, `blueprint`. |
-| (nenhuma) | Demo M5 antigo. |
 
-**Comando padrão:**
-```
-PH2D_HERO_LIVE=1 cargo run -p ph2d-host-desktop
-```
+**Widget Gallery (referência visual da decoração):**
+Com o editor aberto, clique no ícone **palette** na TopBar (entre o
+cluster Layers e o Settings/gear). Abre painel flutuante com todos os
+widgets canônicos pintados em uso. **Veja §5.6.**
 
 Antes da integração (que é trabalho do Coordenador), você NÃO vê
 o ícone da sua Tool no LeftRail nem o botão da sua Action na
 TopBar. Você confirma:
 - App abre sem panic.
-- UI existente (BrushTool, MoveTool, Hierarchy, Inspector) intacta.
+- UI existente (BrushTool, MoveTool, Hierarchy, Inspector, Widget
+  Gallery acessível) intacta.
 - Nenhuma regressão visível.
 
 ## 9. Hard Rules críticas (SKILL §9 tem todas)

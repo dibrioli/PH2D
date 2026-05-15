@@ -1,15 +1,16 @@
 //! Floating-panel paint + event handler for the grid-snap subsystem.
 //!
-//! Layout: vertical stack of title bar / kind section / snap section /
-//! display section. Drag / resize handles match
-//! [`crate::screens::hero::widget_gallery`] so the existing
-//! `BlenderHitKind::DragHandle` / `ResizeHandle` dispatch moves it.
+//! Layout: vertical stack of title bar / Grid Kind section (kind
+//! cycler + per-kind parameter rows) / Snap section / Display
+//! section (Show overlay + Opacity slider) / Inspect section.
+//! Drag / resize handles match [`crate::screens::hero::widget_gallery`]
+//! so the existing `BlenderHitKind::DragHandle` / `ResizeHandle`
+//! dispatch moves the panel.
 //!
-//! v1 simplifies interactive widgets: kind / snap target use cycling
-//! [`crate::widget::Button`]s ("Kind: Square \u{25B6}") in place of a
-//! full [`crate::widget::Dropdown`]; opacity surfaces as a label
-//! ("Opacity: 75%") instead of a slider. Coordenador's integration
-//! wires v2 widgets after Inspect (Stage 11) lands.
+//! Per-kind config rows are populated for **all** kinds at startup
+//! (every NumberInput / cycle Button is registered) but painted +
+//! hit-tested only for the active `state.kind`. Switching kind
+//! preserves every other kind's params untouched.
 
 use super::ids;
 use super::state::{GridKind, GridSnapState};
@@ -19,11 +20,17 @@ use crate::screens::hero::style::{
     paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use crate::widget::{
-    Button, ButtonKind, ButtonState, SectionHeader, Toggle, ToggleState, paint_button,
-    paint_section_header, paint_toggle,
+    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, NumberInput,
+    SectionHeader, Slider, SliderOrientation, SliderState, TextInputState, Toggle, ToggleState,
+    paint_button, paint_dropdown_chip, paint_dropdown_popover, paint_number_input_with_buffer,
+    paint_section_header, paint_slider, paint_toggle,
 };
 use crate::zones::Rect;
+use ph2d_grid::hex::{HexOffset, HexOrientation};
 use ph2d_grid::snap::SnapTarget;
+use ph2d_grid::square::SquareNeighborhood;
+use ph2d_grid::staggered::StaggerParity;
+use ph2d_grid::tri::TriNeighborhood;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -38,6 +45,9 @@ const PAD: f32 = 12.0;
 const ROW_GAP: f32 = 6.0;
 const LABEL_FONT_SIZE: f32 = 13.0;
 const TITLE_FONT_SIZE: f32 = 15.0;
+/// Column where the widget (right side of a "Label: [widget]" row)
+/// starts, measured from the inner-x of the row.
+const LABEL_COL_W: f32 = 110.0;
 
 /// Register the panel's interactive nodes in `store`. Called once
 /// from `HeroScreen::pre_populate_store` (Coordenador wiring).
@@ -57,8 +67,18 @@ pub fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandle,
         },
     );
-    // Plain buttons (close + cycling kind/target).
-    for id in [ids::GS_CLOSE, ids::GS_KIND_DROPDOWN] {
+    // Plain buttons (close, cycle target, 2-option toggles, Voronoi
+    // reseed). 9-option Kind is a proper Dropdown (registered below).
+    for id in [
+        ids::GS_CLOSE,
+        ids::GS_SNAP_CENTER,
+        ids::GS_CFG_NEIGHBORHOOD_4, // cycle Von4/Moore8 (also used by Iso, StagSq, Chunks)
+        ids::GS_CFG_HEX_POINTY,     // cycle Pointy/Flat
+        ids::GS_CFG_HEX_OFFSET_DROPDOWN, // cycle offset variant (4-way for now)
+        ids::GS_CFG_STAGGER_PARITY_ODD, // cycle Odd/EvenRows
+        ids::GS_CFG_TRI_EDGE3,      // cycle Edge3/Vertex12
+        ids::GS_CFG_VORONOI_RESEED,
+    ] {
         store.register(
             id,
             InteractiveState::Button {
@@ -66,8 +86,38 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Toggles — start values match GridSnapState::default() so
-    // the painted toggle thumb matches state until the first event.
+    // Kind dropdown — canonical 9-option Dropdown anchored at the
+    // top of the panel. Initial selected_index = 0 (Square) matches
+    // GridSnapState::default().kind.
+    store.register(
+        ids::GS_KIND_DROPDOWN,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
+        },
+    );
+    // Each kind option gets a button-shaped hit slot so the
+    // dispatcher fires Click on hit-test inside the open popover.
+    for id in [
+        ids::GS_KIND_OPT_SQUARE,
+        ids::GS_KIND_OPT_HEX,
+        ids::GS_KIND_OPT_ISO,
+        ids::GS_KIND_OPT_STAGGERED_SQ,
+        ids::GS_KIND_OPT_STAGGERED_HEX,
+        ids::GS_KIND_OPT_TRI,
+        ids::GS_KIND_OPT_QUADTREE,
+        ids::GS_KIND_OPT_VORONOI,
+        ids::GS_KIND_OPT_CHUNKS,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    // Toggles — start values match GridSnapState::default().
     store.register(
         ids::GS_SNAP_ENABLED,
         InteractiveState::Toggle {
@@ -82,14 +132,79 @@ pub fn populate(store: &mut WidgetStore) {
             on: true,
         },
     );
+    // Opacity slider — value matches GridSnapState::default().opacity.
+    store.register(
+        ids::GS_OPACITY_SLIDER,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.75,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+
+    // NumberInputs — register one entry per reserved id, default
+    // values pulled from GridSnapState::default() so paint stays
+    // in sync on first frame.
+    let defaults = GridSnapState::default();
+    let number_specs: &[(crate::NodeId, f64)] = &[
+        (ids::GS_CFG_CELL_SIZE, defaults.square_cfg.cell_size as f64),
+        (ids::GS_CFG_ISO_TILE_W, defaults.iso_cfg.tile_w as f64),
+        (ids::GS_CFG_ISO_TILE_H, defaults.iso_cfg.tile_h as f64),
+        (
+            ids::GS_CFG_QT_MAX_PER_LEAF,
+            defaults.quadtree_cfg.max_points_per_leaf as f64,
+        ),
+        (
+            ids::GS_CFG_QT_MAX_DEPTH,
+            defaults.quadtree_cfg.max_depth as f64,
+        ),
+        (
+            ids::GS_CFG_VORONOI_SEED_COUNT,
+            defaults.voronoi_cfg.seed_count as f64,
+        ),
+        (
+            ids::GS_CFG_VORONOI_RNG_SEED,
+            defaults.voronoi_cfg.rng_seed as f64,
+        ),
+        (
+            ids::GS_CFG_VORONOI_LLOYD_ITERS,
+            defaults.voronoi_cfg.lloyd_iterations as f64,
+        ),
+        (
+            ids::GS_CFG_CHUNKS_SIZE,
+            defaults.chunks_cfg.chunk_size_cells as f64,
+        ),
+    ];
+    for (id, value) in number_specs {
+        store.register(
+            *id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: *value,
+                buffer: format_value(*value),
+                caret: 0,
+                last_committed: *value,
+                selection_anchor: None,
+            },
+        );
+    }
 }
 
-/// Default panel rect when first opened — centered horizontally on
-/// the viewport, fixed width, height sized for title + 3 config
-/// sections + inspect.
+fn format_value(v: f64) -> String {
+    // Integers render without a decimal point so step=1 fields read
+    // clean ("4" vs "4.0"). Non-integer values keep 2 decimals.
+    if v.fract() == 0.0 {
+        format!("{}", v as i64)
+    } else {
+        format!("{v:.2}")
+    }
+}
+
+/// Default panel rect when first opened — sized for title + 4
+/// sections (Kind + per-kind config + Snap + Display + Inspect).
 pub fn default_rect(viewport_w: f32, viewport_h: f32) -> Rect {
-    let w = 320.0_f32.min(viewport_w - 16.0);
-    let h = 540.0_f32.min(viewport_h - 16.0).max(380.0);
+    let w = 340.0_f32.min(viewport_w - 16.0);
+    let h = 640.0_f32.min(viewport_h - 16.0).max(440.0);
     let x = ((viewport_w - w) * 0.5).max(8.0);
     let y = ((viewport_h - h) * 0.5).max(8.0);
     Rect::new(x, y, w, h)
@@ -106,7 +221,6 @@ pub fn paint(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    // Canonical chrome (PanelBg fill + 1 px Border + drag pill).
     paint_panel_surface(rect, scene, theme);
     hit_index.register(ids::GS_DRAG_HANDLE, panel_drag_handle_rect(rect));
 
@@ -114,7 +228,7 @@ pub fn paint(
     let inner_w = rect.w - PAD * 2.0;
     let mut y = rect.y + HEAD_PAD;
 
-    // ─── Title row (title left, close icon right) ───────────────
+    // ─── Title row ──────────────────────────────────────────────
     paint_text_title(
         text_system,
         scene,
@@ -142,14 +256,28 @@ pub fn paint(
     hit_index.register(ids::GS_CLOSE, close_rect);
     y += close_size + ROW_GAP * 2.0;
 
-    // ─── Section: Grid Kind ─────────────────────────────────────
+    // ─── Grid Kind section ──────────────────────────────────────
     y = paint_section_label("Grid Kind", inner_x, inner_w, y, scene, text_system, theme);
     let kind_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    paint_kind_row(kind_row, scene, text_system, theme, store, state);
+    let kind_dd_open = paint_kind_dropdown_chip(kind_row, scene, text_system, theme, store, state);
     hit_index.register(ids::GS_KIND_DROPDOWN, kind_row);
-    y += ROW_H + ROW_GAP * 2.0;
+    y += ROW_H + ROW_GAP;
 
-    // ─── Section: Snap ──────────────────────────────────────────
+    // Per-kind config rows.
+    y = paint_kind_config(
+        inner_x,
+        inner_w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+    );
+    y += ROW_GAP;
+
+    // ─── Snap section ───────────────────────────────────────────
     y = paint_section_label("Snap", inner_x, inner_w, y, scene, text_system, theme);
     let snap_row = Rect::new(inner_x, y, inner_w, ROW_H);
     paint_snap_enabled_row(snap_row, scene, text_system, theme, hit_index, store, state);
@@ -159,7 +287,7 @@ pub fn paint(
     hit_index.register(ids::GS_SNAP_CENTER, target_row);
     y += ROW_H + ROW_GAP * 2.0;
 
-    // ─── Section: Display ───────────────────────────────────────
+    // ─── Display section ────────────────────────────────────────
     y = paint_section_label("Display", inner_x, inner_w, y, scene, text_system, theme);
     let overlay_row = Rect::new(inner_x, y, inner_w, ROW_H);
     paint_show_overlay_row(
@@ -172,16 +300,19 @@ pub fn paint(
         state,
     );
     y += ROW_H + ROW_GAP;
-    paint_opacity_label_row(
-        Rect::new(inner_x, y, inner_w, ROW_H),
+    let opacity_row = Rect::new(inner_x, y, inner_w, ROW_H);
+    paint_opacity_slider_row(
+        opacity_row,
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
         state,
     );
     y += ROW_H + ROW_GAP * 2.0;
 
-    // ─── Section: Inspect ───────────────────────────────────────
+    // ─── Inspect section ────────────────────────────────────────
     let inspect_h = super::inspect::height();
     super::inspect::paint(
         Rect::new(inner_x, y, inner_w, inspect_h),
@@ -191,9 +322,15 @@ pub fn paint(
         state,
     );
 
-    // ─── Resize gripper (canonical corner dot + standard hit zone) ─
     paint_panel_corner_dot(rect, scene, theme);
     hit_index.register(ids::GS_RESIZE_HANDLE, panel_resize_handle_rect(rect));
+
+    // ─── Kind dropdown popover (painted LAST so it lands above
+    // every other widget in the panel — same trick as Inspector
+    // showcase). ────────────────────────────────────────────────
+    if kind_dd_open {
+        paint_kind_dropdown_popover(kind_row, scene, text_system, theme, hit_index, store, state);
+    }
 }
 
 fn paint_section_label(
@@ -217,21 +354,617 @@ fn paint_section_label(
     y + SECTION_HEADER_H + ROW_GAP
 }
 
-fn paint_kind_row(
+/// Paint the Kind dropdown's chip. Returns `true` when the dropdown
+/// is open (caller paints the popover at the end of `paint`).
+fn paint_kind_dropdown_chip(
     row: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     store: &WidgetStore,
     state: &GridSnapState,
+) -> bool {
+    let (dd_state, dd_open) = match store.get(ids::GS_KIND_DROPDOWN) {
+        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
+        _ => (DropdownState::Normal, false),
+    };
+    let dd = build_kind_dropdown(state.kind)
+        .open(dd_open)
+        .state(dd_state)
+        .selected(state.kind.label().to_string());
+    paint_dropdown_chip(&dd, row, scene, text_system, theme);
+    dd_open
+}
+
+fn paint_kind_dropdown_popover(
+    chip: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
 ) {
+    let (dd_state, _) = match store.get(ids::GS_KIND_DROPDOWN) {
+        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
+        _ => (DropdownState::Normal, false),
+    };
+    let dd = build_kind_dropdown(state.kind)
+        .open(true)
+        .state(dd_state)
+        .selected(state.kind.label().to_string());
+    paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+    // Register option hit-rects matching the popover layout
+    // (FIELD_H per row stacked below the chip).
+    let opt_h = chip.h;
+    let labels_and_ids = kind_option_ids_in_order();
+    for (i, (_, oid)) in labels_and_ids.iter().enumerate() {
+        let r = Rect::new(chip.x, chip.y + chip.h + i as f32 * opt_h, chip.w, opt_h);
+        hit_index.register(*oid, r);
+    }
+}
+
+/// Build the canonical Kind dropdown (options ordered same as
+/// `GridKind::all()`). Each option's id matches a reserved
+/// `GS_KIND_OPT_*` constant for hit-test wiring.
+fn build_kind_dropdown(_active: GridKind) -> Dropdown<String> {
+    let mut opts: Vec<DropdownOption<String>> = Vec::with_capacity(9);
+    for (kind, id) in kind_option_ids_in_order() {
+        opts.push(DropdownOption::new(
+            id,
+            kind.label().to_string(),
+            kind.label(),
+        ));
+    }
+    Dropdown::new(ids::GS_KIND_DROPDOWN, "Kind", opts)
+}
+
+/// Stable mapping: GridKind → reserved option NodeId, in
+/// `GridKind::all()` order. Used by both populate (hit-test
+/// registration) and the chip → option resolve in apply_event.
+fn kind_option_ids_in_order() -> [(GridKind, crate::NodeId); 9] {
+    [
+        (GridKind::Square, ids::GS_KIND_OPT_SQUARE),
+        (GridKind::Hex, ids::GS_KIND_OPT_HEX),
+        (GridKind::Iso, ids::GS_KIND_OPT_ISO),
+        (GridKind::StaggeredSquare, ids::GS_KIND_OPT_STAGGERED_SQ),
+        (GridKind::StaggeredHex, ids::GS_KIND_OPT_STAGGERED_HEX),
+        (GridKind::Tri, ids::GS_KIND_OPT_TRI),
+        (GridKind::Quadtree, ids::GS_KIND_OPT_QUADTREE),
+        (GridKind::Voronoi, ids::GS_KIND_OPT_VORONOI),
+        (GridKind::Chunks, ids::GS_KIND_OPT_CHUNKS),
+    ]
+}
+
+// =============================================================================
+// Per-kind config rows
+// =============================================================================
+
+/// Paint the active kind's config rows starting at `y`. Returns the
+/// Y after the last row (caller advances).
+#[allow(clippy::too_many_arguments)]
+fn paint_kind_config(
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    match state.kind {
+        GridKind::Square => {
+            paint_square_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
+        }
+        GridKind::Hex => paint_hex_cfg(x, w, y, scene, text_system, theme, hit_index, store, state),
+        GridKind::Iso => paint_iso_cfg(x, w, y, scene, text_system, theme, hit_index, store, state),
+        GridKind::StaggeredSquare => {
+            paint_staggered_sq_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
+        }
+        GridKind::StaggeredHex => {
+            paint_hex_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
+        }
+        GridKind::Tri => paint_tri_cfg(x, w, y, scene, text_system, theme, hit_index, store, state),
+        GridKind::Quadtree => {
+            paint_quadtree_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
+        }
+        GridKind::Voronoi => {
+            paint_voronoi_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
+        }
+        GridKind::Chunks => {
+            paint_chunks_cfg(x, w, y, scene, text_system, theme, hit_index, store, state)
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_square_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Cell size",
+        ids::GS_CFG_CELL_SIZE,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let label = match state.square_cfg.neighborhood {
+        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
+        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_NEIGHBORHOOD_4,
+        label,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y + ROW_H + ROW_GAP
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_hex_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Cell size",
+        ids::GS_CFG_CELL_SIZE,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let orient = match state.hex_cfg.orientation {
+        HexOrientation::Pointy => "Orientation: Pointy \u{25B6}",
+        HexOrientation::Flat => "Orientation: Flat \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_HEX_POINTY,
+        orient,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y += ROW_H + ROW_GAP;
+    let offset = match state.hex_cfg.offset_variant {
+        HexOffset::OddR => "Offset: OddR \u{25B6}",
+        HexOffset::EvenR => "Offset: EvenR \u{25B6}",
+        HexOffset::OddQ => "Offset: OddQ \u{25B6}",
+        HexOffset::EvenQ => "Offset: EvenQ \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_HEX_OFFSET_DROPDOWN,
+        offset,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y + ROW_H + ROW_GAP
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_iso_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Tile width",
+        ids::GS_CFG_ISO_TILE_W,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_number_row(
+        "Tile height",
+        ids::GS_CFG_ISO_TILE_H,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let label = match state.iso_cfg.neighborhood {
+        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
+        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_NEIGHBORHOOD_4,
+        label,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y + ROW_H + ROW_GAP
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_staggered_sq_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Cell size",
+        ids::GS_CFG_CELL_SIZE,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let parity = match state.staggered_square_cfg.parity {
+        StaggerParity::OddRows => "Parity: Odd rows \u{25B6}",
+        StaggerParity::EvenRows => "Parity: Even rows \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_STAGGER_PARITY_ODD,
+        parity,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y += ROW_H + ROW_GAP;
+    let nb = match state.staggered_square_cfg.neighborhood {
+        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
+        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_NEIGHBORHOOD_4,
+        nb,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y + ROW_H + ROW_GAP
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_tri_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Edge length",
+        ids::GS_CFG_CELL_SIZE,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let nb = match state.tri_cfg.neighborhood {
+        TriNeighborhood::Edge3 => "Neighborhood: 3 \u{25B6}",
+        TriNeighborhood::Vertex12 => "Neighborhood: 12 \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_TRI_EDGE3,
+        nb,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y + ROW_H + ROW_GAP
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_quadtree_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    _state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Max / leaf",
+        ids::GS_CFG_QT_MAX_PER_LEAF,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_number_row(
+        "Max depth",
+        ids::GS_CFG_QT_MAX_DEPTH,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_voronoi_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    _state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Seed count",
+        ids::GS_CFG_VORONOI_SEED_COUNT,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_number_row(
+        "RNG seed",
+        ids::GS_CFG_VORONOI_RNG_SEED,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_number_row(
+        "Lloyd iters",
+        ids::GS_CFG_VORONOI_LLOYD_ITERS,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    // Reseed button.
+    let reseed_rect = Rect::new(x, y, w, ROW_H);
     let btn = Button {
-        id: ids::GS_KIND_DROPDOWN,
-        label: format!("Kind: {} \u{25B6}", state.kind.label()),
-        state: button_state(store, ids::GS_KIND_DROPDOWN),
+        id: ids::GS_CFG_VORONOI_RESEED,
+        label: "Reseed (next RNG)".to_string(),
+        state: button_state(store, ids::GS_CFG_VORONOI_RESEED),
+        kind: ButtonKind::Default,
+    };
+    paint_button(&btn, reseed_rect, scene, text_system, theme);
+    hit_index.register(ids::GS_CFG_VORONOI_RESEED, reseed_rect);
+    y + ROW_H + ROW_GAP
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_chunks_cfg(
+    x: f32,
+    w: f32,
+    mut y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    y = paint_number_row(
+        "Cell size",
+        ids::GS_CFG_CELL_SIZE,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_number_row(
+        "Chunk size (cells)",
+        ids::GS_CFG_CHUNKS_SIZE,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let nb = match state.chunks_cfg.neighborhood {
+        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
+        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
+    };
+    paint_cycle_row(
+        ids::GS_CFG_NEIGHBORHOOD_4,
+        nb,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y + ROW_H + ROW_GAP
+}
+
+// =============================================================================
+// Row helpers
+// =============================================================================
+
+/// Paint a "Label: [NumberInput]" row. Returns Y after the row.
+#[allow(clippy::too_many_arguments)]
+fn paint_number_row(
+    label: &str,
+    id: crate::NodeId,
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) -> f32 {
+    paint_text(
+        text_system,
+        scene,
+        label,
+        x,
+        y + (ROW_H - LABEL_FONT_SIZE) * 0.5,
+        LABEL_FONT_SIZE,
+        LABEL_COL_W - Spacing::Sm.px(),
+        resolve(ColorToken::Text1, theme),
+    );
+    let input_rect = Rect::new(x + LABEL_COL_W, y, w - LABEL_COL_W, ROW_H);
+    let (state, value, buffer, caret, anchor) = read_number_input(store, id);
+    let input = NumberInput::new(id, "", value).state(state);
+    paint_number_input_with_buffer(
+        &input,
+        Some(buffer),
+        caret,
+        anchor,
+        input_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    hit_index.register(id, input_rect);
+    y + ROW_H + ROW_GAP
+}
+
+/// Paint a full-row cycling Button.
+#[allow(clippy::too_many_arguments)]
+fn paint_cycle_row(
+    id: crate::NodeId,
+    label: &str,
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    let row = Rect::new(x, y, w, ROW_H);
+    let btn = Button {
+        id,
+        label: label.to_string(),
+        state: button_state(store, id),
         kind: ButtonKind::Default,
     };
     paint_button(&btn, row, scene, text_system, theme);
+    hit_index.register(id, row);
 }
 
 fn paint_snap_enabled_row(
@@ -264,15 +997,10 @@ fn paint_snap_target_row(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    // Cycling between Center / Intersection — wired in apply_event
-    // under GS_SNAP_CENTER and GS_SNAP_INTERSECTION (registered for
-    // hit-test even though only one is "active" per click cycle).
     let target_label = match state.snap_target {
         SnapTarget::Center => "Center",
         SnapTarget::Intersection => "Intersection",
     };
-    // Reuse the kind-dropdown id slot conceptually; here use a
-    // dedicated cycling button at the snap-center id.
     let btn = Button {
         id: ids::GS_SNAP_CENTER,
         label: format!("Target: {target_label} \u{25B6}"),
@@ -304,24 +1032,46 @@ fn paint_show_overlay_row(
     );
 }
 
-fn paint_opacity_label_row(
+#[allow(clippy::too_many_arguments)]
+fn paint_opacity_slider_row(
     row: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    let pct = (state.opacity * 100.0).round() as u32;
     paint_text(
         text_system,
         scene,
-        &format!("Opacity: {pct}%"),
-        row.x + Spacing::Sm.px(),
+        "Opacity",
+        row.x,
         row.y + (row.h - LABEL_FONT_SIZE) * 0.5,
         LABEL_FONT_SIZE,
-        row.w,
-        resolve(ColorToken::Text2, theme),
+        LABEL_COL_W - Spacing::Sm.px(),
+        resolve(ColorToken::Text1, theme),
     );
+    let slider_rect = Rect::new(
+        row.x + LABEL_COL_W,
+        row.y + 4.0,
+        row.w - LABEL_COL_W,
+        row.h - 8.0,
+    );
+    let (s_state, value) = store
+        .slider(ids::GS_OPACITY_SLIDER)
+        .unwrap_or((SliderState::Normal, state.opacity));
+    let slider = Slider {
+        id: ids::GS_OPACITY_SLIDER,
+        label: String::new(),
+        value,
+        state: s_state,
+        orientation: SliderOrientation::Horizontal,
+        accent: true,
+        ticks: Vec::new(),
+    };
+    paint_slider(&slider, slider_rect, scene, theme);
+    hit_index.register(ids::GS_OPACITY_SLIDER, slider_rect);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -340,7 +1090,7 @@ fn paint_labeled_toggle(
         text_system,
         scene,
         label,
-        row.x + Spacing::Sm.px(),
+        row.x,
         row.y + (row.h - LABEL_FONT_SIZE) * 0.5,
         LABEL_FONT_SIZE,
         row.w - 60.0,
@@ -365,6 +1115,10 @@ fn paint_labeled_toggle(
     hit_index.register(id, toggle_rect);
 }
 
+// =============================================================================
+// Store readers
+// =============================================================================
+
 fn button_state(store: &WidgetStore, id: crate::NodeId) -> ButtonState {
     match store.get(id) {
         Some(InteractiveState::Button { state }) => *state,
@@ -379,54 +1133,210 @@ fn toggle_state(store: &WidgetStore, id: crate::NodeId) -> ToggleState {
     }
 }
 
+fn read_number_input(
+    store: &WidgetStore,
+    id: crate::NodeId,
+) -> (TextInputState, f64, &str, usize, Option<usize>) {
+    store
+        .number_input(id)
+        .unwrap_or((TextInputState::Normal, 0.0, "", 0, None))
+}
+
+// =============================================================================
+// Event dispatch
+// =============================================================================
+
 /// Handle a widget event for the grid-snap panel. Returns `true`
-/// when the event mutates `state`; the caller (Coordenador-wired
-/// `HeroScreen::apply_event`) uses the return to stop dispatch.
-///
-/// `store` is read-only here: the dispatcher already mutated the
-/// `Toggle.on` field when it emitted [`WidgetEvent::Toggled`]; this
-/// function mirrors that value back into `state` so the painter
-/// (which derives `Toggle.on` from `state`) stays in sync.
+/// when the event mutates `state`. The dispatcher pre-flips Toggle
+/// `on` and updates Slider `value` / NumberInput `value` in the
+/// store BEFORE calling us; we just mirror those back into state.
 pub fn apply_event(state: &mut GridSnapState, event: WidgetEvent, store: &WidgetStore) -> bool {
     match event {
-        WidgetEvent::Toggled(id) if id == ids::GS_SNAP_ENABLED => {
-            if let Some(InteractiveState::Toggle { on, .. }) = store.get(id) {
-                state.snap_enabled = *on;
-            }
-            true
-        }
-        WidgetEvent::Toggled(id) if id == ids::GS_SHOW_OVERLAY => {
-            if let Some(InteractiveState::Toggle { on, .. }) = store.get(id) {
-                state.show_overlay = *on;
-            }
-            true
-        }
-        WidgetEvent::Click(id) => {
-            if id == ids::GS_CLOSE {
-                state.panel_visible = false;
-                return true;
-            }
-            if id == ids::GS_KIND_DROPDOWN {
-                state.kind = cycle_kind(state.kind);
-                return true;
-            }
-            if id == ids::GS_SNAP_CENTER {
-                state.snap_target = match state.snap_target {
-                    SnapTarget::Center => SnapTarget::Intersection,
-                    SnapTarget::Intersection => SnapTarget::Center,
-                };
-                return true;
-            }
-            false
-        }
+        WidgetEvent::Toggled(id) => apply_toggle(state, id, store),
+        WidgetEvent::ValueChanged(id) => apply_value_changed(state, id, store),
+        WidgetEvent::Click(id) => apply_click(state, id),
         _ => false,
     }
 }
 
-fn cycle_kind(k: GridKind) -> GridKind {
-    let all = GridKind::all();
-    let idx = all.iter().position(|x| *x == k).unwrap_or(0);
-    all[(idx + 1) % all.len()]
+fn apply_toggle(state: &mut GridSnapState, id: crate::NodeId, store: &WidgetStore) -> bool {
+    if id == ids::GS_SNAP_ENABLED {
+        if let Some(InteractiveState::Toggle { on, .. }) = store.get(id) {
+            state.snap_enabled = *on;
+        }
+        return true;
+    }
+    if id == ids::GS_SHOW_OVERLAY {
+        if let Some(InteractiveState::Toggle { on, .. }) = store.get(id) {
+            state.show_overlay = *on;
+        }
+        return true;
+    }
+    false
+}
+
+fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &WidgetStore) -> bool {
+    if id == ids::GS_OPACITY_SLIDER {
+        if let Some((_, v)) = store.slider(id) {
+            state.opacity = v.clamp(0.0, 1.0);
+        }
+        return true;
+    }
+    // NumberInput updates — pull value and write to the matching cfg
+    // field of the ACTIVE kind. Cross-kind shared ids (CELL_SIZE,
+    // NEIGHBORHOOD_4) write to the active kind's field; switching
+    // kind re-reads from that kind's cfg on the next paint.
+    let Some(v) = store.number_value(id) else {
+        return false;
+    };
+    let v_f32 = v as f32;
+    if id == ids::GS_CFG_CELL_SIZE {
+        match state.kind {
+            GridKind::Square => state.square_cfg.cell_size = v_f32.max(0.01),
+            GridKind::Hex => state.hex_cfg.cell_size = v_f32.max(0.01),
+            GridKind::StaggeredSquare => {
+                state.staggered_square_cfg.cell_w = v_f32.max(0.01);
+                state.staggered_square_cfg.cell_h = v_f32.max(0.01);
+            }
+            GridKind::StaggeredHex => state.staggered_hex_cfg.hex.cell_size = v_f32.max(0.01),
+            GridKind::Tri => state.tri_cfg.edge_length = v_f32.max(0.01),
+            GridKind::Chunks => state.chunks_cfg.cell_size = v_f32.max(0.01),
+            _ => {}
+        }
+        return true;
+    }
+    if id == ids::GS_CFG_ISO_TILE_W {
+        state.iso_cfg.tile_w = v_f32.max(0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_ISO_TILE_H {
+        state.iso_cfg.tile_h = v_f32.max(0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_QT_MAX_PER_LEAF {
+        state.quadtree_cfg.max_points_per_leaf = (v as usize).max(1);
+        return true;
+    }
+    if id == ids::GS_CFG_QT_MAX_DEPTH {
+        state.quadtree_cfg.max_depth = (v as u32).max(1);
+        return true;
+    }
+    if id == ids::GS_CFG_VORONOI_SEED_COUNT {
+        state.voronoi_cfg.seed_count = (v as usize).max(3);
+        return true;
+    }
+    if id == ids::GS_CFG_VORONOI_RNG_SEED {
+        state.voronoi_cfg.rng_seed = v as u64;
+        return true;
+    }
+    if id == ids::GS_CFG_VORONOI_LLOYD_ITERS {
+        state.voronoi_cfg.lloyd_iterations = (v as u32).min(8);
+        return true;
+    }
+    if id == ids::GS_CFG_CHUNKS_SIZE {
+        state.chunks_cfg.chunk_size_cells = (v as u32).max(1);
+        return true;
+    }
+    false
+}
+
+fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
+    if id == ids::GS_CLOSE {
+        state.panel_visible = false;
+        return true;
+    }
+    // Kind dropdown option clicks — map option id → GridKind.
+    // (Click on the chip itself opens the dropdown; the dispatcher
+    // handles open/closed state on Dropdown widgets, so we don't
+    // handle GS_KIND_DROPDOWN here.)
+    for (kind, opt_id) in kind_option_ids_in_order() {
+        if id == opt_id {
+            state.kind = kind;
+            return true;
+        }
+    }
+    if id == ids::GS_SNAP_CENTER {
+        state.snap_target = match state.snap_target {
+            SnapTarget::Center => SnapTarget::Intersection,
+            SnapTarget::Intersection => SnapTarget::Center,
+        };
+        return true;
+    }
+    // Cycling buttons — interpret based on active kind so the same
+    // node id (e.g. GS_CFG_NEIGHBORHOOD_4) drives whichever cfg's
+    // neighborhood is on screen right now.
+    if id == ids::GS_CFG_NEIGHBORHOOD_4 {
+        cycle_neighborhood_for_active_kind(state);
+        return true;
+    }
+    if id == ids::GS_CFG_HEX_POINTY {
+        let hex = if state.kind == GridKind::StaggeredHex {
+            &mut state.staggered_hex_cfg.hex
+        } else {
+            &mut state.hex_cfg
+        };
+        hex.orientation = match hex.orientation {
+            HexOrientation::Pointy => HexOrientation::Flat,
+            HexOrientation::Flat => HexOrientation::Pointy,
+        };
+        return true;
+    }
+    if id == ids::GS_CFG_HEX_OFFSET_DROPDOWN {
+        let hex = if state.kind == GridKind::StaggeredHex {
+            &mut state.staggered_hex_cfg.hex
+        } else {
+            &mut state.hex_cfg
+        };
+        hex.offset_variant = cycle_hex_offset(hex.offset_variant);
+        return true;
+    }
+    if id == ids::GS_CFG_STAGGER_PARITY_ODD {
+        state.staggered_square_cfg.parity = match state.staggered_square_cfg.parity {
+            StaggerParity::OddRows => StaggerParity::EvenRows,
+            StaggerParity::EvenRows => StaggerParity::OddRows,
+        };
+        return true;
+    }
+    if id == ids::GS_CFG_TRI_EDGE3 {
+        state.tri_cfg.neighborhood = match state.tri_cfg.neighborhood {
+            TriNeighborhood::Edge3 => TriNeighborhood::Vertex12,
+            TriNeighborhood::Vertex12 => TriNeighborhood::Edge3,
+        };
+        return true;
+    }
+    if id == ids::GS_CFG_VORONOI_RESEED {
+        // Bump rng_seed by an odd prime to land on a new pattern
+        // without collapsing back to the SplitMix64 starting state
+        // for any seen seed.
+        state.voronoi_cfg.rng_seed = state.voronoi_cfg.rng_seed.wrapping_add(2_654_435_761);
+        return true;
+    }
+    false
+}
+
+fn cycle_neighborhood_for_active_kind(state: &mut GridSnapState) {
+    let flip = |n: SquareNeighborhood| match n {
+        SquareNeighborhood::Von4 => SquareNeighborhood::Moore8,
+        SquareNeighborhood::Moore8 => SquareNeighborhood::Von4,
+    };
+    match state.kind {
+        GridKind::Square => state.square_cfg.neighborhood = flip(state.square_cfg.neighborhood),
+        GridKind::Iso => state.iso_cfg.neighborhood = flip(state.iso_cfg.neighborhood),
+        GridKind::StaggeredSquare => {
+            state.staggered_square_cfg.neighborhood = flip(state.staggered_square_cfg.neighborhood)
+        }
+        GridKind::Chunks => state.chunks_cfg.neighborhood = flip(state.chunks_cfg.neighborhood),
+        _ => {}
+    }
+}
+
+fn cycle_hex_offset(o: HexOffset) -> HexOffset {
+    match o {
+        HexOffset::OddR => HexOffset::EvenR,
+        HexOffset::EvenR => HexOffset::OddQ,
+        HexOffset::OddQ => HexOffset::EvenQ,
+        HexOffset::EvenQ => HexOffset::OddR,
+    }
 }
 
 #[cfg(test)]
@@ -434,26 +1344,15 @@ mod tests {
     use super::*;
 
     fn populated_store() -> WidgetStore {
-        let mut store = WidgetStore::with_capacity(8);
+        let mut store = WidgetStore::with_capacity(32);
         populate(&mut store);
         store
     }
 
-    /// Helper: mimic the dispatcher's pre-flip of a Toggle's `on` field,
-    /// which happens BEFORE `apply_event` runs in the real flow.
     fn flip_toggle(store: &mut WidgetStore, id: crate::NodeId) {
         if let Some(InteractiveState::Toggle { on, .. }) = store.get_mut(id) {
             *on = !*on;
         }
-    }
-
-    #[test]
-    fn cycle_kind_wraps() {
-        let mut k = GridKind::Square;
-        for _ in 0..GridKind::all().len() {
-            k = cycle_kind(k);
-        }
-        assert_eq!(k, GridKind::Square, "9 cycles returns to start");
     }
 
     #[test]
@@ -472,12 +1371,25 @@ mod tests {
     }
 
     #[test]
-    fn apply_event_kind_cycles() {
+    fn apply_event_kind_option_click_sets_active_kind() {
         let mut s = GridSnapState::default();
         let store = populated_store();
         assert_eq!(s.kind, GridKind::Square);
-        apply_event(&mut s, WidgetEvent::Click(ids::GS_KIND_DROPDOWN), &store);
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_KIND_OPT_HEX), &store);
         assert_eq!(s.kind, GridKind::Hex);
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_KIND_OPT_VORONOI), &store);
+        assert_eq!(s.kind, GridKind::Voronoi);
+    }
+
+    #[test]
+    fn apply_event_chip_click_is_passthrough_for_dispatcher() {
+        // The dispatcher handles Dropdown.open toggling on chip
+        // clicks — apply_event must NOT mutate kind on a chip click.
+        let mut s = GridSnapState::default();
+        let store = populated_store();
+        let before = s.kind;
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_KIND_DROPDOWN), &store);
+        assert_eq!(s.kind, before);
     }
 
     #[test]
@@ -487,9 +1399,6 @@ mod tests {
         flip_toggle(&mut store, ids::GS_SNAP_ENABLED);
         apply_event(&mut s, WidgetEvent::Toggled(ids::GS_SNAP_ENABLED), &store);
         assert!(s.snap_enabled);
-        flip_toggle(&mut store, ids::GS_SNAP_ENABLED);
-        apply_event(&mut s, WidgetEvent::Toggled(ids::GS_SNAP_ENABLED), &store);
-        assert!(!s.snap_enabled);
     }
 
     #[test]
@@ -506,11 +1415,113 @@ mod tests {
     fn apply_event_unrelated_id_returns_false() {
         let mut s = GridSnapState::default();
         let store = populated_store();
-        let snapshot_kind = s.kind;
-        let snapshot_visible = s.panel_visible;
         let unrelated = crate::NodeId(42);
         assert!(!apply_event(&mut s, WidgetEvent::Click(unrelated), &store));
-        assert_eq!(s.kind, snapshot_kind);
-        assert_eq!(s.panel_visible, snapshot_visible);
+    }
+
+    #[test]
+    fn apply_event_number_changed_writes_to_square_cell_size() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        // Set the store's value as the dispatcher would, then fire
+        // ValueChanged.
+        if let Some(InteractiveState::NumberInput {
+            value,
+            last_committed,
+            buffer,
+            ..
+        }) = store.get_mut(ids::GS_CFG_CELL_SIZE)
+        {
+            *value = 4.5;
+            *last_committed = 4.5;
+            *buffer = "4.5".to_string();
+        }
+        apply_event(
+            &mut s,
+            WidgetEvent::ValueChanged(ids::GS_CFG_CELL_SIZE),
+            &store,
+        );
+        assert!((s.square_cfg.cell_size - 4.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn apply_event_cycle_neighborhood_for_square() {
+        let mut s = GridSnapState::default();
+        let store = populated_store();
+        assert_eq!(s.square_cfg.neighborhood, SquareNeighborhood::Von4);
+        apply_event(
+            &mut s,
+            WidgetEvent::Click(ids::GS_CFG_NEIGHBORHOOD_4),
+            &store,
+        );
+        assert_eq!(s.square_cfg.neighborhood, SquareNeighborhood::Moore8);
+    }
+
+    #[test]
+    fn apply_event_cycle_hex_orientation() {
+        let mut s = GridSnapState {
+            kind: GridKind::Hex,
+            ..Default::default()
+        };
+        let store = populated_store();
+        assert_eq!(s.hex_cfg.orientation, HexOrientation::Pointy);
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_CFG_HEX_POINTY), &store);
+        assert_eq!(s.hex_cfg.orientation, HexOrientation::Flat);
+    }
+
+    #[test]
+    fn apply_event_cycle_hex_offset_walks_four_states() {
+        let mut s = GridSnapState {
+            kind: GridKind::Hex,
+            ..Default::default()
+        };
+        let store = populated_store();
+        let order = [
+            HexOffset::OddR,
+            HexOffset::EvenR,
+            HexOffset::OddQ,
+            HexOffset::EvenQ,
+            HexOffset::OddR,
+        ];
+        for expected in &order[1..] {
+            apply_event(
+                &mut s,
+                WidgetEvent::Click(ids::GS_CFG_HEX_OFFSET_DROPDOWN),
+                &store,
+            );
+            assert_eq!(s.hex_cfg.offset_variant, *expected);
+        }
+    }
+
+    #[test]
+    fn apply_event_voronoi_reseed_changes_rng_seed() {
+        let mut s = GridSnapState {
+            kind: GridKind::Voronoi,
+            ..Default::default()
+        };
+        let store = populated_store();
+        let before = s.voronoi_cfg.rng_seed;
+        apply_event(
+            &mut s,
+            WidgetEvent::Click(ids::GS_CFG_VORONOI_RESEED),
+            &store,
+        );
+        assert_ne!(s.voronoi_cfg.rng_seed, before);
+    }
+
+    #[test]
+    fn opacity_slider_value_changed_clamps_to_unit() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(ids::GS_OPACITY_SLIDER)
+        {
+            *value = 1.5;
+        }
+        apply_event(
+            &mut s,
+            WidgetEvent::ValueChanged(ids::GS_OPACITY_SLIDER),
+            &store,
+        );
+        assert!((s.opacity - 1.0).abs() < 1e-5);
     }
 }

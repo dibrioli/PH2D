@@ -11,6 +11,13 @@
 //! in Phase B; TextInput/NumberInput/Combobox in Phase C;
 //! TreeView/ContextMenu/ColorPicker/Modal/Tabs in Phase D.
 
+pub mod keymap;
+
+pub use keymap::{
+    KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
+    KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
+};
+
 use super::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::widget::{
     ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, ToggleState,
@@ -20,25 +27,6 @@ use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::{KeyEvent, KeyKind, PointerEvent, PointerKind};
 use ph2d_text::TextSystem;
-
-/// Keycodes the editor cares about. We don't pull in winit here —
-/// the shell normalizes its keycodes to these constants before
-/// forwarding to [`dispatch_key`]. Values mirror common
-/// platform-independent keycodes (matches the shell's
-/// `KeyEvent::keycode` field documentation).
-pub const KEY_TAB: u32 = 0x09;
-pub const KEY_ENTER: u32 = 0x0D;
-pub const KEY_SPACE: u32 = 0x20;
-pub const KEY_ESCAPE: u32 = 0x1B;
-pub const KEY_BACKSPACE: u32 = 0x08;
-pub const KEY_KEY_A: u32 = 0x41;
-pub const KEY_KEY_C: u32 = 0x43;
-pub const KEY_KEY_V: u32 = 0x56;
-pub const KEY_KEY_X: u32 = 0x58;
-pub const KEY_ARROW_UP: u32 = 0xF700;
-pub const KEY_ARROW_DOWN: u32 = 0xF701;
-pub const KEY_ARROW_LEFT: u32 = 0xF702;
-pub const KEY_ARROW_RIGHT: u32 = 0xF703;
 
 /// Entry point for pointer events. Updates [`WidgetStore`] hover /
 /// active / focus cursors based on the hit-test, transitions the

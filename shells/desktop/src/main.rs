@@ -2235,6 +2235,85 @@ impl App {
                     }
                 }
             }
+            // Make Square drain — parallel to Trim Transparency. Pads
+            // the source image with transparent pixels on the shorter
+            // axis so the result is square (width == height), then
+            // repoints the sprite to a fresh IndividualTextureStore
+            // entry and updates Sprite::size at the current px/m.
+            //
+            // Transform.translation is NOT adjusted: make_square uses
+            // centered padding, so the original content's visual center
+            // already maps to the new canvas center (even diff). For
+            // odd diffs there is a ≤ 0.5 px sub-pixel drift that we
+            // accept in V1 — the simpler invariant (no translation
+            // edit) keeps the user's mental model "padding only" intact.
+            if let Some(entity_bits) = hero.pending_make_square.take() {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
+                let snapshot = {
+                    let world = sim.world();
+                    world
+                        .get::<Sprite>(entity)
+                        .and_then(|sprite| match sprite.source {
+                            ph2d_render::SpriteSource::Atlas { key } => {
+                                let aid = atlas_asset_map.get(&key)?;
+                                let asset = asset_db.get(aid)?;
+                                match &*asset {
+                                    ph2d_asset::Asset::ImageRgba8 {
+                                        width,
+                                        height,
+                                        pixels,
+                                    } => Some((*width, *height, pixels.clone())),
+                                    _ => None,
+                                }
+                            }
+                            ph2d_render::SpriteSource::Individual { texture_id } => {
+                                match renderer.readback_individual(texture_id) {
+                                    Ok((w, h, pixels)) => Some((w, h, pixels.into())),
+                                    Err(_) => None,
+                                }
+                            }
+                        })
+                };
+                match snapshot {
+                    None => {
+                        toasts.push(Toast::error("Make Square unavailable for this sprite"));
+                        self.title_dirty = true;
+                    }
+                    Some((width, height, pixels)) => {
+                        let result = ph2d_editor::make_square(&pixels, width, height);
+                        if !result.made_square {
+                            toasts.push(Toast::info("Sprite is already square"));
+                            self.title_dirty = true;
+                        } else {
+                            match renderer.acquire_individual(
+                                result.size,
+                                result.size,
+                                &result.pixels,
+                            ) {
+                                Err(err) => {
+                                    toasts.push(Toast::error(format!("Make Square failed: {err}")));
+                                    self.title_dirty = true;
+                                }
+                                Ok(texture_id) => {
+                                    let new_side = result.size as f32 / px_per_m;
+                                    let sim_w = sim.world_mut();
+                                    if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                                        sprite.source =
+                                            ph2d_render::SpriteSource::Individual { texture_id };
+                                        sprite.size = [new_side, new_side];
+                                    }
+                                    toasts.push(Toast::success(format!(
+                                        "Made square → {} × {} px",
+                                        result.size, result.size
+                                    )));
+                                    self.title_dirty = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/
             // JPEG), spawn a sprite per image at the camera center.

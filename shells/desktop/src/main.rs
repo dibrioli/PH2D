@@ -38,12 +38,14 @@ mod input_log;
 mod integration;
 mod keymap;
 mod theme;
+mod winit_host;
 
 use cursor_pos::live_cursor_in_window;
 use image_import::import_image_at_camera;
 use input_log::log_input_event;
 use keymap::winit_to_editor_keycode;
 use theme::parse_theme_env;
+use winit_host::{LoggingHandler, WinitHost};
 
 use bumpalo::Bump;
 use ph2d_asset::{AssetDb, AssetId};
@@ -80,7 +82,6 @@ use ph2d_script::ScriptHost;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::{Color as VelloColor, VectorScene};
-use std::cell::Cell;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -103,92 +104,6 @@ const WORLD_HALF: f32 = 5.0;
 #[derive(Component, Copy, Clone, Debug)]
 struct Velocity(Vec2);
 impl SimComponent for Velocity {}
-
-struct WinitHost {
-    window: Arc<Window>,
-    scale: Cell<f32>,
-}
-
-impl WinitHost {
-    fn new(window: Arc<Window>) -> Self {
-        let scale = window.scale_factor() as f32;
-        Self {
-            window,
-            scale: Cell::new(scale),
-        }
-    }
-
-    fn window(&self) -> &Window {
-        &self.window
-    }
-}
-
-impl PlatformHost for WinitHost {
-    fn request_redraw(&self) {
-        self.window.request_redraw();
-    }
-    fn window_size(&self) -> WindowSize {
-        let size = self.window.inner_size();
-        WindowSize::new(size.width, size.height)
-    }
-    fn scale_factor(&self) -> f32 {
-        self.scale.get()
-    }
-}
-
-struct LoggingHandler {
-    started_at: Instant,
-}
-impl LoggingHandler {
-    fn new() -> Self {
-        Self {
-            started_at: Instant::now(),
-        }
-    }
-    fn elapsed_ms(&self) -> u128 {
-        self.started_at.elapsed().as_millis()
-    }
-}
-impl HostHandler for LoggingHandler {
-    fn on_resize(&mut self, size: WindowSize, scale_factor: f32) {
-        println!(
-            "[{:>6}ms] resize: {}x{} @ {:.2}x scale",
-            self.elapsed_ms(),
-            size.width,
-            size.height,
-            scale_factor
-        );
-    }
-    fn on_lifecycle(&mut self, kind: Lifecycle) {
-        println!("[{:>6}ms] lifecycle: {:?}", self.elapsed_ms(), kind);
-    }
-    fn on_pointer(&mut self, event: PointerEvent) {
-        if matches!(event.kind, PointerKind::Down | PointerKind::Up) {
-            println!(
-                "[{:>6}ms] pointer {:?} {:?} ({:.0}, {:.0}) p={:.2}",
-                self.elapsed_ms(),
-                event.source,
-                event.kind,
-                event.x,
-                event.y,
-                event.pressure
-            );
-        }
-    }
-    fn on_key(&mut self, event: KeyEvent) {
-        println!(
-            "[{:>6}ms] key {:?} keycode={} mods={:?}",
-            self.elapsed_ms(),
-            event.kind,
-            event.keycode,
-            event.modifiers
-        );
-    }
-    fn on_close_request(&mut self) -> CloseAction {
-        println!("[{:>6}ms] close requested → Close", self.elapsed_ms());
-        CloseAction::Close
-    }
-}
 
 /// Holds every initialized-after-`resumed` resource. Bundling them into
 /// a single `Option<AppGfx>` lets us destructure into per-field `&mut`
@@ -2792,7 +2707,7 @@ impl ApplicationHandler for App {
 
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 if let Some(host) = &self.host {
-                    host.scale.set(scale_factor as f32);
+                    host.scale().set(scale_factor as f32);
                     if let Some(gfx) = self.gfx.as_ref() {
                         self.pending_resize = Some(gfx.surface.size());
                     }

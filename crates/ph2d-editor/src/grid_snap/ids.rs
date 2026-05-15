@@ -74,6 +74,23 @@ pub const GS_CFG_COLOR_G: NodeId = NodeId(1043);
 /// Blue channel 0..=255.
 pub const GS_CFG_COLOR_B: NodeId = NodeId(1044);
 
+// ─── Snap subdivisions (sub-grid factor) ───────────────────────
+pub const GS_CFG_SNAP_SUBDIVISIONS: NodeId = NodeId(1045);
+
+// ─── Quadtree bounds + demo points (state.rs has the fields) ───
+pub const GS_CFG_QT_BOUNDS_MIN_X: NodeId = NodeId(1046);
+pub const GS_CFG_QT_BOUNDS_MIN_Y: NodeId = NodeId(1047);
+pub const GS_CFG_QT_BOUNDS_MAX_X: NodeId = NodeId(1048);
+pub const GS_CFG_QT_BOUNDS_MAX_Y: NodeId = NodeId(1049);
+pub const GS_CFG_QT_DEMO_POINTS: NodeId = NodeId(1050);
+pub const GS_CFG_QT_DEMO_SEED: NodeId = NodeId(1051);
+
+// ─── Voronoi bounds (rng_seed/seed_count/lloyd already exist) ──
+pub const GS_CFG_VORONOI_BOUNDS_MIN_X: NodeId = NodeId(1052);
+pub const GS_CFG_VORONOI_BOUNDS_MIN_Y: NodeId = NodeId(1053);
+pub const GS_CFG_VORONOI_BOUNDS_MAX_X: NodeId = NodeId(1054);
+pub const GS_CFG_VORONOI_BOUNDS_MAX_Y: NodeId = NodeId(1055);
+
 // ─── Snap policy ───────────────────────────────────────────────
 pub const GS_SNAP_ENABLED: NodeId = NodeId(1060);
 pub const GS_SNAP_CENTER: NodeId = NodeId(1061);

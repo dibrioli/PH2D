@@ -226,9 +226,10 @@ fn snapshot_chunks(state: &GridSnapState) -> InspectSnapshot {
 }
 
 /// Compute the on-screen height the inspect section will consume —
-/// header + ≤ 6 label rows. Used by `panel.rs` for vertical layout.
+/// header + 5 label rows + 2 probe-input rows (A X/Y + B X/Y).
+/// Used by `panel.rs` for vertical layout.
 pub fn height() -> f32 {
-    SECTION_HEADER_H + ROW_GAP + 6.0 * (ROW_H + ROW_GAP)
+    SECTION_HEADER_H + ROW_GAP + 8.0 * (ROW_H + ROW_GAP)
 }
 
 /// Paint the inspect section at `rect`. The caller is responsible
@@ -238,6 +239,8 @@ pub fn paint(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut crate::interaction::HitIndex,
+    store: &crate::interaction::WidgetStore,
     state: &GridSnapState,
 ) {
     let header = SectionHeader {
@@ -310,6 +313,101 @@ pub fn paint(
             );
         }
         y += ROW_H + ROW_GAP;
+    }
+
+    // Probe-input rows — 2 small NumberInputs per probe, side by side.
+    y += ROW_GAP;
+    paint_probe_pair_row(
+        "Probe A",
+        super::ids::GS_PROBE_A_X,
+        super::ids::GS_PROBE_A_Y,
+        state.probe_a,
+        rect.x,
+        rect.w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y += ROW_H + ROW_GAP;
+    paint_probe_pair_row(
+        "Probe B",
+        super::ids::GS_PROBE_B_X,
+        super::ids::GS_PROBE_B_Y,
+        state.probe_b,
+        rect.x,
+        rect.w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+}
+
+/// One probe row: label + X NumberInput + Y NumberInput side by side.
+#[allow(clippy::too_many_arguments)]
+fn paint_probe_pair_row(
+    label: &str,
+    x_id: crate::NodeId,
+    y_id: crate::NodeId,
+    value: Vec2,
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut crate::interaction::HitIndex,
+    store: &crate::interaction::WidgetStore,
+) {
+    let label_w = 70.0;
+    let gap = 4.0;
+    let input_w = (w - label_w - gap - Spacing::Sm.px() * 2.0) / 2.0;
+    paint_text(
+        text_system,
+        scene,
+        label,
+        x + Spacing::Sm.px(),
+        y + (ROW_H - LABEL_FONT_SIZE) * 0.5,
+        LABEL_FONT_SIZE,
+        label_w,
+        resolve(ColorToken::Text1, theme),
+    );
+    for (i, (id, v)) in [(x_id, value[0]), (y_id, value[1])].iter().enumerate() {
+        let r = Rect::new(
+            x + Spacing::Sm.px() + label_w + i as f32 * (input_w + gap),
+            y,
+            input_w,
+            ROW_H,
+        );
+        let (ti_state, _, buffer, caret, anchor) = store.number_input(*id).unwrap_or((
+            crate::widget::TextInputState::Normal,
+            *v as f64,
+            "",
+            0,
+            None,
+        ));
+        let buffer_arg = if ti_state == crate::widget::TextInputState::Focused {
+            Some(buffer)
+        } else {
+            None
+        };
+        let input = crate::widget::NumberInput::new(*id, "", *v as f64).state(ti_state);
+        crate::widget::paint_number_input_with_buffer(
+            &input,
+            buffer_arg,
+            caret,
+            anchor,
+            r,
+            scene,
+            text_system,
+            theme,
+        );
+        hit_index.register(*id, r);
     }
 }
 

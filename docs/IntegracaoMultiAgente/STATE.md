@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 21:40 BRT
+**Última atualização:** 2026-05-15 22:30 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -88,7 +88,7 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `dd051de` — 2026-05-15 21:30 — fix(make-square) audit fixes (texture leak C1, GPU cap M1, sub-pixel recenter M2, round-trip + ímpar split tests N1+N2, INTEGRATION.md doc D1) (workspace verde: fmt+clippy+nextest)
+main @ `67df530` — 2026-05-15 22:30 — feat(image-edit) i18n stub + AccessKit Button a11y + single-level Undo (Trim + Make Square; Cmd+Z + TOOL_UNDO click + toast hint; ph2d-i18n stub para HR-15 partial). Workspace verde: 1131 nextest pass.
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -99,6 +99,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 22:30 | image-edit cross-feature fechados (i18n stub + a11y + Undo single-level). `ph2d-i18n` saiu de vazio (string table en-US keyed por Fluent-style ids — Fluent real M13). `screens/hero/topbar.rs` ganhou `image_action_a11y_nodes()` publicando `Role::Button` + label + Action::Click para Trim+MS (shell TreeUpdate consume M14.x). `AppGfx::image_edit_undo: Option<ImageEditSnapshot>` + drainer no render loop + Cmd+Z handler + `pending_undo_image_edit` em HeroScreen. C1's release-imediato substituído por refcount-hold no snapshot (release on overwrite/undo). 2 a11y tests + workspace verde 1131. Commit `67df530`. |
 | 2026-05-15 21:40 | slot 1 reportou bloqueio externo (cargo check editor falhando por `use kurbo::BezPath` em bgremoval/icon.rs slot 2). Coord confirmou que slot 2 já corrigiu para `use ph2d_vector::BezPath` antes do report; working tree do editor compila verde (1 warning não-fatal). Slot 1 destravado sem ação Coord. `cargo nextest -p ph2d-editor -E 'not test(/bgremoval/)'` = 661 pass. ph2d-grid = 96 pass. Tier-1 (origin offset + subdivisions) já landed em `fc983c3` — não é blocked-waiting-coord, é working. |
 | 2026-05-15 21:30 | make-square audit completa (4 agentes paralelos: algoritmo / wiring / UX semantics / determinism+tests). Aposentado o slot 3. Coord aplicou TODOS os 7 findings: C1 (texture leak no IndividualTextureStore, fix conjunto Trim+MakeSquare) + M1 (cap pré-render em max_texture_dimension_2d, novo accessor em ph2d-render) + M2 (recenter_after_pad helper + sub-pixel correction p/ diff ímpar, paralelo de recenter_after_crop) + N1 (round-trip Trim→MS→Trim test) + N2 (overshoot panic + ímpar split coverage) + D1 (INTEGRATION.md §3 reescrito p/ refletir model real). Drive-by: grid_snap/state.rs:81 docstring reword (clippy 1.95 markdown list lint) + .typos.toml exclude bgremoval/** (slot 2 WIP). Commit `dd051de`, workspace verde. |
 | 2026-05-15 20:55 | make-square fix(shell): drainer pending_make_square em shells/desktop/main.rs (paralelo Trim — readback → algorithm → acquire_individual → repoint Sprite.source/size, sem mexer em Transform). Usuário reportou "sem efeito"; a integração v1 só wirou a UI mas esqueceu o host drain. Commit `e3e1671`, 1098 tests verdes. |

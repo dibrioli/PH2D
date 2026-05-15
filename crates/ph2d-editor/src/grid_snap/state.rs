@@ -247,6 +247,13 @@ pub struct GridSnapState {
 
     pub snap_enabled: bool,
     pub snap_target: SnapTarget,
+    /// Sub-grid factor applied at snap time only (rendering stays
+    /// at the base cell size). `1` (default) = snap to the kind's
+    /// natural cell. `N > 1` = snap as if each cell were `N×N`
+    /// finer — useful for half/quarter-cell alignment without
+    /// changing the visible grid. Applied via pre/post-scale of
+    /// world coords by `N` in [`GridSnapState::snap_world`].
+    pub snap_subdivisions: u32,
 
     pub panel_visible: bool,
     pub panel_rect: Option<Rect>,
@@ -281,6 +288,7 @@ impl Default for GridSnapState {
 
             snap_enabled: false,
             snap_target: SnapTarget::Center,
+            snap_subdivisions: 1,
 
             panel_visible: false,
             panel_rect: None,
@@ -377,7 +385,11 @@ impl GridSnapState {
         }
         let target = self.snap_target;
         let origin = self.active_origin();
-        let local = [world[0] - origin[0], world[1] - origin[1]];
+        // Pre-scale by N for sub-grid snap: a 2× subdivision treats
+        // each cell as if it were 1/N × 1/N during the snap math.
+        // Post-scale undoes it, landing on the fine-grained target.
+        let n = self.snap_subdivisions.max(1) as f32;
+        let local = [(world[0] - origin[0]) * n, (world[1] - origin[1]) * n];
         let snapped_local = match self.kind {
             GridKind::Square => gsw(&self.make_square(), local, target, &mut self.scratch),
             GridKind::Hex => gsw(&self.make_hex(), local, target, &mut self.scratch),
@@ -396,7 +408,10 @@ impl GridSnapState {
             // Non-uniform cells have no canonical snap target.
             GridKind::Quadtree | GridKind::Voronoi => return world,
         };
-        [snapped_local[0] + origin[0], snapped_local[1] + origin[1]]
+        [
+            snapped_local[0] / n + origin[0],
+            snapped_local[1] / n + origin[1],
+        ]
     }
 }
 

@@ -188,6 +188,58 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::GS_CFG_COLOR_R, defaults.color_rgba[0] as f64),
         (ids::GS_CFG_COLOR_G, defaults.color_rgba[1] as f64),
         (ids::GS_CFG_COLOR_B, defaults.color_rgba[2] as f64),
+        // Snap subdivisions (sub-grid factor; rendering unaffected).
+        (
+            ids::GS_CFG_SNAP_SUBDIVISIONS,
+            defaults.snap_subdivisions as f64,
+        ),
+        // Inspect probes A / B (X, Y) — user-editable from the panel.
+        (ids::GS_PROBE_A_X, defaults.probe_a[0] as f64),
+        (ids::GS_PROBE_A_Y, defaults.probe_a[1] as f64),
+        (ids::GS_PROBE_B_X, defaults.probe_b[0] as f64),
+        (ids::GS_PROBE_B_Y, defaults.probe_b[1] as f64),
+        // Quadtree bounds + demo seeds.
+        (
+            ids::GS_CFG_QT_BOUNDS_MIN_X,
+            defaults.quadtree_cfg.bounds.min[0] as f64,
+        ),
+        (
+            ids::GS_CFG_QT_BOUNDS_MIN_Y,
+            defaults.quadtree_cfg.bounds.min[1] as f64,
+        ),
+        (
+            ids::GS_CFG_QT_BOUNDS_MAX_X,
+            defaults.quadtree_cfg.bounds.max[0] as f64,
+        ),
+        (
+            ids::GS_CFG_QT_BOUNDS_MAX_Y,
+            defaults.quadtree_cfg.bounds.max[1] as f64,
+        ),
+        (
+            ids::GS_CFG_QT_DEMO_POINTS,
+            defaults.quadtree_cfg.demo_point_count as f64,
+        ),
+        (
+            ids::GS_CFG_QT_DEMO_SEED,
+            defaults.quadtree_cfg.demo_rng_seed as f64,
+        ),
+        // Voronoi bounds.
+        (
+            ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
+            defaults.voronoi_cfg.bounds.min[0] as f64,
+        ),
+        (
+            ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
+            defaults.voronoi_cfg.bounds.min[1] as f64,
+        ),
+        (
+            ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
+            defaults.voronoi_cfg.bounds.max[0] as f64,
+        ),
+        (
+            ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
+            defaults.voronoi_cfg.bounds.max[1] as f64,
+        ),
     ];
     for (id, value) in number_specs {
         store.register(
@@ -299,7 +351,21 @@ pub fn paint(
     let target_row = Rect::new(inner_x, y, inner_w, ROW_H);
     paint_snap_target_row(target_row, scene, text_system, theme, store, state);
     hit_index.register(ids::GS_SNAP_CENTER, target_row);
-    y += ROW_H + ROW_GAP * 2.0;
+    y += ROW_H + ROW_GAP;
+    y = paint_number_row_from_state(
+        "Subdivisions",
+        ids::GS_CFG_SNAP_SUBDIVISIONS,
+        state.snap_subdivisions as f64,
+        inner_x,
+        inner_w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y += ROW_GAP;
 
     // ─── Display section ────────────────────────────────────────
     y = paint_section_label("Display", inner_x, inner_w, y, scene, text_system, theme);
@@ -344,6 +410,8 @@ pub fn paint(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
         state,
     );
 
@@ -795,7 +863,7 @@ fn paint_quadtree_cfg(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    _state: &GridSnapState,
+    state: &GridSnapState,
 ) -> f32 {
     y = paint_number_row(
         "Max / leaf",
@@ -821,7 +889,49 @@ fn paint_quadtree_cfg(
         hit_index,
         store,
     );
-    y
+    y = paint_aabb_rows(
+        "QT bounds",
+        ids::GS_CFG_QT_BOUNDS_MIN_X,
+        ids::GS_CFG_QT_BOUNDS_MIN_Y,
+        ids::GS_CFG_QT_BOUNDS_MAX_X,
+        ids::GS_CFG_QT_BOUNDS_MAX_Y,
+        state.quadtree_cfg.bounds.min,
+        state.quadtree_cfg.bounds.max,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_number_row_from_state(
+        "Demo points",
+        ids::GS_CFG_QT_DEMO_POINTS,
+        state.quadtree_cfg.demo_point_count as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    paint_number_row_from_state(
+        "Demo seed",
+        ids::GS_CFG_QT_DEMO_SEED,
+        state.quadtree_cfg.demo_rng_seed as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -834,7 +944,7 @@ fn paint_voronoi_cfg(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    _state: &GridSnapState,
+    state: &GridSnapState,
 ) -> f32 {
     y = paint_number_row(
         "Seed count",
@@ -863,6 +973,23 @@ fn paint_voronoi_cfg(
     y = paint_number_row(
         "Lloyd iters",
         ids::GS_CFG_VORONOI_LLOYD_ITERS,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_aabb_rows(
+        "Voronoi bounds",
+        ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
+        ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
+        ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
+        ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
+        state.voronoi_cfg.bounds.min,
+        state.voronoi_cfg.bounds.max,
         x,
         w,
         y,
@@ -1098,6 +1225,81 @@ fn paint_origin_rows(
         "Origin Y",
         ids::GS_CFG_ORIGIN_Y,
         origin[1] as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    )
+}
+
+/// Paint a labeled AABB (min X / min Y / max X / max Y) as 4
+/// stacked NumberInput rows reading current values from state.
+/// Used by Quadtree and Voronoi for their `bounds` field.
+#[allow(clippy::too_many_arguments)]
+fn paint_aabb_rows(
+    label_prefix: &str,
+    min_x_id: crate::NodeId,
+    min_y_id: crate::NodeId,
+    max_x_id: crate::NodeId,
+    max_y_id: crate::NodeId,
+    min: ph2d_grid::Vec2,
+    max: ph2d_grid::Vec2,
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) -> f32 {
+    let y = paint_number_row_from_state(
+        &format!("{label_prefix} min X"),
+        min_x_id,
+        min[0] as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let y = paint_number_row_from_state(
+        &format!("{label_prefix} min Y"),
+        min_y_id,
+        min[1] as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    let y = paint_number_row_from_state(
+        &format!("{label_prefix} max X"),
+        max_x_id,
+        max[0] as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    paint_number_row_from_state(
+        &format!("{label_prefix} max Y"),
+        max_y_id,
+        max[1] as f64,
         x,
         w,
         y,
@@ -1519,6 +1721,77 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
         state.color_rgba[2] = to_u8(v);
         return true;
     }
+    // Snap subdivisions — clamp to [1, 64] so sub-grid stays useful
+    // (1 = no subdivision; 64 covers reasonable half/quarter use).
+    if id == ids::GS_CFG_SNAP_SUBDIVISIONS {
+        state.snap_subdivisions = (v as u32).clamp(1, 64);
+        return true;
+    }
+    // Probe coords — direct write into state.probe_a/b.
+    if id == ids::GS_PROBE_A_X {
+        state.probe_a[0] = v_f32;
+        return true;
+    }
+    if id == ids::GS_PROBE_A_Y {
+        state.probe_a[1] = v_f32;
+        return true;
+    }
+    if id == ids::GS_PROBE_B_X {
+        state.probe_b[0] = v_f32;
+        return true;
+    }
+    if id == ids::GS_PROBE_B_Y {
+        state.probe_b[1] = v_f32;
+        return true;
+    }
+    // Quadtree bounds (4 floats) + demo controls. AABB::new debug-
+    // asserts only ordering; we soft-clamp max ≥ min to avoid
+    // degenerate boxes after edits.
+    if id == ids::GS_CFG_QT_BOUNDS_MIN_X {
+        state.quadtree_cfg.bounds.min[0] = v_f32;
+        state.quadtree_cfg.bounds.max[0] = state.quadtree_cfg.bounds.max[0].max(v_f32 + 0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_QT_BOUNDS_MIN_Y {
+        state.quadtree_cfg.bounds.min[1] = v_f32;
+        state.quadtree_cfg.bounds.max[1] = state.quadtree_cfg.bounds.max[1].max(v_f32 + 0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_QT_BOUNDS_MAX_X {
+        state.quadtree_cfg.bounds.max[0] = v_f32.max(state.quadtree_cfg.bounds.min[0] + 0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_QT_BOUNDS_MAX_Y {
+        state.quadtree_cfg.bounds.max[1] = v_f32.max(state.quadtree_cfg.bounds.min[1] + 0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_QT_DEMO_POINTS {
+        state.quadtree_cfg.demo_point_count = (v as usize).min(4096);
+        return true;
+    }
+    if id == ids::GS_CFG_QT_DEMO_SEED {
+        state.quadtree_cfg.demo_rng_seed = v as u64;
+        return true;
+    }
+    // Voronoi bounds (same soft-clamp pattern as Quadtree).
+    if id == ids::GS_CFG_VORONOI_BOUNDS_MIN_X {
+        state.voronoi_cfg.bounds.min[0] = v_f32;
+        state.voronoi_cfg.bounds.max[0] = state.voronoi_cfg.bounds.max[0].max(v_f32 + 0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_VORONOI_BOUNDS_MIN_Y {
+        state.voronoi_cfg.bounds.min[1] = v_f32;
+        state.voronoi_cfg.bounds.max[1] = state.voronoi_cfg.bounds.max[1].max(v_f32 + 0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_VORONOI_BOUNDS_MAX_X {
+        state.voronoi_cfg.bounds.max[0] = v_f32.max(state.voronoi_cfg.bounds.min[0] + 0.01);
+        return true;
+    }
+    if id == ids::GS_CFG_VORONOI_BOUNDS_MAX_Y {
+        state.voronoi_cfg.bounds.max[1] = v_f32.max(state.voronoi_cfg.bounds.min[1] + 0.01);
+        return true;
+    }
     false
 }
 
@@ -1823,6 +2096,78 @@ mod tests {
         assert_eq!(s.color_rgba[1], defaults.color_rgba[1]);
         assert_eq!(s.color_rgba[2], defaults.color_rgba[2]);
         assert_eq!(s.color_rgba[3], defaults.color_rgba[3]);
+    }
+
+    #[test]
+    fn apply_event_subdivisions_clamps_to_unit_floor() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        if let Some(InteractiveState::NumberInput { value, .. }) =
+            store.get_mut(ids::GS_CFG_SNAP_SUBDIVISIONS)
+        {
+            *value = 0.0; // floor enforced to 1
+        }
+        apply_event(
+            &mut s,
+            WidgetEvent::ValueChanged(ids::GS_CFG_SNAP_SUBDIVISIONS),
+            &store,
+        );
+        assert_eq!(s.snap_subdivisions, 1);
+    }
+
+    #[test]
+    fn apply_event_subdivisions_actually_subdivides_snap() {
+        // With cell_size=1 and subdivisions=2, snap_to_center should
+        // pull to half-cell centers. World [0.3, 0.3] is in cell
+        // (0, 0) of the sub-grid (cells span 0..0.5) → center
+        // (0.25, 0.25), not (0.5, 0.5).
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            snap_target: SnapTarget::Center,
+            snap_subdivisions: 2,
+            ..Default::default()
+        };
+        let p = s.snap_world([0.3, 0.3]);
+        assert!(
+            (p[0] - 0.25).abs() < 1e-5 && (p[1] - 0.25).abs() < 1e-5,
+            "expected [0.25, 0.25] with subdivisions=2; got {p:?}"
+        );
+    }
+
+    #[test]
+    fn apply_event_probe_a_x_writes_state() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        if let Some(InteractiveState::NumberInput { value, .. }) = store.get_mut(ids::GS_PROBE_A_X)
+        {
+            *value = 7.5;
+        }
+        apply_event(&mut s, WidgetEvent::ValueChanged(ids::GS_PROBE_A_X), &store);
+        assert!((s.probe_a[0] - 7.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn apply_event_qt_bounds_max_soft_clamps_to_min_plus_eps() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        // Try to set MAX below MIN — should snap up to min+eps.
+        let min_x = s.quadtree_cfg.bounds.min[0];
+        if let Some(InteractiveState::NumberInput { value, .. }) =
+            store.get_mut(ids::GS_CFG_QT_BOUNDS_MAX_X)
+        {
+            *value = min_x as f64 - 5.0;
+        }
+        apply_event(
+            &mut s,
+            WidgetEvent::ValueChanged(ids::GS_CFG_QT_BOUNDS_MAX_X),
+            &store,
+        );
+        assert!(
+            s.quadtree_cfg.bounds.max[0] > s.quadtree_cfg.bounds.min[0],
+            "MAX must stay > MIN after clamp; got min={} max={}",
+            s.quadtree_cfg.bounds.min[0],
+            s.quadtree_cfg.bounds.max[0]
+        );
     }
 
     #[test]

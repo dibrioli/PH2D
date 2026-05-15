@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 20:25 BRT
+**Última atualização:** 2026-05-15 20:45 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -15,9 +15,9 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Stage 12 + RNG fix) | 2026-05-15 20:10 |
+| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Stage 12 landou; RNG fix landou) | 2026-05-15 20:40 |
 | 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working (Oklab+1024² GrabCut+GF boundary, peer-reviewed) | 2026-05-15 20:25 |
-| 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | working | 2026-05-15 18:55 |
+| 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | done | 2026-05-15 20:45 |
 | 4 | (vago) | — | — | — |
 
 **Status possíveis:**
@@ -88,7 +88,7 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `799fb82` — 2026-05-15 20:15 — feat(integration) grid-snap wired into editor v1 + post-audit polish (workspace verde: fmt+clippy+nextest)
+main @ `49dfcb8` — 2026-05-15 20:45 — feat(integration) make-square wired into Image Tools row (workspace verde: fmt+clippy+nextest 634 tests)
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -99,6 +99,8 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 20:45 | make-square integrado v1 (IconId::MakeSquare + IMAGE_ACTION_MAKE_SQUARE=118 + cluster Image Tools + pending_make_square em HeroScreen + click handler); workspace verde 634 tests — commit `49dfcb8`. Slot 3 → done. |
+| 2026-05-15 20:40 | grid-snap Stage 12 landou (per-kind config widgets + Opacity Slider + Kind Dropdown) — commit `bd60316`. Stage 13 (RNG fix) já tinha landado em `a567604`. Slot 1 segue working (próxima fase aberta a critério do agente). |
 | 2026-05-15 20:25 | bgremoval unblock: criado `THIRD_PARTY_LICENSES.md` na raiz (Apache 2.0 full text + atribuição OpenCV gcgraph.hpp/grabcut.cpp → maxflow.rs) — atende pedido pós-peer-review do agente slot 2; status mantém `working` |
 | 2026-05-15 20:10 | grid-snap integrado v1 (IconId::GridSettings + TOPBAR_GRID_SETTINGS + HeroScreen.grid_snap_state + paint_grid → grid_snap::render::paint); fmt+clippy+test workspace verdes — commit `799fb82` |
 | 2026-05-15 20:10 | grid-snap auditoria pós-integração: fix #1 (visual paint_panel_surface/corner_dot/close icon) + fix #2 (apply_event matchar Toggled p/ Snap/Overlay) aplicados pelo Coordenador. Stage 12 (per-kind widgets) + Stage 13 (RNG warm-up) devolvidos ao agente |

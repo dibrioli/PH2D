@@ -13,6 +13,7 @@
 
 pub mod clipboard;
 pub mod keymap;
+mod number_input;
 mod text_ops;
 
 pub use clipboard::apply_clipboard_paste;
@@ -21,14 +22,13 @@ pub use keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
     KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
 };
+use number_input::{apply_number_stepper_if_hit, is_numeric_input_char, update_drag_value};
 use text_ops::{
     byte_offset_from_click_xy, next_char_boundary, place_text_caret, prev_char_boundary,
 };
 
 use super::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::widget::{
-    ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, ToggleState,
-};
+use crate::widget::{ButtonState, CheckboxState, CheckboxValue, SliderState, ToggleState};
 use crate::zones::Rect;
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
@@ -950,53 +950,6 @@ pub fn dispatch_pointer_with_text<'frame>(
     events.into_bump_slice()
 }
 
-/// Recompute slider value from pointer position relative to its
-/// active rect. Returns true iff the value actually changed (so
-/// dispatcher can decide whether to emit `ValueChanged`). Mirrors
-/// the new value into a linked NumberInput, if one is registered.
-fn update_drag_value(
-    store: &mut WidgetStore,
-    id: ph2d_a11y::NodeId,
-    rect: Rect,
-    px: f32,
-    py: f32,
-) -> bool {
-    let (changed, propagated) = {
-        let Some(InteractiveState::Slider {
-            state,
-            value,
-            orientation,
-        }) = store.get_mut(id)
-        else {
-            return false;
-        };
-        let new_value = match *orientation {
-            SliderOrientation::Horizontal => {
-                if rect.w <= 0.0 {
-                    0.0
-                } else {
-                    ((px - rect.x) / rect.w).clamp(0.0, 1.0)
-                }
-            }
-            SliderOrientation::Vertical => {
-                if rect.h <= 0.0 {
-                    0.0
-                } else {
-                    (1.0 - (py - rect.y) / rect.h).clamp(0.0, 1.0)
-                }
-            }
-        };
-        let changed = (new_value - *value).abs() > f32::EPSILON;
-        *value = new_value;
-        *state = SliderState::Dragging;
-        (changed, new_value as f64)
-    };
-    if changed && let Some(number_id) = store.linked_number(id) {
-        store.set_number_value(number_id, propagated);
-    }
-    changed
-}
-
 /// Entry point for key events. Tab / Shift+Tab traverse the focus
 /// chain; Enter / Space activate the focused widget; Escape blurs.
 pub fn dispatch_key<'frame>(
@@ -1416,13 +1369,6 @@ pub fn dispatch_text_input<'frame>(
     events.into_bump_slice()
 }
 
-/// Filter for chars allowed in a NumberInput buffer: digits, sign,
-/// decimal point, and scientific-notation `e`/`E`/`+`. Anything else
-/// (letters, spaces, control chars) is dropped silently.
-fn is_numeric_input_char(ch: char) -> bool {
-    matches!(ch, '0'..='9' | '.' | '-' | '+' | 'e' | 'E')
-}
-
 /// M14.A: drive the continuous-hold repeat on a NumberInput stepper
 /// arrow. The shell calls this once per frame with the current host
 /// timestamp. After the initial 250 ms delay since Down, the function
@@ -1645,84 +1591,6 @@ fn scrollbar_panel_for_id(id: ph2d_a11y::NodeId) -> Option<ph2d_a11y::NodeId> {
     }
 }
 
-/// Detect a Down landing on a `NumberInput`'s up/down stepper and
-/// apply +/- one step to the value + buffer. Returns true iff the
-/// click landed on a stepper (caller emits `ValueChanged` and skips
-/// the default caret-placement path so the click doesn't also move
-/// the caret).
-///
-/// Step heuristic: `0.01` when the current buffer contains a `.`
-/// (fractional value), `1.0` otherwise (integer). Dispatch has no
-/// access to the widget's `step` field — that lives on the
-/// `NumberInput` struct, not on the store's `InteractiveState`.
-fn apply_number_stepper_if_hit(
-    store: &mut WidgetStore,
-    id: ph2d_a11y::NodeId,
-    host: Rect,
-    click_x: f32,
-    click_y: f32,
-    press_ns: u128,
-) -> bool {
-    use crate::widget::NumberInput;
-    // Audit fix #6 (HIGH): peek value + step heuristic with an
-    // immutable borrow — no `buffer.clone()` per click. Old path
-    // allocated a fresh `String` every stepper-Down (every continuous-
-    // hold tick), wasted work for a single-char membership test.
-    let (current_value, step) = match store.get(id) {
-        Some(InteractiveState::NumberInput { value, buffer, .. }) => (
-            *value,
-            if buffer.contains('.') {
-                0.01_f64
-            } else {
-                1.0_f64
-            },
-        ),
-        _ => return false,
-    };
-    let probe = NumberInput::new(id, "", current_value);
-    let up = probe.up_rect(host);
-    let down = probe.down_rect(host);
-    let direction = if up.contains(click_x, click_y) {
-        1.0_f64
-    } else if down.contains(click_x, click_y) {
-        -1.0_f64
-    } else {
-        return false;
-    };
-    let new_val = current_value + direction * step;
-    if let Some(InteractiveState::NumberInput {
-        value,
-        buffer,
-        last_committed,
-        ..
-    }) = store.get_mut(id)
-    {
-        *value = new_val;
-        *buffer = super::format_number(new_val);
-        *last_committed = new_val;
-    }
-    // Mirror to a linked slider if there is one. The store doesn't
-    // currently expose a typed `set_slider_value`, so we mutate the
-    // variant directly.
-    if let Some(slider_id) = store.linked_slider(id)
-        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
-    {
-        *value = (new_val as f32).clamp(0.0, 1.0);
-    }
-    // M14.A: arm continuous-hold so dispatch_tick can repeat while
-    // the user keeps the arrow pressed. The Down itself counts as the
-    // first tick (already applied above) — `last_tick_ns == press_ns`
-    // makes the initial-delay guard in `dispatch_tick` fire correctly.
-    store.begin_number_stepper_hold(super::drag::NumberStepperHoldState {
-        id,
-        direction,
-        step,
-        press_ns,
-        last_tick_ns: press_ns,
-    });
-    true
-}
-
 /// Detect a Down landing on the Combobox's inline clear-✕ icon. When
 /// the widget at `id` is a Combobox with a non-empty query and the
 /// click coordinates fall inside `Combobox::clear_button_rect(host)`,
@@ -1769,22 +1637,6 @@ fn clear_combobox_if_button_hit(
     false
 }
 
-/// Map a pointer (x, y) to a byte offset within the editable buffer
-/// of the widget at `id`. Honors per-widget layout (hex field has a
-/// 36 px label prefix; Combobox text sits after a 16 px search icon;
-/// channel chips are centered; multi-line `TextInput` content split
-/// on `\n` is line-aware via the y-coordinate).
-///
-/// When `text_system: Some(ts)`, walks the per-line glyph layout to
-/// find the byte whose pixel position is **closest** to `click_x`
-/// — pixel-perfect, "caret appears where you clicked". When `None`,
-/// falls back to the `font_size * APPROX_ADVANCE_RATIO` heuristic
-/// (acceptable for tests; visibly off on real fonts).
-///
-/// Always snaps to **end-of-line** when the click lands past the
-/// last glyph on a multi-line widget's line (per
-/// `docs/UI_Bugs/README.md` §3.3 lesson: don't let click→byte cross
-/// visible line boundaries).
 /// Reset the focused visual state of a text-editing widget at `id`
 /// to its `Normal` variant. Used on every blur path (Down handler,
 /// `cycle_focus`, ESC, hex commit) so the painter stops drawing the
@@ -2386,7 +2238,7 @@ fn apply_blender_hit(
 mod tests {
     use super::*;
     use crate::interaction::InteractiveState;
-    use crate::widget::ButtonState;
+    use crate::widget::{ButtonState, SliderOrientation};
     use crate::zones::Rect;
     use ph2d_a11y::NodeId;
     use ph2d_host::{Modifiers, PointerSource};

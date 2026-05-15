@@ -34,6 +34,7 @@ pub mod dispatch;
 pub mod drag;
 pub mod hit;
 pub mod state;
+pub mod types;
 
 pub use dispatch::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
@@ -47,7 +48,5 @@ pub use drag::{
     STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS, ScrollbarDragAnchor,
 };
 pub use hit::HitIndex;
-pub use state::{
-    BlenderHitKind, ContextMenuKind, ContextMenuRequest, InteractiveState, NoteData, WidgetEvent,
-    WidgetStore, format_number,
-};
+pub use state::{InteractiveState, WidgetEvent, WidgetStore, format_number};
+pub use types::{BlenderHitKind, ContextMenuKind, ContextMenuRequest, NoteData};

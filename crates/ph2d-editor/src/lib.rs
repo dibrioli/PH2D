@@ -29,6 +29,7 @@
 pub mod floating_panel;
 pub mod gizmo;
 pub mod grid;
+pub mod grid_snap;
 pub mod icons;
 pub mod image_edit;
 pub mod interaction;

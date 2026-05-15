@@ -42,6 +42,11 @@ bevy_ecs = "0.18"
 # launch (so M6 has real files to consume). Same dep ph2d-asset
 # pulls — workspace Cargo.lock unifies version.
 image = { version = "0.25", default-features = false, features = ["png"] }
+# postcard: serialize Transform (and future component blobs) for the
+# editor command pipeline (M14.A). Pushed as `EditorCommand::SetComponent
+# { data: Vec<u8> }` and decoded by `apply_editor_commands` via the
+# `ComponentRegistry` registered at boot.
+postcard = { version = "1", features = ["alloc"] }
 wgpu = "28"
 winit = "0.30"
 gilrs = "0.11"

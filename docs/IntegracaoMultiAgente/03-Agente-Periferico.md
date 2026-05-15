@@ -203,6 +203,42 @@ de pintar do zero. Mesma fonte (Inter/JetBrains Mono), mesmos tokens
 novo do zero — pode ser que outro agente já esteja preparando um, ou
 que faça sentido tratar como aliasing/composição do existente.
 
+**Interações canônicas do `NumberInput`** (M14.A — afetam TODOS os
+NumberInputs, incluindo os do showcase na gallery):
+
+- **Clique na seta ▲/▼**: incrementa/decrementa um step (1.0 para
+  inteiros, 0.01 para fracionários). **Segurar a seta** repete
+  continuamente — delay inicial 250 ms, depois 30 ms por repeat
+  (canonical macOS Aqua feel).
+- **Clique no número (corpo da caixa, fora das setas)**: entra em
+  modo edição (foco + caret). Digite + Enter pra commitar.
+- **Clique + arrastar no número (sem soltar antes de mover)**: vira
+  slider Blender-style com **axis-lock**:
+  - **Threshold de promoção:** 4 px. Mouse-up antes disso é "click
+    → entra em edit"; depois disso é "drag → commit, não entra em
+    edit".
+  - **No instante da promoção** (primeiro Move que cruza 4 px), o
+    eixo dominante é decidido por `|dx| vs |dy|` e **travado** para
+    o resto do drag. Wobble off-axis depois disso é ignorado — só
+    um novo clique (Down fresh) reseta o eixo.
+  - **Horizontal travado:** 50 step-units por pixel. Direita =
+    aumenta rápido, esquerda = diminui rápido.
+  - **Vertical travado:** 5 step-units por pixel. Cima = aumenta
+    lento, baixo = diminui lento.
+  - **Shift segurado:** multiplica o delta por 0.001 (fine
+    adjustment, ideal pra precisão sub-step).
+  - Cancelar drag = Esc.
+  - **Buffer atualiza em tempo real** durante o drag — o painter
+    mostra o novo número a cada frame conforme o cursor move.
+
+Tudo isso é centralizado em [`dispatch::dispatch_pointer`](../../crates/ph2d-editor/src/interaction/dispatch.rs)
++ [`dispatch_tick`](../../crates/ph2d-editor/src/interaction/dispatch.rs).
+Você não precisa codar nada — basta usar `paint_number_input_with_buffer`
+canônico e o WidgetStore cuida do resto. Constantes ajustáveis em
+`interaction::state::{DRAG_RATE_X, DRAG_RATE_Y, DRAG_SHIFT_MUL,
+STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS,
+NUMBER_INPUT_DRAG_THRESHOLD_PX}`.
+
 ## 6. Decida a(s) pasta(s) exclusiva(s) e comunique ao Coordenador
 
 Antes de tocar qualquer arquivo, **decida onde sua feature vive**

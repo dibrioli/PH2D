@@ -17,5 +17,5 @@ pub mod hero;
 
 pub use hero::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorSpriteInfo, InspectorSpriteSource,
-    ViewFocusKind, paint_hero_screen, set_live_component_count,
+    InspectorTransformInfo, ViewFocusKind, paint_hero_screen, set_live_component_count,
 };

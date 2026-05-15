@@ -78,6 +78,28 @@ pub const INSP_DRAG_HANDLE: NodeId = NodeId(372);
 /// Resize gripper at the Inspector's bottom-right corner. Registered
 /// as `BlenderHit { parent: INSP_PANEL, kind: ResizeHandle }`.
 pub const INSP_RESIZE_HANDLE: NodeId = NodeId(373);
+
+// ── Inspector Transform editor (M14.A) ──────────────────────────────────────
+// Live binding for `ph2d_ecs::Transform` on the selected entity. The
+// section paints when `HeroScreen::inspector_transform` is `Some` and
+// commits via `pending_transform_edit` → `EditorCommandQueue` at the
+// shell boundary (first real consumer of the editor command pipeline).
+// Z is intentionally hidden — `Transform` is 2D by design (SKILL §3,
+// ADR-0025); X/Y NumberInputs only, with R/G axis-color labels.
+/// Collapsible section header for the Transform editor.
+pub const INSP_TRANSFORM_SECTION: NodeId = NodeId(374);
+/// Position X NumberInput (meters, R-tinted label).
+pub const INSP_TRANSFORM_POS_X: NodeId = NodeId(375);
+/// Position Y NumberInput (meters, G-tinted label).
+pub const INSP_TRANSFORM_POS_Y: NodeId = NodeId(376);
+/// Rotation NumberInput (displayed in degrees; stored in radians).
+pub const INSP_TRANSFORM_ROT: NodeId = NodeId(377);
+/// Scale X NumberInput (unitless, R-tinted label).
+pub const INSP_TRANSFORM_SCALE_X: NodeId = NodeId(378);
+/// Scale Y NumberInput (unitless, G-tinted label).
+pub const INSP_TRANSFORM_SCALE_Y: NodeId = NodeId(379);
+/// Reset-to-Identity button in the Transform section header.
+pub const INSP_TRANSFORM_RESET: NodeId = NodeId(380);
 /// Widget Gallery floating panel — root id. The gallery is a Procreate-
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].

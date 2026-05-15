@@ -37,7 +37,10 @@ mod integration;
 use bumpalo::Bump;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
-use ph2d_ecs::scene::{HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot};
+use ph2d_ecs::scene::{
+    ComponentRegistry, EditorCommand, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
+    apply_editor_commands, build_hierarchy_snapshot, register_ecs_components, stable_type_id,
+};
 use ph2d_ecs::{
     Component, Name, PresentWorld, SimComponent, SimRef, SimWorld, Transform,
     TransformPropagationState, WorklistBuf, propagate_transforms,
@@ -272,6 +275,27 @@ struct AppGfx {
     /// texture preserves every previously-imported sprite. BTreeMap
     /// per HR-5 / ADR-0022.
     atlas_asset_map: BTreeMap<u32, AssetId>,
+    /// M14.A: editor → SimWorld mutation pipeline. Populated at boot
+    /// with the canonical Transform / Name / Visibility / RootOrder
+    /// type registrations via `register_ecs_components`; future crates
+    /// (`ph2d-render` for Sprite, `ph2d-script` for LuauScript) will
+    /// extend it as their components join the live inspector.
+    ///
+    /// First real consumer is the Inspector's Transform editor: each
+    /// commit pushes `EditorCommand::SetComponent` to
+    /// [`Self::editor_queue`], which `apply_editor_commands` drains
+    /// once per frame to write back to SimWorld via this registry.
+    component_registry: ComponentRegistry,
+    /// Editor command queue (Arc<Mutex<…>>-backed for multi-producer
+    /// access). The Inspector's commit path is the only producer
+    /// today; the shell drains and applies once per frame after the
+    /// hero `apply_event` pass.
+    editor_queue: EditorCommandQueue,
+    /// Cached stable type id for `ph2d::ecs::Transform`. Lookup is
+    /// blake3-of-name → first 8 bytes; cached so the per-commit push
+    /// path doesn't re-hash. The matching registry entry was added
+    /// via `register_ecs_components`.
+    transform_type_id: u64,
 }
 
 /// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
@@ -887,6 +911,9 @@ impl App {
             hero_live,
             next_import_cell,
             atlas_asset_map,
+            component_registry,
+            editor_queue,
+            transform_type_id,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -899,6 +926,22 @@ impl App {
         toasts.tick();
         if toasts.len() != prev_toasts {
             self.title_dirty = true;
+        }
+
+        // M14.A: drive the NumberInput stepper continuous-hold. Each
+        // frame we ask the dispatcher whether a held arrow should
+        // fire one more `ValueChanged` (initial 250 ms delay, then
+        // 30 ms repeat). Events drained through `hero.apply_event` so
+        // a Transform field that's been incrementing flows through
+        // the same commit path as a Enter/blur — the EditorCommand
+        // pipeline drain below picks it up.
+        if let Some(hero) = hero_screen.as_mut() {
+            let tick_events: Vec<WidgetEvent> =
+                ph2d_editor::dispatch_tick(hero_arena, &mut hero.store, Self::timestamp_ns())
+                    .to_vec();
+            for e in tick_events {
+                let _ = hero.apply_event(e);
+            }
         }
 
         // M7 per-frame GC step. Cheap (p99 ≤ 10µs target per the M7
@@ -1304,6 +1347,21 @@ impl App {
                     source_kind,
                     source_pixels,
                     can_reimport,
+                })
+            });
+            // M14.A: live Transform snapshot for the inspector. Same
+            // ADR-0021 / HR-8 boundary as sprite snapshot — Inspector
+            // never reads SimWorld; the host bridges. Lands on every
+            // entity that has a `Transform` component, not just sprites
+            // (so non-renderable entities still show their pose).
+            hero.inspector_transform = hero.gizmo_selection.and_then(|bits| {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                let t = sim.world().get::<Transform>(entity)?;
+                Some(ph2d_editor::InspectorTransformInfo {
+                    entity_bits: bits,
+                    translation: [t.translation.x, t.translation.y],
+                    rotation_rad: t.rotation,
+                    scale: [t.scale.x, t.scale.y],
                 })
             });
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
@@ -1805,6 +1863,43 @@ impl App {
                 } else {
                     toasts.push(Toast::error("Reimport unavailable for this source"));
                     self.title_dirty = true;
+                }
+            }
+            // M14.A: drain Inspector Transform commit → push
+            // `EditorCommand::SetComponent` to the editor queue, then
+            // apply. **First end-to-end consumer** of the editor
+            // command pipeline (every prior `pending_*` field mutated
+            // SimWorld directly). When MCP / Luau / multi-agent edits
+            // arrive in M14.B+ they share this same code path —
+            // governance, audit, conflict resolution all live one
+            // level up from the producer.
+            if let Some(info) = hero.pending_transform_edit.take() {
+                let t = Transform {
+                    translation: Vec2::new(info.translation[0], info.translation[1]),
+                    rotation: info.rotation_rad,
+                    scale: Vec2::new(info.scale[0], info.scale[1]),
+                };
+                match postcard::to_allocvec(&t) {
+                    Ok(data) => {
+                        let push_res = editor_queue.push(EditorCommand::SetComponent {
+                            entity: info.entity_bits,
+                            type_id: *transform_type_id,
+                            data,
+                        });
+                        if let Err(e) = push_res {
+                            toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                            self.title_dirty = true;
+                        } else if let Err(e) =
+                            apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
+                        {
+                            toasts.push(Toast::error(format!("Transform commit failed: {e}")));
+                            self.title_dirty = true;
+                        }
+                    }
+                    Err(e) => {
+                        toasts.push(Toast::error(format!("Transform encode failed: {e}")));
+                        self.title_dirty = true;
+                    }
                 }
             }
             // ImageToolsV1: drain Trim Transparency request — read the
@@ -2332,6 +2427,13 @@ impl ApplicationHandler for App {
             hero_live,
             next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
             atlas_asset_map: BTreeMap::new(),
+            component_registry: {
+                let mut reg = ComponentRegistry::new();
+                register_ecs_components(&mut reg);
+                reg
+            },
+            editor_queue: EditorCommandQueue::new(),
+            transform_type_id: stable_type_id("ph2d::ecs::Transform"),
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -2403,6 +2505,17 @@ impl ApplicationHandler for App {
 
             WindowEvent::ModifiersChanged(mods) => {
                 self.modifiers = mods.state();
+                // M14.A: push the Shift state to the hero's WidgetStore
+                // so `dispatch_pointer` Move can scale the NumberInput
+                // drag delta correctly (Shift = fine adjustment). The
+                // ph2d-host `PointerEvent` schema doesn't carry
+                // modifiers natively — the store cache is the canonical
+                // bridge for now.
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some(hero) = gfx.hero_screen.as_mut()
+                {
+                    hero.store.set_shift_held(self.modifiers.shift_key());
+                }
             }
 
             // IME composition commits — PT-BR / Spanish / French

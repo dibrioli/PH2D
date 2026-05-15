@@ -598,6 +598,83 @@ Quando o user altera `pixels_per_meter` global (M14.4d Settings) mas o sprite fo
 
 Implementação estimada: ~200 linhas (Inspector binding + Sprite refactor) + ~80 linhas (reimport handler).
 
+## M14.A — Inspector Transform editor + canonical NumberInput interaction (shipped)
+
+Live Transform editor section in the Inspector + canonical interaction
+upgrade applied to every `NumberInput` in the editor (Transform fields,
+Widget Gallery showcase, vector3 chips, slider+chip composites, future
+Periférico panels).
+
+**Transform editor (Inspector live binding):**
+- `InspectorTransformInfo { entity_bits, translation: [f32; 2], rotation_rad: f32, scale: [f32; 2] }`
+  in `ph2d-editor::screens::hero` — host snapshot, mirrors the M14.5
+  sprite pattern. Loose-coupled (no `ph2d-ecs` types in editor crate;
+  shell converts to/from `Transform` at the boundary).
+- `paint_transform_section` (5-column grid: label / X tag / X box / Y
+  tag / Y box) painted ABOVE Render Source. Position + Scale rows use
+  two NumberInputs each (R/G axis tints, no Z — 2D-by-design per SKILL §3 +
+  ADR-0025). Rotation row is single NumberInput in degrees (rad ↔ deg
+  via `f32::to_degrees`/`to_radians`, HR-5 bit-deterministic).
+- Reset-to-Identity button in the section header. Same commit code path
+  as a field commit (publishes `pending_transform_edit`).
+- Selection-change buffer reset: `last_inspector_entity` tracks the
+  entity that the 5 NumberInput buffers belong to; mid-edit selection
+  switch force-rewrites all buffers so the edit can't leak across
+  entities.
+- **First end-to-end consumer of `EditorCommandQueue`**. Inspector
+  publishes `pending_transform_edit`; shell drains, encodes the
+  `Transform` as postcard, pushes `EditorCommand::SetComponent` to the
+  queue, calls `apply_editor_commands` with the `ComponentRegistry`
+  pre-loaded with `register_ecs_components` at boot. All prior
+  `pending_*` fields bypassed the queue with direct
+  `sim.world_mut().get_mut::<…>()` — keep this path canonical for
+  MCP / Luau / multi-agent edits in M14.B+.
+
+**Canonical NumberInput interaction polish:**
+- **Continuous-hold on stepper arrows**: Down on ▲/▼ does the usual
+  single increment AND arms a hold; `dispatch_tick` (new public entry,
+  called once per frame from the shell with `Self::timestamp_ns()`)
+  fires repeats every 30 ms after a 250 ms initial delay. Released on
+  pointer-Up.
+- **Drag-slider on body**: Down on the box body (not the stepper)
+  records a drag candidate. After the cursor moves ≥ 4 px (the
+  threshold), the field flips into slider mode. The **dominant axis is
+  decided at the moment of promotion and locked** for the rest of the
+  drag — `|dx| vs |dy|` (>= favors horizontal). Subsequent off-axis
+  wobble is ignored; only a fresh Down resets the axis.
+- **Rates**: horizontal locked = 50 step-units / px (fast); vertical
+  locked (cursor up = positive, cursor down = negative) = 5 step-units /
+  px (slow); Shift held multiplies by 0.001 (fine adjustment).
+- **Buffer realtime**: drag-slider mutates `value` + `buffer` +
+  `last_committed` directly (bypassing `set_number_value`'s focus-guard)
+  so the focused field shows the new number every frame during scrub.
+- **Mouse-up split**: drag past threshold commits and clears focus
+  (drag mode ≠ edit mode); drag below threshold keeps the field
+  focused for typing (regular click-to-edit). Stepper hold ends
+  always.
+- **Pointer-event modifiers bridge**: `ph2d-host::PointerEvent` doesn't
+  carry modifiers natively; shell pushes Shift state to
+  `WidgetStore::set_shift_held(...)` on every `WindowEvent::ModifiersChanged`.
+- New state types in `ph2d-editor::interaction::state`:
+  `NumberInputDragState`, `NumberStepperHoldState`. Tunable constants:
+  `DRAG_RATE_X` (50.0), `DRAG_RATE_Y` (5.0), `DRAG_SHIFT_MUL` (0.001),
+  `STEPPER_HOLD_INITIAL_DELAY_NS` (250 ms), `STEPPER_REPEAT_INTERVAL_NS`
+  (30 ms), `NUMBER_INPUT_DRAG_THRESHOLD_PX` (4.0).
+- Doc: `docs/IntegracaoMultiAgente/03-Agente-Periferico.md` §5.6 +
+  SKILL §11.9 widget table updated. Peripheral agents using
+  `paint_number_input_with_buffer` get the full canonical behavior for
+  free (interaction lives in the dispatcher, not the widget).
+
+**Tests**: 8 regression tests in `interaction::dispatch::tests` cover
+horizontal rate, vertical rate + inversion, Shift multiplier,
+no-drag-preserves-edit-mode, axis-lock at promotion, axis-lock
+persistence through off-axis wobble, buffer-realtime refresh,
+continuous-hold initial delay + repeat, hold ended on pointer-Up. 2 in
+`screens::hero::tests` cover Transform commit and Reset.
+
+**Workspace check**: 523 lib tests + 20 integration tests pass; clippy
++ fmt clean.
+
 ## M14.7 polish — rename mode + long-press (planned)
 
 A hierarchy row's right-click menu currently lists Duplicate / Add Child / Reset Transform / Delete (M14.6 F shipped). Two more interactions remain:

@@ -188,6 +188,12 @@ thread_local! {
     /// selected or selection isn't a sprite.
     static CURRENT_INSPECTOR_SPRITE: std::cell::RefCell<Option<InspectorSpriteInfo>> =
         const { std::cell::RefCell::new(None) };
+    /// M14.A: same shape as `CURRENT_INSPECTOR_SPRITE` for the live
+    /// `Transform` editor section. `paint_hero_screen` publishes this
+    /// before `paint_inspector` and clears it after so a stale
+    /// snapshot can't leak into the next frame.
+    static CURRENT_INSPECTOR_TRANSFORM: std::cell::RefCell<Option<super::InspectorTransformInfo>> =
+        const { std::cell::RefCell::new(None) };
     /// Mirror of `LAST_CONTENT_H` / `LAST_VISIBLE_H` for the floating
     /// Widget Gallery panel painted by [`paint_showcase_body`]. Tracked
     /// independently so the gallery and Inspector scroll without
@@ -205,6 +211,17 @@ pub(super) fn set_current_inspector_sprite(info: Option<InspectorSpriteInfo>) {
 
 fn current_inspector_sprite() -> Option<InspectorSpriteInfo> {
     CURRENT_INSPECTOR_SPRITE.with(|c| c.borrow().clone())
+}
+
+/// M14.A: paired with [`set_current_inspector_sprite`] for the
+/// Transform live-binding section. `paint_hero_screen` is the only
+/// publisher.
+pub(super) fn set_current_inspector_transform(info: Option<super::InspectorTransformInfo>) {
+    CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow_mut() = info);
+}
+
+fn current_inspector_transform() -> Option<super::InspectorTransformInfo> {
+    CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow())
 }
 
 fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {
@@ -300,6 +317,44 @@ fn push_section_top_y(tops: &mut Vec<f32>, body_y: f32) {
 pub fn populate(store: &mut WidgetStore) {
     populate_blender_picker(store);
     populate_samples(store);
+    populate_transform_editor(store);
+}
+
+/// M14.A: register the 5 NumberInput states + the Reset button used
+/// by [`paint_transform_section`]. Identity defaults seed each field
+/// (`0` / `0` / `0` / `1` / `1`); the host overwrites these via
+/// [`WidgetStore::set_number_value`] when a fresh
+/// [`super::InspectorTransformInfo`] snapshot lands. Per the
+/// `set_number_value` focus-guard rule, an in-progress edit on a
+/// focused field survives a host snapshot republish.
+fn populate_transform_editor(store: &mut WidgetStore) {
+    let identity_pairs = [
+        (ids::INSP_TRANSFORM_POS_X, 0.0_f64),
+        (ids::INSP_TRANSFORM_POS_Y, 0.0_f64),
+        (ids::INSP_TRANSFORM_ROT, 0.0_f64),
+        (ids::INSP_TRANSFORM_SCALE_X, 1.0_f64),
+        (ids::INSP_TRANSFORM_SCALE_Y, 1.0_f64),
+    ];
+    for (id, value) in identity_pairs {
+        let buffer = format!("{value}");
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer,
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+    }
+    store.register(
+        ids::INSP_TRANSFORM_RESET,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
 }
 
 fn populate_blender_picker(store: &mut WidgetStore) {
@@ -1091,9 +1146,15 @@ pub fn paint_inspector(
     // instructional prompt.
     let section_tops_y: Vec<f32> = Vec::new();
     LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + 4.0));
+    let transform_info = current_inspector_transform();
     let sprite_info = current_inspector_sprite();
-    let y = if let Some(info) = sprite_info.as_ref() {
-        paint_render_source_section(
+    let any_section = transform_info.is_some() || sprite_info.is_some();
+    let mut y = body_top_y + 4.0;
+    // ── Transform section (M14.A) — first, since Transform is the
+    // most fundamental component. Matches Unity / Godot / Blender
+    // conventions where Transform sits above all other components.
+    if transform_info.is_some() {
+        y = paint_transform_section(
             scene,
             text_system,
             theme,
@@ -1101,10 +1162,26 @@ pub fn paint_inspector(
             store,
             inner_x,
             inner_w,
-            body_top_y + 4.0,
+            y,
+        );
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+    }
+    // ── Render Source section (M14.5) — below Transform.
+    if let Some(info) = sprite_info.as_ref() {
+        y = paint_render_source_section(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
             info,
-        )
-    } else {
+        );
+    }
+    // ── Placeholder when nothing is selected ──
+    if !any_section {
         let placeholder = if selection.is_some() {
             "No properties yet for the selected entity."
         } else {
@@ -1122,8 +1199,7 @@ pub fn paint_inspector(
             (inner_w - 16.0).max(80.0),
             resolve(ColorToken::Text3, theme),
         );
-        body_top_y + 4.0
-    };
+    }
 
     // Publish the total content height + the EXACT visible body
     // height for the wheel dispatch + hero clamp. visible_h must
@@ -1468,6 +1544,228 @@ pub(super) fn paint_showcase_body(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/// M14.A: paint the live `Transform` editor section. Shows Position
+/// X/Y (meters), Rotation (degrees, rad ↔ deg conversion at the
+/// paint/commit boundary), Scale X/Y (unitless), and a Reset-to-
+/// Identity button in the section header. Z is intentionally absent
+/// — `Transform` is 2D by design (SKILL §3 + ADR-0025).
+///
+/// Wiring: the section paints the canonical
+/// [`crate::widget::paint_number_input_with_buffer`] (Widget Gallery
+/// reference) for each of the 5 editable fields. Live values come
+/// from the [`WidgetStore`]'s number-value cache; the host seeds
+/// those via `set_number_value` whenever a new
+/// [`super::InspectorTransformInfo`] snapshot lands (selection
+/// change, gizmo drag, script mutation). Per
+/// [`crate::interaction::WidgetStore::set_number_value`], focused
+/// fields skip the rewrite so an in-progress edit isn't clobbered.
+///
+/// Commits flow through `WidgetEvent::ValueChanged` (Enter / blur)
+/// in [`super::HeroScreen::apply_event`], which assembles a fresh
+/// [`super::InspectorTransformInfo`] from the 5 store values and
+/// publishes it via `pending_transform_edit` for the shell to push
+/// to its `EditorCommandQueue` as
+/// [`ph2d_ecs::scene::commands::EditorCommand::SetComponent`].
+///
+/// Returns the y-coordinate of the bottom of the painted section so
+/// the caller can advance the body cursor.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_transform_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let label_font = TypeToken::Sm.px();
+    let field_h = 28.0_f32;
+    let row_gap = 6.0_f32;
+    let label_color = resolve(ColorToken::Text2, theme);
+
+    // ── Section header: "Transform" title + Reset (Identity) button ──
+    paint_text_title(
+        text_system,
+        scene,
+        "Transform",
+        x,
+        y,
+        TypeToken::Md.px(),
+        w - 90.0,
+        resolve(ColorToken::Text1, theme),
+    );
+    let reset_w = 80.0_f32;
+    let reset_h = 24.0_f32;
+    let reset_rect = Rect::new(x + w - reset_w, y - 2.0, reset_w, reset_h);
+    let reset_state = store
+        .button_state(ids::INSP_TRANSFORM_RESET)
+        .unwrap_or(ButtonState::Normal);
+    hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
+    let reset_btn = Button::new(ids::INSP_TRANSFORM_RESET, "Reset")
+        .kind(ButtonKind::Default)
+        .state(reset_state);
+    paint_button(&reset_btn, reset_rect, scene, text_system, theme);
+    let mut cur_y = y + TypeToken::Md.px() + 10.0;
+    cur_y = paint_section_separator(scene, theme, x, w, cur_y);
+
+    // ── 5-column grid geometry ──────────────────────────────────────
+    // | col 1: row label | col 2: X tag | col 3: X box | col 4: Y tag | col 5: Y box |
+    // Col 2 and col 4 are a single-letter wide so the axis tags hug
+    // their boxes. Col 1 fixed at the widest row label ("Rotation
+    // (°)"); cols 3 + 5 split the remaining width evenly.
+    //
+    // Two gap sizes: the gap BEFORE each axis tag (col 1→2, col 3→4)
+    // is the standard `col_gap` so columns breathe, but the gap
+    // BETWEEN the tag and its own box (col 2→3, col 4→5) is tighter
+    // (`tag_box_gap`) so the eye reads tag+box as a single unit.
+    let col_gap = 8.0_f32;
+    let tag_box_gap = 2.0_f32;
+    let label_col_w = 78.0_f32;
+    let axis_col_w = 12.0_f32;
+    // Width consumed by the non-box columns: label + 2×(col_gap before
+    // tag) + 2×(tag) + 2×(tag→box gap). The boxes share what's left.
+    let non_box_w = label_col_w + col_gap * 2.0 + (axis_col_w + tag_box_gap) * 2.0;
+    let box_col_w = ((w - non_box_w) * 0.5).max(40.0);
+    let axis_label_font = TypeToken::Base.px();
+
+    // ── Helper: paint one row of the grid ──────────────────────────
+    // `right_id == None` means "row has only an X field" (Rotation
+    // case) — col 4 + col 5 stay empty so the grid still aligns.
+    let paint_row = |scene: &mut VectorScene,
+                     text_system: &mut TextSystem,
+                     hit_index: &mut HitIndex,
+                     row_y: f32,
+                     row_label: &str,
+                     left_id: NodeId,
+                     left_tag: &str,
+                     left_color: ColorToken,
+                     left_step: f64,
+                     right: Option<(NodeId, &str, ColorToken, f64)>| {
+        // Col 1: row label, vertically centered in the field row.
+        paint_text(
+            text_system,
+            scene,
+            row_label,
+            x,
+            row_y + (field_h - label_font) * 0.5,
+            label_font,
+            label_col_w,
+            label_color,
+        );
+        // Col 2: X / left-axis tag.
+        let left_tag_x = x + label_col_w + col_gap;
+        paint_text(
+            text_system,
+            scene,
+            left_tag,
+            left_tag_x,
+            row_y + (field_h - axis_label_font) * 0.5,
+            axis_label_font,
+            axis_col_w,
+            resolve(left_color, theme),
+        );
+        // Col 3: left field, hugging the X tag (`tag_box_gap`, not
+        // `col_gap` — see grid geometry comment). Reads full state
+        // from the store so the canonical focus-guard semantics in
+        // [`WidgetStore::set_number_value`] take effect — host
+        // snapshot refreshes never clobber an in-progress edit.
+        let left_box_x = left_tag_x + axis_col_w + tag_box_gap;
+        let left_rect = Rect::new(left_box_x, row_y, box_col_w, field_h);
+        hit_index.register(left_id, left_rect);
+        let (state, value, buffer, caret, anchor) = read_number_input(store, left_id);
+        let input = NumberInput::new(left_id, "", value)
+            .step(left_step)
+            .state(state);
+        paint_number_input_with_buffer(
+            &input,
+            Some(buffer),
+            caret,
+            anchor,
+            left_rect,
+            scene,
+            text_system,
+            theme,
+        );
+        // Col 4 + 5: right-axis tag + box, when present.
+        if let Some((right_id, right_tag, right_color, right_step)) = right {
+            let right_tag_x = left_box_x + box_col_w + col_gap;
+            paint_text(
+                text_system,
+                scene,
+                right_tag,
+                right_tag_x,
+                row_y + (field_h - axis_label_font) * 0.5,
+                axis_label_font,
+                axis_col_w,
+                resolve(right_color, theme),
+            );
+            let right_box_x = right_tag_x + axis_col_w + tag_box_gap;
+            let right_rect = Rect::new(right_box_x, row_y, box_col_w, field_h);
+            hit_index.register(right_id, right_rect);
+            let (r_state, r_value, r_buffer, r_caret, r_anchor) =
+                read_number_input(store, right_id);
+            let r_input = NumberInput::new(right_id, "", r_value)
+                .step(right_step)
+                .state(r_state);
+            paint_number_input_with_buffer(
+                &r_input,
+                Some(r_buffer),
+                r_caret,
+                r_anchor,
+                right_rect,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+    };
+
+    // ── Three rows, same grid ──
+    paint_row(
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        "Position",
+        ids::INSP_TRANSFORM_POS_X,
+        "X",
+        ColorToken::Danger,
+        0.01,
+        Some((ids::INSP_TRANSFORM_POS_Y, "Y", ColorToken::Success, 0.01)),
+    );
+    cur_y += field_h + row_gap;
+    paint_row(
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        "Rotation (°)",
+        ids::INSP_TRANSFORM_ROT,
+        "",
+        ColorToken::Text3,
+        1.0,
+        None,
+    );
+    cur_y += field_h + row_gap;
+    paint_row(
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        "Scale",
+        ids::INSP_TRANSFORM_SCALE_X,
+        "X",
+        ColorToken::Danger,
+        0.1,
+        Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)),
+    );
+    cur_y += field_h + 4.0;
+
+    cur_y
+}
 
 /// M14.5 inspector phase (6.4/§9): paint the "Render Source" section
 /// when a sprite entity is selected. Shows the entity name, world

@@ -38,7 +38,7 @@ pub use dispatch::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
     KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
     apply_clipboard_paste, dispatch_key, dispatch_pointer, dispatch_pointer_with_text,
-    dispatch_text_input, dispatch_wheel,
+    dispatch_text_input, dispatch_tick, dispatch_wheel,
 };
 pub use hit::HitIndex;
 pub use state::{

@@ -53,7 +53,7 @@ pub use icons::{IconCmd, IconId, cmd_to_path};
 pub use image_edit::{PixelBounds, recenter_after_crop};
 pub use interaction::{
     HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
-    dispatch_text_input,
+    dispatch_text_input, dispatch_tick,
 };
 pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
@@ -64,7 +64,7 @@ pub use project::{
 };
 pub use screens::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorSpriteInfo, InspectorSpriteSource,
-    ViewFocusKind, paint_hero_screen, set_live_component_count,
+    InspectorTransformInfo, ViewFocusKind, paint_hero_screen, set_live_component_count,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

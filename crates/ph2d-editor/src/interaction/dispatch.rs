@@ -138,16 +138,108 @@ pub fn dispatch_pointer_with_text<'frame>(
             if store.hierarchy_drag().is_some() {
                 store.update_hierarchy_drag(event.x, event.y);
             }
+            // M14.A: NumberInput drag-or-slider. When a Down on the
+            // NumberInput body seeded `number_input_drag`, every Move
+            // first checks distance against the threshold; once
+            // crossed, the field switches to slider mode and the
+            // delta is computed Blender-style with **axis lock**:
+            //   - At the moment the threshold flips, compare
+            //     `|total_dx|` vs `|total_dy|` and lock the dominant
+            //     axis on the drag state. The lock STAYS for the
+            //     rest of the drag — a new click (fresh Down) is the
+            //     only way to reset the axis. This stops late-drag
+            //     wobble on the off-axis from contaminating the
+            //     scrub when the user committed to one direction.
+            //   - Horizontal locked: 50 step-units / px (fast).
+            //   - Vertical locked (up = +, down = -): 5 step-units / px (slow).
+            //   - Shift held: multiply delta by 0.001 (fine).
+            // The painter reads `value` + `buffer` from the store —
+            // we mutate both directly here so the focused field's
+            // displayed text refreshes in real time during the drag.
+            // (Using `set_number_value` would skip the buffer rewrite
+            // because the field IS focused: Down → focus + buffer
+            // seed → drag begins; the focus-guard would keep the
+            // pre-drag buffer visible.)
+            let mut number_input_drag_consumed = None;
+            if let Some(drag) = store.number_input_drag() {
+                let dx_total = event.x - drag.start_x;
+                let dy_total = event.y - drag.start_y;
+                if !drag.crossed_threshold {
+                    let dist_sq = dx_total * dx_total + dy_total * dy_total;
+                    let thr = super::state::NUMBER_INPUT_DRAG_THRESHOLD_PX;
+                    if dist_sq >= thr * thr {
+                        // Decide the locked axis at THIS Move based
+                        // on which delta is larger. `>=` so a perfect
+                        // 45° diagonal defaults to horizontal (the
+                        // primary scrub axis).
+                        let horizontal = dx_total.abs() >= dy_total.abs();
+                        store.promote_number_input_drag_to_slider(horizontal);
+                    }
+                }
+                // Re-read after the potential promotion.
+                if let Some(d) = store.number_input_drag()
+                    && d.crossed_threshold
+                {
+                    // Use the LOCKED axis (decided at promotion). The
+                    // other axis is zeroed unconditionally — its
+                    // delta is not consulted again until the drag
+                    // ends.
+                    let (dom_dx, dom_dy) = if d.axis_horizontal {
+                        (dx_total, 0.0)
+                    } else {
+                        (0.0, dy_total)
+                    };
+                    let shift_mul = if store.shift_held() {
+                        super::state::DRAG_SHIFT_MUL
+                    } else {
+                        1.0
+                    };
+                    let delta = (dom_dx as f64 * super::state::DRAG_RATE_X
+                        - dom_dy as f64 * super::state::DRAG_RATE_Y)
+                        * shift_mul;
+                    let new_value = d.start_value + delta * d.step;
+                    // Direct mutation: refresh value + buffer +
+                    // last_committed so the focused field's painter
+                    // shows the new number this frame.
+                    if let Some(InteractiveState::NumberInput {
+                        value,
+                        buffer,
+                        last_committed,
+                        ..
+                    }) = store.get_mut(d.id)
+                    {
+                        *value = new_value;
+                        *last_committed = new_value;
+                        *buffer = super::format_number(new_value);
+                    }
+                    // Mirror to a linked slider if any (same pattern
+                    // as `apply_number_stepper_if_hit`).
+                    if let Some(slider_id) = store.linked_slider(d.id)
+                        && let Some(InteractiveState::Slider { value, .. }) =
+                            store.get_mut(slider_id)
+                    {
+                        *value = (new_value as f32).clamp(0.0, 1.0);
+                    }
+                    events.push(WidgetEvent::ValueChanged(d.id));
+                    number_input_drag_consumed = Some(d.id);
+                }
+            }
             if let Some(active) = store.active_id() {
                 if let Some(rect) = store.active_rect() {
                     // Text drag-to-select: extend the selection from
                     // the anchor (set on Down) to the new cursor x.
+                    // Skipped when this widget is in NumberInput
+                    // slider mode (drag past threshold) — the slider
+                    // owns the gesture; falling through to text-drag-
+                    // select would also extend the selection while
+                    // the user is scrubbing the value.
                     if matches!(
                         store.get(active),
                         Some(InteractiveState::TextInput { .. })
                             | Some(InteractiveState::NumberInput { .. })
                             | Some(InteractiveState::Combobox { .. })
-                    ) {
+                    ) && number_input_drag_consumed != Some(active)
+                    {
                         let offset = byte_offset_from_click_xy(
                             store,
                             active,
@@ -526,9 +618,54 @@ pub fn dispatch_pointer_with_text<'frame>(
                 let combo_cleared = clear_combobox_if_button_hit(store, id, rect, event.x, event.y);
                 // NumberInput up/down steppers — same precedence
                 // (click on a stepper bumps the value; doesn't move
-                // the caret or trigger select-all).
+                // the caret or trigger select-all). M14.A also seeds
+                // a continuous-hold state so dispatch_tick can repeat
+                // while the arrow stays pressed.
                 let stepper_hit = !combo_cleared
-                    && apply_number_stepper_if_hit(store, id, rect, event.x, event.y);
+                    && apply_number_stepper_if_hit(
+                        store,
+                        id,
+                        rect,
+                        event.x,
+                        event.y,
+                        event.timestamp_ns,
+                    );
+                // M14.A drag-or-edit: when the Down lands on a
+                // NumberInput body (NOT on the stepper, NOT a
+                // double-click that triggers select-all), record a
+                // drag candidate. Move events past the threshold flip
+                // it into slider mode; Up before then leaves edit
+                // mode active (the focus / `init_number_buffer` calls
+                // above already entered edit state). HR-3-safe — the
+                // capture is a single `Copy`-struct, no allocation.
+                if !combo_cleared
+                    && !stepper_hit
+                    && !is_double_click
+                    && let Some(InteractiveState::NumberInput { value, buffer, .. }) = store.get(id)
+                {
+                    let step = if buffer.contains('.') { 0.01 } else { 1.0 };
+                    let drag = super::state::NumberInputDragState {
+                        id,
+                        start_x: event.x,
+                        start_y: event.y,
+                        start_value: *value,
+                        step,
+                        crossed_threshold: false,
+                        // Axis is decided at the moment the threshold
+                        // flips (in the Move handler); the field's
+                        // default before that is irrelevant since
+                        // `crossed_threshold == false` short-circuits
+                        // the slider math.
+                        axis_horizontal: false,
+                        // Caret offset is already placed below via
+                        // the regular `place_text_caret` call; we
+                        // duplicate the field for completeness so a
+                        // future "defer caret-place" refactor has the
+                        // data on hand.
+                        caret_offset_at_down: 0,
+                    };
+                    store.begin_number_input_drag(drag);
+                }
                 if combo_cleared {
                     events.push(WidgetEvent::TextChanged(id));
                 } else if stepper_hit {
@@ -626,6 +763,28 @@ pub fn dispatch_pointer_with_text<'frame>(
             store.end_panel_resize();
             // Same for scrollbar drag.
             store.end_scrollbar_drag();
+            // M14.A: NumberInput drag-or-edit Up cleanup. If the
+            // threshold was crossed, this Up *commits* the drag-slider
+            // delta (already applied during Move) and clears the
+            // focused edit state — the user was scrubbing, not
+            // editing. If the threshold was NOT crossed, the Down
+            // already entered edit mode (focus + caret), so we just
+            // forget the drag candidate. Continuous-hold on the
+            // stepper arrow always ends on Up.
+            if let Some(drag) = store.end_number_input_drag()
+                && drag.crossed_threshold
+            {
+                // Clear the focused state — drag-completed = no edit.
+                if let Some(InteractiveState::NumberInput { state, .. }) = store.get_mut(drag.id) {
+                    *state = crate::widget::TextInputState::Normal;
+                }
+                if store.focus_id() == Some(drag.id) {
+                    store.set_focus(None);
+                    events.push(WidgetEvent::Blur(drag.id));
+                }
+                events.push(WidgetEvent::ValueChanged(drag.id));
+            }
+            store.end_number_stepper_hold();
             // Hierarchy drag ends on Up. If the drag was active
             // (cursor moved past the threshold), find the drop
             // target by cursor y vs each row rect and reorder.
@@ -1271,6 +1430,67 @@ fn is_numeric_input_char(ch: char) -> bool {
     matches!(ch, '0'..='9' | '.' | '-' | '+' | 'e' | 'E')
 }
 
+/// M14.A: drive the continuous-hold repeat on a NumberInput stepper
+/// arrow. The shell calls this once per frame with the current host
+/// timestamp. After the initial 250 ms delay since Down, the function
+/// fires one increment / decrement every 30 ms while the hold stays
+/// active. Returns the slice of `WidgetEvent::ValueChanged` events
+/// that fired this tick (zero-allocation via the bumpalo arena).
+///
+/// The Down event itself counts as the first tick (`apply_number_stepper_if_hit`
+/// already applied the increment); `dispatch_tick` only handles the
+/// repeats after the initial delay. The hold is cleared on Up
+/// (see `PointerKind::Up` in `dispatch_pointer`).
+pub fn dispatch_tick<'frame>(
+    arena: &'frame Bump,
+    store: &mut WidgetStore,
+    now_ns: u128,
+) -> &'frame [WidgetEvent] {
+    let mut events = BumpVec::new_in(arena);
+    let hold = match store.number_stepper_hold() {
+        Some(h) => h,
+        None => return events.into_bump_slice(),
+    };
+    // Initial delay: wait `STEPPER_HOLD_INITIAL_DELAY_NS` after the
+    // press before the first repeat tick fires (matches macOS Aqua).
+    if now_ns.saturating_sub(hold.press_ns) < super::state::STEPPER_HOLD_INITIAL_DELAY_NS {
+        return events.into_bump_slice();
+    }
+    // After the initial delay, gate by the repeat interval.
+    if now_ns.saturating_sub(hold.last_tick_ns) < super::state::STEPPER_REPEAT_INTERVAL_NS {
+        return events.into_bump_slice();
+    }
+    let new_value = match store.get(hold.id) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value + hold.direction * hold.step,
+        _ => {
+            // Widget vanished mid-hold (e.g. selection switched and
+            // the field was force-rewritten). Clear the hold so we
+            // stop ticking against a non-existent target.
+            store.end_number_stepper_hold();
+            return events.into_bump_slice();
+        }
+    };
+    if let Some(InteractiveState::NumberInput {
+        value,
+        buffer,
+        last_committed,
+        ..
+    }) = store.get_mut(hold.id)
+    {
+        *value = new_value;
+        *buffer = super::format_number(new_value);
+        *last_committed = new_value;
+    }
+    if let Some(slider_id) = store.linked_slider(hold.id)
+        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
+    {
+        *value = (new_value as f32).clamp(0.0, 1.0);
+    }
+    store.record_number_stepper_tick(now_ns);
+    events.push(WidgetEvent::ValueChanged(hold.id));
+    events.into_bump_slice()
+}
+
 /// On focus arrival into a NumberInput, sync `buffer` from `value`
 /// using the same formatter the painter uses, place the caret at
 /// the end, and mark state as Focused so the painter draws the
@@ -1453,6 +1673,7 @@ fn apply_number_stepper_if_hit(
     host: Rect,
     click_x: f32,
     click_y: f32,
+    press_ns: u128,
 ) -> bool {
     use crate::widget::NumberInput;
     let (current_value, buffer) = match store.get(id) {
@@ -1494,6 +1715,17 @@ fn apply_number_stepper_if_hit(
     {
         *value = (new_val as f32).clamp(0.0, 1.0);
     }
+    // M14.A: arm continuous-hold so dispatch_tick can repeat while
+    // the user keeps the arrow pressed. The Down itself counts as the
+    // first tick (already applied above) — `last_tick_ns == press_ns`
+    // makes the initial-delay guard in `dispatch_tick` fire correctly.
+    store.begin_number_stepper_hold(super::state::NumberStepperHoldState {
+        id,
+        direction,
+        step,
+        press_ns,
+        last_tick_ns: press_ns,
+    });
     true
 }
 
@@ -3983,6 +4215,326 @@ mod tests {
             _ => -1.0,
         };
         assert!((v - 0.49).abs() < 1e-6, "expected 0.49 got {v}");
+    }
+
+    /// Read NumberInput value via the store accessor — avoids
+    /// boilerplate in the M14.A drag tests below.
+    fn read_value(store: &WidgetStore, id: NodeId) -> f64 {
+        store.number_value(id).expect("NumberInput value")
+    }
+
+    /// M14.A: Down on the body (NOT the stepper) seeds a drag
+    /// candidate. Move right past the threshold flips into slider
+    /// mode with the horizontal rate (50× step / px) — fast.
+    #[test]
+    fn number_input_body_drag_horizontal_uses_fast_rate() {
+        let (mut store, hits, rect) = number_input_setup(5.0);
+        let arena = Bump::new();
+        // Body click — anywhere left of the up/down rects on the right
+        // edge. (rect.x + 10) puts us comfortably inside the body.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        // Move right 10 px → dx=10, dy=0 → delta = 10 * 50 * step = 500.
+        // (Step is 1.0 for buffer "5" — no decimal.)
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, rect.x + 20.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        let v = read_value(&store, NodeId(77));
+        assert!(
+            (v - 505.0).abs() < 1e-6,
+            "expected 505.0 (5 + 10*50*1) got {v}"
+        );
+    }
+
+    /// M14.A: vertical drag uses the slow rate (5× step / px) and
+    /// inverts dy so cursor-up = positive delta (screen coords have
+    /// y growing down).
+    #[test]
+    fn number_input_body_drag_vertical_uses_slow_rate_and_inverts() {
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        // Move up 10 px → dx=0, dy=-10 → delta = (0 - (-10) * 5) * 1 = 50.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(
+                PointerKind::Move,
+                rect.x + 10.0,
+                rect.y + rect.h * 0.5 - 10.0,
+            ),
+            &arena,
+        );
+        let v = read_value(&store, NodeId(77));
+        assert!((v - 50.0).abs() < 1e-6, "expected 50 (0 + 10*5*1) got {v}");
+    }
+
+    /// M14.A: holding Shift multiplies the delta by 0.001 — Blender-
+    /// style fine adjustment. With horizontal 50× × 0.001 = 0.05 / px,
+    /// a 10 px drag yields 0.5 step-units of change.
+    #[test]
+    fn number_input_body_drag_with_shift_uses_fine_rate() {
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        store.set_shift_held(true);
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, rect.x + 20.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        let v = read_value(&store, NodeId(77));
+        assert!(
+            (v - 0.5).abs() < 1e-6,
+            "expected 0.5 (10*50*0.001*1) got {v}"
+        );
+    }
+
+    /// M14.A: the axis lock survives off-axis wobble after the
+    /// threshold cross. User crosses with dx > dy → horizontal locks
+    /// → subsequent drift into the vertical direction is ignored,
+    /// because the only way to release the axis is a fresh Down.
+    #[test]
+    fn number_input_body_drag_locked_axis_persists_through_off_axis_wobble() {
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        let down_x = rect.x + 10.0;
+        let down_y = rect.y + rect.h * 0.5;
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, down_x, down_y),
+            &arena,
+        );
+        // Move horizontally past the 4 px threshold → horizontal
+        // axis locks. dx=5 → delta = 5*50 = 250.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, down_x + 5.0, down_y),
+            &arena,
+        );
+        assert!((read_value(&store, NodeId(77)) - 250.0).abs() < 1e-6);
+        // Now drift vertically a lot (dy=86 >> dx=5). Without the
+        // lock, vertical would dominate → delta = -(-86)*5 = 430 → value 430.
+        // With the lock, horizontal stays active → value still 250.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, down_x + 5.0, down_y + 86.0),
+            &arena,
+        );
+        let v = read_value(&store, NodeId(77));
+        assert!(
+            (v - 250.0).abs() < 1e-6,
+            "horizontal axis lock leaked: expected 250.0 got {v}"
+        );
+        // Up clears the drag (and the lock). A new Down + drag would
+        // pick a fresh axis based on its own first-move dominance.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, down_x + 5.0, down_y + 86.0),
+            &arena,
+        );
+        assert!(store.number_input_drag().is_none());
+    }
+
+    /// M14.A: at the moment the threshold flips, the dominant axis
+    /// is decided and locked on the drag state. A drag that's
+    /// predominantly horizontal (dx 20, dy 5) ignores the dy
+    /// contribution; the formula uses dx only.
+    #[test]
+    fn number_input_body_drag_locks_to_dominant_axis() {
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        let down_x = rect.x + 10.0;
+        let down_y = rect.y + rect.h * 0.5;
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, down_x, down_y),
+            &arena,
+        );
+        // Horizontal-dominant: dx=20, dy=5. Without axis-lock:
+        //   delta = (20*50 - 5*5) * 1 = 1000 - 25 = 975
+        // With axis-lock: dy is zeroed, delta = 20*50 = 1000.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, down_x + 20.0, down_y + 5.0),
+            &arena,
+        );
+        let v = read_value(&store, NodeId(77));
+        assert!(
+            (v - 1000.0).abs() < 1e-6,
+            "horizontal-dominant axis lock failed: expected 1000.0 got {v}"
+        );
+    }
+
+    /// M14.A: during a drag-slider the displayed text in the field
+    /// MUST refresh every Move — not just `value`, but the `buffer`
+    /// that the focused-state painter renders. (Bypass the
+    /// `set_number_value` focus-guard via direct mutation.)
+    #[test]
+    fn number_input_body_drag_refreshes_buffer_in_realtime() {
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        let down_x = rect.x + 10.0;
+        let down_y = rect.y + rect.h * 0.5;
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, down_x, down_y),
+            &arena,
+        );
+        // Move right past threshold.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, down_x + 10.0, down_y),
+            &arena,
+        );
+        // Buffer must mirror the new value, not the start value's
+        // formatted form ("0").
+        let buffer = store.text(NodeId(77)).unwrap_or("").to_string();
+        assert_eq!(
+            buffer, "500",
+            "buffer must refresh during drag-slider; got {buffer:?}"
+        );
+    }
+
+    /// M14.A: Down + Up at (almost) the same position never crosses
+    /// the threshold → no ValueChanged, drag state cleared, focus is
+    /// retained from Down (edit mode = click→type behavior preserved).
+    #[test]
+    fn number_input_body_click_without_drag_preserves_edit_mode() {
+        let (mut store, hits, rect) = number_input_setup(3.0);
+        let arena = Bump::new();
+        let down_x = rect.x + 10.0;
+        let down_y = rect.y + rect.h * 0.5;
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, down_x, down_y),
+            &arena,
+        );
+        // Move 2 px (< 4 px threshold) → drag stays pending.
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, down_x + 2.0, down_y),
+            &arena,
+        );
+        // Up — drag never crossed; edit mode stays active.
+        let evts = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Up, down_x + 2.0, down_y),
+            &arena,
+        );
+        assert!(
+            !evts
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(_))),
+            "no-drag click must not emit ValueChanged"
+        );
+        // Focus remained on the field (placed at Down by the existing
+        // text-widget pathway). Drag candidate cleared.
+        assert_eq!(store.focus_id(), Some(NodeId(77)));
+        assert!(store.number_input_drag().is_none());
+        // Value unchanged.
+        assert!((read_value(&store, NodeId(77)) - 3.0).abs() < 1e-6);
+    }
+
+    /// M14.A: continuous-hold on the up arrow. Down fires the first
+    /// increment (already covered by `number_input_up_arrow_increments_integer`).
+    /// `dispatch_tick` skips while inside the initial 250 ms delay,
+    /// then fires repeats every 30 ms.
+    #[test]
+    fn number_stepper_hold_repeats_after_initial_delay() {
+        use crate::interaction::state::{
+            STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS,
+        };
+        let (mut store, hits, rect) = number_input_setup(10.0);
+        let arena = Bump::new();
+        let probe = crate::widget::NumberInput::new(NodeId(77), "", 10.0);
+        let up = probe.up_rect(rect);
+        // Down at t=0 ns — first tick fires (10 → 11) via apply_number_stepper_if_hit.
+        let mut down_evt = pointer(PointerKind::Down, up.x + up.w * 0.5, up.y + up.h * 0.5);
+        down_evt.timestamp_ns = 0;
+        let _ = dispatch_pointer(&mut store, &hits, down_evt, &arena);
+        assert!((read_value(&store, NodeId(77)) - 11.0).abs() < f64::EPSILON);
+        // Tick at 100 ms — still inside the initial delay; nothing.
+        let evts = dispatch_tick(&arena, &mut store, 100_000_000);
+        assert!(evts.is_empty(), "no repeat inside initial delay");
+        // Tick at 300 ms — past the delay → one repeat fires (11 → 12).
+        let evts = dispatch_tick(
+            &arena,
+            &mut store,
+            STEPPER_HOLD_INITIAL_DELAY_NS + 50_000_000,
+        );
+        assert_eq!(evts.len(), 1);
+        assert!((read_value(&store, NodeId(77)) - 12.0).abs() < f64::EPSILON);
+        // Another tick 50 ms later (> 30 ms repeat) → second repeat (12 → 13).
+        let evts = dispatch_tick(
+            &arena,
+            &mut store,
+            STEPPER_HOLD_INITIAL_DELAY_NS + 50_000_000 + STEPPER_REPEAT_INTERVAL_NS + 5_000_000,
+        );
+        assert_eq!(evts.len(), 1);
+        assert!((read_value(&store, NodeId(77)) - 13.0).abs() < f64::EPSILON);
+    }
+
+    /// M14.A: pointer-Up clears the continuous-hold so subsequent
+    /// ticks (even at a time past the delay) do nothing — release
+    /// stops the repeat. Verified against the same fixture as the
+    /// previous test minus the trailing ticks.
+    #[test]
+    fn number_stepper_hold_ends_on_pointer_up() {
+        use crate::interaction::state::STEPPER_HOLD_INITIAL_DELAY_NS;
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        let arena = Bump::new();
+        let probe = crate::widget::NumberInput::new(NodeId(77), "", 0.0);
+        let up = probe.up_rect(rect);
+        let mut down_evt = pointer(PointerKind::Down, up.x + up.w * 0.5, up.y + up.h * 0.5);
+        down_evt.timestamp_ns = 0;
+        let _ = dispatch_pointer(&mut store, &hits, down_evt, &arena);
+        // Up at t=10 ms — hold cleared.
+        let mut up_evt = pointer(PointerKind::Up, up.x + up.w * 0.5, up.y + up.h * 0.5);
+        up_evt.timestamp_ns = 10_000_000;
+        let _ = dispatch_pointer(&mut store, &hits, up_evt, &arena);
+        assert!(store.number_stepper_hold().is_none());
+        // Tick at 500 ms (well past delay) — nothing fires.
+        let evts = dispatch_tick(
+            &arena,
+            &mut store,
+            STEPPER_HOLD_INITIAL_DELAY_NS + 250_000_000,
+        );
+        assert!(
+            evts.is_empty(),
+            "no repeat after pointer-Up cleared the hold"
+        );
+        // Value remained at the single Down-increment.
+        assert!((read_value(&store, NodeId(77)) - 1.0).abs() < f64::EPSILON);
     }
 
     fn meta_key(kc: u32) -> KeyEvent {

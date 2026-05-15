@@ -356,6 +356,34 @@ pub struct HeroScreen {
     /// ADR-0021 / HR-8 boundary into SimWorld directly. `None`
     /// when nothing is selected or the selection isn't a sprite.
     pub inspector_sprite: Option<InspectorSpriteInfo>,
+    /// M14.A: snapshot of the selected entity's local `Transform`
+    /// the host publishes when selection changes (or the gizmo drag
+    /// mutates the transform externally). `None` when no entity is
+    /// selected. The Inspector's Transform editor section reads this
+    /// to seed its NumberInput buffers; subsequent live edits live
+    /// in the [`WidgetStore`] until commit (HR-8 / ADR-0021: Inspector
+    /// never reads SimWorld directly).
+    pub inspector_transform: Option<InspectorTransformInfo>,
+    /// Entity bits of the last selection that `inspector_transform`
+    /// was populated for. When the current selection differs, the
+    /// Inspector's `apply_event` path force-rewrites the 5 Transform
+    /// NumberInput buffers so an in-progress edit on entity A doesn't
+    /// silently apply to entity B after a selection switch.
+    pub last_inspector_entity: Option<u64>,
+    /// M14.A: editor → host channel for Transform edits. The
+    /// inspector publishes the full snapshot (entity_bits +
+    /// translation/rotation/scale) when a NumberInput commits
+    /// (Enter / blur) or the Reset button fires; the shell drains
+    /// this once per frame, builds an `ph2d_ecs::Transform` from
+    /// the raw fields, and pushes a [`EditorCommand::SetComponent`]
+    /// to its `EditorCommandQueue`. **First end-to-end consumer of
+    /// the editor command pipeline** — every prior `pending_*` field
+    /// bypassed the queue and mutated SimWorld directly.
+    ///
+    /// Re-uses [`InspectorTransformInfo`] so `ph2d-editor` stays
+    /// decoupled from `ph2d-ecs`; the type-id resolution + glam
+    /// conversion happens at the shell boundary.
+    pub pending_transform_edit: Option<InspectorTransformInfo>,
 }
 
 /// Snapshot of the selected sprite's editor-facing fields. Host
@@ -390,6 +418,31 @@ pub enum InspectorSpriteSource {
     Atlas { key: u32 },
     Individual { texture_id: u32 },
     HandPacked,
+}
+
+/// Snapshot of the selected entity's local `Transform` published to
+/// the Inspector. Mirrors the canonical [`ph2d_ecs::Transform`]
+/// fields as raw arrays so the editor crate stays loose-coupled to
+/// glam types and the snapshot stays cheap to clone.
+///
+/// Lifecycle: host writes this when the selection changes (or a
+/// gizmo-driven external mutation lands); inspector seeds its
+/// NumberInput buffers from it; commits flow back through
+/// [`HeroScreen::pending_transform_edit`].
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct InspectorTransformInfo {
+    /// Entity bits — same shape `gizmo_selection` carries.
+    pub entity_bits: u64,
+    /// Local-space translation (meters). 2D-only by design — see
+    /// SKILL §3 "Não é engine 3D" and ADR-0025.
+    pub translation: [f32; 2],
+    /// Local-space rotation in radians. The inspector renders this
+    /// as degrees for UX parity with Unity/Godot/Blender; conversion
+    /// happens at the paint/commit boundary via
+    /// `f32::to_degrees`/`to_radians` (HR-5 bit-deterministic).
+    pub rotation_rad: f32,
+    /// Local-space scale (unitless). Identity = `[1.0, 1.0]`.
+    pub scale: [f32; 2],
 }
 
 /// Which framing action the VIEW button (TOOL_HOME) + F/Home key
@@ -469,6 +522,9 @@ impl HeroScreen {
             pending_reimport: None,
             pending_trim_transparency: None,
             inspector_sprite: None,
+            inspector_transform: None,
+            last_inspector_entity: None,
+            pending_transform_edit: None,
         }
     }
 
@@ -1056,6 +1112,67 @@ impl HeroScreen {
             self.pending_reimport = Some(info.entity_bits);
             return true;
         }
+        // M14.A: Transform editor commits — ValueChanged on any of the
+        // 5 NumberInputs (Enter / blur per `dispatch_key` semantics)
+        // builds a fresh `InspectorTransformInfo` from the current
+        // store values and publishes it via `pending_transform_edit`.
+        // The shell drains this once per frame and pushes a
+        // `EditorCommand::SetComponent` for `Transform` (first real
+        // consumer of the editor command pipeline).
+        if let WidgetEvent::ValueChanged(id) = event
+            && matches!(
+                id,
+                ids::INSP_TRANSFORM_POS_X
+                    | ids::INSP_TRANSFORM_POS_Y
+                    | ids::INSP_TRANSFORM_ROT
+                    | ids::INSP_TRANSFORM_SCALE_X
+                    | ids::INSP_TRANSFORM_SCALE_Y,
+            )
+            && let Some(info) = self.inspector_transform
+        {
+            let x = self
+                .store
+                .number_value(ids::INSP_TRANSFORM_POS_X)
+                .unwrap_or(info.translation[0] as f64) as f32;
+            let y = self
+                .store
+                .number_value(ids::INSP_TRANSFORM_POS_Y)
+                .unwrap_or(info.translation[1] as f64) as f32;
+            let rot_deg =
+                self.store
+                    .number_value(ids::INSP_TRANSFORM_ROT)
+                    .unwrap_or((info.rotation_rad as f64).to_degrees()) as f32;
+            let sx = self
+                .store
+                .number_value(ids::INSP_TRANSFORM_SCALE_X)
+                .unwrap_or(info.scale[0] as f64) as f32;
+            let sy = self
+                .store
+                .number_value(ids::INSP_TRANSFORM_SCALE_Y)
+                .unwrap_or(info.scale[1] as f64) as f32;
+            self.pending_transform_edit = Some(InspectorTransformInfo {
+                entity_bits: info.entity_bits,
+                translation: [x, y],
+                rotation_rad: rot_deg.to_radians(),
+                scale: [sx, sy],
+            });
+            return true;
+        }
+        // Reset-to-Identity button — publishes the Identity transform
+        // for the currently selected entity. Same path as a field
+        // commit so the shell's queue-push code path stays uniform.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::INSP_TRANSFORM_RESET
+            && let Some(info) = self.inspector_transform
+        {
+            self.pending_transform_edit = Some(InspectorTransformInfo {
+                entity_bits: info.entity_bits,
+                translation: [0.0, 0.0],
+                rotation_rad: 0.0,
+                scale: [1.0, 1.0],
+            });
+            return true;
+        }
         if inspector::apply_event(&mut self.store, event) {
             return true;
         }
@@ -1332,10 +1449,56 @@ pub fn paint_hero_screen(
     }
     for panel_id in z_order {
         if panel_id == ids::INSP_PANEL && hero.inspector_visible {
+            // M14.A: when the selected entity changes, force-rewrite
+            // the 5 Transform NumberInput buffers from the new
+            // snapshot. Without this an in-progress edit on entity A
+            // (focused field) survives a selection switch and gets
+            // silently applied to entity B on commit — a subtle data
+            // corruption bug Plan agent flagged.
+            let new_entity = hero.inspector_transform.map(|i| i.entity_bits);
+            let entity_changed = new_entity != hero.last_inspector_entity;
+            if entity_changed {
+                // Drop focus so `set_number_value` rewrites every
+                // buffer including the one that WAS focused on the
+                // previous entity.
+                hero.store.set_focus(None);
+                if let Some(info) = hero.inspector_transform {
+                    hero.store
+                        .set_number_value(ids::INSP_TRANSFORM_POS_X, info.translation[0] as f64);
+                    hero.store
+                        .set_number_value(ids::INSP_TRANSFORM_POS_Y, info.translation[1] as f64);
+                    hero.store.set_number_value(
+                        ids::INSP_TRANSFORM_ROT,
+                        info.rotation_rad.to_degrees() as f64,
+                    );
+                    hero.store
+                        .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
+                    hero.store
+                        .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
+                }
+                hero.last_inspector_entity = new_entity;
+            } else if let Some(info) = hero.inspector_transform {
+                // Same entity — focus-guarded refresh (lets the user
+                // keep typing while gizmo-driven mutations propagate
+                // to the non-focused fields).
+                hero.store
+                    .set_number_value(ids::INSP_TRANSFORM_POS_X, info.translation[0] as f64);
+                hero.store
+                    .set_number_value(ids::INSP_TRANSFORM_POS_Y, info.translation[1] as f64);
+                hero.store.set_number_value(
+                    ids::INSP_TRANSFORM_ROT,
+                    info.rotation_rad.to_degrees() as f64,
+                );
+                hero.store
+                    .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
+                hero.store
+                    .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
+            }
             // Publish the host-supplied sprite snapshot for the
             // Render Source section. Cleared after paint so a stale
             // snapshot can't leak into the next frame.
             inspector::set_current_inspector_sprite(hero.inspector_sprite.clone());
+            inspector::set_current_inspector_transform(hero.inspector_transform);
             paint_inspector(
                 &layout,
                 hero.selection.as_ref(),
@@ -1346,6 +1509,7 @@ pub fn paint_hero_screen(
                 &hero.store,
             );
             inspector::set_current_inspector_sprite(None);
+            inspector::set_current_inspector_transform(None);
             // Publish content_h + clamp scroll right after paint so
             // `dispatch_wheel` sees the new bounds on the very next
             // event (avoids a one-frame overshoot when a section
@@ -1942,6 +2106,79 @@ mod tests {
         assert!(hero.image_tools_mode);
         assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
         assert!(!hero.image_tools_mode);
+    }
+
+    /// M14.A: a `ValueChanged` event on any Transform NumberInput
+    /// publishes a fresh `InspectorTransformInfo` via
+    /// `pending_transform_edit`, taking the current store values for
+    /// every axis (X/Y/Rot/Scale-X/Scale-Y) plus the selected entity
+    /// id from `inspector_transform`. Rotation is converted from
+    /// degrees (UI) back to radians (canonical) at commit.
+    #[test]
+    fn transform_field_commit_raises_pending_with_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        // No selection → no pending fired even on commit (avoids
+        // silently editing a non-existent entity).
+        hero.inspector_transform = None;
+        assert!(!hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X)));
+        assert_eq!(hero.pending_transform_edit, None);
+
+        // With selection + custom store values → pending mirrors the
+        // store snapshot exactly. We seed the store with non-identity
+        // numbers and verify the commit assembles them all.
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 0xCAFE_F00D,
+            translation: [0.0, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+        });
+        hero.store.set_number_value(ids::INSP_TRANSFORM_POS_X, 1.5);
+        hero.store
+            .set_number_value(ids::INSP_TRANSFORM_POS_Y, -2.25);
+        hero.store.set_number_value(ids::INSP_TRANSFORM_ROT, 90.0); // degrees
+        hero.store
+            .set_number_value(ids::INSP_TRANSFORM_SCALE_X, 2.0);
+        hero.store
+            .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, 0.5);
+        assert!(hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X)));
+        let pending = hero.pending_transform_edit.expect("pending populated");
+        assert_eq!(pending.entity_bits, 0xCAFE_F00D);
+        assert_eq!(pending.translation, [1.5, -2.25]);
+        // 90° → π/2 rad. `to_radians` is bit-deterministic (HR-5).
+        assert!((pending.rotation_rad - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
+        assert_eq!(pending.scale, [2.0, 0.5]);
+    }
+
+    /// M14.A: clicking the Reset-to-Identity button publishes an
+    /// Identity transform via `pending_transform_edit`. Same commit
+    /// path as a field ValueChanged so the shell's queue-push code
+    /// stays uniform.
+    #[test]
+    fn transform_reset_button_publishes_identity() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 0xBABE_0042,
+            translation: [10.0, 20.0],
+            rotation_rad: 1.0,
+            scale: [3.0, 3.0],
+        });
+        // Even if the store has garbage in it, Reset always publishes
+        // pure identity — independent of buffer state.
+        hero.store.set_number_value(ids::INSP_TRANSFORM_POS_X, 99.0);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
+        let pending = hero.pending_transform_edit.expect("pending populated");
+        assert_eq!(pending.entity_bits, 0xBABE_0042);
+        assert_eq!(pending.translation, [0.0, 0.0]);
+        assert_eq!(pending.rotation_rad, 0.0);
+        assert_eq!(pending.scale, [1.0, 1.0]);
+
+        // Without a selection, Reset is a no-op (consumes the click
+        // returning false → dispatcher walks; matches non-sprite
+        // Reimport behavior).
+        hero.inspector_transform = None;
+        hero.pending_transform_edit = None;
+        assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
+        assert_eq!(hero.pending_transform_edit, None);
     }
 
     /// Clicking the Trim Transparency action pill captures the

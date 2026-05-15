@@ -463,7 +463,116 @@ pub struct WidgetStore {
     /// `100_000+` and would silently fall through to "click,
     /// no drag" without this set.
     hierarchy_row_ids: std::collections::BTreeSet<NodeId>,
+    /// M14.A polish: in-progress drag on a NumberInput body. Captured
+    /// on Down inside the box (NOT inside the up/down arrow), held
+    /// across Move events to convert cursor delta → value delta
+    /// (Blender-style: horizontal fast, vertical slow, Shift = fine).
+    /// On Up: a drag that NEVER crossed the threshold becomes a
+    /// regular "click → enter edit mode"; one that did becomes a
+    /// committed value (no edit mode).
+    number_input_drag: Option<NumberInputDragState>,
+    /// M14.A polish: in-progress continuous-hold on a NumberInput
+    /// stepper arrow. The dispatcher fires one tick on Down, then
+    /// `dispatch_tick` repeats while held (initial delay + repeat
+    /// interval matching macOS Aqua text-field steppers).
+    number_stepper_hold: Option<NumberStepperHoldState>,
+    /// Latest Shift modifier state, pushed by the shell on every
+    /// `ModifiersChanged`. Used by `dispatch_pointer` to scale the
+    /// NumberInput drag delta (Shift = 0.001× multiplier = fine
+    /// adjustment). Pointer events don't carry modifiers natively in
+    /// `ph2d-host::PointerEvent`; this is the canonical cache.
+    shift_held: bool,
 }
+
+/// State of an in-progress drag on a NumberInput field (M14.A).
+///
+/// Down on the box body seeds this with `crossed_threshold = false`
+/// and the rest of the snapshot. Pointer-move flips the flag once
+/// the cursor moves > 4 px from the start, then applies a value
+/// delta on every subsequent move. Up either commits the new value
+/// (when the threshold was crossed) or falls through to caret-place
+/// + focus (when it wasn't — the click-to-edit path).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct NumberInputDragState {
+    /// NumberInput being dragged.
+    pub id: NodeId,
+    /// Cursor x/y at the moment of Down.
+    pub start_x: f32,
+    pub start_y: f32,
+    /// Value snapshotted at Down. The drag computes `new = start +
+    /// (dx * h_rate + (-dy) * v_rate) * shift_mul * step`.
+    pub start_value: f64,
+    /// Cached step from the buffer ("contains '.'" → 0.01, else 1.0)
+    /// at Down — kept stable for the drag duration so behavior stays
+    /// predictable across mid-drag value changes.
+    pub step: f64,
+    /// Set to `true` once cursor moves > 4 px from start. Below
+    /// threshold, the Down is still a candidate for the "click to
+    /// edit" path; past threshold it's committed to slider mode.
+    pub crossed_threshold: bool,
+    /// **Axis lock**, decided once at the moment `crossed_threshold`
+    /// flips. `true` = horizontal-only (`dy` zeroed), `false` =
+    /// vertical-only (`dx` zeroed). Stays fixed for the rest of the
+    /// drag — a new click (Down → end_number_input_drag → fresh
+    /// state) is the only way to reset the axis. This prevents the
+    /// off-axis from contaminating the scrub even if the user wobbles
+    /// past the original dominance late in the drag.
+    pub axis_horizontal: bool,
+    /// The byte offset at which the deferred caret-place lands if
+    /// Up arrives before threshold is crossed (click-to-edit path).
+    pub caret_offset_at_down: usize,
+}
+
+/// State of an in-progress continuous-hold on a NumberInput stepper
+/// arrow (M14.A).
+///
+/// Repeats the up / down increment while the pointer stays inside the
+/// arrow rect. Initial 250 ms delay, then 30 ms repeat — matches
+/// macOS Aqua and most desktop text-field steppers. The host calls
+/// [`super::dispatch_tick`] each frame to drive the repeat.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct NumberStepperHoldState {
+    /// NumberInput whose value is being adjusted.
+    pub id: NodeId,
+    /// `+1.0` for up arrow, `-1.0` for down arrow.
+    pub direction: f64,
+    /// Cached step from the buffer (same heuristic as drag mode).
+    pub step: f64,
+    /// `timestamp_ns` of the Down event.
+    pub press_ns: u128,
+    /// `timestamp_ns` of the most recent tick that fired (initially
+    /// equal to `press_ns` — the Down itself counts as the first
+    /// tick). The repeat path checks `now - last_tick_ns` against the
+    /// `STEPPER_REPEAT_INTERVAL_NS` budget.
+    pub last_tick_ns: u128,
+}
+
+/// Initial delay (ns) before continuous-hold repeats start firing.
+/// `250 ms` — match macOS Aqua text-field stepper feel.
+pub const STEPPER_HOLD_INITIAL_DELAY_NS: u128 = 250_000_000;
+
+/// Repeat interval (ns) once the initial delay elapsed. `30 ms` —
+/// ~33 ticks per second, a comfortable fast-but-readable rate.
+pub const STEPPER_REPEAT_INTERVAL_NS: u128 = 30_000_000;
+
+/// Distance (in physical px) the cursor must move from the Down
+/// position before a NumberInput drag flips into slider mode.
+pub const NUMBER_INPUT_DRAG_THRESHOLD_PX: f32 = 4.0;
+
+/// Pixels-per-step rates for the drag-slider mode (Blender-style).
+///
+/// - **Horizontal (`DRAG_RATE_X`)**: 50 step-units per cursor pixel
+///   moved right (negative when moved left). Fast — small drag covers
+///   large range.
+/// - **Vertical (`DRAG_RATE_Y`)**: 5 step-units per cursor pixel
+///   moved **up** (`-dy`). Slow — for precision.
+/// - **Shift multiplier (`DRAG_SHIFT_MUL`)**: when Shift is held,
+///   multiply the combined delta by `0.001`. So horizontal+Shift =
+///   `0.05 step/px` (very fine), vertical+Shift = `0.005 step/px`
+///   (ultra-fine).
+pub const DRAG_RATE_X: f64 = 50.0;
+pub const DRAG_RATE_Y: f64 = 5.0;
+pub const DRAG_SHIFT_MUL: f64 = 0.001;
 
 /// Internal state of an in-progress hierarchy drag.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -644,6 +753,9 @@ impl WidgetStore {
             hierarchy_collapsed: std::collections::BTreeSet::new(),
             hierarchy_drag: None,
             hierarchy_row_ids: std::collections::BTreeSet::new(),
+            number_input_drag: None,
+            number_stepper_hold: None,
+            shift_held: false,
         }
     }
 
@@ -1263,6 +1375,73 @@ impl WidgetStore {
 
     pub fn end_scrollbar_drag(&mut self) {
         self.scrollbar_drag = None;
+    }
+
+    /// M14.A: read the in-progress NumberInput drag (Down on the box
+    /// body). `None` when no NumberInput is being dragged or the user
+    /// is currently editing one (focus → caret mode, not drag mode).
+    pub fn number_input_drag(&self) -> Option<NumberInputDragState> {
+        self.number_input_drag
+    }
+
+    pub fn begin_number_input_drag(&mut self, drag: NumberInputDragState) {
+        self.number_input_drag = Some(drag);
+    }
+
+    /// Flip the in-flight drag past the threshold (idempotent). Called
+    /// by `dispatch_pointer` Move once the cursor has moved >
+    /// `NUMBER_INPUT_DRAG_THRESHOLD_PX` from the Down position.
+    ///
+    /// `axis_horizontal` locks the active scrub axis for the rest of
+    /// the drag — true = horizontal, false = vertical. The caller
+    /// decides at the moment of promotion based on `|dx| vs |dy|`.
+    /// Subsequent calls (the threshold is already crossed) are no-ops
+    /// so the axis can't flip mid-drag.
+    pub fn promote_number_input_drag_to_slider(&mut self, axis_horizontal: bool) {
+        if let Some(drag) = self.number_input_drag.as_mut()
+            && !drag.crossed_threshold
+        {
+            drag.crossed_threshold = true;
+            drag.axis_horizontal = axis_horizontal;
+        }
+    }
+
+    pub fn end_number_input_drag(&mut self) -> Option<NumberInputDragState> {
+        self.number_input_drag.take()
+    }
+
+    /// M14.A: read the in-progress NumberInput stepper continuous-
+    /// hold. `None` when no arrow is held.
+    pub fn number_stepper_hold(&self) -> Option<NumberStepperHoldState> {
+        self.number_stepper_hold
+    }
+
+    pub fn begin_number_stepper_hold(&mut self, hold: NumberStepperHoldState) {
+        self.number_stepper_hold = Some(hold);
+    }
+
+    /// Update the `last_tick_ns` after `dispatch_tick` applied a
+    /// repeat. Returns `None` if there's no hold in flight (no-op).
+    pub fn record_number_stepper_tick(&mut self, now_ns: u128) {
+        if let Some(h) = self.number_stepper_hold.as_mut() {
+            h.last_tick_ns = now_ns;
+        }
+    }
+
+    pub fn end_number_stepper_hold(&mut self) {
+        self.number_stepper_hold = None;
+    }
+
+    /// M14.A: latest Shift modifier state. Shell pushes via
+    /// [`Self::set_shift_held`] on every `WindowEvent::ModifiersChanged`.
+    /// `dispatch_pointer` Move reads this to scale the drag delta
+    /// (Shift = fine adjustment).
+    pub fn shift_held(&self) -> bool {
+        self.shift_held
+    }
+
+    pub fn set_shift_held(&mut self, held: bool) {
+        self.shift_held = held;
     }
 
     /// Editor-wide corner-radius scale (1.0 = canonical, 0.0 =

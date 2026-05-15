@@ -22,8 +22,10 @@
 //! `u64` seed; identical seeds reproduce identical output across
 //! platforms.
 
+pub mod chunks;
 pub mod hex;
 pub mod iso;
+pub mod quadtree;
 pub mod square;
 pub mod staggered;
 pub mod tri;

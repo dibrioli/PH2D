@@ -32,6 +32,7 @@
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
 mod cursor_pos;
+mod forwarding;
 mod hero_bridge;
 mod image_import;
 mod input_log;
@@ -41,6 +42,10 @@ mod theme;
 mod winit_host;
 
 use cursor_pos::live_cursor_in_window;
+use forwarding::{
+    cursor_over_hero_panel, forward_key_to_hero, forward_text_to_hero, forward_to_hero,
+    forward_wheel_to_hero,
+};
 use image_import::import_image_at_camera;
 use input_log::log_input_event;
 use keymap::winit_to_editor_keycode;
@@ -109,84 +114,84 @@ impl SimComponent for Velocity {}
 /// a single `Option<AppGfx>` lets us destructure into per-field `&mut`
 /// borrows in `render_frame()` — split-borrowing through a method
 /// chain on individual `Option<...>` fields would be awkward.
-struct AppGfx {
-    surface: SurfaceContext,
-    renderer: SpriteRenderer,
-    sim: SimWorld,
-    present: PresentWorld,
-    camera: Camera2d,
+pub(crate) struct AppGfx {
+    pub(crate) surface: SurfaceContext,
+    pub(crate) renderer: SpriteRenderer,
+    pub(crate) sim: SimWorld,
+    pub(crate) present: PresentWorld,
+    pub(crate) camera: Camera2d,
     /// M6 — set when PNG fixtures loaded successfully; held so the
     /// AssetDb keeps `Arc<Asset>` alive for hot-reload follow-ups.
-    asset_db: AssetDb,
+    pub(crate) asset_db: AssetDb,
     /// M6 — true when the atlas was composed from real PNG files (vs the
     /// procedural dummy fallback). Surfaced in window title.
-    atlas_is_real: bool,
+    pub(crate) atlas_is_real: bool,
     /// M7 — Luau VM with placeholder script loaded. Per-frame gc_step
     /// keeps the GC budget warm; set/get bindings ready for follow-up
     /// gameplay work.
-    script: Option<ScriptHost>,
+    pub(crate) script: Option<ScriptHost>,
     /// M12 editor data layer + M11 widget paint pass.
-    theme: Theme,
-    zen: ZenMode,
-    toasts: ToastQueue,
+    pub(crate) theme: Theme,
+    pub(crate) zen: ZenMode,
+    pub(crate) toasts: ToastQueue,
     /// Registered editor tools. Keys 1/2 switch active tool; the
     /// active tool's `build_panel()` is painted each frame as the
     /// FloatingPanel that shows in the bottom-center of the canvas.
-    tools: ToolRegistry,
+    pub(crate) tools: ToolRegistry,
     /// 4-zone editor layout (ADR-0023 §3). Sized from window each
     /// resize; the M11 paint pass walks this to draw zone backdrops.
-    layout: EditorLayout,
+    pub(crate) layout: EditorLayout,
     /// M14.5: offscreen HDR (Rgba16Float) render target for the game
     /// world. Sprite + future light/particle/material passes write
     /// here; the tonemap pass reads here and writes to LDR. Recreated
     /// on resize.
-    game_rt: GameRt,
+    pub(crate) game_rt: GameRt,
     /// M14.5: AgX tonemap pass — owns its own LDR output texture
     /// (`game_rt_ldr`). Sampled by the compositor as the "game layer"
     /// input. Identity LUT by default; swap in real AgX via
     /// `set_lut`.
-    tonemap: Tonemap,
+    pub(crate) tonemap: Tonemap,
     /// M14.5: compositor that composes `tonemap.output_view()` (game)
     /// and `vello_pass.intermediate_view()` (UI chrome) onto the swap
     /// chain. Replaces the old `vello_pass.blitter` direct-to-surface
     /// blit so chrome and game live in fully isolated RTs.
-    compositor: Compositor,
+    pub(crate) compositor: Compositor,
     /// Vello pipeline + intermediate texture for the widget paint
     /// pass. In M14.5 the intermediate is sampled by `compositor`
     /// (not blitted directly to the surface).
-    vello_pass: VelloPass,
+    pub(crate) vello_pass: VelloPass,
     /// Reused [`VectorScene`] — encoded fresh each frame; allocations
     /// pool inside Vello so this is cheap.
-    vector_scene: VectorScene,
+    pub(crate) vector_scene: VectorScene,
     /// parley font + layout context (heavy state). Threaded through
     /// `PaintCtx` so future text passes don't re-load fonts.
-    text_system: TextSystem,
+    pub(crate) text_system: TextSystem,
     /// Hero screen (`02-editor-main` mockup) — populated by default;
     /// `None` only when `PH2D_M5_DEMO=1` selects the legacy
     /// 1000-sprite perf demo. Owns the [`WidgetStore`] + [`HitIndex`]
     /// so input pipeline (ADR-0024) can route pointer/key events
     /// through `dispatch_*`.
-    hero_screen: Option<HeroScreen>,
+    pub(crate) hero_screen: Option<HeroScreen>,
     /// Per-frame arena for [`WidgetEvent`]s emitted by the hero
     /// dispatcher. Reset at end-of-frame.
-    hero_arena: Bump,
+    pub(crate) hero_arena: Bump,
     /// OS clipboard handle — used by Cmd+C/V/X. `None` when the OS
     /// rejected our request (rare; we just no-op those keys then).
-    clipboard: Option<arboard::Clipboard>,
+    pub(crate) clipboard: Option<arboard::Clipboard>,
     /// M14.1 — cached `QueryState` pair for hierarchical transform
     /// propagation. Built once after `populate_sim`; used every frame
     /// inside the extract phase. The only way to iterate `&World`
     /// from inside `extract!`.
-    prop_state: TransformPropagationState,
+    pub(crate) prop_state: TransformPropagationState,
     /// M14.1 — pre-allocated DFS worklist for `propagate_transforms`.
     /// Capacity sized to `WorklistBuf::DEFAULT_CAPACITY` (8 192
     /// entities) — comfortably above `SPRITE_COUNT = 1000`. HR-3
     /// zero-alloc verified by `crates/ph2d-ecs/tests/propagate_no_alloc.rs`.
-    worklist: WorklistBuf,
+    pub(crate) worklist: WorklistBuf,
     /// M14.4a live-bridge state. Present in the default editor mode
     /// (i.e. always unless `PH2D_M5_DEMO=1` switched to the legacy
     /// untouched.
-    hero_live: Option<HeroLive>,
+    pub(crate) hero_live: Option<HeroLive>,
     /// M14.4c+M14.4d: next free atlas key for imported images.
     /// Starts at `FIRST_IMPORT_KEY` (= 16) so it sits past the
     /// demo's seeded HSV tile keys (0..15). With the Skyline atlas
@@ -196,12 +201,12 @@ struct AppGfx {
     /// the atlas does run out of room the regrow path
     /// (`insert_atlas_sprite_with_regrow`) uses `atlas_asset_map` to
     /// recover each existing region's source bytes from `asset_db`.
-    next_import_cell: u32,
+    pub(crate) next_import_cell: u32,
     /// M14.7 polish: atlas-key → AssetId map kept in sync with each
     /// import. Drives the regrow callback so doubling the atlas
     /// texture preserves every previously-imported sprite. BTreeMap
     /// per HR-5 / ADR-0022.
-    atlas_asset_map: BTreeMap<u32, AssetId>,
+    pub(crate) atlas_asset_map: BTreeMap<u32, AssetId>,
     /// M14.A: editor → SimWorld mutation pipeline. Populated at boot
     /// with the canonical Transform / Name / Visibility / RootOrder
     /// type registrations via `register_ecs_components`; future crates
@@ -212,30 +217,30 @@ struct AppGfx {
     /// commit pushes `EditorCommand::SetComponent` to
     /// [`Self::editor_queue`], which `apply_editor_commands` drains
     /// once per frame to write back to SimWorld via this registry.
-    component_registry: ComponentRegistry,
+    pub(crate) component_registry: ComponentRegistry,
     /// Editor command queue (Arc<Mutex<…>>-backed for multi-producer
     /// access). The Inspector's commit path is the only producer
     /// today; the shell drains and applies once per frame after the
     /// hero `apply_event` pass.
-    editor_queue: EditorCommandQueue,
+    pub(crate) editor_queue: EditorCommandQueue,
     /// Cached stable type id for `ph2d::ecs::Transform`. Lookup is
     /// blake3-of-name → first 8 bytes; cached so the per-commit push
     /// path doesn't re-hash. The matching registry entry was added
     /// via `register_ecs_components`.
-    transform_type_id: u64,
+    pub(crate) transform_type_id: u64,
     /// M14.D: same as `transform_type_id` for the `ph2d::ecs::Visibility`
     /// component. Cached at boot so the Inspector visibility checkbox
     /// commit doesn't re-hash on every toggle.
-    visibility_type_id: u64,
+    pub(crate) visibility_type_id: u64,
     /// M14.E: same cache for `ph2d::ecs::Name`. Used when draining
     /// `pending_name_edit` from the Inspector's editable name field.
-    name_type_id: u64,
+    pub(crate) name_type_id: u64,
     /// M14.C audit fix #8: cache for `ph2d::render::Sprite` so the
     /// Strategy switch commit goes through the canonical
     /// `EditorCommand::SetComponent` pipeline (parity with Transform /
     /// Visibility / Name). Loaded into the registry via
     /// `register_render_components` at boot.
-    sprite_type_id: u64,
+    pub(crate) sprite_type_id: u64,
 }
 
 /// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
@@ -3240,90 +3245,6 @@ impl ApplicationHandler for App {
     }
 }
 
-/// Forward a pointer event to the hero screen's interaction
-/// dispatcher when the hero is active. Drains emitted
-/// [`WidgetEvent`]s into `HeroScreen::apply_event` (consumed events
-/// drive hero-level state mutations) and logs unconsumed ones to
-/// stderr for the developer to verify wiring.
-fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
-    let Some(gfx) = gfx else { return };
-    let Some(hero) = gfx.hero_screen.as_mut() else {
-        return;
-    };
-    // Snapshot events before applying — apply_event may mutate hero,
-    // but the events slice itself lives in the arena (immutable view).
-    // Threads the live TextSystem so click→caret on text widgets
-    // snaps to the nearest glyph boundary (real measurement) instead
-    // of the dispatch's char-count heuristic.
-    let snapshot: Vec<WidgetEvent> = hero
-        .handle_pointer_with_text(event, &mut gfx.text_system, &gfx.hero_arena)
-        .to_vec();
-    for e in snapshot {
-        // Eyedropper pick — read the rendered pixel at the click
-        // position from vello_pass's intermediate texture and apply
-        // it to the picker. Only the host can do this (the dispatch
-        // has no GPU access); intercept before `apply_event`.
-        if let WidgetEvent::EyedropperPick { parent, px, py } = e {
-            if let Some([r, g, b, a]) = gfx.vello_pass.read_pixel(gfx.surface.gpu(), px, py) {
-                hero.store
-                    .set_blender_value(parent, ph2d_tokens::ColorValue::from_rgba8(r, g, b, a));
-            }
-            continue;
-        }
-        if !hero.apply_event(e) {
-            eprintln!("[hero] unhandled event: {e:?}");
-        }
-    }
-}
-
-/// Forward a translated [`KeyEvent`] (with editor-canonical
-/// `keycode` from [`winit_to_editor_keycode`]) into the hero
-/// dispatcher so focused widgets see Tab/Enter/Backspace/arrows etc.
-/// Also drains any clipboard copy/paste requests the dispatcher set
-/// for this key event and bridges to `arboard`.
-fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
-    let Some(gfx) = gfx else { return };
-    let Some(hero) = gfx.hero_screen.as_mut() else {
-        return;
-    };
-    let snapshot: Vec<WidgetEvent> = hero.handle_key(event, &gfx.hero_arena).to_vec();
-    for e in snapshot {
-        if !hero.apply_event(e) {
-            eprintln!("[hero] unhandled key event: {e:?}");
-        }
-    }
-    // Drain clipboard requests set by Cmd+C / Cmd+X / Cmd+V.
-    if let Some(text) = hero.store.take_clipboard_copy()
-        && let Some(cb) = gfx.clipboard.as_mut()
-        && let Err(err) = cb.set_text(text)
-    {
-        eprintln!("[ph2d] clipboard set_text failed: {err}");
-    }
-    if let Some(target) = hero.store.take_clipboard_paste_request() {
-        let text = gfx
-            .clipboard
-            .as_mut()
-            .and_then(|cb| cb.get_text().ok())
-            .unwrap_or_default();
-        if !text.is_empty()
-            && ph2d_editor::interaction::apply_clipboard_paste(&mut hero.store, target, &text)
-        {
-            // Mimic the TextChanged path so sliders/links update.
-            let _ = hero.apply_event(WidgetEvent::TextChanged(target));
-        }
-    }
-}
-
-/// Forward a wheel / trackpad scroll into the hero dispatcher.
-/// Routes to whichever panel registered its rect under the cursor.
-fn forward_wheel_to_hero(gfx: Option<&mut AppGfx>, event: ph2d_host::WheelEvent) {
-    let Some(gfx) = gfx else { return };
-    let Some(hero) = gfx.hero_screen.as_mut() else {
-        return;
-    };
-    let _ = hero.handle_wheel(event, &gfx.hero_arena);
-}
-
 /// Floor for `pixels_per_meter` used inside the import math; below
 /// this a single sprite would span kilometers and break camera math.
 /// The UI clamps to a higher floor (`MIN_PIXELS_PER_METER = 1.0` in
@@ -3345,50 +3266,6 @@ pub(crate) const MIN_SPRITE_SIZE: f32 = 0.001;
 /// time `DroppedFile` fires the cached cursor is stale. We bypass
 /// the event stream by asking CoreGraphics for the live cursor
 /// directly. Other platforms reach here only as a no-op stub.
-/// M14.4b.bis: true when `(x, y)` lies inside either the Inspector
-/// or Hierarchy panel rect published by the most-recent
-/// `paint_hero_screen` pass. Used to decide whether a mouse-wheel
-/// event should zoom the camera (over canvas) or scroll a panel
-/// (over a panel).
-///
-/// Returns false when no hero is active — the demo's fixture mode
-/// shows raw sprites with no panels, so the whole window is "canvas"
-/// and wheel zooms the camera.
-fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
-    let Some(gfx) = gfx else { return false };
-    let Some(hero) = gfx.hero_screen.as_ref() else {
-        return false;
-    };
-    use ph2d_editor::screens::hero::ids::{GAL_PANEL, HIER_PANEL, INSP_PANEL};
-    let inside = |panel_id| {
-        hero.store
-            .panel_rect(panel_id)
-            .map(|r| r.contains(x, y))
-            .unwrap_or(false)
-    };
-    // GAL_PANEL is the floating Widget Gallery — must intercept the
-    // wheel here so it scrolls the panel body instead of zooming the
-    // camera underneath. `panel_rect(GAL_PANEL)` is only published
-    // when the gallery is visible, so this check returns false in
-    // its default closed state.
-    inside(INSP_PANEL) || inside(HIER_PANEL) || inside(GAL_PANEL)
-}
-
-/// Forward a single printable character into the hero text-input
-/// dispatcher (focused TextInput/NumberInput/Combobox buffer).
-fn forward_text_to_hero(gfx: Option<&mut AppGfx>, ch: char) {
-    let Some(gfx) = gfx else { return };
-    let Some(hero) = gfx.hero_screen.as_mut() else {
-        return;
-    };
-    let snapshot: Vec<WidgetEvent> = hero.handle_text_input(ch, &gfx.hero_arena).to_vec();
-    for e in snapshot {
-        if !hero.apply_event(e) {
-            eprintln!("[hero] unhandled text-input event: {e:?}");
-        }
-    }
-}
-
 /// Resolve the editor theme from a name (typically read from the
 /// `PH2D_THEME` env var), falling back to [`Theme::Forge`] for
 /// missing/invalid values. Recognised names match `Theme::id()`

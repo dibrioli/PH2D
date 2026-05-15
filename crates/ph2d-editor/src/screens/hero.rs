@@ -33,6 +33,7 @@ pub mod fixture;
 pub mod hierarchy;
 pub mod ids;
 pub mod inspector;
+pub mod inspector_sync;
 pub mod left_rail;
 pub mod selection;
 pub mod style;
@@ -1613,102 +1614,7 @@ pub fn paint_hero_screen(
     }
     for panel_id in z_order {
         if panel_id == ids::INSP_PANEL && hero.inspector_visible {
-            // M14.A: when the selected entity changes, force-rewrite
-            // the 5 Transform NumberInput buffers from the new
-            // snapshot AND end any in-flight drag/stepper-hold —
-            // otherwise the orphaned state would keep ticking against
-            // the new entity with the old `start_value` (audit fix #3).
-            // Same selection-id is reused for Name and Visibility so
-            // any of those snapshots can drive the entity_changed flag.
-            let new_entity = hero
-                .inspector_transform
-                .map(|i| i.entity_bits)
-                .or_else(|| hero.inspector_name.as_ref().map(|i| i.entity_bits))
-                .or_else(|| hero.inspector_visibility.map(|i| i.entity_bits));
-            let entity_changed = new_entity != hero.last_inspector_entity;
-            if entity_changed {
-                // Drop focus + cancel any drag/stepper-hold so the
-                // next force-rewrite isn't fighting in-progress state
-                // from the previous entity.
-                hero.store.set_focus(None);
-                let _ = hero.store.end_number_input_drag();
-                hero.store.end_number_stepper_hold();
-                if let Some(info) = hero.inspector_transform {
-                    hero.store
-                        .set_number_value(ids::INSP_TRANSFORM_POS_X, info.translation[0] as f64);
-                    hero.store
-                        .set_number_value(ids::INSP_TRANSFORM_POS_Y, info.translation[1] as f64);
-                    hero.store.set_number_value(
-                        ids::INSP_TRANSFORM_ROT,
-                        info.rotation_rad.to_degrees() as f64,
-                    );
-                    hero.store
-                        .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
-                    hero.store
-                        .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
-                }
-                // M14.E: force-rewrite the editable name TextInput
-                // buffer on selection change so the previous entity's
-                // in-progress typed-but-uncommitted edit can't leak
-                // onto the new entity. Audit #2 fix: also flip
-                // `state` back to `Normal` — the global
-                // `set_focus(None)` above only clears the focus_id;
-                // the per-widget state field is what the painter
-                // consults to draw caret + focus ring. Without this
-                // the painter keeps the focused chrome on a field
-                // the user hasn't authored yet (cosmetic but
-                // confusing — same pattern dispatch.rs:1189 uses on
-                // Blur).
-                if let Some(InteractiveState::TextInput {
-                    state,
-                    text,
-                    caret,
-                    selection_anchor,
-                }) = hero.store.get_mut(ids::INSP_ENTITY_NAME)
-                {
-                    *state = crate::widget::TextInputState::Normal;
-                    text.clear();
-                    if let Some(info) = hero.inspector_name.as_ref() {
-                        text.push_str(&info.name);
-                    }
-                    *caret = text.len();
-                    *selection_anchor = None;
-                }
-                hero.last_inspector_entity = new_entity;
-            } else if let Some(info) = hero.inspector_transform {
-                // Same entity — focus-guarded refresh (lets the user
-                // keep typing while gizmo-driven mutations propagate
-                // to the non-focused fields).
-                hero.store
-                    .set_number_value(ids::INSP_TRANSFORM_POS_X, info.translation[0] as f64);
-                hero.store
-                    .set_number_value(ids::INSP_TRANSFORM_POS_Y, info.translation[1] as f64);
-                hero.store.set_number_value(
-                    ids::INSP_TRANSFORM_ROT,
-                    info.rotation_rad.to_degrees() as f64,
-                );
-                hero.store
-                    .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
-                hero.store
-                    .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
-            }
-            // M14.D + audit fix #4: sync the Visibility checkbox
-            // value from the snapshot UNLESS a `pending_visibility_edit`
-            // is already queued — that means the user just clicked the
-            // checkbox AND the shell hasn't drained yet. Without the
-            // skip we'd stomp the just-toggled UI state back to the
-            // pre-click value for one frame.
-            if hero.pending_visibility_edit.is_none()
-                && let Some(vis) = hero.inspector_visibility
-                && let Some(InteractiveState::Checkbox { value, .. }) =
-                    hero.store.get_mut(ids::INSP_VISIBILITY_CHECK)
-            {
-                *value = if vis.visible {
-                    crate::widget::CheckboxValue::Checked
-                } else {
-                    crate::widget::CheckboxValue::Unchecked
-                };
-            }
+            inspector_sync::sync_inspector_from_snapshots(hero);
             // Publish the host-supplied sprite snapshot for the
             // Render Source section. Cleared after paint so a stale
             // snapshot can't leak into the next frame.

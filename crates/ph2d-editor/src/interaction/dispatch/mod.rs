@@ -20,7 +20,9 @@ pub mod key;
 pub mod keymap;
 mod number_input;
 pub mod scroll;
+pub mod text_input;
 mod text_ops;
+pub mod tick;
 
 use blender::{apply_blender_channel_value, apply_blender_hit, derive_blender_channel_value};
 pub use clipboard::apply_clipboard_paste;
@@ -29,7 +31,6 @@ pub(crate) use hierarchy::HierDrop;
 use hierarchy::find_hierarchy_drop;
 use hover::{set_widget_pressed, set_widget_released, update_hover};
 pub use key::dispatch_key;
-pub mod text_input;
 pub use keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
     KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
@@ -39,6 +40,7 @@ pub use scroll::dispatch_wheel;
 use scroll::scrollbar_panel_for_id;
 pub use text_input::dispatch_text_input;
 use text_ops::{byte_offset_from_click_xy, place_text_caret};
+pub use tick::dispatch_tick;
 
 use super::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::zones::Rect;
@@ -959,67 +961,6 @@ pub fn dispatch_pointer_with_text<'frame>(
         }
     }
 
-    events.into_bump_slice()
-}
-
-/// M14.A: drive the continuous-hold repeat on a NumberInput stepper
-/// arrow. The shell calls this once per frame with the current host
-/// timestamp. After the initial 250 ms delay since Down, the function
-/// fires one increment / decrement every 30 ms while the hold stays
-/// active. Returns the slice of `WidgetEvent::ValueChanged` events
-/// that fired this tick (zero-allocation via the bumpalo arena).
-///
-/// The Down event itself counts as the first tick (`apply_number_stepper_if_hit`
-/// already applied the increment); `dispatch_tick` only handles the
-/// repeats after the initial delay. The hold is cleared on Up
-/// (see `PointerKind::Up` in `dispatch_pointer`).
-pub fn dispatch_tick<'frame>(
-    arena: &'frame Bump,
-    store: &mut WidgetStore,
-    now_ns: u128,
-) -> &'frame [WidgetEvent] {
-    let mut events = BumpVec::new_in(arena);
-    let hold = match store.number_stepper_hold() {
-        Some(h) => h,
-        None => return events.into_bump_slice(),
-    };
-    // Initial delay: wait `STEPPER_HOLD_INITIAL_DELAY_NS` after the
-    // press before the first repeat tick fires (matches macOS Aqua).
-    if now_ns.saturating_sub(hold.press_ns) < super::drag::STEPPER_HOLD_INITIAL_DELAY_NS {
-        return events.into_bump_slice();
-    }
-    // After the initial delay, gate by the repeat interval.
-    if now_ns.saturating_sub(hold.last_tick_ns) < super::drag::STEPPER_REPEAT_INTERVAL_NS {
-        return events.into_bump_slice();
-    }
-    let new_value = match store.get(hold.id) {
-        Some(InteractiveState::NumberInput { value, .. }) => *value + hold.direction * hold.step,
-        _ => {
-            // Widget vanished mid-hold (e.g. selection switched and
-            // the field was force-rewritten). Clear the hold so we
-            // stop ticking against a non-existent target.
-            store.end_number_stepper_hold();
-            return events.into_bump_slice();
-        }
-    };
-    if let Some(InteractiveState::NumberInput {
-        value,
-        buffer,
-        last_committed,
-        ..
-    }) = store.get_mut(hold.id)
-    {
-        *value = new_value;
-        *buffer = super::format_number(new_value);
-        *last_committed = new_value;
-    }
-    if let Some(slider_id) = store.linked_slider(hold.id)
-        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
-    {
-        *value = (new_value as f32).clamp(0.0, 1.0);
-    }
-    store.record_number_stepper_tick(now_ns);
-    events.push(WidgetEvent::ValueChanged(hold.id));
     events.into_bump_slice()
 }
 

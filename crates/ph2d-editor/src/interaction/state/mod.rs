@@ -17,6 +17,8 @@
 //! existing entries, which is allocation-free. Lookup is O(log n)
 //! instead of O(1), trivial at editor widget counts (~50).
 
+mod blender_ops;
+
 use ph2d_a11y::NodeId;
 use std::collections::BTreeMap;
 
@@ -24,7 +26,7 @@ use super::drag::{
     HierarchyDragState, NumberInputDragState, NumberStepperHoldState, ScrollbarDragAnchor,
 };
 use super::types::{BlenderHitKind, ContextMenuRequest, NoteData};
-use super::util::{format_number, hsv_to_color_value};
+use super::util::format_number;
 
 use crate::widget::{
     ButtonState, ChannelMode, CheckboxState, CheckboxValue, ColorPickerMode, ComboboxState,
@@ -159,194 +161,194 @@ pub enum InteractiveState {
 
 #[derive(Debug, Default)]
 pub struct WidgetStore {
-    states: BTreeMap<NodeId, InteractiveState>,
+    pub(super) states: BTreeMap<NodeId, InteractiveState>,
     /// Insertion order, used for keyboard Tab traversal.
-    focus_order: Vec<NodeId>,
-    hot_id: Option<NodeId>,
-    active_id: Option<NodeId>,
-    focus_id: Option<NodeId>,
+    pub(super) focus_order: Vec<NodeId>,
+    pub(super) hot_id: Option<NodeId>,
+    pub(super) active_id: Option<NodeId>,
+    pub(super) focus_id: Option<NodeId>,
     /// Rect of the active widget at the moment of Down. Used by
     /// drag dispatch (Slider) to compute new value from pointer
     /// position relative to the original geometry.
-    active_rect: Option<Rect>,
+    pub(super) active_rect: Option<Rect>,
     /// Slider id ↔ NumberInput id pairs that should mirror each
     /// other's value. When the slider's value changes via drag, the
     /// number input's `value` (and `buffer`, when not focused) is
     /// updated; when the number input's buffer commits via Enter or
     /// Blur, the slider's value is updated. Pre-populated by the
     /// hosting screen at construction time.
-    slider_to_number: BTreeMap<NodeId, NodeId>,
-    number_to_slider: BTreeMap<NodeId, NodeId>,
+    pub(super) slider_to_number: BTreeMap<NodeId, NodeId>,
+    pub(super) number_to_slider: BTreeMap<NodeId, NodeId>,
     /// Hex `TextInput` id → its parent `BlenderPicker` id, so the
     /// dispatch can parse the typed buffer on Enter / blur and apply
     /// the resulting color to the parent state.
-    hex_to_blender_parent: BTreeMap<NodeId, NodeId>,
+    pub(super) hex_to_blender_parent: BTreeMap<NodeId, NodeId>,
     /// Channel `NumberInput` chip id → (parent `BlenderPicker`,
     /// channel index 0..=3). Lets dispatch rewrite the parent's
     /// color value when the user commits a new channel value.
-    blender_channel_chip: BTreeMap<NodeId, (NodeId, u8)>,
+    pub(super) blender_channel_chip: BTreeMap<NodeId, (NodeId, u8)>,
     /// Most recent pointer-Down event, used for double-click
     /// detection. Stores the hit `NodeId` (or `None` if the click
     /// missed every widget) and the event timestamp.
-    last_down_id: Option<NodeId>,
-    last_down_at_ns: u128,
+    pub(super) last_down_id: Option<NodeId>,
+    pub(super) last_down_at_ns: u128,
     /// `Some(id)` between a double-click Mouse Down and the matching
     /// Up — `apply_click` consumes this to upgrade `Click(id)` →
     /// `DoubleClick(id)`. Reset on every confirmed take.
-    pending_double_click: Option<NodeId>,
+    pub(super) pending_double_click: Option<NodeId>,
     /// Mutable color palettes per BlenderPicker — one Vec of swatches
     /// per parent picker id. Initialized at populate time; mutated by
     /// "+ swatch" / right-click-delete dispatch paths.
-    blender_palettes: BTreeMap<NodeId, Vec<ColorValue>>,
+    pub(super) blender_palettes: BTreeMap<NodeId, Vec<ColorValue>>,
     /// Per-picker drag offset (dx, dy) applied to the rect chosen by
     /// the host painter. Mutated by drag-handle clicks; defaults to
     /// (0, 0). When the drag handle is `active`, `drag_anchor_px`
     /// stores the (cursor.x − rect.x, cursor.y − rect.y) at Down so
     /// Move events can keep the picker stuck to the cursor.
-    blender_picker_offset: BTreeMap<NodeId, (f32, f32)>,
+    pub(super) blender_picker_offset: BTreeMap<NodeId, (f32, f32)>,
     /// In-progress picker drag: (parent_id, cursor_x_at_down,
     /// cursor_y_at_down, offset_x_at_down, offset_y_at_down). Move
     /// events compute `new_offset = offset_at_down + (cursor − down_cursor)`.
     /// Cleared on pointer Up.
-    blender_drag_anchor: Option<(NodeId, f32, f32, f32, f32)>,
+    pub(super) blender_drag_anchor: Option<(NodeId, f32, f32, f32, f32)>,
     /// Per-panel manual resize delta (dw, dh) applied on top of the
     /// layout's base width/height. Mutated by dragging the bottom-
     /// right resize gripper.
-    panel_resize_delta: BTreeMap<NodeId, (f32, f32)>,
+    pub(super) panel_resize_delta: BTreeMap<NodeId, (f32, f32)>,
     /// In-progress panel resize: (parent_id, last_cursor_x,
     /// last_cursor_y). Move events apply (cursor − last) to the
     /// stored `panel_resize_delta`, then re-anchor.
-    panel_resize_anchor: Option<(NodeId, f32, f32)>,
+    pub(super) panel_resize_anchor: Option<(NodeId, f32, f32)>,
     /// Clipboard outbox — set by Cmd+C/X handlers; shell drains each
     /// frame via `take_clipboard_copy` and writes to the OS
     /// clipboard. `String` rather than a reference so the data lives
     /// independently of any widget buffer that might mutate next.
-    pending_clipboard_copy: Option<String>,
+    pub(super) pending_clipboard_copy: Option<String>,
     /// Clipboard paste request — set by Cmd+V on a focused text
     /// widget; shell reads the OS clipboard and calls back into
     /// `apply_clipboard_paste` with the text.
-    pending_clipboard_paste: Option<NodeId>,
+    pub(super) pending_clipboard_paste: Option<NodeId>,
     /// Currently-loaded scene name shown on the TopBar project chip.
     /// Mutated by `ContextMenuKind::SceneList` row clicks.
-    current_scene_name: String,
+    pub(super) current_scene_name: String,
     /// Coordinate-space toggle for the TOOL_SPACE rail button.
     /// `false` = Global, `true` = Local. Flipped on click.
-    tool_space_local: bool,
+    pub(super) tool_space_local: bool,
     /// Camera-framing mode for the TOOL_HOME rail button.
     /// Cycle: 0 = Selected, 1 = Camera, 2 = All. Bumped on click.
-    tool_view_mode: u8,
+    pub(super) tool_view_mode: u8,
     /// Per-panel Z order — last element paints LAST (= topmost).
     /// Mutated by `bump_panel_z` whenever the user clicks inside a
     /// panel, drags it, or it newly opens (color picker). Painters
     /// walk this in order so the most-recently-touched panel sits
     /// on top of any overlapping siblings.
-    panel_z_order: Vec<NodeId>,
+    pub(super) panel_z_order: Vec<NodeId>,
     /// Eyedropper pending: when Some(parent), the next pointer Down
     /// (anywhere except on the eyedropper button itself) is intercepted
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
     /// signaling the host to readback the pixel under the cursor.
-    eyedropper_pending: Option<NodeId>,
+    pub(super) eyedropper_pending: Option<NodeId>,
     /// Vertical scroll offset per panel. Wheel events advance the
     /// offset; painters subtract it from content y. Clamped on each
     /// scroll to `[0, content_h - visible_h]` by the painter (which
     /// knows both heights). See `docs/UI_Bugs/README.md` §1
     /// (hit-testing) — content rendered with offset must compensate
     /// in hit-test too.
-    panel_scroll: BTreeMap<NodeId, f32>,
+    pub(super) panel_scroll: BTreeMap<NodeId, f32>,
     /// Painter-published rect of each scrollable panel — populated
     /// every frame so the wheel dispatch can find which panel sits
     /// under the cursor. Cleared together with `clear_for_frame` on
     /// the hit_index by the host (or hero) at frame start.
-    panel_rects: BTreeMap<NodeId, Rect>,
+    pub(super) panel_rects: BTreeMap<NodeId, Rect>,
     /// Painter-published total content height per panel (sum of
     /// every section's height + separators). `dispatch_wheel` reads
     /// this to clamp scroll deltas at the upper bound
     /// (`content_h - visible_h`) — without it, wheeling past the
     /// last element produces a one-frame "jump" as the next paint
     /// clamps the over-scroll back.
-    panel_content_h: BTreeMap<NodeId, f32>,
+    pub(super) panel_content_h: BTreeMap<NodeId, f32>,
     /// Exact visible body height per panel, also painter-published.
     /// Pairs with `panel_content_h` so `dispatch_wheel` can compute
     /// `max_scroll = content_h - visible_h` precisely (no heuristic).
-    panel_visible_h: BTreeMap<NodeId, f32>,
+    pub(super) panel_visible_h: BTreeMap<NodeId, f32>,
     /// Tooltip text per widget id. Read by `paint_hover_tooltip`
     /// when the user hovers over a registered widget. Populated by
     /// `populate` / paint passes via `set_tooltip`. Replaces the old
     /// hardcoded `tooltip_for(id)` match — every widget can now
     /// participate without per-id boilerplate.
-    tooltips: BTreeMap<NodeId, String>,
+    pub(super) tooltips: BTreeMap<NodeId, String>,
     /// Collapsed/expanded state per id. `true` = collapsed; missing
     /// entry defaults to "expanded" so newly-registered sections
     /// open by default. Toggled by `apply_event` on Click and
     /// consumed by section painters that early-out when collapsed.
-    collapsed: BTreeMap<NodeId, bool>,
+    pub(super) collapsed: BTreeMap<NodeId, bool>,
     /// Pending right-click context menu. `Some` when a Secondary
     /// Down landed somewhere a menu should appear (e.g. an empty
     /// inspector panel or a section header); `None` when no menu
     /// is open. The hero painter consumes this to render a floating
     /// menu over everything; clicking outside the menu or on a menu
     /// item clears the slot.
-    context_menu: Option<ContextMenuRequest>,
+    pub(super) context_menu: Option<ContextMenuRequest>,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.
-    section_outline_color: BTreeMap<NodeId, u8>,
+    pub(super) section_outline_color: BTreeMap<NodeId, u8>,
     /// Per-panel list of user-created notes. Each note carries a
     /// background color index into the highlighter palette. New
     /// notes append; right-click → delete removes by index. The
     /// painter walks this list once per panel each frame.
-    notes_per_panel: BTreeMap<NodeId, Vec<NoteData>>,
+    pub(super) notes_per_panel: BTreeMap<NodeId, Vec<NoteData>>,
     /// Sticky source of the most recently completed context-menu
     /// request, captured at apply-event time so the inspector can
     /// route the click → side-table mutation. The dispatch clears
     /// `context_menu` on the same Down event that selects an item;
     /// without this snapshot the inspector loses the request
     /// before it can read it.
-    last_context_menu: Option<ContextMenuRequest>,
+    pub(super) last_context_menu: Option<ContextMenuRequest>,
     /// Currently-active color picker target. `Some(id)` means the
     /// floating BlenderColorPicker is open and editing the color
     /// stored at `widget_colors[id]`. `None` hides the picker. Set
     /// by clicks on color targets (section color circles, color
     /// swatches, …) and cleared by any click outside the picker
     /// and outside another color target.
-    picker_target: Option<NodeId>,
+    pub(super) picker_target: Option<NodeId>,
     /// Per-widget current color. Keyed by the target widget's id
     /// (section color circles, color swatches). The picker writes
     /// here on every frame while editing; painters read here to
     /// display the widget's current color.
-    widget_colors: BTreeMap<NodeId, [u8; 4]>,
+    pub(super) widget_colors: BTreeMap<NodeId, [u8; 4]>,
     /// In-progress scrollbar drag. Captured on Down inside a
     /// scrollbar thumb's hit rect; consumed by Move events to
     /// translate cursor delta into a `panel_scroll` delta; cleared
     /// on Up. `track_h` and `content_h` are snapshotted so the
     /// drag stays linear even if the painter republishes them
     /// mid-drag.
-    scrollbar_drag: Option<ScrollbarDragAnchor>,
+    pub(super) scrollbar_drag: Option<ScrollbarDragAnchor>,
     /// Editor-wide corner-radius scale. `1.0` = canonical, `0.0` =
     /// sharp / squared, `1.6` = round. Painters that want to follow
     /// the user's preset multiply their `Radius::*.px()` by this.
     /// Centralized so the topbar theme menu drives the look in one
     /// place.
-    radius_scale: f32,
+    pub(super) radius_scale: f32,
     /// Hierarchy row display order. When non-empty, the hierarchy
     /// painter walks this list instead of the fixture's default
     /// order. Mutated by drag-and-drop (`Down + Move > threshold +
     /// Up`) to reorder rows.
-    hierarchy_order: Vec<NodeId>,
+    pub(super) hierarchy_order: Vec<NodeId>,
     /// Parent map for tree-style hierarchy. `child → parent`; absent
     /// entries are roots. Mutated by drop-inside DnD; consumed by the
     /// painter to indent rows by depth.
-    hierarchy_parent: BTreeMap<NodeId, NodeId>,
+    pub(super) hierarchy_parent: BTreeMap<NodeId, NodeId>,
     /// M14.6C: parents whose subtree is collapsed in the panel.
     /// View-only state (does NOT touch ECS hierarchy); just hides
     /// descendants in the row list. Click on the chevron toggles
     /// membership.
-    hierarchy_collapsed: std::collections::BTreeSet<NodeId>,
+    pub(super) hierarchy_collapsed: std::collections::BTreeSet<NodeId>,
     /// In-progress hierarchy drag. `Some` when a Primary Down landed
     /// on a hierarchy row and the cursor has moved past the drag
     /// threshold; cleared on Up (with reorder applied) or on Up at
     /// the original position (treated as a regular click).
-    hierarchy_drag: Option<HierarchyDragState>,
+    pub(super) hierarchy_drag: Option<HierarchyDragState>,
     /// M14.6B: every NodeId currently displayed as a hierarchy row.
     /// Painter republishes the set each frame (fixture + live
     /// modes). Dispatch reads this to decide "this Down is on a
@@ -355,7 +357,7 @@ pub struct WidgetStore {
     /// only the fixture range; live (ECS-bridge) rows start at
     /// `100_000+` and would silently fall through to "click,
     /// no drag" without this set.
-    hierarchy_row_ids: std::collections::BTreeSet<NodeId>,
+    pub(super) hierarchy_row_ids: std::collections::BTreeSet<NodeId>,
     /// M14.A polish: in-progress drag on a NumberInput body. Captured
     /// on Down inside the box (NOT inside the up/down arrow), held
     /// across Move events to convert cursor delta → value delta
@@ -363,18 +365,18 @@ pub struct WidgetStore {
     /// On Up: a drag that NEVER crossed the threshold becomes a
     /// regular "click → enter edit mode"; one that did becomes a
     /// committed value (no edit mode).
-    number_input_drag: Option<NumberInputDragState>,
+    pub(super) number_input_drag: Option<NumberInputDragState>,
     /// M14.A polish: in-progress continuous-hold on a NumberInput
     /// stepper arrow. The dispatcher fires one tick on Down, then
     /// `dispatch_tick` repeats while held (initial delay + repeat
     /// interval matching macOS Aqua text-field steppers).
-    number_stepper_hold: Option<NumberStepperHoldState>,
+    pub(super) number_stepper_hold: Option<NumberStepperHoldState>,
     /// Latest Shift modifier state, pushed by the shell on every
     /// `ModifiersChanged`. Used by `dispatch_pointer` to scale the
     /// NumberInput drag delta (Shift = 0.001× multiplier = fine
     /// adjustment). Pointer events don't carry modifiers natively in
     /// `ph2d-host::PointerEvent`; this is the canonical cache.
-    shift_held: bool,
+    pub(super) shift_held: bool,
 }
 
 impl WidgetStore {
@@ -448,28 +450,6 @@ impl WidgetStore {
 
     pub fn linked_slider(&self, number: NodeId) -> Option<NodeId> {
         self.number_to_slider.get(&number).copied()
-    }
-
-    /// Tag a hex `TextInput` widget as belonging to a `BlenderPicker`.
-    /// Caller is responsible for both ids being pre-registered.
-    pub fn link_blender_hex(&mut self, parent: NodeId, hex: NodeId) {
-        self.hex_to_blender_parent.insert(hex, parent);
-    }
-
-    pub fn blender_hex_parent(&self, hex: NodeId) -> Option<NodeId> {
-        self.hex_to_blender_parent.get(&hex).copied()
-    }
-
-    /// Tag a channel `NumberInput` chip as belonging to a
-    /// `BlenderPicker` at channel index `idx` (0..=3). On commit,
-    /// dispatch reads `idx` to know which RGBA / HSVA dimension to
-    /// rewrite.
-    pub fn link_blender_channel(&mut self, parent: NodeId, chip: NodeId, idx: u8) {
-        self.blender_channel_chip.insert(chip, (parent, idx));
-    }
-
-    pub fn blender_channel_chip(&self, chip: NodeId) -> Option<(NodeId, u8)> {
-        self.blender_channel_chip.get(&chip).copied()
     }
 
     /// Record the latest pointer-Down for double-click detection.
@@ -649,76 +629,6 @@ impl WidgetStore {
         }
     }
 
-    /// Read the BlenderPicker state at `id`. Returns `None` for
-    /// non-picker widgets.
-    pub fn blender_picker(
-        &self,
-        id: NodeId,
-    ) -> Option<(ColorValue, ChannelMode, InterpolationMode, usize)> {
-        match self.states.get(&id) {
-            Some(InteractiveState::BlenderPicker {
-                value,
-                channel_mode,
-                interpolation,
-                active_palette,
-                ..
-            }) => Some((*value, *channel_mode, *interpolation, *active_palette)),
-            _ => None,
-        }
-    }
-
-    /// Initialize the BlenderPicker's palette swatches. Caller passes
-    /// the seed colors (typically `default_palette()`).
-    pub fn init_blender_palette(&mut self, parent: NodeId, swatches: Vec<ColorValue>) {
-        self.blender_palettes.insert(parent, swatches);
-    }
-
-    /// Read the BlenderPicker's current palette swatches. Returns
-    /// `None` if `init_blender_palette` was never called for `parent`.
-    pub fn blender_palette(&self, parent: NodeId) -> Option<&[ColorValue]> {
-        self.blender_palettes.get(&parent).map(|v| v.as_slice())
-    }
-
-    /// Read the BlenderPicker's drag offset (dx, dy). Defaults to
-    /// (0, 0) if no drag has happened yet.
-    pub fn blender_picker_offset(&self, parent: NodeId) -> (f32, f32) {
-        self.blender_picker_offset
-            .get(&parent)
-            .copied()
-            .unwrap_or((0.0, 0.0))
-    }
-
-    pub fn set_blender_picker_offset(&mut self, parent: NodeId, dx: f32, dy: f32) {
-        self.blender_picker_offset.insert(parent, (dx, dy));
-    }
-
-    /// Begin a picker drag at cursor `(px, py)`. Snapshots the
-    /// current offset so Move events can compute new_offset =
-    /// offset_at_down + (cursor − down_cursor).
-    pub fn begin_blender_drag(&mut self, parent: NodeId, cursor_x: f32, cursor_y: f32) {
-        let (off_x, off_y) = self.blender_picker_offset(parent);
-        self.blender_drag_anchor = Some((parent, cursor_x, cursor_y, off_x, off_y));
-        // Dragged panel → topmost in z-order.
-        self.bump_panel_z(parent);
-    }
-
-    pub fn blender_drag_anchor(&self) -> Option<(NodeId, f32, f32, f32, f32)> {
-        self.blender_drag_anchor
-    }
-
-    /// Update only the cursor coordinates in the drag anchor (used by
-    /// the incremental drag model — each move re-anchors so the next
-    /// move applies a fresh delta to the post-clamp offset).
-    pub fn update_blender_drag_cursor(&mut self, cursor_x: f32, cursor_y: f32) {
-        if let Some((parent, _, _, off_x, off_y)) = self.blender_drag_anchor {
-            self.blender_drag_anchor = Some((parent, cursor_x, cursor_y, off_x, off_y));
-        }
-    }
-
-    pub fn end_blender_drag(&mut self) {
-        self.blender_drag_anchor = None;
-    }
-
     /// Read the manual-resize delta `(dw, dh)` for a panel. Defaults
     /// to `(0, 0)` if no resize has happened.
     pub fn panel_resize_delta(&self, panel: NodeId) -> (f32, f32) {
@@ -808,14 +718,6 @@ impl WidgetStore {
     /// order); the last element is the topmost panel.
     pub fn panel_z_order(&self) -> &[NodeId] {
         &self.panel_z_order
-    }
-
-    pub fn eyedropper_pending(&self) -> Option<NodeId> {
-        self.eyedropper_pending
-    }
-
-    pub fn set_eyedropper_pending(&mut self, parent: Option<NodeId>) {
-        self.eyedropper_pending = parent;
     }
 
     /// Read the vertical scroll offset for a panel (defaults to 0).
@@ -1333,161 +1235,6 @@ impl WidgetStore {
             && let Some(note) = list.get_mut(index)
         {
             note.color_idx = color_idx.min(4);
-        }
-    }
-
-    /// Append `color` to the BlenderPicker's palette. No-op if the
-    /// palette wasn't initialized OR is already at the static cap
-    /// (24 entries — matches the pre-registered swatch hit slots so
-    /// every visible swatch has a clickable hit rect).
-    pub fn blender_palette_push(&mut self, parent: NodeId, color: ColorValue) {
-        const PALETTE_CAP: usize = 27;
-        if let Some(palette) = self.blender_palettes.get_mut(&parent)
-            && palette.len() < PALETTE_CAP
-        {
-            palette.push(color);
-        }
-    }
-
-    /// Remove the swatch at `idx` from the BlenderPicker's palette.
-    /// Returns true if a swatch was actually removed.
-    pub fn blender_palette_remove(&mut self, parent: NodeId, idx: usize) -> bool {
-        if let Some(palette) = self.blender_palettes.get_mut(&parent)
-            && idx < palette.len()
-        {
-            palette.remove(idx);
-            return true;
-        }
-        false
-    }
-
-    /// Read the retained HSV anchor (h, s) the picker uses to
-    /// preserve hue + saturation across V→0 transitions where the
-    /// RGBA representation would otherwise lose them. Both in 0..1.
-    pub fn blender_hsv_anchor(&self, id: NodeId) -> Option<(f32, f32)> {
-        match self.states.get(&id) {
-            Some(InteractiveState::BlenderPicker { hsv_h, hsv_s, .. }) => Some((*hsv_h, *hsv_s)),
-            _ => None,
-        }
-    }
-
-    /// Mutate the BlenderPicker's value. Auto-updates the retained
-    /// (h, s) anchor when the new color is chromatic (S>0, V>0); for
-    /// gray/black inputs the anchor is preserved so the user's chosen
-    /// hue doesn't reset to red on a V=0 click.
-    pub fn set_blender_value(&mut self, id: NodeId, new_value: ColorValue) {
-        if let Some(InteractiveState::BlenderPicker {
-            value,
-            hsv_h,
-            hsv_s,
-            ..
-        }) = self.states.get_mut(&id)
-        {
-            *value = new_value;
-            let (h, s, v, _) = crate::widget::rgba_to_hsv(new_value.rgba);
-            if s > 1e-3 && v > 1e-3 {
-                *hsv_h = h;
-                *hsv_s = s;
-            }
-        }
-    }
-
-    /// Mutate the BlenderPicker's value AND override the retained
-    /// (h, s) anchor explicitly. Used by the SV-rect / hue-strip
-    /// dispatchers, which know the canonical H or S even when the
-    /// resulting RGBA collapses (e.g. picking V=0 → all-zero RGBA).
-    pub fn set_blender_value_with_hsv(
-        &mut self,
-        id: NodeId,
-        new_value: ColorValue,
-        h: f32,
-        s: f32,
-    ) {
-        if let Some(InteractiveState::BlenderPicker {
-            value,
-            hsv_h,
-            hsv_s,
-            ..
-        }) = self.states.get_mut(&id)
-        {
-            *value = new_value;
-            // Clamp instead of `rem_euclid`: the user-picked H from
-            // a hue-strip click may equal 1.0 at the right edge; we
-            // want the thumb to stay at the right rather than
-            // wrapping to 0.0 (left edge).
-            *hsv_h = h.clamp(0.0, 1.0);
-            *hsv_s = s.clamp(0.0, 1.0);
-        }
-    }
-
-    /// Mutate the BlenderPicker's channel mode (RGB↔HSV).
-    pub fn set_blender_channel_mode(&mut self, id: NodeId, mode: ChannelMode) {
-        if let Some(InteractiveState::BlenderPicker { channel_mode, .. }) = self.states.get_mut(&id)
-        {
-            *channel_mode = mode;
-        }
-    }
-
-    /// Mutate the BlenderPicker's interpolation (Linear↔Perceptual).
-    pub fn set_blender_interpolation(&mut self, id: NodeId, mode: InterpolationMode) {
-        if let Some(InteractiveState::BlenderPicker { interpolation, .. }) =
-            self.states.get_mut(&id)
-        {
-            *interpolation = mode;
-        }
-    }
-
-    /// Mutate a single channel of the BlenderPicker's RGBA value.
-    /// `channel_idx` 0..=3 = R/G/B/A (or H/S/V/A in HSV mode — caller
-    /// is responsible for converting before calling). `norm` must be in
-    /// [0.0, 1.0].
-    pub fn set_blender_channel(&mut self, id: NodeId, channel_idx: u8, norm: f32) {
-        if let Some(InteractiveState::BlenderPicker {
-            value,
-            channel_mode,
-            hsv_h,
-            hsv_s,
-            ..
-        }) = self.states.get_mut(&id)
-        {
-            let byte = (norm.clamp(0.0, 1.0) * 255.0).round() as u8;
-            match *channel_mode {
-                ChannelMode::Rgb => {
-                    if let Some(slot) = value.rgba.get_mut(channel_idx as usize) {
-                        *slot = byte;
-                    }
-                    let [r, g, b, a] = value.rgba;
-                    *value = ColorValue::from_rgba8(r, g, b, a);
-                    // Refresh retained anchor when the new RGB is
-                    // chromatic (else keep what we had so the H chip
-                    // doesn't spuriously reset on RGB-mode edits).
-                    let (h, s, v, _) = crate::widget::rgba_to_hsv(value.rgba);
-                    if s > 1e-3 && v > 1e-3 {
-                        *hsv_h = h;
-                        *hsv_s = s;
-                    }
-                }
-                ChannelMode::Hsv => {
-                    // Use retained (h, s) as the canonical HSV basis
-                    // — see `apply_blender_channel_value` for the
-                    // why. V + A from RGBA are recoverable.
-                    let (_, _, v_rgba, a_rgba) = crate::widget::rgba_to_hsv(value.rgba);
-                    let mut h = *hsv_h;
-                    let mut s = *hsv_s;
-                    let mut v = v_rgba;
-                    let mut a = a_rgba;
-                    match channel_idx {
-                        0 => h = norm.clamp(0.0, 1.0),
-                        1 => s = norm.clamp(0.0, 1.0),
-                        2 => v = norm.clamp(0.0, 1.0),
-                        3 => a = norm.clamp(0.0, 1.0),
-                        _ => {}
-                    }
-                    *value = hsv_to_color_value(h, s, v, a);
-                    *hsv_h = h;
-                    *hsv_s = s;
-                }
-            }
         }
     }
 

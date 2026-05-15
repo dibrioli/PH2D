@@ -3902,12 +3902,14 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "dhat",
+ "image",
  "ph2d-a11y",
  "ph2d-grid",
  "ph2d-host",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
+ "rayon",
  "smallvec",
 ]
 

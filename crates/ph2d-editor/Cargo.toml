@@ -29,6 +29,13 @@ ph2d-grid = { path = "../ph2d-grid" }
 # - bumpalo: per-frame arena for emitted WidgetEvents.
 smallvec = "1"
 bumpalo = { version = "3", features = ["collections"] }
+# image — imageops::resize (lanczos) for bgremoval thumbnail downscale
+# + guided-filter ops. `default-features = false` strips decoders
+# (ph2d-asset is the canonical decode boundary; this crate only
+# operates on already-decoded RGBA).
+image = { version = "0.25", default-features = false }
+# rayon — parallel guided filter passes inside bgremoval refine path.
+rayon = "1"
 
 [dev-dependencies]
 # dhat-rs: HR-3 enforcement bench — counts allocations in

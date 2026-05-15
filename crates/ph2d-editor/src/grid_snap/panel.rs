@@ -78,10 +78,11 @@ pub fn populate(store: &mut WidgetStore) {
 }
 
 /// Default panel rect when first opened — centered horizontally on
-/// the viewport, fixed width, height sized for title + 3 sections.
+/// the viewport, fixed width, height sized for title + 3 config
+/// sections + inspect.
 pub fn default_rect(viewport_w: f32, viewport_h: f32) -> Rect {
     let w = 320.0_f32.min(viewport_w - 16.0);
-    let h = 360.0_f32.min(viewport_h - 16.0).max(280.0);
+    let h = 540.0_f32.min(viewport_h - 16.0).max(380.0);
     let x = ((viewport_w - w) * 0.5).max(8.0);
     let y = ((viewport_h - h) * 0.5).max(8.0);
     Rect::new(x, y, w, h)
@@ -173,6 +174,17 @@ pub fn paint(
     y += ROW_H + ROW_GAP;
     paint_opacity_label_row(
         Rect::new(inner_x, y, inner_w, ROW_H),
+        scene,
+        text_system,
+        theme,
+        state,
+    );
+    y += ROW_H + ROW_GAP * 2.0;
+
+    // ─── Section: Inspect ───────────────────────────────────────
+    let inspect_h = super::inspect::height();
+    super::inspect::paint(
+        Rect::new(inner_x, y, inner_w, inspect_h),
         scene,
         text_system,
         theme,

@@ -494,7 +494,17 @@ impl App {
             .as_ref()
             .and_then(|h| live_cursor_in_window(h.window()))
             .unwrap_or(self.last_cursor);
-        let drop_world = gfx.camera.screen_to_world(cursor_px, win);
+        let drop_world_raw = gfx.camera.screen_to_world(cursor_px, win);
+        // Grid-snap apply (drag-drop site). When snap is enabled in
+        // `grid_snap_state`, align the drop position to the active
+        // grid before spawning so a multi-sprite drop forms a tidy
+        // grid rather than scattering at sub-pixel offsets. No-op
+        // when snap_enabled = false or active kind has no snap target.
+        let drop_world: [f32; 2] = if let Some(hero) = gfx.hero_screen.as_mut() {
+            hero.grid_snap_state.snap_world(drop_world_raw)
+        } else {
+            drop_world_raw
+        };
         for path in paths {
             if !ph2d_asset::is_supported_image_extension(path) {
                 let name = path
@@ -3080,7 +3090,16 @@ impl ApplicationHandler for App {
                         move_meters: hero.project.snap_move_meters,
                         rotate_deg: hero.project.snap_rotate_deg,
                     };
-                    let new_t = ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap);
+                    let mut new_t = ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap);
+                    // Grid-snap apply (gizmo Translate site). The
+                    // grid_snap subsystem's `snap_world` is the canonical
+                    // place to align world positions to the active grid;
+                    // it's a no-op when `state.snap_enabled` is false or
+                    // the active kind has no snap target (Quadtree /
+                    // Voronoi). Applied AFTER the gizmo's own Ctrl-snap
+                    // step so the two systems compose (project-level
+                    // step + grid-aligned target).
+                    new_t.translation = hero.grid_snap_state.snap_world(new_t.translation);
                     let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
                     if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                         t.translation =

@@ -73,6 +73,9 @@ pub enum IconId {
     Fps,
     Gizmo,
     Grid,
+    /// Grid + cog overlay — TopBar entry-point for the Grid Settings
+    /// floating panel (grid-snap subsystem).
+    GridSettings,
     Help,
     Hidden,
     Hierarchy,
@@ -268,6 +271,16 @@ impl IconId {
             Self::Grid => &[
                 IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 1.0),
                 IconCmd::Path("M3 9h18M3 15h18M9 3v18M15 3v18"),
+            ],
+            // Grid quadrants in a 2×2 layout with a central cog —
+            // signals "configure the grid". Lucide-derived strokes.
+            Self::GridSettings => &[
+                IconCmd::Rect(3.0, 3.0, 6.0, 6.0, 1.0),
+                IconCmd::Rect(15.0, 3.0, 6.0, 6.0, 1.0),
+                IconCmd::Rect(3.0, 15.0, 6.0, 6.0, 1.0),
+                IconCmd::Rect(15.0, 15.0, 6.0, 6.0, 1.0),
+                IconCmd::Circle(12.0, 12.0, 2.0),
+                IconCmd::Path("M12 9v-1.5M12 16.5v-1.5M9 12h-1.5M16.5 12h-1.5"),
             ],
             Self::Help => &[
                 IconCmd::Circle(12.0, 12.0, 10.0),
@@ -765,6 +778,7 @@ mod tests {
         IconId::Fps,
         IconId::Gizmo,
         IconId::Grid,
+        IconId::GridSettings,
         IconId::Help,
         IconId::Hidden,
         IconId::Hierarchy,

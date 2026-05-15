@@ -44,6 +44,11 @@ pub const TOPBAR_IMAGE_TOOLS: NodeId = NodeId(114);
 /// single in-app source of truth for UI decoration. State lives on
 /// [`crate::screens::HeroScreen::widget_gallery_visible`].
 pub const TOPBAR_WIDGET_GALLERY: NodeId = NodeId(116);
+/// Grid Settings cluster — opens the floating Grid Settings panel
+/// (grid-snap subsystem). Toggles `HeroScreen::grid_snap_state.panel_visible`.
+/// Panel internal widgets live in the reserved `1000..1099` range
+/// (see `grid_snap::ids`).
+pub const TOPBAR_GRID_SETTINGS: NodeId = NodeId(117);
 
 /// Image Tools action — Trim Transparency pill. Lives in the action
 /// row that replaces the right-side TopBar clusters when

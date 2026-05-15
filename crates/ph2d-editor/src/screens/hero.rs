@@ -235,6 +235,13 @@ pub struct HeroScreen {
     /// [`HeroScreen::grid_config_mut`] for project-level
     /// customization.
     pub grid_config: crate::grid::GridConfig,
+    /// Grid-snap subsystem state — kind selector, per-kind config,
+    /// snap policy, overlay display + opacity. Canonical source for
+    /// the canvas grid overlay (paints via [`crate::grid_snap::render::paint`])
+    /// and for snapping world positions (via
+    /// [`crate::grid_snap::GridSnapState::snap_world`]).
+    /// Panel opens/closes via `TOPBAR_GRID_SETTINGS`.
+    pub grid_snap_state: crate::grid_snap::GridSnapState,
     /// M14.4b.bis: set by the VIEW button (`TOOL_HOME`) when its
     /// cycle lands on the "Zero" mode, signaling the host to reset
     /// `Camera2d` to its default (`center=(0,0)`, `height_world=10`).
@@ -588,6 +595,7 @@ impl HeroScreen {
             grid_visible: true,
             grid_view: None,
             grid_config: crate::grid::GridConfig::default(),
+            grid_snap_state: crate::grid_snap::GridSnapState::default(),
             camera_reset_pending: false,
             import_requested: false,
             project: crate::project::ProjectSettings::default(),
@@ -630,6 +638,7 @@ impl HeroScreen {
         hierarchy::populate(store);
         inspector::populate(store);
         widget_gallery::populate(store);
+        crate::grid_snap::populate(store);
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -1083,6 +1092,22 @@ impl HeroScreen {
             self.widget_gallery_visible = !self.widget_gallery_visible;
             return true;
         }
+        // Grid Settings panel toggle — TopBar pill toggles the
+        // floating panel. Inner panel widgets (close X, kind dropdown,
+        // toggles) are routed below via `grid_snap::apply_event`.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::TOPBAR_GRID_SETTINGS
+        {
+            self.grid_snap_state.panel_visible = !self.grid_snap_state.panel_visible;
+            return true;
+        }
+        // Route remaining events into the grid-snap panel's own handler
+        // — covers GS_CLOSE, kind cycler, snap toggles, target cycler.
+        // Pass `&self.store` so the handler can read the post-flip `on`
+        // value the dispatcher already set on the Toggle widgets.
+        if crate::grid_snap::apply_event(&mut self.grid_snap_state, event, &self.store) {
+            return true;
+        }
         // Trim Transparency action — raise the `pending_trim_transparency`
         // intent with whatever entity the gizmo currently has selected.
         // Host drains next frame. When nothing is selected we still
@@ -1524,7 +1549,7 @@ pub fn paint_hero_screen(
             canvas: layout.canvas,
             ..view
         };
-        crate::grid::paint_grid(scene, hero.theme, &view, &hero.grid_config);
+        crate::grid_snap::render::paint(scene, &view, &hero.grid_snap_state);
     }
     // M14.4c: the legacy mockup selection marquee draws a fixed-size
     // dashed rect at the CANVAS center in screen pixels — it has no
@@ -1749,6 +1774,56 @@ pub fn paint_hero_screen(
         if cur > max_scroll {
             hero.store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
         }
+    }
+    // Grid Settings floating panel — mirrors the Widget Gallery
+    // pattern (lazy default rect on first show, drag/resize deltas via
+    // store, panel rect published for chrome routing).
+    if hero.grid_snap_state.panel_visible {
+        let base_rect = match hero.grid_snap_state.panel_rect {
+            Some(r) => r,
+            None => {
+                let r = crate::grid_snap::default_rect(layout.viewport.w, layout.viewport.h);
+                hero.grid_snap_state.panel_rect = Some(r);
+                r
+            }
+        };
+        let gs_off = hero
+            .store
+            .blender_picker_offset(crate::grid_snap::ids::GS_PANEL);
+        let gs_resize = hero
+            .store
+            .panel_resize_delta(crate::grid_snap::ids::GS_PANEL);
+        let (gs_rect, gs_clamped_off, gs_clamped_resize) =
+            clamp_panel(base_rect, gs_off, gs_resize, viewport);
+        if (gs_clamped_off.0 - gs_off.0).abs() > f32::EPSILON
+            || (gs_clamped_off.1 - gs_off.1).abs() > f32::EPSILON
+        {
+            hero.store.set_blender_picker_offset(
+                crate::grid_snap::ids::GS_PANEL,
+                gs_clamped_off.0,
+                gs_clamped_off.1,
+            );
+        }
+        if (gs_clamped_resize.0 - gs_resize.0).abs() > f32::EPSILON
+            || (gs_clamped_resize.1 - gs_resize.1).abs() > f32::EPSILON
+        {
+            hero.store.set_panel_resize_delta(
+                crate::grid_snap::ids::GS_PANEL,
+                gs_clamped_resize.0,
+                gs_clamped_resize.1,
+            );
+        }
+        hero.store
+            .set_panel_rect(crate::grid_snap::ids::GS_PANEL, gs_rect);
+        crate::grid_snap::paint(
+            gs_rect,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+            &hero.grid_snap_state,
+        );
     }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);

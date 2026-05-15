@@ -32,14 +32,14 @@ pub(super) const HUD_BOTTOM_PAD: f32 = 18.0;
 /// metrics were removed alongside the inspector placeholder
 /// teardown — they'll be reintroduced when canonical sample
 /// widgets land in the inspector body.
-pub(super) const PANEL_RADIUS: f32 = 16.0;
+pub(crate) const PANEL_RADIUS: f32 = 16.0;
 pub(super) const PANEL_HEAD_PAD: f32 = 18.0;
 pub(super) const HIER_ROW_H: f32 = 32.0;
 
 /// Pixel size (square) of every panel's bottom-right resize-gripper
 /// hit zone. Centralized so the painters + hit-zone registration use
 /// one value.
-pub(super) const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0;
+pub(crate) const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0;
 
 /// Floating-panel surface — standard BASE chrome for every panel
 /// (Inspector, Hierarchy, future panels). Paints the rounded
@@ -50,7 +50,7 @@ pub(super) const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0;
 /// The bottom-right resize-gripper dot is painted separately by
 /// [`paint_panel_corner_dot`] AFTER the body so body widgets don't
 /// cover it (the body's scrollable clip extends into the corner).
-pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+pub(crate) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let radius = PANEL_RADIUS;
     // PanelBg = BgElev hue/L with ~0.92 alpha → panel reads as
     // floating glass over canvas while text contrast holds.
@@ -65,7 +65,7 @@ pub(super) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Th
 /// each panel painter (after `pop_layer`) so it sits on top of any
 /// body widget whose rect drifted into the corner. Soft `Text2`
 /// reads as a corner accent rather than a foreign visual element.
-pub(super) fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+pub(crate) fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let dot_d = 4.0_f32;
     let inset = 7.0_f32;
     let dot = Rect::new(
@@ -80,7 +80,7 @@ pub(super) fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme:
 /// Rect of the bottom-right resize-gripper hit zone for a panel
 /// whose outer rect is `panel`. Callers register this against the
 /// panel-specific `*_RESIZE_HANDLE` NodeId.
-pub(super) fn panel_resize_handle_rect(panel: Rect) -> Rect {
+pub(crate) fn panel_resize_handle_rect(panel: Rect) -> Rect {
     Rect::new(
         panel.x + panel.w - PANEL_RESIZE_HANDLE_SIZE,
         panel.y + panel.h - PANEL_RESIZE_HANDLE_SIZE,
@@ -91,7 +91,7 @@ pub(super) fn panel_resize_handle_rect(panel: Rect) -> Rect {
 
 /// Rect of the top-center drag-pill hit zone for a panel whose outer
 /// rect is `panel`. 80×14 — wide enough to grab on touch + mouse.
-pub(super) fn panel_drag_handle_rect(panel: Rect) -> Rect {
+pub(crate) fn panel_drag_handle_rect(panel: Rect) -> Rect {
     Rect::new(panel.x + (panel.w - 80.0) * 0.5, panel.y + 2.0, 80.0, 14.0)
 }
 

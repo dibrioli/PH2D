@@ -14,7 +14,10 @@
 use super::ids;
 use super::state::{GridKind, GridSnapState};
 use crate::interaction::{BlenderHitKind, HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{paint_icon, paint_text, paint_text_title, resolve};
+use crate::screens::hero::style::{
+    paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
+};
 use crate::widget::{
     Button, ButtonKind, ButtonState, SectionHeader, Toggle, ToggleState, paint_button,
     paint_section_header, paint_toggle,
@@ -22,15 +25,19 @@ use crate::widget::{
 use crate::zones::Rect;
 use ph2d_grid::snap::SnapTarget;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 const ROW_H: f32 = 28.0;
 const SECTION_HEADER_H: f32 = 22.0;
-const TITLE_BAR_H: f32 = 32.0;
-const PAD: f32 = 8.0;
-const ROW_GAP: f32 = 4.0;
+/// Top inset that frees space above the title for the drag pill +
+/// matches the spacing other panels (Inspector/Hierarchy/Gallery) use
+/// between the drag handle and the first label row.
+const HEAD_PAD: f32 = 18.0;
+const PAD: f32 = 12.0;
+const ROW_GAP: f32 = 6.0;
 const LABEL_FONT_SIZE: f32 = 13.0;
+const TITLE_FONT_SIZE: f32 = 15.0;
 
 /// Register the panel's interactive nodes in `store`. Called once
 /// from `HeroScreen::pre_populate_store` (Coordenador wiring).
@@ -95,79 +102,72 @@ pub fn paint(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    _hit_index: &mut HitIndex,
+    hit_index: &mut HitIndex,
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    // Body fill + border.
-    fill_rounded_rect(
-        scene,
-        rect,
-        Radius::Md.px(),
-        resolve(ColorToken::Bg2, theme),
-    );
-    stroke_rounded_rect(
-        scene,
-        rect,
-        Radius::Md.px(),
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    // Canonical chrome (PanelBg fill + 1 px Border + drag pill).
+    paint_panel_surface(rect, scene, theme);
+    hit_index.register(ids::GS_DRAG_HANDLE, panel_drag_handle_rect(rect));
 
     let inner_x = rect.x + PAD;
     let inner_w = rect.w - PAD * 2.0;
-    let mut y = rect.y + PAD;
+    let mut y = rect.y + HEAD_PAD;
 
-    // ─── Title bar ───────────────────────────────────────────────
-    paint_title_bar(
-        Rect::new(inner_x, y, inner_w, TITLE_BAR_H),
-        scene,
+    // ─── Title row (title left, close icon right) ───────────────
+    paint_text_title(
         text_system,
-        theme,
-        store,
+        scene,
+        "Grid Settings",
+        inner_x,
+        y,
+        TITLE_FONT_SIZE,
+        inner_w - 32.0,
+        resolve(ColorToken::Text1, theme),
     );
-    y += TITLE_BAR_H + ROW_GAP;
+    let close_size = 22.0_f32;
+    let close_rect = Rect::new(
+        rect.x + rect.w - close_size - PAD,
+        y - 2.0,
+        close_size,
+        close_size,
+    );
+    paint_icon(
+        scene,
+        crate::icons::IconId::Close,
+        close_rect,
+        resolve(ColorToken::Text2, theme),
+        1.5,
+    );
+    hit_index.register(ids::GS_CLOSE, close_rect);
+    y += close_size + ROW_GAP * 2.0;
 
     // ─── Section: Grid Kind ─────────────────────────────────────
     y = paint_section_label("Grid Kind", inner_x, inner_w, y, scene, text_system, theme);
-    paint_kind_row(
-        Rect::new(inner_x, y, inner_w, ROW_H),
-        scene,
-        text_system,
-        theme,
-        store,
-        state,
-    );
+    let kind_row = Rect::new(inner_x, y, inner_w, ROW_H);
+    paint_kind_row(kind_row, scene, text_system, theme, store, state);
+    hit_index.register(ids::GS_KIND_DROPDOWN, kind_row);
     y += ROW_H + ROW_GAP * 2.0;
 
     // ─── Section: Snap ──────────────────────────────────────────
     y = paint_section_label("Snap", inner_x, inner_w, y, scene, text_system, theme);
-    paint_snap_enabled_row(
-        Rect::new(inner_x, y, inner_w, ROW_H),
-        scene,
-        text_system,
-        theme,
-        store,
-        state,
-    );
+    let snap_row = Rect::new(inner_x, y, inner_w, ROW_H);
+    paint_snap_enabled_row(snap_row, scene, text_system, theme, hit_index, store, state);
     y += ROW_H + ROW_GAP;
-    paint_snap_target_row(
-        Rect::new(inner_x, y, inner_w, ROW_H),
-        scene,
-        text_system,
-        theme,
-        store,
-        state,
-    );
+    let target_row = Rect::new(inner_x, y, inner_w, ROW_H);
+    paint_snap_target_row(target_row, scene, text_system, theme, store, state);
+    hit_index.register(ids::GS_SNAP_CENTER, target_row);
     y += ROW_H + ROW_GAP * 2.0;
 
     // ─── Section: Display ───────────────────────────────────────
     y = paint_section_label("Display", inner_x, inner_w, y, scene, text_system, theme);
+    let overlay_row = Rect::new(inner_x, y, inner_w, ROW_H);
     paint_show_overlay_row(
-        Rect::new(inner_x, y, inner_w, ROW_H),
+        overlay_row,
         scene,
         text_system,
         theme,
+        hit_index,
         store,
         state,
     );
@@ -191,60 +191,9 @@ pub fn paint(
         state,
     );
 
-    // ─── Resize grip (bottom-right) ─────────────────────────────
-    let grip = Rect::new(rect.x + rect.w - 14.0, rect.y + rect.h - 14.0, 12.0, 12.0);
-    stroke_rounded_rect(
-        scene,
-        grip,
-        Radius::Sm.px(),
-        1.0,
-        resolve(ColorToken::BorderEmph, theme),
-    );
-}
-
-fn paint_title_bar(
-    rect: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    store: &WidgetStore,
-) {
-    fill_rounded_rect(
-        scene,
-        rect,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg3, theme),
-    );
-
-    // Title text.
-    paint_text(
-        text_system,
-        scene,
-        "Grid Settings", // TODO(i18n)
-        rect.x + Spacing::Sm.px(),
-        rect.y + (rect.h - LABEL_FONT_SIZE) * 0.5,
-        LABEL_FONT_SIZE,
-        rect.w - 40.0,
-        resolve(ColorToken::Text1, theme),
-    );
-
-    // Close button on the right.
-    let btn_size = 24.0;
-    let close_rect = Rect::new(
-        rect.x + rect.w - btn_size - 4.0,
-        rect.y + (rect.h - btn_size) * 0.5,
-        btn_size,
-        btn_size,
-    );
-    let close_btn = Button {
-        id: ids::GS_CLOSE,
-        label: String::new(),
-        state: button_state(store, ids::GS_CLOSE),
-        kind: ButtonKind::IconOnly {
-            icon: crate::icons::IconId::Close,
-        },
-    };
-    paint_button(&close_btn, close_rect, scene, text_system, theme);
+    // ─── Resize gripper (canonical corner dot + standard hit zone) ─
+    paint_panel_corner_dot(rect, scene, theme);
+    hit_index.register(ids::GS_RESIZE_HANDLE, panel_resize_handle_rect(rect));
 }
 
 fn paint_section_label(
@@ -290,6 +239,7 @@ fn paint_snap_enabled_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
@@ -301,6 +251,7 @@ fn paint_snap_enabled_row(
         scene,
         text_system,
         theme,
+        hit_index,
         store,
     );
 }
@@ -336,6 +287,7 @@ fn paint_show_overlay_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
@@ -347,6 +299,7 @@ fn paint_show_overlay_row(
         scene,
         text_system,
         theme,
+        hit_index,
         store,
     );
 }
@@ -380,6 +333,7 @@ fn paint_labeled_toggle(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
     paint_text(
@@ -408,6 +362,7 @@ fn paint_labeled_toggle(
         state: toggle_state(store, id),
     };
     paint_toggle(&toggle, toggle_rect, scene, theme);
+    hit_index.register(id, toggle_rect);
 }
 
 fn button_state(store: &WidgetStore, id: crate::NodeId) -> ButtonState {
@@ -427,35 +382,45 @@ fn toggle_state(store: &WidgetStore, id: crate::NodeId) -> ToggleState {
 /// Handle a widget event for the grid-snap panel. Returns `true`
 /// when the event mutates `state`; the caller (Coordenador-wired
 /// `HeroScreen::apply_event`) uses the return to stop dispatch.
-pub fn apply_event(state: &mut GridSnapState, event: WidgetEvent) -> bool {
-    let WidgetEvent::Click(id) = event else {
-        return false;
-    };
-    if id == ids::GS_CLOSE {
-        state.panel_visible = false;
-        return true;
+///
+/// `store` is read-only here: the dispatcher already mutated the
+/// `Toggle.on` field when it emitted [`WidgetEvent::Toggled`]; this
+/// function mirrors that value back into `state` so the painter
+/// (which derives `Toggle.on` from `state`) stays in sync.
+pub fn apply_event(state: &mut GridSnapState, event: WidgetEvent, store: &WidgetStore) -> bool {
+    match event {
+        WidgetEvent::Toggled(id) if id == ids::GS_SNAP_ENABLED => {
+            if let Some(InteractiveState::Toggle { on, .. }) = store.get(id) {
+                state.snap_enabled = *on;
+            }
+            true
+        }
+        WidgetEvent::Toggled(id) if id == ids::GS_SHOW_OVERLAY => {
+            if let Some(InteractiveState::Toggle { on, .. }) = store.get(id) {
+                state.show_overlay = *on;
+            }
+            true
+        }
+        WidgetEvent::Click(id) => {
+            if id == ids::GS_CLOSE {
+                state.panel_visible = false;
+                return true;
+            }
+            if id == ids::GS_KIND_DROPDOWN {
+                state.kind = cycle_kind(state.kind);
+                return true;
+            }
+            if id == ids::GS_SNAP_CENTER {
+                state.snap_target = match state.snap_target {
+                    SnapTarget::Center => SnapTarget::Intersection,
+                    SnapTarget::Intersection => SnapTarget::Center,
+                };
+                return true;
+            }
+            false
+        }
+        _ => false,
     }
-    if id == ids::GS_KIND_DROPDOWN {
-        state.kind = cycle_kind(state.kind);
-        return true;
-    }
-    if id == ids::GS_SNAP_ENABLED {
-        state.snap_enabled = !state.snap_enabled;
-        return true;
-    }
-    if id == ids::GS_SHOW_OVERLAY {
-        state.show_overlay = !state.show_overlay;
-        return true;
-    }
-    if id == ids::GS_SNAP_CENTER {
-        // Cycling toggle for the target row.
-        state.snap_target = match state.snap_target {
-            SnapTarget::Center => SnapTarget::Intersection,
-            SnapTarget::Intersection => SnapTarget::Center,
-        };
-        return true;
-    }
-    false
 }
 
 fn cycle_kind(k: GridKind) -> GridKind {
@@ -467,6 +432,20 @@ fn cycle_kind(k: GridKind) -> GridKind {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn populated_store() -> WidgetStore {
+        let mut store = WidgetStore::with_capacity(8);
+        populate(&mut store);
+        store
+    }
+
+    /// Helper: mimic the dispatcher's pre-flip of a Toggle's `on` field,
+    /// which happens BEFORE `apply_event` runs in the real flow.
+    fn flip_toggle(store: &mut WidgetStore, id: crate::NodeId) {
+        if let Some(InteractiveState::Toggle { on, .. }) = store.get_mut(id) {
+            *on = !*on;
+        }
+    }
 
     #[test]
     fn cycle_kind_wraps() {
@@ -483,34 +462,54 @@ mod tests {
             panel_visible: true,
             ..Default::default()
         };
-        assert!(apply_event(&mut s, WidgetEvent::Click(ids::GS_CLOSE)));
+        let store = populated_store();
+        assert!(apply_event(
+            &mut s,
+            WidgetEvent::Click(ids::GS_CLOSE),
+            &store
+        ));
         assert!(!s.panel_visible);
     }
 
     #[test]
     fn apply_event_kind_cycles() {
         let mut s = GridSnapState::default();
+        let store = populated_store();
         assert_eq!(s.kind, GridKind::Square);
-        apply_event(&mut s, WidgetEvent::Click(ids::GS_KIND_DROPDOWN));
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_KIND_DROPDOWN), &store);
         assert_eq!(s.kind, GridKind::Hex);
     }
 
     #[test]
-    fn apply_event_snap_toggle() {
+    fn apply_event_snap_toggle_via_toggled() {
         let mut s = GridSnapState::default();
-        apply_event(&mut s, WidgetEvent::Click(ids::GS_SNAP_ENABLED));
+        let mut store = populated_store();
+        flip_toggle(&mut store, ids::GS_SNAP_ENABLED);
+        apply_event(&mut s, WidgetEvent::Toggled(ids::GS_SNAP_ENABLED), &store);
         assert!(s.snap_enabled);
-        apply_event(&mut s, WidgetEvent::Click(ids::GS_SNAP_ENABLED));
+        flip_toggle(&mut store, ids::GS_SNAP_ENABLED);
+        apply_event(&mut s, WidgetEvent::Toggled(ids::GS_SNAP_ENABLED), &store);
         assert!(!s.snap_enabled);
+    }
+
+    #[test]
+    fn apply_event_overlay_toggle_via_toggled() {
+        let mut s = GridSnapState::default();
+        let mut store = populated_store();
+        let initial = s.show_overlay;
+        flip_toggle(&mut store, ids::GS_SHOW_OVERLAY);
+        apply_event(&mut s, WidgetEvent::Toggled(ids::GS_SHOW_OVERLAY), &store);
+        assert_eq!(s.show_overlay, !initial);
     }
 
     #[test]
     fn apply_event_unrelated_id_returns_false() {
         let mut s = GridSnapState::default();
+        let store = populated_store();
         let snapshot_kind = s.kind;
         let snapshot_visible = s.panel_visible;
         let unrelated = crate::NodeId(42);
-        assert!(!apply_event(&mut s, WidgetEvent::Click(unrelated)));
+        assert!(!apply_event(&mut s, WidgetEvent::Click(unrelated), &store));
         assert_eq!(s.kind, snapshot_kind);
         assert_eq!(s.panel_visible, snapshot_visible);
     }

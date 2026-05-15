@@ -34,6 +34,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_RIGHT_ASSETS,
         ids::TOPBAR_RIGHT_SCRIPT,
         ids::IMAGE_ACTION_TRIM,
+        ids::IMAGE_ACTION_MAKE_SQUARE,
     ] {
         store.register(
             id,
@@ -75,6 +76,7 @@ pub fn populate(store: &mut WidgetStore) {
         ),
         (ids::TOPBAR_GRID_SETTINGS, "Grid Settings"),
         (ids::IMAGE_ACTION_TRIM, "Trim Transparency"),
+        (ids::IMAGE_ACTION_MAKE_SQUARE, "Make Square"),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),
@@ -257,7 +259,10 @@ fn paint_image_action_row(
     // ImageTools width) so the row visually rhymes with the left half.
     let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
     // V1 actions — extend this slice to add more pills.
-    const ACTIONS: &[(NodeId, IconId)] = &[(ids::IMAGE_ACTION_TRIM, IconId::TrimTransparency)];
+    const ACTIONS: &[(NodeId, IconId)] = &[
+        (ids::IMAGE_ACTION_TRIM, IconId::TrimTransparency),
+        (ids::IMAGE_ACTION_MAKE_SQUARE, IconId::MakeSquare),
+    ];
     let total_w = pill_w * ACTIONS.len() as f32 + gap * ACTIONS.len().saturating_sub(1) as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
     let mut rx = start_x;

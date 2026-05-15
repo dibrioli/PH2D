@@ -359,6 +359,18 @@ pub struct HeroScreen {
     /// here (not read via `gizmo_selection` at drain time) so a
     /// concurrent selection change doesn't retarget the action.
     pub pending_trim_transparency: Option<u64>,
+    /// Pending request to apply Make Square to the selected sprite.
+    /// Raised by clicking `IMAGE_ACTION_MAKE_SQUARE` on the Image Tools
+    /// action row. Host drains, reads the sprite's atlas-source RGBA,
+    /// runs [`crate::make_square`], and — when the result is
+    /// `made_square = true` — replaces the sprite's source pixels with
+    /// the padded square, reprojects the pivot to preserve world
+    /// position (formula: `(old_dim * old_pivot + offset) / new_size`),
+    /// and pushes an "Make square" entry to the undo history. Source
+    /// remains snapshot here (not read via `gizmo_selection` at drain
+    /// time) so a concurrent selection change doesn't retarget the
+    /// action — same contract as `pending_trim_transparency`.
+    pub pending_make_square: Option<u64>,
     /// M14.5 inspector phase: snapshot of the selected sprite's
     /// data the host publishes each frame so `paint_inspector` can
     /// surface a "Render Source" section without crossing the
@@ -617,6 +629,7 @@ impl HeroScreen {
             pending_rename_commit: None,
             pending_reimport: None,
             pending_trim_transparency: None,
+            pending_make_square: None,
             inspector_sprite: None,
             inspector_transform: None,
             last_inspector_entity: None,
@@ -1118,6 +1131,17 @@ impl HeroScreen {
             && id == ids::IMAGE_ACTION_TRIM
         {
             self.pending_trim_transparency = self.gizmo_selection;
+            return true;
+        }
+        // Make Square action — mirror of Trim Transparency. Click raises
+        // `pending_make_square` with the current `gizmo_selection`; host
+        // drains, runs `make_square`, replaces sprite pixels, reprojects
+        // pivot, pushes an "Make square" undo entry. Empty selection
+        // still consumes the click (silent no-op surface).
+        if let WidgetEvent::Click(id) = event
+            && id == ids::IMAGE_ACTION_MAKE_SQUARE
+        {
+            self.pending_make_square = self.gizmo_selection;
             return true;
         }
         if topbar::apply_event(&mut self.store, event) {
@@ -2636,6 +2660,19 @@ mod tests {
         hero.gizmo_selection = Some(0xDEAD_BEEF);
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
         assert_eq!(hero.pending_trim_transparency, Some(0xDEAD_BEEF));
+    }
+
+    /// Make Square pill mirrors the Trim pending-slot semantics.
+    #[test]
+    fn click_on_make_square_pill_raises_pending_with_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.gizmo_selection = None;
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
+        assert_eq!(hero.pending_make_square, None);
+
+        hero.gizmo_selection = Some(0xCAFE_BABE);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
+        assert_eq!(hero.pending_make_square, Some(0xCAFE_BABE));
     }
 
     #[test]

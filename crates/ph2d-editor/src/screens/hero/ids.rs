@@ -57,6 +57,13 @@ pub const TOPBAR_GRID_SETTINGS: NodeId = NodeId(117);
 /// requires the live asset model (out of scope for this PR).
 pub const IMAGE_ACTION_TRIM: NodeId = NodeId(115);
 
+/// Image Tools action — Make Square pill. Sibling of `IMAGE_ACTION_TRIM`,
+/// pads the selected sprite with transparent pixels on the shorter axis
+/// so width == height. Click raises `pending_make_square` on `HeroScreen`;
+/// host drains, runs the algorithm, replaces sprite pixels + reprojects
+/// pivot. Algorithm in `tools/make_square/algorithm.rs`.
+pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = NodeId(118);
+
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 
 pub const TOOL_TRANSLATE: NodeId = NodeId(201);

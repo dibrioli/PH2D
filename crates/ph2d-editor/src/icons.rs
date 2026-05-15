@@ -95,6 +95,11 @@ pub enum IconId {
     Link,
     Lock,
     Material,
+    /// Lucide `square.svg` — single rounded rect 18×18 at (3,3) r=2.
+    /// Used by the Image Tools row's Make Square action; algorithm in
+    /// `tools/make_square/algorithm.rs`. Mirrors [`Self::TrimTransparency`]
+    /// as the canonical icon for the action's chrome.
+    MakeSquare,
     Maximize,
     Menu,
     Minimize,
@@ -382,6 +387,12 @@ impl IconId {
                 IconCmd::Circle(12.0, 12.0, 9.0),
                 IconCmd::Path("M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"),
             ],
+            // Lucide `square.svg` — single rounded rect 18×18 at (3,3),
+            // corner radius 2. Matches the agent's `square_bezpath()`
+            // glyph in `tools/make_square/icon.rs` (different abstraction
+            // — `IconCmd` for chrome iconography, `BezPath` for direct
+            // consumers).
+            Self::MakeSquare => &[IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0)],
             Self::Maximize => &[IconCmd::Path(
                 "M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3",
             )],
@@ -796,6 +807,7 @@ mod tests {
         IconId::Link,
         IconId::Lock,
         IconId::Material,
+        IconId::MakeSquare,
         IconId::Maximize,
         IconId::Menu,
         IconId::Minimize,

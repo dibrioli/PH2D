@@ -993,7 +993,7 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
         *state = crate::widget::TextInputState::Focused;
         buffer.clear();
         use std::fmt::Write;
-        let _ = write!(buffer, "{}", super::state::format_number(*value));
+        let _ = write!(buffer, "{}", super::format_number(*value));
         *caret = buffer.len();
         *last_committed = *value;
         *selection_anchor = None;
@@ -1151,13 +1151,13 @@ pub(super) fn commit_number_buffer<'a>(
                 }
                 buffer.clear();
                 use std::fmt::Write;
-                let _ = write!(buffer, "{}", super::state::format_number(*value));
+                let _ = write!(buffer, "{}", super::format_number(*value));
                 *caret = buffer.len();
             }
             _ => {
                 buffer.clear();
                 use std::fmt::Write;
-                let _ = write!(buffer, "{}", super::state::format_number(*last_committed));
+                let _ = write!(buffer, "{}", super::format_number(*last_committed));
                 *value = *last_committed;
                 *caret = buffer.len();
             }
@@ -1194,7 +1194,7 @@ pub(super) fn revert_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeI
         *value = *last_committed;
         buffer.clear();
         use std::fmt::Write;
-        let _ = write!(buffer, "{}", super::state::format_number(*last_committed));
+        let _ = write!(buffer, "{}", super::format_number(*last_committed));
         *caret = buffer.len();
     }
 }
@@ -1937,8 +1937,8 @@ mod tests {
             InteractiveState::NumberInput {
                 state: TextInputState::Focused,
                 value,
-                buffer: super::super::state::format_number(value),
-                caret: super::super::state::format_number(value).len(),
+                buffer: super::super::format_number(value),
+                caret: super::super::format_number(value).len(),
                 last_committed: value,
                 selection_anchor: None,
             },

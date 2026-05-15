@@ -36,6 +36,7 @@ pub mod event;
 pub mod hit;
 pub mod state;
 pub mod types;
+pub mod util;
 
 pub use dispatch::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
@@ -50,5 +51,6 @@ pub use drag::{
 };
 pub use event::WidgetEvent;
 pub use hit::HitIndex;
-pub use state::{InteractiveState, WidgetStore, format_number};
+pub use state::{InteractiveState, WidgetStore};
 pub use types::{BlenderHitKind, ContextMenuKind, ContextMenuRequest, NoteData};
+pub use util::{format_number, hsv_to_color_value};

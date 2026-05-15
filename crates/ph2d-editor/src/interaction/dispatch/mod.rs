@@ -24,19 +24,20 @@ mod text_ops;
 
 use blender::{apply_blender_channel_value, apply_blender_hit, derive_blender_channel_value};
 pub use clipboard::apply_clipboard_paste;
-use clipboard::delete_selection_if_any;
 use focus::{apply_click, is_focusable};
 pub(crate) use hierarchy::HierDrop;
 use hierarchy::find_hierarchy_drop;
 use hover::{set_widget_pressed, set_widget_released, update_hover};
 pub use key::dispatch_key;
+pub mod text_input;
 pub use keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
     KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
 };
-use number_input::{apply_number_stepper_if_hit, is_numeric_input_char, update_drag_value};
+use number_input::{apply_number_stepper_if_hit, update_drag_value};
 pub use scroll::dispatch_wheel;
 use scroll::scrollbar_panel_for_id;
+pub use text_input::dispatch_text_input;
 use text_ops::{byte_offset_from_click_xy, place_text_caret};
 
 use super::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
@@ -958,58 +959,6 @@ pub fn dispatch_pointer_with_text<'frame>(
         }
     }
 
-    events.into_bump_slice()
-}
-
-/// Character input from the IME / keyboard. Inserts `ch` at the
-/// caret of a focused [`InteractiveState::TextInput`] or appends to
-/// a focused [`InteractiveState::Combobox::query`]. Other widget
-/// kinds ignore the character.
-pub fn dispatch_text_input<'frame>(
-    store: &mut WidgetStore,
-    ch: char,
-    arena: &'frame Bump,
-) -> &'frame [WidgetEvent] {
-    let mut events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
-    // Filter control characters; only printable text gets inserted.
-    if ch.is_control() {
-        return events.into_bump_slice();
-    }
-    let Some(id) = store.focus_id() else {
-        return events.into_bump_slice();
-    };
-    // If the focused widget has an active selection, replacing it
-    // is the first half of "type to overwrite". For NumberInput we
-    // additionally require the typed char to be a valid numeric
-    // character — otherwise we drop the char without touching
-    // selection state.
-    let should_replace_selection = match store.get(id) {
-        Some(InteractiveState::TextInput { .. }) | Some(InteractiveState::Combobox { .. }) => true,
-        Some(InteractiveState::NumberInput { .. }) => is_numeric_input_char(ch),
-        _ => false,
-    };
-    if should_replace_selection {
-        delete_selection_if_any(store, id);
-    }
-    match store.get_mut(id) {
-        Some(InteractiveState::TextInput { text, caret, .. }) => {
-            text.insert(*caret, ch);
-            *caret += ch.len_utf8();
-            events.push(WidgetEvent::TextChanged(id));
-        }
-        Some(InteractiveState::Combobox { query, caret, .. }) => {
-            let pos = (*caret).min(query.len());
-            query.insert(pos, ch);
-            *caret = pos + ch.len_utf8();
-            events.push(WidgetEvent::TextChanged(id));
-        }
-        Some(InteractiveState::NumberInput { buffer, caret, .. }) if is_numeric_input_char(ch) => {
-            buffer.insert(*caret, ch);
-            *caret += ch.len_utf8();
-            events.push(WidgetEvent::TextChanged(id));
-        }
-        _ => {}
-    }
     events.into_bump_slice()
 }
 

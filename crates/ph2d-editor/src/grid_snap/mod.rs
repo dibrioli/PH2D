@@ -25,6 +25,7 @@
 //! Stages 8–12 fill in the empty modules as the agent progresses.
 
 pub mod ids;
+pub mod panel;
 pub mod render;
 pub mod state;
 

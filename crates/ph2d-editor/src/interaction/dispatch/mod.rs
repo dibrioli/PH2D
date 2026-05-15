@@ -16,6 +16,7 @@ pub mod clipboard;
 mod focus;
 pub mod hierarchy;
 mod hover;
+pub mod key;
 pub mod keymap;
 mod number_input;
 pub mod scroll;
@@ -23,11 +24,12 @@ mod text_ops;
 
 use blender::{apply_blender_channel_value, apply_blender_hit, derive_blender_channel_value};
 pub use clipboard::apply_clipboard_paste;
-use clipboard::{clipboard_extract_selection, collapse_selection, delete_selection_if_any};
-use focus::{apply_click, cycle_focus, is_focusable};
+use clipboard::delete_selection_if_any;
+use focus::{apply_click, is_focusable};
 pub(crate) use hierarchy::HierDrop;
 use hierarchy::find_hierarchy_drop;
 use hover::{set_widget_pressed, set_widget_released, update_hover};
+pub use key::dispatch_key;
 pub use keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_ENTER,
     KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
@@ -35,15 +37,13 @@ pub use keymap::{
 use number_input::{apply_number_stepper_if_hit, is_numeric_input_char, update_drag_value};
 pub use scroll::dispatch_wheel;
 use scroll::scrollbar_panel_for_id;
-use text_ops::{
-    byte_offset_from_click_xy, next_char_boundary, place_text_caret, prev_char_boundary,
-};
+use text_ops::{byte_offset_from_click_xy, place_text_caret};
 
 use super::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::zones::Rect;
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
-use ph2d_host::{KeyEvent, KeyKind, PointerEvent, PointerKind};
+use ph2d_host::{PointerEvent, PointerKind};
 use ph2d_text::TextSystem;
 
 /// Entry point for pointer events. Updates [`WidgetStore`] hover /
@@ -961,330 +961,6 @@ pub fn dispatch_pointer_with_text<'frame>(
     events.into_bump_slice()
 }
 
-/// Entry point for key events. Tab / Shift+Tab traverse the focus
-/// chain; Enter / Space activate the focused widget; Escape blurs.
-pub fn dispatch_key<'frame>(
-    store: &mut WidgetStore,
-    event: KeyEvent,
-    arena: &'frame Bump,
-) -> &'frame [WidgetEvent] {
-    let mut events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
-    if event.kind == KeyKind::Up {
-        return events.into_bump_slice();
-    }
-    match event.keycode {
-        KEY_TAB => {
-            if event.modifiers.shift {
-                cycle_focus(store, false, &mut events);
-            } else {
-                cycle_focus(store, true, &mut events);
-            }
-        }
-        KEY_KEY_A if event.modifiers.meta || event.modifiers.ctrl => {
-            // Cmd/Ctrl+A on a focused TextInput / NumberInput selects
-            // the whole buffer (same effect as double-click).
-            if let Some(id) = store.focus_id() {
-                select_all_in_text_widget(store, id);
-            }
-        }
-        KEY_KEY_C if event.modifiers.meta || event.modifiers.ctrl => {
-            if let Some(id) = store.focus_id()
-                && let Some(text) = clipboard_extract_selection(store, id)
-            {
-                store.set_clipboard_copy(text);
-            }
-        }
-        KEY_KEY_X if event.modifiers.meta || event.modifiers.ctrl => {
-            if let Some(id) = store.focus_id()
-                && let Some(text) = clipboard_extract_selection(store, id)
-            {
-                store.set_clipboard_copy(text);
-                delete_selection_if_any(store, id);
-                events.push(WidgetEvent::TextChanged(id));
-            }
-        }
-        KEY_KEY_V if event.modifiers.meta || event.modifiers.ctrl => {
-            if let Some(id) = store.focus_id()
-                && matches!(
-                    store.get(id),
-                    Some(InteractiveState::TextInput { .. })
-                        | Some(InteractiveState::Combobox { .. })
-                        | Some(InteractiveState::NumberInput { .. })
-                )
-            {
-                store.set_clipboard_paste_request(id);
-            }
-        }
-        KEY_ENTER | KEY_SPACE => {
-            if let Some(id) = store.focus_id() {
-                // For NumberInput, Enter commits the buffer (parses)
-                // and emits ValueChanged on success. Falls through to
-                // apply_click for everything else.
-                if matches!(store.get(id), Some(InteractiveState::NumberInput { .. }))
-                    && event.keycode == KEY_ENTER
-                {
-                    commit_number_buffer(store, id, &mut events);
-                    return events.into_bump_slice();
-                }
-                // Hex TextInput linked to a BlenderPicker: parse the
-                // buffer and apply the resulting color to the parent,
-                // then blur (Enter ends the edit, like a form field).
-                if event.keycode == KEY_ENTER
-                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
-                    && store.blender_hex_parent(id).is_some()
-                {
-                    commit_hex_buffer(store, id, &mut events);
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
-                    store.set_focus(None);
-                    events.push(WidgetEvent::Blur(id));
-                    return events.into_bump_slice();
-                }
-                // SPACE while focus is on a text widget MUST insert a
-                // space character (handled by dispatch_text_input) —
-                // we used to also fire `apply_click` here, which
-                // emitted a stray Click event and made the user press
-                // SPACE twice before the char registered. Skip
-                // apply_click for TextInput / Combobox / NumberInput.
-                let is_text_widget = matches!(
-                    store.get(id),
-                    Some(InteractiveState::TextInput { .. })
-                        | Some(InteractiveState::Combobox { .. })
-                        | Some(InteractiveState::NumberInput { .. })
-                );
-                // SPACE on a text widget inserts a literal ' '
-                // directly here, bypassing winit's text-input
-                // pipeline. The shell's IME path delivers ' ' as a
-                // text event AFTER the key event, but on macOS the
-                // FIRST press's text-event sometimes arrives empty
-                // (IME init) — so the user had to press SPACE twice.
-                // Insert it ourselves on the key event; the shell
-                // suppresses the matching text-event for KEY_SPACE
-                // so we never double-insert.
-                if event.keycode == KEY_SPACE
-                    && matches!(
-                        store.get(id),
-                        Some(InteractiveState::TextInput { .. })
-                            | Some(InteractiveState::Combobox { .. })
-                    )
-                {
-                    delete_selection_if_any(store, id);
-                    match store.get_mut(id) {
-                        Some(InteractiveState::TextInput { text, caret, .. }) => {
-                            text.insert(*caret, ' ');
-                            *caret += 1;
-                            events.push(WidgetEvent::TextChanged(id));
-                        }
-                        Some(InteractiveState::Combobox { query, caret, .. }) => {
-                            query.insert(*caret, ' ');
-                            *caret += 1;
-                            events.push(WidgetEvent::TextChanged(id));
-                        }
-                        _ => {}
-                    }
-                    return events.into_bump_slice();
-                }
-                // M14.7 polish: Enter on the rename TextInput
-                // commits via `WidgetEvent::Submit` instead of
-                // inserting a newline. Caller (hero apply_event)
-                // reads the buffer and applies the rename.
-                if event.keycode == KEY_ENTER
-                    && id == crate::screens::hero::ids::HIER_RENAME_INPUT
-                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
-                {
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
-                    store.set_focus(None);
-                    events.push(WidgetEvent::Submit(id));
-                    events.push(WidgetEvent::Blur(id));
-                    return events.into_bump_slice();
-                }
-                // Enter on a multi-line TextInput inserts a literal
-                // newline so notes can have body paragraphs.
-                if event.keycode == KEY_ENTER
-                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
-                {
-                    delete_selection_if_any(store, id);
-                    if let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
-                    {
-                        text.insert(*caret, '\n');
-                        *caret += 1;
-                        events.push(WidgetEvent::TextChanged(id));
-                    }
-                    return events.into_bump_slice();
-                }
-                if !is_text_widget {
-                    apply_click(store, id, &mut events);
-                }
-            }
-        }
-        KEY_ESCAPE => {
-            // Audit fix #1 (CRITICAL): Esc must also abort any
-            // in-flight NumberInput drag-slider OR stepper-hold,
-            // regardless of focus. Without this the drag state stays
-            // armed; the next Move would continue advancing
-            // `last_committed` from a stale `start_value`, and Esc
-            // (which is supposed to revert) would no longer work.
-            // Cleared unconditionally — these `end_*` calls are no-ops
-            // when nothing is in flight.
-            let _ = store.end_number_input_drag();
-            store.end_number_stepper_hold();
-            if let Some(id) = store.focus_id() {
-                // Dropdowns close on ESC instead of losing focus.
-                if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(id)
-                    && *open
-                {
-                    *open = false;
-                    return events.into_bump_slice();
-                }
-                // M14.7 polish: Esc on the rename TextInput emits
-                // `Cancel` so hero can drop the rename mode without
-                // committing.
-                if id == crate::screens::hero::ids::HIER_RENAME_INPUT
-                    && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
-                {
-                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
-                        *state = crate::widget::TextInputState::Normal;
-                    }
-                    store.set_focus(None);
-                    events.push(WidgetEvent::Cancel(id));
-                    events.push(WidgetEvent::Blur(id));
-                    return events.into_bump_slice();
-                }
-                // NumberInput: revert buffer to last committed value.
-                if matches!(store.get(id), Some(InteractiveState::NumberInput { .. })) {
-                    revert_number_buffer(store, id);
-                }
-                // Hex TextInput: revert buffer to canonical form of
-                // the parent picker's current value.
-                if matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
-                    && store.blender_hex_parent(id).is_some()
-                {
-                    write_hex_canonical(store, id);
-                }
-                store.set_focus(None);
-                events.push(WidgetEvent::Blur(id));
-            }
-        }
-        KEY_BACKSPACE => {
-            if let Some(id) = store.focus_id() {
-                if delete_selection_if_any(store, id) {
-                    events.push(WidgetEvent::TextChanged(id));
-                } else {
-                    match store.get_mut(id) {
-                        Some(InteractiveState::TextInput { text, caret, .. }) if *caret > 0 => {
-                            let new_caret = prev_char_boundary(text, *caret);
-                            text.replace_range(new_caret..*caret, "");
-                            *caret = new_caret;
-                            events.push(WidgetEvent::TextChanged(id));
-                        }
-                        Some(InteractiveState::NumberInput { buffer, caret, .. }) if *caret > 0 => {
-                            let new_caret = prev_char_boundary(buffer, *caret);
-                            buffer.replace_range(new_caret..*caret, "");
-                            *caret = new_caret;
-                            events.push(WidgetEvent::TextChanged(id));
-                        }
-                        Some(InteractiveState::Combobox { query, caret, .. }) if *caret > 0 => {
-                            let new_caret = prev_char_boundary(query, *caret);
-                            query.replace_range(new_caret..*caret, "");
-                            *caret = new_caret;
-                            events.push(WidgetEvent::TextChanged(id));
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-        KEY_ARROW_LEFT => {
-            if let Some(id) = store.focus_id() {
-                // Selection collapse takes precedence over caret motion.
-                if collapse_selection(store, id, false) {
-                    return events.into_bump_slice();
-                }
-                match store.get_mut(id) {
-                    Some(InteractiveState::TextInput { text, caret, .. }) if *caret > 0 => {
-                        *caret = prev_char_boundary(text, *caret);
-                    }
-                    Some(InteractiveState::NumberInput { buffer, caret, .. }) if *caret > 0 => {
-                        *caret = prev_char_boundary(buffer, *caret);
-                    }
-                    Some(InteractiveState::Combobox { query, caret, .. }) if *caret > 0 => {
-                        *caret = prev_char_boundary(query, *caret);
-                    }
-                    _ => {}
-                }
-            }
-        }
-        KEY_ARROW_RIGHT => {
-            if let Some(id) = store.focus_id() {
-                if collapse_selection(store, id, true) {
-                    return events.into_bump_slice();
-                }
-                match store.get_mut(id) {
-                    Some(InteractiveState::TextInput { text, caret, .. })
-                        if *caret < text.len() =>
-                    {
-                        *caret = next_char_boundary(text, *caret);
-                    }
-                    Some(InteractiveState::NumberInput { buffer, caret, .. })
-                        if *caret < buffer.len() =>
-                    {
-                        *caret = next_char_boundary(buffer, *caret);
-                    }
-                    Some(InteractiveState::Combobox { query, caret, .. })
-                        if *caret < query.len() =>
-                    {
-                        *caret = next_char_boundary(query, *caret);
-                    }
-                    _ => {}
-                }
-            }
-        }
-        KEY_ARROW_UP => {
-            if let Some(id) = store.focus_id()
-                && let Some(InteractiveState::NumberInput {
-                    value,
-                    buffer,
-                    caret,
-                    last_committed,
-                    ..
-                }) = store.get_mut(id)
-            {
-                *value += 1.0;
-                *last_committed = *value;
-                buffer.clear();
-                use std::fmt::Write;
-                let _ = write!(buffer, "{}", super::state::format_number(*value));
-                *caret = buffer.len();
-                events.push(WidgetEvent::ValueChanged(id));
-            }
-        }
-        KEY_ARROW_DOWN => {
-            if let Some(id) = store.focus_id()
-                && let Some(InteractiveState::NumberInput {
-                    value,
-                    buffer,
-                    caret,
-                    last_committed,
-                    ..
-                }) = store.get_mut(id)
-            {
-                *value -= 1.0;
-                *last_committed = *value;
-                buffer.clear();
-                use std::fmt::Write;
-                let _ = write!(buffer, "{}", super::state::format_number(*value));
-                *caret = buffer.len();
-                events.push(WidgetEvent::ValueChanged(id));
-            }
-        }
-        _ => {}
-    }
-    events.into_bump_slice()
-}
-
 /// Character input from the IME / keyboard. Inserts `ch` at the
 /// caret of a focused [`InteractiveState::TextInput`] or appends to
 /// a focused [`InteractiveState::Combobox::query`]. Other widget
@@ -1688,7 +1364,7 @@ mod tests {
     };
     use crate::zones::Rect;
     use ph2d_a11y::NodeId;
-    use ph2d_host::{Modifiers, PointerSource};
+    use ph2d_host::{KeyEvent, KeyKind, Modifiers, PointerSource};
 
     fn pointer(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
         PointerEvent {

@@ -15,7 +15,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working | 2026-05-15 17:55 |
+| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working | 2026-05-15 18:30 |
 | 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working | 2026-05-15 18:15 |
 | 3 | (vago) | — | — | — |
 | 4 | (vago) | — | — | — |
@@ -63,6 +63,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 18:30 | grid-snap unblock: wired `pub mod grid_snap` em ph2d-editor/lib.rs (commit `2f8ab42`); status → working |
 | 2026-05-15 18:15 | bgremoval pasta aprovada (`crates/ph2d-editor/src/tools/bgremoval/`); status → working |
 | 2026-05-15 18:10 | slot 2 atribuído a bgremoval (Background Removal) |
 | 2026-05-15 17:55 | grid-snap pastas aprovadas; esqueleto ph2d-grid criado pelo Coordenador (Cargo.toml + lib.rs stub + workspace member + dep path em ph2d-editor); status → working |

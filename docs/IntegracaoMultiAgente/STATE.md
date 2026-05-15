@@ -16,7 +16,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
 | 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working | 2026-05-15 18:30 |
-| 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working | 2026-05-15 18:15 |
+| 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working | 2026-05-15 19:10 |
 | 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | working | 2026-05-15 18:55 |
 | 4 | (vago) | — | — | — |
 
@@ -63,6 +63,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 19:10 | bgremoval unblock: image + rayon adicionados em ph2d-editor/Cargo.toml (commit `6d8e9f3`); status → working |
 | 2026-05-15 18:55 | make-square pasta aprovada (`crates/ph2d-editor/src/tools/make_square/`); status → working |
 | 2026-05-15 18:50 | slot 3 atribuído a make-square |
 | 2026-05-15 18:30 | grid-snap unblock: wired `pub mod grid_snap` em ph2d-editor/lib.rs (commit `2f8ab42`); status → working |

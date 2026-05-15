@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 20:10 BRT
+**Última atualização:** 2026-05-15 20:25 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -16,7 +16,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
 | 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Stage 12 + RNG fix) | 2026-05-15 20:10 |
-| 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working | 2026-05-15 19:10 |
+| 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working (Oklab+1024² GrabCut+GF boundary, peer-reviewed) | 2026-05-15 20:25 |
 | 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | working | 2026-05-15 18:55 |
 | 4 | (vago) | — | — | — |
 
@@ -99,7 +99,8 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
-| 2026-05-15 20:10 | grid-snap integrado v1 (IconId::GridSettings + TOPBAR_GRID_SETTINGS + HeroScreen.grid_snap_state + paint_grid → grid_snap::render::paint); fmt+clippy+test workspace verdes |
+| 2026-05-15 20:25 | bgremoval unblock: criado `THIRD_PARTY_LICENSES.md` na raiz (Apache 2.0 full text + atribuição OpenCV gcgraph.hpp/grabcut.cpp → maxflow.rs) — atende pedido pós-peer-review do agente slot 2; status mantém `working` |
+| 2026-05-15 20:10 | grid-snap integrado v1 (IconId::GridSettings + TOPBAR_GRID_SETTINGS + HeroScreen.grid_snap_state + paint_grid → grid_snap::render::paint); fmt+clippy+test workspace verdes — commit `799fb82` |
 | 2026-05-15 20:10 | grid-snap auditoria pós-integração: fix #1 (visual paint_panel_surface/corner_dot/close icon) + fix #2 (apply_event matchar Toggled p/ Snap/Overlay) aplicados pelo Coordenador. Stage 12 (per-kind widgets) + Stage 13 (RNG warm-up) devolvidos ao agente |
 | 2026-05-15 19:10 | bgremoval unblock: image + rayon adicionados em ph2d-editor/Cargo.toml (commit `6d8e9f3`); status → working |
 | 2026-05-15 18:55 | make-square pasta aprovada (`crates/ph2d-editor/src/tools/make_square/`); status → working |

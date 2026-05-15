@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 20:45 BRT
+**Última atualização:** 2026-05-15 21:30 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -39,7 +39,7 @@ idle e fila tem um item no topo, processa imediatamente.
 
 ## Pedidos pendentes ao Coordenador
 
-_(nenhum)_
+- `bgremoval — wire pub mod bgremoval em tools/mod.rs — recebido 2026-05-15 21:00.` **Estado:** working tree do Coord tem `pub mod bgremoval;` adicionado (unstaged) pra destravar o cargo check loop do agente. O agente fixou seu `use kurbo::BezPath;` → `use ph2d_vector::BezPath;` (paridade peer islands). **Pendente:** agente commitar a pasta `crates/ph2d-editor/src/tools/bgremoval/` (atualmente untracked); só então Coord comita `pub mod bgremoval;` em chore separado. Sem a pasta tracked, commitar o `pub mod` quebra fresh checkouts.
 
 Formato: lista bullet, cada item com: `slug — pedido — recebido em <time>`.
 Exemplo: `painter — adicionar dep imageproc 0.25 em ph2d-editor/Cargo.toml — 17:30`.
@@ -88,7 +88,7 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `e3e1671` — 2026-05-15 20:55 — fix(shell) drain pending_make_square in render loop (workspace verde: fmt+clippy+nextest 1098 tests)
+main @ `dd051de` — 2026-05-15 21:30 — fix(make-square) audit fixes (texture leak C1, GPU cap M1, sub-pixel recenter M2, round-trip + ímpar split tests N1+N2, INTEGRATION.md doc D1) (workspace verde: fmt+clippy+nextest)
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -99,6 +99,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 21:30 | make-square audit completa (4 agentes paralelos: algoritmo / wiring / UX semantics / determinism+tests). Aposentado o slot 3. Coord aplicou TODOS os 7 findings: C1 (texture leak no IndividualTextureStore, fix conjunto Trim+MakeSquare) + M1 (cap pré-render em max_texture_dimension_2d, novo accessor em ph2d-render) + M2 (recenter_after_pad helper + sub-pixel correction p/ diff ímpar, paralelo de recenter_after_crop) + N1 (round-trip Trim→MS→Trim test) + N2 (overshoot panic + ímpar split coverage) + D1 (INTEGRATION.md §3 reescrito p/ refletir model real). Drive-by: grid_snap/state.rs:81 docstring reword (clippy 1.95 markdown list lint) + .typos.toml exclude bgremoval/** (slot 2 WIP). Commit `dd051de`, workspace verde. |
 | 2026-05-15 20:55 | make-square fix(shell): drainer pending_make_square em shells/desktop/main.rs (paralelo Trim — readback → algorithm → acquire_individual → repoint Sprite.source/size, sem mexer em Transform). Usuário reportou "sem efeito"; a integração v1 só wirou a UI mas esqueceu o host drain. Commit `e3e1671`, 1098 tests verdes. |
 | 2026-05-15 20:45 | make-square integrado v1 (IconId::MakeSquare + IMAGE_ACTION_MAKE_SQUARE=118 + cluster Image Tools + pending_make_square em HeroScreen + click handler); workspace verde 634 tests — commit `49dfcb8`. Slot 3 → done. |
 | 2026-05-15 20:40 | grid-snap Stage 12 landou (per-kind config widgets + Opacity Slider + Kind Dropdown) — commit `bd60316`. Stage 13 (RNG fix) já tinha landado em `a567604`. Slot 1 segue working (próxima fase aberta a critério do agente). |

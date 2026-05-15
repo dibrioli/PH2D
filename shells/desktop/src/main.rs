@@ -33,11 +33,13 @@
 
 mod cursor_pos;
 mod hero_bridge;
+mod input_log;
 mod integration;
 mod keymap;
 mod theme;
 
 use cursor_pos::live_cursor_in_window;
+use input_log::log_input_event;
 use keymap::winit_to_editor_keycode;
 use theme::parse_theme_env;
 
@@ -67,7 +69,7 @@ use ph2d_host::{
     CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
     PointerKind, PointerSource, WindowSize,
 };
-use ph2d_input::{Event as InputEvent, InputState};
+use ph2d_input::InputState;
 use ph2d_render::{
     Camera2d, Compositor, GameRt, RenderInstance, Sprite, SpriteRenderer, TextureAtlas, Tonemap,
     VelloPass,
@@ -3317,40 +3319,6 @@ impl ApplicationHandler for App {
             }
 
             _ => {}
-        }
-    }
-}
-
-fn log_input_event(elapsed_ms: u128, event: &InputEvent) {
-    match event {
-        InputEvent::GamepadButtonDown(b) => {
-            println!(
-                "[{:>6}ms] gamepad button down: {}",
-                elapsed_ms,
-                b.as_lua_key()
-            );
-        }
-        InputEvent::GamepadButtonUp(b) => {
-            println!(
-                "[{:>6}ms] gamepad button up:   {}",
-                elapsed_ms,
-                b.as_lua_key()
-            );
-        }
-        InputEvent::GamepadAxis { axis, value } => {
-            // Spam-prone: log only when |value| > 0.25 to skip
-            // dead-zone jitter.
-            if value.abs() > 0.25 {
-                println!(
-                    "[{:>6}ms] gamepad axis {} = {:+.2}",
-                    elapsed_ms,
-                    axis.as_lua_key(),
-                    value
-                );
-            }
-        }
-        InputEvent::Pencil(_) => {
-            // No iPad shell yet; pencil events can't originate here.
         }
     }
 }

@@ -32,6 +32,7 @@
 
 pub mod dispatch;
 pub mod drag;
+pub mod event;
 pub mod hit;
 pub mod state;
 pub mod types;
@@ -47,6 +48,7 @@ pub use drag::{
     NUMBER_INPUT_DRAG_THRESHOLD_PX, NumberInputDragState, NumberStepperHoldState,
     STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS, ScrollbarDragAnchor,
 };
+pub use event::WidgetEvent;
 pub use hit::HitIndex;
-pub use state::{InteractiveState, WidgetEvent, WidgetStore, format_number};
+pub use state::{InteractiveState, WidgetStore, format_number};
 pub use types::{BlenderHitKind, ContextMenuKind, ContextMenuRequest, NoteData};

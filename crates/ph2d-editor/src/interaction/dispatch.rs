@@ -4629,6 +4629,42 @@ mod tests {
         }
     }
 
+    /// Re-audit fix: `set_number_value` must NOT overwrite
+    /// `last_committed` when a drag-slider is actively scrubbing the
+    /// same field. Without this guard, the per-frame snapshot
+    /// republish (host path) silently moved the rollback anchor to
+    /// the latest dragged value, defeating audit fix #2.
+    #[test]
+    fn set_number_value_preserves_last_committed_during_drag() {
+        let (mut store, hits, rect) = number_input_setup(7.0);
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(PointerKind::Move, rect.x + 30.0, rect.y + rect.h * 0.5),
+            &arena,
+        );
+        // Host-side snapshot republish: writes a value via
+        // `set_number_value` while drag is active. Must NOT clobber
+        // `last_committed` (still anchored at 7.0 = pre-drag).
+        store.set_number_value(NodeId(77), 999.0);
+        match store.get(NodeId(77)) {
+            Some(InteractiveState::NumberInput { last_committed, .. }) => {
+                assert!(
+                    (*last_committed - 7.0).abs() < f64::EPSILON,
+                    "set_number_value mid-drag must not move last_committed; got {last_committed}"
+                );
+            }
+            _ => panic!("expected NumberInput state"),
+        }
+    }
+
     /// M14.A: pointer-Up clears the continuous-hold so subsequent
     /// ticks (even at a time past the delay) do nothing — release
     /// stops the repeat. Verified against the same fixture as the

@@ -1647,17 +1647,26 @@ pub fn paint_hero_screen(
                     hero.store
                         .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
                 }
-                // M14.E: force-rewrite the editable name TextInput buffer
-                // on selection change so the previous entity's
+                // M14.E: force-rewrite the editable name TextInput
+                // buffer on selection change so the previous entity's
                 // in-progress typed-but-uncommitted edit can't leak
-                // onto the new entity.
+                // onto the new entity. Audit #2 fix: also flip
+                // `state` back to `Normal` — the global
+                // `set_focus(None)` above only clears the focus_id;
+                // the per-widget state field is what the painter
+                // consults to draw caret + focus ring. Without this
+                // the painter keeps the focused chrome on a field
+                // the user hasn't authored yet (cosmetic but
+                // confusing — same pattern dispatch.rs:1189 uses on
+                // Blur).
                 if let Some(InteractiveState::TextInput {
+                    state,
                     text,
                     caret,
                     selection_anchor,
-                    ..
                 }) = hero.store.get_mut(ids::INSP_ENTITY_NAME)
                 {
+                    *state = crate::widget::TextInputState::Normal;
                     text.clear();
                     if let Some(info) = hero.inspector_name.as_ref() {
                         text.push_str(&info.name);
@@ -2529,6 +2538,63 @@ mod tests {
         hero.pending_name_edit = None;
         assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
         assert_eq!(hero.pending_name_edit, None);
+    }
+
+    /// Audit #2 fix (MEDIUM): `paint_hero_screen` selection-change
+    /// block resets the entity-name TextInput state to `Normal` (not
+    /// just `text`/`caret`/`selection_anchor`). Otherwise the
+    /// painter keeps drawing the focused chrome (caret + focus ring)
+    /// on a field the user hasn't authored yet — same canonical
+    /// cleanup dispatch.rs:1189 does on Blur.
+    #[test]
+    fn selection_switch_resets_entity_name_input_state_to_normal() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        let layout = HeroLayout::for_viewport(ipad12_viewport());
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        // 1) Frame 1: select entity A, mark its TextInput Focused
+        //    (simulating user click on the field).
+        hero.inspector_name = Some(InspectorNameInfo {
+            entity_bits: 0xAAAA_0001,
+            name: "Player A".into(),
+        });
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 0xAAAA_0001,
+            translation: [0.0, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+        });
+        paint_hero_screen(&mut hero, layout.viewport, &mut scene, &mut text);
+        if let Some(InteractiveState::TextInput { state, .. }) =
+            hero.store.get_mut(ids::INSP_ENTITY_NAME)
+        {
+            *state = crate::widget::TextInputState::Focused;
+        }
+        // 2) Frame 2: switch to entity B. The selection-change block
+        //    must flip state back to Normal regardless of the focus
+        //    snapshot the user left on entity A.
+        hero.inspector_name = Some(InspectorNameInfo {
+            entity_bits: 0xBBBB_0002,
+            name: "Player B".into(),
+        });
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 0xBBBB_0002,
+            translation: [0.0, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+        });
+        paint_hero_screen(&mut hero, layout.viewport, &mut scene, &mut text);
+        match hero.store.get(ids::INSP_ENTITY_NAME) {
+            Some(InteractiveState::TextInput { state, text, .. }) => {
+                assert_eq!(
+                    *state,
+                    crate::widget::TextInputState::Normal,
+                    "state must reset to Normal on selection switch"
+                );
+                assert_eq!(text, "Player B", "buffer must reset to new entity's name");
+            }
+            _ => panic!("INSP_ENTITY_NAME state missing"),
+        }
     }
 
     /// Audit fix #7 (HIGH): clicking a strategy button resets the

@@ -1832,6 +1832,15 @@ impl WidgetStore {
     /// focused, the user's edit is preserved.
     pub fn set_number_value(&mut self, id: NodeId, new_value: f64) {
         let focused = self.focus_id == Some(id);
+        // Audit re-pass fix: while a drag-slider is actively
+        // scrubbing this very NumberInput, do NOT overwrite
+        // `last_committed` from external (snapshot) writes. The drag's
+        // Up handler commits `last_committed = value` at release — if
+        // an in-flight `set_number_value` clobbered the rollback
+        // anchor on every frame, Esc mid-drag would revert to the
+        // last-applied dragged value (effectively a no-op), defeating
+        // audit fix #2.
+        let dragging_this = matches!(self.number_input_drag.as_ref(), Some(d) if d.id == id);
         if let Some(InteractiveState::NumberInput {
             value,
             buffer,
@@ -1840,7 +1849,9 @@ impl WidgetStore {
         }) = self.states.get_mut(&id)
         {
             *value = new_value;
-            *last_committed = new_value;
+            if !dragging_this {
+                *last_committed = new_value;
+            }
             if !focused {
                 buffer.clear();
                 use std::fmt::Write;

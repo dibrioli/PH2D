@@ -250,8 +250,13 @@ pub(super) fn set_current_inspector_name(info: Option<super::InspectorNameInfo>)
     CURRENT_INSPECTOR_NAME.with(|c| *c.borrow_mut() = info);
 }
 
-fn current_inspector_name() -> Option<super::InspectorNameInfo> {
-    CURRENT_INSPECTOR_NAME.with(|c| c.borrow().clone())
+/// Audit #2 fix (LOW, clone elision): presence check without cloning
+/// the inner `String`. The painter reads the live `name` from the
+/// store buffer (the host writes it during the selection-change reset
+/// in `paint_hero_screen`); the snapshot is only consulted to decide
+/// whether to paint the row at all.
+fn current_inspector_name_is_some() -> bool {
+    CURRENT_INSPECTOR_NAME.with(|c| c.borrow().is_some())
 }
 
 fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {
@@ -1243,17 +1248,17 @@ pub fn paint_inspector(
     let transform_info = current_inspector_transform();
     let sprite_info = current_inspector_sprite();
     let visibility_info = current_inspector_visibility();
-    let name_info = current_inspector_name();
+    let name_present = current_inspector_name_is_some();
     let any_section = transform_info.is_some()
         || sprite_info.is_some()
         || visibility_info.is_some()
-        || name_info.is_some();
+        || name_present;
     let mut y = body_top_y + 4.0;
     // ── Entity name (M14.E) — editable TextInput at the very top
     // of the body. Replaces the read-only name displays that used to
     // live in the header subtitle (now world size) and the Render
     // Source "Name" row (now removed).
-    if name_info.is_some() {
+    if name_present {
         y = paint_entity_name_row(
             scene,
             text_system,

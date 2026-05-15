@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 21:30 BRT
+**Última atualização:** 2026-05-15 21:40 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -15,7 +15,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Stage 12 landou; RNG fix landou) | 2026-05-15 20:40 |
+| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | working (Tier-1 origin + subdivisions landou `fc983c3`; Tier-1c ColorPicker próximo) | 2026-05-15 21:40 |
 | 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | working (Oklab+1024² GrabCut+GF boundary, peer-reviewed) | 2026-05-15 20:25 |
 | 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | done | 2026-05-15 20:45 |
 | 4 | (vago) | — | — | — |
@@ -99,6 +99,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 21:40 | slot 1 reportou bloqueio externo (cargo check editor falhando por `use kurbo::BezPath` em bgremoval/icon.rs slot 2). Coord confirmou que slot 2 já corrigiu para `use ph2d_vector::BezPath` antes do report; working tree do editor compila verde (1 warning não-fatal). Slot 1 destravado sem ação Coord. `cargo nextest -p ph2d-editor -E 'not test(/bgremoval/)'` = 661 pass. ph2d-grid = 96 pass. Tier-1 (origin offset + subdivisions) já landed em `fc983c3` — não é blocked-waiting-coord, é working. |
 | 2026-05-15 21:30 | make-square audit completa (4 agentes paralelos: algoritmo / wiring / UX semantics / determinism+tests). Aposentado o slot 3. Coord aplicou TODOS os 7 findings: C1 (texture leak no IndividualTextureStore, fix conjunto Trim+MakeSquare) + M1 (cap pré-render em max_texture_dimension_2d, novo accessor em ph2d-render) + M2 (recenter_after_pad helper + sub-pixel correction p/ diff ímpar, paralelo de recenter_after_crop) + N1 (round-trip Trim→MS→Trim test) + N2 (overshoot panic + ímpar split coverage) + D1 (INTEGRATION.md §3 reescrito p/ refletir model real). Drive-by: grid_snap/state.rs:81 docstring reword (clippy 1.95 markdown list lint) + .typos.toml exclude bgremoval/** (slot 2 WIP). Commit `dd051de`, workspace verde. |
 | 2026-05-15 20:55 | make-square fix(shell): drainer pending_make_square em shells/desktop/main.rs (paralelo Trim — readback → algorithm → acquire_individual → repoint Sprite.source/size, sem mexer em Transform). Usuário reportou "sem efeito"; a integração v1 só wirou a UI mas esqueceu o host drain. Commit `e3e1671`, 1098 tests verdes. |
 | 2026-05-15 20:45 | make-square integrado v1 (IconId::MakeSquare + IMAGE_ACTION_MAKE_SQUARE=118 + cluster Image Tools + pending_make_square em HeroScreen + click handler); workspace verde 634 tests — commit `49dfcb8`. Slot 3 → done. |

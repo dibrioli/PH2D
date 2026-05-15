@@ -194,6 +194,12 @@ thread_local! {
     /// snapshot can't leak into the next frame.
     static CURRENT_INSPECTOR_TRANSFORM: std::cell::RefCell<Option<super::InspectorTransformInfo>> =
         const { std::cell::RefCell::new(None) };
+    /// M14.D: same pattern for the Visibility checkbox row. Held as
+    /// a `Cell` (struct is `Copy`) so the painter's read is
+    /// allocation-free.
+    static CURRENT_INSPECTOR_VISIBILITY:
+        std::cell::Cell<Option<super::InspectorVisibilityInfo>> =
+        const { std::cell::Cell::new(None) };
     /// Mirror of `LAST_CONTENT_H` / `LAST_VISIBLE_H` for the floating
     /// Widget Gallery panel painted by [`paint_showcase_body`]. Tracked
     /// independently so the gallery and Inspector scroll without
@@ -222,6 +228,16 @@ pub(super) fn set_current_inspector_transform(info: Option<super::InspectorTrans
 
 fn current_inspector_transform() -> Option<super::InspectorTransformInfo> {
     CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow())
+}
+
+/// M14.D: same as `set_current_inspector_transform` for the
+/// Visibility checkbox row.
+pub(super) fn set_current_inspector_visibility(info: Option<super::InspectorVisibilityInfo>) {
+    CURRENT_INSPECTOR_VISIBILITY.with(|c| c.set(info));
+}
+
+fn current_inspector_visibility() -> Option<super::InspectorVisibilityInfo> {
+    CURRENT_INSPECTOR_VISIBILITY.with(|c| c.get())
 }
 
 fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {
@@ -318,6 +334,20 @@ pub fn populate(store: &mut WidgetStore) {
     populate_blender_picker(store);
     populate_samples(store);
     populate_transform_editor(store);
+    populate_visibility_editor(store);
+}
+
+/// M14.D: register the Visibility checkbox state. Default Checked
+/// matches the canonical absence-equals-visible invariant for newly
+/// spawned entities (`ph2d_ecs::Visibility` doc-string).
+fn populate_visibility_editor(store: &mut WidgetStore) {
+    store.register(
+        ids::INSP_VISIBILITY_CHECK,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Checked,
+        },
+    );
 }
 
 /// M14.A: register the 5 NumberInput states + the Reset button used
@@ -1148,11 +1178,32 @@ pub fn paint_inspector(
     LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + 4.0));
     let transform_info = current_inspector_transform();
     let sprite_info = current_inspector_sprite();
-    let any_section = transform_info.is_some() || sprite_info.is_some();
+    let visibility_info = current_inspector_visibility();
+    let any_section =
+        transform_info.is_some() || sprite_info.is_some() || visibility_info.is_some();
     let mut y = body_top_y + 4.0;
-    // ── Transform section (M14.A) — first, since Transform is the
-    // most fundamental component. Matches Unity / Godot / Blender
-    // conventions where Transform sits above all other components.
+    // ── Visibility row (M14.D) — painted first so the eye toggle
+    // sits at the top of the Inspector, mirroring "GameObject active"
+    // in Unity / "visible" eye-icon in Blender. Drives the same
+    // `ph2d_ecs::Visibility` component as the Hierarchy panel's eye
+    // toggle (M14.6 A) via `EditorCommand::SetComponent`.
+    if visibility_info.is_some() {
+        y = paint_visibility_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
+        );
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+    }
+    // ── Transform section (M14.A) — first SECTION (below the
+    // Visibility row), since Transform is the most fundamental
+    // component. Matches Unity / Godot / Blender conventions where
+    // Transform sits above all other components.
     if transform_info.is_some() {
         y = paint_transform_section(
             scene,
@@ -1544,6 +1595,45 @@ pub(super) fn paint_showcase_body(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/// M14.D: paint the live Visibility checkbox row above the Transform
+/// section. Mirrors the eye toggle that's already in the Hierarchy
+/// panel (M14.6 A) — both surfaces drive the same underlying
+/// `ph2d_ecs::Visibility` component via `EditorCommand::SetComponent`.
+///
+/// Layout: single row, Checkbox + "Visible" label. The store carries
+/// the live `CheckboxValue`; `paint_hero_screen` writes it on the
+/// frame the host publishes a fresh
+/// [`super::InspectorVisibilityInfo`] snapshot so the displayed state
+/// always tracks the underlying ECS.
+///
+/// Returns the y-coordinate of the bottom of the painted row.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_visibility_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let row_h = 24.0_f32;
+    let (state, value) = match store.checkbox(ids::INSP_VISIBILITY_CHECK) {
+        Some(pair) => pair,
+        // Fallback: render Checked as a sensible default if the
+        // store hasn't been populated (e.g. early-paint smoke tests).
+        None => (CheckboxState::Normal, CheckboxValue::Checked),
+    };
+    let host = Rect::new(x, y, w, row_h);
+    hit_index.register(ids::INSP_VISIBILITY_CHECK, host);
+    let checkbox = Checkbox::new(ids::INSP_VISIBILITY_CHECK, "Visible")
+        .state(state)
+        .value(value);
+    paint_checkbox(&checkbox, host, scene, text_system, theme);
+    y + row_h + 6.0
+}
 
 /// M14.A: paint the live `Transform` editor section. Shows Position
 /// X/Y (meters), Rotation (degrees, rad ↔ deg conversion at the

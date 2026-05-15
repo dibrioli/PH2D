@@ -64,7 +64,8 @@ pub use project::{
 };
 pub use screens::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorSpriteInfo, InspectorSpriteSource,
-    InspectorTransformInfo, ViewFocusKind, paint_hero_screen, set_live_component_count,
+    InspectorTransformInfo, InspectorVisibilityInfo, ViewFocusKind, paint_hero_screen,
+    set_live_component_count,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

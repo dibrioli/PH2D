@@ -100,6 +100,14 @@ pub const INSP_TRANSFORM_SCALE_X: NodeId = NodeId(378);
 pub const INSP_TRANSFORM_SCALE_Y: NodeId = NodeId(379);
 /// Reset-to-Identity button in the Transform section header.
 pub const INSP_TRANSFORM_RESET: NodeId = NodeId(380);
+
+// ── Inspector Visibility checkbox (M14.D) ───────────────────────────────────
+// Mirrors the Hierarchy eye toggle (M14.6A). Painted as a single row
+// above the Transform section. Click commits via
+// `pending_visibility_edit` → `EditorCommand::SetComponent` for the
+// `ph2d_ecs::Visibility` component (same pipeline as Transform).
+/// Visibility checkbox in the Inspector header strip.
+pub const INSP_VISIBILITY_CHECK: NodeId = NodeId(381);
 /// Widget Gallery floating panel — root id. The gallery is a Procreate-
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].

@@ -43,7 +43,7 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{
     Component, Name, PresentWorld, SimComponent, SimRef, SimWorld, Transform,
-    TransformPropagationState, WorklistBuf, propagate_transforms,
+    TransformPropagationState, Visibility, WorklistBuf, propagate_transforms,
 };
 use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
@@ -296,6 +296,10 @@ struct AppGfx {
     /// path doesn't re-hash. The matching registry entry was added
     /// via `register_ecs_components`.
     transform_type_id: u64,
+    /// M14.D: same as `transform_type_id` for the `ph2d::ecs::Visibility`
+    /// component. Cached at boot so the Inspector visibility checkbox
+    /// commit doesn't re-hash on every toggle.
+    visibility_type_id: u64,
 }
 
 /// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
@@ -914,6 +918,7 @@ impl App {
             component_registry,
             editor_queue,
             transform_type_id,
+            visibility_type_id,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -1362,6 +1367,26 @@ impl App {
                     translation: [t.translation.x, t.translation.y],
                     rotation_rad: t.rotation,
                     scale: [t.scale.x, t.scale.y],
+                })
+            });
+            // M14.D: live Visibility snapshot. Absence-equals-visible
+            // is the canonical invariant — entities without a
+            // `Visibility` component render normally, so `None` from
+            // `world.get::<Visibility>` maps to `visible = true`.
+            // Only published when the selection has a `Transform`
+            // (i.e. it's an Inspector-worthy entity); without a
+            // Transform the Inspector hides the whole panel content.
+            hero.inspector_visibility = hero.gizmo_selection.and_then(|bits| {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                sim.world().get::<Transform>(entity)?;
+                let visible = sim
+                    .world()
+                    .get::<Visibility>(entity)
+                    .map(|v| !v.hidden)
+                    .unwrap_or(true);
+                Some(ph2d_editor::InspectorVisibilityInfo {
+                    entity_bits: bits,
+                    visible,
                 })
             });
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
@@ -1902,6 +1927,39 @@ impl App {
                     }
                 }
             }
+            // M14.D: drain Inspector Visibility commit → same
+            // EditorCommandQueue path as Transform. We always write
+            // an explicit `Visibility { hidden: ... }` (rather than
+            // removing the component when `visible == true`) so the
+            // round-trip is unambiguous and the audit log captures
+            // both directions of the toggle.
+            if let Some(info) = hero.pending_visibility_edit.take() {
+                let v = Visibility {
+                    hidden: !info.visible,
+                };
+                match postcard::to_allocvec(&v) {
+                    Ok(data) => {
+                        let push_res = editor_queue.push(EditorCommand::SetComponent {
+                            entity: info.entity_bits,
+                            type_id: *visibility_type_id,
+                            data,
+                        });
+                        if let Err(e) = push_res {
+                            toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                            self.title_dirty = true;
+                        } else if let Err(e) =
+                            apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
+                        {
+                            toasts.push(Toast::error(format!("Visibility commit failed: {e}")));
+                            self.title_dirty = true;
+                        }
+                    }
+                    Err(e) => {
+                        toasts.push(Toast::error(format!("Visibility encode failed: {e}")));
+                        self.title_dirty = true;
+                    }
+                }
+            }
             // ImageToolsV1: drain Trim Transparency request — read the
             // sprite's atlas-source RGBA pixels, run the trim algorithm,
             // and (if any transparent border was found) re-source the
@@ -2434,6 +2492,7 @@ impl ApplicationHandler for App {
             },
             editor_queue: EditorCommandQueue::new(),
             transform_type_id: stable_type_id("ph2d::ecs::Transform"),
+            visibility_type_id: stable_type_id("ph2d::ecs::Visibility"),
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);

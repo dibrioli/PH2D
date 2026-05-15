@@ -675,6 +675,44 @@ continuous-hold initial delay + repeat, hold ended on pointer-Up. 2 in
 **Workspace check**: 523 lib tests + 20 integration tests pass; clippy
 + fmt clean.
 
+## M14.D — Inspector Visibility checkbox (shipped)
+
+Mirror of the Hierarchy eye toggle (M14.6 A) inside the Inspector.
+Single checkbox + "Visible" label painted at the top of the Inspector
+body, above the Transform section. Both surfaces (Inspector
+checkbox + Hierarchy eye) drive the same
+`ph2d_ecs::Visibility { hidden: bool }` component via
+`EditorCommand::SetComponent` — same pipeline established for
+Transform in M14.A, no new boundary.
+
+- New `InspectorVisibilityInfo { entity_bits, visible }` snapshot +
+  `pending_visibility_edit` channel on `HeroScreen`. Host publishes
+  the snapshot each frame the gizmo selection has a `Transform`
+  component (the "Inspector-worthy" gate).
+- `pub const INSP_VISIBILITY_CHECK: NodeId = NodeId(381)` registered
+  as `InteractiveState::Checkbox` in `inspector::populate`. Default
+  Checked matches the canonical absence-equals-visible invariant.
+- `paint_visibility_row` painted BEFORE the Transform section in
+  `paint_inspector`. Reads the live `CheckboxValue` from the store
+  (host writes it on the frame the snapshot lands).
+- Commit path: dispatch toggles `CheckboxValue` and emits
+  `WidgetEvent::Toggled(INSP_VISIBILITY_CHECK)`; `HeroScreen::apply_event`
+  reads the post-toggle value, raises `pending_visibility_edit`;
+  shell drains, encodes `Visibility { hidden: !visible }` as
+  postcard, pushes `SetComponent`, runs `apply_editor_commands` —
+  same code path as Transform commits.
+- The shell **always** writes an explicit `Visibility { hidden: ... }`
+  (never removes the component) so the round-trip is unambiguous and
+  the eventual audit log captures both directions.
+- Cached `visibility_type_id` (alongside `transform_type_id`) in
+  `AppGfx` so the per-toggle hash is amortized to one-time at boot.
+- Tests: `visibility_toggle_publishes_pending_with_selection` and
+  `visibility_toggle_no_pending_without_selection` in
+  `screens::hero::tests`.
+
+**Workspace check**: 525 lib tests + 20 integration tests pass;
+clippy + fmt clean.
+
 ## M14.7 polish — rename mode + long-press (planned)
 
 A hierarchy row's right-click menu currently lists Duplicate / Add Child / Reset Transform / Delete (M14.6 F shipped). Two more interactions remain:

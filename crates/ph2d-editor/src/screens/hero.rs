@@ -50,7 +50,8 @@ pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 pub use topbar::paint_top_bar;
 
 use crate::interaction::{
-    HitIndex, WidgetEvent, WidgetStore, dispatch_pointer, dispatch_pointer_with_text,
+    HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_pointer,
+    dispatch_pointer_with_text,
 };
 use crate::zones::Rect;
 use bumpalo::Bump;
@@ -384,6 +385,20 @@ pub struct HeroScreen {
     /// decoupled from `ph2d-ecs`; the type-id resolution + glam
     /// conversion happens at the shell boundary.
     pub pending_transform_edit: Option<InspectorTransformInfo>,
+    /// M14.D: snapshot of the selected entity's `Visibility` state,
+    /// mirroring the eye toggle that already lives in the Hierarchy
+    /// panel (M14.6 A). The Inspector renders a checkbox above the
+    /// Transform section so the user can flip visibility from either
+    /// surface. `None` when no entity is selected. Same HR-8 / ADR-0021
+    /// boundary as Transform — the host bridges from SimWorld.
+    pub inspector_visibility: Option<InspectorVisibilityInfo>,
+    /// M14.D: editor → host channel for Visibility commits. The
+    /// inspector publishes `(entity_bits, visible)` when the user
+    /// flips the checkbox; the shell drains and pushes a
+    /// `EditorCommand::SetComponent` for
+    /// [`ph2d_ecs::Visibility`] to its `EditorCommandQueue` — same
+    /// pipeline as `pending_transform_edit`.
+    pub pending_visibility_edit: Option<InspectorVisibilityInfo>,
 }
 
 /// Snapshot of the selected sprite's editor-facing fields. Host
@@ -443,6 +458,25 @@ pub struct InspectorTransformInfo {
     pub rotation_rad: f32,
     /// Local-space scale (unitless). Identity = `[1.0, 1.0]`.
     pub scale: [f32; 2],
+}
+
+/// M14.D: snapshot of the selected entity's `Visibility` state.
+///
+/// The Inspector renders this as a single checkbox above the
+/// Transform section, mirroring the eye toggle in the Hierarchy
+/// panel (M14.6 A). Both surfaces drive the same underlying
+/// `ph2d_ecs::Visibility { hidden: bool }` component via
+/// `EditorCommand::SetComponent`.
+///
+/// `visible == true` ↔ no `Visibility` component OR
+/// `Visibility { hidden: false }`. Absence-equals-visible is the
+/// canonical invariant ([`ph2d_ecs::visibility`]); on commit, the
+/// host always writes an explicit `Visibility { hidden: ... }` so
+/// the round-trip is unambiguous.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct InspectorVisibilityInfo {
+    pub entity_bits: u64,
+    pub visible: bool,
 }
 
 /// Which framing action the VIEW button (TOOL_HOME) + F/Home key
@@ -525,6 +559,8 @@ impl HeroScreen {
             inspector_transform: None,
             last_inspector_entity: None,
             pending_transform_edit: None,
+            inspector_visibility: None,
+            pending_visibility_edit: None,
         }
     }
 
@@ -1173,6 +1209,26 @@ impl HeroScreen {
             });
             return true;
         }
+        // M14.D: Visibility checkbox toggled. The dispatch already
+        // flipped `CheckboxValue` in the store and emitted
+        // `WidgetEvent::Toggled(INSP_VISIBILITY_CHECK)`; we read the
+        // POST-toggle value and publish `pending_visibility_edit` for
+        // the shell to push as `EditorCommand::SetComponent` for the
+        // `ph2d_ecs::Visibility` component.
+        if let WidgetEvent::Toggled(id) = event
+            && id == ids::INSP_VISIBILITY_CHECK
+            && let Some(info) = self.inspector_visibility
+        {
+            let visible = matches!(
+                self.store.checkbox(id).map(|(_, v)| v),
+                Some(crate::widget::CheckboxValue::Checked),
+            );
+            self.pending_visibility_edit = Some(InspectorVisibilityInfo {
+                entity_bits: info.entity_bits,
+                visible,
+            });
+            return true;
+        }
         if inspector::apply_event(&mut self.store, event) {
             return true;
         }
@@ -1494,11 +1550,28 @@ pub fn paint_hero_screen(
                 hero.store
                     .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
             }
+            // M14.D: sync the Visibility checkbox value from the
+            // current snapshot. Always overwrite — Checkbox has no
+            // "in-progress edit" the user might be authoring (Click
+            // is atomic), so unlike NumberInput buffers there's no
+            // focus-guard to honor. Skipped silently when the
+            // selection has no Visibility snapshot.
+            if let Some(vis) = hero.inspector_visibility
+                && let Some(InteractiveState::Checkbox { value, .. }) =
+                    hero.store.get_mut(ids::INSP_VISIBILITY_CHECK)
+            {
+                *value = if vis.visible {
+                    crate::widget::CheckboxValue::Checked
+                } else {
+                    crate::widget::CheckboxValue::Unchecked
+                };
+            }
             // Publish the host-supplied sprite snapshot for the
             // Render Source section. Cleared after paint so a stale
             // snapshot can't leak into the next frame.
             inspector::set_current_inspector_sprite(hero.inspector_sprite.clone());
             inspector::set_current_inspector_transform(hero.inspector_transform);
+            inspector::set_current_inspector_visibility(hero.inspector_visibility);
             paint_inspector(
                 &layout,
                 hero.selection.as_ref(),
@@ -1510,6 +1583,7 @@ pub fn paint_hero_screen(
             );
             inspector::set_current_inspector_sprite(None);
             inspector::set_current_inspector_transform(None);
+            inspector::set_current_inspector_visibility(None);
             // Publish content_h + clamp scroll right after paint so
             // `dispatch_wheel` sees the new bounds on the very next
             // event (avoids a one-frame overshoot when a section
@@ -2179,6 +2253,44 @@ mod tests {
         hero.pending_transform_edit = None;
         assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
         assert_eq!(hero.pending_transform_edit, None);
+    }
+
+    /// M14.D: Toggled on the Visibility checkbox publishes
+    /// `pending_visibility_edit` with the POST-toggle store value.
+    /// Sequence: snapshot says visible=true → dispatch flipped
+    /// Checkbox to Unchecked → apply_event reads Unchecked → publish
+    /// `visible: false`.
+    #[test]
+    fn visibility_toggle_publishes_pending_with_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        // Selection that has a Transform component (we don't paint
+        // here, just exercise apply_event semantics).
+        hero.inspector_visibility = Some(InspectorVisibilityInfo {
+            entity_bits: 0xBABE_BEEF,
+            visible: true,
+        });
+        // Simulate the dispatch having toggled Checked → Unchecked.
+        if let Some(InteractiveState::Checkbox { value, .. }) =
+            hero.store.get_mut(ids::INSP_VISIBILITY_CHECK)
+        {
+            *value = crate::widget::CheckboxValue::Unchecked;
+        }
+        assert!(hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
+        let pending = hero.pending_visibility_edit.expect("pending populated");
+        assert_eq!(pending.entity_bits, 0xBABE_BEEF);
+        assert!(!pending.visible, "toggle should commit visible=false");
+    }
+
+    /// M14.D: Toggled without an `inspector_visibility` snapshot
+    /// (e.g. nothing selected) is a no-op — apply_event returns
+    /// false so the dispatcher keeps walking and `pending` stays
+    /// `None`.
+    #[test]
+    fn visibility_toggle_no_pending_without_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_visibility = None;
+        assert!(!hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
+        assert_eq!(hero.pending_visibility_edit, None);
     }
 
     /// Clicking the Trim Transparency action pill captures the

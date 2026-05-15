@@ -1,6 +1,6 @@
 //! Iso render adapter — diamond cells in 2:1 dimetric projection.
 
-use super::util::{polygon_to_path_world, stroke_path, world_bounds};
+use super::util::{polygon_to_path_world_with_origin, stroke_path, world_bounds};
 use crate::grid::GridView;
 use crate::grid_snap::state::IsoCfg;
 use ph2d_grid::GridMath;
@@ -17,12 +17,13 @@ pub fn paint(scene: &mut VectorScene, view: &GridView, color: Color, cfg: &IsoCf
         neighborhood: cfg.neighborhood,
     };
     let (bounds, _) = world_bounds(view);
+    let origin = cfg.origin;
 
     let corners = [
-        [bounds.left, bounds.bottom],
-        [bounds.right, bounds.bottom],
-        [bounds.right, bounds.top],
-        [bounds.left, bounds.top],
+        [bounds.left - origin[0], bounds.bottom - origin[1]],
+        [bounds.right - origin[0], bounds.bottom - origin[1]],
+        [bounds.right - origin[0], bounds.top - origin[1]],
+        [bounds.left - origin[0], bounds.top - origin[1]],
     ];
     let mut x_min = i32::MAX;
     let mut x_max = i32::MIN;
@@ -47,7 +48,7 @@ pub fn paint(scene: &mut VectorScene, view: &GridView, color: Color, cfg: &IsoCf
     for y in y_min..=y_max {
         for x in x_min..=x_max {
             grid.cell_to_world_vertices((x, y), &mut verts);
-            polygon_to_path_world(&mut path, &verts, &bounds, view);
+            polygon_to_path_world_with_origin(&mut path, &verts, origin, &bounds, view);
         }
     }
     stroke_path(scene, &path, 0.8, color);

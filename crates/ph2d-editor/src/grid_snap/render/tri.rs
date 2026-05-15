@@ -1,7 +1,7 @@
 //! Triangular render adapter — alternating up/down triangles tiling
 //! each row strip.
 
-use super::util::{polygon_to_path_world, stroke_path, world_bounds};
+use super::util::{polygon_to_path_world_with_origin, stroke_path, world_bounds};
 use crate::grid::GridView;
 use crate::grid_snap::state::TriCfg;
 use ph2d_grid::GridMath;
@@ -14,12 +14,13 @@ pub fn paint(scene: &mut VectorScene, view: &GridView, color: Color, cfg: &TriCf
     }
     let grid = TriGrid::new(cfg.edge_length, cfg.neighborhood);
     let (bounds, _) = world_bounds(view);
+    let origin = cfg.origin;
 
     let corners = [
-        [bounds.left, bounds.bottom],
-        [bounds.right, bounds.bottom],
-        [bounds.right, bounds.top],
-        [bounds.left, bounds.top],
+        [bounds.left - origin[0], bounds.bottom - origin[1]],
+        [bounds.right - origin[0], bounds.bottom - origin[1]],
+        [bounds.right - origin[0], bounds.top - origin[1]],
+        [bounds.left - origin[0], bounds.top - origin[1]],
     ];
     let mut k_min = i32::MAX;
     let mut k_max = i32::MIN;
@@ -44,7 +45,7 @@ pub fn paint(scene: &mut VectorScene, view: &GridView, color: Color, cfg: &TriCf
         for k in k_min..=k_max {
             let cell = TriCell::new(k, r);
             grid.cell_to_world_vertices(cell, &mut verts);
-            polygon_to_path_world(&mut path, &verts, &bounds, view);
+            polygon_to_path_world_with_origin(&mut path, &verts, origin, &bounds, view);
         }
     }
     stroke_path(scene, &path, 0.8, color);

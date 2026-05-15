@@ -57,6 +57,15 @@ pub const GS_CFG_VORONOI_LLOYD_ITERS: NodeId = NodeId(1036);
 pub const GS_CFG_VORONOI_RESEED: NodeId = NodeId(1037);
 pub const GS_CFG_CHUNKS_SIZE: NodeId = NodeId(1038);
 
+// ─── Universal per-kind extras (origin + subdivisions) ─────────
+/// World-space X offset of the active grid's (0, 0) anchor.
+pub const GS_CFG_ORIGIN_X: NodeId = NodeId(1039);
+/// World-space Y offset of the active grid's (0, 0) anchor.
+pub const GS_CFG_ORIGIN_Y: NodeId = NodeId(1040);
+/// Major-line spacing (Square / Chunks only — every Nth line drawn
+/// with a thicker stroke).
+pub const GS_CFG_SPACING_MAJOR: NodeId = NodeId(1041);
+
 // ─── Snap policy ───────────────────────────────────────────────
 pub const GS_SNAP_ENABLED: NodeId = NodeId(1060);
 pub const GS_SNAP_CENTER: NodeId = NodeId(1061);

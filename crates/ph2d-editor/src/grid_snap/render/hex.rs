@@ -1,7 +1,7 @@
 //! Hex render adapter — enumerates visible hex cells via the
 //! pointy/flat projection and emits each hexagon's 6 edges.
 
-use super::util::{polygon_to_path_world, stroke_path, world_bounds};
+use super::util::{polygon_to_path_world_with_origin, stroke_path, world_bounds};
 use crate::grid::GridView;
 use crate::grid_snap::state::HexCfg;
 use ph2d_grid::GridMath;
@@ -18,15 +18,17 @@ pub fn paint(scene: &mut VectorScene, view: &GridView, color: Color, cfg: &HexCf
         offset_default: cfg.offset_variant,
     };
     let (bounds, _) = world_bounds(view);
+    let origin = cfg.origin;
 
-    // Conservative axial-range bounds: take the AABB's 4 corners,
-    // convert each to axial, and expand by ±2 to catch hexes that
-    // straddle the boundary.
+    // Conservative axial-range bounds: subtract origin from the
+    // visible AABB corners so the math sees a grid anchored at
+    // (0, 0), then add origin back to each cell's vertices before
+    // projection.
     let corners = [
-        [bounds.left, bounds.bottom],
-        [bounds.right, bounds.bottom],
-        [bounds.right, bounds.top],
-        [bounds.left, bounds.top],
+        [bounds.left - origin[0], bounds.bottom - origin[1]],
+        [bounds.right - origin[0], bounds.bottom - origin[1]],
+        [bounds.right - origin[0], bounds.top - origin[1]],
+        [bounds.left - origin[0], bounds.top - origin[1]],
     ];
     let mut q_min = i32::MAX;
     let mut q_max = i32::MIN;
@@ -50,7 +52,7 @@ pub fn paint(scene: &mut VectorScene, view: &GridView, color: Color, cfg: &HexCf
         for q in q_min..=q_max {
             let cell = HexCell::new(q, r);
             grid.cell_to_world_vertices(cell, &mut verts);
-            polygon_to_path_world(&mut path, &verts, &bounds, view);
+            polygon_to_path_world_with_origin(&mut path, &verts, origin, &bounds, view);
         }
     }
     stroke_path(scene, &path, 0.8, color);

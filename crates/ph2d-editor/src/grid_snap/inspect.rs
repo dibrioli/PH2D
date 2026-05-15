@@ -13,10 +13,22 @@ use crate::paint::{paint_text, resolve};
 use crate::widget::{SectionHeader, paint_section_header};
 use crate::zones::Rect;
 use ph2d_grid::GridMath;
+use ph2d_grid::Vec2;
 use ph2d_grid::hex::{HexCell, axial_to_cube, axial_to_offset};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::VectorScene;
+
+/// Shift the probe pair into the active grid's local space by
+/// subtracting the kind's origin offset. The cell IDs displayed
+/// then reflect the snapped grid the user sees, not raw world.
+fn local_probes(state: &GridSnapState) -> (Vec2, Vec2) {
+    let o = state.active_origin();
+    (
+        [state.probe_a[0] - o[0], state.probe_a[1] - o[1]],
+        [state.probe_b[0] - o[0], state.probe_b[1] - o[1]],
+    )
+}
 
 const SECTION_HEADER_H: f32 = 22.0;
 const ROW_H: f32 = 22.0;
@@ -69,8 +81,9 @@ pub fn snapshot(state: &GridSnapState) -> InspectSnapshot {
 
 fn snapshot_square(state: &GridSnapState) -> InspectSnapshot {
     let g = state.make_square();
-    let a = g.world_to_cell(state.probe_a);
-    let b = g.world_to_cell(state.probe_b);
+    let (pa, pb) = local_probes(state);
+    let a = g.world_to_cell(pa);
+    let b = g.world_to_cell(pb);
     let mut buf = Vec::new();
     g.neighbors(a, &mut buf);
     let n = buf.len() as u32;
@@ -88,8 +101,9 @@ fn snapshot_square(state: &GridSnapState) -> InspectSnapshot {
 
 fn snapshot_hex(state: &GridSnapState) -> InspectSnapshot {
     let g = state.make_hex();
-    let a = g.world_to_cell(state.probe_a);
-    let b = g.world_to_cell(state.probe_b);
+    let (pa, pb) = local_probes(state);
+    let a = g.world_to_cell(pa);
+    let b = g.world_to_cell(pb);
     let a_cube = axial_to_cube(a);
     let a_offset = axial_to_offset(a, state.hex_cfg.offset_variant);
     let mut buf: Vec<HexCell> = Vec::new();
@@ -112,8 +126,9 @@ fn snapshot_hex(state: &GridSnapState) -> InspectSnapshot {
 
 fn snapshot_iso(state: &GridSnapState) -> InspectSnapshot {
     let g = state.make_iso();
-    let a = g.world_to_cell(state.probe_a);
-    let b = g.world_to_cell(state.probe_b);
+    let (pa, pb) = local_probes(state);
+    let a = g.world_to_cell(pa);
+    let b = g.world_to_cell(pb);
     let mut buf = Vec::new();
     g.neighbors(a, &mut buf);
     let n = buf.len() as u32;
@@ -130,8 +145,9 @@ fn snapshot_iso(state: &GridSnapState) -> InspectSnapshot {
 
 fn snapshot_staggered_square(state: &GridSnapState) -> InspectSnapshot {
     let g = state.make_staggered_square();
-    let a = g.world_to_cell(state.probe_a);
-    let b = g.world_to_cell(state.probe_b);
+    let (pa, pb) = local_probes(state);
+    let a = g.world_to_cell(pa);
+    let b = g.world_to_cell(pb);
     let mut buf = Vec::new();
     g.neighbors(a, &mut buf);
     let n = buf.len() as u32;
@@ -148,8 +164,9 @@ fn snapshot_staggered_square(state: &GridSnapState) -> InspectSnapshot {
 
 fn snapshot_staggered_hex(state: &GridSnapState) -> InspectSnapshot {
     let g = state.make_staggered_hex();
-    let a = g.world_to_cell(state.probe_a);
-    let b = g.world_to_cell(state.probe_b);
+    let (pa, pb) = local_probes(state);
+    let a = g.world_to_cell(pa);
+    let b = g.world_to_cell(pb);
     let mut buf = Vec::new();
     g.neighbors(a, &mut buf);
     let n = buf.len() as u32;
@@ -166,8 +183,9 @@ fn snapshot_staggered_hex(state: &GridSnapState) -> InspectSnapshot {
 
 fn snapshot_tri(state: &GridSnapState) -> InspectSnapshot {
     let g = state.make_tri();
-    let a = g.world_to_cell(state.probe_a);
-    let b = g.world_to_cell(state.probe_b);
+    let (pa, pb) = local_probes(state);
+    let a = g.world_to_cell(pa);
+    let b = g.world_to_cell(pb);
     let mut buf = Vec::new();
     g.neighbors(a, &mut buf);
     let n = buf.len() as u32;
@@ -189,8 +207,9 @@ fn snapshot_tri(state: &GridSnapState) -> InspectSnapshot {
 
 fn snapshot_chunks(state: &GridSnapState) -> InspectSnapshot {
     let g = state.make_chunks();
-    let a = g.world_to_cell(state.probe_a);
-    let b = g.world_to_cell(state.probe_b);
+    let (pa, pb) = local_probes(state);
+    let a = g.world_to_cell(pa);
+    let b = g.world_to_cell(pb);
     let mut buf = Vec::new();
     g.neighbors(a, &mut buf);
     let n = buf.len() as u32;

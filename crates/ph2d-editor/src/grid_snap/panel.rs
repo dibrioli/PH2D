@@ -174,6 +174,14 @@ pub fn populate(store: &mut WidgetStore) {
             ids::GS_CFG_CHUNKS_SIZE,
             defaults.chunks_cfg.chunk_size_cells as f64,
         ),
+        // Universal extras — values mirror the active kind's *Cfg
+        // on each frame (apply_event keeps store in sync).
+        (ids::GS_CFG_ORIGIN_X, 0.0),
+        (ids::GS_CFG_ORIGIN_Y, 0.0),
+        (
+            ids::GS_CFG_SPACING_MAJOR,
+            defaults.square_cfg.spacing_major as f64,
+        ),
     ];
     for (id, value) in number_specs {
         store.register(
@@ -503,6 +511,20 @@ fn paint_square_cfg(
         hit_index,
         store,
     );
+    y = paint_number_row_from_state(
+        "Major every",
+        ids::GS_CFG_SPACING_MAJOR,
+        state.square_cfg.spacing_major as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
     let label = match state.square_cfg.neighborhood {
         SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
         SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
@@ -546,6 +568,7 @@ fn paint_hex_cfg(
         hit_index,
         store,
     );
+    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
     let orient = match state.hex_cfg.orientation {
         HexOrientation::Pointy => "Orientation: Pointy \u{25B6}",
         HexOrientation::Flat => "Orientation: Flat \u{25B6}",
@@ -620,6 +643,7 @@ fn paint_iso_cfg(
         hit_index,
         store,
     );
+    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
     let label = match state.iso_cfg.neighborhood {
         SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
         SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
@@ -663,6 +687,7 @@ fn paint_staggered_sq_cfg(
         hit_index,
         store,
     );
+    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
     let parity = match state.staggered_square_cfg.parity {
         StaggerParity::OddRows => "Parity: Odd rows \u{25B6}",
         StaggerParity::EvenRows => "Parity: Even rows \u{25B6}",
@@ -723,6 +748,7 @@ fn paint_tri_cfg(
         hit_index,
         store,
     );
+    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
     let nb = match state.tri_cfg.neighborhood {
         TriNeighborhood::Edge3 => "Neighborhood: 3 \u{25B6}",
         TriNeighborhood::Vertex12 => "Neighborhood: 12 \u{25B6}",
@@ -878,6 +904,7 @@ fn paint_chunks_cfg(
         hit_index,
         store,
     );
+    y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
     let nb = match state.chunks_cfg.neighborhood {
         SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
         SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
@@ -915,6 +942,87 @@ fn paint_number_row(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) -> f32 {
+    let (state, value, buffer, caret, anchor) = read_number_input(store, id);
+    paint_number_row_value(
+        label,
+        id,
+        value,
+        Some(buffer),
+        caret,
+        anchor,
+        state,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    )
+}
+
+/// Like [`paint_number_row`] but takes an explicit displayed value
+/// (caller-supplied — typically read from state, not the store).
+/// Used for "universal" origin / spacing rows that mirror the
+/// ACTIVE kind's cfg field even though one NodeId is shared.
+#[allow(clippy::too_many_arguments)]
+fn paint_number_row_from_state(
+    label: &str,
+    id: crate::NodeId,
+    value: f64,
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) -> f32 {
+    let (state, _, buffer, caret, anchor) = read_number_input(store, id);
+    // Keep the live buffer for in-progress edits; otherwise display
+    // the state-supplied value (so switching kinds repaints with the
+    // new kind's origin).
+    let buffer_arg = if state == TextInputState::Focused {
+        Some(buffer)
+    } else {
+        None
+    };
+    paint_number_row_value(
+        label,
+        id,
+        value,
+        buffer_arg,
+        caret,
+        anchor,
+        state,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_number_row_value(
+    label: &str,
+    id: crate::NodeId,
+    value: f64,
+    buffer: Option<&str>,
+    caret: usize,
+    anchor: Option<usize>,
+    state: TextInputState,
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+) -> f32 {
     paint_text(
         text_system,
         scene,
@@ -926,11 +1034,10 @@ fn paint_number_row(
         resolve(ColorToken::Text1, theme),
     );
     let input_rect = Rect::new(x + LABEL_COL_W, y, w - LABEL_COL_W, ROW_H);
-    let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value).state(state);
     paint_number_input_with_buffer(
         &input,
-        Some(buffer),
+        buffer,
         caret,
         anchor,
         input_rect,
@@ -940,6 +1047,49 @@ fn paint_number_row(
     );
     hit_index.register(id, input_rect);
     y + ROW_H + ROW_GAP
+}
+
+/// Paint Origin X + Origin Y rows reading current values from
+/// `state.active_origin()`. Returns Y after the second row.
+#[allow(clippy::too_many_arguments)]
+fn paint_origin_rows(
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    let origin = state.active_origin();
+    let y = paint_number_row_from_state(
+        "Origin X",
+        ids::GS_CFG_ORIGIN_X,
+        origin[0] as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    paint_number_row_from_state(
+        "Origin Y",
+        ids::GS_CFG_ORIGIN_Y,
+        origin[1] as f64,
+        x,
+        w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    )
 }
 
 /// Paint a full-row cycling Button.
@@ -1237,7 +1387,49 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
         state.chunks_cfg.chunk_size_cells = (v as u32).max(1);
         return true;
     }
+    // Universal origin offset — applies to the active kind's cfg.
+    if id == ids::GS_CFG_ORIGIN_X {
+        write_active_origin_x(state, v_f32);
+        return true;
+    }
+    if id == ids::GS_CFG_ORIGIN_Y {
+        write_active_origin_y(state, v_f32);
+        return true;
+    }
+    // Major-line spacing — Square only (other kinds ignore the id).
+    if id == ids::GS_CFG_SPACING_MAJOR && state.kind == GridKind::Square {
+        state.square_cfg.spacing_major = v_f32.max(state.square_cfg.cell_size);
+        return true;
+    }
     false
+}
+
+fn write_active_origin_x(state: &mut GridSnapState, v: f32) {
+    match state.kind {
+        GridKind::Square => state.square_cfg.origin[0] = v,
+        GridKind::Hex => state.hex_cfg.origin[0] = v,
+        GridKind::Iso => state.iso_cfg.origin[0] = v,
+        GridKind::StaggeredSquare => state.staggered_square_cfg.origin[0] = v,
+        GridKind::StaggeredHex => state.staggered_hex_cfg.hex.origin[0] = v,
+        GridKind::Tri => state.tri_cfg.origin[0] = v,
+        GridKind::Chunks => state.chunks_cfg.origin[0] = v,
+        // Quadtree/Voronoi use `bounds: AABB` instead; origin is a
+        // no-op for them.
+        GridKind::Quadtree | GridKind::Voronoi => {}
+    }
+}
+
+fn write_active_origin_y(state: &mut GridSnapState, v: f32) {
+    match state.kind {
+        GridKind::Square => state.square_cfg.origin[1] = v,
+        GridKind::Hex => state.hex_cfg.origin[1] = v,
+        GridKind::Iso => state.iso_cfg.origin[1] = v,
+        GridKind::StaggeredSquare => state.staggered_square_cfg.origin[1] = v,
+        GridKind::StaggeredHex => state.staggered_hex_cfg.hex.origin[1] = v,
+        GridKind::Tri => state.tri_cfg.origin[1] = v,
+        GridKind::Chunks => state.chunks_cfg.origin[1] = v,
+        GridKind::Quadtree | GridKind::Voronoi => {}
+    }
 }
 
 fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {

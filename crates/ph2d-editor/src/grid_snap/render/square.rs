@@ -15,28 +15,73 @@ pub fn paint(scene: &mut VectorScene, view: &GridView, color: Color, cfg: &Squar
         return;
     }
     let (bounds, _ppm) = world_bounds(view);
+    let minor = cfg.cell_size;
+    let major = if cfg.spacing_major > minor {
+        cfg.spacing_major
+    } else {
+        minor
+    };
 
-    let mut path = BezPath::new();
-    build_lines(&mut path, &bounds, view, cfg.cell_size);
-    stroke_path(scene, &path, 0.8, color);
+    // Minor pass — skip lines that coincide with major so the major
+    // overpaint doesn't fight a duplicate stroke on the same pixel.
+    let mut minor_path = BezPath::new();
+    let skip = if major > minor { Some(major) } else { None };
+    build_lines(&mut minor_path, &bounds, view, minor, cfg.origin, skip);
+    stroke_path(scene, &minor_path, 0.6, color);
+
+    // Major pass — drawn over the minor lines with a heavier stroke.
+    // Skipped when spacing_major collapses to spacing_minor.
+    if major > minor {
+        let mut major_path = BezPath::new();
+        build_lines(&mut major_path, &bounds, view, major, cfg.origin, None);
+        stroke_path(scene, &major_path, 1.4, color);
+    }
 }
 
-fn build_lines(path: &mut BezPath, bounds: &WorldBounds, view: &GridView, spacing: f32) {
-    // Vertical lines (constant world X).
-    let first_v = (bounds.left / spacing).ceil() as i32;
-    let last_v = (bounds.right / spacing).floor() as i32;
+/// Emit vertical + horizontal lines at multiples of `spacing` plus
+/// the `origin` offset. When `skip_multiples_of` is `Some(major)`,
+/// any line whose world coord is itself a multiple of `major`
+/// (within a small tolerance) is omitted to avoid double-painting
+/// against a later major pass.
+fn build_lines(
+    path: &mut BezPath,
+    bounds: &WorldBounds,
+    view: &GridView,
+    spacing: f32,
+    origin: ph2d_grid::Vec2,
+    skip_multiples_of: Option<f32>,
+) {
+    // Vertical lines — constant world X = i * spacing + origin.x.
+    let first_v = ((bounds.left - origin[0]) / spacing).ceil() as i32;
+    let last_v = ((bounds.right - origin[0]) / spacing).floor() as i32;
     for i in first_v..=last_v {
-        let wx = i as f32 * spacing;
+        let wx = i as f32 * spacing + origin[0];
+        if let Some(major) = skip_multiples_of {
+            // Skip if `wx - origin` is a multiple of major (line
+            // coincides with a major-pass line). 1e-3 tolerance
+            // absorbs f32 round-trip jitter same as the canonical
+            // grid.rs uses.
+            let q = (wx - origin[0]) / major;
+            if (q.round() - q).abs() < 1e-3 {
+                continue;
+            }
+        }
         let top = world_to_screen([wx, bounds.top], bounds, view);
         let bot = world_to_screen([wx, bounds.bottom], bounds, view);
         path.move_to((top[0] as f64, top[1] as f64));
         path.line_to((bot[0] as f64, bot[1] as f64));
     }
-    // Horizontal lines (constant world Y).
-    let first_h = (bounds.bottom / spacing).ceil() as i32;
-    let last_h = (bounds.top / spacing).floor() as i32;
+    // Horizontal lines — constant world Y.
+    let first_h = ((bounds.bottom - origin[1]) / spacing).ceil() as i32;
+    let last_h = ((bounds.top - origin[1]) / spacing).floor() as i32;
     for j in first_h..=last_h {
-        let wy = j as f32 * spacing;
+        let wy = j as f32 * spacing + origin[1];
+        if let Some(major) = skip_multiples_of {
+            let q = (wy - origin[1]) / major;
+            if (q.round() - q).abs() < 1e-3 {
+                continue;
+            }
+        }
         let left = world_to_screen([bounds.left, wy], bounds, view);
         let right = world_to_screen([bounds.right, wy], bounds, view);
         path.move_to((left[0] as f64, left[1] as f64));

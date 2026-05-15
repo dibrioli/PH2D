@@ -62,13 +62,32 @@ pub fn polygon_to_path_world(
     bounds: &WorldBounds,
     view: &GridView,
 ) {
+    polygon_to_path_world_with_origin(path, verts, [0.0, 0.0], bounds, view);
+}
+
+/// Like [`polygon_to_path_world`] but shifts every vertex by
+/// `origin` before projection. Lets cell-based render adapters
+/// keep using local-space `cell_to_world_vertices` from
+/// `ph2d_grid` and apply the editor-side origin offset at the
+/// boundary.
+pub fn polygon_to_path_world_with_origin(
+    path: &mut BezPath,
+    verts: &[Vec2],
+    origin: Vec2,
+    bounds: &WorldBounds,
+    view: &GridView,
+) {
     if verts.len() < 2 {
         return;
     }
-    let p0 = world_to_screen(verts[0], bounds, view);
+    let p0 = world_to_screen(
+        [verts[0][0] + origin[0], verts[0][1] + origin[1]],
+        bounds,
+        view,
+    );
     path.move_to((p0[0] as f64, p0[1] as f64));
     for v in &verts[1..] {
-        let p = world_to_screen(*v, bounds, view);
+        let p = world_to_screen([v[0] + origin[0], v[1] + origin[1]], bounds, view);
         path.line_to((p[0] as f64, p[1] as f64));
     }
     path.close_path();

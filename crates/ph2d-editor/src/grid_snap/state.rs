@@ -72,12 +72,23 @@ impl GridKind {
 pub struct SquareCfg {
     pub cell_size: f32,
     pub neighborhood: SquareNeighborhood,
+    /// World-space offset of cell (0, 0)'s corner. Lets the user
+    /// align the grid to existing art instead of being anchored to
+    /// world (0, 0). Matches Tiled / Aseprite / Godot conventions.
+    pub origin: Vec2,
+    /// Spacing in world units between **major** grid lines. Minor
+    /// lines are at `cell_size`. Default = `cell_size * 5` (Photoshop
+    /// + Blender canonical "every 5 minor". Set to `cell_size` to
+    /// disable the major/minor distinction.
+    pub spacing_major: f32,
 }
 impl Default for SquareCfg {
     fn default() -> Self {
         Self {
             cell_size: 1.0,
             neighborhood: SquareNeighborhood::Von4,
+            origin: [0.0, 0.0],
+            spacing_major: 5.0,
         }
     }
 }
@@ -87,6 +98,8 @@ pub struct HexCfg {
     pub cell_size: f32,
     pub orientation: HexOrientation,
     pub offset_variant: HexOffset,
+    /// World-space offset of the hex grid (axial (0, 0) center).
+    pub origin: Vec2,
 }
 impl Default for HexCfg {
     fn default() -> Self {
@@ -94,6 +107,7 @@ impl Default for HexCfg {
             cell_size: 1.0,
             orientation: HexOrientation::Pointy,
             offset_variant: HexOffset::OddR,
+            origin: [0.0, 0.0],
         }
     }
 }
@@ -103,6 +117,8 @@ pub struct IsoCfg {
     pub tile_w: f32,
     pub tile_h: f32,
     pub neighborhood: SquareNeighborhood,
+    /// World-space offset of cell (0, 0)'s top corner.
+    pub origin: Vec2,
 }
 impl Default for IsoCfg {
     fn default() -> Self {
@@ -110,6 +126,7 @@ impl Default for IsoCfg {
             tile_w: 2.0,
             tile_h: 1.0,
             neighborhood: SquareNeighborhood::Von4,
+            origin: [0.0, 0.0],
         }
     }
 }
@@ -120,6 +137,7 @@ pub struct StaggeredSquareCfg {
     pub cell_h: f32,
     pub parity: StaggerParity,
     pub neighborhood: SquareNeighborhood,
+    pub origin: Vec2,
 }
 impl Default for StaggeredSquareCfg {
     fn default() -> Self {
@@ -128,6 +146,7 @@ impl Default for StaggeredSquareCfg {
             cell_h: 1.0,
             parity: StaggerParity::OddRows,
             neighborhood: SquareNeighborhood::Von4,
+            origin: [0.0, 0.0],
         }
     }
 }
@@ -141,12 +160,14 @@ pub struct StaggeredHexCfg {
 pub struct TriCfg {
     pub edge_length: f32,
     pub neighborhood: TriNeighborhood,
+    pub origin: Vec2,
 }
 impl Default for TriCfg {
     fn default() -> Self {
         Self {
             edge_length: 1.0,
             neighborhood: TriNeighborhood::Edge3,
+            origin: [0.0, 0.0],
         }
     }
 }
@@ -196,6 +217,7 @@ pub struct ChunksCfg {
     pub cell_size: f32,
     pub chunk_size_cells: u32,
     pub neighborhood: SquareNeighborhood,
+    pub origin: Vec2,
 }
 impl Default for ChunksCfg {
     fn default() -> Self {
@@ -203,6 +225,7 @@ impl Default for ChunksCfg {
             cell_size: 1.0,
             chunk_size_cells: 8,
             neighborhood: SquareNeighborhood::Von4,
+            origin: [0.0, 0.0],
         }
     }
 }
@@ -324,38 +347,110 @@ impl GridSnapState {
         )
     }
 
+    /// World-space origin offset of the active kind. `[0, 0]` for
+    /// kinds without an explicit origin (Quadtree/Voronoi use
+    /// `bounds: AABB` instead).
+    pub fn active_origin(&self) -> Vec2 {
+        match self.kind {
+            GridKind::Square => self.square_cfg.origin,
+            GridKind::Hex => self.hex_cfg.origin,
+            GridKind::Iso => self.iso_cfg.origin,
+            GridKind::StaggeredSquare => self.staggered_square_cfg.origin,
+            GridKind::StaggeredHex => self.staggered_hex_cfg.hex.origin,
+            GridKind::Tri => self.tri_cfg.origin,
+            GridKind::Chunks => self.chunks_cfg.origin,
+            GridKind::Quadtree | GridKind::Voronoi => [0.0, 0.0],
+        }
+    }
+
     /// Snap `world` per the active grid kind + snap target. Returns
     /// `world` unchanged when snap is disabled or the active kind
     /// has no snap-target (Quadtree, Voronoi).
+    ///
+    /// Origin offset is applied at the boundary: world coords go
+    /// through `(world - origin)` before the math (so the math sees
+    /// a grid anchored at (0, 0)), then `+ origin` is added back to
+    /// the snapped result.
     pub fn snap_world(&mut self, world: Vec2) -> Vec2 {
         if !self.snap_enabled {
             return world;
         }
         let target = self.snap_target;
-        match self.kind {
-            GridKind::Square => gsw(&self.make_square(), world, target, &mut self.scratch),
-            GridKind::Hex => gsw(&self.make_hex(), world, target, &mut self.scratch),
-            GridKind::Iso => gsw(&self.make_iso(), world, target, &mut self.scratch),
+        let origin = self.active_origin();
+        let local = [world[0] - origin[0], world[1] - origin[1]];
+        let snapped_local = match self.kind {
+            GridKind::Square => gsw(&self.make_square(), local, target, &mut self.scratch),
+            GridKind::Hex => gsw(&self.make_hex(), local, target, &mut self.scratch),
+            GridKind::Iso => gsw(&self.make_iso(), local, target, &mut self.scratch),
             GridKind::StaggeredSquare => gsw(
                 &self.make_staggered_square(),
-                world,
+                local,
                 target,
                 &mut self.scratch,
             ),
             GridKind::StaggeredHex => {
-                gsw(&self.make_staggered_hex(), world, target, &mut self.scratch)
+                gsw(&self.make_staggered_hex(), local, target, &mut self.scratch)
             }
-            GridKind::Tri => gsw(&self.make_tri(), world, target, &mut self.scratch),
-            GridKind::Chunks => gsw(&self.make_chunks(), world, target, &mut self.scratch),
+            GridKind::Tri => gsw(&self.make_tri(), local, target, &mut self.scratch),
+            GridKind::Chunks => gsw(&self.make_chunks(), local, target, &mut self.scratch),
             // Non-uniform cells have no canonical snap target.
-            GridKind::Quadtree | GridKind::Voronoi => world,
-        }
+            GridKind::Quadtree | GridKind::Voronoi => return world,
+        };
+        [snapped_local[0] + origin[0], snapped_local[1] + origin[1]]
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn active_origin_dispatches_per_kind() {
+        let mut s = GridSnapState::default();
+        s.square_cfg.origin = [1.0, 2.0];
+        s.hex_cfg.origin = [3.0, 4.0];
+        assert_eq!(s.active_origin(), [1.0, 2.0]);
+        s.kind = GridKind::Hex;
+        assert_eq!(s.active_origin(), [3.0, 4.0]);
+        // Quadtree / Voronoi have no origin — always [0, 0].
+        s.kind = GridKind::Quadtree;
+        assert_eq!(s.active_origin(), [0.0, 0.0]);
+    }
+
+    #[test]
+    fn snap_world_respects_origin_offset() {
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            snap_target: SnapTarget::Center,
+            ..Default::default()
+        };
+        // Default cell_size=1.0, origin=[0,0]. Center of cell (0,0)
+        // is (0.5, 0.5).
+        assert_eq!(s.snap_world([0.1, 0.1]), [0.5, 0.5]);
+        // Shift origin by (10, 20). Same world point [0.1, 0.1]
+        // sits 9.9 units LEFT and 19.9 units DOWN of cell (0,0) of
+        // the shifted grid → cell (-10, -20) → center
+        // (-9.5 + 10, -19.5 + 20) = (0.5, 0.5)? Wait that's the
+        // SAME center because the world point shifts relative to a
+        // grid moved equally. Let me reconsider: snap pulls the
+        // world point to a cell center of the shifted grid. With
+        // origin = (10, 20), cell (0, 0) center is at
+        // world (10.5, 20.5). For input [0.1, 0.1], the nearest
+        // cell center of the shifted grid is one of:
+        //   ..., (-9.5, -19.5), (0.5, -19.5), ... (... etc)
+        // i.e. (k + 0.5 + 10, j + 0.5 + 20) — closest to [0.1, 0.1]
+        // is k=-10, j=-20 → (0.5, 0.5). So same answer as no offset
+        // when world point falls exactly on an integer-cell pattern.
+        // Use a half-integer origin to make the test less degenerate.
+        s.square_cfg.origin = [0.3, 0.7];
+        // Input [0.1, 0.1] → local [-0.2, -0.6] → cell (-1, -1) →
+        // local center (-0.5, -0.5) → world center (-0.2, 0.2).
+        let snapped = s.snap_world([0.1, 0.1]);
+        assert!(
+            (snapped[0] - -0.2).abs() < 1e-5 && (snapped[1] - 0.2).abs() < 1e-5,
+            "expected [-0.2, 0.2], got {snapped:?}"
+        );
+    }
 
     #[test]
     fn default_state_snap_is_off_so_passthrough() {

@@ -1446,9 +1446,16 @@ impl App {
             // next snapshot push fires against the current selection.
             if hero.pending_activate_bgremoval {
                 hero.pending_activate_bgremoval = false;
-                if tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
+                let switched = tools.set_active(&ph2d_editor::ToolId::new("bgremoval"));
+                eprintln!(
+                    "[bgremoval] activate-pill drained · set_active={switched} · \
+                     active_after={:?}",
+                    tools.active().map(|t| t.id())
+                );
+                if switched {
                     self.last_bgremoval_pushed_entity = None;
                     self.title_dirty = true;
+                    toasts.push(Toast::info("Tool → Bg Removal"));
                 }
             }
             // Snapshot push for the active BgRemovalTool. The tool needs

@@ -6,8 +6,16 @@ rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
 authors.workspace = true
+build = "build.rs"
 
 [lib]
+
+# Wave 2 PR 11.2: `build.rs` reads `docs/design/icons/*.svg` (89 SVGs,
+# Lucide-derived) and generates `OUT_DIR/icons_generated.rs` with
+# per-icon `IconCmd` arrays + slug→cmds lookup table. Eliminates 715
+# LOC of manually-ported match arms in `icons.rs::cmds()`.
+
+[build-dependencies]
 
 [dependencies]
 # ph2d-tool-registry — convention-by-discovery infrastructure

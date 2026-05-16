@@ -9,8 +9,33 @@
 //! Source SVGs are Lucide-derived (ISC license). They use
 //! `fill="none" stroke="currentColor" stroke-width="1.5"` —
 //! we replicate that contract here.
+//!
+//! **Wave 2 PR 11.2: command lists are codegen'd by `build.rs` from
+//! `docs/design/icons/*.svg`.** The 715-LOC manually-ported match
+//! arms that previously lived here are gone — values flow from
+//! canonical SVGs at every `cargo build`. Adding an icon: drop a SVG
+//! in `docs/design/icons/<slug>.svg`, add the matching CamelCase
+//! variant to `enum IconId` below in alphabetical order (matches the
+//! sort `build.rs` applies). Order check enforced by test.
 
 use ph2d_vector::BezPath;
+
+/// Codegen'd from `docs/design/icons/*.svg`. Exposed under
+/// `pub(crate)` because consumers in this crate may want the slug
+/// lookup; runtime API is the `IconId`/`cmds()` pair.
+///
+/// `excessive_precision` allow: build.rs emits f32 literals padded to
+/// 6 decimal places for consistent diff output. Clippy flags exact
+/// representations like `12.010000` — purely cosmetic, hence allowed
+/// only inside this codegen'd module.
+///
+/// `dead_code` allow: `lookup_cmds` + `ALL_ICON_SLUGS` are exported
+/// for future chrome derivation (PR 11.4); `cmds()` consumes only
+/// `ICON_CMDS_BY_ID` for now.
+#[allow(clippy::excessive_precision, dead_code)]
+pub(crate) mod icons_generated {
+    include!(concat!(env!("OUT_DIR"), "/icons_generated.rs"));
+}
 
 /// Compact representation of one drawing command in an icon.
 ///
@@ -31,15 +56,19 @@ pub enum IconCmd {
     Rect(f32, f32, f32, f32, f32),
 }
 
-/// All 89 glyphs in the canonical icon set.
+/// All 100 glyphs in the canonical icon set.
 ///
-/// Names mirror the source SVG filenames (kebab-case → CamelCase).
-/// Order is alphabetical for grep-friendliness.
+/// Variants declared in **alphabetical order by kebab-case slug**
+/// (matching `docs/design/icons/*.svg` filenames sorted). Order is
+/// load-bearing: `cmds()` and `slug()` index into codegen'd tables
+/// by `self as usize`, so reorder breaks every icon lookup silently.
+/// `enum_order_matches_svgs` test pins the contract.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum IconId {
     Add,
     Asset,
     Audio,
+    BgRemoval,
     Bolt,
     Bug,
     Build,
@@ -63,18 +92,14 @@ pub enum IconId {
     Erase,
     Error,
     Export,
-    EyePencil,
-    /// Lucide `eye` (M14.6A hierarchy visibility toggle, ON state).
     Eye,
-    /// Lucide `eye-closed` (M14.6A hierarchy visibility toggle, OFF state).
     EyeClosed,
+    EyePencil,
     File,
     Folder,
     Fps,
     Gizmo,
     Grid,
-    /// Grid + cog overlay — TopBar entry-point for the Grid Settings
-    /// floating panel (grid-snap subsystem).
     GridSettings,
     Help,
     Hidden,
@@ -87,19 +112,13 @@ pub enum IconId {
     Kbd,
     Layer,
     Layers,
-    /// "H" inside a circle — Show Hierarchy panel toggle.
     LetterH,
-    /// "I" inside a circle — Show Inspector panel toggle.
     LetterI,
     Light,
     Link,
     Lock,
-    Material,
-    /// Lucide `square.svg` — single rounded rect 18×18 at (3,3) r=2.
-    /// Used by the Image Tools row's Make Square action; algorithm in
-    /// `tools/make_square/algorithm.rs`. Mirrors [`Self::TrimTransparency`]
-    /// as the canonical icon for the action's chrome.
     MakeSquare,
+    Material,
     Maximize,
     Menu,
     Minimize,
@@ -140,12 +159,6 @@ pub enum IconId {
     Transform,
     Trash,
     TrimTransparency,
-    /// Lucide `eraser` glyph — drives the LeftRail chip / TopBar
-    /// activator for the Background Removal stateful Tool.
-    /// Implementation in `tools/bgremoval/icon.rs` (mirror path for
-    /// the Vello-vector consumers); the icon-grid `cmds()` path
-    /// below is the canonical SVG used by `paint_icon`.
-    BgRemoval,
     Undo,
     Unlink,
     Unlock,
@@ -155,469 +168,23 @@ pub enum IconId {
 }
 
 impl IconId {
-    /// Drawing commands for this icon, in paint order.
+    /// Drawing commands for this icon, in paint order. Looked up in
+    /// the codegen'd `ICON_CMDS_BY_ID` table by enum discriminant.
+    ///
+    /// **Invariant:** the variants in `enum IconId` must be declared
+    /// in the SAME alphabetical order as `docs/design/icons/*.svg`
+    /// filenames sort (which is the order `build.rs` emits). The
+    /// `enum_order_matches_svgs` test below pins that contract — if
+    /// you add a variant out of order, that test fails.
     pub fn cmds(self) -> &'static [IconCmd] {
-        match self {
-            Self::Add => &[IconCmd::Path("M12 5v14M5 12h14")],
-            Self::Asset => &[
-                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0),
-                IconCmd::Path("M3 14l4-4 4 4 6-6 4 4"),
-            ],
-            Self::Audio => &[
-                IconCmd::Path("M9 18V5l12-2v13"),
-                IconCmd::Circle(6.0, 18.0, 3.0),
-                IconCmd::Circle(18.0, 16.0, 3.0),
-            ],
-            Self::Bolt => &[IconCmd::Path("M13 2L3 14h9l-1 8 10-12h-9l1-8z")],
-            Self::Bug => &[
-                IconCmd::Rect(8.0, 6.0, 8.0, 14.0, 4.0),
-                IconCmd::Path("M19 7l-3 2M5 7l3 2M19 13h-3M5 13h3M19 19l-3-2M5 19l3-2M12 2v4"),
-            ],
-            Self::Build => &[
-                IconCmd::Path("M14.7 6.3a4 4 0 0 1 5.6 5.6L11 21H3v-8z"),
-                IconCmd::Path("M13.3 7.7l3 3"),
-            ],
-            Self::Camera => &[
-                IconCmd::Path(
-                    "M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z",
-                ),
-                IconCmd::Circle(12.0, 13.0, 4.0),
-            ],
-            Self::Check => &[IconCmd::Polyline("20 6 9 17 4 12")],
-            Self::ChevronDown => &[IconCmd::Polyline("6 9 12 15 18 9")],
-            Self::ChevronLeft => &[IconCmd::Polyline("15 18 9 12 15 6")],
-            Self::ChevronRight => &[IconCmd::Polyline("9 18 15 12 9 6")],
-            Self::ChevronUp => &[IconCmd::Polyline("18 15 12 9 6 15")],
-            Self::Close => &[
-                IconCmd::Line(18.0, 6.0, 6.0, 18.0),
-                IconCmd::Line(6.0, 6.0, 18.0, 18.0),
-            ],
-            Self::Cmd => &[IconCmd::Path(
-                "M6 9a3 3 0 1 1 3-3v12a3 3 0 1 1-3-3h12a3 3 0 1 1-3 3V6a3 3 0 1 1 3 3z",
-            )],
-            Self::Collider => &[IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0)],
-            Self::Color => &[
-                IconCmd::Circle(13.5, 6.5, 2.5),
-                IconCmd::Circle(17.5, 10.5, 2.5),
-                IconCmd::Circle(8.5, 7.5, 2.5),
-                IconCmd::Circle(6.5, 12.5, 2.5),
-                IconCmd::Path(
-                    "M12 2a10 10 0 1 0 0 20 1.5 1.5 0 0 0 1-2.6 1.5 1.5 0 0 1 1-2.6h2.5a4.5 4.5 0 0 0 4.5-4.5A10 10 0 0 0 12 2z",
-                ),
-            ],
-            Self::Command => &[IconCmd::Path(
-                "M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z",
-            )],
-            Self::Console => &[IconCmd::Path("M4 17l6-6-6-6M12 19h8")],
-            Self::Copy => &[
-                IconCmd::Rect(9.0, 9.0, 13.0, 13.0, 2.0),
-                IconCmd::Path("M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"),
-            ],
-            Self::Cube => &[IconCmd::Path(
-                "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z",
-            )],
-            Self::Database => &[
-                IconCmd::Path("M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"),
-                IconCmd::Path("M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"),
-            ],
-            Self::Delete => &[
-                IconCmd::Polyline("3 6 5 6 21 6"),
-                IconCmd::Path(
-                    "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2",
-                ),
-            ],
-            Self::Duplicate => &[
-                IconCmd::Rect(8.0, 8.0, 13.0, 13.0, 2.0),
-                IconCmd::Path("M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"),
-            ],
-            Self::Erase => &[
-                IconCmd::Path(
-                    "M21 21H8l-5-5a2 2 0 0 1 0-2.8L13.6 2.6a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L11 21",
-                ),
-                IconCmd::Path("M9 11l6 6"),
-            ],
-            Self::Error => &[
-                IconCmd::Circle(12.0, 12.0, 10.0),
-                IconCmd::Line(15.0, 9.0, 9.0, 15.0),
-                IconCmd::Line(9.0, 9.0, 15.0, 15.0),
-            ],
-            Self::Export => &[
-                IconCmd::Path("M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"),
-                IconCmd::Path("M7 10l5-5 5 5"),
-                IconCmd::Line(12.0, 5.0, 12.0, 15.0),
-            ],
-            Self::EyePencil => &[
-                IconCmd::Path("M12 19l7-7 3 3-7 7H12v-3z"),
-                IconCmd::Path("M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"),
-                IconCmd::Path("M2 2l7.6 7.6"),
-                IconCmd::Circle(11.0, 11.0, 2.0),
-            ],
-            // Lucide `eye.svg` — elliptical eye outline + pupil.
-            Self::Eye => &[
-                IconCmd::Path(
-                    "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0",
-                ),
-                IconCmd::Circle(12.0, 12.0, 3.0),
-            ],
-            // Lucide `eye-closed.svg` — four lash-rays + eyelid arc.
-            Self::EyeClosed => &[
-                IconCmd::Path("M15 18l-.722-3.25"),
-                IconCmd::Path("M2 8a10.645 10.645 0 0 0 20 0"),
-                IconCmd::Path("M20 15l-1.726-2.05"),
-                IconCmd::Path("M4 15l1.726-2.05"),
-                IconCmd::Path("M9 18l.722-3.25"),
-            ],
-            Self::File => &[
-                IconCmd::Path("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"),
-                IconCmd::Polyline("14 2 14 8 20 8"),
-            ],
-            Self::Folder => &[IconCmd::Path(
-                "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z",
-            )],
-            Self::Fps => &[IconCmd::Polyline("22 12 18 12 15 21 9 3 6 12 2 12")],
-            Self::Gizmo => &[
-                IconCmd::Path("M12 12L4 4M12 12l8-8M12 12L4 20M12 12l8 8"),
-                IconCmd::Circle(12.0, 12.0, 2.0),
-            ],
-            Self::Grid => &[
-                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 1.0),
-                IconCmd::Path("M3 9h18M3 15h18M9 3v18M15 3v18"),
-            ],
-            // Grid quadrants in a 2×2 layout with a central cog —
-            // signals "configure the grid". Lucide-derived strokes.
-            Self::GridSettings => &[
-                IconCmd::Rect(3.0, 3.0, 6.0, 6.0, 1.0),
-                IconCmd::Rect(15.0, 3.0, 6.0, 6.0, 1.0),
-                IconCmd::Rect(3.0, 15.0, 6.0, 6.0, 1.0),
-                IconCmd::Rect(15.0, 15.0, 6.0, 6.0, 1.0),
-                IconCmd::Circle(12.0, 12.0, 2.0),
-                IconCmd::Path("M12 9v-1.5M12 16.5v-1.5M9 12h-1.5M16.5 12h-1.5"),
-            ],
-            Self::Help => &[
-                IconCmd::Circle(12.0, 12.0, 10.0),
-                IconCmd::Path("M9.1 9a3 3 0 1 1 5.8 1c0 2-3 3-3 3"),
-                IconCmd::Line(12.0, 17.0, 12.01, 17.0),
-            ],
-            Self::Hidden => &[
-                IconCmd::Path(
-                    "M17.9 17.9A11 11 0 0 1 12 20c-7 0-11-8-11-8a20 20 0 0 1 5.1-5.9M9.9 5A11 11 0 0 1 12 4c7 0 11 8 11 8a20 20 0 0 1-3.2 4.2M14.1 14.1a3 3 0 1 1-4.2-4.2",
-                ),
-                IconCmd::Line(1.0, 1.0, 23.0, 23.0),
-            ],
-            // Lucide `folder-tree` — two folder glyphs hanging off
-            // an L-shaped tree spine. Reads as "file/scene hierarchy"
-            // far more naturally than the LetterH-in-a-circle it
-            // replaces (circles at icon scale produce visible polygon
-            // facets; the Lucide path is all straight + arc segments
-            // that stroke crisply).
-            Self::Hierarchy => &[
-                IconCmd::Path(
-                    "M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z",
-                ),
-                IconCmd::Path(
-                    "M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z",
-                ),
-                IconCmd::Path("M3 5a2 2 0 0 0 2 2h3"),
-                IconCmd::Path("M3 3v13a2 2 0 0 0 2 2h3"),
-            ],
-            Self::History => &[
-                IconCmd::Path("M3 3v5h5"),
-                IconCmd::Path("M3.05 13A9 9 0 1 0 6 5.3L3 8"),
-                IconCmd::Path("M12 7v5l4 2"),
-            ],
-            Self::HotReload => &[IconCmd::Path(
-                "M14.5 5l4 4M3 21l4.5-1L20 7.5 16.5 4 4 16.5 3 21z",
-            )],
-            // Lucide `image.svg` — rounded frame + sun (small circle) +
-            // mountain path. Used by the TopBar Image Tools toggle cluster.
-            Self::Image => &[
-                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0),
-                IconCmd::Circle(9.0, 9.0, 2.0),
-                IconCmd::Path("m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"),
-            ],
-            Self::Info => &[
-                IconCmd::Circle(12.0, 12.0, 10.0),
-                IconCmd::Line(12.0, 16.0, 12.0, 12.0),
-                IconCmd::Line(12.0, 8.0, 12.01, 8.0),
-            ],
-            // Lucide `inspection-panel` — a rounded panel with a dot
-            // in each corner. Reads as "panel of inspectable cells"
-            // (Lucide's exact metaphor). Replaces a search-magnifier
-            // glyph that's a poor fit for the Inspector pane. Dots
-            // are zero-length strokes (`h.01`) that rely on round
-            // caps to render as circles — kurbo's `Stroke::default()`
-            // is already round, so this matches Lucide's intent.
-            Self::Inspector => &[
-                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0),
-                IconCmd::Path("M7 7h.01"),
-                IconCmd::Path("M17 7h.01"),
-                IconCmd::Path("M7 17h.01"),
-                IconCmd::Path("M17 17h.01"),
-            ],
-            Self::Kbd => &[
-                IconCmd::Rect(2.0, 6.0, 20.0, 12.0, 2.0),
-                IconCmd::Path("M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"),
-            ],
-            Self::Layer => &[
-                IconCmd::Path("M12 2L2 7l10 5 10-5z"),
-                IconCmd::Path("M2 17l10 5 10-5M2 12l10 5 10-5"),
-            ],
-            Self::Layers => &[
-                IconCmd::Path("M12 2L2 7l10 5 10-5-10-5z"),
-                IconCmd::Path("M2 17l10 5 10-5M2 12l10 5 10-5"),
-            ],
-            // Letter "H" inside a circle — Show Hierarchy toggle.
-            // Inspired by emojione-monotone/letter-h.svg but redrawn
-            // in our stroke-based icon grammar (24x24 viewBox).
-            Self::LetterH => &[
-                IconCmd::Circle(12.0, 12.0, 10.0),
-                IconCmd::Path("M8 6 V 18 M16 6 V 18 M8 12 H 16"),
-            ],
-            // Letter "I" inside a circle — Show Inspector toggle.
-            Self::LetterI => &[
-                IconCmd::Circle(12.0, 12.0, 10.0),
-                IconCmd::Path("M9 6 H 15 M12 6 V 18 M9 18 H 15"),
-            ],
-            Self::Light => &[IconCmd::Path(
-                "M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z",
-            )],
-            Self::Link => &[
-                IconCmd::Path("M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"),
-                IconCmd::Path("M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"),
-            ],
-            Self::Lock => &[
-                IconCmd::Rect(3.0, 11.0, 18.0, 11.0, 2.0),
-                IconCmd::Path("M7 11V7a5 5 0 0 1 10 0v4"),
-            ],
-            Self::Material => &[
-                IconCmd::Circle(12.0, 12.0, 9.0),
-                IconCmd::Path("M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"),
-            ],
-            // Lucide `square.svg` — single rounded rect 18×18 at (3,3),
-            // corner radius 2. Matches the agent's `square_bezpath()`
-            // glyph in `tools/make_square/icon.rs` (different abstraction
-            // — `IconCmd` for chrome iconography, `BezPath` for direct
-            // consumers).
-            Self::MakeSquare => &[IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0)],
-            Self::Maximize => &[IconCmd::Path(
-                "M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3",
-            )],
-            Self::Menu => &[
-                IconCmd::Line(3.0, 6.0, 21.0, 6.0),
-                IconCmd::Line(3.0, 12.0, 21.0, 12.0),
-                IconCmd::Line(3.0, 18.0, 21.0, 18.0),
-            ],
-            Self::Minimize => &[IconCmd::Path(
-                "M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3",
-            )],
-            Self::Minus => &[IconCmd::Path("M5 12h14")],
-            Self::Modify => &[
-                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 3.0),
-                IconCmd::Circle(12.0, 12.0, 4.0),
-            ],
-            Self::More => &[
-                IconCmd::Circle(5.0, 12.0, 1.5),
-                IconCmd::Circle(12.0, 12.0, 1.5),
-                IconCmd::Circle(19.0, 12.0, 1.5),
-            ],
-            Self::MoreHorizontal => &[
-                IconCmd::Circle(12.0, 12.0, 1.0),
-                IconCmd::Circle(19.0, 12.0, 1.0),
-                IconCmd::Circle(5.0, 12.0, 1.0),
-            ],
-            Self::MoreVertical => &[
-                IconCmd::Circle(12.0, 12.0, 1.0),
-                IconCmd::Circle(12.0, 5.0, 1.0),
-                IconCmd::Circle(12.0, 19.0, 1.0),
-            ],
-            // Lucide `folder-open` — folder with the front flap lifted.
-            Self::Open => &[IconCmd::Path(
-                "M6 14 L 7.5 11.1 A 2 2 0 0 1 9.24 10 H 20 A 2 2 0 0 1 21.94 12.5 L 20.4 18.5 A 2 2 0 0 1 18.45 20 H 4 A 2 2 0 0 1 2 18 V 5 A 2 2 0 0 1 4 3 H 7.9 A 2 2 0 0 1 9.59 3.9 L 10.4 5.1 A 2 2 0 0 0 12.07 6 H 18 A 2 2 0 0 1 20 8 V 10",
-            )],
-            Self::Palette => &[
-                // Lucide palette.svg — outline + 4 dots for the paint
-                // wells. Used by the TopBar Widget Gallery button.
-                IconCmd::Path(
-                    "M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z",
-                ),
-                IconCmd::Circle(13.5, 6.5, 0.6),
-                IconCmd::Circle(17.5, 10.5, 0.6),
-                IconCmd::Circle(6.5, 12.5, 0.6),
-                IconCmd::Circle(8.5, 7.5, 0.6),
-            ],
-            Self::Pan => &[
-                IconCmd::Path("M9 11V5a2 2 0 1 1 4 0v6"),
-                IconCmd::Path("M13 11V4a2 2 0 1 1 4 0v8"),
-                IconCmd::Path(
-                    "M17 12V7a2 2 0 1 1 4 0v9a6 6 0 0 1-6 6h-2a8 8 0 0 1-8-8v-3a2 2 0 1 1 4 0",
-                ),
-            ],
-            Self::Particle => &[
-                IconCmd::Circle(12.0, 12.0, 1.0),
-                IconCmd::Circle(6.0, 6.0, 1.5),
-                IconCmd::Circle(18.0, 6.0, 1.0),
-                IconCmd::Circle(6.0, 18.0, 1.0),
-                IconCmd::Circle(18.0, 18.0, 1.5),
-                IconCmd::Circle(20.0, 12.0, 1.0),
-                IconCmd::Circle(4.0, 12.0, 1.0),
-            ],
-            Self::Pause => &[
-                IconCmd::Rect(6.0, 4.0, 4.0, 16.0, 0.0),
-                IconCmd::Rect(14.0, 4.0, 4.0, 16.0, 0.0),
-            ],
-            Self::Pin => &[IconCmd::Path("M12 2v8M12 22v-4M5 9l7-7 7 7M9 18h6")],
-            Self::Pivot => &[
-                IconCmd::Circle(12.0, 12.0, 2.0),
-                IconCmd::Path("M12 2v6M12 16v6M2 12h6M16 12h6"),
-            ],
-            Self::Place => &[
-                IconCmd::Circle(12.0, 12.0, 3.0),
-                IconCmd::Path(
-                    "M12 2v4M12 18v4M2 12h4M18 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8",
-                ),
-            ],
-            Self::Play => &[IconCmd::Path("M5 3l16 9-16 9z")],
-            Self::Plus => &[
-                IconCmd::Line(12.0, 5.0, 12.0, 19.0),
-                IconCmd::Line(5.0, 12.0, 19.0, 12.0),
-            ],
-            Self::Prefab => &[
-                IconCmd::Path(
-                    "M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z",
-                ),
-                IconCmd::Polyline("3.3 7 12 12 20.7 7"),
-                IconCmd::Line(12.0, 22.0, 12.0, 12.0),
-            ],
-            // Lucide `redo-2` — arrow head + flat curve.
-            Self::Redo => &[
-                IconCmd::Path("M15 14 L 20 9 L 15 4"),
-                IconCmd::Path("M 20 9 H 9.5 A 5.5 5.5 0 0 0 4 14.5 A 5.5 5.5 0 0 0 9.5 20 H 13"),
-            ],
-            Self::Reset => &[
-                IconCmd::Path("M3 12a9 9 0 1 0 3-6.7L3 8"),
-                IconCmd::Path("M3 3v5h5"),
-            ],
-            Self::Rigid => &[IconCmd::Path(
-                "M12 2v6M12 22v-6M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M16 12h6M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24",
-            )],
-            Self::Rotate => &[
-                IconCmd::Path("M21 12a9 9 0 1 1-3.05-6.74"),
-                IconCmd::Path("M21 4v5h-5"),
-            ],
-            Self::Save => &[
-                IconCmd::Path("M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"),
-                IconCmd::Path("M17 21v-8H7v8M7 3v5h8"),
-            ],
-            // Lucide `image-upscale` — frame + diagonal arrow.
-            Self::Scale => &[
-                IconCmd::Path("M16 3h5v5"),
-                IconCmd::Path("M17 21h2a2 2 0 0 0 2-2"),
-                IconCmd::Path("M21 12v3"),
-                IconCmd::Path("M21 3l-5 5"),
-                IconCmd::Path("M3 7V5a2 2 0 0 1 2-2"),
-                IconCmd::Path("M5 21l4.144-4.144a1.21 1.21 0 0 1 1.712 0L13 19"),
-                IconCmd::Path("M9 3h3"),
-                IconCmd::Rect(3.0, 11.0, 10.0, 10.0, 1.0),
-            ],
-            // Blender's `scene_data` icon — a "mountain" triangle on
-            // the left + a "sphere" on the lower-right, signalling
-            // "a 3D scene containing objects". Adapted from
-            // Resourses/icons/Icons_Flies/blender-icons/scene_data.svg
-            // (1600px viewBox + 100× transform) to our 24×24 grammar.
-            Self::Scene => &[
-                IconCmd::Path("M 7.5 4 L 3 14 L 12 14 Z"),
-                IconCmd::Circle(15.5, 15.5, 4.0),
-                IconCmd::Circle(14.0, 14.2, 0.8),
-            ],
-            Self::Script => &[
-                IconCmd::Path("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"),
-                IconCmd::Polyline("14 2 14 8 20 8"),
-                IconCmd::Path("M9 13l-2 2 2 2M13 13l2 2-2 2M11 17l1-4"),
-            ],
-            Self::Search => &[
-                IconCmd::Circle(11.0, 11.0, 7.0),
-                IconCmd::Line(21.0, 21.0, 16.7, 16.7),
-            ],
-            Self::Select => &[IconCmd::Path("M3 3l7 17 2.5-7.5L20 10z")],
-            Self::Settings => &[
-                IconCmd::Path("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"),
-                IconCmd::Path(
-                    "M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
-                ),
-            ],
-            Self::Spinner => &[IconCmd::Path("M21 12a9 9 0 1 1-6.2-8.5")],
-            Self::Sprite => &[
-                IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0),
-                IconCmd::Circle(9.0, 9.0, 2.0),
-                IconCmd::Path("M21 15l-5-5-9 9"),
-            ],
-            Self::Step => &[
-                IconCmd::Path("M5 4l8 8-8 8z"),
-                IconCmd::Line(19.0, 4.0, 19.0, 20.0),
-            ],
-            Self::Stop => &[IconCmd::Rect(5.0, 5.0, 14.0, 14.0, 1.0)],
-            Self::Success => &[
-                IconCmd::Circle(12.0, 12.0, 10.0),
-                IconCmd::Polyline("8 12 11 15 16 9"),
-            ],
-            Self::Tag => &[
-                IconCmd::Path(
-                    "M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z",
-                ),
-                IconCmd::Line(7.0, 7.0, 7.01, 7.0),
-            ],
-            Self::Text => &[IconCmd::Path("M4 7V5h16v2M9 19h6M12 5v14")],
-            Self::Transform => &[IconCmd::Path(
-                "M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8L2 12l4 4M18 8l4 4-4 4",
-            )],
-            Self::Trash => &[IconCmd::Path(
-                "M3 6h18M19 6l-1.5 14a2 2 0 0 1-2 1.84H8.5a2 2 0 0 1-2-1.84L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2",
-            )],
-            // Lucide `crop.svg` — two mirrored L-brackets framing the
-            // tight non-transparent bounds. Used by the Image Tools row's
-            // Trim Transparency action; algorithm in
-            // `tools/trim_transparency/algorithm.rs`.
-            Self::TrimTransparency => &[
-                IconCmd::Path("M6 2v14a2 2 0 0 0 2 2h14"),
-                IconCmd::Path("M18 22V8a2 2 0 0 0-2-2H2"),
-            ],
-            // Lucide `eraser.svg` (v0.453) — eraser shaft + ground
-            // line + diagonal cut. Three SVG paths, identical to the
-            // BezPath in `tools/bgremoval/icon.rs::eraser_bezpath`.
-            Self::BgRemoval => &[
-                IconCmd::Path(
-                    "m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21",
-                ),
-                IconCmd::Path("M22 21H7"),
-                IconCmd::Path("m5 11 9 9"),
-            ],
-            // Lucide `undo-2` — arrow head + flat curve (mirror of redo-2).
-            Self::Undo => &[
-                IconCmd::Path("M9 14 L 4 9 L 9 4"),
-                IconCmd::Path("M 4 9 H 14.5 A 5.5 5.5 0 0 1 20 14.5 A 5.5 5.5 0 0 1 14.5 20 H 11"),
-            ],
-            Self::Unlink => &[IconCmd::Path(
-                "M18.8 13.2L14 18a5 5 0 0 1-7-7l1-1M5.2 10.8L10 6a5 5 0 0 1 7 7l-1 1M2 2l20 20",
-            )],
-            Self::Unlock => &[
-                IconCmd::Rect(3.0, 11.0, 18.0, 11.0, 2.0),
-                IconCmd::Path("M7 11V7a5 5 0 0 1 9.9-1"),
-            ],
-            Self::Visible => &[
-                IconCmd::Path("M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"),
-                IconCmd::Circle(12.0, 12.0, 3.0),
-            ],
-            Self::Warning => &[
-                IconCmd::Path(
-                    "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z",
-                ),
-                IconCmd::Line(12.0, 9.0, 12.0, 13.0),
-                IconCmd::Line(12.0, 17.0, 12.01, 17.0),
-            ],
-            Self::Zen => &[IconCmd::Path(
-                "M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3",
-            )],
-        }
+        icons_generated::ICON_CMDS_BY_ID[self as usize]
+    }
+
+    /// Kebab-case slug matching the source SVG filename
+    /// (`docs/design/icons/<slug>.svg`). Used by chrome derivation
+    /// (manifest `icon_slug` cross-validation) + a11y label fallback.
+    pub fn slug(self) -> &'static str {
+        icons_generated::ALL_ICON_SLUGS[self as usize]
     }
 }
 
@@ -700,6 +267,39 @@ mod tests {
         }
     }
 
+    /// `IconId` discriminants must align 1:1 with alphabetical SVG
+    /// order (the order `build.rs` produces tables in). If a new
+    /// variant is added out of order, `cmds()` and `slug()` start
+    /// returning the wrong glyph silently. This test catches that
+    /// before any visual regression slips through.
+    #[test]
+    fn enum_order_matches_svgs() {
+        // ALL_ICONS lists every variant in declaration order; if both
+        // sides match alphabetically, discriminants align with
+        // ALL_ICON_SLUGS indices.
+        assert_eq!(
+            ALL_ICONS.len(),
+            icons_generated::ALL_ICON_SLUGS.len(),
+            "IconId variant count must match SVG count"
+        );
+        for (i, id) in ALL_ICONS.iter().enumerate() {
+            let expected_slug = icons_generated::ALL_ICON_SLUGS[i];
+            assert_eq!(
+                *id as usize, i,
+                "{id:?} discriminant {} != position {} \
+                 (enum order vs alphabetical SVG order drift)",
+                *id as usize, i
+            );
+            assert_eq!(
+                id.slug(),
+                expected_slug,
+                "{id:?} (idx {i}) → slug {:?} expected {:?}",
+                id.slug(),
+                expected_slug
+            );
+        }
+    }
+
     /// Every Path command parses cleanly via kurbo's SVG reader.
     #[test]
     fn every_path_string_parses() {
@@ -770,10 +370,13 @@ mod tests {
     /// Full enumeration used by every "for each icon" test above.
     /// Lives at module scope so adding a new icon means adding
     /// exactly one entry both to `IconId` and to `ALL_ICONS`.
+    /// Full enumeration used by every "for each icon" test above.
+    /// In alphabetical-slug order, identical to `IconId` variant order.
     const ALL_ICONS: &[IconId] = &[
         IconId::Add,
         IconId::Asset,
         IconId::Audio,
+        IconId::BgRemoval,
         IconId::Bolt,
         IconId::Bug,
         IconId::Build,
@@ -797,9 +400,9 @@ mod tests {
         IconId::Erase,
         IconId::Error,
         IconId::Export,
-        IconId::EyePencil,
         IconId::Eye,
         IconId::EyeClosed,
+        IconId::EyePencil,
         IconId::File,
         IconId::Folder,
         IconId::Fps,
@@ -822,11 +425,12 @@ mod tests {
         IconId::Light,
         IconId::Link,
         IconId::Lock,
-        IconId::Material,
         IconId::MakeSquare,
+        IconId::Material,
         IconId::Maximize,
         IconId::Menu,
         IconId::Minimize,
+        IconId::Minus,
         IconId::Modify,
         IconId::More,
         IconId::MoreHorizontal,
@@ -863,7 +467,6 @@ mod tests {
         IconId::Transform,
         IconId::Trash,
         IconId::TrimTransparency,
-        IconId::BgRemoval,
         IconId::Undo,
         IconId::Unlink,
         IconId::Unlock,

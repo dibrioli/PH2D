@@ -746,7 +746,7 @@ impl App {
             // resolution against the live sprite.
             if let Some(bg) = active
                 .as_any_mut()
-                .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
                 && bg.take_pending_apply()
                 && let Some(hero) = gfx.hero_screen.as_mut()
                 && let Some(bits) = hero.gizmo_selection
@@ -1496,7 +1496,7 @@ impl App {
                     && let Some(tool) = tools.active_mut()
                     && let Some(bg) = tool
                         .as_any_mut()
-                        .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                        .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
                 {
                     bg.set_source_snapshot(rgba.to_vec(), w, h);
                     self.last_bgremoval_pushed_entity = Some(bits);
@@ -1877,7 +1877,7 @@ impl App {
                         if let Some(ph2d_editor::InteractiveState::Button { state }) =
                             hero.store.get_mut(id)
                         {
-                            *state = ph2d_editor::ButtonState::Normal;
+                            *state = ph2d_editor::widget::ButtonState::Normal;
                         }
                     };
                 match (current_sprite.map(|s| s.source), requested) {
@@ -2019,7 +2019,7 @@ impl App {
             //
             // World-position preservation: after the crop, the entity's
             // `Transform.translation` is shifted by
-            // `ph2d_editor::recenter_after_crop` so the *visual* center
+            // `ph2d_editor::image_edit::recenter_after_crop` so the *visual* center
             // of the surviving opaque content stays put even when it
             // lived off-center inside the original frame. The shift
             // happens in pure-CPU pixel math (Y-flip handled inside
@@ -2087,7 +2087,10 @@ impl App {
             if bgremoval_active && let Some(entity_bits) = hero.pending_bgremoval.take() {
                 let bg = tools
                     .active_mut()
-                    .and_then(|t| t.as_any_mut().downcast_mut::<ph2d_editor::BgRemovalTool>())
+                    .and_then(|t| {
+                        t.as_any_mut()
+                            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+                    })
                     .expect("bgremoval_active gate guarantees a BgRemovalTool");
                 if hero_intents::drain_bgremoval(
                     entity_bits,

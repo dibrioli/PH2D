@@ -25,7 +25,7 @@ use ph2d_tool_registry::{
 /// duplicate the ~50-line BezPath construction — `ph2d-editor` is a
 /// safe dep direction (it does not depend on tool crates per PR 6.0).
 fn icon() -> BezPath {
-    ph2d_editor::eraser_bezpath()
+    ph2d_editor::tools::bgremoval::eraser_bezpath()
 }
 
 /// Shadow-mode handler trio. Real dispatch goes through the legacy

@@ -29,7 +29,8 @@ use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{PresentWorld, SimWorld};
-use ph2d_editor::{BgRemovalTool, Toast, ToastQueue, ViewFocusKind};
+use ph2d_editor::tools::bgremoval::BgRemovalTool;
+use ph2d_editor::{Toast, ToastQueue, ViewFocusKind};
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 
@@ -119,7 +120,7 @@ pub(crate) fn drain_view_focus(
 ///
 /// World-position preservation: after the crop, the entity's
 /// `Transform.translation` is shifted by
-/// `ph2d_editor::recenter_after_crop` so the *visual* center of the
+/// `ph2d_editor::image_edit::recenter_after_crop` so the *visual* center of the
 /// surviving opaque content stays put even when it lived off-center
 /// inside the original frame.
 ///
@@ -190,7 +191,7 @@ pub(crate) fn drain_trim_transparency(
             true
         }
         Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
-            let result = ph2d_editor::trim_transparency(&pixels, width, height, 0);
+            let result = ph2d_editor::tools::trim_transparency(&pixels, width, height, 0);
             if !result.trimmed {
                 toasts.push(Toast::info(ph2d_i18n::tr(
                     "tool.trim_transparency.toast.nothing",
@@ -207,11 +208,11 @@ pub(crate) fn drain_trim_transparency(
                             result.width as f32 / px_per_m,
                             result.height as f32 / px_per_m,
                         ];
-                        let new_translation = ph2d_editor::recenter_after_crop(
+                        let new_translation = ph2d_editor::image_edit::recenter_after_crop(
                             old_translation,
                             old_size_world,
                             [width, height],
-                            ph2d_editor::PixelBounds::from_trim(result.bounds.clone()),
+                            ph2d_editor::image_edit::PixelBounds::from_trim(result.bounds.clone()),
                         );
                         let sim_w = sim.world_mut();
                         if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
@@ -325,7 +326,7 @@ pub(crate) fn drain_make_square(
             true
         }
         Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
-            let result = ph2d_editor::make_square(&pixels, width, height);
+            let result = ph2d_editor::tools::make_square(&pixels, width, height);
             if !result.made_square {
                 toasts.push(Toast::info(ph2d_i18n::tr(
                     "tool.make_square.toast.already_square",
@@ -346,11 +347,11 @@ pub(crate) fn drain_make_square(
                     }
                     Ok(texture_id) => {
                         let new_side = result.size as f32 / px_per_m;
-                        let new_translation = ph2d_editor::recenter_after_pad(
+                        let new_translation = ph2d_editor::image_edit::recenter_after_pad(
                             old_translation,
                             [new_side, new_side],
                             [result.size, result.size],
-                            ph2d_editor::PixelBounds {
+                            ph2d_editor::image_edit::PixelBounds {
                                 x: result.offset_x,
                                 y: result.offset_y,
                                 width,

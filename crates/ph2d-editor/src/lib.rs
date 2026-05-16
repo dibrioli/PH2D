@@ -88,7 +88,6 @@ pub use gizmo::{
 };
 pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
-pub use image_edit::{PixelBounds, recenter_after_crop, recenter_after_pad};
 pub use interaction::{
     HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
     dispatch_text_input, dispatch_tick,
@@ -111,25 +110,19 @@ pub use tool::{PanelEvent, Tool, ToolRegistry};
 // Re-export so the shell can name the dragging node id without
 // taking a direct ph2d-a11y dep just for one type.
 pub use ph2d_a11y::NodeId;
-pub use tools::bgremoval::{BgRemovalParams, BgRemovalTool, eraser_bezpath};
-pub use tools::{
-    Bounds, BrushTool, MakeSquareResult, MoveTool, TrimResult, bgremoval, crop_bezpath,
-    make_square, square_bezpath, trim_transparency,
-};
-pub use widget::{
-    Avatar, AvatarShape, AvatarState, Button, ButtonKind, ButtonState, CHECKBOX_BOX_PX, Card,
-    Checkbox, CheckboxState, CheckboxValue, ColorPicker, ColorPickerMode, ColorSwatch, Combobox,
-    ComboboxOption, ComboboxState, ContextMenu, ContextMenuEntry, Divider, DividerOrientation,
-    Dropdown, DropdownOption, DropdownState, ICON_BUTTON_SIZE_PX, ListItem, ListItemState, Modal,
-    NumberInput, Popover, ProgressBar, ProgressMode, RadioGroup, RadioOption, RadioOrientation,
-    Slider, SliderOrientation, SliderState, Spinner, SwatchSize, SwatchState, TabItem, Tabs,
-    TabsVariant, Tag, TagState, TagTone, TextArea, TextInput, TextInputState, Toggle, ToggleState,
-    Tooltip, TreeNode, TreeView, Vector3Editor, paint_avatar, paint_button, paint_card,
-    paint_checkbox, paint_color_picker, paint_color_swatch, paint_combobox, paint_context_menu,
-    paint_divider, paint_dropdown, paint_list_item, paint_modal, paint_number_input, paint_popover,
-    paint_progress_bar, paint_radio_group, paint_slider, paint_spinner, paint_tabs, paint_tag,
-    paint_text_area, paint_text_input, paint_toggle, paint_tooltip, paint_tree_view,
-    paint_vector3_editor,
-};
+// Wave 2.5 PR 11.11: `tools::*`, `image_edit::*`, and the 70-item
+// `widget::*` re-export block were removed to eliminate the merge
+// zone they created (every new tool / widget / image-edit helper
+// edited this file). Consumers reach those types via their module
+// paths instead:
+//
+//   ph2d_editor::widget::Button       (was ph2d_editor::Button)
+//   ph2d_editor::tools::trim_transparency
+//   ph2d_editor::tools::bgremoval::BgRemovalTool
+//   ph2d_editor::image_edit::recenter_after_crop
+//
+// SKILL §12.3 marks PH2D pré-1.0 ("0.x.y aceita quebras em x") so
+// the path change is on-policy for Wave 2.5.
+
 pub use zen::ZenMode;
 pub use zones::{Layout, Zone};

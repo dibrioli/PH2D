@@ -21,9 +21,9 @@ use ph2d_asset::AssetDb;
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components, stable_type_id};
 use ph2d_ecs::scene::{EditorCommandQueue, HierarchySnapshot, HierarchyWalkState};
 use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
+use ph2d_editor::tools::{BrushTool, MoveTool};
 use ph2d_editor::{
-    BrushTool, HeroScreen, Layout as EditorLayout, MoveTool, NodeId, Toast, ToastQueue,
-    ToolRegistry, ZenMode,
+    HeroScreen, Layout as EditorLayout, NodeId, Toast, ToastQueue, ToolRegistry, ZenMode,
 };
 use ph2d_gpu::{GpuContext, SurfaceContext};
 use ph2d_host::{Lifecycle, PlatformHost};
@@ -190,7 +190,9 @@ pub(crate) fn build_initial_state(
     let mut tools = ToolRegistry::new();
     tools.register(Box::new(BrushTool::default()));
     tools.register(Box::new(MoveTool::default()));
-    tools.register(Box::new(ph2d_editor::BgRemovalTool::default()));
+    tools.register(Box::new(
+        ph2d_editor::tools::bgremoval::BgRemovalTool::default(),
+    ));
     let layout = EditorLayout::new(size.width as f32, size.height as f32);
     let vello_pass =
         match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {

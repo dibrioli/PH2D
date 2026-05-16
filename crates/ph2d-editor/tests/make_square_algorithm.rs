@@ -18,7 +18,7 @@
 // source via `#[path]`. The cross-island round-trip with
 // `trim_transparency` still uses `#[path]` because that island has
 // not migrated yet (PR 7 alvo).
-use ph2d_editor::{make_square, square_bezpath};
+use ph2d_editor::tools::{make_square, square_bezpath};
 
 #[path = "../src/tools/trim_transparency/algorithm.rs"]
 mod trim_algorithm;

@@ -181,6 +181,11 @@ pub fn segment(
 /// Fill `trimap` with `BgSoft` outside the inset rect and `FgSoft`
 /// inside. When `params.alpha_hole_as_bg` is set, additionally lock
 /// every pixel with `alpha < ALPHA_HOLE_THRESHOLD` as `BgHard`.
+///
+/// **Precedence**: the alpha-hole pass runs *after* the inset pass,
+/// so `BgHard` from a transparent pixel overrides the inset's
+/// `FgSoft` / `BgSoft` label. Test `alpha_hole_as_bg_locks_transparent_pixels_as_background`
+/// pins this contract.
 fn init_trimap(
     w: u32,
     h: u32,

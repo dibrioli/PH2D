@@ -1000,6 +1000,34 @@ mod tests {
     }
 
     #[test]
+    fn oracle_4x4_t_tree_dominant_deep_path() {
+        // Audit (2026-05-15) hypothesised a parent-edge convention
+        // bug in the T-tree augment walk symmetric to the
+        // process_orphan fix at b0f22e2. The earlier oracle tests
+        // were mostly S-tree dominated. This test forces a
+        // T-tree-deep augment path:
+        //
+        //   source connects ONLY to (0, 0) with cap 50;
+        //   sink connects ONLY to (3, 3) with cap 50;
+        //   high n-links throughout so the flow must traverse the
+        //   ENTIRE 4×4 grid diagonally — every interior pixel ends
+        //   up in either S- or T-tree, and the longest path passes
+        //   through many T-tree levels before reaching the sink.
+        //
+        // If the audit's claim were correct, BK flow would diverge
+        // from EK by more than the 1e-3 tolerance. EK is the
+        // ground truth; mismatch = bug.
+        let n = 16;
+        let mut src = vec![0.0; n];
+        let mut snk = vec![0.0; n];
+        src[0] = 50.0; // (0,0) is sole source
+        snk[15] = 50.0; // (3,3) is sole sink
+        // n-links cap 5 everywhere → many paths but bottlenecked.
+        let nl = vec![5.0; n * 4];
+        oracle_check(4, 4, &src, &snk, &nl);
+    }
+
+    #[test]
     fn oracle_4x4_random_seed() {
         // Deterministic pseudo-random capacities — no rand crate.
         let n = 16;

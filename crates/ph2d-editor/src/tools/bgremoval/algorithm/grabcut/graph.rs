@@ -169,7 +169,13 @@ pub fn derive_beta(rgb_only: &[u8], w: u32, h: u32) -> f32 {
         return BETA_FLOOR;
     }
     let avg = total_sq / count as f64;
-    if avg < 1e-9 {
+    // Bumped from 1e-9 to 1.0 (one squared-channel JND): images
+    // with a *single* ±1 stray pixel on an otherwise monochrome
+    // plate would otherwise produce a huge β (~5e5 for 1024²),
+    // and `exp(-β·d²)` underflows to 0 across the whole image —
+    // collapsing n-link weights to 0 and degrading GrabCut to
+    // per-pixel GMM classification.
+    if avg < 1.0 {
         return BETA_FLOOR;
     }
     (1.0 / (2.0 * avg)) as f32

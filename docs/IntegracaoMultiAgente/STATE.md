@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 23:00 BRT
+**Última atualização:** 2026-05-15 23:30 BRT
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -89,7 +89,7 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `1d4a0d7` — 2026-05-15 23:00 — feat(grid-snap) wire snap_world at gizmo Translate + drag-drop sites (slot 1 fully end-to-end). Workspace verde: 1135 nextest pass.
+main @ `728e439` — 2026-05-15 23:30 — feat(grid-snap) Corner snap + composite Target modes (5 total: Center / Intersection / Corner / Center+Intersection / Center+Intersection+Corners). Sprite-aware: gizmo Translate passa Sprite.size×scale; drag-drop degenera Corner pra Intersection. Workspace verde: 1142 nextest pass (+7 do baseline).
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -100,6 +100,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-15 23:30 | grid-snap polish pós-`done`: Corner snap mode + 2 composite modes. SnapTarget enum expandido de 2 → 5 (Center / Intersection / Corner / Center+Intersection / Center+Intersection+Corners). Novo helper `snap_sprite_corner` em ph2d-grid/snap.rs (enumera 4 quinas, escolhe par com menor shift para grid vertex). `GridSnapState::snap_world(world, sprite_half_size)` — gizmo Translate forwarda `Sprite::size × scale × 0.5`; drag-drop passa `[0.0, 0.0]` (degenera Corner para Intersection). Painel Target row cicla 5 modos via `state.snap_target.cycle()` + `.label()`. 10 unit tests em snap.rs (atomic + composite + degenerate + cycle + label + zero-alloc). Commit `728e439`. Workspace 1142 pass. |
 | 2026-05-15 23:00 | slot 1 (grid-snap) fechado `done`. Agente reportou feature completa em `3e1ffea` com 5 itens "wiring pendente" — investigação Coord mostrou que 4/5 já estavam wirados em commits anteriores (IconId::GridSettings + TOPBAR_GRID_SETTINGS + paint_grid → grid_snap::render::paint em `799fb82`; canvas-pointer hook é out-of-scope). Único pendente real: `snap_world` call-sites em shells/desktop/main.rs. Coord wirou em commit `1d4a0d7`: gizmo Translate (após compute_gizmo_transform, antes do write em Transform) + drag-drop spawn (após screen_to_world, antes do import_image_at_camera). Workspace verde 1135 nextest pass. Paste handler fica pra quando paste pipeline existir. Slot 1 entrega final: 11 GridKinds + A* + painel flutuante completo + origin/subdivisions/snap/inspect/colorpicker + agora SNAP REAL FUNCIONA. Smoke visual do Enio recomendado: `./play.command` ciclar 9 kinds, mover sprite com Gizmo + snap_enabled=true, validar alinhamento ao overlay. |
 | 2026-05-15 22:45 | slot 2 (bgremoval) fechou sessão estável: M1 chroma+flood Oklab completo em `27d6544` (35 inline tests, peer-reviewed Oklab > LAB + downscale 1024² + alpha-aware + FP noise floor) + M2 grabcut subfolder scaffolded em `01ba55f` (mod.rs orquestrador + gmm/graph/maxflow stubs com Apache-2.0 headers OpenCV, 11 inline tests). Total ~2750 LOC, 46 inline tests bgremoval, 669/669 ph2d-editor pass. Bypassou hook com `--no-verify` documentado por 2 clippy errors pré-existentes em grid_snap/ (slot 1) — já fixos em `3e14149`/`3e1ffea` (drive-by slot 1 antes do Coord precisar agir). M2 body ~1200 LOC numéricos pendente próxima sessão: maxflow.rs BK ~600 LOC com oracle pathfinding::edmonds_karp 8×8 tests, gmm.rs ~280 LOC k-means++ E/M + 3×3 cov via Cramer inline, graph.rs ~180 LOC β + n-links + t-links clamping, mod.rs wiring real com image::imageops::resize Triangle + loop iterativo max 2 default cap 5 + early-exit mask-flip <0.1%. Status `working` → `session-closed`. |
 | 2026-05-15 22:30 | image-edit cross-feature fechados (i18n stub + a11y + Undo single-level). `ph2d-i18n` saiu de vazio (string table en-US keyed por Fluent-style ids — Fluent real M13). `screens/hero/topbar.rs` ganhou `image_action_a11y_nodes()` publicando `Role::Button` + label + Action::Click para Trim+MS (shell TreeUpdate consume M14.x). `AppGfx::image_edit_undo: Option<ImageEditSnapshot>` + drainer no render loop + Cmd+Z handler + `pending_undo_image_edit` em HeroScreen. C1's release-imediato substituído por refcount-hold no snapshot (release on overwrite/undo). 2 a11y tests + workspace verde 1131. Commit `67df530`. |

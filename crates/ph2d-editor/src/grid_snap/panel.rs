@@ -13,7 +13,7 @@
 //! preserves every other kind's params untouched.
 
 use super::ids;
-use super::state::{GridKind, GridSnapState};
+use super::state::{GridKind, GridSnapState, HexCfg};
 use crate::interaction::{BlenderHitKind, HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{paint_icon, paint_text, paint_text_title, resolve};
 use crate::screens::hero::style::{
@@ -89,9 +89,7 @@ pub fn populate(store: &mut WidgetStore) {
     // Inspector's Strategy switcher per Enio's 2026-05-15 redesign):
     // each option has its own NodeId registered as a Button; the
     // active option is painted with `ButtonState::Pressed` driven
-    // from `state` at paint time. The remaining 2-option cycle
-    // buttons (Hex orientation, Hex offset, Stagger parity) keep
-    // the cycle pattern for now.
+    // from `state` at paint time.
     for id in [
         ids::GS_CLOSE,
         // Kind group (9 options).
@@ -115,10 +113,17 @@ pub fn populate(store: &mut WidgetStore) {
         ids::GS_CFG_NEIGHBORHOOD_8,
         ids::GS_CFG_TRI_EDGE3,
         ids::GS_CFG_TRI_VERTEX12,
-        // Cycle buttons (untouched in this pass).
+        // Hex Orientation (Pointy / Flat) segmented group.
         ids::GS_CFG_HEX_POINTY,
-        ids::GS_CFG_HEX_OFFSET_DROPDOWN,
+        ids::GS_CFG_HEX_FLAT,
+        // Hex Offset (OddR / EvenR / OddQ / EvenQ) segmented group.
+        ids::GS_CFG_HEX_OFFSET_ODDR,
+        ids::GS_CFG_HEX_OFFSET_EVENR,
+        ids::GS_CFG_HEX_OFFSET_ODDQ,
+        ids::GS_CFG_HEX_OFFSET_EVENQ,
+        // Stagger parity (Odd / Even) segmented group.
         ids::GS_CFG_STAGGER_PARITY_ODD,
+        ids::GS_CFG_STAGGER_PARITY_EVEN,
         ids::GS_CFG_VORONOI_RESEED,
         // Color swatch — clickable; opens BlenderColorPicker.
         ids::GS_COLOR_PICKER,
@@ -807,6 +812,59 @@ fn paint_neighborhood_button_row(
     y + h + ROW_GAP
 }
 
+/// Generic labeled segmented-button row — renders a small Text2 label
+/// above a horizontal stack of equal-width buttons. The button at
+/// `active_idx` is painted with `ButtonState::Pressed`. Used for Hex
+/// Orientation (2 opts), Hex Offset (4 opts) and Stagger Parity (2 opts).
+#[allow(clippy::too_many_arguments)]
+fn paint_labeled_segmented_row(
+    label: &str,
+    options: &[(&str, crate::NodeId)],
+    active_idx: usize,
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) -> f32 {
+    let label_font = ph2d_tokens::TypeToken::Sm.px();
+    crate::paint::paint_text(
+        text_system,
+        scene,
+        label,
+        x,
+        y,
+        label_font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let y = y + label_font + 4.0;
+
+    let h = 28.0_f32;
+    let gap = 6.0_f32;
+    let n = options.len() as f32;
+    let cell_w = ((w - gap * (n - 1.0)) / n).max(40.0);
+    for (i, (lbl, oid)) in options.iter().enumerate() {
+        let rx = x + i as f32 * (cell_w + gap);
+        let rect = Rect::new(rx, y, cell_w, h);
+        paint_segmented_button(
+            rect,
+            lbl,
+            i == active_idx,
+            *oid,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+        );
+    }
+    y + h + ROW_GAP
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum NeighborhoodFamily {
     Square,
@@ -1023,13 +1081,22 @@ fn paint_hex_cfg(
         store,
     );
     y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
-    let orient = match state.hex_cfg.orientation {
-        HexOrientation::Pointy => "Orientation: Pointy \u{25B6}",
-        HexOrientation::Flat => "Orientation: Flat \u{25B6}",
+    let hex = if state.kind == GridKind::StaggeredHex {
+        &state.staggered_hex_cfg.hex
+    } else {
+        &state.hex_cfg
     };
-    paint_cycle_row(
-        ids::GS_CFG_HEX_POINTY,
-        orient,
+    let orient_idx = match hex.orientation {
+        HexOrientation::Pointy => 0,
+        HexOrientation::Flat => 1,
+    };
+    y = paint_labeled_segmented_row(
+        "Orientation",
+        &[
+            ("Pointy", ids::GS_CFG_HEX_POINTY),
+            ("Flat", ids::GS_CFG_HEX_FLAT),
+        ],
+        orient_idx,
         x,
         w,
         y,
@@ -1039,16 +1106,21 @@ fn paint_hex_cfg(
         hit_index,
         store,
     );
-    y += ROW_H + ROW_GAP;
-    let offset = match state.hex_cfg.offset_variant {
-        HexOffset::OddR => "Offset: OddR \u{25B6}",
-        HexOffset::EvenR => "Offset: EvenR \u{25B6}",
-        HexOffset::OddQ => "Offset: OddQ \u{25B6}",
-        HexOffset::EvenQ => "Offset: EvenQ \u{25B6}",
+    let offset_idx = match hex.offset_variant {
+        HexOffset::OddR => 0,
+        HexOffset::EvenR => 1,
+        HexOffset::OddQ => 2,
+        HexOffset::EvenQ => 3,
     };
-    paint_cycle_row(
-        ids::GS_CFG_HEX_OFFSET_DROPDOWN,
-        offset,
+    paint_labeled_segmented_row(
+        "Offset",
+        &[
+            ("OddR", ids::GS_CFG_HEX_OFFSET_ODDR),
+            ("EvenR", ids::GS_CFG_HEX_OFFSET_EVENR),
+            ("OddQ", ids::GS_CFG_HEX_OFFSET_ODDQ),
+            ("EvenQ", ids::GS_CFG_HEX_OFFSET_EVENQ),
+        ],
+        offset_idx,
         x,
         w,
         y,
@@ -1057,8 +1129,7 @@ fn paint_hex_cfg(
         theme,
         hit_index,
         store,
-    );
-    y + ROW_H + ROW_GAP
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1137,13 +1208,17 @@ fn paint_staggered_sq_cfg(
         store,
     );
     y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
-    let parity = match state.staggered_square_cfg.parity {
-        StaggerParity::OddRows => "Parity: Odd rows \u{25B6}",
-        StaggerParity::EvenRows => "Parity: Even rows \u{25B6}",
+    let parity_idx = match state.staggered_square_cfg.parity {
+        StaggerParity::OddRows => 0,
+        StaggerParity::EvenRows => 1,
     };
-    paint_cycle_row(
-        ids::GS_CFG_STAGGER_PARITY_ODD,
-        parity,
+    y = paint_labeled_segmented_row(
+        "Parity",
+        &[
+            ("Odd rows", ids::GS_CFG_STAGGER_PARITY_ODD),
+            ("Even rows", ids::GS_CFG_STAGGER_PARITY_EVEN),
+        ],
+        parity_idx,
         x,
         w,
         y,
@@ -1153,7 +1228,6 @@ fn paint_staggered_sq_cfg(
         hit_index,
         store,
     );
-    y += ROW_H + ROW_GAP;
     paint_neighborhood_button_row(
         x,
         w,
@@ -1660,31 +1734,6 @@ fn paint_aabb_rows(
     )
 }
 
-/// Paint a full-row cycling Button.
-#[allow(clippy::too_many_arguments)]
-fn paint_cycle_row(
-    id: crate::NodeId,
-    label: &str,
-    x: f32,
-    w: f32,
-    y: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-) {
-    let row = Rect::new(x, y, w, ROW_H);
-    let btn = Button {
-        id,
-        label: label.to_string(),
-        state: button_state(store, id),
-        kind: ButtonKind::Default,
-    };
-    paint_button(&btn, row, scene, text_system, theme);
-    hit_index.register(id, row);
-}
-
 fn paint_show_overlay_row(
     row: Rect,
     scene: &mut VectorScene,
@@ -2092,32 +2141,39 @@ fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
         set_neighborhood_for_active_kind(state, SquareNeighborhood::Moore8);
         return true;
     }
+    // Hex Orientation segmented group (sets value directly).
     if id == ids::GS_CFG_HEX_POINTY {
-        let hex = if state.kind == GridKind::StaggeredHex {
-            &mut state.staggered_hex_cfg.hex
-        } else {
-            &mut state.hex_cfg
-        };
-        hex.orientation = match hex.orientation {
-            HexOrientation::Pointy => HexOrientation::Flat,
-            HexOrientation::Flat => HexOrientation::Pointy,
-        };
+        active_hex_cfg_mut(state).orientation = HexOrientation::Pointy;
         return true;
     }
-    if id == ids::GS_CFG_HEX_OFFSET_DROPDOWN {
-        let hex = if state.kind == GridKind::StaggeredHex {
-            &mut state.staggered_hex_cfg.hex
-        } else {
-            &mut state.hex_cfg
-        };
-        hex.offset_variant = cycle_hex_offset(hex.offset_variant);
+    if id == ids::GS_CFG_HEX_FLAT {
+        active_hex_cfg_mut(state).orientation = HexOrientation::Flat;
         return true;
     }
+    // Hex Offset segmented group (4 options, sets value directly).
+    if id == ids::GS_CFG_HEX_OFFSET_ODDR {
+        active_hex_cfg_mut(state).offset_variant = HexOffset::OddR;
+        return true;
+    }
+    if id == ids::GS_CFG_HEX_OFFSET_EVENR {
+        active_hex_cfg_mut(state).offset_variant = HexOffset::EvenR;
+        return true;
+    }
+    if id == ids::GS_CFG_HEX_OFFSET_ODDQ {
+        active_hex_cfg_mut(state).offset_variant = HexOffset::OddQ;
+        return true;
+    }
+    if id == ids::GS_CFG_HEX_OFFSET_EVENQ {
+        active_hex_cfg_mut(state).offset_variant = HexOffset::EvenQ;
+        return true;
+    }
+    // Stagger parity segmented group.
     if id == ids::GS_CFG_STAGGER_PARITY_ODD {
-        state.staggered_square_cfg.parity = match state.staggered_square_cfg.parity {
-            StaggerParity::OddRows => StaggerParity::EvenRows,
-            StaggerParity::EvenRows => StaggerParity::OddRows,
-        };
+        state.staggered_square_cfg.parity = StaggerParity::OddRows;
+        return true;
+    }
+    if id == ids::GS_CFG_STAGGER_PARITY_EVEN {
+        state.staggered_square_cfg.parity = StaggerParity::EvenRows;
         return true;
     }
     // Tri neighborhood group option clicks.
@@ -2145,12 +2201,16 @@ fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
     false
 }
 
-fn cycle_hex_offset(o: HexOffset) -> HexOffset {
-    match o {
-        HexOffset::OddR => HexOffset::EvenR,
-        HexOffset::EvenR => HexOffset::OddQ,
-        HexOffset::OddQ => HexOffset::EvenQ,
-        HexOffset::EvenQ => HexOffset::OddR,
+/// Mutable handle to the hex config that the user is currently
+/// editing — `state.hex_cfg` for `Hex`, the inner `hex` of
+/// `state.staggered_hex_cfg` for `StaggeredHex`. Used by the
+/// Orientation / Offset segmented groups so the same option ids
+/// drive both kinds.
+fn active_hex_cfg_mut(state: &mut GridSnapState) -> &mut HexCfg {
+    if state.kind == GridKind::StaggeredHex {
+        &mut state.staggered_hex_cfg.hex
+    } else {
+        &mut state.hex_cfg
     }
 }
 
@@ -2281,39 +2341,75 @@ mod tests {
     }
 
     #[test]
-    fn apply_event_cycle_hex_orientation() {
+    fn apply_event_hex_orientation_options_set_value() {
         let mut s = GridSnapState {
             kind: GridKind::Hex,
             ..Default::default()
         };
         let store = populated_store();
-        assert_eq!(s.hex_cfg.orientation, HexOrientation::Pointy);
-        apply_event(&mut s, WidgetEvent::Click(ids::GS_CFG_HEX_POINTY), &store);
+        // Default is Pointy. Clicking Flat sets it; clicking Pointy
+        // again restores it. No cycle behavior — each option lands
+        // on its own value.
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_CFG_HEX_FLAT), &store);
         assert_eq!(s.hex_cfg.orientation, HexOrientation::Flat);
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_CFG_HEX_POINTY), &store);
+        assert_eq!(s.hex_cfg.orientation, HexOrientation::Pointy);
     }
 
     #[test]
-    fn apply_event_cycle_hex_offset_walks_four_states() {
+    fn apply_event_hex_offset_options_set_value() {
         let mut s = GridSnapState {
             kind: GridKind::Hex,
             ..Default::default()
         };
         let store = populated_store();
-        let order = [
-            HexOffset::OddR,
-            HexOffset::EvenR,
-            HexOffset::OddQ,
-            HexOffset::EvenQ,
-            HexOffset::OddR,
-        ];
-        for expected in &order[1..] {
-            apply_event(
-                &mut s,
-                WidgetEvent::Click(ids::GS_CFG_HEX_OFFSET_DROPDOWN),
-                &store,
-            );
-            assert_eq!(s.hex_cfg.offset_variant, *expected);
+        for (id, expected) in [
+            (ids::GS_CFG_HEX_OFFSET_EVENR, HexOffset::EvenR),
+            (ids::GS_CFG_HEX_OFFSET_ODDQ, HexOffset::OddQ),
+            (ids::GS_CFG_HEX_OFFSET_EVENQ, HexOffset::EvenQ),
+            (ids::GS_CFG_HEX_OFFSET_ODDR, HexOffset::OddR),
+        ] {
+            apply_event(&mut s, WidgetEvent::Click(id), &store);
+            assert_eq!(s.hex_cfg.offset_variant, expected);
         }
+    }
+
+    #[test]
+    fn apply_event_hex_orientation_routes_to_staggered_hex_when_active() {
+        let mut s = GridSnapState {
+            kind: GridKind::StaggeredHex,
+            ..Default::default()
+        };
+        let store = populated_store();
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_CFG_HEX_FLAT), &store);
+        assert_eq!(
+            s.staggered_hex_cfg.hex.orientation,
+            HexOrientation::Flat,
+            "StaggeredHex should receive the orientation update"
+        );
+        // Plain hex_cfg untouched.
+        assert_eq!(s.hex_cfg.orientation, HexOrientation::Pointy);
+    }
+
+    #[test]
+    fn apply_event_stagger_parity_options_set_value() {
+        let mut s = GridSnapState {
+            kind: GridKind::StaggeredSquare,
+            ..Default::default()
+        };
+        let store = populated_store();
+        apply_event(
+            &mut s,
+            WidgetEvent::Click(ids::GS_CFG_STAGGER_PARITY_EVEN),
+            &store,
+        );
+        assert_eq!(s.staggered_square_cfg.parity, StaggerParity::EvenRows);
+        apply_event(
+            &mut s,
+            WidgetEvent::Click(ids::GS_CFG_STAGGER_PARITY_ODD),
+            &store,
+        );
+        assert_eq!(s.staggered_square_cfg.parity, StaggerParity::OddRows);
     }
 
     #[test]

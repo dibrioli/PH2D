@@ -42,7 +42,6 @@ pub const GS_CFG_NEIGHBORHOOD_4: NodeId = NodeId(1021);
 pub const GS_CFG_NEIGHBORHOOD_8: NodeId = NodeId(1022);
 pub const GS_CFG_HEX_POINTY: NodeId = NodeId(1023);
 pub const GS_CFG_HEX_FLAT: NodeId = NodeId(1024);
-pub const GS_CFG_HEX_OFFSET_DROPDOWN: NodeId = NodeId(1025);
 pub const GS_CFG_ISO_TILE_W: NodeId = NodeId(1026);
 pub const GS_CFG_ISO_TILE_H: NodeId = NodeId(1027);
 pub const GS_CFG_STAGGER_PARITY_ODD: NodeId = NodeId(1028);
@@ -56,6 +55,11 @@ pub const GS_CFG_VORONOI_RNG_SEED: NodeId = NodeId(1035);
 pub const GS_CFG_VORONOI_LLOYD_ITERS: NodeId = NodeId(1036);
 pub const GS_CFG_VORONOI_RESEED: NodeId = NodeId(1037);
 pub const GS_CFG_CHUNKS_SIZE: NodeId = NodeId(1038);
+/// Hex offset variant options (segmented button group, 4 options).
+pub const GS_CFG_HEX_OFFSET_ODDR: NodeId = NodeId(1056);
+pub const GS_CFG_HEX_OFFSET_EVENR: NodeId = NodeId(1057);
+pub const GS_CFG_HEX_OFFSET_ODDQ: NodeId = NodeId(1058);
+pub const GS_CFG_HEX_OFFSET_EVENQ: NodeId = NodeId(1059);
 
 // ─── Universal per-kind extras (origin + subdivisions) ─────────
 /// World-space X offset of the active grid's (0, 0) anchor.

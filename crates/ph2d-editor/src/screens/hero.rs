@@ -1851,6 +1851,14 @@ pub fn paint_hero_screen(
         if cur > max_scroll {
             hero.store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
         }
+    } else {
+        // Stale-rect cleanup: without this, `panel_at` keeps returning
+        // GAL_PANEL after the Gallery was closed, and BTreeMap key
+        // ordering (950 < 1000) makes that stale rect shadow GS_PANEL
+        // for overlapping cursor positions — wheel scroll on the Grid
+        // Settings panel then routes to a closed GAL_PANEL and looks
+        // like "scroll wheel doesn't work" to the user.
+        hero.store.clear_panel_rect(ids::GAL_PANEL);
     }
     // Grid Settings floating panel — mirrors the Widget Gallery
     // pattern (lazy default rect on first show, drag/resize deltas via
@@ -1915,6 +1923,10 @@ pub fn paint_hero_screen(
             hero.store
                 .set_panel_scroll(crate::grid_snap::ids::GS_PANEL, max_scroll);
         }
+    } else {
+        // Symmetric stale-rect cleanup (mirrors GAL_PANEL above).
+        hero.store
+            .clear_panel_rect(crate::grid_snap::ids::GS_PANEL);
     }
     // BlenderColorPicker — painted AFTER every floating panel
     // (Inspector, Hierarchy, Widget Gallery, Grid Settings) so it
@@ -2249,6 +2261,76 @@ mod tests {
         assert!(
             after > before,
             "wheel down on gallery should increase panel_scroll \
+             (before={before}, after={after})"
+        );
+    }
+
+    /// Same shape as `gallery_publishes_scroll_bounds_after_paint`, but
+    /// for the Grid Settings floating panel. Pins the end-to-end wheel
+    /// pipeline so Enio's "scroll wheel doesn't work" report has a
+    /// regression net: GS_PANEL must (1) publish a content_h that
+    /// exceeds visible_h, (2) own the panel rect under its center, and
+    /// (3) advance `panel_scroll` when a wheel event hits.
+    #[test]
+    fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.grid_snap_state.panel_visible = true;
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let gs_id = crate::grid_snap::ids::GS_PANEL;
+        let content_h = hero
+            .store
+            .panel_content_h(gs_id)
+            .expect("GS_PANEL content_h must be published after paint");
+        let visible_h = hero
+            .store
+            .panel_visible_h(gs_id)
+            .expect("GS_PANEL visible_h must be published after paint");
+        assert!(
+            content_h > 0.0,
+            "grid panel content_h should be positive, got {content_h}"
+        );
+        assert!(
+            visible_h > 0.0,
+            "grid panel visible_h should be positive, got {visible_h}"
+        );
+        assert!(
+            content_h > visible_h,
+            "grid panel should overflow (content_h={content_h} > visible_h={visible_h}) \
+             so the wheel has somewhere to scroll to"
+        );
+        let panel_rect = hero
+            .store
+            .panel_rect(gs_id)
+            .expect("GS_PANEL rect must be registered for panel_at");
+        let cx = panel_rect.x + panel_rect.w * 0.5;
+        let cy = panel_rect.y + panel_rect.h * 0.5;
+        assert_eq!(
+            hero.store.panel_at(cx, cy),
+            Some(gs_id),
+            "cursor over grid-panel center should resolve to GS_PANEL \
+             (got {:?})",
+            hero.store.panel_at(cx, cy)
+        );
+        let arena = bumpalo::Bump::new();
+        let before = hero.store.panel_scroll(gs_id);
+        let _ = crate::interaction::dispatch_wheel(
+            &mut hero.store,
+            ph2d_host::WheelEvent {
+                x: cx,
+                y: cy,
+                delta_x: 0.0,
+                delta_y: -40.0,
+                modifiers: ph2d_host::Modifiers::default(),
+                timestamp_ns: 0,
+            },
+            &arena,
+        );
+        let after = hero.store.panel_scroll(gs_id);
+        assert!(
+            after > before,
+            "wheel down on Grid Settings should increase panel_scroll \
              (before={before}, after={after})"
         );
     }

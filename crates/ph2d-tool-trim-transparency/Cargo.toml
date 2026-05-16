@@ -1,0 +1,32 @@
+[package]
+name = "ph2d-tool-trim-transparency"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Trim Transparency — one-shot image action. Crops an RGBA8 image to
+# its tight opaque bounding box, returning fresh dimensions + cropped
+# pixels for the host to write back as a new asset.
+#
+# Wave 2 PR 11.4 manifest-thin shape: this crate exports only the
+# `ToolManifest` + icon `BezPath` + `register()`. The algorithm
+# (`trim_transparency()`) continues to live at
+# `crates/ph2d-editor/src/tools/trim_transparency/` because the host
+# shell still drains `pending_trim` directly; full handler wiring lives
+# in PR 9 (generic dispatcher). Same pattern as `ph2d-tool-bgremoval`
+# (manifest-only; impl in editor crate).
+
+[dependencies]
+# Registry types (ToolManifest, Zone, Role, etc.).
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Vector primitives (BezPath, Shape) for the icon glyph.
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role) for the manifest a11y declaration (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }

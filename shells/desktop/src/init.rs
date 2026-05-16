@@ -265,10 +265,18 @@ pub(crate) fn build_initial_state(
     registry
         .build()
         .expect("registry build must succeed at boot");
+    let manifest_count = registry.manifests().len();
+    // Wave 2 PR 11.4: hand the built registry to `ph2d-editor` so the
+    // hero painters can derive chrome (Image Tools action row, future
+    // TopBar clusters) from manifests instead of hardcoded lists.
+    // `install_registry` returns true on first install; subsequent
+    // calls from re-init paths in tests get false and silently drop
+    // the second registry (safe — the manifests are identical).
+    ph2d_editor::install_registry(registry);
     println!(
-        "[{:>6}ms] PR 8: tool registry built ({} manifests)",
+        "[{:>6}ms] PR 8: tool registry built ({} manifests, installed in editor)",
         handler.elapsed_ms(),
-        registry.manifests().len()
+        manifest_count,
     );
 
     let gfx = AppGfx {
@@ -317,7 +325,6 @@ pub(crate) fn build_initial_state(
         name_type_id: stable_type_id("ph2d::ecs::Name"),
         sprite_type_id: stable_type_id("ph2d::render::Sprite"),
         image_edit_undo: None,
-        registry,
     };
 
     (window, host, gfx)

@@ -4121,10 +4121,22 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-core",
+ "ph2d-editor",
  "ph2d-tool-bgremoval",
  "ph2d-tool-grid-snap",
  "ph2d-tool-make-square",
  "ph2d-tool-registry",
+ "ph2d-tool-trim-transparency",
+]
+
+[[package]]
+name = "ph2d-tool-trim-transparency"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
 ]
 
 [[package]]

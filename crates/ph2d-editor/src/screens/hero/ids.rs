@@ -78,14 +78,20 @@ pub const TOPBAR_GRID_SETTINGS: NodeId = hash_node_id("topbar_grid_settings");
 /// `image_tools_mode` is on. Click is no-op for now — wiring to the
 /// `ph2d_editor::trim_transparency()` algorithm on a selected sprite
 /// requires the live asset model (out of scope for this PR).
-pub const IMAGE_ACTION_TRIM: NodeId = hash_node_id("image_action_trim");
+// Wave 2 PR 11.4: the three Image Tools action pills are now derived
+// from the `image_tools` cluster in the runtime registry. To make
+// hand-written click dispatch (`id == ids::IMAGE_ACTION_*`) work
+// against registry-derived pills, each chrome const hashes the SAME
+// slug as the matching tool manifest's `id` field. The
+// `chrome_manifest_coverage` integration test pins this contract.
+pub const IMAGE_ACTION_TRIM: NodeId = hash_node_id("trim_transparency");
 
 /// Image Tools action — Make Square pill. Sibling of `IMAGE_ACTION_TRIM`,
 /// pads the selected sprite with transparent pixels on the shorter axis
 /// so width == height. Click raises `pending_make_square` on `HeroScreen`;
 /// host drains, runs the algorithm, replaces sprite pixels + reprojects
 /// pivot. Algorithm in `tools/make_square/algorithm.rs`.
-pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = hash_node_id("image_action_make_square");
+pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = hash_node_id("make_square");
 
 /// Image Tools action — Background Removal pill. Unlike `IMAGE_ACTION_TRIM`
 /// and `IMAGE_ACTION_MAKE_SQUARE` (one-shot algorithms), this one
@@ -94,7 +100,7 @@ pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = hash_node_id("image_action_make_squ
 /// `pending_activate_bgremoval` on `HeroScreen`; host drains via
 /// `tools.set_active(ToolId::new("bgremoval"))` and force-refreshes
 /// the snapshot push.
-pub const IMAGE_ACTION_BGREMOVAL: NodeId = hash_node_id("image_action_bgremoval");
+pub const IMAGE_ACTION_BGREMOVAL: NodeId = hash_node_id("bgremoval");
 
 pub const HIERARCHY_ADD: NodeId = hash_node_id("hierarchy_add");
 

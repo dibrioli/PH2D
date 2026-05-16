@@ -37,8 +37,17 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
 ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }
 ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
+ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 
 [dev-dependencies]
 # Re-export the platform / budget types for the CI lint tests.
 ph2d-core = { path = "../ph2d-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
+# Wave 2 PR 11.4 chrome-manifest-coverage test reads the
+# `screens::hero::ids` chrome consts from the editor and checks
+# they hash-match the manifest ids registered here. Editor isn't a
+# normal dep — adding it would let registry-init pull editor types
+# into runtime, which violates the dep direction. Dev-dep is safe
+# because the editor doesn't depend (directly or transitively) on
+# registry-init.
+ph2d-editor = { path = "../ph2d-editor" }

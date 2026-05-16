@@ -161,6 +161,25 @@ pub fn paint_icon(
     color: Color,
     stroke_width: f32,
 ) {
+    let mut path = BezPath::new();
+    for cmd in icon.cmds() {
+        path.extend(cmd_to_path(*cmd));
+    }
+    paint_icon_path(scene, &path, rect, color, stroke_width);
+}
+
+/// Same as [`paint_icon`] but takes a pre-built [`BezPath`] in the
+/// canonical 24×24 icon design space. Used by Wave 2 PR 11.4 chrome
+/// derivation — manifest `icon_fn` returns a `BezPath` directly, so
+/// the editor can paint registry-derived pills without an
+/// `IconId` enum round-trip.
+pub fn paint_icon_path(
+    scene: &mut VectorScene,
+    path: &BezPath,
+    rect: Rect,
+    color: Color,
+    stroke_width: f32,
+) {
     const VIEWBOX: f64 = 24.0;
     let pad = 2.0_f32.min(rect.w.min(rect.h) * 0.1);
     let avail_w = (rect.w - pad * 2.0).max(0.0) as f64;
@@ -181,13 +200,9 @@ pub fn paint_icon(
     let transform = Affine::translate((tx, ty)) * Affine::scale(scale);
     let stroke = Stroke::new(stroke_width as f64);
     let brush = Brush::Solid(color);
-    let mut path = BezPath::new();
-    for cmd in icon.cmds() {
-        path.extend(cmd_to_path(*cmd));
-    }
     scene
         .inner_mut()
-        .stroke(&stroke, transform, &brush, None, &path);
+        .stroke(&stroke, transform, &brush, None, path);
 }
 
 /// Lay out `text` via parley + emit a glyph run for each parley

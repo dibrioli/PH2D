@@ -6,7 +6,9 @@ use super::ids;
 use super::style::icon_button_fg;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{
+    fill_rounded_rect, paint_icon, paint_icon_path, paint_text, resolve, stroke_rounded_rect,
+};
 use crate::widget::{ButtonState, PILL_PADDING_PX, Tooltip, paint_tooltip};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -251,10 +253,10 @@ pub fn paint_top_bar(
 /// is registered in the hit index so dispatch can route clicks; tooltips
 /// are seeded by [`populate`].
 ///
-/// V1 contains a single action — `[Trim Transparency]`. Adding more
-/// actions later (BG Removal, Equalize, etc.) means extending the
-/// `ACTIONS` slice below + adding the corresponding `IconId` /
-/// `IMAGE_ACTION_*` NodeId pair.
+/// Wave 2 PR 11.4: pill list is now derived from the
+/// [`crate::installed_registry`] when present (one entry per manifest
+/// in the `image_tools` cluster); falls back to the legacy hardcoded
+/// list for tests that don't install a registry.
 fn paint_image_action_row(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -266,59 +268,92 @@ fn paint_image_action_row(
     use crate::screens::hero::style::icon_button_fg;
     let row_h = layout.top_bar.h;
     let radius = Radius::Xl.px();
-    // Each action paints as a Single-style pill (matches Save/Open/
-    // ImageTools width) so the row visually rhymes with the left half.
     let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
-    let actions = image_action_pills();
-    let total_w = pill_w * actions.len() as f32 + gap * actions.len().saturating_sub(1) as f32;
+    let pills = image_action_pills();
+    let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
     let mut rx = start_x;
-    for (id, icon, _i18n_key) in actions {
+    for pill in &pills {
         let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
         fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
         stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
-        hit_index.register(*id, rect);
-        let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+        hit_index.register(pill.id, rect);
+        let state = store.button_state(pill.id).unwrap_or(ButtonState::Normal);
         let chip = Rect::new(
             rect.x + (rect.w - 32.0) * 0.5,
             rect.y + (rect.h - 32.0) * 0.5,
             32.0,
             32.0,
         );
-        paint_icon(
-            scene,
-            *icon,
-            chip,
-            resolve(icon_button_fg(state), theme),
-            1.5,
-        );
+        let color = resolve(icon_button_fg(state), theme);
+        match &pill.icon {
+            PillIcon::FromManifest(path) => paint_icon_path(scene, path, chip, color, 1.5),
+            PillIcon::Legacy(icon) => paint_icon(scene, *icon, chip, color, 1.5),
+        }
         rx = rect.x + rect.w + gap;
     }
 }
 
-/// Canonical list of Image Tools action pills. Extending this slice
-/// is the only place to add a new image-edit action — `paint_image_action_row`
-/// drives the chrome from it, and [`image_action_a11y_nodes`] surfaces
-/// matching AccessKit Button nodes for HR-12 compliance.
+/// Drawing source for one Image Tools action pill's glyph. When the
+/// pill came from a manifest the manifest's `icon_fn` already produced
+/// a 24×24 [`ph2d_vector::BezPath`]; when the pill came from the
+/// legacy fallback the editor's `IconId` table supplies the path.
+enum PillIcon {
+    /// Manifest-derived (Wave 2 PR 11.4). `icon_fn` returned this path.
+    FromManifest(ph2d_vector::BezPath),
+    /// Legacy fallback for tests / pre-registry boot.
+    Legacy(IconId),
+}
+
+/// One pill row entry. Tuple form previously; refactored into a struct
+/// in PR 11.4 because the icon source now has two flavors (manifest
+/// BezPath vs legacy IconId).
+struct ImageActionPill {
+    id: NodeId,
+    icon: PillIcon,
+    label_key: &'static str,
+}
+
+/// Build the Image Tools action pill list. Wave 2 PR 11.4: derives
+/// from the runtime [`crate::installed_registry`] when present.
+/// Manifests register the cluster id `"image_tools"`; the registry
+/// returns them sorted by `(order, id)` so paint order matches design
+/// intent (trim 40 → make_square 50 → bgremoval 60).
 ///
-/// Each tuple: `(NodeId, IconId, i18n key for the visible label)`.
-fn image_action_pills() -> &'static [(NodeId, IconId, &'static str)] {
-    &[
-        (
-            ids::IMAGE_ACTION_TRIM,
-            IconId::TrimTransparency,
-            "tool.trim_transparency.label",
-        ),
-        (
-            ids::IMAGE_ACTION_MAKE_SQUARE,
-            IconId::MakeSquare,
-            "tool.make_square.label",
-        ),
-        (
-            ids::IMAGE_ACTION_BGREMOVAL,
-            IconId::BgRemoval,
-            "tool.bgremoval.label",
-        ),
+/// Falls back to the legacy hardcoded triple for tests / pre-registry
+/// boot. Both paths produce the same `NodeId`s because the chrome
+/// consts in [`crate::screens::hero::ids`] hash the SAME slug as the
+/// matching manifest's `id` field (PR 11.4 contract — pinned by the
+/// `chrome_manifest_coverage` integration test).
+fn image_action_pills() -> Vec<ImageActionPill> {
+    use ph2d_tool_registry::hash_node_id;
+    if let Some(reg) = crate::installed_registry() {
+        return reg
+            .cluster("image_tools")
+            .iter()
+            .map(|m| ImageActionPill {
+                id: hash_node_id(m.id),
+                icon: PillIcon::FromManifest((m.icon_fn)()),
+                label_key: m.label_key,
+            })
+            .collect();
+    }
+    vec![
+        ImageActionPill {
+            id: ids::IMAGE_ACTION_TRIM,
+            icon: PillIcon::Legacy(IconId::TrimTransparency),
+            label_key: "tool.trim_transparency.label",
+        },
+        ImageActionPill {
+            id: ids::IMAGE_ACTION_MAKE_SQUARE,
+            icon: PillIcon::Legacy(IconId::MakeSquare),
+            label_key: "tool.make_square.label",
+        },
+        ImageActionPill {
+            id: ids::IMAGE_ACTION_BGREMOVAL,
+            icon: PillIcon::Legacy(IconId::BgRemoval),
+            label_key: "tool.bgremoval.label",
+        },
     ]
 }
 
@@ -326,10 +361,12 @@ fn image_action_pills() -> &'static [(NodeId, IconId, &'static str)] {
 /// Shared between [`paint_image_action_row`] (paints + hit-registers)
 /// and [`image_action_a11y_nodes`] (publishes AccessKit nodes) so the
 /// two surfaces can't drift.
-pub(crate) fn image_action_pill_rects(
-    layout: &HeroLayout,
-    gap: f32,
-) -> Vec<(NodeId, IconId, Rect)> {
+///
+/// The returned tuples expose only `(NodeId, Rect)` — the icon source
+/// (manifest BezPath vs legacy IconId) is an implementation detail
+/// hidden from callers since neither downstream cares about it
+/// geometrically.
+pub(crate) fn image_action_pill_rects(layout: &HeroLayout, gap: f32) -> Vec<(NodeId, Rect)> {
     let row_h = layout.top_bar.h;
     let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
     let pills = image_action_pills();
@@ -337,9 +374,9 @@ pub(crate) fn image_action_pill_rects(
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
     let mut rx = start_x;
     let mut out = Vec::with_capacity(pills.len());
-    for (id, icon, _label_key) in pills {
+    for pill in &pills {
         let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
-        out.push((*id, *icon, rect));
+        out.push((pill.id, rect));
         rx = rect.x + rect.w + gap;
     }
     out
@@ -369,9 +406,9 @@ pub fn image_action_a11y_nodes(
     rects
         .into_iter()
         .zip(pills.iter())
-        .map(|((id, _icon, rect), (_id, _icon2, label_key))| {
+        .map(|((id, rect), pill)| {
             let node = NodeBuilder::new(Role::Button)
-                .label(ph2d_i18n::tr(label_key))
+                .label(ph2d_i18n::tr(pill.label_key))
                 .bounds(rect.x as f64, rect.y as f64, rect.w as f64, rect.h as f64)
                 .focusable(true)
                 .action(Action::Click)
@@ -661,7 +698,7 @@ mod tests {
 
         // Same length, same NodeIds in the same order.
         assert_eq!(rects.len(), nodes.len());
-        for ((rect_id, _icon, rect), (node_id, node)) in rects.iter().zip(nodes.iter()) {
+        for ((rect_id, rect), (node_id, node)) in rects.iter().zip(nodes.iter()) {
             assert_eq!(rect_id, node_id);
             // Label is non-empty (i18n stub round-tripped through tr()).
             assert!(

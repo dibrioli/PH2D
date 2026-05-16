@@ -43,6 +43,36 @@ pub mod screens;
 /// after the PR 4.0 extraction. See
 /// `docs/Migracao/2026-05-convention-by-discovery.md`.
 pub use ph2d_tool_registry as registry;
+
+/// Process-wide handle on the runtime [`registry::Registry`]. Set once
+/// by the host shell at boot via [`install_registry`]; consumed by the
+/// hero painters that derive chrome from manifests (Wave 2 PR 11.4 —
+/// `image_action_pills`, `topbar_clusters`).
+///
+/// `OnceLock` was picked over a per-`HeroScreen` field because the
+/// registry is shell-scoped (one Registry per process) and threading
+/// it through every painter signature would touch 30+ call sites for a
+/// value that never varies. Tests that need a registry-driven path
+/// call `install_registry` themselves; tests that don't see `None` and
+/// fall back to the legacy hardcoded list — the contract is checked by
+/// the `chrome_manifest_coverage` integration test.
+static EDITOR_REGISTRY: std::sync::OnceLock<registry::Registry> = std::sync::OnceLock::new();
+
+/// Install the process-wide registry. Returns `true` on first install,
+/// `false` if a registry was already installed (so re-init in test
+/// harnesses or split-binary boot flows is safe — the second registry
+/// is silently dropped). Callers that care about which registry won
+/// can inspect the return value.
+pub fn install_registry(reg: registry::Registry) -> bool {
+    EDITOR_REGISTRY.set(reg).is_ok()
+}
+
+/// Read the installed registry, if any. Painters use the fallback path
+/// (legacy hardcoded chrome) when this returns `None` — see callers
+/// in `screens/hero/topbar.rs`.
+pub fn installed_registry() -> Option<&'static registry::Registry> {
+    EDITOR_REGISTRY.get()
+}
 pub mod toast;
 pub mod tool;
 pub mod tools;

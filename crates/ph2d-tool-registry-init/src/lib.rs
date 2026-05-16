@@ -22,9 +22,9 @@ pub fn register_all(reg: &mut Registry) {
     ph2d_tool_bgremoval::register(reg);
     ph2d_tool_grid_snap::register(reg);
     ph2d_tool_make_square::register(reg);
+    ph2d_tool_trim_transparency::register(reg);
     //   ph2d_tool_brush::register(reg);         // future
     //   ph2d_tool_move::register(reg);          // future
-    //   ph2d_tool_trim_transparency::register(reg);  // future
 }
 
 #[cfg(test)]
@@ -49,5 +49,24 @@ mod tests {
             reg.by_id("bgremoval").is_some(),
             "bgremoval should be registered after PR 7"
         );
+        assert!(
+            reg.by_id("trim_transparency").is_some(),
+            "trim_transparency should be registered after Wave 2 PR 11.4"
+        );
+    }
+
+    #[test]
+    fn image_tools_cluster_has_three_manifests_in_canonical_order() {
+        // Wave 2 PR 11.4 contract: every Image Tools action pill comes
+        // from the `image_tools` cluster, ordered by manifest
+        // `order` field. `Registry::cluster` sorts by `(order, id)`,
+        // so this is the canonical paint order: trim (40), make_square
+        // (50), bgremoval (60).
+        let mut reg = Registry::default();
+        register_all(&mut reg);
+        reg.build().expect("registry should build");
+        let cluster = reg.cluster("image_tools");
+        let ids: Vec<&str> = cluster.iter().map(|m| m.id).collect();
+        assert_eq!(ids, vec!["trim_transparency", "make_square", "bgremoval"]);
     }
 }

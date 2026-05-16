@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! ph2d-tool-bgremoval — Background Removal tool manifest.
 //!
-//! Stateful Tool — active in the LeftRail "image" cluster, presents a
+//! Stateful Tool — active in the TopBar `image_tools` cluster, presents a
 //! Procreate-style panel with mode toggles (chroma + flood / GrabCut)
 //! and an Apply Toggle. Pixel work happens at full resolution on
 //! commit; live preview runs on a downscaled 1024² Oklab thumbnail
@@ -37,11 +37,16 @@ pub const MANIFEST: ToolManifest = ToolManifest {
     id: "bgremoval",
     label_key: "tool.bgremoval.label",
     icon_fn: icon,
-    // LeftRail "image" cluster (BrushTool, MoveTool, BgRemovalTool
-    // group). Order 30 sits after Brush (10) and Move (20).
-    zone: Zone::Sidebar,
-    cluster: "image_tools_rail",
-    order: 30,
+    // `image_tools` cluster — pill in the TopBar's image-action row
+    // (Image Tools toggle in `TOPBAR_IMAGE_TOOLS` flips it on). Shares
+    // the cluster with `make_square` (order 50) and `trim_transparency`
+    // (order 40); bgremoval at 60 sits to the right of both per
+    // ImageToolsV1 spec. Wave 2 PR 11.4 renamed this from
+    // `image_tools_rail` to align with the canonical chrome cluster
+    // name that `make_square` already used.
+    zone: Zone::TopRight,
+    cluster: "image_tools",
+    order: 60,
     a11y_role: Role::Button,
     handler: ToolHandler::Stateful {
         on_activate: shadow_handler as HandlerFn,

@@ -248,18 +248,6 @@ pub(crate) struct AppGfx {
     /// PRE-edit state was on one). Future M14.x replaces this with a
     /// proper command stack rooted in `EditorCommandQueue`.
     pub(crate) image_edit_undo: Option<ImageEditSnapshot>,
-
-    /// Tool registry — convention-by-discovery infrastructure (PR 8
-    /// of `docs/Migracao/2026-05-convention-by-discovery.md`).
-    /// Populated at boot by `init::build_initial_state` via
-    /// `ph2d_tool_registry_init::register_all`; queryable for
-    /// chrome derivation (PR 8 follow-ups) and the generic action
-    /// dispatcher (PR 9). Currently held but not yet routed —
-    /// shadow-mode coexisting with the legacy `pending_X` drains.
-    /// `dead_code` allow lifts on PR 9 when the dispatcher routes
-    /// through this field.
-    #[allow(dead_code)]
-    pub(crate) registry: ph2d_tool_registry::Registry,
 }
 
 /// Pre-edit snapshot of a sprite that an image-edit action mutated.
@@ -959,7 +947,6 @@ impl App {
             name_type_id,
             sprite_type_id,
             image_edit_undo,
-            registry: _,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;

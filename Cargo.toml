@@ -25,6 +25,7 @@ members = [
     "crates/ph2d-tool-make-square",
     "crates/ph2d-tool-grid-snap",
     "crates/ph2d-tool-bgremoval",
+    "crates/ph2d-tool-trim-transparency",
     "crates/ph2d-tokens",
     "crates/ph2d-mcp",
     "crates/ph2d-i18n",

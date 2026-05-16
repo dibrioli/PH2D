@@ -380,6 +380,10 @@ impl BkGraph {
     /// (3 oracle tests TODO-flagged); without it those buggy
     /// inputs spin forever instead of erroring cleanly.
     pub fn run_max_flow(&mut self) -> f32 {
+        // Safety cap: each augment saturates at least one edge or
+        // makes a t-link contention, so total augments is bounded by
+        // |E| × small-constant. 16 × |E| is conservative and prevents
+        // pathological hangs if a future regression breaks termination.
         let max_augments = 16usize.saturating_mul(self.edges.len()).max(1024);
         let mut count = 0usize;
         loop {
@@ -394,8 +398,8 @@ impl BkGraph {
             self.adopt_orphans();
             count += 1;
             if count >= max_augments {
-                // Bail safely: known BK port bug on non-trivial
-                // augment paths. Return current flow value.
+                // Should never trigger under correct BK; kept as a
+                // safety net.
                 break;
             }
         }
@@ -614,7 +618,17 @@ impl BkGraph {
                     let total = d.saturating_add(1);
                     if total < best_dist {
                         best_dist = total;
-                        best_parent_edge = e ^ 1;
+                        // BUGFIX(M2-BK-fix): the parent-edge convention
+                        // is `edges[parent[x]].to == parent_of_x`.
+                        // Here `e` is `o`'s outgoing edge to `cand`
+                        // (`edges[e].to == cand`), so storing `e` makes
+                        // the walk `p = edges[parent[p]].to` ascend
+                        // from o to cand correctly. The previous code
+                        // stored `e ^ 1`, whose `.to` was `o` itself —
+                        // creating a 1-cycle in the parent chain that
+                        // infinite-looped origin_distance() during the
+                        // next adoption pass.
+                        best_parent_edge = e;
                     }
                 }
             }
@@ -964,18 +978,12 @@ mod tests {
         oracle_check(3, 3, &src, &snk, &nl);
     }
 
-    // TODO(M2-BK-fix): BK port currently infinite-loops on these
-    // 3 oracle tests — 3x3 split, 4x4 random, 4x4 strong-diagonal.
-    // The simpler 2x2 / 3x3-uniform / 4x4-decoupled cases pass, so
-    // the bug is specific to non-trivial augment paths through
-    // 8-connected grids. Suspected: orphan adoption fails to make
-    // progress on some path saturation, re-augmenting the same
-    // path. Run-max-flow has a `MAX_AUGMENTS` safety cap so the
-    // failure now manifests as "wrong flow value" instead of hang.
-    // Re-enable when the BK port is fixed (or replaced with
-    // Push-Relabel).
+    // Non-trivial augment-path coverage. These exercise the
+    // adoption phase deeply and previously infinite-looped on a
+    // parent-edge convention bug in `process_orphan` (sister-edge
+    // confusion produced 1-cycles in the parent chain). Bug fixed:
+    // see BUGFIX(M2-BK-fix) comment in process_orphan.
     #[test]
-    #[ignore = "BK port bug on non-trivial augment paths — see TODO(M2-BK-fix)"]
     fn oracle_3x3_split_top_source_bottom_sink() {
         // Top row: high source cap, no sink. Bottom row: high
         // sink cap, no source. Middle row: neither. Reasonable
@@ -992,7 +1000,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "BK port bug on non-trivial augment paths — see TODO(M2-BK-fix)"]
     fn oracle_4x4_random_seed() {
         // Deterministic pseudo-random capacities — no rand crate.
         let n = 16;
@@ -1018,7 +1025,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "BK port bug on non-trivial augment paths — see TODO(M2-BK-fix)"]
     fn oracle_4x4_strong_diagonal() {
         // High t-links along one diagonal, low elsewhere. The
         // min-cut shape is non-trivial; verifies that BK's

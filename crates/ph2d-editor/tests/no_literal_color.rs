@@ -189,9 +189,15 @@ fn in_test_module(ranges: &[(usize, usize)], byte_offset: usize) -> bool {
 /// Module path under widget/blender_color_picker/ is allowed to carry
 /// HSV math tables with raw hex. Listed explicitly so a typo in a
 /// neighbouring widget doesn't silently inherit the allow.
+///
+/// Uses [`Path::components`] instead of string-matching so it's robust
+/// to platform separator differences — on Windows CI we observed
+/// mixed-separator paths like `src/widget\blender_color_picker\foo.rs`
+/// from `crate_root.join("src/widget")` which neither a pure-forward
+/// nor pure-back string match catches.
 fn path_is_allowlisted(path: &Path) -> bool {
-    let s = path.to_string_lossy();
-    s.contains("/widget/blender_color_picker/") || s.contains("\\widget\\blender_color_picker\\")
+    path.components()
+        .any(|c| c.as_os_str() == "blender_color_picker")
 }
 
 #[test]

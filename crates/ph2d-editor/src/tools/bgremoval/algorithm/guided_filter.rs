@@ -602,7 +602,10 @@ mod tests {
         let n = (w * h) as f32;
         let mean: f32 = scratch.alpha_f32[..n as usize].iter().sum::<f32>() / n;
         // Mean of output ≈ mean of mask = 16/64 = 0.25 (within FP slack).
-        assert!((mean - 0.25).abs() < 0.02, "got mean {mean}, expected ~0.25");
+        assert!(
+            (mean - 0.25).abs() < 0.02,
+            "got mean {mean}, expected ~0.25"
+        );
         // All outputs near the global mean (not at the extremes).
         for v in &scratch.alpha_f32[..n as usize] {
             assert!(v.is_finite() && (0.0..=1.0).contains(v));

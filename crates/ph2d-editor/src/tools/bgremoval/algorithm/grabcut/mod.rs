@@ -279,8 +279,16 @@ pub fn segment(
             // mask. Avoids divide-by-zero during E/M re-fit.
             break;
         }
-        component_assignments_into(&scratch.grabcut.bg_pixels, &gmm_bg, &mut scratch.grabcut.bg_assigns);
-        component_assignments_into(&scratch.grabcut.fg_pixels, &gmm_fg, &mut scratch.grabcut.fg_assigns);
+        component_assignments_into(
+            &scratch.grabcut.bg_pixels,
+            &gmm_bg,
+            &mut scratch.grabcut.bg_assigns,
+        );
+        component_assignments_into(
+            &scratch.grabcut.fg_pixels,
+            &gmm_fg,
+            &mut scratch.grabcut.fg_assigns,
+        );
         gmm_bg.fit(&scratch.grabcut.bg_pixels, &scratch.grabcut.bg_assigns);
         gmm_fg.fit(&scratch.grabcut.fg_pixels, &scratch.grabcut.fg_assigns);
     }

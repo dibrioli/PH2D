@@ -567,6 +567,7 @@ fn paint_snap_top_toggle(
 /// Generic segmented button row helper — paints one Button at `rect`
 /// with `Pressed` state when `pressed=true`, otherwise `Normal`.
 /// Hit-registers `id`. Used by every segmented group below.
+#[allow(clippy::too_many_arguments)]
 fn paint_segmented_button(
     rect: Rect,
     label: &str,

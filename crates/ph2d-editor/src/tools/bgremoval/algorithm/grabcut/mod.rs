@@ -58,6 +58,78 @@ const FLIP_DENOMINATOR: u32 = 1000;
 const GMM_BG_SEED: u64 = 0xBADC_0FFE_E0DD_F00D;
 const GMM_FG_SEED: u64 = 0xFEED_BEEF_DEAD_FACE;
 
+/// Reusable GrabCut working state. Lives on `BgRemovalScratch` so
+/// the per-call allocations from the orchestrator's pipeline can
+/// reuse capacity across runs — critical for the panel preview
+/// path where `segment()` runs on every slider tick (HR-3).
+///
+/// All `Vec` fields are `.clear()`-ed and re-pushed; `Vec::reserve`
+/// keeps the allocation alive across calls. `BkGraph` and `NLinks`
+/// expose their own `ensure(w, h)` resizers.
+#[derive(Clone, Debug, Default)]
+pub struct GrabCutScratch {
+    /// Per-pixel trimap at the processing resolution. Length =
+    /// `proc_w * proc_h`.
+    pub trimap: Vec<TriLabel>,
+    /// RGB-packed buffer of pixels belonging to the bg side
+    /// (collected from `trimap`). Length up to `proc_w*proc_h*3`.
+    pub bg_pixels: Vec<u8>,
+    /// Same shape as `bg_pixels`, for the fg side.
+    pub fg_pixels: Vec<u8>,
+    /// Per-bg-pixel GMM component index. Length matches
+    /// `bg_pixels.len() / 3`.
+    pub bg_assigns: Vec<u8>,
+    /// Per-fg-pixel GMM component index.
+    pub fg_assigns: Vec<u8>,
+    /// Per-pixel source-side cap for the BK t-links. Length =
+    /// `proc_w * proc_h`.
+    pub source_caps: Vec<f32>,
+    /// Per-pixel sink-side cap for the BK t-links.
+    pub sink_caps: Vec<f32>,
+    /// Pre-computed n-link weights (8-conn, 4 dirs/pixel).
+    pub n_links: NLinks,
+    /// Max-flow solver state — keeps its `Vec<NodeState>` and
+    /// `Vec<Edge>` allocations across calls.
+    pub bk: BkGraph,
+    /// Downscaled RGB-packed input (alpha stripped).
+    pub down_rgb: Vec<u8>,
+    /// Downscaled alpha channel (used by the `alpha_hole_as_bg`
+    /// trimap-init pass).
+    pub down_alpha: Vec<u8>,
+}
+
+impl GrabCutScratch {
+    /// Pre-grow every buffer to fit a `w × h` processing image.
+    /// Subsequent calls with the same dims do no allocation;
+    /// subsequent calls with larger dims grow capacity once.
+    pub fn ensure(&mut self, w: u32, h: u32) {
+        let n = (w as usize) * (h as usize);
+        // Per-pixel buffers — exact length.
+        self.trimap.resize(n, TriLabel::BgSoft);
+        self.source_caps.resize(n, 0.0);
+        self.sink_caps.resize(n, 0.0);
+        self.down_rgb.resize(n * 3, 0);
+        self.down_alpha.resize(n, 0);
+        // Side-pixel buffers — capacity only, length tracked by
+        // `collect_pixels_into` / `component_assignments_into`.
+        // Worst case all pixels on one side → reserve n*3 / n.
+        if self.bg_pixels.capacity() < n * 3 {
+            self.bg_pixels.reserve(n * 3 - self.bg_pixels.capacity());
+        }
+        if self.fg_pixels.capacity() < n * 3 {
+            self.fg_pixels.reserve(n * 3 - self.fg_pixels.capacity());
+        }
+        if self.bg_assigns.capacity() < n {
+            self.bg_assigns.reserve(n - self.bg_assigns.capacity());
+        }
+        if self.fg_assigns.capacity() < n {
+            self.fg_assigns.reserve(n - self.fg_assigns.capacity());
+        }
+        self.n_links.ensure(w, h);
+        self.bk.ensure(w, h);
+    }
+}
+
 /// Run GrabCut on the input and write the binary mask into
 /// `scratch.mask`. The mask is `0` for background, `255` for
 /// foreground at the *input* resolution; internal processing
@@ -77,21 +149,33 @@ pub fn segment(
         return SegmentResult::GrabCut;
     }
 
-    // 1. Downscale (if needed) + split RGB / alpha.
     let (proc_w, proc_h) = compute_downscale_dims(w, h, MAX_INTERNAL_DIM);
-    let (down_rgb, down_alpha) = downscale_to_rgb_alpha(rgba, w, h, proc_w, proc_h);
     let n_proc = (proc_w as usize) * (proc_h as usize);
-    debug_assert_eq!(down_rgb.len(), n_proc * 3);
-    debug_assert_eq!(down_alpha.len(), n_proc);
+
+    // 0. Pre-grow every scratch buffer to fit `proc_w × proc_h`.
+    //    Subsequent calls at the same dims do zero allocation.
+    scratch.grabcut.ensure(proc_w, proc_h);
+
+    // 1. Downscale (if needed) + split RGB / alpha into scratch.
+    downscale_to_rgb_alpha_into(
+        rgba,
+        w,
+        h,
+        proc_w,
+        proc_h,
+        &mut scratch.grabcut.down_rgb,
+        &mut scratch.grabcut.down_alpha,
+    );
+    debug_assert_eq!(scratch.grabcut.down_rgb.len(), n_proc * 3);
+    debug_assert_eq!(scratch.grabcut.down_alpha.len(), n_proc);
 
     // 2. Build initial trimap from the inset rect + alpha.
-    let mut trimap = vec![TriLabel::FgSoft; n_proc];
     init_trimap(
         proc_w,
         proc_h,
-        &down_alpha,
+        &scratch.grabcut.down_alpha,
         params,
-        &mut trimap,
+        &mut scratch.grabcut.trimap,
     );
 
     // Tiny guard — if either side has < COMPONENTS pixels the GMM
@@ -99,51 +183,75 @@ pub fn segment(
     // leaves ≥ 25 % of the image on each side, but a degenerate
     // params (insets summing to ~1.0) could trip this. Bail with
     // an all-fg mask to mirror the trivial-inset stub behaviour.
-    let bg_count = trimap.iter().filter(|t| !t.is_fg()).count();
-    let fg_count = trimap.iter().filter(|t| t.is_fg()).count();
+    let bg_count = scratch.grabcut.trimap.iter().filter(|t| !t.is_fg()).count();
+    let fg_count = scratch.grabcut.trimap.iter().filter(|t| t.is_fg()).count();
     if bg_count < COMPONENTS || fg_count < COMPONENTS {
-        write_mask(&trimap, proc_w, proc_h, w, h, &mut scratch.mask);
+        write_mask(
+            &scratch.grabcut.trimap,
+            proc_w,
+            proc_h,
+            w,
+            h,
+            &mut scratch.mask,
+        );
         return SegmentResult::GrabCut;
     }
 
-    // 3. Initial GMMs.
+    // 3. Initial GMMs. `Gmm5` is a fixed-size struct, no heap.
     let mut gmm_bg = Gmm5::default();
     let mut gmm_fg = Gmm5::default();
-    let mut bg_pixels = collect_pixels(&down_rgb, &trimap, /* want_fg = */ false);
-    let mut fg_pixels = collect_pixels(&down_rgb, &trimap, /* want_fg = */ true);
-    gmm_bg.init_kmeans_pp(&bg_pixels, GMM_BG_SEED);
-    gmm_fg.init_kmeans_pp(&fg_pixels, GMM_FG_SEED);
+    collect_pixels_into(
+        &scratch.grabcut.down_rgb,
+        &scratch.grabcut.trimap,
+        false,
+        &mut scratch.grabcut.bg_pixels,
+    );
+    collect_pixels_into(
+        &scratch.grabcut.down_rgb,
+        &scratch.grabcut.trimap,
+        true,
+        &mut scratch.grabcut.fg_pixels,
+    );
+    gmm_bg.init_kmeans_pp(&scratch.grabcut.bg_pixels, GMM_BG_SEED);
+    gmm_fg.init_kmeans_pp(&scratch.grabcut.fg_pixels, GMM_FG_SEED);
 
     // 4. Build n-links once (only colour-distance dependent — does
     //    not change between iters).
-    let beta = derive_beta(&down_rgb, proc_w, proc_h);
-    let mut n_links = NLinks::default();
-    build_n_links(&down_rgb, proc_w, proc_h, beta, &mut n_links);
+    let beta = derive_beta(&scratch.grabcut.down_rgb, proc_w, proc_h);
+    build_n_links(
+        &scratch.grabcut.down_rgb,
+        proc_w,
+        proc_h,
+        beta,
+        &mut scratch.grabcut.n_links,
+    );
 
     // 5. Iterate. T-link rebuild → max-flow → trimap update → GMM
     //    refit. Convergence: flip ratio < 1 / FLIP_DENOMINATOR.
-    let mut source_caps = vec![0.0f32; n_proc];
-    let mut sink_caps = vec![0.0f32; n_proc];
-    let mut bk = BkGraph::new(proc_w, proc_h);
     let max_iters = params.max_iters.clamp(1, 5);
     for iter in 0..max_iters {
         // 5a. T-links from current GMMs + trimap.
         build_t_links(
-            &down_rgb,
-            &trimap,
+            &scratch.grabcut.down_rgb,
+            &scratch.grabcut.trimap,
             &gmm_bg,
             &gmm_fg,
-            &mut source_caps,
-            &mut sink_caps,
+            &mut scratch.grabcut.source_caps,
+            &mut scratch.grabcut.sink_caps,
         );
 
-        // 5b. Max-flow.
-        bk.reset();
-        bk.load_capacities(&source_caps, &sink_caps, &n_links.edges);
-        bk.run_max_flow();
+        // 5b. Max-flow. `reset()` keeps allocations; `ensure` ran
+        //     once already at the top of `segment`.
+        scratch.grabcut.bk.reset();
+        scratch.grabcut.bk.load_capacities(
+            &scratch.grabcut.source_caps,
+            &scratch.grabcut.sink_caps,
+            &scratch.grabcut.n_links.edges,
+        );
+        scratch.grabcut.bk.run_max_flow();
 
         // 5c. Update trimap from BK output.
-        let flips = update_trimap(&mut trimap, &bk);
+        let flips = update_trimap(&mut scratch.grabcut.trimap, &scratch.grabcut.bk);
 
         // 5d. Convergence — skip after iter 0 because flips count
         //     against an as-yet-untrained GMM is not informative.
@@ -152,24 +260,41 @@ pub fn segment(
         }
 
         // 5e. Re-fit GMMs from updated trimap.
-        bg_pixels.clear();
-        fg_pixels.clear();
-        bg_pixels = collect_pixels(&down_rgb, &trimap, false);
-        fg_pixels = collect_pixels(&down_rgb, &trimap, true);
-        if bg_pixels.len() < COMPONENTS * 3 || fg_pixels.len() < COMPONENTS * 3 {
+        collect_pixels_into(
+            &scratch.grabcut.down_rgb,
+            &scratch.grabcut.trimap,
+            false,
+            &mut scratch.grabcut.bg_pixels,
+        );
+        collect_pixels_into(
+            &scratch.grabcut.down_rgb,
+            &scratch.grabcut.trimap,
+            true,
+            &mut scratch.grabcut.fg_pixels,
+        );
+        if scratch.grabcut.bg_pixels.len() < COMPONENTS * 3
+            || scratch.grabcut.fg_pixels.len() < COMPONENTS * 3
+        {
             // One side collapsed — stop iterating, preserve current
             // mask. Avoids divide-by-zero during E/M re-fit.
             break;
         }
-        let bg_assigns = component_assignments(&bg_pixels, &gmm_bg);
-        let fg_assigns = component_assignments(&fg_pixels, &gmm_fg);
-        gmm_bg.fit(&bg_pixels, &bg_assigns);
-        gmm_fg.fit(&fg_pixels, &fg_assigns);
+        component_assignments_into(&scratch.grabcut.bg_pixels, &gmm_bg, &mut scratch.grabcut.bg_assigns);
+        component_assignments_into(&scratch.grabcut.fg_pixels, &gmm_fg, &mut scratch.grabcut.fg_assigns);
+        gmm_bg.fit(&scratch.grabcut.bg_pixels, &scratch.grabcut.bg_assigns);
+        gmm_fg.fit(&scratch.grabcut.fg_pixels, &scratch.grabcut.fg_assigns);
     }
 
     // 6. Write mask back at the input resolution (nearest-neighbour
     //    upsample if we processed at a smaller dim).
-    write_mask(&trimap, proc_w, proc_h, w, h, &mut scratch.mask);
+    write_mask(
+        &scratch.grabcut.trimap,
+        proc_w,
+        proc_h,
+        w,
+        h,
+        &mut scratch.mask,
+    );
 
     SegmentResult::GrabCut
 }
@@ -186,13 +311,7 @@ pub fn segment(
 /// so `BgHard` from a transparent pixel overrides the inset's
 /// `FgSoft` / `BgSoft` label. Test `alpha_hole_as_bg_locks_transparent_pixels_as_background`
 /// pins this contract.
-fn init_trimap(
-    w: u32,
-    h: u32,
-    alpha: &[u8],
-    params: &GrabCutParams,
-    trimap: &mut [TriLabel],
-) {
+fn init_trimap(w: u32, h: u32, alpha: &[u8], params: &GrabCutParams, trimap: &mut [TriLabel]) {
     let (left, top, right, bottom) = inset_to_bbox(w, h, params);
     let stride = w as usize;
     for y in 0..h {
@@ -258,32 +377,44 @@ fn compute_downscale_dims(w: u32, h: u32, max_dim: u32) -> (u32, u32) {
 }
 
 /// Downscale (or pass-through) an RGBA8 input to `(dw, dh)`,
-/// returning the result split into separate RGB-packed and alpha
-/// buffers. `image::imageops::resize` with `FilterType::Triangle`
-/// is the cheapest box-quality filter and produces no ringing —
-/// good enough for a binary-mask consumer.
-fn downscale_to_rgb_alpha(rgba: &[u8], w: u32, h: u32, dw: u32, dh: u32) -> (Vec<u8>, Vec<u8>) {
+/// writing the result split into the caller-owned `rgb` and
+/// `alpha` buffers. Both are `.clear()`-ed and re-pushed so the
+/// allocation persists across calls (HR-3).
+///
+/// `image::imageops::resize` with `FilterType::Triangle` is the
+/// cheapest box-quality filter and produces no ringing — good
+/// enough for a binary-mask consumer. It allocates an internal
+/// `ImageBuffer` on the downscale path; that's the one remaining
+/// alloc we can't eliminate without re-implementing the filter.
+fn downscale_to_rgb_alpha_into(
+    rgba: &[u8],
+    w: u32,
+    h: u32,
+    dw: u32,
+    dh: u32,
+    rgb: &mut Vec<u8>,
+    alpha: &mut Vec<u8>,
+) {
     if dw == w && dh == h {
-        return split_rgba_to_rgb_alpha(rgba);
+        split_rgba_to_rgb_alpha_into(rgba, rgb, alpha);
+        return;
     }
     let src = ImageBuffer::<Rgba<u8>, _>::from_raw(w, h, rgba.to_vec())
         .expect("rgba length matches w*h*4");
     let down: ImageBuffer<Rgba<u8>, Vec<u8>> =
         image::imageops::resize(&src, dw, dh, FilterType::Triangle);
-    split_rgba_to_rgb_alpha(down.as_raw())
+    split_rgba_to_rgb_alpha_into(down.as_raw(), rgb, alpha);
 }
 
-fn split_rgba_to_rgb_alpha(rgba: &[u8]) -> (Vec<u8>, Vec<u8>) {
-    let n = rgba.len() / 4;
-    let mut rgb = Vec::with_capacity(n * 3);
-    let mut alpha = Vec::with_capacity(n);
+fn split_rgba_to_rgb_alpha_into(rgba: &[u8], rgb: &mut Vec<u8>, alpha: &mut Vec<u8>) {
+    rgb.clear();
+    alpha.clear();
     for chunk in rgba.chunks_exact(4) {
         rgb.push(chunk[0]);
         rgb.push(chunk[1]);
         rgb.push(chunk[2]);
         alpha.push(chunk[3]);
     }
-    (rgb, alpha)
 }
 
 // ---------------------------------------------------------------
@@ -291,11 +422,11 @@ fn split_rgba_to_rgb_alpha(rgba: &[u8]) -> (Vec<u8>, Vec<u8>) {
 // ---------------------------------------------------------------
 
 /// Walk `trimap` and gather RGB pixels matching the side filter
-/// (FgSoft+FgHard if `want_fg`, BgSoft+BgHard otherwise) into a
-/// flat `[R,G,B,…]` buffer suitable for `Gmm5::init_kmeans_pp` /
-/// `Gmm5::fit`.
-fn collect_pixels(rgb: &[u8], trimap: &[TriLabel], want_fg: bool) -> Vec<u8> {
-    let mut out = Vec::with_capacity(trimap.len() * 3 / 2);
+/// (FgSoft+FgHard if `want_fg`, BgSoft+BgHard otherwise) into the
+/// caller-owned `out` buffer (`.clear()`-ed then re-pushed, so the
+/// allocation persists across calls — HR-3).
+fn collect_pixels_into(rgb: &[u8], trimap: &[TriLabel], want_fg: bool, out: &mut Vec<u8>) {
+    out.clear();
     for (i, &t) in trimap.iter().enumerate() {
         if t.is_fg() == want_fg {
             out.push(rgb[i * 3]);
@@ -303,20 +434,17 @@ fn collect_pixels(rgb: &[u8], trimap: &[TriLabel], want_fg: bool) -> Vec<u8> {
             out.push(rgb[i * 3 + 2]);
         }
     }
-    out
 }
 
-/// For each pixel in `pixels` (RGB-packed), return its best
-/// component index under the supplied GMM. Output length =
-/// `pixels.len() / 3`.
-fn component_assignments(pixels: &[u8], gmm: &Gmm5) -> Vec<u8> {
-    let n = pixels.len() / 3;
-    let mut out = Vec::with_capacity(n);
+/// For each pixel in `pixels` (RGB-packed), write its best
+/// component index under the supplied GMM into `out`. `out` is
+/// `.clear()`-ed first; final length = `pixels.len() / 3`.
+fn component_assignments_into(pixels: &[u8], gmm: &Gmm5, out: &mut Vec<u8>) {
+    out.clear();
     for chunk in pixels.chunks_exact(3) {
         let k = gmm.assign_component([chunk[0], chunk[1], chunk[2]]);
         out.push(k as u8);
     }
-    out
 }
 
 /// Walk the BK output and update every soft-labelled pixel's
@@ -589,8 +717,49 @@ mod tests {
     #[test]
     fn split_rgba_separates_channels_correctly() {
         let rgba = vec![10u8, 20, 30, 40, 50, 60, 70, 80];
-        let (rgb, alpha) = split_rgba_to_rgb_alpha(&rgba);
+        let mut rgb = Vec::new();
+        let mut alpha = Vec::new();
+        split_rgba_to_rgb_alpha_into(&rgba, &mut rgb, &mut alpha);
         assert_eq!(rgb, vec![10, 20, 30, 50, 60, 70]);
         assert_eq!(alpha, vec![40, 80]);
+    }
+
+    #[test]
+    fn scratch_ensure_grows_buffers_to_dims() {
+        let mut gs = GrabCutScratch::default();
+        gs.ensure(32, 16);
+        assert_eq!(gs.trimap.len(), 32 * 16);
+        assert_eq!(gs.source_caps.len(), 32 * 16);
+        assert_eq!(gs.sink_caps.len(), 32 * 16);
+        assert_eq!(gs.down_rgb.len(), 32 * 16 * 3);
+        assert_eq!(gs.down_alpha.len(), 32 * 16);
+        // Side buffers reserve capacity but stay length-0.
+        assert!(gs.bg_pixels.capacity() >= 32 * 16 * 3);
+        assert_eq!(gs.bg_pixels.len(), 0);
+        // BkGraph + NLinks resized via their own ensure.
+        assert_eq!(gs.bk.width, 32);
+        assert_eq!(gs.bk.height, 16);
+        assert_eq!(gs.n_links.w, 32);
+        assert_eq!(gs.n_links.h, 16);
+    }
+
+    #[test]
+    fn scratch_reused_across_segment_calls_at_same_dims_does_not_realloc() {
+        // Smoke-test: two consecutive segment() calls on the same
+        // scratch + same dims should not crash and should produce
+        // mask of the right length. We can't easily count allocs
+        // without dhat, but functionality covers the refactor.
+        let rgba = make_image(48, 48, [200, 30, 30], Some(([30, 200, 30], 16, 16, 16, 16)));
+        let mut s = BgRemovalScratch::default();
+        s.ensure(48, 48, false);
+        let _ = segment(&rgba, 48, 48, &default_params(), &mut s);
+        assert_eq!(s.mask.len(), 48 * 48);
+        let bg_buf_cap_after_first = s.grabcut.bg_pixels.capacity();
+        let bk_nodes_cap_after_first = s.grabcut.bk.nodes_capacity_for_test();
+        let _ = segment(&rgba, 48, 48, &default_params(), &mut s);
+        assert_eq!(s.mask.len(), 48 * 48);
+        // Capacity should be ≥ first run — never shrinks.
+        assert!(s.grabcut.bg_pixels.capacity() >= bg_buf_cap_after_first);
+        assert!(s.grabcut.bk.nodes_capacity_for_test() >= bk_nodes_cap_after_first);
     }
 }

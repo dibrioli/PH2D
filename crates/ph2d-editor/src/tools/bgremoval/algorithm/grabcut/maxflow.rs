@@ -187,6 +187,32 @@ impl BkGraph {
         }
     }
 
+    /// Resize the graph to `(width, height)` without releasing
+    /// capacity. Idempotent at the same dims (the inner `Vec`s
+    /// keep their allocations); growing across dims `resize`s the
+    /// node array, which only reallocs when capacity is exceeded.
+    /// Use this from `BgRemovalScratch` to keep BkGraph alive
+    /// across `segment()` calls — HR-3 zero-alloc hot path.
+    pub fn ensure(&mut self, width: u32, height: u32) {
+        let n = (width as usize) * (height as usize);
+        self.width = width;
+        self.height = height;
+        self.n = n;
+        // Resize then zero-fill so old state can't leak between
+        // calls. `resize_with` re-uses the existing capacity when
+        // `n <= self.nodes.capacity()` — no realloc on shrink.
+        self.nodes.resize_with(n, NodeState::empty);
+        for node in &mut self.nodes[..n] {
+            *node = NodeState::empty();
+        }
+        self.edges.clear();
+        self.active_head = NONE;
+        self.active_tail = NONE;
+        self.orphans.clear();
+        self.time_counter = 0;
+        self.flow = 0.0;
+    }
+
     /// Wipe the working state without releasing capacity. Suitable
     /// between iterations of GrabCut (n-link structure is rebuilt
     /// at each iter in our usage — see `super::mod`).
@@ -728,6 +754,14 @@ impl BkGraph {
     /// Read-only access to the resulting flow value.
     pub fn flow(&self) -> f32 {
         self.flow
+    }
+
+    /// Test-only: nodes vector capacity. Exposed so the
+    /// HR-3 scratch-reuse test in `super::mod::tests` can assert
+    /// that capacity never shrinks across `segment()` calls.
+    #[cfg(test)]
+    pub fn nodes_capacity_for_test(&self) -> usize {
+        self.nodes.capacity()
     }
 }
 

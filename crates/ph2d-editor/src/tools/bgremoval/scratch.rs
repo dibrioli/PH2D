@@ -76,6 +76,14 @@ pub struct BgRemovalScratch {
     /// `algorithm::compose::write_output`. This is what the host /
     /// preview thumbnail consumes.
     pub output_rgba: Vec<u8>,
+
+    /// Reusable working state for the GrabCut backend. Holds the
+    /// trimap, per-side pixel + assignment buffers, t-link caps,
+    /// pre-computed n-links, and the BK max-flow solver — all
+    /// allocations persist across `algorithm::grabcut::segment`
+    /// calls (HR-3). Sized lazily by `GrabCutScratch::ensure`
+    /// inside `segment`.
+    pub grabcut: super::algorithm::grabcut::GrabCutScratch,
 }
 
 impl BgRemovalScratch {

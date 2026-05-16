@@ -26,6 +26,7 @@
 //! - Gesture-mapping editor UI (ADR-0023 §4)
 //! - Single-Touch Companion overlay
 
+pub mod action_bus;
 pub mod floating_panel;
 pub mod gizmo;
 pub mod grid;

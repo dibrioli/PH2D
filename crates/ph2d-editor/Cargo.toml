@@ -10,13 +10,14 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-# ph2d-core — MemoryBudget (HR-13) — used by registry budget aggregate
-# integration tests; also transitively via ph2d-tool-registry.
-ph2d-core = { path = "../ph2d-core" }
 # ph2d-tool-registry — convention-by-discovery infrastructure
 # (ToolManifest, Registry, NodeId hash). Re-exported as
 # `ph2d_editor::registry` so existing callers keep working. See
 # `docs/Migracao/2026-05-convention-by-discovery.md` PR 4.0.
+# ph2d-core (MemoryBudget) flows transitively via ph2d-tool-registry —
+# no direct dep needed (cargo-machete enforces this; PR 6.0 retrofit
+# moved the integration tests that consumed ph2d-core directly to
+# ph2d-tool-registry-init).
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # Tool crates moved to `ph2d-tool-registry-init` (PR 6.0 retrofit).
 # `ph2d-editor` no longer depends on Stateful tools (grid-snap,

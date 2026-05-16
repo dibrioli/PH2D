@@ -3904,7 +3904,6 @@ dependencies = [
  "dhat",
  "image",
  "ph2d-a11y",
- "ph2d-core",
  "ph2d-grid",
  "ph2d-host",
  "ph2d-i18n",
@@ -4085,7 +4084,6 @@ dependencies = [
  "ph2d-core",
  "ph2d-editor",
  "ph2d-tool-registry",
- "ph2d-vector",
 ]
 
 [[package]]

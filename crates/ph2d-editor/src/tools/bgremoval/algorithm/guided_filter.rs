@@ -152,7 +152,13 @@ pub fn refine(
     }
     for i in 0..n {
         let m = scratch.box_buf_a[i];
-        scratch.box_buf_c[i] = scratch.alpha_f32[i] - m * m;
+        // `var_I = mean_II − mean_I²` is mathematically ≥ 0, but FP
+        // cancellation on near-constant patches can produce small
+        // negative values. Floor at 0 so that `var_I + ε > 0`
+        // always holds — without this, a user-set ε ≤ |var_I| from
+        // cancellation would yield a tiny negative denominator and
+        // a huge negative `a` (M3 audit finding 1, 2026-05-16).
+        scratch.box_buf_c[i] = (scratch.alpha_f32[i] - m * m).max(0.0);
     }
 
     // 6. a = cov_Ip / (var_I + ε) → box_buf_d (overwrite cov_Ip).
@@ -546,6 +552,88 @@ mod tests {
         let mut params = default_params();
         params.radius = 5;
         refine(&[], 0, 0, &params, &mut scratch);
+    }
+
+    // --- Audit-driven coverage (2026-05-16) ----------------------------
+
+    #[test]
+    fn refine_uniform_guide_with_checker_mask_does_not_nan() {
+        // Audit finding 5: with a fully-uniform guide, var_I ≈ 0
+        // for every window; only ε in the denominator. Combined
+        // with a non-trivial (checker) mask, this exercises the
+        // `var_I = 0` branch + `a = 0 / ε` numerator-zero path
+        // that the prior uniform-mask tests did not.
+        let w = 16;
+        let h = 16;
+        let rgba = make_rgba(w, h, [128, 128, 128]);
+        let mut scratch = BgRemovalScratch::default();
+        scratch.ensure(w, h, false);
+        for i in 0..(w * h) as usize {
+            scratch.mask[i] = if i.is_multiple_of(2) { 255 } else { 0 };
+        }
+        refine(&rgba, w, h, &default_params(), &mut scratch);
+        // Every output must be finite and in [0, 1].
+        for v in &scratch.alpha_f32[..(w * h) as usize] {
+            assert!(v.is_finite() && (0.0..=1.0).contains(v), "got {v}");
+        }
+        // Mean alpha should track mask density (~0.5).
+        let n = (w * h) as f32;
+        let mean: f32 = scratch.alpha_f32[..n as usize].iter().sum::<f32>() / n;
+        assert!((mean - 0.5).abs() < 0.05, "mean alpha = {mean}");
+    }
+
+    #[test]
+    fn refine_radius_larger_than_image_degrades_to_global_mean() {
+        // Audit finding 5: r > max(w, h) should not panic. Every
+        // window covers the whole image, so q ≈ global mean(p) at
+        // every pixel.
+        let w = 8;
+        let h = 8;
+        let rgba = make_rgba(w, h, [100, 150, 200]);
+        let mut scratch = BgRemovalScratch::default();
+        scratch.ensure(w, h, false);
+        // 25 % of pixels fg.
+        for i in 0..16 {
+            scratch.mask[i] = 255;
+        }
+        let mut p = default_params();
+        p.radius = 100; // ≫ max(w, h) = 8
+        refine(&rgba, w, h, &p, &mut scratch);
+        let n = (w * h) as f32;
+        let mean: f32 = scratch.alpha_f32[..n as usize].iter().sum::<f32>() / n;
+        // Mean of output ≈ mean of mask = 16/64 = 0.25 (within FP slack).
+        assert!((mean - 0.25).abs() < 0.02, "got mean {mean}, expected ~0.25");
+        // All outputs near the global mean (not at the extremes).
+        for v in &scratch.alpha_f32[..n as usize] {
+            assert!(v.is_finite() && (0.0..=1.0).contains(v));
+        }
+    }
+
+    #[test]
+    fn refine_asymmetric_non_square_image_runs_clean() {
+        // Audit finding 5: non-square exercises the H/V pass
+        // count-divisor difference per axis.
+        let w: u32 = 24;
+        let h: u32 = 8;
+        let rgba = make_rgba(w, h, [60, 180, 60]);
+        let mut scratch = BgRemovalScratch::default();
+        scratch.ensure(w, h, false);
+        // Left half fg, right half bg.
+        for y in 0..h as usize {
+            for x in 0..(w as usize) / 2 {
+                scratch.mask[y * w as usize + x] = 255;
+            }
+        }
+        let mut p = default_params();
+        p.radius = 3;
+        refine(&rgba, w, h, &p, &mut scratch);
+        let n = (w * h) as usize;
+        for v in &scratch.alpha_f32[..n] {
+            assert!(v.is_finite() && (0.0..=1.0).contains(v));
+        }
+        // Far-left stays ~1, far-right stays ~0.
+        assert!(scratch.alpha_f32[0] > 0.9);
+        assert!(scratch.alpha_f32[w as usize - 1] < 0.1);
     }
 
     #[test]

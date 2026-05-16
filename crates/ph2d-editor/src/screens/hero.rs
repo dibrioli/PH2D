@@ -1762,19 +1762,11 @@ pub fn paint_hero_screen(
             if cur > max_scroll {
                 hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
             }
-        } else if panel_id == ids::INSP_BLENDER_PICKER && hero.store.picker_target().is_some() {
-            // The picker paint is a no-op if `picker_target` isn't
-            // set (early-out inside the demo painter); the visibility
-            // guard mirrors that so we don't waste an iteration.
-            color_picker_demo::paint_blender_picker_demo(
-                &layout,
-                scene,
-                text_system,
-                hero.theme,
-                &mut hero.hit_index,
-                &hero.store,
-            );
         }
+        // INSP_BLENDER_PICKER is intentionally NOT painted inside this
+        // z_order loop — see the dedicated paint pass after the
+        // Widget Gallery + Grid Settings blocks below, which keeps the
+        // picker on top of every floating panel regardless of z order.
     }
     if hero.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
@@ -1910,6 +1902,20 @@ pub fn paint_hero_screen(
             hero.store
                 .set_panel_scroll(crate::grid_snap::ids::GS_PANEL, max_scroll);
         }
+    }
+    // BlenderColorPicker — painted AFTER every floating panel
+    // (Inspector, Hierarchy, Widget Gallery, Grid Settings) so it
+    // never sits visually behind one of them. The painter is a no-op
+    // when `picker_target` is None.
+    if hero.store.picker_target().is_some() {
+        color_picker_demo::paint_blender_picker_demo(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+        );
     }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);

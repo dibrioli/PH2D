@@ -65,7 +65,12 @@ const LABEL_FONT_SIZE: f32 = 13.0;
 const TITLE_FONT_SIZE: f32 = 15.0;
 /// Column where the widget (right side of a "Label: [widget]" row)
 /// starts, measured from the inner-x of the row.
-const LABEL_COL_W: f32 = 110.0;
+/// Width reserved for the label column in NumberInput rows. Widened
+/// from 110 → 150 on 2026-05-15 so the longest labels ("QT bounds max
+/// X / Y", "Chunk size (cells)") fit on one line. The remaining
+/// `inner_w - LABEL_COL_W` (≈ 130 at the default 304-px panel width)
+/// is more than enough for a 4-digit NumberInput.
+const LABEL_COL_W: f32 = 150.0;
 
 /// Register the panel's interactive nodes in `store`. Called once
 /// from `HeroScreen::pre_populate_store` (Coordenador wiring).

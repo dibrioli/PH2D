@@ -24,7 +24,7 @@ carries an SPDX-style header naming the upstream source.
 
 | PH2D file | Upstream | Upstream license |
 |---|---|---|
-| [`crates/ph2d-editor/src/tools/bgremoval/algorithm/maxflow.rs`](crates/ph2d-editor/src/tools/bgremoval/algorithm/maxflow.rs) | OpenCV `modules/imgproc/src/grabcut.cpp` and `modules/imgproc/src/gcgraph.hpp` (max-flow / min-cut implementation backing GrabCut) | Apache 2.0 |
+| [`crates/ph2d-editor/src/tools/bgremoval/algorithm/grabcut/maxflow.rs`](crates/ph2d-editor/src/tools/bgremoval/algorithm/grabcut/maxflow.rs) | OpenCV `modules/imgproc/src/grabcut.cpp` and `modules/imgproc/src/gcgraph.hpp` (max-flow / min-cut implementation backing GrabCut) | Apache 2.0 |
 
 ### Upstream copyright notice (OpenCV)
 

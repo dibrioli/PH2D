@@ -8,6 +8,8 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 > **PH2D** (Power House 2D). Engine 2D de altíssima performance, sem teto para artistas, com IA tratada como first-class user.
 
 **Versão deste documento:** 2.5 — 2026-05-16 (Wave 2 closeout: `build.rs` codegen para tokens.json + icons SVG; chrome derivado do Registry; `docs/design/tools/*.toml` canonical + cross-validation; lint anti-`0xRRGGBB`; HR-18 **ativo** em `shells/desktop/src/`; ADR-0028 Accepted)
+
+**Narrativa do problema multi-agente:** Para entender por quê esta versão existe (problema → diagnóstico → 4 waves de solução incluindo o UI/hero), leia primeiro [`docs/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](../docs/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md).
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
 
 ## 1. Visão em uma frase

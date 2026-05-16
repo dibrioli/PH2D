@@ -169,6 +169,7 @@ Plano em [docs/Migracao/2026-05-wave-2-eliminating-all-collisions.md](../../Migr
 
 ## Referências
 
+- **[Narrativa completa: problema multi-agente paralelo + solução](../../Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md)** ← *começar por aqui se for novo no projeto*
 - [Plano Wave 2 canonical](../../Migracao/2026-05-wave-2-eliminating-all-collisions.md)
 - [SKILL §HR-18](../../../SKILL_Stack_PH2D_Definitiva.md#hr-18--crescimento-bounded-em-shell-binaries)
 - [ADR-0027 — Convention-by-discovery (Wave 1)](0027-convention-by-discovery.md)

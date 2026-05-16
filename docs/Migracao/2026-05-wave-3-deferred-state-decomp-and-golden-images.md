@@ -1,5 +1,14 @@
 # Wave 3 — HeroScreen state decomp + Action Bus migrations + golden images
 
+> **Contexto:** Esta wave é a fase final de uma migração maior
+> contra colisões multi-agente paralelas. Para a narrativa
+> completa (problema → diagnóstico → 4 waves de solução +
+> endgame), vide
+> [`PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md).
+> A seção 8a desse doc cobre especificamente o problema do
+> UI/hero e as 3 soluções definitivas em ordem recomendada.
+
+
 **Status:** Planejado, aguardando sessão dedicada.
 
 Origem: PRs deferidos da Wave 2.5 (vide

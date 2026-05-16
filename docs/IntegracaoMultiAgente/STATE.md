@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-16 — Wave 2 + parte de Wave 2.5 MERGEADAS, sha bom = `8cbfe4e`, CI 10/10 verde em todos os PRs
+**Última atualização:** 2026-05-16 — Wave 2 + Wave 2.5 (parcial) MERGEADAS; ActionBus migrations em progresso (2 de 20 fields, CI 10/10 verde). Para narrativa completa da solução multi-agente, vide [`docs/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](../Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md).
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.

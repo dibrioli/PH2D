@@ -1,5 +1,11 @@
 # Wave 2.5 — Deferred file splits + Action Bus
 
+> **Contexto:** Esta wave é uma fase de uma migração maior contra
+> colisões multi-agente paralelas. Para a narrativa completa
+> (problema → diagnóstico → 4 waves de solução), vide
+> [`PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md).
+
+
 **Status:** Parcialmente entregue 2026-05-16. PR 11.7a + 11.11 +
 11.8 foundation mergeadas em origin/main; PR 11.7d / 11.8b/c/d /
 11.10 deferidas para Wave 3 com sessão dedicada (vide

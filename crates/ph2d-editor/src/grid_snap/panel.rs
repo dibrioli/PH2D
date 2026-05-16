@@ -518,8 +518,10 @@ fn paint_section_label(
 
 /// Big individual Snap toggle at the top of the panel — primary
 /// action chip that flips `state.snap_enabled`. Full-width;
-/// `AccentSoft` fill + Accent border when ON, `BgElev` + Border
-/// when OFF. Returns the Y after the row + gap.
+/// `Accent` fill + `AccentFg` text when ON (canonical primary CTA
+/// look — `AccentFg` is the contrast pair `Accent` was designed
+/// against), `BgElev` + Border + `Text2` when OFF. Returns the Y
+/// after the row + gap.
 #[allow(clippy::too_many_arguments)]
 fn paint_snap_top_toggle(
     x: f32,
@@ -537,11 +539,9 @@ fn paint_snap_top_toggle(
     let radius = ph2d_tokens::Radius::Md.px();
     let on = state.snap_enabled;
     let (fill_tok, border_tok, text_tok) = if on {
-        (
-            ColorToken::AccentSoft,
-            ColorToken::Accent,
-            ColorToken::AccentFg,
-        )
+        // Bold Accent fill + AccentFg text — high contrast primary
+        // CTA. AccentSoft was too dark / blended with AccentFg.
+        (ColorToken::Accent, ColorToken::Accent, ColorToken::AccentFg)
     } else {
         (ColorToken::BgElev, ColorToken::Border, ColorToken::Text2)
     };

@@ -28,6 +28,7 @@ use crate::widget::{
 };
 use crate::zones::Rect;
 use ph2d_grid::hex::{HexOffset, HexOrientation};
+#[cfg(test)]
 use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
 use ph2d_grid::staggered::StaggerParity;
@@ -1366,10 +1367,7 @@ fn paint_snap_target_row(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    let target_label = match state.snap_target {
-        SnapTarget::Center => "Center",
-        SnapTarget::Intersection => "Intersection",
-    };
+    let target_label = state.snap_target.label();
     let btn = Button {
         id: ids::GS_SNAP_CENTER,
         label: format!("Target: {target_label} \u{25B6}"),
@@ -1839,10 +1837,7 @@ fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
         }
     }
     if id == ids::GS_SNAP_CENTER {
-        state.snap_target = match state.snap_target {
-            SnapTarget::Center => SnapTarget::Intersection,
-            SnapTarget::Intersection => SnapTarget::Center,
-        };
+        state.snap_target = state.snap_target.cycle();
         return true;
     }
     // Cycling buttons — interpret based on active kind so the same
@@ -2127,7 +2122,7 @@ mod tests {
             snap_subdivisions: 2,
             ..Default::default()
         };
-        let p = s.snap_world([0.3, 0.3]);
+        let p = s.snap_world([0.3, 0.3], [0.0, 0.0]);
         assert!(
             (p[0] - 0.25).abs() < 1e-5 && (p[1] - 0.25).abs() < 1e-5,
             "expected [0.25, 0.25] with subdivisions=2; got {p:?}"

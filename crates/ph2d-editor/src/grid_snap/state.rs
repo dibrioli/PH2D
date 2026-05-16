@@ -375,11 +375,18 @@ impl GridSnapState {
     /// `world` unchanged when snap is disabled or the active kind
     /// has no snap-target (Quadtree, Voronoi).
     ///
+    /// `sprite_half_size` is the sprite's half-extent in world meters
+    /// — used by the `Corner` and `CenterIntersectionAndCorners`
+    /// modes to align a sprite corner to a grid vertex. Pass
+    /// `[0.0, 0.0]` when the caller is snapping a bare world point
+    /// (drag-drop, paste before the sprite size is known); Corner
+    /// modes degenerate to point-Intersection snap in that case.
+    ///
     /// Origin offset is applied at the boundary: world coords go
     /// through `(world - origin)` before the math (so the math sees
     /// a grid anchored at (0, 0)), then `+ origin` is added back to
     /// the snapped result.
-    pub fn snap_world(&mut self, world: Vec2) -> Vec2 {
+    pub fn snap_world(&mut self, world: Vec2, sprite_half_size: Vec2) -> Vec2 {
         if !self.snap_enabled {
             return world;
         }
@@ -388,23 +395,61 @@ impl GridSnapState {
         // Pre-scale by N for sub-grid snap: a 2× subdivision treats
         // each cell as if it were 1/N × 1/N during the snap math.
         // Post-scale undoes it, landing on the fine-grained target.
+        // The sprite half-size scales with world so Corner mode still
+        // aligns the right sprite corner under sub-grid snap.
         let n = self.snap_subdivisions.max(1) as f32;
         let local = [(world[0] - origin[0]) * n, (world[1] - origin[1]) * n];
+        let local_half = [sprite_half_size[0] * n, sprite_half_size[1] * n];
         let snapped_local = match self.kind {
-            GridKind::Square => gsw(&self.make_square(), local, target, &mut self.scratch),
-            GridKind::Hex => gsw(&self.make_hex(), local, target, &mut self.scratch),
-            GridKind::Iso => gsw(&self.make_iso(), local, target, &mut self.scratch),
-            GridKind::StaggeredSquare => gsw(
-                &self.make_staggered_square(),
+            GridKind::Square => gsw(
+                &self.make_square(),
                 local,
+                local_half,
                 target,
                 &mut self.scratch,
             ),
-            GridKind::StaggeredHex => {
-                gsw(&self.make_staggered_hex(), local, target, &mut self.scratch)
-            }
-            GridKind::Tri => gsw(&self.make_tri(), local, target, &mut self.scratch),
-            GridKind::Chunks => gsw(&self.make_chunks(), local, target, &mut self.scratch),
+            GridKind::Hex => gsw(
+                &self.make_hex(),
+                local,
+                local_half,
+                target,
+                &mut self.scratch,
+            ),
+            GridKind::Iso => gsw(
+                &self.make_iso(),
+                local,
+                local_half,
+                target,
+                &mut self.scratch,
+            ),
+            GridKind::StaggeredSquare => gsw(
+                &self.make_staggered_square(),
+                local,
+                local_half,
+                target,
+                &mut self.scratch,
+            ),
+            GridKind::StaggeredHex => gsw(
+                &self.make_staggered_hex(),
+                local,
+                local_half,
+                target,
+                &mut self.scratch,
+            ),
+            GridKind::Tri => gsw(
+                &self.make_tri(),
+                local,
+                local_half,
+                target,
+                &mut self.scratch,
+            ),
+            GridKind::Chunks => gsw(
+                &self.make_chunks(),
+                local,
+                local_half,
+                target,
+                &mut self.scratch,
+            ),
             // Non-uniform cells have no canonical snap target.
             GridKind::Quadtree | GridKind::Voronoi => return world,
         };
@@ -441,7 +486,7 @@ mod tests {
         };
         // Default cell_size=1.0, origin=[0,0]. Center of cell (0,0)
         // is (0.5, 0.5).
-        assert_eq!(s.snap_world([0.1, 0.1]), [0.5, 0.5]);
+        assert_eq!(s.snap_world([0.1, 0.1], [0.0, 0.0]), [0.5, 0.5]);
         // Shift origin by (10, 20). Same world point [0.1, 0.1]
         // sits 9.9 units LEFT and 19.9 units DOWN of cell (0,0) of
         // the shifted grid → cell (-10, -20) → center
@@ -460,7 +505,7 @@ mod tests {
         s.square_cfg.origin = [0.3, 0.7];
         // Input [0.1, 0.1] → local [-0.2, -0.6] → cell (-1, -1) →
         // local center (-0.5, -0.5) → world center (-0.2, 0.2).
-        let snapped = s.snap_world([0.1, 0.1]);
+        let snapped = s.snap_world([0.1, 0.1], [0.0, 0.0]);
         assert!(
             (snapped[0] - -0.2).abs() < 1e-5 && (snapped[1] - 0.2).abs() < 1e-5,
             "expected [-0.2, 0.2], got {snapped:?}"
@@ -471,7 +516,7 @@ mod tests {
     fn default_state_snap_is_off_so_passthrough() {
         let mut s = GridSnapState::default();
         assert!(!s.snap_enabled);
-        let p = s.snap_world([1.3, 2.7]);
+        let p = s.snap_world([1.3, 2.7], [0.0, 0.0]);
         assert_eq!(p, [1.3, 2.7]);
     }
 
@@ -483,7 +528,7 @@ mod tests {
             snap_target: SnapTarget::Center,
             ..Default::default()
         };
-        let p = s.snap_world([0.1, 0.1]);
+        let p = s.snap_world([0.1, 0.1], [0.0, 0.0]);
         // Default square cell size = 1.0 → cell (0,0) center = (0.5, 0.5).
         assert_eq!(p, [0.5, 0.5]);
     }
@@ -499,7 +544,7 @@ mod tests {
         // Hex point near origin — must land on one of the 6 corners
         // of the containing hex. Verify the result is at distance
         // ≈ cell_size (= 1.0) from the cell center.
-        let p = s.snap_world([0.1, 0.1]);
+        let p = s.snap_world([0.1, 0.1], [0.0, 0.0]);
         let center = s.make_hex();
         use ph2d_grid::GridMath;
         let cell = center.world_to_cell([0.1, 0.1]);
@@ -518,9 +563,9 @@ mod tests {
             kind: GridKind::Quadtree,
             ..Default::default()
         };
-        assert_eq!(s.snap_world([3.7, 2.1]), [3.7, 2.1]);
+        assert_eq!(s.snap_world([3.7, 2.1], [0.0, 0.0]), [3.7, 2.1]);
         s.kind = GridKind::Voronoi;
-        assert_eq!(s.snap_world([3.7, 2.1]), [3.7, 2.1]);
+        assert_eq!(s.snap_world([3.7, 2.1], [0.0, 0.0]), [3.7, 2.1]);
     }
 
     #[test]

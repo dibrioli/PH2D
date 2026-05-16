@@ -501,7 +501,10 @@ impl App {
         // grid rather than scattering at sub-pixel offsets. No-op
         // when snap_enabled = false or active kind has no snap target.
         let drop_world: [f32; 2] = if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.grid_snap_state.snap_world(drop_world_raw)
+            // Drag-drop: sprite hasn't been imported yet, so half-size
+            // is unknown. Pass [0.0, 0.0] — Corner-family modes
+            // degenerate to point-Intersection snap in that case.
+            hero.grid_snap_state.snap_world(drop_world_raw, [0.0, 0.0])
         } else {
             drop_world_raw
         };
@@ -3099,8 +3102,28 @@ impl ApplicationHandler for App {
                     // Voronoi). Applied AFTER the gizmo's own Ctrl-snap
                     // step so the two systems compose (project-level
                     // step + grid-aligned target).
-                    new_t.translation = hero.grid_snap_state.snap_world(new_t.translation);
+                    //
+                    // Sprite half-extent is forwarded so the Corner /
+                    // CenterIntersectionAndCorners snap modes can align
+                    // a sprite corner (rather than the center) to a grid
+                    // vertex. Scale-aware: the sprite's RENDERED size
+                    // is `Sprite::size × Transform::scale`, so we
+                    // multiply.
                     let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
+                    let sprite_half_size = gfx
+                        .sim
+                        .world()
+                        .get::<ph2d_render::Sprite>(entity)
+                        .map(|s| {
+                            [
+                                s.size[0] * new_t.scale[0] * 0.5,
+                                s.size[1] * new_t.scale[1] * 0.5,
+                            ]
+                        })
+                        .unwrap_or([0.0, 0.0]);
+                    new_t.translation = hero
+                        .grid_snap_state
+                        .snap_world(new_t.translation, sprite_half_size);
                     if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                         t.translation =
                             ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);

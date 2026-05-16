@@ -3232,16 +3232,34 @@ impl ApplicationHandler for App {
                                 let start_world =
                                     gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                                 if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
-                                    // Pivot defaults to the entity
-                                    // translation (sprite center).
-                                    // M14.7 D will swap this when Alt
-                                    // is held.
-                                    let pivot = [t.translation.x, t.translation.y];
                                     let snap = ph2d_editor::TransformSnapshot {
                                         translation: [t.translation.x, t.translation.y],
                                         rotation: t.rotation,
                                         scale: [t.scale.x, t.scale.y],
                                     };
+                                    // Anchor-based scale: default pivot
+                                    // is the OPPOSITE corner (Figma /
+                                    // Photoshop convention) — Ctrl/Cmd
+                                    // flips to the sprite center.
+                                    // Translate / Rotate ignore the
+                                    // toggle (they always pivot on
+                                    // center). Sprite intrinsic
+                                    // half-size feeds the helper's
+                                    // opposite-corner math.
+                                    let use_center_anchor =
+                                        self.modifiers.control_key() || self.modifiers.super_key();
+                                    let sprite_half_intrinsic = gfx
+                                        .sim
+                                        .world()
+                                        .get::<ph2d_render::Sprite>(entity)
+                                        .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
+                                        .unwrap_or([0.0, 0.0]);
+                                    let pivot = ph2d_editor::anchor_pivot_world(
+                                        gkind,
+                                        sprite_half_intrinsic,
+                                        snap,
+                                        use_center_anchor,
+                                    );
                                     hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
                                         kind: gkind,
                                         entity_bits,

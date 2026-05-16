@@ -118,12 +118,14 @@ pub struct GizmoModifiers {
     /// Shift held: lock aspect ratio on corner scales, snap to
     /// `snap_rotate_deg` on rotate.
     pub shift: bool,
-    /// Ctrl/Cmd held: snap translate to `snap_move_meters` grid.
+    /// Ctrl/Cmd held: snap translate to `snap_move_meters` grid AND
+    /// flip Scale gizmo to center-anchor (default = opposite-corner).
+    /// The center-anchor swap happens at Down via
+    /// [`anchor_pivot_world`]; the snap-translate path checks this
+    /// flag in [`compute_gizmo_transform`].
     pub ctrl: bool,
-    /// Alt held: pivot rotation/scale around the opposite anchor
-    /// (Figma "mirror anchor"). Wired into the math via the host
-    /// swapping `pivot_world` at Down — this flag is reserved for
-    /// future cursor-hint changes.
+    /// Alt held: reserved for cursor-hint changes (Figma "mirror
+    /// anchor" hint). Not currently consumed by the math.
     pub alt: bool,
 }
 
@@ -318,6 +320,64 @@ pub fn compute_gizmo_transform(
             }
         }
     }
+}
+
+/// Compute the world-space pivot for a Scale drag (Corner / Edge).
+///
+/// Default (`use_center_anchor = false`): pivot at the OPPOSITE corner
+/// (for `ScaleCorner`) or the OPPOSITE edge midpoint (for `ScaleEdge`)
+/// of the sprite's bounding box. Dragging a corner stretches the box
+/// from the anchored opposite side — the same anchor model
+/// Photoshop / Figma / Blender use.
+///
+/// `use_center_anchor = true`: pivot at the sprite center (its
+/// `translation`). Dragging a corner scales the box uniformly around
+/// the center. Bound to the Ctrl / Cmd modifier in the host.
+///
+/// `sprite_half_size` is the sprite's INTRINSIC half-extent in local
+/// frame (i.e. `Sprite::size * 0.5`, before `Transform::scale`). The
+/// helper multiplies by `snap.scale` and rotates by `snap.rotation`
+/// to project to world.
+///
+/// `Translate` and `Rotate` ignore the toggle and always pivot on the
+/// sprite center (those drags don't have a natural opposite anchor).
+pub fn anchor_pivot_world(
+    kind: GizmoDragKind,
+    sprite_half_size: [f32; 2],
+    snap: TransformSnapshot,
+    use_center_anchor: bool,
+) -> [f32; 2] {
+    let local = if use_center_anchor {
+        return snap.translation;
+    } else {
+        match kind {
+            GizmoDragKind::ScaleCorner { dx_sign, dy_sign } => [
+                -dx_sign * sprite_half_size[0],
+                -dy_sign * sprite_half_size[1],
+            ],
+            GizmoDragKind::ScaleEdge { axis, sign } => {
+                if axis == 0 {
+                    [-sign * sprite_half_size[0], 0.0]
+                } else {
+                    [0.0, -sign * sprite_half_size[1]]
+                }
+            }
+            // Translate / Rotate don't have an "opposite" anchor —
+            // fall back to the sprite center.
+            _ => return snap.translation,
+        }
+    };
+    // Local → scaled local → rotated → world.
+    let scaled_x = local[0] * snap.scale[0];
+    let scaled_y = local[1] * snap.scale[1];
+    let cos_r = snap.rotation.cos();
+    let sin_r = snap.rotation.sin();
+    let rotated_x = scaled_x * cos_r - scaled_y * sin_r;
+    let rotated_y = scaled_x * sin_r + scaled_y * cos_r;
+    [
+        snap.translation[0] + rotated_x,
+        snap.translation[1] + rotated_y,
+    ]
 }
 
 /// Quantize `value` to the nearest multiple of `step`. `step <= 0`
@@ -1226,6 +1286,124 @@ mod tests {
             // on overlap) returns SOMETHING. Targeted lookups per id
             // are covered by M14.7 C's dispatch tests.
             assert!(matches!(id.0, 950..=963));
+        }
+    }
+
+    #[test]
+    fn anchor_pivot_world_default_returns_opposite_corner_for_ne_handle() {
+        // Sprite at world (10, 20), unit scale, no rotation. The NE
+        // corner of a 4×6 sprite sits at (12, 23); the opposite (SW)
+        // is (8, 17). Default anchor (no Ctrl) returns SW.
+        let snap = TransformSnapshot {
+            translation: [10.0, 20.0],
+            rotation: 0.0,
+            scale: [1.0, 1.0],
+        };
+        let pivot = anchor_pivot_world(
+            GizmoDragKind::ScaleCorner {
+                dx_sign: 1.0,
+                dy_sign: 1.0,
+            },
+            [2.0, 3.0],
+            snap,
+            false,
+        );
+        assert!(
+            (pivot[0] - 8.0).abs() < 1e-4 && (pivot[1] - 17.0).abs() < 1e-4,
+            "expected SW corner [8, 17], got {pivot:?}"
+        );
+    }
+
+    #[test]
+    fn anchor_pivot_world_center_anchor_returns_translation() {
+        // Ctrl/Cmd held → pivot at the sprite center regardless of
+        // handle kind / sprite size / rotation.
+        let snap = TransformSnapshot {
+            translation: [100.0, -50.0],
+            rotation: 1.234,
+            scale: [3.0, 0.5],
+        };
+        for kind in [
+            GizmoDragKind::ScaleCorner {
+                dx_sign: -1.0,
+                dy_sign: 1.0,
+            },
+            GizmoDragKind::ScaleEdge {
+                axis: 0,
+                sign: -1.0,
+            },
+            GizmoDragKind::ScaleEdge { axis: 1, sign: 1.0 },
+        ] {
+            let pivot = anchor_pivot_world(kind, [5.0, 7.0], snap, true);
+            assert_eq!(
+                pivot, snap.translation,
+                "kind {kind:?} with center anchor should pivot on translation"
+            );
+        }
+    }
+
+    #[test]
+    fn anchor_pivot_world_respects_scale_and_rotation() {
+        // 90° rotated sprite (rotation = π/2). Sprite intrinsic
+        // half-size 2×3; scale 1×1. NE handle (dx=+1, dy=+1).
+        // Opposite local = (-2, -3). After 90° rotation (cos=0, sin=1):
+        //   x' = -2*0 - (-3)*1 =  3
+        //   y' = -2*1 + (-3)*0 = -2
+        // World = translation + (3, -2) = (10+3, 20-2) = (13, 18).
+        let snap = TransformSnapshot {
+            translation: [10.0, 20.0],
+            rotation: std::f32::consts::FRAC_PI_2,
+            scale: [1.0, 1.0],
+        };
+        let pivot = anchor_pivot_world(
+            GizmoDragKind::ScaleCorner {
+                dx_sign: 1.0,
+                dy_sign: 1.0,
+            },
+            [2.0, 3.0],
+            snap,
+            false,
+        );
+        assert!(
+            (pivot[0] - 13.0).abs() < 1e-3 && (pivot[1] - 18.0).abs() < 1e-3,
+            "expected [13, 18] after 90° rotation, got {pivot:?}"
+        );
+    }
+
+    #[test]
+    fn anchor_pivot_world_edge_handle_opposite_midpoint() {
+        // Right-edge handle on a 4×6 sprite at origin: opposite is
+        // the left-edge midpoint, which sits at (-2, 0). No rotation
+        // / unit scale → world (-2, 0).
+        let snap = TransformSnapshot {
+            translation: [0.0, 0.0],
+            rotation: 0.0,
+            scale: [1.0, 1.0],
+        };
+        let pivot = anchor_pivot_world(
+            GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 },
+            [2.0, 3.0],
+            snap,
+            false,
+        );
+        assert!(
+            (pivot[0] - -2.0).abs() < 1e-4 && pivot[1].abs() < 1e-4,
+            "expected [-2, 0] for opposite of right edge, got {pivot:?}"
+        );
+    }
+
+    #[test]
+    fn anchor_pivot_world_translate_and_rotate_fall_back_to_center() {
+        // Translate / Rotate kinds don't have an opposite anchor —
+        // helper must return the sprite center for them.
+        let snap = TransformSnapshot {
+            translation: [42.0, -7.0],
+            rotation: 0.5,
+            scale: [2.0, 2.0],
+        };
+        for kind in [GizmoDragKind::Translate, GizmoDragKind::Rotate] {
+            let pivot = anchor_pivot_world(kind, [1.0, 1.0], snap, false);
+            assert_eq!(pivot, snap.translation, "{kind:?} must fall back to center");
         }
     }
 }

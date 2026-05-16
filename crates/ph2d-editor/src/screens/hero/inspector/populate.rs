@@ -196,7 +196,7 @@ fn populate_blender_picker(store: &mut WidgetStore) {
         ids::BLENDER_HEX,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
-            text: "#E7E7E7FF".to_string(),
+            text: "#E7E7E7FF".to_string(), // LITERAL-COLOR-OK: default value shown in the picker's hex input
             caret: 9,
             selection_anchor: None,
         },

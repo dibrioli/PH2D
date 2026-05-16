@@ -834,9 +834,7 @@ mod tests {
                 }
             }
             let mut mask = vec![false; n];
-            for i in 0..n {
-                mask[i] = visited[i];
-            }
+            mask.copy_from_slice(&visited[..n]);
             (flow, mask)
         }
     }
@@ -900,7 +898,7 @@ mod tests {
         // Two pixels left/right. Source → left (cap 10) → right
         // (n-link cap 4) → sink (cap 10). Max-flow = 4.
         let mut g = BkGraph::new(2, 1);
-        let mut n_links = vec![0.0; 2 * 1 * 4];
+        let mut n_links = vec![0.0; 8];
         n_links[0] = 4.0; // dir 0 (right) from pixel 0 to pixel 1
         g.load_capacities(&[10.0, 0.0], &[0.0, 10.0], &n_links);
         let f = g.run_max_flow();
@@ -919,7 +917,7 @@ mod tests {
         // not double-count by virtue of the "right" direction at
         // index 0 only.
         let mut g = BkGraph::new(2, 1);
-        let mut n_links = vec![0.0; 2 * 1 * 4];
+        let mut n_links = vec![0.0; 8];
         n_links[0] = 7.0; // pixel 0 → pixel 1
         // pixel 1's right-direction goes out of bounds; loader
         // skips it. Total cap between the two pixels is just 7.
@@ -940,13 +938,17 @@ mod tests {
             (got_flow - expected_flow).abs() < 1e-3,
             "BK flow {got_flow} != EK flow {expected_flow}"
         );
-        for i in 0..(w as usize) * (h as usize) {
+        for (i, &exp) in expected_mask
+            .iter()
+            .take((w as usize) * (h as usize))
+            .enumerate()
+        {
             assert_eq!(
                 g.is_source_side(i),
-                expected_mask[i],
+                exp,
                 "min-cut mismatch at pixel {i}: BK={} EK={}",
                 g.is_source_side(i),
-                expected_mask[i]
+                exp
             );
         }
     }
@@ -1005,12 +1007,12 @@ mod tests {
             state ^= state << 17;
             ((state & 0xFFFF) as f32) / 65535.0
         };
-        for i in 0..n {
-            src[i] = (next() * 10.0).round();
+        for (i, s) in src.iter_mut().enumerate().take(n) {
+            *s = (next() * 10.0).round();
             snk[i] = (next() * 10.0).round();
         }
-        for i in 0..nl.len() {
-            nl[i] = (next() * 5.0).round();
+        for v in nl.iter_mut() {
+            *v = (next() * 5.0).round();
         }
         oracle_check(4, 4, &src, &snk, &nl);
     }

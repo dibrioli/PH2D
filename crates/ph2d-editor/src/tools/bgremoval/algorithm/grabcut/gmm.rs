@@ -139,31 +139,30 @@ impl Gmm5 {
         // Distance² of every sample to the nearest already-chosen
         // centroid. We re-compute on every centroid pick.
         let mut d_sq = vec![0.0f32; n_samples];
-        for i in 0..n_samples {
-            let p = sample_rgb(i);
-            d_sq[i] = dist_sq(p, centroids[0]);
+        for (i, d) in d_sq.iter_mut().enumerate() {
+            *d = dist_sq(sample_rgb(i), centroids[0]);
         }
 
-        for k in 1..COMPONENTS {
+        for c in centroids.iter_mut().skip(1) {
             let total: f32 = d_sq.iter().sum();
             let pick_value = next_f01(&mut rng) * total.max(f32::MIN_POSITIVE);
             // Walk the cumulative distribution.
             let mut acc = 0.0f32;
             let mut chosen = n_samples - 1;
-            for i in 0..n_samples {
-                acc += d_sq[i];
+            for (i, &d) in d_sq.iter().enumerate() {
+                acc += d;
                 if acc >= pick_value {
                     chosen = i;
                     break;
                 }
             }
-            centroids[k] = sample_rgb(chosen);
+            let new_centroid = sample_rgb(chosen);
+            *c = new_centroid;
             // Update d_sq with the new centroid.
-            for i in 0..n_samples {
-                let p = sample_rgb(i);
-                let new_d = dist_sq(p, centroids[k]);
-                if new_d < d_sq[i] {
-                    d_sq[i] = new_d;
+            for (i, d) in d_sq.iter_mut().enumerate() {
+                let new_d = dist_sq(sample_rgb(i), new_centroid);
+                if new_d < *d {
+                    *d = new_d;
                 }
             }
         }
@@ -173,19 +172,19 @@ impl Gmm5 {
         for _ in 0..KMEANS_ITERS {
             // Assign.
             let mut changes = 0u32;
-            for i in 0..n_samples {
+            for (i, a) in assign.iter_mut().enumerate() {
                 let p = sample_rgb(i);
                 let mut best_k = 0;
                 let mut best_d = f32::INFINITY;
-                for k in 0..COMPONENTS {
-                    let d = dist_sq(p, centroids[k]);
+                for (k, c) in centroids.iter().enumerate() {
+                    let d = dist_sq(p, *c);
                     if d < best_d {
                         best_d = d;
                         best_k = k;
                     }
                 }
-                if assign[i] != best_k as u8 {
-                    assign[i] = best_k as u8;
+                if *a != best_k as u8 {
+                    *a = best_k as u8;
                     changes += 1;
                 }
             }
@@ -195,18 +194,18 @@ impl Gmm5 {
             // Update centroids from assignments.
             let mut sums = [[0.0f32; 3]; COMPONENTS];
             let mut counts = [0u32; COMPONENTS];
-            for i in 0..n_samples {
-                let k = assign[i] as usize;
+            for (i, &a) in assign.iter().enumerate() {
+                let k = a as usize;
                 let p = sample_rgb(i);
                 sums[k][0] += p[0];
                 sums[k][1] += p[1];
                 sums[k][2] += p[2];
                 counts[k] += 1;
             }
-            for k in 0..COMPONENTS {
+            for (k, c) in centroids.iter_mut().enumerate() {
                 if counts[k] > 0 {
                     let inv = 1.0 / counts[k] as f32;
-                    centroids[k] = [sums[k][0] * inv, sums[k][1] * inv, sums[k][2] * inv];
+                    *c = [sums[k][0] * inv, sums[k][1] * inv, sums[k][2] * inv];
                 }
                 // If a component went empty, leave its centroid
                 // where it was — the next iteration may pull
@@ -227,8 +226,8 @@ impl Gmm5 {
             // Assign to nearest centroid.
             let mut best_k = 0usize;
             let mut best_d = f32::INFINITY;
-            for k in 0..COMPONENTS {
-                let d = dist_sq(p, centroids[k]);
+            for (k, c) in centroids.iter().enumerate() {
+                let d = dist_sq(p, *c);
                 if d < best_d {
                     best_d = d;
                     best_k = k;

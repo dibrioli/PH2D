@@ -112,9 +112,11 @@ mod tests {
 
     #[test]
     fn inset_to_bbox_excessive_inset_is_clamped() {
-        let mut p = GrabCutParams::default();
-        p.inset_left = 0.9;
-        p.inset_right = 0.9;
+        let p = GrabCutParams {
+            inset_left: 0.9,
+            inset_right: 0.9,
+            ..GrabCutParams::default()
+        };
         let (l, _, r, _) = inset_to_bbox(64, 64, &p);
         // Clamp to 0.49 each: left=31, right=33 → at least 1 px wide.
         assert!(l < r);

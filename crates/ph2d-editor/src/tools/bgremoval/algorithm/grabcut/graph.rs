@@ -45,7 +45,7 @@ pub const LAMBDA: f32 = 9.0 * GAMMA;
 /// formula even with zero distance.
 pub const BETA_FLOOR: f32 = 1.0;
 /// 1 / √2 — the diagonal-edge distance factor.
-const INV_SQRT_2: f32 = 0.707_106_8;
+const INV_SQRT_2: f32 = std::f32::consts::FRAC_1_SQRT_2;
 
 // ---------------------------------------------------------------
 // Trimap label
@@ -257,11 +257,7 @@ pub fn build_t_links(
                 sink_caps[i] = 0.0;
             }
             TriLabel::BgSoft | TriLabel::FgSoft => {
-                let rgb = [
-                    rgb_only[i * 3],
-                    rgb_only[i * 3 + 1],
-                    rgb_only[i * 3 + 2],
-                ];
+                let rgb = [rgb_only[i * 3], rgb_only[i * 3 + 1], rgb_only[i * 3 + 2]];
                 source_caps[i] = gmm_bg.neg_log_prob(rgb);
                 sink_caps[i] = gmm_fg.neg_log_prob(rgb);
             }
@@ -316,7 +312,10 @@ mod tests {
         build_n_links(&rgb, 2, 2, 1.0, &mut nl);
         // Pixel 0 (top-left): right (orth), down-right (diag), down (orth), down-left (oob).
         assert_eq!(nl.edges[0], GAMMA, "right (orth)");
-        assert!((nl.edges[1] - GAMMA * INV_SQRT_2).abs() < 1e-4, "down-right (diag)");
+        assert!(
+            (nl.edges[1] - GAMMA * INV_SQRT_2).abs() < 1e-4,
+            "down-right (diag)"
+        );
         assert_eq!(nl.edges[2], GAMMA, "down (orth)");
         assert_eq!(nl.edges[3], 0.0, "down-left (out of bounds)");
     }
@@ -330,7 +329,11 @@ mod tests {
         let mut nl = NLinks::default();
         build_n_links(&rgb, 2, 1, 1.0, &mut nl);
         // edges[0] = right (orth): weight ≈ 0.
-        assert!(nl.edges[0] < 1e-6, "edge weight should fall off, got {}", nl.edges[0]);
+        assert!(
+            nl.edges[0] < 1e-6,
+            "edge weight should fall off, got {}",
+            nl.edges[0]
+        );
     }
 
     #[test]

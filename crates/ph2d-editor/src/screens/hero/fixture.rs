@@ -56,6 +56,14 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_WIDGET_GALLERY,
             TopBarCluster::single("Widget Gallery", IconId::Palette),
         ),
+        // Grid Settings — opens the floating Grid Settings panel
+        // (grid-snap subsystem: 9 grid kinds + snap policy + overlay
+        // controls). Mirrors the Widget Gallery pattern (panel-only
+        // subsystem, NOT a Tool, NOT in the LeftRail).
+        (
+            ids::TOPBAR_GRID_SETTINGS,
+            TopBarCluster::single("Grid Settings", IconId::GridSettings),
+        ),
         // Settings (gear) — moved to the end of the bar per
         // ImageToolsV1 spec. Still opens SettingsMenu context with
         // px/m presets and project-level toggles.

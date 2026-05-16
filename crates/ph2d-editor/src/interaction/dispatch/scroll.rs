@@ -72,6 +72,8 @@ pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::HIER_PANEL)
     } else if id == crate::widget::GALLERY_SCROLLBAR_ID {
         Some(ids::GAL_PANEL)
+    } else if id == crate::widget::GRID_SETTINGS_SCROLLBAR_ID {
+        Some(crate::grid_snap::ids::GS_PANEL)
     } else {
         None
     }

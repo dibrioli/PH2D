@@ -235,6 +235,13 @@ pub struct HeroScreen {
     /// [`HeroScreen::grid_config_mut`] for project-level
     /// customization.
     pub grid_config: crate::grid::GridConfig,
+    /// Grid-snap subsystem state — kind selector, per-kind config,
+    /// snap policy, overlay display + opacity. Canonical source for
+    /// the canvas grid overlay (paints via [`crate::grid_snap::render::paint`])
+    /// and for snapping world positions (via
+    /// [`crate::grid_snap::GridSnapState::snap_world`]).
+    /// Panel opens/closes via `TOPBAR_GRID_SETTINGS`.
+    pub grid_snap_state: crate::grid_snap::GridSnapState,
     /// M14.4b.bis: set by the VIEW button (`TOOL_HOME`) when its
     /// cycle lands on the "Zero" mode, signaling the host to reset
     /// `Camera2d` to its default (`center=(0,0)`, `height_world=10`).
@@ -352,6 +359,49 @@ pub struct HeroScreen {
     /// here (not read via `gizmo_selection` at drain time) so a
     /// concurrent selection change doesn't retarget the action.
     pub pending_trim_transparency: Option<u64>,
+    /// Pending request to apply Make Square to the selected sprite.
+    /// Raised by clicking `IMAGE_ACTION_MAKE_SQUARE` on the Image Tools
+    /// action row. Host drains, reads the sprite's atlas-source RGBA,
+    /// runs [`crate::make_square`], and — when the result is
+    /// `made_square = true` — replaces the sprite's source pixels with
+    /// the padded square, reprojects the pivot to preserve world
+    /// position (formula: `(old_dim * old_pivot + offset) / new_size`),
+    /// and pushes an "Make square" entry to the undo history. Source
+    /// remains snapshot here (not read via `gizmo_selection` at drain
+    /// time) so a concurrent selection change doesn't retarget the
+    /// action — same contract as `pending_trim_transparency`.
+    pub pending_make_square: Option<u64>,
+    /// Pending request to apply Background Removal to the selected
+    /// sprite. Raised by the active `BgRemovalTool` when the user
+    /// clicks the Apply Toggle in its panel — the host's per-frame
+    /// drain reads the sprite's RGBA source, calls
+    /// `BgRemovalTool::run_full_resolution` at full size, and swaps
+    /// `Sprite.source` to a fresh `Individual` texture (same
+    /// contract as `pending_trim_transparency` — same `entity_bits`
+    /// snapshot semantics, no pivot reproject because bgremoval
+    /// preserves image dimensions).
+    pub pending_bgremoval: Option<u64>,
+    /// One-shot intent raised by clicking the Bg Removal pill in
+    /// the Image Tools row. The host drains by calling
+    /// `tools.set_active(ToolId::new("bgremoval"))` so the tool's
+    /// floating panel opens with a live preview of the current
+    /// selection. Distinct from `pending_bgremoval` — that one is
+    /// the *Apply* trigger (raised by the panel's Apply Toggle),
+    /// this one is the *activate* trigger (raised by the TopBar pill).
+    pub pending_activate_bgremoval: bool,
+    /// One-shot intent: undo the most recent image-edit action
+    /// (Trim Transparency / Make Square). Raised by clicking
+    /// `TOOL_UNDO` on the LeftRail or pressing Cmd+Z. The host holds
+    /// the actual snapshot (Sprite source + size + Transform
+    /// translation captured pre-edit) and drains this flag on the
+    /// next frame to restore. Image edits are the only consumer in
+    /// V1 — the broader editor undo system is M14.x scope.
+    pub pending_undo_image_edit: bool,
+    /// Read-only signal from the host: `true` when the host has a
+    /// stored image-edit snapshot that Cmd+Z would restore. Lets the
+    /// UI dim the `TOOL_UNDO` chip when no undo is available. The
+    /// shell writes this each frame after its drain pass.
+    pub has_undoable_image_edit: bool,
     /// M14.5 inspector phase: snapshot of the selected sprite's
     /// data the host publishes each frame so `paint_inspector` can
     /// surface a "Render Source" section without crossing the
@@ -588,6 +638,7 @@ impl HeroScreen {
             grid_visible: true,
             grid_view: None,
             grid_config: crate::grid::GridConfig::default(),
+            grid_snap_state: crate::grid_snap::GridSnapState::default(),
             camera_reset_pending: false,
             import_requested: false,
             project: crate::project::ProjectSettings::default(),
@@ -609,6 +660,11 @@ impl HeroScreen {
             pending_rename_commit: None,
             pending_reimport: None,
             pending_trim_transparency: None,
+            pending_make_square: None,
+            pending_bgremoval: None,
+            pending_activate_bgremoval: false,
+            pending_undo_image_edit: false,
+            has_undoable_image_edit: false,
             inspector_sprite: None,
             inspector_transform: None,
             last_inspector_entity: None,
@@ -630,6 +686,7 @@ impl HeroScreen {
         hierarchy::populate(store);
         inspector::populate(store);
         widget_gallery::populate(store);
+        crate::grid_snap::populate(store);
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -1016,6 +1073,42 @@ impl HeroScreen {
                 self.store.close_context_menu();
                 return true;
             }
+            // Display-unit cascade entry — opens the unit submenu
+            // anchored next to the row, same pattern as the PPM
+            // cascade above.
+            if id == ids::CTX_MENU_SETTINGS_UNIT {
+                let row_rect = self.hit_index.rect_for(id);
+                let anchor = if let Some(r) = row_rect {
+                    (r.x + r.w, r.y)
+                } else {
+                    self.store
+                        .last_context_menu()
+                        .map(|r| (r.x, r.y))
+                        .unwrap_or((0.0, 0.0))
+                };
+                self.store
+                    .open_context_menu(crate::interaction::ContextMenuRequest {
+                        x: anchor.0,
+                        y: anchor.1,
+                        kind: crate::interaction::ContextMenuKind::SettingsUnitSubmenu,
+                    });
+                return true;
+            }
+            // Display-unit submenu options — write to `project.display_unit`
+            // and close the menu. Inspector / Grid Settings / Gizmo
+            // readouts read the project setting on the next paint.
+            let unit_pick = if id == ids::CTX_MENU_UNIT_METERS {
+                Some(crate::project::DisplayUnit::Meters)
+            } else if id == ids::CTX_MENU_UNIT_PIXELS {
+                Some(crate::project::DisplayUnit::Pixels)
+            } else {
+                None
+            };
+            if let Some(unit) = unit_pick {
+                self.project.display_unit = unit;
+                self.store.close_context_menu();
+                return true;
+            }
             // Save / Save As / Open Project — placeholders until the
             // pilot project wires real file I/O. Close the menu and
             // return consumed so the click doesn't propagate.
@@ -1083,6 +1176,45 @@ impl HeroScreen {
             self.widget_gallery_visible = !self.widget_gallery_visible;
             return true;
         }
+        // Grid Settings panel toggle — TopBar pill toggles the
+        // floating panel. Inner panel widgets (close X, kind dropdown,
+        // toggles) are routed below via `grid_snap::apply_event`.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::TOPBAR_GRID_SETTINGS
+        {
+            self.grid_snap_state.panel_visible = !self.grid_snap_state.panel_visible;
+            return true;
+        }
+        // Color swatch click — open the BlenderColorPicker bound to
+        // the grid-snap color slot, seed widget_color from the current
+        // state.color_rgba so the picker reads the right initial hue.
+        if let WidgetEvent::Click(id) = event
+            && id == crate::grid_snap::ids::GS_COLOR_PICKER
+        {
+            self.store.set_widget_color(
+                crate::grid_snap::ids::GS_COLOR_PICKER,
+                self.grid_snap_state.color_rgba,
+            );
+            self.store
+                .set_picker_target(Some(crate::grid_snap::ids::GS_COLOR_PICKER));
+            return true;
+        }
+        // Route remaining events into the grid-snap panel's own handler
+        // — covers GS_CLOSE, kind options, snap target options,
+        // neighborhood options, snap toggle, overlay toggle, opacity
+        // slider, probes, etc. Pass `&self.store` so the handler can
+        // read post-flip `on` from Toggles + post-edit numeric values.
+        // The panel publishes display_unit + ppm via a thread-local
+        // so `apply_value_changed` can convert user-typed values (in
+        // display unit) back to sim-space meters before writing into
+        // state.
+        crate::grid_snap::set_current_display_unit(
+            self.project.display_unit,
+            self.project.pixels_per_meter,
+        );
+        if crate::grid_snap::apply_event(&mut self.grid_snap_state, event, &self.store) {
+            return true;
+        }
         // Trim Transparency action — raise the `pending_trim_transparency`
         // intent with whatever entity the gizmo currently has selected.
         // Host drains next frame. When nothing is selected we still
@@ -1093,6 +1225,43 @@ impl HeroScreen {
             && id == ids::IMAGE_ACTION_TRIM
         {
             self.pending_trim_transparency = self.gizmo_selection;
+            return true;
+        }
+        // Make Square action — mirror of Trim Transparency. Click raises
+        // `pending_make_square` with the current `gizmo_selection`; host
+        // drains, runs `make_square`, replaces sprite pixels, reprojects
+        // pivot, pushes an "Make square" undo entry. Empty selection
+        // still consumes the click (silent no-op surface).
+        if let WidgetEvent::Click(id) = event
+            && id == ids::IMAGE_ACTION_MAKE_SQUARE
+        {
+            self.pending_make_square = self.gizmo_selection;
+            return true;
+        }
+        // Bg Removal action — distinct from Trim / MakeSquare because
+        // it ACTIVATES the stateful tool (so the panel opens with a
+        // live preview) instead of running a one-shot algorithm. The
+        // host drains `pending_activate_bgremoval` by calling
+        // `tools.set_active(ToolId::new("bgremoval"))`. The Apply
+        // trigger then lives in the tool's panel Toggle, which raises
+        // `pending_bgremoval` for the full-resolution drain.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::IMAGE_ACTION_BGREMOVAL
+        {
+            self.pending_activate_bgremoval = true;
+            return true;
+        }
+        // Image-edit Undo — TOOL_UNDO chip on the LeftRail (also
+        // bound to Cmd+Z in the desktop shell). Raises a one-shot
+        // intent; host drains and restores the most recent Trim /
+        // Make Square snapshot. When `has_undoable_image_edit == false`
+        // (host published no snapshot), the click still consumes (so
+        // the dispatcher doesn't keep walking) but the host's drainer
+        // surfaces a "Nothing to undo" toast.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::TOOL_UNDO
+        {
+            self.pending_undo_image_edit = true;
             return true;
         }
         if topbar::apply_event(&mut self.store, event) {
@@ -1223,14 +1392,24 @@ impl HeroScreen {
             )
             && let Some(info) = self.inspector_transform
         {
-            let x = self
+            // Store holds Position in the active DisplayUnit (Meters
+            // or Pixels). Convert back to sim-space meters before
+            // publishing — sim storage is always meters per the unit
+            // policy in `project::DisplayUnit`.
+            let unit = self.project.display_unit;
+            let ppm = self.project.pixels_per_meter;
+            let x_disp = self
                 .store
                 .number_value(ids::INSP_TRANSFORM_POS_X)
-                .unwrap_or(info.translation[0] as f64) as f32;
-            let y = self
+                .unwrap_or(unit.from_meters(info.translation[0], ppm) as f64)
+                as f32;
+            let y_disp = self
                 .store
                 .number_value(ids::INSP_TRANSFORM_POS_Y)
-                .unwrap_or(info.translation[1] as f64) as f32;
+                .unwrap_or(unit.from_meters(info.translation[1], ppm) as f64)
+                as f32;
+            let x = unit.to_meters(x_disp, ppm);
+            let y = unit.to_meters(y_disp, ppm);
             let rot_deg =
                 self.store
                     .number_value(ids::INSP_TRANSFORM_ROT)
@@ -1517,6 +1696,15 @@ pub fn paint_hero_screen(
     // hasn't published a camera view. We substitute the layout's
     // computed canvas rect into the view so the host doesn't have
     // to mirror layout math — it only owns camera + window dims.
+    //
+    // Layer-order toggle (2026-05-15): the compositor currently
+    // composes `game_rt_ldr` UNDER `vello_intermediate` in a single
+    // pass — chrome (including the grid) always lands on top of
+    // sprites. Real "behind" rendering needs a second Vello
+    // intermediate + a 3-layer compositor shader (TODO follow-up).
+    // For now we approximate by halving the grid's effective opacity
+    // when `grid_in_front == false`, which reads as "the grid is
+    // farther / underneath" without changing the compositing path.
     if hero.grid_visible
         && let Some(view) = hero.grid_view
     {
@@ -1524,7 +1712,11 @@ pub fn paint_hero_screen(
             canvas: layout.canvas,
             ..view
         };
-        crate::grid::paint_grid(scene, hero.theme, &view, &hero.grid_config);
+        let mut state_for_paint = hero.grid_snap_state.clone();
+        if !state_for_paint.grid_in_front {
+            state_for_paint.opacity *= 0.4;
+        }
+        crate::grid_snap::render::paint(scene, &view, &state_for_paint);
     }
     // M14.4c: the legacy mockup selection marquee draws a fixed-size
     // dashed rect at the CANVAS center in screen pixels — it has no
@@ -1585,6 +1777,11 @@ pub fn paint_hero_screen(
         && let Some((value, _, _, _)) = hero.store.blender_picker(ids::INSP_BLENDER_PICKER)
     {
         hero.store.set_widget_color(target, value.rgba);
+        // Mirror Grid-Settings swatch edits back into the grid_snap
+        // state so the canvas overlay re-paints with the new color.
+        if target == crate::grid_snap::ids::GS_COLOR_PICKER {
+            hero.grid_snap_state.color_rgba = value.rgba;
+        }
     }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
     // Publish live entries (if any) to the hierarchy painter so it
@@ -1622,6 +1819,10 @@ pub fn paint_hero_screen(
             inspector::set_current_inspector_transform(hero.inspector_transform);
             inspector::set_current_inspector_visibility(hero.inspector_visibility);
             inspector::set_current_inspector_name(hero.inspector_name.clone());
+            inspector::set_current_display_unit(
+                hero.project.display_unit,
+                hero.project.pixels_per_meter,
+            );
             paint_inspector(
                 &layout,
                 hero.selection.as_ref(),
@@ -1665,19 +1866,11 @@ pub fn paint_hero_screen(
             if cur > max_scroll {
                 hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
             }
-        } else if panel_id == ids::INSP_BLENDER_PICKER && hero.store.picker_target().is_some() {
-            // The picker paint is a no-op if `picker_target` isn't
-            // set (early-out inside the demo painter); the visibility
-            // guard mirrors that so we don't waste an iteration.
-            color_picker_demo::paint_blender_picker_demo(
-                &layout,
-                scene,
-                text_system,
-                hero.theme,
-                &mut hero.hit_index,
-                &hero.store,
-            );
         }
+        // INSP_BLENDER_PICKER is intentionally NOT painted inside this
+        // z_order loop — see the dedicated paint pass after the
+        // Widget Gallery + Grid Settings blocks below, which keeps the
+        // picker on top of every floating panel regardless of z order.
     }
     if hero.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
@@ -1749,6 +1942,108 @@ pub fn paint_hero_screen(
         if cur > max_scroll {
             hero.store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
         }
+    } else {
+        // Stale-rect cleanup: without this, `panel_at` keeps returning
+        // GAL_PANEL after the Gallery was closed, and BTreeMap key
+        // ordering (950 < 1000) makes that stale rect shadow GS_PANEL
+        // for overlapping cursor positions — wheel scroll on the Grid
+        // Settings panel then routes to a closed GAL_PANEL and looks
+        // like "scroll wheel doesn't work" to the user.
+        hero.store.clear_panel_rect(ids::GAL_PANEL);
+    }
+    // Grid Settings floating panel — mirrors the Widget Gallery
+    // pattern (lazy default rect on first show, drag/resize deltas via
+    // store, panel rect published for chrome routing).
+    if hero.grid_snap_state.panel_visible {
+        let base_rect = match hero.grid_snap_state.panel_rect {
+            Some(r) => r,
+            None => {
+                let r = crate::grid_snap::default_rect(layout.viewport.w, layout.viewport.h);
+                hero.grid_snap_state.panel_rect = Some(r);
+                r
+            }
+        };
+        let gs_off = hero
+            .store
+            .blender_picker_offset(crate::grid_snap::ids::GS_PANEL);
+        let gs_resize = hero
+            .store
+            .panel_resize_delta(crate::grid_snap::ids::GS_PANEL);
+        let (gs_rect, gs_clamped_off, gs_clamped_resize) =
+            clamp_panel(base_rect, gs_off, gs_resize, viewport);
+        if (gs_clamped_off.0 - gs_off.0).abs() > f32::EPSILON
+            || (gs_clamped_off.1 - gs_off.1).abs() > f32::EPSILON
+        {
+            hero.store.set_blender_picker_offset(
+                crate::grid_snap::ids::GS_PANEL,
+                gs_clamped_off.0,
+                gs_clamped_off.1,
+            );
+        }
+        if (gs_clamped_resize.0 - gs_resize.0).abs() > f32::EPSILON
+            || (gs_clamped_resize.1 - gs_resize.1).abs() > f32::EPSILON
+        {
+            hero.store.set_panel_resize_delta(
+                crate::grid_snap::ids::GS_PANEL,
+                gs_clamped_resize.0,
+                gs_clamped_resize.1,
+            );
+        }
+        hero.store
+            .set_panel_rect(crate::grid_snap::ids::GS_PANEL, gs_rect);
+        // Publish the active DisplayUnit + pixels_per_meter into the
+        // panel's thread-local pair (read by meter↔display conversion
+        // helpers inside `paint` / `apply_event`), then reseed every
+        // meter-domain NumberInput's store value from the live state
+        // so the rows that read from the store display the right
+        // magnitude for the active unit. Focused fields are skipped
+        // by `set_number_value` so in-progress edits don't get
+        // clobbered.
+        crate::grid_snap::set_current_display_unit(
+            hero.project.display_unit,
+            hero.project.pixels_per_meter,
+        );
+        crate::grid_snap::sync_meter_inputs_to_display_unit(&hero.grid_snap_state, &mut hero.store);
+        crate::grid_snap::paint(
+            gs_rect,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+            &hero.grid_snap_state,
+        );
+        // Publish scroll bounds for `dispatch_wheel`. Same pattern as
+        // widget_gallery / inspector.
+        let content_h = crate::grid_snap::last_content_h();
+        let visible_h = crate::grid_snap::last_visible_h();
+        hero.store
+            .set_panel_content_h(crate::grid_snap::ids::GS_PANEL, content_h);
+        hero.store
+            .set_panel_visible_h(crate::grid_snap::ids::GS_PANEL, visible_h);
+        let max_scroll = (content_h - visible_h).max(0.0);
+        let cur = hero.store.panel_scroll(crate::grid_snap::ids::GS_PANEL);
+        if cur > max_scroll {
+            hero.store
+                .set_panel_scroll(crate::grid_snap::ids::GS_PANEL, max_scroll);
+        }
+    } else {
+        // Symmetric stale-rect cleanup (mirrors GAL_PANEL above).
+        hero.store.clear_panel_rect(crate::grid_snap::ids::GS_PANEL);
+    }
+    // BlenderColorPicker — painted AFTER every floating panel
+    // (Inspector, Hierarchy, Widget Gallery, Grid Settings) so it
+    // never sits visually behind one of them. The painter is a no-op
+    // when `picker_target` is None.
+    if hero.store.picker_target().is_some() {
+        color_picker_demo::paint_blender_picker_demo(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+        );
     }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);
@@ -2069,6 +2364,203 @@ mod tests {
         assert!(
             after > before,
             "wheel down on gallery should increase panel_scroll \
+             (before={before}, after={after})"
+        );
+    }
+
+    #[test]
+    fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
+        // Sim position = 1.5 m; project in Pixels mode (default 100
+        // px/m) → store NumberInput shows 150. Editing to 200 and
+        // committing should publish 2.0 m (200 / 100) into
+        // `pending_transform_edit.translation`.
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_visible = true;
+        hero.project.display_unit = crate::project::DisplayUnit::Pixels;
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 1,
+            translation: [1.5, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+        });
+        // Paint once so sync_inspector_from_snapshots seeds the store
+        // with the *converted* value (150 px, not 1.5 m).
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let stored_x = hero
+            .store
+            .number_value(ids::INSP_TRANSFORM_POS_X)
+            .expect("Position X must be seeded");
+        assert!(
+            (stored_x - 150.0).abs() < 1e-3,
+            "Position X should be displayed in pixels (150), got {stored_x}"
+        );
+        // User edits 150 → 200 (in pixels), commits.
+        hero.store
+            .set_number_value(ids::INSP_TRANSFORM_POS_X, 200.0);
+        let _ = hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X));
+        let pending = hero
+            .pending_transform_edit
+            .expect("commit must publish pending_transform_edit");
+        assert!(
+            (pending.translation[0] - 2.0).abs() < 1e-3,
+            "200 px should commit as 2.0 m (200 / 100 px/m), got {} m",
+            pending.translation[0]
+        );
+    }
+
+    #[test]
+    fn inspector_position_meters_mode_displays_raw_meters() {
+        // Sanity: default Meters mode is a no-op — store displays the
+        // raw meter value and commit is identity.
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_visible = true;
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Meters
+        );
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 1,
+            translation: [1.5, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+        });
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let stored_x = hero.store.number_value(ids::INSP_TRANSFORM_POS_X).unwrap();
+        assert!(
+            (stored_x - 1.5).abs() < 1e-3,
+            "Meters mode should display raw value 1.5, got {stored_x}"
+        );
+    }
+
+    #[test]
+    fn settings_unit_submenu_options_flip_project_display_unit() {
+        // Clicking "Pixels" / "Meters" in the SettingsUnit submenu
+        // writes `project.display_unit` and closes the context menu.
+        let mut hero = HeroScreen::new(NodeId(1));
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Meters
+        );
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsUnitSubmenu,
+            });
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_UNIT_PIXELS));
+        assert!(consumed, "Pixels click should be consumed");
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Pixels,
+            "display_unit must flip to Pixels"
+        );
+        assert!(
+            hero.store.context_menu().is_none(),
+            "menu must close after pick"
+        );
+        // Re-open to flip back.
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsUnitSubmenu,
+            });
+        let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_UNIT_METERS));
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Meters
+        );
+    }
+
+    #[test]
+    fn settings_unit_cascade_opens_unit_submenu() {
+        // Clicking the top-level "Display unit ▶" row swaps the open
+        // context menu to `SettingsUnitSubmenu`.
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsMenu,
+            });
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_UNIT));
+        assert!(consumed);
+        assert!(matches!(
+            hero.store.context_menu().map(|r| r.kind),
+            Some(crate::interaction::ContextMenuKind::SettingsUnitSubmenu)
+        ));
+    }
+
+    /// Same shape as `gallery_publishes_scroll_bounds_after_paint`, but
+    /// for the Grid Settings floating panel. Pins the end-to-end wheel
+    /// pipeline so Enio's "scroll wheel doesn't work" report has a
+    /// regression net: GS_PANEL must (1) publish a content_h that
+    /// exceeds visible_h, (2) own the panel rect under its center, and
+    /// (3) advance `panel_scroll` when a wheel event hits.
+    #[test]
+    fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.grid_snap_state.panel_visible = true;
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let gs_id = crate::grid_snap::ids::GS_PANEL;
+        let content_h = hero
+            .store
+            .panel_content_h(gs_id)
+            .expect("GS_PANEL content_h must be published after paint");
+        let visible_h = hero
+            .store
+            .panel_visible_h(gs_id)
+            .expect("GS_PANEL visible_h must be published after paint");
+        assert!(
+            content_h > 0.0,
+            "grid panel content_h should be positive, got {content_h}"
+        );
+        assert!(
+            visible_h > 0.0,
+            "grid panel visible_h should be positive, got {visible_h}"
+        );
+        assert!(
+            content_h > visible_h,
+            "grid panel should overflow (content_h={content_h} > visible_h={visible_h}) \
+             so the wheel has somewhere to scroll to"
+        );
+        let panel_rect = hero
+            .store
+            .panel_rect(gs_id)
+            .expect("GS_PANEL rect must be registered for panel_at");
+        let cx = panel_rect.x + panel_rect.w * 0.5;
+        let cy = panel_rect.y + panel_rect.h * 0.5;
+        assert_eq!(
+            hero.store.panel_at(cx, cy),
+            Some(gs_id),
+            "cursor over grid-panel center should resolve to GS_PANEL \
+             (got {:?})",
+            hero.store.panel_at(cx, cy)
+        );
+        let arena = bumpalo::Bump::new();
+        let before = hero.store.panel_scroll(gs_id);
+        let _ = crate::interaction::dispatch_wheel(
+            &mut hero.store,
+            ph2d_host::WheelEvent {
+                x: cx,
+                y: cy,
+                delta_x: 0.0,
+                delta_y: -40.0,
+                modifiers: ph2d_host::Modifiers::default(),
+                timestamp_ns: 0,
+            },
+            &arena,
+        );
+        let after = hero.store.panel_scroll(gs_id);
+        assert!(
+            after > before,
+            "wheel down on Grid Settings should increase panel_scroll \
              (before={before}, after={after})"
         );
     }
@@ -2561,6 +3053,33 @@ mod tests {
         hero.gizmo_selection = Some(0xDEAD_BEEF);
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
         assert_eq!(hero.pending_trim_transparency, Some(0xDEAD_BEEF));
+    }
+
+    /// Make Square pill mirrors the Trim pending-slot semantics.
+    #[test]
+    fn click_on_make_square_pill_raises_pending_with_selection() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.gizmo_selection = None;
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
+        assert_eq!(hero.pending_make_square, None);
+
+        hero.gizmo_selection = Some(0xCAFE_BABE);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
+        assert_eq!(hero.pending_make_square, Some(0xCAFE_BABE));
+    }
+
+    /// Bg Removal pill raises `pending_activate_bgremoval` (not
+    /// `pending_bgremoval` — that one is the Apply trigger). Host
+    /// drains it by calling `tools.set_active(...)`.
+    #[test]
+    fn click_on_bgremoval_pill_raises_activate_intent() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        assert!(!hero.pending_activate_bgremoval);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_BGREMOVAL)));
+        assert!(hero.pending_activate_bgremoval);
+        // pending_bgremoval (Apply slot) is NOT touched by the
+        // activate click — that's owned by the panel Toggle drain.
+        assert_eq!(hero.pending_bgremoval, None);
     }
 
     #[test]

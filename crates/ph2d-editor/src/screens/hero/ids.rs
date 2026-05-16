@@ -44,6 +44,11 @@ pub const TOPBAR_IMAGE_TOOLS: NodeId = NodeId(114);
 /// single in-app source of truth for UI decoration. State lives on
 /// [`crate::screens::HeroScreen::widget_gallery_visible`].
 pub const TOPBAR_WIDGET_GALLERY: NodeId = NodeId(116);
+/// Grid Settings cluster — opens the floating Grid Settings panel
+/// (grid-snap subsystem). Toggles `HeroScreen::grid_snap_state.panel_visible`.
+/// Panel internal widgets live in the reserved `1000..1099` range
+/// (see `grid_snap::ids`).
+pub const TOPBAR_GRID_SETTINGS: NodeId = NodeId(117);
 
 /// Image Tools action — Trim Transparency pill. Lives in the action
 /// row that replaces the right-side TopBar clusters when
@@ -51,6 +56,22 @@ pub const TOPBAR_WIDGET_GALLERY: NodeId = NodeId(116);
 /// `ph2d_editor::trim_transparency()` algorithm on a selected sprite
 /// requires the live asset model (out of scope for this PR).
 pub const IMAGE_ACTION_TRIM: NodeId = NodeId(115);
+
+/// Image Tools action — Make Square pill. Sibling of `IMAGE_ACTION_TRIM`,
+/// pads the selected sprite with transparent pixels on the shorter axis
+/// so width == height. Click raises `pending_make_square` on `HeroScreen`;
+/// host drains, runs the algorithm, replaces sprite pixels + reprojects
+/// pivot. Algorithm in `tools/make_square/algorithm.rs`.
+pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = NodeId(118);
+
+/// Image Tools action — Background Removal pill. Unlike `IMAGE_ACTION_TRIM`
+/// and `IMAGE_ACTION_MAKE_SQUARE` (one-shot algorithms), this one
+/// ACTIVATES the stateful `BgRemovalTool` so its floating panel opens
+/// at the BottomCenter with a live 160×160 preview. Click raises
+/// `pending_activate_bgremoval` on `HeroScreen`; host drains via
+/// `tools.set_active(ToolId::new("bgremoval"))` and force-refreshes
+/// the snapshot push.
+pub const IMAGE_ACTION_BGREMOVAL: NodeId = NodeId(119);
 
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 
@@ -313,6 +334,13 @@ pub const CTX_MENU_PPM_1024: NodeId = NodeId(944);
 /// the Pixels-per-meter submenu. Sits between `CTX_MENU_HIER_*`
 /// (945-948) and the SAVE/OPEN range — id 949.
 pub const CTX_MENU_SETTINGS_PPM: NodeId = NodeId(949);
+
+/// Top-level Settings entry that opens the Display-unit submenu
+/// (Meters / Pixels). Sits next to `CTX_MENU_SETTINGS_PPM` — id 853.
+/// (Range 850-859 reserved for future Settings cascade entries.)
+pub const CTX_MENU_SETTINGS_UNIT: NodeId = NodeId(853);
+pub const CTX_MENU_UNIT_METERS: NodeId = NodeId(854);
+pub const CTX_MENU_UNIT_PIXELS: NodeId = NodeId(855);
 
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;

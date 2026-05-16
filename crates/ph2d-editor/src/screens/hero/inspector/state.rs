@@ -66,6 +66,15 @@ thread_local! {
     /// names can be longer than `Copy` is convenient for).
     pub(super) static CURRENT_INSPECTOR_NAME: std::cell::RefCell<Option<InspectorNameInfo>> =
         const { std::cell::RefCell::new(None) };
+    /// Per-paint display unit + pixels_per_meter so the Transform
+    /// section can label Position rows and format values in the
+    /// active unit. Set by `paint_hero_screen` before `paint_inspector`
+    /// and cleared after. Default `Meters` matches the project default
+    /// — a stale Some() can't outlive the paint pass either way.
+    pub(super) static CURRENT_DISPLAY_UNIT: std::cell::Cell<crate::project::DisplayUnit> =
+        const { std::cell::Cell::new(crate::project::DisplayUnit::Meters) };
+    pub(super) static CURRENT_PIXELS_PER_METER: std::cell::Cell<f32> =
+        const { std::cell::Cell::new(crate::project::DEFAULT_PIXELS_PER_METER) };
     /// Mirror of `LAST_CONTENT_H` / `LAST_VISIBLE_H` for the floating
     /// Widget Gallery panel painted by [`super::paint_showcase_body`].
     /// Tracked independently so the gallery and Inspector scroll
@@ -122,6 +131,26 @@ pub(in crate::screens::hero) fn set_current_inspector_name(info: Option<Inspecto
 /// whether to paint the row at all.
 pub(super) fn current_inspector_name_is_some() -> bool {
     CURRENT_INSPECTOR_NAME.with(|c| c.borrow().is_some())
+}
+
+/// Set the active display unit + pixels-per-meter for the upcoming
+/// `paint_inspector` call. Read by the Transform section to format
+/// Position rows. `paint_hero_screen` publishes this before each
+/// paint and clears it after.
+pub(in crate::screens::hero) fn set_current_display_unit(
+    unit: crate::project::DisplayUnit,
+    pixels_per_meter: f32,
+) {
+    CURRENT_DISPLAY_UNIT.with(|c| c.set(unit));
+    CURRENT_PIXELS_PER_METER.with(|c| c.set(pixels_per_meter));
+}
+
+pub(super) fn current_display_unit() -> crate::project::DisplayUnit {
+    CURRENT_DISPLAY_UNIT.with(|c| c.get())
+}
+
+pub(super) fn current_pixels_per_meter() -> f32 {
+    CURRENT_PIXELS_PER_METER.with(|c| c.get())
 }
 
 pub(super) fn set_pending_dropdown_chip(chip: Option<(usize, Rect)>) {

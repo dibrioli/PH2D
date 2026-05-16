@@ -12,6 +12,7 @@
 
 use super::super::{InspectorSpriteInfo, InspectorSpriteSource};
 use super::ids;
+use super::state::current_display_unit;
 use super::{paint_section_separator, read_number_input};
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{paint_text, paint_text_title, resolve};
@@ -280,17 +281,31 @@ pub(in crate::screens::hero) fn paint_transform_section(
     };
 
     // ── Three rows, same grid ──
+    // Position label reflects the active display unit ("Position (m)"
+    // or "Position (px)") so the user reads the right magnitude. Step
+    // also scales — 0.01 m ≈ 1 px @ default 100 px/m, so we want the
+    // arrow-key step to feel similar across units (1 px ≈ 1 px).
+    let unit = current_display_unit();
+    let (pos_label, pos_step) = match unit {
+        crate::project::DisplayUnit::Meters => ("Position (m)", 0.01_f64),
+        crate::project::DisplayUnit::Pixels => ("Position (px)", 1.0_f64),
+    };
     paint_row(
         scene,
         text_system,
         hit_index,
         cur_y,
-        "Position",
+        pos_label,
         ids::INSP_TRANSFORM_POS_X,
         "X",
         ColorToken::Danger,
-        0.01,
-        Some((ids::INSP_TRANSFORM_POS_Y, "Y", ColorToken::Success, 0.01)),
+        pos_step,
+        Some((
+            ids::INSP_TRANSFORM_POS_Y,
+            "Y",
+            ColorToken::Success,
+            pos_step,
+        )),
     );
     cur_y += field_h + row_gap;
     paint_row(

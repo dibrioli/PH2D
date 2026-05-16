@@ -9,6 +9,7 @@ members = [
     "crates/ph2d-vector",
     "crates/ph2d-text",
     "crates/ph2d-sdf",
+    "crates/ph2d-grid",
     "crates/ph2d-light",
     "crates/ph2d-physics",
     "crates/ph2d-physics-soft",

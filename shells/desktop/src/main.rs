@@ -241,6 +241,41 @@ pub(crate) struct AppGfx {
     /// Visibility / Name). Loaded into the registry via
     /// `register_render_components` at boot.
     pub(crate) sprite_type_id: u64,
+    /// Single-level undo for image-edit actions (Trim Transparency,
+    /// Make Square). Captures the pre-edit Sprite source / size /
+    /// Transform translation so Cmd+Z (or TOOL_UNDO click) restores
+    /// the previous state. The full editor undo system is M14.x scope;
+    /// image-edits are the only path that ships undo in this milestone.
+    ///
+    /// Single-level by design: each new image-edit overwrites the
+    /// snapshot (releasing the now-orphaned individual texture if the
+    /// PRE-edit state was on one). Future M14.x replaces this with a
+    /// proper command stack rooted in `EditorCommandQueue`.
+    pub(crate) image_edit_undo: Option<ImageEditSnapshot>,
+}
+
+/// Pre-edit snapshot of a sprite that an image-edit action mutated.
+/// Owned by [`AppGfx::image_edit_undo`]; populated by the Trim / Make
+/// Square drainers, consumed by [`AppGfx::undo_image_edit`].
+pub(crate) struct ImageEditSnapshot {
+    /// Bevy entity bits of the sprite the edit targeted.
+    pub(crate) entity_bits: u64,
+    /// `Sprite.source` before the edit. When this is
+    /// `Individual { texture_id }`, the texture is **retained**
+    /// (refcount + 1 vs the natural acquire-by-the-edit path) so the
+    /// undo restore can repoint without re-uploading pixels. The
+    /// drainer that captured the snapshot is responsible for the
+    /// matching `acquire`/refcount bump.
+    pub(crate) pre_source: ph2d_render::SpriteSource,
+    /// `Sprite.size` before the edit (world meters).
+    pub(crate) pre_size: [f32; 2],
+    /// `Transform.translation` before the edit (world meters).
+    pub(crate) pre_translation: [f32; 2],
+    /// The new individual texture id that the edit acquired. Released
+    /// on undo so the now-orphaned post-edit texture doesn't leak.
+    pub(crate) post_individual_id: u32,
+    /// Human-readable label for the toast: "Trim" / "Make square".
+    pub(crate) label: &'static str,
 }
 
 /// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
@@ -322,6 +357,14 @@ struct App {
     cycle_pick_hits: Vec<u64>,
     cycle_pick_idx: usize,
     cycle_pick_count: u32,
+    /// `entity_bits` of the sprite whose RGBA was last pushed into
+    /// the active `BgRemovalTool` snapshot. `None` until the first
+    /// push. Reset to `None` whenever the user activates BgRemoval
+    /// via Digit3 so the very next frame re-pushes against the
+    /// current selection. The snapshot loop reads this every frame
+    /// while BgRemoval is the active tool to skip redundant
+    /// pushes (the thumbnail rebuild + preview rerun are work).
+    last_bgremoval_pushed_entity: Option<u64>,
 }
 
 impl App {
@@ -371,6 +414,7 @@ impl App {
             cycle_pick_hits: Vec::new(),
             cycle_pick_idx: 0,
             cycle_pick_count: 0,
+            last_bgremoval_pushed_entity: None,
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.
@@ -459,7 +503,20 @@ impl App {
             .as_ref()
             .and_then(|h| live_cursor_in_window(h.window()))
             .unwrap_or(self.last_cursor);
-        let drop_world = gfx.camera.screen_to_world(cursor_px, win);
+        let drop_world_raw = gfx.camera.screen_to_world(cursor_px, win);
+        // Grid-snap apply (drag-drop site). When snap is enabled in
+        // `grid_snap_state`, align the drop position to the active
+        // grid before spawning so a multi-sprite drop forms a tidy
+        // grid rather than scattering at sub-pixel offsets. No-op
+        // when snap_enabled = false or active kind has no snap target.
+        let drop_world: [f32; 2] = if let Some(hero) = gfx.hero_screen.as_mut() {
+            // Drag-drop: sprite hasn't been imported yet, so half-size
+            // is unknown. Pass [0.0, 0.0] — Corner-family modes
+            // degenerate to point-Intersection snap in that case.
+            hero.grid_snap_state.snap_world(drop_world_raw, [0.0, 0.0])
+        } else {
+            drop_world_raw
+        };
         for path in paths {
             if !ph2d_asset::is_supported_image_extension(path) {
                 let name = path
@@ -536,6 +593,13 @@ impl App {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;
             }
+            // Cmd+Z / Ctrl+Z — image-edit undo (Trim, Make Square).
+            // Single-level by design; broader editor undo is M14.x.
+            KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.pending_undo_image_edit = true;
+                }
+            }
             KeyCode::Digit1 if gfx.tools.set_active(&ph2d_editor::ToolId::new("brush")) => {
                 gfx.toasts.push(Toast::info("Tool → Brush"));
                 self.title_dirty = true;
@@ -543,6 +607,15 @@ impl App {
             KeyCode::Digit2 if gfx.tools.set_active(&ph2d_editor::ToolId::new("move")) => {
                 gfx.toasts.push(Toast::info("Tool → Move"));
                 self.title_dirty = true;
+            }
+            KeyCode::Digit3 if gfx.tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) => {
+                gfx.toasts.push(Toast::info("Tool → Bg Removal"));
+                self.title_dirty = true;
+                // Force a fresh snapshot push on the next frame so the
+                // newly-active tool sees the current selection's RGBA
+                // (the snapshot-push loop below tracks last-pushed
+                // entity — invalidating it here re-triggers).
+                self.last_bgremoval_pushed_entity = None;
             }
             // M14.7 polish: F / Home = frame the currently selected
             // sprite. Falls back to (0, 0) when nothing is selected
@@ -664,6 +737,21 @@ impl App {
         {
             active.handle_panel_event(event);
             self.title_dirty = true;
+            // Drain BgRemoval's Apply Toggle: when on, the Tool sets
+            // `pending_apply = true` inside `handle_panel_event`.
+            // Route it to `HeroScreen.pending_bgremoval` (asset id =
+            // the currently-selected entity bits) so the per-frame
+            // drain in `render_frame` runs the algorithm at full
+            // resolution against the live sprite.
+            if let Some(bg) = active
+                .as_any_mut()
+                .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                && bg.take_pending_apply()
+                && let Some(hero) = gfx.hero_screen.as_mut()
+                && let Some(bits) = hero.gizmo_selection
+            {
+                hero.pending_bgremoval = Some(bits);
+            }
         }
     }
 
@@ -862,6 +950,7 @@ impl App {
             visibility_type_id,
             name_type_id,
             sprite_type_id,
+            image_edit_undo,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -1349,6 +1438,69 @@ impl App {
                     name,
                 })
             });
+            // Drain the `pending_activate_bgremoval` intent raised by
+            // clicking the Bg Removal pill on the Image Tools row. The
+            // hero can't reach `gfx.tools` so the activation has to
+            // round-trip through this flag. Same force-refresh of the
+            // snapshot push state as the Digit3 shortcut below so the
+            // next snapshot push fires against the current selection.
+            if hero.pending_activate_bgremoval {
+                hero.pending_activate_bgremoval = false;
+                if tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
+                    self.last_bgremoval_pushed_entity = None;
+                    self.title_dirty = true;
+                    toasts.push(Toast::info("Tool → Bg Removal"));
+                }
+            }
+            // Snapshot push for the active BgRemovalTool. The tool needs
+            // the current selection's RGBA so its 160×160 preview shows
+            // the live sprite — pushed once per (tool-active + new
+            // selection) tuple. `last_bgremoval_pushed_entity` is
+            // reset to `None` whenever the user activates BgRemoval
+            // via Digit3 (force-refresh) AND tracked across selection
+            // changes (push when it drifts). Pulls source pixels via
+            // the same Atlas-vs-Individual branch the trim_transparency
+            // drain uses below.
+            let bgremoval_is_active = tools
+                .active()
+                .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+                .unwrap_or(false);
+            if bgremoval_is_active
+                && let Some(bits) = hero.gizmo_selection
+                && self.last_bgremoval_pushed_entity != Some(bits)
+            {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                let snap =
+                    sim.world()
+                        .get::<Sprite>(entity)
+                        .and_then(|sprite| match sprite.source {
+                            ph2d_render::SpriteSource::Atlas { key } => {
+                                let aid = atlas_asset_map.get(&key)?;
+                                let asset = asset_db.get(aid)?;
+                                match &*asset {
+                                    ph2d_asset::Asset::ImageRgba8 {
+                                        width,
+                                        height,
+                                        pixels,
+                                    } => Some((*width, *height, pixels.clone())),
+                                    _ => None,
+                                }
+                            }
+                            ph2d_render::SpriteSource::Individual { texture_id } => renderer
+                                .readback_individual(texture_id)
+                                .ok()
+                                .map(|(w, h, pix)| (w, h, pix.into())),
+                        });
+                if let Some((w, h, rgba)) = snap
+                    && let Some(tool) = tools.active_mut()
+                    && let Some(bg) = tool
+                        .as_any_mut()
+                        .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                {
+                    bg.set_source_snapshot(rgba.to_vec(), w, h);
+                    self.last_bgremoval_pushed_entity = Some(bits);
+                }
+            }
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // M14.4b.bis: drain pending camera-reset request from
             // the VIEW button (legacy "Zero" mode — kept around for
@@ -2131,17 +2283,16 @@ impl App {
             if let Some(entity_bits) = hero.pending_trim_transparency.take() {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
-                // Snapshot `Sprite` (for size + source) and `Transform`
-                // (for translation) in one read pass so we can drop the
+                // Snapshot `Sprite` (for size + source + the OLD
+                // individual texture id, if any, so we can release it
+                // after the swap — audit fix C1) and `Transform` (for
+                // translation) in one read pass so we can drop the
                 // immutable borrow before the mutable `world_mut()` later.
-                // Individual-source sprites go through a GPU readback —
-                // safe here because Trim is a one-shot user action
-                // (HR-3 only applies inside render/physics/audio hot
-                // paths, not user-initiated edit actions).
                 let snapshot = {
                     let world = sim.world();
                     world.get::<Sprite>(entity).and_then(|sprite| {
                         let old_size_world = sprite.size;
+                        let old_source = sprite.source;
                         let old_translation = world
                             .get::<ph2d_ecs::Transform>(entity)
                             .map(|t| [t.translation.x, t.translation.y])
@@ -2161,15 +2312,21 @@ impl App {
                                         pixels.clone(),
                                         old_size_world,
                                         old_translation,
+                                        old_source,
                                     )),
                                     _ => None,
                                 }
                             }
                             ph2d_render::SpriteSource::Individual { texture_id } => {
                                 match renderer.readback_individual(texture_id) {
-                                    Ok((w, h, pixels)) => {
-                                        Some((w, h, pixels.into(), old_size_world, old_translation))
-                                    }
+                                    Ok((w, h, pixels)) => Some((
+                                        w,
+                                        h,
+                                        pixels.into(),
+                                        old_size_world,
+                                        old_translation,
+                                        old_source,
+                                    )),
                                     Err(_) => None,
                                 }
                             }
@@ -2178,13 +2335,17 @@ impl App {
                 };
                 match snapshot {
                     None => {
-                        toasts.push(Toast::error("Trim unavailable for this sprite"));
+                        toasts.push(Toast::error(ph2d_i18n::tr(
+                            "tool.trim_transparency.toast.unavailable",
+                        )));
                         self.title_dirty = true;
                     }
-                    Some((width, height, pixels, old_size_world, old_translation)) => {
+                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
                         let result = ph2d_editor::trim_transparency(&pixels, width, height, 0);
                         if !result.trimmed {
-                            toasts.push(Toast::info("Nothing to trim"));
+                            toasts.push(Toast::info(ph2d_i18n::tr(
+                                "tool.trim_transparency.toast.nothing",
+                            )));
                             self.title_dirty = true;
                         } else {
                             match renderer.acquire_individual(
@@ -2224,8 +2385,24 @@ impl App {
                                         transform.translation.x = new_translation[0];
                                         transform.translation.y = new_translation[1];
                                     }
+                                    // Undo snapshot capture. The PRE-edit
+                                    // texture (if Individual) is owned by
+                                    // the snapshot — refcount held; release
+                                    // happens when the snapshot is
+                                    // overwritten by the next edit OR
+                                    // consumed by an undo. Replaces C1's
+                                    // immediate-release semantics.
+                                    drop_undo_pre_source_if_individual(renderer, image_edit_undo);
+                                    *image_edit_undo = Some(ImageEditSnapshot {
+                                        entity_bits,
+                                        pre_source: old_source,
+                                        pre_size: old_size_world,
+                                        pre_translation: old_translation,
+                                        post_individual_id: texture_id,
+                                        label: "Trim",
+                                    });
                                     toasts.push(Toast::success(format!(
-                                        "Trimmed → {} × {} px",
+                                        "Trimmed → {} × {} px · Cmd+Z to undo",
                                         result.width, result.height
                                     )));
                                     self.title_dirty = true;
@@ -2235,6 +2412,326 @@ impl App {
                     }
                 }
             }
+            // Make Square drain — parallel to Trim Transparency. Pads
+            // the source image with transparent pixels on the shorter
+            // axis so the result is square (width == height), then
+            // repoints the sprite to a fresh IndividualTextureStore
+            // entry and updates Sprite::size at the current px/m.
+            //
+            // Audit fixes applied: M1 (cap output dim against
+            // device.max_texture_dimension_2d BEFORE acquire — was
+            // deferred device-loss); M2 (sub-pixel recenter via
+            // recenter_after_pad for odd-diff parity with Trim — was
+            // accumulating 0.5 px drift across Trim↔Square cycles);
+            // C1 (release OLD individual texture id after a successful
+            // re-acquire — was leaking GPU memory on repeated edits).
+            if let Some(entity_bits) = hero.pending_make_square.take() {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
+                let snapshot = {
+                    let world = sim.world();
+                    world.get::<Sprite>(entity).and_then(|sprite| {
+                        let old_size_world = sprite.size;
+                        let old_source = sprite.source;
+                        let old_translation = world
+                            .get::<ph2d_ecs::Transform>(entity)
+                            .map(|t| [t.translation.x, t.translation.y])
+                            .unwrap_or([0.0, 0.0]);
+                        match sprite.source {
+                            ph2d_render::SpriteSource::Atlas { key } => {
+                                let aid = atlas_asset_map.get(&key)?;
+                                let asset = asset_db.get(aid)?;
+                                match &*asset {
+                                    ph2d_asset::Asset::ImageRgba8 {
+                                        width,
+                                        height,
+                                        pixels,
+                                    } => Some((
+                                        *width,
+                                        *height,
+                                        pixels.clone(),
+                                        old_size_world,
+                                        old_translation,
+                                        old_source,
+                                    )),
+                                    _ => None,
+                                }
+                            }
+                            ph2d_render::SpriteSource::Individual { texture_id } => {
+                                match renderer.readback_individual(texture_id) {
+                                    Ok((w, h, pixels)) => Some((
+                                        w,
+                                        h,
+                                        pixels.into(),
+                                        old_size_world,
+                                        old_translation,
+                                        old_source,
+                                    )),
+                                    Err(_) => None,
+                                }
+                            }
+                        }
+                    })
+                };
+                match snapshot {
+                    None => {
+                        toasts.push(Toast::error(ph2d_i18n::tr(
+                            "tool.make_square.toast.unavailable",
+                        )));
+                        self.title_dirty = true;
+                    }
+                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
+                        let result = ph2d_editor::make_square(&pixels, width, height);
+                        if !result.made_square {
+                            toasts.push(Toast::info(ph2d_i18n::tr(
+                                "tool.make_square.toast.already_square",
+                            )));
+                            self.title_dirty = true;
+                        } else if result.size > renderer.max_texture_dimension_2d() {
+                            // M1: pre-acquire cap. Without this, the
+                            // toast would only surface on the first
+                            // render that tried to bind the oversize
+                            // texture — looks like a silent device-loss
+                            // to the user.
+                            toasts.push(Toast::error(format!(
+                                "Make Square would exceed GPU texture limit ({} px max, would need {} px)",
+                                renderer.max_texture_dimension_2d(),
+                                result.size,
+                            )));
+                            self.title_dirty = true;
+                        } else {
+                            match renderer.acquire_individual(
+                                result.size,
+                                result.size,
+                                &result.pixels,
+                            ) {
+                                Err(err) => {
+                                    toasts.push(Toast::error(format!("Make Square failed: {err}")));
+                                    self.title_dirty = true;
+                                }
+                                Ok(texture_id) => {
+                                    let new_side = result.size as f32 / px_per_m;
+                                    // M2: sub-pixel recenter. Even
+                                    // diffs return the input unchanged
+                                    // (offset is exactly diff/2 → 0.5
+                                    // factor cancels); odd diffs shift
+                                    // translation by 0.5/ppm in the
+                                    // odd-diff dimension so the
+                                    // content's world center stays put
+                                    // across Trim↔Square cycles.
+                                    let new_translation = ph2d_editor::recenter_after_pad(
+                                        old_translation,
+                                        [new_side, new_side],
+                                        [result.size, result.size],
+                                        ph2d_editor::PixelBounds {
+                                            x: result.offset_x,
+                                            y: result.offset_y,
+                                            width,
+                                            height,
+                                        },
+                                    );
+                                    let sim_w = sim.world_mut();
+                                    if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                                        sprite.source =
+                                            ph2d_render::SpriteSource::Individual { texture_id };
+                                        sprite.size = [new_side, new_side];
+                                    }
+                                    if let Some(mut transform) =
+                                        sim_w.get_mut::<ph2d_ecs::Transform>(entity)
+                                    {
+                                        transform.translation.x = new_translation[0];
+                                        transform.translation.y = new_translation[1];
+                                    }
+                                    // Undo snapshot — same pattern as Trim.
+                                    drop_undo_pre_source_if_individual(renderer, image_edit_undo);
+                                    *image_edit_undo = Some(ImageEditSnapshot {
+                                        entity_bits,
+                                        pre_source: old_source,
+                                        pre_size: old_size_world,
+                                        pre_translation: old_translation,
+                                        post_individual_id: texture_id,
+                                        label: "Make square",
+                                    });
+                                    toasts.push(Toast::success(format!(
+                                        "Made square → {} × {} px · Cmd+Z to undo",
+                                        result.size, result.size
+                                    )));
+                                    self.title_dirty = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Bg Removal drain — parallel to Trim Transparency, but
+            // dimensions are preserved (the algorithm only mutates
+            // alpha + optionally despills RGB, never crops). No pivot
+            // reproject for that reason. Reads source RGBA via the
+            // same Atlas / Individual branch the Trim drain uses,
+            // calls `BgRemovalTool::run_full_resolution` at the
+            // sprite's native size, and swaps to a fresh Individual
+            // texture so the on-canvas sprite picks up the new alpha.
+            //
+            // Gate on BgRemoval being the active tool — the user is
+            // expected to apply WHILE the tool is active (the Apply
+            // Toggle lives in its panel). If they switch tools in
+            // the same frame, leave `pending_bgremoval` intact so
+            // the next activation can complete the round-trip.
+            let bgremoval_id = ph2d_editor::ToolId::new("bgremoval");
+            let bgremoval_active = tools
+                .active()
+                .map(|t| t.id() == bgremoval_id)
+                .unwrap_or(false);
+            if bgremoval_active && let Some(entity_bits) = hero.pending_bgremoval.take() {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let snapshot = {
+                    let world = sim.world();
+                    world.get::<Sprite>(entity).and_then(|sprite| {
+                        let old_size_world = sprite.size;
+                        let old_source = sprite.source;
+                        let old_translation = world
+                            .get::<ph2d_ecs::Transform>(entity)
+                            .map(|t| [t.translation.x, t.translation.y])
+                            .unwrap_or([0.0, 0.0]);
+                        match sprite.source {
+                            ph2d_render::SpriteSource::Atlas { key } => {
+                                let aid = atlas_asset_map.get(&key)?;
+                                let asset = asset_db.get(aid)?;
+                                match &*asset {
+                                    ph2d_asset::Asset::ImageRgba8 {
+                                        width,
+                                        height,
+                                        pixels,
+                                    } => Some((
+                                        *width,
+                                        *height,
+                                        pixels.clone(),
+                                        old_size_world,
+                                        old_translation,
+                                        old_source,
+                                    )),
+                                    _ => None,
+                                }
+                            }
+                            ph2d_render::SpriteSource::Individual { texture_id } => {
+                                match renderer.readback_individual(texture_id) {
+                                    Ok((w, h, pixels)) => Some((
+                                        w,
+                                        h,
+                                        pixels.into(),
+                                        old_size_world,
+                                        old_translation,
+                                        old_source,
+                                    )),
+                                    Err(_) => None,
+                                }
+                            }
+                        }
+                    })
+                };
+                match snapshot {
+                    None => {
+                        toasts.push(Toast::error(
+                            "Bg Removal: source unavailable (Atlas key missing or readback failed)",
+                        ));
+                        self.title_dirty = true;
+                    }
+                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
+                        // Outer `bgremoval_active` gate guarantees the
+                        // active tool downcasts to BgRemovalTool here.
+                        // Push the source snapshot (idempotent — the
+                        // per-frame snapshot push may have already
+                        // seeded the same buffer for the preview, but
+                        // the full-res Apply needs the exact same
+                        // buffer the algorithm should consume).
+                        let bg = tools
+                            .active_mut()
+                            .and_then(|t| {
+                                t.as_any_mut().downcast_mut::<ph2d_editor::BgRemovalTool>()
+                            })
+                            .expect("bgremoval_active gate guarantees a BgRemovalTool");
+                        let mut out: Vec<u8> = Vec::new();
+                        bg.set_source_snapshot(pixels.to_vec(), width, height);
+                        let (out_w, out_h) = bg.run_full_resolution(&mut out);
+                        let _ = (width, height); // shadowed by out_*; silence unused.
+                        match renderer.acquire_individual(out_w, out_h, &out) {
+                            Err(err) => {
+                                toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
+                                self.title_dirty = true;
+                            }
+                            Ok(texture_id) => {
+                                let sim_w = sim.world_mut();
+                                if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                                    sprite.source =
+                                        ph2d_render::SpriteSource::Individual { texture_id };
+                                    // Dimensions preserved — size stays.
+                                }
+                                drop_undo_pre_source_if_individual(renderer, image_edit_undo);
+                                *image_edit_undo = Some(ImageEditSnapshot {
+                                    entity_bits,
+                                    pre_source: old_source,
+                                    pre_size: old_size_world,
+                                    pre_translation: old_translation,
+                                    post_individual_id: texture_id,
+                                    label: "Bg Removal",
+                                });
+                                toasts.push(Toast::success("Bg Removal applied · Cmd+Z to undo"));
+                                self.title_dirty = true;
+                                // Re-push the freshly-modified pixels
+                                // into the tool so the next preview
+                                // tick reflects the new state.
+                                self.last_bgremoval_pushed_entity = None;
+                            }
+                        }
+                    }
+                }
+            }
+            // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click) raises
+            // `pending_undo_image_edit` on the hero; the host owns the
+            // snapshot. Single-level: each new edit overwrites the slot
+            // (releasing the previous pre-source), so undo restores at
+            // most the MOST RECENT Trim / Make Square.
+            if hero.pending_undo_image_edit {
+                hero.pending_undo_image_edit = false;
+                match image_edit_undo.take() {
+                    None => {
+                        toasts.push(Toast::info(ph2d_i18n::tr(
+                            "edit.undo.image_edit.toast_nothing_to_undo",
+                        )));
+                        self.title_dirty = true;
+                    }
+                    Some(snap) => {
+                        let entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
+                        let sim_w = sim.world_mut();
+                        // Restore sprite source + size + transform
+                        // translation. The pre-source's individual id
+                        // (if any) keeps its refcount — we don't
+                        // re-acquire because the snapshot held it
+                        // through the post-edit period.
+                        if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                            sprite.source = snap.pre_source;
+                            sprite.size = snap.pre_size;
+                        }
+                        if let Some(mut transform) = sim_w.get_mut::<ph2d_ecs::Transform>(entity) {
+                            transform.translation.x = snap.pre_translation[0];
+                            transform.translation.y = snap.pre_translation[1];
+                        }
+                        // Release the POST-edit texture (the one the
+                        // edit created); the sprite no longer references
+                        // it and no other edit holds it.
+                        renderer.individual_mut().release(snap.post_individual_id);
+                        toasts.push(Toast::success(format!(
+                            "{} · {}",
+                            ph2d_i18n::tr("edit.undo.image_edit.toast_done"),
+                            snap.label,
+                        )));
+                        self.title_dirty = true;
+                    }
+                }
+            }
+            // Publish whether a snapshot is currently stored so the UI
+            // can dim the TOOL_UNDO chip when there's nothing to undo.
+            hero.has_undoable_image_edit = image_edit_undo.is_some();
             // M14.4c: drain pending import request → open native
             // file picker, import every selected image (PNG/WEBP/
             // JPEG), spawn a sprite per image at the camera center.
@@ -2273,6 +2770,20 @@ impl App {
                         }
                     }
                 }
+            }
+            // Active tool's floating panel — same paint as fixture
+            // mode below. Was missing in live mode (PH2D_HERO_LIVE=1),
+            // so the BgRemoval / Brush / Move panels never showed
+            // even when their tool was active (Enio's "Painel
+            // BGRemoval não apareceu" report, 2026-05-16). Painted
+            // AFTER `paint_hero_screen` so the panel sits on top of
+            // canvas / gizmo / grid overlays, and BEFORE toasts so
+            // notifications still cover it.
+            if !zen.is_active()
+                && let Some(active) = tools.active()
+            {
+                let panel = active.build_panel();
+                panel.paint(vector_scene, &mut paint_ctx);
             }
             toasts.paint(vector_scene, &mut paint_ctx);
             // Drain frame-local arena AFTER the dispatch + paint pass
@@ -2539,10 +3050,11 @@ impl ApplicationHandler for App {
         let zen = ZenMode::new();
         let mut toasts = ToastQueue::new();
         toasts.push(Toast::success("Editor data layer wired (M12)"));
-        toasts.push(Toast::info("Press 1=Brush, 2=Move, Tab=Zen"));
+        toasts.push(Toast::info("Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"));
         let mut tools = ToolRegistry::new();
         tools.register(Box::new(BrushTool::default()));
         tools.register(Box::new(MoveTool::default()));
+        tools.register(Box::new(ph2d_editor::BgRemovalTool::default()));
         let layout = EditorLayout::new(size.width as f32, size.height as f32);
         let vello_pass =
             match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {
@@ -2650,6 +3162,7 @@ impl ApplicationHandler for App {
             visibility_type_id: stable_type_id("ph2d::ecs::Visibility"),
             name_type_id: stable_type_id("ph2d::ecs::Name"),
             sprite_type_id: stable_type_id("ph2d::render::Sprite"),
+            image_edit_undo: None,
         });
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
@@ -2814,8 +3327,95 @@ impl ApplicationHandler for App {
                         move_meters: hero.project.snap_move_meters,
                         rotate_deg: hero.project.snap_rotate_deg,
                     };
-                    let new_t = ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap);
+                    // Grid-snap apply (gizmo sites). The grid_snap
+                    // subsystem's `snap_world` is the canonical place to
+                    // align world positions to the active grid; it's a
+                    // no-op when `state.snap_enabled` is false or the
+                    // active kind has no snap target (Quadtree / Voronoi).
+                    //
+                    // Two consumers:
+                    //   1. Translate: applied AFTER the math to the
+                    //      final transform translation. Sprite half-
+                    //      extent feeds Corner / CenterIntersectionAndCorners
+                    //      modes so a sprite corner (not center) lines
+                    //      up with a grid vertex. Scale-aware: rendered
+                    //      half = Sprite::size × Transform::scale × 0.5.
+                    //   2. Scale (Corner / Edge): the snap closure runs
+                    //      INSIDE compute_gizmo_transform — it rewrites
+                    //      the cursor's world position before the scale
+                    //      ratio is computed so the dragged corner /
+                    //      edge midpoint lands on a snapped target.
+                    //      Bug Enio reported #2: "ao escalonar desse
+                    //      jeito, deve aceitar o snap do ponto".
                     let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
+                    let sprite_half_rendered = gfx
+                        .sim
+                        .world()
+                        .get::<ph2d_render::Sprite>(entity)
+                        .map(|s| {
+                            [
+                                s.size[0] * drag.start_transform.scale[0] * 0.5,
+                                s.size[1] * drag.start_transform.scale[1] * 0.5,
+                            ]
+                        })
+                        .unwrap_or([0.0, 0.0]);
+                    // GridSnapState::snap_world takes `[f32; 2]` (=
+                    // `ph2d_grid::Vec2`) — pass arrays directly.
+                    let is_scale = matches!(
+                        drag.kind,
+                        ph2d_editor::GizmoDragKind::ScaleCorner { .. }
+                            | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+                    );
+                    // Compute new_t with snap closure when applicable.
+                    // The closure isolates the &mut borrow of
+                    // grid_snap_state so it doesn't conflict with the
+                    // Translate snap call below.
+                    let new_t = if is_scale {
+                        // Snap closure: project [f32; 2] world → snapped
+                        // [f32; 2]. We pass sprite_half_rendered so
+                        // Corner snap modes work; rendered half is
+                        // start-scale based (cursor snaps to the grid,
+                        // not the post-scale corner — that's what makes
+                        // the snap predictable as the user drags).
+                        let snap_state = &mut hero.grid_snap_state;
+                        let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
+                            snap_state.snap_world(w, sprite_half_rendered)
+                        };
+                        ph2d_editor::compute_gizmo_transform(
+                            &drag,
+                            &cam,
+                            mods,
+                            snap,
+                            Some(&mut snap_closure),
+                        )
+                    } else {
+                        ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap, None)
+                    };
+                    // Translate path: snap the final translation. Skip
+                    // for Scale — the closure above already snapped the
+                    // cursor; snapping translation here would shift the
+                    // sprite center to a grid vertex and the opposite-
+                    // corner anchor would no longer match the grid.
+                    let new_t = if is_scale {
+                        new_t
+                    } else {
+                        let mut new_t = new_t;
+                        let sprite_half_new = gfx
+                            .sim
+                            .world()
+                            .get::<ph2d_render::Sprite>(entity)
+                            .map(|s| {
+                                [
+                                    s.size[0] * new_t.scale[0] * 0.5,
+                                    s.size[1] * new_t.scale[1] * 0.5,
+                                ]
+                            })
+                            .unwrap_or([0.0, 0.0]);
+                        new_t.translation = hero
+                            .grid_snap_state
+                            .snap_world(new_t.translation, sprite_half_new);
+                        new_t
+                    };
                     if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                         t.translation =
                             ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);
@@ -2924,16 +3524,34 @@ impl ApplicationHandler for App {
                                 let start_world =
                                     gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                                 if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
-                                    // Pivot defaults to the entity
-                                    // translation (sprite center).
-                                    // M14.7 D will swap this when Alt
-                                    // is held.
-                                    let pivot = [t.translation.x, t.translation.y];
                                     let snap = ph2d_editor::TransformSnapshot {
                                         translation: [t.translation.x, t.translation.y],
                                         rotation: t.rotation,
                                         scale: [t.scale.x, t.scale.y],
                                     };
+                                    // Anchor-based scale: default pivot
+                                    // is the OPPOSITE corner (Figma /
+                                    // Photoshop convention) — Ctrl/Cmd
+                                    // flips to the sprite center.
+                                    // Translate / Rotate ignore the
+                                    // toggle (they always pivot on
+                                    // center). Sprite intrinsic
+                                    // half-size feeds the helper's
+                                    // opposite-corner math.
+                                    let use_center_anchor =
+                                        self.modifiers.control_key() || self.modifiers.super_key();
+                                    let sprite_half_intrinsic = gfx
+                                        .sim
+                                        .world()
+                                        .get::<ph2d_render::Sprite>(entity)
+                                        .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
+                                        .unwrap_or([0.0, 0.0]);
+                                    let pivot = ph2d_editor::anchor_pivot_world(
+                                        gkind,
+                                        sprite_half_intrinsic,
+                                        snap,
+                                        use_center_anchor,
+                                    );
                                     hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
                                         kind: gkind,
                                         entity_bits,
@@ -2942,6 +3560,17 @@ impl ApplicationHandler for App {
                                         start_transform: snap,
                                         pivot_world: pivot,
                                         start_cursor_world: start_world,
+                                        // Carry the intrinsic half-size so
+                                        // compute_gizmo_transform can re-
+                                        // anchor the opposite corner under
+                                        // a new scale (issue Enio reported
+                                        // — opposite corner used to drift
+                                        // because translation wasn't
+                                        // updated). Center-anchor flag
+                                        // mirrors the same Ctrl/Cmd state
+                                        // anchor_pivot_world resolved on.
+                                        sprite_half_intrinsic,
+                                        anchor_is_center: use_center_anchor,
                                     });
                                 }
                             } else if hero.store.panel_at(evt.x, evt.y).is_none()
@@ -3051,6 +3680,11 @@ impl ApplicationHandler for App {
                                             start_transform: snap_t,
                                             pivot_world: pivot,
                                             start_cursor_world: world_pos,
+                                            // Translate doesn't touch the
+                                            // Scale anchor path — these
+                                            // fields are inert here.
+                                            sprite_half_intrinsic: [0.0, 0.0],
+                                            anchor_is_center: false,
                                         });
                                     }
                                 }
@@ -3251,6 +3885,22 @@ impl ApplicationHandler for App {
 /// `ph2d_editor::project`) but defense-in-depth here keeps the shell
 /// safe even if a future config path skips that clamp.
 pub(crate) const EPS_PIXELS_PER_METER: f32 = 0.01;
+
+/// When the image-edit undo slot is being overwritten by a new edit,
+/// release the previous snapshot's pre-edit Individual texture (if
+/// any) so the now-orphaned texture doesn't leak. Atlas-backed
+/// pre-sources don't need release — they share the texture via the
+/// asset_db. No-op when the slot is empty.
+pub(crate) fn drop_undo_pre_source_if_individual(
+    renderer: &mut SpriteRenderer,
+    slot: &mut Option<ImageEditSnapshot>,
+) {
+    if let Some(prev) = slot.take()
+        && let ph2d_render::SpriteSource::Individual { texture_id } = prev.pre_source
+    {
+        renderer.individual_mut().release(texture_id);
+    }
+}
 
 /// Floor for the world-space side length of an imported sprite.
 /// Guarantees the quad is selectable even if the user picks an

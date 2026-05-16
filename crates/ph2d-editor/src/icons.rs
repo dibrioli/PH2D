@@ -73,6 +73,9 @@ pub enum IconId {
     Fps,
     Gizmo,
     Grid,
+    /// Grid + cog overlay — TopBar entry-point for the Grid Settings
+    /// floating panel (grid-snap subsystem).
+    GridSettings,
     Help,
     Hidden,
     Hierarchy,
@@ -92,6 +95,11 @@ pub enum IconId {
     Link,
     Lock,
     Material,
+    /// Lucide `square.svg` — single rounded rect 18×18 at (3,3) r=2.
+    /// Used by the Image Tools row's Make Square action; algorithm in
+    /// `tools/make_square/algorithm.rs`. Mirrors [`Self::TrimTransparency`]
+    /// as the canonical icon for the action's chrome.
+    MakeSquare,
     Maximize,
     Menu,
     Minimize,
@@ -132,6 +140,12 @@ pub enum IconId {
     Transform,
     Trash,
     TrimTransparency,
+    /// Lucide `eraser` glyph — drives the LeftRail chip / TopBar
+    /// activator for the Background Removal stateful Tool.
+    /// Implementation in `tools/bgremoval/icon.rs` (mirror path for
+    /// the Vello-vector consumers); the icon-grid `cmds()` path
+    /// below is the canonical SVG used by `paint_icon`.
+    BgRemoval,
     Undo,
     Unlink,
     Unlock,
@@ -269,6 +283,16 @@ impl IconId {
                 IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 1.0),
                 IconCmd::Path("M3 9h18M3 15h18M9 3v18M15 3v18"),
             ],
+            // Grid quadrants in a 2×2 layout with a central cog —
+            // signals "configure the grid". Lucide-derived strokes.
+            Self::GridSettings => &[
+                IconCmd::Rect(3.0, 3.0, 6.0, 6.0, 1.0),
+                IconCmd::Rect(15.0, 3.0, 6.0, 6.0, 1.0),
+                IconCmd::Rect(3.0, 15.0, 6.0, 6.0, 1.0),
+                IconCmd::Rect(15.0, 15.0, 6.0, 6.0, 1.0),
+                IconCmd::Circle(12.0, 12.0, 2.0),
+                IconCmd::Path("M12 9v-1.5M12 16.5v-1.5M9 12h-1.5M16.5 12h-1.5"),
+            ],
             Self::Help => &[
                 IconCmd::Circle(12.0, 12.0, 10.0),
                 IconCmd::Path("M9.1 9a3 3 0 1 1 5.8 1c0 2-3 3-3 3"),
@@ -369,6 +393,12 @@ impl IconId {
                 IconCmd::Circle(12.0, 12.0, 9.0),
                 IconCmd::Path("M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"),
             ],
+            // Lucide `square.svg` — single rounded rect 18×18 at (3,3),
+            // corner radius 2. Matches the agent's `square_bezpath()`
+            // glyph in `tools/make_square/icon.rs` (different abstraction
+            // — `IconCmd` for chrome iconography, `BezPath` for direct
+            // consumers).
+            Self::MakeSquare => &[IconCmd::Rect(3.0, 3.0, 18.0, 18.0, 2.0)],
             Self::Maximize => &[IconCmd::Path(
                 "M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3",
             )],
@@ -550,6 +580,16 @@ impl IconId {
             Self::TrimTransparency => &[
                 IconCmd::Path("M6 2v14a2 2 0 0 0 2 2h14"),
                 IconCmd::Path("M18 22V8a2 2 0 0 0-2-2H2"),
+            ],
+            // Lucide `eraser.svg` (v0.453) — eraser shaft + ground
+            // line + diagonal cut. Three SVG paths, identical to the
+            // BezPath in `tools/bgremoval/icon.rs::eraser_bezpath`.
+            Self::BgRemoval => &[
+                IconCmd::Path(
+                    "m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21",
+                ),
+                IconCmd::Path("M22 21H7"),
+                IconCmd::Path("m5 11 9 9"),
             ],
             // Lucide `undo-2` — arrow head + flat curve (mirror of redo-2).
             Self::Undo => &[
@@ -765,6 +805,7 @@ mod tests {
         IconId::Fps,
         IconId::Gizmo,
         IconId::Grid,
+        IconId::GridSettings,
         IconId::Help,
         IconId::Hidden,
         IconId::Hierarchy,
@@ -782,6 +823,7 @@ mod tests {
         IconId::Link,
         IconId::Lock,
         IconId::Material,
+        IconId::MakeSquare,
         IconId::Maximize,
         IconId::Menu,
         IconId::Minimize,
@@ -821,6 +863,7 @@ mod tests {
         IconId::Transform,
         IconId::Trash,
         IconId::TrimTransparency,
+        IconId::BgRemoval,
         IconId::Undo,
         IconId::Unlink,
         IconId::Unlock,

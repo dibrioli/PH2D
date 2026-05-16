@@ -3902,8 +3902,11 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "dhat",
+ "image",
  "ph2d-a11y",
+ "ph2d-grid",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
@@ -3922,6 +3925,10 @@ dependencies = [
  "pollster",
  "wgpu",
 ]
+
+[[package]]
+name = "ph2d-grid"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-host"
@@ -3943,6 +3950,7 @@ dependencies = [
  "ph2d-editor",
  "ph2d-gpu",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-input",
  "ph2d-render",
  "ph2d-script",

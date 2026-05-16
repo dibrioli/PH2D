@@ -35,7 +35,13 @@ pub enum PanelEvent {
 /// Implementors typically carry their own model fields (brush size,
 /// snap toggles, etc.) and project that model into a fresh
 /// [`FloatingPanel`] each time `build_panel` is called.
-pub trait Tool {
+///
+/// `Any` bound + [`Self::as_any_mut`] let the host downcast the
+/// active tool back to its concrete type (e.g. when BgRemoval needs
+/// to push a source snapshot before paint). Implementors get the
+/// downcast method "for free" via the default body — `Self: Sized`
+/// + `Self: Any` make `self as &mut dyn Any` always valid.
+pub trait Tool: std::any::Any {
     /// Stable id used for registry lookup + panel position memory.
     fn id(&self) -> ToolId;
 
@@ -66,6 +72,11 @@ pub trait Tool {
     /// fold the event back into the tool's model state (e.g. update
     /// `BrushTool::size` when the Size slider was dragged).
     fn handle_panel_event(&mut self, _event: PanelEvent) {}
+
+    /// Mutable `Any` view for downcasting in the host (e.g. snapshot
+    /// push into `BgRemovalTool`). Implementors override with
+    /// `fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }`.
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
 /// Owns the registered tools and tracks which one is active. The
@@ -175,6 +186,9 @@ mod tests {
         }
         fn on_deactivate(&mut self) {
             self.deactivated.set(self.deactivated.get() + 1);
+        }
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
         }
     }
 

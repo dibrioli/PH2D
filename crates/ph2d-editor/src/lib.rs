@@ -29,6 +29,7 @@
 pub mod floating_panel;
 pub mod gizmo;
 pub mod grid;
+pub mod grid_snap;
 pub mod icons;
 pub mod image_edit;
 pub mod interaction;
@@ -45,12 +46,12 @@ pub mod zones;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoView,
-    TransformSnapshot, compute_gizmo_transform, gizmo_kind_for_id, is_gizmo_handle_id,
-    paint_sprite_gizmo,
+    TransformSnapshot, anchor_pivot_world, compute_gizmo_transform, gizmo_kind_for_id,
+    is_gizmo_handle_id, paint_sprite_gizmo,
 };
 pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
-pub use image_edit::{PixelBounds, recenter_after_crop};
+pub use image_edit::{PixelBounds, recenter_after_crop, recenter_after_pad};
 pub use interaction::{
     HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
     dispatch_text_input, dispatch_tick,
@@ -60,7 +61,8 @@ pub use paint::{
     paint_text_title, paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
 };
 pub use project::{
-    DEFAULT_PIXELS_PER_METER, MAX_PIXELS_PER_METER, MIN_PIXELS_PER_METER, ProjectSettings,
+    DEFAULT_PIXELS_PER_METER, DisplayUnit, MAX_PIXELS_PER_METER, MIN_PIXELS_PER_METER,
+    ProjectSettings,
 };
 pub use screens::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorSpriteInfo,
@@ -72,7 +74,11 @@ pub use tool::{PanelEvent, Tool, ToolRegistry};
 // Re-export so the shell can name the dragging node id without
 // taking a direct ph2d-a11y dep just for one type.
 pub use ph2d_a11y::NodeId;
-pub use tools::{Bounds, BrushTool, MoveTool, TrimResult, crop_bezpath, trim_transparency};
+pub use tools::bgremoval::{BgRemovalParams, BgRemovalTool, eraser_bezpath};
+pub use tools::{
+    Bounds, BrushTool, MakeSquareResult, MoveTool, TrimResult, bgremoval, crop_bezpath,
+    make_square, square_bezpath, trim_transparency,
+};
 pub use widget::{
     Avatar, AvatarShape, AvatarState, Button, ButtonKind, ButtonState, CHECKBOX_BOX_PX, Card,
     Checkbox, CheckboxState, CheckboxValue, ColorPicker, ColorPickerMode, ColorSwatch, Combobox,

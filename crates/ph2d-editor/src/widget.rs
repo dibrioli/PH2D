@@ -69,9 +69,10 @@ pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
 };
 pub use scrollbar::{
-    GALLERY_SCROLLBAR_ID, HIERARCHY_SCROLLBAR_ID, INSPECTOR_SCROLLBAR_ID, SCROLLBAR_W,
-    delta_for_drag as scrollbar_delta_for_drag, is_needed as scrollbar_is_needed, paint_scrollbar,
-    thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
+    GALLERY_SCROLLBAR_ID, GRID_SETTINGS_SCROLLBAR_ID, HIERARCHY_SCROLLBAR_ID,
+    INSPECTOR_SCROLLBAR_ID, SCROLLBAR_W, delta_for_drag as scrollbar_delta_for_drag,
+    is_needed as scrollbar_is_needed, paint_scrollbar, thumb_rect as scrollbar_thumb_rect,
+    track_rect as scrollbar_track_rect,
 };
 pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider};

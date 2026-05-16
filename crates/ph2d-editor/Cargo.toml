@@ -21,11 +21,27 @@ ph2d-text = { path = "../ph2d-text" }
 # ph2d-host — PointerEvent / KeyEvent types consumed by the
 # interaction dispatcher (ADR-0024).
 ph2d-host = { path = "../ph2d-host" }
+# ph2d-grid — grid kinds (Square/Hex/Iso/Staggered/Tri) + snap math
+# consumed by `grid_snap/` editor module (slot 1 agent grid-snap).
+ph2d-grid = { path = "../ph2d-grid" }
+# ph2d-i18n — string-table stub (M13 deferred Fluent). Tooltips and
+# toast strings funnel through `tr("key")` so the eventual Fluent
+# migration is an impl swap, not a call-site rename. See HR-15.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # Interaction infrastructure (ADR-0024 plan, HR-3 zero-alloc):
 # - smallvec: HitIndex inline storage (no heap until > 128 widgets).
 # - bumpalo: per-frame arena for emitted WidgetEvents.
 smallvec = "1"
 bumpalo = { version = "3", features = ["collections"] }
+# image — imageops::resize (lanczos) for bgremoval thumbnail downscale
+# + guided-filter ops. `default-features = false` strips decoders
+# (ph2d-asset is the canonical decode boundary; this crate only
+# operates on already-decoded RGBA).
+image = { version = "0.25", default-features = false }
+# rayon was requested for parallel guided-filter passes inside
+# bgremoval but slot 2's M3 ships the vanilla serial gray-guide
+# implementation; cargo machete flagged the import as unused on
+# 2026-05-16. Re-add when bgremoval lands a parallel path.
 
 [dev-dependencies]
 # dhat-rs: HR-3 enforcement bench — counts allocations in

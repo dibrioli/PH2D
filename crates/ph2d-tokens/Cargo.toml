@@ -6,13 +6,21 @@ rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
 authors.workspace = true
+build = "build.rs"
 
 [lib]
 
-# ph2d-tokens é design-data puro — zero deps. Cores são structs simples,
-# type/spacing são enums com const tables. Lookup é function call.
-# Validation WCAG AA roda em tests/ sem precisar de libs externas.
+# ph2d-tokens é design-data puro — zero runtime deps. Cores são structs
+# simples, type/spacing são enums com const tables. Lookup é function
+# call. Validation WCAG AA roda em tests/ sem precisar de libs externas.
+#
+# Wave 2 PR 11.1: `build.rs` lê `docs/design/tokens.json` (canonical
+# source-of-truth) e gera `OUT_DIR/tokens_generated.rs` com const arrays
+# por theme. Eliminação de sync manual entre design e Rust. Build-dep
+# vazia (parser JSON ad-hoc; tokens.json tem schema estável de ~150 LOC).
 
 [dependencies]
+
+[build-dependencies]
 
 [dev-dependencies]

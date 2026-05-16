@@ -44,6 +44,13 @@ pub mod spacing;
 pub mod theme;
 pub mod typography;
 
+/// Auto-generated tables from `docs/design/tokens.json` via `build.rs`.
+/// See Wave 2 PR 11.1. Consumed by `color.rs::ColorToken::resolve`.
+/// Module visibility: `pub(crate)` — runtime is the public API.
+pub(crate) mod generated {
+    include!(concat!(env!("OUT_DIR"), "/tokens_generated.rs"));
+}
+
 pub use color::{Color, ColorToken, ColorValue, oklch_to_srgb, srgb_to_oklch};
 pub use layer::Layer;
 pub use motion::{Duration, Easing};

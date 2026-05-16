@@ -312,206 +312,87 @@ pub enum ColorToken {
 }
 
 impl ColorToken {
-    /// Resolve token → concrete Color for the given Theme.
-    /// Values mirror `docs/design/tokens.json`; changing here without
-    /// changing there causes divergence. Tests in this crate enforce
-    /// the WCAG contrast invariants.
+    /// Stable string key for this token, matching the corresponding
+    /// entry in `docs/design/tokens.json`. Used by `resolve` to look up
+    /// the OKLCH value in the codegen'd per-theme table.
+    ///
+    /// Adding a new ColorToken variant: add an arm here mapping to the
+    /// kebab-case key that lives in tokens.json. The runtime panic in
+    /// `lookup` catches missing keys at first use.
+    pub const fn key(self) -> &'static str {
+        match self {
+            Self::Bg0 => "bg-0",
+            Self::Bg1 => "bg-1",
+            Self::Bg2 => "bg-2",
+            Self::Bg3 => "bg-3",
+            Self::BgElev => "bg-elev",
+            Self::BgScrim => "bg-scrim",
+            Self::RailBg => "rail-bg",
+            Self::PanelBg => "panel-bg",
+            Self::Border => "border",
+            Self::BorderStrong => "border-strong",
+            Self::BorderEmph => "border-emph",
+            Self::Text1 => "text-1",
+            Self::Text2 => "text-2",
+            Self::Text3 => "text-3",
+            Self::TextDisabled => "text-disabled",
+            Self::Accent => "accent",
+            Self::AccentHover => "accent-hover",
+            Self::AccentPress => "accent-press",
+            Self::AccentSoft => "accent-soft",
+            Self::AccentFg => "accent-fg",
+            Self::Danger => "danger",
+            Self::DangerSoft => "danger-soft",
+            Self::Success => "success",
+            Self::SuccessSoft => "success-soft",
+            Self::Warn => "warn",
+            Self::WarnSoft => "warn-soft",
+            Self::Info => "info",
+            Self::InfoSoft => "info-soft",
+            Self::Selection => "selection",
+            Self::FocusRing => "focus-ring",
+            Self::GridLine => "grid-line",
+            Self::GridAxis => "grid-axis",
+            Self::Canvas => "canvas",
+        }
+    }
+
+    /// Resolve token → concrete Color for the given Theme via lookup in
+    /// the codegen'd `COLORS_<THEME>` table from
+    /// `docs/design/tokens.json`. Wave 2 PR 11.1: values flow from
+    /// canonical tokens.json → `build.rs` → `crate::generated` → here.
+    /// Sync manual eliminado.
     pub fn resolve(self, theme: Theme) -> Color {
-        // Per-theme tables. Each theme is its own block — repetition is
-        // deliberate for readable diffs and exhaustive compiler matching.
-        match theme {
-            Theme::Forge => self.resolve_forge(),
-            Theme::Workshop => self.resolve_workshop(),
-            Theme::Sunstone => self.resolve_sunstone(),
-            Theme::Blueprint => self.resolve_blueprint(),
+        let table: &[(&str, crate::generated::OklchRaw)] = match theme {
+            Theme::Forge => crate::generated::COLORS_FORGE,
+            Theme::Workshop => crate::generated::COLORS_WORKSHOP,
+            Theme::Sunstone => crate::generated::COLORS_SUNSTONE,
+            Theme::Blueprint => crate::generated::COLORS_BLUEPRINT,
+        };
+        lookup_color(table, self.key())
+    }
+}
+
+/// Linear-scan lookup of a color token in a per-theme table generated
+/// from `docs/design/tokens.json`. Tables have 33 entries; ~ns per
+/// lookup. Not a hot path (paint frame walks tokens once per widget,
+/// not per pixel). Panics on missing key — design-canonical integrity
+/// error (token added to ColorToken enum without matching entry in
+/// tokens.json) caught immediately at first resolve.
+fn lookup_color(table: &[(&str, crate::generated::OklchRaw)], key: &str) -> Color {
+    for (k, v) in table.iter() {
+        if *k == key {
+            return if v.a < 1.0 {
+                Color::from_oklch_alpha(v.l, v.c, v.h, v.a)
+            } else {
+                Color::from_oklch(v.l, v.c, v.h)
+            };
         }
     }
-
-    /// `forge` (default): dark + magenta accent.
-    fn resolve_forge(self) -> Color {
-        // Round 9 color study: neutral hue pulled from 285 → 320 to
-        // sit in the same family as the magenta accent (hue 340).
-        // Previously the 55° gap between neutrals (cool purple) and
-        // accent (warm magenta) produced a "vibrating" perception
-        // that, combined with too-saturated accent (C=0.16) and
-        // pure-white Text1 (L=0.98 → contrast ~16:1), made the UI
-        // feel low-resolution and tiring. The new neutrals (hue
-        // 320, slight magenta tint) harmonize without losing the
-        // dark-chrome character. Other moves in this round:
-        //   - Bg ladder respaced so BgElev sits ABOVE Bg3 (was
-        //     between Bg2 and Bg3 — broken elevation hierarchy).
-        //   - Text1 dropped to L=0.940 (still 11.5:1 vs Bg1, no
-        //     halation glare on long sessions).
-        //   - Accent chroma 0.160 → 0.125 (Linear/Figma range).
-        //   - Canvas L 0.105 → 0.085 so the new translucent
-        //     RailBg/panel surfaces have somewhere to read against.
-        match self {
-            Self::Bg0 => Color::from_oklch(0.105, 0.004, 320.0),
-            Self::Bg1 => Color::from_oklch(0.145, 0.005, 320.0),
-            Self::Bg2 => Color::from_oklch(0.185, 0.006, 320.0),
-            Self::Bg3 => Color::from_oklch(0.225, 0.007, 320.0),
-            // Elevation now > Bg3 (was 0.175, BETWEEN Bg2 and Bg3).
-            Self::BgElev => Color::from_oklch(0.245, 0.008, 320.0),
-            Self::BgScrim => Color::from_oklch_alpha(0.055, 0.004, 320.0, 0.60),
-            // ~0.045 L · 0.55 α: subtly darker than canvas (L≈0.085)
-            // when alpha-over'd, gives Text labels a clear perceptual
-            // platform without fully occluding world content.
-            Self::RailBg => Color::from_oklch_alpha(0.040, 0.004, 320.0, 0.55),
-            // Same hue/L as BgElev but alpha 0.92 — discreet bleed
-            // so the panel reads as floating glass over canvas, not
-            // pure overlay. Strong enough that text contrast holds.
-            Self::PanelBg => Color::from_oklch_alpha(0.245, 0.008, 320.0, 0.92),
-
-            Self::Border => Color::from_oklch(0.295, 0.009, 320.0),
-            Self::BorderStrong => Color::from_oklch(0.480, 0.015, 320.0),
-            Self::BorderEmph => Color::from_oklch(0.550, 0.018, 320.0),
-
-            // Text1 dropped from pure white (L=0.98) to L=0.94 —
-            // still high contrast but eliminates halation glare.
-            Self::Text1 => Color::from_oklch(0.940, 0.004, 320.0),
-            Self::Text2 => Color::from_oklch(0.745, 0.006, 320.0),
-            Self::Text3 => Color::from_oklch(0.555, 0.008, 320.0),
-            Self::TextDisabled => Color::from_oklch(0.410, 0.007, 320.0),
-
-            // Accent retained at hue 340 (brand magenta) but chroma
-            // pulled from 0.160 → 0.125, matching Linear/Figma dark.
-            Self::Accent => Color::from_oklch(0.720, 0.125, 340.0),
-            Self::AccentHover => Color::from_oklch(0.770, 0.135, 340.0),
-            Self::AccentPress => Color::from_oklch(0.670, 0.120, 340.0),
-            Self::AccentSoft => Color::from_oklch(0.285, 0.035, 340.0),
-            Self::AccentFg => Color::from_oklch(0.140, 0.025, 340.0),
-
-            Self::Danger => Color::from_oklch(0.660, 0.180, 25.0),
-            Self::DangerSoft => Color::from_oklch(0.270, 0.042, 25.0),
-            Self::Success => Color::from_oklch(0.745, 0.125, 155.0),
-            Self::SuccessSoft => Color::from_oklch(0.280, 0.034, 155.0),
-            Self::Warn => Color::from_oklch(0.795, 0.125, 80.0),
-            Self::WarnSoft => Color::from_oklch(0.290, 0.036, 80.0),
-            Self::Info => Color::from_oklch(0.720, 0.110, 235.0),
-            Self::InfoSoft => Color::from_oklch(0.275, 0.032, 235.0),
-
-            Self::Selection => Color::from_oklch(0.330, 0.048, 340.0),
-            Self::FocusRing => Color::from_oklch_alpha(0.720, 0.125, 340.0, 0.55),
-            Self::GridLine => Color::from_oklch_alpha(1.0, 0.0, 0.0, 0.035),
-            Self::GridAxis => Color::from_oklch_alpha(0.720, 0.125, 340.0, 0.30),
-            Self::Canvas => Color::from_oklch(0.085, 0.003, 320.0),
-        }
-    }
-
-    /// `workshop`: inherits `forge` structure, only accent
-    /// stack changes (cyan).
-    fn resolve_workshop(self) -> Color {
-        match self {
-            Self::Accent => Color::from_oklch(0.780, 0.140, 205.0),
-            Self::AccentHover => Color::from_oklch(0.820, 0.140, 205.0),
-            Self::AccentPress => Color::from_oklch(0.730, 0.140, 205.0),
-            Self::AccentSoft => Color::from_oklch(0.272, 0.035, 205.0),
-            Self::Selection => Color::from_oklch(0.320, 0.048, 205.0),
-            Self::FocusRing => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.55),
-            Self::GridAxis => Color::from_oklch_alpha(0.780, 0.140, 205.0, 0.32),
-            // Everything else inherits forge.
-            other => other.resolve_forge(),
-        }
-    }
-
-    /// `sunstone`: light + warm orange. Redefine surfaces, text, accent.
-    fn resolve_sunstone(self) -> Color {
-        match self {
-            Self::Bg0 => Color::from_oklch(0.985, 0.006, 75.0),
-            Self::Bg1 => Color::from_oklch(0.965, 0.008, 75.0),
-            Self::Bg2 => Color::from_oklch(0.940, 0.010, 75.0),
-            Self::Bg3 => Color::from_oklch(0.910, 0.014, 75.0),
-            Self::BgElev => Color::from_oklch(0.985, 0.006, 75.0),
-            Self::BgScrim => Color::from_oklch_alpha(0.220, 0.014, 75.0, 0.40),
-            // Light theme: lighter-than-canvas frosted backing so the
-            // dark Text1/2 labels keep their contrast platform.
-            Self::RailBg => Color::from_oklch_alpha(1.000, 0.004, 75.0, 0.55),
-            // Sunstone PanelBg: BgElev (L=0.985) with discreet alpha.
-            Self::PanelBg => Color::from_oklch_alpha(0.985, 0.006, 75.0, 0.92),
-
-            Self::Border => Color::from_oklch(0.870, 0.016, 75.0),
-            Self::BorderStrong => Color::from_oklch(0.640, 0.018, 75.0),
-            Self::BorderEmph => Color::from_oklch(0.500, 0.020, 75.0),
-
-            Self::Text1 => Color::from_oklch(0.220, 0.014, 75.0),
-            Self::Text2 => Color::from_oklch(0.420, 0.012, 75.0),
-            Self::Text3 => Color::from_oklch(0.560, 0.010, 75.0),
-            Self::TextDisabled => Color::from_oklch(0.700, 0.008, 75.0),
-
-            Self::Accent => Color::from_oklch(0.560, 0.190, 55.0),
-            Self::AccentHover => Color::from_oklch(0.610, 0.195, 55.0),
-            Self::AccentPress => Color::from_oklch(0.510, 0.185, 55.0),
-            // M14.5 round 4: opaque tint ≈ 0.84·BgElev + 0.16·Accent.
-            Self::AccentSoft => Color::from_oklch(0.917, 0.034, 55.0),
-            Self::AccentFg => Color::from_oklch(0.985, 0.030, 55.0),
-
-            Self::Warn => Color::from_oklch(0.560, 0.160, 80.0),
-            Self::Selection => Color::from_oklch(0.883, 0.050, 55.0),
-            Self::FocusRing => Color::from_oklch_alpha(0.560, 0.190, 55.0, 0.55),
-            Self::GridLine => Color::from_oklch_alpha(0.0, 0.0, 0.0, 0.04),
-            Self::GridAxis => Color::from_oklch_alpha(0.560, 0.190, 55.0, 0.32),
-            Self::Canvas => Color::from_oklch(0.945, 0.012, 75.0),
-
-            // Semantic states inherit forge chroma but shift L for
-            // light surface. Per audit.md sunstone tunes accent/warn
-            // explicitly; rest uses sensible darker variants.
-            Self::Danger => Color::from_oklch(0.560, 0.200, 25.0),
-            Self::DangerSoft => Color::from_oklch(0.917, 0.036, 25.0),
-            Self::Success => Color::from_oklch(0.520, 0.140, 155.0),
-            Self::SuccessSoft => Color::from_oklch(0.911, 0.025, 155.0),
-            Self::WarnSoft => Color::from_oklch(0.917, 0.029, 80.0),
-            Self::Info => Color::from_oklch(0.520, 0.140, 235.0),
-            Self::InfoSoft => Color::from_oklch(0.911, 0.025, 235.0),
-        }
-    }
-
-    /// `blueprint`: light + cool blue (CAD vibe). Sidebar layout flag
-    /// is read from `Theme::panel_layout`, not from color resolve.
-    fn resolve_blueprint(self) -> Color {
-        match self {
-            Self::Bg0 => Color::from_oklch(0.975, 0.008, 250.0),
-            Self::Bg1 => Color::from_oklch(0.955, 0.010, 250.0),
-            Self::Bg2 => Color::from_oklch(0.925, 0.014, 250.0),
-            Self::Bg3 => Color::from_oklch(0.895, 0.016, 250.0),
-            Self::BgElev => Color::from_oklch(0.975, 0.008, 250.0),
-            Self::BgScrim => Color::from_oklch_alpha(0.220, 0.020, 250.0, 0.40),
-            // Light theme — same approach as sunstone, cool hue.
-            Self::RailBg => Color::from_oklch_alpha(1.000, 0.005, 250.0, 0.55),
-            // Blueprint PanelBg: BgElev (L=0.975) with discreet alpha.
-            Self::PanelBg => Color::from_oklch_alpha(0.975, 0.008, 250.0, 0.92),
-
-            Self::Border => Color::from_oklch(0.860, 0.018, 250.0),
-            Self::BorderStrong => Color::from_oklch(0.620, 0.020, 250.0),
-            Self::BorderEmph => Color::from_oklch(0.480, 0.022, 250.0),
-
-            Self::Text1 => Color::from_oklch(0.220, 0.020, 250.0),
-            Self::Text2 => Color::from_oklch(0.420, 0.018, 250.0),
-            Self::Text3 => Color::from_oklch(0.560, 0.014, 250.0),
-            Self::TextDisabled => Color::from_oklch(0.700, 0.012, 250.0),
-
-            Self::Accent => Color::from_oklch(0.500, 0.180, 250.0),
-            Self::AccentHover => Color::from_oklch(0.555, 0.185, 250.0),
-            Self::AccentPress => Color::from_oklch(0.450, 0.175, 250.0),
-            // M14.5 round 4: opaque tint ≈ 0.84·BgElev + 0.16·Accent.
-            Self::AccentSoft => Color::from_oklch(0.899, 0.030, 250.0),
-            Self::AccentFg => Color::from_oklch(0.985, 0.020, 250.0),
-
-            Self::Warn => Color::from_oklch(0.560, 0.160, 80.0),
-            Self::Selection => Color::from_oklch(0.861, 0.046, 250.0),
-            Self::FocusRing => Color::from_oklch_alpha(0.500, 0.180, 250.0, 0.55),
-            Self::GridLine => Color::from_oklch_alpha(0.0, 0.0, 0.0, 0.06),
-            Self::GridAxis => Color::from_oklch_alpha(0.500, 0.180, 250.0, 0.36),
-            Self::Canvas => Color::from_oklch(0.940, 0.016, 250.0),
-
-            Self::Danger => Color::from_oklch(0.560, 0.200, 25.0),
-            Self::DangerSoft => Color::from_oklch(0.908, 0.034, 25.0),
-            Self::Success => Color::from_oklch(0.520, 0.140, 155.0),
-            Self::SuccessSoft => Color::from_oklch(0.902, 0.024, 155.0),
-            Self::WarnSoft => Color::from_oklch(0.908, 0.027, 80.0),
-            Self::Info => Color::from_oklch(0.520, 0.140, 235.0),
-            Self::InfoSoft => Color::from_oklch(0.902, 0.024, 235.0),
-        }
-    }
+    panic!(
+        "color token {key:?} not found in canonical table — \
+         check docs/design/tokens.json for missing entry"
+    );
 }
 
 #[cfg(test)]

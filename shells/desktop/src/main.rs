@@ -2024,7 +2024,34 @@ impl App {
             // lived off-center inside the original frame. The shift
             // happens in pure-CPU pixel math (Y-flip handled inside
             // `recenter_after_crop`); HR-5-deterministic.
-            if let Some(entity_bits) = hero.pending_trim_transparency.take()
+            // Wave 2.5 PR 11.8b1: trim_transparency intent now lives
+            // on `hero.bus` (EditorAction::Trim) instead of the
+            // legacy `pending_trim_transparency: Option<u64>` field.
+            // We collect the matching variant out of the bus into a
+            // local so the subsequent `drain_trim_transparency` call
+            // — which borrows `hero.project.pixels_per_meter` — sees a
+            // clean borrow window.
+            let trim_entity = {
+                let mut found: Option<u64> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::Trim { entity_bits }
+                            if found.is_none() =>
+                        {
+                            found = Some(entity_bits);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(entity_bits) = trim_entity
                 && hero_intents::drain_trim_transparency(
                     entity_bits,
                     hero.project.pixels_per_meter,

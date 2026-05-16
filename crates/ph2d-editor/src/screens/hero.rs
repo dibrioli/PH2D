@@ -180,6 +180,13 @@ pub struct HeroScreen {
     /// `paint_hero_screen` call and re-populated as painters emit
     /// geometry.
     pub hit_index: HitIndex,
+    /// Outbound action queue (Wave 2.5 PR 11.8). Replaces the
+    /// `pending_X: Option<T>` scatter-pattern with a strongly-typed
+    /// FIFO of [`crate::action_bus::EditorAction`]. Hero pushes from
+    /// inside [`HeroScreen::apply_event`]; shell drains once per frame
+    /// via `hero.bus.drain()`. Migration is incremental — variants
+    /// land one at a time as `pending_X` fields fold into the bus.
+    pub bus: crate::action_bus::ActionBus,
     /// When `true`, the Inspector and Hierarchy panels swap sides
     /// (Inspector left, Hierarchy right). Toggled via the "Mirror
     /// UI" entry in the theme context menu. Defaults to `false` —
@@ -347,18 +354,12 @@ pub struct HeroScreen {
     /// host independent of `gizmo_selection`'s value at drain time
     /// (avoids races with a concurrent selection change).
     pub pending_reimport: Option<u64>,
-    /// Pending request to apply Trim Transparency to the selected
-    /// sprite. Raised by clicking `IMAGE_ACTION_TRIM` on the Image
-    /// Tools action row while in `image_tools_mode`. Host drains,
-    /// reads the sprite's atlas-source RGBA pixels via the asset_db,
-    /// runs [`crate::trim_transparency`] (alpha threshold 0), and
-    /// — when the result is `trimmed = true` — acquires a fresh
-    /// `IndividualTextureStore` entry, repoints the sprite source
-    /// to it, and rewrites `Sprite::size` to the new dims at the
-    /// current `project.pixels_per_meter`. Source remains snapshot
-    /// here (not read via `gizmo_selection` at drain time) so a
-    /// concurrent selection change doesn't retarget the action.
-    pub pending_trim_transparency: Option<u64>,
+    // Wave 2.5 PR 11.8b1: `pending_trim_transparency` migrated to
+    // `bus.push(EditorAction::Trim { entity_bits })`. Shell drains
+    // via `hero.bus.drain()` and dispatches to
+    // `hero_intents::drain_trim_transparency`. Source semantics
+    // unchanged: hero snapshots `gizmo_selection` at push time,
+    // shell consumes the snapshotted entity_bits at drain time.
     /// Pending request to apply Make Square to the selected sprite.
     /// Raised by clicking `IMAGE_ACTION_MAKE_SQUARE` on the Image Tools
     /// action row. Host drains, reads the sprite's atlas-source RGBA,
@@ -627,6 +628,7 @@ impl HeroScreen {
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),
+            bus: crate::action_bus::ActionBus::new(),
             ui_mirrored: false,
             inspector_visible: true,
             hierarchy_visible: true,
@@ -659,7 +661,7 @@ impl HeroScreen {
             pending_rename_seed: None,
             pending_rename_commit: None,
             pending_reimport: None,
-            pending_trim_transparency: None,
+            // pending_trim_transparency removed (Wave 2.5 PR 11.8b1 — bus migration)
             pending_make_square: None,
             pending_bgremoval: None,
             pending_activate_bgremoval: false,
@@ -1215,16 +1217,24 @@ impl HeroScreen {
         if crate::grid_snap::apply_event(&mut self.grid_snap_state, event, &self.store) {
             return true;
         }
-        // Trim Transparency action — raise the `pending_trim_transparency`
-        // intent with whatever entity the gizmo currently has selected.
-        // Host drains next frame. When nothing is selected we still
-        // consume the click (so the dispatcher doesn't keep walking
-        // regions) but raise nothing — the host can no-op silently or
-        // surface a toast on its side.
+        // Trim Transparency action — push `EditorAction::Trim` onto
+        // the bus with whatever entity the gizmo currently has
+        // selected. Host drains next frame via `hero.bus.drain()`.
+        // When nothing is selected we still consume the click (so the
+        // dispatcher doesn't keep walking regions) but push nothing
+        // — the host's bus drain sees an empty queue for this event.
+        //
+        // Wave 2.5 PR 11.8b1: migrated from `self.pending_trim_transparency`
+        // `Option<u64>` field to bus push. First of the 20 pending_X
+        // migrations that collapse main.rs + hero_intents.rs back
+        // under the HR-18 cap.
         if let WidgetEvent::Click(id) = event
             && id == ids::IMAGE_ACTION_TRIM
         {
-            self.pending_trim_transparency = self.gizmo_selection;
+            if let Some(entity_bits) = self.gizmo_selection {
+                self.bus
+                    .push(crate::action_bus::EditorAction::Trim { entity_bits });
+            }
             return true;
         }
         // Make Square action — mirror of Trim Transparency. Click raises
@@ -3036,23 +3046,31 @@ mod tests {
         assert_eq!(hero.pending_visibility_edit, None);
     }
 
-    /// Clicking the Trim Transparency action pill captures the
-    /// current `gizmo_selection` into `pending_trim_transparency`
-    /// so the host can drain it next frame. When nothing is
-    /// selected, the pending stays `None` (click still consumed so
-    /// the dispatcher doesn't keep walking).
+    /// Clicking the Trim Transparency action pill pushes an
+    /// `EditorAction::Trim` onto the bus capturing the current
+    /// `gizmo_selection`. Wave 2.5 PR 11.8b1: bus migration. When
+    /// nothing is selected, the bus stays empty (click still
+    /// consumed so the dispatcher doesn't keep walking).
     #[test]
     fn click_on_trim_pill_raises_pending_with_selection() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
-        // No selection → nothing pending after click.
+        // No selection → nothing pushed after click.
         hero.gizmo_selection = None;
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
-        assert_eq!(hero.pending_trim_transparency, None);
+        assert!(hero.bus.is_empty());
 
-        // With selection → pending mirrors gizmo_selection.
+        // With selection → bus contains exactly one Trim with the
+        // entity_bits taken from gizmo_selection at click time.
         hero.gizmo_selection = Some(0xDEAD_BEEF);
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
-        assert_eq!(hero.pending_trim_transparency, Some(0xDEAD_BEEF));
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(
+            drained,
+            vec![EditorAction::Trim {
+                entity_bits: 0xDEAD_BEEF
+            }]
+        );
     }
 
     /// Make Square pill mirrors the Trim pending-slot semantics.

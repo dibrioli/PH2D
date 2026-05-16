@@ -3093,37 +3093,95 @@ impl ApplicationHandler for App {
                         move_meters: hero.project.snap_move_meters,
                         rotate_deg: hero.project.snap_rotate_deg,
                     };
-                    let mut new_t = ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap);
-                    // Grid-snap apply (gizmo Translate site). The
-                    // grid_snap subsystem's `snap_world` is the canonical
-                    // place to align world positions to the active grid;
-                    // it's a no-op when `state.snap_enabled` is false or
-                    // the active kind has no snap target (Quadtree /
-                    // Voronoi). Applied AFTER the gizmo's own Ctrl-snap
-                    // step so the two systems compose (project-level
-                    // step + grid-aligned target).
+                    // Grid-snap apply (gizmo sites). The grid_snap
+                    // subsystem's `snap_world` is the canonical place to
+                    // align world positions to the active grid; it's a
+                    // no-op when `state.snap_enabled` is false or the
+                    // active kind has no snap target (Quadtree / Voronoi).
                     //
-                    // Sprite half-extent is forwarded so the Corner /
-                    // CenterIntersectionAndCorners snap modes can align
-                    // a sprite corner (rather than the center) to a grid
-                    // vertex. Scale-aware: the sprite's RENDERED size
-                    // is `Sprite::size × Transform::scale`, so we
-                    // multiply.
+                    // Two consumers:
+                    //   1. Translate: applied AFTER the math to the
+                    //      final transform translation. Sprite half-
+                    //      extent feeds Corner / CenterIntersectionAndCorners
+                    //      modes so a sprite corner (not center) lines
+                    //      up with a grid vertex. Scale-aware: rendered
+                    //      half = Sprite::size × Transform::scale × 0.5.
+                    //   2. Scale (Corner / Edge): the snap closure runs
+                    //      INSIDE compute_gizmo_transform — it rewrites
+                    //      the cursor's world position before the scale
+                    //      ratio is computed so the dragged corner /
+                    //      edge midpoint lands on a snapped target.
+                    //      Bug Enio reported #2: "ao escalonar desse
+                    //      jeito, deve aceitar o snap do ponto".
                     let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
-                    let sprite_half_size = gfx
+                    let sprite_half_rendered = gfx
                         .sim
                         .world()
                         .get::<ph2d_render::Sprite>(entity)
                         .map(|s| {
                             [
-                                s.size[0] * new_t.scale[0] * 0.5,
-                                s.size[1] * new_t.scale[1] * 0.5,
+                                s.size[0] * drag.start_transform.scale[0] * 0.5,
+                                s.size[1] * drag.start_transform.scale[1] * 0.5,
                             ]
                         })
                         .unwrap_or([0.0, 0.0]);
-                    new_t.translation = hero
-                        .grid_snap_state
-                        .snap_world(new_t.translation, sprite_half_size);
+                    // GridSnapState::snap_world takes `[f32; 2]` (=
+                    // `ph2d_grid::Vec2`) — pass arrays directly.
+                    let is_scale = matches!(
+                        drag.kind,
+                        ph2d_editor::GizmoDragKind::ScaleCorner { .. }
+                            | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+                    );
+                    // Compute new_t with snap closure when applicable.
+                    // The closure isolates the &mut borrow of
+                    // grid_snap_state so it doesn't conflict with the
+                    // Translate snap call below.
+                    let new_t = if is_scale {
+                        // Snap closure: project [f32; 2] world → snapped
+                        // [f32; 2]. We pass sprite_half_rendered so
+                        // Corner snap modes work; rendered half is
+                        // start-scale based (cursor snaps to the grid,
+                        // not the post-scale corner — that's what makes
+                        // the snap predictable as the user drags).
+                        let snap_state = &mut hero.grid_snap_state;
+                        let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
+                            snap_state.snap_world(w, sprite_half_rendered)
+                        };
+                        ph2d_editor::compute_gizmo_transform(
+                            &drag,
+                            &cam,
+                            mods,
+                            snap,
+                            Some(&mut snap_closure),
+                        )
+                    } else {
+                        ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap, None)
+                    };
+                    // Translate path: snap the final translation. Skip
+                    // for Scale — the closure above already snapped the
+                    // cursor; snapping translation here would shift the
+                    // sprite center to a grid vertex and the opposite-
+                    // corner anchor would no longer match the grid.
+                    let new_t = if is_scale {
+                        new_t
+                    } else {
+                        let mut new_t = new_t;
+                        let sprite_half_new = gfx
+                            .sim
+                            .world()
+                            .get::<ph2d_render::Sprite>(entity)
+                            .map(|s| {
+                                [
+                                    s.size[0] * new_t.scale[0] * 0.5,
+                                    s.size[1] * new_t.scale[1] * 0.5,
+                                ]
+                            })
+                            .unwrap_or([0.0, 0.0]);
+                        new_t.translation = hero
+                            .grid_snap_state
+                            .snap_world(new_t.translation, sprite_half_new);
+                        new_t
+                    };
                     if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                         t.translation =
                             ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);
@@ -3268,6 +3326,17 @@ impl ApplicationHandler for App {
                                         start_transform: snap,
                                         pivot_world: pivot,
                                         start_cursor_world: start_world,
+                                        // Carry the intrinsic half-size so
+                                        // compute_gizmo_transform can re-
+                                        // anchor the opposite corner under
+                                        // a new scale (issue Enio reported
+                                        // — opposite corner used to drift
+                                        // because translation wasn't
+                                        // updated). Center-anchor flag
+                                        // mirrors the same Ctrl/Cmd state
+                                        // anchor_pivot_world resolved on.
+                                        sprite_half_intrinsic,
+                                        anchor_is_center: use_center_anchor,
                                     });
                                 }
                             } else if hero.store.panel_at(evt.x, evt.y).is_none()
@@ -3377,6 +3446,11 @@ impl ApplicationHandler for App {
                                             start_transform: snap_t,
                                             pivot_world: pivot,
                                             start_cursor_world: world_pos,
+                                            // Translate doesn't touch the
+                                            // Scale anchor path — these
+                                            // fields are inert here.
+                                            sprite_half_intrinsic: [0.0, 0.0],
+                                            anchor_is_center: false,
                                         });
                                     }
                                 }

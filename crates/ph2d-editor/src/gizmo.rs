@@ -96,6 +96,18 @@ pub struct GizmoDragState {
     /// Cursor's world position at Down. Cached so move events don't
     /// have to redo the camera projection of the start point.
     pub start_cursor_world: [f32; 2],
+    /// Sprite's INTRINSIC half-size in local frame (i.e. `Sprite::
+    /// size * 0.5`, before `Transform::scale`). Captured at Down so
+    /// the Scale math can recompute the opposite-corner local offset
+    /// under the new scale and derive a translation that keeps
+    /// `pivot_world` fixed. `[0.0, 0.0]` falls back to scaling around
+    /// the sprite center (no translation update) — same as the
+    /// pre-anchor-fix behavior.
+    pub sprite_half_intrinsic: [f32; 2],
+    /// True iff the pivot is the sprite center (Ctrl / Cmd held at
+    /// Down). When set, the Scale branches keep translation
+    /// unchanged — center anchor means the sprite scales in place.
+    pub anchor_is_center: bool,
 }
 
 /// Camera + window snapshot the host pipes through to the math so
@@ -171,15 +183,39 @@ impl GizmoCamera {
 /// `ProjectSettings`. Both arguments default to "no behavior change"
 /// when constructed via `Default::default()`.
 ///
-/// Pure function — no I/O, no allocation. Tested directly against
-/// canonical input/output cases in `tests::*` below.
+/// `world_snap_fn` is an OPTIONAL closure the host wires up to the
+/// active grid snap subsystem (`GridSnapState::snap_world`). When
+/// present AND the drag is a Scale (Corner / Edge) — i.e. the user
+/// is dragging a corner / edge handle to a specific world-space
+/// target — the cursor world position is rewritten through the
+/// closure BEFORE the scale ratio is computed. This lets the dragged
+/// corner land on a grid vertex / center / corner per the user's
+/// selected snap target. Pass `None` to keep the cursor unsnapped.
+/// `FnMut` accepted because `GridSnapState::snap_world` takes `&mut
+/// self` (it lazily caches origin offsets).
+///
+/// Pure function — no I/O, no allocation (closure dispatch only).
+/// Tested directly against canonical input/output cases in `tests::*`
+/// below.
 pub fn compute_gizmo_transform(
     drag: &GizmoDragState,
     camera: &GizmoCamera,
     modifiers: GizmoModifiers,
     snap: GizmoSnap,
+    world_snap_fn: Option<&mut dyn FnMut([f32; 2]) -> [f32; 2]>,
 ) -> TransformSnapshot {
-    let now_world = camera.screen_to_world(drag.cursor_screen);
+    let raw_world = camera.screen_to_world(drag.cursor_screen);
+    // Apply the host's grid snap to the cursor BEFORE the math when
+    // the drag is a Scale — that way the snapped corner anchors at
+    // a grid vertex / center / corner. Translate / Rotate ignore the
+    // closure (Translate runs its own grid-snap pass in the host on
+    // the final transform; Rotate has no spatial snap target).
+    let now_world = match (drag.kind, world_snap_fn) {
+        (GizmoDragKind::ScaleCorner { .. } | GizmoDragKind::ScaleEdge { .. }, Some(f)) => {
+            f(raw_world)
+        }
+        _ => raw_world,
+    };
     match drag.kind {
         GizmoDragKind::Translate => {
             let dx = now_world[0] - drag.start_cursor_world[0];
@@ -248,9 +284,28 @@ pub fn compute_gizmo_transform(
             }
             let scale_x = (drag.start_transform.scale[0] * ratio_x).max(0.001);
             let scale_y = (drag.start_transform.scale[1] * ratio_y).max(0.001);
-            let _ = (dx_sign, dy_sign);
+            // Translation re-anchor: when the opposite corner is the
+            // pivot (default — NOT Ctrl/Cmd), the sprite center must
+            // shift so that the new opposite-corner world position
+            // STAYS at `pivot_world`. Without this step the sprite
+            // scales around its center even though the math used
+            // opposite-corner ratios, which is what the user saw as
+            // "the opposite corner moves with the drag". Center
+            // anchor (Ctrl/Cmd held) keeps translation unchanged —
+            // scaling in place is the intended behavior there.
+            let translation = if drag.anchor_is_center {
+                drag.start_transform.translation
+            } else {
+                opposite_anchor_translation(
+                    drag.pivot_world,
+                    drag.sprite_half_intrinsic,
+                    [-dx_sign, -dy_sign],
+                    [scale_x, scale_y],
+                    drag.start_transform.rotation,
+                )
+            };
             TransformSnapshot {
-                translation: drag.start_transform.translation,
+                translation,
                 rotation: drag.start_transform.rotation,
                 scale: [scale_x, scale_y],
             }
@@ -292,9 +347,27 @@ pub fn compute_gizmo_transform(
                 let other = (axis + 1) % 2;
                 scale[other] = (drag.start_transform.scale[other] * ratio).max(0.001);
             }
-            let _ = sign;
+            // Translation re-anchor: same logic as ScaleCorner. The
+            // opposite-edge midpoint stays fixed at `pivot_world` —
+            // its local offset is along the dragged axis only.
+            let opposite_local_sign = if axis == 0 {
+                [-sign, 0.0]
+            } else {
+                [0.0, -sign]
+            };
+            let translation = if drag.anchor_is_center {
+                drag.start_transform.translation
+            } else {
+                opposite_anchor_translation(
+                    drag.pivot_world,
+                    drag.sprite_half_intrinsic,
+                    opposite_local_sign,
+                    scale,
+                    drag.start_transform.rotation,
+                )
+            };
             TransformSnapshot {
-                translation: drag.start_transform.translation,
+                translation,
                 rotation: drag.start_transform.rotation,
                 scale,
             }
@@ -378,6 +451,35 @@ pub fn anchor_pivot_world(
         snap.translation[0] + rotated_x,
         snap.translation[1] + rotated_y,
     ]
+}
+
+/// Compute the sprite-center translation that keeps `pivot_world`
+/// fixed at the OPPOSITE anchor's world position under a new scale.
+///
+/// `opposite_local_sign` are the (sign_x, sign_y) of the
+/// opposite-corner local offset (e.g. `[-1, -1]` for the SW corner
+/// when the user drags the NE corner). Pass `0.0` on an axis that
+/// doesn't move (Edge handles use one zero component).
+///
+/// Math (no rotation case): `pivot_world = new_translation +
+/// opposite_local_sign * sprite_half_intrinsic * new_scale`. Solve
+/// for `new_translation`. With rotation, the local offset rotates
+/// by `rotation` (world +X = (cos, sin), world +Y = (-sin, cos))
+/// before subtracting from `pivot_world`.
+fn opposite_anchor_translation(
+    pivot_world: [f32; 2],
+    sprite_half_intrinsic: [f32; 2],
+    opposite_local_sign: [f32; 2],
+    new_scale: [f32; 2],
+    rotation: f32,
+) -> [f32; 2] {
+    let local_x = opposite_local_sign[0] * sprite_half_intrinsic[0] * new_scale[0];
+    let local_y = opposite_local_sign[1] * sprite_half_intrinsic[1] * new_scale[1];
+    let cos_r = rotation.cos();
+    let sin_r = rotation.sin();
+    let rotated_x = local_x * cos_r - local_y * sin_r;
+    let rotated_y = local_x * sin_r + local_y * cos_r;
+    [pivot_world[0] - rotated_x, pivot_world[1] - rotated_y]
 }
 
 /// Quantize `value` to the nearest multiple of `step`. `step <= 0`
@@ -934,8 +1036,16 @@ mod tests {
             start_transform: snapshot(0.0, 0.0),
             pivot_world: [0.0, 0.0],
             start_cursor_world: start,
+            sprite_half_intrinsic: [0.0, 0.0],
+            anchor_is_center: false,
         };
-        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            None,
+        );
         let now = c.screen_to_world((480.0, 300.0));
         // New translation must equal start + (now - start_cursor_world).
         assert!((t.translation[0] - (now[0] - start[0])).abs() < 1e-3);
@@ -965,6 +1075,11 @@ mod tests {
             },
             pivot_world: [0.0, 0.0],
             start_cursor_world: start_corner_world,
+            // Center-anchor so the scale-ratio test isn't perturbed
+            // by the opposite-corner translation step. Pivot at the
+            // sprite center matches `anchor_is_center: true`.
+            sprite_half_intrinsic: [1.0, 1.0],
+            anchor_is_center: true,
         };
         // We bypass the screen→world projection by overriding the
         // computed `now_world` via cursor_screen → its projection.
@@ -982,7 +1097,13 @@ mod tests {
         let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
         let mut drag = drag;
         drag.cursor_screen = (cursor_x, cursor_y);
-        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            None,
+        );
         // Doubling along both axes → scale becomes 2× start.
         assert!(
             (t.scale[0] - 2.0).abs() < 1e-3,
@@ -1012,6 +1133,10 @@ mod tests {
             },
             pivot_world: [0.0, 0.0],
             start_cursor_world: [1.0, 0.0],
+            // Center-anchor — focuses the test on the scale ratio
+            // path only.
+            sprite_half_intrinsic: [1.0, 0.0],
+            anchor_is_center: true,
         };
         let target_world = [3.0, 0.0];
         let aspect = c.window_w / c.window_h;
@@ -1023,7 +1148,13 @@ mod tests {
         let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
         let mut drag = drag;
         drag.cursor_screen = (cursor_x, cursor_y);
-        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            None,
+        );
         assert!((t.scale[0] - 3.0).abs() < 1e-3);
         // Y axis untouched.
         assert!((t.scale[1] - 1.0).abs() < 1e-3);
@@ -1046,6 +1177,8 @@ mod tests {
             },
             pivot_world: [0.0, 0.0],
             start_cursor_world: [1.0, 0.0],
+            sprite_half_intrinsic: [0.0, 0.0],
+            anchor_is_center: false,
         };
         let target_world = [0.0, 1.0];
         let aspect = c.window_w / c.window_h;
@@ -1057,7 +1190,13 @@ mod tests {
         let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
         let mut drag = drag;
         drag.cursor_screen = (cursor_x, cursor_y);
-        let t = compute_gizmo_transform(&drag, &c, GizmoModifiers::default(), GizmoSnap::default());
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            None,
+        );
         let pi_over_2 = std::f32::consts::FRAC_PI_2;
         assert!(
             (t.rotation - pi_over_2).abs() < 1e-3,
@@ -1084,6 +1223,8 @@ mod tests {
             start_transform: snapshot(0.0, 0.0),
             pivot_world: [0.0, 0.0],
             start_cursor_world: start,
+            sprite_half_intrinsic: [0.0, 0.0],
+            anchor_is_center: false,
         };
         let t = compute_gizmo_transform(
             &drag,
@@ -1097,6 +1238,7 @@ mod tests {
                 move_meters: 0.16,
                 rotate_deg: 0.0,
             },
+            None,
         );
         // Result must be a multiple of 0.16.
         let rem = (t.translation[0] / 0.16).fract().abs();
@@ -1128,6 +1270,9 @@ mod tests {
             },
             pivot_world: [0.0, 0.0],
             start_cursor_world: start_corner_world,
+            // Center anchor isolates the scale-ratio + AR-lock path.
+            sprite_half_intrinsic: [1.0, 1.0],
+            anchor_is_center: true,
         };
         // Drag to (3, -1.5) world → ratio_x = 3, ratio_y = 1.5.
         // With Shift, both axes lock to the largest deviation, ratio_x=3.
@@ -1150,6 +1295,7 @@ mod tests {
                 alt: false,
             },
             GizmoSnap::default(),
+            None,
         );
         // Uniform scale — both axes equal.
         assert!(
@@ -1178,6 +1324,8 @@ mod tests {
             },
             pivot_world: [0.0, 0.0],
             start_cursor_world: [1.0, 0.0],
+            sprite_half_intrinsic: [0.0, 0.0],
+            anchor_is_center: false,
         };
         // Target angle ~32° (between 30° and 45°). Snap to 15° →
         // 30° = π/6 ≈ 0.5236.
@@ -1207,6 +1355,7 @@ mod tests {
                 move_meters: 0.0,
                 rotate_deg: 15.0,
             },
+            None,
         );
         // Expected: round(32°/15°) * 15° = round(2.13) * 15° = 30°
         // = π/6 ≈ 0.5236.
@@ -1405,5 +1554,217 @@ mod tests {
             let pivot = anchor_pivot_world(kind, [1.0, 1.0], snap, false);
             assert_eq!(pivot, snap.translation, "{kind:?} must fall back to center");
         }
+    }
+
+    /// Compute the screen pixel that projects to `target_world` under
+    /// the test camera. Shared by the Scale-anchor tests below.
+    fn cursor_for_world(c: &GizmoCamera, target_world: [f32; 2]) -> (f32, f32) {
+        let aspect = c.window_w / c.window_h;
+        let half_w = c.height_world * 0.5 * aspect;
+        let half_h = c.height_world * 0.5;
+        let nx = target_world[0] / half_w;
+        let ny = (c.center[1] - target_world[1]) / half_h;
+        let cursor_x = (nx + 1.0) * 0.5 * c.window_w;
+        let cursor_y = (ny + 1.0) * 0.5 * c.window_h;
+        (cursor_x, cursor_y)
+    }
+
+    #[test]
+    fn scale_corner_default_anchor_keeps_opposite_corner_fixed() {
+        // Bug Enio reported: "o escalonamento movendo um ponto e sem
+        // mover o ponto oposto do mouse não funcionou" — opposite
+        // corner used to drift because the math returned start
+        // translation. With the fix, the opposite-corner world point
+        // computed from (new_translation, new_scale, rotation) MUST
+        // match the captured `pivot_world`.
+        //
+        // Sprite: 2×2 intrinsic, scale 1×1, translation (10, 5),
+        // rotation 0. NE handle drag (dx=+1, dy=+1) → opposite is
+        // SW at (10-1, 5-1) = (9, 4). User drags NE from (11, 6) to
+        // (13, 10) world.
+        let c = cam();
+        let pivot_world = [9.0_f32, 4.0_f32];
+        let start_corner = [11.0_f32, 6.0_f32];
+        let mut drag = GizmoDragState {
+            kind: GizmoDragKind::ScaleCorner {
+                dx_sign: 1.0,
+                dy_sign: 1.0,
+            },
+            entity_bits: 1,
+            start_screen: (0.0, 0.0),
+            cursor_screen: (0.0, 0.0),
+            start_transform: TransformSnapshot {
+                translation: [10.0, 5.0],
+                rotation: 0.0,
+                scale: [1.0, 1.0],
+            },
+            pivot_world,
+            start_cursor_world: start_corner,
+            sprite_half_intrinsic: [1.0, 1.0],
+            anchor_is_center: false,
+        };
+        let target_corner = [13.0_f32, 10.0_f32];
+        drag.cursor_screen = cursor_for_world(&c, target_corner);
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            None,
+        );
+        // Recover the SW corner world from the returned transform.
+        // sprite_half_intrinsic = (1, 1); SW local = (-1, -1) ×
+        // new_scale; rotation 0 → world = translation + scaled local.
+        let sw_x = t.translation[0] - t.scale[0];
+        let sw_y = t.translation[1] - t.scale[1];
+        assert!(
+            (sw_x - pivot_world[0]).abs() < 1e-3 && (sw_y - pivot_world[1]).abs() < 1e-3,
+            "opposite corner moved: pivot={pivot_world:?} actual=({sw_x}, {sw_y}) t={t:?}"
+        );
+    }
+
+    #[test]
+    fn scale_corner_center_anchor_keeps_translation_unchanged() {
+        // Ctrl/Cmd held → `anchor_is_center: true`. The Scale path
+        // must leave translation alone (sprite scales in place).
+        let c = cam();
+        let mut drag = GizmoDragState {
+            kind: GizmoDragKind::ScaleCorner {
+                dx_sign: 1.0,
+                dy_sign: 1.0,
+            },
+            entity_bits: 1,
+            start_screen: (0.0, 0.0),
+            cursor_screen: (0.0, 0.0),
+            start_transform: TransformSnapshot {
+                translation: [10.0, 5.0],
+                rotation: 0.0,
+                scale: [1.0, 1.0],
+            },
+            // With center anchor the pivot is the sprite center.
+            pivot_world: [10.0, 5.0],
+            start_cursor_world: [11.0, 6.0],
+            sprite_half_intrinsic: [1.0, 1.0],
+            anchor_is_center: true,
+        };
+        drag.cursor_screen = cursor_for_world(&c, [13.0, 10.0]);
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            None,
+        );
+        assert!(
+            (t.translation[0] - 10.0).abs() < 1e-4 && (t.translation[1] - 5.0).abs() < 1e-4,
+            "center anchor must leave translation untouched, got {:?}",
+            t.translation
+        );
+    }
+
+    #[test]
+    fn scale_edge_default_anchor_keeps_opposite_edge_fixed() {
+        // Right-edge drag on a 2×2 sprite at (10, 5). Opposite edge
+        // midpoint (left edge) = (9, 5). Drag right-edge X from 11
+        // to 13. After fix, the left-edge midpoint MUST stay at 9.
+        let c = cam();
+        let pivot_world = [9.0_f32, 5.0_f32];
+        let mut drag = GizmoDragState {
+            kind: GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 },
+            entity_bits: 1,
+            start_screen: (0.0, 0.0),
+            cursor_screen: (0.0, 0.0),
+            start_transform: TransformSnapshot {
+                translation: [10.0, 5.0],
+                rotation: 0.0,
+                scale: [1.0, 1.0],
+            },
+            pivot_world,
+            start_cursor_world: [11.0, 5.0],
+            sprite_half_intrinsic: [1.0, 1.0],
+            anchor_is_center: false,
+        };
+        drag.cursor_screen = cursor_for_world(&c, [13.0, 5.0]);
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            None,
+        );
+        // Recover the left edge midpoint world: translation + (-1, 0) * scale.
+        let left_x = t.translation[0] - t.scale[0];
+        assert!(
+            (left_x - pivot_world[0]).abs() < 1e-3,
+            "opposite edge moved: pivot.x={} actual.x={} t={t:?}",
+            pivot_world[0],
+            left_x
+        );
+    }
+
+    #[test]
+    fn scale_corner_with_snap_closure_quantizes_cursor() {
+        // World-snap closure rewrites the cursor world position
+        // before the math computes the ratio. We pass a closure that
+        // snaps to integer world coords; with sprite_half=1 at
+        // origin and a pivot at SW (-1, -1), dragging the NE corner
+        // to cursor world (2.6, 2.6) → snapped to (3, 3) → scale = 2.
+        let c = cam();
+        let mut drag = GizmoDragState {
+            kind: GizmoDragKind::ScaleCorner {
+                dx_sign: 1.0,
+                dy_sign: 1.0,
+            },
+            entity_bits: 1,
+            start_screen: (0.0, 0.0),
+            cursor_screen: (0.0, 0.0),
+            start_transform: TransformSnapshot {
+                translation: [0.0, 0.0],
+                rotation: 0.0,
+                scale: [1.0, 1.0],
+            },
+            pivot_world: [-1.0, -1.0],
+            start_cursor_world: [1.0, 1.0],
+            sprite_half_intrinsic: [1.0, 1.0],
+            anchor_is_center: false,
+        };
+        drag.cursor_screen = cursor_for_world(&c, [2.6, 2.6]);
+        // Closure snaps each axis to nearest integer meter.
+        let mut snap_fn = |w: [f32; 2]| [w[0].round(), w[1].round()];
+        let t = compute_gizmo_transform(
+            &drag,
+            &c,
+            GizmoModifiers::default(),
+            GizmoSnap::default(),
+            Some(&mut snap_fn),
+        );
+        // Snapped cursor (3, 3) - pivot (-1, -1) = (4, 4); start
+        // vector was (1, 1) - (-1, -1) = (2, 2). Ratio = 2 → scale 2.
+        assert!(
+            (t.scale[0] - 2.0).abs() < 1e-3,
+            "expected scale_x = 2.0 from snapped cursor, got {}",
+            t.scale[0]
+        );
+        // And the opposite corner must still anchor at pivot.
+        let sw_x = t.translation[0] - t.scale[0];
+        let sw_y = t.translation[1] - t.scale[1];
+        assert!(
+            (sw_x - (-1.0)).abs() < 1e-3 && (sw_y - (-1.0)).abs() < 1e-3,
+            "opposite corner moved under snap closure: ({sw_x}, {sw_y})"
+        );
+    }
+
+    #[test]
+    fn opposite_anchor_translation_no_rotation() {
+        // Pivot at (10, 10), sprite half (1, 1), opposite-local-sign
+        // (-1, -1), new scale (2, 3), rotation 0.
+        // Local = (-1*1*2, -1*1*3) = (-2, -3). Rotation 0 → rotated
+        // = local. Translation = pivot - rotated = (12, 13).
+        let t =
+            opposite_anchor_translation([10.0, 10.0], [1.0, 1.0], [-1.0, -1.0], [2.0, 3.0], 0.0);
+        assert!(
+            (t[0] - 12.0).abs() < 1e-4 && (t[1] - 13.0).abs() < 1e-4,
+            "got {t:?}"
+        );
     }
 }

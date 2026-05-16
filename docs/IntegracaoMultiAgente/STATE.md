@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-16 — Wave 2 closeout local (10 commits stacked desde `a5343f9`, ainda NÃO push pro origin/main — batching policy per CLAUDE.md feedback)
+**Última atualização:** 2026-05-16 — Wave 2 MERGEADA em origin/main, sha bom = `6336e89`, CI 10/10 jobs verde
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -89,11 +89,13 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `a5343f9` — 2026-05-16 16:25 — Wave 1 mergeada em origin/main (sha bom para rollback).
+main @ `6336e89` — 2026-05-16 — **Wave 2 MERGEADA em origin/main**. 12 commits pushed (11 Wave 2 PRs + 1 windows path-separator fix em PR 11.6). CI matrix verde 10/10 jobs (MSRV + lint + 3 OS workspace tests + 3 OS replay hash + C9 cross-platform comparison). PRCI loop ciclo 1/3 — primeira run falhou em windows-only path-sep bug em `no_literal_color::path_is_allowlisted` (string-match com `/` e `\` falhava em path híbrido `src/widget\blender_color_picker\`); fix `6336e89` migrou para `Path::components()` (separator-agnostic) → CI ciclo 2 verde 10/10.
 
-Local main desde então tem **10 commits Wave 2 stacked** (NÃO PUSH ainda — batching policy):
+Commits Wave 2 mergeados:
 
 ```
+6336e89 fix(test): no-literal-color allowlist matches on Path components (PR 11.6 follow-up)
+c319286 docs: Wave 2 closeout — ADR-0028 + SKILL 2.5 + Wave 2.5 plan + STATE (PR 11.12)
 f2cbb20 test(shells): activate HR-18 file-LOC cap (PR 11.9)
 8843d01 refactor(editor): split hierarchy.rs (PR 11.7b)
 bc5a456 refactor(editor): split topbar.rs (PR 11.7c)
@@ -106,9 +108,9 @@ aa5331c feat(tokens): build.rs tokens codegen (PR 11.1)
 c4f0da6 chore(tokens): lift Round 9 to tokens.json (PR 11.1.0)
 ```
 
-Wave 2 entregou: build.rs codegen (tokens + 100 SVGs); chrome derivado do Registry com cross-validation; NodeId hash universal (250 consts migradas); 4 tool TOMLs canonical + design-sync test; lint anti-`0xRRGGBB`; HR-18 ativo com 2 exceções declaradas (main.rs / hero_intents.rs pendente Wave 2.5 PR 11.8). ADR-0028 Accepted, SKILL 2.5.
+Wave 2 entregou: build.rs codegen (tokens + 100 SVGs); chrome derivado do Registry com cross-validation; NodeId hash universal (250 consts migradas, 6 colisões silenciosas pré-Wave-2 eliminadas); 4 tool TOMLs canonical + design-sync test; lint anti-`0xRRGGBB`; HR-18 **ativo** com 2 exceções declaradas (main.rs / hero_intents.rs pendente Wave 2.5 PR 11.8); 5 architecture tests novos. ADR-0028 Accepted, SKILL 2.5. CI run final: https://github.com/dibrioli/PH2D/actions/runs/25972585093
 
-**Wave 2.5 (deferido)** em [`docs/Migracao/2026-05-wave-2-5-deferred-splits.md`](../Migracao/2026-05-wave-2-5-deferred-splits.md): PR 11.7a (grid_snap split), PR 11.7d (HeroScreen state decomp), PR 11.8 (Action Bus), PR 11.10 (golden images), PR 11.11 (lib.rs trim). ~10-12h estimadas.
+**Wave 2.5 (deferido)** em [`docs/Migracao/2026-05-wave-2-5-deferred-splits.md`](../Migracao/2026-05-wave-2-5-deferred-splits.md): PR 11.7a (grid_snap split), PR 11.7d (HeroScreen state decomp), PR 11.8 (Action Bus), PR 11.10 (golden images), PR 11.11 (lib.rs trim). ~10-12h estimadas; demanda sessão dedicada com contexto LLM novo.
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,

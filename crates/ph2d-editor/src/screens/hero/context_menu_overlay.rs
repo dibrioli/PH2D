@@ -100,7 +100,8 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
             (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
             (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
-            (ids::CTX_MENU_SHOW_GRID, "— Show Grid \u{00b7} G", None),
+            // "Show Grid" removed — Grid Settings panel now owns the
+            // grid visibility toggle (Display section "Show grid").
         ],
         ContextMenuKind::SaveMenu => &[
             (ids::CTX_MENU_SAVE, "Save \u{00b7} Cmd+S", None),

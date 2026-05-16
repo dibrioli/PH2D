@@ -20,15 +20,12 @@ use crate::screens::hero::style::{
     paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use crate::widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, Dropdown, DropdownOption, DropdownState,
-    NumberInput, SectionHeader, Slider, SliderOrientation, SliderState, SwatchSize, SwatchState,
-    TextInputState, Toggle, ToggleState, paint_button, paint_color_swatch, paint_dropdown_chip,
-    paint_dropdown_popover, paint_number_input_with_buffer, paint_section_header, paint_slider,
-    paint_toggle,
+    Button, ButtonKind, ButtonState, NumberInput, Slider, SliderOrientation, SliderState,
+    TextInputState, Toggle, ToggleState, paint_button, paint_number_input_with_buffer,
+    paint_slider, paint_toggle,
 };
 use crate::zones::Rect;
 use ph2d_grid::hex::{HexOffset, HexOrientation};
-#[cfg(test)]
 use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
 use ph2d_grid::staggered::StaggerParity;
@@ -37,8 +34,27 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
+thread_local! {
+    /// Last computed scrollable content height of the panel (set by
+    /// `paint`, read by the host caller in `paint_hero_screen`).
+    static LAST_CONTENT_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+    /// Last visible body height (panel rect minus title + paddings).
+    static LAST_VISIBLE_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+}
+
+/// Last computed content height — call from the host after `paint`
+/// to publish via `store.set_panel_content_h(GS_PANEL, …)`.
+pub fn last_content_h() -> f32 {
+    LAST_CONTENT_H.with(|c| c.get())
+}
+
+/// Last computed visible height — call from the host after `paint`
+/// to publish via `store.set_panel_visible_h(GS_PANEL, …)`.
+pub fn last_visible_h() -> f32 {
+    LAST_VISIBLE_H.with(|c| c.get())
+}
+
 const ROW_H: f32 = 28.0;
-const SECTION_HEADER_H: f32 = 22.0;
 /// Top inset that frees space above the title for the drag pill +
 /// matches the spacing other panels (Inspector/Hierarchy/Gallery) use
 /// between the drag handle and the first label row.
@@ -69,39 +85,16 @@ pub fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandle,
         },
     );
-    // Plain buttons (close, cycle target, 2-option toggles, Voronoi
-    // reseed). 9-option Kind is a proper Dropdown (registered below).
+    // All selectors are segmented Button groups (style parity with
+    // Inspector's Strategy switcher per Enio's 2026-05-15 redesign):
+    // each option has its own NodeId registered as a Button; the
+    // active option is painted with `ButtonState::Pressed` driven
+    // from `state` at paint time. The remaining 2-option cycle
+    // buttons (Hex orientation, Hex offset, Stagger parity) keep
+    // the cycle pattern for now.
     for id in [
         ids::GS_CLOSE,
-        ids::GS_SNAP_CENTER,
-        ids::GS_CFG_NEIGHBORHOOD_4, // cycle Von4/Moore8 (also used by Iso, StagSq, Chunks)
-        ids::GS_CFG_HEX_POINTY,     // cycle Pointy/Flat
-        ids::GS_CFG_HEX_OFFSET_DROPDOWN, // cycle offset variant (4-way for now)
-        ids::GS_CFG_STAGGER_PARITY_ODD, // cycle Odd/EvenRows
-        ids::GS_CFG_TRI_EDGE3,      // cycle Edge3/Vertex12
-        ids::GS_CFG_VORONOI_RESEED,
-    ] {
-        store.register(
-            id,
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-    }
-    // Kind dropdown — canonical 9-option Dropdown anchored at the
-    // top of the panel. Initial selected_index = 0 (Square) matches
-    // GridSnapState::default().kind.
-    store.register(
-        ids::GS_KIND_DROPDOWN,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: Some(0),
-        },
-    );
-    // Each kind option gets a button-shaped hit slot so the
-    // dispatcher fires Click on hit-test inside the open popover.
-    for id in [
+        // Kind group (9 options).
         ids::GS_KIND_OPT_SQUARE,
         ids::GS_KIND_OPT_HEX,
         ids::GS_KIND_OPT_ISO,
@@ -111,6 +104,22 @@ pub fn populate(store: &mut WidgetStore) {
         ids::GS_KIND_OPT_QUADTREE,
         ids::GS_KIND_OPT_VORONOI,
         ids::GS_KIND_OPT_CHUNKS,
+        // Target group (5 SnapTarget modes).
+        ids::GS_SNAP_CENTER,
+        ids::GS_SNAP_INTERSECTION,
+        ids::GS_SNAP_TARGET_OPT_CORNER,
+        ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION,
+        ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
+        // Neighborhood groups (Square family Von4/Moore8; Tri Edge3/Vertex12).
+        ids::GS_CFG_NEIGHBORHOOD_4,
+        ids::GS_CFG_NEIGHBORHOOD_8,
+        ids::GS_CFG_TRI_EDGE3,
+        ids::GS_CFG_TRI_VERTEX12,
+        // Cycle buttons (untouched in this pass).
+        ids::GS_CFG_HEX_POINTY,
+        ids::GS_CFG_HEX_OFFSET_DROPDOWN,
+        ids::GS_CFG_STAGGER_PARITY_ODD,
+        ids::GS_CFG_VORONOI_RESEED,
     ] {
         store.register(
             id,
@@ -270,7 +279,9 @@ fn format_value(v: f64) -> String {
 /// Default panel rect when first opened — sized for title + 4
 /// sections (Kind + per-kind config + Snap + Display + Inspect).
 pub fn default_rect(viewport_w: f32, viewport_h: f32) -> Rect {
-    let w = 340.0_f32.min(viewport_w - 16.0);
+    // Width matches Inspector (`style::INSPECTOR_W = 304`) per Enio's
+    // 2026-05-15 redesign so the two floating panels read as siblings.
+    let w = 304.0_f32.min(viewport_w - 16.0);
     let h = 640.0_f32.min(viewport_h - 16.0).max(440.0);
     let x = ((viewport_w - w) * 0.5).max(8.0);
     let y = ((viewport_h - h) * 0.5).max(8.0);
@@ -279,6 +290,14 @@ pub fn default_rect(viewport_w: f32, viewport_h: f32) -> Rect {
 
 /// Paint the panel into `rect`. Reads `state` for current values;
 /// mutations flow through [`apply_event`] from the dispatcher.
+///
+/// Layout (top → bottom): title row → big Snap toggle → Kind 3×3
+/// button grid → per-kind config → Target vertical stack →
+/// Subdivisions → Display (overlay + opacity + color swatch) →
+/// Inspect. Body is clipped to the panel rect and scroll-aware:
+/// content height is published via `store.set_panel_content_h` so
+/// `dispatch_wheel` knows the scroll bound, and the running Y
+/// position is offset by `store.panel_scroll(GS_PANEL)`.
 pub fn paint(
     rect: Rect,
     scene: &mut VectorScene,
@@ -293,15 +312,15 @@ pub fn paint(
 
     let inner_x = rect.x + PAD;
     let inner_w = rect.w - PAD * 2.0;
-    let mut y = rect.y + HEAD_PAD;
+    let title_y = rect.y + HEAD_PAD;
 
-    // ─── Title row ──────────────────────────────────────────────
+    // ─── Title row + close (above scroll clip) ────────────────
     paint_text_title(
         text_system,
         scene,
         "Grid Settings",
         inner_x,
-        y,
+        title_y,
         TITLE_FONT_SIZE,
         inner_w - 32.0,
         resolve(ColorToken::Text1, theme),
@@ -309,7 +328,7 @@ pub fn paint(
     let close_size = 22.0_f32;
     let close_rect = Rect::new(
         rect.x + rect.w - close_size - PAD,
-        y - 2.0,
+        title_y - 2.0,
         close_size,
         close_size,
     );
@@ -321,14 +340,46 @@ pub fn paint(
         1.5,
     );
     hit_index.register(ids::GS_CLOSE, close_rect);
-    y += close_size + ROW_GAP * 2.0;
 
-    // ─── Grid Kind section ──────────────────────────────────────
+    // Body rect — sits below the title row, above the corner dot.
+    // Everything below is clipped to this rect so resize-up doesn't
+    // spill rows past the panel edge.
+    let body_top = title_y + close_size + ROW_GAP * 2.0;
+    let body_h = (rect.y + rect.h - body_top - PAD).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll = store.panel_scroll(ids::GS_PANEL);
+
+    scene.push_clip(&crate::paint::rect_to_vello(body_rect));
+    let mut y = body_top - scroll;
+
+    // ─── Snap (BIG individual toggle, above Kind) ───────────────
+    y = paint_snap_top_toggle(
+        inner_x,
+        inner_w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+    );
+    y += ROW_GAP * 2.0;
+
+    // ─── Grid Kind section (3×3 button grid) ────────────────────
     y = paint_section_label("Grid Kind", inner_x, inner_w, y, scene, text_system, theme);
-    let kind_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    let kind_dd_open = paint_kind_dropdown_chip(kind_row, scene, text_system, theme, store, state);
-    hit_index.register(ids::GS_KIND_DROPDOWN, kind_row);
-    y += ROW_H + ROW_GAP;
+    y = paint_kind_button_grid(
+        inner_x,
+        inner_w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+    );
+    y += ROW_GAP;
 
     // Per-kind config rows.
     y = paint_kind_config(
@@ -342,17 +393,21 @@ pub fn paint(
         store,
         state,
     );
-    y += ROW_GAP;
+    y += ROW_GAP * 2.0;
 
-    // ─── Snap section ───────────────────────────────────────────
-    y = paint_section_label("Snap", inner_x, inner_w, y, scene, text_system, theme);
-    let snap_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    paint_snap_enabled_row(snap_row, scene, text_system, theme, hit_index, store, state);
-    y += ROW_H + ROW_GAP;
-    let target_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    paint_snap_target_row(target_row, scene, text_system, theme, store, state);
-    hit_index.register(ids::GS_SNAP_CENTER, target_row);
-    y += ROW_H + ROW_GAP;
+    // ─── Target section (vertical stack of 5 full-width buttons) ─
+    y = paint_section_label("Target", inner_x, inner_w, y, scene, text_system, theme);
+    y = paint_target_button_stack(
+        inner_x,
+        inner_w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        state,
+    );
     y = paint_number_row_from_state(
         "Subdivisions",
         ids::GS_CFG_SNAP_SUBDIVISIONS,
@@ -366,7 +421,7 @@ pub fn paint(
         hit_index,
         store,
     );
-    y += ROW_GAP;
+    y += ROW_GAP * 2.0;
 
     // ─── Display section ────────────────────────────────────────
     y = paint_section_label("Display", inner_x, inner_w, y, scene, text_system, theme);
@@ -393,7 +448,7 @@ pub fn paint(
     );
     y += ROW_H + ROW_GAP;
     let color_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    paint_color_row(
+    paint_color_swatch_row(
         color_row,
         scene,
         text_system,
@@ -415,18 +470,26 @@ pub fn paint(
         store,
         state,
     );
+    y += inspect_h;
+
+    scene.pop_layer();
+
+    // Content / visible-height publication for `dispatch_wheel`
+    // scroll bound: stash into thread-local cells; the host caller
+    // (hero.rs) reads via `last_content_h()` / `last_visible_h()` and
+    // publishes through `&mut store`. Same pattern as widget_gallery /
+    // inspector.
+    let content_h = (y + scroll) - body_top;
+    LAST_CONTENT_H.with(|c| c.set(content_h));
+    LAST_VISIBLE_H.with(|c| c.set(body_h));
 
     paint_panel_corner_dot(rect, scene, theme);
     hit_index.register(ids::GS_RESIZE_HANDLE, panel_resize_handle_rect(rect));
-
-    // ─── Kind dropdown popover (painted LAST so it lands above
-    // every other widget in the panel — same trick as Inspector
-    // showcase). ────────────────────────────────────────────────
-    if kind_dd_open {
-        paint_kind_dropdown_popover(kind_row, scene, text_system, theme, hit_index, store, state);
-    }
 }
 
+/// Inspector-style section header: `paint_text_title` in
+/// `TypeToken::Md` + 1px Border separator below. Same visual as the
+/// "Transform" / "Render Source" headers in the Inspector.
 fn paint_section_label(
     label: &str,
     x: f32,
@@ -436,42 +499,320 @@ fn paint_section_label(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    let rect = Rect::new(x, y, w, SECTION_HEADER_H);
-    let header = SectionHeader {
-        id: crate::NodeId(0),
-        label: label.to_string(),
-        count: None,
-        collapsible: None,
-        color: None,
-    };
-    paint_section_header(&header, rect, scene, text_system, theme);
-    y + SECTION_HEADER_H + ROW_GAP
+    paint_text_title(
+        text_system,
+        scene,
+        label,
+        x,
+        y,
+        ph2d_tokens::TypeToken::Md.px(),
+        w,
+        resolve(ColorToken::Text1, theme),
+    );
+    let after_title_y = y + ph2d_tokens::TypeToken::Md.px() + 6.0;
+    // Subtle 1px Border separator below the title (Inspector parity).
+    let sep_rect = Rect::new(x, after_title_y, w, 1.0);
+    crate::paint::fill_rounded_rect(scene, sep_rect, 0.0, resolve(ColorToken::Border, theme));
+    after_title_y + 1.0 + ROW_GAP
 }
 
-/// Paint the Kind dropdown's chip. Returns `true` when the dropdown
-/// is open (caller paints the popover at the end of `paint`).
-fn paint_kind_dropdown_chip(
-    row: Rect,
+/// Big individual Snap toggle at the top of the panel — primary
+/// action chip that flips `state.snap_enabled`. Full-width;
+/// `AccentSoft` fill + Accent border when ON, `BgElev` + Border
+/// when OFF. Returns the Y after the row + gap.
+#[allow(clippy::too_many_arguments)]
+fn paint_snap_top_toggle(
+    x: f32,
+    w: f32,
+    y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
     store: &WidgetStore,
     state: &GridSnapState,
-) -> bool {
-    let (dd_state, dd_open) = match store.get(ids::GS_KIND_DROPDOWN) {
-        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
-        _ => (DropdownState::Normal, false),
+) -> f32 {
+    let h = 44.0_f32;
+    let rect = Rect::new(x, y, w, h);
+    let radius = ph2d_tokens::Radius::Md.px();
+    let on = state.snap_enabled;
+    let (fill_tok, border_tok, text_tok) = if on {
+        (
+            ColorToken::AccentSoft,
+            ColorToken::Accent,
+            ColorToken::AccentFg,
+        )
+    } else {
+        (ColorToken::BgElev, ColorToken::Border, ColorToken::Text2)
     };
-    let dd = build_kind_dropdown(state.kind)
-        .open(dd_open)
-        .state(dd_state)
-        .selected(state.kind.label().to_string());
-    paint_dropdown_chip(&dd, row, scene, text_system, theme);
-    dd_open
+    crate::paint::fill_rounded_rect(scene, rect, radius, resolve(fill_tok, theme));
+    crate::paint::stroke_rounded_rect(scene, rect, radius, 1.5, resolve(border_tok, theme));
+    let label = if on { "Snap: ON" } else { "Snap: OFF" };
+    let font = ph2d_tokens::TypeToken::Md.px();
+    crate::paint::paint_text_centered(
+        text_system,
+        scene,
+        label,
+        rect,
+        font,
+        resolve(text_tok, theme),
+    );
+    hit_index.register(ids::GS_SNAP_ENABLED, rect);
+    // Suppress unused-store warning while the snap state lives on the
+    // Toggle in store too (canonical InteractiveState).
+    let _ = store;
+    y + h + ROW_GAP
 }
 
-fn paint_kind_dropdown_popover(
-    chip: Rect,
+/// Generic segmented button row helper — paints one Button at `rect`
+/// with `Pressed` state when `pressed=true`, otherwise `Normal`.
+/// Hit-registers `id`. Used by every segmented group below.
+fn paint_segmented_button(
+    rect: Rect,
+    label: &str,
+    pressed: bool,
+    id: crate::NodeId,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    let state = if pressed {
+        ButtonState::Pressed
+    } else {
+        store.button_state(id).unwrap_or(ButtonState::Normal)
+    };
+    let btn = Button::new(id, label)
+        .kind(ButtonKind::Default)
+        .state(state);
+    paint_button(&btn, rect, scene, text_system, theme);
+    hit_index.register(id, rect);
+}
+
+/// 3-column × 3-row grid of Kind buttons (abbreviated labels so they
+/// fit a ~95 px-wide column). Returns Y after the grid.
+#[allow(clippy::too_many_arguments)]
+fn paint_kind_button_grid(
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    let entries: [(GridKind, &str, crate::NodeId); 9] = [
+        (GridKind::Square, "Square", ids::GS_KIND_OPT_SQUARE),
+        (GridKind::Hex, "Hex", ids::GS_KIND_OPT_HEX),
+        (GridKind::Iso, "Iso", ids::GS_KIND_OPT_ISO),
+        (
+            GridKind::StaggeredSquare,
+            "Stag Sq",
+            ids::GS_KIND_OPT_STAGGERED_SQ,
+        ),
+        (
+            GridKind::StaggeredHex,
+            "Stag Hex",
+            ids::GS_KIND_OPT_STAGGERED_HEX,
+        ),
+        (GridKind::Tri, "Tri", ids::GS_KIND_OPT_TRI),
+        (GridKind::Quadtree, "Quadtree", ids::GS_KIND_OPT_QUADTREE),
+        (GridKind::Voronoi, "Voronoi", ids::GS_KIND_OPT_VORONOI),
+        (GridKind::Chunks, "Chunks", ids::GS_KIND_OPT_CHUNKS),
+    ];
+    let cols = 3.0_f32;
+    let gap = 6.0_f32;
+    let col_w = ((w - gap * (cols - 1.0)) / cols).max(40.0);
+    let h = 28.0_f32;
+    let mut cy = y;
+    for (row_i, chunk) in entries.chunks(3).enumerate() {
+        let row_y = y + row_i as f32 * (h + gap);
+        for (col_i, (kind, label, oid)) in chunk.iter().enumerate() {
+            let rx = x + col_i as f32 * (col_w + gap);
+            let rect = Rect::new(rx, row_y, col_w, h);
+            paint_segmented_button(
+                rect,
+                label,
+                state.kind == *kind,
+                *oid,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+            );
+        }
+        cy = row_y + h;
+    }
+    cy + ROW_GAP
+}
+
+/// Vertical stack of 5 full-width Target buttons (Center,
+/// Intersection, Corner, Center+Intersection, Center+Int+Corners).
+/// Active option painted with `ButtonState::Pressed`.
+#[allow(clippy::too_many_arguments)]
+fn paint_target_button_stack(
+    x: f32,
+    w: f32,
+    y: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    let h = 28.0_f32;
+    let gap = 6.0_f32;
+    let entries: [(SnapTarget, &str, crate::NodeId); 5] = [
+        (SnapTarget::Center, "Center", ids::GS_SNAP_CENTER),
+        (
+            SnapTarget::Intersection,
+            "Intersection",
+            ids::GS_SNAP_INTERSECTION,
+        ),
+        (SnapTarget::Corner, "Corner", ids::GS_SNAP_TARGET_OPT_CORNER),
+        (
+            SnapTarget::CenterAndIntersection,
+            "Center + Intersection",
+            ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION,
+        ),
+        (
+            SnapTarget::CenterIntersectionAndCorners,
+            "Center + Intersection + Corners",
+            ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
+        ),
+    ];
+    let mut cy = y;
+    for (i, (target, label, oid)) in entries.iter().enumerate() {
+        let row_y = y + i as f32 * (h + gap);
+        let rect = Rect::new(x, row_y, w, h);
+        paint_segmented_button(
+            rect,
+            label,
+            state.snap_target == *target,
+            *oid,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+        );
+        cy = row_y + h;
+    }
+    cy + ROW_GAP
+}
+
+/// 2-button row for the Square-family Neighborhood (Von4 / Moore8)
+/// or the Tri Neighborhood (Edge3 / Vertex12). Active option painted
+/// with `ButtonState::Pressed`. The active kind decides which family
+/// the caller invokes via.
+#[allow(clippy::too_many_arguments)]
+fn paint_neighborhood_button_row(
+    x: f32,
+    w: f32,
+    y: f32,
+    family: NeighborhoodFamily,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    state: &GridSnapState,
+) -> f32 {
+    let h = 28.0_f32;
+    let gap = 6.0_f32;
+    let half_w = (w - gap) * 0.5;
+    let (label_l, id_l, label_r, id_r, active_idx) = match family {
+        NeighborhoodFamily::Square => {
+            let n = neighborhood_for_active_kind(state);
+            (
+                "Von4",
+                ids::GS_CFG_NEIGHBORHOOD_4,
+                "Moore8",
+                ids::GS_CFG_NEIGHBORHOOD_8,
+                if matches!(n, SquareNeighborhood::Moore8) {
+                    1
+                } else {
+                    0
+                },
+            )
+        }
+        NeighborhoodFamily::Tri => (
+            "Edge3",
+            ids::GS_CFG_TRI_EDGE3,
+            "Vertex12",
+            ids::GS_CFG_TRI_VERTEX12,
+            if matches!(state.tri_cfg.neighborhood, TriNeighborhood::Vertex12) {
+                1
+            } else {
+                0
+            },
+        ),
+    };
+    let rect_l = Rect::new(x, y, half_w, h);
+    let rect_r = Rect::new(x + half_w + gap, y, half_w, h);
+    paint_segmented_button(
+        rect_l,
+        label_l,
+        active_idx == 0,
+        id_l,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    paint_segmented_button(
+        rect_r,
+        label_r,
+        active_idx == 1,
+        id_r,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y + h + ROW_GAP
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum NeighborhoodFamily {
+    Square,
+    Tri,
+}
+
+fn neighborhood_for_active_kind(state: &GridSnapState) -> SquareNeighborhood {
+    match state.kind {
+        GridKind::Square => state.square_cfg.neighborhood,
+        GridKind::Iso => state.iso_cfg.neighborhood,
+        GridKind::StaggeredSquare => state.staggered_square_cfg.neighborhood,
+        GridKind::Chunks => state.chunks_cfg.neighborhood,
+        _ => SquareNeighborhood::Von4,
+    }
+}
+
+fn set_neighborhood_for_active_kind(state: &mut GridSnapState, value: SquareNeighborhood) {
+    match state.kind {
+        GridKind::Square => state.square_cfg.neighborhood = value,
+        GridKind::Iso => state.iso_cfg.neighborhood = value,
+        GridKind::StaggeredSquare => state.staggered_square_cfg.neighborhood = value,
+        GridKind::Chunks => state.chunks_cfg.neighborhood = value,
+        _ => {}
+    }
+}
+
+/// Color row — single clickable swatch tile that opens the
+/// BlenderColorPicker bound to `GS_COLOR_PICKER` when clicked.
+/// Replaces the prior 3× NumberInput (R / G / B) layout per Enio's
+/// 2026-05-15 redesign.
+#[allow(clippy::too_many_arguments)]
+fn paint_color_swatch_row(
+    row: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -479,38 +820,43 @@ fn paint_kind_dropdown_popover(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    let (dd_state, _) = match store.get(ids::GS_KIND_DROPDOWN) {
-        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
-        _ => (DropdownState::Normal, false),
-    };
-    let dd = build_kind_dropdown(state.kind)
-        .open(true)
-        .state(dd_state)
-        .selected(state.kind.label().to_string());
-    paint_dropdown_popover(&dd, chip, scene, text_system, theme);
-    // Register option hit-rects matching the popover layout
-    // (FIELD_H per row stacked below the chip).
-    let opt_h = chip.h;
-    let labels_and_ids = kind_option_ids_in_order();
-    for (i, (_, oid)) in labels_and_ids.iter().enumerate() {
-        let r = Rect::new(chip.x, chip.y + chip.h + i as f32 * opt_h, chip.w, opt_h);
-        hit_index.register(*oid, r);
-    }
-}
-
-/// Build the canonical Kind dropdown (options ordered same as
-/// `GridKind::all()`). Each option's id matches a reserved
-/// `GS_KIND_OPT_*` constant for hit-test wiring.
-fn build_kind_dropdown(_active: GridKind) -> Dropdown<String> {
-    let mut opts: Vec<DropdownOption<String>> = Vec::with_capacity(9);
-    for (kind, id) in kind_option_ids_in_order() {
-        opts.push(DropdownOption::new(
-            id,
-            kind.label().to_string(),
-            kind.label(),
-        ));
-    }
-    Dropdown::new(ids::GS_KIND_DROPDOWN, "Kind", opts)
+    let label_font = ph2d_tokens::TypeToken::Base.px();
+    crate::paint::paint_text(
+        text_system,
+        scene,
+        "Color",
+        row.x,
+        row.y + (row.h - label_font) * 0.5,
+        label_font,
+        row.w - 56.0,
+        resolve(ColorToken::Text2, theme),
+    );
+    // Swatch tile on the right — size mirrors Inspector swatches.
+    let swatch_w = 48.0_f32;
+    let swatch_h = (row.h - 4.0).max(16.0);
+    let swatch_rect = Rect::new(
+        row.x + row.w - swatch_w,
+        row.y + (row.h - swatch_h) * 0.5,
+        swatch_w,
+        swatch_h,
+    );
+    let rgba = store
+        .widget_color(ids::GS_COLOR_PICKER)
+        .unwrap_or(state.color_rgba);
+    crate::paint::fill_rounded_rect(
+        scene,
+        swatch_rect,
+        ph2d_tokens::Radius::Sm.px(),
+        ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
+    );
+    crate::paint::stroke_rounded_rect(
+        scene,
+        swatch_rect,
+        ph2d_tokens::Radius::Sm.px(),
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
+    hit_index.register(ids::GS_COLOR_PICKER, swatch_rect);
 }
 
 /// Stable mapping: GridKind → reserved option NodeId, in
@@ -611,23 +957,18 @@ fn paint_square_cfg(
         store,
     );
     y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
-    let label = match state.square_cfg.neighborhood {
-        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
-        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
-    };
-    paint_cycle_row(
-        ids::GS_CFG_NEIGHBORHOOD_4,
-        label,
+    paint_neighborhood_button_row(
         x,
         w,
         y,
+        NeighborhoodFamily::Square,
         scene,
         text_system,
         theme,
         hit_index,
         store,
-    );
-    y + ROW_H + ROW_GAP
+        state,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -730,23 +1071,18 @@ fn paint_iso_cfg(
         store,
     );
     y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
-    let label = match state.iso_cfg.neighborhood {
-        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
-        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
-    };
-    paint_cycle_row(
-        ids::GS_CFG_NEIGHBORHOOD_4,
-        label,
+    paint_neighborhood_button_row(
         x,
         w,
         y,
+        NeighborhoodFamily::Square,
         scene,
         text_system,
         theme,
         hit_index,
         store,
-    );
-    y + ROW_H + ROW_GAP
+        state,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -791,23 +1127,18 @@ fn paint_staggered_sq_cfg(
         store,
     );
     y += ROW_H + ROW_GAP;
-    let nb = match state.staggered_square_cfg.neighborhood {
-        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
-        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
-    };
-    paint_cycle_row(
-        ids::GS_CFG_NEIGHBORHOOD_4,
-        nb,
+    paint_neighborhood_button_row(
         x,
         w,
         y,
+        NeighborhoodFamily::Square,
         scene,
         text_system,
         theme,
         hit_index,
         store,
-    );
-    y + ROW_H + ROW_GAP
+        state,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -835,23 +1166,18 @@ fn paint_tri_cfg(
         store,
     );
     y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
-    let nb = match state.tri_cfg.neighborhood {
-        TriNeighborhood::Edge3 => "Neighborhood: 3 \u{25B6}",
-        TriNeighborhood::Vertex12 => "Neighborhood: 12 \u{25B6}",
-    };
-    paint_cycle_row(
-        ids::GS_CFG_TRI_EDGE3,
-        nb,
+    paint_neighborhood_button_row(
         x,
         w,
         y,
+        NeighborhoodFamily::Tri,
         scene,
         text_system,
         theme,
         hit_index,
         store,
-    );
-    y + ROW_H + ROW_GAP
+        state,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1050,23 +1376,18 @@ fn paint_chunks_cfg(
         store,
     );
     y = paint_origin_rows(x, w, y, scene, text_system, theme, hit_index, store, state);
-    let nb = match state.chunks_cfg.neighborhood {
-        SquareNeighborhood::Von4 => "Neighborhood: 4 \u{25B6}",
-        SquareNeighborhood::Moore8 => "Neighborhood: 8 \u{25B6}",
-    };
-    paint_cycle_row(
-        ids::GS_CFG_NEIGHBORHOOD_4,
-        nb,
+    paint_neighborhood_button_row(
         x,
         w,
         y,
+        NeighborhoodFamily::Square,
         scene,
         text_system,
         theme,
         hit_index,
         store,
-    );
-    y + ROW_H + ROW_GAP
+        state,
+    )
 }
 
 // =============================================================================
@@ -1337,46 +1658,6 @@ fn paint_cycle_row(
     hit_index.register(id, row);
 }
 
-fn paint_snap_enabled_row(
-    row: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    state: &GridSnapState,
-) {
-    paint_labeled_toggle(
-        "Snap",
-        ids::GS_SNAP_ENABLED,
-        state.snap_enabled,
-        row,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-    );
-}
-
-fn paint_snap_target_row(
-    row: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    store: &WidgetStore,
-    state: &GridSnapState,
-) {
-    let target_label = state.snap_target.label();
-    let btn = Button {
-        id: ids::GS_SNAP_CENTER,
-        label: format!("Target: {target_label} \u{25B6}"),
-        state: button_state(store, ids::GS_SNAP_CENTER),
-        kind: ButtonKind::Default,
-    };
-    paint_button(&btn, row, scene, text_system, theme);
-}
-
 fn paint_show_overlay_row(
     row: Rect,
     scene: &mut VectorScene,
@@ -1387,7 +1668,7 @@ fn paint_show_overlay_row(
     state: &GridSnapState,
 ) {
     paint_labeled_toggle(
-        "Show overlay",
+        "Show grid",
         ids::GS_SHOW_OVERLAY,
         state.show_overlay,
         row,
@@ -1444,88 +1725,6 @@ fn paint_opacity_slider_row(
 /// "Color" row: 3 small R/G/B NumberInputs + a swatch preview.
 /// Alpha is owned by the opacity slider; we never expose it as a
 /// separate channel here so the two controls stay orthogonal.
-#[allow(clippy::too_many_arguments)]
-fn paint_color_row(
-    row: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    state: &GridSnapState,
-) {
-    paint_text(
-        text_system,
-        scene,
-        "Color",
-        row.x,
-        row.y + (row.h - LABEL_FONT_SIZE) * 0.5,
-        LABEL_FONT_SIZE,
-        LABEL_COL_W - Spacing::Sm.px(),
-        resolve(ColorToken::Text1, theme),
-    );
-    // Three NumberInputs (R, G, B) side-by-side + a swatch preview.
-    // Widget area = row.w - LABEL_COL_W. Reserve 28px for the swatch
-    // at the right edge; split the remainder across 3 inputs with
-    // 4px gaps.
-    let widget_area = row.w - LABEL_COL_W;
-    let swatch_size = 24.0;
-    let inputs_area = widget_area - swatch_size - Spacing::Sm.px();
-    let gap = 4.0;
-    let input_w = (inputs_area - gap * 2.0) / 3.0;
-    let start_x = row.x + LABEL_COL_W;
-    for (i, (id, channel)) in [
-        (ids::GS_CFG_COLOR_R, state.color_rgba[0]),
-        (ids::GS_CFG_COLOR_G, state.color_rgba[1]),
-        (ids::GS_CFG_COLOR_B, state.color_rgba[2]),
-    ]
-    .iter()
-    .enumerate()
-    {
-        let r = Rect::new(start_x + i as f32 * (input_w + gap), row.y, input_w, row.h);
-        let (ti_state, _, buffer, caret, anchor) = read_number_input(store, *id);
-        let buffer_arg = if ti_state == TextInputState::Focused {
-            Some(buffer)
-        } else {
-            None
-        };
-        let input = NumberInput::new(*id, "", *channel as f64).state(ti_state);
-        paint_number_input_with_buffer(
-            &input,
-            buffer_arg,
-            caret,
-            anchor,
-            r,
-            scene,
-            text_system,
-            theme,
-        );
-        hit_index.register(*id, r);
-    }
-    // Swatch preview — non-interactive, just shows the resulting
-    // color (alpha = full so the user sees pure RGB; the opacity
-    // slider is the orthogonal control).
-    let swatch_rect = Rect::new(
-        row.x + row.w - swatch_size,
-        row.y + (row.h - swatch_size) * 0.5,
-        swatch_size,
-        swatch_size,
-    );
-    let swatch = ColorSwatch {
-        id: crate::NodeId(0),
-        label: String::new(),
-        rgba: [
-            state.color_rgba[0],
-            state.color_rgba[1],
-            state.color_rgba[2],
-            0xFF,
-        ],
-        state: SwatchState::Normal,
-        size: SwatchSize::Md,
-    };
-    paint_color_swatch(&swatch, swatch_rect, scene, theme);
-}
-
 #[allow(clippy::too_many_arguments)]
 fn paint_labeled_toggle(
     label: &str,
@@ -1836,15 +2035,34 @@ fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
             return true;
         }
     }
+    // Target group option clicks (5-button vertical stack).
     if id == ids::GS_SNAP_CENTER {
-        state.snap_target = state.snap_target.cycle();
+        state.snap_target = SnapTarget::Center;
         return true;
     }
-    // Cycling buttons — interpret based on active kind so the same
-    // node id (e.g. GS_CFG_NEIGHBORHOOD_4) drives whichever cfg's
-    // neighborhood is on screen right now.
+    if id == ids::GS_SNAP_INTERSECTION {
+        state.snap_target = SnapTarget::Intersection;
+        return true;
+    }
+    if id == ids::GS_SNAP_TARGET_OPT_CORNER {
+        state.snap_target = SnapTarget::Corner;
+        return true;
+    }
+    if id == ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION {
+        state.snap_target = SnapTarget::CenterAndIntersection;
+        return true;
+    }
+    if id == ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS {
+        state.snap_target = SnapTarget::CenterIntersectionAndCorners;
+        return true;
+    }
+    // Neighborhood group option clicks (Square family: Von4 / Moore8).
     if id == ids::GS_CFG_NEIGHBORHOOD_4 {
-        cycle_neighborhood_for_active_kind(state);
+        set_neighborhood_for_active_kind(state, SquareNeighborhood::Von4);
+        return true;
+    }
+    if id == ids::GS_CFG_NEIGHBORHOOD_8 {
+        set_neighborhood_for_active_kind(state, SquareNeighborhood::Moore8);
         return true;
     }
     if id == ids::GS_CFG_HEX_POINTY {
@@ -1875,11 +2093,19 @@ fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
         };
         return true;
     }
+    // Tri neighborhood group option clicks.
     if id == ids::GS_CFG_TRI_EDGE3 {
-        state.tri_cfg.neighborhood = match state.tri_cfg.neighborhood {
-            TriNeighborhood::Edge3 => TriNeighborhood::Vertex12,
-            TriNeighborhood::Vertex12 => TriNeighborhood::Edge3,
-        };
+        state.tri_cfg.neighborhood = TriNeighborhood::Edge3;
+        return true;
+    }
+    if id == ids::GS_CFG_TRI_VERTEX12 {
+        state.tri_cfg.neighborhood = TriNeighborhood::Vertex12;
+        return true;
+    }
+    // Color swatch click — open the BlenderColorPicker bound to
+    // GS_COLOR_PICKER. Same pattern as Inspector samples.
+    if id == ids::GS_COLOR_PICKER {
+        // No state mutation here; the dispatcher sets picker_target.
         return true;
     }
     if id == ids::GS_CFG_VORONOI_RESEED {
@@ -1890,22 +2116,6 @@ fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
         return true;
     }
     false
-}
-
-fn cycle_neighborhood_for_active_kind(state: &mut GridSnapState) {
-    let flip = |n: SquareNeighborhood| match n {
-        SquareNeighborhood::Von4 => SquareNeighborhood::Moore8,
-        SquareNeighborhood::Moore8 => SquareNeighborhood::Von4,
-    };
-    match state.kind {
-        GridKind::Square => state.square_cfg.neighborhood = flip(state.square_cfg.neighborhood),
-        GridKind::Iso => state.iso_cfg.neighborhood = flip(state.iso_cfg.neighborhood),
-        GridKind::StaggeredSquare => {
-            state.staggered_square_cfg.neighborhood = flip(state.staggered_square_cfg.neighborhood)
-        }
-        GridKind::Chunks => state.chunks_cfg.neighborhood = flip(state.chunks_cfg.neighborhood),
-        _ => {}
-    }
 }
 
 fn cycle_hex_offset(o: HexOffset) -> HexOffset {
@@ -2023,16 +2233,24 @@ mod tests {
     }
 
     #[test]
-    fn apply_event_cycle_neighborhood_for_square() {
+    fn apply_event_neighborhood_options_set_value() {
+        // Post-segmented-button semantics: each option id explicitly
+        // SETS its value (Von4 / Moore8), no cycling. Idempotent.
         let mut s = GridSnapState::default();
         let store = populated_store();
         assert_eq!(s.square_cfg.neighborhood, SquareNeighborhood::Von4);
         apply_event(
             &mut s,
-            WidgetEvent::Click(ids::GS_CFG_NEIGHBORHOOD_4),
+            WidgetEvent::Click(ids::GS_CFG_NEIGHBORHOOD_8),
             &store,
         );
         assert_eq!(s.square_cfg.neighborhood, SquareNeighborhood::Moore8);
+        apply_event(
+            &mut s,
+            WidgetEvent::Click(ids::GS_CFG_NEIGHBORHOOD_4),
+            &store,
+        );
+        assert_eq!(s.square_cfg.neighborhood, SquareNeighborhood::Von4);
     }
 
     #[test]

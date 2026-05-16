@@ -1129,10 +1129,25 @@ impl HeroScreen {
             self.grid_snap_state.panel_visible = !self.grid_snap_state.panel_visible;
             return true;
         }
+        // Color swatch click — open the BlenderColorPicker bound to
+        // the grid-snap color slot, seed widget_color from the current
+        // state.color_rgba so the picker reads the right initial hue.
+        if let WidgetEvent::Click(id) = event
+            && id == crate::grid_snap::ids::GS_COLOR_PICKER
+        {
+            self.store.set_widget_color(
+                crate::grid_snap::ids::GS_COLOR_PICKER,
+                self.grid_snap_state.color_rgba,
+            );
+            self.store
+                .set_picker_target(Some(crate::grid_snap::ids::GS_COLOR_PICKER));
+            return true;
+        }
         // Route remaining events into the grid-snap panel's own handler
-        // — covers GS_CLOSE, kind cycler, snap toggles, target cycler.
-        // Pass `&self.store` so the handler can read the post-flip `on`
-        // value the dispatcher already set on the Toggle widgets.
+        // — covers GS_CLOSE, kind options, snap target options,
+        // neighborhood options, snap toggle, overlay toggle, opacity
+        // slider, probes, etc. Pass `&self.store` so the handler can
+        // read post-flip `on` from Toggles + post-edit numeric values.
         if crate::grid_snap::apply_event(&mut self.grid_snap_state, event, &self.store) {
             return true;
         }
@@ -1662,6 +1677,11 @@ pub fn paint_hero_screen(
         && let Some((value, _, _, _)) = hero.store.blender_picker(ids::INSP_BLENDER_PICKER)
     {
         hero.store.set_widget_color(target, value.rgba);
+        // Mirror Grid-Settings swatch edits back into the grid_snap
+        // state so the canvas overlay re-paints with the new color.
+        if target == crate::grid_snap::ids::GS_COLOR_PICKER {
+            hero.grid_snap_state.color_rgba = value.rgba;
+        }
     }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
     // Publish live entries (if any) to the hierarchy painter so it
@@ -1876,6 +1896,20 @@ pub fn paint_hero_screen(
             &hero.store,
             &hero.grid_snap_state,
         );
+        // Publish scroll bounds for `dispatch_wheel`. Same pattern as
+        // widget_gallery / inspector.
+        let content_h = crate::grid_snap::last_content_h();
+        let visible_h = crate::grid_snap::last_visible_h();
+        hero.store
+            .set_panel_content_h(crate::grid_snap::ids::GS_PANEL, content_h);
+        hero.store
+            .set_panel_visible_h(crate::grid_snap::ids::GS_PANEL, visible_h);
+        let max_scroll = (content_h - visible_h).max(0.0);
+        let cur = hero.store.panel_scroll(crate::grid_snap::ids::GS_PANEL);
+        if cur > max_scroll {
+            hero.store
+                .set_panel_scroll(crate::grid_snap::ids::GS_PANEL, max_scroll);
+        }
     }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
     topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);

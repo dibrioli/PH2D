@@ -93,8 +93,16 @@ pub const GS_CFG_VORONOI_BOUNDS_MAX_Y: NodeId = NodeId(1055);
 
 // ─── Snap policy ───────────────────────────────────────────────
 pub const GS_SNAP_ENABLED: NodeId = NodeId(1060);
+/// Target option: snap to cell Center.
 pub const GS_SNAP_CENTER: NodeId = NodeId(1061);
+/// Target option: snap to cell vertex (Intersection).
 pub const GS_SNAP_INTERSECTION: NodeId = NodeId(1062);
+/// Target option: snap a sprite Corner to the nearest grid vertex.
+pub const GS_SNAP_TARGET_OPT_CORNER: NodeId = NodeId(1063);
+/// Target option: composite (Center + Intersection).
+pub const GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION: NodeId = NodeId(1064);
+/// Target option: composite (Center + Intersection + Corners).
+pub const GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS: NodeId = NodeId(1065);
 
 // ─── Display ───────────────────────────────────────────────────
 pub const GS_SHOW_OVERLAY: NodeId = NodeId(1070);

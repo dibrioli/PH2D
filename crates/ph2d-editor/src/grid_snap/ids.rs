@@ -81,6 +81,11 @@ pub const GS_CFG_COLOR_B: NodeId = NodeId(1044);
 // ─── Snap subdivisions (sub-grid factor) ───────────────────────
 pub const GS_CFG_SNAP_SUBDIVISIONS: NodeId = NodeId(1045);
 
+// ─── Snap magnetism radius (world meters; bug 2 — attraction zone)
+/// World-space distance (meters) within which the cursor / sprite is
+/// pulled to a snap target. `0` disables the gate (always-snap).
+pub const GS_CFG_SNAP_MAGNETISM_RADIUS: NodeId = NodeId(1066);
+
 // ─── Quadtree bounds + demo points (state.rs has the fields) ───
 pub const GS_CFG_QT_BOUNDS_MIN_X: NodeId = NodeId(1046);
 pub const GS_CFG_QT_BOUNDS_MIN_Y: NodeId = NodeId(1047);

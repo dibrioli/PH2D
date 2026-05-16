@@ -17,7 +17,7 @@ use ph2d_grid::chunks::ChunkedSquareGrid;
 use ph2d_grid::hex::{HexGrid, HexOffset, HexOrientation};
 use ph2d_grid::iso::IsoGrid;
 use ph2d_grid::quadtree::{AABB, Quadtree};
-use ph2d_grid::snap::{SnapTarget, snap_world as gsw};
+use ph2d_grid::snap::{SnapTarget, snap_distance_for_target};
 use ph2d_grid::square::{SquareGrid, SquareNeighborhood};
 use ph2d_grid::staggered::{StaggerParity, StaggeredHexGrid, StaggeredSquareGrid};
 use ph2d_grid::tri::{TriGrid, TriNeighborhood};
@@ -255,6 +255,16 @@ pub struct GridSnapState {
     /// changing the visible grid. Applied via pre/post-scale of
     /// world coords by `N` in [`GridSnapState::snap_world`].
     pub snap_subdivisions: u32,
+    /// World-space radius (meters) within which the cursor / sprite
+    /// is ATTRACTED to a snap target. Outside this radius the snap
+    /// is a no-op — the host gets the raw world point back so the
+    /// drag stays smooth between snap points (Figma / Blender
+    /// "magnetic" behavior). `0.0` disables magnetism (back-compat
+    /// with the always-snap semantics; equivalent to the legacy
+    /// behavior). Scales with subdivisions inside `snap_world` so
+    /// the active sub-cell still gets a proportionally smaller
+    /// attraction zone.
+    pub snap_magnetism_radius: f32,
 
     pub panel_visible: bool,
     pub panel_rect: Option<Rect>,
@@ -306,6 +316,11 @@ impl Default for GridSnapState {
             snap_enabled: false,
             snap_target: SnapTarget::Center,
             snap_subdivisions: 1,
+            // Default 0.30 m — feels right for a 1 m default cell:
+            // the inner ~60% of the cell is free-drag, the outer
+            // 30% ring near each vertex / center is magnetic. Tune
+            // via the panel.
+            snap_magnetism_radius: 0.30,
 
             panel_visible: false,
             panel_rect: None,
@@ -416,6 +431,15 @@ impl GridSnapState {
         let subdivisions = self.snap_subdivisions.max(1);
         let nf = subdivisions as f32;
         let local = [world[0] - origin[0], world[1] - origin[1]];
+        // Magnetism radius in WORLD units. `<= 0.0` disables the
+        // threshold (legacy always-snap behavior — kept for the
+        // back-compat test suite). The uniform-grid path multiplies
+        // `local` by `nf`, so the distance returned from
+        // `snap_distance_for_target` is also in scaled space; we
+        // pre-multiply the radius by `nf` so the gate threshold lives
+        // in the SAME scaled frame and the world-meter semantic is
+        // preserved at any subdivision.
+        let mag_radius = self.snap_magnetism_radius;
         let snapped_local = match self.kind {
             // Uniform grids: pre-scale by N so each cell is treated
             // as 1/N × 1/N during the snap math, then post-scale to
@@ -430,50 +454,51 @@ impl GridSnapState {
             | GridKind::Chunks => {
                 let scaled = [local[0] * nf, local[1] * nf];
                 let scaled_half = [sprite_half_size[0] * nf, sprite_half_size[1] * nf];
-                let snapped = match self.kind {
-                    GridKind::Square => gsw(
+                let scaled_radius = mag_radius * nf;
+                let (snapped, dist) = match self.kind {
+                    GridKind::Square => snap_distance_for_target(
                         &self.make_square(),
                         scaled,
                         scaled_half,
                         target,
                         &mut self.scratch,
                     ),
-                    GridKind::Hex => gsw(
+                    GridKind::Hex => snap_distance_for_target(
                         &self.make_hex(),
                         scaled,
                         scaled_half,
                         target,
                         &mut self.scratch,
                     ),
-                    GridKind::Iso => gsw(
+                    GridKind::Iso => snap_distance_for_target(
                         &self.make_iso(),
                         scaled,
                         scaled_half,
                         target,
                         &mut self.scratch,
                     ),
-                    GridKind::StaggeredSquare => gsw(
+                    GridKind::StaggeredSquare => snap_distance_for_target(
                         &self.make_staggered_square(),
                         scaled,
                         scaled_half,
                         target,
                         &mut self.scratch,
                     ),
-                    GridKind::StaggeredHex => gsw(
+                    GridKind::StaggeredHex => snap_distance_for_target(
                         &self.make_staggered_hex(),
                         scaled,
                         scaled_half,
                         target,
                         &mut self.scratch,
                     ),
-                    GridKind::Tri => gsw(
+                    GridKind::Tri => snap_distance_for_target(
                         &self.make_tri(),
                         scaled,
                         scaled_half,
                         target,
                         &mut self.scratch,
                     ),
-                    GridKind::Chunks => gsw(
+                    GridKind::Chunks => snap_distance_for_target(
                         &self.make_chunks(),
                         scaled,
                         scaled_half,
@@ -482,26 +507,52 @@ impl GridSnapState {
                     ),
                     _ => unreachable!(),
                 };
-                [snapped[0] / nf, snapped[1] / nf]
+                // Magnetism gate: only commit the snap if the WINNING
+                // candidate is within the (scaled) radius. Otherwise
+                // pass through the (scaled) local point unchanged.
+                let final_scaled = if scaled_radius > 0.0 && dist > scaled_radius {
+                    scaled
+                } else {
+                    snapped
+                };
+                [final_scaled[0] / nf, final_scaled[1] / nf]
             }
             // Non-uniform grids: dedicated snappers (build the
             // structure on each call, no caching). Subdivisions are
             // honored by subdividing the active leaf into N×N sub-cells
             // (Quadtree) or treated as 1 (Voronoi cells are arbitrary
             // polygons; subdividing them isn't well-defined yet).
-            GridKind::Quadtree => snap_world_quadtree(
-                local,
-                sprite_half_size,
-                target,
-                &self.quadtree_cfg,
-                subdivisions,
-            ),
+            GridKind::Quadtree => {
+                let snapped = snap_world_quadtree(
+                    local,
+                    sprite_half_size,
+                    target,
+                    &self.quadtree_cfg,
+                    subdivisions,
+                );
+                gate_by_magnetism(local, snapped, mag_radius)
+            }
             GridKind::Voronoi => {
-                snap_world_voronoi(local, sprite_half_size, target, &self.voronoi_cfg)
+                let snapped =
+                    snap_world_voronoi(local, sprite_half_size, target, &self.voronoi_cfg);
+                gate_by_magnetism(local, snapped, mag_radius)
             }
         };
         [snapped_local[0] + origin[0], snapped_local[1] + origin[1]]
     }
+}
+
+/// Magnetism gate for the non-uniform-grid paths. Returns `snapped`
+/// when it sits within `radius` of `world`, otherwise returns `world`
+/// unchanged (pass-through during free drag). `radius <= 0.0` keeps
+/// the always-snap semantic the legacy tests depended on.
+#[inline]
+fn gate_by_magnetism(world: Vec2, snapped: Vec2, radius: f32) -> Vec2 {
+    if radius <= 0.0 {
+        return snapped;
+    }
+    let d = sq_dist(world, snapped).sqrt();
+    if d <= radius { snapped } else { world }
 }
 
 // ── Snap helpers for non-uniform grids ────────────────────────────
@@ -756,6 +807,10 @@ mod tests {
         let mut s = GridSnapState {
             snap_enabled: true,
             snap_target: SnapTarget::Center,
+            // Disable magnetism so this test exercises the math
+            // path (origin offset) without interference from the
+            // attraction-radius gate added for bug 2.
+            snap_magnetism_radius: 0.0,
             ..Default::default()
         };
         // Default cell_size=1.0, origin=[0,0]. Center of cell (0,0)
@@ -802,8 +857,9 @@ mod tests {
             snap_target: SnapTarget::Center,
             ..Default::default()
         };
-        let p = s.snap_world([0.1, 0.1], [0.0, 0.0]);
-        // Default square cell size = 1.0 → cell (0,0) center = (0.5, 0.5).
+        // Cursor at (0.4, 0.4): cell center at (0.5, 0.5), distance
+        // ≈ 0.141 < default magnetism radius 0.30 → snap engages.
+        let p = s.snap_world([0.4, 0.4], [0.0, 0.0]);
         assert_eq!(p, [0.5, 0.5]);
     }
 
@@ -813,6 +869,10 @@ mod tests {
             snap_enabled: true,
             kind: GridKind::Hex,
             snap_target: SnapTarget::Intersection,
+            // Disable magnetism so any input near-origin engages
+            // the snap (default radius 0.30 m would otherwise gate
+            // the (0.1, 0.1) → vertex shift away).
+            snap_magnetism_radius: 0.0,
             ..Default::default()
         };
         // Hex point near origin — must land on one of the 6 corners
@@ -838,6 +898,11 @@ mod tests {
             snap_enabled: true,
             kind: GridKind::Quadtree,
             snap_target: SnapTarget::Center,
+            // Disable magnetism — the assertion below requires the
+            // snap to actually engage and pull to a leaf center, but
+            // Quadtree leaves can be several meters wide so the
+            // default 0.30 m radius would gate the snap to passthrough.
+            snap_magnetism_radius: 0.0,
             ..Default::default()
         };
         let p = s.snap_world([0.5, 0.5], [0.0, 0.0]);
@@ -872,6 +937,8 @@ mod tests {
             kind: GridKind::Quadtree,
             snap_target: SnapTarget::Center,
             snap_subdivisions: 4,
+            // Disable magnetism (same rationale as the sibling test).
+            snap_magnetism_radius: 0.0,
             ..Default::default()
         };
         let world = [0.5, 0.5];
@@ -947,6 +1014,7 @@ mod tests {
             snap_enabled: true,
             kind: GridKind::Quadtree,
             snap_target: SnapTarget::Intersection,
+            snap_magnetism_radius: 0.0,
             ..Default::default()
         };
         let p = s.snap_world([0.0, 0.0], [0.0, 0.0]);
@@ -966,6 +1034,7 @@ mod tests {
             snap_enabled: true,
             kind: GridKind::Voronoi,
             snap_target: SnapTarget::Center,
+            snap_magnetism_radius: 0.0,
             ..Default::default()
         };
         let p = s.snap_world([0.0, 0.0], [0.0, 0.0]);
@@ -992,6 +1061,7 @@ mod tests {
             snap_enabled: true,
             kind: GridKind::Voronoi,
             snap_target: SnapTarget::Intersection,
+            snap_magnetism_radius: 0.0,
             ..Default::default()
         };
         let p = s.snap_world([0.0, 0.0], [0.0, 0.0]);
@@ -1025,5 +1095,156 @@ mod tests {
         for k in GridKind::all() {
             assert!(!k.label().is_empty());
         }
+    }
+
+    // ── Magnetism radius (bug 2: "snap deve atrair, não teleportar") ──
+
+    #[test]
+    fn magnetism_passthrough_when_cursor_is_far_from_any_snap_point() {
+        // Cursor at (0.5, 0.5) is exactly the cell center under
+        // Intersection mode — distance to nearest vertex (0, 0) is
+        // ≈ 0.707 m. With radius = 0.2 m, no vertex is in range →
+        // free drag.
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::Intersection,
+            snap_magnetism_radius: 0.2,
+            ..Default::default()
+        };
+        let p = s.snap_world([0.5, 0.5], [0.0, 0.0]);
+        assert_eq!(p, [0.5, 0.5], "expected passthrough outside radius");
+    }
+
+    #[test]
+    fn magnetism_snaps_when_cursor_is_inside_radius() {
+        // Cursor at (0.05, 0.05): nearest vertex (0, 0) is ≈ 0.0707
+        // m away — well inside the 0.2 m radius → snap engages.
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::Intersection,
+            snap_magnetism_radius: 0.2,
+            ..Default::default()
+        };
+        let p = s.snap_world([0.05, 0.05], [0.0, 0.0]);
+        assert_eq!(p, [0.0, 0.0]);
+    }
+
+    #[test]
+    fn magnetism_zero_radius_is_back_compat_always_snap() {
+        // Radius = 0.0 reproduces the legacy always-snap semantics
+        // — every distance is "in range".
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::Center,
+            snap_magnetism_radius: 0.0,
+            ..Default::default()
+        };
+        // (0.9, 0.9) is 0.566 m from the nearest cell center, well
+        // beyond any reasonable magnetism radius — but radius = 0
+        // disables the gate so we still snap.
+        let p = s.snap_world([0.9, 0.9], [0.0, 0.0]);
+        assert_eq!(p, [0.5, 0.5]);
+    }
+
+    #[test]
+    fn magnetism_composite_picks_closer_candidate_and_respects_threshold() {
+        // CenterAndIntersection at (0.9, 0.9) on cell_size=1:
+        //   Center  (0.5, 0.5) — dist ≈ 0.566.
+        //   Intersection (1, 1) — dist ≈ 0.141.
+        //   Winner = (1, 1). Radius 0.2 m > 0.141 → snap engages.
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::CenterAndIntersection,
+            snap_magnetism_radius: 0.2,
+            ..Default::default()
+        };
+        assert_eq!(s.snap_world([0.9, 0.9], [0.0, 0.0]), [1.0, 1.0]);
+        // Mid-cell (0.5, 0.5): Center wins at distance 0, but
+        // (0.4, 0.4) puts Center 0.141 m away vs Intersection (0, 0)
+        // at 0.566. Winner = Center. Radius 0.1 < 0.141 → gates to
+        // passthrough.
+        let mut s2 = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::CenterAndIntersection,
+            snap_magnetism_radius: 0.1,
+            ..Default::default()
+        };
+        assert_eq!(s2.snap_world([0.4, 0.4], [0.0, 0.0]), [0.4, 0.4]);
+    }
+
+    #[test]
+    fn magnetism_radius_scales_with_subdivisions() {
+        // Subdivisions = 4 on cell_size = 1 → effective sub-cell
+        // 0.25 m. Vertices at every 0.25 m. Cursor at (0.08, 0.08):
+        // nearest sub-vertex (0, 0) at ≈ 0.113 m. World-space
+        // magnetism radius 0.15 m → snap engages (0.113 ≤ 0.15).
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::Intersection,
+            snap_subdivisions: 4,
+            snap_magnetism_radius: 0.15,
+            ..Default::default()
+        };
+        let p = s.snap_world([0.08, 0.08], [0.0, 0.0]);
+        assert_eq!(p, [0.0, 0.0]);
+        // Same setup, cursor at (0.18, 0.18): nearest sub-vertex
+        // (0.25, 0.25) at ≈ 0.099 m → still inside radius → snap.
+        let q = s.snap_world([0.18, 0.18], [0.0, 0.0]);
+        assert!(
+            (q[0] - 0.25).abs() < 1e-5 && (q[1] - 0.25).abs() < 1e-5,
+            "expected snap to (0.25, 0.25), got {q:?}"
+        );
+        // But (0.125, 0.125) sits exactly midway between sub-grid
+        // vertices — nearest one is 0.177 m away, just outside the
+        // 0.15 m radius → passthrough.
+        let r = s.snap_world([0.125, 0.125], [0.0, 0.0]);
+        assert!(
+            (r[0] - 0.125).abs() < 1e-5 && (r[1] - 0.125).abs() < 1e-5,
+            "expected passthrough at midpoint, got {r:?}"
+        );
+    }
+
+    #[test]
+    fn magnetism_corner_mode_uses_shift_magnitude_not_cursor_distance() {
+        // Corner snap on a sprite half = (0.5, 0.5) centered at
+        // (0.05, 0.05). One sprite corner is (-0.45, -0.45) — that's
+        // 0.0707 m from grid vertex (0, 0) → shift magnitude 0.071
+        // (NOT the cursor's distance to a vertex, which would be
+        // (-0.95, -0.95) → very far). With radius 0.1 m, the snap
+        // engages because the SHIFT is inside the radius.
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Square,
+            snap_target: SnapTarget::Corner,
+            snap_magnetism_radius: 0.1,
+            ..Default::default()
+        };
+        let snapped = s.snap_world([0.05, 0.05], [0.5, 0.5]);
+        // Best corner shift = -(0.45, 0.45) applied → 0.05 - 0.45 =
+        // -0.40? No — corners array uses sprite center ± half. The
+        // closest corner to a vertex is (0.55, 0.55) → (1, 1) shift
+        // (0.45, 0.45)? Let me trust the code: corners are
+        // {(-0.45, -0.45), (0.55, -0.45), (-0.45, 0.55), (0.55, 0.55)}.
+        // Nearest vertex of each: {(0, 0), (1, 0), (0, 1), (1, 1)}.
+        // Shift magnitudes all = sqrt(0.45² + 0.45²) ≈ 0.636. That's
+        // OUT of radius — verify passthrough.
+        assert_eq!(snapped, [0.05, 0.05], "shift > radius should passthrough");
+        // Tighter setup: sprite half (0.5, 0.5) centered at (0.45, 0.45).
+        // Corners {(-0.05, -0.05), (0.95, -0.05), (-0.05, 0.95), (0.95, 0.95)}.
+        // Nearest vertex of each: (0, 0), (1, 0), (0, 1), (1, 1).
+        // All shifts ≈ (0.05, 0.05) magnitude 0.0707. radius 0.1 → snap.
+        let snapped = s.snap_world([0.45, 0.45], [0.5, 0.5]);
+        // Sprite center moves to (0.5, 0.5) so corner (0.95, 0.95)
+        // lands on (1, 1) (or symmetric equivalent).
+        assert!(
+            (snapped[0] - 0.5).abs() < 1e-5 && (snapped[1] - 0.5).abs() < 1e-5,
+            "expected snap to (0.5, 0.5), got {snapped:?}"
+        );
     }
 }

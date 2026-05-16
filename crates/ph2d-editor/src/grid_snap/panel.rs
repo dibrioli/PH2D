@@ -109,8 +109,14 @@ pub fn sync_meter_inputs_to_display_unit(
     }
     // Iso tile size — only painted when the Iso kind is active, but
     // the field is independent of any other kind so always reseed.
-    store.set_number_value(ids::GS_CFG_ISO_TILE_W, meters_to_display(state.iso_cfg.tile_w));
-    store.set_number_value(ids::GS_CFG_ISO_TILE_H, meters_to_display(state.iso_cfg.tile_h));
+    store.set_number_value(
+        ids::GS_CFG_ISO_TILE_W,
+        meters_to_display(state.iso_cfg.tile_w),
+    );
+    store.set_number_value(
+        ids::GS_CFG_ISO_TILE_H,
+        meters_to_display(state.iso_cfg.tile_h),
+    );
     // Quadtree bounds (4 floats — soft-clamped on commit).
     store.set_number_value(
         ids::GS_CFG_QT_BOUNDS_MIN_X,
@@ -150,6 +156,12 @@ pub fn sync_meter_inputs_to_display_unit(
     store.set_number_value(ids::GS_PROBE_A_Y, meters_to_display(state.probe_a[1]));
     store.set_number_value(ids::GS_PROBE_B_X, meters_to_display(state.probe_b[0]));
     store.set_number_value(ids::GS_PROBE_B_Y, meters_to_display(state.probe_b[1]));
+    // Magnetism radius (meters) — keeps the panel input in sync after
+    // unit toggles (m ↔ px).
+    store.set_number_value(
+        ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
+        meters_to_display(state.snap_magnetism_radius),
+    );
 }
 
 fn current_display_unit() -> crate::project::DisplayUnit {
@@ -356,6 +368,11 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ids::GS_CFG_SNAP_SUBDIVISIONS,
             defaults.snap_subdivisions as f64,
+        ),
+        // Snap magnetism radius (world meters; 0 disables the gate).
+        (
+            ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
+            meters_to_display(defaults.snap_magnetism_radius),
         ),
         // Inspect probes A / B (X, Y) — user-editable from the panel.
         (ids::GS_PROBE_A_X, defaults.probe_a[0] as f64),
@@ -566,6 +583,23 @@ pub fn paint(
         "Subdivisions",
         ids::GS_CFG_SNAP_SUBDIVISIONS,
         state.snap_subdivisions as f64,
+        inner_x,
+        inner_w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    // Magnetism radius (world meters). 0 = always-snap (no gate).
+    // Label carries the unit suffix so the user sees the active
+    // DisplayUnit alongside the number.
+    let mag_label = format!("Magnetism radius{}", unit_suffix_paren());
+    y = paint_number_row_from_state(
+        &mag_label,
+        ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
+        meters_to_display(state.snap_magnetism_radius),
         inner_x,
         inner_w,
         y,
@@ -2184,6 +2218,14 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
     // (1 = no subdivision; 64 covers reasonable half/quarter use).
     if id == ids::GS_CFG_SNAP_SUBDIVISIONS {
         state.snap_subdivisions = (v as u32).clamp(1, 64);
+        return true;
+    }
+    // Magnetism radius (meter-domain) — non-negative, soft upper
+    // clamp at 10 m so typing a runaway value doesn't lock every
+    // drag to a snap target. `0.0` disables the gate (back-compat
+    // always-snap), matching the docs on `snap_magnetism_radius`.
+    if id == ids::GS_CFG_SNAP_MAGNETISM_RADIUS {
+        state.snap_magnetism_radius = v_m.clamp(0.0, 10.0);
         return true;
     }
     // Probe coords (world meters) — direct write after display→meters.

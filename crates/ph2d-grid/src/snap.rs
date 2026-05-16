@@ -111,6 +111,62 @@ pub fn snap_world<G: GridMath>(
     }
 }
 
+/// Magnetism distance used by [`snap_distance_for_target`] to measure
+/// how far the snap candidate sits from `world`. For Center /
+/// Intersection / composite modes it's the Euclidean distance between
+/// `world` and the snapped point. For Corner mode it's the SHIFT
+/// magnitude — the distance the sprite would actually move — because
+/// the sprite center may already sit far from any grid vertex even
+/// when a sprite corner is touching one.
+///
+/// Returning the shift instead of `dist(world, snapped)` matches the
+/// user's perception: "is a corner near a snap point?" not "is my
+/// cursor near a grid vertex?". Without this distinction the
+/// magnetism radius would never engage for Corner mode on sprites
+/// larger than the cell.
+pub fn snap_distance_for_target<G: GridMath>(
+    grid: &G,
+    world: Vec2,
+    sprite_half_size: Vec2,
+    target: SnapTarget,
+    scratch: &mut Vec<Vec2>,
+) -> (Vec2, f32) {
+    match target {
+        SnapTarget::Center => {
+            let s = grid.snap_to_center(world);
+            (s, dist(world, s))
+        }
+        SnapTarget::Intersection => {
+            let s = grid.snap_to_nearest_vertex(world, scratch);
+            (s, dist(world, s))
+        }
+        SnapTarget::Corner => {
+            let s = snap_sprite_corner(grid, world, sprite_half_size, scratch);
+            // Shift magnitude == |s - world| because snap_sprite_corner
+            // just adds the best shift to `world`.
+            (s, dist(world, s))
+        }
+        SnapTarget::CenterAndIntersection => {
+            let c = grid.snap_to_center(world);
+            let i = grid.snap_to_nearest_vertex(world, scratch);
+            let s = nearest_to(world, &[c, i]);
+            (s, dist(world, s))
+        }
+        SnapTarget::CenterIntersectionAndCorners => {
+            let c = grid.snap_to_center(world);
+            let i = grid.snap_to_nearest_vertex(world, scratch);
+            let k = snap_sprite_corner(grid, world, sprite_half_size, scratch);
+            let s = nearest_to(world, &[c, i, k]);
+            (s, dist(world, s))
+        }
+    }
+}
+
+#[inline]
+fn dist(a: Vec2, b: Vec2) -> f32 {
+    sq_dist(a, b).sqrt()
+}
+
 /// Compute the world position the sprite center must move to so that
 /// the sprite corner closest to a grid vertex lands exactly on that
 /// vertex.

@@ -72,6 +72,20 @@ pub struct BgRemovalScratch {
     /// with `box_buf_a` for `var = corr - mean²` style ops.
     pub box_buf_b: Vec<f32>,
 
+    /// Box-filter intermediate buffer C. Size: `w*h`. Holds
+    /// `I*p` / `I*I` / `var_I` / `b` sequentially across the GF
+    /// pipeline.
+    pub box_buf_c: Vec<f32>,
+
+    /// Box-filter intermediate buffer D. Size: `w*h`. Holds
+    /// `mean_Ip` / `cov_Ip` / `a` sequentially.
+    pub box_buf_d: Vec<f32>,
+
+    /// Box-filter horizontal-pass temp. Size: `w*h`. Used by
+    /// `separable_box_filter` between its 1D passes; distinct from
+    /// `src` and `dst` to satisfy the no-aliasing contract.
+    pub box_buf_e: Vec<f32>,
+
     /// Final pipeline output, RGBA8. Size: `w*h*4`. Written by
     /// `algorithm::compose::write_output`. This is what the host /
     /// preview thumbnail consumes.
@@ -103,6 +117,9 @@ impl BgRemovalScratch {
         self.guide_f32.resize(guide_n, 0.0);
         self.box_buf_a.resize(n, 0.0);
         self.box_buf_b.resize(n, 0.0);
+        self.box_buf_c.resize(n, 0.0);
+        self.box_buf_d.resize(n, 0.0);
+        self.box_buf_e.resize(n, 0.0);
         self.output_rgba.resize(n * 4, 0);
 
         let span_cap = (w as usize).saturating_mul(4);

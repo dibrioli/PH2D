@@ -7,7 +7,7 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 
 > **PH2D** (Power House 2D). Engine 2D de altíssima performance, sem teto para artistas, com IA tratada como first-class user.
 
-**Versão deste documento:** 2.4 — 2026-05-16 (convention-by-discovery migração: tool-crates `ph2d-tool-*`, registry runtime, shell decomposition `init.rs`/`input_dispatch.rs`/`hero_intents.rs`; HR-18 declarada; ADR-0027 Accepted)
+**Versão deste documento:** 2.5 — 2026-05-16 (Wave 2 closeout: `build.rs` codegen para tokens.json + icons SVG; chrome derivado do Registry; `docs/design/tools/*.toml` canonical + cross-validation; lint anti-`0xRRGGBB`; HR-18 **ativo** em `shells/desktop/src/`; ADR-0028 Accepted)
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
 
 ## 1. Visão em uma frase
@@ -383,7 +383,7 @@ Crescimento de funcionalidade acontece por adição de módulo `mod X;` (arquivo
 
 **Rationale:** god-files são hostis a multi-agente (superfície de conflito), a LLM (excesso de contexto por janela), e a auditoria (complexidade ciclomática inauditável). Bound estrito força decomposição contínua por responsabilidade. Pré-migração 2026-05-16, `shells/desktop/src/main.rs` tinha 3463 LOC com `render_frame()` (1825 LOC) e `window_event()` (706 LOC) violando todos os caps — o PR de decomposição (ADR-0027) extraiu `init.rs`, `input_dispatch.rs`, `hero_intents.rs` reduzindo `main.rs` a 2421 LOC (transitional; cap ativa quando dispatcher genérico full landar).
 
-**Enforced by:** `tests/architecture/file_loc_caps.rs` em CI (lint inativo nesta migração — `main.rs` ainda excede o cap 400; ativa quando dispatcher full extrair os `pending_X` Inspector intents remanescentes). Exceções por `// ph2d-loc-cap: <razão>` no topo do arquivo (uso raro, requer justificativa em PR).
+**Enforced by:** `shells/desktop/tests/file_loc_caps.rs` (Wave 2 PR 11.9, **ativo** desde 2026-05-16). File-level cap (600 LOC) ativo; function-level cap (200 LOC) pendente parser real. Exceções por `// ph2d-loc-cap: <razão>` no topo do arquivo (primeiras 20 linhas; uso raro, requer justificativa em PR). Exceções ativas hoje: `main.rs` (2421 LOC) e `hero_intents.rs` (696 LOC) — ambas resolvem com Wave 2.5 PR 11.8 (Action Bus). Test secundário `loc_cap_exceptions_inventory` emite inventário em CI logs a cada run para visibilidade contínua.
 
 ## 10. Convenções de código
 
@@ -1029,6 +1029,7 @@ Listar com motivo de rejeição.
 | ADR-0023 | UI/UX baseline — Procreate-style canvas-first + WCAG 2.2 AA + AccessKit | **Accepted** ([0023-ui-ux-baseline.md](../docs/architecture/decisions/0023-ui-ux-baseline.md)) |
 | ADR-0024 | Editor input pipeline + retained widget state (Modelo B + plano HR-3 zero-alloc) | **Accepted** ([0024-editor-input-and-widget-state.md](../docs/architecture/decisions/0024-editor-input-and-widget-state.md)) |
 | ADR-0027 | Convention-by-discovery + Shell decomposition + HR-18 (tool-as-crate, registry-init, manifest-driven chrome) | **Accepted** ([0027-convention-by-discovery.md](../docs/architecture/decisions/0027-convention-by-discovery.md)) |
+| ADR-0028 | Wave 2 — `build.rs` codegen (tokens + icons) + design canonical TOMLs + lint guards + HR-18 ativo | **Accepted** ([0028-wave-2-codegen-design-canonical.md](../docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md)) |
 
 ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-17.
 

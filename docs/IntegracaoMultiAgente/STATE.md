@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-16 16:30 BRT (Wave 1 convention-by-discovery mergeada)
+**Última atualização:** 2026-05-16 — Wave 2 closeout local (10 commits stacked desde `a5343f9`, ainda NÃO push pro origin/main — batching policy per CLAUDE.md feedback)
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -89,7 +89,26 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `a5343f9` — 2026-05-16 16:25 — Wave 1 convention-by-discovery mergeada em origin/main. 4 commits push (a71d54c docs canonical + fc13c40 5 tool-crates + 56d2ded shell refactor + a5343f9 cargo-machete fix). CI matrix verde 10/10 jobs (MSRV + lint + 3 OS workspace tests + 3 OS replay hash + cross-platform comparison). Workspace 1319 nextest pass (+221 do baseline 1098). ADR-0027 Accepted, SKILL 2.4, HR-18 declarada (CI gate inativo até Wave 2 PR 11.9). Plano canonical Wave 2 (17 PRs) em docs/Migracao/2026-05-wave-2-eliminating-all-collisions.md.
+main @ `a5343f9` — 2026-05-16 16:25 — Wave 1 mergeada em origin/main (sha bom para rollback).
+
+Local main desde então tem **10 commits Wave 2 stacked** (NÃO PUSH ainda — batching policy):
+
+```
+f2cbb20 test(shells): activate HR-18 file-LOC cap (PR 11.9)
+8843d01 refactor(editor): split hierarchy.rs (PR 11.7b)
+bc5a456 refactor(editor): split topbar.rs (PR 11.7c)
+3d57906 test(editor): no-literal-color lint (PR 11.6)
+7661a7d feat(design): canonical tool TOMLs + cross-validation (PR 11.5)
+8f82407 feat(editor): chrome derived from registry (PR 11.4)
+5e54638 refactor(editor): hash-derived NodeId chrome ids (PR 11.3)
+e9577d7 feat(editor): build.rs SVG codegen (PR 11.2)
+aa5331c feat(tokens): build.rs tokens codegen (PR 11.1)
+c4f0da6 chore(tokens): lift Round 9 to tokens.json (PR 11.1.0)
+```
+
+Wave 2 entregou: build.rs codegen (tokens + 100 SVGs); chrome derivado do Registry com cross-validation; NodeId hash universal (250 consts migradas); 4 tool TOMLs canonical + design-sync test; lint anti-`0xRRGGBB`; HR-18 ativo com 2 exceções declaradas (main.rs / hero_intents.rs pendente Wave 2.5 PR 11.8). ADR-0028 Accepted, SKILL 2.5.
+
+**Wave 2.5 (deferido)** em [`docs/Migracao/2026-05-wave-2-5-deferred-splits.md`](../Migracao/2026-05-wave-2-5-deferred-splits.md): PR 11.7a (grid_snap split), PR 11.7d (HeroScreen state decomp), PR 11.8 (Action Bus), PR 11.10 (golden images), PR 11.11 (lib.rs trim). ~10-12h estimadas.
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -100,6 +119,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-16 (sessão noturna) | **Wave 2 closeout local** — 10 commits stacked desde `a5343f9` (NÃO push ainda; aguarda smoke final + Enio aprovação). PRs entregues: 11.1.0 lift Round 9 → tokens.json; 11.1 build.rs tokens codegen; 11.2 build.rs SVG codegen (89→100 SVGs recuperados); 11.3 NodeId hash universal (250 consts → `hash_node_id`, 12 fixture rows mantidos numeric por bit-flag math); 11.4 chrome derivado do Registry (image_action_pills consome `Registry::cluster("image_tools")`, novo `ph2d-tool-trim-transparency` crate, `paint_icon_path` helper); 11.5 4 design TOMLs + `tool_manifest_design_sync` test (3 cases); 11.6 `no_literal_color` lint anti-regressão; 11.7c topbar.rs split (727→482 + cluster_painter.rs); 11.7b hierarchy.rs split (998→414 + panel_painter.rs + row_painter.rs); 11.9 HR-18 file-LOC cap ATIVO em `shells/desktop/tests/file_loc_caps.rs` com 2 exceções declaradas (main.rs 2421, hero_intents.rs 696 — ambas resolvem com PR 11.8). ADR-0028 Accepted, SKILL 2.5. Workspace ~1296 tests verde. 5 PRs deferidos para Wave 2.5 (`docs/Migracao/2026-05-wave-2-5-deferred-splits.md`): 11.7a/d/8/10/11 — demandam 2-3h cada, melhor com sessão dedicada e contexto LLM novo. **Próximo:** Enio roda smoke `./play.command`; se OK, autorize push do batch + Coordenador acompanha CI run. |
 | 2026-05-16 16:25 | **Wave 1 convention-by-discovery MERGEADA em origin/main**. 4 commits (`a71d54c` docs canonical + `fc13c40` 5 tool-crates + `56d2ded` shell refactor + `a5343f9` cargo-machete fix). CI matrix verde 10/10 jobs (MSRV + lint + 3 OS workspace tests + 3 OS replay hash + cross-platform comparison). PRCI loop ciclo 1/3 — primeira CI falhou em cargo-machete (`ph2d-vector` unused em ph2d-tool-bgremoval, `ph2d-core` unused em ph2d-editor; ambos transitive deps); fix em `a5343f9` passou CI verde. Wave 1 entregou: ph2d-tool-registry crate (Registry + ToolManifest + NodeId hash FNV-1a + IconHandle + ActionInvocation), ph2d-tool-registry-init crate (register_all append-only + 4 CI lint stack HR-12/13/15/7), 3 tool-crates piloto (make-square Action one-shot completo, grid-snap + bgremoval manifest thin), shell decomposition (init.rs 324 LOC + input_dispatch.rs 593 LOC + hero_intents.rs 691 LOC; main.rs 3463→2421 LOC; resumed() 260→17 LOC; window_event() 706→28 LOC). Workspace 1319 nextest pass (+221). ADR-0027 Accepted, SKILL 2.4. **Próximo:** Wave 2 (17 PRs) em `docs/Migracao/2026-05-wave-2-eliminating-all-collisions.md`. CI run: https://github.com/dibrioli/PH2D/actions/runs/25966578589. |
 | 2026-05-15 23:30 | grid-snap polish pós-`done`: Corner snap mode + 2 composite modes. SnapTarget enum expandido de 2 → 5 (Center / Intersection / Corner / Center+Intersection / Center+Intersection+Corners). Novo helper `snap_sprite_corner` em ph2d-grid/snap.rs (enumera 4 quinas, escolhe par com menor shift para grid vertex). `GridSnapState::snap_world(world, sprite_half_size)` — gizmo Translate forwarda `Sprite::size × scale × 0.5`; drag-drop passa `[0.0, 0.0]` (degenera Corner para Intersection). Painel Target row cicla 5 modos via `state.snap_target.cycle()` + `.label()`. 10 unit tests em snap.rs (atomic + composite + degenerate + cycle + label + zero-alloc). Commit `728e439`. Workspace 1142 pass. |
 | 2026-05-15 23:00 | slot 1 (grid-snap) fechado `done`. Agente reportou feature completa em `3e1ffea` com 5 itens "wiring pendente" — investigação Coord mostrou que 4/5 já estavam wirados em commits anteriores (IconId::GridSettings + TOPBAR_GRID_SETTINGS + paint_grid → grid_snap::render::paint em `799fb82`; canvas-pointer hook é out-of-scope). Único pendente real: `snap_world` call-sites em shells/desktop/main.rs. Coord wirou em commit `1d4a0d7`: gizmo Translate (após compute_gizmo_transform, antes do write em Transform) + drag-drop spawn (após screen_to_world, antes do import_image_at_camera). Workspace verde 1135 nextest pass. Paste handler fica pra quando paste pipeline existir. Slot 1 entrega final: 11 GridKinds + A* + painel flutuante completo + origin/subdivisions/snap/inspect/colorpicker + agora SNAP REAL FUNCIONA. Smoke visual do Enio recomendado: `./play.command` ciclar 9 kinds, mover sprite com Gizmo + snap_enabled=true, validar alinhamento ao overlay. |

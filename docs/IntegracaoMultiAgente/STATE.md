@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-15 23:30 BRT
+**Última atualização:** 2026-05-16 16:30 BRT (Wave 1 convention-by-discovery mergeada)
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -15,9 +15,9 @@ Coordenador escreve; Agentes Periféricos só leem.
 
 | # | Slug | Pastas reservadas | Status | Última atividade |
 |---|---|---|---|---|
-| 1 | grid-snap | `crates/ph2d-grid/src/` + `crates/ph2d-editor/src/grid_snap/` | done (final wiring `1d4a0d7` — snap_world em gizmo Translate + drag-drop) | 2026-05-15 23:00 |
-| 2 | bgremoval | `crates/ph2d-editor/src/tools/bgremoval/` | session-closed M1+M2-scaffold (M1 chroma+flood Oklab `27d6544` · M2 grabcut subfolder stubs `01ba55f` · 46 inline tests) — M2 body ~1200 LOC pendente próxima sessão | 2026-05-15 22:45 |
-| 3 | make-square | `crates/ph2d-editor/src/tools/make_square/` | done | 2026-05-15 20:45 |
+| 1 | grid-snap | `crates/ph2d-tool-grid-snap/` (manifest thin) + `crates/ph2d-editor/src/grid_snap/` (conteúdo) | done; migra full em Wave 2 PR 11.7a + 11.8b | 2026-05-16 16:25 |
+| 2 | bgremoval | `crates/ph2d-tool-bgremoval/` (manifest thin) + `crates/ph2d-editor/src/tools/bgremoval/` (conteúdo) | session-closed M1+M2-scaffold; M2 body pendente; migra full em Wave 2 PR 11.8b | 2026-05-16 16:25 |
+| 3 | make-square | `crates/ph2d-tool-make-square/` (crate completo isolado) | done — primeiro tool-crate piloto convention-by-discovery | 2026-05-16 16:25 |
 | 4 | (vago) | — | — | — |
 
 **Status possíveis:**
@@ -89,7 +89,7 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 
 ## Sha conhecido bom (rollback target)
 
-main @ `728e439` — 2026-05-15 23:30 — feat(grid-snap) Corner snap + composite Target modes (5 total: Center / Intersection / Corner / Center+Intersection / Center+Intersection+Corners). Sprite-aware: gizmo Translate passa Sprite.size×scale; drag-drop degenera Corner pra Intersection. Workspace verde: 1142 nextest pass (+7 do baseline).
+main @ `a5343f9` — 2026-05-16 16:25 — Wave 1 convention-by-discovery mergeada em origin/main. 4 commits push (a71d54c docs canonical + fc13c40 5 tool-crates + 56d2ded shell refactor + a5343f9 cargo-machete fix). CI matrix verde 10/10 jobs (MSRV + lint + 3 OS workspace tests + 3 OS replay hash + cross-platform comparison). Workspace 1319 nextest pass (+221 do baseline 1098). ADR-0027 Accepted, SKILL 2.4, HR-18 declarada (CI gate inativo até Wave 2 PR 11.9). Plano canonical Wave 2 (17 PRs) em docs/Migracao/2026-05-wave-2-eliminating-all-collisions.md.
 
 Atualizado pelo Coordenador após cada integração bem-sucedida
 (`cargo check --workspace` verde). Em caso de quebra catastrófica,
@@ -100,6 +100,7 @@ estável conhecido.
 
 | Quando | Evento |
 |---|---|
+| 2026-05-16 16:25 | **Wave 1 convention-by-discovery MERGEADA em origin/main**. 4 commits (`a71d54c` docs canonical + `fc13c40` 5 tool-crates + `56d2ded` shell refactor + `a5343f9` cargo-machete fix). CI matrix verde 10/10 jobs (MSRV + lint + 3 OS workspace tests + 3 OS replay hash + cross-platform comparison). PRCI loop ciclo 1/3 — primeira CI falhou em cargo-machete (`ph2d-vector` unused em ph2d-tool-bgremoval, `ph2d-core` unused em ph2d-editor; ambos transitive deps); fix em `a5343f9` passou CI verde. Wave 1 entregou: ph2d-tool-registry crate (Registry + ToolManifest + NodeId hash FNV-1a + IconHandle + ActionInvocation), ph2d-tool-registry-init crate (register_all append-only + 4 CI lint stack HR-12/13/15/7), 3 tool-crates piloto (make-square Action one-shot completo, grid-snap + bgremoval manifest thin), shell decomposition (init.rs 324 LOC + input_dispatch.rs 593 LOC + hero_intents.rs 691 LOC; main.rs 3463→2421 LOC; resumed() 260→17 LOC; window_event() 706→28 LOC). Workspace 1319 nextest pass (+221). ADR-0027 Accepted, SKILL 2.4. **Próximo:** Wave 2 (17 PRs) em `docs/Migracao/2026-05-wave-2-eliminating-all-collisions.md`. CI run: https://github.com/dibrioli/PH2D/actions/runs/25966578589. |
 | 2026-05-15 23:30 | grid-snap polish pós-`done`: Corner snap mode + 2 composite modes. SnapTarget enum expandido de 2 → 5 (Center / Intersection / Corner / Center+Intersection / Center+Intersection+Corners). Novo helper `snap_sprite_corner` em ph2d-grid/snap.rs (enumera 4 quinas, escolhe par com menor shift para grid vertex). `GridSnapState::snap_world(world, sprite_half_size)` — gizmo Translate forwarda `Sprite::size × scale × 0.5`; drag-drop passa `[0.0, 0.0]` (degenera Corner para Intersection). Painel Target row cicla 5 modos via `state.snap_target.cycle()` + `.label()`. 10 unit tests em snap.rs (atomic + composite + degenerate + cycle + label + zero-alloc). Commit `728e439`. Workspace 1142 pass. |
 | 2026-05-15 23:00 | slot 1 (grid-snap) fechado `done`. Agente reportou feature completa em `3e1ffea` com 5 itens "wiring pendente" — investigação Coord mostrou que 4/5 já estavam wirados em commits anteriores (IconId::GridSettings + TOPBAR_GRID_SETTINGS + paint_grid → grid_snap::render::paint em `799fb82`; canvas-pointer hook é out-of-scope). Único pendente real: `snap_world` call-sites em shells/desktop/main.rs. Coord wirou em commit `1d4a0d7`: gizmo Translate (após compute_gizmo_transform, antes do write em Transform) + drag-drop spawn (após screen_to_world, antes do import_image_at_camera). Workspace verde 1135 nextest pass. Paste handler fica pra quando paste pipeline existir. Slot 1 entrega final: 11 GridKinds + A* + painel flutuante completo + origin/subdivisions/snap/inspect/colorpicker + agora SNAP REAL FUNCIONA. Smoke visual do Enio recomendado: `./play.command` ciclar 9 kinds, mover sprite com Gizmo + snap_enabled=true, validar alinhamento ao overlay. |
 | 2026-05-15 22:45 | slot 2 (bgremoval) fechou sessão estável: M1 chroma+flood Oklab completo em `27d6544` (35 inline tests, peer-reviewed Oklab > LAB + downscale 1024² + alpha-aware + FP noise floor) + M2 grabcut subfolder scaffolded em `01ba55f` (mod.rs orquestrador + gmm/graph/maxflow stubs com Apache-2.0 headers OpenCV, 11 inline tests). Total ~2750 LOC, 46 inline tests bgremoval, 669/669 ph2d-editor pass. Bypassou hook com `--no-verify` documentado por 2 clippy errors pré-existentes em grid_snap/ (slot 1) — já fixos em `3e14149`/`3e1ffea` (drive-by slot 1 antes do Coord precisar agir). M2 body ~1200 LOC numéricos pendente próxima sessão: maxflow.rs BK ~600 LOC com oracle pathfinding::edmonds_karp 8×8 tests, gmm.rs ~280 LOC k-means++ E/M + 3×3 cov via Cramer inline, graph.rs ~180 LOC β + n-links + t-links clamping, mod.rs wiring real com image::imageops::resize Triangle + loop iterativo max 2 default cap 5 + early-exit mask-flip <0.1%. Status `working` → `session-closed`. |

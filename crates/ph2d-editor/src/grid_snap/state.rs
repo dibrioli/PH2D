@@ -393,76 +393,94 @@ impl GridSnapState {
         }
         let target = self.snap_target;
         let origin = self.active_origin();
-        // Pre-scale by N for sub-grid snap: a 2× subdivision treats
-        // each cell as if it were 1/N × 1/N during the snap math.
-        // Post-scale undoes it, landing on the fine-grained target.
-        // The sprite half-size scales with world so Corner mode still
-        // aligns the right sprite corner under sub-grid snap.
-        let n = self.snap_subdivisions.max(1) as f32;
-        let local = [(world[0] - origin[0]) * n, (world[1] - origin[1]) * n];
-        let local_half = [sprite_half_size[0] * n, sprite_half_size[1] * n];
+        let subdivisions = self.snap_subdivisions.max(1);
+        let nf = subdivisions as f32;
+        let local = [world[0] - origin[0], world[1] - origin[1]];
         let snapped_local = match self.kind {
-            GridKind::Square => gsw(
-                &self.make_square(),
-                local,
-                local_half,
-                target,
-                &mut self.scratch,
-            ),
-            GridKind::Hex => gsw(
-                &self.make_hex(),
-                local,
-                local_half,
-                target,
-                &mut self.scratch,
-            ),
-            GridKind::Iso => gsw(
-                &self.make_iso(),
-                local,
-                local_half,
-                target,
-                &mut self.scratch,
-            ),
-            GridKind::StaggeredSquare => gsw(
-                &self.make_staggered_square(),
-                local,
-                local_half,
-                target,
-                &mut self.scratch,
-            ),
-            GridKind::StaggeredHex => gsw(
-                &self.make_staggered_hex(),
-                local,
-                local_half,
-                target,
-                &mut self.scratch,
-            ),
-            GridKind::Tri => gsw(
-                &self.make_tri(),
-                local,
-                local_half,
-                target,
-                &mut self.scratch,
-            ),
-            GridKind::Chunks => gsw(
-                &self.make_chunks(),
-                local,
-                local_half,
-                target,
-                &mut self.scratch,
-            ),
-            // Non-uniform grids: dedicated snappers (build the
-            // structure on each call, no caching — editor responsiveness
-            // is fine even on the largest demo cfgs).
-            GridKind::Quadtree => {
-                snap_world_quadtree(local, local_half, target, &self.quadtree_cfg)
+            // Uniform grids: pre-scale by N so each cell is treated
+            // as 1/N × 1/N during the snap math, then post-scale to
+            // land on the fine-grained target. Sprite half-size scales
+            // along so Corner mode keeps aligning the sprite corner.
+            GridKind::Square
+            | GridKind::Hex
+            | GridKind::Iso
+            | GridKind::StaggeredSquare
+            | GridKind::StaggeredHex
+            | GridKind::Tri
+            | GridKind::Chunks => {
+                let scaled = [local[0] * nf, local[1] * nf];
+                let scaled_half = [sprite_half_size[0] * nf, sprite_half_size[1] * nf];
+                let snapped = match self.kind {
+                    GridKind::Square => gsw(
+                        &self.make_square(),
+                        scaled,
+                        scaled_half,
+                        target,
+                        &mut self.scratch,
+                    ),
+                    GridKind::Hex => gsw(
+                        &self.make_hex(),
+                        scaled,
+                        scaled_half,
+                        target,
+                        &mut self.scratch,
+                    ),
+                    GridKind::Iso => gsw(
+                        &self.make_iso(),
+                        scaled,
+                        scaled_half,
+                        target,
+                        &mut self.scratch,
+                    ),
+                    GridKind::StaggeredSquare => gsw(
+                        &self.make_staggered_square(),
+                        scaled,
+                        scaled_half,
+                        target,
+                        &mut self.scratch,
+                    ),
+                    GridKind::StaggeredHex => gsw(
+                        &self.make_staggered_hex(),
+                        scaled,
+                        scaled_half,
+                        target,
+                        &mut self.scratch,
+                    ),
+                    GridKind::Tri => gsw(
+                        &self.make_tri(),
+                        scaled,
+                        scaled_half,
+                        target,
+                        &mut self.scratch,
+                    ),
+                    GridKind::Chunks => gsw(
+                        &self.make_chunks(),
+                        scaled,
+                        scaled_half,
+                        target,
+                        &mut self.scratch,
+                    ),
+                    _ => unreachable!(),
+                };
+                [snapped[0] / nf, snapped[1] / nf]
             }
-            GridKind::Voronoi => snap_world_voronoi(local, local_half, target, &self.voronoi_cfg),
+            // Non-uniform grids: dedicated snappers (build the
+            // structure on each call, no caching). Subdivisions are
+            // honored by subdividing the active leaf into N×N sub-cells
+            // (Quadtree) or treated as 1 (Voronoi cells are arbitrary
+            // polygons; subdividing them isn't well-defined yet).
+            GridKind::Quadtree => snap_world_quadtree(
+                local,
+                sprite_half_size,
+                target,
+                &self.quadtree_cfg,
+                subdivisions,
+            ),
+            GridKind::Voronoi => {
+                snap_world_voronoi(local, sprite_half_size, target, &self.voronoi_cfg)
+            }
         };
-        [
-            snapped_local[0] / n + origin[0],
-            snapped_local[1] / n + origin[1],
-        ]
+        [snapped_local[0] + origin[0], snapped_local[1] + origin[1]]
     }
 }
 
@@ -568,20 +586,66 @@ fn quadtree_active_leaf(world: Vec2, cfg: &QuadtreeCfg) -> (Vec2, [Vec2; 4]) {
     (center, corners)
 }
 
-fn snap_world_quadtree(world: Vec2, half: Vec2, target: SnapTarget, cfg: &QuadtreeCfg) -> Vec2 {
-    let (center, corners) = quadtree_active_leaf(world, cfg);
+fn snap_world_quadtree(
+    world: Vec2,
+    half: Vec2,
+    target: SnapTarget,
+    cfg: &QuadtreeCfg,
+    subdivisions: u32,
+) -> Vec2 {
+    let (leaf_center, leaf_corners) = quadtree_active_leaf(world, cfg);
+    let n = subdivisions.max(1);
+    if n == 1 {
+        return match target {
+            SnapTarget::Center => leaf_center,
+            SnapTarget::Intersection => nearest_to(world, &leaf_corners),
+            SnapTarget::Corner => corner_snap_against_vertices(world, half, &leaf_corners),
+            SnapTarget::CenterAndIntersection => {
+                let v = nearest_to(world, &leaf_corners);
+                nearest_to(world, &[leaf_center, v])
+            }
+            SnapTarget::CenterIntersectionAndCorners => {
+                let v = nearest_to(world, &leaf_corners);
+                let k = corner_snap_against_vertices(world, half, &leaf_corners);
+                nearest_to(world, &[leaf_center, v, k])
+            }
+        };
+    }
+    // Subdivide the active leaf into N×N uniform sub-cells. The leaf
+    // corners are emitted in CCW order from `quadtree_active_leaf`:
+    // [min, (max.x, min.y), max, (min.x, max.y)].
+    let leaf_min = leaf_corners[0];
+    let leaf_max = leaf_corners[2];
+    let dx = (leaf_max[0] - leaf_min[0]) / n as f32;
+    let dy = (leaf_max[1] - leaf_min[1]) / n as f32;
+    let mut centers: Vec<Vec2> = Vec::with_capacity((n * n) as usize);
+    let mut vertices: Vec<Vec2> = Vec::with_capacity(((n + 1) * (n + 1)) as usize);
+    for j in 0..n {
+        for i in 0..n {
+            centers.push([
+                leaf_min[0] + (i as f32 + 0.5) * dx,
+                leaf_min[1] + (j as f32 + 0.5) * dy,
+            ]);
+        }
+    }
+    for j in 0..=n {
+        for i in 0..=n {
+            vertices.push([leaf_min[0] + i as f32 * dx, leaf_min[1] + j as f32 * dy]);
+        }
+    }
+    let active_center = nearest_to(world, &centers);
     match target {
-        SnapTarget::Center => center,
-        SnapTarget::Intersection => nearest_to(world, &corners),
-        SnapTarget::Corner => corner_snap_against_vertices(world, half, &corners),
+        SnapTarget::Center => active_center,
+        SnapTarget::Intersection => nearest_to(world, &vertices),
+        SnapTarget::Corner => corner_snap_against_vertices(world, half, &vertices),
         SnapTarget::CenterAndIntersection => {
-            let v = nearest_to(world, &corners);
-            nearest_to(world, &[center, v])
+            let v = nearest_to(world, &vertices);
+            nearest_to(world, &[active_center, v])
         }
         SnapTarget::CenterIntersectionAndCorners => {
-            let v = nearest_to(world, &corners);
-            let k = corner_snap_against_vertices(world, half, &corners);
-            nearest_to(world, &[center, v, k])
+            let v = nearest_to(world, &vertices);
+            let k = corner_snap_against_vertices(world, half, &vertices);
+            nearest_to(world, &[active_center, v, k])
         }
     }
 }
@@ -771,6 +835,86 @@ mod tests {
         assert!(
             p != [0.5, 0.5],
             "Center snap should pull to a leaf center, got passthrough"
+        );
+    }
+
+    #[test]
+    fn quadtree_snap_subdivisions_finer_than_one_lands_inside_active_leaf() {
+        // Regression for the pre-scale bug: with subdivisions=4, the
+        // old impl multiplied `world` by 4 before calling the quadtree
+        // helper, which pushed the lookup outside `cfg.bounds` and
+        // collapsed every snap to the outer-AABB fallback. With the
+        // fix, the snap stays inside the leaf containing `world` and
+        // the result lies on the N×N sub-grid of that leaf.
+        use ph2d_grid::quadtree::{AABB, Quadtree};
+        let mut s = GridSnapState {
+            snap_enabled: true,
+            kind: GridKind::Quadtree,
+            snap_target: SnapTarget::Center,
+            snap_subdivisions: 4,
+            ..Default::default()
+        };
+        let world = [0.5, 0.5];
+        let snapped = s.snap_world(world, [0.0, 0.0]);
+        // Recompute the active leaf the helper would have hit.
+        let cfg = &s.quadtree_cfg;
+        let mut qt: Quadtree<()> =
+            Quadtree::new(cfg.bounds, cfg.max_points_per_leaf, cfg.max_depth);
+        for i in 0..cfg.demo_point_count {
+            let t = i as u64;
+            let mut h = cfg
+                .demo_rng_seed
+                .wrapping_add(t)
+                .wrapping_mul(0x9E37_79B9_7F4A_7C15);
+            h ^= h >> 30;
+            h = h.wrapping_mul(0xBF58_476D_1CE4_E5B9);
+            h ^= h >> 27;
+            h = h.wrapping_mul(0x94D0_49BB_1331_11EB);
+            h ^= h >> 31;
+            let fx = ((h >> 32) as u32 as f64) / (u32::MAX as f64);
+            let fy = ((h & 0xFFFF_FFFF) as u32 as f64) / (u32::MAX as f64);
+            let x = cfg.bounds.min[0] + (fx as f32) * (cfg.bounds.max[0] - cfg.bounds.min[0]);
+            let y = cfg.bounds.min[1] + (fy as f32) * (cfg.bounds.max[1] - cfg.bounds.min[1]);
+            let _ = qt.insert([x, y], ());
+        }
+        let mut leaves: Vec<AABB> = Vec::new();
+        qt.iter_leaf_bounds(&mut leaves);
+        let leaf = leaves
+            .into_iter()
+            .find(|l| l.contains_point(world))
+            .expect("world must land in some leaf for the default cfg");
+        // Snap point must be inside (or on the boundary of) the active
+        // leaf — proves the lookup didn't collapse to the outer bounds.
+        assert!(
+            snapped[0] >= leaf.min[0] - 1e-4 && snapped[0] <= leaf.max[0] + 1e-4,
+            "snapped x={} outside leaf x∈[{}, {}]",
+            snapped[0],
+            leaf.min[0],
+            leaf.max[0]
+        );
+        assert!(
+            snapped[1] >= leaf.min[1] - 1e-4 && snapped[1] <= leaf.max[1] + 1e-4,
+            "snapped y={} outside leaf y∈[{}, {}]",
+            snapped[1],
+            leaf.min[1],
+            leaf.max[1]
+        );
+        // And the result must lie on the 4×4 sub-grid of that leaf
+        // (sub-cell centers — quarters offset by half-cell).
+        let n = 4.0_f32;
+        let dx = (leaf.max[0] - leaf.min[0]) / n;
+        let dy = (leaf.max[1] - leaf.min[1]) / n;
+        let on_sub_x = (0..4).any(|i| {
+            let cx = leaf.min[0] + (i as f32 + 0.5) * dx;
+            (snapped[0] - cx).abs() < 1e-3
+        });
+        let on_sub_y = (0..4).any(|j| {
+            let cy = leaf.min[1] + (j as f32 + 0.5) * dy;
+            (snapped[1] - cy).abs() < 1e-3
+        });
+        assert!(
+            on_sub_x && on_sub_y,
+            "snapped {snapped:?} not on the 4×4 sub-grid of leaf {leaf:?}"
         );
     }
 

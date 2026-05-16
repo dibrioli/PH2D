@@ -1,3 +1,8 @@
+// ph2d-loc-cap: 691 LOC, pending Wave 2.5 PR 11.8b — once the Action
+// Bus lands in PR 11.8, the per-intent drains here move into the
+// dispatcher and this file collapses to a thin re-export shim or
+// disappears entirely. HR-18 cap (600) does not gate it until then.
+
 //! Inspector / hierarchy / image-action intent drains.
 //!
 //! PR 9a of `docs/Migracao/2026-05-convention-by-discovery.md`:

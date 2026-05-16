@@ -1,4 +1,9 @@
 #![forbid(unsafe_code)]
+// ph2d-loc-cap: 2416 LOC, pending Wave 2.5 PR 11.8 (Action Bus + drain
+// residuals decomposes the per-frame pending_X handlers into the
+// editor dispatcher). HR-18 cap (600) does not gate this file until
+// then.
+
 //! Desktop shell — winit 0.30 + wgpu + ECS + sprite render + M6+M7+M12.
 //!
 //! Run with: `cargo run -p ph2d-host-desktop`

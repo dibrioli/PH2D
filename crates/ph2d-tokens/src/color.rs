@@ -9,9 +9,12 @@
 //! - Easy theme variants (keep structure, change `H`).
 //! - WCAG contrast still computed in linear sRGB space (per spec).
 //!
-//! Source-of-truth lives in `docs/design/tokens.json`. This module mirrors
-//! those values as Rust constants/expressions — changes there must be
-//! reflected here (or via future codegen).
+//! **Source-of-truth: `docs/design/tokens.json`** (Wave 2 PR 11.1.0 sync,
+//! 2026-05-16). Round 9 color study values were lifted from this file
+//! into tokens.json as authoritative. The literals in `resolve_forge` /
+//! `resolve_workshop` / `resolve_sunstone` / `resolve_blueprint` below
+//! are now a manual mirror — Wave 2 PR 11.1 will replace them with
+//! build.rs codegen from tokens.json so divergence becomes impossible.
 
 use crate::theme::Theme;
 

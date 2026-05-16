@@ -122,6 +122,9 @@ pub const HIERARCHY_SCROLLBAR_ID: NodeId = NodeId(821);
 /// behavior with an independent thumb id so dispatch can route
 /// drag-scroll events without aliasing the Inspector's scroll state.
 pub const GALLERY_SCROLLBAR_ID: NodeId = NodeId(822);
+/// Grid Settings floating panel scrollbar — same shape as Inspector /
+/// Gallery, independent thumb id keeps dispatch from aliasing.
+pub const GRID_SETTINGS_SCROLLBAR_ID: NodeId = NodeId(823);
 
 #[cfg(test)]
 mod tests {

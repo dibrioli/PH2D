@@ -85,6 +85,12 @@ pub fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandle,
         },
     );
+    // Scrollbar thumb — must be in the store as `Plain` so dispatch's
+    // `is_focusable` lets the Down handler seed the scrollbar drag.
+    store.register(
+        crate::widget::GRID_SETTINGS_SCROLLBAR_ID,
+        InteractiveState::Plain,
+    );
     // All selectors are segmented Button groups (style parity with
     // Inspector's Strategy switcher per Enio's 2026-05-15 redesign):
     // each option has its own NodeId registered as a Button; the
@@ -489,6 +495,19 @@ pub fn paint(
     let content_h = (y + scroll) - body_top;
     LAST_CONTENT_H.with(|c| c.set(content_h));
     LAST_VISIBLE_H.with(|c| c.set(body_h));
+
+    // Vertical scrollbar at the right edge of the body region —
+    // mirrors the Inspector / Widget Gallery setup. Skips paint +
+    // hit registration when the content fits the visible area.
+    if crate::widget::scrollbar_is_needed(content_h, body_h) {
+        let track = crate::widget::scrollbar_track_rect(body_rect);
+        let thumb = crate::widget::scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        let is_active = matches!(store.scrollbar_drag(), Some(d) if d.panel == ids::GS_PANEL);
+        crate::widget::paint_scrollbar(
+            body_rect, scroll, content_h, body_h, is_active, scene, theme,
+        );
+        hit_index.register(crate::widget::GRID_SETTINGS_SCROLLBAR_ID, thumb);
+    }
 
     paint_panel_corner_dot(rect, scene, theme);
     hit_index.register(ids::GS_RESIZE_HANDLE, panel_resize_handle_rect(rect));
@@ -2227,6 +2246,70 @@ mod tests {
     fn flip_toggle(store: &mut WidgetStore, id: crate::NodeId) {
         if let Some(InteractiveState::Toggle { on, .. }) = store.get_mut(id) {
             *on = !*on;
+        }
+    }
+
+    #[test]
+    fn paint_hex_segmented_buttons_register_distinct_rects() {
+        // Regression for "click Flat does nothing / Offset stuck on
+        // OddR" reported 2026-05-15: each of the 6 hex segmented
+        // buttons (Pointy, Flat, OddR, EvenR, OddQ, EvenQ) must have
+        // its own non-overlapping rect in hit_index after a paint.
+        use crate::interaction::HitIndex;
+        let mut text_system = TextSystem::default();
+        let mut scene = VectorScene::default();
+        let mut hit_index = HitIndex::default();
+        let store = populated_store();
+        let state = GridSnapState {
+            kind: GridKind::Hex,
+            panel_visible: true,
+            ..Default::default()
+        };
+        let panel_rect = Rect::new(100.0, 50.0, 304.0, 800.0);
+        paint(
+            panel_rect,
+            &mut scene,
+            &mut text_system,
+            Theme::default(),
+            &mut hit_index,
+            &store,
+            &state,
+        );
+
+        let ids_under_test = [
+            ("Pointy", ids::GS_CFG_HEX_POINTY),
+            ("Flat", ids::GS_CFG_HEX_FLAT),
+            ("OddR", ids::GS_CFG_HEX_OFFSET_ODDR),
+            ("EvenR", ids::GS_CFG_HEX_OFFSET_EVENR),
+            ("OddQ", ids::GS_CFG_HEX_OFFSET_ODDQ),
+            ("EvenQ", ids::GS_CFG_HEX_OFFSET_EVENQ),
+        ];
+        let mut rects: Vec<(&str, crate::NodeId, Rect)> = Vec::new();
+        for (label, id) in ids_under_test {
+            let r = hit_index
+                .rect_for(id)
+                .unwrap_or_else(|| panic!("{label} ({id:?}) not registered in hit_index"));
+            rects.push((label, id, r));
+        }
+        // No two buttons may share the same rect, and clicking the
+        // center of each rect must hit the matching id.
+        for i in 0..rects.len() {
+            for j in (i + 1)..rects.len() {
+                assert_ne!(
+                    rects[i].2, rects[j].2,
+                    "{} and {} share rect {:?}",
+                    rects[i].0, rects[j].0, rects[i].2
+                );
+            }
+            let (label, id, r) = rects[i];
+            let cx = r.x + r.w * 0.5;
+            let cy = r.y + r.h * 0.5;
+            let hit = hit_index.hit(cx, cy);
+            assert_eq!(
+                hit,
+                Some(id),
+                "click on {label} center ({cx}, {cy}) hit {hit:?}, expected {id:?}"
+            );
         }
     }
 

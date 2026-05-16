@@ -1,6 +1,27 @@
 # Wave 2.5 — Deferred file splits + Action Bus
 
-**Status:** Planejado, aguardando sessão dedicada.
+**Status:** Parcialmente entregue 2026-05-16. PR 11.7a + 11.11 +
+11.8 foundation mergeadas em origin/main; PR 11.7d / 11.8b/c/d /
+11.10 deferidas para Wave 3 com sessão dedicada (vide
+[`2026-05-wave-3-deferred-state-decomp-and-golden-images.md`](2026-05-wave-3-deferred-state-decomp-and-golden-images.md)).
+
+## Entregues (2026-05-16)
+
+- **PR 11.7a** (`3f42972`) — `grid_snap/panel.rs` 2869 LOC → 7
+  sibling files (`mod.rs`, `orchestrator.rs`, `populate.rs`,
+  `paint_helpers.rs`, `paint_kinds.rs`, `paint_rows.rs`,
+  `events.rs`). CI 10/10 verde.
+- **PR 11.11** (`863a2ca`) — `lib.rs` widget/tools/image_edit
+  re-exports removidos (eliminou ~84 zona-de-merge re-exports).
+  Consumers usam paths longos (`ph2d_editor::widget::Button` etc.).
+  ~12 sites no shell atualizados. CI 10/10 verde.
+- **PR 11.8 foundation** (`8cbfe4e`) — `action_bus.rs` lança o
+  EditorAction enum + ActionBus queue. Infrastructure only; 7
+  unit tests pinning FIFO order + drain semantics. Consumers
+  (pending_X migrations) deferidos para Wave 3 PR 11.8b/c/d.
+  CI 10/10 verde.
+
+## Deferidas para Wave 3
 **Origem:** PRs deferidos do plano Wave 2 (vide
 [2026-05-wave-2-eliminating-all-collisions.md](2026-05-wave-2-eliminating-all-collisions.md))
 por demanda de tempo/contexto inviável em uma única sessão.

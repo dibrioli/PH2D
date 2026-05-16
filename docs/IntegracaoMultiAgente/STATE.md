@@ -6,7 +6,7 @@ Coordenador escreve; Agentes Periféricos só leem.
 ---
 
 **Atualizado por:** Coordenador (única sessão autorizada a escrever em STATE.md)
-**Última atualização:** 2026-05-16 — Wave 2 MERGEADA em origin/main, sha bom = `6336e89`, CI 10/10 jobs verde
+**Última atualização:** 2026-05-16 — Wave 2 + parte de Wave 2.5 MERGEADAS, sha bom = `8cbfe4e`, CI 10/10 verde em todos os PRs
 
 `STATE.md` é a **fonte de verdade** sobre a operação multi-agente.
 Coordenador escreve; Agentes Periféricos só leem.
@@ -88,6 +88,8 @@ fix #3 e #4 voltam a você. Ordem sugerida:
 - Adicionar teste de uniformidade (buckets 4×4 em bounds, cada bucket ≥ N/32).
 
 ## Sha conhecido bom (rollback target)
+
+main @ `8cbfe4e` — 2026-05-16 — **Wave 2 + parte de Wave 2.5 MERGEADAS**. 17 commits desde `a5343f9` baseline; CI 10/10 verde em todos os PRs incrementais. Wave 2.5 entregou parcialmente: PR 11.7a (grid_snap panel.rs split — 2869 LOC → 7 sibling files), PR 11.11 (lib.rs trim — 70+ widget re-exports removidos, consumers usam paths longos), PR 11.8 foundation (`action_bus.rs` — EditorAction enum + ActionBus queue + 7 tests; consumers ainda não migrados — segue em Wave 3). Deferidos para Wave 3 com sessão dedicada: PR 11.7d (HeroScreen state decomp — 138 sites, baixo valor já que hero.rs não é shell), PR 11.8b/c/d (migrar 20 pending_X em consumers, removendo HR-18 exceções), PR 11.10 (golden images Vello headless).
 
 main @ `6336e89` — 2026-05-16 — **Wave 2 MERGEADA em origin/main**. 12 commits pushed (11 Wave 2 PRs + 1 windows path-separator fix em PR 11.6). CI matrix verde 10/10 jobs (MSRV + lint + 3 OS workspace tests + 3 OS replay hash + C9 cross-platform comparison). PRCI loop ciclo 1/3 — primeira run falhou em windows-only path-sep bug em `no_literal_color::path_is_allowlisted` (string-match com `/` e `\` falhava em path híbrido `src/widget\blender_color_picker\`); fix `6336e89` migrou para `Path::components()` (separator-agnostic) → CI ciclo 2 verde 10/10.
 

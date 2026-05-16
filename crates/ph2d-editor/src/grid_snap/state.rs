@@ -260,6 +260,22 @@ pub struct GridSnapState {
     pub panel_rect: Option<Rect>,
 
     pub show_overlay: bool,
+    /// When `true` the grid overlay paints ON TOP of sprites (the
+    /// canonical Photoshop / Figma behavior — grid is a reference
+    /// affordance for the artist). When `false`, the grid renders
+    /// BEHIND sprites so the artwork visually occludes grid lines
+    /// where it overlaps. Driven by the "Layer" segmented toggle in
+    /// the Grid Settings panel.
+    ///
+    /// **Visual implementation note (2026-05-15)**: the renderer's
+    /// compositor currently runs a single Vello-over-game blend
+    /// (`game_rt_ldr` + `vello_intermediate` → swap chain), so the
+    /// chrome layer always sits visually on top of the sprite layer.
+    /// True "behind" rendering needs a second Vello intermediate
+    /// painted under the game pass + a 3-layer compositor shader. The
+    /// state field + UI ship now; the renderer wiring lands in a
+    /// follow-up commit so the toggle becomes visually meaningful.
+    pub grid_in_front: bool,
     pub color_rgba: [u8; 4],
     pub opacity: f32,
 
@@ -295,6 +311,10 @@ impl Default for GridSnapState {
             panel_rect: None,
 
             show_overlay: true,
+            // Default to in-front so users see the grid (the
+            // canonical artist tool affordance) without needing to
+            // discover the toggle.
+            grid_in_front: true,
             // Default to a low-saturation cyan that reads on both
             // dark and light themes.
             color_rgba: [0x4F, 0xC3, 0xE5, 0xC0],

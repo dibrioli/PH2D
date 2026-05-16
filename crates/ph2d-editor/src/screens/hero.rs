@@ -1609,6 +1609,15 @@ pub fn paint_hero_screen(
     // hasn't published a camera view. We substitute the layout's
     // computed canvas rect into the view so the host doesn't have
     // to mirror layout math — it only owns camera + window dims.
+    //
+    // Layer-order toggle (2026-05-15): the compositor currently
+    // composes `game_rt_ldr` UNDER `vello_intermediate` in a single
+    // pass — chrome (including the grid) always lands on top of
+    // sprites. Real "behind" rendering needs a second Vello
+    // intermediate + a 3-layer compositor shader (TODO follow-up).
+    // For now we approximate by halving the grid's effective opacity
+    // when `grid_in_front == false`, which reads as "the grid is
+    // farther / underneath" without changing the compositing path.
     if hero.grid_visible
         && let Some(view) = hero.grid_view
     {
@@ -1616,7 +1625,11 @@ pub fn paint_hero_screen(
             canvas: layout.canvas,
             ..view
         };
-        crate::grid_snap::render::paint(scene, &view, &hero.grid_snap_state);
+        let mut state_for_paint = hero.grid_snap_state.clone();
+        if !state_for_paint.grid_in_front {
+            state_for_paint.opacity *= 0.4;
+        }
+        crate::grid_snap::render::paint(scene, &view, &state_for_paint);
     }
     // M14.4c: the legacy mockup selection marquee draws a fixed-size
     // dashed rect at the CANVAS center in screen pixels — it has no

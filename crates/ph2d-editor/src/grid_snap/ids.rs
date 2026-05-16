@@ -112,6 +112,9 @@ pub const GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS: NodeId = NodeId(10
 pub const GS_SHOW_OVERLAY: NodeId = NodeId(1070);
 pub const GS_COLOR_PICKER: NodeId = NodeId(1071);
 pub const GS_OPACITY_SLIDER: NodeId = NodeId(1072);
+/// Layer-order segmented buttons — In front of vs Behind sprites.
+pub const GS_LAYER_IN_FRONT: NodeId = NodeId(1073);
+pub const GS_LAYER_BEHIND: NodeId = NodeId(1074);
 
 // ─── Inspect subsection ────────────────────────────────────────
 pub const GS_INSPECT_HEADER: NodeId = NodeId(1080);

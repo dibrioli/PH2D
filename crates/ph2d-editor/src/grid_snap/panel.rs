@@ -136,6 +136,9 @@ pub fn populate(store: &mut WidgetStore) {
         ids::GS_CFG_STAGGER_PARITY_ODD,
         ids::GS_CFG_STAGGER_PARITY_EVEN,
         ids::GS_CFG_VORONOI_RESEED,
+        // Layer-order group (In front / Behind).
+        ids::GS_LAYER_IN_FRONT,
+        ids::GS_LAYER_BEHIND,
         // Color swatch — clickable; opens BlenderColorPicker.
         ids::GS_COLOR_PICKER,
     ] {
@@ -475,7 +478,26 @@ pub fn paint(
         store,
         state,
     );
-    y += ROW_H + ROW_GAP * 2.0;
+    y += ROW_H + ROW_GAP;
+    // Layer-order segmented row (In front / Behind).
+    let layer_idx = if state.grid_in_front { 0 } else { 1 };
+    y = paint_labeled_segmented_row(
+        "Layer",
+        &[
+            ("In front", ids::GS_LAYER_IN_FRONT),
+            ("Behind", ids::GS_LAYER_BEHIND),
+        ],
+        layer_idx,
+        inner_x,
+        inner_w,
+        y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
+    y += ROW_GAP;
 
     // ─── Inspect section ────────────────────────────────────────
     let inspect_h = super::inspect::height();
@@ -2209,6 +2231,15 @@ fn apply_click(state: &mut GridSnapState, id: crate::NodeId) -> bool {
         state.tri_cfg.neighborhood = TriNeighborhood::Vertex12;
         return true;
     }
+    // Layer-order segmented group (In front / Behind sprites).
+    if id == ids::GS_LAYER_IN_FRONT {
+        state.grid_in_front = true;
+        return true;
+    }
+    if id == ids::GS_LAYER_BEHIND {
+        state.grid_in_front = false;
+        return true;
+    }
     // Color swatch click — open the BlenderColorPicker bound to
     // GS_COLOR_PICKER. Same pattern as Inspector samples.
     if id == ids::GS_COLOR_PICKER {
@@ -2498,6 +2529,17 @@ mod tests {
             &store,
         );
         assert_eq!(s.staggered_square_cfg.parity, StaggerParity::OddRows);
+    }
+
+    #[test]
+    fn apply_event_layer_options_flip_grid_in_front() {
+        let mut s = GridSnapState::default();
+        let store = populated_store();
+        assert!(s.grid_in_front, "default is In front");
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_LAYER_BEHIND), &store);
+        assert!(!s.grid_in_front);
+        apply_event(&mut s, WidgetEvent::Click(ids::GS_LAYER_IN_FRONT), &store);
+        assert!(s.grid_in_front);
     }
 
     #[test]

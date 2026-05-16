@@ -2078,7 +2078,31 @@ impl App {
             // accumulating 0.5 px drift across Trim↔Square cycles);
             // C1 (release OLD individual texture id after a successful
             // re-acquire — was leaking GPU memory on repeated edits).
-            if let Some(entity_bits) = hero.pending_make_square.take()
+            // Wave 2.5 PR 11.8b2: make_square intent now lives on the
+            // bus (EditorAction::MakeSquare). Same filter-and-replace
+            // pattern as Trim above; the leftover queue is pushed back
+            // so future variants survive this drain.
+            let make_square_entity = {
+                let mut found: Option<u64> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::MakeSquare { entity_bits }
+                            if found.is_none() =>
+                        {
+                            found = Some(entity_bits);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(entity_bits) = make_square_entity
                 && hero_intents::drain_make_square(
                     entity_bits,
                     hero.project.pixels_per_meter,

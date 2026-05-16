@@ -368,10 +368,9 @@ pub struct HeroScreen {
     /// the padded square, reprojects the pivot to preserve world
     /// position (formula: `(old_dim * old_pivot + offset) / new_size`),
     /// and pushes an "Make square" entry to the undo history. Source
-    /// remains snapshot here (not read via `gizmo_selection` at drain
-    /// time) so a concurrent selection change doesn't retarget the
-    /// action — same contract as `pending_trim_transparency`.
-    pub pending_make_square: Option<u64>,
+    // Wave 2.5 PR 11.8b2: migrated to bus.push(EditorAction::MakeSquare).
+    // Source semantics unchanged — entity_bits snapshotted at push time
+    // (apply_event), shell consumes the snapshot at drain time.
     /// Pending request to apply Background Removal to the selected
     /// sprite. Raised by the active `BgRemovalTool` when the user
     /// clicks the Apply Toggle in its panel — the host's per-frame
@@ -662,7 +661,7 @@ impl HeroScreen {
             pending_rename_commit: None,
             pending_reimport: None,
             // pending_trim_transparency removed (Wave 2.5 PR 11.8b1 — bus migration)
-            pending_make_square: None,
+            // pending_make_square removed (Wave 2.5 PR 11.8b2 — bus migration)
             pending_bgremoval: None,
             pending_activate_bgremoval: false,
             pending_undo_image_edit: false,
@@ -1237,15 +1236,20 @@ impl HeroScreen {
             }
             return true;
         }
-        // Make Square action — mirror of Trim Transparency. Click raises
-        // `pending_make_square` with the current `gizmo_selection`; host
-        // drains, runs `make_square`, replaces sprite pixels, reprojects
-        // pivot, pushes an "Make square" undo entry. Empty selection
-        // still consumes the click (silent no-op surface).
+        // Make Square action — mirror of Trim Transparency. Click
+        // pushes `EditorAction::MakeSquare` onto the bus with the
+        // current `gizmo_selection`; host drains, runs
+        // `make_square`, replaces sprite pixels, reprojects pivot.
+        // Empty selection still consumes the click.
+        //
+        // Wave 2.5 PR 11.8b2: bus migration (was `pending_make_square`).
         if let WidgetEvent::Click(id) = event
             && id == ids::IMAGE_ACTION_MAKE_SQUARE
         {
-            self.pending_make_square = self.gizmo_selection;
+            if let Some(entity_bits) = self.gizmo_selection {
+                self.bus
+                    .push(crate::action_bus::EditorAction::MakeSquare { entity_bits });
+            }
             return true;
         }
         // Bg Removal action — distinct from Trim / MakeSquare because
@@ -3073,17 +3077,24 @@ mod tests {
         );
     }
 
-    /// Make Square pill mirrors the Trim pending-slot semantics.
+    /// Make Square pill mirrors the Trim bus-push semantics (Wave 2.5 PR 11.8b2).
     #[test]
     fn click_on_make_square_pill_raises_pending_with_selection() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         hero.gizmo_selection = None;
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
-        assert_eq!(hero.pending_make_square, None);
+        assert!(hero.bus.is_empty());
 
         hero.gizmo_selection = Some(0xCAFE_BABE);
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
-        assert_eq!(hero.pending_make_square, Some(0xCAFE_BABE));
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(
+            drained,
+            vec![EditorAction::MakeSquare {
+                entity_bits: 0xCAFE_BABE
+            }]
+        );
     }
 
     /// Bg Removal pill raises `pending_activate_bgremoval` (not

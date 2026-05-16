@@ -17,6 +17,13 @@ ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# Tool registry — convention-by-discovery infrastructure (PR 8 of
+# the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
+# `init.rs` calls `register_all()` at boot and stashes the built
+# `Registry` on `AppGfx`. PR 9 will replace the `pending_X` drains
+# with a registry-driven dispatcher reading from this instance.
+ph2d-tool-registry = { path = "../../crates/ph2d-tool-registry" }
+ph2d-tool-registry-init = { path = "../../crates/ph2d-tool-registry-init" }
 # Integration demo deps:
 # - ph2d-asset (M6): PNG load, blake3 ids, hot-reload watcher
 # - ph2d-script (M7): Luau ScriptHost, ph2d.set/get/input bindings

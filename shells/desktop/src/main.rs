@@ -34,7 +34,10 @@
 mod cursor_pos;
 mod forwarding;
 mod hero_bridge;
+mod hero_intents;
 mod image_import;
+mod init;
+mod input_dispatch;
 mod input_log;
 mod integration;
 mod keymap;
@@ -42,14 +45,11 @@ mod theme;
 mod winit_host;
 
 use cursor_pos::live_cursor_in_window;
-use forwarding::{
-    cursor_over_hero_panel, forward_key_to_hero, forward_text_to_hero, forward_to_hero,
-    forward_wheel_to_hero,
-};
+// forwarding::* moved to input_dispatch.rs (PR 9b).
 use image_import::import_image_at_camera;
 use input_log::log_input_event;
-use keymap::winit_to_editor_keycode;
-use theme::parse_theme_env;
+// keymap::winit_to_editor_keycode moved to input_dispatch.rs (PR 9b).
+// theme::parse_theme_env moved to init.rs (PR 9c).
 use winit_host::{LoggingHandler, WinitHost};
 
 use bumpalo::Bump;
@@ -57,7 +57,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommand, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
-    apply_editor_commands, build_hierarchy_snapshot, register_ecs_components, stable_type_id,
+    apply_editor_commands, build_hierarchy_snapshot,
 };
 use ph2d_ecs::{
     Component, Name, PresentWorld, SimComponent, SimRef, SimWorld, Transform,
@@ -66,18 +66,14 @@ use ph2d_ecs::{
 use ph2d_editor::paint::{Paint, PaintCtx};
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{
-    BrushTool, HeroScreen, Layout as EditorLayout, MoveTool, PanelControl, PanelEvent,
-    RequestedSpriteStrategy, Toast, ToastQueue, ToolRegistry, WidgetEvent, ZenMode,
-    paint_hero_screen,
+    HeroScreen, Layout as EditorLayout, PanelControl, PanelEvent, RequestedSpriteStrategy, Toast,
+    ToastQueue, ToolRegistry, WidgetEvent, ZenMode, paint_hero_screen,
 };
 use std::collections::BTreeMap;
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
 use ph2d_editor::NodeId;
 use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
-use ph2d_host::{
-    CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, Modifiers, PlatformHost, PointerEvent,
-    PointerKind, PointerSource, WindowSize,
-};
+use ph2d_host::{HostHandler, Lifecycle, Modifiers, PlatformHost, WindowSize};
 use ph2d_input::InputState;
 use ph2d_render::{
     Camera2d, Compositor, GameRt, RenderInstance, Sprite, SpriteRenderer, TextureAtlas, Tonemap,
@@ -92,9 +88,9 @@ use std::time::Instant;
 
 mod gilrs_adapter;
 use winit::application::ApplicationHandler;
-use winit::event::{ElementState, KeyEvent as WinitKeyEvent, WindowEvent};
+use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
+use winit::keyboard::{KeyCode, ModifiersState};
 use winit::window::{Window, WindowId};
 
 const SPRITE_COUNT: u32 = 1000;
@@ -252,6 +248,18 @@ pub(crate) struct AppGfx {
     /// PRE-edit state was on one). Future M14.x replaces this with a
     /// proper command stack rooted in `EditorCommandQueue`.
     pub(crate) image_edit_undo: Option<ImageEditSnapshot>,
+
+    /// Tool registry — convention-by-discovery infrastructure (PR 8
+    /// of `docs/Migracao/2026-05-convention-by-discovery.md`).
+    /// Populated at boot by `init::build_initial_state` via
+    /// `ph2d_tool_registry_init::register_all`; queryable for
+    /// chrome derivation (PR 8 follow-ups) and the generic action
+    /// dispatcher (PR 9). Currently held but not yet routed —
+    /// shadow-mode coexisting with the legacy `pending_X` drains.
+    /// `dead_code` allow lifts on PR 9 when the dispatcher routes
+    /// through this field.
+    #[allow(dead_code)]
+    pub(crate) registry: ph2d_tool_registry::Registry,
 }
 
 /// Pre-edit snapshot of a sprite that an image-edit action mutated.
@@ -782,7 +790,7 @@ impl App {
     /// Compose the M6 atlas from real PNG files. Generates fixtures on first
     /// launch; subsequent launches reuse the on-disk files. Any failure
     /// bubbles a String — caller falls back to the dummy atlas.
-    fn try_load_real_atlas(
+    pub(crate) fn try_load_real_atlas(
         gpu: &GpuContext,
         asset_db: &AssetDb,
         dir: &std::path::Path,
@@ -828,7 +836,7 @@ impl App {
     /// Spawn `SPRITE_COUNT` sprites on a Vogel (golden-angle) spiral
     /// with pseudo-random velocities derived from index — fully
     /// deterministic, no PRNG dep.
-    fn populate_sim(sim: &mut SimWorld) {
+    pub(crate) fn populate_sim(sim: &mut SimWorld) {
         for i in 0..SPRITE_COUNT {
             let f = i as f32;
             let angle = f * 2.399_963_2; // golden angle (rad)
@@ -850,7 +858,7 @@ impl App {
     /// editor mode. `Name` components let the hierarchy panel display
     /// readable rows ("sprite_001" through "sprite_008") instead of a
     /// wall of `Entity_…` hex strings.
-    fn populate_sim_live(sim: &mut SimWorld) {
+    pub(crate) fn populate_sim_live(sim: &mut SimWorld) {
         // 2 roots × 3 children = 8 entities arranged as a depth-2
         // tree. Lets the user exercise the M14.6C hierarchy
         // expand/collapse chevron (which only appears on parents)
@@ -951,6 +959,7 @@ impl App {
             name_type_id,
             sprite_type_id,
             image_edit_undo,
+            registry: _,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -1516,68 +1525,16 @@ impl App {
             //   - `Selected`: pan to gizmo_selection or (0,0).
             //   - `Camera`: pan to (0,0) until camera-object exists.
             //   - `All`: pan + zoom to fit all sprites.
-            if let Some(kind) = hero.pending_view_focus.take() {
-                let label = match kind {
-                    ph2d_editor::ViewFocusKind::Selected => {
-                        let target = hero.gizmo_selection.and_then(|bits| {
-                            ph2d_render::selection_bbox_world(present.world_mut(), bits)
-                        });
-                        if let Some(bbox) = target {
-                            let ([cx, cy], _) = bbox.center_half();
-                            camera.center = [cx, cy];
-                            "View → Selected"
-                        } else {
-                            camera.center = [0.0, 0.0];
-                            "View → Selected (no selection → origin)"
-                        }
-                    }
-                    ph2d_editor::ViewFocusKind::Camera => {
-                        // No camera-object yet — frame the origin.
-                        camera.center = [0.0, 0.0];
-                        "View → Camera (origin)"
-                    }
-                    ph2d_editor::ViewFocusKind::All => {
-                        // Walk PresentWorld for every sprite's bbox
-                        // and fit camera around the union. 10% pad
-                        // so handles + the bbox stroke have room.
-                        let mut q = present
-                            .world_mut()
-                            .query::<(&ph2d_ecs::GlobalTransform, &ph2d_render::RenderInstance)>();
-                        let mut min_x = f32::INFINITY;
-                        let mut min_y = f32::INFINITY;
-                        let mut max_x = f32::NEG_INFINITY;
-                        let mut max_y = f32::NEG_INFINITY;
-                        let mut count = 0u32;
-                        for (gt, ri) in q.iter(present.world()) {
-                            let p = gt.translation();
-                            let hw = ri.size[0] * 0.5;
-                            let hh = ri.size[1] * 0.5;
-                            min_x = min_x.min(p.x - hw);
-                            min_y = min_y.min(p.y - hh);
-                            max_x = max_x.max(p.x + hw);
-                            max_y = max_y.max(p.y + hh);
-                            count += 1;
-                        }
-                        if count > 0 {
-                            let cx = (min_x + max_x) * 0.5;
-                            let cy = (min_y + max_y) * 0.5;
-                            let span_x = max_x - min_x;
-                            let span_y = max_y - min_y;
-                            // Height needed = max of (span_y,
-                            // span_x/aspect) × 1.1 for padding.
-                            let aspect =
-                                (window_size.width as f32) / (window_size.height.max(1) as f32);
-                            let need_h = span_y.max(span_x / aspect.max(1e-3));
-                            camera.center = [cx, cy];
-                            camera.height_world = (need_h * 1.1).max(0.5);
-                            "View → All"
-                        } else {
-                            *camera = Camera2d::default();
-                            "View → All (empty scene → reset)"
-                        }
-                    }
-                };
-                toasts.push(Toast::info(label));
+            if let Some(kind) = hero.pending_view_focus.take()
+                && hero_intents::drain_view_focus(
+                    kind,
+                    hero.gizmo_selection,
+                    present,
+                    camera,
+                    window_size,
+                    toasts,
+                )
+            {
                 self.title_dirty = true;
             }
             // M14.6A: drain pending hierarchy visibility toggle —
@@ -1610,213 +1567,8 @@ impl App {
             // ChildOf in the desired sequence.
             if let Some(intent) = hero.pending_reparent.take()
                 && let Some(live) = hero_live.as_ref()
-                && let Some(dragged_bits) = live.bridge.entity_for(intent.dragged)
             {
-                let dragged = ph2d_ecs::Entity::from_bits(dragged_bits);
-                // M14.7 polish (14.3 fix): the dispatcher computes
-                // `new_parent` via `store.hierarchy_parent_of(target)`,
-                // which only knows about fixture-mode DnD mutations.
-                // In LIVE mode the parent comes from the ECS snapshot,
-                // so "Before(t)" arrives with `new_parent = None` even
-                // when t is a child row — drops then turned into root
-                // promotions. Fallback: when the intent has a `before`
-                // target but no resolved parent, inherit the target's
-                // actual `ChildOf` parent from SimWorld.
-                let new_parent_entity = if let Some(parent_node) = intent.new_parent
-                    && let Some(parent_bits) = live.bridge.entity_for(parent_node)
-                {
-                    Some(ph2d_ecs::Entity::from_bits(parent_bits))
-                } else if let Some(before_node) = intent.before
-                    && let Some(target_bits) = live.bridge.entity_for(before_node)
-                {
-                    let target = ph2d_ecs::Entity::from_bits(target_bits);
-                    sim.world()
-                        .get::<ph2d_ecs::ChildOf>(target)
-                        .map(|c| c.parent())
-                } else if let Some(after_node) = intent.after
-                    && let Some(target_bits) = live.bridge.entity_for(after_node)
-                {
-                    // "After t" inherits t's parent (or root when t
-                    // itself is root).
-                    let target = ph2d_ecs::Entity::from_bits(target_bits);
-                    sim.world()
-                        .get::<ph2d_ecs::ChildOf>(target)
-                        .map(|c| c.parent())
-                } else {
-                    None
-                };
-                let sim_w = sim.world_mut();
-                // Cycle guard: refuse to make dragged a child of
-                // itself or any of its descendants. Walk up
-                // new_parent's ancestors looking for `dragged`; if
-                // found, skip the mutation. Without this, a user
-                // dropping a parent inside one of its own children
-                // would corrupt the hierarchy (infinite loop in any
-                // ancestor walk).
-                let would_cycle = new_parent_entity.is_some_and(|np| {
-                    let mut current = Some(np);
-                    while let Some(c) = current {
-                        if c == dragged {
-                            return true;
-                        }
-                        current = sim_w.get::<ph2d_ecs::ChildOf>(c).map(|c| c.parent());
-                    }
-                    false
-                });
-                if !would_cycle {
-                    // Step 1: pick the new ChildOf relation. We need
-                    // this BEFORE rebuilding the child order so
-                    // step 2 sees the up-to-date Children list.
-                    if let Ok(mut entry) = sim_w.get_entity_mut(dragged) {
-                        match new_parent_entity {
-                            Some(p) => {
-                                entry.insert(ph2d_ecs::ChildOf(p));
-                            }
-                            None => {
-                                entry.remove::<ph2d_ecs::ChildOf>();
-                            }
-                        }
-                    }
-                    // M14.7 polish: root drops need an explicit
-                    // `RootOrder` so `build_hierarchy_snapshot` sorts
-                    // them at the user-chosen slot instead of falling
-                    // back to `Entity::to_bits()`. Walk the current
-                    // root list with the dragged entity inserted at
-                    // the desired position (before / after a target,
-                    // or at the end), then assign sequential indices.
-                    // Non-root drops skip this — child order is
-                    // handled by step 2's ChildOf re-insert pass.
-                    if new_parent_entity.is_none() {
-                        let mut roots: Vec<ph2d_ecs::Entity> = {
-                            let mut q = sim_w.query_filtered::<ph2d_ecs::Entity, (
-                                ph2d_ecs::With<Transform>,
-                                ph2d_ecs::Without<ph2d_ecs::ChildOf>,
-                            )>();
-                            let mut acc: Vec<(ph2d_ecs::Entity, u32)> = Vec::new();
-                            for entity in q.iter(sim_w) {
-                                if entity == dragged {
-                                    continue;
-                                }
-                                let order = sim_w
-                                    .get::<ph2d_ecs::RootOrder>(entity)
-                                    .map(|r| r.0)
-                                    .unwrap_or(u32::MAX);
-                                acc.push((entity, order));
-                            }
-                            acc.sort_unstable_by(|a, b| {
-                                a.1.cmp(&b.1)
-                                    .then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
-                            });
-                            acc.into_iter().map(|(e, _)| e).collect()
-                        };
-                        let before_target = intent
-                            .before
-                            .and_then(|n| live.bridge.entity_for(n))
-                            .map(ph2d_ecs::Entity::from_bits);
-                        let after_target = intent
-                            .after
-                            .and_then(|n| live.bridge.entity_for(n))
-                            .map(ph2d_ecs::Entity::from_bits);
-                        let insert_at = if let Some(b) = before_target {
-                            roots.iter().position(|e| *e == b).unwrap_or(roots.len())
-                        } else if let Some(a) = after_target {
-                            roots
-                                .iter()
-                                .position(|e| *e == a)
-                                .map(|i| i + 1)
-                                .unwrap_or(roots.len())
-                        } else {
-                            roots.len()
-                        };
-                        roots.insert(insert_at.min(roots.len()), dragged);
-                        for (idx, e) in roots.iter().enumerate() {
-                            if let Ok(mut entry) = sim_w.get_entity_mut(*e) {
-                                entry.insert(ph2d_ecs::RootOrder(idx as u32));
-                            }
-                        }
-                    }
-                    // Step 2: enforce sibling order. When dropping
-                    // "before t" (intent.before = Some(target)), the
-                    // dragged entity should sit RIGHT BEFORE target
-                    // in the parent's `Children`. We walk the parent's
-                    // current children, build the desired order by
-                    // inserting `dragged` at the slot just ahead of
-                    // `target`, then re-apply ChildOf to each child in
-                    // sequence — every fresh `insert(ChildOf)` pushes
-                    // the entity to the END of Children, so the loop
-                    // ends with the children laid out in our intended
-                    // order. Skipped when:
-                    //   - new_parent is None (root drop; root order is
-                    //     decided by `Entity::to_bits` sorting in
-                    //     `build_hierarchy_snapshot`, not by us).
-                    //   - intent.before is None ("append at end" is
-                    //     what the bare insert already did).
-                    // Pick the sibling pivot for the reorder:
-                    //   - Before(t): insert dragged just before t
-                    //   - After(t):  insert dragged just after t
-                    // Either resolves to a target NodeId in
-                    // `intent.before` / `intent.after`; from there we
-                    // map to the ECS entity and pick the insert side.
-                    let target_kind: Option<(ph2d_ecs::Entity, bool /* place_before */)> =
-                        if let Some(before_node) = intent.before
-                            && let Some(b) = live.bridge.entity_for(before_node)
-                        {
-                            Some((ph2d_ecs::Entity::from_bits(b), true))
-                        } else if let Some(after_node) = intent.after
-                            && let Some(a) = live.bridge.entity_for(after_node)
-                        {
-                            Some((ph2d_ecs::Entity::from_bits(a), false))
-                        } else {
-                            None
-                        };
-                    if let (Some(parent), Some((target, place_before))) =
-                        (new_parent_entity, target_kind)
-                    {
-                        // Snapshot current Children (excluding the
-                        // dragged entity — we'll re-insert it at the
-                        // chosen slot). `Children::iter` returns
-                        // entities in insertion order.
-                        let current: Vec<ph2d_ecs::Entity> = sim_w
-                            .get::<bevy_ecs::hierarchy::Children>(parent)
-                            .map(|c| c.iter().copied().filter(|e| *e != dragged).collect())
-                            .unwrap_or_default();
-                        // Build new desired order:
-                        //   place_before = true  → [..target) + dragged + [target..end)
-                        //   place_before = false → [..target] + dragged + [target+1..end)
-                        let mut desired: Vec<ph2d_ecs::Entity> =
-                            Vec::with_capacity(current.len() + 1);
-                        let mut inserted = false;
-                        for &c in &current {
-                            if !inserted && c == target && place_before {
-                                desired.push(dragged);
-                                inserted = true;
-                            }
-                            desired.push(c);
-                            if !inserted && c == target && !place_before {
-                                desired.push(dragged);
-                                inserted = true;
-                            }
-                        }
-                        if !inserted {
-                            // Target wasn't actually a child of parent
-                            // (concurrent mutation or stale snapshot)
-                            // → append as fallback so we don't lose
-                            // the dragged entity from the list.
-                            desired.push(dragged);
-                        }
-                        // Re-insert ChildOf for each entity in order.
-                        // Every insert moves the entity to the END of
-                        // `Children`, so iterating `desired` in
-                        // sequence rebuilds the list in that exact
-                        // order.
-                        for &child in &desired {
-                            if let Ok(mut entry) = sim_w.get_entity_mut(child) {
-                                entry.remove::<ph2d_ecs::ChildOf>();
-                                entry.insert(ph2d_ecs::ChildOf(parent));
-                            }
-                        }
-                    }
-                }
+                hero_intents::drain_reparent(intent, live, sim);
             }
             // M14.6 F: drain per-row Hierarchy context-menu actions.
             // Each is a `Some(row_id)` — bridge resolves to Entity,
@@ -2280,137 +2032,19 @@ impl App {
             // lived off-center inside the original frame. The shift
             // happens in pure-CPU pixel math (Y-flip handled inside
             // `recenter_after_crop`); HR-5-deterministic.
-            if let Some(entity_bits) = hero.pending_trim_transparency.take() {
-                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-                let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
-                // Snapshot `Sprite` (for size + source + the OLD
-                // individual texture id, if any, so we can release it
-                // after the swap — audit fix C1) and `Transform` (for
-                // translation) in one read pass so we can drop the
-                // immutable borrow before the mutable `world_mut()` later.
-                let snapshot = {
-                    let world = sim.world();
-                    world.get::<Sprite>(entity).and_then(|sprite| {
-                        let old_size_world = sprite.size;
-                        let old_source = sprite.source;
-                        let old_translation = world
-                            .get::<ph2d_ecs::Transform>(entity)
-                            .map(|t| [t.translation.x, t.translation.y])
-                            .unwrap_or([0.0, 0.0]);
-                        match sprite.source {
-                            ph2d_render::SpriteSource::Atlas { key } => {
-                                let aid = atlas_asset_map.get(&key)?;
-                                let asset = asset_db.get(aid)?;
-                                match &*asset {
-                                    ph2d_asset::Asset::ImageRgba8 {
-                                        width,
-                                        height,
-                                        pixels,
-                                    } => Some((
-                                        *width,
-                                        *height,
-                                        pixels.clone(),
-                                        old_size_world,
-                                        old_translation,
-                                        old_source,
-                                    )),
-                                    _ => None,
-                                }
-                            }
-                            ph2d_render::SpriteSource::Individual { texture_id } => {
-                                match renderer.readback_individual(texture_id) {
-                                    Ok((w, h, pixels)) => Some((
-                                        w,
-                                        h,
-                                        pixels.into(),
-                                        old_size_world,
-                                        old_translation,
-                                        old_source,
-                                    )),
-                                    Err(_) => None,
-                                }
-                            }
-                        }
-                    })
-                };
-                match snapshot {
-                    None => {
-                        toasts.push(Toast::error(ph2d_i18n::tr(
-                            "tool.trim_transparency.toast.unavailable",
-                        )));
-                        self.title_dirty = true;
-                    }
-                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
-                        let result = ph2d_editor::trim_transparency(&pixels, width, height, 0);
-                        if !result.trimmed {
-                            toasts.push(Toast::info(ph2d_i18n::tr(
-                                "tool.trim_transparency.toast.nothing",
-                            )));
-                            self.title_dirty = true;
-                        } else {
-                            match renderer.acquire_individual(
-                                result.width,
-                                result.height,
-                                &result.pixels,
-                            ) {
-                                Err(err) => {
-                                    toasts.push(Toast::error(format!("Trim failed: {err}")));
-                                    self.title_dirty = true;
-                                }
-                                Ok(texture_id) => {
-                                    let new_size = [
-                                        result.width as f32 / px_per_m,
-                                        result.height as f32 / px_per_m,
-                                    ];
-                                    // Pivot-preserving recenter (F1).
-                                    // Shifts the entity's translation so
-                                    // the cropped sprite's new center
-                                    // aligns with where the surviving
-                                    // content visually sat.
-                                    let new_translation = ph2d_editor::recenter_after_crop(
-                                        old_translation,
-                                        old_size_world,
-                                        [width, height],
-                                        ph2d_editor::PixelBounds::from_trim(result.bounds.clone()),
-                                    );
-                                    let sim_w = sim.world_mut();
-                                    if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
-                                        sprite.source =
-                                            ph2d_render::SpriteSource::Individual { texture_id };
-                                        sprite.size = new_size;
-                                    }
-                                    if let Some(mut transform) =
-                                        sim_w.get_mut::<ph2d_ecs::Transform>(entity)
-                                    {
-                                        transform.translation.x = new_translation[0];
-                                        transform.translation.y = new_translation[1];
-                                    }
-                                    // Undo snapshot capture. The PRE-edit
-                                    // texture (if Individual) is owned by
-                                    // the snapshot — refcount held; release
-                                    // happens when the snapshot is
-                                    // overwritten by the next edit OR
-                                    // consumed by an undo. Replaces C1's
-                                    // immediate-release semantics.
-                                    drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-                                    *image_edit_undo = Some(ImageEditSnapshot {
-                                        entity_bits,
-                                        pre_source: old_source,
-                                        pre_size: old_size_world,
-                                        pre_translation: old_translation,
-                                        post_individual_id: texture_id,
-                                        label: "Trim",
-                                    });
-                                    toasts.push(Toast::success(format!(
-                                        "Trimmed → {} × {} px · Cmd+Z to undo",
-                                        result.width, result.height
-                                    )));
-                                    self.title_dirty = true;
-                                }
-                            }
-                        }
-                    }
-                }
+            if let Some(entity_bits) = hero.pending_trim_transparency.take()
+                && hero_intents::drain_trim_transparency(
+                    entity_bits,
+                    hero.project.pixels_per_meter,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                    toasts,
+                    image_edit_undo,
+                )
+            {
+                self.title_dirty = true;
             }
             // Make Square drain — parallel to Trim Transparency. Pads
             // the source image with transparent pixels on the shorter
@@ -2425,143 +2059,19 @@ impl App {
             // accumulating 0.5 px drift across Trim↔Square cycles);
             // C1 (release OLD individual texture id after a successful
             // re-acquire — was leaking GPU memory on repeated edits).
-            if let Some(entity_bits) = hero.pending_make_square.take() {
-                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-                let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
-                let snapshot = {
-                    let world = sim.world();
-                    world.get::<Sprite>(entity).and_then(|sprite| {
-                        let old_size_world = sprite.size;
-                        let old_source = sprite.source;
-                        let old_translation = world
-                            .get::<ph2d_ecs::Transform>(entity)
-                            .map(|t| [t.translation.x, t.translation.y])
-                            .unwrap_or([0.0, 0.0]);
-                        match sprite.source {
-                            ph2d_render::SpriteSource::Atlas { key } => {
-                                let aid = atlas_asset_map.get(&key)?;
-                                let asset = asset_db.get(aid)?;
-                                match &*asset {
-                                    ph2d_asset::Asset::ImageRgba8 {
-                                        width,
-                                        height,
-                                        pixels,
-                                    } => Some((
-                                        *width,
-                                        *height,
-                                        pixels.clone(),
-                                        old_size_world,
-                                        old_translation,
-                                        old_source,
-                                    )),
-                                    _ => None,
-                                }
-                            }
-                            ph2d_render::SpriteSource::Individual { texture_id } => {
-                                match renderer.readback_individual(texture_id) {
-                                    Ok((w, h, pixels)) => Some((
-                                        w,
-                                        h,
-                                        pixels.into(),
-                                        old_size_world,
-                                        old_translation,
-                                        old_source,
-                                    )),
-                                    Err(_) => None,
-                                }
-                            }
-                        }
-                    })
-                };
-                match snapshot {
-                    None => {
-                        toasts.push(Toast::error(ph2d_i18n::tr(
-                            "tool.make_square.toast.unavailable",
-                        )));
-                        self.title_dirty = true;
-                    }
-                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
-                        let result = ph2d_editor::make_square(&pixels, width, height);
-                        if !result.made_square {
-                            toasts.push(Toast::info(ph2d_i18n::tr(
-                                "tool.make_square.toast.already_square",
-                            )));
-                            self.title_dirty = true;
-                        } else if result.size > renderer.max_texture_dimension_2d() {
-                            // M1: pre-acquire cap. Without this, the
-                            // toast would only surface on the first
-                            // render that tried to bind the oversize
-                            // texture — looks like a silent device-loss
-                            // to the user.
-                            toasts.push(Toast::error(format!(
-                                "Make Square would exceed GPU texture limit ({} px max, would need {} px)",
-                                renderer.max_texture_dimension_2d(),
-                                result.size,
-                            )));
-                            self.title_dirty = true;
-                        } else {
-                            match renderer.acquire_individual(
-                                result.size,
-                                result.size,
-                                &result.pixels,
-                            ) {
-                                Err(err) => {
-                                    toasts.push(Toast::error(format!("Make Square failed: {err}")));
-                                    self.title_dirty = true;
-                                }
-                                Ok(texture_id) => {
-                                    let new_side = result.size as f32 / px_per_m;
-                                    // M2: sub-pixel recenter. Even
-                                    // diffs return the input unchanged
-                                    // (offset is exactly diff/2 → 0.5
-                                    // factor cancels); odd diffs shift
-                                    // translation by 0.5/ppm in the
-                                    // odd-diff dimension so the
-                                    // content's world center stays put
-                                    // across Trim↔Square cycles.
-                                    let new_translation = ph2d_editor::recenter_after_pad(
-                                        old_translation,
-                                        [new_side, new_side],
-                                        [result.size, result.size],
-                                        ph2d_editor::PixelBounds {
-                                            x: result.offset_x,
-                                            y: result.offset_y,
-                                            width,
-                                            height,
-                                        },
-                                    );
-                                    let sim_w = sim.world_mut();
-                                    if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
-                                        sprite.source =
-                                            ph2d_render::SpriteSource::Individual { texture_id };
-                                        sprite.size = [new_side, new_side];
-                                    }
-                                    if let Some(mut transform) =
-                                        sim_w.get_mut::<ph2d_ecs::Transform>(entity)
-                                    {
-                                        transform.translation.x = new_translation[0];
-                                        transform.translation.y = new_translation[1];
-                                    }
-                                    // Undo snapshot — same pattern as Trim.
-                                    drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-                                    *image_edit_undo = Some(ImageEditSnapshot {
-                                        entity_bits,
-                                        pre_source: old_source,
-                                        pre_size: old_size_world,
-                                        pre_translation: old_translation,
-                                        post_individual_id: texture_id,
-                                        label: "Make square",
-                                    });
-                                    toasts.push(Toast::success(format!(
-                                        "Made square → {} × {} px · Cmd+Z to undo",
-                                        result.size, result.size
-                                    )));
-                                    self.title_dirty = true;
-                                }
-                            }
-                        }
-                    }
-                }
+            if let Some(entity_bits) = hero.pending_make_square.take()
+                && hero_intents::drain_make_square(
+                    entity_bits,
+                    hero.project.pixels_per_meter,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                    toasts,
+                    image_edit_undo,
+                )
+            {
+                self.title_dirty = true;
             }
             // Bg Removal drain — parallel to Trim Transparency, but
             // dimensions are preserved (the algorithm only mutates
@@ -2583,107 +2093,22 @@ impl App {
                 .map(|t| t.id() == bgremoval_id)
                 .unwrap_or(false);
             if bgremoval_active && let Some(entity_bits) = hero.pending_bgremoval.take() {
-                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-                let snapshot = {
-                    let world = sim.world();
-                    world.get::<Sprite>(entity).and_then(|sprite| {
-                        let old_size_world = sprite.size;
-                        let old_source = sprite.source;
-                        let old_translation = world
-                            .get::<ph2d_ecs::Transform>(entity)
-                            .map(|t| [t.translation.x, t.translation.y])
-                            .unwrap_or([0.0, 0.0]);
-                        match sprite.source {
-                            ph2d_render::SpriteSource::Atlas { key } => {
-                                let aid = atlas_asset_map.get(&key)?;
-                                let asset = asset_db.get(aid)?;
-                                match &*asset {
-                                    ph2d_asset::Asset::ImageRgba8 {
-                                        width,
-                                        height,
-                                        pixels,
-                                    } => Some((
-                                        *width,
-                                        *height,
-                                        pixels.clone(),
-                                        old_size_world,
-                                        old_translation,
-                                        old_source,
-                                    )),
-                                    _ => None,
-                                }
-                            }
-                            ph2d_render::SpriteSource::Individual { texture_id } => {
-                                match renderer.readback_individual(texture_id) {
-                                    Ok((w, h, pixels)) => Some((
-                                        w,
-                                        h,
-                                        pixels.into(),
-                                        old_size_world,
-                                        old_translation,
-                                        old_source,
-                                    )),
-                                    Err(_) => None,
-                                }
-                            }
-                        }
-                    })
-                };
-                match snapshot {
-                    None => {
-                        toasts.push(Toast::error(
-                            "Bg Removal: source unavailable (Atlas key missing or readback failed)",
-                        ));
-                        self.title_dirty = true;
-                    }
-                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
-                        // Outer `bgremoval_active` gate guarantees the
-                        // active tool downcasts to BgRemovalTool here.
-                        // Push the source snapshot (idempotent — the
-                        // per-frame snapshot push may have already
-                        // seeded the same buffer for the preview, but
-                        // the full-res Apply needs the exact same
-                        // buffer the algorithm should consume).
-                        let bg = tools
-                            .active_mut()
-                            .and_then(|t| {
-                                t.as_any_mut().downcast_mut::<ph2d_editor::BgRemovalTool>()
-                            })
-                            .expect("bgremoval_active gate guarantees a BgRemovalTool");
-                        let mut out: Vec<u8> = Vec::new();
-                        bg.set_source_snapshot(pixels.to_vec(), width, height);
-                        let (out_w, out_h) = bg.run_full_resolution(&mut out);
-                        let _ = (width, height); // shadowed by out_*; silence unused.
-                        match renderer.acquire_individual(out_w, out_h, &out) {
-                            Err(err) => {
-                                toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
-                                self.title_dirty = true;
-                            }
-                            Ok(texture_id) => {
-                                let sim_w = sim.world_mut();
-                                if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
-                                    sprite.source =
-                                        ph2d_render::SpriteSource::Individual { texture_id };
-                                    // Dimensions preserved — size stays.
-                                }
-                                drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-                                *image_edit_undo = Some(ImageEditSnapshot {
-                                    entity_bits,
-                                    pre_source: old_source,
-                                    pre_size: old_size_world,
-                                    pre_translation: old_translation,
-                                    post_individual_id: texture_id,
-                                    label: "Bg Removal",
-                                });
-                                toasts.push(Toast::success("Bg Removal applied · Cmd+Z to undo"));
-                                self.title_dirty = true;
-                                // Re-push the freshly-modified pixels
-                                // into the tool so the next preview
-                                // tick reflects the new state.
-                                self.last_bgremoval_pushed_entity = None;
-                            }
-                        }
-                    }
+                let bg = tools
+                    .active_mut()
+                    .and_then(|t| t.as_any_mut().downcast_mut::<ph2d_editor::BgRemovalTool>())
+                    .expect("bgremoval_active gate guarantees a BgRemovalTool");
+                if hero_intents::drain_bgremoval(
+                    entity_bits,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                    toasts,
+                    image_edit_undo,
+                    bg,
+                    &mut self.last_bgremoval_pushed_entity,
+                ) {
+                    self.title_dirty = true;
                 }
             }
             // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click) raises
@@ -2693,40 +2118,8 @@ impl App {
             // most the MOST RECENT Trim / Make Square.
             if hero.pending_undo_image_edit {
                 hero.pending_undo_image_edit = false;
-                match image_edit_undo.take() {
-                    None => {
-                        toasts.push(Toast::info(ph2d_i18n::tr(
-                            "edit.undo.image_edit.toast_nothing_to_undo",
-                        )));
-                        self.title_dirty = true;
-                    }
-                    Some(snap) => {
-                        let entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
-                        let sim_w = sim.world_mut();
-                        // Restore sprite source + size + transform
-                        // translation. The pre-source's individual id
-                        // (if any) keeps its refcount — we don't
-                        // re-acquire because the snapshot held it
-                        // through the post-edit period.
-                        if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
-                            sprite.source = snap.pre_source;
-                            sprite.size = snap.pre_size;
-                        }
-                        if let Some(mut transform) = sim_w.get_mut::<ph2d_ecs::Transform>(entity) {
-                            transform.translation.x = snap.pre_translation[0];
-                            transform.translation.y = snap.pre_translation[1];
-                        }
-                        // Release the POST-edit texture (the one the
-                        // edit created); the sprite no longer references
-                        // it and no other edit holds it.
-                        renderer.individual_mut().release(snap.post_individual_id);
-                        toasts.push(Toast::success(format!(
-                            "{} · {}",
-                            ph2d_i18n::tr("edit.undo.image_edit.toast_done"),
-                            snap.label,
-                        )));
-                        self.title_dirty = true;
-                    }
+                if hero_intents::drain_undo_image_edit(image_edit_undo, sim, renderer, toasts) {
+                    self.title_dirty = true;
                 }
             }
             // Publish whether a snapshot is currently stored so the UI
@@ -2913,967 +2306,47 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let attrs = Window::default_attributes()
-            .with_title("PH2D — editor")
-            .with_inner_size(winit::dpi::LogicalSize::new(1024, 768));
-        let window = Arc::new(
-            event_loop
-                .create_window(attrs)
-                .expect("create_window must succeed"),
-        );
-        // Enable IME so dead-key + composition sequences (PT-BR
-        // accents `á`, `ç`, `ñ`, …) reach us via `WindowEvent::Ime`.
-        // Without this the macOS text-input service swallows the
-        // dead-key keystroke and `KeyEvent::text` arrives empty.
-        window.set_ime_allowed(true);
-        let host = WinitHost::new(window.clone());
-        let size = host.window_size();
+        // PR 9c of the convention-by-discovery migration: subsystem
+        // boot pipeline lives in `init::build_initial_state`. This
+        // method now only wires the produced state into `self` and
+        // fires lifecycle hooks. See
+        // `docs/Migracao/2026-05-convention-by-discovery.md`.
+        let (window, host, gfx) = init::build_initial_state(&self.handler, event_loop);
+        let size = gfx.surface.size();
         let scale = host.scale_factor();
-
-        let instance = GpuContext::default_instance();
-        let raw_surface = instance
-            .create_surface(window.clone())
-            .expect("create_surface");
-        let gpu = GpuContext::new(instance, Some(&raw_surface)).expect("GpuContext::new");
-        let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
-
-        // M6: try to compose the atlas from real PNG files on disk.
-        // Auto-generates 16 procedural fixtures on first launch so the
-        // demo is self-contained (no committed binary fixtures). Any
-        // failure logs and falls back to the M5 procedural dummy —
-        // the shell must boot regardless of asset-pipeline issues.
-        let asset_db = AssetDb::new();
-        let assets_dir = integration::demo_assets_dir();
-        let (atlas, atlas_is_real) =
-            match Self::try_load_real_atlas(surface.gpu(), &asset_db, &assets_dir) {
-                Ok(atlas) => {
-                    println!(
-                        "[{:>6}ms] M6: real atlas composed from {} ({} assets cached)",
-                        self.handler.elapsed_ms(),
-                        assets_dir.display(),
-                        asset_db.len_assets()
-                    );
-                    (atlas, true)
-                }
-                Err(e) => {
-                    eprintln!(
-                        "[{:>6}ms] M6 fallback to dummy atlas: {e}",
-                        self.handler.elapsed_ms()
-                    );
-                    (TextureAtlas::dummy(surface.gpu()), false)
-                }
-            };
-        // M14.5: sprite pipeline now targets the offscreen HDR game RT
-        // (Rgba16Float) instead of the swap chain. The tonemap +
-        // compositor passes carry pixels through to the surface.
-        let renderer = SpriteRenderer::new(
-            surface.gpu().clone(),
-            GameRt::FORMAT,
-            atlas,
-            SPRITE_COUNT.next_power_of_two(),
-        );
-
-        // Mode gate inverted 2026-05-14: hero live is the **default**
-        // user-facing experience. `PH2D_M5_DEMO=1` opts into the legacy
-        // M5 perf-validation demo (1000-sprite Vogel spiral, no editor
-        // chrome) — kept reachable for HR-4 frame-budget validation,
-        // 100k-sprite stress tests, and future bench work without
-        // forcing users through it on first launch.
-        let m5_demo_enabled = std::env::var("PH2D_M5_DEMO").as_deref() == Ok("1");
-        let hero_live_enabled = !m5_demo_enabled;
-        let mut sim = SimWorld::new();
-        if hero_live_enabled {
-            // M14.4a: spawn a small named set so the hierarchy
-            // panel renders readable rows. The 1000-sprite Vogel
-            // spiral demo is fixture-only; live mode is for the
-            // editor's hierarchy/inspector pipeline.
-            Self::populate_sim_live(&mut sim);
-            println!(
-                "[{:>6}ms] live hero mode (8 named entities; \
-                 hierarchy panel binds to ECS)",
-                self.handler.elapsed_ms()
-            );
-        } else {
-            Self::populate_sim(&mut sim);
-            println!(
-                "[{:>6}ms] M5 demo mode (PH2D_M5_DEMO=1; 1000-sprite \
-                 Vogel spiral, no editor chrome)",
-                self.handler.elapsed_ms()
-            );
-        }
-        let present = PresentWorld::new();
-        // ADR-0025 M14.1: build the cached propagation queries AFTER
-        // populate_sim so bevy_ecs has already seen the Transform
-        // archetype. QueryState::new on `&mut World` is fine here
-        // (one-shot at boot); inside the extract phase the queries
-        // iterate via `&World` only.
-        let prop_state = TransformPropagationState::new(sim.world_mut());
-        let worklist = WorklistBuf::new();
-        let hero_live = if hero_live_enabled {
-            let walk_state = HierarchyWalkState::new(sim.world_mut());
-            Some(HeroLive {
-                bridge: hero_bridge::EntityNodeMap::new(),
-                walk_state,
-                walk_scratch: Vec::with_capacity(64),
-                snapshot: HierarchySnapshot::new(),
-            })
-        } else {
-            None
-        };
-        let camera = Camera2d::default();
-
-        // M7: ScriptHost. Failure here is also non-fatal (script is
-        // a placeholder; full sim-driving lands in M12+ editor panel).
-        let script = match integration::init_script_host() {
-            Ok(host) => {
-                println!(
-                    "[{:>6}ms] M7: ScriptHost initialized (placeholder script loaded)",
-                    self.handler.elapsed_ms()
-                );
-                Some(host)
-            }
-            Err(e) => {
-                eprintln!(
-                    "[{:>6}ms] M7 ScriptHost failed: {e} — continuing without scripting",
-                    self.handler.elapsed_ms()
-                );
-                None
-            }
-        };
-
-        // M12 + M11: editor data layer + Vello widget paint pass.
-        // ZenMode/ToastQueue/ToolRegistry model state, Layout computes
-        // the 4 zones, VelloPass renders all widgets onto the surface
-        // AFTER the sprite pass.
-        let theme = parse_theme_env();
-        eprintln!("[ph2d] theme = {}", theme.id());
-        let zen = ZenMode::new();
-        let mut toasts = ToastQueue::new();
-        toasts.push(Toast::success("Editor data layer wired (M12)"));
-        toasts.push(Toast::info("Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"));
-        let mut tools = ToolRegistry::new();
-        tools.register(Box::new(BrushTool::default()));
-        tools.register(Box::new(MoveTool::default()));
-        tools.register(Box::new(ph2d_editor::BgRemovalTool::default()));
-        let layout = EditorLayout::new(size.width as f32, size.height as f32);
-        let vello_pass =
-            match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {
-                Ok(p) => {
-                    println!(
-                        "[{:>6}ms] M11: VelloPass initialized ({}×{} intermediate)",
-                        self.handler.elapsed_ms(),
-                        size.width,
-                        size.height
-                    );
-                    p
-                }
-                Err(e) => {
-                    // Pass init failure is fatal here — the demo's whole
-                    // point is showing the editor over the canvas.
-                    panic!("VelloPass::new failed: {e}");
-                }
-            };
-
-        // M14.5: viewport / RT pipeline construction. game_rt → tonemap
-        // → compositor (which also reads vello_pass intermediate). The
-        // sample views are extracted here at boot; rebound on resize
-        // alongside game_rt/tonemap output recreation.
-        let game_rt = GameRt::new(surface.gpu(), (size.width, size.height));
-        let tonemap = Tonemap::new(
-            surface.gpu(),
-            game_rt
-                .texture()
-                .create_view(&wgpu::TextureViewDescriptor::default()),
-            (size.width, size.height),
-        );
-        let compositor = Compositor::new(
-            surface.gpu(),
-            surface.format(),
-            tonemap
-                .output_texture()
-                .create_view(&wgpu::TextureViewDescriptor::default()),
-            vello_pass
-                .intermediate_texture()
-                .create_view(&wgpu::TextureViewDescriptor::default()),
-        );
-        println!(
-            "[{:>6}ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)",
-            self.handler.elapsed_ms()
-        );
-        let vector_scene = VectorScene::new();
-        let text_system = TextSystem::new();
-
-        // Hero screen (TopBar / LeftRail / Hierarchy / Inspector /
-        // BottomHUD) is always-on in the default mode and disabled
-        // in the M5 demo path. The legacy `PH2D_HERO_SCREEN=1` env
-        // var is kept as a no-op alias — anyone with it in their
-        // shell rc still gets the editor instead of an error.
-        let hero_screen_enabled = hero_live_enabled;
-        let hero_screen = if hero_screen_enabled {
-            Some(HeroScreen::new(NodeId(1)).theme(theme))
-        } else {
-            None
-        };
-
         self.window = Some(window);
         self.host = Some(host);
-        self.gfx = Some(AppGfx {
-            surface,
-            renderer,
-            sim,
-            present,
-            camera,
-            asset_db,
-            atlas_is_real,
-            script,
-            theme,
-            zen,
-            toasts,
-            tools,
-            layout,
-            game_rt,
-            tonemap,
-            compositor,
-            vello_pass,
-            vector_scene,
-            text_system,
-            hero_screen,
-            hero_arena: Bump::with_capacity(4096),
-            clipboard: arboard::Clipboard::new()
-                .map_err(|e| eprintln!("[ph2d] clipboard init failed: {e}"))
-                .ok(),
-            prop_state,
-            worklist,
-            hero_live,
-            next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
-            atlas_asset_map: BTreeMap::new(),
-            component_registry: {
-                let mut reg = ComponentRegistry::new();
-                register_ecs_components(&mut reg);
-                // M14.C audit fix #8: register Sprite alongside the
-                // ecs components so the Strategy switch can flow
-                // through `EditorCommand::SetComponent` instead of
-                // direct world mutation.
-                ph2d_render::register_render_components(&mut reg);
-                reg
-            },
-            editor_queue: EditorCommandQueue::new(),
-            transform_type_id: stable_type_id("ph2d::ecs::Transform"),
-            visibility_type_id: stable_type_id("ph2d::ecs::Visibility"),
-            name_type_id: stable_type_id("ph2d::ecs::Name"),
-            sprite_type_id: stable_type_id("ph2d::render::Sprite"),
-            image_edit_undo: None,
-        });
+        self.gfx = Some(gfx);
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
         self.title_dirty = true;
-        if let Some(host) = self.host.as_ref() {
-            host.request_redraw();
+        if let Some(host_ref) = self.host.as_ref() {
+            host_ref.request_redraw();
         }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        // PR 9b of the convention-by-discovery migration: per-arm
+        // handlers live in `input_dispatch::App::on_<arm>`. This
+        // method is a pure dispatch table — adding a new arm is one
+        // line here + one method there. See
+        // `docs/Migracao/2026-05-convention-by-discovery.md`.
         match event {
-            WindowEvent::CloseRequested => match self.handler.on_close_request() {
-                CloseAction::Close => {
-                    self.handler.on_lifecycle(Lifecycle::WillTerminate);
-                    event_loop.exit();
-                }
-                CloseAction::Cancel => {}
-            },
-
-            WindowEvent::Resized(size) => {
-                self.pending_resize = Some(WindowSize::new(size.width, size.height));
-            }
-
-            // M14.4e drag-and-drop. winit emits one HoveredFile per
-            // path when multiple files are dragged together. We
-            // buffer paths into `self.hovered_files` and push them to
-            // the hero (for the overlay) on every HoveredFile event.
-            WindowEvent::HoveredFile(path) => {
-                self.hovered_files.push(path.clone());
-                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                    hero.dragging_files = Some((self.hovered_files.clone(), self.last_cursor));
-                }
-                self.handler.on_file_hover(&self.hovered_files);
-                if let Some(host) = self.host.as_ref() {
-                    host.request_redraw();
-                }
-            }
-            WindowEvent::HoveredFileCancelled => {
-                self.hovered_files.clear();
-                if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                    hero.dragging_files = None;
-                }
-                self.handler.on_file_hover_cancel();
-                if let Some(host) = self.host.as_ref() {
-                    host.request_redraw();
-                }
-            }
-            WindowEvent::DroppedFile(path) => {
-                // M14.7 polish (7.3 fix): winit fires `DroppedFile`
-                // once PER FILE on macOS but the events arrive across
-                // multiple loop iterations. Importing inline on each
-                // event was racy — some imports silently dropped when
-                // an event came in mid-render. Buffer the path here;
-                // `render_frame` drains `pending_drops` atomically.
-                self.pending_drops.push(path);
-                if let Some(host) = self.host.as_ref() {
-                    host.request_redraw();
-                }
-            }
-
+            WindowEvent::CloseRequested => self.on_close_request(event_loop),
+            WindowEvent::Resized(size) => self.on_resized(size),
+            WindowEvent::HoveredFile(path) => self.on_hovered_file(path),
+            WindowEvent::HoveredFileCancelled => self.on_hovered_file_cancelled(),
+            WindowEvent::DroppedFile(path) => self.on_dropped_file(path),
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                if let Some(host) = &self.host {
-                    host.scale().set(scale_factor as f32);
-                    if let Some(gfx) = self.gfx.as_ref() {
-                        self.pending_resize = Some(gfx.surface.size());
-                    }
-                }
+                self.on_scale_factor_changed(scale_factor)
             }
-
-            WindowEvent::ModifiersChanged(mods) => {
-                self.modifiers = mods.state();
-                // M14.A: push the Shift state to the hero's WidgetStore
-                // so `dispatch_pointer` Move can scale the NumberInput
-                // drag delta correctly (Shift = fine adjustment). The
-                // ph2d-host `PointerEvent` schema doesn't carry
-                // modifiers natively — the store cache is the canonical
-                // bridge for now.
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some(hero) = gfx.hero_screen.as_mut()
-                {
-                    hero.store.set_shift_held(self.modifiers.shift_key());
-                }
-            }
-
-            // IME composition commits — PT-BR / Spanish / French
-            // accent dead-key sequences arrive here on macOS, NOT
-            // in `KeyEvent::text` (the system text-input service
-            // swallows the dead-key keystroke and emits the
-            // composed char via `Ime::Commit`).
-            WindowEvent::Ime(winit::event::Ime::Commit(text)) => {
-                for ch in text.chars() {
-                    if !ch.is_control() {
-                        forward_text_to_hero(self.gfx.as_mut(), ch);
-                    }
-                }
-                // `Preedit` (in-progress composition) is ignored for
-                // now — no visible preedit caret yet. Future:
-                // render the preedit text in italics at the caret.
-            }
-
-            WindowEvent::CursorMoved { position, .. } => {
-                let prev = self.last_pointer;
-                self.last_pointer = (position.x as f32, position.y as f32);
-                // M14.4e: cache the latest cursor for DroppedFile —
-                // winit's DroppedFile carries no position, so we
-                // project the most-recently-seen cursor to world.
-                self.last_cursor = self.last_pointer;
-                // M14.4b.bis: middle-drag camera pan. Applied BEFORE
-                // pointer forwarding so widgets receive the move
-                // event but the camera also follows.
-                if let Some(anchor) = self.pan_anchor
-                    && let Some(gfx) = self.gfx.as_mut()
-                {
-                    let dx = self.last_pointer.0 - anchor.0;
-                    let dy = self.last_pointer.1 - anchor.1;
-                    let size = gfx.surface.size();
-                    gfx.camera
-                        .pan_screen_delta(dx, dy, size.width as f32, size.height as f32);
-                    self.pan_anchor = Some(self.last_pointer);
-                    let _ = prev; // silence unused warning when feature shifts
-                }
-                let evt = PointerEvent {
-                    x: self.last_pointer.0,
-                    y: self.last_pointer.1,
-                    pressure: 1.0,
-                    kind: PointerKind::Move,
-                    source: PointerSource::Mouse,
-                    button: ph2d_host::PointerButton::Primary,
-                    timestamp_ns: Self::timestamp_ns(),
-                };
-                self.handler.on_pointer(evt);
-                forward_to_hero(self.gfx.as_mut(), evt);
-                // M14.7 C: advance the gizmo drag if one is open. We
-                // update the cursor on the snapshot, derive the new
-                // Transform via the pure math in `compute_gizmo_
-                // transform`, and write it back to SimWorld. The next
-                // frame's extract+paint mirror the change visually.
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some(hero) = gfx.hero_screen.as_mut()
-                    && let Some(mut drag) = hero.gizmo_drag
-                {
-                    drag.cursor_screen = (self.last_pointer.0, self.last_pointer.1);
-                    hero.gizmo_drag = Some(drag);
-                    let window_size = gfx.surface.size();
-                    let cam = ph2d_editor::GizmoCamera {
-                        center: gfx.camera.center,
-                        height_world: gfx.camera.height_world,
-                        window_w: window_size.width as f32,
-                        window_h: window_size.height as f32,
-                    };
-                    // M14.7 D: sample winit's tracked modifier state
-                    // (updated on ModifiersChanged). Shift / Ctrl /
-                    // Alt feed AR lock + snap + mirror-anchor. On
-                    // macOS we treat Cmd as Ctrl (industry convention
-                    // for snap-to-grid).
-                    let mods = ph2d_editor::GizmoModifiers {
-                        shift: self.modifiers.shift_key(),
-                        ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
-                        alt: self.modifiers.alt_key(),
-                    };
-                    let snap = ph2d_editor::GizmoSnap {
-                        move_meters: hero.project.snap_move_meters,
-                        rotate_deg: hero.project.snap_rotate_deg,
-                    };
-                    // Grid-snap apply (gizmo sites). The grid_snap
-                    // subsystem's `snap_world` is the canonical place to
-                    // align world positions to the active grid; it's a
-                    // no-op when `state.snap_enabled` is false or the
-                    // active kind has no snap target (Quadtree / Voronoi).
-                    //
-                    // Two consumers:
-                    //   1. Translate: applied AFTER the math to the
-                    //      final transform translation. Sprite half-
-                    //      extent feeds Corner / CenterIntersectionAndCorners
-                    //      modes so a sprite corner (not center) lines
-                    //      up with a grid vertex. Scale-aware: rendered
-                    //      half = Sprite::size × Transform::scale × 0.5.
-                    //   2. Scale (Corner / Edge): the snap closure runs
-                    //      INSIDE compute_gizmo_transform — it rewrites
-                    //      the cursor's world position before the scale
-                    //      ratio is computed so the dragged corner /
-                    //      edge midpoint lands on a snapped target.
-                    //      Bug Enio reported #2: "ao escalonar desse
-                    //      jeito, deve aceitar o snap do ponto".
-                    let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
-                    let sprite_half_rendered = gfx
-                        .sim
-                        .world()
-                        .get::<ph2d_render::Sprite>(entity)
-                        .map(|s| {
-                            [
-                                s.size[0] * drag.start_transform.scale[0] * 0.5,
-                                s.size[1] * drag.start_transform.scale[1] * 0.5,
-                            ]
-                        })
-                        .unwrap_or([0.0, 0.0]);
-                    // GridSnapState::snap_world takes `[f32; 2]` (=
-                    // `ph2d_grid::Vec2`) — pass arrays directly.
-                    let is_scale = matches!(
-                        drag.kind,
-                        ph2d_editor::GizmoDragKind::ScaleCorner { .. }
-                            | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
-                    );
-                    // Compute new_t with snap closure when applicable.
-                    // The closure isolates the &mut borrow of
-                    // grid_snap_state so it doesn't conflict with the
-                    // Translate snap call below.
-                    let new_t = if is_scale {
-                        // Snap closure: project [f32; 2] world → snapped
-                        // [f32; 2]. We pass sprite_half_rendered so
-                        // Corner snap modes work; rendered half is
-                        // start-scale based (cursor snaps to the grid,
-                        // not the post-scale corner — that's what makes
-                        // the snap predictable as the user drags).
-                        let snap_state = &mut hero.grid_snap_state;
-                        let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
-                            snap_state.snap_world(w, sprite_half_rendered)
-                        };
-                        ph2d_editor::compute_gizmo_transform(
-                            &drag,
-                            &cam,
-                            mods,
-                            snap,
-                            Some(&mut snap_closure),
-                        )
-                    } else {
-                        ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap, None)
-                    };
-                    // Translate path: snap the final translation. Skip
-                    // for Scale — the closure above already snapped the
-                    // cursor; snapping translation here would shift the
-                    // sprite center to a grid vertex and the opposite-
-                    // corner anchor would no longer match the grid.
-                    let new_t = if is_scale {
-                        new_t
-                    } else {
-                        let mut new_t = new_t;
-                        let sprite_half_new = gfx
-                            .sim
-                            .world()
-                            .get::<ph2d_render::Sprite>(entity)
-                            .map(|s| {
-                                [
-                                    s.size[0] * new_t.scale[0] * 0.5,
-                                    s.size[1] * new_t.scale[1] * 0.5,
-                                ]
-                            })
-                            .unwrap_or([0.0, 0.0]);
-                        new_t.translation = hero
-                            .grid_snap_state
-                            .snap_world(new_t.translation, sprite_half_new);
-                        new_t
-                    };
-                    if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
-                        t.translation =
-                            ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);
-                        t.rotation = new_t.rotation;
-                        t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
-                    }
-                }
-                // Drag-in-progress: forward pointer to active tool
-                // panel hit-test → updates slider value continuously.
-                if self.dragging.is_some() {
-                    self.dispatch_panel_pointer(self.last_pointer.0, self.last_pointer.1, false);
-                }
-            }
-
-            WindowEvent::MouseWheel { delta, .. } => {
-                let (dx, dy) = match delta {
-                    winit::event::MouseScrollDelta::LineDelta(x, y) => (x * 16.0, y * 16.0),
-                    winit::event::MouseScrollDelta::PixelDelta(p) => (p.x as f32, p.y as f32),
-                };
-                // M14.4b.bis: wheel over the canvas zooms the camera.
-                // Wheel over a hero panel keeps the existing
-                // panel-scroll behavior (forward to hero).
-                let over_panel = cursor_over_hero_panel(
-                    self.gfx.as_ref(),
-                    self.last_pointer.0,
-                    self.last_pointer.1,
-                );
-                if !over_panel && let Some(gfx) = self.gfx.as_mut() {
-                    // Wheel up (positive dy) zooms IN (smaller height_world).
-                    let factor = 0.9_f32.powf(dy / 16.0);
-                    gfx.camera.zoom(factor);
-                } else {
-                    let evt = ph2d_host::WheelEvent {
-                        x: self.last_pointer.0,
-                        y: self.last_pointer.1,
-                        delta_x: dx,
-                        delta_y: dy,
-                        modifiers: Self::convert_modifiers(self.modifiers),
-                        timestamp_ns: Self::timestamp_ns(),
-                    };
-                    forward_wheel_to_hero(self.gfx.as_mut(), evt);
-                }
-            }
-
-            WindowEvent::MouseInput { state, button, .. } => {
-                let kind = match state {
-                    ElementState::Pressed => PointerKind::Down,
-                    ElementState::Released => PointerKind::Up,
-                };
-                let mapped_button = match button {
-                    winit::event::MouseButton::Left => ph2d_host::PointerButton::Primary,
-                    winit::event::MouseButton::Right => ph2d_host::PointerButton::Secondary,
-                    winit::event::MouseButton::Middle => ph2d_host::PointerButton::Middle,
-                    _ => ph2d_host::PointerButton::Primary,
-                };
-                let evt = PointerEvent {
-                    x: self.last_pointer.0,
-                    y: self.last_pointer.1,
-                    pressure: 1.0,
-                    kind,
-                    source: PointerSource::Mouse,
-                    button: mapped_button,
-                    timestamp_ns: Self::timestamp_ns(),
-                };
-                self.handler.on_pointer(evt);
-                forward_to_hero(self.gfx.as_mut(), evt);
-                // M14.7 C: gizmo drag begin/end. A Primary Down that
-                // lands on a gizmo handle starts a drag (snapshot
-                // Transform + cursor world pos); Up clears it. Move
-                // handling lives in CursorMoved so every motion event
-                // gets the live cursor.
-                if mapped_button == ph2d_host::PointerButton::Primary
-                    && let Some(gfx) = self.gfx.as_mut()
-                    && let Some(hero) = gfx.hero_screen.as_mut()
-                {
-                    match kind {
-                        PointerKind::Down => {
-                            let hit_id = hero.hit_index.hit(evt.x, evt.y);
-                            let gizmo_kind = hit_id.and_then(ph2d_editor::gizmo_kind_for_id);
-                            // M14.7 polish (19.3 fix): only the SPECIFIC
-                            // handles (corner / edge / rotate) bypass
-                            // canvas picking. `BBOX_INTERIOR` resolves
-                            // to `Translate`, which previously absorbed
-                            // every click inside the current selection's
-                            // rect — that blocked the overlap-cycle path
-                            // when a back sprite was selected and the
-                            // user clicked the front sprite's visible
-                            // area. The bbox_interior click now falls
-                            // through to picking, which selects the
-                            // topmost sprite first AND starts a translate
-                            // drag on it via the canvas-pick branch.
-                            let is_specific_handle = matches!(
-                                gizmo_kind,
-                                Some(ph2d_editor::GizmoDragKind::ScaleCorner { .. })
-                                    | Some(ph2d_editor::GizmoDragKind::ScaleEdge { .. })
-                                    | Some(ph2d_editor::GizmoDragKind::Rotate)
-                            );
-                            if is_specific_handle
-                                && let Some(gkind) = gizmo_kind
-                                && let Some(entity_bits) = hero.gizmo_selection
-                            {
-                                // Snapshot the entity's Transform + the
-                                // bbox pivot (center) for the math.
-                                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-                                let window_size = gfx.surface.size();
-                                let start_world =
-                                    gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                                if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
-                                    let snap = ph2d_editor::TransformSnapshot {
-                                        translation: [t.translation.x, t.translation.y],
-                                        rotation: t.rotation,
-                                        scale: [t.scale.x, t.scale.y],
-                                    };
-                                    // Anchor-based scale: default pivot
-                                    // is the OPPOSITE corner (Figma /
-                                    // Photoshop convention) — Ctrl/Cmd
-                                    // flips to the sprite center.
-                                    // Translate / Rotate ignore the
-                                    // toggle (they always pivot on
-                                    // center). Sprite intrinsic
-                                    // half-size feeds the helper's
-                                    // opposite-corner math.
-                                    let use_center_anchor =
-                                        self.modifiers.control_key() || self.modifiers.super_key();
-                                    let sprite_half_intrinsic = gfx
-                                        .sim
-                                        .world()
-                                        .get::<ph2d_render::Sprite>(entity)
-                                        .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
-                                        .unwrap_or([0.0, 0.0]);
-                                    let pivot = ph2d_editor::anchor_pivot_world(
-                                        gkind,
-                                        sprite_half_intrinsic,
-                                        snap,
-                                        use_center_anchor,
-                                    );
-                                    hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
-                                        kind: gkind,
-                                        entity_bits,
-                                        start_screen: (evt.x, evt.y),
-                                        cursor_screen: (evt.x, evt.y),
-                                        start_transform: snap,
-                                        pivot_world: pivot,
-                                        start_cursor_world: start_world,
-                                        // Carry the intrinsic half-size so
-                                        // compute_gizmo_transform can re-
-                                        // anchor the opposite corner under
-                                        // a new scale (issue Enio reported
-                                        // — opposite corner used to drift
-                                        // because translation wasn't
-                                        // updated). Center-anchor flag
-                                        // mirrors the same Ctrl/Cmd state
-                                        // anchor_pivot_world resolved on.
-                                        sprite_half_intrinsic,
-                                        anchor_is_center: use_center_anchor,
-                                    });
-                                }
-                            } else if hero.store.panel_at(evt.x, evt.y).is_none()
-                                && hero.store.context_menu().is_none()
-                                && (
-                                    // No widget under cursor: clean
-                                    // canvas click.
-                                    hit_id.is_none()
-                                    // Gizmo bbox interior or pivot:
-                                    // user clicked inside the
-                                    // selection's footprint. Still
-                                    // a canvas click — picking may
-                                    // promote a different sprite to
-                                    // the selection (overlap-cycle).
-                                    || matches!(
-                                        gizmo_kind,
-                                        Some(ph2d_editor::GizmoDragKind::Translate),
-                                    )
-                                    || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT)
-                                )
-                            {
-                                // Canvas pick (M14.7 A) — but only when:
-                                // 1. The click did NOT begin a gizmo drag.
-                                // 2. The cursor is outside chrome panels.
-                                // 3. NO context menu is currently open
-                                //    (clicking on a menu item must not
-                                //    also hijack as a canvas click → was
-                                //    the M14.6 F regression user reported).
-                                // 4. No widget id was hit at all
-                                //    (search field, menu item, etc. all
-                                //    register hit rects in HitIndex; if
-                                //    any of those resolves, the dispatch
-                                //    consumes the click and canvas pick
-                                //    must stay out of the way).
-                                let window_size = gfx.surface.size();
-                                let world_pos =
-                                    gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                                // M14.7 polish (19.3): alternate-click
-                                // overlap cycling — anchored by the
-                                // SAME HIT SET, not the same pixel.
-                                // Touch + stylus inputs can't reliably
-                                // hit the same world point twice; tying
-                                // the cycle to the entity set instead
-                                // lets the user tap anywhere inside the
-                                // overlap region and still walk the
-                                // stack. Reset triggers:
-                                //   - hit list shape changed (cursor
-                                //     moved to a different overlap)
-                                //   - hit list empty (= empty canvas
-                                //     click → deselect)
-                                let hits = ph2d_render::pick_sprites_at_world(
-                                    gfx.present.world_mut(),
-                                    world_pos,
-                                );
-                                let same_list = !hits.is_empty() && hits == self.cycle_pick_hits;
-                                if !same_list {
-                                    // Fresh click — reset the cycle.
-                                    self.cycle_pick_world = Some(world_pos);
-                                    self.cycle_pick_hits = hits.clone();
-                                    self.cycle_pick_idx = 0;
-                                    self.cycle_pick_count = 1;
-                                } else {
-                                    // Same overlap stack as before —
-                                    // increment counter; advance idx on
-                                    // every odd count past the first.
-                                    self.cycle_pick_count = self.cycle_pick_count.saturating_add(1);
-                                    if self.cycle_pick_count.is_multiple_of(2) {
-                                        // Even count → selection stays.
-                                    } else if !hits.is_empty() {
-                                        self.cycle_pick_idx =
-                                            (self.cycle_pick_idx + 1) % hits.len();
-                                    }
-                                }
-                                let picked = if hits.is_empty() {
-                                    None
-                                } else {
-                                    hits.get(self.cycle_pick_idx).copied()
-                                };
-                                hero.gizmo_selection = picked;
-                                // M14.7 polish: same-click select +
-                                // drag. Without this the user has to
-                                // click twice — once to select, once
-                                // to grab the bbox-interior handle —
-                                // because the gizmo isn't painted (so
-                                // its handles aren't in hit_index) on
-                                // the frame of the initial pick. We
-                                // start a Translate drag using the
-                                // picked sprite's Transform snapshot;
-                                // if the user releases without moving,
-                                // the math returns delta=0 → Transform
-                                // unchanged → visually identical to a
-                                // pure selection click.
-                                if let Some(bits) = picked {
-                                    let entity = ph2d_ecs::Entity::from_bits(bits);
-                                    if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
-                                        let snap_t = ph2d_editor::TransformSnapshot {
-                                            translation: [t.translation.x, t.translation.y],
-                                            rotation: t.rotation,
-                                            scale: [t.scale.x, t.scale.y],
-                                        };
-                                        let pivot = [t.translation.x, t.translation.y];
-                                        hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
-                                            kind: ph2d_editor::GizmoDragKind::Translate,
-                                            entity_bits: bits,
-                                            start_screen: (evt.x, evt.y),
-                                            cursor_screen: (evt.x, evt.y),
-                                            start_transform: snap_t,
-                                            pivot_world: pivot,
-                                            start_cursor_world: world_pos,
-                                            // Translate doesn't touch the
-                                            // Scale anchor path — these
-                                            // fields are inert here.
-                                            sprite_half_intrinsic: [0.0, 0.0],
-                                            anchor_is_center: false,
-                                        });
-                                    }
-                                }
-                                // M14.6 D: canvas-pick → hierarchy sync.
-                                // Resolve entity bits → bridge NodeId →
-                                // live entry → update `hero.selection`
-                                // so the hierarchy row paints as selected
-                                // (the panel matches by name label).
-                                if let Some(live) = gfx.hero_live.as_ref()
-                                    && let Some(bits) = picked
-                                    && let Some(node_id) = live.bridge.node_for(bits)
-                                    && let Some(entries) = hero.live_hierarchy_entries.as_ref()
-                                    && let Some(entry) = entries.get(&node_id)
-                                {
-                                    hero.selection = Some(ph2d_editor::HeroSelection {
-                                        label: entry.name.clone(),
-                                        kind: entry
-                                            .badge
-                                            .clone()
-                                            .unwrap_or_else(|| "ENT".to_string()),
-                                        world_pos: (0.0, 0.0),
-                                    });
-                                } else if picked.is_none() {
-                                    hero.selection = None;
-                                }
-                                self.title_dirty = true;
-                            }
-                        }
-                        PointerKind::Up => {
-                            // Drop the drag — Transform is already
-                            // committed up to the latest Move position.
-                            hero.gizmo_drag = None;
-                        }
-                        _ => {}
-                    }
-                }
-                // M14.4b.bis: middle button = camera pan anchor.
-                // Tracked here so CursorMoved can drive the pan.
-                if button == winit::event::MouseButton::Middle {
-                    match state {
-                        ElementState::Pressed => {
-                            self.pan_anchor = Some(self.last_pointer);
-                        }
-                        ElementState::Released => {
-                            self.pan_anchor = None;
-                        }
-                    }
-                }
-                match state {
-                    ElementState::Pressed => {
-                        // Mirror-sidebar chip takes precedence over the
-                        // panel hit-test (different zone, no overlap).
-                        let mut consumed = false;
-                        if let Some(gfx) = self.gfx.as_mut()
-                            && !gfx.zen.is_active()
-                            && let Some(btn) = gfx.layout.mirror_button_rect()
-                            && btn.contains(self.last_pointer.0, self.last_pointer.1)
-                        {
-                            gfx.layout.mirror_sidebar();
-                            gfx.toasts.push(Toast::info(format!(
-                                "Sidebar → {:?}",
-                                gfx.layout.sidebar_side
-                            )));
-                            self.title_dirty = true;
-                            consumed = true;
-                        }
-                        // Tool palette icon click — switch active tool.
-                        if !consumed
-                            && let Some(gfx) = self.gfx.as_mut()
-                            && !gfx.zen.is_active()
-                        {
-                            let palette = gfx.layout.tool_palette_rects(gfx.tools.tools().len());
-                            let hit_idx = palette
-                                .iter()
-                                .position(|r| r.contains(self.last_pointer.0, self.last_pointer.1));
-                            if let Some(idx) = hit_idx {
-                                let tool_id = gfx.tools.tools()[idx].id();
-                                let tool_label = gfx.tools.tools()[idx].label().to_string();
-                                if gfx.tools.set_active(&tool_id) {
-                                    gfx.toasts.push(Toast::info(format!("Tool → {tool_label}")));
-                                    self.title_dirty = true;
-                                }
-                                consumed = true;
-                            }
-                        }
-                        if !consumed {
-                            // Mouse down — start hit-test against active panel.
-                            self.dispatch_panel_pointer(
-                                self.last_pointer.0,
-                                self.last_pointer.1,
-                                true,
-                            );
-                        }
-                    }
-                    ElementState::Released => {
-                        // End any drag-in-progress.
-                        self.dragging = None;
-                    }
-                }
-            }
-
-            WindowEvent::KeyboardInput {
-                event:
-                    WinitKeyEvent {
-                        physical_key,
-                        state,
-                        repeat,
-                        ref text,
-                        ..
-                    },
-                ..
-            } => {
-                let keycode = match physical_key {
-                    winit::keyboard::PhysicalKey::Code(code) => code as u32,
-                    winit::keyboard::PhysicalKey::Unidentified(_) => 0,
-                };
-                let kind = match (state, repeat) {
-                    (ElementState::Pressed, false) => KeyKind::Down,
-                    (ElementState::Pressed, true) => KeyKind::Repeat,
-                    (ElementState::Released, _) => KeyKind::Up,
-                };
-                self.handler.on_key(KeyEvent {
-                    keycode,
-                    modifiers: Self::convert_modifiers(self.modifiers),
-                    kind,
-                    timestamp_ns: Self::timestamp_ns(),
-                });
-
-                // Hero pipeline (ADR-0024): translate winit's
-                // physical KeyCode into the editor's KEY_* constants
-                // and route to the focused widget.
-                if state == ElementState::Pressed
-                    && let PhysicalKey::Code(code) = physical_key
-                    && let Some(editor_keycode) = winit_to_editor_keycode(code)
-                {
-                    forward_key_to_hero(
-                        self.gfx.as_mut(),
-                        KeyEvent {
-                            keycode: editor_keycode,
-                            modifiers: Self::convert_modifiers(self.modifiers),
-                            kind,
-                            timestamp_ns: Self::timestamp_ns(),
-                        },
-                    );
-                }
-                // Printable text from this key event (winit already
-                // resolved layout + dead-keys + shift). Send each
-                // char through the text-input dispatcher so focused
-                // TextInput/NumberInput/Combobox buffers update.
-                // EXCEPT for ' ' coming from the physical Space key
-                // and 'a'/'A' coming from KeyA with Cmd/Ctrl held —
-                // those are inserted by the dispatch's key handler
-                // directly (SPACE bug: winit's first text-event for
-                // SPACE on macOS arrived empty; Cmd+A: text-event
-                // would replace the just-selected range with 'a').
-                if state == ElementState::Pressed
-                    && let Some(s) = text.as_ref()
-                {
-                    let is_space_key = matches!(physical_key, PhysicalKey::Code(KeyCode::Space));
-                    let cmd_held = self.modifiers.super_key() || self.modifiers.control_key();
-                    for ch in s.chars() {
-                        if ch.is_control() {
-                            continue;
-                        }
-                        if is_space_key && ch == ' ' {
-                            continue;
-                        }
-                        // Cmd/Ctrl chord with a letter: skip the
-                        // text-event so Cmd+A's select-all isn't
-                        // overwritten by 'a' insertion.
-                        if cmd_held && ch.is_ascii_alphabetic() {
-                            continue;
-                        }
-                        forward_text_to_hero(self.gfx.as_mut(), ch);
-                    }
-                }
-
-                // M12 demo controls (only on key Down, no repeat).
-                if matches!((state, repeat), (ElementState::Pressed, false))
-                    && let PhysicalKey::Code(code) = physical_key
-                {
-                    self.handle_editor_key(code);
-                }
-            }
-
-            WindowEvent::RedrawRequested => {
-                self.render_frame();
-            }
-
+            WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
+            WindowEvent::Ime(winit::event::Ime::Commit(text)) => self.on_ime_commit(text),
+            WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
+            WindowEvent::MouseWheel { delta, .. } => self.on_mouse_wheel(delta),
+            WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
+            WindowEvent::KeyboardInput { event, .. } => self.on_keyboard_input(event),
+            WindowEvent::RedrawRequested => self.render_frame(),
             _ => {}
         }
     }

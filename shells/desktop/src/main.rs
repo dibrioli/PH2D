@@ -1446,13 +1446,7 @@ impl App {
             // next snapshot push fires against the current selection.
             if hero.pending_activate_bgremoval {
                 hero.pending_activate_bgremoval = false;
-                let switched = tools.set_active(&ph2d_editor::ToolId::new("bgremoval"));
-                eprintln!(
-                    "[bgremoval] activate-pill drained · set_active={switched} · \
-                     active_after={:?}",
-                    tools.active().map(|t| t.id())
-                );
-                if switched {
+                if tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
                     self.last_bgremoval_pushed_entity = None;
                     self.title_dirty = true;
                     toasts.push(Toast::info("Tool → Bg Removal"));
@@ -2776,6 +2770,20 @@ impl App {
                         }
                     }
                 }
+            }
+            // Active tool's floating panel — same paint as fixture
+            // mode below. Was missing in live mode (PH2D_HERO_LIVE=1),
+            // so the BgRemoval / Brush / Move panels never showed
+            // even when their tool was active (Enio's "Painel
+            // BGRemoval não apareceu" report, 2026-05-16). Painted
+            // AFTER `paint_hero_screen` so the panel sits on top of
+            // canvas / gizmo / grid overlays, and BEFORE toasts so
+            // notifications still cover it.
+            if !zen.is_active()
+                && let Some(active) = tools.active()
+            {
+                let panel = active.build_panel();
+                panel.paint(vector_scene, &mut paint_ctx);
             }
             toasts.paint(vector_scene, &mut paint_ctx);
             // Drain frame-local arena AFTER the dispatch + paint pass

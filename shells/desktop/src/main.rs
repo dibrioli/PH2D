@@ -357,6 +357,14 @@ struct App {
     cycle_pick_hits: Vec<u64>,
     cycle_pick_idx: usize,
     cycle_pick_count: u32,
+    /// `entity_bits` of the sprite whose RGBA was last pushed into
+    /// the active `BgRemovalTool` snapshot. `None` until the first
+    /// push. Reset to `None` whenever the user activates BgRemoval
+    /// via Digit3 so the very next frame re-pushes against the
+    /// current selection. The snapshot loop reads this every frame
+    /// while BgRemoval is the active tool to skip redundant
+    /// pushes (the thumbnail rebuild + preview rerun are work).
+    last_bgremoval_pushed_entity: Option<u64>,
 }
 
 impl App {
@@ -406,6 +414,7 @@ impl App {
             cycle_pick_hits: Vec::new(),
             cycle_pick_idx: 0,
             cycle_pick_count: 0,
+            last_bgremoval_pushed_entity: None,
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.
@@ -599,6 +608,15 @@ impl App {
                 gfx.toasts.push(Toast::info("Tool → Move"));
                 self.title_dirty = true;
             }
+            KeyCode::Digit3 if gfx.tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) => {
+                gfx.toasts.push(Toast::info("Tool → Bg Removal"));
+                self.title_dirty = true;
+                // Force a fresh snapshot push on the next frame so the
+                // newly-active tool sees the current selection's RGBA
+                // (the snapshot-push loop below tracks last-pushed
+                // entity — invalidating it here re-triggers).
+                self.last_bgremoval_pushed_entity = None;
+            }
             // M14.7 polish: F / Home = frame the currently selected
             // sprite. Falls back to (0, 0) when nothing is selected
             // (Blender / Maya "frame view" semantics). Raises a
@@ -719,6 +737,21 @@ impl App {
         {
             active.handle_panel_event(event);
             self.title_dirty = true;
+            // Drain BgRemoval's Apply Toggle: when on, the Tool sets
+            // `pending_apply = true` inside `handle_panel_event`.
+            // Route it to `HeroScreen.pending_bgremoval` (asset id =
+            // the currently-selected entity bits) so the per-frame
+            // drain in `render_frame` runs the algorithm at full
+            // resolution against the live sprite.
+            if let Some(bg) = active
+                .as_any_mut()
+                .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                && bg.take_pending_apply()
+                && let Some(hero) = gfx.hero_screen.as_mut()
+                && let Some(bits) = hero.gizmo_selection
+            {
+                hero.pending_bgremoval = Some(bits);
+            }
         }
     }
 
@@ -1405,6 +1438,54 @@ impl App {
                     name,
                 })
             });
+            // Snapshot push for the active BgRemovalTool. The tool needs
+            // the current selection's RGBA so its 160×160 preview shows
+            // the live sprite — pushed once per (tool-active + new
+            // selection) tuple. `last_bgremoval_pushed_entity` is
+            // reset to `None` whenever the user activates BgRemoval
+            // via Digit3 (force-refresh) AND tracked across selection
+            // changes (push when it drifts). Pulls source pixels via
+            // the same Atlas-vs-Individual branch the trim_transparency
+            // drain uses below.
+            let bgremoval_is_active = tools
+                .active()
+                .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+                .unwrap_or(false);
+            if bgremoval_is_active
+                && let Some(bits) = hero.gizmo_selection
+                && self.last_bgremoval_pushed_entity != Some(bits)
+            {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                let snap = sim.world().get::<Sprite>(entity).and_then(|sprite| {
+                    match sprite.source {
+                        ph2d_render::SpriteSource::Atlas { key } => {
+                            let aid = atlas_asset_map.get(&key)?;
+                            let asset = asset_db.get(aid)?;
+                            match &*asset {
+                                ph2d_asset::Asset::ImageRgba8 {
+                                    width,
+                                    height,
+                                    pixels,
+                                } => Some((*width, *height, pixels.clone())),
+                                _ => None,
+                            }
+                        }
+                        ph2d_render::SpriteSource::Individual { texture_id } => renderer
+                            .readback_individual(texture_id)
+                            .ok()
+                            .map(|(w, h, pix)| (w, h, pix.into())),
+                    }
+                });
+                if let Some((w, h, rgba)) = snap
+                    && let Some(tool) = tools.active_mut()
+                    && let Some(bg) = tool
+                        .as_any_mut()
+                        .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                {
+                    bg.set_source_snapshot(rgba.to_vec(), w, h);
+                    self.last_bgremoval_pushed_entity = Some(bits);
+                }
+            }
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // M14.4b.bis: drain pending camera-reset request from
             // the VIEW button (legacy "Zero" mode — kept around for
@@ -2467,6 +2548,134 @@ impl App {
                     }
                 }
             }
+            // Bg Removal drain — parallel to Trim Transparency, but
+            // dimensions are preserved (the algorithm only mutates
+            // alpha + optionally despills RGB, never crops). No pivot
+            // reproject for that reason. Reads source RGBA via the
+            // same Atlas / Individual branch the Trim drain uses,
+            // calls `BgRemovalTool::run_full_resolution` at the
+            // sprite's native size, and swaps to a fresh Individual
+            // texture so the on-canvas sprite picks up the new alpha.
+            //
+            // Gate on BgRemoval being the active tool — the user is
+            // expected to apply WHILE the tool is active (the Apply
+            // Toggle lives in its panel). If they switch tools in
+            // the same frame, leave `pending_bgremoval` intact so
+            // the next activation can complete the round-trip.
+            let bgremoval_id = ph2d_editor::ToolId::new("bgremoval");
+            let bgremoval_active = tools
+                .active()
+                .map(|t| t.id() == bgremoval_id)
+                .unwrap_or(false);
+            if bgremoval_active
+                && let Some(entity_bits) = hero.pending_bgremoval.take()
+            {
+                let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                let snapshot = {
+                    let world = sim.world();
+                    world.get::<Sprite>(entity).and_then(|sprite| {
+                        let old_size_world = sprite.size;
+                        let old_source = sprite.source;
+                        let old_translation = world
+                            .get::<ph2d_ecs::Transform>(entity)
+                            .map(|t| [t.translation.x, t.translation.y])
+                            .unwrap_or([0.0, 0.0]);
+                        match sprite.source {
+                            ph2d_render::SpriteSource::Atlas { key } => {
+                                let aid = atlas_asset_map.get(&key)?;
+                                let asset = asset_db.get(aid)?;
+                                match &*asset {
+                                    ph2d_asset::Asset::ImageRgba8 {
+                                        width,
+                                        height,
+                                        pixels,
+                                    } => Some((
+                                        *width,
+                                        *height,
+                                        pixels.clone(),
+                                        old_size_world,
+                                        old_translation,
+                                        old_source,
+                                    )),
+                                    _ => None,
+                                }
+                            }
+                            ph2d_render::SpriteSource::Individual { texture_id } => {
+                                match renderer.readback_individual(texture_id) {
+                                    Ok((w, h, pixels)) => Some((
+                                        w,
+                                        h,
+                                        pixels.into(),
+                                        old_size_world,
+                                        old_translation,
+                                        old_source,
+                                    )),
+                                    Err(_) => None,
+                                }
+                            }
+                        }
+                    })
+                };
+                match snapshot {
+                    None => {
+                        toasts.push(Toast::error(
+                            "Bg Removal: source unavailable (Atlas key missing or readback failed)",
+                        ));
+                        self.title_dirty = true;
+                    }
+                    Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
+                        // Outer `bgremoval_active` gate guarantees the
+                        // active tool downcasts to BgRemovalTool here.
+                        // Push the source snapshot (idempotent — the
+                        // per-frame snapshot push may have already
+                        // seeded the same buffer for the preview, but
+                        // the full-res Apply needs the exact same
+                        // buffer the algorithm should consume).
+                        let bg = tools
+                            .active_mut()
+                            .and_then(|t| {
+                                t.as_any_mut()
+                                    .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                            })
+                            .expect("bgremoval_active gate guarantees a BgRemovalTool");
+                        let mut out: Vec<u8> = Vec::new();
+                        bg.set_source_snapshot(pixels.to_vec(), width, height);
+                        let (out_w, out_h) = bg.run_full_resolution(&mut out);
+                        let _ = (width, height); // shadowed by out_*; silence unused.
+                        match renderer.acquire_individual(out_w, out_h, &out) {
+                            Err(err) => {
+                                toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
+                                self.title_dirty = true;
+                            }
+                            Ok(texture_id) => {
+                                let sim_w = sim.world_mut();
+                                if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
+                                    sprite.source =
+                                        ph2d_render::SpriteSource::Individual { texture_id };
+                                    // Dimensions preserved — size stays.
+                                }
+                                drop_undo_pre_source_if_individual(renderer, image_edit_undo);
+                                *image_edit_undo = Some(ImageEditSnapshot {
+                                    entity_bits,
+                                    pre_source: old_source,
+                                    pre_size: old_size_world,
+                                    pre_translation: old_translation,
+                                    post_individual_id: texture_id,
+                                    label: "Bg Removal",
+                                });
+                                toasts.push(Toast::success(
+                                    "Bg Removal applied · Cmd+Z to undo",
+                                ));
+                                self.title_dirty = true;
+                                // Re-push the freshly-modified pixels
+                                // into the tool so the next preview
+                                // tick reflects the new state.
+                                self.last_bgremoval_pushed_entity = None;
+                            }
+                        }
+                    }
+                }
+            }
             // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click) raises
             // `pending_undo_image_edit` on the hero; the host owns the
             // snapshot. Single-level: each new edit overwrites the slot
@@ -2817,10 +3026,11 @@ impl ApplicationHandler for App {
         let zen = ZenMode::new();
         let mut toasts = ToastQueue::new();
         toasts.push(Toast::success("Editor data layer wired (M12)"));
-        toasts.push(Toast::info("Press 1=Brush, 2=Move, Tab=Zen"));
+        toasts.push(Toast::info("Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"));
         let mut tools = ToolRegistry::new();
         tools.register(Box::new(BrushTool::default()));
         tools.register(Box::new(MoveTool::default()));
+        tools.register(Box::new(ph2d_editor::BgRemovalTool::default()));
         let layout = EditorLayout::new(size.width as f32, size.height as f32);
         let vello_pass =
             match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {

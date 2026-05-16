@@ -140,6 +140,12 @@ pub enum IconId {
     Transform,
     Trash,
     TrimTransparency,
+    /// Lucide `eraser` glyph — drives the LeftRail chip / TopBar
+    /// activator for the Background Removal stateful Tool.
+    /// Implementation in `tools/bgremoval/icon.rs` (mirror path for
+    /// the Vello-vector consumers); the icon-grid `cmds()` path
+    /// below is the canonical SVG used by `paint_icon`.
+    BgRemoval,
     Undo,
     Unlink,
     Unlock,
@@ -575,6 +581,16 @@ impl IconId {
                 IconCmd::Path("M6 2v14a2 2 0 0 0 2 2h14"),
                 IconCmd::Path("M18 22V8a2 2 0 0 0-2-2H2"),
             ],
+            // Lucide `eraser.svg` (v0.453) — eraser shaft + ground
+            // line + diagonal cut. Three SVG paths, identical to the
+            // BezPath in `tools/bgremoval/icon.rs::eraser_bezpath`.
+            Self::BgRemoval => &[
+                IconCmd::Path(
+                    "m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21",
+                ),
+                IconCmd::Path("M22 21H7"),
+                IconCmd::Path("m5 11 9 9"),
+            ],
             // Lucide `undo-2` — arrow head + flat curve (mirror of redo-2).
             Self::Undo => &[
                 IconCmd::Path("M9 14 L 4 9 L 9 4"),
@@ -847,6 +863,7 @@ mod tests {
         IconId::Transform,
         IconId::Trash,
         IconId::TrimTransparency,
+        IconId::BgRemoval,
         IconId::Undo,
         IconId::Unlink,
         IconId::Unlock,

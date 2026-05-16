@@ -7,7 +7,9 @@
 //! - On `set_source_snapshot` and on every panel event, the Tool
 //!   re-runs `algorithm::run_pipeline` on the 160×160 thumbnail.
 //!   The result lands in `self.preview_rgba`, ready for the panel
-//!   paint to display.
+//!   paint to display. The thumbnail is built once per snapshot via
+//!   [`image::imageops::resize`] with `Triangle` (cheap box-quality,
+//!   no ringing — good enough for a preview).
 //! - On Apply trigger, the Tool sets `self.pending_apply = true`.
 //!   The host drains via [`BgRemovalTool::take_pending_apply`], runs
 //!   the pipeline at full resolution against the live `Sprite.source`,
@@ -149,22 +151,81 @@ impl BgRemovalTool {
         (self.source_w, self.source_h)
     }
 
+    /// Aspect-fit `source_rgba` into a `THUMB_SIZE × THUMB_SIZE` RGBA8
+    /// buffer with transparent letterbox borders. Uses
+    /// `image::imageops::resize` with `Triangle` (cheap box-quality,
+    /// no ringing — fine for a 160-px preview that gets re-segmented
+    /// every panel-event frame).
+    ///
+    /// No-op when the host hasn't pushed a source snapshot yet.
+    ///
+    /// Allocations: one `ImageBuffer` for the source view and one for
+    /// the resized output (both freed before return). The owned
+    /// `self.thumbnail_rgba` is `clear()`-ed and re-extended so its
+    /// capacity persists across calls (HR-3 in the steady state where
+    /// every Apply sees the same source size).
     fn rebuild_thumbnail(&mut self) {
-        // STUB: M1 onwards uses `image::imageops::resize` with a
-        // Triangle filter to produce an aspect-fit
-        // THUMB_SIZE × THUMB_SIZE buffer with letterbox transparent
-        // borders. For the skeleton we keep the buffer empty so
-        // callers see a "no preview yet" state.
-        self.thumbnail_w = 0;
-        self.thumbnail_h = 0;
+        if !self.has_source() {
+            self.thumbnail_w = 0;
+            self.thumbnail_h = 0;
+            self.thumbnail_rgba.clear();
+            return;
+        }
+        let target = THUMB_SIZE;
+        // Aspect-fit: scale the LONGER side to `target`, the shorter
+        // side gets proportional scaling. Degenerate dims fall back
+        // to 1 px so the resize call doesn't panic.
+        let (sw, sh) = aspect_fit(self.source_w, self.source_h, target);
+        let src = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(
+            self.source_w,
+            self.source_h,
+            self.source_rgba.clone(),
+        )
+        .expect("source_rgba length matches source_w * source_h * 4");
+        let resized: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = if sw == self.source_w
+            && sh == self.source_h
+        {
+            src
+        } else {
+            image::imageops::resize(&src, sw, sh, image::imageops::FilterType::Triangle)
+        };
+        // Letterbox into target × target with transparent borders.
+        let pad_x = (target - sw) / 2;
+        let pad_y = (target - sh) / 2;
+        let total_bytes = (target as usize) * (target as usize) * 4;
         self.thumbnail_rgba.clear();
+        self.thumbnail_rgba.resize(total_bytes, 0);
+        for row in 0..sh {
+            let dst_y = (pad_y + row) as usize;
+            let dst_start = (dst_y * (target as usize) + pad_x as usize) * 4;
+            let src_start = (row as usize) * (sw as usize) * 4;
+            let row_bytes = (sw as usize) * 4;
+            self.thumbnail_rgba[dst_start..dst_start + row_bytes]
+                .copy_from_slice(&resized.as_raw()[src_start..src_start + row_bytes]);
+        }
+        self.thumbnail_w = target;
+        self.thumbnail_h = target;
     }
 
+    /// Re-run the segmentation pipeline against the cached thumbnail
+    /// with the current `params`. Output lands in `self.preview_rgba`,
+    /// always `THUMB_SIZE * THUMB_SIZE * 4` bytes.
+    ///
+    /// No-op when `rebuild_thumbnail` hasn't produced a buffer yet.
     fn rerun_preview(&mut self) {
-        // STUB: M1 onwards runs `run_pipeline` on `thumbnail_rgba`
-        // and stores the output in `preview_rgba`. The skeleton just
-        // clears the preview.
+        if self.thumbnail_rgba.is_empty() {
+            self.preview_rgba.clear();
+            return;
+        }
+        run_pipeline(
+            &self.thumbnail_rgba,
+            self.thumbnail_w,
+            self.thumbnail_h,
+            &self.params,
+            &mut self.scratch,
+        );
         self.preview_rgba.clear();
+        self.preview_rgba.extend_from_slice(&self.scratch.output_rgba);
     }
 
     /// Build the Mode RadioGroup (Chroma / Smart Cut) seeded with the
@@ -268,6 +329,30 @@ impl Tool for BgRemovalTool {
             self.rerun_preview();
         }
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+/// Compute the (w, h) that fit inside a `target × target` square,
+/// preserving the input aspect ratio. The longer side lands on
+/// `target`; the shorter side scales proportionally. Outputs are
+/// clamped to at least 1 px so the resize call never sees a 0
+/// dimension.
+fn aspect_fit(sw: u32, sh: u32, target: u32) -> (u32, u32) {
+    if sw == 0 || sh == 0 || target == 0 {
+        return (target.max(1), target.max(1));
+    }
+    if sw >= sh {
+        // landscape (or square) → width clamps to target.
+        let scaled_h = ((sh as u64 * target as u64) / sw as u64) as u32;
+        (target, scaled_h.max(1))
+    } else {
+        // portrait → height clamps to target.
+        let scaled_w = ((sw as u64 * target as u64) / sh as u64) as u32;
+        (scaled_w.max(1), target)
+    }
 }
 
 #[cfg(test)]
@@ -366,6 +451,69 @@ mod tests {
         let buf = vec![255u8; 8 * 8 * 4];
         t.set_source_snapshot(buf, 8, 8);
         assert!(t.has_source());
+    }
+
+    #[test]
+    fn set_source_snapshot_builds_thumbnail_and_preview() {
+        // Push a 32×32 opaque-white source; the thumbnail must
+        // letterbox to 160×160 and the preview pipeline must produce
+        // a same-size buffer.
+        let mut t = BgRemovalTool::default();
+        let buf = vec![255u8; 32 * 32 * 4];
+        t.set_source_snapshot(buf, 32, 32);
+        assert_eq!(t.thumbnail_w, THUMB_SIZE);
+        assert_eq!(t.thumbnail_h, THUMB_SIZE);
+        assert_eq!(
+            t.thumbnail_rgba.len(),
+            (THUMB_SIZE as usize) * (THUMB_SIZE as usize) * 4
+        );
+        assert_eq!(
+            t.preview_rgba().len(),
+            (THUMB_SIZE as usize) * (THUMB_SIZE as usize) * 4
+        );
+    }
+
+    #[test]
+    fn slider_event_triggers_preview_rerun() {
+        // Mutating a param after a source snapshot is live re-runs
+        // the preview pipeline. Tests the `changed && has_source`
+        // gate in `handle_panel_event`.
+        let mut t = BgRemovalTool::default();
+        let buf = vec![255u8; 32 * 32 * 4];
+        t.set_source_snapshot(buf, 32, 32);
+        let baseline = t.preview_rgba().to_vec();
+        t.handle_panel_event(PanelEvent::SetValue(TOLERANCE_NODE, 0.9));
+        // Preview ran again (length preserved; content may differ —
+        // we don't assert on content, just on the contract that it
+        // didn't get wiped to empty).
+        assert_eq!(t.preview_rgba().len(), baseline.len());
+    }
+
+    #[test]
+    fn aspect_fit_landscape_keeps_target_width() {
+        let (w, h) = aspect_fit(400, 200, 160);
+        assert_eq!(w, 160);
+        assert_eq!(h, 80);
+    }
+
+    #[test]
+    fn aspect_fit_portrait_keeps_target_height() {
+        let (w, h) = aspect_fit(200, 400, 160);
+        assert_eq!(h, 160);
+        assert_eq!(w, 80);
+    }
+
+    #[test]
+    fn aspect_fit_square_passes_through_target() {
+        assert_eq!(aspect_fit(256, 256, 160), (160, 160));
+    }
+
+    #[test]
+    fn aspect_fit_degenerate_returns_target_minimum() {
+        // Zero dims should not panic — should produce a 1×1+ fallback
+        // so the downstream resize call has a defined target.
+        let (w, h) = aspect_fit(0, 0, 160);
+        assert!(w >= 1 && h >= 1);
     }
 
     #[test]

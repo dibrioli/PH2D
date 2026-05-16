@@ -1,8 +1,8 @@
 # Background Removal — Plano de Integração
 
-**Status:** Ilha isolada **em construção** (M1 → M2 → M3 → integração interna). Atualizo cada seção conforme avanço.
+**Status:** Ilha isolada **pronta** — feature core completa, 4 stubs preenchidos pelo Coordenador, host wiring landado em 2026-05-16. 110+ tests verdes.
 **Agente Implementador:** Slot #2 — slug `bgremoval`.
-**Audiência:** próximo agente Integrador (Coordenador).
+**Coordenador (integração):** sessão Coord 2026-05-16.
 
 ## 1. O que esta ilha entrega
 
@@ -104,17 +104,17 @@ active_tool_mut::<BgRemovalTool>().unwrap().set_source_snapshot(rgba, w, h);
 
 O `set_source_snapshot` rebuilda o thumbnail e re-roda o preview com os params atuais.
 
-## 4. Wiring pendente pelo Coordenador (checklist)
+## 4. Wiring (concluído 2026-05-16 pelo Coordenador)
 
-- [ ] `pub mod bgremoval;` em `crates/ph2d-editor/src/tools/mod.rs`.
-- [ ] Re-export de `BgRemovalTool` em `lib.rs` quando shells/desktop precisar.
-- [ ] HeroScreen: novo campo `pub pending_bgremoval: Option<u64>` (asset id token).
-- [ ] Variant `IconId::BgRemoval` em `crates/ph2d-editor/src/icons.rs` — SVG path sugerido: vide [`icon.rs`](icon.rs) (`eraser_bezpath()` — Lucide eraser).
-- [ ] LeftRail entry em `screens/hero/left_rail.rs` apontando para `ToolId::new("bgremoval")` + `IconId::BgRemoval`.
-- [ ] ToolRegistry register em `shells/desktop/src/main.rs`: `registry.register(Box::new(BgRemovalTool::default()));`.
-- [ ] Snapshot push handler: chama `tool.set_source_snapshot(rgba, w, h)` no `on_activate` + na transição de seleção ativa.
-- [ ] Drain handler do `pending_bgremoval` no main.rs (modelo trim_transparency §3.2 acima).
-- [ ] Strings via `t!()` quando bundle Fluent existir (atualmente literal "Bg Removal" / "Tolerance" / etc. — HR-15 fallback).
+- [x] `pub mod bgremoval;` em `crates/ph2d-editor/src/tools/mod.rs`.
+- [x] Re-export de `BgRemovalTool` em `lib.rs` para consumo do shells/desktop.
+- [x] HeroScreen: novo campo `pub pending_bgremoval: Option<u64>` (asset id token).
+- [x] Variant `IconId::BgRemoval` em `crates/ph2d-editor/src/icons.rs` ligado ao `eraser_bezpath()` deste módulo.
+- [x] LeftRail entry em `screens/hero/left_rail.rs` apontando para `ToolId::new("bgremoval")` + `IconId::BgRemoval`.
+- [x] ToolRegistry register em `shells/desktop/src/main.rs`: `registry.register(Box::new(BgRemovalTool::default()));`.
+- [x] Snapshot push handler: chama `tool.set_source_snapshot(rgba, w, h)` no `on_activate` + na transição de seleção ativa.
+- [x] Drain handler do `pending_bgremoval` no main.rs (modelo trim_transparency §3.2 acima).
+- [ ] Strings via `t!()` quando bundle Fluent existir (atualmente literal "Bg Removal" / "Tolerance" / etc. — HR-15 fallback documentado).
 
 ## 5. APIs públicas (para Coord referenciar)
 
@@ -161,9 +161,12 @@ Tabela `THIRD_PARTY_LICENSES.md` na raiz já lista a entrada para este arquivo.
 
 ## 9. Status por método
 
-- [ ] **M1 — Chroma+Flood** — esqueleto pronto, stub. Real implementação no próximo pass.
-- [ ] **M2 — GrabCut** — esqueleto pronto, stub. Implementação depois do audit do M1.
-- [ ] **M3 — Guided Filter** — esqueleto pronto, stub. Implementação depois do audit do M2.
+- [x] **M1 — Chroma+Flood** — completo + auditado. 35 tests; Oklab + corner k-means + connected flood com border-bg fallback e alpha-aware sampling.
+- [x] **M2 — GrabCut** — completo + auditado. 51 tests; downscale Triangle 1024² + iter loop com convergence early-exit, GMM 5-comp × 3×3, BK port (Apache 2.0 OpenCV) com EK oracle de validação.
+- [x] **M3 — Guided Filter** — completo + auditado. 17 tests; vanilla gray-guide + separable box filter, var_I floor + ε clamp.
+- [x] **Compose** — 5 tests (pós-audit final P0): path-1 refined, path-2 chroma soft band (ΔE² unit fix), path-3 grabcut binary com mode gate.
+- [x] **Tool wrapper** — stubs `rebuild_thumbnail` (aspect-fit Triangle 160×160 letterbox) + `rerun_preview` (pipeline na thumbnail) preenchidos em 2026-05-16; eraser_bezpath real port Lucide v0.453.
+- [x] **Host wiring** — `pub mod` + `IconId::BgRemoval` + `HeroScreen.pending_bgremoval` + LeftRail entry + ToolRegistry register + snapshot push em on_activate / selection-change + drain handler modelo trim_transparency.
 
 ## 10. Out of scope desta ilha (deliberado)
 

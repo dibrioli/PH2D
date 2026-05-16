@@ -371,6 +371,16 @@ pub struct HeroScreen {
     /// time) so a concurrent selection change doesn't retarget the
     /// action — same contract as `pending_trim_transparency`.
     pub pending_make_square: Option<u64>,
+    /// Pending request to apply Background Removal to the selected
+    /// sprite. Raised by the active `BgRemovalTool` when the user
+    /// clicks the Apply Toggle in its panel — the host's per-frame
+    /// drain reads the sprite's RGBA source, calls
+    /// `BgRemovalTool::run_full_resolution` at full size, and swaps
+    /// `Sprite.source` to a fresh `Individual` texture (same
+    /// contract as `pending_trim_transparency` — same `entity_bits`
+    /// snapshot semantics, no pivot reproject because bgremoval
+    /// preserves image dimensions).
+    pub pending_bgremoval: Option<u64>,
     /// One-shot intent: undo the most recent image-edit action
     /// (Trim Transparency / Make Square). Raised by clicking
     /// `TOOL_UNDO` on the LeftRail or pressing Cmd+Z. The host holds
@@ -643,6 +653,7 @@ impl HeroScreen {
             pending_reimport: None,
             pending_trim_transparency: None,
             pending_make_square: None,
+            pending_bgremoval: None,
             pending_undo_image_edit: false,
             has_undoable_image_edit: false,
             inspector_sprite: None,
@@ -1970,10 +1981,7 @@ pub fn paint_hero_screen(
             hero.project.display_unit,
             hero.project.pixels_per_meter,
         );
-        crate::grid_snap::sync_meter_inputs_to_display_unit(
-            &hero.grid_snap_state,
-            &mut hero.store,
-        );
+        crate::grid_snap::sync_meter_inputs_to_display_unit(&hero.grid_snap_state, &mut hero.store);
         crate::grid_snap::paint(
             gs_rect,
             scene,

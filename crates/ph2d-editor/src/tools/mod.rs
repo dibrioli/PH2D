@@ -5,6 +5,7 @@
 //! controls (sliders, color swatches, axis radios) lazy-bind once
 //! the widget-primitives PR lands.
 
+pub mod bgremoval;
 pub mod brush;
 pub mod make_square;
 pub mod move_tool;

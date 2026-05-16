@@ -75,9 +75,10 @@ pub use tool::{PanelEvent, Tool, ToolRegistry};
 // taking a direct ph2d-a11y dep just for one type.
 pub use ph2d_a11y::NodeId;
 pub use tools::{
-    Bounds, BrushTool, MakeSquareResult, MoveTool, TrimResult, crop_bezpath, make_square,
-    square_bezpath, trim_transparency,
+    Bounds, BrushTool, MakeSquareResult, MoveTool, TrimResult, bgremoval, crop_bezpath,
+    make_square, square_bezpath, trim_transparency,
 };
+pub use tools::bgremoval::{BgRemovalParams, BgRemovalTool, eraser_bezpath};
 pub use widget::{
     Avatar, AvatarShape, AvatarState, Button, ButtonKind, ButtonState, CHECKBOX_BOX_PX, Card,
     Checkbox, CheckboxState, CheckboxValue, ColorPicker, ColorPickerMode, ColorSwatch, Combobox,

@@ -7,7 +7,7 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 
 > **PH2D** (Power House 2D). Engine 2D de altíssima performance, sem teto para artistas, com IA tratada como first-class user.
 
-**Versão deste documento:** 2.3 — 2026-05-10 (versões pinadas atualizadas após M11; status M1-M12 done refletido em §7; design library handoff + hero deep polish + color picker fix em §11.9)
+**Versão deste documento:** 2.4 — 2026-05-16 (convention-by-discovery migração: tool-crates `ph2d-tool-*`, registry runtime, shell decomposition `init.rs`/`input_dispatch.rs`/`hero_intents.rs`; HR-18 declarada; ADR-0027 Accepted)
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
 
 ## 1. Visão em uma frase
@@ -372,6 +372,18 @@ Toda mutação destrutiva grava em `audit.log` (JSON Lines, append-only): timest
 **Rule:** todo example em `docs/scripting/examples/` (~30 entradas no v0.1) compila com `luau-analyze` em strict mode e roda em fixture sintético. PR que altera API canônica e quebra example exige update do example no mesmo PR.
 **Rationale:** LLM é o único programador. Documentação desatualizada é fricção catastrófica — LLM lê doc, gera código baseado nele, código falha. Examples curados em training data on-the-fly só funcionam se garantidamente corretos.
 **Enforced by:** `tests/scripting/examples_compile.rs` carrega cada arquivo `.luau` em `docs/scripting/examples/`, valida com `luau-analyze --strict`, executa em runtime fixture; CI quebra na primeira falha.
+
+### HR-18 — Crescimento bounded em shell binaries
+**Rule:** Arquivos em `shells/<plataforma>/src/` respeitam caps de tamanho:
+- Qualquer arquivo `.rs`: **≤ 600 LOC** (excluindo `tests/` e arquivos declarados como tabelas em comentário `// ph2d-loc-cap: table`).
+- Qualquer função: **≤ 200 LOC** (corpo entre `{` e `}` do top-level fn).
+- `main.rs` de qualquer shell: **≤ 400 LOC** — contém apenas struct App, impl ApplicationHandler, fn main, e tests inline.
+
+Crescimento de funcionalidade acontece por adição de módulo `mod X;` (arquivo novo abaixo do cap), nunca por inflação de função ou arquivo existente.
+
+**Rationale:** god-files são hostis a multi-agente (superfície de conflito), a LLM (excesso de contexto por janela), e a auditoria (complexidade ciclomática inauditável). Bound estrito força decomposição contínua por responsabilidade. Pré-migração 2026-05-16, `shells/desktop/src/main.rs` tinha 3463 LOC com `render_frame()` (1825 LOC) e `window_event()` (706 LOC) violando todos os caps — o PR de decomposição (ADR-0027) extraiu `init.rs`, `input_dispatch.rs`, `hero_intents.rs` reduzindo `main.rs` a 2421 LOC (transitional; cap ativa quando dispatcher genérico full landar).
+
+**Enforced by:** `tests/architecture/file_loc_caps.rs` em CI (lint inativo nesta migração — `main.rs` ainda excede o cap 400; ativa quando dispatcher full extrair os `pending_X` Inspector intents remanescentes). Exceções por `// ph2d-loc-cap: <razão>` no topo do arquivo (uso raro, requer justificativa em PR).
 
 ## 10. Convenções de código
 
@@ -868,6 +880,20 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 3. Usar `t!("identifier", args...)` no código.
 4. CI checa que toda chave usada existe em todos bundles core.
 
+**Adicionar uma tool ao editor (post ADR-0027 / convention-by-discovery):**
+1. Crie `crates/ph2d-tool-<slug>/` seguindo Apêndice A do plano `docs/Migracao/2026-05-convention-by-discovery.md`:
+   - `Cargo.toml` com deps mínimas (ph2d-tool-registry + as que o tool precisa). NÃO precisa editar `ph2d-editor/Cargo.toml`.
+   - `src/lib.rs`: `pub const MANIFEST: ToolManifest = ...;` + `pub fn register(reg: &mut Registry)`.
+   - `src/manifest.rs`, `src/algorithm.rs` (pure-Rust se possível), `src/icon.rs` (fn() -> BezPath), `src/handler.rs`.
+2. Adicione ao workspace: `"crates/ph2d-tool-<slug>"` em `Cargo.toml` raiz.
+3. Adicione dep + UMA linha em `crates/ph2d-tool-registry-init/`:
+   - `Cargo.toml`: `ph2d-tool-<slug> = { path = "../ph2d-tool-<slug>" }`.
+   - `src/lib.rs::register_all`: `ph2d_tool_<slug>::register(reg);` (ordem alfabética).
+4. Testes próprios em `crates/ph2d-tool-<slug>/tests/`.
+5. CI lints em `crates/ph2d-tool-registry-init/tests/` validam HR-12/13/15 automaticamente.
+
+**O que VOCÊ NÃO TOCA**: `ph2d-editor/src/lib.rs`, `ph2d-editor/src/tools/mod.rs`, `ph2d-editor/src/icons.rs`, `screens/hero/fixture.rs`, `screens/hero/ids.rs`, `shells/desktop/src/main.rs`. Esses arquivos eram colisão central pré-ADR-0027 — receita nova evita totalmente.
+
 ## 15. Anti-patterns (NÃO faça)
 
 - ❌ `Arc<Mutex<T>>` em hot path. Use `parking_lot::RwLock` raramente, prefira channels (`crossbeam`) ou ECS.
@@ -895,6 +921,9 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 - ❌ Resize não-coalescido no shell desktop. Descartar resize events intermediários do mesmo frame (wgpu issues #2301/#3868/#5353).
 - ❌ Async runtime no core além de `ph2d-asset::loader` e `ph2d-net::transport`. **Async morre na fronteira da shell** (§12.2).
 - ❌ Assumir `SharedArrayBuffer` no web target sem confirmar headers COOP/COEP. Sempre fallback single-thread elegante (§11.12).
+- ❌ **God-file em `shells/*/src/`** (HR-18). Crescimento por inflação de função existente em vez de extração para módulo novo. Aplica especialmente a `main.rs`, `render_frame()`, `window_event()`, `resumed()` — todos historicamente alvos de incremento descontrolado pré-ADR-0027.
+- ❌ **Manual NodeId range allocation**. `screens/hero/ids.rs` antigamente alocava ranges 100..199 / 200..299 / etc à mão; convention-by-discovery substitui isso por `hash_node_id("tool.<slug>")` em `ph2d-tool-registry::node_id` (FNV-1a 64-bit const fn, collision-detected at registry build). Chrome fixo legacy retém consts; chrome derivado de tool-crates usa hash.
+- ❌ **Editar registries centrais ao adicionar tool**: `lib.rs::pub use`, `tools/mod.rs`, `widget.rs`, `icons.rs` enum, `screens/hero/fixture.rs::topbar_clusters()`, `Cargo.toml` raiz. A receita canônica é `crates/ph2d-tool-<slug>/` com `pub fn register` + `pub const MANIFEST` + UMA linha em `crates/ph2d-tool-registry-init/src/lib.rs::register_all`. Vide ADR-0027 + plano `docs/Migracao/2026-05-convention-by-discovery.md` Apêndice A.
 
 ## 16. Estratégia de testes
 
@@ -999,6 +1028,7 @@ Listar com motivo de rejeição.
 | ADR-0022 | Banimento HashMap em simulation crates | **Accepted** ([0022-no-hashmap-in-simulation.md](../docs/architecture/decisions/0022-no-hashmap-in-simulation.md)) |
 | ADR-0023 | UI/UX baseline — Procreate-style canvas-first + WCAG 2.2 AA + AccessKit | **Accepted** ([0023-ui-ux-baseline.md](../docs/architecture/decisions/0023-ui-ux-baseline.md)) |
 | ADR-0024 | Editor input pipeline + retained widget state (Modelo B + plano HR-3 zero-alloc) | **Accepted** ([0024-editor-input-and-widget-state.md](../docs/architecture/decisions/0024-editor-input-and-widget-state.md)) |
+| ADR-0027 | Convention-by-discovery + Shell decomposition + HR-18 (tool-as-crate, registry-init, manifest-driven chrome) | **Accepted** ([0027-convention-by-discovery.md](../docs/architecture/decisions/0027-convention-by-discovery.md)) |
 
 ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-17.
 

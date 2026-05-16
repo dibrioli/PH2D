@@ -377,7 +377,10 @@ fn paint_probe_pair_row(
         label_w,
         resolve(ColorToken::Text1, theme),
     );
-    for (i, (id, v)) in [(x_id, value[0]), (y_id, value[1])].iter().enumerate() {
+    // Probe values are world meters; convert through the active
+    // DisplayUnit so the NumberInputs read the right magnitude.
+    for (i, (id, v_m)) in [(x_id, value[0]), (y_id, value[1])].iter().enumerate() {
+        let v_disp = super::panel::meters_to_display_pub(*v_m);
         let r = Rect::new(
             x + Spacing::Sm.px() + label_w + i as f32 * (input_w + gap),
             y,
@@ -386,7 +389,7 @@ fn paint_probe_pair_row(
         );
         let (ti_state, _, buffer, caret, anchor) = store.number_input(*id).unwrap_or((
             crate::widget::TextInputState::Normal,
-            *v as f64,
+            v_disp,
             "",
             0,
             None,
@@ -396,7 +399,7 @@ fn paint_probe_pair_row(
         } else {
             None
         };
-        let input = crate::widget::NumberInput::new(*id, "", *v as f64).state(ti_state);
+        let input = crate::widget::NumberInput::new(*id, "", v_disp).state(ti_state);
         crate::widget::paint_number_input_with_buffer(
             &input,
             buffer_arg,

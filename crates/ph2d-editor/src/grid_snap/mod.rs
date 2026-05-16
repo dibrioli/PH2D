@@ -40,7 +40,10 @@ pub mod panel;
 pub mod render;
 pub mod state;
 
-pub use panel::{apply_event, default_rect, last_content_h, last_visible_h, paint, populate};
+pub use panel::{
+    apply_event, default_rect, last_content_h, last_visible_h, paint, populate,
+    set_current_display_unit, sync_meter_inputs_to_display_unit,
+};
 pub use state::{
     ChunksCfg, GridKind, GridSnapState, HexCfg, IsoCfg, QuadtreeCfg, SquareCfg, StaggeredHexCfg,
     StaggeredSquareCfg, TriCfg, VoronoiCfg,

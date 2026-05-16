@@ -40,6 +40,18 @@ thread_local! {
     static LAST_CONTENT_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
     /// Last visible body height (panel rect minus title + paddings).
     static LAST_VISIBLE_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+    /// Active project DisplayUnit + pixels-per-meter for THIS paint /
+    /// apply_event call. State storage is always meters; this pair
+    /// drives the meter↔display conversion at the panel boundary.
+    /// `paint_hero_screen` calls `set_current_display_unit` before
+    /// invoking `paint` and `apply_event` so the conversion sees the
+    /// live project value. Default `Meters` matches the project
+    /// default — a stale Some() can't outlive these calls anyway
+    /// because the host updates them every frame.
+    static CURRENT_DISPLAY_UNIT: std::cell::Cell<crate::project::DisplayUnit> =
+        const { std::cell::Cell::new(crate::project::DisplayUnit::Meters) };
+    static CURRENT_PPM: std::cell::Cell<f32> =
+        const { std::cell::Cell::new(crate::project::DEFAULT_PIXELS_PER_METER) };
 }
 
 /// Last computed content height — call from the host after `paint`
@@ -52,6 +64,127 @@ pub fn last_content_h() -> f32 {
 /// to publish via `store.set_panel_visible_h(GS_PANEL, …)`.
 pub fn last_visible_h() -> f32 {
     LAST_VISIBLE_H.with(|c| c.get())
+}
+
+/// Set by `paint_hero_screen` once per frame before any grid_snap
+/// `paint` / `apply_event` call. The two values are read inside the
+/// panel by the meter↔display conversion helpers below.
+pub fn set_current_display_unit(unit: crate::project::DisplayUnit, pixels_per_meter: f32) {
+    CURRENT_DISPLAY_UNIT.with(|c| c.set(unit));
+    CURRENT_PPM.with(|c| c.set(pixels_per_meter));
+}
+
+/// Reseed the store's NumberInput values for every meter-domain
+/// field from the live state, converted through the active
+/// DisplayUnit. Called by the host before `paint` so the rows that
+/// read from the store (via `read_number_input`) display the right
+/// magnitude for the current unit. Focused fields are skipped by
+/// `WidgetStore::set_number_value` so in-progress user edits don't
+/// get clobbered mid-typing.
+///
+/// Must be called AFTER `set_current_display_unit` so the conversion
+/// sees the live unit. Unitless / integer fields (subdivisions,
+/// max_per_leaf, RGB channels, etc.) are not touched.
+pub fn sync_meter_inputs_to_display_unit(
+    state: &GridSnapState,
+    store: &mut crate::interaction::WidgetStore,
+) {
+    // CELL_SIZE is shared across most kinds — reseed it from whichever
+    // cfg the active kind uses (Square/Hex/Tri/Chunks single
+    // cell_size; StaggeredSquare uses cell_w; Quadtree/Voronoi don't
+    // surface a cell_size row at all).
+    let cell_size_m: Option<f32> = match state.kind {
+        GridKind::Square => Some(state.square_cfg.cell_size),
+        GridKind::Hex => Some(state.hex_cfg.cell_size),
+        GridKind::StaggeredSquare => Some(state.staggered_square_cfg.cell_w),
+        GridKind::StaggeredHex => Some(state.staggered_hex_cfg.hex.cell_size),
+        GridKind::Tri => Some(state.tri_cfg.edge_length),
+        GridKind::Chunks => Some(state.chunks_cfg.cell_size),
+        // Iso uses tile_w / tile_h (NOT the shared CELL_SIZE input);
+        // Quadtree / Voronoi don't paint a CELL_SIZE row at all.
+        GridKind::Iso | GridKind::Quadtree | GridKind::Voronoi => None,
+    };
+    if let Some(m) = cell_size_m {
+        store.set_number_value(ids::GS_CFG_CELL_SIZE, meters_to_display(m));
+    }
+    // Iso tile size — only painted when the Iso kind is active, but
+    // the field is independent of any other kind so always reseed.
+    store.set_number_value(ids::GS_CFG_ISO_TILE_W, meters_to_display(state.iso_cfg.tile_w));
+    store.set_number_value(ids::GS_CFG_ISO_TILE_H, meters_to_display(state.iso_cfg.tile_h));
+    // Quadtree bounds (4 floats — soft-clamped on commit).
+    store.set_number_value(
+        ids::GS_CFG_QT_BOUNDS_MIN_X,
+        meters_to_display(state.quadtree_cfg.bounds.min[0]),
+    );
+    store.set_number_value(
+        ids::GS_CFG_QT_BOUNDS_MIN_Y,
+        meters_to_display(state.quadtree_cfg.bounds.min[1]),
+    );
+    store.set_number_value(
+        ids::GS_CFG_QT_BOUNDS_MAX_X,
+        meters_to_display(state.quadtree_cfg.bounds.max[0]),
+    );
+    store.set_number_value(
+        ids::GS_CFG_QT_BOUNDS_MAX_Y,
+        meters_to_display(state.quadtree_cfg.bounds.max[1]),
+    );
+    // Voronoi bounds.
+    store.set_number_value(
+        ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
+        meters_to_display(state.voronoi_cfg.bounds.min[0]),
+    );
+    store.set_number_value(
+        ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
+        meters_to_display(state.voronoi_cfg.bounds.min[1]),
+    );
+    store.set_number_value(
+        ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
+        meters_to_display(state.voronoi_cfg.bounds.max[0]),
+    );
+    store.set_number_value(
+        ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
+        meters_to_display(state.voronoi_cfg.bounds.max[1]),
+    );
+    // Probe A / B (world meters) inputs.
+    store.set_number_value(ids::GS_PROBE_A_X, meters_to_display(state.probe_a[0]));
+    store.set_number_value(ids::GS_PROBE_A_Y, meters_to_display(state.probe_a[1]));
+    store.set_number_value(ids::GS_PROBE_B_X, meters_to_display(state.probe_b[0]));
+    store.set_number_value(ids::GS_PROBE_B_Y, meters_to_display(state.probe_b[1]));
+}
+
+fn current_display_unit() -> crate::project::DisplayUnit {
+    CURRENT_DISPLAY_UNIT.with(|c| c.get())
+}
+
+fn current_ppm() -> f32 {
+    CURRENT_PPM.with(|c| c.get())
+}
+
+/// Convert a sim-stored meter value to the value to DISPLAY in a
+/// NumberInput (under the active DisplayUnit).
+#[inline]
+fn meters_to_display(meters: f32) -> f64 {
+    current_display_unit().from_meters(meters, current_ppm()) as f64
+}
+
+/// `pub(super)` re-export so sibling modules (`inspect`) can apply
+/// the same conversion without touching the thread-local directly.
+#[inline]
+pub(super) fn meters_to_display_pub(meters: f32) -> f64 {
+    meters_to_display(meters)
+}
+
+/// Convert a value the user TYPED (in display unit) back to meters
+/// before writing into state.
+#[inline]
+fn display_to_meters(value: f64) -> f32 {
+    current_display_unit().to_meters(value as f32, current_ppm())
+}
+
+/// "(m)" or "(px)" suffix for labels that show a length.
+#[inline]
+fn unit_suffix_paren() -> String {
+    format!(" ({})", current_display_unit().suffix())
 }
 
 const ROW_H: f32 = 28.0;
@@ -1063,7 +1196,7 @@ fn paint_square_cfg(
     state: &GridSnapState,
 ) -> f32 {
     y = paint_number_row(
-        "Cell size",
+        &format!("Cell size{}", unit_suffix_paren()),
         ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -1075,9 +1208,9 @@ fn paint_square_cfg(
         store,
     );
     y = paint_number_row_from_state(
-        "Major every",
+        &format!("Major every{}", unit_suffix_paren()),
         ids::GS_CFG_SPACING_MAJOR,
-        state.square_cfg.spacing_major as f64,
+        meters_to_display(state.square_cfg.spacing_major),
         x,
         w,
         y,
@@ -1115,7 +1248,7 @@ fn paint_hex_cfg(
     state: &GridSnapState,
 ) -> f32 {
     y = paint_number_row(
-        "Cell size",
+        &format!("Cell size{}", unit_suffix_paren()),
         ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -1190,8 +1323,9 @@ fn paint_iso_cfg(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    let suffix = unit_suffix_paren();
     y = paint_number_row(
-        "Tile width",
+        &format!("Tile width{suffix}"),
         ids::GS_CFG_ISO_TILE_W,
         x,
         w,
@@ -1203,7 +1337,7 @@ fn paint_iso_cfg(
         store,
     );
     y = paint_number_row(
-        "Tile height",
+        &format!("Tile height{suffix}"),
         ids::GS_CFG_ISO_TILE_H,
         x,
         w,
@@ -1242,7 +1376,7 @@ fn paint_staggered_sq_cfg(
     state: &GridSnapState,
 ) -> f32 {
     y = paint_number_row(
-        "Cell size",
+        &format!("Cell size{}", unit_suffix_paren()),
         ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -1301,7 +1435,7 @@ fn paint_tri_cfg(
     state: &GridSnapState,
 ) -> f32 {
     y = paint_number_row(
-        "Edge length",
+        &format!("Edge length{}", unit_suffix_paren()),
         ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -1499,7 +1633,7 @@ fn paint_chunks_cfg(
     state: &GridSnapState,
 ) -> f32 {
     y = paint_number_row(
-        "Cell size",
+        &format!("Cell size{}", unit_suffix_paren()),
         ids::GS_CFG_CELL_SIZE,
         x,
         w,
@@ -1677,10 +1811,11 @@ fn paint_origin_rows(
     state: &GridSnapState,
 ) -> f32 {
     let origin = state.active_origin();
+    let suffix = unit_suffix_paren();
     let y = paint_number_row_from_state(
-        "Origin X",
+        &format!("Origin X{suffix}"),
         ids::GS_CFG_ORIGIN_X,
-        origin[0] as f64,
+        meters_to_display(origin[0]),
         x,
         w,
         y,
@@ -1691,9 +1826,9 @@ fn paint_origin_rows(
         store,
     );
     paint_number_row_from_state(
-        "Origin Y",
+        &format!("Origin Y{suffix}"),
         ids::GS_CFG_ORIGIN_Y,
-        origin[1] as f64,
+        meters_to_display(origin[1]),
         x,
         w,
         y,
@@ -1726,10 +1861,11 @@ fn paint_aabb_rows(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) -> f32 {
+    let suffix = unit_suffix_paren();
     let y = paint_number_row_from_state(
-        &format!("{label_prefix} min X"),
+        &format!("{label_prefix} min X{suffix}"),
         min_x_id,
-        min[0] as f64,
+        meters_to_display(min[0]),
         x,
         w,
         y,
@@ -1740,9 +1876,9 @@ fn paint_aabb_rows(
         store,
     );
     let y = paint_number_row_from_state(
-        &format!("{label_prefix} min Y"),
+        &format!("{label_prefix} min Y{suffix}"),
         min_y_id,
-        min[1] as f64,
+        meters_to_display(min[1]),
         x,
         w,
         y,
@@ -1753,9 +1889,9 @@ fn paint_aabb_rows(
         store,
     );
     let y = paint_number_row_from_state(
-        &format!("{label_prefix} max X"),
+        &format!("{label_prefix} max X{suffix}"),
         max_x_id,
-        max[0] as f64,
+        meters_to_display(max[0]),
         x,
         w,
         y,
@@ -1766,9 +1902,9 @@ fn paint_aabb_rows(
         store,
     );
     paint_number_row_from_state(
-        &format!("{label_prefix} max Y"),
+        &format!("{label_prefix} max Y{suffix}"),
         max_y_id,
-        max[1] as f64,
+        meters_to_display(max[1]),
         x,
         w,
         y,
@@ -1962,28 +2098,32 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
     let Some(v) = store.number_value(id) else {
         return false;
     };
-    let v_f32 = v as f32;
+    // For meter-domain fields, convert the user-typed display value
+    // back to meters before writing into state. Integer / unitless
+    // fields (subdivisions, max_per_leaf, RGB) continue using `v`
+    // directly.
+    let v_m = display_to_meters(v);
     if id == ids::GS_CFG_CELL_SIZE {
         match state.kind {
-            GridKind::Square => state.square_cfg.cell_size = v_f32.max(0.01),
-            GridKind::Hex => state.hex_cfg.cell_size = v_f32.max(0.01),
+            GridKind::Square => state.square_cfg.cell_size = v_m.max(0.01),
+            GridKind::Hex => state.hex_cfg.cell_size = v_m.max(0.01),
             GridKind::StaggeredSquare => {
-                state.staggered_square_cfg.cell_w = v_f32.max(0.01);
-                state.staggered_square_cfg.cell_h = v_f32.max(0.01);
+                state.staggered_square_cfg.cell_w = v_m.max(0.01);
+                state.staggered_square_cfg.cell_h = v_m.max(0.01);
             }
-            GridKind::StaggeredHex => state.staggered_hex_cfg.hex.cell_size = v_f32.max(0.01),
-            GridKind::Tri => state.tri_cfg.edge_length = v_f32.max(0.01),
-            GridKind::Chunks => state.chunks_cfg.cell_size = v_f32.max(0.01),
+            GridKind::StaggeredHex => state.staggered_hex_cfg.hex.cell_size = v_m.max(0.01),
+            GridKind::Tri => state.tri_cfg.edge_length = v_m.max(0.01),
+            GridKind::Chunks => state.chunks_cfg.cell_size = v_m.max(0.01),
             _ => {}
         }
         return true;
     }
     if id == ids::GS_CFG_ISO_TILE_W {
-        state.iso_cfg.tile_w = v_f32.max(0.01);
+        state.iso_cfg.tile_w = v_m.max(0.01);
         return true;
     }
     if id == ids::GS_CFG_ISO_TILE_H {
-        state.iso_cfg.tile_h = v_f32.max(0.01);
+        state.iso_cfg.tile_h = v_m.max(0.01);
         return true;
     }
     if id == ids::GS_CFG_QT_MAX_PER_LEAF {
@@ -2012,16 +2152,16 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
     }
     // Universal origin offset — applies to the active kind's cfg.
     if id == ids::GS_CFG_ORIGIN_X {
-        write_active_origin_x(state, v_f32);
+        write_active_origin_x(state, v_m);
         return true;
     }
     if id == ids::GS_CFG_ORIGIN_Y {
-        write_active_origin_y(state, v_f32);
+        write_active_origin_y(state, v_m);
         return true;
     }
     // Major-line spacing — Square only (other kinds ignore the id).
     if id == ids::GS_CFG_SPACING_MAJOR && state.kind == GridKind::Square {
-        state.square_cfg.spacing_major = v_f32.max(state.square_cfg.cell_size);
+        state.square_cfg.spacing_major = v_m.max(state.square_cfg.cell_size);
         return true;
     }
     // Grid color RGB — clamp each channel to 0..=255 and write
@@ -2046,42 +2186,42 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
         state.snap_subdivisions = (v as u32).clamp(1, 64);
         return true;
     }
-    // Probe coords — direct write into state.probe_a/b.
+    // Probe coords (world meters) — direct write after display→meters.
     if id == ids::GS_PROBE_A_X {
-        state.probe_a[0] = v_f32;
+        state.probe_a[0] = v_m;
         return true;
     }
     if id == ids::GS_PROBE_A_Y {
-        state.probe_a[1] = v_f32;
+        state.probe_a[1] = v_m;
         return true;
     }
     if id == ids::GS_PROBE_B_X {
-        state.probe_b[0] = v_f32;
+        state.probe_b[0] = v_m;
         return true;
     }
     if id == ids::GS_PROBE_B_Y {
-        state.probe_b[1] = v_f32;
+        state.probe_b[1] = v_m;
         return true;
     }
     // Quadtree bounds (4 floats) + demo controls. AABB::new debug-
     // asserts only ordering; we soft-clamp max ≥ min to avoid
     // degenerate boxes after edits.
     if id == ids::GS_CFG_QT_BOUNDS_MIN_X {
-        state.quadtree_cfg.bounds.min[0] = v_f32;
-        state.quadtree_cfg.bounds.max[0] = state.quadtree_cfg.bounds.max[0].max(v_f32 + 0.01);
+        state.quadtree_cfg.bounds.min[0] = v_m;
+        state.quadtree_cfg.bounds.max[0] = state.quadtree_cfg.bounds.max[0].max(v_m + 0.01);
         return true;
     }
     if id == ids::GS_CFG_QT_BOUNDS_MIN_Y {
-        state.quadtree_cfg.bounds.min[1] = v_f32;
-        state.quadtree_cfg.bounds.max[1] = state.quadtree_cfg.bounds.max[1].max(v_f32 + 0.01);
+        state.quadtree_cfg.bounds.min[1] = v_m;
+        state.quadtree_cfg.bounds.max[1] = state.quadtree_cfg.bounds.max[1].max(v_m + 0.01);
         return true;
     }
     if id == ids::GS_CFG_QT_BOUNDS_MAX_X {
-        state.quadtree_cfg.bounds.max[0] = v_f32.max(state.quadtree_cfg.bounds.min[0] + 0.01);
+        state.quadtree_cfg.bounds.max[0] = v_m.max(state.quadtree_cfg.bounds.min[0] + 0.01);
         return true;
     }
     if id == ids::GS_CFG_QT_BOUNDS_MAX_Y {
-        state.quadtree_cfg.bounds.max[1] = v_f32.max(state.quadtree_cfg.bounds.min[1] + 0.01);
+        state.quadtree_cfg.bounds.max[1] = v_m.max(state.quadtree_cfg.bounds.min[1] + 0.01);
         return true;
     }
     if id == ids::GS_CFG_QT_DEMO_POINTS {
@@ -2094,21 +2234,21 @@ fn apply_value_changed(state: &mut GridSnapState, id: crate::NodeId, store: &Wid
     }
     // Voronoi bounds (same soft-clamp pattern as Quadtree).
     if id == ids::GS_CFG_VORONOI_BOUNDS_MIN_X {
-        state.voronoi_cfg.bounds.min[0] = v_f32;
-        state.voronoi_cfg.bounds.max[0] = state.voronoi_cfg.bounds.max[0].max(v_f32 + 0.01);
+        state.voronoi_cfg.bounds.min[0] = v_m;
+        state.voronoi_cfg.bounds.max[0] = state.voronoi_cfg.bounds.max[0].max(v_m + 0.01);
         return true;
     }
     if id == ids::GS_CFG_VORONOI_BOUNDS_MIN_Y {
-        state.voronoi_cfg.bounds.min[1] = v_f32;
-        state.voronoi_cfg.bounds.max[1] = state.voronoi_cfg.bounds.max[1].max(v_f32 + 0.01);
+        state.voronoi_cfg.bounds.min[1] = v_m;
+        state.voronoi_cfg.bounds.max[1] = state.voronoi_cfg.bounds.max[1].max(v_m + 0.01);
         return true;
     }
     if id == ids::GS_CFG_VORONOI_BOUNDS_MAX_X {
-        state.voronoi_cfg.bounds.max[0] = v_f32.max(state.voronoi_cfg.bounds.min[0] + 0.01);
+        state.voronoi_cfg.bounds.max[0] = v_m.max(state.voronoi_cfg.bounds.min[0] + 0.01);
         return true;
     }
     if id == ids::GS_CFG_VORONOI_BOUNDS_MAX_Y {
-        state.voronoi_cfg.bounds.max[1] = v_f32.max(state.voronoi_cfg.bounds.min[1] + 0.01);
+        state.voronoi_cfg.bounds.max[1] = v_m.max(state.voronoi_cfg.bounds.min[1] + 0.01);
         return true;
     }
     false

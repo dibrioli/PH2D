@@ -1184,6 +1184,14 @@ impl HeroScreen {
         // neighborhood options, snap toggle, overlay toggle, opacity
         // slider, probes, etc. Pass `&self.store` so the handler can
         // read post-flip `on` from Toggles + post-edit numeric values.
+        // The panel publishes display_unit + ppm via a thread-local
+        // so `apply_value_changed` can convert user-typed values (in
+        // display unit) back to sim-space meters before writing into
+        // state.
+        crate::grid_snap::set_current_display_unit(
+            self.project.display_unit,
+            self.project.pixels_per_meter,
+        );
         if crate::grid_snap::apply_event(&mut self.grid_snap_state, event, &self.store) {
             return true;
         }
@@ -1950,6 +1958,22 @@ pub fn paint_hero_screen(
         }
         hero.store
             .set_panel_rect(crate::grid_snap::ids::GS_PANEL, gs_rect);
+        // Publish the active DisplayUnit + pixels_per_meter into the
+        // panel's thread-local pair (read by meter↔display conversion
+        // helpers inside `paint` / `apply_event`), then reseed every
+        // meter-domain NumberInput's store value from the live state
+        // so the rows that read from the store display the right
+        // magnitude for the active unit. Focused fields are skipped
+        // by `set_number_value` so in-progress edits don't get
+        // clobbered.
+        crate::grid_snap::set_current_display_unit(
+            hero.project.display_unit,
+            hero.project.pixels_per_meter,
+        );
+        crate::grid_snap::sync_meter_inputs_to_display_unit(
+            &hero.grid_snap_state,
+            &mut hero.store,
+        );
         crate::grid_snap::paint(
             gs_rect,
             scene,

@@ -1351,14 +1351,24 @@ impl HeroScreen {
             )
             && let Some(info) = self.inspector_transform
         {
-            let x = self
+            // Store holds Position in the active DisplayUnit (Meters
+            // or Pixels). Convert back to sim-space meters before
+            // publishing — sim storage is always meters per the unit
+            // policy in `project::DisplayUnit`.
+            let unit = self.project.display_unit;
+            let ppm = self.project.pixels_per_meter;
+            let x_disp = self
                 .store
                 .number_value(ids::INSP_TRANSFORM_POS_X)
-                .unwrap_or(info.translation[0] as f64) as f32;
-            let y = self
+                .unwrap_or(unit.from_meters(info.translation[0], ppm) as f64)
+                as f32;
+            let y_disp = self
                 .store
                 .number_value(ids::INSP_TRANSFORM_POS_Y)
-                .unwrap_or(info.translation[1] as f64) as f32;
+                .unwrap_or(unit.from_meters(info.translation[1], ppm) as f64)
+                as f32;
+            let x = unit.to_meters(x_disp, ppm);
+            let y = unit.to_meters(y_disp, ppm);
             let rot_deg =
                 self.store
                     .number_value(ids::INSP_TRANSFORM_ROT)
@@ -1768,6 +1778,10 @@ pub fn paint_hero_screen(
             inspector::set_current_inspector_transform(hero.inspector_transform);
             inspector::set_current_inspector_visibility(hero.inspector_visibility);
             inspector::set_current_inspector_name(hero.inspector_name.clone());
+            inspector::set_current_display_unit(
+                hero.project.display_unit,
+                hero.project.pixels_per_meter,
+            );
             paint_inspector(
                 &layout,
                 hero.selection.as_ref(),
@@ -2297,6 +2311,74 @@ mod tests {
             after > before,
             "wheel down on gallery should increase panel_scroll \
              (before={before}, after={after})"
+        );
+    }
+
+    #[test]
+    fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
+        // Sim position = 1.5 m; project in Pixels mode (default 100
+        // px/m) → store NumberInput shows 150. Editing to 200 and
+        // committing should publish 2.0 m (200 / 100) into
+        // `pending_transform_edit.translation`.
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_visible = true;
+        hero.project.display_unit = crate::project::DisplayUnit::Pixels;
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 1,
+            translation: [1.5, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+        });
+        // Paint once so sync_inspector_from_snapshots seeds the store
+        // with the *converted* value (150 px, not 1.5 m).
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let stored_x = hero
+            .store
+            .number_value(ids::INSP_TRANSFORM_POS_X)
+            .expect("Position X must be seeded");
+        assert!(
+            (stored_x - 150.0).abs() < 1e-3,
+            "Position X should be displayed in pixels (150), got {stored_x}"
+        );
+        // User edits 150 → 200 (in pixels), commits.
+        hero.store
+            .set_number_value(ids::INSP_TRANSFORM_POS_X, 200.0);
+        let _ = hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X));
+        let pending = hero
+            .pending_transform_edit
+            .expect("commit must publish pending_transform_edit");
+        assert!(
+            (pending.translation[0] - 2.0).abs() < 1e-3,
+            "200 px should commit as 2.0 m (200 / 100 px/m), got {} m",
+            pending.translation[0]
+        );
+    }
+
+    #[test]
+    fn inspector_position_meters_mode_displays_raw_meters() {
+        // Sanity: default Meters mode is a no-op — store displays the
+        // raw meter value and commit is identity.
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.inspector_visible = true;
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Meters
+        );
+        hero.inspector_transform = Some(InspectorTransformInfo {
+            entity_bits: 1,
+            translation: [1.5, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+        });
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::new();
+        paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
+        let stored_x = hero.store.number_value(ids::INSP_TRANSFORM_POS_X).unwrap();
+        assert!(
+            (stored_x - 1.5).abs() < 1e-3,
+            "Meters mode should display raw value 1.5, got {stored_x}"
         );
     }
 

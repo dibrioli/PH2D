@@ -41,8 +41,8 @@ use state::{
 pub(in crate::screens::hero) use state::{
     last_body_top_screen_y, last_gallery_content_h, last_gallery_visible_h,
     last_inspector_content_h, last_inspector_visible_h, section_index_below_body_y,
-    set_current_inspector_name, set_current_inspector_sprite, set_current_inspector_transform,
-    set_current_inspector_visibility,
+    set_current_display_unit, set_current_inspector_name, set_current_inspector_sprite,
+    set_current_inspector_transform, set_current_inspector_visibility,
 };
 
 use super::HeroLayout;

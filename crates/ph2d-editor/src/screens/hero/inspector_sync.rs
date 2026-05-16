@@ -48,6 +48,13 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
         .or_else(|| hero.inspector_name.as_ref().map(|i| i.entity_bits))
         .or_else(|| hero.inspector_visibility.map(|i| i.entity_bits));
     let entity_changed = new_entity != hero.last_inspector_entity;
+    // Position values displayed to the user respect the project's
+    // DisplayUnit setting (Meters / Pixels). Rotation is always
+    // degrees and Scale is unitless, so only the two POS fields
+    // need the conversion. Sim storage stays meters.
+    let display_unit = hero.project.display_unit;
+    let ppm = hero.project.pixels_per_meter;
+    let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;
     if entity_changed {
         // Drop focus + cancel any drag/stepper-hold so the next
         // force-rewrite isn't fighting in-progress state from the
@@ -56,10 +63,14 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
         let _ = hero.store.end_number_input_drag();
         hero.store.end_number_stepper_hold();
         if let Some(info) = hero.inspector_transform {
-            hero.store
-                .set_number_value(ids::INSP_TRANSFORM_POS_X, info.translation[0] as f64);
-            hero.store
-                .set_number_value(ids::INSP_TRANSFORM_POS_Y, info.translation[1] as f64);
+            hero.store.set_number_value(
+                ids::INSP_TRANSFORM_POS_X,
+                pos_for_display(info.translation[0]),
+            );
+            hero.store.set_number_value(
+                ids::INSP_TRANSFORM_POS_Y,
+                pos_for_display(info.translation[1]),
+            );
             hero.store.set_number_value(
                 ids::INSP_TRANSFORM_ROT,
                 info.rotation_rad.to_degrees() as f64,
@@ -100,10 +111,14 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
             // Same entity — focus-guarded refresh (lets the user keep
             // typing while gizmo-driven mutations propagate to the
             // non-focused fields).
-            hero.store
-                .set_number_value(ids::INSP_TRANSFORM_POS_X, info.translation[0] as f64);
-            hero.store
-                .set_number_value(ids::INSP_TRANSFORM_POS_Y, info.translation[1] as f64);
+            hero.store.set_number_value(
+                ids::INSP_TRANSFORM_POS_X,
+                pos_for_display(info.translation[0]),
+            );
+            hero.store.set_number_value(
+                ids::INSP_TRANSFORM_POS_Y,
+                pos_for_display(info.translation[1]),
+            );
             hero.store.set_number_value(
                 ids::INSP_TRANSFORM_ROT,
                 info.rotation_rad.to_degrees() as f64,

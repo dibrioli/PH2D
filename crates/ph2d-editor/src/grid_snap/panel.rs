@@ -120,6 +120,8 @@ pub fn populate(store: &mut WidgetStore) {
         ids::GS_CFG_HEX_OFFSET_DROPDOWN,
         ids::GS_CFG_STAGGER_PARITY_ODD,
         ids::GS_CFG_VORONOI_RESEED,
+        // Color swatch — clickable; opens BlenderColorPicker.
+        ids::GS_COLOR_PICKER,
     ] {
         store.register(
             id,
@@ -509,11 +511,19 @@ fn paint_section_label(
         w,
         resolve(ColorToken::Text1, theme),
     );
-    let after_title_y = y + ph2d_tokens::TypeToken::Md.px() + 6.0;
-    // Subtle 1px Border separator below the title (Inspector parity).
-    let sep_rect = Rect::new(x, after_title_y, w, 1.0);
-    crate::paint::fill_rounded_rect(scene, sep_rect, 0.0, resolve(ColorToken::Border, theme));
-    after_title_y + 1.0 + ROW_GAP
+    let after_title_y = y + ph2d_tokens::TypeToken::Md.px() + 8.0;
+    // Accent-colored separator line — same visual as Inspector's
+    // `paint_section_separator` (Border token reads as invisible on
+    // dark themes; Accent reads as the canonical section divider).
+    let sep_pad_x = 2.0_f32;
+    let sep = Rect::new(
+        x + sep_pad_x,
+        after_title_y,
+        (w - sep_pad_x * 2.0).max(0.0),
+        1.0,
+    );
+    crate::paint::fill_rounded_rect(scene, sep, 0.5, resolve(ColorToken::Accent, theme));
+    after_title_y + 1.0 + 8.0
 }
 
 /// Big individual Snap toggle at the top of the panel — primary
@@ -724,6 +734,22 @@ fn paint_neighborhood_button_row(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
+    // Label above the row — without it the two buttons read as
+    // anonymous (Von4 / Moore8 don't self-explain). Uses the same
+    // small Text2 label style as Inspector property labels.
+    let label_font = ph2d_tokens::TypeToken::Sm.px();
+    crate::paint::paint_text(
+        text_system,
+        scene,
+        "Neighborhood",
+        x,
+        y,
+        label_font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let y = y + label_font + 4.0;
+
     let h = 28.0_f32;
     let gap = 6.0_f32;
     let half_w = (w - gap) * 0.5;

@@ -131,10 +131,12 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
             .map(|r| r.contains(x, y))
             .unwrap_or(false)
     };
-    // GAL_PANEL is the floating Widget Gallery — must intercept the
-    // wheel here so it scrolls the panel body instead of zooming the
-    // camera underneath. `panel_rect(GAL_PANEL)` is only published
-    // when the gallery is visible, so this check returns false in
-    // its default closed state.
-    inside(INSP_PANEL) || inside(HIER_PANEL) || inside(GAL_PANEL)
+    // Floating panels (Widget Gallery + Grid Settings) intercept the
+    // wheel so it scrolls the panel body instead of zooming the camera
+    // underneath. `panel_rect(...)` is only published while the panel
+    // is visible, so each check is false in the panel's closed state.
+    inside(INSP_PANEL)
+        || inside(HIER_PANEL)
+        || inside(GAL_PANEL)
+        || inside(ph2d_editor::grid_snap::ids::GS_PANEL)
 }

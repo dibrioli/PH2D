@@ -37,6 +37,56 @@ pub const DEFAULT_SNAP_MOVE_METERS: f32 = 0.16;
 /// disables rotation snap.
 pub const DEFAULT_SNAP_ROTATE_DEG: f32 = 15.0;
 
+/// User-visible unit for length / position readouts. Sim values are
+/// always stored in **meters** (the world-space canonical) — this
+/// enum only changes how those values are FORMATTED for the user in
+/// panels (Inspector, Grid Settings, Gizmo tooltip).
+///
+/// Conversion uses `ProjectSettings::pixels_per_meter`:
+///   pixels = meters × pixels_per_meter
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DisplayUnit {
+    Meters,
+    Pixels,
+}
+
+impl DisplayUnit {
+    /// Convert a sim-stored meter value to the user-visible value in
+    /// the active display unit.
+    pub fn from_meters(self, meters: f32, pixels_per_meter: f32) -> f32 {
+        match self {
+            DisplayUnit::Meters => meters,
+            DisplayUnit::Pixels => meters * pixels_per_meter,
+        }
+    }
+
+    /// Inverse of [`Self::from_meters`] — convert a value the user
+    /// typed (in display unit) back to sim-space meters before
+    /// writing into ECS.
+    pub fn to_meters(self, value: f32, pixels_per_meter: f32) -> f32 {
+        match self {
+            DisplayUnit::Meters => value,
+            DisplayUnit::Pixels => {
+                if pixels_per_meter > 0.0 {
+                    value / pixels_per_meter
+                } else {
+                    value
+                }
+            }
+        }
+    }
+
+    /// One-character suffix to show alongside a formatted value
+    /// (`"m"` / `"px"`). Used by panel painters for "1.50 m" /
+    /// "150 px" style readouts.
+    pub fn suffix(self) -> &'static str {
+        match self {
+            DisplayUnit::Meters => "m",
+            DisplayUnit::Pixels => "px",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectSettings {
     /// Source-image pixels per world meter. Default `100.0` matches
@@ -54,6 +104,11 @@ pub struct ProjectSettings {
     /// M14.7 F: snap step in degrees for Shift-modified gizmo
     /// rotate. `0.0` disables the snap.
     pub snap_rotate_deg: f32,
+    /// User-visible unit for length / position readouts. Sim storage
+    /// is always meters; this flips the FORMAT in Inspector / Grid
+    /// Settings / Gizmo readouts between "m" and "px". Default
+    /// `Meters` matches Godot / Bevy convention.
+    pub display_unit: DisplayUnit,
 }
 
 impl ProjectSettings {
@@ -73,6 +128,7 @@ impl Default for ProjectSettings {
             pixels_per_meter: DEFAULT_PIXELS_PER_METER,
             snap_move_meters: DEFAULT_SNAP_MOVE_METERS,
             snap_rotate_deg: DEFAULT_SNAP_ROTATE_DEG,
+            display_unit: DisplayUnit::Meters,
         }
     }
 }
@@ -109,5 +165,43 @@ mod tests {
             assert_eq!(s.set_pixels_per_meter(v), v);
             assert_eq!(s.pixels_per_meter, v);
         }
+    }
+
+    #[test]
+    fn display_unit_round_trips_through_meters() {
+        // Sim values are meters → to_meters(from_meters(m)) == m for
+        // either unit, so the user can flip the toggle without losing
+        // precision.
+        for unit in [DisplayUnit::Meters, DisplayUnit::Pixels] {
+            for m in [0.0, 0.16, 1.5, 64.0] {
+                let displayed = unit.from_meters(m, 100.0);
+                let back = unit.to_meters(displayed, 100.0);
+                assert!(
+                    (m - back).abs() < 1e-4,
+                    "round trip failed for {unit:?} @ m={m}: displayed={displayed}, back={back}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn display_unit_pixels_conversion_matches_pixels_per_meter() {
+        // 1 m at 100 px/m → 100 px.
+        assert_eq!(DisplayUnit::Pixels.from_meters(1.0, 100.0), 100.0);
+        // 1 m at 32 px/m → 32 px.
+        assert_eq!(DisplayUnit::Pixels.from_meters(1.0, 32.0), 32.0);
+        // Meters mode ignores the px_per_m parameter.
+        assert_eq!(DisplayUnit::Meters.from_meters(1.5, 999.0), 1.5);
+    }
+
+    #[test]
+    fn display_unit_suffix() {
+        assert_eq!(DisplayUnit::Meters.suffix(), "m");
+        assert_eq!(DisplayUnit::Pixels.suffix(), "px");
+    }
+
+    #[test]
+    fn default_display_unit_is_meters() {
+        assert_eq!(ProjectSettings::default().display_unit, DisplayUnit::Meters);
     }
 }

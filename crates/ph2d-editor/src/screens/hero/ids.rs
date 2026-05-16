@@ -326,6 +326,13 @@ pub const CTX_MENU_PPM_1024: NodeId = NodeId(944);
 /// (945-948) and the SAVE/OPEN range — id 949.
 pub const CTX_MENU_SETTINGS_PPM: NodeId = NodeId(949);
 
+/// Top-level Settings entry that opens the Display-unit submenu
+/// (Meters / Pixels). Sits next to `CTX_MENU_SETTINGS_PPM` — id 853.
+/// (Range 850-859 reserved for future Settings cascade entries.)
+pub const CTX_MENU_SETTINGS_UNIT: NodeId = NodeId(853);
+pub const CTX_MENU_UNIT_METERS: NodeId = NodeId(854);
+pub const CTX_MENU_UNIT_PIXELS: NodeId = NodeId(855);
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

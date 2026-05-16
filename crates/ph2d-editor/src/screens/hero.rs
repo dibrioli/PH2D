@@ -1053,6 +1053,42 @@ impl HeroScreen {
                 self.store.close_context_menu();
                 return true;
             }
+            // Display-unit cascade entry — opens the unit submenu
+            // anchored next to the row, same pattern as the PPM
+            // cascade above.
+            if id == ids::CTX_MENU_SETTINGS_UNIT {
+                let row_rect = self.hit_index.rect_for(id);
+                let anchor = if let Some(r) = row_rect {
+                    (r.x + r.w, r.y)
+                } else {
+                    self.store
+                        .last_context_menu()
+                        .map(|r| (r.x, r.y))
+                        .unwrap_or((0.0, 0.0))
+                };
+                self.store
+                    .open_context_menu(crate::interaction::ContextMenuRequest {
+                        x: anchor.0,
+                        y: anchor.1,
+                        kind: crate::interaction::ContextMenuKind::SettingsUnitSubmenu,
+                    });
+                return true;
+            }
+            // Display-unit submenu options — write to `project.display_unit`
+            // and close the menu. Inspector / Grid Settings / Gizmo
+            // readouts read the project setting on the next paint.
+            let unit_pick = if id == ids::CTX_MENU_UNIT_METERS {
+                Some(crate::project::DisplayUnit::Meters)
+            } else if id == ids::CTX_MENU_UNIT_PIXELS {
+                Some(crate::project::DisplayUnit::Pixels)
+            } else {
+                None
+            };
+            if let Some(unit) = unit_pick {
+                self.project.display_unit = unit;
+                self.store.close_context_menu();
+                return true;
+            }
             // Save / Save As / Open Project — placeholders until the
             // pilot project wires real file I/O. Close the menu and
             // return consumed so the click doesn't propagate.
@@ -1925,8 +1961,7 @@ pub fn paint_hero_screen(
         }
     } else {
         // Symmetric stale-rect cleanup (mirrors GAL_PANEL above).
-        hero.store
-            .clear_panel_rect(crate::grid_snap::ids::GS_PANEL);
+        hero.store.clear_panel_rect(crate::grid_snap::ids::GS_PANEL);
     }
     // BlenderColorPicker — painted AFTER every floating panel
     // (Inspector, Hierarchy, Widget Gallery, Grid Settings) so it
@@ -2263,6 +2298,65 @@ mod tests {
             "wheel down on gallery should increase panel_scroll \
              (before={before}, after={after})"
         );
+    }
+
+    #[test]
+    fn settings_unit_submenu_options_flip_project_display_unit() {
+        // Clicking "Pixels" / "Meters" in the SettingsUnit submenu
+        // writes `project.display_unit` and closes the context menu.
+        let mut hero = HeroScreen::new(NodeId(1));
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Meters
+        );
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsUnitSubmenu,
+            });
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_UNIT_PIXELS));
+        assert!(consumed, "Pixels click should be consumed");
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Pixels,
+            "display_unit must flip to Pixels"
+        );
+        assert!(
+            hero.store.context_menu().is_none(),
+            "menu must close after pick"
+        );
+        // Re-open to flip back.
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsUnitSubmenu,
+            });
+        let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_UNIT_METERS));
+        assert_eq!(
+            hero.project.display_unit,
+            crate::project::DisplayUnit::Meters
+        );
+    }
+
+    #[test]
+    fn settings_unit_cascade_opens_unit_submenu() {
+        // Clicking the top-level "Display unit ▶" row swaps the open
+        // context menu to `SettingsUnitSubmenu`.
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::SettingsMenu,
+            });
+        let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_UNIT));
+        assert!(consumed);
+        assert!(matches!(
+            hero.store.context_menu().map(|r| r.kind),
+            Some(crate::interaction::ContextMenuKind::SettingsUnitSubmenu)
+        ));
     }
 
     /// Same shape as `gallery_publishes_scroll_bounds_after_paint`, but

@@ -119,6 +119,11 @@ pub enum ContextMenuKind {
     /// selecting one writes `HeroScreen.project.pixels_per_meter`
     /// and closes the menu.
     SettingsPpmSubmenu,
+    /// Submenu opened when the user picks "Display unit" — flips the
+    /// formatted readouts in Inspector / Grid Settings / Gizmo
+    /// between meters and pixels. Sim storage stays in meters; this
+    /// only changes the FORMAT.
+    SettingsUnitSubmenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `super::WidgetStore::current_scene_name`.

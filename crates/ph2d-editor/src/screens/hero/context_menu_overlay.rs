@@ -130,11 +130,18 @@ pub fn paint_context_menu_overlay(
         // U+25B8 (smaller triangle) is not, which was the earlier
         // tofu the user reported. Future categories (Snap, Theme,
         // etc.) line up here.
-        ContextMenuKind::SettingsMenu => &[(
-            ids::CTX_MENU_SETTINGS_PPM,
-            "Pixels per meter\u{2003}\u{25b6}",
-            None,
-        )],
+        ContextMenuKind::SettingsMenu => &[
+            (
+                ids::CTX_MENU_SETTINGS_PPM,
+                "Pixels per meter\u{2003}\u{25b6}",
+                None,
+            ),
+            (
+                ids::CTX_MENU_SETTINGS_UNIT,
+                "Display unit\u{2003}\u{25b6}",
+                None,
+            ),
+        ],
         // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
         // presets as before the cascade, just one click deeper.
         //
@@ -150,6 +157,10 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_PPM_100, "100 (Godot)", None),
             (ids::CTX_MENU_PPM_256, "256 (HD 2D)", None),
             (ids::CTX_MENU_PPM_1024, "1024 (4K ref)", None),
+        ],
+        ContextMenuKind::SettingsUnitSubmenu => &[
+            (ids::CTX_MENU_UNIT_METERS, "Meters", None),
+            (ids::CTX_MENU_UNIT_PIXELS, "Pixels", None),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is

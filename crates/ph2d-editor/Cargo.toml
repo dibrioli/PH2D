@@ -38,8 +38,10 @@ bumpalo = { version = "3", features = ["collections"] }
 # (ph2d-asset is the canonical decode boundary; this crate only
 # operates on already-decoded RGBA).
 image = { version = "0.25", default-features = false }
-# rayon — parallel guided filter passes inside bgremoval refine path.
-rayon = "1"
+# rayon was requested for parallel guided-filter passes inside
+# bgremoval but slot 2's M3 ships the vanilla serial gray-guide
+# implementation; cargo machete flagged the import as unused on
+# 2026-05-16. Re-add when bgremoval lands a parallel path.
 
 [dev-dependencies]
 # dhat-rs: HR-3 enforcement bench — counts allocations in

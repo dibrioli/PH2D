@@ -38,6 +38,8 @@ pub fn tr(key: &str) -> &'static str {
         "tool.trim_transparency.tooltip" => "Trim Transparency",
         "tool.make_square.label" => "Make Square",
         "tool.make_square.tooltip" => "Make Square",
+        "tool.bgremoval.label" => "Bg Removal",
+        "tool.bgremoval.tooltip" => "Background Removal · 3",
         // Image-edit undo affordance.
         "edit.undo.label" => "Undo",
         "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",

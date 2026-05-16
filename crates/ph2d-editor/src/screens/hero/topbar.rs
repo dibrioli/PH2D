@@ -35,6 +35,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_RIGHT_SCRIPT,
         ids::IMAGE_ACTION_TRIM,
         ids::IMAGE_ACTION_MAKE_SQUARE,
+        ids::IMAGE_ACTION_BGREMOVAL,
     ] {
         store.register(
             id,
@@ -82,6 +83,10 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ids::IMAGE_ACTION_MAKE_SQUARE,
             ph2d_i18n::tr("tool.make_square.tooltip"),
+        ),
+        (
+            ids::IMAGE_ACTION_BGREMOVAL,
+            ph2d_i18n::tr("tool.bgremoval.tooltip"),
         ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),
@@ -308,6 +313,11 @@ fn image_action_pills() -> &'static [(NodeId, IconId, &'static str)] {
             ids::IMAGE_ACTION_MAKE_SQUARE,
             IconId::MakeSquare,
             "tool.make_square.label",
+        ),
+        (
+            ids::IMAGE_ACTION_BGREMOVAL,
+            IconId::BgRemoval,
+            "tool.bgremoval.label",
         ),
     ]
 }

@@ -381,6 +381,14 @@ pub struct HeroScreen {
     /// snapshot semantics, no pivot reproject because bgremoval
     /// preserves image dimensions).
     pub pending_bgremoval: Option<u64>,
+    /// One-shot intent raised by clicking the Bg Removal pill in
+    /// the Image Tools row. The host drains by calling
+    /// `tools.set_active(ToolId::new("bgremoval"))` so the tool's
+    /// floating panel opens with a live preview of the current
+    /// selection. Distinct from `pending_bgremoval` — that one is
+    /// the *Apply* trigger (raised by the panel's Apply Toggle),
+    /// this one is the *activate* trigger (raised by the TopBar pill).
+    pub pending_activate_bgremoval: bool,
     /// One-shot intent: undo the most recent image-edit action
     /// (Trim Transparency / Make Square). Raised by clicking
     /// `TOOL_UNDO` on the LeftRail or pressing Cmd+Z. The host holds
@@ -654,6 +662,7 @@ impl HeroScreen {
             pending_trim_transparency: None,
             pending_make_square: None,
             pending_bgremoval: None,
+            pending_activate_bgremoval: false,
             pending_undo_image_edit: false,
             has_undoable_image_edit: false,
             inspector_sprite: None,
@@ -1227,6 +1236,19 @@ impl HeroScreen {
             && id == ids::IMAGE_ACTION_MAKE_SQUARE
         {
             self.pending_make_square = self.gizmo_selection;
+            return true;
+        }
+        // Bg Removal action — distinct from Trim / MakeSquare because
+        // it ACTIVATES the stateful tool (so the panel opens with a
+        // live preview) instead of running a one-shot algorithm. The
+        // host drains `pending_activate_bgremoval` by calling
+        // `tools.set_active(ToolId::new("bgremoval"))`. The Apply
+        // trigger then lives in the tool's panel Toggle, which raises
+        // `pending_bgremoval` for the full-resolution drain.
+        if let WidgetEvent::Click(id) = event
+            && id == ids::IMAGE_ACTION_BGREMOVAL
+        {
+            self.pending_activate_bgremoval = true;
             return true;
         }
         // Image-edit Undo — TOOL_UNDO chip on the LeftRail (also
@@ -3044,6 +3066,20 @@ mod tests {
         hero.gizmo_selection = Some(0xCAFE_BABE);
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
         assert_eq!(hero.pending_make_square, Some(0xCAFE_BABE));
+    }
+
+    /// Bg Removal pill raises `pending_activate_bgremoval` (not
+    /// `pending_bgremoval` — that one is the Apply trigger). Host
+    /// drains it by calling `tools.set_active(...)`.
+    #[test]
+    fn click_on_bgremoval_pill_raises_activate_intent() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        assert!(!hero.pending_activate_bgremoval);
+        assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_BGREMOVAL)));
+        assert!(hero.pending_activate_bgremoval);
+        // pending_bgremoval (Apply slot) is NOT touched by the
+        // activate click — that's owned by the panel Toggle drain.
+        assert_eq!(hero.pending_bgremoval, None);
     }
 
     #[test]

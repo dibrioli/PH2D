@@ -1438,6 +1438,19 @@ impl App {
                     name,
                 })
             });
+            // Drain the `pending_activate_bgremoval` intent raised by
+            // clicking the Bg Removal pill on the Image Tools row. The
+            // hero can't reach `gfx.tools` so the activation has to
+            // round-trip through this flag. Same force-refresh of the
+            // snapshot push state as the Digit3 shortcut below so the
+            // next snapshot push fires against the current selection.
+            if hero.pending_activate_bgremoval {
+                hero.pending_activate_bgremoval = false;
+                if tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
+                    self.last_bgremoval_pushed_entity = None;
+                    self.title_dirty = true;
+                }
+            }
             // Snapshot push for the active BgRemovalTool. The tool needs
             // the current selection's RGBA so its 160×160 preview shows
             // the live sprite — pushed once per (tool-active + new
@@ -1456,26 +1469,27 @@ impl App {
                 && self.last_bgremoval_pushed_entity != Some(bits)
             {
                 let entity = ph2d_ecs::Entity::from_bits(bits);
-                let snap = sim.world().get::<Sprite>(entity).and_then(|sprite| {
-                    match sprite.source {
-                        ph2d_render::SpriteSource::Atlas { key } => {
-                            let aid = atlas_asset_map.get(&key)?;
-                            let asset = asset_db.get(aid)?;
-                            match &*asset {
-                                ph2d_asset::Asset::ImageRgba8 {
-                                    width,
-                                    height,
-                                    pixels,
-                                } => Some((*width, *height, pixels.clone())),
-                                _ => None,
+                let snap =
+                    sim.world()
+                        .get::<Sprite>(entity)
+                        .and_then(|sprite| match sprite.source {
+                            ph2d_render::SpriteSource::Atlas { key } => {
+                                let aid = atlas_asset_map.get(&key)?;
+                                let asset = asset_db.get(aid)?;
+                                match &*asset {
+                                    ph2d_asset::Asset::ImageRgba8 {
+                                        width,
+                                        height,
+                                        pixels,
+                                    } => Some((*width, *height, pixels.clone())),
+                                    _ => None,
+                                }
                             }
-                        }
-                        ph2d_render::SpriteSource::Individual { texture_id } => renderer
-                            .readback_individual(texture_id)
-                            .ok()
-                            .map(|(w, h, pix)| (w, h, pix.into())),
-                    }
-                });
+                            ph2d_render::SpriteSource::Individual { texture_id } => renderer
+                                .readback_individual(texture_id)
+                                .ok()
+                                .map(|(w, h, pix)| (w, h, pix.into())),
+                        });
                 if let Some((w, h, rgba)) = snap
                     && let Some(tool) = tools.active_mut()
                     && let Some(bg) = tool
@@ -2567,9 +2581,7 @@ impl App {
                 .active()
                 .map(|t| t.id() == bgremoval_id)
                 .unwrap_or(false);
-            if bgremoval_active
-                && let Some(entity_bits) = hero.pending_bgremoval.take()
-            {
+            if bgremoval_active && let Some(entity_bits) = hero.pending_bgremoval.take() {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let snapshot = {
                     let world = sim.world();
@@ -2634,8 +2646,7 @@ impl App {
                         let bg = tools
                             .active_mut()
                             .and_then(|t| {
-                                t.as_any_mut()
-                                    .downcast_mut::<ph2d_editor::BgRemovalTool>()
+                                t.as_any_mut().downcast_mut::<ph2d_editor::BgRemovalTool>()
                             })
                             .expect("bgremoval_active gate guarantees a BgRemovalTool");
                         let mut out: Vec<u8> = Vec::new();
@@ -2663,9 +2674,7 @@ impl App {
                                     post_individual_id: texture_id,
                                     label: "Bg Removal",
                                 });
-                                toasts.push(Toast::success(
-                                    "Bg Removal applied · Cmd+Z to undo",
-                                ));
+                                toasts.push(Toast::success("Bg Removal applied · Cmd+Z to undo"));
                                 self.title_dirty = true;
                                 // Re-push the freshly-modified pixels
                                 // into the tool so the next preview

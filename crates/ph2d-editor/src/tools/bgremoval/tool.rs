@@ -182,13 +182,12 @@ impl BgRemovalTool {
             self.source_rgba.clone(),
         )
         .expect("source_rgba length matches source_w * source_h * 4");
-        let resized: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = if sw == self.source_w
-            && sh == self.source_h
-        {
-            src
-        } else {
-            image::imageops::resize(&src, sw, sh, image::imageops::FilterType::Triangle)
-        };
+        let resized: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
+            if sw == self.source_w && sh == self.source_h {
+                src
+            } else {
+                image::imageops::resize(&src, sw, sh, image::imageops::FilterType::Triangle)
+            };
         // Letterbox into target × target with transparent borders.
         let pad_x = (target - sw) / 2;
         let pad_y = (target - sh) / 2;
@@ -225,7 +224,8 @@ impl BgRemovalTool {
             &mut self.scratch,
         );
         self.preview_rgba.clear();
-        self.preview_rgba.extend_from_slice(&self.scratch.output_rgba);
+        self.preview_rgba
+            .extend_from_slice(&self.scratch.output_rgba);
     }
 
     /// Build the Mode RadioGroup (Chroma / Smart Cut) seeded with the

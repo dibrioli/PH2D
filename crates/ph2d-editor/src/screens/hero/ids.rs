@@ -64,6 +64,15 @@ pub const IMAGE_ACTION_TRIM: NodeId = NodeId(115);
 /// pivot. Algorithm in `tools/make_square/algorithm.rs`.
 pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = NodeId(118);
 
+/// Image Tools action — Background Removal pill. Unlike `IMAGE_ACTION_TRIM`
+/// and `IMAGE_ACTION_MAKE_SQUARE` (one-shot algorithms), this one
+/// ACTIVATES the stateful `BgRemovalTool` so its floating panel opens
+/// at the BottomCenter with a live 160×160 preview. Click raises
+/// `pending_activate_bgremoval` on `HeroScreen`; host drains via
+/// `tools.set_active(ToolId::new("bgremoval"))` and force-refreshes
+/// the snapshot push.
+pub const IMAGE_ACTION_BGREMOVAL: NodeId = NodeId(119);
+
 pub const HIERARCHY_ADD: NodeId = NodeId(150);
 
 pub const TOOL_TRANSLATE: NodeId = NodeId(201);

@@ -1,0 +1,27 @@
+# Background Removal — Stateful tool. Rightmost pill in the TopBar
+# Image Tools action row activates the BgRemovalTool's floating panel
+# (chroma + flood / GrabCut modes). Pixel work happens at full
+# resolution on commit; live preview runs on a 1024² Oklab thumbnail
+# (`memory_budget.ram_mb = 16` reserves the worst-case working buffer
+# against HR-13 boot check).
+#
+# Canonical source for `crates/ph2d-tool-bgremoval/src/lib.rs`.
+
+[tool]
+id          = "bgremoval"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 60
+a11y_role   = "Button"
+icon_slug   = "bg-removal"
+touches_sim = false
+
+[label]
+pt_br_inline = "Bg Removal"
+en_us_inline = "Bg Removal"
+fluent_key   = "tool.bgremoval.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 16
+heap_script_mb = 0

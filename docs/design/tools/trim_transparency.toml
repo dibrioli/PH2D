@@ -1,0 +1,25 @@
+# Trim Transparency — one-shot image action. Crops an RGBA8 image to
+# its tight opaque bounding box. Leftmost pill in the TopBar Image
+# Tools action row (order 40 → make_square 50 → bgremoval 60).
+#
+# Canonical source for `crates/ph2d-tool-trim-transparency/src/lib.rs`.
+# `tool_manifest_design_sync` test asserts the two stay in sync.
+
+[tool]
+id          = "trim_transparency"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 40
+a11y_role   = "Button"
+icon_slug   = "trim-transparency"
+touches_sim = false
+
+[label]
+pt_br_inline = "Trim"
+en_us_inline = "Trim Transparency"
+fluent_key   = "tool.trim_transparency.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

@@ -1,0 +1,24 @@
+# Make Square — one-shot image action. Pads an RGBA8 image with
+# transparent pixels on its shorter axis so width == height. Middle
+# pill in the TopBar Image Tools action row.
+#
+# Canonical source for `crates/ph2d-tool-make-square/src/manifest.rs`.
+
+[tool]
+id          = "make_square"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 50
+a11y_role   = "Button"
+icon_slug   = "make-square"
+touches_sim = false
+
+[label]
+pt_br_inline = "Make Square"
+en_us_inline = "Make Square"
+fluent_key   = "tool.make_square.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

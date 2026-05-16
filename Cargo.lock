@@ -4127,6 +4127,7 @@ dependencies = [
  "ph2d-tool-make-square",
  "ph2d-tool-registry",
  "ph2d-tool-trim-transparency",
+ "toml",
 ]
 
 [[package]]

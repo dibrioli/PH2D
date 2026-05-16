@@ -1,0 +1,26 @@
+# Grid Snap — Stateful tool. Opens the floating Grid Settings panel
+# (9 grid kinds: Square / Hex / Iso / Staggered SQ / Staggered HEX /
+# Tri / Quadtree / Voronoi / Chunks) with snap policy + overlay
+# controls. Lives in the TopBar `settings` cluster (gear cluster — NOT
+# the Image Tools row). Single pill, opens panel on click.
+#
+# Canonical source for `crates/ph2d-tool-grid-snap/src/lib.rs`.
+
+[tool]
+id          = "grid_snap"
+cluster     = "settings"
+zone        = "top_right"
+order       = 10
+a11y_role   = "Button"
+icon_slug   = "grid-settings"
+touches_sim = false
+
+[label]
+pt_br_inline = "Grid Settings"
+en_us_inline = "Grid Settings"
+fluent_key   = "tool.grid_snap.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

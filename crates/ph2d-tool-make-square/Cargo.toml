@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-tool-make-square"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Make Square — one-shot image action. Pads an RGBA8 image with
+# fully-transparent pixels on its shorter axis to produce a perfect
+# square without distorting or cropping any source pixel.
+#
+# First convention-by-discovery tool crate per
+# `docs/Migracao/2026-05-convention-by-discovery.md` PR 4 piloto. Other
+# tools follow the same shape (see Appendix A of the migration plan).
+
+[dependencies]
+# Registry types (ToolManifest, Zone, Role, etc.) — single point of
+# coupling for any tool crate. Never depends on ph2d-editor directly,
+# which would create a cycle.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Vector primitives (BezPath, RoundedRect, Shape) for the icon glyph.
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role) for the manifest a11y declaration (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }

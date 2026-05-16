@@ -10,6 +10,8 @@ pub mod brush;
 pub mod make_square;
 pub mod move_tool;
 pub mod trim_transparency;
+// `registry_init` moved to crate `ph2d-tool-registry-init` (PR 6.0
+// retrofit). See `docs/Migracao/2026-05-convention-by-discovery.md`.
 
 pub use brush::BrushTool;
 pub use make_square::{MakeSquareResult, make_square, square_bezpath};

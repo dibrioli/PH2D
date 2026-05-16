@@ -3904,11 +3904,14 @@ dependencies = [
  "dhat",
  "image",
  "ph2d-a11y",
+ "ph2d-core",
  "ph2d-grid",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-tool-make-square",
+ "ph2d-tool-registry",
  "ph2d-vector",
  "smallvec",
 ]
@@ -3956,6 +3959,8 @@ dependencies = [
  "ph2d-script",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-tool-registry-init",
  "ph2d-vector",
  "postcard",
  "rfd",
@@ -4071,6 +4076,58 @@ dependencies = [
 [[package]]
 name = "ph2d-tokens"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-tool-bgremoval"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-editor",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-tool-grid-snap"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-tool-make-square"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-tool-registry"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-tool-registry-init"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-tool-bgremoval",
+ "ph2d-tool-grid-snap",
+ "ph2d-tool-make-square",
+ "ph2d-tool-registry",
+]
 
 [[package]]
 name = "ph2d-vector"

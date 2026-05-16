@@ -37,20 +37,12 @@ impl Rect {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Zone {
-    /// Top-left (Editing — Gallery, Actions, Scene tree, Adjustments,
-    /// Selections, Transform).
-    TopLeft,
-    /// Top-right (Creating — Tile painter, Sprite placer, Asset
-    /// insertion, Brush, Layer, Color).
-    TopRight,
-    /// Sidebar (modulators — brush size/opacity, snap, undo/redo,
-    /// eyedropper, Modify button).
-    Sidebar,
-    /// Center (canvas — 100 % of leftover).
-    Center,
-}
+// `Zone` lives in `ph2d-tool-registry` so `ToolManifest` can declare
+// its host zone without forcing tool crates to depend on `ph2d-editor`.
+// Re-exported here so existing callers (`zones::Zone::TopLeft`) keep
+// working byte-for-byte. See
+// `docs/Migracao/2026-05-convention-by-discovery.md` PR 4.0.
+pub use ph2d_tool_registry::Zone;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SidebarSide {

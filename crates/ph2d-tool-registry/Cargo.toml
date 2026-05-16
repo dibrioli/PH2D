@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-tool-registry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Convention-by-discovery infrastructure. Owns the `ToolManifest` shape,
+# the `Registry` that collects manifests + builds lookup indices, the
+# `NodeId` hashing (FNV-1a 64-bit) + collision detection, and the
+# `IconHandle` typed wrapper.
+#
+# Lives in its own crate (not inside `ph2d-editor`) so that tool crates
+# (`crates/ph2d-tool-<slug>/`) can depend on it without creating a
+# circular dep through `ph2d-editor`. See plan
+# `docs/Migracao/2026-05-convention-by-discovery.md` PR 4.0 retrofit.
+
+[dependencies]
+# ph2d-core — MemoryBudget (HR-13).
+ph2d-core = { path = "../ph2d-core" }
+# ph2d-a11y — Role (HR-12), NodeId.
+ph2d-a11y = { path = "../ph2d-a11y" }
+# ph2d-vector — BezPath, re-exported from vello's bundled kurbo
+# (avoids version skew per SKILL §5).
+ph2d-vector = { path = "../ph2d-vector" }

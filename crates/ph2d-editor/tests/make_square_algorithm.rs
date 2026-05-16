@@ -13,16 +13,16 @@
 //! Same shape as `tests/trim_transparency_algorithm.rs` (slug-prefix
 //! convention from §7.1 of `03-Agente-Periferico.md`).
 
-#[path = "../src/tools/make_square/algorithm.rs"]
-mod algorithm;
-
-#[path = "../src/tools/make_square/icon.rs"]
-mod icon;
+// PR 4 piloto: Make Square moved out to `crates/ph2d-tool-make-square/`,
+// so this test now consumes its public crate API rather than pulling
+// source via `#[path]`. The cross-island round-trip with
+// `trim_transparency` still uses `#[path]` because that island has
+// not migrated yet (PR 7 alvo).
+use ph2d_editor::{make_square, square_bezpath};
 
 #[path = "../src/tools/trim_transparency/algorithm.rs"]
 mod trim_algorithm;
 
-use algorithm::make_square;
 use trim_algorithm::trim_transparency;
 
 #[test]
@@ -90,7 +90,7 @@ fn icon_module_compiles_and_returns_non_empty_path() {
     // Black-box smoke: the icon helper is callable from outside the
     // source module and yields a non-empty path. Shape detail lives
     // in the unit tests inside `icon.rs`.
-    let path = icon::square_bezpath();
+    let path = square_bezpath();
     assert!(!path.elements().is_empty());
 }
 

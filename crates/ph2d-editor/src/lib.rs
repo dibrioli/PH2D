@@ -36,6 +36,13 @@ pub mod interaction;
 pub mod paint;
 pub mod project;
 pub mod screens;
+
+/// Re-export of `ph2d-tool-registry` under the path
+/// `ph2d_editor::registry` so existing callers
+/// (`ph2d_editor::registry::Registry`, etc.) keep working byte-for-byte
+/// after the PR 4.0 extraction. See
+/// `docs/Migracao/2026-05-convention-by-discovery.md`.
+pub use ph2d_tool_registry as registry;
 pub mod toast;
 pub mod tool;
 pub mod tools;

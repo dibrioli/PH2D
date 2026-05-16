@@ -10,6 +10,21 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ph2d-core — MemoryBudget (HR-13) — used by registry budget aggregate
+# integration tests; also transitively via ph2d-tool-registry.
+ph2d-core = { path = "../ph2d-core" }
+# ph2d-tool-registry — convention-by-discovery infrastructure
+# (ToolManifest, Registry, NodeId hash). Re-exported as
+# `ph2d_editor::registry` so existing callers keep working. See
+# `docs/Migracao/2026-05-convention-by-discovery.md` PR 4.0.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Tool crates moved to `ph2d-tool-registry-init` (PR 6.0 retrofit).
+# `ph2d-editor` no longer depends on Stateful tools (grid-snap,
+# bgremoval) so they can import `ph2d-editor` (widgets, paint,
+# FloatingPanel) without a Cargo cycle. Action-only tools
+# (no `ph2d-editor` dep) can still be facaded here as a transition
+# nicety until PR 10 cleanup removes the facades entirely.
+ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # ph2d-vector + ph2d-text — M11 widget paint pass. The `Paint` trait

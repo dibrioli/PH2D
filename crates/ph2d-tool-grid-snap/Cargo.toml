@@ -1,0 +1,34 @@
+[package]
+name = "ph2d-tool-grid-snap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Grid Snap — Stateful Tool with a Procreate-style floating panel.
+# Cycles through 11 grid kinds (Square/Hex/Iso/StaggeredSquare/
+# StaggeredHex/Tri/Quadtree/Voronoi/Chunks/…) and applies snap-to-grid
+# during gizmo + drag-drop in the canvas.
+#
+# **Implementation note (PR 6 — convention-by-discovery migration):**
+# Grid Snap is heavily integrated with `ph2d-editor::screens::hero`
+# (state stored on `HeroScreen`; panel built from
+# `ph2d_editor::widget::*` primitives; render walks
+# `crate::grid_snap::render` modules). Fully moving the ~5500 LOC
+# would require also refactoring `screens/hero.rs`. For this PR the
+# tool crate ships only the **manifest** — the runtime registration
+# point that lets `ph2d-tool-registry`-driven chrome (PR 8) surface
+# the Grid Settings entry alongside the canonical TopBar items. The
+# implementation continues to live at
+# `crates/ph2d-editor/src/grid_snap/` until a later refactor decides
+# whether to extract it.
+
+[dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-core = { path = "../ph2d-core" }

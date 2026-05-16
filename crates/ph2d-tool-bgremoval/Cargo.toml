@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-tool-bgremoval"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Background Removal — Stateful Tool. M1 chroma+flood (Oklab) +
+# downscale 1024² + alpha-aware shipped; M2 GrabCut + Guided Filter
+# scaffolded; M2 body (~1200 LOC) pending next session.
+#
+# **PR 7 scope** (convention-by-discovery migration): ships manifest
+# only. The implementation (BgRemovalTool, M1+M2 algorithms, panel)
+# continues to live at `crates/ph2d-editor/src/tools/bgremoval/` while
+# slot 2 keeps iterating on the M2 body. Manifest is sufficient to
+# wire registry-derived chrome (PR 8). Same pattern as grid-snap PR 6.
+
+[dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Re-uses `eraser_bezpath` (Lucide glyph) re-exported by ph2d-editor
+# rather than duplicating the ~50-line BezPath construction.
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-core = { path = "../ph2d-core" }

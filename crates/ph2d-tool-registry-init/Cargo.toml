@@ -1,0 +1,44 @@
+[package]
+name = "ph2d-tool-registry-init"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `register_all()` — the single append-only point of contact for tool
+# registration. Lives in a dedicated crate (not in `ph2d-editor`) so
+# tool crates that need to import `ph2d-editor` (widgets, paint,
+# FloatingPanel, interaction pipeline — Stateful tools like grid-snap
+# and bgremoval do) avoid the dependency cycle that would arise if
+# `ph2d-editor` itself imported the tool crates.
+#
+# Dependency direction:
+#   ph2d-tool-registry        (Registry types)
+#       ↑
+#       ├── ph2d-editor                (re-exports registry types; no tool deps)
+#       ├── ph2d-tool-make-square      (action-only; no ph2d-editor dep)
+#       └── ph2d-tool-<slug-stateful>  (needs widgets → deps ph2d-editor)
+#
+#   ph2d-tool-registry-init    (depends on all tool crates + this one for shell to call)
+#       ↑
+#       └── shells/desktop, shells/ipad, ...  (call `register_all()` at boot)
+#
+# See `docs/Migracao/2026-05-convention-by-discovery.md` PR 6.0
+# retrofit.
+
+[dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Tool crates registered here. One line per tool, alphabetical order
+# to keep merge-conflict surface trivial under multi-agent operation.
+ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
+ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }
+ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
+
+[dev-dependencies]
+# Re-export the platform / budget types for the CI lint tests.
+ph2d-core = { path = "../ph2d-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }

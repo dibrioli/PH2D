@@ -4,10 +4,15 @@ Narrativa completa do problema → diagnóstico → solução. Para quem
 chega novo ao projeto: leia ISTO primeiro. Depois aprofunde nas
 ADRs (links no fim).
 
-**Última atualização:** 2026-05-16 — Wave 2 + parte de Wave 2.5
-mergeadas em `origin/main`. Wave 2.5 ActionBus migrations em
-progresso (2 de 20 fields migrados, 18 restantes documentados em
-[Wave 3 plan](2026-05-wave-3-deferred-state-decomp-and-golden-images.md)).
+**Última atualização:** 2026-05-17 — Wave 2.5 + Wave 3.1 (stages
+A/B/C) MERGEADAS em `origin/main` (CI 10/10 verde nas duas
+sessões). 20/20 `pending_X` fields retired do HeroScreen; `main.rs`
+caiu de 2607 → 928 LOC; `hero_intents.rs` 697 LOC → directory module
+sem exceção HR-18. **HR-18 parcialmente fechado** —
+hero_intents marker removido, mas `main.rs` (928) e o novo
+`render_loop.rs` (1603) ainda têm exceções declaradas. O fechamento
+completo é Wave 3.2
+([brief](2026-05-wave-3-2-remaining-shell-decomp.md)).
 
 ---
 
@@ -208,7 +213,7 @@ Detalhes em
 
 CI matrix verde 10/10 jobs em todos. **Workspace ~1296 tests pass.**
 
-### Wave 2.5 — File hygiene + ActionBus (em progresso 2026-05-16 noite)
+### Wave 2.5 — File hygiene + ActionBus (mergeada 2026-05-17 manhã)
 
 | PR | Status | O que entregou |
 |----|--------|----------------|
@@ -217,17 +222,34 @@ CI matrix verde 10/10 jobs em todos. **Workspace ~1296 tests pass.**
 | 11.8 foundation (`8cbfe4e`) | ✅ mergeada | `action_bus.rs` — `EditorAction` enum + `ActionBus` queue + 7 tests |
 | 11.8b1 (`ca429ec`) | ✅ mergeada | `pending_trim_transparency` → `EditorAction::Trim` (1 of 20) |
 | 11.8b2 (`017a5cf`) | ✅ mergeada CI 10/10 | `pending_make_square` → `EditorAction::MakeSquare` (2 of 20) |
-| 11.8b3/b4 | ⏳ pendente | bgremoval / reimport / undo_image_edit / activate_bgremoval |
-| 11.8c | ⏳ pendente | 9 hierarchy intents |
-| 11.8d | ⏳ pendente | 5 inspector intents |
-| 11.8 closeout | ⏳ pendente | Remove os 2 `// ph2d-loc-cap:` markers de main.rs + hero_intents.rs |
+| 11.8b3/b4 (`1f62828`) | ✅ mergeada CI 10/10 | bgremoval / reimport / undo_image_edit / activate_bgremoval (6 of 20) |
+| 11.8c (`b6aa382`) | ✅ mergeada CI 10/10 | 9 hierarchy intents (15 of 20) |
+| 11.8d (`8303266`) | ✅ mergeada CI 10/10 | 5 inspector intents — **20 of 20 retired** |
+| 11.8 closeout (`129a532`) | ✅ mergeada CI 10/10 | 18 filter-and-replace drains consolidados num único match em render_frame |
 
-Após o closeout, HR-18 fica clean (inventory test emite "NONE").
+**Stated goal de remover os markers HR-18 NÃO atingido pela Wave 2.5 alone** — o bus migration consolidou dispatch mas adicionou ~300 LOC de Vec/push-back boilerplate. Continua em Wave 3.1 com decomp interna.
 
 Detalhes em
 [`docs/Migracao/2026-05-wave-2-5-deferred-splits.md`](2026-05-wave-2-5-deferred-splits.md).
 
-### Wave 3 — Pending (deferidos por baixo valor/alto custo)
+### Wave 3.1 — File decomp interna (mergeada 2026-05-17 tarde)
+
+| PR | Status | O que entregou |
+|----|--------|----------------|
+| stage A (`434acac`) | ✅ mergeada | `hero_intents.rs` 697 LOC → directory module com 4 arquivos (mod 34 / image_edit 446 / hierarchy 165 / view 83). Marker HR-18 desse arquivo removido. |
+| stage B (`fc5a0da`) | ✅ mergeada CI 10/10 | `atlas_loader.rs` (61 LOC) + `sim_populate.rs` (77 LOC) hoisted de `impl App`; main.rs 2607 → 2502. |
+| stage C (`e309e80`) | ✅ mergeada CI 10/10 | `App::render_frame` 1582-LOC body lifted verbatim pra `render_loop.rs` via split impl block; main.rs 2502 → 928 (−1574 net). |
+
+**Markers HR-18 ainda ativos** em main.rs (928 LOC) + render_loop.rs (1603 LOC). Closeout completo é Wave 3.2.
+
+### Wave 3.2 — Pendente (fecha HR-18 completamente)
+
+| PR | Recomendação |
+|----|--------------|
+| Stage A — render_loop directory split (snapshots/dispatch/image_edit/present) | Defer. Architectural hygiene. 4-6h + borrow-checker risk no AppGfx destructure. Brief detalhado em [`docs/Migracao/2026-05-wave-3-2-remaining-shell-decomp.md`](2026-05-wave-3-2-remaining-shell-decomp.md). |
+| Stage B — main.rs extract app_state.rs + input_handlers.rs | Defer. 2-3h. Risco baixo (split-impl pattern já validado em Wave 3.1 C). |
+
+### Wave 3 (legacy plan — superseded por 3.1 + 3.2)
 
 | PR | Recomendação |
 |----|--------------|
@@ -315,20 +337,20 @@ register_all é append-only.
 
 ## 7. Métricas
 
-| Métrica | Pré-Wave-1 | Pós-Wave-2 | Pós-Wave-2.5 |
-|---------|-----------|-----------|-------------|
-| Manual NodeId consts em ids.rs | 253 | 0 (hash) | 0 |
-| Silent NodeId collisions | 6 | 0 | 0 |
-| Manual icon match-arms (icons.rs) | 715 LOC | 0 (codegen) | 0 |
-| Manual color resolve fns | 200 LOC | 0 (codegen) | 0 |
-| Sources of truth para tools | 4 fragmented | 1 canonical | 1 canonical |
-| Architecture tests | 1 | 6 | 6 |
-| Files em shells > 600 LOC | 2 ungated | 2 com exceções declaradas | 2 (closeout em 11.8c+d remove) |
-| Widget re-exports em lib.rs | 84 | 84 | 0 |
-| god-files crates/ acima de 600 | 5 | 3 (todos não-shell) | 2 (panel.rs e state.rs splittados) |
-| pending_X scattered fields | 20 | 20 | 18 (e descendo a cada PR 11.8b) |
-| Workspace tests pass | 1098 | 1296 | ~1300 |
-| Commits batched para CI única | — | 11 (Wave 2) | 5+ (Wave 2.5) |
+| Métrica | Pré-Wave-1 | Pós-Wave-2 | Pós-Wave-2.5 | Pós-Wave-3.1 |
+|---------|-----------|-----------|-------------|---------------|
+| Manual NodeId consts em ids.rs | 253 | 0 (hash) | 0 | 0 |
+| Silent NodeId collisions | 6 | 0 | 0 | 0 |
+| Manual icon match-arms (icons.rs) | 715 LOC | 0 (codegen) | 0 | 0 |
+| Manual color resolve fns | 200 LOC | 0 (codegen) | 0 | 0 |
+| Sources of truth para tools | 4 fragmented | 1 canonical | 1 canonical | 1 canonical |
+| Architecture tests | 1 | 6 | 6 | 6 |
+| Files em shells > 600 LOC | 2 ungated | 2 com exceções declaradas | 2 com exceções declaradas | 2 com exceções declaradas (Wave 3.2 fecha) |
+| Widget re-exports em lib.rs | 84 | 84 | 0 | 0 |
+| god-files crates/ acima de 600 | 5 | 3 (todos não-shell) | 2 (panel.rs e state.rs splittados) | 2 |
+| pending_X scattered fields | 20 | 20 | 18 | **0** (Wave 2.5 closeout) |
+| Workspace tests pass | 1098 | 1296 | ~1300 | ~1300 |
+| Commits batched para CI única | — | 11 (Wave 2) | 5+ (Wave 2.5) | 3 (Wave 3.1 stages A/B/C) |
 
 ---
 

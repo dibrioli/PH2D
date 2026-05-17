@@ -404,7 +404,7 @@ impl crate::App {
                 .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
                 .unwrap_or(false);
             if bgremoval_is_active
-                && let Some(bits) = hero.gizmo_selection
+                && let Some(bits) = hero.gizmo.selection
                 && self.last_bgremoval_pushed_entity != Some(bits)
             {
                 let entity = ph2d_ecs::Entity::from_bits(bits);

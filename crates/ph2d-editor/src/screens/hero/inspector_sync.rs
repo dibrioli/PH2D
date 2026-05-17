@@ -43,11 +43,12 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
     // Name and Visibility so any of those snapshots can drive the
     // entity_changed flag.
     let new_entity = hero
-        .inspector_transform
+        .inspector
+        .transform
         .map(|i| i.entity_bits)
-        .or_else(|| hero.inspector_name.as_ref().map(|i| i.entity_bits))
-        .or_else(|| hero.inspector_visibility.map(|i| i.entity_bits));
-    let entity_changed = new_entity != hero.last_inspector_entity;
+        .or_else(|| hero.inspector.name.as_ref().map(|i| i.entity_bits))
+        .or_else(|| hero.inspector.visibility.map(|i| i.entity_bits));
+    let entity_changed = new_entity != hero.inspector.last_entity;
     // Position values displayed to the user respect the project's
     // DisplayUnit setting (Meters / Pixels). Rotation is always
     // degrees and Scale is unitless, so only the two POS fields
@@ -62,7 +63,7 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
         hero.store.set_focus(None);
         let _ = hero.store.end_number_input_drag();
         hero.store.end_number_stepper_hold();
-        if let Some(info) = hero.inspector_transform {
+        if let Some(info) = hero.inspector.transform {
             hero.store.set_number_value(
                 ids::INSP_TRANSFORM_POS_X,
                 pos_for_display(info.translation[0]),
@@ -99,15 +100,15 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
         {
             *state = crate::widget::TextInputState::Normal;
             text.clear();
-            if let Some(info) = hero.inspector_name.as_ref() {
+            if let Some(info) = hero.inspector.name.as_ref() {
                 text.push_str(&info.name);
             }
             *caret = text.len();
             *selection_anchor = None;
         }
-        hero.last_inspector_entity = new_entity;
+        hero.inspector.last_entity = new_entity;
     } else {
-        if let Some(info) = hero.inspector_transform {
+        if let Some(info) = hero.inspector.transform {
             // Same entity — focus-guarded refresh (lets the user keep
             // typing while gizmo-driven mutations propagate to the
             // non-focused fields).
@@ -151,7 +152,7 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
             .any(|a| matches!(a, crate::action_bus::EditorAction::InspectorNameEdit(_)));
         if !pending_name_edit
             && !focused
-            && let Some(info) = hero.inspector_name.as_ref()
+            && let Some(info) = hero.inspector.name.as_ref()
             && let Some(InteractiveState::TextInput {
                 text,
                 caret,
@@ -182,7 +183,7 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
         )
     });
     if !pending_visibility_edit
-        && let Some(vis) = hero.inspector_visibility
+        && let Some(vis) = hero.inspector.visibility
         && let Some(InteractiveState::Checkbox { value, .. }) =
             hero.store.get_mut(ids::INSP_VISIBILITY_CHECK)
     {

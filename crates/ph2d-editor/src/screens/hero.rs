@@ -36,9 +36,14 @@ pub mod inspector;
 pub mod inspector_sync;
 pub mod left_rail;
 pub mod selection;
+pub mod state;
 pub mod style;
 pub mod topbar;
 pub mod widget_gallery;
+
+pub use state::{
+    GizmoStateGroup, GridState, HierarchyState, ImageEditState, InspectorState, ViewState,
+};
 
 pub use bottom_hud::{BottomHudStats, paint_bottom_hud};
 pub use canvas::{paint_canvas_bg, paint_drop_overlay};
@@ -187,68 +192,24 @@ pub struct HeroScreen {
     /// via `hero.bus.drain()`. Migration is incremental — variants
     /// land one at a time as `pending_X` fields fold into the bus.
     pub bus: crate::action_bus::ActionBus,
-    /// When `true`, the Inspector and Hierarchy panels swap sides
-    /// (Inspector left, Hierarchy right). Toggled via the "Mirror
-    /// UI" entry in the theme context menu. Defaults to `false` —
-    /// Hierarchy left, Inspector right.
-    pub ui_mirrored: bool,
-    /// Visibility of the Inspector panel — toggled by the
-    /// `RAIL_SHOW_INSPECTOR` button in the left rail.
-    pub inspector_visible: bool,
-    /// Visibility of the Hierarchy panel — toggled by the
-    /// `RAIL_SHOW_HIERARCHY` button in the left rail.
-    pub hierarchy_visible: bool,
-    /// Visibility of the bottom statistics HUD — toggled by the
-    /// "Show Statistics" entry in the theme context menu.
-    pub stats_visible: bool,
-    /// Whether the TopBar is in **Image Tools mode**. When `true`,
-    /// the right-side clusters (Project / Play / Right / Settings)
-    /// are hidden and replaced by an action row of image-editing
-    /// pills (`[Trim Transparency]` in V1; more to follow). Toggled
-    /// by clicks on the `TOPBAR_IMAGE_TOOLS` button — handled in
-    /// [`HeroScreen::apply_event`] before the topbar's stub
-    /// `apply_event` runs. Default `false`.
-    pub image_tools_mode: bool,
-    /// Visibility of the floating **Widget Gallery** panel — toggled
-    /// by clicks on the `TOPBAR_WIDGET_GALLERY` palette button.
-    /// Painted as an overlay on top of the canvas (NOT in the panel
-    /// z-order list, since it doesn't dock). Default `false`.
-    pub widget_gallery_visible: bool,
-    /// Rect of the Widget Gallery panel in viewport pixels. Set on
-    /// first toggle to a centered default; persisted across frames so
-    /// dragging keeps the position. Width and height match the
-    /// reference snapshot's Inspector dimensions so the showcase fits
-    /// without scroll.
-    pub widget_gallery_rect: Option<crate::zones::Rect>,
-    /// Live-mode entity rows published by the host via
-    /// [`HeroScreen::sync_from_hierarchy`] (ADR-0025 M14.4a).
-    ///
-    /// When `Some`, the hierarchy panel renders these entries instead
-    /// of `fixture::hierarchy()`, and `apply_event` resolves click
-    /// ids against this map. `None` keeps the fixture behavior (used
-    /// by tests + the standalone hero demo).
-    pub live_hierarchy_entries:
-        Option<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>,
-    /// World-space grid overlay toggle (ADR-0025 M14.4b). Default
-    /// `true`. Toggled via the "Show Grid" context-menu entry and
-    /// the `G` key.
-    pub grid_visible: bool,
-    /// Per-frame grid projection state. `None` means the host hasn't
-    /// supplied a view yet → grid stays hidden even if
-    /// `grid_visible` is `true`. Set each frame via
-    /// [`HeroScreen::set_grid_view`].
-    pub grid_view: Option<crate::grid::GridView>,
-    /// Spacing + color config for the grid painter. Mutate via
-    /// [`HeroScreen::grid_config_mut`] for project-level
-    /// customization.
-    pub grid_config: crate::grid::GridConfig,
-    /// Grid-snap subsystem state — kind selector, per-kind config,
-    /// snap policy, overlay display + opacity. Canonical source for
-    /// the canvas grid overlay (paints via [`crate::grid_snap::render::paint`])
-    /// and for snapping world positions (via
-    /// [`crate::grid_snap::GridSnapState::snap_world`]).
-    /// Panel opens/closes via `TOPBAR_GRID_SETTINGS`.
-    pub grid_snap_state: crate::grid_snap::GridSnapState,
+    /// Wave 5 stage B: view-state flags — mirror toggle + stats HUD /
+    /// widget gallery / grid overlay visibility + gallery rect.
+    pub view: ViewState,
+    /// Wave 5 stage B: Inspector panel state — visibility + per-frame
+    /// snapshots (sprite/transform/visibility/name) + last_entity guard.
+    pub inspector: InspectorState,
+    /// Wave 5 stage B: Hierarchy panel state — visibility + live
+    /// entity map + inline-rename target.
+    pub hierarchy: HierarchyState,
+    /// Wave 5 stage B: image-edit subsystem state — TopBar Image-Tools
+    /// mode flag + undo-availability signal from host.
+    pub image_edit: ImageEditState,
+    /// Wave 5 stage B: canvas gizmo state — selection + per-frame view
+    /// + in-progress drag.
+    pub gizmo: GizmoStateGroup,
+    /// Wave 5 stage B: grid subsystem state — per-frame projection view
+    /// + paint config + snap state (overlay + per-kind config).
+    pub grid: GridState,
     /// M14.4b.bis: set by the VIEW button (`TOOL_HOME`) when its
     /// cycle lands on the "Zero" mode, signaling the host to reset
     /// `Camera2d` to its default (`center=(0,0)`, `height_world=10`).
@@ -288,155 +249,35 @@ pub struct HeroScreen {
     // shell drains via `hero.bus.drain()` + filter-and-replace,
     // resolves NodeId → Entity via `HeroLive::bridge`, and runs the
     // ECS mutation.
-    /// M14.7 A: sim-entity bits of the sprite currently selected for
-    /// gizmo manipulation. The host's canvas-click handler runs
-    /// `pick_sprite_at_world` against PresentWorld and writes the
-    /// result here; the gizmo painter (M14.7 B) and the inspector
-    /// (M14.5) read it on the next frame. `None` = nothing selected
-    /// (click landed on empty canvas, or the entity was just
-    /// despawned).
-    pub gizmo_selection: Option<u64>,
-    /// M14.7 B: per-frame projection input for the gizmo painter.
-    /// Host computes this from `selection_bbox_world(present,
-    /// gizmo_selection)` + the current camera/window and pushes it
-    /// here just before `paint_hero_screen`. `None` ⇒ no gizmo
-    /// painted this frame (selection is empty, or the entity vanished).
-    pub gizmo_view: Option<crate::gizmo::GizmoView>,
-    /// M14.7 C: in-progress drag on the gizmo. Host's MouseInput
-    /// handler fills this when a Mouse Down lands on a gizmo handle;
-    /// the Move handler advances `cursor_screen`, calls
-    /// [`crate::gizmo::compute_gizmo_transform`], and writes the
-    /// result back to SimWorld; Up clears the field.
-    pub gizmo_drag: Option<crate::gizmo::GizmoDragState>,
+    //
     // Wave 2.5 PR 11.8c: `pending_hierarchy_row_click` migrated to
     // `bus.push(EditorAction::HierRowClick { row })`. Same drain
     // semantics: shell resolves row NodeId → sim entity via the
-    // bridge and updates `gizmo_selection` so the canvas gizmo
+    // bridge and updates `gizmo.selection` so the canvas gizmo
     // follows the hierarchy click. Live (ECS) mode only.
     // Wave 2.5 PR 11.8d: `pending_view_focus` migrated to
     // `bus.push(EditorAction::SetViewFocus { kind })`. Raised by
     // the F/Home key, the VIEW button on the left rail (TOOL_HOME
     // cycles Selected/Camera/All), and double-click on a live row
-    // (always Selected). Shell drains and updates `Camera2d::center`
-    // (and `height_world` for `All`) on the next frame.
-    /// M14.7 polish: row currently in inline-rename mode. The
-    /// hierarchy painter replaces the row's name label with a
-    /// TextInput when this matches; user typing flows through the
-    /// usual TextInput dispatch. `None` = no row in rename.
-    pub rename_target_row: Option<NodeId>,
+    // (always Selected).
     // Wave 2.5 PR 11.8c: rename intents migrated to the bus.
     //   pending_rename_seed   → EditorAction::HierRenameSeed { row }
     //   pending_rename_commit → EditorAction::HierRenameCommit { row, new_name }
-    // Seed is one-shot — shell drains, fills HIER_RENAME_INPUT.text
-    // with the entity's current Name, and selects all. Subsequent
-    // Backspace edits aren't re-seeded (no field re-set every frame).
-    // Commit writes the new Name component and clears the rename
-    // TextInput buffer.
-    // Wave 2.5 PR 11.8b3: `pending_reimport` migrated to
-    // `bus.push(EditorAction::Reimport { entity_bits })`. Same
-    // `entity_bits` snapshot semantics — captured at push time
-    // (apply_event on INSP_RENDER_SOURCE_REIMPORT), consumed at
-    // drain time so a concurrent selection change doesn't retarget.
-    // Wave 2.5 PR 11.8b1: `pending_trim_transparency` migrated to
-    // `bus.push(EditorAction::Trim { entity_bits })`. Shell drains
-    // via `hero.bus.drain()` and dispatches to
-    // `hero_intents::drain_trim_transparency`. Source semantics
-    // unchanged: hero snapshots `gizmo_selection` at push time,
-    // shell consumes the snapshotted entity_bits at drain time.
-    // Wave 2.5 PR 11.8b2: `pending_make_square` migrated to
-    // `bus.push(EditorAction::MakeSquare { entity_bits })`.
-    // Source semantics unchanged — entity_bits snapshotted at push
-    // time (apply_event), shell consumes the snapshot at drain time.
-    // Wave 2.5 PR 11.8b3: `pending_bgremoval` migrated to
-    // `bus.push(EditorAction::Bgremoval { entity_bits })`. The push
-    // happens shell-side (BgRemovalTool's apply-toggle drain in
-    // `App::route_panel_event`); main.rs filters the variant out at
-    // drain time, gated on `bgremoval` being the active tool — if
-    // not active, the variant is pushed back onto the bus so the
-    // next activation can complete the round-trip (same "stays
-    // intact across tool switches" contract the old field had).
-    // Wave 2.5 PR 11.8b3: `pending_activate_bgremoval` migrated to
-    // `bus.push(EditorAction::ActivateBgRemoval)`. Raised by the
-    // TopBar pill click (IMAGE_ACTION_BGREMOVAL). Distinct from
-    // `EditorAction::Bgremoval` — that one is the *Apply* trigger
-    // (raised by the tool's panel Toggle), this one is the
-    // *activate* trigger (raised by the TopBar pill).
-    // Wave 2.5 PR 11.8b3: `pending_undo_image_edit` migrated to
-    // `bus.push(EditorAction::UndoImageEdit)`. Raised by clicking
-    // TOOL_UNDO on the LeftRail or pressing Cmd+Z / Ctrl+Z. The
-    // shell owns the snapshot (Sprite source + size + Transform
-    // translation captured pre-edit). Single-level by design;
-    // broader editor undo is M14.x scope.
-    /// Read-only signal from the host: `true` when the host has a
-    /// stored image-edit snapshot that Cmd+Z would restore. Lets the
-    /// UI dim the `TOOL_UNDO` chip when no undo is available. The
-    /// shell writes this each frame after its drain pass.
-    pub has_undoable_image_edit: bool,
-    /// M14.5 inspector phase: snapshot of the selected sprite's
-    /// data the host publishes each frame so `paint_inspector` can
-    /// surface a "Render Source" section without crossing the
-    /// ADR-0021 / HR-8 boundary into SimWorld directly. `None`
-    /// when nothing is selected or the selection isn't a sprite.
-    pub inspector_sprite: Option<InspectorSpriteInfo>,
-    /// M14.A: snapshot of the selected entity's local `Transform`
-    /// the host publishes when selection changes (or the gizmo drag
-    /// mutates the transform externally). `None` when no entity is
-    /// selected. The Inspector's Transform editor section reads this
-    /// to seed its NumberInput buffers; subsequent live edits live
-    /// in the [`WidgetStore`] until commit (HR-8 / ADR-0021: Inspector
-    /// never reads SimWorld directly).
-    pub inspector_transform: Option<InspectorTransformInfo>,
-    /// Entity bits of the last selection that `inspector_transform`
-    /// was populated for. When the current selection differs, the
-    /// Inspector's `apply_event` path force-rewrites the 5 Transform
-    /// NumberInput buffers so an in-progress edit on entity A doesn't
-    /// silently apply to entity B after a selection switch.
-    pub last_inspector_entity: Option<u64>,
-    /// M14.A: editor → host channel for Transform edits. The
-    /// inspector publishes the full snapshot (entity_bits +
-    /// translation/rotation/scale) when a NumberInput commits
-    /// (Enter / blur) or the Reset button fires; the shell drains
-    /// this once per frame, builds an `ph2d_ecs::Transform` from
-    /// the raw fields, and pushes a [`EditorCommand::SetComponent`]
-    /// to its `EditorCommandQueue`. **First end-to-end consumer of
-    /// the editor command pipeline** — every prior `pending_*` field
-    /// bypassed the queue and mutated SimWorld directly.
-    ///
-    /// Re-uses [`InspectorTransformInfo`] so `ph2d-editor` stays
-    /// decoupled from `ph2d-ecs`; the type-id resolution + glam
-    /// conversion happens at the shell boundary.
+    // Wave 2.5 PR 11.8b1-3: image-edit + bgremoval + reimport intents
+    // all live on the bus (Trim/MakeSquare/Bgremoval/ActivateBgRemoval/
+    // Reimport/UndoImageEdit variants).
+    // Wave 2.5 PR 11.8d: inspector edits live on the bus
+    // (InspectorTransformEdit / InspectorVisibilityEdit /
+    //  InspectorNameEdit / InspectorSpriteSourceChange variants).
     //
-    // Wave 2.5 PR 11.8d: migrated to
-    // `bus.push(EditorAction::InspectorTransformEdit(InspectorTransformInfo))`.
-    /// M14.D: snapshot of the selected entity's `Visibility` state,
-    /// mirroring the eye toggle that already lives in the Hierarchy
-    /// panel (M14.6 A). The Inspector renders a checkbox above the
-    /// Transform section so the user can flip visibility from either
-    /// surface. `None` when no entity is selected. Same HR-8 / ADR-0021
-    /// boundary as Transform — the host bridges from SimWorld.
-    pub inspector_visibility: Option<InspectorVisibilityInfo>,
-    // Wave 2.5 PR 11.8d: `pending_visibility_edit` migrated to
-    // `bus.push(EditorAction::InspectorVisibilityEdit(InspectorVisibilityInfo))`.
-    // Shell drain pushes `EditorCommand::SetComponent` for
-    // `ph2d_ecs::Visibility` — same pipeline as InspectorTransformEdit.
-    // Wave 2.5 PR 11.8d: `pending_sprite_source_change` migrated to
-    // `bus.push(EditorAction::InspectorSpriteSourceChange { entity_bits, strategy })`.
-    // Shell drain runs the actual swap (Atlas → Individual re-decodes
-    // via `atlas_asset_map` + `acquire_individual`; Individual → Atlas
-    // and HandPacked transitions toast in v1).
-    /// M14.E: snapshot of the selected entity's `Name` component.
-    /// Host publishes this per frame so the editable name field at
-    /// the top of the Inspector body can seed its TextInput buffer.
-    /// `None` when nothing is selected.
-    pub inspector_name: Option<InspectorNameInfo>,
-    // Wave 2.5 PR 11.8d: `pending_name_edit` migrated to
-    // `bus.push(EditorAction::InspectorNameEdit(InspectorNameInfo))`.
-    // The bus is a Vec so multiple TextChanged pushes per frame all
-    // queue; the shell drains them in order. (Was `Option`-coalesced
-    // before, so only the last edit per frame survived. With the bus
-    // every keystroke commits — fine because Name is a single
-    // SetComponent per push, and the shell already de-dupes via the
-    // EditorCommandQueue.)
+    // Wave 5 stage B: 21 flat state fields moved into the 6 sub-state
+    // groups declared above (`view`, `inspector`, `hierarchy`,
+    // `image_edit`, `gizmo`, `grid`). Read access uses the structural
+    // path (`hero.inspector.sprite`, `hero.view.ui_mirrored`, etc.).
+    // Snapshot types `InspectorSpriteInfo` / `InspectorTransformInfo` /
+    // `InspectorVisibilityInfo` / `InspectorNameInfo` keep their
+    // definitions in this file (re-exported by `screens::hero` for the
+    // crate-wide import surface; `state.rs` re-imports them from here).
 }
 
 /// Snapshot of the selected sprite's editor-facing fields. Host
@@ -594,39 +435,32 @@ impl HeroScreen {
             store,
             hit_index: HitIndex::new(),
             bus: crate::action_bus::ActionBus::new(),
-            ui_mirrored: false,
-            inspector_visible: true,
-            hierarchy_visible: true,
-            stats_visible: true,
-            image_tools_mode: false,
-            widget_gallery_visible: false,
-            widget_gallery_rect: None,
-            live_hierarchy_entries: None,
-            grid_visible: true,
-            grid_view: None,
-            grid_config: crate::grid::GridConfig::default(),
-            grid_snap_state: crate::grid_snap::GridSnapState::default(),
+            // Wave 5 stage B: 21 flat fields grouped into 6 sub-state
+            // structs. Inspector + Hierarchy visible by default; stats
+            // HUD + grid overlay visible; everything else off / None.
+            view: ViewState {
+                ui_mirrored: false,
+                stats_visible: true,
+                widget_gallery_visible: false,
+                widget_gallery_rect: None,
+                grid_visible: true,
+            },
+            inspector: InspectorState {
+                visible: true,
+                ..InspectorState::default()
+            },
+            hierarchy: HierarchyState {
+                visible: true,
+                ..HierarchyState::default()
+            },
+            image_edit: ImageEditState::default(),
+            gizmo: GizmoStateGroup::default(),
+            grid: GridState::default(),
             camera_reset_pending: false,
             import_requested: false,
             project: crate::project::ProjectSettings::default(),
             dragging_files: None,
             stats: BottomHudStats::default(),
-            // Wave 2.5 PR 11.8c: 6 hierarchy fields removed (bus migration).
-            gizmo_selection: None,
-            gizmo_view: None,
-            gizmo_drag: None,
-            // Wave 2.5 PR 11.8c/d: all `pending_X` fields migrated to
-            // `bus` (declared above). Read-only state fields (inspector
-            // snapshots, has_undoable_image_edit) remain — they're
-            // shell → editor publication channels, not editor → shell
-            // intents.
-            rename_target_row: None,
-            has_undoable_image_edit: false,
-            inspector_sprite: None,
-            inspector_transform: None,
-            last_inspector_entity: None,
-            inspector_visibility: None,
-            inspector_name: None,
         }
     }
 
@@ -676,7 +510,7 @@ impl HeroScreen {
         entries: std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>,
     ) {
         hierarchy::repopulate(&mut self.store, ordered);
-        self.live_hierarchy_entries = Some(entries);
+        self.hierarchy.live_entries = Some(entries);
     }
 
     /// Drop any host-supplied hierarchy state, reverting to the
@@ -684,7 +518,7 @@ impl HeroScreen {
     /// this when leaving live-edit mode (e.g. user pressed
     /// `PH2D_HERO_LIVE` toggle off).
     pub fn clear_live_hierarchy(&mut self) {
-        self.live_hierarchy_entries = None;
+        self.hierarchy.live_entries = None;
     }
 
     /// Inject the host's per-frame grid projection (ADR-0025 M14.4b).
@@ -692,13 +526,13 @@ impl HeroScreen {
     /// true — useful while the host is between scenes and no
     /// camera is established.
     pub fn set_grid_view(&mut self, view: Option<crate::grid::GridView>) {
-        self.grid_view = view;
+        self.grid.view = view;
     }
 
     /// Mutable access to the grid configuration (spacing, colors,
     /// stroke widths). Changes apply on the next paint.
     pub fn grid_config_mut(&mut self) -> &mut crate::grid::GridConfig {
-        &mut self.grid_config
+        &mut self.grid.config
     }
 
     pub fn handle_pointer<'frame>(
@@ -847,17 +681,17 @@ impl HeroScreen {
                 return true;
             }
             if id == ids::CTX_MENU_MIRROR_UI {
-                self.ui_mirrored = !self.ui_mirrored;
+                self.view.ui_mirrored = !self.view.ui_mirrored;
                 self.store.close_context_menu();
                 return true;
             }
             if id == ids::CTX_MENU_SHOW_STATS {
-                self.stats_visible = !self.stats_visible;
+                self.view.stats_visible = !self.view.stats_visible;
                 self.store.close_context_menu();
                 return true;
             }
             if id == ids::CTX_MENU_SHOW_GRID {
-                self.grid_visible = !self.grid_visible;
+                self.view.grid_visible = !self.view.grid_visible;
                 self.store.close_context_menu();
                 return true;
             }
@@ -916,11 +750,11 @@ impl HeroScreen {
             // state so the rail rendering reflects the new state
             // on the next frame.
             if id == ids::RAIL_SHOW_INSPECTOR {
-                self.inspector_visible = !self.inspector_visible;
+                self.inspector.visible = !self.inspector.visible;
                 if let Some(crate::interaction::InteractiveState::Button { state }) =
                     self.store.get_mut(ids::RAIL_SHOW_INSPECTOR)
                 {
-                    *state = if self.inspector_visible {
+                    *state = if self.inspector.visible {
                         crate::widget::ButtonState::Pressed
                     } else {
                         crate::widget::ButtonState::Normal
@@ -929,11 +763,11 @@ impl HeroScreen {
                 return true;
             }
             if id == ids::RAIL_SHOW_HIERARCHY {
-                self.hierarchy_visible = !self.hierarchy_visible;
+                self.hierarchy.visible = !self.hierarchy.visible;
                 if let Some(crate::interaction::InteractiveState::Button { state }) =
                     self.store.get_mut(ids::RAIL_SHOW_HIERARCHY)
                 {
-                    *state = if self.hierarchy_visible {
+                    *state = if self.hierarchy.visible {
                         crate::widget::ButtonState::Pressed
                     } else {
                         crate::widget::ButtonState::Normal
@@ -990,7 +824,7 @@ impl HeroScreen {
                         // re-seeding every frame would clobber the
                         // user's Backspace edits).
                         open_rename(&mut self.store);
-                        self.rename_target_row = Some(row);
+                        self.hierarchy.rename_target_row = Some(row);
                         self.bus
                             .push(crate::action_bus::EditorAction::HierRenameSeed { row });
                     }
@@ -1131,7 +965,7 @@ impl HeroScreen {
         if let WidgetEvent::Click(id) = event
             && id == ids::TOPBAR_IMAGE_TOOLS
         {
-            self.image_tools_mode = !self.image_tools_mode;
+            self.image_edit.mode_on = !self.image_edit.mode_on;
             return true;
         }
         // Widget Gallery toggle — palette pill in the TopBar opens /
@@ -1144,7 +978,7 @@ impl HeroScreen {
         if let WidgetEvent::Click(id) = event
             && (id == ids::TOPBAR_WIDGET_GALLERY || id == ids::GAL_CLOSE)
         {
-            self.widget_gallery_visible = !self.widget_gallery_visible;
+            self.view.widget_gallery_visible = !self.view.widget_gallery_visible;
             return true;
         }
         // Grid Settings panel toggle — TopBar pill toggles the
@@ -1153,7 +987,7 @@ impl HeroScreen {
         if let WidgetEvent::Click(id) = event
             && id == ids::TOPBAR_GRID_SETTINGS
         {
-            self.grid_snap_state.panel_visible = !self.grid_snap_state.panel_visible;
+            self.grid.snap_state.panel_visible = !self.grid.snap_state.panel_visible;
             return true;
         }
         // Color swatch click — open the BlenderColorPicker bound to
@@ -1164,7 +998,7 @@ impl HeroScreen {
         {
             self.store.set_widget_color(
                 crate::grid_snap::ids::GS_COLOR_PICKER,
-                self.grid_snap_state.color_rgba,
+                self.grid.snap_state.color_rgba,
             );
             self.store
                 .set_picker_target(Some(crate::grid_snap::ids::GS_COLOR_PICKER));
@@ -1183,7 +1017,7 @@ impl HeroScreen {
             self.project.display_unit,
             self.project.pixels_per_meter,
         );
-        if crate::grid_snap::apply_event(&mut self.grid_snap_state, event, &self.store) {
+        if crate::grid_snap::apply_event(&mut self.grid.snap_state, event, &self.store) {
             return true;
         }
         // Trim Transparency action — push `EditorAction::Trim` onto
@@ -1200,7 +1034,7 @@ impl HeroScreen {
         if let WidgetEvent::Click(id) = event
             && id == ids::IMAGE_ACTION_TRIM
         {
-            if let Some(entity_bits) = self.gizmo_selection {
+            if let Some(entity_bits) = self.gizmo.selection {
                 self.bus
                     .push(crate::action_bus::EditorAction::Trim { entity_bits });
             }
@@ -1216,7 +1050,7 @@ impl HeroScreen {
         if let WidgetEvent::Click(id) = event
             && id == ids::IMAGE_ACTION_MAKE_SQUARE
         {
-            if let Some(entity_bits) = self.gizmo_selection {
+            if let Some(entity_bits) = self.gizmo.selection {
                 self.bus
                     .push(crate::action_bus::EditorAction::MakeSquare { entity_bits });
             }
@@ -1271,7 +1105,7 @@ impl HeroScreen {
         // update still happens too.
         // Wave 2.5 PR 11.8c: bus migration (was `pending_hierarchy_row_click`).
         if let WidgetEvent::Click(id) = event
-            && let Some(live) = self.live_hierarchy_entries.as_ref()
+            && let Some(live) = self.hierarchy.live_entries.as_ref()
             && live.contains_key(&id)
         {
             self.bus
@@ -1286,7 +1120,7 @@ impl HeroScreen {
         // Wave 2.5 PR 11.8c: HierRowClick on the bus. `pending_view_focus`
         // is Stage C scope — still a field for now.
         if let WidgetEvent::DoubleClick(id) = event
-            && let Some(live) = self.live_hierarchy_entries.as_ref()
+            && let Some(live) = self.hierarchy.live_entries.as_ref()
             && live.contains_key(&id)
         {
             self.bus
@@ -1304,11 +1138,11 @@ impl HeroScreen {
         //
         // Wave 2.5 PR 11.8c: bus migration (was `pending_rename_seed`).
         if let WidgetEvent::LongPress(id) = event
-            && let Some(live) = self.live_hierarchy_entries.as_ref()
+            && let Some(live) = self.hierarchy.live_entries.as_ref()
             && live.contains_key(&id)
         {
             open_rename(&mut self.store);
-            self.rename_target_row = Some(id);
+            self.hierarchy.rename_target_row = Some(id);
             self.bus
                 .push(crate::action_bus::EditorAction::HierRenameSeed { row: id });
             return true;
@@ -1320,7 +1154,7 @@ impl HeroScreen {
         // Wave 2.5 PR 11.8c: bus migration (was `pending_rename_commit`).
         if let WidgetEvent::Submit(id) = event
             && id == ids::HIER_RENAME_INPUT
-            && let Some(row) = self.rename_target_row.take()
+            && let Some(row) = self.hierarchy.rename_target_row.take()
         {
             let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
                 Some(crate::interaction::InteractiveState::TextInput { text, .. }) => text.clone(),
@@ -1339,7 +1173,7 @@ impl HeroScreen {
         if let WidgetEvent::Cancel(id) = event
             && id == ids::HIER_RENAME_INPUT
         {
-            self.rename_target_row = None;
+            self.hierarchy.rename_target_row = None;
             return true;
         }
         // M14.7 polish: click outside the rename TextInput → commit
@@ -1350,7 +1184,7 @@ impl HeroScreen {
         // buffer as a HierRenameCommit, drop rename mode.
         if let WidgetEvent::Blur(id) = event
             && id == ids::HIER_RENAME_INPUT
-            && let Some(row) = self.rename_target_row.take()
+            && let Some(row) = self.hierarchy.rename_target_row.take()
         {
             let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
                 Some(crate::interaction::InteractiveState::TextInput { text, .. }) => text.clone(),
@@ -1370,7 +1204,7 @@ impl HeroScreen {
         if hierarchy::apply_event(
             &mut self.store,
             &mut self.selection,
-            self.live_hierarchy_entries.as_ref(),
+            self.hierarchy.live_entries.as_ref(),
             event,
         ) {
             return true;
@@ -1385,7 +1219,7 @@ impl HeroScreen {
         // Wave 2.5 PR 11.8b3: bus migration (was `pending_reimport`).
         if let WidgetEvent::Click(id) = event
             && id == ids::INSP_RENDER_SOURCE_REIMPORT
-            && let Some(info) = self.inspector_sprite.as_ref()
+            && let Some(info) = self.inspector.sprite.as_ref()
             && info.can_reimport
         {
             self.bus.push(crate::action_bus::EditorAction::Reimport {
@@ -1409,7 +1243,7 @@ impl HeroScreen {
                     | ids::INSP_TRANSFORM_SCALE_X
                     | ids::INSP_TRANSFORM_SCALE_Y,
             )
-            && let Some(info) = self.inspector_transform
+            && let Some(info) = self.inspector.transform
         {
             // Store holds Position in the active DisplayUnit (Meters
             // or Pixels). Convert back to sim-space meters before
@@ -1460,7 +1294,7 @@ impl HeroScreen {
         // Wave 2.5 PR 11.8d: bus migration (was `pending_transform_edit`).
         if let WidgetEvent::Click(id) = event
             && id == ids::INSP_TRANSFORM_RESET
-            && let Some(info) = self.inspector_transform
+            && let Some(info) = self.inspector.transform
         {
             self.bus
                 .push(crate::action_bus::EditorAction::InspectorTransformEdit(
@@ -1481,7 +1315,7 @@ impl HeroScreen {
         // `ph2d_ecs::Visibility` component.
         if let WidgetEvent::Toggled(id) = event
             && id == ids::INSP_VISIBILITY_CHECK
-            && let Some(info) = self.inspector_visibility
+            && let Some(info) = self.inspector.visibility
         {
             let visible = matches!(
                 self.store.checkbox(id).map(|(_, v)| v),
@@ -1509,7 +1343,7 @@ impl HeroScreen {
                 ids::INSP_RENDER_STRATEGY_HANDPACKED => Some(RequestedSpriteStrategy::HandPacked),
                 _ => None,
             }
-            && let Some(info) = self.inspector_sprite.as_ref()
+            && let Some(info) = self.inspector.sprite.as_ref()
         {
             let current = match info.source_kind {
                 InspectorSpriteSource::Atlas { .. } => RequestedSpriteStrategy::Atlas,
@@ -1548,7 +1382,7 @@ impl HeroScreen {
         // frame, so the queue depth per drain is 0 or 1 either way.
         if let WidgetEvent::TextChanged(id) = event
             && id == ids::INSP_ENTITY_NAME
-            && let Some(info) = self.inspector_name.as_ref()
+            && let Some(info) = self.inspector.name.as_ref()
         {
             let text = self.store.text(id).unwrap_or("").to_string();
             self.bus
@@ -1617,7 +1451,7 @@ pub fn paint_hero_screen(
     // every frame so it stays in sync with the topbar's radius menu.
     crate::paint::set_radius_scale(hero.store.radius_scale());
 
-    let mut layout = HeroLayout::for_viewport_mirrored(viewport, hero.ui_mirrored);
+    let mut layout = HeroLayout::for_viewport_mirrored(viewport, hero.view.ui_mirrored);
     // Apply user-driven panel drag offsets to the Inspector +
     // Hierarchy rects. The offsets live on the WidgetStore's
     // `blender_picker_offset` side-table (panel-agnostic — the
@@ -1730,7 +1564,7 @@ pub fn paint_hero_screen(
     // panels, topbar) paint their own backdrops — verified in the
     // M14.5 audit. Fixture mode keeps the canvas tint so mockup
     // screenshots stay theme-correct.
-    if hero.grid_view.is_none() {
+    if hero.grid.view.is_none() {
         paint_canvas_bg(&layout, scene, hero.theme);
     }
     // M14.4b: world-space grid overlay. Painted between the canvas
@@ -1748,14 +1582,14 @@ pub fn paint_hero_screen(
     // For now we approximate by halving the grid's effective opacity
     // when `grid_in_front == false`, which reads as "the grid is
     // farther / underneath" without changing the compositing path.
-    if hero.grid_visible
-        && let Some(view) = hero.grid_view
+    if hero.view.grid_visible
+        && let Some(view) = hero.grid.view
     {
         let view = crate::grid::GridView {
             canvas: layout.canvas,
             ..view
         };
-        let mut state_for_paint = hero.grid_snap_state.clone();
+        let mut state_for_paint = hero.grid.snap_state.clone();
         if !state_for_paint.grid_in_front {
             state_for_paint.opacity *= 0.4; // LITERAL-PX-OK: grid behind-canvas dim ratio (visual effect)
         }
@@ -1768,7 +1602,7 @@ pub fn paint_hero_screen(
     // mislead users into thinking the marquee tracks an entity.
     // Fixture mode keeps the placeholder marquee for the mockup
     // screenshots.
-    if hero.grid_view.is_none()
+    if hero.grid.view.is_none()
         && let Some(sel) = hero.selection.as_ref()
     {
         paint_selection_overlay(&layout, sel, scene, text_system, hero.theme);
@@ -1778,7 +1612,7 @@ pub fn paint_hero_screen(
     // current camera; the painter projects to screen pixels with the
     // same math the grid uses (so the gizmo and grid stay aligned
     // across pan/zoom).
-    if let Some(view) = hero.gizmo_view {
+    if let Some(view) = hero.gizmo.view {
         crate::gizmo::paint_sprite_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
     }
     paint_top_bar(
@@ -1788,7 +1622,7 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
-        hero.image_tools_mode,
+        hero.image_edit.mode_on,
     );
     paint_left_rail(
         &layout,
@@ -1803,12 +1637,12 @@ pub fn paint_hero_screen(
     // When a panel is hidden via its left-rail toggle we DROP the
     // published rect so dispatch's "inside panel" tests don't match
     // a stale geometry.
-    if hero.inspector_visible {
+    if hero.inspector.visible {
         hero.store.set_panel_rect(ids::INSP_PANEL, layout.inspector);
     } else {
         hero.store.clear_panel_rect(ids::INSP_PANEL);
     }
-    if hero.hierarchy_visible {
+    if hero.hierarchy.visible {
         hero.store.set_panel_rect(ids::HIER_PANEL, layout.hierarchy);
     } else {
         hero.store.clear_panel_rect(ids::HIER_PANEL);
@@ -1823,15 +1657,15 @@ pub fn paint_hero_screen(
         // Mirror Grid-Settings swatch edits back into the grid_snap
         // state so the canvas overlay re-paints with the new color.
         if target == crate::grid_snap::ids::GS_COLOR_PICKER {
-            hero.grid_snap_state.color_rgba = value.rgba;
+            hero.grid.snap_state.color_rgba = value.rgba;
         }
     }
     hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
     // Publish live entries (if any) to the hierarchy painter so it
     // overrides `fixture::hierarchy()`. Cleared at the end of paint
     // so the next frame's `sync_from_hierarchy` is the single source.
-    hierarchy::set_live_entries(hero.live_hierarchy_entries.clone());
-    hierarchy::set_rename_target(hero.rename_target_row);
+    hierarchy::set_live_entries(hero.hierarchy.live_entries.clone());
+    hierarchy::set_rename_target(hero.hierarchy.rename_target_row);
     // Publish the picker's outer rect so dispatch's "is the click
     // inside the picker?" test can reason about its bounds.
     if hero.store.picker_target().is_some()
@@ -1853,15 +1687,15 @@ pub fn paint_hero_screen(
         }
     }
     for panel_id in z_order {
-        if panel_id == ids::INSP_PANEL && hero.inspector_visible {
+        if panel_id == ids::INSP_PANEL && hero.inspector.visible {
             inspector_sync::sync_inspector_from_snapshots(hero);
             // Publish the host-supplied sprite snapshot for the
             // Render Source section. Cleared after paint so a stale
             // snapshot can't leak into the next frame.
-            inspector::set_current_inspector_sprite(hero.inspector_sprite.clone());
-            inspector::set_current_inspector_transform(hero.inspector_transform);
-            inspector::set_current_inspector_visibility(hero.inspector_visibility);
-            inspector::set_current_inspector_name(hero.inspector_name.clone());
+            inspector::set_current_inspector_sprite(hero.inspector.sprite.clone());
+            inspector::set_current_inspector_transform(hero.inspector.transform);
+            inspector::set_current_inspector_visibility(hero.inspector.visibility);
+            inspector::set_current_inspector_name(hero.inspector.name.clone());
             inspector::set_current_display_unit(
                 hero.project.display_unit,
                 hero.project.pixels_per_meter,
@@ -1892,7 +1726,7 @@ pub fn paint_hero_screen(
             if cur > max_scroll {
                 hero.store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
             }
-        } else if panel_id == ids::HIER_PANEL && hero.hierarchy_visible {
+        } else if panel_id == ids::HIER_PANEL && hero.hierarchy.visible {
             paint_hierarchy(
                 &layout,
                 scene,
@@ -1915,7 +1749,7 @@ pub fn paint_hero_screen(
         // Widget Gallery + Grid Settings blocks below, which keeps the
         // picker on top of every floating panel regardless of z order.
     }
-    if hero.stats_visible {
+    if hero.view.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
     }
     // Widget Gallery floating panel. Sits above every docked panel
@@ -1925,8 +1759,8 @@ pub fn paint_hero_screen(
     // the base rect persists and drag / resize deltas come from the
     // store (`blender_picker_offset` + `panel_resize_delta`) so the
     // gallery is movable + resizable like the Inspector.
-    if hero.widget_gallery_visible {
-        let base_rect = match hero.widget_gallery_rect {
+    if hero.view.widget_gallery_visible {
+        let base_rect = match hero.view.widget_gallery_rect {
             Some(r) => r,
             None => {
                 let r = widget_gallery::default_rect(
@@ -1934,7 +1768,7 @@ pub fn paint_hero_screen(
                     layout.viewport.h,
                     layout.inspector.w,
                 );
-                hero.widget_gallery_rect = Some(r);
+                hero.view.widget_gallery_rect = Some(r);
                 r
             }
         };
@@ -1997,12 +1831,12 @@ pub fn paint_hero_screen(
     // Grid Settings floating panel — mirrors the Widget Gallery
     // pattern (lazy default rect on first show, drag/resize deltas via
     // store, panel rect published for chrome routing).
-    if hero.grid_snap_state.panel_visible {
-        let base_rect = match hero.grid_snap_state.panel_rect {
+    if hero.grid.snap_state.panel_visible {
+        let base_rect = match hero.grid.snap_state.panel_rect {
             Some(r) => r,
             None => {
                 let r = crate::grid_snap::default_rect(layout.viewport.w, layout.viewport.h);
-                hero.grid_snap_state.panel_rect = Some(r);
+                hero.grid.snap_state.panel_rect = Some(r);
                 r
             }
         };
@@ -2046,7 +1880,7 @@ pub fn paint_hero_screen(
             hero.project.display_unit,
             hero.project.pixels_per_meter,
         );
-        crate::grid_snap::sync_meter_inputs_to_display_unit(&hero.grid_snap_state, &mut hero.store);
+        crate::grid_snap::sync_meter_inputs_to_display_unit(&hero.grid.snap_state, &mut hero.store);
         crate::grid_snap::paint(
             gs_rect,
             scene,
@@ -2054,7 +1888,7 @@ pub fn paint_hero_screen(
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
-            &hero.grid_snap_state,
+            &hero.grid.snap_state,
         );
         // Publish scroll bounds for `dispatch_wheel`. Same pattern as
         // widget_gallery / inspector.
@@ -2348,7 +2182,7 @@ mod tests {
     #[test]
     fn gallery_publishes_scroll_bounds_after_paint() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.widget_gallery_visible = true;
+        hero.view.widget_gallery_visible = true;
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
@@ -2418,9 +2252,9 @@ mod tests {
         // committing should publish 2.0 m (200 / 100) into
         // `pending_transform_edit.translation`.
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_visible = true;
+        hero.inspector.visible = true;
         hero.project.display_unit = crate::project::DisplayUnit::Pixels;
-        hero.inspector_transform = Some(InspectorTransformInfo {
+        hero.inspector.transform = Some(InspectorTransformInfo {
             entity_bits: 1,
             translation: [1.5, 0.0],
             rotation_rad: 0.0,
@@ -2463,12 +2297,12 @@ mod tests {
         // Sanity: default Meters mode is a no-op — store displays the
         // raw meter value and commit is identity.
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_visible = true;
+        hero.inspector.visible = true;
         assert_eq!(
             hero.project.display_unit,
             crate::project::DisplayUnit::Meters
         );
-        hero.inspector_transform = Some(InspectorTransformInfo {
+        hero.inspector.transform = Some(InspectorTransformInfo {
             entity_bits: 1,
             translation: [1.5, 0.0],
             rotation_rad: 0.0,
@@ -2552,7 +2386,7 @@ mod tests {
     #[test]
     fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.grid_snap_state.panel_visible = true;
+        hero.grid.snap_state.panel_visible = true;
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
@@ -2623,7 +2457,7 @@ mod tests {
     #[test]
     fn gallery_create_note_targets_gal_panel() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.widget_gallery_visible = true;
+        hero.view.widget_gallery_visible = true;
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         // Paint once so `panel_rect(GAL_PANEL)` is published and
@@ -2676,7 +2510,7 @@ mod tests {
     #[test]
     fn gallery_section_outline_color_writes_through() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.widget_gallery_visible = true;
+        hero.view.widget_gallery_visible = true;
         let mut scene = VectorScene::new();
         let mut text = TextSystem::new();
         paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
@@ -2766,11 +2600,11 @@ mod tests {
     #[test]
     fn click_on_image_tools_pill_toggles_mode() {
         let mut hero = HeroScreen::new(NodeId(1));
-        assert!(!hero.image_tools_mode);
+        assert!(!hero.image_edit.mode_on);
         assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
-        assert!(hero.image_tools_mode);
+        assert!(hero.image_edit.mode_on);
         assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
-        assert!(!hero.image_tools_mode);
+        assert!(!hero.image_edit.mode_on);
     }
 
     /// M14.A: a `ValueChanged` event on any Transform NumberInput
@@ -2786,14 +2620,14 @@ mod tests {
         let mut hero = HeroScreen::new(NodeId(1));
         // No selection → no push even on commit (avoids silently
         // editing a non-existent entity).
-        hero.inspector_transform = None;
+        hero.inspector.transform = None;
         assert!(!hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X)));
         assert!(hero.bus.is_empty());
 
         // With selection + custom store values → push mirrors the
         // store snapshot exactly. We seed the store with non-identity
         // numbers and verify the commit assembles them all.
-        hero.inspector_transform = Some(InspectorTransformInfo {
+        hero.inspector.transform = Some(InspectorTransformInfo {
             entity_bits: 0xCAFE_F00D,
             translation: [0.0, 0.0],
             rotation_rad: 0.0,
@@ -2832,7 +2666,7 @@ mod tests {
     fn transform_reset_button_publishes_identity() {
         use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_transform = Some(InspectorTransformInfo {
+        hero.inspector.transform = Some(InspectorTransformInfo {
             entity_bits: 0xBABE_0042,
             translation: [10.0, 20.0],
             rotation_rad: 1.0,
@@ -2858,7 +2692,7 @@ mod tests {
         // Without a selection, Reset is a no-op (consumes the click
         // returning false → dispatcher walks; matches non-sprite
         // Reimport behavior).
-        hero.inspector_transform = None;
+        hero.inspector.transform = None;
         assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
         assert!(hero.bus.is_empty());
     }
@@ -2875,7 +2709,7 @@ mod tests {
         let mut hero = HeroScreen::new(NodeId(1));
         // Selection that has a Transform component (we don't paint
         // here, just exercise apply_event semantics).
-        hero.inspector_visibility = Some(InspectorVisibilityInfo {
+        hero.inspector.visibility = Some(InspectorVisibilityInfo {
             entity_bits: 0xBABE_BEEF,
             visible: true,
         });
@@ -2906,7 +2740,7 @@ mod tests {
     fn strategy_click_raises_pending_when_kind_differs() {
         use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_sprite = Some(InspectorSpriteInfo {
+        hero.inspector.sprite = Some(InspectorSpriteInfo {
             entity_bits: 0xC0FF_EE00,
             name: "Player".into(),
             world_size: [1.0, 1.0],
@@ -2947,7 +2781,7 @@ mod tests {
     #[test]
     fn strategy_click_no_pending_without_sprite_selection() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_sprite = None;
+        hero.inspector.sprite = None;
         assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
         assert!(hero.bus.is_empty());
     }
@@ -2961,7 +2795,7 @@ mod tests {
     fn name_text_changed_publishes_pending_with_current_text() {
         use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_name = Some(InspectorNameInfo {
+        hero.inspector.name = Some(InspectorNameInfo {
             entity_bits: 0xDEAD_BEEF,
             name: "Old".to_string(),
         });
@@ -2993,7 +2827,7 @@ mod tests {
     #[test]
     fn name_text_changed_no_pending_without_selection() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_name = None;
+        hero.inspector.name = None;
         assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
         assert!(hero.bus.is_empty());
     }
@@ -3012,7 +2846,7 @@ mod tests {
             *text = "Player Two".to_string();
             *caret = text.len();
         }
-        hero.inspector_name = Some(InspectorNameInfo {
+        hero.inspector.name = Some(InspectorNameInfo {
             entity_bits: 0xDEAD_F00D,
             name: "Player".into(),
         });
@@ -3029,7 +2863,7 @@ mod tests {
         assert_eq!(p.name, "Player Two");
 
         // No selection → no push.
-        hero.inspector_name = None;
+        hero.inspector.name = None;
         assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
         assert!(hero.bus.is_empty());
     }
@@ -3048,11 +2882,11 @@ mod tests {
         let mut text = TextSystem::new();
         // 1) Frame 1: select entity A, mark its TextInput Focused
         //    (simulating user click on the field).
-        hero.inspector_name = Some(InspectorNameInfo {
+        hero.inspector.name = Some(InspectorNameInfo {
             entity_bits: 0xAAAA_0001,
             name: "Player A".into(),
         });
-        hero.inspector_transform = Some(InspectorTransformInfo {
+        hero.inspector.transform = Some(InspectorTransformInfo {
             entity_bits: 0xAAAA_0001,
             translation: [0.0, 0.0],
             rotation_rad: 0.0,
@@ -3067,11 +2901,11 @@ mod tests {
         // 2) Frame 2: switch to entity B. The selection-change block
         //    must flip state back to Normal regardless of the focus
         //    snapshot the user left on entity A.
-        hero.inspector_name = Some(InspectorNameInfo {
+        hero.inspector.name = Some(InspectorNameInfo {
             entity_bits: 0xBBBB_0002,
             name: "Player B".into(),
         });
-        hero.inspector_transform = Some(InspectorTransformInfo {
+        hero.inspector.transform = Some(InspectorTransformInfo {
             entity_bits: 0xBBBB_0002,
             translation: [0.0, 0.0],
             rotation_rad: 0.0,
@@ -3097,7 +2931,7 @@ mod tests {
     #[test]
     fn strategy_click_resets_button_state_to_normal() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_sprite = Some(InspectorSpriteInfo {
+        hero.inspector.sprite = Some(InspectorSpriteInfo {
             entity_bits: 0x00C0_FFEE,
             name: "S".into(),
             world_size: [1.0, 1.0],
@@ -3127,7 +2961,7 @@ mod tests {
     #[test]
     fn visibility_toggle_no_pending_without_selection() {
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.inspector_visibility = None;
+        hero.inspector.visibility = None;
         assert!(!hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
         assert!(hero.bus.is_empty());
     }
@@ -3142,13 +2976,13 @@ mod tests {
         use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         // No selection → nothing pushed after click.
-        hero.gizmo_selection = None;
+        hero.gizmo.selection = None;
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
         assert!(hero.bus.is_empty());
 
         // With selection → bus contains exactly one Trim with the
         // entity_bits taken from gizmo_selection at click time.
-        hero.gizmo_selection = Some(0xDEAD_BEEF);
+        hero.gizmo.selection = Some(0xDEAD_BEEF);
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
         let drained: Vec<_> = hero.bus.drain().collect();
         assert_eq!(
@@ -3164,11 +2998,11 @@ mod tests {
     fn click_on_make_square_pill_raises_pending_with_selection() {
         use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
-        hero.gizmo_selection = None;
+        hero.gizmo.selection = None;
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
         assert!(hero.bus.is_empty());
 
-        hero.gizmo_selection = Some(0xCAFE_BABE);
+        hero.gizmo.selection = Some(0xCAFE_BABE);
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_MAKE_SQUARE)));
         let drained: Vec<_> = hero.bus.drain().collect();
         assert_eq!(

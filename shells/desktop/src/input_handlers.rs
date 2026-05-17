@@ -53,7 +53,7 @@ impl App {
             // Drag-drop: sprite hasn't been imported yet, so half-size
             // is unknown. Pass [0.0, 0.0] — Corner-family modes
             // degenerate to point-Intersection snap in that case.
-            hero.grid_snap_state.snap_world(drop_world_raw, [0.0, 0.0])
+            hero.grid.snap_state.snap_world(drop_world_raw, [0.0, 0.0])
         } else {
             drop_world_raw
         };
@@ -188,8 +188,8 @@ impl App {
             // by the host continues regardless.
             KeyCode::KeyG => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.grid_visible = !hero.grid_visible;
-                    let msg = if hero.grid_visible {
+                    hero.view.grid_visible = !hero.view.grid_visible;
+                    let msg = if hero.view.grid_visible {
                         "Grid → on"
                     } else {
                         "Grid → off"
@@ -297,7 +297,7 @@ impl App {
                 .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
                 && bg.take_pending_apply()
                 && let Some(hero) = gfx.hero_screen.as_mut()
-                && let Some(bits) = hero.gizmo_selection
+                && let Some(bits) = hero.gizmo.selection
             {
                 hero.bus
                     .push(ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits: bits });

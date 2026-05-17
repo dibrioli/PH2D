@@ -130,7 +130,7 @@ pub(super) fn publish(
     // from SimWorld — it's the import-time author rect,
     // multiplied here by the world scale extracted from the
     // matrix to match the renderer's RenderInstance build.
-    hero.gizmo_view = hero.gizmo_selection.and_then(|bits| {
+    hero.gizmo.view = hero.gizmo.selection.and_then(|bits| {
         let sim_entity = ph2d_ecs::Entity::from_bits(bits);
         let sprite = sim.world().get::<Sprite>(sim_entity)?;
         // Look up the present entity that mirrors this sim
@@ -184,7 +184,7 @@ pub(super) fn publish(
     // snapshot of the selected sprite so `paint_inspector` can
     // surface the Render Source section + Reimport button
     // without crossing the ADR-0021 boundary into SimWorld.
-    hero.inspector_sprite = hero.gizmo_selection.and_then(|bits| {
+    hero.inspector.sprite = hero.gizmo.selection.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let world = sim.world();
         let sprite = world.get::<Sprite>(entity)?;
@@ -233,7 +233,7 @@ pub(super) fn publish(
     // never reads SimWorld; the host bridges. Lands on every
     // entity that has a `Transform` component, not just sprites
     // (so non-renderable entities still show their pose).
-    hero.inspector_transform = hero.gizmo_selection.and_then(|bits| {
+    hero.inspector.transform = hero.gizmo.selection.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let t = sim.world().get::<Transform>(entity)?;
         Some(ph2d_editor::InspectorTransformInfo {
@@ -250,7 +250,7 @@ pub(super) fn publish(
     // Only published when the selection has a `Transform`
     // (i.e. it's an Inspector-worthy entity); without a
     // Transform the Inspector hides the whole panel content.
-    hero.inspector_visibility = hero.gizmo_selection.and_then(|bits| {
+    hero.inspector.visibility = hero.gizmo.selection.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         sim.world().get::<Transform>(entity)?;
         let visible = sim
@@ -267,7 +267,7 @@ pub(super) fn publish(
     // `Entity_{hex}` when the entity has no Name component
     // yet — matches the existing `InspectorSpriteInfo::name`
     // shape. Same Transform-presence gate.
-    hero.inspector_name = hero.gizmo_selection.and_then(|bits| {
+    hero.inspector.name = hero.gizmo.selection.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         sim.world().get::<Transform>(entity)?;
         let name = sim

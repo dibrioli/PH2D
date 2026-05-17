@@ -34,7 +34,7 @@ fn make_entry(name: &str) -> HierarchyEntity {
 #[test]
 fn sync_from_hierarchy_caches_entries() {
     let mut hero = HeroScreen::new(NodeId(1));
-    assert!(hero.live_hierarchy_entries.is_none());
+    assert!(hero.hierarchy.live_entries.is_none());
 
     let id_a = NodeId(100_000);
     let id_b = NodeId(100_001);
@@ -43,8 +43,8 @@ fn sync_from_hierarchy_caches_entries() {
     entries.insert(id_b, make_entry("Beta"));
 
     hero.sync_from_hierarchy(&[id_a, id_b], entries.clone());
-    assert!(hero.live_hierarchy_entries.is_some());
-    let cached = hero.live_hierarchy_entries.as_ref().unwrap();
+    assert!(hero.hierarchy.live_entries.is_some());
+    let cached = hero.hierarchy.live_entries.as_ref().unwrap();
     assert_eq!(cached.len(), 2);
     assert_eq!(cached.get(&id_a).unwrap().name, "Alpha");
     assert_eq!(cached.get(&id_b).unwrap().name, "Beta");
@@ -94,10 +94,10 @@ fn clear_live_reverts_to_fixture_behavior() {
     let mut entries = BTreeMap::new();
     entries.insert(id, make_entry("Temp"));
     hero.sync_from_hierarchy(&[id], entries);
-    assert!(hero.live_hierarchy_entries.is_some());
+    assert!(hero.hierarchy.live_entries.is_some());
 
     hero.clear_live_hierarchy();
-    assert!(hero.live_hierarchy_entries.is_none());
+    assert!(hero.hierarchy.live_entries.is_none());
 
     // After clear, a click on the previously-live id is NOT consumed
     // because it's neither in fixture's hierarchy_label_for_id nor
@@ -177,7 +177,7 @@ fn sync_overwrites_previous_live_entries() {
     entries_v2.insert(id_v2, make_entry("V2"));
     hero.sync_from_hierarchy(&[id_v2], entries_v2);
 
-    let cached = hero.live_hierarchy_entries.as_ref().unwrap();
+    let cached = hero.hierarchy.live_entries.as_ref().unwrap();
     assert!(!cached.contains_key(&id_v1));
     assert!(cached.contains_key(&id_v2));
     assert_eq!(cached.get(&id_v2).unwrap().name, "V2");

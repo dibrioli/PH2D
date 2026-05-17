@@ -59,7 +59,7 @@ pub(super) fn dispatch(
     if let Some(kind) = view_focus_kind
         && hero_intents::drain_view_focus(
             kind,
-            hero.gizmo_selection,
+            hero.gizmo.selection,
             present,
             camera,
             window_size,
@@ -170,8 +170,8 @@ pub(super) fn dispatch(
         // Clear gizmo selection if it pointed at the deleted entity
         // — the bbox lookup would otherwise dangle for a frame until
         // the next snapshot rebuilds.
-        if hero.gizmo_selection == Some(entity_bits) {
-            hero.gizmo_selection = None;
+        if hero.gizmo.selection == Some(entity_bits) {
+            hero.gizmo.selection = None;
         }
         toasts.push(Toast::warning("Deleted entity"));
         title_dirty = true;
@@ -185,7 +185,7 @@ pub(super) fn dispatch(
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
     {
-        hero.gizmo_selection = Some(entity_bits);
+        hero.gizmo.selection = Some(entity_bits);
     }
     // M14.7 polish: one-shot seed of the rename TextInput when rename
     // mode opens. `HierRenameSeed` is pushed by hero on the open path

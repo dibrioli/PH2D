@@ -24,8 +24,8 @@ fn sample_view() -> GridView {
 #[test]
 fn grid_visible_starts_true_view_starts_none() {
     let hero = HeroScreen::new(NodeId(1));
-    assert!(hero.grid_visible);
-    assert!(hero.grid_view.is_none());
+    assert!(hero.view.grid_visible);
+    assert!(hero.grid.view.is_none());
 }
 
 #[test]
@@ -33,25 +33,25 @@ fn set_grid_view_round_trips() {
     let mut hero = HeroScreen::new(NodeId(1));
     let view = sample_view();
     hero.set_grid_view(Some(view));
-    assert!(hero.grid_view.is_some());
-    let got = hero.grid_view.unwrap();
+    assert!(hero.grid.view.is_some());
+    let got = hero.grid.view.unwrap();
     assert_eq!(got.camera_height_world, view.camera_height_world);
     assert_eq!(got.window_w, view.window_w);
     hero.set_grid_view(None);
-    assert!(hero.grid_view.is_none());
+    assert!(hero.grid.view.is_none());
 }
 
 #[test]
 fn show_grid_menu_entry_toggles_visibility() {
     let mut hero = HeroScreen::new(NodeId(1));
-    assert!(hero.grid_visible);
+    assert!(hero.view.grid_visible);
     let consumed = hero.apply_event(WidgetEvent::Click(CTX_MENU_SHOW_GRID));
     assert!(consumed);
-    assert!(!hero.grid_visible);
+    assert!(!hero.view.grid_visible);
     // Second click toggles back ON.
     let consumed = hero.apply_event(WidgetEvent::Click(CTX_MENU_SHOW_GRID));
     assert!(consumed);
-    assert!(hero.grid_visible);
+    assert!(hero.view.grid_visible);
 }
 
 /// M14.7 polish: VIEW button (TOOL_HOME) cycles through 3 modes —
@@ -120,6 +120,6 @@ fn grid_config_mut_exposes_spacing() {
     let default = GridConfig::default();
     assert!(default.spacing_minor != 0.5);
     // Re-read after mutation: state was committed.
-    assert_eq!(hero.grid_config.spacing_minor, 0.5);
-    assert_eq!(hero.grid_config.spacing_major, 2.5);
+    assert_eq!(hero.grid.config.spacing_minor, 0.5);
+    assert_eq!(hero.grid.config.spacing_major, 2.5);
 }

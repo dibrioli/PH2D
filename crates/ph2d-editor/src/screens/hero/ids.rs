@@ -507,7 +507,7 @@ pub const HIER_MAIN_CAMERA: NodeId = NodeId(411);
 pub const HIER_SEARCH: NodeId = hash_node_id("hier_search");
 
 /// M14.7 polish: inline rename TextInput on a hierarchy row.
-/// Painted only when `HeroScreen.rename_target_row` is `Some(id)`
+/// Painted only when `HeroScreen.hierarchy.rename_target_row` is `Some(id)`
 /// — replaces the matching row's name label with an editable input.
 pub const HIER_RENAME_INPUT: NodeId = hash_node_id("hier_rename_input");
 

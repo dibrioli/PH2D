@@ -188,7 +188,7 @@ pub(super) fn dispatch(
     }
     // Publish whether a snapshot is currently stored so the UI
     // can dim the TOOL_UNDO chip when there's nothing to undo.
-    hero.has_undoable_image_edit = image_edit_undo.is_some();
+    hero.image_edit.has_undoable = image_edit_undo.is_some();
     // M14.4c: drain pending import request → open native
     // file picker, import every selected image (PNG/WEBP/
     // JPEG), spawn a sprite per image at the camera center.

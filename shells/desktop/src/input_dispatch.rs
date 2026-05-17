@@ -168,10 +168,10 @@ impl App {
         // visually.
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
-            && let Some(mut drag) = hero.gizmo_drag
+            && let Some(mut drag) = hero.gizmo.drag
         {
             drag.cursor_screen = (self.last_pointer.0, self.last_pointer.1);
-            hero.gizmo_drag = Some(drag);
+            hero.gizmo.drag = Some(drag);
             let window_size = gfx.surface.size();
             let cam = ph2d_editor::GizmoCamera {
                 center: gfx.camera.center,
@@ -215,7 +215,7 @@ impl App {
                     | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
             );
             let new_t = if is_scale {
-                let snap_state = &mut hero.grid_snap_state;
+                let snap_state = &mut hero.grid.snap_state;
                 let mut snap_closure =
                     |w: [f32; 2]| -> [f32; 2] { snap_state.snap_world(w, sprite_half_rendered) };
                 ph2d_editor::compute_gizmo_transform(
@@ -244,7 +244,8 @@ impl App {
                     })
                     .unwrap_or([0.0, 0.0]);
                 new_t.translation = hero
-                    .grid_snap_state
+                    .grid
+                    .snap_state
                     .snap_world(new_t.translation, sprite_half_new);
                 new_t
             };
@@ -330,7 +331,7 @@ impl App {
                     );
                     if is_specific_handle
                         && let Some(gkind) = gizmo_kind
-                        && let Some(entity_bits) = hero.gizmo_selection
+                        && let Some(entity_bits) = hero.gizmo.selection
                     {
                         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                         let window_size = gfx.surface.size();
@@ -355,7 +356,7 @@ impl App {
                                 snap,
                                 use_center_anchor,
                             );
-                            hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
+                            hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
                                 kind: gkind,
                                 entity_bits,
                                 start_screen: (evt.x, evt.y),
@@ -398,7 +399,7 @@ impl App {
                         } else {
                             hits.get(self.cycle_pick_idx).copied()
                         };
-                        hero.gizmo_selection = picked;
+                        hero.gizmo.selection = picked;
                         if let Some(bits) = picked {
                             let entity = ph2d_ecs::Entity::from_bits(bits);
                             if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
@@ -408,7 +409,7 @@ impl App {
                                     scale: [t.scale.x, t.scale.y],
                                 };
                                 let pivot = [t.translation.x, t.translation.y];
-                                hero.gizmo_drag = Some(ph2d_editor::GizmoDragState {
+                                hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
                                     kind: ph2d_editor::GizmoDragKind::Translate,
                                     entity_bits: bits,
                                     start_screen: (evt.x, evt.y),
@@ -424,7 +425,7 @@ impl App {
                         if let Some(live) = gfx.hero_live.as_ref()
                             && let Some(bits) = picked
                             && let Some(node_id) = live.bridge.node_for(bits)
-                            && let Some(entries) = hero.live_hierarchy_entries.as_ref()
+                            && let Some(entries) = hero.hierarchy.live_entries.as_ref()
                             && let Some(entry) = entries.get(&node_id)
                         {
                             hero.selection = Some(ph2d_editor::HeroSelection {
@@ -441,7 +442,7 @@ impl App {
                 PointerKind::Up => {
                     // Drop the drag — Transform is already committed
                     // up to the latest Move position.
-                    hero.gizmo_drag = None;
+                    hero.gizmo.drag = None;
                 }
                 _ => {}
             }

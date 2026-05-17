@@ -13,6 +13,8 @@ use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_title, resolve, stroke_rounded_rect,
 };
+use crate::panel_registry::{PaintCtx, PanelManifest};
+use crate::screens::hero::HeroScreen;
 use crate::widget::{
     ButtonState, Tag, TagState, TagTone, TextInput, TextInputState, paint_tag,
     paint_text_input_with_buffer,
@@ -36,6 +38,24 @@ use ph2d_vector::{Color as VelloColor, VectorScene};
 mod panel_painter;
 mod row_painter;
 pub use panel_painter::paint_hierarchy;
+
+/// Wave 5 stage C+D — declarative panel manifest. Stage C is a no-op
+/// paint thunk; stage D moves the per-frame logic here.
+pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
+    id: "hierarchy",
+    panel_node_id: super::ids::HIER_PANEL,
+    default_visible: true,
+    paint_fn: paint_thunk,
+    apply_event_fn: apply_event_thunk,
+    populate_fn: populate,
+};
+
+#[allow(clippy::needless_pass_by_ref_mut)]
+fn paint_thunk(_ctx: &mut PaintCtx) {}
+
+fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
+    false
+}
 
 pub fn populate(store: &mut WidgetStore) {
     store.register(

@@ -55,12 +55,32 @@ use super::style::{
 };
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, paint_text_title, rect_to_vello, resolve};
+use crate::panel_registry::{PaintCtx, PanelManifest};
+use crate::screens::hero::HeroScreen;
 use crate::widget::{ButtonState, ComboboxState, Dropdown, DropdownOption, TextInputState};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
+
+/// Wave 5 stage C+D — declarative panel manifest. Stage C is a no-op
+/// paint thunk; stage D moves the per-frame logic here.
+pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
+    id: "inspector",
+    panel_node_id: super::ids::INSP_PANEL,
+    default_visible: true,
+    paint_fn: paint_thunk,
+    apply_event_fn: apply_event_thunk,
+    populate_fn: populate,
+};
+
+#[allow(clippy::needless_pass_by_ref_mut)]
+fn paint_thunk(_ctx: &mut PaintCtx) {}
+
+fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
+    false
+}
 
 const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset (between Spacing::Md and Lg; chrome-specific)
 const ROW_GAP: f32 = Spacing::Sm.px();

@@ -35,6 +35,7 @@ pub mod icons;
 pub mod image_edit;
 pub mod interaction;
 pub mod paint;
+pub mod panel_registry;
 pub mod project;
 pub mod screens;
 

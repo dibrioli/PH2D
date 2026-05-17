@@ -14,8 +14,30 @@
 //! expects so they can replicate the decoration in their own
 //! modules. Single in-app source of UI truth.
 
-use crate::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
+use crate::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
+use crate::panel_registry::{PaintCtx, PanelManifest};
+use crate::screens::hero::HeroScreen;
 use crate::zones::Rect;
+
+/// Wave 5 stage C+D — declarative panel manifest. Stage C ships a
+/// no-op paint thunk (hero.rs still hard-codes the gallery's per-frame
+/// paint block); stage D moves the per-frame logic here and collapses
+/// `paint_hero_screen` to a registry iteration.
+pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
+    id: "widget_gallery",
+    panel_node_id: super::ids::GAL_PANEL,
+    default_visible: false,
+    paint_fn: paint_thunk,
+    apply_event_fn: apply_event_thunk,
+    populate_fn: populate,
+};
+
+#[allow(clippy::needless_pass_by_ref_mut)] // stage D fills the body
+fn paint_thunk(_ctx: &mut PaintCtx) {}
+
+fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
+    false
+}
 
 /// Register the gallery's drag / resize handles as `BlenderHit`
 /// children of `GAL_PANEL` so the existing

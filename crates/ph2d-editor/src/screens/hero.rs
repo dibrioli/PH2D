@@ -59,7 +59,7 @@ use bumpalo::Bump;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_host::{KeyEvent, PointerEvent};
 use ph2d_text::TextSystem;
-use ph2d_tokens::Theme;
+use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Pre-computed sub-regions that the rest of the hero painters
@@ -99,7 +99,7 @@ impl HeroLayout {
             TOPBAR_H,
         );
         let chrome_top = top_bar.y + top_bar.h + TOPBAR_GAP;
-        let chrome_bot = viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H - 8.0;
+        let chrome_bot = viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H - Spacing::Md.px();
         let chrome_h = (chrome_bot - chrome_top).max(0.0);
 
         // Rail is FLUSH with the viewport's left edge — the
@@ -124,7 +124,7 @@ impl HeroLayout {
                 viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W,
             )
         };
-        let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h.min(880.0));
+        let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h.min(880.0)); // LITERAL-PX-OK: Inspector max height cap (chrome-specific)
         let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
         // Canvas spans the gap between whichever panel is on the
         // left side of it and whichever is on the right.
@@ -142,9 +142,9 @@ impl HeroLayout {
         let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
 
         let bottom_hud = Rect::new(
-            viewport.x + (viewport.w - 480.0) * 0.5,
+            viewport.x + (viewport.w - 480.0) * 0.5, // LITERAL-PX-OK: HUD strip width (chrome-specific)
             viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H,
-            480.0,
+            480.0, // LITERAL-PX-OK: HUD strip width (chrome-specific)
             HUD_H,
         );
 
@@ -833,11 +833,11 @@ impl HeroScreen {
                 return true;
             }
             let new_radius_scale = if id == ids::CTX_MENU_RADIUS_SHARP {
-                Some(0.2_f32)
+                Some(0.2_f32) // LITERAL-PX-OK: radius scale preset (business value, not dimension)
             } else if id == ids::CTX_MENU_RADIUS_DEFAULT {
                 Some(1.0_f32)
             } else if id == ids::CTX_MENU_RADIUS_ROUND {
-                Some(1.6_f32)
+                Some(1.6_f32) // LITERAL-PX-OK: radius scale preset (business value)
             } else {
                 None
             };
@@ -1027,15 +1027,15 @@ impl HeroScreen {
             // `project.pixels_per_meter` and closes the menu; the
             // shell will read the new value on the next import.
             let ppm_preset = if id == ids::CTX_MENU_PPM_16 {
-                Some(16.0)
+                Some(16.0) // LITERAL-PX-OK: pixels-per-meter preset (business value, not UI dimension)
             } else if id == ids::CTX_MENU_PPM_32 {
-                Some(32.0)
+                Some(32.0) // LITERAL-PX-OK: pixels-per-meter preset
             } else if id == ids::CTX_MENU_PPM_100 {
-                Some(100.0)
+                Some(100.0) // LITERAL-PX-OK: pixels-per-meter preset
             } else if id == ids::CTX_MENU_PPM_256 {
-                Some(256.0)
+                Some(256.0) // LITERAL-PX-OK: pixels-per-meter preset
             } else if id == ids::CTX_MENU_PPM_1024 {
-                Some(1024.0)
+                Some(1024.0) // LITERAL-PX-OK: pixels-per-meter preset
             } else {
                 None
             };
@@ -1637,8 +1637,8 @@ pub fn paint_hero_screen(
     // subsequent drag-begins capture the visible offset rather than
     // an accumulated raw value — eliminates the "rubber band" the
     // user perceived as discrete jumps when reversing direction.
-    const MIN_W: f32 = 220.0;
-    const MIN_H: f32 = 120.0;
+    const MIN_W: f32 = 220.0; // LITERAL-PX-OK: panel min width (chrome-specific min)
+    const MIN_H: f32 = 120.0; // LITERAL-PX-OK: panel min height (chrome-specific min)
     // `resize` lets the user manually grow/shrink the panel via the
     // bottom-right gripper (state `panel_resize_delta`). Manual size
     // is computed FIRST so the auto-shrink-on-drag-down logic below
@@ -1650,15 +1650,15 @@ pub fn paint_hero_screen(
      -> (Rect, (f32, f32), (f32, f32)) {
         let raw_w = (base.w + resize.0).max(MIN_W);
         let raw_h = (base.h + resize.1).max(MIN_H);
-        let max_w = (viewport.w * 0.7).max(MIN_W);
+        let max_w = (viewport.w * 0.7).max(MIN_W); // LITERAL-PX-OK: max panel width = 70% viewport (chrome ratio)
         let new_w = raw_w.min(max_w);
         let new_h_user = raw_h.min(viewport.h.max(MIN_H));
         let clamped_dw = new_w - base.w;
         let clamped_dh = new_h_user - base.h;
 
-        let max_x = (viewport.x + viewport.w - 60.0) - base.x;
-        let min_x = (viewport.x + 60.0) - (base.x + new_w);
-        let max_bottom = viewport.y + viewport.h - 8.0;
+        let max_x = (viewport.x + viewport.w - 60.0) - base.x; // LITERAL-PX-OK: drag clamp right inset (chrome-specific)
+        let min_x = (viewport.x + 60.0) - (base.x + new_w); // LITERAL-PX-OK: drag clamp left inset (chrome-specific)
+        let max_bottom = viewport.y + viewport.h - Spacing::Md.px();
         let min_y = viewport.y - base.y;
         let max_y = (max_bottom - MIN_H) - base.y;
         let dx = off.0.clamp(min_x, max_x);
@@ -1757,7 +1757,7 @@ pub fn paint_hero_screen(
         };
         let mut state_for_paint = hero.grid_snap_state.clone();
         if !state_for_paint.grid_in_front {
-            state_for_paint.opacity *= 0.4;
+            state_for_paint.opacity *= 0.4; // LITERAL-PX-OK: grid behind-canvas dim ratio (visual effect)
         }
         crate::grid_snap::render::paint(scene, &view, &state_for_paint);
     }
@@ -1903,7 +1903,7 @@ pub fn paint_hero_screen(
             );
             let content_h = hierarchy::last_hierarchy_content_h();
             hero.store.set_panel_content_h(ids::HIER_PANEL, content_h);
-            let visible_h = (layout.hierarchy.h - 60.0).max(0.0);
+            let visible_h = (layout.hierarchy.h - 60.0).max(0.0); // LITERAL-PX-OK: header+scrollbar reserve composite (chrome dim)
             let max_scroll = (content_h - visible_h).max(0.0);
             let cur = hero.store.panel_scroll(ids::HIER_PANEL);
             if cur > max_scroll {

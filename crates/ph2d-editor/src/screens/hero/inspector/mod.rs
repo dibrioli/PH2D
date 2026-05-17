@@ -58,13 +58,13 @@ use crate::widget::{ButtonState, ComboboxState, Dropdown, DropdownOption, TextIn
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-const BODY_PAD: f32 = 10.0;
-const ROW_GAP: f32 = 6.0;
-const SECTION_HEAD_H: f32 = 28.0;
-const FIELD_H: f32 = 32.0;
+const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset (between Spacing::Md and Lg; chrome-specific)
+const ROW_GAP: f32 = Spacing::Sm.px();
+const SECTION_HEAD_H: f32 = ROW_H_PX;
+const FIELD_H: f32 = Spacing::Xl3.px();
 
 /// Stable id list for every collapsible section header in the
 /// Inspector. Order matches `paint_inspector` paint order so the
@@ -331,7 +331,7 @@ pub fn paint_inspector(
     // currently-selected entity's name (or "(none)" when no entity
     // is selected). The pilot project's selection wiring drives the
     // sub-field; the panel title is constant.
-    let title_y = rect.y + 18.0;
+    let title_y = rect.y + 18.0; // LITERAL-PX-OK: panel title baseline (matches PANEL_HEAD_PAD composite)
     paint_text_title(
         text_system,
         scene,
@@ -361,12 +361,12 @@ pub fn paint_inspector(
         scene,
         subtitle,
         rect.x + PANEL_HEAD_PAD,
-        title_y + TypeToken::Md.px() + 4.0,
+        title_y + TypeToken::Md.px() + Spacing::Xs.px(),
         TypeToken::Sm.px(),
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text3, theme),
     );
-    let div_y = title_y + TypeToken::Md.px() + TypeToken::Sm.px() + 16.0;
+    let div_y = title_y + TypeToken::Md.px() + TypeToken::Sm.px() + Spacing::Xl.px();
     let div = Rect::new(
         rect.x + PANEL_HEAD_PAD,
         div_y,
@@ -379,7 +379,7 @@ pub fn paint_inspector(
     // overflow stays inside the panel; `scroll_y` shifts the content
     // cursor up by however much the wheel has been scrolled.
     let content_top = div_y + Spacing::Sm.px();
-    let content_bottom = rect.y + rect.h - 4.0;
+    let content_bottom = rect.y + rect.h - Spacing::Xs.px();
     let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
     let clip = ph2d_vector::Rect::new(
         rect.x as f64,
@@ -395,9 +395,9 @@ pub fn paint_inspector(
     // stable so widgets don't reflow when notes/section toggles
     // push content past the viewport. `SCROLLBAR_W + 6` covers the
     // track (10) + the 2 px outer gap + a 4 px breathing margin.
-    let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
+    let scrollbar_reserve = crate::widget::SCROLLBAR_W + Spacing::Sm.px();
     let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
-    let body_top_y = content_top - scroll_y + 4.0;
+    let body_top_y = content_top - scroll_y + Spacing::Xs.px();
     // Body: placeholder until the pilot project wires real component
     // editors. The 10-section widget showcase + notes are now in
     // the floating Widget Gallery panel ([`paint_showcase_body`],
@@ -406,7 +406,7 @@ pub fn paint_inspector(
     // properties of the currently-selected entity. No selection →
     // instructional prompt.
     let section_tops_y: Vec<f32> = Vec::new();
-    LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + 4.0));
+    LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + Spacing::Xs.px()));
     let transform_info = current_inspector_transform();
     let sprite_info = current_inspector_sprite();
     let visibility_info = current_inspector_visibility();
@@ -415,7 +415,7 @@ pub fn paint_inspector(
         || sprite_info.is_some()
         || visibility_info.is_some()
         || name_present;
-    let mut y = body_top_y + 4.0;
+    let mut y = body_top_y + Spacing::Xs.px();
     // ── Entity name (M14.E) — editable TextInput at the very top
     // of the body. Replaces the read-only name displays that used to
     // live in the header subtitle (now world size) and the Render
@@ -488,16 +488,16 @@ pub fn paint_inspector(
         } else {
             "Select an entity in the Hierarchy to inspect its properties."
         };
-        let line_h = TypeToken::Sm.px() + 4.0;
+        let line_h = TypeToken::Sm.px() + Spacing::Xs.px();
         let center_y = content_top + (content_bottom - content_top) * 0.5 - line_h * 0.5;
         paint_text(
             text_system,
             scene,
             placeholder,
-            inner_x + 8.0,
+            inner_x + Spacing::Md.px(),
             center_y,
             TypeToken::Sm.px(),
-            (inner_w - 16.0).max(80.0),
+            (inner_w - Spacing::Xl.px()).max(80.0), // LITERAL-PX-OK: minimum placeholder text width
             resolve(ColorToken::Text3, theme),
         );
     }
@@ -602,7 +602,7 @@ pub(super) fn paint_section_separator(
 /// Vertical breathing room above AND below the section separator
 /// line — same on both sides so the colored pill reads as centered
 /// between two sections rather than glued to the previous one.
-const SEPARATOR_PAD_Y: f32 = 8.0;
+const SEPARATOR_PAD_Y: f32 = Spacing::Md.px();
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn read_text_input(

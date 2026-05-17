@@ -43,13 +43,15 @@ use crate::widget::{
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{
+    ColorToken, Density, ICON_BTN_SIZE_PX, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
+};
 use ph2d_vector::VectorScene;
 
-const BODY_PAD: f32 = 10.0;
-const ROW_GAP: f32 = 6.0;
-const SECTION_HEAD_H: f32 = 28.0;
-const FIELD_H: f32 = 32.0;
+const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: showcase body inset (between Spacing::Md and Lg; chrome-specific)
+const ROW_GAP: f32 = Spacing::Sm.px();
+const SECTION_HEAD_H: f32 = ROW_H_PX;
+const FIELD_H: f32 = Spacing::Xl3.px();
 
 pub(in crate::screens::hero) fn paint_showcase_body(
     rect: Rect,
@@ -72,7 +74,7 @@ pub(in crate::screens::hero) fn paint_showcase_body(
 
     // Header: title + subtitle + divider, matching the reference
     // snapshot's Inspector header style.
-    let title_y = rect.y + 18.0;
+    let title_y = rect.y + 18.0; // LITERAL-PX-OK: panel title baseline (matches PANEL_HEAD_PAD chrome composite)
     paint_text_title(
         text_system,
         scene,
@@ -80,7 +82,7 @@ pub(in crate::screens::hero) fn paint_showcase_body(
         rect.x + PANEL_HEAD_PAD,
         title_y,
         TypeToken::Md.px(),
-        rect.w - PANEL_HEAD_PAD * 2.0 - 40.0,
+        rect.w - PANEL_HEAD_PAD * 2.0 - 40.0, // LITERAL-PX-OK: reserve for header Close button (chrome dim ~ICON_BTN_SIZE)
         resolve(ColorToken::Text1, theme),
     );
     paint_text(
@@ -88,13 +90,13 @@ pub(in crate::screens::hero) fn paint_showcase_body(
         scene,
         "Canonical widget showcase \u{00b7} reference for peripheral agents",
         rect.x + PANEL_HEAD_PAD,
-        title_y + TypeToken::Md.px() + 4.0,
+        title_y + TypeToken::Md.px() + Spacing::Xs.px(),
         TypeToken::Xs.px() - 1.0,
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text3, theme),
     );
     // Close (X) at top-right of the header strip.
-    let close_size = 24.0_f32;
+    let close_size = Spacing::Xl2.px();
     let close_rect = Rect::new(
         rect.x + rect.w - PANEL_HEAD_PAD - close_size,
         title_y - 2.0,
@@ -107,10 +109,10 @@ pub(in crate::screens::hero) fn paint_showcase_body(
         IconId::Close,
         close_rect,
         resolve(ColorToken::Text2, theme),
-        1.5,
+        StrokeToken::Default.px(),
     );
 
-    let div_y = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 16.0;
+    let div_y = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + Spacing::Xl.px();
     let div = Rect::new(
         rect.x + PANEL_HEAD_PAD,
         div_y,
@@ -124,7 +126,7 @@ pub(in crate::screens::hero) fn paint_showcase_body(
     // Reserve room for the scrollbar even when it isn't visible so
     // the section content width is stable.
     let content_top = div_y + Spacing::Sm.px();
-    let content_bottom = rect.y + rect.h - 4.0;
+    let content_bottom = rect.y + rect.h - Spacing::Xs.px();
     let scroll_y = store.panel_scroll(ids::GAL_PANEL).max(0.0);
     let clip = ph2d_vector::Rect::new(
         rect.x as f64,
@@ -135,9 +137,9 @@ pub(in crate::screens::hero) fn paint_showcase_body(
     scene.push_clip(&clip);
 
     let inner_x = rect.x + BODY_PAD;
-    let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
+    let scrollbar_reserve = crate::widget::SCROLLBAR_W + Spacing::Sm.px();
     let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
-    let body_top_y = content_top - scroll_y + 4.0;
+    let body_top_y = content_top - scroll_y + Spacing::Xs.px();
     let mut y = body_top_y;
     // Publish the body's screen-Y origin so the right-click dispatch
     // can convert screen-y → body-y when computing `before_section`
@@ -146,7 +148,7 @@ pub(in crate::screens::hero) fn paint_showcase_body(
     // AFTER inspector in `paint_hero_screen`, so the gallery's value
     // wins for the next dispatch tick — correct for clicks on the
     // gallery body.
-    LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + 4.0));
+    LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + Spacing::Xs.px()));
 
     // Notes — read once and partition by `before_section`. Notes
     // tagged with `Some(i)` paint immediately above `SECTION_IDS[i]`;
@@ -208,7 +210,7 @@ pub(in crate::screens::hero) fn paint_showcase_body(
             if let Some(color_idx) = store.section_outline_color($section_id) {
                 let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
                     [color_idx.min(4) as usize];
-                let pad = 4.0_f32;
+                let pad = Spacing::Xs.px();
                 let block = Rect::new(
                     inner_x - pad,
                     y_before - pad,
@@ -221,7 +223,7 @@ pub(in crate::screens::hero) fn paint_showcase_body(
                     scene,
                     block,
                     Radius::Md.px(),
-                    2.0,
+                    StrokeToken::Thick.px(),
                     outline_color,
                 );
             }
@@ -354,7 +356,7 @@ fn paint_collapsible_header(
     if let Some(circle_rect) = crate::widget::color_circle_hit_rect(&header, r) {
         hit_index.register(color_id, circle_rect);
     }
-    (y + SECTION_HEAD_H + 4.0, !is_collapsed)
+    (y + SECTION_HEAD_H + Spacing::Xs.px(), !is_collapsed)
 }
 
 /// Discreet colored separator painted at the end of each section's
@@ -437,7 +439,7 @@ fn paint_inputs_section(
     y += FIELD_H + ROW_GAP;
 
     // TextArea (3 lines tall).
-    let area_h = 60.0_f32;
+    let area_h = 60.0_f32; // LITERAL-PX-OK: 3-line TextArea showcase height (chrome-specific demo dim)
     let r = Rect::new(x, y, w, area_h);
     hit_index.register(ids::INSP_SAMPLE_TEXTAREA, r);
     let (ta_state, ta_text, ta_caret, ta_anchor) =
@@ -470,9 +472,9 @@ fn paint_inputs_section(
     y += FIELD_H + ROW_GAP;
 
     // NumberInput.
-    let label_w = 80.0_f32;
-    let chip_w = (w - label_w - 8.0).max(40.0);
-    let r = Rect::new(x + label_w + 8.0, y, chip_w, FIELD_H);
+    let label_w = 80.0_f32; // LITERAL-PX-OK: showcase label column width (demo geometry)
+    let chip_w = (w - label_w - Spacing::Md.px()).max(40.0); // LITERAL-PX-OK: min chip width (demo)
+    let r = Rect::new(x + label_w + Spacing::Md.px(), y, chip_w, FIELD_H);
     hit_index.register(ids::INSP_SAMPLE_NUMBER, r);
     paint_left_label(scene, text_system, theme, x, "Value", label_w, y, FIELD_H);
     let (n_state, n_value, n_buffer, n_caret, n_anchor) =
@@ -521,7 +523,7 @@ fn paint_slider_section(
     }
     let (_, value) = store
         .slider(ids::INSP_SAMPLE_SLIDER)
-        .unwrap_or((SliderState::Normal, 0.62));
+        .unwrap_or((SliderState::Normal, 0.62)); // LITERAL-PX-OK: slider default ratio (showcase demo seed value)
     let r = Rect::new(x, y, w, FIELD_H);
     paint_slider_with_chip(
         r,
@@ -569,7 +571,7 @@ fn paint_switches_section(
     }
 
     // Checkbox.
-    let r = Rect::new(x, y, w, 22.0);
+    let r = Rect::new(x, y, w, Density::Compact.row_h_px());
     hit_index.register(ids::INSP_SAMPLE_CHECKBOX, r);
     let (cb_state, cb_value) = store
         .checkbox(ids::INSP_SAMPLE_CHECKBOX)
@@ -578,11 +580,11 @@ fn paint_switches_section(
         .state(cb_state)
         .value(cb_value);
     paint_checkbox(&cb, r, scene, text_system, theme);
-    y += 22.0 + ROW_GAP;
+    y += Density::Compact.row_h_px() + ROW_GAP;
 
     // Toggle.
-    let toggle_w = 44.0_f32;
-    let row_h = 22.0_f32;
+    let toggle_w = TypeToken::Xl3.px(); // LITERAL-PX-OK: toggle widget width (matches TypeToken::Xl3 = 44px by coincidence; chrome-specific)
+    let row_h = Density::Compact.row_h_px();
     let tr = Rect::new(x + w - toggle_w, y, toggle_w, row_h);
     hit_index.register(ids::INSP_SAMPLE_TOGGLE, tr);
     let (tg_state, tg_on) = store
@@ -598,7 +600,7 @@ fn paint_switches_section(
         theme,
         x,
         "Snap to grid",
-        w - toggle_w - 6.0,
+        w - toggle_w - Spacing::Sm.px(),
         y,
         row_h,
     );
@@ -629,7 +631,7 @@ fn paint_switches_section(
     )
     .orientation(RadioOrientation::Segmented)
     .selected(selected_label.to_string());
-    let r = Rect::new(x, y, w, 28.0);
+    let r = Rect::new(x, y, w, ROW_H_PX);
     paint_radio_group_with_labels(&rg, r, scene, text_system, theme);
     // Register per-option hit rects.
     for (i, id) in [
@@ -642,7 +644,7 @@ fn paint_switches_section(
     {
         hit_index.register(*id, rg.option_rect(r, i));
     }
-    y + 28.0
+    y + ROW_H_PX
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -715,7 +717,7 @@ fn paint_lists_section(
     y += FIELD_H + ROW_GAP;
 
     // Tabs (segmented).
-    let r = Rect::new(x, y, w, 28.0);
+    let r = Rect::new(x, y, w, ROW_H_PX);
     let selected = active_index(
         store,
         &[
@@ -740,13 +742,13 @@ fn paint_lists_section(
     for (i, item) in tabs.items.iter().enumerate() {
         hit_index.register(item.id, tabs.tab_rect(r, i));
     }
-    y += 28.0 + 4.0;
+    y += ROW_H_PX + Spacing::Xs.px();
 
     // Tab body — distinct sample per selected tab so the user can
     // see the tab actually swapping content (vs. just visual
     // emphasis on the segmented control). Each body is painted in a
     // `BgElev` rounded panel for visual grouping with the tabs.
-    let body_h = 36.0_f32;
+    let body_h = ICON_BTN_SIZE_PX;
     let body_rect = Rect::new(x, y, w, body_h);
     fill_rounded_rect(
         scene,
@@ -778,8 +780,8 @@ fn paint_lists_section(
     // button state — `pin_button_selection` keeps exactly one
     // leaf Pressed across frames.
     let expanded = !store.is_collapsed(ids::INSP_SAMPLE_TREE_ROOT);
-    let visible_rows = if expanded { 3.0 } else { 1.0 };
-    let tree_h = 26.0_f32 * visible_rows;
+    let visible_rows = if expanded { 3.0 } else { 1.0 }; // LITERAL-PX-OK: row count constants for tree height calc
+    let tree_h = Density::Cozy.row_h_px() * visible_rows;
     let r = Rect::new(x, y, w, tree_h);
     let mut tree = TreeView::new(
         NodeId(0),
@@ -798,15 +800,22 @@ fn paint_lists_section(
     }
     let selected_leaf = active_index(store, &TREE_LEAF_IDS).unwrap_or(0);
     tree.select(TREE_LEAF_IDS[selected_leaf]);
-    paint_tree_view(&tree, r, scene, text_system, theme, 26.0);
+    paint_tree_view(
+        &tree,
+        r,
+        scene,
+        text_system,
+        theme,
+        Density::Cozy.row_h_px(),
+    );
     // Register hit rects for each visible row.
     for (i, (_depth, node)) in tree.visible_rows().iter().enumerate() {
-        hit_index.register(node.id, tree.row_rect(r, i, 26.0));
+        hit_index.register(node.id, tree.row_rect(r, i, Density::Cozy.row_h_px()));
     }
     y += tree_h + ROW_GAP;
 
     // ListItem.
-    let li_h = 26.0_f32;
+    let li_h = Density::Cozy.row_h_px();
     let r = Rect::new(x, y, w, li_h);
     hit_index.register(ids::INSP_SAMPLE_LIST_ITEM, r);
     let li_state = match store.get(ids::INSP_SAMPLE_LIST_ITEM) {
@@ -923,31 +932,31 @@ fn paint_status_section(
 
     // ProgressBar — determinate, 60 %.
     let bar = ProgressBar::new(NodeId(0), "Build")
-        .determinate(0.6)
+        .determinate(0.6) // LITERAL-PX-OK: progress ratio (demo value)
         .show_percent(true);
-    let bar_rect = Rect::new(x, y, w, 12.0);
+    let bar_rect = Rect::new(x, y, w, Spacing::Lg.px());
     paint_progress_bar(&bar, bar_rect, scene, text_system, theme);
-    y += 12.0 + ROW_GAP;
+    y += Spacing::Lg.px() + ROW_GAP;
 
     // Spinner + caption.
-    let spin_rect = Rect::new(x, y, 20.0, 20.0);
+    let spin_rect = Rect::new(x, y, Radius::Xl2.px(), Radius::Xl2.px());
     paint_spinner(&Spinner::new(NodeId(0), "Loading"), spin_rect, scene, theme);
     paint_left_label(
         scene,
         text_system,
         theme,
-        x + 28.0,
+        x + 28.0, // LITERAL-PX-OK: spinner+caption offset (Spinner 20 + gap ~8 chrome composite)
         "Loading…",
-        w - 28.0,
+        w - 28.0, // LITERAL-PX-OK: caption width budget
         y,
-        20.0,
+        Radius::Xl2.px(),
     );
-    y += 20.0 + ROW_GAP;
+    y += Radius::Xl2.px() + ROW_GAP;
 
     // Tag chips — Accent + Success + Warn.
-    let chip_w = 50.0_f32;
-    let chip_h = 18.0_f32;
-    let gap = 6.0_f32;
+    let chip_w = 50.0_f32; // LITERAL-PX-OK: tag chip width (chrome-specific)
+    let chip_h = TypeToken::Lg.px();
+    let gap = Spacing::Sm.px();
     for (i, (label, tone)) in [
         ("PRF", TagTone::Accent),
         ("OK", TagTone::Success),
@@ -991,10 +1000,10 @@ fn paint_color_section(
     if !open {
         return y;
     }
-    let sw_h = 28.0_f32;
-    let label_w = 80.0_f32;
+    let sw_h = ROW_H_PX;
+    let label_w = 80.0_f32; // LITERAL-PX-OK: showcase label column width
     paint_left_label(scene, text_system, theme, x, "Tint", label_w, y, sw_h);
-    let sw_size = 32.0_f32;
+    let sw_size = Spacing::Xl3.px();
     let sr = Rect::new(x + w - sw_size, y, sw_size, sw_h);
     hit_index.register(ids::INSP_SAMPLE_SWATCH, sr);
     // Read the swatch's live color from `widget_colors` so the
@@ -1037,10 +1046,10 @@ fn paint_actions_section(
     if !open {
         return y;
     }
-    let btn_h = 30.0_f32;
-    let gap = 6.0_f32;
+    let btn_h = 30.0_f32; // LITERAL-PX-OK: action button height (distinct from ROW_H_PX)
+    let gap = Spacing::Sm.px();
     // Three labelled buttons.
-    let trio_w = (w - gap * 2.0) / 3.0;
+    let trio_w = (w - gap * 2.0) / 3.0; // LITERAL-PX-OK: button count divisor
     let trio = [
         (ids::INSP_SAMPLE_BTN_PRIMARY, "Save", ButtonKind::Accent),
         (
@@ -1060,7 +1069,7 @@ fn paint_actions_section(
     y += btn_h + ROW_GAP;
 
     // Icon button + Tag (removable) on one row.
-    let icon_size = 32.0_f32;
+    let icon_size = Spacing::Xl3.px();
     let ir = Rect::new(x, y, icon_size, icon_size);
     hit_index.register(ids::INSP_SAMPLE_BTN_ICON, ir);
     let icon_state = store
@@ -1073,10 +1082,10 @@ fn paint_actions_section(
         .state(icon_state);
     paint_button(&icon_btn, ir, scene, text_system, theme);
 
-    let tag_w = 80.0_f32;
-    let tag_h = 22.0_f32;
+    let tag_w = 80.0_f32; // LITERAL-PX-OK: showcase tag chip width
+    let tag_h = Density::Compact.row_h_px();
     let tr = Rect::new(
-        x + icon_size + 8.0,
+        x + icon_size + Spacing::Md.px(),
         y + (icon_size - tag_h) * 0.5,
         tag_w,
         tag_h,
@@ -1124,8 +1133,8 @@ fn paint_identity_section(
     if !open {
         return y;
     }
-    let size = 36.0_f32;
-    let gap = 8.0_f32;
+    let size = ICON_BTN_SIZE_PX;
+    let gap = Spacing::Md.px();
     let circle = Rect::new(x, y, size, size);
     paint_avatar(
         &Avatar::new(NodeId(0), "Enio", 'E'),
@@ -1185,7 +1194,7 @@ fn paint_card_section(
     if !open {
         return y;
     }
-    let card_h = 80.0_f32;
+    let card_h = 80.0_f32; // LITERAL-PX-OK: demo Card height (showcase-specific)
     let r = Rect::new(x, y, w, card_h);
     let card = Card::new(NodeId(0)).title("Quick actions");
     paint_card(&card, r, scene, text_system, theme);

@@ -213,7 +213,7 @@ pub fn paint_context_menu_overlay(
                 scene,
                 sw,
                 3.0,
-                VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
+                VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]), // LITERAL-COLOR-OK: user-color — swatch shows an outline-pick rgba, not a theme token
             );
             stroke_rounded_rect(scene, sw, 3.0, 1.0, resolve(ColorToken::Border, theme));
         } else if matches!(req.kind, ContextMenuKind::CreateNote { .. }) {
@@ -369,7 +369,7 @@ fn paint_scene_list(
                     theme,
                 ),
             );
-            let _ = VelloColor::from_rgba8(0, 0, 0, 0); // keep VelloColor import in scope
+            let _ = VelloColor::from_rgba8(0, 0, 0, 0); // LITERAL-COLOR-OK: import-keepalive no-op (keeps the VelloColor import live for conditional paths)
             let _ = IconId::Search; // keep IconId import in scope
         }
     }

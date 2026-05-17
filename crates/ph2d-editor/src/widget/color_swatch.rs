@@ -97,8 +97,10 @@ impl ColorSwatch {
 }
 
 const CHECKER_CELL_PX: f32 = 4.0;
-const CHECKER_LIGHT: VelloColor = VelloColor::from_rgba8(220, 220, 220, 255);
-const CHECKER_DARK: VelloColor = VelloColor::from_rgba8(170, 170, 170, 255);
+// Alpha-checker tiles. Gray-on-gray is the universal convention for
+// communicating "translucency"; theme-invariant by design.
+const CHECKER_LIGHT: VelloColor = VelloColor::from_rgba8(220, 220, 220, 255); // LITERAL-COLOR-OK: alpha-checker tile (theme-invariant gray)
+const CHECKER_DARK: VelloColor = VelloColor::from_rgba8(170, 170, 170, 255); // LITERAL-COLOR-OK: alpha-checker tile (theme-invariant gray)
 
 /// Fill rect with a small checkerboard pattern. Used to communicate
 /// translucency under low-alpha fills.
@@ -168,7 +170,7 @@ pub fn paint_color_swatch(swatch: &ColorSwatch, rect: Rect, scene: &mut VectorSc
         scene,
         inner,
         inner_radius,
-        VelloColor::from_rgba8(r, g, b, a),
+        VelloColor::from_rgba8(r, g, b, a), // LITERAL-COLOR-OK: user-color — swatch shows the user's stored ColorValue, not a theme token
     );
 
     if swatch.state == SwatchState::Hovered {

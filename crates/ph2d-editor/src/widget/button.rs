@@ -181,7 +181,7 @@ pub fn paint_button(
             scene,
             rect,
             radius,
-            ph2d_vector::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a),
+            ph2d_vector::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a), // LITERAL-COLOR-OK: token-bridge — `bg` is ColorToken-resolved
         );
     }
     if button.focus_ring() {
@@ -191,11 +191,11 @@ pub fn paint_button(
             rect,
             radius,
             2.0,
-            ph2d_vector::Color::from_rgba8(ring.r, ring.g, ring.b, ring.a),
+            ph2d_vector::Color::from_rgba8(ring.r, ring.g, ring.b, ring.a), // LITERAL-COLOR-OK: token-bridge — `ring` is ColorToken::BorderEmph
         );
     }
     let fg_token = button.fg_color(theme);
-    let fg = ph2d_vector::Color::from_rgba8(fg_token.r, fg_token.g, fg_token.b, fg_token.a);
+    let fg = ph2d_vector::Color::from_rgba8(fg_token.r, fg_token.g, fg_token.b, fg_token.a); // LITERAL-COLOR-OK: token-bridge — `fg_token` is ColorToken-resolved
     match button.kind {
         ButtonKind::IconOnly { icon } => {
             paint_icon(scene, icon, rect, fg, 1.5);

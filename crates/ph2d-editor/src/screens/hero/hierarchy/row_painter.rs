@@ -126,7 +126,7 @@ pub(super) fn paint_hierarchy_row(
         let sw = 14.0_f32;
         let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);
         let [r, g, b, a] = swatch;
-        fill_rounded_rect(scene, sw_rect, 4.0, VelloColor::from_rgba8(r, g, b, a));
+        fill_rounded_rect(scene, sw_rect, 4.0, VelloColor::from_rgba8(r, g, b, a)); // LITERAL-COLOR-OK: user-color — `entity.swatch` is a per-entity user accent, not a theme token
         stroke_rounded_rect(scene, sw_rect, 4.0, 1.0, resolve(ColorToken::Border, theme));
         right_x -= sw + 6.0;
     }

@@ -76,10 +76,10 @@ pub(super) fn paint_one_note(
     }
     let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
         [note.color_idx.min(4) as usize];
-    let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+    let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — HIGHLIGHTER_RGBA palette (note background)
     fill_rounded_rect(scene, r, Radius::Md.px(), bg);
 
-    let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF);
+    let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF); // LITERAL-COLOR-OK: note-text — dark glyph fixed across themes because BG is the user's highlighter color, not a theme token
     // Title row.
     let title_rect = Rect::new(r.x + pad, r.y + pad, r.w - pad * 2.0, title_h);
     if let Some(title_id) = NOTE_TITLE_IDS.get(slot) {
@@ -160,7 +160,7 @@ fn paint_note_editable_line(
             let sel = Rect::new(sel_x, rect.y + 2.0, sel_w, (rect.h - 4.0).max(2.0));
             // Translucent dark wash for the selection so the highlighter
             // bg still shows through.
-            let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33);
+            let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection — translucent dark wash, theme-invariant (BG is user-highlighter)
             fill_rounded_rect(scene, sel, 1.0, sel_color);
         }
     }
@@ -171,7 +171,7 @@ fn paint_note_editable_line(
         text
     };
     let display_color = if text.is_empty() && !focused {
-        ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80)
+        ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80) // LITERAL-COLOR-OK: note-placeholder — dim dark text, theme-invariant (BG is user-highlighter)
     } else {
         fg
     };
@@ -233,7 +233,7 @@ fn paint_note_editable_multiline(
             text_y0,
             font_size,
             text_w,
-            ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80),
+            ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80), // LITERAL-COLOR-OK: note-placeholder multiline — same dim dark as single-line; theme-invariant
         );
         return;
     }
@@ -247,7 +247,7 @@ fn paint_note_editable_multiline(
         let (s, e) = if a < caret { (a, caret) } else { (caret, a) };
         let s = s.min(text.len());
         let e = e.min(text.len());
-        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33);
+        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection multiline — same translucent dark as single-line
         let mut line_start = 0_usize;
         for (i, line) in text.split('\n').enumerate() {
             let line_end = line_start + line.len();

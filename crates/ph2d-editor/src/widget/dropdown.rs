@@ -330,7 +330,7 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
 /// wrong for an opaque surface).
 fn opaque(token: ColorToken, theme: Theme) -> ph2d_vector::Color {
     let c = token.resolve(theme);
-    ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, 0xFF)
+    ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, 0xFF) // LITERAL-COLOR-OK: token-bridge with forced-opaque alpha (popover must occlude content behind it)
 }
 
 #[cfg(test)]

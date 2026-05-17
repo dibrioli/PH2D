@@ -17,10 +17,22 @@
 //!
 //! ## What counts as a "color literal"
 //!
-//! 6- or 8-hex-digit literal (`0x` prefix or `#` prefix). Three- or
-//! four-hex shorthands aren't lintered because they're never colors
-//! in Rust source. Underscores inside literals are tolerated
-//! (`0x4422_88FF`).
+//! Two complementary families are gated:
+//!
+//! 1. **Hex literals** — 6- or 8-hex-digit literal (`0x` prefix or
+//!    `#` prefix). Three- or four-hex shorthands aren't lintered
+//!    because they're never colors in Rust source. Underscores inside
+//!    literals are tolerated (`0x4422_88FF`).
+//! 2. **Non-hex aliases (Wave 4 stage C)** — direct construction or
+//!    use of a Vello/peniko color outside the token system:
+//!    - `Color::WHITE` / `Color::BLACK` / `Color::TRANSPARENT`
+//!    - `Color::rgba8(` / `Color::rgb8(` /
+//!      `Color::from_rgba8(` / `Color::from_rgba(` / `Color::from_rgb(`
+//!    - All of the above prefixed with `VelloColor::` (the editor's
+//!      common alias).
+//!
+//! Both families share the same escape hatches (comment + path
+//! allowlist) below.
 //!
 //! ## Escape hatch
 //!
@@ -28,8 +40,9 @@
 //! line suppresses the lint for that line. Use only when the value
 //! genuinely IS a color but lives outside the theme system (e.g.,
 //! Blender-style HSV math tables in
-//! `widget/blender_color_picker/`). Every allowlist site must carry
-//! a written reason.
+//! `widget/blender_color_picker/`, theme-invariant drop overlays,
+//! token-resolved → VelloColor bridge calls). Every allowlist site
+//! must carry a written reason.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -105,6 +118,82 @@ fn hex_color_at(bytes: &[u8], start: usize) -> Option<usize> {
     } else {
         None
     }
+}
+
+/// Detect a non-hex Vello color expression starting at `bytes[start]`.
+/// Returns the matched length in bytes if recognized, else None.
+///
+/// Recognized prefixes (case-sensitive):
+/// - `Color::WHITE`, `Color::BLACK`, `Color::TRANSPARENT`
+/// - `Color::rgba8(`, `Color::rgb8(`
+/// - `Color::from_rgba8(`, `Color::from_rgba(`, `Color::from_rgb(`
+/// - All of the above with `VelloColor::` instead of `Color::`
+///
+/// Wave 4 stage C — closes a bypass where agents reached non-token
+/// colors via `Color::from_rgba8(255, 0, 0, 255)` etc., which the
+/// hex-only lint never caught.
+fn vello_color_at(bytes: &[u8], start: usize) -> Option<usize> {
+    // The byte before the match must not be alphanumeric / `_` —
+    // otherwise this is the tail of an identifier (e.g. `MyColor::`,
+    // `_Color::`) that happens to end in `Color::`.
+    if start > 0 {
+        let prev = bytes[start - 1];
+        if prev.is_ascii_alphanumeric() || prev == b'_' {
+            return None;
+        }
+    }
+
+    // Match the type prefix. `VelloColor::` is tried first so
+    // disambiguation is unambiguous (otherwise `Color::` would match
+    // partially inside `VelloColor::`, but we already gated that via
+    // the prev-char check above; explicit ordering is just clearer).
+    let prefix_len = if bytes_starts_with(bytes, start, b"VelloColor::") {
+        b"VelloColor::".len()
+    } else if bytes_starts_with(bytes, start, b"Color::") {
+        b"Color::".len()
+    } else {
+        return None;
+    };
+
+    let after = start + prefix_len;
+
+    // Try named constants first.
+    for kw in [
+        b"WHITE".as_slice(),
+        b"BLACK".as_slice(),
+        b"TRANSPARENT".as_slice(),
+    ] {
+        if bytes_starts_with(bytes, after, kw) {
+            let end = after + kw.len();
+            // Reject if followed by alphanumeric — e.g. `WHITESPACE`,
+            // `BLACKHOLE` — that would be a partial id match.
+            if end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'_') {
+                continue;
+            }
+            return Some(end - start);
+        }
+    }
+
+    // Try constructor function names (note: longer variants first so
+    // `from_rgba8` wins over `from_rgba`).
+    for ctor in [
+        b"from_rgba8(".as_slice(),
+        b"from_rgba(".as_slice(),
+        b"from_rgb(".as_slice(),
+        b"rgba8(".as_slice(),
+        b"rgb8(".as_slice(),
+    ] {
+        if bytes_starts_with(bytes, after, ctor) {
+            return Some(after + ctor.len() - start);
+        }
+    }
+
+    None
+}
+
+/// Byte-slice equality with bounds check, returning false on overflow.
+fn bytes_starts_with(bytes: &[u8], start: usize, needle: &[u8]) -> bool {
+    start + needle.len() <= bytes.len() && &bytes[start..start + needle.len()] == needle
 }
 
 /// Strip the `// LITERAL-COLOR-OK: ...` allowlist comment from a line.
@@ -232,15 +321,19 @@ fn no_hex_color_literals_in_widget_or_screens() {
                 let bytes = line.as_bytes();
                 let mut i = 0;
                 while i < bytes.len() {
-                    if let Some(len) = hex_color_at(bytes, i) {
+                    // Two matchers in sequence — hex literal first
+                    // (cheap byte check), then Vello/Color alias.
+                    let matched = hex_color_at(bytes, i).or_else(|| vello_color_at(bytes, i));
+                    if let Some(len) = matched {
                         let abs = line_start + i;
                         if !in_test_module(&test_ranges, abs) {
                             let literal = &line[i..i + len];
                             let rel = path.strip_prefix(&crate_root).unwrap_or(&path);
                             hits.push(format!(
-                                "  {}:{}: `{literal}` — use ColorToken instead, or add \
-                                 `// LITERAL-COLOR-OK: <reason>` if the value really must \
-                                 stay raw (e.g. HSV math table).",
+                                "  {}:{}: `{literal}` — use `ColorToken::X.resolve(theme)` \
+                                 instead, or add `// LITERAL-COLOR-OK: <reason>` if the value \
+                                 genuinely lives outside the theme system (e.g. HSV math table, \
+                                 token-cast-to-vello bridge, theme-invariant overlay).",
                                 rel.display(),
                                 line_no + 1,
                             ));
@@ -287,6 +380,48 @@ fn matcher_smoke_detects_hex_literals() {
         let mut i = 0;
         while i < bytes.len() {
             if let Some(len) = hex_color_at(bytes, i) {
+                found = true;
+                i += len;
+            } else {
+                i += 1;
+            }
+        }
+        assert_eq!(found, want, "matcher disagrees on input {input:?}");
+    }
+}
+
+/// Wave 4 stage C smoke — the extended matcher catches non-hex
+/// Vello/Color paths that the hex matcher silently lets through.
+#[test]
+fn matcher_smoke_detects_vello_color_aliases() {
+    let cases = [
+        ("Color::WHITE", true),
+        ("Color::BLACK", true),
+        ("Color::TRANSPARENT", true),
+        ("VelloColor::WHITE", true),
+        ("VelloColor::BLACK", true),
+        ("Color::rgba8(255, 0, 0, 255)", true),
+        ("Color::rgb8(0, 0, 0)", true),
+        ("Color::from_rgba8(255, 255, 255, 255)", true),
+        ("Color::from_rgba(0.5, 0.5, 0.5, 1.0)", true),
+        ("Color::from_rgb(0.0, 0.0, 0.0)", true),
+        ("VelloColor::from_rgba8(0, 0, 0, 0)", true),
+        // ── Negatives ──
+        ("MyColor::WHITE", false),         // not Color::/VelloColor::
+        ("colorize::WHITE", false),        // identifier ends in `colorize::`, prev char `:`
+        ("Color::WHITESPACE", false),      // alpha-suffix → not a constant
+        ("Color::BLACKBERRY", false),      // alpha-suffix
+        ("Color::from_oklch(...)", false), // legitimate token-aware constructor
+        ("Color::resolve(...)", false),    // ColorToken bridge
+        ("foo_Color::WHITE", false),       // `_Color::` is an identifier
+        ("Color::SHADE", false),           // not a recognized constant
+    ];
+    for (input, want) in cases {
+        let bytes = input.as_bytes();
+        let mut found = false;
+        let mut i = 0;
+        while i < bytes.len() {
+            if let Some(len) = vello_color_at(bytes, i) {
                 found = true;
                 i += len;
             } else {

@@ -216,7 +216,7 @@ pub(in crate::screens::hero) fn paint_showcase_body(
                     (new_y - y_before + pad * 2.0).max(0.0),
                 );
                 let outline_color =
-                    ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+                    ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — showcase preview outline from user-stored ColorValue
                 crate::paint::stroke_rounded_rect(
                     scene,
                     block,

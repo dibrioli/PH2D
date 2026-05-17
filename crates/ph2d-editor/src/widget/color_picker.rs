@@ -166,7 +166,7 @@ pub fn paint_color_picker(
         scene,
         preview_rect,
         Radius::Md.px(),
-        VelloColor::from_rgba8(cp.rgba[0], cp.rgba[1], cp.rgba[2], cp.rgba[3]),
+        VelloColor::from_rgba8(cp.rgba[0], cp.rgba[1], cp.rgba[2], cp.rgba[3]), // LITERAL-COLOR-OK: user-color — preview of the user's chosen ColorValue, not a theme token
     );
     stroke_rounded_rect(
         scene,

@@ -48,7 +48,7 @@ pub fn paint_drop_overlay(
     let _ = theme; // overlay color is theme-independent on purpose
     scene.fill_rect(
         rect_to_vello(scrim),
-        VelloColor::from_rgba8(0x12, 0x14, 0x18, 0x80),
+        VelloColor::from_rgba8(0x12, 0x14, 0x18, 0x80), // LITERAL-COLOR-OK: drop-overlay scrim theme-invariant by design — AccentSoft hue-shifts across themes (Forge flashed red); see comment above
     );
 
     // Centered card with file count + first filename. The card sits

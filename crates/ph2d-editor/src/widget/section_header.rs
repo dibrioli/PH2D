@@ -150,7 +150,7 @@ pub fn paint_section_header(
         let cx = rect.x + rect.w - pad_x - radius_px;
         let cy = rect.y + rect.h * 0.5;
         let circle = Circle::new(Point::new(cx as f64, cy as f64), radius_px as f64);
-        let fill = VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+        let fill = VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — `rgba` is the user's per-section accent, not a theme token
         scene.inner_mut().fill(
             Fill::NonZero,
             Affine::IDENTITY,

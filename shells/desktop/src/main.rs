@@ -1562,8 +1562,30 @@ impl App {
             }
             // M14.6A: drain pending hierarchy visibility toggle —
             // resolve row NodeId → ECS Entity via the bridge, flip
-            // the `Visibility` component on SimWorld.
-            if let Some(row_id) = hero.pending_visibility_toggle.take()
+            // the `Visibility` component on SimWorld. Wave 2.5 PR
+            // 11.8c: filter-and-replace pattern (was
+            // `hero.pending_visibility_toggle.take()`).
+            let visibility_toggle_row = {
+                let mut found: Option<NodeId> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierToggleVisibility { row }
+                            if found.is_none() =>
+                        {
+                            found = Some(row);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(row_id) = visibility_toggle_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row_id)
             {
@@ -1588,19 +1610,66 @@ impl App {
             // `Children` preserves insertion order, so we rebuild the
             // ordering by re-inserting every relevant child's
             // ChildOf in the desired sequence.
-            if let Some(intent) = hero.pending_reparent.take()
+            //
+            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
+            // `hero.pending_reparent.take()`).
+            let reparent_intent = {
+                let mut found: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierReparent(intent)
+                            if found.is_none() =>
+                        {
+                            found = Some(intent);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(intent) = reparent_intent
                 && let Some(live) = hero_live.as_ref()
             {
                 hero_intents::drain_reparent(intent, live, sim);
             }
             // M14.6 F: drain per-row Hierarchy context-menu actions.
-            // Each is a `Some(row_id)` — bridge resolves to Entity,
-            // then we apply the corresponding ECS mutation. Order is
+            // Each is a `HierDuplicate/AddChild/ResetTransform/Delete`
+            // bus variant — bridge resolves row → Entity, then we
+            // apply the corresponding ECS mutation. Order is
             // intentional: Delete last, so a (degenerate) frame that
             // queues "duplicate then delete" leaves the duplicate in
             // place and removes the original. The next snapshot rebuild
             // picks up the result automatically.
-            if let Some(row) = hero.pending_duplicate.take()
+            //
+            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
+            // `hero.pending_{duplicate,add_child,reset_transform,delete}.take()`).
+            let duplicate_row = {
+                let mut found: Option<NodeId> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierDuplicate { row }
+                            if found.is_none() =>
+                        {
+                            found = Some(row);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(row) = duplicate_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {
@@ -1627,7 +1696,27 @@ impl App {
                 toasts.push(Toast::success("Duplicated entity"));
                 self.title_dirty = true;
             }
-            if let Some(row) = hero.pending_add_child.take()
+            let add_child_row = {
+                let mut found: Option<NodeId> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierAddChild { row }
+                            if found.is_none() =>
+                        {
+                            found = Some(row);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(row) = add_child_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(parent_bits) = live.bridge.entity_for(row)
             {
@@ -1640,7 +1729,27 @@ impl App {
                 toasts.push(Toast::success("Added child entity"));
                 self.title_dirty = true;
             }
-            if let Some(row) = hero.pending_reset_transform.take()
+            let reset_transform_row = {
+                let mut found: Option<NodeId> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierResetTransform { row }
+                            if found.is_none() =>
+                        {
+                            found = Some(row);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(row) = reset_transform_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {
@@ -1651,7 +1760,27 @@ impl App {
                     self.title_dirty = true;
                 }
             }
-            if let Some(row) = hero.pending_delete.take()
+            let delete_row = {
+                let mut found: Option<NodeId> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierDelete { row }
+                            if found.is_none() =>
+                        {
+                            found = Some(row);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(row) = delete_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {
@@ -1675,19 +1804,65 @@ impl App {
             // picked in the hierarchy panel. Inverse of the M14.7 A
             // canvas-pick path (canvas → label sync runs further down
             // when we publish gizmo_view).
-            if let Some(row) = hero.pending_hierarchy_row_click.take()
+            //
+            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
+            // `hero.pending_hierarchy_row_click.take()`).
+            let hierarchy_row_click = {
+                let mut found: Option<NodeId> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierRowClick { row }
+                            if found.is_none() =>
+                        {
+                            found = Some(row);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(row) = hierarchy_row_click
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {
                 hero.gizmo_selection = Some(entity_bits);
             }
             // M14.7 polish: one-shot seed of the rename TextInput
-            // when rename mode opens. `pending_rename_seed` is set by
+            // when rename mode opens. `HierRenameSeed` is pushed by
             // hero on the open path (right-click Rename / long-press)
-            // and taken here exactly once — so subsequent Backspace
+            // and drained here exactly once — so subsequent Backspace
             // edits that empty the buffer don't get clobbered back
             // to the original name on the next frame.
-            if let Some(row) = hero.pending_rename_seed.take()
+            //
+            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
+            // `hero.pending_rename_seed.take()`).
+            let rename_seed_row = {
+                let mut found: Option<NodeId> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierRenameSeed { row }
+                            if found.is_none() =>
+                        {
+                            found = Some(row);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(row) = rename_seed_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {
@@ -1715,7 +1890,33 @@ impl App {
             // Drain a finalized rename commit (Enter pressed in
             // rename input). Write the new Name component on the
             // entity; toast confirms.
-            if let Some((row, new_name)) = hero.pending_rename_commit.take()
+            //
+            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
+            // `hero.pending_rename_commit.take()`). `HierRenameCommit`
+            // carries an owned String, so `into_iter` semantics through
+            // `drain()` move the name out without clone.
+            let rename_commit = {
+                let mut found: Option<(NodeId, String)> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::HierRenameCommit {
+                            row,
+                            new_name,
+                        } if found.is_none() => {
+                            found = Some((row, new_name));
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some((row, new_name)) = rename_commit
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
             {

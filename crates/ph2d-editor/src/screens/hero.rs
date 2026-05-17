@@ -276,27 +276,18 @@ pub struct HeroScreen {
     /// the bottom HUD. Host assigns directly (`hero.stats = ...`)
     /// once per frame; painter reads them in `paint_bottom_hud`.
     pub stats: BottomHudStats,
-    /// M14.6A: row NodeId whose visibility eye-icon was just clicked.
-    /// The host drains this each frame, resolves NodeId → Entity via
-    /// the bridge, and flips the `Visibility` component on
-    /// `SimWorld`. Cleared by `apply_event` after dispatch sets it
-    /// when the host reads + applies the toggle.
-    pub pending_visibility_toggle: Option<NodeId>,
-    /// M14.6B: hierarchy drag-reparent intent emitted by the
-    /// dispatcher when a DnD drop resolves. Same drain semantics as
-    /// `pending_visibility_toggle`: host reads on the next frame,
-    /// translates NodeIds → Entities via the bridge, then issues the
-    /// matching `ChildOf` mutation on `SimWorld`. Carries only
-    /// NodeIds — staying `Copy + Eq` keeps the field cheap to clear.
-    pub pending_reparent: Option<HierReparentIntent>,
-    /// M14.6 F: per-row context-menu action intents. Each is a
-    /// `Some(row_node_id)` once the user picks the matching menu
-    /// entry; the host drains and applies the matching ECS mutation,
-    /// then re-snapshots the hierarchy on the next frame.
-    pub pending_duplicate: Option<NodeId>,
-    pub pending_delete: Option<NodeId>,
-    pub pending_reset_transform: Option<NodeId>,
-    pub pending_add_child: Option<NodeId>,
+    // Wave 2.5 PR 11.8c: 6 hierarchy fields migrated to the bus.
+    //   pending_visibility_toggle → EditorAction::HierToggleVisibility { row }
+    //   pending_reparent          → EditorAction::HierReparent(HierReparentIntent)
+    //   pending_duplicate         → EditorAction::HierDuplicate { row }
+    //   pending_delete            → EditorAction::HierDelete { row }
+    //   pending_reset_transform   → EditorAction::HierResetTransform { row }
+    //   pending_add_child         → EditorAction::HierAddChild { row }
+    // Each push happens in `apply_event` (dispatcher event for
+    // visibility/reparent, CTX_MENU_HIER_* for menu actions); the
+    // shell drains via `hero.bus.drain()` + filter-and-replace,
+    // resolves NodeId → Entity via `HeroLive::bridge`, and runs the
+    // ECS mutation.
     /// M14.7 A: sim-entity bits of the sprite currently selected for
     /// gizmo manipulation. The host's canvas-click handler runs
     /// `pick_sprite_at_world` against PresentWorld and writes the
@@ -317,13 +308,11 @@ pub struct HeroScreen {
     /// [`crate::gizmo::compute_gizmo_transform`], and writes the
     /// result back to SimWorld; Up clears the field.
     pub gizmo_drag: Option<crate::gizmo::GizmoDragState>,
-    /// M14.6 D: hierarchy-row click intent for cross-panel selection
-    /// sync. When the user clicks a live row in the hierarchy panel,
-    /// `apply_event` raises this; the host drains it on the next
-    /// frame, resolves the row NodeId → sim entity via the bridge,
-    /// and updates `gizmo_selection` so the canvas gizmo follows
-    /// the hierarchy click.
-    pub pending_hierarchy_row_click: Option<NodeId>,
+    // Wave 2.5 PR 11.8c: `pending_hierarchy_row_click` migrated to
+    // `bus.push(EditorAction::HierRowClick { row })`. Same drain
+    // semantics: shell resolves row NodeId → sim entity via the
+    // bridge and updates `gizmo_selection` so the canvas gizmo
+    // follows the hierarchy click. Live (ECS) mode only.
     /// M14.7 polish: pending request to reframe the camera. Raised by
     /// the F/Home key or the VIEW button on the left rail; the host
     /// drains and updates `Camera2d::center` (and `height_world` for
@@ -334,18 +323,14 @@ pub struct HeroScreen {
     /// TextInput when this matches; user typing flows through the
     /// usual TextInput dispatch. `None` = no row in rename.
     pub rename_target_row: Option<NodeId>,
-    /// One-shot seed signal raised when rename mode opens. Host takes
-    /// it on the next frame, fills `HIER_RENAME_INPUT.text` with the
-    /// entity's current `Name`, and selects all. Without this flag,
-    /// the host can't tell "rename just opened (seed once)" from
-    /// "user typed Backspace and emptied the buffer (don't re-seed)"
-    /// — the previous `buffer_empty` heuristic clobbered every
-    /// keystroke once the field hit zero chars.
-    pub pending_rename_seed: Option<NodeId>,
-    /// Pending Name commit. Host drains on the next frame,
-    /// resolves bridge NodeId → Entity, and writes the new `Name`
-    /// component. `text` is the buffer contents at commit time.
-    pub pending_rename_commit: Option<(NodeId, String)>,
+    // Wave 2.5 PR 11.8c: rename intents migrated to the bus.
+    //   pending_rename_seed   → EditorAction::HierRenameSeed { row }
+    //   pending_rename_commit → EditorAction::HierRenameCommit { row, new_name }
+    // Seed is one-shot — shell drains, fills HIER_RENAME_INPUT.text
+    // with the entity's current Name, and selects all. Subsequent
+    // Backspace edits aren't re-seeded (no field re-set every frame).
+    // Commit writes the new Name component and clears the rename
+    // TextInput buffer.
     // Wave 2.5 PR 11.8b3: `pending_reimport` migrated to
     // `bus.push(EditorAction::Reimport { entity_bits })`. Same
     // `entity_bits` snapshot semantics — captured at push time
@@ -629,20 +614,14 @@ impl HeroScreen {
             project: crate::project::ProjectSettings::default(),
             dragging_files: None,
             stats: BottomHudStats::default(),
-            pending_visibility_toggle: None,
-            pending_reparent: None,
-            pending_duplicate: None,
-            pending_delete: None,
-            pending_reset_transform: None,
-            pending_add_child: None,
+            // Wave 2.5 PR 11.8c: 6 hierarchy fields removed (bus migration).
             gizmo_selection: None,
             gizmo_view: None,
             gizmo_drag: None,
-            pending_hierarchy_row_click: None,
+            // pending_hierarchy_row_click removed (Wave 2.5 PR 11.8c)
             pending_view_focus: None,
             rename_target_row: None,
-            pending_rename_seed: None,
-            pending_rename_commit: None,
+            // pending_rename_seed + pending_rename_commit removed (Wave 2.5 PR 11.8c)
             // pending_reimport removed (Wave 2.5 PR 11.8b3 — bus migration)
             // pending_trim_transparency removed (Wave 2.5 PR 11.8b1 — bus migration)
             // pending_make_square removed (Wave 2.5 PR 11.8b2 — bus migration)
@@ -802,9 +781,11 @@ impl HeroScreen {
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
         // M14.6B: hierarchy drag-reparent. Dispatcher emits one
         // `HierReparent` per drop in addition to mutating the panel
-        // store. Live (ECS) mode reads it via `pending_reparent` and
-        // the host applies `ChildOf` accordingly. Fixture mode can
-        // ignore it (the store mutation is already in place).
+        // store. Live (ECS) mode reads it via the bus and the shell
+        // applies `ChildOf` accordingly. Fixture mode can ignore it
+        // (the store mutation is already in place).
+        //
+        // Wave 2.5 PR 11.8c: bus migration (was `pending_reparent`).
         if let WidgetEvent::HierReparent {
             dragged,
             new_parent,
@@ -812,12 +793,14 @@ impl HeroScreen {
             after,
         } = event
         {
-            self.pending_reparent = Some(HierReparentIntent {
-                dragged,
-                new_parent,
-                before,
-                after,
-            });
+            self.bus.push(crate::action_bus::EditorAction::HierReparent(
+                HierReparentIntent {
+                    dragged,
+                    new_parent,
+                    before,
+                    after,
+                },
+            ));
             return true;
         }
         // Theme + radius selector from the TopBar theme menu —
@@ -825,12 +808,16 @@ impl HeroScreen {
         // here, not on the WidgetStore.
         if let WidgetEvent::Click(id) = event {
             // M14.6A: hierarchy eye-toggle clicks arrive as a
-            // companion NodeId with the EYE_TOGGLE_BIT set. Route
-            // them to `pending_visibility_toggle` for the host to
-            // drain, then short-circuit so the row's regular click
-            // (selection / inspector focus) does NOT also fire.
+            // companion NodeId with the EYE_TOGGLE_BIT set. Push
+            // `EditorAction::HierToggleVisibility { row }` for the
+            // shell to drain, then short-circuit so the row's
+            // regular click (selection / inspector focus) does NOT
+            // also fire.
+            //
+            // Wave 2.5 PR 11.8c: bus migration (was `pending_visibility_toggle`).
             if let Some(row_id) = ids::hier_eye_companion_to_row(id) {
-                self.pending_visibility_toggle = Some(row_id);
+                self.bus
+                    .push(crate::action_bus::EditorAction::HierToggleVisibility { row: row_id });
                 return true;
             }
             // M14.6C: chevron click on a hierarchy parent row.
@@ -976,9 +963,13 @@ impl HeroScreen {
             // pulls the target `row` NodeId from the most-recently
             // closed `HierarchyRow { row }` snapshot (dispatch moves
             // the request from `context_menu` to `last_context_menu`
-            // on the menu-closing Down event), raises the matching
-            // `pending_*` flag, and exits. The host drains the flag
-            // next frame and runs the ECS mutation.
+            // on the menu-closing Down event), pushes the matching
+            // `EditorAction::Hier*` variant onto the bus, and exits.
+            // The shell drains next frame and runs the ECS mutation.
+            //
+            // Wave 2.5 PR 11.8c: bus migration (was `pending_duplicate`,
+            // `pending_add_child`, `pending_reset_transform`,
+            // `pending_delete`, `pending_rename_seed`).
             if id == ids::CTX_MENU_HIER_DUPLICATE
                 || id == ids::CTX_MENU_HIER_ADD_CHILD
                 || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
@@ -989,24 +980,29 @@ impl HeroScreen {
                     && let crate::interaction::ContextMenuKind::HierarchyRow { row } = req.kind
                 {
                     if id == ids::CTX_MENU_HIER_DUPLICATE {
-                        self.pending_duplicate = Some(row);
+                        self.bus
+                            .push(crate::action_bus::EditorAction::HierDuplicate { row });
                     } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
-                        self.pending_add_child = Some(row);
+                        self.bus
+                            .push(crate::action_bus::EditorAction::HierAddChild { row });
                     } else if id == ids::CTX_MENU_HIER_RESET_TRANSFORM {
-                        self.pending_reset_transform = Some(row);
+                        self.bus
+                            .push(crate::action_bus::EditorAction::HierResetTransform { row });
                     } else if id == ids::CTX_MENU_HIER_DELETE {
-                        self.pending_delete = Some(row);
+                        self.bus
+                            .push(crate::action_bus::EditorAction::HierDelete { row });
                     } else if id == ids::CTX_MENU_HIER_RENAME {
                         // M14.7 polish: enter inline-rename mode for
                         // this row. Painter swaps the name label for
-                        // a TextInput; `pending_rename_seed` tells the
-                        // host to fill the buffer with the entity's
+                        // a TextInput; `HierRenameSeed` tells the
+                        // shell to fill the buffer with the entity's
                         // current Name on the next frame (one-shot —
                         // re-seeding every frame would clobber the
                         // user's Backspace edits).
                         open_rename(&mut self.store);
                         self.rename_target_row = Some(row);
-                        self.pending_rename_seed = Some(row);
+                        self.bus
+                            .push(crate::action_bus::EditorAction::HierRenameSeed { row });
                     }
                 }
                 return true;
@@ -1283,22 +1279,28 @@ impl HeroScreen {
         // gizmo follows the hierarchy click. This runs before
         // `hierarchy::apply_event` so the existing selection-label
         // update still happens too.
+        // Wave 2.5 PR 11.8c: bus migration (was `pending_hierarchy_row_click`).
         if let WidgetEvent::Click(id) = event
             && let Some(live) = self.live_hierarchy_entries.as_ref()
             && live.contains_key(&id)
         {
-            self.pending_hierarchy_row_click = Some(id);
+            self.bus
+                .push(crate::action_bus::EditorAction::HierRowClick { row: id });
         }
         // M14.7 polish: double-click on a hierarchy row → focus the
         // entity (same intent as F/Home, but explicit gesture on the
-        // panel). We still raise `pending_hierarchy_row_click` so the
-        // gizmo selection updates first; then the view-focus drain
-        // pans the camera onto the freshly-selected entity.
+        // panel). We still push `HierRowClick` so the gizmo selection
+        // updates first; then the view-focus drain pans the camera
+        // onto the freshly-selected entity.
+        //
+        // Wave 2.5 PR 11.8c: HierRowClick on the bus. `pending_view_focus`
+        // is Stage C scope — still a field for now.
         if let WidgetEvent::DoubleClick(id) = event
             && let Some(live) = self.live_hierarchy_entries.as_ref()
             && live.contains_key(&id)
         {
-            self.pending_hierarchy_row_click = Some(id);
+            self.bus
+                .push(crate::action_bus::EditorAction::HierRowClick { row: id });
             self.pending_view_focus = Some(ViewFocusKind::Selected);
             return true;
         }
@@ -1306,18 +1308,23 @@ impl HeroScreen {
         // rename mode. Same effect as right-click → "Rename..." but
         // modeless — works on touch / pen where a context menu isn't
         // the natural gesture.
+        //
+        // Wave 2.5 PR 11.8c: bus migration (was `pending_rename_seed`).
         if let WidgetEvent::LongPress(id) = event
             && let Some(live) = self.live_hierarchy_entries.as_ref()
             && live.contains_key(&id)
         {
             open_rename(&mut self.store);
             self.rename_target_row = Some(id);
-            self.pending_rename_seed = Some(id);
+            self.bus
+                .push(crate::action_bus::EditorAction::HierRenameSeed { row: id });
             return true;
         }
         // M14.7 polish: inline-rename commit / cancel for the
         // hierarchy row in rename mode. The dispatch's Enter / Esc
         // path emits these on `HIER_RENAME_INPUT`.
+        //
+        // Wave 2.5 PR 11.8c: bus migration (was `pending_rename_commit`).
         if let WidgetEvent::Submit(id) = event
             && id == ids::HIER_RENAME_INPUT
             && let Some(row) = self.rename_target_row.take()
@@ -1328,7 +1335,11 @@ impl HeroScreen {
             };
             let trimmed = buf.trim().to_owned();
             if !trimmed.is_empty() {
-                self.pending_rename_commit = Some((row, trimmed));
+                self.bus
+                    .push(crate::action_bus::EditorAction::HierRenameCommit {
+                        row,
+                        new_name: trimmed,
+                    });
             }
             return true;
         }
@@ -1343,7 +1354,7 @@ impl HeroScreen {
         // HIER_RENAME_INPUT but `rename_target_row` stayed Some, so
         // the row remained in edit mode visually with no caret.
         // Treat the Blur as an implicit Submit: stage the current
-        // buffer as a pending commit, drop rename mode.
+        // buffer as a HierRenameCommit, drop rename mode.
         if let WidgetEvent::Blur(id) = event
             && id == ids::HIER_RENAME_INPUT
             && let Some(row) = self.rename_target_row.take()
@@ -1354,7 +1365,11 @@ impl HeroScreen {
             };
             let trimmed = buf.trim().to_owned();
             if !trimmed.is_empty() {
-                self.pending_rename_commit = Some((row, trimmed));
+                self.bus
+                    .push(crate::action_bus::EditorAction::HierRenameCommit {
+                        row,
+                        new_name: trimmed,
+                    });
             }
             // Don't return true — Blur isn't "consumed" exclusively
             // by rename; other panels may want to observe it too.
@@ -3224,44 +3239,52 @@ mod tests {
 
     #[test]
     fn hier_menu_duplicate_sets_pending_duplicate() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         let row = NodeId(100_500);
         stage_hierarchy_row_snapshot(&mut hero, row);
         let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
         assert!(consumed);
-        assert_eq!(hero.pending_duplicate, Some(row));
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(drained, vec![EditorAction::HierDuplicate { row }]);
         // Snapshot was consumed.
         assert!(hero.store.last_context_menu().is_none());
     }
 
     #[test]
     fn hier_menu_add_child_sets_pending_add_child() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         let row = NodeId(100_501);
         stage_hierarchy_row_snapshot(&mut hero, row);
         let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_ADD_CHILD));
         assert!(consumed);
-        assert_eq!(hero.pending_add_child, Some(row));
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(drained, vec![EditorAction::HierAddChild { row }]);
     }
 
     #[test]
     fn hier_menu_reset_transform_sets_pending() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         let row = NodeId(100_502);
         stage_hierarchy_row_snapshot(&mut hero, row);
         let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_RESET_TRANSFORM));
         assert!(consumed);
-        assert_eq!(hero.pending_reset_transform, Some(row));
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(drained, vec![EditorAction::HierResetTransform { row }]);
     }
 
     #[test]
     fn hier_menu_delete_sets_pending_delete() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         let row = NodeId(100_503);
         stage_hierarchy_row_snapshot(&mut hero, row);
         let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DELETE));
         assert!(consumed);
-        assert_eq!(hero.pending_delete, Some(row));
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(drained, vec![EditorAction::HierDelete { row }]);
     }
 
     #[test]
@@ -3272,14 +3295,15 @@ mod tests {
         let mut hero = HeroScreen::new(NodeId(1));
         let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
         assert!(consumed);
-        assert!(hero.pending_duplicate.is_none());
+        assert!(hero.bus.is_empty());
     }
 
     #[test]
     fn hierarchy_row_click_raises_pending_for_live_entries() {
         // Build a live-mode hierarchy with one entry, then click the
-        // matching NodeId. `pending_hierarchy_row_click` should fire
-        // so the host can sync `gizmo_selection`.
+        // matching NodeId. `HierRowClick` should fire on the bus so
+        // the shell can sync `gizmo_selection`.
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         let row_id = NodeId(100_500);
         let mut entries = std::collections::BTreeMap::new();
@@ -3299,17 +3323,17 @@ mod tests {
         hero.sync_from_hierarchy(&[row_id], entries);
         let consumed = hero.apply_event(WidgetEvent::Click(row_id));
         assert!(consumed, "live-mode row click should consume");
-        assert_eq!(hero.pending_hierarchy_row_click, Some(row_id));
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(drained, vec![EditorAction::HierRowClick { row: row_id }]);
     }
 
     #[test]
     fn hierarchy_row_click_silent_for_fixture_only_rows() {
         // Fixture-mode click (no `sync_from_hierarchy`) shouldn't
-        // raise `pending_hierarchy_row_click` — the M14.6 D path is
-        // live-only.
+        // push `HierRowClick` — the M14.6 D path is live-only.
         let mut hero = HeroScreen::new(NodeId(1));
         let _ = hero.apply_event(WidgetEvent::Click(ids::HIER_PLAYER));
-        assert_eq!(hero.pending_hierarchy_row_click, None);
+        assert!(hero.bus.is_empty());
     }
 
     #[test]
@@ -3318,12 +3342,15 @@ mod tests {
         // the first — the snapshot is consumed and the second click
         // sees an empty `last_context_menu`. This protects against
         // double-trigger if a synthetic event stream emits both.
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         let row = NodeId(100_504);
         stage_hierarchy_row_snapshot(&mut hero, row);
         let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
         let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DELETE));
-        assert_eq!(hero.pending_duplicate, Some(row));
-        assert!(hero.pending_delete.is_none());
+        let drained: Vec<_> = hero.bus.drain().collect();
+        // Only Duplicate — the second Click consumed but found no
+        // snapshot to attach a row to, so no Delete variant pushed.
+        assert_eq!(drained, vec![EditorAction::HierDuplicate { row }]);
     }
 }

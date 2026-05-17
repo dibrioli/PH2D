@@ -98,6 +98,74 @@ pub enum EditorAction {
     /// pressing Cmd+Z / Ctrl+Z in the desktop shell. Single-level
     /// by design; the broader editor-undo system is M14.x scope.
     UndoImageEdit,
+
+    /// Toggle the `Visibility` component on the entity backing the
+    /// hierarchy row whose eye-icon was just clicked. Payload: the
+    /// row's `NodeId`. The shell resolves NodeId → Entity via
+    /// `HeroLive::bridge.entity_for(row)` and flips `Visibility.hidden`
+    /// on `SimWorld`.
+    HierToggleVisibility { row: ph2d_a11y::NodeId },
+
+    /// Drag-and-drop reparent for a hierarchy row. Payload mirrors
+    /// the `WidgetEvent::HierReparent` event one-to-one. `new_parent
+    /// = None` is a root-level drop; `before`/`after` position the
+    /// dragged entity relative to a target sibling. The shell
+    /// resolves NodeIds → Entities via the bridge and runs
+    /// `hero_intents::drain_reparent` which rebuilds the bevy_ecs
+    /// `Children` ordering by re-inserting `ChildOf` in sequence.
+    HierReparent(crate::screens::hero::HierReparentIntent),
+
+    /// Duplicate the entity backing the hierarchy row. Payload: the
+    /// row's `NodeId`. Shell copies Transform / Sprite / Name /
+    /// ChildOf onto a freshly-spawned entity, suffixes the name
+    /// with `_copy`, and toasts on success. Raised by the row's
+    /// right-click → Duplicate menu entry.
+    HierDuplicate { row: ph2d_a11y::NodeId },
+
+    /// Despawn the entity backing the hierarchy row. Payload: the
+    /// row's `NodeId`. Cascades through bevy_ecs 0.18's `ChildOf`
+    /// relation, taking descendants with it. Also clears
+    /// `gizmo_selection` if it pointed at the deleted entity.
+    /// Raised by the row's right-click → Delete menu entry.
+    HierDelete { row: ph2d_a11y::NodeId },
+
+    /// Reset the entity's `Transform` to `Transform::IDENTITY`.
+    /// Payload: the row's `NodeId`. Raised by the row's right-click
+    /// → Reset Transform menu entry.
+    HierResetTransform { row: ph2d_a11y::NodeId },
+
+    /// Spawn a new child entity (identity transform, name "Child")
+    /// under the hierarchy row. Payload: the parent row's `NodeId`.
+    /// Raised by the row's right-click → Add Child menu entry.
+    HierAddChild { row: ph2d_a11y::NodeId },
+
+    /// Sync `gizmo_selection` to the entity backing the clicked
+    /// hierarchy row — cross-panel selection sync from the
+    /// hierarchy panel to the canvas gizmo. Payload: the row's
+    /// `NodeId`. Live (ECS) mode only; fixture-only rows don't
+    /// raise this.
+    HierRowClick { row: ph2d_a11y::NodeId },
+
+    /// One-shot seed of the rename TextInput buffer when inline-
+    /// rename mode opens. Payload: the row's `NodeId`. Shell reads
+    /// the entity's current `Name`, fills `HIER_RENAME_INPUT.text`,
+    /// and selects all. Without the one-shot semantic, subsequent
+    /// Backspace edits would get clobbered back to the original
+    /// name on every frame. Raised by right-click → Rename and by
+    /// long-press on the row.
+    HierRenameSeed { row: ph2d_a11y::NodeId },
+
+    /// Finalized rename commit (Enter / blur on the rename
+    /// TextInput). Payload: the row's `NodeId` + the trimmed new
+    /// name. Shell writes the new `Name` component on the entity
+    /// and toasts confirmation, then clears the rename TextInput
+    /// buffer. `String` owned-data payload is fine — `EditorAction`
+    /// is `Clone` (not `Copy`); see the `editor_action_is_clone_and_partial_eq`
+    /// test below.
+    HierRenameCommit {
+        row: ph2d_a11y::NodeId,
+        new_name: String,
+    },
 }
 
 /// FIFO queue of [`EditorAction`]s. Held on `HeroScreen` as a single

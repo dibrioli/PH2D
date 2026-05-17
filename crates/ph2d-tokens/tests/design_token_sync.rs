@@ -34,8 +34,11 @@
 use std::path::PathBuf;
 
 use ph2d_tokens::{
-    Density, FontWeight, ICON_BTN_SIZE_PX, LetterSpacing, LineHeight, ROW_H_PX, Radius,
-    SECTION_GAP_PX, Spacing, StrokeToken, TypeToken,
+    CHECKBOX_BOX_PX, DIVIDER_GAP_PX, Density, EDGE_PAD_PX, FontWeight, HERO_VIEWPORT_H_PX,
+    HERO_VIEWPORT_W_PX, HIER_ROW_H_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX,
+    ICON_BTN_SIZE_PX, INSPECTOR_W_PX, LetterSpacing, LineHeight, PANEL_HEAD_PAD_PX,
+    PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, ROW_H_PX, Radius,
+    SECTION_GAP_PX, Spacing, StrokeToken, TOOL_CHIP_PX, TOPBAR_GAP_PX, TOPBAR_H_PX, TypeToken,
 };
 use serde_json::Value;
 
@@ -168,21 +171,38 @@ fn density_enum_matches_tokens_json() {
 fn chrome_consts_match_tokens_json() {
     let tokens = load_tokens();
     let chrome = &tokens["chrome"];
-    assert_close(
-        "chrome.row-h",
-        extract_numeric(&chrome["row-h"]),
-        ROW_H_PX as f64,
-    );
-    assert_close(
-        "chrome.icon-btn-size",
-        extract_numeric(&chrome["icon-btn-size"]),
-        ICON_BTN_SIZE_PX as f64,
-    );
-    assert_close(
-        "chrome.section-gap",
-        extract_numeric(&chrome["section-gap"]),
-        SECTION_GAP_PX as f64,
-    );
+
+    // Wave 4 originals (live in `spacing.rs`).
+    let pairs: &[(&str, f32)] = &[
+        ("row-h", ROW_H_PX),
+        ("icon-btn-size", ICON_BTN_SIZE_PX),
+        ("section-gap", SECTION_GAP_PX),
+        // Wave 5 stage A additions (live in `chrome.rs`).
+        ("hero-viewport-w", HERO_VIEWPORT_W_PX),
+        ("hero-viewport-h", HERO_VIEWPORT_H_PX),
+        ("edge-pad", EDGE_PAD_PX),
+        ("topbar-h", TOPBAR_H_PX),
+        ("topbar-gap", TOPBAR_GAP_PX),
+        ("inspector-w", INSPECTOR_W_PX),
+        ("hierarchy-w", HIERARCHY_W_PX),
+        ("hud-h", HUD_H_PX),
+        ("hud-bottom-pad", HUD_BOTTOM_PAD_PX),
+        ("panel-radius", PANEL_RADIUS_PX),
+        ("panel-head-pad", PANEL_HEAD_PAD_PX),
+        ("hier-row-h", HIER_ROW_H_PX),
+        ("panel-resize-handle-size", PANEL_RESIZE_HANDLE_SIZE_PX),
+        ("tool-chip", TOOL_CHIP_PX),
+        ("divider-gap", DIVIDER_GAP_PX),
+        ("pill-padding", PILL_PADDING_PX),
+        ("checkbox-box", CHECKBOX_BOX_PX),
+    ];
+    for (key, value) in pairs {
+        assert_close(
+            &format!("chrome.{key}"),
+            extract_numeric(&chrome[*key]),
+            *value as f64,
+        );
+    }
 }
 
 #[test]

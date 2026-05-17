@@ -20,7 +20,10 @@ use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{
+    ColorToken, DIVIDER_GAP_PX as CHROME_DIVIDER_GAP, Radius, Spacing, StrokeToken,
+    TOOL_CHIP_PX as CHROME_TOOL_CHIP, Theme, TypeToken,
+};
 use ph2d_vector::VectorScene;
 
 /// Width of the LeftRail. Tightly packed: label column on the left,
@@ -28,9 +31,11 @@ use ph2d_vector::VectorScene;
 /// the label column budget so changing label padding only shifts
 /// the chip, not the rail width.
 pub const TOOL_RAIL_WIDTH_PX: f32 = CHIP_X_OFFSET_PX + TOOL_CHIP_PX + Spacing::Xs.px();
-pub const TOOL_CHIP_PX: f32 = 44.0; // LITERAL-PX-OK: LeftRail tool chip square (chrome-specific)
+/// Per tokens.json `chrome.tool-chip`.
+pub const TOOL_CHIP_PX: f32 = CHROME_TOOL_CHIP;
 pub const COMPOUND_TOTAL_H_PX: f32 = TOOL_CHIP_PX; // sub-label moved to vertical-left
-pub const DIVIDER_GAP_PX: f32 = Spacing::Md.px();
+/// Per tokens.json `chrome.divider-gap`.
+pub const DIVIDER_GAP_PX: f32 = CHROME_DIVIDER_GAP;
 /// Padding from the rail's left edge to the vertical sub-label.
 const LABEL_LEFT_PAD: f32 = 3.0; // LITERAL-PX-OK: rotated sub-label edge inset (chrome-specific)
 /// Horizontal extent the rotated sub-label occupies on screen

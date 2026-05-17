@@ -6,40 +6,47 @@
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
-use ph2d_tokens::{ColorToken, Density, Radius, SECTION_GAP_PX, Spacing, Theme};
+use ph2d_tokens::{
+    ColorToken, EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIER_ROW_H_PX, HIERARCHY_W_PX,
+    HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX,
+    PANEL_RESIZE_HANDLE_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, TOPBAR_GAP_PX, TOPBAR_H_PX,
+    Theme,
+};
 use ph2d_vector::VectorScene;
 
 /// Default mockup viewport (iPad 12.9 landscape). Public so callers
 /// like `shells/desktop` and tests can size their windows to match.
-pub const HERO_VIEWPORT_W: f32 = 1366.0; // LITERAL-PX-OK: iPad 12.9 landscape viewport (fixture, not design scale)
-pub const HERO_VIEWPORT_H: f32 = 1024.0; // LITERAL-PX-OK: iPad 12.9 landscape viewport (fixture)
+/// Per tokens.json `chrome.hero-viewport-w`.
+pub const HERO_VIEWPORT_W: f32 = HERO_VIEWPORT_W_PX;
+/// Per tokens.json `chrome.hero-viewport-h`.
+pub const HERO_VIEWPORT_H: f32 = HERO_VIEWPORT_H_PX;
 
 /// Padding from the screen edge to chrome (TopBar inset, Hierarchy
 /// pinned-right inset, etc).
-pub(super) const EDGE_PAD: f32 = SECTION_GAP_PX;
-pub(super) const TOPBAR_H: f32 = 40.0; // LITERAL-PX-OK: TopBar chrome height (specific dim, not on spacing scale)
-pub(super) const TOPBAR_GAP: f32 = Spacing::Xl.px();
+pub(super) const EDGE_PAD: f32 = EDGE_PAD_PX;
+pub(super) const TOPBAR_H: f32 = TOPBAR_H_PX;
+pub(super) const TOPBAR_GAP: f32 = TOPBAR_GAP_PX;
 /// Mirrors `crate::widget::TOOL_RAIL_WIDTH_PX`. The hero layout uses
 /// this for the rail's outer rect; the widget reuses it as a sizing
 /// hint. Keep them in lockstep.
 pub(super) const RAIL_W: f32 = crate::widget::TOOL_RAIL_WIDTH_PX;
-pub(super) const INSPECTOR_W: f32 = 304.0; // LITERAL-PX-OK: Inspector panel fixed width (chrome-specific dim)
-pub(super) const HIERARCHY_W: f32 = 308.0; // LITERAL-PX-OK: Hierarchy panel fixed width (chrome-specific dim)
-pub(super) const HUD_H: f32 = 34.0; // LITERAL-PX-OK: HUD strip height (chrome-specific dim)
-pub(super) const HUD_BOTTOM_PAD: f32 = 18.0; // LITERAL-PX-OK: HUD bottom inset (chrome-specific dim)
+pub(super) const INSPECTOR_W: f32 = INSPECTOR_W_PX;
+pub(super) const HIERARCHY_W: f32 = HIERARCHY_W_PX;
+pub(super) const HUD_H: f32 = HUD_H_PX;
+pub(super) const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
 
 /// Inspector + Hierarchy panel layout constants. Field/section
 /// metrics were removed alongside the inspector placeholder
 /// teardown — they'll be reintroduced when canonical sample
 /// widgets land in the inspector body.
-pub(crate) const PANEL_RADIUS: f32 = Radius::Xl.px();
-pub(super) const PANEL_HEAD_PAD: f32 = 18.0; // LITERAL-PX-OK: panel header inset (chrome-specific dim)
-pub(super) const HIER_ROW_H: f32 = Density::Comfortable.row_h_px();
+pub(crate) const PANEL_RADIUS: f32 = PANEL_RADIUS_PX;
+pub(super) const PANEL_HEAD_PAD: f32 = PANEL_HEAD_PAD_PX;
+pub(super) const HIER_ROW_H: f32 = HIER_ROW_H_PX;
 
 /// Pixel size (square) of every panel's bottom-right resize-gripper
 /// hit zone. Centralized so the painters + hit-zone registration use
 /// one value.
-pub(crate) const PANEL_RESIZE_HANDLE_SIZE: f32 = Spacing::Xl.px();
+pub(crate) const PANEL_RESIZE_HANDLE_SIZE: f32 = PANEL_RESIZE_HANDLE_SIZE_PX;
 
 /// Floating-panel surface — standard BASE chrome for every panel
 /// (Inspector, Hierarchy, future panels). Paints the rounded

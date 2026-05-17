@@ -36,6 +36,7 @@
 //! - Automatic codegen tokens.json → this crate (planned; see
 //!   "Pipeline" above — sync is manual for now).
 
+pub mod chrome;
 pub mod color;
 pub mod layer;
 pub mod motion;
@@ -52,6 +53,12 @@ pub(crate) mod generated {
     include!(concat!(env!("OUT_DIR"), "/tokens_generated.rs"));
 }
 
+pub use chrome::{
+    CHECKBOX_BOX_PX, DIVIDER_GAP_PX, EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX,
+    HIER_ROW_H_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, PANEL_HEAD_PAD_PX,
+    PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, PILL_PADDING_PX, TOOL_CHIP_PX, TOPBAR_GAP_PX,
+    TOPBAR_H_PX,
+};
 pub use color::{Color, ColorToken, ColorValue, oklch_to_srgb, srgb_to_oklch};
 pub use layer::Layer;
 pub use motion::{Duration, Easing};

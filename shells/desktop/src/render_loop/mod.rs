@@ -512,20 +512,16 @@ impl crate::App {
             ) {
                 self.title_dirty = true;
             }
-            // Active tool's floating panel — same paint as fixture
-            // mode below. Was missing in live mode (PH2D_HERO_LIVE=1),
-            // so the BgRemoval / Brush / Move panels never showed
-            // even when their tool was active (Enio's "Painel
-            // BGRemoval não apareceu" report, 2026-05-16). Painted
-            // AFTER `paint_hero_screen` so the panel sits on top of
-            // canvas / gizmo / grid overlays, and BEFORE toasts so
-            // notifications still cover it.
-            if !zen.is_active()
-                && let Some(active) = tools.active()
-            {
-                let panel = active.build_panel();
-                panel.paint(vector_scene, &mut paint_ctx);
-            }
+            // Legacy `FloatingPanel` Procreate-style paint was retired
+            // here (2026-05-17). The pink/magenta tab-strip + Accent
+            // toggle decoration was inconsistent with the canonical
+            // dark-glass surface used by Inspector / Hierarchy /
+            // Widget Gallery. `Tool::build_panel()` still exists for
+            // event dispatch but the visual is dropped; per-tool
+            // chrome rewires through the new panel style in a
+            // follow-up wave (BgRemoval especially needs its preview
+            // panel re-painted; Move/Brush were stubs anyway).
+            let _ = tools;
             toasts.paint(vector_scene, &mut paint_ctx);
             // Drain frame-local arena AFTER the dispatch + paint pass
             // so any events emitted earlier this frame are still alive
@@ -555,13 +551,10 @@ impl crate::App {
                 paint_ctx.theme,
             );
 
-            if !zen.is_active()
-                && let Some(active) = tools.active()
-            {
-                // Active tool's panel — built fresh each frame; cheap.
-                let panel = active.build_panel();
-                panel.paint(vector_scene, &mut paint_ctx);
-            }
+            // Legacy `FloatingPanel` paint retired (2026-05-17). Same
+            // rationale as the live-mode branch above. Tool palette
+            // chrome above remains because it's the click entrypoint
+            // to switch tools; the per-tool panel itself is gone.
             toasts.paint(vector_scene, &mut paint_ctx);
         }
 

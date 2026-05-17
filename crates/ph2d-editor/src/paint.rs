@@ -14,10 +14,16 @@
 //! Tabs / actions / button labels / toast messages all render visibly
 //! with the system sans-serif fallback chain.
 
-use crate::floating_panel::{FloatingPanel, PanelAction, PanelControl, PanelTab};
+// `FloatingPanel` paint impl retired 2026-05-17 — struct itself
+// remains in `crate::floating_panel` for tool event dispatch but no
+// longer needs a paint helper import here.
 use crate::icons::{IconId, cmd_to_path};
 use crate::toast::ToastQueue;
-use crate::widget::{paint_color_swatch, paint_radio_group, paint_slider, paint_toggle};
+// `paint_color_swatch`, `paint_radio_group`, `paint_slider`, and
+// `paint_toggle` were used inside `impl Paint for FloatingPanel`
+// (retired 2026-05-17). They still ship from `crate::widget` for
+// direct consumers (Inspector, Grid Snap panel, etc.); paint.rs just
+// no longer references them.
 use crate::zones::{Layout, Rect, Zone};
 use ph2d_text::{FontWeight, PositionedLayoutItem, TextSystem};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
@@ -527,146 +533,22 @@ impl Paint for Layout {
 }
 
 // -----------------------------------------------------------------------
-// FloatingPanel — body + tab strip + action grid (rects only, v1)
+// FloatingPanel paint retired 2026-05-17.
+//
+// The legacy `impl Paint for FloatingPanel` rendered a Procreate-style
+// drawer with an Accent-colored tab strip + Accent-tinted control row.
+// That decoration predated the dark-glass canonical surface used by
+// Inspector / Hierarchy / Widget Gallery and stuck out visually (pink
+// Transform panel hovering over a dark editor). It was the last
+// residual old-decoration site flagged in the 2026-05-17 UI audit.
+//
+// `Tool::build_panel()` and the `FloatingPanel` struct itself are
+// kept — they still encode the tool's intended controls + tab model,
+// useful as input to a future panel re-paint that uses
+// `paint_panel_surface` (the canonical dark-glass painter). Removing
+// only the `Paint` trait impl (and its `tab_color` / `action_label`
+// helpers) cuts the visual without touching the data model.
 // -----------------------------------------------------------------------
-
-impl Paint for FloatingPanel {
-    fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
-        if !self.visible {
-            return;
-        }
-        let viewport = ph2d_vector::Rect::new(
-            ctx.viewport.x as f64,
-            ctx.viewport.y as f64,
-            (ctx.viewport.x + ctx.viewport.w) as f64,
-            (ctx.viewport.y + ctx.viewport.h) as f64,
-        );
-        // FloatingPanel::rect takes our pixel Rect — repackage.
-        let panel_rect = self.rect(Rect {
-            x: viewport.x0 as f32,
-            y: viewport.y0 as f32,
-            w: (viewport.x1 - viewport.x0) as f32,
-            h: (viewport.y1 - viewport.y0) as f32,
-        });
-        // Panel body — SurfaceElevated so it visually lifts off the
-        // zones below.
-        scene.fill_rect(
-            rect_to_vello(panel_rect),
-            resolve(ColorToken::BgElev, ctx.theme),
-        );
-        if self.collapsed {
-            // Just the chip — no tabs / actions.
-            return;
-        }
-
-        // Tab strip occupies the top ~40 % of the panel height.
-        let tab_h = (panel_rect.h * 0.4).min(36.0);
-        let tab_count = self.tabs.len().max(1) as f32;
-        let tab_w = panel_rect.w / tab_count;
-        for (i, tab) in self.tabs.iter().enumerate() {
-            let r = Rect {
-                x: panel_rect.x + tab_w * i as f32,
-                y: panel_rect.y,
-                w: tab_w,
-                h: tab_h,
-            };
-            scene.fill_rect(rect_to_vello(r), tab_color(tab, ctx.theme));
-            // Tab label — invert color when active so it stays readable
-            // on AccentPrimary.
-            let label_color = if tab.active {
-                resolve(ColorToken::AccentFg, ctx.theme)
-            } else {
-                resolve(ColorToken::Text1, ctx.theme)
-            };
-            paint_text_centered(ctx.text, scene, &tab.label, r, 13.0, label_color);
-        }
-
-        // Control / action row beneath tabs. Tools using the modern
-        // `controls` field (Brush, Move) render widgets; legacy panels
-        // (selection_demo) fall back to the labeled action grid.
-        let row_y = panel_rect.y + tab_h;
-        let row_h = panel_rect.h - tab_h;
-        let label_color = resolve(ColorToken::Text2, ctx.theme);
-        if !self.controls.is_empty() {
-            let count = self.controls.len() as f32;
-            let cell_w = panel_rect.w / count;
-            // Header label band ~32% of cell h, widget below.
-            let label_h = (row_h * 0.32).min(14.0);
-            let pad = 4.0_f32;
-            for (i, ctrl) in self.controls.iter().enumerate() {
-                let cell = Rect {
-                    x: panel_rect.x + cell_w * i as f32 + pad,
-                    y: row_y + 2.0,
-                    w: cell_w - pad * 2.0,
-                    h: row_h - 4.0,
-                };
-                let label_rect = Rect {
-                    x: cell.x,
-                    y: cell.y,
-                    w: cell.w,
-                    h: label_h,
-                };
-                let widget_rect = Rect {
-                    x: cell.x,
-                    y: cell.y + label_h,
-                    w: cell.w,
-                    h: cell.h - label_h,
-                };
-                paint_text_centered(ctx.text, scene, ctrl.label(), label_rect, 10.0, label_color);
-                match ctrl {
-                    PanelControl::Slider(s) => paint_slider(s, widget_rect, scene, ctx.theme),
-                    PanelControl::Toggle(t) => paint_toggle(t, widget_rect, scene, ctx.theme),
-                    PanelControl::RadioGroup(g) => {
-                        paint_radio_group(g, widget_rect, scene, ctx.theme)
-                    }
-                    PanelControl::ColorSwatch(s) => {
-                        paint_color_swatch(s, widget_rect, scene, ctx.theme)
-                    }
-                    PanelControl::Action(a) => {
-                        scene.fill_rect(
-                            rect_to_vello(widget_rect),
-                            resolve(ColorToken::Bg1, ctx.theme),
-                        );
-                        paint_text_centered(
-                            ctx.text,
-                            scene,
-                            &a.label,
-                            widget_rect,
-                            11.0,
-                            label_color,
-                        );
-                    }
-                }
-            }
-            return;
-        }
-        // Legacy: labels-only action grid.
-        let action_count = self.actions.len().max(1) as f32;
-        let action_w = panel_rect.w / action_count;
-        for (i, action) in self.actions.iter().enumerate() {
-            let r = Rect {
-                x: panel_rect.x + action_w * i as f32 + 2.0,
-                y: row_y + 4.0,
-                w: action_w - 4.0,
-                h: row_h - 8.0,
-            };
-            scene.fill_rect(rect_to_vello(r), resolve(ColorToken::Bg1, ctx.theme));
-            paint_text_centered(ctx.text, scene, action_label(action), r, 11.0, label_color);
-        }
-    }
-}
-
-fn action_label(action: &PanelAction) -> &str {
-    &action.label
-}
-
-fn tab_color(tab: &PanelTab, theme: Theme) -> Color {
-    if tab.active {
-        resolve(ColorToken::Accent, theme)
-    } else {
-        resolve(ColorToken::Bg1, theme)
-    }
-}
 
 // Button paint helper now lives at crate::widget::paint_button — see
 // `widget/button.rs` for the rounded-rect, kind-aware implementation.
@@ -787,19 +669,10 @@ mod tests {
         scene.reset();
     }
 
-    #[test]
-    fn floating_panel_paint_collapsed_emits_only_chip() {
-        let mut panel = crate::floating_panel::selection_demo_panel();
-        panel.collapsed = true;
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
-        let mut ctx = PaintCtx {
-            theme: Theme::Forge,
-            viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
-            text: &mut text,
-        };
-        panel.paint(&mut scene, &mut ctx);
-    }
+    // `floating_panel_paint_collapsed_emits_only_chip` removed
+    // alongside the `impl Paint for FloatingPanel` retirement
+    // (2026-05-17). The struct itself stays for `Tool::build_panel`
+    // event dispatch; only the legacy decoration was dropped.
 
     #[test]
     fn fill_rounded_rect_smoke() {

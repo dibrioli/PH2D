@@ -24,7 +24,7 @@ use crate::widget::{
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// M14.E: paint the editable entity-name TextInput row at the top of
@@ -45,7 +45,7 @@ pub(in crate::screens::hero) fn paint_entity_name_row(
     w: f32,
     y: f32,
 ) -> f32 {
-    let row_h = 28.0_f32;
+    let row_h = ROW_H_PX;
     let host = Rect::new(x, y, w, row_h);
     hit_index.register(ids::INSP_ENTITY_NAME, host);
     let (state, text, caret, anchor) = match store.get(ids::INSP_ENTITY_NAME) {
@@ -70,7 +70,7 @@ pub(in crate::screens::hero) fn paint_entity_name_row(
         text_system,
         theme,
     );
-    y + row_h + 6.0
+    y + row_h + Spacing::Sm.px()
 }
 
 /// M14.D: paint the live Visibility checkbox row above the Transform
@@ -86,7 +86,7 @@ pub(in crate::screens::hero) fn paint_visibility_row(
     w: f32,
     y: f32,
 ) -> f32 {
-    let row_h = 24.0_f32;
+    let row_h = 24.0_f32; // LITERAL-PX-OK: compact checkbox row (shorter than ROW_H_PX=28; checkbox is mini-control)
     let (state, value) = match store.checkbox(ids::INSP_VISIBILITY_CHECK) {
         Some(pair) => pair,
         // Fallback: render Checked as a sensible default if the
@@ -99,7 +99,7 @@ pub(in crate::screens::hero) fn paint_visibility_row(
         .state(state)
         .value(value);
     paint_checkbox(&checkbox, host, scene, text_system, theme);
-    y + row_h + 6.0
+    y + row_h + Spacing::Sm.px()
 }
 
 /// M14.A: paint the live `Transform` editor section. Shows Position
@@ -139,8 +139,8 @@ pub(in crate::screens::hero) fn paint_transform_section(
     y: f32,
 ) -> f32 {
     let label_font = TypeToken::Sm.px();
-    let field_h = 28.0_f32;
-    let row_gap = 6.0_f32;
+    let field_h = ROW_H_PX;
+    let row_gap = Spacing::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
 
     // ── Section header: "Transform" title + Reset (Identity) button ──
@@ -151,12 +151,12 @@ pub(in crate::screens::hero) fn paint_transform_section(
         x,
         y,
         TypeToken::Md.px(),
-        w - 90.0,
+        w - 90.0, // LITERAL-PX-OK: width budget for title, reserves 90px (≈reset_w 80 + padding) for the Reset button
         resolve(ColorToken::Text1, theme),
     );
-    let reset_w = 80.0_f32;
-    let reset_h = 24.0_f32;
-    let reset_rect = Rect::new(x + w - reset_w, y - 2.0, reset_w, reset_h);
+    let reset_w = 80.0_f32; // LITERAL-PX-OK: Reset button explicit width (chrome dim)
+    let reset_h = 24.0_f32; // LITERAL-PX-OK: Reset button explicit height (compact, shorter than ROW_H_PX)
+    let reset_rect = Rect::new(x + w - reset_w, y - Spacing::Xxs.px(), reset_w, reset_h);
     let reset_state = store
         .button_state(ids::INSP_TRANSFORM_RESET)
         .unwrap_or(ButtonState::Normal);
@@ -165,7 +165,7 @@ pub(in crate::screens::hero) fn paint_transform_section(
         .kind(ButtonKind::Default)
         .state(reset_state);
     paint_button(&reset_btn, reset_rect, scene, text_system, theme);
-    let mut cur_y = y + TypeToken::Md.px() + 10.0;
+    let mut cur_y = y + TypeToken::Md.px() + 10.0; // LITERAL-PX-OK: title baseline + breathing gap (composite of font + spacing)
     cur_y = paint_section_separator(scene, theme, x, w, cur_y);
 
     // ── 5-column grid geometry ──────────────────────────────────────
@@ -178,14 +178,14 @@ pub(in crate::screens::hero) fn paint_transform_section(
     // is the standard `col_gap` so columns breathe, but the gap
     // BETWEEN the tag and its own box (col 2→3, col 4→5) is tighter
     // (`tag_box_gap`) so the eye reads tag+box as a single unit.
-    let col_gap = 8.0_f32;
-    let tag_box_gap = 2.0_f32;
-    let label_col_w = 78.0_f32;
-    let axis_col_w = 12.0_f32;
+    let col_gap = Spacing::Md.px();
+    let tag_box_gap = Spacing::Xxs.px();
+    let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width sized for "Rotation (°)" widest case
+    let axis_col_w = Spacing::Lg.px();
     // Width consumed by the non-box columns: label + 2×(col_gap before
     // tag) + 2×(tag) + 2×(tag→box gap). The boxes share what's left.
     let non_box_w = label_col_w + col_gap * 2.0 + (axis_col_w + tag_box_gap) * 2.0;
-    let box_col_w = ((w - non_box_w) * 0.5).max(40.0);
+    let box_col_w = ((w - non_box_w) * 0.5).max(40.0); // LITERAL-PX-OK: minimum field box width (chrome-specific min)
     let axis_label_font = TypeToken::Base.px();
 
     // ── Helper: paint one row of the grid ──────────────────────────
@@ -287,7 +287,7 @@ pub(in crate::screens::hero) fn paint_transform_section(
     // arrow-key step to feel similar across units (1 px ≈ 1 px).
     let unit = current_display_unit();
     let (pos_label, pos_step) = match unit {
-        crate::project::DisplayUnit::Meters => ("Position (m)", 0.01_f64),
+        crate::project::DisplayUnit::Meters => ("Position (m)", 0.01_f64), // LITERAL-PX-OK: NumberInput step (slider precision, not a dimension)
         crate::project::DisplayUnit::Pixels => ("Position (px)", 1.0_f64),
     };
     paint_row(
@@ -330,10 +330,10 @@ pub(in crate::screens::hero) fn paint_transform_section(
         ids::INSP_TRANSFORM_SCALE_X,
         "X",
         ColorToken::Danger,
-        0.1,
-        Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)),
+        0.1, // LITERAL-PX-OK: scale NumberInput step (slider precision)
+        Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
     );
-    cur_y += field_h + 4.0;
+    cur_y += field_h + Spacing::Xs.px();
 
     cur_y
 }
@@ -362,7 +362,7 @@ pub(in crate::screens::hero) fn paint_render_source_section(
 ) -> f32 {
     let line_font = TypeToken::Sm.px();
     let label_font = TypeToken::Xs.px();
-    let row_gap = 4.0_f32;
+    let row_gap = Spacing::Xs.px();
     let row_h = line_font + row_gap;
     // Section title.
     paint_text_title(
@@ -375,7 +375,7 @@ pub(in crate::screens::hero) fn paint_render_source_section(
         w,
         resolve(ColorToken::Text1, theme),
     );
-    let mut cur_y = y + TypeToken::Md.px() + 8.0;
+    let mut cur_y = y + TypeToken::Md.px() + Spacing::Md.px();
     // Separator under the title.
     cur_y = paint_section_separator(scene, theme, x, w, cur_y);
 
@@ -431,10 +431,10 @@ pub(in crate::screens::hero) fn paint_render_source_section(
         w,
         resolve(ColorToken::Text3, theme),
     );
-    cur_y += label_font + 4.0;
-    let strategy_btn_h = 28.0_f32;
-    let strategy_gap = 6.0_f32;
-    let strategy_btn_w = ((w - strategy_gap * 2.0) / 3.0).max(40.0);
+    cur_y += label_font + Spacing::Xs.px();
+    let strategy_btn_h = ROW_H_PX;
+    let strategy_gap = Spacing::Sm.px();
+    let strategy_btn_w = ((w - strategy_gap * 2.0) / 3.0).max(40.0); // LITERAL-PX-OK: 3-segment strategy button minimum width (chrome dim) — divisor 3 is a count
     let strategy_buttons = [
         (
             ids::INSP_RENDER_STRATEGY_ATLAS,
@@ -468,7 +468,7 @@ pub(in crate::screens::hero) fn paint_render_source_section(
             .state(state);
         paint_button(&btn, r, scene, text_system, theme);
     }
-    cur_y += strategy_btn_h + 8.0;
+    cur_y += strategy_btn_h + Spacing::Md.px();
     // Storage detail (atlas key / texture id) — kept as a small
     // line under the switcher so the user can still see the
     // identifier without it cluttering the buttons.
@@ -500,9 +500,9 @@ pub(in crate::screens::hero) fn paint_render_source_section(
         w,
         resolve(ColorToken::Text3, theme),
     );
-    cur_y += label_font + 4.0;
-    let btn_h = 28.0_f32;
-    let gap = 6.0_f32;
+    cur_y += label_font + Spacing::Xs.px();
+    let btn_h = ROW_H_PX;
+    let gap = Spacing::Sm.px();
     let half_w = (w - gap) * 0.5;
     let rgba8_rect = Rect::new(x, cur_y, half_w, btn_h);
     let rgba16_rect = Rect::new(x + half_w + gap, cur_y, half_w, btn_h);
@@ -523,11 +523,11 @@ pub(in crate::screens::hero) fn paint_render_source_section(
         .state(rgba16_state);
     paint_button(&rgba8_btn, rgba8_rect, scene, text_system, theme);
     paint_button(&rgba16_btn, rgba16_rect, scene, text_system, theme);
-    cur_y += btn_h + 8.0;
+    cur_y += btn_h + Spacing::Md.px();
 
     // Reimport button — disabled when the snapshot says the source
     // doesn't resolve to a re-decodable asset (procedural / lost).
-    let reimport_h = 30.0_f32;
+    let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height (compact, distinct from ROW_H_PX)
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);
     let id = ids::INSP_RENDER_SOURCE_REIMPORT;
     let state = if !info.can_reimport {
@@ -540,5 +540,5 @@ pub(in crate::screens::hero) fn paint_render_source_section(
         .kind(ButtonKind::Default)
         .state(state);
     paint_button(&btn, btn_rect, scene, text_system, theme);
-    cur_y + reimport_h + 4.0
+    cur_y + reimport_h + Spacing::Xs.px()
 }

@@ -6,40 +6,40 @@
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, Density, Radius, SECTION_GAP_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Default mockup viewport (iPad 12.9 landscape). Public so callers
 /// like `shells/desktop` and tests can size their windows to match.
-pub const HERO_VIEWPORT_W: f32 = 1366.0;
-pub const HERO_VIEWPORT_H: f32 = 1024.0;
+pub const HERO_VIEWPORT_W: f32 = 1366.0; // LITERAL-PX-OK: iPad 12.9 landscape viewport (fixture, not design scale)
+pub const HERO_VIEWPORT_H: f32 = 1024.0; // LITERAL-PX-OK: iPad 12.9 landscape viewport (fixture)
 
 /// Padding from the screen edge to chrome (TopBar inset, Hierarchy
 /// pinned-right inset, etc).
-pub(super) const EDGE_PAD: f32 = 14.0;
-pub(super) const TOPBAR_H: f32 = 40.0;
-pub(super) const TOPBAR_GAP: f32 = 16.0;
+pub(super) const EDGE_PAD: f32 = SECTION_GAP_PX;
+pub(super) const TOPBAR_H: f32 = 40.0; // LITERAL-PX-OK: TopBar chrome height (specific dim, not on spacing scale)
+pub(super) const TOPBAR_GAP: f32 = Spacing::Xl.px();
 /// Mirrors `crate::widget::TOOL_RAIL_WIDTH_PX`. The hero layout uses
 /// this for the rail's outer rect; the widget reuses it as a sizing
 /// hint. Keep them in lockstep.
 pub(super) const RAIL_W: f32 = crate::widget::TOOL_RAIL_WIDTH_PX;
-pub(super) const INSPECTOR_W: f32 = 304.0;
-pub(super) const HIERARCHY_W: f32 = 308.0;
-pub(super) const HUD_H: f32 = 34.0;
-pub(super) const HUD_BOTTOM_PAD: f32 = 18.0;
+pub(super) const INSPECTOR_W: f32 = 304.0; // LITERAL-PX-OK: Inspector panel fixed width (chrome-specific dim)
+pub(super) const HIERARCHY_W: f32 = 308.0; // LITERAL-PX-OK: Hierarchy panel fixed width (chrome-specific dim)
+pub(super) const HUD_H: f32 = 34.0; // LITERAL-PX-OK: HUD strip height (chrome-specific dim)
+pub(super) const HUD_BOTTOM_PAD: f32 = 18.0; // LITERAL-PX-OK: HUD bottom inset (chrome-specific dim)
 
 /// Inspector + Hierarchy panel layout constants. Field/section
 /// metrics were removed alongside the inspector placeholder
 /// teardown — they'll be reintroduced when canonical sample
 /// widgets land in the inspector body.
-pub(crate) const PANEL_RADIUS: f32 = 16.0;
-pub(super) const PANEL_HEAD_PAD: f32 = 18.0;
-pub(super) const HIER_ROW_H: f32 = 32.0;
+pub(crate) const PANEL_RADIUS: f32 = Radius::Xl.px();
+pub(super) const PANEL_HEAD_PAD: f32 = 18.0; // LITERAL-PX-OK: panel header inset (chrome-specific dim)
+pub(super) const HIER_ROW_H: f32 = Density::Comfortable.row_h_px();
 
 /// Pixel size (square) of every panel's bottom-right resize-gripper
 /// hit zone. Centralized so the painters + hit-zone registration use
 /// one value.
-pub(crate) const PANEL_RESIZE_HANDLE_SIZE: f32 = 16.0;
+pub(crate) const PANEL_RESIZE_HANDLE_SIZE: f32 = Spacing::Xl.px();
 
 /// Floating-panel surface — standard BASE chrome for every panel
 /// (Inspector, Hierarchy, future panels). Paints the rounded
@@ -57,8 +57,18 @@ pub(crate) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Th
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::PanelBg, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
     // Drag pill at the top center.
-    let handle = Rect::new(rect.x + (rect.w - 36.0) * 0.5, rect.y + 6.0, 36.0, 4.0);
-    fill_rounded_rect(scene, handle, 999.0, resolve(ColorToken::BorderEmph, theme));
+    let handle = Rect::new(
+        rect.x + (rect.w - 36.0) * 0.5, // LITERAL-PX-OK: drag pill width 36 (chrome-specific dim)
+        rect.y + Spacing::Sm.px(),
+        36.0, // LITERAL-PX-OK: drag pill width 36 (chrome-specific dim)
+        4.0,  // LITERAL-PX-OK: drag pill height 4 (chrome-specific dim)
+    );
+    fill_rounded_rect(
+        scene,
+        handle,
+        Radius::Full.px(),
+        resolve(ColorToken::BorderEmph, theme),
+    );
 }
 
 /// Bottom-right resize-gripper corner accent. Painted at the END of
@@ -66,8 +76,8 @@ pub(crate) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Th
 /// body widget whose rect drifted into the corner. Soft `Text2`
 /// reads as a corner accent rather than a foreign visual element.
 pub(crate) fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    let dot_d = 4.0_f32;
-    let inset = 7.0_f32;
+    let dot_d = Spacing::Xs.px();
+    let inset = 7.0_f32; // LITERAL-PX-OK: corner-dot inset (specific accent geometry)
     let dot = Rect::new(
         rect.x + rect.w - inset - dot_d,
         rect.y + rect.h - inset - dot_d,
@@ -92,7 +102,12 @@ pub(crate) fn panel_resize_handle_rect(panel: Rect) -> Rect {
 /// Rect of the top-center drag-pill hit zone for a panel whose outer
 /// rect is `panel`. 80×14 — wide enough to grab on touch + mouse.
 pub(crate) fn panel_drag_handle_rect(panel: Rect) -> Rect {
-    Rect::new(panel.x + (panel.w - 80.0) * 0.5, panel.y + 2.0, 80.0, 14.0)
+    Rect::new(
+        panel.x + (panel.w - 80.0) * 0.5, // LITERAL-PX-OK: drag hit-zone width 80 (chrome-specific)
+        panel.y + Spacing::Xxs.px(),
+        80.0, // LITERAL-PX-OK: drag hit-zone width 80
+        SECTION_GAP_PX,
+    )
 }
 
 /// Pick a chrome icon's foreground tint based on its interactive

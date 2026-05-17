@@ -1,8 +1,13 @@
 #![forbid(unsafe_code)]
-// ph2d-loc-cap: 2416 LOC, pending Wave 2.5 PR 11.8 (Action Bus + drain
-// residuals decomposes the per-frame pending_X handlers into the
-// editor dispatcher). HR-18 cap (600) does not gate this file until
-// then.
+// ph2d-loc-cap: 2602 LOC post-Wave-2.5. The Action Bus migration
+// retired all 20 `pending_X` fields (PR 11.8b/c/d) and collapsed
+// the 18 filter-and-replace drains into a single consolidated
+// `for action in hero.bus.drain()` match at the top of the editor
+// dispatch section. Saved ~300 LOC; the file still carries
+// non-editor concerns (winit event loop, GPU bootstrap, Asset/
+// ScriptHost wiring, file picker, integration demo) so the 600
+// cap can't be reached without splitting those into sibling
+// modules. Deferred to a follow-up refactor PR (Wave 3).
 
 //! Desktop shell — winit 0.30 + wgpu + ECS + sprite render + M6+M7+M12.
 //!
@@ -1449,41 +1454,130 @@ impl App {
                     name,
                 })
             });
-            // Drain the `EditorAction::ActivateBgRemoval` intent
-            // raised by clicking the Bg Removal pill on the Image
-            // Tools row. The hero can't reach `gfx.tools` so the
-            // activation has to round-trip through the bus. Same
-            // force-refresh of the snapshot push state as the
-            // Digit3 shortcut below so the next snapshot push
-            // fires against the current selection.
+            // ─────────────────────────────────────────────────────────
+            // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
+            // ─────────────────────────────────────────────────────────
             //
-            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
-            // `hero.pending_activate_bgremoval` flag). The leftover
-            // queue is pushed back so future variants survive this
-            // drain. Multiple Activate pushes in one frame collapse
-            // to one set_active — `found` short-circuits after the
-            // first hit, subsequent Activate variants drop on the
-            // floor (idempotent activation, same as the old `=
-            // false` clear).
-            let activate_bgremoval = {
-                let mut found = false;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter(|a| {
-                        if matches!(a, ph2d_editor::action_bus::EditorAction::ActivateBgRemoval) {
-                            found = true;
-                            false
-                        } else {
-                            true
-                        }
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
+            // Previously, each of the 18 EditorAction variants had its
+            // own filter-and-replace block (one per drain site, ~20 LOC
+            // of "drain, capture this variant, push others back" each).
+            // Now we drain the bus ONCE at the top of this section,
+            // categorize every variant into per-kind locals, and the
+            // dispatch sites further down just read `if let Some(x) = X`.
+            //
+            // First-wins for most variants (matches the old
+            // `found.is_none()` short-circuit). Latest-wins for
+            // `InspectorNameEdit` (preserves the pre-bus Option
+            // coalescing that drained at most one SetComponent per
+            // frame). `Bgremoval` is NOT categorized here — it keeps
+            // a separate filter-and-replace at its original site so
+            // its `bgremoval_active` gate runs AFTER any same-frame
+            // `ActivateBgRemoval` fires (1-frame defer edge case).
+            //
+            // The `undo_image_edit` / `activate_bgremoval` flag-style
+            // variants collapse to a `bool` (idempotent — multiple
+            // pushes in one frame = one dispatch).
+            let mut activate_bgremoval = false;
+            let mut visibility_toggle_row: Option<NodeId> = None;
+            let mut reparent_intent: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
+            let mut duplicate_row: Option<NodeId> = None;
+            let mut add_child_row: Option<NodeId> = None;
+            let mut reset_transform_row: Option<NodeId> = None;
+            let mut delete_row: Option<NodeId> = None;
+            let mut hierarchy_row_click: Option<NodeId> = None;
+            let mut rename_seed_row: Option<NodeId> = None;
+            let mut rename_commit: Option<(NodeId, String)> = None;
+            let mut view_focus_kind: Option<ph2d_editor::ViewFocusKind> = None;
+            let mut reimport_entity: Option<u64> = None;
+            let mut trim_entity: Option<u64> = None;
+            let mut make_square_entity: Option<u64> = None;
+            let mut undo_image_edit = false;
+            let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
+            let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
+            let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
+            let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
+            let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
+            for action in hero.bus.drain() {
+                use ph2d_editor::action_bus::EditorAction;
+                match action {
+                    EditorAction::ActivateBgRemoval => activate_bgremoval = true,
+                    EditorAction::UndoImageEdit => undo_image_edit = true,
+                    EditorAction::HierToggleVisibility { row } => {
+                        visibility_toggle_row.get_or_insert(row);
+                    }
+                    EditorAction::HierReparent(intent) => {
+                        reparent_intent.get_or_insert(intent);
+                    }
+                    EditorAction::HierDuplicate { row } => {
+                        duplicate_row.get_or_insert(row);
+                    }
+                    EditorAction::HierAddChild { row } => {
+                        add_child_row.get_or_insert(row);
+                    }
+                    EditorAction::HierResetTransform { row } => {
+                        reset_transform_row.get_or_insert(row);
+                    }
+                    EditorAction::HierDelete { row } => {
+                        delete_row.get_or_insert(row);
+                    }
+                    EditorAction::HierRowClick { row } => {
+                        hierarchy_row_click.get_or_insert(row);
+                    }
+                    EditorAction::HierRenameSeed { row } => {
+                        rename_seed_row.get_or_insert(row);
+                    }
+                    EditorAction::HierRenameCommit { row, new_name } if rename_commit.is_none() => {
+                        rename_commit = Some((row, new_name));
+                    }
+                    EditorAction::SetViewFocus { kind } => {
+                        view_focus_kind.get_or_insert(kind);
+                    }
+                    EditorAction::Reimport { entity_bits } => {
+                        reimport_entity.get_or_insert(entity_bits);
+                    }
+                    EditorAction::Trim { entity_bits } => {
+                        trim_entity.get_or_insert(entity_bits);
+                    }
+                    EditorAction::MakeSquare { entity_bits } => {
+                        make_square_entity.get_or_insert(entity_bits);
+                    }
+                    EditorAction::InspectorTransformEdit(info) => {
+                        transform_edit.get_or_insert(info);
+                    }
+                    EditorAction::InspectorVisibilityEdit(info) => {
+                        visibility_edit.get_or_insert(info);
+                    }
+                    EditorAction::InspectorSpriteSourceChange {
+                        entity_bits,
+                        strategy,
+                    } => {
+                        sprite_source_change.get_or_insert((entity_bits, strategy));
+                    }
+                    EditorAction::InspectorNameEdit(info) => {
+                        // Latest-wins (Option-coalesce parity).
+                        name_edit = Some(info);
+                    }
+                    // Bgremoval falls through to its own filter-and-
+                    // replace at the image-edit drain site so the
+                    // `bgremoval_active` gate runs AFTER any same-frame
+                    // ActivateBgRemoval fires.
+                    other @ EditorAction::Bgremoval { .. } => bgremoval_leftover.push(other),
+                    // EditorAction is `#[non_exhaustive]`. A future
+                    // variant landing in `ph2d-editor` shouldn't break
+                    // the shell — drop it silently here until a
+                    // dispatch site is wired up.
+                    _ => {}
                 }
-                found
-            };
+            }
+            for a in bgremoval_leftover {
+                hero.bus.push(a);
+            }
+            // Drain the `EditorAction::ActivateBgRemoval` intent raised
+            // by clicking the Bg Removal pill. The hero can't reach
+            // `gfx.tools` so the activation round-trips via the bus.
+            // Same force-refresh of the snapshot push state as the
+            // Digit3 shortcut below so the next snapshot push fires
+            // against the current selection.
             if activate_bgremoval && tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
                 self.last_bgremoval_pushed_entity = None;
                 self.title_dirty = true;
@@ -1553,29 +1647,7 @@ impl App {
             //   - `Selected`: pan to gizmo_selection or (0,0).
             //   - `Camera`: pan to (0,0) until camera-object exists.
             //   - `All`: pan + zoom to fit all sprites.
-            //
-            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
-            // `hero.pending_view_focus.take()`).
-            let view_focus_kind = {
-                let mut found: Option<ph2d_editor::ViewFocusKind> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::SetViewFocus { kind }
-                            if found.is_none() =>
-                        {
-                            found = Some(kind);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `view_focus_kind` pre-populated by the consolidated drain.
             if let Some(kind) = view_focus_kind
                 && hero_intents::drain_view_focus(
                     kind,
@@ -1590,29 +1662,8 @@ impl App {
             }
             // M14.6A: drain pending hierarchy visibility toggle —
             // resolve row NodeId → ECS Entity via the bridge, flip
-            // the `Visibility` component on SimWorld. Wave 2.5 PR
-            // 11.8c: filter-and-replace pattern (was
-            // `hero.pending_visibility_toggle.take()`).
-            let visibility_toggle_row = {
-                let mut found: Option<NodeId> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierToggleVisibility { row }
-                            if found.is_none() =>
-                        {
-                            found = Some(row);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // the `Visibility` component on SimWorld.
+            // `visibility_toggle_row` pre-populated by the consolidated drain.
             if let Some(row_id) = visibility_toggle_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row_id)
@@ -1638,29 +1689,7 @@ impl App {
             // `Children` preserves insertion order, so we rebuild the
             // ordering by re-inserting every relevant child's
             // ChildOf in the desired sequence.
-            //
-            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
-            // `hero.pending_reparent.take()`).
-            let reparent_intent = {
-                let mut found: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierReparent(intent)
-                            if found.is_none() =>
-                        {
-                            found = Some(intent);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `reparent_intent` pre-populated by the consolidated drain.
             if let Some(intent) = reparent_intent
                 && let Some(live) = hero_live.as_ref()
             {
@@ -1674,29 +1703,8 @@ impl App {
             // queues "duplicate then delete" leaves the duplicate in
             // place and removes the original. The next snapshot rebuild
             // picks up the result automatically.
-            //
-            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
-            // `hero.pending_{duplicate,add_child,reset_transform,delete}.take()`).
-            let duplicate_row = {
-                let mut found: Option<NodeId> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierDuplicate { row }
-                            if found.is_none() =>
-                        {
-                            found = Some(row);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `duplicate_row` / `add_child_row` / `reset_transform_row`
+            // / `delete_row` pre-populated by the consolidated drain.
             if let Some(row) = duplicate_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -1724,26 +1732,6 @@ impl App {
                 toasts.push(Toast::success("Duplicated entity"));
                 self.title_dirty = true;
             }
-            let add_child_row = {
-                let mut found: Option<NodeId> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierAddChild { row }
-                            if found.is_none() =>
-                        {
-                            found = Some(row);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
             if let Some(row) = add_child_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(parent_bits) = live.bridge.entity_for(row)
@@ -1757,26 +1745,6 @@ impl App {
                 toasts.push(Toast::success("Added child entity"));
                 self.title_dirty = true;
             }
-            let reset_transform_row = {
-                let mut found: Option<NodeId> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierResetTransform { row }
-                            if found.is_none() =>
-                        {
-                            found = Some(row);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
             if let Some(row) = reset_transform_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -1788,26 +1756,6 @@ impl App {
                     self.title_dirty = true;
                 }
             }
-            let delete_row = {
-                let mut found: Option<NodeId> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierDelete { row }
-                            if found.is_none() =>
-                        {
-                            found = Some(row);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
             if let Some(row) = delete_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -1832,29 +1780,7 @@ impl App {
             // picked in the hierarchy panel. Inverse of the M14.7 A
             // canvas-pick path (canvas → label sync runs further down
             // when we publish gizmo_view).
-            //
-            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
-            // `hero.pending_hierarchy_row_click.take()`).
-            let hierarchy_row_click = {
-                let mut found: Option<NodeId> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierRowClick { row }
-                            if found.is_none() =>
-                        {
-                            found = Some(row);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `hierarchy_row_click` pre-populated by the consolidated drain.
             if let Some(row) = hierarchy_row_click
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -1867,29 +1793,7 @@ impl App {
             // and drained here exactly once — so subsequent Backspace
             // edits that empty the buffer don't get clobbered back
             // to the original name on the next frame.
-            //
-            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
-            // `hero.pending_rename_seed.take()`).
-            let rename_seed_row = {
-                let mut found: Option<NodeId> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierRenameSeed { row }
-                            if found.is_none() =>
-                        {
-                            found = Some(row);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `rename_seed_row` pre-populated by the consolidated drain.
             if let Some(row) = rename_seed_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -1918,32 +1822,8 @@ impl App {
             // Drain a finalized rename commit (Enter pressed in
             // rename input). Write the new Name component on the
             // entity; toast confirms.
-            //
-            // Wave 2.5 PR 11.8c: filter-and-replace pattern (was
-            // `hero.pending_rename_commit.take()`). `HierRenameCommit`
-            // carries an owned String, so `into_iter` semantics through
-            // `drain()` move the name out without clone.
-            let rename_commit = {
-                let mut found: Option<(NodeId, String)> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::HierRenameCommit {
-                            row,
-                            new_name,
-                        } if found.is_none() => {
-                            found = Some((row, new_name));
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `rename_commit` pre-populated by the consolidated drain
+            // (owned String moved out of the EditorAction at the match).
             if let Some((row, new_name)) = rename_commit
                 && let Some(live) = hero_live.as_ref()
                 && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -1975,30 +1855,7 @@ impl App {
             // current `project.pixels_per_meter` and write the new
             // world size back to the Sprite component. The texture
             // itself is unchanged; only `Sprite.size` is recomputed.
-            //
-            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
-            // `hero.pending_reimport.take()`). Same leftover-push-
-            // back contract as the other drains in this block.
-            let reimport_entity = {
-                let mut found: Option<u64> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::Reimport { entity_bits }
-                            if found.is_none() =>
-                        {
-                            found = Some(entity_bits);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `reimport_entity` pre-populated by the consolidated drain.
             if let Some(entity_bits) = reimport_entity {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
@@ -2038,28 +1895,7 @@ impl App {
             // arrive in M14.B+ they share this same code path —
             // governance, audit, conflict resolution all live one
             // level up from the producer.
-            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
-            // `hero.pending_transform_edit.take()`).
-            let transform_edit = {
-                let mut found: Option<ph2d_editor::InspectorTransformInfo> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::InspectorTransformEdit(info)
-                            if found.is_none() =>
-                        {
-                            found = Some(info);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `transform_edit` pre-populated by the consolidated drain.
             if let Some(info) = transform_edit {
                 let t = Transform {
                     translation: Vec2::new(info.translation[0], info.translation[1]),
@@ -2095,28 +1931,7 @@ impl App {
             // removing the component when `visible == true`) so the
             // round-trip is unambiguous and the audit log captures
             // both directions of the toggle.
-            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
-            // `hero.pending_visibility_edit.take()`).
-            let visibility_edit = {
-                let mut found: Option<ph2d_editor::InspectorVisibilityInfo> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::InspectorVisibilityEdit(info)
-                            if found.is_none() =>
-                        {
-                            found = Some(info);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `visibility_edit` pre-populated by the consolidated drain.
             if let Some(info) = visibility_edit {
                 let v = Visibility {
                     hidden: !info.visible,
@@ -2146,32 +1961,9 @@ impl App {
             }
             // M14.E: drain Inspector Name commit → push a
             // `Name(string)` postcard via `EditorCommand::SetComponent`
-            // and apply. Coalesced via the Option: even if the user
-            // types fast, we drain once per frame with the latest text.
-            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
-            // `hero.pending_name_edit.take()`). Note the Vec push
-            // semantics mean multiple TextChanged in one frame all
-            // queue — here we take only the LAST (most recent) edit
-            // so the shell mirrors the old Option-coalesced behavior
-            // (single SetComponent per frame, latest text wins).
-            let name_edit = {
-                let mut latest: Option<ph2d_editor::InspectorNameInfo> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::InspectorNameEdit(info) => {
-                            latest = Some(info);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                latest
-            };
+            // and apply. The consolidated drain captures latest-wins
+            // (mirrors the pre-bus Option coalesce: even if the user
+            // types fast, we apply once per frame with the latest text).
             if let Some(info) = name_edit {
                 let n = ph2d_ecs::Name(info.name.clone());
                 match postcard::to_allocvec(&n) {
@@ -2206,29 +1998,7 @@ impl App {
             // Individual → Atlas and any HandPacked transition
             // surface a toast — atlas re-insert + hand-packed asset
             // picker land in M14.C+.
-            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
-            // `hero.pending_sprite_source_change.take()`).
-            let sprite_source_change = {
-                let mut found: Option<(u64, RequestedSpriteStrategy)> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::InspectorSpriteSourceChange {
-                            entity_bits,
-                            strategy,
-                        } if found.is_none() => {
-                            found = Some((entity_bits, strategy));
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `sprite_source_change` pre-populated by the consolidated drain.
             if let Some((entity_bits, requested)) = sprite_source_change {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let current_sprite = sim.world().get::<Sprite>(entity).copied();
@@ -2399,33 +2169,8 @@ impl App {
             // lived off-center inside the original frame. The shift
             // happens in pure-CPU pixel math (Y-flip handled inside
             // `recenter_after_crop`); HR-5-deterministic.
-            // Wave 2.5 PR 11.8b1: trim_transparency intent now lives
-            // on `hero.bus` (EditorAction::Trim) instead of the
-            // legacy `pending_trim_transparency: Option<u64>` field.
-            // We collect the matching variant out of the bus into a
-            // local so the subsequent `drain_trim_transparency` call
-            // — which borrows `hero.project.pixels_per_meter` — sees a
-            // clean borrow window.
-            let trim_entity = {
-                let mut found: Option<u64> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::Trim { entity_bits }
-                            if found.is_none() =>
-                        {
-                            found = Some(entity_bits);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `trim_entity` pre-populated by the consolidated drain
+            // (EditorAction::Trim from `pending_trim_transparency`).
             if let Some(entity_bits) = trim_entity
                 && hero_intents::drain_trim_transparency(
                     entity_bits,
@@ -2453,30 +2198,7 @@ impl App {
             // accumulating 0.5 px drift across Trim↔Square cycles);
             // C1 (release OLD individual texture id after a successful
             // re-acquire — was leaking GPU memory on repeated edits).
-            // Wave 2.5 PR 11.8b2: make_square intent now lives on the
-            // bus (EditorAction::MakeSquare). Same filter-and-replace
-            // pattern as Trim above; the leftover queue is pushed back
-            // so future variants survive this drain.
-            let make_square_entity = {
-                let mut found: Option<u64> = None;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter_map(|a| match a {
-                        ph2d_editor::action_bus::EditorAction::MakeSquare { entity_bits }
-                            if found.is_none() =>
-                        {
-                            found = Some(entity_bits);
-                            None
-                        }
-                        other => Some(other),
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `make_square_entity` pre-populated by the consolidated drain.
             if let Some(entity_bits) = make_square_entity
                 && hero_intents::drain_make_square(
                     entity_bits,
@@ -2509,10 +2231,13 @@ impl App {
             // `bgremoval_active`, so the variant is pushed back as
             // a leftover otherwise).
             //
-            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
-            // `hero.pending_bgremoval.take()`). The conditional gate
-            // is hoisted into the filter so the variant survives an
-            // inactive frame.
+            // The consolidated drain at the top of this section
+            // intentionally pushed every `Bgremoval` variant BACK
+            // onto the bus (`bgremoval_leftover`). We pick it up
+            // here, where the `bgremoval_active` gate runs AFTER
+            // any same-frame `ActivateBgRemoval` has already fired
+            // — preserving the 1-frame-no-defer contract from the
+            // pre-Wave-2.5 `pending_bgremoval` field.
             let bgremoval_id = ph2d_editor::ToolId::new("bgremoval");
             let bgremoval_active = tools
                 .active()
@@ -2567,30 +2292,9 @@ impl App {
             // so undo restores at most the MOST RECENT Trim / Make
             // Square / Bg Removal.
             //
-            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
-            // `hero.pending_undo_image_edit` flag). Multiple Undo
-            // pushes in one frame collapse to one drain — `found`
-            // short-circuits after the first hit, mirroring the
-            // old flag's edge-triggered semantics.
-            let undo_image_edit = {
-                let mut found = false;
-                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
-                    .bus
-                    .drain()
-                    .filter(|a| {
-                        if matches!(a, ph2d_editor::action_bus::EditorAction::UndoImageEdit) {
-                            found = true;
-                            false
-                        } else {
-                            true
-                        }
-                    })
-                    .collect();
-                for a in leftovers {
-                    hero.bus.push(a);
-                }
-                found
-            };
+            // `undo_image_edit` pre-populated by the consolidated drain
+            // (bool — multiple Undo pushes in one frame = one dispatch,
+            // mirroring the old flag's edge-triggered semantics).
             if undo_image_edit
                 && hero_intents::drain_undo_image_edit(image_edit_undo, sim, renderer, toasts)
             {

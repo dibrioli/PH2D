@@ -1,7 +1,11 @@
-// ph2d-loc-cap: 691 LOC, pending Wave 2.5 PR 11.8b — once the Action
-// Bus lands in PR 11.8, the per-intent drains here move into the
-// dispatcher and this file collapses to a thin re-export shim or
-// disappears entirely. HR-18 cap (600) does not gate it until then.
+// ph2d-loc-cap: 697 LOC post-Wave-2.5. The Action Bus migration in
+// `main.rs` (PR 11.8) consolidated the per-frame drain dispatch,
+// but each individual drain helper here (`drain_trim_transparency`,
+// `drain_bgremoval`, `drain_reparent`, `drain_undo_image_edit`,
+// `drain_view_focus`, plus the import-image-at-camera helper)
+// still carries its full ECS/renderer body — the bus only changed
+// HOW intents are dispatched, not what each drain DOES. Splitting
+// this file into per-intent modules is a follow-up refactor (Wave 3).
 
 //! Inspector / hierarchy / image-action intent drains.
 //!

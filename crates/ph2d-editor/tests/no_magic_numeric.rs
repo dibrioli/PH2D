@@ -292,9 +292,19 @@ fn no_magic_numeric_in_widget_or_screens() {
                 continue;
             }
             let text = match fs::read_to_string(&path) {
-                Ok(t) => t,
+                Ok(raw) => raw.replace("\r\n", "\n"),
                 Err(_) => continue,
             };
+            // Normalize CRLF → LF up front so the per-line walker's
+            // `line_offset += line.len() + 1` math (which assumes a
+            // single-byte LF) stays in sync with byte ranges returned
+            // by `cfg_test_byte_ranges`. Without this, Windows CI
+            // (Git autocrlf) leaks ~1 byte of offset drift per line,
+            // and after hundreds of lines the `abs` lookups for hits
+            // inside `#[cfg(test)] mod tests {}` blocks land outside
+            // the recorded ranges — every cfg(test) literal then
+            // surfaces as a lint failure (which is exactly the bug
+            // Wave 4.1's first CI run hit).
             let test_ranges = cfg_test_byte_ranges(&text);
             let mut line_offset = 0usize;
             for (line_no, line) in text.lines().enumerate() {

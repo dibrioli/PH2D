@@ -304,7 +304,15 @@ fn no_hex_color_literals_in_widget_or_screens() {
                 continue;
             }
             let text = match fs::read_to_string(&path) {
-                Ok(t) => t,
+                // Normalize CRLF → LF up front so the per-line walker
+                // stays in sync with `cfg_test_byte_ranges` on Windows
+                // CI (Git autocrlf converts the checked-out files).
+                // Without this, the `line_offset += line.len() + 1`
+                // step drifts one byte per line in CRLF files and
+                // hex literals inside `#[cfg(test)]` blocks surface
+                // as false positives (Wave 4.1 hit the same drift in
+                // `no_magic_numeric.rs`, fixed in lockstep).
+                Ok(raw) => raw.replace("\r\n", "\n"),
                 Err(_) => continue,
             };
             let test_ranges = cfg_test_byte_ranges(&text);

@@ -36,7 +36,8 @@ pub(in crate::screens::hero) use showcase::paint_showcase_body;
 use state::{
     LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y, current_inspector_name_is_some,
     current_inspector_sprite, current_inspector_transform, current_inspector_visibility,
-    set_last_inspector_content_h, set_last_inspector_visible_h, take_pending_dropdown_chip,
+    push_section_top_y, set_last_inspector_content_h, set_last_inspector_visible_h,
+    take_pending_dropdown_chip,
 };
 pub(in crate::screens::hero) use state::{
     last_body_top_screen_y, last_gallery_content_h, last_gallery_visible_h,
@@ -417,7 +418,7 @@ pub fn paint_inspector(
     // Inspector here focuses on the actual editor's job — inspect
     // properties of the currently-selected entity. No selection →
     // instructional prompt.
-    let section_tops_y: Vec<f32> = Vec::new();
+    let mut section_tops_y: Vec<f32> = Vec::with_capacity(4);
     LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + Spacing::Xs.px()));
     let transform_info = current_inspector_transform();
     let sprite_info = current_inspector_sprite();
@@ -428,6 +429,27 @@ pub fn paint_inspector(
         || visibility_info.is_some()
         || name_present;
     let mut y = body_top_y + Spacing::Xs.px();
+
+    // Wave 4.1 — paint user notes anchored to live Inspector sections.
+    // Notes flow through the same `notes_push` → `paint_one_note`
+    // pipeline the Widget Gallery uses, so the right-click → "Create
+    // note" affordance now actually paints a note in the live
+    // Inspector instead of silently dropping it. Notes with
+    // `before_section = Some(i)` paint immediately above section `i`
+    // (0=Name, 1=Visibility, 2=Transform, 3=RenderSource); notes with
+    // `before_section = None` (or an out-of-range index) paint at the
+    // tail after the last section.
+    let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
+    let mut notes_per_section: [Vec<(usize, crate::interaction::NoteData)>; 4] = Default::default();
+    let mut trailing_notes: Vec<(usize, crate::interaction::NoteData)> = Vec::new();
+    for (idx, note) in all_notes.into_iter().enumerate() {
+        match note.before_section {
+            Some(i) if (i as usize) < notes_per_section.len() => {
+                notes_per_section[i as usize].push((idx, note));
+            }
+            _ => trailing_notes.push((idx, note)),
+        }
+    }
     // Wave 4.1 — restored section outline affordance in the live
     // Inspector. Mirrors the Widget Gallery showcase: right-click on
     // a section header opens the SectionOutline context menu (5
@@ -440,8 +462,28 @@ pub fn paint_inspector(
     // receives the secondary (right-click) at the title area.
     use crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA;
     macro_rules! live_section {
-        ($section_id:expr, $header_h:expr, $body:block) => {{
+        ($section_id:expr, $section_idx:expr, $header_h:expr, $body:block) => {{
+            // Paint any notes anchored just above this section first
+            // (they flow into the regular `y` cursor so the section
+            // body lands below them).
+            for (slot, note) in &notes_per_section[$section_idx] {
+                paint_one_note(
+                    scene,
+                    text_system,
+                    hit_index,
+                    store,
+                    inner_x,
+                    inner_w,
+                    &mut y,
+                    note,
+                    *slot,
+                );
+            }
             let y_before = y;
+            // Record the section's body-relative top so the right-
+            // click dispatcher can compute `before_section` for a new
+            // note via `section_index_below_body_y`.
+            push_section_top_y(&mut section_tops_y, y_before - body_top_y);
             // Register the header strip FIRST so child widgets
             // painted inside `$body` override the back-to-front hit
             // walk for primary clicks on their own rects.
@@ -478,7 +520,7 @@ pub fn paint_inspector(
     // live in the header subtitle (now world size) and the Render
     // Source "Name" row (now removed).
     if name_present {
-        y = live_section!(ids::INSP_LIVE_NAME_SECTION, ROW_H_PX, {
+        y = live_section!(ids::INSP_LIVE_NAME_SECTION, 0, ROW_H_PX, {
             paint_entity_name_row(
                 scene,
                 text_system,
@@ -497,7 +539,7 @@ pub fn paint_inspector(
     // Hierarchy panel's eye toggle (M14.6 A) via
     // `EditorCommand::SetComponent`.
     if visibility_info.is_some() {
-        y = live_section!(ids::INSP_LIVE_VISIBILITY_SECTION, ROW_H_PX, {
+        y = live_section!(ids::INSP_LIVE_VISIBILITY_SECTION, 1, ROW_H_PX, {
             paint_visibility_row(
                 scene,
                 text_system,
@@ -516,7 +558,7 @@ pub fn paint_inspector(
     // component. Matches Unity / Godot / Blender conventions where
     // Transform sits above all other components.
     if transform_info.is_some() {
-        y = live_section!(ids::INSP_LIVE_TRANSFORM_SECTION, SECTION_HEAD_H, {
+        y = live_section!(ids::INSP_LIVE_TRANSFORM_SECTION, 2, SECTION_HEAD_H, {
             paint_transform_section(
                 scene,
                 text_system,
@@ -532,7 +574,7 @@ pub fn paint_inspector(
     }
     // ── Render Source section (M14.5) — below Transform.
     if let Some(info) = sprite_info.as_ref() {
-        y = live_section!(ids::INSP_LIVE_RENDER_SECTION, SECTION_HEAD_H, {
+        y = live_section!(ids::INSP_LIVE_RENDER_SECTION, 3, SECTION_HEAD_H, {
             paint_render_source_section(
                 scene,
                 text_system,
@@ -545,6 +587,26 @@ pub fn paint_inspector(
                 info,
             )
         });
+    }
+    // ── Trailing notes (anchor = None or out-of-range section index)
+    // paint at the bottom after all sections. Notes anchored to a
+    // section that wasn't visible this frame fall through here. Only
+    // painted when at least one section is visible — without sections
+    // the placeholder text would overlap the notes.
+    if any_section {
+        for (slot, note) in &trailing_notes {
+            paint_one_note(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                &mut y,
+                note,
+                *slot,
+            );
+        }
     }
     // ── Placeholder when nothing is selected ──
     if !any_section {

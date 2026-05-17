@@ -1000,14 +1000,27 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
     }
 }
 
-/// True iff `id` belongs to the Inspector's collapsible section
-/// header range. Used by the right-click dispatcher to decide
-/// whether to open the section-outline menu vs the create-note
-/// menu. Keeps the screen-specific knowledge in one place; if more
-/// panels gain section headers, extend this match.
+/// True iff `id` belongs to a section header that supports the
+/// right-click → SectionOutline context menu. Used by the right-click
+/// dispatcher to decide whether to open that menu vs the create-note
+/// menu.
+///
+/// Two source-of-truth arrays:
+/// - [`crate::screens::hero::inspector::SECTION_IDS`] — 10 Widget
+///   Gallery (showcase) section headers.
+/// - [`crate::screens::hero::inspector::LIVE_SECTION_IDS`] — 4 live
+///   Inspector section headers (Name / Visibility / Transform /
+///   Render Source). Restored in Wave 4.1 so the section outline
+///   affordance reaches the canonical Inspector, not just the demo
+///   gallery.
+///
+/// Wave 2 PR 11.3 migrated NodeIds from numeric ranges to FNV-1a
+/// hashes; this function used to test `350..=359` which became dead
+/// after the migration (every hash falls outside that range), silently
+/// breaking the affordance until Wave 4.1's audit caught it.
 pub(super) fn is_section_header_id(id: ph2d_a11y::NodeId) -> bool {
-    let v = id.0;
-    (350..=359).contains(&v)
+    crate::screens::hero::inspector::SECTION_IDS.contains(&id)
+        || crate::screens::hero::inspector::LIVE_SECTION_IDS.contains(&id)
 }
 
 /// Color-target widgets — clicking these opens the global color

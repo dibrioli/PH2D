@@ -58,7 +58,7 @@ use crate::widget::{ButtonState, ComboboxState, Dropdown, DropdownOption, TextIn
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset (between Spacing::Md and Lg; chrome-specific)
@@ -70,7 +70,7 @@ const FIELD_H: f32 = Spacing::Xl3.px();
 /// Inspector. Order matches `paint_inspector` paint order so the
 /// `apply_event` lookup and `populate` registration walk the same
 /// sequence.
-pub(super) const SECTION_IDS: [ph2d_a11y::NodeId; 10] = [
+pub const SECTION_IDS: [ph2d_a11y::NodeId; 10] = [
     ids::INSP_SECTION_INPUTS,
     ids::INSP_SECTION_SLIDER,
     ids::INSP_SECTION_SWITCHES,
@@ -81,6 +81,18 @@ pub(super) const SECTION_IDS: [ph2d_a11y::NodeId; 10] = [
     ids::INSP_SECTION_ACTIONS,
     ids::INSP_SECTION_IDENTITY,
     ids::INSP_SECTION_CARD,
+];
+
+/// Live Inspector section headers. Right-click on any of these opens
+/// the SectionOutline context menu (same affordance as the Widget
+/// Gallery's `SECTION_IDS`). The painter registers each editable block
+/// (Name / Visibility / Transform / Render Source) against one of
+/// these so the user can frame a section while reviewing.
+pub const LIVE_SECTION_IDS: [ph2d_a11y::NodeId; 4] = [
+    ids::INSP_LIVE_NAME_SECTION,
+    ids::INSP_LIVE_VISIBILITY_SECTION,
+    ids::INSP_LIVE_TRANSFORM_SECTION,
+    ids::INSP_LIVE_RENDER_SECTION,
 ];
 
 /// Color-circle hit ids — one per section header, in the same
@@ -416,21 +428,68 @@ pub fn paint_inspector(
         || visibility_info.is_some()
         || name_present;
     let mut y = body_top_y + Spacing::Xs.px();
+    // Wave 4.1 — restored section outline affordance in the live
+    // Inspector. Mirrors the Widget Gallery showcase: right-click on
+    // a section header opens the SectionOutline context menu (5
+    // highlighter colors + "No outline"). The picked color paints a
+    // colored frame around the section body until the user clears
+    // it. Each section registers a header strip against its
+    // `INSP_LIVE_*_SECTION` id BEFORE its body widgets so internal
+    // hits (NumberInput chips, checkbox, etc.) win the back-to-front
+    // hit_index walk for primary clicks while the header strip still
+    // receives the secondary (right-click) at the title area.
+    use crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA;
+    macro_rules! live_section {
+        ($section_id:expr, $header_h:expr, $body:block) => {{
+            let y_before = y;
+            // Register the header strip FIRST so child widgets
+            // painted inside `$body` override the back-to-front hit
+            // walk for primary clicks on their own rects.
+            hit_index.register(
+                $section_id,
+                Rect::new(inner_x, y_before, inner_w, $header_h),
+            );
+            let new_y: f32 = $body;
+            if let Some(color_idx) = store.section_outline_color($section_id) {
+                let rgba = HIGHLIGHTER_RGBA[color_idx.min(4) as usize];
+                let pad = Spacing::Xs.px();
+                let block = Rect::new(
+                    inner_x - pad,
+                    y_before - pad,
+                    inner_w + pad * 2.0,
+                    (new_y - y_before + pad * 2.0).max(0.0),
+                );
+                let outline_color =
+                    ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — HIGHLIGHTER_RGBA palette
+                crate::paint::stroke_rounded_rect(
+                    scene,
+                    block,
+                    Radius::Md.px(),
+                    ph2d_tokens::StrokeToken::Thick.px(),
+                    outline_color,
+                );
+            }
+            new_y
+        }};
+    }
+
     // ── Entity name (M14.E) — editable TextInput at the very top
     // of the body. Replaces the read-only name displays that used to
     // live in the header subtitle (now world size) and the Render
     // Source "Name" row (now removed).
     if name_present {
-        y = paint_entity_name_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-        );
+        y = live_section!(ids::INSP_LIVE_NAME_SECTION, ROW_H_PX, {
+            paint_entity_name_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            )
+        });
         y = paint_section_separator(scene, theme, inner_x, inner_w, y);
     }
     // ── Visibility row (M14.D) — checkbox below the name field.
@@ -438,16 +497,18 @@ pub fn paint_inspector(
     // Hierarchy panel's eye toggle (M14.6 A) via
     // `EditorCommand::SetComponent`.
     if visibility_info.is_some() {
-        y = paint_visibility_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-        );
+        y = live_section!(ids::INSP_LIVE_VISIBILITY_SECTION, ROW_H_PX, {
+            paint_visibility_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            )
+        });
         y = paint_section_separator(scene, theme, inner_x, inner_w, y);
     }
     // ── Transform section (M14.A) — first SECTION (below the
@@ -455,31 +516,35 @@ pub fn paint_inspector(
     // component. Matches Unity / Godot / Blender conventions where
     // Transform sits above all other components.
     if transform_info.is_some() {
-        y = paint_transform_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-        );
+        y = live_section!(ids::INSP_LIVE_TRANSFORM_SECTION, SECTION_HEAD_H, {
+            paint_transform_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            )
+        });
         y = paint_section_separator(scene, theme, inner_x, inner_w, y);
     }
     // ── Render Source section (M14.5) — below Transform.
     if let Some(info) = sprite_info.as_ref() {
-        y = paint_render_source_section(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            inner_x,
-            inner_w,
-            y,
-            info,
-        );
+        y = live_section!(ids::INSP_LIVE_RENDER_SECTION, SECTION_HEAD_H, {
+            paint_render_source_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                info,
+            )
+        });
     }
     // ── Placeholder when nothing is selected ──
     if !any_section {

@@ -177,6 +177,19 @@ pub const INSP_RENDER_STRATEGY_HANDPACKED: NodeId = hash_node_id("insp_render_st
 /// Render Source section. Edits commit live via `TextChanged` →
 /// `EditorCommand::SetComponent` for `ph2d_ecs::Name`.
 pub const INSP_ENTITY_NAME: NodeId = hash_node_id("insp_entity_name");
+
+// ── Inspector live section headers (Wave 4.1 restore) ─────────────────
+// Right-click on these header areas opens the SectionOutline context
+// menu — same affordance the Widget Gallery (showcase) has for its 10
+// `INSP_SECTION_*` headers. The live Inspector originally had Transform
+// + Render Source + Visibility + Name "sections" without right-click
+// hit areas; restoring the outline feature here means each editable
+// block now registers a header rect under one of these ids and reads
+// `store.section_outline_color(...)` to paint the colored frame.
+pub const INSP_LIVE_NAME_SECTION: NodeId = hash_node_id("insp_live_name_section");
+pub const INSP_LIVE_VISIBILITY_SECTION: NodeId = hash_node_id("insp_live_visibility_section");
+pub const INSP_LIVE_TRANSFORM_SECTION: NodeId = hash_node_id("insp_live_transform_section");
+pub const INSP_LIVE_RENDER_SECTION: NodeId = hash_node_id("insp_live_render_section");
 /// Widget Gallery floating panel — root id. The gallery is a Procreate-
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].

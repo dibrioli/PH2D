@@ -72,8 +72,8 @@ use bumpalo::Bump;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::{FixedStep, Vec2, install_panic_hook, panic};
 use ph2d_ecs::scene::{
-    ComponentRegistry, EditorCommand, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
-    apply_editor_commands, build_hierarchy_snapshot,
+    ComponentRegistry, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
+    build_hierarchy_snapshot,
 };
 use ph2d_ecs::{
     Component, PresentWorld, SimComponent, SimWorld, Transform, TransformPropagationState,
@@ -88,14 +88,14 @@ use ph2d_editor::{
 use std::collections::BTreeMap;
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
 use ph2d_editor::NodeId;
-use ph2d_gpu::{AcquireError, SurfaceContext};
+use ph2d_gpu::SurfaceContext;
 use ph2d_host::{HostHandler, Lifecycle, Modifiers, PlatformHost, WindowSize};
 use ph2d_input::InputState;
 use ph2d_render::{Camera2d, Compositor, GameRt, SpriteRenderer, Tonemap, VelloPass};
 use ph2d_script::ScriptHost;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
-use ph2d_vector::{Color as VelloColor, VectorScene};
+use ph2d_vector::VectorScene;
 use std::sync::Arc;
 use std::time::Instant;
 

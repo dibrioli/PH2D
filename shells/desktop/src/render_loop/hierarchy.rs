@@ -1,0 +1,251 @@
+//! Hierarchy intent dispatch phase.
+//!
+//! Wave 3.2 stage A — extracted from `render_loop::mod.rs` as a free
+//! function. Dispatches camera-reset + view-focus + 9 hierarchy
+//! intents (visibility_toggle / reparent / duplicate / add_child /
+//! reset_transform / delete / row_click / rename_seed / rename_commit)
+//! using the locals pre-populated by the consolidated bus drain in
+//! mod.rs. Returns `true` iff any dispatch pushed a toast.
+//!
+//! Behavior-preserving lift.
+
+use crate::HeroLive;
+use crate::hero_intents;
+use ph2d_ecs::PresentWorld;
+use ph2d_ecs::{Name, SimWorld, Transform};
+use ph2d_editor::screens::hero::HierReparentIntent;
+use ph2d_editor::{HeroScreen, NodeId, Toast, ToastQueue, ViewFocusKind};
+use ph2d_host::WindowSize;
+use ph2d_render::Camera2d;
+
+/// Dispatches camera-reset, view-focus, and 9 hierarchy intents.
+/// Returns `true` if any dispatch pushed a toast.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn dispatch(
+    view_focus_kind: Option<ViewFocusKind>,
+    visibility_toggle_row: Option<NodeId>,
+    reparent_intent: Option<HierReparentIntent>,
+    duplicate_row: Option<NodeId>,
+    add_child_row: Option<NodeId>,
+    reset_transform_row: Option<NodeId>,
+    delete_row: Option<NodeId>,
+    hierarchy_row_click: Option<NodeId>,
+    rename_seed_row: Option<NodeId>,
+    rename_commit: Option<(NodeId, String)>,
+    hero: &mut HeroScreen,
+    hero_live: &Option<HeroLive>,
+    sim: &mut SimWorld,
+    present: &mut PresentWorld,
+    camera: &mut Camera2d,
+    toasts: &mut ToastQueue,
+    window_size: WindowSize,
+) -> bool {
+    let mut title_dirty = false;
+
+    // M14.4b.bis: drain pending camera-reset request from the VIEW
+    // button (legacy "Zero" mode — kept around for shells that still
+    // raise it).
+    if hero.camera_reset_pending {
+        hero.camera_reset_pending = false;
+        *camera = Camera2d::default();
+        toasts.push(Toast::info("View → Zero (camera reset)"));
+        title_dirty = true;
+    }
+    // M14.7 polish: drain pending view-focus intent (F/Home key OR
+    // VIEW button click). Per `ViewFocusKind`:
+    //   - `Selected`: pan to gizmo_selection or (0,0).
+    //   - `Camera`: pan to (0,0) until camera-object exists.
+    //   - `All`: pan + zoom to fit all sprites.
+    if let Some(kind) = view_focus_kind
+        && hero_intents::drain_view_focus(
+            kind,
+            hero.gizmo_selection,
+            present,
+            camera,
+            window_size,
+            toasts,
+        )
+    {
+        title_dirty = true;
+    }
+    // M14.6A: drain pending hierarchy visibility toggle — resolve row
+    // NodeId → ECS Entity via the bridge, flip the `Visibility`
+    // component on SimWorld.
+    if let Some(row_id) = visibility_toggle_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row_id)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        let sim_w = sim.world_mut();
+        if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
+            let was_hidden = entry
+                .get::<ph2d_ecs::Visibility>()
+                .is_some_and(|v| v.hidden);
+            entry.insert(ph2d_ecs::Visibility {
+                hidden: !was_hidden,
+            });
+        }
+    }
+    // M14.6B: drain pending hierarchy reparent intent — translate
+    // dragged + new_parent NodeIds via the bridge, then either
+    // `insert(ChildOf(p))` or remove the `ChildOf` component for a
+    // root-level drop. With M14.7 polish (14.3 continuation) we also
+    // honor `intent.before` to position the dragged entity at a
+    // specific slot in the new parent's `Children` list — bevy_ecs
+    // 0.18 `Children` preserves insertion order, so we rebuild the
+    // ordering by re-inserting every relevant child's ChildOf in the
+    // desired sequence.
+    if let Some(intent) = reparent_intent
+        && let Some(live) = hero_live.as_ref()
+    {
+        hero_intents::drain_reparent(intent, live, sim);
+    }
+    // M14.6 F: drain per-row Hierarchy context-menu actions. Each is
+    // a `HierDuplicate/AddChild/ResetTransform/Delete` bus variant
+    // — bridge resolves row → Entity, then we apply the corresponding
+    // ECS mutation. Order is intentional: Delete last, so a
+    // (degenerate) frame that queues "duplicate then delete" leaves
+    // the duplicate in place and removes the original. The next
+    // snapshot rebuild picks up the result automatically.
+    if let Some(row) = duplicate_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        let src = ph2d_ecs::Entity::from_bits(entity_bits);
+        let sim_w = sim.world_mut();
+        let transform = sim_w.get::<Transform>(src).copied();
+        let sprite = sim_w.get::<ph2d_render::Sprite>(src).copied();
+        let name = sim_w.get::<Name>(src).map(|n| n.as_str().to_owned());
+        let parent = sim_w.get::<ph2d_ecs::ChildOf>(src).map(|c| c.parent());
+        let copy_name = name
+            .map(|n| format!("{n}_copy"))
+            .unwrap_or_else(|| "copy".to_string());
+        let mut builder = sim_w.spawn_empty();
+        if let Some(t) = transform {
+            builder.insert(t);
+        }
+        if let Some(s) = sprite {
+            builder.insert(s);
+        }
+        builder.insert(Name::new(copy_name));
+        if let Some(p) = parent {
+            builder.insert(ph2d_ecs::ChildOf(p));
+        }
+        toasts.push(Toast::success("Duplicated entity"));
+        title_dirty = true;
+    }
+    if let Some(row) = add_child_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(parent_bits) = live.bridge.entity_for(row)
+    {
+        let parent = ph2d_ecs::Entity::from_bits(parent_bits);
+        sim.world_mut().spawn((
+            Transform::IDENTITY,
+            Name::new("Child"),
+            ph2d_ecs::ChildOf(parent),
+        ));
+        toasts.push(Toast::success("Added child entity"));
+        title_dirty = true;
+    }
+    if let Some(row) = reset_transform_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
+            *t = Transform::IDENTITY;
+            toasts.push(Toast::info("Transform reset"));
+            title_dirty = true;
+        }
+    }
+    if let Some(row) = delete_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        // bevy_ecs 0.18 `ChildOf` cascade: despawning a parent takes
+        // its descendants with it. No manual recursion here (see
+        // `transform_hierarchy.rs::despawn_root_cascades_via_child_of`).
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        sim.world_mut().despawn(entity);
+        // Clear gizmo selection if it pointed at the deleted entity
+        // — the bbox lookup would otherwise dangle for a frame until
+        // the next snapshot rebuilds.
+        if hero.gizmo_selection == Some(entity_bits) {
+            hero.gizmo_selection = None;
+        }
+        toasts.push(Toast::warning("Deleted entity"));
+        title_dirty = true;
+    }
+    // M14.6 D: drain pending hierarchy-row click → sync
+    // `gizmo_selection` to whichever entity the user just picked in
+    // the hierarchy panel. Inverse of the M14.7 A canvas-pick path
+    // (canvas → label sync runs further down when we publish
+    // gizmo_view).
+    if let Some(row) = hierarchy_row_click
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        hero.gizmo_selection = Some(entity_bits);
+    }
+    // M14.7 polish: one-shot seed of the rename TextInput when rename
+    // mode opens. `HierRenameSeed` is pushed by hero on the open path
+    // (right-click Rename / long-press) and drained here exactly once
+    // — so subsequent Backspace edits that empty the buffer don't get
+    // clobbered back to the original name on the next frame.
+    if let Some(row) = rename_seed_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        let value = sim
+            .world()
+            .get::<Name>(entity)
+            .map(|n| n.as_str().to_owned())
+            .unwrap_or_default();
+        if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) = hero
+            .store
+            .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
+        {
+            let len = value.len();
+            *text = value;
+            *caret = len;
+            *selection_anchor = Some(0); // select all
+        }
+    }
+    // Drain a finalized rename commit (Enter pressed in rename
+    // input). Write the new Name component on the entity; toast
+    // confirms.
+    if let Some((row, new_name)) = rename_commit
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        let sim_w = sim.world_mut();
+        if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
+            entry.insert(Name::new(new_name.clone()));
+            toasts.push(Toast::success(format!("Renamed to {new_name}")));
+            title_dirty = true;
+        }
+        // Clear the rename TextInput buffer for next session.
+        if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) = hero
+            .store
+            .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
+        {
+            text.clear();
+            *caret = 0;
+            *selection_anchor = None;
+        }
+    }
+
+    title_dirty
+}

@@ -1,0 +1,283 @@
+//! Snapshot publication phase — once per frame, before paint.
+//!
+//! Wave 3.2 stage A — extracted from `render_loop::mod.rs` as a free
+//! function taking explicit refs to the destructured `AppGfx` fields
+//! it needs. Behavior-preserving lift.
+//!
+//! Publishes the live hierarchy snapshot, grid view, telemetry stats,
+//! gizmo projection, and 4 inspector snapshots
+//! (sprite/transform/visibility/name) onto the `HeroScreen` so the
+//! subsequent paint pass reads them via the HR-8 / ADR-0021 boundary
+//! (Inspector never reads SimWorld directly).
+
+use crate::HeroLive;
+use ph2d_asset::AssetDb;
+use ph2d_asset::AssetId;
+use ph2d_ecs::{Name, PresentWorld, SimRef, SimWorld, Transform, Visibility};
+use ph2d_editor::HeroScreen;
+use ph2d_host::WindowSize;
+use ph2d_render::{Camera2d, Sprite};
+use std::collections::BTreeMap;
+
+/// Walks PresentWorld + SimWorld to build the per-frame snapshots
+/// and writes them onto the `HeroScreen`. Caller (orchestrator)
+/// already holds the destructured `AppGfx` refs and the per-frame
+/// EWMA stats; this is purely the publication logic.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn publish(
+    hero: &mut HeroScreen,
+    hero_live: &mut Option<HeroLive>,
+    sim: &mut SimWorld,
+    present: &mut PresentWorld,
+    camera: &Camera2d,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+    window_size: WindowSize,
+    last_pointer: (f32, f32),
+    frame_ms_ewma: f32,
+    frame_cpu_ms_ewma: f32,
+) {
+    // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
+    // from SimWorld + push into HeroScreen BEFORE paint. The
+    // snapshot's DFS visit order = hierarchy panel display
+    // order. `paint_hero_screen` reads `live_hierarchy_entries`
+    // via thread-local in `hierarchy::set_live_entries`.
+    if let Some(live) = hero_live.as_mut() {
+        crate::build_hierarchy_snapshot(
+            sim.world(),
+            &mut live.walk_state,
+            &mut live.walk_scratch,
+            &mut live.snapshot,
+        );
+        let (ordered, entries) = live.bridge.sync_from_snapshot(&live.snapshot);
+        hero.sync_from_hierarchy(&ordered, entries);
+    }
+    // M14.4b: publish the demo camera + window dims so the
+    // hero paints its world grid overlay. `canvas` is a
+    // placeholder — `paint_hero_screen` overrides it with
+    // the layout-computed canvas rect.
+    hero.set_grid_view(Some(ph2d_editor::GridView {
+        camera_center: camera.center,
+        camera_height_world: camera.height_world,
+        window_w: window_size.width as f32,
+        window_h: window_size.height as f32,
+        canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
+    }));
+    // M14.4g Telemetry Phase A: publish real stats. Sprite
+    // and entity counts come from PresentWorld (the source of
+    // truth for "what we shipped to the GPU this frame"); fps
+    // is derived from the EWMA frame_ms.
+    let sprite_count = present
+        .world_mut()
+        .query::<&ph2d_render::RenderInstance>()
+        .iter(present.world_mut())
+        .count() as u32;
+    let entity_count = present
+        .world_mut()
+        .query::<&SimRef>()
+        .iter(present.world_mut())
+        .count() as u32;
+    let fps = if frame_ms_ewma > 0.001 {
+        1000.0 / frame_ms_ewma
+    } else {
+        0.0
+    };
+    // M14.7 polish (10.1): raw fps = inverse of pure
+    // CPU/command-encode time. Floored at 1 ms (1000 fps) so
+    // a startup-edge measurement of 0 doesn't blow up to
+    // `inf`; real workloads stabilize within a few frames.
+    let raw_fps = 1000.0 / frame_cpu_ms_ewma.max(0.001);
+    hero.stats = ph2d_editor::BottomHudStats {
+        fps,
+        frame_ms: frame_ms_ewma,
+        draws: 1,
+        sprite_count,
+        entity_count,
+        raw_fps,
+    };
+    // Hierarchy counts use PresentWorld's archetype components
+    // (Transform + Sprite + Visibility + ChildOf + Children).
+    // It's a proxy — exactly the components the editor's
+    // snapshot pipeline observes per entity. Multiplying by
+    // entity count is a rough estimate; counting via archetype
+    // walk is cheap enough at editor scales.
+    let component_count = {
+        let world = sim.world();
+        let mut total = 0u32;
+        for archetype in world.archetypes().iter() {
+            let len = archetype.len();
+            let comps = archetype.components().len() as u32;
+            total = total.saturating_add(len.saturating_mul(comps));
+        }
+        total
+    };
+    ph2d_editor::set_live_component_count(component_count);
+    // M14.7 B: publish the gizmo's per-frame projection. When
+    // the selection still resolves to a present entity (it can
+    // vanish if the user deleted it between frames) we build a
+    // `GizmoView` from the world-space bbox + camera. Empty
+    // selection → clear the view so the painter skips.
+    //
+    // M14.7 polish (parent-fix): the gizmo MUST read
+    // `GlobalTransform` from PresentWorld — not the entity's
+    // local `Transform` in SimWorld. After a hierarchy reparent
+    // the child's local Transform stays the same but its world
+    // position is now parent.world ∘ local; the sprite renders
+    // at the new world position via the extract path (which
+    // reads GlobalTransform), so the gizmo has to do the same
+    // or it drifts away from the sprite by exactly the parent's
+    // world offset. The Sprite's local `size` is still pulled
+    // from SimWorld — it's the import-time author rect,
+    // multiplied here by the world scale extracted from the
+    // matrix to match the renderer's RenderInstance build.
+    hero.gizmo_view = hero.gizmo_selection.and_then(|bits| {
+        let sim_entity = ph2d_ecs::Entity::from_bits(bits);
+        let sprite = sim.world().get::<Sprite>(sim_entity)?;
+        // Look up the present entity that mirrors this sim
+        // entity via `SimRef`. We can't reuse the sim
+        // `Entity` directly because entity ids are
+        // per-`World` (ADR-0021).
+        let mut q = present
+            .world_mut()
+            .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
+        let gt = q.iter(present.world()).find_map(|(sref, gt)| {
+            if sref.0 == sim_entity {
+                Some(*gt)
+            } else {
+                None
+            }
+        })?;
+        // Decompose the affine matrix the same way the
+        // extract path does — column lengths for scale,
+        // atan2(col0.y, col0.x) for rotation. Keeps gizmo
+        // math in lockstep with the render path so any
+        // future change has one canonical place.
+        let affine = gt.affine();
+        let col0_x = affine[0];
+        let col0_y = affine[1];
+        let col1_x = affine[2];
+        let col1_y = affine[3];
+        let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
+        let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
+        let rotation = col0_y.atan2(col0_x);
+        let p = gt.translation();
+        let half_w = sprite.size[0] * scale_x * 0.5;
+        let half_h = sprite.size[1] * scale_y * 0.5;
+        Some(ph2d_editor::GizmoView {
+            bbox_min_world: [p.x - half_w, p.y - half_h],
+            bbox_max_world: [p.x + half_w, p.y + half_h],
+            rotation,
+            camera_center: camera.center,
+            camera_height_world: camera.height_world,
+            window_w: window_size.width as f32,
+            window_h: window_size.height as f32,
+            canvas: ph2d_editor::zones::Rect::new(
+                0.0,
+                0.0,
+                window_size.width as f32,
+                window_size.height as f32,
+            ),
+            cursor_screen: Some(last_pointer),
+        })
+    });
+    // M14.5 inspector phase (6.4/§9): publish a per-frame
+    // snapshot of the selected sprite so `paint_inspector` can
+    // surface the Render Source section + Reimport button
+    // without crossing the ADR-0021 boundary into SimWorld.
+    hero.inspector_sprite = hero.gizmo_selection.and_then(|bits| {
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        let world = sim.world();
+        let sprite = world.get::<Sprite>(entity)?;
+        let transform = world.get::<Transform>(entity)?;
+        let name = world
+            .get::<Name>(entity)
+            .map(|n| n.0.clone())
+            .unwrap_or_else(|| format!("Entity_{bits:x}"));
+        let (source_kind, source_pixels, can_reimport) = match sprite.source {
+            ph2d_render::SpriteSource::Atlas { key } => {
+                let dims = atlas_asset_map.get(&key).and_then(|aid| {
+                    asset_db.get(aid).and_then(|asset| match &*asset {
+                        ph2d_asset::Asset::ImageRgba8 { width, height, .. } => {
+                            Some((*width, *height))
+                        }
+                        _ => None,
+                    })
+                });
+                (
+                    ph2d_editor::InspectorSpriteSource::Atlas { key },
+                    dims,
+                    dims.is_some(),
+                )
+            }
+            ph2d_render::SpriteSource::Individual { texture_id } => (
+                ph2d_editor::InspectorSpriteSource::Individual { texture_id },
+                None,
+                false,
+            ),
+        };
+        let world_size = [
+            sprite.size[0] * transform.scale.x,
+            sprite.size[1] * transform.scale.y,
+        ];
+        Some(ph2d_editor::InspectorSpriteInfo {
+            entity_bits: bits,
+            name,
+            world_size,
+            source_kind,
+            source_pixels,
+            can_reimport,
+        })
+    });
+    // M14.A: live Transform snapshot for the inspector. Same
+    // ADR-0021 / HR-8 boundary as sprite snapshot — Inspector
+    // never reads SimWorld; the host bridges. Lands on every
+    // entity that has a `Transform` component, not just sprites
+    // (so non-renderable entities still show their pose).
+    hero.inspector_transform = hero.gizmo_selection.and_then(|bits| {
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        let t = sim.world().get::<Transform>(entity)?;
+        Some(ph2d_editor::InspectorTransformInfo {
+            entity_bits: bits,
+            translation: [t.translation.x, t.translation.y],
+            rotation_rad: t.rotation,
+            scale: [t.scale.x, t.scale.y],
+        })
+    });
+    // M14.D: live Visibility snapshot. Absence-equals-visible
+    // is the canonical invariant — entities without a
+    // `Visibility` component render normally, so `None` from
+    // `world.get::<Visibility>` maps to `visible = true`.
+    // Only published when the selection has a `Transform`
+    // (i.e. it's an Inspector-worthy entity); without a
+    // Transform the Inspector hides the whole panel content.
+    hero.inspector_visibility = hero.gizmo_selection.and_then(|bits| {
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        sim.world().get::<Transform>(entity)?;
+        let visible = sim
+            .world()
+            .get::<Visibility>(entity)
+            .map(|v| !v.hidden)
+            .unwrap_or(true);
+        Some(ph2d_editor::InspectorVisibilityInfo {
+            entity_bits: bits,
+            visible,
+        })
+    });
+    // M14.E: live `Name` snapshot. Falls back to
+    // `Entity_{hex}` when the entity has no Name component
+    // yet — matches the existing `InspectorSpriteInfo::name`
+    // shape. Same Transform-presence gate.
+    hero.inspector_name = hero.gizmo_selection.and_then(|bits| {
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        sim.world().get::<Transform>(entity)?;
+        let name = sim
+            .world()
+            .get::<Name>(entity)
+            .map(|n| n.0.clone())
+            .unwrap_or_else(|| format!("Entity_{bits:x}"));
+        Some(ph2d_editor::InspectorNameInfo {
+            entity_bits: bits,
+            name,
+        })
+    });
+}

@@ -19,7 +19,10 @@ use crate::widget::{
 };
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
+use ph2d_tokens::{
+    ColorToken, ICON_BTN_SIZE_PX, ROW_H_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme,
+    TypeToken,
+};
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
 /// Register the hierarchy header `+` button + every entity row's hit

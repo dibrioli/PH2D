@@ -10,7 +10,7 @@
 //! right-aligned layout. Neither is re-exported beyond `super`.
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 use crate::icons::IconId;
@@ -26,13 +26,13 @@ use super::super::style::icon_button_fg;
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;
     match cluster {
-        TopBarCluster::Theme { .. } => 132.0,
-        TopBarCluster::Single { .. } => 40.0 + PILL_PADDING_PX * 2.0,
-        TopBarCluster::Project { .. } => 156.0,
+        TopBarCluster::Theme { .. } => 132.0, // LITERAL-PX-OK: Theme chip width (chrome dim)
+        TopBarCluster::Single { .. } => 40.0 + PILL_PADDING_PX * 2.0, // LITERAL-PX-OK: Single-icon cluster base width 40px (chrome dim)
+        TopBarCluster::Project { .. } => 156.0, // LITERAL-PX-OK: Project chip width (chrome dim)
         // Play cluster now holds 3 controls (Play 32 + Pause 24 +
         // Reset 24) plus inner spacings. ~120px fits comfortably.
-        TopBarCluster::Play => 120.0,
-        TopBarCluster::Right => 132.0,
+        TopBarCluster::Play => 120.0, // LITERAL-PX-OK: Play cluster width (chrome dim)
+        TopBarCluster::Right => 132.0, // LITERAL-PX-OK: Right cluster width (chrome dim)
     }
 }
 
@@ -52,7 +52,7 @@ pub(super) fn paint_top_bar_cluster(
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
     let pad_x = Spacing::Md.px();
-    let icon_w = 18.0;
+    let icon_w = 18.0; // LITERAL-PX-OK: chev icon dim (chrome accent)
     let font = TypeToken::Sm.px();
     match cluster {
         TopBarCluster::Theme { label: _ } => {
@@ -67,13 +67,13 @@ pub(super) fn paint_top_bar_cluster(
             // (Theme's display name is still surfaced in the menu's
             // own items.)
             let label = "PH2D";
-            let mut cx = rect.x + pad_x + 4.0;
+            let mut cx = rect.x + pad_x + Spacing::Xs.px();
             let cy = rect.y + rect.h * 0.5;
             for (i, token) in [ColorToken::Accent, ColorToken::AccentSoft]
                 .iter()
                 .enumerate()
             {
-                let dot = Circle::new(Point::new(cx as f64, cy as f64), 4.0);
+                let dot = Circle::new(Point::new(cx as f64, cy as f64), Spacing::Xs.px() as f64);
                 scene.inner_mut().fill(
                     Fill::NonZero,
                     Affine::IDENTITY,
@@ -81,9 +81,9 @@ pub(super) fn paint_top_bar_cluster(
                     None,
                     &dot,
                 );
-                cx += if i == 0 { 10.0 } else { 0.0 };
+                cx += if i == 0 { 10.0 } else { 0.0 }; // LITERAL-PX-OK: inter-accent-dot spacing in PH2D logo (decorative)
             }
-            let label_x = rect.x + pad_x + 28.0;
+            let label_x = rect.x + pad_x + 28.0; // LITERAL-PX-OK: label inset after the PH2D accent-dot logo
             let label_y = rect.y + (rect.h - font) * 0.5;
             paint_text(
                 text_system,
@@ -92,7 +92,7 @@ pub(super) fn paint_top_bar_cluster(
                 label_x,
                 label_y,
                 font,
-                rect.w - (label_x - rect.x) - 24.0,
+                rect.w - (label_x - rect.x) - Spacing::Xl2.px(),
                 resolve(ColorToken::Text1, theme),
             );
             let chev_rect = Rect::new(
@@ -106,24 +106,24 @@ pub(super) fn paint_top_bar_cluster(
                 IconId::ChevronDown,
                 chev_rect,
                 resolve(ColorToken::Text3, theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
         }
         TopBarCluster::Single { icon, .. } => {
             hit_index.register(id, rect);
             let state = store.button_state(id).unwrap_or(ButtonState::Normal);
             let chip = Rect::new(
-                rect.x + (rect.w - 32.0) * 0.5,
-                rect.y + (rect.h - 32.0) * 0.5,
-                32.0,
-                32.0,
+                rect.x + (rect.w - Spacing::Xl3.px()) * 0.5,
+                rect.y + (rect.h - Spacing::Xl3.px()) * 0.5,
+                Spacing::Xl3.px(),
+                Spacing::Xl3.px(),
             );
             paint_icon(
                 scene,
                 *icon,
                 chip,
                 resolve(icon_button_fg(state), theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
         }
         TopBarCluster::Project { name } => {
@@ -135,7 +135,7 @@ pub(super) fn paint_top_bar_cluster(
             // Leading glyph: the Blender `scene_data` icon ("scene")
             // — was an Avatar('E') initial; replaced because the
             // chip now reads as "current scene", not "project owner".
-            let icon_size = 22.0_f32;
+            let icon_size = 22.0_f32; // LITERAL-PX-OK: Project chip icon size (specific accent dim)
             let icon_rect = Rect::new(
                 rect.x + pad_x,
                 rect.y + (rect.h - icon_size) * 0.5,
@@ -147,7 +147,7 @@ pub(super) fn paint_top_bar_cluster(
                 IconId::Scene,
                 icon_rect,
                 resolve(ColorToken::Text2, theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
             // Prefer the store's current scene name (mutated by
             // SceneList row clicks); fall back to the fixture name.
@@ -159,7 +159,7 @@ pub(super) fn paint_top_bar_cluster(
             };
             // Reserve room on the right for the dropdown chevron so
             // the name doesn't overlap it.
-            let chev_size = 14.0_f32;
+            let chev_size = SECTION_GAP_PX;
             let chev_rect = Rect::new(
                 rect.x + rect.w - pad_x - chev_size,
                 rect.y + (rect.h - chev_size) * 0.5,
@@ -184,15 +184,15 @@ pub(super) fn paint_top_bar_cluster(
                 IconId::ChevronDown,
                 chev_rect,
                 resolve(ColorToken::Text3, theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
         }
         TopBarCluster::Play => {
             // Play / Pause / Reset transport. Play gets the
             // Accent-tinted pill (primary action); Pause and Reset
             // are flat icon buttons.
-            let pill_d = 32.0_f32;
-            let plain_d = 24.0_f32;
+            let pill_d = Spacing::Xl3.px();
+            let plain_d = Spacing::Xl2.px();
             // Play (leftmost, primary pill).
             let play_rect = Rect::new(
                 rect.x + pad_x,
@@ -213,7 +213,7 @@ pub(super) fn paint_top_bar_cluster(
                 IconId::Play,
                 play_rect,
                 resolve(ColorToken::AccentFg, theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
             // Pause (middle, plain icon button).
             let pause_rect = Rect::new(
@@ -231,7 +231,7 @@ pub(super) fn paint_top_bar_cluster(
                 IconId::Pause,
                 pause_rect,
                 resolve(icon_button_fg(pause_state), theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
             // Reset (rightmost, plain icon button).
             let reset_rect = Rect::new(
@@ -249,7 +249,7 @@ pub(super) fn paint_top_bar_cluster(
                 IconId::Reset,
                 reset_rect,
                 resolve(icon_button_fg(reset_state), theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
         }
         TopBarCluster::Right => {
@@ -258,9 +258,9 @@ pub(super) fn paint_top_bar_cluster(
                 (ids::TOPBAR_RIGHT_ASSETS, IconId::Asset),
                 (ids::TOPBAR_RIGHT_SCRIPT, IconId::Script),
             ];
-            let chip = 32.0_f32;
+            let chip = Spacing::Xl3.px();
             for (i, (icon_id, icon)) in icons.iter().enumerate() {
-                let cx = rect.x + pad_x + (chip + 4.0) * i as f32;
+                let cx = rect.x + pad_x + (chip + Spacing::Xs.px()) * i as f32;
                 let chip_rect = Rect::new(cx, rect.y + (rect.h - chip) * 0.5, chip, chip);
                 hit_index.register(*icon_id, chip_rect);
                 let state = store.button_state(*icon_id).unwrap_or(ButtonState::Normal);
@@ -269,7 +269,7 @@ pub(super) fn paint_top_bar_cluster(
                     *icon,
                     chip_rect,
                     resolve(icon_button_fg(state), theme),
-                    1.5,
+                    StrokeToken::Default.px(),
                 );
             }
         }

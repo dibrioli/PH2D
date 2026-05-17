@@ -25,7 +25,7 @@ pub fn paint_hierarchy(
     hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
 
-    let title_y = rect.y + 18.0;
+    let title_y = rect.y + 18.0; // LITERAL-PX-OK: panel title baseline (chrome-specific, matches PANEL_HEAD_PAD)
     paint_text_title(
         text_system,
         scene,
@@ -33,7 +33,7 @@ pub fn paint_hierarchy(
         rect.x + PANEL_HEAD_PAD,
         title_y,
         TypeToken::Md.px(),
-        rect.w - PANEL_HEAD_PAD * 2.0 - 40.0,
+        rect.w - PANEL_HEAD_PAD * 2.0 - 40.0, // LITERAL-PX-OK: reserve for header Add-button (≈ICON_BTN_SIZE chrome)
         resolve(ColorToken::Text1, theme),
     );
     // Live counts in live-ECS mode (real entries from the host
@@ -58,13 +58,13 @@ pub fn paint_hierarchy(
         scene,
         &counts,
         rect.x + PANEL_HEAD_PAD,
-        title_y + TypeToken::Md.px() + 4.0,
+        title_y + TypeToken::Md.px() + Spacing::Xs.px(),
         TypeToken::Xs.px() - 1.0,
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text3, theme),
     );
 
-    let add_size = 30.0_f32;
+    let add_size = 30.0_f32; // LITERAL-PX-OK: Add button square size (chrome-specific, distinct from ROW_H_PX)
     let add_rect = Rect::new(
         rect.x + rect.w - PANEL_HEAD_PAD - add_size,
         title_y - 2.0,
@@ -80,11 +80,11 @@ pub fn paint_hierarchy(
         ButtonState::Hovered => ColorToken::AccentSoft,
         _ => ColorToken::AccentSoft,
     };
-    fill_rounded_rect(scene, add_rect, 999.0, resolve(add_bg, theme));
+    fill_rounded_rect(scene, add_rect, Radius::Full.px(), resolve(add_bg, theme));
     stroke_rounded_rect(
         scene,
         add_rect,
-        999.0,
+        Radius::Full.px(),
         1.0,
         resolve(ColorToken::Accent, theme),
     );
@@ -93,15 +93,21 @@ pub fn paint_hierarchy(
     } else {
         ColorToken::Accent
     };
-    paint_icon(scene, IconId::Add, add_rect, resolve(add_fg, theme), 1.5);
+    paint_icon(
+        scene,
+        IconId::Add,
+        add_rect,
+        resolve(add_fg, theme),
+        StrokeToken::Default.px(),
+    );
 
-    let header_bottom = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0;
-    let body_pad = 8.0_f32;
+    let header_bottom = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0; // LITERAL-PX-OK: header baseline composite
+    let body_pad = Spacing::Md.px();
 
     // M14.6 E: search/filter TextInput. Sits between the header and the
     // entity rows; its current buffer drives a case-insensitive name
     // filter with ancestor-path preservation (see `match_filter`).
-    let search_h = 28.0_f32;
+    let search_h = ROW_H_PX;
     let search_rect = Rect::new(
         rect.x + body_pad,
         header_bottom,
@@ -133,10 +139,10 @@ pub fn paint_hierarchy(
         theme,
     );
 
-    let body_top = search_rect.y + search_rect.h + 6.0;
+    let body_top = search_rect.y + search_rect.h + Spacing::Sm.px();
     // Scrollable content area below the header. Clip layer + wheel
     // offset so the entity list can grow past the panel bottom.
-    let content_bottom = rect.y + rect.h - 4.0;
+    let content_bottom = rect.y + rect.h - Spacing::Xs.px();
     let scroll_y = store.panel_scroll(ids::HIER_PANEL).max(0.0);
     let clip = ph2d_vector::Rect::new(
         rect.x as f64,
@@ -150,7 +156,7 @@ pub fn paint_hierarchy(
     // Reserve room for the scrollbar on the right (same convention
     // as the inspector — keeps row width stable regardless of
     // whether the scrollbar is currently visible).
-    let scrollbar_reserve = crate::widget::SCROLLBAR_W + 6.0;
+    let scrollbar_reserve = crate::widget::SCROLLBAR_W + Spacing::Sm.px();
     let row_w = (rect.w - body_pad * 2.0 - scrollbar_reserve).max(0.0);
     let selected_label = current_selection_label();
     // Build NodeId → entity lookup so we can iterate by the store's
@@ -180,7 +186,7 @@ pub fn paint_hierarchy(
     // First pass: paint rows + register hit zones. Rows indent
     // horizontally by `depth × INDENT_PX` to make tree structure
     // visible after a drop-inside DnD.
-    const INDENT_PX: f32 = 16.0;
+    const INDENT_PX: f32 = Spacing::Xl.px();
     let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> = Vec::with_capacity(order.len());
     // M14.6C: precompute depth per row + collapsed-gate. With DFS
     // order, `has_children` is just "next row's depth is greater";
@@ -248,7 +254,7 @@ pub fn paint_hierarchy(
         let row_rect = Rect::new(
             rect.x + body_pad + indent,
             y,
-            (row_w - indent).max(80.0),
+            (row_w - indent).max(80.0), // LITERAL-PX-OK: minimum row width when deeply indented (chrome-specific min)
             HIER_ROW_H,
         );
         if let Some(ref sel_label) = selected_label {
@@ -281,13 +287,17 @@ pub fn paint_hierarchy(
             // Overlay TextInput at the row's name area. Width spans
             // from the row's name x to the right edge minus the
             // existing chrome (eye / badge / swatch reserved space).
-            let icon_x_local = rect.x + 8.0 + (depth as f32) * INDENT_PX + 12.0 + 4.0;
-            let name_x = icon_x_local + 16.0 + 8.0;
-            let name_right = row_rect.x + row_rect.w - 10.0 - 16.0 - 6.0;
+            let icon_x_local = rect.x
+                + Spacing::Md.px()
+                + (depth as f32) * INDENT_PX
+                + Spacing::Lg.px()
+                + Spacing::Xs.px();
+            let name_x = icon_x_local + Spacing::Xl.px() + Spacing::Md.px();
+            let name_right = row_rect.x + row_rect.w - 10.0 - Spacing::Xl.px() - Spacing::Sm.px(); // LITERAL-PX-OK: 10 = chrome inset matching row_painter pad
             let input_rect = Rect::new(
-                name_x - 4.0,
+                name_x - Spacing::Xs.px(),
                 row_rect.y + 1.0,
-                (name_right - name_x + 8.0).max(80.0),
+                (name_right - name_x + Spacing::Md.px()).max(80.0), // LITERAL-PX-OK: min rename input width
                 row_rect.h - 2.0,
             );
             hit_index.register(super::ids::HIER_RENAME_INPUT, input_rect);
@@ -316,7 +326,7 @@ pub fn paint_hierarchy(
         if is_collapsed {
             collapsed_gate = Some(depth);
         }
-        y += HIER_ROW_H + 2.0;
+        y += HIER_ROW_H + Spacing::Xxs.px();
     }
     // Second pass: drop indicator while dragging. Mirrors the
     // dispatch's `find_hierarchy_drop` exactly (y-only band split)
@@ -332,8 +342,8 @@ pub fn paint_hierarchy(
             }
             let top = rrect.y;
             let bot = rrect.y + rrect.h;
-            let inside_top = top + rrect.h * 0.3;
-            let inside_bot = top + rrect.h * 0.7;
+            let inside_top = top + rrect.h * 0.3; // LITERAL-PX-OK: drop-zone partition ratio (30% sibling-above)
+            let inside_bot = top + rrect.h * 0.7; // LITERAL-PX-OK: drop-zone partition ratio (70% boundary)
             if d.cursor_y < top || d.cursor_y >= bot {
                 continue;
             }
@@ -351,8 +361,8 @@ pub fn paint_hierarchy(
                 crate::paint::stroke_rounded_rect(
                     scene,
                     *rrect,
-                    6.0,
-                    2.0,
+                    Spacing::Sm.px(),
+                    StrokeToken::Thick.px(),
                     resolve(ColorToken::Accent, theme),
                 );
                 drew = true;

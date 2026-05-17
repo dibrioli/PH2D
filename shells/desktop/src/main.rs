@@ -41,6 +41,7 @@
 //!   `ph2d.input` Luau snapshot is a follow-up.
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
+mod atlas_loader;
 mod cursor_pos;
 mod forwarding;
 mod hero_bridge;
@@ -51,6 +52,7 @@ mod input_dispatch;
 mod input_log;
 mod integration;
 mod keymap;
+mod sim_populate;
 mod theme;
 mod winit_host;
 
@@ -82,12 +84,11 @@ use ph2d_editor::{
 use std::collections::BTreeMap;
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
 use ph2d_editor::NodeId;
-use ph2d_gpu::{AcquireError, GpuContext, SurfaceContext};
+use ph2d_gpu::{AcquireError, SurfaceContext};
 use ph2d_host::{HostHandler, Lifecycle, Modifiers, PlatformHost, WindowSize};
 use ph2d_input::InputState;
 use ph2d_render::{
-    Camera2d, Compositor, GameRt, RenderInstance, Sprite, SpriteRenderer, TextureAtlas, Tonemap,
-    VelloPass,
+    Camera2d, Compositor, GameRt, RenderInstance, Sprite, SpriteRenderer, Tonemap, VelloPass,
 };
 use ph2d_script::ScriptHost;
 use ph2d_text::TextSystem;
@@ -103,17 +104,17 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, ModifiersState};
 use winit::window::{Window, WindowId};
 
-const SPRITE_COUNT: u32 = 1000;
+pub(crate) const SPRITE_COUNT: u32 = 1000;
 /// Half-extent of the bouncing world in meters. Camera default has
 /// `height_world = 10`, so [-5, 5] in Y is exactly the visible region;
 /// X depends on aspect (narrower than visible at 4:3+).
-const WORLD_HALF: f32 = 5.0;
+pub(crate) const WORLD_HALF: f32 = 5.0;
 
 // ADR-0025: `Position(Vec2)` removed — `Transform` from `ph2d_ecs` is
 // the canonical pose component now. `Velocity` stays local to the
 // demo because no other crate consumes it yet (M14.2+ may promote it).
 #[derive(Component, Copy, Clone, Debug)]
-struct Velocity(Vec2);
+pub(crate) struct Velocity(pub(crate) Vec2);
 impl SimComponent for Velocity {}
 
 /// Holds every initialized-after-`resumed` resource. Bundling them into
@@ -792,112 +793,6 @@ impl App {
         for (axis, value) in self.input.gamepad.iter_axes() {
             let key = format!("gamepad.axis.{}", axis.as_lua_key());
             host.provide_input(&key, value as f64);
-        }
-    }
-
-    /// Compose the M6 atlas from real PNG files. Generates fixtures on first
-    /// launch; subsequent launches reuse the on-disk files. Any failure
-    /// bubbles a String — caller falls back to the dummy atlas.
-    pub(crate) fn try_load_real_atlas(
-        gpu: &GpuContext,
-        asset_db: &AssetDb,
-        dir: &std::path::Path,
-    ) -> Result<TextureAtlas, String> {
-        let created = integration::ensure_demo_assets_exist(dir)
-            .map_err(|e| format!("ensure_demo_assets_exist({}): {e}", dir.display()))?;
-        if created > 0 {
-            println!(
-                "M6: generated {created} demo PNG fixtures in {}",
-                dir.display()
-            );
-        }
-        let ids = integration::load_demo_assets(asset_db, dir)?;
-        let composed = integration::compose_atlas_rgba(asset_db, &ids)?;
-        // M14.4d retrofit: the demo atlas used to be a single 256×256
-        // texture mirroring the `compose_atlas_rgba` layout. With the
-        // Skyline packer it's a dynamic atlas seeded by 16 inserts of
-        // the per-tile slices — keys 0..16 reproduce the same
-        // (col, row) ordering the dummy HSV path uses, so the rest of
-        // the demo (which addresses tiles by `i % 16`) needs no
-        // change.
-        let mut atlas = TextureAtlas::new(gpu, ph2d_render::ATLAS_DEFAULT_SIZE_PX);
-        let tile_px = ph2d_render::DEMO_TILE_PX;
-        let composed_px = integration::ATLAS_PX;
-        for i in 0..ph2d_render::DEMO_TILE_COUNT {
-            let col = i % integration::ATLAS_GRID;
-            let row = i / integration::ATLAS_GRID;
-            let mut tile = Vec::with_capacity((tile_px * tile_px * 4) as usize);
-            for ty in 0..tile_px {
-                let src_y = row * tile_px + ty;
-                let src_x = col * tile_px;
-                let row_start = ((src_y * composed_px + src_x) * 4) as usize;
-                let row_end = row_start + (tile_px * 4) as usize;
-                tile.extend_from_slice(&composed[row_start..row_end]);
-            }
-            atlas
-                .insert(gpu, i, tile_px, tile_px, &tile)
-                .map_err(|e| format!("demo tile {i}: {e}"))?;
-        }
-        Ok(atlas)
-    }
-
-    /// Spawn `SPRITE_COUNT` sprites on a Vogel (golden-angle) spiral
-    /// with pseudo-random velocities derived from index — fully
-    /// deterministic, no PRNG dep.
-    pub(crate) fn populate_sim(sim: &mut SimWorld) {
-        for i in 0..SPRITE_COUNT {
-            let f = i as f32;
-            let angle = f * 2.399_963_2; // golden angle (rad)
-            let r = (f / SPRITE_COUNT as f32).sqrt() * (WORLD_HALF - 0.5);
-            let pos = Vec2::new(r * angle.cos(), r * angle.sin());
-            // Velocity in m/s; both axes seeded by independent index hashes
-            // so motion isn't correlated with the spiral pattern.
-            let vx = ((f * 12.9898).sin() * 43758.547).fract() * 3.0 - 1.5;
-            let vy = ((f * 78.233).sin() * 12345.678).fract() * 3.0 - 1.5;
-            sim.world_mut().spawn((
-                Transform::from_translation(pos),
-                Velocity(Vec2::new(vx, vy)),
-                Sprite::atlas(i % 16, [0.18, 0.18], [1.0, 1.0, 1.0, 1.0]),
-            ));
-        }
-    }
-
-    /// Spawn 8 named entities in a depth-2 tree — used in the default
-    /// editor mode. `Name` components let the hierarchy panel display
-    /// readable rows ("sprite_001" through "sprite_008") instead of a
-    /// wall of `Entity_…` hex strings.
-    pub(crate) fn populate_sim_live(sim: &mut SimWorld) {
-        // 2 roots × 3 children = 8 entities arranged as a depth-2
-        // tree. Lets the user exercise the M14.6C hierarchy
-        // expand/collapse chevron (which only appears on parents)
-        // and M14.6A hide/show propagation as soon as the demo
-        // boots — without that, every row is a root and there's
-        // nothing to collapse. Layout: roots on Y=+0.5/-0.5 with
-        // their 3 children fanned out on the same row, 0.5 m apart.
-        let mut sprite_idx = 0u32;
-        let world = sim.world_mut();
-        for group in 0..2 {
-            let y_root = if group == 0 { 0.5 } else { -0.5 };
-            let root_entity = world
-                .spawn((
-                    Transform::from_translation(Vec2::new(-1.5, y_root)),
-                    Sprite::atlas(sprite_idx % 16, [0.4, 0.4], [1.0, 1.0, 1.0, 1.0]),
-                    Name::new(format!("group_{:02}", group + 1)),
-                ))
-                .id();
-            sprite_idx += 1;
-            for child in 0..3 {
-                let f = child as f32;
-                let vx = ((sprite_idx as f32 * 12.9898).sin() * 43758.547).fract() * 1.0 - 0.5;
-                world.spawn((
-                    Transform::from_translation(Vec2::new(-0.5 + f, y_root)),
-                    Velocity(Vec2::new(vx, 0.0)),
-                    Sprite::atlas(sprite_idx % 16, [0.4, 0.4], [1.0, 1.0, 1.0, 1.0]),
-                    Name::new(format!("sprite_{:03}", sprite_idx)),
-                    ph2d_ecs::ChildOf(root_entity),
-                ));
-                sprite_idx += 1;
-            }
         }
     }
 

@@ -38,7 +38,7 @@ use crate::hero_bridge;
 use crate::integration;
 use crate::theme::parse_theme_env;
 use crate::winit_host::{LoggingHandler, WinitHost};
-use crate::{App, AppGfx, HeroLive, SPRITE_COUNT};
+use crate::{AppGfx, HeroLive, SPRITE_COUNT};
 
 /// Build the editor's initial state. Called once from
 /// [`ApplicationHandler::resumed`] on the first frame; never re-runs.
@@ -81,7 +81,7 @@ pub(crate) fn build_initial_state(
     let asset_db = AssetDb::new();
     let assets_dir = integration::demo_assets_dir();
     let (atlas, atlas_is_real) =
-        match App::try_load_real_atlas(surface.gpu(), &asset_db, &assets_dir) {
+        match crate::atlas_loader::load_atlas(surface.gpu(), &asset_db, &assets_dir) {
             Ok(atlas) => {
                 println!(
                     "[{:>6}ms] M6: real atlas composed from {} ({} assets cached)",
@@ -123,14 +123,14 @@ pub(crate) fn build_initial_state(
         // panel renders readable rows. The 1000-sprite Vogel
         // spiral demo is fixture-only; live mode is for the
         // editor's hierarchy/inspector pipeline.
-        App::populate_sim_live(&mut sim);
+        crate::sim_populate::populate_sim_live(&mut sim);
         println!(
             "[{:>6}ms] live hero mode (8 named entities; \
              hierarchy panel binds to ECS)",
             handler.elapsed_ms()
         );
     } else {
-        App::populate_sim(&mut sim);
+        crate::sim_populate::populate_sim(&mut sim);
         println!(
             "[{:>6}ms] M5 demo mode (PH2D_M5_DEMO=1; 1000-sprite \
              Vogel spiral, no editor chrome)",

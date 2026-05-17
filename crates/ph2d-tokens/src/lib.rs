@@ -41,6 +41,7 @@ pub mod layer;
 pub mod motion;
 pub mod radius;
 pub mod spacing;
+pub mod stroke;
 pub mod theme;
 pub mod typography;
 
@@ -56,6 +57,7 @@ pub use layer::Layer;
 pub use motion::{Duration, Easing};
 pub use radius::Radius;
 pub use spacing::{Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing};
+pub use stroke::StrokeToken;
 pub use theme::{PanelLayout, Theme};
 pub use typography::{
     FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight, TypeToken,

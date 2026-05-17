@@ -24,3 +24,9 @@ build = "build.rs"
 [build-dependencies]
 
 [dev-dependencies]
+# Wave 4: cross-validation test (`tests/design_token_sync.rs`) re-parses
+# tokens.json with serde_json — an independent parser from the ad-hoc
+# build.rs one — so that drift between JSON and the codegen'd const
+# tables fails CI with an inline diff. serde_json is dev-only; runtime
+# crate still has zero deps.
+serde_json = "1"

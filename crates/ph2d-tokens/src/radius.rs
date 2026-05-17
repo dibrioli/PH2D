@@ -2,6 +2,9 @@
 //!
 //! Tier-based ("soft" default across all themes); values here are the
 //! soft tier. `full` (999) yields a perfect circle (avatars, pills).
+//!
+//! Wave 4 stage A: values now come from `crate::generated::RADIUS_*`
+//! consts (codegen'd by build.rs).
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Radius {
@@ -24,13 +27,13 @@ pub enum Radius {
 impl Radius {
     pub const fn px(self) -> f32 {
         match self {
-            Self::Xs => 4.0,
-            Self::Sm => 6.0,
-            Self::Md => 8.0,
-            Self::Lg => 12.0,
-            Self::Xl => 16.0,
-            Self::Xl2 => 20.0,
-            Self::Full => 999.0,
+            Self::Xs => crate::generated::RADIUS_XS,
+            Self::Sm => crate::generated::RADIUS_SM,
+            Self::Md => crate::generated::RADIUS_MD,
+            Self::Lg => crate::generated::RADIUS_LG,
+            Self::Xl => crate::generated::RADIUS_XL,
+            Self::Xl2 => crate::generated::RADIUS_XL2,
+            Self::Full => crate::generated::RADIUS_FULL,
         }
     }
 

@@ -4075,6 +4075,9 @@ dependencies = [
 [[package]]
 name = "ph2d-tokens"
 version = "0.0.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "ph2d-tool-bgremoval"

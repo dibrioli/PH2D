@@ -34,15 +34,15 @@ pub enum TypeToken {
 impl TypeToken {
     pub const fn px(self) -> f32 {
         match self {
-            Self::Xxs => 10.0,
-            Self::Xs => 11.0,
-            Self::Sm => 12.0,
-            Self::Base => 13.0,
-            Self::Md => 15.0,
-            Self::Lg => 18.0,
-            Self::Xl => 24.0,
-            Self::Xl2 => 32.0,
-            Self::Xl3 => 44.0,
+            Self::Xxs => crate::generated::TYPOGRAPHY_SIZE_XXS,
+            Self::Xs => crate::generated::TYPOGRAPHY_SIZE_XS,
+            Self::Sm => crate::generated::TYPOGRAPHY_SIZE_SM,
+            Self::Base => crate::generated::TYPOGRAPHY_SIZE_BASE,
+            Self::Md => crate::generated::TYPOGRAPHY_SIZE_MD,
+            Self::Lg => crate::generated::TYPOGRAPHY_SIZE_LG,
+            Self::Xl => crate::generated::TYPOGRAPHY_SIZE_XL,
+            Self::Xl2 => crate::generated::TYPOGRAPHY_SIZE_XL2,
+            Self::Xl3 => crate::generated::TYPOGRAPHY_SIZE_XL3,
         }
     }
 
@@ -74,10 +74,10 @@ pub enum FontWeight {
 impl FontWeight {
     pub const fn value(self) -> u16 {
         match self {
-            Self::Regular => 400,
-            Self::Medium => 500,
-            Self::Semibold => 600,
-            Self::Bold => 700,
+            Self::Regular => crate::generated::TYPOGRAPHY_WEIGHT_REGULAR,
+            Self::Medium => crate::generated::TYPOGRAPHY_WEIGHT_MEDIUM,
+            Self::Semibold => crate::generated::TYPOGRAPHY_WEIGHT_SEMIBOLD,
+            Self::Bold => crate::generated::TYPOGRAPHY_WEIGHT_BOLD,
         }
     }
 }
@@ -94,10 +94,10 @@ pub enum LineHeight {
 impl LineHeight {
     pub const fn ratio(self) -> f32 {
         match self {
-            Self::Tight => 1.15,
-            Self::Snug => 1.30,
-            Self::Normal => 1.45,
-            Self::Loose => 1.60,
+            Self::Tight => crate::generated::TYPOGRAPHY_LINE_TIGHT,
+            Self::Snug => crate::generated::TYPOGRAPHY_LINE_SNUG,
+            Self::Normal => crate::generated::TYPOGRAPHY_LINE_NORMAL,
+            Self::Loose => crate::generated::TYPOGRAPHY_LINE_LOOSE,
         }
     }
 }
@@ -115,10 +115,10 @@ impl LetterSpacing {
     /// Em units (matches CSS `letter-spacing: Xem`).
     pub const fn em(self) -> f32 {
         match self {
-            Self::Tight => -0.02,
-            Self::Normal => 0.0,
-            Self::Wide => 0.04,
-            Self::Caps => 0.08,
+            Self::Tight => crate::generated::TYPOGRAPHY_TRACK_TIGHT,
+            Self::Normal => crate::generated::TYPOGRAPHY_TRACK_NORMAL,
+            Self::Wide => crate::generated::TYPOGRAPHY_TRACK_WIDE,
+            Self::Caps => crate::generated::TYPOGRAPHY_TRACK_CAPS,
         }
     }
 }

@@ -53,11 +53,179 @@ fn main() {
         .unwrap_or_else(|e| panic!("read {}: {e}", tokens_path.display()));
 
     let themes = parse_themes(&json);
+    let spacing = parse_scalar_block(&json, "spacing");
+    let radius = parse_scalar_block(&json, "radius");
+    let stroke = parse_scalar_block(&json, "stroke");
+    let density = parse_scalar_block(&json, "density");
+    let chrome = parse_scalar_block(&json, "chrome");
+    let typography_size = parse_scalar_block_with_px_suffix(&json, "typography", "size");
+    let typography_weight = parse_scalar_block_with_path(&json, "typography", "weight");
+    let typography_line = parse_scalar_block_with_path(&json, "typography", "line");
+    let typography_track = parse_em_block(&json, "typography", "track");
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let out_path = out_dir.join("tokens_generated.rs");
-    fs::write(&out_path, emit_rust(&themes))
-        .unwrap_or_else(|e| panic!("write {}: {e}", out_path.display()));
+    fs::write(
+        &out_path,
+        emit_rust(
+            &themes,
+            &spacing,
+            &radius,
+            &stroke,
+            &density,
+            &chrome,
+            &typography_size,
+            &typography_weight,
+            &typography_line,
+            &typography_track,
+        ),
+    )
+    .unwrap_or_else(|e| panic!("write {}: {e}", out_path.display()));
+}
+
+/// Parse a top-level scalar block (e.g. `"spacing": { "xs": 4, "sm": 6, ... }`)
+/// into a key→f64 map. Numeric values only; no unit suffix. Panics if the
+/// block is missing — Wave 4 adds these as required sections.
+fn parse_scalar_block(json: &str, key: &str) -> BTreeMap<String, f64> {
+    let body = extract_object_block(json, key)
+        .unwrap_or_else(|| panic!("tokens.json missing top-level `{key}` block"));
+    let out = parse_pairs(&body, parse_scalar_value);
+    if out.is_empty() {
+        panic!("tokens.json `{key}` block parsed empty — schema drift?");
+    }
+    out
+}
+
+/// Parse a nested scalar block under `parent.child` where values are
+/// integers/floats (used for `typography.weight`, `typography.line`).
+fn parse_scalar_block_with_path(json: &str, parent: &str, child: &str) -> BTreeMap<String, f64> {
+    let parent_body = extract_object_block(json, parent)
+        .unwrap_or_else(|| panic!("tokens.json missing `{parent}` block"));
+    let child_body = extract_object_block(&parent_body, child)
+        .unwrap_or_else(|| panic!("tokens.json missing `{parent}.{child}` block"));
+    let out = parse_pairs(&child_body, parse_scalar_value);
+    if out.is_empty() {
+        panic!("tokens.json `{parent}.{child}` block parsed empty — schema drift?");
+    }
+    out
+}
+
+/// Parse a nested block where values are strings with `"px"` suffix,
+/// like `"xxs": "10px"`. Used for `typography.size`.
+fn parse_scalar_block_with_px_suffix(
+    json: &str,
+    parent: &str,
+    child: &str,
+) -> BTreeMap<String, f64> {
+    let parent_body = extract_object_block(json, parent)
+        .unwrap_or_else(|| panic!("tokens.json missing `{parent}` block"));
+    let child_body = extract_object_block(&parent_body, child)
+        .unwrap_or_else(|| panic!("tokens.json missing `{parent}.{child}` block"));
+    let out = parse_pairs(&child_body, parse_px_string_value);
+    if out.is_empty() {
+        panic!("tokens.json `{parent}.{child}` block parsed empty — schema drift?");
+    }
+    out
+}
+
+/// Parse a nested block where values are strings with `"em"` suffix or
+/// the special value `"0"`. Used for `typography.track`.
+fn parse_em_block(json: &str, parent: &str, child: &str) -> BTreeMap<String, f64> {
+    let parent_body = extract_object_block(json, parent)
+        .unwrap_or_else(|| panic!("tokens.json missing `{parent}` block"));
+    let child_body = extract_object_block(&parent_body, child)
+        .unwrap_or_else(|| panic!("tokens.json missing `{parent}.{child}` block"));
+    let out = parse_pairs(&child_body, parse_em_string_value);
+    if out.is_empty() {
+        panic!("tokens.json `{parent}.{child}` block parsed empty — schema drift?");
+    }
+    out
+}
+
+/// Walk a flat block body splitting on `,` and parsing each `"key": value`
+/// pair via `parse_value`. Robust to both multi-line bodies (one pair per
+/// line) and single-line bodies (`{ "xs": "10px", "sm": "12px", ... }`).
+///
+/// The blocks we target (spacing, radius, stroke, density, chrome,
+/// typography.{size,weight,line,track}) have no nested braces, so a naive
+/// comma split is safe. If schema evolves, generalize then.
+fn parse_pairs<F>(body: &str, parse_value: F) -> BTreeMap<String, f64>
+where
+    F: Fn(&str) -> Option<f64>,
+{
+    let mut out = BTreeMap::new();
+    for chunk in body.split(',') {
+        let trimmed = chunk.trim();
+        if !trimmed.starts_with('"') {
+            continue;
+        }
+        let after_open = &trimmed[1..];
+        let Some(close_key) = after_open.find('"') else {
+            continue;
+        };
+        let key = after_open[..close_key].to_string();
+        let after_key = &after_open[close_key + 1..];
+        let Some(colon) = after_key.find(':') else {
+            continue;
+        };
+        let raw_value = after_key[colon + 1..].trim();
+        if let Some(value) = parse_value(raw_value) {
+            out.insert(key, value);
+        }
+    }
+    out
+}
+
+/// Numeric value: `4`, `4.5`, `-0.02`. Trim quotes if accidentally
+/// wrapped (defensive — top-level scalar blocks emit raw numerics).
+fn parse_scalar_value(raw: &str) -> Option<f64> {
+    let s = raw.trim_matches('"').trim();
+    s.parse().ok()
+}
+
+/// String value with `px` suffix: `"10px"` → `10.0`. Strips the quotes
+/// and the suffix.
+fn parse_px_string_value(raw: &str) -> Option<f64> {
+    let s = raw.trim_matches('"').trim();
+    let stripped = s.strip_suffix("px").unwrap_or(s);
+    stripped.trim().parse().ok()
+}
+
+/// String value optionally suffixed `em`: `"-0.02em"` → `-0.02`,
+/// `"0"` → `0.0`. Strips quotes and optional suffix.
+fn parse_em_string_value(raw: &str) -> Option<f64> {
+    let s = raw.trim_matches('"').trim();
+    let stripped = s.strip_suffix("em").unwrap_or(s);
+    stripped.trim().parse().ok()
+}
+
+/// Transform a JSON key like `"2xl"`, `"full"`, `"row-h"`,
+/// `"icon-btn-size"` into a Rust const-name suffix like `XL2`, `FULL`,
+/// `ROW_H`, `ICON_BTN_SIZE`. Rules:
+///
+/// - hyphens → underscores
+/// - leading digits move to the end (Rust identifier rule)
+/// - everything uppercased
+fn key_to_const_suffix(key: &str) -> String {
+    let underscored = key.replace('-', "_");
+    // Split leading-digit prefix from the rest.
+    let mut leading_digits = String::new();
+    let mut rest = String::new();
+    let mut still_leading = true;
+    for c in underscored.chars() {
+        if still_leading && c.is_ascii_digit() {
+            leading_digits.push(c);
+        } else {
+            still_leading = false;
+            rest.push(c);
+        }
+    }
+    let normalized = if leading_digits.is_empty() {
+        underscored
+    } else {
+        format!("{rest}{leading_digits}")
+    };
+    normalized.to_uppercase()
 }
 
 /// One color entry: `("bg-0", OklchRaw { l, c, h, a })`.
@@ -226,12 +394,26 @@ fn parse_color_line(line: &str) -> Option<ColorEntry> {
 }
 
 /// Emit Rust source for `tokens_generated.rs`.
-fn emit_rust(themes: &BTreeMap<String, Theme>) -> String {
+#[allow(clippy::too_many_arguments)]
+fn emit_rust(
+    themes: &BTreeMap<String, Theme>,
+    spacing: &BTreeMap<String, f64>,
+    radius: &BTreeMap<String, f64>,
+    stroke: &BTreeMap<String, f64>,
+    density: &BTreeMap<String, f64>,
+    chrome: &BTreeMap<String, f64>,
+    typography_size: &BTreeMap<String, f64>,
+    typography_weight: &BTreeMap<String, f64>,
+    typography_line: &BTreeMap<String, f64>,
+    typography_track: &BTreeMap<String, f64>,
+) -> String {
     let mut s = String::new();
     s.push_str(
         "// AUTO-GENERATED by build.rs from `docs/design/tokens.json`.\n\
          // DO NOT EDIT BY HAND — changes here are overwritten every build.\n\
-         // Source-of-truth: `docs/design/tokens.json` (Wave 2 PR 11.1).\n\
+         // Source-of-truth: `docs/design/tokens.json` (Wave 2 PR 11.1 +\n\
+         //                  Wave 4 stage A/B extends to spacing/radius/\n\
+         //                  stroke/density/chrome/typography codegen).\n\
          \n\
          /// Raw OKLCH color from canonical design tokens. `a` field is\n\
          /// the alpha multiplier (1.0 = opaque). Consumer in `color.rs`\n\
@@ -284,5 +466,106 @@ fn emit_rust(themes: &BTreeMap<String, Theme>) -> String {
         s.push_str("];\n\n");
     }
 
+    // Wave 4 stage A — scalar token sections.
+    emit_scalar_consts(
+        &mut s,
+        "SPACING",
+        spacing,
+        "Spacing scale (px). Source: `tokens.json::spacing`.",
+    );
+    emit_scalar_consts(
+        &mut s,
+        "RADIUS",
+        radius,
+        "Border-radius scale (px). Source: `tokens.json::radius`.",
+    );
+    emit_scalar_consts(
+        &mut s,
+        "STROKE",
+        stroke,
+        "Stroke width scale (px). Source: `tokens.json::stroke`.",
+    );
+    emit_scalar_consts(
+        &mut s,
+        "DENSITY",
+        density,
+        "Density row-height scale (px). Source: `tokens.json::density`.",
+    );
+    emit_scalar_consts(
+        &mut s,
+        "CHROME",
+        chrome,
+        "Chrome dimensional constants (px). Source: `tokens.json::chrome`.",
+    );
+
+    // Wave 4 stage B — typography codegen.
+    emit_scalar_consts(
+        &mut s,
+        "TYPOGRAPHY_SIZE",
+        typography_size,
+        "Type-scale font sizes (px). Source: `tokens.json::typography.size`.",
+    );
+    emit_typography_weight_consts(&mut s, typography_weight);
+    emit_scalar_consts(
+        &mut s,
+        "TYPOGRAPHY_LINE",
+        typography_line,
+        "Line-height ratios. Source: `tokens.json::typography.line`.",
+    );
+    emit_scalar_consts(
+        &mut s,
+        "TYPOGRAPHY_TRACK",
+        typography_track,
+        "Letter-spacing em values. Source: `tokens.json::typography.track`.",
+    );
+
     s
+}
+
+/// Emit a block of `pub const <PREFIX>_<KEY>: f32 = <VALUE>;` lines.
+/// Keys are normalized via [`key_to_const_suffix`].
+fn emit_scalar_consts(s: &mut String, prefix: &str, values: &BTreeMap<String, f64>, doc: &str) {
+    s.push_str(&format!("/// {doc}\n"));
+    for (key, value) in values {
+        let suffix = key_to_const_suffix(key);
+        s.push_str(&format!(
+            "pub const {prefix}_{suffix}: f32 = {value}_f32;\n",
+            value = format_f32_literal(*value),
+        ));
+    }
+    s.push('\n');
+}
+
+/// `typography.weight` values are integers (CSS font-weight: 400, 500,
+/// 600, 700) → emitted as `u16`, not `f32`.
+fn emit_typography_weight_consts(s: &mut String, weights: &BTreeMap<String, f64>) {
+    s.push_str("/// Font weights (CSS units). Source: `tokens.json::typography.weight`.\n");
+    for (key, value) in weights {
+        let suffix = key_to_const_suffix(key);
+        let int_value = *value as u16;
+        s.push_str(&format!(
+            "pub const TYPOGRAPHY_WEIGHT_{suffix}: u16 = {int_value};\n"
+        ));
+    }
+    s.push('\n');
+}
+
+/// Format an f64 → f32 literal with platform-independent precision.
+/// Integers emit as `N.0`; fractions use up to 6 decimal places,
+/// trailing zeros stripped. Determinism HR-5: same byte output across
+/// linux/mac/windows.
+fn format_f32_literal(value: f64) -> String {
+    if value.fract() == 0.0 {
+        format!("{:.1}", value)
+    } else {
+        let s = format!("{:.6}", value);
+        // Strip trailing zeros after the decimal point, but keep at
+        // least one digit (e.g., "1.500000" → "1.5", "1.000000" → "1.0").
+        let trimmed = s.trim_end_matches('0');
+        if trimmed.ends_with('.') {
+            format!("{trimmed}0")
+        } else {
+            trimmed.to_string()
+        }
+    }
 }

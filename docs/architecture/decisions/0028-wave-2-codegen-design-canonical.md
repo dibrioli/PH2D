@@ -102,6 +102,98 @@ linhas). Duas exceções ativas hoje, ambas pendentes Wave 2.5:
 Inventário automático em `loc_cap_exceptions_inventory` test emite a lista de
 exceções a cada `cargo test` para visibilidade contínua.
 
+## Wave 4 (2026-05-17) — source-of-truth UI extends to spacing/radius/stroke/typography
+
+Wave 4 closes the **decoration-layer** armadilhas that survived Waves
+1-3. Same three pillars (canonical source → codegen → lint guard), now
+applied to the dimensional + temporal axis of UI.
+
+### Pillar 1: design canonical extends
+
+`docs/design/tokens.json` gains 5 new top-level sections (moved out
+of `themes.forge` where applicable; stripped from per-theme blocks):
+
+- `spacing` — 9 values `xxs..4xl` (2..48 px)
+- `radius` — 7 values `xs..full` (4..999 px)
+- `stroke` — 5 values `hairline..heavy` (0.5..3.0 px) — **new
+  dimension**, no prior Rust enum
+- `density` — 3 values `compact..comfortable` (22..32 px)
+- `chrome` — 3 values `row-h`, `icon-btn-size`, `section-gap`
+  (28, 36, 14 px)
+
+`typography.{size, weight, line, track}` (already present) becomes
+codegen-driven (was a manual mirror).
+
+### Pillar 2: codegen extends
+
+`crates/ph2d-tokens/build.rs` extended with `parse_scalar_block` /
+`parse_pairs` (handles both multi-line and single-line JSON bodies)
+and emits new const tables: `SPACING_*`, `RADIUS_*`, `STROKE_*`,
+`DENSITY_*`, `CHROME_*`, `TYPOGRAPHY_SIZE_*`, `TYPOGRAPHY_WEIGHT_*`,
+`TYPOGRAPHY_LINE_*`, `TYPOGRAPHY_TRACK_*`. Still zero build-deps
+(ad-hoc parser, comma-split for blocks, suffix-stripped values).
+
+Consumers (`Spacing::px`, `Radius::px`, `Density::row_h_px`,
+`StrokeToken::px`, `TypeToken::px`, `FontWeight::value`,
+`LineHeight::ratio`, `LetterSpacing::em`, plus
+`SECTION_GAP_PX`/`ICON_BTN_SIZE_PX`/`ROW_H_PX` consts) now read from
+`crate::generated::*` instead of hardcoded match arms.
+
+New `StrokeToken {Hairline/Thin/Default/Thick/Heavy}` enum
+re-exported from `ph2d_tokens::*`.
+
+### Pillar 3: cross-validation + lint extends
+
+- `crates/ph2d-tokens/tests/design_token_sync.rs` (new) — 9 tests
+  re-parse `tokens.json` with `serde_json` (dev-only dep,
+  independent of build.rs's ad-hoc parser) and assert every public
+  token API agrees with the JSON. Drift fails CI with inline diff.
+- `crates/ph2d-editor/tests/no_literal_color.rs` (extended) —
+  matcher now catches `Color::WHITE/BLACK/TRANSPARENT`,
+  `Color::{rgba8, rgb8, from_rgba8, from_rgba, from_rgb}(`, all of
+  the above prefixed with `VelloColor::`. Same allowlist mechanism
+  (per-line comment + `blender_color_picker/` path). 21 sites in
+  the existing tree annotated as legitimate (token-cast bridges,
+  alpha-checker tiles, drop-overlay scrim theme-invariant, note
+  text on highlighter background).
+- `crates/ph2d-editor/tests/no_magic_numeric.rs` (new, warn mode) —
+  bans bare `\d+\.\d+` literals in `widget/**` and `screens/**`
+  outside structural ratios `{0.0, ±0.5, ±1.0, ±2.0}`. Allowlist
+  via `// LITERAL-PX-OK: <reason>` per-line +
+  `blender_color_picker/` path. Mode toggle const flips warn→deny
+  when the migration sweep zeroes.
+
+### Migration sweep status
+
+The walker found 493 actionable hits across 35+ files. Wave 4 lands
+the **infrastructure** + migrates 5 files as demonstration:
+`style.rs`, `inspector/sections.rs`, `topbar/cluster_painter.rs`,
+`hierarchy/panel_painter.rs`, `hierarchy/row_painter.rs` (~154
+sites done, 31%).
+
+The remaining 339 sites in ~30 files are deferred to **Wave 4.1
+dedicated** (top remaining: `inspector/showcase.rs` 63,
+`hero.rs` 20, `inspector/mod.rs` 19, `selection.rs` 18,
+`color_picker.rs` 15; long tail of 22 files with 1-10 hits each).
+Until Wave 4.1 lands, the lint stays in `LintMode::Warn` — CI
+remains green, inventory is visible in stdout for any reviewer.
+
+### Métricas Wave 4
+
+| Métrica | Pré-Wave-4 | Pós-Wave-4 |
+|---------|------------|-------------|
+| `tokens.json` top-level sections (excl. `$meta`/themes/motion/z) | 1 (typography) | 6 (spacing, radius, stroke, density, chrome, typography) |
+| Rust enums consuming codegen | 1 (`ColorToken`) | 9 (`+ Spacing, Radius, StrokeToken, Density, TypeToken, FontWeight, LineHeight, LetterSpacing`) |
+| Color lint coverage | hex literals only | hex + `Color::{WHITE,BLACK,TRANSPARENT}` + `Color::{rgba8,from_rgba8,...}` + `VelloColor::*` |
+| Magic-numeric lint | none | warn-mode in widget+screens; 154/493 sites migrated |
+| Cross-validation tests | 1 (`tool_manifest_design_sync`) | 2 (`+ design_token_sync` with 9 sub-tests) |
+
+When Wave 4.1 closes, an agent paralelo adicionando widget novo
+**não pode**:
+- Usar spacing/radius/stroke/font-size não-token (lint bloqueia)
+- Usar `Color::WHITE` ou `from_rgba8` hardcoded (lint estendido)
+- Drift JSON↔Rust em qualquer das 9 dimensions (sync test)
+
 ## Wave 2.5 — débito conhecido
 
 Os splits internos a seguir foram deferidos por demandarem 2+ sessões cada e
@@ -166,6 +258,14 @@ Plano em [docs/Migracao/2026-05-wave-2-eliminating-all-collisions.md](../../Migr
 - ✅ PR 11.7b — hierarchy.rs split (8843d01)
 - ✅ PR 11.9 — HR-18 file-LOC cap ativo (f2cbb20)
 - 🔜 Wave 2.5: PR 11.7a, 11.7d, 11.8, 11.10, 11.11
+
+### Wave 4 (2026-05-17, stage A+B+C + partial D)
+
+- ✅ Stage A+B — spacing/radius/stroke/density/chrome top-level + typography codegen (`b84b74b`)
+- ✅ Stage C — `no_literal_color` matcher extends to non-hex paths (`1dc8487`)
+- ✅ Stage D.1 — `no_magic_numeric` lint infra (warn) + 2 demo files (`ccf1ff9`)
+- ✅ Stage D.2 — 3 more painter files (`3463fc7`)
+- 🔜 Wave 4.1 — Stage D sweep continuation (339 sites in ~30 files; flip lint to deny)
 
 ## Referências
 

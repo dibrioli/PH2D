@@ -4,15 +4,22 @@ Narrativa completa do problema → diagnóstico → solução. Para quem
 chega novo ao projeto: leia ISTO primeiro. Depois aprofunde nas
 ADRs (links no fim).
 
-**Última atualização:** 2026-05-17 — **Wave 3.2 fechada**.
-HR-18 cap **fully active workspace-wide em `shells/desktop/src/`**:
-`loc_cap_exceptions_inventory` test imprime `NONE (cap fully
-active)`. Stage A: render_loop.rs (1603 LOC) split em 7 sub-files
-(mod/snapshots/dispatch/hierarchy/inspector_commits/image_edit/sim_extract/present),
-todos sob cap. Stage B: main.rs 928 → 359 LOC via extração de
-app_state.rs (struct App/AppGfx/HeroLive/ImageEditSnapshot, 291
-LOC) + input_handlers.rs (3 grandes impl App methods, 307 LOC).
-Convention-by-discovery + decomposição multi-agente: **completas**.
+**Última atualização:** 2026-05-17 noite — **Wave 4 stage A+B+C+D
+parcial fechada** (4 commits locais: `b84b74b`, `1dc8487`,
+`ccf1ff9`, `3463fc7`). Source-of-truth UI estende a 5 novas
+seções top-level no `tokens.json` (spacing/radius/stroke/density/
+chrome) + 4 typography subsections — todas codegen-driven, 9
+enums Rust agora leem `crate::generated::*`. Novo `StrokeToken`
+enum re-exported. Cross-validation `design_token_sync.rs` (9
+tests) pin parity JSON↔Rust. `no_literal_color` matcher estende
+a non-hex paths (`Color::WHITE`, `Color::from_rgba8`,
+`VelloColor::*`). Novo `no_magic_numeric` lint (warn mode) banindo
+literais `f32/f64` fora de structural ratios; 154/493 sites
+migrados em 5 painters (31%). **Sweep restante (339 sites em
+~30 files) deferred para Wave 4.1 dedicada.** HR-18 cap **fully
+active** em `shells/desktop/src/` desde Wave 3.2. Convention-by-
+discovery + decomposição multi-agente + tokens canonical: o que
+falta é o sweep final.
 
 ---
 
@@ -250,6 +257,21 @@ Detalhes em
 | stage B (`776750b`) | ✅ mergeada | `main.rs` 928 → 359 LOC via `app_state.rs` (291 LOC: struct App/AppGfx/HeroLive/ImageEditSnapshot) + `input_handlers.rs` (307 LOC: 3 grandes impl App methods via split-impl). Marker HR-18 removido. |
 
 **HR-18 inventory**: `cargo test -p ph2d-host-desktop --test file_loc_caps` imprime `HR-18 loc-cap exceptions inventory: NONE (cap fully active)`. Zero exceções declaradas em `shells/desktop/src/*.rs`. Convention-by-discovery + decomposição multi-agente: **completas**.
+
+### Wave 4 — Source-of-truth UI (parcial; sweep continua em 4.1)
+
+Pós Wave 1-3.2 a colisão multi-agente está eliminada no layer
+funcional (tools, chrome, NodeIds, HR-18). Wave 4 ataca o layer de
+**decoração** — fechar as 4 armadilhas onde um agente paralelo
+podia introduzir UI não-canônica silenciosamente.
+
+| PR | Status | O que entregou |
+|----|--------|----------------|
+| Stage A+B (`b84b74b`) | ✅ mergeada local | `tokens.json` ganha 5 novas seções top-level (spacing/radius/stroke/density/chrome) + 4 typography subsections agora codegen. 9 enums Rust (`Spacing`, `Radius`, `StrokeToken` novo, `Density`, `TypeToken`, `FontWeight`, `LineHeight`, `LetterSpacing` + chrome consts) leem `crate::generated::*`. Cross-validation `design_token_sync.rs` (9 tests, `serde_json` dev-dep) pin parity JSON↔Rust. |
+| Stage C (`1dc8487`) | ✅ mergeada local | `no_literal_color` matcher estende para `Color::WHITE/BLACK/TRANSPARENT`, `Color::{rgba8,from_rgba8,...}`, `VelloColor::*` aliases. 21 sites pre-existentes anotados (bridges, alpha-checker tiles, drop-overlay theme-invariant, note text). |
+| Stage D.1 (`ccf1ff9`) | ✅ mergeada local | `no_magic_numeric.rs` lint **infra** em warn mode. Walker mirror de `no_literal_color.rs`: byte float matcher, structural allowlist `{0.0, ±0.5, ±1.0, ±2.0}`, per-line + path allowlist. 2 demo files migrados: `style.rs`, `inspector/sections.rs`. |
+| Stage D.2 (`3463fc7`) | ✅ mergeada local | 3 more painters migrated: `topbar/cluster_painter.rs`, `hierarchy/panel_painter.rs`, `hierarchy/row_painter.rs`. Sweep: 154/493 sites done (31%). |
+| **Wave 4.1** (deferred) | 🔜 | Stage D sweep continuation: 339 remaining sites em ~30 files. Top remaining: `inspector/showcase.rs` 63, `hero.rs` 20, `inspector/mod.rs` 19, `selection.rs` 18, `color_picker.rs` 15. Quando inventory zerar, flip lint para `LintMode::Deny`. |
 
 ### Wave 3 (legacy plan — superseded por 3.1 + 3.2)
 

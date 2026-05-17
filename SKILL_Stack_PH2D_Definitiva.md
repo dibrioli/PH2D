@@ -7,7 +7,7 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 
 > **PH2D** (Power House 2D). Engine 2D de altíssima performance, sem teto para artistas, com IA tratada como first-class user.
 
-**Versão deste documento:** 2.5 — 2026-05-16 (Wave 2 closeout: `build.rs` codegen para tokens.json + icons SVG; chrome derivado do Registry; `docs/design/tools/*.toml` canonical + cross-validation; lint anti-`0xRRGGBB`; HR-18 **ativo** em `shells/desktop/src/`; ADR-0028 Accepted)
+**Versão deste documento:** 2.6 — 2026-05-17 (Wave 4 stage A+B+C+D parcial: `tokens.json` ganha 5 novas seções top-level — spacing/radius/stroke/density/chrome — todas codegen-driven; novo `StrokeToken` enum; typography 4 enums migrados para codegen; cross-validation `design_token_sync` (9 tests); `no_literal_color` matcher estende a non-hex paths; novo `no_magic_numeric` lint em warn mode banindo literais `f32/f64` em widget/screens; ADR-0028 extends. Stage D sweep 154/493 sites — Wave 4.1 dedicada cobre os 339 restantes. Pré-Wave-4 baseline: 2.5 — 2026-05-16 — Wave 2 closeout)
 
 **Narrativa do problema multi-agente:** Para entender por quê esta versão existe (problema → diagnóstico → 4 waves de solução incluindo o UI/hero), leia primeiro [`docs/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](../docs/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md).
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
@@ -1031,7 +1031,7 @@ Listar com motivo de rejeição.
 | ADR-0023 | UI/UX baseline — Procreate-style canvas-first + WCAG 2.2 AA + AccessKit | **Accepted** ([0023-ui-ux-baseline.md](../docs/architecture/decisions/0023-ui-ux-baseline.md)) |
 | ADR-0024 | Editor input pipeline + retained widget state (Modelo B + plano HR-3 zero-alloc) | **Accepted** ([0024-editor-input-and-widget-state.md](../docs/architecture/decisions/0024-editor-input-and-widget-state.md)) |
 | ADR-0027 | Convention-by-discovery + Shell decomposition + HR-18 (tool-as-crate, registry-init, manifest-driven chrome) | **Accepted** ([0027-convention-by-discovery.md](../docs/architecture/decisions/0027-convention-by-discovery.md)) |
-| ADR-0028 | Wave 2 — `build.rs` codegen (tokens + icons) + design canonical TOMLs + lint guards + HR-18 ativo | **Accepted** ([0028-wave-2-codegen-design-canonical.md](../docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md)) |
+| ADR-0028 | Wave 2 — `build.rs` codegen (tokens + icons) + design canonical TOMLs + lint guards + HR-18 ativo; **Wave 4 extends**: spacing/radius/stroke/density/chrome top-level + typography codegen + `StrokeToken` enum + `design_token_sync` cross-val + `no_literal_color` non-hex paths + `no_magic_numeric` lint (warn mode) | **Accepted** ([0028-wave-2-codegen-design-canonical.md](../docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md)) |
 
 ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-17.
 

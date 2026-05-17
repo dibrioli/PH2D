@@ -4,15 +4,15 @@ Narrativa completa do problema → diagnóstico → solução. Para quem
 chega novo ao projeto: leia ISTO primeiro. Depois aprofunde nas
 ADRs (links no fim).
 
-**Última atualização:** 2026-05-17 — Wave 2.5 + Wave 3.1 (stages
-A/B/C) MERGEADAS em `origin/main` (CI 10/10 verde nas duas
-sessões). 20/20 `pending_X` fields retired do HeroScreen; `main.rs`
-caiu de 2607 → 928 LOC; `hero_intents.rs` 697 LOC → directory module
-sem exceção HR-18. **HR-18 parcialmente fechado** —
-hero_intents marker removido, mas `main.rs` (928) e o novo
-`render_loop.rs` (1603) ainda têm exceções declaradas. O fechamento
-completo é Wave 3.2
-([brief](2026-05-wave-3-2-remaining-shell-decomp.md)).
+**Última atualização:** 2026-05-17 — **Wave 3.2 fechada**.
+HR-18 cap **fully active workspace-wide em `shells/desktop/src/`**:
+`loc_cap_exceptions_inventory` test imprime `NONE (cap fully
+active)`. Stage A: render_loop.rs (1603 LOC) split em 7 sub-files
+(mod/snapshots/dispatch/hierarchy/inspector_commits/image_edit/sim_extract/present),
+todos sob cap. Stage B: main.rs 928 → 359 LOC via extração de
+app_state.rs (struct App/AppGfx/HeroLive/ImageEditSnapshot, 291
+LOC) + input_handlers.rs (3 grandes impl App methods, 307 LOC).
+Convention-by-discovery + decomposição multi-agente: **completas**.
 
 ---
 
@@ -240,14 +240,16 @@ Detalhes em
 | stage B (`fc5a0da`) | ✅ mergeada CI 10/10 | `atlas_loader.rs` (61 LOC) + `sim_populate.rs` (77 LOC) hoisted de `impl App`; main.rs 2607 → 2502. |
 | stage C (`e309e80`) | ✅ mergeada CI 10/10 | `App::render_frame` 1582-LOC body lifted verbatim pra `render_loop.rs` via split impl block; main.rs 2502 → 928 (−1574 net). |
 
-**Markers HR-18 ainda ativos** em main.rs (928 LOC) + render_loop.rs (1603 LOC). Closeout completo é Wave 3.2.
+**Markers HR-18 ativos** em main.rs (928 LOC) + render_loop.rs (1603 LOC) — fechados em Wave 3.2 (vide abaixo).
 
-### Wave 3.2 — Pendente (fecha HR-18 completamente)
+### Wave 3.2 — File decomp final (mergeada 2026-05-17 noite, **HR-18 fully active**)
 
-| PR | Recomendação |
-|----|--------------|
-| Stage A — render_loop directory split (snapshots/dispatch/image_edit/present) | Defer. Architectural hygiene. 4-6h + borrow-checker risk no AppGfx destructure. Brief detalhado em [`docs/Migracao/2026-05-wave-3-2-remaining-shell-decomp.md`](2026-05-wave-3-2-remaining-shell-decomp.md). |
-| Stage B — main.rs extract app_state.rs + input_handlers.rs | Defer. 2-3h. Risco baixo (split-impl pattern já validado em Wave 3.1 C). |
+| PR | Status | O que entregou |
+|----|--------|----------------|
+| stage A (`07ec45c`) | ✅ mergeada CI 10/10 | `render_loop.rs` 1603 LOC → 7 sub-files (mod 574 / snapshots 283 / inspector_commits 321 / hierarchy 251 / image_edit 232 / sim_extract 125 / present 138). Phase fns como free fns recebendo destructured AppGfx refs. Marker HR-18 removido. |
+| stage B (`776750b`) | ✅ mergeada | `main.rs` 928 → 359 LOC via `app_state.rs` (291 LOC: struct App/AppGfx/HeroLive/ImageEditSnapshot) + `input_handlers.rs` (307 LOC: 3 grandes impl App methods via split-impl). Marker HR-18 removido. |
+
+**HR-18 inventory**: `cargo test -p ph2d-host-desktop --test file_loc_caps` imprime `HR-18 loc-cap exceptions inventory: NONE (cap fully active)`. Zero exceções declaradas em `shells/desktop/src/*.rs`. Convention-by-discovery + decomposição multi-agente: **completas**.
 
 ### Wave 3 (legacy plan — superseded por 3.1 + 3.2)
 
@@ -345,7 +347,7 @@ register_all é append-only.
 | Manual color resolve fns | 200 LOC | 0 (codegen) | 0 | 0 |
 | Sources of truth para tools | 4 fragmented | 1 canonical | 1 canonical | 1 canonical |
 | Architecture tests | 1 | 6 | 6 | 6 |
-| Files em shells > 600 LOC | 2 ungated | 2 com exceções declaradas | 2 com exceções declaradas | 2 com exceções declaradas (Wave 3.2 fecha) |
+| Files em shells > 600 LOC | 2 ungated | 2 com exceções declaradas | 2 com exceções declaradas | **0** (HR-18 fully active após Wave 3.2) |
 | Widget re-exports em lib.rs | 84 | 84 | 0 | 0 |
 | god-files crates/ acima de 600 | 5 | 3 (todos não-shell) | 2 (panel.rs e state.rs splittados) | 2 |
 | pending_X scattered fields | 20 | 20 | 18 | **0** (Wave 2.5 closeout) |

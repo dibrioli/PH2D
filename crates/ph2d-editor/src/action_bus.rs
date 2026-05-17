@@ -69,6 +69,35 @@ pub enum EditorAction {
     /// when dispatching. Raised by clicking
     /// `IMAGE_ACTION_BGREMOVAL`.
     ActivateBgRemoval,
+
+    /// Apply Background Removal at full resolution to the entity's
+    /// sprite. Payload: `entity.to_bits()`. Raised by the shell when
+    /// the `BgRemovalTool` panel's Apply Toggle fires (the tool sets
+    /// `pending_apply = true` inside `handle_panel_event`, the shell
+    /// pushes this variant with the current selection). Shell drain
+    /// runs `BgRemovalTool::run_full_resolution` against the source
+    /// RGBA and swaps `Sprite.source` to a fresh `Individual`
+    /// texture. Gated at drain time on `bgremoval` being the active
+    /// tool — if not active when drained, the action is pushed back
+    /// onto the bus for the next frame (preserves the
+    /// `pending_bgremoval` "stays intact across tool switches"
+    /// contract).
+    Bgremoval { entity_bits: u64 },
+
+    /// Re-decode the entity's sprite source asset at the current
+    /// `ProjectSettings::pixels_per_meter` and write the recomputed
+    /// world size back to `Sprite.size`. Payload: `entity.to_bits()`.
+    /// Raised by the Inspector's "Reimport at current px/m" button
+    /// (`INSP_RENDER_SOURCE_REIMPORT`). Texture itself unchanged;
+    /// only `Sprite.size` is recomputed.
+    Reimport { entity_bits: u64 },
+
+    /// Undo the most recent image-edit (Trim Transparency / Make
+    /// Square / Bg Removal). No payload — the shell owns the
+    /// snapshot. Raised by clicking `TOOL_UNDO` on the LeftRail or
+    /// pressing Cmd+Z / Ctrl+Z in the desktop shell. Single-level
+    /// by design; the broader editor-undo system is M14.x scope.
+    UndoImageEdit,
 }
 
 /// FIFO queue of [`EditorAction`]s. Held on `HeroScreen` as a single

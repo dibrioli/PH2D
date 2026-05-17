@@ -346,57 +346,41 @@ pub struct HeroScreen {
     /// resolves bridge NodeId → Entity, and writes the new `Name`
     /// component. `text` is the buffer contents at commit time.
     pub pending_rename_commit: Option<(NodeId, String)>,
-    /// M14.5 inspector phase (6.4): pending request to re-import
-    /// the currently-selected sprite at the current
-    /// `project.pixels_per_meter`. Host drains, recomputes the
-    /// sprite's world size from the source PNG dims / px-per-m, and
-    /// updates the `Sprite` component. `Some(entity_bits)` keeps the
-    /// host independent of `gizmo_selection`'s value at drain time
-    /// (avoids races with a concurrent selection change).
-    pub pending_reimport: Option<u64>,
+    // Wave 2.5 PR 11.8b3: `pending_reimport` migrated to
+    // `bus.push(EditorAction::Reimport { entity_bits })`. Same
+    // `entity_bits` snapshot semantics — captured at push time
+    // (apply_event on INSP_RENDER_SOURCE_REIMPORT), consumed at
+    // drain time so a concurrent selection change doesn't retarget.
     // Wave 2.5 PR 11.8b1: `pending_trim_transparency` migrated to
     // `bus.push(EditorAction::Trim { entity_bits })`. Shell drains
     // via `hero.bus.drain()` and dispatches to
     // `hero_intents::drain_trim_transparency`. Source semantics
     // unchanged: hero snapshots `gizmo_selection` at push time,
     // shell consumes the snapshotted entity_bits at drain time.
-    /// Pending request to apply Make Square to the selected sprite.
-    /// Raised by clicking `IMAGE_ACTION_MAKE_SQUARE` on the Image Tools
-    /// action row. Host drains, reads the sprite's atlas-source RGBA,
-    /// runs [`crate::make_square`], and — when the result is
-    /// `made_square = true` — replaces the sprite's source pixels with
-    /// the padded square, reprojects the pivot to preserve world
-    /// position (formula: `(old_dim * old_pivot + offset) / new_size`),
-    /// and pushes an "Make square" entry to the undo history. Source
-    // Wave 2.5 PR 11.8b2: migrated to bus.push(EditorAction::MakeSquare).
-    // Source semantics unchanged — entity_bits snapshotted at push time
-    // (apply_event), shell consumes the snapshot at drain time.
-    /// Pending request to apply Background Removal to the selected
-    /// sprite. Raised by the active `BgRemovalTool` when the user
-    /// clicks the Apply Toggle in its panel — the host's per-frame
-    /// drain reads the sprite's RGBA source, calls
-    /// `BgRemovalTool::run_full_resolution` at full size, and swaps
-    /// `Sprite.source` to a fresh `Individual` texture (same
-    /// contract as `pending_trim_transparency` — same `entity_bits`
-    /// snapshot semantics, no pivot reproject because bgremoval
-    /// preserves image dimensions).
-    pub pending_bgremoval: Option<u64>,
-    /// One-shot intent raised by clicking the Bg Removal pill in
-    /// the Image Tools row. The host drains by calling
-    /// `tools.set_active(ToolId::new("bgremoval"))` so the tool's
-    /// floating panel opens with a live preview of the current
-    /// selection. Distinct from `pending_bgremoval` — that one is
-    /// the *Apply* trigger (raised by the panel's Apply Toggle),
-    /// this one is the *activate* trigger (raised by the TopBar pill).
-    pub pending_activate_bgremoval: bool,
-    /// One-shot intent: undo the most recent image-edit action
-    /// (Trim Transparency / Make Square). Raised by clicking
-    /// `TOOL_UNDO` on the LeftRail or pressing Cmd+Z. The host holds
-    /// the actual snapshot (Sprite source + size + Transform
-    /// translation captured pre-edit) and drains this flag on the
-    /// next frame to restore. Image edits are the only consumer in
-    /// V1 — the broader editor undo system is M14.x scope.
-    pub pending_undo_image_edit: bool,
+    // Wave 2.5 PR 11.8b2: `pending_make_square` migrated to
+    // `bus.push(EditorAction::MakeSquare { entity_bits })`.
+    // Source semantics unchanged — entity_bits snapshotted at push
+    // time (apply_event), shell consumes the snapshot at drain time.
+    // Wave 2.5 PR 11.8b3: `pending_bgremoval` migrated to
+    // `bus.push(EditorAction::Bgremoval { entity_bits })`. The push
+    // happens shell-side (BgRemovalTool's apply-toggle drain in
+    // `App::route_panel_event`); main.rs filters the variant out at
+    // drain time, gated on `bgremoval` being the active tool — if
+    // not active, the variant is pushed back onto the bus so the
+    // next activation can complete the round-trip (same "stays
+    // intact across tool switches" contract the old field had).
+    // Wave 2.5 PR 11.8b3: `pending_activate_bgremoval` migrated to
+    // `bus.push(EditorAction::ActivateBgRemoval)`. Raised by the
+    // TopBar pill click (IMAGE_ACTION_BGREMOVAL). Distinct from
+    // `EditorAction::Bgremoval` — that one is the *Apply* trigger
+    // (raised by the tool's panel Toggle), this one is the
+    // *activate* trigger (raised by the TopBar pill).
+    // Wave 2.5 PR 11.8b3: `pending_undo_image_edit` migrated to
+    // `bus.push(EditorAction::UndoImageEdit)`. Raised by clicking
+    // TOOL_UNDO on the LeftRail or pressing Cmd+Z / Ctrl+Z. The
+    // shell owns the snapshot (Sprite source + size + Transform
+    // translation captured pre-edit). Single-level by design;
+    // broader editor undo is M14.x scope.
     /// Read-only signal from the host: `true` when the host has a
     /// stored image-edit snapshot that Cmd+Z would restore. Lets the
     /// UI dim the `TOOL_UNDO` chip when no undo is available. The
@@ -659,12 +643,12 @@ impl HeroScreen {
             rename_target_row: None,
             pending_rename_seed: None,
             pending_rename_commit: None,
-            pending_reimport: None,
+            // pending_reimport removed (Wave 2.5 PR 11.8b3 — bus migration)
             // pending_trim_transparency removed (Wave 2.5 PR 11.8b1 — bus migration)
             // pending_make_square removed (Wave 2.5 PR 11.8b2 — bus migration)
-            pending_bgremoval: None,
-            pending_activate_bgremoval: false,
-            pending_undo_image_edit: false,
+            // pending_bgremoval removed (Wave 2.5 PR 11.8b3 — bus migration)
+            // pending_activate_bgremoval removed (Wave 2.5 PR 11.8b3 — bus migration)
+            // pending_undo_image_edit removed (Wave 2.5 PR 11.8b3 — bus migration)
             has_undoable_image_edit: false,
             inspector_sprite: None,
             inspector_transform: None,
@@ -1255,27 +1239,35 @@ impl HeroScreen {
         // Bg Removal action — distinct from Trim / MakeSquare because
         // it ACTIVATES the stateful tool (so the panel opens with a
         // live preview) instead of running a one-shot algorithm. The
-        // host drains `pending_activate_bgremoval` by calling
+        // shell drains `EditorAction::ActivateBgRemoval` by calling
         // `tools.set_active(ToolId::new("bgremoval"))`. The Apply
-        // trigger then lives in the tool's panel Toggle, which raises
-        // `pending_bgremoval` for the full-resolution drain.
+        // trigger then lives in the tool's panel Toggle, which the
+        // shell forwards as `EditorAction::Bgremoval { entity_bits }`
+        // for the full-resolution drain.
+        //
+        // Wave 2.5 PR 11.8b3: bus migration (was `pending_activate_bgremoval`).
         if let WidgetEvent::Click(id) = event
             && id == ids::IMAGE_ACTION_BGREMOVAL
         {
-            self.pending_activate_bgremoval = true;
+            self.bus
+                .push(crate::action_bus::EditorAction::ActivateBgRemoval);
             return true;
         }
         // Image-edit Undo — TOOL_UNDO chip on the LeftRail (also
-        // bound to Cmd+Z in the desktop shell). Raises a one-shot
-        // intent; host drains and restores the most recent Trim /
-        // Make Square snapshot. When `has_undoable_image_edit == false`
-        // (host published no snapshot), the click still consumes (so
-        // the dispatcher doesn't keep walking) but the host's drainer
-        // surfaces a "Nothing to undo" toast.
+        // bound to Cmd+Z in the desktop shell). Pushes a one-shot
+        // `EditorAction::UndoImageEdit`; shell drains and restores
+        // the most recent Trim / Make Square / Bg Removal snapshot.
+        // When `has_undoable_image_edit == false` (shell published no
+        // snapshot), the click still consumes (so the dispatcher
+        // doesn't keep walking) but the shell's drainer surfaces a
+        // "Nothing to undo" toast.
+        //
+        // Wave 2.5 PR 11.8b3: bus migration (was `pending_undo_image_edit`).
         if let WidgetEvent::Click(id) = event
             && id == ids::TOOL_UNDO
         {
-            self.pending_undo_image_edit = true;
+            self.bus
+                .push(crate::action_bus::EditorAction::UndoImageEdit);
             return true;
         }
         if topbar::apply_event(&mut self.store, event) {
@@ -1375,17 +1367,22 @@ impl HeroScreen {
         ) {
             return true;
         }
-        // M14.5 inspector phase (6.4): Reimport button → raise
-        // `pending_reimport` so the host re-decodes the source asset
-        // at the current `project.pixels_per_meter`. Captured BEFORE
-        // delegating to `inspector::apply_event` because that helper
-        // doesn't know about HeroScreen-level pending fields.
+        // M14.5 inspector phase (6.4): Reimport button → push
+        // `EditorAction::Reimport { entity_bits }` so the shell
+        // re-decodes the source asset at the current
+        // `project.pixels_per_meter`. Captured BEFORE delegating to
+        // `inspector::apply_event` because that helper doesn't know
+        // about HeroScreen-level bus.
+        //
+        // Wave 2.5 PR 11.8b3: bus migration (was `pending_reimport`).
         if let WidgetEvent::Click(id) = event
             && id == ids::INSP_RENDER_SOURCE_REIMPORT
             && let Some(info) = self.inspector_sprite.as_ref()
             && info.can_reimport
         {
-            self.pending_reimport = Some(info.entity_bits);
+            self.bus.push(crate::action_bus::EditorAction::Reimport {
+                entity_bits: info.entity_bits,
+            });
             return true;
         }
         // M14.A: Transform editor commits — ValueChanged on any of the
@@ -3097,18 +3094,21 @@ mod tests {
         );
     }
 
-    /// Bg Removal pill raises `pending_activate_bgremoval` (not
-    /// `pending_bgremoval` — that one is the Apply trigger). Host
-    /// drains it by calling `tools.set_active(...)`.
+    /// Bg Removal pill raises `EditorAction::ActivateBgRemoval`
+    /// (not `EditorAction::Bgremoval` — that one is the Apply
+    /// trigger, raised shell-side when the tool's panel Toggle
+    /// fires). Shell drains the Activate variant by calling
+    /// `tools.set_active(...)`. (Wave 2.5 PR 11.8b3.)
     #[test]
     fn click_on_bgremoval_pill_raises_activate_intent() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
-        assert!(!hero.pending_activate_bgremoval);
+        assert!(hero.bus.is_empty());
         assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_BGREMOVAL)));
-        assert!(hero.pending_activate_bgremoval);
-        // pending_bgremoval (Apply slot) is NOT touched by the
-        // activate click — that's owned by the panel Toggle drain.
-        assert_eq!(hero.pending_bgremoval, None);
+        let drained: Vec<_> = hero.bus.drain().collect();
+        // Only the Activate variant — the Apply variant (Bgremoval)
+        // is raised shell-side, not by the pill click.
+        assert_eq!(drained, vec![EditorAction::ActivateBgRemoval]);
     }
 
     #[test]

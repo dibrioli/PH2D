@@ -594,11 +594,14 @@ impl App {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;
             }
-            // Cmd+Z / Ctrl+Z — image-edit undo (Trim, Make Square).
-            // Single-level by design; broader editor undo is M14.x.
+            // Cmd+Z / Ctrl+Z — image-edit undo (Trim, Make Square,
+            // Bg Removal). Single-level by design; broader editor
+            // undo is M14.x. Wave 2.5 PR 11.8b3: bus migration (was
+            // `hero.pending_undo_image_edit = true`).
             KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.pending_undo_image_edit = true;
+                    hero.bus
+                        .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);
                 }
             }
             KeyCode::Digit1 if gfx.tools.set_active(&ph2d_editor::ToolId::new("brush")) => {
@@ -740,10 +743,11 @@ impl App {
             self.title_dirty = true;
             // Drain BgRemoval's Apply Toggle: when on, the Tool sets
             // `pending_apply = true` inside `handle_panel_event`.
-            // Route it to `HeroScreen.pending_bgremoval` (asset id =
-            // the currently-selected entity bits) so the per-frame
-            // drain in `render_frame` runs the algorithm at full
-            // resolution against the live sprite.
+            // Push `EditorAction::Bgremoval { entity_bits }` so the
+            // per-frame drain in `render_frame` runs the algorithm
+            // at full resolution against the live sprite. Wave 2.5
+            // PR 11.8b3: bus migration (was `hero.pending_bgremoval
+            // = Some(bits)`).
             if let Some(bg) = active
                 .as_any_mut()
                 .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
@@ -751,7 +755,8 @@ impl App {
                 && let Some(hero) = gfx.hero_screen.as_mut()
                 && let Some(bits) = hero.gizmo_selection
             {
-                hero.pending_bgremoval = Some(bits);
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits: bits });
             }
         }
     }
@@ -1439,19 +1444,45 @@ impl App {
                     name,
                 })
             });
-            // Drain the `pending_activate_bgremoval` intent raised by
-            // clicking the Bg Removal pill on the Image Tools row. The
-            // hero can't reach `gfx.tools` so the activation has to
-            // round-trip through this flag. Same force-refresh of the
-            // snapshot push state as the Digit3 shortcut below so the
-            // next snapshot push fires against the current selection.
-            if hero.pending_activate_bgremoval {
-                hero.pending_activate_bgremoval = false;
-                if tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
-                    self.last_bgremoval_pushed_entity = None;
-                    self.title_dirty = true;
-                    toasts.push(Toast::info("Tool → Bg Removal"));
+            // Drain the `EditorAction::ActivateBgRemoval` intent
+            // raised by clicking the Bg Removal pill on the Image
+            // Tools row. The hero can't reach `gfx.tools` so the
+            // activation has to round-trip through the bus. Same
+            // force-refresh of the snapshot push state as the
+            // Digit3 shortcut below so the next snapshot push
+            // fires against the current selection.
+            //
+            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
+            // `hero.pending_activate_bgremoval` flag). The leftover
+            // queue is pushed back so future variants survive this
+            // drain. Multiple Activate pushes in one frame collapse
+            // to one set_active — `found` short-circuits after the
+            // first hit, subsequent Activate variants drop on the
+            // floor (idempotent activation, same as the old `=
+            // false` clear).
+            let activate_bgremoval = {
+                let mut found = false;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter(|a| {
+                        if matches!(a, ph2d_editor::action_bus::EditorAction::ActivateBgRemoval) {
+                            found = true;
+                            false
+                        } else {
+                            true
+                        }
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
                 }
+                found
+            };
+            if activate_bgremoval && tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
+                self.last_bgremoval_pushed_entity = None;
+                self.title_dirty = true;
+                toasts.push(Toast::info("Tool → Bg Removal"));
             }
             // Snapshot push for the active BgRemovalTool. The tool needs
             // the current selection's RGBA so its 160×160 preview shows
@@ -1710,12 +1741,36 @@ impl App {
                     *selection_anchor = None;
                 }
             }
-            // M14.5 inspector phase (6.4): drain pending reimport →
+            // M14.5 inspector phase (6.4): drain Reimport intent →
             // re-decode the atlas source's pixel dimensions at the
             // current `project.pixels_per_meter` and write the new
             // world size back to the Sprite component. The texture
             // itself is unchanged; only `Sprite.size` is recomputed.
-            if let Some(entity_bits) = hero.pending_reimport.take() {
+            //
+            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
+            // `hero.pending_reimport.take()`). Same leftover-push-
+            // back contract as the other drains in this block.
+            let reimport_entity = {
+                let mut found: Option<u64> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::Reimport { entity_bits }
+                            if found.is_none() =>
+                        {
+                            found = Some(entity_bits);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(entity_bits) = reimport_entity {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let px_per_m = hero.project.pixels_per_meter.max(EPS_PIXELS_PER_METER);
                 let new_size = sim.world().get::<Sprite>(entity).and_then(|sprite| {
@@ -2128,14 +2183,42 @@ impl App {
             // Gate on BgRemoval being the active tool — the user is
             // expected to apply WHILE the tool is active (the Apply
             // Toggle lives in its panel). If they switch tools in
-            // the same frame, leave `pending_bgremoval` intact so
-            // the next activation can complete the round-trip.
+            // the same frame, leave the `Bgremoval` variant on the
+            // bus so the next activation can complete the round-trip
+            // (the filter predicate below only matches when
+            // `bgremoval_active`, so the variant is pushed back as
+            // a leftover otherwise).
+            //
+            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
+            // `hero.pending_bgremoval.take()`). The conditional gate
+            // is hoisted into the filter so the variant survives an
+            // inactive frame.
             let bgremoval_id = ph2d_editor::ToolId::new("bgremoval");
             let bgremoval_active = tools
                 .active()
                 .map(|t| t.id() == bgremoval_id)
                 .unwrap_or(false);
-            if bgremoval_active && let Some(entity_bits) = hero.pending_bgremoval.take() {
+            let bgremoval_entity = {
+                let mut found: Option<u64> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits }
+                            if bgremoval_active && found.is_none() =>
+                        {
+                            found = Some(entity_bits);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(entity_bits) = bgremoval_entity {
                 let bg = tools
                     .active_mut()
                     .and_then(|t| {
@@ -2157,16 +2240,41 @@ impl App {
                     self.title_dirty = true;
                 }
             }
-            // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click) raises
-            // `pending_undo_image_edit` on the hero; the host owns the
-            // snapshot. Single-level: each new edit overwrites the slot
-            // (releasing the previous pre-source), so undo restores at
-            // most the MOST RECENT Trim / Make Square.
-            if hero.pending_undo_image_edit {
-                hero.pending_undo_image_edit = false;
-                if hero_intents::drain_undo_image_edit(image_edit_undo, sim, renderer, toasts) {
-                    self.title_dirty = true;
+            // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click)
+            // pushes `EditorAction::UndoImageEdit` onto the bus; the
+            // shell owns the snapshot. Single-level: each new edit
+            // overwrites the slot (releasing the previous pre-source),
+            // so undo restores at most the MOST RECENT Trim / Make
+            // Square / Bg Removal.
+            //
+            // Wave 2.5 PR 11.8b3: filter-and-replace pattern (was
+            // `hero.pending_undo_image_edit` flag). Multiple Undo
+            // pushes in one frame collapse to one drain — `found`
+            // short-circuits after the first hit, mirroring the
+            // old flag's edge-triggered semantics.
+            let undo_image_edit = {
+                let mut found = false;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter(|a| {
+                        if matches!(a, ph2d_editor::action_bus::EditorAction::UndoImageEdit) {
+                            found = true;
+                            false
+                        } else {
+                            true
+                        }
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
                 }
+                found
+            };
+            if undo_image_edit
+                && hero_intents::drain_undo_image_edit(image_edit_undo, sim, renderer, toasts)
+            {
+                self.title_dirty = true;
             }
             // Publish whether a snapshot is currently stored so the UI
             // can dim the TOOL_UNDO chip when there's nothing to undo.

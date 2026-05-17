@@ -141,7 +141,15 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
         //   - buffer already matches snapshot — no-op, avoid a
         //     spurious caret reset every frame.
         let focused = hero.store.focus_id() == Some(ids::INSP_ENTITY_NAME);
-        if hero.pending_name_edit.is_none()
+        // Wave 2.5 PR 11.8d: pending_name_edit is now an
+        // EditorAction::InspectorNameEdit on the bus. Skip re-seed if
+        // any are queued — the user's in-flight commit hasn't been
+        // drained yet.
+        let pending_name_edit = hero
+            .bus
+            .iter()
+            .any(|a| matches!(a, crate::action_bus::EditorAction::InspectorNameEdit(_)));
+        if !pending_name_edit
             && !focused
             && let Some(info) = hero.inspector_name.as_ref()
             && let Some(InteractiveState::TextInput {
@@ -164,7 +172,16 @@ pub(super) fn sync_inspector_from_snapshots(hero: &mut HeroScreen) {
     // the shell hasn't drained yet. Without the skip we'd stomp the
     // just-toggled UI state back to the pre-click value for one
     // frame.
-    if hero.pending_visibility_edit.is_none()
+    // Wave 2.5 PR 11.8d: pending_visibility_edit is now an
+    // EditorAction::InspectorVisibilityEdit on the bus. Skip re-seed
+    // if any are queued.
+    let pending_visibility_edit = hero.bus.iter().any(|a| {
+        matches!(
+            a,
+            crate::action_bus::EditorAction::InspectorVisibilityEdit(_)
+        )
+    });
+    if !pending_visibility_edit
         && let Some(vis) = hero.inspector_visibility
         && let Some(InteractiveState::Checkbox { value, .. }) =
             hero.store.get_mut(ids::INSP_VISIBILITY_CHECK)

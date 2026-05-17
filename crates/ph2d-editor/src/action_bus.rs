@@ -166,6 +166,53 @@ pub enum EditorAction {
         row: ph2d_a11y::NodeId,
         new_name: String,
     },
+
+    /// Reframe the camera. Payload: which mode to fire (Selected
+    /// focuses the current `gizmo_selection`; Camera resets to the
+    /// project's default view; All frames every sprite in the scene
+    /// with a 10% padding). Raised by clicking `TOOL_HOME` on the
+    /// LeftRail (which cycles the 3 modes) and by double-clicking
+    /// a live hierarchy row (always `Selected`).
+    SetViewFocus {
+        kind: crate::screens::hero::ViewFocusKind,
+    },
+
+    /// Inspector → shell channel for `Transform` edits — the first
+    /// end-to-end consumer of the editor command pipeline. Payload
+    /// is the full snapshot the inspector built from its NumberInput
+    /// buffers (entity_bits + translation/rotation/scale). Shell
+    /// drains, builds a `ph2d_ecs::Transform` from the raw fields,
+    /// and pushes a `EditorCommand::SetComponent` to its
+    /// `EditorCommandQueue`. Raised by NumberInput commits (Enter /
+    /// blur) on `INSP_TRANSFORM_*` and by the Reset Transform button.
+    InspectorTransformEdit(crate::screens::hero::InspectorTransformInfo),
+
+    /// Inspector → shell channel for `Visibility` commits. Payload:
+    /// the POST-toggle snapshot `(entity_bits, visible)`. Shell drains
+    /// and pushes a `EditorCommand::SetComponent` for
+    /// `ph2d_ecs::Visibility` — same pipeline as
+    /// [`Self::InspectorTransformEdit`]. Raised by flipping the
+    /// `INSP_VISIBILITY_CHECK` checkbox.
+    InspectorVisibilityEdit(crate::screens::hero::InspectorVisibilityInfo),
+
+    /// Inspector → shell channel for `Sprite` source-strategy
+    /// switches. Payload: `(entity_bits, requested_strategy)`.
+    /// Shell does the actual swap: Atlas → Individual re-decodes
+    /// the source asset via `atlas_asset_map` + `acquire_individual`;
+    /// Individual → Atlas and HandPacked transitions surface a toast
+    /// in v1. Raised by picking a different segment in the Render
+    /// Source segmented switcher.
+    InspectorSpriteSourceChange {
+        entity_bits: u64,
+        strategy: crate::screens::hero::RequestedSpriteStrategy,
+    },
+
+    /// Inspector → shell channel for entity-`Name` edits. Payload:
+    /// the snapshot `(entity_bits, new_name)`. Shell drains and
+    /// pushes a `EditorCommand::SetComponent` for `ph2d_ecs::Name`,
+    /// same pipeline as Transform / Visibility. Raised by
+    /// `TextChanged` on `INSP_ENTITY_NAME`.
+    InspectorNameEdit(crate::screens::hero::InspectorNameInfo),
 }
 
 /// FIFO queue of [`EditorAction`]s. Held on `HeroScreen` as a single
@@ -191,6 +238,17 @@ impl ActionBus {
     /// Returns an iterator the shell consumes via a single `match`.
     pub fn drain(&mut self) -> std::vec::Drain<'_, EditorAction> {
         self.queue.drain(..)
+    }
+
+    /// Non-consuming iterator over queued actions. Used by editor-
+    /// side guards that need to ask "does the bus already carry a
+    /// variant of this kind?" without dispatching it — e.g.
+    /// `inspector_sync` skips re-seeding the Inspector's name /
+    /// visibility widgets when an unsent edit is already in flight,
+    /// so a frame between push + drain doesn't clobber the user's
+    /// in-progress UI state.
+    pub fn iter(&self) -> std::slice::Iter<'_, EditorAction> {
+        self.queue.iter()
     }
 
     /// True iff no actions are queued.

@@ -313,11 +313,12 @@ pub struct HeroScreen {
     // semantics: shell resolves row NodeId → sim entity via the
     // bridge and updates `gizmo_selection` so the canvas gizmo
     // follows the hierarchy click. Live (ECS) mode only.
-    /// M14.7 polish: pending request to reframe the camera. Raised by
-    /// the F/Home key or the VIEW button on the left rail; the host
-    /// drains and updates `Camera2d::center` (and `height_world` for
-    /// `All`) on the next frame.
-    pub pending_view_focus: Option<ViewFocusKind>,
+    // Wave 2.5 PR 11.8d: `pending_view_focus` migrated to
+    // `bus.push(EditorAction::SetViewFocus { kind })`. Raised by
+    // the F/Home key, the VIEW button on the left rail (TOOL_HOME
+    // cycles Selected/Camera/All), and double-click on a live row
+    // (always Selected). Shell drains and updates `Camera2d::center`
+    // (and `height_world` for `All`) on the next frame.
     /// M14.7 polish: row currently in inline-rename mode. The
     /// hierarchy painter replaces the row's name label with a
     /// TextInput when this matches; user typing flows through the
@@ -404,7 +405,9 @@ pub struct HeroScreen {
     /// Re-uses [`InspectorTransformInfo`] so `ph2d-editor` stays
     /// decoupled from `ph2d-ecs`; the type-id resolution + glam
     /// conversion happens at the shell boundary.
-    pub pending_transform_edit: Option<InspectorTransformInfo>,
+    //
+    // Wave 2.5 PR 11.8d: migrated to
+    // `bus.push(EditorAction::InspectorTransformEdit(InspectorTransformInfo))`.
     /// M14.D: snapshot of the selected entity's `Visibility` state,
     /// mirroring the eye toggle that already lives in the Hierarchy
     /// panel (M14.6 A). The Inspector renders a checkbox above the
@@ -412,34 +415,28 @@ pub struct HeroScreen {
     /// surface. `None` when no entity is selected. Same HR-8 / ADR-0021
     /// boundary as Transform — the host bridges from SimWorld.
     pub inspector_visibility: Option<InspectorVisibilityInfo>,
-    /// M14.D: editor → host channel for Visibility commits. The
-    /// inspector publishes `(entity_bits, visible)` when the user
-    /// flips the checkbox; the shell drains and pushes a
-    /// `EditorCommand::SetComponent` for
-    /// [`ph2d_ecs::Visibility`] to its `EditorCommandQueue` — same
-    /// pipeline as `pending_transform_edit`.
-    pub pending_visibility_edit: Option<InspectorVisibilityInfo>,
-    /// M14.C: editor → host channel for Sprite source-strategy
-    /// switches. The inspector publishes `(entity_bits, requested)`
-    /// when the user picks a different strategy in the Render Source
-    /// section's segmented switcher. The shell does the actual swap:
-    /// Atlas → Individual re-decodes the source asset via
-    /// `atlas_asset_map` and `acquire_individual`; Individual → Atlas
-    /// and HandPacked transitions surface a toast in v1
-    /// (renderer-side parity arrives in M14.C+).
-    pub pending_sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
+    // Wave 2.5 PR 11.8d: `pending_visibility_edit` migrated to
+    // `bus.push(EditorAction::InspectorVisibilityEdit(InspectorVisibilityInfo))`.
+    // Shell drain pushes `EditorCommand::SetComponent` for
+    // `ph2d_ecs::Visibility` — same pipeline as InspectorTransformEdit.
+    // Wave 2.5 PR 11.8d: `pending_sprite_source_change` migrated to
+    // `bus.push(EditorAction::InspectorSpriteSourceChange { entity_bits, strategy })`.
+    // Shell drain runs the actual swap (Atlas → Individual re-decodes
+    // via `atlas_asset_map` + `acquire_individual`; Individual → Atlas
+    // and HandPacked transitions toast in v1).
     /// M14.E: snapshot of the selected entity's `Name` component.
     /// Host publishes this per frame so the editable name field at
     /// the top of the Inspector body can seed its TextInput buffer.
     /// `None` when nothing is selected.
     pub inspector_name: Option<InspectorNameInfo>,
-    /// M14.E: editor → host channel for entity-name edits. The
-    /// inspector publishes the full snapshot (entity_bits + new name)
-    /// on every `TextChanged` — `Option` coalescing means the shell
-    /// drains at most once per frame, even when the user is typing
-    /// fast. Drained via `EditorCommand::SetComponent` for
-    /// `ph2d_ecs::Name`, same pipeline as Transform / Visibility.
-    pub pending_name_edit: Option<InspectorNameInfo>,
+    // Wave 2.5 PR 11.8d: `pending_name_edit` migrated to
+    // `bus.push(EditorAction::InspectorNameEdit(InspectorNameInfo))`.
+    // The bus is a Vec so multiple TextChanged pushes per frame all
+    // queue; the shell drains them in order. (Was `Option`-coalesced
+    // before, so only the last edit per frame survived. With the bus
+    // every keystroke commits — fine because Name is a single
+    // SetComponent per push, and the shell already de-dupes via the
+    // EditorCommandQueue.)
 }
 
 /// Snapshot of the selected sprite's editor-facing fields. Host
@@ -618,26 +615,18 @@ impl HeroScreen {
             gizmo_selection: None,
             gizmo_view: None,
             gizmo_drag: None,
-            // pending_hierarchy_row_click removed (Wave 2.5 PR 11.8c)
-            pending_view_focus: None,
+            // Wave 2.5 PR 11.8c/d: all `pending_X` fields migrated to
+            // `bus` (declared above). Read-only state fields (inspector
+            // snapshots, has_undoable_image_edit) remain — they're
+            // shell → editor publication channels, not editor → shell
+            // intents.
             rename_target_row: None,
-            // pending_rename_seed + pending_rename_commit removed (Wave 2.5 PR 11.8c)
-            // pending_reimport removed (Wave 2.5 PR 11.8b3 — bus migration)
-            // pending_trim_transparency removed (Wave 2.5 PR 11.8b1 — bus migration)
-            // pending_make_square removed (Wave 2.5 PR 11.8b2 — bus migration)
-            // pending_bgremoval removed (Wave 2.5 PR 11.8b3 — bus migration)
-            // pending_activate_bgremoval removed (Wave 2.5 PR 11.8b3 — bus migration)
-            // pending_undo_image_edit removed (Wave 2.5 PR 11.8b3 — bus migration)
             has_undoable_image_edit: false,
             inspector_sprite: None,
             inspector_transform: None,
             last_inspector_entity: None,
-            pending_transform_edit: None,
             inspector_visibility: None,
-            pending_visibility_edit: None,
-            pending_sprite_source_change: None,
             inspector_name: None,
-            pending_name_edit: None,
         }
     }
 
@@ -892,7 +881,8 @@ impl HeroScreen {
                     2 => ViewFocusKind::All,
                     _ => ViewFocusKind::Selected,
                 };
-                self.pending_view_focus = Some(kind);
+                self.bus
+                    .push(crate::action_bus::EditorAction::SetViewFocus { kind });
                 let next = (current + 1) % 3;
                 self.store.set_tool_view_mode(next);
                 return true;
@@ -1301,7 +1291,10 @@ impl HeroScreen {
         {
             self.bus
                 .push(crate::action_bus::EditorAction::HierRowClick { row: id });
-            self.pending_view_focus = Some(ViewFocusKind::Selected);
+            self.bus
+                .push(crate::action_bus::EditorAction::SetViewFocus {
+                    kind: ViewFocusKind::Selected,
+                });
             return true;
         }
         // M14.7 polish: long-press on a hierarchy row → enter inline
@@ -1448,27 +1441,36 @@ impl HeroScreen {
                 .store
                 .number_value(ids::INSP_TRANSFORM_SCALE_Y)
                 .unwrap_or(info.scale[1] as f64) as f32;
-            self.pending_transform_edit = Some(InspectorTransformInfo {
-                entity_bits: info.entity_bits,
-                translation: [x, y],
-                rotation_rad: rot_deg.to_radians(),
-                scale: [sx, sy],
-            });
+            // Wave 2.5 PR 11.8d: bus migration (was `pending_transform_edit`).
+            self.bus
+                .push(crate::action_bus::EditorAction::InspectorTransformEdit(
+                    InspectorTransformInfo {
+                        entity_bits: info.entity_bits,
+                        translation: [x, y],
+                        rotation_rad: rot_deg.to_radians(),
+                        scale: [sx, sy],
+                    },
+                ));
             return true;
         }
         // Reset-to-Identity button — publishes the Identity transform
         // for the currently selected entity. Same path as a field
         // commit so the shell's queue-push code path stays uniform.
+        //
+        // Wave 2.5 PR 11.8d: bus migration (was `pending_transform_edit`).
         if let WidgetEvent::Click(id) = event
             && id == ids::INSP_TRANSFORM_RESET
             && let Some(info) = self.inspector_transform
         {
-            self.pending_transform_edit = Some(InspectorTransformInfo {
-                entity_bits: info.entity_bits,
-                translation: [0.0, 0.0],
-                rotation_rad: 0.0,
-                scale: [1.0, 1.0],
-            });
+            self.bus
+                .push(crate::action_bus::EditorAction::InspectorTransformEdit(
+                    InspectorTransformInfo {
+                        entity_bits: info.entity_bits,
+                        translation: [0.0, 0.0],
+                        rotation_rad: 0.0,
+                        scale: [1.0, 1.0],
+                    },
+                ));
             return true;
         }
         // M14.D: Visibility checkbox toggled. The dispatch already
@@ -1485,10 +1487,14 @@ impl HeroScreen {
                 self.store.checkbox(id).map(|(_, v)| v),
                 Some(crate::widget::CheckboxValue::Checked),
             );
-            self.pending_visibility_edit = Some(InspectorVisibilityInfo {
-                entity_bits: info.entity_bits,
-                visible,
-            });
+            // Wave 2.5 PR 11.8d: bus migration (was `pending_visibility_edit`).
+            self.bus
+                .push(crate::action_bus::EditorAction::InspectorVisibilityEdit(
+                    InspectorVisibilityInfo {
+                        entity_bits: info.entity_bits,
+                        visible,
+                    },
+                ));
             return true;
         }
         // M14.C: Render Source Strategy switcher. A click on a
@@ -1511,7 +1517,13 @@ impl HeroScreen {
                 InspectorSpriteSource::HandPacked => RequestedSpriteStrategy::HandPacked,
             };
             if requested != current {
-                self.pending_sprite_source_change = Some((info.entity_bits, requested));
+                // Wave 2.5 PR 11.8d: bus migration (was `pending_sprite_source_change`).
+                self.bus.push(
+                    crate::action_bus::EditorAction::InspectorSpriteSourceChange {
+                        entity_bits: info.entity_bits,
+                        strategy: requested,
+                    },
+                );
             }
             // Audit fix #7 (HIGH): reset the just-clicked button's
             // stored state back to Normal regardless of whether the
@@ -1529,18 +1541,23 @@ impl HeroScreen {
             return true;
         }
         // M14.E: entity-name TextInput edits. Live commit on every
-        // `TextChanged` — `Option` coalescing in `pending_name_edit`
-        // means the shell drains at most once per frame regardless of
-        // typing speed.
+        // `TextChanged`. Wave 2.5 PR 11.8d: bus migration (was
+        // `pending_name_edit`). The `Option`-coalescing of the old
+        // field is replaced by Vec push — each keystroke queues
+        // one InspectorNameEdit. In practice one keystroke = one
+        // frame, so the queue depth per drain is 0 or 1 either way.
         if let WidgetEvent::TextChanged(id) = event
             && id == ids::INSP_ENTITY_NAME
             && let Some(info) = self.inspector_name.as_ref()
         {
             let text = self.store.text(id).unwrap_or("").to_string();
-            self.pending_name_edit = Some(InspectorNameInfo {
-                entity_bits: info.entity_bits,
-                name: text,
-            });
+            self.bus
+                .push(crate::action_bus::EditorAction::InspectorNameEdit(
+                    InspectorNameInfo {
+                        entity_bits: info.entity_bits,
+                        name: text,
+                    },
+                ));
             return true;
         }
         if inspector::apply_event(&mut self.store, event) {
@@ -2427,8 +2444,13 @@ mod tests {
             .set_number_value(ids::INSP_TRANSFORM_POS_X, 200.0);
         let _ = hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X));
         let pending = hero
-            .pending_transform_edit
-            .expect("commit must publish pending_transform_edit");
+            .bus
+            .drain()
+            .find_map(|a| match a {
+                crate::action_bus::EditorAction::InspectorTransformEdit(info) => Some(info),
+                _ => None,
+            })
+            .expect("commit must publish InspectorTransformEdit");
         assert!(
             (pending.translation[0] - 2.0).abs() < 1e-3,
             "200 px should commit as 2.0 m (200 / 100 px/m), got {} m",
@@ -2752,21 +2774,23 @@ mod tests {
     }
 
     /// M14.A: a `ValueChanged` event on any Transform NumberInput
-    /// publishes a fresh `InspectorTransformInfo` via
-    /// `pending_transform_edit`, taking the current store values for
-    /// every axis (X/Y/Rot/Scale-X/Scale-Y) plus the selected entity
-    /// id from `inspector_transform`. Rotation is converted from
-    /// degrees (UI) back to radians (canonical) at commit.
+    /// pushes a fresh `EditorAction::InspectorTransformEdit` onto the
+    /// bus (Wave 2.5 PR 11.8d — was `pending_transform_edit`), taking
+    /// the current store values for every axis (X/Y/Rot/Scale-X/Scale-Y)
+    /// plus the selected entity id from `inspector_transform`.
+    /// Rotation is converted from degrees (UI) back to radians
+    /// (canonical) at commit.
     #[test]
     fn transform_field_commit_raises_pending_with_selection() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
-        // No selection → no pending fired even on commit (avoids
-        // silently editing a non-existent entity).
+        // No selection → no push even on commit (avoids silently
+        // editing a non-existent entity).
         hero.inspector_transform = None;
         assert!(!hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X)));
-        assert_eq!(hero.pending_transform_edit, None);
+        assert!(hero.bus.is_empty());
 
-        // With selection + custom store values → pending mirrors the
+        // With selection + custom store values → push mirrors the
         // store snapshot exactly. We seed the store with non-identity
         // numbers and verify the commit assembles them all.
         hero.inspector_transform = Some(InspectorTransformInfo {
@@ -2784,7 +2808,14 @@ mod tests {
         hero.store
             .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, 0.5);
         assert!(hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X)));
-        let pending = hero.pending_transform_edit.expect("pending populated");
+        let pending = hero
+            .bus
+            .drain()
+            .find_map(|a| match a {
+                EditorAction::InspectorTransformEdit(info) => Some(info),
+                _ => None,
+            })
+            .expect("pending populated");
         assert_eq!(pending.entity_bits, 0xCAFE_F00D);
         assert_eq!(pending.translation, [1.5, -2.25]);
         // 90° → π/2 rad. `to_radians` is bit-deterministic (HR-5).
@@ -2792,12 +2823,14 @@ mod tests {
         assert_eq!(pending.scale, [2.0, 0.5]);
     }
 
-    /// M14.A: clicking the Reset-to-Identity button publishes an
-    /// Identity transform via `pending_transform_edit`. Same commit
+    /// M14.A: clicking the Reset-to-Identity button pushes an
+    /// Identity-shaped `EditorAction::InspectorTransformEdit` (Wave
+    /// 2.5 PR 11.8d — was `pending_transform_edit`). Same commit
     /// path as a field ValueChanged so the shell's queue-push code
     /// stays uniform.
     #[test]
     fn transform_reset_button_publishes_identity() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         hero.inspector_transform = Some(InspectorTransformInfo {
             entity_bits: 0xBABE_0042,
@@ -2809,7 +2842,14 @@ mod tests {
         // pure identity — independent of buffer state.
         hero.store.set_number_value(ids::INSP_TRANSFORM_POS_X, 99.0);
         assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
-        let pending = hero.pending_transform_edit.expect("pending populated");
+        let pending = hero
+            .bus
+            .drain()
+            .find_map(|a| match a {
+                EditorAction::InspectorTransformEdit(info) => Some(info),
+                _ => None,
+            })
+            .expect("pending populated");
         assert_eq!(pending.entity_bits, 0xBABE_0042);
         assert_eq!(pending.translation, [0.0, 0.0]);
         assert_eq!(pending.rotation_rad, 0.0);
@@ -2819,18 +2859,19 @@ mod tests {
         // returning false → dispatcher walks; matches non-sprite
         // Reimport behavior).
         hero.inspector_transform = None;
-        hero.pending_transform_edit = None;
         assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
-        assert_eq!(hero.pending_transform_edit, None);
+        assert!(hero.bus.is_empty());
     }
 
-    /// M14.D: Toggled on the Visibility checkbox publishes
-    /// `pending_visibility_edit` with the POST-toggle store value.
-    /// Sequence: snapshot says visible=true → dispatch flipped
-    /// Checkbox to Unchecked → apply_event reads Unchecked → publish
+    /// M14.D: Toggled on the Visibility checkbox pushes
+    /// `EditorAction::InspectorVisibilityEdit` (Wave 2.5 PR 11.8d —
+    /// was `pending_visibility_edit`) with the POST-toggle store
+    /// value. Sequence: snapshot says visible=true → dispatch flipped
+    /// Checkbox to Unchecked → apply_event reads Unchecked → push
     /// `visible: false`.
     #[test]
     fn visibility_toggle_publishes_pending_with_selection() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         // Selection that has a Transform component (we don't paint
         // here, just exercise apply_event semantics).
@@ -2845,16 +2886,25 @@ mod tests {
             *value = crate::widget::CheckboxValue::Unchecked;
         }
         assert!(hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
-        let pending = hero.pending_visibility_edit.expect("pending populated");
+        let pending = hero
+            .bus
+            .drain()
+            .find_map(|a| match a {
+                EditorAction::InspectorVisibilityEdit(info) => Some(info),
+                _ => None,
+            })
+            .expect("pending populated");
         assert_eq!(pending.entity_bits, 0xBABE_BEEF);
         assert!(!pending.visible, "toggle should commit visible=false");
     }
 
     /// M14.C: Click on a Strategy button different from the current
-    /// `source_kind` publishes `pending_sprite_source_change` with
+    /// `source_kind` pushes `EditorAction::InspectorSpriteSourceChange`
+    /// (Wave 2.5 PR 11.8d — was `pending_sprite_source_change`) with
     /// the requested kind. Same-kind click is consumed silently.
     #[test]
     fn strategy_click_raises_pending_when_kind_differs() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         hero.inspector_sprite = Some(InspectorSpriteInfo {
             entity_bits: 0xC0FF_EE00,
@@ -2866,41 +2916,50 @@ mod tests {
         });
         // Current = Atlas → click on Individual button publishes.
         assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
+        let drained: Vec<_> = hero.bus.drain().collect();
         assert_eq!(
-            hero.pending_sprite_source_change,
-            Some((0xC0FF_EE00, RequestedSpriteStrategy::Individual))
+            drained,
+            vec![EditorAction::InspectorSpriteSourceChange {
+                entity_bits: 0xC0FF_EE00,
+                strategy: RequestedSpriteStrategy::Individual
+            }]
         );
 
-        // Click on Atlas (already-current) is consumed but no pending.
-        hero.pending_sprite_source_change = None;
+        // Click on Atlas (already-current) is consumed but no push.
         assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_ATLAS)));
-        assert_eq!(hero.pending_sprite_source_change, None);
+        assert!(hero.bus.is_empty());
 
         // HandPacked → publishes too (shell decides to skip with toast).
         assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_HANDPACKED)));
+        let drained: Vec<_> = hero.bus.drain().collect();
         assert_eq!(
-            hero.pending_sprite_source_change,
-            Some((0xC0FF_EE00, RequestedSpriteStrategy::HandPacked))
+            drained,
+            vec![EditorAction::InspectorSpriteSourceChange {
+                entity_bits: 0xC0FF_EE00,
+                strategy: RequestedSpriteStrategy::HandPacked
+            }]
         );
     }
 
     /// M14.C: Without `inspector_sprite` (nothing selected), Strategy
     /// clicks are no-ops — apply_event returns false so the dispatcher
-    /// keeps walking and pending stays `None`.
+    /// keeps walking and the bus stays empty.
     #[test]
     fn strategy_click_no_pending_without_sprite_selection() {
         let mut hero = HeroScreen::new(NodeId(1));
         hero.inspector_sprite = None;
         assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
-        assert_eq!(hero.pending_sprite_source_change, None);
+        assert!(hero.bus.is_empty());
     }
 
-    /// M14.E: `TextChanged` on the editable entity-name field
-    /// publishes the current store text via `pending_name_edit`. The
-    /// `Option` coalesces multi-keystroke spans — only the latest
-    /// value survives until the shell drains.
+    /// M14.E: `TextChanged` on the editable entity-name field pushes
+    /// `EditorAction::InspectorNameEdit` (Wave 2.5 PR 11.8d — was
+    /// `pending_name_edit`) with the current store text. Multiple
+    /// keystrokes within one frame each push their own variant; the
+    /// shell drains them in push order.
     #[test]
     fn name_text_changed_publishes_pending_with_current_text() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         hero.inspector_name = Some(InspectorNameInfo {
             entity_bits: 0xDEAD_BEEF,
@@ -2917,8 +2976,12 @@ mod tests {
         }
         assert!(hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
         let pending = hero
-            .pending_name_edit
-            .as_ref()
+            .bus
+            .drain()
+            .find_map(|a| match a {
+                EditorAction::InspectorNameEdit(info) => Some(info),
+                _ => None,
+            })
             .expect("pending populated after TextChanged");
         assert_eq!(pending.entity_bits, 0xDEAD_BEEF);
         assert_eq!(pending.name, "Player");
@@ -2932,14 +2995,15 @@ mod tests {
         let mut hero = HeroScreen::new(NodeId(1));
         hero.inspector_name = None;
         assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
-        assert_eq!(hero.pending_name_edit, None);
+        assert!(hero.bus.is_empty());
     }
 
     /// M14.E: TextChanged on the entity-name field with a selection
-    /// publishes `pending_name_edit` with the current store buffer.
-    /// Without a selection, returns false and pending stays None.
+    /// pushes `EditorAction::InspectorNameEdit` (Wave 2.5 PR 11.8d).
+    /// Without a selection, returns false and the bus stays empty.
     #[test]
     fn entity_name_text_changed_raises_pending_with_selection() {
+        use crate::action_bus::EditorAction;
         let mut hero = HeroScreen::new(NodeId(1));
         // Seed the TextInput buffer with what the user just typed.
         if let Some(InteractiveState::TextInput { text, caret, .. }) =
@@ -2953,15 +3017,21 @@ mod tests {
             name: "Player".into(),
         });
         assert!(hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
-        let p = hero.pending_name_edit.as_ref().expect("pending populated");
+        let p = hero
+            .bus
+            .drain()
+            .find_map(|a| match a {
+                EditorAction::InspectorNameEdit(info) => Some(info),
+                _ => None,
+            })
+            .expect("pending populated");
         assert_eq!(p.entity_bits, 0xDEAD_F00D);
         assert_eq!(p.name, "Player Two");
 
-        // No selection → no pending.
+        // No selection → no push.
         hero.inspector_name = None;
-        hero.pending_name_edit = None;
         assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
-        assert_eq!(hero.pending_name_edit, None);
+        assert!(hero.bus.is_empty());
     }
 
     /// Audit #2 fix (MEDIUM): `paint_hero_screen` selection-change
@@ -3052,14 +3122,14 @@ mod tests {
 
     /// M14.D: Toggled without an `inspector_visibility` snapshot
     /// (e.g. nothing selected) is a no-op — apply_event returns
-    /// false so the dispatcher keeps walking and `pending` stays
-    /// `None`.
+    /// false so the dispatcher keeps walking and the bus stays
+    /// empty.
     #[test]
     fn visibility_toggle_no_pending_without_selection() {
         let mut hero = HeroScreen::new(NodeId(1));
         hero.inspector_visibility = None;
         assert!(!hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
-        assert_eq!(hero.pending_visibility_edit, None);
+        assert!(hero.bus.is_empty());
     }
 
     /// Clicking the Trim Transparency action pill pushes an

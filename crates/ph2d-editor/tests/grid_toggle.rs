@@ -55,36 +55,59 @@ fn show_grid_menu_entry_toggles_visibility() {
 }
 
 /// M14.7 polish: VIEW button (TOOL_HOME) cycles through 3 modes —
-/// Selected → Camera → All → Selected — and raises a
-/// `pending_view_focus` intent each click for the host to apply.
-/// `camera_reset_pending` is no longer used by this path (kept for
-/// shells that still raise it directly).
+/// Selected → Camera → All → Selected — and pushes an
+/// `EditorAction::SetViewFocus` (Wave 2.5 PR 11.8d — was
+/// `pending_view_focus`) onto the bus each click for the shell to
+/// drain. `camera_reset_pending` is no longer used by this path
+/// (kept for shells that still raise it directly).
 #[test]
 fn view_button_cycles_through_three_modes() {
     use ph2d_editor::ViewFocusKind;
+    use ph2d_editor::action_bus::EditorAction;
     use ph2d_editor::screens::hero::ids::TOOL_HOME;
 
     let mut hero = HeroScreen::new(NodeId(1));
-    assert!(hero.pending_view_focus.is_none());
+    assert!(hero.bus.is_empty());
 
     // Click 1: 0 (Selected). Mode advances to 1.
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::Selected));
-    hero.pending_view_focus = None;
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(
+        drained,
+        vec![EditorAction::SetViewFocus {
+            kind: ViewFocusKind::Selected
+        }]
+    );
 
     // Click 2: 1 (Camera).
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::Camera));
-    hero.pending_view_focus = None;
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(
+        drained,
+        vec![EditorAction::SetViewFocus {
+            kind: ViewFocusKind::Camera
+        }]
+    );
 
     // Click 3: 2 (All).
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::All));
-    hero.pending_view_focus = None;
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(
+        drained,
+        vec![EditorAction::SetViewFocus {
+            kind: ViewFocusKind::All
+        }]
+    );
 
     // Click 4 wraps back to Selected.
     hero.apply_event(WidgetEvent::Click(TOOL_HOME));
-    assert_eq!(hero.pending_view_focus, Some(ViewFocusKind::Selected));
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(
+        drained,
+        vec![EditorAction::SetViewFocus {
+            kind: ViewFocusKind::Selected
+        }]
+    );
 }
 
 #[test]

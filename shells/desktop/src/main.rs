@@ -628,7 +628,12 @@ impl App {
             // resolves the selection and updates `gfx.camera`.
             KeyCode::Home | KeyCode::KeyF => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.pending_view_focus = Some(ph2d_editor::ViewFocusKind::Selected);
+                    // Wave 2.5 PR 11.8d: bus migration (was
+                    // `hero.pending_view_focus = Some(...)`).
+                    hero.bus
+                        .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                            kind: ph2d_editor::ViewFocusKind::Selected,
+                        });
                 } else {
                     // No hero panel — fall back to legacy "reset
                     // camera" so the non-editor demo mode still has
@@ -1548,7 +1553,30 @@ impl App {
             //   - `Selected`: pan to gizmo_selection or (0,0).
             //   - `Camera`: pan to (0,0) until camera-object exists.
             //   - `All`: pan + zoom to fit all sprites.
-            if let Some(kind) = hero.pending_view_focus.take()
+            //
+            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
+            // `hero.pending_view_focus.take()`).
+            let view_focus_kind = {
+                let mut found: Option<ph2d_editor::ViewFocusKind> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::SetViewFocus { kind }
+                            if found.is_none() =>
+                        {
+                            found = Some(kind);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(kind) = view_focus_kind
                 && hero_intents::drain_view_focus(
                     kind,
                     hero.gizmo_selection,
@@ -2010,7 +2038,29 @@ impl App {
             // arrive in M14.B+ they share this same code path —
             // governance, audit, conflict resolution all live one
             // level up from the producer.
-            if let Some(info) = hero.pending_transform_edit.take() {
+            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
+            // `hero.pending_transform_edit.take()`).
+            let transform_edit = {
+                let mut found: Option<ph2d_editor::InspectorTransformInfo> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::InspectorTransformEdit(info)
+                            if found.is_none() =>
+                        {
+                            found = Some(info);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(info) = transform_edit {
                 let t = Transform {
                     translation: Vec2::new(info.translation[0], info.translation[1]),
                     rotation: info.rotation_rad,
@@ -2045,7 +2095,29 @@ impl App {
             // removing the component when `visible == true`) so the
             // round-trip is unambiguous and the audit log captures
             // both directions of the toggle.
-            if let Some(info) = hero.pending_visibility_edit.take() {
+            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
+            // `hero.pending_visibility_edit.take()`).
+            let visibility_edit = {
+                let mut found: Option<ph2d_editor::InspectorVisibilityInfo> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::InspectorVisibilityEdit(info)
+                            if found.is_none() =>
+                        {
+                            found = Some(info);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some(info) = visibility_edit {
                 let v = Visibility {
                     hidden: !info.visible,
                 };
@@ -2076,7 +2148,31 @@ impl App {
             // `Name(string)` postcard via `EditorCommand::SetComponent`
             // and apply. Coalesced via the Option: even if the user
             // types fast, we drain once per frame with the latest text.
-            if let Some(info) = hero.pending_name_edit.take() {
+            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
+            // `hero.pending_name_edit.take()`). Note the Vec push
+            // semantics mean multiple TextChanged in one frame all
+            // queue — here we take only the LAST (most recent) edit
+            // so the shell mirrors the old Option-coalesced behavior
+            // (single SetComponent per frame, latest text wins).
+            let name_edit = {
+                let mut latest: Option<ph2d_editor::InspectorNameInfo> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::InspectorNameEdit(info) => {
+                            latest = Some(info);
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                latest
+            };
+            if let Some(info) = name_edit {
                 let n = ph2d_ecs::Name(info.name.clone());
                 match postcard::to_allocvec(&n) {
                     Ok(data) => {
@@ -2110,7 +2206,30 @@ impl App {
             // Individual → Atlas and any HandPacked transition
             // surface a toast — atlas re-insert + hand-packed asset
             // picker land in M14.C+.
-            if let Some((entity_bits, requested)) = hero.pending_sprite_source_change.take() {
+            // Wave 2.5 PR 11.8d: filter-and-replace pattern (was
+            // `hero.pending_sprite_source_change.take()`).
+            let sprite_source_change = {
+                let mut found: Option<(u64, RequestedSpriteStrategy)> = None;
+                let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+                    .bus
+                    .drain()
+                    .filter_map(|a| match a {
+                        ph2d_editor::action_bus::EditorAction::InspectorSpriteSourceChange {
+                            entity_bits,
+                            strategy,
+                        } if found.is_none() => {
+                            found = Some((entity_bits, strategy));
+                            None
+                        }
+                        other => Some(other),
+                    })
+                    .collect();
+                for a in leftovers {
+                    hero.bus.push(a);
+                }
+                found
+            };
+            if let Some((entity_bits, requested)) = sprite_source_change {
                 let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                 let current_sprite = sim.world().get::<Sprite>(entity).copied();
                 // Audit fix #7 helper: when a swap is rejected (toast

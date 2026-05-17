@@ -265,7 +265,93 @@ Plano em [docs/Migracao/2026-05-wave-2-eliminating-all-collisions.md](../../Migr
 - ✅ Stage C — `no_literal_color` matcher extends to non-hex paths (`1dc8487`)
 - ✅ Stage D.1 — `no_magic_numeric` lint infra (warn) + 2 demo files (`ccf1ff9`)
 - ✅ Stage D.2 — 3 more painter files (`3463fc7`)
-- 🔜 Wave 4.1 — Stage D sweep continuation (339 sites in ~30 files; flip lint to deny)
+- ✅ Wave 4.1 — Stage D sweep completion: 493/493 sites migrated; `no_magic_numeric` flipped to `LintMode::Deny`; CRLF normalize in lint walkers (windows CI fix); section outline + user notes regressions fixed (`b8bf68c` + `dc978d1` + `1917860` + `890654b` + `4109a70`)
+
+## Wave 5 (2026-05-17) — chrome canonical + HeroScreen state decomp + panel-as-canonical pattern
+
+Wave 4.1 closed the **layer-of-decoration** colisões (every magic
+numeric in widget/screens forced into a token). Wave 5 closes the
+two architectural residuals that survived: chrome layout dimensions
+still owned by Rust, and panels NOT being canonical-source units.
+
+### Pillar 1: chrome layout to tokens.json (Stage A)
+
+`docs/design/tokens.json::chrome` gains 17 new entries — every
+fixed dimension that previously lived as a hardcoded `f32` literal
+in `screens/hero/style.rs` (`HERO_VIEWPORT_W/H`, `EDGE_PAD`,
+`TOPBAR_H/GAP`, `INSPECTOR_W`, `HIERARCHY_W`, `HUD_H/BOTTOM_PAD`,
+`PANEL_RADIUS/HEAD_PAD`, `HIER_ROW_H`, `PANEL_RESIZE_HANDLE_SIZE`)
+or in widget modules (`TOOL_CHIP_PX`, `DIVIDER_GAP_PX`,
+`PILL_PADDING_PX`, `CHECKBOX_BOX_PX`). New `crates/ph2d-tokens/src/chrome.rs`
+module re-exports 17 `pub const *_PX: f32` from `crate::generated::CHROME_*`.
+
+`design_token_sync::chrome_consts_match_tokens_json` extended from
+3 → 20 keys. Designer fully owns the dimensional side of UI.
+
+### Pillar 2: HeroScreen state decomp (Stage B)
+
+`HeroScreen`'s 21 flat state fields grouped into 6 cohesive
+sub-state structs in new `screens/hero/state.rs`: `InspectorState`
+(6 fields), `HierarchyState` (3), `ImageEditState` (2),
+`ViewState` (5), `GizmoStateGroup` (3), `GridState` (3). Top-level
+drops from 33 → 17 fields (3 identity + 3 UI machinery + 6 group
+structs + 5 misc shell-publication channels).
+
+~129 call sites migrated mechanically (`hero.inspector_sprite` →
+`hero.inspector.sprite`, etc.). Pre-req for stage C — each panel
+can now own its state group instead of poking flat HeroScreen
+fields scattered across the god-struct.
+
+### Pillar 3: PanelManifest infrastructure (Stage C)
+
+New `crates/ph2d-editor/src/panel_registry.rs` mirrors
+`ph2d-tool-registry`'s `ToolManifest` + `Registry`:
+
+- `PaintCtx<'a>` — per-frame ref bundle (hero, layout, viewport,
+  scene, text_system).
+- `PanelManifest` — id, panel_node_id, default_visible, three fn
+  pointers (paint / apply_event / populate).
+- `PanelRegistry` + `PANEL_REGISTRY` static — append-only slice of
+  manifests with `find_by_panel_node_id`.
+
+Each of the 4 panel modules (`widget_gallery`, `hierarchy/`,
+`inspector/`, `grid_snap`) exports `pub static PANEL_MANIFEST`.
+
+### Pillar 4: paint_hero_screen collapse (Stage D)
+
+Each panel's `paint_fn` thunk owns the full per-frame logic
+(visibility early-return + lazy default rect + drag/resize clamp +
+chrome publish + actual paint + content_h publish + scroll clamp +
+stale-rect cleanup on hide). Shared `style::clamp_panel_rect`
+helper extracted from a closure that lived inside `paint_hero_screen`.
+
+`paint_hero_screen` collapses its 4 hardcoded per-panel paint blocks
+(~280 LOC) into a single z-ordered loop over
+`PANEL_REGISTRY.find_by_panel_node_id`. hero.rs: 3260 → 3027 LOC.
+
+`apply_event_fn` thunks remain `false`-returning stubs — the
+`HeroScreen::apply_event` god-match stays the per-event dispatcher.
+Event canonicalization is a follow-up wave.
+
+### Wave 5 status
+
+- ✅ Stage A — chrome layout dims to tokens.json (`e26622b`)
+- ✅ Stage B — HeroScreen state decomp (`4d8d6ad`)
+- ✅ Stage C — PanelManifest + PanelRegistry infrastructure (`9d2d687`)
+- ✅ Stage D — paint_hero_screen collapses to registry iteration (`9c93dce`)
+- 🔜 Wave 6 (optional) — extract `crates/ph2d-panel-<slug>/` per panel; defer until concrete multi-agent demand on a panel.
+
+### Métricas Wave 5
+
+| Métrica | Pré-Wave-5 | Pós-Wave-5 |
+|---------|------------|------------|
+| Hardcoded chrome `f32` literals in style.rs + 3 widget files | 17 | 0 (token-driven) |
+| `tokens.json::chrome` keys | 3 | 20 |
+| Flat fields on `HeroScreen` | 33 | 17 (6 group structs + 11 misc) |
+| Per-panel paint blocks in `paint_hero_screen` | 4 hardcoded (~280 LOC) | 1 registry iteration (~15 LOC) |
+| Panel registration cost | edit hero.rs + ids.rs + populate-list-call | 1 `PANEL_MANIFEST` + 1 line in `PANEL_REGISTRY` |
+| hero.rs LOC | 3260 | 3027 |
+| Architecture tests | 9 | 9 (chrome_consts_match_tokens_json extends 3→20 keys) |
 
 ## Referências
 

@@ -271,7 +271,21 @@ podia introduzir UI não-canônica silenciosamente.
 | Stage C (`1dc8487`) | ✅ mergeada local | `no_literal_color` matcher estende para `Color::WHITE/BLACK/TRANSPARENT`, `Color::{rgba8,from_rgba8,...}`, `VelloColor::*` aliases. 21 sites pre-existentes anotados (bridges, alpha-checker tiles, drop-overlay theme-invariant, note text). |
 | Stage D.1 (`ccf1ff9`) | ✅ mergeada local | `no_magic_numeric.rs` lint **infra** em warn mode. Walker mirror de `no_literal_color.rs`: byte float matcher, structural allowlist `{0.0, ±0.5, ±1.0, ±2.0}`, per-line + path allowlist. 2 demo files migrados: `style.rs`, `inspector/sections.rs`. |
 | Stage D.2 (`3463fc7`) | ✅ mergeada local | 3 more painters migrated: `topbar/cluster_painter.rs`, `hierarchy/panel_painter.rs`, `hierarchy/row_painter.rs`. Sweep: 154/493 sites done (31%). |
-| **Wave 4.1** (deferred) | 🔜 | Stage D sweep continuation: 339 remaining sites em ~30 files. Top remaining: `inspector/showcase.rs` 63, `hero.rs` 20, `inspector/mod.rs` 19, `selection.rs` 18, `color_picker.rs` 15. Quando inventory zerar, flip lint para `LintMode::Deny`. |
+| **Wave 4.1** (`4109a70` closeout) | ✅ mergeada origin/main | Stage D sweep completed: 493/493 sites migrated; `no_magic_numeric` flipped to `LintMode::Deny`; CRLF normalize fix em walkers (windows CI); section outline + user notes regressions também corrigidas no closeout. |
+
+### Wave 5 — chrome canonical + state decomp + panel-as-canonical (mergeada origin/main 2026-05-17 noite)
+
+Wave 4.1 fechou o último gap de decoração (cada magic numeric em
+widget/screens forçada para token). Wave 5 fecha os dois últimos
+gaps arquiteturais: chrome layout dims ainda em Rust + painéis NÃO
+canonical-source units.
+
+| PR | Status | O que entregou |
+|----|--------|----------------|
+| Stage A (`e26622b`) | ✅ mergeada local | 17 novos `chrome.*` keys em `tokens.json` (hero-viewport-w/h, edge-pad, topbar-h/gap, inspector-w, hierarchy-w, hud-h/bottom-pad, panel-radius/head-pad, hier-row-h, panel-resize-handle-size, tool-chip, divider-gap, pill-padding, checkbox-box); novo `crates/ph2d-tokens/src/chrome.rs` com 17 `pub const *_PX: f32` re-exports do codegen; `screens/hero/style.rs` + 3 widget files lêem `CHROME_*` em vez de hardcoded `f32`; `chrome_consts_match_tokens_json` 3 → 20 keys. |
+| Stage B (`4d8d6ad`) | ✅ mergeada local | `HeroScreen` god-struct decomposta em 6 sub-state groups em novo `screens/hero/state.rs`: `InspectorState` (6 fields), `HierarchyState` (3), `ImageEditState` (2), `ViewState` (5), `GizmoStateGroup` (3), `GridState` (3). Top-level: 33 → 17 fields. ~129 call sites migrados mecanicamente. Pre-req do stage C. |
+| Stage C (`9d2d687`) | ✅ mergeada local | Novo `crates/ph2d-editor/src/panel_registry.rs` mirror de `ph2d-tool-registry`: `PaintCtx<'a>` + `PanelManifest` (id, panel_node_id, default_visible, 3 fn pointers) + `PanelRegistry` + `PANEL_REGISTRY` static. 4 painéis (widget_gallery/hierarchy/inspector/grid_snap) exportam `pub static PANEL_MANIFEST`. Stubs no-op nesta etapa. |
+| Stage D (`9c93dce`) | ✅ mergeada local | Cada `paint_fn` thunk dono da full per-frame logic (visibility + clamp + publish + paint + content_h + scroll). `paint_hero_screen` colapsa 4 paint blocks hardcoded (~280 LOC) em iteração única via z-order. hero.rs 3260 → 3027 LOC. `apply_event_fn` thunks ficam stubs — event canonicalization é wave futura. |
 
 ### Wave 3 (legacy plan — superseded por 3.1 + 3.2)
 
@@ -361,20 +375,26 @@ register_all é append-only.
 
 ## 7. Métricas
 
-| Métrica | Pré-Wave-1 | Pós-Wave-2 | Pós-Wave-2.5 | Pós-Wave-3.1 |
-|---------|-----------|-----------|-------------|---------------|
-| Manual NodeId consts em ids.rs | 253 | 0 (hash) | 0 | 0 |
-| Silent NodeId collisions | 6 | 0 | 0 | 0 |
-| Manual icon match-arms (icons.rs) | 715 LOC | 0 (codegen) | 0 | 0 |
-| Manual color resolve fns | 200 LOC | 0 (codegen) | 0 | 0 |
-| Sources of truth para tools | 4 fragmented | 1 canonical | 1 canonical | 1 canonical |
-| Architecture tests | 1 | 6 | 6 | 6 |
-| Files em shells > 600 LOC | 2 ungated | 2 com exceções declaradas | 2 com exceções declaradas | **0** (HR-18 fully active após Wave 3.2) |
-| Widget re-exports em lib.rs | 84 | 84 | 0 | 0 |
-| god-files crates/ acima de 600 | 5 | 3 (todos não-shell) | 2 (panel.rs e state.rs splittados) | 2 |
-| pending_X scattered fields | 20 | 20 | 18 | **0** (Wave 2.5 closeout) |
-| Workspace tests pass | 1098 | 1296 | ~1300 | ~1300 |
-| Commits batched para CI única | — | 11 (Wave 2) | 5+ (Wave 2.5) | 3 (Wave 3.1 stages A/B/C) |
+| Métrica | Pré-Wave-1 | Pós-Wave-2 | Pós-Wave-2.5 | Pós-Wave-3.1 | Pós-Wave-5 |
+|---------|-----------|-----------|-------------|---------------|------------|
+| Manual NodeId consts em ids.rs | 253 | 0 (hash) | 0 | 0 | 0 |
+| Silent NodeId collisions | 6 | 0 | 0 | 0 | 0 |
+| Manual icon match-arms (icons.rs) | 715 LOC | 0 (codegen) | 0 | 0 | 0 |
+| Manual color resolve fns | 200 LOC | 0 (codegen) | 0 | 0 | 0 |
+| Hardcoded chrome `f32` literals em widget/screens | many | many | many | many | **0** (token-driven) |
+| `tokens.json::chrome` keys | 0 | 0 | 0 | 3 | **20** |
+| Sources of truth para tools | 4 fragmented | 1 canonical | 1 canonical | 1 canonical | 1 canonical |
+| Sources of truth para panels | implicit hero.rs hardcoded | implicit | implicit | implicit | **1 canonical (`PANEL_MANIFEST` + `PANEL_REGISTRY`)** |
+| Architecture tests | 1 | 6 | 6 | 6 | 9 |
+| Files em shells > 600 LOC | 2 ungated | 2 com exceções declaradas | 2 com exceções declaradas | **0** (HR-18 fully active após Wave 3.2) | 0 |
+| Widget re-exports em lib.rs | 84 | 84 | 0 | 0 | 0 |
+| god-files crates/ acima de 600 | 5 | 3 (todos não-shell) | 2 (panel.rs e state.rs splittados) | 2 | 2 |
+| pending_X scattered fields | 20 | 20 | 18 | **0** (Wave 2.5 closeout) | 0 |
+| HeroScreen flat fields | 50+ | 50+ | 33 | 33 | **17** (6 group structs + 11 misc) |
+| Per-panel paint blocks em paint_hero_screen | 4 hardcoded | 4 | 4 | 4 | **1 registry iteration** |
+| hero.rs LOC | ~3300 | ~3300 | ~3300 | 3260 | **3027** |
+| Workspace tests pass | 1098 | 1296 | ~1300 | ~1300 | 1312 |
+| Commits batched para CI única | — | 11 (Wave 2) | 5+ (Wave 2.5) | 3 (Wave 3.1 stages A/B/C) | 5 (Wave 5 A/B/C/D + docs) |
 
 ---
 
@@ -563,58 +583,107 @@ hero.rs surgir entre agentes (até 2026-05-16 não aconteceu pós
 Wave 2). Defer enquanto Wave 2.5 ActionBus completar — depois
 disso, a contagem cai de 48 → 28 fields e talvez nem precise.
 
-#### Solução 3 — Painel-as-canonical-source (futuro Wave 4+)
+#### Solução 3 — Painel-as-canonical-source (Wave 5 ✅ entregue, 2026-05-17)
 
-**Status:** não planejado ainda, mas é o "endgame" lógico.
+**Status:** ✅ Stage A+B+C+D mergeados local 2026-05-17 noite. Wave 6 (crate extraction) deferido até demanda multi-agente concreta em painéis.
 
-A mesma receita que tornou *tools* discoverable (TOML + crate + 1
-linha em register_all) pode tornar *painéis* discoverable:
+A mesma receita que tornou *tools* discoverable (crate + `MANIFEST`
+const + 1 linha em `register_all`) agora torna *painéis*
+discoverable. Wave 5 entregou o pattern dentro do `ph2d-editor`
+crate primeiro (sem split em crates separados — esse é Wave 6
+opcional):
 
-```toml
-# docs/design/panels/inspector.toml
-[panel]
-id        = "inspector"
-zone      = "top_right"
-default_visible = true
-collapsible = true
-sections  = ["transform", "render_strategy", "name", "samples"]
+**Stage A (`e26622b`)** — chrome dims a tokens.json. 17 novos
+`chrome.*` keys (hero-viewport, inspector-w, hierarchy-w,
+topbar-h, panel-radius, hier-row-h, tool-chip, etc.). Designer
+edita JSON; Rust replica via codegen existente (`build.rs`
+unchanged). Novo `crates/ph2d-tokens/src/chrome.rs` expõe
+`pub const *_PX: f32` re-exports do `crate::generated::CHROME_*`.
 
-# docs/design/panels/hierarchy.toml
-[panel]
-id        = "hierarchy"
-zone      = "top_left"
-features  = ["search", "rename", "drag_reparent", "context_menu"]
+**Stage B (`4d8d6ad`)** — `HeroScreen` god-struct decomp em 6
+sub-state structs em `screens/hero/state.rs`. 33 → 17 top-level
+fields. ~129 call sites migrados mecanicamente. Pré-requisito do
+Stage C — cada painel agora "possui" seu grupo de estado em vez
+de poke flat fields espalhados.
+
+**Stage C (`9d2d687`)** — `PanelManifest` + `PanelRegistry`
+infrastructure. Novo `crates/ph2d-editor/src/panel_registry.rs`:
+
+```rust
+pub struct PanelManifest {
+    pub id: &'static str,
+    pub panel_node_id: NodeId,
+    pub default_visible: bool,
+    pub paint_fn: PaintFn,        // fn(&mut PaintCtx)
+    pub apply_event_fn: ApplyEventFn,
+    pub populate_fn: PopulateFn,
+}
+
+pub static PANEL_REGISTRY: PanelRegistry = PanelRegistry::new(&[
+    &crate::screens::hero::widget_gallery::PANEL_MANIFEST,
+    &crate::screens::hero::hierarchy::PANEL_MANIFEST,
+    &crate::screens::hero::inspector::PANEL_MANIFEST,
+    &crate::grid_snap::PANEL_MANIFEST,
+]);
 ```
 
-Cada painel vira um crate `ph2d-panel-<slug>/` com:
-- `pub const PANEL_MANIFEST: PanelManifest`
-- `pub fn paint(...)` + `pub fn apply_event(...)`
-- `pub fn populate(store: &mut WidgetStore)`
-- Sub-state struct (vide solução 2)
+**Stage D (`9c93dce`)** — `paint_hero_screen` colapsa de 4 paint
+blocks hardcoded (~280 LOC) para iteração única via z-order:
 
-O `paint_hero_screen` itera o `PanelRegistry` e pinta cada um.
+```rust
+for panel_id in z_order {
+    if let Some(manifest) = registry.find_by_panel_node_id(panel_id) {
+        (manifest.paint_fn)(&mut ctx);
+    }
+}
+```
 
-**Resultado:** Inspector, Hierarchy, ImageTools, Gallery, GridSnap
-viram **5 crates isolados**. `hero.rs` colapsa para ~200 LOC de
-orquestração. Multi-agente trabalhando em painel novo (ex:
-Animator) = drop um crate `ph2d-panel-animator/`, adicionar TOML,
-adicionar 1 linha em `panel_register_all`. **Zero contato com
-hero.rs.**
+Cada `paint_fn` thunk owns full per-frame logic (visibility +
+clamp + publish + paint + content_h + scroll). hero.rs 3260 →
+3027 LOC.
 
-**Por que é definitivo:** simétrico ao tool-as-crate. Resolve
-de raiz, não por palliative.
+**Adicionar painel novo pós Wave 5:**
 
-**Custo estimado:** 1-2 sessões dedicadas. Sem urgência — Wave 2.5
-+ Wave 3 ActionBus já dão folga arquitetural significativa.
+```rust
+// crates/ph2d-editor/src/<modulo>/<slug>.rs
+pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
+    id: "my_panel",
+    panel_node_id: ids::MY_PANEL,
+    default_visible: false,
+    paint_fn: paint_thunk,
+    apply_event_fn: apply_event_thunk,
+    populate_fn: populate,
+};
+
+// crates/ph2d-editor/src/panel_registry.rs
+pub static PANEL_REGISTRY: PanelRegistry = PanelRegistry::new(&[
+    ..., &crate::<modulo>::<slug>::PANEL_MANIFEST,
+]);
+```
+
+**Zero edits** em `paint_hero_screen` ou na match arm de chrome.
+Simétrico ao tool-as-crate.
+
+**Wave 6 (opcional):** extrair cada painel para `crates/ph2d-panel-<slug>/`
+quando demanda multi-agente concreta em painéis aparecer. O pattern
+de Wave 5 já tem 100% do unlock funcional; o split em crates separados
+é última camada de isolamento (cycle risk entre `ph2d-editor` e panel
+crates é o que justifica não fazer antecipadamente).
+
+**Custo real (entregue):** 1 sessão. Stage A 1-2h baixo risco; Stage B
+3-4h alto risco (~129 call sites mecânicos); Stage C 1-2h baixo risco;
+Stage D 4 sub-stages (widget gallery / hierarchy / inspector / grid
+snap + collapse) ~4h.
 
 ### 8a.4 Resumo: ordem recomendada de execução
 
 | Quando | O quê | Custo | Bloqueia o quê |
 |--------|-------|-------|-----------------|
 | Já feito | Wave 1 + Wave 2 (códegen + Registry chrome + lints + HR-18) | — | Nada |
-| Em progresso | Wave 2.5 PR 11.8b3/b4/c/d/closeout (ActionBus completa) | 3-4h | HR-18 fica clean; -20 fields no HeroScreen |
-| Quando custo justificar | Wave 3 PR 11.7d (state decomp) | 3-4h | Multi-agente em domínios diferentes do hero |
-| Endgame | Wave 4+ (painel-as-canonical-source) | 1-2 sessões | Multi-agente em painéis inteiros; hero.rs colapsa para 200 LOC |
+| Já feito | Wave 2.5 (ActionBus completa) + Wave 3.1/3.2 (file decomp; HR-18 fully active) | 5-6h | HR-18 fica clean; -20 fields no HeroScreen |
+| Já feito | Wave 4 + 4.1 (source-of-truth UI: tokens.json estende; `no_magic_numeric` em DENY) | 4-6h | Multi-agente forçado a usar tokens canônicos |
+| Já feito | Wave 5 (chrome a tokens; HeroScreen state decomp; PanelManifest + collapse) | 1 sessão | Multi-agente em painéis = `PANEL_MANIFEST` + 1 linha; sem contato com hero.rs |
+| Wave 6 opcional | Crate extraction por painel (`ph2d-panel-<slug>/`) | 1-2 sessões | Multi-agente em painéis em crates totalmente isolados (cycle-free) |
 
 A regra: **só executar a próxima solução quando a anterior parar
 de ser suficiente**. Não over-engineering — cada step ganha

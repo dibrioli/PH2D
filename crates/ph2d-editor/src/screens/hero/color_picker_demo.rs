@@ -15,30 +15,33 @@ use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::BlenderColorPicker;
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::Theme;
+use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
 
-const PICKER_W: f32 = 280.0;
-const PICKER_H: f32 = 560.0;
+const PICKER_W: f32 = 280.0; // LITERAL-PX-OK: Blender color picker fixed width (chrome-specific)
+const PICKER_H: f32 = 560.0; // LITERAL-PX-OK: Blender color picker fixed height (chrome-specific)
+const VIEWPORT_MIN_MARGIN: f32 = 40.0; // LITERAL-PX-OK: min viewport margin to host picker (chrome-specific)
 
 /// Compute the picker rect for the current viewport + drag offset.
 /// Returns `None` when the canvas is too small to host it — the
 /// painter early-outs on `None` so a degenerate viewport doesn't
 /// strand the picker off-screen.
 pub fn current_picker_rect(layout: &HeroLayout, store: &WidgetStore) -> Option<Rect> {
-    if layout.canvas.w < PICKER_W + 40.0 || layout.canvas.h < PICKER_H + 40.0 {
+    if layout.canvas.w < PICKER_W + VIEWPORT_MIN_MARGIN
+        || layout.canvas.h < PICKER_H + VIEWPORT_MIN_MARGIN
+    {
         return None;
     }
     let (dx, dy) = store.blender_picker_offset(ids::INSP_BLENDER_PICKER);
-    let base_x = layout.canvas.x + layout.canvas.w - PICKER_W - 12.0;
-    let base_y = layout.canvas.y + layout.canvas.h - PICKER_H - 12.0;
-    let min_x = layout.canvas.x + 8.0;
-    let max_x = layout.canvas.x + layout.canvas.w - PICKER_W - 8.0;
+    let base_x = layout.canvas.x + layout.canvas.w - PICKER_W - Spacing::Lg.px();
+    let base_y = layout.canvas.y + layout.canvas.h - PICKER_H - Spacing::Lg.px();
+    let min_x = layout.canvas.x + Spacing::Md.px();
+    let max_x = layout.canvas.x + layout.canvas.w - PICKER_W - Spacing::Md.px();
     // Drag handle (top of panel) must stay inside the canvas; the
     // panel may overflow the canvas bottom — user can drag it back
     // up via the handle.
     let min_y = layout.canvas.y;
-    let max_y = layout.canvas.y + layout.canvas.h - 60.0;
+    let max_y = layout.canvas.y + layout.canvas.h - 60.0; // LITERAL-PX-OK: drag handle min height inside canvas (chrome-specific)
     Some(Rect::new(
         (base_x + dx).clamp(min_x, max_x),
         (base_y + dy).clamp(min_y, max_y),

@@ -14,7 +14,7 @@ use crate::widget::text_input::{TextInputState, border_token, fill_token};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -64,7 +64,7 @@ impl TextArea {
 
 /// Suggested minimum height = 3 rows at body font size.
 pub fn min_height(font_size: f32) -> f32 {
-    font_size * 3.0 + Spacing::Md.px() * 2.0
+    font_size * 3.0 + Spacing::Md.px() * 2.0 // LITERAL-PX-OK: 3 rows of body text (row count)
 }
 
 pub fn paint_text_area(
@@ -117,7 +117,7 @@ pub fn paint_text_area_with_state(
     let inner_w = (rect.w - pad_x * 2.0).max(0.0);
     let inner_right = inner_x + inner_w;
     let font_size = TypeToken::Base.px();
-    let line_h = font_size + 4.0;
+    let line_h = font_size + Spacing::Xs.px();
 
     let focused = area.state == TextInputState::Focused;
     let displayed = area.value.as_str();
@@ -228,7 +228,12 @@ pub fn paint_text_area_with_state(
         };
         let caret_x = (inner_x + prefix_w).min(inner_right);
         let caret_y = inner_y + line_idx as f32 * line_h;
-        let caret_rect = Rect::new(caret_x, caret_y, 1.5, (line_h - 2.0).max(2.0));
+        let caret_rect = Rect::new(
+            caret_x,
+            caret_y,
+            StrokeToken::Default.px(),
+            (line_h - 2.0).max(2.0),
+        );
         scene.fill_rect(
             rect_to_vello(caret_rect),
             resolve(ColorToken::Accent, theme),

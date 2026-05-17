@@ -54,10 +54,10 @@ pub fn populate(store: &mut WidgetStore) {
 /// the actual panel reads it. Height clamps to the viewport with
 /// 8 px breathing margins.
 pub fn default_rect(viewport_w: f32, viewport_h: f32, inspector_w: f32) -> Rect {
-    let w = inspector_w.max(280.0).min(viewport_w - 16.0);
-    let h = 720.0_f32.min(viewport_h - 16.0).max(420.0);
-    let x = ((viewport_w - w) * 0.5).max(8.0);
-    let y = ((viewport_h - h) * 0.5).max(8.0);
+    let w = inspector_w.max(280.0).min(viewport_w - 16.0); // LITERAL-PX-OK: gallery min width 280 + viewport margin 16 (chrome-specific)
+    let h = 720.0_f32.min(viewport_h - 16.0).max(420.0); // LITERAL-PX-OK: gallery default height 720 + viewport margin + min 420 (chrome-specific)
+    let x = ((viewport_w - w) * 0.5).max(8.0); // LITERAL-PX-OK: viewport edge inset
+    let y = ((viewport_h - h) * 0.5).max(8.0); // LITERAL-PX-OK: viewport edge inset
     Rect::new(x, y, w, h)
 }
 

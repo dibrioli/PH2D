@@ -8,7 +8,7 @@ use crate::icons::IconId;
 use crate::paint::paint_icon;
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -41,7 +41,13 @@ impl Spinner {
 pub fn paint_spinner(spinner: &Spinner, rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let _ = spinner;
     let color = crate::paint::resolve(ColorToken::Accent, theme);
-    paint_icon(scene, IconId::Spinner, rect, color, 1.5);
+    paint_icon(
+        scene,
+        IconId::Spinner,
+        rect,
+        color,
+        StrokeToken::Default.px(),
+    );
 }
 
 #[cfg(test)]

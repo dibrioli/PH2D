@@ -11,7 +11,7 @@ use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -103,7 +103,7 @@ pub fn paint_list_item(
     }
 
     let pad_x = Spacing::Lg.px();
-    let icon_w = (rect.h * 0.6).clamp(14.0, 20.0);
+    let icon_w = (rect.h * 0.6).clamp(14.0, 20.0); // LITERAL-PX-OK: list icon sized 60% of row height with min/max
     let mut cursor_x = rect.x + pad_x;
     if let Some(icon) = item.leading_icon {
         let icon_rect = Rect::new(cursor_x, rect.y + (rect.h - icon_w) * 0.5, icon_w, icon_w);
@@ -114,7 +114,13 @@ pub fn paint_list_item(
         } else {
             ColorToken::Text2
         };
-        paint_icon(scene, icon, icon_rect, resolve(icon_color, theme), 1.5);
+        paint_icon(
+            scene,
+            icon,
+            icon_rect,
+            resolve(icon_color, theme),
+            StrokeToken::Default.px(),
+        );
         cursor_x += icon_w + Spacing::Md.px();
     }
 
@@ -174,7 +180,7 @@ pub fn paint_list_item(
             IconId::ChevronRight,
             chev_rect,
             resolve(ColorToken::Text3, theme),
-            1.5,
+            StrokeToken::Default.px(),
         );
     }
 }

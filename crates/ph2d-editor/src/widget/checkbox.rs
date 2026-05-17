@@ -9,7 +9,7 @@ use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_ro
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role, Toggled};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -86,7 +86,7 @@ impl Checkbox {
 }
 
 /// Edge length of the box itself (label flows to the right).
-pub const CHECKBOX_BOX_PX: f32 = 18.0;
+pub const CHECKBOX_BOX_PX: f32 = TypeToken::Lg.px();
 
 /// Square box (left) + label (right). Box fills with `Accent` when
 /// Checked, paints a check glyph; Indeterminate paints a dash glyph.
@@ -132,7 +132,9 @@ pub fn paint_checkbox(
     };
     let g = resolve(glyph_color, theme);
     match cb.value {
-        CheckboxValue::Checked => paint_icon(scene, IconId::Check, box_rect, g, 1.5),
+        CheckboxValue::Checked => {
+            paint_icon(scene, IconId::Check, box_rect, g, StrokeToken::Default.px())
+        }
         // Indeterminate paints a horizontal dash (Minus glyph) — the
         // platform convention for "some children selected". Previous
         // code used `Plus` here, which painted a `+` and read as

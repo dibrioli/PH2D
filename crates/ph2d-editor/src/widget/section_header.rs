@@ -11,7 +11,9 @@ use crate::paint::{fill_rounded_rect, paint_icon, paint_text, paint_text_centere
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{
+    ColorToken, ICON_BTN_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
+};
 use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Fill, Point, VectorScene};
 
 #[derive(Clone, Debug)]
@@ -96,7 +98,7 @@ pub fn paint_section_header(
     }
     let pad_x = Spacing::Md.px();
     let mut cursor_x = rect.x + pad_x;
-    let icon_w = (rect.h * 0.7).clamp(12.0, 18.0);
+    let icon_w = (rect.h * 0.7).clamp(12.0, 18.0); // LITERAL-PX-OK: section header chev icon size scales 70% of row height with min/max
 
     // Collapse chevron — always painted now; non-collapsible headers
     // simply default to "open" via `is_open()`. Single visual anchor
@@ -112,7 +114,7 @@ pub fn paint_section_header(
         icon,
         chev_rect,
         resolve(ColorToken::Text2, theme),
-        1.5,
+        StrokeToken::Default.px(),
     );
     cursor_x += icon_w + Spacing::Sm.px();
 
@@ -125,7 +127,7 @@ pub fn paint_section_header(
     let font = TypeToken::Sm.px();
     let label_y = rect.y + (rect.h - font) * 0.5;
     let label_w = if header.count.is_some() {
-        (rect.x + rect.w - cursor_x - 48.0 - pad_x).max(0.0)
+        (rect.x + rect.w - cursor_x - Spacing::Xl4.px() - pad_x).max(0.0)
     } else {
         (rect.x + rect.w - cursor_x - pad_x).max(0.0)
     };
@@ -146,7 +148,7 @@ pub fn paint_section_header(
     // this section" affordance; the count chip is legacy and only
     // shown when no color is configured.
     if let Some(rgba) = header.color {
-        let radius_px = 7.0_f32;
+        let radius_px = 7.0_f32; // LITERAL-PX-OK: section header color circle radius (chrome-specific accent)
         let cx = rect.x + rect.w - pad_x - radius_px;
         let cy = rect.y + rect.h * 0.5;
         let circle = Circle::new(Point::new(cx as f64, cy as f64), radius_px as f64);
@@ -169,8 +171,8 @@ pub fn paint_section_header(
             &ring,
         );
     } else if let Some(n) = header.count {
-        let chip_w = 36.0_f32;
-        let chip_h = (rect.h - 4.0).max(14.0);
+        let chip_w = ICON_BTN_SIZE_PX;
+        let chip_h = (rect.h - Spacing::Xs.px()).max(SECTION_GAP_PX);
         let chip_rect = Rect::new(
             rect.x + rect.w - pad_x - chip_w,
             rect.y + (rect.h - chip_h) * 0.5,
@@ -202,8 +204,8 @@ pub fn paint_section_header(
 pub fn color_circle_hit_rect(header: &SectionHeader, host: Rect) -> Option<Rect> {
     header.color?;
     let pad_x = Spacing::Md.px();
-    let radius_px = 7.0_f32;
-    let size = radius_px * 2.0 + 4.0;
+    let radius_px = 7.0_f32; // LITERAL-PX-OK: hit-zone radius mirrors paint geometry
+    let size = radius_px * 2.0 + Spacing::Xs.px();
     Some(Rect::new(
         host.x + host.w - pad_x - size,
         host.y + (host.h - size) * 0.5,

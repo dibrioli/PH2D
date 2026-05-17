@@ -13,7 +13,7 @@ use crate::paint::{
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -133,7 +133,7 @@ impl Combobox {
             return None;
         }
         let pad_x = Spacing::Lg.px();
-        let size = (host.h * 0.5).clamp(14.0, 18.0);
+        let size = (host.h * 0.5).clamp(14.0, 18.0); // LITERAL-PX-OK: clear-icon sized 50% of host height with min/max
         Some(Rect::new(
             host.x + host.w - pad_x * 0.5 - size,
             host.y + (host.h - size) * 0.5,
@@ -188,7 +188,7 @@ pub fn paint_combobox_with_state(
     stroke_rounded_rect(scene, rect, radius, stroke_w, resolve(border, theme));
 
     let pad_x = Spacing::Lg.px();
-    let icon_size = (rect.h * 0.5).clamp(14.0, 18.0);
+    let icon_size = (rect.h * 0.5).clamp(14.0, 18.0); // LITERAL-PX-OK: search icon scales 50% of host with min/max
     let search_rect = Rect::new(
         rect.x + pad_x * 0.5,
         rect.y + (rect.h - icon_size) * 0.5,
@@ -200,7 +200,7 @@ pub fn paint_combobox_with_state(
         IconId::Search,
         search_rect,
         resolve(ColorToken::Text2, theme),
-        1.5,
+        StrokeToken::Default.px(),
     );
     let font_size = TypeToken::Base.px();
     let inner_x = rect.x + pad_x + icon_size + Spacing::Md.px();
@@ -279,8 +279,13 @@ pub fn paint_combobox_with_state(
         let caret_x = (inner_x + prefix_w).min(inner_x + inner_w);
         let caret_top = rect.y + Spacing::Md.px();
         let caret_bot = rect.y + rect.h - Spacing::Md.px();
-        let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
-        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
+        let caret_rect = Rect::new(
+            caret_x,
+            caret_top,
+            StrokeToken::Default.px(),
+            (caret_bot - caret_top).max(2.0),
+        );
+        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
 
     // Clear-✕ icon at the right edge when the query is non-empty.
@@ -293,7 +298,7 @@ pub fn paint_combobox_with_state(
             IconId::Close,
             cr,
             resolve(ColorToken::Text2, theme),
-            1.5,
+            StrokeToken::Default.px(),
         );
     }
 

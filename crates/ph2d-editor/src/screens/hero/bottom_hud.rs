@@ -65,7 +65,7 @@ pub fn paint_bottom_hud(
     // Format `entity_count` with a `K` suffix above 999 so the
     // segment width stays predictable when the scene scales up.
     let sprite_label = if stats.sprite_count >= 1_000 {
-        format!("{:.1}K sprites", stats.sprite_count as f32 / 1_000.0)
+        format!("{:.1}K sprites", stats.sprite_count as f32 / 1_000.0) // LITERAL-PX-OK: 1K divisor (display thousands)
     } else {
         format!("{} sprites", stats.sprite_count)
     };
@@ -98,7 +98,7 @@ pub fn paint_bottom_hud(
             StatusSegment::new("default-scene").tone(SegmentTone::Muted),
         ],
     );
-    let pref_w = bar.preferred_width().min(layout.viewport.w - 40.0);
+    let pref_w = bar.preferred_width().min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
     let rect = Rect::new(
         layout.viewport.x + (layout.viewport.w - pref_w) * 0.5,
         layout.bottom_hud.y,

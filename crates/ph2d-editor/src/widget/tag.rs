@@ -12,7 +12,7 @@ use crate::paint::{
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -96,8 +96,8 @@ impl Tag {
         if !self.removable {
             return None;
         }
-        let pad_x = (host.h * 0.5).max(8.0);
-        let close_size = (host.h * 0.7).clamp(10.0, 16.0);
+        let pad_x = (host.h * 0.5).max(8.0); // LITERAL-PX-OK: tag pill horizontal pad scales with height (chrome geometry)
+        let close_size = (host.h * 0.7).clamp(10.0, 16.0); // LITERAL-PX-OK: close icon scales 70% of pill height with min/max
         Some(Rect::new(
             host.x + host.w - pad_x - close_size,
             host.y + (host.h - close_size) * 0.5,
@@ -148,15 +148,15 @@ pub fn paint_tag(
     let fg = resolve(tag.fg_token(), theme);
     fill_rounded_rect(scene, rect, radius, bg);
     if tag.state == TagState::Hovered {
-        stroke_rounded_rect(scene, rect, radius, 1.0, fg);
+        stroke_rounded_rect(scene, rect, radius, 1.0, fg); // LITERAL-PX-OK: tag hover ring stroke (geometry 1px)
     }
 
-    let pad_x = (rect.h * 0.5).max(8.0);
+    let pad_x = (rect.h * 0.5).max(8.0); // LITERAL-PX-OK: pill horizontal pad scales with height (geometry)
     if let Some(close_rect) = tag.close_rect(rect) {
         let label_rect = Rect::new(
             rect.x + pad_x,
             rect.y,
-            (close_rect.x - rect.x - pad_x * 1.5).max(0.0),
+            (close_rect.x - rect.x - pad_x * 1.5).max(0.0), // LITERAL-PX-OK: label width budget composite (mirrors close-rect math)
             rect.h,
         );
         paint_text_centered(
@@ -167,7 +167,13 @@ pub fn paint_tag(
             TypeToken::Xs.px(),
             fg,
         );
-        paint_icon(scene, IconId::Close, close_rect, fg, 1.5);
+        paint_icon(
+            scene,
+            IconId::Close,
+            close_rect,
+            fg,
+            StrokeToken::Default.px(),
+        );
     } else {
         paint_text_centered(text_system, scene, &tag.label, rect, TypeToken::Xs.px(), fg);
     }

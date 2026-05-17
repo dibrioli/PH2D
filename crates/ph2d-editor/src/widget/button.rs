@@ -11,7 +11,10 @@ use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, stroke_ro
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Color as TokenColor, ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{
+    Color as TokenColor, ColorToken, ICON_BTN_SIZE_PX, Radius, Spacing, StrokeToken, Theme,
+    TypeToken,
+};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -164,7 +167,7 @@ impl Button {
 }
 
 /// Suggested square edge for [`ButtonKind::IconOnly`].
-pub const ICON_BUTTON_SIZE_PX: f32 = 36.0;
+pub const ICON_BUTTON_SIZE_PX: f32 = ICON_BTN_SIZE_PX;
 
 /// Paint a button at the given rect. Honors [`ButtonKind`] for
 /// background, focus ring, label/icon swap, and Loading→spinner glyph.
@@ -198,11 +201,11 @@ pub fn paint_button(
     let fg = ph2d_vector::Color::from_rgba8(fg_token.r, fg_token.g, fg_token.b, fg_token.a); // LITERAL-COLOR-OK: token-bridge — `fg_token` is ColorToken-resolved
     match button.kind {
         ButtonKind::IconOnly { icon } => {
-            paint_icon(scene, icon, rect, fg, 1.5);
+            paint_icon(scene, icon, rect, fg, StrokeToken::Default.px());
         }
         _ => {
             if button.state == ButtonState::Loading {
-                paint_icon(scene, IconId::Spinner, rect, fg, 1.5);
+                paint_icon(scene, IconId::Spinner, rect, fg, StrokeToken::Default.px());
             } else {
                 paint_text_centered(
                     text_system,

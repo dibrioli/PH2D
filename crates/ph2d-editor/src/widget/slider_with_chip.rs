@@ -31,11 +31,11 @@ use crate::widget::TextInputState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-pub const DEFAULT_LABEL_W: f32 = 70.0;
-pub const DEFAULT_CHIP_W: f32 = 60.0;
+pub const DEFAULT_LABEL_W: f32 = 70.0; // LITERAL-PX-OK: slider-with-chip default label column width (chrome-specific)
+pub const DEFAULT_CHIP_W: f32 = 60.0; // LITERAL-PX-OK: slider-with-chip default numeric chip width (chrome-specific)
 
 /// Paint a label + slider track + numeric chip composite using the
 /// canonical layout. Both `slider_id` and `chip_id` register in the
@@ -106,7 +106,12 @@ pub fn paint_slider_with_chip_layout(
     let track_x = rect.x + label_w + gap;
     let track_w = (rect.w - label_w - chip_w - gap * 2.0).max(1.0);
     let label_rect = Rect::new(rect.x, rect.y, label_w, rect.h);
-    let track_rect = Rect::new(track_x, rect.y + 6.0, track_w, rect.h - 12.0);
+    let track_rect = Rect::new(
+        track_x,
+        rect.y + Spacing::Sm.px(),
+        track_w,
+        rect.h - Spacing::Lg.px(),
+    );
     let chip_rect = Rect::new(rect.x + rect.w - chip_w, rect.y, chip_w, rect.h);
 
     // Plain text label, no pill background — the previous AccentPress
@@ -240,8 +245,8 @@ pub fn paint_number_chip(
         } else {
             text_system.prefix_width(&display[sel_start..sel_end], font_size)
         };
-        let sel_top = rect.y + 4.0;
-        let sel_bot = rect.y + rect.h - 4.0;
+        let sel_top = rect.y + Spacing::Xs.px();
+        let sel_bot = rect.y + rect.h - Spacing::Xs.px();
         let sel_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0);
         let sel_w = mid_w.min(rect.x + rect.w - 2.0 - sel_x);
         if sel_w > 0.0 {
@@ -266,9 +271,14 @@ pub fn paint_number_chip(
             text_system.prefix_width(prefix, font_size)
         };
         let caret_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0);
-        let caret_top = rect.y + 4.0;
-        let caret_bot = rect.y + rect.h - 4.0;
-        let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
-        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
+        let caret_top = rect.y + Spacing::Xs.px();
+        let caret_bot = rect.y + rect.h - Spacing::Xs.px();
+        let caret_rect = Rect::new(
+            caret_x,
+            caret_top,
+            StrokeToken::Default.px(),
+            (caret_bot - caret_top).max(2.0),
+        );
+        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
 }

@@ -12,7 +12,7 @@
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Radius, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -39,9 +39,9 @@ pub enum SwatchSize {
 impl SwatchSize {
     pub const fn px(self) -> f32 {
         match self {
-            Self::Sm => 24.0,
-            Self::Md => 32.0,
-            Self::Lg => 48.0,
+            Self::Sm => Spacing::Xl2.px(),
+            Self::Md => Spacing::Xl3.px(),
+            Self::Lg => Spacing::Xl4.px(),
         }
     }
 }
@@ -96,7 +96,7 @@ impl ColorSwatch {
     }
 }
 
-const CHECKER_CELL_PX: f32 = 4.0;
+const CHECKER_CELL_PX: f32 = Spacing::Xs.px();
 // Alpha-checker tiles. Gray-on-gray is the universal convention for
 // communicating "translucency"; theme-invariant by design.
 const CHECKER_LIGHT: VelloColor = VelloColor::from_rgba8(220, 220, 220, 255); // LITERAL-COLOR-OK: alpha-checker tile (theme-invariant gray)

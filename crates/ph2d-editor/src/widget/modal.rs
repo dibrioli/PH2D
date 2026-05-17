@@ -13,11 +13,11 @@ use crate::widget::{Button, ButtonState, paint_button};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-const HEADER_H: f32 = 44.0;
-const FOOTER_H: f32 = 56.0;
+const HEADER_H: f32 = TypeToken::Xl3.px();
+const FOOTER_H: f32 = 56.0; // LITERAL-PX-OK: modal footer height (chrome-specific)
 
 #[derive(Clone, Debug)]
 pub struct Modal {
@@ -73,7 +73,7 @@ impl Modal {
     }
 
     pub fn close_rect(&self, host: Rect) -> Rect {
-        let icon = 24.0;
+        let icon = Spacing::Xl2.px();
         let pad = Spacing::Lg.px();
         Rect::new(
             host.x + host.w - pad - icon,
@@ -150,19 +150,19 @@ pub fn paint_modal(
         _ => (None, ColorToken::Text2),
     };
     if let Some(bg) = close_bg {
-        fill_rounded_rect(scene, close_rect, 6.0, resolve(bg, theme));
+        fill_rounded_rect(scene, close_rect, Spacing::Sm.px(), resolve(bg, theme));
     }
     paint_icon(
         scene,
         IconId::Close,
         close_rect,
         resolve(close_fg, theme),
-        1.5,
+        StrokeToken::Default.px(),
     );
 
     let footer = modal.footer_rect(dialog_rect);
-    let btn_w = 96.0_f32;
-    let btn_h = 32.0_f32;
+    let btn_w = 96.0_f32; // LITERAL-PX-OK: modal action button width (chrome-specific)
+    let btn_h = Spacing::Xl3.px();
     let gap = Spacing::Md.px();
     let confirm_x = footer.x + footer.w - pad - btn_w;
     let cancel_x = confirm_x - gap - btn_w;

@@ -12,7 +12,7 @@ use crate::widget::text_input::{TextInputState, border_token, fill_token};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -115,7 +115,7 @@ impl NumberInput {
 }
 
 fn stepper_width(host: Rect) -> f32 {
-    (host.h * 0.6).clamp(16.0, 22.0)
+    (host.h * 0.6).clamp(16.0, 22.0) // LITERAL-PX-OK: stepper column sized 60% of input height with min/max
 }
 
 pub fn paint_number_input(
@@ -228,8 +228,13 @@ pub fn paint_number_input_with_buffer(
         let caret_x = (inner_x + prefix_w).min(inner_x + inner_w);
         let caret_top = rect.y + Spacing::Md.px();
         let caret_bot = rect.y + rect.h - Spacing::Md.px();
-        let caret_rect = Rect::new(caret_x, caret_top, 1.5, (caret_bot - caret_top).max(2.0));
-        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme));
+        let caret_rect = Rect::new(
+            caret_x,
+            caret_top,
+            StrokeToken::Default.px(),
+            (caret_bot - caret_top).max(2.0),
+        );
+        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
 
     let icon_color = resolve(ColorToken::Text2, theme);
@@ -238,14 +243,14 @@ pub fn paint_number_input_with_buffer(
         IconId::ChevronUp,
         input.up_rect(rect),
         icon_color,
-        1.5,
+        StrokeToken::Default.px(),
     );
     paint_icon(
         scene,
         IconId::ChevronDown,
         input.down_rect(rect),
         icon_color,
-        1.5,
+        StrokeToken::Default.px(),
     );
 }
 

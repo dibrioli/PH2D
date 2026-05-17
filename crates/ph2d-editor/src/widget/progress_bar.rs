@@ -72,7 +72,7 @@ impl ProgressBar {
     }
 }
 
-const INDETERMINATE_FRACTION: f32 = 0.30;
+const INDETERMINATE_FRACTION: f32 = 0.30; // LITERAL-PX-OK: indeterminate progress fill fraction (animation parameter, not dimension)
 
 pub fn paint_progress_bar(
     bar: &ProgressBar,
@@ -104,7 +104,7 @@ pub fn paint_progress_bar(
     if bar.show_percent
         && let ProgressMode::Determinate(v) = bar.mode
     {
-        let pct = (v.clamp(0.0, 1.0) * 100.0).round() as i32;
+        let pct = (v.clamp(0.0, 1.0) * 100.0).round() as i32; // LITERAL-PX-OK: percentage scale (math constant)
         let text = format!("{pct}%");
         paint_text_centered(
             text_system,

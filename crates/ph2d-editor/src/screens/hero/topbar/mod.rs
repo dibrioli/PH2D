@@ -10,7 +10,7 @@ use crate::widget::{ButtonState, PILL_PADDING_PX, Tooltip, paint_tooltip};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// Register every TopBar widget into the [`WidgetStore`]. Called
@@ -155,12 +155,17 @@ pub fn paint_hover_tooltip(
     // `docs/UI_Bugs/README.md` §3.3.
     let font_size = ph2d_tokens::TypeToken::Sm.px();
     let measured_w = text_system.layout(text, font_size, f32::INFINITY).width();
-    let pill_w = (measured_w + 16.0).max(60.0);
-    let pill_h = (font_size + 10.0).max(22.0);
+    let pill_w = (measured_w + Spacing::Xl.px()).max(60.0); // LITERAL-PX-OK: tooltip pill min width (chrome-specific)
+    let pill_h = (font_size + 10.0).max(22.0); // LITERAL-PX-OK: tooltip pill height composite + min (chrome-specific)
     // Center over the target; if that would clip the right edge of
     // the viewport, fall back to right-aligning to the target.
     let tip_x = target_rect.x + (target_rect.w - pill_w) * 0.5;
-    let tip_rect = Rect::new(tip_x, target_rect.y + target_rect.h + 6.0, pill_w, pill_h);
+    let tip_rect = Rect::new(
+        tip_x,
+        target_rect.y + target_rect.h + Spacing::Sm.px(),
+        pill_w,
+        pill_h,
+    );
     let tip = Tooltip::new(NodeId(0), text);
     paint_tooltip(&tip, tip_rect, scene, text_system, theme);
 }
@@ -265,7 +270,7 @@ fn paint_image_action_row(
     use crate::screens::hero::style::icon_button_fg;
     let row_h = layout.top_bar.h;
     let radius = Radius::Xl.px();
-    let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
+    let pill_w = 40.0 + PILL_PADDING_PX * 2.0; // LITERAL-PX-OK: TopBar action pill base width (chrome dim, matches single-cluster width)
     let pills = image_action_pills();
     let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
@@ -277,15 +282,19 @@ fn paint_image_action_row(
         hit_index.register(pill.id, rect);
         let state = store.button_state(pill.id).unwrap_or(ButtonState::Normal);
         let chip = Rect::new(
-            rect.x + (rect.w - 32.0) * 0.5,
-            rect.y + (rect.h - 32.0) * 0.5,
-            32.0,
-            32.0,
+            rect.x + (rect.w - Spacing::Xl3.px()) * 0.5,
+            rect.y + (rect.h - Spacing::Xl3.px()) * 0.5,
+            Spacing::Xl3.px(),
+            Spacing::Xl3.px(),
         );
         let color = resolve(icon_button_fg(state), theme);
         match &pill.icon {
-            PillIcon::FromManifest(path) => paint_icon_path(scene, path, chip, color, 1.5),
-            PillIcon::Legacy(icon) => paint_icon(scene, *icon, chip, color, 1.5),
+            PillIcon::FromManifest(path) => {
+                paint_icon_path(scene, path, chip, color, StrokeToken::Default.px())
+            }
+            PillIcon::Legacy(icon) => {
+                paint_icon(scene, *icon, chip, color, StrokeToken::Default.px())
+            }
         }
         rx = rect.x + rect.w + gap;
     }
@@ -365,7 +374,7 @@ fn image_action_pills() -> Vec<ImageActionPill> {
 /// geometrically.
 pub(crate) fn image_action_pill_rects(layout: &HeroLayout, gap: f32) -> Vec<(NodeId, Rect)> {
     let row_h = layout.top_bar.h;
-    let pill_w = 40.0 + PILL_PADDING_PX * 2.0;
+    let pill_w = 40.0 + PILL_PADDING_PX * 2.0; // LITERAL-PX-OK: TopBar action pill base width (chrome dim)
     let pills = image_action_pills();
     let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;

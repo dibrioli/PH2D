@@ -14,7 +14,7 @@ use crate::widget::TextInputState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Radius, TypeToken};
+use ph2d_tokens::{Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Horizontal inset between a note's rect edge and where text drawn
@@ -22,11 +22,11 @@ use ph2d_vector::VectorScene;
 /// dispatch math in `byte_offset_from_click_xy` (`rect.x + 12.0`) so
 /// click→caret + drag-select route to the byte under the visible
 /// cursor.
-const NOTE_TEXT_PAD_X: f32 = 12.0;
+const NOTE_TEXT_PAD_X: f32 = Spacing::Lg.px();
 
 /// Vertical inset for multi-line note body painting. Mirrors the
 /// `TextArea` dispatch math (`text_start_y = rect.y + 8.0`).
-const NOTE_TEXT_PAD_Y: f32 = 8.0;
+const NOTE_TEXT_PAD_Y: f32 = Spacing::Md.px();
 
 /// Paint a single sticky-note. Editable: the title + body each
 /// have their own TextInput state in the store
@@ -60,15 +60,15 @@ pub(super) fn paint_one_note(
     // dispatch to measure prefixes at the wrong font size and put
     // the caret 1–3 chars off (the user's "mapeamento errado do
     // mouse"). Same lesson as docs/UI_Bugs §3.3.
-    let pad = 8.0_f32;
+    let pad = Spacing::Md.px();
     let title_font = TypeToken::Base.px();
     let body_font = TypeToken::Base.px();
-    let title_h = title_font + 8.0;
+    let title_h = title_font + Spacing::Md.px();
     // Body holds ~3 lines. Painter starts at rect.y + NOTE_TEXT_PAD_Y
     // (=8) and uses line_h = body_font + 4. Total height needs both
     // the top inset and a small bottom buffer or the third line gets
     // clipped under the note's rounded bottom edge.
-    let body_h = NOTE_TEXT_PAD_Y * 2.0 + (body_font + 4.0) * 3.0;
+    let body_h = NOTE_TEXT_PAD_Y * 2.0 + (body_font + Spacing::Xs.px()) * 3.0; // LITERAL-PX-OK: 3 lines (line count)
     let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
     if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
@@ -110,7 +110,7 @@ pub(super) fn paint_one_note(
             "Notes…",
         );
     }
-    *y += note_h + 8.0;
+    *y += note_h + Spacing::Md.px();
 }
 
 /// Paint an editable single-line text field with no chrome —
@@ -157,7 +157,12 @@ fn paint_note_editable_line(
         let sel_x = text_x + prefix_w;
         let sel_w = mid_w.min(text_x + text_w - sel_x).max(0.0);
         if sel_w > 0.0 {
-            let sel = Rect::new(sel_x, rect.y + 2.0, sel_w, (rect.h - 4.0).max(2.0));
+            let sel = Rect::new(
+                sel_x,
+                rect.y + 2.0,
+                sel_w,
+                (rect.h - Spacing::Xs.px()).max(2.0),
+            );
             // Translucent dark wash for the selection so the highlighter
             // bg still shows through.
             let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection — translucent dark wash, theme-invariant (BG is user-highlighter)
@@ -192,10 +197,10 @@ fn paint_note_editable_line(
         let caret_rect = Rect::new(
             (text_x + prefix_w).min(text_x + text_w),
             rect.y + 2.0,
-            1.5,
-            (rect.h - 4.0).max(2.0),
+            StrokeToken::Default.px(),
+            (rect.h - Spacing::Xs.px()).max(2.0),
         );
-        fill_rounded_rect(scene, caret_rect, 0.75, fg);
+        fill_rounded_rect(scene, caret_rect, 0.75, fg); // LITERAL-PX-OK: caret half-width radius (smooth rounded caret)
     }
 }
 
@@ -220,7 +225,7 @@ fn paint_note_editable_multiline(
     // breaks click-y → line index. Origin offsets (text_x, text_y0)
     // also MUST match dispatch (`rect.x + 12`, `rect.y + 8`) so
     // click→caret lands at the visible glyph boundary.
-    let line_h = font_size + 4.0;
+    let line_h = font_size + Spacing::Xs.px();
     let text_x = rect.x + NOTE_TEXT_PAD_X;
     let text_y0 = rect.y + NOTE_TEXT_PAD_Y;
     let text_w = (rect.w - NOTE_TEXT_PAD_X).max(0.0);
@@ -301,9 +306,9 @@ fn paint_note_editable_multiline(
         let caret_rect = Rect::new(
             (text_x + prefix_w).min(text_x + text_w),
             text_y0 + line_idx as f32 * line_h,
-            1.5,
+            StrokeToken::Default.px(),
             (line_h - 2.0).max(2.0),
         );
-        fill_rounded_rect(scene, caret_rect, 0.75, fg);
+        fill_rounded_rect(scene, caret_rect, 0.75, fg); // LITERAL-PX-OK: caret half-width radius
     }
 }

@@ -11,7 +11,7 @@ use crate::paint::{
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role, Toggled};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -148,8 +148,8 @@ pub fn paint_tabs_with_hover(
             let inset = Rect::new(
                 r.x + 2.0,
                 r.y + 2.0,
-                (r.w - 4.0).max(0.0),
-                (r.h - 4.0).max(0.0),
+                (r.w - Spacing::Xs.px()).max(0.0),
+                (r.h - Spacing::Xs.px()).max(0.0),
             );
             let radius = (Radius::Md.px() - 2.0).max(0.0);
             fill_rounded_rect(scene, inset, radius, resolve(ColorToken::Bg2, theme));
@@ -170,8 +170,12 @@ pub fn paint_tabs_with_hover(
                     resolve(fg, theme),
                 );
                 if is_selected {
-                    let underline =
-                        Rect::new(r.x + 8.0, r.y + r.h - 2.0, (r.w - 16.0).max(0.0), 2.0);
+                    let underline = Rect::new(
+                        r.x + Spacing::Md.px(),
+                        r.y + r.h - 2.0,
+                        (r.w - Spacing::Xl.px()).max(0.0),
+                        2.0,
+                    );
                     scene.fill_rect(rect_to_vello(underline), resolve(ColorToken::Accent, theme));
                 }
             }
@@ -180,8 +184,8 @@ pub fn paint_tabs_with_hover(
                     let inset = Rect::new(
                         r.x + 2.0,
                         r.y + 2.0,
-                        (r.w - 4.0).max(0.0),
-                        (r.h - 4.0).max(0.0),
+                        (r.w - Spacing::Xs.px()).max(0.0),
+                        (r.h - Spacing::Xs.px()).max(0.0),
                     );
                     fill_rounded_rect(
                         scene,

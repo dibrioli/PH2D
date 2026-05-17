@@ -181,12 +181,12 @@ pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme:
 fn track_rect(orientation: SliderOrientation, rect: Rect) -> Rect {
     match orientation {
         SliderOrientation::Horizontal => {
-            let h = (rect.h * 0.25).clamp(2.0, 8.0);
+            let h = (rect.h * 0.25).clamp(2.0, 8.0); // LITERAL-PX-OK: slider track sized as 25% of widget height (geometry ratio + clamp)
             let y = rect.y + (rect.h - h) / 2.0;
             Rect::new(rect.x, y, rect.w, h)
         }
         SliderOrientation::Vertical => {
-            let w = (rect.w * 0.25).clamp(2.0, 8.0);
+            let w = (rect.w * 0.25).clamp(2.0, 8.0); // LITERAL-PX-OK: slider track sized as 25% of widget width (geometry ratio + clamp)
             let x = rect.x + (rect.w - w) / 2.0;
             Rect::new(x, rect.y, w, rect.h)
         }
@@ -197,13 +197,13 @@ fn tick_mark_rect(orientation: SliderOrientation, rect: Rect, value: f32) -> Rec
     match orientation {
         SliderOrientation::Horizontal => {
             let x = rect.x + rect.w * value - 1.0;
-            let h = (rect.h * 0.5).max(4.0);
+            let h = (rect.h * 0.5).max(4.0); // LITERAL-PX-OK: tick mark minimum height
             let y = rect.y + (rect.h - h) / 2.0;
             Rect::new(x, y, 2.0, h)
         }
         SliderOrientation::Vertical => {
             let y = rect.y + rect.h - rect.h * value - 1.0;
-            let w = (rect.w * 0.5).max(4.0);
+            let w = (rect.w * 0.5).max(4.0); // LITERAL-PX-OK: tick mark minimum width
             let x = rect.x + (rect.w - w) / 2.0;
             Rect::new(x, y, w, 2.0)
         }
@@ -213,13 +213,13 @@ fn tick_mark_rect(orientation: SliderOrientation, rect: Rect, value: f32) -> Rec
 fn thumb_geometry(orientation: SliderOrientation, rect: Rect, value: f32) -> (f32, f32, f32) {
     match orientation {
         SliderOrientation::Horizontal => {
-            let r = (rect.h * 0.45).clamp(6.0, 14.0);
+            let r = (rect.h * 0.45).clamp(6.0, 14.0); // LITERAL-PX-OK: slider thumb radius 45% of widget height (geometry ratio + clamp)
             let cx = rect.x + rect.w * value;
             let cy = rect.y + rect.h * 0.5;
             (cx, cy, r)
         }
         SliderOrientation::Vertical => {
-            let r = (rect.w * 0.45).clamp(6.0, 14.0);
+            let r = (rect.w * 0.45).clamp(6.0, 14.0); // LITERAL-PX-OK: slider thumb radius 45% of widget width (geometry ratio + clamp)
             let cx = rect.x + rect.w * 0.5;
             let cy = rect.y + rect.h - rect.h * value;
             (cx, cy, r)

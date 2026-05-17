@@ -66,8 +66,8 @@ pub fn paint_drop_overlay(
         format!("Drop to import {count} files (first: {first_name})")
     };
 
-    let card_w = 420.0_f32.min(scrim.w - 32.0).max(220.0);
-    let card_h = 64.0_f32;
+    let card_w = 420.0_f32.min(scrim.w - 32.0).max(220.0); // LITERAL-PX-OK: drop-overlay card width with viewport margin (chrome-specific)
+    let card_h = 64.0_f32; // LITERAL-PX-OK: drop-overlay card height (chrome-specific)
     let card = Rect::new(
         scrim.x + (scrim.w - card_w) * 0.5,
         scrim.y + (scrim.h - card_h) * 0.5,

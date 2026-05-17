@@ -77,7 +77,7 @@ use std::path::{Path, PathBuf};
 /// - `LintMode::Deny` → test fails with the inventory if any hit
 ///   remains. **Flipped to this at the end of Wave 4 stage D**,
 ///   when every site is migrated or annotated.
-const WAVE_4_STAGE_D_MODE: LintMode = LintMode::Warn;
+const WAVE_4_STAGE_D_MODE: LintMode = LintMode::Deny;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[allow(dead_code)] // Both variants are referenced as the const value alternates between warn (sweep in progress) and deny (sweep complete).

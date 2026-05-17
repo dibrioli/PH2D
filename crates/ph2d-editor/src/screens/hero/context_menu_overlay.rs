@@ -19,12 +19,14 @@ use crate::widget::{TextInput, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{
+    ColorToken, ROW_H_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
+};
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
-const MENU_W: f32 = 200.0;
-const ROW_H: f32 = 28.0;
-const PAD_Y: f32 = 6.0;
+const MENU_W: f32 = 200.0; // LITERAL-PX-OK: context menu fixed width (chrome-specific)
+const ROW_H: f32 = ROW_H_PX;
+const PAD_Y: f32 = Spacing::Sm.px();
 
 /// Five common highlighter colors. Matches the design brief for note
 /// backgrounds and section outlines.
@@ -202,7 +204,7 @@ pub fn paint_context_menu_overlay(
             fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
         }
         let pad_x = Spacing::Md.px();
-        let icon_size = 14.0_f32;
+        let icon_size = SECTION_GAP_PX;
         let icon_y = r.y + (r.h - icon_size) * 0.5;
         let glyph_x = r.x + pad_x;
         // Leading visual: color swatch for outline picks, "+" icon
@@ -212,17 +214,17 @@ pub fn paint_context_menu_overlay(
             fill_rounded_rect(
                 scene,
                 sw,
-                3.0,
+                3.0, // LITERAL-PX-OK: context-menu swatch radius (chrome-specific accent)
                 VelloColor::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]), // LITERAL-COLOR-OK: user-color — swatch shows an outline-pick rgba, not a theme token
             );
-            stroke_rounded_rect(scene, sw, 3.0, 1.0, resolve(ColorToken::Border, theme));
+            stroke_rounded_rect(scene, sw, 3.0, 1.0, resolve(ColorToken::Border, theme)); // LITERAL-PX-OK: context-menu swatch radius (chrome-specific accent)
         } else if matches!(req.kind, ContextMenuKind::CreateNote { .. }) {
             paint_icon(
                 scene,
                 IconId::Add,
                 Rect::new(glyph_x, icon_y, icon_size, icon_size),
                 resolve(ColorToken::Text2, theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
         }
         let text_x = glyph_x + icon_size + Spacing::Sm.px();
@@ -255,8 +257,8 @@ fn paint_scene_list(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let menu_w = 260.0_f32;
-    let search_h = 30.0_f32;
+    let menu_w = 260.0_f32; // LITERAL-PX-OK: scene-list popover width (chrome-specific)
+    let search_h = 30.0_f32; // LITERAL-PX-OK: scene-list search field height (chrome-specific)
     let row_h = ROW_H;
     let max_rows = ids::CTX_SCENE_ROWS.len();
     // Read the current search query directly from the TextInput
@@ -340,7 +342,7 @@ fn paint_scene_list(
             if is_current {
                 let dot = ph2d_vector::Circle::new(
                     ph2d_vector::Point::new(bullet_x as f64, bullet_y as f64),
-                    3.0,
+                    3.0, // LITERAL-PX-OK: scene-list bullet dot radius (chrome-specific accent)
                 );
                 scene.inner_mut().fill(
                     ph2d_vector::Fill::NonZero,
@@ -350,7 +352,7 @@ fn paint_scene_list(
                     &dot,
                 );
             }
-            let text_x = bullet_x + 10.0;
+            let text_x = bullet_x + 10.0; // LITERAL-PX-OK: bullet → text gap (chrome-specific)
             let text_y = r.y + (r.h - font) * 0.5;
             paint_text(
                 text_system,

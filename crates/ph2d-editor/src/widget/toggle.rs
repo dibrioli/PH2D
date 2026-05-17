@@ -8,7 +8,7 @@
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role, Toggled};
-use ph2d_tokens::{ColorToken, Radius, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -109,8 +109,8 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
 
     // Circular thumb. Diameter = body height - 2*pad. Off → left,
     // On → right. Disabled tints to Text3 so it stays visible but mute.
-    let pad = (rect.h * 0.15).clamp(2.0, 6.0);
-    let diameter = (rect.h - pad * 2.0).max(4.0);
+    let pad = (rect.h * 0.15).clamp(2.0, 6.0); // LITERAL-PX-OK: toggle inner pad 15% of body height with min/max
+    let diameter = (rect.h - pad * 2.0).max(Spacing::Xs.px());
     let r = diameter * 0.5;
     let cy = rect.y + rect.h * 0.5;
     let cx = if toggle.on {

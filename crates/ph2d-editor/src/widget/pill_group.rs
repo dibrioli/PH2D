@@ -9,12 +9,12 @@
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Radius, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Default padding inside the pill body. Children sit inside this
 /// inset; total width grows linearly with `child_count`.
-pub const PILL_PADDING_PX: f32 = 4.0;
+pub const PILL_PADDING_PX: f32 = Spacing::Xs.px();
 
 #[derive(Clone, Debug)]
 pub struct PillGroup {
@@ -34,7 +34,7 @@ impl PillGroup {
             id,
             label: label.into(),
             child_count,
-            child_size: 32.0,
+            child_size: Spacing::Xl3.px(),
         }
     }
 

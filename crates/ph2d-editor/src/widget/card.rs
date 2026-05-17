@@ -6,11 +6,11 @@ use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ICON_BTN_SIZE_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-const HEADER_H: f32 = 32.0;
-const FOOTER_H: f32 = 36.0;
+const HEADER_H: f32 = Spacing::Xl3.px();
+const FOOTER_H: f32 = ICON_BTN_SIZE_PX;
 
 #[derive(Clone, Debug)]
 pub struct Card {

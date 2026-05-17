@@ -304,10 +304,10 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::INSP_SAMPLE_NUMBER,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
-            value: 42.0,
+            value: 42.0, // LITERAL-PX-OK: NumberInput demo seed
             buffer: "42".to_string(),
             caret: 0,
-            last_committed: 42.0,
+            last_committed: 42.0, // LITERAL-PX-OK: NumberInput demo seed
             selection_anchor: None,
         },
     );
@@ -316,7 +316,7 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::INSP_SAMPLE_SLIDER,
         InteractiveState::Slider {
             state: SliderState::Normal,
-            value: 0.62,
+            value: 0.62, // LITERAL-PX-OK: slider demo seed (62%)
             orientation: SliderOrientation::Horizontal,
         },
     );
@@ -324,10 +324,10 @@ fn populate_samples(store: &mut WidgetStore) {
         ids::INSP_SAMPLE_SLIDER_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
-            value: 0.62,
-            buffer: crate::interaction::format_number(0.62),
+            value: 0.62, // LITERAL-PX-OK: slider demo seed (62%)
+            buffer: crate::interaction::format_number(0.62), // LITERAL-PX-OK: slider demo seed (62%)
             caret: 0,
-            last_committed: 0.62,
+            last_committed: 0.62, // LITERAL-PX-OK: slider demo seed (62%)
             selection_anchor: None,
         },
     );
@@ -418,7 +418,7 @@ fn populate_samples(store: &mut WidgetStore) {
     for (id, v) in [
         (ids::INSP_SAMPLE_V3_X, 1.0_f64),
         (ids::INSP_SAMPLE_V3_Y, 2.0),
-        (ids::INSP_SAMPLE_V3_Z, 3.0),
+        (ids::INSP_SAMPLE_V3_Z, 3.0), // LITERAL-PX-OK: Vector3 demo seed values (1, 2, 3)
     ] {
         store.register(
             id,

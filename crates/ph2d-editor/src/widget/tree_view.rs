@@ -11,7 +11,7 @@ use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_ro
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeSet;
 
@@ -117,7 +117,7 @@ impl TreeView {
     pub fn chevron_rect(&self, host: Rect, visible_index: usize, depth: usize, row_h: f32) -> Rect {
         let pad_x = Spacing::Md.px();
         let indent = Spacing::Lg.px();
-        let chev_size = (row_h * 0.6).clamp(10.0, 16.0);
+        let chev_size = (row_h * 0.6).clamp(10.0, 16.0); // LITERAL-PX-OK: TreeView chev sized as 60% of row height with min/max
         let y = host.y + row_h * visible_index as f32;
         let x = host.x + pad_x + indent * depth as f32;
         Rect::new(x, y + (row_h - chev_size) * 0.5, chev_size, chev_size)
@@ -165,8 +165,8 @@ pub fn paint_tree_view(
 ) {
     let pad_x = Spacing::Md.px();
     let indent = Spacing::Lg.px();
-    let chev_size = (row_h * 0.6).clamp(10.0, 16.0);
-    let icon_size = (row_h * 0.6).clamp(12.0, 18.0);
+    let chev_size = (row_h * 0.6).clamp(10.0, 16.0); // LITERAL-PX-OK: chev 60% of row height with min/max
+    let icon_size = (row_h * 0.6).clamp(12.0, 18.0); // LITERAL-PX-OK: icon 60% of row height with min/max
     let font = TypeToken::Base.px();
 
     for (visible_index, (depth, node)) in tree.visible_rows().iter().enumerate() {
@@ -210,7 +210,7 @@ pub fn paint_tree_view(
                 icon,
                 chev_rect,
                 resolve(ColorToken::Text2, theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
             cursor_x += chev_size + Spacing::Xs.px();
         } else {
@@ -228,7 +228,7 @@ pub fn paint_tree_view(
                 icon,
                 icon_rect,
                 resolve(ColorToken::Text2, theme),
-                1.5,
+                StrokeToken::Default.px(),
             );
             cursor_x += icon_size + Spacing::Md.px();
         }

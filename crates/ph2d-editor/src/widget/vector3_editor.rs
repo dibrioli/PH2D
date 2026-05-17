@@ -63,11 +63,11 @@ impl Vector3Editor {
         let gap = Spacing::Md.px();
         let total_gap = gap * 2.0;
         let label_w = if self.colored_labels {
-            (host.h * 0.7).max(14.0)
+            (host.h * 0.7).max(14.0) // LITERAL-PX-OK: axis label width 70% of host height with min
         } else {
             0.0
         };
-        let field_w = ((host.w - total_gap) / 3.0 - label_w).max(0.0);
+        let field_w = ((host.w - total_gap) / 3.0 - label_w).max(0.0); // LITERAL-PX-OK: 3-field divisor (count)
         std::array::from_fn(|i| {
             let x = host.x + (field_w + label_w + gap) * i as f32 + label_w;
             Rect::new(x, host.y, field_w, host.h)
@@ -131,7 +131,7 @@ pub fn paint_vector3_editor_with_state(
     {
         let field_rect = rects[i];
         if v.colored_labels {
-            let label_x = field_rect.x - (rect.h * 0.7).max(14.0);
+            let label_x = field_rect.x - (rect.h * 0.7).max(14.0); // LITERAL-PX-OK: mirror of field_rects axis label width
             let label_y = rect.y + (rect.h - font) * 0.5;
             let color = if v.state == TextInputState::Disabled {
                 ColorToken::TextDisabled

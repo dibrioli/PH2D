@@ -20,26 +20,26 @@ use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Width of the LeftRail. Tightly packed: label column on the left,
 /// 44-px chip, small right margin. The chip's x is computed from
 /// the label column budget so changing label padding only shifts
 /// the chip, not the rail width.
-pub const TOOL_RAIL_WIDTH_PX: f32 = CHIP_X_OFFSET_PX + TOOL_CHIP_PX + 4.0;
-pub const TOOL_CHIP_PX: f32 = 44.0;
+pub const TOOL_RAIL_WIDTH_PX: f32 = CHIP_X_OFFSET_PX + TOOL_CHIP_PX + Spacing::Xs.px();
+pub const TOOL_CHIP_PX: f32 = 44.0; // LITERAL-PX-OK: LeftRail tool chip square (chrome-specific)
 pub const COMPOUND_TOTAL_H_PX: f32 = TOOL_CHIP_PX; // sub-label moved to vertical-left
-pub const DIVIDER_GAP_PX: f32 = 8.0;
+pub const DIVIDER_GAP_PX: f32 = Spacing::Md.px();
 /// Padding from the rail's left edge to the vertical sub-label.
-const LABEL_LEFT_PAD: f32 = 3.0;
+const LABEL_LEFT_PAD: f32 = 3.0; // LITERAL-PX-OK: rotated sub-label edge inset (chrome-specific)
 /// Horizontal extent the rotated sub-label occupies on screen
 /// (≈ parley line height for the chosen sub-label font). 11 px
 /// fits the Xs - 2 font (8-9 px) plus its ascender/descender margin.
-const LABEL_VISUAL_EXTENT_PX: f32 = 11.0;
+const LABEL_VISUAL_EXTENT_PX: f32 = 11.0; // LITERAL-PX-OK: rotated sub-label glyph extent (chrome-specific)
 /// Gap between the right edge of the rotated sub-label and the
 /// left edge of the chip.
-const LABEL_TO_CHIP_GAP_PX: f32 = 3.0;
+const LABEL_TO_CHIP_GAP_PX: f32 = 3.0; // LITERAL-PX-OK: sub-label → chip gap (chrome-specific)
 /// Resulting chip-x offset from the rail's left edge.
 const CHIP_X_OFFSET_PX: f32 = LABEL_LEFT_PAD + LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX;
 
@@ -192,7 +192,7 @@ pub fn paint_tool_rail(
     // label-to-chip gap is exactly `LABEL_TO_CHIP_GAP_PX`, regardless
     // of how wide the rail itself is set.
     let chip_x = rect.x + CHIP_X_OFFSET_PX;
-    let sub_font = (TypeToken::Xs.px() - 2.0).max(8.0);
+    let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
     let gap = Spacing::Xs.px();
     let mut y = rect.y;
     for (i, entry) in rail.entries.iter().enumerate() {
@@ -220,8 +220,8 @@ pub fn paint_tool_rail(
                 fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
                 let (border, border_w) = match state {
                     ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
-                    ButtonState::Pressed => (ColorToken::Accent, 1.5),
-                    _ if is_active => (ColorToken::Accent, 1.5),
+                    ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
+                    _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
                     _ => (ColorToken::Border, 1.0),
                 };
                 stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
@@ -231,7 +231,13 @@ pub fn paint_tool_rail(
                     _ if is_active => ColorToken::Accent,
                     _ => ColorToken::Text2,
                 };
-                paint_icon(scene, *icon, chip_rect, resolve(fg, theme), 1.5);
+                paint_icon(
+                    scene,
+                    *icon,
+                    chip_rect,
+                    resolve(fg, theme),
+                    StrokeToken::Default.px(),
+                );
                 paint_sub_label_vertical(
                     text_system,
                     scene,
@@ -261,7 +267,7 @@ pub fn paint_tool_rail(
                 fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
                 let (border, border_w) = match state {
                     ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
-                    ButtonState::Pressed => (ColorToken::Accent, 1.5),
+                    ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
                     _ => (ColorToken::Border, 1.0),
                 };
                 stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
@@ -296,7 +302,12 @@ pub fn paint_tool_rail(
             }
             ToolRailEntry::Divider => {
                 y += DIVIDER_GAP_PX;
-                let line = Rect::new(rect.x + (rect.w - 24.0) * 0.5, y, 24.0, 1.0);
+                let line = Rect::new(
+                    rect.x + (rect.w - Spacing::Xl2.px()) * 0.5,
+                    y,
+                    Spacing::Xl2.px(),
+                    1.0,
+                );
                 scene.fill_rect(rect_to_vello(line), resolve(ColorToken::Border, theme));
                 y += 1.0 + DIVIDER_GAP_PX;
             }

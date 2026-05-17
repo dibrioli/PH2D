@@ -13,7 +13,7 @@ use crate::paint::{
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -46,7 +46,7 @@ pub enum DropdownState {
 /// popover panel's top edge. Keeps the two surfaces visually
 /// distinct (without it the chip's border merges into the panel
 /// border on themes where both use the same Border token).
-const POPOVER_GAP: f32 = 4.0;
+const POPOVER_GAP: f32 = Spacing::Xs.px();
 /// Inner padding inside the open popover panel — option rows live
 /// inside this margin. Tight on purpose so the list doesn't look
 /// "shifted down" inside an oversized panel (per the user's report).
@@ -211,7 +211,7 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     stroke_rounded_rect(scene, rect, radius, stroke_w, resolve(border, theme));
 
     let pad_x = Spacing::Lg.px();
-    let chevron_size = (rect.h * 0.6).clamp(14.0, 20.0);
+    let chevron_size = (rect.h * 0.6).clamp(14.0, 20.0); // LITERAL-PX-OK: chevron sized 60% of host height with min/max
     let chevron_rect = Rect::new(
         rect.x + rect.w - pad_x - chevron_size,
         rect.y + (rect.h - chevron_size) * 0.5,
@@ -257,7 +257,13 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     } else {
         IconId::ChevronDown
     };
-    paint_icon(scene, icon, chevron_rect, chevron_color, 1.5);
+    paint_icon(
+        scene,
+        icon,
+        chevron_rect,
+        chevron_color,
+        StrokeToken::Default.px(),
+    );
 }
 
 /// Paint only the open option list (no chip). Caller is responsible

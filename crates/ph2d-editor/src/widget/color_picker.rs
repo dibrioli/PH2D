@@ -92,9 +92,9 @@ impl ColorPicker {
     }
 
     fn sync_sliders_from_rgba(&mut self) {
-        self.red.set_value(self.rgba[0] as f32 / 255.0);
-        self.green.set_value(self.rgba[1] as f32 / 255.0);
-        self.blue.set_value(self.rgba[2] as f32 / 255.0);
+        self.red.set_value(self.rgba[0] as f32 / 255.0); // LITERAL-PX-OK: sRGB byte normalize
+        self.green.set_value(self.rgba[1] as f32 / 255.0); // LITERAL-PX-OK: sRGB byte normalize
+        self.blue.set_value(self.rgba[2] as f32 / 255.0); // LITERAL-PX-OK: sRGB byte normalize
         let (h, s, l) = rgb_to_hsl(self.rgba[0], self.rgba[1], self.rgba[2]);
         self.hue.set_value(h);
         self.saturation.set_value(s);
@@ -113,9 +113,9 @@ impl ColorPicker {
 /// Approximate RGB → HSL using the standard piecewise formula. Output
 /// each channel in [0, 1].
 fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
-    let r = r as f32 / 255.0;
-    let g = g as f32 / 255.0;
-    let b = b as f32 / 255.0;
+    let r = r as f32 / 255.0; // LITERAL-PX-OK: sRGB byte normalize
+    let g = g as f32 / 255.0; // LITERAL-PX-OK: sRGB byte normalize
+    let b = b as f32 / 255.0; // LITERAL-PX-OK: sRGB byte normalize
     let max = r.max(g).max(b);
     let min = r.min(g).min(b);
     let l = (max + min) * 0.5;
@@ -129,13 +129,13 @@ fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
         d / (max + min)
     };
     let h = if (max - r).abs() < f32::EPSILON {
-        ((g - b) / d) % 6.0
+        ((g - b) / d) % 6.0 // LITERAL-PX-OK: HSL hue sector count (math constant)
     } else if (max - g).abs() < f32::EPSILON {
         (b - r) / d + 2.0
     } else {
-        (r - g) / d + 4.0
+        (r - g) / d + 4.0 // LITERAL-PX-OK: HSL hue sector offset (math constant)
     };
-    let h = ((h * 60.0).rem_euclid(360.0)) / 360.0;
+    let h = ((h * 60.0).rem_euclid(360.0)) / 360.0; // LITERAL-PX-OK: HSL hue degrees (math constants)
     (h, s, l)
 }
 
@@ -151,8 +151,8 @@ pub fn paint_color_picker(
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
 
     let pad = Spacing::Lg.px();
-    let tab_h = 32.0;
-    let preview_h = 56.0;
+    let tab_h = Spacing::Xl3.px();
+    let preview_h = 56.0; // LITERAL-PX-OK: color preview height (chrome-specific)
     let tabs_rect = Rect::new(rect.x + pad, rect.y + pad, rect.w - pad * 2.0, tab_h);
     paint_tabs(&cp.tabs, tabs_rect, scene, text_system, theme);
 
@@ -197,9 +197,9 @@ fn paint_classic(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let row_h = 24.0;
+    let row_h = Spacing::Xl2.px();
     let gap = Spacing::Md.px();
-    let label_w = 18.0;
+    let label_w = 18.0; // LITERAL-PX-OK: single-glyph axis label column width (R/G/B/H/S/L)
     let labels = [
         ("R", &cp.red),
         ("G", &cp.green),

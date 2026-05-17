@@ -87,8 +87,8 @@ impl StatusBar {
     /// Used by the hero composer to center the bar horizontally.
     pub fn preferred_width(&self) -> f32 {
         let pad = Spacing::Lg.px();
-        let dot_extra = 12.0;
-        let approx_advance = TypeToken::Sm.px() * 0.6;
+        let dot_extra = Spacing::Lg.px();
+        let approx_advance = TypeToken::Sm.px() * 0.6; // LITERAL-PX-OK: proportional-font advance heuristic (60% of font size)
         self.segments
             .iter()
             .map(|s| {
@@ -130,7 +130,7 @@ pub fn paint_status_bar(
         return;
     }
     let pad = Spacing::Lg.px();
-    let dot_extra = 12.0;
+    let dot_extra = Spacing::Lg.px();
     let font = TypeToken::Sm.px();
     // Real text measurement per segment — the previous `chars × 0.6`
     // heuristic miscounted proportional glyphs and made wide
@@ -158,14 +158,14 @@ pub fn paint_status_bar(
         if i > 0 {
             // 1 px inner divider in Border color, full segment height
             // minus 6 px breathing room top/bottom.
-            let div = Rect::new(x, rect.y + 6.0, 1.0, rect.h - 12.0);
+            let div = Rect::new(x, rect.y + Spacing::Sm.px(), 1.0, rect.h - Spacing::Lg.px());
             scene.fill_rect(rect_to_vello(div), resolve(ColorToken::Border, theme));
         }
         let fg_token = segment.tone.fg();
         let fg = resolve(fg_token, theme);
         let mut text_x = seg_rect.x + pad;
         if segment.leading_dot {
-            let r = 3.5;
+            let r = 3.5; // LITERAL-PX-OK: status-bar dot radius (chrome-specific accent)
             let cx = text_x + r;
             let cy = seg_rect.y + seg_rect.h * 0.5;
             let dot = Circle::new(Point::new(cx as f64, cy as f64), r as f64);
@@ -176,7 +176,7 @@ pub fn paint_status_bar(
                 None,
                 &dot,
             );
-            text_x += r * 2.0 + 6.0;
+            text_x += r * 2.0 + Spacing::Sm.px();
         }
         let text_y = seg_rect.y + (seg_rect.h - font) * 0.5;
         let text_w = (seg_rect.x + seg_rect.w - text_x - pad).max(0.0);

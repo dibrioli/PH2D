@@ -18,7 +18,7 @@ use crate::paint::{
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -185,8 +185,8 @@ fn paint_segmented<T: Clone + PartialEq>(
         let inset = Rect::new(
             r.x + 2.0,
             r.y + 2.0,
-            (r.w - 4.0).max(0.0),
-            (r.h - 4.0).max(0.0),
+            (r.w - Spacing::Xs.px()).max(0.0),
+            (r.h - Spacing::Xs.px()).max(0.0),
         );
         // Saturated accent fill on the active pill so the selection
         // is unambiguous against the surrounding `Bg2` tray. Soft

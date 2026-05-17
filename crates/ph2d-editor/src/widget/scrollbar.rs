@@ -14,18 +14,18 @@
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Theme};
 use ph2d_vector::VectorScene;
 
 /// Default scrollbar track width. Wide enough to be a comfortable
 /// drag target on iPad/tablet (the user's "Fundamental para
 /// ipad/tablet" requirement); narrow enough to not encroach on
 /// the panel content.
-pub const SCROLLBAR_W: f32 = 10.0;
+pub const SCROLLBAR_W: f32 = 10.0; // LITERAL-PX-OK: scrollbar track width (chrome-specific, between Spacing::Md and Lg)
 /// Minimum thumb height. When the visible viewport is a large
 /// fraction of the content, the proportional thumb height could
 /// shrink to 0 px; we clamp so the user can always grab it.
-pub const SCROLLBAR_THUMB_MIN_H: f32 = 28.0;
+pub const SCROLLBAR_THUMB_MIN_H: f32 = ROW_H_PX;
 
 /// Compute the track rect inside the panel body. The caller is
 /// responsible for clipping the track to the panel's body region —

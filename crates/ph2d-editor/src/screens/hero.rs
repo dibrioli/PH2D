@@ -1457,67 +1457,16 @@ pub fn paint_hero_screen(
     // `blender_picker_offset` side-table (panel-agnostic — the
     // dispatch's BlenderHitKind::DragHandle path stores the
     // offset under the `parent` NodeId regardless of widget kind).
-    //
-    // Two clamps:
-    //   1. Horizontal: keep ≥60px of the panel inside the viewport
-    //      so the user can always grab the drag bar back.
-    //   2. Vertical: the panel's top stays inside the viewport and
-    //      its bottom never crosses `viewport.bottom - 8`. When the
-    //      user drags DOWN past where `base.h` fits, the panel
-    //      auto-shrinks (floor at MIN_H so the header + a row stay
-    //      visible). Dragging back up restores the natural height.
-    //
-    // The clamped offset is also written back into the store so
-    // subsequent drag-begins capture the visible offset rather than
-    // an accumulated raw value — eliminates the "rubber band" the
-    // user perceived as discrete jumps when reversing direction.
-    const MIN_W: f32 = 220.0; // LITERAL-PX-OK: panel min width (chrome-specific min)
-    const MIN_H: f32 = 120.0; // LITERAL-PX-OK: panel min height (chrome-specific min)
-    // `resize` lets the user manually grow/shrink the panel via the
-    // bottom-right gripper (state `panel_resize_delta`). Manual size
-    // is computed FIRST so the auto-shrink-on-drag-down logic below
-    // sees the user's chosen base height.
-    let clamp_panel = |base: Rect,
-                       off: (f32, f32),
-                       resize: (f32, f32),
-                       viewport: Rect|
-     -> (Rect, (f32, f32), (f32, f32)) {
-        let raw_w = (base.w + resize.0).max(MIN_W);
-        let raw_h = (base.h + resize.1).max(MIN_H);
-        let max_w = (viewport.w * 0.7).max(MIN_W); // LITERAL-PX-OK: max panel width = 70% viewport (chrome ratio)
-        let new_w = raw_w.min(max_w);
-        let new_h_user = raw_h.min(viewport.h.max(MIN_H));
-        let clamped_dw = new_w - base.w;
-        let clamped_dh = new_h_user - base.h;
-
-        let max_x = (viewport.x + viewport.w - 60.0) - base.x; // LITERAL-PX-OK: drag clamp right inset (chrome-specific)
-        let min_x = (viewport.x + 60.0) - (base.x + new_w); // LITERAL-PX-OK: drag clamp left inset (chrome-specific)
-        let max_bottom = viewport.y + viewport.h - Spacing::Md.px();
-        let min_y = viewport.y - base.y;
-        let max_y = (max_bottom - MIN_H) - base.y;
-        let dx = off.0.clamp(min_x, max_x);
-        let dy = off.1.clamp(min_y.min(max_y), max_y);
-        let new_y = base.y + dy;
-        let natural_bottom = new_y + new_h_user;
-        let final_h = if natural_bottom > max_bottom {
-            (max_bottom - new_y).max(MIN_H)
-        } else {
-            new_h_user
-        };
-        (
-            Rect::new(base.x + dx, new_y, new_w, final_h),
-            (dx, dy),
-            (clamped_dw, clamped_dh),
-        )
-    };
+    // Clamp helper lives in `style::clamp_panel_rect` so the floating
+    // panel thunks (widget gallery, grid snap) share the same math.
     let insp_off = hero.store.blender_picker_offset(ids::INSP_PANEL);
     let hier_off = hero.store.blender_picker_offset(ids::HIER_PANEL);
     let insp_resize = hero.store.panel_resize_delta(ids::INSP_PANEL);
     let hier_resize = hero.store.panel_resize_delta(ids::HIER_PANEL);
     let (insp_rect, insp_clamped_off, insp_clamped_resize) =
-        clamp_panel(layout.inspector, insp_off, insp_resize, viewport);
+        style::clamp_panel_rect(layout.inspector, insp_off, insp_resize, viewport);
     let (hier_rect, hier_clamped_off, hier_clamped_resize) =
-        clamp_panel(layout.hierarchy, hier_off, hier_resize, viewport);
+        style::clamp_panel_rect(layout.hierarchy, hier_off, hier_resize, viewport);
     layout.inspector = insp_rect;
     layout.hierarchy = hier_rect;
     if (insp_clamped_off.0 - insp_off.0).abs() > f32::EPSILON
@@ -1677,236 +1626,54 @@ pub fn paint_hero_screen(
         hero.store.clear_panel_rect(ids::INSP_BLENDER_PICKER);
     }
 
-    // Paint each panel in z-order — bottom-first, so the panel most
-    // recently clicked / dragged / opened sits on top.  Panels that
-    // haven't been touched yet inherit a default order at the bottom.
+    // Wave 5 stage D — paint each panel via the PanelRegistry in
+    // z-order. Bottom-first, so the panel most recently clicked /
+    // dragged / opened sits on top. Panels that haven't been touched
+    // yet inherit a default order at the bottom (fallback list below
+    // also covers floating panels that have their own panel rects:
+    // GAL_PANEL + GS_PANEL).
+    //
+    // INSP_BLENDER_PICKER is intentionally NOT in the panel
+    // registry — it's painted out-of-band AFTER every floating panel
+    // (see `paint_blender_picker_demo` below) so it sits on top of
+    // every other panel regardless of z order.
+    //
+    // Each manifest's `paint_fn` owns its full per-frame logic:
+    // visibility check + lazy default rect + drag/resize clamp +
+    // chrome publish + actual paint + content_h publish + scroll
+    // clamp + stale-rect cleanup on hide. Adding a new panel needs
+    // zero edits to this iteration — drop `PANEL_MANIFEST` in the
+    // panel module + 1 line in `panel_registry::PANEL_REGISTRY`.
     let mut z_order: Vec<ph2d_a11y::NodeId> = hero.store.panel_z_order().to_vec();
-    for &fallback in &[ids::HIER_PANEL, ids::INSP_PANEL, ids::INSP_BLENDER_PICKER] {
+    for &fallback in &[
+        ids::HIER_PANEL,
+        ids::INSP_PANEL,
+        ids::INSP_BLENDER_PICKER,
+        ids::GAL_PANEL,
+        crate::grid_snap::ids::GS_PANEL,
+    ] {
         if !z_order.contains(&fallback) {
             z_order.push(fallback);
         }
     }
+    let registry = &crate::panel_registry::PANEL_REGISTRY;
+    let mut ctx = crate::panel_registry::PaintCtx {
+        hero,
+        layout: &layout,
+        viewport,
+        scene,
+        text_system,
+    };
     for panel_id in z_order {
-        if panel_id == ids::INSP_PANEL && hero.inspector.visible {
-            inspector_sync::sync_inspector_from_snapshots(hero);
-            // Publish the host-supplied sprite snapshot for the
-            // Render Source section. Cleared after paint so a stale
-            // snapshot can't leak into the next frame.
-            inspector::set_current_inspector_sprite(hero.inspector.sprite.clone());
-            inspector::set_current_inspector_transform(hero.inspector.transform);
-            inspector::set_current_inspector_visibility(hero.inspector.visibility);
-            inspector::set_current_inspector_name(hero.inspector.name.clone());
-            inspector::set_current_display_unit(
-                hero.project.display_unit,
-                hero.project.pixels_per_meter,
-            );
-            paint_inspector(
-                &layout,
-                hero.selection.as_ref(),
-                scene,
-                text_system,
-                hero.theme,
-                &mut hero.hit_index,
-                &hero.store,
-            );
-            inspector::set_current_inspector_sprite(None);
-            inspector::set_current_inspector_transform(None);
-            inspector::set_current_inspector_visibility(None);
-            inspector::set_current_inspector_name(None);
-            // Publish content_h + clamp scroll right after paint so
-            // `dispatch_wheel` sees the new bounds on the very next
-            // event (avoids a one-frame overshoot when a section
-            // collapses or notes are added).
-            let content_h = inspector::last_inspector_content_h();
-            let visible_h = inspector::last_inspector_visible_h();
-            hero.store.set_panel_content_h(ids::INSP_PANEL, content_h);
-            hero.store.set_panel_visible_h(ids::INSP_PANEL, visible_h);
-            let max_scroll = (content_h - visible_h).max(0.0);
-            let cur = hero.store.panel_scroll(ids::INSP_PANEL);
-            if cur > max_scroll {
-                hero.store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
-            }
-        } else if panel_id == ids::HIER_PANEL && hero.hierarchy.visible {
-            paint_hierarchy(
-                &layout,
-                scene,
-                text_system,
-                hero.theme,
-                &mut hero.hit_index,
-                &mut hero.store,
-            );
-            let content_h = hierarchy::last_hierarchy_content_h();
-            hero.store.set_panel_content_h(ids::HIER_PANEL, content_h);
-            let visible_h = (layout.hierarchy.h - 60.0).max(0.0); // LITERAL-PX-OK: header+scrollbar reserve composite (chrome dim)
-            let max_scroll = (content_h - visible_h).max(0.0);
-            let cur = hero.store.panel_scroll(ids::HIER_PANEL);
-            if cur > max_scroll {
-                hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
-            }
+        if let Some(manifest) = registry.find_by_panel_node_id(panel_id) {
+            (manifest.paint_fn)(&mut ctx);
         }
-        // INSP_BLENDER_PICKER is intentionally NOT painted inside this
-        // z_order loop — see the dedicated paint pass after the
-        // Widget Gallery + Grid Settings blocks below, which keeps the
-        // picker on top of every floating panel regardless of z order.
     }
+    // ctx is dropped here; hero/scene/text_system unborrowed for the
+    // rest of paint_hero_screen (bottom HUD, picker overlay, tooltip,
+    // context menu, drop overlay).
     if hero.view.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
-    }
-    // Widget Gallery floating panel. Sits above every docked panel
-    // and the bottom HUD but below tooltips + context menus so a
-    // user inspecting the gallery can still summon menus / hover
-    // helpers. Geometry materialized lazily on first show; once set,
-    // the base rect persists and drag / resize deltas come from the
-    // store (`blender_picker_offset` + `panel_resize_delta`) so the
-    // gallery is movable + resizable like the Inspector.
-    if hero.view.widget_gallery_visible {
-        let base_rect = match hero.view.widget_gallery_rect {
-            Some(r) => r,
-            None => {
-                let r = widget_gallery::default_rect(
-                    layout.viewport.w,
-                    layout.viewport.h,
-                    layout.inspector.w,
-                );
-                hero.view.widget_gallery_rect = Some(r);
-                r
-            }
-        };
-        let gal_off = hero.store.blender_picker_offset(ids::GAL_PANEL);
-        let gal_resize = hero.store.panel_resize_delta(ids::GAL_PANEL);
-        let (gallery_rect, gal_clamped_off, gal_clamped_resize) =
-            clamp_panel(base_rect, gal_off, gal_resize, viewport);
-        if (gal_clamped_off.0 - gal_off.0).abs() > f32::EPSILON
-            || (gal_clamped_off.1 - gal_off.1).abs() > f32::EPSILON
-        {
-            hero.store.set_blender_picker_offset(
-                ids::GAL_PANEL,
-                gal_clamped_off.0,
-                gal_clamped_off.1,
-            );
-        }
-        if (gal_clamped_resize.0 - gal_resize.0).abs() > f32::EPSILON
-            || (gal_clamped_resize.1 - gal_resize.1).abs() > f32::EPSILON
-        {
-            hero.store.set_panel_resize_delta(
-                ids::GAL_PANEL,
-                gal_clamped_resize.0,
-                gal_clamped_resize.1,
-            );
-        }
-        // Publish the panel rect so wheel-event dispatch + chrome
-        // routing recognize "inside the gallery". Independent panel
-        // id (`GAL_PANEL`) keeps Inspector's `INSP_PANEL` state
-        // untouched.
-        hero.store.set_panel_rect(ids::GAL_PANEL, gallery_rect);
-        widget_gallery::paint(
-            gallery_rect,
-            scene,
-            text_system,
-            hero.theme,
-            &mut hero.hit_index,
-            &hero.store,
-        );
-        // Publish content + visible heights so `dispatch_wheel` knows
-        // the scroll bound for `GAL_PANEL`. Clamp scroll here too so
-        // a shrunken panel can't leave scroll past max.
-        let content_h = widget_gallery::last_content_h();
-        let visible_h = widget_gallery::last_visible_h();
-        hero.store.set_panel_content_h(ids::GAL_PANEL, content_h);
-        hero.store.set_panel_visible_h(ids::GAL_PANEL, visible_h);
-        let max_scroll = (content_h - visible_h).max(0.0);
-        let cur = hero.store.panel_scroll(ids::GAL_PANEL);
-        if cur > max_scroll {
-            hero.store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
-        }
-    } else {
-        // Stale-rect cleanup: without this, `panel_at` keeps returning
-        // GAL_PANEL after the Gallery was closed, and BTreeMap key
-        // ordering (950 < 1000) makes that stale rect shadow GS_PANEL
-        // for overlapping cursor positions — wheel scroll on the Grid
-        // Settings panel then routes to a closed GAL_PANEL and looks
-        // like "scroll wheel doesn't work" to the user.
-        hero.store.clear_panel_rect(ids::GAL_PANEL);
-    }
-    // Grid Settings floating panel — mirrors the Widget Gallery
-    // pattern (lazy default rect on first show, drag/resize deltas via
-    // store, panel rect published for chrome routing).
-    if hero.grid.snap_state.panel_visible {
-        let base_rect = match hero.grid.snap_state.panel_rect {
-            Some(r) => r,
-            None => {
-                let r = crate::grid_snap::default_rect(layout.viewport.w, layout.viewport.h);
-                hero.grid.snap_state.panel_rect = Some(r);
-                r
-            }
-        };
-        let gs_off = hero
-            .store
-            .blender_picker_offset(crate::grid_snap::ids::GS_PANEL);
-        let gs_resize = hero
-            .store
-            .panel_resize_delta(crate::grid_snap::ids::GS_PANEL);
-        let (gs_rect, gs_clamped_off, gs_clamped_resize) =
-            clamp_panel(base_rect, gs_off, gs_resize, viewport);
-        if (gs_clamped_off.0 - gs_off.0).abs() > f32::EPSILON
-            || (gs_clamped_off.1 - gs_off.1).abs() > f32::EPSILON
-        {
-            hero.store.set_blender_picker_offset(
-                crate::grid_snap::ids::GS_PANEL,
-                gs_clamped_off.0,
-                gs_clamped_off.1,
-            );
-        }
-        if (gs_clamped_resize.0 - gs_resize.0).abs() > f32::EPSILON
-            || (gs_clamped_resize.1 - gs_resize.1).abs() > f32::EPSILON
-        {
-            hero.store.set_panel_resize_delta(
-                crate::grid_snap::ids::GS_PANEL,
-                gs_clamped_resize.0,
-                gs_clamped_resize.1,
-            );
-        }
-        hero.store
-            .set_panel_rect(crate::grid_snap::ids::GS_PANEL, gs_rect);
-        // Publish the active DisplayUnit + pixels_per_meter into the
-        // panel's thread-local pair (read by meter↔display conversion
-        // helpers inside `paint` / `apply_event`), then reseed every
-        // meter-domain NumberInput's store value from the live state
-        // so the rows that read from the store display the right
-        // magnitude for the active unit. Focused fields are skipped
-        // by `set_number_value` so in-progress edits don't get
-        // clobbered.
-        crate::grid_snap::set_current_display_unit(
-            hero.project.display_unit,
-            hero.project.pixels_per_meter,
-        );
-        crate::grid_snap::sync_meter_inputs_to_display_unit(&hero.grid.snap_state, &mut hero.store);
-        crate::grid_snap::paint(
-            gs_rect,
-            scene,
-            text_system,
-            hero.theme,
-            &mut hero.hit_index,
-            &hero.store,
-            &hero.grid.snap_state,
-        );
-        // Publish scroll bounds for `dispatch_wheel`. Same pattern as
-        // widget_gallery / inspector.
-        let content_h = crate::grid_snap::last_content_h();
-        let visible_h = crate::grid_snap::last_visible_h();
-        hero.store
-            .set_panel_content_h(crate::grid_snap::ids::GS_PANEL, content_h);
-        hero.store
-            .set_panel_visible_h(crate::grid_snap::ids::GS_PANEL, visible_h);
-        let max_scroll = (content_h - visible_h).max(0.0);
-        let cur = hero.store.panel_scroll(crate::grid_snap::ids::GS_PANEL);
-        if cur > max_scroll {
-            hero.store
-                .set_panel_scroll(crate::grid_snap::ids::GS_PANEL, max_scroll);
-        }
-    } else {
-        // Symmetric stale-rect cleanup (mirrors GAL_PANEL above).
-        hero.store.clear_panel_rect(crate::grid_snap::ids::GS_PANEL);
     }
     // BlenderColorPicker — painted AFTER every floating panel
     // (Inspector, Hierarchy, Widget Gallery, Grid Settings) so it

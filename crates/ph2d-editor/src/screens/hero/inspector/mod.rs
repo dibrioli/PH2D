@@ -75,8 +75,60 @@ pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
     populate_fn: populate,
 };
 
-#[allow(clippy::needless_pass_by_ref_mut)]
-fn paint_thunk(_ctx: &mut PaintCtx) {}
+/// Full per-frame thunk: visibility early-return + snapshot sync +
+/// publish host-supplied inspector data to module thread-locals +
+/// `paint_inspector` + clear thread-locals + content_h publish +
+/// scroll clamp. Panel rect set/clear runs in `paint_hero_screen`
+/// BEFORE the z_order iteration (chrome painters consume the docked
+/// rect via `ctx.layout.inspector`).
+fn paint_thunk(ctx: &mut PaintCtx) {
+    use super::inspector_sync;
+    if !ctx.hero.inspector.visible {
+        return;
+    }
+    inspector_sync::sync_inspector_from_snapshots(ctx.hero);
+    // Publish the host-supplied sprite snapshot for the Render Source
+    // section. Cleared after paint so a stale snapshot can't leak into
+    // the next frame.
+    set_current_inspector_sprite(ctx.hero.inspector.sprite.clone());
+    set_current_inspector_transform(ctx.hero.inspector.transform);
+    set_current_inspector_visibility(ctx.hero.inspector.visibility);
+    set_current_inspector_name(ctx.hero.inspector.name.clone());
+    set_current_display_unit(
+        ctx.hero.project.display_unit,
+        ctx.hero.project.pixels_per_meter,
+    );
+    paint_inspector(
+        ctx.layout,
+        ctx.hero.selection.as_ref(),
+        ctx.scene,
+        ctx.text_system,
+        ctx.hero.theme,
+        &mut ctx.hero.hit_index,
+        &ctx.hero.store,
+    );
+    set_current_inspector_sprite(None);
+    set_current_inspector_transform(None);
+    set_current_inspector_visibility(None);
+    set_current_inspector_name(None);
+    // Publish content_h + clamp scroll right after paint so
+    // `dispatch_wheel` sees the new bounds on the very next event
+    // (avoids a one-frame overshoot when a section collapses or
+    // notes are added).
+    let content_h = last_inspector_content_h();
+    let visible_h = last_inspector_visible_h();
+    ctx.hero
+        .store
+        .set_panel_content_h(ids::INSP_PANEL, content_h);
+    ctx.hero
+        .store
+        .set_panel_visible_h(ids::INSP_PANEL, visible_h);
+    let max_scroll = (content_h - visible_h).max(0.0);
+    let cur = ctx.hero.store.panel_scroll(ids::INSP_PANEL);
+    if cur > max_scroll {
+        ctx.hero.store.set_panel_scroll(ids::INSP_PANEL, max_scroll);
+    }
+}
 
 fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
     false

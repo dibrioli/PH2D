@@ -50,8 +50,33 @@ pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
     populate_fn: populate,
 };
 
-#[allow(clippy::needless_pass_by_ref_mut)]
-fn paint_thunk(_ctx: &mut PaintCtx) {}
+/// Full per-frame thunk: visibility early-return + actual paint +
+/// content_h publish + scroll clamp. Panel rect set/clear runs in
+/// `paint_hero_screen` BEFORE the z_order iteration because chrome
+/// painters consume the docked rect via `ctx.layout.hierarchy`.
+fn paint_thunk(ctx: &mut PaintCtx) {
+    if !ctx.hero.hierarchy.visible {
+        return;
+    }
+    paint_hierarchy(
+        ctx.layout,
+        ctx.scene,
+        ctx.text_system,
+        ctx.hero.theme,
+        &mut ctx.hero.hit_index,
+        &mut ctx.hero.store,
+    );
+    let content_h = last_hierarchy_content_h();
+    ctx.hero
+        .store
+        .set_panel_content_h(ids::HIER_PANEL, content_h);
+    let visible_h = (ctx.layout.hierarchy.h - 60.0).max(0.0); // LITERAL-PX-OK: header+scrollbar reserve composite (chrome dim)
+    let max_scroll = (content_h - visible_h).max(0.0);
+    let cur = ctx.hero.store.panel_scroll(ids::HIER_PANEL);
+    if cur > max_scroll {
+        ctx.hero.store.set_panel_scroll(ids::HIER_PANEL, max_scroll);
+    }
+}
 
 fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
     false

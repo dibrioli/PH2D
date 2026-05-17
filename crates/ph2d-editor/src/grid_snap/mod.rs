@@ -64,8 +64,78 @@ pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
     populate_fn: populate,
 };
 
-#[allow(clippy::needless_pass_by_ref_mut)]
-fn paint_thunk(_ctx: &mut PaintCtx) {}
+/// Full per-frame thunk for the Grid Settings floating panel. Mirrors
+/// the Widget Gallery pattern (lazy default rect on first show,
+/// drag/resize deltas via store, panel rect published for chrome
+/// routing) plus the meter↔display-unit reseed that lets
+/// `paint`/`apply_event` see this frame's active display unit.
+fn paint_thunk(ctx: &mut PaintCtx) {
+    use crate::screens::hero::style::clamp_panel_rect;
+    if !ctx.hero.grid.snap_state.panel_visible {
+        // Symmetric stale-rect cleanup (mirrors GAL_PANEL).
+        ctx.hero.store.clear_panel_rect(ids::GS_PANEL);
+        return;
+    }
+    let base_rect = match ctx.hero.grid.snap_state.panel_rect {
+        Some(r) => r,
+        None => {
+            let r = default_rect(ctx.layout.viewport.w, ctx.layout.viewport.h);
+            ctx.hero.grid.snap_state.panel_rect = Some(r);
+            r
+        }
+    };
+    let gs_off = ctx.hero.store.blender_picker_offset(ids::GS_PANEL);
+    let gs_resize = ctx.hero.store.panel_resize_delta(ids::GS_PANEL);
+    let (gs_rect, gs_clamped_off, gs_clamped_resize) =
+        clamp_panel_rect(base_rect, gs_off, gs_resize, ctx.viewport);
+    if (gs_clamped_off.0 - gs_off.0).abs() > f32::EPSILON
+        || (gs_clamped_off.1 - gs_off.1).abs() > f32::EPSILON
+    {
+        ctx.hero
+            .store
+            .set_blender_picker_offset(ids::GS_PANEL, gs_clamped_off.0, gs_clamped_off.1);
+    }
+    if (gs_clamped_resize.0 - gs_resize.0).abs() > f32::EPSILON
+        || (gs_clamped_resize.1 - gs_resize.1).abs() > f32::EPSILON
+    {
+        ctx.hero.store.set_panel_resize_delta(
+            ids::GS_PANEL,
+            gs_clamped_resize.0,
+            gs_clamped_resize.1,
+        );
+    }
+    ctx.hero.store.set_panel_rect(ids::GS_PANEL, gs_rect);
+    // Publish the active DisplayUnit + pixels_per_meter into the
+    // panel's thread-local pair (read by meter↔display conversion
+    // helpers inside `paint` / `apply_event`), then reseed every
+    // meter-domain NumberInput's store value from the live state so
+    // the rows that read from the store display the right magnitude
+    // for the active unit. Focused fields are skipped by
+    // `set_number_value` so in-progress edits don't get clobbered.
+    set_current_display_unit(
+        ctx.hero.project.display_unit,
+        ctx.hero.project.pixels_per_meter,
+    );
+    sync_meter_inputs_to_display_unit(&ctx.hero.grid.snap_state, &mut ctx.hero.store);
+    paint(
+        gs_rect,
+        ctx.scene,
+        ctx.text_system,
+        ctx.hero.theme,
+        &mut ctx.hero.hit_index,
+        &ctx.hero.store,
+        &ctx.hero.grid.snap_state,
+    );
+    let content_h = last_content_h();
+    let visible_h = last_visible_h();
+    ctx.hero.store.set_panel_content_h(ids::GS_PANEL, content_h);
+    ctx.hero.store.set_panel_visible_h(ids::GS_PANEL, visible_h);
+    let max_scroll = (content_h - visible_h).max(0.0);
+    let cur = ctx.hero.store.panel_scroll(ids::GS_PANEL);
+    if cur > max_scroll {
+        ctx.hero.store.set_panel_scroll(ids::GS_PANEL, max_scroll);
+    }
+}
 
 fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
     false

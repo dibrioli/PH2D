@@ -32,8 +32,79 @@ pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
     populate_fn: populate,
 };
 
-#[allow(clippy::needless_pass_by_ref_mut)] // stage D fills the body
-fn paint_thunk(_ctx: &mut PaintCtx) {}
+/// Full per-frame thunk: visibility check + lazy default rect +
+/// drag/resize clamp + chrome publish + actual paint + content_h
+/// publish + scroll clamp + stale-rect cleanup on hide.
+fn paint_thunk(ctx: &mut PaintCtx) {
+    use super::ids;
+    use super::style::clamp_panel_rect;
+    if !ctx.hero.view.widget_gallery_visible {
+        // Stale-rect cleanup: without this, `panel_at` keeps returning
+        // GAL_PANEL after the Gallery was closed, and BTreeMap key
+        // ordering (950 < 1000) makes that stale rect shadow GS_PANEL
+        // for overlapping cursor positions — wheel scroll on the Grid
+        // Settings panel then routes to a closed GAL_PANEL and looks
+        // like "scroll wheel doesn't work" to the user.
+        ctx.hero.store.clear_panel_rect(ids::GAL_PANEL);
+        return;
+    }
+    let base_rect = match ctx.hero.view.widget_gallery_rect {
+        Some(r) => r,
+        None => {
+            let r = default_rect(
+                ctx.layout.viewport.w,
+                ctx.layout.viewport.h,
+                ctx.layout.inspector.w,
+            );
+            ctx.hero.view.widget_gallery_rect = Some(r);
+            r
+        }
+    };
+    let gal_off = ctx.hero.store.blender_picker_offset(ids::GAL_PANEL);
+    let gal_resize = ctx.hero.store.panel_resize_delta(ids::GAL_PANEL);
+    let (gallery_rect, gal_clamped_off, gal_clamped_resize) =
+        clamp_panel_rect(base_rect, gal_off, gal_resize, ctx.viewport);
+    if (gal_clamped_off.0 - gal_off.0).abs() > f32::EPSILON
+        || (gal_clamped_off.1 - gal_off.1).abs() > f32::EPSILON
+    {
+        ctx.hero.store.set_blender_picker_offset(
+            ids::GAL_PANEL,
+            gal_clamped_off.0,
+            gal_clamped_off.1,
+        );
+    }
+    if (gal_clamped_resize.0 - gal_resize.0).abs() > f32::EPSILON
+        || (gal_clamped_resize.1 - gal_resize.1).abs() > f32::EPSILON
+    {
+        ctx.hero.store.set_panel_resize_delta(
+            ids::GAL_PANEL,
+            gal_clamped_resize.0,
+            gal_clamped_resize.1,
+        );
+    }
+    ctx.hero.store.set_panel_rect(ids::GAL_PANEL, gallery_rect);
+    paint(
+        gallery_rect,
+        ctx.scene,
+        ctx.text_system,
+        ctx.hero.theme,
+        &mut ctx.hero.hit_index,
+        &ctx.hero.store,
+    );
+    let content_h = last_content_h();
+    let visible_h = last_visible_h();
+    ctx.hero
+        .store
+        .set_panel_content_h(ids::GAL_PANEL, content_h);
+    ctx.hero
+        .store
+        .set_panel_visible_h(ids::GAL_PANEL, visible_h);
+    let max_scroll = (content_h - visible_h).max(0.0);
+    let cur = ctx.hero.store.panel_scroll(ids::GAL_PANEL);
+    if cur > max_scroll {
+        ctx.hero.store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
+    }
+}
 
 fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
     false

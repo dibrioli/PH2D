@@ -117,6 +117,61 @@ pub(crate) fn panel_drag_handle_rect(panel: Rect) -> Rect {
     )
 }
 
+/// Wave 5 stage D — shared floating-panel clamp helper. Used by
+/// `paint_hero_screen` for INSP + HIER (computes the final
+/// `layout.inspector` / `layout.hierarchy` rects before chrome paints)
+/// AND by each floating panel's `paint_fn` thunk (widget gallery,
+/// grid snap — they own their base rect lazily). Two clamps:
+///
+/// 1. Horizontal: keep ≥60px of the panel inside the viewport so the
+///    user can always grab the drag bar back.
+/// 2. Vertical: the panel's top stays inside the viewport and its
+///    bottom never crosses `viewport.bottom - 8`. When the user
+///    drags DOWN past where `base.h` fits, the panel auto-shrinks
+///    (floor at MIN_H so the header + a row stay visible). Dragging
+///    back up restores the natural height.
+///
+/// Returns `(clamped_rect, clamped_off, clamped_resize)`. The callers
+/// write the clamped offset/resize back to the WidgetStore so
+/// subsequent drag-begins capture the visible offset rather than an
+/// accumulated raw value (no rubber-band on direction reversal).
+pub(crate) fn clamp_panel_rect(
+    base: Rect,
+    off: (f32, f32),
+    resize: (f32, f32),
+    viewport: Rect,
+) -> (Rect, (f32, f32), (f32, f32)) {
+    const MIN_W: f32 = 220.0; // LITERAL-PX-OK: panel min width (chrome-specific min)
+    const MIN_H: f32 = 120.0; // LITERAL-PX-OK: panel min height (chrome-specific min)
+    let raw_w = (base.w + resize.0).max(MIN_W);
+    let raw_h = (base.h + resize.1).max(MIN_H);
+    let max_w = (viewport.w * 0.7).max(MIN_W); // LITERAL-PX-OK: max panel width = 70% viewport (chrome ratio)
+    let new_w = raw_w.min(max_w);
+    let new_h_user = raw_h.min(viewport.h.max(MIN_H));
+    let clamped_dw = new_w - base.w;
+    let clamped_dh = new_h_user - base.h;
+
+    let max_x = (viewport.x + viewport.w - 60.0) - base.x; // LITERAL-PX-OK: drag clamp right inset (chrome-specific)
+    let min_x = (viewport.x + 60.0) - (base.x + new_w); // LITERAL-PX-OK: drag clamp left inset (chrome-specific)
+    let max_bottom = viewport.y + viewport.h - Spacing::Md.px();
+    let min_y = viewport.y - base.y;
+    let max_y = (max_bottom - MIN_H) - base.y;
+    let dx = off.0.clamp(min_x, max_x);
+    let dy = off.1.clamp(min_y.min(max_y), max_y);
+    let new_y = base.y + dy;
+    let natural_bottom = new_y + new_h_user;
+    let final_h = if natural_bottom > max_bottom {
+        (max_bottom - new_y).max(MIN_H)
+    } else {
+        new_h_user
+    };
+    (
+        Rect::new(base.x + dx, new_y, new_w, final_h),
+        (dx, dy),
+        (clamped_dw, clamped_dh),
+    )
+}
+
 /// Pick a chrome icon's foreground tint based on its interactive
 /// state. Used by TopBar single-icon clusters and the LeftRail tools.
 pub(super) fn icon_button_fg(state: ButtonState) -> ColorToken {

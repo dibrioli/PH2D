@@ -605,6 +605,16 @@ impl HeroScreen {
     /// `apply_event` in z-order; first region that consumes the
     /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
+        // Wave 6+7 Phase 4: panel-distributed event handling. Each
+        // registered panel gets first crack at the event via its
+        // `apply_event_fn` thunk before falling through to the chrome
+        // dispatcher below. Thunks that don't claim the event return
+        // false. `WidgetEvent` is `Copy` — passing by value is cheap.
+        for manifest in crate::panel_registry::PANEL_REGISTRY.manifests() {
+            if (manifest.apply_event_fn)(self, event) {
+                return true;
+            }
+        }
         // M14.6B: hierarchy drag-reparent. Dispatcher emits one
         // `HierReparent` per drop in addition to mutating the panel
         // store. Live (ECS) mode reads it via the bus and the shell

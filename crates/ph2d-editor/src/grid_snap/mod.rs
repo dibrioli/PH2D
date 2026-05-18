@@ -137,6 +137,20 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
+fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
+    // GS_COLOR_PICKER click — open the BlenderColorPicker bound to
+    // the grid-snap color slot, seeding widget_color from the live
+    // `state.color_rgba` so the picker reads the right initial hue.
+    if let WidgetEvent::Click(id) = ev
+        && id == crate::grid_snap::ids::GS_COLOR_PICKER
+    {
+        hero.store.set_widget_color(
+            crate::grid_snap::ids::GS_COLOR_PICKER,
+            hero.grid.snap_state.color_rgba,
+        );
+        hero.store
+            .set_picker_target(Some(crate::grid_snap::ids::GS_COLOR_PICKER));
+        return true;
+    }
     false
 }

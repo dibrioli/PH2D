@@ -106,7 +106,14 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
+fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
+    use super::ids;
+    if let WidgetEvent::Click(id) = ev
+        && id == ids::GAL_CLOSE
+    {
+        hero.view.widget_gallery_visible = !hero.view.widget_gallery_visible;
+        return true;
+    }
     false
 }
 

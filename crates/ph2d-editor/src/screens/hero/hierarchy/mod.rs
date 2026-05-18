@@ -13,7 +13,7 @@ use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_title, resolve, stroke_rounded_rect,
 };
-use crate::panel_registry::{PaintCtx, PanelManifest};
+use crate::panel_registry::{EventOutcome, PaintCtx, PanelManifest};
 use crate::screens::hero::HeroScreen;
 use crate::widget::{
     ButtonState, Tag, TagState, TagTone, TextInput, TextInputState, paint_tag,
@@ -79,7 +79,7 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
+fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> EventOutcome {
     apply_event::apply_event_full(hero, ev)
 }
 

@@ -7,8 +7,12 @@
 //! so the `ph2d-panel-widget-gallery` panel crate can consume
 //! `paint_showcase_body` + helpers without depending on `ph2d-editor`
 //! (audit S1 + A3 closure).
+//!
+//! Wave 8 Phase 3 (audit A1): `#[doc(hidden)]` — items are pub for
+//! panel crates but excluded from rustdoc / unstable across 0.x.y.
 
 #![allow(dead_code)]
+#![doc(hidden)]
 
 use crate::icons::IconId;
 use crate::ids;

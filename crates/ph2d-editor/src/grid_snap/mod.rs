@@ -137,7 +137,11 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
+fn apply_event_thunk(
+    hero: &mut HeroScreen,
+    ev: WidgetEvent,
+) -> crate::panel_registry::EventOutcome {
+    use crate::panel_registry::EventOutcome;
     // TOPBAR_GRID_SETTINGS pill toggle — although TOPBAR_* is normally
     // chrome, this single id maps 1:1 to the grid-snap panel visibility
     // and has no other meaning, so we own it here too.
@@ -145,7 +149,7 @@ fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
         && id == crate::screens::hero::ids::TOPBAR_GRID_SETTINGS
     {
         hero.grid.snap_state.panel_visible = !hero.grid.snap_state.panel_visible;
-        return true;
+        return EventOutcome::Consumed;
     }
     // GS_COLOR_PICKER click — open the BlenderColorPicker bound to
     // the grid-snap color slot, seeding widget_color from the live
@@ -159,17 +163,16 @@ fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
         );
         hero.store
             .set_picker_target(Some(crate::grid_snap::ids::GS_COLOR_PICKER));
-        return true;
+        return EventOutcome::Consumed;
     }
-    // Delegate remaining grid-snap panel events (GS_CLOSE, kind options,
-    // snap target options, neighborhood options, snap toggle, overlay
-    // toggle, opacity slider, probes, etc.) to the panel's own handler.
-    // Synchronize the thread-local display_unit / ppm so user-typed
-    // numeric values (in display unit) convert correctly back to
-    // sim-space meters before writing into state.
+    // Delegate remaining grid-snap panel events.
     crate::grid_snap::set_current_display_unit(
         hero.project.display_unit,
         hero.project.pixels_per_meter,
     );
-    crate::grid_snap::apply_event(&mut hero.grid.snap_state, ev, &hero.store)
+    EventOutcome::from_bool(crate::grid_snap::apply_event(
+        &mut hero.grid.snap_state,
+        ev,
+        &hero.store,
+    ))
 }

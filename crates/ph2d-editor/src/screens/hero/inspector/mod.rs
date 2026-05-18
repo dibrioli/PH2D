@@ -59,7 +59,7 @@ use super::style::{
 };
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{paint_text, paint_text_title, rect_to_vello, resolve};
-use crate::panel_registry::{PaintCtx, PanelManifest};
+use crate::panel_registry::{EventOutcome, PaintCtx, PanelManifest};
 use crate::screens::hero::HeroScreen;
 use crate::widget::{ButtonState, Dropdown, DropdownOption};
 use crate::zones::Rect;
@@ -133,8 +133,8 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
-    apply_event_full::apply_event_full(hero, ev)
+fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> EventOutcome {
+    EventOutcome::from_bool(apply_event_full::apply_event_full(hero, ev))
 }
 
 mod apply_event_full;

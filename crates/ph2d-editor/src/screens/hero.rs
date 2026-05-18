@@ -614,16 +614,23 @@ impl HeroScreen {
     /// `apply_event` in z-order; first region that consumes the
     /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
-        // Wave 6+7 Phase 4: panel-distributed event handling. Each
-        // registered panel gets first crack at the event via its
-        // `apply_event_fn` thunk before falling through to the chrome
-        // dispatcher below. Thunks that don't claim the event return
-        // false. `WidgetEvent` is `Copy` — passing by value is cheap.
+        // Wave 6+7 Phase 4 + Wave 8 Phase 4: panel-distributed event
+        // handling with tripartite EventOutcome (audit B2 + A4).
+        // Each panel returns Consumed (stop), Observed (continue but
+        // record a side-effect happened), or Ignored (continue).
+        // `WidgetEvent` is `Copy` — passing by value is cheap.
+        use crate::panel_registry::EventOutcome;
+        let mut observed = false;
         for manifest in crate::panel_registry::panels() {
-            if (manifest.apply_event_fn)(self, event) {
-                return true;
+            match (manifest.apply_event_fn)(self, event) {
+                EventOutcome::Consumed => return true,
+                EventOutcome::Observed => observed = true,
+                EventOutcome::Ignored => {}
             }
         }
+        // `observed` is OR'd with the chrome-dispatch result at the
+        // end of this function so the caller learns *something*
+        // happened.
         // HierReparent + hier_eye/expand companion bits — handled
         // by `hierarchy::apply_event_thunk` via the panel iteration
         // above (Wave 6+7 Phase 4 distribution). Removed from here.
@@ -994,7 +1001,11 @@ impl HeroScreen {
         // toggles + context-menu items — all handled by
         // `inspector::apply_event_thunk` via panel iteration (Wave 6+7
         // Phase 4 distribution).
-        false
+        // Wave 8 Phase 4: return `observed` so a panel that did a
+        // side-effect via `EventOutcome::Observed` (e.g. hierarchy
+        // Blur(HIER_RENAME_INPUT) commits) propagates as "handled"
+        // even when no chrome region consumed.
+        observed
     }
 
     pub fn build_a11y(&self, viewport: Rect) -> Node {

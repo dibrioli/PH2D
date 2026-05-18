@@ -15,7 +15,7 @@
 
 #![forbid(unsafe_code)]
 
-use ph2d_editor::panel_registry::{PaintCtx, PanelManifest};
+use ph2d_editor::panel_registry::{EventOutcome, PaintCtx, PanelManifest};
 use ph2d_editor::screens::hero::HeroScreen;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
@@ -109,16 +109,14 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
-    // TOPBAR_WIDGET_GALLERY pill toggle + the panel's own X (GAL_CLOSE)
-    // both flip `view.widget_gallery_visible`.
+fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> EventOutcome {
     if let WidgetEvent::Click(id) = ev
         && (id == ids::TOPBAR_WIDGET_GALLERY || id == ids::GAL_CLOSE)
     {
         hero.view.widget_gallery_visible = !hero.view.widget_gallery_visible;
-        return true;
+        return EventOutcome::Consumed;
     }
-    false
+    EventOutcome::Ignored
 }
 
 /// Register the gallery's drag / resize handles as `BlenderHit`

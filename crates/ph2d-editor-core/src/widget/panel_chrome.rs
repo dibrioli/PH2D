@@ -5,17 +5,18 @@
 //! Wave 8 Phase 2.A hoisted these from
 //! `ph2d_editor::screens::hero::style` so panel crates
 //! (`ph2d-panel-*`) can paint their surface without depending on
-//! `ph2d-editor`. The previous arrangement forced every panel to
-//! reach into `screens/hero/style` via the editor crate, which
-//! defeated the panel-as-crate isolation goal (audit S1).
+//! `ph2d-editor` (audit S1).
 //!
 //! ## Stability
 //!
-//! These items are panel-author-facing infrastructure, NOT stable
-//! user API. Panel authors are expected to track PH2D releases
-//! closely; signatures may shift between 0.x.y versions while we
-//! tune layout primitives. The shape is intentionally narrow so a
-//! 3rd-party panel can implement its surface in ≤ 10 lines.
+//! Wave 8 Phase 3 (audit A1): the module is `#[doc(hidden)]` to
+//! signal "panel-author infrastructure, NOT stable user API".
+//! Items remain `pub` so panel crates can consume them, but they
+//! don't appear in rustdoc and may change shape between 0.x.y
+//! releases without a SemVer break. Panel authors are expected to
+//! track PH2D releases closely.
+
+#![doc(hidden)]
 
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;

@@ -56,15 +56,50 @@ pub struct PaintCtx<'a> {
 /// field gates each panel.
 pub type PaintFn = for<'a> fn(&mut PaintCtx<'a>);
 
-/// Apply-event function pointer — routes a `WidgetEvent` to one
-/// panel's apply logic. Returns `true` when the event was consumed
-/// (so the dispatcher stops iterating).
+/// Outcome of a panel's [`ApplyEventFn`] call. Wave 8 Phase 4
+/// replaced the previous `-> bool` (Consumed / Ignored) with a
+/// tripartite enum so the dispatcher can distinguish:
 ///
-/// Wave 5 stage D ships paint migration only; `apply_event_fn`
-/// thunks are stubs returning `false` for now. The
-/// `HeroScreen::apply_event` god-match stays the per-event dispatcher
-/// until a later wave folds it into per-panel thunks.
-pub type ApplyEventFn = fn(&mut HeroScreen, WidgetEvent) -> bool;
+/// - **Consumed**: the panel handled the event exclusively. Stop
+///   iterating; no other panel needs to see it.
+/// - **Ignored**: the panel did nothing. Continue to the next.
+/// - **Observed**: the panel did a side-effect (state mutation,
+///   buffer commit, etc.) but doesn't claim exclusivity. Continue
+///   iterating; other panels may also observe.
+///
+/// `Observed` exists because of the audit B2 pattern: hierarchy's
+/// `Blur(HIER_RENAME_INPUT)` stages a `HierRenameCommit` AND
+/// returns false (so the chrome fallthrough still runs). The old
+/// `-> bool` contract said "false = nothing happened" but the side
+/// effect was loud. Tripartite makes the intent explicit + impossible
+/// to introduce by accident.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventOutcome {
+    Consumed,
+    Ignored,
+    Observed,
+}
+
+impl EventOutcome {
+    /// Migration helper: convert a legacy `-> bool` (true = Consumed,
+    /// false = Ignored). Used by panels that still bool-return and
+    /// don't have side-effects-without-consumption. The hierarchy
+    /// Blur case returns `Observed` directly without going through
+    /// `from_bool`.
+    pub fn from_bool(consumed: bool) -> Self {
+        if consumed {
+            EventOutcome::Consumed
+        } else {
+            EventOutcome::Ignored
+        }
+    }
+}
+
+/// Apply-event function pointer — routes a `WidgetEvent` to one
+/// panel's apply logic. Returns an [`EventOutcome`] declaring whether
+/// the event was consumed exclusively, observed (side-effect, no
+/// exclusivity), or ignored.
+pub type ApplyEventFn = fn(&mut HeroScreen, WidgetEvent) -> EventOutcome;
 
 /// Populate function pointer — pre-registers a panel's widget
 /// NodeIds against the WidgetStore at construction time. Matches

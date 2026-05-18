@@ -1,6 +1,11 @@
 //! Thread-local snapshots + last-paint measurements for the
 //! live Inspector panel.
 //!
+//! Wave 8 Phase 3 (audit A1): items here are `pub` so the host
+//! shell can publish snapshots before paint, but they are NOT
+//! stable user API. The module is `#[doc(hidden)]` at re-export
+//! sites; this is panel-author infrastructure.
+//!
 //! Wave 8 Phase 2.A — gallery-related thread-locals
 //! (LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y, PENDING_DROPDOWN_CHIP,
 //! LAST_GALLERY_*, push_section_top_y, section_index_below_body_y,

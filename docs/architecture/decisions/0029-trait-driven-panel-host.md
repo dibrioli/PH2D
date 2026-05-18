@@ -1,7 +1,7 @@
 # ADR-0029 — Trait-driven panel host (PanelHost + Panel<State>) — endgame post-Wave-7
 
-**Status:** Proposed
-**Data:** 2026-05-18
+**Status:** Accepted
+**Data:** 2026-05-18 (Proposed) → 2026-05-18 (Accepted — Enio aprovou Phase A.5)
 **Decisor(es):** Enio + LLM (review por outro agente incorporado)
 **Substitui:** parcialmente ADR-0028 §Wave 6+7 (panel-as-crate alias model)
 **Habilita:** Wave 8 Phase 2.B-F + fechamento definitivo de auditoria S1+A2.

@@ -45,6 +45,15 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "blender_color_picker/wheel.rs",
         "paint helper; parent mod owns a11y",
     ),
+    // Wave 8 Phase 2.A panel chrome: shared paint helpers + constants
+    // (paint_panel_surface, drag/resize hit-zone rects, clamp math,
+    // HIGHLIGHTER_RGBA). No standalone user-facing semantics — each
+    // panel that uses these owns its own a11y tree via its parent
+    // panel manifest.
+    (
+        "panel_chrome.rs",
+        "shared paint helpers; consumer panel owns a11y",
+    ),
 ];
 
 #[test]

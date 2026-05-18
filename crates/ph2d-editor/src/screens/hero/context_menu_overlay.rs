@@ -28,15 +28,12 @@ const MENU_W: f32 = 200.0; // LITERAL-PX-OK: context menu fixed width (chrome-sp
 const ROW_H: f32 = ROW_H_PX;
 const PAD_Y: f32 = Spacing::Sm.px();
 
-/// Five common highlighter colors. Matches the design brief for note
-/// backgrounds and section outlines.
-pub const HIGHLIGHTER_RGBA: [[u8; 4]; 5] = [
-    [0xFF, 0xF5, 0x9D, 0xFF], // yellow
-    [0xF8, 0xBB, 0xD0, 0xFF], // pink
-    [0xC8, 0xE6, 0xC9, 0xFF], // green
-    [0xBB, 0xDE, 0xFB, 0xFF], // blue
-    [0xFF, 0xE0, 0xB2, 0xFF], // orange
-];
+/// Five common highlighter colors used for note backgrounds and
+/// section outlines. Wave 8 Phase 2.A re-export from
+/// `ph2d-editor-core::widget::panel_chrome::HIGHLIGHTER_RGBA` so panel
+/// crates don't need to reach into `ph2d_editor::screens::hero` to
+/// paint user-placed notes.
+pub use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 
 /// Paint the open context menu (if any) and register hit rects for
 /// each item. Called last in the hero paint pipeline so the menu

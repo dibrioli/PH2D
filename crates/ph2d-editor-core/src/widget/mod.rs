@@ -18,6 +18,7 @@ mod dropdown;
 mod list_item;
 mod modal;
 mod number_input;
+pub mod panel_chrome;
 mod pill_group;
 mod popover;
 mod progress_bar;

@@ -280,8 +280,11 @@ fn in_test_module(ranges: &[(usize, usize)], byte_offset: usize) -> bool {
 #[test]
 fn no_magic_numeric_in_widget_or_screens() {
     let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    // Wave 6+7 Phase 2: widget/ migrated to ph2d-editor-core/. Scan
+    // both crates' source trees so the rule still covers every
+    // primitive + every chrome painter.
     let scan_roots = [
-        crate_root.join("src/widget"),
+        crate_root.join("../ph2d-editor-core/src/widget"),
         crate_root.join("src/screens"),
     ];
 

@@ -331,11 +331,9 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // companion ids are stripped first so a right-click on
                 // those toggles still reaches the parent row.
                 let hier_row_id = hit_id.and_then(|id| {
-                    if let Some(row) = crate::screens::hero::ids::hier_eye_companion_to_row(id) {
+                    if let Some(row) = crate::ids::hier_eye_companion_to_row(id) {
                         Some(row)
-                    } else if let Some(row) =
-                        crate::screens::hero::ids::hier_expand_companion_to_row(id)
-                    {
+                    } else if let Some(row) = crate::ids::hier_expand_companion_to_row(id) {
                         Some(row)
                     } else {
                         Some(id)
@@ -392,7 +390,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             // hero's real `populate` registers it as Plain).
             if event.button == ph2d_host::PointerButton::Primary
                 && let Some((hit_id, hit_rect)) = hit
-                && hit_id == crate::screens::hero::ids::TOPBAR_THEME
+                && hit_id == crate::ids::TOPBAR_THEME
                 && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
             {
                 store.open_context_menu(ContextMenuRequest {
@@ -406,7 +404,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             // Save / Save As menu anchored below the chip.
             if event.button == ph2d_host::PointerButton::Primary
                 && let Some((hit_id, hit_rect)) = hit
-                && hit_id == crate::screens::hero::ids::TOPBAR_SAVE
+                && hit_id == crate::ids::TOPBAR_SAVE
                 && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
             {
                 store.open_context_menu(ContextMenuRequest {
@@ -419,7 +417,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             // Open chip — same anchor logic.
             if event.button == ph2d_host::PointerButton::Primary
                 && let Some((hit_id, hit_rect)) = hit
-                && hit_id == crate::screens::hero::ids::TOPBAR_OPEN
+                && hit_id == crate::ids::TOPBAR_OPEN
                 && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
             {
                 store.open_context_menu(ContextMenuRequest {
@@ -433,7 +431,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             // px/m presets. Same anchor convention as Save/Open.
             if event.button == ph2d_host::PointerButton::Primary
                 && let Some((hit_id, hit_rect)) = hit
-                && hit_id == crate::screens::hero::ids::TOPBAR_SETTINGS
+                && hit_id == crate::ids::TOPBAR_SETTINGS
                 && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
             {
                 store.open_context_menu(ContextMenuRequest {
@@ -446,7 +444,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             // Project chip → SceneList popover (search + scenes).
             if event.button == ph2d_host::PointerButton::Primary
                 && let Some((hit_id, hit_rect)) = hit
-                && hit_id == crate::screens::hero::ids::TOPBAR_PROJECT
+                && hit_id == crate::ids::TOPBAR_PROJECT
                 && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
             {
                 store.open_context_menu(ContextMenuRequest {
@@ -470,8 +468,8 @@ pub fn dispatch_pointer_with_text<'frame>(
                     Some(ContextMenuKind::SceneList)
                 ) && matches!(
                     hit_id,
-                    Some(id) if id == crate::screens::hero::ids::CTX_SCENE_SEARCH
-                        || crate::screens::hero::ids::CTX_SCENE_ROWS.contains(&id)
+                    Some(id) if id == crate::ids::CTX_SCENE_SEARCH
+                        || crate::ids::CTX_SCENE_ROWS.contains(&id)
                 );
                 if !inside_scene_list {
                     store.close_context_menu();
@@ -494,7 +492,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             // closes". Fallback to the sub-control test when the
             // outer rect isn't published (e.g. first frame).
             if store.picker_target().is_some() {
-                use crate::screens::hero::ids as hero_ids;
+                use crate::ids as hero_ids;
                 let inside_outer = store
                     .panel_rect(hero_ids::INSP_BLENDER_PICKER)
                     .map(|r| r.contains(event.x, event.y))
@@ -551,7 +549,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             // only floating panel and visually overlaps the others
             // when displayed.
             {
-                use crate::screens::hero::ids as hero_ids;
+                use crate::ids as hero_ids;
                 const PANEL_IDS: [ph2d_a11y::NodeId; 3] = [
                     hero_ids::INSP_BLENDER_PICKER,
                     hero_ids::INSP_PANEL,
@@ -591,8 +589,8 @@ pub fn dispatch_pointer_with_text<'frame>(
             // `WidgetEvent::Click(id)` for unregistered ids. Hero's
             // `apply_event` then routes by companion bit pattern.
             if let Some((id, rect)) = hit
-                && (crate::screens::hero::ids::hier_eye_companion_to_row(id).is_some()
-                    || crate::screens::hero::ids::hier_expand_companion_to_row(id).is_some())
+                && (crate::ids::hier_eye_companion_to_row(id).is_some()
+                    || crate::ids::hier_expand_companion_to_row(id).is_some())
             {
                 store.set_active(Some(id));
                 store.set_active_rect(Some(rect));

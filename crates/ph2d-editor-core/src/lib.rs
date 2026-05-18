@@ -10,7 +10,15 @@
 
 #![forbid(unsafe_code)]
 
+pub mod floating_panel;
+pub mod gizmo;
+pub mod grid;
+pub mod icons;
+pub mod ids;
+pub mod interaction;
+pub mod paint;
 pub mod project;
 pub mod toast;
+pub mod widget;
 pub mod zen;
 pub mod zones;

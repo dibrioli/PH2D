@@ -160,7 +160,7 @@ pub fn dispatch_key<'frame>(
                 // inserting a newline. Caller (hero apply_event)
                 // reads the buffer and applies the rename.
                 if event.keycode == KEY_ENTER
-                    && id == crate::screens::hero::ids::HIER_RENAME_INPUT
+                    && id == crate::ids::HIER_RENAME_INPUT
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
                     if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
@@ -228,7 +228,7 @@ pub fn dispatch_key<'frame>(
                 // M14.7 polish: Esc on the rename TextInput emits
                 // `Cancel` so hero can drop the rename mode without
                 // committing.
-                if id == crate::screens::hero::ids::HIER_RENAME_INPUT
+                if id == crate::ids::HIER_RENAME_INPUT
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
                     if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {

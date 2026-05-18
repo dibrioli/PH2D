@@ -65,7 +65,7 @@ pub fn dispatch_wheel<'frame>(
 /// mapping in one place — hosts that add new scrollable panels
 /// extend this match.
 pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
-    use crate::screens::hero::ids;
+    use crate::ids;
     if id == crate::widget::INSPECTOR_SCROLLBAR_ID {
         Some(ids::INSP_PANEL)
     } else if id == crate::widget::HIERARCHY_SCROLLBAR_ID {
@@ -73,7 +73,7 @@ pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
     } else if id == crate::widget::GALLERY_SCROLLBAR_ID {
         Some(ids::GAL_PANEL)
     } else if id == crate::widget::GRID_SETTINGS_SCROLLBAR_ID {
-        Some(crate::grid_snap::ids::GS_PANEL)
+        Some(crate::ids::GS_PANEL)
     } else {
         None
     }

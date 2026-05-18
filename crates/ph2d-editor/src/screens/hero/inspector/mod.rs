@@ -139,34 +139,11 @@ const ROW_GAP: f32 = Spacing::Sm.px();
 const SECTION_HEAD_H: f32 = ROW_H_PX;
 const FIELD_H: f32 = Spacing::Xl3.px();
 
-/// Stable id list for every collapsible section header in the
-/// Inspector. Order matches `paint_inspector` paint order so the
-/// `apply_event` lookup and `populate` registration walk the same
-/// sequence.
-pub const SECTION_IDS: [ph2d_a11y::NodeId; 10] = [
-    ids::INSP_SECTION_INPUTS,
-    ids::INSP_SECTION_SLIDER,
-    ids::INSP_SECTION_SWITCHES,
-    ids::INSP_SECTION_LISTS,
-    ids::INSP_SECTION_VECTOR,
-    ids::INSP_SECTION_STATUS,
-    ids::INSP_SECTION_COLOR,
-    ids::INSP_SECTION_ACTIONS,
-    ids::INSP_SECTION_IDENTITY,
-    ids::INSP_SECTION_CARD,
-];
-
-/// Live Inspector section headers. Right-click on any of these opens
-/// the SectionOutline context menu (same affordance as the Widget
-/// Gallery's `SECTION_IDS`). The painter registers each editable block
-/// (Name / Visibility / Transform / Render Source) against one of
-/// these so the user can frame a section while reviewing.
-pub const LIVE_SECTION_IDS: [ph2d_a11y::NodeId; 4] = [
-    ids::INSP_LIVE_NAME_SECTION,
-    ids::INSP_LIVE_VISIBILITY_SECTION,
-    ids::INSP_LIVE_TRANSFORM_SECTION,
-    ids::INSP_LIVE_RENDER_SECTION,
-];
+// Wave 6+7 Phase 2: definitions live in `ph2d_editor_core::ids` so
+// dispatch (also in editor-core) can query them without depending
+// back on ph2d-editor. Re-exported here for legacy
+// `inspector::{SECTION_IDS,LIVE_SECTION_IDS}` import-path stability.
+pub use ph2d_editor_core::ids::{LIVE_SECTION_IDS, SECTION_IDS};
 
 /// Color-circle hit ids — one per section header, in the same
 /// order as `SECTION_IDS`. Clicking any of these opens the global

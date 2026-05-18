@@ -146,7 +146,7 @@ fn hierarchy_eye_companion_click_emits_click_event() {
     // Up emitted nothing. Now the dispatcher special-cases these
     // companions and routes them through the regular Up→Click
     // path; this test pins that behavior.
-    use crate::screens::hero::ids;
+    use crate::ids;
     let mut store = WidgetStore::with_capacity(4);
     // Simulate a live hierarchy row (registered as Plain by
     // `hierarchy::populate_live`); only the companion is missing
@@ -181,7 +181,7 @@ fn hierarchy_expand_companion_click_emits_click_event() {
     // Same contract as the eye test above, for the chevron
     // companion (collapse/expand). Lives separately so a
     // regression on one toggle bit doesn't silently break both.
-    use crate::screens::hero::ids;
+    use crate::ids;
     let mut store = WidgetStore::with_capacity(4);
     let row_id = ph2d_a11y::NodeId(413);
     store.register(row_id, InteractiveState::Plain);

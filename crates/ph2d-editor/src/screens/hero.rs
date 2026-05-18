@@ -31,7 +31,10 @@ pub mod color_picker_demo;
 pub mod context_menu_overlay;
 pub mod fixture;
 pub mod hierarchy;
-pub mod ids;
+// Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
+// and panel crates can reach them without depending back on hero. The
+// `screens::hero::ids` path continues to resolve via this re-export.
+pub use ph2d_editor_core::ids;
 pub mod inspector;
 pub mod inspector_sync;
 pub mod left_rail;

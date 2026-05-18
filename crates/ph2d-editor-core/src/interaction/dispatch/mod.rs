@@ -78,9 +78,9 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
 /// menu.
 ///
 /// Two source-of-truth arrays:
-/// - [`crate::screens::hero::inspector::SECTION_IDS`] — 10 Widget
+/// - [`crate::ids::SECTION_IDS`] — 10 Widget
 ///   Gallery (showcase) section headers.
-/// - [`crate::screens::hero::inspector::LIVE_SECTION_IDS`] — 4 live
+/// - [`crate::ids::LIVE_SECTION_IDS`] — 4 live
 ///   Inspector section headers (Name / Visibility / Transform /
 ///   Render Source). Restored in Wave 4.1 so the section outline
 ///   affordance reaches the canonical Inspector, not just the demo
@@ -91,8 +91,7 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
 /// after the migration (every hash falls outside that range), silently
 /// breaking the affordance until Wave 4.1's audit caught it.
 pub(super) fn is_section_header_id(id: ph2d_a11y::NodeId) -> bool {
-    crate::screens::hero::inspector::SECTION_IDS.contains(&id)
-        || crate::screens::hero::inspector::LIVE_SECTION_IDS.contains(&id)
+    crate::ids::SECTION_IDS.contains(&id) || crate::ids::LIVE_SECTION_IDS.contains(&id)
 }
 
 /// Reset the focused visual state of a text-editing widget at `id`

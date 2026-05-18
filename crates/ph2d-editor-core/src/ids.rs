@@ -530,7 +530,7 @@ pub const INSP_RENDER_FORMAT_RGBA16: NodeId = hash_node_id("insp_render_format_r
 /// placeholder fixture currently exposes only "Scene Root"; the
 /// other `HIER_*` ids are kept reserved for the pilot project's
 /// real entities.
-pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {
+pub fn hierarchy_id(name: &str) -> Option<NodeId> {
     Some(match name {
         "Scene Root" => HIER_PLAYER,
         _ => return None,
@@ -539,7 +539,7 @@ pub(crate) fn hierarchy_id(name: &str) -> Option<NodeId> {
 
 /// Map a hierarchy `NodeId` back to its fixture entity name. Inverse
 /// of [`hierarchy_id`].
-pub(crate) fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
+pub fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
     Some(match id {
         x if x == HIER_PLAYER => "Scene Root",
         _ => return None,
@@ -548,7 +548,7 @@ pub(crate) fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
 
 /// Best-effort 3-letter "kind" badge for the selection tag.
 /// Placeholder fixture has a single Scene Root; pilot replaces.
-pub(crate) fn hierarchy_kind_for_label(_label: &str) -> &'static str {
+pub fn hierarchy_kind_for_label(_label: &str) -> &'static str {
     "ENT"
 }
 
@@ -627,3 +627,37 @@ pub fn hier_expand_companion_to_row(id: NodeId) -> Option<NodeId> {
     }
     None
 }
+
+// ─── Wave 6+7 Phase 2: consolidated section + grid-snap ids that
+// dispatch (in editor-core) needs to query. Definitions originally
+// lived in `screens/hero/inspector/mod.rs` and `grid_snap/ids.rs`;
+// moved here so editor-core can reference them without depending
+// back on ph2d-editor. Inspector + grid_snap re-export for legacy
+// import-path stability.
+
+/// Stable id list for every collapsible section header in the
+/// Inspector (Widget Gallery showcase mode).
+pub const SECTION_IDS: [NodeId; 10] = [
+    INSP_SECTION_INPUTS,
+    INSP_SECTION_SLIDER,
+    INSP_SECTION_SWITCHES,
+    INSP_SECTION_LISTS,
+    INSP_SECTION_VECTOR,
+    INSP_SECTION_STATUS,
+    INSP_SECTION_COLOR,
+    INSP_SECTION_ACTIONS,
+    INSP_SECTION_IDENTITY,
+    INSP_SECTION_CARD,
+];
+
+/// Live Inspector section headers (Name / Visibility / Transform /
+/// Render). Right-click opens the SectionOutline context menu.
+pub const LIVE_SECTION_IDS: [NodeId; 4] = [
+    INSP_LIVE_NAME_SECTION,
+    INSP_LIVE_VISIBILITY_SECTION,
+    INSP_LIVE_TRANSFORM_SECTION,
+    INSP_LIVE_RENDER_SECTION,
+];
+
+/// Grid-snap floating panel root id.
+pub const GS_PANEL: NodeId = NodeId(1000);

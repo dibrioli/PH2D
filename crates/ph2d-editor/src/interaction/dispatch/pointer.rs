@@ -5,7 +5,7 @@
 //! file-private helpers (`is_color_target_id`,
 //! `clear_combobox_if_button_hit`) live here.
 
-use super::blender::apply_blender_hit;
+use super::blender::{apply_blender_channel_value, apply_blender_hit};
 use super::focus::{apply_click, is_focusable};
 use super::hierarchy::{HierDrop, find_hierarchy_drop};
 use super::hover::{set_widget_pressed, set_widget_released, update_hover};
@@ -182,7 +182,21 @@ pub fn dispatch_pointer_with_text<'frame>(
                     let delta = (dom_dx as f64 * drag::DRAG_RATE_X
                         - dom_dy as f64 * drag::DRAG_RATE_Y)
                         * shift_mul;
-                    let new_value = d.start_value + delta * d.step;
+                    let raw_value = d.start_value + delta * d.step;
+                    // Range guard: when the NumberInput is linked to
+                    // a Slider OR is a BlenderPicker channel chip,
+                    // clamp the displayed value to the slider's
+                    // normalized 0..1 range. Without this the user
+                    // can scrub past the slider thumb's endpoints
+                    // and the number display drifts out of bounds
+                    // while the slider stays pinned at 0 or 1.
+                    let is_bounded = store.linked_slider(d.id).is_some()
+                        || store.blender_channel_chip(d.id).is_some();
+                    let new_value = if is_bounded {
+                        raw_value.clamp(0.0, 1.0)
+                    } else {
+                        raw_value
+                    };
                     // Audit fix #2 (CRITICAL): mutate `value` and
                     // `buffer` for live display, but DO NOT touch
                     // `last_committed` — that anchor must keep
@@ -203,6 +217,15 @@ pub fn dispatch_pointer_with_text<'frame>(
                             store.get_mut(slider_id)
                     {
                         *value = (new_value as f32).clamp(0.0, 1.0);
+                    }
+                    // BlenderColorPicker channel chip drag: push the
+                    // scrubbed value back into the parent picker's
+                    // RGBA / HSVA dimension so the swatch + wheel +
+                    // sibling channels re-render live. Mirrors the
+                    // commit path in `commit_number_buffer`.
+                    if let Some((parent, idx)) = store.blender_channel_chip(d.id) {
+                        apply_blender_channel_value(store, parent, idx, new_value as f32);
+                        events.push(WidgetEvent::ValueChanged(parent));
                     }
                     events.push(WidgetEvent::ValueChanged(d.id));
                     number_input_drag_consumed = Some(d.id);

@@ -4011,6 +4011,13 @@ name = "ph2d-net"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-panel-registry-init"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor",
+]
+
+[[package]]
 name = "ph2d-physics"
 version = "0.0.0"
 dependencies = [

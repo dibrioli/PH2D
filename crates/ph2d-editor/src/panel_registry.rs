@@ -95,16 +95,29 @@ pub struct PanelManifest {
 /// `paint_hero_screen` in z-order; `find_by_panel_node_id` lets the
 /// z_order walk look up the matching manifest.
 pub struct PanelRegistry {
-    manifests: &'static [&'static PanelManifest],
+    manifests: Vec<&'static PanelManifest>,
 }
 
 impl PanelRegistry {
-    pub const fn new(manifests: &'static [&'static PanelManifest]) -> Self {
+    /// Construct from a `Vec` so callers can aggregate panel manifests
+    /// at runtime (Wave 7 Phase 3: panel crates push their
+    /// `PANEL_MANIFEST` here via `ph2d-panel-registry-init`).
+    pub const fn new_empty() -> Self {
+        Self {
+            manifests: Vec::new(),
+        }
+    }
+
+    pub fn new(manifests: Vec<&'static PanelManifest>) -> Self {
         Self { manifests }
     }
 
-    pub fn manifests(&self) -> &'static [&'static PanelManifest] {
-        self.manifests
+    pub fn push(&mut self, manifest: &'static PanelManifest) {
+        self.manifests.push(manifest);
+    }
+
+    pub fn manifests(&self) -> &[&'static PanelManifest] {
+        &self.manifests
     }
 
     /// Look up the manifest whose `panel_node_id == id`. Returns
@@ -118,13 +131,57 @@ impl PanelRegistry {
     }
 }
 
-/// Append-only list of panel manifests. Adding a new panel = drop a
-/// `pub static PANEL_MANIFEST: PanelManifest = ...` into the panel
-/// module and add one line here. No edits to `paint_hero_screen` or
-/// the chrome match arms — symmetric to `ph2d-tool-registry-init`.
-pub static PANEL_REGISTRY: PanelRegistry = PanelRegistry::new(&[
-    &crate::screens::hero::widget_gallery::PANEL_MANIFEST,
-    &crate::screens::hero::hierarchy::PANEL_MANIFEST,
-    &crate::screens::hero::inspector::PANEL_MANIFEST,
-    &crate::grid_snap::PANEL_MANIFEST,
-]);
+/// Process-wide panel registry. Wave 7 Phase 3: converted from a
+/// hardcoded `pub static` to a runtime-initializable `OnceLock` so
+/// downstream init crates (`ph2d-panel-registry-init`) can wire the
+/// list without ph2d-editor referencing panel crates (which would
+/// create a cycle when panels live in their own crates and depend
+/// on ph2d-editor for `HeroScreen`).
+///
+/// Default empty. Callers MUST invoke [`install_panel_registry`] at
+/// boot (before the first paint frame). The bundled
+/// [`default_panel_registry`] aggregates the 4 in-tree panels
+/// (widget_gallery + hierarchy + inspector + grid_snap) for hosts
+/// that don't want feature-gated panel selection.
+pub static PANEL_REGISTRY: std::sync::OnceLock<PanelRegistry> = std::sync::OnceLock::new();
+
+/// Install the process-wide panel registry. Returns `true` on first
+/// install, `false` if a registry was already installed (so re-init
+/// in test harnesses is silently dropped).
+pub fn install_panel_registry(reg: PanelRegistry) -> bool {
+    PANEL_REGISTRY.set(reg).is_ok()
+}
+
+/// Iterate the installed panel registry. Returns an empty slice
+/// when nothing has been installed yet (defensive — `paint_hero_screen`
+/// and `apply_event` short-circuit gracefully on empty registry).
+pub fn panels() -> &'static [&'static PanelManifest] {
+    static EMPTY: &[&PanelManifest] = &[];
+    PANEL_REGISTRY.get().map(|r| r.manifests()).unwrap_or(EMPTY)
+}
+
+/// Look up the manifest whose `panel_node_id == id` against the
+/// installed registry. Returns `None` for ids that don't match (or
+/// when no registry installed yet).
+pub fn find_panel_by_node_id(id: NodeId) -> Option<&'static PanelManifest> {
+    PANEL_REGISTRY
+        .get()
+        .and_then(|r| r.find_by_panel_node_id(id))
+}
+
+/// Bundled default registry — all 4 in-tree panels. Hosts that don't
+/// want cargo-features per panel install this at boot:
+///
+/// ```ignore
+/// ph2d_editor::panel_registry::install_panel_registry(
+///     ph2d_editor::panel_registry::default_panel_registry(),
+/// );
+/// ```
+pub fn default_panel_registry() -> PanelRegistry {
+    PanelRegistry::new(vec![
+        &crate::screens::hero::widget_gallery::PANEL_MANIFEST,
+        &crate::screens::hero::hierarchy::PANEL_MANIFEST,
+        &crate::screens::hero::inspector::PANEL_MANIFEST,
+        &crate::grid_snap::PANEL_MANIFEST,
+    ])
+}

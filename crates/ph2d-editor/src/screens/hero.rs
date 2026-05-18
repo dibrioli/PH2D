@@ -430,6 +430,15 @@ pub struct HierReparentIntent {
 
 impl HeroScreen {
     pub fn new(id: NodeId) -> Self {
+        // Wave 7 Phase 3: ensure the process-wide PANEL_REGISTRY is
+        // populated. Hosts that want feature-gated panel selection
+        // install their own registry BEFORE constructing a HeroScreen;
+        // otherwise we install the bundled default (all 4 in-tree
+        // panels). Idempotent — `install_panel_registry` returns
+        // false on second install and we discard.
+        let _ = crate::panel_registry::install_panel_registry(
+            crate::panel_registry::default_panel_registry(),
+        );
         let mut store = WidgetStore::with_capacity(64);
         Self::pre_populate_store(&mut store);
         Self {
@@ -611,7 +620,7 @@ impl HeroScreen {
         // `apply_event_fn` thunk before falling through to the chrome
         // dispatcher below. Thunks that don't claim the event return
         // false. `WidgetEvent` is `Copy` — passing by value is cheap.
-        for manifest in crate::panel_registry::PANEL_REGISTRY.manifests() {
+        for manifest in crate::panel_registry::panels() {
             if (manifest.apply_event_fn)(self, event) {
                 return true;
             }
@@ -1249,7 +1258,6 @@ pub fn paint_hero_screen(
             z_order.push(fallback);
         }
     }
-    let registry = &crate::panel_registry::PANEL_REGISTRY;
     let mut ctx = crate::panel_registry::PaintCtx {
         hero,
         layout: &layout,
@@ -1258,7 +1266,7 @@ pub fn paint_hero_screen(
         text_system,
     };
     for panel_id in z_order {
-        if let Some(manifest) = registry.find_by_panel_node_id(panel_id) {
+        if let Some(manifest) = crate::panel_registry::find_panel_by_node_id(panel_id) {
             (manifest.paint_fn)(&mut ctx);
         }
     }

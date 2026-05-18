@@ -21,6 +21,7 @@ members = [
     "crates/ph2d-input",
     "crates/ph2d-editor",
     "crates/ph2d-editor-core",
+    "crates/ph2d-panel-registry-init",
     "crates/ph2d-tool-registry",
     "crates/ph2d-tool-registry-init",
     "crates/ph2d-tool-make-square",

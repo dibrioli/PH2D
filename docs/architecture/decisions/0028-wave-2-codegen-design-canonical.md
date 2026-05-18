@@ -535,28 +535,40 @@ they don't need at compile time.
     (one per panel); `build_registry()` pushes manifests from the
     panel crates (not in-tree modules). Default-all + lite-build +
     feature-subset all tested.
-- 🔜 **Stage 3 — Hotspot decomp follow-up** (deferred — same Phase 1
-  pattern, targets `inspector/mod.rs` 857 LOC + `grid_snap/state.rs`
-  1250 LOC + `screens/hero.rs` 2620 LOC).
-- 🔜 **Stage 4 — Wave 8 panel-body physical migration** (deferred —
-  move `grid_snap/`, `inspector/`, `hierarchy/` implementation files
-  from `crates/ph2d-editor/src/` into their `ph2d-panel-*` crates;
-  alias `lib.rs` becomes the full module tree. ~10k LOC moved total;
-  alias pattern means consumer dep paths stay constant).
+- ✅ Stage 3 — hotspot test extraction (`7b58e4a`). `screens/hero.rs`
+  2628→1313 (−50%), `grid_snap/state.rs` 1250→790 (−37%),
+  `grid_snap/panel/mod.rs` 743→330 (−56%). 2188 LOC moved into
+  sibling `tests.rs` / `_tests.rs` files via the
+  `#[cfg(test)] #[path = "..."] mod tests;` pattern. Architecture
+  tests `no_literal_color` + `no_magic_numeric` updated to
+  allowlist `tests.rs`/`*_tests.rs` by filename convention
+  (extracted test files lose the `cfg_test_byte_ranges` skip-window
+  that inline `mod tests { … }` had). Inspector `paint_inspector`
+  extraction attempted + reverted (cross-cuts to file-private
+  helpers `BODY_PAD`/`SECTION_HEAD_H`/etc. — would need ~15
+  visibility bumps; out of scope).
+- 🔜 **Stage 4 — Panel-body physical migration** (deferred —
+  promote `grid_snap/`, `inspector/`, `hierarchy/` implementation
+  files from `crates/ph2d-editor/src/` into their alias panel
+  crates' `lib.rs` module tree. ~10k LOC moved total; alias
+  pattern means consumer dep paths stay constant).
 - 🔜 **Stage 5 — Shells migration to editor-core direct paths**
   (deferred — low ROI, `pub use ph2d_editor_core::*;` re-export
   already works transparently).
 
-### Métricas Wave 7 Stage 1+2
+### Métricas Wave 7 Stage 1+2+3
 
-| Métrica | Pré-Wave-7 | Pós-Wave-7-S2 |
+| Métrica | Pré-Wave-7 | Pós-Wave-7-S3 |
 |---|---|---|
-| Crates no workspace | 31 | 36 (+5: editor-core já tinha, panel-registry-init + 4 panel crates) |
+| Crates no workspace | 31 | 36 (+5: editor-core + panel-registry-init + 4 panel crates) |
 | PANEL_REGISTRY init | hardcoded static | OnceLock runtime |
-| Cargo features per panel | nenhum | 4 (default-all + per-panel) + alias-crate wiring |
+| Cargo features per panel | nenhum | 4 (default-all + per-panel + lite-build) |
 | Panel crates extraídas | 0 | 4 (1 physical full + 3 alias) |
-| `pub(crate)`/`pub(super)` items bumped pra `pub` (Stage 2) | — | 30+ (hero style + showcase + state helpers) |
-| Tests panel-init crate | — | 1 (passes for default/empty/single-panel/feature-subset) |
+| `pub(crate)`/`pub(super)` items bumped pra `pub` (Stage 2) | — | 30+ |
+| `screens/hero.rs` LOC | 3030 | 1313 (−57% cumulative w/ Phase 4) |
+| `grid_snap/state.rs` LOC | 1250 | 790 (−37%) |
+| `grid_snap/panel/mod.rs` LOC | 743 | 330 (−56%) |
+| Combined lib tests | 732 | 732+ (split 275 + 457 + per-panel) |
 | Public API breaks | — | 0 (downstream paths unchanged) |
 
 

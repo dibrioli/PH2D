@@ -24,6 +24,13 @@ ph2d-render = { path = "../../crates/ph2d-render" }
 # with a registry-driven dispatcher reading from this instance.
 ph2d-tool-registry = { path = "../../crates/ph2d-tool-registry" }
 ph2d-tool-registry-init = { path = "../../crates/ph2d-tool-registry-init" }
+# Wave 8 Phase 1 — panel registry install at boot. `register_all_panels()`
+# is mandatory BEFORE the first `HeroScreen::new` (audit B1 closure:
+# the previous auto-install in `HeroScreen::new` silently overrode
+# `panel-*` cargo features at runtime). `default-features = false` so
+# the shell's own `[features]` table drives panel selection; defaults
+# below re-enable all 4 panels for the standard build.
+ph2d-panel-registry-init = { path = "../../crates/ph2d-panel-registry-init", default-features = false }
 # Integration demo deps:
 # - ph2d-asset (M6): PNG load, blake3 ids, hot-reload watcher
 # - ph2d-script (M7): Luau ScriptHost, ph2d.set/get/input bindings
@@ -86,3 +93,24 @@ core-graphics = "0.23"
 # `bevy_ecs` is reached only through `#[derive(Component)]` expansion,
 # which machete can't see. See dep comment above.
 ignored = ["bevy_ecs"]
+
+# Wave 8 Phase 1 — host-level cargo features that proxy through to
+# `ph2d-panel-registry-init`. `default` re-enables all 4 panels for
+# the standard build; lite distributions and panel-isolated runs
+# pick the subset they want via `--no-default-features --features X`.
+[features]
+default = [
+    "panel-widget-gallery",
+    "panel-hierarchy",
+    "panel-inspector",
+    "panel-grid-snap",
+]
+# `lite` = explicit "no panels" — host boots with chrome only
+# (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
+# builds that ship only the rendering surface (e.g., embedded
+# preview windows) without the editor sidecars.
+lite = []
+panel-widget-gallery = ["ph2d-panel-registry-init/panel-widget-gallery"]
+panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy"]
+panel-inspector      = ["ph2d-panel-registry-init/panel-inspector"]
+panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

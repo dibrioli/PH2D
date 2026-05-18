@@ -430,15 +430,14 @@ pub struct HierReparentIntent {
 
 impl HeroScreen {
     pub fn new(id: NodeId) -> Self {
-        // Wave 7 Phase 3: ensure the process-wide PANEL_REGISTRY is
-        // populated. Hosts that want feature-gated panel selection
-        // install their own registry BEFORE constructing a HeroScreen;
-        // otherwise we install the bundled default (all 4 in-tree
-        // panels). Idempotent — `install_panel_registry` returns
-        // false on second install and we discard.
-        let _ = crate::panel_registry::install_panel_registry(
-            crate::panel_registry::default_panel_registry(),
-        );
+        // Wave 8 Phase 1: `HeroScreen::new` is a pure constructor. The
+        // host (or the test harness) installs `PANEL_REGISTRY` BEFORE
+        // the first `HeroScreen::new` call — production binaries via
+        // `ph2d_panel_registry_init::register_all_panels()` (which
+        // honors `panel-*` cargo features), tests via
+        // `crate::test_support::ensure_panel_registry()`. The previous
+        // auto-install here silently neutralized those features at
+        // runtime (audit B1).
         let mut store = WidgetStore::with_capacity(64);
         Self::pre_populate_store(&mut store);
         Self {

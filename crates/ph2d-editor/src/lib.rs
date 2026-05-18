@@ -32,6 +32,13 @@ pub mod image_edit;
 pub mod panel_registry;
 pub mod screens;
 
+/// Test-only helpers exposed for integration tests + downstream
+/// crate tests that construct `HeroScreen`. Not part of the stable
+/// public API; see [`test_support::ensure_panel_registry`] for the
+/// Wave 8 boot-order helper.
+#[doc(hidden)]
+pub mod test_support;
+
 // Wave 6+7 Phase 2: leaf/utility modules promoted to `ph2d-editor-core`.
 // Re-exported here so `crate::zones::Rect` (and `crate::icons::*` etc.)
 // continue to resolve from inside ph2d-editor, and

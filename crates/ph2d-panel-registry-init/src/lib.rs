@@ -1,12 +1,17 @@
 //! ph2d-panel-registry-init — append-only point of contact for
-//! panel registration. Wave 7 Phase 5 scaffold.
+//! panel registration. Wave 7 Phase 5 scaffold; Wave 8 Phase 1 made
+//! the call mandatory (no more `HeroScreen::new` auto-install).
 //!
-//! Hosts that want feature-gated panel selection call
-//! [`register_all_panels`] at boot BEFORE constructing the first
-//! `HeroScreen`. The default (all 4 in-tree panels) lives inside
-//! `ph2d_editor::panel_registry::default_panel_registry`, which
-//! `HeroScreen::new` auto-installs as a fallback when no registry
-//! is present.
+//! **Order of init obrigatório** for every host:
+//!
+//! 1. [`register_all_panels`] — installs the cargo-feature-gated
+//!    registry into `ph2d_editor::panel_registry::PANEL_REGISTRY`.
+//! 2. `ph2d_editor::HeroScreen::new(...)` — reads the installed
+//!    registry; panics with a clear message if step 1 was skipped.
+//!
+//! There is no silent fallback since Wave 8 (audit B1 closed: the
+//! previous fallback neutralized `panel-*` cargo features at
+//! runtime).
 //!
 //! ## Cargo features
 //!

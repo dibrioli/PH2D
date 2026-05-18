@@ -348,6 +348,24 @@ Você foi ativado pelo Enio ao final do ciclo. Pode ser:
 - **Never `--no-verify` em commits.** Se hook falha, fix root cause.
 - **Never amend.** Sempre new commit (CLAUDE.md "Git Safety Protocol").
 
+**Order of init obrigatório (host shells, pós Wave 8 Phase 1):**
+
+1. `ph2d_panel_registry_init::register_all_panels()` — instala o
+   `PANEL_REGISTRY` global respeitando os cargo features
+   `panel-widget-gallery`, `panel-hierarchy`, `panel-inspector`,
+   `panel-grid-snap` (default = todos os 4).
+2. `ph2d_editor::HeroScreen::new(...)` — construtor puro; lê do
+   `PANEL_REGISTRY` já instalado. Se passo 1 foi pulado, panica com
+   mensagem clara apontando para `register_all_panels` ou o helper
+   `ph2d_editor::test_support::ensure_panel_registry()` (testes).
+
+Pular passo 1 = panic. Não há fallback silencioso desde Wave 8
+Phase 1 (audit B1 fechado — o auto-install antigo em
+`HeroScreen::new` neutralizava os `panel-*` cargo features em
+runtime). Cargo features per painel **agora funcionam de verdade**:
+`--no-default-features --features panel-inspector` produz binário
+com apenas Inspector visível.
+
 ---
 
 ## 4. Receitas canônicas

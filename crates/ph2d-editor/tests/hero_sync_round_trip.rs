@@ -33,6 +33,7 @@ fn make_entry(name: &str) -> HierarchyEntity {
 
 #[test]
 fn sync_from_hierarchy_caches_entries() {
+    ph2d_editor::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     assert!(hero.hierarchy.live_entries.is_none());
 
@@ -52,6 +53,7 @@ fn sync_from_hierarchy_caches_entries() {
 
 #[test]
 fn click_on_live_row_updates_selection_label() {
+    ph2d_editor::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let id_player = NodeId(100_005);
     let mut entries = BTreeMap::new();
@@ -70,6 +72,7 @@ fn click_on_live_row_updates_selection_label() {
 
 #[test]
 fn click_uses_badge_as_kind_when_present() {
+    ph2d_editor::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let id = NodeId(100_010);
     let mut entries = BTreeMap::new();
@@ -89,6 +92,7 @@ fn click_uses_badge_as_kind_when_present() {
 
 #[test]
 fn clear_live_reverts_to_fixture_behavior() {
+    ph2d_editor::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let id = NodeId(100_020);
     let mut entries = BTreeMap::new();
@@ -108,6 +112,7 @@ fn clear_live_reverts_to_fixture_behavior() {
 
 #[test]
 fn fixture_click_still_works_in_live_mode_for_unknown_id() {
+    ph2d_editor::test_support::ensure_panel_registry();
     // Live mode only overrides ids the host supplied. Clicks on
     // ids NOT in live_entries fall through to the fixture
     // resolver — this lets a partially-wired editor still surface
@@ -139,6 +144,7 @@ fn fixture_click_still_works_in_live_mode_for_unknown_id() {
 /// have caught that bug.
 #[test]
 fn sync_overwrites_widget_store_hierarchy_order() {
+    ph2d_editor::test_support::ensure_panel_registry();
     use ph2d_editor::screens::hero::ids::HIER_PLAYER;
 
     let mut hero = HeroScreen::new(NodeId(1));
@@ -166,6 +172,7 @@ fn sync_overwrites_widget_store_hierarchy_order() {
 
 #[test]
 fn sync_overwrites_previous_live_entries() {
+    ph2d_editor::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let id_v1 = NodeId(100_040);
     let id_v2 = NodeId(100_041);

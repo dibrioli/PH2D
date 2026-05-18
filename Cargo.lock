@@ -3968,6 +3968,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-input",
+ "ph2d-panel-registry-init",
  "ph2d-render",
  "ph2d-script",
  "ph2d-text",

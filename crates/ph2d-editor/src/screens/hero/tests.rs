@@ -65,18 +65,21 @@ fn layout_bottom_hud_centered_horizontally() {
 
 #[test]
 fn hero_default_carries_fixture_selection() {
+    crate::test_support::ensure_panel_registry();
     let h = HeroScreen::new(NodeId(1));
     assert!(h.selection.is_some());
 }
 
 #[test]
 fn hero_selection_clearable() {
+    crate::test_support::ensure_panel_registry();
     let h = HeroScreen::new(NodeId(1)).selection(None);
     assert!(h.selection.is_none());
 }
 
 #[test]
 fn a11y_root_is_window() {
+    crate::test_support::ensure_panel_registry();
     let h = HeroScreen::new(NodeId(1));
     let node = h.build_a11y(ipad12_viewport());
     assert_eq!(node.role(), Role::Window);
@@ -84,6 +87,7 @@ fn a11y_root_is_window() {
 
 #[test]
 fn paint_hero_smoke_default() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut scene = VectorScene::new();
     let mut text = TextSystem::new();
@@ -92,6 +96,7 @@ fn paint_hero_smoke_default() {
 
 #[test]
 fn paint_hero_smoke_alternate_theme() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1)).theme(Theme::Sunstone);
     let mut scene = VectorScene::new();
     let mut text = TextSystem::new();
@@ -100,6 +105,7 @@ fn paint_hero_smoke_alternate_theme() {
 
 #[test]
 fn paint_hero_smoke_no_selection() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1)).selection(None);
     let mut scene = VectorScene::new();
     let mut text = TextSystem::new();
@@ -108,6 +114,7 @@ fn paint_hero_smoke_no_selection() {
 
 #[test]
 fn paint_hero_smoke_all_themes() {
+    crate::test_support::ensure_panel_registry();
     for theme in [
         Theme::Forge,
         Theme::Workshop,
@@ -151,6 +158,7 @@ fn up(x: f32, y: f32) -> PointerEvent {
 
 #[test]
 fn hero_pre_populates_store_with_topbar_and_tools() {
+    crate::test_support::ensure_panel_registry();
     let hero = HeroScreen::new(NodeId(1));
     for id in [
         ids::TOPBAR_SAVE,
@@ -170,6 +178,7 @@ fn hero_pre_populates_store_with_topbar_and_tools() {
 
 #[test]
 fn hero_translate_tool_starts_pressed() {
+    crate::test_support::ensure_panel_registry();
     let hero = HeroScreen::new(NodeId(1));
     assert_eq!(
         hero.store.button_state(ids::TOOL_TRANSLATE),
@@ -179,6 +188,7 @@ fn hero_translate_tool_starts_pressed() {
 
 #[test]
 fn hero_topbar_save_click_opens_save_menu() {
+    crate::test_support::ensure_panel_registry();
     // Save chip on the topbar now opens the SaveMenu context
     // menu (same pattern as the Theme chip → ThemeSelector). The
     // pointer Down → menu-open short-circuits the Up's
@@ -210,6 +220,7 @@ fn hero_topbar_save_click_opens_save_menu() {
 
 #[test]
 fn hero_apply_event_hierarchy_click_changes_selection() {
+    crate::test_support::ensure_panel_registry();
     // Placeholder fixture only registers Scene Root; the reserved
     // HIER_* ids return None from `hierarchy_label_for_id` until
     // the pilot project wires real entities.
@@ -224,6 +235,7 @@ fn hero_apply_event_hierarchy_click_changes_selection() {
 
 #[test]
 fn hero_apply_event_unrelated_click_returns_false() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let consumed = hero.apply_event(WidgetEvent::Click(ids::TOPBAR_SAVE));
     assert!(!consumed);
@@ -236,6 +248,7 @@ fn hero_apply_event_unrelated_click_returns_false() {
 /// be ignored (no panel match) or fail to advance (max_scroll = 0).
 #[test]
 fn gallery_publishes_scroll_bounds_after_paint() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.widget_gallery_visible = true;
     let mut scene = VectorScene::new();
@@ -302,6 +315,7 @@ fn gallery_publishes_scroll_bounds_after_paint() {
 
 #[test]
 fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
+    crate::test_support::ensure_panel_registry();
     // Sim position = 1.5 m; project in Pixels mode (default 100
     // px/m) → store NumberInput shows 150. Editing to 200 and
     // committing should publish 2.0 m (200 / 100) into
@@ -349,6 +363,7 @@ fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
 
 #[test]
 fn inspector_position_meters_mode_displays_raw_meters() {
+    crate::test_support::ensure_panel_registry();
     // Sanity: default Meters mode is a no-op — store displays the
     // raw meter value and commit is identity.
     let mut hero = HeroScreen::new(NodeId(1));
@@ -375,6 +390,7 @@ fn inspector_position_meters_mode_displays_raw_meters() {
 
 #[test]
 fn settings_unit_submenu_options_flip_project_display_unit() {
+    crate::test_support::ensure_panel_registry();
     // Clicking "Pixels" / "Meters" in the SettingsUnit submenu
     // writes `project.display_unit` and closes the context menu.
     let mut hero = HeroScreen::new(NodeId(1));
@@ -415,6 +431,7 @@ fn settings_unit_submenu_options_flip_project_display_unit() {
 
 #[test]
 fn settings_unit_cascade_opens_unit_submenu() {
+    crate::test_support::ensure_panel_registry();
     // Clicking the top-level "Display unit ▶" row swaps the open
     // context menu to `SettingsUnitSubmenu`.
     let mut hero = HeroScreen::new(NodeId(1));
@@ -440,6 +457,7 @@ fn settings_unit_cascade_opens_unit_submenu() {
 /// (3) advance `panel_scroll` when a wheel event hits.
 #[test]
 fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.grid.snap_state.panel_visible = true;
     let mut scene = VectorScene::new();
@@ -511,6 +529,7 @@ fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
 /// retired reference snapshot.
 #[test]
 fn gallery_create_note_targets_gal_panel() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.widget_gallery_visible = true;
     let mut scene = VectorScene::new();
@@ -564,6 +583,7 @@ fn gallery_create_note_targets_gal_panel() {
 /// gallery re-uses the section painters.
 #[test]
 fn gallery_section_outline_color_writes_through() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.widget_gallery_visible = true;
     let mut scene = VectorScene::new();
@@ -654,6 +674,7 @@ fn paint_top_bar_image_tools_mode_swaps_right_side() {
 /// so the dispatcher hook is exercised end-to-end.
 #[test]
 fn click_on_image_tools_pill_toggles_mode() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     assert!(!hero.image_edit.mode_on);
     assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
@@ -671,6 +692,7 @@ fn click_on_image_tools_pill_toggles_mode() {
 /// (canonical) at commit.
 #[test]
 fn transform_field_commit_raises_pending_with_selection() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     // No selection → no push even on commit (avoids silently
@@ -719,6 +741,7 @@ fn transform_field_commit_raises_pending_with_selection() {
 /// stays uniform.
 #[test]
 fn transform_reset_button_publishes_identity() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.transform = Some(InspectorTransformInfo {
@@ -760,6 +783,7 @@ fn transform_reset_button_publishes_identity() {
 /// `visible: false`.
 #[test]
 fn visibility_toggle_publishes_pending_with_selection() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     // Selection that has a Transform component (we don't paint
@@ -793,6 +817,7 @@ fn visibility_toggle_publishes_pending_with_selection() {
 /// the requested kind. Same-kind click is consumed silently.
 #[test]
 fn strategy_click_raises_pending_when_kind_differs() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.sprite = Some(InspectorSpriteInfo {
@@ -835,6 +860,7 @@ fn strategy_click_raises_pending_when_kind_differs() {
 /// keeps walking and the bus stays empty.
 #[test]
 fn strategy_click_no_pending_without_sprite_selection() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.sprite = None;
     assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
@@ -848,6 +874,7 @@ fn strategy_click_no_pending_without_sprite_selection() {
 /// shell drains them in push order.
 #[test]
 fn name_text_changed_publishes_pending_with_current_text() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.name = Some(InspectorNameInfo {
@@ -881,6 +908,7 @@ fn name_text_changed_publishes_pending_with_current_text() {
 /// dispatcher keeps walking.
 #[test]
 fn name_text_changed_no_pending_without_selection() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.name = None;
     assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
@@ -892,6 +920,7 @@ fn name_text_changed_no_pending_without_selection() {
 /// Without a selection, returns false and the bus stays empty.
 #[test]
 fn entity_name_text_changed_raises_pending_with_selection() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     // Seed the TextInput buffer with what the user just typed.
@@ -931,6 +960,7 @@ fn entity_name_text_changed_raises_pending_with_selection() {
 /// cleanup dispatch.rs:1189 does on Blur.
 #[test]
 fn selection_switch_resets_entity_name_input_state_to_normal() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let mut scene = VectorScene::new();
@@ -985,6 +1015,7 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
 /// `Pressed` pin is the single visual source of truth.
 #[test]
 fn strategy_click_resets_button_state_to_normal() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.sprite = Some(InspectorSpriteInfo {
         entity_bits: 0x00C0_FFEE,
@@ -1015,6 +1046,7 @@ fn strategy_click_resets_button_state_to_normal() {
 /// empty.
 #[test]
 fn visibility_toggle_no_pending_without_selection() {
+    crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.visibility = None;
     assert!(!hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
@@ -1028,6 +1060,7 @@ fn visibility_toggle_no_pending_without_selection() {
 /// consumed so the dispatcher doesn't keep walking).
 #[test]
 fn click_on_trim_pill_raises_pending_with_selection() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     // No selection → nothing pushed after click.
@@ -1051,6 +1084,7 @@ fn click_on_trim_pill_raises_pending_with_selection() {
 /// Make Square pill mirrors the Trim bus-push semantics (Wave 2.5 PR 11.8b2).
 #[test]
 fn click_on_make_square_pill_raises_pending_with_selection() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     hero.gizmo.selection = None;
@@ -1075,6 +1109,7 @@ fn click_on_make_square_pill_raises_pending_with_selection() {
 /// `tools.set_active(...)`. (Wave 2.5 PR 11.8b3.)
 #[test]
 fn click_on_bgremoval_pill_raises_activate_intent() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     assert!(hero.bus.is_empty());
@@ -1198,6 +1233,7 @@ fn stage_hierarchy_row_snapshot(hero: &mut HeroScreen, row: NodeId) {
 
 #[test]
 fn hier_menu_duplicate_sets_pending_duplicate() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     let row = NodeId(100_500);
@@ -1212,6 +1248,7 @@ fn hier_menu_duplicate_sets_pending_duplicate() {
 
 #[test]
 fn hier_menu_add_child_sets_pending_add_child() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     let row = NodeId(100_501);
@@ -1224,6 +1261,7 @@ fn hier_menu_add_child_sets_pending_add_child() {
 
 #[test]
 fn hier_menu_reset_transform_sets_pending() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     let row = NodeId(100_502);
@@ -1236,6 +1274,7 @@ fn hier_menu_reset_transform_sets_pending() {
 
 #[test]
 fn hier_menu_delete_sets_pending_delete() {
+    crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     let row = NodeId(100_503);
@@ -1248,6 +1287,7 @@ fn hier_menu_delete_sets_pending_delete() {
 
 #[test]
 fn hier_menu_click_without_snapshot_consumes_but_no_pending() {
+    crate::test_support::ensure_panel_registry();
     // Defensive case: stray Click without any prior right-click
     // snapshot still consumes the event so the click doesn't
     // bubble to row selection, but no pending action is raised.
@@ -1259,6 +1299,7 @@ fn hier_menu_click_without_snapshot_consumes_but_no_pending() {
 
 #[test]
 fn hierarchy_row_click_raises_pending_for_live_entries() {
+    crate::test_support::ensure_panel_registry();
     // Build a live-mode hierarchy with one entry, then click the
     // matching NodeId. `HierRowClick` should fire on the bus so
     // the shell can sync `gizmo_selection`.
@@ -1288,6 +1329,7 @@ fn hierarchy_row_click_raises_pending_for_live_entries() {
 
 #[test]
 fn hierarchy_row_click_silent_for_fixture_only_rows() {
+    crate::test_support::ensure_panel_registry();
     // Fixture-mode click (no `sync_from_hierarchy`) shouldn't
     // push `HierRowClick` — the M14.6 D path is live-only.
     let mut hero = HeroScreen::new(NodeId(1));
@@ -1297,6 +1339,7 @@ fn hierarchy_row_click_silent_for_fixture_only_rows() {
 
 #[test]
 fn hier_menu_one_action_per_drain() {
+    crate::test_support::ensure_panel_registry();
     // Two consecutive clicks (Duplicate then Delete) only fire
     // the first — the snapshot is consumed and the second click
     // sees an empty `last_context_menu`. This protects against

@@ -152,22 +152,40 @@ pub fn install_panel_registry(reg: PanelRegistry) -> bool {
     PANEL_REGISTRY.set(reg).is_ok()
 }
 
-/// Iterate the installed panel registry. Returns an empty slice
-/// when nothing has been installed yet (defensive — `paint_hero_screen`
-/// and `apply_event` short-circuit gracefully on empty registry).
+/// Iterate the installed panel registry.
+///
+/// **Panics** if no registry has been installed yet. Wave 8 Phase 1
+/// removed the silent empty-slice fallback (audit S3): an editor with
+/// no panels was a configuration error that booted without warning.
+/// Hosts must call `ph2d_panel_registry_init::register_all_panels()`
+/// (or `install_panel_registry(default_panel_registry())`) before
+/// the first `HeroScreen::new`. Tests use
+/// [`crate::test_support::ensure_panel_registry`].
 pub fn panels() -> &'static [&'static PanelManifest] {
-    static EMPTY: &[&PanelManifest] = &[];
-    PANEL_REGISTRY.get().map(|r| r.manifests()).unwrap_or(EMPTY)
+    PANEL_REGISTRY
+        .get()
+        .map(|r| r.manifests())
+        .expect(REGISTRY_NOT_INSTALLED_MSG)
 }
 
 /// Look up the manifest whose `panel_node_id == id` against the
-/// installed registry. Returns `None` for ids that don't match (or
-/// when no registry installed yet).
+/// installed registry. Returns `None` for ids that don't match a
+/// registered panel.
+///
+/// **Panics** if no registry has been installed yet (see [`panels`]).
 pub fn find_panel_by_node_id(id: NodeId) -> Option<&'static PanelManifest> {
     PANEL_REGISTRY
         .get()
-        .and_then(|r| r.find_by_panel_node_id(id))
+        .expect(REGISTRY_NOT_INSTALLED_MSG)
+        .find_by_panel_node_id(id)
 }
+
+const REGISTRY_NOT_INSTALLED_MSG: &str = "\
+PANEL_REGISTRY not installed. Host must call \
+`ph2d_panel_registry_init::register_all_panels()` (or \
+`ph2d_editor::panel_registry::install_panel_registry(default_panel_registry())`) \
+before the first `HeroScreen::new`. Tests should call \
+`ph2d_editor::test_support::ensure_panel_registry()`.";
 
 /// Bundled default registry — all 4 in-tree panels. Hosts that don't
 /// want cargo-features per panel install this at boot:

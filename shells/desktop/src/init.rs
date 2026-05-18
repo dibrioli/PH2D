@@ -247,6 +247,15 @@ pub(crate) fn build_initial_state(
     // var is kept as a no-op alias — anyone with it in their
     // shell rc still gets the editor instead of an error.
     let hero_screen_enabled = hero_live_enabled;
+    // Wave 8 Phase 1 — install the panel registry BEFORE the first
+    // `HeroScreen::new` call. `register_all_panels` honors the
+    // `panel-*` cargo features on `ph2d-panel-registry-init`, so
+    // `--no-default-features --features panel-inspector` (etc.)
+    // produces a binary with exactly the selected panels at runtime.
+    // Idempotent — re-entry is a no-op.
+    if hero_screen_enabled {
+        let _ = ph2d_panel_registry_init::register_all_panels();
+    }
     let hero_screen = if hero_screen_enabled {
         Some(HeroScreen::new(NodeId(1)).theme(theme))
     } else {

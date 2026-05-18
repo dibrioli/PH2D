@@ -466,14 +466,20 @@ re-exporta `GS_PANEL`. Zero downstream changes (shells, tool crates).
   fixes) (`cfad551`)
 - ✅ Phase 2 batch — widget + interaction + paint + icons + grid +
   gizmo + floating_panel + ids consolidado (`53db463`)
+- ✅ Phase 4 partial — `PANEL_REGISTRY.manifests()` iteration wired
+  at top of `HeroScreen::apply_event` (`2440552`). 2 panel thunks
+  filled in: `widget_gallery` claims `GAL_CLOSE`, `grid_snap`
+  claims `GS_COLOR_PICKER`. Inspector + hierarchy thunks remain
+  `false`-returning stubs; their ~25+ branches stay in the chrome
+  dispatcher fallthrough until a future incremental migration.
 - 🔜 **Phase 2 follow-up** (deferido — HeroScreen + state + fixture +
   panel_registry + action_bus + tool migrations; bloqueia panel
   crates por orphan rule)
 - 🔜 **Phase 3** (deferido — extract per-panel crates: widget_gallery,
   inspector, hierarchy, grid-snap)
-- 🔜 **Phase 4** (deferido — distribute apply_event via
-  PanelManifest.apply_event_fn thunks; god-match `hero::apply_event`
-  hoje ainda tem 798 LOC)
+- 🔜 **Phase 4 completion** (deferido — distribute the remaining ~25+
+  apply_event branches from hero.rs to inspector + hierarchy thunks;
+  current god-match still ~795 LOC)
 - 🔜 **Phase 5** (deferido — ph2d-panel-registry-init + cargo features
   per panel + lite build + shells migration pra editor-core direto)
 

@@ -520,9 +520,13 @@ TOML correspondente. CI re-valida.
 
 ### 4.4 Adicionar painel novo (Wave 5 ✅ disponível)
 
-> **Status:** Wave 5 entregou o pattern em 2026-05-17. Wave 6
-> (crate extraction por painel) fica opcional para quando demanda
-> multi-agente concreta em painéis aparecer.
+> **Status:** Wave 5 entregou o pattern em 2026-05-17. Wave 6+7
+> (Phase 1+2, 2026-05-17) extraiu `ph2d-editor-core` com primitives
+> compartilhados — `widget/`, `interaction/`, `paint`, `gizmo/`,
+> `floating_panel`, `ids` etc. Receita abaixo continua válida
+> (paths via re-export). Wave 6+7 Phase 3 (panel-as-crate) + Phase 4
+> (apply_event distribuído) deferidos — vide
+> [ADR-0028 §Wave 6+7](../architecture/decisions/0028-wave-2-codegen-design-canonical.md#wave-67-2026-05-17--hotspot-decomp--editor-core-primitives-crate).
 
 **Receita 4-passos** (simétrico ao §4.1 tool-as-crate):
 

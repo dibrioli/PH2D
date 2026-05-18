@@ -4,12 +4,12 @@
 //! `grid_visible` and that `set_grid_view` round-trips a
 //! [`GridView`].
 
-use ph2d_editor::HeroScreen;
-use ph2d_editor::NodeId;
-use ph2d_editor::interaction::WidgetEvent;
-use ph2d_editor::screens::hero::ids::CTX_MENU_SHOW_GRID;
-use ph2d_editor::zones::Rect;
-use ph2d_editor::{GridConfig, GridView};
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::screens::hero::ids::CTX_MENU_SHOW_GRID;
+use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::{GridConfig, GridView};
 
 fn sample_view() -> GridView {
     GridView {
@@ -23,7 +23,7 @@ fn sample_view() -> GridView {
 
 #[test]
 fn grid_visible_starts_true_view_starts_none() {
-    ph2d_editor::test_support::ensure_panel_registry();
+    ph2d_editor_core::test_support::ensure_panel_registry();
     let hero = HeroScreen::new(NodeId(1));
     assert!(hero.view.grid_visible);
     assert!(hero.grid.view.is_none());
@@ -31,7 +31,7 @@ fn grid_visible_starts_true_view_starts_none() {
 
 #[test]
 fn set_grid_view_round_trips() {
-    ph2d_editor::test_support::ensure_panel_registry();
+    ph2d_editor_core::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let view = sample_view();
     hero.set_grid_view(Some(view));
@@ -45,7 +45,7 @@ fn set_grid_view_round_trips() {
 
 #[test]
 fn show_grid_menu_entry_toggles_visibility() {
-    ph2d_editor::test_support::ensure_panel_registry();
+    ph2d_editor_core::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     assert!(hero.view.grid_visible);
     let consumed = hero.apply_event(WidgetEvent::Click(CTX_MENU_SHOW_GRID));
@@ -65,10 +65,10 @@ fn show_grid_menu_entry_toggles_visibility() {
 /// (kept for shells that still raise it directly).
 #[test]
 fn view_button_cycles_through_three_modes() {
-    ph2d_editor::test_support::ensure_panel_registry();
-    use ph2d_editor::ViewFocusKind;
-    use ph2d_editor::action_bus::EditorAction;
-    use ph2d_editor::screens::hero::ids::TOOL_HOME;
+    ph2d_editor_core::test_support::ensure_panel_registry();
+    use ph2d_editor_core::ViewFocusKind;
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::screens::hero::ids::TOOL_HOME;
 
     let mut hero = HeroScreen::new(NodeId(1));
     assert!(hero.bus.is_empty());
@@ -116,7 +116,7 @@ fn view_button_cycles_through_three_modes() {
 
 #[test]
 fn grid_config_mut_exposes_spacing() {
-    ph2d_editor::test_support::ensure_panel_registry();
+    ph2d_editor_core::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let cfg = hero.grid_config_mut();
     cfg.spacing_minor = 0.5;

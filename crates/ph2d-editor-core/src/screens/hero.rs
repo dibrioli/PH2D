@@ -34,7 +34,7 @@ pub mod hierarchy;
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
 // and panel crates can reach them without depending back on hero. The
 // `screens::hero::ids` path continues to resolve via this re-export.
-pub use ph2d_editor_core::ids;
+pub use crate::ids;
 pub mod inspector;
 pub mod inspector_sync;
 pub mod left_rail;
@@ -1316,6 +1316,37 @@ pub fn paint_hero_screen(
     // import" hint while the OS drag is active.
     if let Some((paths, cursor)) = hero.dragging_files.as_ref() {
         paint_drop_overlay(&layout, paths, *cursor, scene, text_system, hero.theme);
+    }
+}
+
+/// ADR-0029 Phase B.3 — `PanelHostInternal` is the
+/// `#[doc(hidden)] pub` trait surface that the four in-tree panels
+/// consume in Phase C. The initial impl exposes only the minimal
+/// foundation (theme + project + widget store + hit index); the
+/// remaining ~25-30 accessors (selection, gizmo, grid, view, …)
+/// land alongside each panel's migration in Phase C as they're
+/// actually needed.
+impl crate::panel::PanelHost for HeroScreen {
+    fn theme(&self) -> Theme {
+        self.theme
+    }
+
+    fn project(&self) -> &crate::project::ProjectSettings {
+        &self.project
+    }
+}
+
+impl crate::panel::PanelHostInternal for HeroScreen {
+    fn store(&self) -> &WidgetStore {
+        &self.store
+    }
+
+    fn store_mut(&mut self) -> &mut WidgetStore {
+        &mut self.store
+    }
+
+    fn hit_index_mut(&mut self) -> &mut HitIndex {
+        &mut self.hit_index
     }
 }
 

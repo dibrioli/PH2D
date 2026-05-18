@@ -22,8 +22,8 @@
 use std::path::{Path, PathBuf};
 
 fn workspace_root() -> PathBuf {
-    // CARGO_MANIFEST_DIR points at this crate (`crates/ph2d-editor`);
-    // the workspace root is two parents up.
+    // CARGO_MANIFEST_DIR points at this crate (`crates/ph2d-editor-core`,
+    // post-ADR-0029 Phase B.2 move); workspace root is two parents up.
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("crates/")
@@ -110,7 +110,7 @@ fn editor_core_has_no_panel_or_editor_deps() {
 ///
 /// Marked `#[ignore]` for now because Wave 8 Phase 1 still has 3
 /// alias panel crates (inspector, hierarchy, grid-snap) that
-/// re-export `ph2d_editor::*::PANEL_MANIFEST`. Phase 2 (Stage 4)
+/// re-export `ph2d_editor_core::*::PANEL_MANIFEST`. Phase 2 (Stage 4)
 /// physically migrates each panel body into its crate; the
 /// `#[ignore]` lifts in that commit.
 #[test]

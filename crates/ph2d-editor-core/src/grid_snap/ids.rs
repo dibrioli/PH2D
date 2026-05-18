@@ -20,10 +20,10 @@ use crate::NodeId;
 
 // ─── Panel chrome ───────────────────────────────────────────────
 // Wave 6+7 Phase 2: GS_PANEL definition lives in
-// `ph2d_editor_core::ids` so dispatch (in editor-core) can match
+// `crate::ids` so dispatch (in editor-core) can match
 // against it without depending back on ph2d-editor. Re-exported
 // here for legacy `grid_snap::ids::GS_PANEL` import-path stability.
-pub use ph2d_editor_core::ids::GS_PANEL;
+pub use crate::ids::GS_PANEL;
 pub const GS_DRAG_HANDLE: NodeId = NodeId(1001);
 pub const GS_RESIZE_HANDLE: NodeId = NodeId(1002);
 pub const GS_CLOSE: NodeId = NodeId(1003);

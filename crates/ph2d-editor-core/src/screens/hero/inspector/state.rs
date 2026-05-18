@@ -10,7 +10,7 @@
 //! (LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y, PENDING_DROPDOWN_CHIP,
 //! LAST_GALLERY_*, push_section_top_y, section_index_below_body_y,
 //! take_pending_dropdown_chip, etc.) moved to
-//! `ph2d_editor_core::widget::showcase::state` so the showcase tree
+//! `crate::widget::showcase::state` so the showcase tree
 //! (also in editor-core) can write to them without depending on
 //! `ph2d-editor`. Re-exported from this module for backwards
 //! compatibility with existing call sites in `ph2d-editor`.
@@ -26,7 +26,7 @@ use super::super::{
 // Wave 8 Phase 2.A re-exports — gallery / shared section state lives
 // in editor-core. Existing inspector consumers keep `use state::*` style
 // imports working.
-pub use ph2d_editor_core::widget::showcase::{
+pub use crate::widget::showcase::{
     LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y, last_body_top_screen_y, last_gallery_content_h,
     last_gallery_visible_h, push_section_top_y, section_index_below_body_y,
     take_pending_dropdown_chip,

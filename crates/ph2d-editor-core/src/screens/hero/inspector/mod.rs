@@ -32,7 +32,7 @@ pub(in crate::screens::hero) use sections::{
 // Wave 8 Phase 2.A — showcase + notes + shared helpers moved to
 // editor-core::widget::showcase. Re-exported here for backwards
 // compat with existing `inspector::*` import paths.
-pub use ph2d_editor_core::widget::showcase::{
+pub use crate::widget::showcase::{
     NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, RADIO_GROUP_IDS, SECTION_COLOR_IDS,
     TAB_GROUP_IDS, TREE_LEAF_IDS, active_index, paint_one_note, paint_section_separator,
     paint_showcase_body, read_combobox, read_number_input, read_text_input,
@@ -144,11 +144,11 @@ const ROW_GAP: f32 = Spacing::Sm.px();
 const SECTION_HEAD_H: f32 = ROW_H_PX;
 const FIELD_H: f32 = Spacing::Xl3.px();
 
-// Wave 6+7 Phase 2: definitions live in `ph2d_editor_core::ids` so
+// Wave 6+7 Phase 2: definitions live in `crate::ids` so
 // dispatch (also in editor-core) can query them without depending
 // back on ph2d-editor. Re-exported here for legacy
 // `inspector::{SECTION_IDS,LIVE_SECTION_IDS}` import-path stability.
-pub use ph2d_editor_core::ids::{LIVE_SECTION_IDS, SECTION_IDS};
+pub use crate::ids::{LIVE_SECTION_IDS, SECTION_IDS};
 // SECTION_COLOR_IDS / RADIO_GROUP_IDS / TAB_GROUP_IDS / TREE_LEAF_IDS
 // / NOTE_*_IDS — Wave 8 Phase 2.A: moved to editor-core::widget::showcase
 // (re-exported above so existing `inspector::*` imports keep working).

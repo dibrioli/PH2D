@@ -17,9 +17,9 @@
 use bumpalo::Bump;
 use dhat::{HeapStats, Profiler};
 use ph2d_a11y::NodeId;
-use ph2d_editor::interaction::{HitIndex, InteractiveState, WidgetStore, dispatch_pointer};
-use ph2d_editor::widget::ButtonState;
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore, dispatch_pointer};
+use ph2d_editor_core::widget::ButtonState;
+use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerEvent, PointerKind, PointerSource};
 
 #[global_allocator]

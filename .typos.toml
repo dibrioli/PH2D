@@ -89,5 +89,6 @@ extend-exclude = [
     # agente periférico, ainda não passou pelo audit pós-integração
     # do Coordenador. Quando integrar, remove esta linha + roda typos
     # como parte do checklist.
-    "crates/ph2d-editor/src/tools/bgremoval/**",
+    # Path moved by ADR-0029 Phase B.2 (`ph2d-editor` → `ph2d-editor-core`).
+    "crates/ph2d-editor-core/src/tools/bgremoval/**",
 ]

@@ -1,5 +1,5 @@
 //! Regression: every chrome `NodeId` declared in
-//! [`ph2d_editor::screens::hero::ids`] (Wave 2 PR 11.3) must be unique.
+//! [`ph2d_editor_core::screens::hero::ids`] (Wave 2 PR 11.3) must be unique.
 //!
 //! The ids are derived from FNV-1a-hashed slug strings via
 //! `hash_node_id`. The function is collision-resistant in principle
@@ -15,7 +15,7 @@
 //! Those are the reason this test exists.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor::screens::hero::ids;
+use ph2d_editor_core::screens::hero::ids;
 
 /// Every chrome [`NodeId`] const exported by [`ids`], paired with its
 /// const identifier for error reporting. Hand-maintained — extending

@@ -19,11 +19,33 @@ build = "build.rs"
 [build-dependencies]
 
 [dependencies]
-ph2d-tokens        = { path = "../ph2d-tokens" }
-ph2d-a11y          = { path = "../ph2d-a11y" }
-ph2d-vector        = { path = "../ph2d-vector" }
-ph2d-text          = { path = "../ph2d-text" }
-ph2d-host          = { path = "../ph2d-host" }
-ph2d-tool-registry = { path = "../ph2d-tool-registry" }
-smallvec           = "1"
-bumpalo            = { version = "3", features = ["collections"] }
+ph2d-tokens           = { path = "../ph2d-tokens" }
+ph2d-a11y             = { path = "../ph2d-a11y" }
+ph2d-vector           = { path = "../ph2d-vector" }
+ph2d-text             = { path = "../ph2d-text" }
+ph2d-host             = { path = "../ph2d-host" }
+ph2d-tool-registry    = { path = "../ph2d-tool-registry" }
+# ph2d-grid — grid kinds (Square/Hex/Iso/Staggered/Tri) + snap math
+# consumed by `grid_snap/` module (ADR-0029 Phase B.2 absorbed from
+# ph2d-editor).
+ph2d-grid             = { path = "../ph2d-grid" }
+# ph2d-i18n — string-table stub (M13 deferred Fluent). Tooltips and
+# toast strings funnel through `tr("key")` so the eventual Fluent
+# migration is an impl swap, not a call-site rename. See HR-15.
+ph2d-i18n             = { path = "../ph2d-i18n" }
+# ph2d-tool-make-square — thin facade re-exported via
+# `tools::make_square` (PR 4.0 convention-by-discovery pilot).
+ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
+# image — imageops::resize (lanczos) for bgremoval thumbnail downscale
+# + guided-filter ops. `default-features = false` strips decoders
+# (ph2d-asset is the canonical decode boundary; this crate only
+# operates on already-decoded RGBA).
+image                 = { version = "0.25", default-features = false }
+smallvec              = "1"
+bumpalo               = { version = "3", features = ["collections"] }
+
+[dev-dependencies]
+# dhat-rs: HR-3 enforcement bench — counts allocations in
+# `interaction_dispatch_no_alloc` test to assert hot path is
+# allocation-free. See ADR-0024 "Plano de conformidade HR-3".
+dhat = "0.3"

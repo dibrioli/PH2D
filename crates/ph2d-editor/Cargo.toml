@@ -9,65 +9,20 @@ authors.workspace = true
 
 [lib]
 
-[build-dependencies]
+# ADR-0029 Phase B.5 — `ph2d-editor` is a deprecated shim. All
+# substantive content moved to `ph2d-editor-core` in Phase B.2; this
+# crate's `lib.rs` is now a `pub use ph2d_editor_core::*;` re-export
+# so existing consumers (panel crates, shells, tool crates) keep
+# their `ph2d_editor::*` import paths working unchanged.
+#
+# Targeted for deletion in ADR-0030 (~6 months) once all callers
+# migrate to `ph2d_editor_core::*` directly.
 
 [dependencies]
-# Wave 6+7 Phase 2: shared primitives (zones, paint, widget,
-# action_bus, floating_panel, project, toast, zen, …) live in
-# `ph2d-editor-core`. Re-exported from `ph2d-editor::lib.rs` to
-# preserve the legacy `ph2d_editor::*` import paths.
 ph2d-editor-core = { path = "../ph2d-editor-core" }
-# ph2d-tool-registry — convention-by-discovery infrastructure
-# (ToolManifest, Registry, NodeId hash). Re-exported as
-# `ph2d_editor::registry` so existing callers keep working. See
-# `docs/Migracao/2026-05-convention-by-discovery.md` PR 4.0.
-# ph2d-core (MemoryBudget) flows transitively via ph2d-tool-registry —
-# no direct dep needed (cargo-machete enforces this; PR 6.0 retrofit
-# moved the integration tests that consumed ph2d-core directly to
-# ph2d-tool-registry-init).
-ph2d-tool-registry = { path = "../ph2d-tool-registry" }
-# Tool crates moved to `ph2d-tool-registry-init` (PR 6.0 retrofit).
-# `ph2d-editor` no longer depends on Stateful tools (grid-snap,
-# bgremoval) so they can import `ph2d-editor` (widgets, paint,
-# FloatingPanel) without a Cargo cycle. Action-only tools
-# (no `ph2d-editor` dep) can still be facaded here as a transition
-# nicety until PR 10 cleanup removes the facades entirely.
-ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
-ph2d-tokens = { path = "../ph2d-tokens" }
-ph2d-a11y = { path = "../ph2d-a11y" }
-# ph2d-vector + ph2d-text — M11 widget paint pass. The `Paint` trait
-# in `paint.rs` lowers each widget into a `vello::Scene` via
-# `ph2d-vector::VectorScene`; text labels go through
-# `ph2d-text::TextSystem` (parley layout → Vello glyph runs).
-ph2d-vector = { path = "../ph2d-vector" }
-ph2d-text = { path = "../ph2d-text" }
-# ph2d-host — PointerEvent / KeyEvent types consumed by the
-# interaction dispatcher (ADR-0024).
-ph2d-host = { path = "../ph2d-host" }
-# ph2d-grid — grid kinds (Square/Hex/Iso/Staggered/Tri) + snap math
-# consumed by `grid_snap/` editor module (slot 1 agent grid-snap).
-ph2d-grid = { path = "../ph2d-grid" }
-# ph2d-i18n — string-table stub (M13 deferred Fluent). Tooltips and
-# toast strings funnel through `tr("key")` so the eventual Fluent
-# migration is an impl swap, not a call-site rename. See HR-15.
-ph2d-i18n = { path = "../ph2d-i18n" }
-# Interaction infrastructure (ADR-0024 plan, HR-3 zero-alloc):
-# - bumpalo: per-frame arena for emitted WidgetEvents. smallvec moved
-#   to ph2d-editor-core with `interaction/` in Wave 6+7 Phase 2 and is
-#   no longer a direct ph2d-editor dep.
-bumpalo = { version = "3", features = ["collections"] }
-# image — imageops::resize (lanczos) for bgremoval thumbnail downscale
-# + guided-filter ops. `default-features = false` strips decoders
-# (ph2d-asset is the canonical decode boundary; this crate only
-# operates on already-decoded RGBA).
-image = { version = "0.25", default-features = false }
-# rayon was requested for parallel guided-filter passes inside
-# bgremoval but slot 2's M3 ships the vanilla serial gray-guide
-# implementation; cargo machete flagged the import as unused on
-# 2026-05-16. Re-add when bgremoval lands a parallel path.
 
 [dev-dependencies]
-# dhat-rs: HR-3 enforcement bench — counts allocations in
-# `interaction_dispatch_no_alloc` test to assert hot path is
-# allocation-free. See ADR-0024 "Plano de conformidade HR-3".
+# Tests in `tests/` still live here; they reach editor symbols
+# through the shim re-export. `dhat` powers
+# `interaction_no_alloc.rs` (HR-3 enforcement bench).
 dhat = "0.3"

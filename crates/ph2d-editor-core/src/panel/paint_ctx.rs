@@ -7,7 +7,7 @@
 //! crates have zero static dep on the concrete host type.
 
 use super::PanelHostInternal;
-use crate::screen::HeroLayout;
+use crate::screens::HeroLayout;
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;

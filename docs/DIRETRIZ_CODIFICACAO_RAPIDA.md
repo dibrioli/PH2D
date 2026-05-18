@@ -244,15 +244,16 @@ Em qualquer outra situação, escope.
 ## 12. LOC threshold para validação (v1.1)
 
 **Regra:** não rode `cargo check` antes de ter editado/movido pelo
-menos ~300 LOC OU completado uma operação lógica coesa (ex: criar
-um módulo inteiro). Cada `cargo check` custa 10-30s + redirecionamento
-mental — antes de ter um chunk significativo, é noise.
+menos ~600 LOC novos/movidos OU completado uma operação lógica coesa
+(ex: criar um módulo inteiro). Cada `cargo check` custa 10-30s +
+redirecionamento mental — antes de ter um chunk significativo, é
+noise.
 
 | LOC editados/movidos | Comando OK |
 |----------------------|-----------|
-| 0-100 | NADA. Continue editando. |
-| 100-300 | `cargo check -p <crate>` opcional (se você está incerto). |
-| 300+ ou módulo inteiro | `cargo check -p <crate>` — sane stop. |
+| 0-200 | NADA. Continue editando. |
+| 200-600 | `cargo check -p <crate>` opcional (se você está incerto). |
+| 600+ ou módulo inteiro | `cargo check -p <crate>` — sane stop. |
 | Phase fechada (múltiplos crates) | `cargo check --workspace` (NÃO test). |
 | Antes do commit | **nada** — hook valida. |
 

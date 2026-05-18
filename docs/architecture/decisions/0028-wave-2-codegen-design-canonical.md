@@ -468,18 +468,32 @@ re-exporta `GS_PANEL`. Zero downstream changes (shells, tool crates).
   gizmo + floating_panel + ids consolidado (`53db463`)
 - ✅ Phase 4 partial — `PANEL_REGISTRY.manifests()` iteration wired
   at top of `HeroScreen::apply_event` (`2440552`). 2 panel thunks
-  filled in: `widget_gallery` claims `GAL_CLOSE`, `grid_snap`
-  claims `GS_COLOR_PICKER`. Inspector + hierarchy thunks remain
-  `false`-returning stubs; their ~25+ branches stay in the chrome
-  dispatcher fallthrough until a future incremental migration.
+  filled (widget_gallery::GAL_CLOSE, grid_snap::GS_COLOR_PICKER).
+- ✅ **Phase 4 completion** (`5ebcb22`) — all 4 panel thunks fully
+  populated. New modules `hierarchy/apply_event.rs::apply_event_full`
+  (HierReparent + companion bits + CTX_MENU_HIER_* + live row
+  click/DoubleClick/LongPress + HIER_RENAME_INPUT) and
+  `inspector/apply_event_full.rs::apply_event_full` (Reimport +
+  Transform commits + Reset + Visibility + Render Strategy +
+  entity-name). widget_gallery thunk extends to TOPBAR_WIDGET_GALLERY.
+  grid_snap thunk extends to TOPBAR_GRID_SETTINGS + full delegation
+  to `grid_snap::apply_event`. `HeroScreen::apply_event` god-match
+  collapses 798 LOC → ~380 LOC (chrome-only: theme/radius menus,
+  rail toggles, tool buttons, settings cascades, scene list,
+  image-edit actions). `hero.rs` total: 3030 → 2620 LOC (−14%).
 - 🔜 **Phase 2 follow-up** (deferido — HeroScreen + state + fixture +
-  panel_registry + action_bus + tool migrations; bloqueia panel
-  crates por orphan rule)
-- 🔜 **Phase 3** (deferido — extract per-panel crates: widget_gallery,
-  inspector, hierarchy, grid-snap)
-- 🔜 **Phase 4 completion** (deferido — distribute the remaining ~25+
-  apply_event branches from hero.rs to inspector + hierarchy thunks;
-  current god-match still ~795 LOC)
+  Info types + panel_registry + action_bus + tool migrations; not
+  required for Phase 3 anymore since panel crates can depend on
+  ph2d-editor for HeroScreen — `apply_event_fn` are free fns so
+  no orphan-rule issue).
+- 🔜 **Phase 3** (deferido — extract per-panel crates:
+  ph2d-panel-{widget-gallery,inspector,hierarchy,grid-snap}.
+  Requires PANEL_REGISTRY conversion to runtime-init via OnceLock
+  + style funcs made pub + cross-panel `paint_showcase_body` access
+  routed through editor-core. ~5500 LOC for grid_snap alone).
+- 🔜 **Phase 5** (deferido — ph2d-panel-registry-init crate + cargo
+  features per panel + lite build + shells migration to editor-core
+  direct paths). Depends on Phase 3.
 - 🔜 **Phase 5** (deferido — ph2d-panel-registry-init + cargo features
   per panel + lite build + shells migration pra editor-core direto)
 

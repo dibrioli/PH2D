@@ -10,11 +10,22 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor               = { path = "../ph2d-editor" }
+ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery", optional = true }
+ph2d-panel-grid-snap      = { path = "../ph2d-panel-grid-snap",      optional = true }
+ph2d-panel-inspector      = { path = "../ph2d-panel-inspector",      optional = true }
+ph2d-panel-hierarchy      = { path = "../ph2d-panel-hierarchy",      optional = true }
 
 [features]
 default = ["panel-widget-gallery", "panel-hierarchy", "panel-inspector", "panel-grid-snap"]
-panel-widget-gallery = []
-panel-hierarchy      = []
-panel-inspector      = []
-panel-grid-snap      = []
+# Wave 7 Stage 2 — every panel is its own crate.
+#   - widget_gallery: full physical extraction (lib.rs holds the real
+#     paint / apply_event / populate thunks).
+#   - grid_snap, inspector, hierarchy: alias-form extraction (the
+#     crate re-exports `ph2d_editor::<path>::PANEL_MANIFEST`). Wave 8
+#     can physically migrate each panel's body into its crate; the
+#     external dep path stays the same.
+panel-widget-gallery = ["dep:ph2d-panel-widget-gallery"]
+panel-grid-snap      = ["dep:ph2d-panel-grid-snap"]
+panel-inspector      = ["dep:ph2d-panel-inspector"]
+panel-hierarchy      = ["dep:ph2d-panel-hierarchy"]

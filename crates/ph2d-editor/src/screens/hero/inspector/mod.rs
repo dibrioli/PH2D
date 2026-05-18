@@ -32,14 +32,14 @@ pub(in crate::screens::hero) use sections::{
     paint_entity_name_row, paint_render_source_section, paint_transform_section,
     paint_visibility_row,
 };
-pub(in crate::screens::hero) use showcase::paint_showcase_body;
+pub use showcase::paint_showcase_body;
 use state::{
     LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y, current_inspector_name_is_some,
     current_inspector_sprite, current_inspector_transform, current_inspector_visibility,
     push_section_top_y, set_last_inspector_content_h, set_last_inspector_visible_h,
     take_pending_dropdown_chip,
 };
-pub(in crate::screens::hero) use state::{
+pub use state::{
     last_body_top_screen_y, last_gallery_content_h, last_gallery_visible_h,
     last_inspector_content_h, last_inspector_visible_h, section_index_below_body_y,
     set_current_display_unit, set_current_inspector_name, set_current_inspector_sprite,

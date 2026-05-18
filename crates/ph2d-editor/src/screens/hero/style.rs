@@ -23,30 +23,30 @@ pub const HERO_VIEWPORT_H: f32 = HERO_VIEWPORT_H_PX;
 
 /// Padding from the screen edge to chrome (TopBar inset, Hierarchy
 /// pinned-right inset, etc).
-pub(super) const EDGE_PAD: f32 = EDGE_PAD_PX;
-pub(super) const TOPBAR_H: f32 = TOPBAR_H_PX;
-pub(super) const TOPBAR_GAP: f32 = TOPBAR_GAP_PX;
+pub const EDGE_PAD: f32 = EDGE_PAD_PX;
+pub const TOPBAR_H: f32 = TOPBAR_H_PX;
+pub const TOPBAR_GAP: f32 = TOPBAR_GAP_PX;
 /// Mirrors `crate::widget::TOOL_RAIL_WIDTH_PX`. The hero layout uses
 /// this for the rail's outer rect; the widget reuses it as a sizing
 /// hint. Keep them in lockstep.
-pub(super) const RAIL_W: f32 = crate::widget::TOOL_RAIL_WIDTH_PX;
-pub(super) const INSPECTOR_W: f32 = INSPECTOR_W_PX;
-pub(super) const HIERARCHY_W: f32 = HIERARCHY_W_PX;
-pub(super) const HUD_H: f32 = HUD_H_PX;
-pub(super) const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
+pub const RAIL_W: f32 = crate::widget::TOOL_RAIL_WIDTH_PX;
+pub const INSPECTOR_W: f32 = INSPECTOR_W_PX;
+pub const HIERARCHY_W: f32 = HIERARCHY_W_PX;
+pub const HUD_H: f32 = HUD_H_PX;
+pub const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
 
 /// Inspector + Hierarchy panel layout constants. Field/section
 /// metrics were removed alongside the inspector placeholder
 /// teardown — they'll be reintroduced when canonical sample
 /// widgets land in the inspector body.
-pub(crate) const PANEL_RADIUS: f32 = PANEL_RADIUS_PX;
-pub(super) const PANEL_HEAD_PAD: f32 = PANEL_HEAD_PAD_PX;
-pub(super) const HIER_ROW_H: f32 = HIER_ROW_H_PX;
+pub const PANEL_RADIUS: f32 = PANEL_RADIUS_PX;
+pub const PANEL_HEAD_PAD: f32 = PANEL_HEAD_PAD_PX;
+pub const HIER_ROW_H: f32 = HIER_ROW_H_PX;
 
 /// Pixel size (square) of every panel's bottom-right resize-gripper
 /// hit zone. Centralized so the painters + hit-zone registration use
 /// one value.
-pub(crate) const PANEL_RESIZE_HANDLE_SIZE: f32 = PANEL_RESIZE_HANDLE_SIZE_PX;
+pub const PANEL_RESIZE_HANDLE_SIZE: f32 = PANEL_RESIZE_HANDLE_SIZE_PX;
 
 /// Floating-panel surface — standard BASE chrome for every panel
 /// (Inspector, Hierarchy, future panels). Paints the rounded
@@ -57,7 +57,7 @@ pub(crate) const PANEL_RESIZE_HANDLE_SIZE: f32 = PANEL_RESIZE_HANDLE_SIZE_PX;
 /// The bottom-right resize-gripper dot is painted separately by
 /// [`paint_panel_corner_dot`] AFTER the body so body widgets don't
 /// cover it (the body's scrollable clip extends into the corner).
-pub(crate) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+pub fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let radius = PANEL_RADIUS;
     // PanelBg = BgElev hue/L with ~0.92 alpha → panel reads as
     // floating glass over canvas while text contrast holds.
@@ -82,7 +82,7 @@ pub(crate) fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Th
 /// each panel painter (after `pop_layer`) so it sits on top of any
 /// body widget whose rect drifted into the corner. Soft `Text2`
 /// reads as a corner accent rather than a foreign visual element.
-pub(crate) fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+pub fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let dot_d = Spacing::Xs.px();
     let inset = 7.0_f32; // LITERAL-PX-OK: corner-dot inset (specific accent geometry)
     let dot = Rect::new(
@@ -97,7 +97,7 @@ pub(crate) fn paint_panel_corner_dot(rect: Rect, scene: &mut VectorScene, theme:
 /// Rect of the bottom-right resize-gripper hit zone for a panel
 /// whose outer rect is `panel`. Callers register this against the
 /// panel-specific `*_RESIZE_HANDLE` NodeId.
-pub(crate) fn panel_resize_handle_rect(panel: Rect) -> Rect {
+pub fn panel_resize_handle_rect(panel: Rect) -> Rect {
     Rect::new(
         panel.x + panel.w - PANEL_RESIZE_HANDLE_SIZE,
         panel.y + panel.h - PANEL_RESIZE_HANDLE_SIZE,
@@ -108,7 +108,7 @@ pub(crate) fn panel_resize_handle_rect(panel: Rect) -> Rect {
 
 /// Rect of the top-center drag-pill hit zone for a panel whose outer
 /// rect is `panel`. 80×14 — wide enough to grab on touch + mouse.
-pub(crate) fn panel_drag_handle_rect(panel: Rect) -> Rect {
+pub fn panel_drag_handle_rect(panel: Rect) -> Rect {
     Rect::new(
         panel.x + (panel.w - 80.0) * 0.5, // LITERAL-PX-OK: drag hit-zone width 80 (chrome-specific)
         panel.y + Spacing::Xxs.px(),
@@ -135,7 +135,7 @@ pub(crate) fn panel_drag_handle_rect(panel: Rect) -> Rect {
 /// write the clamped offset/resize back to the WidgetStore so
 /// subsequent drag-begins capture the visible offset rather than an
 /// accumulated raw value (no rubber-band on direction reversal).
-pub(crate) fn clamp_panel_rect(
+pub fn clamp_panel_rect(
     base: Rect,
     off: (f32, f32),
     resize: (f32, f32),

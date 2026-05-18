@@ -152,4 +152,4 @@ use switches::paint_switches_section;
 use vector::paint_vector_section;
 
 mod body;
-pub(in crate::screens::hero) use body::paint_showcase_body;
+pub use body::paint_showcase_body;

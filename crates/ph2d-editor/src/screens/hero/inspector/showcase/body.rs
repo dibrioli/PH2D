@@ -4,7 +4,7 @@
 
 use super::*;
 
-pub(in crate::screens::hero) fn paint_showcase_body(
+pub fn paint_showcase_body(
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,

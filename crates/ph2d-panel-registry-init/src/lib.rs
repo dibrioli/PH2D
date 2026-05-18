@@ -43,14 +43,17 @@ pub fn register_all_panels() -> bool {
 pub fn build_registry() -> PanelRegistry {
     #[allow(unused_mut)]
     let mut reg = PanelRegistry::new_empty();
+    // Wave 7 Stage 2: every panel is its own crate. widget_gallery
+    // is fully physical-extracted; the others alias the in-tree
+    // `ph2d_editor::*::PANEL_MANIFEST` until Wave 8 promotes them.
     #[cfg(feature = "panel-widget-gallery")]
-    reg.push(&ph2d_editor::screens::hero::widget_gallery::PANEL_MANIFEST);
+    reg.push(&ph2d_panel_widget_gallery::PANEL_MANIFEST);
     #[cfg(feature = "panel-hierarchy")]
-    reg.push(&ph2d_editor::screens::hero::hierarchy::PANEL_MANIFEST);
+    reg.push(&ph2d_panel_hierarchy::PANEL_MANIFEST);
     #[cfg(feature = "panel-inspector")]
-    reg.push(&ph2d_editor::screens::hero::inspector::PANEL_MANIFEST);
+    reg.push(&ph2d_panel_inspector::PANEL_MANIFEST);
     #[cfg(feature = "panel-grid-snap")]
-    reg.push(&ph2d_editor::grid_snap::PANEL_MANIFEST);
+    reg.push(&ph2d_panel_grid_snap::PANEL_MANIFEST);
     reg
 }
 

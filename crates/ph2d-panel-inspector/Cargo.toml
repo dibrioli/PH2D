@@ -1,0 +1,13 @@
+[package]
+name = "ph2d-panel-inspector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-editor = { path = "../ph2d-editor" }

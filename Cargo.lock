@@ -4011,10 +4011,47 @@ name = "ph2d-net"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-panel-grid-snap"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor",
+]
+
+[[package]]
+name = "ph2d-panel-hierarchy"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor",
+]
+
+[[package]]
+name = "ph2d-panel-inspector"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor",
+]
+
+[[package]]
 name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-editor",
+ "ph2d-panel-grid-snap",
+ "ph2d-panel-hierarchy",
+ "ph2d-panel-inspector",
+ "ph2d-panel-widget-gallery",
+]
+
+[[package]]
+name = "ph2d-panel-widget-gallery"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor",
+ "ph2d-editor-core",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

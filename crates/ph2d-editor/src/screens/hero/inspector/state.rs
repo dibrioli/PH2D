@@ -86,7 +86,7 @@ thread_local! {
 /// Set the inspector sprite snapshot for the current paint. Hero
 /// publishes this before `paint_inspector` runs and clears it after,
 /// matching the [[hierarchy_live_entries]] thread-local pattern.
-pub(in crate::screens::hero) fn set_current_inspector_sprite(info: Option<InspectorSpriteInfo>) {
+pub fn set_current_inspector_sprite(info: Option<InspectorSpriteInfo>) {
     CURRENT_INSPECTOR_SPRITE.with(|c| *c.borrow_mut() = info);
 }
 
@@ -97,9 +97,7 @@ pub(super) fn current_inspector_sprite() -> Option<InspectorSpriteInfo> {
 /// M14.A: paired with [`set_current_inspector_sprite`] for the
 /// Transform live-binding section. `paint_hero_screen` is the only
 /// publisher.
-pub(in crate::screens::hero) fn set_current_inspector_transform(
-    info: Option<InspectorTransformInfo>,
-) {
+pub fn set_current_inspector_transform(info: Option<InspectorTransformInfo>) {
     CURRENT_INSPECTOR_TRANSFORM.with(|c| *c.borrow_mut() = info);
 }
 
@@ -109,9 +107,7 @@ pub(super) fn current_inspector_transform() -> Option<InspectorTransformInfo> {
 
 /// M14.D: same as `set_current_inspector_transform` for the
 /// Visibility checkbox row.
-pub(in crate::screens::hero) fn set_current_inspector_visibility(
-    info: Option<InspectorVisibilityInfo>,
-) {
+pub fn set_current_inspector_visibility(info: Option<InspectorVisibilityInfo>) {
     CURRENT_INSPECTOR_VISIBILITY.with(|c| c.set(info));
 }
 
@@ -120,7 +116,7 @@ pub(super) fn current_inspector_visibility() -> Option<InspectorVisibilityInfo> 
 }
 
 /// M14.E: same shape for the editable entity-name field.
-pub(in crate::screens::hero) fn set_current_inspector_name(info: Option<InspectorNameInfo>) {
+pub fn set_current_inspector_name(info: Option<InspectorNameInfo>) {
     CURRENT_INSPECTOR_NAME.with(|c| *c.borrow_mut() = info);
 }
 
@@ -137,10 +133,7 @@ pub(super) fn current_inspector_name_is_some() -> bool {
 /// `paint_inspector` call. Read by the Transform section to format
 /// Position rows. `paint_hero_screen` publishes this before each
 /// paint and clears it after.
-pub(in crate::screens::hero) fn set_current_display_unit(
-    unit: crate::project::DisplayUnit,
-    pixels_per_meter: f32,
-) {
+pub fn set_current_display_unit(unit: crate::project::DisplayUnit, pixels_per_meter: f32) {
     CURRENT_DISPLAY_UNIT.with(|c| c.set(unit));
     CURRENT_PIXELS_PER_METER.with(|c| c.set(pixels_per_meter));
 }
@@ -164,7 +157,7 @@ pub(super) fn take_pending_dropdown_chip() -> Option<(usize, Rect)> {
 /// Last-known total content height of the inspector body (sum of all
 /// section heights + gaps). Used by `dispatch_wheel` to clamp the
 /// scroll offset so the user can't scroll past the last element.
-pub(in crate::screens::hero) fn last_inspector_content_h() -> f32 {
+pub fn last_inspector_content_h() -> f32 {
     LAST_CONTENT_H.with(|c| c.get())
 }
 
@@ -172,7 +165,7 @@ pub(super) fn set_last_inspector_content_h(h: f32) {
     LAST_CONTENT_H.with(|c| c.set(h));
 }
 
-pub(in crate::screens::hero) fn last_inspector_visible_h() -> f32 {
+pub fn last_inspector_visible_h() -> f32 {
     LAST_VISIBLE_H.with(|c| c.get())
 }
 
@@ -183,11 +176,11 @@ pub(super) fn set_last_inspector_visible_h(h: f32) {
 /// Gallery counterparts of `last_inspector_content_h` / `last_inspector_visible_h`.
 /// Read by the host after [`super::paint_showcase_body`] to clamp the
 /// wheel-scroll bound on `GAL_PANEL`.
-pub(in crate::screens::hero) fn last_gallery_content_h() -> f32 {
+pub fn last_gallery_content_h() -> f32 {
     LAST_GALLERY_CONTENT_H.with(|c| c.get())
 }
 
-pub(in crate::screens::hero) fn last_gallery_visible_h() -> f32 {
+pub fn last_gallery_visible_h() -> f32 {
     LAST_GALLERY_VISIBLE_H.with(|c| c.get())
 }
 
@@ -210,7 +203,7 @@ pub(super) fn set_last_gallery_visible_h(h: f32) {
 /// section B, so the new note went BELOW A's separator instead of
 /// above A's header (user reported "note created below the separator
 /// of the section the right-click landed in").
-pub(in crate::screens::hero) fn section_index_below_body_y(body_y: f32) -> Option<u8> {
+pub fn section_index_below_body_y(body_y: f32) -> Option<u8> {
     LAST_SECTION_TOPS_Y.with(|tops| {
         let tops = tops.borrow();
         // Walk pairs (top[i], top[i+1]); the click is "inside"
@@ -233,7 +226,7 @@ pub(in crate::screens::hero) fn section_index_below_body_y(body_y: f32) -> Optio
     })
 }
 
-pub(in crate::screens::hero) fn last_body_top_screen_y() -> f32 {
+pub fn last_body_top_screen_y() -> f32 {
     LAST_BODY_TOP_SCREEN_Y.with(|c| c.get())
 }
 

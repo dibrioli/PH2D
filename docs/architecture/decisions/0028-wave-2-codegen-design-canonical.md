@@ -353,6 +353,144 @@ Event canonicalization is a follow-up wave.
 | hero.rs LOC | 3260 | 3027 |
 | Architecture tests | 9 | 9 (chrome_consts_match_tokens_json extends 3→20 keys) |
 
+## Wave 6+7 (2026-05-17) — hotspot decomp + editor-core primitives crate
+
+Wave 5 left 3 god-files intactos (dispatch/mod.rs 3392 LOC, gizmo.rs
+1770 LOC, inspector/showcase.rs 1217 LOC) e o `apply_event` god-match
+em `hero.rs` (798 LOC). Wave 6+7 ataca os hotspots E destranca o
+caminho pra panel-as-crate criando a infraestrutura `ph2d-editor-core`
+(primitives compartilhados sem orchestrator).
+
+### Phase 1 — Hotspot decomp (3 commits)
+
+| Hotspot | Antes | Depois | Δ |
+|---|---|---|---|
+| `interaction/dispatch/mod.rs` | 3392 | 279 | −92% |
+| `gizmo.rs` (monolítico) | 1770 | 45 (mod.rs) + 6 sub-files | −97% mod.rs |
+| `inspector/showcase.rs` (monolítico) | 1217 | 155 (mod.rs) + 11 per-section files | −87% mod.rs |
+
+Padrões:
+
+- **Dispatch split** (Phase 1.A) — extrai `dispatch_pointer_with_text`
+  (god-function de 893 LOC) pra `pointer.rs`; helpers file-private
+  vão junto. Tests inline movem pra `tests.rs` via `mod tests;`.
+- **Gizmo split** (Phase 1.B) — `gizmo/` directory com per-domain
+  files: `drag.rs` (state machine), `camera.rs` (config), `transform.rs`
+  (math), `hit.rs` (id classification + ids module), `paint.rs`
+  (GizmoView + paint_sprite_gizmo + helpers), `tests.rs`. mod.rs vira
+  re-export hub.
+- **Showcase split** (Phase 1.C) — per-section painters
+  (`inputs.rs`, `slider.rs`, `switches.rs`, `lists.rs`, `vector.rs`,
+  `status.rs`, `color.rs`, `actions.rs`, `identity.rs`, `card.rs`) +
+  `body.rs` (orchestrator) + `mod.rs` (shared helpers + consts). Cada
+  sub-file faz `use super::*;` pegando o shared scope da mod.rs.
+
+### Phase 1 polish — 4 UX bug fixes (mesmo commit que Phase 2 foundation)
+
+Bugs descobertos durante smoke do Phase 1:
+
+1. **BlenderColorPicker drag bridge** — NumberInput drag em channel
+   chip não propagava cor pro parent picker (commit path já tinha
+   o bridge via `apply_blender_channel_value`; drag path faltava).
+2. **Slider clamp** — NumberInput drag exibia valores fora do range
+   0..1 do slider linkado. Clamp adicionado tanto pra linked_slider
+   quanto BlenderPicker channel chip.
+3. **Enter blur (TextInput single-line)** — Enter inseria `\n` literal
+   em todos TextInputs. Agora: multi-line opt-in via
+   `WidgetStore::mark_multiline_text(id)` (TextArea, note bodies);
+   single-line default = Submit + Blur (convention de form-field).
+4. **Enter blur (NumberInput)** — Enter commitava buffer mas mantinha
+   foco. Agora: Submit → reset visual state → Blur (matching
+   single-line TextInput).
+
+### Phase 2 — `ph2d-editor-core` crate (engine primitives)
+
+Novo crate `crates/ph2d-editor-core/` housing engine-level primitives
+que panel crates (`ph2d-panel-*`) ou downstream shells podem
+consumir sem depender do `ph2d-editor` orchestrator.
+
+**Migrado em Phase 2 batch (1 commit):**
+
+- `widget/` (~12000 LOC) — todos os primitives (Button, Slider, Toggle,
+  RadioGroup, TextInput, TextArea, NumberInput, Combobox, Dropdown,
+  Tabs, Tag, Avatar, Card, Checkbox, ColorSwatch, ColorPicker,
+  BlenderColorPicker, ContextMenu, Divider, IconButton, ListItem,
+  Modal, PillGroup, Popover, ProgressBar, ScrollBar, SectionHeader,
+  SliderWithChip, Spinner, StatusBar, TreeView, ToolRail,
+  Vector3Editor).
+- `interaction/` (~10000 LOC) — dispatch + state + drag + event + hit
+  + types + util. Refs `crate::screens::hero::ids` reescritas pra
+  `crate::ids`.
+- `ids` (629 LOC) — todos os NodeId constants hero/widget.
+  `SECTION_IDS` + `LIVE_SECTION_IDS` (inspector) + `GS_PANEL`
+  (grid_snap) consolidados aqui pra dispatch poder query sem
+  depender back em ph2d-editor. Inspector + grid_snap re-export.
+- `paint`, `grid`, `gizmo/`, `icons` + `build.rs` (SVG codegen),
+  `floating_panel`, `project`, `toast`, `zen`, `zones` — primitives
+  e helpers que widgets/dispatch consomem.
+- Architecture tests `hr12_widgets_a11y` + `hr15_no_hardcoded_ui_strings`
+  movem com `widget/` pra editor-core. `no_literal_color` +
+  `no_magic_numeric` ficam em ph2d-editor mas scan_roots extendem
+  pra `../ph2d-editor-core/src/widget`.
+
+**Fica em ph2d-editor** (Phase 2 follow-up + Phase 3+):
+
+- `screens/hero.rs` + `screens/hero/{state,fixture}.rs` — HeroScreen
+  + sub-state + Info types. Mover pra editor-core exige refatorar
+  `apply_event` (orphan rule: impl HeroScreen em editor-core não
+  pode chamar chrome painters em ph2d-editor). Daria pra fazer com
+  `apply_event` distribuído via PanelManifest thunks (Phase 4),
+  mas é trabalho não-trivial.
+- `panel_registry` — depende de HeroScreen + HeroLayout.
+- `action_bus` — depende de Info types.
+- `tool` + `tools/` — depende de floating_panel (já em core, daria
+  pra mover; deferido pra reduzir batch size).
+- `image_edit/`, `grid_snap/`, `screens/hero/{topbar,inspector,
+  hierarchy,widget_gallery,…}/` — chrome + panels. Panel extraction
+  é Phase 3 (deferido).
+
+### Public API preserved
+
+`pub use ph2d_editor_core::{floating_panel, gizmo, grid, icons,
+interaction, paint, project, toast, widget, zen, zones, ids};` em
+`ph2d_editor::lib.rs`. `screens::hero::ids` re-exporta editor-core::ids.
+Inspector re-exporta `SECTION_IDS`/`LIVE_SECTION_IDS`. Grid_snap
+re-exporta `GS_PANEL`. Zero downstream changes (shells, tool crates).
+
+### Wave 6+7 status
+
+- ✅ Phase 1.A — dispatch split (`326e18b`)
+- ✅ Phase 1.B — gizmo split (`bbb8690`)
+- ✅ Phase 1.C — showcase split (`316af75`)
+- ✅ Phase 1 polish 4 bugs + Phase 2 foundation (4 leaf modules + bug
+  fixes) (`cfad551`)
+- ✅ Phase 2 batch — widget + interaction + paint + icons + grid +
+  gizmo + floating_panel + ids consolidado (`53db463`)
+- 🔜 **Phase 2 follow-up** (deferido — HeroScreen + state + fixture +
+  panel_registry + action_bus + tool migrations; bloqueia panel
+  crates por orphan rule)
+- 🔜 **Phase 3** (deferido — extract per-panel crates: widget_gallery,
+  inspector, hierarchy, grid-snap)
+- 🔜 **Phase 4** (deferido — distribute apply_event via
+  PanelManifest.apply_event_fn thunks; god-match `hero::apply_event`
+  hoje ainda tem 798 LOC)
+- 🔜 **Phase 5** (deferido — ph2d-panel-registry-init + cargo features
+  per panel + lite build + shells migration pra editor-core direto)
+
+### Métricas Wave 6+7
+
+| Métrica | Pré-Wave-6+7 | Pós-Wave-6+7 (Phase 1+2) |
+|---|---|---|
+| `interaction/dispatch/mod.rs` LOC | 3392 | 279 |
+| `gizmo.rs` (mod.rs) LOC | 1770 | 45 |
+| `inspector/showcase.rs` (mod.rs) LOC | 1217 | 155 |
+| Crates em workspace | 30 | 31 (+`ph2d-editor-core`) |
+| ph2d-editor lib tests | 732 | 275 (rest migraram) |
+| ph2d-editor-core lib tests | — | 457 |
+| Combined lib tests | 732 | 732 (unchanged) |
+| HR-18 cap shells/desktop | enforced (600) | enforced (600) |
+| Public API breaks | — | 0 (via re-exports) |
+
 ## Referências
 
 - **[Narrativa completa: problema multi-agente paralelo + solução](../../Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md)** ← *começar por aqui se for novo no projeto*

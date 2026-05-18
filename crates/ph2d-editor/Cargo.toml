@@ -6,18 +6,17 @@ rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
 authors.workspace = true
-build = "build.rs"
 
 [lib]
-
-# Wave 2 PR 11.2: `build.rs` reads `docs/design/icons/*.svg` (89 SVGs,
-# Lucide-derived) and generates `OUT_DIR/icons_generated.rs` with
-# per-icon `IconCmd` arrays + slug→cmds lookup table. Eliminates 715
-# LOC of manually-ported match arms in `icons.rs::cmds()`.
 
 [build-dependencies]
 
 [dependencies]
+# Wave 6+7 Phase 2: shared primitives (zones, paint, widget,
+# action_bus, floating_panel, project, toast, zen, …) live in
+# `ph2d-editor-core`. Re-exported from `ph2d-editor::lib.rs` to
+# preserve the legacy `ph2d_editor::*` import paths.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ph2d-tool-registry — convention-by-discovery infrastructure
 # (ToolManifest, Registry, NodeId hash). Re-exported as
 # `ph2d_editor::registry` so existing callers keep working. See

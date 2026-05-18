@@ -361,6 +361,13 @@ pub struct WidgetStore {
     /// `100_000+` and would silently fall through to "click,
     /// no drag" without this set.
     pub(super) hierarchy_row_ids: std::collections::BTreeSet<NodeId>,
+    /// TextInput ids that should treat Enter as "insert newline"
+    /// instead of the default "Submit + Blur" (single-line form
+    /// behavior). Populated by widgets that wrap multi-line content
+    /// (TextArea, note bodies). Default-empty so a freshly registered
+    /// TextInput is single-line — matches user expectation that Enter
+    /// confirms the value rather than wrapping.
+    pub(super) multiline_text_ids: std::collections::BTreeSet<NodeId>,
     /// M14.A polish: in-progress drag on a NumberInput body. Captured
     /// on Down inside the box (NOT inside the up/down arrow), held
     /// across Move events to convert cursor delta → value delta
@@ -432,6 +439,7 @@ impl WidgetStore {
             hierarchy_collapsed: std::collections::BTreeSet::new(),
             hierarchy_drag: None,
             hierarchy_row_ids: std::collections::BTreeSet::new(),
+            multiline_text_ids: std::collections::BTreeSet::new(),
             number_input_drag: None,
             number_stepper_hold: None,
             shift_held: false,
@@ -755,6 +763,20 @@ impl WidgetStore {
     /// one query — dispatch uses this to decide whether to start a
     /// drag candidate on Primary Down (replaces the static range
     /// check that used to silently reject every live row).
+    /// Mark `id` as a multi-line text widget. Enter on it inserts a
+    /// literal newline instead of submitting + blurring (the default
+    /// behavior for single-line TextInputs). Idempotent; callers
+    /// (TextArea widget, note body populators) re-mark every frame
+    /// during populate.
+    pub fn mark_multiline_text(&mut self, id: NodeId) {
+        self.multiline_text_ids.insert(id);
+    }
+
+    /// True iff `id` was previously marked via `mark_multiline_text`.
+    pub fn is_multiline_text(&self, id: NodeId) -> bool {
+        self.multiline_text_ids.contains(&id)
+    }
+
     pub fn is_hierarchy_row(&self, id: NodeId) -> bool {
         self.hierarchy_row_ids.contains(&id)
     }

@@ -18,8 +18,8 @@ use super::keymap::{
 };
 use super::text_ops::{next_char_boundary, prev_char_boundary};
 use super::{
-    commit_hex_buffer, commit_number_buffer, revert_number_buffer, select_all_in_text_widget,
-    write_hex_canonical,
+    commit_hex_buffer, commit_number_buffer, reset_focused_visual_state, revert_number_buffer,
+    select_all_in_text_widget, write_hex_canonical,
 };
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
@@ -81,13 +81,19 @@ pub fn dispatch_key<'frame>(
         }
         KEY_ENTER | KEY_SPACE => {
             if let Some(id) = store.focus_id() {
-                // For NumberInput, Enter commits the buffer (parses)
-                // and emits ValueChanged on success. Falls through to
-                // apply_click for everything else.
+                // For NumberInput, Enter commits the buffer (parses
+                // and emits ValueChanged on success) and ends the
+                // edit by blurring — matches the single-line TextInput
+                // form-field convention. Without the blur the caret
+                // stayed inside the field and the user had to click
+                // outside to dismiss focus.
                 if matches!(store.get(id), Some(InteractiveState::NumberInput { .. }))
                     && event.keycode == KEY_ENTER
                 {
                     commit_number_buffer(store, id, &mut events);
+                    reset_focused_visual_state(store, id);
+                    store.set_focus(None);
+                    events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
                 }
                 // Hex TextInput linked to a BlenderPicker: parse the
@@ -154,7 +160,7 @@ pub fn dispatch_key<'frame>(
                 // inserting a newline. Caller (hero apply_event)
                 // reads the buffer and applies the rename.
                 if event.keycode == KEY_ENTER
-                    && id == crate::screens::hero::ids::HIER_RENAME_INPUT
+                    && id == crate::ids::HIER_RENAME_INPUT
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
                     if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
@@ -165,17 +171,33 @@ pub fn dispatch_key<'frame>(
                     events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
                 }
-                // Enter on a multi-line TextInput inserts a literal
-                // newline so notes can have body paragraphs.
+                // Enter on a TextInput: behavior depends on whether
+                // it's marked multi-line.
+                //   - Multi-line (TextArea, note bodies): insert a
+                //     literal newline so paragraphs can have hard
+                //     breaks.
+                //   - Single-line (default): Submit + Blur, matching
+                //     form-field convention. Callers (hero apply_event)
+                //     read the buffer on Submit and apply the value.
                 if event.keycode == KEY_ENTER
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
-                    delete_selection_if_any(store, id);
-                    if let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(id)
-                    {
-                        text.insert(*caret, '\n');
-                        *caret += 1;
-                        events.push(WidgetEvent::TextChanged(id));
+                    if store.is_multiline_text(id) {
+                        delete_selection_if_any(store, id);
+                        if let Some(InteractiveState::TextInput { text, caret, .. }) =
+                            store.get_mut(id)
+                        {
+                            text.insert(*caret, '\n');
+                            *caret += 1;
+                            events.push(WidgetEvent::TextChanged(id));
+                        }
+                    } else {
+                        if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
+                            *state = crate::widget::TextInputState::Normal;
+                        }
+                        store.set_focus(None);
+                        events.push(WidgetEvent::Submit(id));
+                        events.push(WidgetEvent::Blur(id));
                     }
                     return events.into_bump_slice();
                 }
@@ -206,7 +228,7 @@ pub fn dispatch_key<'frame>(
                 // M14.7 polish: Esc on the rename TextInput emits
                 // `Cancel` so hero can drop the rename mode without
                 // committing.
-                if id == crate::screens::hero::ids::HIER_RENAME_INPUT
+                if id == crate::ids::HIER_RENAME_INPUT
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
                     if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {

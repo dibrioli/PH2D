@@ -285,8 +285,27 @@ fn in_test_module(ranges: &[(usize, usize)], byte_offset: usize) -> bool {
 /// from `crate_root.join("src/widget")` which neither a pure-forward
 /// nor pure-back string match catches.
 fn path_is_allowlisted(path: &Path) -> bool {
-    path.components()
+    // Skip the blender_color_picker sub-tree (HSV→RGB math tables
+    // genuinely live outside the theme system; that decision is
+    // documented per-call with `// LITERAL-COLOR-OK:` markers in
+    // the source).
+    if path
+        .components()
         .any(|c| c.as_os_str() == "blender_color_picker")
+    {
+        return true;
+    }
+    // Wave 7 Stage 3: files explicitly named `tests.rs` (or
+    // `*_tests.rs`) are sibling-extracted test files (per the
+    // `#[cfg(test)] mod tests;` pattern). Treat as test-only code —
+    // hex literals here are sentinels for assertion comparisons, not
+    // shipped colors.
+    if let Some(name) = path.file_name().and_then(|n| n.to_str())
+        && (name == "tests.rs" || name.ends_with("_tests.rs"))
+    {
+        return true;
+    }
+    false
 }
 
 #[test]

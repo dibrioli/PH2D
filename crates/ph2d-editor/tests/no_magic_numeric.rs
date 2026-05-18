@@ -227,8 +227,21 @@ fn line_has_allowlist(line: &str) -> bool {
 /// tables that legitimately use raw numerics (60.0 / 360.0 hue,
 /// 0.6 / 0.7 lightness, etc.); same allow as `no_literal_color`.
 fn path_is_allowlisted(path: &Path) -> bool {
-    path.components()
+    if path
+        .components()
         .any(|c| c.as_os_str() == "blender_color_picker")
+    {
+        return true;
+    }
+    // Wave 7 Stage 3: extracted `tests.rs` / `*_tests.rs` siblings
+    // (per `#[cfg(test)] mod tests;` pattern) are test-only files —
+    // magic numerics here are assertion sentinels, not chrome dims.
+    if let Some(name) = path.file_name().and_then(|n| n.to_str())
+        && (name == "tests.rs" || name.ends_with("_tests.rs"))
+    {
+        return true;
+    }
+    false
 }
 
 /// Half-open byte ranges that fall inside a `#[cfg(test)] mod tests { … }`

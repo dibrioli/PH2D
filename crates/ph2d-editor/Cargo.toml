@@ -52,9 +52,9 @@ ph2d-grid = { path = "../ph2d-grid" }
 # migration is an impl swap, not a call-site rename. See HR-15.
 ph2d-i18n = { path = "../ph2d-i18n" }
 # Interaction infrastructure (ADR-0024 plan, HR-3 zero-alloc):
-# - smallvec: HitIndex inline storage (no heap until > 128 widgets).
-# - bumpalo: per-frame arena for emitted WidgetEvents.
-smallvec = "1"
+# - bumpalo: per-frame arena for emitted WidgetEvents. smallvec moved
+#   to ph2d-editor-core with `interaction/` in Wave 6+7 Phase 2 and is
+#   no longer a direct ph2d-editor dep.
 bumpalo = { version = "3", features = ["collections"] }
 # image — imageops::resize (lanczos) for bgremoval thumbnail downscale
 # + guided-filter ops. `default-features = false` strips decoders

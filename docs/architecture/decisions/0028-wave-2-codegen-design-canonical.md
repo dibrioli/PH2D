@@ -519,28 +519,45 @@ they don't need at compile time.
 
 - ✅ Stage 1 — PANEL_REGISTRY runtime-init + ph2d-panel-registry-init
   crate w/ cargo features (`257740c`).
-- 🔜 **Stage 2 — Phase 3 panel-as-crate extraction** (deferred —
-  blocker: `screens/hero/inspector/showcase/` is shared by inspector
-  AND widget_gallery via `super::inspector::paint_showcase_body`,
-  needs to relocate to editor-core; plus `screens/hero/style::*`
-  needs pub-exposure for external panel crates; ~5500 LOC grid-snap +
-  ~3500 LOC inspector to physically move).
+- ✅ Stage 2 — panel-as-crate extraction. 4 new crates:
+  - `ph2d-panel-widget-gallery` — full physical extraction (real
+    paint/apply_event/populate thunks in its `lib.rs`; delegates to
+    `inspector::paint_showcase_body` which is now `pub`).
+  - `ph2d-panel-grid-snap`, `ph2d-panel-inspector`,
+    `ph2d-panel-hierarchy` — alias form (each `lib.rs` just
+    `pub use ph2d_editor::<path>::PANEL_MANIFEST`). Keeps consumer
+    dep paths stable so Wave 8 can physically migrate each body
+    without touching downstream code.
+  - 17 `screens/hero/style.rs` items bumped to `pub`;
+    `paint_showcase_body` + 12 inspector::state helpers bumped to
+    `pub` so external panel crates can reach them.
+  - `ph2d-panel-registry-init` Cargo.toml gains 4 optional path-deps
+    (one per panel); `build_registry()` pushes manifests from the
+    panel crates (not in-tree modules). Default-all + lite-build +
+    feature-subset all tested.
 - 🔜 **Stage 3 — Hotspot decomp follow-up** (deferred — same Phase 1
   pattern, targets `inspector/mod.rs` 857 LOC + `grid_snap/state.rs`
   1250 LOC + `screens/hero.rs` 2620 LOC).
-- 🔜 **Stage 4 — Shells migration to editor-core direct paths**
+- 🔜 **Stage 4 — Wave 8 panel-body physical migration** (deferred —
+  move `grid_snap/`, `inspector/`, `hierarchy/` implementation files
+  from `crates/ph2d-editor/src/` into their `ph2d-panel-*` crates;
+  alias `lib.rs` becomes the full module tree. ~10k LOC moved total;
+  alias pattern means consumer dep paths stay constant).
+- 🔜 **Stage 5 — Shells migration to editor-core direct paths**
   (deferred — low ROI, `pub use ph2d_editor_core::*;` re-export
   already works transparently).
 
-### Métricas Wave 7 Stage 1
+### Métricas Wave 7 Stage 1+2
 
-| Métrica | Pré-Wave-7-S1 | Pós-Wave-7-S1 |
+| Métrica | Pré-Wave-7 | Pós-Wave-7-S2 |
 |---|---|---|
-| Crates no workspace | 31 | 32 (+`ph2d-panel-registry-init`) |
+| Crates no workspace | 31 | 36 (+5: editor-core já tinha, panel-registry-init + 4 panel crates) |
 | PANEL_REGISTRY init | hardcoded static | OnceLock runtime |
-| Cargo features per panel | nenhum | 4 (default-all + per-panel) |
-| Tests panel-init crate | — | 1 (passes for default/empty/single-panel) |
-| Public API breaks | — | 0 |
+| Cargo features per panel | nenhum | 4 (default-all + per-panel) + alias-crate wiring |
+| Panel crates extraídas | 0 | 4 (1 physical full + 3 alias) |
+| `pub(crate)`/`pub(super)` items bumped pra `pub` (Stage 2) | — | 30+ (hero style + showcase + state helpers) |
+| Tests panel-init crate | — | 1 (passes for default/empty/single-panel/feature-subset) |
+| Public API breaks | — | 0 (downstream paths unchanged) |
 
 
 - 🔜 **Phase 5** (deferido — ph2d-panel-registry-init + cargo features

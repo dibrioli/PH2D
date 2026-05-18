@@ -35,6 +35,7 @@ use ph2d_vector::{Color as VelloColor, VectorScene};
 /// painters are re-exported `pub` here so external callers
 /// (`screens::hero::paint_hero_screen`) keep using
 /// `screens::hero::hierarchy::paint_hierarchy` unchanged.
+mod apply_event;
 mod panel_painter;
 mod row_painter;
 pub use panel_painter::paint_hierarchy;
@@ -78,8 +79,8 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
-    false
+fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
+    apply_event::apply_event_full(hero, ev)
 }
 
 pub fn populate(store: &mut WidgetStore) {

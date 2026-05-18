@@ -130,9 +130,11 @@ fn paint_thunk(ctx: &mut PaintCtx) {
     }
 }
 
-fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
-    false
+fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
+    apply_event_full::apply_event_full(hero, ev)
 }
+
+mod apply_event_full;
 
 const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset (between Spacing::Md and Lg; chrome-specific)
 const ROW_GAP: f32 = Spacing::Sm.px();

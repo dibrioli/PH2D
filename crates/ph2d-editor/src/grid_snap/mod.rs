@@ -138,6 +138,15 @@ fn paint_thunk(ctx: &mut PaintCtx) {
 }
 
 fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
+    // TOPBAR_GRID_SETTINGS pill toggle — although TOPBAR_* is normally
+    // chrome, this single id maps 1:1 to the grid-snap panel visibility
+    // and has no other meaning, so we own it here too.
+    if let WidgetEvent::Click(id) = ev
+        && id == crate::screens::hero::ids::TOPBAR_GRID_SETTINGS
+    {
+        hero.grid.snap_state.panel_visible = !hero.grid.snap_state.panel_visible;
+        return true;
+    }
     // GS_COLOR_PICKER click — open the BlenderColorPicker bound to
     // the grid-snap color slot, seeding widget_color from the live
     // `state.color_rgba` so the picker reads the right initial hue.
@@ -152,5 +161,15 @@ fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> bool {
             .set_picker_target(Some(crate::grid_snap::ids::GS_COLOR_PICKER));
         return true;
     }
-    false
+    // Delegate remaining grid-snap panel events (GS_CLOSE, kind options,
+    // snap target options, neighborhood options, snap toggle, overlay
+    // toggle, opacity slider, probes, etc.) to the panel's own handler.
+    // Synchronize the thread-local display_unit / ppm so user-typed
+    // numeric values (in display unit) convert correctly back to
+    // sim-space meters before writing into state.
+    crate::grid_snap::set_current_display_unit(
+        hero.project.display_unit,
+        hero.project.pixels_per_meter,
+    );
+    crate::grid_snap::apply_event(&mut hero.grid.snap_state, ev, &hero.store)
 }

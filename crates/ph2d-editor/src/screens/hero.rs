@@ -58,9 +58,10 @@ pub use selection::paint_selection_overlay;
 pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 pub use topbar::paint_top_bar;
 
+#[cfg(test)]
+use crate::interaction::InteractiveState;
 use crate::interaction::{
-    HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_pointer,
-    dispatch_pointer_with_text,
+    HitIndex, WidgetEvent, WidgetStore, dispatch_pointer, dispatch_pointer_with_text,
 };
 use crate::zones::Rect;
 use bumpalo::Bump;
@@ -615,54 +616,14 @@ impl HeroScreen {
                 return true;
             }
         }
-        // M14.6B: hierarchy drag-reparent. Dispatcher emits one
-        // `HierReparent` per drop in addition to mutating the panel
-        // store. Live (ECS) mode reads it via the bus and the shell
-        // applies `ChildOf` accordingly. Fixture mode can ignore it
-        // (the store mutation is already in place).
+        // HierReparent + hier_eye/expand companion bits — handled
+        // by `hierarchy::apply_event_thunk` via the panel iteration
+        // above (Wave 6+7 Phase 4 distribution). Removed from here.
         //
-        // Wave 2.5 PR 11.8c: bus migration (was `pending_reparent`).
-        if let WidgetEvent::HierReparent {
-            dragged,
-            new_parent,
-            before,
-            after,
-        } = event
-        {
-            self.bus.push(crate::action_bus::EditorAction::HierReparent(
-                HierReparentIntent {
-                    dragged,
-                    new_parent,
-                    before,
-                    after,
-                },
-            ));
-            return true;
-        }
         // Theme + radius selector from the TopBar theme menu —
         // intercepted at the Hero level because `self.theme` lives
         // here, not on the WidgetStore.
         if let WidgetEvent::Click(id) = event {
-            // M14.6A: hierarchy eye-toggle clicks arrive as a
-            // companion NodeId with the EYE_TOGGLE_BIT set. Push
-            // `EditorAction::HierToggleVisibility { row }` for the
-            // shell to drain, then short-circuit so the row's
-            // regular click (selection / inspector focus) does NOT
-            // also fire.
-            //
-            // Wave 2.5 PR 11.8c: bus migration (was `pending_visibility_toggle`).
-            if let Some(row_id) = ids::hier_eye_companion_to_row(id) {
-                self.bus
-                    .push(crate::action_bus::EditorAction::HierToggleVisibility { row: row_id });
-                return true;
-            }
-            // M14.6C: chevron click on a hierarchy parent row.
-            // Toggles the panel's view-only collapse state — does
-            // not touch the ECS `ChildOf` hierarchy.
-            if let Some(row_id) = ids::hier_expand_companion_to_row(id) {
-                self.store.toggle_hierarchy_collapsed(row_id);
-                return true;
-            }
             let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
                 Some(Theme::Forge)
             } else if id == ids::CTX_MENU_THEME_PAINT {
@@ -796,54 +757,8 @@ impl HeroScreen {
                 self.store.close_context_menu();
                 return true;
             }
-            // M14.6 F: per-row Hierarchy actions. Each menu entry
-            // pulls the target `row` NodeId from the most-recently
-            // closed `HierarchyRow { row }` snapshot (dispatch moves
-            // the request from `context_menu` to `last_context_menu`
-            // on the menu-closing Down event), pushes the matching
-            // `EditorAction::Hier*` variant onto the bus, and exits.
-            // The shell drains next frame and runs the ECS mutation.
-            //
-            // Wave 2.5 PR 11.8c: bus migration (was `pending_duplicate`,
-            // `pending_add_child`, `pending_reset_transform`,
-            // `pending_delete`, `pending_rename_seed`).
-            if id == ids::CTX_MENU_HIER_DUPLICATE
-                || id == ids::CTX_MENU_HIER_ADD_CHILD
-                || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
-                || id == ids::CTX_MENU_HIER_DELETE
-                || id == ids::CTX_MENU_HIER_RENAME
-            {
-                if let Some(req) = self.store.consume_last_context_menu()
-                    && let crate::interaction::ContextMenuKind::HierarchyRow { row } = req.kind
-                {
-                    if id == ids::CTX_MENU_HIER_DUPLICATE {
-                        self.bus
-                            .push(crate::action_bus::EditorAction::HierDuplicate { row });
-                    } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
-                        self.bus
-                            .push(crate::action_bus::EditorAction::HierAddChild { row });
-                    } else if id == ids::CTX_MENU_HIER_RESET_TRANSFORM {
-                        self.bus
-                            .push(crate::action_bus::EditorAction::HierResetTransform { row });
-                    } else if id == ids::CTX_MENU_HIER_DELETE {
-                        self.bus
-                            .push(crate::action_bus::EditorAction::HierDelete { row });
-                    } else if id == ids::CTX_MENU_HIER_RENAME {
-                        // M14.7 polish: enter inline-rename mode for
-                        // this row. Painter swaps the name label for
-                        // a TextInput; `HierRenameSeed` tells the
-                        // shell to fill the buffer with the entity's
-                        // current Name on the next frame (one-shot —
-                        // re-seeding every frame would clobber the
-                        // user's Backspace edits).
-                        open_rename(&mut self.store);
-                        self.hierarchy.rename_target_row = Some(row);
-                        self.bus
-                            .push(crate::action_bus::EditorAction::HierRenameSeed { row });
-                    }
-                }
-                return true;
-            }
+            // CTX_MENU_HIER_* per-row Hierarchy actions — handled by
+            // `hierarchy::apply_event_thunk` via panel iteration.
             // M14.7 polish (6.3): top-level Settings cascade entry.
             // Clicking "Pixels per meter \u{25b6}" REPLACES the top-
             // level menu with the px/m presets submenu. Anchored to
@@ -981,58 +896,10 @@ impl HeroScreen {
             self.image_edit.mode_on = !self.image_edit.mode_on;
             return true;
         }
-        // Widget Gallery toggle — palette pill in the TopBar opens /
-        // closes the floating reference panel. State lives on
-        // `HeroScreen::widget_gallery_visible`; geometry is materialized
-        // lazily on the first show against the current viewport (see
-        // `paint_hero_screen`). Same handler covers the panel's own
-        // close (X) hit registered at `GAL_CLOSE` so dismissing from
-        // either entry point goes through one code path.
-        if let WidgetEvent::Click(id) = event
-            && (id == ids::TOPBAR_WIDGET_GALLERY || id == ids::GAL_CLOSE)
-        {
-            self.view.widget_gallery_visible = !self.view.widget_gallery_visible;
-            return true;
-        }
-        // Grid Settings panel toggle — TopBar pill toggles the
-        // floating panel. Inner panel widgets (close X, kind dropdown,
-        // toggles) are routed below via `grid_snap::apply_event`.
-        if let WidgetEvent::Click(id) = event
-            && id == ids::TOPBAR_GRID_SETTINGS
-        {
-            self.grid.snap_state.panel_visible = !self.grid.snap_state.panel_visible;
-            return true;
-        }
-        // Color swatch click — open the BlenderColorPicker bound to
-        // the grid-snap color slot, seed widget_color from the current
-        // state.color_rgba so the picker reads the right initial hue.
-        if let WidgetEvent::Click(id) = event
-            && id == crate::grid_snap::ids::GS_COLOR_PICKER
-        {
-            self.store.set_widget_color(
-                crate::grid_snap::ids::GS_COLOR_PICKER,
-                self.grid.snap_state.color_rgba,
-            );
-            self.store
-                .set_picker_target(Some(crate::grid_snap::ids::GS_COLOR_PICKER));
-            return true;
-        }
-        // Route remaining events into the grid-snap panel's own handler
-        // — covers GS_CLOSE, kind options, snap target options,
-        // neighborhood options, snap toggle, overlay toggle, opacity
-        // slider, probes, etc. Pass `&self.store` so the handler can
-        // read post-flip `on` from Toggles + post-edit numeric values.
-        // The panel publishes display_unit + ppm via a thread-local
-        // so `apply_value_changed` can convert user-typed values (in
-        // display unit) back to sim-space meters before writing into
-        // state.
-        crate::grid_snap::set_current_display_unit(
-            self.project.display_unit,
-            self.project.pixels_per_meter,
-        );
-        if crate::grid_snap::apply_event(&mut self.grid.snap_state, event, &self.store) {
-            return true;
-        }
+        // Widget Gallery + Grid Settings panel toggles, GS_COLOR_PICKER
+        // seeding, and the grid-snap panel-inner delegation — all
+        // handled by their respective panel thunks via the iteration
+        // at the top (Wave 6+7 Phase 4 distribution).
         // Trim Transparency action — push `EditorAction::Trim` onto
         // the bus with whatever entity the gizmo currently has
         // selected. Host drains next frame via `hero.bus.drain()`.
@@ -1109,307 +976,16 @@ impl HeroScreen {
         if left_rail::apply_event(&mut self.store, event) {
             return true;
         }
-        // M14.6 D: when a click lands on a live hierarchy row, raise
-        // `pending_hierarchy_row_click` BEFORE the hierarchy itself
-        // consumes the event. The host drains and resolves the row →
-        // sim entity, then updates `gizmo_selection` so the canvas
-        // gizmo follows the hierarchy click. This runs before
-        // `hierarchy::apply_event` so the existing selection-label
-        // update still happens too.
-        // Wave 2.5 PR 11.8c: bus migration (was `pending_hierarchy_row_click`).
-        if let WidgetEvent::Click(id) = event
-            && let Some(live) = self.hierarchy.live_entries.as_ref()
-            && live.contains_key(&id)
-        {
-            self.bus
-                .push(crate::action_bus::EditorAction::HierRowClick { row: id });
-        }
-        // M14.7 polish: double-click on a hierarchy row → focus the
-        // entity (same intent as F/Home, but explicit gesture on the
-        // panel). We still push `HierRowClick` so the gizmo selection
-        // updates first; then the view-focus drain pans the camera
-        // onto the freshly-selected entity.
-        //
-        // Wave 2.5 PR 11.8c: HierRowClick on the bus. `pending_view_focus`
-        // is Stage C scope — still a field for now.
-        if let WidgetEvent::DoubleClick(id) = event
-            && let Some(live) = self.hierarchy.live_entries.as_ref()
-            && live.contains_key(&id)
-        {
-            self.bus
-                .push(crate::action_bus::EditorAction::HierRowClick { row: id });
-            self.bus
-                .push(crate::action_bus::EditorAction::SetViewFocus {
-                    kind: ViewFocusKind::Selected,
-                });
-            return true;
-        }
-        // M14.7 polish: long-press on a hierarchy row → enter inline
-        // rename mode. Same effect as right-click → "Rename..." but
-        // modeless — works on touch / pen where a context menu isn't
-        // the natural gesture.
-        //
-        // Wave 2.5 PR 11.8c: bus migration (was `pending_rename_seed`).
-        if let WidgetEvent::LongPress(id) = event
-            && let Some(live) = self.hierarchy.live_entries.as_ref()
-            && live.contains_key(&id)
-        {
-            open_rename(&mut self.store);
-            self.hierarchy.rename_target_row = Some(id);
-            self.bus
-                .push(crate::action_bus::EditorAction::HierRenameSeed { row: id });
-            return true;
-        }
-        // M14.7 polish: inline-rename commit / cancel for the
-        // hierarchy row in rename mode. The dispatch's Enter / Esc
-        // path emits these on `HIER_RENAME_INPUT`.
-        //
-        // Wave 2.5 PR 11.8c: bus migration (was `pending_rename_commit`).
-        if let WidgetEvent::Submit(id) = event
-            && id == ids::HIER_RENAME_INPUT
-            && let Some(row) = self.hierarchy.rename_target_row.take()
-        {
-            let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
-                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => text.clone(),
-                _ => String::new(),
-            };
-            let trimmed = buf.trim().to_owned();
-            if !trimmed.is_empty() {
-                self.bus
-                    .push(crate::action_bus::EditorAction::HierRenameCommit {
-                        row,
-                        new_name: trimmed,
-                    });
-            }
-            return true;
-        }
-        if let WidgetEvent::Cancel(id) = event
-            && id == ids::HIER_RENAME_INPUT
-        {
-            self.hierarchy.rename_target_row = None;
-            return true;
-        }
-        // M14.7 polish: click outside the rename TextInput → commit
-        // (Finder / macOS convention). Without this, focus left
-        // HIER_RENAME_INPUT but `rename_target_row` stayed Some, so
-        // the row remained in edit mode visually with no caret.
-        // Treat the Blur as an implicit Submit: stage the current
-        // buffer as a HierRenameCommit, drop rename mode.
-        if let WidgetEvent::Blur(id) = event
-            && id == ids::HIER_RENAME_INPUT
-            && let Some(row) = self.hierarchy.rename_target_row.take()
-        {
-            let buf = match self.store.get(ids::HIER_RENAME_INPUT) {
-                Some(crate::interaction::InteractiveState::TextInput { text, .. }) => text.clone(),
-                _ => String::new(),
-            };
-            let trimmed = buf.trim().to_owned();
-            if !trimmed.is_empty() {
-                self.bus
-                    .push(crate::action_bus::EditorAction::HierRenameCommit {
-                        row,
-                        new_name: trimmed,
-                    });
-            }
-            // Don't return true — Blur isn't "consumed" exclusively
-            // by rename; other panels may want to observe it too.
-        }
-        if hierarchy::apply_event(
-            &mut self.store,
-            &mut self.selection,
-            self.hierarchy.live_entries.as_ref(),
-            event,
-        ) {
-            return true;
-        }
-        // M14.5 inspector phase (6.4): Reimport button → push
-        // `EditorAction::Reimport { entity_bits }` so the shell
-        // re-decodes the source asset at the current
-        // `project.pixels_per_meter`. Captured BEFORE delegating to
-        // `inspector::apply_event` because that helper doesn't know
-        // about HeroScreen-level bus.
-        //
-        // Wave 2.5 PR 11.8b3: bus migration (was `pending_reimport`).
-        if let WidgetEvent::Click(id) = event
-            && id == ids::INSP_RENDER_SOURCE_REIMPORT
-            && let Some(info) = self.inspector.sprite.as_ref()
-            && info.can_reimport
-        {
-            self.bus.push(crate::action_bus::EditorAction::Reimport {
-                entity_bits: info.entity_bits,
-            });
-            return true;
-        }
-        // M14.A: Transform editor commits — ValueChanged on any of the
-        // 5 NumberInputs (Enter / blur per `dispatch_key` semantics)
-        // builds a fresh `InspectorTransformInfo` from the current
-        // store values and publishes it via `pending_transform_edit`.
-        // The shell drains this once per frame and pushes a
-        // `EditorCommand::SetComponent` for `Transform` (first real
-        // consumer of the editor command pipeline).
-        if let WidgetEvent::ValueChanged(id) = event
-            && matches!(
-                id,
-                ids::INSP_TRANSFORM_POS_X
-                    | ids::INSP_TRANSFORM_POS_Y
-                    | ids::INSP_TRANSFORM_ROT
-                    | ids::INSP_TRANSFORM_SCALE_X
-                    | ids::INSP_TRANSFORM_SCALE_Y,
-            )
-            && let Some(info) = self.inspector.transform
-        {
-            // Store holds Position in the active DisplayUnit (Meters
-            // or Pixels). Convert back to sim-space meters before
-            // publishing — sim storage is always meters per the unit
-            // policy in `project::DisplayUnit`.
-            let unit = self.project.display_unit;
-            let ppm = self.project.pixels_per_meter;
-            let x_disp = self
-                .store
-                .number_value(ids::INSP_TRANSFORM_POS_X)
-                .unwrap_or(unit.from_meters(info.translation[0], ppm) as f64)
-                as f32;
-            let y_disp = self
-                .store
-                .number_value(ids::INSP_TRANSFORM_POS_Y)
-                .unwrap_or(unit.from_meters(info.translation[1], ppm) as f64)
-                as f32;
-            let x = unit.to_meters(x_disp, ppm);
-            let y = unit.to_meters(y_disp, ppm);
-            let rot_deg =
-                self.store
-                    .number_value(ids::INSP_TRANSFORM_ROT)
-                    .unwrap_or((info.rotation_rad as f64).to_degrees()) as f32;
-            let sx = self
-                .store
-                .number_value(ids::INSP_TRANSFORM_SCALE_X)
-                .unwrap_or(info.scale[0] as f64) as f32;
-            let sy = self
-                .store
-                .number_value(ids::INSP_TRANSFORM_SCALE_Y)
-                .unwrap_or(info.scale[1] as f64) as f32;
-            // Wave 2.5 PR 11.8d: bus migration (was `pending_transform_edit`).
-            self.bus
-                .push(crate::action_bus::EditorAction::InspectorTransformEdit(
-                    InspectorTransformInfo {
-                        entity_bits: info.entity_bits,
-                        translation: [x, y],
-                        rotation_rad: rot_deg.to_radians(),
-                        scale: [sx, sy],
-                    },
-                ));
-            return true;
-        }
-        // Reset-to-Identity button — publishes the Identity transform
-        // for the currently selected entity. Same path as a field
-        // commit so the shell's queue-push code path stays uniform.
-        //
-        // Wave 2.5 PR 11.8d: bus migration (was `pending_transform_edit`).
-        if let WidgetEvent::Click(id) = event
-            && id == ids::INSP_TRANSFORM_RESET
-            && let Some(info) = self.inspector.transform
-        {
-            self.bus
-                .push(crate::action_bus::EditorAction::InspectorTransformEdit(
-                    InspectorTransformInfo {
-                        entity_bits: info.entity_bits,
-                        translation: [0.0, 0.0],
-                        rotation_rad: 0.0,
-                        scale: [1.0, 1.0],
-                    },
-                ));
-            return true;
-        }
-        // M14.D: Visibility checkbox toggled. The dispatch already
-        // flipped `CheckboxValue` in the store and emitted
-        // `WidgetEvent::Toggled(INSP_VISIBILITY_CHECK)`; we read the
-        // POST-toggle value and publish `pending_visibility_edit` for
-        // the shell to push as `EditorCommand::SetComponent` for the
-        // `ph2d_ecs::Visibility` component.
-        if let WidgetEvent::Toggled(id) = event
-            && id == ids::INSP_VISIBILITY_CHECK
-            && let Some(info) = self.inspector.visibility
-        {
-            let visible = matches!(
-                self.store.checkbox(id).map(|(_, v)| v),
-                Some(crate::widget::CheckboxValue::Checked),
-            );
-            // Wave 2.5 PR 11.8d: bus migration (was `pending_visibility_edit`).
-            self.bus
-                .push(crate::action_bus::EditorAction::InspectorVisibilityEdit(
-                    InspectorVisibilityInfo {
-                        entity_bits: info.entity_bits,
-                        visible,
-                    },
-                ));
-            return true;
-        }
-        // M14.C: Render Source Strategy switcher. A click on a
-        // non-pressed button raises `pending_sprite_source_change`
-        // with the requested kind; the shell does the renderer-side
-        // swap on drain. Clicks on the already-Pressed button are
-        // consumed silently (no-op).
-        if let WidgetEvent::Click(id) = event
-            && let Some(requested) = match id {
-                ids::INSP_RENDER_STRATEGY_ATLAS => Some(RequestedSpriteStrategy::Atlas),
-                ids::INSP_RENDER_STRATEGY_INDIVIDUAL => Some(RequestedSpriteStrategy::Individual),
-                ids::INSP_RENDER_STRATEGY_HANDPACKED => Some(RequestedSpriteStrategy::HandPacked),
-                _ => None,
-            }
-            && let Some(info) = self.inspector.sprite.as_ref()
-        {
-            let current = match info.source_kind {
-                InspectorSpriteSource::Atlas { .. } => RequestedSpriteStrategy::Atlas,
-                InspectorSpriteSource::Individual { .. } => RequestedSpriteStrategy::Individual,
-                InspectorSpriteSource::HandPacked => RequestedSpriteStrategy::HandPacked,
-            };
-            if requested != current {
-                // Wave 2.5 PR 11.8d: bus migration (was `pending_sprite_source_change`).
-                self.bus.push(
-                    crate::action_bus::EditorAction::InspectorSpriteSourceChange {
-                        entity_bits: info.entity_bits,
-                        strategy: requested,
-                    },
-                );
-            }
-            // Audit fix #7 (HIGH): reset the just-clicked button's
-            // stored state back to Normal regardless of whether the
-            // swap will succeed. The painter re-pins the matching
-            // strategy to Pressed each frame from the snapshot, so
-            // leaving the clicked button in the dispatch-set
-            // Pressed/Hovered state would visually claim "active" on
-            // a button that the host either rejected (toast path) or
-            // is about to overwrite anyway. Clearing here keeps the
-            // painter's snapshot-driven pin as the single source of
-            // visual truth for which strategy is "current".
-            if let Some(InteractiveState::Button { state }) = self.store.get_mut(id) {
-                *state = crate::widget::ButtonState::Normal;
-            }
-            return true;
-        }
-        // M14.E: entity-name TextInput edits. Live commit on every
-        // `TextChanged`. Wave 2.5 PR 11.8d: bus migration (was
-        // `pending_name_edit`). The `Option`-coalescing of the old
-        // field is replaced by Vec push — each keystroke queues
-        // one InspectorNameEdit. In practice one keystroke = one
-        // frame, so the queue depth per drain is 0 or 1 either way.
-        if let WidgetEvent::TextChanged(id) = event
-            && id == ids::INSP_ENTITY_NAME
-            && let Some(info) = self.inspector.name.as_ref()
-        {
-            let text = self.store.text(id).unwrap_or("").to_string();
-            self.bus
-                .push(crate::action_bus::EditorAction::InspectorNameEdit(
-                    InspectorNameInfo {
-                        entity_bits: info.entity_bits,
-                        name: text,
-                    },
-                ));
-            return true;
-        }
-        if inspector::apply_event(&mut self.store, event) {
-            return true;
-        }
+        // Hierarchy row clicks (live + fixture), DoubleClick (focus),
+        // LongPress (rename), Submit/Cancel/Blur on HIER_RENAME_INPUT,
+        // and the selection-label update — all handled by
+        // `hierarchy::apply_event_thunk` via panel iteration (Wave 6+7
+        // Phase 4 distribution).
+        // Inspector — Reimport, Transform commits, Visibility checkbox,
+        // Render Strategy switcher, entity-name edits, section header
+        // toggles + context-menu items — all handled by
+        // `inspector::apply_event_thunk` via panel iteration (Wave 6+7
+        // Phase 4 distribution).
         false
     }
 
@@ -1437,6 +1013,10 @@ impl HeroScreen {
 /// `widget_color` / `panel_z` / `panel_scroll` / `tooltip` entries,
 /// so the force-overwrite `store.register` (vs `register_if_absent`)
 /// only resets buffer / caret / state — the intended effect.
+pub fn open_rename_public(store: &mut crate::interaction::WidgetStore) {
+    open_rename(store)
+}
+
 fn open_rename(store: &mut crate::interaction::WidgetStore) {
     store.register(
         ids::HIER_RENAME_INPUT,

@@ -244,16 +244,16 @@ Em qualquer outra situação, escope.
 ## 12. LOC threshold para validação (v1.1)
 
 **Regra:** não rode `cargo check` antes de ter editado/movido pelo
-menos ~600 LOC novos/movidos OU completado uma operação lógica coesa
+menos ~1200 LOC novos/movidos OU completado uma operação lógica coesa
 (ex: criar um módulo inteiro). Cada `cargo check` custa 10-30s +
 redirecionamento mental — antes de ter um chunk significativo, é
 noise.
 
 | LOC editados/movidos | Comando OK |
 |----------------------|-----------|
-| 0-200 | NADA. Continue editando. |
-| 200-600 | `cargo check -p <crate>` opcional (se você está incerto). |
-| 600+ ou módulo inteiro | `cargo check -p <crate>` — sane stop. |
+| 0-400 | NADA. Continue editando. |
+| 400-1200 | `cargo check -p <crate>` opcional (se você está incerto). |
+| 1200+ ou módulo inteiro | `cargo check -p <crate>` — sane stop. |
 | Phase fechada (múltiplos crates) | `cargo check --workspace` (NÃO test). |
 | Antes do commit | **nada** — hook valida. |
 
@@ -406,9 +406,10 @@ Caso especial OK:
 
 ## 19. Versão + revisão
 
-**Versão atual:** 1.1 (2026-05-18 sessão tarde)
-**Origem:** Enio observou que mesmo após v1.0 a LLM continuava
-lenta em Wave 8 Phase 2 — pediu MAIS estratégias.
+**Versão atual:** 1.2 (2026-05-18 sessão noite)
+**Origem:** v1.1 estabilizou cadência mas ainda lenta para Enio.
+v1.2 dobra o LOC threshold pra ~1200 (de 600), mais raros checkpoints,
+mais editing burst entre validações.
 
 **Revise este doc se:**
 - Pre-commit hook mudar de comportamento.

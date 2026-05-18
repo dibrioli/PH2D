@@ -40,6 +40,16 @@ Vide [`~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/
 para feedback acumulado, perfil do Enio, estado do projeto, paths canônicos.
 LLM nova chegando lê esse índice antes de tomar ações.
 
+## Cadência de validação (codificação rápida)
+
+[`docs/DIRETRIZ_CODIFICACAO_RAPIDA.md`](docs/DIRETRIZ_CODIFICACAO_RAPIDA.md)
+— quando rodar `cargo check -p <crate>` vs `cargo test --workspace`,
+quando confiar no pre-commit hook em vez de duplicar a validação, e
+quando granular-commitar vs acumular em blocos durante Waves. **LLM
+deve ler antes de começar refactor multi-arquivo** — over-validation
+mata produtividade (5-10min de espera por commit quando o hook já
+roda a mesma matriz).
+
 ## Plano operacional ativo
 
 [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) — 13

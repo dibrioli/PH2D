@@ -20,19 +20,23 @@
 //! [`populate`].
 #![allow(dead_code)]
 
-mod notes;
 mod populate;
 mod sections;
-mod showcase;
 mod state;
 
-use notes::paint_one_note;
 pub use populate::populate;
 pub(in crate::screens::hero) use sections::{
     paint_entity_name_row, paint_render_source_section, paint_transform_section,
     paint_visibility_row,
 };
-pub use showcase::paint_showcase_body;
+// Wave 8 Phase 2.A — showcase + notes + shared helpers moved to
+// editor-core::widget::showcase. Re-exported here for backwards
+// compat with existing `inspector::*` import paths.
+pub use ph2d_editor_core::widget::showcase::{
+    NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, RADIO_GROUP_IDS, SECTION_COLOR_IDS,
+    TAB_GROUP_IDS, TREE_LEAF_IDS, active_index, paint_one_note, paint_section_separator,
+    paint_showcase_body, read_combobox, read_number_input, read_text_input,
+};
 use state::{
     LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y, current_inspector_name_is_some,
     current_inspector_sprite, current_inspector_transform, current_inspector_visibility,
@@ -54,12 +58,11 @@ use super::style::{
     panel_resize_handle_rect,
 };
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, paint_text_title, rect_to_vello, resolve};
+use crate::paint::{paint_text, paint_text_title, rect_to_vello, resolve};
 use crate::panel_registry::{PaintCtx, PanelManifest};
 use crate::screens::hero::HeroScreen;
-use crate::widget::{ButtonState, ComboboxState, Dropdown, DropdownOption, TextInputState};
+use crate::widget::{ButtonState, Dropdown, DropdownOption};
 use crate::zones::Rect;
-use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -146,83 +149,9 @@ const FIELD_H: f32 = Spacing::Xl3.px();
 // back on ph2d-editor. Re-exported here for legacy
 // `inspector::{SECTION_IDS,LIVE_SECTION_IDS}` import-path stability.
 pub use ph2d_editor_core::ids::{LIVE_SECTION_IDS, SECTION_IDS};
-
-/// Color-circle hit ids — one per section header, in the same
-/// order as `SECTION_IDS`. Clicking any of these opens the global
-/// color picker editing `widget_colors[circle_id]`.
-pub(super) const SECTION_COLOR_IDS: [ph2d_a11y::NodeId; 10] = [
-    ids::INSP_SECTION_INPUTS_COLOR,
-    ids::INSP_SECTION_SLIDER_COLOR,
-    ids::INSP_SECTION_SWITCHES_COLOR,
-    ids::INSP_SECTION_LISTS_COLOR,
-    ids::INSP_SECTION_VECTOR_COLOR,
-    ids::INSP_SECTION_STATUS_COLOR,
-    ids::INSP_SECTION_COLOR_COLOR,
-    ids::INSP_SECTION_ACTIONS_COLOR,
-    ids::INSP_SECTION_IDENTITY_COLOR,
-    ids::INSP_SECTION_CARD_COLOR,
-];
-
-/// Ids of the three Radio buttons that form the Switches sample's
-/// segmented "Low / Mid / High" group. Same trick used for the
-/// "Edit / Play / Debug" tabs — exactly one button is `Pressed` at
-/// a time, the painter reads the active index from that flag.
-pub(super) const RADIO_GROUP_IDS: [ph2d_a11y::NodeId; 3] = [
-    ids::INSP_SAMPLE_RADIO_A,
-    ids::INSP_SAMPLE_RADIO_B,
-    ids::INSP_SAMPLE_RADIO_C,
-];
-pub(super) const TAB_GROUP_IDS: [ph2d_a11y::NodeId; 3] = [
-    ids::INSP_SAMPLE_TAB_A,
-    ids::INSP_SAMPLE_TAB_B,
-    ids::INSP_SAMPLE_TAB_C,
-];
-pub(super) const TREE_LEAF_IDS: [ph2d_a11y::NodeId; 2] =
-    [ids::INSP_SAMPLE_TREE_LEAF_A, ids::INSP_SAMPLE_TREE_LEAF_B];
-/// Hit-slot ids for the 12 possible notes per panel. The painter
-/// assigns slots by position (slot 0 = first painted note, etc.).
-pub(super) const NOTE_SLOT_IDS: [ph2d_a11y::NodeId; 12] = [
-    ids::INSP_NOTE_SLOT_0,
-    ids::INSP_NOTE_SLOT_1,
-    ids::INSP_NOTE_SLOT_2,
-    ids::INSP_NOTE_SLOT_3,
-    ids::INSP_NOTE_SLOT_4,
-    ids::INSP_NOTE_SLOT_5,
-    ids::INSP_NOTE_SLOT_6,
-    ids::INSP_NOTE_SLOT_7,
-    ids::INSP_NOTE_SLOT_8,
-    ids::INSP_NOTE_SLOT_9,
-    ids::INSP_NOTE_SLOT_10,
-    ids::INSP_NOTE_SLOT_11,
-];
-pub(super) const NOTE_TITLE_IDS: [ph2d_a11y::NodeId; 12] = [
-    ids::INSP_NOTE_TITLE_0,
-    ids::INSP_NOTE_TITLE_1,
-    ids::INSP_NOTE_TITLE_2,
-    ids::INSP_NOTE_TITLE_3,
-    ids::INSP_NOTE_TITLE_4,
-    ids::INSP_NOTE_TITLE_5,
-    ids::INSP_NOTE_TITLE_6,
-    ids::INSP_NOTE_TITLE_7,
-    ids::INSP_NOTE_TITLE_8,
-    ids::INSP_NOTE_TITLE_9,
-    ids::INSP_NOTE_TITLE_10,
-    ids::INSP_NOTE_TITLE_11,
-];
-pub(super) const NOTE_BODY_IDS: [ph2d_a11y::NodeId; 12] = [
-    ids::INSP_NOTE_BODY_0,
-    ids::INSP_NOTE_BODY_1,
-    ids::INSP_NOTE_BODY_2,
-    ids::INSP_NOTE_BODY_3,
-    ids::INSP_NOTE_BODY_4,
-    ids::INSP_NOTE_BODY_5,
-    ids::INSP_NOTE_BODY_6,
-    ids::INSP_NOTE_BODY_7,
-    ids::INSP_NOTE_BODY_8,
-    ids::INSP_NOTE_BODY_9,
-    ids::INSP_NOTE_BODY_10,
-    ids::INSP_NOTE_BODY_11,
-];
+// SECTION_COLOR_IDS / RADIO_GROUP_IDS / TAB_GROUP_IDS / TREE_LEAF_IDS
+// / NOTE_*_IDS — Wave 8 Phase 2.A: moved to editor-core::widget::showcase
+// (re-exported above so existing `inspector::*` imports keep working).
 
 /// Apply a [`WidgetEvent`] against Inspector widgets. Currently
 /// handles:
@@ -744,93 +673,8 @@ pub fn paint_inspector(
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
 }
 
-/// Paint the canonical widget showcase at `rect`. Designed to be
-/// called from the floating Widget Gallery panel (see
-/// [`super::widget_gallery`]). The live `paint_inspector` uses its
-/// own minimalist body; this entry point keeps the 10-section
-/// showcase reachable inside the working app so peripheral agents
-/// have a single in-app source of truth for UI decoration.
-///
-/// Re-uses the `paint_*_section` painters preserved as `dead_code`
-/// after the Inspector switched to the live entity-binding model.
-/// Uses `ids::GAL_*` for panel chrome so the gallery's drag /
-/// resize state is independent of the live Inspector at
-/// `ids::INSP_*`.
-///
-/// `rect` is the panel rect in viewport pixels. Content is clipped
-/// to that rect; v1 is non-scrollable, so callers should size the
-/// panel tall enough to fit all 10 sections (~700 px at default
-/// theme).
-#[allow(clippy::too_many_arguments)]
-pub(super) fn paint_section_separator(
-    scene: &mut VectorScene,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let pad_x = 2.0_f32;
-    let pad_y = SEPARATOR_PAD_Y;
-    let thickness = 1.0_f32;
-    let line = Rect::new(x + pad_x, y + pad_y, (w - pad_x * 2.0).max(0.0), thickness);
-    fill_rounded_rect(scene, line, 0.5, resolve(ColorToken::Accent, theme));
-    y + pad_y + thickness + pad_y
-}
-
-/// Vertical breathing room above AND below the section separator
-/// line — same on both sides so the colored pill reads as centered
-/// between two sections rather than glued to the previous one.
-const SEPARATOR_PAD_Y: f32 = Spacing::Md.px();
-
-#[allow(clippy::too_many_arguments)]
-pub(super) fn read_text_input(
-    store: &WidgetStore,
-    id: NodeId,
-) -> (TextInputState, &str, usize, Option<usize>) {
-    match store.get(id) {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, text.as_str(), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, "", 0, None),
-    }
-}
-
-pub(super) fn read_combobox(
-    store: &WidgetStore,
-    id: NodeId,
-) -> (ComboboxState, bool, &str, usize, Option<usize>) {
-    match store.get(id) {
-        Some(InteractiveState::Combobox {
-            state,
-            open,
-            query,
-            caret,
-            selection_anchor,
-        }) => (*state, *open, query.as_str(), *caret, *selection_anchor),
-        _ => (ComboboxState::Normal, false, "", 0, None),
-    }
-}
-
-pub(super) fn read_number_input(
-    store: &WidgetStore,
-    id: NodeId,
-) -> (TextInputState, f64, &str, usize, Option<usize>) {
-    store
-        .number_input(id)
-        .unwrap_or((TextInputState::Normal, 0.0, "", 0, None))
-}
-
-/// Find which id in `ids` is the active (`Pressed`) one. Used for
-/// segmented button groups (Tabs, RadioGroup) that we model as N
-/// independent Button states with exactly one in the Pressed state.
-pub(super) fn active_index(store: &WidgetStore, ids: &[NodeId]) -> Option<usize> {
-    for (i, id) in ids.iter().enumerate() {
-        if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
-            return Some(i);
-        }
-    }
-    None
-}
+// Wave 8 Phase 2.A: `paint_section_separator`, `read_text_input`,
+// `read_combobox`, `read_number_input`, `active_index`, and
+// `paint_showcase_body` moved to `editor-core::widget::showcase`
+// (re-exported above so existing `inspector::*` import paths keep
+// working without changes).

@@ -159,8 +159,7 @@ pub fn paint_showcase_body(
                 y,
             );
             if let Some(color_idx) = store.section_outline_color($section_id) {
-                let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
-                    [color_idx.min(4) as usize];
+                let rgba = HIGHLIGHTER_RGBA[color_idx.min(4) as usize];
                 let pad = Spacing::Xs.px();
                 let block = Rect::new(
                     inner_x - pad,

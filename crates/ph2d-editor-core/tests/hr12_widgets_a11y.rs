@@ -54,6 +54,36 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "panel_chrome.rs",
         "shared paint helpers; consumer panel owns a11y",
     ),
+    // Wave 8 Phase 2.A widget gallery showcase tree: 10 section
+    // painters + body orchestrator + state thread-locals. The
+    // showcase paints reference widgets which DO emit a11y nodes
+    // via the widget primitives they call (paint_button etc.); the
+    // sections themselves are paint orchestration with no
+    // independent user-facing identity. Owner panel
+    // (ph2d-panel-widget-gallery) carries the a11y root.
+    (
+        "showcase/mod.rs",
+        "paint orchestrator; owner panel carries a11y",
+    ),
+    ("showcase/actions.rs", "section painter; widgets emit a11y"),
+    (
+        "showcase/body.rs",
+        "showcase orchestrator; widgets emit a11y",
+    ),
+    ("showcase/card.rs", "section painter; widgets emit a11y"),
+    ("showcase/color.rs", "section painter; widgets emit a11y"),
+    ("showcase/identity.rs", "section painter; widgets emit a11y"),
+    ("showcase/inputs.rs", "section painter; widgets emit a11y"),
+    ("showcase/lists.rs", "section painter; widgets emit a11y"),
+    ("showcase/notes.rs", "note painter; TextInput emits a11y"),
+    ("showcase/slider.rs", "section painter; widgets emit a11y"),
+    (
+        "showcase/state.rs",
+        "thread-locals; no user-facing identity",
+    ),
+    ("showcase/status.rs", "section painter; widgets emit a11y"),
+    ("showcase/switches.rs", "section painter; widgets emit a11y"),
+    ("showcase/vector.rs", "section painter; widgets emit a11y"),
 ];
 
 #[test]

@@ -35,6 +35,10 @@ const BASELINE: &[(&str, usize)] = &[
     ("card.rs", 1),    // .label("card") — generic a11y fallback
     ("divider.rs", 1), // .label("separator") — generic a11y fallback
     ("popover.rs", 1), // .label("popover") — generic a11y fallback
+    // Wave 8 Phase 2.A — showcase is a hardcoded English reference
+    // gallery (peripheral agents read it to see canonical widget
+    // appearance). i18n migration tracked separately.
+    ("showcase/inputs.rs", 2),
 ];
 
 #[test]

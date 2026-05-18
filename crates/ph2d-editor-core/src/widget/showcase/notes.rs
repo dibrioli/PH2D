@@ -1,16 +1,22 @@
 //! Sticky-note painters (single editable note + its title/body
 //! sub-painters).
 //!
-//! Extracted from [`super`] (Track C4). Notes are right-click-created
-//! highlights pinned above Inspector sections. Each painted note
-//! registers three hit rects — the whole slot for the right-click
-//! background-color menu, plus title + body sub-rects for the
-//! TextInput focus + edit pipeline.
+//! Wave 8 Phase 2.A — hoisted from
+//! `ph2d_editor::screens::hero::inspector::notes` to editor-core so
+//! the showcase tree (now in editor-core::widget::showcase) and
+//! eventually the panel-inspector crate can both use them without
+//! depending on `ph2d-editor`.
+//!
+//! Notes are right-click-created highlights pinned above panel
+//! sections. Each painted note registers three hit rects — the
+//! whole slot for the right-click background-color menu, plus
+//! title + body sub-rects for the TextInput focus + edit pipeline.
 
 use super::{NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, read_text_input};
 use crate::interaction::{HitIndex, NoteData, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text};
 use crate::widget::TextInputState;
+use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -30,20 +36,9 @@ const NOTE_TEXT_PAD_Y: f32 = Spacing::Md.px();
 
 /// Paint a single sticky-note. Editable: the title + body each
 /// have their own TextInput state in the store
-/// (`NOTE_TITLE_IDS[slot]` + `NOTE_BODY_IDS[slot]`). Single click
-/// on either focuses it; double-click selects all; typing edits.
-/// Dark glyphs hardcoded `#212121` for contrast over the light
-/// highlighter bg regardless of theme.
-///
-/// Registers three hit rects:
-///   - The whole note slot (`NOTE_SLOT_IDS[slot]`) for right-click
-///     → background-color menu. Registered FIRST so the more
-///     specific title/body rects layered above win pointer hits
-///     within them.
-///   - The title sub-rect (`NOTE_TITLE_IDS[slot]`) for focus + edit.
-///   - The body sub-rect (`NOTE_BODY_IDS[slot]`).
+/// (`NOTE_TITLE_IDS[slot]` + `NOTE_BODY_IDS[slot]`).
 #[allow(clippy::too_many_arguments)]
-pub(super) fn paint_one_note(
+pub fn paint_one_note(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     hit_index: &mut HitIndex,
@@ -54,33 +49,21 @@ pub(super) fn paint_one_note(
     note: &NoteData,
     slot: usize,
 ) {
-    // Font sizes MUST match the dispatch's hardcoded `TypeToken::
-    // Base.px()` (13 px) so click→caret mapping uses the same
-    // glyph width as the painter. Using `Sm`/`Xs` caused the
-    // dispatch to measure prefixes at the wrong font size and put
-    // the caret 1–3 chars off (the user's "mapeamento errado do
-    // mouse"). Same lesson as docs/UI_Bugs §3.3.
     let pad = Spacing::Md.px();
     let title_font = TypeToken::Base.px();
     let body_font = TypeToken::Base.px();
     let title_h = title_font + Spacing::Md.px();
-    // Body holds ~3 lines. Painter starts at rect.y + NOTE_TEXT_PAD_Y
-    // (=8) and uses line_h = body_font + 4. Total height needs both
-    // the top inset and a small bottom buffer or the third line gets
-    // clipped under the note's rounded bottom edge.
     let body_h = NOTE_TEXT_PAD_Y * 2.0 + (body_font + Spacing::Xs.px()) * 3.0; // LITERAL-PX-OK: 3 lines (line count)
     let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
     if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
         hit_index.register(*slot_id, r);
     }
-    let rgba = crate::screens::hero::context_menu_overlay::HIGHLIGHTER_RGBA
-        [note.color_idx.min(4) as usize];
+    let rgba = HIGHLIGHTER_RGBA[note.color_idx.min(4) as usize];
     let bg = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color — HIGHLIGHTER_RGBA palette (note background)
     fill_rounded_rect(scene, r, Radius::Md.px(), bg);
 
-    let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF); // LITERAL-COLOR-OK: note-text — dark glyph fixed across themes because BG is the user's highlighter color, not a theme token
-    // Title row.
+    let dark = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0xFF); // LITERAL-COLOR-OK: note-text — dark glyph fixed across themes
     let title_rect = Rect::new(r.x + pad, r.y + pad, r.w - pad * 2.0, title_h);
     if let Some(title_id) = NOTE_TITLE_IDS.get(slot) {
         hit_index.register(*title_id, title_rect);
@@ -95,7 +78,6 @@ pub(super) fn paint_one_note(
             "Title",
         );
     }
-    // Body region — multi-line below the title.
     let body_rect = Rect::new(r.x + pad, r.y + pad + title_h, r.w - pad * 2.0, body_h);
     if let Some(body_id) = NOTE_BODY_IDS.get(slot) {
         hit_index.register(*body_id, body_rect);
@@ -113,16 +95,6 @@ pub(super) fn paint_one_note(
     *y += note_h + Spacing::Md.px();
 }
 
-/// Paint an editable single-line text field with no chrome —
-/// dark glyphs + caret + selection on a transparent background.
-/// Reads the TextInput state at `id` from the store.
-///
-/// CRITICAL: text origin matches the TextInput dispatch contract
-/// (`text_start_x = rect.x + 12`, `text_start_y = rect.y`) — without
-/// this alignment, `byte_offset_from_click_xy` measures from a
-/// different origin than the painter and click→caret + drag-select
-/// land on the wrong byte. Vertical centering still happens, but
-/// click→byte ignores y for single-line widgets.
 #[allow(clippy::too_many_arguments)]
 fn paint_note_editable_line(
     scene: &mut VectorScene,
@@ -139,7 +111,6 @@ fn paint_note_editable_line(
     let text_x = rect.x + NOTE_TEXT_PAD_X;
     let text_w = (rect.w - NOTE_TEXT_PAD_X).max(0.0);
     let text_y = rect.y + (rect.h - font_size) * 0.5;
-    // Selection highlight (drawn under glyphs).
     if focused
         && !text.is_empty()
         && let Some(a) = anchor
@@ -163,20 +134,17 @@ fn paint_note_editable_line(
                 sel_w,
                 (rect.h - Spacing::Xs.px()).max(2.0),
             );
-            // Translucent dark wash for the selection so the highlighter
-            // bg still shows through.
-            let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection — translucent dark wash, theme-invariant (BG is user-highlighter)
+            let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection
             fill_rounded_rect(scene, sel, 1.0, sel_color);
         }
     }
-    // Visible text (or placeholder if empty and not focused).
     let displayed: &str = if text.is_empty() && !focused {
         placeholder
     } else {
         text
     };
     let display_color = if text.is_empty() && !focused {
-        ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80) // LITERAL-COLOR-OK: note-placeholder — dim dark text, theme-invariant (BG is user-highlighter)
+        ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80) // LITERAL-COLOR-OK: note-placeholder
     } else {
         fg
     };
@@ -190,7 +158,6 @@ fn paint_note_editable_line(
         text_w,
         display_color,
     );
-    // Caret — only when focused.
     if focused {
         let caret_byte = caret.min(text.len());
         let prefix_w = text_system.prefix_width(&text[..caret_byte], font_size);
@@ -200,13 +167,10 @@ fn paint_note_editable_line(
             StrokeToken::Default.px(),
             (rect.h - Spacing::Xs.px()).max(2.0),
         );
-        fill_rounded_rect(scene, caret_rect, 0.75, fg); // LITERAL-PX-OK: caret half-width radius (smooth rounded caret)
+        fill_rounded_rect(scene, caret_rect, 0.75, fg); // LITERAL-PX-OK: caret half-width radius
     }
 }
 
-/// Paint an editable multi-line text region with no chrome. Splits
-/// the text on `\n` and renders each line; caret + selection mirror
-/// the same per-line math the `TextArea` widget uses.
 #[allow(clippy::too_many_arguments)]
 fn paint_note_editable_multiline(
     scene: &mut VectorScene,
@@ -220,11 +184,6 @@ fn paint_note_editable_multiline(
 ) {
     let (state, text, caret, anchor) = read_text_input(store, id);
     let focused = state == TextInputState::Focused;
-    // line_h MUST match the dispatch's TextArea math:
-    // `byte_offset_from_click_xy` uses `font_size + 4.0`. Drift
-    // breaks click-y → line index. Origin offsets (text_x, text_y0)
-    // also MUST match dispatch (`rect.x + 12`, `rect.y + 8`) so
-    // click→caret lands at the visible glyph boundary.
     let line_h = font_size + Spacing::Xs.px();
     let text_x = rect.x + NOTE_TEXT_PAD_X;
     let text_y0 = rect.y + NOTE_TEXT_PAD_Y;
@@ -238,13 +197,10 @@ fn paint_note_editable_multiline(
             text_y0,
             font_size,
             text_w,
-            ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80), // LITERAL-COLOR-OK: note-placeholder multiline — same dim dark as single-line; theme-invariant
+            ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x80), // LITERAL-COLOR-OK: note-placeholder multiline
         );
         return;
     }
-    // Selection highlight (drawn under glyphs). Supports spanning
-    // multiple lines: paints one box per visible line covered by the
-    // range. Mirrors `TextArea`'s widget selection math.
     if focused
         && let Some(a) = anchor
         && a != caret
@@ -252,11 +208,10 @@ fn paint_note_editable_multiline(
         let (s, e) = if a < caret { (a, caret) } else { (caret, a) };
         let s = s.min(text.len());
         let e = e.min(text.len());
-        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection multiline — same translucent dark as single-line
+        let sel_color = ph2d_vector::Color::from_rgba8(0x21, 0x21, 0x21, 0x33); // LITERAL-COLOR-OK: note-selection multiline
         let mut line_start = 0_usize;
         for (i, line) in text.split('\n').enumerate() {
             let line_end = line_start + line.len();
-            // Overlap of [s, e] with this line's byte range.
             let seg_s = s.max(line_start);
             let seg_e = e.min(line_end);
             if seg_s < seg_e {
@@ -287,7 +242,6 @@ fn paint_note_editable_multiline(
         );
     }
     if focused {
-        // Caret on the line containing the caret byte.
         let caret_byte = caret.min(text.len());
         let mut line_start = 0_usize;
         let mut line_idx = 0_usize;

@@ -241,11 +241,173 @@ Em qualquer outra situação, escope.
 
 ---
 
-## 12. Versão + revisão
+## 12. LOC threshold para validação (v1.1)
 
-**Versão atual:** 1.0 (2026-05-18)
-**Origem:** Enio observou que o agente LLM passava mais tempo
-esperando testes que codificando durante Wave 8 Phase 2.A.
+**Regra:** não rode `cargo check` antes de ter editado/movido pelo
+menos ~300 LOC OU completado uma operação lógica coesa (ex: criar
+um módulo inteiro). Cada `cargo check` custa 10-30s + redirecionamento
+mental — antes de ter um chunk significativo, é noise.
+
+| LOC editados/movidos | Comando OK |
+|----------------------|-----------|
+| 0-100 | NADA. Continue editando. |
+| 100-300 | `cargo check -p <crate>` opcional (se você está incerto). |
+| 300+ ou módulo inteiro | `cargo check -p <crate>` — sane stop. |
+| Phase fechada (múltiplos crates) | `cargo check --workspace` (NÃO test). |
+| Antes do commit | **nada** — hook valida. |
+
+**Não rode `cargo test` durante editing burst.** Tests só no:
+1. Fim do commit (via hook), OU
+2. Diagnóstico de uma falha específica que o hook reportou.
+
+---
+
+## 13. Batch maior de commits (v1.1)
+
+**Regra atualizada:** Wave 8 Phase 2 (originalmente brief = 5
+commits 2.A/.B/.C/.D/.F) pode ser **1 commit único** se as
+mudanças formam um endgame coerente.
+
+Cada commit dispara o pre-commit hook (~5-10min em T2). 5 commits =
+~25-50min só de hook. 1 commit = ~5-10min. Margem de 4x.
+
+**Trade-offs:**
+- ✅ Tempo: 1 commit é 5x mais barato em hooks.
+- ✅ Coerência: o leitor vê o endgame de uma vez (mais útil que 5
+  commits intermediários "WIP").
+- ❌ Bisect: mais difícil isolar regressão. Mitigação: Enio testa
+  manualmente e não usa bisect em rotina.
+- ❌ Revert: rollback derruba tudo. Mitigação: refactor preserva
+  comportamento — improvável precisar reverter.
+
+**Quando granular AINDA faz sentido:**
+- Mudança que altera comportamento + mudança que preserva → 2
+  commits separados (smoke pode passar/falhar atestando uma sem
+  a outra).
+- Trabalho em paralelo entre agentes coordenados (commit fronteira).
+- Wave inteiro fecha + closeout docs separado.
+
+**Default:** 1 Phase = 1 commit. Múltiplos sub-stages comprimem.
+
+---
+
+## 14. Editing burst — não interrompa o flow (v1.1)
+
+**Regra:** edit 5+ arquivos seguidos sem rodar cargo entre.
+
+```
+[Edit a.rs] [Edit b.rs] [Edit c.rs] [Edit d.rs] [Edit e.rs]
+            ↓
+[cargo check -p <crate>]   ← UMA vez no fim
+            ↓
+[Fix all errors em 1 burst novo]
+            ↓
+[cargo check -p <crate>]   ← validação final
+```
+
+NÃO faça:
+
+```
+[Edit a.rs] [cargo check] [Edit b.rs] [cargo check] ...   ← 5x overhead
+```
+
+Compilador erra em batch também. Não precisa one-at-a-time.
+
+---
+
+## 15. Delete > back-compat re-exports (v1.1)
+
+**Regra:** quando você move algo de `crate::a::foo` para
+`crate::b::foo`, prefira **atualizar todos os call sites direto**
+em vez de criar `pub use crate::b::foo;` em `crate::a::*`.
+
+Custo do re-export:
+- +N linhas no arquivo origem
+- +1 ponto de manutenção quando o nome mudar de novo
+- Disfarça onde a verdade vive (debug fica mais difícil)
+- A LLM gasta tempo escrevendo o re-export + a documentação dele
+
+Custo de atualizar call sites:
+- N edits, mas todos triviais (path swap)
+- `grep -l 'old::path' | xargs sed -i 's|old::path|new::path|g'`
+  faz em 1 comando
+
+**Exceção:** API pública estável consumida por terceiros (ex:
+`ph2d_editor::HeroScreen` re-exportado de `crate::screens::hero`).
+Internal: delete.
+
+---
+
+## 16. Doc comments / commit messages — menos é mais (v1.1)
+
+**Doc comments:** não escreva mid-refactor. O código é a doc. Save
+escrita longa para o **closeout commit** de fim de Wave (1 commit
+de docs cobrindo tudo).
+
+**Commit messages:** 1-3 parágrafos no body, não 30 linhas. O título
++ 5 linhas no body já carrega o "what + why".
+
+```
+RUIM:
+fix(editor): Wave 8 Phase 2.A — physical showcase tree to ph2d-editor-core::widget::showcase
+
+Audit S1 + A3 + P1 step 2. Following Phase 2.A.0 (chrome hoist),
+this commit physically moves the entire Widget Gallery showcase
+tree out of `ph2d_editor::screens::hero::inspector::showcase` into
+`ph2d-editor-core::widget::showcase`. Goal: panel crates can paint
+the showcase without depending on `ph2d-editor`.
+
+Moves:
+- `showcase/{actions,body,card,...}.rs` (10 section painters + ...)
+...
+[40 more lines]
+
+BOM:
+refactor: move showcase tree → editor-core::widget::showcase (Wave 8 Phase 2.A)
+
+12 showcase files + notes + 5 helpers + 7 ID constants now live in
+editor-core. Inspector re-exports for back-compat. Widget Gallery
+panel imports from editor-core, no longer reaches into ph2d-editor
+internals. Audit S1 + A3 closed.
+
+cargo test workspace 1315 green.
+```
+
+---
+
+## 17. Reads cirúrgicos (v1.1)
+
+❌ `Read large_file.rs` (sem offset/limit) só pra "ver a estrutura".
+✅ `Bash: grep -n 'pub fn|pub struct|^use' file.rs | head -20` →
+   `Read offset=X limit=20` na seção relevante.
+
+❌ Re-Read arquivo que acabou de Edit/Write.
+✅ Confiar na confirmação do tool. Próximo erro do compilador é
+   evidência mais barata.
+
+❌ Read 5 arquivos sequencialmente.
+✅ 5 Read tools em paralelo na mesma mensagem.
+
+---
+
+## 18. Skip "validation matrix" antes do hook (v1.1)
+
+**Regra reforçada:** o pre-commit hook T2 é a matriz oficial. Rodar
+`cargo build + clippy + test` manualmente antes é gastar o tempo
+duas vezes.
+
+Caso especial OK:
+- Mudou Cargo.toml (deps/features) → `cargo build -p <consumer>
+  --features <combo>` UMA vez pra confirmar features resolvem.
+- Caso contrário, deixa o hook decidir.
+
+---
+
+## 19. Versão + revisão
+
+**Versão atual:** 1.1 (2026-05-18 sessão tarde)
+**Origem:** Enio observou que mesmo após v1.0 a LLM continuava
+lenta em Wave 8 Phase 2 — pediu MAIS estratégias.
 
 **Revise este doc se:**
 - Pre-commit hook mudar de comportamento.

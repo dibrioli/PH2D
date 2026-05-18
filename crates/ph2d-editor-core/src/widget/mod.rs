@@ -25,6 +25,7 @@ mod progress_bar;
 mod radio_group;
 mod scrollbar;
 mod section_header;
+pub mod showcase;
 mod slider;
 mod slider_with_chip;
 mod spinner;

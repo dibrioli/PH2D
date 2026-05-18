@@ -3,9 +3,10 @@
 //! Widget Gallery panel: floating reference panel that showcases
 //! every canonical widget used by the editor. Triggered by clicking
 //! the palette icon in the TopBar (`ids::TOPBAR_WIDGET_GALLERY`).
-//! Reuses the 10-section showcase painters owned by `inspector` —
-//! the gallery itself is a thin wrapper around `inspector::
-//! paint_showcase_body`.
+//! Reuses the 10-section showcase painters owned by
+//! `ph2d-editor-core::widget::showcase` (Wave 8 Phase 2.A —
+//! previously reached into `ph2d_editor::screens::hero::inspector::
+//! paint_showcase_body`, defeating the panel-as-crate isolation).
 //!
 //! Design intent: peripheral agents run `./play.command`, click
 //! the palette pill, and see every widget rendered the way the
@@ -16,10 +17,12 @@
 
 use ph2d_editor::panel_registry::{PaintCtx, PanelManifest};
 use ph2d_editor::screens::hero::HeroScreen;
-use ph2d_editor::screens::hero::ids;
-use ph2d_editor::screens::hero::inspector;
-use ph2d_editor::screens::hero::style::clamp_panel_rect;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::widget::panel_chrome::clamp_panel_rect;
+use ph2d_editor_core::widget::showcase::{
+    last_gallery_content_h, last_gallery_visible_h, paint_showcase_body,
+};
 use ph2d_editor_core::zones::Rect;
 
 /// Wave 7 Stage 2 — panel-as-crate manifest. Replaces the in-tree
@@ -91,8 +94,8 @@ fn paint_thunk(ctx: &mut PaintCtx) {
         &mut ctx.hero.hit_index,
         &ctx.hero.store,
     );
-    let content_h = inspector::last_gallery_content_h();
-    let visible_h = inspector::last_gallery_visible_h();
+    let content_h = last_gallery_content_h();
+    let visible_h = last_gallery_visible_h();
     ctx.hero
         .store
         .set_panel_content_h(ids::GAL_PANEL, content_h);
@@ -162,10 +165,7 @@ pub fn default_rect(viewport_w: f32, viewport_h: f32, inspector_w: f32) -> Rect 
 }
 
 /// Paint the gallery at `rect`. Delegates the entire showcase body
-/// to [`inspector::paint_showcase_body`]; this wrapper exists so
-/// the call site stays self-documenting and so future gallery-only
-/// features (filter / search / themed preview tabs) can land here
-/// without churning `inspector.rs`.
+/// to [`ph2d_editor_core::widget::showcase::paint_showcase_body`].
 pub fn paint(
     rect: Rect,
     scene: &mut ph2d_vector::VectorScene,
@@ -174,5 +174,5 @@ pub fn paint(
     hit_index: &mut ph2d_editor_core::interaction::HitIndex,
     store: &WidgetStore,
 ) {
-    inspector::paint_showcase_body(rect, scene, text_system, theme, hit_index, store);
+    paint_showcase_body(rect, scene, text_system, theme, hit_index, store);
 }

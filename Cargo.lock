@@ -4046,7 +4046,6 @@ dependencies = [
 name = "ph2d-panel-widget-gallery"
 version = "0.0.0"
 dependencies = [
- "ph2d-a11y",
  "ph2d-editor",
  "ph2d-editor-core",
  "ph2d-text",

@@ -18,6 +18,11 @@ build = "build.rs"
 [build-dependencies]
 
 [dependencies]
+# Wave 6+7 Phase 2: shared primitives (zones, paint, widget,
+# action_bus, floating_panel, project, toast, zen, …) live in
+# `ph2d-editor-core`. Re-exported from `ph2d-editor::lib.rs` to
+# preserve the legacy `ph2d_editor::*` import paths.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ph2d-tool-registry — convention-by-discovery infrastructure
 # (ToolManifest, Registry, NodeId hash). Re-exported as
 # `ph2d_editor::registry` so existing callers keep working. See

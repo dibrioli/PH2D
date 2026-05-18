@@ -36,8 +36,16 @@ pub mod image_edit;
 pub mod interaction;
 pub mod paint;
 pub mod panel_registry;
-pub mod project;
 pub mod screens;
+
+// Wave 6+7 Phase 2: pure-leaf modules promoted to `ph2d-editor-core`.
+// Re-exported here so `crate::zones::Rect` etc. continue to resolve
+// from inside ph2d-editor and `ph2d_editor::zones::Rect` continues to
+// resolve from downstream consumers (shells, tool crates). Non-leaf
+// modules (action_bus, floating_panel — both reference back into
+// hero state / widget primitives) stay in ph2d-editor until a
+// future phase extracts those dependencies.
+pub use ph2d_editor_core::{project, toast, zen, zones};
 
 /// Re-export of `ph2d-tool-registry` under the path
 /// `ph2d_editor::registry` so existing callers
@@ -75,12 +83,9 @@ pub fn install_registry(reg: registry::Registry) -> bool {
 pub fn installed_registry() -> Option<&'static registry::Registry> {
     EDITOR_REGISTRY.get()
 }
-pub mod toast;
 pub mod tool;
 pub mod tools;
 pub mod widget;
-pub mod zen;
-pub mod zones;
 
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{

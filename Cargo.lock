@@ -3904,12 +3904,27 @@ dependencies = [
  "dhat",
  "image",
  "ph2d-a11y",
+ "ph2d-editor-core",
  "ph2d-grid",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-make-square",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+ "smallvec",
+]
+
+[[package]]
+name = "ph2d-editor-core"
+version = "0.0.0"
+dependencies = [
+ "bumpalo",
+ "ph2d-a11y",
+ "ph2d-host",
+ "ph2d-text",
+ "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-vector",
  "smallvec",

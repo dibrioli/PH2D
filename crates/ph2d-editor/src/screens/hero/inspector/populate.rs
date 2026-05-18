@@ -278,7 +278,9 @@ fn populate_samples(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
-    // Multi-line area — placeholder until the user types.
+    // Multi-line area — placeholder until the user types. Marked as
+    // multiline so Enter inserts a newline instead of submitting +
+    // blurring (single-line TextInputs get Submit+Blur on Enter).
     store.register(
         ids::INSP_SAMPLE_TEXTAREA,
         InteractiveState::TextInput {
@@ -288,6 +290,7 @@ fn populate_samples(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
+    store.mark_multiline_text(ids::INSP_SAMPLE_TEXTAREA);
     // Combobox — empty query, 3 options.
     store.register(
         ids::INSP_SAMPLE_COMBO,
@@ -573,6 +576,10 @@ fn populate_samples(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+        // Note bodies are multi-line: Enter inserts a newline rather
+        // than submitting + blurring (single-line TextInputs default
+        // to Submit + Blur behavior).
+        store.mark_multiline_text(id);
     }
     // M14.5 inspector phase: pixel-format segmented picker. RGBA8 is
     // pressed by default; RGBA16 is disabled until the asset crate

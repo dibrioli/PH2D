@@ -518,15 +518,18 @@ Mesma receita do §4.1 mas você edita o crate existente. Touch só
 `crates/ph2d-tool-<slug>/src/`. Se mudou o TOML também, edite o
 TOML correspondente. CI re-valida.
 
-### 4.4 Adicionar painel novo (Wave 5 ✅ disponível)
+### 4.4 Adicionar painel novo (Wave 5 ✅ + Wave 6+7 Phase 4 ✅ + Wave 7 Stage 1 ✅)
 
-> **Status:** Wave 5 entregou o pattern em 2026-05-17. Wave 6+7
-> (Phase 1+2, 2026-05-17) extraiu `ph2d-editor-core` com primitives
-> compartilhados — `widget/`, `interaction/`, `paint`, `gizmo/`,
-> `floating_panel`, `ids` etc. Receita abaixo continua válida
-> (paths via re-export). Wave 6+7 Phase 3 (panel-as-crate) + Phase 4
-> (apply_event distribuído) deferidos — vide
-> [ADR-0028 §Wave 6+7](../architecture/decisions/0028-wave-2-codegen-design-canonical.md#wave-67-2026-05-17--hotspot-decomp--editor-core-primitives-crate).
+> **Status:** Wave 5 (2026-05-17) entregou o `PanelManifest` pattern.
+> Wave 6+7 Phase 1+2 (2026-05-17) extraiu `ph2d-editor-core` com
+> primitives compartilhados. Wave 6+7 Phase 4 (2026-05-18) distribuiu
+> `apply_event` 100% — cada panel thunk hoje tem lógica real, hero.rs
+> apply_event virou chrome-only. Wave 7 Stage 1 (2026-05-18) converteu
+> `PANEL_REGISTRY` pra `OnceLock` runtime-init + criou
+> `ph2d-panel-registry-init` crate com cargo features per panel
+> (default-all + per-panel + lite-build). Hoje, painel novo registra
+> dinamicamente no boot — feature-gate disponível.
+> Vide [ADR-0028 §Wave 6+7 e Wave 7 Stage 1](../architecture/decisions/0028-wave-2-codegen-design-canonical.md#wave-7-stage-1-2026-05-18--panel-registry-runtime-init--cargo-features).
 
 **Receita 4-passos** (simétrico ao §4.1 tool-as-crate):
 

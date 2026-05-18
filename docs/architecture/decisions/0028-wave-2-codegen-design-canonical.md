@@ -486,14 +486,63 @@ re-exporta `GS_PANEL`. Zero downstream changes (shells, tool crates).
   required for Phase 3 anymore since panel crates can depend on
   ph2d-editor for HeroScreen — `apply_event_fn` are free fns so
   no orphan-rule issue).
-- 🔜 **Phase 3** (deferido — extract per-panel crates:
-  ph2d-panel-{widget-gallery,inspector,hierarchy,grid-snap}.
-  Requires PANEL_REGISTRY conversion to runtime-init via OnceLock
-  + style funcs made pub + cross-panel `paint_showcase_body` access
-  routed through editor-core. ~5500 LOC for grid_snap alone).
-- 🔜 **Phase 5** (deferido — ph2d-panel-registry-init crate + cargo
-  features per panel + lite build + shells migration to editor-core
-  direct paths). Depends on Phase 3.
+
+## Wave 7 Stage 1 (2026-05-18) — PANEL_REGISTRY runtime-init + cargo features
+
+Lays the infrastructure for Phase 3 panel-as-crate extraction without
+physically moving any panel yet. Cargo features per panel work TODAY
+for the in-tree panels — lite-build distributions can drop panels
+they don't need at compile time.
+
+### Changes (`257740c`)
+
+- `PANEL_REGISTRY`: `pub static PanelRegistry` (hardcoded 4 panels)
+  → `pub static OnceLock<PanelRegistry>` (runtime-init).
+- `PanelRegistry` field: `&'static [&'static PanelManifest]` → 
+  `Vec<&'static PanelManifest>` (runtime aggregation).
+- Public API: `install_panel_registry(reg)`, `panels()`,
+  `find_panel_by_node_id(id)`, `default_panel_registry()`,
+  `PanelRegistry::new_empty()`, `PanelRegistry::push(&MANIFEST)`.
+- `HeroScreen::new` auto-installs the default registry if no
+  registry installed — backward-compatible with every existing
+  host/test.
+- New crate `crates/ph2d-panel-registry-init/`:
+  - `default = ["panel-widget-gallery", "panel-hierarchy",
+    "panel-inspector", "panel-grid-snap"]` — bundles every panel.
+  - `--no-default-features` — empty registry (lite-build).
+  - Single-feature builds (`--no-default-features --features
+    panel-inspector`) — feature-gated subset.
+  - Self-test asserts panel count = sum of enabled features (passes
+    for all 3 configurations tested locally).
+
+### Wave 7 status
+
+- ✅ Stage 1 — PANEL_REGISTRY runtime-init + ph2d-panel-registry-init
+  crate w/ cargo features (`257740c`).
+- 🔜 **Stage 2 — Phase 3 panel-as-crate extraction** (deferred —
+  blocker: `screens/hero/inspector/showcase/` is shared by inspector
+  AND widget_gallery via `super::inspector::paint_showcase_body`,
+  needs to relocate to editor-core; plus `screens/hero/style::*`
+  needs pub-exposure for external panel crates; ~5500 LOC grid-snap +
+  ~3500 LOC inspector to physically move).
+- 🔜 **Stage 3 — Hotspot decomp follow-up** (deferred — same Phase 1
+  pattern, targets `inspector/mod.rs` 857 LOC + `grid_snap/state.rs`
+  1250 LOC + `screens/hero.rs` 2620 LOC).
+- 🔜 **Stage 4 — Shells migration to editor-core direct paths**
+  (deferred — low ROI, `pub use ph2d_editor_core::*;` re-export
+  already works transparently).
+
+### Métricas Wave 7 Stage 1
+
+| Métrica | Pré-Wave-7-S1 | Pós-Wave-7-S1 |
+|---|---|---|
+| Crates no workspace | 31 | 32 (+`ph2d-panel-registry-init`) |
+| PANEL_REGISTRY init | hardcoded static | OnceLock runtime |
+| Cargo features per panel | nenhum | 4 (default-all + per-panel) |
+| Tests panel-init crate | — | 1 (passes for default/empty/single-panel) |
+| Public API breaks | — | 0 |
+
+
 - 🔜 **Phase 5** (deferido — ph2d-panel-registry-init + cargo features
   per panel + lite build + shells migration pra editor-core direto)
 

@@ -237,9 +237,10 @@ pub fn default_panel_registry() -> PanelRegistry {
     // ADR-0029 Phase C.1: Inspector dropped from the legacy registry.
     // ADR-0029 Phase C.2: Hierarchy dropped from the legacy registry.
     // ADR-0029 Phase C.3: Widget Gallery dropped from the legacy
-    // registry. All three register into `crate::panel::PANEL_REGISTRY`
-    // via `ph2d_panel_registry_init::register_all_panels()`. Only
-    // grid_snap remains as a fn-pointer manifest until it migrates
-    // in C.4.
-    PanelRegistry::new(vec![&crate::grid_snap::PANEL_MANIFEST])
+    // registry. ADR-0029 Phase C.4: Grid Snap dropped — every in-tree
+    // panel now lives in `crate::panel::PANEL_REGISTRY` via
+    // `ph2d_panel_registry_init::register_all_panels()`. The legacy
+    // registry stays around for back-compat (3rd-party panels could
+    // still install a fn-pointer manifest) but ships empty by default.
+    PanelRegistry::new(vec![])
 }

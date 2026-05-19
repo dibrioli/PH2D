@@ -1,12 +1,26 @@
-//! `populate()` — WidgetStore registration for grid snap panel.
+//! Grid Snap panel populate — ADR-0029 Phase C.4 port of the legacy
+//! `ph2d_editor_core::grid_snap::panel::populate`.
 //!
-//! Extracted from `panel/mod.rs` in Wave 2.5 PR 11.7a to bring the
-//! parent module under the HR-18 hygiene cap. Same private surface
-//! as before; re-exported by `mod.rs` so call sites are unchanged.
+//! Registers the panel chrome (drag/resize/close), every Kind / Target
+//! / Neighborhood / Orientation / Offset / Parity option button, the
+//! Snap + ShowOverlay toggles, the opacity Slider, the color picker
+//! swatch, the scrollbar thumb, and the universe of NumberInput slots
+//! (per-kind config, AABB bounds, probe coords, snap magnetism).
+//!
+//! Default values come from `GridSnapState::default()` — populate is
+//! a one-shot at boot.
 
-use super::*;
+use crate::ids;
+use crate::state::meters_to_display;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::grid_snap::GridSnapState;
+use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
+use ph2d_editor_core::widget::{
+    ButtonState, GRID_SETTINGS_SCROLLBAR_ID, SliderOrientation, SliderState, TextInputState,
+    ToggleState,
+};
 
-pub fn populate(store: &mut WidgetStore) {
+pub(crate) fn populate(store: &mut WidgetStore) {
     // Panel chrome — Blender drag/resize handles same as Widget Gallery.
     store.register(
         ids::GS_DRAG_HANDLE,
@@ -24,10 +38,7 @@ pub fn populate(store: &mut WidgetStore) {
     );
     // Scrollbar thumb — must be in the store as `Plain` so dispatch's
     // `is_focusable` lets the Down handler seed the scrollbar drag.
-    store.register(
-        crate::widget::GRID_SETTINGS_SCROLLBAR_ID,
-        InteractiveState::Plain,
-    );
+    store.register(GRID_SETTINGS_SCROLLBAR_ID, InteractiveState::Plain);
     // All selectors are segmented Button groups (style parity with
     // Inspector's Strategy switcher per Enio's 2026-05-15 redesign):
     // each option has its own NodeId registered as a Button; the
@@ -110,7 +121,7 @@ pub fn populate(store: &mut WidgetStore) {
     // values pulled from GridSnapState::default() so paint stays
     // in sync on first frame.
     let defaults = GridSnapState::default();
-    let number_specs: &[(crate::NodeId, f64)] = &[
+    let number_specs: &[(NodeId, f64)] = &[
         (ids::GS_CFG_CELL_SIZE, defaults.square_cfg.cell_size as f64),
         (ids::GS_CFG_ISO_TILE_W, defaults.iso_cfg.tile_w as f64),
         (ids::GS_CFG_ISO_TILE_H, defaults.iso_cfg.tile_h as f64),

@@ -1,10 +1,26 @@
 //! Generic paint helpers (segmented buttons, labeled rows, swatches).
 //!
-//! Extracted from `panel/mod.rs` in Wave 2.5 PR 11.7a to bring the
-//! parent module under the HR-18 hygiene cap. Same private surface
-//! as before; re-exported by `mod.rs` so call sites are unchanged.
+//! Ported verbatim from
+//! `ph2d_editor_core::grid_snap::panel::paint_helpers` during ADR-0029
+//! Phase C.4. Internal-only — re-exported via `crate::paint`.
 
-use super::*;
+use crate::ids;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
+use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+};
+use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
+use ph2d_editor_core::zones::Rect;
+use ph2d_grid::snap::SnapTarget;
+use ph2d_grid::square::SquareNeighborhood;
+use ph2d_grid::tri::TriNeighborhood;
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_vector::VectorScene;
+
+use super::layout::ROW_GAP;
 
 pub(crate) fn paint_section_label(
     label: &str,
@@ -15,7 +31,7 @@ pub(crate) fn paint_section_label(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    paint_text_title(
+    ph2d_editor_core::paint::paint_text_title(
         text_system,
         scene,
         label,
@@ -36,7 +52,7 @@ pub(crate) fn paint_section_label(
         (w - sep_pad_x * 2.0).max(0.0),
         1.0,
     );
-    crate::paint::fill_rounded_rect(scene, sep, 0.5, resolve(ColorToken::Accent, theme));
+    fill_rounded_rect(scene, sep, 0.5, resolve(ColorToken::Accent, theme));
     after_title_y + 1.0 + 8.0
 }
 
@@ -69,11 +85,11 @@ pub(crate) fn paint_snap_top_toggle(
     } else {
         (ColorToken::BgElev, ColorToken::Border, ColorToken::Text2)
     };
-    crate::paint::fill_rounded_rect(scene, rect, radius, resolve(fill_tok, theme));
-    crate::paint::stroke_rounded_rect(scene, rect, radius, 1.5, resolve(border_tok, theme));
+    fill_rounded_rect(scene, rect, radius, resolve(fill_tok, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.5, resolve(border_tok, theme));
     let label = if on { "Snap: ON" } else { "Snap: OFF" };
     let font = ph2d_tokens::TypeToken::Md.px();
-    crate::paint::paint_text_centered(
+    paint_text_centered(
         text_system,
         scene,
         label,
@@ -96,7 +112,7 @@ pub(crate) fn paint_segmented_button(
     rect: Rect,
     label: &str,
     pressed: bool,
-    id: crate::NodeId,
+    id: NodeId,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -129,7 +145,7 @@ pub(crate) fn paint_kind_button_grid(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
-    let entries: [(GridKind, &str, crate::NodeId); 9] = [
+    let entries: [(GridKind, &str, NodeId); 9] = [
         (GridKind::Square, "Square", ids::GS_KIND_OPT_SQUARE),
         (GridKind::Hex, "Hex", ids::GS_KIND_OPT_HEX),
         (GridKind::Iso, "Iso", ids::GS_KIND_OPT_ISO),
@@ -192,7 +208,7 @@ pub(crate) fn paint_target_button_stack(
 ) -> f32 {
     let h = 28.0_f32;
     let gap = 6.0_f32;
-    let entries: [(SnapTarget, &str, crate::NodeId); 5] = [
+    let entries: [(SnapTarget, &str, NodeId); 5] = [
         (SnapTarget::Center, "Center", ids::GS_SNAP_CENTER),
         (
             SnapTarget::Intersection,
@@ -252,7 +268,7 @@ pub(crate) fn paint_neighborhood_button_row(
     // anonymous (Von4 / Moore8 don't self-explain). Uses the same
     // small Text2 label style as Inspector property labels.
     let label_font = ph2d_tokens::TypeToken::Sm.px();
-    crate::paint::paint_text(
+    paint_text(
         text_system,
         scene,
         "Neighborhood",
@@ -328,7 +344,7 @@ pub(crate) fn paint_neighborhood_button_row(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_labeled_segmented_row(
     label: &str,
-    options: &[(&str, crate::NodeId)],
+    options: &[(&str, NodeId)],
     active_idx: usize,
     x: f32,
     w: f32,
@@ -340,7 +356,7 @@ pub(crate) fn paint_labeled_segmented_row(
     store: &WidgetStore,
 ) -> f32 {
     let label_font = ph2d_tokens::TypeToken::Sm.px();
-    crate::paint::paint_text(
+    paint_text(
         text_system,
         scene,
         label,
@@ -418,7 +434,7 @@ pub(crate) fn paint_color_swatch_row(
     state: &GridSnapState,
 ) {
     let label_font = ph2d_tokens::TypeToken::Base.px();
-    crate::paint::paint_text(
+    paint_text(
         text_system,
         scene,
         "Color",
@@ -440,13 +456,13 @@ pub(crate) fn paint_color_swatch_row(
     let rgba = store
         .widget_color(ids::GS_COLOR_PICKER)
         .unwrap_or(state.color_rgba);
-    crate::paint::fill_rounded_rect(
+    fill_rounded_rect(
         scene,
         swatch_rect,
         ph2d_tokens::Radius::Sm.px(),
         ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
     );
-    crate::paint::stroke_rounded_rect(
+    stroke_rounded_rect(
         scene,
         swatch_rect,
         ph2d_tokens::Radius::Sm.px(),
@@ -459,7 +475,7 @@ pub(crate) fn paint_color_swatch_row(
 /// Stable mapping: GridKind → reserved option NodeId, in
 /// `GridKind::all()` order. Used by both populate (hit-test
 /// registration) and the chip → option resolve in apply_event.
-pub(crate) fn kind_option_ids_in_order() -> [(GridKind, crate::NodeId); 9] {
+pub(crate) fn kind_option_ids_in_order() -> [(GridKind, NodeId); 9] {
     [
         (GridKind::Square, ids::GS_KIND_OPT_SQUARE),
         (GridKind::Hex, ids::GS_KIND_OPT_HEX),
@@ -471,4 +487,21 @@ pub(crate) fn kind_option_ids_in_order() -> [(GridKind, crate::NodeId); 9] {
         (GridKind::Voronoi, ids::GS_KIND_OPT_VORONOI),
         (GridKind::Chunks, ids::GS_KIND_OPT_CHUNKS),
     ]
+}
+
+pub(crate) fn button_state(store: &WidgetStore, id: NodeId) -> ButtonState {
+    match store.get(id) {
+        Some(InteractiveState::Button { state }) => *state,
+        _ => ButtonState::Normal,
+    }
+}
+
+pub(crate) fn toggle_state(
+    store: &WidgetStore,
+    id: NodeId,
+) -> ph2d_editor_core::widget::ToggleState {
+    match store.get(id) {
+        Some(InteractiveState::Toggle { state, .. }) => *state,
+        _ => ph2d_editor_core::widget::ToggleState::Normal,
+    }
 }

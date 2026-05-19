@@ -458,12 +458,18 @@ fn settings_unit_cascade_opens_unit_submenu() {
     ));
 }
 
+// ADR-0029 Phase C.4: disabled in editor-core — touches the legacy
+// `grid.snap_state.panel_visible` field (now removed) and routes a
+// `hero.apply_event` that needs the typed `GridSnapPanel` installed.
+// Recreated at
+// `crates/ph2d-panel-grid-snap/tests/grid_snap_paint.rs`.
 /// Same shape as `gallery_publishes_scroll_bounds_after_paint`, but
 /// for the Grid Settings floating panel. Pins the end-to-end wheel
 /// pipeline so Enio's "scroll wheel doesn't work" report has a
 /// regression net: GS_PANEL must (1) publish a content_h that
 /// exceeds visible_h, (2) own the panel rect under its center, and
 /// (3) advance `panel_scroll` when a wheel event hits.
+#[cfg(any())]
 #[test]
 fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
     crate::test_support::ensure_panel_registry();

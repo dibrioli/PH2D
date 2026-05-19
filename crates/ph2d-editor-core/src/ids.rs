@@ -71,8 +71,9 @@ pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
 /// `ph2d_panel_widget_gallery::WidgetGalleryState::rect`.
 pub const TOPBAR_WIDGET_GALLERY: NodeId = hash_node_id("topbar_widget_gallery");
 /// Grid Settings cluster — opens the floating Grid Settings panel
-/// (grid-snap subsystem). Toggles `HeroScreen::grid_snap_state.panel_visible`.
-/// Panel internal widgets are hash-derived in `grid_snap::ids`.
+/// (grid-snap subsystem). Toggles
+/// `HeroScreen::panel_visibility["grid_snap"]` via the typed
+/// `GridSnapPanel::apply_event` after ADR-0029 Phase C.4.
 pub const TOPBAR_GRID_SETTINGS: NodeId = hash_node_id("topbar_grid_settings");
 
 /// Image Tools action — Trim Transparency pill. Lives in the action

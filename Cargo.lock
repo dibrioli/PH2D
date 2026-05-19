@@ -4011,7 +4011,14 @@ version = "0.0.0"
 name = "ph2d-panel-grid-snap"
 version = "0.0.0"
 dependencies = [
- "ph2d-editor",
+ "bumpalo",
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-grid",
+ "ph2d-host",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

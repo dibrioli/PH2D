@@ -476,13 +476,10 @@ impl HeroScreen {
         topbar::populate(store);
         left_rail::populate(store);
         pre_populate::populate_shared(store);
-        crate::grid_snap::populate(store);
-        // ADR-0029 Phase C.1: typed panels register their own widgets
-        // via `Panel::populate`. The new registry mirrors the legacy
-        // contract — host or test harness installs it before
-        // `HeroScreen::new`. If absent (lite-build hosts that skip
-        // typed panels), we silently fall through; legacy alias
-        // panels still populate via the loop above.
+        // ADR-0029 Phase C.4: every in-tree panel (Inspector,
+        // Hierarchy, Widget Gallery, Grid Snap) registers its
+        // widgets via `Panel::populate`. The legacy
+        // `crate::grid_snap::populate` is now an empty stub.
         if let Some(mtx) = crate::panel::PANEL_REGISTRY.get() {
             let guard = mtx.lock().expect("PANEL_REGISTRY mutex poisoned");
             for panel in guard.panels() {
@@ -1422,6 +1419,28 @@ impl crate::panel::PanelHostInternal for HeroScreen {
             Box::leak(id.to_string().into_boxed_str()) as &'static str
         });
         self.panel_visibility.insert(key, value);
+    }
+
+    fn grid_snap_state(&self) -> &crate::grid_snap::GridSnapState {
+        &self.grid.snap_state
+    }
+
+    fn grid_snap_state_mut(&mut self) -> &mut crate::grid_snap::GridSnapState {
+        &mut self.grid.snap_state
+    }
+
+    fn store_and_grid_snap_state_mut(
+        &mut self,
+    ) -> (&WidgetStore, &mut crate::grid_snap::GridSnapState) {
+        (&self.store, &mut self.grid.snap_state)
+    }
+
+    fn grid_snap_panel_rect(&self) -> Option<crate::zones::Rect> {
+        self.grid.snap_state.panel_rect
+    }
+
+    fn set_grid_snap_panel_rect(&mut self, rect: Option<crate::zones::Rect>) {
+        self.grid.snap_state.panel_rect = rect;
     }
 }
 

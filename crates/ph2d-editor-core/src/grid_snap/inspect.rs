@@ -10,6 +10,7 @@
 
 use super::state::{GridKind, GridSnapState};
 use crate::paint::{paint_text, resolve};
+use crate::project::DisplayUnit;
 use crate::widget::{SectionHeader, paint_section_header};
 use crate::zones::Rect;
 use ph2d_grid::GridMath;
@@ -234,6 +235,11 @@ pub fn height() -> f32 {
 
 /// Paint the inspect section at `rect`. The caller is responsible
 /// for positioning `rect` after the Display section.
+///
+/// `display_unit` + `pixels_per_meter` come from the live project
+/// settings (`PanelHostInternal::project()`) — used to convert the
+/// meter-domain probe NumberInputs to the active DisplayUnit.
+#[allow(clippy::too_many_arguments)]
 pub fn paint(
     rect: Rect,
     scene: &mut VectorScene,
@@ -242,6 +248,8 @@ pub fn paint(
     hit_index: &mut crate::interaction::HitIndex,
     store: &crate::interaction::WidgetStore,
     state: &GridSnapState,
+    display_unit: DisplayUnit,
+    pixels_per_meter: f32,
 ) {
     let header = SectionHeader {
         id: crate::NodeId(0),
@@ -330,6 +338,8 @@ pub fn paint(
         theme,
         hit_index,
         store,
+        display_unit,
+        pixels_per_meter,
     );
     y += ROW_H + ROW_GAP;
     paint_probe_pair_row(
@@ -345,6 +355,8 @@ pub fn paint(
         theme,
         hit_index,
         store,
+        display_unit,
+        pixels_per_meter,
     );
 }
 
@@ -363,6 +375,8 @@ fn paint_probe_pair_row(
     theme: Theme,
     hit_index: &mut crate::interaction::HitIndex,
     store: &crate::interaction::WidgetStore,
+    display_unit: DisplayUnit,
+    pixels_per_meter: f32,
 ) {
     let label_w = 70.0;
     let gap = 4.0;
@@ -380,7 +394,7 @@ fn paint_probe_pair_row(
     // Probe values are world meters; convert through the active
     // DisplayUnit so the NumberInputs read the right magnitude.
     for (i, (id, v_m)) in [(x_id, value[0]), (y_id, value[1])].iter().enumerate() {
-        let v_disp = super::panel::meters_to_display_pub(*v_m);
+        let v_disp = display_unit.from_meters(*v_m, pixels_per_meter) as f64;
         let r = Rect::new(
             x + Spacing::Sm.px() + label_w + i as f32 * (input_w + gap),
             y,

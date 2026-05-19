@@ -1,15 +1,39 @@
 //! Number rows + origin/aabb/overlay/opacity/labeled-toggle painters.
 //!
-//! Extracted from `panel/mod.rs` in Wave 2.5 PR 11.7a to bring the
-//! parent module under the HR-18 hygiene cap. Same private surface
-//! as before; re-exported by `mod.rs` so call sites are unchanged.
+//! Ported verbatim from
+//! `ph2d_editor_core::grid_snap::panel::paint_rows` during ADR-0029
+//! Phase C.4.
 
-use super::*;
+use crate::ids;
+use crate::layout::{LABEL_COL_W, LABEL_FONT_SIZE, ROW_GAP, ROW_H};
+use crate::paint_helpers::toggle_state;
+use crate::state::{meters_to_display, unit_suffix_paren};
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::grid_snap::GridSnapState;
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::widget::{
+    NumberInput, Slider, SliderOrientation, SliderState, TextInputState, Toggle,
+    paint_number_input_with_buffer, paint_slider, paint_toggle,
+};
+use ph2d_editor_core::zones::Rect;
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Spacing, Theme};
+use ph2d_vector::VectorScene;
+
+pub(crate) fn read_number_input(
+    store: &WidgetStore,
+    id: NodeId,
+) -> (TextInputState, f64, &str, usize, Option<usize>) {
+    store
+        .number_input(id)
+        .unwrap_or((TextInputState::Normal, 0.0, "", 0, None))
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_number_row(
     label: &str,
-    id: crate::NodeId,
+    id: NodeId,
     x: f32,
     w: f32,
     y: f32,
@@ -45,7 +69,7 @@ pub(crate) fn paint_number_row(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_number_row_from_state(
     label: &str,
-    id: crate::NodeId,
+    id: NodeId,
     value: f64,
     x: f32,
     w: f32,
@@ -86,7 +110,7 @@ pub(crate) fn paint_number_row_from_state(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_number_row_value(
     label: &str,
-    id: crate::NodeId,
+    id: NodeId,
     value: f64,
     buffer: Option<&str>,
     caret: usize,
@@ -176,10 +200,10 @@ pub(crate) fn paint_origin_rows(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_aabb_rows(
     label_prefix: &str,
-    min_x_id: crate::NodeId,
-    min_y_id: crate::NodeId,
-    max_x_id: crate::NodeId,
-    max_y_id: crate::NodeId,
+    min_x_id: NodeId,
+    min_y_id: NodeId,
+    max_x_id: NodeId,
+    max_y_id: NodeId,
     min: ph2d_grid::Vec2,
     max: ph2d_grid::Vec2,
     x: f32,
@@ -310,13 +334,10 @@ pub(crate) fn paint_opacity_slider_row(
     hit_index.register(ids::GS_OPACITY_SLIDER, slider_rect);
 }
 
-/// "Color" row: 3 small R/G/B NumberInputs + a swatch preview.
-/// Alpha is owned by the opacity slider; we never expose it as a
-/// separate channel here so the two controls stay orthogonal.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_labeled_toggle(
     label: &str,
-    id: crate::NodeId,
+    id: NodeId,
     on: bool,
     row: Rect,
     scene: &mut VectorScene,
@@ -353,3 +374,7 @@ pub(crate) fn paint_labeled_toggle(
     paint_toggle(&toggle, toggle_rect, scene, theme);
     hit_index.register(id, toggle_rect);
 }
+
+// Re-export `button_state` so `paint_kinds.rs` can use it without
+// reaching across modules; mirrors the legacy `super::*` glob.
+pub(crate) use crate::paint_helpers::button_state;

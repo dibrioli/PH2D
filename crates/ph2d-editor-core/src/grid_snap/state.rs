@@ -266,7 +266,14 @@ pub struct GridSnapState {
     /// attraction zone.
     pub snap_magnetism_radius: f32,
 
-    pub panel_visible: bool,
+    /// Persisted floating-panel rect for the Grid Snap chrome
+    /// (drag/resize survives close+reopen). Lazy-initialized to
+    /// [`super::default_rect_for_panel`] on first paint. Phase C.4
+    /// kept this field on `GridSnapState` (rather than splitting it
+    /// into a separate `GridSnapPanelState`) because the canvas
+    /// renderer never reads it — only the panel chrome does — and
+    /// splitting added more friction than it removed. Visibility
+    /// migrated to `HeroScreen::panel_visibility` keyed `"grid_snap"`.
     pub panel_rect: Option<Rect>,
 
     pub show_overlay: bool,
@@ -322,7 +329,6 @@ impl Default for GridSnapState {
             // via the panel.
             snap_magnetism_radius: 0.30,
 
-            panel_visible: false,
             panel_rect: None,
 
             show_overlay: true,

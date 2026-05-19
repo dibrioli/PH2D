@@ -1,10 +1,26 @@
 //! `paint_kind_config` dispatch + 8 per-kind config painters.
 //!
-//! Extracted from `panel/mod.rs` in Wave 2.5 PR 11.7a to bring the
-//! parent module under the HR-18 hygiene cap. Same private surface
-//! as before; re-exported by `mod.rs` so call sites are unchanged.
+//! Ported verbatim from `ph2d_editor_core::grid_snap::panel::paint_kinds`
+//! during ADR-0029 Phase C.4.
 
-use super::*;
+use crate::ids;
+use crate::layout::{ROW_GAP, ROW_H};
+use crate::paint_helpers::{
+    NeighborhoodFamily, paint_labeled_segmented_row, paint_neighborhood_button_row,
+};
+use crate::paint_rows::{
+    button_state, paint_aabb_rows, paint_number_row, paint_number_row_from_state, paint_origin_rows,
+};
+use crate::state::unit_suffix_paren;
+use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
+use ph2d_editor_core::zones::Rect;
+use ph2d_grid::hex::{HexOffset, HexOrientation};
+use ph2d_grid::staggered::StaggerParity;
+use ph2d_text::TextSystem;
+use ph2d_tokens::Theme;
+use ph2d_vector::VectorScene;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_kind_config(
@@ -70,7 +86,7 @@ pub(crate) fn paint_square_cfg(
     y = paint_number_row_from_state(
         &format!("Major every{}", unit_suffix_paren()),
         ids::GS_CFG_SPACING_MAJOR,
-        meters_to_display(state.square_cfg.spacing_major),
+        crate::state::meters_to_display(state.square_cfg.spacing_major),
         x,
         w,
         y,

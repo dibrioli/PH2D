@@ -1,13 +1,13 @@
 //! ph2d-panel-registry-init — append-only point of contact for
 //! panel registration.
 //!
-//! ADR-0029 Phase C.1 split this init into two registries:
-//! - **Legacy fn-pointer registry** (`ph2d_editor_core::panel_registry`)
-//!   for panels still on the pre-ADR shape (grid_snap as of C.3;
-//!   migrates to typed in C.4).
-//! - **Typed `Panel<State>` registry** (`ph2d_editor_core::panel`)
-//!   for migrated panels (Inspector after C.1, Hierarchy after C.2,
-//!   Widget Gallery after C.3).
+//! ADR-0029 Phase C.4 closed the typed migration: every in-tree panel
+//! (Inspector / Hierarchy / Widget Gallery / Grid Snap) now lives in
+//! `ph2d_editor_core::panel::PANEL_REGISTRY` as a typed
+//! `Panel<State>`. The legacy fn-pointer registry
+//! (`ph2d_editor_core::panel_registry`) ships empty by default but
+//! continues to exist so 3rd-party panels (future) can opt into the
+//! pre-ADR contract.
 //!
 //! `register_all_panels` installs BOTH atomically. Hosts call it once
 //! at boot before `HeroScreen::new`.
@@ -39,12 +39,12 @@ pub fn register_all_panels() -> bool {
 }
 
 /// Build the legacy fn-pointer registry without installing it.
+/// Post-Phase-C.4 this always returns an empty registry — every
+/// in-tree panel migrated to the typed registry below. Kept around
+/// so future 3rd-party panels can `push(&manifest)` if they prefer
+/// the legacy shape.
 pub fn build_legacy_registry() -> LegacyRegistry {
-    #[allow(unused_mut)]
-    let mut reg = LegacyRegistry::new_empty();
-    #[cfg(feature = "panel-grid-snap")]
-    reg.push(&ph2d_panel_grid_snap::PANEL_MANIFEST);
-    reg
+    LegacyRegistry::new_empty()
 }
 
 /// Build the typed `Panel<State>` registry without installing it.
@@ -59,6 +59,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<
         ph2d_panel_widget_gallery::WidgetGalleryPanel,
     >());
+    #[cfg(feature = "panel-grid-snap")]
+    reg.push(ErasedPanel::new::<ph2d_panel_grid_snap::GridSnapPanel>());
     reg
 }
 
@@ -66,19 +68,12 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
 mod tests {
     use super::*;
 
-    /// Expected legacy panel count (grid_snap while it remains a
-    /// fn-pointer manifest post-C.3).
-    const EXPECTED_LEGACY: usize = {
-        let mut n = 0;
-        #[cfg(feature = "panel-grid-snap")]
-        {
-            n += 1;
-        }
-        n
-    };
+    /// Expected legacy panel count post-Phase-C.4 — always zero (no
+    /// in-tree panel lives on the fn-pointer registry anymore).
+    const EXPECTED_LEGACY: usize = 0;
 
     /// Expected typed panel count (Inspector + Hierarchy + Widget
-    /// Gallery after C.3).
+    /// Gallery + Grid Snap after C.4).
     const EXPECTED_TYPED: usize = {
         let mut n = 0;
         #[cfg(feature = "panel-inspector")]
@@ -90,6 +85,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-widget-gallery")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-grid-snap")]
         {
             n += 1;
         }

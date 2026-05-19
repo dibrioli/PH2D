@@ -20,9 +20,11 @@
 //! observed usage.
 
 use crate::action_bus::ActionBus;
+use crate::grid_snap::GridSnapState;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::project::ProjectSettings;
 use crate::screens::HeroSelection;
+use crate::zones::Rect;
 use ph2d_tokens::Theme;
 
 /// Public-stable subset of host operations panels can consume across
@@ -80,4 +82,42 @@ pub trait PanelHostInternal: PanelHost {
     /// affordances mutate it via [`Self::set_panel_visible`].
     fn panel_visible(&self, id: &str) -> bool;
     fn set_panel_visible(&mut self, id: &str, value: bool);
+
+    /// Read-only access to the canvas-renderer / snap state owned by
+    /// editor-core. ADR-0029 Phase C.4: the Grid Snap panel chrome
+    /// migrated to `ph2d-panel-grid-snap`, but the per-kind config +
+    /// `panel_rect` + canvas-overlay color/opacity continue to live
+    /// on `crate::grid_snap::GridSnapState` (the canvas renderer +
+    /// world-space snap algorithm both read them). Panel paint /
+    /// apply_event reach into the state through this accessor.
+    fn grid_snap_state(&self) -> &GridSnapState;
+
+    /// Mutable access to the canvas-renderer / snap state. Used by
+    /// the typed Grid Snap panel's `apply_event` when the user
+    /// changes a config row.
+    fn grid_snap_state_mut(&mut self) -> &mut GridSnapState;
+
+    /// Clone of the canvas-renderer state. Convenience used by the
+    /// panel's paint thunk to avoid aliasing a long-lived borrow of
+    /// `self.grid_snap_state()` across `&mut store` writes during
+    /// the paint pass.
+    fn grid_snap_state_clone(&self) -> GridSnapState {
+        self.grid_snap_state().clone()
+    }
+
+    /// Joint accessor: `(&WidgetStore, &mut GridSnapState)`. Used
+    /// by the Grid Snap panel's `apply_event` to read store values
+    /// (number / toggle / slider) while writing into the snap state
+    /// — the trait split prevents a re-borrow of `host` from working
+    /// otherwise. Concrete impls split the fields directly.
+    fn store_and_grid_snap_state_mut(&mut self) -> (&WidgetStore, &mut GridSnapState);
+
+    /// Persisted floating-panel rect for the Grid Snap panel.
+    /// `None` means "not yet shown — paint will lazy-init from
+    /// [`crate::grid_snap::default_rect`]". Stored on
+    /// `GridSnapState::panel_rect`; mirrored here through the trait
+    /// so the panel crate doesn't need to reach into the state by
+    /// field name.
+    fn grid_snap_panel_rect(&self) -> Option<Rect>;
+    fn set_grid_snap_panel_rect(&mut self, rect: Option<Rect>);
 }

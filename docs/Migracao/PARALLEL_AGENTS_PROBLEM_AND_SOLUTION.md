@@ -691,6 +691,77 @@ justificativa empírica.
 
 ---
 
+### 8a.5 Wave 9 — Multi-agent UI hardening (2026-05-19)
+
+Wave 8 / ADR-0029 closou tools + painéis físicas-isoladas. Audit pós-Wave-8
+identificou 4 gaps específicos contra os 2 critérios operacionais de
+"perfeição" do Enio:
+
+1. **Arquitetura pronta multi-agente paralelo** — tools/panels físicas
+   isoladas + **zero shared edit point em fluxo crítico**.
+2. **UI núcleo único de source-of-truth** — agentes criam UI consistente
+   sem reinventar padrão.
+
+Gaps reais (não os falsos do brief original Wave 9 que mirava 5 residuais
+internos como pointer.rs decomp, shim delete, PanelHost carve — rejeitados
+porque não moviam os 2 critérios):
+
+- **G1 — `hero.rs::apply_event` shared edit (412 LOC inline).** Qualquer agente
+  adicionando TopBar action / chrome affordance editava o mesmo método.
+- **G2 — Sem cookbook canonical para widget novo.** Agente fresh inventava
+  padrão.
+- **G3 — Sem gate "widget aparece no showcase".** Gallery degradava silenciosamente.
+- **G4 — Sem gate "tokens usados em mockup HTML existem".** Divergência
+  design ↔ impl invisível.
+
+Wave 9 resolveu cada um:
+
+- **A.1 — chrome decomp.** `apply_event` → 11 handlers em [`chrome/`](../../crates/ph2d-editor-core/src/screens/hero/chrome/)
+  + `dispatch_all`. Adicionar TopBar action = drop arquivo + 2 linhas em
+  `chrome/mod.rs`. Zero edit em hero.rs. hero.rs 1334→976 LOC.
+- **A.2 — alphabetical registry gate.** `ph2d-tool-registry-init/Cargo.toml`
+  + `register_all()` gateados por `architecture_register_all_alphabetical` —
+  merge conflict surface = trivial.
+- **B.1-3 — UI source-of-truth gates.** [DIRETRIZ §4.2](../IntegracaoMultiAgente/DIRETRIZ.md)
+  cookbook completo + 2 arch tests (`architecture_widget_showcase_coverage`
+  + `architecture_widget_loc_cap` cap 500 LOC).
+- **C.1 — mockup tokens gate.** `mockup_tokens_exist` em ph2d-tokens.
+  Descobriu e fechou `--border-soft` faltando em `docs/design/styles/tokens.css`.
+
+**Bug fix bônus (pré-existente, não-Wave-9):** submenu Display Unit dead
+code. Faltavam `CTX_MENU_SETTINGS_UNIT` + `CTX_MENU_UNIT_METERS/PIXELS`
+em `populate_global_context_menu` → Click event nunca emitido → handler
+jamais chamado. Bug coberto por instrumentação experimental (eprintln
+revelou em 1 ciclo o que 4 análises estáticas não pegaram — vide memory
+`feedback_visual_bug_debug`). Smart cascade adicionado em `chrome/mod.rs`
+flipa submenu pra esquerda quando direita não cabe; clamp viewport no
+painter como safety net.
+
+**Multi-agente paralelo perfeito pelos critérios pós-Wave-9:**
+
+- ✅ **Tool nova**: 1 crate isolada + 1 linha alfabética em `register_all` +
+  1 linha em Cargo.toml. Zero edit em arquivo central.
+- ✅ **Painel novo**: 1 crate isolada + 1 linha em `panel-registry-init`.
+- ✅ **Widget novo**: 1 arquivo em `editor-core/src/widget/` + 1 entry em
+  showcase. Cookbook claro, 5 mandamentos gateados via arch tests.
+- ✅ **TopBar action novo**: 1 arquivo em `chrome/` + 2 linhas em
+  `chrome/mod.rs`.
+- ✅ **Token novo**: definir em tokens.json + alias em tokens.css; gate
+  de mockups garante zero orphan reference.
+
+**Métricas Wave 9:**
+
+| Métrica | Pré-Wave-9 | Pós-Wave-9 |
+|---|---|---|
+| `screens/hero.rs` LOC | 1334 | 976 |
+| `apply_event` inline LOC | 412 | ~54 (dispatch only) |
+| Chrome handlers files | 0 | 11 + mod.rs |
+| Architecture tests (UI gates) | 6 | 10 |
+| Widget cookbook DIRETRIZ | placeholder | completo, gateado |
+| Submenu Display Unit | dead code (pre-existing) | funcional |
+
+---
+
 ## 9. Referências
 
 - [ADR-0027 — Convention-by-discovery (Wave 1)](../architecture/decisions/0027-convention-by-discovery.md)

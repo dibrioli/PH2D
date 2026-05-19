@@ -615,6 +615,98 @@ A audit findings S1 + A2 ficam fechados como consequência. ADR-0030
 é o próximo follow-up planejado, deferido para ~6 meses pós-merge
 conforme ADR-0029 §12.
 
+## Wave 9 closeout (2026-05-19)
+
+Wave 9 — **Multi-Agent UI Hardening** — endereçou gaps pós-Wave-8 que
+ainda permitiam fricção em uso paralelo OU dispersão de UI source-of-truth.
+
+Definição de "perfeição" pelos 2 critérios operacionais do Enio:
+
+1. **Arquitetura pronta multi-agente paralelo**: tools/panels físicas-
+   isoladas + zero shared edit point em fluxo crítico (TopBar / chrome /
+   widget registration).
+2. **UI núcleo único de fonte da verdade**: agentes criando UI consistente
+   sem reinventar padrão ou divergir de design canonical.
+
+### Eixo A — Multi-agent friction zerada
+
+- **A.1 — chrome decomp.** `screens/hero.rs::apply_event` tinha 412 LOC
+  inline de `if id == X { ... }` arms para cada TopBar / context menu /
+  left rail affordance — qualquer agente adicionando affordance editava
+  o mesmo método. Decomposto em
+  [`crates/ph2d-editor-core/src/screens/hero/chrome/`](../../../crates/ph2d-editor-core/src/screens/hero/chrome/)
+  com 11 handlers (theme, radius, view_toggles, rail_tools, rail_panels,
+  io_menu, settings_ppm, settings_unit, scene_picker, image_tools_toggle,
+  image_actions) + `dispatch_all` (chain `||` que para no primeiro consume).
+  hero.rs 1334 → 976 LOC. **Adicionar TopBar action novo = drop arquivo
+  + 2 linhas em `chrome/mod.rs`. Zero edit em hero.rs.**
+
+- **A.2 — alphabetical registry gate.** [`architecture_register_all_alphabetical`](../../../crates/ph2d-tool-registry-init/tests/architecture_register_all_alphabetical.rs)
+  gateia ordem em `register_all()` + Cargo.toml `[dependencies]`. Inserir
+  tool nova em posição alfabética = merge conflict surface trivial.
+
+### Eixo B — UI source-of-truth gates
+
+- **B.1 — widget cookbook canonical.** [DIRETRIZ §4.2](../../IntegracaoMultiAgente/DIRETRIZ.md)
+  reescrita com cookbook completo: template Rust (struct + state enum +
+  `paint_X` helper + AccessKit Node) + 5 mandamentos gateados (cores via
+  `ColorToken::X.resolve(theme)`, sizes via `Spacing/Radius/StrokeToken/
+  TypeToken`, AccessKit obrigatório, LOC cap 500, showcase coverage).
+
+- **B.2 — showcase coverage.** [`architecture_widget_showcase_coverage`](../../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs)
+  força todo `src/widget/*.rs` aparecer em `widget/showcase/` ou ter
+  opt-out justificado (13 chrome-internal opt-outs).
+
+- **B.3 — widget LOC cap.** [`architecture_widget_loc_cap`](../../../crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs)
+  cap 500 LOC por widget primitive (HR-18 estendida para `editor-core/src/widget/`).
+  Maior atual: `tool_rail.rs` 454.
+
+### Eixo C — Mockup ↔ impl gate
+
+- **C.1 — mockup tokens.** [`mockup_tokens_exist`](../../../crates/ph2d-tokens/tests/mockup_tokens_exist.rs):
+  todo `var(--*)` em `docs/design/screens/*.html` resolve via
+  `docs/design/styles/*.css` (alias layer over tokens.json — ex.
+  `--fw-medium: 500`) OU `docs/design/tokens.json` direto OU `--var-name`
+  definido inline na própria screen. `var(--X, fallback)` é tolerado
+  (per-instance knob explicitamente opcional). Descobriu gap real:
+  `--border-soft` faltava, adicionado em `tokens.css` como `color-mix(in
+  oklch, var(--border), transparent 60%)` cascade-derived.
+
+### Bug fix bônus (pré-existente, não-Wave-9)
+
+Submenu **Display Unit** nunca aparecia:
+
+- `CTX_MENU_SETTINGS_UNIT` + `CTX_MENU_UNIT_METERS` + `CTX_MENU_UNIT_PIXELS`
+  faltavam em [`populate_global_context_menu`](../../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs).
+  Sem registro → `is_focusable(store, id)` retorna false → `set_active`
+  não disparou no Mouse Down → no Mouse Up `apply_click` não emitiu
+  `WidgetEvent::Click` → handler `settings_unit::apply` jamais foi chamado.
+- Submenu cascade também não tinha clamp ao viewport: anchor `(row.x + row.w,
+  row.y)` num parent clamped na borda direita gerava overlap com o parent.
+
+Wave 9 corrigiu ambos:
+
+- 3 ids registrados em `populate_global_context_menu`.
+- `cascade_anchor()` em [`chrome/mod.rs`](../../../crates/ph2d-editor-core/src/screens/hero/chrome/mod.rs)
+  usa novo campo `HeroScreen::last_viewport` (setado a cada `paint_hero_screen`)
+  para flipar submenu para a esquerda quando direita não cabe.
+- `clamp_to_viewport` em [`context_menu_overlay.rs`](../../../crates/ph2d-editor-core/src/screens/hero/context_menu_overlay.rs)
+  como safety net (mantém menu 4px dentro do viewport).
+
+Lição metodológica gravada em memory [[feedback-visual-bug-debug]]: bug
+visual = aritmética de pixels CEDO; instrumentação experimental >> leitura
+estática (eprintln revelou em 1 ciclo o que 4 análises de fluxo não pegaram).
+
+### Próximo follow-up
+
+- **`architecture_context_menu_ids_populated`**: arch test que toda
+  variante `ContextMenuKind::*` em `context_menu_overlay.rs` tenha
+  todos os ids referenciados também em `populate_global_context_menu`.
+  Evita bug do Display Unit acontecer de novo.
+- **Pixel snapshot tests por widget** (G10 do audit, defer).
+- **5 god-files 700-1000 LOC** restantes (chroma, atlas, paint,
+  grid_snap_state, grabcut/mod): defer até dor real aparecer pós-piloto.
+
 ## Referências
 
 - **[Narrativa completa: problema multi-agente paralelo + solução](../../Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md)** ← *começar por aqui se for novo no projeto*

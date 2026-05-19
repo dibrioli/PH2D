@@ -1,9 +1,10 @@
 //! ph2d-editor-core — Procreate-style canvas-first editor (M12, ADR-0023).
 //!
 //! ADR-0029 Phase B.2 absorbed the orchestrator content from `ph2d-editor`
-//! (HeroScreen, panel_registry, action_bus, grid_snap, tools, image_edit,
-//! screens/*) so panel crates can depend ONLY on this crate without
-//! pulling in the legacy `ph2d-editor` shim.
+//! (HeroScreen, action_bus, grid_snap, tools, image_edit, screens/*) so
+//! panel crates can depend ONLY on this crate without pulling in the legacy
+//! `ph2d-editor` shim. Phase D deleted the legacy fn-pointer panel registry
+//! (every in-tree panel migrated to `panel::PANEL_REGISTRY` typed Panel<State>).
 //!
 //! Foundation:
 //! - [`zones::Layout`] — 4-zone canonical positioning (top-left
@@ -21,11 +22,11 @@
 //! - [`zen::ZenMode`] — Tab-toggle workspace state.
 //! - [`toast::ToastQueue`] — non-modal notification stream.
 //! - [`paint`] — Vello lowering (`Paint` trait + `paint_text` helper).
-//! - [`panel`] — ADR-0029 trait-driven panel host (Phase B.1 infra,
-//!   wired to panels in Phase C).
-//! - [`panel_registry`] — legacy fn-pointer panel registry (still
-//!   used by the 4 in-tree panels until Phase C migrates each to
-//!   `Panel<State>`).
+//! - [`panel`] — ADR-0029 trait-driven panel host. All four in-tree
+//!   panels (Inspector, Hierarchy, Widget Gallery, Grid Snap) live
+//!   here as typed `Panel<State>` impls in their own crates; the
+//!   process-wide [`panel::PANEL_REGISTRY`] is installed at boot by
+//!   `ph2d_panel_registry_init::register_all_panels()`.
 
 #![forbid(unsafe_code)]
 
@@ -40,7 +41,6 @@ pub mod image_edit;
 pub mod interaction;
 pub mod paint;
 pub mod panel;
-pub mod panel_registry;
 pub mod project;
 pub mod screens;
 pub mod toast;

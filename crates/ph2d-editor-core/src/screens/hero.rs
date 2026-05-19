@@ -61,106 +61,14 @@ use bumpalo::Bump;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_host::{KeyEvent, PointerEvent};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
-/// Pre-computed sub-regions that the rest of the hero painters
-/// consume. Built once per frame from a viewport rect — cheap.
-#[derive(Copy, Clone, Debug)]
-pub struct HeroLayout {
-    pub viewport: Rect,
-    pub top_bar: Rect,
-    pub left_rail: Rect,
-    pub inspector: Rect,
-    pub hierarchy: Rect,
-    pub bottom_hud: Rect,
-    /// Visible canvas region (between rail/inspector on the left and
-    /// hierarchy on the right, between TopBar and HUD vertically).
-    /// The selection overlay positions itself relative to this rect.
-    pub canvas: Rect,
-}
-
-impl HeroLayout {
-    /// Default layout (mirrored = false): Hierarchy on the LEFT next
-    /// to the rail, Inspector pinned to the RIGHT edge. The canvas
-    /// sits between them. Pass `mirrored = true` to flip horizontally
-    /// (Inspector left of canvas, Hierarchy right) — used by the
-    /// "Mirror UI" theme-menu toggle.
-    pub fn for_viewport(viewport: Rect) -> Self {
-        Self::for_viewport_mirrored(viewport, false)
-    }
-
-    pub fn for_viewport_mirrored(viewport: Rect, mirrored: bool) -> Self {
-        use style::{
-            EDGE_PAD, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H, INSPECTOR_W, RAIL_W, TOPBAR_GAP, TOPBAR_H,
-        };
-        let top_bar = Rect::new(
-            viewport.x + EDGE_PAD,
-            viewport.y + EDGE_PAD,
-            (viewport.w - EDGE_PAD * 2.0).max(0.0),
-            TOPBAR_H,
-        );
-        let chrome_top = top_bar.y + top_bar.h + TOPBAR_GAP;
-        let chrome_bot = viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H - Spacing::Md.px();
-        let chrome_h = (chrome_bot - chrome_top).max(0.0);
-
-        // Rail is FLUSH with the viewport's left edge — the
-        // sub-labels paint at `rail.x + LABEL_LEFT_PAD` so this
-        // gives them an exact 3-px gap from the screen edge.
-        let left_rail = Rect::new(viewport.x, chrome_top, RAIL_W, chrome_h);
-        // Default panel sides (mirrored=false):
-        //   - Hierarchy LEFT (just past the rail)
-        //   - Inspector RIGHT (pinned to viewport edge)
-        // Mirrored flips both.
-        // Side panels sit just past the rail (now flush at viewport.x)
-        // — `RAIL_W + EDGE_PAD` from the screen's left edge gives the
-        // canonical breathing room.
-        let (hierarchy_x, inspector_x) = if mirrored {
-            (
-                viewport.x + viewport.w - EDGE_PAD - HIERARCHY_W,
-                viewport.x + RAIL_W + EDGE_PAD,
-            )
-        } else {
-            (
-                viewport.x + RAIL_W + EDGE_PAD,
-                viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W,
-            )
-        };
-        let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h.min(880.0)); // LITERAL-PX-OK: Inspector max height cap (chrome-specific)
-        let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
-        // Canvas spans the gap between whichever panel is on the
-        // left side of it and whichever is on the right.
-        let (left_panel_right, right_panel_left) = if mirrored {
-            (inspector.x + inspector.w, hierarchy.x)
-        } else {
-            (hierarchy.x + hierarchy.w, inspector.x)
-        };
-        // Canvas spans the FULL viewport — every other piece of
-        // chrome (rail, top bar, side panels, bottom HUD) is a
-        // floating overlay on top. Includes the area BELOW the
-        // chrome bottom so the canvas tint reaches the screen's
-        // bottom edge; the stats HUD floats above it.
-        let _ = (left_panel_right, right_panel_left, chrome_bot);
-        let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
-
-        let bottom_hud = Rect::new(
-            viewport.x + (viewport.w - 480.0) * 0.5, // LITERAL-PX-OK: HUD strip width (chrome-specific)
-            viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H,
-            480.0, // LITERAL-PX-OK: HUD strip width (chrome-specific)
-            HUD_H,
-        );
-
-        Self {
-            viewport,
-            top_bar,
-            left_rail,
-            inspector,
-            hierarchy,
-            bottom_hud,
-            canvas,
-        }
-    }
-}
+// ADR-0029 Phase D: `HeroLayout` collapsed — single canonical definition
+// lives in `crate::screens::layout`. Re-exported here so legacy paths
+// (`crate::screens::hero::HeroLayout`, `super::HeroLayout` from sibling
+// painters) keep resolving.
+pub use crate::screens::layout::HeroLayout;
 
 /// Selection state surfaced by the hero (drives the marquee + tag).
 #[derive(Clone, Debug, Default)]
@@ -579,48 +487,26 @@ impl HeroScreen {
     /// `apply_event` in z-order; first region that consumes the
     /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
-        // Wave 6+7 Phase 4 + Wave 8 Phase 4: panel-distributed event
-        // handling with tripartite EventOutcome (audit B2 + A4).
-        // Each panel returns Consumed (stop), Observed (continue but
-        // record a side-effect happened), or Ignored (continue).
-        // `WidgetEvent` is `Copy` — passing by value is cheap.
-        use crate::panel_registry::EventOutcome;
+        // ADR-0029 Phase D: legacy fn-pointer dispatch deleted — every
+        // in-tree panel lives in `crate::panel::PANEL_REGISTRY` as a
+        // typed `Panel<State>`. Walk only the typed registry.
+        // Tripartite outcome semantics (audit B2 + A4): Consumed stops
+        // iteration entirely (returns `true`); Observed records a side
+        // effect but continues; Ignored is a no-op.
         let mut observed = false;
-        for manifest in crate::panel_registry::panels() {
-            match (manifest.apply_event_fn)(self, event) {
-                EventOutcome::Consumed => return true,
-                EventOutcome::Observed => observed = true,
-                EventOutcome::Ignored => {}
-            }
-        }
-        // ADR-0029 Phase C.1: walk the new typed registry alongside
-        // the legacy one. Migrated panels (Inspector first; others
-        // follow in C.2-C.4) live in `crate::panel::PANEL_REGISTRY`.
-        // Matches legacy semantics: Consumed stops iteration entirely
-        // (returns to caller as `true`); Observed records side effect
-        // but continues.
-        #[derive(Clone, Copy)]
-        enum TypedSummary {
-            Consumed,
-            Observed,
-            Ignored,
-        }
-        let typed_summary = crate::panel::with_registry_opt(|reg| {
-            let mut acc = TypedSummary::Ignored;
+        let consumed = crate::panel::with_registry_opt(|reg| {
             for panel in reg.panels_mut() {
                 match panel.apply_event(self, event) {
-                    crate::panel::EventOutcome::Consumed => return TypedSummary::Consumed,
-                    crate::panel::EventOutcome::Observed => acc = TypedSummary::Observed,
+                    crate::panel::EventOutcome::Consumed => return true,
+                    crate::panel::EventOutcome::Observed => observed = true,
                     crate::panel::EventOutcome::Ignored => {}
                 }
             }
-            acc
+            false
         })
-        .unwrap_or(TypedSummary::Ignored);
-        match typed_summary {
-            TypedSummary::Consumed => return true,
-            TypedSummary::Observed => observed = true,
-            TypedSummary::Ignored => {}
+        .unwrap_or(false);
+        if consumed {
+            return true;
         }
         // ADR-0029 Phase C.1: host-level showcase event handler —
         // covers `CTX_MENU_OUTLINE_*`, `CTX_MENU_CREATE_NOTE`,
@@ -1273,49 +1159,25 @@ pub fn paint_hero_screen(
             z_order.push(fallback);
         }
     }
-    // ADR-0029 Phase C.1: dual-path dispatch — z-order may resolve to
-    // a legacy fn-pointer manifest (panel_registry) OR to a typed
-    // `Panel` impl living in `crate::panel::PANEL_REGISTRY`. Migrated
-    // panels drop from legacy and appear in the typed registry; the
-    // unmatched id is silently skipped (same as legacy semantics).
-    for panel_id in z_order {
-        if let Some(manifest) = crate::panel_registry::find_panel_by_node_id(panel_id) {
-            let mut ctx = crate::panel_registry::PaintCtx {
-                hero,
-                layout: &layout,
-                viewport,
-                scene,
-                text_system,
-            };
-            (manifest.paint_fn)(&mut ctx);
-        } else {
-            // The new PaintCtx wants `&crate::screens::layout::HeroLayout`;
-            // the orchestrator's local `layout` is the duplicate
-            // `crate::screens::hero::HeroLayout`. Same shape — copy
-            // fields. (Phase D will collapse the two layouts.)
-            let typed_layout = crate::screens::layout::HeroLayout {
-                viewport: layout.viewport,
-                top_bar: layout.top_bar,
-                left_rail: layout.left_rail,
-                inspector: layout.inspector,
-                hierarchy: layout.hierarchy,
-                bottom_hud: layout.bottom_hud,
-                canvas: layout.canvas,
-            };
-            crate::panel::with_registry_opt(|reg| {
-                if let Some(idx) = reg.find_by_panel_node_id(panel_id) {
-                    let mut typed_ctx = crate::panel::PaintCtx {
-                        host: hero,
-                        layout: &typed_layout,
-                        viewport,
-                        scene,
-                        text_system,
-                    };
-                    reg.panels_mut()[idx].paint(&mut typed_ctx);
-                }
-            });
+    // ADR-0029 Phase D: legacy fn-pointer dispatch deleted. Every
+    // in-tree panel lives in `crate::panel::PANEL_REGISTRY` as a
+    // typed `Panel<State>`. The z-order walk resolves each id to its
+    // typed entry; ids that don't match (e.g. `INSP_BLENDER_PICKER`,
+    // painted out-of-band below) are silently skipped.
+    crate::panel::with_registry_opt(|reg| {
+        for panel_id in z_order {
+            if let Some(idx) = reg.find_by_panel_node_id(panel_id) {
+                let mut typed_ctx = crate::panel::PaintCtx {
+                    host: hero,
+                    layout: &layout,
+                    viewport,
+                    scene,
+                    text_system,
+                };
+                reg.panels_mut()[idx].paint(&mut typed_ctx);
+            }
         }
-    }
+    });
     // hero/scene/text_system unborrowed for the
     // rest of paint_hero_screen (bottom HUD, picker overlay, tooltip,
     // context menu, drop overlay).

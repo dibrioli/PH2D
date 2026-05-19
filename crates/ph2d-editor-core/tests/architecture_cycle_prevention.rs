@@ -108,13 +108,10 @@ fn editor_core_has_no_panel_or_editor_deps() {
 /// passes, a 3rd-party panel can `crates.io` itself and live
 /// outside the workspace without depending on `ph2d-editor`.
 ///
-/// Marked `#[ignore]` for now because Wave 8 Phase 1 still has 3
-/// alias panel crates (inspector, hierarchy, grid-snap) that
-/// re-export `ph2d_editor_core::*::PANEL_MANIFEST`. Phase 2 (Stage 4)
-/// physically migrates each panel body into its crate; the
-/// `#[ignore]` lifts in that commit.
+/// ADR-0029 Phase D lifted the `#[ignore]` — all four in-tree panels
+/// now live as typed `Panel<State>` impls in their own crates with
+/// `ph2d-editor-core` as their only first-party dep.
 #[test]
-#[ignore = "Wave 8 Phase 2 (Stage 4 panel-body migration) unblocks this"]
 fn panel_crates_depend_only_on_editor_core() {
     let mut violations = Vec::new();
     for toml in panel_crate_tomls() {

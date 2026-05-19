@@ -1,50 +1,32 @@
 //! ph2d-panel-registry-init — append-only point of contact for
 //! panel registration.
 //!
-//! ADR-0029 Phase C.4 closed the typed migration: every in-tree panel
-//! (Inspector / Hierarchy / Widget Gallery / Grid Snap) now lives in
+//! ADR-0029 Phase D closed the migration: every in-tree panel
+//! (Inspector / Hierarchy / Widget Gallery / Grid Snap) lives in
 //! `ph2d_editor_core::panel::PANEL_REGISTRY` as a typed
-//! `Panel<State>`. The legacy fn-pointer registry
-//! (`ph2d_editor_core::panel_registry`) ships empty by default but
-//! continues to exist so 3rd-party panels (future) can opt into the
-//! pre-ADR contract.
-//!
-//! `register_all_panels` installs BOTH atomically. Hosts call it once
-//! at boot before `HeroScreen::new`.
+//! `Panel<State>`. The legacy fn-pointer registry was deleted in
+//! Phase D — this crate installs only the typed registry. Hosts call
+//! it once at boot before `HeroScreen::new`.
 //!
 //! ## Cargo features
 //!
 //! - `default = ["panel-widget-gallery", "panel-hierarchy",
 //!   "panel-inspector", "panel-grid-snap"]` — bundles every panel.
-//! - `--no-default-features` — empty registries.
+//! - `--no-default-features` — empty registry.
 //! - `--no-default-features --features panel-inspector` — only the
 //!   typed Inspector; chrome only otherwise.
 
 #![forbid(unsafe_code)]
 
-use ph2d_editor_core::panel::{ErasedPanel, install_panel_registry as install_typed_registry};
-use ph2d_editor_core::panel_registry::{
-    PanelRegistry as LegacyRegistry, install_panel_registry as install_legacy_registry,
-};
+use ph2d_editor_core::panel::{ErasedPanel, install_panel_registry};
 
 /// Aggregate the cargo-feature-gated panel manifests + install them
-/// into both process-wide registries. Idempotent.
+/// into the process-wide typed registry. Idempotent.
 ///
-/// Returns `true` only when BOTH installs succeeded on first try.
-/// Subsequent calls return `false` (matches `OnceLock::set` semantics).
+/// Returns `true` on first install, `false` if a registry was already
+/// installed (matches `OnceLock::set` semantics).
 pub fn register_all_panels() -> bool {
-    let legacy_ok = install_legacy_registry(build_legacy_registry());
-    let typed_ok = install_typed_registry(build_typed_registry());
-    legacy_ok && typed_ok
-}
-
-/// Build the legacy fn-pointer registry without installing it.
-/// Post-Phase-C.4 this always returns an empty registry — every
-/// in-tree panel migrated to the typed registry below. Kept around
-/// so future 3rd-party panels can `push(&manifest)` if they prefer
-/// the legacy shape.
-pub fn build_legacy_registry() -> LegacyRegistry {
-    LegacyRegistry::new_empty()
+    install_panel_registry(build_typed_registry())
 }
 
 /// Build the typed `Panel<State>` registry without installing it.
@@ -68,12 +50,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
 mod tests {
     use super::*;
 
-    /// Expected legacy panel count post-Phase-C.4 — always zero (no
-    /// in-tree panel lives on the fn-pointer registry anymore).
-    const EXPECTED_LEGACY: usize = 0;
-
     /// Expected typed panel count (Inspector + Hierarchy + Widget
-    /// Gallery + Grid Snap after C.4).
+    /// Gallery + Grid Snap after Phase C.4).
     const EXPECTED_TYPED: usize = {
         let mut n = 0;
         #[cfg(feature = "panel-inspector")]
@@ -96,9 +74,7 @@ mod tests {
     };
 
     #[test]
-    fn build_registries_match_enabled_features() {
-        let legacy = build_legacy_registry();
-        assert_eq!(legacy.manifests().len(), EXPECTED_LEGACY);
+    fn build_typed_registry_matches_enabled_features() {
         let typed = build_typed_registry();
         assert_eq!(typed.panels().len(), EXPECTED_TYPED);
     }

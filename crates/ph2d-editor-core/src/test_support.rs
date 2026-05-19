@@ -1,4 +1,4 @@
-//! Test helpers for `ph2d-editor` consumers (panel crates,
+//! Test helpers for `ph2d-editor-core` consumers (panel crates,
 //! integration tests, downstream shell tests).
 //!
 //! Wave 8 Phase 1 — `HeroScreen::new` is a pure constructor and no
@@ -7,25 +7,19 @@
 //! at boot; tests that just want a working HeroScreen call
 //! [`ensure_panel_registry`].
 //!
+//! ADR-0029 Phase D — the legacy fn-pointer registry was deleted, and
+//! the orchestrator now reaches the typed registry through
+//! [`crate::panel::with_registry_opt`] which tolerates an empty
+//! `OnceLock`. So this helper is intentionally a no-op now: tests that
+//! construct a [`crate::HeroScreen`] and only exercise the host /
+//! chrome paths need no registry at all, and tests that need a
+//! specific panel installed (see `ph2d-panel-*/tests/*.rs`) manage
+//! their own [`crate::panel::install_panel_registry`] call. Kept as a
+//! function so existing callers continue to compile.
+//!
 //! Exposed via `#[doc(hidden)] pub mod test_support` so integration
 //! tests can reach it, but it is **not** part of the stable public
 //! API.
 
-use std::sync::Once;
-
-/// Install the bundled `default_panel_registry()` (all 4 in-tree
-/// panels) into the process-wide `PANEL_REGISTRY` exactly once per
-/// process. Subsequent calls are a cheap no-op via [`Once`], so
-/// every `#[test]` can call this without coordination.
-///
-/// Use this in any test that constructs a [`crate::HeroScreen`] and
-/// either paints, dispatches events, or calls
-/// [`crate::panel_registry::panels`] directly.
-pub fn ensure_panel_registry() {
-    static INIT: Once = Once::new();
-    INIT.call_once(|| {
-        let _ = crate::panel_registry::install_panel_registry(
-            crate::panel_registry::default_panel_registry(),
-        );
-    });
-}
+/// No-op since ADR-0029 Phase D. See module docs.
+pub fn ensure_panel_registry() {}

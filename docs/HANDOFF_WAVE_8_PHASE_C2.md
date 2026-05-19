@@ -1,8 +1,23 @@
 # HANDOFF — Wave 8 Phase C.2 (retomada após Phase C.1)
 
-**Data:** 2026-05-18.
-**Estado:** Phase C.1 (Inspector migrado, dual-path orchestrator) concluído + smoke pendente do Enio. Phase C.2-C.4 pendentes.
+**Data:** 2026-05-18 noite.
+**Estado:** Phase C.1 (Inspector migrado, dual-path orchestrator) **fechada e commitada** — `05dd935 refactor(panels): ADR-0029 Phase C.1 — Inspector typed Panel migration`. Smoke do Enio PASSOU. Phase C.2 (Hierarchy) é a próxima migração.
 **Lê isto se você é uma LLM nova chegando para retomar.**
+
+## 0. Verificação rápida
+
+```bash
+git log --oneline -1
+# 05dd935 refactor(panels): ADR-0029 Phase C.1 — Inspector typed Panel migration
+
+git status -sb
+# ## main...origin/main [ahead 12]  (clean — ou apenas docs/HANDOFF*.md pendente)
+
+cargo check --workspace 2>&1 | tail -3
+# Finished `dev` profile (verde, ~5s warm)
+```
+
+Se diverge, **pare e pergunte ao Enio** antes de mudar nada.
 
 ---
 

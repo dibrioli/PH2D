@@ -24,9 +24,25 @@ use ph2d_tokens::{
 };
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
-const MENU_W: f32 = 200.0; // LITERAL-PX-OK: context menu fixed width (chrome-specific)
+/// Standard context-menu width. Exported so cascade-opening handlers
+/// in `chrome/` can decide whether the submenu fits to the right of
+/// its parent row or needs to flip to the left.
+pub const MENU_W: f32 = 200.0; // LITERAL-PX-OK: context menu fixed width (chrome-specific)
 const ROW_H: f32 = ROW_H_PX;
 const PAD_Y: f32 = Spacing::Sm.px();
+const EDGE_INSET: f32 = 4.0; // LITERAL-PX-OK: keep the menu 4px away from the viewport edge
+
+/// Clamp a menu rect anchored at `(anchor_x, anchor_y)` so it stays
+/// inside `viewport`. Used by both the simple-row menu and the scene
+/// list — cascading submenus (Settings → PPM) anchored near the
+/// right edge would otherwise render off-screen.
+fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rect) -> Rect {
+    let max_x = (viewport.x + viewport.w - w - EDGE_INSET).max(viewport.x + EDGE_INSET);
+    let max_y = (viewport.y + viewport.h - h - EDGE_INSET).max(viewport.y + EDGE_INSET);
+    let x = anchor_x.min(max_x).max(viewport.x + EDGE_INSET);
+    let y = anchor_y.min(max_y).max(viewport.y + EDGE_INSET);
+    Rect::new(x, y, w, h)
+}
 
 /// Five common highlighter colors used for note backgrounds and
 /// section outlines. Wave 8 Phase 2.A re-export from
@@ -38,12 +54,17 @@ pub use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 /// Paint the open context menu (if any) and register hit rects for
 /// each item. Called last in the hero paint pipeline so the menu
 /// always sits on top.
+///
+/// `viewport` is used to clamp the menu rect so a cascade submenu
+/// anchored near the right/bottom edge (e.g. Settings → PPM opened
+/// from the topbar gear) doesn't render off-screen.
 pub fn paint_context_menu_overlay(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    viewport: Rect,
 ) {
     let Some(req) = store.context_menu() else {
         return;
@@ -180,11 +201,11 @@ pub fn paint_context_menu_overlay(
     };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
-        paint_scene_list(req, scene, text_system, theme, hit_index, store);
+        paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);
         return;
     }
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
-    let rect = Rect::new(req.x, req.y, MENU_W, total_h);
+    let rect = clamp_to_viewport(req.x, req.y, MENU_W, total_h, viewport);
 
     // Floating panel: BgElev fill + Border stroke + Md radius.
     let radius = Radius::Md.px();
@@ -253,6 +274,7 @@ fn paint_scene_list(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    viewport: Rect,
 ) {
     let menu_w = 260.0_f32; // LITERAL-PX-OK: scene-list popover width (chrome-specific)
     let search_h = 30.0_f32; // LITERAL-PX-OK: scene-list search field height (chrome-specific)
@@ -281,7 +303,7 @@ fn paint_scene_list(
 
     let row_count = filtered.len().max(1); // reserve at least one row for "No matches"
     let total_h = PAD_Y * 2.0 + search_h + Spacing::Xs.px() + row_count as f32 * row_h;
-    let rect = Rect::new(req.x, req.y, menu_w, total_h);
+    let rect = clamp_to_viewport(req.x, req.y, menu_w, total_h, viewport);
 
     // Floating panel surface.
     let radius = Radius::Md.px();

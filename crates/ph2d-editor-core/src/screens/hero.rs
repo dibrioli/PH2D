@@ -29,6 +29,7 @@
 
 pub mod bottom_hud;
 pub mod canvas;
+pub mod chrome;
 pub mod color_picker_demo;
 pub mod context_menu_overlay;
 pub mod fixture;
@@ -143,6 +144,12 @@ pub struct HeroScreen {
     /// the bottom HUD. Host assigns directly (`hero.stats = ...`)
     /// once per frame; painter reads them in `paint_bottom_hud`.
     pub stats: BottomHudStats,
+    /// Most recent viewport rect — written each frame at the top of
+    /// [`paint_hero_screen`]. Chrome event handlers in `chrome/` read
+    /// it to make smart layout decisions (e.g. cascade submenus flip
+    /// to the left of their parent when the right edge is reached).
+    /// Defaults to a zero rect until the first paint.
+    pub last_viewport: Rect,
     // Wave 2.5 PR 11.8c: 6 hierarchy fields migrated to the bus.
     //   pending_visibility_toggle → EditorAction::HierToggleVisibility { row }
     //   pending_reparent          → EditorAction::HierReparent(HierReparentIntent)
@@ -366,6 +373,7 @@ impl HeroScreen {
             project: crate::project::ProjectSettings::default(),
             dragging_files: None,
             stats: BottomHudStats::default(),
+            last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
         }
     }
 
@@ -518,363 +526,14 @@ impl HeroScreen {
         if crate::widget::showcase::apply_showcase_event(&mut self.store, event) {
             return true;
         }
-        // `observed` is OR'd with the chrome-dispatch result at the
-        // end of this function so the caller learns *something*
-        // happened.
-        // HierReparent + hier_eye/expand companion bits — handled
-        // by `hierarchy::apply_event_thunk` via the panel iteration
-        // above (Wave 6+7 Phase 4 distribution). Removed from here.
-        //
-        // Theme + radius selector from the TopBar theme menu —
-        // intercepted at the Hero level because `self.theme` lives
-        // here, not on the WidgetStore.
-        if let WidgetEvent::Click(id) = event {
-            let new_theme = if id == ids::CTX_MENU_THEME_FORGE {
-                Some(Theme::Forge)
-            } else if id == ids::CTX_MENU_THEME_PAINT {
-                Some(Theme::Workshop)
-            } else if id == ids::CTX_MENU_THEME_SUNSTONE {
-                Some(Theme::Sunstone)
-            } else if id == ids::CTX_MENU_THEME_BLUEPRINT {
-                Some(Theme::Blueprint)
-            } else {
-                None
-            };
-            if let Some(t) = new_theme {
-                self.theme = t;
-                self.store.close_context_menu();
-                return true;
-            }
-            let new_radius_scale = if id == ids::CTX_MENU_RADIUS_SHARP {
-                Some(0.2_f32) // LITERAL-PX-OK: radius scale preset (business value, not dimension)
-            } else if id == ids::CTX_MENU_RADIUS_DEFAULT {
-                Some(1.0_f32)
-            } else if id == ids::CTX_MENU_RADIUS_ROUND {
-                Some(1.6_f32) // LITERAL-PX-OK: radius scale preset (business value)
-            } else {
-                None
-            };
-            if let Some(s) = new_radius_scale {
-                self.store.set_radius_scale(s);
-                self.store.close_context_menu();
-                return true;
-            }
-            if id == ids::CTX_MENU_MIRROR_UI {
-                self.view.ui_mirrored = !self.view.ui_mirrored;
-                self.store.close_context_menu();
-                return true;
-            }
-            if id == ids::CTX_MENU_SHOW_STATS {
-                self.view.stats_visible = !self.view.stats_visible;
-                self.store.close_context_menu();
-                return true;
-            }
-            if id == ids::CTX_MENU_SHOW_GRID {
-                self.view.grid_visible = !self.view.grid_visible;
-                self.store.close_context_menu();
-                return true;
-            }
-            // Rail compound toggles: SPACE flips Global↔Local, VIEW
-            // cycles Selected → Camera → All. The face label is read
-            // from the store every paint, so flipping the value here
-            // is enough — the next frame renders the new label.
-            if id == ids::TOOL_SPACE {
-                let next = !self.store.tool_space_local();
-                self.store.set_tool_space_local(next);
-                return true;
-            }
-            if id == ids::TOOL_HOME {
-                // M14.7 polish: 3-mode cycle (Selected → Camera →
-                // All). Each click EXECUTES the current mode and
-                // then advances the label so the user can chain
-                // actions or see what's next.
-                let current = self.store.tool_view_mode();
-                let kind = match current {
-                    1 => ViewFocusKind::Camera,
-                    2 => ViewFocusKind::All,
-                    _ => ViewFocusKind::Selected,
-                };
-                self.bus
-                    .push(crate::action_bus::EditorAction::SetViewFocus { kind });
-                let next = (current + 1) % 3;
-                self.store.set_tool_view_mode(next);
-                return true;
-            }
-            // Transform tools are an EXCLUSIVE toggle group (a radio
-            // group with no off-state): clicking any one activates
-            // it and de-activates the others. Mirrors Blender / Unity
-            // convention — only one transform tool is "current".
-            const TRANSFORM_TOOLS: [ph2d_a11y::NodeId; 4] = [
-                ids::TOOL_TRANSLATE,
-                ids::TOOL_ROTATE,
-                ids::TOOL_SCALE,
-                ids::TOOL_PIVOT,
-            ];
-            if TRANSFORM_TOOLS.contains(&id) {
-                for tool_id in TRANSFORM_TOOLS {
-                    if let Some(crate::interaction::InteractiveState::Button { state }) =
-                        self.store.get_mut(tool_id)
-                    {
-                        *state = if tool_id == id {
-                            crate::widget::ButtonState::Pressed
-                        } else {
-                            crate::widget::ButtonState::Normal
-                        };
-                    }
-                }
-                return true;
-            }
-            // Panel-visibility toggles in the left rail. Flip the
-            // hero-level visibility flag and the button's Pressed
-            // state so the rail rendering reflects the new state
-            // on the next frame.
-            if id == ids::RAIL_SHOW_INSPECTOR {
-                let new_visible = !self.is_panel_visible("inspector");
-                self.panel_visibility.insert("inspector", new_visible);
-                if let Some(crate::interaction::InteractiveState::Button { state }) =
-                    self.store.get_mut(ids::RAIL_SHOW_INSPECTOR)
-                {
-                    *state = if new_visible {
-                        crate::widget::ButtonState::Pressed
-                    } else {
-                        crate::widget::ButtonState::Normal
-                    };
-                }
-                return true;
-            }
-            if id == ids::RAIL_SHOW_HIERARCHY {
-                let new_visible = !self.is_panel_visible("hierarchy");
-                self.panel_visibility.insert("hierarchy", new_visible);
-                if let Some(crate::interaction::InteractiveState::Button { state }) =
-                    self.store.get_mut(ids::RAIL_SHOW_HIERARCHY)
-                {
-                    *state = if new_visible {
-                        crate::widget::ButtonState::Pressed
-                    } else {
-                        crate::widget::ButtonState::Normal
-                    };
-                }
-                return true;
-            }
-            // M14.4c: Import… raises a host-polled flag so the
-            // shell can open the native file picker. Other I/O
-            // menu items remain placeholders.
-            if id == ids::CTX_MENU_IMPORT {
-                self.import_requested = true;
-                self.store.close_context_menu();
-                return true;
-            }
-            // CTX_MENU_HIER_* per-row Hierarchy actions — handled by
-            // `hierarchy::apply_event_thunk` via panel iteration.
-            // M14.7 polish (6.3): top-level Settings cascade entry.
-            // Clicking "Pixels per meter \u{25b6}" REPLACES the top-
-            // level menu with the px/m presets submenu. Anchored to
-            // the right edge of the clicked cascade row so the
-            // submenu lands next to the chevron — Unity / Godot /
-            // Blender convention. Falls back to the closed parent
-            // menu's anchor when the hit rect isn't published yet
-            // (defensive — shouldn't happen during normal flow).
-            if id == ids::CTX_MENU_SETTINGS_PPM {
-                let row_rect = self.hit_index.rect_for(id);
-                let anchor = if let Some(r) = row_rect {
-                    (r.x + r.w, r.y)
-                } else {
-                    self.store
-                        .last_context_menu()
-                        .map(|r| (r.x, r.y))
-                        .unwrap_or((0.0, 0.0))
-                };
-                self.store
-                    .open_context_menu(crate::interaction::ContextMenuRequest {
-                        x: anchor.0,
-                        y: anchor.1,
-                        kind: crate::interaction::ContextMenuKind::SettingsPpmSubmenu,
-                    });
-                return true;
-            }
-            // Pixels-per-meter presets (Settings cluster). Writes
-            // `project.pixels_per_meter` and closes the menu; the
-            // shell will read the new value on the next import.
-            let ppm_preset = if id == ids::CTX_MENU_PPM_16 {
-                Some(16.0) // LITERAL-PX-OK: pixels-per-meter preset (business value, not UI dimension)
-            } else if id == ids::CTX_MENU_PPM_32 {
-                Some(32.0) // LITERAL-PX-OK: pixels-per-meter preset
-            } else if id == ids::CTX_MENU_PPM_100 {
-                Some(100.0) // LITERAL-PX-OK: pixels-per-meter preset
-            } else if id == ids::CTX_MENU_PPM_256 {
-                Some(256.0) // LITERAL-PX-OK: pixels-per-meter preset
-            } else if id == ids::CTX_MENU_PPM_1024 {
-                Some(1024.0) // LITERAL-PX-OK: pixels-per-meter preset
-            } else {
-                None
-            };
-            if let Some(v) = ppm_preset {
-                self.project.set_pixels_per_meter(v);
-                self.store.close_context_menu();
-                return true;
-            }
-            // Display-unit cascade entry — opens the unit submenu
-            // anchored next to the row, same pattern as the PPM
-            // cascade above.
-            if id == ids::CTX_MENU_SETTINGS_UNIT {
-                let row_rect = self.hit_index.rect_for(id);
-                let anchor = if let Some(r) = row_rect {
-                    (r.x + r.w, r.y)
-                } else {
-                    self.store
-                        .last_context_menu()
-                        .map(|r| (r.x, r.y))
-                        .unwrap_or((0.0, 0.0))
-                };
-                self.store
-                    .open_context_menu(crate::interaction::ContextMenuRequest {
-                        x: anchor.0,
-                        y: anchor.1,
-                        kind: crate::interaction::ContextMenuKind::SettingsUnitSubmenu,
-                    });
-                return true;
-            }
-            // Display-unit submenu options — write to `project.display_unit`
-            // and close the menu. Inspector / Grid Settings / Gizmo
-            // readouts read the project setting on the next paint.
-            let unit_pick = if id == ids::CTX_MENU_UNIT_METERS {
-                Some(crate::project::DisplayUnit::Meters)
-            } else if id == ids::CTX_MENU_UNIT_PIXELS {
-                Some(crate::project::DisplayUnit::Pixels)
-            } else {
-                None
-            };
-            if let Some(unit) = unit_pick {
-                self.project.display_unit = unit;
-                self.store.close_context_menu();
-                return true;
-            }
-            // Save / Save As / Open Project — placeholders until the
-            // pilot project wires real file I/O. Close the menu and
-            // return consumed so the click doesn't propagate.
-            if matches!(
-                id,
-                x if x == ids::CTX_MENU_SAVE
-                    || x == ids::CTX_MENU_SAVE_AS
-                    || x == ids::CTX_MENU_OPEN_PROJECT
-            ) {
-                self.store.close_context_menu();
-                return true;
-            }
-            // Scene row click in the SceneList popover → set the
-            // chip's name and close the menu. We re-filter the
-            // scene list with the same query the painter used so
-            // index→name maps correctly.
-            if let Some(slot) = ids::CTX_SCENE_ROWS.iter().position(|x| *x == id) {
-                let query = self
-                    .store
-                    .get(ids::CTX_SCENE_SEARCH)
-                    .and_then(|s| {
-                        if let crate::interaction::InteractiveState::TextInput { text, .. } = s {
-                            Some(text.as_str())
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or("");
-                let lower_q = query.to_lowercase();
-                let visible: Vec<&'static str> = fixture::scenes()
-                    .iter()
-                    .copied()
-                    .filter(|s| lower_q.is_empty() || s.to_lowercase().contains(&lower_q))
-                    .take(ids::CTX_SCENE_ROWS.len())
-                    .collect();
-                if let Some(name) = visible.get(slot) {
-                    self.store.set_current_scene_name(*name);
-                }
-                self.store.close_context_menu();
-                return true;
-            }
-        }
-        // Image Tools mode toggle — intercepted at Hero level because
-        // `image_tools_mode` lives on `HeroScreen`, not on the
-        // WidgetStore. Same pattern as the theme menu / eye-toggle
-        // branches above. Runs BEFORE the topbar's stub `apply_event`
-        // so a click on the Image Tools pill flips the mode (and
-        // doesn't fall through to the still-empty topbar handler).
-        if let WidgetEvent::Click(id) = event
-            && id == ids::TOPBAR_IMAGE_TOOLS
-        {
-            self.image_edit.mode_on = !self.image_edit.mode_on;
-            return true;
-        }
-        // Widget Gallery + Grid Settings panel toggles, GS_COLOR_PICKER
-        // seeding, and the grid-snap panel-inner delegation — all
-        // handled by their respective panel thunks via the iteration
-        // at the top (Wave 6+7 Phase 4 distribution).
-        // Trim Transparency action — push `EditorAction::Trim` onto
-        // the bus with whatever entity the gizmo currently has
-        // selected. Host drains next frame via `hero.bus.drain()`.
-        // When nothing is selected we still consume the click (so the
-        // dispatcher doesn't keep walking regions) but push nothing
-        // — the host's bus drain sees an empty queue for this event.
-        //
-        // Wave 2.5 PR 11.8b1: migrated from `self.pending_trim_transparency`
-        // `Option<u64>` field to bus push. First of the 20 pending_X
-        // migrations that collapse main.rs + hero_intents.rs back
-        // under the HR-18 cap.
-        if let WidgetEvent::Click(id) = event
-            && id == ids::IMAGE_ACTION_TRIM
-        {
-            if let Some(entity_bits) = self.gizmo.selection {
-                self.bus
-                    .push(crate::action_bus::EditorAction::Trim { entity_bits });
-            }
-            return true;
-        }
-        // Make Square action — mirror of Trim Transparency. Click
-        // pushes `EditorAction::MakeSquare` onto the bus with the
-        // current `gizmo_selection`; host drains, runs
-        // `make_square`, replaces sprite pixels, reprojects pivot.
-        // Empty selection still consumes the click.
-        //
-        // Wave 2.5 PR 11.8b2: bus migration (was `pending_make_square`).
-        if let WidgetEvent::Click(id) = event
-            && id == ids::IMAGE_ACTION_MAKE_SQUARE
-        {
-            if let Some(entity_bits) = self.gizmo.selection {
-                self.bus
-                    .push(crate::action_bus::EditorAction::MakeSquare { entity_bits });
-            }
-            return true;
-        }
-        // Bg Removal action — distinct from Trim / MakeSquare because
-        // it ACTIVATES the stateful tool (so the panel opens with a
-        // live preview) instead of running a one-shot algorithm. The
-        // shell drains `EditorAction::ActivateBgRemoval` by calling
-        // `tools.set_active(ToolId::new("bgremoval"))`. The Apply
-        // trigger then lives in the tool's panel Toggle, which the
-        // shell forwards as `EditorAction::Bgremoval { entity_bits }`
-        // for the full-resolution drain.
-        //
-        // Wave 2.5 PR 11.8b3: bus migration (was `pending_activate_bgremoval`).
-        if let WidgetEvent::Click(id) = event
-            && id == ids::IMAGE_ACTION_BGREMOVAL
-        {
-            self.bus
-                .push(crate::action_bus::EditorAction::ActivateBgRemoval);
-            return true;
-        }
-        // Image-edit Undo — TOOL_UNDO chip on the LeftRail (also
-        // bound to Cmd+Z in the desktop shell). Pushes a one-shot
-        // `EditorAction::UndoImageEdit`; shell drains and restores
-        // the most recent Trim / Make Square / Bg Removal snapshot.
-        // When `has_undoable_image_edit == false` (shell published no
-        // snapshot), the click still consumes (so the dispatcher
-        // doesn't keep walking) but the shell's drainer surfaces a
-        // "Nothing to undo" toast.
-        //
-        // Wave 2.5 PR 11.8b3: bus migration (was `pending_undo_image_edit`).
-        if let WidgetEvent::Click(id) = event
-            && id == ids::TOOL_UNDO
-        {
-            self.bus
-                .push(crate::action_bus::EditorAction::UndoImageEdit);
+        // Wave 9 Eixo A.1: chrome affordances split per file under
+        // `chrome/` — theme menu, radius presets, view toggles, rail
+        // panel/tool toggles, file menu, Settings cascades, scene
+        // picker, image-edit actions. Adding a new chrome affordance
+        // = drop a new `chrome/<feature>.rs` + one line in
+        // `chrome::dispatch_all`. Multi-agent parallel work no longer
+        // collides on this function.
+        if chrome::dispatch_all(self, event) {
             return true;
         }
         if topbar::apply_event(&mut self.store, event) {
@@ -883,16 +542,6 @@ impl HeroScreen {
         if left_rail::apply_event(&mut self.store, event) {
             return true;
         }
-        // Hierarchy row clicks (live + fixture), DoubleClick (focus),
-        // LongPress (rename), Submit/Cancel/Blur on HIER_RENAME_INPUT,
-        // and the selection-label update — all handled by
-        // `hierarchy::apply_event_thunk` via panel iteration (Wave 6+7
-        // Phase 4 distribution).
-        // Inspector — Reimport, Transform commits, Visibility checkbox,
-        // Render Strategy switcher, entity-name edits, section header
-        // toggles + context-menu items — all handled by
-        // `inspector::apply_event_thunk` via panel iteration (Wave 6+7
-        // Phase 4 distribution).
         // Wave 8 Phase 4: return `observed` so a panel that did a
         // side-effect via `EventOutcome::Observed` (e.g. hierarchy
         // Blur(HIER_RENAME_INPUT) commits) propagates as "handled"
@@ -954,6 +603,9 @@ pub fn paint_hero_screen(
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.
     crate::paint::set_radius_scale(hero.store.radius_scale());
+    // Stash the viewport so chrome event handlers in `chrome/` can
+    // make smart layout decisions (cascade submenu side-flip etc.).
+    hero.last_viewport = viewport;
 
     let mut layout = HeroLayout::for_viewport_mirrored(viewport, hero.view.ui_mirrored);
     // Apply user-driven panel drag offsets to the Inspector +
@@ -1208,6 +860,7 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
+        viewport,
     );
     // M14.4e: file-drop overlay sits above EVERY layer (chrome,
     // tooltips, context menus) so the user always sees the "Drop to

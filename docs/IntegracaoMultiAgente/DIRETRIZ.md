@@ -506,29 +506,102 @@ do editor, `screens/hero/fixture.rs::topbar_clusters()`,
 `screens/hero/ids.rs`, `Cargo.toml` raiz (além de adicionar o
 member).
 
-### 4.2 Adicionar widget novo (Wave 4 pendente)
+### 4.2 Adicionar widget novo em editor-core (Wave 9 ✅)
 
-> **Status:** Wave 4 (source-of-truth UI) ainda não fechou. Esta
-> seção será expandida quando fechar. Por ora, siga:
+> **Status:** Wave 9 Eixo B (2026-05-19) cravou o contrato. Receita
+> abaixo é executável; testes arquiteturais barram qualquer desvio.
 
-1. Estuda widgets canônicos via **Widget Gallery** (TopBar →
-   palette icon → painel flutuante com 10 seções).
-2. Cria seu widget em `crates/ph2d-editor/src/widget/<slug>.rs`
-   (após Wave 4: ou em um crate próprio `ph2d-widget-<slug>/`,
-   se o subsistema for grande).
-3. Implementa o pattern canônico:
-   - struct com data
-   - state enum (Normal / Hovered / Pressed / Focused / Disabled)
-   - `pub fn paint_<slug>(widget, rect, scene, theme)` — consome
-     `ColorToken::X.resolve(theme)`, `Spacing::X.px()`,
-     `Radius::X.px()`, `StrokeToken::X.px()`, `TypeToken::X.px()`.
-   - `pub fn build_a11y(&self, ...) -> Node` — HR-12.
-4. Adiciona ao showcase em `screens/hero/inspector/showcase.rs`
-   para aparecer no Widget Gallery.
-5. **Lints pós Wave 4:** o `no_magic_numeric` lint + estendido
-   `no_literal_color` vão bloquear `Color::rgba8(...)`,
-   `Stroke::new(1.5)`, `8.0` literal — você é forçado a usar
-   tokens canônicos.
+**Onde mora:** `crates/ph2d-editor-core/src/widget/<slug>.rs`. Um
+arquivo por primitive, ≤500 LOC (cap gated por
+`architecture_widget_loc_cap`). Se passar de 500, vire diretório
+`<slug>/{mod,data,paint,helpers}.rs`.
+
+**Pattern canônico** (copia de qualquer primitive existente, ex:
+[`button.rs`](../../crates/ph2d-editor-core/src/widget/button.rs)):
+
+```rust
+//! Brief one-liner describing the widget's role.
+
+use crate::interaction::HitIndex;
+use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_vector::VectorScene;
+
+use crate::paint::resolve;
+use crate::zones::Rect;
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum MyWidgetState {
+    #[default]
+    Normal,
+    Hovered,
+    Pressed,
+    Focused,
+    Disabled,
+}
+
+#[derive(Clone, Debug)]
+pub struct MyWidget {
+    pub id: NodeId,
+    pub label: &'static str,
+    // … widget-specific data
+}
+
+impl MyWidget {
+    pub fn build_a11y(&self) -> Node {
+        NodeBuilder::new(Role::Button)
+            .label(self.label)
+            .build()
+    }
+}
+
+pub fn paint_my_widget(
+    widget: &MyWidget,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let bg = resolve(ColorToken::Bg2, theme);
+    // … paint using tokens only; never hex / px literals.
+}
+```
+
+**Cinco mandamentos** (todos gated por arch test):
+
+1. **Cores só via `ColorToken::X.resolve(theme)`** — `no_literal_color`
+   barra `Color::rgba8(...)`, hex strings, `Color::WHITE`, etc.
+2. **Sizes só via `Spacing::X.px()` / `Radius::X.px()` /
+   `StrokeToken::X.px()` / `TypeToken::X.px()`** — `no_magic_numeric`
+   barra px literais. Exceção: comment `// LITERAL-PX-OK: <razão>`
+   no mesmo line.
+3. **`build_a11y()` obrigatório** — `hr12_widgets_a11y` barra widget
+   sem AccessKit. Opt-out exige justificativa escrita.
+4. **Tamanho ≤500 LOC** — `architecture_widget_loc_cap` barra. Split
+   pra sub-files se ultrapassar.
+5. **Mostrar no showcase** — `architecture_widget_showcase_coverage`
+   barra widget que existe mas não aparece em nenhuma seção do
+   Widget Gallery. Opt-out se for chrome-internal (panel_chrome,
+   tool_rail, tooltip etc.); decisão consciente.
+
+**Registrar:**
+
+1. Adicione `mod <slug>;` na ordem alfabética em
+   [`widget/mod.rs`](../../crates/ph2d-editor-core/src/widget/mod.rs).
+2. Adicione `pub use <slug>::{MyWidget, MyWidgetState, paint_my_widget};`
+   logo abaixo.
+3. Crie uma seção no showcase em
+   [`widget/showcase/`](../../crates/ph2d-editor-core/src/widget/showcase/)
+   (copia layout de `inputs.rs` ou `switches.rs`; ~80 LOC pra um
+   widget simples).
+
+**NÃO toca:** `hero.rs`, `paint.rs`, `interaction/`, painéis. Widget
+primitive é local.
+
+**Smoke:** `./play.command` + abrir o Widget Gallery (topbar →
+palette icon) e confirmar a nova seção aparece com hover/press
+states funcionando.
 
 ### 4.3 Modificar tool existente
 

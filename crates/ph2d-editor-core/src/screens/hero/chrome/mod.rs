@@ -1,0 +1,77 @@
+//! Chrome event dispatchers — one file per affordance group.
+//!
+//! Wave 9 Eixo A.1: `HeroScreen::apply_event` previously held ~400 LOC
+//! of inline `if id == X { ... }` arms for every TopBar / context menu
+//! / left rail affordance. Each arm is now a sibling module with a
+//! single `pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool`
+//! entry. Adding a new chrome affordance = drop a new file + one line
+//! in [`dispatch_all`]. Multi-agent parallel work no longer collides
+//! on `hero.rs`.
+//!
+//! Dispatch order matches the legacy z-order: earlier modules in the
+//! `||` chain win when ids overlap. First module that returns `true`
+//! stops the walk.
+
+use crate::interaction::WidgetEvent;
+use crate::screens::hero::HeroScreen;
+use crate::screens::hero::context_menu_overlay::MENU_W;
+use ph2d_a11y::NodeId;
+
+const CASCADE_EDGE_INSET: f32 = 4.0; // LITERAL-PX-OK: matches context_menu_overlay::EDGE_INSET
+
+/// Compute the anchor point for a cascade submenu opened from `row_id`.
+///
+/// Prefers cascade-right (anchored at the parent row's right edge —
+/// the platform convention). If that would overflow the viewport's
+/// right edge, falls back to cascade-left so the submenu doesn't
+/// visually overlap (and obscure) the parent menu.
+pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
+    let viewport = hero.last_viewport;
+    let Some(r) = hero.hit_index.rect_for(row_id) else {
+        return hero
+            .store
+            .last_context_menu()
+            .map(|m| (m.x, m.y))
+            .unwrap_or((0.0, 0.0));
+    };
+    let right_x = r.x + r.w;
+    let left_x = r.x - MENU_W;
+    let viewport_right = viewport.x + viewport.w;
+    if right_x + MENU_W <= viewport_right - CASCADE_EDGE_INSET {
+        (right_x, r.y)
+    } else if left_x >= viewport.x + CASCADE_EDGE_INSET {
+        (left_x, r.y)
+    } else {
+        // Tight viewport: keep cascade-right and let the painter's
+        // clamp_to_viewport pull the submenu back inside.
+        (right_x, r.y)
+    }
+}
+
+mod image_actions;
+mod image_tools_toggle;
+mod io_menu;
+mod radius;
+mod rail_panels;
+mod rail_tools;
+mod scene_picker;
+mod settings_ppm;
+mod settings_unit;
+mod theme;
+mod view_toggles;
+
+/// Walk every chrome handler in `||` order; stop at the first that
+/// consumes the event.
+pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
+    theme::apply(hero, event)
+        || radius::apply(hero, event)
+        || view_toggles::apply(hero, event)
+        || rail_tools::apply(hero, event)
+        || rail_panels::apply(hero, event)
+        || io_menu::apply(hero, event)
+        || settings_ppm::apply(hero, event)
+        || settings_unit::apply(hero, event)
+        || scene_picker::apply(hero, event)
+        || image_tools_toggle::apply(hero, event)
+        || image_actions::apply(hero, event)
+}

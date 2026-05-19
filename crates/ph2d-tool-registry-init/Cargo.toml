@@ -34,9 +34,12 @@ authors.workspace = true
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # Tool crates registered here. One line per tool, alphabetical order
 # to keep merge-conflict surface trivial under multi-agent operation.
-ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
-ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }
+# `architecture_register_all_alphabetical` (in this crate's tests/)
+# gates the ordering so a new tool inserted mid-alphabet by one agent
+# can't silently land next to a competing append by another.
 ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
+ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }
+ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 
 [dev-dependencies]

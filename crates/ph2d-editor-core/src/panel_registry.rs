@@ -222,8 +222,11 @@ PANEL_REGISTRY not installed. Host must call \
 before the first `HeroScreen::new`. Tests should call \
 `ph2d_editor::test_support::ensure_panel_registry()`.";
 
-/// Bundled default registry — all 4 in-tree panels. Hosts that don't
-/// want cargo-features per panel install this at boot:
+/// Bundled default registry — only the panels that still use the
+/// legacy fn-pointer manifest contract (grid_snap as of Phase C.3).
+/// Hosts that don't want cargo-features per panel install this at
+/// boot alongside the typed registry from
+/// `ph2d_panel_registry_init::register_all_panels()`:
 ///
 /// ```ignore
 /// ph2d_editor::panel_registry::install_panel_registry(
@@ -233,12 +236,10 @@ before the first `HeroScreen::new`. Tests should call \
 pub fn default_panel_registry() -> PanelRegistry {
     // ADR-0029 Phase C.1: Inspector dropped from the legacy registry.
     // ADR-0029 Phase C.2: Hierarchy dropped from the legacy registry.
-    // Both register into `crate::panel::PANEL_REGISTRY` via
-    // `ph2d_panel_registry_init::register_all_panels()`. The 2
-    // remaining panels keep their fn-pointer manifests until they
-    // migrate in C.3-C.4.
-    PanelRegistry::new(vec![
-        &crate::screens::hero::widget_gallery::PANEL_MANIFEST,
-        &crate::grid_snap::PANEL_MANIFEST,
-    ])
+    // ADR-0029 Phase C.3: Widget Gallery dropped from the legacy
+    // registry. All three register into `crate::panel::PANEL_REGISTRY`
+    // via `ph2d_panel_registry_init::register_all_panels()`. Only
+    // grid_snap remains as a fn-pointer manifest until it migrates
+    // in C.4.
+    PanelRegistry::new(vec![&crate::grid_snap::PANEL_MANIFEST])
 }

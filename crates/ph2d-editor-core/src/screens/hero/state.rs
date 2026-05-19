@@ -19,14 +19,15 @@
 //! their place in `hero.rs` for reach — moving them would churn the
 //! import surface for no gain.
 
-use crate::zones::Rect;
-
 // ADR-0029 Phase C.1: `InspectorState` migrated to
 // `ph2d_panel_inspector::state::InspectorState`.
 // ADR-0029 Phase C.2: `HierarchyState` migrated to
-// `ph2d_panel_hierarchy::state::HierarchyState`. Both store their
-// retained state inside `ErasedPanel` in the typed registry; the
-// visibility flag moved into `HeroScreen::panel_visibility`.
+// `ph2d_panel_hierarchy::state::HierarchyState`.
+// ADR-0029 Phase C.3: Widget Gallery rect migrated to
+// `ph2d_panel_widget_gallery::state::WidgetGalleryState::rect`;
+// `widget_gallery_visible` migrated to `HeroScreen::panel_visibility`.
+// All store their retained state inside `ErasedPanel` in the typed
+// registry; visibility flags moved into `HeroScreen::panel_visibility`.
 
 /// Image-edit subsystem state — TopBar Image-Tools mode flag + a
 /// read-only signal mirroring the shell's image-edit undo snapshot.
@@ -44,9 +45,11 @@ pub struct ImageEditState {
     pub has_undoable: bool,
 }
 
-/// View-state flags — mirror toggle + 4 overlay visibility flags
-/// (stats HUD, widget gallery, grid overlay, plus the gallery rect
-/// when shown). All purely UI presentation — no business logic.
+/// View-state flags — mirror toggle + overlay visibility flags
+/// (stats HUD, grid overlay). All purely UI presentation — no business
+/// logic. ADR-0029 Phase C.3 removed `widget_gallery_visible` (now in
+/// `HeroScreen::panel_visibility` map) and `widget_gallery_rect` (now
+/// on `ph2d_panel_widget_gallery::WidgetGalleryState::rect`).
 #[derive(Clone, Debug)]
 pub struct ViewState {
     /// When `true`, the Inspector and Hierarchy panels swap sides
@@ -57,14 +60,6 @@ pub struct ViewState {
     /// "Show Statistics" entry in the theme context menu. Default
     /// `true`.
     pub stats_visible: bool,
-    /// Visibility of the floating **Widget Gallery** panel — toggled
-    /// by clicks on the `TOPBAR_WIDGET_GALLERY` palette button.
-    /// Default `false`.
-    pub widget_gallery_visible: bool,
-    /// Rect of the Widget Gallery panel in viewport pixels. Set on
-    /// first toggle to a centered default; persisted across frames
-    /// so dragging keeps the position.
-    pub widget_gallery_rect: Option<Rect>,
     /// World-space grid overlay toggle (ADR-0025 M14.4b). Default
     /// `true`. Toggled via the "Show Grid" context-menu entry and the
     /// `G` key.
@@ -76,8 +71,6 @@ impl Default for ViewState {
         Self {
             ui_mirrored: false,
             stats_visible: true,
-            widget_gallery_visible: false,
-            widget_gallery_rect: None,
             grid_visible: true,
         }
     }

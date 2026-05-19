@@ -65,8 +65,10 @@ pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /
 /// Card). Peripheral agents open this from the live app as the
-/// single in-app source of truth for UI decoration. State lives on
-/// [`crate::screens::HeroScreen::widget_gallery_visible`].
+/// single in-app source of truth for UI decoration. Visibility lives
+/// in `HeroScreen::panel_visibility` (keyed `"widget_gallery"`) after
+/// ADR-0029 Phase C.3; persistent rect lives on
+/// `ph2d_panel_widget_gallery::WidgetGalleryState::rect`.
 pub const TOPBAR_WIDGET_GALLERY: NodeId = hash_node_id("topbar_widget_gallery");
 /// Grid Settings cluster — opens the floating Grid Settings panel
 /// (grid-snap subsystem). Toggles `HeroScreen::grid_snap_state.panel_visible`.

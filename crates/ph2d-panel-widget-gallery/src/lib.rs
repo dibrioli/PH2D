@@ -1,176 +1,61 @@
-//! ph2d-panel-widget-gallery — Wave 7 Stage 2 panel-as-crate.
+//! `ph2d-panel-widget-gallery` — ADR-0029 Phase C.3 typed panel crate.
 //!
-//! Widget Gallery panel: floating reference panel that showcases
-//! every canonical widget used by the editor. Triggered by clicking
-//! the palette icon in the TopBar (`ids::TOPBAR_WIDGET_GALLERY`).
-//! Reuses the 10-section showcase painters owned by
-//! `ph2d-editor-core::widget::showcase` (Wave 8 Phase 2.A —
-//! previously reached into `ph2d_editor::screens::hero::inspector::
-//! paint_showcase_body`, defeating the panel-as-crate isolation).
+//! Owns the Widget Gallery panel's:
+//! - retained state ([`WidgetGalleryState`]) — held by `ErasedPanel`
+//!   in the runtime `panel::PANEL_REGISTRY`. Just the persisted
+//!   `Option<Rect>` post-Phase-C; visibility lives on the host's
+//!   `panel_visibility` map.
+//! - paint thunk ([`paint`]), event router ([`event`]),
+//!   widget registration ([`populate`]).
+//! - typed contract via [`WidgetGalleryPanel`] implementing
+//!   [`ph2d_editor_core::panel::Panel`].
 //!
-//! Design intent: peripheral agents run `./play.command`, click
-//! the palette pill, and see every widget rendered the way the
-//! editor expects so they can replicate the decoration in their
-//! own modules. Single in-app source of UI truth.
+//! Design intent: peripheral agents run `./play.command`, click the
+//! palette pill in the TopBar (`ids::TOPBAR_WIDGET_GALLERY`), and see
+//! every canonical widget rendered the way the editor expects so they
+//! can replicate the decoration in their own modules. Single in-app
+//! source of UI truth. Reuses the 10-section showcase painters owned
+//! by `ph2d-editor-core::widget::showcase`.
 
 #![forbid(unsafe_code)]
 
-use ph2d_editor::panel_registry::{EventOutcome, PaintCtx, PanelManifest};
-use ph2d_editor::screens::hero::HeroScreen;
+mod event;
+mod paint;
+mod populate;
+pub mod state;
+
+pub use paint::default_rect;
+pub use state::WidgetGalleryState;
+
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
-use ph2d_editor_core::widget::panel_chrome::clamp_panel_rect;
-use ph2d_editor_core::widget::showcase::{
-    last_gallery_content_h, last_gallery_visible_h, paint_showcase_body,
-};
-use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 
-/// Wave 7 Stage 2 — panel-as-crate manifest. Replaces the in-tree
-/// `screens::hero::widget_gallery::PANEL_MANIFEST` that lived in
-/// `ph2d-editor` before the extraction.
-pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
-    id: "widget_gallery",
-    panel_node_id: ids::GAL_PANEL,
-    default_visible: false,
-    paint_fn: paint_thunk,
-    apply_event_fn: apply_event_thunk,
-    populate_fn: populate,
-};
+/// Zero-size marker implementing the typed Widget Gallery panel
+/// contract.
+pub struct WidgetGalleryPanel;
 
-/// Full per-frame thunk: visibility check + lazy default rect +
-/// drag/resize clamp + chrome publish + actual paint + content_h
-/// publish + scroll clamp + stale-rect cleanup on hide.
-fn paint_thunk(ctx: &mut PaintCtx) {
-    if !ctx.hero.view.widget_gallery_visible {
-        // Stale-rect cleanup: without this, `panel_at` keeps returning
-        // GAL_PANEL after the Gallery was closed, and BTreeMap key
-        // ordering (950 < 1000) makes that stale rect shadow GS_PANEL
-        // for overlapping cursor positions — wheel scroll on the Grid
-        // Settings panel then routes to a closed GAL_PANEL and looks
-        // like "scroll wheel doesn't work" to the user.
-        ctx.hero.store.clear_panel_rect(ids::GAL_PANEL);
-        return;
+impl Panel for WidgetGalleryPanel {
+    type State = WidgetGalleryState;
+
+    const ID: &'static str = "widget_gallery";
+    const NODE_ID: NodeId = ids::GAL_PANEL;
+    const DEFAULT_VISIBLE: bool = false;
+
+    fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
+        paint::paint(state, ctx);
     }
-    let base_rect = match ctx.hero.view.widget_gallery_rect {
-        Some(r) => r,
-        None => {
-            let r = default_rect(
-                ctx.layout.viewport.w,
-                ctx.layout.viewport.h,
-                ctx.layout.inspector.w,
-            );
-            ctx.hero.view.widget_gallery_rect = Some(r);
-            r
-        }
-    };
-    let gal_off = ctx.hero.store.blender_picker_offset(ids::GAL_PANEL);
-    let gal_resize = ctx.hero.store.panel_resize_delta(ids::GAL_PANEL);
-    let (gallery_rect, gal_clamped_off, gal_clamped_resize) =
-        clamp_panel_rect(base_rect, gal_off, gal_resize, ctx.viewport);
-    if (gal_clamped_off.0 - gal_off.0).abs() > f32::EPSILON
-        || (gal_clamped_off.1 - gal_off.1).abs() > f32::EPSILON
-    {
-        ctx.hero.store.set_blender_picker_offset(
-            ids::GAL_PANEL,
-            gal_clamped_off.0,
-            gal_clamped_off.1,
-        );
-    }
-    if (gal_clamped_resize.0 - gal_resize.0).abs() > f32::EPSILON
-        || (gal_clamped_resize.1 - gal_resize.1).abs() > f32::EPSILON
-    {
-        ctx.hero.store.set_panel_resize_delta(
-            ids::GAL_PANEL,
-            gal_clamped_resize.0,
-            gal_clamped_resize.1,
-        );
-    }
-    ctx.hero.store.set_panel_rect(ids::GAL_PANEL, gallery_rect);
-    paint(
-        gallery_rect,
-        ctx.scene,
-        ctx.text_system,
-        ctx.hero.theme,
-        &mut ctx.hero.hit_index,
-        &ctx.hero.store,
-    );
-    let content_h = last_gallery_content_h();
-    let visible_h = last_gallery_visible_h();
-    ctx.hero
-        .store
-        .set_panel_content_h(ids::GAL_PANEL, content_h);
-    ctx.hero
-        .store
-        .set_panel_visible_h(ids::GAL_PANEL, visible_h);
-    let max_scroll = (content_h - visible_h).max(0.0);
-    let cur = ctx.hero.store.panel_scroll(ids::GAL_PANEL);
-    if cur > max_scroll {
-        ctx.hero.store.set_panel_scroll(ids::GAL_PANEL, max_scroll);
-    }
-}
 
-fn apply_event_thunk(hero: &mut HeroScreen, ev: WidgetEvent) -> EventOutcome {
-    if let WidgetEvent::Click(id) = ev
-        && (id == ids::TOPBAR_WIDGET_GALLERY || id == ids::GAL_CLOSE)
-    {
-        hero.view.widget_gallery_visible = !hero.view.widget_gallery_visible;
-        return EventOutcome::Consumed;
+    fn apply_event(
+        state: &mut WidgetGalleryState,
+        host: &mut dyn PanelHostInternal,
+        ev: WidgetEvent,
+    ) -> EventOutcome {
+        event::apply_event(state, host, ev)
     }
-    EventOutcome::Ignored
-}
 
-/// Register the gallery's drag / resize handles as `BlenderHit`
-/// children of `GAL_PANEL` so the existing
-/// `BlenderHitKind::DragHandle` / `ResizeHandle` dispatch paths
-/// move the panel without bespoke wiring. Called once from
-/// `HeroScreen::pre_populate_store`.
-pub fn populate(store: &mut WidgetStore) {
-    store.register(
-        ids::GAL_DRAG_HANDLE,
-        InteractiveState::BlenderHit {
-            parent: ids::GAL_PANEL,
-            kind: BlenderHitKind::DragHandle,
-        },
-    );
-    store.register(
-        ids::GAL_RESIZE_HANDLE,
-        InteractiveState::BlenderHit {
-            parent: ids::GAL_PANEL,
-            kind: BlenderHitKind::ResizeHandle,
-        },
-    );
-    // Close (X) — plain Button so the HeroScreen apply_event branch
-    // (`id == GAL_CLOSE → widget_gallery_visible = false`) fires.
-    store.register(
-        ids::GAL_CLOSE,
-        InteractiveState::Button {
-            state: ph2d_editor_core::widget::ButtonState::Normal,
-        },
-    );
-}
-
-/// Default panel geometry when the gallery is first opened. Width
-/// matches the live Inspector (`layout.inspector.w`) so the showcase
-/// renders at the same dimensions peripheral agents will see when
-/// the actual panel reads it. Height clamps to the viewport with
-/// 8 px breathing margins.
-pub fn default_rect(viewport_w: f32, viewport_h: f32, inspector_w: f32) -> Rect {
-    let w = inspector_w.max(280.0).min(viewport_w - 16.0);
-    let h = 720.0_f32.min(viewport_h - 16.0).max(420.0);
-    let x = ((viewport_w - w) * 0.5).max(8.0);
-    let y = ((viewport_h - h) * 0.5).max(8.0);
-    Rect::new(x, y, w, h)
-}
-
-/// Paint the gallery at `rect`. Delegates the entire showcase body
-/// to [`ph2d_editor_core::widget::showcase::paint_showcase_body`].
-pub fn paint(
-    rect: Rect,
-    scene: &mut ph2d_vector::VectorScene,
-    text_system: &mut ph2d_text::TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut ph2d_editor_core::interaction::HitIndex,
-    store: &WidgetStore,
-) {
-    paint_showcase_body(rect, scene, text_system, theme, hit_index, store);
+    fn populate(store: &mut WidgetStore) {
+        populate::populate(store);
+    }
 }

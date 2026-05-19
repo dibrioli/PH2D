@@ -42,7 +42,6 @@ pub mod selection;
 pub mod state;
 pub mod style;
 pub mod topbar;
-pub mod widget_gallery;
 
 pub use state::{GizmoStateGroup, GridState, ImageEditState, ViewState};
 
@@ -448,8 +447,6 @@ impl HeroScreen {
             view: ViewState {
                 ui_mirrored: false,
                 stats_visible: true,
-                widget_gallery_visible: false,
-                widget_gallery_rect: None,
                 grid_visible: true,
             },
             panel_visibility: default_panel_visibility(),
@@ -479,7 +476,6 @@ impl HeroScreen {
         topbar::populate(store);
         left_rail::populate(store);
         pre_populate::populate_shared(store);
-        widget_gallery::populate(store);
         crate::grid_snap::populate(store);
         // ADR-0029 Phase C.1: typed panels register their own widgets
         // via `Panel::populate`. The new registry mirrors the legacy

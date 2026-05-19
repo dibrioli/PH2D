@@ -240,11 +240,17 @@ fn hero_apply_event_unrelated_click_returns_false() {
     assert!(!consumed);
 }
 
+// ADR-0029 Phase C.3: disabled in editor-core — touches
+// `view.widget_gallery_visible` (migrated to `panel_visibility`) and
+// asserts on `paint_hero_screen` output that needs the typed registry
+// installed with `WidgetGalleryPanel`. Recreated at
+// `crates/ph2d-panel-widget-gallery/tests/widget_gallery_paint.rs`.
 /// Regression: the Widget Gallery must publish content_h /
 /// visible_h to the store after painting so the wheel dispatch
 /// can clamp the scroll bound on `GAL_PANEL`. Without this the
 /// user reports "scroll doesn't work" — wheel events would either
 /// be ignored (no panel match) or fail to advance (max_scroll = 0).
+#[cfg(any())]
 #[test]
 fn gallery_publishes_scroll_bounds_after_paint() {
     crate::test_support::ensure_panel_registry();
@@ -523,6 +529,10 @@ fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
     );
 }
 
+// ADR-0029 Phase C.3: disabled in editor-core — touches
+// `view.widget_gallery_visible` and routes a `hero.apply_event` that
+// needs the typed registry with `WidgetGalleryPanel`. Recreated at
+// `crates/ph2d-panel-widget-gallery/tests/widget_gallery_paint.rs`.
 /// Regression: right-clicking inside the gallery body → choosing
 /// "Create note" must push a `NoteData` keyed on `GAL_PANEL` (NOT
 /// `INSP_PANEL`) so the gallery renders it on the next frame. The
@@ -530,6 +540,7 @@ fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
 /// — features the showcase advertises (sticky notes, section
 /// outline) need to work in the in-app gallery, not just in the
 /// retired reference snapshot.
+#[cfg(any())]
 #[test]
 fn gallery_create_note_targets_gal_panel() {
     crate::test_support::ensure_panel_registry();
@@ -578,12 +589,17 @@ fn gallery_create_note_targets_gal_panel() {
     );
 }
 
+// ADR-0029 Phase C.3: disabled in editor-core — touches
+// `view.widget_gallery_visible` and routes a `hero.apply_event` that
+// needs the typed registry with `WidgetGalleryPanel`. Recreated at
+// `crates/ph2d-panel-widget-gallery/tests/widget_gallery_paint.rs`.
 /// Regression: right-clicking on a gallery section header →
 /// choosing a color must write `section_outline_color` so the
 /// gallery's next paint draws the colored ring around that
 /// section's body. Mirror of the live Inspector's right-click
 /// outline path — same NodeIds (`INSP_SECTION_*`) because the
 /// gallery re-uses the section painters.
+#[cfg(any())]
 #[test]
 fn gallery_section_outline_color_writes_through() {
     crate::test_support::ensure_panel_registry();

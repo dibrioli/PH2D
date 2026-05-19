@@ -21,7 +21,16 @@ Se diverge, pare e pergunte ao Enio.
 
 ## 1. Run de CI ativa
 
-`https://github.com/dibrioli/PH2D/actions/runs/26090388703` — commit `88cce53`.
+Quando este handoff foi escrito, estavam em curso DUAS runs (o próprio commit deste doc dispara uma nova porque o workflow não filtra `paths`):
+
+- `https://github.com/dibrioli/PH2D/actions/runs/26090388703` — commit `88cce53` (o fix de Cargo.lock; é o que importa pra "vai passar?").
+- `https://github.com/dibrioli/PH2D/actions/runs/26090693607` — commit `e046e92` (este handoff; docs-only).
+
+**Pegue a mais recente como referência canônica:**
+
+```bash
+gh run list --workflow=spike.yml --limit=1 --json databaseId,headSha,status,conclusion
+```
 
 Comandos úteis:
 

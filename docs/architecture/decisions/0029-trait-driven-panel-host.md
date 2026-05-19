@@ -1,10 +1,37 @@
 # ADR-0029 — Trait-driven panel host (PanelHost + Panel<State>) — endgame post-Wave-7
 
-**Status:** Accepted
-**Data:** 2026-05-18 (Proposed) → 2026-05-18 (Accepted — Enio aprovou Phase A.5)
+**Status:** Closed
+**Data:** 2026-05-18 (Proposed) → 2026-05-18 (Accepted — Enio aprovou Phase A.5) → 2026-05-19 (Closed — Phase D merged, CI verde, smoke OK)
 **Decisor(es):** Enio + LLM (review por outro agente incorporado)
 **Substitui:** parcialmente ADR-0028 §Wave 6+7 (panel-as-crate alias model)
 **Habilita:** Wave 8 Phase 2.B-F + fechamento definitivo de auditoria S1+A2.
+
+## Closeout (2026-05-19)
+
+Plano executado integralmente. Commits canônicos em `main`:
+
+| Phase | Commit | Conteúdo |
+|-------|--------|----------|
+| B (infra)         | (vide ADR-0028 §Wave 8 closeout) | `ph2d-editor` → shim; HeroScreen + chrome absorvidos em `ph2d-editor-core`; `panel/` infra (host trait, ErasedPanel, manifest, registry, EventOutcome). |
+| C.1 Inspector     | `05dd935` → `e92e0bb` | InspectorState → typed `Panel<InspectorState>`. |
+| C.2 Hierarchy     | `40a1091` | HierarchyState → typed `Panel<HierarchyState>`. |
+| C.3 Widget Gallery| `4a8e361` | WidgetGalleryState → typed `Panel<WidgetGalleryState>`. |
+| C.4 Grid Snap     | `a873d8f` | GridSnapPanelState → typed `Panel<GridSnapPanelState>` (Phase C closes). |
+| C CI fixes        | `c4c6905` + `88cce53` | machete unused dep + Cargo.lock --locked sync. |
+| D cleanup         | `9099248` | Delete legacy `panel_registry::*`, collapse `HeroLayout`, drop dual-path dispatch, lift `#[ignore]` from `panel_crates_depend_only_on_editor_core`, add `architecture_panel_host_surface` gate, simplify `panel-registry-init` to typed-only. |
+
+Acceptance criteria §8 — todos verdes:
+
+- `cargo test --workspace` 1341 testes / 0 failed (pre-commit T2).
+- `cargo clippy --workspace --all-targets -- -D warnings` clean.
+- `cargo machete` zero.
+- `cargo tree -p ph2d-panel-{inspector,hierarchy,widget-gallery,grid-snap} --depth=2 | grep ph2d-editor` vazio nos 4.
+- `cargo test -p ph2d-editor-core --test architecture_cycle_prevention` verde, INCLUSIVE `panel_crates_depend_only_on_editor_core` sem `#[ignore]`.
+- `cargo test -p ph2d-editor-core --test architecture_panel_host_surface` verde — `PanelHost` 2 ≤ 12, `PanelHostInternal` 16 ≤ 35.
+- CI 9/9 jobs verde (run `26094836307` em `9099248`).
+- Smoke do Enio passou (2026-05-19).
+
+`ph2d-editor` crate permanece como shim (`pub use ph2d_editor_core::*`) — deleção formal adiada para ADR-0030 (~6 meses pós-merge) para evitar sweep de imports antes da janela de uso real, conforme §11 trade-offs.
 
 ---
 

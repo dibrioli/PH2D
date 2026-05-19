@@ -589,9 +589,36 @@ they don't need at compile time.
 | HR-18 cap shells/desktop | enforced (600) | enforced (600) |
 | Public API breaks | — | 0 (via re-exports) |
 
+## Wave 8 closeout (2026-05-19)
+
+Wave 8 (panel-as-crate physical migration + structural cycle break) foi
+escopada e executada sob [ADR-0029 — Trait-driven panel host](0029-trait-driven-panel-host.md),
+não em uma seção própria deste ADR. O Phase 4 deferido descrito em §Wave
+6+7 acima (panel-body migration + HeroScreen + panel_registry move pra
+editor-core) está integralmente resolvido por ADR-0029:
+
+- **Phase B** absorveu HeroScreen + chrome + `panel/` infra em
+  `ph2d-editor-core`; `ph2d-editor` virou shim (`pub use
+  ph2d_editor_core::*`).
+- **Phase C.1-C.4** migrou os 4 painéis in-tree (Inspector, Hierarchy,
+  Widget Gallery, Grid Snap) para typed `Panel<State>` em crates
+  próprios — cada um depende ONLY de `ph2d-editor-core`.
+- **Phase D** (commit `9099248`, CI verde) deletou o legacy fn-pointer
+  `panel_registry` inteiro, colapsou `HeroLayout` duplicada, simplificou
+  o dispatch em `paint_hero_screen`/`apply_event` para single-path
+  típado, e ativou os architecture gates (`panel_crates_depend_only_on_editor_core`
+  sem `#[ignore]` + novo `architecture_panel_host_surface` enforçando
+  `PanelHost ≤ 12` e `PanelHostInternal ≤ 35`).
+
+A audit findings S1 + A2 ficam fechados como consequência. ADR-0030
+(carve-out do tier `PanelHost` público estável baseado em uso real)
+é o próximo follow-up planejado, deferido para ~6 meses pós-merge
+conforme ADR-0029 §12.
+
 ## Referências
 
 - **[Narrativa completa: problema multi-agente paralelo + solução](../../Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md)** ← *começar por aqui se for novo no projeto*
 - [Plano Wave 2 canonical](../../Migracao/2026-05-wave-2-eliminating-all-collisions.md)
 - [SKILL §HR-18](../../../SKILL_Stack_PH2D_Definitiva.md#hr-18--crescimento-bounded-em-shell-binaries)
 - [ADR-0027 — Convention-by-discovery (Wave 1)](0027-convention-by-discovery.md)
+- [ADR-0029 — Trait-driven panel host](0029-trait-driven-panel-host.md) — escopo + execução do Wave 8 completo.

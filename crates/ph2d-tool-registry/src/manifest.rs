@@ -68,10 +68,9 @@ impl McpExposure {
     }
 }
 
-/// Discriminator: Action one-shot vs Tool stateful. Matches the
-/// existing distinction in `docs/IntegracaoMultiAgente/03-Agente-Periferico.md`
-/// §5.2 ("Action one-shot": click → fn runs; "Tool stateful": persistent
-/// state + Procreate-style panel).
+/// Discriminator: Action one-shot vs Tool stateful.
+/// "Action one-shot": click → fn runs.
+/// "Tool stateful": persistent state + Procreate-style panel.
 ///
 /// PR 1 declares the variants and stores function pointers; concrete
 /// `ToolCtx` / `PanelEvent` types arrive with the dispatcher in PR 9.

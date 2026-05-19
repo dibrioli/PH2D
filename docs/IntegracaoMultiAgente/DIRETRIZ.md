@@ -1,421 +1,201 @@
-# DIRETRIZ — Operação Multi-Agente PH2D
+# Diretriz de Implementação Universal — PH2D
 
-**Versão:** 5.0 — 2026-05-17 (pós Wave 1-3.2; Wave 4 *source-of-truth UI* em planejamento)
-**Substitui:** `01-Enio.md` / `02-Coordenador.md` / `03-Agente-Periferico.md` / `04-Agente-PRCI.md` (arquivados em `ARCHIVE-v4.0-pre-wave-1/`)
-**Audiência:** Enio (humano) **e** qualquer sessão LLM que entra no projeto.
+**Versão:** 6.0 — 2026-05-19 (pós Wave 9 / ADR-0029 fechados; modelo 2 papéis + fluxo invertido)
+**Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
+**Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Depois, Enio te diz "Você é o Coordenador" ou "Você é o Implementador" e este doc te diz o resto.
 
 ---
 
 ## TL;DR
 
-> A arquitetura PH2D pós Wave 1-3.2 elimina colisões multi-agente
-> por **construção**: cada tool é seu próprio crate; chrome é
-> derivado do Registry; design canonical (tokens.json + SVGs +
-> TOMLs) gera Rust via `build.rs`; 6 architecture tests + HR-18
-> cap bloqueiam regressão.
+> **Dois papéis. Fluxo invertido. Zero colisão por construção.**
 >
-> **Para adicionar uma tool nova:** criar `crates/ph2d-tool-<slug>/`
-> + 1 linha em `ph2d-tool-registry-init::register_all`. **Zero
-> edit em arquivos centrais.**
+> 1. Enio diz "vamos criar X" ao **Coordenador**.
+> 2. Coordenador **faz primeiro todos os links centrais** (pasta nova, Cargo.toml, register_all, TOML de design, SVG, stubs prontos). Valida com `cargo check -p <crate-novo>`. Pasta já está plugada na árvore.
+> 3. Coordenador entrega briefing pro **Implementador**: "tua pasta é `crates/ph2d-tool-<slug>/`. Stubs prontos. Não saia daí."
+> 4. Implementador preenche **apenas dentro da pasta isolada**. Nunca toca arquivo fora. Usa tokens canônicos. Obedece codificação rápida.
+> 5. Coordenador revisa, faz smoke com Enio, commita, faz push, babysit CI.
 >
-> Esta diretriz substitui 4 docs operacionais antigos (versão 4.0,
-> 2026-05-13) que descreviam um modelo onde Coordenador editava
-> manualmente `icons.rs` / `lib.rs` / `fixture.rs` / `ids.rs` /
-> `ToolRegistry::new()` — arquitetura morta.
+> **Enio não decide nada operacional.** Coordenador instrui Enio passo a passo. Enio é relay mecânico entre as duas sessões Claude Code.
 
 ---
 
-## 0. Antes de começar (leitura obrigatória)
+## 0. Antes de começar (sanity check obrigatório)
 
-Qualquer LLM que entra no projeto deve ler, **nesta ordem**:
-
-1. **[`docs/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](../Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md)**
-   — narrativa do problema multi-agente paralelo + as 4 waves de
-   solução. ~450 LOC. **Não pule.**
-2. **[`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)**
-   — especialmente §HR-1..HR-18 (Hard Rules) e §1 (arquitetura geral).
-3. **[`CLAUDE.md`](../../CLAUDE.md)** — operacional do dia-a-dia
-   (CI, push, batching policy).
-4. **Memory:**
-   `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`
-   (auto-loaded) — perfil do Enio, feedback acumulado, histórico
-   entre sessões.
-5. **[`docs/architecture/decisions/0027-convention-by-discovery.md`](../architecture/decisions/0027-convention-by-discovery.md)
-   e [`0028-wave-2-codegen-design-canonical.md`](../architecture/decisions/0028-wave-2-codegen-design-canonical.md)**
-   — as duas ADRs canônicas da arquitetura atual.
-
-**Sanity check antes de tocar código:**
+Independentemente do papel que vai assumir, rode primeiro:
 
 ```bash
-git log --oneline -3                                  # confirma onde HEAD está
-git status -sb                                        # working tree clean?
-cargo test --workspace --exclude ph2d-asset 2>&1 \
-  | grep -E "test result:|FAILED" | head             # baseline verde?
-find shells/desktop/src -name "*.rs" -exec wc -l {} \; | awk '$1 > 600'
-                                                      # HR-18: zero violações
+git log --oneline -5                              # confirma HEAD
+git status -sb                                    # working tree clean?
+cargo check --workspace 2>&1 | tail -5            # baseline compila?
 ```
 
-Se qualquer um diverge do esperado, **pare e pergunte ao Enio**.
+Se algo divergir do esperado (HEAD inesperado, working tree suja, build quebrado), **pare e reporte ao Enio** antes de qualquer ação.
+
+Leitura mínima de contexto técnico:
+- [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18 (Hard Rules) e §1 (arquitetura).
+- [`CLAUDE.md`](../../CLAUDE.md) (CI, push, batching).
+- Memória persistente do LLM em `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md` (perfil do Enio, feedback acumulado).
 
 ---
 
-## 1. Topologia
+## 1. O modelo
+
+### 1.1 Os dois papéis
+
+**Coordenador** — única autoridade global. Centraliza tudo que é "arquivo compartilhado". Faz scaffold de feature nova *antes* do Implementador começar. Revisa entrega. Commita. Faz push. Babysit CI. Absorve o papel que antes era PRCI.
+
+**Implementador** — sessão isolada, uma por feature. Recebe pasta já plugada na árvore. Edita **somente** dentro dela. Reporta pronto. Pode rodar em paralelo com outros Implementadores sem coordenação direta — a arquitetura física garante que eles não colidem.
+
+Enio não é papel. Enio é o humano que orquestra: abre sessões Claude Code, cola mensagens entre elas, roda smoke visual quando o Coordenador pede.
+
+### 1.2 Fluxo invertido (a mudança fundamental)
+
+O modelo antigo era: Implementador cria a tool → Coordenador depois faz os links centrais. **Errado.** O Implementador editava arquivos fora da pasta dele pra plugar a tool, e dois Implementadores em paralelo colidiam.
+
+Modelo novo: **scaffolding primeiro, conteúdo depois.**
 
 ```
-Enio (humano, relay)
- │
- ├─ Coordenador  (sessão Claude Code #1, sempre ativa)
- │   • Mantém STATE.md
- │   • Revisa PRs dos Periféricos
- │   • Edita arquivos compartilhados (raro, pós Wave 1-4)
- │
- ├─ Agentes Periféricos (até 4 sessões paralelas)
- │   • Cada uma numa sessão Claude Code separada, mesmo path
- │   • Cada uma trabalha em SEU crate exclusivo
- │   • Comunicam com Coordenador via Enio (copy/paste)
- │
- └─ Agente PRCI (ativado pelo Enio ao final do ciclo)
-     • ÚNICO autorizado a `git push` + `gh`
-     • Babysit CI até verde
+Enio: "Coordenador, vamos criar a tool Transform."
+   │
+   ▼
+Coordenador:
+  1. Decide: é uma tool? painel? widget? (vide §3)
+  2. Cria crates/ph2d-tool-transform/ inteira com stubs
+  3. Adiciona em Cargo.toml raiz (members)
+  4. Adiciona linha em ph2d-tool-registry-init::register_all (alfabético)
+  5. Cria docs/design/tools/transform.toml
+  6. Dropa docs/design/icons/transform.svg (ou pede ao Enio)
+  7. cargo check -p ph2d-tool-transform  →  verde
+  8. Briefing pro Implementador (vide §2)
+   │
+   ▼  (Enio abre nova sessão Claude Code, cola briefing)
+   │
+Implementador:
+  9. Lê briefing + esta DIRETRIZ + sanity check
+ 10. Edita SÓ dentro de crates/ph2d-tool-transform/
+ 11. Preenche algorithm.rs, icon.rs, manifest, register
+ 12. cargo test -p ph2d-tool-transform  →  verde
+ 13. Commit local, reporta pronto
+   │
+   ▼
+Coordenador:
+ 14. Revisa o que foi commitado
+ 15. Pede smoke pro Enio (./play.command)
+ 16. Se OK, push origin main + babysit CI
+ 17. CI verde → Enio livre pra próxima feature
 ```
 
-Todas as sessões no mesmo diretório principal do projeto. Sem
-worktrees. Sem `git checkout -b`. Tudo em main local até o ciclo
-fechar.
+A partir do passo 8 o Implementador **nunca** toca arquivo fora da pasta dele. Zero risco de colisão com outro Implementador que esteja trabalhando em outra feature em paralelo.
 
-**Limites operacionais:**
-- Máximo **4 Periféricos simultâneos** (limite do STATE.md).
-- **Um único Coordenador ativo** por vez. Duas sessões
-  pretendendo ser Coordenador = colisão garantida.
-- **Push só ao final** do ciclo (batching policy).
+### 1.3 As 3 obrigações do Implementador (sempre, sem exceção)
 
----
+1. **ISOLAMENTO.** Edita **só** arquivos dentro da pasta exclusiva atribuída pelo Coordenador. Se precisa de algo fora (dep nova, mudança em foundational, novo NodeId), **reporta** ao Enio — não edita por conta própria.
+2. **UI canônica.** Toda cor, espaçamento, raio, tipografia, stroke **passa por tokens** (`ColorToken::X.resolve(theme)`, `Spacing::Lg.px()`, etc.). Zero hex, zero `f32` literal de UI. Vide §4.
+3. **Codificação rápida.** Usa `cargo check -p <crate>` durante editing burst. Não duplica trabalho do pre-commit hook. Não roda `--workspace` em loop. Vide §5.
 
-## 2. STATE.md é a fonte de verdade operacional
-
-[`docs/IntegracaoMultiAgente/STATE.md`](STATE.md) registra
-**sempre**:
-
-- Slots ativos (slug, pastas reservadas, status, última atividade)
-- Fila de integração (FIFO)
-- Pedidos pendentes ao Coordenador
-- Lock de integração (Coordenador idle | integrando X)
-- Sha conhecido bom (rollback target)
-- Histórico de operação (append-only, mais recente no topo)
-
-**Quem escreve:** **só o Coordenador.** Periféricos e PRCI
-**leem**. Conflitos = grave (vide §5).
-
-Após cada operação significativa (atribuição slot, aprovação
-pasta, status mudou, fila avançou, sha bom atualizado, integração
-concluída), Coordenador commita STATE.md como `chore(coordenador):
-<descrição>`.
+Se você é o Implementador e está pra violar uma das três, **pare e reporte**. Quase certamente significa que o Coordenador não fez o scaffold direito.
 
 ---
 
-## 3. Seu papel (selecione um)
+## 2. Como Coordenador e Implementador se comunicam
 
-### 3.1 Você é o Enio
+Enio é **relay mecânico**, não decisor.
 
-Você é o **relay humano**: copia/cola mensagens entre Coordenador
-e Periféricos. Decide:
+### 2.1 Coordenador → Implementador
 
-- Quando iniciar nova feature
-- Quando parar e fazer PR pro GitHub
-- Resolver impasses quando Coordenador apresenta opções
-- Smoke visual (`./play.command`)
+Quando o Coordenador precisa que o Implementador comece, ele entrega ao Enio um briefing pronto-pra-colar, com este formato exato:
 
-**Fluxo padrão:**
+```
+═══════════════════════════════════════════════════════════════════
+BRIEFING — IMPLEMENTADOR · slot <N> · feature: <slug>
+═══════════════════════════════════════════════════════════════════
 
-1. **Setup uma vez por sessão de trabalho:**
-   - Abre Sessão Claude Code #1. Cola: "Você é o Coordenador. Leia
-     `docs/IntegracaoMultiAgente/DIRETRIZ.md`. Inicialize a operação."
-   - Coordenador lê tudo + STATE.md + reporta pronto.
+PASTA EXCLUSIVA: crates/ph2d-tool-<slug>/
 
-2. **Por feature nova:**
-   - Diz ao Coordenador: "Quero feature X. Atribua slot."
-   - Coordenador prepara briefing (cola desta DIRETRIZ + escopo +
-     slot). Atualiza STATE.md.
-   - Você abre nova Sessão Claude Code (mesmo path), cola o
-     briefing.
-   - Periférico lê briefing + SKILL + STATE.md + esta DIRETRIZ.
-     Cria crate `ph2d-tool-<slug>/` (vide §4.1). **Não precisa
-     pedir permissão de pasta** — a pasta é o crate dele.
-   - Periférico desenvolve, comita local, reporta pronto.
-   - Coordenador revisa, valida CI lints + smoke, marca `done` em
-     STATE.md.
+ESTADO INICIAL (já plugado na árvore pelo Coordenador):
+- Cargo.toml      (workspace deps prontos)
+- src/lib.rs      (MANIFEST + register stubs)
+- src/icon.rs     (BezPath placeholder)
+- src/algorithm.rs (assinatura pronta, corpo vazio)
+- docs/design/tools/<slug>.toml (spec funcional)
+- docs/design/icons/<slug>.svg (ícone source)
 
-3. **Final do ciclo:**
-   - Você decide: "manda PR pro GitHub".
-   - Ou Coordenador assume PRCI, ou você abre sessão dedicada nova
-     com `Você é o PRCI. Leia DIRETRIZ §3.4`.
-   - Push + babysit CI per CLAUDE.md.
+O QUE VOCÊ FAZ:
+- Preenche src/algorithm.rs com a lógica pura + unit tests
+- Preenche src/icon.rs com o BezPath final (porte do SVG)
+- Ajusta o MANIFEST se a spec do TOML pedir
+- cargo test -p ph2d-tool-<slug> verde
 
-**Regras de ouro pra você:**
+O QUE VOCÊ NÃO TOCA (em hipótese alguma):
+- Qualquer arquivo fora de crates/ph2d-tool-<slug>/
+- Cargo.toml raiz (já tem você como member)
+- ph2d-tool-registry-init/* (já tem sua linha em register_all)
+- crates/ph2d-tokens/* (foundational)
+- crates/ph2d-editor-core/* (foundational)
+- shells/*
 
-- Confia mais em STATE.md do que em memória sua ou de qualquer
-  agente.
-- Comunicação é assíncrona — não force agentes a "decidir agora".
-- Smoke visual é SUA responsabilidade. Quando agente diz "pronto",
-  abre `./play.command` e testa concretamente.
-- **Push** é decisão sua — agente nunca push sem você autorizar
-  explicitamente.
+LEIA ANTES DE CODAR:
+- docs/IntegracaoMultiAgente/DIRETRIZ.md §1.3 (3 obrigações)
+- docs/IntegracaoMultiAgente/DIRETRIZ.md §4 (UI canônica)
+- docs/IntegracaoMultiAgente/DIRETRIZ.md §5 (codificação rápida)
 
-### 3.2 Você é o Coordenador
+QUANDO TERMINAR:
+Reporte ao Enio nesta forma EXATA:
+  "Implementador slot <N> pronto. Commit local: <sha>. Aguardando revisão."
+═══════════════════════════════════════════════════════════════════
+```
 
-**Responsabilidades:**
+Enio copia esse bloco e cola numa sessão Claude Code nova. Implementador lê + executa.
 
-1. **Atender pedidos do Enio** (relay):
-   - "Quero feature X" → atribuir slot em STATE.md, preparar briefing.
-   - "Agente Y reporta pasta Z" → validar (pasta livre? bate
-     arquitetura?), atualizar STATE.md, devolver "aprovado" ou
-     "use W em vez de Z".
-   - "Agente Y reporta pronto" → adicionar à fila de integração.
+### 2.2 Implementador → Coordenador
 
-2. **Revisar integrações:**
-   - Quando vez do slug chega: ler o que o Periférico
-     commitou em main local.
-   - **Pós Wave 1-4:** geralmente NÃO precisa editar arquivos
-     compartilhados — chrome aparece via Registry-derived;
-     adicionar tool é só `register_all` (vide §4.1).
-   - Rodar validação:
-     ```bash
-     cargo fmt --all -- --check
-     cargo clippy --workspace --all-targets -- -D warnings
-     cargo test --workspace --exclude ph2d-asset
-     ```
-   - **Smoke visual** (Enio confirma via `./play.command`).
-   - Atualizar STATE.md: status `done`, sha bom novo.
+Quando Implementador termina, reporta ao Enio com a frase ritual:
 
-3. **Manter STATE.md** sempre atualizado (a cada operação).
+> "Implementador slot N pronto. Commit local: `<sha>`. Aguardando revisão."
 
-4. **Edição de arquivos compartilhados — RARO pós Wave 1-4:**
-   - Adicionar tool: SÓ `register_all` em `ph2d-tool-registry-init`
-     (1 linha). Coordenador faz.
-   - Adicionar SVG novo: dropar em `docs/design/icons/<slug>.svg`.
-     Coordenador faz.
-   - Adicionar tool TOML: `docs/design/tools/<slug>.toml`.
-     Coordenador faz.
-   - Tokens.json updates (designer): Coordenador faz.
+Enio cola essa frase na sessão do Coordenador. Coordenador faz `git log --oneline -3`, lê o diff, faz seus checks.
 
-5. **Disciplina de commit** — anti-colisão com Periféricos:
-   - **Antes de cada `git add`**, rode `git status`. Se houver
-     arquivos `M`/`??` que não são seus, **PARE** — outro agente
-     no meio de commit. Aguarde.
-   - **Antes de cada `git commit`**, rode `git status --cached`.
-     Se índice tem arquivo que você não estagiou, **PARE**.
-     `git restore --staged <não-meus>`, então commit.
-   - Stage→commit é UMA operação atômica.
-   - Se vai trigar hook tier T2 (toca shared / shells), avise via
-     Enio antes pra Periféricos segurarem commits 3-5min.
+### 2.3 Coordenador → Enio (instruções operacionais)
 
-6. **Final do ciclo** — passar a PRCI:
-   - Quando Enio diz "manda PR pro GitHub":
-     - Verifica `STATE.md` (fila vazia, sha bom alinhado, working
-       tree clean).
-     - Comita STATE.md final.
-     - Reporta a Enio: "Local pronto. Mude papel pra PRCI ou abra
-       sessão nova com DIRETRIZ §3.4."
+Coordenador instrui Enio mecanicamente:
 
-**O que você NÃO faz:**
-- Codifica feature nova (Periféricos fazem).
-- Pinta widget novo (Periféricos fazem).
-- Push pro GitHub (PRCI faz).
-- Decide o roadmap (Enio decide).
+- "Enio, rode `./play.command` e me diga se a tool Transform aparece na TopBar com o ícone correto."
+- "Enio, abra uma sessão Claude Code nova e cole o briefing abaixo."
+- "Enio, confirma que posso pushar? Estou pronto."
 
-### 3.3 Você é um Agente Periférico
+Enio executa sem decidir. Se Enio precisa decidir algo (escolher entre 2 abordagens, definir escopo), o Coordenador apresenta opções com recomendação primeiro, conforme preferência registrada em memória.
 
-Você foi instanciado numa sessão Claude Code pra implementar UMA
-feature. Sessão paralela com outras Periféricas (até 3 outras
-ativas).
+### 2.4 Implementador → Coordenador (pedidos de fora-da-pasta)
 
-**Antes de qualquer código:**
+Se Implementador descobre que precisa:
 
-1. Confirme estado (vide §0 sanity check).
-2. Leia STATE.md — encontre seu slug + slot atribuído.
-3. Leia o briefing que o Enio te colou.
-4. Leia o cookbook relevante em §4 desta DIRETRIZ.
-5. **NÃO precisa pedir aprovação de pasta** se vai criar
-   `crates/ph2d-tool-<slug>/` (convenção canônica). Outras pastas
-   exclusivas (e.g., novo crate stub) → pedir.
+- Adicionar dep externa em `Cargo.toml` workspace
+- Mudar algo em `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core` (foundational)
+- Criar um NodeId novo, alocar um cluster id, etc.
+- Adicionar widget primitive novo que outras tools vão consumir
 
-**O que você FAZ:**
+**Para imediatamente.** Reporta ao Enio:
 
-- Cria seu crate em `crates/ph2d-tool-<slug>/` com:
-  - `Cargo.toml`
-  - `src/lib.rs` — `pub const MANIFEST: ToolManifest` + `pub fn register`
-  - `src/icon.rs` (se action one-shot ou tool stateful, BezPath)
-  - `src/algorithm.rs` (se aplicável, pure-Rust logic + tests)
-- Adiciona seu crate como `workspace member` em `Cargo.toml` raiz.
-  Isso é a ÚNICA edit fora do seu crate.
-- Adiciona 1 linha em `crates/ph2d-tool-registry-init/src/lib.rs::register_all`:
-  ```rust
-  ph2d_tool_<slug>::register(reg);
-  ```
-- **Designer dropa** `docs/design/tools/<slug>.toml` +
-  `docs/design/icons/<icon-slug>.svg`. Se você precisa que
-  designer faça, reporte ao Enio com payload claro.
+> "Implementador slot N bloqueado. Preciso que o Coordenador faça: <descrição precisa>. Razão: <por quê>. Continuo após scaffold extra."
 
-**O que você NÃO toca (regra clara):**
-
-- **Tudo** fora do seu crate, exceto as 2 linhas exigidas:
-  - `Cargo.toml` raiz (1 linha em `members`)
-  - `ph2d-tool-registry-init/src/lib.rs::register_all` (1 linha)
-- **NUNCA** edita:
-  - `crates/ph2d-editor/src/icons.rs` (build.rs gera; designer
-    edita SVG)
-  - `crates/ph2d-editor/src/screens/hero/fixture.rs` (chrome derivado)
-  - `crates/ph2d-editor/src/screens/hero/ids.rs` (hash-based)
-  - `crates/ph2d-tokens/src/color.rs` (tokens.json source)
-  - `lib.rs` de qualquer crate (path canônico, não re-export central)
-  - SKILL, CLAUDE, ADRs, esta DIRETRIZ, `docs/Migracao/`
-  - `shells/desktop/`, `shells/ipad/`, etc.
-  - Outros tool crates (`ph2d-tool-*`)
-  - Crates foundational: `ph2d-core`, `ph2d-ecs`, `ph2d-tokens`,
-    `ph2d-host`, `ph2d-tool-registry`
-
-**Antes de cada commit:** `git status` + `git diff --stat`.
-Confirma que só sua pasta + as 2 linhas dos arquivos shared
-aparecem.
-
-**Commits locais:**
-
-- Sem branches. Direto em main local quando atinge estado estável
-  (cargo check do seu crate verde).
-- Mensagem em inglês, imperativo, < 70 char.
-- Pre-commit hook tiered (vide §5).
-- **NUNCA `git push`** — PRCI faz no final.
-
-**Reporta "pronto" pra Enio quando:**
-
-- Todos os tests passam no seu crate.
-- `cargo clippy -p ph2d-tool-<slug> -- -D warnings` clean.
-- Architecture tests workspace-wide passam:
-  - `cargo test --workspace --exclude ph2d-asset 2>&1 | grep "test result"`
-- Smoke visual no `./play.command` foi confirmado por Enio (você
-  pede; Enio testa).
-
-**Quando precisa de algo fora:**
-
-- Dep externa nova (Cargo.toml de outro crate) → reporta ao Enio.
-- Mudança em foundational crate → reporta ao Enio.
-- Coordenador atende (via Enio relay).
-
-### 3.4 Você é o Agente PRCI
-
-Você foi ativado pelo Enio ao final do ciclo. Pode ser:
-- Sessão dedicada nova
-- A mesma sessão Coordenador que trocou de papel
-
-**Você é o ÚNICO autorizado a usar `git push` e `gh`.**
-
-**Protocolo:**
-
-1. **Verifica estado:**
-   ```bash
-   git log origin/main..HEAD --oneline   # quantos commits ahead
-   git status -sb                        # working tree clean
-   ```
-
-2. **Push:**
-   ```bash
-   git push origin main
-   ```
-
-3. **Babysit CI** (CLAUDE.md §"CI/GitHub Actions"):
-   ```bash
-   sleep 5 && gh run list --workflow=spike.yml --limit=1 \
-     --json databaseId,url
-   gh run watch <run-id> --exit-status
-   ```
-
-4. **Se CI verde** (10/10 jobs):
-   - Reporte ao Enio: link da run + "CI verde, sha bom = `<sha>`".
-   - Coordenador atualiza STATE.md com novo sha bom.
-
-5. **Se CI falha:**
-   - Diagnostica via `gh run view <id> --log-failed | tail -80`.
-   - Comita fix local (você assume papel Periférico temporariamente).
-   - Push de novo.
-   - Re-watch.
-   - **Máximo 3 ciclos** consecutivos de falha do mesmo job antes
-     de escalonar pro Enio.
-   - PRCI loop policy completa em CLAUDE.md §"CI/GitHub Actions".
-
-**Hard rules pra você:**
-
-- **Never `git push --force` em main.** No exceptions.
-- **Never `--no-verify` em commits.** Se hook falha, fix root cause.
-- **Never amend.** Sempre new commit (CLAUDE.md "Git Safety Protocol").
-
-**Order of init obrigatório (host shells, pós Wave 8 Phase 1):**
-
-1. `ph2d_panel_registry_init::register_all_panels()` — instala o
-   `PANEL_REGISTRY` global respeitando os cargo features
-   `panel-widget-gallery`, `panel-hierarchy`, `panel-inspector`,
-   `panel-grid-snap` (default = todos os 4).
-2. `ph2d_editor::HeroScreen::new(...)` — construtor puro; lê do
-   `PANEL_REGISTRY` já instalado. Se passo 1 foi pulado, panica com
-   mensagem clara apontando para `register_all_panels` ou o helper
-   `ph2d_editor::test_support::ensure_panel_registry()` (testes).
-
-Pular passo 1 = panic. Não há fallback silencioso desde Wave 8
-Phase 1 (audit B1 fechado — o auto-install antigo em
-`HeroScreen::new` neutralizava os `panel-*` cargo features em
-runtime). Cargo features per painel **agora funcionam de verdade**:
-`--no-default-features --features panel-inspector` produz binário
-com apenas Inspector visível.
+Enio cola pro Coordenador. Coordenador faz o scaffold adicional, comita, libera o Implementador.
 
 ---
 
-## 4. Receitas canônicas
+## 3. Receitas canônicas — o que o Coordenador faz para cada tipo de pedido
 
-### 4.1 Adicionar tool nova (pós Wave 1-3.2)
+Cinco buckets. O Coordenador classifica o pedido antes de fazer qualquer coisa.
 
-**Receita 6-passos:**
+### 3.1 Tool nova ("vamos criar a tool Transform")
 
-1. **Designer** (humano ou Claude Design) cria
-   `docs/design/tools/<slug>.toml` com a spec funcional:
+**Coordenador (scaffold):**
 
-   ```toml
-   [tool]
-   id          = "my_tool"
-   cluster     = "image_tools"       # ou outro cluster
-   zone        = "top_right"
-   order       = 70                  # sorting within cluster
-   a11y_role   = "Button"
-   icon_slug   = "my-icon"           # → docs/design/icons/my-icon.svg
-   touches_sim = false
-
-   [label]
-   fluent_key   = "tool.my_tool.label"
-   pt_br_inline = "My Tool"
-   en_us_inline = "My Tool"
-
-   [memory_budget]
-   vram_mb        = 0
-   ram_mb         = 0
-   heap_script_mb = 0
-   ```
-
-2. **Designer** dropa `docs/design/icons/my-icon.svg` (Lucide-style,
-   24×24 viewBox, `stroke="currentColor"`).
-
-3. **Dev (Agente Periférico)** cria `crates/ph2d-tool-my-tool/`:
-
-   ```
-   crates/ph2d-tool-my-tool/
-   ├── Cargo.toml
-   ├── src/
-   │   ├── lib.rs           — pub const MANIFEST + pub fn register
-   │   ├── icon.rs          — BezPath glyph (~30 LOC, hand-port do SVG)
-   │   └── algorithm.rs     — pure-Rust logic + unit tests (se aplicável)
-   ```
-
-   `Cargo.toml` template:
+1. Decide `slug` (`transform`), `cluster` (`image_tools` / `selection` / etc.), `zone` (`top_right` / `left_rail` / etc.), `order` numérico.
+2. Cria `crates/ph2d-tool-transform/Cargo.toml`:
    ```toml
    [package]
-   name = "ph2d-tool-my-tool"
+   name = "ph2d-tool-transform"
    version.workspace = true
    edition.workspace = true
    rust-version.workspace = true
@@ -431,11 +211,10 @@ com apenas Inspector visível.
    ph2d-a11y          = { path = "../ph2d-a11y" }
    ph2d-core          = { path = "../ph2d-core" }
    ```
-
-   `src/lib.rs` template:
+3. Cria `src/lib.rs` com stubs:
    ```rust
    #![forbid(unsafe_code)]
-   //! ph2d-tool-my-tool — <description>.
+   //! ph2d-tool-transform — placeholder
 
    use ph2d_a11y::Role;
    use ph2d_core::MemoryBudget;
@@ -445,370 +224,446 @@ com apenas Inspector visível.
    };
 
    pub mod icon;
-   pub mod algorithm;   // se aplicável
+   pub mod algorithm;
 
    fn shadow_handler() {}
 
    pub const MANIFEST: ToolManifest = ToolManifest {
-       id:           "my_tool",
-       label_key:    "tool.my_tool.label",
-       icon_fn:      icon::my_tool_bezpath,
+       id:           "transform",
+       label_key:    "tool.transform.label",
+       icon_fn:      icon::transform_bezpath,
        zone:         Zone::TopRight,
        cluster:      "image_tools",
-       order:        70,
+       order:        50,
        a11y_role:    Role::Button,
-       handler:      ToolHandler::OneShot {
-                         on_click: shadow_handler as HandlerFn,
-                     },
+       handler:      ToolHandler::OneShot { on_click: shadow_handler as HandlerFn },
        memory_budget: MemoryBudget::new(0, 0, 0),
        touches_sim:  false,
        mcp:          McpExposure::reserved(),
    };
 
-   pub fn register(reg: &mut Registry) {
-       reg.register(&MANIFEST);
+   pub fn register(reg: &mut Registry) { reg.register(&MANIFEST); }
+   ```
+4. Cria `src/icon.rs` com BezPath placeholder (1 retângulo, será trocado pelo Implementador):
+   ```rust
+   use ph2d_tool_registry::BezPath;
+   pub fn transform_bezpath() -> BezPath {
+       let mut p = BezPath::new();
+       p.move_to((4.0, 4.0)); p.line_to((20.0, 4.0));
+       p.line_to((20.0, 20.0)); p.line_to((4.0, 20.0)); p.close_path();
+       p
    }
    ```
-
-4. **Dev** adiciona 1 linha em `Cargo.toml` raiz:
+5. Cria `src/algorithm.rs` com assinatura vazia.
+6. Adiciona em `Cargo.toml` raiz (`members = [..., "crates/ph2d-tool-transform"]`).
+7. Adiciona em `crates/ph2d-tool-registry-init/Cargo.toml` deps:
    ```toml
-   members = [
-       ...
-       "crates/ph2d-tool-my-tool",
-   ]
+   ph2d-tool-transform = { path = "../ph2d-tool-transform" }
    ```
-
-5. **Dev** adiciona 1 linha em
-   `crates/ph2d-tool-registry-init/src/lib.rs::register_all`:
+8. Adiciona em `crates/ph2d-tool-registry-init/src/lib.rs::register_all` (**em ordem alfabética** — o arch test `architecture_register_all_alphabetical` enforça):
    ```rust
-   ph2d_tool_my_tool::register(reg);
+   ph2d_tool_transform::register(reg);
    ```
-   E adiciona o crate como dep em
-   `crates/ph2d-tool-registry-init/Cargo.toml`:
+9. Cria `docs/design/tools/transform.toml` com a spec funcional:
    ```toml
-   ph2d-tool-my-tool = { path = "../ph2d-tool-my-tool" }
+   [tool]
+   id          = "transform"
+   cluster     = "image_tools"
+   zone        = "top_right"
+   order       = 50
+   a11y_role   = "Button"
+   icon_slug   = "transform"
+   touches_sim = false
+
+   [label]
+   fluent_key   = "tool.transform.label"
+   pt_br_inline = "Transform"
+   en_us_inline = "Transform"
+
+   [memory_budget]
+   vram_mb        = 0
+   ram_mb         = 0
+   heap_script_mb = 0
    ```
+10. Cria `docs/design/icons/transform.svg` (Lucide-style 24×24, `stroke="currentColor"`). Se não tem source, pede ao Enio.
+11. Roda `cargo check -p ph2d-tool-transform` — deve compilar verde.
+12. Roda `cargo test --workspace --exclude ph2d-asset` rápido — arch tests devem passar (alphabetical, design-sync, etc).
+13. Commita: `chore(coord): scaffold ph2d-tool-transform (slot N)`.
+14. Entrega briefing pro Enio (vide §2.1).
 
-6. **Validação automática (CI):** 6 architecture tests rodam:
-   - `tool_manifest_design_sync` — TOML ↔ MANIFEST cross-validation
-   - `chrome_manifest_coverage` — chrome NodeId ↔ manifest hash
-   - `node_id_collisions` — pairwise NodeId uniqueness
-   - `no_literal_color` — nenhum hex em widget/screens
-   - `file_loc_caps` — HR-18 cap (shells/desktop/src/)
-   - cross-platform replay hash, MSRV, clippy
+**Implementador:** preenche `algorithm.rs` com lógica pura + tests, troca `icon.rs` pelo BezPath real do SVG, ajusta MANIFEST se TOML pediu detalhe específico. `cargo test -p ph2d-tool-transform` verde. Reporta.
 
-**Chrome aparece automaticamente.** O painter de
-`image_action_pills` consome `Registry::cluster("image_tools")` e
-renderiza a pill com o icon + label. Zero edit em chrome painters.
+### 3.2 Painel novo ("vamos criar o painel Outline")
 
-**NÃO toca:** `lib.rs` raiz, `icons.rs`, `tools/mod.rs` interno
-do editor, `screens/hero/fixture.rs::topbar_clusters()`,
-`screens/hero/ids.rs`, `Cargo.toml` raiz (além de adicionar o
-member).
+**Coordenador (scaffold):**
 
-### 4.2 Adicionar widget novo em editor-core (Wave 9 ✅)
-
-> **Status:** Wave 9 Eixo B (2026-05-19) cravou o contrato. Receita
-> abaixo é executável; testes arquiteturais barram qualquer desvio.
-
-**Onde mora:** `crates/ph2d-editor-core/src/widget/<slug>.rs`. Um
-arquivo por primitive, ≤500 LOC (cap gated por
-`architecture_widget_loc_cap`). Se passar de 500, vire diretório
-`<slug>/{mod,data,paint,helpers}.rs`.
-
-**Pattern canônico** (copia de qualquer primitive existente, ex:
-[`button.rs`](../../crates/ph2d-editor-core/src/widget/button.rs)):
-
-```rust
-//! Brief one-liner describing the widget's role.
-
-use crate::interaction::HitIndex;
-use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
-use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::VectorScene;
-
-use crate::paint::resolve;
-use crate::zones::Rect;
-
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum MyWidgetState {
-    #[default]
-    Normal,
-    Hovered,
-    Pressed,
-    Focused,
-    Disabled,
-}
-
-#[derive(Clone, Debug)]
-pub struct MyWidget {
-    pub id: NodeId,
-    pub label: &'static str,
-    // … widget-specific data
-}
-
-impl MyWidget {
-    pub fn build_a11y(&self) -> Node {
-        NodeBuilder::new(Role::Button)
-            .label(self.label)
-            .build()
-    }
-}
-
-pub fn paint_my_widget(
-    widget: &MyWidget,
-    rect: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    let bg = resolve(ColorToken::Bg2, theme);
-    // … paint using tokens only; never hex / px literals.
-}
-```
-
-**Cinco mandamentos** (todos gated por arch test):
-
-1. **Cores só via `ColorToken::X.resolve(theme)`** — `no_literal_color`
-   barra `Color::rgba8(...)`, hex strings, `Color::WHITE`, etc.
-2. **Sizes só via `Spacing::X.px()` / `Radius::X.px()` /
-   `StrokeToken::X.px()` / `TypeToken::X.px()`** — `no_magic_numeric`
-   barra px literais. Exceção: comment `// LITERAL-PX-OK: <razão>`
-   no mesmo line.
-3. **`build_a11y()` obrigatório** — `hr12_widgets_a11y` barra widget
-   sem AccessKit. Opt-out exige justificativa escrita.
-4. **Tamanho ≤500 LOC** — `architecture_widget_loc_cap` barra. Split
-   pra sub-files se ultrapassar.
-5. **Mostrar no showcase** — `architecture_widget_showcase_coverage`
-   barra widget que existe mas não aparece em nenhuma seção do
-   Widget Gallery. Opt-out se for chrome-internal (panel_chrome,
-   tool_rail, tooltip etc.); decisão consciente.
-
-**Registrar:**
-
-1. Adicione `mod <slug>;` na ordem alfabética em
-   [`widget/mod.rs`](../../crates/ph2d-editor-core/src/widget/mod.rs).
-2. Adicione `pub use <slug>::{MyWidget, MyWidgetState, paint_my_widget};`
-   logo abaixo.
-3. Crie uma seção no showcase em
-   [`widget/showcase/`](../../crates/ph2d-editor-core/src/widget/showcase/)
-   (copia layout de `inputs.rs` ou `switches.rs`; ~80 LOC pra um
-   widget simples).
-
-**NÃO toca:** `hero.rs`, `paint.rs`, `interaction/`, painéis. Widget
-primitive é local.
-
-**Smoke:** `./play.command` + abrir o Widget Gallery (topbar →
-palette icon) e confirmar a nova seção aparece com hover/press
-states funcionando.
-
-### 4.3 Modificar tool existente
-
-Mesma receita do §4.1 mas você edita o crate existente. Touch só
-`crates/ph2d-tool-<slug>/src/`. Se mudou o TOML também, edite o
-TOML correspondente. CI re-valida.
-
-### 4.4 Adicionar painel novo (Wave 5 ✅ + Wave 6+7 Phase 4 ✅ + Wave 7 Stage 1 ✅)
-
-> **Status:** Wave 5 (2026-05-17) entregou o `PanelManifest` pattern.
-> Wave 6+7 Phase 1+2 (2026-05-17) extraiu `ph2d-editor-core` com
-> primitives compartilhados. Wave 6+7 Phase 4 (2026-05-18) distribuiu
-> `apply_event` 100% — cada panel thunk hoje tem lógica real, hero.rs
-> apply_event virou chrome-only. Wave 7 Stage 1 (2026-05-18) converteu
-> `PANEL_REGISTRY` pra `OnceLock` runtime-init + criou
-> `ph2d-panel-registry-init` crate com cargo features per panel
-> (default-all + per-panel + lite-build). Hoje, painel novo registra
-> dinamicamente no boot — feature-gate disponível.
-> Vide [ADR-0028 §Wave 6+7 e Wave 7 Stage 1](../architecture/decisions/0028-wave-2-codegen-design-canonical.md#wave-7-stage-1-2026-05-18--panel-registry-runtime-init--cargo-features).
-
-**Receita 4-passos** (simétrico ao §4.1 tool-as-crate):
-
-1. **Dev** cria o módulo do painel em
-   `crates/ph2d-editor/src/screens/hero/<slug>/mod.rs`
-   (ou pasta exclusiva em outro local se faz mais sentido). Declara
-   `pub static PANEL_MANIFEST: PanelManifest` com os 3 fn pointers:
-
+1. Decide `slug` (`outline`), `default_visible`, feature flag (`panel-outline`).
+2. Cria crate `crates/ph2d-panel-outline/` com `Cargo.toml` (deps em `ph2d-editor-core`, `ph2d-a11y`, `ph2d-tokens`, `ph2d-text`, `ph2d-vector`).
+3. Cria `src/lib.rs` com stub do `impl Panel`:
    ```rust
-   use crate::panel_registry::{PaintCtx, PanelManifest};
-   use crate::interaction::{WidgetEvent, WidgetStore};
+   use ph2d_editor_core::panel::{Panel, PaintCtx, PanelHost};
+   use ph2d_a11y::NodeId;
+
+   pub struct OutlinePanel;
+
+   #[derive(Default)]
+   pub struct OutlineState { /* placeholder */ }
+
+   impl Panel for OutlinePanel {
+       type State = OutlineState;
+       const ID: &'static str = "outline";
+       const NODE_ID: NodeId = ph2d_a11y::hash_node_id("panel.outline");
+       const DEFAULT_VISIBLE: bool = false;
+
+       fn paint(_state: &mut Self::State, _ctx: &mut PaintCtx, _host: &mut dyn PanelHost) {
+           // placeholder
+       }
+       // demais métodos com stubs
+   }
+   ```
+4. Adiciona feature em `crates/ph2d-panel-registry-init/Cargo.toml`:
+   ```toml
+   [features]
+   default = ["panel-inspector", "panel-hierarchy", "panel-widget-gallery", "panel-grid-snap", "panel-outline"]
+   panel-outline = ["dep:ph2d-panel-outline"]
+   ```
+5. Adiciona em `crates/ph2d-panel-registry-init/src/lib.rs::register_all_panels` (alfabético):
+   ```rust
+   #[cfg(feature = "panel-outline")]
+   build.register::<ph2d_panel_outline::OutlinePanel>();
+   ```
+6. Adiciona member em `Cargo.toml` raiz.
+7. `cargo check -p ph2d-panel-outline` + `cargo check -p ph2d-panel-registry-init` verde.
+8. Commita + entrega briefing.
+
+**Implementador:** preenche state, paint, apply_event, populate.
+
+### 3.3 Widget primitive novo ("precisamos de um ColorWheel")
+
+Widget primitive é "elemento de UI reutilizável" (botão, slider, dropdown, etc.) — vive em `crates/ph2d-editor-core/src/widget/`. Diferente de tool/painel: **é foundational**, consumido por vários painéis. Coordenador faz o scaffold completo e entrega ao Implementador apenas se for grande o suficiente; caso contrário Coordenador faz inteiro.
+
+**Coordenador (scaffold):**
+
+1. Cria `crates/ph2d-editor-core/src/widget/<slug>.rs` com pattern canônico (vide [`button.rs`](../../crates/ph2d-editor-core/src/widget/button.rs) como template):
+   ```rust
+   //! <one-liner>
+   use crate::interaction::HitIndex;
+   use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+   use ph2d_text::TextSystem;
+   use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+   use ph2d_vector::VectorScene;
+   use crate::paint::resolve;
+   use crate::zones::Rect;
+
+   #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+   pub enum ColorWheelState {
+       #[default] Normal, Hovered, Pressed, Focused, Disabled,
+   }
+
+   #[derive(Clone, Debug)]
+   pub struct ColorWheel { pub id: NodeId, /* … */ }
+
+   impl ColorWheel {
+       pub fn build_a11y(&self) -> Node {
+           NodeBuilder::new(Role::Slider).build()
+       }
+   }
+
+   pub fn paint_color_wheel(/* args canônicos */) { /* stub */ }
+   ```
+2. Adiciona em `widget/mod.rs` na ordem alfabética:
+   ```rust
+   mod color_wheel;
+   pub use color_wheel::{ColorWheel, ColorWheelState, paint_color_wheel};
+   ```
+3. Cria seção no showcase em `widget/showcase/` (copia layout de [`switches.rs`](../../crates/ph2d-editor-core/src/widget/showcase/switches.rs)). Arch test `architecture_widget_showcase_coverage` enforça que o widget aparece no showcase OU em opt-out justificado.
+4. `cargo check -p ph2d-editor-core` verde. Os 4 arch tests de widget devem passar:
+   - `architecture_widget_loc_cap` (≤500 LOC)
+   - `architecture_widget_showcase_coverage`
+   - `no_literal_color`
+   - `hr12_widgets_a11y`
+5. Commita + briefing (se entregar a Implementador).
+
+**Implementador:** preenche `paint_color_wheel` usando **só tokens** (zero hex, zero px literal), adiciona unit tests, ajusta seção do showcase.
+
+### 3.4 TopBar action / chrome affordance ("adicionar botão Settings → Snap toggle")
+
+Chrome (TopBar, LeftRail, BottomHUD, ContextMenu) tem handlers em [`crates/ph2d-editor-core/src/screens/hero/chrome/`](../../crates/ph2d-editor-core/src/screens/hero/chrome/). Cada handler = 1 arquivo (≤80 LOC típico) com função `pub fn apply(hero, event) -> bool`. Dispatcher central em `chrome/mod.rs`.
+
+**Coordenador:**
+
+1. Cria `crates/ph2d-editor-core/src/screens/hero/chrome/<slug>.rs` com stub:
+   ```rust
+   use crate::interaction::WidgetEvent;
    use crate::screens::hero::HeroScreen;
 
-   pub static PANEL_MANIFEST: PanelManifest = PanelManifest {
-       id: "my_panel",
-       panel_node_id: super::ids::MY_PANEL, // hash-derived NodeId
-       default_visible: false,
-       paint_fn: paint_thunk,
-       apply_event_fn: apply_event_thunk,
-       populate_fn: populate,
-   };
-
-   fn paint_thunk(ctx: &mut PaintCtx) {
-       if !visibility_check(ctx.hero) { return; }
-       // ... full per-frame logic:
-       //   lazy default rect + drag/resize clamp via
-       //   `style::clamp_panel_rect` + chrome publish +
-       //   actual paint + content_h publish + scroll clamp.
-   }
-
-   fn apply_event_thunk(_hero: &mut HeroScreen, _ev: WidgetEvent) -> bool {
-       false // stub OK por enquanto; god-match em `HeroScreen::apply_event`
-             // ainda é o dispatcher canônico (canonicalization wave futura)
-   }
-
-   pub fn populate(store: &mut WidgetStore) {
-       // register widget NodeIds (drag handle, resize handle, etc.)
+   pub fn apply(_hero: &mut HeroScreen, _event: WidgetEvent) -> bool {
+       false  // implementador preenche
    }
    ```
-
-2. **Dev** adiciona 1 linha em
-   `crates/ph2d-editor/src/panel_registry.rs::PANEL_REGISTRY`:
-
+2. Adiciona no dispatcher em `chrome/mod.rs` (ordem alfabética):
    ```rust
-   pub static PANEL_REGISTRY: PanelRegistry = PanelRegistry::new(&[
-       ...,
-       &crate::screens::hero::<slug>::PANEL_MANIFEST,
-   ]);
+   pub mod snap_toggle;
    ```
+   E na fn `dispatch_all` adiciona `|| snap_toggle::apply(hero, event)`.
+3. Se o handler precisa de NodeIds novos, adiciona em `screens/hero/ids.rs` via `hash_node_id`.
+4. Se precisa item de menu/popover, adiciona em `pre_populate.rs` (ou pede ao Implementador).
+5. `cargo check -p ph2d-editor-core` verde. Briefing.
 
-3. **Dev** adiciona o NodeId em `screens/hero/ids.rs` (hash-derived):
+**Implementador:** preenche corpo do handler.
 
-   ```rust
-   pub const MY_PANEL: NodeId = hash_node_id("my_panel");
-   ```
+### 3.5 Modificar feature existente ("o ícone da tool Trim está errado")
 
-4. **Dev** chama `populate` em `HeroScreen::pre_populate_store` (se
-   não estiver listado lá já — pós Wave 5 pode-se iterar
-   `PANEL_REGISTRY.manifests()` chamando `populate_fn` automaticamente,
-   mas a chamada hoje continua explícita).
+Não há scaffold. A pasta já existe. Coordenador delega direto ao Implementador:
 
-**Chrome aparece automaticamente:** o `z_order` loop em
-`paint_hero_screen` chama `(manifest.paint_fn)(&mut ctx)` para
-todo NodeId no z_order que bate `find_by_panel_node_id`. Cross-panel
-state vai em sub-struct do `HeroScreen` (vide §3 Stage B em
-[`docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md`](../architecture/decisions/0028-wave-2-codegen-design-canonical.md#wave-5-2026-05-17--chrome-canonical--heroscreen-state-decomp--panel-as-canonical-pattern)).
+```
+Implementador slot N: edite crates/ph2d-tool-trim-transparency/src/icon.rs.
+Não toque em nada fora. Reporte quando terminar.
+```
 
-**Zero edits** em `paint_hero_screen` ou em match arms de chrome.
-Multi-agente paralelo em painéis diferentes não colidem (cada um
-toca só seu módulo + 1 linha em `PANEL_REGISTRY`).
+### 3.6 Mudança em foundational ("precisamos de um token de cor novo")
+
+Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core`, `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-panel-registry-init`, `shells/*`, arch tests.
+
+**Foundational não é paralelizável.** Coordenador faz **sozinho**. Não delega.
+
+Exemplo: adicionar `ColorToken::AccentTeal`:
+1. Coord edita `docs/design/tokens.json` adicionando a chave em todos os 4 temas.
+2. Coord roda `cargo check -p ph2d-tokens` (build.rs regenera).
+3. Coord edita `crates/ph2d-tokens/src/color.rs` adicionando o variant.
+4. Coord roda `cargo test --workspace --exclude ph2d-asset` pra garantir nada quebrou.
+5. Coord commita: `feat(tokens): add ColorToken::AccentTeal`.
 
 ---
 
-## 5. Disciplina de commit (anti-colisão multi-sessão)
+## 4. UI canonical — única fonte de verdade
 
-`git commit` é serializado pelo índice global do git. Múltiplas
-sessões com arquivos staged + uma roda commit = a segunda **agarra
-os arquivos da primeira junto** e a mensagem fica fundida. Isso
-é a colisão a evitar.
+Tudo de UI passa por tokens. Sem exceção. A cadeia é:
 
-### 5.1 Protocolo atômico stage→commit
-
-```bash
-# 1) Antes de stage: confere working tree.
-git status
-#    Se há M/?? que NÃO são seus → PARE. Outro agente em vôo.
-#    Aguarde ou reporte ao Enio.
-
-# 2) Stage só os seus. NUNCA `-A` / `-a` / `git add .`.
-git add <arquivos específicos da sua pasta>
-
-# 3) Antes de commit: confere índice.
-git status --cached
-#    Se índice tem arquivo que você não estaviou → vazamento.
-#    git restore --staged <não-meus>  → devolve.
-
-# 4) Commit. Hook tiered roda automaticamente.
-git commit -m "feat(<slug>): <descrição curta em inglês>"
+```
+docs/design/tokens.json   (designer edita; 4 temas; OKLCH para cores)
+        │
+        │  (build.rs em ph2d-tokens lê e regenera)
+        ▼
+crates/ph2d-tokens/src/   (5 enums semânticos)
+   ├─ ColorToken          (33 variants — Bg0..Bg3, Text1..3, Accent*, Danger, Selection, etc.)
+   ├─ Spacing             (12 variants — Xxs..Xl4)
+   ├─ Radius              (7 variants — Xs..Full)
+   ├─ TypeToken           (9 sizes + FontWeight + LineHeight + LetterSpacing)
+   └─ StrokeToken         (5 variants — Hairline..Heavy)
+        │
+        │  (widget code consome)
+        ▼
+let bg = ColorToken::Bg2.resolve(theme);
+let pad = Spacing::Lg.px();
+let r   = Radius::Md.px();
 ```
 
-Stage→commit é **uma operação contínua**. Não pause entre eles.
+CSS aliases em [`docs/design/styles/tokens.css`](../../docs/design/styles/tokens.css) servem para mockups HTML — o arch test `mockup_tokens_exist` garante que toda `var(--X)` em mockup resolve em `tokens.json` ou em alias CSS.
 
-### 5.2 Pre-commit hook tiered
+**Gates ativos que enforçam o canônico:**
 
-| Tier | Ativa quando | Tempo | Quando esperar |
-|------|--------------|-------|----------------|
-| **T0** | docs / README / `.gitignore` / scripts | ~5s | Commits de doc |
-| **T1** | arquivos do seu crate (cargo nextest + clippy local) | ~30s | Commit normal seu |
-| **T2** | `Cargo.toml`, multi-crate, `shells/desktop`, foundational | ~3-5min | Coordenador edits compartilhados ou bumps de dep |
+| Arch test | O que barra |
+|-----------|-------------|
+| [`no_literal_color`](../../crates/ph2d-editor-core/tests/no_literal_color.rs) | hex `0xRRGGBB`, `Color::rgba8(...)`, `Color::WHITE`, etc. em `widget/` ou `screens/` |
+| `no_magic_numeric` | `f32`/`f64` literais em UI fora do allowlist estrutural (`0.0`, `±0.5`, `±1.0`, `±2.0`) |
+| [`hr12_widgets_a11y`](../../crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs) | widget que não emite `Node` AccessKit |
+| [`architecture_widget_loc_cap`](../../crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs) | widget primitive > 500 LOC |
+| [`architecture_widget_showcase_coverage`](../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs) | widget existe mas não aparece no Widget Gallery showcase nem em opt-out |
+| [`mockup_tokens_exist`](../../crates/ph2d-tokens/tests/mockup_tokens_exist.rs) | `var(--X)` em mockup HTML que não resolve em tokens.json/styles |
+| [`architecture_register_all_alphabetical`](../../crates/ph2d-tool-registry-init/tests/architecture_register_all_alphabetical.rs) | `register_all` ou Cargo deps fora da ordem alfabética |
+| [`architecture_panel_host_surface`](../../crates/ph2d-editor-core/tests/architecture_panel_host_surface.rs) | `PanelHost` cresce além de 12 métodos |
+| [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/architecture_cycle_prevention.rs) | `editor-core` ganha dep em `panel-*` ou `ph2d-editor` |
+| `tool_manifest_design_sync` | `docs/design/tools/<slug>.toml` divergente do `MANIFEST` const |
+| `node_id_collisions` | dois NodeIds chrome colidem |
 
-Se acidentalmente trigar T2 numa pasta isolada, provavelmente
-está staged junto com algo de outro agente — confira
-`git status --cached`.
+Violação em qualquer um = build vermelho = Implementador refaz. Não há "vou abrir exceção".
 
-**Coordenador, antes de T2:** avise via Enio pra Periféricos
-segurarem commits 3-5min.
+**Exceção declarada legítima:** comentário `// LITERAL-COLOR-OK: <razão>` na mesma linha ou `// LITERAL-PX-OK: <razão>` para magic numeric. Use sparingly — Coordenador valida na revisão se a justificativa procede.
 
-### 5.3 Bypass `--no-verify` — proibido
+---
 
-**Nunca** use `git commit --no-verify` ou
-`git commit --no-gpg-sign`. Se hook falha, **fix root cause**.
+## 5. Codificação rápida
 
-Exceção: se o Enio explicitamente pedir bypass por razão
-documentada. Documente no commit message.
+Princípio: **não duplique o pre-commit hook.** O hook T2 já roda `cargo clippy --workspace --all-targets -- -D warnings` + `cargo test --workspace --exclude ph2d-asset`. Rodar isso manualmente antes do commit gasta 5-10min duas vezes pelo mesmo sinal.
 
-### 5.4 Sintomas de colisão entre sessões
+### 5.1 Tabela de validação
+
+| Situação | Comando | Tempo |
+|----------|---------|-------|
+| Editou 1 arquivo, quer ver se compila | `cargo check -p <crate>` | 3-15s |
+| Editou crate, quer rodar testes | `cargo test -p <crate>` | 5-30s |
+| Quer rodar UM teste | `cargo test -p <crate> -- <pattern>` | 1-5s |
+| Editou foundational, quer ver downstream | `cargo check --workspace` (NÃO test) | 30-60s warm |
+| Vai commitar (T2 hook vai rodar) | **nada** — deixa o hook validar | 0s |
+| Fim do ciclo, antes do push | `cargo test --workspace --exclude ph2d-asset` | 3-5min |
+| Só mudou `.md` | **nada** — hook é T0 (skip) | 0s |
+
+### 5.2 LOC threshold (não interrompa o editing burst)
+
+| LOC editados | Comando OK |
+|--------------|-----------|
+| 0-400 | nada, continue editando |
+| 400-1200 | `cargo check -p <crate>` opcional |
+| 1200+ ou módulo inteiro | `cargo check -p <crate>` — sane stop |
+| Antes do commit | nada — hook valida |
+
+Não rode `cargo test` durante editing burst. Testes só no hook ou em diagnóstico de falha específica.
+
+### 5.3 O que NÃO fazer
+
+❌ `cargo test --workspace` depois de cada edit
+❌ `cargo clippy --workspace --all-targets` antes do commit
+❌ Re-rodar testes que já passaram pra "confirmar"
+❌ Validar baseline no início da sessão se o último commit já está verde
+❌ `cargo build` antes de `cargo test` (test já compila)
+❌ Re-`Read` arquivo que acabou de editar (o tool já confirmou sucesso)
+
+### 5.4 Pre-commit hook tiered
+
+| Tier | Ativa quando | Tempo |
+|------|--------------|-------|
+| **T0** | só docs / `.md` / scripts | ~5s |
+| **T1** | arquivos de UM crate isolado | ~30s |
+| **T2** | `Cargo.toml`, multi-crate, foundational, `shells/` | ~3-5min |
+
+Se acidentalmente trigar T2 numa pasta isolada, provavelmente está staged junto com algo de outro agente — confira `git status --cached`.
+
+### 5.5 Reads cirúrgicos
+
+- `Read` com `offset` + `limit` em vez de ler arquivo inteiro
+- `Bash: grep -n` pra localizar primeiro, `Read` depois
+- 5 Reads em paralelo na mesma mensagem em vez de sequenciais
+- Para busca larga em código novo: subagent `Explore`
+
+---
+
+## 6. Disciplina git — anti-colisão entre sessões
+
+`git commit` é serializado pelo índice global do git. Se duas sessões têm arquivos staged ao mesmo tempo e uma roda commit, a segunda agarra os arquivos da primeira junto.
+
+### 6.1 Protocolo atômico stage→commit
+
+```bash
+# 1) Antes de stage: confira working tree
+git status
+#    Há M/?? que não são seus? PARE. Outro agente em vôo.
+
+# 2) Stage só os seus. NUNCA -A / -a / git add .
+git add <arquivos-específicos>
+
+# 3) Antes de commit: confere índice
+git status --cached
+#    Tem arquivo que você não estagiou? Vazamento.
+#    git restore --staged <não-meus>
+
+# 4) Commit. Hook tiered roda automaticamente.
+git commit -m "<descrição em inglês, imperativo, <70 char>"
+```
+
+Stage→commit é **uma operação contínua**. Não pause entre os dois passos.
+
+### 6.2 Proibições
+
+- **Nunca** `git push --force` em main
+- **Nunca** `--no-verify` (se hook falha, fix root cause)
+- **Nunca** `git commit --amend` (sempre novo commit)
+- **Nunca** `git config` mudando settings do repo
+- **Nunca** `git restore --staged --worktree` em path fora da sua pasta sem coordenar (memória: feedback_destructive_git_outside_pasta)
+
+### 6.3 Sintomas de colisão
 
 | Sintoma | Recuperação |
 |---------|-------------|
-| `fatal: cannot lock ref 'HEAD': is at X but expected Y` | Outra sessão commitou no meio do seu. `git status` → diagnose. |
-| `git status` mostra M que você não tocou | Outro agente paralelo na mesma working tree. NÃO comite. Reporte. |
-| `git log -1` mostra mensagem fundida (2 títulos, 2 Co-Authored-By, corpo truncado) | Colisão. Coordenador faz `git reset --soft HEAD~1` + split. |
+| `fatal: cannot lock ref 'HEAD'` no commit | Outra sessão commitou no meio. `git status` → diagnose. |
+| `git status` mostra M que você não tocou | Outro agente paralelo. NÃO comite. Reporte. |
+| `git log -1` mostra mensagem fundida (2 títulos, corpo truncado) | Colisão. Se NÃO pushado: `git reset --soft HEAD~1` + split + recommit. |
+| Hook trigga T2 quando você esperava T1 | `git status --cached` — provavelmente vazamento de outro agente. |
 
 ---
 
-## 6. Smoke + PR + CI
+## 7. Smoke + Push + CI (Coordenador absorve PRCI)
 
-### 6.1 Smoke local — antes de "pronto"
+### 7.1 Smoke local — antes do push
 
 ```bash
 ./play.command
 ```
 
-Abre o editor desktop. Confira:
+Smoke é responsabilidade do **Enio**, sob comando do Coordenador. O Coordenador escreve a checklist concreta:
 
-- App abre sem panic.
-- Feature nova aparece (chrome derivado do Registry — pill na
-  TopBar Image Tools, entry no LeftRail, painel flutuante, etc.).
-- Click → comportamento esperado.
-- **Tools/Actions pré-existentes continuam funcionando** (não
-  regrediu).
-- Sem regressão visível em TopBar / LeftRail / Hierarchy /
-  Inspector / Widget Gallery.
+> "Enio, rode `./play.command` e verifica:
+> 1. App abre sem panic.
+> 2. Tool Transform aparece na TopBar Image Tools com ícone correto.
+> 3. Clique → ação esperada.
+> 4. Tools/Actions pré-existentes continuam funcionando.
+> 5. Sem regressão visual em Hierarchy / Inspector / Widget Gallery."
 
-**Quem roda:** o **Enio**. Periférico/Coordenador pedem o smoke;
-Enio confirma.
+Enio confirma item por item ou reporta o que viu de diferente.
 
-### 6.2 PR pro GitHub — só o PRCI
+### 7.2 Push (Coordenador faz)
 
-Vide §3.4. Push só ao final do ciclo (batching policy). Babysit
-CI até verde. Update STATE.md com novo sha bom.
+Batching policy: **push UMA vez por jornada**, no fim do ciclo. CI matrix (linux + macOS + windows + replay hash + bench) demora ~30min. Não push a cada commit.
 
-### 6.3 PRCI loop em falha
+```bash
+git push origin main
+```
 
-CLAUDE.md §"CI/GitHub Actions":
+Antes do push, Coordenador roda **uma vez** a matriz completa local:
 
-- Loop polling com 15min (`Monitor` com `sleep 900` ou
-  `gh run watch`).
-- Se falha: diagnose + fix local + push + re-watch.
-- Loop fecha em `success` OU 3 ciclos consecutivos de falha do
-  mesmo job → escalona ao Enio.
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --exclude ph2d-asset
+```
 
----
+Tudo verde → push.
 
-## 7. Hard Rules summary (cite ao comitar quando aplicável)
+### 7.3 Babysit CI (Coordenador faz)
 
-| HR | Conteúdo | Onde garantida |
-|----|----------|----------------|
-| HR-3 | Zero-alloc no dispatcher hot-path | `interaction_dispatch_no_alloc` test |
-| HR-5 | Determinism cross-platform (replay hash) | CI replay-hash matrix (3 OS) |
-| HR-12 | A11y obrigatória (Role + Action) | `hr12_widgets_a11y` test |
-| HR-13 | Memory budget declarado por subsistema | Manifest `memory_budget` field |
-| HR-15 | Zero hardcoded UI string + zero hex color | `hr15_no_hardcoded_ui_strings` + `no_literal_color` tests |
-| HR-18 | Files em `shells/<plat>/src/` ≤ 600 LOC | `file_loc_caps` test |
+```bash
+gh run list --workflow=spike.yml --limit=1 --json databaseId,url
+```
 
-Hard Rules completas em
-[`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)
-§HR-1..HR-18.
+Pega o run id. Polling com intervalo de **15 minutos** (`Monitor` com `sleep 900` ou `gh run watch <id>`):
+
+```bash
+bash -c '
+RUN_ID=<id>
+while true; do
+  st=$(gh run view "$RUN_ID" --json status -q .status)
+  cc=$(gh run view "$RUN_ID" --json conclusion -q .conclusion)
+  echo "[$(date +%H:%M:%S)] status=$st conclusion=$cc"
+  [ "$st" = "completed" ] && break
+  sleep 900
+done
+'
+```
+
+Cenários:
+
+| Resultado | Resposta |
+|-----------|----------|
+| Success 9/9 | Coordenador reporta link da run + sha bom novo ao Enio. Ciclo fechado. |
+| Falha de código | Coordenador diagnostica (`gh run view --log-failed`), aplica fix mínimo local, commita, push, re-watch. |
+| Falha de infra (cache, network, rustup flaky) | Não conta. `gh run rerun --failed` + re-watch. |
+| 3 ciclos consecutivos de falha do mesmo job | Escalona pro Enio com diagnose + tentativas. |
+
+CI rule de ouro: **fora do babysit, ninguém polla CI.** Push, link, próxima tarefa.
+
+### 7.4 Comunicação pós-push pro Enio
+
+```
+✓ Wave <N> pushed. CI run: https://github.com/dibrioli/PH2D/actions/runs/<id>
+Entrei em babysit. Reporto quando concluir.
+```
+
+E quando termina:
+
+```
+✓ CI verde 9/9 em <duração>. sha bom novo: <sha>.
+Ciclo fechado. Disponível para próxima ordem.
+```
 
 ---
 
@@ -816,53 +671,98 @@ Hard Rules completas em
 
 | Sintoma | Resposta |
 |---------|----------|
-| Você não sabe o que fazer | Releia §0 + pergunte ao Enio |
-| Arquivo que vc não tocou aparece em `git status` | §5.4 (colisão entre sessões) |
-| Hook falha em fmt / clippy / nextest | Fix root cause; nunca `--no-verify` |
-| Hook trigga T2 quando vc esperava T1 | §5.1 #3 — `git status --cached` pra ver vazamento |
-| Smoke quebrou no `./play.command` | Reporte ao Enio com sintoma; agente Periférico diagnostica + fix local |
-| CI failure cíclico (mesma job 3× seguidas) | PRCI escalona ao Enio |
-| Você é Periférico e descobre bug fora da sua pasta | Reporte ao Enio com diagnose; Coordenador decide quem fix |
-| Você é Coordenador e quer editar shared mas Periférico está working | Anuncie via Enio, espere Periférico chegar a stable, então edite |
-| Você é Coordenador e tem que decidir entre 2 opções arquiteturais | Apresente as opções ao Enio com recomendação + tradeoff |
-| Você é qualquer agente e a memória diz X mas o código diz Y | Confie no código. Memórias podem decair. Atualize memória depois. |
+| Você não sabe o que fazer | Releia §0 + §1.1 + pergunte ao Enio |
+| Arquivo que não tocou aparece em `git status` | §6.3 (colisão entre sessões) |
+| Hook falha em fmt/clippy/test | Fix root cause; nunca `--no-verify` |
+| Hook trigga T2 quando esperava T1 | `git status --cached` — vazamento de outro agente |
+| Smoke quebrou no `./play.command` | Implementador diagnostica + fix local na pasta dele |
+| CI failure cíclico (3× mesmo job) | Coordenador escalona pro Enio |
+| Implementador descobre bug fora da pasta dele | Reporta ao Enio com diagnose; Coord faz |
+| Coord quer editar shared mas Implementador está working | Anuncie via Enio, espere Implementador chegar a estado estável, então edite |
+| Coord tem dúvida arquitetural | Apresente opções ao Enio com recomendação + tradeoff |
+| Memória diz X mas código diz Y | Confie no código. Atualize memória depois. |
 
 ---
 
-## 9. Referências canônicas
+## 9. Cheat-sheet
 
-- **Narrativa do problema multi-agente:** [`docs/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](../Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md)
-- **Hard Rules + arquitetura:** [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)
+### 9.1 Hard Rules ativas (CI-gated)
+
+| HR | Conteúdo | Onde |
+|----|----------|------|
+| HR-3 | Zero-alloc no dispatcher hot-path | `interaction_dispatch_no_alloc` |
+| HR-5 | Determinism cross-platform | CI replay-hash matrix (3 OS) |
+| HR-12 | A11y obrigatória | `hr12_widgets_a11y` |
+| HR-13 | Memory budget declarado | manifest `memory_budget` |
+| HR-15 | Zero hex + zero hardcoded UI string | `no_literal_color` + `hr15_no_hardcoded_ui_strings` |
+| HR-18 | Files em `shells/<plat>/src/` ≤ 600 LOC | `file_loc_caps` |
+| (Wave 9) | Widget primitive ≤ 500 LOC | `architecture_widget_loc_cap` |
+| (Wave 9) | Widget aparece no showcase | `architecture_widget_showcase_coverage` |
+
+Hard Rules completas em [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18.
+
+### 9.2 Caminhos físicos canônicos
+
+| O que | Onde |
+|-------|------|
+| Tool nova | `crates/ph2d-tool-<slug>/` |
+| Painel novo | `crates/ph2d-panel-<slug>/` |
+| Widget primitive | `crates/ph2d-editor-core/src/widget/<slug>.rs` |
+| Chrome handler | `crates/ph2d-editor-core/src/screens/hero/chrome/<slug>.rs` |
+| Tool registry init | `crates/ph2d-tool-registry-init/src/lib.rs::register_all` |
+| Panel registry init | `crates/ph2d-panel-registry-init/src/lib.rs::register_all_panels` |
+| Widget showcase | `crates/ph2d-editor-core/src/widget/showcase/` |
+| Tokens source | `docs/design/tokens.json` |
+| Tokens Rust | `crates/ph2d-tokens/src/` (codegen via build.rs) |
+| Tool design TOML | `docs/design/tools/<slug>.toml` |
+| Icon SVG | `docs/design/icons/<slug>.svg` |
+| Mockup HTML | `docs/design/screens/*.html` |
+| Arch tests editor | `crates/ph2d-editor-core/tests/` |
+| Arch tests tokens | `crates/ph2d-tokens/tests/` |
+| Arch tests registry | `crates/ph2d-tool-registry-init/tests/` |
+
+### 9.3 Comandos mais usados
+
+```bash
+# Implementador — durante edição
+cargo check -p ph2d-tool-<slug>
+cargo test  -p ph2d-tool-<slug>
+cargo test  -p ph2d-tool-<slug> -- some_pattern
+
+# Coordenador — antes do push
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --exclude ph2d-asset
+
+# Coordenador — push + babysit
+git push origin main
+gh run list --workflow=spike.yml --limit=1
+gh run watch <id> --exit-status
+```
+
+---
+
+## 10. Referências canônicas
+
+- **Stack + Hard Rules:** [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)
 - **Operacional dia-a-dia + CI:** [`CLAUDE.md`](../../CLAUDE.md)
-- **ADR convention-by-discovery (Wave 1):** [`docs/architecture/decisions/0027-convention-by-discovery.md`](../architecture/decisions/0027-convention-by-discovery.md)
-- **ADR codegen + design canonical (Wave 2):** [`docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md`](../architecture/decisions/0028-wave-2-codegen-design-canonical.md)
-- **STATE operacional:** [`STATE.md`](STATE.md)
-- **Memory (auto-loaded):** `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`
-- **Wave 2.5 plan (parcialmente fechada):** [`docs/Migracao/2026-05-wave-2-5-deferred-splits.md`](../Migracao/2026-05-wave-2-5-deferred-splits.md)
-- **Wave 3 plan (parcialmente fechada):** [`docs/Migracao/2026-05-wave-3-deferred-state-decomp-and-golden-images.md`](../Migracao/2026-05-wave-3-deferred-state-decomp-and-golden-images.md)
+- **ADR Convention-by-discovery:** [`docs/architecture/decisions/0027-convention-by-discovery.md`](../architecture/decisions/0027-convention-by-discovery.md)
+- **ADR Codegen + design canonical:** [`docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md`](../architecture/decisions/0028-wave-2-codegen-design-canonical.md)
+- **ADR Trait-driven panel host:** [`docs/architecture/decisions/0029-trait-driven-panel-host.md`](../architecture/decisions/0029-trait-driven-panel-host.md)
+- **Memória LLM (auto-loaded):** `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`
 
 ---
 
-## 10. Versão + histórico
+## 11. Versão + histórico
 
-- **5.0 — 2026-05-17:** Diretriz unificada. Substitui 01-04 docs
-  separados. Reflete arquitetura pós Wave 1-3.2. Wave 4 (source-
-  of-truth UI) e Wave 5 (panel-as-canonical-source) referenciados
-  como pendentes.
-- **4.0 — 2026-05-13** (em `ARCHIVE-v4.0-pre-wave-1/`): modelo
-  Coordenador edita manualmente icons.rs / fixture.rs / ids.rs /
-  ToolRegistry::new. Arquitetura morta pós Wave 1.
+- **6.0 — 2026-05-19:** Modelo 2 papéis (Coordenador absorvendo PRCI) + fluxo invertido (scaffold central antes do Implementador começar). Condensa em um único doc: v5.0 DIRETRIZ + 4 docs operacionais 01-04 + STATE.md + DIRETRIZ_CODIFICACAO_RAPIDA.md + PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md.
+- **5.0 — 2026-05-17** (arquivada): Diretriz unificada substituindo 01-04, ainda com modelo 4 papéis (Enio relay / Coord / Periférico / PRCI) e fluxo Periférico-primeiro.
+- **4.0 — 2026-05-13** (arquivada em `ARCHIVE-v4.0-pre-wave-1/` quando criada): modelo Coordenador editava manualmente icons.rs / fixture.rs / ids.rs. Arquitetura morta pós Wave 1.
 
 ---
 
-## 11. Última nota — quando esta DIRETRIZ está obsoleta
+## 12. Quando esta diretriz fica obsoleta
 
-Se a arquitetura mudar materialmente (e.g., panel-as-canonical-source
-lança em Wave 5, mudando como painéis são adicionados), atualize
-esta DIRETRIZ in-place e bump a versão. Não fragmente em múltiplos
-docs — a lição dos 4 docs antigos (que ficaram dessincronizados)
-é que um doc único é mais fácil de manter atualizado.
+Se a arquitetura mudar materialmente (ex.: surge um terceiro papel, ou o fluxo invertido vira fluxo lateral), atualize esta diretriz in-place e bump a versão. **Não fragmente em múltiplos docs** — a lição dos 4 docs antigos que dessincronizaram é que um doc único é mais fácil de manter atualizado.
 
-Se você é LLM lendo isso depois de uma mudança arquitetural maior
-e a DIRETRIZ contradiz o código, **confie no código**, reporte ao
-Enio com diagnose, e atualize esta DIRETRIZ quando autorizado.
+Se você é LLM lendo isto depois de uma mudança arquitetural maior e a diretriz contradiz o código, **confie no código**, reporte ao Enio com diagnose, e atualize esta diretriz quando autorizado.

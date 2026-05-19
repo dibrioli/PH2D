@@ -11,7 +11,7 @@
 //! integration-test builds.
 //!
 //! Same shape as `tests/trim_transparency_algorithm.rs` (slug-prefix
-//! convention from §7.1 of `03-Agente-Periferico.md`).
+//! convention canonicalized in `docs/IntegracaoMultiAgente/DIRETRIZ.md`).
 
 // PR 4 piloto: Make Square moved out to `crates/ph2d-tool-make-square/`,
 // so this test now consumes its public crate API rather than pulling

@@ -2,14 +2,17 @@
 # Pre-commit gate — TIERED. Speed-tunes validation to scope of changes.
 #
 # Tiers (auto-selected from `git diff --cached`):
-#   T0 (~5s)   — docs / config-only: fmt + typos on staged paths, no
-#                rust compile.
-#   T1 (~30s)  — single crate: cargo check/clippy/nextest -p <crate>
-#                + fmt + typos.
-#   T2 (~3-5m) — workspace gate: full fmt + clippy + nextest +
-#                doc-tests + typos. Used when staged set touches
-#                Cargo.{toml,lock}, shells/desktop, multiple crates,
-#                or workspace-affecting files.
+#   T0 (~5s)    — docs / config-only: fmt + typos on staged paths, no
+#                 rust compile.
+#   T1 (~30s)   — single crate: cargo check/clippy/nextest -p <crate>
+#                 + fmt + typos.
+#   T2 (~2-5m)  — workspace gate: fmt + typos + clippy --workspace
+#                 + nextest scoped to touched crates (or --workspace if
+#                 foundational/Cargo.toml/shells/desktop changed).
+#                 Doctests + benches/examples skipped here — CI covers.
+#                 (Pre-2026-05-19: T2 ran clippy --all-targets + nextest
+#                 --workspace + test --doc --workspace, ~40min in
+#                 practice — see DIRETRIZ §5 timing audit.)
 #
 # Bypass: `git commit --no-verify` skips everything. Use after manual
 # per-crate validation, especially for small isolated edits.
@@ -168,17 +171,44 @@ if [ "$tier" = "T1" ]; then
     exit 0
 fi
 
-# ── T2: workspace ────────────────────────────────────────────────────────
+# ── T2: workspace gate ───────────────────────────────────────────────────
+# Filosofia: hook filtra falhas óbvias; CI é a última linha de defesa.
+# Cortes A+B (DIRETRIZ §5 + timing audit 2026-05-19):
+#   A. Drop `--all-targets` em clippy (benches/examples só no CI).
+#   A. Drop `cargo test --doc --workspace` (3min pra zero retorno típico
+#      — maioria das crates tem 0 doctests; CI cobre).
+#   B. Escopar `nextest -p <crates-tocados>` quando o trigger é
+#      "multi-crate" SEM foundational/Cargo.toml/shells — ganho 5-10×
+#      vs `--workspace` (que rodava 1347 tests em 14min cache-quente).
 run_fmt_typos
-step "cargo clippy --workspace --all-targets -- -D warnings"
-cargo clippy --workspace --all-targets -- -D warnings || die "clippy found issues"
-if command -v cargo-nextest >/dev/null 2>&1; then
-    step "cargo nextest run --workspace"
-    cargo nextest run --workspace || die "nextest failed"
+step "cargo clippy --workspace -- -D warnings"
+cargo clippy --workspace -- -D warnings || die "clippy found issues"
+
+if [ "$has_workspace_trigger" = "1" ]; then
+    # Foundational / Cargo.toml/lock / shells/desktop muda → ripples
+    # cross-crate; precisa workspace inteiro pra pegar regressão.
+    if command -v cargo-nextest >/dev/null 2>&1; then
+        step "cargo nextest run --workspace (workspace-level change)"
+        cargo nextest run --workspace || die "nextest failed"
+    else
+        step "cargo test --workspace --lib --bins --tests (nextest not installed)"
+        cargo test --workspace --lib --bins --tests || die "tests failed"
+    fi
 else
-    step "cargo test --workspace --lib --bins --tests (nextest not installed)"
-    cargo test --workspace --lib --bins --tests || die "tests failed"
+    # Multi-crate isolado — escopar nos crates tocados.
+    # basename(dir) = package name na convenção PH2D (1 crate = 1 dir).
+    pkg_args=""
+    for dir in $(echo "$crate_dirs_set" | tr '|' '\n' | awk 'NF' | sort -u); do
+        pkg=$(basename "$dir")
+        pkg_args="$pkg_args -p $pkg"
+    done
+    if command -v cargo-nextest >/dev/null 2>&1; then
+        step "cargo nextest run$pkg_args (scoped to touched crates)"
+        cargo nextest run$pkg_args --no-tests=warn || die "nextest failed"
+    else
+        step "cargo test$pkg_args (scoped to touched crates)"
+        cargo test$pkg_args || die "tests failed"
+    fi
 fi
-step "cargo test --doc --workspace"
-cargo test --doc --workspace || die "doc tests failed"
+
 ok "T2 done — workspace gate passed."

@@ -140,3 +140,25 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         || inside(GAL_PANEL)
         || inside(ph2d_editor::grid_snap::ids::GS_PANEL)
 }
+
+/// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live
+/// Hierarchy entry via the panel-owned thread-local snapshot. Takes
+/// the `hero_live` field directly (not `&AppGfx`) so the caller can
+/// keep a `&mut gfx.hero_screen` borrow live alongside this read.
+#[cfg(feature = "panel-hierarchy")]
+pub(crate) fn resolve_live_entry(
+    hero_live: Option<&crate::HeroLive>,
+    picked: Option<u64>,
+) -> Option<ph2d_editor::screens::hero::fixture::HierarchyEntity> {
+    let node = hero_live?.bridge.node_for(picked?)?;
+    ph2d_panel_hierarchy::current_live_entries()?
+        .get(&node)
+        .cloned()
+}
+#[cfg(not(feature = "panel-hierarchy"))]
+pub(crate) fn resolve_live_entry(
+    _hero_live: Option<&crate::HeroLive>,
+    _picked: Option<u64>,
+) -> Option<ph2d_editor::screens::hero::fixture::HierarchyEntity> {
+    None
+}

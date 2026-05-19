@@ -40,8 +40,11 @@ pub(super) fn publish(
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
     // snapshot's DFS visit order = hierarchy panel display
-    // order. `paint_hero_screen` reads `live_hierarchy_entries`
-    // via thread-local in `hierarchy::set_live_entries`.
+    // order. ADR-0029 Phase C.2: the typed Hierarchy panel owns the
+    // live-entries thread-local; we call into the panel crate
+    // directly here (the shell already gates `panel-hierarchy` via
+    // feature).
+    #[cfg(feature = "panel-hierarchy")]
     if let Some(live) = hero_live.as_mut() {
         crate::build_hierarchy_snapshot(
             sim.world(),
@@ -50,7 +53,7 @@ pub(super) fn publish(
             &mut live.snapshot,
         );
         let (ordered, entries) = live.bridge.sync_from_snapshot(&live.snapshot);
-        hero.sync_from_hierarchy(&ordered, entries);
+        ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
     }
     // M14.4b: publish the demo camera + window dims so the
     // hero paints its world grid overlay. `canvas` is a
@@ -111,7 +114,8 @@ pub(super) fn publish(
         }
         total
     };
-    ph2d_editor::set_live_component_count(component_count);
+    #[cfg(feature = "panel-hierarchy")]
+    ph2d_panel_hierarchy::set_live_component_count(component_count);
     // M14.7 B: publish the gizmo's per-frame projection. When
     // the selection still resolves to a present entity (it can
     // vanish if the user deleted it between frames) we build a

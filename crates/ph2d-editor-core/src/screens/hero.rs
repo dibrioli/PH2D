@@ -19,10 +19,12 @@
 //! ```
 //!
 //! Region painters live in sibling sub-modules
-//! ([`canvas`], [`topbar`], [`left_rail`], [`inspector`],
-//! [`hierarchy`], [`bottom_hud`], [`selection`]). Shared layout
-//! constants + small helpers in [`style`]; stable `NodeId`s in
-//! [`ids`]. Hardcoded mockup content stays in [`fixture`] until a
+//! ([`canvas`], [`topbar`], [`left_rail`], [`bottom_hud`],
+//! [`selection`]). Inspector + Hierarchy panels live in their own
+//! crates (`ph2d-panel-inspector`, `ph2d-panel-hierarchy`) per
+//! ADR-0029 Phase C.1/C.2. Shared layout constants + small helpers
+//! in [`style`]; stable `NodeId`s in [`ids`]. Hardcoded mockup
+//! content stays in [`fixture`] until a
 //! pilot project picks the entity model.
 
 pub mod bottom_hud;
@@ -30,7 +32,6 @@ pub mod canvas;
 pub mod color_picker_demo;
 pub mod context_menu_overlay;
 pub mod fixture;
-pub mod hierarchy;
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
 // and panel crates can reach them without depending back on hero. The
 // `screens::hero::ids` path continues to resolve via this re-export.
@@ -43,12 +44,11 @@ pub mod style;
 pub mod topbar;
 pub mod widget_gallery;
 
-pub use state::{GizmoStateGroup, GridState, HierarchyState, ImageEditState, ViewState};
+pub use state::{GizmoStateGroup, GridState, ImageEditState, ViewState};
 
 pub use bottom_hud::{BottomHudStats, paint_bottom_hud};
 pub use canvas::{paint_canvas_bg, paint_drop_overlay};
 pub use color_picker_demo::paint_blender_picker_demo;
-pub use hierarchy::{paint_hierarchy, set_live_component_count};
 pub use left_rail::paint_left_rail;
 pub use selection::paint_selection_overlay;
 pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
@@ -193,9 +193,6 @@ pub struct HeroScreen {
     /// Wave 5 stage B: view-state flags — mirror toggle + stats HUD /
     /// widget gallery / grid overlay visibility + gallery rect.
     pub view: ViewState,
-    /// Wave 5 stage B: Hierarchy panel state — visibility + live
-    /// entity map + inline-rename target.
-    pub hierarchy: HierarchyState,
     /// ADR-0029 Phase C.1: per-panel visibility map keyed by
     /// [`crate::panel::Panel::ID`]. Host-side persistence replaces
     /// the legacy `hero.inspector.visible` field; left-rail toggles
@@ -455,10 +452,6 @@ impl HeroScreen {
                 widget_gallery_rect: None,
                 grid_visible: true,
             },
-            hierarchy: HierarchyState {
-                visible: true,
-                ..HierarchyState::default()
-            },
             panel_visibility: default_panel_visibility(),
             image_edit: ImageEditState::default(),
             gizmo: GizmoStateGroup::default(),
@@ -485,7 +478,6 @@ impl HeroScreen {
     fn pre_populate_store(store: &mut WidgetStore) {
         topbar::populate(store);
         left_rail::populate(store);
-        hierarchy::populate(store);
         pre_populate::populate_shared(store);
         widget_gallery::populate(store);
         crate::grid_snap::populate(store);
@@ -511,41 +503,6 @@ impl HeroScreen {
     pub fn selection(mut self, sel: Option<HeroSelection>) -> Self {
         self.selection = sel;
         self
-    }
-
-    /// Inject host-supplied live entity rows into the hierarchy panel
-    /// (ADR-0025 M14.4a). Each call:
-    ///
-    /// 1. Re-registers the `ordered` `NodeId`s on the `WidgetStore`
-    ///    as plain interactive rows (idempotent — repeat calls cost
-    ///    nothing for ids already seen this session).
-    /// 2. Replaces the `WidgetStore::init_hierarchy_order` list so
-    ///    the painter iterates in the order the host supplies (the
-    ///    bridge's `HierarchySnapshot` walk order = DFS root-first).
-    /// 3. Stores `entries` so `paint_hero_screen` can publish them
-    ///    to the hierarchy painter's thread-local before paint, and
-    ///    so `apply_event` can resolve click ids back to entity
-    ///    names without crossing the `bevy_ecs::World` boundary
-    ///    (HR-8).
-    ///
-    /// Call once per frame from the host's `render_frame` loop
-    /// before `paint_hero_screen`. Passing an empty `ordered` slice
-    /// is valid (renders an empty hierarchy).
-    pub fn sync_from_hierarchy(
-        &mut self,
-        ordered: &[NodeId],
-        entries: std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>,
-    ) {
-        hierarchy::repopulate(&mut self.store, ordered);
-        self.hierarchy.live_entries = Some(entries);
-    }
-
-    /// Drop any host-supplied hierarchy state, reverting to the
-    /// fixture data set in `hierarchy::populate`. The host calls
-    /// this when leaving live-edit mode (e.g. user pressed
-    /// `PH2D_HERO_LIVE` toggle off).
-    pub fn clear_live_hierarchy(&mut self) {
-        self.hierarchy.live_entries = None;
     }
 
     /// Inject the host's per-frame grid projection (ADR-0025 M14.4b).
@@ -807,11 +764,12 @@ impl HeroScreen {
                 return true;
             }
             if id == ids::RAIL_SHOW_HIERARCHY {
-                self.hierarchy.visible = !self.hierarchy.visible;
+                let new_visible = !self.is_panel_visible("hierarchy");
+                self.panel_visibility.insert("hierarchy", new_visible);
                 if let Some(crate::interaction::InteractiveState::Button { state }) =
                     self.store.get_mut(ids::RAIL_SHOW_HIERARCHY)
                 {
-                    *state = if self.hierarchy.visible {
+                    *state = if new_visible {
                         crate::widget::ButtonState::Pressed
                     } else {
                         crate::widget::ButtonState::Normal
@@ -1258,7 +1216,7 @@ pub fn paint_hero_screen(
     } else {
         hero.store.clear_panel_rect(ids::INSP_PANEL);
     }
-    if hero.hierarchy.visible {
+    if hero.is_panel_visible("hierarchy") {
         hero.store.set_panel_rect(ids::HIER_PANEL, layout.hierarchy);
     } else {
         hero.store.clear_panel_rect(ids::HIER_PANEL);
@@ -1276,12 +1234,11 @@ pub fn paint_hero_screen(
             hero.grid.snap_state.color_rgba = value.rgba;
         }
     }
-    hierarchy::set_selection_label(hero.selection.as_ref().map(|s| s.label.clone()));
-    // Publish live entries (if any) to the hierarchy painter so it
-    // overrides `fixture::hierarchy()`. Cleared at the end of paint
-    // so the next frame's `sync_from_hierarchy` is the single source.
-    hierarchy::set_live_entries(hero.hierarchy.live_entries.clone());
-    hierarchy::set_rename_target(hero.hierarchy.rename_target_row);
+    // ADR-0029 Phase C.2: Hierarchy migrated to a typed Panel — selection
+    // label is read via `host.selection()` inside the panel's `paint`;
+    // live entries and rename-target live in panel-owned thread-local /
+    // typed `HierarchyState` respectively. No host-side publish needed.
+    //
     // Publish the picker's outer rect so dispatch's "is the click
     // inside the picker?" test can reason about its bounds.
     if hero.store.picker_target().is_some()

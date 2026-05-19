@@ -160,12 +160,16 @@ fn up(x: f32, y: f32) -> PointerEvent {
 fn hero_pre_populates_store_with_topbar_and_tools() {
     crate::test_support::ensure_panel_registry();
     let hero = HeroScreen::new(NodeId(1));
+    // ADR-0029 Phase C.2: `HIERARCHY_ADD` is now registered by the
+    // typed `HierarchyPanel::populate`; this editor-core test
+    // doesn't install the typed registry, so we no longer check
+    // hierarchy ids here. The Hierarchy panel's own regression
+    // tests in `crates/ph2d-panel-hierarchy/tests/` cover that.
     for id in [
         ids::TOPBAR_SAVE,
         ids::TOPBAR_PROJECT,
         ids::TOPBAR_PLAY_BUTTON,
         ids::TOPBAR_RIGHT_LAYERS,
-        ids::HIERARCHY_ADD,
         ids::TOOL_TRANSLATE,
         ids::TOOL_REDO,
     ] {
@@ -218,20 +222,15 @@ fn hero_topbar_save_click_opens_save_menu() {
     ));
 }
 
+// ADR-0029 Phase C.2: Hierarchy moved to a typed panel that lives in
+// `ph2d-panel-hierarchy`. `hero.apply_event(Click(HIER_PLAYER))`
+// would consume only when the typed registry holds the Hierarchy
+// panel; editor-core's `ensure_panel_registry` seeds only the legacy
+// registry. Test ported to
+// `crates/ph2d-panel-hierarchy/tests/hierarchy_apply_event.rs`.
+#[cfg(any())]
 #[test]
-fn hero_apply_event_hierarchy_click_changes_selection() {
-    crate::test_support::ensure_panel_registry();
-    // Placeholder fixture only registers Scene Root; the reserved
-    // HIER_* ids return None from `hierarchy_label_for_id` until
-    // the pilot project wires real entities.
-    let mut hero = HeroScreen::new(NodeId(1));
-    let consumed = hero.apply_event(WidgetEvent::Click(ids::HIER_PLAYER));
-    assert!(consumed);
-    assert_eq!(
-        hero.selection.as_ref().map(|s| s.label.as_str()),
-        Some("Scene Root")
-    );
-}
+fn hero_apply_event_hierarchy_click_changes_selection() {}
 
 #[test]
 fn hero_apply_event_unrelated_click_returns_false() {
@@ -1204,22 +1203,15 @@ fn paint_inspector_smoke_no_selection() {
     );
 }
 
+// ADR-0029 Phase C.2: `paint_hierarchy` migrated to
+// `ph2d_panel_hierarchy::paint::paint`. A dev-dep on
+// `ph2d-panel-hierarchy` from `ph2d-editor-core` tests creates a
+// duplicate-crate cycle (panel-hierarchy → editor-core → panel-
+// hierarchy via dev-dep), so the smoke test moves to the panel
+// crate's integration tests (`crates/ph2d-panel-hierarchy/tests/`).
+#[cfg(any())]
 #[test]
-fn paint_hierarchy_smoke() {
-    let layout = HeroLayout::for_viewport(ipad12_viewport());
-    let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
-    let mut hits = HitIndex::new();
-    let mut store = WidgetStore::with_capacity(32);
-    paint_hierarchy(
-        &layout,
-        &mut scene,
-        &mut text,
-        Theme::Forge,
-        &mut hits,
-        &mut store,
-    );
-}
+fn paint_hierarchy_smoke() {}
 
 #[test]
 fn paint_bottom_hud_smoke() {
@@ -1249,6 +1241,12 @@ fn paint_selection_overlay_smoke() {
 /// Stage a closed HierarchyRow snapshot so `apply_event` can read
 /// it via `consume_last_context_menu`. Mirrors what dispatch does
 /// on the menu-closing Down → next-frame-Click sequence.
+///
+/// ADR-0029 Phase C.2: all callers of this helper moved to
+/// `crates/ph2d-panel-hierarchy/tests/`; the function stays here
+/// under `#[cfg(any())]` as a documented reference for the panel-
+/// crate tests but is excluded from compilation.
+#[cfg(any())]
 fn stage_hierarchy_row_snapshot(hero: &mut HeroScreen, row: NodeId) {
     hero.store
         .open_context_menu(crate::interaction::ContextMenuRequest {
@@ -1256,106 +1254,43 @@ fn stage_hierarchy_row_snapshot(hero: &mut HeroScreen, row: NodeId) {
             y: 0.0,
             kind: crate::interaction::ContextMenuKind::HierarchyRow { row },
         });
-    // Closing copies the request into `last_context_menu`, which
-    // is what `consume_last_context_menu` returns.
     hero.store.close_context_menu();
 }
 
+// ADR-0029 Phase C.2: the next 5 `hier_menu_*` tests dispatch
+// `CTX_MENU_HIER_*` clicks through `hero.apply_event`, which routes
+// to the typed `HierarchyPanel`. Editor-core's `ensure_panel_registry`
+// only installs the legacy registry; the typed registry isn't
+// reachable from this crate's test target without creating the
+// dev-dep cycle described in `docs/HANDOFF_WAVE_8_PHASE_C2.md` §4.1.
+// Tests ported to
+// `crates/ph2d-panel-hierarchy/tests/hierarchy_context_menu.rs`.
+#[cfg(any())]
 #[test]
-fn hier_menu_duplicate_sets_pending_duplicate() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    let row = NodeId(100_500);
-    stage_hierarchy_row_snapshot(&mut hero, row);
-    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
-    assert!(consumed);
-    let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierDuplicate { row }]);
-    // Snapshot was consumed.
-    assert!(hero.store.last_context_menu().is_none());
-}
+fn hier_menu_duplicate_sets_pending_duplicate() {}
 
+#[cfg(any())]
 #[test]
-fn hier_menu_add_child_sets_pending_add_child() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    let row = NodeId(100_501);
-    stage_hierarchy_row_snapshot(&mut hero, row);
-    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_ADD_CHILD));
-    assert!(consumed);
-    let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierAddChild { row }]);
-}
+fn hier_menu_add_child_sets_pending_add_child() {}
 
+#[cfg(any())]
 #[test]
-fn hier_menu_reset_transform_sets_pending() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    let row = NodeId(100_502);
-    stage_hierarchy_row_snapshot(&mut hero, row);
-    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_RESET_TRANSFORM));
-    assert!(consumed);
-    let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierResetTransform { row }]);
-}
+fn hier_menu_reset_transform_sets_pending() {}
 
+#[cfg(any())]
 #[test]
-fn hier_menu_delete_sets_pending_delete() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    let row = NodeId(100_503);
-    stage_hierarchy_row_snapshot(&mut hero, row);
-    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DELETE));
-    assert!(consumed);
-    let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierDelete { row }]);
-}
+fn hier_menu_delete_sets_pending_delete() {}
 
+#[cfg(any())]
 #[test]
-fn hier_menu_click_without_snapshot_consumes_but_no_pending() {
-    crate::test_support::ensure_panel_registry();
-    // Defensive case: stray Click without any prior right-click
-    // snapshot still consumes the event so the click doesn't
-    // bubble to row selection, but no pending action is raised.
-    let mut hero = HeroScreen::new(NodeId(1));
-    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
-    assert!(consumed);
-    assert!(hero.bus.is_empty());
-}
+fn hier_menu_click_without_snapshot_consumes_but_no_pending() {}
 
+// ADR-0029 Phase C.2: `HeroScreen::sync_from_hierarchy` moved to
+// `ph2d_panel_hierarchy::sync_from_hierarchy`; the test moves to
+// the panel crate's integration tests to avoid the dev-dep cycle.
+#[cfg(any())]
 #[test]
-fn hierarchy_row_click_raises_pending_for_live_entries() {
-    crate::test_support::ensure_panel_registry();
-    // Build a live-mode hierarchy with one entry, then click the
-    // matching NodeId. `HierRowClick` should fire on the bus so
-    // the shell can sync `gizmo_selection`.
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    let row_id = NodeId(100_500);
-    let mut entries = std::collections::BTreeMap::new();
-    entries.insert(
-        row_id,
-        fixture::HierarchyEntity {
-            name: "hero_001".into(),
-            icon: crate::icons::IconId::Sprite,
-            indent: 0,
-            badge: None,
-            swatch: None,
-            visible: true,
-            selected: false,
-            muted: false,
-        },
-    );
-    hero.sync_from_hierarchy(&[row_id], entries);
-    let consumed = hero.apply_event(WidgetEvent::Click(row_id));
-    assert!(consumed, "live-mode row click should consume");
-    let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierRowClick { row: row_id }]);
-}
+fn hierarchy_row_click_raises_pending_for_live_entries() {}
 
 #[test]
 fn hierarchy_row_click_silent_for_fixture_only_rows() {
@@ -1367,21 +1302,9 @@ fn hierarchy_row_click_silent_for_fixture_only_rows() {
     assert!(hero.bus.is_empty());
 }
 
+// ADR-0029 Phase C.2: ported to
+// `crates/ph2d-panel-hierarchy/tests/hierarchy_context_menu.rs`
+// (same rationale as the `hier_menu_*` block above).
+#[cfg(any())]
 #[test]
-fn hier_menu_one_action_per_drain() {
-    crate::test_support::ensure_panel_registry();
-    // Two consecutive clicks (Duplicate then Delete) only fire
-    // the first — the snapshot is consumed and the second click
-    // sees an empty `last_context_menu`. This protects against
-    // double-trigger if a synthetic event stream emits both.
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    let row = NodeId(100_504);
-    stage_hierarchy_row_snapshot(&mut hero, row);
-    let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DUPLICATE));
-    let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_HIER_DELETE));
-    let drained: Vec<_> = hero.bus.drain().collect();
-    // Only Duplicate — the second Click consumed but found no
-    // snapshot to attach a row to, so no Delete variant pushed.
-    assert_eq!(drained, vec![EditorAction::HierDuplicate { row }]);
-}
+fn hier_menu_one_action_per_drain() {}

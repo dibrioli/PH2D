@@ -33,7 +33,7 @@ use crate::App;
 use crate::Transform;
 use crate::forwarding::{
     cursor_over_hero_panel, forward_key_to_hero, forward_text_to_hero, forward_to_hero,
-    forward_wheel_to_hero,
+    forward_wheel_to_hero, resolve_live_entry,
 };
 use crate::keymap::winit_to_editor_keycode;
 
@@ -422,12 +422,10 @@ impl App {
                                 });
                             }
                         }
-                        if let Some(live) = gfx.hero_live.as_ref()
-                            && let Some(bits) = picked
-                            && let Some(node_id) = live.bridge.node_for(bits)
-                            && let Some(entries) = hero.hierarchy.live_entries.as_ref()
-                            && let Some(entry) = entries.get(&node_id)
-                        {
+                        // ADR-0029 Phase C.2: live entries owned by the
+                        // Hierarchy panel crate; reach via the public
+                        // thread-local snapshot.
+                        if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), picked) {
                             hero.selection = Some(ph2d_editor::HeroSelection {
                                 label: entry.name.clone(),
                                 kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),

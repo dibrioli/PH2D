@@ -48,6 +48,12 @@ ph2d-editor = { path = "../../crates/ph2d-editor" }
 # writes. Gated by the `panel-inspector` feature alongside the
 # registry-init's mirror feature.
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
+# ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
+# host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
+# `set_live_component_count` and read the panel-owned live entries
+# thread-local. Gated by the `panel-hierarchy` feature alongside the
+# registry-init's mirror feature.
+ph2d-panel-hierarchy = { path = "../../crates/ph2d-panel-hierarchy", optional = true }
 ph2d-i18n = { path = "../../crates/ph2d-i18n" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 # M11 widget paint pass — Vello scene encoder + parley text contexts.
@@ -117,6 +123,6 @@ default = [
 # preview windows) without the editor sidecars.
 lite = []
 panel-widget-gallery = ["ph2d-panel-registry-init/panel-widget-gallery"]
-panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy"]
+panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy", "dep:ph2d-panel-hierarchy"]
 panel-inspector      = ["ph2d-panel-registry-init/panel-inspector", "dep:ph2d-panel-inspector"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

@@ -1,12 +1,24 @@
 //! `paint_hierarchy_row` — per-row painter for the hierarchy panel.
-//! Extracted from `hierarchy/mod.rs` in Wave 2 PR 11.7b. Called by
-//! `super::panel_painter::paint_hierarchy` for each row in display
-//! order. Reads thread-local rename-target state via `super`.
+//! Ported from `ph2d_editor_core::screens::hero::hierarchy::row_painter`
+//! in Phase C.2; logic unchanged.
 
-use super::*;
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::interaction::HitIndex;
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
+};
+use ph2d_editor_core::screens::hero::fixture;
+use ph2d_editor_core::screens::hero::ids;
+use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
+use ph2d_editor_core::zones::Rect;
+use ph2d_text::TextSystem;
+use ph2d_tokens::{
+    ColorToken, ICON_BTN_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
+};
+use ph2d_vector::{Color as VelloColor, VectorScene};
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn paint_hierarchy_row(
+pub(crate) fn paint_hierarchy_row(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
@@ -35,9 +47,6 @@ pub(super) fn paint_hierarchy_row(
     }
     let indent_w = Spacing::Xl.px() * entity.indent as f32;
     let pad = 10.0_f32; // LITERAL-PX-OK: row inset between Spacing::Md(8) and Lg(12); chrome-specific dim
-    // M14.6C: chevron column. Always reserves 16 px so child rows
-    // align with their parents' entity-icon column. Painted only when
-    // `has_children` (otherwise the slot is empty whitespace).
     let chev_w = Spacing::Lg.px();
     let chev_pad = Spacing::Xs.px();
     let chev_x = rect.x + pad + indent_w;
@@ -56,17 +65,13 @@ pub(super) fn paint_hierarchy_row(
             StrokeToken::Default.px(),
         );
         if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
-            // Hit-rect: chevron glyph + padding for 24×24 click target.
             let hit_rect = Rect::new(
                 chev_rect.x - Spacing::Sm.px(),
                 chev_rect.y - Spacing::Sm.px(),
                 chev_w + Spacing::Lg.px(),
                 chev_w + Spacing::Lg.px(),
             );
-            idx.register(
-                crate::screens::hero::ids::hier_expand_companion(row_id),
-                hit_rect,
-            );
+            idx.register(ids::hier_expand_companion(row_id), hit_rect);
         }
     }
     let icon_w = Spacing::Xl.px();
@@ -88,8 +93,6 @@ pub(super) fn paint_hierarchy_row(
     );
 
     let mut right_x = rect.x + rect.w - pad;
-    // M14.6A: clickable eye icon replaces the legacy visibility dot.
-    // Open eye = visible (Text2), closed eye = hidden (TextDisabled).
     let eye_icon = if entity.visible {
         IconId::Eye
     } else {
@@ -122,10 +125,7 @@ pub(super) fn paint_hierarchy_row(
             eye_rect.w + hit_pad * 2.0,
             eye_rect.h + hit_pad * 2.0,
         );
-        idx.register(
-            crate::screens::hero::ids::hier_eye_companion(row_id),
-            hit_rect,
-        );
+        idx.register(ids::hier_eye_companion(row_id), hit_rect);
     }
     right_x -= eye_size + Spacing::Sm.px();
     if let Some(swatch) = entity.swatch {
@@ -136,7 +136,7 @@ pub(super) fn paint_hierarchy_row(
             scene,
             sw_rect,
             Radius::Xs.px(),
-            VelloColor::from_rgba8(r, g, b, a), // LITERAL-COLOR-OK: user-color — `entity.swatch` is a per-entity accent, not a theme token
+            VelloColor::from_rgba8(r, g, b, a), // LITERAL-COLOR-OK: user-color (per-entity accent, not a theme token)
         );
         stroke_rounded_rect(
             scene,
@@ -148,10 +148,6 @@ pub(super) fn paint_hierarchy_row(
         right_x -= sw + Spacing::Sm.px();
     }
     if let Some(badge) = &entity.badge {
-        // Phase 2 polish: render the kind badge as a `Tag` widget
-        // tinted by kind (PRF=Accent, UNI=Neutral, CAM=Success,
-        // OUT=Warn, etc). Functional in the sense that it shares
-        // identity with the rest of the editor's chrome.
         let badge_w = ICON_BTN_SIZE_PX;
         let badge_h = TypeToken::Lg.px();
         let badge_rect = Rect::new(
@@ -186,9 +182,6 @@ pub(super) fn paint_hierarchy_row(
     let name_color = if entity.muted {
         ColorToken::TextDisabled
     } else if direct_match {
-        // M14.6 E: rows whose name literally matched the search query
-        // get the Accent color so the eye locks onto hits even when
-        // ancestors are painted alongside them for context.
         ColorToken::Accent
     } else {
         ColorToken::Text1

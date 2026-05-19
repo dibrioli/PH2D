@@ -1,15 +1,12 @@
 //! Wave 5 stage B — HeroScreen sub-state groups.
 //!
-//! Replaces the flat 30+-field god-struct with 6 cohesive groups.
+//! Replaces the flat 30+-field god-struct with cohesive groups.
 //! Cross-group access still goes through the parent `HeroScreen`
-//! (`hero.inspector.sprite`, `hero.hierarchy.live_entries`, etc.);
-//! no inter-group method dependencies — each group is plain data.
+//! (`hero.view.ui_mirrored`, etc.); no inter-group method
+//! dependencies — each group is plain data.
 //!
 //! ## Group inventory
 //!
-//! - [`InspectorState`] — visibility + 4 per-frame snapshot fields
-//!   (sprite/transform/visibility/name) + `last_entity` rewrite guard.
-//! - [`HierarchyState`] — visibility + live entity map + rename target.
 //! - [`ImageEditState`] — TopBar Image-Tools mode + undo availability.
 //! - [`ViewState`] — UI mirror toggle + 3 overlay visibility flags
 //!   (stats HUD / widget gallery / grid overlay) + gallery rect.
@@ -17,40 +14,19 @@
 //! - [`GridState`] — per-frame projection view + config + snap subsystem.
 //!
 //! Default impls match the pre-decomp `HeroScreen::new` defaults
-//! (inspector/hierarchy visible by default; stats + grid overlay
-//! visible; everything else off / None). Pre-existing snapshot types
-//! (`InspectorSpriteInfo` etc.) keep their place in `hero.rs` for
-//! reach — moving them would churn the import surface for no gain.
+//! (stats + grid overlay visible; everything else off / None).
+//! Pre-existing snapshot types (`InspectorSpriteInfo` etc.) keep
+//! their place in `hero.rs` for reach — moving them would churn the
+//! import surface for no gain.
 
-use ph2d_a11y::NodeId;
-
-use super::fixture;
 use crate::zones::Rect;
 
 // ADR-0029 Phase C.1: `InspectorState` migrated to
-// `ph2d_panel_inspector::state::InspectorState`. Snapshots
-// (`InspectorSpriteInfo` etc.) keep their definitions in
-// [`super::HeroScreen`] for now; future panel cleanups may move them
-// alongside the state.
-
-/// Hierarchy panel state — visibility, live entity map injected by
-/// the host (ADR-0025 M14.4a), and the inline-rename target.
-#[derive(Clone, Debug, Default)]
-pub struct HierarchyState {
-    /// Visibility — toggled by the `RAIL_SHOW_HIERARCHY` left-rail
-    /// button. Default `true`.
-    pub visible: bool,
-    /// Live-mode entity rows published by the host via
-    /// [`super::HeroScreen::sync_from_hierarchy`]. When `Some`, the
-    /// hierarchy panel renders these entries instead of
-    /// `fixture::hierarchy()`. `None` keeps the fixture behavior
-    /// (used by tests + standalone hero demo).
-    pub live_entries: Option<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>,
-    /// M14.7 polish: row currently in inline-rename mode. The
-    /// hierarchy painter replaces the row's name label with a
-    /// TextInput when this matches. `None` = no row in rename.
-    pub rename_target_row: Option<NodeId>,
-}
+// `ph2d_panel_inspector::state::InspectorState`.
+// ADR-0029 Phase C.2: `HierarchyState` migrated to
+// `ph2d_panel_hierarchy::state::HierarchyState`. Both store their
+// retained state inside `ErasedPanel` in the typed registry; the
+// visibility flag moved into `HeroScreen::panel_visibility`.
 
 /// Image-edit subsystem state — TopBar Image-Tools mode flag + a
 /// read-only signal mirroring the shell's image-edit undo snapshot.

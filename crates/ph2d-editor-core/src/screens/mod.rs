@@ -19,7 +19,7 @@ pub mod layout;
 pub use hero::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorSpriteInfo,
     InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    RequestedSpriteStrategy, ViewFocusKind, paint_hero_screen, set_live_component_count,
+    RequestedSpriteStrategy, ViewFocusKind, paint_hero_screen,
 };
 pub use layout::{
     EDGE_PAD, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HIER_ROW_H, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H,

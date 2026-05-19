@@ -1,64 +1,61 @@
 //! ph2d-panel-registry-init — append-only point of contact for
-//! panel registration. Wave 7 Phase 5 scaffold; Wave 8 Phase 1 made
-//! the call mandatory (no more `HeroScreen::new` auto-install).
+//! panel registration.
 //!
-//! **Order of init obrigatório** for every host:
+//! ADR-0029 Phase C.1 split this init into two registries:
+//! - **Legacy fn-pointer registry** (`ph2d_editor_core::panel_registry`)
+//!   for panels still on the pre-ADR shape (hierarchy, widget_gallery,
+//!   grid_snap as of C.1; migrate to typed in C.2-C.4).
+//! - **Typed `Panel<State>` registry** (`ph2d_editor_core::panel`)
+//!   for migrated panels (just Inspector after C.1).
 //!
-//! 1. [`register_all_panels`] — installs the cargo-feature-gated
-//!    registry into `ph2d_editor::panel_registry::PANEL_REGISTRY`.
-//! 2. `ph2d_editor::HeroScreen::new(...)` — reads the installed
-//!    registry; panics with a clear message if step 1 was skipped.
-//!
-//! There is no silent fallback since Wave 8 (audit B1 closed: the
-//! previous fallback neutralized `panel-*` cargo features at
-//! runtime).
+//! `register_all_panels` installs BOTH atomically. Hosts call it once
+//! at boot before `HeroScreen::new`.
 //!
 //! ## Cargo features
 //!
 //! - `default = ["panel-widget-gallery", "panel-hierarchy",
 //!   "panel-inspector", "panel-grid-snap"]` — bundles every panel.
-//! - `--no-default-features` — empty registry (host renders chrome
-//!   only; useful for lite-build distributions).
-//! - `--no-default-features --features panel-inspector` — single
-//!   panel; everything else stripped.
-//!
-//! Wave 7 Phase 3 (panel-as-crate extraction) is the future step
-//! that physically moves each panel to its own `crates/ph2d-panel-*`
-//! crate; this init crate's API stays the same — only its `[dependencies]`
-//! block in Cargo.toml swaps the path-dep from `ph2d-editor` to the
-//! per-panel crate.
+//! - `--no-default-features` — empty registries.
+//! - `--no-default-features --features panel-inspector` — only the
+//!   typed Inspector; chrome only otherwise.
 
 #![forbid(unsafe_code)]
 
-use ph2d_editor::panel_registry::{PanelRegistry, install_panel_registry};
+use ph2d_editor_core::panel::{ErasedPanel, install_panel_registry as install_typed_registry};
+use ph2d_editor_core::panel_registry::{
+    PanelRegistry as LegacyRegistry, install_panel_registry as install_legacy_registry,
+};
 
-/// Aggregate the cargo-feature-gated panel manifests + install
-/// them into the process-wide registry. Idempotent — calling
-/// twice is a no-op (second registry silently dropped per
-/// `OnceLock::set` semantics).
+/// Aggregate the cargo-feature-gated panel manifests + install them
+/// into both process-wide registries. Idempotent.
 ///
-/// Returns `true` on first install, `false` if a registry was
-/// already installed (matches `install_panel_registry`).
+/// Returns `true` only when BOTH installs succeeded on first try.
+/// Subsequent calls return `false` (matches `OnceLock::set` semantics).
 pub fn register_all_panels() -> bool {
-    install_panel_registry(build_registry())
+    let legacy_ok = install_legacy_registry(build_legacy_registry());
+    let typed_ok = install_typed_registry(build_typed_registry());
+    legacy_ok && typed_ok
 }
 
-/// Build the registry without installing. Useful for tests that
-/// want to inspect the manifest list before install.
-pub fn build_registry() -> PanelRegistry {
+/// Build the legacy fn-pointer registry without installing it.
+pub fn build_legacy_registry() -> LegacyRegistry {
     #[allow(unused_mut)]
-    let mut reg = PanelRegistry::new_empty();
-    // Wave 7 Stage 2: every panel is its own crate. widget_gallery
-    // is fully physical-extracted; the others alias the in-tree
-    // `ph2d_editor::*::PANEL_MANIFEST` until Wave 8 promotes them.
+    let mut reg = LegacyRegistry::new_empty();
     #[cfg(feature = "panel-widget-gallery")]
     reg.push(&ph2d_panel_widget_gallery::PANEL_MANIFEST);
     #[cfg(feature = "panel-hierarchy")]
     reg.push(&ph2d_panel_hierarchy::PANEL_MANIFEST);
-    #[cfg(feature = "panel-inspector")]
-    reg.push(&ph2d_panel_inspector::PANEL_MANIFEST);
     #[cfg(feature = "panel-grid-snap")]
     reg.push(&ph2d_panel_grid_snap::PANEL_MANIFEST);
+    reg
+}
+
+/// Build the typed `Panel<State>` registry without installing it.
+pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
+    #[allow(unused_mut)]
+    let mut reg = ph2d_editor_core::panel::PanelRegistry::new_empty();
+    #[cfg(feature = "panel-inspector")]
+    reg.push(ErasedPanel::new::<ph2d_panel_inspector::InspectorPanel>());
     reg
 }
 
@@ -66,20 +63,15 @@ pub fn build_registry() -> PanelRegistry {
 mod tests {
     use super::*;
 
-    /// Expected panel count = sum of enabled cargo features. Computed
-    /// at compile time so the test passes for any feature combination
-    /// (default-all, `--no-default-features`, single-panel selection).
-    const EXPECTED_PANELS: usize = {
+    /// Expected legacy panel count (gallery + hierarchy + grid_snap
+    /// while they remain fn-pointer manifests).
+    const EXPECTED_LEGACY: usize = {
         let mut n = 0;
         #[cfg(feature = "panel-widget-gallery")]
         {
             n += 1;
         }
         #[cfg(feature = "panel-hierarchy")]
-        {
-            n += 1;
-        }
-        #[cfg(feature = "panel-inspector")]
         {
             n += 1;
         }
@@ -90,9 +82,21 @@ mod tests {
         n
     };
 
+    /// Expected typed panel count (just Inspector at C.1).
+    const EXPECTED_TYPED: usize = {
+        let mut n = 0;
+        #[cfg(feature = "panel-inspector")]
+        {
+            n += 1;
+        }
+        n
+    };
+
     #[test]
-    fn build_registry_matches_enabled_features() {
-        let reg = build_registry();
-        assert_eq!(reg.manifests().len(), EXPECTED_PANELS);
+    fn build_registries_match_enabled_features() {
+        let legacy = build_legacy_registry();
+        assert_eq!(legacy.manifests().len(), EXPECTED_LEGACY);
+        let typed = build_typed_registry();
+        assert_eq!(typed.panels().len(), EXPECTED_TYPED);
     }
 }

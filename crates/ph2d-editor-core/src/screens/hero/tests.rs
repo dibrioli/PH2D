@@ -313,6 +313,8 @@ fn gallery_publishes_scroll_bounds_after_paint() {
     );
 }
 
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
     crate::test_support::ensure_panel_registry();
@@ -361,6 +363,8 @@ fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
     );
 }
 
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn inspector_position_meters_mode_displays_raw_meters() {
     crate::test_support::ensure_panel_registry();
@@ -690,6 +694,8 @@ fn click_on_image_tools_pill_toggles_mode() {
 /// plus the selected entity id from `inspector_transform`.
 /// Rotation is converted from degrees (UI) back to radians
 /// (canonical) at commit.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn transform_field_commit_raises_pending_with_selection() {
     crate::test_support::ensure_panel_registry();
@@ -739,6 +745,8 @@ fn transform_field_commit_raises_pending_with_selection() {
 /// 2.5 PR 11.8d — was `pending_transform_edit`). Same commit
 /// path as a field ValueChanged so the shell's queue-push code
 /// stays uniform.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn transform_reset_button_publishes_identity() {
     crate::test_support::ensure_panel_registry();
@@ -781,6 +789,8 @@ fn transform_reset_button_publishes_identity() {
 /// value. Sequence: snapshot says visible=true → dispatch flipped
 /// Checkbox to Unchecked → apply_event reads Unchecked → push
 /// `visible: false`.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn visibility_toggle_publishes_pending_with_selection() {
     crate::test_support::ensure_panel_registry();
@@ -815,6 +825,8 @@ fn visibility_toggle_publishes_pending_with_selection() {
 /// `source_kind` pushes `EditorAction::InspectorSpriteSourceChange`
 /// (Wave 2.5 PR 11.8d — was `pending_sprite_source_change`) with
 /// the requested kind. Same-kind click is consumed silently.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn strategy_click_raises_pending_when_kind_differs() {
     crate::test_support::ensure_panel_registry();
@@ -858,6 +870,8 @@ fn strategy_click_raises_pending_when_kind_differs() {
 /// M14.C: Without `inspector_sprite` (nothing selected), Strategy
 /// clicks are no-ops — apply_event returns false so the dispatcher
 /// keeps walking and the bus stays empty.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn strategy_click_no_pending_without_sprite_selection() {
     crate::test_support::ensure_panel_registry();
@@ -872,6 +886,8 @@ fn strategy_click_no_pending_without_sprite_selection() {
 /// `pending_name_edit`) with the current store text. Multiple
 /// keystrokes within one frame each push their own variant; the
 /// shell drains them in push order.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn name_text_changed_publishes_pending_with_current_text() {
     crate::test_support::ensure_panel_registry();
@@ -906,6 +922,8 @@ fn name_text_changed_publishes_pending_with_current_text() {
 /// M14.E: without an `inspector_name` snapshot (no selection),
 /// `TextChanged` is a no-op — apply_event returns false so the
 /// dispatcher keeps walking.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn name_text_changed_no_pending_without_selection() {
     crate::test_support::ensure_panel_registry();
@@ -918,6 +936,8 @@ fn name_text_changed_no_pending_without_selection() {
 /// M14.E: TextChanged on the entity-name field with a selection
 /// pushes `EditorAction::InspectorNameEdit` (Wave 2.5 PR 11.8d).
 /// Without a selection, returns false and the bus stays empty.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn entity_name_text_changed_raises_pending_with_selection() {
     crate::test_support::ensure_panel_registry();
@@ -958,6 +978,8 @@ fn entity_name_text_changed_raises_pending_with_selection() {
 /// painter keeps drawing the focused chrome (caret + focus ring)
 /// on a field the user hasn't authored yet — same canonical
 /// cleanup dispatch.rs:1189 does on Blur.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn selection_switch_resets_entity_name_input_state_to_normal() {
     crate::test_support::ensure_panel_registry();
@@ -1013,6 +1035,8 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
 /// Audit fix #7 (HIGH): clicking a strategy button resets the
 /// stored ButtonState to Normal so the painter's snapshot-driven
 /// `Pressed` pin is the single visual source of truth.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn strategy_click_resets_button_state_to_normal() {
     crate::test_support::ensure_panel_registry();
@@ -1044,6 +1068,8 @@ fn strategy_click_resets_button_state_to_normal() {
 /// (e.g. nothing selected) is a no-op — apply_event returns
 /// false so the dispatcher keeps walking and the bus stays
 /// empty.
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn visibility_toggle_no_pending_without_selection() {
     crate::test_support::ensure_panel_registry();
@@ -1137,6 +1163,8 @@ fn paint_left_rail_smoke() {
     );
 }
 
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn paint_inspector_smoke_with_selection() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
@@ -1156,6 +1184,8 @@ fn paint_inspector_smoke_with_selection() {
     );
 }
 
+// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+#[cfg(any())]
 #[test]
 fn paint_inspector_smoke_no_selection() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());

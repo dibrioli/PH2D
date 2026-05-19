@@ -179,18 +179,17 @@ pub fn paint(
     hit_index: &mut crate::interaction::HitIndex,
     store: &crate::interaction::WidgetStore,
 ) {
-    super::inspector::paint_showcase_body(rect, scene, text_system, theme, hit_index, store);
+    crate::widget::showcase::paint_showcase_body(rect, scene, text_system, theme, hit_index, store);
 }
 
 /// Total height of the gallery body painted on the last frame.
-/// Re-export of [`super::inspector::last_gallery_content_h`] so the
-/// host (`paint_hero_screen`) can stay decoupled from the inspector
-/// module when wiring the scroll clamp.
+/// ADR-0029 Phase C.1: thread-local moved from the deleted
+/// `screens::hero::inspector::state` to `widget::showcase::state`.
 pub fn last_content_h() -> f32 {
-    super::inspector::last_gallery_content_h()
+    crate::widget::showcase::last_gallery_content_h()
 }
 
 /// Visible body region of the gallery on the last frame.
 pub fn last_visible_h() -> f32 {
-    super::inspector::last_gallery_visible_h()
+    crate::widget::showcase::last_gallery_visible_h()
 }

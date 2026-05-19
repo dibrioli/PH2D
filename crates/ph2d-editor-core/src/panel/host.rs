@@ -19,8 +19,10 @@
 //! (future, ~6 months post-merge) does the carve-out based on
 //! observed usage.
 
+use crate::action_bus::ActionBus;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::project::ProjectSettings;
+use crate::screens::HeroSelection;
 use ph2d_tokens::Theme;
 
 /// Public-stable subset of host operations panels can consume across
@@ -54,4 +56,28 @@ pub trait PanelHostInternal: PanelHost {
     fn store(&self) -> &WidgetStore;
     fn store_mut(&mut self) -> &mut WidgetStore;
     fn hit_index_mut(&mut self) -> &mut HitIndex;
+
+    /// Joint borrow: returns `(&WidgetStore, &mut HitIndex)` in one
+    /// call so panel paint code can pass them to inner painters
+    /// without tripping the borrow checker on aliased dyn-trait
+    /// method calls. Concrete impls split the fields directly.
+    fn store_and_hit_index_mut(&mut self) -> (&WidgetStore, &mut HitIndex);
+
+    /// Outbound editor-action queue. Panels push commits here for the
+    /// shell to drain each frame.
+    fn bus(&self) -> &ActionBus;
+    fn bus_mut(&mut self) -> &mut ActionBus;
+
+    /// Currently selected hero entity (canvas-side). `None` when
+    /// nothing is selected. Inspector reads to drive its placeholder
+    /// text; hierarchy reads/writes via [`Self::selection_mut`].
+    fn selection(&self) -> Option<&HeroSelection>;
+    fn selection_mut(&mut self) -> &mut Option<HeroSelection>;
+
+    /// Whether the panel identified by `id` (matching
+    /// [`crate::panel::Panel::ID`]) is currently visible. Host
+    /// maintains the visibility map; left-rail toggles + panel-close
+    /// affordances mutate it via [`Self::set_panel_visible`].
+    fn panel_visible(&self, id: &str) -> bool;
+    fn set_panel_visible(&mut self, id: &str, value: bool);
 }

@@ -49,3 +49,9 @@ bumpalo               = { version = "3", features = ["collections"] }
 # `interaction_dispatch_no_alloc` test to assert hot path is
 # allocation-free. See ADR-0024 "Plano de conformidade HR-3".
 dhat = "0.3"
+# ADR-0029 Phase C.1 NOTE: Inspector regression tests that need
+# `ph2d_panel_inspector::*` are scheduled to migrate to
+# `crates/ph2d-panel-inspector/tests/inspector_regression.rs` in
+# Phase D (cycle-free integration tests). A dev-dep here would
+# duplicate `ph2d-editor-core` in the test build graph (cargo
+# treats dev-dep cycles as distinct crate instances).

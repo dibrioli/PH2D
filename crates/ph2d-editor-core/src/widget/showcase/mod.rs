@@ -252,6 +252,124 @@ pub fn read_number_input(
         .unwrap_or((TextInputState::Normal, 0.0, "", 0, None))
 }
 
+/// ADR-0029 Phase C.1: host-level event router for showcase-shared
+/// clicks (section header collapse, radio/tab/tree leaf pinning,
+/// section outline / note background color picks, "Create note"
+/// context-menu item, color-circle picker open). Previously lived
+/// in `inspector::apply_event` (editor-core) where it served BOTH
+/// the live Inspector AND the Widget Gallery — both panels reuse
+/// the same `INSP_SAMPLE_*` showcase widgets + the global
+/// `CTX_MENU_OUTLINE_*` / `CTX_MENU_CREATE_NOTE` ids. After
+/// Inspector migrated to its own crate, this logic became
+/// host-level so the Gallery (still on the legacy registry) keeps
+/// working without depending on the typed Inspector being
+/// installed.
+///
+/// Returns `true` when `event` was consumed (host should stop
+/// further dispatch).
+pub fn apply_showcase_event(
+    store: &mut WidgetStore,
+    event: crate::interaction::WidgetEvent,
+) -> bool {
+    use crate::interaction::{ContextMenuKind, InteractiveState, WidgetEvent};
+    if let WidgetEvent::Click(id) = event {
+        const OUTLINE_ITEMS: [(NodeId, Option<u8>); 6] = [
+            (crate::ids::CTX_MENU_OUTLINE_NONE, None),
+            (crate::ids::CTX_MENU_OUTLINE_0, Some(0)),
+            (crate::ids::CTX_MENU_OUTLINE_1, Some(1)),
+            (crate::ids::CTX_MENU_OUTLINE_2, Some(2)),
+            (crate::ids::CTX_MENU_OUTLINE_3, Some(3)),
+            (crate::ids::CTX_MENU_OUTLINE_4, Some(4)),
+        ];
+        if id == crate::ids::CTX_MENU_CREATE_NOTE {
+            if let Some(req) = store.consume_last_context_menu()
+                && let ContextMenuKind::CreateNote { panel, .. } = req.kind
+            {
+                let scroll_y = store.panel_scroll(panel);
+                let body_top_screen = last_body_top_screen_y();
+                let body_y = req.y - body_top_screen + scroll_y;
+                let before = section_index_below_body_y(body_y);
+                let new_index = store.notes_for_panel(panel).len();
+                store.notes_push(panel, 0, before);
+                if let Some(title_id) = NOTE_TITLE_IDS.get(new_index)
+                    && let Some(InteractiveState::TextInput { text, caret, .. }) =
+                        store.get_mut(*title_id)
+                {
+                    *text = format!("Note {}", new_index + 1);
+                    *caret = text.len();
+                }
+                if let Some(body_id) = NOTE_BODY_IDS.get(new_index)
+                    && let Some(InteractiveState::TextInput { text, caret, .. }) =
+                        store.get_mut(*body_id)
+                {
+                    text.clear();
+                    *caret = 0;
+                }
+            }
+            return true;
+        }
+        if let Some((_, color_idx)) = OUTLINE_ITEMS.iter().find(|(item_id, _)| *item_id == id) {
+            if let Some(req) = store.consume_last_context_menu() {
+                match req.kind {
+                    ContextMenuKind::SectionOutline { section } => {
+                        store.set_section_outline_color(section, *color_idx);
+                    }
+                    ContextMenuKind::NoteBackground { panel, note_index } => {
+                        if let Some(c) = color_idx {
+                            store.note_set_color(panel, note_index as usize, *c);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            return true;
+        }
+        if SECTION_COLOR_IDS.contains(&id) || id == crate::ids::INSP_SAMPLE_SWATCH {
+            let seed = store.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
+            store.set_widget_color(id, seed);
+            store.set_picker_target(Some(id));
+            store.set_blender_value(
+                crate::ids::INSP_BLENDER_PICKER,
+                ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+            );
+            return true;
+        }
+        if crate::ids::SECTION_IDS.contains(&id) {
+            store.toggle_collapsed(id);
+            return true;
+        }
+        if id == crate::ids::INSP_SAMPLE_TREE_ROOT {
+            store.toggle_collapsed(id);
+            return true;
+        }
+        if TREE_LEAF_IDS.contains(&id) {
+            pin_showcase_button_selection(store, id, &TREE_LEAF_IDS);
+            return true;
+        }
+        if RADIO_GROUP_IDS.contains(&id) {
+            pin_showcase_button_selection(store, id, &RADIO_GROUP_IDS);
+            return true;
+        }
+        if TAB_GROUP_IDS.contains(&id) {
+            pin_showcase_button_selection(store, id, &TAB_GROUP_IDS);
+            return true;
+        }
+    }
+    false
+}
+
+fn pin_showcase_button_selection(store: &mut WidgetStore, selected: NodeId, group: &[NodeId]) {
+    for id in group {
+        if let Some(crate::interaction::InteractiveState::Button { state }) = store.get_mut(*id) {
+            *state = if *id == selected {
+                crate::widget::ButtonState::Pressed
+            } else {
+                crate::widget::ButtonState::Normal
+            };
+        }
+    }
+}
+
 /// Find which id in `ids` is the active (`Pressed`) one. Used for
 /// segmented button groups (Tabs, RadioGroup) that model selection
 /// as N independent Button states with exactly one in the Pressed

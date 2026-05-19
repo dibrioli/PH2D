@@ -25,41 +25,13 @@
 use ph2d_a11y::NodeId;
 
 use super::fixture;
-use super::{
-    InspectorNameInfo, InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-};
 use crate::zones::Rect;
 
-/// Inspector panel state — visibility + per-frame host-published
-/// snapshots the painter reads instead of crossing the ECS boundary
-/// directly (HR-8 / ADR-0021).
-#[derive(Clone, Debug, Default)]
-pub struct InspectorState {
-    /// Visibility — toggled by the `RAIL_SHOW_INSPECTOR` left-rail
-    /// button. Default `true` in `HeroScreen::new`.
-    pub visible: bool,
-    /// Snapshot of the selected sprite's editor-facing fields
-    /// (M14.5). Host rebuilds each frame from `gizmo.selection` +
-    /// SimWorld. `None` when nothing is selected or selection isn't
-    /// a sprite.
-    pub sprite: Option<InspectorSpriteInfo>,
-    /// Snapshot of the selected entity's local `Transform`
-    /// (M14.A). Host writes on selection change or external mutation.
-    /// `None` when no entity is selected.
-    pub transform: Option<InspectorTransformInfo>,
-    /// Snapshot of the selected entity's `Visibility` (M14.D) —
-    /// powers the Inspector's eye-toggle checkbox.
-    pub visibility: Option<InspectorVisibilityInfo>,
-    /// Snapshot of the selected entity's `Name` (M14.E) — seeds the
-    /// Inspector's editable name TextInput.
-    pub name: Option<InspectorNameInfo>,
-    /// Entity bits of the last selection that `transform` was
-    /// populated for. When current selection differs, the Inspector's
-    /// `apply_event` path force-rewrites the 5 Transform NumberInput
-    /// buffers so an in-progress edit on entity A doesn't silently
-    /// apply to entity B after a selection switch.
-    pub last_entity: Option<u64>,
-}
+// ADR-0029 Phase C.1: `InspectorState` migrated to
+// `ph2d_panel_inspector::state::InspectorState`. Snapshots
+// (`InspectorSpriteInfo` etc.) keep their definitions in
+// [`super::HeroScreen`] for now; future panel cleanups may move them
+// alongside the state.
 
 /// Hierarchy panel state — visibility, live entity map injected by
 /// the host (ADR-0025 M14.4a), and the inline-rename target.

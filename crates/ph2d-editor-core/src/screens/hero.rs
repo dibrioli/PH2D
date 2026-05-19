@@ -35,31 +35,25 @@ pub mod hierarchy;
 // and panel crates can reach them without depending back on hero. The
 // `screens::hero::ids` path continues to resolve via this re-export.
 pub use crate::ids;
-pub mod inspector;
-pub mod inspector_sync;
 pub mod left_rail;
+pub mod pre_populate;
 pub mod selection;
 pub mod state;
 pub mod style;
 pub mod topbar;
 pub mod widget_gallery;
 
-pub use state::{
-    GizmoStateGroup, GridState, HierarchyState, ImageEditState, InspectorState, ViewState,
-};
+pub use state::{GizmoStateGroup, GridState, HierarchyState, ImageEditState, ViewState};
 
 pub use bottom_hud::{BottomHudStats, paint_bottom_hud};
 pub use canvas::{paint_canvas_bg, paint_drop_overlay};
 pub use color_picker_demo::paint_blender_picker_demo;
 pub use hierarchy::{paint_hierarchy, set_live_component_count};
-pub use inspector::paint_inspector;
 pub use left_rail::paint_left_rail;
 pub use selection::paint_selection_overlay;
 pub use style::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 pub use topbar::paint_top_bar;
 
-#[cfg(test)]
-use crate::interaction::InteractiveState;
 use crate::interaction::{
     HitIndex, WidgetEvent, WidgetStore, dispatch_pointer, dispatch_pointer_with_text,
 };
@@ -199,12 +193,16 @@ pub struct HeroScreen {
     /// Wave 5 stage B: view-state flags — mirror toggle + stats HUD /
     /// widget gallery / grid overlay visibility + gallery rect.
     pub view: ViewState,
-    /// Wave 5 stage B: Inspector panel state — visibility + per-frame
-    /// snapshots (sprite/transform/visibility/name) + last_entity guard.
-    pub inspector: InspectorState,
     /// Wave 5 stage B: Hierarchy panel state — visibility + live
     /// entity map + inline-rename target.
     pub hierarchy: HierarchyState,
+    /// ADR-0029 Phase C.1: per-panel visibility map keyed by
+    /// [`crate::panel::Panel::ID`]. Host-side persistence replaces
+    /// the legacy `hero.inspector.visible` field; left-rail toggles
+    /// plus panel-close affordances mutate this map; orchestrator
+    /// reads it to publish chrome rects. `BTreeMap` (not `HashMap`)
+    /// per HR-5: bit-determinism rules out non-fixed hashers.
+    pub panel_visibility: std::collections::BTreeMap<&'static str, bool>,
     /// Wave 5 stage B: image-edit subsystem state — TopBar Image-Tools
     /// mode flag + undo-availability signal from host.
     pub image_edit: ImageEditState,
@@ -457,14 +455,11 @@ impl HeroScreen {
                 widget_gallery_rect: None,
                 grid_visible: true,
             },
-            inspector: InspectorState {
-                visible: true,
-                ..InspectorState::default()
-            },
             hierarchy: HierarchyState {
                 visible: true,
                 ..HierarchyState::default()
             },
+            panel_visibility: default_panel_visibility(),
             image_edit: ImageEditState::default(),
             gizmo: GizmoStateGroup::default(),
             grid: GridState::default(),
@@ -476,6 +471,14 @@ impl HeroScreen {
         }
     }
 
+    /// ADR-0029 Phase C.1 panel-visibility accessor. Mirrors the
+    /// `PanelHostInternal::panel_visible` impl below so editor-core
+    /// code paths (orchestrator chrome publish, left-rail toggle)
+    /// can read without dyn-dispatching through the trait.
+    pub fn is_panel_visible(&self, id: &str) -> bool {
+        self.panel_visibility.get(id).copied().unwrap_or(false)
+    }
+
     /// Pre-populate the [`WidgetStore`] by delegating to each
     /// region's `populate` function. Each region owns its ids;
     /// adding a widget means editing only that region's file.
@@ -483,9 +486,21 @@ impl HeroScreen {
         topbar::populate(store);
         left_rail::populate(store);
         hierarchy::populate(store);
-        inspector::populate(store);
+        pre_populate::populate_shared(store);
         widget_gallery::populate(store);
         crate::grid_snap::populate(store);
+        // ADR-0029 Phase C.1: typed panels register their own widgets
+        // via `Panel::populate`. The new registry mirrors the legacy
+        // contract — host or test harness installs it before
+        // `HeroScreen::new`. If absent (lite-build hosts that skip
+        // typed panels), we silently fall through; legacy alias
+        // panels still populate via the loop above.
+        if let Some(mtx) = crate::panel::PANEL_REGISTRY.get() {
+            let guard = mtx.lock().expect("PANEL_REGISTRY mutex poisoned");
+            for panel in guard.panels() {
+                panel.populate(store);
+            }
+        }
     }
 
     pub fn theme(mut self, theme: Theme) -> Self {
@@ -628,6 +643,45 @@ impl HeroScreen {
                 EventOutcome::Ignored => {}
             }
         }
+        // ADR-0029 Phase C.1: walk the new typed registry alongside
+        // the legacy one. Migrated panels (Inspector first; others
+        // follow in C.2-C.4) live in `crate::panel::PANEL_REGISTRY`.
+        // Matches legacy semantics: Consumed stops iteration entirely
+        // (returns to caller as `true`); Observed records side effect
+        // but continues.
+        #[derive(Clone, Copy)]
+        enum TypedSummary {
+            Consumed,
+            Observed,
+            Ignored,
+        }
+        let typed_summary = crate::panel::with_registry_opt(|reg| {
+            let mut acc = TypedSummary::Ignored;
+            for panel in reg.panels_mut() {
+                match panel.apply_event(self, event) {
+                    crate::panel::EventOutcome::Consumed => return TypedSummary::Consumed,
+                    crate::panel::EventOutcome::Observed => acc = TypedSummary::Observed,
+                    crate::panel::EventOutcome::Ignored => {}
+                }
+            }
+            acc
+        })
+        .unwrap_or(TypedSummary::Ignored);
+        match typed_summary {
+            TypedSummary::Consumed => return true,
+            TypedSummary::Observed => observed = true,
+            TypedSummary::Ignored => {}
+        }
+        // ADR-0029 Phase C.1: host-level showcase event handler —
+        // covers `CTX_MENU_OUTLINE_*`, `CTX_MENU_CREATE_NOTE`,
+        // `SECTION_IDS`, `SECTION_COLOR_IDS`, radio/tab/tree pin
+        // clicks. Shared across the live Inspector (when typed
+        // panel is installed) and the Widget Gallery (legacy);
+        // running at host level means the gallery keeps working
+        // when the typed Inspector is absent.
+        if crate::widget::showcase::apply_showcase_event(&mut self.store, event) {
+            return true;
+        }
         // `observed` is OR'd with the chrome-dispatch result at the
         // end of this function so the caller learns *something*
         // happened.
@@ -739,11 +793,12 @@ impl HeroScreen {
             // state so the rail rendering reflects the new state
             // on the next frame.
             if id == ids::RAIL_SHOW_INSPECTOR {
-                self.inspector.visible = !self.inspector.visible;
+                let new_visible = !self.is_panel_visible("inspector");
+                self.panel_visibility.insert("inspector", new_visible);
                 if let Some(crate::interaction::InteractiveState::Button { state }) =
                     self.store.get_mut(ids::RAIL_SHOW_INSPECTOR)
                 {
-                    *state = if self.inspector.visible {
+                    *state = if new_visible {
                         crate::widget::ButtonState::Pressed
                     } else {
                         crate::widget::ButtonState::Normal
@@ -1198,7 +1253,7 @@ pub fn paint_hero_screen(
     // When a panel is hidden via its left-rail toggle we DROP the
     // published rect so dispatch's "inside panel" tests don't match
     // a stale geometry.
-    if hero.inspector.visible {
+    if hero.is_panel_visible("inspector") {
         hero.store.set_panel_rect(ids::INSP_PANEL, layout.inspector);
     } else {
         hero.store.clear_panel_rect(ids::INSP_PANEL);
@@ -1268,19 +1323,50 @@ pub fn paint_hero_screen(
             z_order.push(fallback);
         }
     }
-    let mut ctx = crate::panel_registry::PaintCtx {
-        hero,
-        layout: &layout,
-        viewport,
-        scene,
-        text_system,
-    };
+    // ADR-0029 Phase C.1: dual-path dispatch — z-order may resolve to
+    // a legacy fn-pointer manifest (panel_registry) OR to a typed
+    // `Panel` impl living in `crate::panel::PANEL_REGISTRY`. Migrated
+    // panels drop from legacy and appear in the typed registry; the
+    // unmatched id is silently skipped (same as legacy semantics).
     for panel_id in z_order {
         if let Some(manifest) = crate::panel_registry::find_panel_by_node_id(panel_id) {
+            let mut ctx = crate::panel_registry::PaintCtx {
+                hero,
+                layout: &layout,
+                viewport,
+                scene,
+                text_system,
+            };
             (manifest.paint_fn)(&mut ctx);
+        } else {
+            // The new PaintCtx wants `&crate::screens::layout::HeroLayout`;
+            // the orchestrator's local `layout` is the duplicate
+            // `crate::screens::hero::HeroLayout`. Same shape — copy
+            // fields. (Phase D will collapse the two layouts.)
+            let typed_layout = crate::screens::layout::HeroLayout {
+                viewport: layout.viewport,
+                top_bar: layout.top_bar,
+                left_rail: layout.left_rail,
+                inspector: layout.inspector,
+                hierarchy: layout.hierarchy,
+                bottom_hud: layout.bottom_hud,
+                canvas: layout.canvas,
+            };
+            crate::panel::with_registry_opt(|reg| {
+                if let Some(idx) = reg.find_by_panel_node_id(panel_id) {
+                    let mut typed_ctx = crate::panel::PaintCtx {
+                        host: hero,
+                        layout: &typed_layout,
+                        viewport,
+                        scene,
+                        text_system,
+                    };
+                    reg.panels_mut()[idx].paint(&mut typed_ctx);
+                }
+            });
         }
     }
-    // ctx is dropped here; hero/scene/text_system unborrowed for the
+    // hero/scene/text_system unborrowed for the
     // rest of paint_hero_screen (bottom HUD, picker overlay, tooltip,
     // context menu, drop overlay).
     if hero.view.stats_visible {
@@ -1347,6 +1433,66 @@ impl crate::panel::PanelHostInternal for HeroScreen {
 
     fn hit_index_mut(&mut self) -> &mut HitIndex {
         &mut self.hit_index
+    }
+
+    fn store_and_hit_index_mut(&mut self) -> (&WidgetStore, &mut HitIndex) {
+        (&self.store, &mut self.hit_index)
+    }
+
+    fn bus(&self) -> &crate::action_bus::ActionBus {
+        &self.bus
+    }
+
+    fn bus_mut(&mut self) -> &mut crate::action_bus::ActionBus {
+        &mut self.bus
+    }
+
+    fn selection(&self) -> Option<&HeroSelection> {
+        self.selection.as_ref()
+    }
+
+    fn selection_mut(&mut self) -> &mut Option<HeroSelection> {
+        &mut self.selection
+    }
+
+    fn panel_visible(&self, id: &str) -> bool {
+        self.is_panel_visible(id)
+    }
+
+    fn set_panel_visible(&mut self, id: &str, value: bool) {
+        // Use the canonical interned id when one matches a known
+        // panel so the HashMap lookup is keyed by `&'static str`.
+        let key = canonical_panel_id(id).unwrap_or_else(|| {
+            // Fall back to leaking — unknown panels are rare (3rd
+            // party / future migrations); a single allocation per
+            // unique id is acceptable for the unstable internal tier.
+            Box::leak(id.to_string().into_boxed_str()) as &'static str
+        });
+        self.panel_visibility.insert(key, value);
+    }
+}
+
+/// Build the default per-panel visibility map for a fresh
+/// `HeroScreen`. Inspector + Hierarchy visible by default; floating
+/// panels (Widget Gallery, Grid Snap) hidden.
+fn default_panel_visibility() -> std::collections::BTreeMap<&'static str, bool> {
+    let mut map = std::collections::BTreeMap::new();
+    map.insert("inspector", true);
+    map.insert("hierarchy", true);
+    map.insert("widget_gallery", false);
+    map.insert("grid_snap", false);
+    map
+}
+
+/// Canonical `&'static str` for known panel ids — keeps the
+/// visibility HashMap keys stable across calls without leaking.
+fn canonical_panel_id(id: &str) -> Option<&'static str> {
+    match id {
+        "inspector" => Some("inspector"),
+        "hierarchy" => Some("hierarchy"),
+        "widget_gallery" => Some("widget_gallery"),
+        "grid_snap" => Some("grid_snap"),
+        _ => None,
     }
 }
 

@@ -42,6 +42,12 @@ ph2d-asset = { path = "../../crates/ph2d-asset" }
 ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-input = { path = "../../crates/ph2d-input" }
 ph2d-editor = { path = "../../crates/ph2d-editor" }
+# ADR-0029 Phase C.1: direct dep on the panel-inspector crate so the
+# host can publish per-frame snapshots via the typed thread-local
+# setters that replace the pre-C.1 `hero.inspector.<field> = ...`
+# writes. Gated by the `panel-inspector` feature alongside the
+# registry-init's mirror feature.
+ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
 ph2d-i18n = { path = "../../crates/ph2d-i18n" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 # M11 widget paint pass — Vello scene encoder + parley text contexts.
@@ -112,5 +118,5 @@ default = [
 lite = []
 panel-widget-gallery = ["ph2d-panel-registry-init/panel-widget-gallery"]
 panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy"]
-panel-inspector      = ["ph2d-panel-registry-init/panel-inspector"]
+panel-inspector      = ["ph2d-panel-registry-init/panel-inspector", "dep:ph2d-panel-inspector"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

@@ -69,6 +69,16 @@ pub fn with_registry<R>(f: impl FnOnce(&mut PanelRegistry) -> R) -> R {
     f(&mut guard)
 }
 
+/// Lenient variant — returns `None` if no registry has been
+/// installed. The orchestrator uses this so editor-core tests +
+/// `--no-default-features` builds without typed panels render
+/// the legacy registry without panicking.
+pub fn with_registry_opt<R>(f: impl FnOnce(&mut PanelRegistry) -> R) -> Option<R> {
+    let mtx = PANEL_REGISTRY.get()?;
+    let mut guard = mtx.lock().expect("PANEL_REGISTRY mutex poisoned");
+    Some(f(&mut guard))
+}
+
 /// Convenience: read-only access.
 pub fn with_registry_ref<R>(f: impl FnOnce(&PanelRegistry) -> R) -> R {
     with_registry(|r| f(r))

@@ -10,7 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-ph2d-editor               = { path = "../ph2d-editor" }
+ph2d-editor-core          = { path = "../ph2d-editor-core" }
 ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery", optional = true }
 ph2d-panel-grid-snap      = { path = "../ph2d-panel-grid-snap",      optional = true }
 ph2d-panel-inspector      = { path = "../ph2d-panel-inspector",      optional = true }

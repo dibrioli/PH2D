@@ -18,7 +18,9 @@ use std::borrow::Cow;
 
 use parley::{
     Alignment, FontContext, FontSettings, FontStack, FontVariation, FontWeight, Layout,
-    LayoutContext, StyleProperty, fontique::Blob, swash::tag_from_bytes,
+    LayoutContext, StyleProperty,
+    fontique::{Blob, Collection, CollectionOptions, FontInfoOverride, SourceCache},
+    swash::tag_from_bytes,
 };
 
 /// OpenType axis tag for "Optical Size" (`opsz`). Inter 4.x supports
@@ -59,6 +61,51 @@ impl TextSystem {
         let primary_stack = match register_inter(&mut font_context) {
             Some(name) => format!("{name}, sans-serif"),
             None => "sans-serif".to_string(),
+        };
+        Self {
+            font_context,
+            layout_context: LayoutContext::new(),
+            primary_stack,
+        }
+    }
+
+    /// Build a TextSystem that skips the system-font scan (`fontique::CollectionOptions::system_fonts = false`).
+    /// Only bundled Inter Variable is available — sufficient for any
+    /// Latin layout but no CJK/emoji fallback.
+    ///
+    /// Why: `FontContext::new()` enumerates installed system fonts via
+    /// CoreText/Fontconfig/DirectWrite, which on some macOS machines
+    /// takes 25-70 s cold per call. Test suites build ~30 TextSystems
+    /// each, multiplying that cost across the workspace. Tests that
+    /// only need ASCII chrome text can use this faster path.
+    pub fn without_system_fonts() -> Self {
+        let collection = Collection::new(CollectionOptions {
+            shared: false,
+            system_fonts: false,
+        });
+        let mut font_context = FontContext {
+            collection,
+            source_cache: SourceCache::default(),
+        };
+        // Force the registered family name. Without a system-font
+        // fallback chain, parley resolves the FontStack by exact
+        // family_by_name() lookup — so the in-collection name MUST
+        // match the string we put in `primary_stack`. The TTF's own
+        // name table reports "Inter" (not "InterVariable"), so without
+        // this override `family_by_name("InterVariable")` returns None
+        // and tests get zero glyphs.
+        let override_info = FontInfoOverride {
+            family_name: Some(INTER_FAMILY),
+            ..Default::default()
+        };
+        let blob = Blob::new(Arc::new(INTER_VARIABLE_TTF));
+        let registered = font_context
+            .collection
+            .register_fonts(blob, Some(override_info));
+        let primary_stack = if registered.is_empty() {
+            "sans-serif".to_string()
+        } else {
+            INTER_FAMILY.to_string()
         };
         Self {
             font_context,
@@ -197,7 +244,7 @@ mod tests {
     /// + our wrapper compose into something usable.
     #[test]
     fn ascii_hello_ph2d_produces_glyphs() {
-        let mut sys = TextSystem::new();
+        let mut sys = TextSystem::without_system_fonts();
         let layout = sys.layout("Hello PH2D", 16.0, f32::INFINITY);
         let glyph_count: usize = layout
             .lines()
@@ -218,7 +265,7 @@ mod tests {
     /// (placeholder fields, deleted text).
     #[test]
     fn empty_string_layout_is_safe() {
-        let mut sys = TextSystem::new();
+        let mut sys = TextSystem::without_system_fonts();
         let layout = sys.layout("", 16.0, 100.0);
         let glyph_count: usize = layout
             .lines()
@@ -262,7 +309,7 @@ mod tests {
     /// produces a width > 0 and height ~ font_size.
     #[test]
     fn layout_dimensions_are_sane() {
-        let mut sys = TextSystem::new();
+        let mut sys = TextSystem::without_system_fonts();
         let layout = sys.layout("Hello", 16.0, f32::INFINITY);
         let height = layout.height();
         assert!(

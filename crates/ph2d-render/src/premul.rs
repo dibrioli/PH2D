@@ -167,12 +167,11 @@ mod tests {
                 let orig = c as i32;
                 premultiply_rgba8(&mut px);
                 unpremultiply_rgba8(&mut px);
-                for ch in 0..3 {
-                    let d = px[ch] as i32 - orig;
+                for (ch, &v) in px[..3].iter().enumerate() {
+                    let d = v as i32 - orig;
                     assert!(
                         d.abs() <= 1,
-                        "channel {ch}: a={a} c={c} round-trip {} vs {orig} (delta {d})",
-                        px[ch],
+                        "channel {ch}: a={a} c={c} round-trip {v} vs {orig} (delta {d})",
                     );
                 }
                 assert_eq!(px[3], a as u8, "alpha must be untouched");
@@ -195,8 +194,8 @@ mod tests {
                 let orig = c as i32;
                 premultiply_rgba8(&mut px);
                 unpremultiply_rgba8(&mut px);
-                for ch in 0..3 {
-                    let d = (px[ch] as i32 - orig).abs();
+                for (ch, &v) in px[..3].iter().enumerate() {
+                    let d = (v as i32 - orig).abs();
                     assert!(
                         d <= bound,
                         "channel {ch}: a={a} c={c} delta {d} exceeds bound {bound}",
@@ -215,8 +214,8 @@ mod tests {
         for a in 0u32..=255 {
             let mut px = [255, 255, 255, a as u8];
             premultiply_rgba8(&mut px);
-            for ch in 0..3 {
-                assert!(px[ch] as u32 <= a, "rgb {} > a {a}", px[ch]);
+            for &v in &px[..3] {
+                assert!(v as u32 <= a, "rgb {v} > a {a}");
             }
         }
     }

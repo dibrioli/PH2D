@@ -146,6 +146,19 @@ pub fn segment(
             h,
             tol_sq,
         );
+        // Interior bg pockets: the border flood only removes bg-similar
+        // regions CONNECTED to the image border, so ENCLOSED bg-similar
+        // pockets (e.g. the gaps between a character's arm and torso)
+        // stay foreground. Sweep them too — any still-fg pixel that is
+        // HARD background (ΔE² ≤ tol²) is an interior hole, not subject.
+        // Anti-aliased subject-edge pixels sit in the soft band
+        // (ΔE² > tol², ≤ (tol+feather)²) so they survive this sweep and
+        // are handled by the compose soft-edge.
+        for i in 0..n {
+            if scratch.mask[i] != 0 && scratch.delta_e[i] <= tol_sq {
+                scratch.mask[i] = 0;
+            }
+        }
     } else {
         // Fallback: global threshold. No connectivity guard.
         for i in 0..n {
@@ -791,10 +804,13 @@ mod tests {
     }
 
     #[test]
-    fn interior_bg_color_island_is_protected_by_flood() {
+    fn interior_bg_color_pocket_is_removed() {
         // 32×32 green bg, 12×12 red ring with an interior green
-        // patch. The interior green should NOT be killed because
-        // it is not connected to the border.
+        // patch (an enclosed bg-coloured "hole" — like the gap between
+        // a character's arm and torso). It must be removed: the border
+        // flood can't reach it, but the interior-pocket sweep does
+        // (hard bg, ΔE² ≤ tol²). Was previously protected as fg, which
+        // left bg colour stuck inside the drawing.
         let mut rgba = make_image(32, 32, [0, 200, 0], Some(([200, 30, 30], 10, 10, 12, 12)));
         // Punch a 2×2 green hole at (15,15) inside the red ring.
         for y in 15..17 {
@@ -810,17 +826,19 @@ mod tests {
         s.ensure(32, 32, false);
         let _ = segment(&rgba, 32, 32, &default_params(), &mut s);
 
-        // The 2×2 interior green patch is surrounded by red on all
-        // 4 sides — it must remain fg.
+        // The 2×2 interior green patch is bg-coloured → removed.
         for y in 15..17 {
             for x in 15..17 {
                 let i = (y as usize) * 32 + x as usize;
                 assert_eq!(
-                    s.mask[i], 255,
-                    "interior bg-color island ({x},{y}) should be protected by flood"
+                    s.mask[i], 0,
+                    "interior bg-colour pocket ({x},{y}) should be removed"
                 );
             }
         }
+        // The red ring (subject) stays fg.
+        let ring_i = 11 * 32 + 11;
+        assert_eq!(s.mask[ring_i], 255, "red ring pixel should stay fg");
         // Exterior green is still bg.
         let edge_i = 0;
         assert_eq!(s.mask[edge_i], 0, "exterior bg pixel should be bg");

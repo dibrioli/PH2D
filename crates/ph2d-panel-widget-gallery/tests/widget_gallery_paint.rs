@@ -67,7 +67,7 @@ fn ipad12_viewport() -> Rect {
 fn gallery_publishes_scroll_bounds_after_paint() {
     let mut hero = setup_hero();
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let content_h = hero
         .store
@@ -131,7 +131,7 @@ fn gallery_publishes_scroll_bounds_after_paint() {
 fn gallery_create_note_targets_gal_panel() {
     let mut hero = setup_hero();
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let gallery_rect = hero.store.panel_rect(ids::GAL_PANEL).unwrap();
     let cx = gallery_rect.x + gallery_rect.w * 0.5;
@@ -170,7 +170,7 @@ fn gallery_create_note_targets_gal_panel() {
 fn gallery_section_outline_color_writes_through() {
     let mut hero = setup_hero();
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     hero.store
         .open_context_menu(ph2d_editor_core::interaction::ContextMenuRequest {

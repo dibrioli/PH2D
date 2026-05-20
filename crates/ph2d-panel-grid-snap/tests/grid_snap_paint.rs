@@ -52,7 +52,7 @@ fn ipad12_viewport() -> Rect {
 fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
     let mut hero = setup_hero();
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let gs_id = ids::GS_PANEL;
     let content_h = hero

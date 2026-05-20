@@ -153,6 +153,13 @@ pub const BGR_CANCEL: NodeId = hash_node_id("bgr_cancel");
 /// canvas samples extra background colours into the swatch row below
 /// the sliders. Right-click a swatch to delete it.
 pub const BGR_EYEDROPPER: NodeId = hash_node_id("bgr_eyedropper");
+/// Protection-brush toggle — when armed, click-drag over the sprite on
+/// the canvas paints a freehand "keep" mask: every painted pixel is
+/// forced foreground (never removed) in BOTH modes (Chroma force-keep /
+/// Smart Cut `FgHard` trimap lock).
+pub const BGR_PROTECT: NodeId = hash_node_id("bgr_protect");
+/// Clear-protection button — wipes the painted protection mask.
+pub const BGR_PROTECT_CLEAR: NodeId = hash_node_id("bgr_protect_clear");
 /// Extra-colour swatch hit slots 0..11. Painted only when the
 /// corresponding extra colour exists (a fixed pool, like the Blender
 /// palette's `BLENDER_SWATCH_*`). Capacity matches

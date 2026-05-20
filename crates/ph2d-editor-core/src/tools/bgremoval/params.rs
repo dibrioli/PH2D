@@ -231,6 +231,15 @@ pub struct BgRemovalUiSnapshot {
     /// click-drag over the sprite on the canvas samples colours into
     /// `extra_colors`. Drives the toggle button's pressed look.
     pub eyedropper_armed: bool,
+    /// Whether the protection brush is armed — while `true`, a click-drag
+    /// over the sprite on the canvas paints the freehand protection mask
+    /// (forced-foreground "keep" region, both modes). Drives the Protect
+    /// toggle button's pressed look.
+    pub protect_brush_armed: bool,
+    /// Whether the protection mask currently holds any painted pixels —
+    /// drives the Clear-protection button's enabled/visible state and the
+    /// "you have a protected region" affordance.
+    pub has_protect_mask: bool,
 }
 
 impl Default for BgRemovalUiSnapshot {
@@ -248,6 +257,8 @@ impl Default for BgRemovalUiSnapshot {
             grow01: p.grow_px / (2.0 * GROW_FULL_SCALE) + 0.5,
             extra_colors: Vec::new(),
             eyedropper_armed: false,
+            protect_brush_armed: false,
+            has_protect_mask: false,
         }
     }
 }
@@ -276,6 +287,15 @@ pub enum BgRemovalUiEdit {
     ToggleEyedropper,
     /// Right-click on extra-colour swatch `idx` — removes it.
     RemoveExtraColor(usize),
+    /// Protection-brush toggle button clicked — flips the armed state.
+    /// While armed, the shell paints the freehand protection mask on
+    /// click-drag (no edit variant for the dab itself — the shell calls
+    /// `paint_protect_at_uv` directly, mirroring the eyedropper's
+    /// `add_extra_color`).
+    ToggleProtectBrush,
+    /// Clear-protection button pressed — wipes the painted protection
+    /// mask (the tool reruns the preview without any forced-keep region).
+    ClearProtectMask,
     /// Apply button pressed — commit at full resolution.
     Apply,
 }

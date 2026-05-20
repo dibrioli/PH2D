@@ -102,6 +102,24 @@ pub struct BgRemovalTool {
     /// deactivate / Apply so a stale armed state can't keep eating
     /// canvas clicks after the tool is dismissed.
     eyedropper_armed: bool,
+
+    /// Whether the protection brush is armed. While `true`, the shell's
+    /// canvas click-drag handler paints into [`Self::protect_mask`] via
+    /// [`Self::paint_protect_at_uv`] instead of running the normal pick /
+    /// gizmo / selection logic. Reset on deactivate / Apply (mirrors
+    /// `eyedropper_armed`).
+    protect_brush_armed: bool,
+
+    /// Freehand protection mask at the SOURCE resolution
+    /// (`protect_mask_w × protect_mask_h`, one byte/pixel; `255` =
+    /// protected/forced-foreground, `0` = unprotected). Empty until the
+    /// user paints. SCAFFOLD: storage + accessors exist; the Implementer
+    /// owns (a) the dab logic in `paint_protect_at_uv`, (b) downscaling
+    /// this to the thumbnail / threading it into `run_pipeline` (Chroma
+    /// force-keep + GrabCut `FgHard`), and (c) tests.
+    protect_mask: Vec<u8>,
+    protect_mask_w: u32,
+    protect_mask_h: u32,
 }
 
 /// Squared RGB Euclidean distance below which two extra colours are
@@ -156,6 +174,64 @@ impl BgRemovalTool {
     /// Set the eyedropper armed state (shell mirror of the panel toggle).
     pub fn set_eyedropper_armed(&mut self, armed: bool) {
         self.eyedropper_armed = armed;
+    }
+
+    // ── Protection brush (SCAFFOLD — Coordinator) ──────────────────────
+    // Contract surface the panel + shell compile against. The Implementer
+    // fills the dab/threading bodies + tests; do NOT change these public
+    // signatures without reporting (the shell `input_dispatch` + overlay
+    // call them). Mirrors the eyedropper arm/sample pattern.
+
+    /// Whether the protection brush is armed (shell paints canvas
+    /// click-drags into the protection mask while `true`).
+    pub fn is_protect_armed(&self) -> bool {
+        self.protect_brush_armed
+    }
+
+    /// Set the protection-brush armed state (shell mirror of the panel
+    /// toggle). Arming the brush disarms the eyedropper so the two canvas
+    /// modes never fight over the same click.
+    pub fn set_protect_armed(&mut self, armed: bool) {
+        self.protect_brush_armed = armed;
+        if armed {
+            self.eyedropper_armed = false;
+        }
+    }
+
+    /// Whether the protection mask currently holds any painted pixels.
+    pub fn has_protect_mask(&self) -> bool {
+        self.protect_mask.iter().any(|&v| v != 0)
+    }
+
+    /// Borrow the source-resolution protection mask for the shell's
+    /// on-canvas overlay: `(mask, w, h)`, one byte/pixel (`255` =
+    /// protected). Empty slice + `(0, 0)` when nothing is painted.
+    pub fn protect_mask_source(&self) -> (&[u8], u32, u32) {
+        (&self.protect_mask, self.protect_mask_w, self.protect_mask_h)
+    }
+
+    /// Paint a brush dab into the protection mask at normalized UV
+    /// `(u, v)` (`[0,1]` each, origin top-left) with `radius_px` measured
+    /// at SOURCE resolution. Called by the shell on canvas click-drag
+    /// while the brush is armed (mirrors `add_extra_color` /
+    /// `sample_source_at_uv`).
+    ///
+    /// SCAFFOLD STUB — the Implementer fills: lazy-size `protect_mask` to
+    /// the source dims, stamp a filled disc of `255` around the UV, and
+    /// rerun the preview so the overlay + matte update live.
+    pub fn paint_protect_at_uv(&mut self, _u: f32, _v: f32, _radius_px: f32) {
+        // TODO(impl): size protect_mask to source dims; stamp disc; rerun preview.
+    }
+
+    /// Wipe the painted protection mask. Reruns the preview when a source
+    /// is loaded so the matte drops the forced-keep region immediately.
+    pub fn clear_protect_mask(&mut self) {
+        self.protect_mask.clear();
+        self.protect_mask_w = 0;
+        self.protect_mask_h = 0;
+        if self.has_source() {
+            self.rerun_preview();
+        }
     }
 
     /// Borrow the current extra background colours (sRGB 8-bit).
@@ -334,6 +410,8 @@ impl BgRemovalTool {
             grow01: (self.params.grow_px / (2.0 * GROW_FULL_SCALE) + 0.5).clamp(0.0, 1.0),
             extra_colors: self.params.extra_bg_colors.clone(),
             eyedropper_armed: self.eyedropper_armed,
+            protect_brush_armed: self.protect_brush_armed,
+            has_protect_mask: self.has_protect_mask(),
         }
     }
 
@@ -392,12 +470,23 @@ impl BgRemovalTool {
                 // `remove_extra_color` already reruns the preview itself.
                 self.remove_extra_color(idx);
             }
+            BgRemovalUiEdit::ToggleProtectBrush => {
+                // Flip the armed state; arming disarms the eyedropper
+                // (`set_protect_armed` enforces the mutual exclusion). No
+                // preview rerun — arming changes no params; painting does.
+                self.set_protect_armed(!self.protect_brush_armed);
+            }
+            BgRemovalUiEdit::ClearProtectMask => {
+                // `clear_protect_mask` reruns the preview itself.
+                self.clear_protect_mask();
+            }
             BgRemovalUiEdit::Apply => {
                 self.pending_apply = true;
                 // A commit ends the picking session — disarm so a stale
-                // eyedropper doesn't keep eating canvas clicks on the
-                // freshly baked sprite.
+                // eyedropper / protect brush doesn't keep eating canvas
+                // clicks on the freshly baked sprite.
                 self.eyedropper_armed = false;
+                self.protect_brush_armed = false;
             }
         }
         if changed && self.has_source() {
@@ -508,10 +597,11 @@ impl Tool for BgRemovalTool {
     }
 
     fn on_deactivate(&mut self) {
-        // Disarm the eyedropper so reactivating later starts clean and
-        // a stale armed state can't intercept canvas clicks meant for
-        // another tool.
+        // Disarm the eyedropper + protect brush so reactivating later
+        // starts clean and a stale armed state can't intercept canvas
+        // clicks meant for another tool.
         self.eyedropper_armed = false;
+        self.protect_brush_armed = false;
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

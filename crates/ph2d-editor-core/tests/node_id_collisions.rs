@@ -298,8 +298,10 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("HIER_PANEL", ids::HIER_PANEL),
     ("HIER_SEARCH", ids::HIER_SEARCH),
     ("HIER_RENAME_INPUT", ids::HIER_RENAME_INPUT),
-    // Bg Removal — eyedropper + extra-colour swatch pool.
+    // Bg Removal — eyedropper + protection brush + extra-colour swatch pool.
     ("BGR_EYEDROPPER", ids::BGR_EYEDROPPER),
+    ("BGR_PROTECT", ids::BGR_PROTECT),
+    ("BGR_PROTECT_CLEAR", ids::BGR_PROTECT_CLEAR),
     ("BGR_SWATCH_0", ids::BGR_SWATCH_0),
     ("BGR_SWATCH_1", ids::BGR_SWATCH_1),
     ("BGR_SWATCH_2", ids::BGR_SWATCH_2),

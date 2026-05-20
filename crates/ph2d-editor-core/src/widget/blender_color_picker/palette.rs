@@ -2,14 +2,12 @@
 
 use super::state::{BlenderColorPicker, ColorPalette};
 use crate::interaction::HitIndex;
-use crate::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
-};
+use crate::paint::{paint_text, resolve};
 use crate::widget::{ColorSwatch, paint_color_swatch};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 pub fn paint_palettes(
@@ -112,27 +110,11 @@ fn paint_palette_grid(
         let y = rect.y + (swatch_size + gap) * row as f32;
         if y + swatch_size <= rect.y + rect.h {
             let plus_rect = Rect::new(x, y, swatch_size, swatch_size);
-            fill_rounded_rect(
-                scene,
-                plus_rect,
-                Radius::Xs.px(),
-                resolve(ColorToken::Bg2, theme),
-            );
-            stroke_rounded_rect(
-                scene,
-                plus_rect,
-                Radius::Xs.px(),
-                1.0,
-                resolve(ColorToken::Border, theme),
-            );
-            paint_text_centered(
-                text_system,
-                scene,
-                "+",
-                plus_rect,
-                TypeToken::Md.px(),
-                resolve(ColorToken::Text2, theme),
-            );
+            // Canonical button (single source of truth) — bordered ghost
+            // "+" tile, consistent with every other secondary button.
+            let plus_btn = crate::widget::Button::new(add_swatch_id, "+")
+                .kind(crate::widget::ButtonKind::Default);
+            crate::widget::paint_button(&plus_btn, plus_rect, scene, text_system, theme);
             hit_index.register(add_swatch_id, plus_rect);
         }
     }

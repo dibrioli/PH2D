@@ -3,10 +3,10 @@
 //! `hsv_to_rgba8` color-space helpers. The interactive channel
 //! row is now drawn by `crate::widget::paint_slider_with_chip`.
 
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use crate::paint::{paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 pub fn paint_slider_row(
@@ -48,20 +48,20 @@ pub fn paint_slider_row(
         theme,
     );
 
-    fill_rounded_rect(
-        scene,
-        val_rect,
-        Radius::Xs.px(),
-        resolve(ColorToken::Bg3, theme),
-    );
+    // Canonical numeric chip (single source of truth — same chip the
+    // app-wide `paint_slider_with_chip` uses).
     let display = format!("{value:.3}");
-    paint_text_centered(
-        text_system,
-        scene,
-        &display,
+    crate::widget::paint_number_chip(
         val_rect,
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text1, theme),
+        crate::widget::TextInputState::Normal,
+        value as f64,
+        Some(&display),
+        None,
+        0,
+        None,
+        scene,
+        text_system,
+        theme,
     );
 }
 

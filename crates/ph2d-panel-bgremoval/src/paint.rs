@@ -21,7 +21,6 @@
 
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
 use crate::{BgRemovalPanel, ids};
-use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::tools::bgremoval::BgRemovalMode;
 use ph2d_editor_core::widget::panel_chrome::{
@@ -101,12 +100,29 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     // numeric chip) — the exact painter the Widget Gallery showcase
     // renders. `chip_id = NodeId(0)` ⇒ read-only value readout.
     let chip_w = Spacing::Xl.px() * 2.0;
-    for (label, id, fallback) in [
-        ("Tolerance", ids::BGR_TOLERANCE, snapshot.tolerance01),
-        ("Feather", ids::BGR_FEATHER, snapshot.feather01),
-        ("Refine", ids::BGR_REFINE, snapshot.refine01),
+    for (label, id, chip_id, fallback) in [
+        (
+            "Tolerance",
+            ids::BGR_TOLERANCE,
+            ids::BGR_TOLERANCE_NUM,
+            snapshot.tolerance01,
+        ),
+        (
+            "Feather",
+            ids::BGR_FEATHER,
+            ids::BGR_FEATHER_NUM,
+            snapshot.feather01,
+        ),
+        (
+            "Refine",
+            ids::BGR_REFINE,
+            ids::BGR_REFINE_NUM,
+            snapshot.refine01,
+        ),
     ] {
         let value = store.slider(id).map(|(_, v)| v).unwrap_or(fallback);
+        // Editable numeric chip (`chip_id`) — keyboard + drag-scrub via
+        // the canonical NumberInput dispatch.
         paint_slider_with_chip_layout(
             Rect::new(inner_x, y, inner_w, row_h),
             label,
@@ -114,7 +130,7 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
             value as f64,
             None,
             id,
-            NodeId(0),
+            chip_id,
             LABEL_COL_W,
             chip_w,
             store,

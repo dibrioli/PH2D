@@ -8,7 +8,7 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState};
+use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub fn populate(store: &mut WidgetStore) {
     for id in [
@@ -24,17 +24,32 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    for (id, value) in [
-        (ids::BGR_TOLERANCE, 0.10 / 0.30),
-        (ids::BGR_FEATHER, 0.04 / 0.20),
-        (ids::BGR_REFINE, 30.0 / 100.0),
+    for (slider_id, chip_id, value) in [
+        (ids::BGR_TOLERANCE, ids::BGR_TOLERANCE_NUM, 0.10 / 0.30),
+        (ids::BGR_FEATHER, ids::BGR_FEATHER_NUM, 0.04 / 0.20),
+        (ids::BGR_REFINE, ids::BGR_REFINE_NUM, 30.0 / 100.0),
     ] {
         store.register(
-            id,
+            slider_id,
             InteractiveState::Slider {
                 state: SliderState::Normal,
                 value,
                 orientation: SliderOrientation::Horizontal,
+            },
+        );
+        // Editable numeric chip paired with the slider — keyboard +
+        // drag-scrub via the canonical NumberInput dispatch (same
+        // behaviour as the Inspector / color-picker chips).
+        let v = value as f64;
+        store.register(
+            chip_id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: v,
+                buffer: format!("{v:.3}"),
+                caret: 0,
+                last_committed: v,
+                selection_anchor: None,
             },
         );
     }

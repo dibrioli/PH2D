@@ -58,6 +58,27 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             host.bus_mut().push(EditorAction::BgremovalUiEdit(edit));
             true
         }
+        // Numeric chip edited (keyboard commit or drag-scrub) — read the
+        // committed NumberInput value (normalized 0..1) and route the
+        // same edit as the slider. Single source of truth: the chip uses
+        // the canonical NumberInput dispatch, identical to Inspector /
+        // color-picker chips.
+        WidgetEvent::ValueChanged(id)
+            if id == ids::BGR_TOLERANCE_NUM
+                || id == ids::BGR_FEATHER_NUM
+                || id == ids::BGR_REFINE_NUM =>
+        {
+            let value = host.store().number_value(id).unwrap_or(0.0) as f32;
+            let edit = if id == ids::BGR_TOLERANCE_NUM {
+                BgRemovalUiEdit::Tolerance(value)
+            } else if id == ids::BGR_FEATHER_NUM {
+                BgRemovalUiEdit::Feather(value)
+            } else {
+                BgRemovalUiEdit::Refine(value)
+            };
+            host.bus_mut().push(EditorAction::BgremovalUiEdit(edit));
+            true
+        }
         // Apply button — commit at full resolution. The shell drains
         // `Apply` into `apply_ui_edit` (arms pending_apply) and then
         // pushes `EditorAction::Bgremoval` for the active selection.

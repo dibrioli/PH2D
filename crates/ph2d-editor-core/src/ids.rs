@@ -135,6 +135,11 @@ pub const BGR_TOLERANCE: NodeId = hash_node_id("bgr_tolerance");
 pub const BGR_FEATHER: NodeId = hash_node_id("bgr_feather");
 /// Refine slider (0..1 → guided-filter radius 0..100 px).
 pub const BGR_REFINE: NodeId = hash_node_id("bgr_refine");
+/// Editable numeric chips (NumberInput) paired with the sliders above —
+/// keyboard + drag-scrub edit the normalized 0..1 value.
+pub const BGR_TOLERANCE_NUM: NodeId = hash_node_id("bgr_tolerance_num");
+pub const BGR_FEATHER_NUM: NodeId = hash_node_id("bgr_feather_num");
+pub const BGR_REFINE_NUM: NodeId = hash_node_id("bgr_refine_num");
 /// Apply button — commits the removal at full resolution.
 pub const BGR_APPLY: NodeId = hash_node_id("bgr_apply");
 /// Cancel button — abandons the preview and deactivates the tool

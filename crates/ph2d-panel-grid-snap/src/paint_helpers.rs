@@ -11,7 +11,7 @@ use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
 };
-use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
+use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
@@ -119,15 +119,18 @@ pub(crate) fn paint_segmented_button(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let state = if pressed {
-        ButtonState::Pressed
-    } else {
-        store.button_state(id).unwrap_or(ButtonState::Normal)
-    };
-    let btn = Button::new(id, label)
-        .kind(ButtonKind::Default)
-        .state(state);
-    paint_button(&btn, rect, scene, text_system, theme);
+    // Delegate to the canonical segmented painter (single source of
+    // truth — `panel_chrome`) so every Grid-Snap toggle group (kind
+    // grid, target stack, labeled rows) matches the rest of the app.
+    let _ = store;
+    ph2d_editor_core::widget::panel_chrome::paint_segmented_button(
+        rect,
+        label,
+        pressed,
+        scene,
+        text_system,
+        theme,
+    );
     hit_index.register(id, rect);
 }
 

@@ -25,6 +25,13 @@ pub(super) fn run(
     renderer: &SpriteRenderer,
     prop_state: &mut TransformPropagationState,
     worklist: &mut WorklistBuf,
+    // Entity (`to_bits`) to suppress from the sprite emit this frame.
+    // Used by the Background-Removal live preview: while the tool shows
+    // its on-canvas preview overlay, the *original* sprite must not
+    // render underneath, otherwise the preview's transparent (removed)
+    // regions would reveal the untouched original instead of the canvas
+    // backdrop. `None` = render everything.
+    exclude_entity: Option<u64>,
 ) {
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
@@ -70,7 +77,9 @@ pub(super) fn run(
                 let hidden = sim
                     .get::<ph2d_ecs::Visibility>(sim_entity)
                     .is_some_and(|v| v.hidden);
+                let suppressed = exclude_entity == Some(sim_entity.to_bits());
                 if !hidden
+                    && !suppressed
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
                 {
                     let p = gt.translation();

@@ -7,6 +7,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, paint_text_title, resolve};
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_group;
 use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, NumberInput,
@@ -335,39 +336,31 @@ pub(crate) fn paint_render_source_section(
     );
     cur_y += label_font + Spacing::Xs.px();
     let strategy_btn_h = ROW_H_PX;
-    let strategy_gap = Spacing::Sm.px();
-    let strategy_btn_w = ((w - strategy_gap * 2.0) / 3.0).max(40.0); // LITERAL-PX-OK: 3-segment strategy button minimum width
-    let strategy_buttons = [
-        (
-            ids::INSP_RENDER_STRATEGY_ATLAS,
-            "Atlas",
-            matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
-        ),
-        (
-            ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
-            "Individual",
-            matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
-        ),
-        (
-            ids::INSP_RENDER_STRATEGY_HANDPACKED,
-            "Hand-packed",
-            matches!(info.source_kind, InspectorSpriteSource::HandPacked),
-        ),
-    ];
-    for (i, (id, label, pressed)) in strategy_buttons.into_iter().enumerate() {
-        let bx = x + (strategy_btn_w + strategy_gap) * i as f32;
-        let r = Rect::new(bx, cur_y, strategy_btn_w, strategy_btn_h);
-        hit_index.register(id, r);
-        let state = if pressed {
-            ButtonState::Pressed
-        } else {
-            store.button_state(id).unwrap_or(ButtonState::Normal)
-        };
-        let btn = Button::new(id, label)
-            .kind(ButtonKind::Default)
-            .state(state);
-        paint_button(&btn, r, scene, text_system, theme);
-    }
+    // Canonical segmented GROUP (central layout + gap).
+    paint_segmented_group(
+        Rect::new(x, cur_y, w, strategy_btn_h),
+        &[
+            (
+                "Atlas",
+                matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
+                ids::INSP_RENDER_STRATEGY_ATLAS,
+            ),
+            (
+                "Individual",
+                matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
+                ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+            ),
+            (
+                "Hand-packed",
+                matches!(info.source_kind, InspectorSpriteSource::HandPacked),
+                ids::INSP_RENDER_STRATEGY_HANDPACKED,
+            ),
+        ],
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
     cur_y += strategy_btn_h + Spacing::Md.px();
     let storage_detail = match info.source_kind {
         InspectorSpriteSource::Atlas { key } => format!("Atlas key: {}", key),
@@ -394,24 +387,19 @@ pub(crate) fn paint_render_source_section(
     );
     cur_y += label_font + Spacing::Xs.px();
     let btn_h = ROW_H_PX;
-    let gap = Spacing::Sm.px();
-    let half_w = (w - gap) * 0.5;
-    let rgba8_rect = Rect::new(x, cur_y, half_w, btn_h);
-    let rgba16_rect = Rect::new(x + half_w + gap, cur_y, half_w, btn_h);
-    let rgba8_state = store
-        .button_state(ids::INSP_RENDER_FORMAT_RGBA8)
-        .unwrap_or(ButtonState::Pressed);
-    let rgba16_state = ButtonState::Disabled;
-    hit_index.register(ids::INSP_RENDER_FORMAT_RGBA8, rgba8_rect);
-    hit_index.register(ids::INSP_RENDER_FORMAT_RGBA16, rgba16_rect);
-    let rgba8_btn = Button::new(ids::INSP_RENDER_FORMAT_RGBA8, "RGBA8")
-        .kind(ButtonKind::Default)
-        .state(rgba8_state);
-    let rgba16_btn = Button::new(ids::INSP_RENDER_FORMAT_RGBA16, "RGBA16")
-        .kind(ButtonKind::Default)
-        .state(rgba16_state);
-    paint_button(&rgba8_btn, rgba8_rect, scene, text_system, theme);
-    paint_button(&rgba16_btn, rgba16_rect, scene, text_system, theme);
+    // Canonical segmented GROUP: RGBA8 active, RGBA16 not selected
+    // (format switch is V1-fixed at RGBA8).
+    paint_segmented_group(
+        Rect::new(x, cur_y, w, btn_h),
+        &[
+            ("RGBA8", true, ids::INSP_RENDER_FORMAT_RGBA8),
+            ("RGBA16", false, ids::INSP_RENDER_FORMAT_RGBA16),
+        ],
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
     cur_y += btn_h + Spacing::Md.px();
 
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height

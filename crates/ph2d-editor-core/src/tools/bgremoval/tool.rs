@@ -40,7 +40,10 @@ use crate::widget::{RadioGroup, RadioOption, Slider, Toggle};
 use ph2d_a11y::NodeId;
 
 use super::algorithm::run_pipeline;
-use super::params::{BgRemovalMode, BgRemovalParams};
+use super::params::{
+    BgRemovalMode, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, FEATHER_FULL_SCALE,
+    REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
+};
 use super::scratch::BgRemovalScratch;
 
 /// Side length (px) of the square thumbnail used for the panel preview.
@@ -226,6 +229,69 @@ impl BgRemovalTool {
         self.preview_rgba.clear();
         self.preview_rgba
             .extend_from_slice(&self.scratch.output_rgba);
+    }
+
+    /// Project the current full-scale params into the normalized
+    /// snapshot the typed `ph2d-panel-bgremoval` paints. Published by
+    /// the host once per frame while the tool is active (forward of
+    /// [`Self::apply_ui_edit`]).
+    pub fn ui_snapshot(&self) -> BgRemovalUiSnapshot {
+        BgRemovalUiSnapshot {
+            mode: self.params.mode,
+            tolerance01: (self.params.chroma.tolerance / TOLERANCE_FULL_SCALE).clamp(0.0, 1.0),
+            feather01: (self.params.chroma.feather / FEATHER_FULL_SCALE).clamp(0.0, 1.0),
+            refine01: (self.params.refinement.radius as f32 / REFINE_RADIUS_FULL_SCALE)
+                .clamp(0.0, 1.0),
+        }
+    }
+
+    /// Apply one panel-originated edit (normalized slider value / mode /
+    /// Apply) against the live params. Re-runs the thumbnail preview when
+    /// a param actually changed and a source snapshot is loaded. `Apply`
+    /// arms the pending-apply flag the host drains via
+    /// [`Self::take_pending_apply`]. Inverse of [`Self::ui_snapshot`].
+    pub fn apply_ui_edit(&mut self, edit: BgRemovalUiEdit) {
+        let mut changed = false;
+        match edit {
+            BgRemovalUiEdit::Mode(mode) => {
+                if self.params.mode != mode {
+                    self.params.mode = mode;
+                    changed = true;
+                }
+            }
+            BgRemovalUiEdit::Tolerance(v) => {
+                self.params.chroma.tolerance = v.clamp(0.0, 1.0) * TOLERANCE_FULL_SCALE;
+                changed = true;
+            }
+            BgRemovalUiEdit::Feather(v) => {
+                let v = v.clamp(0.0, 1.0);
+                // Drives BOTH feather paths so the slider is never a
+                // no-op regardless of Refine:
+                //   • Refine == 0 (compose soft-band path): widens the
+                //     `[tol, tol+feather]` ΔE transition band.
+                //   • Refine  > 0 (guided-filter path, the default):
+                //     maps to the filter's regularisation ε on a log
+                //     scale — the canonical "guided feathering" control
+                //     (He et al. 2013). Larger ε ⇒ the matte ignores
+                //     fine guide edges and blurs softer; smaller ε ⇒
+                //     edges hug the luma guide tightly. Range 1e-6
+                //     (sharp) … 1e-1 (very soft).
+                self.params.chroma.feather = v * FEATHER_FULL_SCALE;
+                self.params.refinement.epsilon = 1.0e-6 * 10.0_f32.powf(5.0 * v);
+                changed = true;
+            }
+            BgRemovalUiEdit::Refine(v) => {
+                self.params.refinement.radius =
+                    (v.clamp(0.0, 1.0) * REFINE_RADIUS_FULL_SCALE).round() as u32;
+                changed = true;
+            }
+            BgRemovalUiEdit::Apply => {
+                self.pending_apply = true;
+            }
+        }
+        if changed && self.has_source() {
+            self.rerun_preview();
+        }
     }
 
     /// Build the Mode RadioGroup (Chroma / Smart Cut) seeded with the
@@ -524,6 +590,54 @@ mod tests {
         assert_eq!(t.params.mode, BgRemovalMode::GrabCut);
         t.handle_panel_event(PanelEvent::SelectOption(MODE_GROUP_NODE, "chroma".into()));
         assert_eq!(t.params.mode, BgRemovalMode::Chroma);
+    }
+
+    #[test]
+    fn ui_snapshot_reflects_default_params() {
+        let t = BgRemovalTool::default();
+        let s = t.ui_snapshot();
+        assert_eq!(s.mode, BgRemovalMode::Chroma);
+        // tolerance 0.10/0.30, feather 0.04/0.20, radius 30/100.
+        assert!((s.tolerance01 - 0.10 / 0.30).abs() < 1e-5);
+        assert!((s.feather01 - 0.04 / 0.20).abs() < 1e-5);
+        assert!((s.refine01 - 0.30).abs() < 1e-5);
+    }
+
+    #[test]
+    fn apply_ui_edit_round_trips_through_ui_snapshot() {
+        let mut t = BgRemovalTool::default();
+        t.apply_ui_edit(BgRemovalUiEdit::Tolerance(0.5));
+        t.apply_ui_edit(BgRemovalUiEdit::Feather(0.25));
+        t.apply_ui_edit(BgRemovalUiEdit::Refine(0.8));
+        t.apply_ui_edit(BgRemovalUiEdit::Mode(BgRemovalMode::GrabCut));
+        let s = t.ui_snapshot();
+        assert_eq!(s.mode, BgRemovalMode::GrabCut);
+        assert!((s.tolerance01 - 0.5).abs() < 1e-5);
+        assert!((s.feather01 - 0.25).abs() < 1e-5);
+        // Refine maps through an integer radius (0.8*100=80 → 80/100).
+        assert!((s.refine01 - 0.8).abs() < 1e-2);
+        // Full-scale values land where the slider maps expect.
+        assert!((t.params.chroma.tolerance - 0.15).abs() < 1e-5);
+        assert!((t.params.chroma.feather - 0.05).abs() < 1e-5);
+        assert_eq!(t.params.refinement.radius, 80);
+    }
+
+    #[test]
+    fn apply_ui_edit_clamps_out_of_range() {
+        let mut t = BgRemovalTool::default();
+        t.apply_ui_edit(BgRemovalUiEdit::Tolerance(2.0));
+        assert!((t.ui_snapshot().tolerance01 - 1.0).abs() < 1e-5);
+        t.apply_ui_edit(BgRemovalUiEdit::Tolerance(-1.0));
+        assert!(t.ui_snapshot().tolerance01.abs() < 1e-5);
+    }
+
+    #[test]
+    fn apply_ui_edit_apply_arms_pending() {
+        let mut t = BgRemovalTool::default();
+        assert!(!t.take_pending_apply());
+        t.apply_ui_edit(BgRemovalUiEdit::Apply);
+        assert!(t.take_pending_apply());
+        assert!(!t.take_pending_apply());
     }
 
     #[test]

@@ -107,15 +107,33 @@ pub fn write_output(
         }
     }
 
-    // Despill — only when chroma mode + flag set + we actually have a
-    // detected bg colour to subtract. Stub for M1: despill math lands
-    // with the real chroma implementation; the skeleton just exercises
-    // the branch via the destructure.
+    // Despill / foreground decontamination — chroma mode only, when
+    // enabled and we have a detected bg colour. Soft-edge pixels are a
+    // composite `C = a·fg + (1−a)·bg`; we recover the true foreground
+    // `fg = (C − (1−a)·bg) / a` and write it back, removing the colour
+    // halo the background bleeds into anti-aliased edges (the canonical
+    // green-screen "despill", generalised to any detected bg colour).
+    // Only fractional-alpha pixels are touched: a==0 is invisible,
+    // a==255 is already pure foreground.
     if params.mode == BgRemovalMode::Chroma
         && params.chroma.despill
-        && let SegmentResult::Chroma { bg_oklab: _ } = segment
+        && let SegmentResult::Chroma { bg_oklab } = segment
     {
-        // M1 stub.
+        let bg = super::chroma::oklab_to_srgb8(*bg_oklab);
+        for i in 0..n {
+            let base = i * 4;
+            let a = scratch.output_rgba[base + 3];
+            if a == 0 || a == 255 {
+                continue;
+            }
+            let af = (a as f32) * (1.0 / 255.0);
+            let inv = 1.0 - af;
+            for (c, &bg_c) in bg.iter().enumerate() {
+                let comp = scratch.output_rgba[base + c] as f32;
+                let fg = (comp - inv * bg_c as f32) / af;
+                scratch.output_rgba[base + c] = (fg + 0.5).clamp(0.0, 255.0) as u8;
+            }
+        }
     }
 }
 

@@ -270,38 +270,64 @@ fn separable_box_filter(
     debug_assert_eq!(tmp.len(), w * h);
     debug_assert_eq!(dst.len(), w * h);
 
-    let r_i = r as i32;
-    let w_i = w as i32;
-    let h_i = h as i32;
+    if w == 0 || h == 0 {
+        return;
+    }
 
-    // Horizontal pass: tmp = horizontal-box(src).
+    // Horizontal pass: tmp = horizontal-box(src). Rolling window —
+    // each pixel enters/leaves the running sum exactly once per row,
+    // so the whole pass is O(w·h) regardless of `r` (the previous
+    // implementation re-summed the `2r+1` window per pixel → O(w·h·r),
+    // the dominant cost of the whole filter at large Refine radii).
+    // Clamp-to-edge: the window is `[max(0,x-r), min(w-1,x+r)]`, so the
+    // divisor (`cur_r - cur_l + 1`) shrinks near the borders. `cur_l`
+    // and `cur_r` only ever advance, which is what makes the rolling
+    // add/subtract valid.
     for y in 0..h {
         let row = y * w;
+        let mut cur_l = 0usize;
+        let mut cur_r = r.min(w - 1);
+        let mut sum = 0.0f32;
+        for k in cur_l..=cur_r {
+            sum += src[row + k];
+        }
         for x in 0..w {
-            let xl = ((x as i32) - r_i).max(0) as usize;
-            let xr = ((x as i32) + r_i).min(w_i - 1) as usize;
-            let mut sum = 0.0f32;
-            for k in xl..=xr {
-                sum += src[row + k];
+            let want_r = (x + r).min(w - 1);
+            while cur_r < want_r {
+                cur_r += 1;
+                sum += src[row + cur_r];
             }
-            let count = (xr - xl + 1) as f32;
+            let want_l = x.saturating_sub(r);
+            while cur_l < want_l {
+                sum -= src[row + cur_l];
+                cur_l += 1;
+            }
+            let count = (cur_r - cur_l + 1) as f32;
             tmp[row + x] = sum / count;
         }
     }
 
-    // Vertical pass: dst = vertical-box(tmp). Outer x iterates by
-    // index since we need `x` for both `tmp[k*w + x]` reads and
-    // `dst[y*w + x]` writes spanning multiple rows.
-    #[allow(clippy::needless_range_loop)]
+    // Vertical pass: dst = vertical-box(tmp). Same rolling window,
+    // striding by `w` down each column.
     for x in 0..w {
+        let mut cur_t = 0usize;
+        let mut cur_b = r.min(h - 1);
+        let mut sum = 0.0f32;
+        for k in cur_t..=cur_b {
+            sum += tmp[k * w + x];
+        }
         for y in 0..h {
-            let yl = ((y as i32) - r_i).max(0) as usize;
-            let yr = ((y as i32) + r_i).min(h_i - 1) as usize;
-            let mut sum = 0.0f32;
-            for k in yl..=yr {
-                sum += tmp[k * w + x];
+            let want_b = (y + r).min(h - 1);
+            while cur_b < want_b {
+                cur_b += 1;
+                sum += tmp[cur_b * w + x];
             }
-            let count = (yr - yl + 1) as f32;
+            let want_t = y.saturating_sub(r);
+            while cur_t < want_t {
+                sum -= tmp[cur_t * w + x];
+                cur_t += 1;
+            }
+            let count = (cur_b - cur_t + 1) as f32;
             dst[y * w + x] = sum / count;
         }
     }

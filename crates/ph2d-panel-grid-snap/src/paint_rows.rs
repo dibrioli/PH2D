@@ -13,8 +13,7 @@ use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{
-    NumberInput, Slider, SliderOrientation, SliderState, TextInputState, Toggle,
-    paint_number_input_with_buffer, paint_slider, paint_toggle,
+    NumberInput, TextInputState, Toggle, paint_number_input_with_buffer, paint_toggle,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -302,36 +301,25 @@ pub(crate) fn paint_opacity_slider_row(
     store: &WidgetStore,
     state: &GridSnapState,
 ) {
-    paint_text(
-        text_system,
-        scene,
-        "Opacity",
-        row.x,
-        row.y + (row.h - LABEL_FONT_SIZE) * 0.5,
-        LABEL_FONT_SIZE,
-        LABEL_COL_W - Spacing::Sm.px(),
-        resolve(ColorToken::Text1, theme),
-    );
-    let slider_rect = Rect::new(
-        row.x + LABEL_COL_W,
-        row.y + 4.0,
-        row.w - LABEL_COL_W,
-        row.h - 8.0,
-    );
-    let (s_state, value) = store
+    // Canonical label + track + chip — the same painter the Widget
+    // Gallery slider uses, so this matches every other slider in the
+    // app. (Was a one-off label + bare `paint_slider`.)
+    let value = store
         .slider(ids::GS_OPACITY_SLIDER)
-        .unwrap_or((SliderState::Normal, state.opacity));
-    let slider = Slider {
-        id: ids::GS_OPACITY_SLIDER,
-        label: String::new(),
+        .map(|(_, v)| v)
+        .unwrap_or(state.opacity);
+    ph2d_editor_core::widget::paint_slider_with_chip(
+        row,
+        "Opacity",
         value,
-        state: s_state,
-        orientation: SliderOrientation::Horizontal,
-        accent: true,
-        ticks: Vec::new(),
-    };
-    paint_slider(&slider, slider_rect, scene, theme);
-    hit_index.register(ids::GS_OPACITY_SLIDER, slider_rect);
+        ids::GS_OPACITY_SLIDER,
+        ph2d_editor_core::NodeId(0),
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]

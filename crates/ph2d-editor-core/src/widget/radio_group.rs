@@ -18,7 +18,7 @@ use crate::paint::{
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -174,29 +174,37 @@ fn paint_segmented<T: Clone + PartialEq>(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
-    let outer = Radius::Md.px();
-    fill_rounded_rect(scene, rect, outer, resolve(ColorToken::Bg2, theme));
-    stroke_rounded_rect(scene, rect, outer, 1.0, resolve(ColorToken::Border, theme));
+    // Discrete outlined segments — identical look to the canonical
+    // `panel_chrome::paint_segmented_button` (selected = Bg2 + Accent
+    // outline; unselected = Bg3 + Border). Labels are drawn on top by
+    // `paint_radio_group_with_labels`. Was a "Bg2 tray + Accent inner
+    // pill" look that diverged from every other segmented control.
+    let r = Radius::Sm.px();
+    // Canonical inter-segment gap (single source — same value the
+    // central `paint_segmented_group` uses), applied as a half-gap
+    // inset each side so adjacent outlined segments don't touch.
+    let half_gap = crate::widget::panel_chrome::segmented_gap() * 0.5;
     for (i, opt) in group.options.iter().enumerate() {
-        if group.selected.as_ref() != Some(&opt.value) {
-            continue;
-        }
-        let r = group.option_rect(rect, i);
-        let inset = Rect::new(
-            r.x + 2.0,
-            r.y + 2.0,
-            (r.w - Spacing::Xs.px()).max(0.0),
-            (r.h - Spacing::Xs.px()).max(0.0),
+        let cell = group.option_rect(rect, i);
+        let seg = Rect::new(
+            cell.x + half_gap,
+            cell.y,
+            (cell.w - half_gap * 2.0).max(0.0),
+            cell.h,
         );
-        // Saturated accent fill on the active pill so the selection
-        // is unambiguous against the surrounding `Bg2` tray. Soft
-        // tints (e.g. AccentSoft) blend with the tray on dark themes
-        // and read as "no selection".
-        fill_rounded_rect(
+        let selected = group.selected.as_ref() == Some(&opt.value);
+        let (bg, border) = if selected {
+            (ColorToken::Bg2, ColorToken::Accent)
+        } else {
+            (ColorToken::Bg3, ColorToken::Border)
+        };
+        fill_rounded_rect(scene, seg, r, resolve(bg, theme));
+        stroke_rounded_rect(
             scene,
-            inset,
-            (outer - 2.0).max(0.0),
-            resolve(ColorToken::Accent, theme),
+            seg,
+            r,
+            StrokeToken::Default.px(),
+            resolve(border, theme),
         );
     }
 }
@@ -218,8 +226,11 @@ pub fn paint_radio_group_with_labels<T: Clone + PartialEq>(
     for (i, opt) in group.options.iter().enumerate() {
         let r = group.option_rect(rect, i);
         let selected = group.selected.as_ref() == Some(&opt.value);
+        // Selected segment fills with Bg2 (dark), so the label is Text1
+        // (light) — matches `paint_segmented_button`. (Was AccentFg,
+        // which paired with the old Accent-filled pill.)
         let color = if selected {
-            ColorToken::AccentFg
+            ColorToken::Text1
         } else {
             ColorToken::Text2
         };

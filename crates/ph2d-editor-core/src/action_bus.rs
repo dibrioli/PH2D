@@ -84,6 +84,22 @@ pub enum EditorAction {
     /// contract).
     Bgremoval { entity_bits: u64 },
 
+    /// One Background-Removal panel edit (mode / slider / Apply) routed
+    /// from the typed `ph2d-panel-bgremoval` to the shell. The shell
+    /// drains it and calls `BgRemovalTool::apply_ui_edit` against the
+    /// active tool instance (the tool lives in the shell's
+    /// `ToolRegistry`, unreachable from `HeroScreen`, so the panel can't
+    /// mutate it directly — same bus round-trip as `ActivateBgRemoval`).
+    /// On `BgRemovalUiEdit::Apply` the shell additionally pushes a
+    /// [`Self::Bgremoval`] for the active selection to commit full-res.
+    BgremovalUiEdit(crate::tools::bgremoval::BgRemovalUiEdit),
+
+    /// Cancel Background Removal: abandon the live preview (no commit)
+    /// and deactivate the tool so the panel hides and the Inspector
+    /// returns. Raised by the panel's Cancel button. The shell switches
+    /// the active tool back to the default (first-registered) tool.
+    BgremovalCancel,
+
     /// Re-decode the entity's sprite source asset at the current
     /// `ProjectSettings::pixels_per_meter` and write the recomputed
     /// world size back to `Sprite.size`. Payload: `entity.to_bits()`.

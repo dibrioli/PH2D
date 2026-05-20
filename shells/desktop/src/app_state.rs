@@ -288,4 +288,23 @@ pub(crate) struct App {
     /// while BgRemoval is the active tool to skip redundant
     /// pushes (the thumbnail rebuild + preview rerun are work).
     pub(crate) last_bgremoval_pushed_entity: Option<u64>,
+    /// Cached full-resolution Background-Removal preview for the active
+    /// sprite. Recomputed only when params change / source changes /
+    /// the tool (re)activates; the per-frame canvas overlay reuses the
+    /// `Arc` buffer (no pixel copy). `None` when the tool is inactive
+    /// or no source is loaded. NOT a destructive edit — the sprite's
+    /// own texture is untouched; the overlay just paints on top, so
+    /// Apply (which re-reads the original source) and undo stay correct.
+    pub(crate) bgremoval_preview: Option<BgremovalPreview>,
+}
+
+/// Cached on-canvas preview bitmap for the Background-Removal tool.
+pub(crate) struct BgremovalPreview {
+    /// Sprite the preview belongs to — invalidates when selection moves.
+    pub(crate) entity_bits: u64,
+    /// Straight-alpha RGBA8, `width * height * 4`. `Arc` so the
+    /// per-frame `VectorScene::draw_image_rgba` shares it cheaply.
+    pub(crate) rgba: std::sync::Arc<Vec<u8>>,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
 }

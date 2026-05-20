@@ -6,11 +6,11 @@
 //! Supports horizontal and vertical orientation and an optional set
 //! of tick positions for snap-to-grid affordance.
 
-use crate::paint::{fill_rounded_rect, resolve};
+use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Radius, Theme};
-use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
+use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
+use ph2d_vector::VectorScene;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum SliderState {
@@ -99,81 +99,60 @@ impl Slider {
     }
 }
 
-/// Pill-shaped track + filled portion + circular thumb.
-///
-/// Vertical orientation flips the major/minor axis; thumb stays
-/// circular and centered on the value position.
-pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    if slider.state == SliderState::Disabled {
-        let track = track_rect(slider.orientation, rect);
-        fill_rounded_rect(
-            scene,
-            track,
-            Radius::Full.px(),
-            resolve(ColorToken::Border, theme),
-        );
-        return;
-    }
-
-    let track = track_rect(slider.orientation, rect);
-    fill_rounded_rect(
-        scene,
-        track,
-        Radius::Full.px(),
-        resolve(ColorToken::Bg2, theme),
-    );
-
-    let value = slider.value.clamp(0.0, 1.0);
-    let fill_token = if slider.accent {
-        ColorToken::Accent
-    } else {
-        ColorToken::AccentPress
-    };
-    if value > 0.0 {
-        let filled = match slider.orientation {
-            SliderOrientation::Horizontal => Rect::new(track.x, track.y, track.w * value, track.h),
+/// Canonical slider track: rounded-rect background (`Bg2`) + an
+/// `Accent`-filled portion for the current value. **Single source of
+/// truth for the slider look** — both the bare [`paint_slider`] and
+/// `widget::slider_with_chip::paint_slider_with_chip` render through
+/// this, so every slider in the app shares one rectangular appearance.
+pub fn paint_slider_track(
+    track: Rect,
+    value: f32,
+    orientation: SliderOrientation,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let r = Radius::Xs.px();
+    fill_rounded_rect(scene, track, r, resolve(ColorToken::Bg2, theme));
+    let v = value.clamp(0.0, 1.0);
+    if v > 0.0 {
+        let filled = match orientation {
+            SliderOrientation::Horizontal => Rect::new(track.x, track.y, track.w * v, track.h),
             SliderOrientation::Vertical => {
-                let h = track.h * value;
+                let h = track.h * v;
                 Rect::new(track.x, track.y + track.h - h, track.w, h)
             }
         };
-        fill_rounded_rect(scene, filled, Radius::Full.px(), resolve(fill_token, theme));
+        fill_rounded_rect(scene, filled, r, resolve(ColorToken::Accent, theme));
     }
+}
+
+/// Rectangular track + accent fill (no circular thumb — the filled
+/// portion is the value readout, matching `paint_slider_with_chip`).
+/// `Focused` adds a `BorderEmph` outline on the track; `Disabled`
+/// draws a flat `Border` track.
+pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    let track = track_rect(slider.orientation, rect);
+    let r = Radius::Xs.px();
+    if slider.state == SliderState::Disabled {
+        fill_rounded_rect(scene, track, r, resolve(ColorToken::Border, theme));
+        return;
+    }
+
+    paint_slider_track(track, slider.value, slider.orientation, scene, theme);
 
     for tick in &slider.ticks {
         let pos = tick.clamp(0.0, 1.0);
         let mark = tick_mark_rect(slider.orientation, rect, pos);
-        fill_rounded_rect(
-            scene,
-            mark,
-            Radius::Xs.px(),
-            resolve(ColorToken::Text3, theme),
-        );
+        fill_rounded_rect(scene, mark, r, resolve(ColorToken::Text3, theme));
     }
 
-    let (thumb_cx, thumb_cy, thumb_r) = thumb_geometry(slider.orientation, rect, value);
-    let thumb_color = match slider.state {
-        SliderState::Dragging => ColorToken::AccentPress,
-        _ => ColorToken::Accent,
-    };
-    let circle = Circle::new(Point::new(thumb_cx as f64, thumb_cy as f64), thumb_r as f64);
-    scene.inner_mut().fill(
-        Fill::NonZero,
-        Affine::IDENTITY,
-        &Brush::Solid(resolve(thumb_color, theme)),
-        None,
-        &circle,
-    );
     if slider.state == SliderState::Focused {
-        let ring_r = thumb_r + 2.0;
-        let stroke = ph2d_vector::Stroke::new(2.0);
-        let ring = Circle::new(Point::new(thumb_cx as f64, thumb_cy as f64), ring_r as f64);
-        scene.inner_mut().stroke(
-            &stroke,
-            Affine::IDENTITY,
-            &Brush::Solid(resolve(ColorToken::BorderEmph, theme)),
-            None,
-            &ring,
+        stroke_rounded_rect(
+            scene,
+            track,
+            r,
+            StrokeToken::Default.px(),
+            resolve(ColorToken::BorderEmph, theme),
         );
     }
 }
@@ -210,23 +189,6 @@ fn tick_mark_rect(orientation: SliderOrientation, rect: Rect, value: f32) -> Rec
     }
 }
 
-fn thumb_geometry(orientation: SliderOrientation, rect: Rect, value: f32) -> (f32, f32, f32) {
-    match orientation {
-        SliderOrientation::Horizontal => {
-            let r = (rect.h * 0.45).clamp(6.0, 14.0); // LITERAL-PX-OK: slider thumb radius 45% of widget height (geometry ratio + clamp)
-            let cx = rect.x + rect.w * value;
-            let cy = rect.y + rect.h * 0.5;
-            (cx, cy, r)
-        }
-        SliderOrientation::Vertical => {
-            let r = (rect.w * 0.45).clamp(6.0, 14.0); // LITERAL-PX-OK: slider thumb radius 45% of widget width (geometry ratio + clamp)
-            let cx = rect.x + rect.w * 0.5;
-            let cy = rect.y + rect.h - rect.h * value;
-            (cx, cy, r)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,14 +221,6 @@ mod tests {
         let mut s = fixture();
         s.set_value(1.5);
         assert_eq!(s.value, 1.0);
-    }
-
-    #[test]
-    fn vertical_thumb_position_inverts_value() {
-        let rect = Rect::new(0.0, 0.0, 24.0, 200.0);
-        let (_, top_y, _) = thumb_geometry(SliderOrientation::Vertical, rect, 1.0);
-        let (_, bot_y, _) = thumb_geometry(SliderOrientation::Vertical, rect, 0.0);
-        assert!(top_y < bot_y, "value=1 must sit above value=0 vertically");
     }
 
     #[test]

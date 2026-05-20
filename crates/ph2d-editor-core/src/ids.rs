@@ -121,6 +121,26 @@ pub const TOOL_REDO: NodeId = hash_node_id("tool_redo");
 pub const RAIL_SHOW_INSPECTOR: NodeId = hash_node_id("rail_show_inspector");
 pub const RAIL_SHOW_HIERARCHY: NodeId = hash_node_id("rail_show_hierarchy");
 
+/// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
+/// outer rect. Right-docked (same geometry slot as the Inspector) and
+/// only visible while the `bgremoval` tool is active.
+pub const BGR_PANEL: NodeId = hash_node_id("bgr_panel");
+/// Mode segmented control — "Chroma" half.
+pub const BGR_MODE_CHROMA: NodeId = hash_node_id("bgr_mode_chroma");
+/// Mode segmented control — "Smart Cut" half.
+pub const BGR_MODE_GRABCUT: NodeId = hash_node_id("bgr_mode_grabcut");
+/// Tolerance slider (0..1 → ΔE 0..0.30 Oklab).
+pub const BGR_TOLERANCE: NodeId = hash_node_id("bgr_tolerance");
+/// Feather slider (0..1 → soft-band 0..0.20 Oklab).
+pub const BGR_FEATHER: NodeId = hash_node_id("bgr_feather");
+/// Refine slider (0..1 → guided-filter radius 0..100 px).
+pub const BGR_REFINE: NodeId = hash_node_id("bgr_refine");
+/// Apply button — commits the removal at full resolution.
+pub const BGR_APPLY: NodeId = hash_node_id("bgr_apply");
+/// Cancel button — abandons the preview and deactivates the tool
+/// (returns to the Inspector).
+pub const BGR_CANCEL: NodeId = hash_node_id("bgr_cancel");
+
 /// Inspector panel container — used as the wheel-scroll key.
 pub const INSP_PANEL: NodeId = hash_node_id("insp_panel");
 /// Drag handle at the top of the Inspector — click+drag moves the

@@ -17,14 +17,14 @@ use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_title, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect,
-    panel_resize_handle_rect,
+    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
+    paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::{
     self, ButtonState, HIERARCHY_SCROLLBAR_ID, SCROLLBAR_W, TextInput, TextInputState,
@@ -89,17 +89,10 @@ fn paint_hierarchy_body(
     hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
 
-    let title_y = rect.y + 18.0; // LITERAL-PX-OK: panel title baseline (chrome-specific, matches PANEL_HEAD_PAD)
-    paint_text_title(
-        text_system,
-        scene,
-        "Hierarchy",
-        rect.x + PANEL_HEAD_PAD,
-        title_y,
-        TypeToken::Md.px(),
-        rect.w - PANEL_HEAD_PAD * 2.0 - 40.0, // LITERAL-PX-OK: reserve for header Add-button (≈ICON_BTN_SIZE chrome)
-        resolve(ColorToken::Text1, theme),
-    );
+    // Canonical panel title (single source of truth — `panel_chrome`).
+    // Reserve ≈ICON_BTN_SIZE on the right for the header Add-button.
+    let title_y = rect.y + PANEL_TITLE_BASELINE;
+    let title_size = paint_panel_title(rect, "Hierarchy", 40.0, scene, text_system, theme); // LITERAL-PX-OK: Add-button reserve
     let (entities, components) = if let Some(live) = current_live_entries() {
         let entity_count = live.len() as u32;
         let comp_count = current_component_count();
@@ -117,7 +110,7 @@ fn paint_hierarchy_body(
         scene,
         &counts,
         rect.x + PANEL_HEAD_PAD,
-        title_y + TypeToken::Md.px() + Spacing::Xs.px(),
+        title_y + title_size + Spacing::Xs.px(),
         TypeToken::Xs.px() - 1.0,
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text3, theme),

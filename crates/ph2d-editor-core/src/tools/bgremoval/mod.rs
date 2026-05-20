@@ -32,6 +32,9 @@ pub mod tool;
 
 pub use algorithm::run_pipeline;
 pub use icon::eraser_bezpath;
-pub use params::{BgRemovalMode, BgRemovalParams, ChromaParams, GrabCutParams, GuidedFilterParams};
+pub use params::{
+    BgRemovalMode, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, ChromaParams,
+    GrabCutParams, GuidedFilterParams,
+};
 pub use scratch::{BgRemovalScratch, FloodSpan};
 pub use tool::BgRemovalTool;

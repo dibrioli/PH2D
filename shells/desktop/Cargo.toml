@@ -48,6 +48,7 @@ ph2d-editor = { path = "../../crates/ph2d-editor" }
 # writes. Gated by the `panel-inspector` feature alongside the
 # registry-init's mirror feature.
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
+ph2d-panel-bgremoval = { path = "../../crates/ph2d-panel-bgremoval", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
 # `set_live_component_count` and read the panel-owned live entries
@@ -116,6 +117,7 @@ default = [
     "panel-hierarchy",
     "panel-inspector",
     "panel-grid-snap",
+    "panel-bgremoval",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -125,4 +127,5 @@ lite = []
 panel-widget-gallery = ["ph2d-panel-registry-init/panel-widget-gallery"]
 panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy", "dep:ph2d-panel-hierarchy"]
 panel-inspector      = ["ph2d-panel-registry-init/panel-inspector", "dep:ph2d-panel-inspector"]
+panel-bgremoval      = ["ph2d-panel-registry-init/panel-bgremoval", "dep:ph2d-panel-bgremoval"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

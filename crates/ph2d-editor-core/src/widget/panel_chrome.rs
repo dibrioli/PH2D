@@ -18,13 +18,134 @@
 
 #![doc(hidden)]
 
-use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use crate::interaction::HitIndex;
+use crate::paint::{
+    fill_rounded_rect, paint_text_centered, paint_text_title, resolve, stroke_rounded_rect,
+};
 use crate::zones::Rect;
+use ph2d_a11y::NodeId;
+use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, Radius,
-    SECTION_GAP_PX, Spacing, Theme,
+    SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
 };
 use ph2d_vector::VectorScene;
+
+/// Title baseline inset from the panel's top edge. Single value so the
+/// title, the close/add button row, and the body-top offset all align.
+pub const PANEL_TITLE_BASELINE: f32 = 18.0; // LITERAL-PX-OK: canonical panel title baseline
+
+/// Canonical panel header title — **the single source of truth for the
+/// panel name text.** Every `ph2d-panel-*` crate paints its title
+/// through this so the size / weight / colour / baseline can never
+/// diverge again (they previously ranged `TypeToken::Md`, a raw `15.0`,
+/// and `TypeToken::Lg` across panels). Uses [`TypeToken::Lg`] — the
+/// larger, canonical size.
+///
+/// `reserve_right` keeps that many px clear on the right for a close /
+/// add affordance. Returns the title font size so callers can position
+/// a subtitle / divider directly beneath it.
+pub fn paint_panel_title(
+    rect: Rect,
+    text: &str,
+    reserve_right: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) -> f32 {
+    let size = TypeToken::Lg.px();
+    let x = rect.x + PANEL_HEAD_PAD;
+    let y = rect.y + PANEL_TITLE_BASELINE;
+    let max_w = (rect.w - PANEL_HEAD_PAD * 2.0 - reserve_right).max(0.0);
+    paint_text_title(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        size,
+        max_w,
+        resolve(ColorToken::Text1, theme),
+    );
+    size
+}
+
+/// Canonical segmented / toggle-group button — **the single source of
+/// truth for grouped 2–3-way selectors** (Mode pickers, render-strategy
+/// switchers, etc.). Always draws a discrete outline so an UNSELECTED
+/// segment still reads as a button; the bare `paint_button(Default)`
+/// ghost look failed that (inactive halves looked like plain text).
+///
+/// Selected → `Bg2` fill + `Accent` outline + `Text1`. Unselected →
+/// `Bg3` fill + `Border` outline + `Text2`. Caller registers the hit
+/// rect against the segment's `NodeId`.
+pub fn paint_segmented_button(
+    rect: Rect,
+    label: &str,
+    selected: bool,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let radius = Radius::Sm.px();
+    let (bg, fg, border) = if selected {
+        (ColorToken::Bg2, ColorToken::Text1, ColorToken::Accent)
+    } else {
+        (ColorToken::Bg3, ColorToken::Text2, ColorToken::Border)
+    };
+    fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
+    stroke_rounded_rect(
+        scene,
+        rect,
+        radius,
+        StrokeToken::Default.px(),
+        resolve(border, theme),
+    );
+    paint_text_centered(
+        text_system,
+        scene,
+        label,
+        rect,
+        TypeToken::Sm.px(),
+        resolve(fg, theme),
+    );
+}
+
+/// Canonical horizontal gap (px) between the segments of a
+/// toggle/segmented group. **Single source of truth** — both
+/// [`paint_segmented_group`] and the typed `RadioGroup` segmented
+/// painter read this so the spacing never diverges (some groups, e.g.
+/// the Widget Gallery's Low/Mid/High, previously had zero gap).
+pub fn segmented_gap() -> f32 {
+    Spacing::Xs.px()
+}
+
+/// Canonical segmented / toggle GROUP: lays out `segments` as N
+/// equal-width buttons across `rect` with [`segmented_gap`] between
+/// them, paints each via [`paint_segmented_button`], and registers each
+/// segment's hit rect. **The single source of truth for segmented-group
+/// layout** — call sites pass `(label, selected, node_id)` and never
+/// compute per-segment rects or gaps inline.
+pub fn paint_segmented_group(
+    rect: Rect,
+    segments: &[(&str, bool, NodeId)],
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+) {
+    let n = segments.len();
+    if n == 0 {
+        return;
+    }
+    let gap = segmented_gap();
+    let seg_w = ((rect.w - gap * (n as f32 - 1.0)) / n as f32).max(0.0);
+    for (i, (label, selected, id)) in segments.iter().enumerate() {
+        let seg = Rect::new(rect.x + (seg_w + gap) * i as f32, rect.y, seg_w, rect.h);
+        paint_segmented_button(seg, label, *selected, scene, text_system, theme);
+        hit_index.register(*id, seg);
+    }
+}
 
 /// Outer corner radius of every panel rect (Inspector, Hierarchy,
 /// floating panels). Mirrors `tokens.json::chrome.panel-radius`.

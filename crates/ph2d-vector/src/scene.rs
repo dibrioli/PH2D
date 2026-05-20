@@ -6,9 +6,10 @@
 //! that need the full Vello API; the convenience helpers below
 //! cover the 80 % case (rect / path fill).
 
+use std::sync::Arc;
 use vello::Scene;
 use vello::kurbo::{Affine, BezPath, Rect};
-use vello::peniko::{Brush, Color, Fill};
+use vello::peniko::{Blob, Brush, Color, Fill, ImageAlphaType, ImageData, ImageFormat};
 
 pub struct VectorScene {
     inner: Scene,
@@ -51,6 +52,48 @@ impl VectorScene {
     /// Fill an arbitrary path with a brush.
     pub fn fill_path(&mut self, path: &BezPath, brush: &Brush, transform: Affine) {
         self.inner.fill(Fill::NonZero, transform, brush, None, path);
+    }
+
+    /// Blit a straight-alpha RGBA8 bitmap into `dest` (screen-space
+    /// rect, px). The image's native `width × height` pixel space is
+    /// scaled to fill `dest`. Used by the Background-Removal tool to
+    /// overlay its live preview on top of the sprite on-canvas (in
+    /// place of the real image) without mutating the sprite's GPU
+    /// texture.
+    ///
+    /// `rgba` is taken as an `Arc<Vec<u8>>` so the per-frame redraw
+    /// shares the buffer (Arc clone, no pixel copy) with the caller's
+    /// cache. Length must be `width * height * 4`; mismatched buffers
+    /// are dropped (no draw) rather than panicking.
+    ///
+    /// `dest` is the destination screen rect as `(x0, y0, x1, y1)` in
+    /// pixels (top-left, bottom-right). Taking raw coords keeps callers
+    /// free of a direct `kurbo`/`vello` dependency.
+    pub fn draw_image_rgba(
+        &mut self,
+        rgba: &Arc<Vec<u8>>,
+        width: u32,
+        height: u32,
+        dest: (f64, f64, f64, f64),
+    ) {
+        if width == 0 || height == 0 {
+            return;
+        }
+        if rgba.len() != (width as usize) * (height as usize) * 4 {
+            return;
+        }
+        let (x0, y0, x1, y1) = dest;
+        let image = ImageData {
+            data: Blob::new(rgba.clone()),
+            format: ImageFormat::Rgba8,
+            alpha_type: ImageAlphaType::Alpha,
+            width,
+            height,
+        };
+        let sx = (x1 - x0) / width as f64;
+        let sy = (y1 - y0) / height as f64;
+        let transform = Affine::translate((x0, y0)) * Affine::scale_non_uniform(sx, sy);
+        self.inner.draw_image(&image, transform);
     }
 
     /// Push a clip layer that masks subsequent drawing to `path`.

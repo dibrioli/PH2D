@@ -38,22 +38,15 @@ pub fn paint_slider_row(
         resolve(ColorToken::Text2, theme),
     );
 
-    fill_rounded_rect(
-        scene,
+    // Canonical slider track (Bg2 + Accent fill) — shared with every
+    // other slider in the app. Was a one-off Border-filled track.
+    crate::widget::paint_slider_track(
         track_rect,
-        Radius::Xs.px(),
-        resolve(ColorToken::Bg2, theme),
+        value,
+        crate::widget::SliderOrientation::Horizontal,
+        scene,
+        theme,
     );
-    let fill_w = track_rect.w * value.clamp(0.0, 1.0);
-    if fill_w > 0.0 {
-        let filled = Rect::new(track_rect.x, track_rect.y, fill_w, track_rect.h);
-        fill_rounded_rect(
-            scene,
-            filled,
-            Radius::Xs.px(),
-            resolve(ColorToken::Border, theme),
-        );
-    }
 
     fill_rounded_rect(
         scene,

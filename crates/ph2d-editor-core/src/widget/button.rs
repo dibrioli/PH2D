@@ -2,9 +2,12 @@
 //!
 //! Same pattern as [`crate::widget::ColorSwatch`]: data + state enum +
 //! token-resolved colors + AccessKit `Role::Button` node + colocated
-//! [`paint_button`]. Per ADR-0023 §11 the accent ladder collapses
-//! Hover→AccentSoft, Pressed→AccentPress on a single hue; Danger
-//! follows the same ladder rotated to the danger hue.
+//! [`paint_button`]. Accent ladder on a single hue: Normal→Accent,
+//! Hover→AccentHover (brighter), Pressed→AccentPress (deeper). Hover
+//! must NOT use AccentSoft — that dark, desaturated surface tone read
+//! as "disabled" under the cursor. Danger follows the same ladder
+//! rotated to the danger hue. Secondary (`Default`) buttons carry a
+//! discrete `Border` outline (see [`Button::border_color`]).
 
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, stroke_rounded_rect};
@@ -127,7 +130,10 @@ impl Button {
             (ButtonKind::IconOnly { .. }, ButtonState::Pressed) => ColorToken::AccentSoft,
             (ButtonKind::IconOnly { .. }, _) => return None,
             (ButtonKind::Accent, ButtonState::Pressed) => ColorToken::AccentPress,
-            (ButtonKind::Accent, ButtonState::Hovered) => ColorToken::AccentSoft,
+            // Hover must use the dedicated (brighter) `AccentHover`, NOT
+            // `AccentSoft` — AccentSoft is a dark, desaturated surface
+            // tone (L≈0.28) that read as "disabled" under the cursor.
+            (ButtonKind::Accent, ButtonState::Hovered) => ColorToken::AccentHover,
             (ButtonKind::Accent, _) => ColorToken::Accent,
             (ButtonKind::Danger, ButtonState::Pressed | ButtonState::Hovered) => {
                 ColorToken::DangerSoft
@@ -135,6 +141,22 @@ impl Button {
             (ButtonKind::Danger, _) => ColorToken::Danger,
         };
         Some(token.resolve(theme))
+    }
+
+    /// Resolve the discrete outline token. Secondary / ghost
+    /// (`Default`) buttons always carry a `Border` outline so they
+    /// read as buttons even with no fill — without it a Normal-state
+    /// Cancel / Reset is bare text indistinguishable from a label.
+    /// Filled CTAs (`Accent` / `Danger`) need no outline (the fill is
+    /// the affordance); `IconOnly` toolbar chips stay frameless.
+    /// `None` ⇒ no outline.
+    pub fn border_color(&self, theme: Theme) -> Option<TokenColor> {
+        match self.kind {
+            ButtonKind::Default if self.state != ButtonState::Disabled => {
+                Some(ColorToken::Border.resolve(theme))
+            }
+            _ => None,
+        }
     }
 
     /// Show a focus ring? True only when focused (per WCAG 2.4.7).
@@ -185,6 +207,18 @@ pub fn paint_button(
             rect,
             radius,
             ph2d_vector::Color::from_rgba8(bg.r, bg.g, bg.b, bg.a), // LITERAL-COLOR-OK: token-bridge — `bg` is ColorToken-resolved
+        );
+    }
+    // Discrete outline for secondary / ghost buttons (so a Normal-state
+    // Cancel/Reset reads as a button, not bare text). Drawn before the
+    // focus ring so the ring wins visually when focused.
+    if let Some(b) = button.border_color(theme) {
+        stroke_rounded_rect(
+            scene,
+            rect,
+            radius,
+            StrokeToken::Default.px(),
+            ph2d_vector::Color::from_rgba8(b.r, b.g, b.b, b.a), // LITERAL-COLOR-OK: token-bridge — `b` is ColorToken::Border
         );
     }
     if button.focus_ring() {

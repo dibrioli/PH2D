@@ -16,14 +16,12 @@ use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, NoteData, WidgetStore};
-use ph2d_editor_core::paint::{
-    paint_text, paint_text_title, rect_to_vello, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
 use ph2d_editor_core::widget::panel_chrome::{
-    HIGHLIGHTER_RGBA, PANEL_HEAD_PAD, paint_panel_corner_dot, paint_panel_surface,
-    panel_drag_handle_rect, panel_resize_handle_rect,
+    HIGHLIGHTER_RGBA, PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot,
+    paint_panel_surface, paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::showcase::{LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y};
 use ph2d_editor_core::widget::showcase::{
@@ -103,17 +101,9 @@ fn paint_inspector(
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
 
-    let title_y = rect.y + 18.0; // LITERAL-PX-OK: panel title baseline
-    paint_text_title(
-        text_system,
-        scene,
-        "Inspector",
-        rect.x + PANEL_HEAD_PAD,
-        title_y,
-        TypeToken::Md.px(),
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        resolve(ColorToken::Text1, theme),
-    );
+    // Canonical panel title (single source of truth — `panel_chrome`).
+    let title_y = rect.y + PANEL_TITLE_BASELINE;
+    let title_size = paint_panel_title(rect, "Inspector", 0.0, scene, text_system, theme);
     let sprite_for_header = current_inspector_sprite();
     let subtitle_owned;
     let subtitle: &str = match sprite_for_header.as_ref() {
@@ -128,7 +118,7 @@ fn paint_inspector(
         scene,
         subtitle,
         rect.x + PANEL_HEAD_PAD,
-        title_y + TypeToken::Md.px() + Spacing::Xs.px(),
+        title_y + title_size + Spacing::Xs.px(),
         TypeToken::Sm.px(),
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text3, theme),

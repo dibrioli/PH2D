@@ -140,6 +140,28 @@ impl Camera2d {
         [world_x, world_y]
     }
 
+    /// Project a world-space point (meters) to a screen-pixel position
+    /// (origin at the window's top-left, Y-down). Exact inverse of
+    /// [`Camera2d::screen_to_world`] — world Y-up maps so the largest
+    /// world Y lands at the smallest screen Y (top of the window).
+    ///
+    /// Used by overlays that must align to a sprite's on-canvas
+    /// footprint without a GPU readback — e.g. the Background-Removal
+    /// live preview blit.
+    pub fn world_to_screen(&self, world: [f32; 2], window: WindowSize) -> (f32, f32) {
+        let w = window.width.max(1) as f32;
+        let h = window.height.max(1) as f32;
+        let aspect = w / h;
+        let half_h = self.height_world * 0.5;
+        let half_w = half_h * aspect;
+        // Inverse of `screen_to_world`'s nx/ny derivation.
+        let nx = (world[0] - self.center[0]) / half_w;
+        let ny = (self.center[1] - world[1]) / half_h;
+        let cx_px = (nx + 1.0) * 0.5 * w;
+        let cy_px = (ny + 1.0) * 0.5 * h;
+        (cx_px, cy_px)
+    }
+
     /// Build the view-projection matrix for the given window.
     /// Standard right-handed orthographic — world Y-up maps to wgpu
     /// clip space Y-up (per WebGPU spec §3.4), which means world top
@@ -209,6 +231,21 @@ mod tests {
         let before = cam.height_world;
         cam.zoom(1.0);
         assert_eq!(cam.height_world, before);
+    }
+
+    #[test]
+    fn world_to_screen_round_trips_screen_to_world() {
+        let cam = Camera2d::new([3.0, -2.0], 8.0);
+        let win = WindowSize {
+            width: 800,
+            height: 600,
+        };
+        for px in [(0.0, 0.0), (400.0, 300.0), (799.0, 599.0), (123.0, 456.0)] {
+            let world = cam.screen_to_world(px, win);
+            let (sx, sy) = cam.world_to_screen(world, win);
+            assert!((sx - px.0).abs() < 1e-3, "x: {sx} vs {}", px.0);
+            assert!((sy - px.1).abs() < 1e-3, "y: {sy} vs {}", px.1);
+        }
     }
 
     #[test]

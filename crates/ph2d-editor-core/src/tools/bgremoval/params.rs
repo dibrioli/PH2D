@@ -144,6 +144,68 @@ pub struct BgRemovalParams {
     pub refinement: GuidedFilterParams,
 }
 
+/// Full-scale → normalized-slider mapping constants. The panel sliders
+/// run 0..1; these are the full-scale maxima each maps onto. Centralized
+/// here so [`BgRemovalTool::ui_snapshot`](super::tool::BgRemovalTool::ui_snapshot)
+/// (forward) and [`BgRemovalTool::apply_ui_edit`](super::tool::BgRemovalTool::apply_ui_edit)
+/// (inverse) can't drift apart.
+pub const TOLERANCE_FULL_SCALE: f32 = 0.30;
+pub const FEATHER_FULL_SCALE: f32 = 0.20;
+pub const REFINE_RADIUS_FULL_SCALE: f32 = 100.0;
+
+/// Normalized projection of [`BgRemovalParams`] for the panel UI. All
+/// slider fields are in `0.0..=1.0`; the panel paints these directly as
+/// slider track positions and the host publishes a fresh snapshot each
+/// frame via `ph2d_panel_bgremoval::set_current_bgremoval_snapshot`.
+///
+/// Decoupling the panel from the full-scale param units keeps the
+/// editor-core ↔ panel-crate boundary in normalized space — the panel
+/// never needs to know that "Tolerance 1.0" means ΔE 0.30 in Oklab.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct BgRemovalUiSnapshot {
+    pub mode: BgRemovalMode,
+    /// Chroma tolerance, normalized (`chroma.tolerance / TOLERANCE_FULL_SCALE`).
+    pub tolerance01: f32,
+    /// Soft-band feather, normalized (`chroma.feather / FEATHER_FULL_SCALE`).
+    pub feather01: f32,
+    /// Guided-filter refine radius, normalized
+    /// (`refinement.radius / REFINE_RADIUS_FULL_SCALE`).
+    pub refine01: f32,
+}
+
+impl Default for BgRemovalUiSnapshot {
+    fn default() -> Self {
+        // Mirrors `BgRemovalParams::default` projected through the
+        // normalized mapping (tolerance 0.10/0.30, feather 0.04/0.20,
+        // radius 30/100).
+        Self {
+            mode: BgRemovalMode::default(),
+            tolerance01: ChromaParams::default().tolerance / TOLERANCE_FULL_SCALE,
+            feather01: ChromaParams::default().feather / FEATHER_FULL_SCALE,
+            refine01: GuidedFilterParams::default().radius as f32 / REFINE_RADIUS_FULL_SCALE,
+        }
+    }
+}
+
+/// One panel-originated parameter edit, routed editor-core → shell over
+/// `EditorAction::BgremovalUiEdit`. The shell drains it and calls
+/// [`BgRemovalTool::apply_ui_edit`](super::tool::BgRemovalTool::apply_ui_edit)
+/// against the active tool instance. Slider values are normalized
+/// `0.0..=1.0`; the tool maps them back to full scale.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum BgRemovalUiEdit {
+    /// Mode radio switched (Chroma / Smart Cut).
+    Mode(BgRemovalMode),
+    /// Tolerance slider moved (normalized).
+    Tolerance(f32),
+    /// Feather slider moved (normalized).
+    Feather(f32),
+    /// Refine slider moved (normalized).
+    Refine(f32),
+    /// Apply button pressed — commit at full resolution.
+    Apply,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

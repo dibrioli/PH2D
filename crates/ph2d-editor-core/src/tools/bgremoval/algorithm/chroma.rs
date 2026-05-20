@@ -203,6 +203,41 @@ fn srgb_to_oklab(r: u8, g: u8, b: u8) -> [f32; 3] {
     ]
 }
 
+/// Inverse of [`srgb_to_oklab`]: Oklab → sRGB 8-bit. Used by the
+/// compose step's despill / foreground-decontamination pass to know
+/// the detected background colour in sRGB. Matrices are the published
+/// inverses from Björn Ottosson's Oklab reference (must NOT be
+/// truncated). Out-of-gamut results are clamped to `[0, 255]`.
+#[allow(clippy::excessive_precision)]
+pub(crate) fn oklab_to_srgb8(lab: [f32; 3]) -> [u8; 3] {
+    let (l, a, b) = (lab[0], lab[1], lab[2]);
+    let l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    let m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    let s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+    let lc = l_ * l_ * l_;
+    let mc = m_ * m_ * m_;
+    let sc = s_ * s_ * s_;
+    let rl = 4.0767416621 * lc - 3.3077115913 * mc + 0.2309699292 * sc;
+    let gl = -1.2684380046 * lc + 2.6097574011 * mc - 0.3413193965 * sc;
+    let bl = -0.0041960863 * lc - 0.7034186147 * mc + 1.7076147010 * sc;
+
+    #[inline(always)]
+    fn linear_to_srgb8(c: f32) -> u8 {
+        let c = c.clamp(0.0, 1.0);
+        let s = if c <= 0.0031308 {
+            c * 12.92
+        } else {
+            1.055 * c.powf(1.0 / 2.4) - 0.055
+        };
+        (s * 255.0 + 0.5).clamp(0.0, 255.0) as u8
+    }
+    [
+        linear_to_srgb8(rl),
+        linear_to_srgb8(gl),
+        linear_to_srgb8(bl),
+    ]
+}
+
 /// Squared Euclidean distance between two Oklab points.
 #[inline(always)]
 fn oklab_dist_sq(a: [f32; 3], b: [f32; 3]) -> f32 {

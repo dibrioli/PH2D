@@ -10,6 +10,7 @@
 //!  - `present.rs` — paint + 4 GPU passes + title refresh.
 //!  - (more phases land as Wave 3.2 progresses.)
 
+mod bgremoval_preview;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
@@ -23,7 +24,6 @@ use ph2d_editor::interaction::WidgetEvent;
 use ph2d_editor::paint::PaintCtx;
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{Layout as EditorLayout, RequestedSpriteStrategy, Toast, paint_hero_screen};
-use ph2d_render::Sprite;
 use std::time::Instant;
 
 impl crate::App {
@@ -188,7 +188,29 @@ impl crate::App {
         // the ADR-0021 / ADR-0025 propagate-transforms + sprite
         // emit pass.
         let dt = self.fixed_step.fixed_dt() as f32;
-        sim_extract::run(dt, sim, present, renderer, prop_state, worklist);
+        // While the Background-Removal tool is active on a selection,
+        // suppress that sprite from the sprite pass — its live preview
+        // overlay (drawn later, on top of the Vello scene) stands in for
+        // it, so the removed (transparent) regions reveal the canvas
+        // backdrop rather than the untouched original underneath.
+        let bgremoval_preview_entity: Option<u64> = if tools
+            .active()
+            .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+            .unwrap_or(false)
+        {
+            hero_screen.as_ref().and_then(|h| h.gizmo.selection)
+        } else {
+            None
+        };
+        sim_extract::run(
+            dt,
+            sim,
+            present,
+            renderer,
+            prop_state,
+            worklist,
+            bgremoval_preview_entity,
+        );
 
         // Sprite-layer clear color = backdrop visible in the canvas
         // area through the transparent regions of `vello_rt`. Live
@@ -304,10 +326,15 @@ impl crate::App {
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
+            let mut bgremoval_ui_edits: Vec<ph2d_editor::tools::bgremoval::BgRemovalUiEdit> =
+                Vec::new();
+            let mut bgremoval_cancel = false;
             for action in hero.bus.drain() {
                 use ph2d_editor::action_bus::EditorAction;
                 match action {
                     EditorAction::ActivateBgRemoval => activate_bgremoval = true,
+                    EditorAction::BgremovalUiEdit(edit) => bgremoval_ui_edits.push(edit),
+                    EditorAction::BgremovalCancel => bgremoval_cancel = true,
                     EditorAction::UndoImageEdit => undo_image_edit = true,
                     EditorAction::HierToggleVisibility { row } => {
                         visibility_toggle_row.get_or_insert(row);
@@ -390,55 +417,35 @@ impl crate::App {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool → Bg Removal"));
             }
-            // Snapshot push for the active BgRemovalTool. The tool needs
-            // the current selection's RGBA so its 160×160 preview shows
-            // the live sprite — pushed once per (tool-active + new
-            // selection) tuple. `last_bgremoval_pushed_entity` is
-            // reset to `None` whenever the user activates BgRemoval
-            // via Digit3 (force-refresh) AND tracked across selection
-            // changes (push when it drifts). Pulls source pixels via
-            // the same Atlas-vs-Individual branch the trim_transparency
-            // drain uses below.
-            let bgremoval_is_active = tools
-                .active()
-                .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
-                .unwrap_or(false);
-            if bgremoval_is_active
-                && let Some(bits) = hero.gizmo.selection
-                && self.last_bgremoval_pushed_entity != Some(bits)
+            // Cancel Background Removal: deactivate the tool by switching
+            // back to the default (first-registered) tool. The preview
+            // is dropped below (visibility gate sets it None when the
+            // tool is no longer active), the sprite un-suppresses, and
+            // the Inspector returns.
+            if bgremoval_cancel
+                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && tools.set_active(&default_id)
             {
-                let entity = ph2d_ecs::Entity::from_bits(bits);
-                let snap =
-                    sim.world()
-                        .get::<Sprite>(entity)
-                        .and_then(|sprite| match sprite.source {
-                            ph2d_render::SpriteSource::Atlas { key } => {
-                                let aid = atlas_asset_map.get(&key)?;
-                                let asset = asset_db.get(aid)?;
-                                match &*asset {
-                                    ph2d_asset::Asset::ImageRgba8 {
-                                        width,
-                                        height,
-                                        pixels,
-                                    } => Some((*width, *height, pixels.clone())),
-                                    _ => None,
-                                }
-                            }
-                            ph2d_render::SpriteSource::Individual { texture_id } => renderer
-                                .readback_individual(texture_id)
-                                .ok()
-                                .map(|(w, h, pix)| (w, h, pix.into())),
-                        });
-                if let Some((w, h, rgba)) = snap
-                    && let Some(tool) = tools.active_mut()
-                    && let Some(bg) = tool
-                        .as_any_mut()
-                        .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
-                {
-                    bg.set_source_snapshot(rgba.to_vec(), w, h);
-                    self.last_bgremoval_pushed_entity = Some(bits);
-                }
+                self.last_bgremoval_pushed_entity = None;
+                self.bgremoval_preview = None;
+                self.title_dirty = true;
             }
+            // Bg Removal panel ⟷ tool bridge + on-canvas live preview
+            // — extracted to sibling `bgremoval_preview.rs` (HR-18 LOC).
+            bgremoval_preview::dispatch(
+                hero,
+                tools,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                camera,
+                window_size,
+                vector_scene,
+                bgremoval_ui_edits,
+                &mut self.last_bgremoval_pushed_entity,
+                &mut self.bgremoval_preview,
+            );
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // Hierarchy intent dispatch phase — camera reset +
             // view-focus + 9 hierarchy intents (visibility_toggle /

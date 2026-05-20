@@ -127,23 +127,15 @@ pub fn paint_slider_with_chip_layout(
         resolve(ColorToken::Text2, theme),
     );
 
-    // Track background + filled portion (current value).
-    fill_rounded_rect(
-        scene,
+    // Track background + filled portion — shared canonical painter so
+    // this matches the bare `paint_slider` look exactly.
+    crate::widget::paint_slider_track(
         track_rect,
-        Radius::Xs.px(),
-        resolve(ColorToken::Bg2, theme),
+        value,
+        crate::widget::SliderOrientation::Horizontal,
+        scene,
+        theme,
     );
-    let fill_w = track_rect.w * value.clamp(0.0, 1.0);
-    if fill_w > 0.0 {
-        let filled = Rect::new(track_rect.x, track_rect.y, fill_w, track_rect.h);
-        fill_rounded_rect(
-            scene,
-            filled,
-            Radius::Xs.px(),
-            resolve(ColorToken::Accent, theme),
-        );
-    }
     if slider_id.0 != 0 {
         hit_index.register(slider_id, track_rect);
     }

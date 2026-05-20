@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-panel-bgremoval"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Background-Removal panel — typed `Panel<State>` (ADR-0029). Right-docked
+# (Inspector geometry slot); visible only while the `bgremoval` tool is
+# active. Controls only (Mode / Tolerance / Feather / Refine / Apply) —
+# the live preview renders on the canvas itself, not in this panel.
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y        = { path = "../ph2d-a11y" }
+ph2d-tokens      = { path = "../ph2d-tokens" }
+ph2d-text        = { path = "../ph2d-text" }
+ph2d-vector      = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+ph2d-host = { path = "../ph2d-host" }
+bumpalo   = "3"

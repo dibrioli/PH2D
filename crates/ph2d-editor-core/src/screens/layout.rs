@@ -40,6 +40,11 @@ pub struct HeroLayout {
     pub top_bar: Rect,
     pub left_rail: Rect,
     pub inspector: Rect,
+    /// Background-Removal panel slot — shares the Inspector's right-dock
+    /// geometry. Only painted while the `bgremoval` tool is active (the
+    /// panel's own visibility gate keys off `panel_visible("bgremoval")`,
+    /// which the shell drives from the active-tool id).
+    pub bgremoval: Rect,
     pub hierarchy: Rect,
     pub bottom_hud: Rect,
     /// Visible canvas region (between rail/inspector on the left
@@ -75,6 +80,9 @@ impl HeroLayout {
             )
         };
         let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h.min(880.0)); // LITERAL-PX-OK: Inspector max height cap
+        // Bg Removal panel shares the Inspector's right-dock x/width;
+        // it replaces the Inspector visually while the tool is active.
+        let bgremoval = inspector;
         let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
         let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
         let bottom_hud = Rect::new(
@@ -88,6 +96,7 @@ impl HeroLayout {
             top_bar,
             left_rail,
             inspector,
+            bgremoval,
             hierarchy,
             bottom_hud,
             canvas,

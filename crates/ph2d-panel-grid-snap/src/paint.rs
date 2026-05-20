@@ -17,7 +17,7 @@
 
 use crate::GridSnapPanel;
 use crate::ids;
-use crate::layout::{HEAD_PAD, PAD, ROW_GAP, ROW_H, TITLE_FONT_SIZE};
+use crate::layout::{PAD, ROW_GAP, ROW_H};
 use crate::paint_helpers::{
     paint_color_swatch_row, paint_kind_button_grid, paint_labeled_segmented_row,
     paint_section_label, paint_snap_top_toggle, paint_target_button_stack,
@@ -32,11 +32,11 @@ use crate::state::{
 };
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::paint::{paint_icon, paint_text_title, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_icon, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    clamp_panel_rect, paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect,
-    panel_resize_handle_rect,
+    PANEL_TITLE_BASELINE, clamp_panel_rect, paint_panel_corner_dot, paint_panel_surface,
+    paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::{
     GRID_SETTINGS_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
@@ -132,18 +132,17 @@ fn paint_body(
 
     let inner_x = rect.x + PAD;
     let inner_w = rect.w - PAD * 2.0;
-    let title_y = rect.y + HEAD_PAD;
-
-    paint_text_title(
-        ctx.text_system,
-        ctx.scene,
+    // Canonical panel title (single source of truth — `panel_chrome`).
+    // Reserve ~close-button width on the right.
+    let title_y = rect.y + PANEL_TITLE_BASELINE;
+    paint_panel_title(
+        rect,
         "Grid Settings",
-        inner_x,
-        title_y,
-        TITLE_FONT_SIZE,
-        inner_w - 32.0,
-        resolve(ColorToken::Text1, theme),
-    );
+        32.0,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    ); // LITERAL-PX-OK: close-button reserve
     let close_size = 22.0_f32;
     let close_rect = Rect::new(
         rect.x + rect.w - close_size - PAD,

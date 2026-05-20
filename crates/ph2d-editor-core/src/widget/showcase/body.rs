@@ -23,25 +23,17 @@ pub fn paint_showcase_body(
     hit_index.register(ids::GAL_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::GAL_RESIZE_HANDLE, resize_handle_rect);
 
-    // Header: title + subtitle + divider, matching the reference
-    // snapshot's Inspector header style.
-    let title_y = rect.y + 18.0; // LITERAL-PX-OK: panel title baseline (matches PANEL_HEAD_PAD chrome composite)
-    paint_text_title(
-        text_system,
-        scene,
-        "Widget Gallery",
-        rect.x + PANEL_HEAD_PAD,
-        title_y,
-        TypeToken::Md.px(),
-        rect.w - PANEL_HEAD_PAD * 2.0 - 40.0, // LITERAL-PX-OK: reserve for header Close button (chrome dim ~ICON_BTN_SIZE)
-        resolve(ColorToken::Text1, theme),
-    );
+    // Header: title + subtitle + divider. Canonical panel title
+    // (single source of truth — `panel_chrome::paint_panel_title`);
+    // reserve ≈ICON_BTN_SIZE on the right for the Close button.
+    let title_y = rect.y + PANEL_TITLE_BASELINE;
+    let title_size = paint_panel_title(rect, "Widget Gallery", 40.0, scene, text_system, theme); // LITERAL-PX-OK: Close-button reserve
     paint_text(
         text_system,
         scene,
         "Canonical widget showcase \u{00b7} reference for peripheral agents",
         rect.x + PANEL_HEAD_PAD,
-        title_y + TypeToken::Md.px() + Spacing::Xs.px(),
+        title_y + title_size + Spacing::Xs.px(),
         TypeToken::Xs.px() - 1.0,
         rect.w - PANEL_HEAD_PAD * 2.0,
         resolve(ColorToken::Text3, theme),
@@ -63,7 +55,7 @@ pub fn paint_showcase_body(
         StrokeToken::Default.px(),
     );
 
-    let div_y = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + Spacing::Xl.px();
+    let div_y = title_y + title_size + TypeToken::Xs.px() + Spacing::Xl.px();
     let div = Rect::new(
         rect.x + PANEL_HEAD_PAD,
         div_y,

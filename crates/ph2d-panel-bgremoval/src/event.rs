@@ -45,15 +45,20 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // Slider drag — read the freshly-dispatched value and forward it
         // normalized. The tool maps 0..1 back to full scale.
         WidgetEvent::ValueChanged(id)
-            if id == ids::BGR_TOLERANCE || id == ids::BGR_FEATHER || id == ids::BGR_REFINE =>
+            if id == ids::BGR_TOLERANCE
+                || id == ids::BGR_FEATHER
+                || id == ids::BGR_REFINE
+                || id == ids::BGR_GROW =>
         {
             let value = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             let edit = if id == ids::BGR_TOLERANCE {
                 BgRemovalUiEdit::Tolerance(value)
             } else if id == ids::BGR_FEATHER {
                 BgRemovalUiEdit::Feather(value)
-            } else {
+            } else if id == ids::BGR_REFINE {
                 BgRemovalUiEdit::Refine(value)
+            } else {
+                BgRemovalUiEdit::Grow(value)
             };
             host.bus_mut().push(EditorAction::BgremovalUiEdit(edit));
             true
@@ -66,15 +71,18 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         WidgetEvent::ValueChanged(id)
             if id == ids::BGR_TOLERANCE_NUM
                 || id == ids::BGR_FEATHER_NUM
-                || id == ids::BGR_REFINE_NUM =>
+                || id == ids::BGR_REFINE_NUM
+                || id == ids::BGR_GROW_NUM =>
         {
             let value = host.store().number_value(id).unwrap_or(0.0) as f32;
             let edit = if id == ids::BGR_TOLERANCE_NUM {
                 BgRemovalUiEdit::Tolerance(value)
             } else if id == ids::BGR_FEATHER_NUM {
                 BgRemovalUiEdit::Feather(value)
-            } else {
+            } else if id == ids::BGR_REFINE_NUM {
                 BgRemovalUiEdit::Refine(value)
+            } else {
+                BgRemovalUiEdit::Grow(value)
             };
             host.bus_mut().push(EditorAction::BgremovalUiEdit(edit));
             true
@@ -88,6 +96,19 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             }
             host.bus_mut()
                 .push(EditorAction::BgremovalUiEdit(BgRemovalUiEdit::Apply));
+            true
+        }
+        // Eyedropper toggle — flip the armed state. While armed, the
+        // shell samples canvas click-drags into extra colours. Reset
+        // the button's pressed state like the other buttons do; the
+        // armed look is driven by the per-frame snapshot in `paint`.
+        WidgetEvent::Click(id) if id == ids::BGR_EYEDROPPER => {
+            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+                *state = ButtonState::Normal;
+            }
+            host.bus_mut().push(EditorAction::BgremovalUiEdit(
+                BgRemovalUiEdit::ToggleEyedropper,
+            ));
             true
         }
         // Cancel — abandon the preview and deactivate the tool (shell

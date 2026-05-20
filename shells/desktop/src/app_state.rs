@@ -194,6 +194,11 @@ pub(crate) struct ImageEditSnapshot {
     pub(crate) pre_size: [f32; 2],
     /// `Transform.translation` before the edit (world meters).
     pub(crate) pre_translation: [f32; 2],
+    /// `Sprite.premultiplied` before the edit. BG-Removal Apply sets it
+    /// `true` (premultiplied bake, fringe fix); undo must restore the
+    /// pre-edit value so the original straight-alpha source renders
+    /// straight again. Trim / Make-Square leave it `false`.
+    pub(crate) pre_premultiplied: bool,
     /// The new individual texture id that the edit acquired. Released
     /// on undo so the now-orphaned post-edit texture doesn't leak.
     pub(crate) post_individual_id: u32,
@@ -239,6 +244,11 @@ pub(crate) struct App {
     /// `Some(anchor)` while a middle-drag is in progress; subsequent
     /// `CursorMoved` events feed `Camera2d::pan_screen_delta`.
     pub(crate) pan_anchor: Option<(f32, f32)>,
+    /// `true` while the primary button is held with the BgRemoval
+    /// eyedropper armed — drives multi-colour sampling on `CursorMoved`.
+    /// Set on Primary Down (when over the sprite + armed), cleared on
+    /// Primary Up. Separate from `dragging` (panel-slider drag).
+    pub(crate) eyedropper_dragging: bool,
     /// M14.4e: most recent cursor position (in physical px, top-left
     /// origin). Cached on every `CursorMoved` so `DroppedFile` can
     /// project the drop point to world coords — winit's `DroppedFile`

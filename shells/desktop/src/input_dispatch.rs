@@ -19,23 +19,26 @@
 //! visibility upstream.
 
 use winit::dpi::PhysicalPosition;
-use winit::event::{ElementState, KeyEvent as WinitKeyEvent, MouseButton, MouseScrollDelta};
+use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::event_loop::ActiveEventLoop;
-use winit::keyboard::{KeyCode, ModifiersState, PhysicalKey};
 
 use ph2d_editor::Toast;
 use ph2d_host::{
-    CloseAction, HostHandler, KeyEvent, KeyKind, Lifecycle, PlatformHost, PointerEvent,
-    PointerKind, PointerSource, WindowSize,
+    CloseAction, HostHandler, Lifecycle, PlatformHost, PointerEvent, PointerKind, PointerSource,
+    WindowSize,
 };
 
 use crate::App;
 use crate::Transform;
 use crate::forwarding::{
-    cursor_over_hero_panel, forward_key_to_hero, forward_text_to_hero, forward_to_hero,
-    forward_wheel_to_hero, resolve_live_entry,
+    cursor_over_hero_panel, forward_text_to_hero, forward_to_hero, forward_wheel_to_hero,
+    resolve_live_entry,
 };
-use crate::keymap::winit_to_editor_keycode;
+
+// `impl App` is split across sibling modules (see the eyedropper /
+// keyboard handlers) to keep this file under the HR-18 LOC cap.
+mod eyedropper;
+mod keyboard;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
@@ -136,6 +139,14 @@ impl App {
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
+        // BgRemoval eyedropper drag (SHELL-only): while the primary
+        // button is held with the eyedropper armed, every motion
+        // samples another colour. Early-return so the move does not
+        // also drive a gizmo drag / panel slider.
+        if self.eyedropper_dragging {
+            self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
+            return;
+        }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
         // forwarding so widgets receive the move event but the camera
         // also follows.
@@ -311,6 +322,29 @@ impl App {
         };
         self.handler.on_pointer(evt);
         forward_to_hero(self.gfx.as_mut(), evt);
+
+        // BgRemoval eyedropper (SHELL-only). A Secondary Down on an
+        // extra-colour swatch deletes it; a Primary Down/drag over the
+        // sprite samples colours. Both consume the event so the normal
+        // canvas/gizmo/context-menu logic below does not run.
+        match (mapped_button, kind) {
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if self.try_eyedropper_delete(evt.x, evt.y) =>
+            {
+                return;
+            }
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_eyedropper_sample(evt.x, evt.y) =>
+            {
+                self.eyedropper_dragging = true;
+                return;
+            }
+            (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
+                self.eyedropper_dragging = false;
+            }
+            _ => {}
+        }
+
         // M14.7 C: gizmo drag begin/end. A Primary Down that lands on
         // a gizmo handle starts a drag (snapshot Transform + cursor
         // world pos); Up clears it. Move handling lives in CursorMoved
@@ -505,88 +539,4 @@ impl App {
             }
         }
     }
-
-    pub(crate) fn on_keyboard_input(&mut self, event: WinitKeyEvent) {
-        let WinitKeyEvent {
-            physical_key,
-            state,
-            repeat,
-            text,
-            ..
-        } = event;
-
-        let keycode = match physical_key {
-            PhysicalKey::Code(code) => code as u32,
-            PhysicalKey::Unidentified(_) => 0,
-        };
-        let kind = match (state, repeat) {
-            (ElementState::Pressed, false) => KeyKind::Down,
-            (ElementState::Pressed, true) => KeyKind::Repeat,
-            (ElementState::Released, _) => KeyKind::Up,
-        };
-        self.handler.on_key(KeyEvent {
-            keycode,
-            modifiers: Self::convert_modifiers(self.modifiers),
-            kind,
-            timestamp_ns: Self::timestamp_ns(),
-        });
-
-        // Hero pipeline (ADR-0024): translate winit's physical KeyCode
-        // into the editor's KEY_* constants and route to the focused
-        // widget.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code) = physical_key
-            && let Some(editor_keycode) = winit_to_editor_keycode(code)
-        {
-            forward_key_to_hero(
-                self.gfx.as_mut(),
-                KeyEvent {
-                    keycode: editor_keycode,
-                    modifiers: Self::convert_modifiers(self.modifiers),
-                    kind,
-                    timestamp_ns: Self::timestamp_ns(),
-                },
-            );
-        }
-        // Printable text from this key event (winit already resolved
-        // layout + dead-keys + shift). Send each char through the
-        // text-input dispatcher so focused TextInput/NumberInput/
-        // Combobox buffers update. EXCEPT for ' ' coming from the
-        // physical Space key and 'a'/'A' coming from KeyA with Cmd/
-        // Ctrl held — those are inserted by the dispatch's key handler
-        // directly.
-        if state == ElementState::Pressed
-            && let Some(s) = text.as_ref()
-        {
-            let is_space_key = matches!(physical_key, PhysicalKey::Code(KeyCode::Space));
-            let cmd_held = self.modifiers.super_key() || self.modifiers.control_key();
-            for ch in s.chars() {
-                if ch.is_control() {
-                    continue;
-                }
-                if is_space_key && ch == ' ' {
-                    continue;
-                }
-                // Cmd/Ctrl chord with a letter: skip the text-event so
-                // Cmd+A's select-all isn't overwritten by 'a' insertion.
-                if cmd_held && ch.is_ascii_alphabetic() {
-                    continue;
-                }
-                forward_text_to_hero(self.gfx.as_mut(), ch);
-            }
-        }
-
-        // M12 demo controls (only on key Down, no repeat).
-        if matches!((state, repeat), (ElementState::Pressed, false))
-            && let PhysicalKey::Code(code) = physical_key
-        {
-            self.handle_editor_key(code);
-        }
-    }
 }
-
-// Tell clippy not to flag unused imports if a feature shift mid-PR-9b
-// removed a consumer. Concrete unused warnings still surface as
-// errors under `-D warnings`; this just keeps the import block tidy.
-#[allow(dead_code)]
-const fn _dummy_to_anchor_import_block(_x: ModifiersState) {}

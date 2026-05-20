@@ -51,6 +51,7 @@ pub(crate) fn drain_trim_transparency(
         world.get::<Sprite>(entity).and_then(|sprite| {
             let old_size_world = sprite.size;
             let old_source = sprite.source;
+            let old_premultiplied = sprite.premultiplied;
             let old_translation = world
                 .get::<ph2d_ecs::Transform>(entity)
                 .map(|t| [t.translation.x, t.translation.y])
@@ -71,20 +72,32 @@ pub(crate) fn drain_trim_transparency(
                             old_size_world,
                             old_translation,
                             old_source,
+                            old_premultiplied,
                         )),
                         _ => None,
                     }
                 }
                 ph2d_render::SpriteSource::Individual { texture_id } => {
                     match renderer.readback_individual(texture_id) {
-                        Ok((w, h, pixels)) => Some((
-                            w,
-                            h,
-                            pixels.into(),
-                            old_size_world,
-                            old_translation,
-                            old_source,
-                        )),
+                        Ok((w, h, mut pixels)) => {
+                            // If the source texture is premultiplied
+                            // (e.g. a prior BG-Removal Apply), recover
+                            // straight alpha — the Trim algorithm scans
+                            // for transparent borders and expects
+                            // straight RGBA.
+                            if old_premultiplied {
+                                ph2d_render::unpremultiply_rgba8(&mut pixels);
+                            }
+                            Some((
+                                w,
+                                h,
+                                pixels.into(),
+                                old_size_world,
+                                old_translation,
+                                old_source,
+                                old_premultiplied,
+                            ))
+                        }
                         Err(_) => None,
                     }
                 }
@@ -98,7 +111,15 @@ pub(crate) fn drain_trim_transparency(
             )));
             true
         }
-        Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
+        Some((
+            width,
+            height,
+            pixels,
+            old_size_world,
+            old_translation,
+            old_source,
+            old_premultiplied,
+        )) => {
             let result = ph2d_editor::tools::trim_transparency(&pixels, width, height, 0);
             if !result.trimmed {
                 toasts.push(Toast::info(ph2d_i18n::tr(
@@ -126,6 +147,10 @@ pub(crate) fn drain_trim_transparency(
                         if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                             sprite.source = ph2d_render::SpriteSource::Individual { texture_id };
                             sprite.size = new_size;
+                            // Trim re-uploads straight-alpha pixels (we
+                            // un-premultiplied above if the source was
+                            // premultiplied), so the result is straight.
+                            sprite.premultiplied = false;
                         }
                         if let Some(mut transform) = sim_w.get_mut::<ph2d_ecs::Transform>(entity) {
                             transform.translation.x = new_translation[0];
@@ -137,6 +162,7 @@ pub(crate) fn drain_trim_transparency(
                             pre_source: old_source,
                             pre_size: old_size_world,
                             pre_translation: old_translation,
+                            pre_premultiplied: old_premultiplied,
                             post_individual_id: texture_id,
                             label: "Trim",
                         });
@@ -186,6 +212,7 @@ pub(crate) fn drain_make_square(
         world.get::<Sprite>(entity).and_then(|sprite| {
             let old_size_world = sprite.size;
             let old_source = sprite.source;
+            let old_premultiplied = sprite.premultiplied;
             let old_translation = world
                 .get::<ph2d_ecs::Transform>(entity)
                 .map(|t| [t.translation.x, t.translation.y])
@@ -206,20 +233,30 @@ pub(crate) fn drain_make_square(
                             old_size_world,
                             old_translation,
                             old_source,
+                            old_premultiplied,
                         )),
                         _ => None,
                     }
                 }
                 ph2d_render::SpriteSource::Individual { texture_id } => {
                     match renderer.readback_individual(texture_id) {
-                        Ok((w, h, pixels)) => Some((
-                            w,
-                            h,
-                            pixels.into(),
-                            old_size_world,
-                            old_translation,
-                            old_source,
-                        )),
+                        Ok((w, h, mut pixels)) => {
+                            // Recover straight alpha if the source is a
+                            // premultiplied BG-Removal bake — Make-Square
+                            // pads with transparent straight RGBA.
+                            if old_premultiplied {
+                                ph2d_render::unpremultiply_rgba8(&mut pixels);
+                            }
+                            Some((
+                                w,
+                                h,
+                                pixels.into(),
+                                old_size_world,
+                                old_translation,
+                                old_source,
+                                old_premultiplied,
+                            ))
+                        }
                         Err(_) => None,
                     }
                 }
@@ -233,7 +270,15 @@ pub(crate) fn drain_make_square(
             )));
             true
         }
-        Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
+        Some((
+            width,
+            height,
+            pixels,
+            old_size_world,
+            old_translation,
+            old_source,
+            old_premultiplied,
+        )) => {
             let result = ph2d_editor::tools::make_square(&pixels, width, height);
             if !result.made_square {
                 toasts.push(Toast::info(ph2d_i18n::tr(
@@ -270,6 +315,8 @@ pub(crate) fn drain_make_square(
                         if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                             sprite.source = ph2d_render::SpriteSource::Individual { texture_id };
                             sprite.size = [new_side, new_side];
+                            // Padded result is straight-alpha RGBA.
+                            sprite.premultiplied = false;
                         }
                         if let Some(mut transform) = sim_w.get_mut::<ph2d_ecs::Transform>(entity) {
                             transform.translation.x = new_translation[0];
@@ -281,6 +328,7 @@ pub(crate) fn drain_make_square(
                             pre_source: old_source,
                             pre_size: old_size_world,
                             pre_translation: old_translation,
+                            pre_premultiplied: old_premultiplied,
                             post_individual_id: texture_id,
                             label: "Make square",
                         });
@@ -323,6 +371,7 @@ pub(crate) fn drain_bgremoval(
         world.get::<Sprite>(entity).and_then(|sprite| {
             let old_size_world = sprite.size;
             let old_source = sprite.source;
+            let old_premultiplied = sprite.premultiplied;
             let old_translation = world
                 .get::<ph2d_ecs::Transform>(entity)
                 .map(|t| [t.translation.x, t.translation.y])
@@ -343,20 +392,30 @@ pub(crate) fn drain_bgremoval(
                             old_size_world,
                             old_translation,
                             old_source,
+                            old_premultiplied,
                         )),
                         _ => None,
                     }
                 }
                 ph2d_render::SpriteSource::Individual { texture_id } => {
                     match renderer.readback_individual(texture_id) {
-                        Ok((w, h, pixels)) => Some((
-                            w,
-                            h,
-                            pixels.into(),
-                            old_size_world,
-                            old_translation,
-                            old_source,
-                        )),
+                        Ok((w, h, mut pixels)) => {
+                            // Re-running BG-Removal on an already-baked
+                            // (premultiplied) sprite: recover straight
+                            // alpha so the segmentation sees true colours.
+                            if old_premultiplied {
+                                ph2d_render::unpremultiply_rgba8(&mut pixels);
+                            }
+                            Some((
+                                w,
+                                h,
+                                pixels.into(),
+                                old_size_world,
+                                old_translation,
+                                old_source,
+                                old_premultiplied,
+                            ))
+                        }
                         Err(_) => None,
                     }
                 }
@@ -370,11 +429,29 @@ pub(crate) fn drain_bgremoval(
             ));
             true
         }
-        Some((width, height, pixels, old_size_world, old_translation, old_source)) => {
+        Some((
+            width,
+            height,
+            pixels,
+            old_size_world,
+            old_translation,
+            old_source,
+            old_premultiplied,
+        )) => {
             let mut out: Vec<u8> = Vec::new();
             bg.set_source_snapshot(pixels.to_vec(), width, height);
             let (out_w, out_h) = bg.run_full_resolution(&mut out);
             let _ = (width, height); // shadowed by out_*; silence unused.
+            // Fringe fix: the algorithm emits STRAIGHT-alpha RGBA (the
+            // anti-aliased edge band is real line-art and must NOT be
+            // altered). We premultiply it before upload so the sprite
+            // shader's bilinear sample composites the edge band exactly
+            // like the Vello on-canvas preview (premultiply-before-
+            // sample) — no purple/dark fringe. The matching
+            // `Sprite::premultiplied = true` below flips the per-instance
+            // shader flag, and the Image-Tools readback paths
+            // un-premultiply to recover the straight art.
+            ph2d_render::premultiply_rgba8(&mut out);
             match renderer.acquire_individual(out_w, out_h, &out) {
                 Err(err) => {
                     toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
@@ -384,6 +461,8 @@ pub(crate) fn drain_bgremoval(
                     let sim_w = sim.world_mut();
                     if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                         sprite.source = ph2d_render::SpriteSource::Individual { texture_id };
+                        // The baked texture is premultiplied (fringe fix).
+                        sprite.premultiplied = true;
                         // Dimensions preserved — size stays.
                     }
                     drop_undo_pre_source_if_individual(renderer, image_edit_undo);
@@ -392,6 +471,7 @@ pub(crate) fn drain_bgremoval(
                         pre_source: old_source,
                         pre_size: old_size_world,
                         pre_translation: old_translation,
+                        pre_premultiplied: old_premultiplied,
                         post_individual_id: texture_id,
                         label: "Bg Removal",
                     });
@@ -429,6 +509,7 @@ pub(crate) fn drain_undo_image_edit(
             if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                 sprite.source = snap.pre_source;
                 sprite.size = snap.pre_size;
+                sprite.premultiplied = snap.pre_premultiplied;
             }
             if let Some(mut transform) = sim_w.get_mut::<ph2d_ecs::Transform>(entity) {
                 transform.translation.x = snap.pre_translation[0];

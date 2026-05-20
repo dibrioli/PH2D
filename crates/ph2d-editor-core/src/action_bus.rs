@@ -223,6 +223,20 @@ pub enum EditorAction {
         strategy: crate::screens::hero::RequestedSpriteStrategy,
     },
 
+    /// Config → "Image filter" pick. Payload: the chosen
+    /// [`ImageFilterMode`]. The hero already wrote
+    /// `project.image_filter` (so the menu checkmark is correct on the
+    /// next paint); this round-trips the change to the shell, which
+    /// owns the GPU sampler state and calls
+    /// `SpriteRenderer::set_filter_mode(mode)` to rebuild the atlas +
+    /// individual samplers and their bind groups. The shell also stores
+    /// the mode so the per-frame BG-Removal Vello preview picks the
+    /// matching `peniko::ImageQuality`. Raised by clicking a row in the
+    /// `SettingsFilterSubmenu`.
+    SetImageFilter {
+        mode: crate::project::ImageFilterMode,
+    },
+
     /// Inspector → shell channel for entity-`Name` edits. Payload:
     /// the snapshot `(entity_bits, new_name)`. Shell drains and
     /// pushes a `EditorCommand::SetComponent` for `ph2d_ecs::Name`,

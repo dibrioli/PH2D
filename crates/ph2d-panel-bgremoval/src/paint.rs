@@ -28,7 +28,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_title, paint_segmented_group,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
+    Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
+    paint_slider_with_chip_layout,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -142,6 +143,97 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         y += row_h + row_gap;
     }
 
+    // ── Grow / Shrink (bipolar) ────────────────────────────────────
+    // Same CANONICAL slider+chip painter; only the chip's DISPLAY is
+    // remapped to a signed −1..+1 readout (0 at the 0.5 track centre)
+    // so the control reads as the "+/−, zero-centred" grow/shrink the
+    // user asked for. The slider value + link stay in normalized 0..1
+    // space — no panel-local widget look, no forked behaviour.
+    let grow_v = store
+        .slider(ids::BGR_GROW)
+        .map(|(_, v)| v)
+        .unwrap_or(snapshot.grow01);
+    let signed = (grow_v - 0.5) * 2.0;
+    let grow_display = if signed.abs() < 0.005 {
+        "0.00".to_string()
+    } else {
+        format!("{signed:+.2}")
+    };
+    paint_slider_with_chip_layout(
+        Rect::new(inner_x, y, inner_w, row_h),
+        "Grow",
+        grow_v,
+        signed as f64,
+        Some(&grow_display),
+        ids::BGR_GROW,
+        ids::BGR_GROW_NUM,
+        LABEL_COL_W,
+        chip_w,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += row_h + row_gap;
+
+    y += row_gap;
+
+    // ── Eyedropper toggle + extra-colour swatch row ────────────────
+    // The eyedropper arms canvas click-drag colour sampling (handled in
+    // the shell). Active = armed → painted as an Accent CTA; idle = a
+    // ghost Default button. Same canonical `paint_button` as Cancel/
+    // Apply — no panel-local widget look.
+    let eyedropper_state = if snapshot.eyedropper_armed {
+        ButtonState::Pressed
+    } else {
+        store
+            .button_state(ids::BGR_EYEDROPPER)
+            .unwrap_or(ButtonState::Normal)
+    };
+    let eyedropper_kind = if snapshot.eyedropper_armed {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let eyedropper_rect = Rect::new(inner_x, y, inner_w, row_h);
+    let eyedropper = Button::new(ids::BGR_EYEDROPPER, "Pick colors")
+        .kind(eyedropper_kind)
+        .state(eyedropper_state);
+    paint_button(&eyedropper, eyedropper_rect, scene, text_system, theme);
+    hit_index.register(ids::BGR_EYEDROPPER, eyedropper_rect);
+    y += row_h + row_gap;
+
+    // Swatch row(s): one canonical `paint_color_swatch` per extra
+    // colour, wrapping to a new line on overflow. Each registers a
+    // fixed-pool hit id (`BGR_SWATCHES[i]`) so the shell's right-click
+    // delete can map a hit → index.
+    let swatch_px = SwatchSize::Sm.px();
+    let swatch_gap = Spacing::Xs.px();
+    if snapshot.extra_colors.is_empty() {
+        // Faint hint when no colours picked yet.
+        y += swatch_px;
+    } else {
+        let per_row = (((inner_w + swatch_gap) / (swatch_px + swatch_gap)).floor() as usize).max(1);
+        let mut col = 0usize;
+        let mut sx = inner_x;
+        for (i, color) in snapshot.extra_colors.iter().enumerate() {
+            if col == per_row {
+                col = 0;
+                sx = inner_x;
+                y += swatch_px + swatch_gap;
+            }
+            let rect = Rect::new(sx, y, swatch_px, swatch_px);
+            let rgba = [color[0], color[1], color[2], 255];
+            let sw = ColorSwatch::new(ids::BGR_SWATCHES[i], "Extra bg colour", rgba)
+                .size(SwatchSize::Sm);
+            paint_color_swatch(&sw, rect, scene, theme);
+            hit_index.register(ids::BGR_SWATCHES[i], rect);
+            sx += swatch_px + swatch_gap;
+            col += 1;
+        }
+        y += swatch_px;
+    }
     y += row_gap;
 
     // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────

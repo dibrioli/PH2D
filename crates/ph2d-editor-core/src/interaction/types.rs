@@ -124,6 +124,13 @@ pub enum ContextMenuKind {
     /// between meters and pixels. Sim storage stays in meters; this
     /// only changes the FORMAT.
     SettingsUnitSubmenu,
+    /// Submenu opened when the user picks "Image filter" — flips the
+    /// app-wide [`crate::project::ImageFilterMode`] (Pixel Art /
+    /// Smooth) applied to EVERY sprite/texture sample and the Vello
+    /// preview. Selecting one writes `HeroScreen.project.image_filter`
+    /// and raises `EditorAction::SetImageFilter` so the shell rebuilds
+    /// the GPU samplers.
+    SettingsFilterSubmenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `super::WidgetStore::current_scene_name`.

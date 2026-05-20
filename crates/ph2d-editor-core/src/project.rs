@@ -15,6 +15,9 @@
 //! deferred — added when there's a real case of mixing scales in a
 //! single scene.
 
+pub use ph2d_host::ImageFilterMode;
+use ph2d_vector::ImageQuality;
+
 /// Defaults — kept as `pub const` so tests + UI presets can reference
 /// the canonical value without re-typing the literal.
 pub const DEFAULT_PIXELS_PER_METER: f32 = 100.0;
@@ -87,6 +90,22 @@ impl DisplayUnit {
     }
 }
 
+/// Map the app-wide [`ImageFilterMode`] (defined in `ph2d-host`) onto
+/// the peniko [`ImageQuality`] used by the Vello image preview
+/// (`VectorScene::draw_image_rgba`). Companion of
+/// `ph2d_render::wgpu_filter`, which maps the SAME enum onto the wgpu
+/// sprite sampler — keeping the on-canvas BG-Removal preview consistent
+/// with the baked sprite.
+///
+/// - `PixelArt` → [`ImageQuality::Low`]  (nearest-neighbor, crisp)
+/// - `Smooth`   → [`ImageQuality::High`] (bicubic, smooth)
+pub fn image_quality_for(mode: ImageFilterMode) -> ImageQuality {
+    match mode {
+        ImageFilterMode::PixelArt => ImageQuality::Low,
+        ImageFilterMode::Smooth => ImageQuality::High,
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectSettings {
     /// Source-image pixels per world meter. Default `100.0` matches
@@ -109,6 +128,13 @@ pub struct ProjectSettings {
     /// Settings / Gizmo readouts between "m" and "px". Default
     /// `Meters` matches Godot / Bevy convention.
     pub display_unit: DisplayUnit,
+    /// App-wide image sampling mode (Config → "Image filter"). The
+    /// editor stores it so the Settings submenu can show the active
+    /// pick with a checkmark; the SHELL is the source of truth for the
+    /// GPU sampler state and drives it via `EditorAction::SetImageFilter`
+    /// then `SpriteRenderer::set_filter_mode`. Default `PixelArt` — PH2D
+    /// is a pixel-art-first editor.
+    pub image_filter: ImageFilterMode,
 }
 
 impl ProjectSettings {
@@ -129,6 +155,7 @@ impl Default for ProjectSettings {
             snap_move_meters: DEFAULT_SNAP_MOVE_METERS,
             snap_rotate_deg: DEFAULT_SNAP_ROTATE_DEG,
             display_unit: DisplayUnit::Meters,
+            image_filter: ImageFilterMode::default(),
         }
     }
 }

@@ -67,6 +67,25 @@ pub struct Sprite {
     pub size: [f32; 2],
     /// RGBA tint multiplied with the texel color in the fragment shader.
     pub tint: [f32; 4],
+    /// `true` → this sprite's texture pixels are stored PREMULTIPLIED,
+    /// not straight alpha. Set only by the BG-Removal Apply path, which
+    /// bakes a premultiplied Individual texture so the GPU's bilinear
+    /// `textureSample` composites the anti-aliased edge band like the
+    /// Vello preview (premultiply-before-sample) instead of letting a
+    /// partial-alpha edge texel's straight RGB bleed in at full weight
+    /// (the purple/dark fringe). Drives `RenderInstance.premultiplied`
+    /// at extract time AND tells the Image-Tools readback paths to
+    /// un-premultiply before re-running an algorithm that assumes
+    /// straight alpha. Defaults to `false`.
+    ///
+    /// `#[serde(skip)]`: this is a RUNTIME rendering hint, never part of
+    /// the persisted prefab/scene format. It is only ever `true` for a
+    /// live Individual texture (itself runtime — `texture_id` isn't
+    /// portably serializable), and always `false` for Atlas sprites, so
+    /// it carries no meaning on disk. Skipping it keeps the postcard cook
+    /// hash stable (no fixture churn) and deserializes as `false`.
+    #[serde(skip)]
+    pub premultiplied: bool,
 }
 
 impl Sprite {
@@ -85,6 +104,7 @@ impl Sprite {
             source: SpriteSource::Atlas { key },
             size,
             tint,
+            premultiplied: false,
         }
     }
 
@@ -96,6 +116,7 @@ impl Sprite {
             source: SpriteSource::Individual { texture_id },
             size,
             tint,
+            premultiplied: false,
         }
     }
 }
@@ -134,7 +155,15 @@ pub struct RenderInstance {
     /// extract paths that don't set it.
     pub rotation: f32,
     pub texture_id: u32,
-    pub _pad: [u32; 2],
+    /// `1.0` → the bound texture is already premultiplied (BG-Removal
+    /// Apply); the fragment skips its post-sample premultiply so
+    /// bilinear sampling matches the Vello on-canvas preview and the
+    /// straight-alpha edge fringe disappears. `0.0` for every other
+    /// sprite. CPU-side this is set from [`Sprite::premultiplied`] at
+    /// extract time. Occupies one of the two former `_pad` words, so
+    /// the Pod stride stays 64 bytes.
+    pub premultiplied: f32,
+    pub _pad: u32,
 }
 
 impl PresentComponent for RenderInstance {}
@@ -146,6 +175,7 @@ impl RenderInstance {
         4 => Float32x4,  // atlas_uv
         5 => Float32x4,  // tint
         6 => Float32,    // rotation (M14.7)
+        7 => Float32,    // premultiplied flag (BG-Removal Apply)
     ];
 
     pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -227,13 +257,39 @@ mod tests {
             tint: [1.0, 1.0, 1.0, 1.0],
             rotation: 0.0,
             texture_id: RenderInstance::ATLAS_TEXTURE_ID,
-            _pad: [0; 2],
+            premultiplied: 0.0,
+            _pad: 0,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
         // 12 floats (world_pos+size+atlas_uv+tint) = 48 bytes
-        // + rotation f32 (4) + texture_id u32 (4) + 2 pad u32 (8) = 64 bytes
+        // + rotation f32 (4) + texture_id u32 (4) + premultiplied f32 (4)
+        // + 1 pad u32 (4) = 64 bytes — stride unchanged from pre-fringe-fix.
         assert_eq!(bytes.len(), 64);
+    }
+
+    #[test]
+    fn vertex_attributes_cover_full_stride() {
+        // The premultiplied flag is the 6th vertex attribute (location
+        // 7). Confirm the attribute array's last offset+size lands
+        // inside the Pod stride so the vertex layout doesn't read past
+        // the instance buffer.
+        let attrs = RenderInstance::VERTEX_ATTRIBUTES;
+        let last = attrs.last().expect("at least one attribute");
+        assert_eq!(last.shader_location, 7, "premultiplied is @location(7)");
+        // Float32 == 4 bytes.
+        let end = last.offset + 4;
+        assert!(
+            end <= std::mem::size_of::<RenderInstance>() as u64,
+            "attr end {end} must fit in stride {}",
+            std::mem::size_of::<RenderInstance>()
+        );
+    }
+
+    #[test]
+    fn sprite_constructors_default_straight_alpha() {
+        assert!(!Sprite::atlas(0, [1.0, 1.0], [1.0; 4]).premultiplied);
+        assert!(!Sprite::individual(1, [1.0, 1.0], [1.0; 4]).premultiplied);
     }
 
     #[test]

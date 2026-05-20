@@ -42,7 +42,7 @@ use ph2d_a11y::NodeId;
 use super::algorithm::run_pipeline;
 use super::params::{
     BgRemovalMode, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, FEATHER_FULL_SCALE,
-    REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
+    GROW_FULL_SCALE, MAX_EXTRA_BG_COLORS, REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
 };
 use super::scratch::BgRemovalScratch;
 
@@ -95,7 +95,20 @@ pub struct BgRemovalTool {
     /// it runs the pipeline at full resolution against the active
     /// sprite and writes back a new Individual texture.
     pending_apply: bool,
+
+    /// Whether the panel eyedropper is armed. While `true`, the shell's
+    /// canvas click-drag handler samples the source pixel under the
+    /// cursor and feeds it to [`Self::add_extra_color`]. Reset on
+    /// deactivate / Apply so a stale armed state can't keep eating
+    /// canvas clicks after the tool is dismissed.
+    eyedropper_armed: bool,
 }
+
+/// Squared RGB Euclidean distance below which two extra colours are
+/// treated as duplicates (skip-on-add). `24²` ≈ a barely-perceptible
+/// step; stops a click-drag from appending hundreds of near-identical
+/// samples across a smooth gradient. // LITERAL-OK: dedup perceptual budget
+const EXTRA_COLOR_DEDUP_DIST_SQ: i32 = 24 * 24;
 
 impl BgRemovalTool {
     /// Push a fresh source RGBA snapshot from the host. Called when
@@ -132,6 +145,82 @@ impl BgRemovalTool {
         let p = self.pending_apply;
         self.pending_apply = false;
         p
+    }
+
+    /// Whether the panel eyedropper is armed (shell samples canvas
+    /// click-drags into extra colours while `true`).
+    pub fn is_eyedropper_armed(&self) -> bool {
+        self.eyedropper_armed
+    }
+
+    /// Set the eyedropper armed state (shell mirror of the panel toggle).
+    pub fn set_eyedropper_armed(&mut self, armed: bool) {
+        self.eyedropper_armed = armed;
+    }
+
+    /// Borrow the current extra background colours (sRGB 8-bit).
+    pub fn extra_colors(&self) -> &[[u8; 3]] {
+        &self.params.extra_bg_colors
+    }
+
+    /// Append a user-picked extra background colour. No-op when the
+    /// colour duplicates (exactly or within
+    /// [`EXTRA_COLOR_DEDUP_DIST_SQ`]) one already stored, or when the
+    /// list is already at [`MAX_EXTRA_BG_COLORS`]. Re-runs the preview
+    /// when something was actually added and a source is loaded.
+    pub fn add_extra_color(&mut self, rgb: [u8; 3]) {
+        if self.params.extra_bg_colors.len() >= MAX_EXTRA_BG_COLORS {
+            return;
+        }
+        let is_dup = self.params.extra_bg_colors.iter().any(|c| {
+            let dr = c[0] as i32 - rgb[0] as i32;
+            let dg = c[1] as i32 - rgb[1] as i32;
+            let db = c[2] as i32 - rgb[2] as i32;
+            dr * dr + dg * dg + db * db <= EXTRA_COLOR_DEDUP_DIST_SQ
+        });
+        if is_dup {
+            return;
+        }
+        self.params.extra_bg_colors.push(rgb);
+        if self.has_source() {
+            self.rerun_preview();
+        }
+    }
+
+    /// Remove the extra background colour at `idx` (bounds-checked).
+    /// Re-runs the preview when the index was valid and a source is
+    /// loaded.
+    pub fn remove_extra_color(&mut self, idx: usize) {
+        if idx >= self.params.extra_bg_colors.len() {
+            return;
+        }
+        self.params.extra_bg_colors.remove(idx);
+        if self.has_source() {
+            self.rerun_preview();
+        }
+    }
+
+    /// Sample the stored SOURCE snapshot at normalized UV `(u, v)`
+    /// (`[0,1]` each, origin top-left), nearest-pixel. Returns the RGB
+    /// of that pixel, or `None` when no source is loaded or the UV is
+    /// out of range. Samples the SOURCE — never the framebuffer — so the
+    /// picked colour is the true sprite colour, not the composited
+    /// preview (which carries the in-progress transparency).
+    pub fn sample_source_at_uv(&self, u: f32, v: f32) -> Option<[u8; 3]> {
+        if !self.has_source() || !(0.0..=1.0).contains(&u) || !(0.0..=1.0).contains(&v) {
+            return None;
+        }
+        // Nearest-pixel: map [0,1] onto [0, dim-1].
+        let px = ((u * (self.source_w as f32 - 1.0)).round() as i64)
+            .clamp(0, self.source_w as i64 - 1) as usize;
+        let py = ((v * (self.source_h as f32 - 1.0)).round() as i64)
+            .clamp(0, self.source_h as i64 - 1) as usize;
+        let base = (py * self.source_w as usize + px) * 4;
+        Some([
+            self.source_rgba[base],
+            self.source_rgba[base + 1],
+            self.source_rgba[base + 2],
+        ])
     }
 
     /// Run the full-resolution pipeline on the cached `source_rgba`
@@ -242,6 +331,9 @@ impl BgRemovalTool {
             feather01: (self.params.chroma.feather / FEATHER_FULL_SCALE).clamp(0.0, 1.0),
             refine01: (self.params.refinement.radius as f32 / REFINE_RADIUS_FULL_SCALE)
                 .clamp(0.0, 1.0),
+            grow01: (self.params.grow_px / (2.0 * GROW_FULL_SCALE) + 0.5).clamp(0.0, 1.0),
+            extra_colors: self.params.extra_bg_colors.clone(),
+            eyedropper_armed: self.eyedropper_armed,
         }
     }
 
@@ -285,8 +377,27 @@ impl BgRemovalTool {
                     (v.clamp(0.0, 1.0) * REFINE_RADIUS_FULL_SCALE).round() as u32;
                 changed = true;
             }
+            BgRemovalUiEdit::Grow(v) => {
+                // Bipolar: 0.5 = neutral, maps to ∓GROW_FULL_SCALE px.
+                self.params.grow_px = (v.clamp(0.0, 1.0) - 0.5) * 2.0 * GROW_FULL_SCALE;
+                changed = true;
+            }
+            BgRemovalUiEdit::ToggleEyedropper => {
+                // Flip the armed state. No preview rerun needed — arming
+                // the picker doesn't change params; sampling does (via
+                // `add_extra_color`).
+                self.eyedropper_armed = !self.eyedropper_armed;
+            }
+            BgRemovalUiEdit::RemoveExtraColor(idx) => {
+                // `remove_extra_color` already reruns the preview itself.
+                self.remove_extra_color(idx);
+            }
             BgRemovalUiEdit::Apply => {
                 self.pending_apply = true;
+                // A commit ends the picking session — disarm so a stale
+                // eyedropper doesn't keep eating canvas clicks on the
+                // freshly baked sprite.
+                self.eyedropper_armed = false;
             }
         }
         if changed && self.has_source() {
@@ -394,6 +505,13 @@ impl Tool for BgRemovalTool {
         if changed && self.has_source() {
             self.rerun_preview();
         }
+    }
+
+    fn on_deactivate(&mut self) {
+        // Disarm the eyedropper so reactivating later starts clean and
+        // a stale armed state can't intercept canvas clicks meant for
+        // another tool.
+        self.eyedropper_armed = false;
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -597,10 +715,27 @@ mod tests {
         let t = BgRemovalTool::default();
         let s = t.ui_snapshot();
         assert_eq!(s.mode, BgRemovalMode::Chroma);
-        // tolerance 0.10/0.30, feather 0.04/0.20, radius 30/100.
-        assert!((s.tolerance01 - 0.10 / 0.30).abs() < 1e-5);
-        assert!((s.feather01 - 0.04 / 0.20).abs() < 1e-5);
-        assert!((s.refine01 - 0.30).abs() < 1e-5);
+        // Tuned defaults (Enio 2026-05-20): tolerance 0.6, feather 0.9,
+        // refine 0.01, grow chip −0.10 ⇒ grow01 0.45.
+        assert!((s.tolerance01 - 0.6).abs() < 1e-5);
+        assert!((s.feather01 - 0.9).abs() < 1e-5);
+        assert!((s.refine01 - 0.01).abs() < 1e-5);
+        assert!((s.grow01 - 0.45).abs() < 1e-5);
+    }
+
+    #[test]
+    fn grow_edit_maps_bipolar_and_round_trips() {
+        let mut t = BgRemovalTool::default();
+        // Centre = neutral.
+        t.apply_ui_edit(BgRemovalUiEdit::Grow(0.5));
+        assert!(t.params.grow_px.abs() < 1e-5);
+        // Full shrink (0.0) → −GROW_FULL_SCALE px; full grow (1.0) → +.
+        t.apply_ui_edit(BgRemovalUiEdit::Grow(0.0));
+        assert!((t.params.grow_px + GROW_FULL_SCALE).abs() < 1e-5);
+        assert!(t.ui_snapshot().grow01.abs() < 1e-5);
+        t.apply_ui_edit(BgRemovalUiEdit::Grow(1.0));
+        assert!((t.params.grow_px - GROW_FULL_SCALE).abs() < 1e-5);
+        assert!((t.ui_snapshot().grow01 - 1.0).abs() < 1e-5);
     }
 
     #[test]
@@ -648,5 +783,117 @@ mod tests {
         t.handle_panel_event(PanelEvent::SelectOption(MODE_GROUP_NODE, "grabcut".into()));
         let p = t.build_panel();
         assert_eq!(p.tabs[0].label, "Smart Cut");
+    }
+
+    // ── Eyedropper / extra-colour tests ────────────────────────────
+
+    #[test]
+    fn add_extra_color_dedups_near_duplicates_and_caps() {
+        let mut t = BgRemovalTool::default();
+        t.add_extra_color([100, 100, 100]);
+        // A colour within ~24 RGB of an existing one is skipped.
+        t.add_extra_color([110, 100, 100]);
+        assert_eq!(t.extra_colors().len(), 1, "near-duplicate must be skipped");
+        // A clearly different colour is appended.
+        t.add_extra_color([10, 200, 30]);
+        assert_eq!(t.extra_colors().len(), 2);
+
+        // Cap at MAX_EXTRA_BG_COLORS with well-separated colours.
+        // Grid in (R, G) with a 64-step so every pair is ≥ 64 apart
+        // on at least one channel — far beyond the dedup radius.
+        let mut t2 = BgRemovalTool::default();
+        for i in 0..(MAX_EXTRA_BG_COLORS + 5) {
+            let r = ((i % 4) * 64) as u8;
+            let g = ((i / 4) * 64) as u8;
+            t2.add_extra_color([r, g, 0]);
+        }
+        assert_eq!(t2.extra_colors().len(), MAX_EXTRA_BG_COLORS);
+    }
+
+    #[test]
+    fn remove_extra_color_removes_right_index_and_is_bounds_checked() {
+        let mut t = BgRemovalTool::default();
+        t.add_extra_color([200, 0, 0]);
+        t.add_extra_color([0, 200, 0]);
+        t.add_extra_color([0, 0, 200]);
+        t.remove_extra_color(1); // remove green
+        assert_eq!(t.extra_colors(), &[[200, 0, 0], [0, 0, 200]]);
+        // Out-of-bounds is a no-op.
+        t.remove_extra_color(99);
+        assert_eq!(t.extra_colors().len(), 2);
+    }
+
+    #[test]
+    fn sample_source_at_uv_maps_corners() {
+        // 2×2 source with 4 distinct colours: TL red, TR green,
+        // BL blue, BR white.
+        let mut t = BgRemovalTool::default();
+        let buf = vec![
+            255, 0, 0, 255, // (0,0) red
+            0, 255, 0, 255, // (1,0) green
+            0, 0, 255, 255, // (0,1) blue
+            255, 255, 255, 255, // (1,1) white
+        ];
+        t.set_source_snapshot(buf, 2, 2);
+        assert_eq!(t.sample_source_at_uv(0.0, 0.0), Some([255, 0, 0]));
+        assert_eq!(t.sample_source_at_uv(1.0, 0.0), Some([0, 255, 0]));
+        assert_eq!(t.sample_source_at_uv(0.0, 1.0), Some([0, 0, 255]));
+        assert_eq!(t.sample_source_at_uv(1.0, 1.0), Some([255, 255, 255]));
+        // Out of range → None.
+        assert_eq!(t.sample_source_at_uv(1.5, 0.0), None);
+        assert_eq!(t.sample_source_at_uv(0.0, -0.1), None);
+    }
+
+    #[test]
+    fn sample_source_at_uv_none_without_source() {
+        let t = BgRemovalTool::default();
+        assert_eq!(t.sample_source_at_uv(0.5, 0.5), None);
+    }
+
+    #[test]
+    fn ui_snapshot_reflects_extra_colors_and_armed() {
+        let mut t = BgRemovalTool::default();
+        assert!(t.ui_snapshot().extra_colors.is_empty());
+        assert!(!t.ui_snapshot().eyedropper_armed);
+        t.add_extra_color([1, 2, 3]);
+        t.set_eyedropper_armed(true);
+        let s = t.ui_snapshot();
+        assert_eq!(s.extra_colors, vec![[1, 2, 3]]);
+        assert!(s.eyedropper_armed);
+    }
+
+    #[test]
+    fn toggle_eyedropper_edit_flips_armed() {
+        let mut t = BgRemovalTool::default();
+        assert!(!t.is_eyedropper_armed());
+        t.apply_ui_edit(BgRemovalUiEdit::ToggleEyedropper);
+        assert!(t.is_eyedropper_armed());
+        t.apply_ui_edit(BgRemovalUiEdit::ToggleEyedropper);
+        assert!(!t.is_eyedropper_armed());
+    }
+
+    #[test]
+    fn remove_extra_color_edit_removes_index() {
+        let mut t = BgRemovalTool::default();
+        t.add_extra_color([200, 0, 0]);
+        t.add_extra_color([0, 200, 0]);
+        t.apply_ui_edit(BgRemovalUiEdit::RemoveExtraColor(0));
+        assert_eq!(t.extra_colors(), &[[0, 200, 0]]);
+    }
+
+    #[test]
+    fn apply_disarms_eyedropper() {
+        let mut t = BgRemovalTool::default();
+        t.set_eyedropper_armed(true);
+        t.apply_ui_edit(BgRemovalUiEdit::Apply);
+        assert!(!t.is_eyedropper_armed());
+    }
+
+    #[test]
+    fn on_deactivate_disarms_eyedropper() {
+        let mut t = BgRemovalTool::default();
+        t.set_eyedropper_armed(true);
+        Tool::on_deactivate(&mut t);
+        assert!(!t.is_eyedropper_armed());
     }
 }

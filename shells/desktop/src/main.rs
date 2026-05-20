@@ -129,6 +129,7 @@ impl App {
             gilrs,
             input: InputState::new(),
             pan_anchor: None,
+            eyedropper_dragging: false,
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),
             pending_drops: Vec::new(),

@@ -90,11 +90,18 @@ const BORDER_BG_CONFIDENCE_FLOOR: f32 = 0.60;
 ///
 /// # Panics
 /// Panics if `rgba.len() != (w * h * 4) as usize`.
+/// `extra_colors` are additional user-picked background references
+/// (sRGB 8-bit, from the panel eyedropper). A pixel is treated as
+/// background-similar when it is close to the auto/override
+/// `bg_oklab` **OR** to any extra colour — so the user can knock out
+/// multi-coloured backgrounds the corner-auto pass misses. Pass an
+/// empty slice for auto-only behaviour.
 pub fn segment(
     rgba: &[u8],
     w: u32,
     h: u32,
     params: &ChromaParams,
+    extra_colors: &[[u8; 3]],
     scratch: &mut BgRemovalScratch,
 ) -> SegmentResult {
     let n = (w as usize) * (h as usize);
@@ -124,6 +131,24 @@ pub fn segment(
     };
     let tol_sq = tol * tol;
     fill_delta_e_sq(rgba, n, bg_oklab, &mut scratch.delta_e);
+
+    // Fold in every extra user-picked background colour: a pixel's
+    // ΔE² becomes the MIN distance to {bg_oklab} ∪ {extra colours}, so
+    // being close to ANY reference classifies it as background.
+    // Everything downstream (flood / threshold / interior sweep / soft
+    // band) then works unchanged. Transparent pixels keep their forced
+    // 0.0 (already handled by `fill_delta_e_sq`); we skip them here too.
+    for &rgb in extra_colors {
+        let extra_oklab = srgb_to_oklab(rgb[0], rgb[1], rgb[2]);
+        for (i, d) in scratch.delta_e.iter_mut().enumerate().take(n) {
+            let base = i * 4;
+            if rgba[base + 3] == 0 {
+                continue;
+            }
+            let p = srgb_to_oklab(rgba[base], rgba[base + 1], rgba[base + 2]);
+            *d = d.min(oklab_dist_sq(p, extra_oklab));
+        }
+    }
 
     // 3 — decide flood vs threshold-only.
     let use_flood = params.use_flood && {
@@ -760,7 +785,7 @@ mod tests {
         let rgba = make_image(32, 32, [0, 200, 0], None);
         let mut s = BgRemovalScratch::default();
         s.ensure(32, 32, false);
-        let r = segment(&rgba, 32, 32, &default_params(), &mut s);
+        let r = segment(&rgba, 32, 32, &default_params(), &[], &mut s);
         match r {
             SegmentResult::Chroma { bg_oklab } => {
                 // bg detected — the centroid should be very close to
@@ -785,7 +810,7 @@ mod tests {
         let rgba = make_image(32, 32, [0, 200, 0], Some(([200, 30, 30], 12, 12, 8, 8)));
         let mut s = BgRemovalScratch::default();
         s.ensure(32, 32, false);
-        let _ = segment(&rgba, 32, 32, &default_params(), &mut s);
+        let _ = segment(&rgba, 32, 32, &default_params(), &[], &mut s);
 
         // Subject pixels (12..20 × 12..20) should be fg.
         for y in 12..20 {
@@ -824,7 +849,7 @@ mod tests {
 
         let mut s = BgRemovalScratch::default();
         s.ensure(32, 32, false);
-        let _ = segment(&rgba, 32, 32, &default_params(), &mut s);
+        let _ = segment(&rgba, 32, 32, &default_params(), &[], &mut s);
 
         // The 2×2 interior green patch is bg-coloured → removed.
         for y in 15..17 {
@@ -869,7 +894,7 @@ mod tests {
         p.use_flood = false;
         let mut s = BgRemovalScratch::default();
         s.ensure(32, 32, false);
-        let _ = segment(&rgba, 32, 32, &p, &mut s);
+        let _ = segment(&rgba, 32, 32, &p, &[], &mut s);
 
         // TL (green) should be bg; BR (red) should be fg.
         let tl = 0;
@@ -883,7 +908,7 @@ mod tests {
         let rgba = make_image(16, 16, [0, 200, 0], Some(([200, 0, 0], 6, 6, 4, 4)));
         let mut s = BgRemovalScratch::default();
         s.ensure(16, 16, false);
-        let _ = segment(&rgba, 16, 16, &default_params(), &mut s);
+        let _ = segment(&rgba, 16, 16, &default_params(), &[], &mut s);
 
         // A border pixel should have ΔE² ≈ 0.
         assert!(
@@ -914,7 +939,7 @@ mod tests {
         p.tolerance = 0.10;
         let mut s = BgRemovalScratch::default();
         s.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &p, &mut s);
+        let _ = segment(&rgba, 64, 64, &p, &[], &mut s);
 
         // Top-left pixel is red → fg.
         assert_eq!(
@@ -933,7 +958,7 @@ mod tests {
     fn empty_image_returns_default_bg_no_panic() {
         let mut s = BgRemovalScratch::default();
         s.ensure(0, 0, false);
-        let r = segment(&[], 0, 0, &default_params(), &mut s);
+        let r = segment(&[], 0, 0, &default_params(), &[], &mut s);
         match r {
             SegmentResult::Chroma { bg_oklab } => assert_eq!(bg_oklab, [0.0, 0.0, 0.0]),
             _ => panic!("expected Chroma"),
@@ -946,11 +971,11 @@ mod tests {
 
         let mut s1 = BgRemovalScratch::default();
         s1.ensure(48, 48, false);
-        let r1 = segment(&rgba, 48, 48, &default_params(), &mut s1);
+        let r1 = segment(&rgba, 48, 48, &default_params(), &[], &mut s1);
 
         let mut s2 = BgRemovalScratch::default();
         s2.ensure(48, 48, false);
-        let r2 = segment(&rgba, 48, 48, &default_params(), &mut s2);
+        let r2 = segment(&rgba, 48, 48, &default_params(), &[], &mut s2);
 
         assert_eq!(s1.mask, s2.mask);
         match (r1, r2) {
@@ -969,11 +994,11 @@ mod tests {
         let mut s = BgRemovalScratch::default();
         s.ensure(24, 24, false);
 
-        let _ = segment(&rgba_a, 24, 24, &default_params(), &mut s);
+        let _ = segment(&rgba_a, 24, 24, &default_params(), &[], &mut s);
         let bg_count_a = s.mask.iter().filter(|&&v| v == 0).count();
 
         // No re-ensure between calls — reuse same allocation.
-        let _ = segment(&rgba_b, 24, 24, &default_params(), &mut s);
+        let _ = segment(&rgba_b, 24, 24, &default_params(), &[], &mut s);
         let bg_count_b = s.mask.iter().filter(|&&v| v == 0).count();
 
         // Both runs should produce mostly-bg masks (different bg
@@ -1025,7 +1050,14 @@ mod tests {
         }
         let mut s = BgRemovalScratch::default();
         s.ensure(dim as u32, dim as u32, false);
-        let _ = segment(&rgba, dim as u32, dim as u32, &default_params(), &mut s);
+        let _ = segment(
+            &rgba,
+            dim as u32,
+            dim as u32,
+            &default_params(),
+            &[],
+            &mut s,
+        );
 
         // Centre red subject must be fg.
         let centre = 32 * dim + 32;
@@ -1049,7 +1081,7 @@ mod tests {
         p.tolerance = f32::NAN;
         let mut s = BgRemovalScratch::default();
         s.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &p, &mut s);
+        let _ = segment(&rgba, 64, 64, &p, &[], &mut s);
 
         // Sanitised → tol_sq = 0 + FP_NOISE_FLOOR → uniform bg
         // (exact match within FP noise) all classify as bg.
@@ -1077,7 +1109,7 @@ mod tests {
         p.use_flood = false;
         let mut s = BgRemovalScratch::default();
         s.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &p, &mut s);
+        let _ = segment(&rgba, 64, 64, &p, &[], &mut s);
 
         assert_eq!(
             s.mask[5 * 64 + 5],
@@ -1095,7 +1127,7 @@ mod tests {
         let rgba = make_image(4, 200, [50, 150, 250], None);
         let mut s = BgRemovalScratch::default();
         s.ensure(4, 200, false);
-        let _ = segment(&rgba, 4, 200, &default_params(), &mut s);
+        let _ = segment(&rgba, 4, 200, &default_params(), &[], &mut s);
         // Uniform input → entire mask should be bg.
         let bg = s.mask.iter().filter(|&&v| v == 0).count();
         assert!(
@@ -1116,7 +1148,7 @@ mod tests {
         let rgba = make_image(dim, dim, [100, 100, 100], None);
         let mut s = BgRemovalScratch::default();
         s.ensure(dim, dim, false);
-        let _ = segment(&rgba, dim, dim, &default_params(), &mut s);
+        let _ = segment(&rgba, dim, dim, &default_params(), &[], &mut s);
         let n = (dim * dim) as usize;
         let bg = s.mask.iter().filter(|&&v| v == 0).count();
         assert_eq!(bg, n, "uniform MIN_BIG_DIM image must be entirely bg");
@@ -1126,9 +1158,45 @@ mod tests {
         let rgba2 = make_image(small, small, [100, 100, 100], None);
         let mut s2 = BgRemovalScratch::default();
         s2.ensure(small, small, false);
-        let _ = segment(&rgba2, small, small, &default_params(), &mut s2);
+        let _ = segment(&rgba2, small, small, &default_params(), &[], &mut s2);
         let n2 = (small * small) as usize;
         let bg2 = s2.mask.iter().filter(|&&v| v == 0).count();
         assert_eq!(bg2, n2, "uniform small-fallback image must be entirely bg");
+    }
+
+    #[test]
+    fn extra_color_masks_a_second_background_region() {
+        // 64×64 image: green bg (auto-detected from the corners) with a
+        // BLUE 16×16 block in the centre. Blue is far from green, so
+        // with auto-only the blue block stays foreground. Adding blue as
+        // an extra background colour must knock it out — without
+        // disturbing the green-bg classification. Disable flood so each
+        // pixel is judged on its own colour (the blue block is interior,
+        // not border-connected).
+        let blue = [30u8, 30, 220];
+        let rgba = make_image(64, 64, [0, 200, 0], Some((blue, 24, 24, 16, 16)));
+        let mut p = default_params();
+        p.use_flood = false;
+        let centre = 32 * 64 + 32;
+
+        // Auto-only: blue centre is foreground.
+        let mut s = BgRemovalScratch::default();
+        s.ensure(64, 64, false);
+        let _ = segment(&rgba, 64, 64, &p, &[], &mut s);
+        assert_eq!(
+            s.mask[centre], 255,
+            "without the extra colour the blue block must stay foreground"
+        );
+
+        // With blue as an extra bg colour: the blue centre is removed.
+        let mut s2 = BgRemovalScratch::default();
+        s2.ensure(64, 64, false);
+        let _ = segment(&rgba, 64, 64, &p, &[blue], &mut s2);
+        assert_eq!(
+            s2.mask[centre], 0,
+            "the extra blue colour must mask the blue block as background"
+        );
+        // The green border is still background.
+        assert_eq!(s2.mask[0], 0, "green border must remain background");
     }
 }

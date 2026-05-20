@@ -59,8 +59,11 @@ pub struct ChromaParams {
 impl Default for ChromaParams {
     fn default() -> Self {
         Self {
-            tolerance: 0.10,
-            feather: 0.04,
+            // Tuned defaults (Enio 2026-05-20): normalized slider 0.6 →
+            // ΔE 0.18, slider 0.9 → soft-band 0.18. Project through
+            // TOLERANCE_FULL_SCALE / FEATHER_FULL_SCALE.
+            tolerance: 0.6 * TOLERANCE_FULL_SCALE,
+            feather: 0.9 * FEATHER_FULL_SCALE,
             reference_color: None,
             despill: true,
             use_flood: true,
@@ -127,8 +130,13 @@ pub struct GuidedFilterParams {
 impl Default for GuidedFilterParams {
     fn default() -> Self {
         Self {
-            radius: 30,
-            epsilon: 1e-7,
+            // Tuned defaults (Enio 2026-05-20): normalized Refine slider
+            // 0.01 → radius round(0.01 × 100) = 1. ε kept consistent with
+            // the Feather slider's log map at feather01 = 0.9 (the same
+            // `1e-6 · 10^(5·v)` curve `apply_ui_edit` applies) so the
+            // boot state equals "Feather slider parked at 0.9".
+            radius: (0.01 * REFINE_RADIUS_FULL_SCALE).round() as u32,
+            epsilon: 1.0e-6 * 10.0_f32.powf(5.0 * 0.9),
             color_guide: true,
             boundary_only: true,
         }
@@ -136,13 +144,47 @@ impl Default for GuidedFilterParams {
 }
 
 /// Top-level parameter bag passed into [`super::algorithm::run_pipeline`].
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct BgRemovalParams {
     pub mode: BgRemovalMode,
     pub chroma: ChromaParams,
     pub grabcut: GrabCutParams,
     pub refinement: GuidedFilterParams,
+    /// Signed morphological grow/shrink of the final alpha matte, in
+    /// pixels. `0.0` = no change (default). Negative erodes the matte
+    /// (eats the residual background outline at the cost of nibbling the
+    /// subject edge); positive dilates it (penetrates outward).
+    /// Backend-agnostic post-process applied by `algorithm::compose`.
+    pub grow_px: f32,
+    /// Extra user-picked background colours (sRGB 8-bit), sampled from
+    /// the image via the panel eyedropper. The chroma backend treats a
+    /// pixel as background when it is within `tolerance` of the
+    /// auto-detected colour OR **any** of these — so the user can knock
+    /// out multi-coloured / gradient backgrounds the corner-auto pass
+    /// misses. Empty by default (auto only). Ignored by GrabCut.
+    pub extra_bg_colors: Vec<[u8; 3]>,
 }
+
+impl Default for BgRemovalParams {
+    fn default() -> Self {
+        Self {
+            mode: BgRemovalMode::default(),
+            chroma: ChromaParams::default(),
+            grabcut: GrabCutParams::default(),
+            refinement: GuidedFilterParams::default(),
+            // Tuned default (Enio 2026-05-20): Grow chip −0.10 (a slight
+            // erode to trim residual outline). The chip shows the signed
+            // value `(grow01−0.5)·2`, so −0.10 ⇒ grow_px = −0.1·SCALE.
+            grow_px: -0.1 * GROW_FULL_SCALE,
+            extra_bg_colors: Vec::new(),
+        }
+    }
+}
+
+/// Max number of eyedropper-picked extra background colours. Bounds the
+/// swatch row + the per-pixel min-ΔE inner loop; click-drag sampling
+/// stops appending once full. // LITERAL-OK: UI + perf budget
+pub const MAX_EXTRA_BG_COLORS: usize = 12;
 
 /// Full-scale → normalized-slider mapping constants. The panel sliders
 /// run 0..1; these are the full-scale maxima each maps onto. Centralized
@@ -152,6 +194,10 @@ pub struct BgRemovalParams {
 pub const TOLERANCE_FULL_SCALE: f32 = 0.30;
 pub const FEATHER_FULL_SCALE: f32 = 0.20;
 pub const REFINE_RADIUS_FULL_SCALE: f32 = 100.0;
+/// Grow/Shrink is BIPOLAR: the slider runs 0..1 with `0.5` = neutral.
+/// Each end maps to ∓`GROW_FULL_SCALE` pixels of erosion (`0.0`) /
+/// dilation (`1.0`). `grow_px = (grow01 − 0.5) · 2 · GROW_FULL_SCALE`.
+pub const GROW_FULL_SCALE: f32 = 8.0;
 
 /// Normalized projection of [`BgRemovalParams`] for the panel UI. All
 /// slider fields are in `0.0..=1.0`; the panel paints these directly as
@@ -161,7 +207,10 @@ pub const REFINE_RADIUS_FULL_SCALE: f32 = 100.0;
 /// Decoupling the panel from the full-scale param units keeps the
 /// editor-core ↔ panel-crate boundary in normalized space — the panel
 /// never needs to know that "Tolerance 1.0" means ΔE 0.30 in Oklab.
-#[derive(Copy, Clone, Debug, PartialEq)]
+///
+/// NOTE: this struct is intentionally NOT `Copy` — `extra_colors` is a
+/// `Vec`. It is cheap to `Clone` (≤ `MAX_EXTRA_BG_COLORS` × 3 bytes).
+#[derive(Clone, Debug, PartialEq)]
 pub struct BgRemovalUiSnapshot {
     pub mode: BgRemovalMode,
     /// Chroma tolerance, normalized (`chroma.tolerance / TOLERANCE_FULL_SCALE`).
@@ -171,18 +220,34 @@ pub struct BgRemovalUiSnapshot {
     /// Guided-filter refine radius, normalized
     /// (`refinement.radius / REFINE_RADIUS_FULL_SCALE`).
     pub refine01: f32,
+    /// Grow/Shrink, normalized BIPOLAR (`0.5` = neutral; see
+    /// [`GROW_FULL_SCALE`]).
+    pub grow01: f32,
+    /// User-picked extra background colours (sRGB 8-bit), painted as a
+    /// row of swatches below the sliders. Right-clicking a swatch
+    /// removes it. Mirrors [`BgRemovalParams::extra_bg_colors`].
+    pub extra_colors: Vec<[u8; 3]>,
+    /// Whether the panel's eyedropper is armed — while `true`, a
+    /// click-drag over the sprite on the canvas samples colours into
+    /// `extra_colors`. Drives the toggle button's pressed look.
+    pub eyedropper_armed: bool,
 }
 
 impl Default for BgRemovalUiSnapshot {
     fn default() -> Self {
         // Mirrors `BgRemovalParams::default` projected through the
-        // normalized mapping (tolerance 0.10/0.30, feather 0.04/0.20,
-        // radius 30/100).
+        // normalized mapping (tolerance 0.6, feather 0.9, refine 0.01,
+        // grow chip −0.10 ⇒ grow01 0.45). Single source: every field
+        // derives from the param defaults, never a hand-typed dup.
+        let p = BgRemovalParams::default();
         Self {
-            mode: BgRemovalMode::default(),
-            tolerance01: ChromaParams::default().tolerance / TOLERANCE_FULL_SCALE,
-            feather01: ChromaParams::default().feather / FEATHER_FULL_SCALE,
-            refine01: GuidedFilterParams::default().radius as f32 / REFINE_RADIUS_FULL_SCALE,
+            mode: p.mode,
+            tolerance01: p.chroma.tolerance / TOLERANCE_FULL_SCALE,
+            feather01: p.chroma.feather / FEATHER_FULL_SCALE,
+            refine01: p.refinement.radius as f32 / REFINE_RADIUS_FULL_SCALE,
+            grow01: p.grow_px / (2.0 * GROW_FULL_SCALE) + 0.5,
+            extra_colors: Vec::new(),
+            eyedropper_armed: false,
         }
     }
 }
@@ -202,6 +267,15 @@ pub enum BgRemovalUiEdit {
     Feather(f32),
     /// Refine slider moved (normalized).
     Refine(f32),
+    /// Grow/Shrink slider moved (normalized bipolar; `0.5` = neutral).
+    Grow(f32),
+    /// Eyedropper toggle button clicked — flips the armed state. While
+    /// armed, the shell samples colours from the canvas on click-drag
+    /// and feeds them to the tool directly (no edit variant for the
+    /// sample itself — the shell calls `add_extra_color`).
+    ToggleEyedropper,
+    /// Right-click on extra-colour swatch `idx` — removes it.
+    RemoveExtraColor(usize),
     /// Apply button pressed — commit at full resolution.
     Apply,
 }
@@ -214,18 +288,21 @@ mod tests {
     fn defaults_align_with_design_doc() {
         let p = BgRemovalParams::default();
         assert_eq!(p.mode, BgRemovalMode::Chroma);
-        assert!((p.chroma.tolerance - 0.10).abs() < 1e-6);
-        assert!((p.chroma.feather - 0.04).abs() < 1e-6);
+        // Tuned defaults (Enio 2026-05-20): sliders 0.6 / 0.9 / 0.01 /
+        // grow −0.10.
+        assert!((p.chroma.tolerance - 0.6 * TOLERANCE_FULL_SCALE).abs() < 1e-6);
+        assert!((p.chroma.feather - 0.9 * FEATHER_FULL_SCALE).abs() < 1e-6);
         assert_eq!(p.chroma.reference_color, None);
         assert!(p.chroma.despill);
         assert!(p.chroma.use_flood);
         assert_eq!(p.grabcut.max_iters, 2);
         assert!((p.grabcut.inset_top - 0.05).abs() < 1e-6);
         assert!(p.grabcut.alpha_hole_as_bg);
-        assert!((p.refinement.epsilon - 1e-7).abs() < 1e-9);
-        assert_eq!(p.refinement.radius, 30);
+        assert_eq!(p.refinement.radius, 1);
         assert!(p.refinement.color_guide);
         assert!(p.refinement.boundary_only);
+        assert!((p.grow_px - (-0.1 * GROW_FULL_SCALE)).abs() < 1e-6);
+        assert!(p.extra_bg_colors.is_empty());
     }
 
     #[test]

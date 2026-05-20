@@ -184,7 +184,8 @@ mod tests {
             tint: [1.0, 1.0, 1.0, 1.0],
             rotation: 0.0,
             texture_id: 0,
-            _pad: [0; 2],
+            premultiplied: 0.0,
+            _pad: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()

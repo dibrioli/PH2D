@@ -42,7 +42,7 @@ pub fn set_current_bgremoval_snapshot(snapshot: Option<BgRemovalUiSnapshot>) {
 /// Read the snapshot the host published this frame, falling back to
 /// [`BgRemovalUiSnapshot::default`] when the host hasn't pushed yet.
 pub(crate) fn current_snapshot() -> BgRemovalUiSnapshot {
-    CURRENT_SNAPSHOT.with(|c| c.borrow().unwrap_or_default())
+    CURRENT_SNAPSHOT.with(|c| c.borrow().clone().unwrap_or_default())
 }
 
 pub fn last_content_h() -> f32 {

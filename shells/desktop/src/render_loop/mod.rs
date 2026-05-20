@@ -391,6 +391,16 @@ impl crate::App {
                         // Latest-wins (Option-coalesce parity).
                         name_edit = Some(info);
                     }
+                    EditorAction::SetImageFilter { mode } => {
+                        // Single global image-filter toggle. Rebuilds the
+                        // atlas + individual samplers and their bind groups
+                        // so EVERY sprite samples with the new mode; no
+                        // texture re-upload. The Vello BG-Removal preview
+                        // reads `hero.project.image_filter` directly (set by
+                        // the editor before this action), so both stay in
+                        // sync.
+                        renderer.set_filter_mode(mode);
+                    }
                     // Bgremoval falls through to its own filter-and-
                     // replace at the image-edit drain site so the
                     // `bgremoval_active` gate runs AFTER any same-frame
@@ -432,7 +442,7 @@ impl crate::App {
             }
             // Bg Removal panel ⟷ tool bridge + on-canvas live preview
             // — extracted to sibling `bgremoval_preview.rs` (HR-18 LOC).
-            bgremoval_preview::dispatch(
+            let bgremoval_apply_committed = bgremoval_preview::dispatch(
                 hero,
                 tools,
                 sim,
@@ -517,6 +527,22 @@ impl crate::App {
                 next_import_cell,
                 &mut self.last_bgremoval_pushed_entity,
             ) {
+                self.title_dirty = true;
+            }
+            // Apply teardown — runs AFTER the bake above (which needs
+            // the BgRemovalTool still active to read the result). Now
+            // that the committed alpha lives in the sprite texture,
+            // deactivate the tool exactly like Cancel: the panel hides,
+            // the sprite un-suppresses, the Inspector returns, and the
+            // on-canvas preview overlay stops re-rendering on top of the
+            // freshly baked sprite (that double-draw was the ghost edge
+            // outline that appeared only while the image stayed selected).
+            if bgremoval_apply_committed
+                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && tools.set_active(&default_id)
+            {
+                self.last_bgremoval_pushed_entity = None;
+                self.bgremoval_preview = None;
                 self.title_dirty = true;
             }
             // Legacy `FloatingPanel` Procreate-style paint was retired

@@ -37,6 +37,36 @@ fn sprite_fragment(atlas: [f32; 4], tint: [f32; 4]) -> [f32; 4] {
     [r * a, g * a, b * a, a]
 }
 
+/// Software model of the `in.premultiplied > 0.5` branch added for the
+/// BG-Removal fringe fix:
+/// ```wgsl
+/// let color = tex * in.tint;
+/// if (in.premultiplied > 0.5) { return color; }
+/// ```
+/// `tex` is sampled from an ALREADY-premultiplied texture, so the
+/// shader returns it (× tint) directly without a second premultiply.
+fn sprite_fragment_premul(tex: [f32; 4], tint: [f32; 4]) -> [f32; 4] {
+    [
+        tex[0] * tint[0],
+        tex[1] * tint[1],
+        tex[2] * tint[2],
+        tex[3] * tint[3],
+    ]
+}
+
+/// 1-D bilinear lerp of two RGBA texels at parameter `t` — the core of
+/// what the GPU sampler does on an edge between two texels. Used to
+/// contrast the two compositing models (premultiply-before vs -after
+/// sampling) that drive the fringe.
+fn lerp(a: [f32; 4], b: [f32; 4], t: f32) -> [f32; 4] {
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+        a[3] + (b[3] - a[3]) * t,
+    ]
+}
+
 /// Software model of wgpu's `BlendState::PREMULTIPLIED_ALPHA_BLENDING`
 /// — the blend equation declared in [`src/pipeline.rs`](../src/pipeline.rs).
 /// `out = src + dst * (1 - src.a)`, per channel including alpha.
@@ -198,4 +228,86 @@ fn fully_opaque_sprite_replaces_destination() {
     let dst = [1.0, 1.0, 1.0, 1.0];
     let out = premul_blend(src, dst);
     approx(out, src);
+}
+
+// ---- BG-Removal fringe fix: premultiplied-texture branch ----
+
+#[test]
+fn premul_branch_passes_premultiplied_texel_through() {
+    // A valid premultiplied texel (rgb already ≤ a) with opaque white
+    // tint must come out unchanged AND already satisfy the premultiplied
+    // invariant the blend equation expects.
+    let tex = [0.4, 0.2, 0.1, 0.5]; // premultiplied: rgb ≤ a
+    let out = sprite_fragment_premul(tex, [1.0; 4]);
+    approx(out, tex);
+    assert!(out[0] <= out[3] && out[1] <= out[3] && out[2] <= out[3]);
+}
+
+#[test]
+fn premul_branch_eliminates_edge_fringe_vs_straight_branch() {
+    // The fringe scenario: an edge between a fully-transparent texel and
+    // an opaque RED texel, sampled at the bilinear midpoint (t = 0.5).
+    //
+    // Reference = what the Vello preview does (premultiply BEFORE
+    // sampling). For a straight RED opaque texel and a transparent
+    // texel, premultiplied forms are (1,0,0,1) and (0,0,0,0); their
+    // bilinear midpoint is (0.5, 0, 0, 0.5).
+    let premul_opaque_red = [1.0, 0.0, 0.0, 1.0];
+    let premul_transparent = [0.0, 0.0, 0.0, 0.0];
+    let reference = lerp(premul_transparent, premul_opaque_red, 0.5);
+    approx(reference, [0.5, 0.0, 0.0, 0.5]);
+
+    // APPLY path WITH the fix: texture stores premultiplied data, the
+    // sampler lerps it, and the premul branch passes it through.
+    let sampled_premul = lerp(premul_transparent, premul_opaque_red, 0.5);
+    let fixed = sprite_fragment_premul(sampled_premul, [1.0; 4]);
+    approx(fixed, reference);
+
+    // OLD (buggy) APPLY path: texture stores STRAIGHT data, so the
+    // transparent texel keeps whatever RGB it carried. Background
+    // Removal zeroes alpha but the edge texel's straight RGB is NOT
+    // zero — model it as a contaminating dark/purple straight value
+    // (here a stray blue) at a=0. The straight sampler lerps colour at
+    // full weight, then premultiplies after.
+    let straight_opaque_red = [1.0, 0.0, 0.0, 1.0];
+    let straight_transparent_contaminated = [0.0, 0.0, 0.6, 0.0]; // a=0 but rgb≠0
+    let sampled_straight = lerp(straight_transparent_contaminated, straight_opaque_red, 0.5);
+    let buggy = sprite_fragment(sampled_straight, [1.0; 4]);
+
+    // The buggy path leaks blue into the edge (the fringe); the fixed
+    // path matches the reference exactly and carries no blue.
+    assert!(
+        buggy[2] > 1e-3,
+        "expected the straight-alpha path to leak a blue fringe, got {buggy:?}"
+    );
+    assert!(
+        fixed[2].abs() < 1e-6,
+        "fixed path must carry no fringe colour, got {fixed:?}"
+    );
+}
+
+#[test]
+fn premul_branch_keeps_invariant_for_blend() {
+    // A premultiplied texel passed through the branch then blended over
+    // any opaque background never overshoots 1.0 (no halo), same
+    // guarantee the straight branch gives.
+    let texels = [
+        [0.0, 0.0, 0.0, 0.0],
+        [0.5, 0.0, 0.0, 0.5],
+        [1.0, 1.0, 1.0, 1.0],
+        [0.2, 0.4, 0.6, 0.8],
+    ];
+    let bgs = [[0.0; 4], [1.0, 1.0, 1.0, 1.0], [0.5, 0.5, 0.5, 1.0]];
+    for tex in texels {
+        let src = sprite_fragment_premul(tex, [1.0; 4]);
+        for dst in bgs {
+            let out = premul_blend(src, dst);
+            for (i, c) in out.iter().enumerate() {
+                assert!(
+                    *c <= 1.0 + 1e-6,
+                    "premul-branch halo: channel {i}={c} for tex={tex:?} over {dst:?}"
+                );
+            }
+        }
+    }
 }

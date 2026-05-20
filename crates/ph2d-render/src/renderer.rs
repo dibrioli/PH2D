@@ -107,6 +107,11 @@ impl SpriteRenderer {
         });
 
         let instance_buffer = InstanceBuffer::new(&gpu, initial_instance_capacity);
+        // The individual store must agree with the atlas on filter
+        // mode. The caller built `atlas` (possibly via
+        // `TextureAtlas::with_filter`); seed the store from the SAME
+        // descriptor so both samplers match from frame 0. Subsequent
+        // changes go through `set_filter_mode` which drives both.
         let individual = IndividualTextureStore::new(&gpu);
 
         Self {
@@ -286,6 +291,24 @@ impl SpriteRenderer {
             });
     }
 
+    /// Switch the global sprite-sampling mode at runtime. Recreates the
+    /// atlas sampler + the individual-store samplers, then rebuilds the
+    /// bind groups that referenced the old samplers (the atlas's
+    /// `material_bind_group` and every individual entry's bind group).
+    ///
+    /// No texture is re-uploaded — only how the existing pixels are
+    /// sampled changes — so this is cheap (a handful of sampler +
+    /// bind-group allocations) and safe to call from the Settings menu
+    /// handler on every toggle.
+    pub fn set_filter_mode(&mut self, mode: crate::ImageFilterMode) {
+        self.atlas.set_filter_mode(&self.gpu, mode);
+        self.individual
+            .set_filter_mode(&self.gpu, &self.pipeline.material_bgl, mode);
+        // The shared-atlas material bind group baked in the old atlas
+        // sampler; rebuild it against the freshly-created one.
+        self.rebuild_material_bind_group();
+    }
+
     /// Render every `RenderInstance` in `present` into `target`.
     /// Loads with `clear_color` (single pass; M6+ may compose multiple).
     ///
@@ -418,7 +441,8 @@ mod tests {
             tint: [1.0, 1.0, 1.0, 1.0],
             rotation: 0.0,
             texture_id,
-            _pad: [0; 2],
+            premultiplied: 0.0,
+            _pad: 0,
         }
     }
 

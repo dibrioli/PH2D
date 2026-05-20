@@ -29,12 +29,19 @@ struct InstanceInput {
     @location(4) atlas_uv:  vec4<f32>,  // u_min, v_min, u_max, v_max
     @location(5) tint:      vec4<f32>,
     @location(6) rotation:  f32,        // radians; M14.7 gizmo
+    // > 0.5 → this instance's texture is ALREADY premultiplied
+    // (BG-Removal Apply bakes premultiplied so bilinear matches the
+    // Vello preview). The fragment then skips its post-sample
+    // premultiply. 0.0 for every other sprite (atlas + straight
+    // individual) so they composite exactly as before.
+    @location(7) premultiplied: f32,
 };
 
 struct VertexOutput {
     @builtin(position) clip_pos: vec4<f32>,
     @location(0) uv:   vec2<f32>,
     @location(1) tint: vec4<f32>,
+    @location(2) premultiplied: f32,
 };
 
 @vertex
@@ -59,17 +66,29 @@ fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
     out.clip_pos = camera.view_proj * vec4<f32>(world, 0.0, 1.0);
     out.uv = uv;
     out.tint = i.tint;
+    out.premultiplied = i.premultiplied;
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let tex = textureSample(atlas_tex, atlas_sampler, in.uv);
+    let color = tex * in.tint;
+    if (in.premultiplied > 0.5) {
+        // The texture is already premultiplied (BG-Removal Apply). The
+        // bilinear `textureSample` therefore blended premultiplied
+        // texels — exactly what Vello's `draw_image_rgba` does for the
+        // on-canvas preview, so partial-alpha edge texels contribute
+        // `rgb·α` and there's no straight-alpha fringe. We must NOT
+        // multiply rgb by α again. `tint` is straight; multiplying a
+        // premultiplied color by a straight tint is the correct tint
+        // for the common opaque-white tint and acceptable otherwise.
+        return color;
+    }
     // M14.5: sprite atlas is straight (non-premultiplied) sRGB; the
     // pipeline blend is `PREMULTIPLIED_ALPHA_BLENDING` (pipeline.rs),
     // so we premultiply here before returning. This makes overlap
     // composite linearly without the dark-fringe artifact seen with
     // straight alpha + premultiplied blend.
-    let color = tex * in.tint;
     return vec4<f32>(color.rgb * color.a, color.a);
 }

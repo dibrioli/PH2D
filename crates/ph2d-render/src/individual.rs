@@ -99,21 +99,62 @@ impl std::error::Error for IndividualTextureError {}
 
 impl IndividualTextureStore {
     pub fn new(gpu: &GpuContext) -> Self {
-        let sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("ph2d-render individual texture sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-            ..Default::default()
-        });
+        Self::with_filter(gpu, crate::ImageFilterMode::default())
+    }
+
+    /// Build the store with an explicit [`ImageFilterMode`]. The
+    /// sampler is the SINGLE canonical sprite sampler
+    /// ([`crate::create_sprite_sampler`]) shared with the atlas — so a
+    /// sprite baked into an Individual texture (e.g. BG-Removal Apply)
+    /// samples identically to an atlas sprite. This fixes the
+    /// smooth-preview/pixelated-bake divergence: before, this sampler
+    /// hardcoded `Nearest` while the atlas hardcoded `Linear`.
+    pub fn with_filter(gpu: &GpuContext, filter: crate::ImageFilterMode) -> Self {
+        let sampler = crate::create_sprite_sampler(
+            &gpu.device,
+            filter,
+            "ph2d-render individual texture sampler",
+        );
         Self {
             entries: BTreeMap::new(),
             // 1 because 0 is reserved for "shared atlas".
             next_id: 1,
             sampler,
+        }
+    }
+
+    /// Switch the sampling mode for every individually-owned texture.
+    /// Recreates the store sampler AND rebuilds each entry's bind group
+    /// (the bind group bakes the old sampler in, so it must be
+    /// re-created against the new one). The textures and `texture_id`s
+    /// are untouched — only how they're sampled — so SimWorld sprite
+    /// references stay valid and no pixel data is re-uploaded.
+    pub fn set_filter_mode(
+        &mut self,
+        gpu: &GpuContext,
+        material_bgl: &wgpu::BindGroupLayout,
+        filter: crate::ImageFilterMode,
+    ) {
+        self.sampler = crate::create_sprite_sampler(
+            &gpu.device,
+            filter,
+            "ph2d-render individual texture sampler",
+        );
+        for entry in self.entries.values_mut() {
+            entry.bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render individual bg (refiltered)"),
+                layout: material_bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&entry.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
+                ],
+            });
         }
     }
 

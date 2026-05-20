@@ -161,6 +161,11 @@ pub fn paint_context_menu_overlay(
                 "Display unit\u{2003}\u{25b6}",
                 None,
             ),
+            (
+                ids::CTX_MENU_SETTINGS_FILTER,
+                "Image filter\u{2003}\u{25b6}",
+                None,
+            ),
         ],
         // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
         // presets as before the cascade, just one click deeper.
@@ -181,6 +186,12 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::SettingsUnitSubmenu => &[
             (ids::CTX_MENU_UNIT_METERS, "Meters", None),
             (ids::CTX_MENU_UNIT_PIXELS, "Pixels", None),
+        ],
+        // Image-filter submenu — the single global sampling mode
+        // applied to every sprite/texture + the Vello preview.
+        ContextMenuKind::SettingsFilterSubmenu => &[
+            (ids::CTX_MENU_FILTER_PIXELART, "Pixel Art (crisp)", None),
+            (ids::CTX_MENU_FILTER_SMOOTH, "Smooth (bilinear)", None),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is

@@ -25,7 +25,13 @@ use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 
+/// Returns `true` iff an Apply committed this frame (the caller then
+/// tears the tool down — deactivate + restore Inspector — so the
+/// on-canvas preview overlay stops re-rendering on top of the freshly
+/// baked sprite, which otherwise reads as a ghost edge outline while the
+/// tool stays selected).
 #[allow(clippy::too_many_arguments)]
+#[must_use]
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
@@ -39,7 +45,7 @@ pub(super) fn dispatch(
     mut bgremoval_ui_edits: Vec<ph2d_editor::tools::bgremoval::BgRemovalUiEdit>,
     last_bgremoval_pushed_entity: &mut Option<u64>,
     bgremoval_preview: &mut Option<BgremovalPreview>,
-) {
+) -> bool {
     let bgremoval_is_active = tools
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
@@ -70,7 +76,16 @@ pub(super) fn dispatch(
                 ph2d_render::SpriteSource::Individual { texture_id } => renderer
                     .readback_individual(texture_id)
                     .ok()
-                    .map(|(w, h, pix)| (w, h, pix.into())),
+                    .map(|(w, h, mut pix)| {
+                        // If a prior BG-Removal Apply baked this texture
+                        // premultiplied (fringe fix), recover straight
+                        // alpha — the segmentation snapshot assumes
+                        // straight RGBA.
+                        if sprite.premultiplied {
+                            ph2d_render::unpremultiply_rgba8(&mut pix);
+                        }
+                        (w, h, pix.into())
+                    }),
             });
         if let Some((w, h, rgba)) = snap
             && let Some(tool) = tools.active_mut()
@@ -86,58 +101,58 @@ pub(super) fn dispatch(
     // "bgremoval" to match `BgRemovalPanel::ID`).
     hero.panel_visibility
         .insert("bgremoval", bgremoval_is_active);
+    let params_changed = !bgremoval_ui_edits.is_empty();
+    let mut apply_selection: Option<u64> = None;
+    if let Some(tool) = tools.active_mut()
+        && let Some(bg) = tool
+            .as_any_mut()
+            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
     {
-        let params_changed = !bgremoval_ui_edits.is_empty();
-        let mut apply_selection: Option<u64> = None;
-        if let Some(tool) = tools.active_mut()
-            && let Some(bg) = tool
-                .as_any_mut()
-                .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+        for edit in bgremoval_ui_edits.drain(..) {
+            bg.apply_ui_edit(edit);
+        }
+        if bg.take_pending_apply() {
+            apply_selection = hero.gizmo.selection;
+        }
+        #[cfg(feature = "panel-bgremoval")]
+        ph2d_panel_bgremoval::set_current_bgremoval_snapshot(if bgremoval_is_active {
+            Some(bg.ui_snapshot())
+        } else {
+            None
+        });
+        if bgremoval_is_active
+            && bg.has_source()
+            && let Some(bits) = hero.gizmo.selection
         {
-            for edit in bgremoval_ui_edits.drain(..) {
-                bg.apply_ui_edit(edit);
+            let stale = match &*bgremoval_preview {
+                Some(p) => params_changed || p.entity_bits != bits,
+                None => true,
+            };
+            if stale {
+                let mut out = Vec::new();
+                let (w, h) = bg.run_full_resolution(&mut out);
+                *bgremoval_preview = Some(BgremovalPreview {
+                    entity_bits: bits,
+                    rgba: std::sync::Arc::new(out),
+                    width: w,
+                    height: h,
+                });
             }
-            if bg.take_pending_apply() {
-                apply_selection = hero.gizmo.selection;
-            }
-            #[cfg(feature = "panel-bgremoval")]
-            ph2d_panel_bgremoval::set_current_bgremoval_snapshot(if bgremoval_is_active {
-                Some(bg.ui_snapshot())
-            } else {
-                None
-            });
-            if bgremoval_is_active
-                && bg.has_source()
-                && let Some(bits) = hero.gizmo.selection
-            {
-                let stale = match &*bgremoval_preview {
-                    Some(p) => params_changed || p.entity_bits != bits,
-                    None => true,
-                };
-                if stale {
-                    let mut out = Vec::new();
-                    let (w, h) = bg.run_full_resolution(&mut out);
-                    *bgremoval_preview = Some(BgremovalPreview {
-                        entity_bits: bits,
-                        rgba: std::sync::Arc::new(out),
-                        width: w,
-                        height: h,
-                    });
-                }
-            } else {
-                *bgremoval_preview = None;
-            }
-        }
-        if !bgremoval_is_active {
+        } else {
             *bgremoval_preview = None;
         }
-        if let Some(bits) = apply_selection {
-            hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits: bits });
-            // Committed result becomes the new sprite texture; drop the
-            // preview so the overlay stops painting the pre-commit copy.
-            *bgremoval_preview = None;
-        }
+    }
+    if !bgremoval_is_active {
+        *bgremoval_preview = None;
+    }
+    if let Some(bits) = apply_selection {
+        hero.bus
+            .push(ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits: bits });
+        // Committed result becomes the new sprite texture; drop the
+        // preview so the overlay stops painting the pre-commit copy.
+        // The caller deactivates the tool on the returned flag so the
+        // overlay never re-runs against the freshly baked sprite.
+        *bgremoval_preview = None;
     }
     // On-canvas preview overlay (straight-alpha, on top of the
     // suppressed sprite's footprint).
@@ -151,12 +166,20 @@ pub(super) fn dispatch(
             let (sw, sh) = (sprite.size[0], sprite.size[1]);
             let (x0, y0) = camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
             let (x1, y1) = camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
+            // Single source of truth: the preview's sampling quality is
+            // derived from the SAME app-wide ImageFilterMode that drives
+            // the wgpu sprite sampler. PixelArt → nearest, Smooth →
+            // bicubic — so the on-canvas preview matches the sprite the
+            // Apply will bake.
+            let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
             vector_scene.draw_image_rgba(
                 &preview.rgba,
                 preview.width,
                 preview.height,
                 (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
+                quality,
             );
         }
     }
+    apply_selection.is_some()
 }

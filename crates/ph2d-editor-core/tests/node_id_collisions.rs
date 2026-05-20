@@ -219,6 +219,9 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("CTX_MENU_SETTINGS_UNIT", ids::CTX_MENU_SETTINGS_UNIT),
     ("CTX_MENU_UNIT_METERS", ids::CTX_MENU_UNIT_METERS),
     ("CTX_MENU_UNIT_PIXELS", ids::CTX_MENU_UNIT_PIXELS),
+    ("CTX_MENU_SETTINGS_FILTER", ids::CTX_MENU_SETTINGS_FILTER),
+    ("CTX_MENU_FILTER_PIXELART", ids::CTX_MENU_FILTER_PIXELART),
+    ("CTX_MENU_FILTER_SMOOTH", ids::CTX_MENU_FILTER_SMOOTH),
     ("CTX_MENU_HIER_DUPLICATE", ids::CTX_MENU_HIER_DUPLICATE),
     ("CTX_MENU_HIER_DELETE", ids::CTX_MENU_HIER_DELETE),
     (
@@ -295,6 +298,20 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("HIER_PANEL", ids::HIER_PANEL),
     ("HIER_SEARCH", ids::HIER_SEARCH),
     ("HIER_RENAME_INPUT", ids::HIER_RENAME_INPUT),
+    // Bg Removal — eyedropper + extra-colour swatch pool.
+    ("BGR_EYEDROPPER", ids::BGR_EYEDROPPER),
+    ("BGR_SWATCH_0", ids::BGR_SWATCH_0),
+    ("BGR_SWATCH_1", ids::BGR_SWATCH_1),
+    ("BGR_SWATCH_2", ids::BGR_SWATCH_2),
+    ("BGR_SWATCH_3", ids::BGR_SWATCH_3),
+    ("BGR_SWATCH_4", ids::BGR_SWATCH_4),
+    ("BGR_SWATCH_5", ids::BGR_SWATCH_5),
+    ("BGR_SWATCH_6", ids::BGR_SWATCH_6),
+    ("BGR_SWATCH_7", ids::BGR_SWATCH_7),
+    ("BGR_SWATCH_8", ids::BGR_SWATCH_8),
+    ("BGR_SWATCH_9", ids::BGR_SWATCH_9),
+    ("BGR_SWATCH_10", ids::BGR_SWATCH_10),
+    ("BGR_SWATCH_11", ids::BGR_SWATCH_11),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

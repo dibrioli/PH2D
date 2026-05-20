@@ -8,6 +8,7 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::tools::bgremoval::BgRemovalUiSnapshot;
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub fn populate(store: &mut WidgetStore) {
@@ -16,6 +17,9 @@ pub fn populate(store: &mut WidgetStore) {
         ids::BGR_MODE_GRABCUT,
         ids::BGR_APPLY,
         ids::BGR_CANCEL,
+        // Eyedropper toggle. Swatches need NO store entry — they're
+        // paint-time hit registrations from a fixed id pool.
+        ids::BGR_EYEDROPPER,
     ] {
         store.register(
             id,
@@ -24,10 +28,16 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Seed slider positions from the canonical default snapshot so the
+    // boot UI can never drift from `BgRemovalParams::default()` (single
+    // source of truth — the tuned defaults live there, not here).
+    let d = BgRemovalUiSnapshot::default();
     for (slider_id, chip_id, value) in [
-        (ids::BGR_TOLERANCE, ids::BGR_TOLERANCE_NUM, 0.10 / 0.30),
-        (ids::BGR_FEATHER, ids::BGR_FEATHER_NUM, 0.04 / 0.20),
-        (ids::BGR_REFINE, ids::BGR_REFINE_NUM, 30.0 / 100.0),
+        (ids::BGR_TOLERANCE, ids::BGR_TOLERANCE_NUM, d.tolerance01),
+        (ids::BGR_FEATHER, ids::BGR_FEATHER_NUM, d.feather01),
+        (ids::BGR_REFINE, ids::BGR_REFINE_NUM, d.refine01),
+        // Grow/Shrink is bipolar (0.5 = neutral); default is a slight erode.
+        (ids::BGR_GROW, ids::BGR_GROW_NUM, d.grow01),
     ] {
         store.register(
             slider_id,
@@ -52,6 +62,14 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+        // Bidirectional slider↔chip link — the SINGLE source of truth
+        // for this behaviour. With it, the canonical dispatch (a) clamps
+        // chip keyboard/drag-scrub edits to the slider's 0..1 range and
+        // (b) mirrors the value back onto the slider track live. Exactly
+        // how the Widget Gallery wires `INSP_SAMPLE_SLIDER` to its chip
+        // (see `screens/hero/pre_populate.rs`). Without it the chip is
+        // orphaned: edits don't move the slider and aren't range-bounded.
+        store.link_slider_number(slider_id, chip_id);
     }
 }
 
@@ -67,11 +85,13 @@ mod tests {
         for id in [ids::BGR_MODE_CHROMA, ids::BGR_MODE_GRABCUT, ids::BGR_APPLY] {
             assert!(store.button_state(id).is_some(), "button {id:?} missing");
         }
-        // Sliders with their seeded normalized values.
+        // Sliders seeded from the default snapshot (tuned defaults:
+        // tolerance 0.6, feather 0.9, refine 0.01).
+        let d = BgRemovalUiSnapshot::default();
         for (id, expect) in [
-            (ids::BGR_TOLERANCE, 0.10 / 0.30),
-            (ids::BGR_FEATHER, 0.04 / 0.20),
-            (ids::BGR_REFINE, 0.30),
+            (ids::BGR_TOLERANCE, d.tolerance01),
+            (ids::BGR_FEATHER, d.feather01),
+            (ids::BGR_REFINE, d.refine01),
         ] {
             let (_, v) = store.slider(id).expect("slider registered");
             assert!((v - expect).abs() < 1e-5, "slider {id:?}: {v} vs {expect}");

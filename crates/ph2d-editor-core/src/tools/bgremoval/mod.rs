@@ -34,7 +34,7 @@ pub use algorithm::run_pipeline;
 pub use icon::eraser_bezpath;
 pub use params::{
     BgRemovalMode, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, ChromaParams,
-    GrabCutParams, GuidedFilterParams,
+    GrabCutParams, GuidedFilterParams, MAX_EXTRA_BG_COLORS,
 };
 pub use scratch::{BgRemovalScratch, FloodSpan};
 pub use tool::BgRemovalTool;

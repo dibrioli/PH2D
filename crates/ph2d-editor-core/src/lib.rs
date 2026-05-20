@@ -110,8 +110,8 @@ pub use paint::{
     paint_text_title, paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
 };
 pub use project::{
-    DEFAULT_PIXELS_PER_METER, DisplayUnit, MAX_PIXELS_PER_METER, MIN_PIXELS_PER_METER,
-    ProjectSettings,
+    DEFAULT_PIXELS_PER_METER, DisplayUnit, ImageFilterMode, MAX_PIXELS_PER_METER,
+    MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for,
 };
 pub use screens::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorSpriteInfo,

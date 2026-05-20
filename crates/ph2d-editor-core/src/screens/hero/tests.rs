@@ -458,6 +458,57 @@ fn settings_unit_cascade_opens_unit_submenu() {
     ));
 }
 
+#[test]
+fn settings_filter_cascade_opens_filter_submenu() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SettingsMenu,
+        });
+    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_FILTER));
+    assert!(consumed);
+    assert!(matches!(
+        hero.store.context_menu().map(|r| r.kind),
+        Some(crate::interaction::ContextMenuKind::SettingsFilterSubmenu)
+    ));
+}
+
+#[test]
+fn picking_smooth_filter_sets_project_and_raises_action() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    // Default is PixelArt (pixel-art-first editor).
+    assert_eq!(
+        hero.project.image_filter,
+        crate::project::ImageFilterMode::PixelArt
+    );
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SettingsFilterSubmenu,
+        });
+    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_FILTER_SMOOTH));
+    assert!(consumed);
+    // Project setting flips (so the menu state is correct next paint)…
+    assert_eq!(
+        hero.project.image_filter,
+        crate::project::ImageFilterMode::Smooth
+    );
+    // …and the shell-bound action is queued so the GPU samplers rebuild.
+    let queued: Vec<_> = hero.bus.iter().cloned().collect();
+    assert!(
+        queued.contains(&crate::action_bus::EditorAction::SetImageFilter {
+            mode: crate::project::ImageFilterMode::Smooth
+        })
+    );
+    // Menu closes after a pick (mirrors the Display-unit flow).
+    assert!(hero.store.context_menu().is_none());
+}
+
 // ADR-0029 Phase C.4: disabled in editor-core — touches the legacy
 // `grid.snap_state.panel_visible` field (now removed) and routes a
 // `hero.apply_event` that needs the typed `GridSnapPanel` installed.

@@ -125,7 +125,11 @@ pub(super) fn run(
                         tint: spr.tint,
                         rotation,
                         texture_id,
-                        _pad: [0; 2],
+                        // Flag the BG-Removal-baked premultiplied texture
+                        // so the fragment skips its post-sample premultiply
+                        // (fringe fix). Straight for every other sprite.
+                        premultiplied: if spr.premultiplied { 1.0 } else { 0.0 },
+                        _pad: 0,
                     });
                 }
             },

@@ -9,7 +9,9 @@
 use std::sync::Arc;
 use vello::Scene;
 use vello::kurbo::{Affine, BezPath, Rect};
-use vello::peniko::{Blob, Brush, Color, Fill, ImageAlphaType, ImageData, ImageFormat};
+use vello::peniko::{
+    Blob, Brush, Color, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat, ImageQuality,
+};
 
 pub struct VectorScene {
     inner: Scene,
@@ -69,12 +71,21 @@ impl VectorScene {
     /// `dest` is the destination screen rect as `(x0, y0, x1, y1)` in
     /// pixels (top-left, bottom-right). Taking raw coords keeps callers
     /// free of a direct `kurbo`/`vello` dependency.
+    ///
+    /// `quality` selects the sampling filter and MUST be derived from
+    /// the app-wide `ImageFilterMode` (PixelArt → [`ImageQuality::Low`]
+    /// / nearest, Smooth → [`ImageQuality::High`] / bicubic). Threading
+    /// it through here is what keeps the Background-Removal preview
+    /// consistent with the baked sprite: before, this defaulted to
+    /// [`ImageQuality::Medium`] (bilinear), so the preview looked smooth
+    /// while a PixelArt-sampled sprite was crisp.
     pub fn draw_image_rgba(
         &mut self,
         rgba: &Arc<Vec<u8>>,
         width: u32,
         height: u32,
         dest: (f64, f64, f64, f64),
+        quality: ImageQuality,
     ) {
         if width == 0 || height == 0 {
             return;
@@ -93,7 +104,8 @@ impl VectorScene {
         let sx = (x1 - x0) / width as f64;
         let sy = (y1 - y0) / height as f64;
         let transform = Affine::translate((x0, y0)) * Affine::scale_non_uniform(sx, sy);
-        self.inner.draw_image(&image, transform);
+        let brush = ImageBrush::new(image).with_quality(quality);
+        self.inner.draw_image(brush.as_ref(), transform);
     }
 
     /// Push a clip layer that masks subsequent drawing to `path`.

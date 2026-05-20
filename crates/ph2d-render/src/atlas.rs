@@ -166,25 +166,22 @@ impl TextureAtlas {
     /// only the regions touched by [`Self::insert`] /
     /// [`Self::update_region`] are deterministic.
     pub fn new(gpu: &GpuContext, size_px: u32) -> Self {
+        Self::with_filter(gpu, size_px, crate::ImageFilterMode::default())
+    }
+
+    /// Build an empty atlas using an explicit [`ImageFilterMode`].
+    /// [`Self::new`] defers to this with the project default. The
+    /// sampler is the SINGLE canonical sprite sampler
+    /// ([`crate::create_sprite_sampler`]) — atlas and individual
+    /// textures share the exact same descriptor so they never diverge
+    /// (the old hardcoded `Linear` vs `Nearest` bug).
+    pub fn with_filter(gpu: &GpuContext, size_px: u32, filter: crate::ImageFilterMode) -> Self {
         let adapter_cap = gpu.device.limits().max_texture_dimension_2d;
         let max_size_px = adapter_cap.min(8192);
         let size_px = size_px.max(1).min(max_size_px);
         let (texture, view) = create_texture(&gpu.device, size_px);
-        let sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("ph2d-render atlas sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            // Linear filtering is more forgiving than Nearest for
-            // sprites resampled at non-integer scale (which is
-            // common once the camera zooms). Nearest stays
-            // available behind a feature flag in M15+ for pixel-
-            // art mode.
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-            ..Default::default()
-        });
+        let sampler =
+            crate::create_sprite_sampler(&gpu.device, filter, "ph2d-render atlas sampler");
         Self {
             texture,
             view,
@@ -202,6 +199,16 @@ impl TextureAtlas {
     /// larger than this without waiting for the atlas to fail.
     pub fn max_size_px(&self) -> u32 {
         self.max_size_px
+    }
+
+    /// Recreate the atlas sampler for a new [`ImageFilterMode`]. The
+    /// texture and packed regions are untouched — only how they're
+    /// SAMPLED changes — but any bind group referencing the old
+    /// `sampler` must be rebuilt afterward (the renderer does this via
+    /// `rebuild_material_bind_group`). Cheap: one sampler allocation.
+    pub fn set_filter_mode(&mut self, gpu: &GpuContext, filter: crate::ImageFilterMode) {
+        self.sampler =
+            crate::create_sprite_sampler(&gpu.device, filter, "ph2d-render atlas sampler");
     }
 
     /// Build the demo atlas — empty atlas + 16 HSV-tinted 64×64

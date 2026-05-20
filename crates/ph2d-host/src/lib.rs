@@ -17,11 +17,13 @@
 //! something on its behalf.
 
 pub mod events;
+pub mod filter;
 
 pub use events::{
     CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PointerButton, PointerEvent, PointerKind,
     PointerSource, WheelEvent, WindowSize,
 };
+pub use filter::ImageFilterMode;
 
 /// Services exposed by the shell to the core.
 ///

@@ -91,6 +91,20 @@ pub struct BgRemovalScratch {
     /// preview thumbnail consumes.
     pub output_rgba: Vec<u8>,
 
+    /// Alpha snapshot for the grow/shrink morphology ping-pong. Size:
+    /// `w*h`. Owned by `algorithm::compose::grow_shrink_alpha`: each
+    /// erode/dilate pass copies the current alpha here, then reads it
+    /// while writing the new alpha back into `output_rgba`. Reused
+    /// across runs (HR-3).
+    pub morph_alpha: Vec<u8>,
+
+    /// Edge-bleed validity flag, one byte per pixel. Size: `w*h`.
+    /// Owned by `algorithm::compose::bleed_edges`: 1 = pixel RGB is a
+    /// trusted foreground colour source, 0 = needs filling, 2 = filled
+    /// this ring (promoted to 1 after the ring completes). Reused
+    /// across runs (HR-3).
+    pub bleed_valid: Vec<u8>,
+
     /// Reusable working state for the GrabCut backend. Holds the
     /// trimap, per-side pixel + assignment buffers, t-link caps,
     /// pre-computed n-links, and the BK max-flow solver — all
@@ -121,6 +135,8 @@ impl BgRemovalScratch {
         self.box_buf_d.resize(n, 0.0);
         self.box_buf_e.resize(n, 0.0);
         self.output_rgba.resize(n * 4, 0);
+        self.morph_alpha.resize(n, 0);
+        self.bleed_valid.resize(n, 0);
 
         let span_cap = (w as usize).saturating_mul(4);
         if self.spans.capacity() < span_cap {

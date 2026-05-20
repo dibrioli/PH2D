@@ -237,6 +237,10 @@ pub(super) fn dispatch(
                                 [1.0, 1.0, 1.0, 1.0],
                             ));
                             updated.source = ph2d_render::SpriteSource::Individual { texture_id };
+                            // Freshly-decoded image is straight alpha;
+                            // clear any premultiplied flag carried over
+                            // from a prior BG-Removal Apply on this sprite.
+                            updated.premultiplied = false;
                             match postcard::to_allocvec(&updated) {
                                 Ok(data) => {
                                     let push_res = editor_queue.push(EditorCommand::SetComponent {

@@ -49,7 +49,9 @@ pub fn run_pipeline(
     // and (for chroma) scratch.delta_e. Returns the side-channel
     // SegmentResult so compose can despill against the detected bg.
     let segment_result = match params.mode {
-        BgRemovalMode::Chroma => chroma::segment(rgba, w, h, &params.chroma, scratch),
+        BgRemovalMode::Chroma => {
+            chroma::segment(rgba, w, h, &params.chroma, &params.extra_bg_colors, scratch)
+        }
         BgRemovalMode::GrabCut => grabcut::segment(rgba, w, h, &params.grabcut, scratch),
     };
 

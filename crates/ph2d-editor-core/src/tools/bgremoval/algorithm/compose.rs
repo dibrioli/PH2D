@@ -135,6 +135,170 @@ pub fn write_output(
             }
         }
     }
+
+    // Grow / Shrink — backend-agnostic morphology on the final alpha,
+    // BEFORE the edge bleed (which only fills the resulting alpha==0
+    // collar). Negative `grow_px` erodes the matte to eat the residual
+    // background outline; positive dilates it. Runs for every mode.
+    grow_shrink_alpha(w, h, params.grow_px, scratch);
+
+    // Edge bleed — fix the Apply-vs-preview edge fringe. The on-canvas
+    // preview is clean because Vello's `draw_image` premultiplies BEFORE
+    // bilinear sampling; the wgpu sprite shader samples the STRAIGHT
+    // texture bilinearly and premultiplies AFTER (`rgb * a`). So a fully
+    // transparent texel that still holds the original bg colour bleeds
+    // that colour into the anti-aliased edge → fringe. Propagating the
+    // visible edge colour into the transparent collar makes the straight
+    // texture safe to bilinear-sample. Only alpha==0 texels are written,
+    // so the preview is byte-identical with or without this pass.
+    bleed_edges(w, h, scratch);
+}
+
+/// Erode (`grow_px < 0`) or dilate (`grow_px > 0`) the alpha channel of
+/// `scratch.output_rgba` in place by `|grow_px|` rounded pixels, using
+/// `scratch.morph_alpha` as the per-pass read snapshot.
+///
+/// Grayscale morphology: each 1-px pass replaces every alpha with the
+/// min (erode) or max (dilate) over its 3×3 (8-connected + self)
+/// neighbourhood, repeated `radius` times ≈ a Chebyshev-disc of that
+/// radius. RGB is untouched — eroded pixels simply become transparent;
+/// the subsequent edge bleed re-colours the freshly transparent collar.
+fn grow_shrink_alpha(w: u32, h: u32, grow_px: f32, scratch: &mut BgRemovalScratch) {
+    let radius = grow_px.abs().round() as i32;
+    if radius == 0 {
+        return;
+    }
+    let dilate = grow_px > 0.0;
+    let wi = w as usize;
+    let hi = h as usize;
+    if wi == 0 || hi == 0 {
+        return;
+    }
+    for _pass in 0..radius {
+        // Snapshot the current alpha so neighbour reads are unaffected
+        // by writes earlier in this pass.
+        for i in 0..wi * hi {
+            scratch.morph_alpha[i] = scratch.output_rgba[i * 4 + 3];
+        }
+        for y in 0..hi {
+            for x in 0..wi {
+                let i = y * wi + x;
+                let mut acc = scratch.morph_alpha[i];
+                for dy in -1i32..=1 {
+                    for dx in -1i32..=1 {
+                        if dx == 0 && dy == 0 {
+                            continue;
+                        }
+                        let nx = x as i32 + dx;
+                        let ny = y as i32 + dy;
+                        if nx < 0 || ny < 0 || nx >= wi as i32 || ny >= hi as i32 {
+                            // Treat off-image as background (alpha 0):
+                            // erosion shrinks at the border, dilation
+                            // does not bleed past it.
+                            if !dilate {
+                                acc = 0;
+                            }
+                            continue;
+                        }
+                        let nv = scratch.morph_alpha[ny as usize * wi + nx as usize];
+                        acc = if dilate { acc.max(nv) } else { acc.min(nv) };
+                    }
+                }
+                scratch.output_rgba[i * 4 + 3] = acc;
+            }
+        }
+    }
+}
+
+/// Number of 1-pixel rings of foreground colour to grow outward into the
+/// transparent / low-alpha collar. A handful covers the bilinear
+/// footprint at any reasonable on-canvas scale; capped so we never flood
+/// the whole transparent background. // LITERAL-OK: bilinear footprint
+const BLEED_RINGS: usize = 4;
+
+/// Grow edge colour outward into the FULLY TRANSPARENT collar so the
+/// straight-alpha texture is safe for the sprite shader's
+/// bilinear-then-premultiply sampling. Operates in place on
+/// `scratch.output_rgba` (RGB only; alpha is preserved) using
+/// `scratch.bleed_valid` as the per-pixel state machine.
+///
+/// CRITICAL invariant: only pixels with `alpha == 0` are ever written.
+/// They are invisible under premultiplied compositing, so the on-canvas
+/// Vello preview (which premultiplies BEFORE sampling) is byte-identical
+/// with or without this pass — the bleed exists purely to stop the wgpu
+/// sprite shader from bilinear-sampling the original background colour
+/// out of transparent texels. Sources are any pixel with `alpha > 0`
+/// (the true, already-despilled edge colour), NOT just the opaque
+/// interior — seeding only `== 255` would let a mis-classified opaque
+/// background pocket spray its colour into the edge (the green-halo
+/// regression). Overwriting the partial-alpha AA band (NOT just the
+/// transparent collar) likewise corrupts comic line-art, where that
+/// band IS the artwork — so this stays strictly an `alpha == 0` fill.
+fn bleed_edges(w: u32, h: u32, scratch: &mut BgRemovalScratch) {
+    let wi = w as usize;
+    let hi = h as usize;
+    let n = wi * hi;
+    if n == 0 {
+        return;
+    }
+    // Seed: any visible pixel (alpha > 0) is a colour source; only the
+    // fully-transparent collar (alpha == 0) is a fill target.
+    for i in 0..n {
+        scratch.bleed_valid[i] = u8::from(scratch.output_rgba[i * 4 + 3] > 0);
+    }
+    for _ring in 0..BLEED_RINGS {
+        let mut any = false;
+        for y in 0..hi {
+            for x in 0..wi {
+                let i = y * wi + x;
+                if scratch.bleed_valid[i] != 0 {
+                    continue; // already a source (1) or filled this ring (2)
+                }
+                // Average the RGB of the 8-connected neighbours that
+                // are sources as of the start of this ring (== 1).
+                let (mut sr, mut sg, mut sb, mut cnt) = (0u32, 0u32, 0u32, 0u32);
+                for dy in -1i32..=1 {
+                    for dx in -1i32..=1 {
+                        if dx == 0 && dy == 0 {
+                            continue;
+                        }
+                        let nx = x as i32 + dx;
+                        let ny = y as i32 + dy;
+                        if nx < 0 || ny < 0 || nx >= wi as i32 || ny >= hi as i32 {
+                            continue;
+                        }
+                        let ni = ny as usize * wi + nx as usize;
+                        if scratch.bleed_valid[ni] == 1 {
+                            let nb = ni * 4;
+                            sr += scratch.output_rgba[nb] as u32;
+                            sg += scratch.output_rgba[nb + 1] as u32;
+                            sb += scratch.output_rgba[nb + 2] as u32;
+                            cnt += 1;
+                        }
+                    }
+                }
+                if cnt > 0 {
+                    let inv = 1.0 / cnt as f32;
+                    let base = i * 4;
+                    scratch.output_rgba[base] = (sr as f32 * inv) as u8;
+                    scratch.output_rgba[base + 1] = (sg as f32 * inv) as u8;
+                    scratch.output_rgba[base + 2] = (sb as f32 * inv) as u8;
+                    // Filled this ring; promote to source only AFTER the
+                    // ring so it isn't used as a source within it.
+                    scratch.bleed_valid[i] = 2;
+                    any = true;
+                }
+            }
+        }
+        if !any {
+            break;
+        }
+        for v in scratch.bleed_valid.iter_mut() {
+            if *v == 2 {
+                *v = 1;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -194,6 +358,9 @@ mod tests {
                 feather: 0.04,
                 ..crate::tools::bgremoval::params::ChromaParams::default()
             },
+            // Pin neutral grow so these tests isolate the compose path
+            // (the default params now carry a slight erode).
+            grow_px: 0.0,
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
@@ -226,6 +393,9 @@ mod tests {
         scratch.delta_e[0] = 0.05; // mid-band but mask says bg
         let params = BgRemovalParams {
             mode: BgRemovalMode::Chroma,
+            // Pin neutral grow so these tests isolate the compose path
+            // (the default params now carry a slight erode).
+            grow_px: 0.0,
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
@@ -259,6 +429,9 @@ mod tests {
 
         let params = BgRemovalParams {
             mode: BgRemovalMode::GrabCut,
+            // Pin neutral grow so these tests isolate the compose path
+            // (the default params now carry a slight erode).
+            grow_px: 0.0,
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::GrabCut;
@@ -283,13 +456,128 @@ mod tests {
         scratch.alpha_f32[1] = 0.5;
         scratch.alpha_f32[2] = 1.0;
         scratch.alpha_f32[3] = 1.5; // out-of-range → clamp
-        let params = BgRemovalParams::default();
+        let params = BgRemovalParams {
+            grow_px: 0.0, // isolate compose path from the default erode
+            ..BgRemovalParams::default()
+        };
         let segment = SegmentResult::GrabCut;
         write_output(&rgba, w, h, &params, &segment, true, &mut scratch);
         assert_eq!(scratch.output_rgba[3], 0);
         assert_eq!(scratch.output_rgba[7], 128); // 0.5*255+0.5 = 128
         assert_eq!(scratch.output_rgba[11], 255);
         assert_eq!(scratch.output_rgba[15], 255);
+    }
+
+    // --- Edge bleed -------------------------------------------------
+
+    #[test]
+    fn bleed_fills_transparent_neighbour_with_foreground_rgb() {
+        // 3×1: opaque FG (green) | transparent (cream contamination) |
+        // transparent. After bleed the transparent pixels' RGB must
+        // become the FG green; alpha must stay 0.
+        let w = 3u32;
+        let h = 1u32;
+        let mut scratch = fresh_scratch(w, h);
+        // pixel 0: opaque green source
+        scratch.output_rgba[0..4].copy_from_slice(&[0, 200, 0, 255]);
+        // pixel 1: transparent but holds cream bg
+        scratch.output_rgba[4..8].copy_from_slice(&[240, 230, 210, 0]);
+        // pixel 2: transparent cream
+        scratch.output_rgba[8..12].copy_from_slice(&[240, 230, 210, 0]);
+
+        bleed_edges(w, h, &mut scratch);
+
+        // Pixel 1 took the green source RGB; alpha preserved at 0.
+        assert_eq!(&scratch.output_rgba[4..7], &[0, 200, 0]);
+        assert_eq!(scratch.output_rgba[7], 0, "alpha must be untouched");
+        // Pixel 2 filled from the now-valid pixel 1 on the second ring.
+        assert_eq!(&scratch.output_rgba[8..11], &[0, 200, 0]);
+        assert_eq!(scratch.output_rgba[11], 0);
+    }
+
+    // --- Grow / Shrink morphology -----------------------------------
+
+    #[test]
+    fn shrink_erodes_a_one_pixel_border_off_the_matte() {
+        // 5×5 solid-opaque block. One erosion pass must zero the outer
+        // ring (every border pixel has an off-image / interior min of 0
+        // only at the frame edge) — concretely the 4 corners + edges
+        // touching the frame go to 0; the 3×3 interior stays 255.
+        let (w, h) = (5u32, 5u32);
+        let mut scratch = fresh_scratch(w, h);
+        for i in 0..(w * h) as usize {
+            scratch.output_rgba[i * 4 + 3] = 255;
+        }
+        grow_shrink_alpha(w, h, -1.0, &mut scratch);
+        // Interior 3×3 (rows/cols 1..=3) stays opaque.
+        for y in 1..=3 {
+            for x in 1..=3 {
+                let a = scratch.output_rgba[(y * 5 + x) * 4 + 3];
+                assert_eq!(a, 255, "interior ({x},{y}) should survive erosion");
+            }
+        }
+        // Border pixels eroded to 0 (off-image counts as background).
+        assert_eq!(scratch.output_rgba[3], 0, "corner (0,0) eroded");
+        assert_eq!(scratch.output_rgba[(2 * 5) * 4 + 3], 0, "edge (0,2) eroded");
+    }
+
+    #[test]
+    fn grow_dilates_into_a_transparent_neighbour() {
+        // 3×1: opaque | transparent | transparent. One dilation pass
+        // grows the opaque alpha into pixel 1.
+        let (w, h) = (3u32, 1u32);
+        let mut scratch = fresh_scratch(w, h);
+        scratch.output_rgba[3] = 255; // pixel 0 opaque
+        grow_shrink_alpha(w, h, 1.0, &mut scratch);
+        assert_eq!(scratch.output_rgba[7], 255, "pixel 1 dilated to opaque");
+    }
+
+    #[test]
+    fn grow_zero_is_a_noop() {
+        let (w, h) = (3u32, 3u32);
+        let mut scratch = fresh_scratch(w, h);
+        let original: Vec<u8> = (0..36).map(|i| i as u8).collect();
+        scratch.output_rgba[..36].copy_from_slice(&original);
+        grow_shrink_alpha(w, h, 0.0, &mut scratch);
+        assert_eq!(&scratch.output_rgba[..36], &original[..]);
+    }
+
+    #[test]
+    fn bleed_never_touches_partial_alpha_edge_pixels() {
+        // The partial-alpha AA band IS the artwork in comic line-art;
+        // overwriting it corrupts the edge. The bleed must leave every
+        // alpha<255 visible pixel byte-for-byte and only fill the fully
+        // transparent collar.
+        let w = 3u32;
+        let h = 1u32;
+        let mut scratch = fresh_scratch(w, h);
+        scratch.output_rgba[0..4].copy_from_slice(&[0, 200, 0, 255]); // opaque FG
+        scratch.output_rgba[4..8].copy_from_slice(&[180, 60, 90, 128]); // partial edge
+        scratch.output_rgba[8..12].copy_from_slice(&[240, 230, 210, 0]); // transparent
+
+        bleed_edges(w, h, &mut scratch);
+
+        // Partial edge pixel: untouched.
+        assert_eq!(&scratch.output_rgba[4..8], &[180, 60, 90, 128]);
+        // Transparent pixel: filled from a visible neighbour (alpha 0
+        // → invisible in the preview, so this never alters it).
+        assert_eq!(scratch.output_rgba[11], 0, "alpha untouched");
+        assert_ne!(
+            &scratch.output_rgba[8..11],
+            &[240, 230, 210],
+            "transparent collar must take a visible neighbour colour"
+        );
+    }
+
+    #[test]
+    fn bleed_leaves_fully_opaque_image_untouched() {
+        let w = 2u32;
+        let h = 2u32;
+        let mut scratch = fresh_scratch(w, h);
+        let original: Vec<u8> = (0..16).map(|i| if i % 4 == 3 { 255 } else { i }).collect();
+        scratch.output_rgba[..16].copy_from_slice(&original);
+        bleed_edges(w, h, &mut scratch);
+        assert_eq!(&scratch.output_rgba[..16], &original[..]);
     }
 
     #[test]
@@ -300,7 +588,10 @@ mod tests {
         let rgba = solid_rgba(w, h, [123, 45, 67]);
         scratch.mask[0] = 255;
         scratch.alpha_f32[0] = 0.5;
-        let params = BgRemovalParams::default();
+        let params = BgRemovalParams {
+            grow_px: 0.0, // isolate compose path from the default erode
+            ..BgRemovalParams::default()
+        };
         let segment = SegmentResult::GrabCut;
         // Path 1.
         write_output(&rgba, w, h, &params, &segment, true, &mut scratch);

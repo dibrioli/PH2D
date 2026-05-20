@@ -254,21 +254,13 @@ fn apply_pending_is_idempotent_on_empty_batch() {
 
 #[test]
 fn png_bomb_oversized_dimensions_rejected() {
-    // Craft a 16k × 16k PNG header — over the 8k MAX_DIMENSION limit
-    // baked into ph2d-asset's loader. Real allocation would be 16384 ×
-    // 16384 × 4 = 1 GiB; with limits the decoder must refuse before
-    // touching that memory.
-    let mut img = image::RgbaImage::new(16_384, 16_384);
-    // Don't actually fill 1 GiB of test memory — `image::RgbaImage::new`
-    // already does. Skip the test if allocation would fail (unlikely on
-    // dev machines but graceful in resource-constrained CI runners).
-    if img.as_raw().len() < (16_384 * 16_384 * 4) as usize {
-        eprintln!("skip: cannot allocate 1 GiB for synthetic bomb");
-        return;
-    }
-    for px in img.pixels_mut() {
-        *px = image::Rgba([0, 0, 0, 255]);
-    }
+    // Craft a PNG whose IHDR claims width 8193 — one pixel past the
+    // 8192 MAX_DIMENSION baked into ph2d-asset's loader. image::Limits
+    // is checked against the IHDR header at decode start, before any
+    // pixel buffer is allocated, so a 8193 × 1 strip is enough to
+    // trigger the same rejection path as a true 16k × 16k bomb at
+    // ~32 KB instead of 1 GiB of test memory.
+    let img = image::RgbaImage::from_pixel(8_193, 1, image::Rgba([0, 0, 0, 255]));
     let mut buf = Vec::new();
     image::DynamicImage::ImageRgba8(img)
         .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
@@ -278,7 +270,7 @@ fn png_bomb_oversized_dimensions_rejected() {
     let result = db.insert_png_bytes(&buf);
     assert!(
         result.is_err(),
-        "16k × 16k PNG must be rejected by image::Limits"
+        "PNG with width > MAX_DIMENSION must be rejected by image::Limits"
     );
 }
 

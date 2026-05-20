@@ -5,12 +5,15 @@ use super::fixture;
 use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_icon_path, resolve, stroke_rounded_rect};
-use crate::widget::{ButtonState, PILL_PADDING_PX, Tooltip, paint_tooltip};
+use crate::paint::{resolve, stroke_rounded_rect};
+use crate::widget::{
+    ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, Tooltip, paint_icon_button,
+    paint_tooltip,
+};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 /// Register every TopBar widget into the [`WidgetStore`]. Called
@@ -267,9 +270,7 @@ fn paint_image_action_row(
     store: &WidgetStore,
     gap: f32,
 ) {
-    use crate::screens::hero::style::icon_button_fg;
     let row_h = layout.top_bar.h;
-    let radius = Radius::Xl.px();
     let pill_w = 40.0 + PILL_PADDING_PX * 2.0; // LITERAL-PX-OK: TopBar action pill base width (chrome dim, matches single-cluster width)
     let pills = image_action_pills();
     let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
@@ -277,25 +278,17 @@ fn paint_image_action_row(
     let mut rx = start_x;
     for pill in &pills {
         let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
-        fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-        stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
         hit_index.register(pill.id, rect);
         let state = store.button_state(pill.id).unwrap_or(ButtonState::Normal);
-        let chip = Rect::new(
-            rect.x + (rect.w - Spacing::Xl3.px()) * 0.5,
-            rect.y + (rect.h - Spacing::Xl3.px()) * 0.5,
-            Spacing::Xl3.px(),
-            Spacing::Xl3.px(),
-        );
-        let color = resolve(icon_button_fg(state), theme);
-        match &pill.icon {
-            PillIcon::FromManifest(path) => {
-                paint_icon_path(scene, path, chip, color, StrokeToken::Default.px())
-            }
-            PillIcon::Legacy(icon) => {
-                paint_icon(scene, *icon, chip, color, StrokeToken::Default.px())
-            }
-        }
+        // Canonical framed icon-chip — single source of truth (was a
+        // hand-rolled fill+stroke+icon here). Manifest pills carry a
+        // `BezPath` glyph, which `ButtonKind` can't hold, so the glyph is
+        // a paint-time `IconGlyph`.
+        let glyph = match &pill.icon {
+            PillIcon::FromManifest(path) => IconGlyph::Path(path),
+            PillIcon::Legacy(icon) => IconGlyph::Builtin(*icon),
+        };
+        paint_icon_button(rect, glyph, IconButtonStyle::Chip, state, scene, theme);
         rx = rect.x + rect.w + gap;
     }
 }

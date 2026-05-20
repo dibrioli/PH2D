@@ -25,6 +25,7 @@
 
 mod hierarchy;
 mod image_edit;
+pub(crate) mod texture_edit;
 mod view;
 
 pub(crate) use hierarchy::drain_reparent;

@@ -57,44 +57,26 @@ pub(super) fn dispatch(
         && *last_bgremoval_pushed_entity != Some(bits)
     {
         let entity = ph2d_ecs::Entity::from_bits(bits);
-        let snap = sim
-            .world()
-            .get::<Sprite>(entity)
-            .and_then(|sprite| match sprite.source {
-                ph2d_render::SpriteSource::Atlas { key } => {
-                    let aid = atlas_asset_map.get(&key)?;
-                    let asset = asset_db.get(aid)?;
-                    match &*asset {
-                        ph2d_asset::Asset::ImageRgba8 {
-                            width,
-                            height,
-                            pixels,
-                        } => Some((*width, *height, pixels.clone())),
-                        _ => None,
-                    }
-                }
-                ph2d_render::SpriteSource::Individual { texture_id } => renderer
-                    .readback_individual(texture_id)
-                    .ok()
-                    .map(|(w, h, mut pix)| {
-                        // If a prior BG-Removal Apply baked this texture
-                        // premultiplied (fringe fix), recover straight
-                        // alpha — the segmentation snapshot assumes
-                        // straight RGBA.
-                        if sprite.premultiplied {
-                            ph2d_render::unpremultiply_rgba8(&mut pix);
-                        }
-                        (w, h, pix.into())
-                    }),
-            });
-        if let Some((w, h, rgba)) = snap
-            && let Some(tool) = tools.active_mut()
-            && let Some(bg) = tool
-                .as_any_mut()
-                .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
-        {
-            bg.set_source_snapshot(rgba.to_vec(), w, h);
-            *last_bgremoval_pushed_entity = Some(bits);
+        // Single readback chokepoint: pixels arrive carrying their alpha
+        // mode (a prior premultiplied BG-Removal bake included). The
+        // segmentation snapshot reasons about true colours, so normalize
+        // to straight once.
+        if let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
+            entity,
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+        ) {
+            let straight = src.image.into_straight();
+            if let Some(tool) = tools.active_mut()
+                && let Some(bg) = tool
+                    .as_any_mut()
+                    .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+            {
+                bg.set_source_snapshot(straight.pixels, straight.width, straight.height);
+                *last_bgremoval_pushed_entity = Some(bits);
+            }
         }
     }
     // Visibility: shown iff bgremoval is the active tool (keyed

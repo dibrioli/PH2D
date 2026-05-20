@@ -15,6 +15,7 @@ mod combobox;
 mod context_menu;
 mod divider;
 mod dropdown;
+mod icon_button;
 mod list_item;
 mod modal;
 mod number_input;
@@ -61,6 +62,7 @@ pub use dropdown::{
     Dropdown, DropdownOption, DropdownState, paint_dropdown, paint_dropdown_chip,
     paint_dropdown_popover,
 };
+pub use icon_button::{IconButtonStyle, IconGlyph, paint_icon_button};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{NumberInput, paint_number_input, paint_number_input_with_buffer};

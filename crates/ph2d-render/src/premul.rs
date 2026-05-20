@@ -16,6 +16,77 @@
 //! Both functions operate in place on tightly-packed `[r,g,b,a,…]`
 //! RGBA8 and are no-ops on a zero-length / non-multiple-of-4 tail.
 
+/// Alpha storage representation of an RGBA8 buffer / texture. Making
+/// this a TYPE (not a loose `bool premultiplied`) means a caller can
+/// never silently mistake premultiplied bytes for straight ones — the
+/// class of bug that corrupted Image-Tools results run after a
+/// BG-Removal Apply (the result was un-premultiplied, the flag dropped,
+/// and the fringe came back).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AlphaMode {
+    /// RGB is independent of alpha — the editor's default texture format.
+    Straight,
+    /// RGB is already multiplied by alpha — the BG-Removal fringe-fix bake.
+    Premultiplied,
+}
+
+impl AlphaMode {
+    pub fn is_premultiplied(self) -> bool {
+        matches!(self, AlphaMode::Premultiplied)
+    }
+    /// Map from `Sprite.premultiplied`.
+    pub fn from_premultiplied_flag(flag: bool) -> Self {
+        if flag {
+            AlphaMode::Premultiplied
+        } else {
+            AlphaMode::Straight
+        }
+    }
+}
+
+/// An owned RGBA8 image that CARRIES its alpha representation. Image
+/// tools read a sprite's pixels as a `SpriteImage` and hand one back; the
+/// upload chokepoint derives `Sprite.premultiplied` from `alpha`, so the
+/// representation can never drift from the bytes. Conversions are
+/// explicit + reversible (see [`premultiply_rgba8`] / [`unpremultiply_rgba8`]).
+#[derive(Clone, Debug)]
+pub struct SpriteImage {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+    pub alpha: AlphaMode,
+}
+
+impl SpriteImage {
+    pub fn new(width: u32, height: u32, pixels: Vec<u8>, alpha: AlphaMode) -> Self {
+        Self {
+            width,
+            height,
+            pixels,
+            alpha,
+        }
+    }
+
+    /// Convert to STRAIGHT alpha (no-op if already straight). Call before
+    /// any algorithm that reasons about true colours (segmentation).
+    pub fn into_straight(mut self) -> Self {
+        if self.alpha == AlphaMode::Premultiplied {
+            unpremultiply_rgba8(&mut self.pixels);
+            self.alpha = AlphaMode::Straight;
+        }
+        self
+    }
+
+    /// Convert to PREMULTIPLIED alpha (no-op if already premultiplied).
+    pub fn into_premultiplied(mut self) -> Self {
+        if self.alpha == AlphaMode::Straight {
+            premultiply_rgba8(&mut self.pixels);
+            self.alpha = AlphaMode::Premultiplied;
+        }
+        self
+    }
+}
+
 /// Convert STRAIGHT-alpha RGBA8 to PREMULTIPLIED in place:
 /// `rgb' = round(rgb * a / 255)`, alpha unchanged.
 ///
@@ -148,6 +219,42 @@ mod tests {
                 assert!(px[ch] as u32 <= a, "rgb {} > a {a}", px[ch]);
             }
         }
+    }
+
+    #[test]
+    fn sprite_image_conversions_flip_mode_and_are_idempotent() {
+        let px = vec![10u8, 200, 30, 128, 0, 0, 0, 0];
+        let straight = SpriteImage::new(2, 1, px.clone(), AlphaMode::Straight);
+        // Straight -> premultiplied flips the mode and premultiplies RGB.
+        let pre = straight.clone().into_premultiplied();
+        assert_eq!(pre.alpha, AlphaMode::Premultiplied);
+        assert_ne!(pre.pixels, px, "RGB should have been premultiplied");
+        // Idempotent: into_premultiplied again is a no-op.
+        let pre2 = pre.clone().into_premultiplied();
+        assert_eq!(pre2.pixels, pre.pixels);
+        assert_eq!(pre2.alpha, AlphaMode::Premultiplied);
+        // Round-trip back to straight (a>=128 interior is lossless to ±1).
+        let back = pre.into_straight();
+        assert_eq!(back.alpha, AlphaMode::Straight);
+        assert!((back.pixels[0] as i32 - 10).abs() <= 1);
+        // into_straight on an already-straight image is a no-op.
+        let s2 = straight.clone().into_straight();
+        assert_eq!(s2.pixels, px);
+        assert_eq!(s2.alpha, AlphaMode::Straight);
+    }
+
+    #[test]
+    fn alpha_mode_flag_round_trip() {
+        assert_eq!(
+            AlphaMode::from_premultiplied_flag(true),
+            AlphaMode::Premultiplied
+        );
+        assert_eq!(
+            AlphaMode::from_premultiplied_flag(false),
+            AlphaMode::Straight
+        );
+        assert!(AlphaMode::Premultiplied.is_premultiplied());
+        assert!(!AlphaMode::Straight.is_premultiplied());
     }
 
     #[test]

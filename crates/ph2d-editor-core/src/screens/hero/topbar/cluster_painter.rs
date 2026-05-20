@@ -16,7 +16,7 @@ use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::{ButtonState, PILL_PADDING_PX};
+use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button};
 use crate::zones::Rect;
 
 use super::super::fixture;
@@ -188,9 +188,10 @@ pub(super) fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Play => {
-            // Play / Pause / Reset transport. Play gets the
-            // Accent-tinted pill (primary action); Pause and Reset
-            // are flat icon buttons.
+            // Play / Pause / Reset transport, via the canonical icon
+            // button (single source of truth — was hand-rolled fill +
+            // paint_icon). Play = `Primary` (accent pill); Pause/Reset =
+            // `Plain` (frameless). Same geometry + look as before.
             let pill_d = Spacing::Xl3.px();
             let plain_d = Spacing::Xl2.px();
             // Play (leftmost, primary pill).
@@ -202,18 +203,13 @@ pub(super) fn paint_top_bar_cluster(
             );
             hit_index.register(id, play_rect);
             let play_state = store.button_state(id).unwrap_or(ButtonState::Normal);
-            let bg = match play_state {
-                ButtonState::Pressed => ColorToken::AccentPress,
-                ButtonState::Hovered => ColorToken::AccentSoft,
-                _ => ColorToken::Danger,
-            };
-            fill_rounded_rect(scene, play_rect, Radius::Lg.px(), resolve(bg, theme));
-            paint_icon(
-                scene,
-                IconId::Play,
+            paint_icon_button(
                 play_rect,
-                resolve(ColorToken::AccentFg, theme),
-                StrokeToken::Default.px(),
+                IconGlyph::Builtin(IconId::Play),
+                IconButtonStyle::Primary,
+                play_state,
+                scene,
+                theme,
             );
             // Pause (middle, plain icon button).
             let pause_rect = Rect::new(
@@ -226,12 +222,13 @@ pub(super) fn paint_top_bar_cluster(
             let pause_state = store
                 .button_state(ids::TOPBAR_PAUSE)
                 .unwrap_or(ButtonState::Normal);
-            paint_icon(
-                scene,
-                IconId::Pause,
+            paint_icon_button(
                 pause_rect,
-                resolve(icon_button_fg(pause_state), theme),
-                StrokeToken::Default.px(),
+                IconGlyph::Builtin(IconId::Pause),
+                IconButtonStyle::Plain,
+                pause_state,
+                scene,
+                theme,
             );
             // Reset (rightmost, plain icon button).
             let reset_rect = Rect::new(
@@ -244,12 +241,13 @@ pub(super) fn paint_top_bar_cluster(
             let reset_state = store
                 .button_state(ids::TOPBAR_RESET)
                 .unwrap_or(ButtonState::Normal);
-            paint_icon(
-                scene,
-                IconId::Reset,
+            paint_icon_button(
                 reset_rect,
-                resolve(icon_button_fg(reset_state), theme),
-                StrokeToken::Default.px(),
+                IconGlyph::Builtin(IconId::Reset),
+                IconButtonStyle::Plain,
+                reset_state,
+                scene,
+                theme,
             );
         }
         TopBarCluster::Right => {

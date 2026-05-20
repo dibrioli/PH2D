@@ -84,6 +84,13 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     ("showcase/status.rs", "section painter; widgets emit a11y"),
     ("showcase/switches.rs", "section painter; widgets emit a11y"),
     ("showcase/vector.rs", "section painter; widgets emit a11y"),
+    // Canonical icon-button: a pure draw fn. The consumer chrome
+    // (TopBar) registers each button's hit-rect AND its AccessKit node,
+    // same split as panel_chrome / the showcase section painters.
+    (
+        "icon_button.rs",
+        "paint helper; consumer chrome (TopBar) owns hit + a11y",
+    ),
 ];
 
 #[test]

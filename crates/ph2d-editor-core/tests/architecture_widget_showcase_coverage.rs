@@ -41,6 +41,10 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
         "primitive too small to merit a dedicated showcase section; used inline by other widgets",
     ),
     (
+        "icon_button",
+        "chrome-internal: TopBar action-pill / Play transport painter, covered by the running editor's TopBar (same as pill_group / tool_rail)",
+    ),
+    (
         "modal",
         "chrome-internal: app-wide overlay invoked from menus, no idle visual",
     ),

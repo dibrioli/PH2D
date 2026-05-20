@@ -45,7 +45,7 @@ pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
 pub use picking::{WorldBbox, pick_sprite_at_world, pick_sprites_at_world, selection_bbox_world};
 pub use pipeline::SpritePipeline;
-pub use premul::{premultiply_rgba8, unpremultiply_rgba8};
+pub use premul::{AlphaMode, SpriteImage, premultiply_rgba8, unpremultiply_rgba8};
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{QuadVertex, RenderInstance, Sprite, SpriteSource};

@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.2 — 2026-05-20 (§5 corrigida: o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
+**Versão:** 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
 **Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
 **Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Depois, Enio te diz "Você é o Coordenador" ou "Você é o Implementador" e este doc te diz o resto.
 
@@ -654,6 +654,23 @@ Stage→commit é **uma operação contínua**. Não pause entre os dois passos.
 
 ## 7. Smoke + Push + CI (Coordenador absorve PRCI)
 
+### 7.0 Fast mode (dia) vs Ship (fim do dia)
+
+**Princípio: separar "implementar" de "entregar".** Validação completa + CI rodam **1× por jornada**, não 1× por commit. Quase todo o "tempo perdido" em commits/push/CI vem de validar a cada mudança — não faça isso.
+
+**De dia — fast mode (implementar sem fricção):**
+- Checkpoints com `git commit --no-verify` → **instantâneo**, pula o hook. Salva trabalho, permite reverter, sem o pedágio de ~5min do hook.
+- `cargo check -p <crate>` só quando quiser confirmar que compila. Nada de `--workspace`/test em loop (§5).
+- **ZERO push, ZERO CI durante o dia.**
+
+**Fim do dia — ship (Enio dispara: "commit" / "push" / "ship" / "fim do dia"):**
+O Coordenador entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entregar commits + push + CI **verdes, sem falta**:
+1. **`./scripts/ship.sh`** — roda a job de lint + test do CI inteira, local, de uma vez (fmt, clippy `--all-targets` com as features do CI, `cargo machete`, `cargo deny`, `cargo audit`, `nextest --workspace`). Paridade EXATA com `spike.yml`; o hook local NÃO cobre isso (§5: o perf audit cortou `--all-targets`, e o hook nunca rodou machete/deny/audit).
+2. Para CADA `✗` do ship.sh: diagnostica + corrige + re-roda. **NÃO pusha enquanto o ship.sh não estiver 100% verde.** É aqui que o erro de CI é pego — não no CI vermelho 30min depois.
+3. Organiza os checkpoints `--no-verify` do dia em commits limpos (squash se preciso).
+4. Push (§7.2) → babysit do CI (§7.3) até verde; em vermelho, diagnostica + corrige + re-push, loop até verde (escalona só após 3 falhas do MESMO job).
+5. Entrega: reporta o link da run verde ao Enio.
+
 ### 7.1 Smoke local — antes do push
 
 ```bash
@@ -679,15 +696,13 @@ Batching policy: **push UMA vez por jornada**, no fim do ciclo. CI matrix (linux
 git push origin main
 ```
 
-Antes do push, Coordenador roda **uma vez** a matriz completa local:
+Antes do push, Coordenador roda **uma vez** a paridade-CI completa local — via o script único (§7.0), que cobre TODOS os passos da job de lint + test (o comando manual antigo era incompleto: faltavam as features do clippy + machete/deny/audit, o que já reddened CI):
 
 ```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --exclude ph2d-asset
+./scripts/ship.sh
 ```
 
-Tudo verde → push.
+`✓ CI-clean` → push. `✗` → corrige e re-roda antes de pushar.
 
 ### 7.3 Babysit CI (Coordenador faz)
 

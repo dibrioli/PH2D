@@ -44,6 +44,21 @@ deve ler antes de começar refactor multi-arquivo** — over-validation
 mata produtividade (5-10min de espera por commit quando o hook já
 roda a mesma matriz).
 
+## Fluxo de trabalho: fast mode (dia) / ship (fim do dia)
+
+Vide [`DIRETRIZ.md`](docs/IntegracaoMultiAgente/DIRETRIZ.md) §7.0.
+**De dia, implemente sem fricção:** checkpoints com `git commit
+--no-verify` (instantâneo, pula o hook), `cargo check -p <crate>` quando
+quiser, **zero push / zero CI**. **No fim do dia**, quando o Enio mandar
+("commit" / "push" / "ship" / "fim do dia"), entre em **modo
+observa-e-corrige** e entregue commits + push + CI verdes **sem falta**:
+1. `./scripts/ship.sh` (paridade EXATA com a job de lint+test do CI —
+   fmt, clippy `--all-targets`+features, machete, deny, audit, nextest;
+   o pre-commit hook NÃO cobre isso). 2. Corrija TODO `✗` e re-rode até
+verde — **não pusha antes**. 3. Push + babysit do CI (§7.3) até verde,
+corrigindo o que aparecer. O erro de CI é pego no ship.sh **antes** do
+push, não no CI vermelho 30min depois.
+
 ## Plano operacional ativo
 
 [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) — 13

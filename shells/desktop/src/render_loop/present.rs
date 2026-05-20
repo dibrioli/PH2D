@@ -133,6 +133,22 @@ impl crate::App {
             self.title_dirty = false;
         }
 
+        // Continuous redraw (paired with `ControlFlow::Poll` in main.rs):
+        // the frame is rebuilt every loop iteration regardless of input,
+        // so any per-frame cost shows as ~100% idle CPU and, if a frame
+        // gets heavy, mouse-move stutter (worst over the Hierarchy panel,
+        // which has the most per-frame text).
+        //
+        // IF MOUSE STUTTER RETURNS, look here first:
+        //  1. Per-frame text shaping — mitigated by the shaped-layout
+        //     cache in `ph2d-text/src/system.rs` (`layout_cache`). A new
+        //     uncached text path, or text that changes every frame and
+        //     thrashes the cache, re-introduces the cost. Profile with a
+        //     `PH2D_PROF`-style timer around `paint_hero_screen`.
+        //  2. The continuous redraw itself — the real fix is event-driven
+        //     rendering (`ControlFlow::Wait` + `request_redraw` only on
+        //     input / animation / async loads). Bigger blast radius;
+        //     deferred (Hierarchy-hover stutter investigation, 2026-05-20).
         host.request_redraw();
     }
 }

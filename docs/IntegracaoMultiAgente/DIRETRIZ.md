@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.1 — 2026-05-19 noite (perf audit pós-v6.0 acrescentou §3.7 trabalho cross-cutting, §5.6 como NÃO escrever test slow, §6.4 armadilhas conhecidas; tabela T2 atualizada com cortes A+B)
+**Versão:** 6.2 — 2026-05-20 (§5 corrigida: o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
 **Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
 **Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Depois, Enio te diz "Você é o Coordenador" ou "Você é o Implementador" e este doc te diz o resto.
 
@@ -502,7 +502,12 @@ Violação em qualquer um = build vermelho = Implementador refaz. Não há "vou 
 
 ## 5. Codificação rápida
 
-Princípio: **não duplique o pre-commit hook.** O hook T2 já roda `cargo clippy --workspace --all-targets -- -D warnings` + `cargo test --workspace --exclude ph2d-asset`. Rodar isso manualmente antes do commit gasta 5-10min duas vezes pelo mesmo sinal.
+Princípio: **não duplique o pre-commit hook** durante o editing burst. PORÉM o **hook ≠ CI** em dois pontos que já queimaram runs vermelhas — e antes do **push** (não a cada commit) é obrigação do Coordenador fechar esse gap:
+
+1. **clippy `--all-targets`:** o tier **T2 workspace** roda `cargo clippy --workspace -- -D warnings` **SEM `--all-targets`** (cortado no perf audit 2026-05-19 por velocidade). Logo, **lints em código de teste (`#[cfg(test)]`) e atrás de feature NÃO são pegos localmente numa mudança multi-crate.** O CI roda o comando completo (`spike.yml`): `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`. (O tier T1, 1 crate isolado, ainda roda `--all-targets` — só o T2 workspace não.) **NÃO** use `--all-features` pra "verificar" — ela liga o path flecs do spike (`c11_flecs`) que o CI nem linta (falso-positivo).
+2. **arch-gates:** mudança estrutural (novo arquivo de widget, novo campo serializado) dispara arch-tests determinísticos (`*_OPT_OUT`, cook-hash) que só aparecem **depois** dos ~3min de compile do hook — cada miss = ciclo de ~5min perdido. Rode o gate do crate antes (vide §5.1).
+
+**Regra: antes do PUSH, rode o comando exato do CI** — `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` (segundos com build morno). E `git commit` SEMPRE em background (o hook estoura o timeout de 2min do shell em foreground).
 
 ### 5.1 Tabela de validação
 
@@ -514,6 +519,7 @@ Princípio: **não duplique o pre-commit hook.** O hook T2 já roda `cargo clipp
 | Editou foundational, quer ver downstream | `cargo check --workspace` (NÃO test) | 30-60s warm |
 | Vai commitar (T2 hook vai rodar) | **nada** — deixa o hook validar | 0s |
 | Fim do ciclo, antes do push | `cargo test --workspace --exclude ph2d-asset` | 3-5min |
+| **Antes do push (paridade CI clippy)** | `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | 1-3min warm |
 | Só mudou `.md` | **nada** — hook é T0 (skip) | 0s |
 
 ### 5.2 LOC threshold (não interrompa o editing burst)
@@ -530,7 +536,7 @@ Não rode `cargo test` durante editing burst. Testes só no hook ou em diagnóst
 ### 5.3 O que NÃO fazer
 
 ❌ `cargo test --workspace` depois de cada edit
-❌ `cargo clippy --workspace --all-targets` antes do commit
+❌ `cargo clippy --workspace --all-targets` a cada COMMIT (mas SIM uma vez antes do PUSH — o T2 workspace NÃO cobre `--all-targets`; vide §5 intro)
 ❌ Re-rodar testes que já passaram pra "confirmar"
 ❌ Validar baseline no início da sessão se o último commit já está verde
 ❌ `cargo build` antes de `cargo test` (test já compila)

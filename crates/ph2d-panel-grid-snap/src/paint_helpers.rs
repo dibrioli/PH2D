@@ -8,10 +8,10 @@ use crate::ids;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::widget::{
+    Button, ButtonKind, ButtonState, ColorSwatch, paint_button, paint_color_swatch,
 };
-use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
@@ -76,27 +76,17 @@ pub(crate) fn paint_snap_top_toggle(
 ) -> f32 {
     let h = 44.0_f32;
     let rect = Rect::new(x, y, w, h);
-    let radius = ph2d_tokens::Radius::Md.px();
     let on = state.snap_enabled;
-    let (fill_tok, border_tok, text_tok) = if on {
-        // Bold Accent fill + AccentFg text — high contrast primary
-        // CTA. AccentSoft was too dark / blended with AccentFg.
-        (ColorToken::Accent, ColorToken::Accent, ColorToken::AccentFg)
-    } else {
-        (ColorToken::BgElev, ColorToken::Border, ColorToken::Text2)
-    };
-    fill_rounded_rect(scene, rect, radius, resolve(fill_tok, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.5, resolve(border_tok, theme));
+    // Canonical primary CTA: ON → Accent kind; OFF → Default (ghost
+    // with the canonical Border outline). Single source of truth.
     let label = if on { "Snap: ON" } else { "Snap: OFF" };
-    let font = ph2d_tokens::TypeToken::Md.px();
-    paint_text_centered(
-        text_system,
-        scene,
-        label,
-        rect,
-        font,
-        resolve(text_tok, theme),
-    );
+    let kind = if on {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let btn = Button::new(ids::GS_SNAP_ENABLED, label).kind(kind);
+    paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::GS_SNAP_ENABLED, rect);
     // Suppress unused-store warning while the snap state lives on the
     // Toggle in store too (canonical InteractiveState).
@@ -459,19 +449,9 @@ pub(crate) fn paint_color_swatch_row(
     let rgba = store
         .widget_color(ids::GS_COLOR_PICKER)
         .unwrap_or(state.color_rgba);
-    fill_rounded_rect(
-        scene,
-        swatch_rect,
-        ph2d_tokens::Radius::Sm.px(),
-        ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
-    );
-    stroke_rounded_rect(
-        scene,
-        swatch_rect,
-        ph2d_tokens::Radius::Sm.px(),
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    // Canonical color swatch painter (single source of truth).
+    let cs = ColorSwatch::new(ids::GS_COLOR_PICKER, "", rgba);
+    paint_color_swatch(&cs, swatch_rect, scene, theme);
     hit_index.register(ids::GS_COLOR_PICKER, swatch_rect);
 }
 

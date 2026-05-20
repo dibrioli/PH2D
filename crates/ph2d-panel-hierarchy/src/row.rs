@@ -15,7 +15,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, ICON_BTN_SIZE_PX, Radius, SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
 };
-use ph2d_vector::{Color as VelloColor, VectorScene};
+use ph2d_vector::VectorScene;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_hierarchy_row(
@@ -131,20 +131,13 @@ pub(crate) fn paint_hierarchy_row(
     if let Some(swatch) = entity.swatch {
         let sw = SECTION_GAP_PX;
         let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);
-        let [r, g, b, a] = swatch;
-        fill_rounded_rect(
-            scene,
-            sw_rect,
-            Radius::Xs.px(),
-            VelloColor::from_rgba8(r, g, b, a), // LITERAL-COLOR-OK: user-color (per-entity accent, not a theme token)
+        // Canonical color swatch painter (single source of truth).
+        let cs = ph2d_editor_core::widget::ColorSwatch::new(
+            row_id.unwrap_or(ph2d_a11y::NodeId(0)),
+            "",
+            swatch,
         );
-        stroke_rounded_rect(
-            scene,
-            sw_rect,
-            Radius::Xs.px(),
-            1.0,
-            resolve(ColorToken::Border, theme),
-        );
+        ph2d_editor_core::widget::paint_color_swatch(&cs, sw_rect, scene, theme);
         right_x -= sw + Spacing::Sm.px();
     }
     if let Some(badge) = &entity.badge {

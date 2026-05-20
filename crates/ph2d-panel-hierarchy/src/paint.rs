@@ -16,9 +16,7 @@ use crate::state::{
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::fixture;
@@ -32,9 +30,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{
-    ColorToken, HIER_ROW_H_PX, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
-};
+use ph2d_tokens::{ColorToken, HIER_ROW_H_PX, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 const HIER_ROW_H: f32 = HIER_ROW_H_PX;
@@ -124,34 +120,16 @@ fn paint_hierarchy_body(
         add_size,
     );
     hit_index.register(ids::HIERARCHY_ADD, add_rect);
+    // Canonical icon button (same ghost-icon look as every other icon
+    // button — e.g. panel Close). Was a one-off accent-circle that read
+    // as "disabled" (AccentSoft) under the cursor.
     let add_state = store
         .button_state(ids::HIERARCHY_ADD)
         .unwrap_or(ButtonState::Normal);
-    let add_bg = match add_state {
-        ButtonState::Pressed => ColorToken::Accent,
-        ButtonState::Hovered => ColorToken::AccentSoft,
-        _ => ColorToken::AccentSoft,
-    };
-    fill_rounded_rect(scene, add_rect, Radius::Full.px(), resolve(add_bg, theme));
-    stroke_rounded_rect(
-        scene,
-        add_rect,
-        Radius::Full.px(),
-        1.0,
-        resolve(ColorToken::Accent, theme),
-    );
-    let add_fg = if add_state == ButtonState::Pressed {
-        ColorToken::AccentFg
-    } else {
-        ColorToken::Accent
-    };
-    paint_icon(
-        scene,
-        IconId::Add,
-        add_rect,
-        resolve(add_fg, theme),
-        StrokeToken::Default.px(),
-    );
+    let add_btn = widget::Button::new(ids::HIERARCHY_ADD, "Add")
+        .icon_only(IconId::Add)
+        .state(add_state);
+    widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
 
     let header_bottom = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0; // LITERAL-PX-OK: header baseline composite
     let body_pad = Spacing::Md.px();

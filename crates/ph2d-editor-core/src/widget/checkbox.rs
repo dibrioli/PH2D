@@ -219,7 +219,7 @@ mod tests {
 
     fn smoke(c: Checkbox, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_checkbox(
             &c,
             Rect::new(0.0, 0.0, 200.0, 18.0),

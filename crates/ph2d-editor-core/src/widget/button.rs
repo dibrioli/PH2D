@@ -317,7 +317,7 @@ mod tests {
 
     fn smoke(button: Button, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_button(
             &button,
             Rect::new(0.0, 0.0, 120.0, 32.0),

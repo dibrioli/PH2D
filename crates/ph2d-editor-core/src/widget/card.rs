@@ -202,7 +202,7 @@ mod tests {
 
     fn smoke(card: Card, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_card(
             &card,
             Rect::new(0.0, 0.0, 240.0, 200.0),

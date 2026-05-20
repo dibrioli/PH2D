@@ -219,7 +219,7 @@ mod tests {
 
     fn smoke(tag: Tag, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_tag(
             &tag,
             Rect::new(0.0, 0.0, 80.0, 22.0),

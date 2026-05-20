@@ -234,7 +234,7 @@ mod tests {
             .count(3)
             .collapsible(true);
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_section_header(
             &h,
             Rect::new(0.0, 0.0, 280.0, 28.0),
@@ -272,7 +272,7 @@ mod tests {
 
     fn smoke(h: SectionHeader, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_section_header(
             &h,
             Rect::new(0.0, 0.0, 280.0, 24.0),

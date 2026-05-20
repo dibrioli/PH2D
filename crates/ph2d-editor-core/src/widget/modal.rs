@@ -242,7 +242,7 @@ mod tests {
 
     fn smoke(modal: Modal, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_modal(
             &modal,
             Rect::new(0.0, 0.0, 1024.0, 768.0),

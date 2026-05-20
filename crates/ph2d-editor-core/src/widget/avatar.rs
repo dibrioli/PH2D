@@ -125,7 +125,7 @@ mod tests {
 
     fn smoke(av: Avatar, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_avatar(
             &av,
             Rect::new(0.0, 0.0, 32.0, 32.0),

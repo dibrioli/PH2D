@@ -331,7 +331,7 @@ mod tests {
 
     fn smoke(t: TreeView, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_tree_view(
             &t,
             Rect::new(0.0, 0.0, 240.0, 200.0),

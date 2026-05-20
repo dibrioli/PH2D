@@ -153,7 +153,7 @@ mod tests {
 
     fn smoke(bar: ProgressBar, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_progress_bar(
             &bar,
             Rect::new(0.0, 0.0, 200.0, 8.0),

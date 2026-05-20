@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn paint_smoke_full_rail() {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         let rail = fixture();
         let host = Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height());
         let store = crate::interaction::WidgetStore::with_capacity(0);
@@ -440,7 +440,7 @@ mod tests {
             vec![ToolRailEntry::icon(NodeId(2), "x", IconId::Add)],
         );
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         let store = crate::interaction::WidgetStore::with_capacity(0);
         paint_tool_rail(
             &rail,

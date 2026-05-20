@@ -388,7 +388,7 @@ mod tests {
 
     fn smoke(c: Combobox, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_combobox(
             &c,
             Rect::new(0.0, 0.0, 240.0, 32.0),

@@ -212,7 +212,7 @@ mod tests {
 
     fn smoke(v: Vector3Editor, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_vector3_editor(
             &v,
             Rect::new(0.0, 0.0, 360.0, 32.0),

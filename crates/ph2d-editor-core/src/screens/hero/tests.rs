@@ -90,7 +90,7 @@ fn paint_hero_smoke_default() {
     crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
 }
 
@@ -99,7 +99,7 @@ fn paint_hero_smoke_alternate_theme() {
     crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1)).theme(Theme::Sunstone);
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
 }
 
@@ -108,7 +108,7 @@ fn paint_hero_smoke_no_selection() {
     crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1)).selection(None);
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
 }
 
@@ -123,7 +123,7 @@ fn paint_hero_smoke_all_themes() {
     ] {
         let mut hero = HeroScreen::new(NodeId(1)).theme(theme);
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     }
 }
@@ -200,7 +200,7 @@ fn hero_topbar_save_click_opens_save_menu() {
     // kind instead.
     let mut hero = HeroScreen::new(NodeId(1));
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let arena = Bump::new();
     let mut save_x = 0.0;
@@ -257,7 +257,7 @@ fn gallery_publishes_scroll_bounds_after_paint() {
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.widget_gallery_visible = true;
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let content_h = hero
         .store
@@ -339,7 +339,7 @@ fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
     // Paint once so sync_inspector_from_snapshots seeds the store
     // with the *converted* value (150 px, not 1.5 m).
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let stored_x = hero
         .store
@@ -388,7 +388,7 @@ fn inspector_position_meters_mode_displays_raw_meters() {
         scale: [1.0, 1.0],
     });
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let stored_x = hero.store.number_value(ids::INSP_TRANSFORM_POS_X).unwrap();
     assert!(
@@ -476,7 +476,7 @@ fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
     let mut hero = HeroScreen::new(NodeId(1));
     hero.grid.snap_state.panel_visible = true;
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     let gs_id = crate::grid_snap::ids::GS_PANEL;
     let content_h = hero
@@ -553,7 +553,7 @@ fn gallery_create_note_targets_gal_panel() {
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.widget_gallery_visible = true;
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     // Paint once so `panel_rect(GAL_PANEL)` is published and
     // `LAST_BODY_TOP_SCREEN_Y` is set for the upcoming dispatch.
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
@@ -612,7 +612,7 @@ fn gallery_section_outline_color_writes_through() {
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.widget_gallery_visible = true;
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
     // Open the SectionOutline menu for the Inputs section header.
     hero.store
@@ -640,7 +640,7 @@ fn gallery_section_outline_color_writes_through() {
 fn paint_top_bar_smoke() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     let mut hits = HitIndex::new();
     let store = WidgetStore::with_capacity(32);
     paint_top_bar(
@@ -661,7 +661,7 @@ fn paint_top_bar_smoke() {
 fn paint_top_bar_image_tools_mode_swaps_right_side() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     let mut hits = HitIndex::new();
     let store = WidgetStore::with_capacity(32);
     paint_top_bar(
@@ -1007,7 +1007,7 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
     let mut hero = HeroScreen::new(NodeId(1));
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     // 1) Frame 1: select entity A, mark its TextInput Focused
     //    (simulating user click on the field).
     hero.inspector.name = Some(InspectorNameInfo {
@@ -1171,7 +1171,7 @@ fn click_on_bgremoval_pill_raises_activate_intent() {
 fn paint_left_rail_smoke() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     let mut hits = HitIndex::new();
     let store = WidgetStore::with_capacity(32);
     paint_left_rail(
@@ -1191,7 +1191,7 @@ fn paint_inspector_smoke_with_selection() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let sel = fixture::default_selection();
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     let mut hits = HitIndex::new();
     let store = WidgetStore::with_capacity(32);
     paint_inspector(
@@ -1211,7 +1211,7 @@ fn paint_inspector_smoke_with_selection() {
 fn paint_inspector_smoke_no_selection() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     let mut hits = HitIndex::new();
     let store = WidgetStore::with_capacity(32);
     paint_inspector(
@@ -1239,7 +1239,7 @@ fn paint_hierarchy_smoke() {}
 fn paint_bottom_hud_smoke() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_bottom_hud(
         &layout,
         &mut scene,
@@ -1254,7 +1254,7 @@ fn paint_selection_overlay_smoke() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let sel = fixture::default_selection();
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_selection_overlay(&layout, &sel, &mut scene, &mut text, Theme::Forge);
 }
 

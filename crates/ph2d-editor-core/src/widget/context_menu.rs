@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn paint_smoke() {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         let menu = fixture();
         let host = Rect::new(0.0, 0.0, 200.0, menu.preferred_height(26.0));
         paint_context_menu(&menu, host, &mut scene, &mut text, Theme::Forge, 26.0);

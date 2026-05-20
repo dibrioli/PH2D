@@ -323,7 +323,7 @@ mod tests {
 
     fn smoke(n: NumberInput, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_number_input(
             &n,
             Rect::new(0.0, 0.0, 120.0, 32.0),

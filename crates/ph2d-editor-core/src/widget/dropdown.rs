@@ -393,7 +393,7 @@ mod tests {
 
     fn smoke(d: Dropdown<&'static str>, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_dropdown(
             &d,
             Rect::new(0.0, 0.0, 200.0, 32.0),

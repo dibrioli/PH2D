@@ -657,7 +657,7 @@ mod tests {
     fn layout_paint_smoke() {
         let layout = Layout::new(1024.0, 768.0);
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         let mut ctx = PaintCtx {
             theme: Theme::Forge,
             viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
@@ -769,7 +769,7 @@ mod tests {
         q.push(Toast::success("success"));
         q.push(Toast::warning("warn"));
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         let mut ctx = PaintCtx {
             theme: Theme::Sunstone,
             viewport: Rect::new(0.0, 0.0, 800.0, 600.0),

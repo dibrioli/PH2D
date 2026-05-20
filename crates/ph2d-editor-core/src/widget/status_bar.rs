@@ -234,7 +234,7 @@ mod tests {
 
     fn smoke(bar: StatusBar, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_status_bar(
             &bar,
             Rect::new(0.0, 0.0, bar.preferred_width(), 34.0),

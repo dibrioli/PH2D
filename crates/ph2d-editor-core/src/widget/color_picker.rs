@@ -316,7 +316,7 @@ mod tests {
 
     fn smoke(c: ColorPicker, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_color_picker(
             &c,
             Rect::new(0.0, 0.0, 320.0, 360.0),

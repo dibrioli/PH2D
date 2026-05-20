@@ -275,7 +275,7 @@ mod tests {
 
     fn smoke(t: Tabs, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_tabs(
             &t,
             Rect::new(0.0, 0.0, 300.0, 32.0),

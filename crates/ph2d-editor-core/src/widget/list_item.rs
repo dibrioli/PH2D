@@ -223,7 +223,7 @@ mod tests {
 
     fn smoke(item: ListItem, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_list_item(
             &item,
             Rect::new(0.0, 0.0, 240.0, 26.0),

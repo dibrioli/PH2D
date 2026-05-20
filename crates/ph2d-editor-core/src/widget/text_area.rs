@@ -266,7 +266,7 @@ mod tests {
 
     fn smoke(area: TextArea, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_text_area(
             &area,
             Rect::new(0.0, 0.0, 240.0, 96.0),

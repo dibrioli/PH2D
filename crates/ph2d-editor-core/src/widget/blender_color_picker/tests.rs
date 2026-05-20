@@ -77,7 +77,7 @@ fn a11y_role_is_group() {
 
 fn smoke(cp: BlenderColorPicker, theme: Theme) {
     let mut scene = VectorScene::new();
-    let mut text = TextSystem::new();
+    let mut text = TextSystem::without_system_fonts();
     paint_blender_color_picker(
         &cp,
         Rect::new(0.0, 0.0, 280.0, 560.0),

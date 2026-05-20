@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn paint_smoke() {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_tooltip(
             &Tooltip::new(NodeId(1), "Save (Cmd+S)"),
             Rect::new(0.0, 0.0, 120.0, 24.0),

@@ -251,7 +251,7 @@ mod tests {
 
     fn smoke(t: TextInput, theme: Theme) {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         paint_text_input(
             &t,
             Rect::new(0.0, 0.0, 240.0, 32.0),
@@ -300,7 +300,7 @@ mod tests {
     #[test]
     fn paint_with_buffer_overrides_value() {
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         let t = fixture().value("stale").state(TextInputState::Focused);
         // Pretend the WidgetStore has a freshly typed buffer.
         paint_text_input_with_buffer(
@@ -320,7 +320,7 @@ mod tests {
         // Caret beyond buffer length should still paint without
         // panic (clamped at draw time).
         let mut scene = VectorScene::new();
-        let mut text = TextSystem::new();
+        let mut text = TextSystem::without_system_fonts();
         let t = fixture().state(TextInputState::Focused);
         paint_text_input_with_buffer(
             &t,

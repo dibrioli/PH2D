@@ -110,9 +110,21 @@ mod tests {
     /// rasterizer. Tests use `let Some(gpu) = … else { return; }` so
     /// they pass on adapter-less environments; the assertions run
     /// wherever wgpu can spin up a device (dev machines + Mac CI).
+    ///
+    /// Cached per test binary: each `request_adapter` + `request_device`
+    /// pair costs ~30-50 s on Apple Silicon (cold Metal driver load +
+    /// shader compile cache miss). GpuContext is Clone (Arc internals),
+    /// so handing out clones is cheap and tests can keep `let Some(gpu)
+    /// = …` semantics.
     fn try_headless_gpu() -> Option<GpuContext> {
-        let instance = GpuContext::default_instance();
-        GpuContext::new(instance, None).ok()
+        use std::sync::OnceLock;
+        static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
+        SHARED
+            .get_or_init(|| {
+                let instance = GpuContext::default_instance();
+                GpuContext::new(instance, None).ok()
+            })
+            .clone()
     }
 
     #[test]

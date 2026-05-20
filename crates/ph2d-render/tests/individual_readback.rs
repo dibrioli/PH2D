@@ -11,8 +11,14 @@ use ph2d_gpu::GpuContext;
 use ph2d_render::{IndividualTextureError, IndividualTextureStore};
 
 fn try_headless_gpu() -> Option<GpuContext> {
-    let instance = GpuContext::default_instance();
-    GpuContext::new(instance, None).ok()
+    use std::sync::OnceLock;
+    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
+    SHARED
+        .get_or_init(|| {
+            let instance = GpuContext::default_instance();
+            GpuContext::new(instance, None).ok()
+        })
+        .clone()
 }
 
 /// Build the `material_bgl` the way `SpriteRenderer` does (texture +

@@ -498,9 +498,18 @@ fn hsv_to_rgb(h: f32, s: f32, v: f32) -> (u8, u8, u8) {
 mod tests {
     use super::*;
 
+    /// Cached per test binary — see `game_rt::tests::try_headless_gpu`
+    /// for rationale. Each adapter+device request costs ~30-50 s cold;
+    /// the atlas suite alone has ~20 GPU-touching tests.
     fn try_headless_gpu() -> Option<GpuContext> {
-        let instance = GpuContext::default_instance();
-        GpuContext::new(instance, None).ok()
+        use std::sync::OnceLock;
+        static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
+        SHARED
+            .get_or_init(|| {
+                let instance = GpuContext::default_instance();
+                GpuContext::new(instance, None).ok()
+            })
+            .clone()
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.0 — 2026-05-19 (pós Wave 9 / ADR-0029 fechados; modelo 2 papéis + fluxo invertido)
+**Versão:** 6.1 — 2026-05-19 noite (perf audit pós-v6.0 acrescentou §3.7 trabalho cross-cutting, §5.6 como NÃO escrever test slow, §6.4 armadilhas conhecidas; tabela T2 atualizada com cortes A+B)
 **Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
 **Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Depois, Enio te diz "Você é o Coordenador" ou "Você é o Implementador" e este doc te diz o resto.
 
@@ -434,6 +434,23 @@ Exemplo: adicionar `ColorToken::AccentTeal`:
 4. Coord roda `cargo test --workspace --exclude ph2d-asset` pra garantir nada quebrou.
 5. Coord commita: `feat(tokens): add ColorToken::AccentTeal`.
 
+### 3.7 Trabalho cross-cutting (perf audit, refactor cross-crate, manutenção de tests)
+
+Algumas tarefas não cabem em nenhum dos 6 buckets acima porque tocam múltiplos crates por natureza — perf audit do workspace, deduplicação de pattern, migração de API antiga em N crates consumidores, sweep de lint novo, etc.
+
+**Coordenador autoriza explicitamente a exceção ao isolamento.** O briefing pro Implementador diz literalmente:
+
+> "Você toca tests em vários crates conforme os achados. Exceção autorizada à regra de uma pasta isolada da DIRETRIZ §1.3. Cada commit ainda fica T1 single-crate sempre que possível."
+
+**Regras desse bucket:**
+
+1. **Cada commit valida-se sozinho** — `cargo test -p <crate>` verde para o crate tocado, antes do commit. Pre-commit hook entra em T1 (single-crate, ~30s), não T2.
+2. **Não tocar production code de foundational sem motivo claro** — em audit de tests, mexer só nos tests (`tests/`, `#[cfg(test)] mod`). Production `pub fn` fica intocado salvo se a auditoria revelar API faltando (e nesse caso vira novo trabalho discutido com Enio).
+3. **Documentar risk surface** — no relatório final, listar todas as mudanças sutis de comportamento que CI pode capturar mas smoke local pode não ver (ex: "função X agora cacheia via `OnceLock` — primeiro caller paga, demais zero-init; tests confirmados que só fazem `&ctx` imutável").
+4. **Tokens canônicos continuam valendo** — geralmente N/A em test code, mas se tocar paint/widget, mesma regra de §4.
+
+**Exemplo real (2026-05-19 noite):** perf audit cortou nextest workspace de 14min → 1.5min via 6 commits, cada um T1 single-crate, todos verdes em CI. Detalhe na memória `project_perf_audit_2026_05_19.md`.
+
 ---
 
 ## 4. UI canonical — única fonte de verdade
@@ -525,9 +542,16 @@ Não rode `cargo test` durante editing burst. Testes só no hook ou em diagnóst
 |------|--------------|-------|
 | **T0** | só docs / `.md` / scripts | ~5s |
 | **T1** | arquivos de UM crate isolado | ~30s |
-| **T2** | `Cargo.toml`, multi-crate, foundational, `shells/` | ~3-5min |
+| **T2 escopado** | multi-crate **sem** foundational/Cargo.toml/shells | ~30s-3min (nextest -p escopado) |
+| **T2 workspace** | `Cargo.toml/lock`, foundational, `shells/desktop/` | ~5-15min (workspace ripple) |
 
-Se acidentalmente trigar T2 numa pasta isolada, provavelmente está staged junto com algo de outro agente — confira `git status --cached`.
+Se acidentalmente trigar T2 workspace numa pasta isolada, provavelmente está staged junto com algo de outro agente — confira `git status --cached`.
+
+**Cortes A+B (2026-05-19):** o hook NÃO roda mais `cargo test --doc --workspace` nem `clippy --all-targets`. Esses ficam pro CI. Implicações práticas:
+
+- Doctest novo (`/// ```` `` em rustdoc) **só é verificado em CI**. Se você adicionar doctest e ele tiver typo, hook deixa passar; CI pega. Quem cria doctest valida manualmente com `cargo test --doc -p <crate>` antes de commitar.
+- Benches e examples (`#[bench]`, `examples/*.rs`) **só clippados em CI**. Mesma lógica: validação manual se alterou.
+- Em compensação, T2 caiu de ~40min pra segundos em commits típicos. Vide [`project_perf_audit_2026_05_19`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/project_perf_audit_2026_05_19.md) na memória.
 
 ### 5.5 Reads cirúrgicos
 
@@ -535,6 +559,27 @@ Se acidentalmente trigar T2 numa pasta isolada, provavelmente está staged junto
 - `Bash: grep -n` pra localizar primeiro, `Read` depois
 - 5 Reads em paralelo na mesma mensagem em vez de sequenciais
 - Para busca larga em código novo: subagent `Explore`
+
+### 5.6 Como NÃO escrever test slow
+
+Test lento mata a cadência. Em 2026-05-19 descobrimos 105 tests `SLOW` no workspace que consumiam 14min cache-quente (~83% disso era CoreText scan de fontes via `TextSystem::new()` em test code, 25-77s por chamada × 48 sites em editor-core). Cortes:
+
+**❌ NÃO faça em test:**
+
+- **`TextSystem::new()`** — enumera fontes do sistema via CoreText/Fontconfig. Pesado. Em test, use **`TextSystem::without_system_fonts()`** (pula scan + força `family_name = "InterVariable"` bundled).
+- **Alloc gigante pra exercitar limit-check** — ex: `RgbaImage::new(16384, 16384)` (1 GiB) só pra testar que `image::Limits` rejeita. Use dimensão **1 pixel acima** do limite (8193×1 = 32 KiB). `image::Limits` é checado contra IHDR antes da alloc.
+- **GPU init repetido por test** — `pollster::block_on(GpuContext::new_headless())` em cada `#[test]`. Use **`OnceLock<Option<GpuContext>>`** lazy module-level. Primeiro test paga, demais zero-init. `GpuContext: Clone` via `Arc` internals.
+- **Font shaping real** quando só precisa do shape de uma palavra fixa. Bundle uma fonte mínima ou use o mock fontique do ph2d-text.
+
+**✅ Faça em test:**
+
+- Setup caro em `OnceLock` lazy, compartilhado entre tests do mesmo binário.
+- Input minimal: 1 caso simples + 1 caso edge. Não rode o algoritmo com corpus de 100 entradas.
+- IO real (font system, FSEvents watcher, network) → `#[ignore]` com doc-comment explicando + `cargo test -- --ignored` no CI separado, OU mover pra `tests/` integration.
+
+**Slow tests inerentes** (aceitos no chão dos ~99s pós-audit):
+- `ph2d-asset watcher_*` (~32s × 2) — FSEvents 5s deadline + 250ms poll cycles, security-critical
+- `ph2d-render` GPU init (~14-35s × 4-5 binários) — Metal driver cold load per binary
 
 ---
 
@@ -579,6 +624,25 @@ Stage→commit é **uma operação contínua**. Não pause entre os dois passos.
 | `git status` mostra M que você não tocou | Outro agente paralelo. NÃO comite. Reporte. |
 | `git log -1` mostra mensagem fundida (2 títulos, corpo truncado) | Colisão. Se NÃO pushado: `git reset --soft HEAD~1` + split + recommit. |
 | Hook trigga T2 quando você esperava T1 | `git status --cached` — provavelmente vazamento de outro agente. |
+
+### 6.4 Armadilhas conhecidas
+
+**Typos engine bloqueia palavras pt-BR ambíguas.** O hook roda `typos` (full project, respeita `.typos.toml`). Algumas palavras pt-BR têm forma idêntica a typos comuns em inglês — o engine bloqueia. Casos vistos:
+
+| pt-BR escrito | typos vê como | Solução |
+|---------------|---------------|---------|
+| `erros` | typo de `errors` | usar `falhas`, `problemas`, ou inglês |
+| `usso` | typo de `use` | reescrever ou allowlist |
+| `nao` (sem acento) | typo de `not` | usar `não` (com acento) |
+
+**Regra prática:** comentários e doc em pt-BR — prefira palavras sem ambiguidade com inglês. Se a palavra "correta" em pt-BR é necessária e disparou typos, adicione exceção em `.typos.toml` (categoria `[default.extend-words]`) **com justificativa no commit**, não esconda com `--no-verify`.
+
+**Sintoma de cargo lock entre sessões.** Se você rodar `cargo check/build/test` enquanto outra sessão Claude Code paralela está rodando comando cargo, a segunda **espera silenciosamente** pelo `target/` lock. Não é crash — só lentidão inesperada. Se você não estava esperando demora, verifica `ps aux | grep cargo` antes de assumir que travou.
+
+**Hook T2 lento sem motivo.** Se T2 demora muito mais que o esperado (~5-15min com cache quente, ~25-40min full cold), checar:
+1. Cache pode ter sido invalidado por mudança em foundational/Cargo.toml recente.
+2. Algum teste novo virou slow inadvertidamente — vide §5.6.
+3. `target/` em rede/disco lento — mover pra SSD local.
 
 ---
 
@@ -755,6 +819,7 @@ gh run watch <id> --exit-status
 
 ## 11. Versão + histórico
 
+- **6.1 — 2026-05-19 noite:** Perf audit + pre-commit T2 cuts A+B aplicados (commit `10ef2b6` + range `436626e..cb13efe`). Acréscimos: §3.7 trabalho cross-cutting (perf audit / refactor cross-crate); §5.6 como NÃO escrever test slow (com `TextSystem::without_system_fonts()`, `OnceLock` GpuContext, alloc-pequena pra limit-check); §6.4 armadilhas conhecidas (typos pt-BR, cargo lock, hook lento). Tabela §5.4 atualizada com T2 escopado vs T2 workspace.
 - **6.0 — 2026-05-19:** Modelo 2 papéis (Coordenador absorvendo PRCI) + fluxo invertido (scaffold central antes do Implementador começar). Condensa em um único doc: v5.0 DIRETRIZ + 4 docs operacionais 01-04 + STATE.md + DIRETRIZ_CODIFICACAO_RAPIDA.md + PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md.
 - **5.0 — 2026-05-17** (arquivada): Diretriz unificada substituindo 01-04, ainda com modelo 4 papéis (Enio relay / Coord / Periférico / PRCI) e fluxo Periférico-primeiro.
 - **4.0 — 2026-05-13** (arquivada em `ARCHIVE-v4.0-pre-wave-1/` quando criada): modelo Coordenador editava manualmente icons.rs / fixture.rs / ids.rs. Arquitetura morta pós Wave 1.

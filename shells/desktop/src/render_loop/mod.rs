@@ -495,9 +495,18 @@ impl crate::App {
                 self.title_dirty = true;
             }
             // Padding panel ⟷ tool bridge — drains panel edits into the
-            // tool, publishes the snapshot, returns the (selection, spec)
-            // to bake on Apply. Sibling `padding_bridge.rs` (HR-18 LOC).
-            let padding_apply = padding_bridge::dispatch(hero, tools, padding_ui_edits);
+            // tool, publishes the snapshot, draws the live (non-destructive)
+            // canvas-bounds preview, and returns the (selection, spec,
+            // pivot mode) to bake on Apply. Sibling `padding_bridge.rs`.
+            let padding_apply = padding_bridge::dispatch(
+                hero,
+                tools,
+                sim,
+                camera,
+                window_size,
+                vector_scene,
+                padding_ui_edits,
+            );
             // Bg Removal panel ⟷ tool bridge + on-canvas live preview
             // — extracted to sibling `bgremoval_preview.rs` (HR-18 LOC).
             let bgremoval_apply_committed = bgremoval_preview::dispatch(

@@ -1,81 +1,128 @@
-//! BgRemoval protection brush — freehand "keep" mask painting on the
-//! canvas.
+//! BgRemoval protection brush — freehand "keep" mask painting + erasing
+//! on the canvas.
 //!
 //! All NEW input handling lives in the SHELL (like
 //! `input_dispatch::eyedropper`), reaching the active `BgRemovalTool`
 //! via `gfx.tools.active_mut()` + downcast. The brush paints a
 //! forced-foreground mask the pipeline honours in both modes (GrabCut
-//! `FgHard` seed + compose force-keep).
+//! `FgHard` seed + compose force-keep). Left-button drag paints; right-
+//! button drag erases.
 //!
-//! Drag handling mirrors the eyedropper, but the "painting in progress"
-//! flag lives on the tool (`is_protect_painting` / `set_protect_painting`)
+//! Drag state (`is_protect_painting` / erase mode) lives on the tool
 //! rather than on `App` — the shell's `App` struct is outside this
-//! feature's edit surface, and the tool is the natural per-tool home
-//! for the transient state.
+//! feature's edit surface, and the tool is the natural per-tool home.
+//!
+//! Performance: a dab only mutates the mask (cheap); it does NOT re-run
+//! the segmentation pipeline. The on-canvas tint reads the mask live, so
+//! the matte only re-segments once the stroke ends (`end_protect_paint`
+//! drops the cached preview). This is what fixed the per-dab GrabCut
+//! freeze.
+
+use std::cell::Cell;
 
 use crate::{App, Transform};
 
-/// On-screen brush radius (px). Mapped into source pixels per the
-/// sprite's on-screen footprint scale before painting, so the brush
-/// feels the same size regardless of zoom / source resolution.
-/// // LITERAL-PX-OK: input brush metric
-const BRUSH_SCREEN_PX: f32 = 22.0;
+thread_local! {
+    /// Last cursor screen position while the protection brush is armed —
+    /// published by the input hooks, read by the on-canvas overlay to
+    /// draw the brush-size ring. `None` when the brush isn't armed.
+    static BRUSH_CURSOR: Cell<Option<(f32, f32)>> = const { Cell::new(None) };
+}
+
+/// Publish the brush ring cursor (screen px), or clear it.
+pub(crate) fn set_brush_cursor(p: Option<(f32, f32)>) {
+    BRUSH_CURSOR.with(|c| c.set(p));
+}
+
+/// Read the brush ring cursor (screen px) for the overlay gizmo.
+pub(crate) fn brush_cursor() -> Option<(f32, f32)> {
+    BRUSH_CURSOR.with(|c| c.get())
+}
 
 impl App {
-    /// Begin / continue a protection-brush dab at `(px, py)`. When the
-    /// BgRemoval tool is active AND its protection brush is armed, paints
-    /// a dab into the mask (if the point is inside the selected sprite
-    /// footprint), arms the drag, and returns `true` so the caller
-    /// consumes the event (we must not move/deselect the sprite while
-    /// painting) — armed in or out of bounds. Returns `false` when the
-    /// brush is not armed / no sprite is selected.
+    /// Primary-button protection dab at `(px, py)` — paint. Returns `true`
+    /// (consumes the event) when the brush is armed, so the click doesn't
+    /// move/deselect the sprite; `false` when not armed / no selection.
     pub(crate) fn try_protect_paint(&mut self, px: f32, py: f32) -> bool {
-        self.protect_dab(px, py)
+        self.protect_dab(px, py, false)
+    }
+
+    /// Secondary-button protection dab at `(px, py)` — erase. Same
+    /// consume semantics as [`Self::try_protect_paint`].
+    pub(crate) fn try_protect_erase(&mut self, px: f32, py: f32) -> bool {
+        self.protect_dab(px, py, true)
     }
 
     /// Continue a protection-brush drag from a cursor-move event. Paints
-    /// only when a drag is already in progress (set on pointer-down);
-    /// returns `true` when it consumed the move.
+    /// or erases (per the drag's mode) only when a drag is already in
+    /// progress; returns `true` when it consumed the move.
     pub(crate) fn protect_drag_move(&mut self, px: f32, py: f32) -> bool {
-        if !self.is_protect_painting() {
-            return false;
+        match self.protect_drag_mode() {
+            Some(erase) => {
+                self.protect_dab(px, py, erase);
+                true
+            }
+            None => false,
         }
-        self.protect_dab(px, py);
-        true
     }
 
-    /// End any protection-brush drag (pointer-up). No-op when not armed.
+    /// End any protection-brush drag (pointer-up): clear the drag flags
+    /// and drop the cached preview ONCE so the matte re-segments with the
+    /// final mask. No-op when no drag was in progress.
     pub(crate) fn end_protect_paint(&mut self) {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        if let Some(tool) = gfx.tools.active_mut()
+        let mut was_painting = false;
+        if let Some(gfx) = self.gfx.as_mut()
+            && let Some(tool) = gfx.tools.active_mut()
             && let Some(bg) = tool
                 .as_any_mut()
                 .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
         {
+            was_painting = bg.is_protect_painting();
             bg.set_protect_painting(false);
+            bg.set_protect_erasing(false);
+        }
+        // Re-segment the matte once, now that the stroke is complete.
+        if was_painting {
+            self.bgremoval_preview = None;
         }
     }
 
-    /// Whether a protection-brush drag is currently in progress.
-    fn is_protect_painting(&mut self) -> bool {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        gfx.tools
-            .active_mut()
+    /// Publish the brush-ring cursor for the overlay gizmo: the cursor
+    /// position while the protection brush is armed, else `None`. Called
+    /// every cursor-move (one cheap downcast).
+    pub(crate) fn update_protect_brush_cursor(&mut self, px: f32, py: f32) {
+        let armed = self
+            .gfx
+            .as_mut()
+            .and_then(|g| g.tools.active_mut())
             .and_then(|t| {
                 t.as_any_mut()
                     .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
             })
-            .map(|bg| bg.is_protect_painting())
-            .unwrap_or(false)
+            .map(|bg| bg.is_protect_armed())
+            .unwrap_or(false);
+        set_brush_cursor(if armed { Some((px, py)) } else { None });
     }
 
-    /// Core dab: footprint hit-test + paint + arm the drag. Returns
+    /// Drag state: `Some(erase)` while a protection drag is in progress,
+    /// `None` otherwise.
+    fn protect_drag_mode(&mut self) -> Option<bool> {
+        let gfx = self.gfx.as_mut()?;
+        let bg = gfx
+            .tools
+            .active_mut()?
+            .as_any_mut()
+            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()?;
+        if bg.is_protect_painting() {
+            Some(bg.is_protect_erasing())
+        } else {
+            None
+        }
+    }
+
+    /// Core dab: footprint hit-test + paint/erase + arm the drag. Returns
     /// `true` when the brush is armed (so the click is consumed).
-    fn protect_dab(&mut self, px: f32, py: f32) -> bool {
+    fn protect_dab(&mut self, px: f32, py: f32, erase: bool) -> bool {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -124,29 +171,27 @@ impl App {
         if !bg.is_protect_armed() {
             return false;
         }
-        // Inside the footprint? Compute UV + paint.
+        // Inside the footprint? Compute UV + paint/erase.
         if hi_x > lo_x && hi_y > lo_y && px >= lo_x && px <= hi_x && py >= lo_y && py <= hi_y {
             let u = (px - lo_x) / (hi_x - lo_x);
             let v = (py - lo_y) / (hi_y - lo_y);
-            // Map the on-screen brush radius into SOURCE pixels — the
-            // unit `paint_protect_at_uv` expects.
-            let (src_w, _src_h) = bg.source_size();
-            let footprint_w = hi_x - lo_x;
-            let radius_px = if footprint_w > 0.0 && src_w > 0 {
-                BRUSH_SCREEN_PX * (src_w as f32) / footprint_w
+            // The brush radius is stored in SOURCE px (the unit the dab
+            // expects) and driven by the panel Size slider.
+            let radius_px = bg.brush_radius_px();
+            if erase {
+                bg.erase_protect_at_uv(u, v, radius_px);
             } else {
-                BRUSH_SCREEN_PX
-            };
-            bg.paint_protect_at_uv(u, v, radius_px);
-            // Force the on-canvas overlay to recompute next frame
-            // (painting pushes no `BgremovalUiEdit`). `bgremoval_preview`
-            // is a disjoint `App` field from `self.gfx`, so this write is
-            // legal while `bg` (borrowed via `gfx`) is live.
-            self.bgremoval_preview = None;
+                bg.paint_protect_at_uv(u, v, radius_px);
+            }
+            // NOTE: no `self.bgremoval_preview = None` here — the tint
+            // overlay reads the mask live, and re-segmenting per dab is
+            // what froze the GrabCut path. The matte re-runs once on
+            // pointer-up (`end_protect_paint`).
         }
-        // Mark the drag in progress + consume regardless of in/out so the
-        // click doesn't move or deselect the sprite while painting.
+        // Mark the drag in progress + its mode; consume regardless of
+        // in/out so the click doesn't move or deselect the sprite.
         bg.set_protect_painting(true);
+        bg.set_protect_erasing(erase);
         true
     }
 }

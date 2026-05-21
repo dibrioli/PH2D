@@ -22,8 +22,8 @@ use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
-use ph2d_tokens::ColorToken;
-use ph2d_vector::VectorScene;
+use ph2d_tokens::{ColorToken, StrokeToken};
+use ph2d_vector::{Affine, Brush, Circle, Color, Stroke, VectorScene};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -91,6 +91,9 @@ pub(super) fn dispatch(
     // is borrowed below, drawn in the on-canvas overlay block).
     let theme = hero.theme;
     let mut protect_tint: Option<(Arc<Vec<u8>>, u32, u32)> = None;
+    // Brush-size ring gizmo: (brush radius in source px, source width).
+    // Set while the protection brush is armed; drawn at the cursor.
+    let mut brush_ring: Option<(f32, u32)> = None;
     if let Some(tool) = tools.active_mut()
         && let Some(bg) = tool
             .as_any_mut()
@@ -136,8 +139,9 @@ pub(super) fn dispatch(
             *bgremoval_preview = None;
         }
         // Build the protection-mask overlay tint (drawn over the sprite
-        // footprint so the user sees their painted "keep" region).
-        if bgremoval_is_active && bg.has_protect_mask() {
+        // footprint so the user sees their painted "keep" region). Gated
+        // on the Show-Mask toggle.
+        if bgremoval_is_active && bg.show_mask() && bg.has_protect_mask() {
             let (mask, mw, mh) = bg.protect_mask_source();
             let accent = ColorToken::Accent.resolve(theme);
             if let Some((tw, th, buf)) =
@@ -145,6 +149,11 @@ pub(super) fn dispatch(
             {
                 protect_tint = Some((Arc::new(buf), tw, th));
             }
+        }
+        // Brush-size ring: capture the radius (source px) + source width
+        // while the brush is armed; the overlay draws it at the cursor.
+        if bgremoval_is_active && bg.is_protect_armed() {
+            brush_ring = Some((bg.brush_radius_px(), bg.source_size().0));
         }
     }
     if !bgremoval_is_active {
@@ -194,6 +203,25 @@ pub(super) fn dispatch(
                     *th,
                     (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
                     quality,
+                );
+            }
+            // Brush-size ring at the cursor — the source-px radius mapped
+            // to screen via the footprint scale (footprint_w / source_w).
+            if let (Some((r_src, src_w)), Some((cur_x, cur_y))) = (
+                brush_ring,
+                crate::input_dispatch::protect_brush::brush_cursor(),
+            ) && src_w > 0
+            {
+                let footprint_w = (x1 - x0).abs();
+                let r_screen = r_src * footprint_w / src_w as f32;
+                let accent = ColorToken::Accent.resolve(theme);
+                let color = Color::from_rgba8(accent.r, accent.g, accent.b, 255);
+                vector_scene.inner_mut().stroke(
+                    &Stroke::new(StrokeToken::Default.px() as f64),
+                    Affine::IDENTITY,
+                    &Brush::Solid(color),
+                    None,
+                    &Circle::new((cur_x as f64, cur_y as f64), r_screen as f64),
                 );
             }
         }

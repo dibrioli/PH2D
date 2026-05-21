@@ -39,7 +39,7 @@ use crate::forwarding::{
 // keyboard handlers) to keep this file under the HR-18 LOC cap.
 mod eyedropper;
 mod keyboard;
-mod protect_brush;
+pub(crate) mod protect_brush;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
@@ -148,9 +148,12 @@ impl App {
             self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
             return;
         }
+        // Keep the brush-size ring gizmo following the cursor while the
+        // protection brush is armed (published for the on-canvas overlay).
+        self.update_protect_brush_cursor(self.last_pointer.0, self.last_pointer.1);
         // BgRemoval protection brush drag (SHELL-only): while a dab is in
-        // progress, every motion paints another disc into the keep mask.
-        // Early-return so it doesn't also drive a gizmo drag / slider.
+        // progress, every motion paints/erases another disc into the keep
+        // mask. Early-return so it doesn't also drive a gizmo drag / slider.
         if self.protect_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
@@ -339,6 +342,18 @@ impl App {
                 if self.try_eyedropper_delete(evt.x, evt.y) =>
             {
                 return;
+            }
+            // Protection brush ERASE: a Secondary Down with the brush armed
+            // erases the first dab + starts an erase drag (continued in
+            // CursorMoved). Consumes so it doesn't open a context menu.
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if self.try_protect_erase(evt.x, evt.y) =>
+            {
+                return;
+            }
+            (ph2d_host::PointerButton::Secondary, PointerKind::Up) => {
+                // End any erase drag (no-op when not erasing).
+                self.end_protect_paint();
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if self.try_eyedropper_sample(evt.x, evt.y) =>

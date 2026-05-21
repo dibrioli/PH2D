@@ -53,6 +53,11 @@ run_optional "cargo-machete (unused deps)" cargo-machete cargo machete
 run_optional "cargo-deny (licenses/advisories/bans/sources)" cargo-deny \
     cargo deny --all-features check
 run_optional "cargo-audit (CVE scan)" cargo-audit cargo audit
+# typos: CI's lint job runs a project-wide scan (config in .typos.toml).
+# The pre-commit hook DOES run it, but a `--no-verify` fast-mode session
+# bypasses the hook — so without this row a stray typo lands in CI lint
+# red after the push. Same engine + config as spike.yml.
+run_optional "typos (project-wide typo scan)" typos typos
 
 # ── CI `test` job parity (nextest covers arch gates + cook-hash) ─────────
 if command -v cargo-nextest >/dev/null 2>&1; then

@@ -85,7 +85,7 @@ fn tofu_in_strings(src: &str) -> Vec<(usize, char)> {
                     i += 1;
                 } else if c == '\'' {
                     // char literal or lifetime — skip the next token
-                    // crudely (enough to avoid mis-entering a string).
+                    // crudely (enough to avoid wrongly entering a string).
                     i += 1;
                 } else {
                     i += 1;

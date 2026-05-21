@@ -666,10 +666,29 @@ impl App {
                         .position(|r| r.contains(self.last_pointer.0, self.last_pointer.1));
                     if let Some(idx) = hit_idx {
                         let tool_id = gfx.tools.tools()[idx].id();
-                        let tool_label = gfx.tools.tools()[idx].label().to_string();
-                        if gfx.tools.set_active(&tool_id) {
-                            gfx.toasts.push(Toast::info(format!("Tool · {tool_label}")));
-                            self.title_dirty = true;
+                        // Image-edit tools (Bg Removal / Padding) are only
+                        // reachable while Image Tools mode is on — same
+                        // rule as the TopBar pills. The tool palette is a
+                        // SECOND activation path that otherwise bypassed
+                        // the mode (it called set_active directly): a
+                        // palette click fired the tool + a "Tool · Padding"
+                        // toast even with the mode off (the per-frame
+                        // reconcile then deactivated the tool, leaving only
+                        // the stray toast — "só a mensagem"). Gate it here
+                        // too so image tools are fully inaccessible off.
+                        let mode_on = gfx
+                            .hero_screen
+                            .as_ref()
+                            .map(|h| h.image_edit.mode_on)
+                            .unwrap_or(false);
+                        let is_image_tool = tool_id == ph2d_editor::ToolId::new("bgremoval")
+                            || tool_id == ph2d_editor::ToolId::new("padding");
+                        if !(is_image_tool && !mode_on) {
+                            let tool_label = gfx.tools.tools()[idx].label().to_string();
+                            if gfx.tools.set_active(&tool_id) {
+                                gfx.toasts.push(Toast::info(format!("Tool · {tool_label}")));
+                                self.title_dirty = true;
+                            }
                         }
                         consumed = true;
                     }

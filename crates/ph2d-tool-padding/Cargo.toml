@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-tool-padding"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Padding — canvas resize by signed per-edge padding. Condenses the
+# legacy engine's "Image Padding" (per-edge add/remove) and "Directional
+# Expand" (single-edge grow/shrink) into one tool: directional expand is
+# just dragging one edge of the same PaddingSpec. Positive = expand with
+# transparent pixels; negative = crop. Recomputes the content offset so
+# the caller can keep world-space position (pivot) stable.
+#
+# Leaf island crate (no editor-core dep), same shape as
+# ph2d-tool-make-square / ph2d-tool-real-size.
+
+[dependencies]
+# Registry types (ToolManifest, Zone, Role, etc.) — single point of
+# coupling for any tool crate. Never depends on ph2d-editor (cycle).
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Vector primitives (BezPath, Point, Shape) for the icon glyph.
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role) for the manifest a11y declaration (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }

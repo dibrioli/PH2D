@@ -494,6 +494,13 @@ pub const CTX_MENU_UNIT_PIXELS: NodeId = hash_node_id("ctx_menu_unit_pixels");
 pub const CTX_MENU_SETTINGS_FILTER: NodeId = hash_node_id("ctx_menu_settings_filter");
 pub const CTX_MENU_FILTER_PIXELART: NodeId = hash_node_id("ctx_menu_filter_pixelart");
 pub const CTX_MENU_FILTER_SMOOTH: NodeId = hash_node_id("ctx_menu_filter_smooth");
+/// Top-level Settings entry that opens the Display submenu (present
+/// mode). Selecting a mode switches the swap-chain present mode at
+/// runtime: VSync (`Fifo`, smooth motion) vs Immediate (non-blocking,
+/// no mouse-stutter — the M5-demo-continuous-render tradeoff).
+pub const CTX_MENU_SETTINGS_DISPLAY: NodeId = hash_node_id("ctx_menu_settings_display");
+pub const CTX_MENU_DISPLAY_VSYNC: NodeId = hash_node_id("ctx_menu_display_vsync");
+pub const CTX_MENU_DISPLAY_IMMEDIATE: NodeId = hash_node_id("ctx_menu_display_immediate");
 
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;

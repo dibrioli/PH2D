@@ -415,6 +415,19 @@ impl crate::App {
                         // sync.
                         renderer.set_filter_mode(mode);
                     }
+                    EditorAction::SetPresentMode { vsync } => {
+                        // Config → Display toggle. VSync (Fifo) = smooth
+                        // hardware-paced motion; Immediate = non-blocking
+                        // (no mouse-stutter). Reconfigures the swap chain
+                        // in place. Both modes are available on this
+                        // backend (boot log confirms); Fifo is the
+                        // universal fallback.
+                        surface.set_present_mode(if vsync {
+                            wgpu::PresentMode::Fifo
+                        } else {
+                            wgpu::PresentMode::Immediate
+                        });
+                    }
                     // Bgremoval falls through to its own filter-and-
                     // replace at the image-edit drain site so the
                     // `bgremoval_active` gate runs AFTER any same-frame

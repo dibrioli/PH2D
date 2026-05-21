@@ -57,6 +57,7 @@ mod rail_tools;
 mod scene_picker;
 mod settings_filter;
 mod settings_ppm;
+mod settings_present;
 mod settings_unit;
 mod theme;
 mod view_toggles;
@@ -73,6 +74,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_ppm::apply(hero, event)
         || settings_unit::apply(hero, event)
         || settings_filter::apply(hero, event)
+        || settings_present::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)

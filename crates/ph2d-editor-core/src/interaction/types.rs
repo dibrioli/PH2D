@@ -131,6 +131,12 @@ pub enum ContextMenuKind {
     /// and raises `EditorAction::SetImageFilter` so the shell rebuilds
     /// the GPU samplers.
     SettingsFilterSubmenu,
+    /// Submenu opened when the user picks "Display" — switches the
+    /// swap-chain present mode at runtime: VSync (`Fifo`, perfectly
+    /// smooth motion) vs Immediate (non-blocking, no mouse-stutter).
+    /// Selecting one raises `EditorAction::SetPresentMode` so the shell
+    /// reconfigures the surface.
+    SettingsDisplaySubmenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `super::WidgetStore::current_scene_name`.

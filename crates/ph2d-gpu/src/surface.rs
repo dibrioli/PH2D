@@ -150,6 +150,26 @@ impl SurfaceContext {
         self.surface.configure(&self.gpu.device, &self.config);
     }
 
+    /// The surface's active present mode.
+    pub fn present_mode(&self) -> wgpu::PresentMode {
+        self.config.present_mode
+    }
+
+    /// Switch the present mode at runtime (Config → Display toggle:
+    /// `Fifo` for smooth vsync vs `Immediate` for non-blocking / no
+    /// mouse-stutter). Reconfigures the swap chain in place; no-op when
+    /// the mode is unchanged. The caller is responsible for only passing
+    /// a mode the backend supports (Fifo is always supported; Immediate
+    /// where exposed).
+    pub fn set_present_mode(&mut self, mode: wgpu::PresentMode) {
+        if self.config.present_mode == mode {
+            return;
+        }
+        self.config.present_mode = mode;
+        self.surface.configure(&self.gpu.device, &self.config);
+        eprintln!("[ph2d-gpu] surface present mode → {mode:?}");
+    }
+
     /// After a `Lost` cascade, the caller must invoke this before the
     /// next `acquire_frame()`. Drops transients + reconfigures the
     /// surface (per ADR-0020).

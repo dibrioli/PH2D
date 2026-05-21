@@ -244,6 +244,16 @@ pub enum EditorAction {
         mode: crate::project::ImageFilterMode,
     },
 
+    /// Config → "Display" present-mode pick. `vsync = true` → `Fifo`
+    /// (smooth, hardware-paced motion); `vsync = false` → `Immediate`
+    /// (non-blocking, kills the mouse-move stutter at the cost of
+    /// vsync pacing). The shell owns the swap chain and calls
+    /// `SurfaceContext::set_present_mode`. Raised by clicking a row in
+    /// the `SettingsDisplaySubmenu`.
+    SetPresentMode {
+        vsync: bool,
+    },
+
     /// Inspector → shell channel for entity-`Name` edits. Payload:
     /// the snapshot `(entity_bits, new_name)`. Shell drains and
     /// pushes a `EditorCommand::SetComponent` for `ph2d_ecs::Name`,

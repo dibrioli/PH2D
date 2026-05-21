@@ -236,6 +236,46 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     }
     y += row_gap;
 
+    // ── Protection brush toggle + Clear ────────────────────────────
+    // Freehand "keep" brush: while armed, canvas click-drag paints a
+    // forced-foreground mask (handled in the shell, both modes). Mirrors
+    // the eyedropper look — armed = Accent CTA, idle = ghost Default —
+    // via the same canonical `paint_button`.
+    let protect_state = if snapshot.protect_brush_armed {
+        ButtonState::Pressed
+    } else {
+        store
+            .button_state(ids::BGR_PROTECT)
+            .unwrap_or(ButtonState::Normal)
+    };
+    let protect_kind = if snapshot.protect_brush_armed {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let protect_rect = Rect::new(inner_x, y, inner_w, row_h);
+    let protect = Button::new(ids::BGR_PROTECT, "Protect")
+        .kind(protect_kind)
+        .state(protect_state);
+    paint_button(&protect, protect_rect, scene, text_system, theme);
+    hit_index.register(ids::BGR_PROTECT, protect_rect);
+    y += row_h + row_gap;
+
+    // Clear protection — only painted/registered when a region exists,
+    // so the dispatch can't hit a phantom button.
+    if snapshot.has_protect_mask {
+        let clear_rect = Rect::new(inner_x, y, inner_w, row_h);
+        let clear_state = store
+            .button_state(ids::BGR_PROTECT_CLEAR)
+            .unwrap_or(ButtonState::Normal);
+        let clear = Button::new(ids::BGR_PROTECT_CLEAR, "Clear protection")
+            .kind(ButtonKind::Default)
+            .state(clear_state);
+        paint_button(&clear, clear_rect, scene, text_system, theme);
+        hit_index.register(ids::BGR_PROTECT_CLEAR, clear_rect);
+        y += row_h + row_gap;
+    }
+
     // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
     let btn_gap = Spacing::Sm.px();
     let half_btn = ((inner_w - btn_gap) * 0.5).max(0.0);

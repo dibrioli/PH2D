@@ -20,6 +20,9 @@ pub fn populate(store: &mut WidgetStore) {
         // Eyedropper toggle. Swatches need NO store entry — they're
         // paint-time hit registrations from a fixed id pool.
         ids::BGR_EYEDROPPER,
+        // Protection-brush toggle + its Clear button.
+        ids::BGR_PROTECT,
+        ids::BGR_PROTECT_CLEAR,
     ] {
         store.register(
             id,

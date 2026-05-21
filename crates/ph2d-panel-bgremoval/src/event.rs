@@ -111,6 +111,30 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             ));
             true
         }
+        // Protection-brush toggle — flip the armed state. While armed,
+        // the shell paints canvas click-drags into the protection mask.
+        // Reset the pressed state; the armed look is the per-frame
+        // snapshot in `paint`.
+        WidgetEvent::Click(id) if id == ids::BGR_PROTECT => {
+            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+                *state = ButtonState::Normal;
+            }
+            host.bus_mut().push(EditorAction::BgremovalUiEdit(
+                BgRemovalUiEdit::ToggleProtectBrush,
+            ));
+            true
+        }
+        // Clear protection — wipe the painted protection mask. The tool
+        // reruns the preview without any forced-keep region.
+        WidgetEvent::Click(id) if id == ids::BGR_PROTECT_CLEAR => {
+            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+                *state = ButtonState::Normal;
+            }
+            host.bus_mut().push(EditorAction::BgremovalUiEdit(
+                BgRemovalUiEdit::ClearProtectMask,
+            ));
+            true
+        }
         // Cancel — abandon the preview and deactivate the tool (shell
         // switches back to the default tool, hiding this panel and
         // restoring the Inspector).

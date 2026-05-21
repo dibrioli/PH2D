@@ -10,7 +10,7 @@ use crate::ids;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
-use ph2d_editor_core::tools::bgremoval::{BgRemovalMode, BgRemovalUiEdit};
+use ph2d_editor_core::tools::bgremoval::{BgRemovalMode, BgRemovalUiEdit, BrushFalloff};
 use ph2d_editor_core::widget::ButtonState;
 
 use crate::state::BgRemovalPanelState;
@@ -85,6 +85,59 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 BgRemovalUiEdit::Grow(value)
             };
             host.bus_mut().push(EditorAction::BgremovalUiEdit(edit));
+            true
+        }
+        // Brush-size slider / chip → BrushSize edit (normalized 0..1).
+        WidgetEvent::ValueChanged(id) if id == ids::BGR_BRUSH_SIZE => {
+            let value = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+            host.bus_mut()
+                .push(EditorAction::BgremovalUiEdit(BgRemovalUiEdit::BrushSize(
+                    value,
+                )));
+            true
+        }
+        WidgetEvent::ValueChanged(id) if id == ids::BGR_BRUSH_SIZE_NUM => {
+            let value = host.store().number_value(id).unwrap_or(0.0) as f32;
+            host.bus_mut()
+                .push(EditorAction::BgremovalUiEdit(BgRemovalUiEdit::BrushSize(
+                    value,
+                )));
+            true
+        }
+        // Falloff 4-way segmented → SetFalloff. Active highlight is the
+        // per-frame snapshot; reset the clicked button's pressed state.
+        WidgetEvent::Click(id)
+            if id == ids::BGR_FALLOFF_SMOOTH
+                || id == ids::BGR_FALLOFF_SPHERE
+                || id == ids::BGR_FALLOFF_SHARP
+                || id == ids::BGR_FALLOFF_CONSTANT =>
+        {
+            let falloff = if id == ids::BGR_FALLOFF_SPHERE {
+                BrushFalloff::Sphere
+            } else if id == ids::BGR_FALLOFF_SHARP {
+                BrushFalloff::Sharp
+            } else if id == ids::BGR_FALLOFF_CONSTANT {
+                BrushFalloff::Constant
+            } else {
+                BrushFalloff::Smooth
+            };
+            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+                *state = ButtonState::Normal;
+            }
+            host.bus_mut()
+                .push(EditorAction::BgremovalUiEdit(BgRemovalUiEdit::SetFalloff(
+                    falloff,
+                )));
+            true
+        }
+        // Show-mask toggle — flips the on-canvas tint overlay.
+        WidgetEvent::Click(id) if id == ids::BGR_SHOW_MASK => {
+            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+                *state = ButtonState::Normal;
+            }
+            host.bus_mut().push(EditorAction::BgremovalUiEdit(
+                BgRemovalUiEdit::ToggleShowMask,
+            ));
             true
         }
         // Apply button — commit at full resolution. The shell drains

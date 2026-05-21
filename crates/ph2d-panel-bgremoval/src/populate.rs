@@ -23,6 +23,12 @@ pub fn populate(store: &mut WidgetStore) {
         // Protection-brush toggle + its Clear button.
         ids::BGR_PROTECT,
         ids::BGR_PROTECT_CLEAR,
+        // Show-mask toggle + the 4-way falloff segmented buttons.
+        ids::BGR_SHOW_MASK,
+        ids::BGR_FALLOFF_SMOOTH,
+        ids::BGR_FALLOFF_SPHERE,
+        ids::BGR_FALLOFF_SHARP,
+        ids::BGR_FALLOFF_CONSTANT,
     ] {
         store.register(
             id,
@@ -41,6 +47,8 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::BGR_REFINE, ids::BGR_REFINE_NUM, d.refine01),
         // Grow/Shrink is bipolar (0.5 = neutral); default is a slight erode.
         (ids::BGR_GROW, ids::BGR_GROW_NUM, d.grow01),
+        // Protection-brush size (source-px radius, normalized).
+        (ids::BGR_BRUSH_SIZE, ids::BGR_BRUSH_SIZE_NUM, d.brush_size01),
     ] {
         store.register(
             slider_id,

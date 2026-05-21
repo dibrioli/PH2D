@@ -22,7 +22,7 @@
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
 use crate::{BgRemovalPanel, ids};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::tools::bgremoval::BgRemovalMode;
+use ph2d_editor_core::tools::bgremoval::{BgRemovalMode, BrushFalloff};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
     paint_panel_title, paint_segmented_group,
@@ -260,6 +260,90 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     paint_button(&protect, protect_rect, scene, text_system, theme);
     hit_index.register(ids::BGR_PROTECT, protect_rect);
     y += row_h + row_gap;
+
+    // Brush settings — shown only while the brush is armed (they only
+    // affect painting). Brush Size slider + Falloff segmented control,
+    // both canonical painters / tokens.
+    if snapshot.protect_brush_armed {
+        let chip_w = Spacing::Xl.px() * 2.0;
+        let size_v = store
+            .slider(ids::BGR_BRUSH_SIZE)
+            .map(|(_, v)| v)
+            .unwrap_or(snapshot.brush_size01);
+        paint_slider_with_chip_layout(
+            Rect::new(inner_x, y, inner_w, row_h),
+            "Size",
+            size_v,
+            size_v as f64,
+            None,
+            ids::BGR_BRUSH_SIZE,
+            ids::BGR_BRUSH_SIZE_NUM,
+            LABEL_COL_W,
+            chip_w,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        y += row_h + row_gap;
+
+        // Falloff: 4-way segmented group (mirrors the Mode control).
+        paint_segmented_group(
+            Rect::new(inner_x, y, inner_w, row_h),
+            &[
+                (
+                    BrushFalloff::Smooth.label(),
+                    snapshot.falloff == BrushFalloff::Smooth,
+                    ids::BGR_FALLOFF_SMOOTH,
+                ),
+                (
+                    BrushFalloff::Sphere.label(),
+                    snapshot.falloff == BrushFalloff::Sphere,
+                    ids::BGR_FALLOFF_SPHERE,
+                ),
+                (
+                    BrushFalloff::Sharp.label(),
+                    snapshot.falloff == BrushFalloff::Sharp,
+                    ids::BGR_FALLOFF_SHARP,
+                ),
+                (
+                    BrushFalloff::Constant.label(),
+                    snapshot.falloff == BrushFalloff::Constant,
+                    ids::BGR_FALLOFF_CONSTANT,
+                ),
+            ],
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+        y += row_h + row_gap;
+    }
+
+    // Show-Mask toggle — visible whenever there's a brush context (armed
+    // or already-painted). Accent when the overlay is on.
+    if snapshot.protect_brush_armed || snapshot.has_protect_mask {
+        let show_state = if snapshot.show_mask {
+            ButtonState::Pressed
+        } else {
+            store
+                .button_state(ids::BGR_SHOW_MASK)
+                .unwrap_or(ButtonState::Normal)
+        };
+        let show_kind = if snapshot.show_mask {
+            ButtonKind::Accent
+        } else {
+            ButtonKind::Default
+        };
+        let show_rect = Rect::new(inner_x, y, inner_w, row_h);
+        let show = Button::new(ids::BGR_SHOW_MASK, "Show mask")
+            .kind(show_kind)
+            .state(show_state);
+        paint_button(&show, show_rect, scene, text_system, theme);
+        hit_index.register(ids::BGR_SHOW_MASK, show_rect);
+        y += row_h + row_gap;
+    }
 
     // Clear protection — only painted/registered when a region exists,
     // so the dispatch can't hit a phantom button.

@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
+**Versão:** 6.4 — 2026-05-21 (§4.1 novo: regras de UI sem gate automático que já queimaram >1× — glifos fora da fonte bundled viram tofu; estado de modo ↔ estado derivado não pode desacoplar, use reconciliação por frame não guard pontual; diagnostique medindo com env-probe. Bases: `docs/UI_Bugs/` + `docs/Image Tools Bugs/`.) · 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
 **Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
 **Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Depois, Enio te diz "Você é o Coordenador" ou "Você é o Implementador" e este doc te diz o resto.
 
@@ -497,6 +497,17 @@ CSS aliases em [`docs/design/styles/tokens.css`](../../docs/design/styles/tokens
 Violação em qualquer um = build vermelho = Implementador refaz. Não há "vou abrir exceção".
 
 **Exceção declarada legítima:** comentário `// LITERAL-COLOR-OK: <razão>` na mesma linha ou `// LITERAL-PX-OK: <razão>` para magic numeric. Use sparingly — Coordenador valida na revisão se a justificativa procede.
+
+### 4.1 Regras de UI que já queimaram (NÃO repita) — sem gate automático
+
+Estas não têm arch-test (ainda); são erros recorrentes que voltaram >1 vez.
+Bases de conhecimento: [`docs/UI_Bugs/README.md`](../UI_Bugs/README.md) (UI geral) e [`docs/Image Tools Bugs/README.md`](../Image%20Tools%20Bugs/README.md) (Image Tools). **Leia antes de tocar em painter/dispatch/tool.**
+
+1. **Nenhum glifo fora da fonte bundled (Inter) em string de UI.** Seta/símbolo (`→ ⌘ ↵ ✕ ▸ …`) vira **tofu** (quadrado). Vale pra TODA string visível: toast, tooltip, label, pill. Use ASCII; o único não-ASCII seguro comprovado é `·` (U+00B7). Já queimou 2×: glifos Cmd/Return do topbar (UI_Bugs §9.19) e a seta das toasts "Tool → X" (`b62e0c5`).
+
+2. **Estado de MODO e estado DERIVADO não podem viver desacoplados.** Se um toggle/modo de UI (ex.: `image_edit.mode_on`) governa o que aparece (tool ativo, painel, preview), quem desliga o modo é responsável por **desligar tudo** que ele expõe. O lugar certo é uma **reconciliação por frame** sobre estado derivado — **não** um *guard* pontual no caminho de clique. Guard trata "não deixar ligar"; **não** trata "já está ligado". Bug clássico: ferramenta de imagem (Bg Removal/Padding) seguia ativa com Image Tools desligado, painel/preview órfãos persistindo (Image Tools Bugs §2, `3ef9190`). **Implementador:** ao adicionar um modo que liga subsistemas, escreva também a reconciliação que os desliga quando o modo cai, e teste o ciclo liga→usa→desliga.
+
+3. **Diagnostique medindo, não chutando.** Bug de UI/input com repro: instrumente (env-gate, ex.: `PH2D_UIDBG`) o caminho exato e capture o estado real (id resolvido no hit, flags, frame) antes de propor fix. Reverta a instrumentação no fim. Duas "correções" às cegas do bug do Image Tools falharam por chutar (uma chegou a mover o Config — proibido); a 3ª resolveu medindo.
 
 ---
 

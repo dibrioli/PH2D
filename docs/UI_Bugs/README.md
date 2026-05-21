@@ -526,6 +526,13 @@ estava implícito nos §1–§8.
   seguro manter.
 - **Código**: [`screens/hero/topbar.rs populate tooltips`](../../crates/ph2d-editor/src/screens/hero/topbar.rs);
   [`screens/hero/inspector.rs ListItem value`](../../crates/ph2d-editor/src/screens/hero/inspector.rs).
+- **RECORRÊNCIA (2026-05-21, commit `b62e0c5`)**: as toasts de troca de
+  ferramenta usavam **U+2192 (→)** ("Tool → Padding") → tofu na tela.
+  Mesma causa, mesmo fix (→ virou `·`). **Regra geral, vale pra QUALQUER
+  string de UI** (toast, tooltip, label, pill): só ASCII + os poucos
+  não-ASCII comprovadamente in-font (`·`). Setas/símbolos (→ ⌘ ↵ ✕ ▸ …)
+  são tofu garantido. Code: `shells/desktop/src/{input_handlers,
+  input_dispatch}.rs`, `shells/desktop/src/render_loop/mod.rs`.
 
 ### 9.20 Inspector scroll clamp + separador colorido por seção
 

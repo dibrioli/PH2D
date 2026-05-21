@@ -82,7 +82,8 @@ mod tests {
     #[test]
     fn manifest_order_is_right_of_bgremoval() {
         // Paint order on the Image Tools row (sorted by `order`):
-        // real_size sits to the right of bgremoval (60).
-        assert!(MANIFEST.order > 60);
+        // real_size sits to the right of bgremoval (60). `const {}` so
+        // the const-value assertion doesn't trip clippy::assertions_on_constants.
+        const { assert!(MANIFEST.order > 60) };
     }
 }

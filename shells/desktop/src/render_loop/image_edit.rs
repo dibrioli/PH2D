@@ -30,7 +30,7 @@ pub(super) fn dispatch(
     trim_entity: Option<u64>,
     make_square_entity: Option<u64>,
     real_size_entity: Option<u64>,
-    padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec)>,
+    padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)>,
     undo_image_edit: bool,
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -129,10 +129,11 @@ pub(super) fn dispatch(
     // Individual texture, and reproject the pivot so the original
     // content's world position holds. Parallel to Make Square; the spec
     // was captured from the active `PaddingTool` by `padding_bridge`.
-    if let Some((entity_bits, spec)) = padding_apply
+    if let Some((entity_bits, spec, recenter_pivot)) = padding_apply
         && hero_intents::drain_padding(
             entity_bits,
             spec,
+            recenter_pivot,
             hero.project.pixels_per_meter,
             sim,
             renderer,

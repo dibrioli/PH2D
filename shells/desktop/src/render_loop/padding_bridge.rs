@@ -15,17 +15,18 @@
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
 
-/// Returns `Some((entity_bits, spec))` iff Apply fired this frame — the
-/// caller runs the full-resolution bake against that selection with the
-/// captured per-edge spec and then tears the tool down (deactivate +
-/// restore Inspector), exactly like the Bg-Removal apply teardown. The
-/// spec is captured here (while the tool is borrowed) so the bake site
-/// doesn't have to re-borrow `tools`.
+/// Returns `Some((entity_bits, spec, recenter_pivot))` iff Apply fired
+/// this frame — the caller runs the full-resolution bake against that
+/// selection with the captured per-edge spec + pivot mode and then tears
+/// the tool down (deactivate + restore Inspector), exactly like the
+/// Bg-Removal apply teardown. The spec + pivot flag are captured here
+/// (while the tool is borrowed) so the bake site doesn't have to
+/// re-borrow `tools`.
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
     padding_ui_edits: Vec<ph2d_editor::tools::padding::PaddingUiEdit>,
-) -> Option<(u64, ph2d_tool_padding::PaddingSpec)> {
+) -> Option<(u64, ph2d_tool_padding::PaddingSpec, bool)> {
     let padding_is_active = tools
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("padding"))
@@ -33,7 +34,7 @@ pub(super) fn dispatch(
     // Visibility: shown iff padding is the active tool.
     hero.panel_visibility.insert("padding", padding_is_active);
 
-    let mut apply: Option<(u64, ph2d_tool_padding::PaddingSpec)> = None;
+    let mut apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)> = None;
     if let Some(tool) = tools.active_mut()
         && let Some(pad) = tool
             .as_any_mut()
@@ -54,6 +55,7 @@ pub(super) fn dispatch(
                     bottom,
                     left,
                 },
+                pad.recenter_pivot(),
             ));
         }
         #[cfg(feature = "panel-padding")]

@@ -23,9 +23,9 @@ use super::params::{PaddingUiEdit, PaddingUiSnapshot};
 
 /// Editor Tool implementing the stateful Padding / Expand feature.
 ///
-/// `Default` is derived — every edge starts at `0` (a no-op spec) and
-/// nothing is pending.
-#[derive(Clone, Debug, Default)]
+/// `Default` is hand-written (not derived) because `recenter_pivot`
+/// defaults to `true`, not the `bool` zero value.
+#[derive(Clone, Debug)]
 pub struct PaddingTool {
     /// Signed per-edge padding/crop, in pixels (positive = expand with
     /// transparent pixels, negative = crop).
@@ -33,9 +33,28 @@ pub struct PaddingTool {
     right: i32,
     bottom: i32,
     left: i32,
+    /// Pivot mode. `true` (default) = recenter: the shell recalculates
+    /// the sprite translation on Apply so the original content's world
+    /// position is preserved. `false` = keep the pivot unchanged (the
+    /// shell leaves the translation alone, so the canvas resizes around
+    /// the current pivot point and the content visually shifts).
+    recenter_pivot: bool,
     /// Set `true` when the user presses Apply; the host drains it via
     /// [`Self::take_pending_apply`] and bakes at full resolution.
     pending_apply: bool,
+}
+
+impl Default for PaddingTool {
+    fn default() -> Self {
+        Self {
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            recenter_pivot: true,
+            pending_apply: false,
+        }
+    }
 }
 
 impl PaddingTool {
@@ -48,6 +67,7 @@ impl PaddingTool {
             right: self.right,
             bottom: self.bottom,
             left: self.left,
+            recenter_pivot: self.recenter_pivot,
         }
     }
 
@@ -60,8 +80,17 @@ impl PaddingTool {
             PaddingUiEdit::Right(v) => self.right = v,
             PaddingUiEdit::Bottom(v) => self.bottom = v,
             PaddingUiEdit::Left(v) => self.left = v,
+            PaddingUiEdit::TogglePivotRecenter => self.recenter_pivot = !self.recenter_pivot,
             PaddingUiEdit::Apply => self.pending_apply = true,
         }
+    }
+
+    /// Whether Apply should recenter the pivot (recalculate the sprite
+    /// translation to keep the original content world-fixed). `false`
+    /// leaves the translation unchanged. The shell reads this at bake
+    /// time alongside [`Self::spec`].
+    pub fn recenter_pivot(&self) -> bool {
+        self.recenter_pivot
     }
 
     /// Drain the pending-apply flag. Returns `true` exactly once after
@@ -79,16 +108,6 @@ impl PaddingTool {
     /// crate — the spec is just four `i32`s here).
     pub fn spec(&self) -> (i32, i32, i32, i32) {
         (self.top, self.right, self.bottom, self.left)
-    }
-
-    /// Reset every edge to `0` + clear the pending flag. Called on
-    /// deactivate / Cancel so reactivating later starts clean.
-    pub fn reset(&mut self) {
-        self.top = 0;
-        self.right = 0;
-        self.bottom = 0;
-        self.left = 0;
-        self.pending_apply = false;
     }
 }
 
@@ -116,9 +135,13 @@ impl Tool for PaddingTool {
     }
 
     fn on_deactivate(&mut self) {
-        // A tool switch / Cancel abandons any in-progress spec so a stale
-        // value can't bake on the next activation.
-        self.reset();
+        // Clear only the pending-apply latch so a tool switch can't fire a
+        // stray bake. The per-edge spec + pivot mode PERSIST across
+        // activations (mirrors Bg Removal keeping its params): the panel's
+        // slider/chip widget stores also persist, so resetting the spec
+        // here would desync the painted fields from the tool the next time
+        // the panel opens.
+        self.pending_apply = false;
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -169,12 +192,26 @@ mod tests {
     }
 
     #[test]
-    fn deactivate_resets_spec_and_pending() {
+    fn deactivate_clears_pending_but_keeps_spec() {
         let mut t = PaddingTool::default();
         t.apply_ui_edit(PaddingUiEdit::Top(20));
         t.apply_ui_edit(PaddingUiEdit::Apply);
         t.on_deactivate();
-        assert_eq!(t.spec(), (0, 0, 0, 0));
+        // Spec persists (panel widget stores persist too); only the
+        // pending-apply latch is cleared.
+        assert_eq!(t.spec(), (20, 0, 0, 0));
         assert!(!t.take_pending_apply());
+    }
+
+    #[test]
+    fn pivot_recenter_defaults_on_and_toggles() {
+        let mut t = PaddingTool::default();
+        assert!(t.recenter_pivot());
+        assert!(t.ui_snapshot().recenter_pivot);
+        t.apply_ui_edit(PaddingUiEdit::TogglePivotRecenter);
+        assert!(!t.recenter_pivot());
+        assert!(!t.ui_snapshot().recenter_pivot);
+        t.apply_ui_edit(PaddingUiEdit::TogglePivotRecenter);
+        assert!(t.recenter_pivot());
     }
 }

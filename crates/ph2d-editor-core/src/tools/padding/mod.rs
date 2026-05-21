@@ -14,5 +14,7 @@
 pub mod params;
 pub mod tool;
 
-pub use params::{PaddingUiEdit, PaddingUiSnapshot};
+pub use params::{
+    PAD_SLIDER_FULL_SCALE, PaddingUiEdit, PaddingUiSnapshot, px_to_slider, slider_to_px,
+};
 pub use tool::PaddingTool;

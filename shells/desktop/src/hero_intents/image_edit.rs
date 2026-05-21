@@ -215,11 +215,15 @@ pub(crate) fn drain_make_square(
 /// Drain a Padding Apply: resize the selected sprite's source bitmap by
 /// the tool's signed per-edge `spec` (positive = transparent expand,
 /// negative = crop) via `ph2d_tool_padding::add_padding`, acquire a
-/// fresh Individual texture, and reproject the Transform translation so
-/// the original content's world position holds across the resize.
+/// fresh Individual texture, and (when `recenter_pivot`) reproject the
+/// Transform translation so the original content's world position holds.
+///
+/// `recenter_pivot` is the panel's pivot-mode toggle: `true` recalculates
+/// the translation (content stays world-fixed); `false` leaves the
+/// translation unchanged (the canvas resizes around the current pivot).
 ///
 /// Mirrors [`drain_make_square`] (texture chokepoint + undo snapshot +
-/// `max_texture_dimension_2d` cap). The pivot fix-up uses the
+/// `max_texture_dimension_2d` cap). The recenter fix-up uses the
 /// `PaddingResult::pivot_delta_*` directly — it's the signed shift of
 /// the original content's top-left inside the new canvas, so the
 /// recenter formula (same as `recenter_after_pad`, but accepting a
@@ -231,6 +235,7 @@ pub(crate) fn drain_make_square(
 pub(crate) fn drain_padding(
     entity_bits: u64,
     spec: ph2d_tool_padding::PaddingSpec,
+    recenter_pivot: bool,
     project_pixels_per_meter: f32,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -272,12 +277,17 @@ pub(crate) fn drain_padding(
         result.width as f32 / px_per_m,
         result.height as f32 / px_per_m,
     ];
-    // Recenter so the ORIGINAL content's world center stays fixed. Same
-    // formula as `recenter_after_pad`, but the offset is the signed
-    // `pivot_delta` (the original content's top-left inside the new
-    // canvas) — `recenter_after_pad`'s `PixelBounds` is unsigned and
-    // can't represent the crop case, so the math is inlined here.
-    let new_translation = {
+    // Pivot mode (panel toggle):
+    //  - `recenter_pivot = true` (default): recalculate the translation so
+    //    the ORIGINAL content's world center stays fixed. Same formula as
+    //    `recenter_after_pad`, but the offset is the signed `pivot_delta`
+    //    (the original content's top-left inside the new canvas) —
+    //    `recenter_after_pad`'s `PixelBounds` is unsigned and can't
+    //    represent the crop case, so the math is inlined here.
+    //  - `recenter_pivot = false`: keep the pivot unchanged — leave the
+    //    translation as-is (the canvas resizes around the current pivot,
+    //    so the content visually shifts).
+    let new_translation = if recenter_pivot {
         let (nw, nh) = (result.width as f32, result.height as f32);
         let center_px_x = result.pivot_delta_x as f32 + src_w as f32 * 0.5;
         let center_px_y = result.pivot_delta_y as f32 + src_h as f32 * 0.5;
@@ -285,6 +295,8 @@ pub(crate) fn drain_padding(
         // Y-up flip (pixel space is Y-down).
         let dy = new_size_world[1] * (0.5 - center_px_y / nh);
         [src.old_translation[0] - dx, src.old_translation[1] - dy]
+    } else {
+        src.old_translation
     };
     // Color-agnostic resize (transparent border / crop): PRESERVE the
     // source alpha mode so a premultiplied BG-Removal result survives

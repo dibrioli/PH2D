@@ -9,21 +9,59 @@
 //! `ph2d-tool-padding` (the spec is four `i32`s; the shell converts them
 //! to `ph2d_tool_padding::PaddingSpec` at bake time).
 
-/// Normalized projection of the tool's per-edge state for the typed
-/// `ph2d-panel-padding` to paint. All four fields are signed pixel
-/// counts (positive = expand, negative = crop). The host publishes a
-/// fresh snapshot each frame via
-/// `ph2d_panel_padding::set_current_padding_snapshot`.
+/// Half-range (px) each per-edge slider spans on either side of its
+/// neutral centre. The slider is BIPOLAR: track `0.0` = `−SCALE` px
+/// (crop), `0.5` = `0` px, `1.0` = `+SCALE` px (expand). The paired
+/// px chip is the exact value (the user can type beyond this range; the
+/// slider thumb just saturates at the ends).
+pub const PAD_SLIDER_FULL_SCALE: i32 = 512;
+
+/// Normalize a signed pixel count into the bipolar slider track position
+/// `0.0..=1.0` (`0.5` = neutral). Inverse of [`slider_to_px`].
+pub fn px_to_slider(px: i32) -> f32 {
+    (px as f32 / (2.0 * PAD_SLIDER_FULL_SCALE as f32) + 0.5).clamp(0.0, 1.0)
+}
+
+/// Map a bipolar slider track position `0.0..=1.0` to a signed pixel
+/// count (rounded). Inverse of [`px_to_slider`].
+pub fn slider_to_px(track: f32) -> i32 {
+    ((track.clamp(0.0, 1.0) - 0.5) * 2.0 * PAD_SLIDER_FULL_SCALE as f32).round() as i32
+}
+
+/// Projection of the tool's per-edge state + pivot mode for the typed
+/// `ph2d-panel-padding` to paint. The four edge fields are signed pixel
+/// counts (positive = expand, negative = crop); `recenter_pivot` drives
+/// the pivot-mode toggle. The host publishes a fresh snapshot each frame
+/// via `ph2d_panel_padding::set_current_padding_snapshot`.
 ///
-/// Unlike the Bg-Removal snapshot these are NOT normalized to `0..1` —
-/// the panel paints four `NumberInput` fields whose displayed value IS
-/// the pixel count, so the snapshot carries the raw `i32`s.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+/// Unlike the Bg-Removal snapshot the edges are NOT normalized to
+/// `0..1` — the panel paints px chips whose displayed value IS the pixel
+/// count, so the snapshot carries the raw `i32`s (the slider track
+/// position is derived via [`px_to_slider`]).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PaddingUiSnapshot {
     pub top: i32,
     pub right: i32,
     pub bottom: i32,
     pub left: i32,
+    /// `true` = recenter the pivot (recalculate the sprite translation so
+    /// the original content's world position is preserved across the
+    /// resize); `false` = keep the pivot unchanged (don't recalculate).
+    pub recenter_pivot: bool,
+}
+
+impl Default for PaddingUiSnapshot {
+    fn default() -> Self {
+        // Mirrors `PaddingTool::default`: a no-op spec with pivot recenter
+        // ON (the least-surprising default — content stays put).
+        Self {
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            recenter_pivot: true,
+        }
+    }
 }
 
 /// One panel-originated edit, routed editor-core → shell over
@@ -41,6 +79,8 @@ pub enum PaddingUiEdit {
     Bottom(i32),
     /// Left edge field edited (signed px).
     Left(i32),
+    /// Pivot-mode toggle clicked — flips `recenter_pivot`.
+    TogglePivotRecenter,
     /// Apply pressed — bake the resized canvas at full resolution.
     Apply,
 }

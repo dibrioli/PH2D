@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-tool-real-size"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Real Size — one-shot transform action. Resets the selected sprite's
+# Transform scale back to 1:1 (original dimensions), preserving the flip
+# sign of each axis. Port of the legacy engine's `real-size` /
+# `toggle_realsize` (Game-Engine-Legada). No pixel work — pure scale
+# reset applied to the ECS Transform by the desktop shell.
+#
+# convention-by-discovery tool crate; same island shape as
+# `ph2d-tool-make-square` (algorithm + icon + manifest, no editor dep).
+
+[dependencies]
+# Registry types (ToolManifest, Zone, Role, etc.) — the single point of
+# coupling for any tool crate. Never depends on ph2d-editor (cycle).
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Vector primitives (BezPath, Shape) for the icon glyph.
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role) for the manifest a11y declaration (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }

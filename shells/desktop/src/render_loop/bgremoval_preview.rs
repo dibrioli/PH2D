@@ -22,8 +22,10 @@ use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
+use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Returns `true` iff an Apply committed this frame (the caller then
 /// tears the tool down — deactivate + restore Inspector — so the
@@ -85,6 +87,10 @@ pub(super) fn dispatch(
         .insert("bgremoval", bgremoval_is_active);
     let params_changed = !bgremoval_ui_edits.is_empty();
     let mut apply_selection: Option<u64> = None;
+    // Captured for the protection-mask overlay tint (built while the tool
+    // is borrowed below, drawn in the on-canvas overlay block).
+    let theme = hero.theme;
+    let mut protect_tint: Option<(Arc<Vec<u8>>, u32, u32)> = None;
     if let Some(tool) = tools.active_mut()
         && let Some(bg) = tool
             .as_any_mut()
@@ -112,16 +118,33 @@ pub(super) fn dispatch(
             };
             if stale {
                 let mut out = Vec::new();
-                let (w, h) = bg.run_full_resolution(&mut out);
+                // Capped-resolution preview (PREVIEW_MAX_DIM) — NOT the
+                // full-res bake. Running the full pipeline at source
+                // resolution on every slider tick froze the UI in the
+                // GrabCut backend (a ~1M-node max-flow per drag event).
+                // The overlay is drawn scaled to the footprint anyway;
+                // Apply still bakes full-res via the Bgremoval action.
+                let (w, h) = bg.run_canvas_preview(&mut out);
                 *bgremoval_preview = Some(BgremovalPreview {
                     entity_bits: bits,
-                    rgba: std::sync::Arc::new(out),
+                    rgba: Arc::new(out),
                     width: w,
                     height: h,
                 });
             }
         } else {
             *bgremoval_preview = None;
+        }
+        // Build the protection-mask overlay tint (drawn over the sprite
+        // footprint so the user sees their painted "keep" region).
+        if bgremoval_is_active && bg.has_protect_mask() {
+            let (mask, mw, mh) = bg.protect_mask_source();
+            let accent = ColorToken::Accent.resolve(theme);
+            if let Some((tw, th, buf)) =
+                build_protect_tint(mask, mw, mh, [accent.r, accent.g, accent.b])
+            {
+                protect_tint = Some((Arc::new(buf), tw, th));
+            }
         }
     }
     if !bgremoval_is_active {
@@ -161,7 +184,68 @@ pub(super) fn dispatch(
                 (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
                 quality,
             );
+            // Protection-mask tint on top — a semitransparent accent wash
+            // over the painted "keep" pixels. Same footprint rect, so it
+            // tracks the sprite transform like the preview.
+            if let Some((tint, tw, th)) = &protect_tint {
+                vector_scene.draw_image_rgba(
+                    tint,
+                    *tw,
+                    *th,
+                    (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
+                    quality,
+                );
+            }
         }
     }
     apply_selection.is_some()
+}
+
+/// Build a capped-resolution RGBA tint image from a source-resolution
+/// protection mask: protected pixels get `rgb` at [`TINT_ALPHA`], the
+/// rest are fully transparent. Downsampled (nearest) to at most
+/// [`TINT_CAP`] on the long axis — it's a coarse visual hint, drawn
+/// scaled to the footprint anyway. Returns `None` when nothing is
+/// painted (so the overlay draws nothing).
+fn build_protect_tint(mask: &[u8], mw: u32, mh: u32, rgb: [u8; 3]) -> Option<(u32, u32, Vec<u8>)> {
+    /// Long-axis cap for the tint buffer (visual hint, not crisp art).
+    const TINT_CAP: u32 = 256;
+    /// Tint opacity (~38%). // LITERAL-OK: overlay hint alpha budget
+    const TINT_ALPHA: u8 = 96;
+    /// Mask byte threshold (`>=` ⇒ protected).
+    const PROTECT_THRESHOLD: u8 = 128;
+
+    if mask.is_empty() || mw == 0 || mh == 0 {
+        return None;
+    }
+    let (tw, th) = if mw <= TINT_CAP && mh <= TINT_CAP {
+        (mw, mh)
+    } else if mw >= mh {
+        (
+            TINT_CAP,
+            ((mh as u64 * TINT_CAP as u64 / mw as u64).max(1)) as u32,
+        )
+    } else {
+        (
+            ((mw as u64 * TINT_CAP as u64 / mh as u64).max(1)) as u32,
+            TINT_CAP,
+        )
+    };
+    let mut out = vec![0u8; (tw as usize) * (th as usize) * 4];
+    let mut any = false;
+    for y in 0..th as usize {
+        let sy = ((y as u64) * (mh as u64) / (th as u64)).min(mh as u64 - 1) as usize;
+        for x in 0..tw as usize {
+            let sx = ((x as u64) * (mw as u64) / (tw as u64)).min(mw as u64 - 1) as usize;
+            if mask[sy * mw as usize + sx] >= PROTECT_THRESHOLD {
+                let b = (y * tw as usize + x) * 4;
+                out[b] = rgb[0];
+                out[b + 1] = rgb[1];
+                out[b + 2] = rgb[2];
+                out[b + 3] = TINT_ALPHA;
+                any = true;
+            }
+        }
+    }
+    if any { Some((tw, th, out)) } else { None }
 }

@@ -39,6 +39,7 @@ use crate::forwarding::{
 // keyboard handlers) to keep this file under the HR-18 LOC cap.
 mod eyedropper;
 mod keyboard;
+mod protect_brush;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
@@ -145,6 +146,12 @@ impl App {
         // also drive a gizmo drag / panel slider.
         if self.eyedropper_dragging {
             self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
+            return;
+        }
+        // BgRemoval protection brush drag (SHELL-only): while a dab is in
+        // progress, every motion paints another disc into the keep mask.
+        // Early-return so it doesn't also drive a gizmo drag / slider.
+        if self.protect_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -339,8 +346,18 @@ impl App {
                 self.eyedropper_dragging = true;
                 return;
             }
+            // Protection brush: a Primary Down with the brush armed paints
+            // the first dab + starts the drag (drag continues in
+            // CursorMoved). Consumes the event so it doesn't pick/move the
+            // sprite.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_protect_paint(evt.x, evt.y) =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                 self.eyedropper_dragging = false;
+                self.end_protect_paint();
             }
             _ => {}
         }

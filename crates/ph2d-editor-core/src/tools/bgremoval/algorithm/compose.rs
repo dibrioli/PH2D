@@ -229,18 +229,17 @@ fn grow_shrink_alpha(w: u32, h: u32, grow_px: f32, scratch: &mut BgRemovalScratc
     }
 }
 
-/// Threshold above which a protection-mask byte counts as "protected".
-const PROTECT_THRESHOLD: u8 = 128;
-
-/// Force every protected pixel (`protect[i] >= PROTECT_THRESHOLD`) fully
-/// opaque in `scratch.output_rgba`. RGB is untouched — the source colour
+/// Apply the protection mask as a per-pixel keep-floor: the final alpha
+/// is `max(alpha_seg, strength)` where `strength = protect[i]` (0..255).
+/// A hard-painted core (255) becomes fully opaque; a soft falloff rim
+/// raises the alpha proportionally, so a feathered brush blends into the
+/// matte instead of a hard cutout. RGB is untouched — the source colour
 /// is what the user wants to keep.
 fn force_keep_protected(protect: &[u8], n: usize, scratch: &mut BgRemovalScratch) {
     debug_assert!(protect.len() >= n);
     for (i, &p) in protect.iter().enumerate().take(n) {
-        if p >= PROTECT_THRESHOLD {
-            scratch.output_rgba[i * 4 + 3] = 255;
-        }
+        let a = &mut scratch.output_rgba[i * 4 + 3];
+        *a = (*a).max(p);
     }
 }
 
@@ -515,6 +514,45 @@ mod tests {
         assert_eq!(
             scratch.output_rgba[7], 0,
             "unprotected bg pixel stays transparent"
+        );
+    }
+
+    #[test]
+    fn protect_soft_strength_blends_proportionally() {
+        // A soft-falloff rim (strength 128) over a background pixel
+        // (mask 0) must lift alpha to ~128, not slam it to 255 — the
+        // feathered keep-edge blends into the matte.
+        let w = 2u32;
+        let h = 1u32;
+        let mut scratch = fresh_scratch(w, h);
+        let rgba = solid_rgba(w, h, [10, 20, 30]);
+        scratch.mask[0] = 0;
+        scratch.mask[1] = 255; // already opaque foreground
+        let params = BgRemovalParams {
+            mode: BgRemovalMode::GrabCut,
+            grow_px: 0.0,
+            ..BgRemovalParams::default()
+        };
+        let segment = SegmentResult::GrabCut;
+        let protect = [128u8, 64u8];
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            false,
+            Some(&protect),
+            &mut scratch,
+        );
+        // bg pixel lifted to the strength; fg pixel keeps its higher alpha.
+        assert_eq!(
+            scratch.output_rgba[3], 128,
+            "soft rim lifts bg alpha to strength"
+        );
+        assert_eq!(
+            scratch.output_rgba[7], 255,
+            "max keeps the higher seg alpha"
         );
     }
 

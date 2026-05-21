@@ -30,6 +30,57 @@ impl BgRemovalMode {
     }
 }
 
+/// Protection-brush dab profile: how the painted strength falls off from
+/// the dab centre (`d = 0`) to its rim (`d = 1`). Drives both paint and
+/// erase. All profiles are `1` at the centre and `0` at the rim, and
+/// monotonically decreasing — deterministic (HR-5).
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum BrushFalloff {
+    /// `s = 1 − (3d² − 2d³)` — smoothstep-soft edge. The default: a soft
+    /// feathered keep-region blends cleanly into the matte.
+    #[default]
+    Smooth,
+    /// `s = √(1 − d²)` — hemisphere profile (rounded shoulder).
+    Sphere,
+    /// `s = (1 − d)²` — concentrated peak, quick falloff.
+    Sharp,
+    /// `s = 1` — hard disc (every covered pixel fully protected).
+    Constant,
+}
+
+impl BrushFalloff {
+    pub fn label(self) -> &'static str {
+        match self {
+            BrushFalloff::Smooth => "Smooth",
+            BrushFalloff::Sphere => "Sphere",
+            BrushFalloff::Sharp => "Sharp",
+            BrushFalloff::Constant => "Hard",
+        }
+    }
+
+    pub fn all() -> [BrushFalloff; 4] {
+        [
+            BrushFalloff::Smooth,
+            BrushFalloff::Sphere,
+            BrushFalloff::Sharp,
+            BrushFalloff::Constant,
+        ]
+    }
+
+    /// Strength `s ∈ [0,1]` at normalized distance `d ∈ [0,1]` from the
+    /// dab centre. Inputs outside `[0,1]` are clamped (a pixel beyond the
+    /// rim contributes `0`).
+    pub fn strength(self, d: f32) -> f32 {
+        let d = d.clamp(0.0, 1.0);
+        match self {
+            BrushFalloff::Constant => 1.0,
+            BrushFalloff::Smooth => 1.0 - (3.0 * d * d - 2.0 * d * d * d),
+            BrushFalloff::Sphere => (1.0 - d * d).max(0.0).sqrt(),
+            BrushFalloff::Sharp => (1.0 - d) * (1.0 - d),
+        }
+    }
+}
+
 /// Tuning parameters for `algorithm::chroma::segment`.
 #[derive(Copy, Clone, Debug)]
 pub struct ChromaParams {
@@ -198,6 +249,14 @@ pub const REFINE_RADIUS_FULL_SCALE: f32 = 100.0;
 /// Each end maps to ∓`GROW_FULL_SCALE` pixels of erosion (`0.0`) /
 /// dilation (`1.0`). `grow_px = (grow01 − 0.5) · 2 · GROW_FULL_SCALE`.
 pub const GROW_FULL_SCALE: f32 = 8.0;
+/// Protection-brush radius full-scale: normalized slider `1.0` maps to
+/// this many SOURCE pixels of radius. `paint_protect_at_uv` consumes the
+/// resulting radius directly.
+pub const BRUSH_SIZE_FULL_SCALE: f32 = 256.0;
+/// Default normalized protection-brush size (≈ 38 px of source radius at
+/// the default 256 full-scale). Single source for the tool field default
+/// + the snapshot default so they can't drift.
+pub const DEFAULT_BRUSH_SIZE01: f32 = 0.15;
 
 /// Normalized projection of [`BgRemovalParams`] for the panel UI. All
 /// slider fields are in `0.0..=1.0`; the panel paints these directly as
@@ -240,6 +299,16 @@ pub struct BgRemovalUiSnapshot {
     /// drives the Clear-protection button's enabled/visible state and the
     /// "you have a protected region" affordance.
     pub has_protect_mask: bool,
+    /// Protection-brush radius, normalized (`brush_radius / BRUSH_SIZE_FULL_SCALE`).
+    /// Drives the Brush Size slider track + the on-canvas ring gizmo.
+    pub brush_size01: f32,
+    /// Protection-brush dab falloff profile — drives the 4-way segmented
+    /// control's active highlight.
+    pub falloff: BrushFalloff,
+    /// Whether the painted protection mask is shown as an on-canvas tint
+    /// overlay. Drives the Show-Mask toggle's pressed look + the shell's
+    /// overlay gate.
+    pub show_mask: bool,
 }
 
 impl Default for BgRemovalUiSnapshot {
@@ -259,6 +328,11 @@ impl Default for BgRemovalUiSnapshot {
             eyedropper_armed: false,
             protect_brush_armed: false,
             has_protect_mask: false,
+            // Brush-state defaults (tool-state, not params): single source
+            // is the consts above + the tool's manual Default.
+            brush_size01: DEFAULT_BRUSH_SIZE01,
+            falloff: BrushFalloff::Smooth,
+            show_mask: true,
         }
     }
 }
@@ -296,6 +370,12 @@ pub enum BgRemovalUiEdit {
     /// Clear-protection button pressed — wipes the painted protection
     /// mask (the tool reruns the preview without any forced-keep region).
     ClearProtectMask,
+    /// Protection-brush size slider moved (normalized `0..1`).
+    BrushSize(f32),
+    /// Protection-brush falloff profile changed (4-way segmented).
+    SetFalloff(BrushFalloff),
+    /// Show-Mask toggle clicked — flips the on-canvas tint overlay.
+    ToggleShowMask,
     /// Apply button pressed — commit at full resolution.
     Apply,
 }
@@ -323,6 +403,27 @@ mod tests {
         assert!(p.refinement.boundary_only);
         assert!((p.grow_px - (-0.1 * GROW_FULL_SCALE)).abs() < 1e-6);
         assert!(p.extra_bg_colors.is_empty());
+    }
+
+    #[test]
+    fn falloff_profiles_peak_at_centre_and_decay_to_rim() {
+        for f in BrushFalloff::all() {
+            assert!((f.strength(0.0) - 1.0).abs() < 1e-6, "{f:?} centre = 1");
+            // Rim: Constant stays 1; the others reach (≈)0.
+            if f == BrushFalloff::Constant {
+                assert_eq!(f.strength(1.0), 1.0);
+            } else {
+                assert!(f.strength(1.0) < 1e-6, "{f:?} rim ≈ 0");
+            }
+            // Monotonic non-increasing across the radius.
+            let mut prev = f.strength(0.0);
+            for k in 1..=10 {
+                let s = f.strength(k as f32 / 10.0);
+                assert!(s <= prev + 1e-6, "{f:?} not monotonic at {k}");
+                prev = s;
+            }
+            assert!(!f.label().is_empty());
+        }
     }
 
     #[test]

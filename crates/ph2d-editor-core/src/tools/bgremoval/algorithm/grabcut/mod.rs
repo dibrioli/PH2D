@@ -59,13 +59,16 @@ const FLIP_DENOMINATOR: u32 = 1000;
 const GMM_BG_SEED: u64 = 0xBADC_0FFE_E0DD_F00D;
 const GMM_FG_SEED: u64 = 0xFEED_BEEF_DEAD_FACE;
 
-/// Oklab ΔE below which a pixel is "definitely" the chroma-detected
-/// background, used to harden the trimap seed (see
-/// [`seed_hard_bg_from_chroma`]). Conservative on purpose — we only
-/// lock pixels we're confident about as `BgHard`; everything else stays
-/// soft for the GMM / graph-cut to decide. The squared form is what the
-/// flood compares against. // LITERAL-OK: perceptual seed budget
+/// Representative seed tolerance for the unit tests (production feeds the
+/// live Tolerance slider value through `segment`'s `seed_tol` arg).
+/// // LITERAL-OK: perceptual seed budget
+#[cfg(test)]
 const SEED_TOL: f32 = 0.10;
+/// Clamp range for the seed tolerance fed from the Tolerance slider.
+/// Floor avoids disabling the seed at tolerance 0; ceiling matches the
+/// Chroma backend's `TOLERANCE_FULL_SCALE`. // LITERAL-OK: perceptual budget
+const SEED_TOL_FLOOR: f32 = 0.04;
+const SEED_TOL_MAX: f32 = 0.30;
 
 /// Minimum border-bg confidence for the chroma seed to fire. Below this
 /// the subject likely touches an image edge (so a border flood would
@@ -164,6 +167,7 @@ pub fn segment(
     h: u32,
     params: &GrabCutParams,
     protect: Option<&[u8]>,
+    seed_tol: f32,
     scratch: &mut BgRemovalScratch,
 ) -> SegmentResult {
     let n_full = (w as usize) * (h as usize);
@@ -211,7 +215,7 @@ pub fn segment(
     //     drags the cut. Anchoring real background as hard constraints is
     //     what Chroma already does well; this brings it to GrabCut.
     //     Confidence-gated so a subject touching the border isn't eaten.
-    seed_hard_bg_from_chroma(rgba, w, h, proc_w, proc_h, scratch);
+    seed_hard_bg_from_chroma(rgba, w, h, proc_w, proc_h, seed_tol, scratch);
 
     // 2c. Protection mask: lock painted pixels to `FgHard` so the cut
     //     can never drop them. Applied last so it overrides the chroma
@@ -429,6 +433,7 @@ fn seed_hard_bg_from_chroma(
     h: u32,
     proc_w: u32,
     proc_h: u32,
+    seed_tol: f32,
     scratch: &mut BgRemovalScratch,
 ) {
     let n_proc = (proc_w as usize) * (proc_h as usize);
@@ -449,7 +454,11 @@ fn seed_hard_bg_from_chroma(
         scratch.delta_e[i] = chroma::oklab_dist_sq(p, bg_oklab);
     }
 
-    let tol_sq = SEED_TOL * SEED_TOL;
+    // The Tolerance slider feeds the seed aggressiveness in Smart Cut
+    // (higher ⇒ more pixels hard-locked as background). Clamped to a sane
+    // floor so a 0 tolerance doesn't disable the seed entirely.
+    let tol = seed_tol.clamp(SEED_TOL_FLOOR, SEED_TOL_MAX);
+    let tol_sq = tol * tol;
     // Subject-touches-border guard — mirrors the chroma backend.
     if chroma::border_bg_confidence(&scratch.delta_e, proc_w, proc_h, tol_sq)
         < SEED_BORDER_CONF_FLOOR
@@ -764,7 +773,7 @@ mod tests {
         let rgba = make_image(64, 64, [0, 200, 0], None);
         let mut s = BgRemovalScratch::default();
         s.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &default_params(), None, &mut s);
+        let _ = segment(&rgba, 64, 64, &default_params(), None, SEED_TOL, &mut s);
         // Every mask byte must be 0 or 255 — no garbage.
         assert!(s.mask.iter().all(|&v| v == 0 || v == 255));
     }
@@ -777,7 +786,7 @@ mod tests {
         let rgba = make_image(96, 96, [200, 30, 30], Some(([30, 200, 30], 32, 32, 32, 32)));
         let mut s = BgRemovalScratch::default();
         s.ensure(96, 96, false);
-        let _ = segment(&rgba, 96, 96, &default_params(), None, &mut s);
+        let _ = segment(&rgba, 96, 96, &default_params(), None, SEED_TOL, &mut s);
         // Centre of the green subject — fg.
         let centre = 48 * 96 + 48;
         assert_eq!(s.mask[centre], 255, "subject centre must be fg");
@@ -805,7 +814,7 @@ mod tests {
         };
         let mut s = BgRemovalScratch::default();
         s.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &p, None, &mut s);
+        let _ = segment(&rgba, 64, 64, &p, None, SEED_TOL, &mut s);
         // A transparent corner pixel — bg.
         assert_eq!(s.mask[0], 0, "transparent pixel must be bg");
     }
@@ -814,7 +823,7 @@ mod tests {
     fn empty_image_does_not_panic() {
         let mut s = BgRemovalScratch::default();
         s.ensure(0, 0, false);
-        let _ = segment(&[], 0, 0, &default_params(), None, &mut s);
+        let _ = segment(&[], 0, 0, &default_params(), None, SEED_TOL, &mut s);
     }
 
     #[test]
@@ -832,7 +841,15 @@ mod tests {
         }
         let mut s = BgRemovalScratch::default();
         s.ensure(96, 96, false);
-        let _ = segment(&rgba, 96, 96, &default_params(), Some(&protect), &mut s);
+        let _ = segment(
+            &rgba,
+            96,
+            96,
+            &default_params(),
+            Some(&protect),
+            SEED_TOL,
+            &mut s,
+        );
         assert_eq!(s.mask[48 * 96 + 48], 255, "protected pixel must be fg");
         assert_eq!(s.mask[0], 0, "unprotected bg corner must be bg");
     }
@@ -844,11 +861,19 @@ mod tests {
         let rgba = make_image(96, 96, [200, 30, 30], Some(([30, 200, 30], 32, 32, 32, 32)));
         let mut a = BgRemovalScratch::default();
         a.ensure(96, 96, false);
-        let _ = segment(&rgba, 96, 96, &default_params(), None, &mut a);
+        let _ = segment(&rgba, 96, 96, &default_params(), None, SEED_TOL, &mut a);
         let mut b = BgRemovalScratch::default();
         b.ensure(96, 96, false);
         let empty = vec![0u8; 96 * 96];
-        let _ = segment(&rgba, 96, 96, &default_params(), Some(&empty), &mut b);
+        let _ = segment(
+            &rgba,
+            96,
+            96,
+            &default_params(),
+            Some(&empty),
+            SEED_TOL,
+            &mut b,
+        );
         assert_eq!(a.mask, b.mask, "all-zero protect must equal None");
     }
 
@@ -857,11 +882,11 @@ mod tests {
         let rgba = make_image(64, 64, [200, 30, 30], Some(([30, 200, 30], 16, 16, 32, 32)));
         let mut s1 = BgRemovalScratch::default();
         s1.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &default_params(), None, &mut s1);
+        let _ = segment(&rgba, 64, 64, &default_params(), None, SEED_TOL, &mut s1);
 
         let mut s2 = BgRemovalScratch::default();
         s2.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &default_params(), None, &mut s2);
+        let _ = segment(&rgba, 64, 64, &default_params(), None, SEED_TOL, &mut s2);
 
         assert_eq!(s1.mask, s2.mask, "GrabCut must be deterministic");
     }
@@ -879,7 +904,7 @@ mod tests {
         );
         let mut s = BgRemovalScratch::default();
         s.ensure(1280, 1280, false);
-        let _ = segment(&rgba, 1280, 1280, &default_params(), None, &mut s);
+        let _ = segment(&rgba, 1280, 1280, &default_params(), None, SEED_TOL, &mut s);
         // mask vector covers the full input.
         assert_eq!(s.mask.len(), 1280 * 1280);
         // Centre of the subject — fg.
@@ -944,11 +969,11 @@ mod tests {
         let rgba = make_image(48, 48, [200, 30, 30], Some(([30, 200, 30], 16, 16, 16, 16)));
         let mut s = BgRemovalScratch::default();
         s.ensure(48, 48, false);
-        let _ = segment(&rgba, 48, 48, &default_params(), None, &mut s);
+        let _ = segment(&rgba, 48, 48, &default_params(), None, SEED_TOL, &mut s);
         assert_eq!(s.mask.len(), 48 * 48);
         let bg_buf_cap_after_first = s.grabcut.bg_pixels.capacity();
         let bk_nodes_cap_after_first = s.grabcut.bk.nodes_capacity_for_test();
-        let _ = segment(&rgba, 48, 48, &default_params(), None, &mut s);
+        let _ = segment(&rgba, 48, 48, &default_params(), None, SEED_TOL, &mut s);
         assert_eq!(s.mask.len(), 48 * 48);
         // Capacity should be ≥ first run — never shrinks.
         assert!(s.grabcut.bg_pixels.capacity() >= bg_buf_cap_after_first);

@@ -71,7 +71,17 @@ pub fn run_pipeline(
         BgRemovalMode::Chroma => {
             chroma::segment(rgba, w, h, &params.chroma, &params.extra_bg_colors, scratch)
         }
-        BgRemovalMode::GrabCut => grabcut::segment(rgba, w, h, &params.grabcut, protect, scratch),
+        BgRemovalMode::GrabCut => grabcut::segment(
+            rgba,
+            w,
+            h,
+            &params.grabcut,
+            protect,
+            // The Tolerance slider (a Chroma param) also feeds GrabCut's
+            // bg-seed aggressiveness, so it isn't a dead control in Smart Cut.
+            params.chroma.tolerance,
+            scratch,
+        ),
     };
 
     // Step 2 — refinement (optional). Writes scratch.alpha_f32 if it

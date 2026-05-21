@@ -41,8 +41,9 @@ use ph2d_a11y::NodeId;
 
 use super::algorithm::run_pipeline;
 use super::params::{
-    BgRemovalMode, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, FEATHER_FULL_SCALE,
-    GROW_FULL_SCALE, MAX_EXTRA_BG_COLORS, REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
+    BRUSH_SIZE_FULL_SCALE, BgRemovalMode, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot,
+    BrushFalloff, DEFAULT_BRUSH_SIZE01, FEATHER_FULL_SCALE, GROW_FULL_SCALE, MAX_EXTRA_BG_COLORS,
+    REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
 };
 use super::scratch::BgRemovalScratch;
 
@@ -70,7 +71,11 @@ const REFINE_NODE: NodeId = NodeId(506);
 const APPLY_NODE: NodeId = NodeId(507);
 
 /// Editor Tool implementing the background-removal feature.
-#[derive(Clone, Debug, Default)]
+///
+/// `Default` is hand-written (not derived) because the protection-brush
+/// state has non-zero defaults: the brush starts at a usable size and the
+/// painted mask is shown by default.
+#[derive(Clone, Debug)]
 pub struct BgRemovalTool {
     /// User-tunable parameters, projected into the floating panel.
     pub params: BgRemovalParams,
@@ -151,6 +156,51 @@ pub struct BgRemovalTool {
     /// Re-filled each canvas-preview run; kept as a field so the
     /// allocation persists across runs (HR-3).
     canvas_protect: Vec<u8>,
+
+    /// Protection-brush radius in SOURCE pixels (what `paint_protect_at_uv`
+    /// consumes). Driven by the panel Brush Size slider; default ≈
+    /// [`DEFAULT_BRUSH_SIZE01`] × [`BRUSH_SIZE_FULL_SCALE`].
+    brush_radius: f32,
+    /// Protection-brush dab falloff profile (Smooth / Sphere / Sharp /
+    /// Hard) — applied to both paint and erase.
+    falloff: BrushFalloff,
+    /// Current drag is an ERASE drag (set by the shell on a secondary-
+    /// button down). Transient, like `protect_painting`.
+    protect_erase_mode: bool,
+    /// Whether the painted protection mask is drawn as an on-canvas tint
+    /// overlay (the shell gates the overlay on this). Default `true`.
+    show_mask: bool,
+}
+
+impl Default for BgRemovalTool {
+    fn default() -> Self {
+        Self {
+            params: BgRemovalParams::default(),
+            source_rgba: Vec::new(),
+            source_w: 0,
+            source_h: 0,
+            thumbnail_rgba: Vec::new(),
+            thumbnail_w: 0,
+            thumbnail_h: 0,
+            preview_rgba: Vec::new(),
+            scratch: BgRemovalScratch::default(),
+            pending_apply: false,
+            eyedropper_armed: false,
+            protect_brush_armed: false,
+            protect_painting: false,
+            protect_mask: Vec::new(),
+            protect_mask_w: 0,
+            protect_mask_h: 0,
+            canvas_src_rgba: Vec::new(),
+            canvas_src_w: 0,
+            canvas_src_h: 0,
+            canvas_protect: Vec::new(),
+            brush_radius: DEFAULT_BRUSH_SIZE01 * BRUSH_SIZE_FULL_SCALE,
+            falloff: BrushFalloff::default(),
+            protect_erase_mode: false,
+            show_mask: true,
+        }
+    }
 }
 
 /// Squared RGB Euclidean distance below which two extra colours are
@@ -278,18 +328,44 @@ impl BgRemovalTool {
     /// while the brush is armed (mirrors `add_extra_color` /
     /// `sample_source_at_uv`).
     ///
-    /// Lazy-sizes `protect_mask` to the source dims, stamps a filled disc
-    /// of `255` around the UV, and re-runs the thumbnail preview. The
-    /// on-canvas overlay recomputes next frame (the shell drops its
-    /// cached preview after painting, mirroring the eyedropper).
+    /// Lazy-sizes `protect_mask` to the source dims and stamps a brush dab
+    /// at UV `(u, v)` with `radius_px` (SOURCE px). The dab strength
+    /// follows the active [`BrushFalloff`] over the normalized distance
+    /// `d = dist/radius`, accumulating with `max` so overlapping dabs
+    /// build up to full protection.
+    ///
+    /// Does NOT re-run the pipeline — painting only mutates the mask. The
+    /// on-canvas tint overlay reads the mask live each frame (cheap); the
+    /// matte re-segments once the stroke ends (the shell drops its cached
+    /// preview on pointer-up). This is the fix for the per-dab GrabCut
+    /// freeze: re-segmenting at 512² on every cursor-move is what stalled.
     pub fn paint_protect_at_uv(&mut self, u: f32, v: f32, radius_px: f32) {
+        self.stamp_protect(u, v, radius_px, false);
+    }
+
+    /// Erase from the protection mask at UV `(u, v)` — the inverse of
+    /// [`Self::paint_protect_at_uv`]: subtracts the falloff strength
+    /// (`saturating_sub`) so the centre erases fully and the rim only
+    /// nibbles. No pipeline re-run (same rationale as paint).
+    pub fn erase_protect_at_uv(&mut self, u: f32, v: f32, radius_px: f32) {
+        self.stamp_protect(u, v, radius_px, true);
+    }
+
+    /// Shared dab kernel for paint (`erase = false`) / erase (`erase =
+    /// true`). Walks the bounding box of the disc, computes the falloff
+    /// strength per covered pixel, and either `max`-accumulates (paint) or
+    /// `saturating_sub`-removes (erase).
+    fn stamp_protect(&mut self, u: f32, v: f32, radius_px: f32, erase: bool) {
         if !self.has_source() {
             return;
         }
         let (w, h) = (self.source_w, self.source_h);
         let n = (w as usize) * (h as usize);
-        // Lazy-size to the source resolution on first dab (or after a
-        // dimension change / clear).
+        // Erase on an unsized mask is a no-op (nothing to remove).
+        if erase && self.protect_mask.len() != n {
+            return;
+        }
+        // Lazy-size to the source resolution on first paint dab.
         if self.protect_mask.len() != n {
             self.protect_mask.clear();
             self.protect_mask.resize(n, 0);
@@ -301,22 +377,60 @@ impl BgRemovalTool {
         let cx = u * (w as f32 - 1.0);
         let cy = v * (h as f32 - 1.0);
         let r = radius_px.max(0.5);
-        let r2 = r * r;
+        let inv_r = 1.0 / r;
         let x0 = (cx - r).floor().max(0.0) as u32;
         let x1 = ((cx + r).ceil() as i64).clamp(0, w as i64 - 1) as u32;
         let y0 = (cy - r).floor().max(0.0) as u32;
         let y1 = ((cy + r).ceil() as i64).clamp(0, h as i64 - 1) as u32;
         let stride = w as usize;
+        let falloff = self.falloff;
         for y in y0..=y1 {
             let dy = y as f32 - cy;
             for x in x0..=x1 {
                 let dx = x as f32 - cx;
-                if dx * dx + dy * dy <= r2 {
-                    self.protect_mask[(y as usize) * stride + x as usize] = 255;
+                let dist = (dx * dx + dy * dy).sqrt();
+                if dist > r {
+                    continue;
                 }
+                let s = falloff.strength(dist * inv_r);
+                let val = (s * 255.0 + 0.5) as u8;
+                let i = (y as usize) * stride + x as usize;
+                self.protect_mask[i] = if erase {
+                    self.protect_mask[i].saturating_sub(val)
+                } else {
+                    self.protect_mask[i].max(val)
+                };
             }
         }
-        self.rerun_preview();
+    }
+
+    /// Protection-brush radius in SOURCE pixels (the unit the shell passes
+    /// to [`Self::paint_protect_at_uv`] and converts to a screen-space
+    /// ring). Always ≥ a usable minimum.
+    pub fn brush_radius_px(&self) -> f32 {
+        self.brush_radius.max(0.5)
+    }
+
+    /// Active protection-brush falloff profile.
+    pub fn falloff(&self) -> BrushFalloff {
+        self.falloff
+    }
+
+    /// Whether the painted protection mask should be shown as an on-canvas
+    /// tint overlay (shell gates its overlay on this).
+    pub fn show_mask(&self) -> bool {
+        self.show_mask
+    }
+
+    /// Whether the in-progress protection drag is an erase drag.
+    pub fn is_protect_erasing(&self) -> bool {
+        self.protect_erase_mode
+    }
+
+    /// Set the erase-drag flag (shell sets `true` on a secondary-button
+    /// protection drag, `false` on a primary paint drag / drag-end).
+    pub fn set_protect_erasing(&mut self, erasing: bool) {
+        self.protect_erase_mode = erasing;
     }
 
     /// Wipe the painted protection mask. Reruns the preview when a source
@@ -608,6 +722,9 @@ impl BgRemovalTool {
             eyedropper_armed: self.eyedropper_armed,
             protect_brush_armed: self.protect_brush_armed,
             has_protect_mask: self.has_protect_mask(),
+            brush_size01: (self.brush_radius / BRUSH_SIZE_FULL_SCALE).clamp(0.0, 1.0),
+            falloff: self.falloff,
+            show_mask: self.show_mask,
         }
     }
 
@@ -676,6 +793,18 @@ impl BgRemovalTool {
                 // `clear_protect_mask` reruns the preview itself.
                 self.clear_protect_mask();
             }
+            BgRemovalUiEdit::BrushSize(v) => {
+                // Brush radius only affects future dabs — no matte rerun.
+                self.brush_radius = v.clamp(0.0, 1.0) * BRUSH_SIZE_FULL_SCALE;
+            }
+            BgRemovalUiEdit::SetFalloff(f) => {
+                // Falloff only affects future dabs — no matte rerun.
+                self.falloff = f;
+            }
+            BgRemovalUiEdit::ToggleShowMask => {
+                // Overlay-visibility only — no params, no matte rerun.
+                self.show_mask = !self.show_mask;
+            }
             BgRemovalUiEdit::Apply => {
                 self.pending_apply = true;
                 // A commit ends the picking session — disarm so a stale
@@ -684,6 +813,7 @@ impl BgRemovalTool {
                 self.eyedropper_armed = false;
                 self.protect_brush_armed = false;
                 self.protect_painting = false;
+                self.protect_erase_mode = false;
             }
         }
         if changed && self.has_source() {
@@ -800,6 +930,7 @@ impl Tool for BgRemovalTool {
         self.eyedropper_armed = false;
         self.protect_brush_armed = false;
         self.protect_painting = false;
+        self.protect_erase_mode = false;
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -1217,16 +1348,87 @@ mod tests {
 
         let buf = vec![255u8; 32 * 32 * 4];
         t.set_source_snapshot(buf, 32, 32);
-        // Dab at the centre.
-        t.paint_protect_at_uv(0.5, 0.5, 4.0);
+        // Hard (Constant) falloff so the whole disc is full strength.
+        t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
+        t.paint_protect_at_uv(0.5, 0.5, 6.0);
         assert!(t.has_protect_mask());
         let (mask, w, h) = t.protect_mask_source();
         assert_eq!((w, h), (32, 32));
-        // Centre pixel protected.
-        let cx = (0.5_f32 * 31.0).round() as usize;
-        assert_eq!(mask[cx * 32 + cx], 255, "disc centre must be protected");
+        // Centre pixel fully protected under Constant falloff.
+        let c = 16 * 32 + 16;
+        assert_eq!(mask[c], 255, "disc centre must be fully protected (hard)");
         // A far corner is untouched.
         assert_eq!(mask[0], 0, "corner outside the disc stays unprotected");
+    }
+
+    #[test]
+    fn paint_protect_falloff_is_monotonic_center_to_rim() {
+        // Smooth falloff: strength must be max at the centre and decay to
+        // ~0 at the rim along a row through the dab.
+        let mut t = BgRemovalTool::default();
+        t.set_source_snapshot(vec![255u8; 64 * 64 * 4], 64, 64);
+        t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Smooth));
+        let r = 20.0;
+        t.paint_protect_at_uv(0.5, 0.5, r);
+        let (mask, _, _) = t.protect_mask_source();
+        let cx = (0.5_f32 * 63.0).round() as usize;
+        let row = cx * 64;
+        let centre = mask[row + cx] as i32;
+        let mid = mask[row + cx + 10] as i32; // ~half radius out
+        let rim = mask[row + cx + 19] as i32; // near the rim
+        assert!(centre >= mid && mid >= rim, "{centre} >= {mid} >= {rim}");
+        assert!(centre > 200, "centre near-full, got {centre}");
+        assert!(rim < 64, "rim near-zero, got {rim}");
+    }
+
+    #[test]
+    fn erase_protect_subtracts_strength() {
+        let mut t = BgRemovalTool::default();
+        t.set_source_snapshot(vec![255u8; 32 * 32 * 4], 32, 32);
+        t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
+        // Paint a hard disc, then erase the centre with a hard dab.
+        t.paint_protect_at_uv(0.5, 0.5, 8.0);
+        let c = 16 * 32 + 16;
+        assert_eq!(t.protect_mask_source().0[c], 255);
+        t.erase_protect_at_uv(0.5, 0.5, 4.0);
+        assert_eq!(
+            t.protect_mask_source().0[c],
+            0,
+            "hard erase clears the painted centre"
+        );
+    }
+
+    #[test]
+    fn erase_on_empty_mask_is_noop() {
+        let mut t = BgRemovalTool::default();
+        t.set_source_snapshot(vec![255u8; 16 * 16 * 4], 16, 16);
+        t.erase_protect_at_uv(0.5, 0.5, 4.0);
+        assert!(
+            !t.has_protect_mask(),
+            "erase without a painted mask is inert"
+        );
+    }
+
+    #[test]
+    fn brush_size_edit_maps_and_round_trips() {
+        let mut t = BgRemovalTool::default();
+        // Default snapshot reflects DEFAULT_BRUSH_SIZE01.
+        assert!((t.ui_snapshot().brush_size01 - DEFAULT_BRUSH_SIZE01).abs() < 1e-5);
+        t.apply_ui_edit(BgRemovalUiEdit::BrushSize(0.5));
+        assert!((t.ui_snapshot().brush_size01 - 0.5).abs() < 1e-5);
+        assert!((t.brush_radius_px() - 0.5 * BRUSH_SIZE_FULL_SCALE).abs() < 1e-3);
+    }
+
+    #[test]
+    fn show_mask_and_falloff_edits() {
+        let mut t = BgRemovalTool::default();
+        assert!(t.show_mask(), "show-mask defaults on");
+        t.apply_ui_edit(BgRemovalUiEdit::ToggleShowMask);
+        assert!(!t.show_mask());
+        assert_eq!(t.falloff(), BrushFalloff::Smooth);
+        t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Sharp));
+        assert_eq!(t.falloff(), BrushFalloff::Sharp);
+        assert_eq!(t.ui_snapshot().falloff, BrushFalloff::Sharp);
     }
 
     #[test]

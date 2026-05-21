@@ -199,6 +199,12 @@ pub(crate) struct ImageEditSnapshot {
     /// pre-edit value so the original straight-alpha source renders
     /// straight again. Trim / Make-Square leave it `false`.
     pub(crate) pre_premultiplied: bool,
+    /// `Sprite.anchor` (pivot offset) before the edit. Padding's Keep
+    /// mode rebases the anchor to keep content + pivot world-fixed under
+    /// an asymmetric resize; undo restores the pre-edit value. `[0,0]`
+    /// for edits that don't touch the pivot (and every sprite until the
+    /// TOOL_PIVOT tool moves a pivot).
+    pub(crate) pre_anchor: [f32; 2],
     /// The new individual texture id that the edit acquired. Released
     /// on undo so the now-orphaned post-edit texture doesn't leak.
     pub(crate) post_individual_id: u32,

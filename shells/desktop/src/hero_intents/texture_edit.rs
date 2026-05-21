@@ -31,6 +31,11 @@ pub(crate) struct SourceRead {
     pub old_translation: [f32; 2],
     pub old_source: SpriteSource,
     pub old_premultiplied: bool,
+    /// `Sprite.anchor` (intrinsic-local pivot offset) before the edit.
+    /// Padding's Keep mode rebases it so content + pivot stay world-
+    /// fixed; undo restores it. `[0,0]` for any sprite the TOOL_PIVOT
+    /// tool hasn't moved the pivot on.
+    pub old_anchor: [f32; 2],
 }
 
 /// Read `entity`'s sprite source as a [`SpriteImage`] carrying its native
@@ -52,6 +57,7 @@ pub(crate) fn read_sprite_source(
     let old_size_world = sprite.size;
     let old_source = sprite.source;
     let old_premultiplied = sprite.premultiplied;
+    let old_anchor = sprite.anchor;
     let old_translation = world
         .get::<Transform>(entity)
         .map(|t| [t.translation.x, t.translation.y])
@@ -85,6 +91,7 @@ pub(crate) fn read_sprite_source(
         old_translation,
         old_source,
         old_premultiplied,
+        old_anchor,
     })
 }
 

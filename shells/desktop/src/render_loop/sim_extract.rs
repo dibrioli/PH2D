@@ -129,6 +129,11 @@ pub(super) fn run(
                         // so the fragment skips its post-sample premultiply
                         // (fringe fix). Straight for every other sprite.
                         premultiplied: if spr.premultiplied { 1.0 } else { 0.0 },
+                        // Pivot offset: scale the intrinsic-local anchor
+                        // by the same `GlobalTransform` scale as `size`,
+                        // so the shader's `anchor + quad*size` stays in
+                        // one consistent (world-scaled) local frame.
+                        anchor: [spr.anchor[0] * scale_x, spr.anchor[1] * scale_y],
                         _pad: 0,
                     });
                 }

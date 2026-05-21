@@ -99,7 +99,14 @@ pub fn pick_sprites_at_world(present: &mut World, world_pos: [f32; 2]) -> Vec<u6
         let sin_r = ri.rotation.sin();
         let local_dx = dx * cos_r + dy * sin_r;
         let local_dy = -dx * sin_r + dy * cos_r;
-        if local_dx.abs() <= half_w && local_dy.abs() <= half_h {
+        // The quad center sits at `anchor` in the (world-scaled) local
+        // frame — `world_pos` is the pivot, not necessarily the center
+        // — so the bbox spans `[anchor - half, anchor + half]`. Subtract
+        // the anchor before the half-extent test. anchor [0,0] (every
+        // legacy sprite) collapses to the original centered test.
+        if (local_dx - ri.anchor[0]).abs() <= half_w
+            && (local_dy - ri.anchor[1]).abs() <= half_h
+        {
             hits.push(sim_ref.0.to_bits());
         }
     }
@@ -128,7 +135,14 @@ pub fn pick_sprite_at_world(present: &mut World, world_pos: [f32; 2]) -> Option<
         let sin_r = ri.rotation.sin();
         let local_dx = dx * cos_r + dy * sin_r;
         let local_dy = -dx * sin_r + dy * cos_r;
-        if local_dx.abs() <= half_w && local_dy.abs() <= half_h {
+        // The quad center sits at `anchor` in the (world-scaled) local
+        // frame — `world_pos` is the pivot, not necessarily the center
+        // — so the bbox spans `[anchor - half, anchor + half]`. Subtract
+        // the anchor before the half-extent test. anchor [0,0] (every
+        // legacy sprite) collapses to the original centered test.
+        if (local_dx - ri.anchor[0]).abs() <= half_w
+            && (local_dy - ri.anchor[1]).abs() <= half_h
+        {
             // Last hit wins — within an archetype bevy_ecs walks in
             // insertion order, so the most recently spawned sprite
             // overrides earlier ones (intuitive "top of the pile").
@@ -149,9 +163,16 @@ pub fn selection_bbox_world(present: &mut World, sim_entity_bits: u64) -> Option
             let pos = gt.translation();
             let half_w = ri.size[0] * 0.5;
             let half_h = ri.size[1] * 0.5;
+            // Center the gizmo bbox on the visible quad center
+            // (`pivot + anchor`), not the pivot. Like the pick test
+            // above and this function's v1 contract, rotation is left
+            // out of the bbox (axis-aligned); anchor [0,0] reproduces
+            // the original pivot-centered box.
+            let cx = pos.x + ri.anchor[0];
+            let cy = pos.y + ri.anchor[1];
             return Some(WorldBbox {
-                min: [pos.x - half_w, pos.y - half_h],
-                max: [pos.x + half_w, pos.y + half_h],
+                min: [cx - half_w, cy - half_h],
+                max: [cx + half_w, cy + half_h],
             });
         }
     }
@@ -185,6 +206,35 @@ mod tests {
             rotation: 0.0,
             texture_id: 0,
             premultiplied: 0.0,
+            anchor: [0.0, 0.0],
+            _pad: 0,
+        };
+        present.world_mut().spawn((SimRef(sim_entity), gt, ri));
+        sim_entity.to_bits()
+    }
+
+    /// Like [`spawn_at`] but with a non-zero pivot offset: the pivot
+    /// (transform/world_pos) is at `(x, y)`, while the quad CENTER sits
+    /// at `(x + anchor.0, y + anchor.1)`.
+    fn spawn_at_with_anchor(
+        present: &mut PresentWorld,
+        sim_entity: Entity,
+        x: f32,
+        y: f32,
+        size: [f32; 2],
+        anchor: [f32; 2],
+    ) -> u64 {
+        let gt =
+            GlobalTransform::from_transform(ph2d_ecs::Transform::from_translation(Vec2::new(x, y)));
+        let ri = RenderInstance {
+            world_pos: [x, y],
+            size,
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            rotation: 0.0,
+            texture_id: 0,
+            premultiplied: 0.0,
+            anchor,
             _pad: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
@@ -220,6 +270,39 @@ mod tests {
         let (c, h) = b.center_half();
         assert_eq!(c, [3.0, 6.0]);
         assert_eq!(h, [1.0, 3.0]);
+    }
+
+    #[test]
+    fn anchor_offsets_pick_region_away_from_pivot() {
+        // Pivot at origin, 2×2 quad shifted +5 on X by the anchor →
+        // quad spans x∈[4,6], y∈[-1,1]. A click on the pivot must MISS
+        // (no quad there); a click on the shifted quad center must HIT.
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let mut present = PresentWorld::new();
+        let sim_e = fresh_sim_entity(&mut sim);
+        let bits = spawn_at_with_anchor(&mut present, sim_e, 0.0, 0.0, [2.0, 2.0], [5.0, 0.0]);
+        assert_eq!(
+            pick_sprite_at_world(present.world_mut(), [0.0, 0.0]),
+            None,
+            "pivot is empty once the quad is anchored away"
+        );
+        assert_eq!(
+            pick_sprite_at_world(present.world_mut(), [5.0, 0.0]),
+            Some(bits),
+            "the shifted quad center is pickable"
+        );
+    }
+
+    #[test]
+    fn anchor_offsets_selection_bbox_to_quad_center() {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let mut present = PresentWorld::new();
+        let sim_e = fresh_sim_entity(&mut sim);
+        let bits = spawn_at_with_anchor(&mut present, sim_e, 0.0, 0.0, [2.0, 2.0], [5.0, 0.0]);
+        let bbox = selection_bbox_world(present.world_mut(), bits).expect("entity present");
+        let (center, half) = bbox.center_half();
+        assert_eq!(center, [5.0, 0.0], "gizmo box tracks the quad, not the pivot");
+        assert_eq!(half, [1.0, 1.0]);
     }
 
     #[test]

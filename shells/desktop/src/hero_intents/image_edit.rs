@@ -100,6 +100,7 @@ pub(crate) fn drain_trim_transparency(
                 pre_size: src.old_size_world,
                 pre_translation: src.old_translation,
                 pre_premultiplied: src.old_premultiplied,
+                pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
                 label: "Trim",
             });
@@ -200,6 +201,7 @@ pub(crate) fn drain_make_square(
                 pre_size: src.old_size_world,
                 pre_translation: src.old_translation,
                 pre_premultiplied: src.old_premultiplied,
+                pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
                 label: "Make square",
             });
@@ -277,26 +279,37 @@ pub(crate) fn drain_padding(
         result.width as f32 / px_per_m,
         result.height as f32 / px_per_m,
     ];
-    // Pivot mode (panel toggle):
-    //  - `recenter_pivot = true` (default): recalculate the translation so
-    //    the ORIGINAL content's world center stays fixed. Same formula as
-    //    `recenter_after_pad`, but the offset is the signed `pivot_delta`
-    //    (the original content's top-left inside the new canvas) —
-    //    `recenter_after_pad`'s `PixelBounds` is unsigned and can't
-    //    represent the crop case, so the math is inlined here.
-    //  - `recenter_pivot = false`: keep the pivot unchanged — leave the
-    //    translation as-is (the canvas resizes around the current pivot,
-    //    so the content visually shifts).
-    let new_translation = if recenter_pivot {
-        let (nw, nh) = (result.width as f32, result.height as f32);
-        let center_px_x = result.pivot_delta_x as f32 + src_w as f32 * 0.5;
-        let center_px_y = result.pivot_delta_y as f32 + src_h as f32 * 0.5;
-        let dx = new_size_world[0] * (center_px_x / nw - 0.5);
-        // Y-up flip (pixel space is Y-down).
-        let dy = new_size_world[1] * (0.5 - center_px_y / nh);
-        [src.old_translation[0] - dx, src.old_translation[1] - dy]
+    // `(dx, dy)` = world-meter offset of the ORIGINAL content's center
+    // from the NEW canvas center (signed; handles both pad and crop —
+    // `recenter_after_pad`'s `PixelBounds` is unsigned and can't, so the
+    // math is inlined). The original content quad must stay world-fixed
+    // in BOTH pivot modes: its center sits at `old_pivot + old_anchor`,
+    // and after the resize the content center within the new quad is
+    // `new_quad_center + (dx, dy)`. So the new quad center must land at
+    // `old_pivot + old_anchor - (dx, dy)` — that invariant is what keeps
+    // the existing pixels from sliding on screen.
+    let (nw, nh) = (result.width as f32, result.height as f32);
+    let center_px_x = result.pivot_delta_x as f32 + src_w as f32 * 0.5;
+    let center_px_y = result.pivot_delta_y as f32 + src_h as f32 * 0.5;
+    let dx = new_size_world[0] * (center_px_x / nw - 0.5);
+    // Y-up flip (pixel space is Y-down).
+    let dy = new_size_world[1] * (0.5 - center_px_y / nh);
+    let [ox, oy] = src.old_translation;
+    let [ax, ay] = src.old_anchor;
+    // Pivot mode (panel toggle), with the new quad center fixed at
+    // `(ox + ax - dx, oy + ay - dy)`:
+    //  - `recenter_pivot = true` (default): move the PIVOT onto the new
+    //    quad center, so the sprite stays strictly centered (`anchor =
+    //    0`). Reduces to the historical `old - (dx, dy)` when the sprite
+    //    had no prior anchor.
+    //  - `recenter_pivot = false` (Keep): leave the PIVOT where it is and
+    //    push the offset into the anchor instead, so BOTH the content and
+    //    the pivot stay world-fixed while only the transparent borders
+    //    grow asymmetrically.
+    let (new_translation, new_anchor) = if recenter_pivot {
+        ([ox + ax - dx, oy + ay - dy], [0.0, 0.0])
     } else {
-        src.old_translation
+        (src.old_translation, [ax - dx, ay - dy])
     };
     // Color-agnostic resize (transparent border / crop): PRESERVE the
     // source alpha mode so a premultiplied BG-Removal result survives
@@ -313,6 +326,12 @@ pub(crate) fn drain_padding(
                 transform.translation.x = new_translation[0];
                 transform.translation.y = new_translation[1];
             }
+            // Keep mode pushes the resize offset into the pivot anchor
+            // (Recenter resets it to centered). `commit_edited_texture`
+            // doesn't touch `anchor`, so set it here.
+            if let Some(mut sprite) = sim.world_mut().get_mut::<Sprite>(entity) {
+                sprite.anchor = new_anchor;
+            }
             drop_undo_pre_source_if_individual(renderer, image_edit_undo);
             *image_edit_undo = Some(ImageEditSnapshot {
                 entity_bits,
@@ -320,6 +339,7 @@ pub(crate) fn drain_padding(
                 pre_size: src.old_size_world,
                 pre_translation: src.old_translation,
                 pre_premultiplied: src.old_premultiplied,
+                pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
                 label: "Padding",
             });
@@ -393,6 +413,7 @@ pub(crate) fn drain_bgremoval(
                 pre_size: old_size_world,
                 pre_translation: old_translation,
                 pre_premultiplied: old_premultiplied,
+                pre_anchor: src.old_anchor,
                 post_individual_id: texture_id,
                 label: "Bg Removal",
             });
@@ -429,6 +450,7 @@ pub(crate) fn drain_undo_image_edit(
                 sprite.source = snap.pre_source;
                 sprite.size = snap.pre_size;
                 sprite.premultiplied = snap.pre_premultiplied;
+                sprite.anchor = snap.pre_anchor;
             }
             if let Some(mut transform) = sim_w.get_mut::<ph2d_ecs::Transform>(entity) {
                 transform.translation.x = snap.pre_translation[0];

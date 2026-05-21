@@ -167,9 +167,19 @@ pub(super) fn publish(
         let p = gt.translation();
         let half_w = sprite.size[0] * scale_x * 0.5;
         let half_h = sprite.size[1] * scale_y * 0.5;
+        // `p` is the pivot; the visible quad center sits at `pivot +
+        // R·(anchor·scale)` (the shader rotates the anchor about the
+        // pivot). Center the gizmo box there so handles track the quad,
+        // and let GizmoView.rotation spin the box about that center.
+        // anchor [0,0] (every legacy sprite) keeps the box on the pivot.
+        let ax = sprite.anchor[0] * scale_x;
+        let ay = sprite.anchor[1] * scale_y;
+        let (sin_r, cos_r) = rotation.sin_cos();
+        let cx = p.x + ax * cos_r - ay * sin_r;
+        let cy = p.y + ax * sin_r + ay * cos_r;
         Some(ph2d_editor::GizmoView {
-            bbox_min_world: [p.x - half_w, p.y - half_h],
-            bbox_max_world: [p.x + half_w, p.y + half_h],
+            bbox_min_world: [cx - half_w, cy - half_h],
+            bbox_max_world: [cx + half_w, cy + half_h],
             rotation,
             camera_center: camera.center,
             camera_height_world: camera.height_world,

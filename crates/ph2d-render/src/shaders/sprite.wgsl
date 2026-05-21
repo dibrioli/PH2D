@@ -35,6 +35,11 @@ struct InstanceInput {
     // premultiply. 0.0 for every other sprite (atlas + straight
     // individual) so they composite exactly as before.
     @location(7) premultiplied: f32,
+    // Pivot offset (world-scaled local meters): the quad CENTER's
+    // position relative to `world_pos`, which IS the pivot. Added to
+    // the centered corner before rotation so the quad orbits the pivot
+    // rather than its own center. [0,0] = strictly-centered (legacy).
+    @location(8) anchor: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -46,11 +51,13 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
-    // Local-space sprite corner (centered at origin, scaled by size).
-    // `size` already carries `Transform.scale` baked at extract time;
-    // the rotation here applies the gizmo's `Transform.rotation`
-    // before the world translate.
-    let local = vec2<f32>(v.quad_pos.x * i.size.x, v.quad_pos.y * i.size.y);
+    // Local-space sprite corner. The quad is centered on its own
+    // geometry, then shifted by `anchor` so the quad center sits at
+    // `anchor` relative to the pivot (`world_pos`). `size` already
+    // carries `Transform.scale` baked at extract time; rotation then
+    // orbits the pivot (applies to anchor + corner together) before the
+    // world translate. anchor [0,0] = strictly-centered (legacy).
+    let local = i.anchor + vec2<f32>(v.quad_pos.x * i.size.x, v.quad_pos.y * i.size.y);
     let cos_r = cos(i.rotation);
     let sin_r = sin(i.rotation);
     let rotated = vec2<f32>(

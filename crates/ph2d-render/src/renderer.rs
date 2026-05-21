@@ -442,6 +442,7 @@ mod tests {
             rotation: 0.0,
             texture_id,
             premultiplied: 0.0,
+            anchor: [0.0, 0.0],
             _pad: 0,
         }
     }

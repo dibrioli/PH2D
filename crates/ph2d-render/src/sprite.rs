@@ -67,6 +67,30 @@ pub struct Sprite {
     pub size: [f32; 2],
     /// RGBA tint multiplied with the texel color in the fragment shader.
     pub tint: [f32; 4],
+    /// Offset, in INTRINSIC local meters (pre-`Transform::scale`,
+    /// pre-rotation), from the entity's transform origin — the
+    /// **pivot** (`GlobalTransform.translation`) — to the geometric
+    /// **center of the texture quad**. `[0.0, 0.0]` (the default) means
+    /// the quad is centered on the pivot, which is the historical
+    /// strictly-centered behavior every sprite had before M14.x pivot
+    /// support.
+    ///
+    /// A non-zero anchor lets the pivot sit somewhere other than the
+    /// quad center: the TOOL_PIVOT tool writes it directly, and the
+    /// Padding tool's "Keep" mode sets it so an asymmetric resize keeps
+    /// the original content + pivot world-fixed while only the
+    /// transparent borders grow. Extract multiplies it by
+    /// `GlobalTransform.scale` (exactly as it does `size`) before
+    /// stamping `RenderInstance.anchor`; the shader adds it to the
+    /// centered quad corner so rotation orbits the pivot, not the quad.
+    ///
+    /// `#[serde(default)]` (NOT `skip`): the anchor IS persisted in the
+    /// prefab/scene postcard format (a Keep-mode bake must survive
+    /// save/load). Older cooked docs that predate the field deserialize
+    /// to `[0.0, 0.0]` = centered, so reading stays backward-compatible;
+    /// `VERSION` is bumped to 3 for schema honesty + cook-hash.
+    #[serde(default)]
+    pub anchor: [f32; 2],
     /// `true` → this sprite's texture pixels are stored PREMULTIPLIED,
     /// not straight alpha. Set only by the BG-Removal Apply path, which
     /// bakes a premultiplied Individual texture so the GPU's bilinear
@@ -92,8 +116,10 @@ impl Sprite {
     /// Schema version for the cooked-prefab pipeline (HR-14
     /// mitigation; consumed by `ComponentRegistry` until the
     /// `Saveable` derive macro lands). Bumped to 2 when
-    /// `atlas_index` became `source` in M14.5 C.
-    pub const VERSION: u32 = 2;
+    /// `atlas_index` became `source` in M14.5 C; to 3 when the
+    /// serialized `anchor` (pivot offset) field landed for the
+    /// TOOL_PIVOT + Padding-Keep work.
+    pub const VERSION: u32 = 3;
 
     /// Convenience constructor for atlas-backed sprites — the
     /// dominant case after M14.4d. Preserves the pre-M14.5 ergonomics
@@ -104,6 +130,7 @@ impl Sprite {
             source: SpriteSource::Atlas { key },
             size,
             tint,
+            anchor: [0.0, 0.0],
             premultiplied: false,
         }
     }
@@ -116,6 +143,7 @@ impl Sprite {
             source: SpriteSource::Individual { texture_id },
             size,
             tint,
+            anchor: [0.0, 0.0],
             premultiplied: false,
         }
     }
@@ -154,15 +182,27 @@ pub struct RenderInstance {
     /// quad before the world translate. Defaults to 0 for legacy
     /// extract paths that don't set it.
     pub rotation: f32,
-    pub texture_id: u32,
     /// `1.0` → the bound texture is already premultiplied (BG-Removal
     /// Apply); the fragment skips its post-sample premultiply so
     /// bilinear sampling matches the Vello on-canvas preview and the
     /// straight-alpha edge fringe disappears. `0.0` for every other
     /// sprite. CPU-side this is set from [`Sprite::premultiplied`] at
-    /// extract time. Occupies one of the two former `_pad` words, so
-    /// the Pod stride stays 64 bytes.
+    /// extract time.
     pub premultiplied: f32,
+    /// Pivot offset in WORLD-scaled local meters (the canonical
+    /// [`Sprite::anchor`] multiplied by `GlobalTransform.scale` at
+    /// extract time, mirroring how `size` is scaled). The shader adds
+    /// it to the centered quad corner BEFORE rotating, so the quad
+    /// orbits `world_pos` (the pivot) rather than its own center.
+    /// `[0.0, 0.0]` reproduces the historical strictly-centered sprite.
+    pub anchor: [f32; 2],
+    /// CPU-side metadata used by the renderer to group same-texture
+    /// instances into one draw call; NOT a vertex attribute. Kept after
+    /// every GPU-read field so `vertex_attr_array!`'s sequential offsets
+    /// line up exactly with the struct field offsets (the
+    /// `vertex_attr_offsets_match_struct` test pins this). `0` = shared
+    /// atlas; `> 0` = an `IndividualTextureStore` handle.
+    pub texture_id: u32,
     pub _pad: u32,
 }
 
@@ -176,6 +216,7 @@ impl RenderInstance {
         5 => Float32x4,  // tint
         6 => Float32,    // rotation (M14.7)
         7 => Float32,    // premultiplied flag (BG-Removal Apply)
+        8 => Float32x2,  // anchor (pivot offset; TOOL_PIVOT + Padding-Keep)
     ];
 
     pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -258,32 +299,68 @@ mod tests {
             rotation: 0.0,
             texture_id: RenderInstance::ATLAS_TEXTURE_ID,
             premultiplied: 0.0,
+            anchor: [0.0, 0.0],
             _pad: 0,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
         // 12 floats (world_pos+size+atlas_uv+tint) = 48 bytes
-        // + rotation f32 (4) + texture_id u32 (4) + premultiplied f32 (4)
-        // + 1 pad u32 (4) = 64 bytes — stride unchanged from pre-fringe-fix.
-        assert_eq!(bytes.len(), 64);
+        // + rotation f32 (4) + premultiplied f32 (4) + anchor [f32;2] (8)
+        // + texture_id u32 (4) + 1 pad u32 (4) = 72 bytes. (Was 64 before
+        // anchor; the pivot offset added one [f32;2] attribute.)
+        assert_eq!(bytes.len(), 72);
     }
 
     #[test]
     fn vertex_attributes_cover_full_stride() {
-        // The premultiplied flag is the 6th vertex attribute (location
-        // 7). Confirm the attribute array's last offset+size lands
-        // inside the Pod stride so the vertex layout doesn't read past
-        // the instance buffer.
+        // The anchor offset is the last (7th) vertex attribute, at
+        // location 8. Confirm the attribute array's last offset+size
+        // lands inside the Pod stride so the vertex layout doesn't read
+        // past the instance buffer.
         let attrs = RenderInstance::VERTEX_ATTRIBUTES;
         let last = attrs.last().expect("at least one attribute");
-        assert_eq!(last.shader_location, 7, "premultiplied is @location(7)");
-        // Float32 == 4 bytes.
-        let end = last.offset + 4;
+        assert_eq!(last.shader_location, 8, "anchor is @location(8)");
+        // Float32x2 == 8 bytes.
+        let end = last.offset + 8;
         assert!(
             end <= std::mem::size_of::<RenderInstance>() as u64,
             "attr end {end} must fit in stride {}",
             std::mem::size_of::<RenderInstance>()
         );
+    }
+
+    #[test]
+    fn vertex_attr_offsets_match_struct() {
+        // REGRESSION GUARD. `wgpu::vertex_attr_array!` derives each
+        // attribute's byte offset from the running sum of the FORMATS
+        // listed — it knows nothing about the Rust struct. So every
+        // GPU-read field MUST sit contiguously, in attribute order,
+        // before any CPU-only field (`texture_id`, `_pad`). If a future
+        // edit interleaves a non-attribute field (as the original
+        // `premultiplied` placement did — it sat after `texture_id`, so
+        // `@location(7)` silently read `texture_id`'s bytes), this test
+        // fails instead of shipping a sampler that reads the wrong word.
+        use std::mem::offset_of;
+        let expect = [
+            (2u32, offset_of!(RenderInstance, world_pos) as u64),
+            (3, offset_of!(RenderInstance, size) as u64),
+            (4, offset_of!(RenderInstance, atlas_uv) as u64),
+            (5, offset_of!(RenderInstance, tint) as u64),
+            (6, offset_of!(RenderInstance, rotation) as u64),
+            (7, offset_of!(RenderInstance, premultiplied) as u64),
+            (8, offset_of!(RenderInstance, anchor) as u64),
+        ];
+        let attrs = RenderInstance::VERTEX_ATTRIBUTES;
+        assert_eq!(attrs.len(), expect.len(), "attribute count drifted");
+        for (attr, (loc, off)) in attrs.iter().zip(expect) {
+            assert_eq!(attr.shader_location, loc, "location order drifted");
+            assert_eq!(
+                attr.offset, off,
+                "@location({loc}) macro offset {} != struct field offset {off} \
+                 — a non-attribute field is interleaved with GPU fields",
+                attr.offset
+            );
+        }
     }
 
     #[test]

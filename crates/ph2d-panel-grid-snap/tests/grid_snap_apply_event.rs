@@ -13,6 +13,7 @@ use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState, ids as gs_ids};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::project::DisplayUnit;
 use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelRegistry};
 use ph2d_grid::hex::{HexOffset, HexOrientation};
 use ph2d_grid::snap::SnapTarget;
@@ -33,7 +34,17 @@ fn ensure_typed_registry() {
 fn setup_hero() -> HeroScreen {
     ph2d_editor_core::test_support::ensure_panel_registry();
     ensure_typed_registry();
-    HeroScreen::new(NodeId(1))
+    let mut hero = HeroScreen::new(NodeId(1));
+    // These tests probe the METER-domain grid config directly (e.g.
+    // `square_cfg.cell_size` in meters). `apply_event` runs the active
+    // project's DisplayUnit→meters conversion on NumberInput edits; the
+    // project default is now Pixels @ 100 px/m (2026-05 defaults), so a
+    // raw input of `4.5` would land as `0.045 m`. Pin the unit to Meters
+    // here so the conversion is identity and the meter assertions hold.
+    // (Without this the file's number-input tests fail — a pre-existing
+    // breakage from the defaults change, surfaced at ship time.)
+    hero.project.display_unit = DisplayUnit::Meters;
+    hero
 }
 
 fn snap(hero: &HeroScreen) -> &GridSnapState {

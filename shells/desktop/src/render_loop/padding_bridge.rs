@@ -92,7 +92,7 @@ pub(super) fn dispatch(
     // sprite's footprint. Non-destructive: nothing about the sprite or
     // its Transform moves while editing — only this overlay grows /
     // shrinks as the sliders change.
-    if let Some((top, right, bottom, left, recenter)) = preview_spec
+    if let Some((top, right, bottom, left, _recenter)) = preview_spec
         && (top != 0 || right != 0 || bottom != 0 || left != 0)
         && let Some(bits) = hero.gizmo.selection
     {
@@ -104,7 +104,6 @@ pub(super) fn dispatch(
             vector_scene,
             bits,
             [top, right, bottom, left],
-            recenter,
         );
     }
 
@@ -113,11 +112,10 @@ pub(super) fn dispatch(
 
 /// Stroke the new-canvas world rect for `entity_bits` onto the canvas.
 ///
-/// `spec = [top, right, bottom, left]` signed px. In `recenter` mode the
-/// rect grows outward from the CONTENT edges (the content stays put on
-/// Apply, so the preview anchors to it); in keep mode it is centred on
-/// the current pivot (which stays put on Apply). Either way the existing
-/// sprite + pivot are untouched — this only paints an overlay.
+/// `spec = [top, right, bottom, left]` signed px. The rect grows outward
+/// from the CONTENT edges (the content stays world-fixed on Apply in
+/// both pivot modes, so the preview anchors to it). The existing sprite
+/// + pivot are untouched — this only paints an overlay.
 #[allow(clippy::too_many_arguments)]
 fn draw_canvas_outline(
     hero: &HeroScreen,
@@ -127,7 +125,6 @@ fn draw_canvas_outline(
     vector_scene: &mut VectorScene,
     entity_bits: u64,
     spec: [i32; 4],
-    recenter: bool,
 ) {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let Some(sprite) = sim.world().get::<Sprite>(entity) else {
@@ -138,7 +135,15 @@ fn draw_canvas_outline(
     };
     let ppm = hero.project.pixels_per_meter.max(1.0e-3);
     let (sx, sy) = (sprite.size[0], sprite.size[1]);
-    let (cx, cy) = (tr.translation.x, tr.translation.y);
+    // Content quad center in world = pivot + anchor. For a centered
+    // sprite this IS the pivot; once the pivot was moved (TOOL_PIVOT) or
+    // a prior Keep bake offset it, the anchor re-pins the outline to the
+    // visible quad. (No scale/rotation term — parity with the bake,
+    // which works in unscaled world units.)
+    let (cx, cy) = (
+        tr.translation.x + sprite.anchor[0],
+        tr.translation.y + sprite.anchor[1],
+    );
     // Per-edge padding in world units (positive = expand, negative = crop).
     let (t, r, b, l) = (
         spec[0] as f32 / ppm,
@@ -146,26 +151,15 @@ fn draw_canvas_outline(
         spec[2] as f32 / ppm,
         spec[3] as f32 / ppm,
     );
-    // World rect edges (Y-up). Content rect = sprite footprint centred at
-    // the translation.
+    // World rect edges (Y-up). Content rect = the current quad.
     let (c_left, c_right) = (cx - sx * 0.5, cx + sx * 0.5);
     let (c_top, c_bottom) = (cy + sy * 0.5, cy - sy * 0.5);
-    let (left_w, right_w, top_w, bottom_w) = if recenter {
-        // Grow outward from the content edges (content stays world-fixed
-        // on Apply).
-        (c_left - l, c_right + r, c_top + t, c_bottom - b)
-    } else {
-        // Canvas centred on the (unchanged) pivot; total per-axis growth
-        // split symmetrically around it.
-        let new_w = (sx + l + r).max(1.0e-3);
-        let new_h = (sy + t + b).max(1.0e-3);
-        (
-            cx - new_w * 0.5,
-            cx + new_w * 0.5,
-            cy + new_h * 0.5,
-            cy - new_h * 0.5,
-        )
-    };
+    // BOTH pivot modes keep the content world-fixed and grow the border
+    // outward only on the padded edge(s) — Recenter vs Keep differ only
+    // in where the PIVOT lands (new center vs unchanged), which doesn't
+    // change the canvas outline at all. So grow from the content edges
+    // in both: a single edge's slider extends only that side.
+    let (left_w, right_w, top_w, bottom_w) = (c_left - l, c_right + r, c_top + t, c_bottom - b);
     // World → screen (top-left + bottom-right corners).
     let (x0, y0) = camera.world_to_screen([left_w, top_w], window_size);
     let (x1, y1) = camera.world_to_screen([right_w, bottom_w], window_size);

@@ -655,16 +655,27 @@ impl App {
                     self.title_dirty = true;
                     consumed = true;
                 }
-                // Tool palette icon click — switch active tool. The
-                // palette only exposes the tools visible RIGHT NOW: with
-                // Image Tools mode off the image tools are filtered out
-                // entirely (no icon, no hit zone), so a click there can't
-                // reach them. `palette_visible_tool_indices` is the SAME
-                // mapping the paint pass uses, so palette slots ↔ tools
-                // can't drift.
+                // Tool palette icon click — switch active tool.
+                //
+                // CRITICAL: only hit-test the palette where it is actually
+                // PAINTED — the legacy no-hero (demo) path. In the editor
+                // (`hero_screen` is `Some`) the palette is NOT painted (the
+                // editor switches tools via the LeftRail + Image Tools
+                // pills), yet this hit-test used to run unconditionally.
+                // Zone::TopRight is the right HALF of the toolbar strip —
+                // exactly where the TopBar paints its right clusters incl.
+                // the Settings gear — so a click on "Config" also landed on
+                // an INVISIBLE palette slot and silently switched tools
+                // ("Tool · Move"/"Tool · Padding"). Gating on
+                // `hero_screen.is_none()` (the paint condition) makes the
+                // top-right belong solely to the TopBar in the editor.
+                //
+                // The visible-tools filter below still applies in the demo
+                // path so its indices match the paint mapping (no drift).
                 if !consumed
                     && let Some(gfx) = self.gfx.as_mut()
                     && !gfx.zen.is_active()
+                    && gfx.hero_screen.is_none()
                 {
                     let mode_on = gfx
                         .hero_screen

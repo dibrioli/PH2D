@@ -42,4 +42,6 @@ pub use camera::{GizmoCamera, GizmoModifiers, GizmoSnap};
 pub use drag::{GizmoDragKind, GizmoDragState, TransformSnapshot};
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id};
 pub use paint::{GizmoView, paint_sprite_gizmo};
-pub use transform::{anchor_pivot_world, compute_gizmo_transform};
+pub use transform::{
+    anchor_pivot_world, compute_gizmo_transform, move_pivot_transform, pivot_snap_candidates,
+};

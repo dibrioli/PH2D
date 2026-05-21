@@ -26,6 +26,15 @@ pub enum GizmoDragKind {
     /// Rotation around the bbox pivot. The drag tracks the cursor's
     /// angle relative to the pivot.
     Rotate,
+    /// Move the PIVOT itself (the TOOL_PIVOT tool). The sprite's quad
+    /// stays world-fixed while the pivot point relocates: the host
+    /// writes the new `Transform.translation` (= dragged pivot world
+    /// pos) AND a compensating `Sprite.anchor` so nothing visually
+    /// jumps. Routed through [`super::move_pivot_transform`], NOT
+    /// `compute_gizmo_transform` (which can't return an anchor). For
+    /// this kind `pivot_world` holds the INVARIANT quad center captured
+    /// at drag start.
+    MovePivot,
 }
 
 /// World-space snapshot of the selected sprite's Transform captured

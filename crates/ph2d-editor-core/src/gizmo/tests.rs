@@ -18,6 +18,11 @@ fn view(bbox_min: [f32; 2], bbox_max: [f32; 2]) -> GizmoView {
         window_h: 600.0,
         canvas: Rect::new(0.0, 0.0, 800.0, 600.0),
         cursor_screen: None,
+        pivot_world: [
+            (bbox_min[0] + bbox_max[0]) * 0.5,
+            (bbox_min[1] + bbox_max[1]) * 0.5,
+        ],
+        pivot_tool_active: false,
     }
 }
 
@@ -823,4 +828,82 @@ fn opposite_anchor_translation_no_rotation() {
         (t[0] - 12.0).abs() < 1e-4 && (t[1] - 13.0).abs() < 1e-4,
         "got {t:?}"
     );
+}
+
+#[test]
+fn move_pivot_keeps_quad_fixed_identity() {
+    // Quad center at origin; drag the pivot to (3, 0). The anchor must
+    // re-pin the quad: pivot + anchor == quad_center.
+    let (t, a) = move_pivot_transform(snapshot(0.0, 0.0), [0.0, 0.0], [3.0, 0.0]);
+    assert_eq!(t, [3.0, 0.0]);
+    assert!(
+        (a[0] + 3.0).abs() < 1e-5 && a[1].abs() < 1e-5,
+        "anchor {a:?}"
+    );
+    assert!(
+        (t[0] + a[0]).abs() < 1e-5,
+        "pivot+anchor should equal quad center 0"
+    );
+}
+
+#[test]
+fn move_pivot_divides_out_scale() {
+    // scale 2×: a 4-unit world gap becomes a 2-unit intrinsic anchor
+    // (extract re-multiplies by scale, like `size`).
+    let s = TransformSnapshot {
+        translation: [0.0, 0.0],
+        rotation: 0.0,
+        scale: [2.0, 2.0],
+    };
+    let (t, a) = move_pivot_transform(s, [0.0, 0.0], [4.0, 0.0]);
+    assert_eq!(t, [4.0, 0.0]);
+    assert!(
+        (a[0] + 2.0).abs() < 1e-5 && a[1].abs() < 1e-5,
+        "anchor {a:?}"
+    );
+}
+
+#[test]
+fn move_pivot_inverse_rotates_world_delta() {
+    // rotation 90°: dragging the pivot to (0, 2) with quad center at
+    // origin must yield an anchor that, once the extract re-rotates it,
+    // points back to the origin. Check via the forward rotation.
+    let s = TransformSnapshot {
+        translation: [0.0, 0.0],
+        rotation: std::f32::consts::FRAC_PI_2,
+        scale: [1.0, 1.0],
+    };
+    let (t, a) = move_pivot_transform(s, [0.0, 0.0], [0.0, 2.0]);
+    let (sin_r, cos_r) = s.rotation.sin_cos();
+    let world = [
+        t[0] + a[0] * cos_r - a[1] * sin_r,
+        t[1] + a[0] * sin_r + a[1] * cos_r,
+    ];
+    assert!(
+        world[0].abs() < 1e-5 && world[1].abs() < 1e-5,
+        "re-pinned {world:?}"
+    );
+}
+
+#[test]
+fn pivot_snap_candidates_axis_aligned() {
+    let c = pivot_snap_candidates([0.0, 0.0], 0.0, [2.0, 1.0]);
+    assert_eq!(c[0], [0.0, 0.0]); // center
+    assert_eq!(c[1], [-2.0, 1.0]); // TL
+    assert_eq!(c[2], [2.0, 1.0]); // TR
+    assert_eq!(c[3], [-2.0, -1.0]); // BL
+    assert_eq!(c[4], [2.0, -1.0]); // BR
+    assert_eq!(c[5], [0.0, 1.0]); // T
+    assert_eq!(c[6], [2.0, 0.0]); // R
+    assert_eq!(c[7], [0.0, -1.0]); // B
+    assert_eq!(c[8], [-2.0, 0.0]); // L
+}
+
+#[test]
+fn pivot_snap_candidates_offset_center() {
+    // Center offset; corners track it.
+    let c = pivot_snap_candidates([10.0, 5.0], 0.0, [1.0, 1.0]);
+    assert_eq!(c[0], [10.0, 5.0]);
+    assert_eq!(c[2], [11.0, 6.0]); // TR
+    assert_eq!(c[3], [9.0, 4.0]); // BL
 }

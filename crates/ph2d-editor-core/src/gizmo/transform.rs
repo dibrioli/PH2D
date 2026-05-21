@@ -222,7 +222,90 @@ pub fn compute_gizmo_transform(
                 scale: drag.start_transform.scale,
             }
         }
+        // MovePivot is driven by `move_pivot_transform` in the host
+        // (it must also return a `Sprite.anchor`, which this signature
+        // can't carry). It never reaches here; keep the match
+        // exhaustive with a no-op that leaves the transform untouched.
+        GizmoDragKind::MovePivot => drag.start_transform,
     }
+}
+
+/// TOOL_PIVOT math: the user drags the pivot to `target_world` while
+/// the sprite's quad stays world-fixed. Returns the new
+/// `(translation, anchor)` to write back — `translation` becomes the
+/// pivot (= `target_world`), and `anchor` is the intrinsic-local offset
+/// that re-pins the quad center at `quad_center_world` (the invariant
+/// captured at drag start: `pivot0 + R·(anchor0 ⊙ scale)`).
+///
+/// Derivation: the quad center must stay put, so
+/// `target_world + R·(anchor ⊙ scale) = quad_center_world`. Solve for
+/// `anchor`: rotate the world delta into the local frame (inverse
+/// rotation) then divide out the scale. With identity scale + zero
+/// rotation this collapses to `anchor = quad_center_world -
+/// target_world`.
+///
+/// Pure function — no I/O, no allocation. The host snaps `target_world`
+/// (CTRL-to-candidate) BEFORE calling.
+pub fn move_pivot_transform(
+    start: TransformSnapshot,
+    quad_center_world: [f32; 2],
+    target_world: [f32; 2],
+) -> ([f32; 2], [f32; 2]) {
+    let dx = quad_center_world[0] - target_world[0];
+    let dy = quad_center_world[1] - target_world[1];
+    // World delta → local frame (inverse rotation: world +X = (cos,
+    // sin), world +Y = (-sin, cos)), then ÷ scale to get the intrinsic
+    // anchor (extract re-multiplies by scale, mirroring `size`).
+    let cos_r = start.rotation.cos();
+    let sin_r = start.rotation.sin();
+    let local_x = dx * cos_r + dy * sin_r;
+    let local_y = -dx * sin_r + dy * cos_r;
+    let sx = if start.scale[0].abs() < 1e-6 {
+        1.0
+    } else {
+        start.scale[0]
+    };
+    let sy = if start.scale[1].abs() < 1e-6 {
+        1.0
+    } else {
+        start.scale[1]
+    };
+    (target_world, [local_x / sx, local_y / sy])
+}
+
+/// World-space snap candidates for the TOOL_PIVOT drag: the quad
+/// center, its 4 corners, and 4 edge midpoints (9 points). The host
+/// adds the content-bbox center (needs pixels) and picks the nearest
+/// candidate within a screen-space threshold while CTRL is held.
+///
+/// `half_world` is the rendered half-extent (`Sprite::size * 0.5 ⊙
+/// Transform::scale`); corners/edges are rotated by `rotation` about
+/// `quad_center_world`. Order: `[center, TL, TR, BL, BR, T, R, B, L]`
+/// (world Y-up: T = +Y).
+pub fn pivot_snap_candidates(
+    quad_center_world: [f32; 2],
+    rotation: f32,
+    half_world: [f32; 2],
+) -> [[f32; 2]; 9] {
+    let cos_r = rotation.cos();
+    let sin_r = rotation.sin();
+    let [cx, cy] = quad_center_world;
+    let [hx, hy] = half_world;
+    // Rotate a local offset into world and translate to the center.
+    let p = |lx: f32, ly: f32| -> [f32; 2] {
+        [cx + lx * cos_r - ly * sin_r, cy + lx * sin_r + ly * cos_r]
+    };
+    [
+        [cx, cy],    // center
+        p(-hx, hy),  // TL
+        p(hx, hy),   // TR
+        p(-hx, -hy), // BL
+        p(hx, -hy),  // BR
+        p(0.0, hy),  // T
+        p(hx, 0.0),  // R
+        p(0.0, -hy), // B
+        p(-hx, 0.0), // L
+    ]
 }
 
 /// Compute the world-space pivot for a Scale drag (Corner / Edge).

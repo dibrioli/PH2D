@@ -134,6 +134,11 @@ pub(super) fn publish(
     // from SimWorld — it's the import-time author rect,
     // multiplied here by the world scale extracted from the
     // matrix to match the renderer's RenderInstance build.
+    // Whether the Pivot transform tool is the active radio selection —
+    // captured as a Copy bool so the gizmo-view closure (which can't
+    // re-borrow `hero`) can emphasize the pivot dot.
+    let pivot_tool_active = hero.store.button_state(ph2d_editor::ids::TOOL_PIVOT)
+        == Some(ph2d_editor::widget::ButtonState::Pressed);
     hero.gizmo.view = hero.gizmo.selection.and_then(|bits| {
         let sim_entity = ph2d_ecs::Entity::from_bits(bits);
         let sprite = sim.world().get::<Sprite>(sim_entity)?;
@@ -180,6 +185,10 @@ pub(super) fn publish(
         Some(ph2d_editor::GizmoView {
             bbox_min_world: [cx - half_w, cy - half_h],
             bbox_max_world: [cx + half_w, cy + half_h],
+            // The TRUE pivot is the entity's translation `p`; the bbox
+            // above is centered on the quad (pivot + anchor).
+            pivot_world: [p.x, p.y],
+            pivot_tool_active,
             rotation,
             camera_center: camera.center,
             camera_height_world: camera.height_world,

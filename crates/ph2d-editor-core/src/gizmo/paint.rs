@@ -39,6 +39,17 @@ pub struct GizmoView {
     /// circles when the cursor is inside one of the 4 rotate-hover
     /// rings — gives the user a "you're about to rotate" cue.
     pub cursor_screen: Option<(f32, f32)>,
+    /// World position of the actual PIVOT — the entity's
+    /// `Transform.translation`. Distinct from the bbox center once the
+    /// sprite carries a non-zero `Sprite.anchor` (TOOL_PIVOT / Padding
+    /// Keep): the bbox tracks the visible quad while the pivot dot is
+    /// drawn here, at the true rotation/scale origin. Equals the bbox
+    /// center for every centered (anchor == 0) sprite.
+    pub pivot_world: [f32; 2],
+    /// `true` while the Pivot transform tool is the active radio
+    /// selection — the painter emphasizes the pivot dot (filled, slightly
+    /// larger) so the user sees the grabbable handle.
+    pub pivot_tool_active: bool,
 }
 
 /// Side length of the square handle hit + visual rects.
@@ -236,17 +247,26 @@ pub fn paint_sprite_gizmo(
         fill_rounded_rect(scene, r, 2.0, handle_fill);
         stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
     }
-    // Pivot dot at the rotated bbox center (= sprite world center
-    // projected). Stays at the visual anchor regardless of rotation
-    // angle — same world point, just rotated underneath.
-    let pivot_cx = center_screen[0];
-    let pivot_cy = center_screen[1];
+    // Pivot dot at the TRUE pivot (`Transform.translation`), projected
+    // to screen. For a centered sprite this coincides with the bbox
+    // center; once the sprite carries an anchor (TOOL_PIVOT / Padding
+    // Keep) the pivot sits off-center and the dot tracks it there.
+    let pivot_screen = world_to_screen(view, view.pivot_world);
+    let pivot_cx = pivot_screen[0];
+    let pivot_cy = pivot_screen[1];
     let _ = (sx_min, sx_max, sy_min, sy_max);
+    // Slightly larger hit/visual when the Pivot tool is active so the
+    // grabbable handle is obvious.
+    let dot_size = if view.pivot_tool_active {
+        PIVOT_DOT_SIZE * 1.5
+    } else {
+        PIVOT_DOT_SIZE
+    };
     let pivot_rect = Rect::new(
-        pivot_cx - PIVOT_DOT_SIZE * 0.5,
-        pivot_cy - PIVOT_DOT_SIZE * 0.5,
-        PIVOT_DOT_SIZE,
-        PIVOT_DOT_SIZE,
+        pivot_cx - dot_size * 0.5,
+        pivot_cy - dot_size * 0.5,
+        dot_size,
+        dot_size,
     );
     hit_index.register(ids::GIZMO_PIVOT, pivot_rect);
     // Pivot ring: hollow red circle, fixed color across themes.
@@ -257,18 +277,28 @@ pub fn paint_sprite_gizmo(
     let pivot_red = VelloColor::from_rgba8(0xE0, 0x40, 0x40, 0xFF);
     let pivot_circle = Circle::new(
         Point::new(pivot_cx as f64, pivot_cy as f64),
-        (PIVOT_DOT_SIZE * 0.5) as f64,
+        (dot_size * 0.5) as f64,
     );
-    // Stroke (not fill) so the dot is a ring with the bbox interior
-    // visible through the hole — user explicitly asked for "vazado
-    // no meio".
-    scene.inner_mut().stroke(
-        &ph2d_vector::Stroke::new(1.5),
-        ph2d_vector::Affine::IDENTITY,
-        pivot_red,
-        None,
-        &pivot_circle,
-    );
+    if view.pivot_tool_active {
+        // Active tool: fill the dot so it reads as a grabbable handle.
+        scene.inner_mut().fill(
+            ph2d_vector::Fill::NonZero,
+            ph2d_vector::Affine::IDENTITY,
+            pivot_red,
+            None,
+            &pivot_circle,
+        );
+    } else {
+        // Idle: hollow ring (stroke) with the bbox interior visible
+        // through the hole — user explicitly asked for "vazado no meio".
+        scene.inner_mut().stroke(
+            &ph2d_vector::Stroke::new(1.5),
+            ph2d_vector::Affine::IDENTITY,
+            pivot_red,
+            None,
+            &pivot_circle,
+        );
+    }
 }
 
 /// Rect for the rotate-hover region just outside a corner handle.

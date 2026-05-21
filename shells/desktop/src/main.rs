@@ -50,7 +50,9 @@ mod sim_populate;
 mod theme;
 mod winit_host;
 
-pub(crate) use app_state::{App, AppGfx, HeroLive, ImageEditSnapshot};
+pub(crate) use app_state::{
+    App, AppGfx, HeroLive, ImageEditSnapshot, is_image_edit_tool, palette_visible_tool_indices,
+};
 
 // forwarding::* moved to input_dispatch.rs (PR 9b).
 // cursor_pos::live_cursor_in_window + image_import::import_image_at_camera

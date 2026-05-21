@@ -324,3 +324,46 @@ pub(crate) struct BgremovalPreview {
     pub(crate) width: u32,
     pub(crate) height: u32,
 }
+
+/// True for any tool that belongs to the **Image Tools** group — i.e.
+/// whose manifest is registered in the `"image_tools"` cluster (Bg
+/// Removal, Padding, Trim Transparency, Make Square, Real Size, and
+/// EVERY future image tool). Data-driven on purpose: there is no
+/// hardcoded id list to keep in sync — add a tool to the `image_tools`
+/// cluster in its manifest and this predicate (and everything gated on
+/// it) picks it up automatically.
+///
+/// `installed_registry()` is `Some` in the real editor (installed at
+/// boot); the `None` fallback (pre-registry boot / isolated tests)
+/// reports `false`, matching the legacy "no gating" behavior there.
+pub(crate) fn is_image_edit_tool(id: &ph2d_editor::ToolId) -> bool {
+    // `m.id` is the manifest's `&'static str` id; `id` is the editor's
+    // `ToolId` newtype (what `Tool::id()` returns). Bridge the two via
+    // `ToolId::new`.
+    ph2d_editor::installed_registry()
+        .map(|reg| {
+            reg.cluster("image_tools")
+                .iter()
+                .any(|m| ph2d_editor::ToolId::new(m.id) == *id)
+        })
+        .unwrap_or(false)
+}
+
+/// Indices into `tools.tools()` that are visible in the top-right tool
+/// palette right now. Brush / Move are always present; the image-edit
+/// tools appear ONLY while Image Tools mode is on — off, they're fully
+/// gone (no icon painted, no hit zone), the absolute rule for "Image
+/// Tools off ⟹ image tools inaccessible". Paint AND hit-test must both
+/// map palette slots through this so their indices can't drift.
+pub(crate) fn palette_visible_tool_indices(
+    tools: &ph2d_editor::ToolRegistry,
+    image_tools_mode_on: bool,
+) -> Vec<usize> {
+    tools
+        .tools()
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| image_tools_mode_on || !is_image_edit_tool(&t.id()))
+        .map(|(i, _)| i)
+        .collect()
+}

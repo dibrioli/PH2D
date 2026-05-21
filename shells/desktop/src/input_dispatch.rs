@@ -655,40 +655,34 @@ impl App {
                     self.title_dirty = true;
                     consumed = true;
                 }
-                // Tool palette icon click — switch active tool.
+                // Tool palette icon click — switch active tool. The
+                // palette only exposes the tools visible RIGHT NOW: with
+                // Image Tools mode off the image tools are filtered out
+                // entirely (no icon, no hit zone), so a click there can't
+                // reach them. `palette_visible_tool_indices` is the SAME
+                // mapping the paint pass uses, so palette slots ↔ tools
+                // can't drift.
                 if !consumed
                     && let Some(gfx) = self.gfx.as_mut()
                     && !gfx.zen.is_active()
                 {
-                    let palette = gfx.layout.tool_palette_rects(gfx.tools.tools().len());
+                    let mode_on = gfx
+                        .hero_screen
+                        .as_ref()
+                        .map(|h| h.image_edit.mode_on)
+                        .unwrap_or(false);
+                    let visible = crate::palette_visible_tool_indices(&gfx.tools, mode_on);
+                    let palette = gfx.layout.tool_palette_rects(visible.len());
                     let hit_idx = palette
                         .iter()
                         .position(|r| r.contains(self.last_pointer.0, self.last_pointer.1));
-                    if let Some(idx) = hit_idx {
-                        let tool_id = gfx.tools.tools()[idx].id();
-                        // Image-edit tools (Bg Removal / Padding) are only
-                        // reachable while Image Tools mode is on — same
-                        // rule as the TopBar pills. The tool palette is a
-                        // SECOND activation path that otherwise bypassed
-                        // the mode (it called set_active directly): a
-                        // palette click fired the tool + a "Tool · Padding"
-                        // toast even with the mode off (the per-frame
-                        // reconcile then deactivated the tool, leaving only
-                        // the stray toast — "só a mensagem"). Gate it here
-                        // too so image tools are fully inaccessible off.
-                        let mode_on = gfx
-                            .hero_screen
-                            .as_ref()
-                            .map(|h| h.image_edit.mode_on)
-                            .unwrap_or(false);
-                        let is_image_tool = tool_id == ph2d_editor::ToolId::new("bgremoval")
-                            || tool_id == ph2d_editor::ToolId::new("padding");
-                        if !(is_image_tool && !mode_on) {
-                            let tool_label = gfx.tools.tools()[idx].label().to_string();
-                            if gfx.tools.set_active(&tool_id) {
-                                gfx.toasts.push(Toast::info(format!("Tool · {tool_label}")));
-                                self.title_dirty = true;
-                            }
+                    if let Some(slot) = hit_idx {
+                        let tool_idx = visible[slot];
+                        let tool_id = gfx.tools.tools()[tool_idx].id();
+                        let tool_label = gfx.tools.tools()[tool_idx].label().to_string();
+                        if gfx.tools.set_active(&tool_id) {
+                            gfx.toasts.push(Toast::info(format!("Tool · {tool_label}")));
+                            self.title_dirty = true;
                         }
                         consumed = true;
                     }

@@ -521,10 +521,7 @@ impl crate::App {
             if !hero.image_edit.mode_on {
                 let active_is_image_tool = tools
                     .active()
-                    .map(|t| {
-                        t.id() == ph2d_editor::ToolId::new("bgremoval")
-                            || t.id() == ph2d_editor::ToolId::new("padding")
-                    })
+                    .map(|t| crate::is_image_edit_tool(&t.id()))
                     .unwrap_or(false);
                 if active_is_image_tool
                     && let Some(default_id) = tools.tools().first().map(|t| t.id())
@@ -682,15 +679,21 @@ impl crate::App {
         } else {
             layout.paint(vector_scene, &mut paint_ctx);
 
-            // Tool palette in the CREATE zone (top-right). Always-visible
-            // chips; click switches active tool. Hidden in Zen mode by
-            // virtue of `tool_palette_rects` returning empty there.
-            let palette_rects = layout.tool_palette_rects(tools.tools().len());
+            // Tool palette in the CREATE zone (top-right). Hidden in Zen
+            // mode by virtue of `tool_palette_rects` returning empty.
+            // This branch is the legacy no-hero (demo) path, so there is
+            // no Image Tools mode → `mode_on = false`. Map slots through
+            // the SAME `palette_visible_tool_indices` the click hit-test
+            // uses so the two never drift (image tools filtered out when
+            // off — no icon, no hit zone).
+            let visible = crate::palette_visible_tool_indices(tools, false);
+            let palette_rects = layout.tool_palette_rects(visible.len());
             let active_id = tools.active().map(|t| t.id());
             let palette_icons: Vec<(EditorRect, &str, bool)> = palette_rects
                 .iter()
-                .zip(tools.tools().iter())
-                .map(|(r, tool)| {
+                .zip(visible.iter())
+                .map(|(r, &i)| {
+                    let tool = &tools.tools()[i];
                     let is_active = active_id.as_ref() == Some(&tool.id());
                     (*r, tool.label(), is_active)
                 })

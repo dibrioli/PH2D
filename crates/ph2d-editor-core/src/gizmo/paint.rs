@@ -120,7 +120,6 @@ pub fn paint_sprite_gizmo(
     let tr = world_to_screen(view, tr_w);
     let bl = world_to_screen(view, bl_w);
     let br = world_to_screen(view, br_w);
-    let center_screen = world_to_screen(view, [cx_w, cy_w]);
 
     // Interior hit: axis-aligned bounding box of the 4 rotated
     // corners. Picking precision suffers slightly at high rotation

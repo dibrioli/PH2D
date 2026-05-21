@@ -111,6 +111,25 @@ pub const IMAGE_ACTION_BGREMOVAL: NodeId = hash_node_id("bgremoval");
 /// the ECS `Transform`. Algorithm in `ph2d-tool-real-size`.
 pub const IMAGE_ACTION_REAL_SIZE: NodeId = hash_node_id("real_size");
 
+/// Image Tools action — Padding pill. Unlike the one-shots, this ACTIVATES
+/// the stateful Padding tool (panel with 4 signed per-edge fields + Apply;
+/// the directional-expand gizmo edge-drag is a v2). Click raises
+/// `EditorAction::ActivatePadding`; the shell sets the tool active.
+/// Condenses the legacy Image Padding + Directional Expand.
+pub const IMAGE_ACTION_PADDING: NodeId = hash_node_id("padding");
+
+/// Padding panel widget NodeIds (typed `ph2d-panel-padding`, right-docked
+/// in the Inspector slot while the `padding` tool is active). Four signed
+/// per-edge NumberInput fields + Apply / Cancel. The directional-expand
+/// gizmo (v2) will add canvas-edge handles, not panel ids.
+pub const PAD_PANEL: NodeId = hash_node_id("pad_panel");
+pub const PAD_TOP: NodeId = hash_node_id("pad_top");
+pub const PAD_RIGHT: NodeId = hash_node_id("pad_right");
+pub const PAD_BOTTOM: NodeId = hash_node_id("pad_bottom");
+pub const PAD_LEFT: NodeId = hash_node_id("pad_left");
+pub const PAD_APPLY: NodeId = hash_node_id("pad_apply");
+pub const PAD_CANCEL: NodeId = hash_node_id("pad_cancel");
+
 pub const HIERARCHY_ADD: NodeId = hash_node_id("hierarchy_add");
 
 pub const TOOL_TRANSLATE: NodeId = hash_node_id("tool_translate");

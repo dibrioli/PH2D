@@ -209,7 +209,7 @@ pub fn segment(
 /// silenced here because changing the digits drifts the colour
 /// space.
 #[allow(clippy::excessive_precision)]
-fn srgb_to_oklab(r: u8, g: u8, b: u8) -> [f32; 3] {
+pub(crate) fn srgb_to_oklab(r: u8, g: u8, b: u8) -> [f32; 3] {
     #[inline(always)]
     fn srgb_to_linear(c: u8) -> f32 {
         let cf = (c as f32) / 255.0;
@@ -278,7 +278,7 @@ pub(crate) fn oklab_to_srgb8(lab: [f32; 3]) -> [u8; 3] {
 
 /// Squared Euclidean distance between two Oklab points.
 #[inline(always)]
-fn oklab_dist_sq(a: [f32; 3], b: [f32; 3]) -> f32 {
+pub(crate) fn oklab_dist_sq(a: [f32; 3], b: [f32; 3]) -> f32 {
     let dl = a[0] - b[0];
     let da = a[1] - b[1];
     let db = a[2] - b[2];
@@ -291,7 +291,17 @@ fn oklab_dist_sq(a: [f32; 3], b: [f32; 3]) -> f32 {
 
 /// Sample corner patches and k-means-cluster them; return the
 /// larger cluster's centroid as the detected bg.
-fn detect_corner_bg(rgba: &[u8], w: u32, h: u32, scratch: &mut BgRemovalScratch) -> [f32; 3] {
+///
+/// Reused by [`super::grabcut`] to seed its trimap with a real
+/// background reference (the background colour is resolution-
+/// independent, so GrabCut detects it on the full-res input and then
+/// floods at its own processing resolution).
+pub(crate) fn detect_corner_bg(
+    rgba: &[u8],
+    w: u32,
+    h: u32,
+    scratch: &mut BgRemovalScratch,
+) -> [f32; 3] {
     scratch.corner_samples.clear();
     sample_corner_patches(rgba, w, h, &mut scratch.corner_samples);
 
@@ -512,7 +522,7 @@ fn fill_delta_e_sq(rgba: &[u8], n: usize, bg_oklab: [f32; 3], out: &mut [f32]) {
 /// Fraction of perimeter pixels with ΔE² ≤ `tol_sq`. Returns 0 for
 /// pathological 1-px-wide images (n_border == 0 only when both
 /// w == 0 or h == 0, which we early-returned earlier).
-fn border_bg_confidence(delta_e: &[f32], w: u32, h: u32, tol_sq: f32) -> f32 {
+pub(crate) fn border_bg_confidence(delta_e: &[f32], w: u32, h: u32, tol_sq: f32) -> f32 {
     let (w_us, h_us) = (w as usize, h as usize);
     if w_us == 0 || h_us == 0 {
         return 0.0;
@@ -566,7 +576,7 @@ fn border_bg_confidence(delta_e: &[f32], w: u32, h: u32, tol_sq: f32) -> f32 {
 /// Invariant on entry: `mask[..n]` is all-255 (foreground).
 /// On exit: pixels reachable from a "bg-similar" border pixel
 /// via 4-connected paths of bg-similar pixels are set to 0.
-fn flood_from_borders(
+pub(crate) fn flood_from_borders(
     delta_e: &[f32],
     mask: &mut [u8],
     spans: &mut Vec<FloodSpan>,

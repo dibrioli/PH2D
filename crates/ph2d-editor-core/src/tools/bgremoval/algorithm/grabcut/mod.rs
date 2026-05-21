@@ -35,6 +35,7 @@ use image::{ImageBuffer, Rgba};
 use super::super::params::GrabCutParams;
 use super::super::scratch::BgRemovalScratch;
 use super::SegmentResult;
+use super::chroma;
 
 use gmm::{COMPONENTS, Gmm5};
 use graph::{NLinks, TriLabel, build_n_links, build_t_links, derive_beta};
@@ -57,6 +58,23 @@ const FLIP_DENOMINATOR: u32 = 1000;
 /// Deterministic seeds for the per-side GMM init (HR-5).
 const GMM_BG_SEED: u64 = 0xBADC_0FFE_E0DD_F00D;
 const GMM_FG_SEED: u64 = 0xFEED_BEEF_DEAD_FACE;
+
+/// Oklab ΔE below which a pixel is "definitely" the chroma-detected
+/// background, used to harden the trimap seed (see
+/// [`seed_hard_bg_from_chroma`]). Conservative on purpose — we only
+/// lock pixels we're confident about as `BgHard`; everything else stays
+/// soft for the GMM / graph-cut to decide. The squared form is what the
+/// flood compares against. // LITERAL-OK: perceptual seed budget
+const SEED_TOL: f32 = 0.10;
+
+/// Minimum border-bg confidence for the chroma seed to fire. Below this
+/// the subject likely touches an image edge (so a border flood would
+/// eat into it) and we keep the plain geometric inset seed. Mirrors the
+/// chroma backend's own `BORDER_BG_CONFIDENCE_FLOOR`.
+const SEED_BORDER_CONF_FLOOR: f32 = 0.60;
+
+/// Protection-mask byte threshold (`>= ` ⇒ protected / forced-fg).
+const PROTECT_THRESHOLD: u8 = 128;
 
 /// Reusable GrabCut working state. Lives on `BgRemovalScratch` so
 /// the per-call allocations from the orchestrator's pipeline can
@@ -134,11 +152,18 @@ impl GrabCutScratch {
 /// `scratch.mask`. The mask is `0` for background, `255` for
 /// foreground at the *input* resolution; internal processing
 /// happens at `min(input, MAX_INTERNAL_DIM)` per axis.
+///
+/// `protect` is an optional foreground-protection mask aligned to the
+/// **input** `(w, h)` (one byte/pixel, `>= PROTECT_THRESHOLD` =
+/// protected). Protected pixels are locked `TriLabel::FgHard` in the
+/// trimap seed so the cut can never push them to the background. The
+/// mask is nearest-downsampled to the processing resolution.
 pub fn segment(
     rgba: &[u8],
     w: u32,
     h: u32,
     params: &GrabCutParams,
+    protect: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) -> SegmentResult {
     let n_full = (w as usize) * (h as usize);
@@ -177,6 +202,24 @@ pub fn segment(
         params,
         &mut scratch.grabcut.trimap,
     );
+
+    // 2b. Harden the seed with the chroma backend's background detection:
+    //     pixels that are border-connected and clearly the detected bg
+    //     colour become `BgHard`. The plain inset seed (FgSoft inside /
+    //     BgSoft outside) gives the GMMs a poor start on natural images —
+    //     anything bg-coloured *inside* the inset trains the FG GMM and
+    //     drags the cut. Anchoring real background as hard constraints is
+    //     what Chroma already does well; this brings it to GrabCut.
+    //     Confidence-gated so a subject touching the border isn't eaten.
+    seed_hard_bg_from_chroma(rgba, w, h, proc_w, proc_h, scratch);
+
+    // 2c. Protection mask: lock painted pixels to `FgHard` so the cut
+    //     can never drop them. Applied last so it overrides the chroma
+    //     seed / alpha-hole `BgHard` on any pixel the user explicitly
+    //     protected (nearest-downsampled from the input resolution).
+    if let Some(pm) = protect {
+        apply_protect_fghard(pm, w, h, proc_w, proc_h, &mut scratch.grabcut.trimap);
+    }
 
     // Tiny guard — if either side has < COMPONENTS pixels the GMM
     // init can't seed properly. In practice a sane inset always
@@ -356,6 +399,112 @@ pub(crate) fn inset_to_bbox(w: u32, h: u32, params: &GrabCutParams) -> (u32, u32
     let right = w.saturating_sub(ir).max(left + 1).min(w);
     let bottom = h.saturating_sub(ib).max(top + 1).min(h);
     (left, top, right, bottom)
+}
+
+// ---------------------------------------------------------------
+// Seed hardening (chroma bg detection + protection mask)
+// ---------------------------------------------------------------
+
+/// Harden `scratch.grabcut.trimap` by marking border-connected,
+/// clearly-background pixels as [`TriLabel::BgHard`], reusing the chroma
+/// backend's corner-auto background detection + connected flood-fill.
+///
+/// The background colour is detected on the full-resolution `rgba`
+/// (colour is resolution-independent) and the flood runs at the
+/// processing resolution against `scratch.grabcut.down_rgb`. Only
+/// existing soft labels are hardened — `BgHard` from the alpha-hole pass
+/// is preserved, and the routine never touches the foreground side.
+///
+/// No-op (keeps the plain geometric seed) when the border-bg confidence
+/// is below [`SEED_BORDER_CONF_FLOOR`], i.e. the subject likely touches
+/// an image edge and a border flood would bleed into it.
+///
+/// Scratch usage: writes `scratch.delta_e` / `scratch.mask` /
+/// `scratch.spans` at the processing resolution. GrabCut's compose path
+/// never reads `delta_e`, and the final mask is overwritten by
+/// `write_mask`, so this is safe to clobber here.
+fn seed_hard_bg_from_chroma(
+    rgba: &[u8],
+    w: u32,
+    h: u32,
+    proc_w: u32,
+    proc_h: u32,
+    scratch: &mut BgRemovalScratch,
+) {
+    let n_proc = (proc_w as usize) * (proc_h as usize);
+    if n_proc == 0 {
+        return;
+    }
+
+    // Detect the background reference (full-res, resolution-independent).
+    let bg_oklab = chroma::detect_corner_bg(rgba, w, h, scratch);
+
+    // Squared ΔE per processing-resolution pixel against the bg colour.
+    for i in 0..n_proc {
+        let p = chroma::srgb_to_oklab(
+            scratch.grabcut.down_rgb[i * 3],
+            scratch.grabcut.down_rgb[i * 3 + 1],
+            scratch.grabcut.down_rgb[i * 3 + 2],
+        );
+        scratch.delta_e[i] = chroma::oklab_dist_sq(p, bg_oklab);
+    }
+
+    let tol_sq = SEED_TOL * SEED_TOL;
+    // Subject-touches-border guard — mirrors the chroma backend.
+    if chroma::border_bg_confidence(&scratch.delta_e, proc_w, proc_h, tol_sq)
+        < SEED_BORDER_CONF_FLOOR
+    {
+        return;
+    }
+
+    // Connected flood from the borders: mask 0 ⇒ border-connected bg.
+    for v in &mut scratch.mask[..n_proc] {
+        *v = 255;
+    }
+    chroma::flood_from_borders(
+        &scratch.delta_e,
+        &mut scratch.mask,
+        &mut scratch.spans,
+        proc_w,
+        proc_h,
+        tol_sq,
+    );
+
+    // Promote flooded background to hard constraints. Never demote the
+    // foreground side (a subject pixel matching the bg colour but not
+    // border-connected is left soft for the graph-cut to decide).
+    for i in 0..n_proc {
+        if scratch.mask[i] == 0 && !scratch.grabcut.trimap[i].is_fg() {
+            scratch.grabcut.trimap[i] = TriLabel::BgHard;
+        }
+    }
+}
+
+/// Lock every protected input pixel to [`TriLabel::FgHard`] in the
+/// processing-resolution `trimap`. `protect` is at the input `(w, h)`;
+/// each processing pixel samples the nearest input pixel.
+fn apply_protect_fghard(
+    protect: &[u8],
+    w: u32,
+    h: u32,
+    proc_w: u32,
+    proc_h: u32,
+    trimap: &mut [TriLabel],
+) {
+    if w == 0 || h == 0 || proc_w == 0 || proc_h == 0 {
+        return;
+    }
+    let (w_u, h_u) = (w as u64, h as u64);
+    let (pw_u, ph_u) = (proc_w as u64, proc_h as u64);
+    for y in 0..proc_h as usize {
+        let sy = (((y as u64) * h_u) / ph_u).min(h_u - 1) as usize;
+        for x in 0..proc_w as usize {
+            let sx = (((x as u64) * w_u) / pw_u).min(w_u - 1) as usize;
+            if protect[sy * w as usize + sx] >= PROTECT_THRESHOLD {
+                trimap[y * proc_w as usize + x] = TriLabel::FgHard;
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------
@@ -615,7 +764,7 @@ mod tests {
         let rgba = make_image(64, 64, [0, 200, 0], None);
         let mut s = BgRemovalScratch::default();
         s.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &default_params(), &mut s);
+        let _ = segment(&rgba, 64, 64, &default_params(), None, &mut s);
         // Every mask byte must be 0 or 255 — no garbage.
         assert!(s.mask.iter().all(|&v| v == 0 || v == 255));
     }
@@ -628,7 +777,7 @@ mod tests {
         let rgba = make_image(96, 96, [200, 30, 30], Some(([30, 200, 30], 32, 32, 32, 32)));
         let mut s = BgRemovalScratch::default();
         s.ensure(96, 96, false);
-        let _ = segment(&rgba, 96, 96, &default_params(), &mut s);
+        let _ = segment(&rgba, 96, 96, &default_params(), None, &mut s);
         // Centre of the green subject — fg.
         let centre = 48 * 96 + 48;
         assert_eq!(s.mask[centre], 255, "subject centre must be fg");
@@ -656,7 +805,7 @@ mod tests {
         };
         let mut s = BgRemovalScratch::default();
         s.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &p, &mut s);
+        let _ = segment(&rgba, 64, 64, &p, None, &mut s);
         // A transparent corner pixel — bg.
         assert_eq!(s.mask[0], 0, "transparent pixel must be bg");
     }
@@ -665,7 +814,42 @@ mod tests {
     fn empty_image_does_not_panic() {
         let mut s = BgRemovalScratch::default();
         s.ensure(0, 0, false);
-        let _ = segment(&[], 0, 0, &default_params(), &mut s);
+        let _ = segment(&[], 0, 0, &default_params(), None, &mut s);
+    }
+
+    #[test]
+    fn protect_mask_locks_pixel_as_foreground() {
+        // 96×96 uniform red — the chroma seed would lock the whole image
+        // as bg. Protecting a central 16×16 region forces those pixels
+        // FgHard, so they must come out foreground while the unprotected
+        // border stays background.
+        let rgba = make_image(96, 96, [200, 30, 30], None);
+        let mut protect = vec![0u8; 96 * 96];
+        for y in 40..56 {
+            for x in 40..56 {
+                protect[y * 96 + x] = 255;
+            }
+        }
+        let mut s = BgRemovalScratch::default();
+        s.ensure(96, 96, false);
+        let _ = segment(&rgba, 96, 96, &default_params(), Some(&protect), &mut s);
+        assert_eq!(s.mask[48 * 96 + 48], 255, "protected pixel must be fg");
+        assert_eq!(s.mask[0], 0, "unprotected bg corner must be bg");
+    }
+
+    #[test]
+    fn protect_none_matches_baseline() {
+        // Threading the protect arg as `None` must be byte-identical to
+        // the pre-protection behaviour (determinism / no regression).
+        let rgba = make_image(96, 96, [200, 30, 30], Some(([30, 200, 30], 32, 32, 32, 32)));
+        let mut a = BgRemovalScratch::default();
+        a.ensure(96, 96, false);
+        let _ = segment(&rgba, 96, 96, &default_params(), None, &mut a);
+        let mut b = BgRemovalScratch::default();
+        b.ensure(96, 96, false);
+        let empty = vec![0u8; 96 * 96];
+        let _ = segment(&rgba, 96, 96, &default_params(), Some(&empty), &mut b);
+        assert_eq!(a.mask, b.mask, "all-zero protect must equal None");
     }
 
     #[test]
@@ -673,11 +857,11 @@ mod tests {
         let rgba = make_image(64, 64, [200, 30, 30], Some(([30, 200, 30], 16, 16, 32, 32)));
         let mut s1 = BgRemovalScratch::default();
         s1.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &default_params(), &mut s1);
+        let _ = segment(&rgba, 64, 64, &default_params(), None, &mut s1);
 
         let mut s2 = BgRemovalScratch::default();
         s2.ensure(64, 64, false);
-        let _ = segment(&rgba, 64, 64, &default_params(), &mut s2);
+        let _ = segment(&rgba, 64, 64, &default_params(), None, &mut s2);
 
         assert_eq!(s1.mask, s2.mask, "GrabCut must be deterministic");
     }
@@ -695,7 +879,7 @@ mod tests {
         );
         let mut s = BgRemovalScratch::default();
         s.ensure(1280, 1280, false);
-        let _ = segment(&rgba, 1280, 1280, &default_params(), &mut s);
+        let _ = segment(&rgba, 1280, 1280, &default_params(), None, &mut s);
         // mask vector covers the full input.
         assert_eq!(s.mask.len(), 1280 * 1280);
         // Centre of the subject — fg.
@@ -760,11 +944,11 @@ mod tests {
         let rgba = make_image(48, 48, [200, 30, 30], Some(([30, 200, 30], 16, 16, 16, 16)));
         let mut s = BgRemovalScratch::default();
         s.ensure(48, 48, false);
-        let _ = segment(&rgba, 48, 48, &default_params(), &mut s);
+        let _ = segment(&rgba, 48, 48, &default_params(), None, &mut s);
         assert_eq!(s.mask.len(), 48 * 48);
         let bg_buf_cap_after_first = s.grabcut.bg_pixels.capacity();
         let bk_nodes_cap_after_first = s.grabcut.bk.nodes_capacity_for_test();
-        let _ = segment(&rgba, 48, 48, &default_params(), &mut s);
+        let _ = segment(&rgba, 48, 48, &default_params(), None, &mut s);
         assert_eq!(s.mask.len(), 48 * 48);
         // Capacity should be ≥ first run — never shrinks.
         assert!(s.grabcut.bg_pixels.capacity() >= bg_buf_cap_after_first);

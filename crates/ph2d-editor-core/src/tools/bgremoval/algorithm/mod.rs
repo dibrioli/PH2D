@@ -25,13 +25,23 @@ use super::scratch::BgRemovalScratch;
 /// `scratch.output_rgba`. The output is the same shape as the input
 /// with the alpha channel modified to reflect the segmentation.
 ///
+/// `protect` is an optional freehand foreground-protection mask aligned
+/// to the **same `w × h`** as `rgba` (one byte/pixel, `>= 128` =
+/// protected / forced-foreground). When present, protected pixels are
+/// locked to the foreground side (`TriLabel::FgHard` for GrabCut) and
+/// forced opaque in the final compose, for both backends. Pass `None`
+/// when no region is painted. The caller (the tool) is responsible for
+/// resampling its source-resolution mask to `(w, h)` first.
+///
 /// # Panics
-/// Panics if `rgba.len() != (w * h * 4) as usize`.
+/// Panics if `rgba.len() != (w * h * 4) as usize`, or if `protect` is
+/// `Some` and its length is not `w * h`.
 pub fn run_pipeline(
     rgba: &[u8],
     w: u32,
     h: u32,
     params: &BgRemovalParams,
+    protect: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) {
     let expected = (w as usize) * (h as usize) * 4;
@@ -42,6 +52,15 @@ pub fn run_pipeline(
         rgba.len(),
         expected
     );
+    if let Some(pm) = protect {
+        assert_eq!(
+            pm.len(),
+            (w as usize) * (h as usize),
+            "protect mask length must equal w*h (was {} expected {})",
+            pm.len(),
+            (w as usize) * (h as usize)
+        );
+    }
 
     scratch.ensure(w, h, params.refinement.color_guide);
 
@@ -52,7 +71,7 @@ pub fn run_pipeline(
         BgRemovalMode::Chroma => {
             chroma::segment(rgba, w, h, &params.chroma, &params.extra_bg_colors, scratch)
         }
-        BgRemovalMode::GrabCut => grabcut::segment(rgba, w, h, &params.grabcut, scratch),
+        BgRemovalMode::GrabCut => grabcut::segment(rgba, w, h, &params.grabcut, protect, scratch),
     };
 
     // Step 2 — refinement (optional). Writes scratch.alpha_f32 if it
@@ -64,8 +83,19 @@ pub fn run_pipeline(
         false
     };
 
-    // Step 3 — compose. Writes scratch.output_rgba.
-    compose::write_output(rgba, w, h, params, &segment_result, did_refine, scratch);
+    // Step 3 — compose. Writes scratch.output_rgba. The protection mask
+    // is applied here as a final force-keep so a painted region stays
+    // opaque regardless of backend / refinement path.
+    compose::write_output(
+        rgba,
+        w,
+        h,
+        params,
+        &segment_result,
+        did_refine,
+        protect,
+        scratch,
+    );
 }
 
 /// Side-channel data the primary segmenter hands to the compose step

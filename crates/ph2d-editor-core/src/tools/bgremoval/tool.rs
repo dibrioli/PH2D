@@ -49,6 +49,16 @@ use super::scratch::BgRemovalScratch;
 /// Side length (px) of the square thumbnail used for the panel preview.
 pub const THUMB_SIZE: u32 = 160;
 
+/// Side cap (px) for the live on-canvas preview overlay. The overlay
+/// re-runs the whole pipeline on every parameter change; doing that at
+/// full source resolution makes the expensive GrabCut backend freeze
+/// the UI on each slider tick (a ~1024²-node max-flow per drag event).
+/// The overlay is drawn *scaled* to the sprite footprint anyway, so it
+/// re-segments a copy of the source downscaled to fit this box (aspect
+/// preserved, no letterbox) instead. Apply still bakes at full source
+/// resolution via [`BgRemovalTool::run_full_resolution`].
+pub const PREVIEW_MAX_DIM: u32 = 512;
+
 // NodeId range 500..599 reserved for bgremoval panel controls
 // (clear of 100..199 brush/move and 1000..1099 grid_snap).
 const MODE_GROUP_NODE: NodeId = NodeId(501);
@@ -110,6 +120,14 @@ pub struct BgRemovalTool {
     /// `eyedropper_armed`).
     protect_brush_armed: bool,
 
+    /// Whether a protection-brush dab-drag is in progress (set on
+    /// pointer-down, cleared on pointer-up by the shell). Transient
+    /// pointer state — it lives here rather than on the shell's `App`
+    /// because the protection feature does not edit the `App` struct, and
+    /// the tool is the natural per-tool home for the flag. Distinct from
+    /// `protect_brush_armed` (whether the brush is *selected* at all).
+    protect_painting: bool,
+
     /// Freehand protection mask at the SOURCE resolution
     /// (`protect_mask_w × protect_mask_h`, one byte/pixel; `255` =
     /// protected/forced-foreground, `0` = unprotected). Empty until the
@@ -120,6 +138,19 @@ pub struct BgRemovalTool {
     protect_mask: Vec<u8>,
     protect_mask_w: u32,
     protect_mask_h: u32,
+
+    /// Source RGBA downscaled to fit [`PREVIEW_MAX_DIM`] (aspect kept,
+    /// no letterbox) — the input of the on-canvas live preview. Rebuilt
+    /// only when the source snapshot changes, so a slider drag
+    /// re-segments this small image instead of the full-res source.
+    /// Empty until the host pushes a source.
+    canvas_src_rgba: Vec<u8>,
+    canvas_src_w: u32,
+    canvas_src_h: u32,
+    /// Protection mask nearest-resampled to the canvas-preview dims.
+    /// Re-filled each canvas-preview run; kept as a field so the
+    /// allocation persists across runs (HR-3).
+    canvas_protect: Vec<u8>,
 }
 
 /// Squared RGB Euclidean distance below which two extra colours are
@@ -137,16 +168,35 @@ impl BgRemovalTool {
     /// `rgba` must be straight-alpha RGBA8 of length `w * h * 4`.
     pub fn set_source_snapshot(&mut self, rgba: Vec<u8>, w: u32, h: u32) {
         assert_eq!(rgba.len(), (w as usize) * (h as usize) * 4);
+        // The protection mask is spatial — a genuinely different image
+        // invalidates it. Re-feeding the SAME dimensions (e.g. the Apply
+        // re-read of the same sprite) preserves it so the bake honours
+        // the painted region.
+        if w != self.protect_mask_w || h != self.protect_mask_h {
+            self.protect_mask.clear();
+            self.protect_mask_w = 0;
+            self.protect_mask_h = 0;
+        }
         self.source_rgba = rgba;
         self.source_w = w;
         self.source_h = h;
         self.rebuild_thumbnail();
+        self.rebuild_canvas_src();
         self.rerun_preview();
     }
 
     /// Whether the host has pushed a source snapshot at least once.
     pub fn has_source(&self) -> bool {
         !self.source_rgba.is_empty()
+    }
+
+    /// Source texture resolution `(w, h)` of the active snapshot, or
+    /// `(0, 0)` before any source is pushed. The shell uses this to map
+    /// an on-screen protection-brush radius into source pixels (the unit
+    /// [`Self::paint_protect_at_uv`] expects) on the very first dab,
+    /// before the protection mask itself is sized.
+    pub fn source_size(&self) -> (u32, u32) {
+        (self.source_w, self.source_h)
     }
 
     /// Borrow the current thumbnail preview (RGBA8,
@@ -203,6 +253,18 @@ impl BgRemovalTool {
         self.protect_mask.iter().any(|&v| v != 0)
     }
 
+    /// Whether a protection-brush dab-drag is currently in progress
+    /// (shell paints on every cursor-move while `true`).
+    pub fn is_protect_painting(&self) -> bool {
+        self.protect_painting
+    }
+
+    /// Set the protection-brush dab-drag state (shell sets `true` on
+    /// pointer-down over the sprite, `false` on pointer-up).
+    pub fn set_protect_painting(&mut self, painting: bool) {
+        self.protect_painting = painting;
+    }
+
     /// Borrow the source-resolution protection mask for the shell's
     /// on-canvas overlay: `(mask, w, h)`, one byte/pixel (`255` =
     /// protected). Empty slice + `(0, 0)` when nothing is painted.
@@ -216,11 +278,45 @@ impl BgRemovalTool {
     /// while the brush is armed (mirrors `add_extra_color` /
     /// `sample_source_at_uv`).
     ///
-    /// SCAFFOLD STUB — the Implementer fills: lazy-size `protect_mask` to
-    /// the source dims, stamp a filled disc of `255` around the UV, and
-    /// rerun the preview so the overlay + matte update live.
-    pub fn paint_protect_at_uv(&mut self, _u: f32, _v: f32, _radius_px: f32) {
-        // TODO(impl): size protect_mask to source dims; stamp disc; rerun preview.
+    /// Lazy-sizes `protect_mask` to the source dims, stamps a filled disc
+    /// of `255` around the UV, and re-runs the thumbnail preview. The
+    /// on-canvas overlay recomputes next frame (the shell drops its
+    /// cached preview after painting, mirroring the eyedropper).
+    pub fn paint_protect_at_uv(&mut self, u: f32, v: f32, radius_px: f32) {
+        if !self.has_source() {
+            return;
+        }
+        let (w, h) = (self.source_w, self.source_h);
+        let n = (w as usize) * (h as usize);
+        // Lazy-size to the source resolution on first dab (or after a
+        // dimension change / clear).
+        if self.protect_mask.len() != n {
+            self.protect_mask.clear();
+            self.protect_mask.resize(n, 0);
+            self.protect_mask_w = w;
+            self.protect_mask_h = h;
+        }
+        let u = u.clamp(0.0, 1.0);
+        let v = v.clamp(0.0, 1.0);
+        let cx = u * (w as f32 - 1.0);
+        let cy = v * (h as f32 - 1.0);
+        let r = radius_px.max(0.5);
+        let r2 = r * r;
+        let x0 = (cx - r).floor().max(0.0) as u32;
+        let x1 = ((cx + r).ceil() as i64).clamp(0, w as i64 - 1) as u32;
+        let y0 = (cy - r).floor().max(0.0) as u32;
+        let y1 = ((cy + r).ceil() as i64).clamp(0, h as i64 - 1) as u32;
+        let stride = w as usize;
+        for y in y0..=y1 {
+            let dy = y as f32 - cy;
+            for x in x0..=x1 {
+                let dx = x as f32 - cx;
+                if dx * dx + dy * dy <= r2 {
+                    self.protect_mask[(y as usize) * stride + x as usize] = 255;
+                }
+            }
+        }
+        self.rerun_preview();
     }
 
     /// Wipe the painted protection mask. Reruns the preview when a source
@@ -307,16 +403,81 @@ impl BgRemovalTool {
     /// Returns the `(w, h)` of the output.
     pub fn run_full_resolution(&mut self, out: &mut Vec<u8>) -> (u32, u32) {
         assert!(self.has_source(), "set_source_snapshot must run first");
+        // The protection mask is stored at source resolution, so it
+        // aligns 1:1 with the full-res pipeline input.
+        let protect: Option<&[u8]> = if self.protect_mask.len()
+            == (self.source_w as usize) * (self.source_h as usize)
+            && !self.protect_mask.is_empty()
+        {
+            Some(self.protect_mask.as_slice())
+        } else {
+            None
+        };
         run_pipeline(
             &self.source_rgba,
             self.source_w,
             self.source_h,
             &self.params,
+            protect,
             &mut self.scratch,
         );
         out.clear();
         out.extend_from_slice(&self.scratch.output_rgba);
         (self.source_w, self.source_h)
+    }
+
+    /// Run the pipeline for the live on-canvas preview at a capped
+    /// resolution (see [`PREVIEW_MAX_DIM`]) and write the result into
+    /// `out`. The shell draws this scaled to the sprite footprint, so a
+    /// slider drag re-segments a small image — the GrabCut backend no
+    /// longer freezes the UI per tick. Returns the `(w, h)` of the
+    /// output (the capped preview dims, NOT the source dims).
+    ///
+    /// No-op (returns `(0, 0)`, clears `out`) when no source is loaded.
+    pub fn run_canvas_preview(&mut self, out: &mut Vec<u8>) -> (u32, u32) {
+        if self.canvas_src_rgba.is_empty() {
+            out.clear();
+            return (0, 0);
+        }
+        let (cw, ch) = (self.canvas_src_w, self.canvas_src_h);
+        let protect: Option<&[u8]> = if self.protect_mask.is_empty() {
+            None
+        } else {
+            self.resize_protect_into(cw, ch);
+            Some(self.canvas_protect.as_slice())
+        };
+        run_pipeline(
+            &self.canvas_src_rgba,
+            cw,
+            ch,
+            &self.params,
+            protect,
+            &mut self.scratch,
+        );
+        out.clear();
+        out.extend_from_slice(&self.scratch.output_rgba);
+        (cw, ch)
+    }
+
+    /// Nearest-resample the source-resolution protection mask into
+    /// `self.canvas_protect` at `(dw, dh)`. Reuses the allocation.
+    fn resize_protect_into(&mut self, dw: u32, dh: u32) {
+        let n = (dw as usize) * (dh as usize);
+        self.canvas_protect.clear();
+        self.canvas_protect.resize(n, 0);
+        let (sw, sh) = (self.protect_mask_w, self.protect_mask_h);
+        if self.protect_mask.is_empty() || sw == 0 || sh == 0 || dw == 0 || dh == 0 {
+            return;
+        }
+        let (sw_u, sh_u) = (sw as u64, sh as u64);
+        let (dw_u, dh_u) = (dw as u64, dh as u64);
+        for y in 0..dh as usize {
+            let sy = (((y as u64) * sh_u) / dh_u).min(sh_u - 1) as usize;
+            for x in 0..dw as usize {
+                let sx = (((x as u64) * sw_u) / dw_u).min(sw_u - 1) as usize;
+                self.canvas_protect[y * dw as usize + x] = self.protect_mask[sy * sw as usize + sx];
+            }
+        }
     }
 
     /// Aspect-fit `source_rgba` into a `THUMB_SIZE × THUMB_SIZE` RGBA8
@@ -384,16 +545,51 @@ impl BgRemovalTool {
             self.preview_rgba.clear();
             return;
         }
+        // The 160² thumbnail preview is letterboxed; threading the
+        // protection mask through it would need the same letterbox
+        // remap. It is not the user-facing preview (the on-canvas
+        // overlay is), so it runs without protection.
         run_pipeline(
             &self.thumbnail_rgba,
             self.thumbnail_w,
             self.thumbnail_h,
             &self.params,
+            None,
             &mut self.scratch,
         );
         self.preview_rgba.clear();
         self.preview_rgba
             .extend_from_slice(&self.scratch.output_rgba);
+    }
+
+    /// Rebuild [`Self::canvas_src_rgba`] — the source downscaled to fit
+    /// [`PREVIEW_MAX_DIM`] (aspect preserved, no letterbox). Called once
+    /// per source snapshot; the on-canvas preview re-segments this small
+    /// buffer on every parameter change. No-op without a source.
+    fn rebuild_canvas_src(&mut self) {
+        if !self.has_source() {
+            self.canvas_src_w = 0;
+            self.canvas_src_h = 0;
+            self.canvas_src_rgba.clear();
+            return;
+        }
+        let (dw, dh) = aspect_fit_within(self.source_w, self.source_h, PREVIEW_MAX_DIM);
+        self.canvas_src_rgba.clear();
+        if dw == self.source_w && dh == self.source_h {
+            self.canvas_src_rgba.extend_from_slice(&self.source_rgba);
+        } else {
+            let src = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(
+                self.source_w,
+                self.source_h,
+                self.source_rgba.clone(),
+            )
+            .expect("source_rgba length matches source_w * source_h * 4");
+            let resized: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
+                image::imageops::resize(&src, dw, dh, image::imageops::FilterType::Triangle);
+            self.canvas_src_rgba.extend_from_slice(resized.as_raw());
+        }
+        self.canvas_src_w = dw;
+        self.canvas_src_h = dh;
     }
 
     /// Project the current full-scale params into the normalized
@@ -487,6 +683,7 @@ impl BgRemovalTool {
                 // clicks on the freshly baked sprite.
                 self.eyedropper_armed = false;
                 self.protect_brush_armed = false;
+                self.protect_painting = false;
             }
         }
         if changed && self.has_source() {
@@ -602,6 +799,7 @@ impl Tool for BgRemovalTool {
         // clicks meant for another tool.
         self.eyedropper_armed = false;
         self.protect_brush_armed = false;
+        self.protect_painting = false;
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -626,6 +824,27 @@ fn aspect_fit(sw: u32, sh: u32, target: u32) -> (u32, u32) {
         // portrait → height clamps to target.
         let scaled_w = ((sw as u64 * target as u64) / sh as u64) as u32;
         (scaled_w.max(1), target)
+    }
+}
+
+/// Compute the `(w, h)` that fit inside a `max_dim × max_dim` box,
+/// preserving aspect ratio and **never upscaling** — inputs already
+/// within the box pass through unchanged. Used for the on-canvas
+/// preview source (unlike [`aspect_fit`], which scales the longer side
+/// up to `target` for the fixed-size thumbnail).
+fn aspect_fit_within(sw: u32, sh: u32, max_dim: u32) -> (u32, u32) {
+    if sw == 0 || sh == 0 || max_dim == 0 {
+        return (sw.max(1), sh.max(1));
+    }
+    if sw <= max_dim && sh <= max_dim {
+        return (sw, sh);
+    }
+    if sw >= sh {
+        let dh = ((sh as u64 * max_dim as u64) / sw as u64).max(1) as u32;
+        (max_dim, dh)
+    } else {
+        let dw = ((sw as u64 * max_dim as u64) / sh as u64).max(1) as u32;
+        (dw, max_dim)
     }
 }
 
@@ -985,5 +1204,95 @@ mod tests {
         t.set_eyedropper_armed(true);
         Tool::on_deactivate(&mut t);
         assert!(!t.is_eyedropper_armed());
+    }
+
+    // ── Protection brush tests ─────────────────────────────────────
+
+    #[test]
+    fn paint_protect_stamps_disc_and_lazy_sizes_mask() {
+        let mut t = BgRemovalTool::default();
+        // No source → no-op (no panic, no mask).
+        t.paint_protect_at_uv(0.5, 0.5, 4.0);
+        assert!(!t.has_protect_mask());
+
+        let buf = vec![255u8; 32 * 32 * 4];
+        t.set_source_snapshot(buf, 32, 32);
+        // Dab at the centre.
+        t.paint_protect_at_uv(0.5, 0.5, 4.0);
+        assert!(t.has_protect_mask());
+        let (mask, w, h) = t.protect_mask_source();
+        assert_eq!((w, h), (32, 32));
+        // Centre pixel protected.
+        let cx = (0.5_f32 * 31.0).round() as usize;
+        assert_eq!(mask[cx * 32 + cx], 255, "disc centre must be protected");
+        // A far corner is untouched.
+        assert_eq!(mask[0], 0, "corner outside the disc stays unprotected");
+    }
+
+    #[test]
+    fn clear_protect_mask_wipes_it() {
+        let mut t = BgRemovalTool::default();
+        let buf = vec![255u8; 16 * 16 * 4];
+        t.set_source_snapshot(buf, 16, 16);
+        t.paint_protect_at_uv(0.5, 0.5, 3.0);
+        assert!(t.has_protect_mask());
+        t.clear_protect_mask();
+        assert!(!t.has_protect_mask());
+        let (mask, w, h) = t.protect_mask_source();
+        assert!(mask.is_empty());
+        assert_eq!((w, h), (0, 0));
+    }
+
+    #[test]
+    fn new_image_dims_clear_stale_protect_mask() {
+        let mut t = BgRemovalTool::default();
+        t.set_source_snapshot(vec![255u8; 16 * 16 * 4], 16, 16);
+        t.paint_protect_at_uv(0.5, 0.5, 3.0);
+        assert!(t.has_protect_mask());
+        // Same dims → preserved (Apply re-feed case).
+        t.set_source_snapshot(vec![128u8; 16 * 16 * 4], 16, 16);
+        assert!(t.has_protect_mask(), "same-dims re-feed keeps the mask");
+        // Different dims → cleared.
+        t.set_source_snapshot(vec![255u8; 8 * 8 * 4], 8, 8);
+        assert!(!t.has_protect_mask(), "new dimensions drop the stale mask");
+    }
+
+    #[test]
+    fn canvas_preview_caps_resolution_and_runs() {
+        let mut t = BgRemovalTool::default();
+        // 1024×512 source → capped to PREVIEW_MAX_DIM on the long axis.
+        let buf = vec![255u8; 1024 * 512 * 4];
+        t.set_source_snapshot(buf, 1024, 512);
+        let mut out = Vec::new();
+        let (cw, ch) = t.run_canvas_preview(&mut out);
+        assert_eq!(cw, PREVIEW_MAX_DIM);
+        assert_eq!(ch, PREVIEW_MAX_DIM / 2);
+        assert_eq!(out.len(), (cw as usize) * (ch as usize) * 4);
+    }
+
+    #[test]
+    fn canvas_preview_small_source_passes_through() {
+        let mut t = BgRemovalTool::default();
+        let buf = vec![255u8; 64 * 48 * 4];
+        t.set_source_snapshot(buf, 64, 48);
+        let mut out = Vec::new();
+        let (cw, ch) = t.run_canvas_preview(&mut out);
+        assert_eq!((cw, ch), (64, 48), "sub-cap source is not upscaled");
+    }
+
+    #[test]
+    fn canvas_preview_no_source_is_noop() {
+        let mut t = BgRemovalTool::default();
+        let mut out = vec![1u8, 2, 3];
+        let (cw, ch) = t.run_canvas_preview(&mut out);
+        assert_eq!((cw, ch), (0, 0));
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn aspect_fit_within_no_upscale() {
+        assert_eq!(aspect_fit_within(100, 80, 512), (100, 80));
+        assert_eq!(aspect_fit_within(1024, 512, 512), (512, 256));
+        assert_eq!(aspect_fit_within(512, 1024, 512), (256, 512));
     }
 }

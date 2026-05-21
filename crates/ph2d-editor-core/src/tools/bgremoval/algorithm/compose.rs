@@ -32,6 +32,13 @@ use super::super::scratch::BgRemovalScratch;
 use super::SegmentResult;
 
 /// Write the final RGBA into `scratch.output_rgba`.
+///
+/// `protect` is an optional freehand foreground-protection mask aligned
+/// to `(w, h)` (one byte/pixel, `>= 128` = protected). Protected pixels
+/// are forced fully opaque after the grow/shrink morphology and before
+/// the edge bleed, so a painted "keep" region survives every backend +
+/// refinement path. Pass `None` when nothing is painted.
+#[allow(clippy::too_many_arguments)]
 pub fn write_output(
     rgba: &[u8],
     w: u32,
@@ -39,6 +46,7 @@ pub fn write_output(
     params: &BgRemovalParams,
     segment: &SegmentResult,
     did_refine: bool,
+    protect: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) {
     let n = (w as usize) * (h as usize);
@@ -142,6 +150,17 @@ pub fn write_output(
     // background outline; positive dilates it. Runs for every mode.
     grow_shrink_alpha(w, h, params.grow_px, scratch);
 
+    // Foreground protection force-keep — backend-agnostic. Every pixel
+    // the user painted into the protection mask is slammed fully opaque
+    // AFTER grow/shrink (so a shrink can't eat it) and BEFORE the edge
+    // bleed (which only fills alpha==0 collar, never these). For GrabCut
+    // the segmentation already locked these as FgHard, so this is a
+    // belt-and-suspenders guarantee; for Chroma it is the ONLY mechanism
+    // (chroma has no trimap). Runs for every mode.
+    if let Some(pm) = protect {
+        force_keep_protected(pm, n, scratch);
+    }
+
     // Edge bleed — fix the Apply-vs-preview edge fringe. The on-canvas
     // preview is clean because Vello's `draw_image` premultiplies BEFORE
     // bilinear sampling; the wgpu sprite shader samples the STRAIGHT
@@ -206,6 +225,21 @@ fn grow_shrink_alpha(w: u32, h: u32, grow_px: f32, scratch: &mut BgRemovalScratc
                 }
                 scratch.output_rgba[i * 4 + 3] = acc;
             }
+        }
+    }
+}
+
+/// Threshold above which a protection-mask byte counts as "protected".
+const PROTECT_THRESHOLD: u8 = 128;
+
+/// Force every protected pixel (`protect[i] >= PROTECT_THRESHOLD`) fully
+/// opaque in `scratch.output_rgba`. RGB is untouched — the source colour
+/// is what the user wants to keep.
+fn force_keep_protected(protect: &[u8], n: usize, scratch: &mut BgRemovalScratch) {
+    debug_assert!(protect.len() >= n);
+    for (i, &p) in protect.iter().enumerate().take(n) {
+        if p >= PROTECT_THRESHOLD {
+            scratch.output_rgba[i * 4 + 3] = 255;
         }
     }
 }
@@ -365,7 +399,7 @@ mod tests {
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
 
-        write_output(&rgba, w, h, &params, &segment, false, &mut scratch);
+        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
 
         assert_eq!(scratch.output_rgba[3], 255, "below tol_sq must keep fg");
         // Quarter-band: t ≈ 0.25 ⇒ alpha ≈ 64.
@@ -399,7 +433,7 @@ mod tests {
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
-        write_output(&rgba, w, h, &params, &segment, false, &mut scratch);
+        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
         assert_eq!(scratch.output_rgba[3], 0, "mask=0 must produce alpha=0");
     }
 
@@ -435,13 +469,89 @@ mod tests {
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::GrabCut;
-        write_output(&rgba, w, h, &params, &segment, false, &mut scratch);
+        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
 
         // Alpha must equal mask, byte-for-byte. No delta_e leak.
         assert_eq!(scratch.output_rgba[3], 0);
         assert_eq!(scratch.output_rgba[7], 255);
         assert_eq!(scratch.output_rgba[11], 255);
         assert_eq!(scratch.output_rgba[15], 0);
+    }
+
+    // --- Protection force-keep --------------------------------------
+
+    #[test]
+    fn protect_forces_protected_pixel_opaque_regardless_of_mask() {
+        // 2×1: both pixels classified as background (mask 0). The first
+        // is protected → must end fully opaque; the second is not →
+        // stays transparent.
+        let w = 2u32;
+        let h = 1u32;
+        let mut scratch = fresh_scratch(w, h);
+        let rgba = solid_rgba(w, h, [10, 20, 30]);
+        scratch.mask[0] = 0;
+        scratch.mask[1] = 0;
+        let params = BgRemovalParams {
+            mode: BgRemovalMode::GrabCut,
+            grow_px: 0.0,
+            ..BgRemovalParams::default()
+        };
+        let segment = SegmentResult::GrabCut;
+        let protect = [255u8, 0u8];
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            false,
+            Some(&protect),
+            &mut scratch,
+        );
+        assert_eq!(
+            scratch.output_rgba[3], 255,
+            "protected bg pixel must be forced opaque"
+        );
+        assert_eq!(
+            scratch.output_rgba[7], 0,
+            "unprotected bg pixel stays transparent"
+        );
+    }
+
+    #[test]
+    fn protect_survives_a_full_shrink() {
+        // A protected pixel must survive even an aggressive erode: the
+        // force-keep runs AFTER grow/shrink. 3×1 opaque row, shrink by 2,
+        // centre pixel protected.
+        let w = 3u32;
+        let h = 1u32;
+        let mut scratch = fresh_scratch(w, h);
+        let rgba = solid_rgba(w, h, [200, 50, 50]);
+        for i in 0..3 {
+            scratch.mask[i] = 255;
+            scratch.output_rgba[i * 4 + 3] = 255;
+        }
+        let params = BgRemovalParams {
+            mode: BgRemovalMode::GrabCut,
+            grow_px: -2.0,
+            ..BgRemovalParams::default()
+        };
+        let segment = SegmentResult::GrabCut;
+        let protect = [0u8, 255u8, 0u8];
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            false,
+            Some(&protect),
+            &mut scratch,
+        );
+        assert_eq!(
+            scratch.output_rgba[7], 255,
+            "protected centre pixel must survive the shrink"
+        );
     }
 
     // --- Path 1 (refinement) — alpha_f32 round-trip -------------------
@@ -461,7 +571,7 @@ mod tests {
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::GrabCut;
-        write_output(&rgba, w, h, &params, &segment, true, &mut scratch);
+        write_output(&rgba, w, h, &params, &segment, true, None, &mut scratch);
         assert_eq!(scratch.output_rgba[3], 0);
         assert_eq!(scratch.output_rgba[7], 128); // 0.5*255+0.5 = 128
         assert_eq!(scratch.output_rgba[11], 255);
@@ -594,14 +704,14 @@ mod tests {
         };
         let segment = SegmentResult::GrabCut;
         // Path 1.
-        write_output(&rgba, w, h, &params, &segment, true, &mut scratch);
+        write_output(&rgba, w, h, &params, &segment, true, None, &mut scratch);
         assert_eq!(&scratch.output_rgba[0..3], &[123, 45, 67]);
         // Path 3.
         let p3 = BgRemovalParams {
             mode: BgRemovalMode::GrabCut,
             ..params.clone()
         };
-        write_output(&rgba, w, h, &p3, &segment, false, &mut scratch);
+        write_output(&rgba, w, h, &p3, &segment, false, None, &mut scratch);
         assert_eq!(&scratch.output_rgba[0..3], &[123, 45, 67]);
     }
 }

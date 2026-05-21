@@ -104,9 +104,7 @@ pub fn pick_sprites_at_world(present: &mut World, world_pos: [f32; 2]) -> Vec<u6
         // — so the bbox spans `[anchor - half, anchor + half]`. Subtract
         // the anchor before the half-extent test. anchor [0,0] (every
         // legacy sprite) collapses to the original centered test.
-        if (local_dx - ri.anchor[0]).abs() <= half_w
-            && (local_dy - ri.anchor[1]).abs() <= half_h
-        {
+        if (local_dx - ri.anchor[0]).abs() <= half_w && (local_dy - ri.anchor[1]).abs() <= half_h {
             hits.push(sim_ref.0.to_bits());
         }
     }
@@ -140,9 +138,7 @@ pub fn pick_sprite_at_world(present: &mut World, world_pos: [f32; 2]) -> Option<
         // — so the bbox spans `[anchor - half, anchor + half]`. Subtract
         // the anchor before the half-extent test. anchor [0,0] (every
         // legacy sprite) collapses to the original centered test.
-        if (local_dx - ri.anchor[0]).abs() <= half_w
-            && (local_dy - ri.anchor[1]).abs() <= half_h
-        {
+        if (local_dx - ri.anchor[0]).abs() <= half_w && (local_dy - ri.anchor[1]).abs() <= half_h {
             // Last hit wins — within an archetype bevy_ecs walks in
             // insertion order, so the most recently spawned sprite
             // overrides earlier ones (intuitive "top of the pile").
@@ -301,7 +297,11 @@ mod tests {
         let bits = spawn_at_with_anchor(&mut present, sim_e, 0.0, 0.0, [2.0, 2.0], [5.0, 0.0]);
         let bbox = selection_bbox_world(present.world_mut(), bits).expect("entity present");
         let (center, half) = bbox.center_half();
-        assert_eq!(center, [5.0, 0.0], "gizmo box tracks the quad, not the pivot");
+        assert_eq!(
+            center,
+            [5.0, 0.0],
+            "gizmo box tracks the quad, not the pivot"
+        );
         assert_eq!(half, [1.0, 1.0]);
     }
 

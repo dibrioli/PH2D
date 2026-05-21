@@ -17,6 +17,12 @@
 //! `private` to `main.rs`, but submodules see their parent's private
 //! items — so this `impl` block compiles without exposing any field
 //! visibility upstream.
+// ph2d-loc-cap: window-event dispatch hub — one method per WindowEvent
+// arm (CursorMoved / MouseInput are inherently large: gizmo drag begin +
+// advance, canvas pick cycling, tool palette). The eyedropper / keyboard
+// / protect_brush arms already live in siblings. FOLLOW-UP: extract the
+// gizmo-drag arms (MovePivot begin/advance) to a `gizmo_drag.rs` sibling
+// to drop back under the cap (2026-05-21: TOOL_PIVOT tipped it past 600).
 
 use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};

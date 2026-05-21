@@ -110,6 +110,10 @@ impl SurfaceContext {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
+        // Boot-time record of the selected present mode — confirms
+        // whether the backend gave us a non-blocking mode (Mailbox /
+        // Immediate, the stutter fix) or fell back to Fifo.
+        eprintln!("[ph2d-gpu] surface present mode: {:?}", config.present_mode);
         surface.configure(&gpu.device, &config);
 
         Ok(Self {

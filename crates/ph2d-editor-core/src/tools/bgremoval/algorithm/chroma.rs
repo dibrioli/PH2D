@@ -796,15 +796,10 @@ mod tests {
         let mut s = BgRemovalScratch::default();
         s.ensure(32, 32, false);
         let r = segment(&rgba, 32, 32, &default_params(), &[], &mut s);
-        match r {
-            SegmentResult::Chroma { bg_oklab } => {
-                // bg detected — the centroid should be very close to
-                // green oklab.
-                let green = srgb_to_oklab(0, 200, 0);
-                assert!(oklab_dist_sq(bg_oklab, green) < 0.01);
-            }
-            _ => panic!("expected Chroma"),
-        }
+        let SegmentResult::Chroma { bg_oklab } = r;
+        // bg detected — the centroid should be very close to green oklab.
+        let green = srgb_to_oklab(0, 200, 0);
+        assert!(oklab_dist_sq(bg_oklab, green) < 0.01);
         let mask = &s.mask[..32 * 32];
         let bg_count = mask.iter().filter(|&&v| v == 0).count();
         assert!(
@@ -969,10 +964,8 @@ mod tests {
         let mut s = BgRemovalScratch::default();
         s.ensure(0, 0, false);
         let r = segment(&[], 0, 0, &default_params(), &[], &mut s);
-        match r {
-            SegmentResult::Chroma { bg_oklab } => assert_eq!(bg_oklab, [0.0, 0.0, 0.0]),
-            _ => panic!("expected Chroma"),
-        }
+        let SegmentResult::Chroma { bg_oklab } = r;
+        assert_eq!(bg_oklab, [0.0, 0.0, 0.0]);
     }
 
     #[test]
@@ -988,12 +981,9 @@ mod tests {
         let r2 = segment(&rgba, 48, 48, &default_params(), &[], &mut s2);
 
         assert_eq!(s1.mask, s2.mask);
-        match (r1, r2) {
-            (SegmentResult::Chroma { bg_oklab: a }, SegmentResult::Chroma { bg_oklab: b }) => {
-                assert_eq!(a, b);
-            }
-            _ => panic!("expected Chroma in both"),
-        }
+        let (SegmentResult::Chroma { bg_oklab: a }, SegmentResult::Chroma { bg_oklab: b }) =
+            (r1, r2);
+        assert_eq!(a, b);
     }
 
     #[test]

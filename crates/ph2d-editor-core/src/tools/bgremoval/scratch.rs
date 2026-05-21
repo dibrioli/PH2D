@@ -35,8 +35,8 @@ pub struct BgRemovalScratch {
     pub delta_e: Vec<f32>,
 
     /// Segmentation mask: 0 = background, 255 = foreground. Size:
-    /// `w*h`. Owned by `algorithm::chroma` / `algorithm::grabcut`.
-    /// Read by `algorithm::guided_filter::refine`.
+    /// `w*h`. Owned by `algorithm::chroma`. Read by
+    /// `algorithm::guided_filter::refine`.
     pub mask: Vec<u8>,
 
     /// Scanline flood-fill stack. Pre-grown to capacity `4*W` on
@@ -104,14 +104,6 @@ pub struct BgRemovalScratch {
     /// this ring (promoted to 1 after the ring completes). Reused
     /// across runs (HR-3).
     pub bleed_valid: Vec<u8>,
-
-    /// Reusable working state for the GrabCut backend. Holds the
-    /// trimap, per-side pixel + assignment buffers, t-link caps,
-    /// pre-computed n-links, and the BK max-flow solver — all
-    /// allocations persist across `algorithm::grabcut::segment`
-    /// calls (HR-3). Sized lazily by `GrabCutScratch::ensure`
-    /// inside `segment`.
-    pub grabcut: super::algorithm::grabcut::GrabCutScratch,
 }
 
 impl BgRemovalScratch {

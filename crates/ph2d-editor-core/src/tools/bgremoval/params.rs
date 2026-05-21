@@ -3,33 +3,6 @@
 //! All defaults are tuned for the "give me a reasonable result on the first
 //! click" case. Power users tweak via the panel sliders / toggles.
 
-/// Which primary segmentation backend to run.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum BgRemovalMode {
-    /// Chroma key in Oklab + corner-auto background detection + connected
-    /// flood-fill from image borders. Fast (~50-150 ms on 4k); ideal for
-    /// uniform / solid backgrounds.
-    #[default]
-    Chroma,
-    /// GrabCut (Rother 2004) on a downsampled 1024² image; mask upsampled
-    /// via nearest, refined by Guided Filter post-process. Slow but robust
-    /// for natural images with textured backgrounds.
-    GrabCut,
-}
-
-impl BgRemovalMode {
-    pub fn label(self) -> &'static str {
-        match self {
-            BgRemovalMode::Chroma => "Chroma",
-            BgRemovalMode::GrabCut => "Smart Cut",
-        }
-    }
-
-    pub fn all() -> [BgRemovalMode; 2] {
-        [BgRemovalMode::Chroma, BgRemovalMode::GrabCut]
-    }
-}
-
 /// Protection-brush dab profile: how the painted strength falls off from
 /// the dab centre (`d = 0`) to its rim (`d = 1`). Drives both paint and
 /// erase. All profiles are `1` at the centre and `0` at the rim, and
@@ -122,39 +95,6 @@ impl Default for ChromaParams {
     }
 }
 
-/// Tuning parameters for `algorithm::grabcut::segment`.
-#[derive(Copy, Clone, Debug)]
-pub struct GrabCutParams {
-    /// Inset of the assumed-foreground rectangle, as a fraction of image
-    /// dimensions, per side. Default 0.05 on all sides = the foreground
-    /// is the central 90×90% of the canvas.
-    pub inset_top: f32,
-    pub inset_right: f32,
-    pub inset_bottom: f32,
-    pub inset_left: f32,
-    /// Maximum GrabCut iterations. Algorithm may stop earlier if the
-    /// mask-flip ratio between iters falls below 0.1%. Range 1..5;
-    /// default 2.
-    pub max_iters: u32,
-    /// When true, input pixels with alpha < 128 are treated as hard
-    /// background (`GC_BGD`) — useful when the sprite already has alpha
-    /// holes (e.g. cleanup pass after a previous removal).
-    pub alpha_hole_as_bg: bool,
-}
-
-impl Default for GrabCutParams {
-    fn default() -> Self {
-        Self {
-            inset_top: 0.05,
-            inset_right: 0.05,
-            inset_bottom: 0.05,
-            inset_left: 0.05,
-            max_iters: 2,
-            alpha_hole_as_bg: true,
-        }
-    }
-}
-
 /// Tuning parameters for `algorithm::guided_filter::refine`.
 #[derive(Copy, Clone, Debug)]
 pub struct GuidedFilterParams {
@@ -197,9 +137,7 @@ impl Default for GuidedFilterParams {
 /// Top-level parameter bag passed into [`super::algorithm::run_pipeline`].
 #[derive(Clone, Debug)]
 pub struct BgRemovalParams {
-    pub mode: BgRemovalMode,
     pub chroma: ChromaParams,
-    pub grabcut: GrabCutParams,
     pub refinement: GuidedFilterParams,
     /// Signed morphological grow/shrink of the final alpha matte, in
     /// pixels. `0.0` = no change (default). Negative erodes the matte
@@ -212,16 +150,14 @@ pub struct BgRemovalParams {
     /// pixel as background when it is within `tolerance` of the
     /// auto-detected colour OR **any** of these — so the user can knock
     /// out multi-coloured / gradient backgrounds the corner-auto pass
-    /// misses. Empty by default (auto only). Ignored by GrabCut.
+    /// misses. Empty by default (auto only).
     pub extra_bg_colors: Vec<[u8; 3]>,
 }
 
 impl Default for BgRemovalParams {
     fn default() -> Self {
         Self {
-            mode: BgRemovalMode::default(),
             chroma: ChromaParams::default(),
-            grabcut: GrabCutParams::default(),
             refinement: GuidedFilterParams::default(),
             // Tuned default (Enio 2026-05-20): Grow chip −0.10 (a slight
             // erode to trim residual outline). The chip shows the signed
@@ -271,7 +207,6 @@ pub const DEFAULT_BRUSH_SIZE01: f32 = 0.15;
 /// `Vec`. It is cheap to `Clone` (≤ `MAX_EXTRA_BG_COLORS` × 3 bytes).
 #[derive(Clone, Debug, PartialEq)]
 pub struct BgRemovalUiSnapshot {
-    pub mode: BgRemovalMode,
     /// Chroma tolerance, normalized (`chroma.tolerance / TOLERANCE_FULL_SCALE`).
     pub tolerance01: f32,
     /// Soft-band feather, normalized (`chroma.feather / FEATHER_FULL_SCALE`).
@@ -319,7 +254,6 @@ impl Default for BgRemovalUiSnapshot {
         // derives from the param defaults, never a hand-typed dup.
         let p = BgRemovalParams::default();
         Self {
-            mode: p.mode,
             tolerance01: p.chroma.tolerance / TOLERANCE_FULL_SCALE,
             feather01: p.chroma.feather / FEATHER_FULL_SCALE,
             refine01: p.refinement.radius as f32 / REFINE_RADIUS_FULL_SCALE,
@@ -344,8 +278,6 @@ impl Default for BgRemovalUiSnapshot {
 /// `0.0..=1.0`; the tool maps them back to full scale.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum BgRemovalUiEdit {
-    /// Mode radio switched (Chroma / Smart Cut).
-    Mode(BgRemovalMode),
     /// Tolerance slider moved (normalized).
     Tolerance(f32),
     /// Feather slider moved (normalized).
@@ -387,7 +319,6 @@ mod tests {
     #[test]
     fn defaults_align_with_design_doc() {
         let p = BgRemovalParams::default();
-        assert_eq!(p.mode, BgRemovalMode::Chroma);
         // Tuned defaults (Enio 2026-05-20): sliders 0.6 / 0.9 / 0.01 /
         // grow −0.10.
         assert!((p.chroma.tolerance - 0.6 * TOLERANCE_FULL_SCALE).abs() < 1e-6);
@@ -395,9 +326,6 @@ mod tests {
         assert_eq!(p.chroma.reference_color, None);
         assert!(p.chroma.despill);
         assert!(p.chroma.use_flood);
-        assert_eq!(p.grabcut.max_iters, 2);
-        assert!((p.grabcut.inset_top - 0.05).abs() < 1e-6);
-        assert!(p.grabcut.alpha_hole_as_bg);
         assert_eq!(p.refinement.radius, 1);
         assert!(p.refinement.color_guide);
         assert!(p.refinement.boundary_only);
@@ -424,17 +352,5 @@ mod tests {
             }
             assert!(!f.label().is_empty());
         }
-    }
-
-    #[test]
-    fn mode_all_labels_nonempty() {
-        for m in BgRemovalMode::all() {
-            assert!(!m.label().is_empty());
-        }
-    }
-
-    #[test]
-    fn mode_default_is_chroma() {
-        assert_eq!(BgRemovalMode::default(), BgRemovalMode::Chroma);
     }
 }

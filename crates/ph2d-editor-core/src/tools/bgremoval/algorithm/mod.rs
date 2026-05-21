@@ -5,7 +5,7 @@
 //! orchestrator [`run_pipeline`] chains:
 //!
 //! ```text
-//!   segment (chroma | grabcut)  →  refine (guided_filter, optional)  →  compose
+//!   segment (chroma)  →  refine (guided_filter, optional)  →  compose
 //! ```
 //!
 //! Each stage writes into a named field on
@@ -14,10 +14,9 @@
 
 pub mod chroma;
 pub mod compose;
-pub mod grabcut;
 pub mod guided_filter;
 
-use super::params::{BgRemovalMode, BgRemovalParams};
+use super::params::BgRemovalParams;
 use super::scratch::BgRemovalScratch;
 
 /// Run the full background-removal pipeline on `rgba` (size `w * h * 4`,
@@ -28,10 +27,9 @@ use super::scratch::BgRemovalScratch;
 /// `protect` is an optional freehand foreground-protection mask aligned
 /// to the **same `w × h`** as `rgba` (one byte/pixel, `>= 128` =
 /// protected / forced-foreground). When present, protected pixels are
-/// locked to the foreground side (`TriLabel::FgHard` for GrabCut) and
-/// forced opaque in the final compose, for both backends. Pass `None`
-/// when no region is painted. The caller (the tool) is responsible for
-/// resampling its source-resolution mask to `(w, h)` first.
+/// forced opaque in the final compose. Pass `None` when no region is
+/// painted. The caller (the tool) is responsible for resampling its
+/// source-resolution mask to `(w, h)` first.
 ///
 /// # Panics
 /// Panics if `rgba.len() != (w * h * 4) as usize`, or if `protect` is
@@ -64,25 +62,11 @@ pub fn run_pipeline(
 
     scratch.ensure(w, h, params.refinement.color_guide);
 
-    // Step 1 — primary segmentation. Writes scratch.mask (binary 0/255)
-    // and (for chroma) scratch.delta_e. Returns the side-channel
-    // SegmentResult so compose can despill against the detected bg.
-    let segment_result = match params.mode {
-        BgRemovalMode::Chroma => {
-            chroma::segment(rgba, w, h, &params.chroma, &params.extra_bg_colors, scratch)
-        }
-        BgRemovalMode::GrabCut => grabcut::segment(
-            rgba,
-            w,
-            h,
-            &params.grabcut,
-            protect,
-            // The Tolerance slider (a Chroma param) also feeds GrabCut's
-            // bg-seed aggressiveness, so it isn't a dead control in Smart Cut.
-            params.chroma.tolerance,
-            scratch,
-        ),
-    };
+    // Step 1 — chroma segmentation. Writes scratch.mask (binary 0/255)
+    // and scratch.delta_e. Returns the side-channel SegmentResult so
+    // compose can despill against the detected bg.
+    let segment_result =
+        chroma::segment(rgba, w, h, &params.chroma, &params.extra_bg_colors, scratch);
 
     // Step 2 — refinement (optional). Writes scratch.alpha_f32 if it
     // runs; otherwise compose falls back to mask + delta_e soft band.
@@ -95,7 +79,7 @@ pub fn run_pipeline(
 
     // Step 3 — compose. Writes scratch.output_rgba. The protection mask
     // is applied here as a final force-keep so a painted region stays
-    // opaque regardless of backend / refinement path.
+    // opaque regardless of the refinement path.
     compose::write_output(
         rgba,
         w,
@@ -108,10 +92,9 @@ pub fn run_pipeline(
     );
 }
 
-/// Side-channel data the primary segmenter hands to the compose step
-/// (e.g. detected bg color for despill).
+/// Side-channel data the chroma segmenter hands to the compose step
+/// (the detected bg colour, for despill).
 #[derive(Copy, Clone, Debug)]
 pub enum SegmentResult {
     Chroma { bg_oklab: [f32; 3] },
-    GrabCut,
 }

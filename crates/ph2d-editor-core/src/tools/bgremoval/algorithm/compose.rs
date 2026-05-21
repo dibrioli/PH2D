@@ -1,33 +1,26 @@
 //! Final compose step: produce `scratch.output_rgba` from the
 //! segmentation mask, optional soft alpha, and the input RGBA.
 //!
-//! Three paths:
+//! Two paths:
 //!
 //! 1. **Guided filter ran** (`did_refine = true`): alpha comes from
-//!    `scratch.alpha_f32` directly. Despill (when enabled, chroma-mode
-//!    only) subtracts the detected bg chroma from soft-edge pixels.
+//!    `scratch.alpha_f32` directly. Despill (when enabled) subtracts the
+//!    detected bg chroma from soft-edge pixels.
 //!
-//! 2. **No refinement, Chroma mode** (`did_refine = false &&
-//!    params.mode == Chroma`): alpha synthesised from `scratch.mask` +
-//!    `scratch.delta_e` using the `[tolerance, tolerance + feather]`
-//!    soft-band formula. Important: `scratch.delta_e[i]` is the
-//!    **squared** Oklab distance (the chroma backend squares it once
-//!    to avoid a per-pixel `sqrt` in its main loop), so comparisons
-//!    happen against `tol_sq` / `(tol + feat)²`; the band-position
-//!    fraction `t` linearises with `sqrt` once per soft-band pixel.
+//! 2. **No refinement** (`did_refine = false`): alpha synthesised from
+//!    `scratch.mask` + `scratch.delta_e` using the `[tolerance,
+//!    tolerance + feather]` soft-band formula. Important:
+//!    `scratch.delta_e[i]` is the **squared** Oklab distance (the chroma
+//!    backend squares it once to avoid a per-pixel `sqrt` in its main
+//!    loop), so comparisons happen against `tol_sq` / `(tol + feat)²`;
+//!    the band-position fraction `t` linearises with `sqrt` once per
+//!    soft-band pixel.
 //!
-//! 3. **No refinement, non-Chroma mode** (`did_refine = false &&
-//!    params.mode == GrabCut`): GrabCut never writes `scratch.delta_e`;
-//!    reading it would yield stale data from a prior chroma run on the
-//!    same scratch (mode-flip in the panel). Path 3 ignores delta_e
-//!    entirely and writes a binary alpha (0 or 255) directly from
-//!    `scratch.mask`. Final-audit bug fix 2026-05-16.
-//!
-//! All paths assume the input is **straight-alpha RGBA8** (not
+//! Both paths assume the input is **straight-alpha RGBA8** (not
 //! premultiplied) — enforced at the API boundary of
 //! [`super::super::tool::BgRemovalTool::set_source_snapshot`].
 
-use super::super::params::{BgRemovalMode, BgRemovalParams};
+use super::super::params::BgRemovalParams;
 use super::super::scratch::BgRemovalScratch;
 use super::SegmentResult;
 
@@ -63,13 +56,12 @@ pub fn write_output(
             scratch.output_rgba[base + 2] = rgba[base + 2];
             scratch.output_rgba[base + 3] = a;
         }
-    } else if params.mode == BgRemovalMode::Chroma {
-        // Path 2 — hard mask + delta_e soft band (chroma mode only).
-        // `delta_e` is SQUARED Oklab distance — compare against
-        // `tol_sq` / `(tol + feat)²`, linearise via `sqrt` once per
-        // soft-band pixel (P0 fix 2026-05-16: previously compared
-        // raw `tol` against squared `delta_e`, so the soft band
-        // never fired at expected positions).
+    } else {
+        // Path 2 — hard mask + delta_e soft band. `delta_e` is SQUARED
+        // Oklab distance — compare against `tol_sq` / `(tol + feat)²`,
+        // linearise via `sqrt` once per soft-band pixel (P0 fix
+        // 2026-05-16: previously compared raw `tol` against squared
+        // `delta_e`, so the soft band never fired at expected positions).
         let tol = params.chroma.tolerance;
         let feat = params.chroma.feather.max(1e-6);
         let tol_sq = tol * tol;
@@ -99,32 +91,17 @@ pub fn write_output(
             scratch.output_rgba[base + 2] = rgba[base + 2];
             scratch.output_rgba[base + 3] = alpha;
         }
-    } else {
-        // Path 3 — non-Chroma mode (GrabCut), no refinement.
-        // Binary alpha straight from the mask; `scratch.delta_e`
-        // would be stale from a prior chroma run on the same
-        // scratch and must not leak into this output (P0 fix
-        // 2026-05-16: gating moved from comment-only to actual
-        // branch).
-        for i in 0..n {
-            let base = i * 4;
-            scratch.output_rgba[base] = rgba[base];
-            scratch.output_rgba[base + 1] = rgba[base + 1];
-            scratch.output_rgba[base + 2] = rgba[base + 2];
-            scratch.output_rgba[base + 3] = scratch.mask[i];
-        }
     }
 
-    // Despill / foreground decontamination — chroma mode only, when
-    // enabled and we have a detected bg colour. Soft-edge pixels are a
-    // composite `C = a·fg + (1−a)·bg`; we recover the true foreground
+    // Despill / foreground decontamination — when enabled and we have a
+    // detected bg colour. Soft-edge pixels are a composite
+    // `C = a·fg + (1−a)·bg`; we recover the true foreground
     // `fg = (C − (1−a)·bg) / a` and write it back, removing the colour
     // halo the background bleeds into anti-aliased edges (the canonical
     // green-screen "despill", generalised to any detected bg colour).
     // Only fractional-alpha pixels are touched: a==0 is invisible,
     // a==255 is already pure foreground.
-    if params.mode == BgRemovalMode::Chroma
-        && params.chroma.despill
+    if params.chroma.despill
         && let SegmentResult::Chroma { bg_oklab } = segment
     {
         let bg = super::chroma::oklab_to_srgb8(*bg_oklab);
@@ -144,19 +121,16 @@ pub fn write_output(
         }
     }
 
-    // Grow / Shrink — backend-agnostic morphology on the final alpha,
-    // BEFORE the edge bleed (which only fills the resulting alpha==0
-    // collar). Negative `grow_px` erodes the matte to eat the residual
-    // background outline; positive dilates it. Runs for every mode.
+    // Grow / Shrink — morphology on the final alpha, BEFORE the edge
+    // bleed (which only fills the resulting alpha==0 collar). Negative
+    // `grow_px` erodes the matte to eat the residual background outline;
+    // positive dilates it.
     grow_shrink_alpha(w, h, params.grow_px, scratch);
 
-    // Foreground protection force-keep — backend-agnostic. Every pixel
-    // the user painted into the protection mask is slammed fully opaque
-    // AFTER grow/shrink (so a shrink can't eat it) and BEFORE the edge
-    // bleed (which only fills alpha==0 collar, never these). For GrabCut
-    // the segmentation already locked these as FgHard, so this is a
-    // belt-and-suspenders guarantee; for Chroma it is the ONLY mechanism
-    // (chroma has no trimap). Runs for every mode.
+    // Foreground protection force-keep — the painted "keep" mask raises
+    // each pixel's alpha to `max(alpha, strength)`, AFTER grow/shrink (so
+    // a shrink can't eat it) and BEFORE the edge bleed (which only fills
+    // the alpha==0 collar, never these). The soft falloff rim blends in.
     if let Some(pm) = protect {
         force_keep_protected(pm, n, scratch);
     }
@@ -337,7 +311,7 @@ fn bleed_edges(w: u32, h: u32, scratch: &mut BgRemovalScratch) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::bgremoval::params::{BgRemovalMode, BgRemovalParams};
+    use crate::tools::bgremoval::params::BgRemovalParams;
 
     fn fresh_scratch(w: u32, h: u32) -> BgRemovalScratch {
         let mut s = BgRemovalScratch::default();
@@ -385,7 +359,6 @@ mod tests {
         scratch.delta_e[3] = 0.025;
 
         let params = BgRemovalParams {
-            mode: BgRemovalMode::Chroma,
             chroma: crate::tools::bgremoval::params::ChromaParams {
                 tolerance: 0.10,
                 feather: 0.04,
@@ -425,7 +398,6 @@ mod tests {
         scratch.mask[0] = 0;
         scratch.delta_e[0] = 0.05; // mid-band but mask says bg
         let params = BgRemovalParams {
-            mode: BgRemovalMode::Chroma,
             // Pin neutral grow so these tests isolate the compose path
             // (the default params now carry a slight erode).
             grow_px: 0.0,
@@ -461,13 +433,12 @@ mod tests {
         scratch.delta_e[3] = 0.02;
 
         let params = BgRemovalParams {
-            mode: BgRemovalMode::GrabCut,
             // Pin neutral grow so these tests isolate the compose path
             // (the default params now carry a slight erode).
             grow_px: 0.0,
             ..BgRemovalParams::default()
         };
-        let segment = SegmentResult::GrabCut;
+        let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
         write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
 
         // Alpha must equal mask, byte-for-byte. No delta_e leak.
@@ -491,11 +462,10 @@ mod tests {
         scratch.mask[0] = 0;
         scratch.mask[1] = 0;
         let params = BgRemovalParams {
-            mode: BgRemovalMode::GrabCut,
             grow_px: 0.0,
             ..BgRemovalParams::default()
         };
-        let segment = SegmentResult::GrabCut;
+        let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
         let protect = [255u8, 0u8];
         write_output(
             &rgba,
@@ -529,11 +499,10 @@ mod tests {
         scratch.mask[0] = 0;
         scratch.mask[1] = 255; // already opaque foreground
         let params = BgRemovalParams {
-            mode: BgRemovalMode::GrabCut,
             grow_px: 0.0,
             ..BgRemovalParams::default()
         };
-        let segment = SegmentResult::GrabCut;
+        let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
         let protect = [128u8, 64u8];
         write_output(
             &rgba,
@@ -570,11 +539,10 @@ mod tests {
             scratch.output_rgba[i * 4 + 3] = 255;
         }
         let params = BgRemovalParams {
-            mode: BgRemovalMode::GrabCut,
             grow_px: -2.0,
             ..BgRemovalParams::default()
         };
-        let segment = SegmentResult::GrabCut;
+        let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
         let protect = [0u8, 255u8, 0u8];
         write_output(
             &rgba,
@@ -608,7 +576,7 @@ mod tests {
             grow_px: 0.0, // isolate compose path from the default erode
             ..BgRemovalParams::default()
         };
-        let segment = SegmentResult::GrabCut;
+        let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
         write_output(&rgba, w, h, &params, &segment, true, None, &mut scratch);
         assert_eq!(scratch.output_rgba[3], 0);
         assert_eq!(scratch.output_rgba[7], 128); // 0.5*255+0.5 = 128
@@ -729,27 +697,26 @@ mod tests {
     }
 
     #[test]
-    fn rgb_channels_passthrough_in_every_path() {
+    fn rgb_channels_passthrough_in_both_paths() {
         let w = 1u32;
         let h = 1u32;
         let mut scratch = fresh_scratch(w, h);
         let rgba = solid_rgba(w, h, [123, 45, 67]);
         scratch.mask[0] = 255;
         scratch.alpha_f32[0] = 0.5;
-        let params = BgRemovalParams {
+        let mut params = BgRemovalParams {
             grow_px: 0.0, // isolate compose path from the default erode
             ..BgRemovalParams::default()
         };
-        let segment = SegmentResult::GrabCut;
-        // Path 1.
+        // Disable despill so this test isolates RGB passthrough (despill
+        // intentionally rewrites fractional-alpha RGB; covered elsewhere).
+        params.chroma.despill = false;
+        let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
+        // Path 1 (refined).
         write_output(&rgba, w, h, &params, &segment, true, None, &mut scratch);
         assert_eq!(&scratch.output_rgba[0..3], &[123, 45, 67]);
-        // Path 3.
-        let p3 = BgRemovalParams {
-            mode: BgRemovalMode::GrabCut,
-            ..params.clone()
-        };
-        write_output(&rgba, w, h, &p3, &segment, false, None, &mut scratch);
+        // Path 2 (soft band).
+        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
         assert_eq!(&scratch.output_rgba[0..3], &[123, 45, 67]);
     }
 }

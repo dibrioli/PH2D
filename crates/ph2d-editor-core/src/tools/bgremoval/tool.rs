@@ -36,13 +36,13 @@
 
 use crate::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
 use crate::tool::{PanelEvent, Tool};
-use crate::widget::{RadioGroup, RadioOption, Slider, Toggle};
+use crate::widget::{Slider, Toggle};
 use ph2d_a11y::NodeId;
 
 use super::algorithm::run_pipeline;
 use super::params::{
-    BRUSH_SIZE_FULL_SCALE, BgRemovalMode, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot,
-    BrushFalloff, DEFAULT_BRUSH_SIZE01, FEATHER_FULL_SCALE, GROW_FULL_SCALE, MAX_EXTRA_BG_COLORS,
+    BRUSH_SIZE_FULL_SCALE, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, BrushFalloff,
+    DEFAULT_BRUSH_SIZE01, FEATHER_FULL_SCALE, GROW_FULL_SCALE, MAX_EXTRA_BG_COLORS,
     REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
 };
 use super::scratch::BgRemovalScratch;
@@ -52,19 +52,15 @@ pub const THUMB_SIZE: u32 = 160;
 
 /// Side cap (px) for the live on-canvas preview overlay. The overlay
 /// re-runs the whole pipeline on every parameter change; doing that at
-/// full source resolution makes the expensive GrabCut backend freeze
-/// the UI on each slider tick (a ~1024²-node max-flow per drag event).
-/// The overlay is drawn *scaled* to the sprite footprint anyway, so it
-/// re-segments a copy of the source downscaled to fit this box (aspect
-/// preserved, no letterbox) instead. Apply still bakes at full source
-/// resolution via [`BgRemovalTool::run_full_resolution`].
+/// full source resolution makes each slider tick janky. The overlay is
+/// drawn *scaled* to the sprite footprint anyway, so it re-segments a
+/// copy of the source downscaled to fit this box (aspect preserved, no
+/// letterbox) instead — keeping slider drags smooth. Apply still bakes
+/// at full source resolution via [`BgRemovalTool::run_full_resolution`].
 pub const PREVIEW_MAX_DIM: u32 = 512;
 
 // NodeId range 500..599 reserved for bgremoval panel controls
 // (clear of 100..199 brush/move and 1000..1099 grid_snap).
-const MODE_GROUP_NODE: NodeId = NodeId(501);
-const MODE_CHROMA_OPT: NodeId = NodeId(502);
-const MODE_GRABCUT_OPT: NodeId = NodeId(503);
 const TOLERANCE_NODE: NodeId = NodeId(504);
 const FEATHER_NODE: NodeId = NodeId(505);
 const REFINE_NODE: NodeId = NodeId(506);
@@ -136,10 +132,8 @@ pub struct BgRemovalTool {
     /// Freehand protection mask at the SOURCE resolution
     /// (`protect_mask_w × protect_mask_h`, one byte/pixel; `255` =
     /// protected/forced-foreground, `0` = unprotected). Empty until the
-    /// user paints. SCAFFOLD: storage + accessors exist; the Implementer
-    /// owns (a) the dab logic in `paint_protect_at_uv`, (b) downscaling
-    /// this to the thumbnail / threading it into `run_pipeline` (Chroma
-    /// force-keep + GrabCut `FgHard`), and (c) tests.
+    /// user paints. Threaded into `run_pipeline` as the compose
+    /// force-keep mask (a painted region stays opaque).
     protect_mask: Vec<u8>,
     protect_mask_w: u32,
     protect_mask_h: u32,
@@ -337,8 +331,8 @@ impl BgRemovalTool {
     /// Does NOT re-run the pipeline — painting only mutates the mask. The
     /// on-canvas tint overlay reads the mask live each frame (cheap); the
     /// matte re-segments once the stroke ends (the shell drops its cached
-    /// preview on pointer-up). This is the fix for the per-dab GrabCut
-    /// freeze: re-segmenting at 512² on every cursor-move is what stalled.
+    /// preview on pointer-up) — so painting stays cheap (no per-dab
+    /// re-segmentation).
     pub fn paint_protect_at_uv(&mut self, u: f32, v: f32, radius_px: f32) {
         self.stamp_protect(u, v, radius_px, false);
     }
@@ -543,9 +537,9 @@ impl BgRemovalTool {
     /// Run the pipeline for the live on-canvas preview at a capped
     /// resolution (see [`PREVIEW_MAX_DIM`]) and write the result into
     /// `out`. The shell draws this scaled to the sprite footprint, so a
-    /// slider drag re-segments a small image — the GrabCut backend no
-    /// longer freezes the UI per tick. Returns the `(w, h)` of the
-    /// output (the capped preview dims, NOT the source dims).
+    /// slider drag re-segments a small image — keeping the drag smooth.
+    /// Returns the `(w, h)` of the output (the capped preview dims, NOT
+    /// the source dims).
     ///
     /// No-op (returns `(0, 0)`, clears `out`) when no source is loaded.
     pub fn run_canvas_preview(&mut self, out: &mut Vec<u8>) -> (u32, u32) {
@@ -712,7 +706,6 @@ impl BgRemovalTool {
     /// [`Self::apply_ui_edit`]).
     pub fn ui_snapshot(&self) -> BgRemovalUiSnapshot {
         BgRemovalUiSnapshot {
-            mode: self.params.mode,
             tolerance01: (self.params.chroma.tolerance / TOLERANCE_FULL_SCALE).clamp(0.0, 1.0),
             feather01: (self.params.chroma.feather / FEATHER_FULL_SCALE).clamp(0.0, 1.0),
             refine01: (self.params.refinement.radius as f32 / REFINE_RADIUS_FULL_SCALE)
@@ -736,12 +729,6 @@ impl BgRemovalTool {
     pub fn apply_ui_edit(&mut self, edit: BgRemovalUiEdit) {
         let mut changed = false;
         match edit {
-            BgRemovalUiEdit::Mode(mode) => {
-                if self.params.mode != mode {
-                    self.params.mode = mode;
-                    changed = true;
-                }
-            }
             BgRemovalUiEdit::Tolerance(v) => {
                 self.params.chroma.tolerance = v.clamp(0.0, 1.0) * TOLERANCE_FULL_SCALE;
                 changed = true;
@@ -820,24 +807,6 @@ impl BgRemovalTool {
             self.rerun_preview();
         }
     }
-
-    /// Build the Mode RadioGroup (Chroma / Smart Cut) seeded with the
-    /// currently-selected mode.
-    fn build_mode_radio(&self) -> RadioGroup<String> {
-        let selected = match self.params.mode {
-            BgRemovalMode::Chroma => "chroma",
-            BgRemovalMode::GrabCut => "grabcut",
-        };
-        RadioGroup::new(
-            MODE_GROUP_NODE,
-            "Mode",
-            vec![
-                RadioOption::new(MODE_CHROMA_OPT, "chroma".to_string(), "Chroma"),
-                RadioOption::new(MODE_GRABCUT_OPT, "grabcut".to_string(), "Smart Cut"),
-            ],
-        )
-        .selected(selected.to_string())
-    }
 }
 
 impl Tool for BgRemovalTool {
@@ -854,8 +823,6 @@ impl Tool for BgRemovalTool {
     }
 
     fn build_panel(&self) -> FloatingPanel {
-        let mode = self.build_mode_radio();
-
         let mut tolerance = Slider::new(TOLERANCE_NODE, "Tolerance");
         tolerance.value = (self.params.chroma.tolerance / 0.30).clamp(0.0, 1.0);
 
@@ -872,12 +839,11 @@ impl Tool for BgRemovalTool {
 
         let mut panel = FloatingPanel::new(self.id(), "Bg Removal")
             .with_tabs(vec![PanelTab {
-                label: self.params.mode.label().to_string(),
+                label: "Bg Removal".to_string(),
                 icon: None,
                 active: true,
             }])
             .with_controls(vec![
-                PanelControl::RadioGroup(mode),
                 PanelControl::Slider(tolerance),
                 PanelControl::Slider(feather),
                 PanelControl::Slider(refine),
@@ -902,13 +868,6 @@ impl Tool for BgRemovalTool {
             }
             PanelEvent::SetValue(id, v) if id == REFINE_NODE => {
                 self.params.refinement.radius = (v.clamp(0.0, 1.0) * 100.0).round() as u32;
-                changed = true;
-            }
-            PanelEvent::SelectOption(id, value) if id == MODE_GROUP_NODE => {
-                self.params.mode = match value.as_str() {
-                    "grabcut" => BgRemovalMode::GrabCut,
-                    _ => BgRemovalMode::Chroma,
-                };
                 changed = true;
             }
             // One-shot trigger; the next build_panel emits a
@@ -999,36 +958,18 @@ mod tests {
     }
 
     #[test]
-    fn panel_has_five_canonical_controls() {
+    fn panel_has_four_canonical_controls() {
         let p = BgRemovalTool::default().build_panel();
         assert_eq!(p.tool_id, ToolId::new("bgremoval"));
         assert_eq!(p.title, "Bg Removal");
         assert_eq!(p.tabs.len(), 1);
-        assert_eq!(p.controls.len(), 5);
-        assert!(matches!(p.controls[0], PanelControl::RadioGroup(_)));
+        assert_eq!(p.controls.len(), 4);
+        assert!(matches!(p.controls[0], PanelControl::Slider(_)));
         assert!(matches!(p.controls[1], PanelControl::Slider(_)));
         assert!(matches!(p.controls[2], PanelControl::Slider(_)));
-        assert!(matches!(p.controls[3], PanelControl::Slider(_)));
-        assert!(matches!(p.controls[4], PanelControl::Toggle(_)));
+        assert!(matches!(p.controls[3], PanelControl::Toggle(_)));
         let labels: Vec<&str> = p.controls.iter().map(|c| c.label()).collect();
-        assert_eq!(
-            labels,
-            vec!["Mode", "Tolerance", "Feather", "Refine", "Apply"]
-        );
-    }
-
-    #[test]
-    fn panel_radio_options_match_modes() {
-        let p = BgRemovalTool::default().build_panel();
-        match &p.controls[0] {
-            PanelControl::RadioGroup(g) => {
-                assert_eq!(g.options.len(), 2);
-                assert_eq!(g.options[0].label, "Chroma");
-                assert_eq!(g.options[1].label, "Smart Cut");
-                assert_eq!(g.selected.as_deref(), Some("chroma"));
-            }
-            _ => panic!("expected RadioGroup at index 0"),
-        }
+        assert_eq!(labels, vec!["Tolerance", "Feather", "Refine", "Apply"]);
     }
 
     #[test]
@@ -1063,9 +1004,9 @@ mod tests {
         // pending was consumed; the next build_panel must emit
         // Toggle(on=false) so the UI does not stick lit.
         let panel = t.build_panel();
-        match &panel.controls[4] {
+        match &panel.controls[3] {
             PanelControl::Toggle(tg) => assert!(!tg.on, "Apply toggle must reset to off"),
-            _ => panic!("expected Toggle at index 4"),
+            _ => panic!("expected Toggle at index 3"),
         }
     }
 
@@ -1141,20 +1082,9 @@ mod tests {
     }
 
     #[test]
-    fn mode_radio_select_swaps_mode() {
-        let mut t = BgRemovalTool::default();
-        assert_eq!(t.params.mode, BgRemovalMode::Chroma);
-        t.handle_panel_event(PanelEvent::SelectOption(MODE_GROUP_NODE, "grabcut".into()));
-        assert_eq!(t.params.mode, BgRemovalMode::GrabCut);
-        t.handle_panel_event(PanelEvent::SelectOption(MODE_GROUP_NODE, "chroma".into()));
-        assert_eq!(t.params.mode, BgRemovalMode::Chroma);
-    }
-
-    #[test]
     fn ui_snapshot_reflects_default_params() {
         let t = BgRemovalTool::default();
         let s = t.ui_snapshot();
-        assert_eq!(s.mode, BgRemovalMode::Chroma);
         // Tuned defaults (Enio 2026-05-20): tolerance 0.6, feather 0.9,
         // refine 0.01, grow chip −0.10 ⇒ grow01 0.45.
         assert!((s.tolerance01 - 0.6).abs() < 1e-5);
@@ -1184,9 +1114,7 @@ mod tests {
         t.apply_ui_edit(BgRemovalUiEdit::Tolerance(0.5));
         t.apply_ui_edit(BgRemovalUiEdit::Feather(0.25));
         t.apply_ui_edit(BgRemovalUiEdit::Refine(0.8));
-        t.apply_ui_edit(BgRemovalUiEdit::Mode(BgRemovalMode::GrabCut));
         let s = t.ui_snapshot();
-        assert_eq!(s.mode, BgRemovalMode::GrabCut);
         assert!((s.tolerance01 - 0.5).abs() < 1e-5);
         assert!((s.feather01 - 0.25).abs() < 1e-5);
         // Refine maps through an integer radius (0.8*100=80 → 80/100).
@@ -1213,16 +1141,6 @@ mod tests {
         t.apply_ui_edit(BgRemovalUiEdit::Apply);
         assert!(t.take_pending_apply());
         assert!(!t.take_pending_apply());
-    }
-
-    #[test]
-    fn mode_change_updates_active_tab_label() {
-        let mut t = BgRemovalTool::default();
-        let p = t.build_panel();
-        assert_eq!(p.tabs[0].label, "Chroma");
-        t.handle_panel_event(PanelEvent::SelectOption(MODE_GROUP_NODE, "grabcut".into()));
-        let p = t.build_panel();
-        assert_eq!(p.tabs[0].label, "Smart Cut");
     }
 
     // ── Eyedropper / extra-colour tests ────────────────────────────

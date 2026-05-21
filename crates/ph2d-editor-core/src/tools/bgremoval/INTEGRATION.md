@@ -1,5 +1,12 @@
 # Background Removal — Plano de Integração
 
+> **NOTA (2026-05-20):** o backend **GrabCut / "Smart Cut" foi removido**
+> a pedido do Enio (sliders engasgavam; Chroma é o único backend). Tudo
+> abaixo que menciona GrabCut / Smart Cut / `BgRemovalMode` / o módulo
+> `algorithm::grabcut` / Mode radio / tabs é **histórico** — o pipeline
+> atual é Chroma+Flood → Guided Filter (opcional) → compose, mais o
+> pincel de proteção (force-keep). Doc não reescrito por completo.
+
 **Status:** Ilha isolada **pronta** — feature core completa, 4 stubs preenchidos pelo Coordenador, host wiring landado em 2026-05-16. 110+ tests verdes.
 **Agente Implementador:** Slot #2 — slug `bgremoval`.
 **Coordenador (integração):** sessão Coord 2026-05-16.

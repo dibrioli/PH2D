@@ -101,11 +101,21 @@ pub fn write_output(
     // green-screen "despill", generalised to any detected bg colour).
     // Only fractional-alpha pixels are touched: a==0 is invisible,
     // a==255 is already pure foreground.
+    //
+    // PROTECTED pixels are SKIPPED: the user painted them to keep as-is,
+    // so the bg-over-fg assumption is wrong there. Despilling them turns
+    // the fractional-alpha boundary between a kept (e.g. green) region and
+    // the dark line-art into a magenta fringe — `(C − (1−a)·bg)/a` zeroes
+    // green and amplifies red+blue. Leaving them untouched keeps the
+    // painted region's true colour (and removes that fringe).
     if params.chroma.despill
         && let SegmentResult::Chroma { bg_oklab } = segment
     {
         let bg = super::chroma::oklab_to_srgb8(*bg_oklab);
         for i in 0..n {
+            if protect.is_some_and(|pm| pm[i] > 0) {
+                continue;
+            }
             let base = i * 4;
             let a = scratch.output_rgba[base + 3];
             if a == 0 || a == 255 {
@@ -522,6 +532,57 @@ mod tests {
         assert_eq!(
             scratch.output_rgba[7], 255,
             "max keeps the higher seg alpha"
+        );
+    }
+
+    #[test]
+    fn despill_skips_protected_pixels_no_magenta_fringe() {
+        // A dark line-art pixel at fractional alpha over a green bg would
+        // despill to magenta (`(C−(1−a)·bg)/a` zeroes green, amplifies
+        // red+blue). A PROTECTED pixel must be left untouched — this is
+        // the fix for the pink outline around a painted keep-region.
+        let w = 2u32;
+        let h = 1u32;
+        let bg_oklab = crate::tools::bgremoval::algorithm::chroma::srgb_to_oklab(0, 200, 0);
+        let params = BgRemovalParams {
+            grow_px: 0.0,
+            ..BgRemovalParams::default() // despill defaults on
+        };
+        let segment = SegmentResult::Chroma { bg_oklab };
+        let rgba = solid_rgba(w, h, [20, 20, 20]); // dark line-art
+        let make = || {
+            let mut s = fresh_scratch(w, h);
+            s.alpha_f32[0] = 0.5;
+            s.alpha_f32[1] = 0.5;
+            s
+        };
+
+        // Unprotected → despill rewrites the RGB (green removed).
+        let mut s_un = make();
+        write_output(&rgba, w, h, &params, &segment, true, None, &mut s_un);
+        assert_ne!(
+            &s_un.output_rgba[0..3],
+            &[20, 20, 20],
+            "unprotected fractional pixel is despilled"
+        );
+
+        // Protected → RGB untouched (no magenta).
+        let mut s_pr = make();
+        let protect = [255u8, 255u8];
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            true,
+            Some(&protect),
+            &mut s_pr,
+        );
+        assert_eq!(
+            &s_pr.output_rgba[0..3],
+            &[20, 20, 20],
+            "protected pixel keeps its true colour (despill skipped)"
         );
     }
 

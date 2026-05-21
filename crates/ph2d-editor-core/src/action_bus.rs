@@ -250,9 +250,7 @@ pub enum EditorAction {
     /// vsync pacing). The shell owns the swap chain and calls
     /// `SurfaceContext::set_present_mode`. Raised by clicking a row in
     /// the `SettingsDisplaySubmenu`.
-    SetPresentMode {
-        vsync: bool,
-    },
+    SetPresentMode { vsync: bool },
 
     /// Inspector → shell channel for entity-`Name` edits. Payload:
     /// the snapshot `(entity_bits, new_name)`. Shell drains and

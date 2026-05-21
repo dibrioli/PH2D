@@ -203,7 +203,11 @@ pub fn paint_context_menu_overlay(
         // at the cost of vsync-pacing.
         ContextMenuKind::SettingsDisplaySubmenu => &[
             (ids::CTX_MENU_DISPLAY_VSYNC, "VSync (smooth)", None),
-            (ids::CTX_MENU_DISPLAY_IMMEDIATE, "Immediate (no stutter)", None),
+            (
+                ids::CTX_MENU_DISPLAY_IMMEDIATE,
+                "Immediate (no stutter)",
+                None,
+            ),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is

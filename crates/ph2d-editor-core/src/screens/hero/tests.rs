@@ -403,9 +403,10 @@ fn settings_unit_submenu_options_flip_project_display_unit() {
     // Clicking "Pixels" / "Meters" in the SettingsUnit submenu
     // writes `project.display_unit` and closes the context menu.
     let mut hero = HeroScreen::new(NodeId(1));
+    // Default is Pixels (Enio 2026-05-21).
     assert_eq!(
         hero.project.display_unit,
-        crate::project::DisplayUnit::Meters
+        crate::project::DisplayUnit::Pixels
     );
     hero.store
         .open_context_menu(crate::interaction::ContextMenuRequest {
@@ -477,13 +478,13 @@ fn settings_filter_cascade_opens_filter_submenu() {
 }
 
 #[test]
-fn picking_smooth_filter_sets_project_and_raises_action() {
+fn picking_filter_option_sets_project_and_raises_action() {
     crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
-    // Default is PixelArt (pixel-art-first editor).
+    // Default is Smooth (Enio 2026-05-21).
     assert_eq!(
         hero.project.image_filter,
-        crate::project::ImageFilterMode::PixelArt
+        crate::project::ImageFilterMode::Smooth
     );
     hero.store
         .open_context_menu(crate::interaction::ContextMenuRequest {
@@ -491,18 +492,19 @@ fn picking_smooth_filter_sets_project_and_raises_action() {
             y: 0.0,
             kind: crate::interaction::ContextMenuKind::SettingsFilterSubmenu,
         });
-    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_FILTER_SMOOTH));
+    // Pick the NON-default option so we verify a real flip.
+    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_FILTER_PIXELART));
     assert!(consumed);
     // Project setting flips (so the menu state is correct next paint)…
     assert_eq!(
         hero.project.image_filter,
-        crate::project::ImageFilterMode::Smooth
+        crate::project::ImageFilterMode::PixelArt
     );
     // …and the shell-bound action is queued so the GPU samplers rebuild.
     let queued: Vec<_> = hero.bus.iter().cloned().collect();
     assert!(
         queued.contains(&crate::action_bus::EditorAction::SetImageFilter {
-            mode: crate::project::ImageFilterMode::Smooth
+            mode: crate::project::ImageFilterMode::PixelArt
         })
     );
     // Menu closes after a pick (mirrors the Display-unit flow).

@@ -234,6 +234,9 @@ mod tests {
 
     #[test]
     fn default_image_filter_is_smooth() {
-        assert_eq!(ProjectSettings::default().image_filter, ImageFilterMode::Smooth);
+        assert_eq!(
+            ProjectSettings::default().image_filter,
+            ImageFilterMode::Smooth
+        );
     }
 }

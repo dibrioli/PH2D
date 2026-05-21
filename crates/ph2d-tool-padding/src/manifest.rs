@@ -75,6 +75,6 @@ mod tests {
 
     #[test]
     fn manifest_order_is_right_of_real_size() {
-        assert!(MANIFEST.order > 70);
+        const { assert!(MANIFEST.order > 70) };
     }
 }

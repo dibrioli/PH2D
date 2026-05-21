@@ -1,12 +1,11 @@
 //! Padding icon — `BezPath` glyph for the Image Tools chrome pill.
 //!
-//! SCAFFOLD PLACEHOLDER (Coordinator): two concentric squares — an outer
-//! canvas frame and an inner content frame — reading as "padding around
-//! content". The Implementer should confirm/finalise the glyph (a Lucide
-//! source such as `expand` / `move` / `scaling`, or this concentric
-//! frame), drop the SVG at `docs/design/icons/padding.svg` for the design
-//! pipeline, and keep `path_is_non_empty` + `path_fits_inside_24_grid`
-//! green. Stroked, not filled — drawn like the sibling row glyphs.
+//! FINAL GLYPH: two concentric squares — an outer canvas frame `(2,2)-(22,22)`
+//! and an inner content frame `(8,8)-(16,16)` — reading as "padding around
+//! content", which is exactly this tool's signed per-edge canvas resize.
+//! Stroked, not filled, like the sibling Image Tools glyphs. The source of
+//! truth for the design pipeline is `docs/design/icons/padding.svg`, kept
+//! byte-for-byte in sync with the two rects below.
 
 use ph2d_vector::{BezPath, Point};
 

@@ -187,7 +187,17 @@ impl crate::App {
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
         // the ADR-0021 / ADR-0025 propagate-transforms + sprite
         // emit pass.
-        let dt = self.fixed_step.fixed_dt() as f32;
+        // Demo bouncing-motion integrates ONCE per render frame, so it
+        // must use the real wall-clock delta — not the fixed timestep —
+        // or its speed scales with the frame rate. That was invisible
+        // under vsync (~60 fps) but the non-blocking `Immediate` present
+        // mode (stutter fix, 2026-05-21) uncaps the loop to hundreds of
+        // fps, which made the sprites race + jitter. `wall_dt` makes the
+        // motion frame-rate-independent (real-time, smooth at any fps);
+        // clamped so a hitch / debugger pause can't teleport a sprite.
+        // (The proper fixed-step substep integration lands with the M10
+        // gameplay sim; this is the M5 demo's stop-gap.)
+        let dt = (wall_dt as f32).min(1.0 / 30.0);
         // While the Background-Removal tool is active on a selection,
         // suppress that sprite from the sprite pass — its live preview
         // overlay (drawn later, on top of the Vello scene) stands in for

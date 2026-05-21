@@ -143,12 +143,32 @@ ativação (tentativa anterior) NÃO resolve: o tool **já estava ativo**.
 em [`render_loop/mod.rs`](../../shells/desktop/src/render_loop/mod.rs):
 
 1. **Reconciliação por frame, ANTES dos bridges:** se `!mode_on` e o tool
-   ativo é `bgremoval`/`padding`, volta pro tool default e dropa o preview
-   do Bg Removal. Invariante: **Image Tools OFF ⟹ nenhum tool de imagem
-   ativo**, não importa como ficou ativo.
-2. **Ativação gateada em `mode_on`:** Bg Removal/Padding só ativam com o
-   modo ligado (cobre o atalho Digit3 e qualquer caminho stale, sem flicker
-   de 1 frame nem toast espúrio).
+   ativo é image tool, volta pro tool default e dropa o preview do Bg
+   Removal. Invariante: **Image Tools OFF ⟹ nenhum tool de imagem ativo**,
+   não importa como ficou ativo.
+2. **Ativação gateada em `mode_on`:** image tools só ativam com o modo
+   ligado (cobre o atalho Digit3 e qualquer caminho stale, sem flicker de
+   1 frame nem toast espúrio).
+
+#### 2.b — O segundo caminho: a Tool Palette (`32460b9`)
+
+Depois do fix acima, ainda aparecia a toast "Tool · Padding" ao clicar no
+canto superior direito com o modo off — **"só a mensagem"** (o reconcile
+matava o tool, mas o toast já tinha saído). Causa: a **tool palette** da
+zona top-right (`tool_palette_rects`) é uma **segunda via de ativação** —
+clicar um ícone chama `tools.set_active` **direto**, fora das pills e do
+guard. Pior: no caminho hero o paint da palette não roda, mas o hit-test
+roda → **zona de clique invisível**.
+
+Fix: **filtrar os image tools da palette quando o modo está off**, em
+paint E hit (`palette_visible_tool_indices`, mesmo mapeamento nos dois →
+sem drift de índice). Off ⟹ sem ícone, sem zona de clique.
+
+**Definição canônica de "image tool" (data-driven):** `is_image_edit_tool`
+em [`app_state.rs`](../../shells/desktop/src/app_state.rs) responde pela
+**presença no cluster `"image_tools"` do manifest** — NÃO uma lista fixa
+de ids. Cobre Bg Removal, Padding, Trim, Make Square, Real Size e
+**qualquer tool futura** registrada nesse cluster, automaticamente.
 
 ### Como evitar regressão
 
@@ -160,9 +180,22 @@ em [`render_loop/mod.rs`](../../shells/desktop/src/render_loop/mod.rs):
 - Um *guard* na ativação trata "não deixar ligar"; ele **não** trata "já
   está ligado". Bugs de "fica ativo indevidamente" pedem reconciliação de
   estado, não guard.
+- **Enumere TODOS os caminhos de ativação.** Uma feature pode ser ligada
+  por mais de uma via (pills da TopBar, **tool palette**, atalho de
+  teclado, bus action). Gatear só uma deixa o bug vivo pelas outras (foi o
+  que aconteceu: pills gateadas, palette não). Ao gatear um modo, faça um
+  grep por TODOS os `set_active`/push de action do subsistema e cubra cada
+  um — ou, melhor, centralize num predicado/reconciliação única.
+- **Predicado de pertencimento é data-driven, não lista fixa.** "É um image
+  tool?" = está no cluster `"image_tools"` do manifest. Nada de
+  `id == "bgremoval" || id == "padding"` espalhado — um helper único
+  (`is_image_edit_tool`) consultando o cluster cobre as tools futuras de
+  graça.
 - Ponteiros: `render_loop/mod.rs` (bloco "Image Tools OFF is
   AUTHORITATIVE"), `render_loop/padding_bridge.rs` +
-  `render_loop/bgremoval_preview.rs` (visibilidade por tool ativo).
+  `render_loop/bgremoval_preview.rs` (visibilidade por tool ativo),
+  `app_state.rs` (`is_image_edit_tool` / `palette_visible_tool_indices`),
+  `input_dispatch.rs` + `render_loop/mod.rs` (filtro da palette).
 
 ---
 

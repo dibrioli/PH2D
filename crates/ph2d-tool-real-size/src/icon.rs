@@ -1,40 +1,69 @@
 //! Real Size icon — `BezPath` glyph for the Image Tools chrome pill.
 //!
-//! SCAFFOLD PLACEHOLDER (Coordinator): a Lucide-style "maximize" frame
-//! (four corner brackets) in a 24×24 Y-down design space — reads as
-//! "fit to real size". The Implementer should confirm/finalise the glyph
-//! (port the chosen Lucide source, e.g. `maximize.svg` or `scaling.svg`,
-//! and drop the SVG at `docs/design/icons/real-size.svg` so the design
-//! pipeline has a source), then keep the `path_is_non_empty` test green.
+//! Port of Lucide [`maximize`](https://lucide.dev/icons/maximize) (24×24,
+//! Y-down, origin top-left): four L-shaped corner brackets with rounded
+//! `r = 2` corners, reading as "expand to real size". The canonical SVG
+//! source lives at `docs/design/icons/real-size.svg` for the design
+//! pipeline; this `BezPath` mirrors it 1:1.
 //!
-//! Stroked, not filled — chrome draws it with `Stroke::new(2.0)` round
-//! caps and scales via `Affine::scale(chip_px / 24.0)`, identical to the
-//! sibling `make_square` / `trim_transparency` glyphs on the same row.
+//! Each rounded corner approximates Lucide's quarter-circle arc with a
+//! single cubic Bézier (κ·r where κ = 0.552_284_75, so the control offset
+//! is ≈ 1.104_57). Stroked, not filled — chrome draws it with
+//! `Stroke::new(2.0)` round caps and scales via
+//! `Affine::scale(chip_px / 24.0)`, identical to the sibling
+//! `make_square` / `trim_transparency` glyphs on the same row.
 
 use ph2d_vector::{BezPath, Point};
 
+/// Cubic control offset for a quarter-circle of radius 2 (κ · r).
+const KR: f64 = 1.104_569_5;
+
 /// Build the Real Size glyph as a `BezPath` in a 24×24 design space
-/// (Y-down, origin top-left). Placeholder: four L-shaped corner brackets
-/// (top-left, top-right, bottom-right, bottom-left) suggesting "expand to
-/// real size".
+/// (Y-down, origin top-left): four rounded corner brackets — the Lucide
+/// `maximize` frame.
 pub fn real_size_bezpath() -> BezPath {
     let mut p = BezPath::new();
-    // Top-left bracket.
-    p.move_to(Point::new(4.0, 9.0));
-    p.line_to(Point::new(4.0, 4.0));
-    p.line_to(Point::new(9.0, 4.0));
-    // Top-right bracket.
-    p.move_to(Point::new(15.0, 4.0));
-    p.line_to(Point::new(20.0, 4.0));
-    p.line_to(Point::new(20.0, 9.0));
-    // Bottom-right bracket.
-    p.move_to(Point::new(20.0, 15.0));
-    p.line_to(Point::new(20.0, 20.0));
-    p.line_to(Point::new(15.0, 20.0));
-    // Bottom-left bracket.
-    p.move_to(Point::new(9.0, 20.0));
-    p.line_to(Point::new(4.0, 20.0));
-    p.line_to(Point::new(4.0, 15.0));
+
+    // Top-left bracket: down-left from (8,3), round the (3,3) corner, to (3,8).
+    p.move_to(Point::new(8.0, 3.0));
+    p.line_to(Point::new(5.0, 3.0));
+    p.curve_to(
+        Point::new(5.0 - KR, 3.0),
+        Point::new(3.0, 3.0 + KR),
+        Point::new(3.0, 5.0),
+    );
+    p.line_to(Point::new(3.0, 8.0));
+
+    // Top-right bracket: up from (21,8), round the (21,3) corner, to (16,3).
+    p.move_to(Point::new(21.0, 8.0));
+    p.line_to(Point::new(21.0, 5.0));
+    p.curve_to(
+        Point::new(21.0, 5.0 - KR),
+        Point::new(19.0 + KR, 3.0),
+        Point::new(19.0, 3.0),
+    );
+    p.line_to(Point::new(16.0, 3.0));
+
+    // Bottom-left bracket: down from (3,16), round the (3,21) corner, to (8,21).
+    p.move_to(Point::new(3.0, 16.0));
+    p.line_to(Point::new(3.0, 19.0));
+    p.curve_to(
+        Point::new(3.0, 19.0 + KR),
+        Point::new(5.0 - KR, 21.0),
+        Point::new(5.0, 21.0),
+    );
+    p.line_to(Point::new(8.0, 21.0));
+
+    // Bottom-right bracket: right from (16,21), round the (21,21) corner, to (21,16).
+    p.move_to(Point::new(16.0, 21.0));
+    p.line_to(Point::new(19.0, 21.0));
+    p.curve_to(
+        Point::new(19.0 + KR, 21.0),
+        Point::new(21.0, 19.0 + KR),
+        Point::new(21.0, 19.0),
+    );
+    p.line_to(Point::new(21.0, 16.0));
+
     p
 }
 

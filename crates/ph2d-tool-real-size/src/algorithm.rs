@@ -24,12 +24,52 @@
 /// Reset a sprite's `[scale_x, scale_y]` to 1:1, preserving the flip sign
 /// of each axis.
 ///
-/// SCAFFOLD STUB — the Implementer fills the body per the module-level
-/// contract and adds the unit tests. Returns the input unchanged for now
-/// so the (future) shell drain wiring compiles and is inert.
+/// Each axis collapses to `±1.0`: a negative magnitude keeps its flip as
+/// `-1.0`, everything else (positive, `0.0`, `NaN`) resets to `+1.0`. The
+/// `< 0.0` test gives the legacy `Math.sign(x) || 1` fallback for free,
+/// since both `0.0 < 0.0` and `NaN < 0.0` are `false`.
 pub fn real_size_scale(scale: [f32; 2]) -> [f32; 2] {
-    // TODO(impl): reset each axis to ±1 preserving flip sign; handle the
-    // 0 / NaN sign fallback to +1; add unit tests for the edge cases
-    // listed in the module doc.
-    scale
+    [unit_with_sign(scale[0]), unit_with_sign(scale[1])]
+}
+
+/// `-1.0` for a negative axis, `+1.0` otherwise (positive / zero / NaN).
+#[inline]
+fn unit_with_sign(axis: f32) -> f32 {
+    if axis < 0.0 { -1.0 } else { 1.0 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn already_unit_is_unchanged() {
+        assert_eq!(real_size_scale([1.0, 1.0]), [1.0, 1.0]);
+    }
+
+    #[test]
+    fn flip_keeps_sign_resets_magnitude() {
+        assert_eq!(real_size_scale([-2.5, 1.0]), [-1.0, 1.0]);
+        assert_eq!(real_size_scale([1.0, -2.5]), [1.0, -1.0]);
+        assert_eq!(real_size_scale([-4.0, -0.25]), [-1.0, -1.0]);
+    }
+
+    #[test]
+    fn positive_magnitude_resets_to_unit() {
+        assert_eq!(real_size_scale([3.0, 0.5]), [1.0, 1.0]);
+    }
+
+    #[test]
+    fn zero_falls_back_to_positive_unit() {
+        // 0.0 has no flip sign → legacy `Math.sign(0) || 1` == +1.
+        assert_eq!(real_size_scale([0.0, 0.0]), [1.0, 1.0]);
+        // -0.0 < 0.0 is false in IEEE-754, so negative zero also → +1.
+        assert_eq!(real_size_scale([-0.0, -0.0]), [1.0, 1.0]);
+    }
+
+    #[test]
+    fn nan_falls_back_to_positive_unit() {
+        assert_eq!(real_size_scale([f32::NAN, f32::NAN]), [1.0, 1.0]);
+        assert_eq!(real_size_scale([f32::NAN, -2.0]), [1.0, -1.0]);
+    }
 }

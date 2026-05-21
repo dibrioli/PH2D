@@ -160,9 +160,19 @@ clicar um ícone chama `tools.set_active` **direto**, fora das pills e do
 guard. Pior: no caminho hero o paint da palette não roda, mas o hit-test
 roda → **zona de clique invisível**.
 
-Fix: **filtrar os image tools da palette quando o modo está off**, em
-paint E hit (`palette_visible_tool_indices`, mesmo mapeamento nos dois →
-sem drift de índice). Off ⟹ sem ícone, sem zona de clique.
+Fix em duas partes:
+1. **Filtrar os image tools da palette quando o modo está off** (`32460b9`),
+   em paint E hit (`palette_visible_tool_indices`, mesmo mapeamento nos
+   dois → sem drift de índice). Off ⟹ sem ícone.
+2. **Hit-test SÓ onde a palette é pintada** (`952dc0c`): a palette só pinta
+   no caminho legado sem-hero (demo); no editor (hero) não pinta, mas o
+   hit rodava sempre. `Zone::TopRight` é a metade direita da faixa do
+   toolbar — exatamente onde o topbar pinta o gear (Config) — então clicar
+   no Config caía também num slot invisível da palette e trocava o tool
+   ("Tool · Move"). Gate do hit em `hero_screen.is_none()` (mesma condição
+   do paint) → no editor o top-right é só do topbar. **Lição:** hit-test e
+   paint do mesmo widget têm que ser gateados pela MESMA condição; hit sem
+   paint = zona de clique invisível.
 
 **Definição canônica de "image tool" (data-driven):** `is_image_edit_tool`
 em [`app_state.rs`](../../shells/desktop/src/app_state.rs) responde pela

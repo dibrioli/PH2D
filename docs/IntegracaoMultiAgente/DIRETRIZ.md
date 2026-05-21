@@ -509,6 +509,8 @@ Bases de conhecimento: [`docs/UI_Bugs/README.md`](../UI_Bugs/README.md) (UI gera
 
    2.a **Enumere TODOS os caminhos de ativação.** Uma feature costuma ter >1 via de ligar (pill da TopBar, **tool palette**, atalho de teclado, bus action). Gatear só uma deixa o bug vivo pelas outras — foi exatamente o que aconteceu: pills gateadas, mas a tool palette chamava `set_active` direto e ressuscitava o image tool com o modo off (Image Tools Bugs §2.b, `32460b9`). Faça grep de TODOS os `set_active`/push de action do subsistema e cubra cada um, ou centralize.
 
+   2.c **Hit-test e paint do MESMO widget têm que ser gateados pela MESMA condição.** Um hit-test que roda onde o widget NÃO é pintado = **zona de clique invisível**. Caso real: a tool palette só pinta no caminho demo, mas o hit rodava sempre, sobrepondo o gear de Config no editor — clicar no Config trocava o tool silenciosamente (Image Tools Bugs §2.b, `952dc0c`). Sempre que um widget é condicional, condicione paint E hit juntos (idealmente pela mesma flag/expressão).
+
    2.b **Pertencimento é data-driven, não lista de ids hardcoded.** "É um image tool?" = está no cluster `"image_tools"` do manifest, resolvido por UM helper (`is_image_edit_tool`) — não `id == "x" || id == "y"` espalhado por N sites. Assim toda tool futura do grupo é coberta de graça e não há lista pra dessincronizar.
 
 3. **Diagnostique medindo, não chutando.** Bug de UI/input com repro: instrumente (env-gate, ex.: `PH2D_UIDBG`) o caminho exato e capture o estado real (id resolvido no hit, flags, frame) antes de propor fix. Reverta a instrumentação no fim. Duas "correções" às cegas do bug do Image Tools falharam por chutar (uma chegou a mover o Config — proibido); a 3ª resolveu medindo.

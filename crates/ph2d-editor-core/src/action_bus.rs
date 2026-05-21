@@ -64,6 +64,13 @@ pub enum EditorAction {
     /// `IMAGE_ACTION_MAKE_SQUARE` action pill.
     MakeSquare { entity_bits: u64 },
 
+    /// Reset the entity's sprite `Transform.scale` to 1:1 (preserving
+    /// flip sign). Payload: `entity.to_bits()`. Mirror of [`Self::Trim`]
+    /// for the `IMAGE_ACTION_REAL_SIZE` action pill; the shell drain
+    /// applies `ph2d_tool_real_size::real_size_scale` to the ECS
+    /// `Transform` (no pixel work, no texture rebind).
+    RealSize { entity_bits: u64 },
+
     /// Activate the stateful BgRemoval tool. No payload — the shell
     /// pulls the active selection from `HeroScreen::gizmo_selection`
     /// when dispatching. Raised by clicking

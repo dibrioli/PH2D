@@ -29,6 +29,7 @@ use std::collections::BTreeMap;
 pub(super) fn dispatch(
     trim_entity: Option<u64>,
     make_square_entity: Option<u64>,
+    real_size_entity: Option<u64>,
     undo_image_edit: bool,
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -102,6 +103,25 @@ pub(super) fn dispatch(
         )
     {
         title_dirty = true;
+    }
+    // Real Size drain — reset the selected sprite's Transform scale to
+    // 1:1 (preserving flip sign). Unlike Trim / Make Square this is a
+    // pure ECS Transform write — no pixel readback, no texture rebind,
+    // no pivot reproject (scale changes around the existing pivot). The
+    // ±1 reset itself is the single-source-of-truth pure helper in
+    // `ph2d-tool-real-size`.
+    if let Some(entity_bits) = real_size_entity {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
+            let new = ph2d_tool_real_size::real_size_scale([t.scale.x, t.scale.y]);
+            if t.scale.x != new[0] || t.scale.y != new[1] {
+                t.scale.x = new[0];
+                t.scale.y = new[1];
+                // Project mutated → dirty the title (no toast: the visible
+                // scale snap is the feedback).
+                title_dirty = true;
+            }
+        }
     }
     // Bg Removal drain — parallel to Trim Transparency, but
     // dimensions are preserved (the algorithm only mutates

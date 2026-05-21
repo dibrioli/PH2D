@@ -1,0 +1,24 @@
+# Real Size — one-shot transform action. Resets the selected sprite's
+# Transform scale to 1:1 (original dimensions), preserving flip sign.
+# Rightmost pill in the TopBar Image Tools action row (order 70).
+#
+# Canonical source for `crates/ph2d-tool-real-size/src/manifest.rs`.
+
+[tool]
+id          = "real_size"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 70
+a11y_role   = "Button"
+icon_slug   = "real-size"
+touches_sim = false
+
+[label]
+pt_br_inline = "Tamanho Real"
+en_us_inline = "Real Size"
+fluent_key   = "tool.real_size.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

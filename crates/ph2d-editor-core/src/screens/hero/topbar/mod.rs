@@ -38,6 +38,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::IMAGE_ACTION_TRIM,
         ids::IMAGE_ACTION_MAKE_SQUARE,
         ids::IMAGE_ACTION_BGREMOVAL,
+        ids::IMAGE_ACTION_REAL_SIZE,
     ] {
         store.register(
             id,
@@ -89,6 +90,10 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ids::IMAGE_ACTION_BGREMOVAL,
             ph2d_i18n::tr("tool.bgremoval.tooltip"),
+        ),
+        (
+            ids::IMAGE_ACTION_REAL_SIZE,
+            ph2d_i18n::tr("tool.real_size.tooltip"),
         ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),

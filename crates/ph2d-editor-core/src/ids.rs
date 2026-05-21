@@ -105,6 +105,12 @@ pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = hash_node_id("make_square");
 /// the snapshot push.
 pub const IMAGE_ACTION_BGREMOVAL: NodeId = hash_node_id("bgremoval");
 
+/// Image Tools action — Real Size pill. One-shot like Trim / Make Square:
+/// resets the selected sprite's `Transform.scale` to 1:1 (preserving flip
+/// sign). Click raises `EditorAction::RealSize`; the shell drain mutates
+/// the ECS `Transform`. Algorithm in `ph2d-tool-real-size`.
+pub const IMAGE_ACTION_REAL_SIZE: NodeId = hash_node_id("real_size");
+
 pub const HIERARCHY_ADD: NodeId = hash_node_id("hierarchy_add");
 
 pub const TOOL_TRANSLATE: NodeId = hash_node_id("tool_translate");

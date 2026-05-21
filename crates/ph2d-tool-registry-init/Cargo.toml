@@ -40,6 +40,7 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
 ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
+ph2d-tool-real-size = { path = "../ph2d-tool-real-size" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 
 [dev-dependencies]

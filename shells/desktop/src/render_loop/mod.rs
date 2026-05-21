@@ -320,6 +320,7 @@ impl crate::App {
             let mut reimport_entity: Option<u64> = None;
             let mut trim_entity: Option<u64> = None;
             let mut make_square_entity: Option<u64> = None;
+            let mut real_size_entity: Option<u64> = None;
             let mut undo_image_edit = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
@@ -374,6 +375,9 @@ impl crate::App {
                     }
                     EditorAction::MakeSquare { entity_bits } => {
                         make_square_entity.get_or_insert(entity_bits);
+                    }
+                    EditorAction::RealSize { entity_bits } => {
+                        real_size_entity.get_or_insert(entity_bits);
                     }
                     EditorAction::InspectorTransformEdit(info) => {
                         transform_edit.get_or_insert(info);
@@ -514,6 +518,7 @@ impl crate::App {
             if image_edit::dispatch(
                 trim_entity,
                 make_square_entity,
+                real_size_entity,
                 undo_image_edit,
                 hero,
                 sim,

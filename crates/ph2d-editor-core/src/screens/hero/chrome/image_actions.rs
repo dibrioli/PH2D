@@ -25,6 +25,14 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         return true;
     }
+    // Real Size — mirror of Trim / Make Square. Resets the selected
+    // sprite's Transform scale to 1:1. Same empty-selection semantics.
+    if id == ids::IMAGE_ACTION_REAL_SIZE {
+        if let Some(entity_bits) = hero.gizmo.selection {
+            hero.bus.push(EditorAction::RealSize { entity_bits });
+        }
+        return true;
+    }
     // Bg Removal — ACTIVATES the stateful tool (panel opens with a live
     // preview) instead of running a one-shot algorithm. Apply trigger
     // lives in the tool's panel Toggle (drained as `EditorAction::Bgremoval`).

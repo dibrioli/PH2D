@@ -166,6 +166,22 @@ pub const BGR_EYEDROPPER: NodeId = hash_node_id("bgr_eyedropper");
 pub const BGR_PROTECT: NodeId = hash_node_id("bgr_protect");
 /// Clear-protection button — wipes the painted protection mask.
 pub const BGR_PROTECT_CLEAR: NodeId = hash_node_id("bgr_protect_clear");
+/// Show-mask toggle — shows/hides the on-canvas protection-mask overlay
+/// tint (so the user can preview the clean result without the tint, or
+/// turn it back on to keep painting).
+pub const BGR_SHOW_MASK: NodeId = hash_node_id("bgr_show_mask");
+/// Protection-brush size slider (0..1 → brush radius in source px) +
+/// its editable numeric chip. Drives the canvas brush-size gizmo ring.
+pub const BGR_BRUSH_SIZE: NodeId = hash_node_id("bgr_brush_size");
+pub const BGR_BRUSH_SIZE_NUM: NodeId = hash_node_id("bgr_brush_size_num");
+/// Protection-brush falloff profile — 4-option segmented control
+/// (mirrors the Mode segmented group). Shapes the painted dab's
+/// strength from centre (255) to edge (0): Constant = hard disc,
+/// Smooth = smoothstep, Sphere = sqrt(1−d²), Sharp = concentrated peak.
+pub const BGR_FALLOFF_SMOOTH: NodeId = hash_node_id("bgr_falloff_smooth");
+pub const BGR_FALLOFF_SPHERE: NodeId = hash_node_id("bgr_falloff_sphere");
+pub const BGR_FALLOFF_SHARP: NodeId = hash_node_id("bgr_falloff_sharp");
+pub const BGR_FALLOFF_CONSTANT: NodeId = hash_node_id("bgr_falloff_constant");
 /// Extra-colour swatch hit slots 0..11. Painted only when the
 /// corresponding extra colour exists (a fixed pool, like the Blender
 /// palette's `BLENDER_SWATCH_*`). Capacity matches

@@ -9,6 +9,12 @@
 //! Phases (called by `run_render_frame` in order):
 //!  - `present.rs` — paint + 4 GPU passes + title refresh.
 //!  - (more phases land as Wave 3.2 progresses.)
+//!
+// ph2d-loc-cap: frame orchestrator — heavy phases already extracted to
+// siblings (present/image_edit/sim_extract/snapshots/bgremoval_preview/
+// hierarchy); residual is the frame skeleton + EditorAction intent drain.
+// FOLLOW-UP: extract the intent-drain match to a `intents.rs` sibling to
+// drop back under the cap (2026-05-21: +SetPresentMode/RealSize tipped it).
 
 mod bgremoval_preview;
 mod hierarchy;

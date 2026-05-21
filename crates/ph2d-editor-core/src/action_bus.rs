@@ -107,6 +107,34 @@ pub enum EditorAction {
     /// the active tool back to the default (first-registered) tool.
     BgremovalCancel,
 
+    /// Activate the stateful Padding tool. No payload — the shell pulls
+    /// the active selection from `HeroScreen::gizmo_selection` when
+    /// dispatching. Raised by clicking `IMAGE_ACTION_PADDING`. Mirror of
+    /// [`Self::ActivateBgRemoval`].
+    ActivatePadding,
+
+    /// One Padding panel edit (one of the four signed per-edge fields or
+    /// Apply) routed from the typed `ph2d-panel-padding` to the shell.
+    /// The shell drains it and calls `PaddingTool::apply_ui_edit` against
+    /// the active tool instance (the tool lives in the shell's
+    /// `ToolRegistry`, unreachable from `HeroScreen`). Mirror of
+    /// [`Self::BgremovalUiEdit`].
+    PaddingUiEdit(crate::tools::padding::PaddingUiEdit),
+
+    /// Cancel Padding: abandon the in-progress spec (no bake) and
+    /// deactivate the tool so the panel hides and the Inspector returns.
+    /// Raised by the panel's Cancel button. Mirror of
+    /// [`Self::BgremovalCancel`].
+    PaddingCancel,
+
+    /// Apply Padding at full resolution to the entity's sprite. Payload:
+    /// `entity.to_bits()`. Raised by the shell when the `PaddingTool`
+    /// panel's Apply fires. Shell drain reads the source RGBA, runs
+    /// `ph2d_tool_padding::add_padding` with the tool's signed per-edge
+    /// spec, swaps `Sprite.source` to a fresh `Individual` texture, and
+    /// reprojects the pivot. Mirror of [`Self::Bgremoval`].
+    Padding { entity_bits: u64 },
+
     /// Re-decode the entity's sprite source asset at the current
     /// `ProjectSettings::pixels_per_meter` and write the recomputed
     /// world size back to `Sprite.size`. Payload: `entity.to_bits()`.

@@ -40,6 +40,13 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.bus.push(EditorAction::ActivateBgRemoval);
         return true;
     }
+    // Padding — ACTIVATES the stateful tool (panel opens with the four
+    // signed per-edge fields) instead of running a one-shot algorithm.
+    // Apply lives in the tool's panel (drained as `EditorAction::Padding`).
+    if id == ids::IMAGE_ACTION_PADDING {
+        hero.bus.push(EditorAction::ActivatePadding);
+        return true;
+    }
     // Image-edit Undo — TOOL_UNDO chip on the LeftRail (also bound to
     // Cmd+Z in the desktop shell). When no snapshot exists the shell's
     // drainer surfaces a "Nothing to undo" toast.

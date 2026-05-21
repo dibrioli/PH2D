@@ -1,0 +1,27 @@
+# Padding — stateful canvas-resize tool. Condenses the legacy Image
+# Padding + Directional Expand into one panel with four signed per-edge
+# fields (top / right / bottom / left): positive expands that edge with
+# transparent pixels, negative crops it. Apply bakes the resized canvas
+# and reprojects the sprite pivot. Rightmost pill in the TopBar Image
+# Tools action row (order 80).
+#
+# Canonical source for `crates/ph2d-tool-padding/src/manifest.rs`.
+
+[tool]
+id          = "padding"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 80
+a11y_role   = "Button"
+icon_slug   = "padding"
+touches_sim = false
+
+[label]
+pt_br_inline = "Preenchimento"
+en_us_inline = "Padding"
+fluent_key   = "tool.padding.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

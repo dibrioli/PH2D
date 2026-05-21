@@ -23,6 +23,7 @@ members = [
     "crates/ph2d-editor-core",
     "crates/ph2d-panel-registry-init",
     "crates/ph2d-panel-bgremoval",
+    "crates/ph2d-panel-padding",
     "crates/ph2d-panel-widget-gallery",
     "crates/ph2d-panel-grid-snap",
     "crates/ph2d-panel-inspector",

@@ -30,6 +30,7 @@ mod view;
 
 pub(crate) use hierarchy::drain_reparent;
 pub(crate) use image_edit::{
-    drain_bgremoval, drain_make_square, drain_trim_transparency, drain_undo_image_edit,
+    drain_bgremoval, drain_make_square, drain_padding, drain_trim_transparency,
+    drain_undo_image_edit,
 };
 pub(crate) use view::drain_view_focus;

@@ -30,6 +30,7 @@ pub(super) fn dispatch(
     trim_entity: Option<u64>,
     make_square_entity: Option<u64>,
     real_size_entity: Option<u64>,
+    padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec)>,
     undo_image_edit: bool,
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -122,6 +123,26 @@ pub(super) fn dispatch(
                 title_dirty = true;
             }
         }
+    }
+    // Padding Apply drain — resize the selected sprite's source by the
+    // tool's signed per-edge spec (`add_padding`), swap to a fresh
+    // Individual texture, and reproject the pivot so the original
+    // content's world position holds. Parallel to Make Square; the spec
+    // was captured from the active `PaddingTool` by `padding_bridge`.
+    if let Some((entity_bits, spec)) = padding_apply
+        && hero_intents::drain_padding(
+            entity_bits,
+            spec,
+            hero.project.pixels_per_meter,
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+            toasts,
+            image_edit_undo,
+        )
+    {
+        title_dirty = true;
     }
     // Bg Removal drain — parallel to Trim Transparency, but
     // dimensions are preserved (the algorithm only mutates

@@ -20,6 +20,7 @@ mod bgremoval_preview;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
+mod padding_bridge;
 mod present;
 mod sim_extract;
 mod snapshots;
@@ -346,12 +347,18 @@ impl crate::App {
             let mut bgremoval_ui_edits: Vec<ph2d_editor::tools::bgremoval::BgRemovalUiEdit> =
                 Vec::new();
             let mut bgremoval_cancel = false;
+            let mut activate_padding = false;
+            let mut padding_ui_edits: Vec<ph2d_editor::tools::padding::PaddingUiEdit> = Vec::new();
+            let mut padding_cancel = false;
             for action in hero.bus.drain() {
                 use ph2d_editor::action_bus::EditorAction;
                 match action {
                     EditorAction::ActivateBgRemoval => activate_bgremoval = true,
                     EditorAction::BgremovalUiEdit(edit) => bgremoval_ui_edits.push(edit),
                     EditorAction::BgremovalCancel => bgremoval_cancel = true,
+                    EditorAction::ActivatePadding => activate_padding = true,
+                    EditorAction::PaddingUiEdit(edit) => padding_ui_edits.push(edit),
+                    EditorAction::PaddingCancel => padding_cancel = true,
                     EditorAction::UndoImageEdit => undo_image_edit = true,
                     EditorAction::HierToggleVisibility { row } => {
                         visibility_toggle_row.get_or_insert(row);
@@ -473,6 +480,24 @@ impl crate::App {
                 self.bgremoval_preview = None;
                 self.title_dirty = true;
             }
+            // Activate / cancel the stateful Padding tool (mirror of the
+            // Bg Removal activate/cancel above). Clicking the Padding pill
+            // raises `ActivatePadding`; the panel's Cancel raises
+            // `PaddingCancel` (switch back to the default tool).
+            if activate_padding && tools.set_active(&ph2d_editor::ToolId::new("padding")) {
+                self.title_dirty = true;
+                toasts.push(Toast::info("Tool → Padding"));
+            }
+            if padding_cancel
+                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && tools.set_active(&default_id)
+            {
+                self.title_dirty = true;
+            }
+            // Padding panel ⟷ tool bridge — drains panel edits into the
+            // tool, publishes the snapshot, returns the (selection, spec)
+            // to bake on Apply. Sibling `padding_bridge.rs` (HR-18 LOC).
+            let padding_apply = padding_bridge::dispatch(hero, tools, padding_ui_edits);
             // Bg Removal panel ⟷ tool bridge + on-canvas live preview
             // — extracted to sibling `bgremoval_preview.rs` (HR-18 LOC).
             let bgremoval_apply_committed = bgremoval_preview::dispatch(
@@ -548,6 +573,7 @@ impl crate::App {
                 trim_entity,
                 make_square_entity,
                 real_size_entity,
+                padding_apply,
                 undo_image_edit,
                 hero,
                 sim,
@@ -577,6 +603,14 @@ impl crate::App {
             {
                 self.last_bgremoval_pushed_entity = None;
                 self.bgremoval_preview = None;
+                self.title_dirty = true;
+            }
+            // Padding Apply teardown — deactivate the tool so the panel
+            // hides + the Inspector returns, exactly like Bg Removal.
+            if padding_apply.is_some()
+                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && tools.set_active(&default_id)
+            {
                 self.title_dirty = true;
             }
             // Legacy `FloatingPanel` Procreate-style paint was retired

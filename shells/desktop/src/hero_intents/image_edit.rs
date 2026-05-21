@@ -212,6 +212,114 @@ pub(crate) fn drain_make_square(
     }
 }
 
+/// Drain a Padding Apply: resize the selected sprite's source bitmap by
+/// the tool's signed per-edge `spec` (positive = transparent expand,
+/// negative = crop) via `ph2d_tool_padding::add_padding`, acquire a
+/// fresh Individual texture, and reproject the Transform translation so
+/// the original content's world position holds across the resize.
+///
+/// Mirrors [`drain_make_square`] (texture chokepoint + undo snapshot +
+/// `max_texture_dimension_2d` cap). The pivot fix-up uses the
+/// `PaddingResult::pivot_delta_*` directly — it's the signed shift of
+/// the original content's top-left inside the new canvas, so the
+/// recenter formula (same as `recenter_after_pad`, but accepting a
+/// signed offset for the crop case) keeps the content world-fixed for
+/// pure-expand, pure-crop, AND mixed specs.
+///
+/// Returns `true` if a toast was pushed (caller marks title dirty).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn drain_padding(
+    entity_bits: u64,
+    spec: ph2d_tool_padding::PaddingSpec,
+    project_pixels_per_meter: f32,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+    toasts: &mut ToastQueue,
+    image_edit_undo: &mut Option<ImageEditSnapshot>,
+) -> bool {
+    let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+    let px_per_m = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
+    if spec.is_noop() {
+        toasts.push(Toast::info("Padding: nothing to apply (all edges 0)"));
+        return true;
+    }
+    let Some(src) =
+        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+    else {
+        toasts.push(Toast::error("Padding unavailable for this sprite"));
+        return true;
+    };
+    let (src_w, src_h) = (src.image.width, src.image.height);
+    let result = ph2d_tool_padding::add_padding(&src.image.pixels, src_w, src_h, spec);
+    if !result.changed {
+        toasts.push(Toast::info("Padding: nothing changed"));
+        return true;
+    }
+    // M1 (make_square precedent): cap BOTH output dims against the GPU
+    // texture limit BEFORE acquiring, so an over-size pad surfaces a
+    // clear toast instead of a deferred device-loss.
+    let max_dim = renderer.max_texture_dimension_2d();
+    if result.width > max_dim || result.height > max_dim {
+        toasts.push(Toast::error(format!(
+            "Padding would exceed GPU texture limit ({} px max, would need {} × {} px)",
+            max_dim, result.width, result.height
+        )));
+        return true;
+    }
+    let new_size_world = [
+        result.width as f32 / px_per_m,
+        result.height as f32 / px_per_m,
+    ];
+    // Recenter so the ORIGINAL content's world center stays fixed. Same
+    // formula as `recenter_after_pad`, but the offset is the signed
+    // `pivot_delta` (the original content's top-left inside the new
+    // canvas) — `recenter_after_pad`'s `PixelBounds` is unsigned and
+    // can't represent the crop case, so the math is inlined here.
+    let new_translation = {
+        let (nw, nh) = (result.width as f32, result.height as f32);
+        let center_px_x = result.pivot_delta_x as f32 + src_w as f32 * 0.5;
+        let center_px_y = result.pivot_delta_y as f32 + src_h as f32 * 0.5;
+        let dx = new_size_world[0] * (center_px_x / nw - 0.5);
+        // Y-up flip (pixel space is Y-down).
+        let dy = new_size_world[1] * (0.5 - center_px_y / nh);
+        [src.old_translation[0] - dx, src.old_translation[1] - dy]
+    };
+    // Color-agnostic resize (transparent border / crop): PRESERVE the
+    // source alpha mode so a premultiplied BG-Removal result survives
+    // byte-exact — the chokepoint re-derives `Sprite.premultiplied`.
+    let edited =
+        ph2d_render::SpriteImage::new(result.width, result.height, result.pixels, src.image.alpha);
+    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, new_size_world) {
+        Err(err) => {
+            toasts.push(Toast::error(format!("Padding failed: {err}")));
+            true
+        }
+        Ok(texture_id) => {
+            if let Some(mut transform) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
+                transform.translation.x = new_translation[0];
+                transform.translation.y = new_translation[1];
+            }
+            drop_undo_pre_source_if_individual(renderer, image_edit_undo);
+            *image_edit_undo = Some(ImageEditSnapshot {
+                entity_bits,
+                pre_source: src.old_source,
+                pre_size: src.old_size_world,
+                pre_translation: src.old_translation,
+                pre_premultiplied: src.old_premultiplied,
+                post_individual_id: texture_id,
+                label: "Padding",
+            });
+            toasts.push(Toast::success(format!(
+                "Padded → {} × {} px · Cmd+Z to undo",
+                result.width, result.height
+            )));
+            true
+        }
+    }
+}
+
 /// Drain a `pending_bgremoval` Tool Action: run the BgRemoval
 /// algorithm at the sprite's full resolution and swap to a fresh
 /// Individual texture with the same dimensions (alpha-only mutation;

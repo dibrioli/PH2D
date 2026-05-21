@@ -45,6 +45,12 @@ pub struct HeroLayout {
     /// panel's own visibility gate keys off `panel_visible("bgremoval")`,
     /// which the shell drives from the active-tool id).
     pub bgremoval: Rect,
+    /// Padding panel slot — shares the Inspector's right-dock geometry,
+    /// like [`Self::bgremoval`]. Only painted while the `padding` tool is
+    /// active (the panel's own visibility gate keys off
+    /// `panel_visible("padding")`, which the shell drives from the
+    /// active-tool id).
+    pub padding: Rect,
     pub hierarchy: Rect,
     pub bottom_hud: Rect,
     /// Visible canvas region (between rail/inspector on the left
@@ -83,6 +89,8 @@ impl HeroLayout {
         // Bg Removal panel shares the Inspector's right-dock x/width;
         // it replaces the Inspector visually while the tool is active.
         let bgremoval = inspector;
+        // Padding panel shares the Inspector's right-dock geometry too.
+        let padding = inspector;
         let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
         let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
         let bottom_hud = Rect::new(
@@ -97,6 +105,7 @@ impl HeroLayout {
             left_rail,
             inspector,
             bgremoval,
+            padding,
             hierarchy,
             bottom_hud,
             canvas,

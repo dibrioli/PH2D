@@ -31,6 +31,7 @@ fn build_full_registry() -> Registry {
     ph2d_tool_bgremoval::register(&mut reg);
     ph2d_tool_grid_snap::register(&mut reg);
     ph2d_tool_make_square::register(&mut reg);
+    ph2d_tool_padding::register(&mut reg);
     ph2d_tool_real_size::register(&mut reg);
     ph2d_tool_trim_transparency::register(&mut reg);
     reg.build().expect("registry must build");
@@ -50,6 +51,7 @@ fn chrome_const_hashes_match_manifest_id() {
         ("make_square", ids::IMAGE_ACTION_MAKE_SQUARE),
         ("bgremoval", ids::IMAGE_ACTION_BGREMOVAL),
         ("real_size", ids::IMAGE_ACTION_REAL_SIZE),
+        ("padding", ids::IMAGE_ACTION_PADDING),
     ];
     for (manifest_id, chrome_const) in cases {
         let derived = hash_node_id(manifest_id);
@@ -70,9 +72,15 @@ fn image_tools_cluster_contains_all_three_action_pills_in_paint_order() {
     let ids: Vec<&str> = cluster.iter().map(|m| m.id).collect();
     assert_eq!(
         ids,
-        vec!["trim_transparency", "make_square", "bgremoval", "real_size"],
-        "expected trim → make_square → bgremoval → real_size \
-         (orders 40/50/60/70); got {ids:?}"
+        vec![
+            "trim_transparency",
+            "make_square",
+            "bgremoval",
+            "real_size",
+            "padding"
+        ],
+        "expected trim → make_square → bgremoval → real_size → padding \
+         (orders 40/50/60/70/80); got {ids:?}"
     );
 }
 
@@ -92,6 +100,7 @@ fn every_chrome_image_action_const_has_a_manifest_entry() {
         ("IMAGE_ACTION_MAKE_SQUARE", ids::IMAGE_ACTION_MAKE_SQUARE),
         ("IMAGE_ACTION_BGREMOVAL", ids::IMAGE_ACTION_BGREMOVAL),
         ("IMAGE_ACTION_REAL_SIZE", ids::IMAGE_ACTION_REAL_SIZE),
+        ("IMAGE_ACTION_PADDING", ids::IMAGE_ACTION_PADDING),
     ] {
         assert!(
             pill_node_ids.contains(&const_id.0),

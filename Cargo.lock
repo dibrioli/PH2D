@@ -3965,11 +3965,13 @@ dependencies = [
  "ph2d-panel-bgremoval",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-padding",
  "ph2d-panel-registry-init",
  "ph2d-render",
  "ph2d-script",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-tool-padding",
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
  "ph2d-tool-registry-init",
@@ -4057,6 +4059,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-padding"
+version = "0.0.0"
+dependencies = [
+ "bumpalo",
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -4065,6 +4080,7 @@ dependencies = [
  "ph2d-panel-grid-snap",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-padding",
  "ph2d-panel-widget-gallery",
 ]
 
@@ -4232,6 +4248,7 @@ dependencies = [
  "ph2d-tool-bgremoval",
  "ph2d-tool-grid-snap",
  "ph2d-tool-make-square",
+ "ph2d-tool-padding",
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
  "ph2d-tool-trim-transparency",

@@ -162,6 +162,7 @@ fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
         "bgremoval" => "bg-removal",
         "grid_snap" => "grid-settings",
         "real_size" => "real-size",
+        "padding" => "padding",
         _ => return None,
     })
 }

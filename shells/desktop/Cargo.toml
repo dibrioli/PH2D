@@ -27,6 +27,9 @@ ph2d-tool-registry-init = { path = "../../crates/ph2d-tool-registry-init" }
 # Real Size one-shot — the shell drain applies `real_size_scale` to the
 # selected sprite's ECS Transform (see render_loop/image_edit.rs).
 ph2d-tool-real-size = { path = "../../crates/ph2d-tool-real-size" }
+# Padding bake — the shell drain runs `add_padding` on the selected
+# sprite's source RGBA and swaps the texture (see hero_intents/image_edit.rs).
+ph2d-tool-padding = { path = "../../crates/ph2d-tool-padding" }
 # Wave 8 Phase 1 — panel registry install at boot. `register_all_panels()`
 # is mandatory BEFORE the first `HeroScreen::new` (audit B1 closure:
 # the previous auto-install in `HeroScreen::new` silently overrode
@@ -52,6 +55,7 @@ ph2d-editor = { path = "../../crates/ph2d-editor" }
 # registry-init's mirror feature.
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
 ph2d-panel-bgremoval = { path = "../../crates/ph2d-panel-bgremoval", optional = true }
+ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
 # `set_live_component_count` and read the panel-owned live entries
@@ -121,6 +125,7 @@ default = [
     "panel-inspector",
     "panel-grid-snap",
     "panel-bgremoval",
+    "panel-padding",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -131,4 +136,5 @@ panel-widget-gallery = ["ph2d-panel-registry-init/panel-widget-gallery"]
 panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy", "dep:ph2d-panel-hierarchy"]
 panel-inspector      = ["ph2d-panel-registry-init/panel-inspector", "dep:ph2d-panel-inspector"]
 panel-bgremoval      = ["ph2d-panel-registry-init/panel-bgremoval", "dep:ph2d-panel-bgremoval"]
+panel-padding        = ["ph2d-panel-registry-init/panel-padding", "dep:ph2d-panel-padding"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

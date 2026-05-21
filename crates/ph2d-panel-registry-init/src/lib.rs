@@ -35,6 +35,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     let mut reg = ph2d_editor_core::panel::PanelRegistry::new_empty();
     #[cfg(feature = "panel-bgremoval")]
     reg.push(ErasedPanel::new::<ph2d_panel_bgremoval::BgRemovalPanel>());
+    #[cfg(feature = "panel-padding")]
+    reg.push(ErasedPanel::new::<ph2d_panel_padding::PaddingPanel>());
     #[cfg(feature = "panel-inspector")]
     reg.push(ErasedPanel::new::<ph2d_panel_inspector::InspectorPanel>());
     #[cfg(feature = "panel-hierarchy")]
@@ -57,6 +59,10 @@ mod tests {
     const EXPECTED_TYPED: usize = {
         let mut n = 0;
         #[cfg(feature = "panel-bgremoval")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-padding")]
         {
             n += 1;
         }

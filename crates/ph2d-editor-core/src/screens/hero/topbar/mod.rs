@@ -39,6 +39,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::IMAGE_ACTION_MAKE_SQUARE,
         ids::IMAGE_ACTION_BGREMOVAL,
         ids::IMAGE_ACTION_REAL_SIZE,
+        ids::IMAGE_ACTION_PADDING,
     ] {
         store.register(
             id,
@@ -94,6 +95,10 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ids::IMAGE_ACTION_REAL_SIZE,
             ph2d_i18n::tr("tool.real_size.tooltip"),
+        ),
+        (
+            ids::IMAGE_ACTION_PADDING,
+            ph2d_i18n::tr("tool.padding.tooltip"),
         ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),

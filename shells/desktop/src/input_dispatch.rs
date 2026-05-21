@@ -668,7 +668,7 @@ impl App {
                         let tool_id = gfx.tools.tools()[idx].id();
                         let tool_label = gfx.tools.tools()[idx].label().to_string();
                         if gfx.tools.set_active(&tool_id) {
-                            gfx.toasts.push(Toast::info(format!("Tool → {tool_label}")));
+                            gfx.toasts.push(Toast::info(format!("Tool · {tool_label}")));
                             self.title_dirty = true;
                         }
                         consumed = true;

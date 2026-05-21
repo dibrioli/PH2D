@@ -473,7 +473,7 @@ impl crate::App {
             {
                 self.last_bgremoval_pushed_entity = None;
                 self.title_dirty = true;
-                toasts.push(Toast::info("Tool → Bg Removal"));
+                toasts.push(Toast::info("Tool · Bg Removal"));
             }
             // Cancel Background Removal: deactivate the tool by switching
             // back to the default (first-registered) tool. The preview
@@ -497,7 +497,7 @@ impl crate::App {
                 && tools.set_active(&ph2d_editor::ToolId::new("padding"))
             {
                 self.title_dirty = true;
-                toasts.push(Toast::info("Tool → Padding"));
+                toasts.push(Toast::info("Tool · Padding"));
             }
             if padding_cancel
                 && let Some(default_id) = tools.tools().first().map(|t| t.id())

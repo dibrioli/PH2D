@@ -144,15 +144,15 @@ impl App {
                 }
             }
             KeyCode::Digit1 if gfx.tools.set_active(&ph2d_editor::ToolId::new("brush")) => {
-                gfx.toasts.push(Toast::info("Tool → Brush"));
+                gfx.toasts.push(Toast::info("Tool · Brush"));
                 self.title_dirty = true;
             }
             KeyCode::Digit2 if gfx.tools.set_active(&ph2d_editor::ToolId::new("move")) => {
-                gfx.toasts.push(Toast::info("Tool → Move"));
+                gfx.toasts.push(Toast::info("Tool · Move"));
                 self.title_dirty = true;
             }
             KeyCode::Digit3 if gfx.tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) => {
-                gfx.toasts.push(Toast::info("Tool → Bg Removal"));
+                gfx.toasts.push(Toast::info("Tool · Bg Removal"));
                 self.title_dirty = true;
                 // Force a fresh snapshot push on the next frame so the
                 // newly-active tool sees the current selection's RGBA

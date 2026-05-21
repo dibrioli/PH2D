@@ -13,8 +13,6 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 
 pub fn populate(store: &mut WidgetStore) {
     for id in [
-        ids::BGR_MODE_CHROMA,
-        ids::BGR_MODE_GRABCUT,
         ids::BGR_APPLY,
         ids::BGR_CANCEL,
         // Eyedropper toggle. Swatches need NO store entry — they're
@@ -93,7 +91,7 @@ mod tests {
         let mut store = WidgetStore::with_capacity(8);
         populate(&mut store);
         // Buttons.
-        for id in [ids::BGR_MODE_CHROMA, ids::BGR_MODE_GRABCUT, ids::BGR_APPLY] {
+        for id in [ids::BGR_APPLY, ids::BGR_CANCEL, ids::BGR_PROTECT] {
             assert!(store.button_state(id).is_some(), "button {id:?} missing");
         }
         // Sliders seeded from the default snapshot (tuned defaults:

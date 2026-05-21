@@ -22,7 +22,7 @@
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
 use crate::{BgRemovalPanel, ids};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::tools::bgremoval::{BgRemovalMode, BrushFalloff};
+use ph2d_editor_core::tools::bgremoval::BrushFalloff;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
     paint_panel_title, paint_segmented_group,
@@ -72,29 +72,6 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-
-    // ── Mode segmented control (Chroma | Smart Cut) ────────────────
-    // Canonical segmented GROUP (central layout + gap, outlined).
-    paint_segmented_group(
-        Rect::new(inner_x, y, inner_w, row_h),
-        &[
-            (
-                "Chroma",
-                snapshot.mode == BgRemovalMode::Chroma,
-                ids::BGR_MODE_CHROMA,
-            ),
-            (
-                "Smart Cut",
-                snapshot.mode == BgRemovalMode::GrabCut,
-                ids::BGR_MODE_GRABCUT,
-            ),
-        ],
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += row_h + row_gap * 2.0;
 
     // ── Sliders ────────────────────────────────────────────────────
     // CANONICAL `paint_slider_with_chip_layout` (rectangular track +

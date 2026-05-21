@@ -58,11 +58,12 @@ impl crate::App {
         // want ("Unity shows 2000 fps"). Pause the clock around the
         // acquire, then resume for the actual encode + submit work.
         //
-        // 2026-05-21 stutter fix: the present mode is now NON-BLOCKING
-        // (Mailbox/Immediate, picked in `ph2d-gpu/src/surface.rs`) so
-        // this acquire no longer stalls multiple vsync intervals when
-        // the continuously-animating demo scene saturates the present
-        // queue — that stall was the measured mouse-move stutter.
+        // Present mode default is VSync (`Fifo`, set in
+        // `ph2d-gpu/src/surface.rs`) for smooth motion; under it this
+        // acquire blocks ~1 refresh and, when the continuously-animating
+        // demo scene saturates the queue, can stall longer = the
+        // mouse-move stutter. The user opts into the non-blocking
+        // `Immediate` mode via Config → Display to kill that stall.
         let work_before_acquire = cpu_start.elapsed();
         match surface.acquire_frame() {
             Ok(frame) => {
@@ -150,16 +151,15 @@ impl crate::App {
         //     uncached text path, or text that changes every frame and
         //     thrashes the cache, re-introduces the cost. Profile with a
         //     `PH2D_PROF`-style timer around `paint_hero_screen`.
-        //  2. The continuous redraw + present saturation — addressed
-        //     2026-05-21 by the NON-BLOCKING present mode in
-        //     `ph2d-gpu/src/surface.rs` (Mailbox/Immediate), so a busy
-        //     present queue no longer stalls `acquire_frame`. NOTE: that
-        //     mode falls back to `Fifo` if the backend exposes neither —
-        //     if the stutter returns there, confirm the active mode.
-        //     The deeper idle-CPU win (event-driven `ControlFlow::Wait`)
-        //     stays deferred and only pays off once the scene is static
-        //     (the M5 demo bouncing-motion sim animates every frame, so
-        //     the loop is continuous regardless).
+        //  2. The continuous redraw + present saturation — the
+        //     user-facing fix is Config → Display → Immediate (a
+        //     non-blocking present mode, see `ph2d-gpu/src/surface.rs`
+        //     `set_present_mode`), which stops `acquire_frame` stalling.
+        //     Default is VSync (`Fifo`) for smooth motion. The deeper
+        //     idle-CPU win (event-driven `ControlFlow::Wait`) stays
+        //     deferred and only pays off once the scene is static (the
+        //     M5 demo bouncing-motion sim animates every frame, so the
+        //     loop is continuous regardless).
         host.request_redraw();
     }
 }

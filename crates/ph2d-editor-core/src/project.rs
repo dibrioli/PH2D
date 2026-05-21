@@ -154,8 +154,8 @@ impl Default for ProjectSettings {
             pixels_per_meter: DEFAULT_PIXELS_PER_METER,
             snap_move_meters: DEFAULT_SNAP_MOVE_METERS,
             snap_rotate_deg: DEFAULT_SNAP_ROTATE_DEG,
-            display_unit: DisplayUnit::Meters,
-            image_filter: ImageFilterMode::default(),
+            display_unit: DisplayUnit::Pixels,
+            image_filter: ImageFilterMode::Smooth,
         }
     }
 }
@@ -228,7 +228,12 @@ mod tests {
     }
 
     #[test]
-    fn default_display_unit_is_meters() {
-        assert_eq!(ProjectSettings::default().display_unit, DisplayUnit::Meters);
+    fn default_display_unit_is_pixels() {
+        assert_eq!(ProjectSettings::default().display_unit, DisplayUnit::Pixels);
+    }
+
+    #[test]
+    fn default_image_filter_is_smooth() {
+        assert_eq!(ProjectSettings::default().image_filter, ImageFilterMode::Smooth);
     }
 }

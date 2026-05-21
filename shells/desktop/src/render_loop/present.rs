@@ -50,14 +50,19 @@ impl crate::App {
         } = gfx;
         let window_size = surface.size();
 
-        // M14.7 polish (10.1 fix): `surface.acquire_frame()` blocks
-        // until the next swap-chain texture is ready — under
-        // `PresentMode::Fifo` (the wgpu default + the macOS default)
-        // that wait IS the vsync interval, ~16.7 ms at 60 Hz.
-        // Including it in the raw-fps measurement caps the reading
-        // at the refresh rate, which is exactly what we DON'T want
-        // ("Unity shows 2000 fps"). Pause the clock around the
+        // M14.7 polish (10.1 fix): `surface.acquire_frame()` can block
+        // until the next swap-chain texture is ready. Under a vsync
+        // present mode that wait IS the refresh interval (~16.7 ms at
+        // 60 Hz); including it in the raw-fps measurement caps the
+        // reading at the refresh rate, which is exactly what we DON'T
+        // want ("Unity shows 2000 fps"). Pause the clock around the
         // acquire, then resume for the actual encode + submit work.
+        //
+        // 2026-05-21 stutter fix: the present mode is now NON-BLOCKING
+        // (Mailbox/Immediate, picked in `ph2d-gpu/src/surface.rs`) so
+        // this acquire no longer stalls multiple vsync intervals when
+        // the continuously-animating demo scene saturates the present
+        // queue — that stall was the measured mouse-move stutter.
         let work_before_acquire = cpu_start.elapsed();
         match surface.acquire_frame() {
             Ok(frame) => {
@@ -145,10 +150,16 @@ impl crate::App {
         //     uncached text path, or text that changes every frame and
         //     thrashes the cache, re-introduces the cost. Profile with a
         //     `PH2D_PROF`-style timer around `paint_hero_screen`.
-        //  2. The continuous redraw itself — the real fix is event-driven
-        //     rendering (`ControlFlow::Wait` + `request_redraw` only on
-        //     input / animation / async loads). Bigger blast radius;
-        //     deferred (Hierarchy-hover stutter investigation, 2026-05-20).
+        //  2. The continuous redraw + present saturation — addressed
+        //     2026-05-21 by the NON-BLOCKING present mode in
+        //     `ph2d-gpu/src/surface.rs` (Mailbox/Immediate), so a busy
+        //     present queue no longer stalls `acquire_frame`. NOTE: that
+        //     mode falls back to `Fifo` if the backend exposes neither —
+        //     if the stutter returns there, confirm the active mode.
+        //     The deeper idle-CPU win (event-driven `ControlFlow::Wait`)
+        //     stays deferred and only pays off once the scene is static
+        //     (the M5 demo bouncing-motion sim animates every frame, so
+        //     the loop is continuous regardless).
         host.request_redraw();
     }
 }

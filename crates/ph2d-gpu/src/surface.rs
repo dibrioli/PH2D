@@ -87,12 +87,25 @@ impl SurfaceContext {
             format,
             width: size.width.max(1),
             height: size.height.max(1),
-            present_mode: surface_caps
-                .present_modes
-                .iter()
-                .copied()
-                .find(|m| *m == wgpu::PresentMode::Fifo)
-                .unwrap_or(surface_caps.present_modes[0]),
+            // Prefer a NON-BLOCKING present mode so `acquire_frame()`
+            // never stalls multiple vsync intervals when the render loop
+            // saturates the present queue (the M5 demo bouncing-motion
+            // sim animates the scene every frame, so the loop is
+            // effectively continuous). Under `Fifo` that stall is the
+            // measured mouse-move stutter (worst over the Hierarchy, the
+            // heaviest scene); `Mailbox` (non-blocking, no tearing —
+            // drops stale frames) or `Immediate` (non-blocking, may
+            // tear) keep acquire from piling up. Falls back to `Fifo`
+            // when the backend exposes neither (so vsync correctness is
+            // preserved on platforms without a non-blocking mode).
+            present_mode: [
+                wgpu::PresentMode::Mailbox,
+                wgpu::PresentMode::Immediate,
+                wgpu::PresentMode::Fifo,
+            ]
+            .into_iter()
+            .find(|pref| surface_caps.present_modes.contains(pref))
+            .unwrap_or(surface_caps.present_modes[0]),
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,

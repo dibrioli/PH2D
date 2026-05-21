@@ -498,12 +498,13 @@ Violação em qualquer um = build vermelho = Implementador refaz. Não há "vou 
 
 **Exceção declarada legítima:** comentário `// LITERAL-COLOR-OK: <razão>` na mesma linha ou `// LITERAL-PX-OK: <razão>` para magic numeric. Use sparingly — Coordenador valida na revisão se a justificativa procede.
 
-### 4.1 Regras de UI que já queimaram (NÃO repita) — sem gate automático
+### 4.1 Regras de UI que já queimaram (NÃO repita)
 
-Estas não têm arch-test (ainda); são erros recorrentes que voltaram >1 vez.
+Erros recorrentes que voltaram >1 vez. A regra 1 agora TEM gate automático
+(arch-test); as demais (2.x/3) ainda dependem de disciplina + revisão.
 Bases de conhecimento: [`docs/UI_Bugs/README.md`](../UI_Bugs/README.md) (UI geral) e [`docs/Image Tools Bugs/README.md`](../Image%20Tools%20Bugs/README.md) (Image Tools). **Leia antes de tocar em painter/dispatch/tool.**
 
-1. **Nenhum glifo fora da fonte bundled (Inter) em string de UI.** Seta/símbolo (`→ ⌘ ↵ ✕ ▸ …`) vira **tofu** (quadrado). Vale pra TODA string visível: toast, tooltip, label, pill. Use ASCII; o único não-ASCII seguro comprovado é `·` (U+00B7). Já queimou 2×: glifos Cmd/Return do topbar (UI_Bugs §9.19) e a seta das toasts "Tool → X" (`b62e0c5`).
+1. **Nenhum glifo fora da fonte bundled (Inter) em string de UI.** Seta/símbolo (`→ ⌘ ↵ ✕ ▸ …`) vira **tofu** (quadrado). Vale pra TODA string visível: toast, tooltip, label, pill. Use ASCII; o único não-ASCII seguro comprovado é `·` (U+00B7). Já queimou 3×: glifos Cmd/Return do topbar (UI_Bugs §9.19), a seta das toasts "Tool → X" (`b62e0c5`) e mais 27 ocorrências varridas no sweep final. **GATE:** [`crates/ph2d-editor-core/tests/no_tofu_glyphs.rs`](../../crates/ph2d-editor-core/tests/no_tofu_glyphs.rs) varre editor-core + shell e barra glifos dos blocos arrow (U+2190–21FF) e technical-symbols (U+2300–23FF) dentro de string literal (ignora comentários). CI vermelho se reincidir.
 
 2. **Estado de MODO e estado DERIVADO não podem viver desacoplados.** Se um toggle/modo de UI (ex.: `image_edit.mode_on`) governa o que aparece (tool ativo, painel, preview), quem desliga o modo é responsável por **desligar tudo** que ele expõe. O lugar certo é uma **reconciliação por frame** sobre estado derivado — **não** um *guard* pontual no caminho de clique. Guard trata "não deixar ligar"; **não** trata "já está ligado". Bug clássico: ferramenta de imagem (Bg Removal/Padding) seguia ativa com Image Tools desligado, painel/preview órfãos persistindo (Image Tools Bugs §2, `3ef9190`). **Implementador:** ao adicionar um modo que liga subsistemas, escreva também a reconciliação que os desliga quando o modo cai, e teste o ciclo liga→usa→desliga.
 

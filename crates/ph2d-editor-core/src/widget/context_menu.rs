@@ -150,18 +150,18 @@ mod tests {
                 ContextMenuEntry::Item(
                     ListItem::new(NodeId(2), "Open")
                         .icon(IconId::Open)
-                        .value("⌘O"),
+                        .value("Cmd+O"),
                 ),
                 ContextMenuEntry::Item(
                     ListItem::new(NodeId(3), "Save")
                         .icon(IconId::Save)
-                        .value("⌘S"),
+                        .value("Cmd+S"),
                 ),
                 ContextMenuEntry::Separator(Divider::new(NodeId(4))),
                 ContextMenuEntry::Item(
                     ListItem::new(NodeId(5), "Quit")
                         .icon(IconId::Close)
-                        .value("⌘Q"),
+                        .value("Cmd+Q"),
                 ),
             ],
         )

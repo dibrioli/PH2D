@@ -73,7 +73,7 @@ pub(super) fn dispatch(
             if let Some(mut sprite) = sim_w.get_mut::<Sprite>(entity) {
                 sprite.size = size;
                 toasts.push(Toast::success(format!(
-                    "Reimported at {:.0} px/m → {:.3} × {:.3} m",
+                    "Reimported at {:.0} px/m · {:.3} × {:.3} m",
                     px_per_m, size[0], size[1]
                 )));
                 title_dirty = true;
@@ -263,7 +263,7 @@ pub(super) fn dispatch(
                                         title_dirty = true;
                                     } else {
                                         toasts.push(Toast::success(format!(
-                                            "Strategy → Individual (texture {})",
+                                            "Strategy · Individual (texture {})",
                                             texture_id
                                         )));
                                         title_dirty = true;
@@ -302,7 +302,7 @@ pub(super) fn dispatch(
             }
             (Some(_), RequestedSpriteStrategy::Atlas) => {
                 toasts.push(Toast::info(
-                    "Individual → Atlas swap is M14.C+ (atlas re-insert path)",
+                    "Individual · Atlas swap is M14.C+ (atlas re-insert path)",
                 ));
                 title_dirty = true;
                 reject_visual_reset(hero, requested);

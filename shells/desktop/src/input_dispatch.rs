@@ -649,7 +649,7 @@ impl App {
                 {
                     gfx.layout.mirror_sidebar();
                     gfx.toasts.push(Toast::info(format!(
-                        "Sidebar → {:?}",
+                        "Sidebar · {:?}",
                         gfx.layout.sidebar_side
                     )));
                     self.title_dirty = true;

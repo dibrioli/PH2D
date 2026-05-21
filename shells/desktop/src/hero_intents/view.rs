@@ -29,16 +29,16 @@ pub(crate) fn drain_view_focus(
             if let Some(bbox) = target {
                 let ([cx, cy], _) = bbox.center_half();
                 camera.center = [cx, cy];
-                "View → Selected"
+                "View · Selected"
             } else {
                 camera.center = [0.0, 0.0];
-                "View → Selected (no selection → origin)"
+                "View · Selected (no selection · origin)"
             }
         }
         ViewFocusKind::Camera => {
             // No camera-object yet — frame the origin.
             camera.center = [0.0, 0.0];
-            "View → Camera (origin)"
+            "View · Camera (origin)"
         }
         ViewFocusKind::All => {
             // Walk PresentWorld for every sprite's bbox and fit
@@ -71,10 +71,10 @@ pub(crate) fn drain_view_focus(
                 let need_h = span_y.max(span_x / aspect.max(1e-3));
                 camera.center = [cx, cy];
                 camera.height_world = (need_h * 1.1).max(0.5);
-                "View → All"
+                "View · All"
             } else {
                 *camera = Camera2d::default();
-                "View → All (empty scene → reset)"
+                "View · All (empty scene · reset)"
             }
         }
     };

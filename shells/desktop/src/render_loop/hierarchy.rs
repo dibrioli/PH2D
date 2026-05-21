@@ -48,7 +48,7 @@ pub(super) fn dispatch(
     if hero.camera_reset_pending {
         hero.camera_reset_pending = false;
         *camera = Camera2d::default();
-        toasts.push(Toast::info("View → Zero (camera reset)"));
+        toasts.push(Toast::info("View · Zero (camera reset)"));
         title_dirty = true;
     }
     // M14.7 polish: drain pending view-focus intent (F/Home key OR

@@ -295,7 +295,7 @@ mod tests {
             assert_eq!(
                 id.slug(),
                 expected_slug,
-                "{id:?} (idx {i}) → slug {:?} expected {:?}",
+                "{id:?} (idx {i}) · slug {:?} expected {:?}",
                 id.slug(),
                 expected_slug
             );

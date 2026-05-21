@@ -206,11 +206,11 @@ mod tests {
     fn builder_chain_sets_fields() {
         let i = fixture()
             .icon(IconId::Sprite)
-            .value("⌘B")
+            .value("Cmd+B")
             .chevron(true)
             .selected(true);
         assert_eq!(i.leading_icon, Some(IconId::Sprite));
-        assert_eq!(i.value.as_deref(), Some("⌘B"));
+        assert_eq!(i.value.as_deref(), Some("Cmd+B"));
         assert!(i.trailing_chevron);
         assert!(i.selected);
     }
@@ -243,7 +243,7 @@ mod tests {
         smoke(
             fixture()
                 .icon(IconId::Sprite)
-                .value("⌘B")
+                .value("Cmd+B")
                 .chevron(true)
                 .selected(true),
             Theme::Sunstone,

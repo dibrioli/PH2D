@@ -126,7 +126,7 @@ impl App {
             KeyCode::KeyM => {
                 gfx.theme = gfx.theme.next();
                 gfx.toasts
-                    .push(Toast::info(format!("Theme → {}", gfx.theme.id())));
+                    .push(Toast::info(format!("Theme · {}", gfx.theme.id())));
                 self.title_dirty = true;
             }
             KeyCode::KeyT => {
@@ -178,7 +178,7 @@ impl App {
                     // camera" so the non-editor demo mode still has
                     // a way to recover from a bad pan/zoom.
                     gfx.camera = Camera2d::default();
-                    gfx.toasts.push(Toast::info("Camera → reset"));
+                    gfx.toasts.push(Toast::info("Camera · reset"));
                 }
                 self.title_dirty = true;
             }
@@ -190,9 +190,9 @@ impl App {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.view.grid_visible = !hero.view.grid_visible;
                     let msg = if hero.view.grid_visible {
-                        "Grid → on"
+                        "Grid · on"
                     } else {
-                        "Grid → off"
+                        "Grid · off"
                     };
                     gfx.toasts.push(Toast::info(msg));
                     self.title_dirty = true;

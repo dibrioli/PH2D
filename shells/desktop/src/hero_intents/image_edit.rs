@@ -105,7 +105,7 @@ pub(crate) fn drain_trim_transparency(
                 label: "Trim",
             });
             toasts.push(Toast::success(format!(
-                "Trimmed → {} × {} px · Cmd+Z to undo",
+                "Trimmed · {} × {} px · Cmd+Z to undo",
                 result.width, result.height
             )));
             true
@@ -206,7 +206,7 @@ pub(crate) fn drain_make_square(
                 label: "Make square",
             });
             toasts.push(Toast::success(format!(
-                "Made square → {} × {} px · Cmd+Z to undo",
+                "Made square · {} × {} px · Cmd+Z to undo",
                 result.size, result.size
             )));
             true
@@ -344,7 +344,7 @@ pub(crate) fn drain_padding(
                 label: "Padding",
             });
             toasts.push(Toast::success(format!(
-                "Padded → {} × {} px · Cmd+Z to undo",
+                "Padded · {} × {} px · Cmd+Z to undo",
                 result.width, result.height
             )));
             true

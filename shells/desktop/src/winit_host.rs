@@ -101,7 +101,7 @@ impl HostHandler for LoggingHandler {
         );
     }
     fn on_close_request(&mut self) -> CloseAction {
-        println!("[{:>6}ms] close requested → Close", self.elapsed_ms());
+        println!("[{:>6}ms] close requested · Close", self.elapsed_ms());
         CloseAction::Close
     }
 }

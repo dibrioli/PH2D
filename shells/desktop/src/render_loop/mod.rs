@@ -462,7 +462,15 @@ impl crate::App {
             // Same force-refresh of the snapshot push state as the
             // Digit3 shortcut below so the next snapshot push fires
             // against the current selection.
-            if activate_bgremoval && tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) {
+            // Gated on `mode_on`: image tools are only reachable while
+            // Image Tools is on (the pills only exist then; the Digit3
+            // shortcut must also respect the mode). The reconcile below
+            // is the safety net, but gating here avoids a 1-frame
+            // activate→deactivate flicker + a spurious toast.
+            if hero.image_edit.mode_on
+                && activate_bgremoval
+                && tools.set_active(&ph2d_editor::ToolId::new("bgremoval"))
+            {
                 self.last_bgremoval_pushed_entity = None;
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool → Bg Removal"));
@@ -484,7 +492,10 @@ impl crate::App {
             // Bg Removal activate/cancel above). Clicking the Padding pill
             // raises `ActivatePadding`; the panel's Cancel raises
             // `PaddingCancel` (switch back to the default tool).
-            if activate_padding && tools.set_active(&ph2d_editor::ToolId::new("padding")) {
+            if hero.image_edit.mode_on
+                && activate_padding
+                && tools.set_active(&ph2d_editor::ToolId::new("padding"))
+            {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool → Padding"));
             }
@@ -493,6 +504,36 @@ impl crate::App {
                 && tools.set_active(&default_id)
             {
                 self.title_dirty = true;
+            }
+            // Image Tools OFF is AUTHORITATIVE over the active tool. The
+            // TopBar Image Tools toggle (`image_edit.mode_on`) and the
+            // ToolRegistry's active tool are otherwise decoupled: a
+            // stateful image tool (Bg Removal / Padding) activated while
+            // the mode was on stays active — panel + on-canvas preview and
+            // all — after the mode is toggled off, since nothing
+            // deactivated it. Reconcile here every frame, BEFORE the
+            // panel/preview bridges run: when the mode is off, no
+            // image-edit tool may remain active, so switch back to the
+            // default tool and drop the Bg-Removal preview. This is the
+            // single invariant that makes "Image Tools off ⟹ every image
+            // tool off & inaccessible" hold no matter how the tool became
+            // active (toggle-off, a stale path, the Digit3 shortcut).
+            if !hero.image_edit.mode_on {
+                let active_is_image_tool = tools
+                    .active()
+                    .map(|t| {
+                        t.id() == ph2d_editor::ToolId::new("bgremoval")
+                            || t.id() == ph2d_editor::ToolId::new("padding")
+                    })
+                    .unwrap_or(false);
+                if active_is_image_tool
+                    && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                    && tools.set_active(&default_id)
+                {
+                    self.bgremoval_preview = None;
+                    self.last_bgremoval_pushed_entity = None;
+                    self.title_dirty = true;
+                }
             }
             // Padding panel ⟷ tool bridge — drains panel edits into the
             // tool, publishes the snapshot, draws the live (non-destructive)

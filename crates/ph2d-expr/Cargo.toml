@@ -1,0 +1,15 @@
+[package]
+name = "ph2d-expr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Dependency-free leaf, like ph2d-nodegraph: the shared compute IR that node
+# crates embed. The glue to attribute streams lives in the consuming node (via
+# the `Bindings` trait), so this crate stays decoupled.
+[dependencies]

@@ -1,13 +1,16 @@
 //! Effect classes — the type-checked membrane (ADR-0030 / ADR-0032).
 //!
 //! Every node declares one effect class. The membrane is a single rule
-//! enforced here and gated in CI (W2.T3): a presentation node (`Pure` /
-//! `Temporal`, the pull side) must never depend **directly** on a `Stateful`
-//! node (the push side that writes the `SimWorld`). That crossing must go
-//! through a designated membrane export, not a plain edge. The membrane is
-//! thus *proven*, not trusted — and only the `Stateful` (gameplay) side is
-//! bound by determinism (HR-5); presentation is exempt, like Radiance
-//! Cascades.
+//! ([`Effect::can_feed`]): a presentation node (`Pure` / `Temporal`, the pull
+//! side) must never depend **directly** on a `Stateful` node (the push side
+//! that writes the `SimWorld`). That crossing must go through a designated
+//! membrane export, not a plain edge. The rule is *checked* — not just trusted
+//! — by [`crate::graph::Graph::validate`] (see `tests/validate.rs`). The CI
+//! arch-gate that runs `validate` on every authored graph lands with the
+//! evaluators (W2.T3, `docs/plans/2026-05-node-waves.md`); until then `validate`
+//! is the enforcement point, callable by any consumer. Only the `Stateful`
+//! (gameplay) side is bound by determinism (HR-5); presentation is exempt, like
+//! Radiance Cascades.
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Effect {

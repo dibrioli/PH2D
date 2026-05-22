@@ -88,6 +88,11 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
                     return Err(ParseError::BadLine(line.into())); // duplicate id
                 }
                 let name = tok.next().ok_or_else(|| ParseError::BadLine(line.into()))?;
+                if tok.next().is_some() {
+                    // Extra tokens: e.g. a corrupt file with a whitespaced name
+                    // ("n 0 motion clone") that would otherwise load lossy.
+                    return Err(ParseError::BadLine(line.into()));
+                }
                 node_recs.push((id, name.to_string()));
             }
             Some("e") => {
@@ -197,6 +202,16 @@ mod tests {
     #[test]
     fn bad_header_is_rejected() {
         assert!(matches!(from_text("oops\n"), Err(ParseError::BadHeader)));
+    }
+
+    #[test]
+    fn n_line_with_extra_tokens_is_rejected() {
+        // A type name with a space splits into extra tokens; reject rather than
+        // load a truncated name (the round-trip would be silently lossy).
+        assert!(matches!(
+            from_text("v1\nn 0 motion clone\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
     }
 
     #[test]

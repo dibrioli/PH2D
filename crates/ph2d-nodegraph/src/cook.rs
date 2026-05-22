@@ -113,17 +113,28 @@ impl Cook {
         Self::default()
     }
 
-    /// Advance one tick: snapshot the outputs of nodes that feed a `pre` edge
-    /// as the previous tick (so those edges read them next tick). Only the
-    /// sequential state is cloned, not the whole cache. Call once per frame,
-    /// between cooks.
-    pub fn advance_tick(&mut self, graph: &Graph) {
+    /// Advance one tick: snapshot the outputs of every node that feeds a `pre`
+    /// edge, so those edges read them next tick. Each `pre` source is **cooked
+    /// here at `playhead`** (memoized if the frame's target already pulled it)
+    /// before snapshotting — because a `pre` source is part of the live
+    /// sequential circuit and must hold a current value even if this frame's
+    /// cook target never pulled it (a forward consumer is not required). Call
+    /// once per frame, after the frame's `cook`(s), with the same `playhead`.
+    pub fn advance_tick(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        playhead: f64,
+    ) -> Result<(), CookError> {
         let pre_sources: std::collections::BTreeSet<NodeId> = graph
             .edges()
             .iter()
             .filter(|e| e.delayed)
             .map(|e| e.from.0)
             .collect();
+        for &src in &pre_sources {
+            self.cook_node(graph, ops, src, playhead)?;
+        }
         self.prev_outputs = self
             .cache
             .iter()
@@ -131,6 +142,7 @@ impl Cook {
             .map(|(id, c)| (*id, c.outputs.clone()))
             .collect();
         self.tick += 1;
+        Ok(())
     }
 
     /// Cook `target`'s outputs at `playhead`, pulling upstream on demand and
@@ -349,11 +361,33 @@ mod tests {
         fn eval(&self, _ctx: &mut EvalCtx<'_>) {}
     }
 
+    static DELAY_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.delay"),
+        name: "test.delay",
+        inputs: &[port("in")],
+        outputs: &[port("out")],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+    };
+
+    /// Emits its single input verbatim (used with a `pre` edge as a delay line).
+    struct Delay;
+    impl NodeOp for Delay {
+        fn manifest(&self) -> &'static NodeManifest {
+            &DELAY_MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            let passthrough = ctx.input(0).clone();
+            ctx.emit(passthrough);
+        }
+    }
+
     struct Ops {
         generator: Gen,
         scale: Scale,
         acc: Acc,
         bad: Bad,
+        delay: Delay,
     }
     impl OpResolver for Ops {
         fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
@@ -362,6 +396,7 @@ mod tests {
                 t if t == SCALE_MAN.id => Some(&self.scale),
                 t if t == ACC_MAN.id => Some(&self.acc),
                 t if t == BAD_MAN.id => Some(&self.bad),
+                t if t == DELAY_MAN.id => Some(&self.delay),
                 _ => None,
             }
         }
@@ -377,6 +412,7 @@ mod tests {
                 calls: AtomicU64::new(0),
             },
             bad: Bad,
+            delay: Delay,
         }
     }
 
@@ -411,7 +447,7 @@ mod tests {
         let o = ops();
         let mut cook = Cook::new();
         cook.cook(&g, &o, scale, 0.0).unwrap();
-        cook.advance_tick(&g);
+        cook.advance_tick(&g, &o, 0.0).unwrap();
         cook.cook(&g, &o, scale, 0.0).unwrap();
         // Combinational + unchanged → generator evaluated exactly once.
         assert_eq!(o.generator.calls.load(Ordering::Relaxed), 1);
@@ -443,13 +479,13 @@ mod tests {
             scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
             vec![1.0, 2.0, 3.0]
         );
-        cook.advance_tick(&g);
+        cook.advance_tick(&g, &o, 0.0).unwrap();
         // tick 1: gen + prev(=[1,2,3])
         assert_eq!(
             scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
             vec![2.0, 4.0, 6.0]
         );
-        cook.advance_tick(&g);
+        cook.advance_tick(&g, &o, 0.0).unwrap();
         // tick 2: gen + prev(=[2,4,6])
         assert_eq!(
             scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
@@ -537,5 +573,46 @@ mod tests {
         cook.cook(&g, &o, acc, 0.0).unwrap();
         cook.cook(&g, &o, acc, 0.0).unwrap(); // same tick, no advance_tick
         assert_eq!(o.acc.calls.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn pre_source_without_forward_consumer_is_still_advanced() {
+        // Regression for the audit's C1: `s` (a source) feeds `c` ONLY via a
+        // `pre` edge and has no forward consumer. `s` must still be cooked each
+        // tick (by advance_tick) so its value reaches `c` next tick — otherwise
+        // the feedback value is silently lost.
+        let mut g = Graph::new();
+        let s = g.add_node("test.gen");
+        let c = g.add_node("test.delay");
+        g.connect(Edge {
+            from: (s, 0),
+            to: (c, 0),
+            delayed: true,
+        })
+        .unwrap();
+        let o = ops();
+        let mut cook = Cook::new();
+
+        // tick 0: prev(s) is empty (s not cooked yet) → c emits empty.
+        assert!(scalars(&cook.cook(&g, &o, c, 0.0).unwrap()[0]).is_empty());
+        cook.advance_tick(&g, &o, 0.0).unwrap(); // cooks s, snapshots it
+        // tick 1: c reads last tick's s → [1,2,3].
+        assert_eq!(
+            scalars(&cook.cook(&g, &o, c, 0.0).unwrap()[0]),
+            vec![1.0, 2.0, 3.0]
+        );
+    }
+
+    #[test]
+    fn cooking_a_missing_node_errors() {
+        // Regression for the audit's B2: the UnknownNode path was untested.
+        let mut g = Graph::new();
+        g.add_node("test.gen");
+        let o = ops();
+        let mut cook = Cook::new();
+        assert_eq!(
+            cook.cook(&g, &o, NodeId(999), 0.0),
+            Err(CookError::UnknownNode)
+        );
     }
 }

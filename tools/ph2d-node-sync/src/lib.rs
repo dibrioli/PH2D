@@ -25,8 +25,11 @@ pub const TOML_END: &str = "# <ph2d-node-sync:end>";
 pub fn scan_node_crates(crates_dir: &Path) -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(crates_dir)
         .expect("crates dir readable")
+        // A real crate: a directory with a Cargo.toml. Rejects stray dirs,
+        // scratch folders, and bare symlinks that share the `ph2d-node-` prefix
+        // but would generate a `register` call to a crate that does not exist.
         .filter_map(Result::ok)
-        .filter(|e| e.path().is_dir())
+        .filter(|e| e.path().join("Cargo.toml").is_file())
         .filter_map(|e| e.file_name().into_string().ok())
         .filter(|n| {
             n.starts_with("ph2d-node-")
@@ -64,6 +67,13 @@ pub fn render_cargo_dep_lines(crates: &[String]) -> Vec<String> {
 /// Marker match is on the trimmed line, so indentation is irrelevant.
 pub fn splice_lines(content: &str, begin: &str, end: &str, body_lines: &[String]) -> String {
     let lines: Vec<&str> = content.lines().collect();
+    let count = |marker: &str| lines.iter().filter(|l| l.trim() == marker.trim()).count();
+    assert_eq!(
+        count(begin),
+        1,
+        "begin marker must appear exactly once: {begin}"
+    );
+    assert_eq!(count(end), 1, "end marker must appear exactly once: {end}");
     let bi = lines
         .iter()
         .position(|l| l.trim() == begin.trim())

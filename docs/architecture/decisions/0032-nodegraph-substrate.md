@@ -38,3 +38,10 @@ Criar o crate `ph2d-nodegraph` com **sete primitivos**:
 - **Portas escalares simples (sem domínio/clock no tipo):** rejeitado — é a raiz do vazamento de taxa de amostragem; o `Field` a 60Hz alimentando synth a 48kHz compila e produz lixo.
 - **Detecção de ciclo em runtime:** rejeitado — custa e é não-determinístico se a quebra for ad-hoc; `pre` + DAG resolve por construção.
 - **Dirty-bit ingênuo:** aceitável como v1, mas o alvo é incremental composável (Adapton-like) para reuso de subcomputação sob mutação.
+
+## 5. Nota de implementação (2026-05-22, pós-auditoria)
+
+- **§2 item 7 ("Registry de tipos de porta") → enum fechado.** Na implementação, o "vocabulário de portas" virou os enums fechados `Domain`/`Dim`/`Clock` em `port.rs`, **não** um registry dinâmico. É a escolha superior: enum fechado é determinístico, checável em compile-time e não tem superfície de extensão dinâmica para um agente desincronizar. O "registry" do crate `ph2d-node-registry` é de **node ops**, não de tipos de porta. Decisão ratificada: o enum vence; este item do §2 fica como histórico.
+- **Membrana + tipos são aplicados por `Graph::validate(&dyn OpResolver)`**, não por `connect` (que só garante invariantes estruturais — aciclicidade, uma-aresta-por-porta). Adicionado na remediação da 1ª auditoria (`6489f70`).
+- **`pre` (synchronous-dataflow):** `Cook::advance_tick(graph, ops, playhead)` cozinha as fontes de `pre` antes do snapshot — uma fonte de `pre` sem consumidor forward ainda avança (correção da auditoria 2026-05-22).
+- **`NodeManifest` ainda não tem `lowerings[]` nem `params`** — chegam com `ph2d-expr` (ADR-0033) ANTES do freeze (vide `docs/plans/2026-05-node-waves.md`). Congelar o contrato antes disso é prematuro.

@@ -1,56 +1,16 @@
 [workspace]
 resolver = "3"
+# Glob membership: every crate under crates/ and tools/ is a member
+# automatically. Dropping a new crate (e.g. a `ph2d-node-*` for fan-out) needs
+# ZERO edit here — removing the manual list removes the last central-file
+# collision point for parallel agents (audit 2026-05-22, codegen-A1).
+# `tests/` is NOT globbed (tests/fixtures has no Cargo.toml); shells listed
+# explicitly until the mobile/web shells exist.
 members = [
-    "crates/ph2d-core",
-    "crates/ph2d-host",
-    "crates/ph2d-ecs",
-    "crates/ph2d-gpu",
-    "crates/ph2d-render",
-    "crates/ph2d-vector",
-    "crates/ph2d-text",
-    "crates/ph2d-sdf",
-    "crates/ph2d-grid",
-    "crates/ph2d-light",
-    "crates/ph2d-physics",
-    "crates/ph2d-physics-soft",
-    "crates/ph2d-fluids",
-    "crates/ph2d-audio",
-    "crates/ph2d-asset",
-    "crates/ph2d-script",
-    "crates/ph2d-net",
-    "crates/ph2d-nodegraph",
-    "crates/ph2d-node-registry",
-    "crates/ph2d-node-registry-init",
-    "crates/ph2d-node-debug-const",
-    "crates/ph2d-input",
-    "crates/ph2d-editor",
-    "crates/ph2d-editor-core",
-    "crates/ph2d-panel-registry-init",
-    "crates/ph2d-panel-bgremoval",
-    "crates/ph2d-panel-padding",
-    "crates/ph2d-panel-widget-gallery",
-    "crates/ph2d-panel-grid-snap",
-    "crates/ph2d-panel-inspector",
-    "crates/ph2d-panel-hierarchy",
-    "crates/ph2d-tool-registry",
-    "crates/ph2d-tool-registry-init",
-    "crates/ph2d-tool-make-square",
-    "crates/ph2d-tool-grid-snap",
-    "crates/ph2d-tool-bgremoval",
-    "crates/ph2d-tool-trim-transparency",
-    "crates/ph2d-tool-real-size",
-    "crates/ph2d-tool-padding",
-    "crates/ph2d-tokens",
-    "crates/ph2d-mcp",
-    "crates/ph2d-i18n",
-    "crates/ph2d-a11y",
-    "crates/ph2d-save",
-    "crates/ph2d-telemetry",
-    "tests/spike",
+    "crates/*",
+    "tools/*",
     "shells/desktop",
-    "tools/ph2d-bindgen",
-    "tools/asset-cooker",
-    "tools/ph2d-node-sync",
+    "tests/spike",
 ]
 
 [workspace.package]

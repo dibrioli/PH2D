@@ -23,6 +23,12 @@ use crate::cook::OpResolver;
 use crate::node::NodeTypeId;
 use std::collections::BTreeMap;
 
+/// A canonical node type name must be non-empty and whitespace-free, so it
+/// round-trips through the whitespace-delimited textual format unambiguously.
+fn is_valid_type_name(name: &str) -> bool {
+    !name.is_empty() && !name.contains(char::is_whitespace)
+}
+
 /// Stable instance id within a graph. Assigned monotonically, never reused,
 /// survives serialization.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -122,13 +128,18 @@ impl Graph {
     }
 
     /// Add a node of the given canonical type name; returns its fresh id.
+    /// Panics on an invalid name (empty or containing whitespace) — a
+    /// programmer error that would otherwise corrupt the whitespace-delimited
+    /// textual format ([`crate::format`]).
     pub fn add_node(&mut self, type_name: impl Into<String>) -> NodeId {
+        let type_name = type_name.into();
+        assert!(
+            is_valid_type_name(&type_name),
+            "node type name must be non-empty and whitespace-free: {type_name:?}"
+        );
         let id = NodeId(self.next_id);
         self.next_id += 1;
-        self.nodes.push(NodeInstance {
-            id,
-            type_name: type_name.into(),
-        });
+        self.nodes.push(NodeInstance { id, type_name });
         id
     }
 
@@ -136,10 +147,12 @@ impl Graph {
     /// preserve stable ids on load). Bumps `next_id` past it. Saturating add
     /// guards against a corrupt/adversarial file using `id == u32::MAX`.
     pub fn insert_raw(&mut self, id: NodeId, type_name: impl Into<String>) {
-        self.nodes.push(NodeInstance {
-            id,
-            type_name: type_name.into(),
-        });
+        let type_name = type_name.into();
+        assert!(
+            is_valid_type_name(&type_name),
+            "node type name must be non-empty and whitespace-free: {type_name:?}"
+        );
+        self.nodes.push(NodeInstance { id, type_name });
         self.next_id = self.next_id.max(id.0.saturating_add(1));
     }
 
@@ -337,6 +350,13 @@ mod tests {
         let mut g = Graph::new();
         let a = g.add_node("a");
         assert_eq!(g.connect(edge(a, a, false)), Err(EdgeError::WouldCycle));
+    }
+
+    #[test]
+    #[should_panic(expected = "whitespace-free")]
+    fn add_node_rejects_whitespaced_name() {
+        // Would corrupt the whitespace-delimited textual format.
+        Graph::new().add_node("motion clone");
     }
 
     #[test]

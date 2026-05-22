@@ -4012,11 +4012,32 @@ name = "ph2d-net"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-node-debug-const"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-registry"
 version = "0.0.0"
 dependencies = [
  "ph2d-nodegraph",
 ]
+
+[[package]]
+name = "ph2d-node-registry-init"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-debug-const",
+ "ph2d-node-registry",
+ "ph2d-node-sync",
+]
+
+[[package]]
+name = "ph2d-node-sync"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-nodegraph"

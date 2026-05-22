@@ -1,0 +1,16 @@
+[package]
+name = "ph2d-node-sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Both a library (the scan+render logic, shared with the staleness gate) and a
+# binary (the rewriter). Dependency-free: pure std codegen.
+[lib]
+
+[[bin]]
+name = "ph2d-node-sync"
+path = "src/main.rs"

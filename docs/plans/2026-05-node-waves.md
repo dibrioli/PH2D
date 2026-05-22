@@ -28,8 +28,8 @@ Depois de W1.T4 fixar o contrato e a vertical Motion (W2) provar end-to-end: con
 ## WAVE 2 — provar UMA vertical: MOTION · SERIAL (precisa do Enio no fim)
 - **W2.T1** — avaliador de motion (pull-no-playhead) → lowering p/ `ph2d-render` instancing. ✅ commit `8c6bb4f`; auditado 3× + remediado (`2944e38`).
 - **W2.T2** — 3 nós (generator/cloner/modifier). ✅ commit `74c8254`; auditado + remediado (`2944e38`).
-- **W2.T3** — arch-gate da membrana (rodar `Graph::validate` no load; recusar `Stateful` no lado pull). ✅ parte HEADLESS commit `931883d` (`tests/membrane_gate.rs`: Stateful→pull e dim-mismatch recusados, vertical bem-tipada passa). ⏸ **PARA AQUI:** view de editor mínima + live-preview + smoke visual (`./play.command`) = passo do Enio.
-- **W2.T4** — FREEZE. **Decisão do Enio** (após o smoke de T3).
+- **W2.T3** — arch-gate da membrana (rodar `Graph::validate` no load; recusar `Stateful` no lado pull). ✅ **FECHADO**: parte HEADLESS `931883d` (`tests/membrane_gate.rs`: Stateful→pull e dim-mismatch recusados, vertical bem-tipada passa); smoke visual `c58becc` (`PH2D_MOTION_SMOKE=1` desenha as 27 instâncias via sprite renderer) **confirmado pelo Enio 2026-05-22** (27 sprites, 1 draw, posições corretas). Achado do smoke: a vertical carrega só `P`; identidade de textura/atlas é coluna de convenção sem produtor (item de fan-out, NÃO bloqueia freeze — é só mais uma coluna nomeada no Stream).
+- **W2.T4** — FREEZE. **Decisão do Enio** (após o smoke de T3 ✅). Fork em aberto: congelar agora vs. landar **param overrides por-instância** no contrato ANTES (é mudança de contrato → pós-freeze seria evento Coordenador-only).
 
 ## WAVE 3+ — FAN-OUT · PARALELO (pós-freeze)
 Tracks independentes, um node-crate por sessão, governados pelo briefing de W1.T5: mais nós de Motion · Shader (→WGSL) · Sound (sync-dataflow) · Gameplay (blocos + node-programming → Luau, `ph2d-collision2d`) · ops de `ph2d-expr` · cook path · ferramentas imperativas (ADR-0027).

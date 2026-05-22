@@ -93,7 +93,7 @@ pub const IMAGE_ACTION_TRIM: NodeId = hash_node_id("trim_transparency");
 /// pads the selected sprite with transparent pixels on the shorter axis
 /// so width == height. Click raises `pending_make_square` on `HeroScreen`;
 /// host drains, runs the algorithm, replaces sprite pixels + reprojects
-/// pivot. Algorithm in `tools/make_square/algorithm.rs`.
+/// pivot. Algorithm in crate `ph2d-tool-make-square` (ADR-0040 T1.5).
 pub const IMAGE_ACTION_MAKE_SQUARE: NodeId = hash_node_id("make_square");
 
 /// Image Tools action — Background Removal pill. Unlike `IMAGE_ACTION_TRIM`

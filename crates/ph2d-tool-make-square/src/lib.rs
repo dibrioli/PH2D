@@ -16,14 +16,13 @@
 //! - [`algorithm`] — pure-Rust `std`-only padding logic + tests.
 //! - [`icon`] — Lucide-derived `BezPath` glyph for chrome rendering.
 //! - [`manifest`] — `ToolManifest` declaration + handler stub.
-//! - [`register`] — single entry point called by
-//!   `crates/ph2d-editor/src/tools/registry_init.rs`.
+//! - [`register`] — single entry point, codegen-wired into
+//!   `ph2d-tool-registry-init::register_all` by `ph2d-tool-sync`.
 //!
-//! Public re-exports preserve the legacy `ph2d_editor::make_square` /
-//! `ph2d_editor::square_bezpath` / `ph2d_editor::MakeSquareResult`
-//! API surface — `ph2d-editor` keeps those `pub use`s pointing here
-//! via the thin facade in `crates/ph2d-editor/src/tools/make_square/`
-//! (removed in PR 10 cleanup).
+//! Consumers call this crate's public surface directly
+//! (`ph2d_tool_make_square::{make_square, square_bezpath,
+//! MakeSquareResult}`). The old editor-core facade re-export was
+//! deleted in ADR-0040 T1.5 (foundation ⊥ tools).
 
 pub mod algorithm;
 pub mod icon;

@@ -1,14 +1,11 @@
-//! Integration test for the Make Square island.
+//! Integration test for the Make Square island + its round-trip with
+//! `trim_transparency`.
 //!
-//! The new module lives at `src/tools/make_square/` but is not yet
-//! re-exported through `tools/mod.rs` (that wiring is the
-//! Coordenador's job per `INTEGRATION.md`). To still exercise the
-//! algorithm + icon under `cargo test -p ph2d-editor`, we pull the
-//! source files in via `#[path]` so they compile as a fresh module
-//! inside this test binary. `algorithm.rs` is `std`-only;
-//! `icon.rs` pulls `ph2d_vector` (`BezPath`, `RoundedRect`, `Shape`),
-//! a regular dependency of `ph2d-editor` and therefore available in
-//! integration-test builds.
+//! Make Square lives in crate `ph2d-tool-make-square`; this test
+//! consumes it as a `[dev-dependency]` (ADR-0040 T1.5 — the editor-core
+//! facade was removed so foundation has no tool dep). The cross-island
+//! round-trip with `trim_transparency` still pulls that algorithm in
+//! via `#[path]` because trim has not migrated to a crate yet.
 //!
 //! Same shape as `tests/trim_transparency_algorithm.rs` (slug-prefix
 //! convention canonicalized in `docs/IntegracaoMultiAgente/DIRETRIZ.md`).

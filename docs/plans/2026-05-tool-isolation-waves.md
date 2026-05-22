@@ -1,11 +1,31 @@
 # Plano de waves — isolamento de ferramentas (tool-as-crate)
 
 **Data:** 2026-05-22
-**Status:** em execução (neck T1).
+**Status:** T1 (neck) + T2 (bgremoval) + T3a/b (trim, padding) FEITOS e verificados headless; brush/move DIFERIDOS; canal de ação genérico (T1.2/T1.3) NÃO feito (smoke-dependente). Pendente: smoke visual do Enio + decisão sobre brush/move + canal genérico.
 **Arquitetura:** [ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) (contrato `Tool`/`ImageEditTool` + canal de ação genérico + `ph2d-tool-sync` codegen) · estende ADR-0031 (tool como unidade de feature) · espelha o fan-out de nós (ADR-0030/0039, [`node-waves.md`](2026-05-node-waves.md)).
 **Norte:** editor-core vira **pura foundation** (só o contrato). Cada tool é satélite drop-in. Escala pra N tools com **zero edit central por tool**.
 
 Os tags `T1.x`/`T2.x` que aparecerem em comentários de código referenciam este doc.
+
+---
+
+## ✅ Estado de execução (run autônomo 2026-05-22)
+
+**Re-staging consciente do plano original:** o plano previa generalizar-o-canal-primeiro (T1.2/T1.3) e relocar depois. O run autônomo INVERTEU para **relocar-primeiro** (behavior-preserving, 100% verificável headless) e deixar o canal genérico (smoke-dependente) por último — porque sem o smoke do Enio o canal genérico não pode ser provado, e a relocação entrega o grosso do valor (tools fora de editor-core) com prova headless. A relocação mantém o **vocabulário** (UiEdit/UiSnapshot) em editor-core temporariamente (re-exportado via `crate::params`); ele migra pro crate quando o canal genérico landar.
+
+| Fase | Estado | Verificação |
+|------|--------|-------------|
+| **T1.1** contrato `ImageEditTool` + `as_image_edit_mut` upcast | ✅ feito | unit tests; auditado (zero Crít/Alto) |
+| **T1.4** `ph2d-tool-sync` codegen + staleness gate | ✅ feito | idempotente; staleness+alfabético verdes; auditado |
+| **T1.5** gate de ciclo `editor_core_has_no_concrete_tool_deps` + make_square 100% no crate | ✅ feito | gate provado (injeção→FAILED); machete limpo |
+| **T2** BgRemoval relocado (~4.4k LOC) | ✅ feito | 98 testes do crate; auditado **zero achados Crít/Alto/Médio** |
+| **T3a** trim_transparency relocado (isolamento completo, `from_trim` removido) | ✅ feito | 19 testes; auditado (só doc) |
+| **T3b** padding relocado (PaddingTool→crate) | ✅ feito | 19 testes; auditado (só doc) |
+| **brush / move** | ⏸ **DIFERIDOS** | stateful NÃO-image, sem `ToolManifest` (o `ph2d-tool-sync` geraria um `register` inexistente) → exigem decisão de design (dar-lhes manifest muda o modelo de chrome) + smoke. Melhor com o canal genérico. |
+| **T1.2/T1.3** canal de ação genérico (mata os variants por-tool da `EditorAction`) | ❌ **NÃO feito** | smoke-dependente (rewire de preview/eyedropper/protect interativos + painel). É o que torna "zero edit central" COMPLETO. |
+| **🔒 FREEZE** | ❌ não feito | só após smoke do Enio confirmar a vertical + o canal genérico landar |
+
+**Resultado:** os **4 tools de imagem** (make_square, bgremoval, trim, padding) e **todos os tools com manifest** estão isolados em crates; editor-core/src/tools/ só tem brush + move (stateful não-image) + os módulos de vocabulário (params) do bgremoval/padding. **Workspace inteiro verde: 179 binários de teste.** 8 commits locais, NÃO pushados (ship é do Enio). **Pendência crítica = smoke visual** das 4 image tools (relocação é byte-a-byte o mesmo código nos mesmos call paths, risco baixo, mas não-provado sem rodar a tela).
 
 ---
 

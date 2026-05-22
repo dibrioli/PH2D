@@ -176,10 +176,17 @@ pub(super) fn dispatch(
             sim.world().get::<ph2d_ecs::Transform>(entity),
             sim.world().get::<Sprite>(entity),
         ) {
-            let (tx, ty) = (tr.translation.x, tr.translation.y);
+            // Center the preview on the sprite's VISIBLE quad center —
+            // pivot (translation) + anchor — NOT the pivot itself. Once
+            // TOOL_PIVOT / Padding-Keep moves the pivot off-center
+            // (anchor != 0) the two diverge; without the anchor term the
+            // preview slides off the sprite. (No scale/rotation term —
+            // parity with this overlay's axis-aligned, unscaled footprint.)
+            let cx = tr.translation.x + sprite.anchor[0];
+            let cy = tr.translation.y + sprite.anchor[1];
             let (sw, sh) = (sprite.size[0], sprite.size[1]);
-            let (x0, y0) = camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
-            let (x1, y1) = camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
+            let (x0, y0) = camera.world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
+            let (x1, y1) = camera.world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
             // Single source of truth: the preview's sampling quality is
             // derived from the SAME app-wide ImageFilterMode that drives
             // the wgpu sprite sampler. PixelArt → nearest, Smooth →

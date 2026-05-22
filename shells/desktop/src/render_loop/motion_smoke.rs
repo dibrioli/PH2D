@@ -66,13 +66,13 @@ pub(super) fn run(present: &mut PresentWorld, renderer: &SpriteRenderer) {
         to: (xf, 0),
         delayed: false,
     })
-    .expect("grid → transform");
+    .expect("grid -> transform");
     g.connect(Edge {
         from: (xf, 0),
         to: (clone, 0),
         delayed: false,
     })
-    .expect("transform → clone");
+    .expect("transform -> clone");
     // The same "validate on load" the editor view will run before cooking —
     // proves the authored graph is well-typed and membrane-clean.
     g.validate(&reg).expect("motion vertical is well-typed");

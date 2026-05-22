@@ -13,12 +13,12 @@
 //! Same shape as `tests/trim_transparency_algorithm.rs` (slug-prefix
 //! convention canonicalized in `docs/IntegracaoMultiAgente/DIRETRIZ.md`).
 
-// PR 4 piloto: Make Square moved out to `crates/ph2d-tool-make-square/`,
-// so this test now consumes its public crate API rather than pulling
-// source via `#[path]`. The cross-island round-trip with
-// `trim_transparency` still uses `#[path]` because that island has
-// not migrated yet (PR 7 alvo).
-use ph2d_editor_core::tools::{make_square, square_bezpath};
+// Make Square lives in `crates/ph2d-tool-make-square/`; this test
+// consumes its public crate API directly (dev-dep, ADR-0040 T1.5 —
+// the editor-core facade was removed so foundation has no tool dep).
+// The cross-island round-trip with `trim_transparency` still uses
+// `#[path]` because that island has not migrated to a crate yet.
+use ph2d_tool_make_square::{make_square, square_bezpath};
 
 #[path = "../src/tools/trim_transparency/algorithm.rs"]
 mod trim_algorithm;

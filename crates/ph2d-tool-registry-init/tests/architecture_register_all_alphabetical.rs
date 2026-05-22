@@ -1,16 +1,19 @@
-//! Wave 9 Eixo A.2 — gate alphabetical order of tool registrations.
+//! Wave 9 Eixo A.2 (extended ADR-0040 T-close) — gate alphabetical
+//! order of tool registrations.
 //!
-//! The `register_all()` body and the `[dependencies]` block in this
-//! crate's `Cargo.toml` are the two shared edit points that every new
-//! tool touches. Forcing alphabetical order means concurrent inserts
+//! Three shared edit points every new tool touches: `register_all()`
+//! body (manifest), `register_all_tools()` body (behavior `Box<dyn Tool>`,
+//! ADR-0040), and the `[dependencies]` block in this crate's
+//! `Cargo.toml`. Forcing alphabetical order means concurrent inserts
 //! from parallel agents land in distinct positions of the file with
 //! deterministic merge resolution: `git merge` produces a conflict if
 //! and only if the SAME letter is inserted twice, which is fast to
 //! resolve by hand. Random-order inserts produce semantic conflicts
 //! the merge driver can't even diagnose.
 //!
-//! This test runs on both surfaces. Failures point at the line range
-//! to re-sort.
+//! This test runs on all three surfaces. Failures point at the line
+//! range to re-sort. (All three regions are codegen'd by `ph2d-tool-sync`,
+//! so a fresh sort comes free from `cargo run -p ph2d-tool-sync`.)
 
 use std::path::PathBuf;
 
@@ -43,6 +46,36 @@ fn register_all_body_is_alphabetical() {
     assert_eq!(
         tools, sorted,
         "register_all() tool calls must be in alphabetical order. \
+         actual={tools:?} sorted={sorted:?}"
+    );
+}
+
+/// ADR-0040 T-close — same merge-hygiene invariant for the behavior
+/// registry body. Lines have shape `reg.register(ph2d_tool_<slug>::make());`.
+#[test]
+fn register_all_tools_body_is_alphabetical() {
+    let src = std::fs::read_to_string(crate_root().join("src/lib.rs"))
+        .expect("src/lib.rs must be readable");
+    let tools: Vec<&str> = src
+        .lines()
+        .map(str::trim)
+        .filter_map(|l| {
+            // Match `reg.register(ph2d_tool_<slug>::make());` only.
+            let stripped = l.strip_prefix("reg.register(ph2d_tool_")?;
+            let slug_end = stripped.find("::make());")?;
+            Some(&stripped[..slug_end])
+        })
+        .collect();
+    assert!(
+        !tools.is_empty(),
+        "no `reg.register(ph2d_tool_*::make());` lines found in src/lib.rs — \
+         parser may be stale relative to register_all_tools() shape"
+    );
+    let mut sorted = tools.clone();
+    sorted.sort_unstable();
+    assert_eq!(
+        tools, sorted,
+        "register_all_tools() calls must be in alphabetical order. \
          actual={tools:?} sorted={sorted:?}"
     );
 }

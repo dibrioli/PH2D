@@ -69,8 +69,8 @@ pub trait Tool: std::any::Any {
 
     /// Called when the shell's hit-test routes a pointer event to
     /// one of this tool's panel widgets. Default no-op; override to
-    /// fold the event back into the tool's model state (e.g. update
-    /// `BrushTool::size` when the Size slider was dragged).
+    /// fold the event back into the tool's model state (e.g. write a
+    /// slider's float value back into the tool's stored model field).
     fn handle_panel_event(&mut self, _event: PanelEvent) {}
 
     /// Mutable `Any` view for downcasting in the host (e.g. snapshot
@@ -152,18 +152,18 @@ impl ToolRegistry {
         }
     }
 
-    /// Append a tool. The first registered tool is auto-activated
-    /// (and receives `on_activate`) so the editor always has a
-    /// usable default.
-    pub fn register(&mut self, mut tool: Box<dyn Tool>) {
-        let first = self.tools.is_empty();
-        if first {
-            tool.on_activate();
-        }
+    /// Append a tool. **Pure push** — does NOT activate or call
+    /// `on_activate`. The caller picks the opening tool via
+    /// [`Self::activate_default`] (data-driven, follows `Tool::is_default`)
+    /// or [`Self::set_active`] (explicit by id), so the registration
+    /// order does not decide the boot tool (ADR-0040 T-close fix M3:
+    /// the old "first registered is auto-active" semantics fired a
+    /// spurious `on_deactivate` on the first-alphabetical tool when
+    /// codegen + `activate_default` then switched away — invisible
+    /// today because the affected tools' hooks are idempotent over the
+    /// default state, but a latent regression magnet).
+    pub fn register(&mut self, tool: Box<dyn Tool>) {
         self.tools.push(tool);
-        if first {
-            self.active = Some(0);
-        }
     }
 
     /// Borrow the full palette listing (for rendering the tool bar).
@@ -292,23 +292,27 @@ mod tests {
     }
 
     #[test]
-    fn first_register_auto_activates() {
+    fn register_is_pure_push_no_activate() {
+        // ADR-0040 T-close (M3): register no longer auto-activates the
+        // first tool — the boot tool is chosen explicitly via
+        // `activate_default` or `set_active`. So `on_activate` MUST NOT
+        // fire just from registration.
         let mut reg = ToolRegistry::new();
         let (t, a, d) = hooked("a");
         reg.register(t);
         assert_eq!(reg.tools().len(), 1);
-        let active = reg.active().expect("first register should activate");
-        assert_eq!(active.id(), ToolId::new("a"));
-        assert_eq!(a.get(), 1);
+        assert!(reg.active().is_none());
+        assert_eq!(a.get(), 0);
         assert_eq!(d.get(), 0);
     }
 
     #[test]
-    fn second_register_does_not_steal_active() {
+    fn second_register_keeps_active_unchanged() {
         let mut reg = ToolRegistry::new();
         let (ta, _, _) = hooked("a");
         let (tb, ab, _) = hooked("b");
         reg.register(ta);
+        reg.set_active(&ToolId::new("a"));
         reg.register(tb);
         assert_eq!(reg.active().unwrap().id(), ToolId::new("a"));
         assert_eq!(ab.get(), 0); // b was never activated
@@ -319,6 +323,7 @@ mod tests {
         let mut reg = ToolRegistry::new();
         reg.register(hooked("a").0);
         reg.register(hooked("b").0);
+        assert!(reg.set_active(&ToolId::new("a")));
         assert_eq!(reg.active().unwrap().id(), ToolId::new("a"));
         assert!(reg.set_active(&ToolId::new("b")));
         assert_eq!(reg.active().unwrap().id(), ToolId::new("b"));
@@ -329,6 +334,7 @@ mod tests {
         let mut reg = ToolRegistry::new();
         reg.register(hooked("a").0);
         reg.register(hooked("b").0);
+        reg.set_active(&ToolId::new("a"));
         assert!(!reg.set_active(&ToolId::new("nope")));
         assert_eq!(reg.active().unwrap().id(), ToolId::new("a"));
     }
@@ -339,16 +345,18 @@ mod tests {
         let (ta, aa, da) = hooked("a");
         let (tb, ab, db) = hooked("b");
         reg.register(ta);
-        // First register auto-activates.
-        assert_eq!(aa.get(), 1);
-        assert_eq!(da.get(), 0);
-
         reg.register(tb);
+        // No hooks yet — register is pure push.
+        assert_eq!(aa.get(), 0);
         assert_eq!(ab.get(), 0);
 
+        reg.set_active(&ToolId::new("a"));
+        assert_eq!(aa.get(), 1); // a activated
+        assert_eq!(da.get(), 0);
+
         assert!(reg.set_active(&ToolId::new("b")));
-        assert_eq!(da.get(), 1); // a was deactivated
-        assert_eq!(ab.get(), 1); // b was activated
+        assert_eq!(da.get(), 1); // a deactivated
+        assert_eq!(ab.get(), 1); // b activated
 
         // Re-setting to the already-active tool is a no-op.
         assert!(reg.set_active(&ToolId::new("b")));
@@ -361,8 +369,53 @@ mod tests {
     fn active_mut_yields_the_active_tool() {
         let mut reg = ToolRegistry::new();
         reg.register(hooked("a").0);
+        reg.set_active(&ToolId::new("a"));
         let m = reg.active_mut().expect("should have active");
         assert_eq!(m.id(), ToolId::new("a"));
+    }
+
+    #[test]
+    fn activate_default_picks_is_default_tool_not_first() {
+        // Default tool is brush-like (is_default=true) even when it's
+        // registered SECOND — proves registration order doesn't decide.
+        struct Brushy;
+        impl Tool for Brushy {
+            fn id(&self) -> ToolId {
+                ToolId::new("brushy")
+            }
+            fn label(&self) -> &str {
+                "Brushy"
+            }
+            fn icon_slug(&self) -> &str {
+                "brushy"
+            }
+            fn build_panel(&self) -> FloatingPanel {
+                FloatingPanel::new(self.id(), "Brushy")
+            }
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
+            }
+            fn is_default(&self) -> bool {
+                true
+            }
+        }
+        let mut reg = ToolRegistry::new();
+        reg.register(hooked("a").0); // alphabetically first
+        reg.register(Box::new(Brushy));
+        assert_eq!(reg.default_tool_id(), Some(ToolId::new("brushy")));
+        reg.activate_default();
+        assert_eq!(reg.active().unwrap().id(), ToolId::new("brushy"));
+    }
+
+    #[test]
+    fn activate_default_falls_back_to_first_when_no_is_default() {
+        let mut reg = ToolRegistry::new();
+        reg.register(hooked("a").0);
+        reg.register(hooked("b").0);
+        // Neither flags is_default → fall back to first registered.
+        assert_eq!(reg.default_tool_id(), Some(ToolId::new("a")));
+        reg.activate_default();
+        assert_eq!(reg.active().unwrap().id(), ToolId::new("a"));
     }
 
     /// A minimal `ImageEditTool` that doubles the source size on commit
@@ -430,6 +483,7 @@ mod tests {
             src: (Vec::new(), 0, 0),
             pending: false,
         }));
+        reg.set_active(&ToolId::new("raster"));
         let tool = reg.active_mut().expect("active");
         let ie = tool
             .as_image_edit_mut()

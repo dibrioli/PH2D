@@ -28,8 +28,12 @@ fn main() {
 
     let tool_crates = scan_tool_crates(&crates_dir);
     // Split by capability: manifest (chrome) vs behavior (palette modal).
-    let manifest_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn register");
-    let modal_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn make");
+    // Needles include the opening paren so the scan only matches the
+    // exact target functions — `pub fn register(reg: &mut Registry)`
+    // and `pub fn make() -> Box<dyn Tool>` — never a future helper like
+    // `pub fn register_thing` or `pub fn make_thumbnail`. (M1 fix.)
+    let manifest_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn register(");
+    let modal_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn make(");
     let init = crates_dir.join("ph2d-tool-registry-init");
 
     rewrite(

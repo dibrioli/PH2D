@@ -27,7 +27,7 @@ fn crates_dir() -> PathBuf {
 #[test]
 fn register_all_is_in_sync_with_folder() {
     let crates = crates_dir();
-    let manifest_crates = filter_exposing(&crates, &scan_tool_crates(&crates), "pub fn register");
+    let manifest_crates = filter_exposing(&crates, &scan_tool_crates(&crates), "pub fn register(");
     let path = crates.join("ph2d-tool-registry-init/src/lib.rs");
     let current = std::fs::read_to_string(&path).expect("lib.rs readable");
     let regenerated = splice_lines(
@@ -45,7 +45,7 @@ fn register_all_is_in_sync_with_folder() {
 #[test]
 fn register_all_tools_is_in_sync_with_folder() {
     let crates = crates_dir();
-    let modal_crates = filter_exposing(&crates, &scan_tool_crates(&crates), "pub fn make");
+    let modal_crates = filter_exposing(&crates, &scan_tool_crates(&crates), "pub fn make(");
     let path = crates.join("ph2d-tool-registry-init/src/lib.rs");
     let current = std::fs::read_to_string(&path).expect("lib.rs readable");
     let regenerated = splice_lines(

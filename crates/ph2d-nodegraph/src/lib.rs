@@ -8,6 +8,13 @@
 //! depends on it. Design: `docs/Migracao/2026-05-node-centric-architecture.md`
 //! and ADR-0030..0038 in `docs/architecture/decisions/`.
 //!
+//! 🔒 **FROZEN at W2.T4 (ADR-0039, 2026-05-22).** The Motion vertical proved
+//! the contract end to end (audited, gated, smoke-confirmed) and per-instance
+//! param overrides closed the last authoring gap, so the surface is now frozen:
+//! the arch-gate caps (`tests/architecture_contract_surface.rs`) are pinned to
+//! the current surface, and any change is a deliberate Coordenador-only event
+//! (bump the cap + write an ADR). Fan-out node crates build against this.
+//!
 //! What is **unified** here (the plural evaluators live in `ph2d-eval-*`):
 //! - algebraic port types carrying domain + dimensionality + clock ([`port`]),
 //! - the effect system / membrane rule ([`effect`]),

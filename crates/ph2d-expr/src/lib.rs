@@ -18,6 +18,13 @@
 //!
 //! This crate is dependency-free and value-typed; a consuming node implements
 //! [`eval::Bindings`] to feed attribute/param values from its `EvalCtx`.
+//!
+//! 🔒 **FROZEN at W2.T4 (ADR-0039, 2026-05-22)** alongside `ph2d-nodegraph`:
+//! the per-element compute IR is part of the node-authoring contract, so its
+//! surface (the `Expr` shape, `eval`/`eval_column`, the WGSL lowering + prelude,
+//! the `Bindings` traits) is stable. Adding an op or `Func` variant is a
+//! deliberate Coordenador-only event — CPU↔WGSL parity must be re-proven for
+//! any new transcendental, and a node may already depend on the existing shape.
 
 pub mod eval;
 pub mod expr;

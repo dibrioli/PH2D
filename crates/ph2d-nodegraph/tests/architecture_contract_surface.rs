@@ -7,6 +7,11 @@
 //! Mirrors `ph2d-editor-core`'s `architecture_panel_host_surface`. To raise a
 //! cap, bump the number here *and justify it in review* — a contract change is
 //! a rare, Coordenador-only event (the freeze discipline).
+//!
+//! **FROZEN at W2.T4 (ADR-0039, 2026-05-22):** the caps below are pinned to the
+//! *current* surface (no headroom), so ANY addition to the node-implemented
+//! contract now trips this gate and forces a conscious cap bump + ADR. This is
+//! what makes the freeze bite — the fan-out builds against a fixed contract.
 
 /// Count `fn ` declarations inside the body of `trait_decl` (up to its first
 /// closing `\n}`). Method signatures end in `;`, so the first `\n}` after the
@@ -23,9 +28,11 @@ fn nodeop_contract_is_capped() {
     let src = include_str!("../src/node.rs");
     let n = trait_method_count(src, "pub trait NodeOp");
     assert!(
-        n <= 4,
-        "NodeOp has {n} methods; cap is 4. Every node crate implements this — \
-         keep it tiny. Justify a bump in review (ADR-0031)."
+        n <= 2,
+        "NodeOp has {n} methods; cap is 2. FROZEN at W2.T4 (ADR-0039) to the \
+         current surface — every node crate implements this, so any growth \
+         ripples the whole fan-out. Adding a method is a Coordenador-only \
+         contract change: bump the cap here + write the ADR (ADR-0031)."
     );
 }
 
@@ -34,9 +41,11 @@ fn opresolver_contract_is_capped() {
     let src = include_str!("../src/cook.rs");
     let n = trait_method_count(src, "pub trait OpResolver");
     assert!(
-        n <= 2,
-        "OpResolver has {n} methods; cap is 2. The registry implements this — \
-         keep it tiny. Justify a bump in review (ADR-0032)."
+        n <= 1,
+        "OpResolver has {n} methods; cap is 1. FROZEN at W2.T4 (ADR-0039) to the \
+         current surface — the registry implements this. Adding a method is a \
+         Coordenador-only contract change: bump the cap here + write the ADR \
+         (ADR-0032)."
     );
 }
 
@@ -53,8 +62,10 @@ fn nodemanifest_field_count_is_capped() {
     let body_end = src[body_start..].find("\n}").expect("struct closes") + body_start;
     let n = src[body_start..body_end].matches("pub ").count();
     assert!(
-        n <= 10,
-        "NodeManifest has {n} pub fields; cap is 10. Justify a bump in review \
-         (it ripples to every node crate's MANIFEST literal)."
+        n <= 8,
+        "NodeManifest has {n} pub fields; cap is 8. FROZEN at W2.T4 (ADR-0039) \
+         to the current surface — adding a field breaks every node crate's \
+         `MANIFEST {{ .. }}` literal at once. A Coordenador-only contract change: \
+         bump the cap here + write the ADR (ADR-0032)."
     );
 }

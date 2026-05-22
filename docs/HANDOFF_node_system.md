@@ -49,10 +49,19 @@ Engine virou **node-centric** (ADR-0030..0038). Modelo = **funil**: neck serial 
 
 **W1 (o neck) COMPLETO + SHIPADO** — contrato + registry + codegen + compute compartilhado + template + save verificado. Auditado 3× e remediado. **CI 9/9 verde cross-platform** (incl. replay-hash de determinismo nos 3 OS); push em main `0c0e934`.
 
-**W2.T1+T2 (vertical Motion, parte HEADLESS) CONSTRUÍDO + AUDITADO + verde** — commits `8c6bb4f` (avaliador `ph2d-eval-motion`: grafo→`Vec<RenderInstance>`) + `74c8254` (3 nós reais `motion.{grid,transform,clone}` + integração: grid→transform→clone→27 instâncias, sem GPU). Auditoria adversarial 3-lentes + remediação a erro-zero em `2944e38` (vide §10/§11). **W2.T3 parte HEADLESS** (arch-gate da membrana com nós reais) em `931883d`. Commits **locais, não pushados**.
+**W2 (vertical Motion) COMPLETO + contrato CONGELADO (W2.T4, ADR-0039).** O neck fechou: avaliador `ph2d-eval-motion` + 3 nós reais `motion.{grid,transform,clone}` (auditados 3× + re-auditados a erro-zero), membrane arch-gate na registry real, smoke visual confirmado pelo Enio (27 sprites), param overrides por-instância (último gap de autoria) e o FREEZE de `ph2d-nodegraph`+`ph2d-expr`. O funil passou pro **fan-out paralelo** (§9). Commits **locais, não pushados** (§10).
 
 > ### ⏯ PONTO DE ENTRADA (próximo agente — comece AQUI)
-> A vertical Motion está **auditada, remediada, gateada e com smoke visual confirmado pelo Enio** (2026-05-22: `PH2D_MOTION_SMOKE=1 ./play.command` → 27 sprites, 1 draw, posições corretas). **W2.T3 FECHADO.** O único passo restante de W2 é **W2.T4 = FREEZE** de `ph2d-nodegraph`+`ph2d-expr` — **decisão do Enio**. Fork em aberto que ele decide: (a) congelar agora como está, ou (b) landar **param overrides por-instância** no contrato ANTES de congelar (é headless e autônomo, MAS muda o contrato — `NodeInstance.params` + `EvalCtx` expondo params; pós-freeze viraria evento Coordenador-only). O substrato já tem `NodeManifest::param_default` e os nós já leem via ele, então é a extensão natural. Releia §0 (mandato) e §1 (loop) antes de qualquer código.
+> **O neck fechou e o contrato está CONGELADO (W2.T4, ADR-0039, 2026-05-22).** A
+> vertical Motion foi auditada/gateada/smoke-confirmada, os param overrides
+> por-instância landaram (último gap de autoria), e a superfície de
+> `ph2d-nodegraph`+`ph2d-expr` foi congelada (caps do arch-gate apertados ao
+> tamanho atual; marcadores 🔒 nos `lib.rs`). **Você está no FAN-OUT agora**
+> (§9): adicionar feature = largar um node-crate isolado, sem editar nada
+> central, via o briefing `docs/IntegracaoMultiAgente/briefing-node-crate.md`.
+> NÃO altere o contrato congelado sem ser um evento Coordenador-only explícito
+> (bump do cap + ADR). Tudo local, não pushado — o ship/push é do Enio. Releia
+> §0 (mandato) e §1 (loop) antes de qualquer código.
 
 Tese: o objetivo "multi-agente sem colisão" **é** o sistema de nós, via **isolamento FBP** (nó = caixa-preta: portas tipadas + efeito, zero estado compartilhado). Adicionar feature = largar um crate isolado. Houdini é referência de poder, não design final (síntese: atributos Houdini + Fields Blender + compile-to-shader Unreal + UX Substance + **inventado: membrana de determinismo como tipo** + formato textual diffável).
 
@@ -143,9 +152,9 @@ Prova o contrato inteiro num caminho real antes do fan-out. (Plano §W2.)
 - **W2.T1 — avaliador motion** (`ph2d-eval-motion`) ✅ CONSTRUÍDO + AUDITADO (headless, verde, `8c6bb4f` + remediação `2944e38`) — pull-no-playhead → `Vec<RenderInstance>`; o upload+draw na tela é smoke.
 - **W2.T2 — 3 nós reais** ✅ CONSTRUÍDO + AUDITADO (`74c8254` + remediação `2944e38`): `motion.grid` (generator) · `motion.transform` (modifier) · `motion.clone` (cloner = multiplicador de stream, ADR-0035). Vertical headless provada por teste de integração.
 - **W2.T3 — arch-gate da membrana** ✅ **FECHADO**: parte HEADLESS (`931883d`, `ph2d-eval-motion/tests/membrane_gate.rs`: `validate` na registry real recusa `Stateful`→pull e dim-mismatch; vertical bem-tipada passa) + smoke visual (`c58becc`, `shells/desktop/src/render_loop/motion_smoke.rs` atrás de `PH2D_MOTION_SMOKE=1`) **confirmado pelo Enio 2026-05-22**.
-- **W2.T4 — 🔒 FREEZE** — congelar `ph2d-nodegraph`+`ph2d-expr`. **Decisão do Enio** (smoke de T3 ✅; aguardando o go/no-go do freeze).
+- **W2.T4 — 🔒 FREEZE** ✅ **FEITO** (ADR-0039): param overrides por-instância landados primeiro (último gap de autoria — `Graph::set_param`+`EvalCtx::param`+`p` record+`Violation::UnknownParam`+fingerprint que invalida memo), então `ph2d-nodegraph`+`ph2d-expr` congelados (caps do arch-gate apertados ao atual: `NodeOp`≤2, `OpResolver`≤1, `NodeManifest`≤8; 🔒 nos `lib.rs`).
 
-**Estado:** W2 todo headless+smoke fechado. Resta só o FREEZE (decisão do Enio) — eventualmente precedido por param overrides por-instância se ele quiser essa capacidade dentro do contrato congelado (vide ⏯ ponto de entrada + §11).
+**Estado:** **W2 COMPLETO + contrato CONGELADO.** O funil passou do neck pro fan-out paralelo (§9). Mudança no contrato agora = evento Coordenador-only (cap bump + ADR).
 
 ---
 
@@ -159,14 +168,15 @@ Tracks (briefing §): mais nós Motion · Shader (→WGSL; precisa do avaliador 
 
 **Pushados (CI verde) — até `0c0e934`:** `9d6a7ec` substrato W1.T2 · `6489f70` remediação auditoria 1 · `35fd1f3` NodeRegistry · `751b974` registry-init+codegen+gate · `7b0306f` remediação auditoria 3 · `b4a98f3` ph2d-expr · `7d18519` NodeManifest params/lowerings · `a19a141` remediação auditoria expr · `e87edb0` template+briefing · `0c0e934` verificação W1.T1.
 
-**Locais, NÃO pushados (próximo ship do Enio):** `ce8cd40` handoff playbook · `8c6bb4f` W2.T1 avaliador motion · `74c8254` W2.T2 3 nós + vertical headless · `ea8d527` handoff update · `2944e38` **remediação da auditoria W2.T1+T2** (mata falhas silenciosas + overflow, extrai `param_default`/`param_as_count` ao contrato) · `931883d` **W2.T3 headless** (membrane arch-gate na registry real) · `d0e39fc` docs · `c58becc` **W2.T3 smoke visual** (`shells/desktop` cena `PH2D_MOTION_SMOKE`, confirmada pelo Enio). W2.T1+T2 **auditados 3× + re-auditados 2× a erro-zero**; W2.T3 fechado.
+**Locais, NÃO pushados (próximo ship do Enio):** `ce8cd40` handoff playbook · `8c6bb4f` W2.T1 avaliador motion · `74c8254` W2.T2 3 nós + vertical headless · `ea8d527` handoff update · `2944e38` **remediação auditoria W2.T1+T2** (falhas silenciosas + overflow; extrai `param_default`/`param_as_count`) · `931883d` **W2.T3 headless** (membrane gate na registry real) · `d0e39fc` docs · `c58becc` **W2.T3 smoke visual** (cena `PH2D_MOTION_SMOKE`, confirmada pelo Enio) · `d0e39fc`/+ docs · `fd0c64d` **param overrides por-instância** (último gap de autoria; auditado 2× a erro-zero) · **W2.T4 FREEZE** (ADR-0039 + caps do arch-gate apertados + 🔒 nos `lib.rs`). Toda a vertical auditada a erro-zero; **W2 completo + contrato congelado**.
 
 ---
 
 ## 11. Follow-ups diferidos (não-bloqueantes; das auditorias)
 
+- ✅ ~~**Param overrides por-instância**~~ — FEITO (`fd0c64d`): `Graph::set_param` + `EvalCtx::param` (override→default→panic) + `p` record no formato + `Violation::UnknownParam` + fingerprint que invalida o memo. Nós leem via `ctx.param`. Era o último gap pré-freeze.
 - `would_cycle` O(V²) por `connect` — otimizar (BTreeSet) só se surgirem grafos grandes.
-- **Param overrides por-instância:** hoje nós leem só o default do `ParamSpec` via `NodeManifest::param_default`. Falta `NodeInstance.params` + `EvalCtx` expor params. **É o que destrava a aritmética não-default de `motion.transform`/`clone`** (hoje só o default identidade é cozido; a math é provada por unit-test direto dos helpers puros `apply_xform`/`clone_stream`). Quando entrar, os caps de `param_as_count`/`copies_within_budget` já blindam contra valores hostis. **Candidato headless natural** se o Enio liberar antes do freeze.
+- **Identidade de textura/atlas nas instâncias Motion** (revelado pelo smoke): o stream Motion carrega só `P`; textura/tint são colunas de convenção sem produtor. É extensão de convenção (coluna nomeada), NÃO mudança de contrato — item de fan-out (um nó que atribui atlas, ou o avaliador puxando de asset).
 - **Lowering Luau** + gate HR-5 — com o domínio gameplay.
 - **Avaliador shader + WGSL runtime** em `ph2d-gpu` (hoje só wgpu safe API). Os nós Motion declaram só `LoweringKind::Cpu` **por honestidade** (não há runtime WGSL p/ domínio `Instances`, e `ph2d-expr` é escalar enquanto `P` é Vec2) — declarar `Wgsl` seria assumir paridade sem prova. Revisitar quando este runtime existir.
 - **Paridade CPU↔GPU real** (device headless) — hoje coverage-gate + semântica fixada.
@@ -174,4 +184,4 @@ Tracks (briefing §): mais nós Motion · Shader (→WGSL; precisa do avaliador 
 
 ---
 
-**Confiança:** o neck está sólido (auditado 3×), e a vertical Motion headless agora também — auditada por 3 lentes adversariais, remediada a erro-zero, re-auditada 2× sem achados materiais, com membrane arch-gate na registry real. Rode o loop (§1) no padrão-ouro (§0). O que falta de W2 (editor view + live-preview + smoke + freeze) é do Enio. A engine cresce por adição de crate isolado, em paralelo.
+**Confiança:** o neck está sólido (W1 auditado 3× + CI verde) e a vertical Motion fechou o ciclo inteiro — auditada por 3 lentes adversariais + re-auditada a erro-zero em cada fase (substrato, params, freeze), membrane gate na registry real, smoke visual confirmado pelo Enio, contrato congelado (ADR-0039). **O contrato está estável; o fan-out está aberto.** Rode o loop (§1) no padrão-ouro (§0): a engine cresce por adição de crate isolado, em paralelo, sem tocar no contrato congelado. O push/CI é do Enio.

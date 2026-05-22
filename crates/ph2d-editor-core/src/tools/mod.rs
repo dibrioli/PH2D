@@ -19,7 +19,6 @@ pub mod padding;
 
 pub use brush::BrushTool;
 pub use move_tool::MoveTool;
-pub use padding::PaddingTool;
 // trim_transparency fully lives in crate `ph2d-tool-trim-transparency`
 // (ADR-0040 T3); the dead `crop_bezpath` re-export was dropped (no
 // consumer) and editor-core's recenter uses its own `PixelBounds`.

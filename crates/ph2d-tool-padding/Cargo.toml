@@ -16,13 +16,16 @@ authors.workspace = true
 # transparent pixels; negative = crop. Recomputes the content offset so
 # the caller can keep world-space position (pivot) stable.
 #
-# Leaf island crate (no editor-core dep), same shape as
-# ph2d-tool-make-square / ph2d-tool-real-size.
+# Owns the add_padding algorithm AND the stateful PaddingTool (ADR-0040
+# T3); depends on ph2d-editor-core for the Tool/FloatingPanel contract
+# (the satellite direction) — never the reverse.
 
 [dependencies]
-# Registry types (ToolManifest, Zone, Role, etc.) — single point of
-# coupling for any tool crate. Never depends on ph2d-editor (cycle).
+# Registry types (ToolManifest, Zone, Role, etc.).
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Tool trait + FloatingPanel the PaddingTool builds on; the params
+# vocabulary module is re-exported at this crate's root (ADR-0040 T3).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 # Vector primitives (BezPath, Point, Shape) for the icon glyph.
 ph2d-vector = { path = "../ph2d-vector" }
 # Accessibility (Role) for the manifest a11y declaration (HR-12).

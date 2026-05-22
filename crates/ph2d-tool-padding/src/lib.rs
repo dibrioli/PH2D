@@ -31,10 +31,17 @@
 pub mod algorithm;
 pub mod icon;
 pub mod manifest;
+pub mod tool;
 
 pub use algorithm::{PaddingResult, PaddingSpec, add_padding};
 pub use icon::padding_bezpath;
 pub use manifest::MANIFEST;
+pub use tool::PaddingTool;
+
+/// UI/action vocabulary, re-exported from editor-core (ADR-0040 T3) so
+/// the moved `tool.rs`'s `super::params` resolves to the foundation-side
+/// single source of truth (the action bus + ph2d-panel-padding read it).
+pub use ph2d_editor_core::tools::padding::params;
 
 /// Register the Padding manifest with the runtime registry. Appended
 /// (one line) to `ph2d-tool-registry-init::register_all` by the

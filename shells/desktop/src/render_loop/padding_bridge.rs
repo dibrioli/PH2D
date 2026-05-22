@@ -55,7 +55,7 @@ pub(super) fn dispatch(
     if let Some(tool) = tools.active_mut()
         && let Some(pad) = tool
             .as_any_mut()
-            .downcast_mut::<ph2d_editor::tools::padding::PaddingTool>()
+            .downcast_mut::<ph2d_tool_padding::PaddingTool>()
     {
         for edit in padding_ui_edits {
             pad.apply_ui_edit(edit);

@@ -193,7 +193,7 @@ pub(crate) fn build_initial_state(
     tools.register(Box::new(
         ph2d_tool_bgremoval::BgRemovalTool::default(),
     ));
-    tools.register(Box::new(ph2d_editor::tools::padding::PaddingTool::default()));
+    tools.register(Box::new(ph2d_tool_padding::PaddingTool::default()));
     let layout = EditorLayout::new(size.width as f32, size.height as f32);
     let vello_pass =
         match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {

@@ -16,8 +16,8 @@
 //! Individual one, and reprojects the pivot so the world position holds
 //! (the make_square precedent).
 
-use crate::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
-use crate::tool::Tool;
+use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
+use ph2d_editor_core::tool::Tool;
 
 use super::params::{PaddingUiEdit, PaddingUiSnapshot};
 

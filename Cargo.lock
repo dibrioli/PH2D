@@ -4312,6 +4312,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-core",
+ "ph2d-editor-core",
  "ph2d-tool-registry",
  "ph2d-vector",
 ]

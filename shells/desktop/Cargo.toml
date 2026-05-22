@@ -43,6 +43,10 @@ ph2d-tool-bgremoval = { path = "../../crates/ph2d-tool-bgremoval" }
 # RGBA and swaps the texture (ADR-0040 T1.5: was reached via the
 # editor-core facade, now the crate directly; editor-core ⊥ tools).
 ph2d-tool-make-square = { path = "../../crates/ph2d-tool-make-square" }
+# Trim Transparency one-shot — the shell drain calls
+# `ph2d_tool_trim_transparency::trim_transparency` and crops the sprite
+# (ADR-0040 T3; was reached via editor-core).
+ph2d-tool-trim-transparency = { path = "../../crates/ph2d-tool-trim-transparency" }
 # Real Size one-shot — the shell drain applies `real_size_scale` to the
 # selected sprite's ECS Transform (see render_loop/image_edit.rs).
 ph2d-tool-real-size = { path = "../../crates/ph2d-tool-real-size" }

@@ -55,7 +55,7 @@ pub(crate) fn drain_trim_transparency(
         )));
         return true;
     };
-    let result = ph2d_editor::tools::trim_transparency(
+    let result = ph2d_tool_trim_transparency::trim_transparency(
         &src.image.pixels,
         src.image.width,
         src.image.height,
@@ -79,7 +79,12 @@ pub(crate) fn drain_trim_transparency(
         src.old_translation,
         src.old_size_world,
         [src.image.width, src.image.height],
-        ph2d_editor::image_edit::PixelBounds::from_trim(result.bounds.clone()),
+        ph2d_editor::image_edit::PixelBounds {
+            x: result.bounds.x,
+            y: result.bounds.y,
+            width: result.bounds.width,
+            height: result.bounds.height,
+        },
     );
     let edited =
         ph2d_render::SpriteImage::new(result.width, result.height, result.pixels, src.image.alpha);

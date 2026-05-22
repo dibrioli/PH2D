@@ -39,31 +39,17 @@
 //! platforms even though background removal isn't simulation state.
 
 /// Bounding box of the surviving content in pixel space (Y-down,
-/// origin at the texture's top-left). Equivalent in shape to the
-/// `Bounds` returned by
-/// [`crate::tools::trim_transparency`](crate::tools::trim_transparency),
-/// kept as its own type here so callers from other image-edit tools
-/// (Background Removal post-trim, future Crop) share this geometry
-/// without depending on `tools::trim_transparency`.
+/// origin at the texture's top-left). Shared geometry for the
+/// image-edit recenter math, owned by the foundation so it depends on
+/// no tool crate (ADR-0040: editor-core ⊥ tools). Callers holding a
+/// tool's own bounds type (e.g. `ph2d_tool_trim_transparency::Bounds`)
+/// copy its `x`/`y`/`width`/`height` fields into this struct.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PixelBounds {
     pub x: u32,
     pub y: u32,
     pub width: u32,
     pub height: u32,
-}
-
-impl PixelBounds {
-    /// Convenience for callers holding the `tools::trim_transparency::Bounds`
-    /// type. The two shapes are identical so the cast is a copy.
-    pub fn from_trim(b: crate::tools::trim_transparency::Bounds) -> Self {
-        Self {
-            x: b.x,
-            y: b.y,
-            width: b.width,
-            height: b.height,
-        }
-    }
 }
 
 /// Compute the new world-space translation a sprite needs after a
@@ -291,21 +277,6 @@ mod tests {
             },
         );
         assert_eq!(out, [7.0, 3.0]);
-    }
-
-    #[test]
-    fn from_trim_bounds_round_trips() {
-        let trim = crate::tools::trim_transparency::Bounds {
-            x: 4,
-            y: 8,
-            width: 12,
-            height: 16,
-        };
-        let bounds = PixelBounds::from_trim(trim);
-        assert_eq!(bounds.x, 4);
-        assert_eq!(bounds.y, 8);
-        assert_eq!(bounds.width, 12);
-        assert_eq!(bounds.height, 16);
     }
 
     // ── recenter_after_pad ─────────────────────────────────────────

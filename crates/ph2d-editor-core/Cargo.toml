@@ -41,13 +41,14 @@ bumpalo               = { version = "3", features = ["collections"] }
 # `interaction_dispatch_no_alloc` test to assert hot path is
 # allocation-free. See ADR-0024 "Plano de conformidade HR-3".
 dhat = "0.3"
-# ph2d-tool-make-square — DEV-only (ADR-0040 T1.5). The runtime facade
-# + [dependencies] entry were removed (foundation ⊥ tools); the
-# trim↔make_square round-trip test in tests/make_square_algorithm.rs
-# still exercises the crate's algorithm. Dev-dep doesn't trip the
-# `architecture_cycle_prevention` gate (it parses [dependencies] only)
-# and creates no runtime cycle.
+# ph2d-tool-make-square + ph2d-tool-trim-transparency — DEV-only
+# (ADR-0040 T1.5/T3). The algorithms moved to their crates (foundation
+# ⊥ tools); the editor-core integration tests (make_square_algorithm.rs,
+# trim_transparency_algorithm.rs, and their round-trip) still exercise
+# them. Dev-dep doesn't trip the `architecture_cycle_prevention` gate
+# (it parses [dependencies] only) and creates no runtime cycle.
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
+ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 # ADR-0029 Phase C.1 NOTE: Inspector regression tests that need
 # `ph2d_panel_inspector::*` are scheduled to migrate to
 # `crates/ph2d-panel-inspector/tests/inspector_regression.rs` in

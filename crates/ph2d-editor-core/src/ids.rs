@@ -79,7 +79,7 @@ pub const TOPBAR_GRID_SETTINGS: NodeId = hash_node_id("topbar_grid_settings");
 /// Image Tools action — Trim Transparency pill. Lives in the action
 /// row that replaces the right-side TopBar clusters when
 /// `image_tools_mode` is on. Click is no-op for now — wiring to the
-/// `ph2d_editor::trim_transparency()` algorithm on a selected sprite
+/// `ph2d_tool_trim_transparency::trim_transparency()` on a selected sprite
 /// requires the live asset model (out of scope for this PR).
 // Wave 2 PR 11.4: the three Image Tools action pills are now derived
 // from the `image_tools` cluster in the runtime registry. To make

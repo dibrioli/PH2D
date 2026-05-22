@@ -9,7 +9,6 @@ pub mod bgremoval;
 pub mod brush;
 pub mod move_tool;
 pub mod padding;
-pub mod trim_transparency;
 // `make_square` fully lives in crate `ph2d-tool-make-square` (ADR-0040
 // T1.5): the editor-core facade + dep were removed so editor-core has
 // zero `ph2d-tool-<slug>` dependency (foundation ⊥ tools, gated by
@@ -21,4 +20,6 @@ pub mod trim_transparency;
 pub use brush::BrushTool;
 pub use move_tool::MoveTool;
 pub use padding::PaddingTool;
-pub use trim_transparency::{Bounds, TrimResult, crop_bezpath, trim_transparency};
+// trim_transparency fully lives in crate `ph2d-tool-trim-transparency`
+// (ADR-0040 T3); the dead `crop_bezpath` re-export was dropped (no
+// consumer) and editor-core's recenter uses its own `PixelBounds`.

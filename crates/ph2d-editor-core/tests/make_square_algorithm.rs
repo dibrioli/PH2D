@@ -7,20 +7,14 @@
 //! round-trip with `trim_transparency` still pulls that algorithm in
 //! via `#[path]` because trim has not migrated to a crate yet.
 //!
-//! Same shape as `tests/trim_transparency_algorithm.rs` (slug-prefix
-//! convention canonicalized in `docs/IntegracaoMultiAgente/DIRETRIZ.md`).
+//! Slug-prefix convention canonicalized in
+//! `docs/IntegracaoMultiAgente/DIRETRIZ.md`.
 
-// Make Square lives in `crates/ph2d-tool-make-square/`; this test
-// consumes its public crate API directly (dev-dep, ADR-0040 T1.5 —
-// the editor-core facade was removed so foundation has no tool dep).
-// The cross-island round-trip with `trim_transparency` still uses
-// `#[path]` because that island has not migrated to a crate yet.
+// Both islands now live in their own crates (ADR-0040 T1.5 / T3); this
+// test consumes their public APIs as dev-dependencies. The editor-core
+// facades were removed so the foundation has no tool dep at runtime.
 use ph2d_tool_make_square::{make_square, square_bezpath};
-
-#[path = "../src/tools/trim_transparency/algorithm.rs"]
-mod trim_algorithm;
-
-use trim_algorithm::trim_transparency;
+use ph2d_tool_trim_transparency::trim_transparency;
 
 #[test]
 fn behaviour_wider_than_tall_preserves_original_pixels_at_centered_offset() {

@@ -3918,6 +3918,7 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-make-square",
  "ph2d-tool-registry",
+ "ph2d-tool-trim-transparency",
  "ph2d-vector",
  "smallvec",
 ]
@@ -4001,6 +4002,7 @@ dependencies = [
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
  "ph2d-tool-registry-init",
+ "ph2d-tool-trim-transparency",
  "ph2d-vector",
  "postcard",
  "rfd",

@@ -1,10 +1,17 @@
 #![forbid(unsafe_code)]
-//! ph2d-tool-trim-transparency — Trim Transparency one-shot action.
+//! ph2d-tool-trim-transparency — Trim Transparency one-shot, isolated crate.
 //!
-//! Wave 2 PR 11.4. Manifest-thin crate. Declares the `ToolManifest` so
-//! the registry can derive the chrome pill (Image Tools action row);
-//! the algorithm lives at `crates/ph2d-editor/src/tools/trim_transparency/`
-//! pending the PR 9 dispatcher migration (same pattern as bgremoval).
+//! Declares the `ToolManifest` (chrome pill) AND owns the pure trim
+//! [`algorithm`] (ADR-0040 T3): scan a sprite's RGBA for the opaque
+//! bounding box and crop to it. The shell drains `EditorAction::Trim`
+//! and calls [`trim_transparency`]. Std-only, no editor-core dep — the
+//! recenter geometry editor-core needs is its own `PixelBounds`, built
+//! from this crate's [`Bounds`] fields at the shell (ADR-0040: the
+//! decoupling that lets editor-core stay foundation ⊥ tools).
+
+pub mod algorithm;
+
+pub use algorithm::{Bounds, TrimResult, trim_transparency};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

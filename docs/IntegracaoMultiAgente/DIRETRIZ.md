@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.4 — 2026-05-21 (§4.1 novo: regras de UI sem gate automático que já queimaram >1× — glifos fora da fonte bundled viram tofu; estado de modo ↔ estado derivado não pode desacoplar (reconciliação por frame, não guard pontual); enumere TODOS os caminhos de ativação (pill/palette/atalho/bus); pertencimento data-driven via cluster do manifest, não lista de ids; diagnostique medindo com env-probe. Bases: `docs/UI_Bugs/` + `docs/Image Tools Bugs/`.) · 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
+**Versão:** 6.5 — 2026-05-22 (arquitetura node-centric: §3.8 novo balde "Node crate (fan-out)" apontando pro `briefing-node-crate.md` — o fan-out mais isolado que existe, pois o wiring central é GERADO por `ph2d-node-sync`, sem edit central; §3.6 foundational ganha `ph2d-nodegraph`+`ph2d-expr` congelados (ADR-0039, W2.T4); TL;DR nota o sistema de nós como caminho principal de crescimento. Os baldes de editor — Tool/Painel/Widget/Chrome — seguem válidos: são o chrome do editor, que edita os grafos de nós.) · 6.4 — 2026-05-21 (§4.1 novo: regras de UI sem gate automático que já queimaram >1× — glifos fora da fonte bundled viram tofu; estado de modo ↔ estado derivado não pode desacoplar (reconciliação por frame, não guard pontual); enumere TODOS os caminhos de ativação (pill/palette/atalho/bus); pertencimento data-driven via cluster do manifest, não lista de ids; diagnostique medindo com env-probe. Bases: `docs/UI_Bugs/` + `docs/Image Tools Bugs/`.) · 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
 **Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
 **Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Depois, Enio te diz "Você é o Coordenador" ou "Você é o Implementador" e este doc te diz o resto.
 
@@ -17,6 +17,8 @@
 > 5. Coordenador revisa, faz smoke com Enio, commita, faz push, babysit CI.
 >
 > **Enio não decide nada operacional.** Coordenador instrui Enio passo a passo. Enio é relay mecânico entre as duas sessões Claude Code.
+>
+> **Caminho principal de crescimento = sistema de nós (fan-out, §3.8).** A engine virou node-centric (ADR-0030..0039): adicionar feature de conteúdo = largar um node-crate isolado, e até o wiring central é gerado (`ph2d-node-sync`) — o fan-out mais leve do projeto. Os baldes de editor (Tool/Painel/Widget/Chrome, §3.1-3.4) seguem para o chrome do editor que edita esses grafos.
 
 ---
 
@@ -423,9 +425,11 @@ Não toque em nada fora. Reporte quando terminar.
 
 ### 3.6 Mudança em foundational ("precisamos de um token de cor novo")
 
-Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core`, `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-panel-registry-init`, `shells/*`, arch tests.
+Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core`, `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-panel-registry-init`, `shells/*`, arch tests, **+ o contrato de nós `ph2d-nodegraph` + `ph2d-expr` (🔒 CONGELADOS em W2.T4, ADR-0039)**.
 
 **Foundational não é paralelizável.** Coordenador faz **sozinho**. Não delega.
+
+**O contrato de nós é caso especial — congelado.** Mexer em `ph2d-nodegraph`/`ph2d-expr` não é só foundational, é evento **raro Coordenador-only com ADR**: os caps do arch-gate (`architecture_contract_surface.rs`) estão apertados ao tamanho atual, então qualquer crescimento tripa o gate de propósito. Para mudar: bump do cap + ADR novo + (no `ph2d-expr`) re-provar a paridade CPU↔WGSL. Adicionar um NÓ NÃO mexe no contrato — é fan-out (§3.8).
 
 Exemplo: adicionar `ColorToken::AccentTeal`:
 1. Coord edita `docs/design/tokens.json` adicionando a chave em todos os 4 temas.
@@ -449,7 +453,23 @@ Algumas tarefas não cabem em nenhum dos 6 buckets acima porque tocam múltiplos
 3. **Documentar risk surface** — no relatório final, listar todas as mudanças sutis de comportamento que CI pode capturar mas smoke local pode não ver (ex: "função X agora cacheia via `OnceLock` — primeiro caller paga, demais zero-init; tests confirmados que só fazem `&ctx` imutável").
 4. **Tokens canônicos continuam valendo** — geralmente N/A em test code, mas se tocar paint/widget, mesma regra de §4.
 
-**Exemplo real (2026-05-19 noite):** perf audit cortou nextest workspace de 14min → 1.5min via 6 commits, cada um T1 single-crate, todos verdes em CI. Detalhe na memória `project_perf_audit_2026_05_19.md`.
+**Exemplo real (2026-05-19 noite):** perf audit cortou nextest workspace de 14min para 1.5min via 6 commits, cada um T1 single-crate, todos verdes em CI. Detalhe na memória `project_perf_audit_2026_05_19.md`.
+
+### 3.8 Node crate novo — fan-out (o caminho principal de crescimento)
+
+A engine é node-centric (ADR-0030..0039). Uma feature de **conteúdo** (um gerador, um modifier, um cloner, um nó de shader/som/gameplay) é um **node-crate isolado** — e este é o **fan-out mais leve do projeto**, porque o acoplamento é só o contrato congelado e o wiring central é **gerado**, não editado.
+
+**Diferença-chave vs. os baldes de editor (§3.1-3.4):** lá o Coordenador edita um `register_all` central na mão. Aqui **não há edit central** — `cargo run -p ph2d-node-sync` regenera `register_all_nodes` + as deps de `ph2d-node-registry-init` a partir de um scan das pastas `crates/ph2d-node-*`, e o `workspace.members` é glob. Dois agentes adicionando dois nós **não tocam nenhum arquivo em comum, nem o central**.
+
+**O briefing canônico já existe e é pronto-pra-colar:** [`docs/IntegracaoMultiAgente/briefing-node-crate.md`](briefing-node-crate.md). O Coordenador o entrega (preenchendo domínio/slug/spec); o Implementador cria só a sua pasta `crates/ph2d-node-<domínio>-<slug>/`, roda o sync, e fecha o gate local `cargo test -p ph2d-node-registry-init`. Exemplo a copiar: `crates/ph2d-node-debug-wave/` (template) e a vertical Motion `crates/ph2d-node-motion-{grid,transform,clone}/`.
+
+**Regras específicas do balde de nó (somam às 3 obrigações do §1.3):**
+1. **Não tocar o contrato congelado** (`ph2d-nodegraph`/`ph2d-expr`, §3.6) — se você acha que precisa, pare e reporte; quase sempre é sinal de que o nó está modelado errado. Mudança de contrato é evento Coordenador-only com ADR.
+2. **Ler params via `ctx.param("nome")`** — nunca o default do manifest direto, nunca `unwrap_or(0.0)`. Param que vira contagem/alocação passa por `param_as_count` + cap (vide `motion.grid`/`clone`).
+3. **Efeito + membrana:** se o nó não escreve estado de jogo, é `Pure`/`Temporal` (lado pull, isento de HR-5); `Stateful` é só gameplay. `Graph::validate` é quem prova a membrana — rode-o nos testes.
+4. **Teste golden** input→output (ADR-0031 §3): grafo source→seu-nó → registra → `validate` → `cook` → asserta a saída.
+
+Estado vivo do sistema de nós + o loop de operação autônoma: [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md).
 
 ---
 
@@ -808,6 +828,8 @@ Hard Rules completas em [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2
 
 | O que | Onde |
 |-------|------|
+| **Node crate novo (fan-out)** | `crates/ph2d-node-<domínio>-<slug>/` (wiring via `cargo run -p ph2d-node-sync`; gate `cargo test -p ph2d-node-registry-init`) |
+| **Contrato de nós (🔒 congelado)** | `crates/ph2d-nodegraph/` + `crates/ph2d-expr/` (Coordenador-only + ADR) |
 | Tool nova | `crates/ph2d-tool-<slug>/` |
 | Painel novo | `crates/ph2d-panel-<slug>/` |
 | Widget primitive | `crates/ph2d-editor-core/src/widget/<slug>.rs` |
@@ -852,12 +874,16 @@ gh run watch <id> --exit-status
 - **ADR Convention-by-discovery:** [`docs/architecture/decisions/0027-convention-by-discovery.md`](../architecture/decisions/0027-convention-by-discovery.md)
 - **ADR Codegen + design canonical:** [`docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md`](../architecture/decisions/0028-wave-2-codegen-design-canonical.md)
 - **ADR Trait-driven panel host:** [`docs/architecture/decisions/0029-trait-driven-panel-host.md`](../architecture/decisions/0029-trait-driven-panel-host.md)
+- **Sistema de nós — briefing do fan-out (§3.8):** [`docs/IntegracaoMultiAgente/briefing-node-crate.md`](briefing-node-crate.md)
+- **Sistema de nós — estado vivo + loop autônomo:** [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md)
+- **ADR FREEZE do contrato de nós (W2.T4):** [`docs/architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md`](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md)
 - **Memória LLM (auto-loaded):** `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`
 
 ---
 
 ## 11. Versão + histórico
 
+- **6.5 — 2026-05-22:** Arquitetura node-centric absorvida no doc. §3.8 novo balde "Node crate (fan-out)" — o fan-out mais leve do projeto (wiring gerado por `ph2d-node-sync`, zero edit central), apontando pro `briefing-node-crate.md` como briefing canônico. §3.6 foundational ganha o contrato `ph2d-nodegraph`+`ph2d-expr` (🔒 congelado em W2.T4, ADR-0039 — mudança = Coordenador-only + ADR + re-prova de paridade CPU↔WGSL). TL;DR + §9.2 + §10 atualizados. Os baldes de editor (§3.1-3.4) permanecem válidos (chrome do editor que edita os grafos de nós).
 - **6.1 — 2026-05-19 noite:** Perf audit + pre-commit T2 cuts A+B aplicados (commit `10ef2b6` + range `436626e..cb13efe`). Acréscimos: §3.7 trabalho cross-cutting (perf audit / refactor cross-crate); §5.6 como NÃO escrever test slow (com `TextSystem::without_system_fonts()`, `OnceLock` GpuContext, alloc-pequena pra limit-check); §6.4 armadilhas conhecidas (typos pt-BR, cargo lock, hook lento). Tabela §5.4 atualizada com T2 escopado vs T2 workspace.
 - **6.0 — 2026-05-19:** Modelo 2 papéis (Coordenador absorvendo PRCI) + fluxo invertido (scaffold central antes do Implementador começar). Condensa em um único doc: v5.0 DIRETRIZ + 4 docs operacionais 01-04 + STATE.md + DIRETRIZ_CODIFICACAO_RAPIDA.md + PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md.
 - **5.0 — 2026-05-17** (arquivada): Diretriz unificada substituindo 01-04, ainda com modelo 4 papéis (Enio relay / Coord / Periférico / PRCI) e fluxo Periférico-primeiro.

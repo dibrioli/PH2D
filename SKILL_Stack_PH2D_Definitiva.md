@@ -882,7 +882,17 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 3. Usar `t!("identifier", args...)` no código.
 4. CI checa que toda chave usada existe em todos bundles core.
 
-**Adicionar uma tool ao editor (post ADR-0027 / convention-by-discovery):**
+**⚠️ EM MIGRAÇÃO ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md), [plano](docs/plans/2026-05-tool-isolation-waves.md)):**
+o passo 3 abaixo (editar `register_all` à mão + member raiz) está sendo
+substituído por **codegen** (`ph2d-tool-sync`, espelha `ph2d-node-sync`):
+`workspace.members` já é glob e o registro vira gerado a partir do scan de
+`crates/ph2d-tool-*`. Os `Tool` impls stateful (hoje em `editor-core/src/tools/`)
+também migram pros crates, com o contrato `Tool`/`ImageEditTool`. Enquanto o
+contrato não congela (pós-vertical BgRemoval, T2), **NÃO** siga os passos manuais
+no escuro — confira o estado do plano primeiro. Esta seção é reescrita pro fluxo
+codegen no FREEZE.
+
+**Adicionar uma tool ao editor (post ADR-0027 / convention-by-discovery — fluxo manual, em migração p/ codegen):**
 1. Crie `crates/ph2d-tool-<slug>/` seguindo Apêndice A do plano `docs/Migracao/2026-05-convention-by-discovery.md`:
    - `Cargo.toml` com deps mínimas (ph2d-tool-registry + as que o tool precisa). NÃO precisa editar `ph2d-editor/Cargo.toml`.
    - `src/lib.rs`: `pub const MANIFEST: ToolManifest = ...;` + `pub fn register(reg: &mut Registry)`.

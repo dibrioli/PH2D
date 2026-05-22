@@ -61,12 +61,18 @@ push, não no CI vermelho 30min depois.
 
 ## Plano operacional ativo
 
-[`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) — 13
-marcos M1..M13 para implementação real do core pós-spike.
+[`docs/plans/2026-05-tool-isolation-waves.md`](docs/plans/2026-05-tool-isolation-waves.md) —
+**reestruturação tool-as-crate** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md)):
+ferramentas saem de `editor-core` e viram crates satélite drop-in, espelhando o
+fan-out de nós. Funil neck (T1: contrato `Tool`/`ImageEditTool` + canal de ação
+genérico + `ph2d-tool-sync` codegen) → 🔒 FREEZE → fan-out. Vertical que prova o
+contrato = **BgRemoval** (T2). Cada fase tem gate de auditoria adversarial + smoke.
 
-**Estado em 2026-05-09:** M1-M12 implementados e mergeados (PRs #1-#28).
-M13 em curso: tool palette UI shipada (PR #30), em paralelo com design
-library handoff para Claude Design (vide `docs/design/`).
+Plano paralelo (sistema de nós): [`docs/plans/2026-05-node-waves.md`](docs/plans/2026-05-node-waves.md) —
+W1/W2 fechados + contrato CONGELADO (ADR-0039); fan-out de nós aberto.
+
+**Histórico:** [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) —
+M1..M13 do core pós-spike, todos mergeados (PRs #1-#30).
 
 ## Design system
 

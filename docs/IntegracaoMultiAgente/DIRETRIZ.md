@@ -228,6 +228,8 @@ Cinco buckets. O Coordenador classifica o pedido antes de fazer qualquer coisa.
 
 ### 3.1 Tool nova ("vamos criar a tool Transform")
 
+> **⚠️ EM MIGRAÇÃO ([ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) · [plano de waves](../plans/2026-05-tool-isolation-waves.md)).** Os passos 6-8 abaixo (member raiz manual + dep + linha em `register_all`) estão sendo substituídos por **codegen** (`ph2d-tool-sync`, espelha `ph2d-node-sync`): glob de members + registro gerado, zero edit central — e os `Tool` impls stateful migram pros crates via o contrato `Tool`/`ImageEditTool`. Até o FREEZE (pós-vertical BgRemoval, T2), confira o estado do plano antes de seguir o scaffold manual. Esta receita é reescrita (e ganha um balde "tool fan-out" irmão do §3.8) **no FREEZE**, não antes — para não documentar contrato instável.
+
 **Coordenador (scaffold):**
 
 1. Decide `slug` (`transform`), `cluster` (`image_tools` / `selection` / etc.), `zone` (`top_right` / `left_rail` / etc.), `order` numérico.

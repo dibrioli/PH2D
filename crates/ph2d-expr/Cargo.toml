@@ -9,7 +9,8 @@ authors.workspace = true
 
 [lib]
 
-# Dependency-free leaf, like ph2d-nodegraph: the shared compute IR that node
-# crates embed. The glue to attribute streams lives in the consuming node (via
-# the `Bindings` trait), so this crate stays decoupled.
+# The IR + lowerings (expr/eval/wgsl) are dependency-free; the `stream` module
+# adds the Field->column glue over ph2d-nodegraph's attribute Stream, so the
+# crate depends on the (leaf) substrate. Acyclic: nodegraph does not depend back.
 [dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }

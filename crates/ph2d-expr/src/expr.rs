@@ -65,6 +65,16 @@ pub enum Func {
     Noise, // (x) → deterministic value noise in [0,1)
 }
 
+impl Func {
+    /// Whether this function is bit-deterministic across platforms (HR-5 safe).
+    /// Transcendentals (`Sin`/`Cos`) and `Sqrt` are **not** — they vary by
+    /// libm/GPU. The gameplay/Luau lowering must reject non-deterministic funcs
+    /// (or use a fixed-point lowering); the presentation lowerings are exempt.
+    pub fn is_deterministic(self) -> bool {
+        !matches!(self, Func::Sin | Func::Cos | Func::Sqrt)
+    }
+}
+
 impl Expr {
     // Small ergonomic constructors so node code reads cleanly.
     pub fn cnst(v: f32) -> Self {

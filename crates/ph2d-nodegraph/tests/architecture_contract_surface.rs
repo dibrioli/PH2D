@@ -39,3 +39,22 @@ fn opresolver_contract_is_capped() {
          keep it tiny. Justify a bump in review (ADR-0032)."
     );
 }
+
+#[test]
+fn nodemanifest_field_count_is_capped() {
+    // Every node crate writes a `NodeManifest { .. }` literal (no `..Default`
+    // in const context), so adding a field breaks them ALL — the fan-out
+    // re-serialization this gate guards (audit M1, ADR-0032).
+    let src = include_str!("../src/node.rs");
+    let start = src
+        .find("pub struct NodeManifest {")
+        .expect("struct present");
+    let body_start = src[start..].find('{').expect("opening brace") + start;
+    let body_end = src[body_start..].find("\n}").expect("struct closes") + body_start;
+    let n = src[body_start..body_end].matches("pub ").count();
+    assert!(
+        n <= 10,
+        "NodeManifest has {n} pub fields; cap is 10. Justify a bump in review \
+         (it ripples to every node crate's MANIFEST literal)."
+    );
+}

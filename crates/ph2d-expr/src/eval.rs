@@ -44,12 +44,21 @@ pub fn eval(expr: &Expr, bindings: &dyn Bindings) -> f32 {
                 Func::Abs => arg(0).abs(),
                 Func::Sqrt => arg(0).sqrt(),
                 Func::Floor => arg(0).floor(),
-                Func::Fract => arg(0).fract(),
+                // WGSL `fract` is `x - floor(x)` (always >= 0), NOT Rust's
+                // sign-preserving `f32::fract`. Match WGSL so CPU/GPU agree
+                // for negative inputs (audit C1).
+                Func::Fract => {
+                    let v = arg(0);
+                    v - v.floor()
+                }
                 Func::Min => arg(0).min(arg(1)),
                 Func::Max => arg(0).max(arg(1)),
+                // WGSL `mix(a,b,t) = a*(1-t) + b*t`. Match it algebraically
+                // (bit-exact GPU parity is not guaranteed — the GPU may fuse;
+                // acceptable, presentation is HR-5-exempt).
                 Func::Mix => {
                     let (a, b, t) = (arg(0), arg(1), arg(2));
-                    a + (b - a) * t
+                    a * (1.0 - t) + b * t
                 }
                 Func::Noise => noise1(arg(0)),
             }
@@ -73,10 +82,13 @@ fn bool_f32(b: bool) -> f32 {
 }
 
 /// Deterministic value noise in `[0, 1)` from the bits of `x` — RNG-free and
-/// reproducible (no `thread_rng`), and bit-identical across platforms (integer
-/// hashing only). The WGSL lowering emits a matching `ph2d_noise1` helper.
+/// reproducible (no `thread_rng`), bit-identical across platforms (integer
+/// hashing only). [`crate::wgsl::wgsl_prelude`] emits a WGSL `ph2d_noise1` with
+/// the **same** hash, so CPU and GPU agree. The seed avoids the degenerate
+/// `noise(0) == 0`, and `-0.0` is canonicalized to `+0.0` so both map alike.
 pub fn noise1(x: f32) -> f32 {
-    let mut h = x.to_bits();
+    let xc = if x == 0.0 { 0.0 } else { x };
+    let mut h = xc.to_bits() ^ 0x9e37_79b9;
     h ^= h >> 16;
     h = h.wrapping_mul(0x7feb_352d);
     h ^= h >> 15;

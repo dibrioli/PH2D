@@ -21,8 +21,10 @@
 
 pub mod eval;
 pub mod expr;
+pub mod stream;
 pub mod wgsl;
 
 pub use eval::{Bindings, eval};
 pub use expr::{BinOp, Expr, Func, UnaryOp};
-pub use wgsl::to_wgsl;
+pub use stream::{StreamBindings, eval_column};
+pub use wgsl::{to_wgsl, wgsl_prelude};

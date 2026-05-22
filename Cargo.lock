@@ -3926,6 +3926,9 @@ dependencies = [
 [[package]]
 name = "ph2d-expr"
 version = "0.0.0"
+dependencies = [
+ "ph2d-nodegraph",
+]
 
 [[package]]
 name = "ph2d-fluids"

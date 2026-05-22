@@ -77,6 +77,53 @@ pub trait Tool: std::any::Any {
     /// push into `BgRemovalTool`). Implementors override with
     /// `fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }`.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    /// Capability upcast: a tool that transforms the active entity's
+    /// raster returns `Some(self)`; everything else uses the default
+    /// `None`. The shell drives **any** image-edit tool through one
+    /// generic path ([`ImageEditTool`]) without naming a concrete
+    /// type — the contract that lets ferramentas de imagem viverem em
+    /// crates satélite (ADR-0040 §2.1). Implementors that also impl
+    /// [`ImageEditTool`] override with `{ Some(self) }`.
+    fn as_image_edit_mut(&mut self) -> Option<&mut dyn ImageEditTool> {
+        None
+    }
+}
+
+/// A tool that produces new pixels for the active entity (background
+/// removal, padding, trim, make-square, real-size). The shell drives
+/// **every** `ImageEditTool` through a single generic loop (ADR-0040
+/// §2.1): feed the source when selection changes, recompute the
+/// preview as panel edits arrive (via [`Tool::handle_panel_event`]),
+/// and commit at full resolution when the tool asks. No per-tool
+/// `EditorAction` variant, no per-tool branch in the shell — adding an
+/// image-edit tool touches nothing central.
+///
+/// All buffers are straight-alpha RGBA8 (`w*h*4` bytes, row-major).
+/// Tool-specific interactions that don't fit this contract (eyedropper
+/// colour picking, protection-brush dabs) stay on the concrete type
+/// and are reached by the shell via [`Tool::as_any_mut`] downcast — a
+/// documented exception (ADR-0040 §3), generalized only if a second
+/// tool needs the same shape.
+pub trait ImageEditTool: Tool {
+    /// Hand the active entity's source pixels (straight alpha) to the
+    /// tool when the selection changes. The tool caches them and
+    /// computes whatever downscaled preview it needs internally.
+    fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32);
+
+    /// Current preview as `(rgba, width, height)`, if the tool
+    /// produces a live preview. `None` while there is nothing to show
+    /// (no source yet, or a tool that only acts on commit).
+    fn preview(&self) -> Option<(&[u8], u32, u32)>;
+
+    /// Drain the "user requested commit" flag (e.g. the Apply button).
+    /// Returns `true` exactly once per request; the shell then calls
+    /// [`Self::run_full`] and swaps the entity's texture.
+    fn take_pending_commit(&mut self) -> bool;
+
+    /// Run the edit at full source resolution, returning the new
+    /// `(rgba, width, height)`. Called by the shell on commit.
+    fn run_full(&mut self) -> (Vec<u8>, u32, u32);
 }
 
 /// Owns the registered tools and tracks which one is active. The
@@ -284,5 +331,82 @@ mod tests {
         reg.register(hooked("a").0);
         let m = reg.active_mut().expect("should have active");
         assert_eq!(m.id(), ToolId::new("a"));
+    }
+
+    /// A minimal `ImageEditTool` that doubles the source size on commit
+    /// — exercises the generic capability upcast without any concrete
+    /// tool. `Hooked` (a plain `Tool`) must NOT upcast; `Raster` must.
+    struct Raster {
+        id: ToolId,
+        src: (Vec<u8>, u32, u32),
+        pending: bool,
+    }
+
+    impl Tool for Raster {
+        fn id(&self) -> ToolId {
+            self.id.clone()
+        }
+        fn label(&self) -> &str {
+            "Raster"
+        }
+        fn icon_slug(&self) -> &str {
+            "raster"
+        }
+        fn build_panel(&self) -> FloatingPanel {
+            FloatingPanel::new(self.id.clone(), "Raster")
+        }
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+        fn as_image_edit_mut(&mut self) -> Option<&mut dyn ImageEditTool> {
+            Some(self)
+        }
+    }
+
+    impl ImageEditTool for Raster {
+        fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
+            self.src = (rgba, width, height);
+        }
+        fn preview(&self) -> Option<(&[u8], u32, u32)> {
+            if self.src.0.is_empty() {
+                None
+            } else {
+                Some((&self.src.0, self.src.1, self.src.2))
+            }
+        }
+        fn take_pending_commit(&mut self) -> bool {
+            std::mem::take(&mut self.pending)
+        }
+        fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
+            // Trivial: echo the source back (commit semantics tested
+            // per-tool; here we only prove the dispatch wiring).
+            self.src.clone()
+        }
+    }
+
+    #[test]
+    fn plain_tool_does_not_upcast_to_image_edit() {
+        let (mut t, _, _) = hooked("plain");
+        assert!(t.as_image_edit_mut().is_none());
+    }
+
+    #[test]
+    fn image_edit_tool_upcasts_and_drives_through_generic_contract() {
+        let mut reg = ToolRegistry::new();
+        reg.register(Box::new(Raster {
+            id: ToolId::new("raster"),
+            src: (Vec::new(), 0, 0),
+            pending: false,
+        }));
+        let tool = reg.active_mut().expect("active");
+        let ie = tool
+            .as_image_edit_mut()
+            .expect("Raster should upcast to ImageEditTool");
+        assert!(ie.preview().is_none(), "no source yet");
+        ie.set_source(vec![1, 2, 3, 4], 1, 1);
+        assert_eq!(ie.preview(), Some((&[1u8, 2, 3, 4][..], 1, 1)));
+        assert!(!ie.take_pending_commit(), "no commit requested");
+        let (px, w, h) = ie.run_full();
+        assert_eq!((px, w, h), (vec![1, 2, 3, 4], 1, 1));
     }
 }

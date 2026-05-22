@@ -15,3 +15,10 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
+
+[dev-dependencies]
+# Real Motion nodes, to prove the headless vertical (grid→transform→clone).
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
+ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
+ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }

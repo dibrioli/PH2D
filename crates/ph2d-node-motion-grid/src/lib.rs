@@ -5,17 +5,24 @@
 //! `ph2d-eval-motion`'s (P → world_pos).
 //!
 //! Params (manifest defaults until per-instance overrides land — node-waves.md):
-//! `rows` (3), `cols` (3), `spacing` (1.0).
+//! `rows` (3), `cols` (3), `spacing` (1.0). `rows`/`cols` are read as element
+//! counts via [`param_as_count`] (non-finite/negative → 0) and the `rows × cols`
+//! product is capped at [`RECOMMENDED_MAX_ELEMENTS`], so no param value can
+//! overflow the allocation.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
+use ph2d_nodegraph::node::{
+    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    param_as_count,
+};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
+/// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.grid"),
     name: "motion.grid",
@@ -40,16 +47,37 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 1.0,
         },
     ],
+    // CPU-only by design: there is no Instances-domain WGSL runtime yet
+    // (handoff §9), and the grid is a structural *generator* (it produces an
+    // element count), not a per-element `ph2d-expr` map that an `eval_column`
+    // could lower. Declaring `Wgsl` here would claim parity nothing can run.
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// The grid param read; `.expect` documents that the name is a literal of this
+/// crate's own `MANIFEST` (a typo fails the golden test, never silent `0.0`).
 fn param(name: &str) -> f32 {
     MANIFEST
-        .params
-        .iter()
-        .find(|p| p.name == name)
-        .map(|p| p.default)
-        .unwrap_or(0.0)
+        .param_default(name)
+        .expect("grid reads only its own declared params")
+}
+
+/// Build the `rows × cols` position grid (row-major, spaced by `spacing`),
+/// capping the element count at `max` so a pathological `rows × cols` can never
+/// overflow the allocation. Pure and `max`-parameterized so the cap is testable
+/// without allocating the full budget. The emitted count is `positions.len()`.
+fn build_grid(rows: usize, cols: usize, spacing: f32, max: usize) -> Vec<[f32; 2]> {
+    let count = rows.saturating_mul(cols).min(max);
+    let mut positions = Vec::with_capacity(count);
+    'outer: for r in 0..rows {
+        for c in 0..cols {
+            if positions.len() == count {
+                break 'outer;
+            }
+            positions.push([c as f32 * spacing, r as f32 * spacing]);
+        }
+    }
+    positions
 }
 
 struct MotionGrid;
@@ -60,19 +88,18 @@ impl NodeOp for MotionGrid {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let rows = param("rows").max(0.0) as usize;
-        let cols = param("cols").max(0.0) as usize;
-        let spacing = param("spacing");
-        let mut positions = Vec::with_capacity(rows * cols);
-        for r in 0..rows {
-            for c in 0..cols {
-                positions.push([c as f32 * spacing, r as f32 * spacing]);
-            }
-        }
+        // `rows`/`cols` come from `f32` params; convert *totally* (a non-finite
+        // or negative override yields 0, huge values clamp) and cap the product
+        // so a corrupt scene value can never overflow the allocation.
+        let rows = param_as_count(param("rows"), RECOMMENDED_MAX_ELEMENTS);
+        let cols = param_as_count(param("cols"), RECOMMENDED_MAX_ELEMENTS);
+        let positions = build_grid(rows, cols, param("spacing"), RECOMMENDED_MAX_ELEMENTS);
         ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
     }
 }
 
+/// Register this node with the runtime registry. Called (via codegen) from
+/// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionGrid))
 }
@@ -107,5 +134,21 @@ mod tests {
             }
             _ => panic!("P must be Vec2"),
         }
+    }
+
+    #[test]
+    fn build_grid_caps_pathological_product_at_max() {
+        // 100 × 100 = 10_000 requested, but max is 4 → exactly 4 emitted, and
+        // the count matches the Vec len (the emit invariant). Row-major order is
+        // preserved up to the cut.
+        let g = build_grid(100, 100, 1.0, 4);
+        assert_eq!(g.len(), 4);
+        assert_eq!(g, vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]);
+    }
+
+    #[test]
+    fn build_grid_zero_dim_is_empty() {
+        assert!(build_grid(0, 5, 1.0, 64).is_empty());
+        assert!(build_grid(5, 0, 1.0, 64).is_empty());
     }
 }

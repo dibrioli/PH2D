@@ -13,10 +13,12 @@
 //! Compute: `out[i] = in.v[i] * gain + sin(t)`.
 //!
 //! NOTE on params: the manifest declares the param *spec + default*; per-element
-//! eval reads the default via [`param_default`]. Per-instance param *overrides*
-//! (a value map on the graph's `NodeInstance`, surfaced through `EvalCtx`) are a
-//! planned graph feature — see `docs/plans/2026-05-node-waves.md`. A node that
-//! is purely `Temporal`/`Pure` and reads only defaults is correct today.
+//! eval reads the default via [`NodeManifest::param_default`] (the contract
+//! helper — `.expect` the name, never a silent fallback). Per-instance param
+//! *overrides* (a value map on the graph's `NodeInstance`, surfaced through
+//! `EvalCtx`) are a planned graph feature — see
+//! `docs/plans/2026-05-node-waves.md`. A node that is purely `Temporal`/`Pure`
+//! and reads only defaults is correct today.
 
 use ph2d_expr::{BinOp, Expr, Func, eval_column};
 use ph2d_node_registry::{NodeRegistry, RegistryError};
@@ -49,16 +51,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// The default value of a declared parameter (until per-instance overrides land).
-fn param_default(name: &str) -> f32 {
-    MANIFEST
-        .params
-        .iter()
-        .find(|p| p.name == name)
-        .map(|p| p.default)
-        .unwrap_or(0.0)
-}
-
 struct DebugWave;
 
 impl NodeOp for DebugWave {
@@ -74,8 +66,15 @@ impl NodeOp for DebugWave {
             Expr::call(Func::Sin, vec![Expr::param("t")]),
         );
         let t = ctx.playhead() as f32;
+        // `gain` is read from the manifest default via the contract helper
+        // (per-instance overrides land later — node-waves.md); `.expect`
+        // documents that `gain` is a declared param of this node, so a typo
+        // fails the golden test rather than silently reading 0.0.
+        let gain = MANIFEST
+            .param_default("gain")
+            .expect("debug.wave declares the `gain` param");
         let params = |name: &str| match name {
-            "gain" => param_default("gain"),
+            "gain" => gain,
             "t" => t,
             _ => 0.0,
         };

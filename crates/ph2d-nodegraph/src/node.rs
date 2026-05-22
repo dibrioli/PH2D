@@ -52,6 +52,35 @@ pub struct ParamSpec {
     pub default: f32,
 }
 
+/// A safety ceiling for turning an *untrusted* `f32` parameter into an
+/// allocation size ([`param_as_count`]). Streams are `Vec`-backed SoA
+/// everywhere, so an out-of-range count is an allocation-overflow / OOM vector.
+/// `1 << 24` (~16.7M elements) is well above the 100k-instance target (MEMORY
+/// M5) yet far below where `count * count` overflows `usize`. A domain may pass
+/// its own budget; this is the recommended default.
+pub const RECOMMENDED_MAX_ELEMENTS: usize = 1 << 24;
+
+/// Interpret an `f32` parameter as a non-negative element count, **totally**:
+/// non-finite (`NaN`/`±∞`) and negative values map to `0`, fractional values
+/// floor, and the result is clamped to `max`. This mirrors `ph2d-expr`'s
+/// totality discipline (a bad value degrades to a defined number, never a
+/// panic or a silent `as usize` overflow) — necessary because [`NodeOp::eval`]
+/// cannot return a `Result`. Use it (with a per-element-product guard, e.g.
+/// [`usize::saturating_mul`] then `.min(max)`) wherever a param drives a
+/// `Vec::with_capacity` / element count, so a corrupt scene value can never
+/// trigger a capacity-overflow abort.
+pub fn param_as_count(value: f32, max: usize) -> usize {
+    if value.is_finite() && value >= 0.0 {
+        // The `f32 -> u64` cast is *saturating* in Rust (no UB), so a value far
+        // beyond `u64` — e.g. `1e30` — becomes `u64::MAX`, and `.min(max)` then
+        // clamps it to the budget. For in-range values (`< 2^24 <= 2^53`) the
+        // floored f32 is exactly representable, so the count is exact.
+        (value.floor() as u64).min(max as u64) as usize
+    } else {
+        0
+    }
+}
+
 /// Which backends a node type can lower to (ADR-0033/0034). Every node supports
 /// [`LoweringKind::Cpu`] (its [`NodeOp::eval`]); a node whose math is expressed
 /// via `ph2d-expr` also lists `Wgsl` (GPU) and/or `Luau` (gameplay). The domain
@@ -81,6 +110,27 @@ pub struct NodeManifest {
     pub params: &'static [ParamSpec],
     /// Backends this node can lower to. Always includes [`LoweringKind::Cpu`].
     pub lowerings: &'static [LoweringKind],
+}
+
+impl NodeManifest {
+    /// The declared default of parameter `name`, or `None` if this node type has
+    /// no such parameter. Per-instance overrides are a planned graph feature
+    /// (`docs/plans/2026-05-node-waves.md`); until they land a node reads this
+    /// default in its `eval`.
+    ///
+    /// Returning `Option` (rather than a silent fallback) makes a *misspelled*
+    /// param name — a programmer error, since the name is a literal constant of
+    /// the node's own crate — a checkable error: the call site `.expect`s it and
+    /// the node's golden test exercises that path, so a typo fails the test
+    /// instead of silently reading `0.0` in production (gold-standard rule: no
+    /// silent failure). This replaces the per-crate `unwrap_or(0.0)` helper that
+    /// each node used to copy-paste.
+    pub fn param_default(&self, name: &str) -> Option<f32> {
+        self.params
+            .iter()
+            .find(|p| p.name == name)
+            .map(|p| p.default)
+    }
 }
 
 /// Implemented by every concrete node type. `manifest` is the static contract;
@@ -113,5 +163,44 @@ mod tests {
     fn fnv1a_known_vector() {
         // FNV-1a of empty input is the offset basis.
         assert_eq!(fnv1a_64(b""), 0xcbf2_9ce4_8422_2325);
+    }
+
+    static PARAMMED: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.parammed"),
+        name: "test.parammed",
+        inputs: &[],
+        outputs: &[],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[ParamSpec {
+            name: "rows",
+            default: 3.0,
+        }],
+        lowerings: &[LoweringKind::Cpu],
+    };
+
+    #[test]
+    fn param_default_finds_declared_and_rejects_unknown() {
+        assert_eq!(PARAMMED.param_default("rows"), Some(3.0));
+        // A misspelled name is None (the call site `.expect`s it) — never a
+        // silent 0.0.
+        assert_eq!(PARAMMED.param_default("rowz"), None);
+    }
+
+    #[test]
+    fn param_as_count_is_total_over_pathological_floats() {
+        let max = RECOMMENDED_MAX_ELEMENTS;
+        // happy: floors fractional, passes integral.
+        assert_eq!(param_as_count(3.0, max), 3);
+        assert_eq!(param_as_count(2.9, max), 2);
+        // non-finite and negative degrade to 0 (no panic, no garbage).
+        assert_eq!(param_as_count(f32::NAN, max), 0);
+        assert_eq!(param_as_count(f32::INFINITY, max), 0);
+        assert_eq!(param_as_count(f32::NEG_INFINITY, max), 0);
+        assert_eq!(param_as_count(-5.0, max), 0);
+        // huge finite values clamp to the budget instead of saturating to a
+        // `usize` that would overflow a `Vec` allocation.
+        assert_eq!(param_as_count(1e30, max), max);
+        assert_eq!(param_as_count(max as f32 * 4.0, max), max);
     }
 }

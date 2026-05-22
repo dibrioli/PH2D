@@ -23,6 +23,13 @@
 //!
 //! `atlas_uv`/`anchor`/`texture_id`/`premultiplied` use the shared-atlas
 //! defaults; richer cloners can extend the convention later.
+//!
+//! Producer coverage so far: the W2 Motion vertical (`motion.grid` →
+//! `transform` → `clone`) emits only `P`; `size`/`rot`/`tint` are reserved
+//! columns of the convention with no producer node yet (their lowering is
+//! covered by the `lowering_reads_convention_with_defaults` unit test below). A
+//! later node that sets them needs no change here — the lowering already reads
+//! them.
 
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::{Cook, CookError, OpResolver};
@@ -52,8 +59,17 @@ pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
         .collect()
 }
 
-/// Cook `target` at `playhead` and lower its first output port to render
+/// Cook `target` at `playhead` and lower its **output port 0** to render
 /// instances. Reuse the same [`Cook`] across frames for incremental cheapness.
+///
+/// Lowering a single port is intentional: a Motion render target is one
+/// instance stream. A target with several output ports has only port 0 lowered
+/// here (a multi-port target would select the port at the call site — not
+/// needed by any Motion node today, all of which have exactly one output). A
+/// target that legitimately declares **zero** outputs yields an empty `Vec`;
+/// note the cook itself already rejects a node that *declares* an output but
+/// emits none ([`CookError::OutputCountMismatch`]), so an empty result here
+/// means "no output port", never a dropped stream.
 pub fn evaluate_motion(
     cook: &mut Cook,
     graph: &Graph,
@@ -92,7 +108,7 @@ mod tests {
     use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
     use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-    const INST_FRAME: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+    const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
     #[test]
     fn lowering_reads_convention_with_defaults() {
@@ -123,7 +139,7 @@ mod tests {
         inputs: &[],
         outputs: &[PortSpec {
             name: "out",
-            ty: INST_FRAME,
+            ty: INST_VEC2,
         }],
         effect: Effect::Pure,
         clock: Clock::Frame,

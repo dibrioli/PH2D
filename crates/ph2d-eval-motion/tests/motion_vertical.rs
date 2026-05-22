@@ -65,7 +65,10 @@ fn grid_transform_clone_lowers_to_render_instances() {
 #[test]
 fn incremental_recook_is_stable() {
     // Cooking the same static graph twice (same Cook) yields identical output —
-    // the memoized cook path is stable for a combinational motion graph.
+    // the memoized cook path is stable for a combinational motion graph. This
+    // graph is purely combinational (no `pre` edge), so `advance_tick` snapshots
+    // nothing; the point is that re-cooking a memoized graph reproduces its
+    // output exactly (the live-preview re-cook every frame must not drift).
     let reg = registry();
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");

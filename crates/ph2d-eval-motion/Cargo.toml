@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-eval-motion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The Motion domain evaluator (ADR-0034): cooks a motion graph (pull) and lowers
+# the instance stream to ph2d-render RenderInstances. The data path is headless
+# (no GPU); the upload+draw is the shell's job.
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-render = { path = "../ph2d-render" }

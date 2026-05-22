@@ -6,14 +6,17 @@
 //! cargo run -p ph2d-tool-sync
 //! ```
 //!
-//! Rewrites the marked regions of `ph2d-tool-registry-init`'s `src/lib.rs`
-//! (the `register_all` body) and `Cargo.toml` (the `[dependencies]`). The
-//! staleness gate in that crate fails CI if this was not run. Twin of
-//! `ph2d-node-sync` (ADR-0040).
+//! Rewrites three marked regions: in `ph2d-tool-registry-init`'s `src/lib.rs`
+//! the `register_all` body (manifests, crates with `pub fn register`) and the
+//! `register_all_tools` body (behavior `Box<dyn Tool>`, crates with
+//! `pub fn make`), and in its `Cargo.toml` the `[dependencies]` (all tool
+//! crates). The staleness gate in that crate fails CI if this was not run.
+//! Twin of `ph2d-node-sync` (ADR-0040).
 
 use ph2d_tool_sync::{
-    RS_BEGIN, RS_END, TOML_BEGIN, TOML_END, render_cargo_dep_lines, render_register_lines,
-    scan_tool_crates, splice_lines,
+    RS_BEGIN, RS_END, TOML_BEGIN, TOML_END, TOOLS_BEGIN, TOOLS_END, filter_exposing,
+    render_cargo_dep_lines, render_register_lines, render_register_tools_lines, scan_tool_crates,
+    splice_lines,
 };
 use std::path::Path;
 
@@ -24,13 +27,22 @@ fn main() {
         .expect("crates dir resolves");
 
     let tool_crates = scan_tool_crates(&crates_dir);
+    // Split by capability: manifest (chrome) vs behavior (palette modal).
+    let manifest_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn register");
+    let modal_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn make");
     let init = crates_dir.join("ph2d-tool-registry-init");
 
     rewrite(
         &init.join("src/lib.rs"),
         RS_BEGIN,
         RS_END,
-        &render_register_lines(&tool_crates),
+        &render_register_lines(&manifest_crates),
+    );
+    rewrite(
+        &init.join("src/lib.rs"),
+        TOOLS_BEGIN,
+        TOOLS_END,
+        &render_register_tools_lines(&modal_crates),
     );
     rewrite(
         &init.join("Cargo.toml"),
@@ -40,9 +52,10 @@ fn main() {
     );
 
     println!(
-        "ph2d-tool-sync: wired {} tool crate(s): {:?}",
+        "ph2d-tool-sync: {} crate(s) total; {} manifest, {} modal (make).",
         tool_crates.len(),
-        tool_crates
+        manifest_crates.len(),
+        modal_crates.len(),
     );
 }
 

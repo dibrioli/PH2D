@@ -1,14 +1,28 @@
-//! [`BrushTool`] — first concrete tool. Model: size/opacity/flow/color.
+#![forbid(unsafe_code)]
+//! [`BrushTool`] — the painter tool (modal, palette). Model:
+//! size/opacity/flow/color.
 //!
 //! Panel layout follows Procreate's brush HUD: one "Tip" tab plus a
 //! row of three Sliders (Size / Opacity / Flow) + one ColorSwatch.
-//! The slider values reflect the model fields; mouse drag (next PR)
-//! will write back into them.
+//! The slider values reflect the model fields; mouse drag writes back
+//! into them via `handle_panel_event`.
+//!
+//! ADR-0040 T-close: isolated crate. [`make`] is the codegen entry
+//! (`ph2d-tool-sync` → `register_all_tools`); `BrushTool::is_default`
+//! marks it the editor's boot/fallback tool.
 
-use crate::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
-use crate::tool::{PanelEvent, Tool};
-use crate::widget::{ColorSwatch, Slider};
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::floating_panel::{
+    FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId,
+};
+use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_editor_core::widget::{ColorSwatch, Slider};
+
+/// Construct the Brush tool as a boxed trait object for the behavior
+/// `ToolRegistry`. Codegen target for `ph2d-tool-sync`.
+pub fn make() -> Box<dyn Tool> {
+    Box::new(BrushTool::default())
+}
 
 const SIZE_NODE: NodeId = NodeId(101);
 const OPACITY_NODE: NodeId = NodeId(102);
@@ -94,11 +108,28 @@ impl Tool for BrushTool {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    /// Brush is the editor's default / fallback tool (ADR-0040 T-close).
+    fn is_default(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn brush_is_the_default_tool() {
+        assert!(BrushTool::default().is_default());
+    }
+
+    #[test]
+    fn make_builds_a_brush() {
+        let t = make();
+        assert_eq!(t.id(), ToolId::new("brush"));
+        assert!(t.is_default());
+    }
 
     #[test]
     fn defaults_match_procreate_brush_baseline() {

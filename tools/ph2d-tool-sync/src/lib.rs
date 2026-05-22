@@ -17,9 +17,13 @@
 
 use std::path::Path;
 
-/// Markers delimiting the generated region in `src/lib.rs` (Rust comments).
+/// Markers delimiting the generated `register_all` (manifests) region.
 pub const RS_BEGIN: &str = "// <ph2d-tool-sync:begin>";
 pub const RS_END: &str = "// <ph2d-tool-sync:end>";
+/// Markers delimiting the generated `register_all_tools` (behavior /
+/// `Box<dyn Tool>`) region in `src/lib.rs`.
+pub const TOOLS_BEGIN: &str = "// <ph2d-tool-sync:tools:begin>";
+pub const TOOLS_END: &str = "// <ph2d-tool-sync:tools:end>";
 /// Markers delimiting the generated region in `Cargo.toml` (TOML comments).
 pub const TOML_BEGIN: &str = "# <ph2d-tool-sync:begin>";
 pub const TOML_END: &str = "# <ph2d-tool-sync:end>";
@@ -51,6 +55,24 @@ fn crate_ident(crate_name: &str) -> String {
     crate_name.replace('-', "_")
 }
 
+/// Of `crates`, keep those whose `src/lib.rs` contains `needle`. Used to
+/// split tool crates by capability: `"pub fn register"` → data-registry
+/// (manifest/chrome) tools; `"pub fn make"` → behavior-registry
+/// (modal/palette) tools. A crate may match both (e.g. bgremoval), one
+/// (make_square = register only; brush = make only), driving which
+/// generated list it lands in. Text scan, like the alphabetical gate.
+pub fn filter_exposing(crates_dir: &Path, crates: &[String], needle: &str) -> Vec<String> {
+    crates
+        .iter()
+        .filter(|c| {
+            std::fs::read_to_string(crates_dir.join(c).join("src/lib.rs"))
+                .map(|s| s.contains(needle))
+                .unwrap_or(false)
+        })
+        .cloned()
+        .collect()
+}
+
 /// The generated `register_all` body lines (4-space indented to match the
 /// function body; rustfmt leaves these untouched). Tool `register` returns
 /// `()`, so no `?` — unlike the node twin.
@@ -58,6 +80,16 @@ pub fn render_register_lines(crates: &[String]) -> Vec<String> {
     crates
         .iter()
         .map(|c| format!("    {}::register(reg);", crate_ident(c)))
+        .collect()
+}
+
+/// The generated `register_all_tools` body lines — one boxed `make()`
+/// per behavior (modal/palette) tool crate, registered into the
+/// `ToolRegistry`. Tool register returns `()`.
+pub fn render_register_tools_lines(crates: &[String]) -> Vec<String> {
+    crates
+        .iter()
+        .map(|c| format!("    reg.register({}::make());", crate_ident(c)))
         .collect()
 }
 

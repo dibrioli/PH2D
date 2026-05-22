@@ -38,6 +38,13 @@ pub use icon::padding_bezpath;
 pub use manifest::MANIFEST;
 pub use tool::PaddingTool;
 
+/// Construct the Padding tool as a boxed trait object for the behavior
+/// `ToolRegistry`. Codegen target for `ph2d-tool-sync`
+/// (`register_all_tools`).
+pub fn make() -> Box<dyn ph2d_editor_core::tool::Tool> {
+    Box::new(PaddingTool::default())
+}
+
 /// UI/action vocabulary, re-exported from editor-core (ADR-0040 T3) so
 /// the moved `tool.rs`'s `super::params` resolves to the foundation-side
 /// single source of truth (the action bus + ph2d-panel-padding read it).

@@ -17,8 +17,9 @@
 //!   + tokens + a11y::Node + colocated `paint_X` helper.
 //! - [`tool::Tool`] + [`tool::ToolRegistry`] — canonical contract
 //!   every editor tool implements.
-//! - [`tools`] — seed implementations (`tools::BrushTool`,
-//!   `tools::MoveTool`) proving the trait shape.
+//! - [`tools`] — UI/action vocabulary for the stateful image tools
+//!   (params read by the action bus + panel crates); the tool impls
+//!   themselves live in `ph2d-tool-*` satellite crates (ADR-0040).
 //! - [`zen::ZenMode`] — Tab-toggle workspace state.
 //! - [`toast::ToastQueue`] — non-modal notification stream.
 //! - [`paint`] — Vello lowering (`Paint` trait + `paint_text` helper).

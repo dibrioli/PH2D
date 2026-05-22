@@ -10,8 +10,9 @@
 //! to a fresh regeneration.
 
 use ph2d_tool_sync::{
-    RS_BEGIN, RS_END, TOML_BEGIN, TOML_END, render_cargo_dep_lines, render_register_lines,
-    scan_tool_crates, splice_lines,
+    RS_BEGIN, RS_END, TOML_BEGIN, TOML_END, TOOLS_BEGIN, TOOLS_END, filter_exposing,
+    render_cargo_dep_lines, render_register_lines, render_register_tools_lines, scan_tool_crates,
+    splice_lines,
 };
 use std::path::{Path, PathBuf};
 
@@ -26,18 +27,37 @@ fn crates_dir() -> PathBuf {
 #[test]
 fn register_all_is_in_sync_with_folder() {
     let crates = crates_dir();
-    let tool_crates = scan_tool_crates(&crates);
+    let manifest_crates = filter_exposing(&crates, &scan_tool_crates(&crates), "pub fn register");
     let path = crates.join("ph2d-tool-registry-init/src/lib.rs");
     let current = std::fs::read_to_string(&path).expect("lib.rs readable");
     let regenerated = splice_lines(
         &current,
         RS_BEGIN,
         RS_END,
-        &render_register_lines(&tool_crates),
+        &render_register_lines(&manifest_crates),
     );
     assert_eq!(
         current, regenerated,
         "register_all is STALE vs crates/ph2d-tool-*. Run: cargo run -p ph2d-tool-sync"
+    );
+}
+
+#[test]
+fn register_all_tools_is_in_sync_with_folder() {
+    let crates = crates_dir();
+    let modal_crates = filter_exposing(&crates, &scan_tool_crates(&crates), "pub fn make");
+    let path = crates.join("ph2d-tool-registry-init/src/lib.rs");
+    let current = std::fs::read_to_string(&path).expect("lib.rs readable");
+    let regenerated = splice_lines(
+        &current,
+        TOOLS_BEGIN,
+        TOOLS_END,
+        &render_register_tools_lines(&modal_crates),
+    );
+    assert_eq!(
+        current, regenerated,
+        "register_all_tools is STALE vs crates/ph2d-tool-* (pub fn make). \
+         Run: cargo run -p ph2d-tool-sync"
     );
 }
 

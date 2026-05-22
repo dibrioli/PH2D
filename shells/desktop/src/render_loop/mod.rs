@@ -489,7 +489,7 @@ impl crate::App {
             // tool is no longer active), the sprite un-suppresses, and
             // the Inspector returns.
             if bgremoval_cancel
-                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {
                 self.last_bgremoval_pushed_entity = None;
@@ -508,7 +508,7 @@ impl crate::App {
                 toasts.push(Toast::info("Tool · Padding"));
             }
             if padding_cancel
-                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {
                 self.title_dirty = true;
@@ -532,7 +532,7 @@ impl crate::App {
                     .map(|t| crate::is_image_edit_tool(&t.id()))
                     .unwrap_or(false);
                 if active_is_image_tool
-                    && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                    && let Some(default_id) = tools.default_tool_id()
                     && tools.set_active(&default_id)
                 {
                     self.bgremoval_preview = None;
@@ -653,7 +653,7 @@ impl crate::App {
             // freshly baked sprite (that double-draw was the ghost edge
             // outline that appeared only while the image stayed selected).
             if bgremoval_apply_committed
-                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {
                 self.last_bgremoval_pushed_entity = None;
@@ -663,7 +663,7 @@ impl crate::App {
             // Padding Apply teardown — deactivate the tool so the panel
             // hides + the Inspector returns, exactly like Bg Removal.
             if padding_apply.is_some()
-                && let Some(default_id) = tools.tools().first().map(|t| t.id())
+                && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {
                 self.title_dirty = true;

@@ -88,6 +88,17 @@ pub trait Tool: std::any::Any {
     fn as_image_edit_mut(&mut self) -> Option<&mut dyn ImageEditTool> {
         None
     }
+
+    /// Whether this tool is the editor's initial / fallback tool — the
+    /// one selected at boot and returned to when a transient tool (an
+    /// image edit) deactivates. Exactly one registered tool should
+    /// return `true` (the Brush); the rest use the default `false`.
+    /// Data-driven default (ADR-0040 T-close): replaces the old
+    /// "first-registered-wins" rule, so codegen registration order no
+    /// longer decides the opening tool.
+    fn is_default(&self) -> bool {
+        false
+    }
 }
 
 /// A tool that produces new pixels for the active entity (background
@@ -170,6 +181,27 @@ impl ToolRegistry {
     pub fn active_mut(&mut self) -> Option<&mut dyn Tool> {
         let i = self.active?;
         Some(self.tools[i].as_mut())
+    }
+
+    /// Id of the editor's default tool — the one whose [`Tool::is_default`]
+    /// returns `true`, falling back to the first registered tool if none
+    /// is flagged. Used for the boot selection and as the "return to"
+    /// tool when a transient image-edit tool deactivates.
+    pub fn default_tool_id(&self) -> Option<ToolId> {
+        self.tools
+            .iter()
+            .find(|t| t.is_default())
+            .or_else(|| self.tools.first())
+            .map(|t| t.id())
+    }
+
+    /// Activate the default tool (see [`Self::default_tool_id`]). Called
+    /// once at boot after `register_all_tools`, so the codegen
+    /// registration order does not decide the opening tool.
+    pub fn activate_default(&mut self) {
+        if let Some(id) = self.default_tool_id() {
+            self.set_active(&id);
+        }
     }
 
     /// Switch active tool by id. Calls `on_deactivate` on the

@@ -31,6 +31,13 @@ pub use ph2d_editor_core::tools::bgremoval::params;
 
 pub use tool::BgRemovalTool;
 
+/// Construct the BgRemoval tool as a boxed trait object for the
+/// behavior `ToolRegistry`. Codegen target for `ph2d-tool-sync`
+/// (`register_all_tools`).
+pub fn make() -> Box<dyn ph2d_editor_core::tool::Tool> {
+    Box::new(BgRemovalTool::default())
+}
+
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;
 use ph2d_tool_registry::{HandlerFn, McpExposure, Registry, ToolHandler, ToolManifest, Zone};

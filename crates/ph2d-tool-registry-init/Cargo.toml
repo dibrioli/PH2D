@@ -32,6 +32,11 @@ authors.workspace = true
 
 [dependencies]
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# For `register_all_tools(&mut ToolRegistry)` (ADR-0040 T-close): the
+# behavior registry type lives in editor-core. registry-init already
+# pulls editor-core transitively (via the stateful tool crates); making
+# it direct is honest. No cycle — editor-core doesn't depend on this crate.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 # Tool crates registered here. One line per tool, alphabetical order
 # to keep merge-conflict surface trivial under multi-agent operation.
 # `architecture_register_all_alphabetical` (in this crate's tests/)
@@ -41,8 +46,10 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # staleness gate fails CI if it drifts from the crates/ph2d-tool-* scan.
 # <ph2d-tool-sync:begin>
 ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
+ph2d-tool-brush = { path = "../ph2d-tool-brush" }
 ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
+ph2d-tool-move = { path = "../ph2d-tool-move" }
 ph2d-tool-padding = { path = "../ph2d-tool-padding" }
 ph2d-tool-real-size = { path = "../ph2d-tool-real-size" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }

@@ -21,7 +21,6 @@ use ph2d_asset::AssetDb;
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components, stable_type_id};
 use ph2d_ecs::scene::{EditorCommandQueue, HierarchySnapshot, HierarchyWalkState};
 use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
-use ph2d_editor::tools::{BrushTool, MoveTool};
 use ph2d_editor::{
     HeroScreen, Layout as EditorLayout, NodeId, Toast, ToastQueue, ToolRegistry, ZenMode,
 };
@@ -187,13 +186,14 @@ pub(crate) fn build_initial_state(
     let mut toasts = ToastQueue::new();
     toasts.push(Toast::success("Editor data layer wired (M12)"));
     toasts.push(Toast::info("Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"));
+    // All modal tools are registered by codegen (ADR-0040 T-close):
+    // `ph2d-tool-sync` generates `register_all_tools` from the scan of
+    // `crates/ph2d-tool-*` (pub fn make). Adding a tool = drop a crate +
+    // run the sync — zero edit here. `activate_default` selects the boot
+    // tool data-drivenly (`Tool::is_default` = Brush), not registration order.
     let mut tools = ToolRegistry::new();
-    tools.register(Box::new(BrushTool::default()));
-    tools.register(Box::new(MoveTool::default()));
-    tools.register(Box::new(
-        ph2d_tool_bgremoval::BgRemovalTool::default(),
-    ));
-    tools.register(Box::new(ph2d_tool_padding::PaddingTool::default()));
+    ph2d_tool_registry_init::register_all_tools(&mut tools);
+    tools.activate_default();
     let layout = EditorLayout::new(size.width as f32, size.height as f32);
     let vello_pass =
         match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {

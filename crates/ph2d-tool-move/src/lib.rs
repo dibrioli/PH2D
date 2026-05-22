@@ -1,13 +1,26 @@
-//! [`MoveTool`] — second concrete tool. Model: snap toggles + axis lock.
+#![forbid(unsafe_code)]
+//! [`MoveTool`] — the transform tool (modal, palette). Model: snap
+//! toggles + axis lock.
 //!
 //! Panel: one "Transform" tab plus 2 Toggles (Snap Grid / Snap Pixel)
 //! and a 3-option RadioGroup for Lock Axis (None/X/Y). The widget
-//! states reflect the model; mouse interaction (next PR) writes back.
+//! states reflect the model; mouse interaction writes back.
+//!
+//! ADR-0040 T-close: isolated crate. [`make`] is the codegen entry
+//! (`ph2d-tool-sync` → `register_all_tools`).
 
-use crate::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
-use crate::tool::{PanelEvent, Tool};
-use crate::widget::{RadioGroup, RadioOption, Toggle};
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::floating_panel::{
+    FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId,
+};
+use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_editor_core::widget::{RadioGroup, RadioOption, Toggle};
+
+/// Construct the Move tool as a boxed trait object for the behavior
+/// `ToolRegistry`. Codegen target for `ph2d-tool-sync`.
+pub fn make() -> Box<dyn Tool> {
+    Box::new(MoveTool::default())
+}
 
 const SNAP_GRID_NODE: NodeId = NodeId(201);
 const SNAP_PIXEL_NODE: NodeId = NodeId(202);

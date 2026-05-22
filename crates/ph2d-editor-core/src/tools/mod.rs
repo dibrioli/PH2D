@@ -1,24 +1,19 @@
-//! Example tools that prove the [`crate::tool::Tool`] trait shape.
+//! Tool UI/action **vocabulary** that the foundation owns (ADR-0040).
 //!
-//! These are the seed two — Brush + Move — wired up enough for the
-//! shell to switch between them and render their panels. Real
-//! controls (sliders, color swatches, axis radios) lazy-bind once
-//! the widget-primitives PR lands.
+//! All tool *implementations* now live in satellite crates
+//! (`ph2d-tool-*`). What remains here is only the vocabulary the
+//! editor-core action bus and the `ph2d-panel-*` crates read for the
+//! stateful image tools — kept here to avoid an `editor-core → tool`
+//! cycle until the generic action channel lands (ADR-0040 T1.2/T1.3):
+//!
+//! - [`bgremoval`] — `BgRemovalUiEdit`/`UiSnapshot`/`BrushFalloff` + params
+//! - [`padding`] — `PaddingUiEdit`/`UiSnapshot` + slider mapping
+//!
+//! Tool crates re-export these modules at their own root so their
+//! moved `tool.rs` files resolve `super::params` unchanged. Everything
+//! else (Brush, Move, BgRemoval, Padding, Trim, Make Square, Real Size)
+//! is a `ph2d-tool-*` crate; `editor-core/src/tools/` holds no tool
+//! impl (foundation ⊥ tools, gated by `architecture_cycle_prevention`).
 
 pub mod bgremoval;
-pub mod brush;
-pub mod move_tool;
 pub mod padding;
-// `make_square` fully lives in crate `ph2d-tool-make-square` (ADR-0040
-// T1.5): the editor-core facade + dep were removed so editor-core has
-// zero `ph2d-tool-<slug>` dependency (foundation ⊥ tools, gated by
-// `architecture_cycle_prevention`). Consumers call
-// `ph2d_tool_make_square::{make_square, square_bezpath}` directly.
-// `registry_init` moved to crate `ph2d-tool-registry-init` (PR 6.0
-// retrofit). See `docs/Migracao/2026-05-convention-by-discovery.md`.
-
-pub use brush::BrushTool;
-pub use move_tool::MoveTool;
-// trim_transparency fully lives in crate `ph2d-tool-trim-transparency`
-// (ADR-0040 T3); the dead `crop_bezpath` re-export was dropped (no
-// consumer) and editor-core's recenter uses its own `PixelBounds`.

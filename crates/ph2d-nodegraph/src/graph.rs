@@ -8,7 +8,18 @@
 //! Instance ids are stable and monotonic; the textual format ([`crate::format`])
 //! keys on them. Node **layout** (editor position) is stored in a separate map
 //! so it never affects semantics or a semantic diff (ADR-0032 §6).
+//!
+//! Two layers of invariant:
+//! - [`Graph::connect`] enforces the **structural** invariants that need no
+//!   external information: acyclicity (forward edges) and one edge per input
+//!   port.
+//! - [`Graph::validate`] enforces the **semantic** invariants that need the
+//!   node manifests (a resolver): port indices exist, port types are
+//!   compatible ([`crate::port::PortType::connects_directly`]), and the
+//!   membrane holds ([`crate::effect::Effect::can_feed`]). This is where the
+//!   ADR-0030 membrane is actually *proven* — call it after editing/loading.
 
+use crate::cook::OpResolver;
 use crate::node::NodeTypeId;
 use std::collections::BTreeMap;
 
@@ -31,7 +42,9 @@ impl NodeInstance {
     }
 }
 
-/// A typed edge from one node's output port to another's input port.
+/// An edge from one node's output port to another's input port. Structurally
+/// constrained by [`Graph::connect`]; its *typing* and membrane-conformance are
+/// checked by [`Graph::validate`] (which needs the node manifests).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Edge {
     /// `(node, output port index)`.
@@ -51,6 +64,41 @@ pub enum EdgeError {
     WouldCycle,
     /// One of the endpoints is not a node in this graph.
     UnknownNode,
+    /// The target input port already has an incoming edge. An input port takes
+    /// at most one edge (the cook reads the first; ambiguity is rejected here).
+    InputAlreadyConnected,
+}
+
+/// A semantic invariant violation found by [`Graph::validate`]. (Structural
+/// problems are rejected earlier, by [`Graph::connect`].)
+#[derive(Debug, PartialEq, Eq)]
+pub enum Violation {
+    /// A node's type is not known to the resolver.
+    UnknownType { node: NodeId },
+    /// An edge references an output port index the source type does not have.
+    BadOutputPort {
+        node: NodeId,
+        port: u16,
+        n_outputs: usize,
+    },
+    /// An edge references an input port index the target type does not have.
+    BadInputPort {
+        node: NodeId,
+        port: u16,
+        n_inputs: usize,
+    },
+    /// The connected port types are not directly compatible (domain/dim/clock).
+    /// A clock/domain crossing must be a dedicated node, not a plain edge.
+    TypeMismatch {
+        from: (NodeId, u16),
+        to: (NodeId, u16),
+    },
+    /// A `Stateful` (push) node feeds a presentation (pull) node directly —
+    /// the membrane crossing must go through an export, not a plain edge.
+    Membrane {
+        from: (NodeId, u16),
+        to: (NodeId, u16),
+    },
 }
 
 /// Editor-space position of a node. Pure layout — never affects cook.
@@ -77,23 +125,38 @@ impl Graph {
     pub fn add_node(&mut self, type_name: impl Into<String>) -> NodeId {
         let id = NodeId(self.next_id);
         self.next_id += 1;
-        self.nodes.push(NodeInstance { id, type_name: type_name.into() });
+        self.nodes.push(NodeInstance {
+            id,
+            type_name: type_name.into(),
+        });
         id
     }
 
     /// Insert a node with an explicit id (used by the textual-format parser to
-    /// preserve stable ids on load). Bumps `next_id` past it.
+    /// preserve stable ids on load). Bumps `next_id` past it. Saturating add
+    /// guards against a corrupt/adversarial file using `id == u32::MAX`.
     pub fn insert_raw(&mut self, id: NodeId, type_name: impl Into<String>) {
-        self.nodes.push(NodeInstance { id, type_name: type_name.into() });
-        self.next_id = self.next_id.max(id.0 + 1);
+        self.nodes.push(NodeInstance {
+            id,
+            type_name: type_name.into(),
+        });
+        self.next_id = self.next_id.max(id.0.saturating_add(1));
     }
 
-    /// Connect two ports. Rejects an edge that would create a cycle unless it
-    /// is `delayed` (a `pre` edge). Acyclicity is thus an invariant of the
-    /// stored graph; nothing else in the engine performs cycle detection.
+    /// Connect two ports, enforcing the **structural** invariants:
+    /// - both endpoints exist;
+    /// - the target input port is not already connected (one edge per input);
+    /// - a non-`delayed` edge does not close a cycle (feedback must be `pre`).
+    ///
+    /// Acyclicity is thus an invariant of the stored graph; nothing else in the
+    /// engine performs cycle detection. **Semantic** typing and the membrane
+    /// are checked separately by [`Graph::validate`] (they need the manifests).
     pub fn connect(&mut self, edge: Edge) -> Result<(), EdgeError> {
         if !self.contains(edge.from.0) || !self.contains(edge.to.0) {
             return Err(EdgeError::UnknownNode);
+        }
+        if self.edges.iter().any(|e| e.to == edge.to) {
+            return Err(EdgeError::InputAlreadyConnected);
         }
         if !edge.delayed && self.would_cycle(edge.from.0, edge.to.0) {
             return Err(EdgeError::WouldCycle);
@@ -163,6 +226,75 @@ impl Graph {
     pub fn layout(&self) -> &BTreeMap<NodeId, Pos> {
         &self.layout
     }
+
+    /// Check the **semantic** invariants of every edge against the node
+    /// manifests resolved through `ops`: that referenced ports exist, that the
+    /// connected port types are directly compatible, and that the membrane
+    /// holds (no `Stateful` → presentation by a plain edge). Returns every
+    /// violation found (not just the first), so an editor can surface them all.
+    ///
+    /// This is where the ADR-0030 membrane and the algebraic port types are
+    /// actually enforced; `connect` only guarantees structure (acyclicity,
+    /// one-edge-per-input). Run after editing or loading a graph.
+    pub fn validate(&self, ops: &dyn OpResolver) -> Result<(), Vec<Violation>> {
+        let mut violations = Vec::new();
+        for e in &self.edges {
+            let from_man = self
+                .node(e.from.0)
+                .and_then(|n| ops.resolve(n.type_id()))
+                .map(|o| o.manifest());
+            let to_man = self
+                .node(e.to.0)
+                .and_then(|n| ops.resolve(n.type_id()))
+                .map(|o| o.manifest());
+
+            let (Some(fm), Some(tm)) = (from_man, to_man) else {
+                if from_man.is_none() {
+                    violations.push(Violation::UnknownType { node: e.from.0 });
+                }
+                if to_man.is_none() {
+                    violations.push(Violation::UnknownType { node: e.to.0 });
+                }
+                continue;
+            };
+
+            let out = fm.outputs.get(e.from.1 as usize);
+            let inp = tm.inputs.get(e.to.1 as usize);
+            if out.is_none() {
+                violations.push(Violation::BadOutputPort {
+                    node: e.from.0,
+                    port: e.from.1,
+                    n_outputs: fm.outputs.len(),
+                });
+            }
+            if inp.is_none() {
+                violations.push(Violation::BadInputPort {
+                    node: e.to.0,
+                    port: e.to.1,
+                    n_inputs: tm.inputs.len(),
+                });
+            }
+            if let (Some(o), Some(i)) = (out, inp) {
+                if !o.ty.connects_directly(i.ty) {
+                    violations.push(Violation::TypeMismatch {
+                        from: e.from,
+                        to: e.to,
+                    });
+                }
+                if !fm.effect.can_feed(tm.effect) {
+                    violations.push(Violation::Membrane {
+                        from: e.from,
+                        to: e.to,
+                    });
+                }
+            }
+        }
+        if violations.is_empty() {
+            Ok(())
+        } else {
+            Err(violations)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -170,7 +302,11 @@ mod tests {
     use super::*;
 
     fn edge(from: NodeId, to: NodeId, delayed: bool) -> Edge {
-        Edge { from: (from, 0), to: (to, 0), delayed }
+        Edge {
+            from: (from, 0),
+            to: (to, 0),
+            delayed,
+        }
     }
 
     #[test]
@@ -190,7 +326,10 @@ mod tests {
     fn unknown_node_is_rejected() {
         let mut g = Graph::new();
         let a = g.add_node("a");
-        assert_eq!(g.connect(edge(a, NodeId(999), false)), Err(EdgeError::UnknownNode));
+        assert_eq!(
+            g.connect(edge(a, NodeId(999), false)),
+            Err(EdgeError::UnknownNode)
+        );
     }
 
     #[test]
@@ -201,11 +340,39 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_input_edge_is_rejected() {
+        let mut g = Graph::new();
+        let a = g.add_node("a");
+        let b = g.add_node("b");
+        let c = g.add_node("c");
+        g.connect(Edge {
+            from: (a, 0),
+            to: (c, 0),
+            delayed: false,
+        })
+        .unwrap();
+        // A second edge into the same input port (c, 0) is rejected.
+        assert_eq!(
+            g.connect(Edge {
+                from: (b, 0),
+                to: (c, 0),
+                delayed: false
+            }),
+            Err(EdgeError::InputAlreadyConnected)
+        );
+    }
+
+    #[test]
     fn input_edge_resolves_source() {
         let mut g = Graph::new();
         let a = g.add_node("a");
         let b = g.add_node("b");
-        g.connect(Edge { from: (a, 0), to: (b, 1), delayed: false }).unwrap();
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 1),
+            delayed: false,
+        })
+        .unwrap();
         assert_eq!(g.input_edge(b, 1), Some((a, 0, false)));
         assert_eq!(g.input_edge(b, 0), None);
     }

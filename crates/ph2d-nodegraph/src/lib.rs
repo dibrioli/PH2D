@@ -5,17 +5,23 @@
 //! all domains (motion / shader / sound / gameplay). It is deliberately thin
 //! and **stable**: its surface is capped by an arch-gate, and changes to it
 //! are rare, Coordenador-only events — because every node in the engine
-//! depends on it. See `docs/Migracao/2026-05-node-centric-architecture.md`
-//! and the funnel plan (`~/.claude/plans/...iridescent-bumblebee.md`).
+//! depends on it. Design: `docs/Migracao/2026-05-node-centric-architecture.md`
+//! and ADR-0030..0038 in `docs/architecture/decisions/`.
 //!
 //! What is **unified** here (the plural evaluators live in `ph2d-eval-*`):
 //! - algebraic port types carrying domain + dimensionality + clock ([`port`]),
-//! - the effect system + type-checked membrane ([`effect`]),
+//! - the effect system / membrane rule ([`effect`]),
 //! - the node contract ([`node`]),
-//! - the acyclic-by-construction graph with `pre` delay ([`graph`]).
+//! - the columnar attribute stream ([`attr`]),
+//! - the acyclic-by-construction graph with `pre` delay; [`graph::Graph::validate`]
+//!   enforces the membrane + port types ([`graph`]),
+//! - the demand-driven incremental cook engine ([`cook`]),
+//! - the diffable textual format ([`format`]).
 //!
-//! Still to land (tracked in the plan): the textual diffable format, the
-//! generic cook engine, and the attribute stream / `EvalCtx`.
+//! Not yet built (separate crates per the plan): per-node `lowerings` →
+//! WGSL|Luau (`ph2d-expr`, ADR-0033), the node registry + codegen
+//! (`ph2d-node-registry`, ADR-0031), and the domain evaluators (`ph2d-eval-*`,
+//! ADR-0034).
 
 pub mod attr;
 pub mod cook;

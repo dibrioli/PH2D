@@ -1,9 +1,9 @@
 //! Textual graph format — diffable, mergeable, deterministic (ADR-0032 §6).
 //!
 //! The canonical on-disk form is **line-oriented**, not a nested blob: one
-//! node per line, one edge per line, sorted by stable id. Two agridts adding
+//! node per line, one edge per line, sorted by stable id. Two agents adding
 //! two nodes touch different lines, so `git` merges them without conflict —
-//! the multi-agridt requirement that rules out JSON/RON trees. Node **layout**
+//! the multi-agent requirement that rules out JSON/RON trees. Node **layout**
 //! (editor position) lives in a trailing `[layout]` section so it never
 //! appears in a semantic diff.
 //!
@@ -32,13 +32,13 @@ pub fn to_text(graph: &Graph) -> String {
     }
 
     let mut edges: Vec<_> = graph.edges().iter().collect();
-    edges.sort_by_key(|e| (e.from.0 .0, e.from.1, e.to.0 .0, e.to.1, e.delayed));
+    edges.sort_by_key(|e| (e.from.0.0, e.from.1, e.to.0.0, e.to.1, e.delayed));
     for e in edges {
         let kind = if e.delayed { "pre" } else { "fwd" };
         let _ = writeln!(
             out,
             "e {} {} {} {} {}",
-            e.from.0 .0, e.from.1, e.to.0 .0, e.to.1, kind
+            e.from.0.0, e.from.1, e.to.0.0, e.to.1, kind
         );
     }
 
@@ -77,12 +77,16 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut node_recs: Vec<(NodeId, String)> = Vec::new();
     let mut edge_recs: Vec<Edge> = Vec::new();
     let mut layout_recs: Vec<(NodeId, Pos)> = Vec::new();
+    let mut seen_ids = std::collections::BTreeSet::new();
 
     for line in lines {
         let mut tok = line.split_whitespace();
         match tok.next() {
             Some("n") => {
                 let id = NodeId(parse(&mut tok, line)?);
+                if !seen_ids.insert(id) {
+                    return Err(ParseError::BadLine(line.into())); // duplicate id
+                }
                 let name = tok.next().ok_or_else(|| ParseError::BadLine(line.into()))?;
                 node_recs.push((id, name.to_string()));
             }
@@ -143,8 +147,18 @@ mod tests {
         let mut g = Graph::new();
         let grid = g.add_node("motion.grid");
         let clone = g.add_node("motion.clone");
-        g.connect(Edge { from: (grid, 0), to: (clone, 0), delayed: false }).unwrap();
-        g.connect(Edge { from: (clone, 0), to: (clone, 1), delayed: true }).unwrap();
+        g.connect(Edge {
+            from: (grid, 0),
+            to: (clone, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.connect(Edge {
+            from: (clone, 0),
+            to: (clone, 1),
+            delayed: true,
+        })
+        .unwrap();
         g.set_pos(grid, Pos { x: 10.0, y: 20.0 });
         g.set_pos(clone, Pos { x: 120.0, y: 20.0 });
         g

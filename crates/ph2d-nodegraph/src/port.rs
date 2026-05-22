@@ -67,9 +67,7 @@ impl PortType {
     /// target?"). Dimensionality is strict in v1 (broadcasting is a later
     /// refinement).
     pub fn connects_directly(self, consumer: PortType) -> bool {
-        self.domain == consumer.domain
-            && self.dim == consumer.dim
-            && self.clock == consumer.clock
+        self.domain == consumer.domain && self.dim == consumer.dim && self.clock == consumer.clock
     }
 }
 

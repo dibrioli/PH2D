@@ -56,7 +56,10 @@ pub struct Stream {
 
 impl Stream {
     pub fn new(count: usize) -> Self {
-        Self { count, attrs: BTreeMap::new() }
+        Self {
+            count,
+            attrs: BTreeMap::new(),
+        }
     }
 
     pub fn count(&self) -> usize {

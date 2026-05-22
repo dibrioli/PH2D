@@ -66,15 +66,24 @@ pub enum CookError {
     UnknownNode,
     /// A node's type is not registered with the resolver.
     UnknownType,
+    /// A node emitted a number of outputs that disagrees with its manifest —
+    /// a node-implementation bug that would otherwise leak as empty streams.
+    OutputCountMismatch {
+        node: NodeId,
+        expected: usize,
+        got: usize,
+    },
 }
 
 /// What a node's reuse decision depends on: revisions of its forward inputs,
-/// the playhead (if `Temporal`), and the tick (if it consumes a `pre` edge,
-/// i.e. is sequential and must advance every tick).
+/// the playhead bits (if `Temporal`), and the tick (if it consumes a `pre`
+/// edge, i.e. is sequential and must advance every tick). Playhead is stored
+/// as `to_bits` so the key is a stable bitwise compare (no NaN-self-inequality,
+/// no `-0.0`/`+0.0` aliasing).
 #[derive(Clone, Default, PartialEq)]
 struct Fingerprint {
     input_revs: Vec<u64>,
-    playhead: Option<f64>,
+    playhead: Option<u64>,
     tick: Option<u64>,
 }
 
@@ -92,6 +101,11 @@ pub struct Cook {
     cache: BTreeMap<NodeId, Cached>,
     prev_outputs: BTreeMap<NodeId, Vec<Stream>>,
     tick: u64,
+    /// Monotonic revision clock. Bumped only on an actual recompute; a node's
+    /// stored revision changes iff it recomputed, so a downstream consumer
+    /// detects change by a changed input revision. (Replaces the earlier
+    /// max-scan, which could recede once cache eviction lands → false hits.)
+    rev_counter: u64,
 }
 
 impl Cook {
@@ -99,12 +113,21 @@ impl Cook {
         Self::default()
     }
 
-    /// Advance one tick: snapshot this tick's outputs as the previous tick (so
-    /// `pre` edges read them next tick). Call once per frame, between cooks.
-    pub fn advance_tick(&mut self) {
+    /// Advance one tick: snapshot the outputs of nodes that feed a `pre` edge
+    /// as the previous tick (so those edges read them next tick). Only the
+    /// sequential state is cloned, not the whole cache. Call once per frame,
+    /// between cooks.
+    pub fn advance_tick(&mut self, graph: &Graph) {
+        let pre_sources: std::collections::BTreeSet<NodeId> = graph
+            .edges()
+            .iter()
+            .filter(|e| e.delayed)
+            .map(|e| e.from.0)
+            .collect();
         self.prev_outputs = self
             .cache
             .iter()
+            .filter(|(id, _)| pre_sources.contains(id))
             .map(|(id, c)| (*id, c.outputs.clone()))
             .collect();
         self.tick += 1;
@@ -160,7 +183,7 @@ impl Cook {
         //    feedback loop; a purely combinational node stays memoized.
         let fingerprint = Fingerprint {
             input_revs,
-            playhead: (manifest.effect == Effect::Temporal).then_some(playhead),
+            playhead: (manifest.effect == Effect::Temporal).then_some(playhead.to_bits()),
             tick: consumes_pre.then_some(self.tick),
         };
         if let Some(c) = self.cache.get(&node)
@@ -170,18 +193,31 @@ impl Cook {
         }
 
         // 3. Recompute.
-        let mut ctx = EvalCtx { inputs: &input_streams, playhead, outputs: Vec::new() };
+        let mut ctx = EvalCtx {
+            inputs: &input_streams,
+            playhead,
+            outputs: Vec::new(),
+        };
         op.eval(&mut ctx);
-        let revision = self.next_revision();
-        self.cache.insert(node, Cached { outputs: ctx.outputs, revision, fingerprint });
+        let n_out = manifest.outputs.len();
+        if ctx.outputs.len() != n_out {
+            return Err(CookError::OutputCountMismatch {
+                node,
+                expected: n_out,
+                got: ctx.outputs.len(),
+            });
+        }
+        self.rev_counter += 1;
+        let revision = self.rev_counter;
+        self.cache.insert(
+            node,
+            Cached {
+                outputs: ctx.outputs,
+                revision,
+                fingerprint,
+            },
+        );
         Ok(revision)
-    }
-
-    fn next_revision(&mut self) -> u64 {
-        // Monotonic across the engine's lifetime; downstream nodes detect a
-        // changed input by a changed revision.
-        let last = self.cache.values().map(|c| c.revision).max().unwrap_or(0);
-        last + 1
     }
 
     fn cur_output(&self, node: NodeId, port: usize) -> Stream {
@@ -212,7 +248,10 @@ mod tests {
 
     const SCALAR_FRAME: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
     const fn port(name: &'static str) -> PortSpec {
-        PortSpec { name, ty: SCALAR_FRAME }
+        PortSpec {
+            name,
+            ty: SCALAR_FRAME,
+        }
     }
 
     static GEN_MAN: NodeManifest = NodeManifest {
@@ -271,13 +310,25 @@ mod tests {
         }
     }
 
+    static BAD_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.bad"),
+        name: "test.bad",
+        inputs: &[],
+        outputs: &[port("out")], // declares one output...
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+    };
+
     /// out = incr + feedback(pre). Classic accumulator over the clock.
-    struct Acc;
+    struct Acc {
+        calls: AtomicU64,
+    }
     impl NodeOp for Acc {
         fn manifest(&self) -> &'static NodeManifest {
             &ACC_MAN
         }
         fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            self.calls.fetch_add(1, Ordering::Relaxed);
             let incr = scalars(ctx.input(0));
             let fb = scalars(ctx.input(1));
             let out: Vec<f32> = incr
@@ -289,10 +340,20 @@ mod tests {
         }
     }
 
+    /// ...but emits zero outputs — a node-implementation bug the cook must catch.
+    struct Bad;
+    impl NodeOp for Bad {
+        fn manifest(&self) -> &'static NodeManifest {
+            &BAD_MAN
+        }
+        fn eval(&self, _ctx: &mut EvalCtx<'_>) {}
+    }
+
     struct Ops {
         generator: Gen,
         scale: Scale,
         acc: Acc,
+        bad: Bad,
     }
     impl OpResolver for Ops {
         fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
@@ -300,13 +361,23 @@ mod tests {
                 t if t == GEN_MAN.id => Some(&self.generator),
                 t if t == SCALE_MAN.id => Some(&self.scale),
                 t if t == ACC_MAN.id => Some(&self.acc),
+                t if t == BAD_MAN.id => Some(&self.bad),
                 _ => None,
             }
         }
     }
 
     fn ops() -> Ops {
-        Ops { generator: Gen { calls: AtomicU64::new(0) }, scale: Scale, acc: Acc }
+        Ops {
+            generator: Gen {
+                calls: AtomicU64::new(0),
+            },
+            scale: Scale,
+            acc: Acc {
+                calls: AtomicU64::new(0),
+            },
+            bad: Bad,
+        }
     }
 
     #[test]
@@ -314,7 +385,12 @@ mod tests {
         let mut g = Graph::new();
         let generator = g.add_node("test.gen");
         let scale = g.add_node("test.scale");
-        g.connect(Edge { from: (generator, 0), to: (scale, 0), delayed: false }).unwrap();
+        g.connect(Edge {
+            from: (generator, 0),
+            to: (scale, 0),
+            delayed: false,
+        })
+        .unwrap();
         let o = ops();
         let mut cook = Cook::new();
         let out = cook.cook(&g, &o, scale, 0.0).unwrap();
@@ -326,11 +402,16 @@ mod tests {
         let mut g = Graph::new();
         let generator = g.add_node("test.gen");
         let scale = g.add_node("test.scale");
-        g.connect(Edge { from: (generator, 0), to: (scale, 0), delayed: false }).unwrap();
+        g.connect(Edge {
+            from: (generator, 0),
+            to: (scale, 0),
+            delayed: false,
+        })
+        .unwrap();
         let o = ops();
         let mut cook = Cook::new();
         cook.cook(&g, &o, scale, 0.0).unwrap();
-        cook.advance_tick();
+        cook.advance_tick(&g);
         cook.cook(&g, &o, scale, 0.0).unwrap();
         // Combinational + unchanged → generator evaluated exactly once.
         assert_eq!(o.generator.calls.load(Ordering::Relaxed), 1);
@@ -342,19 +423,38 @@ mod tests {
         let mut g = Graph::new();
         let generator = g.add_node("test.gen");
         let acc = g.add_node("test.acc");
-        g.connect(Edge { from: (generator, 0), to: (acc, 0), delayed: false }).unwrap();
-        g.connect(Edge { from: (acc, 0), to: (acc, 1), delayed: true }).unwrap();
+        g.connect(Edge {
+            from: (generator, 0),
+            to: (acc, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.connect(Edge {
+            from: (acc, 0),
+            to: (acc, 1),
+            delayed: true,
+        })
+        .unwrap();
         let o = ops();
         let mut cook = Cook::new();
 
         // tick 0: feedback empty → gen
-        assert_eq!(scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]), vec![1.0, 2.0, 3.0]);
-        cook.advance_tick();
+        assert_eq!(
+            scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+            vec![1.0, 2.0, 3.0]
+        );
+        cook.advance_tick(&g);
         // tick 1: gen + prev(=[1,2,3])
-        assert_eq!(scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]), vec![2.0, 4.0, 6.0]);
-        cook.advance_tick();
+        assert_eq!(
+            scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+            vec![2.0, 4.0, 6.0]
+        );
+        cook.advance_tick(&g);
         // tick 2: gen + prev(=[2,4,6])
-        assert_eq!(scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]), vec![3.0, 6.0, 9.0]);
+        assert_eq!(
+            scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+            vec![3.0, 6.0, 9.0]
+        );
 
         // gen is combinational/unchanged → evaluated once despite 3 ticks.
         assert_eq!(o.generator.calls.load(Ordering::Relaxed), 1);
@@ -367,5 +467,75 @@ mod tests {
         let o = ops();
         let mut cook = Cook::new();
         assert_eq!(cook.cook(&g, &o, n, 0.0), Err(CookError::UnknownType));
+    }
+
+    #[test]
+    fn diamond_memoizes_shared_upstream() {
+        // gen feeds BOTH inputs of acc (two forward paths). The shared upstream
+        // must be cooked exactly once per tick.
+        let mut g = Graph::new();
+        let generator = g.add_node("test.gen");
+        let acc = g.add_node("test.acc");
+        g.connect(Edge {
+            from: (generator, 0),
+            to: (acc, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.connect(Edge {
+            from: (generator, 0),
+            to: (acc, 1),
+            delayed: false,
+        })
+        .unwrap();
+        let o = ops();
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &o, acc, 0.0).unwrap();
+        assert_eq!(scalars(&out[0]), vec![2.0, 4.0, 6.0]); // [1,2,3] + [1,2,3]
+        assert_eq!(o.generator.calls.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn output_count_mismatch_errors() {
+        // A node that declares 1 output but emits 0 is caught, not leaked as
+        // an empty stream downstream.
+        let mut g = Graph::new();
+        let n = g.add_node("test.bad");
+        let o = ops();
+        let mut cook = Cook::new();
+        assert_eq!(
+            cook.cook(&g, &o, n, 0.0),
+            Err(CookError::OutputCountMismatch {
+                node: n,
+                expected: 1,
+                got: 0
+            })
+        );
+    }
+
+    #[test]
+    fn cook_twice_same_tick_is_idempotent_for_sequential_node() {
+        // A `pre`-consuming (sequential) node must not recompute on a second
+        // cook within the same tick (no advance_tick between).
+        let mut g = Graph::new();
+        let generator = g.add_node("test.gen");
+        let acc = g.add_node("test.acc");
+        g.connect(Edge {
+            from: (generator, 0),
+            to: (acc, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.connect(Edge {
+            from: (acc, 0),
+            to: (acc, 1),
+            delayed: true,
+        })
+        .unwrap();
+        let o = ops();
+        let mut cook = Cook::new();
+        cook.cook(&g, &o, acc, 0.0).unwrap();
+        cook.cook(&g, &o, acc, 0.0).unwrap(); // same tick, no advance_tick
+        assert_eq!(o.acc.calls.load(Ordering::Relaxed), 1);
     }
 }

@@ -10,8 +10,10 @@ use crate::effect::Effect;
 use crate::port::{Clock, PortType};
 
 /// Stable, deterministic id derived from a node type's canonical name via
-/// FNV-1a 64-bit. Matches `ph2d-tool-registry::hash_node_id`; reimplemented
-/// dependency-free here so the substrate stays leaf-level. Const so it can be
+/// FNV-1a 64-bit. Uses the same FNV-1a algorithm/constants as
+/// `ph2d-tool-registry::hash_node_id` (reimplemented dependency-free so the
+/// substrate stays leaf-level), but **without** that function's `NodeId(0)`
+/// reservation, which is specific to the a11y root. Const so it can be
 /// computed in a `const MANIFEST`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NodeTypeId(pub u64);
@@ -53,6 +55,9 @@ pub struct NodeManifest {
     /// The clock this node cooks under. Must match its ports' clock unless it
     /// is a membrane-crossing node.
     pub clock: Clock,
+    // NOTE: per ADR-0031 the full contract also carries `lowerings[]` (the
+    // spec → WGSL|Luau backends). That field lands with `ph2d-expr` (ADR-0033);
+    // until then a node is cooked on the CPU via `NodeOp::eval` only.
 }
 
 /// Implemented by every concrete node type. `manifest` is the static contract;
@@ -71,8 +76,14 @@ mod tests {
     #[test]
     fn id_is_stable_and_deterministic() {
         // Same name → same id across runs (FNV-1a is pure).
-        assert_eq!(NodeTypeId::of("motion.clone"), NodeTypeId::of("motion.clone"));
-        assert_ne!(NodeTypeId::of("motion.clone"), NodeTypeId::of("motion.grid"));
+        assert_eq!(
+            NodeTypeId::of("motion.clone"),
+            NodeTypeId::of("motion.clone")
+        );
+        assert_ne!(
+            NodeTypeId::of("motion.clone"),
+            NodeTypeId::of("motion.grid")
+        );
     }
 
     #[test]

@@ -1,16 +1,17 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.5 — 2026-05-22 (arquitetura node-centric: §3.8 novo balde "Node crate (fan-out)" apontando pro `briefing-node-crate.md` — o fan-out mais isolado que existe, pois o wiring central é GERADO por `ph2d-node-sync`, sem edit central; §3.6 foundational ganha `ph2d-nodegraph`+`ph2d-expr` congelados (ADR-0039, W2.T4); TL;DR nota o sistema de nós como caminho principal de crescimento. Os baldes de editor — Tool/Painel/Widget/Chrome — seguem válidos: são o chrome do editor, que edita os grafos de nós.) · 6.4 — 2026-05-21 (§4.1 novo: regras de UI sem gate automático que já queimaram >1× — glifos fora da fonte bundled viram tofu; estado de modo ↔ estado derivado não pode desacoplar (reconciliação por frame, não guard pontual); enumere TODOS os caminhos de ativação (pill/palette/atalho/bus); pertencimento data-driven via cluster do manifest, não lista de ids; diagnostique medindo com env-probe. Bases: `docs/UI_Bugs/` + `docs/Image Tools Bugs/`.) · 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
+**Versão:** 6.6 — 2026-05-22 (doc ÚNICO de implementação: o `briefing-node-crate.md` foi integrado in-line no §3.8 (briefing pronto-pra-colar + garantia sem-colisão + checklist do revisor); o arquivo virou stub. NOVO §1.4 "Triagem": o primeiro output do agente ao receber uma tarefa é classificar e informar ao Enio como proceder — só Implementador / Coordenador+Implementador / Coordenador-only+ADR — com tabela de decisão. TL;DR + audiência refletem a triagem-primeiro.) · 6.5 — 2026-05-22 (arquitetura node-centric: §3.8 novo balde "Node crate (fan-out)" apontando pro `briefing-node-crate.md` — o fan-out mais isolado que existe, pois o wiring central é GERADO por `ph2d-node-sync`, sem edit central; §3.6 foundational ganha `ph2d-nodegraph`+`ph2d-expr` congelados (ADR-0039, W2.T4); TL;DR nota o sistema de nós como caminho principal de crescimento. Os baldes de editor — Tool/Painel/Widget/Chrome — seguem válidos: são o chrome do editor, que edita os grafos de nós.) · 6.4 — 2026-05-21 (§4.1 novo: regras de UI sem gate automático que já queimaram >1× — glifos fora da fonte bundled viram tofu; estado de modo ↔ estado derivado não pode desacoplar (reconciliação por frame, não guard pontual); enumere TODOS os caminhos de ativação (pill/palette/atalho/bus); pertencimento data-driven via cluster do manifest, não lista de ids; diagnostique medindo com env-probe. Bases: `docs/UI_Bugs/` + `docs/Image Tools Bugs/`.) · 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
 **Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
-**Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Depois, Enio te diz "Você é o Coordenador" ou "Você é o Implementador" e este doc te diz o resto.
+**Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Quando o Enio te descreve uma tarefa, seu **primeiro output é a TRIAGEM (§1.4)** — você classifica e diz a ele se precisa de Coordenador + Implementador ou só Implementador. Depois Enio te diz o papel ("Você é o Coordenador" / "o Implementador") e este doc te diz o resto. **Doc único de implementação:** o briefing de node-crate do fan-out está integrado aqui (§3.8); não há doc separado.
 
 ---
 
 ## TL;DR
 
-> **Dois papéis. Fluxo invertido. Zero colisão por construção.**
+> **Triagem primeiro. Dois papéis. Fluxo invertido. Zero colisão por construção.**
 >
-> 1. Enio diz "vamos criar X" ao **Coordenador**.
+> 0. Enio descreve a tarefa a uma sessão. **Antes de codar, o agente faz a TRIAGEM (§1.4): classifica o balde, diz se toca o núcleo congelado, e informa ao Enio como proceder — só Implementador, ou Coordenador + Implementador, ou Coordenador-only + ADR.** O Enio age conforme a triagem.
+> 1. Enio diz "vamos criar X" ao **Coordenador** (quando a triagem pediu Coordenador).
 > 2. Coordenador **faz primeiro todos os links centrais** (pasta nova, Cargo.toml, register_all, TOML de design, SVG, stubs prontos). Valida com `cargo check -p <crate-novo>`. Pasta já está plugada na árvore.
 > 3. Coordenador entrega briefing pro **Implementador**: "tua pasta é `crates/ph2d-tool-<slug>/`. Stubs prontos. Não saia daí."
 > 4. Implementador preenche **apenas dentro da pasta isolada**. Nunca toca arquivo fora. Usa tokens canônicos. Obedece codificação rápida.
@@ -97,6 +98,42 @@ A partir do passo 8 o Implementador **nunca** toca arquivo fora da pasta dele. Z
 3. **Codificação rápida.** Usa `cargo check -p <crate>` durante editing burst. Não duplica trabalho do pre-commit hook. Não roda `--workspace` em loop. Vide §5.
 
 Se você é o Implementador e está pra violar uma das três, **pare e reporte**. Quase certamente significa que o Coordenador não fez o scaffold direito.
+
+### 1.4 Triagem — seu PRIMEIRO output (Coordenador ou só Implementador?)
+
+**Antes de tocar em código, antes de assumir um papel:** quando o Enio te descreve uma tarefa ("quero criar X"), seu primeiro output **não** é começar — é **classificar a tarefa e dizer ao Enio como proceder**. O Enio não sabe de antemão se precisa abrir uma sessão Coordenador + uma Implementador, ou se uma sessão Implementador sozinha resolve. **Você decide isso por ele e informa.**
+
+Responda ao Enio **exatamente** neste formato:
+
+```
+TRIAGEM
+- Tarefa: <o que o Enio pediu, em 1 linha>
+- Balde: <§3.1 tool | §3.2 painel | §3.3 widget | §3.4 chrome |
+          §3.5 modificar existente | §3.6 foundational | §3.7 cross-cutting |
+          §3.8 node crate>
+- Toca o núcleo congelado (ph2d-nodegraph/ph2d-expr)? <Não | Sim — exige ADR>
+- COMO PROCEDER: <uma das 3 linhas abaixo>
+    (A) Só Implementador — uma sessão isolada basta. Sem scaffold central.
+    (B) Coordenador + Implementador — precisa de scaffold central / arquivos
+        compartilhados antes do Implementador começar.
+    (C) Coordenador-only — foundational ou mudança de contrato; não paraleliza,
+        não delega; pode exigir ADR.
+- Razão: <por que esse caminho, em 1-2 linhas>
+- Se grande/ambíguo: <peças, e o que é isolável vs. compartilhado>
+```
+
+Tabela de decisão:
+
+| Tarefa | Balde | Toca núcleo? | Como proceder |
+|--------|-------|--------------|---------------|
+| **Nó novo** num domínio que já tem avaliador (hoje: Motion) e cabe no contrato | §3.8 | Não | **(A) Só Implementador** — cria pasta, roda `ph2d-node-sync`, testa. Wiring gerado, zero edit central. |
+| **Modificar** nó/tool/feature existente (sem novo arquivo central) | §3.5 | Não | **(A) Só Implementador** — a pasta já existe. |
+| **Tool / Painel / Widget / Chrome** novo | §3.1-3.4 | Não | **(B) Coordenador + Implementador** — Coord faz scaffold central (register_all, Cargo.toml raiz, design TOML) ANTES. |
+| **Domínio/avaliador de nó novo** (Shader/Field, Som, Gameplay) — não há avaliador ainda | §3.8 + neck | Não (usa o contrato) mas é greenfield grande | **(B/C) Coordenador** — é trabalho "tipo W2" (avaliador novo); pode quebrar em fan-out depois. |
+| **Mudar tokens / editor-core / shells / arch tests** | §3.6 | Não | **(C) Coordenador-only** — foundational, não paraleliza. |
+| **Mudar o contrato de nós** (porta, tipo, formato, EvalCtx, motor) | §3.6 | **Sim** | **(C) Coordenador-only + ADR** — evento raro; bump do cap do arch-gate + ADR. |
+
+Heurística de uma frase: **feature de conteúdo = nó isolado = (A) Implementador só. Peça de editor = (B) Coord faz o central primeiro. Mudar a regra do jogo = (C) Coord-only + ADR.** Na dúvida entre A e B, pergunte: "isso exige editar QUALQUER arquivo fora de uma única pasta nova?" Se sim → (B). Se a única coisa fora da pasta é o wiring **gerado** (`ph2d-node-sync`), ainda é **(A)**.
 
 ---
 
@@ -457,17 +494,103 @@ Algumas tarefas não cabem em nenhum dos 6 buckets acima porque tocam múltiplos
 
 ### 3.8 Node crate novo — fan-out (o caminho principal de crescimento)
 
-A engine é node-centric (ADR-0030..0039). Uma feature de **conteúdo** (um gerador, um modifier, um cloner, um nó de shader/som/gameplay) é um **node-crate isolado** — e este é o **fan-out mais leve do projeto**, porque o acoplamento é só o contrato congelado e o wiring central é **gerado**, não editado.
+A engine é node-centric (ADR-0030..0039). Uma feature de **conteúdo** (um gerador, um modifier, um cloner, um nó de shader/som/gameplay) é um **node-crate isolado** — e este é o **fan-out mais enxuto do projeto**, porque o acoplamento é só o contrato congelado e o wiring central é **gerado**, não editado.
 
-**Diferença-chave vs. os baldes de editor (§3.1-3.4):** lá o Coordenador edita um `register_all` central na mão. Aqui **não há edit central** — `cargo run -p ph2d-node-sync` regenera `register_all_nodes` + as deps de `ph2d-node-registry-init` a partir de um scan das pastas `crates/ph2d-node-*`, e o `workspace.members` é glob. Dois agentes adicionando dois nós **não tocam nenhum arquivo em comum, nem o central**.
+**Diferença-chave vs. os baldes de editor (§3.1-3.4):** lá o Coordenador edita um `register_all` central na mão (por isso precisam de scaffold-primeiro). Aqui **não há edit central** — `cargo run -p ph2d-node-sync` regenera `register_all_nodes` + as deps de `ph2d-node-registry-init` a partir de um scan das pastas `crates/ph2d-node-*`, e o `workspace.members` é glob. Dois agentes adicionando dois nós **não tocam nenhum arquivo em comum, nem o central**. Consequência prática (vide triagem §1.4): **um nó num domínio que já tem avaliador (hoje: Motion) e cabe no contrato congelado dispensa o Coordenador — uma sessão Implementador sozinha cria a pasta, roda o sync e fecha.**
 
-**O briefing canônico já existe e é pronto-pra-colar:** [`docs/IntegracaoMultiAgente/briefing-node-crate.md`](briefing-node-crate.md). O Coordenador o entrega (preenchendo domínio/slug/spec); o Implementador cria só a sua pasta `crates/ph2d-node-<domínio>-<slug>/`, roda o sync, e fecha o gate local `cargo test -p ph2d-node-registry-init`. Exemplo a copiar: `crates/ph2d-node-debug-wave/` (template) e a vertical Motion `crates/ph2d-node-motion-{grid,transform,clone}/`.
+**Pré-requisito:** o contrato `ph2d-nodegraph` está **congelado** (W2.T4, ADR-0039). Você **usa**, não edita. Exemplo a copiar: `crates/ph2d-node-debug-wave/` (template: input + param + `Temporal` + `ph2d-expr` + golden) e a vertical Motion `crates/ph2d-node-motion-{grid,transform,clone}/`.
 
-**Regras específicas do balde de nó (somam às 3 obrigações do §1.3):**
-1. **Não tocar o contrato congelado** (`ph2d-nodegraph`/`ph2d-expr`, §3.6) — se você acha que precisa, pare e reporte; quase sempre é sinal de que o nó está modelado errado. Mudança de contrato é evento Coordenador-only com ADR.
-2. **Ler params via `ctx.param("nome")`** — nunca o default do manifest direto, nunca `unwrap_or(0.0)`. Param que vira contagem/alocação passa por `param_as_count` + cap (vide `motion.grid`/`clone`).
-3. **Efeito + membrana:** se o nó não escreve estado de jogo, é `Pure`/`Temporal` (lado pull, isento de HR-5); `Stateful` é só gameplay. `Graph::validate` é quem prova a membrana — rode-o nos testes.
-4. **Teste golden** input→output (ADR-0031 §3): grafo source→seu-nó → registra → `validate` → `cook` → asserta a saída.
+#### 3.8.1 Briefing pronto-pra-colar (Coordenador OU Enio entrega numa sessão Implementador nova)
+
+Preencha `<domínio>`/`<slug>`/spec e cole numa sessão Claude Code nova:
+
+```
+═══════════════════════════════════════════════════════════════════
+BRIEFING — node-crate · domínio: <domínio> · slug: <slug>
+═══════════════════════════════════════════════════════════════════
+
+PASTA EXCLUSIVA: crates/ph2d-node-<domínio>-<slug>/
+(criada por você; o glob de workspace.members a inclui automaticamente —
+NÃO edite o Cargo.toml raiz.)
+
+O QUE VOCÊ FAZ (só dentro da sua pasta):
+1. Cargo.toml: deps mínimas — ph2d-nodegraph, ph2d-node-registry,
+   e ph2d-expr se usar math por-elemento.
+2. src/lib.rs:
+   - pub const MANIFEST: NodeManifest { id (NodeTypeId::of("<dom>.<slug>")),
+     name, inputs/outputs (PortSpec com PortType = domínio+dim+CLOCK),
+     effect (Pure | Temporal | Stateful), clock, params (&[ParamSpec]),
+     lowerings (&[LoweringKind::Cpu] e/ou Wgsl) }
+   - impl NodeOp { manifest(); eval(ctx) PURO — lê params via ctx.param("nome") }
+   - pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError>
+3. Teste golden input→output (ADR-0031 §3): grafo source→seu-nó,
+   registra num NodeRegistry, g.validate(&ops), cook, asserta a saída.
+
+EXEMPLO CANÔNICO A COPIAR:
+- crates/ph2d-node-debug-wave/  ← input + param + Temporal + ph2d-expr + golden
+- crates/ph2d-node-debug-const/ ← gerador Pure trivial
+
+CONTRATO (leia, NÃO edite — está CONGELADO, ADR-0039):
+crates/ph2d-nodegraph/src/{node,port,effect,attr,cook}.rs
+- Você só vê (portas tipadas + efeito + clock + params + lowerings).
+- Membrana: se seu nó NÃO escreve estado simulado, é Pure/Temporal (lado pull,
+  isento de HR-5). Stateful é só gameplay. Graph::validate prova a membrana.
+- PARAMS: leia SEMPRE via ctx.param("nome") no eval — resolve o override
+  por-instância do grafo se houver, senão o default do manifest. NUNCA leia
+  MANIFEST.params[..].default direto (ignora overrides) nem unwrap_or(0.0)
+  (falha silenciosa). Nome não-declarado → ctx.param dá panic (pego no golden
+  test). Param que vira contagem/alocação: ph2d_nodegraph::node::param_as_count
+  (valor, max) + cape o produto (vide motion.grid/clone) — override hostil
+  (NaN/∞/gigante) não pode estourar a alocação.
+- Math por-elemento: ph2d-expr (Expr + eval_column sobre o Stream de entrada).
+
+O QUE VOCÊ NÃO TOCA:
+- Qualquer arquivo fora da sua pasta.
+- ph2d-nodegraph, ph2d-expr (foundational CONGELADO), ph2d-node-registry.
+- crates/ph2d-node-registry-init/ (GERADO — vide WIRING).
+- Cargo.toml raiz (glob cobre você).
+
+WIRING (sem colisão, sem edição central):
+- Depois de criar a pasta:  cargo run -p ph2d-node-sync
+  (regenera register_all_nodes + deps de registry-init a partir do scan).
+- Valida o wiring (segundos, fecha o gate antes do CI):
+      cargo test -p ph2d-node-registry-init
+  (staleness gate falha se esqueceu o sync; a compilação de registry-init
+   falha se seu register tem assinatura errada.)
+
+VALIDAÇÃO (codificação rápida, §5):
+- cargo check  -p ph2d-node-<domínio>-<slug>   (durante editing)
+- cargo test   -p ph2d-node-<domínio>-<slug>   (golden)
+- cargo clippy -p ... --all-targets -- -D warnings
+- cargo fmt -p ...
+
+NOMES (gates ativos):
+- type name canônico = "<domínio>.<slug>", único cross-crate (colisão de id é
+  pega no boot por RegistryError::Collision).
+- atributos de stream e params: identificadores simples (sem espaço/ponto).
+
+SE PRECISAR DE ALGO FORA DA PASTA (dep externa nova, mudança no contrato
+congelado, novo domínio/avaliador): PARE e reporte ao Enio (§2.4). Quase
+sempre significa que a tarefa não era fan-out puro — vide triagem §1.4.
+
+QUANDO TERMINAR, reporte ao Enio:
+  "Node <dom>.<slug> pronto. Commit local: <sha>. cargo test -p
+   ph2d-node-<dom>-<slug> e -p ph2d-node-registry-init verdes."
+═══════════════════════════════════════════════════════════════════
+```
+
+#### 3.8.2 Por que é sem-colisão (a garantia)
+
+Dois agentes adicionando dois nós diferentes **não tocam nenhum arquivo em comum**: cada um cria sua pasta; o `workspace.members` é glob (zero edit); o `register_all_nodes` + deps de `registry-init` são **gerados** por `ph2d-node-sync` (resultado determinístico, staleness gate garante consistência). É o isolamento FBP do ADR-0031 levado à prática — o contrato (portas + efeito) é o único acoplamento, e está congelado. **Por isso o balde de nó é o único que dispensa scaffold central do Coordenador.**
+
+#### 3.8.3 Checklist do revisor (Coordenador, se houver revisão)
+
+- [ ] `MANIFEST` completo (params + lowerings preenchidos).
+- [ ] `eval` puro (sem estado global, sem IO); efeito declarado bate (Stateful só se escreve sim); params lidos via `ctx.param`.
+- [ ] teste golden presente e verde.
+- [ ] `cargo run -p ph2d-node-sync` rodado; `cargo test -p ph2d-node-registry-init` verde.
+- [ ] clippy `--all-targets` + fmt limpos.
+- [ ] nome canônico único; sem dep fora do contrato; contrato congelado intocado.
 
 Estado vivo do sistema de nós + o loop de operação autônoma: [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md).
 
@@ -874,7 +997,7 @@ gh run watch <id> --exit-status
 - **ADR Convention-by-discovery:** [`docs/architecture/decisions/0027-convention-by-discovery.md`](../architecture/decisions/0027-convention-by-discovery.md)
 - **ADR Codegen + design canonical:** [`docs/architecture/decisions/0028-wave-2-codegen-design-canonical.md`](../architecture/decisions/0028-wave-2-codegen-design-canonical.md)
 - **ADR Trait-driven panel host:** [`docs/architecture/decisions/0029-trait-driven-panel-host.md`](../architecture/decisions/0029-trait-driven-panel-host.md)
-- **Sistema de nós — briefing do fan-out (§3.8):** [`docs/IntegracaoMultiAgente/briefing-node-crate.md`](briefing-node-crate.md)
+- **Sistema de nós — briefing do fan-out:** integrado neste doc, **§3.8** (o arquivo `briefing-node-crate.md` é só um stub que aponta pra cá).
 - **Sistema de nós — estado vivo + loop autônomo:** [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md)
 - **ADR FREEZE do contrato de nós (W2.T4):** [`docs/architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md`](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md)
 - **Memória LLM (auto-loaded):** `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`
@@ -883,6 +1006,7 @@ gh run watch <id> --exit-status
 
 ## 11. Versão + histórico
 
+- **6.6 — 2026-05-22:** Doc único de implementação. `briefing-node-crate.md` integrado in-line no §3.8 (§3.8.1 briefing pronto-pra-colar, §3.8.2 garantia sem-colisão, §3.8.3 checklist do revisor); o arquivo agora é um stub que aponta pro §3.8. Novo §1.4 "Triagem" — primeiro output do agente é classificar a tarefa + tabela de decisão Coordenador-vs-Implementador (só Impl / Coord+Impl / Coord-only+ADR). TL;DR (passo 0) + linha de audiência atualizados.
 - **6.5 — 2026-05-22:** Arquitetura node-centric absorvida no doc. §3.8 novo balde "Node crate (fan-out)" — o fan-out mais leve do projeto (wiring gerado por `ph2d-node-sync`, zero edit central), apontando pro `briefing-node-crate.md` como briefing canônico. §3.6 foundational ganha o contrato `ph2d-nodegraph`+`ph2d-expr` (🔒 congelado em W2.T4, ADR-0039 — mudança = Coordenador-only + ADR + re-prova de paridade CPU↔WGSL). TL;DR + §9.2 + §10 atualizados. Os baldes de editor (§3.1-3.4) permanecem válidos (chrome do editor que edita os grafos de nós).
 - **6.1 — 2026-05-19 noite:** Perf audit + pre-commit T2 cuts A+B aplicados (commit `10ef2b6` + range `436626e..cb13efe`). Acréscimos: §3.7 trabalho cross-cutting (perf audit / refactor cross-crate); §5.6 como NÃO escrever test slow (com `TextSystem::without_system_fonts()`, `OnceLock` GpuContext, alloc-pequena pra limit-check); §6.4 armadilhas conhecidas (typos pt-BR, cargo lock, hook lento). Tabela §5.4 atualizada com T2 escopado vs T2 workspace.
 - **6.0 — 2026-05-19:** Modelo 2 papéis (Coordenador absorvendo PRCI) + fluxo invertido (scaffold central antes do Implementador começar). Condensa em um único doc: v5.0 DIRETRIZ + 4 docs operacionais 01-04 + STATE.md + DIRETRIZ_CODIFICACAO_RAPIDA.md + PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md.

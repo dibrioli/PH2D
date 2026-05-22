@@ -77,7 +77,7 @@ mod tests {
     use ph2d_nodegraph::cook::{Cook, EvalCtx};
     use ph2d_nodegraph::effect::Effect;
     use ph2d_nodegraph::graph::{Edge, Graph};
-    use ph2d_nodegraph::node::PortSpec;
+    use ph2d_nodegraph::node::{LoweringKind, PortSpec};
     use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
     const T: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
@@ -92,6 +92,8 @@ mod tests {
         outputs: &[port("out")],
         effect: Effect::Pure,
         clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
     };
     static PASS_MAN: NodeManifest = NodeManifest {
         id: NodeTypeId::of("reg.pass"),
@@ -100,6 +102,8 @@ mod tests {
         outputs: &[port("out")],
         effect: Effect::Pure,
         clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
     };
 
     struct Src;

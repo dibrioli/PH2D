@@ -42,8 +42,30 @@ pub struct PortSpec {
     pub ty: PortType,
 }
 
+/// A static node parameter — a named scalar constant across the stream (e.g.
+/// `rows`, `seed`), with a default. Read in `ph2d-expr` via `Expr::Param` and
+/// in `NodeOp::eval` via the node's own state. (Vector/enum params are a later
+/// extension; scalar `f32` matches `ph2d-expr`'s value type.)
+#[derive(Copy, Clone, Debug)]
+pub struct ParamSpec {
+    pub name: &'static str,
+    pub default: f32,
+}
+
+/// Which backends a node type can lower to (ADR-0033/0034). Every node supports
+/// [`LoweringKind::Cpu`] (its [`NodeOp::eval`]); a node whose math is expressed
+/// via `ph2d-expr` also lists `Wgsl` (GPU) and/or `Luau` (gameplay). The domain
+/// evaluator picks the lowering it can run.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LoweringKind {
+    Cpu,
+    Wgsl,
+    Luau,
+}
+
 /// The static descriptor of a node **type** (not an instance). Declared as a
 /// `const MANIFEST` in each node crate and registered by codegen (ADR-0031).
+/// The full contract is `(ports, effect, clock, params, lowerings)`.
 #[derive(Clone, Debug)]
 pub struct NodeManifest {
     pub id: NodeTypeId,
@@ -55,9 +77,10 @@ pub struct NodeManifest {
     /// The clock this node cooks under. Must match its ports' clock unless it
     /// is a membrane-crossing node.
     pub clock: Clock,
-    // NOTE: per ADR-0031 the full contract also carries `lowerings[]` (the
-    // spec → WGSL|Luau backends). That field lands with `ph2d-expr` (ADR-0033);
-    // until then a node is cooked on the CPU via `NodeOp::eval` only.
+    /// Static parameters (constant across the stream).
+    pub params: &'static [ParamSpec],
+    /// Backends this node can lower to. Always includes [`LoweringKind::Cpu`].
+    pub lowerings: &'static [LoweringKind],
 }
 
 /// Implemented by every concrete node type. `manifest` is the static contract;

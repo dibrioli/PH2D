@@ -9,7 +9,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 /// The static contract of this node type (ADR-0031).
@@ -23,6 +23,8 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
 };
 
 struct DebugConst;

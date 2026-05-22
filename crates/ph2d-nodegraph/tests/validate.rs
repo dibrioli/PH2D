@@ -7,7 +7,7 @@
 use ph2d_nodegraph::cook::{EvalCtx, OpResolver};
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::graph::{Edge, Graph, Violation};
-use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const FRAME: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
@@ -24,6 +24,8 @@ static PURE_GEN: NodeManifest = NodeManifest {
     outputs: &[p("out", FRAME)],
     effect: Effect::Pure,
     clock: Clock::Frame,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
 };
 static PURE_SINK: NodeManifest = NodeManifest {
     id: NodeTypeId::of("v.pure_sink"),
@@ -32,6 +34,8 @@ static PURE_SINK: NodeManifest = NodeManifest {
     outputs: &[],
     effect: Effect::Pure,
     clock: Clock::Frame,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
 };
 static STATEFUL_SRC: NodeManifest = NodeManifest {
     id: NodeTypeId::of("v.stateful_src"),
@@ -40,6 +44,8 @@ static STATEFUL_SRC: NodeManifest = NodeManifest {
     outputs: &[p("out", FRAME)],
     effect: Effect::Stateful,
     clock: Clock::Frame,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
 };
 static AUDIO_SINK: NodeManifest = NodeManifest {
     id: NodeTypeId::of("v.audio_sink"),
@@ -48,6 +54,8 @@ static AUDIO_SINK: NodeManifest = NodeManifest {
     outputs: &[],
     effect: Effect::Pure,
     clock: Clock::Audio,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
 };
 
 macro_rules! op {

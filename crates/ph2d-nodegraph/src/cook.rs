@@ -254,7 +254,7 @@ mod tests {
     use super::*;
     use crate::attr::Column;
     use crate::graph::Edge;
-    use crate::node::{NodeManifest, PortSpec};
+    use crate::node::{LoweringKind, NodeManifest, PortSpec};
     use crate::port::{Clock, Dim, Domain, PortType};
     use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -273,6 +273,8 @@ mod tests {
         outputs: &[port("out")],
         effect: Effect::Pure,
         clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
     };
     static SCALE_MAN: NodeManifest = NodeManifest {
         id: NodeTypeId::of("test.scale"),
@@ -281,6 +283,8 @@ mod tests {
         outputs: &[port("out")],
         effect: Effect::Pure,
         clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
     };
     static ACC_MAN: NodeManifest = NodeManifest {
         id: NodeTypeId::of("test.acc"),
@@ -289,6 +293,8 @@ mod tests {
         outputs: &[port("out")],
         effect: Effect::Pure,
         clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
     };
 
     fn scalars(s: &Stream) -> Vec<f32> {
@@ -329,6 +335,8 @@ mod tests {
         outputs: &[port("out")], // declares one output...
         effect: Effect::Pure,
         clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
     };
 
     /// out = incr + feedback(pre). Classic accumulator over the clock.
@@ -368,6 +376,8 @@ mod tests {
         outputs: &[port("out")],
         effect: Effect::Pure,
         clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
     };
 
     /// Emits its single input verbatim (used with a `pre` edge as a delay line).

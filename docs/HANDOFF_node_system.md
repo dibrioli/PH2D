@@ -47,9 +47,12 @@ Para CADA fase do plano ([`docs/plans/2026-05-node-waves.md`](plans/2026-05-node
 
 Engine virou **node-centric** (ADR-0030..0038). Modelo = **funil**: neck serial (contrato) → **FREEZE** → fan-out paralelo (N agentes, 1 node-crate cada, sem colisão).
 
-**W1 (o neck) COMPLETO** — contrato + registry + codegen + compute compartilhado + template + save verificado. Auditado 3× e remediado. **CI:** ship.sh local 100% verde (1466 testes); push em main `0c0e934`; run cross-platform: https://github.com/dibrioli/PH2D/actions/runs/26282314365.
+**W1 (o neck) COMPLETO + SHIPADO** — contrato + registry + codegen + compute compartilhado + template + save verificado. Auditado 3× e remediado. **CI 9/9 verde cross-platform** (incl. replay-hash de determinismo nos 3 OS); push em main `0c0e934`.
 
-**Próximo: W2 (vertical Motion) → FREEZE** (culmina em smoke + decisão do Enio).
+**W2.T1+T2 (vertical Motion, parte HEADLESS) CONSTRUÍDO + verde, mas NÃO auditado ainda** — commits `8c6bb4f` (avaliador `ph2d-eval-motion`: grafo→`Vec<RenderInstance>`) + `74c8254` (3 nós reais `motion.{grid,transform,clone}` + teste de integração da vertical: grid→transform→clone→27 instâncias, sem GPU). Commits **locais, não pushados**.
+
+> ### ⏯ PONTO DE ENTRADA (próximo agente — comece AQUI)
+> Seu **primeiro passo** é o passo 5 do loop (§1) sobre o que já está construído mas não auditado: **AUDITE a vertical Motion** (`8c6bb4f`+`74c8254`: `ph2d-eval-motion` + os 3 `ph2d-node-motion-*`) com ≥2 auditores adversariais → **corrija TUDO até erro zero** → commit. **Depois** construa o arch-gate da membrana (W2.T3 parte headless) e **PARE em W2.T3** (view de editor + live-preview + smoke visual = precisam do Enio). Não pushe (ship é do Enio). Releia §0 (mandato) e §1 (loop) antes.
 
 Tese: o objetivo "multi-agente sem colisão" **é** o sistema de nós, via **isolamento FBP** (nó = caixa-preta: portas tipadas + efeito, zero estado compartilhado). Adicionar feature = largar um crate isolado. Houdini é referência de poder, não design final (síntese: atributos Houdini + Fields Blender + compile-to-shader Unreal + UX Substance + **inventado: membrana de determinismo como tipo** + formato textual diffável).
 
@@ -68,8 +71,12 @@ Docs: [`Migracao/2026-05-node-centric-architecture.md`](Migracao/2026-05-node-ce
 | `tools/ph2d-node-sync` | codegen do wiring (bin+lib) | `scan_node_crates`, `splice_lines`, `render_*` | — |
 | `ph2d-node-debug-const` | 1º nó (gerador Pure trivial) | `MANIFEST`, `register` | nodegraph + registry |
 | `ph2d-node-debug-wave` | **template canônico** (input+param+Temporal+expr+golden) | idem + `eval_column` | nodegraph + registry + expr |
+| `ph2d-eval-motion` (W2.T1) | avaliador do domínio Motion: cook→`Vec<RenderInstance>` (headless) | `evaluate_motion`, `lower_to_instances` | nodegraph + **ph2d-render** |
+| `ph2d-node-motion-grid` (W2.T2) | generator (grid N×M no `P`) | `MANIFEST`/`register` | nodegraph + registry |
+| `ph2d-node-motion-transform` (W2.T2) | modifier (scale+offset do `P`, passthrough) | idem | nodegraph + registry |
+| `ph2d-node-motion-clone` (W2.T2) | cloner (multiplica stream ×count, ADR-0035) | idem | nodegraph + registry |
 
-`workspace.members` é **glob** (`crates/*`,`tools/*`) → adicionar crate = zero edit central. ~71 testes no sistema de nós, todos verdes (parte de 1466 no workspace).
+`workspace.members` é **glob** (`crates/*`,`tools/*`) → adicionar crate = zero edit central. ~85 testes no sistema de nós, todos verdes (parte de 1466 no workspace).
 
 ---
 
@@ -133,12 +140,12 @@ cargo run -p ph2d-node-sync && cargo test -p ph2d-node-registry-init   # wiring 
 ## 8. W2 — vertical Motion → FREEZE (a próxima fase do loop)
 
 Prova o contrato inteiro num caminho real antes do fan-out. (Plano §W2.)
-- **W2.T1 — avaliador motion** (`ph2d-eval-motion`): pull-no-playhead → `Vec<RenderInstance>` pra `ph2d-render` (instancing M5). **A parte de dados (grafo → instâncias) é HEADLESS e testável sem GPU** — faça pelo loop autônomo. O upload+draw na tela é smoke.
-- **W2.T2 — 3 nós reais** (generator/cloner/modifier). Cloner = multiplicador de stream → GPU instancing (não spawn de entidades).
+- **W2.T1 — avaliador motion** (`ph2d-eval-motion`) ✅ CONSTRUÍDO (headless, verde, `8c6bb4f`) — pull-no-playhead → `Vec<RenderInstance>`; o upload+draw na tela é smoke. **Falta auditar.**
+- **W2.T2 — 3 nós reais** ✅ CONSTRUÍDO (verde, `74c8254`): `motion.grid` (generator) · `motion.transform` (modifier) · `motion.clone` (cloner = multiplicador de stream, ADR-0035). Vertical headless provada por teste de integração. **Falta auditar.**
 - **W2.T3 — arch-gate da membrana** (rodar `validate` no load) + view de editor mínima + **live-preview**. ⚠ toca editor-core + **PARA aqui: precisa de smoke visual do Enio** (`./play.command`).
 - **W2.T4 — 🔒 FREEZE** — congelar `ph2d-nodegraph`+`ph2d-expr`. **Decisão do Enio.**
 
-**Ao retomar:** rode o loop em W2.T1+T2 (headless, auditado até erro-zero, commits locais). **Pare em W2.T3** com relatório pro Enio (smoke + freeze).
+**Ao retomar (ordem exata):** (1) **AUDITE** W2.T1+T2 (`8c6bb4f`+`74c8254`) com ≥2 auditores → corrija até erro zero → commit. (2) Construa o arch-gate da membrana de W2.T3 (parte headless: um teste que roda `validate` e recusa `Stateful`→pull num grafo de exemplo). (3) **PARE** — view de editor + live-preview + smoke + FREEZE são do Enio. Relatório curto a ele.
 
 ---
 
@@ -148,9 +155,11 @@ Tracks (briefing §): mais nós Motion · Shader (→WGSL; precisa do avaliador 
 
 ---
 
-## 10. Commits desta sessão (locais; push em `0c0e934`)
+## 10. Commits desta sessão
 
-`9d6a7ec` substrato W1.T2 · `6489f70` remediação auditoria 1 · `35fd1f3` NodeRegistry · `751b974` registry-init+codegen+gate · `7b0306f` remediação auditoria 3 · `b4a98f3` ph2d-expr · `7d18519` NodeManifest params/lowerings · `a19a141` remediação auditoria expr · `e87edb0` template+briefing · `0c0e934` verificação W1.T1.
+**Pushados (CI verde) — até `0c0e934`:** `9d6a7ec` substrato W1.T2 · `6489f70` remediação auditoria 1 · `35fd1f3` NodeRegistry · `751b974` registry-init+codegen+gate · `7b0306f` remediação auditoria 3 · `b4a98f3` ph2d-expr · `7d18519` NodeManifest params/lowerings · `a19a141` remediação auditoria expr · `e87edb0` template+briefing · `0c0e934` verificação W1.T1.
+
+**Locais, NÃO pushados (próximo ship do Enio):** `ce8cd40` handoff playbook · `8c6bb4f` W2.T1 avaliador motion · `74c8254` W2.T2 3 nós + vertical headless. ⚠ W2.T1+T2 ainda **não auditados** (1º passo do próximo agente).
 
 ---
 

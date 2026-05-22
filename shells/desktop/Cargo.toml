@@ -17,6 +17,16 @@ ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# Node-system Motion vertical (W2) — used ONLY by the visual smoke scene
+# (render_loop/motion_smoke.rs), gated behind the PH2D_MOTION_SMOKE env var.
+# Cooks the headless grid→transform→clone graph and feeds its RenderInstances
+# to the existing sprite renderer so the lowering convention can be eyeballed.
+ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
+ph2d-node-registry = { path = "../../crates/ph2d-node-registry" }
+ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
+ph2d-node-motion-grid = { path = "../../crates/ph2d-node-motion-grid" }
+ph2d-node-motion-transform = { path = "../../crates/ph2d-node-motion-transform" }
+ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built

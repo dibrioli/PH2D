@@ -20,6 +20,7 @@ mod bgremoval_preview;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
+mod motion_smoke;
 mod padding_bridge;
 mod present;
 mod sim_extract;
@@ -219,15 +220,22 @@ impl crate::App {
         } else {
             None
         };
-        sim_extract::run(
-            dt,
-            sim,
-            present,
-            renderer,
-            prop_state,
-            worklist,
-            bgremoval_preview_entity,
-        );
+        // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the
+        // canvas this frame — cook grid→transform→clone and publish its
+        // RenderInstances instead of the M5 demo sim. Debug-only; off by default.
+        if motion_smoke::enabled() {
+            motion_smoke::run(present, renderer);
+        } else {
+            sim_extract::run(
+                dt,
+                sim,
+                present,
+                renderer,
+                prop_state,
+                worklist,
+                bgremoval_preview_entity,
+            );
+        }
 
         // Sprite-layer clear color = backdrop visible in the canvas
         // area through the transparent regions of `vello_rt`. Live

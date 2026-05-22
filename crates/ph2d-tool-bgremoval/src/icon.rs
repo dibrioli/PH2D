@@ -3,8 +3,8 @@
 //! SVG), to be scaled by the caller via `Affine::scale(chip_size /
 //! 24.0)` at paint time.
 //!
-//! Mirror of `ph2d_editor_core::tools::trim_transparency::icon` which
-//! provides `crop_bezpath()` the same way.
+//! Mirror of `ph2d_tool_trim_transparency`'s icon approach — a Lucide
+//! glyph hand-ported to a `BezPath` in 24×24 space.
 
 use ph2d_vector::BezPath;
 

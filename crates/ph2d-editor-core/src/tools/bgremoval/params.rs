@@ -175,9 +175,9 @@ pub const MAX_EXTRA_BG_COLORS: usize = 12;
 
 /// Full-scale → normalized-slider mapping constants. The panel sliders
 /// run 0..1; these are the full-scale maxima each maps onto. Centralized
-/// here so [`BgRemovalTool::ui_snapshot`](super::tool::BgRemovalTool::ui_snapshot)
-/// (forward) and [`BgRemovalTool::apply_ui_edit`](super::tool::BgRemovalTool::apply_ui_edit)
-/// (inverse) can't drift apart.
+/// here so `BgRemovalTool::ui_snapshot` (forward) and
+/// `BgRemovalTool::apply_ui_edit` (inverse) — in crate
+/// `ph2d-tool-bgremoval` — can't drift apart.
 pub const TOLERANCE_FULL_SCALE: f32 = 0.30;
 pub const FEATHER_FULL_SCALE: f32 = 0.20;
 pub const REFINE_RADIUS_FULL_SCALE: f32 = 100.0;
@@ -273,7 +273,7 @@ impl Default for BgRemovalUiSnapshot {
 
 /// One panel-originated parameter edit, routed editor-core → shell over
 /// `EditorAction::BgremovalUiEdit`. The shell drains it and calls
-/// [`BgRemovalTool::apply_ui_edit`](super::tool::BgRemovalTool::apply_ui_edit)
+/// `BgRemovalTool::apply_ui_edit` (in crate `ph2d-tool-bgremoval`)
 /// against the active tool instance. Slider values are normalized
 /// `0.0..=1.0`; the tool maps them back to full scale.
 #[derive(Copy, Clone, Debug, PartialEq)]

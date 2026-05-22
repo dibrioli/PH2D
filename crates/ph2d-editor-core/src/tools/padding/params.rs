@@ -66,9 +66,8 @@ impl Default for PaddingUiSnapshot {
 
 /// One panel-originated edit, routed editor-core → shell over
 /// `EditorAction::PaddingUiEdit`. The shell drains it and calls
-/// [`PaddingTool::apply_ui_edit`](super::tool::PaddingTool::apply_ui_edit)
-/// against the active tool instance. Inverse of
-/// [`PaddingTool::ui_snapshot`](super::tool::PaddingTool::ui_snapshot).
+/// `PaddingTool::apply_ui_edit` (in crate `ph2d-tool-padding`) against
+/// the active tool instance. Inverse of `PaddingTool::ui_snapshot`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PaddingUiEdit {
     /// Top edge field edited (signed px).

@@ -1,11 +1,10 @@
 //! Integration test for the Make Square island + its round-trip with
 //! `trim_transparency`.
 //!
-//! Make Square lives in crate `ph2d-tool-make-square`; this test
-//! consumes it as a `[dev-dependency]` (ADR-0040 T1.5 — the editor-core
-//! facade was removed so foundation has no tool dep). The cross-island
-//! round-trip with `trim_transparency` still pulls that algorithm in
-//! via `#[path]` because trim has not migrated to a crate yet.
+//! Both Make Square and Trim Transparency live in their own crates
+//! (ADR-0040 T1.5 / T3); this test consumes them as `[dev-dependencies]`
+//! (the editor-core facades were removed so foundation has no tool dep).
+//! The cross-island round-trip exercises both crate algorithms together.
 //!
 //! Slug-prefix convention canonicalized in
 //! `docs/IntegracaoMultiAgente/DIRETRIZ.md`.

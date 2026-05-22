@@ -43,9 +43,9 @@ bumpalo               = { version = "3", features = ["collections"] }
 dhat = "0.3"
 # ph2d-tool-make-square + ph2d-tool-trim-transparency — DEV-only
 # (ADR-0040 T1.5/T3). The algorithms moved to their crates (foundation
-# ⊥ tools); the editor-core integration tests (make_square_algorithm.rs,
-# trim_transparency_algorithm.rs, and their round-trip) still exercise
-# them. Dev-dep doesn't trip the `architecture_cycle_prevention` gate
+# ⊥ tools); the editor-core integration test make_square_algorithm.rs
+# (incl. its trim↔make_square round-trip) still exercises them.
+# Dev-dep doesn't trip the `architecture_cycle_prevention` gate
 # (it parses [dependencies] only) and creates no runtime cycle.
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }

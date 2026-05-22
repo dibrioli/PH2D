@@ -12,13 +12,11 @@
 //!
 //! Compute: `out[i] = in.v[i] * gain + sin(t)`.
 //!
-//! NOTE on params: the manifest declares the param *spec + default*; per-element
-//! eval reads the default via [`NodeManifest::param_default`] (the contract
-//! helper — `.expect` the name, never a silent fallback). Per-instance param
-//! *overrides* (a value map on the graph's `NodeInstance`, surfaced through
-//! `EvalCtx`) are a planned graph feature — see
-//! `docs/plans/2026-05-node-waves.md`. A node that is purely `Temporal`/`Pure`
-//! and reads only defaults is correct today.
+//! NOTE on params: the manifest declares the param *spec + default*; `eval`
+//! reads the live value via [`EvalCtx::param`] — the graph's per-instance
+//! override if the author set one ([`ph2d_nodegraph::graph::Graph::set_param`]),
+//! else the manifest default. Reading a name the manifest does not declare
+//! panics (caught by the golden test), never a silent `0.0`.
 
 use ph2d_expr::{BinOp, Expr, Func, eval_column};
 use ph2d_node_registry::{NodeRegistry, RegistryError};
@@ -66,13 +64,10 @@ impl NodeOp for DebugWave {
             Expr::call(Func::Sin, vec![Expr::param("t")]),
         );
         let t = ctx.playhead() as f32;
-        // `gain` is read from the manifest default via the contract helper
-        // (per-instance overrides land later — node-waves.md); `.expect`
-        // documents that `gain` is a declared param of this node, so a typo
-        // fails the golden test rather than silently reading 0.0.
-        let gain = MANIFEST
-            .param_default("gain")
-            .expect("debug.wave declares the `gain` param");
+        // `gain` resolves to the graph's per-instance override if set, else the
+        // manifest default (`EvalCtx::param`); reading an undeclared name would
+        // panic (caught by the golden test), never silently read 0.0.
+        let gain = ctx.param("gain");
         let params = |name: &str| match name {
             "gain" => gain,
             "t" => t,

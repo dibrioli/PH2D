@@ -43,9 +43,11 @@ pub struct PortSpec {
 }
 
 /// A static node parameter — a named scalar constant across the stream (e.g.
-/// `rows`, `seed`), with a default. Read in `ph2d-expr` via `Expr::Param` and
-/// in `NodeOp::eval` via the node's own state. (Vector/enum params are a later
-/// extension; scalar `f32` matches `ph2d-expr`'s value type.)
+/// `rows`, `seed`), with a default. A node reads its live value in
+/// `NodeOp::eval` via [`crate::cook::EvalCtx::param`] (the graph's per-instance
+/// override if set, else this `default`); `ph2d-expr` reads it via `Expr::Param`
+/// through the same binding. (Vector/enum params are a later extension; scalar
+/// `f32` matches `ph2d-expr`'s value type.)
 #[derive(Copy, Clone, Debug)]
 pub struct ParamSpec {
     pub name: &'static str,
@@ -114,17 +116,16 @@ pub struct NodeManifest {
 
 impl NodeManifest {
     /// The declared default of parameter `name`, or `None` if this node type has
-    /// no such parameter. Per-instance overrides are a planned graph feature
-    /// (`docs/plans/2026-05-node-waves.md`); until they land a node reads this
-    /// default in its `eval`.
+    /// no such parameter. A node's `eval` does not call this directly — it reads
+    /// the live value (per-instance override else this default) via
+    /// [`crate::cook::EvalCtx::param`]; this is the resolver `EvalCtx::param`
+    /// falls back to, and the way the cook/validate paths look up a default.
     ///
     /// Returning `Option` (rather than a silent fallback) makes a *misspelled*
     /// param name — a programmer error, since the name is a literal constant of
-    /// the node's own crate — a checkable error: the call site `.expect`s it and
-    /// the node's golden test exercises that path, so a typo fails the test
-    /// instead of silently reading `0.0` in production (gold-standard rule: no
-    /// silent failure). This replaces the per-crate `unwrap_or(0.0)` helper that
-    /// each node used to copy-paste.
+    /// the node's own crate — a checkable error: `EvalCtx::param` panics on an
+    /// undeclared name (caught by the node's golden test) instead of silently
+    /// reading `0.0` in production (gold-standard rule: no silent failure).
     pub fn param_default(&self, name: &str) -> Option<f32> {
         self.params
             .iter()

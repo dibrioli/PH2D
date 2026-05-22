@@ -14,6 +14,13 @@
 //! Ticks advance explicitly via [`Cook::advance_tick`] (call once per frame,
 //! between cooks). Within a tick, `cook` is idempotent.
 //!
+//! **Assumes a validated graph.** Like the membrane and the port types, a
+//! node's param overrides are checked by [`crate::graph::Graph::validate`], not
+//! here: an override naming a param the node does not declare is reported as
+//! [`crate::graph::Violation::UnknownParam`] by `validate` and is otherwise
+//! ignored at cook time (the node only reads its *own* declared names via
+//! [`EvalCtx::param`]). Call `validate` after editing/loading, before cooking.
+//!
 //! Scope: drives the **pull / presentation** side (motion, shader, sound).
 //! `Stateful` (gameplay) nodes are driven by the push evaluator
 //! (`ph2d-script`), never here — that separation is the membrane (ADR-0030).
@@ -21,7 +28,7 @@
 use crate::attr::Stream;
 use crate::effect::Effect;
 use crate::graph::{Graph, NodeId};
-use crate::node::{NodeOp, NodeTypeId};
+use crate::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
 /// Resolves a node type id to its operation impl. Implemented by the node
@@ -31,10 +38,13 @@ pub trait OpResolver {
 }
 
 /// Per-eval context handed to a node. A node sees **only** this — its typed
-/// inputs and the playhead — never the graph. FBP black box (ADR-0031).
+/// inputs, the playhead, and its own resolved parameters — never the graph.
+/// FBP black box (ADR-0031).
 pub struct EvalCtx<'a> {
     inputs: &'a [Stream],
     playhead: f64,
+    manifest: &'static NodeManifest,
+    overrides: Option<&'a BTreeMap<String, f32>>,
     outputs: Vec<Stream>,
 }
 
@@ -52,6 +62,24 @@ impl<'a> EvalCtx<'a> {
     /// Current clock time; meaningful for `Temporal` nodes.
     pub fn playhead(&self) -> f64 {
         self.playhead
+    }
+
+    /// The current value of parameter `name`: the graph's per-instance override
+    /// if set ([`crate::graph::Graph::set_param`]), else the node type's
+    /// manifest default. Panics if `name` is not a declared param of this node
+    /// — a programmer error (the name is a literal of the node's own crate),
+    /// caught by its golden test rather than silently reading `0.0`, the same
+    /// no-silent-failure discipline as [`NodeManifest::param_default`].
+    pub fn param(&self, name: &str) -> f32 {
+        self.overrides
+            .and_then(|o| o.get(name).copied())
+            .or_else(|| self.manifest.param_default(name))
+            .unwrap_or_else(|| {
+                panic!(
+                    "node `{}` read undeclared param `{name}`",
+                    self.manifest.name
+                )
+            })
     }
 
     /// Emit the next output port's stream. Call once per output port, in order.
@@ -85,6 +113,38 @@ struct Fingerprint {
     input_revs: Vec<u64>,
     playhead: Option<u64>,
     tick: Option<u64>,
+    /// FNV-1a of the node's per-instance param overrides (name + value bits).
+    /// Folds edited params into the reuse decision: an override change must
+    /// recompute, or a re-cook with the same `Cook` would return a stale,
+    /// pre-edit stream. Manifest defaults are compile-time constant, so only
+    /// overrides can change at runtime — hashing them suffices.
+    params: u64,
+}
+
+/// FNV-1a over a node's overrides, in `BTreeMap` (deterministic) order. `None`
+/// or empty → the FNV offset basis (a stable constant for "no overrides").
+///
+/// Each name is **length-prefixed** so the byte stream is unambiguous: without
+/// it, `{"p": x, "q": y}` and `{"pemonq": y}` can flatten to the same bytes and
+/// collide, which (since the fingerprint gates memo reuse) would return a stale,
+/// pre-edit stream — a silent wrong result. The length prefix makes the
+/// encoding injective, so distinct override sets always hash distinctly.
+fn params_fingerprint(overrides: Option<&BTreeMap<String, f32>>) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut mix = |bytes: &[u8]| {
+        for b in bytes {
+            hash ^= *b as u64;
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    if let Some(map) = overrides {
+        for (name, value) in map {
+            mix(&(name.len() as u64).to_le_bytes());
+            mix(name.as_bytes());
+            mix(&value.to_bits().to_le_bytes());
+        }
+    }
+    hash
 }
 
 struct Cached {
@@ -197,6 +257,7 @@ impl Cook {
             input_revs,
             playhead: (manifest.effect == Effect::Temporal).then_some(playhead.to_bits()),
             tick: consumes_pre.then_some(self.tick),
+            params: params_fingerprint(graph.node_param_overrides(node)),
         };
         if let Some(c) = self.cache.get(&node)
             && c.fingerprint == fingerprint
@@ -208,6 +269,8 @@ impl Cook {
         let mut ctx = EvalCtx {
             inputs: &input_streams,
             playhead,
+            manifest,
+            overrides: graph.node_param_overrides(node),
             outputs: Vec::new(),
         };
         op.eval(&mut ctx);
@@ -624,5 +687,139 @@ mod tests {
             cook.cook(&g, &o, NodeId(999), 0.0),
             Err(CookError::UnknownNode)
         );
+    }
+
+    // A node that emits its `k` param (default 7) as a 1-element scalar — the
+    // probe for per-instance param overrides + their memo invalidation.
+    static PARAM_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.param_echo"),
+        name: "test.param_echo",
+        inputs: &[],
+        outputs: &[port("out")],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[crate::node::ParamSpec {
+            name: "k",
+            default: 7.0,
+        }],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct ParamEcho {
+        calls: AtomicU64,
+    }
+    impl NodeOp for ParamEcho {
+        fn manifest(&self) -> &'static NodeManifest {
+            &PARAM_MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            ctx.emit(Stream::new(1).with("v", Column::Scalar(vec![ctx.param("k")])));
+        }
+    }
+    struct ParamOps {
+        echo: ParamEcho,
+    }
+    impl OpResolver for ParamOps {
+        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+            (ty == PARAM_MAN.id).then_some(&self.echo as &dyn NodeOp)
+        }
+    }
+
+    #[test]
+    fn param_reads_default_then_override() {
+        let mut g = Graph::new();
+        let n = g.add_node("test.param_echo");
+        let o = ParamOps {
+            echo: ParamEcho {
+                calls: AtomicU64::new(0),
+            },
+        };
+        let mut cook = Cook::new();
+        // No override → manifest default (7).
+        assert_eq!(scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![7.0]);
+        // Editing the override and re-cooking the SAME Cook must recompute, not
+        // return the memoized pre-edit stream (params fold into the fingerprint).
+        g.set_param(n, "k", 42.0);
+        assert_eq!(scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![42.0]);
+        assert_eq!(o.echo.calls.load(Ordering::Relaxed), 2); // recomputed
+        // A second edit (override → a different override) must also recompute.
+        g.set_param(n, "k", 43.0);
+        assert_eq!(scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![43.0]);
+        assert_eq!(o.echo.calls.load(Ordering::Relaxed), 3);
+    }
+
+    #[test]
+    fn params_fingerprint_is_unambiguous_across_name_value_boundary() {
+        // Regression for the audit's framing collision: without length-prefixed
+        // names, `{"p": <bytes "emon">, "q": 2.5}` and `{"pemonq": 2.5}` flatten
+        // to the same byte stream and collide → memo would return a stale stream.
+        let v_p = f32::from_bits(u32::from_le_bytes([b'e', b'm', b'o', b'n']));
+        let mut a = BTreeMap::new();
+        a.insert("p".to_string(), v_p);
+        a.insert("q".to_string(), 2.5_f32);
+        let mut b = BTreeMap::new();
+        b.insert("pemonq".to_string(), 2.5_f32);
+        assert_ne!(params_fingerprint(Some(&a)), params_fingerprint(Some(&b)));
+        // None and an empty map both hash to the bare FNV basis (stable "no
+        // overrides").
+        assert_eq!(
+            params_fingerprint(None),
+            params_fingerprint(Some(&BTreeMap::new()))
+        );
+    }
+
+    #[test]
+    fn unchanged_param_still_memoizes() {
+        let mut g = Graph::new();
+        let n = g.add_node("test.param_echo");
+        g.set_param(n, "k", 3.0);
+        let o = ParamOps {
+            echo: ParamEcho {
+                calls: AtomicU64::new(0),
+            },
+        };
+        let mut cook = Cook::new();
+        cook.cook(&g, &o, n, 0.0).unwrap();
+        cook.advance_tick(&g, &o, 0.0).unwrap();
+        cook.cook(&g, &o, n, 0.0).unwrap();
+        // Param unchanged + combinational → evaluated exactly once.
+        assert_eq!(o.echo.calls.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "read undeclared param")]
+    fn reading_an_undeclared_param_panics() {
+        // A node whose `eval` reads a name not in its manifest is a programmer
+        // bug — caught loudly (by its own test), never a silent 0.0.
+        static BAD_PARAM_MAN: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("test.bad_param"),
+            name: "test.bad_param",
+            inputs: &[],
+            outputs: &[port("out")],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct BadParam;
+        impl NodeOp for BadParam {
+            fn manifest(&self) -> &'static NodeManifest {
+                &BAD_PARAM_MAN
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                let _ = ctx.param("nope");
+                ctx.emit(Stream::new(0));
+            }
+        }
+        struct BadOps;
+        impl OpResolver for BadOps {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                (ty == BAD_PARAM_MAN.id).then_some(&BadParam as &dyn NodeOp)
+            }
+        }
+        let mut g = Graph::new();
+        let n = g.add_node("test.bad_param");
+        let mut cook = Cook::new();
+        let _ = cook.cook(&g, &BadOps, n, 0.0);
     }
 }

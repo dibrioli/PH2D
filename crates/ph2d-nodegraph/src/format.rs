@@ -12,9 +12,20 @@
 //! v1
 //! n <id> <type_name>
 //! e <from_id> <from_port> <to_id> <to_port> <fwd|pre>
+//! p <id> <param_name> <value>
 //! [layout]
 //! l <id> <x> <y>
 //! ```
+//!
+//! `p` records (per-instance param overrides) are **semantic** — they sit above
+//! `[layout]` so a semantic diff includes them, unlike `l` (layout) records.
+//!
+//! Versioning: `p` is part of the **frozen `v1` grammar** (it lands with the
+//! Motion vertical, before the W2.T4 freeze). The extension is forward- and
+//! backward-compatible — a `v1` file without `p` records still loads, and a
+//! `v1` reader that predates `p` *rejects* an unknown record (hard error, never
+//! a silent misread), so no version bump is warranted. Any **future** record
+//! kind, post-freeze, is a contract change and bumps the header to `v2`.
 
 use crate::graph::{Edge, EdgeError, Graph, NodeId, Pos};
 use std::fmt::Write as _;
@@ -40,6 +51,14 @@ pub fn to_text(graph: &Graph) -> String {
             "e {} {} {} {} {}",
             e.from.0.0, e.from.1, e.to.0.0, e.to.1, kind
         );
+    }
+
+    // Per-instance param overrides (semantic). `node_params()` is a nested
+    // `BTreeMap`, so node ids and param names are both already sorted.
+    for (id, params) in graph.node_params() {
+        for (name, value) in params {
+            let _ = writeln!(out, "p {} {} {}", id.0, name, value);
+        }
     }
 
     out.push_str("[layout]\n");
@@ -76,6 +95,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     // Collect records first (two-pass), so order in the file is irrelevant.
     let mut node_recs: Vec<(NodeId, String)> = Vec::new();
     let mut edge_recs: Vec<Edge> = Vec::new();
+    let mut param_recs: Vec<(NodeId, String, f32)> = Vec::new();
     let mut layout_recs: Vec<(NodeId, Pos)> = Vec::new();
     let mut seen_ids = std::collections::BTreeSet::new();
 
@@ -111,6 +131,18 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
                     delayed,
                 });
             }
+            Some("p") => {
+                let id = NodeId(parse(&mut tok, line)?);
+                let name = tok.next().ok_or_else(|| ParseError::BadLine(line.into()))?;
+                let value: f32 = parse(&mut tok, line)?;
+                // Reject non-finite overrides (`"nan"`/`"inf"` parse fine as f32
+                // but are never legitimate authored params) and any trailing
+                // token (a whitespaced param name would split, loading lossy).
+                if !value.is_finite() || tok.next().is_some() {
+                    return Err(ParseError::BadLine(line.into()));
+                }
+                param_recs.push((id, name.to_string(), value));
+            }
             Some("l") => {
                 let id = NodeId(parse(&mut tok, line)?);
                 let x: f32 = parse(&mut tok, line)?;
@@ -122,12 +154,27 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
         }
     }
 
+    // A `p` record must reference a node declared by an `n` record — otherwise
+    // the override is a dead entry on a non-existent node (`set_param` is lenient
+    // for the in-code path, mirroring `set_pos`, so the file boundary rejects it
+    // here rather than storing an unvalidatable phantom). Order-independent: the
+    // check runs after the two-pass collect, so a `p` may precede its `n`.
+    if let Some((id, _, _)) = param_recs.iter().find(|(id, _, _)| !seen_ids.contains(id)) {
+        return Err(ParseError::BadLine(format!(
+            "p record for unknown node id {}",
+            id.0
+        )));
+    }
+
     let mut graph = Graph::new();
     for (id, name) in node_recs {
         graph.insert_raw(id, name);
     }
     for e in edge_recs {
         graph.connect(e).map_err(ParseError::Edge)?;
+    }
+    for (id, name, value) in param_recs {
+        graph.set_param(id, name, value);
     }
     for (id, pos) in layout_recs {
         graph.set_pos(id, pos);
@@ -166,6 +213,10 @@ mod tests {
         .unwrap();
         g.set_pos(grid, Pos { x: 10.0, y: 20.0 });
         g.set_pos(clone, Pos { x: 120.0, y: 20.0 });
+        // Per-instance param overrides — exercises the `p` record round-trip.
+        g.set_param(grid, "rows", 4.0);
+        g.set_param(grid, "cols", 5.0);
+        g.set_param(clone, "count", 2.0);
         g
     }
 
@@ -176,7 +227,48 @@ mod tests {
         let back = from_text(&text).unwrap();
         assert_eq!(g.nodes(), back.nodes());
         assert_eq!(g.edges(), back.edges());
+        assert_eq!(g.node_params(), back.node_params());
         assert_eq!(g.layout(), back.layout());
+    }
+
+    #[test]
+    fn params_are_in_the_semantic_section_above_layout() {
+        // A `p` record must sit before `[layout]` so a semantic diff includes it
+        // (params change the cook; layout does not).
+        let text = to_text(&sample());
+        let p_pos = text.find("\np ").expect("a param record");
+        let layout_pos = text.find("[layout]").expect("layout section");
+        assert!(p_pos < layout_pos);
+    }
+
+    #[test]
+    fn non_finite_or_malformed_param_is_rejected() {
+        // "nan"/"inf" parse as f32 but are never legitimate authored params.
+        assert!(matches!(
+            from_text("v1\nn 0 a\np 0 k nan\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+        assert!(matches!(
+            from_text("v1\nn 0 a\np 0 k inf\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+        // A trailing token (a whitespaced param name would split lossy).
+        assert!(matches!(
+            from_text("v1\nn 0 a\np 0 k 1.0 extra\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+    }
+
+    #[test]
+    fn param_for_unknown_node_id_is_rejected() {
+        // A `p` referencing a node id with no `n` record is a dead override —
+        // rejected at the file boundary rather than stored as a phantom.
+        assert!(matches!(
+            from_text("v1\nn 0 a\np 7 k 1.0\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+        // Order-independent: a `p` *before* its `n` still loads.
+        assert!(from_text("v1\np 0 k 1.0\nn 0 a\n[layout]\n").is_ok());
     }
 
     #[test]

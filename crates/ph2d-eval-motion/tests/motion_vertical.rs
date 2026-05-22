@@ -63,6 +63,30 @@ fn grid_transform_clone_lowers_to_render_instances() {
 }
 
 #[test]
+fn per_instance_overrides_flow_through_the_real_registry() {
+    // The whole point of per-instance params, end to end on the real registry:
+    // override grid to 2×2 and clone to ×2 → 4 × 2 = 8 instances (vs the default
+    // 9 × 3 = 27). Proves overrides reach eval through registry + cook + lower.
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let clone = g.add_node("motion.clone");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (clone, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.set_param(grid, "rows", 2.0);
+    g.set_param(grid, "cols", 2.0);
+    g.set_param(clone, "count", 2.0);
+    g.validate(&reg).expect("well-typed with overrides");
+    let mut cook = Cook::new();
+    let instances = evaluate_motion(&mut cook, &g, &reg, clone, 0.0).unwrap();
+    assert_eq!(instances.len(), 8); // (2×2) × 2
+}
+
+#[test]
 fn incremental_recook_is_stable() {
     // Cooking the same static graph twice (same Cook) yields identical output —
     // the memoized cook path is stable for a combinational motion graph. This

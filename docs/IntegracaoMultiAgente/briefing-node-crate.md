@@ -38,6 +38,14 @@ CONTRATO (leia, não edite): crates/ph2d-nodegraph/src/{node,port,effect,attr,co
 - A membrana: se seu nó NÃO escreve estado simulado, é Pure/Temporal (lado pull).
   Stateful é só gameplay. Pure/Temporal são isentos de HR-5.
 - Math por-elemento: use ph2d-expr (Expr + eval_column sobre o Stream de entrada).
+- PARAMS: leia SEMPRE via `ctx.param("nome")` no eval — resolve o override
+  por-instância do grafo se houver, senão o default do manifest. NUNCA leia
+  `MANIFEST.params[..].default` direto (ignora overrides) nem `unwrap_or(0.0)`
+  (falha silenciosa). Um nome não-declarado no manifest faz `ctx.param` dar
+  panic — pego pelo golden test, nunca silencioso. Param que vira contagem/
+  alocação: passe por `ph2d_nodegraph::node::param_as_count(valor, max)` e cape
+  o produto (vide motion.grid/clone) — um override hostil (NaN/∞/gigante) não
+  pode estourar a alocação.
 
 O QUE VOCÊ NÃO TOCA:
 - Qualquer arquivo fora da sua pasta.

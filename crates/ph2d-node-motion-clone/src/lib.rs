@@ -5,7 +5,8 @@
 //! (1 node → N×in instances) — NOT entity spawning; it has no ECS analogue
 //! (ADR-0035). Output count = `in_count * count`. Pure.
 //!
-//! Params (manifest defaults): `count` (3), `step_x` (2.0), `step_y` (0.0).
+//! Params (read via `ctx.param` — per-instance override else the manifest
+//! default shown): `count` (3), `step_x` (2.0), `step_y` (0.0).
 //! `count` is read as an element count ([`param_as_count`]) and clamped so the
 //! output `in_count * count` never overflows the allocation; the minimum is one
 //! copy (a cloner is at least a passthrough).
@@ -56,14 +57,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// A clone param read; `.expect` documents that the name is a literal of this
-/// crate's own `MANIFEST` (a typo fails the golden test, never silent `0.0`).
-fn param(name: &str) -> f32 {
-    MANIFEST
-        .param_default(name)
-        .expect("clone reads only its own declared params")
-}
-
 /// Replicate a column `k` times (copy 0, copy 1, ... — element order within a
 /// copy preserved), matching the `P` offset loop in [`clone_stream`].
 fn replicate(col: &Column, k: usize) -> Column {
@@ -97,8 +90,8 @@ fn copies_within_budget(requested: usize, in_count: usize, max: usize) -> usize 
 /// `copy_index * (sx, sy)` and replicating every other column unchanged. `k`
 /// must already be budget-clamped ([`copies_within_budget`]) so `in_count * k`
 /// fits the allocation. Pure and isolated so the per-copy offset *and* the
-/// column-replication alignment are unit-tested directly (the cook only feeds
-/// manifest defaults until per-instance overrides land).
+/// column-replication alignment are unit-tested directly, alongside the
+/// end-to-end cook test that drives `count`/`step` via per-instance overrides.
 fn clone_stream(input: &Stream, k: usize, sx: f32, sy: f32) -> Stream {
     // The port type guarantees `P` is `Vec2`; any other dim is an upstream
     // node-author bug — assert loudly rather than replicate `P` without the
@@ -135,12 +128,12 @@ impl NodeOp for MotionClone {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let (sx, sy) = (param("step_x"), param("step_y"));
-        let input = ctx.input(0);
+        let (sx, sy) = (ctx.param("step_x"), ctx.param("step_y"));
         // `count` from an `f32` param: total conversion (non-finite/negative →
         // 0) then clamped so `in_count * k` cannot overflow the allocation; at
         // least one copy (passthrough).
-        let requested = param_as_count(param("count"), RECOMMENDED_MAX_ELEMENTS);
+        let requested = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
+        let input = ctx.input(0);
         let k = copies_within_budget(requested, input.count(), RECOMMENDED_MAX_ELEMENTS);
         let out = clone_stream(input, k, sx, sy);
         ctx.emit(out);
@@ -209,6 +202,30 @@ mod tests {
         assert_eq!(out[0].count(), 3);
         match out[0].get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [2.0, 0.0], [4.0, 0.0]]),
+            _ => panic!("P"),
+        }
+    }
+
+    #[test]
+    fn per_instance_overrides_drive_clone_through_the_cook() {
+        // Authoring path: override count → 2, step_x → 5, on a 1-element source
+        // → 2 copies at x = 0, 5 (vs the default count 3, step 2).
+        let mut g = Graph::new();
+        let src = g.add_node("motion.clone.test.src");
+        let clone = g.add_node("motion.clone");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (clone, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(clone, "count", 2.0);
+        g.set_param(clone, "step_x", 5.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, clone, 0.0).unwrap();
+        assert_eq!(out[0].count(), 2);
+        match out[0].get("P").unwrap() {
+            Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [5.0, 0.0]]),
             _ => panic!("P"),
         }
     }

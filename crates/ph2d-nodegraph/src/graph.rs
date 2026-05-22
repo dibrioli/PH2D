@@ -105,6 +105,12 @@ pub enum Violation {
         from: (NodeId, u16),
         to: (NodeId, u16),
     },
+    /// A per-instance param override names a parameter the node's type does not
+    /// declare (a typo, or a stale name after a manifest change). Surfaced here
+    /// rather than silently ignored at cook time — the override would otherwise
+    /// read as the manifest default with no signal that the authored value was
+    /// dropped.
+    UnknownParam { node: NodeId, param: String },
 }
 
 /// Editor-space position of a node. Pure layout — never affects cook.
@@ -119,6 +125,12 @@ pub struct Graph {
     nodes: Vec<NodeInstance>,
     edges: Vec<Edge>,
     layout: BTreeMap<NodeId, Pos>,
+    /// Per-instance parameter overrides, keyed by node then param name. Unlike
+    /// [`layout`](Self::layout) these are **semantic** — they change the cooked
+    /// result — so they live in the semantic section of the textual format.
+    /// A node with no entry cooks at its manifest defaults. `BTreeMap` for
+    /// deterministic iteration (stable diff / serialization, ADR-0032 §6).
+    node_params: BTreeMap<NodeId, BTreeMap<String, f32>>,
     next_id: u32,
 }
 
@@ -184,6 +196,42 @@ impl Graph {
 
     pub fn pos(&self, id: NodeId) -> Option<Pos> {
         self.layout.get(&id).copied()
+    }
+
+    /// Set a per-instance parameter override for `id`, replacing any previous
+    /// value for `name`. Overrides the node type's manifest default at cook
+    /// time (read via [`crate::cook::EvalCtx::param`]). A `name` the node's type
+    /// does not declare is **not** rejected here (the graph holds no manifests)
+    /// — [`Graph::validate`] surfaces it as [`Violation::UnknownParam`].
+    ///
+    /// Panics in debug on a non-finite `value`: an override is authored data and
+    /// `NaN`/`±∞` are never a legitimate parameter (the textual parser rejects
+    /// them at load, so this guards the in-code path).
+    ///
+    /// Lenient on `id` (does not check the node exists), mirroring
+    /// [`Graph::set_pos`]; an override on a non-existent node is dead data the
+    /// cook never reads. The textual parser is stricter — it rejects a `p`
+    /// record whose id has no node — so a corrupt file cannot smuggle one in.
+    pub fn set_param(&mut self, id: NodeId, name: impl Into<String>, value: f32) {
+        debug_assert!(value.is_finite(), "param override must be finite: {value}");
+        self.node_params
+            .entry(id)
+            .or_default()
+            .insert(name.into(), value);
+    }
+
+    /// The per-instance param overrides for `id` (none if untouched). The cook
+    /// resolves a param as this map's value if present, else the manifest
+    /// default.
+    pub fn node_param_overrides(&self, id: NodeId) -> Option<&BTreeMap<String, f32>> {
+        self.node_params.get(&id)
+    }
+
+    /// All per-instance param overrides, keyed by node id then param name
+    /// (deterministic order). Used by the textual format; cook reads a single
+    /// node's via [`Graph::node_param_overrides`].
+    pub fn node_params(&self) -> &BTreeMap<NodeId, BTreeMap<String, f32>> {
+        &self.node_params
     }
 
     fn contains(&self, id: NodeId) -> bool {
@@ -302,6 +350,30 @@ impl Graph {
                 }
             }
         }
+
+        // Per-instance param overrides must name a declared param of the node's
+        // type — otherwise the authored value is silently dropped at cook time
+        // (the cook would read the manifest default). Checked against the
+        // resolved manifest; a node whose type does not resolve is left to the
+        // edge loop above (if connected) or is a harmless isolated node.
+        for (&node, overrides) in &self.node_params {
+            let Some(manifest) = self
+                .node(node)
+                .and_then(|n| ops.resolve(n.type_id()))
+                .map(|o| o.manifest())
+            else {
+                continue;
+            };
+            for name in overrides.keys() {
+                if manifest.param_default(name).is_none() {
+                    violations.push(Violation::UnknownParam {
+                        node,
+                        param: name.clone(),
+                    });
+                }
+            }
+        }
+
         if violations.is_empty() {
             Ok(())
         } else {

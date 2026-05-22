@@ -3,7 +3,8 @@
 //! (Vec2) attribute of its input instance stream; passes every other column
 //! through unchanged (count is preserved). Pure.
 //!
-//! Params (manifest defaults): `scale` (1.0), `offset_x` (0.0), `offset_y` (0.0).
+//! Params (read via `ctx.param` — per-instance override else the manifest
+//! default shown): `scale` (1.0), `offset_x` (0.0), `offset_y` (0.0).
 //! `P' = P * scale + (offset_x, offset_y)`.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
@@ -50,18 +51,9 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// A transform param read; `.expect` documents that the name is a literal of
-/// this crate's own `MANIFEST` (a typo fails the golden test, never silent
-/// `0.0`).
-fn param(name: &str) -> f32 {
-    MANIFEST
-        .param_default(name)
-        .expect("transform reads only its own declared params")
-}
-
 /// The per-element affine map `p' = p * scale + (ox, oy)`. Pure and isolated so
-/// the arithmetic is unit-tested with non-identity values (the cook only ever
-/// feeds the manifest defaults — identity — until per-instance overrides land).
+/// the arithmetic is unit-tested directly with non-identity values, alongside
+/// the end-to-end cook test that drives it via per-instance param overrides.
 fn apply_xform(p: [f32; 2], scale: f32, ox: f32, oy: f32) -> [f32; 2] {
     [p[0] * scale + ox, p[1] * scale + oy]
 }
@@ -74,8 +66,8 @@ impl NodeOp for MotionTransform {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let scale = param("scale");
-        let (ox, oy) = (param("offset_x"), param("offset_y"));
+        let scale = ctx.param("scale");
+        let (ox, oy) = (ctx.param("offset_x"), ctx.param("offset_y"));
         let out = {
             let input = ctx.input(0);
             // The port type guarantees `P` is `Vec2`; a `P` of any other dim is
@@ -182,9 +174,36 @@ mod tests {
     }
 
     #[test]
+    fn per_instance_overrides_drive_the_affine_through_the_cook() {
+        // The real authoring path: override scale + offset on the instance and
+        // see P transformed end-to-end (the cook only fed identity defaults
+        // before per-instance params landed). src emits (1,1),(2,2).
+        let mut g = Graph::new();
+        let src = g.add_node("motion.transform.test.src");
+        let xf = g.add_node("motion.transform");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (xf, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(xf, "scale", 2.0);
+        g.set_param(xf, "offset_x", 10.0);
+        g.set_param(xf, "offset_y", 1.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, xf, 0.0).unwrap();
+        match out[0].get("P").unwrap() {
+            // (1,1)*2+(10,1) = (12,3) ; (2,2)*2+(10,1) = (14,5)
+            Column::Vec2(v) => assert_eq!(v, &vec![[12.0, 3.0], [14.0, 5.0]]),
+            _ => panic!("P"),
+        }
+    }
+
+    #[test]
     fn apply_xform_scales_then_offsets() {
-        // The cook can only feed identity (manifest default scale=1, offset=0),
-        // so the actual `p*scale + offset` arithmetic is proven here directly.
+        // Unit-proves the `p*scale + offset` arithmetic directly with
+        // non-identity values (the end-to-end override path is covered by
+        // `per_instance_overrides_drive_the_affine_through_the_cook`).
         assert_eq!(apply_xform([2.0, 3.0], 2.0, 1.0, -1.0), [5.0, 5.0]);
         assert_eq!(apply_xform([0.0, 0.0], 10.0, 4.0, 7.0), [4.0, 7.0]);
         assert_eq!(apply_xform([1.0, 1.0], 0.0, 0.0, 0.0), [0.0, 0.0]); // collapse

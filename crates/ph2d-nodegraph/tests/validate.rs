@@ -173,6 +173,24 @@ fn bad_port_index_is_caught() {
 }
 
 #[test]
+fn unknown_param_override_is_caught() {
+    // A per-instance override naming a param the node type does not declare is
+    // surfaced (would otherwise be silently dropped at cook time). PURE_GEN
+    // declares no params, so any override on it is unknown.
+    let mut g = Graph::new();
+    let n = g.add_node("v.pure_gen");
+    g.set_param(n, "ghost", 1.0);
+    let err = g.validate(&Ops).unwrap_err();
+    assert_eq!(
+        err,
+        vec![Violation::UnknownParam {
+            node: n,
+            param: "ghost".to_string(),
+        }]
+    );
+}
+
+#[test]
 fn unknown_type_is_caught() {
     let mut g = Graph::new();
     let a = g.add_node("v.pure_gen");

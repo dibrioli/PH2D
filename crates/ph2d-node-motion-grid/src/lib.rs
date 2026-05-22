@@ -4,8 +4,8 @@
 //! inputs. Pure (combinational). The instance stream convention is
 //! `ph2d-eval-motion`'s (P → world_pos).
 //!
-//! Params (manifest defaults until per-instance overrides land — node-waves.md):
-//! `rows` (3), `cols` (3), `spacing` (1.0). `rows`/`cols` are read as element
+//! Params (read via `ctx.param` — per-instance override else the manifest
+//! default shown): `rows` (3), `cols` (3), `spacing` (1.0). `rows`/`cols` are read as element
 //! counts via [`param_as_count`] (non-finite/negative → 0) and the `rows × cols`
 //! product is capped at [`RECOMMENDED_MAX_ELEMENTS`], so no param value can
 //! overflow the allocation.
@@ -54,14 +54,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// The grid param read; `.expect` documents that the name is a literal of this
-/// crate's own `MANIFEST` (a typo fails the golden test, never silent `0.0`).
-fn param(name: &str) -> f32 {
-    MANIFEST
-        .param_default(name)
-        .expect("grid reads only its own declared params")
-}
-
 /// Build the `rows × cols` position grid (row-major, spaced by `spacing`),
 /// capping the element count at `max` so a pathological `rows × cols` can never
 /// overflow the allocation. Pure and `max`-parameterized so the cap is testable
@@ -91,9 +83,9 @@ impl NodeOp for MotionGrid {
         // `rows`/`cols` come from `f32` params; convert *totally* (a non-finite
         // or negative override yields 0, huge values clamp) and cap the product
         // so a corrupt scene value can never overflow the allocation.
-        let rows = param_as_count(param("rows"), RECOMMENDED_MAX_ELEMENTS);
-        let cols = param_as_count(param("cols"), RECOMMENDED_MAX_ELEMENTS);
-        let positions = build_grid(rows, cols, param("spacing"), RECOMMENDED_MAX_ELEMENTS);
+        let rows = param_as_count(ctx.param("rows"), RECOMMENDED_MAX_ELEMENTS);
+        let cols = param_as_count(ctx.param("cols"), RECOMMENDED_MAX_ELEMENTS);
+        let positions = build_grid(rows, cols, ctx.param("spacing"), RECOMMENDED_MAX_ELEMENTS);
         ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
     }
 }
@@ -131,6 +123,25 @@ mod tests {
                 assert_eq!(v[1], [1.0, 0.0]); // col 1, spacing 1.0
                 assert_eq!(v[3], [0.0, 1.0]); // row 1
                 assert_eq!(v[8], [2.0, 2.0]); // last
+            }
+            _ => panic!("P must be Vec2"),
+        }
+    }
+
+    #[test]
+    fn per_instance_override_changes_the_grid() {
+        // The headline of per-instance params: override `rows` to 2 → 2×3 = 6
+        // points (vs the 3×3 = 9 default), proven through the real cook path.
+        let mut g = Graph::new();
+        let n = g.add_node("motion.grid");
+        g.set_param(n, "rows", 2.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
+        assert_eq!(out[0].count(), 6);
+        match out[0].get("P").unwrap() {
+            Column::Vec2(v) => {
+                assert_eq!(v.len(), 6);
+                assert_eq!(v[5], [2.0, 1.0]); // last of row 1
             }
             _ => panic!("P must be Vec2"),
         }

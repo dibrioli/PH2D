@@ -49,10 +49,10 @@ Engine virou **node-centric** (ADR-0030..0038). Modelo = **funil**: neck serial 
 
 **W1 (o neck) COMPLETO + SHIPADO** — contrato + registry + codegen + compute compartilhado + template + save verificado. Auditado 3× e remediado. **CI 9/9 verde cross-platform** (incl. replay-hash de determinismo nos 3 OS); push em main `0c0e934`.
 
-**W2.T1+T2 (vertical Motion, parte HEADLESS) CONSTRUÍDO + verde, mas NÃO auditado ainda** — commits `8c6bb4f` (avaliador `ph2d-eval-motion`: grafo→`Vec<RenderInstance>`) + `74c8254` (3 nós reais `motion.{grid,transform,clone}` + teste de integração da vertical: grid→transform→clone→27 instâncias, sem GPU). Commits **locais, não pushados**.
+**W2.T1+T2 (vertical Motion, parte HEADLESS) CONSTRUÍDO + AUDITADO + verde** — commits `8c6bb4f` (avaliador `ph2d-eval-motion`: grafo→`Vec<RenderInstance>`) + `74c8254` (3 nós reais `motion.{grid,transform,clone}` + integração: grid→transform→clone→27 instâncias, sem GPU). Auditoria adversarial 3-lentes + remediação a erro-zero em `2944e38` (vide §10/§11). **W2.T3 parte HEADLESS** (arch-gate da membrana com nós reais) em `931883d`. Commits **locais, não pushados**.
 
 > ### ⏯ PONTO DE ENTRADA (próximo agente — comece AQUI)
-> Seu **primeiro passo** é o passo 5 do loop (§1) sobre o que já está construído mas não auditado: **AUDITE a vertical Motion** (`8c6bb4f`+`74c8254`: `ph2d-eval-motion` + os 3 `ph2d-node-motion-*`) com ≥2 auditores adversariais → **corrija TUDO até erro zero** → commit. **Depois** construa o arch-gate da membrana (W2.T3 parte headless) e **PARE em W2.T3** (view de editor + live-preview + smoke visual = precisam do Enio). Não pushe (ship é do Enio). Releia §0 (mandato) e §1 (loop) antes.
+> A vertical Motion headless está **auditada, remediada e gateada**. O que resta de W2.T3 é a **parte que precisa do Enio**: view de editor mínima + live-preview + **smoke visual** (`./play.command`) e depois **W2.T4 = FREEZE** (decisão do Enio). Essas tocam `editor-core`/shells e a tela → **NÃO autônomas**. Espere o smoke/decisão do Enio. Se ele liberar trabalho headless adicional antes do freeze, o próximo candidato natural é **param overrides por-instância** (§11 — `NodeInstance.params` + `EvalCtx` expondo params; o substrato já tem `NodeManifest::param_default` e os nós já leem via ele). Releia §0 (mandato) e §1 (loop) antes de qualquer código.
 
 Tese: o objetivo "multi-agente sem colisão" **é** o sistema de nós, via **isolamento FBP** (nó = caixa-preta: portas tipadas + efeito, zero estado compartilhado). Adicionar feature = largar um crate isolado. Houdini é referência de poder, não design final (síntese: atributos Houdini + Fields Blender + compile-to-shader Unreal + UX Substance + **inventado: membrana de determinismo como tipo** + formato textual diffável).
 
@@ -140,12 +140,12 @@ cargo run -p ph2d-node-sync && cargo test -p ph2d-node-registry-init   # wiring 
 ## 8. W2 — vertical Motion → FREEZE (a próxima fase do loop)
 
 Prova o contrato inteiro num caminho real antes do fan-out. (Plano §W2.)
-- **W2.T1 — avaliador motion** (`ph2d-eval-motion`) ✅ CONSTRUÍDO (headless, verde, `8c6bb4f`) — pull-no-playhead → `Vec<RenderInstance>`; o upload+draw na tela é smoke. **Falta auditar.**
-- **W2.T2 — 3 nós reais** ✅ CONSTRUÍDO (verde, `74c8254`): `motion.grid` (generator) · `motion.transform` (modifier) · `motion.clone` (cloner = multiplicador de stream, ADR-0035). Vertical headless provada por teste de integração. **Falta auditar.**
-- **W2.T3 — arch-gate da membrana** (rodar `validate` no load) + view de editor mínima + **live-preview**. ⚠ toca editor-core + **PARA aqui: precisa de smoke visual do Enio** (`./play.command`).
-- **W2.T4 — 🔒 FREEZE** — congelar `ph2d-nodegraph`+`ph2d-expr`. **Decisão do Enio.**
+- **W2.T1 — avaliador motion** (`ph2d-eval-motion`) ✅ CONSTRUÍDO + AUDITADO (headless, verde, `8c6bb4f` + remediação `2944e38`) — pull-no-playhead → `Vec<RenderInstance>`; o upload+draw na tela é smoke.
+- **W2.T2 — 3 nós reais** ✅ CONSTRUÍDO + AUDITADO (`74c8254` + remediação `2944e38`): `motion.grid` (generator) · `motion.transform` (modifier) · `motion.clone` (cloner = multiplicador de stream, ADR-0035). Vertical headless provada por teste de integração.
+- **W2.T3 — arch-gate da membrana** ✅ parte HEADLESS feita (`931883d`, `ph2d-eval-motion/tests/membrane_gate.rs`: `validate` na registry real recusa `Stateful`→pull e dim-mismatch; vertical bem-tipada passa). ⏸ **RESTA (Enio):** view de editor mínima + **live-preview** + **smoke visual** (`./play.command`). ⚠ toca editor-core/tela.
+- **W2.T4 — 🔒 FREEZE** — congelar `ph2d-nodegraph`+`ph2d-expr`. **Decisão do Enio** (após o smoke de T3).
 
-**Ao retomar (ordem exata):** (1) **AUDITE** W2.T1+T2 (`8c6bb4f`+`74c8254`) com ≥2 auditores → corrija até erro zero → commit. (2) Construa o arch-gate da membrana de W2.T3 (parte headless: um teste que roda `validate` e recusa `Stateful`→pull num grafo de exemplo). (3) **PARE** — view de editor + live-preview + smoke + FREEZE são do Enio. Relatório curto a ele.
+**Estado:** o loop autônomo de W2 chegou ao seu limite — tudo que é headless está auditado, remediado e gateado. O próximo passo (editor view + live-preview + smoke + freeze) é do Enio.
 
 ---
 
@@ -159,18 +159,19 @@ Tracks (briefing §): mais nós Motion · Shader (→WGSL; precisa do avaliador 
 
 **Pushados (CI verde) — até `0c0e934`:** `9d6a7ec` substrato W1.T2 · `6489f70` remediação auditoria 1 · `35fd1f3` NodeRegistry · `751b974` registry-init+codegen+gate · `7b0306f` remediação auditoria 3 · `b4a98f3` ph2d-expr · `7d18519` NodeManifest params/lowerings · `a19a141` remediação auditoria expr · `e87edb0` template+briefing · `0c0e934` verificação W1.T1.
 
-**Locais, NÃO pushados (próximo ship do Enio):** `ce8cd40` handoff playbook · `8c6bb4f` W2.T1 avaliador motion · `74c8254` W2.T2 3 nós + vertical headless. ⚠ W2.T1+T2 ainda **não auditados** (1º passo do próximo agente).
+**Locais, NÃO pushados (próximo ship do Enio):** `ce8cd40` handoff playbook · `8c6bb4f` W2.T1 avaliador motion · `74c8254` W2.T2 3 nós + vertical headless · `ea8d527` handoff update · `2944e38` **remediação da auditoria W2.T1+T2** (mata falhas silenciosas + overflow, extrai `param_default`/`param_as_count` ao contrato) · `931883d` **W2.T3 headless** (membrane arch-gate na registry real). W2.T1+T2 **auditados 3× + re-auditados 2× a erro-zero**.
 
 ---
 
 ## 11. Follow-ups diferidos (não-bloqueantes; das auditorias)
 
 - `would_cycle` O(V²) por `connect` — otimizar (BTreeSet) só se surgirem grafos grandes.
-- **Param overrides por-instância:** hoje nós leem só o default do `ParamSpec`. Falta `NodeInstance.params` + `EvalCtx` expor params. Necessário quando autoria precisar editar valores.
+- **Param overrides por-instância:** hoje nós leem só o default do `ParamSpec` via `NodeManifest::param_default`. Falta `NodeInstance.params` + `EvalCtx` expor params. **É o que destrava a aritmética não-default de `motion.transform`/`clone`** (hoje só o default identidade é cozido; a math é provada por unit-test direto dos helpers puros `apply_xform`/`clone_stream`). Quando entrar, os caps de `param_as_count`/`copies_within_budget` já blindam contra valores hostis. **Candidato headless natural** se o Enio liberar antes do freeze.
 - **Lowering Luau** + gate HR-5 — com o domínio gameplay.
-- **Avaliador shader + WGSL runtime** em `ph2d-gpu` (hoje só wgpu safe API).
+- **Avaliador shader + WGSL runtime** em `ph2d-gpu` (hoje só wgpu safe API). Os nós Motion declaram só `LoweringKind::Cpu` **por honestidade** (não há runtime WGSL p/ domínio `Instances`, e `ph2d-expr` é escalar enquanto `P` é Vec2) — declarar `Wgsl` seria assumir paridade sem prova. Revisitar quando este runtime existir.
 - **Paridade CPU↔GPU real** (device headless) — hoje coverage-gate + semântica fixada.
+- **`debug_assert` P=Vec2** em transform/clone é no-op em release (defesa-em-profundidade; o port-type já barra no `validate`). Promover a erro tratável exigiria `eval` retornar `Result` — mudança de contrato (território FREEZE), fora de escopo agora.
 
 ---
 
-**Confiança:** o neck está sólido — auditado 3×, bugs corrigidos, ship.sh CI-clean. Rode o loop (§1) no padrão-ouro (§0), fase a fase, até o smoke do W2.T3. A engine cresce por adição de crate isolado, em paralelo.
+**Confiança:** o neck está sólido (auditado 3×), e a vertical Motion headless agora também — auditada por 3 lentes adversariais, remediada a erro-zero, re-auditada 2× sem achados materiais, com membrane arch-gate na registry real. Rode o loop (§1) no padrão-ouro (§0). O que falta de W2 (editor view + live-preview + smoke + freeze) é do Enio. A engine cresce por adição de crate isolado, em paralelo.

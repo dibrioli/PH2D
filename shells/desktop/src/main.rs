@@ -137,6 +137,7 @@ impl App {
             pending_drops: Vec::new(),
             frame_cpu_ms_ewma: 1.0, // optimistic baseline; reseeds on
             // the first frame's measurement
+            pivot_content_center: None,
             cycle_pick_world: None,
             cycle_pick_hits: Vec::new(),
             cycle_pick_idx: 0,

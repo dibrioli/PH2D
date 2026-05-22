@@ -312,6 +312,13 @@ pub(crate) struct App {
     /// own texture is untouched; the overlay just paints on top, so
     /// Apply (which re-reads the original source) and undo stay correct.
     pub(crate) bgremoval_preview: Option<BgremovalPreview>,
+    /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
+    /// bbox (non-transparent pixels), computed once (lazily, on the
+    /// first CTRL-held move) per MovePivot drag and reused as a snap
+    /// candidate. `None` between drags / before the first readback.
+    /// Cleared when the drag ends. Cached on `App` (not in
+    /// `GizmoDragState`) so the pixel readback stays a shell concern.
+    pub(crate) pivot_content_center: Option<[f32; 2]>,
 }
 
 /// Cached on-canvas preview bitmap for the Background-Removal tool.

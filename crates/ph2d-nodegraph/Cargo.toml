@@ -1,0 +1,16 @@
+[package]
+name = "ph2d-nodegraph"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# v1 contract skeleton is intentionally dependency-free: it is the leaf-level
+# substrate every node crate depends on, so it must not pull anything heavy.
+# serde (textual format), glam (math), and hashing land in later tasks per the
+# node-centric plan.
+[dependencies]

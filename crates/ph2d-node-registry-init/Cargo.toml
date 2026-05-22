@@ -16,6 +16,7 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 # gate (tests/staleness.rs) fails CI if this is out of sync with the folder.
 # <ph2d-node-sync:begin>
 ph2d-node-debug-const = { path = "../ph2d-node-debug-const" }
+ph2d-node-debug-wave = { path = "../ph2d-node-debug-wave" }
 # <ph2d-node-sync:end>
 
 [dev-dependencies]

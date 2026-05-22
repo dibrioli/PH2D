@@ -4027,6 +4027,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-debug-wave"
+version = "0.0.0"
+dependencies = [
+ "ph2d-expr",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-registry"
 version = "0.0.0"
 dependencies = [
@@ -4038,6 +4047,7 @@ name = "ph2d-node-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-debug-const",
+ "ph2d-node-debug-wave",
  "ph2d-node-registry",
  "ph2d-node-sync",
 ]

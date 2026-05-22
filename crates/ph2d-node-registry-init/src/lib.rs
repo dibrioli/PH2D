@@ -16,6 +16,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // <ph2d-node-sync:begin>
     ph2d_node_debug_const::register(reg)?;
+    ph2d_node_debug_wave::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())
 }

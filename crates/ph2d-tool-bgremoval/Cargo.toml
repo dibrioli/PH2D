@@ -9,22 +9,23 @@ authors.workspace = true
 
 [lib]
 
-# Background Removal — Stateful Tool. M1 chroma+flood (Oklab) +
-# downscale 1024² + alpha-aware shipped; M2 GrabCut + Guided Filter
-# scaffolded; M2 body (~1200 LOC) pending next session.
-#
-# **PR 7 scope** (convention-by-discovery migration): ships manifest
-# only. The implementation (BgRemovalTool, M1+M2 algorithms, panel)
-# continues to live at `crates/ph2d-editor/src/tools/bgremoval/` while
-# slot 2 keeps iterating on the M2 body. Manifest is sufficient to
-# wire registry-derived chrome (PR 8). Same pattern as grid-snap PR 6.
+# Background Removal — Stateful Tool, isolated crate (ADR-0040 T2). Owns the
+# whole feature: ToolManifest (data) + BgRemovalTool (impl Tool) + the pure
+# chroma/guided-filter/compose pipeline + scratch buffers + icon. Depends on
+# ph2d-editor-core for the Tool/widget/FloatingPanel contract (satellite
+# direction); the UI/action vocabulary is re-exported from editor-core's
+# `tools::bgremoval::params` (see lib.rs) until the generic channel lands.
 
 [dependencies]
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
-# Re-uses `eraser_bezpath` (Lucide glyph) re-exported by ph2d-editor
-# rather than duplicating the ~50-line BezPath construction. Pulls in
-# BezPath transitively from ph2d-vector via ph2d-editor — no direct
-# ph2d-vector dep needed (cargo-machete enforces this).
-ph2d-editor = { path = "../ph2d-editor" }
+# The Tool trait + FloatingPanel + widgets the BgRemovalTool builds on, and
+# the params/vocabulary module re-exported at this crate's root.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# BezPath for the eraser icon (icon.rs).
+ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-core = { path = "../ph2d-core" }
+# imageops::resize (lanczos) for the preview thumbnail downscale. Decoders
+# stripped — operates on already-decoded RGBA (ph2d-asset is the decode
+# boundary).
+image = { version = "0.25", default-features = false }

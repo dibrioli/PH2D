@@ -74,7 +74,7 @@ pub(super) fn dispatch(
             if let Some(tool) = tools.active_mut()
                 && let Some(bg) = tool
                     .as_any_mut()
-                    .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+                    .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
             {
                 bg.set_source_snapshot(straight.pixels, straight.width, straight.height);
                 *last_bgremoval_pushed_entity = Some(bits);
@@ -97,7 +97,7 @@ pub(super) fn dispatch(
     if let Some(tool) = tools.active_mut()
         && let Some(bg) = tool
             .as_any_mut()
-            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+            .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
     {
         for edit in bgremoval_ui_edits.drain(..) {
             bg.apply_ui_edit(edit);

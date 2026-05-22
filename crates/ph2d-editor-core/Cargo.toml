@@ -33,11 +33,6 @@ ph2d-grid             = { path = "../ph2d-grid" }
 # toast strings funnel through `tr("key")` so the eventual Fluent
 # migration is an impl swap, not a call-site rename. See HR-15.
 ph2d-i18n             = { path = "../ph2d-i18n" }
-# image — imageops::resize (lanczos) for bgremoval thumbnail downscale
-# + guided-filter ops. `default-features = false` strips decoders
-# (ph2d-asset is the canonical decode boundary; this crate only
-# operates on already-decoded RGBA).
-image                 = { version = "0.25", default-features = false }
 smallvec              = "1"
 bumpalo               = { version = "3", features = ["collections"] }
 

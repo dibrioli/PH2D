@@ -294,7 +294,7 @@ impl App {
             // = Some(bits)`).
             if let Some(bg) = active
                 .as_any_mut()
-                .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+                .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
                 && bg.take_pending_apply()
                 && let Some(hero) = gfx.hero_screen.as_mut()
                 && let Some(bits) = hero.gizmo.selection

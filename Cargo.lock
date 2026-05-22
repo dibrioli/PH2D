@@ -3910,7 +3910,6 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "dhat",
- "image",
  "ph2d-a11y",
  "ph2d-grid",
  "ph2d-host",
@@ -3996,6 +3995,7 @@ dependencies = [
  "ph2d-script",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-tool-bgremoval",
  "ph2d-tool-make-square",
  "ph2d-tool-padding",
  "ph2d-tool-real-size",
@@ -4276,10 +4276,12 @@ dependencies = [
 name = "ph2d-tool-bgremoval"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-a11y",
  "ph2d-core",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-tool-registry",
+ "ph2d-vector",
 ]
 
 [[package]]

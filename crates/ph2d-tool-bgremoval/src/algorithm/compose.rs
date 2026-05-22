@@ -321,7 +321,7 @@ fn bleed_edges(w: u32, h: u32, scratch: &mut BgRemovalScratch) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::bgremoval::params::BgRemovalParams;
+    use crate::params::BgRemovalParams;
 
     fn fresh_scratch(w: u32, h: u32) -> BgRemovalScratch {
         let mut s = BgRemovalScratch::default();
@@ -369,10 +369,10 @@ mod tests {
         scratch.delta_e[3] = 0.025;
 
         let params = BgRemovalParams {
-            chroma: crate::tools::bgremoval::params::ChromaParams {
+            chroma: crate::params::ChromaParams {
                 tolerance: 0.10,
                 feather: 0.04,
-                ..crate::tools::bgremoval::params::ChromaParams::default()
+                ..crate::params::ChromaParams::default()
             },
             // Pin neutral grow so these tests isolate the compose path
             // (the default params now carry a slight erode).
@@ -543,7 +543,7 @@ mod tests {
         // the fix for the pink outline around a painted keep-region.
         let w = 2u32;
         let h = 1u32;
-        let bg_oklab = crate::tools::bgremoval::algorithm::chroma::srgb_to_oklab(0, 200, 0);
+        let bg_oklab = crate::algorithm::chroma::srgb_to_oklab(0, 200, 0);
         let params = BgRemovalParams {
             grow_px: 0.0,
             ..BgRemovalParams::default() // despill defaults on

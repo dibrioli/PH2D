@@ -191,7 +191,7 @@ pub(crate) fn build_initial_state(
     tools.register(Box::new(BrushTool::default()));
     tools.register(Box::new(MoveTool::default()));
     tools.register(Box::new(
-        ph2d_editor::tools::bgremoval::BgRemovalTool::default(),
+        ph2d_tool_bgremoval::BgRemovalTool::default(),
     ));
     tools.register(Box::new(ph2d_editor::tools::padding::PaddingTool::default()));
     let layout = EditorLayout::new(size.width as f32, size.height as f32);

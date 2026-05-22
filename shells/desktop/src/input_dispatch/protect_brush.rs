@@ -75,7 +75,7 @@ impl App {
             && let Some(tool) = gfx.tools.active_mut()
             && let Some(bg) = tool
                 .as_any_mut()
-                .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+                .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
         {
             was_painting = bg.is_protect_painting();
             bg.set_protect_painting(false);
@@ -97,7 +97,7 @@ impl App {
             .and_then(|g| g.tools.active_mut())
             .and_then(|t| {
                 t.as_any_mut()
-                    .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+                    .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
             })
             .map(|bg| bg.is_protect_armed())
             .unwrap_or(false);
@@ -112,7 +112,7 @@ impl App {
             .tools
             .active_mut()?
             .as_any_mut()
-            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()?;
+            .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()?;
         if bg.is_protect_painting() {
             Some(bg.is_protect_erasing())
         } else {
@@ -164,7 +164,7 @@ impl App {
         };
         let Some(bg) = tool
             .as_any_mut()
-            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+            .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
         else {
             return false;
         };

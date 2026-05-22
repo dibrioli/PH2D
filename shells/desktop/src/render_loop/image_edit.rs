@@ -200,7 +200,7 @@ pub(super) fn dispatch(
             .active_mut()
             .and_then(|t| {
                 t.as_any_mut()
-                    .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+                    .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
             })
             .expect("bgremoval_active gate guarantees a BgRemovalTool");
         if hero_intents::drain_bgremoval(

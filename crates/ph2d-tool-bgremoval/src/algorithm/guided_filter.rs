@@ -353,7 +353,7 @@ fn three_disjoint_slices_mut<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools::bgremoval::params::GuidedFilterParams;
+    use crate::params::GuidedFilterParams;
 
     fn default_params() -> GuidedFilterParams {
         GuidedFilterParams::default()

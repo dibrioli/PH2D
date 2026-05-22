@@ -1,39 +1,28 @@
-//! Background Removal — Tool stateful for raster bg removal in the editor.
+//! Background Removal — UI/action vocabulary (foundation side).
 //!
-//! Pipeline: the Chroma+Flood backend produces a binary mask; an optional
-//! Guided Filter post-process refines the mask boundary into an edge-aware
-//! soft alpha; a compose step writes the alpha into a copy of the input
-//! RGBA. The tool runs the pipeline twice per Apply:
+//! ADR-0040 T2: the heavy implementation (`algorithm`, `scratch`, `tool`,
+//! `icon`) moved to crate `ph2d-tool-bgremoval`. What stays here is only the
+//! **vocabulary** that the foundation legitimately owns and that would
+//! otherwise force an `editor-core → tool` cycle:
 //!
-//! 1. On a 160×160 thumbnail every slider tick → preview in the panel.
-//! 2. On full RGBA when the user clicks Apply → host drains
-//!    [`tool::BgRemovalTool::take_pending_apply`] and re-runs the pipeline
-//!    at full resolution, then swaps `Sprite.source` to a new Individual
-//!    texture (the canonical Image Tools pattern from
-//!    [`crate::tools::trim_transparency`]).
+//! - [`params::BgRemovalUiEdit`] — carried by `EditorAction::BgremovalUiEdit`
+//!   (the action bus is editor-core's), so it must be reachable here.
+//! - [`params::BgRemovalUiSnapshot`] / [`params::BrushFalloff`] — read by the
+//!   `ph2d-panel-bgremoval` crate, which depends on editor-core (not on the
+//!   tool crate).
+//! - [`params::BgRemovalParams`] + the full-scale mapping consts — the single
+//!   source of truth the snapshot's `Default` derives from; the tool crate
+//!   imports these (tool → editor-core is the allowed direction).
 //!
-//! See [`INTEGRATION.md`](INTEGRATION.md) for the host wiring contract.
+//! The tool crate re-exports this `params` module at its own root so its moved
+//! files' `super::params` paths resolve unchanged.
 //!
-//! ## Module layout
-//!
-//! - [`params`] — parameter structs + UI snapshot/edit types.
-//! - [`scratch`] — reusable `BgRemovalScratch` buffer (HR-3 zero-alloc).
-//! - [`algorithm`] — pure algorithms: chroma, guided_filter +
-//!   the `run_pipeline` orchestrator that wires them.
-//! - [`tool`] — `BgRemovalTool` implementing [`crate::tool::Tool`].
-//! - [`icon`] — `eraser_bezpath()` glyph helper for the LeftRail entry.
+//! When the generic action channel lands (ADR-0040 T1.2/T1.3), this vocabulary
+//! moves into the tool crate too and this module disappears.
 
-pub mod algorithm;
-pub mod icon;
 pub mod params;
-pub mod scratch;
-pub mod tool;
 
-pub use algorithm::run_pipeline;
-pub use icon::eraser_bezpath;
 pub use params::{
     BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, BrushFalloff, ChromaParams,
     GuidedFilterParams, MAX_EXTRA_BG_COLORS,
 };
-pub use scratch::{BgRemovalScratch, FloodSpan};
-pub use tool::BgRemovalTool;

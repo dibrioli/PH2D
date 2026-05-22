@@ -14,7 +14,7 @@
 //!   The host drains via [`BgRemovalTool::take_pending_apply`], runs
 //!   the pipeline at full resolution against the live `Sprite.source`,
 //!   and swaps the texture per the Image Tools precedent
-//!   ([`crate::tools::trim_transparency`]).
+//!   (`ph2d_editor_core::tools::trim_transparency`).
 //!
 //! All pointer / hover / canvas interaction is **out of scope** —
 //! the tool reacts only to its panel widgets, never to the canvas
@@ -34,9 +34,11 @@
 //! a proper PanelAction-with-NodeId once `floating_panel.rs` gets
 //! that surface.
 
-use crate::floating_panel::{FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId};
-use crate::tool::{PanelEvent, Tool};
-use crate::widget::{Slider, Toggle};
+use ph2d_editor_core::floating_panel::{
+    FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId,
+};
+use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_editor_core::widget::{Slider, Toggle};
 use ph2d_a11y::NodeId;
 
 use super::algorithm::run_pipeline;

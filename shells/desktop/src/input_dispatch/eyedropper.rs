@@ -67,7 +67,7 @@ impl App {
         };
         let Some(bg) = tool
             .as_any_mut()
-            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+            .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
         else {
             return false;
         };
@@ -119,7 +119,7 @@ impl App {
         };
         if let Some(bg) = tool
             .as_any_mut()
-            .downcast_mut::<ph2d_editor::tools::bgremoval::BgRemovalTool>()
+            .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
         {
             bg.remove_extra_color(idx);
             self.bgremoval_preview = None;

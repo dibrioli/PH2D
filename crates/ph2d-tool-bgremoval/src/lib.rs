@@ -1,42 +1,49 @@
 #![forbid(unsafe_code)]
-//! ph2d-tool-bgremoval — Background Removal tool manifest.
+//! ph2d-tool-bgremoval — Background Removal: the full tool, isolated crate.
 //!
 //! Stateful Tool — active in the TopBar `image_tools` cluster, presents a
-//! Procreate-style panel with mode toggles (chroma + flood / GrabCut)
-//! and an Apply Toggle. Pixel work happens at full resolution on
-//! commit; live preview runs on a downscaled 1024² Oklab thumbnail
-//! computed by the M1 path.
+//! Procreate-style panel with mode toggles and an Apply Toggle. Pixel work
+//! happens at full resolution on commit; live preview runs on a downscaled
+//! thumbnail.
 //!
-//! **PR 7 scope** (convention-by-discovery migration): manifest only.
-//! The implementation (`BgRemovalTool`, M1 algorithm, M2 GrabCut
-//! scaffold, panel build) continues to live at
-//! `crates/ph2d-editor/src/tools/bgremoval/` while slot 2 iterates on
-//! the M2 body. Manifest unlocks registry-derived chrome (PR 8) for
-//! the Bg Removal LeftRail entry. Same pattern as grid-snap PR 6.
+//! ADR-0040 T2 — this crate now owns the whole feature: the `ToolManifest`
+//! (data), [`BgRemovalTool`] (behavior, `impl ph2d_editor_core::tool::Tool`),
+//! the pure [`algorithm`] pipeline, [`scratch`] buffers, and [`icon`]. It
+//! depends on `ph2d-editor-core` (the `Tool`/widget/`FloatingPanel` contract,
+//! the allowed satellite direction), never the reverse.
+//!
+//! The UI/action **vocabulary** (`BgRemovalUiEdit`/`BgRemovalUiSnapshot`/
+//! `BrushFalloff`/`BgRemovalParams` + scale consts) still lives in
+//! `ph2d_editor_core::tools::bgremoval::params` because the editor-core action
+//! bus and the `ph2d-panel-bgremoval` crate read it. It is re-exported here as
+//! [`params`] so the moved files' `super::params` paths resolve unchanged; it
+//! migrates into this crate when the generic action channel lands (T1.2/T1.3).
+
+pub mod algorithm;
+pub mod icon;
+pub mod scratch;
+pub mod tool;
+
+/// UI/action vocabulary, re-exported from editor-core (see module docs). The
+/// re-export makes `crate::params` (hence `super::params` in the moved files)
+/// resolve to the foundation-side single source of truth.
+pub use ph2d_editor_core::tools::bgremoval::params;
+
+pub use tool::BgRemovalTool;
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;
-use ph2d_tool_registry::{
-    BezPath, HandlerFn, McpExposure, Registry, ToolHandler, ToolManifest, Zone,
-};
+use ph2d_tool_registry::{HandlerFn, McpExposure, Registry, ToolHandler, ToolManifest, Zone};
 
-/// Eraser glyph re-uses the canonical Lucide port already shipped at
-/// `ph2d_editor::eraser_bezpath` (M1 slot 2 work). No reason to
-/// duplicate the ~50-line BezPath construction — `ph2d-editor` is a
-/// safe dep direction (it does not depend on tool crates per PR 6.0).
-fn icon() -> BezPath {
-    ph2d_editor::tools::bgremoval::eraser_bezpath()
-}
-
-/// Shadow-mode handler trio. Real dispatch goes through the legacy
-/// `ToolRegistry` in `shells/desktop` and `BgRemovalTool::Tool` trait
-/// impl. PR 9 generic dispatcher will replace these stubs.
+/// Shadow-mode handler trio. Real dispatch goes through the `ToolRegistry`
+/// in `shells/desktop` and the `BgRemovalTool` `Tool` impl. The generic
+/// action channel (ADR-0040 T1.2/T1.3) will replace these stubs.
 fn shadow_handler() {}
 
 pub const MANIFEST: ToolManifest = ToolManifest {
     id: "bgremoval",
     label_key: "tool.bgremoval.label",
-    icon_fn: icon,
+    icon_fn: icon::eraser_bezpath,
     // `image_tools` cluster — pill in the TopBar's image-action row
     // (Image Tools toggle in `TOPBAR_IMAGE_TOOLS` flips it on). Shares
     // the cluster with `make_square` (order 50) and `trim_transparency`
@@ -89,7 +96,7 @@ mod tests {
 
     #[test]
     fn icon_returns_non_empty_path() {
-        let p = icon();
+        let p = icon::eraser_bezpath();
         assert!(!p.elements().is_empty());
     }
 

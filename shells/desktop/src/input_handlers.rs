@@ -8,6 +8,7 @@
 use crate::App;
 use crate::cursor_pos::live_cursor_in_window;
 use crate::image_import::import_image_at_camera;
+use ph2d_editor::interaction::InteractiveState;
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{PanelControl, PanelEvent, Toast};
 use ph2d_render::Camera2d;
@@ -107,12 +108,43 @@ impl App {
     ///   Tab — toggle ZenMode (debounced 30 frames)
     ///   M   — flip theme Dark↔Light
     ///   T   — push info toast
-    ///   1   — activate Brush tool
-    ///   2   — activate Move tool
+    ///   Cmd+Z / Ctrl+Z — image-edit undo
+    ///   F / Home — frame the current selection
+    ///   G — toggle grid visibility
+    ///
+    /// **Focus gate:** when a text-editable widget (TextInput /
+    /// NumberInput / Combobox) holds keyboard focus AND no Cmd/Ctrl
+    /// modifier is held, the entire match below is short-circuited —
+    /// otherwise typing "M" / "T" / "G" / "1" into a chip would also
+    /// flip the theme / push a toast / toggle the grid / activate a
+    /// tool. Chord shortcuts (Cmd+Z undo, etc.) still pass through so
+    /// editing-time undo keeps working.
+    ///
+    /// Tool-switch digits (1/2/3) were retired in favour of the
+    /// canvas tool palette + Image Tools chrome pills — they were the
+    /// loudest source of the text-input conflict (Color Equalization
+    /// "Tile Grid" chip swallows digits all day).
     pub(crate) fn handle_editor_key(&mut self, code: KeyCode) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        let cmd_chord = self.modifiers.super_key() || self.modifiers.control_key();
+        if !cmd_chord
+            && let Some(hero) = gfx.hero_screen.as_ref()
+            && let Some(focused) = hero.store.focus_id()
+            && matches!(
+                hero.store.get(focused),
+                Some(InteractiveState::TextInput { .. })
+                    | Some(InteractiveState::NumberInput { .. })
+                    | Some(InteractiveState::Combobox { .. })
+            )
+        {
+            // A text input is collecting keystrokes — let it own the
+            // event entirely. The dispatch already pushed the buffer
+            // mutation upstream; we just refuse to interpret the same
+            // key as a global shortcut.
+            return;
+        }
         match code {
             KeyCode::Tab if gfx.zen.try_toggle() => {
                 let msg = if gfx.zen.is_active() {
@@ -143,23 +175,11 @@ impl App {
                         .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);
                 }
             }
-            KeyCode::Digit1 if gfx.tools.set_active(&ph2d_editor::ToolId::new("brush")) => {
-                gfx.toasts.push(Toast::info("Tool · Brush"));
-                self.title_dirty = true;
-            }
-            KeyCode::Digit2 if gfx.tools.set_active(&ph2d_editor::ToolId::new("move")) => {
-                gfx.toasts.push(Toast::info("Tool · Move"));
-                self.title_dirty = true;
-            }
-            KeyCode::Digit3 if gfx.tools.set_active(&ph2d_editor::ToolId::new("bgremoval")) => {
-                gfx.toasts.push(Toast::info("Tool · Bg Removal"));
-                self.title_dirty = true;
-                // Force a fresh snapshot push on the next frame so the
-                // newly-active tool sees the current selection's RGBA
-                // (the snapshot-push loop below tracks last-pushed
-                // entity — invalidating it here re-triggers).
-                self.last_bgremoval_pushed_entity = None;
-            }
+            // Digit shortcuts (1=Brush, 2=Move, 3=BgRemoval) retired
+            // — they collided with every numeric chip in the Image
+            // Tools panels (Color EQ Tile Grid, Equalize Sizes Fixed
+            // W/H, Upscale Scale, …). Tool switching now goes through
+            // the canvas tool palette + Image Tools chrome pills.
             // M14.7 polish: F / Home = frame the currently selected
             // sprite. Falls back to (0, 0) when nothing is selected
             // (Blender / Maya "frame view" semantics). Raises a

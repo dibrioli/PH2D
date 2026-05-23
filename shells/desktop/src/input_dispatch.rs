@@ -495,6 +495,19 @@ impl App {
                                     use_center_anchor,
                                 )
                             };
+                            // Onda 2 polish: capture the global view at
+                            // drag start so snapshots::publish can keep
+                            // the global gizmo's visual orientation /
+                            // scale in lockstep with the live group
+                            // transform (otherwise it would be the
+                            // axis-aligned union of rotated sprites,
+                            // which grows during rotation instead of
+                            // rotating).
+                            if matches!(effective_target, ph2d_editor::GizmoTarget::Global) {
+                                hero.gizmo.global_view_start = hero.gizmo.global_view;
+                            } else {
+                                hero.gizmo.global_view_start = None;
+                            }
                             hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
                                 kind: gkind,
                                 entity_bits,
@@ -765,6 +778,10 @@ impl App {
                     // the next single-select drag doesn't accidentally
                     // pull stale extras along.
                     self.group_drag_starts.clear();
+                    // Onda 2 polish: release the global drag-start view
+                    // so snapshots::publish reverts to the live-union
+                    // computation for the next frame.
+                    hero.gizmo.global_view_start = None;
                 }
                 _ => {}
             }

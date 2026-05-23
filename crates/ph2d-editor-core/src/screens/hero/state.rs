@@ -126,6 +126,16 @@ pub struct GizmoStateGroup {
     /// map fresh each frame (no stale entries from sprites that left
     /// the selection).
     pub gizmo_hit_map: std::collections::BTreeMap<ph2d_a11y::NodeId, crate::gizmo::GizmoHit>,
+    /// Onda 2C polish: snapshot of the global view taken at the start
+    /// of a `GizmoTarget::Global` drag. While the drag is alive, the
+    /// shell's `snapshots::publish` derives the live global view from
+    /// this start (centre + half-extents + rotation deltas tracked
+    /// against `drag.start_transform`) instead of recomputing the
+    /// union of every sprite's AABB — that way the global gizmo
+    /// **visually rotates** with the group during a Global Rotate
+    /// (axis-aligned-union would just grow / shrink the AABB) and
+    /// scales rigidly. Cleared on PointerUp.
+    pub global_view_start: Option<crate::gizmo::GizmoView>,
     /// M14.7 C: in-progress drag on the gizmo. Host's MouseInput
     /// handler fills on Down landing on a handle; Move advances
     /// `cursor_screen`, calls `compute_gizmo_transform`, writes back

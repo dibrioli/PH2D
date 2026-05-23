@@ -266,14 +266,20 @@ pub(super) fn dispatch(
                 }
             }
             HierarchySelectIntent::Range { row: target_row } => {
-                // Onda 2 hotfix: Shift on the hierarchy = range TOGGLE
-                // (Enio: "selecionar e desselecionar todos os objetos
-                // entre os dois clicados na hierarquia"). For each row
-                // in the inclusive [anchor..target] interval, flip its
-                // membership in the selection set — present rows are
-                // removed; absent rows are added. Without an anchor
-                // (selection empty) the click degenerates to a single
-                // toggle of the target.
+                // Onda 2 hotfix v2 — preserves the anchor (Enio: "o
+                // shift em múltiplas sprites desselecionou a primeira").
+                // Decision based on the TARGET row's current state:
+                //   - target NOT selected → ADD every row in
+                //     [anchor..target] (anchor stays as primary; new
+                //     rows enter via add_to_selection, which is a
+                //     no-op for ones already there).
+                //   - target selected → REMOVE every row in
+                //     [anchor..target] EXCEPT the anchor itself
+                //     (anchor never demoted by this gesture; primary
+                //     remains stable for the next range click).
+                // Without an anchor (selection empty), degenerates to
+                // a single add of the target — same as Cmd-click /
+                // bare-click on an empty selection.
                 let target_bits = live.bridge.entity_for(target_row);
                 let anchor_row = hero
                     .gizmo
@@ -286,16 +292,27 @@ pub(super) fn dispatch(
                     if let (Some(a), Some(t)) = (i_anchor, i_target) {
                         let (lo, hi) = if a <= t { (a, t) } else { (t, a) };
                         let row_range: Vec<_> = order[lo..=hi].to_vec();
+                        let target_was_selected = hero.gizmo.is_selected(target_bits);
                         for n in row_range {
+                            if n == anchor_row {
+                                continue;
+                            }
                             if let Some(bits) = live.bridge.entity_for(n) {
-                                hero.gizmo.toggle_in_selection(bits);
+                                if target_was_selected {
+                                    // Remove from extras only — anchor
+                                    // (= primary) skipped above so we
+                                    // never demote it.
+                                    hero.gizmo.extra_selection.retain(|b| *b != bits);
+                                } else {
+                                    hero.gizmo.add_to_selection(bits);
+                                }
                             }
                         }
                     } else {
-                        hero.gizmo.toggle_in_selection(target_bits);
+                        hero.gizmo.add_to_selection(target_bits);
                     }
                 } else if let Some(target_bits) = target_bits {
-                    hero.gizmo.toggle_in_selection(target_bits);
+                    hero.gizmo.add_to_selection(target_bits);
                 }
             }
         }

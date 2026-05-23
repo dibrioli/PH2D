@@ -260,6 +260,63 @@ pub(super) fn publish(
             None
         };
     }
+    // Onda 2 polish: while a Global gizmo drag is alive, derive the
+    // global view from the cached `global_view_start` snapshot +
+    // primary's transform deltas. This is what makes the global gizmo
+    // **rotate visually** during a Global Rotate (and scale rigidly
+    // during a Global Scale) instead of being the axis-aligned union
+    // of rotated sprites — that union grows under rotation, which
+    // would make the gizmo "balloon" rather than rotate.
+    let global_from_drag = if let (Some(start), Some(drag)) = (
+        hero.gizmo.global_view_start.as_ref().copied(),
+        hero.gizmo.drag.as_ref().copied(),
+    ) && matches!(drag.target, ph2d_editor::GizmoTarget::Global)
+    {
+        let primary_entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
+        let world = sim.world();
+        let (delta_dx, delta_dy, delta_rot, factor_x, factor_y) =
+            if let Some(t) = world.get::<Transform>(primary_entity) {
+                let dx = t.translation.x - drag.start_transform.translation[0];
+                let dy = t.translation.y - drag.start_transform.translation[1];
+                let dr = t.rotation - drag.start_transform.rotation;
+                let fx = if drag.start_transform.scale[0].abs() > f32::EPSILON {
+                    t.scale.x / drag.start_transform.scale[0]
+                } else {
+                    1.0
+                };
+                let fy = if drag.start_transform.scale[1].abs() > f32::EPSILON {
+                    t.scale.y / drag.start_transform.scale[1]
+                } else {
+                    1.0
+                };
+                (dx, dy, dr, fx, fy)
+            } else {
+                (0.0, 0.0, 0.0, 1.0, 1.0)
+            };
+        let cx_s = (start.bbox_min_world[0] + start.bbox_max_world[0]) * 0.5;
+        let cy_s = (start.bbox_min_world[1] + start.bbox_max_world[1]) * 0.5;
+        let hw_s = (start.bbox_max_world[0] - start.bbox_min_world[0]) * 0.5;
+        let hh_s = (start.bbox_max_world[1] - start.bbox_min_world[1]) * 0.5;
+        let new_cx = cx_s + delta_dx;
+        let new_cy = cy_s + delta_dy;
+        let new_hw = hw_s * factor_x.abs();
+        let new_hh = hh_s * factor_y.abs();
+        Some(ph2d_editor::GizmoView {
+            bbox_min_world: [new_cx - new_hw, new_cy - new_hh],
+            bbox_max_world: [new_cx + new_hw, new_cy + new_hh],
+            pivot_world: [new_cx, new_cy],
+            pivot_tool_active: false,
+            rotation: delta_rot,
+            camera_center: start.camera_center,
+            camera_height_world: start.camera_height_world,
+            window_w: start.window_w,
+            window_h: start.window_h,
+            canvas: start.canvas,
+            cursor_screen: Some(last_pointer),
+        })
+    } else {
+        None
+    };
     // Onda 2: global view = union of every selected sprite's bbox,
     // EXPANDED by a fixed screen offset so the global gizmo's handles
     // sit clear of the individual gizmos' handles (Enio: "o gizmo da
@@ -268,7 +325,9 @@ pub(super) fn publish(
     // converted to world units at the current zoom so the offset
     // tracks the zoom level — handles stay one handle-size + a gap
     // outside the individuals at any scale.
-    hero.gizmo.global_view = if hero.gizmo.selected_len() > 1 {
+    hero.gizmo.global_view = if let Some(v) = global_from_drag {
+        Some(v)
+    } else if hero.gizmo.selected_len() > 1 {
         let primary = hero.gizmo.view.as_ref();
         let mut iter = primary.into_iter().chain(hero.gizmo.extra_views.iter());
         iter.next().map(|first| {

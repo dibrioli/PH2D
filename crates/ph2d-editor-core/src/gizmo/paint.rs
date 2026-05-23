@@ -97,7 +97,12 @@ pub struct GizmoView {
 const HANDLE_SIZE_PX: f32 = 12.0;
 /// Radial offset around each corner-handle's center where the rotate
 /// hover ring sits.
-pub(super) const ROTATE_HANDLE_OFFSET: f32 = 12.0;
+// Onda 2 hotfix: bumped from 12 → 20 (Enio: "aumente a área sensível
+// de detecção para rot em todos os gzimo"). The hit rect is also
+// `ROTATE_HANDLE_OFFSET × ROTATE_HANDLE_OFFSET`, so this widens both
+// the radial offset past each corner AND the rect side length —
+// rotate zones are ~2.7× the prior area.
+pub(super) const ROTATE_HANDLE_OFFSET: f32 = 20.0;
 /// Side length of the pivot dot.
 /// Diameter of the pivot ring drawn at the bbox center. 12 px per
 /// user feedback — visible enough to grab with the cursor without
@@ -529,13 +534,6 @@ pub fn paint_sprite_gizmo_keyed(
             corner_outer_rect_oriented(br, view.rotation, 1.0, -1.0),
         ),
     ];
-    // Onda 2 polish: paint a small ring at the centre of each rotate
-    // hover rect so the user can SEE the rotate zone (extras + global
-    // skip the cursor-over-rotate hover swap the primary uses; without
-    // a static visual cue the hit zone is invisible). Stroke-only
-    // accent ring 5 px radius — distinct from the filled scale-corner
-    // squares the user sees on the corners themselves.
-    let rotate_ring_color = resolve(ColorToken::Selection, theme);
     for (id, r) in rotate_rects {
         register_keyed_handle(
             hit_index,
@@ -545,17 +543,16 @@ pub fn paint_sprite_gizmo_keyed(
             GizmoDragKind::Rotate,
             r,
         );
-        let cx = (r.x + r.w * 0.5) as f64;
-        let cy = (r.y + r.h * 0.5) as f64;
-        let ring = Circle::new(Point::new(cx, cy), (r.w * 0.4) as f64);
-        scene.inner_mut().stroke(
-            &ph2d_vector::Stroke::new(1.5),
-            ph2d_vector::Affine::IDENTITY,
-            rotate_ring_color,
-            None,
-            &ring,
-        );
     }
+    // Onda 2 hotfix: mirror the primary gizmo's cursor-over-rotate
+    // hover swap — when the cursor enters any of the rotate hit rects,
+    // the four scale-corner handles draw as CIRCLES instead of
+    // squares. That's the visual rotate cue Enio asked for (no extra
+    // ring drawn on the canvas; the corners themselves change shape).
+    let cursor_over_rotate = view
+        .cursor_screen
+        .map(|(cx, cy)| rotate_rects.iter().any(|(_, r)| r.contains(cx, cy)))
+        .unwrap_or(false);
 
     // Corner scale handles + edge scale handles (squares).
     let mid_top = midpoint(tl, tr);
@@ -617,7 +614,37 @@ pub fn paint_sprite_gizmo_keyed(
             gizmo_kind_for_id(ids::GIZMO_HANDLE_L).unwrap_or(GizmoDragKind::Translate),
         ),
     ];
-    for (id, cx, cy, kind) in corners.iter().chain(edges.iter()) {
+    // Corners: render as circle when cursor hovers a rotate zone
+    // (Enio: "mudar os rect do gizmo para circulos"). Edges always
+    // stay square — edges are scale-only, never rotate.
+    for (id, cx, cy, kind) in corners.iter() {
+        let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
+        register_keyed_handle(hit_index, hit_map, target, *id, *kind, r);
+        if cursor_over_rotate {
+            let circle = Circle::new(
+                Point::new(*cx as f64, *cy as f64),
+                (HANDLE_SIZE_PX * 0.5) as f64,
+            );
+            scene.inner_mut().fill(
+                ph2d_vector::Fill::NonZero,
+                ph2d_vector::Affine::IDENTITY,
+                handle_fill,
+                None,
+                &circle,
+            );
+            scene.inner_mut().stroke(
+                &ph2d_vector::Stroke::new(1.0),
+                ph2d_vector::Affine::IDENTITY,
+                handle_stroke,
+                None,
+                &circle,
+            );
+        } else {
+            fill_rounded_rect(scene, r, 2.0, handle_fill);
+            stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
+        }
+    }
+    for (id, cx, cy, kind) in edges.iter() {
         let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
         register_keyed_handle(hit_index, hit_map, target, *id, *kind, r);
         fill_rounded_rect(scene, r, 2.0, handle_fill);

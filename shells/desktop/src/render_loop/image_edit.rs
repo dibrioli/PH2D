@@ -33,6 +33,7 @@ pub(super) fn dispatch(
     real_size_entities: Vec<u64>,
     padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)>,
     color_equalization_apply: Option<Vec<u64>>,
+    equalize_sizes_apply: Option<Vec<u64>>,
     undo_image_edit: bool,
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -177,6 +178,36 @@ pub(super) fn dispatch(
                 if ran {
                     title_dirty = true;
                 }
+            }
+        }
+    }
+    // Equalize Sizes drain — multi-sprite Apply. Cross-sprite: Max
+    // mode needs the global max over the selection, so the bake runs
+    // ONCE over the whole bits_list (not once per sprite like CEQ).
+    // The bridge returns the full `iter_selected()` snapshot on
+    // Apply; we downcast the active tool and forward to
+    // `drain_equalize_sizes`.
+    if let Some(bits_list) = equalize_sizes_apply {
+        let eqs_id = ph2d_editor::ToolId::new("equalize_sizes");
+        let eqs_active = tools.active().map(|t| t.id() == eqs_id).unwrap_or(false);
+        if eqs_active
+            && let Some(tool) = tools.active_mut()
+            && let Some(eqs) = tool
+                .as_any_mut()
+                .downcast_mut::<ph2d_tool_equalize_sizes::EqualizeSizesTool>()
+        {
+            if hero_intents::drain_equalize_sizes(
+                &bits_list,
+                hero.project.pixels_per_meter,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                toasts,
+                image_edit_undo,
+                eqs,
+            ) {
+                title_dirty = true;
             }
         }
     }

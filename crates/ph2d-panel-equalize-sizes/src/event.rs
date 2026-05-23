@@ -8,18 +8,23 @@
 //! shell call `Tool::handle_panel_event` on the active tool. Cancel maps
 //! to `EditorAction::CancelActiveTool`.
 //!
-//! The grid-unit slider ↔ chip mirror is kept locally (UI-state-local in
-//! the widget store): drag the slider → chip px follows; type in the
-//! chip → slider track follows.
+//! Widget Gallery convention (DIRETRIZ §4.2): slider + chip share `0..1`
+//! storage via `link_slider_number` (set up in [`crate::populate`]) — so
+//! the dispatch handles drag, clamp, and chip↔slider mirror for free.
+//! Both `ValueChanged(slider_id)` and `ValueChanged(chip_id)` flow
+//! through here; we forward the slider's normalized track value to the
+//! tool (whose `params::apply_ui_edit` owns the `0..1 → natural unit`
+//! projection). NO mirror logic here, NO clamps — both are anti-patterns
+//! that re-create the slot 1 bugs.
 
 use crate::ids;
 use crate::state::EqualizeSizesPanelState;
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::ButtonState;
-use ph2d_tool_equalize_sizes::params::{grid_unit_to_slider, slider_to_grid_unit};
 
 pub(crate) fn apply_event(
     _state: &mut EqualizeSizesPanelState,
@@ -31,36 +36,28 @@ pub(crate) fn apply_event(
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
-        // Grid-unit slider dragged — read the track, forward as-is, then
-        // mirror the corresponding px into the chip's stored value so
-        // the chip's painted number tracks the thumb in real time.
-        WidgetEvent::ValueChanged(id) if id == ids::EQS_GRID_UNIT => {
-            let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        // Grid-unit slider drag OR chip scrub/typing — both end up with
+        // `slider(EQS_GRID_UNIT).value` (0..1) holding the canonical
+        // track via `link_slider_number`. Forward it; the tool projects
+        // through `slider_to_grid_unit` in `apply_ui_edit`.
+        WidgetEvent::ValueChanged(id)
+            if id == ids::EQS_GRID_UNIT || id == ids::EQS_GRID_UNIT_NUM =>
+        {
+            let track = host
+                .store()
+                .slider(ids::EQS_GRID_UNIT)
+                .map(|(_, v)| v)
+                .unwrap_or(0.0);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                    id,
+                    ids::EQS_GRID_UNIT,
                     track as f64,
                 )));
-            host.store_mut()
-                .set_number_value(ids::EQS_GRID_UNIT_NUM, slider_to_grid_unit(track) as f64);
             true
         }
-        // Grid-unit chip edited — read the px, forward, mirror onto the
-        // slider's stored track so the thumb follows.
-        WidgetEvent::ValueChanged(id) if id == ids::EQS_GRID_UNIT_NUM => {
-            let px = host.store().number_value(id).unwrap_or(1.0).round() as u32;
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                    id, px as f64,
-                )));
-            if let Some(InteractiveState::Slider { value, .. }) =
-                host.store_mut().get_mut(ids::EQS_GRID_UNIT)
-            {
-                *value = grid_unit_to_slider(px);
-            }
-            true
-        }
-        // Fixed-mode W/H chips — raw px, no mirror.
+        // Fixed-mode W/H chips — standalone, raw px (no slider pairing,
+        // no track translation). The tool's `apply_ui_edit` clamps to
+        // `[1, EQS_MAX_FIXED_DIM]`.
         WidgetEvent::ValueChanged(id) if id == ids::EQS_FIXED_W || id == ids::EQS_FIXED_H => {
             let px = host.store().number_value(id).unwrap_or(1.0);
             host.bus_mut()
@@ -97,7 +94,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     }
 }
 
-fn reset_button(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) {
+fn reset_button(host: &mut dyn PanelHostInternal, id: NodeId) {
     if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
         *state = ButtonState::Normal;
     }

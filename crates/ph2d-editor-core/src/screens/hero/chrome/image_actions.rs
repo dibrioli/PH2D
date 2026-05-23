@@ -71,6 +71,8 @@ fn stateful_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
         Some("padding")
     } else if id == ids::IMAGE_ACTION_COLOR_EQUALIZATION {
         Some("color_equalization")
+    } else if id == ids::IMAGE_ACTION_EQUALIZE_SIZES {
+        Some("equalize_sizes")
     } else {
         None
     }

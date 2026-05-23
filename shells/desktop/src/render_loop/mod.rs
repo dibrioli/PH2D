@@ -18,6 +18,7 @@
 
 mod bgremoval_preview;
 mod color_equalization_bridge;
+mod equalize_sizes_bridge;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
@@ -335,6 +336,7 @@ impl crate::App {
             // pushes in one frame = one dispatch).
             let mut activate_bgremoval = false;
             let mut activate_color_equalization = false;
+            let mut activate_equalize_sizes = false;
             let mut visibility_toggle_row: Option<NodeId> = None;
             let mut reparent_intent: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
             let mut duplicate_row: Option<NodeId> = None;
@@ -372,6 +374,7 @@ impl crate::App {
                         "bgremoval" => activate_bgremoval = true,
                         "padding" => activate_padding = true,
                         "color_equalization" => activate_color_equalization = true,
+                        "equalize_sizes" => activate_equalize_sizes = true,
                         _ => {}
                     },
                     // ADR-0040 TG-B: generic panel→tool channel. Route the
@@ -596,6 +599,18 @@ impl crate::App {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool · Color EQ"));
             }
+            // Equalize Sizes activation (mirror of Color EQ above).
+            // Click the Equalize Sizes pill → `ActivateTool { tool_id:
+            // "equalize_sizes" }`. Same mode_on gate; the reconcile
+            // below catches the case where the user toggles Image Tools
+            // off while the tool is still active.
+            if hero.image_edit.mode_on
+                && activate_equalize_sizes
+                && tools.set_active(&ph2d_editor::ToolId::new("equalize_sizes"))
+            {
+                self.title_dirty = true;
+                toasts.push(Toast::info("Tool · Equalize Sizes"));
+            }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
             // TopBar Image Tools toggle (`image_edit.mode_on`) and the
             // ToolRegistry's active tool are otherwise decoupled: a
@@ -667,6 +682,12 @@ impl crate::App {
                 &mut self.last_color_equalization_pushed_entity,
                 &mut self.color_equalization_preview,
             );
+            // Equalize Sizes panel ⟷ tool bridge — multi-sprite, no
+            // per-frame on-canvas preview (the visual effect is the
+            // Apply bake; an interim transform-only preview is future
+            // work). Returns the full `iter_selected()` on Apply for
+            // the cross-sprite `run_full_resolution_multi` bake.
+            let equalize_sizes_apply = equalize_sizes_bridge::dispatch(hero, tools);
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs (which paints the primary gizmo and only writes to
             // hit_index, not hit_map — primary still goes through the
@@ -813,6 +834,7 @@ impl crate::App {
                 real_size_entities,
                 padding_apply,
                 color_equalization_apply.clone(),
+                equalize_sizes_apply,
                 undo_image_edit,
                 hero,
                 sim,

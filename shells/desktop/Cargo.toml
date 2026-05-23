@@ -58,6 +58,11 @@ ph2d-tool-padding = { path = "../../crates/ph2d-tool-padding" }
 # `run_full_resolution` for the bake (see render_loop/
 # color_equalization_bridge.rs + hero_intents/image_edit.rs).
 ph2d-tool-color-equalization = { path = "../../crates/ph2d-tool-color-equalization" }
+# Equalize Sizes bake — multi-sprite size normalization. The shell drain
+# collects per-sprite inputs from `hero.gizmo.iter_selected()` and runs
+# `EqualizeSizesTool::run_full_resolution_multi` in one batch (see
+# render_loop/equalize_sizes_bridge.rs + hero_intents/image_edit.rs).
+ph2d-tool-equalize-sizes = { path = "../../crates/ph2d-tool-equalize-sizes" }
 # Wave 8 Phase 1 — panel registry install at boot. `register_all_panels()`
 # is mandatory BEFORE the first `HeroScreen::new` (audit B1 closure:
 # the previous auto-install in `HeroScreen::new` silently overrode
@@ -84,6 +89,7 @@ ph2d-editor = { path = "../../crates/ph2d-editor" }
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
 ph2d-panel-bgremoval = { path = "../../crates/ph2d-panel-bgremoval", optional = true }
 ph2d-panel-color-equalization = { path = "../../crates/ph2d-panel-color-equalization", optional = true }
+ph2d-panel-equalize-sizes = { path = "../../crates/ph2d-panel-equalize-sizes", optional = true }
 ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
@@ -156,6 +162,7 @@ default = [
     "panel-bgremoval",
     "panel-padding",
     "panel-color-equalization",
+    "panel-equalize-sizes",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -168,4 +175,5 @@ panel-inspector      = ["ph2d-panel-registry-init/panel-inspector", "dep:ph2d-pa
 panel-bgremoval      = ["ph2d-panel-registry-init/panel-bgremoval", "dep:ph2d-panel-bgremoval"]
 panel-padding        = ["ph2d-panel-registry-init/panel-padding", "dep:ph2d-panel-padding"]
 panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization", "dep:ph2d-panel-color-equalization"]
+panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

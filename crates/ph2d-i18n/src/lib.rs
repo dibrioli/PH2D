@@ -48,6 +48,10 @@ pub fn tr(key: &str) -> &'static str {
         "tool.color_equalization.tooltip" => {
             "Color Equalization · CLAHE + brightness/contrast/saturation + auto-WB"
         }
+        "tool.equalize_sizes.label" => "Equalize Sizes",
+        "tool.equalize_sizes.tooltip" => {
+            "Equalize Sizes · normalize selection to Max / Fixed / Grid target"
+        }
         // Image-edit undo affordance.
         "edit.undo.label" => "Undo",
         "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",

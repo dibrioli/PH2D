@@ -128,6 +128,14 @@ pub const IMAGE_ACTION_PADDING: NodeId = hash_node_id("padding");
 /// resolved id.
 pub const CEQ_PANEL: NodeId = hash_node_id("panel.color_equalization");
 
+/// Equalize Sizes panel marker NodeId. Mirror of `CEQ_PANEL` for the
+/// multi-sprite size-normalization tool. Hash matches
+/// `ph2d_tool_equalize_sizes::ids::EQS_PANEL` and
+/// `ph2d_panel_equalize_sizes::EqualizeSizesPanel::NODE_ID` — keeping
+/// the dispatcher's `panel_at` lookup, the typed panel registry, and
+/// `paint_hero_screen`'s z_order fallback consistent.
+pub const EQS_PANEL: NodeId = hash_node_id("panel.equalize_sizes");
+
 /// Image Tools action — Color Equalization pill. Stateful tool: opens
 /// the right-docked panel with 5 slider+chip rows (clip limit, tile
 /// grid size, brightness, contrast, saturation), an Auto-WB toggle,
@@ -139,6 +147,17 @@ pub const CEQ_PANEL: NodeId = hash_node_id("panel.color_equalization");
 /// entity_bits }` per selected sprite, and the shell drain reads each
 /// sprite's source then bakes via the tool's `run_full_resolution`.
 pub const IMAGE_ACTION_COLOR_EQUALIZATION: NodeId = hash_node_id("color_equalization");
+
+/// Image Tools action — Equalize Sizes pill. Stateful, multi-sprite:
+/// opens the right-docked panel with target-mode radio (Max/Fixed/Grid),
+/// per-mode chips / slider, Upscale-if-smaller + algorithm radio,
+/// Rasterize-after toggle, Cancel/Apply. Click raises
+/// `EditorAction::ActivateTool { tool_id: "equalize_sizes" }`; Apply
+/// arms the tool's latch which the bridge drains into a single
+/// `run_full_resolution_multi` over `hero.gizmo.iter_selected()` (the
+/// only cross-sprite Image Tool — Max/Grid modes compute global
+/// targets, so per-sprite `OneShotImageOp` broadcast won't work here).
+pub const IMAGE_ACTION_EQUALIZE_SIZES: NodeId = hash_node_id("equalize_sizes");
 
 /// Padding panel widget NodeIds (typed `ph2d-panel-padding`, right-docked
 /// in the Inspector slot while the `padding` tool is active). Four signed

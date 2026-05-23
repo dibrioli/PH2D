@@ -105,6 +105,10 @@ pub fn populate(store: &mut WidgetStore) {
             ids::IMAGE_ACTION_COLOR_EQUALIZATION,
             ph2d_i18n::tr("tool.color_equalization.tooltip"),
         ),
+        (
+            ids::IMAGE_ACTION_EQUALIZE_SIZES,
+            ph2d_i18n::tr("tool.equalize_sizes.tooltip"),
+        ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),

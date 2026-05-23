@@ -9,13 +9,19 @@
 //! Naming convention: `EQS_<chip>` (Equalize Sizes), hashed from
 //! `"eqsizes.<chip>"` to keep the FNV-1a string namespace distinct from
 //! `PAD_*` / `BGR_*` (the `node_id_collisions` arch test in editor-core
-//! covers any accidental hash collision globally).
+//! covers any accidental hash collision globally). The panel envelope
+//! itself is hashed from `"panel.equalize_sizes"` so it matches
+//! `EqualizeSizesPanel::NODE_ID` (the dispatcher's `panel_at` lookup
+//! keys on that hash); mismatch silently broke hit-testing pre-fix.
 
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
-/// Panel envelope (right-docked, Inspector geometry slot).
-pub const EQS_PANEL: NodeId = hash_node_id("eqsizes.panel");
+/// Panel envelope (right-docked, Inspector geometry slot). Hash matches
+/// `ph2d_panel_equalize_sizes::EqualizeSizesPanel::NODE_ID` and the
+/// editor-core `EQS_PANEL` mirror used by `paint_hero_screen`'s
+/// `z_order` fallback.
+pub const EQS_PANEL: NodeId = hash_node_id("panel.equalize_sizes");
 
 // ── Target mode (3-way radio implemented as 3 toggle-buttons) ────────
 /// "Max of selection" mode — target = max(W,H) over all selected sprites.

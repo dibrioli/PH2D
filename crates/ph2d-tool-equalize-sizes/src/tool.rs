@@ -134,13 +134,15 @@ impl Tool for EqualizeSizesTool {
                 self.apply_ui_edit(EqualizeSizesUiEdit::SetFixedH(h));
             }
             // ── Grid unit slider (track 0..1) ────────────────────────
+            //
+            // The panel registers slider + chip in the SAME 0..1 storage
+            // (`link_slider_number`, Widget Gallery convention §4.2), so
+            // the forwarder only ever emits `SetValue(EQS_GRID_UNIT,
+            // track)` — even when the chip was the widget that changed.
+            // The chip's natural-unit display is paint-only via
+            // `display_override`. No `_NUM` branch needed.
             PanelEvent::SetValue(id, v) if id == ids::EQS_GRID_UNIT => {
                 let g = slider_to_grid_unit(v as f32);
-                self.apply_ui_edit(EqualizeSizesUiEdit::SetGridUnit(g));
-            }
-            // ── Grid unit num chip (raw px) ──────────────────────────
-            PanelEvent::SetValue(id, v) if id == ids::EQS_GRID_UNIT_NUM => {
-                let g = (v.round().max(0.0) as u32).max(1);
                 self.apply_ui_edit(EqualizeSizesUiEdit::SetGridUnit(g));
             }
             // ── Toggles ──────────────────────────────────────────────

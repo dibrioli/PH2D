@@ -31,7 +31,9 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
-use ph2d_tool_equalize_sizes::params::{TargetMode, UpscaleAlgorithm, grid_unit_to_slider};
+use ph2d_tool_equalize_sizes::params::{
+    TargetMode, UpscaleAlgorithm, grid_unit_to_slider, slider_to_grid_unit,
+};
 use ph2d_vector::VectorScene;
 
 /// Label column width for slider rows. // LITERAL-PX-OK: panel grid metric
@@ -136,21 +138,25 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
             y += row_h + row_gap;
         }
         TargetMode::GridUnit => {
+            // Widget Gallery convention §4.2: chip and slider share
+            // `0..1` storage (`link_slider_number`). The chip's natural
+            // unit (px) is paint-only via `display_override`, projected
+            // from the live slider track — NOT consulted from the chip's
+            // own stored value (which lives in track space too).
             let chip_w = Spacing::Xl.px() * 2.0;
             let track = store
                 .slider(ids::EQS_GRID_UNIT)
                 .map(|(_, v)| v)
                 .unwrap_or_else(|| grid_unit_to_slider(snapshot.grid_unit));
-            let px = store
+            let chip_value = store
                 .number_value(ids::EQS_GRID_UNIT_NUM)
-                .unwrap_or(snapshot.grid_unit as f64)
-                .round() as i64;
-            let px_display = px.to_string();
+                .unwrap_or(track as f64);
+            let px_display = slider_to_grid_unit(track).to_string();
             paint_slider_with_chip_layout(
                 Rect::new(inner_x, y, inner_w, row_h),
                 "Grid",
                 track,
-                px as f64,
+                chip_value,
                 Some(&px_display),
                 ids::EQS_GRID_UNIT,
                 ids::EQS_GRID_UNIT_NUM,

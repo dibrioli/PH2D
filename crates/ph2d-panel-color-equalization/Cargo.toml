@@ -21,11 +21,25 @@ authors.workspace = true
 ph2d-editor-core            = { path = "../ph2d-editor-core" }
 ph2d-a11y                   = { path = "../ph2d-a11y" }
 ph2d-tokens                 = { path = "../ph2d-tokens" }
+# VectorScene + Color for the Phase 2 histogram overlay (bars drawn via
+# editor-core's `fill_rounded_rect` helper need the scene type imported
+# directly, and `multiply_alpha` lives on `Color`).
+ph2d-vector                 = { path = "../ph2d-vector" }
+# TextSystem reference re-exported through PaintCtx; needed for the
+# `paint_slider_with_chip_layout` calls.
+ph2d-text                   = { path = "../ph2d-text" }
 # Vocab single-source-of-truth (DIRETRIZ §3.8.3 — sabor 3): snapshot type,
 # slider↔value projection helpers, and the panel NodeId consts live in
 # the tool crate. Panel → tool dep direction (allowed; tool depends on
 # editor-core, panel on both — no cycle).
 ph2d-tool-color-equalization = { path = "../ph2d-tool-color-equalization" }
+
+[package.metadata.cargo-machete]
+# `ph2d-text` is reserved for the live-preview thumbnail render that
+# the CEQ Fase 1 follow-up will paint inside the panel; the dep
+# ships now so the panel's paint pass can land without a Cargo.toml
+# bump. Ignore so machete passes while the consumer is in flight.
+ignored = ["ph2d-text"]
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }

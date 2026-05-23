@@ -18,6 +18,16 @@ authors.workspace = true
 # All kernels are 100% own implementation, zero external image deps.
 # Crate-irmão: ph2d-panel-color-equalization.
 
+[features]
+# `gpu` enables the Phase 4 wgpu compute path (LUT3D apply, more to
+# come). Off by default so the CPU-only build stays light — the shell
+# turns it on when it has a GpuContext to share. CPU + GPU paths share
+# the same input/output shape and are pinned by a parity test (ε ≤ 1
+# LSB per channel) so callers can flip the switch without diff'ing
+# pixels.
+default = []
+gpu = ["dep:ph2d-gpu", "dep:wgpu", "dep:bytemuck", "dep:half", "dep:pollster"]
+
 [dependencies]
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # Tool trait + FloatingPanel + widgets for the panel scaffolding (the
@@ -29,3 +39,26 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # MemoryBudget type for the manifest budget declaration (HR-13).
 ph2d-core = { path = "../ph2d-core" }
+
+# ── Phase 4 GPU stack (optional, gated by `gpu` feature) ──────────
+# Shared GpuContext (Device + Queue) — same one the shell holds, so
+# uploads/downloads round-trip through a single device/queue pair.
+ph2d-gpu = { path = "../ph2d-gpu", optional = true }
+# Pinned to workspace's wgpu version (28) to avoid ABI drift.
+wgpu = { version = "28", optional = true }
+# `Pod` / `Zeroable` for safe `&[u8]` ↔ `&[u32]` ↔ uniform-buffer casts.
+bytemuck = { version = "1", optional = true, features = ["derive"] }
+# f32 → f16 for the LUT3D rgba16float upload (rgba32float is not
+# universally filterable without the FLOAT32_FILTERABLE feature; f16
+# is filterable on every adapter).
+half = { version = "2", optional = true }
+# Block-on the wgpu poll for `map_async` in the readback path —
+# matches the rest of the workspace's pattern.
+pollster = { version = "0.4", optional = true }
+
+[package.metadata.cargo-machete]
+# `pollster` is wired in `src/gpu/lut_apply.rs` (gpu-feature path) and
+# is documented in comments before it's reached by the cooked GPU
+# pipeline; machete can't see the feature-gated callsite. Ignore so
+# the workspace lint stays green while the GPU stack lands.
+ignored = ["pollster"]

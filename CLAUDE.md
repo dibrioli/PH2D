@@ -61,18 +61,23 @@ push, não no CI vermelho 30min depois.
 
 ## Plano operacional ativo
 
-[`docs/plans/2026-05-tool-isolation-waves.md`](docs/plans/2026-05-tool-isolation-waves.md) —
-**reestruturação tool-as-crate** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md)):
-ferramentas saem de `editor-core` e viram crates satélite drop-in, espelhando o
-fan-out de nós. Funil neck (T1: contrato `Tool`/`ImageEditTool` + canal de ação
-genérico + `ph2d-tool-sync` codegen) → 🔒 FREEZE → fan-out. Vertical que prova o
-contrato = **BgRemoval** (T2). Cada fase tem gate de auditoria adversarial + smoke.
+[`docs/plans/2026-05-node-waves.md`](docs/plans/2026-05-node-waves.md) —
+**sistema de nós node-centric** ([ADR-0030..0039](docs/architecture/decisions/)):
+W1 (neck) e W2 (vertical Motion) fechados + contrato CONGELADO (ADR-0039);
+**fan-out aberto** (Wave 3+: mais nós Motion, Shader, Sound, Gameplay, ferramentas
+imperativas). Receita pronta-pra-colar em [DIRETRIZ §3.8](docs/IntegracaoMultiAgente/DIRETRIZ.md#38-node-crate-novo--fan-out-o-caminho-principal-de-crescimento).
+Tracker vivo: [`docs/HANDOFF_node_system.md`](docs/HANDOFF_node_system.md).
 
-Plano paralelo (sistema de nós): [`docs/plans/2026-05-node-waves.md`](docs/plans/2026-05-node-waves.md) —
-W1/W2 fechados + contrato CONGELADO (ADR-0039); fan-out de nós aberto.
+**Histórico recente (concluído):**
 
-**Histórico:** [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) —
-M1..M13 do core pós-spike, todos mergeados (PRs #1-#30).
+- [`docs/plans/2026-05-tool-isolation-waves.md`](docs/plans/2026-05-tool-isolation-waves.md) —
+  **reestruturação tool-as-crate** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md))
+  🔒 **CLOSED 2026-05-22** (TG-A..TG-E em uma jornada). Tool agora é satélite
+  drop-in: `cargo run -p ph2d-tool-sync` regenera o wiring central, contrato
+  `Tool`/`ImageEditTool`/`PanelEvent` congelado por arch-gate. Receita pra
+  tool nova em [DIRETRIZ §3.9](docs/IntegracaoMultiAgente/DIRETRIZ.md) + SKILL_Stack §"Adicionar uma tool".
+- [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) —
+  M1..M13 do core pós-spike, todos mergeados (PRs #1-#30).
 
 ## Design system
 

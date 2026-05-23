@@ -1,5 +1,7 @@
 # Handoff — fechamento do ADR-0040 (canal genérico + FREEZE)
 
+> ✅ **EXECUTADO em 2026-05-22** (commits `7676793` TG-B → `4a15d9b` TG-C → `c4063b7` TG-D → `fc23647` TG-E, encadeados numa única jornada de uma LLM fresca). ADR-0040 fechado. Para o fluxo **vigente** de adicionar/editar uma tool, vide [DIRETRIZ §3.9](IntegracaoMultiAgente/DIRETRIZ.md) e `SKILL_Stack_PH2D_Definitiva.md §"Adicionar uma tool"`. Este doc fica como **histórico** do raciocínio + checklist que a próxima fase usou.
+
 **Data:** 2026-05-22
 **Para:** a LLM que vai fechar os ~30% restantes do ADR-0040 (canal de ação genérico de UI-edit + cleanup + FREEZE).
 **Pré-leitura obrigatória:**

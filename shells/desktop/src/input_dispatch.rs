@@ -307,6 +307,52 @@ impl App {
         {
             match kind {
                 PointerKind::Down => {
+                    // Onda 1 hotfix: Shift/Cmd in the canvas ALWAYS means
+                    // selection-adjustment. Pre-empt the gizmo-handle /
+                    // pivot-tool / canvas-pick cascade so a modifier
+                    // click never accidentally opens a scale-handle drag
+                    // (gizmo handles overlap the sprite bbox corners —
+                    // bare Shift+click was landing on a handle and
+                    // entering the `is_specific_handle` branch which
+                    // bypasses the canvas pick where toggle lives).
+                    let shift_held_early = self.modifiers.shift_key();
+                    let cmd_held_early =
+                        self.modifiers.super_key() || self.modifiers.control_key();
+                    if (shift_held_early || cmd_held_early)
+                        && hero.store.panel_at(evt.x, evt.y).is_none()
+                        && hero.store.context_menu().is_none()
+                    {
+                        let window_size = gfx.surface.size();
+                        let world_pos =
+                            gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                        let hits = ph2d_render::pick_sprites_at_world(
+                            gfx.present.world_mut(),
+                            world_pos,
+                        );
+                        if let Some(bits) = hits.first().copied() {
+                            hero.gizmo.toggle_in_selection(bits);
+                            let primary = hero.gizmo.selection;
+                            if let Some(entry) =
+                                resolve_live_entry(gfx.hero_live.as_ref(), primary)
+                            {
+                                hero.selection = Some(ph2d_editor::HeroSelection {
+                                    label: entry.name.clone(),
+                                    kind: entry
+                                        .badge
+                                        .clone()
+                                        .unwrap_or_else(|| "ENT".to_string()),
+                                    world_pos: (0.0, 0.0),
+                                });
+                            } else if primary.is_none() {
+                                hero.selection = None;
+                            }
+                            self.title_dirty = true;
+                            return;
+                        }
+                        // Modifier on empty canvas → fall through to
+                        // existing cascade so a Shift-drag can still
+                        // open an additive rubber-band.
+                    }
                     let hit_id = hero.hit_index.hit(evt.x, evt.y);
                     let gizmo_kind = hit_id.and_then(ph2d_editor::gizmo_kind_for_id);
                     let is_specific_handle = matches!(

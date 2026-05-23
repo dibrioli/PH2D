@@ -107,14 +107,14 @@ pub const IMAGE_ACTION_BGREMOVAL: NodeId = hash_node_id("bgremoval");
 
 /// Image Tools action — Real Size pill. One-shot like Trim / Make Square:
 /// resets the selected sprite's `Transform.scale` to 1:1 (preserving flip
-/// sign). Click raises `EditorAction::RealSize`; the shell drain mutates
+/// sign). Click raises `EditorAction::OneShotImageOp { tool_id: "real_size" }`; the shell drain mutates
 /// the ECS `Transform`. Algorithm in `ph2d-tool-real-size`.
 pub const IMAGE_ACTION_REAL_SIZE: NodeId = hash_node_id("real_size");
 
 /// Image Tools action — Padding pill. Unlike the one-shots, this ACTIVATES
 /// the stateful Padding tool (panel with 4 signed per-edge fields + Apply;
 /// the directional-expand gizmo edge-drag is a v2). Click raises
-/// `EditorAction::ActivatePadding`; the shell sets the tool active.
+/// `EditorAction::ActivateTool { tool_id: "padding" }`; the shell sets the tool active.
 /// Condenses the legacy Image Padding + Directional Expand.
 pub const IMAGE_ACTION_PADDING: NodeId = hash_node_id("padding");
 

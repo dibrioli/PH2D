@@ -1153,35 +1153,33 @@ fn visibility_toggle_no_pending_without_selection() {
     assert!(hero.bus.is_empty());
 }
 
-/// Clicking the Trim Transparency action pill pushes an
-/// `EditorAction::Trim` onto the bus capturing the current
-/// `gizmo_selection`. Wave 2.5 PR 11.8b1: bus migration. When
-/// nothing is selected, the bus stays empty (click still
-/// consumed so the dispatcher doesn't keep walking).
+/// Clicking the Trim Transparency action pill pushes a generic
+/// `EditorAction::OneShotImageOp { tool_id: "trim_transparency" }` onto
+/// the bus capturing the current `gizmo_selection`. Wave 2.5 PR 11.8b1
+/// (bus migration) + ADR-0040 TG-A (generic variant). When nothing is
+/// selected, the bus stays empty (click still consumed).
 #[test]
 fn click_on_trim_pill_raises_pending_with_selection() {
     crate::test_support::ensure_panel_registry();
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
-    // No selection → nothing pushed after click.
     hero.gizmo.selection = None;
     assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
     assert!(hero.bus.is_empty());
 
-    // With selection → bus contains exactly one Trim with the
-    // entity_bits taken from gizmo_selection at click time.
     hero.gizmo.selection = Some(0xDEAD_BEEF);
     assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_TRIM)));
     let drained: Vec<_> = hero.bus.drain().collect();
     assert_eq!(
         drained,
-        vec![EditorAction::Trim {
-            entity_bits: 0xDEAD_BEEF
+        vec![EditorAction::OneShotImageOp {
+            tool_id: "trim_transparency",
+            entity_bits: 0xDEAD_BEEF,
         }]
     );
 }
 
-/// Make Square pill mirrors the Trim bus-push semantics (Wave 2.5 PR 11.8b2).
+/// Make Square pill mirrors the Trim bus-push semantics.
 #[test]
 fn click_on_make_square_pill_raises_pending_with_selection() {
     crate::test_support::ensure_panel_registry();
@@ -1196,17 +1194,17 @@ fn click_on_make_square_pill_raises_pending_with_selection() {
     let drained: Vec<_> = hero.bus.drain().collect();
     assert_eq!(
         drained,
-        vec![EditorAction::MakeSquare {
-            entity_bits: 0xCAFE_BABE
+        vec![EditorAction::OneShotImageOp {
+            tool_id: "make_square",
+            entity_bits: 0xCAFE_BABE,
         }]
     );
 }
 
-/// Bg Removal pill raises `EditorAction::ActivateBgRemoval`
-/// (not `EditorAction::Bgremoval` — that one is the Apply
-/// trigger, raised shell-side when the tool's panel Toggle
-/// fires). Shell drains the Activate variant by calling
-/// `tools.set_active(...)`. (Wave 2.5 PR 11.8b3.)
+/// Bg Removal pill raises `EditorAction::ActivateTool { tool_id:
+/// "bgremoval" }` (ADR-0040 TG-A generic activation). The Apply /
+/// commit is raised shell-side as `OneShotImageOp { tool_id:
+/// "bgremoval", entity_bits }` when the tool's panel Toggle fires.
 #[test]
 fn click_on_bgremoval_pill_raises_activate_intent() {
     crate::test_support::ensure_panel_registry();
@@ -1215,9 +1213,12 @@ fn click_on_bgremoval_pill_raises_activate_intent() {
     assert!(hero.bus.is_empty());
     assert!(hero.apply_event(WidgetEvent::Click(ids::IMAGE_ACTION_BGREMOVAL)));
     let drained: Vec<_> = hero.bus.drain().collect();
-    // Only the Activate variant — the Apply variant (Bgremoval)
-    // is raised shell-side, not by the pill click.
-    assert_eq!(drained, vec![EditorAction::ActivateBgRemoval]);
+    assert_eq!(
+        drained,
+        vec![EditorAction::ActivateTool {
+            tool_id: "bgremoval"
+        }]
+    );
 }
 
 #[test]

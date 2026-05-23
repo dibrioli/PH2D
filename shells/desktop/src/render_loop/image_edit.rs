@@ -181,9 +181,10 @@ pub(super) fn dispatch(
             .bus
             .drain()
             .filter_map(|a| match a {
-                ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits }
-                    if bgremoval_active && found.is_none() =>
-                {
+                ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                    tool_id: "bgremoval",
+                    entity_bits,
+                } if bgremoval_active && found.is_none() => {
                     found = Some(entity_bits);
                     None
                 }

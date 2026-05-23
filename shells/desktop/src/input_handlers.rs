@@ -300,7 +300,10 @@ impl App {
                 && let Some(bits) = hero.gizmo.selection
             {
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits: bits });
+                    .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                        tool_id: "bgremoval",
+                        entity_bits: bits,
+                    });
             }
         }
     }

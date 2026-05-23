@@ -53,87 +53,52 @@
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum EditorAction {
-    /// Trim transparency from the entity's sprite source.
-    /// Payload: `entity.to_bits()`. Hero raises this when the user
-    /// clicks `IMAGE_ACTION_TRIM`; shell drains via the
-    /// `trim_transparency` algorithm + Individual texture rebind.
-    Trim { entity_bits: u64 },
+    /// Set the active tool by canonical id (the manifest's `id` field).
+    /// Generic activation variant (ADR-0040 TG-A): replaces the
+    /// per-tool `ActivateBgRemoval` / `ActivatePadding` etc. Shell
+    /// drains by routing through `ToolRegistry::set_active`; the
+    /// `mode_on` gate for image tools applies at the shell side, not
+    /// in the variant. Adding a new modal tool does not require a new
+    /// variant.
+    ActivateTool { tool_id: &'static str },
 
-    /// Pad the entity's sprite source to a square. Payload:
-    /// `entity.to_bits()`. Mirror of [`Self::Trim`] for the
-    /// `IMAGE_ACTION_MAKE_SQUARE` action pill.
-    MakeSquare { entity_bits: u64 },
-
-    /// Reset the entity's sprite `Transform.scale` to 1:1 (preserving
-    /// flip sign). Payload: `entity.to_bits()`. Mirror of [`Self::Trim`]
-    /// for the `IMAGE_ACTION_REAL_SIZE` action pill; the shell drain
-    /// applies `ph2d_tool_real_size::real_size_scale` to the ECS
-    /// `Transform` (no pixel work, no texture rebind).
-    RealSize { entity_bits: u64 },
-
-    /// Activate the stateful BgRemoval tool. No payload — the shell
-    /// pulls the active selection from `HeroScreen::gizmo_selection`
-    /// when dispatching. Raised by clicking
-    /// `IMAGE_ACTION_BGREMOVAL`.
-    ActivateBgRemoval,
-
-    /// Apply Background Removal at full resolution to the entity's
-    /// sprite. Payload: `entity.to_bits()`. Raised by the shell when
-    /// the `BgRemovalTool` panel's Apply Toggle fires (the tool sets
-    /// `pending_apply = true` inside `handle_panel_event`, the shell
-    /// pushes this variant with the current selection). Shell drain
-    /// runs `BgRemovalTool::run_full_resolution` against the source
-    /// RGBA and swaps `Sprite.source` to a fresh `Individual`
-    /// texture. Gated at drain time on `bgremoval` being the active
-    /// tool — if not active when drained, the action is pushed back
-    /// onto the bus for the next frame (preserves the
-    /// `pending_bgremoval` "stays intact across tool switches"
-    /// contract).
-    Bgremoval { entity_bits: u64 },
+    /// Apply a one-shot or stateful-bake image edit on `entity_bits`,
+    /// dispatched by `tool_id` (the manifest id). Generic image-edit
+    /// variant (ADR-0040 TG-A): replaces the per-tool `Trim` /
+    /// `MakeSquare` / `RealSize` (stateless one-shots) and `Bgremoval`
+    /// (stateful bake reading the active tool's pipeline state). The
+    /// shell dispatches by `tool_id` to the matching drain function
+    /// (which still reads tool-specific state from the active tool when
+    /// needed — Padding/BgRemoval bake). The ordering / `mode_on` /
+    /// "stays intact across tool switches" gating applies at the shell
+    /// drain site, not in the variant. Adding a one-shot image op does
+    /// not require a new variant.
+    OneShotImageOp {
+        tool_id: &'static str,
+        entity_bits: u64,
+    },
 
     /// One Background-Removal panel edit (mode / slider / Apply) routed
-    /// from the typed `ph2d-panel-bgremoval` to the shell. The shell
-    /// drains it and calls `BgRemovalTool::apply_ui_edit` against the
-    /// active tool instance (the tool lives in the shell's
-    /// `ToolRegistry`, unreachable from `HeroScreen`, so the panel can't
-    /// mutate it directly — same bus round-trip as `ActivateBgRemoval`).
-    /// On `BgRemovalUiEdit::Apply` the shell additionally pushes a
-    /// [`Self::Bgremoval`] for the active selection to commit full-res.
+    /// from the typed `ph2d-panel-bgremoval` to the shell. Migrates to
+    /// the generic `ToolPanelEvent` channel in ADR-0040 TG-B.
     BgremovalUiEdit(crate::tools::bgremoval::BgRemovalUiEdit),
 
     /// Cancel Background Removal: abandon the live preview (no commit)
     /// and deactivate the tool so the panel hides and the Inspector
     /// returns. Raised by the panel's Cancel button. The shell switches
-    /// the active tool back to the default (first-registered) tool.
+    /// the active tool back to the default. Migrates to ActivateTool
+    /// (default) in ADR-0040 TG-B.
     BgremovalCancel,
-
-    /// Activate the stateful Padding tool. No payload — the shell pulls
-    /// the active selection from `HeroScreen::gizmo_selection` when
-    /// dispatching. Raised by clicking `IMAGE_ACTION_PADDING`. Mirror of
-    /// [`Self::ActivateBgRemoval`].
-    ActivatePadding,
 
     /// One Padding panel edit (one of the four signed per-edge fields or
     /// Apply) routed from the typed `ph2d-panel-padding` to the shell.
-    /// The shell drains it and calls `PaddingTool::apply_ui_edit` against
-    /// the active tool instance (the tool lives in the shell's
-    /// `ToolRegistry`, unreachable from `HeroScreen`). Mirror of
-    /// [`Self::BgremovalUiEdit`].
+    /// Mirror of [`Self::BgremovalUiEdit`]. Migrates in ADR-0040 TG-C.
     PaddingUiEdit(crate::tools::padding::PaddingUiEdit),
 
     /// Cancel Padding: abandon the in-progress spec (no bake) and
     /// deactivate the tool so the panel hides and the Inspector returns.
-    /// Raised by the panel's Cancel button. Mirror of
-    /// [`Self::BgremovalCancel`].
+    /// Raised by the panel's Cancel button. Migrates in ADR-0040 TG-C.
     PaddingCancel,
-
-    /// Apply Padding at full resolution to the entity's sprite. Payload:
-    /// `entity.to_bits()`. Raised by the shell when the `PaddingTool`
-    /// panel's Apply fires. Shell drain reads the source RGBA, runs
-    /// `ph2d_tool_padding::add_padding` with the tool's signed per-edge
-    /// spec, swaps `Sprite.source` to a fresh `Individual` texture, and
-    /// reprojects the pivot. Mirror of [`Self::Bgremoval`].
-    Padding { entity_bits: u64 },
 
     /// Re-decode the entity's sprite source asset at the current
     /// `ProjectSettings::pixels_per_meter` and write the recomputed
@@ -356,9 +321,9 @@ mod tests {
     #[test]
     fn push_then_len_grows() {
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::Trim { entity_bits: 42 });
+        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 42 });
         assert_eq!(bus.len(), 1);
-        bus.push(EditorAction::MakeSquare { entity_bits: 99 });
+        bus.push(EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 99 });
         assert_eq!(bus.len(), 2);
     }
 
@@ -368,14 +333,14 @@ mod tests {
         // relies on this for the gizmo's drag-then-release sequence
         // and similar paired-intent cases.
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::Trim { entity_bits: 1 });
-        bus.push(EditorAction::ActivateBgRemoval);
-        bus.push(EditorAction::MakeSquare { entity_bits: 2 });
+        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
+        bus.push(EditorAction::ActivateTool { tool_id: "bgremoval" });
+        bus.push(EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 });
         let drained: Vec<_> = bus.drain().collect();
         assert_eq!(drained.len(), 3);
-        assert_eq!(drained[0], EditorAction::Trim { entity_bits: 1 });
-        assert_eq!(drained[1], EditorAction::ActivateBgRemoval);
-        assert_eq!(drained[2], EditorAction::MakeSquare { entity_bits: 2 });
+        assert_eq!(drained[0], EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
+        assert_eq!(drained[1], EditorAction::ActivateTool { tool_id: "bgremoval" });
+        assert_eq!(drained[2], EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 });
         assert!(bus.is_empty(), "bus must be empty after drain");
     }
 
@@ -390,19 +355,19 @@ mod tests {
     #[test]
     fn push_after_drain_starts_fresh_sequence() {
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::Trim { entity_bits: 1 });
+        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
         let _ = bus.drain().count();
-        bus.push(EditorAction::MakeSquare { entity_bits: 2 });
+        bus.push(EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 });
         assert_eq!(bus.len(), 1);
         let drained: Vec<_> = bus.drain().collect();
-        assert_eq!(drained, vec![EditorAction::MakeSquare { entity_bits: 2 }]);
+        assert_eq!(drained, vec![EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 }]);
     }
 
     #[test]
     fn clear_empties_without_dispatching() {
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::Trim { entity_bits: 1 });
-        bus.push(EditorAction::ActivateBgRemoval);
+        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
+        bus.push(EditorAction::ActivateTool { tool_id: "bgremoval" });
         bus.clear();
         assert!(bus.is_empty());
         // Subsequent drain yields nothing.

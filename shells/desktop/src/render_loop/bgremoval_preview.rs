@@ -161,7 +161,10 @@ pub(super) fn dispatch(
     }
     if let Some(bits) = apply_selection {
         hero.bus
-            .push(ph2d_editor::action_bus::EditorAction::Bgremoval { entity_bits: bits });
+            .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                tool_id: "bgremoval",
+                entity_bits: bits,
+            });
         // Committed result becomes the new sprite texture; drop the
         // preview so the overlay stops painting the pre-commit copy.
         // The caller deactivates the tool on the returned flag so the

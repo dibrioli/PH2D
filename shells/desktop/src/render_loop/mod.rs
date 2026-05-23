@@ -361,10 +361,16 @@ impl crate::App {
             for action in hero.bus.drain() {
                 use ph2d_editor::action_bus::EditorAction;
                 match action {
-                    EditorAction::ActivateBgRemoval => activate_bgremoval = true,
+                    // ADR-0040 TG-A: generic activation. Per-tool flags
+                    // preserve the existing mode_on gating / activation
+                    // side effects after the drain.
+                    EditorAction::ActivateTool { tool_id } => match tool_id {
+                        "bgremoval" => activate_bgremoval = true,
+                        "padding" => activate_padding = true,
+                        _ => {}
+                    },
                     EditorAction::BgremovalUiEdit(edit) => bgremoval_ui_edits.push(edit),
                     EditorAction::BgremovalCancel => bgremoval_cancel = true,
-                    EditorAction::ActivatePadding => activate_padding = true,
                     EditorAction::PaddingUiEdit(edit) => padding_ui_edits.push(edit),
                     EditorAction::PaddingCancel => padding_cancel = true,
                     EditorAction::UndoImageEdit => undo_image_edit = true,
@@ -401,14 +407,27 @@ impl crate::App {
                     EditorAction::Reimport { entity_bits } => {
                         reimport_entity.get_or_insert(entity_bits);
                     }
-                    EditorAction::Trim { entity_bits } => {
-                        trim_entity.get_or_insert(entity_bits);
-                    }
-                    EditorAction::MakeSquare { entity_bits } => {
-                        make_square_entity.get_or_insert(entity_bits);
-                    }
-                    EditorAction::RealSize { entity_bits } => {
-                        real_size_entity.get_or_insert(entity_bits);
+                    // ADR-0040 TG-A: generic one-shot image-op dispatch.
+                    // Trim/MakeSquare/RealSize collect into per-tool Option<u64>
+                    // for the existing per-tool drain functions; bgremoval bake
+                    // is deferred via leftover (must run AFTER ActivateTool
+                    // has switched the tool active, image_edit.rs:184 picks it up).
+                    oneshot @ EditorAction::OneShotImageOp { tool_id, entity_bits } => {
+                        match tool_id {
+                            "trim_transparency" => {
+                                trim_entity.get_or_insert(entity_bits);
+                            }
+                            "make_square" => {
+                                make_square_entity.get_or_insert(entity_bits);
+                            }
+                            "real_size" => {
+                                real_size_entity.get_or_insert(entity_bits);
+                            }
+                            "bgremoval" => {
+                                bgremoval_leftover.push(oneshot);
+                            }
+                            _ => {}
+                        }
                     }
                     EditorAction::InspectorTransformEdit(info) => {
                         transform_edit.get_or_insert(info);
@@ -449,11 +468,10 @@ impl crate::App {
                             wgpu::PresentMode::Immediate
                         });
                     }
-                    // Bgremoval falls through to its own filter-and-
-                    // replace at the image-edit drain site so the
-                    // `bgremoval_active` gate runs AFTER any same-frame
-                    // ActivateBgRemoval fires.
-                    other @ EditorAction::Bgremoval { .. } => bgremoval_leftover.push(other),
+                    // (Bgremoval bake leftover handled inside the
+                    // `OneShotImageOp` arm above — defers to the
+                    // image_edit drain site so `bgremoval_active` is
+                    // observed AFTER any same-frame ActivateTool fires.)
                     // EditorAction is `#[non_exhaustive]`. A future
                     // variant landing in `ph2d-editor` shouldn't break
                     // the shell — drop it silently here until a

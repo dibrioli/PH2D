@@ -660,6 +660,21 @@ impl WidgetStore {
         }
     }
 
+    /// Advance the incremental-drag anchor `last_x` / `last_y` to the
+    /// cursor's current position. Called by `dispatch_pointer` Move
+    /// after each per-Move delta has been applied so the NEXT Move
+    /// computes its delta from "here", not from Down. This is the
+    /// Blender/AE scrub model — a reversal after a clamp produces a
+    /// non-zero step_dx on the very next Move (the absolute-delta
+    /// model kept the value pegged at the clamp edge until the cursor
+    /// returned all the way to `start_x`).
+    pub fn advance_number_input_drag_anchor(&mut self, x: f32, y: f32) {
+        if let Some(drag) = self.number_input_drag.as_mut() {
+            drag.last_x = x;
+            drag.last_y = y;
+        }
+    }
+
     pub fn end_number_input_drag(&mut self) -> Option<NumberInputDragState> {
         self.number_input_drag.take()
     }

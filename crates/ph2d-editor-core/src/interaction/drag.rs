@@ -23,12 +23,26 @@ use ph2d_a11y::NodeId;
 pub struct NumberInputDragState {
     /// NumberInput being dragged.
     pub id: NodeId,
-    /// Cursor x/y at the moment of Down.
+    /// Cursor x/y at the moment of Down. Used ONLY for the initial
+    /// threshold check (`crossed_threshold`) — once axis-locked, value
+    /// updates use the incremental `last_x` / `last_y` anchor instead
+    /// so a reversal after a clamp immediately reverses the value
+    /// (the absolute model would keep the value pegged at the clamp
+    /// edge until the cursor returned all the way to `start_x`).
     pub start_x: f32,
     pub start_y: f32,
-    /// Value snapshotted at Down. The drag computes `new = start +
-    /// (dx * h_rate + (-dy) * v_rate) * shift_mul * step`.
+    /// Value snapshotted at Down. Surface for tests / introspection;
+    /// the live drag math reads the chip's current `value` and applies
+    /// an incremental delta each Move (Blender/AE scrub pattern).
     pub start_value: f64,
+    /// Cursor x/y from the PREVIOUS Move (or Down, before any Move
+    /// fired). Each Move computes `delta = event - last`, applies the
+    /// delta to the chip's current value, then writes `last = event`.
+    /// This is the standard "scrub" model — reversal after a clamp
+    /// hits zero accumulated dx so the next Move immediately moves
+    /// the value in the new direction.
+    pub last_x: f32,
+    pub last_y: f32,
     /// Cached step from the buffer ("contains '.'" → 0.01, else 1.0)
     /// at Down — kept stable for the drag duration so behavior stays
     /// predictable across mid-drag value changes.

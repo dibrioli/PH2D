@@ -165,14 +165,21 @@ pub fn dispatch_pointer_with_text<'frame>(
                 if let Some(d) = store.number_input_drag()
                     && d.crossed_threshold
                 {
-                    // Use the LOCKED axis (decided at promotion). The
-                    // other axis is zeroed unconditionally — its
-                    // delta is not consulted again until the drag
-                    // ends.
+                    // Incremental delta from the LAST Move (not from
+                    // Down). The previous absolute-delta model paired
+                    // with the clamp pegged the value at the bound: a
+                    // reversal after going past the cap kept the chip
+                    // stuck at the cap until the cursor returned all
+                    // the way to `start_x`. Standard Blender/AE scrub
+                    // is incremental: each Move adds its own dx to the
+                    // current value, so a reversal IMMEDIATELY moves
+                    // the value the other way.
+                    let step_dx = event.x - d.last_x;
+                    let step_dy = event.y - d.last_y;
                     let (dom_dx, dom_dy) = if d.axis_horizontal {
-                        (dx_total, 0.0)
+                        (step_dx, 0.0)
                     } else {
-                        (0.0, dy_total)
+                        (0.0, step_dy)
                     };
                     let shift_mul = if store.shift_held() {
                         drag::DRAG_SHIFT_MUL
@@ -181,15 +188,17 @@ pub fn dispatch_pointer_with_text<'frame>(
                     };
                     let delta = (dom_dx as f64 * drag::DRAG_RATE_X
                         - dom_dy as f64 * drag::DRAG_RATE_Y)
-                        * shift_mul;
-                    let raw_value = d.start_value + delta * d.step;
-                    // Range guard: when the NumberInput is linked to
-                    // a Slider OR is a BlenderPicker channel chip,
-                    // clamp the displayed value to the slider's
-                    // normalized 0..1 range. Without this the user
-                    // can scrub past the slider thumb's endpoints
-                    // and the number display drifts out of bounds
-                    // while the slider stays pinned at 0 or 1.
+                        * shift_mul
+                        * d.step;
+                    // Apply the per-Move delta on top of the chip's
+                    // CURRENT value (not `start_value`). Read it back
+                    // out before mutating so the clamp logic below can
+                    // operate on the same number we wrote.
+                    let current_value = match store.get(d.id) {
+                        Some(InteractiveState::NumberInput { value, .. }) => *value,
+                        _ => d.start_value,
+                    };
+                    let raw_value = current_value + delta;
                     // Three-tier clamp: panel-registered natural-unit
                     // bounds win first (Color EQ chips register e.g.
                     // brightness ±0.5 explicitly). Otherwise fall back to
@@ -205,6 +214,13 @@ pub fn dispatch_pointer_with_text<'frame>(
                     } else {
                         raw_value
                     };
+                    // Advance the per-Move anchor BEFORE writing back —
+                    // the next Move computes its delta from this new
+                    // `last`. The anchor advances unconditionally
+                    // (even when the value clamped at a bound) so a
+                    // reversal still produces a non-zero step_dx on
+                    // the very next Move.
+                    store.advance_number_input_drag_anchor(event.x, event.y);
                     // Audit fix #2 (CRITICAL): mutate `value` and
                     // `buffer` for live display, but DO NOT touch
                     // `last_committed` — that anchor must keep
@@ -673,6 +689,14 @@ pub fn dispatch_pointer_with_text<'frame>(
                         start_x: event.x,
                         start_y: event.y,
                         start_value: *value,
+                        // Seed `last_x` / `last_y` at the Down position
+                        // so the FIRST post-threshold Move's incremental
+                        // delta is measured against Down (matching the
+                        // old absolute-from-Down behaviour for the
+                        // initial Move). Subsequent Moves advance the
+                        // anchor.
+                        last_x: event.x,
+                        last_y: event.y,
                         step,
                         crossed_threshold: false,
                         // Axis is decided at the moment the threshold

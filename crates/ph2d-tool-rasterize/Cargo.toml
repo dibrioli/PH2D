@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-tool-rasterize"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Rasterize — one-shot image action. Bakes the active Transform
+# (scale + rotation + flip) into a sprite's pixel buffer, then resets
+# the sprite Transform to identity. Pure-CPU, std-only, no external deps.
+#
+# Sabor 1 (one-shot stateless) per DIRETRIZ §3.8.3 — same shape as
+# `ph2d-tool-trim-transparency`, `ph2d-tool-make-square`,
+# `ph2d-tool-real-size`.
+
+[dependencies]
+# Registry types (ToolManifest, Zone, Role, etc.) — the single
+# coupling point with the chrome registry.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Vector primitives (BezPath, RoundedRect, Point, Shape) for the icon.
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role) for the manifest a11y declaration (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }

@@ -200,10 +200,35 @@ impl App {
                 // scale / rotate around its own pivot — translation
                 // stays put. The default `compute_gizmo_transform`
                 // would shift the primary's translation for non-
-                // center anchors (drag opens a corner-pivoted scale).
-                // Restore the start translation to keep the primary
-                // consistent with the extras, which the group loop
-                // below forces to start translations.
+                // center anchors. Restore start translation so the
+                // primary matches the extras in Local mode.
+                //
+                // Global mode is the opposite — `compute_gizmo_transform`
+                // returns translation computed via `opposite_anchor_translation`
+                // using the PRIMARY's `sprite_half_intrinsic` and the GLOBAL
+                // pivot, which is geometrically incorrect (it treats the
+                // global center as if it were the primary's opposite
+                // corner). That math sends the primary jumping to wild
+                // positions on tiny drags (smoke: "algumas sprite saltam
+                // para outra posição distante mesmo sem escalonar muito").
+                // For Global Scale/Rotate, override the primary's
+                // translation with the same group-pivot formula the extras
+                // already use: `pivot + R(delta_rot) * factor * (start -
+                // pivot)`. The primary then behaves consistently with
+                // every other selected sprite — "as if the group is a
+                // single rigid object around the global pivot".
+                let start_scale = drag.start_transform.scale;
+                let factor_x = if start_scale[0].abs() > f32::EPSILON {
+                    new_t.scale[0] / start_scale[0]
+                } else {
+                    1.0
+                };
+                let factor_y = if start_scale[1].abs() > f32::EPSILON {
+                    new_t.scale[1] / start_scale[1]
+                } else {
+                    1.0
+                };
+                let delta_rot_outer = new_t.rotation - drag.start_transform.rotation;
                 let in_local_multi = !self.group_drag_starts.is_empty()
                     && !matches!(drag.target, ph2d_editor::GizmoTarget::Global)
                     && !matches!(
@@ -211,8 +236,25 @@ impl App {
                         ph2d_editor::GizmoDragKind::Translate
                             | ph2d_editor::GizmoDragKind::MovePivot
                     );
+                let in_global_xform = matches!(drag.target, ph2d_editor::GizmoTarget::Global)
+                    && !matches!(
+                        drag.kind,
+                        ph2d_editor::GizmoDragKind::Translate
+                            | ph2d_editor::GizmoDragKind::MovePivot
+                    );
                 let primary_translation = if in_local_multi {
                     drag.start_transform.translation
+                } else if in_global_xform {
+                    let pivot = drag.pivot_world;
+                    let st = drag.start_transform;
+                    let rel_x = st.translation[0] - pivot[0];
+                    let rel_y = st.translation[1] - pivot[1];
+                    let scaled_x = rel_x * factor_x;
+                    let scaled_y = rel_y * factor_y;
+                    let (sin_d, cos_d) = delta_rot_outer.sin_cos();
+                    let rotated_x = scaled_x * cos_d - scaled_y * sin_d;
+                    let rotated_y = scaled_x * sin_d + scaled_y * cos_d;
+                    [pivot[0] + rotated_x, pivot[1] + rotated_y]
                 } else {
                     new_t.translation
                 };

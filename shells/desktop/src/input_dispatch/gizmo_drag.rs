@@ -195,9 +195,30 @@ impl App {
                         .snap_world(new_t.translation, sprite_half_new);
                     new_t
                 };
+                // Onda 2C.4 fix: in Local-pivot mode with multi-select
+                // active, every sprite (INCLUDING the primary) must
+                // scale / rotate around its own pivot — translation
+                // stays put. The default `compute_gizmo_transform`
+                // would shift the primary's translation for non-
+                // center anchors (drag opens a corner-pivoted scale).
+                // Restore the start translation to keep the primary
+                // consistent with the extras, which the group loop
+                // below forces to start translations.
+                let in_local_multi = !self.group_drag_starts.is_empty()
+                    && !matches!(drag.target, ph2d_editor::GizmoTarget::Global)
+                    && !matches!(
+                        drag.kind,
+                        ph2d_editor::GizmoDragKind::Translate
+                            | ph2d_editor::GizmoDragKind::MovePivot
+                    );
+                let primary_translation = if in_local_multi {
+                    drag.start_transform.translation
+                } else {
+                    new_t.translation
+                };
                 if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                     t.translation =
-                        ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);
+                        ph2d_core::Vec2::new(primary_translation[0], primary_translation[1]);
                     t.rotation = new_t.rotation;
                     t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
                 }

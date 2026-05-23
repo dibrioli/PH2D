@@ -234,10 +234,31 @@ pub(super) fn publish(
     // Onda 2: rebuild the extras' views every frame. Cleared first so
     // a sprite that left the selection between frames stops painting.
     hero.gizmo.extra_views.clear();
+    let mut alive_extras: Vec<u64> = Vec::with_capacity(hero.gizmo.extra_selection.len());
     for bits in hero.gizmo.extra_selection.clone() {
         if let Some(v) = build_view(bits, sim, present) {
             hero.gizmo.extra_views.push(v);
+            alive_extras.push(bits);
         }
+    }
+    // Onda 2 hotfix: prune the selection set when sprites disappear
+    // (cascade despawn, parent delete, etc.) — otherwise selected_len
+    // stays >1 and the global gizmo keeps painting over the surviving
+    // single sprite (user-reported: "se deletar algumas e sobrar 1,
+    // o gizmo global fica aparecendo mesmo com uma sprite"). The
+    // bridge / world don't notify; we detect by absence of a view.
+    hero.gizmo.extra_selection = alive_extras;
+    if hero.gizmo.view.is_none() && hero.gizmo.selection.is_some() {
+        // Primary disappeared. Promote oldest extra if any; else clear.
+        hero.gizmo.selection = if !hero.gizmo.extra_selection.is_empty() {
+            let promoted = hero.gizmo.extra_selection.remove(0);
+            // The promoted entity already had a view in extra_views;
+            // re-point hero.gizmo.view to it.
+            hero.gizmo.view = build_view(promoted, sim, present);
+            Some(promoted)
+        } else {
+            None
+        };
     }
     // Onda 2: global view = union of every selected sprite's bbox,
     // EXPANDED by a fixed screen offset so the global gizmo's handles

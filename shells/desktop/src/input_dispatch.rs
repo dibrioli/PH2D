@@ -380,7 +380,15 @@ impl App {
                     // skips keyed ids since they aren't None / Translate /
                     // PIVOT canonical, so without this guard those clicks
                     // would fall through to nothing).
-                    let _is_keyed_translate = hit_map_entry.map(|h| matches!(
+                    // Keyed Translate = click on the bbox interior of an
+                    // extra or the global gizmo (whose interior IDs are
+                    // hashed, so `gizmo_kind_for_id` doesn't recognise
+                    // them). Treated as a multi-select translate
+                    // through the canvas-pick branch below — that
+                    // branch resolves the world position to a sprite
+                    // via `pick_sprites_at_world` and opens a group
+                    // translate drag.
+                    let is_keyed_translate = hit_map_entry.map(|h| matches!(
                         h.kind,
                         ph2d_editor::GizmoDragKind::Translate
                     )).unwrap_or(false);
@@ -533,7 +541,8 @@ impl App {
                         && hero.store.context_menu().is_none()
                         && (hit_id.is_none()
                             || matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
-                            || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT))
+                            || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT)
+                            || is_keyed_translate)
                     {
                         // Canvas pick (M14.7 A) — see commit history
                         // for the four conditions enumerated.

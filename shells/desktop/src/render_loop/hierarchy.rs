@@ -181,20 +181,44 @@ pub(super) fn dispatch(
     }
     if let Some(row) = delete_row
         && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row)
+        && let Some(clicked_entity_bits) = live.bridge.entity_for(row)
     {
-        // bevy_ecs 0.18 `ChildOf` cascade: despawning a parent takes
-        // its descendants with it. No manual recursion here (see
-        // `transform_hierarchy.rs::despawn_root_cascades_via_child_of`).
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        sim.world_mut().despawn(entity);
-        // Clear gizmo selection if it pointed at the deleted entity
-        // — the bbox lookup would otherwise dangle for a frame until
-        // the next snapshot rebuilds.
-        if hero.gizmo.selection == Some(entity_bits) {
-            hero.gizmo.selection = None;
+        // Onda 2 fix: if the clicked row is part of the multi-
+        // selection, delete EVERY selected sprite (Photoshop / Figma
+        // convention — multi-select right-click → Delete affects the
+        // whole group). Otherwise just the clicked row. bevy_ecs 0.18
+        // `ChildOf` cascade despawns descendants.
+        let to_delete: Vec<u64> = if hero.gizmo.is_selected(clicked_entity_bits) {
+            hero.gizmo.iter_selected().collect()
+        } else {
+            vec![clicked_entity_bits]
+        };
+        for bits in &to_delete {
+            let entity = ph2d_ecs::Entity::from_bits(*bits);
+            sim.world_mut().despawn(entity);
         }
-        toasts.push(Toast::warning("Deleted entity"));
+        // Remove every deleted bits from the selection set. Without
+        // this, `selected_len()` stays > 1 even after a multi-delete,
+        // which keeps the global gizmo painted around vanished sprites
+        // (user-reported: "se deletar algumas e sobrar 1, o gizmo
+        // global fica aparecendo mesmo com uma sprite").
+        for bits in &to_delete {
+            if hero.gizmo.selection == Some(*bits) {
+                hero.gizmo.selection = None;
+            }
+            hero.gizmo.extra_selection.retain(|b| b != bits);
+        }
+        // If primary was deleted but extras remain, promote the
+        // oldest extra so the selection isn't headless.
+        if hero.gizmo.selection.is_none() && !hero.gizmo.extra_selection.is_empty() {
+            hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
+        }
+        let n = to_delete.len();
+        toasts.push(Toast::warning(if n == 1 {
+            "Deleted entity".to_string()
+        } else {
+            format!("Deleted {n} entities")
+        }));
         title_dirty = true;
     }
     // M14.6 D: drain pending hierarchy-row click → sync

@@ -240,7 +240,12 @@ fn paint_hierarchy_body(
             (row_w - indent).max(80.0), // LITERAL-PX-OK: minimum row width when deeply indented (chrome-specific min)
             HIER_ROW_H,
         );
-        if let Some(sel_label) = selection_label {
+        // Fase 0 hotfix: respect any `selected` flag set by the shell
+        // when building hierarchy entries (multi-row highlight comes
+        // pre-marked). Fall back to label match only for entries that
+        // weren't marked — covers the fixture/demo path where there
+        // is no live bridge.
+        if !entity.selected && let Some(sel_label) = selection_label {
             entity.selected = entity.name == sel_label;
         }
         entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);

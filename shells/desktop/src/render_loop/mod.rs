@@ -635,6 +635,38 @@ impl crate::App {
                 &mut self.bgremoval_preview,
             );
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
+            // Fase 0 hotfix: outline every sprite in the multi-
+            // selection EXCEPT the primary (the primary already has a
+            // full gizmo painted by paint_hero_screen). Without this
+            // the user has no visual confirmation that extra sprites
+            // are part of the active selection. Bbox lookup uses
+            // `selection_bbox_world` then `camera.world_to_screen`; if
+            // the entity vanished mid-frame the bbox lookup returns
+            // None and the outline is skipped silently.
+            if hero.gizmo.selected_len() > 1 {
+                use ph2d_vector::{Color, Rect as VRect};
+                let extra_border = Color::new([0.23, 0.56, 0.90, 0.85]);
+                for bits in hero.gizmo.extra_selection.iter().copied() {
+                    if let Some(bbox) =
+                        ph2d_render::selection_bbox_world(present.world_mut(), bits)
+                    {
+                        let c0 = camera.world_to_screen([bbox.min[0], bbox.min[1]], window_size);
+                        let c1 = camera.world_to_screen([bbox.max[0], bbox.max[1]], window_size);
+                        let x0 = (c0.0.min(c1.0)) as f64;
+                        let x1 = (c0.0.max(c1.0)) as f64;
+                        let y0 = (c0.1.min(c1.1)) as f64;
+                        let y1 = (c0.1.max(c1.1)) as f64;
+                        vector_scene
+                            .fill_rect(VRect::new(x0, y0, x1, y0 + 1.5), extra_border);
+                        vector_scene
+                            .fill_rect(VRect::new(x0, y1 - 1.5, x1, y1), extra_border);
+                        vector_scene
+                            .fill_rect(VRect::new(x0, y0, x0 + 1.5, y1), extra_border);
+                        vector_scene
+                            .fill_rect(VRect::new(x1 - 1.5, y0, x1, y1), extra_border);
+                    }
+                }
+            }
             // Fase 0f: overlay the active rubber-band rect on top of
             // everything (panels, gizmo, hero chrome). Pure shell
             // concern — coords stay in screen space so the rect

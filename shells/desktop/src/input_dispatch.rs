@@ -448,12 +448,25 @@ impl App {
                         // adjusting selection, not moving sprites.
                         let shift_held = self.modifiers.shift_key();
                         let cmd_held = self.modifiers.super_key() || self.modifiers.control_key();
-                        let is_modifier_click = picked.is_some() && (shift_held || cmd_held);
+                        // Smart-click preservation: bare click on a
+                        // sprite that's already inside an active multi-
+                        // selection KEEPS the whole set (user intends
+                        // to interact with the group — e.g. run a tool
+                        // over it — not collapse to single). Without
+                        // this, every click on a member of a multi-
+                        // selection would silently narrow it.
+                        let preserves_multi = picked.is_some_and(|bits| {
+                            hero.gizmo.selected_len() > 1 && hero.gizmo.is_selected(bits)
+                        });
+                        let is_modifier_click =
+                            picked.is_some() && (shift_held || cmd_held || preserves_multi);
                         if let Some(bits) = picked {
                             if cmd_held {
                                 hero.gizmo.toggle_in_selection(bits);
                             } else if shift_held {
                                 hero.gizmo.add_to_selection(bits);
+                            } else if preserves_multi {
+                                // No-op: multi-selection survives the click.
                             } else {
                                 hero.gizmo.replace_selection(Some(bits));
                             }

@@ -52,7 +52,19 @@ pub(super) fn publish(
             &mut live.walk_scratch,
             &mut live.snapshot,
         );
-        let (ordered, entries) = live.bridge.sync_from_snapshot(&live.snapshot);
+        let (ordered, mut entries) = live.bridge.sync_from_snapshot(&live.snapshot);
+        // Fase 0 hotfix: mark every multi-selection row's
+        // `HierarchyEntity.selected` BEFORE the panel paints, so
+        // the row painter highlights N rows instead of just the
+        // primary (paint.rs falls back to label match only when
+        // `selected` is still false — fixture/demo path).
+        for bits in hero.gizmo.iter_selected() {
+            if let Some(node_id) = live.bridge.node_for(bits)
+                && let Some(entry) = entries.get_mut(&node_id)
+            {
+                entry.selected = true;
+            }
+        }
         ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
     }
     // M14.4b: publish the demo camera + window dims so the

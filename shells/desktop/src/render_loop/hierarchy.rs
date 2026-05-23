@@ -222,7 +222,15 @@ pub(super) fn dispatch(
                 if let Some(entity_bits) = live.bridge.entity_for(row) {
                     match modifier {
                         SelectModifier::Replace => {
-                            hero.gizmo.replace_selection(Some(entity_bits));
+                            // Smart-click parity with canvas pick (Fase
+                            // 0 hotfix): bare click on a row already
+                            // part of a multi-selection preserves the
+                            // group instead of collapsing to single.
+                            let preserves_multi = hero.gizmo.selected_len() > 1
+                                && hero.gizmo.is_selected(entity_bits);
+                            if !preserves_multi {
+                                hero.gizmo.replace_selection(Some(entity_bits));
+                            }
                         }
                         SelectModifier::Add => {
                             hero.gizmo.add_to_selection(entity_bits);

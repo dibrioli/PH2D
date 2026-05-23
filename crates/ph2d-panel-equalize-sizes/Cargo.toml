@@ -14,10 +14,22 @@ authors.workspace = true
 # `equalize_sizes` tool is active. Target dim input (max of selection /
 # fixed W×H / grid unit), toggles (upscale-if-smaller, automatic
 # rasterize), + Apply / Cancel. Multi-sprite obrigatório (Fase 0).
-# Coord pre-work stub.
+#
+# ADR-0040 TG-B/TG-C: the UI vocabulary (`EqualizeSizesUiEdit` /
+# `EqualizeSizesUiSnapshot` / `EqualizeSizesParams` + the slider↔grid
+# helpers) lives in `ph2d-tool-equalize-sizes::params`. The panel reads
+# the snapshot it paints and the helpers from there directly. No cycle:
+# the panel→tool dep is the allowed satellite direction.
 
 [dependencies]
-ph2d-editor-core   = { path = "../ph2d-editor-core" }
-ph2d-a11y          = { path = "../ph2d-a11y" }
-ph2d-tokens        = { path = "../ph2d-tokens" }
-ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core         = { path = "../ph2d-editor-core" }
+ph2d-tool-equalize-sizes = { path = "../ph2d-tool-equalize-sizes" }
+ph2d-a11y                = { path = "../ph2d-a11y" }
+ph2d-tokens              = { path = "../ph2d-tokens" }
+ph2d-tool-registry       = { path = "../ph2d-tool-registry" }
+# Painter helpers (paint_slider_with_chip_layout / paint_button) take
+# &mut TextSystem + &mut VectorScene directly; the panel needs these
+# types in scope. Foundational crates (no cycle: editor-core → text +
+# vector already; we just re-import here for the panel paint helpers).
+ph2d-text                = { path = "../ph2d-text" }
+ph2d-vector              = { path = "../ph2d-vector" }

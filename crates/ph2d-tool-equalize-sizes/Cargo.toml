@@ -1,0 +1,40 @@
+[package]
+name = "ph2d-tool-equalize-sizes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Equalize Sizes — multi-sprite canvas-size normalization tool. Image
+# Tools row, order 100. Sabor 3 (stateful + docked panel). UNIQUE among
+# the 4 Image Tools image_tools_4 batch in being *cross-sprite*: a single
+# Apply iterates the active selection (`hero.gizmo.iter_selected()`)
+# instead of being broadcast 1-per-sprite by the chrome.
+#
+# Algorithm: pick a target (W,H) — max-of-selection / fixed W×H / grid
+# multiple — then for each selected sprite, fit-to-target via scale ratio
+# (or Mitchell-Netravali resample if `rasterize_after`), optionally
+# upscaling the small ones with Lanczos3/Nearest/xBR before fit. 100%
+# own implementation; no `image::imageops::resize`.
+#
+# Owns the algorithm + the stateful EqualizeSizesTool; depends on
+# ph2d-editor-core for the Tool / FloatingPanel / PanelEvent contract
+# (the satellite direction) — never the reverse.
+
+[dependencies]
+# Registry types (ToolManifest, Zone, Role, hash_node_id, etc.).
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Tool trait + FloatingPanel + PanelEvent the EqualizeSizesTool builds
+# on; the vocabulary module (`UiEdit` / `UiSnapshot` / `Params`) lives in
+# this crate's root (ADR-0040 TG-C).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# Vector primitives (BezPath, Point) for the icon glyph.
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role + NodeId) for the manifest + panel widget ids.
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }

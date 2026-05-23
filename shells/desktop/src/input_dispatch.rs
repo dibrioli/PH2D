@@ -616,7 +616,19 @@ impl App {
                                 // sane semantic for both modifiers.
                                 hero.gizmo.toggle_in_selection(bits);
                             } else if preserves_multi {
-                                // No-op: multi-selection survives the click.
+                                // Onda 2 hotfix: bare click on a sprite
+                                // already in the multi-selection DEFERS
+                                // the decision to PointerUp. If the user
+                                // drags from here, the open Translate
+                                // drag becomes a group translate (Onda 1
+                                // semantics preserved). If they release
+                                // without dragging, Up `replace_selection`
+                                // collapses the multi to just this sprite
+                                // (Enio: "se há multiplas sprites
+                                // selecionas e eu clicar com botão
+                                // esquerdo em uma delas, todas as outras
+                                // devem ser desselecionadas").
+                                self.pending_single_replace = Some((bits, (evt.x, evt.y)));
                             } else {
                                 hero.gizmo.replace_selection(Some(bits));
                             }
@@ -768,6 +780,38 @@ impl App {
                             // Bare click on empty = clear selection.
                             hero.gizmo.clear_all_selection();
                             hero.selection = None;
+                            self.title_dirty = true;
+                        }
+                    }
+                    // Onda 2 hotfix: resolve a pending click-vs-drag
+                    // decision. `pending_single_replace` is Some when
+                    // the user Down'd on a multi-selected sprite. If
+                    // the cursor stayed within ~4 px of the Down point
+                    // until now (a click, not a drag), collapse the
+                    // multi-selection to just that sprite. If it moved
+                    // past the threshold, the open Translate drag has
+                    // already group-translated the selection; just
+                    // clear the pending state.
+                    if let Some((bits, (dx0, dy0))) = self.pending_single_replace.take() {
+                        let dx = evt.x - dx0;
+                        let dy = evt.y - dy0;
+                        if (dx * dx + dy * dy) <= 16.0 {
+                            hero.gizmo.replace_selection(Some(bits));
+                            // Sync the panel header label to the new
+                            // primary so the Hierarchy highlight
+                            // matches the canvas immediately.
+                            if let Some(entry) =
+                                resolve_live_entry(gfx.hero_live.as_ref(), Some(bits))
+                            {
+                                hero.selection = Some(ph2d_editor::HeroSelection {
+                                    label: entry.name.clone(),
+                                    kind: entry
+                                        .badge
+                                        .clone()
+                                        .unwrap_or_else(|| "ENT".to_string()),
+                                    world_pos: (0.0, 0.0),
+                                });
+                            }
                             self.title_dirty = true;
                         }
                     }

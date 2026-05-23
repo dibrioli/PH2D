@@ -327,6 +327,17 @@ pub(crate) struct App {
     /// is converted to world coords and intersected against every
     /// sprite's bbox via `pick_sprites_in_world_rect`.
     pub(crate) rubber_band: Option<RubberBandState>,
+    /// Onda 2 polish: click-vs-drag distinguisher. `Some((bits, down_pos))`
+    /// while the user Down'd on a sprite that is part of the multi-
+    /// selection (smart-click preservation). If the cursor stays within
+    /// a few px of `down_pos` until Up — a click, not a drag — the Up
+    /// handler `replace_selection(Some(bits))` to collapse the multi to
+    /// just the clicked sprite (Enio: "se há multiplas sprites
+    /// selecionas e eu clicar com botão esquerdo em uma delas, todas as
+    /// outras devem ser desselecionadas"). If the cursor moves past
+    /// the threshold first, this gets cleared and the open Translate
+    /// drag becomes a group translate as before (Onda 1).
+    pub(crate) pending_single_replace: Option<(u64, (f32, f32))>,
     /// Onda 1 + 2C.4: per-sprite snapshot captured at PointerDown when
     /// a gizmo drag opens with `selected_len > 1`. Covers EVERY
     /// selected sprite EXCEPT the drag's own primary (whose snapshot

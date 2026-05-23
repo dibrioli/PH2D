@@ -274,31 +274,40 @@ pub(super) fn publish(
     {
         let primary_entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
         let world = sim.world();
-        let (delta_dx, delta_dy, delta_rot, factor_x, factor_y) =
-            if let Some(t) = world.get::<Transform>(primary_entity) {
-                let dx = t.translation.x - drag.start_transform.translation[0];
-                let dy = t.translation.y - drag.start_transform.translation[1];
-                let dr = t.rotation - drag.start_transform.rotation;
-                let fx = if drag.start_transform.scale[0].abs() > f32::EPSILON {
-                    t.scale.x / drag.start_transform.scale[0]
-                } else {
-                    1.0
-                };
-                let fy = if drag.start_transform.scale[1].abs() > f32::EPSILON {
-                    t.scale.y / drag.start_transform.scale[1]
-                } else {
-                    1.0
-                };
-                (dx, dy, dr, fx, fy)
+        let (delta_rot, factor_x, factor_y) = if let Some(t) =
+            world.get::<Transform>(primary_entity)
+        {
+            let dr = t.rotation - drag.start_transform.rotation;
+            let fx = if drag.start_transform.scale[0].abs() > f32::EPSILON {
+                t.scale.x / drag.start_transform.scale[0]
             } else {
-                (0.0, 0.0, 0.0, 1.0, 1.0)
+                1.0
             };
+            let fy = if drag.start_transform.scale[1].abs() > f32::EPSILON {
+                t.scale.y / drag.start_transform.scale[1]
+            } else {
+                1.0
+            };
+            (dr, fx, fy)
+        } else {
+            (0.0, 1.0, 1.0)
+        };
         let cx_s = (start.bbox_min_world[0] + start.bbox_max_world[0]) * 0.5;
         let cy_s = (start.bbox_min_world[1] + start.bbox_max_world[1]) * 0.5;
         let hw_s = (start.bbox_max_world[0] - start.bbox_min_world[0]) * 0.5;
         let hh_s = (start.bbox_max_world[1] - start.bbox_min_world[1]) * 0.5;
-        let new_cx = cx_s + delta_dx;
-        let new_cy = cy_s + delta_dy;
+        // Onda 2 hotfix: global drags (Scale + Rotate) PIVOT around the
+        // start centre. The primary's translation shifts as a side
+        // effect of the rotation/scale, but the gizmo's centre stays
+        // at the original pivot — using the primary's delta_translation
+        // here was making the gizmo drift away from the sprites it
+        // covers (smoke: "o desenho do gizmo não rotaciona corretamente
+        // em seu centro causando um drift entre as sprites e o
+        // desenho do gizmo"). Global has no Translate handle (we
+        // dropped BBOX_INTERIOR for keyed gizmos), so this branch only
+        // sees Scale + Rotate.
+        let new_cx = cx_s;
+        let new_cy = cy_s;
         let new_hw = hw_s * factor_x.abs();
         let new_hh = hh_s * factor_y.abs();
         Some(ph2d_editor::GizmoView {

@@ -378,6 +378,43 @@ fn midpoint(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
 /// outline. Replaces the rounded-rect draw the axis-aligned painter
 /// used; with rotation, the rect's edges no longer align with screen
 /// axes so we walk the corner sequence directly via `BezPath`.
+/// Onda 2: paint a non-interactive gizmo outline — just the rotated
+/// bbox rectangle, no handles, no hit registration. Used by the shell
+/// to mark every EXTRA member of a multi-selection (the primary still
+/// gets the full interactive gizmo via `paint_sprite_gizmo`) and to
+/// hint the GLOBAL bbox covering every selected sprite. `stroke_w`
+/// lets the caller distinguish extras (1.0 px) from global (2.0 px)
+/// from the primary (1.5 px) without three separate functions.
+pub fn paint_gizmo_outline(
+    scene: &mut VectorScene,
+    view: &GizmoView,
+    theme: Theme,
+    stroke_w: f32,
+) {
+    let cx_w = (view.bbox_min_world[0] + view.bbox_max_world[0]) * 0.5;
+    let cy_w = (view.bbox_min_world[1] + view.bbox_max_world[1]) * 0.5;
+    let hx_w = (view.bbox_max_world[0] - view.bbox_min_world[0]) * 0.5;
+    let hy_w = (view.bbox_max_world[1] - view.bbox_min_world[1]) * 0.5;
+    let cos_r = view.rotation.cos();
+    let sin_r = view.rotation.sin();
+    let rotate_world = |lx: f32, ly: f32| -> [f32; 2] {
+        [
+            cx_w + lx * cos_r - ly * sin_r,
+            cy_w + lx * sin_r + ly * cos_r,
+        ]
+    };
+    let tl = world_to_screen(view, rotate_world(-hx_w, hy_w));
+    let tr = world_to_screen(view, rotate_world(hx_w, hy_w));
+    let bl = world_to_screen(view, rotate_world(-hx_w, -hy_w));
+    let br = world_to_screen(view, rotate_world(hx_w, -hy_w));
+    paint_oriented_bbox(
+        scene,
+        [tl, tr, br, bl],
+        stroke_w,
+        resolve(ColorToken::Selection, theme),
+    );
+}
+
 fn paint_oriented_bbox(
     scene: &mut VectorScene,
     corners: [[f32; 2]; 4],

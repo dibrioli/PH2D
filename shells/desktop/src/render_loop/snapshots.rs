@@ -174,13 +174,17 @@ pub(super) fn publish(
     // re-borrow `hero`) can emphasize the pivot dot.
     let pivot_tool_active = hero.store.button_state(ph2d_editor::ids::TOOL_PIVOT)
         == Some(ph2d_editor::widget::ButtonState::Pressed);
-    hero.gizmo.view = hero.gizmo.selection.and_then(|bits| {
+    // Onda 2: factor the per-sprite GizmoView build into a closure so
+    // the primary, each extra, and the global union all share the
+    // exact same world→view math. Single source of truth for the
+    // affine decomposition + anchor compensation; any future render-
+    // path tweak only touches this closure.
+    let build_view = |bits: u64,
+                      sim: &SimWorld,
+                      present: &mut PresentWorld|
+     -> Option<ph2d_editor::GizmoView> {
         let sim_entity = ph2d_ecs::Entity::from_bits(bits);
         let sprite = sim.world().get::<Sprite>(sim_entity)?;
-        // Look up the present entity that mirrors this sim
-        // entity via `SimRef`. We can't reuse the sim
-        // `Entity` directly because entity ids are
-        // per-`World` (ADR-0021).
         let mut q = present
             .world_mut()
             .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
@@ -191,11 +195,6 @@ pub(super) fn publish(
                 None
             }
         })?;
-        // Decompose the affine matrix the same way the
-        // extract path does — column lengths for scale,
-        // atan2(col0.y, col0.x) for rotation. Keeps gizmo
-        // math in lockstep with the render path so any
-        // future change has one canonical place.
         let affine = gt.affine();
         let col0_x = affine[0];
         let col0_y = affine[1];
@@ -207,11 +206,6 @@ pub(super) fn publish(
         let p = gt.translation();
         let half_w = sprite.size[0] * scale_x * 0.5;
         let half_h = sprite.size[1] * scale_y * 0.5;
-        // `p` is the pivot; the visible quad center sits at `pivot +
-        // R·(anchor·scale)` (the shader rotates the anchor about the
-        // pivot). Center the gizmo box there so handles track the quad,
-        // and let GizmoView.rotation spin the box about that center.
-        // anchor [0,0] (every legacy sprite) keeps the box on the pivot.
         let ax = sprite.anchor[0] * scale_x;
         let ay = sprite.anchor[1] * scale_y;
         let (sin_r, cos_r) = rotation.sin_cos();
@@ -220,8 +214,6 @@ pub(super) fn publish(
         Some(ph2d_editor::GizmoView {
             bbox_min_world: [cx - half_w, cy - half_h],
             bbox_max_world: [cx + half_w, cy + half_h],
-            // The TRUE pivot is the entity's translation `p`; the bbox
-            // above is centered on the quad (pivot + anchor).
             pivot_world: [p.x, p.y],
             pivot_tool_active,
             rotation,
@@ -237,7 +229,52 @@ pub(super) fn publish(
             ),
             cursor_screen: Some(last_pointer),
         })
-    });
+    };
+    hero.gizmo.view = hero.gizmo.selection.and_then(|bits| build_view(bits, sim, present));
+    // Onda 2: rebuild the extras' views every frame. Cleared first so
+    // a sprite that left the selection between frames stops painting.
+    hero.gizmo.extra_views.clear();
+    for bits in hero.gizmo.extra_selection.clone() {
+        if let Some(v) = build_view(bits, sim, present) {
+            hero.gizmo.extra_views.push(v);
+        }
+    }
+    // Onda 2: global view = union of every selected sprite's bbox.
+    // Only painted when multi-select is alive (selected_len > 1). The
+    // global gizmo is axis-aligned in world space (no rotation) since
+    // each individual bbox may rotate independently; the union of
+    // their rotated AABBs is itself axis-aligned by construction.
+    hero.gizmo.global_view = if hero.gizmo.selected_len() > 1 {
+        let primary = hero.gizmo.view.as_ref();
+        let mut iter = primary.into_iter().chain(hero.gizmo.extra_views.iter());
+        iter.next().map(|first| {
+            let mut min_x = first.bbox_min_world[0];
+            let mut min_y = first.bbox_min_world[1];
+            let mut max_x = first.bbox_max_world[0];
+            let mut max_y = first.bbox_max_world[1];
+            for v in iter {
+                min_x = min_x.min(v.bbox_min_world[0]);
+                min_y = min_y.min(v.bbox_min_world[1]);
+                max_x = max_x.max(v.bbox_max_world[0]);
+                max_y = max_y.max(v.bbox_max_world[1]);
+            }
+            ph2d_editor::GizmoView {
+                bbox_min_world: [min_x, min_y],
+                bbox_max_world: [max_x, max_y],
+                pivot_world: [(min_x + max_x) * 0.5, (min_y + max_y) * 0.5],
+                pivot_tool_active: false,
+                rotation: 0.0,
+                camera_center: first.camera_center,
+                camera_height_world: first.camera_height_world,
+                window_w: first.window_w,
+                window_h: first.window_h,
+                canvas: first.canvas,
+                cursor_screen: first.cursor_screen,
+            }
+        })
+    } else {
+        None
+    };
     // M14.5 inspector phase (6.4/§9): publish a per-frame
     // snapshot of the selected sprite so `paint_inspector` can
     // surface the Render Source section + Reimport button

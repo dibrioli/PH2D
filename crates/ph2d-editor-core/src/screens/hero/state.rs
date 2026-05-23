@@ -105,6 +105,19 @@ pub struct GizmoStateGroup {
     /// plus current camera/window and pushes here just before
     /// `paint_hero_screen`. `None` ⇒ no gizmo painted this frame.
     pub view: Option<crate::gizmo::GizmoView>,
+    /// Onda 2: per-frame views of the multi-selection extras. The
+    /// shell rebuilds this from `extra_selection` × PresentWorld each
+    /// frame. The painter draws an outline-only gizmo (no interactive
+    /// handles) for each — visual confirmation that those sprites are
+    /// part of the active selection. Empty when `extra_selection` is
+    /// empty or no sprites resolved.
+    pub extra_views: Vec<crate::gizmo::GizmoView>,
+    /// Onda 2: per-frame "global" view covering every selected sprite
+    /// — the union of all individual bboxes, no rotation. `Some` only
+    /// when `selected_len() > 1`. The painter draws a distinctive
+    /// outline; interactive group transforms via this gizmo are a
+    /// follow-up (Onda 3) since they need per-entity hit-id allocation.
+    pub global_view: Option<crate::gizmo::GizmoView>,
     /// M14.7 C: in-progress drag on the gizmo. Host's MouseInput
     /// handler fills on Down landing on a handle; Move advances
     /// `cursor_screen`, calls `compute_gizmo_transform`, writes back

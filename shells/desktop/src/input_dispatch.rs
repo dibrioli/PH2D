@@ -380,7 +380,7 @@ impl App {
                     // skips keyed ids since they aren't None / Translate /
                     // PIVOT canonical, so without this guard those clicks
                     // would fall through to nothing).
-                    let is_keyed_translate = hit_map_entry.map(|h| matches!(
+                    let _is_keyed_translate = hit_map_entry.map(|h| matches!(
                         h.kind,
                         ph2d_editor::GizmoDragKind::Translate
                     )).unwrap_or(false);

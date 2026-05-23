@@ -159,20 +159,57 @@ impl App {
                     ph2d_editor::GizmoDragKind::ScaleCorner { .. }
                         | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
                 );
+                // Onda 2 hotfix: for a Global gizmo drag, the axis math
+                // inside `compute_gizmo_transform` projects the cursor
+                // delta into the PRIMARY's LOCAL rotated frame —
+                // correct for a single-sprite gizmo (whose handles
+                // ARE in that rotated frame) but wrong for the global
+                // gizmo, which is axis-aligned in world space. If the
+                // primary happens to be rotated 90°, dragging the
+                // global's right edge would scale the primary's local
+                // Y axis (which IS world X) — the symptom Enio saw
+                // as "scale em x muda em y e vice versa". Solution:
+                // run `compute_gizmo_transform` against a drag whose
+                // start_transform.rotation is zeroed so the axis
+                // projection happens in WORLD coords, then restore
+                // the primary's actual start rotation when applying
+                // the new transform.
+                let is_global_drag = matches!(drag.target, ph2d_editor::GizmoTarget::Global);
+                let drag_for_math = if is_global_drag {
+                    let mut d = drag;
+                    d.start_transform.rotation = 0.0;
+                    d
+                } else {
+                    drag
+                };
                 let new_t = if is_scale {
                     let snap_state = &mut hero.grid.snap_state;
                     let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
                         snap_state.snap_world(w, sprite_half_rendered)
                     };
                     ph2d_editor::compute_gizmo_transform(
-                        &drag,
+                        &drag_for_math,
                         &cam,
                         mods,
                         snap,
                         Some(&mut snap_closure),
                     )
                 } else {
-                    ph2d_editor::compute_gizmo_transform(&drag, &cam, mods, snap, None)
+                    ph2d_editor::compute_gizmo_transform(&drag_for_math, &cam, mods, snap, None)
+                };
+                // Restore the primary's actual rotation: in Global
+                // drags `compute_gizmo_transform` returned a rotation
+                // computed against the zeroed start, so we shift it
+                // back by the primary's original start rotation. For
+                // non-Global drags this is a no-op.
+                let new_t = if is_global_drag {
+                    ph2d_editor::TransformSnapshot {
+                        rotation: drag.start_transform.rotation
+                            + (new_t.rotation - drag_for_math.start_transform.rotation),
+                        ..new_t
+                    }
+                } else {
+                    new_t
                 };
                 let new_t = if is_scale {
                     new_t

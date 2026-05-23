@@ -795,7 +795,11 @@ impl App {
                     if let Some((bits, (dx0, dy0))) = self.pending_single_replace.take() {
                         let dx = evt.x - dx0;
                         let dy = evt.y - dy0;
-                        if (dx * dx + dy * dy) <= 16.0 {
+                        // 12 px tolerance — trackpads have micro
+                        // tremor and acceleration that can move
+                        // the cursor a few px even on what feels
+                        // like a stationary click.
+                        if (dx * dx + dy * dy) <= 144.0 {
                             hero.gizmo.replace_selection(Some(bits));
                             // Sync the panel header label to the new
                             // primary so the Hierarchy highlight

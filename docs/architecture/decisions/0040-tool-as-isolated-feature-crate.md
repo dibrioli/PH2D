@@ -1,6 +1,6 @@
 # ADR-0040 — Ferramenta como crate de feature isolado (contrato `Tool`/`ImageEditTool` + canal de ação genérico + registro por codegen)
 
-**Status:** Accepted (ratificado pelo Enio 2026-05-22; implementação pendente)
+**Status:** Accepted (implementado e FREEZE ratificado 2026-05-22 — vide §7 Histórico de execução)
 **Data:** 2026-05-22
 **Decisor(es):** Enio + Claude (arquiteto).
 **Estende:** ADR-0031 (nó **e** ferramenta como unidade de feature) — especifica o contrato concreto da família *ferramenta*, que o 0031 declarou mas não definiu. Espelha o que ADR-0032 + ADR-0039 fizeram pelo contrato de **nó**.
@@ -163,3 +163,30 @@ O shell chama **uma linha** (`register_all_tools(&mut tools)`) no lugar dos N `r
 - Esta ADR **não** generaliza a `EditorAction` inteira — só remove o que é por-tool. As ações genéricas (hierarquia/inspector/view) seguem como estão; uma eventual generalização delas é trabalho separado.
 - A dualidade `FloatingPanel` (painel Procreate-style que o tool constrói) vs. crates `ph2d-panel-*` (painéis docados `Panel<State>`) **permanece** — bgremoval usa ambos hoje. Racionalizar essa dualidade é fora de escopo; esta ADR só garante que o tool e seu vocabulário saem de editor-core.
 - Atualizar a DIRETRIZ (novo balde de fan-out de tool, irmão do §3.8) **após o FREEZE**, não antes — pra não documentar contrato instável.
+
+---
+
+## 7. Histórico de execução
+
+Implementação fechou em 2026-05-22 numa única jornada de cinco fases (TG-A..TG-E),
+seguindo o plano funil neck → freeze → fan-out de §5. Smoke do Enio entre fases
+(bgremoval interativo e padding interativo) passaram sem regressão. Commits
+locais (não-pushados; ship é do Enio):
+
+| Fase | Commit | Resumo |
+|---|---|---|
+| Pré-TG-B (T-close) | `1484a49` | Handoff executável dos substeps + plano sincronizado. |
+| TG-A | `5be7541` | `EditorAction::ActivateTool { tool_id }` + `OneShotImageOp { tool_id, entity_bits }` genéricos; 7 dos 11 variants per-tool eliminados (Trim/MakeSquare/RealSize/ActivateBgRemoval/ActivatePadding/dead-code). |
+| TG-A close | `42438be` | Register pure-push + activate_default data-driven + codegen `register_all_tools` (3 staleness gates: manifests + Box<dyn Tool> + Cargo deps). |
+| TG-B | `7676793` | `ToolPanelEvent(PanelEvent)` + `CancelActiveTool` genéricos; `BgRemovalTool::handle_panel_event` cobre os 15 `BGR_*` NodeIds via `apply_ui_edit`. `take_params_dirty` substitui `!bgremoval_ui_edits.is_empty()` no canvas-preview gate. Vocab `BgRemovalUiEdit`/`UiSnapshot`/`BrushFalloff`/`BgRemovalParams` migrou de `editor-core/src/tools/bgremoval/params.rs` para `ph2d-tool-bgremoval/src/params.rs`. `on_deactivate` zera `pending_apply` + `params_dirty` (fix de bake fantasma latente). |
+| TG-C | `4a15d9b` | Espelho mecânico de TG-B em padding. `PaddingTool::handle_panel_event` cobre 10 `PAD_*` NodeIds (sliders + chips + Pivot + Apply). Vocab migrou de `editor-core/src/tools/padding/params.rs` para `ph2d-tool-padding/src/params.rs`. `take_params_dirty` não aplicado em padding — o bridge não tem cache de preview a invalidar (snapshot/overlay incondicional cada frame). |
+| TG-D | `c4063b7` | `editor-core/src/tools/` deletado + `pub mod tools;` removido de `editor-core/src/lib.rs`. Doc-comment atualizado. |
+| TG-E | (este) | **FREEZE.** Arch-gate `architecture_tool_contract_surface` caps: `Tool=10` métodos, `ImageEditTool=4`, `PanelEvent=4` variants. 🔒 markers nos doc-comments de `Tool`/`ImageEditTool`/`PanelEvent`. `panel_crate_tomls()` agora auto-descobre `crates/ph2d-panel-*` e o gate `panel_crates_depend_only_on_editor_core` ganhou ban explícito de cross-panel-dep (excetuando `panel-registry-init`) — codifica a edge panel→tool permitida. DIRETRIZ §3.1 neutralizada como referência histórica; novo §3.9 "Tool crate — fan-out" espelha §3.8 (briefing pronto-pra-colar + garantia sem-colisão + checklist do revisor). SKILL_Stack §"Adicionar uma tool" reescrita para 3 passos (largar crate + `cargo run -p ph2d-tool-sync` + verificar 3 gates). |
+
+**Métricas:**
+- `EditorAction`: **11 variants per-tool removidos** (TG-A 7 + TG-B 2 + TG-C 2); restam apenas os 4 genéricos (`ActivateTool`, `OneShotImageOp`, `ToolPanelEvent`, `CancelActiveTool`).
+- LOC saídos de `editor-core`: ~512 LOC de vocab (bgremoval + padding `params.rs`) + ~22 LOC de stubs/decls (`tools/mod.rs`, `pub mod tools;`).
+- Tools em crates satélite: **10 de 10** (bgremoval, brush, grid-snap, make-square, move, padding, real-size, trim-transparency + registry + registry-init).
+- Arch-gates ativos pós-FREEZE: 4 em `architecture_cycle_prevention` + 3 em `architecture_tool_contract_surface` + 3 staleness em `ph2d-tool-registry-init`.
+
+**Auditorias adversariais** (≥2 agentes paralelos com lentes distintas — paridade comportamental + arquitetura/cycles — em TG-B, TG-C). Achados Médio/Alto remediados pré-commit. Follow-ups documentados (gate de panel auto-discover) endereçados no próprio TG-E. Stutter de mouse VSync = trade-off documentado em `docs/perf/mouse-stutter.md` (não-regressão).

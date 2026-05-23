@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.6 — 2026-05-22 (doc ÚNICO de implementação: o `briefing-node-crate.md` foi integrado in-line no §3.8 (briefing pronto-pra-colar + garantia sem-colisão + checklist do revisor); o arquivo virou stub. NOVO §1.4 "Triagem": o primeiro output do agente ao receber uma tarefa é classificar e informar ao Enio como proceder — só Implementador / Coordenador+Implementador / Coordenador-only+ADR — com tabela de decisão. TL;DR + audiência refletem a triagem-primeiro.) · 6.5 — 2026-05-22 (arquitetura node-centric: §3.8 novo balde "Node crate (fan-out)" apontando pro `briefing-node-crate.md` — o fan-out mais isolado que existe, pois o wiring central é GERADO por `ph2d-node-sync`, sem edit central; §3.6 foundational ganha `ph2d-nodegraph`+`ph2d-expr` congelados (ADR-0039, W2.T4); TL;DR nota o sistema de nós como caminho principal de crescimento. Os baldes de editor — Tool/Painel/Widget/Chrome — seguem válidos: são o chrome do editor, que edita os grafos de nós.) · 6.4 — 2026-05-21 (§4.1 novo: regras de UI sem gate automático que já queimaram >1× — glifos fora da fonte bundled viram tofu; estado de modo ↔ estado derivado não pode desacoplar (reconciliação por frame, não guard pontual); enumere TODOS os caminhos de ativação (pill/palette/atalho/bus); pertencimento data-driven via cluster do manifest, não lista de ids; diagnostique medindo com env-probe. Bases: `docs/UI_Bugs/` + `docs/Image Tools Bugs/`.) · 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
+**Versão:** 6.7 — 2026-05-22 (ADR-0040 FECHADO via TG-A..TG-E: o §3.1 "Tool nova" foi neutralizado (referência histórica), e ganhamos NOVO §3.9 "Tool crate — fan-out" irmão do §3.8 — pasta exclusiva + `cargo run -p ph2d-tool-sync` regenera tudo, contrato `Tool`/`ImageEditTool`/`PanelEvent` congelado por arch-gate. Arch-gate de panel auto-discover (`crates/ph2d-panel-*`) + cross-panel-dep ban + panel→tool edge codificada como permitida.) · 6.6 — 2026-05-22 (doc ÚNICO de implementação: o `briefing-node-crate.md` foi integrado in-line no §3.8 (briefing pronto-pra-colar + garantia sem-colisão + checklist do revisor); o arquivo virou stub. NOVO §1.4 "Triagem": o primeiro output do agente ao receber uma tarefa é classificar e informar ao Enio como proceder — só Implementador / Coordenador+Implementador / Coordenador-only+ADR — com tabela de decisão. TL;DR + audiência refletem a triagem-primeiro.) · 6.5 — 2026-05-22 (arquitetura node-centric: §3.8 novo balde "Node crate (fan-out)" apontando pro `briefing-node-crate.md` — o fan-out mais isolado que existe, pois o wiring central é GERADO por `ph2d-node-sync`, sem edit central; §3.6 foundational ganha `ph2d-nodegraph`+`ph2d-expr` congelados (ADR-0039, W2.T4); TL;DR nota o sistema de nós como caminho principal de crescimento. Os baldes de editor — Tool/Painel/Widget/Chrome — seguem válidos: são o chrome do editor, que edita os grafos de nós.) · 6.4 — 2026-05-21 (§4.1 novo: regras de UI sem gate automático que já queimaram >1× — glifos fora da fonte bundled viram tofu; estado de modo ↔ estado derivado não pode desacoplar (reconciliação por frame, não guard pontual); enumere TODOS os caminhos de ativação (pill/palette/atalho/bus); pertencimento data-driven via cluster do manifest, não lista de ids; diagnostique medindo com env-probe. Bases: `docs/UI_Bugs/` + `docs/Image Tools Bugs/`.) · 6.3 — 2026-05-20 (§7.0 novo: fluxo fast-mode/ship — de dia `git commit --no-verify` sem push/CI; no fim do dia `./scripts/ship.sh` (paridade-CI completa) → fix loop → commit → push → babysit, modo observa-e-corrige, entrega sem falta. §7.2 troca a matriz manual incompleta pelo ship.sh. v6.2: §5 corrigida — o perf audit cortou `--all-targets` do hook T2 workspace, mas o CI ainda exige — documentado o gap hook≠CI + regra "rode o comando exato do CI antes do push". v6.1: perf audit acrescentou §3.7 cross-cutting, §5.6 test slow, §6.4 armadilhas; tabela T2 cortes A+B)
 **Substitui:** `01-Enio.md` · `02-Coordenador.md` · `03-Agente-Periferico.md` · `04-Agente-PRCI.md` · DIRETRIZ v5.0 · `STATE.md` · `DIRETRIZ_CODIFICACAO_RAPIDA.md` · `Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`
 **Audiência:** **toda LLM que entra no projeto.** Você lê este doc inteiro antes de tocar em código. Quando o Enio te descreve uma tarefa, seu **primeiro output é a TRIAGEM (§1.4)** — você classifica e diz a ele se precisa de Coordenador + Implementador ou só Implementador. Depois Enio te diz o papel ("Você é o Coordenador" / "o Implementador") e este doc te diz o resto. **Doc único de implementação:** o briefing de node-crate do fan-out está integrado aqui (§3.8); não há doc separado.
 
@@ -228,7 +228,7 @@ Cinco buckets. O Coordenador classifica o pedido antes de fazer qualquer coisa.
 
 ### 3.1 Tool nova ("vamos criar a tool Transform")
 
-> **⚠️ EM MIGRAÇÃO ([ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) · [plano de waves](../plans/2026-05-tool-isolation-waves.md)).** Os passos 6-8 abaixo (member raiz manual + dep + linha em `register_all`) estão sendo substituídos por **codegen** (`ph2d-tool-sync`, espelha `ph2d-node-sync`): glob de members + registro gerado, zero edit central — e os `Tool` impls stateful migram pros crates via o contrato `Tool`/`ImageEditTool`. Até o FREEZE (pós-vertical BgRemoval, T2), confira o estado do plano antes de seguir o scaffold manual. Esta receita é reescrita (e ganha um balde "tool fan-out" irmão do §3.8) **no FREEZE**, não antes — para não documentar contrato instável.
+> **🔒 ADR-0040 FECHADO (2026-05-22, TG-E).** Tool nova agora é **fan-out**, espelhando node-crate (§3.8): pasta exclusiva + `cargo run -p ph2d-tool-sync` regenera o wiring central, zero edit central. Vá direto pro **§3.9 (Tool crate — fan-out)** — esta seção fica como referência histórica do scaffold pré-ADR-0040 que ainda descreve o **stub stateless** (one-shot do tipo Trim Transparency / Make Square / Real Size); para uma **tool stateful** (Brush, Move, BgRemoval, Padding) leia §3.9 antes — o briefing pronto-pra-colar cobre o caso completo (`impl Tool` + `handle_panel_event` + `apply_ui_edit`).
 
 **Coordenador (scaffold):**
 
@@ -595,6 +595,131 @@ Dois agentes adicionando dois nós diferentes **não tocam nenhum arquivo em com
 - [ ] nome canônico único; sem dep fora do contrato; contrato congelado intocado.
 
 Estado vivo do sistema de nós + o loop de operação autônoma: [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md).
+
+### 3.9 Tool crate novo — fan-out (espelho do §3.8 aplicado a tools)
+
+Após ADR-0040 (TG-A..TG-E, fechado 2026-05-22), adicionar uma tool ao editor é **fan-out** igual a um node-crate: pasta exclusiva + codegen regenera o wiring central. Sem edit em `register_all_tools`, sem dep central, sem variant de `EditorAction` novo. O contrato `Tool` + `ImageEditTool` + `PanelEvent` está **congelado** (cap arch-gates em [`crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs)).
+
+**Pré-requisito:** o contrato em `ph2d_editor_core::tool` está **congelado**. Você **usa**, não edita. Exemplos a copiar:
+- One-shot stateless: `crates/ph2d-tool-trim-transparency/` ou `crates/ph2d-tool-make-square/` (manifest + algorithm + icon + register, sem `impl Tool`).
+- Stateful com panel docado: `crates/ph2d-tool-padding/` (mais leve — sem preview) ou `crates/ph2d-tool-bgremoval/` (referência completa — preview + protect-mask + eyedropper + `ImageEditTool`).
+
+#### 3.9.1 Briefing pronto-pra-colar (Coordenador OU Enio entrega numa sessão Implementador nova)
+
+Preencha `<slug>`/`<label>`/`<cluster>`/`<zone>`/`<order>` e cole numa sessão Claude Code nova:
+
+```
+═══════════════════════════════════════════════════════════════════
+BRIEFING — tool-crate · slug: <slug> · label: <label>
+═══════════════════════════════════════════════════════════════════
+
+PASTA EXCLUSIVA: crates/ph2d-tool-<slug>/
+(criada por você; o glob de workspace.members a inclui automaticamente —
+NÃO edite o Cargo.toml raiz nem o tool-registry-init.)
+
+O QUE VOCÊ FAZ (só dentro da sua pasta):
+1. Cargo.toml: deps mínimas — ph2d-tool-registry (manifest + Zone) +
+   ph2d-editor-core (Tool / FloatingPanel se stateful) +
+   ph2d-a11y + ph2d-core + dom-específicas (ph2d-vector p/ ícone).
+2. src/lib.rs:
+   - pub const MANIFEST: ToolManifest { id: "<slug>", label_key:
+     "tool.<slug>.label", icon_fn: icon::<slug>_bezpath, zone:
+     Zone::<…>, cluster: "<cluster>", order: <N>, a11y_role,
+     handler: ToolHandler::OneShot | ::Stateful{..}, memory_budget,
+     touches_sim, mcp: McpExposure::reserved() }
+   - pub fn register(reg: &mut Registry) { reg.register(&MANIFEST); }
+3. Se a tool é STATEFUL (precisa de `impl Tool`):
+   - src/tool.rs: pub struct <Slug>Tool { /* model */ };
+     impl Tool for <Slug>Tool { id, label, icon_slug, build_panel,
+       on_activate/on_deactivate (se precisa),
+       handle_panel_event (mapeia NodeIds do panel docado em ids.rs
+         pra apply_ui_edit(<UiEdit>::X)),
+       as_any_mut, as_image_edit_mut (se ImageEditTool),
+       is_default (só Brush retorna true) }
+   - apply_ui_edit é o single-source-of-truth dos clamps / projeções
+     normalizadas; handle_panel_event é só roteamento NodeId → variant.
+   - pub fn make() -> Box<dyn Tool> { Box::new(<Slug>Tool::default()) }
+4. src/icon.rs: BezPath placeholder (1 retângulo) — Implementador
+   troca pelo SVG real depois.
+5. Se stateful com panel docado: o `ph2d-panel-<slug>` é OUTRO crate
+   irmão (vide §3.2 Painel novo) — coordene; o panel pushea
+   EditorAction::ToolPanelEvent(PanelEvent::SetValue|Click) e
+   EditorAction::CancelActiveTool (genéricos, sem variant novo).
+
+EXEMPLO CANÔNICO A COPIAR:
+- One-shot stateless:  crates/ph2d-tool-trim-transparency/
+- Stateful leve:       crates/ph2d-tool-padding/
+- Stateful completo:   crates/ph2d-tool-bgremoval/
+  (preview cap, ImageEditTool, eyedropper bypass via downcast)
+
+CONTRATO (leia, NÃO edite — está CONGELADO, ADR-0040 TG-E):
+crates/ph2d-editor-core/src/tool.rs
+- Tool: cap 10 métodos. ImageEditTool: cap 4. PanelEvent: cap 4 variants.
+- Crescer o cap = ADR-0040 amendment + bump em
+  tests/architecture_tool_contract_surface.rs.
+- Membrana: tool ↛ panel; tool → editor-core OK; panel → tool OK
+  (vide architecture_cycle_prevention).
+
+O QUE VOCÊ NÃO TOCA:
+- Qualquer arquivo fora da sua pasta.
+- ph2d-editor-core (foundational CONGELADO), ph2d-tool-registry,
+  crates/ph2d-tool-registry-init/ (GERADO — vide WIRING).
+- Cargo.toml raiz (glob cobre você), EditorAction (sem variant novo —
+  use ToolPanelEvent / OneShotImageOp / ActivateTool genéricos).
+
+WIRING (sem colisão, sem edição central):
+- Depois de criar a pasta:  cargo run -p ph2d-tool-sync
+  (regenera register_all + register_all_tools + deps de
+   tool-registry-init a partir do scan das pastas crates/ph2d-tool-*.)
+- Valida o wiring (segundos, fecha o gate antes do CI):
+      cargo test -p ph2d-tool-registry-init
+  (3 staleness gates: register_all + register_all_tools + Cargo deps;
+   falham se esqueceu o sync.)
+
+ÍCONE:
+- src/icon.rs com BezPath placeholder inicial.
+- docs/design/icons/<slug>.svg (Lucide-style 24×24, stroke="currentColor")
+  — se não tem source, peça ao Enio.
+- IconId variant em ph2d-editor-core/src/icons.rs em ORDEM ALFABÉTICA
+  (o gate enum_order_matches_svgs falha se sair de ordem). NUNCA pule
+  via --no-verify — TODOS os ícones quebram.
+
+VALIDAÇÃO (codificação rápida, §5):
+- cargo check  -p ph2d-tool-<slug>           (durante editing)
+- cargo test   -p ph2d-tool-<slug>           (algorithm/tool tests)
+- cargo clippy -p ... --all-targets -- -D warnings
+- cargo fmt -p ...
+
+NOMES (gates ativos):
+- manifest id = "<slug>" único cross-crate (colisão pega no
+  Registry::build).
+- label_key segue o padrão "tool.<slug>.label".
+
+SE PRECISAR DE ALGO FORA DA PASTA (dep externa nova, mudança no contrato
+congelado, novo variant de EditorAction): PARE e reporte ao Enio (§2.4).
+Quase sempre significa que a tarefa não era fan-out puro — vide
+triagem §1.4.
+
+QUANDO TERMINAR, reporte ao Enio:
+  "Tool <slug> pronto. Commit local: <sha>. cargo test -p
+   ph2d-tool-<slug> e -p ph2d-tool-registry-init verdes."
+═══════════════════════════════════════════════════════════════════
+```
+
+#### 3.9.2 Por que é sem-colisão (a garantia)
+
+Dois agentes adicionando duas tools diferentes **não tocam nenhum arquivo em comum**: cada um cria sua pasta; o `workspace.members` é glob (zero edit); `register_all` (manifests) + `register_all_tools` (Box<dyn Tool>) + `tool-registry-init/Cargo.toml` deps são **gerados** por `ph2d-tool-sync` entre marcadores codegen, e três staleness gates pegam regen-esquecida. O contrato `Tool`/`ImageEditTool`/`PanelEvent` é o único acoplamento, e está congelado pelo arch-gate `architecture_tool_contract_surface`. **Edits centrais em `EditorAction` desapareceram com ADR-0040 TG-B/TG-C** — `ToolPanelEvent(PanelEvent)` + `OneShotImageOp { tool_id, … }` + `ActivateTool { tool_id }` + `CancelActiveTool` cobrem todo o vocabulário, sem variant per-tool.
+
+#### 3.9.3 Checklist do revisor (Coordenador, se houver revisão)
+
+- [ ] `MANIFEST` completo (id único, cluster/zone/order coerentes com o palette).
+- [ ] Se stateful: `handle_panel_event` cobre 1:1 os NodeIds do panel docado; rota tudo via `apply_ui_edit` (sem duplicar clamps/projeções).
+- [ ] Se `ImageEditTool`: `as_image_edit_mut` retorna `Some(self)`; o quadteto `set_source` / `preview` / `take_pending_commit` / `run_full` honra straight-alpha RGBA8.
+- [ ] `cargo run -p ph2d-tool-sync` rodado; `cargo test -p ph2d-tool-registry-init` verde (3 staleness gates).
+- [ ] arch-gate `architecture_tool_contract_surface` verde (caps não foram tripados — se foram, requer ADR amendment + bump).
+- [ ] clippy `--all-targets` + fmt limpos.
+- [ ] ícone: SVG em docs/design/icons + IconId variant em ordem alfabética.
+- [ ] Sem variant novo em `EditorAction` — usa os 4 genéricos.
 
 ---
 

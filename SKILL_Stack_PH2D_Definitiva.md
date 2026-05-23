@@ -882,29 +882,37 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 3. Usar `t!("identifier", args...)` no código.
 4. CI checa que toda chave usada existe em todos bundles core.
 
-**⚠️ EM MIGRAÇÃO ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md), [plano](docs/plans/2026-05-tool-isolation-waves.md)):**
-o passo 3 abaixo (editar `register_all` à mão + member raiz) está sendo
-substituído por **codegen** (`ph2d-tool-sync`, espelha `ph2d-node-sync`):
-`workspace.members` já é glob e o registro vira gerado a partir do scan de
-`crates/ph2d-tool-*`. Os `Tool` impls stateful (hoje em `editor-core/src/tools/`)
-também migram pros crates, com o contrato `Tool`/`ImageEditTool`. Enquanto o
-contrato não congela (pós-vertical BgRemoval, T2), **NÃO** siga os passos manuais
-no escuro — confira o estado do plano primeiro. Esta seção é reescrita pro fluxo
-codegen no FREEZE.
+**Adicionar uma tool ao editor (fan-out via codegen, [ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md) fechado 2026-05-22):**
 
-**Adicionar uma tool ao editor (post ADR-0027 / convention-by-discovery — fluxo manual, em migração p/ codegen):**
-1. Crie `crates/ph2d-tool-<slug>/` seguindo Apêndice A do plano `docs/Migracao/2026-05-convention-by-discovery.md`:
-   - `Cargo.toml` com deps mínimas (ph2d-tool-registry + as que o tool precisa). NÃO precisa editar `ph2d-editor/Cargo.toml`.
-   - `src/lib.rs`: `pub const MANIFEST: ToolManifest = ...;` + `pub fn register(reg: &mut Registry)`.
-   - `src/manifest.rs`, `src/algorithm.rs` (pure-Rust se possível), `src/icon.rs` (fn() -> BezPath), `src/handler.rs`.
-2. Adicione ao workspace: `"crates/ph2d-tool-<slug>"` em `Cargo.toml` raiz.
-3. Adicione dep + UMA linha em `crates/ph2d-tool-registry-init/`:
-   - `Cargo.toml`: `ph2d-tool-<slug> = { path = "../ph2d-tool-<slug>" }`.
-   - `src/lib.rs::register_all`: `ph2d_tool_<slug>::register(reg);` (ordem alfabética).
-4. Testes próprios em `crates/ph2d-tool-<slug>/tests/`.
-5. CI lints em `crates/ph2d-tool-registry-init/tests/` validam HR-12/13/15 automaticamente.
+A receita virou **3 passos**: largar a pasta + rodar o sync + verificar. Sem edit central, sem variant novo de `EditorAction`. O contrato `Tool`/`ImageEditTool`/`PanelEvent` em `crates/ph2d-editor-core/src/tool.rs` está **congelado** (caps em `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs`).
 
-**O que VOCÊ NÃO TOCA**: `ph2d-editor/src/lib.rs`, `ph2d-editor/src/tools/mod.rs`, `ph2d-editor/src/icons.rs`, `screens/hero/fixture.rs`, `screens/hero/ids.rs`, `shells/desktop/src/main.rs`. Esses arquivos eram colisão central pré-ADR-0027 — receita nova evita totalmente.
+1. **Largue o crate** em `crates/ph2d-tool-<slug>/` (o glob de `workspace.members` cobre — NÃO edite o `Cargo.toml` raiz):
+   - `Cargo.toml`: deps mínimas (`ph2d-tool-registry` + `ph2d-editor-core` p/ `Tool`/`FloatingPanel` se stateful + dom-específicas).
+   - `src/lib.rs`: `pub const MANIFEST: ToolManifest = …;` + `pub fn register(reg: &mut Registry)` + `pub fn make() -> Box<dyn Tool>` se stateful.
+   - `src/tool.rs` se stateful: `pub struct <Slug>Tool` + `impl Tool` (no mínimo `id` / `label` / `icon_slug` / `build_panel` / `as_any_mut`; sobrescreva `handle_panel_event` rotando NodeIds do panel docado → `apply_ui_edit(<UiEdit>::X)`; `is_default = true` apenas no Brush).
+   - `src/icon.rs`: BezPath (Lucide 24×24 — placeholder OK, depois substitui pelo SVG real).
+   - `src/algorithm.rs` se pure-Rust core (BgRemoval / Trim / etc).
+
+2. **Rode o sync** (regenera `register_all` + `register_all_tools` + `Cargo` deps de `ph2d-tool-registry-init` a partir do scan das pastas):
+   ```
+   cargo run -p ph2d-tool-sync
+   ```
+
+3. **Verifique os 3 gates** (segundos, antes de subir):
+   ```
+   cargo test -p ph2d-tool-registry-init           # 3 staleness gates
+   cargo test -p ph2d-editor-core --test architecture_tool_contract_surface  # contrato congelado
+   cargo test -p ph2d-tool-<slug>                  # seu test
+   ```
+
+**Exemplos canônicos:**
+- One-shot stateless: [`crates/ph2d-tool-trim-transparency/`](crates/ph2d-tool-trim-transparency/) ou [`make-square`](crates/ph2d-tool-make-square/) (só manifest + algorithm + icon, sem `impl Tool`).
+- Stateful leve: [`crates/ph2d-tool-padding/`](crates/ph2d-tool-padding/).
+- Stateful completo: [`crates/ph2d-tool-bgremoval/`](crates/ph2d-tool-bgremoval/) (preview cap + `ImageEditTool` + protect-mask + eyedropper via downcast).
+
+**O que VOCÊ NÃO TOCA**: `Cargo.toml` raiz, `crates/ph2d-tool-registry-init/` (gerado), `crates/ph2d-editor-core/src/tool.rs` (contrato congelado — cap-bump exige amendment de ADR-0040), `EditorAction` (sem variant per-tool — use os 4 genéricos: `ActivateTool`, `OneShotImageOp`, `ToolPanelEvent`, `CancelActiveTool`).
+
+**Se a tool tem panel docado próprio**: o `crates/ph2d-panel-<slug>/` é OUTRO crate (vide DIRETRIZ §3.2); ele pushea `EditorAction::ToolPanelEvent(PanelEvent::SetValue|Click(id, …))` e o shell rota via `Tool::handle_panel_event` automaticamente.
 
 ## 15. Anti-patterns (NÃO faça)
 

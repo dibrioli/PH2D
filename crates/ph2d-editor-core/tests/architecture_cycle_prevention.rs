@@ -62,19 +62,32 @@ fn parse_deps(toml_path: &Path) -> Vec<String> {
     out
 }
 
-/// All `ph2d-panel-*` crate paths under `crates/`. Hardcoded to
-/// the four known panels; if a new panel crate joins, add it here.
+/// All `ph2d-panel-*` crate paths under `crates/`, discovered by walking
+/// `crates/` for directories whose name starts with the prefix. Skips
+/// `ph2d-panel-registry-init` — that crate is the codegen aggregator
+/// whose entire job is to depend on every panel sibling at once
+/// (mirror of `ph2d-tool-registry-init`); the cross-panel-dep ban does
+/// not apply to it. Self-extending: a new panel crate joins the gate
+/// the moment it lands on disk, with no edit here required (ADR-0040
+/// TG-E follow-up — the hardcoded list silently missed
+/// `ph2d-panel-bgremoval` and `ph2d-panel-padding` after TG-B/TG-C
+/// added their `ph2d-tool-*` deps).
 fn panel_crate_tomls() -> Vec<PathBuf> {
-    let root = workspace_root();
-    [
-        "ph2d-panel-widget-gallery",
-        "ph2d-panel-hierarchy",
-        "ph2d-panel-inspector",
-        "ph2d-panel-grid-snap",
-    ]
-    .into_iter()
-    .map(|name| root.join("crates").join(name).join("Cargo.toml"))
-    .collect()
+    let crates_dir = workspace_root().join("crates");
+    let mut out: Vec<PathBuf> = std::fs::read_dir(&crates_dir)
+        .unwrap_or_else(|e| panic!("read_dir {}: {e}", crates_dir.display()))
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with("ph2d-panel-") && n != "ph2d-panel-registry-init")
+        })
+        .map(|p| p.join("Cargo.toml"))
+        .filter(|p| p.exists())
+        .collect();
+    out.sort();
+    out
 }
 
 #[test]
@@ -136,14 +149,18 @@ fn editor_core_has_no_concrete_tool_deps() {
 }
 
 /// Wave 8 Phase 2 invariant — every `ph2d-panel-*` crate depends on
-/// `ph2d-editor-core` but NOT on `ph2d-editor`. This is the
-/// definition of "physical panel-as-crate isolation"; once it
-/// passes, a 3rd-party panel can `crates.io` itself and live
-/// outside the workspace without depending on `ph2d-editor`.
+/// `ph2d-editor-core` but NOT on `ph2d-editor` (the legacy shim).
+/// ADR-0040 TG-B/TG-C added a second allowed direction: a panel that
+/// paints a specific tool's snapshot MAY depend on that tool's crate
+/// (`ph2d-tool-*`) — the foundation `Tool` contract makes the edge
+/// non-cyclic (tool → editor-core → ..., panel → editor-core AND
+/// optionally panel → tool). What panels MUST NOT do: depend on
+/// `ph2d-editor` (would cycle the foundation) or on another
+/// `ph2d-panel-*` (would entangle panel siblings).
 ///
-/// ADR-0029 Phase D lifted the `#[ignore]` — all four in-tree panels
-/// now live as typed `Panel<State>` impls in their own crates with
-/// `ph2d-editor-core` as their only first-party dep.
+/// ADR-0029 Phase D lifted the `#[ignore]` — every in-tree panel
+/// lives as a typed `Panel<State>` impl in its own crate with
+/// `ph2d-editor-core` as its foundation dep.
 #[test]
 fn panel_crates_depend_only_on_editor_core() {
     let mut violations = Vec::new();
@@ -166,6 +183,17 @@ fn panel_crates_depend_only_on_editor_core() {
                 "{panel} depends on `ph2d-editor` — Stage 4 invariant requires \
                  panel crates to consume `ph2d-editor-core` only"
             ));
+        }
+        // ADR-0040 TG-E: panel ↛ panel — siblings stay isolated. A
+        // panel-tool edge (`ph2d-tool-*`) is allowed (see docstring).
+        for dep in &deps {
+            if dep.starts_with("ph2d-panel-") && dep.as_str() != panel.as_str() {
+                violations.push(format!(
+                    "{panel} depends on `{dep}` — panel crates must not cross-depend; \
+                     share code through `ph2d-editor-core` (or a leaf widget crate) \
+                     instead"
+                ));
+            }
         }
     }
     assert!(

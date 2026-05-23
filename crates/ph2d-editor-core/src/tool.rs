@@ -17,6 +17,11 @@ use ph2d_a11y::NodeId;
 /// interacts with one of its panel widgets. The shell does the
 /// hit-testing (using the same per-control rect math as the paint
 /// pass) and dispatches the resulting event here.
+///
+/// 🔒 **FROZEN at ADR-0040 TG-E (2026-05-22).** Every tool's
+/// `handle_panel_event` matches on these variants, so adding one ripples
+/// to the whole fan-out. The cap is enforced by
+/// `tests/architecture_tool_contract_surface.rs::panel_event_variant_count_is_capped`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PanelEvent {
     /// Plain click on a button-style action (no payload beyond the
@@ -41,6 +46,11 @@ pub enum PanelEvent {
 /// to push a source snapshot before paint). Implementors get the
 /// downcast method "for free" via the default body — `Self: Sized`
 /// + `Self: Any` make `self as &mut dyn Any` always valid.
+///
+/// 🔒 **FROZEN at ADR-0040 TG-E (2026-05-22).** Every `ph2d-tool-*`
+/// satellite crate implements this trait, so any growth ripples to the
+/// whole fan-out. The method-count cap is enforced by
+/// `tests/architecture_tool_contract_surface.rs::tool_contract_is_capped`.
 pub trait Tool: std::any::Any {
     /// Stable id used for registry lookup + panel position memory.
     fn id(&self) -> ToolId;
@@ -116,6 +126,11 @@ pub trait Tool: std::any::Any {
 /// and are reached by the shell via [`Tool::as_any_mut`] downcast — a
 /// documented exception (ADR-0040 §3), generalized only if a second
 /// tool needs the same shape.
+///
+/// 🔒 **FROZEN at ADR-0040 TG-E (2026-05-22).** Every image-edit tool
+/// crate implements this on top of [`Tool`]; growth ripples the fan-out.
+/// The cap is enforced by
+/// `tests/architecture_tool_contract_surface.rs::image_edit_tool_contract_is_capped`.
 pub trait ImageEditTool: Tool {
     /// Hand the active entity's source pixels (straight alpha) to the
     /// tool when the selection changes. The tool caches them and

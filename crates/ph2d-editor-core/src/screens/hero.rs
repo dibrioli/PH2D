@@ -177,8 +177,10 @@ pub struct HeroScreen {
     //   pending_rename_seed   → EditorAction::HierRenameSeed { row }
     //   pending_rename_commit → EditorAction::HierRenameCommit { row, new_name }
     // Wave 2.5 PR 11.8b1-3: image-edit + bgremoval + reimport intents
-    // all live on the bus (Trim/MakeSquare/Bgremoval/ActivateBgRemoval/
-    // Reimport/UndoImageEdit variants).
+    // all live on the bus. ADR-0040 TG-A/B/C genericized the per-tool
+    // variants into ActivateTool / OneShotImageOp / ToolPanelEvent /
+    // CancelActiveTool; the non-tool variants (Reimport, UndoImageEdit)
+    // stayed as-is.
     // Wave 2.5 PR 11.8d: inspector edits live on the bus
     // (InspectorTransformEdit / InspectorVisibilityEdit /
     //  InspectorNameEdit / InspectorSpriteSourceChange variants).

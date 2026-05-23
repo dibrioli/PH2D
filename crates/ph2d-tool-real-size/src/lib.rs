@@ -20,7 +20,8 @@
 //! SCAFFOLD (Coordinator): manifest + island shape are pinned; the
 //! Implementer fills [`algorithm::real_size_scale`] (+ tests) and the
 //! real [`icon::real_size_bezpath`] glyph. The chrome-pill wiring
-//! (NodeId, `EditorAction::RealSize`, dispatch, shell drain) is done by
+//! (NodeId, the generic `EditorAction::OneShotImageOp { tool_id:
+//! "real_size", entity_bits }` push, dispatch, shell drain) is done by
 //! the Coordinator on a clean tree — NOT in this crate.
 
 pub mod algorithm;

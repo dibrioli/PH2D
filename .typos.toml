@@ -85,10 +85,7 @@ extend-exclude = [
     # - Strings em pt-BR + nomes de tokens + identifiers de design system
     # Não é nosso source — design system handoff de terceiro.
     "docs/design/**",
-    # Slot 2 (bgremoval) mid-development WIP — pasta exclusiva do
-    # agente periférico, ainda não passou pelo audit pós-integração
-    # do Coordenador. Quando integrar, remove esta linha + roda typos
-    # como parte do checklist.
-    # Path moved by ADR-0029 Phase B.2 (`ph2d-editor` → `ph2d-editor-core`).
-    "crates/ph2d-editor-core/src/tools/bgremoval/**",
+    # Slot 2 (bgremoval) — mantida durante a migração TG-B; conteúdo agora
+    # vive no crate isolado pós-ADR-0040.
+    "crates/ph2d-tool-bgremoval/**",
 ]

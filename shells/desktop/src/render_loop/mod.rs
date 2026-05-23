@@ -326,7 +326,8 @@ impl crate::App {
             // frame). `Bgremoval` is NOT categorized here — it keeps
             // a separate filter-and-replace at its original site so
             // its `bgremoval_active` gate runs AFTER any same-frame
-            // `ActivateBgRemoval` fires (1-frame defer edge case).
+            // `ActivateTool { tool_id: "bgremoval" }` fires (1-frame
+            // defer edge case).
             //
             // The `undo_image_edit` / `activate_bgremoval` flag-style
             // variants collapse to a `bool` (idempotent — multiple
@@ -500,8 +501,8 @@ impl crate::App {
             for a in bgremoval_leftover {
                 hero.bus.push(a);
             }
-            // Drain the `EditorAction::ActivateBgRemoval` intent raised
-            // by clicking the Bg Removal pill. The hero can't reach
+            // Drain the `EditorAction::ActivateTool { tool_id: "bgremoval" }`
+            // intent raised by clicking the Bg Removal pill. The hero can't reach
             // `gfx.tools` so the activation round-trips via the bus.
             // Same force-refresh of the snapshot push state as the
             // Digit3 shortcut below so the next snapshot push fires

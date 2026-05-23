@@ -185,8 +185,8 @@ locais (não-pushados; ship é do Enio):
 
 **Métricas:**
 - `EditorAction`: **11 variants per-tool removidos** (TG-A 7 + TG-B 2 + TG-C 2); restam apenas os 4 genéricos (`ActivateTool`, `OneShotImageOp`, `ToolPanelEvent`, `CancelActiveTool`).
-- LOC saídos de `editor-core`: ~512 LOC de vocab (bgremoval + padding `params.rs`) + ~22 LOC de stubs/decls (`tools/mod.rs`, `pub mod tools;`).
-- Tools em crates satélite: **10 de 10** (bgremoval, brush, grid-snap, make-square, move, padding, real-size, trim-transparency + registry + registry-init).
+- LOC saídos de `editor-core`: 358 (bgremoval `params.rs`) + 87 (padding `params.rs`) = **445 LOC de vocab** + ~22 LOC de stubs/decls (`tools/mod.rs`, `pub mod tools;`).
+- Tools em crates satélite: **8 de 8** (bgremoval, brush, grid-snap, make-square, move, padding, real-size, trim-transparency) + **2 crates de plumbing** (`ph2d-tool-registry` data-contract + `ph2d-tool-registry-init` codegen aggregator).
 - Arch-gates ativos pós-FREEZE: 4 em `architecture_cycle_prevention` + 3 em `architecture_tool_contract_surface` + 3 staleness em `ph2d-tool-registry-init`.
 
 **Auditorias adversariais** (≥2 agentes paralelos com lentes distintas — paridade comportamental + arquitetura/cycles — em TG-B, TG-C). Achados Médio/Alto remediados pré-commit. Follow-ups documentados (gate de panel auto-discover) endereçados no próprio TG-E. Stutter de mouse VSync = trade-off documentado em `docs/perf/mouse-stutter.md` (não-regressão).

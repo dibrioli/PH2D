@@ -11,7 +11,8 @@
 //!
 //! Bgremoval keeps its own filter-and-replace on the bus here
 //! (deliberately NOT consolidated up top) so its `bgremoval_active`
-//! gate runs AFTER any same-frame `ActivateBgRemoval` fires — the
+//! gate runs AFTER any same-frame `ActivateTool { tool_id: "bgremoval" }`
+//! fires — the
 //! 1-frame-no-defer contract from the pre-Wave-2.5 `pending_bgremoval`
 //! field.
 
@@ -167,7 +168,8 @@ pub(super) fn dispatch(
     // every `Bgremoval` variant BACK onto the bus
     // (`bgremoval_leftover`). We pick it up here, where the
     // `bgremoval_active` gate runs AFTER any same-frame
-    // `ActivateBgRemoval` has already fired — preserving the
+    // `ActivateTool { tool_id: "bgremoval" }` has already fired —
+    // preserving the
     // 1-frame-no-defer contract from the pre-Wave-2.5
     // `pending_bgremoval` field.
     let bgremoval_id = ph2d_editor::ToolId::new("bgremoval");

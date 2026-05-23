@@ -21,7 +21,7 @@
 //!
 //! ## Apply trigger mechanism
 //!
-//! The Widget Gallery's [`PanelControl::Action`](crate::floating_panel::PanelControl::Action)
+//! The Widget Gallery's `ph2d_editor_core::floating_panel::PanelControl::Action`
 //! variant is paint-only (no `NodeId`, so the dispatcher cannot route
 //! click events to it). The canonical workaround used here is a
 //! single-shot **Toggle** wired to the Apply event: the Tool reads

@@ -22,7 +22,8 @@ use ph2d_tool_registry::{HandlerFn, McpExposure, ToolHandler, ToolManifest, Zone
 use crate::icon::real_size_bezpath;
 
 /// Shadow-mode handler. Real work happens in the desktop shell's
-/// `EditorAction::RealSize` drain (Coordinator wiring).
+/// `EditorAction::OneShotImageOp { tool_id: "real_size", entity_bits }`
+/// drain (ADR-0040 TG-A genericized the per-tool variant).
 fn shadow_handler() {}
 
 /// The canonical Real Size manifest.

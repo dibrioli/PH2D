@@ -287,11 +287,12 @@ impl App {
             self.title_dirty = true;
             // Drain BgRemoval's Apply Toggle: when on, the Tool sets
             // `pending_apply = true` inside `handle_panel_event`.
-            // Push `EditorAction::Bgremoval { entity_bits }` so the
-            // per-frame drain in `render_frame` runs the algorithm
-            // at full resolution against the live sprite. Wave 2.5
-            // PR 11.8b3: bus migration (was `hero.pending_bgremoval
-            // = Some(bits)`).
+            // Push `EditorAction::OneShotImageOp { tool_id: "bgremoval",
+            // entity_bits }` so the per-frame drain in `render_frame`
+            // runs the algorithm at full resolution against the live
+            // sprite. Wave 2.5 PR 11.8b3: bus migration (was
+            // `hero.pending_bgremoval = Some(bits)`). ADR-0040 TG-A
+            // genericized the variant (was `EditorAction::Bgremoval`).
             if let Some(bg) = active
                 .as_any_mut()
                 .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()

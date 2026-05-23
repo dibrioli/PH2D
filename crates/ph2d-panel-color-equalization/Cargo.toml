@@ -18,7 +18,16 @@ authors.workspace = true
 # vocab snapshot in `ph2d-tool-color-equalization`.
 
 [dependencies]
-ph2d-editor-core   = { path = "../ph2d-editor-core" }
-ph2d-a11y          = { path = "../ph2d-a11y" }
-ph2d-tokens        = { path = "../ph2d-tokens" }
-ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core            = { path = "../ph2d-editor-core" }
+ph2d-a11y                   = { path = "../ph2d-a11y" }
+ph2d-tokens                 = { path = "../ph2d-tokens" }
+ph2d-tool-registry          = { path = "../ph2d-tool-registry" }
+# Vocab single-source-of-truth (DIRETRIZ §3.8.3 — sabor 3): snapshot type,
+# slider↔value projection helpers, and the panel NodeId consts live in
+# the tool crate. Panel → tool dep direction (allowed; tool depends on
+# editor-core, panel on both — no cycle).
+ph2d-tool-color-equalization = { path = "../ph2d-tool-color-equalization" }
+
+[dev-dependencies]
+ph2d-host = { path = "../ph2d-host" }
+bumpalo   = "3"

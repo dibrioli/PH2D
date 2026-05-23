@@ -1,56 +1,73 @@
-//! `ph2d-panel-color-equalization` — typed `Panel<State>` stub for the
-//! stateful Color Equalization tool (ADR-0029). Coord pre-work for the
-//! Implementador opening this tool in parallel with the other 3 image
-//! tools (Equalize Sizes / Rasterize / Upscale).
+//! `ph2d-panel-color-equalization` — typed `Panel<State>` for the stateful
+//! Color Equalization tool (ADR-0029).
 //!
 //! Right-docked in the Inspector geometry slot; visible only while the
 //! `color_equalization` tool is active (the shell drives
-//! `panel_visible("color_equalization")` from the active-tool id).
+//! `panel_visible("color_equalization")` from the active-tool id). Holds
+//! five slider+chip rows (clip limit / tile grid / brightness / contrast
+//! / saturation), an Auto-WB toggle, and Cancel / Apply.
 //!
-//! Implementador preenche `state.rs` (UI snapshot mirror), `paint.rs`
-//! (sliders + Apply/Cancel), `event.rs` (modifier → `PanelEvent` →
-//! `ToolPanelEvent` bus push), and `populate.rs` (NodeId registration).
-//! Vocab `ColorEqualizationUiEdit` / `ColorEqualizationUiSnapshot` /
-//! `ColorEqualizationParams` lives in `crates/ph2d-tool-color-equalization/src/params.rs`
-//! (TG-B/TG-C single-source-of-truth pattern — vide bgremoval/padding).
+//! The authoritative `ColorEqualizationTool` lives in the shell's
+//! `ToolRegistry`, unreachable from `HeroScreen`. So:
+//! - the host publishes a [`ColorEqualizationUiSnapshot`] each frame via
+//!   [`set_current_snapshot`] → [`paint`] reads it;
+//! - panel edits flow out over `EditorAction::ToolPanelEvent` → the shell
+//!   calls `ColorEqualizationTool::handle_panel_event`, which routes each
+//!   event through `apply_ui_edit` (ADR-0040 TG-C precedent — clamps live
+//!   exactly once in the tool's params module).
+//!
+//! Mirrors `ph2d-panel-padding` 1:1 in chrome shape, with a couple of
+//! adjustments: five rows instead of four, an extra toggle, and the
+//! number chips display natural units (not pixels) — clip limit `2.0`,
+//! tile grid `8`, brightness `0.50`, etc.
+//!
+//! [`ColorEqualizationUiSnapshot`]:
+//! ph2d_tool_color_equalization::params::ColorEqualizationUiSnapshot
 
 #![forbid(unsafe_code)]
+
+mod event;
+pub mod ids;
+mod paint;
+mod populate;
+pub mod state;
+
+pub use state::{last_content_h, last_visible_h, set_current_snapshot};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
-use ph2d_tool_registry::hash_node_id;
 
 /// Zero-size marker implementing the typed Color Equalization panel
-/// contract. Implementador can keep the marker name; the panel body
-/// lives across `paint.rs` / `event.rs` / `state.rs` / `populate.rs`.
+/// contract.
 pub struct ColorEqualizationPanel;
 
-/// Panel retained state — Implementador adds the UI mirror fields
-/// (e.g. live snapshot of the tool's params, drag-in-progress flags,
-/// preview cache handle). Default = empty.
-#[derive(Default)]
+/// Retained per-instance state slot for `ColorEqualizationPanel`.
+/// Intentionally empty — the authoritative state lives on the
+/// shell-side `ColorEqualizationTool`; the panel renders the per-frame
+/// snapshot. `Default` required by the `Panel::State: Default` bound.
+#[derive(Clone, Debug, Default)]
 pub struct ColorEqualizationPanelState;
 
 impl Panel for ColorEqualizationPanel {
     type State = ColorEqualizationPanelState;
     const ID: &'static str = "color_equalization";
-    const NODE_ID: NodeId = hash_node_id("panel.color_equalization");
+    const NODE_ID: NodeId = ids::CEQ_PANEL;
     const DEFAULT_VISIBLE: bool = false;
 
-    fn paint(_state: &mut ColorEqualizationPanelState, _ctx: &mut PaintCtx) {
-        // Implementador preenche.
+    fn paint(state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx) {
+        paint::paint(state, ctx);
     }
 
     fn apply_event(
-        _state: &mut ColorEqualizationPanelState,
-        _host: &mut dyn PanelHostInternal,
-        _ev: WidgetEvent,
+        state: &mut ColorEqualizationPanelState,
+        host: &mut dyn PanelHostInternal,
+        ev: WidgetEvent,
     ) -> EventOutcome {
-        EventOutcome::Ignored
+        event::apply_event(state, host, ev)
     }
 
-    fn populate(_store: &mut WidgetStore) {
-        // Implementador registra ids (sliders, Apply, Cancel).
+    fn populate(store: &mut WidgetStore) {
+        populate::populate(store);
     }
 }

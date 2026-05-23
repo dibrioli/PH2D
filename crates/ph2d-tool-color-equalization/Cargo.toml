@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-tool-color-equalization"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Color Equalization — multi-sprite color/tone adjustment tool. Image
+# Tools row, order 90 (right of padding 80, left of equalize_sizes
+# 100). Stateful + docked panel (sabor 3 da DIRETRIZ §3.8.3): CLAHE
+# (Zuiderveld 1994) + brightness/contrast/saturation (linear sRGB) +
+# auto white balance (Gray-World), with live preview and Apply/Cancel.
+#
+# All kernels are 100% own implementation, zero external image deps.
+# Crate-irmão: ph2d-panel-color-equalization.
+
+[dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Tool trait + FloatingPanel + widgets for the panel scaffolding (the
+# satellite direction — never the reverse).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# BezPath for the icon glyph (icon.rs).
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role) for the manifest a11y declaration (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }

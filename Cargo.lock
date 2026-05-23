@@ -4124,9 +4124,12 @@ dependencies = [
 name = "ph2d-panel-color-equalization"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-tokens",
+ "ph2d-tool-color-equalization",
  "ph2d-tool-registry",
 ]
 
@@ -4136,8 +4139,11 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
+ "ph2d-text",
  "ph2d-tokens",
+ "ph2d-tool-equalize-sizes",
  "ph2d-tool-registry",
+ "ph2d-vector",
 ]
 
 [[package]]
@@ -4212,6 +4218,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-tokens",
  "ph2d-tool-registry",
+ "ph2d-tool-upscale",
 ]
 
 [[package]]
@@ -4330,6 +4337,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-tool-color-equalization"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-editor-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-tool-equalize-sizes"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-editor-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-tool-grid-snap"
 version = "0.0.0"
 dependencies = [
@@ -4369,6 +4398,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-tool-rasterize"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-tool-real-size"
 version = "0.0.0"
 dependencies = [
@@ -4397,14 +4436,18 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-tool-bgremoval",
  "ph2d-tool-brush",
+ "ph2d-tool-color-equalization",
+ "ph2d-tool-equalize-sizes",
  "ph2d-tool-grid-snap",
  "ph2d-tool-make-square",
  "ph2d-tool-move",
  "ph2d-tool-padding",
+ "ph2d-tool-rasterize",
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
  "ph2d-tool-sync",
  "ph2d-tool-trim-transparency",
+ "ph2d-tool-upscale",
  "toml",
 ]
 
@@ -4418,6 +4461,18 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-tool-upscale"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-a11y",
+ "ph2d-core",
+ "ph2d-editor-core",
  "ph2d-tool-registry",
  "ph2d-vector",
 ]

@@ -28,11 +28,15 @@ use ph2d_tool_registry::Registry;
 pub fn register_all(reg: &mut Registry) {
     // <ph2d-tool-sync:begin>
     ph2d_tool_bgremoval::register(reg);
+    ph2d_tool_color_equalization::register(reg);
+    ph2d_tool_equalize_sizes::register(reg);
     ph2d_tool_grid_snap::register(reg);
     ph2d_tool_make_square::register(reg);
     ph2d_tool_padding::register(reg);
+    ph2d_tool_rasterize::register(reg);
     ph2d_tool_real_size::register(reg);
     ph2d_tool_trim_transparency::register(reg);
+    ph2d_tool_upscale::register(reg);
     // <ph2d-tool-sync:end>
 }
 
@@ -46,8 +50,11 @@ pub fn register_all_tools(reg: &mut ToolRegistry) {
     // <ph2d-tool-sync:tools:begin>
     reg.register(ph2d_tool_bgremoval::make());
     reg.register(ph2d_tool_brush::make());
+    reg.register(ph2d_tool_color_equalization::make());
+    reg.register(ph2d_tool_equalize_sizes::make());
     reg.register(ph2d_tool_move::make());
     reg.register(ph2d_tool_padding::make());
+    reg.register(ph2d_tool_upscale::make());
     // <ph2d-tool-sync:tools:end>
 }
 
@@ -85,7 +92,11 @@ mod tests {
         // from the `image_tools` cluster, ordered by manifest
         // `order` field. `Registry::cluster` sorts by `(order, id)`,
         // so this is the canonical paint order: trim (40), make_square
-        // (50), bgremoval (60), real_size (70), padding (80).
+        // (50), bgremoval (60), real_size (70), padding (80),
+        // color_equalization (90), equalize_sizes (100), rasterize
+        // (110), upscale (120). Extended for the image_tools_4 batch
+        // (2026-05-23) — the 4 Image Tools sessions add their entry to
+        // this list as the canonical order grows.
         let mut reg = Registry::default();
         register_all(&mut reg);
         reg.build().expect("registry should build");
@@ -98,7 +109,11 @@ mod tests {
                 "make_square",
                 "bgremoval",
                 "real_size",
-                "padding"
+                "padding",
+                "color_equalization",
+                "equalize_sizes",
+                "rasterize",
+                "upscale",
             ]
         );
     }

@@ -154,7 +154,8 @@ fn role_to_design(r: Role) -> &'static str {
 }
 
 /// Map manifest id → expected `icon_slug` value in the matching TOML.
-/// Pre-populated for the four committed tools; new tools extend this.
+/// New tools extend this. Image Tools row coverage as of 2026-05-23
+/// (image_tools_4 batch).
 fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
     Some(match manifest_id {
         "trim_transparency" => "trim-transparency",
@@ -163,6 +164,10 @@ fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
         "grid_snap" => "grid-settings",
         "real_size" => "real-size",
         "padding" => "padding",
+        "color_equalization" => "color-equalization",
+        "equalize_sizes" => "equalize-sizes",
+        "rasterize" => "rasterize",
+        "upscale" => "upscale",
         _ => return None,
     })
 }

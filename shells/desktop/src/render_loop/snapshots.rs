@@ -239,11 +239,14 @@ pub(super) fn publish(
             hero.gizmo.extra_views.push(v);
         }
     }
-    // Onda 2: global view = union of every selected sprite's bbox.
-    // Only painted when multi-select is alive (selected_len > 1). The
-    // global gizmo is axis-aligned in world space (no rotation) since
-    // each individual bbox may rotate independently; the union of
-    // their rotated AABBs is itself axis-aligned by construction.
+    // Onda 2: global view = union of every selected sprite's bbox,
+    // EXPANDED by a fixed screen offset so the global gizmo's handles
+    // sit clear of the individual gizmos' handles (Enio: "o gizmo da
+    // multiseleção com offset em relação aos gizmos individuais para
+    // não conflitar as alças de manipulação"). 32 px in screen space,
+    // converted to world units at the current zoom so the offset
+    // tracks the zoom level — handles stay one handle-size + a gap
+    // outside the individuals at any scale.
     hero.gizmo.global_view = if hero.gizmo.selected_len() > 1 {
         let primary = hero.gizmo.view.as_ref();
         let mut iter = primary.into_iter().chain(hero.gizmo.extra_views.iter());
@@ -258,9 +261,11 @@ pub(super) fn publish(
                 max_x = max_x.max(v.bbox_max_world[0]);
                 max_y = max_y.max(v.bbox_max_world[1]);
             }
+            let pixel_to_world = first.camera_height_world / first.window_h.max(1.0);
+            let offset_world = 32.0 * pixel_to_world;
             ph2d_editor::GizmoView {
-                bbox_min_world: [min_x, min_y],
-                bbox_max_world: [max_x, max_y],
+                bbox_min_world: [min_x - offset_world, min_y - offset_world],
+                bbox_max_world: [max_x + offset_world, max_y + offset_world],
                 pivot_world: [(min_x + max_x) * 0.5, (min_y + max_y) * 0.5],
                 pivot_tool_active: false,
                 rotation: 0.0,

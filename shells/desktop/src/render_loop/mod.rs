@@ -634,25 +634,60 @@ impl crate::App {
                 &mut self.last_bgremoval_pushed_entity,
                 &mut self.bgremoval_preview,
             );
+            // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
+            // runs (which paints the primary gizmo and only writes to
+            // hit_index, not hit_map — primary still goes through the
+            // legacy gizmo_kind_for_id lookup). After paint_hero_screen
+            // we paint the extras + global via paint_sprite_gizmo_keyed,
+            // which DOES populate hit_map — those entries drive the
+            // dispatcher's group-transform routing in on_mouse_input.
+            hero.gizmo.gizmo_hit_map.clear();
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
-            // Onda 2a: paint a thin outline gizmo for every EXTRA in
-            // the multi-selection (the primary already has the full
-            // interactive gizmo from paint_hero_screen, so we skip it
-            // to avoid double-stroking). Uses the canonical
-            // `GizmoView` built in `snapshots::publish` so the math
-            // stays in lockstep with `paint_sprite_gizmo`. Non-
-            // interactive — handles are NOT registered on hit_index
-            // for the extras in this phase (Onda 3 will add per-
-            // entity hit ids for group transform modes).
-            for v in hero.gizmo.extra_views.iter() {
-                ph2d_editor::gizmo::paint_gizmo_outline(vector_scene, v, hero.theme, 1.0);
+            // Onda 2C: paint INTERACTIVE gizmos for every extra in the
+            // multi-selection (handles register hit ids keyed by the
+            // sprite's entity_bits via `keyed_handle_id`). Each extra
+            // is `GizmoTarget::ExtraIndividual(bits)` — its handles
+            // open a drag with local-pivot semantics in
+            // advance_gizmo_drag.
+            //
+            // We need to borrow `extra_views` for iteration while also
+            // passing `&mut hero.gizmo.gizmo_hit_map` to the painter.
+            // The Vec carries entity_bits via `extra_selection` paired
+            // with views at the same index (snapshots.publish builds
+            // both in lockstep so positions align), but for clarity we
+            // collect (bits, view) pairs first then loop.
+            let extras_snapshot: Vec<(u64, ph2d_editor::GizmoView)> = hero
+                .gizmo
+                .extra_selection
+                .iter()
+                .copied()
+                .zip(hero.gizmo.extra_views.iter().copied())
+                .collect();
+            for (bits, v) in extras_snapshot {
+                ph2d_editor::gizmo::paint_sprite_gizmo_keyed(
+                    vector_scene,
+                    &v,
+                    hero.theme,
+                    &mut hero.hit_index,
+                    &mut hero.gizmo.gizmo_hit_map,
+                    ph2d_editor::GizmoTarget::ExtraIndividual(bits),
+                    1.0,
+                );
             }
-            // Onda 2b: paint the GLOBAL gizmo outline — axis-aligned
-            // union of every selected sprite's bbox — when multi-
-            // select is alive. Stroke 2.0 px (vs 1.5 primary, 1.0
-            // extras) makes the "this is the group" cue legible.
-            if let Some(v) = hero.gizmo.global_view.as_ref() {
-                ph2d_editor::gizmo::paint_gizmo_outline(vector_scene, v, hero.theme, 2.0);
+            // Onda 2C: global gizmo — bbox is the union of every
+            // selected sprite's bbox, expanded by 32 screen px so its
+            // handles never overlap the individuals'. Handles open a
+            // drag with global-pivot semantics.
+            if let Some(v) = hero.gizmo.global_view {
+                ph2d_editor::gizmo::paint_sprite_gizmo_keyed(
+                    vector_scene,
+                    &v,
+                    hero.theme,
+                    &mut hero.hit_index,
+                    &mut hero.gizmo.gizmo_hit_map,
+                    ph2d_editor::GizmoTarget::Global,
+                    2.0,
+                );
             }
             // Fase 0f: overlay the active rubber-band rect on top of
             // everything (panels, gizmo, hero chrome). Pure shell

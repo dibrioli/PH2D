@@ -115,9 +115,17 @@ pub struct GizmoStateGroup {
     /// Onda 2: per-frame "global" view covering every selected sprite
     /// — the union of all individual bboxes, no rotation. `Some` only
     /// when `selected_len() > 1`. The painter draws a distinctive
-    /// outline; interactive group transforms via this gizmo are a
-    /// follow-up (Onda 3) since they need per-entity hit-id allocation.
+    /// outline.
     pub global_view: Option<crate::gizmo::GizmoView>,
+    /// Onda 2C: reverse lookup from a hit NodeId to which gizmo (and
+    /// which handle of it) was clicked. The painters populate this
+    /// map every frame for the primary, every extra, and the global
+    /// gizmo. The shell's `on_mouse_input` Down reads it after the
+    /// `hit_index` lookup to decide which group-transform mode to
+    /// open. Cleared at the top of `paint_hero_screen` to keep the
+    /// map fresh each frame (no stale entries from sprites that left
+    /// the selection).
+    pub gizmo_hit_map: std::collections::BTreeMap<ph2d_a11y::NodeId, crate::gizmo::GizmoHit>,
     /// M14.7 C: in-progress drag on the gizmo. Host's MouseInput
     /// handler fills on Down landing on a handle; Move advances
     /// `cursor_screen`, calls `compute_gizmo_transform`, writes back

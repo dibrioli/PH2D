@@ -355,12 +355,35 @@ impl App {
                     }
                     let hit_id = hero.hit_index.hit(evt.x, evt.y);
                     let gizmo_kind = hit_id.and_then(ph2d_editor::gizmo_kind_for_id);
+                    // Onda 2C: hit_map fills in for handles whose ids
+                    // aren't canonical — extras + global. The primary
+                    // keeps canonical IDs (matches the legacy
+                    // `gizmo_kind_for_id` lookup above so the primary
+                    // path runs unchanged when it's the only sprite
+                    // selected).
+                    let hit_map_entry: Option<ph2d_editor::GizmoHit> =
+                        hit_id.and_then(|id| hero.gizmo.gizmo_hit_map.get(&id).copied());
+                    let effective_target = hit_map_entry
+                        .map(|h| h.target)
+                        .unwrap_or(ph2d_editor::GizmoTarget::PrimaryIndividual);
+                    let effective_kind = hit_map_entry.map(|h| h.kind).or(gizmo_kind);
                     let is_specific_handle = matches!(
-                        gizmo_kind,
+                        effective_kind,
                         Some(ph2d_editor::GizmoDragKind::ScaleCorner { .. })
                             | Some(ph2d_editor::GizmoDragKind::ScaleEdge { .. })
                             | Some(ph2d_editor::GizmoDragKind::Rotate)
                     );
+                    // Also recognize Translate from a keyed bbox-interior
+                    // hit — clicking the interior of an extra or the global
+                    // gizmo should open a group translate via the
+                    // `effective_target` route (the canvas-pick path below
+                    // skips keyed ids since they aren't None / Translate /
+                    // PIVOT canonical, so without this guard those clicks
+                    // would fall through to nothing).
+                    let is_keyed_translate = hit_map_entry.map(|h| matches!(
+                        h.kind,
+                        ph2d_editor::GizmoDragKind::Translate
+                    )).unwrap_or(false);
                     // TOOL_PIVOT begin: when the Pivot transform tool is
                     // the active radio selection and the click lands on
                     // the selected sprite (or its pivot dot), open a
@@ -411,6 +434,7 @@ impl App {
                                 start_cursor_world: world_pos,
                                 sprite_half_intrinsic: half,
                                 anchor_is_center: false,
+                                target: ph2d_editor::GizmoTarget::PrimaryIndividual,
                             });
                             began_pivot = true;
                         }
@@ -418,8 +442,11 @@ impl App {
                     if began_pivot {
                         // MovePivot drag opened; Move events drive it.
                     } else if is_specific_handle
-                        && let Some(gkind) = gizmo_kind
-                        && let Some(entity_bits) = hero.gizmo.selection
+                        && let Some(gkind) = effective_kind
+                        && let Some(entity_bits) = match effective_target {
+                            ph2d_editor::GizmoTarget::ExtraIndividual(bits) => Some(bits),
+                            _ => hero.gizmo.selection,
+                        }
                     {
                         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                         let window_size = gfx.surface.size();
@@ -438,12 +465,28 @@ impl App {
                                 .get::<ph2d_render::Sprite>(entity)
                                 .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
                                 .unwrap_or([0.0, 0.0]);
-                            let pivot = ph2d_editor::anchor_pivot_world(
-                                gkind,
-                                sprite_half_intrinsic,
-                                snap,
-                                use_center_anchor,
-                            );
+                            // Onda 2C: pivot world depends on target.
+                            // PrimaryIndividual / ExtraIndividual use the
+                            // sprite's own anchor (transforms local to it).
+                            // Global overrides pivot to the global bbox
+                            // center so group transforms rotate/scale every
+                            // sprite around a single shared point.
+                            let pivot = if let ph2d_editor::GizmoTarget::Global =
+                                effective_target
+                                && let Some(gv) = hero.gizmo.global_view.as_ref()
+                            {
+                                [
+                                    (gv.bbox_min_world[0] + gv.bbox_max_world[0]) * 0.5,
+                                    (gv.bbox_min_world[1] + gv.bbox_max_world[1]) * 0.5,
+                                ]
+                            } else {
+                                ph2d_editor::anchor_pivot_world(
+                                    gkind,
+                                    sprite_half_intrinsic,
+                                    snap,
+                                    use_center_anchor,
+                                )
+                            };
                             hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
                                 kind: gkind,
                                 entity_bits,
@@ -454,6 +497,7 @@ impl App {
                                 start_cursor_world: start_world,
                                 sprite_half_intrinsic,
                                 anchor_is_center: use_center_anchor,
+                                target: effective_target,
                             });
                             // Onda 1: snapshot every OTHER selected sprite's
                             // start translation so advance_gizmo_drag can
@@ -583,6 +627,7 @@ impl App {
                                     start_cursor_world: world_pos,
                                     sprite_half_intrinsic: [0.0, 0.0],
                                     anchor_is_center: false,
+                                    target: ph2d_editor::GizmoTarget::PrimaryIndividual,
                                 });
                                 // Onda 1: snapshot start translations of
                                 // every OTHER selected sprite (skip the

@@ -47,6 +47,39 @@ pub struct TransformSnapshot {
     pub scale: [f32; 2],
 }
 
+/// Onda 2C: which gizmo the user clicked. Drives `advance_gizmo_drag`'s
+/// branch between primary-only, group-with-global-pivot, and group-
+/// with-local-pivots transforms.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum GizmoTarget {
+    /// The primary's gizmo (canonical IDs) — transforms apply to the
+    /// primary and, when multi-select is alive, to extras with
+    /// pivots LOCAL TO EACH (matches Enio's spec — "transforms via
+    /// individual gizmos use each sprite's own pivot").
+    PrimaryIndividual,
+    /// One of the extra's gizmos (per-entity hashed IDs). Same
+    /// semantic as `PrimaryIndividual` — the drag is rooted on this
+    /// sprite's pivot, but the transform delta propagates to every
+    /// selected sprite locally (each rotates/scales around its own
+    /// pivot, translates by the same world delta).
+    ExtraIndividual(u64),
+    /// The global gizmo (group_offset-XORed IDs). Transforms use a
+    /// SINGLE pivot = global bbox center, applied to every selected
+    /// sprite (per Enio — "transforms via global gizmo behave as
+    /// if the group is one rigid object").
+    Global,
+}
+
+/// Onda 2C: a single drag-target lookup entry, populated by the
+/// painters and consumed by `on_mouse_input` Down. The shell holds a
+/// `BTreeMap<NodeId, GizmoHit>` covering every interactive handle on
+/// every gizmo painted this frame.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct GizmoHit {
+    pub target: GizmoTarget,
+    pub kind: GizmoDragKind,
+}
+
 /// In-progress gizmo drag. Owned by the host (typically the desktop
 /// shell) and lives outside `WidgetStore` so the math can stay in
 /// `ph2d-editor` without dragging in `ph2d-render` or `ph2d-ecs`.
@@ -87,4 +120,8 @@ pub struct GizmoDragState {
     /// Down). When set, the Scale branches keep translation
     /// unchanged — center anchor means the sprite scales in place.
     pub anchor_is_center: bool,
+    /// Onda 2C: which gizmo opened this drag. Drives the dispatch in
+    /// `advance_gizmo_drag` between single-sprite, multi with global
+    /// pivot, and multi with local pivots.
+    pub target: GizmoTarget,
 }

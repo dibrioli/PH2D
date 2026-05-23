@@ -2,12 +2,53 @@
 //!
 //! Extracted from monolithic `gizmo.rs` in Wave 6+7 Phase 1.B.
 
-use super::hit::ids;
+use super::drag::{GizmoDragKind, GizmoHit, GizmoTarget};
+use super::hit::{gizmo_kind_for_id, ids};
 use crate::interaction::HitIndex;
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
+use ph2d_a11y::NodeId;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Circle, Color as VelloColor, Point, VectorScene};
+use std::collections::BTreeMap;
+
+/// Onda 2C: derive a hit-id unique per (target, canonical handle id).
+/// Primary keeps canonical IDs (preserves the legacy
+/// `gizmo_kind_for_id` lookup for primary handles). Extra and Global
+/// XOR with a target-specific scrambler to drop into distinct id
+/// spaces — collision-free with the canonical primary set + with each
+/// other (every extra carries the sprite's `entity_bits` which is
+/// globally unique by construction).
+pub(crate) fn keyed_handle_id(target: GizmoTarget, canonical_id: NodeId) -> NodeId {
+    match target {
+        GizmoTarget::PrimaryIndividual => canonical_id,
+        GizmoTarget::ExtraIndividual(bits) => {
+            // Golden-ratio scrambler so a sprite with `bits` close to
+            // a canonical-id integer can't collide by accident.
+            let h = bits ^ 0x_9E37_79B9_7F4A_7C15;
+            NodeId(canonical_id.0 ^ h)
+        }
+        GizmoTarget::Global => NodeId(canonical_id.0 ^ 0x_91A0_5B12_4FE9_3A8D),
+    }
+}
+
+/// Register a handle in both the hit index and the shell's hit map
+/// using the canonical-id → keyed-id mapping above. Kind comes from
+/// `gizmo_kind_for_id` for handles the legacy dispatcher knows about;
+/// callers pass an explicit kind for pivot / interior hits whose
+/// canonical ids aren't in that table.
+pub(crate) fn register_keyed_handle(
+    hit_index: &mut HitIndex,
+    hit_map: &mut BTreeMap<NodeId, GizmoHit>,
+    target: GizmoTarget,
+    canonical_id: NodeId,
+    kind: GizmoDragKind,
+    rect: Rect,
+) {
+    let id = keyed_handle_id(target, canonical_id);
+    hit_index.register(id, rect);
+    hit_map.insert(id, GizmoHit { target, kind });
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct GizmoView {
@@ -413,6 +454,162 @@ pub fn paint_gizmo_outline(
         stroke_w,
         resolve(ColorToken::Selection, theme),
     );
+}
+
+/// Onda 2C: interactive gizmo painter for extras + global. Same
+/// rotated bbox outline + scale-corner / scale-edge / rotate-hover
+/// handles as `paint_sprite_gizmo`, but every handle's hit id goes
+/// through `keyed_handle_id(target, …)` so the dispatcher can tell
+/// WHICH gizmo (which sprite, or the global one) was clicked. Skips
+/// the pivot dot — that's primary-only chrome. Skips the cursor-
+/// over-rotate circular-handle visual cue too — keeps the painter
+/// simple while the primary still gets the full UX.
+pub fn paint_sprite_gizmo_keyed(
+    scene: &mut VectorScene,
+    view: &GizmoView,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    hit_map: &mut BTreeMap<NodeId, GizmoHit>,
+    target: GizmoTarget,
+    outline_stroke_w: f32,
+) {
+    let cx_w = (view.bbox_min_world[0] + view.bbox_max_world[0]) * 0.5;
+    let cy_w = (view.bbox_min_world[1] + view.bbox_max_world[1]) * 0.5;
+    let hx_w = (view.bbox_max_world[0] - view.bbox_min_world[0]) * 0.5;
+    let hy_w = (view.bbox_max_world[1] - view.bbox_min_world[1]) * 0.5;
+    let cos_r = view.rotation.cos();
+    let sin_r = view.rotation.sin();
+    let rotate_world = |lx: f32, ly: f32| -> [f32; 2] {
+        [
+            cx_w + lx * cos_r - ly * sin_r,
+            cy_w + lx * sin_r + ly * cos_r,
+        ]
+    };
+    let tl = world_to_screen(view, rotate_world(-hx_w, hy_w));
+    let tr = world_to_screen(view, rotate_world(hx_w, hy_w));
+    let bl = world_to_screen(view, rotate_world(-hx_w, -hy_w));
+    let br = world_to_screen(view, rotate_world(hx_w, -hy_w));
+
+    // Interior bbox hit — Translate.
+    let sx_min = tl[0].min(tr[0]).min(bl[0]).min(br[0]);
+    let sx_max = tl[0].max(tr[0]).max(bl[0]).max(br[0]);
+    let sy_min = tl[1].min(tr[1]).min(bl[1]).min(br[1]);
+    let sy_max = tl[1].max(tr[1]).max(bl[1]).max(br[1]);
+    let aabb = Rect::new(sx_min, sy_min, sx_max - sx_min, sy_max - sy_min);
+    register_keyed_handle(
+        hit_index,
+        hit_map,
+        target,
+        ids::GIZMO_BBOX_INTERIOR,
+        GizmoDragKind::Translate,
+        aabb,
+    );
+
+    // Outline stroke.
+    paint_oriented_bbox(
+        scene,
+        [tl, tr, br, bl],
+        outline_stroke_w,
+        resolve(ColorToken::Selection, theme),
+    );
+
+    // 4 rotate-hover rects (registered BEFORE corner handles so the
+    // tighter corner hits outrank them on overlap).
+    let rotate_rects = [
+        (
+            ids::GIZMO_ROTATE_TL,
+            corner_outer_rect_oriented(tl, view.rotation, -1.0, 1.0),
+        ),
+        (
+            ids::GIZMO_ROTATE_TR,
+            corner_outer_rect_oriented(tr, view.rotation, 1.0, 1.0),
+        ),
+        (
+            ids::GIZMO_ROTATE_BL,
+            corner_outer_rect_oriented(bl, view.rotation, -1.0, -1.0),
+        ),
+        (
+            ids::GIZMO_ROTATE_BR,
+            corner_outer_rect_oriented(br, view.rotation, 1.0, -1.0),
+        ),
+    ];
+    for (id, r) in rotate_rects {
+        register_keyed_handle(
+            hit_index,
+            hit_map,
+            target,
+            id,
+            GizmoDragKind::Rotate,
+            r,
+        );
+    }
+
+    // Corner scale handles + edge scale handles (squares).
+    let mid_top = midpoint(tl, tr);
+    let mid_right = midpoint(tr, br);
+    let mid_bottom = midpoint(br, bl);
+    let mid_left = midpoint(bl, tl);
+    let handle_fill = resolve(ColorToken::Accent, theme);
+    let handle_stroke = resolve(ColorToken::BorderEmph, theme);
+    let half = HANDLE_SIZE_PX * 0.5;
+    let corners: [(NodeId, f32, f32, GizmoDragKind); 4] = [
+        (
+            ids::GIZMO_HANDLE_TL,
+            tl[0],
+            tl[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_TL).unwrap_or(GizmoDragKind::Translate),
+        ),
+        (
+            ids::GIZMO_HANDLE_TR,
+            tr[0],
+            tr[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_TR).unwrap_or(GizmoDragKind::Translate),
+        ),
+        (
+            ids::GIZMO_HANDLE_BL,
+            bl[0],
+            bl[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_BL).unwrap_or(GizmoDragKind::Translate),
+        ),
+        (
+            ids::GIZMO_HANDLE_BR,
+            br[0],
+            br[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_BR).unwrap_or(GizmoDragKind::Translate),
+        ),
+    ];
+    let edges: [(NodeId, f32, f32, GizmoDragKind); 4] = [
+        (
+            ids::GIZMO_HANDLE_T,
+            mid_top[0],
+            mid_top[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_T).unwrap_or(GizmoDragKind::Translate),
+        ),
+        (
+            ids::GIZMO_HANDLE_R,
+            mid_right[0],
+            mid_right[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_R).unwrap_or(GizmoDragKind::Translate),
+        ),
+        (
+            ids::GIZMO_HANDLE_B,
+            mid_bottom[0],
+            mid_bottom[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_B).unwrap_or(GizmoDragKind::Translate),
+        ),
+        (
+            ids::GIZMO_HANDLE_L,
+            mid_left[0],
+            mid_left[1],
+            gizmo_kind_for_id(ids::GIZMO_HANDLE_L).unwrap_or(GizmoDragKind::Translate),
+        ),
+    ];
+    for (id, cx, cy, kind) in corners.iter().chain(edges.iter()) {
+        let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
+        register_keyed_handle(hit_index, hit_map, target, *id, *kind, r);
+        fill_rounded_rect(scene, r, 2.0, handle_fill);
+        stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
+    }
 }
 
 fn paint_oriented_bbox(

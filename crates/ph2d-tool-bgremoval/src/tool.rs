@@ -13,8 +13,7 @@
 //! - On Apply trigger, the Tool sets `self.pending_apply = true`.
 //!   The host drains via [`BgRemovalTool::take_pending_apply`], runs
 //!   the pipeline at full resolution against the live `Sprite.source`,
-//!   and swaps the texture per the Image Tools precedent
-//!   (`ph2d_editor_core::tools::trim_transparency`).
+//!   and swaps the texture per the Image Tools precedent (`ph2d-tool-trim-transparency`).
 //!
 //! All pointer / hover / canvas interaction is **out of scope** —
 //! the tool reacts only to its panel widgets, never to the canvas

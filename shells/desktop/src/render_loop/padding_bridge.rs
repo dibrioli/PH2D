@@ -5,15 +5,18 @@
 //!
 //! 1. Drives the panel's visibility (shown iff `padding` is the active
 //!    tool, keyed "padding" to match `PaddingPanel::ID`).
-//! 2. Drains the panel's `PaddingUiEdit`s into the active `PaddingTool`.
-//! 3. Publishes the per-frame snapshot the panel paints next frame.
-//! 4. Draws a NON-DESTRUCTIVE live preview of the new canvas bounds
+//! 2. Publishes the per-frame snapshot the panel paints next frame.
+//!    Panel events themselves are routed earlier in the frame via
+//!    `EditorAction::ToolPanelEvent → PaddingTool::handle_panel_event`
+//!    (ADR-0040 TG-C), so by the time this bridge runs the per-edge
+//!    spec already reflects every slider/chip edit drained this tick.
+//! 3. Draws a NON-DESTRUCTIVE live preview of the new canvas bounds
 //!    (an accent outline) so dragging a slider shows the padding change
 //!    on the canvas in real time. Crucially the preview never mutates
 //!    the sprite Transform — so in either pivot mode the existing
 //!    content pixels and the pivot stay put while editing; the actual
 //!    resize + pivot reproject happen only on Apply (the bake).
-//! 5. Returns the selection + spec + pivot mode to bake on Apply.
+//! 4. Returns the selection + spec + pivot mode to bake on Apply.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
@@ -38,7 +41,6 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
-    padding_ui_edits: Vec<ph2d_editor::tools::padding::PaddingUiEdit>,
 ) -> Option<(u64, ph2d_tool_padding::PaddingSpec, bool)> {
     let padding_is_active = tools
         .active()
@@ -57,9 +59,6 @@ pub(super) fn dispatch(
             .as_any_mut()
             .downcast_mut::<ph2d_tool_padding::PaddingTool>()
     {
-        for edit in padding_ui_edits {
-            pad.apply_ui_edit(edit);
-        }
         if pad.take_pending_apply()
             && let Some(bits) = hero.gizmo.selection
         {

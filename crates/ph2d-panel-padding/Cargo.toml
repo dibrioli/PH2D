@@ -16,9 +16,17 @@ authors.workspace = true
 # resized canvas shell-side.
 
 [dependencies]
-ph2d-editor-core = { path = "../ph2d-editor-core" }
-ph2d-a11y        = { path = "../ph2d-a11y" }
-ph2d-tokens      = { path = "../ph2d-tokens" }
+ph2d-editor-core  = { path = "../ph2d-editor-core" }
+# ADR-0040 TG-C: the padding UI vocabulary (`PaddingUiSnapshot` +
+# `slider_to_px` / `px_to_slider`) moved into the tool crate when the
+# generic `ToolPanelEvent` channel landed. The panel reads the snapshot
+# it paints and the slider↔chip mirror helpers from there directly.
+# `editor-core` no longer carries the vocab; the new direction
+# (panel → tool) does not cycle (tool depends on editor-core, panel on
+# both).
+ph2d-tool-padding = { path = "../ph2d-tool-padding" }
+ph2d-a11y         = { path = "../ph2d-a11y" }
+ph2d-tokens       = { path = "../ph2d-tokens" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }

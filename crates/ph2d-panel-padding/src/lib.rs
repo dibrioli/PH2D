@@ -11,12 +11,13 @@
 //! unreachable from `HeroScreen`. So:
 //! - the host publishes a [`PaddingUiSnapshot`] each frame via
 //!   [`set_current_padding_snapshot`] → [`paint`] reads it;
-//! - panel edits flow out over `EditorAction::PaddingUiEdit` → the shell
-//!   drains them into `PaddingTool::apply_ui_edit`.
+//! - panel edits flow out over `EditorAction::ToolPanelEvent` → the
+//!   shell calls `PaddingTool::handle_panel_event`, which routes each
+//!   event through `apply_ui_edit` (ADR-0040 TG-C).
 //!
 //! Mirrors `ph2d-panel-bgremoval` 1:1, minus the preview machinery.
 //!
-//! [`PaddingUiSnapshot`]: ph2d_editor_core::tools::padding::PaddingUiSnapshot
+//! [`PaddingUiSnapshot`]: ph2d_tool_padding::params::PaddingUiSnapshot
 
 #![forbid(unsafe_code)]
 

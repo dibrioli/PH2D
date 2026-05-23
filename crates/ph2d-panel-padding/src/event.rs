@@ -1,43 +1,29 @@
-//! Padding panel `apply_event` — routes the panel's widget events out to
-//! the shell over `EditorAction::PaddingUiEdit` / `PaddingCancel`, and
-//! keeps each edge's slider + px chip in lock-step.
+//! Padding panel `apply_event` — thin forwarder.
 //!
-//! The authoritative `PaddingTool` lives in the shell's `ToolRegistry`,
-//! so the panel can't mutate the spec directly — every edit becomes a
-//! bus action the shell drains into `PaddingTool::apply_ui_edit`.
+//! ADR-0040 TG-C: the panel no longer holds the semantic mapping
+//! (slider track → signed px via `slider_to_px`, then construction of a
+//! typed `PaddingUiEdit::Top(px)`) — that lives in
+//! `PaddingTool::handle_panel_event` over in `ph2d-tool-padding`.
+//! Here we just classify each `WidgetEvent` into a tool-agnostic
+//! [`PanelEvent`], push it through `EditorAction::ToolPanelEvent`, and
+//! let the action-bus drain in the shell call `Tool::handle_panel_event`
+//! on the active tool. Cancel maps to `EditorAction::CancelActiveTool`.
 //!
-//! Real-time slider ⟷ chip link (done MANUALLY rather than via
-//! `link_slider_number`, which would force both into the same `0..1`
-//! space and clobber the px chip):
-//! - slider drag → push the px edit + mirror the px into the chip's
-//!   stored value (so focusing the chip shows the right number);
-//! - chip commit/scrub → push the px edit + mirror the normalized track
-//!   position into the slider's stored value (so the thumb tracks).
+//! The panel still owns the slider ↔ chip MIRROR (the chip's stored
+//! number value follows a slider drag, and the slider's stored value
+//! follows a chip commit) — that is UI-state-local to the widget store,
+//! not authoritative tool state.
 
 use crate::ids;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
-use ph2d_editor_core::tools::padding::{PaddingUiEdit, px_to_slider, slider_to_px};
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::ButtonState;
+use ph2d_tool_padding::params::{px_to_slider, slider_to_px};
 
 use crate::state::PaddingPanelState;
-
-/// `(slider_id, chip_id)` → the edit constructor for that edge.
-fn edge_edit(slider_or_chip: NodeId, px: i32) -> Option<PaddingUiEdit> {
-    if slider_or_chip == ids::PAD_TOP || slider_or_chip == ids::PAD_TOP_NUM {
-        Some(PaddingUiEdit::Top(px))
-    } else if slider_or_chip == ids::PAD_RIGHT || slider_or_chip == ids::PAD_RIGHT_NUM {
-        Some(PaddingUiEdit::Right(px))
-    } else if slider_or_chip == ids::PAD_BOTTOM || slider_or_chip == ids::PAD_BOTTOM_NUM {
-        Some(PaddingUiEdit::Bottom(px))
-    } else if slider_or_chip == ids::PAD_LEFT || slider_or_chip == ids::PAD_LEFT_NUM {
-        Some(PaddingUiEdit::Left(px))
-    } else {
-        None
-    }
-}
 
 /// Chip id paired with an edge slider id.
 fn chip_for_slider(slider: NodeId) -> Option<NodeId> {
@@ -79,27 +65,33 @@ pub(crate) fn apply_event(
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
-        // Edge slider dragged — read the live track, map to px, push the
-        // edit, and mirror the px into the paired chip's stored value.
+        // Edge slider dragged — read the live track, forward it as-is to
+        // the tool (which maps to px), and mirror the px into the paired
+        // chip's stored value so the chip's painted number matches the
+        // slider thumb in real time.
         WidgetEvent::ValueChanged(id) if chip_for_slider(id).is_some() => {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-            let px = slider_to_px(track);
-            if let Some(edit) = edge_edit(id, px) {
-                host.bus_mut().push(EditorAction::PaddingUiEdit(edit));
-            }
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                    id,
+                    track as f64,
+                )));
             if let Some(chip) = chip_for_slider(id) {
-                host.store_mut().set_number_value(chip, px as f64);
+                host.store_mut()
+                    .set_number_value(chip, slider_to_px(track) as f64);
             }
             true
         }
         // Edge px chip edited (keyboard commit or drag-scrub) — read the
-        // px value, push the edit, and mirror the normalized track onto
-        // the paired slider's stored value so the thumb follows.
+        // px value, forward it as-is to the tool, and mirror the
+        // normalized track onto the paired slider's stored value so the
+        // thumb follows the chip.
         WidgetEvent::ValueChanged(id) if slider_for_chip(id).is_some() => {
             let px = host.store().number_value(id).unwrap_or(0.0).round() as i32;
-            if let Some(edit) = edge_edit(id, px) {
-                host.bus_mut().push(EditorAction::PaddingUiEdit(edit));
-            }
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                    id, px as f64,
+                )));
             if let Some(slider) = slider_for_chip(id)
                 && let Some(InteractiveState::Slider { value, .. }) =
                     host.store_mut().get_mut(slider)
@@ -111,32 +103,32 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // Pivot-mode toggle — flips recenter/keep. Reset the pressed
         // state; the active look is the per-frame snapshot in `paint`.
         WidgetEvent::Click(id) if id == ids::PAD_PIVOT_RECENTER => {
-            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
-                *state = ButtonState::Normal;
-            }
-            host.bus_mut().push(EditorAction::PaddingUiEdit(
-                PaddingUiEdit::TogglePivotRecenter,
-            ));
+            reset_button(host, id);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
         // Apply button — bake at full resolution.
         WidgetEvent::Click(id) if id == ids::PAD_APPLY => {
-            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
-                *state = ButtonState::Normal;
-            }
+            reset_button(host, id);
             host.bus_mut()
-                .push(EditorAction::PaddingUiEdit(PaddingUiEdit::Apply));
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
-        // Cancel — abandon + deactivate the tool (shell switches back to
-        // the default tool, hiding this panel and restoring the Inspector).
+        // Cancel — abandon + deactivate the tool. Shell switches back to
+        // the default tool via `CancelActiveTool`, hiding this panel and
+        // restoring the Inspector.
         WidgetEvent::Click(id) if id == ids::PAD_CANCEL => {
-            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
-                *state = ButtonState::Normal;
-            }
-            host.bus_mut().push(EditorAction::PaddingCancel);
+            reset_button(host, id);
+            host.bus_mut().push(EditorAction::CancelActiveTool);
             true
         }
         _ => false,
+    }
+}
+
+fn reset_button(host: &mut dyn PanelHostInternal, id: NodeId) {
+    if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+        *state = ButtonState::Normal;
     }
 }

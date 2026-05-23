@@ -80,31 +80,20 @@ pub enum EditorAction {
 
     /// Generic panel → tool event channel (ADR-0040 TG-B). Typed
     /// panels (`ph2d-panel-bgremoval`, `ph2d-panel-padding`, …) convert
-    /// their `WidgetEvent`s into a tool-agnostic [`PanelEvent`] (carrying
-    /// the widget's `NodeId` + payload) and push this variant; the shell
-    /// drains by calling `tools.active_mut().map(|t| t.handle_panel_event(ev))`.
-    /// The semantic mapping (slider id → `BgRemovalUiEdit::Tolerance(v)`)
+    /// their `WidgetEvent`s into a tool-agnostic [`crate::tool::PanelEvent`]
+    /// (carrying the widget's `NodeId` + payload) and push this variant;
+    /// the shell drains by calling
+    /// `tools.active_mut().map(|t| t.handle_panel_event(ev))`. The
+    /// semantic mapping (slider id → `BgRemovalUiEdit::Tolerance(v)`)
     /// lives in the tool's `handle_panel_event`, not in the panel, so
     /// adding a panel-edit semantic does not require a new variant here.
     ToolPanelEvent(crate::tool::PanelEvent),
 
-    /// Generic cancel of the active modal tool (ADR-0040 TG-B). Shell
-    /// drains by calling `tools.activate_default()` and tearing down any
-    /// tool-specific shell-side preview state. Raised by panels' Cancel
-    /// buttons. Replaces the per-tool `PaddingCancel` once TG-C lands;
-    /// `BgremovalCancel` already migrated in TG-B.
+    /// Generic cancel of the active modal tool (ADR-0040 TG-B/TG-C).
+    /// Shell drains by calling `tools.set_active(default)` and tearing
+    /// down any tool-specific shell-side preview state. Raised by both
+    /// panels' Cancel buttons (BgRemoval + Padding).
     CancelActiveTool,
-
-    /// One Padding panel edit (one of the four signed per-edge fields or
-    /// Apply) routed from the typed `ph2d-panel-padding` to the shell.
-    /// Migrates to the generic [`Self::ToolPanelEvent`] channel in
-    /// ADR-0040 TG-C (mirror of the bgremoval TG-B migration).
-    PaddingUiEdit(crate::tools::padding::PaddingUiEdit),
-
-    /// Cancel Padding: abandon the in-progress spec (no bake) and
-    /// deactivate the tool so the panel hides and the Inspector returns.
-    /// Raised by the panel's Cancel button. Migrates in ADR-0040 TG-C.
-    PaddingCancel,
 
     /// Re-decode the entity's sprite source asset at the current
     /// `ProjectSettings::pixels_per_meter` and write the recomputed

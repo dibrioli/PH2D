@@ -353,8 +353,6 @@ impl crate::App {
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             let mut activate_padding = false;
-            let mut padding_ui_edits: Vec<ph2d_editor::tools::padding::PaddingUiEdit> = Vec::new();
-            let mut padding_cancel = false;
             for action in hero.bus.drain() {
                 use ph2d_editor::action_bus::EditorAction;
                 match action {
@@ -375,12 +373,14 @@ impl crate::App {
                             t.handle_panel_event(ev);
                         }
                     }
-                    // ADR-0040 TG-B: generic "cancel the active modal tool".
-                    // Switch back to the default tool and tear down the
-                    // image-tool's shell-side preview caches. Currently the
-                    // BgRemoval panel is the only producer (Padding still
-                    // raises `PaddingCancel` until TG-C); the bgremoval
-                    // cleanup is a no-op if any other tool was active.
+                    // ADR-0040 TG-B/TG-C: generic "cancel the active modal
+                    // tool". Switch back to the default tool and tear down
+                    // any image-tool shell-side preview caches. Bg Removal +
+                    // Padding panels both raise this; the bgremoval cleanup
+                    // is a no-op when padding (or any non-bgremoval tool)
+                    // was active. Padding's shell-side state is purely
+                    // tool-internal (no shell-cached preview), so no
+                    // padding-specific cleanup is needed here.
                     EditorAction::CancelActiveTool => {
                         if let Some(default_id) = tools.default_tool_id()
                             && tools.set_active(&default_id)
@@ -390,8 +390,6 @@ impl crate::App {
                             self.title_dirty = true;
                         }
                     }
-                    EditorAction::PaddingUiEdit(edit) => padding_ui_edits.push(edit),
-                    EditorAction::PaddingCancel => padding_cancel = true,
                     EditorAction::UndoImageEdit => undo_image_edit = true,
                     EditorAction::HierToggleVisibility { row } => {
                         visibility_toggle_row.get_or_insert(row);
@@ -521,25 +519,18 @@ impl crate::App {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool · Bg Removal"));
             }
-            // (Bg Removal cancel moved to the generic
+            // (Bg Removal + Padding cancel both go through the generic
             // `EditorAction::CancelActiveTool` drain above — ADR-0040
-            // TG-B. Padding cancel keeps its dedicated arm until TG-C.)
-            // Activate / cancel the stateful Padding tool (mirror of the
-            // Bg Removal activate/cancel above). Clicking the Padding pill
-            // raises `ActivatePadding`; the panel's Cancel raises
-            // `PaddingCancel` (switch back to the default tool).
+            // TG-B/TG-C.)
+            // Activate the stateful Padding tool (mirror of the
+            // Bg Removal activate above). Clicking the Padding pill
+            // raises `ActivateTool { tool_id: "padding" }`.
             if hero.image_edit.mode_on
                 && activate_padding
                 && tools.set_active(&ph2d_editor::ToolId::new("padding"))
             {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool · Padding"));
-            }
-            if padding_cancel
-                && let Some(default_id) = tools.default_tool_id()
-                && tools.set_active(&default_id)
-            {
-                self.title_dirty = true;
             }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
             // TopBar Image Tools toggle (`image_edit.mode_on`) and the
@@ -568,19 +559,14 @@ impl crate::App {
                     self.title_dirty = true;
                 }
             }
-            // Padding panel ⟷ tool bridge — drains panel edits into the
-            // tool, publishes the snapshot, draws the live (non-destructive)
-            // canvas-bounds preview, and returns the (selection, spec,
-            // pivot mode) to bake on Apply. Sibling `padding_bridge.rs`.
-            let padding_apply = padding_bridge::dispatch(
-                hero,
-                tools,
-                sim,
-                camera,
-                window_size,
-                vector_scene,
-                padding_ui_edits,
-            );
+            // Padding panel ⟷ tool bridge — publishes the snapshot, draws
+            // the live (non-destructive) canvas-bounds preview, and returns
+            // the (selection, spec, pivot mode) to bake on Apply. Panel
+            // events themselves are routed earlier in the frame via
+            // `EditorAction::ToolPanelEvent` → `Tool::handle_panel_event`
+            // (ADR-0040 TG-C). Sibling `padding_bridge.rs`.
+            let padding_apply =
+                padding_bridge::dispatch(hero, tools, sim, camera, window_size, vector_scene);
             // Bg Removal panel ⟷ tool bridge + on-canvas live preview
             // — extracted to sibling `bgremoval_preview.rs` (HR-18 LOC).
             // Panel events now flow through `EditorAction::ToolPanelEvent`

@@ -5,11 +5,11 @@
 //! frame the shell publishes a [`PaddingUiSnapshot`] via
 //! [`set_current_padding_snapshot`] BEFORE the panel paints; the paint
 //! reads it to seed the four field values. Edits flow back out over
-//! `EditorAction::PaddingUiEdit` (see [`crate::event`]), so the panel
+//! `EditorAction::ToolPanelEvent` (see [`crate::event`]), so the panel
 //! itself holds no authoritative state — [`PaddingPanelState`] is an
 //! empty marker.
 
-use ph2d_editor_core::tools::padding::PaddingUiSnapshot;
+use ph2d_tool_padding::params::PaddingUiSnapshot;
 use std::cell::{Cell, RefCell};
 
 thread_local! {

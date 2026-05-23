@@ -17,9 +17,10 @@
 //! (the make_square precedent).
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
-use ph2d_editor_core::tool::Tool;
+use ph2d_editor_core::ids;
+use ph2d_editor_core::tool::{PanelEvent, Tool};
 
-use super::params::{PaddingUiEdit, PaddingUiSnapshot};
+use super::params::{PaddingUiEdit, PaddingUiSnapshot, slider_to_px};
 
 /// Editor Tool implementing the stateful Padding / Expand feature.
 ///
@@ -142,6 +143,52 @@ impl Tool for PaddingTool {
         // here would desync the painted fields from the tool the next time
         // the panel opens.
         self.pending_apply = false;
+    }
+
+    fn handle_panel_event(&mut self, event: PanelEvent) {
+        // ADR-0040 TG-C: docked-panel `PAD_*` NodeIds route through
+        // `apply_ui_edit` so the slider/chip → px projection lives once.
+        // Sliders carry the bipolar normalized track 0..1; chips carry the
+        // signed pixel value directly. The panel still mirrors slider
+        // value ↔ chip value on its own (UI-state-local in the widget
+        // store) — the tool only owns the SPEC, never the widget visuals.
+        match event {
+            // Sliders (bipolar 0..1 → signed px via slider_to_px).
+            PanelEvent::SetValue(id, v) if id == ids::PAD_TOP => {
+                self.apply_ui_edit(PaddingUiEdit::Top(slider_to_px(v as f32)));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::PAD_RIGHT => {
+                self.apply_ui_edit(PaddingUiEdit::Right(slider_to_px(v as f32)));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::PAD_BOTTOM => {
+                self.apply_ui_edit(PaddingUiEdit::Bottom(slider_to_px(v as f32)));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::PAD_LEFT => {
+                self.apply_ui_edit(PaddingUiEdit::Left(slider_to_px(v as f32)));
+            }
+            // Number chips (raw signed px, rounded — the chip already
+            // commits an integer value but `PanelEvent::SetValue` is f64).
+            PanelEvent::SetValue(id, v) if id == ids::PAD_TOP_NUM => {
+                self.apply_ui_edit(PaddingUiEdit::Top(v.round() as i32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::PAD_RIGHT_NUM => {
+                self.apply_ui_edit(PaddingUiEdit::Right(v.round() as i32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::PAD_BOTTOM_NUM => {
+                self.apply_ui_edit(PaddingUiEdit::Bottom(v.round() as i32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::PAD_LEFT_NUM => {
+                self.apply_ui_edit(PaddingUiEdit::Left(v.round() as i32));
+            }
+            // Buttons.
+            PanelEvent::Click(id) if id == ids::PAD_PIVOT_RECENTER => {
+                self.apply_ui_edit(PaddingUiEdit::TogglePivotRecenter);
+            }
+            PanelEvent::Click(id) if id == ids::PAD_APPLY => {
+                self.apply_ui_edit(PaddingUiEdit::Apply);
+            }
+            _ => {}
+        }
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

@@ -1,0 +1,37 @@
+[package]
+name = "ph2d-tool-upscale"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Upscale — multi-sprite resolution upscaling with three competing
+# algorithms covering the design space: Lanczos3 (default, photos /
+# realistic sprites, Duchon 1979 sinc-based), Nearest (pixel-art exact —
+# preserves the source grid), Scale2x/3x/4x (Mazzoleni 2001 — edge-aware
+# corner replacement under the "xBR" label here; an open follow-up
+# vertical migrates to full Hyllian xBR). Stateful tool with docked
+# panel (sabor 3); Image Tools row, order 120 (rightmost). Crate-irmão:
+# ph2d-panel-upscale.
+
+[dependencies]
+# Registry types (ToolManifest, Zone, Role, etc.).
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# Tool trait + FloatingPanel + ids the UpscaleTool builds on; the
+# params/vocabulary module is re-exported at this crate's root
+# (ADR-0040 TG-B/TG-C pattern: vocab lives in the tool crate).
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# Vector primitives (BezPath, Point, Shape) for the icon glyph.
+ph2d-vector = { path = "../ph2d-vector" }
+# Accessibility (Role) for the manifest a11y declaration (HR-12).
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget type for the manifest budget declaration (HR-13).
+ph2d-core = { path = "../ph2d-core" }
+# imageops::resize (Triangle) for the panel preview thumbnail downscale,
+# mirroring ph2d-tool-bgremoval. Decoders stripped — operates on
+# already-decoded RGBA (ph2d-asset is the decode boundary).
+image = { version = "0.25", default-features = false }

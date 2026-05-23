@@ -11,11 +11,17 @@ authors.workspace = true
 
 # Upscale panel — typed `Panel<State>` (ADR-0029). Right-docked
 # (Inspector geometry slot); visible only while the `upscale` tool is
-# active. Algorithm dropdown (Lanczos3 / Nearest / xBR), scale slider
-# (1×–16×), preview, Apply / Cancel. Coord pre-work stub.
+# active. Algorithm segmented control (Lanczos3 / Nearest / xBR), scale
+# slider (1×–16×) with paired numeric chip, live preview thumbnail,
+# Cancel / Apply. Mirrors ph2d-panel-bgremoval / ph2d-panel-padding
+# 1:1; reads its `UpscaleUiSnapshot` directly from the tool crate
+# (ADR-0040 TG-B pattern — panel → tool dep, never the reverse).
 
 [dependencies]
 ph2d-editor-core   = { path = "../ph2d-editor-core" }
+# The tool crate owns the UI vocabulary (UpscaleUiSnapshot /
+# UpscaleAlgorithm + scale consts) per ADR-0040 TG-B.
+ph2d-tool-upscale  = { path = "../ph2d-tool-upscale" }
 ph2d-a11y          = { path = "../ph2d-a11y" }
 ph2d-tokens        = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

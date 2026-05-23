@@ -490,20 +490,16 @@ pub fn paint_sprite_gizmo_keyed(
     let bl = world_to_screen(view, rotate_world(-hx_w, -hy_w));
     let br = world_to_screen(view, rotate_world(hx_w, -hy_w));
 
-    // Interior bbox hit — Translate.
-    let sx_min = tl[0].min(tr[0]).min(bl[0]).min(br[0]);
-    let sx_max = tl[0].max(tr[0]).max(bl[0]).max(br[0]);
-    let sy_min = tl[1].min(tr[1]).min(bl[1]).min(br[1]);
-    let sy_max = tl[1].max(tr[1]).max(bl[1]).max(br[1]);
-    let aabb = Rect::new(sx_min, sy_min, sx_max - sx_min, sy_max - sy_min);
-    register_keyed_handle(
-        hit_index,
-        hit_map,
-        target,
-        ids::GIZMO_BBOX_INTERIOR,
-        GizmoDragKind::Translate,
-        aabb,
-    );
+    // Onda 2C hotfix: do NOT register a BBOX_INTERIOR hit for extras
+    // or the global. Their bbox AABBs are big (and the global covers
+    // EVERY sprite + 32 px offset), so registering them after the
+    // primary's handles would shadow every individual scale / rotate
+    // handle on `hit_index`'s back-to-front walk. Translate dispatch
+    // for these gizmos goes through the shell's canvas-pick branch
+    // instead: a click in the empty area of an extra resolves to the
+    // sprite via `pick_sprites_at_world`, and the smart-click
+    // preservation logic keeps the multi-selection alive while a
+    // group-translate drag opens against that sprite.
 
     // Outline stroke.
     paint_oriented_bbox(

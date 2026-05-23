@@ -199,17 +199,9 @@ pub fn dispatch_pointer_with_text<'frame>(
                         _ => d.start_value,
                     };
                     let raw_value = current_value + delta;
-                    // Three-tier clamp: panel-registered natural-unit
-                    // bounds win first (Color EQ chips register e.g.
-                    // brightness ±0.5 explicitly). Otherwise fall back to
-                    // the existing 0..1 clamp for linked-slider / blender
-                    // channel chips, or no clamp at all (unbounded scrub
-                    // for free-floating chips like Inspector position).
-                    let new_value = if let Some((min, max)) = store.chip_drag_bounds(d.id) {
-                        raw_value.clamp(min, max)
-                    } else if store.linked_slider(d.id).is_some()
-                        || store.blender_channel_chip(d.id).is_some()
-                    {
+                    let is_bounded = store.linked_slider(d.id).is_some()
+                        || store.blender_channel_chip(d.id).is_some();
+                    let new_value = if is_bounded {
                         raw_value.clamp(0.0, 1.0)
                     } else {
                         raw_value
@@ -672,18 +664,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                     && !is_double_click
                     && let Some(InteractiveState::NumberInput { value, buffer, .. }) = store.get(id)
                 {
-                    // Per-chip drag step override (e.g. Color Equalization
-                    // chips set tight steps so the scrub covers their
-                    // narrow natural-unit ranges over ~200 px instead of
-                    // the heuristic's 2-6 px). Falls back to the buffer
-                    // heuristic when no override is registered.
-                    let step = store.chip_drag_step(id).unwrap_or_else(|| {
-                        if buffer.contains('.') {
-                            0.01
-                        } else {
-                            1.0
-                        }
-                    });
+                    let step = if buffer.contains('.') { 0.01 } else { 1.0 };
                     let drag = drag::NumberInputDragState {
                         id,
                         start_x: event.x,

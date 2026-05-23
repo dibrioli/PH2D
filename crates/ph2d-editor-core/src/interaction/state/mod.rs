@@ -182,21 +182,6 @@ pub struct WidgetStore {
     /// hosting screen at construction time.
     pub(super) slider_to_number: BTreeMap<NodeId, NodeId>,
     pub(super) number_to_slider: BTreeMap<NodeId, NodeId>,
-    /// Per-chip drag step override. When a chip is registered here,
-    /// the `NumberInput` Down handler uses this value as the drag
-    /// `step` instead of the buffer-inferred heuristic ("." → 0.01,
-    /// else 1.0). Lets panels with narrow-range natural-unit chips
-    /// (e.g. Color Equalization's brightness ±0.5) scrub at a sensible
-    /// rate (~full range / 200 px) instead of the heuristic's
-    /// 0.5 units / px which covers the full range in 2 pixels.
-    pub(super) chip_drag_step: BTreeMap<NodeId, f64>,
-    /// Per-chip drag bounds (min, max). When set, the `NumberInput`
-    /// drag-slider Move handler clamps the scrubbed value to this
-    /// range — same role `linked_slider` plays for 0..1-space chips,
-    /// but with explicit natural-unit bounds. Lets natural-unit chips
-    /// stay inside the tool's accepted range while dragging without
-    /// drifting past the slider track's visible endpoints.
-    pub(super) chip_drag_bounds: BTreeMap<NodeId, (f64, f64)>,
     /// Hex `TextInput` id → its parent `BlenderPicker` id, so the
     /// dispatch can parse the typed buffer on Enter / blur and apply
     /// the resulting color to the parent state.
@@ -424,8 +409,6 @@ impl WidgetStore {
             active_rect: None,
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
-            chip_drag_step: BTreeMap::new(),
-            chip_drag_bounds: BTreeMap::new(),
             hex_to_blender_parent: BTreeMap::new(),
             blender_channel_chip: BTreeMap::new(),
             last_down_id: None,
@@ -485,36 +468,6 @@ impl WidgetStore {
 
     pub fn linked_slider(&self, number: NodeId) -> Option<NodeId> {
         self.number_to_slider.get(&number).copied()
-    }
-
-    /// Register a per-chip drag step override. The `NumberInput` Down
-    /// handler caches this as the drag `step` instead of the buffer-
-    /// inferred heuristic, letting natural-unit chips with narrow
-    /// ranges (e.g. brightness ±0.5) scrub at a sensible rate.
-    pub fn register_chip_drag_step(&mut self, chip: NodeId, step: f64) {
-        self.chip_drag_step.insert(chip, step);
-    }
-
-    /// Look up the per-chip drag step override registered for `chip`,
-    /// if any. The pointer dispatch falls back to the buffer-inferred
-    /// heuristic when no override is set.
-    pub fn chip_drag_step(&self, chip: NodeId) -> Option<f64> {
-        self.chip_drag_step.get(&chip).copied()
-    }
-
-    /// Register a per-chip drag clamp `[min, max]` in the chip's
-    /// natural unit. The drag-slider Move handler keeps the scrubbed
-    /// value inside this range so a natural-unit chip can't drift past
-    /// the tool's accepted bounds while the cursor keeps moving.
-    pub fn register_chip_drag_bounds(&mut self, chip: NodeId, min: f64, max: f64) {
-        self.chip_drag_bounds.insert(chip, (min, max));
-    }
-
-    /// Look up the per-chip drag bounds registered for `chip`, if any.
-    /// When `None`, the dispatch falls back to either the `linked_slider`
-    /// 0..1 clamp or no clamp at all (unbounded scrub).
-    pub fn chip_drag_bounds(&self, chip: NodeId) -> Option<(f64, f64)> {
-        self.chip_drag_bounds.get(&chip).copied()
     }
 
     /// Record the latest pointer-Down for double-click detection.

@@ -41,6 +41,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::IMAGE_ACTION_REAL_SIZE,
         ids::IMAGE_ACTION_PADDING,
         ids::IMAGE_ACTION_COLOR_EQUALIZATION,
+        ids::IMAGE_ACTION_EQUALIZE_SIZES,
     ] {
         store.register(
             id,

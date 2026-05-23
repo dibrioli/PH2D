@@ -15,9 +15,16 @@ authors.workspace = true
 # the live preview renders on the canvas itself, not in this panel.
 
 [dependencies]
-ph2d-editor-core = { path = "../ph2d-editor-core" }
-ph2d-a11y        = { path = "../ph2d-a11y" }
-ph2d-tokens      = { path = "../ph2d-tokens" }
+ph2d-editor-core    = { path = "../ph2d-editor-core" }
+# ADR-0040 TG-B: the bgremoval UI vocabulary (`BgRemovalUiSnapshot` /
+# `BrushFalloff` + scale consts) moved into the tool crate when the
+# generic `ToolPanelEvent` channel landed. Panel reads the snapshot it
+# paints from there directly — `editor-core` no longer carries the
+# vocab, and the new direction (panel → tool) does not cycle (tool
+# depends on editor-core, panel depends on both).
+ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
+ph2d-a11y           = { path = "../ph2d-a11y" }
+ph2d-tokens         = { path = "../ph2d-tokens" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }

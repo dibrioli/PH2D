@@ -24,12 +24,9 @@ Bg Removal stateful — Tool ativável via LeftRail com painel Procreate-style. 
 | Orchestrator | `algorithm::run_pipeline` | `run_pipeline(rgba, w, h, &BgRemovalParams, &mut Scratch)` | `scratch.output_rgba` |
 | Tool wrapper | `tool::BgRemovalTool` | `impl Tool`, `set_source_snapshot`, `take_pending_apply`, `run_full_resolution` | — |
 
-Ilha **não toca:**
-- `tools/mod.rs` (re-exports — você adiciona).
-- Qualquer arquivo fora de `crates/ph2d-editor/src/tools/bgremoval/`.
-- Tool registration (ToolRegistry::register em shells/desktop).
-- `icons.rs` (variant `IconId::BgRemoval` — você adiciona).
-- HeroScreen field `pending_bgremoval: Option<u64>` (você adiciona).
+Ilha **não toca:** *(seção original do briefing pré-ADR-0040; após T2 o feature
+inteiro vive aqui em `crates/ph2d-tool-bgremoval/`. Mantido como histórico do
+plano de absorção e desativado para futuras releituras.)*
 
 ## 2. UX-alvo (v1 — alinhado à Widget Gallery canônica §5.6)
 

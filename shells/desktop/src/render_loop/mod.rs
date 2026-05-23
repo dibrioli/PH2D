@@ -352,9 +352,6 @@ impl crate::App {
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
-            let mut bgremoval_ui_edits: Vec<ph2d_editor::tools::bgremoval::BgRemovalUiEdit> =
-                Vec::new();
-            let mut bgremoval_cancel = false;
             let mut activate_padding = false;
             let mut padding_ui_edits: Vec<ph2d_editor::tools::padding::PaddingUiEdit> = Vec::new();
             let mut padding_cancel = false;
@@ -369,8 +366,30 @@ impl crate::App {
                         "padding" => activate_padding = true,
                         _ => {}
                     },
-                    EditorAction::BgremovalUiEdit(edit) => bgremoval_ui_edits.push(edit),
-                    EditorAction::BgremovalCancel => bgremoval_cancel = true,
+                    // ADR-0040 TG-B: generic panel→tool channel. Route the
+                    // event to the active tool's `handle_panel_event` —
+                    // semantic mapping (slider id → typed UI edit) lives on
+                    // the tool, not here.
+                    EditorAction::ToolPanelEvent(ev) => {
+                        if let Some(t) = tools.active_mut() {
+                            t.handle_panel_event(ev);
+                        }
+                    }
+                    // ADR-0040 TG-B: generic "cancel the active modal tool".
+                    // Switch back to the default tool and tear down the
+                    // image-tool's shell-side preview caches. Currently the
+                    // BgRemoval panel is the only producer (Padding still
+                    // raises `PaddingCancel` until TG-C); the bgremoval
+                    // cleanup is a no-op if any other tool was active.
+                    EditorAction::CancelActiveTool => {
+                        if let Some(default_id) = tools.default_tool_id()
+                            && tools.set_active(&default_id)
+                        {
+                            self.last_bgremoval_pushed_entity = None;
+                            self.bgremoval_preview = None;
+                            self.title_dirty = true;
+                        }
+                    }
                     EditorAction::PaddingUiEdit(edit) => padding_ui_edits.push(edit),
                     EditorAction::PaddingCancel => padding_cancel = true,
                     EditorAction::UndoImageEdit => undo_image_edit = true,
@@ -412,23 +431,24 @@ impl crate::App {
                     // for the existing per-tool drain functions; bgremoval bake
                     // is deferred via leftover (must run AFTER ActivateTool
                     // has switched the tool active, image_edit.rs:184 picks it up).
-                    oneshot @ EditorAction::OneShotImageOp { tool_id, entity_bits } => {
-                        match tool_id {
-                            "trim_transparency" => {
-                                trim_entity.get_or_insert(entity_bits);
-                            }
-                            "make_square" => {
-                                make_square_entity.get_or_insert(entity_bits);
-                            }
-                            "real_size" => {
-                                real_size_entity.get_or_insert(entity_bits);
-                            }
-                            "bgremoval" => {
-                                bgremoval_leftover.push(oneshot);
-                            }
-                            _ => {}
+                    oneshot @ EditorAction::OneShotImageOp {
+                        tool_id,
+                        entity_bits,
+                    } => match tool_id {
+                        "trim_transparency" => {
+                            trim_entity.get_or_insert(entity_bits);
                         }
-                    }
+                        "make_square" => {
+                            make_square_entity.get_or_insert(entity_bits);
+                        }
+                        "real_size" => {
+                            real_size_entity.get_or_insert(entity_bits);
+                        }
+                        "bgremoval" => {
+                            bgremoval_leftover.push(oneshot);
+                        }
+                        _ => {}
+                    },
                     EditorAction::InspectorTransformEdit(info) => {
                         transform_edit.get_or_insert(info);
                     }
@@ -501,19 +521,9 @@ impl crate::App {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool · Bg Removal"));
             }
-            // Cancel Background Removal: deactivate the tool by switching
-            // back to the default (first-registered) tool. The preview
-            // is dropped below (visibility gate sets it None when the
-            // tool is no longer active), the sprite un-suppresses, and
-            // the Inspector returns.
-            if bgremoval_cancel
-                && let Some(default_id) = tools.default_tool_id()
-                && tools.set_active(&default_id)
-            {
-                self.last_bgremoval_pushed_entity = None;
-                self.bgremoval_preview = None;
-                self.title_dirty = true;
-            }
+            // (Bg Removal cancel moved to the generic
+            // `EditorAction::CancelActiveTool` drain above — ADR-0040
+            // TG-B. Padding cancel keeps its dedicated arm until TG-C.)
             // Activate / cancel the stateful Padding tool (mirror of the
             // Bg Removal activate/cancel above). Clicking the Padding pill
             // raises `ActivatePadding`; the panel's Cancel raises
@@ -573,6 +583,10 @@ impl crate::App {
             );
             // Bg Removal panel ⟷ tool bridge + on-canvas live preview
             // — extracted to sibling `bgremoval_preview.rs` (HR-18 LOC).
+            // Panel events now flow through `EditorAction::ToolPanelEvent`
+            // (drained above into `handle_panel_event` → `apply_ui_edit`);
+            // the canvas-preview cache is gated on `BgRemovalTool::take_params_dirty`
+            // instead of a per-frame edits vector (ADR-0040 TG-B).
             let bgremoval_apply_committed = bgremoval_preview::dispatch(
                 hero,
                 tools,
@@ -583,7 +597,6 @@ impl crate::App {
                 camera,
                 window_size,
                 vector_scene,
-                bgremoval_ui_edits,
                 &mut self.last_bgremoval_pushed_entity,
                 &mut self.bgremoval_preview,
             );

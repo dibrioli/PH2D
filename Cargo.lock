@@ -4117,6 +4117,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-tokens",
+ "ph2d-tool-bgremoval",
 ]
 
 [[package]]

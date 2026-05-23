@@ -214,7 +214,7 @@ pub const BGR_FALLOFF_CONSTANT: NodeId = hash_node_id("bgr_falloff_constant");
 /// Extra-colour swatch hit slots 0..11. Painted only when the
 /// corresponding extra colour exists (a fixed pool, like the Blender
 /// palette's `BLENDER_SWATCH_*`). Capacity matches
-/// [`crate::tools::bgremoval::MAX_EXTRA_BG_COLORS`]. Right-clicking a
+/// `ph2d_tool_bgremoval::params::MAX_EXTRA_BG_COLORS`. Right-clicking a
 /// painted slot removes that colour.
 pub const BGR_SWATCH_0: NodeId = hash_node_id("bgr_swatch_0");
 pub const BGR_SWATCH_1: NodeId = hash_node_id("bgr_swatch_1");

@@ -1,19 +1,17 @@
-//! Tool UI/action **vocabulary** that the foundation owns (ADR-0040).
+//! Tool UI/action **vocabulary** the foundation still owns (ADR-0040).
 //!
-//! All tool *implementations* now live in satellite crates
-//! (`ph2d-tool-*`). What remains here is only the vocabulary the
-//! editor-core action bus and the `ph2d-panel-*` crates read for the
-//! stateful image tools — kept here to avoid an `editor-core → tool`
-//! cycle until the generic action channel lands (ADR-0040 T1.2/T1.3):
+//! All tool *implementations* live in satellite crates (`ph2d-tool-*`).
+//! After ADR-0040 TG-B the bgremoval vocabulary moved to
+//! `ph2d_tool_bgremoval::params` — the generic `ToolPanelEvent` channel
+//! and `BgRemovalTool::handle_panel_event` made the editor-core copy
+//! unnecessary. Only padding still keeps a vocabulary module here until
+//! TG-C completes the same migration:
 //!
-//! - [`bgremoval`] — `BgRemovalUiEdit`/`UiSnapshot`/`BrushFalloff` + params
 //! - [`padding`] — `PaddingUiEdit`/`UiSnapshot` + slider mapping
 //!
-//! Tool crates re-export these modules at their own root so their
-//! moved `tool.rs` files resolve `super::params` unchanged. Everything
-//! else (Brush, Move, BgRemoval, Padding, Trim, Make Square, Real Size)
-//! is a `ph2d-tool-*` crate; `editor-core/src/tools/` holds no tool
-//! impl (foundation ⊥ tools, gated by `architecture_cycle_prevention`).
+//! The tool crate re-exports `padding::params` at its own root so its
+//! moved `tool.rs` files resolve `super::params` unchanged. When TG-C
+//! ships, `pub mod tools` disappears from `lib.rs` (ADR-0040 TG-D) and
+//! this file is deleted.
 
-pub mod bgremoval;
 pub mod padding;

@@ -9,12 +9,11 @@ authors.workspace = true
 
 [lib]
 
-# Background Removal — Stateful Tool, isolated crate (ADR-0040 T2). Owns the
+# Background Removal — Stateful Tool, isolated crate (ADR-0040). Owns the
 # whole feature: ToolManifest (data) + BgRemovalTool (impl Tool) + the pure
-# chroma/guided-filter/compose pipeline + scratch buffers + icon. Depends on
-# ph2d-editor-core for the Tool/widget/FloatingPanel contract (satellite
-# direction); the UI/action vocabulary is re-exported from editor-core's
-# `tools::bgremoval::params` (see lib.rs) until the generic channel lands.
+# chroma/guided-filter/compose pipeline + scratch buffers + icon + UI/action
+# vocabulary (`params` module). Depends on ph2d-editor-core for the
+# Tool/widget/FloatingPanel contract (satellite direction).
 
 [dependencies]
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

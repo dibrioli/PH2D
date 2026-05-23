@@ -6,28 +6,27 @@
 //! happens at full resolution on commit; live preview runs on a downscaled
 //! thumbnail.
 //!
-//! ADR-0040 T2 — this crate now owns the whole feature: the `ToolManifest`
-//! (data), [`BgRemovalTool`] (behavior, `impl ph2d_editor_core::tool::Tool`),
-//! the pure [`algorithm`] pipeline, [`scratch`] buffers, and [`icon`]. It
-//! depends on `ph2d-editor-core` (the `Tool`/widget/`FloatingPanel` contract,
-//! the allowed satellite direction), never the reverse.
+//! ADR-0040 — this crate now owns the whole feature, vocabulary included:
+//! the `ToolManifest` (data), [`BgRemovalTool`] (behavior,
+//! `impl ph2d_editor_core::tool::Tool`), the pure [`algorithm`] pipeline,
+//! [`scratch`] buffers, [`icon`], and the UI/action vocabulary in
+//! [`params`] (`BgRemovalUiEdit` / `BgRemovalUiSnapshot` / `BrushFalloff` /
+//! `BgRemovalParams` + scale consts). It depends on `ph2d-editor-core` (the
+//! `Tool` / widget / `FloatingPanel` contract — the allowed satellite
+//! direction), never the reverse.
 //!
-//! The UI/action **vocabulary** (`BgRemovalUiEdit`/`BgRemovalUiSnapshot`/
-//! `BrushFalloff`/`BgRemovalParams` + scale consts) still lives in
-//! `ph2d_editor_core::tools::bgremoval::params` because the editor-core action
-//! bus and the `ph2d-panel-bgremoval` crate read it. It is re-exported here as
-//! [`params`] so the moved files' `super::params` paths resolve unchanged; it
-//! migrates into this crate when the generic action channel lands (T1.2/T1.3).
+//! TG-B closed the last editor-core dependency on bgremoval semantics: panel
+//! events now flow through the generic `EditorAction::ToolPanelEvent` →
+//! `BgRemovalTool::handle_panel_event` (which calls `apply_ui_edit`), so the
+//! foundation no longer carries `BgRemovalUiEdit` in its action bus. The
+//! `params` module then moved here without any cycle risk; `ph2d-panel-bgremoval`
+//! reads its snapshot type from this crate.
 
 pub mod algorithm;
 pub mod icon;
+pub mod params;
 pub mod scratch;
 pub mod tool;
-
-/// UI/action vocabulary, re-exported from editor-core (see module docs). The
-/// re-export makes `crate::params` (hence `super::params` in the moved files)
-/// resolve to the foundation-side single source of truth.
-pub use ph2d_editor_core::tools::bgremoval::params;
 
 pub use tool::BgRemovalTool;
 

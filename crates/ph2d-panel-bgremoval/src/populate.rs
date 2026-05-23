@@ -8,8 +8,8 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::tools::bgremoval::BgRemovalUiSnapshot;
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
+use ph2d_tool_bgremoval::params::BgRemovalUiSnapshot;
 
 pub fn populate(store: &mut WidgetStore) {
     for id in [

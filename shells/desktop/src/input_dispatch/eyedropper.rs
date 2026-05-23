@@ -19,10 +19,11 @@ impl App {
     /// deselect the sprite while sampling).
     ///
     /// On a successful sample we drop `self.bgremoval_preview` so the
-    /// per-frame dispatch recomputes the on-canvas overlay next frame
-    /// (sampling pushes no `BgremovalUiEdit`, so the overlay would
-    /// otherwise go stale — `add_extra_color` already re-runs the
-    /// thumbnail so `ui_snapshot` reflects the new swatch).
+    /// per-frame dispatch recomputes the on-canvas overlay next frame.
+    /// `add_extra_color` flips the tool's `params_dirty` flag so the
+    /// canvas-preview cache rebuilds on the same frame the swatch
+    /// appears (ADR-0040 TG-B; previously the overlay went stale until
+    /// an unrelated panel edit nudged it).
     pub(crate) fn try_eyedropper_sample(&mut self, px: f32, py: f32) -> bool {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;

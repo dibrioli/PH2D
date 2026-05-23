@@ -4,12 +4,12 @@
 //! in the shell's `ToolRegistry` (unreachable from `HeroScreen`). Each
 //! frame the shell publishes a normalized [`BgRemovalUiSnapshot`] via
 //! [`set_current_bgremoval_snapshot`] BEFORE the panel paints; the paint
-//! reads it to position the sliders + highlight the active mode. Edits
-//! flow back out over `EditorAction::BgremovalUiEdit` (see
+//! reads it to position the sliders + highlight the active mode. Panel
+//! events flow back out over `EditorAction::ToolPanelEvent` (see
 //! [`crate::event`]), so the panel itself holds no authoritative param
 //! state — [`BgRemovalPanelState`] is an empty marker.
 
-use ph2d_editor_core::tools::bgremoval::BgRemovalUiSnapshot;
+use ph2d_tool_bgremoval::params::BgRemovalUiSnapshot;
 use std::cell::{Cell, RefCell};
 
 thread_local! {

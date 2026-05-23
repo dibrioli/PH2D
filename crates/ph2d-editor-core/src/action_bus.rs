@@ -78,21 +78,27 @@ pub enum EditorAction {
         entity_bits: u64,
     },
 
-    /// One Background-Removal panel edit (mode / slider / Apply) routed
-    /// from the typed `ph2d-panel-bgremoval` to the shell. Migrates to
-    /// the generic `ToolPanelEvent` channel in ADR-0040 TG-B.
-    BgremovalUiEdit(crate::tools::bgremoval::BgRemovalUiEdit),
+    /// Generic panel → tool event channel (ADR-0040 TG-B). Typed
+    /// panels (`ph2d-panel-bgremoval`, `ph2d-panel-padding`, …) convert
+    /// their `WidgetEvent`s into a tool-agnostic [`PanelEvent`] (carrying
+    /// the widget's `NodeId` + payload) and push this variant; the shell
+    /// drains by calling `tools.active_mut().map(|t| t.handle_panel_event(ev))`.
+    /// The semantic mapping (slider id → `BgRemovalUiEdit::Tolerance(v)`)
+    /// lives in the tool's `handle_panel_event`, not in the panel, so
+    /// adding a panel-edit semantic does not require a new variant here.
+    ToolPanelEvent(crate::tool::PanelEvent),
 
-    /// Cancel Background Removal: abandon the live preview (no commit)
-    /// and deactivate the tool so the panel hides and the Inspector
-    /// returns. Raised by the panel's Cancel button. The shell switches
-    /// the active tool back to the default. Migrates to ActivateTool
-    /// (default) in ADR-0040 TG-B.
-    BgremovalCancel,
+    /// Generic cancel of the active modal tool (ADR-0040 TG-B). Shell
+    /// drains by calling `tools.activate_default()` and tearing down any
+    /// tool-specific shell-side preview state. Raised by panels' Cancel
+    /// buttons. Replaces the per-tool `PaddingCancel` once TG-C lands;
+    /// `BgremovalCancel` already migrated in TG-B.
+    CancelActiveTool,
 
     /// One Padding panel edit (one of the four signed per-edge fields or
     /// Apply) routed from the typed `ph2d-panel-padding` to the shell.
-    /// Mirror of [`Self::BgremovalUiEdit`]. Migrates in ADR-0040 TG-C.
+    /// Migrates to the generic [`Self::ToolPanelEvent`] channel in
+    /// ADR-0040 TG-C (mirror of the bgremoval TG-B migration).
     PaddingUiEdit(crate::tools::padding::PaddingUiEdit),
 
     /// Cancel Padding: abandon the in-progress spec (no bake) and
@@ -321,9 +327,15 @@ mod tests {
     #[test]
     fn push_then_len_grows() {
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 42 });
+        bus.push(EditorAction::OneShotImageOp {
+            tool_id: "trim_transparency",
+            entity_bits: 42,
+        });
         assert_eq!(bus.len(), 1);
-        bus.push(EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 99 });
+        bus.push(EditorAction::OneShotImageOp {
+            tool_id: "make_square",
+            entity_bits: 99,
+        });
         assert_eq!(bus.len(), 2);
     }
 
@@ -333,14 +345,39 @@ mod tests {
         // relies on this for the gizmo's drag-then-release sequence
         // and similar paired-intent cases.
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
-        bus.push(EditorAction::ActivateTool { tool_id: "bgremoval" });
-        bus.push(EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 });
+        bus.push(EditorAction::OneShotImageOp {
+            tool_id: "trim_transparency",
+            entity_bits: 1,
+        });
+        bus.push(EditorAction::ActivateTool {
+            tool_id: "bgremoval",
+        });
+        bus.push(EditorAction::OneShotImageOp {
+            tool_id: "make_square",
+            entity_bits: 2,
+        });
         let drained: Vec<_> = bus.drain().collect();
         assert_eq!(drained.len(), 3);
-        assert_eq!(drained[0], EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
-        assert_eq!(drained[1], EditorAction::ActivateTool { tool_id: "bgremoval" });
-        assert_eq!(drained[2], EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 });
+        assert_eq!(
+            drained[0],
+            EditorAction::OneShotImageOp {
+                tool_id: "trim_transparency",
+                entity_bits: 1
+            }
+        );
+        assert_eq!(
+            drained[1],
+            EditorAction::ActivateTool {
+                tool_id: "bgremoval"
+            }
+        );
+        assert_eq!(
+            drained[2],
+            EditorAction::OneShotImageOp {
+                tool_id: "make_square",
+                entity_bits: 2
+            }
+        );
         assert!(bus.is_empty(), "bus must be empty after drain");
     }
 
@@ -355,19 +392,36 @@ mod tests {
     #[test]
     fn push_after_drain_starts_fresh_sequence() {
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
+        bus.push(EditorAction::OneShotImageOp {
+            tool_id: "trim_transparency",
+            entity_bits: 1,
+        });
         let _ = bus.drain().count();
-        bus.push(EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 });
+        bus.push(EditorAction::OneShotImageOp {
+            tool_id: "make_square",
+            entity_bits: 2,
+        });
         assert_eq!(bus.len(), 1);
         let drained: Vec<_> = bus.drain().collect();
-        assert_eq!(drained, vec![EditorAction::OneShotImageOp { tool_id: "make_square", entity_bits: 2 }]);
+        assert_eq!(
+            drained,
+            vec![EditorAction::OneShotImageOp {
+                tool_id: "make_square",
+                entity_bits: 2
+            }]
+        );
     }
 
     #[test]
     fn clear_empties_without_dispatching() {
         let mut bus = ActionBus::new();
-        bus.push(EditorAction::OneShotImageOp { tool_id: "trim_transparency", entity_bits: 1 });
-        bus.push(EditorAction::ActivateTool { tool_id: "bgremoval" });
+        bus.push(EditorAction::OneShotImageOp {
+            tool_id: "trim_transparency",
+            entity_bits: 1,
+        });
+        bus.push(EditorAction::ActivateTool {
+            tool_id: "bgremoval",
+        });
         bus.clear();
         assert!(bus.is_empty());
         // Subsequent drain yields nothing.

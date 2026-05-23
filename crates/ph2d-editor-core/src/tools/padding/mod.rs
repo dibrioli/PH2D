@@ -7,9 +7,9 @@
 //! pivot). No live preview and no on-canvas gizmo edge-drag — both are
 //! v2 (the directional-expand gizmo is the canvas half of the feature).
 //!
-//! Shape mirrors [`crate::tools::bgremoval`] (stateful tool + typed
-//! panel crate + shell bridge + bake), minus the preview / scratch /
-//! algorithm machinery.
+//! Shape mirrors `ph2d_tool_bgremoval` (stateful tool + typed panel
+//! crate + shell bridge + bake), minus the preview / scratch / algorithm
+//! machinery.
 
 // ADR-0040 T3: `PaddingTool` moved to crate `ph2d-tool-padding` (which
 // already owned the `add_padding` algorithm). What stays here is the

@@ -22,7 +22,6 @@
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
 use crate::{BgRemovalPanel, ids};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::tools::bgremoval::BrushFalloff;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
     paint_panel_title, paint_segmented_group,
@@ -33,6 +32,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tool_bgremoval::params::BrushFalloff;
 
 /// Label column width for slider rows (passed to the canonical
 /// `paint_slider_with_chip_layout`). // LITERAL-PX-OK: panel grid metric

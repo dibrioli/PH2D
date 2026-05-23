@@ -271,11 +271,13 @@ impl Default for BgRemovalUiSnapshot {
     }
 }
 
-/// One panel-originated parameter edit, routed editor-core → shell over
-/// `EditorAction::BgremovalUiEdit`. The shell drains it and calls
-/// `BgRemovalTool::apply_ui_edit` (in crate `ph2d-tool-bgremoval`)
-/// against the active tool instance. Slider values are normalized
-/// `0.0..=1.0`; the tool maps them back to full scale.
+/// One panel-originated parameter edit. After ADR-0040 TG-B these edits
+/// no longer travel as their own `EditorAction` variant — the panel
+/// pushes the generic `EditorAction::ToolPanelEvent(PanelEvent::…)` and
+/// the shell calls `BgRemovalTool::handle_panel_event`, which maps the
+/// `NodeId` back to one of these variants and forwards it to
+/// `apply_ui_edit`. Slider values are normalized `0.0..=1.0`; the tool
+/// maps them back to full scale.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum BgRemovalUiEdit {
     /// Tolerance slider moved (normalized).

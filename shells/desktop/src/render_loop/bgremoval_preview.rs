@@ -7,9 +7,11 @@
 //! 1. Pushes the active sprite's RGBA into the `BgRemovalTool` snapshot
 //!    when the selection drifts (so the tool segments the live pixels).
 //! 2. Drives the panel's visibility (shown iff bgremoval is active),
-//!    drains the panel's `BgremovalUiEdit`s into the tool, fires the
-//!    full-res commit on Apply, and publishes the normalized snapshot
-//!    the panel paints next frame.
+//!    polls the tool for `take_params_dirty()` to gate the canvas-preview
+//!    rerun (panel events themselves are routed earlier in the frame via
+//!    `EditorAction::ToolPanelEvent → Tool::handle_panel_event` — ADR-0040
+//!    TG-B), fires the full-res commit on Apply, and publishes the
+//!    normalized snapshot the panel paints next frame.
 //! 3. (Re)computes the full-res straight-alpha preview and blits it on
 //!    top of the sprite's on-canvas footprint (the sprite itself is
 //!    suppressed from the sprite pass while previewing — see
@@ -44,7 +46,6 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
-    mut bgremoval_ui_edits: Vec<ph2d_editor::tools::bgremoval::BgRemovalUiEdit>,
     last_bgremoval_pushed_entity: &mut Option<u64>,
     bgremoval_preview: &mut Option<BgremovalPreview>,
 ) -> bool {
@@ -85,7 +86,6 @@ pub(super) fn dispatch(
     // "bgremoval" to match `BgRemovalPanel::ID`).
     hero.panel_visibility
         .insert("bgremoval", bgremoval_is_active);
-    let params_changed = !bgremoval_ui_edits.is_empty();
     let mut apply_selection: Option<u64> = None;
     // Captured for the protection-mask overlay tint (built while the tool
     // is borrowed below, drawn in the on-canvas overlay block).
@@ -99,9 +99,14 @@ pub(super) fn dispatch(
             .as_any_mut()
             .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
     {
-        for edit in bgremoval_ui_edits.drain(..) {
-            bg.apply_ui_edit(edit);
-        }
+        // ADR-0040 TG-B replaces the old `!bgremoval_ui_edits.is_empty()`
+        // gate with the tool's own `take_params_dirty` — panel events are
+        // routed straight into `handle_panel_event → apply_ui_edit` in the
+        // action-bus drain (`render_loop::mod.rs`), so by the time we
+        // reach this bridge the dirty flag already reflects every panel
+        // edit + every shell-side mutator (eyedropper / protect-brush /
+        // clear). Drained inside the `bg` borrow so it can flip cleanly.
+        let params_changed = bg.take_params_dirty();
         if bg.take_pending_apply() {
             apply_selection = hero.gizmo.selection;
         }

@@ -12,9 +12,9 @@ use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
-use ph2d_tool_bgremoval::BgRemovalTool;
 use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer};
+use ph2d_tool_bgremoval::BgRemovalTool;
 
 use super::texture_edit;
 use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot, drop_undo_pre_source_if_individual};

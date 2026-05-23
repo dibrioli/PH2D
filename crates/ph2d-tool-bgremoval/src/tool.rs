@@ -34,12 +34,13 @@
 //! a proper PanelAction-with-NodeId once `floating_panel.rs` gets
 //! that surface.
 
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::floating_panel::{
     FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId,
 };
+use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::widget::{Slider, Toggle};
-use ph2d_a11y::NodeId;
 
 use super::algorithm::run_pipeline;
 use super::params::{
@@ -108,6 +109,15 @@ pub struct BgRemovalTool {
     /// it runs the pipeline at full resolution against the active
     /// sprite and writes back a new Individual texture.
     pending_apply: bool,
+
+    /// Set to `true` by any mutator that touches state the shell's
+    /// on-canvas preview reflects (params, extra-bg colours, painted
+    /// protection mask). Host polls via [`Self::take_params_dirty`]
+    /// each frame as the gate for rerunning `run_canvas_preview` —
+    /// replaces the old `!bgremoval_ui_edits.is_empty()` check the
+    /// shell used before ADR-0040 TG-B routed panel events through
+    /// `handle_panel_event` directly.
+    params_dirty: bool,
 
     /// Whether the panel eyedropper is armed. While `true`, the shell's
     /// canvas click-drag handler samples the source pixel under the
@@ -181,6 +191,7 @@ impl Default for BgRemovalTool {
             preview_rgba: Vec::new(),
             scratch: BgRemovalScratch::default(),
             pending_apply: false,
+            params_dirty: false,
             eyedropper_armed: false,
             protect_brush_armed: false,
             protect_painting: false,
@@ -229,6 +240,13 @@ impl BgRemovalTool {
         self.rebuild_thumbnail();
         self.rebuild_canvas_src();
         self.rerun_preview();
+        // The cached on-canvas preview the shell holds was computed against
+        // the previous selection's source — mark dirty so the next bridge
+        // tick rebuilds it. (Shell also drops `bgremoval_preview` when
+        // `last_bgremoval_pushed_entity` changes, so this is a belt-and-
+        // suspenders for the path where the snapshot push fires for some
+        // other reason but the cached preview is now stale.)
+        self.params_dirty = true;
     }
 
     /// Whether the host has pushed a source snapshot at least once.
@@ -259,6 +277,15 @@ impl BgRemovalTool {
         let p = self.pending_apply;
         self.pending_apply = false;
         p
+    }
+
+    /// Drain the params-dirty flag. Returns `true` exactly once when
+    /// any panel-edit / extra-colour / protect-mask mutator has run
+    /// since the last call. The shell uses this as the gate for
+    /// rerunning the on-canvas live preview (ADR-0040 TG-B replacement
+    /// for the old `!bgremoval_ui_edits.is_empty()` check).
+    pub fn take_params_dirty(&mut self) -> bool {
+        std::mem::take(&mut self.params_dirty)
     }
 
     /// Whether the panel eyedropper is armed (shell samples canvas
@@ -398,6 +425,13 @@ impl BgRemovalTool {
                 };
             }
         }
+        // Protect dab mutates the mask (force-keep region for compose).
+        // The matte itself only re-segments on pointer-up (shell drops
+        // its cached preview there); but the on-canvas tint overlay
+        // reads the mask each frame and the canvas preview gate uses
+        // this flag — mark dirty so a follow-up render-loop tick sees
+        // the new mask without waiting for an unrelated edit.
+        self.params_dirty = true;
     }
 
     /// Protection-brush radius in SOURCE pixels (the unit the shell passes
@@ -438,6 +472,9 @@ impl BgRemovalTool {
         if self.has_source() {
             self.rerun_preview();
         }
+        // Canvas-preview cache must rebuild (the matte just dropped the
+        // forced-keep region).
+        self.params_dirty = true;
     }
 
     /// Borrow the current extra background colours (sRGB 8-bit).
@@ -467,6 +504,11 @@ impl BgRemovalTool {
         if self.has_source() {
             self.rerun_preview();
         }
+        // Eyedropper sampling mutates params.extra_bg_colors → canvas
+        // preview must rebuild (previously this site did NOT invalidate
+        // the shell-side cache because eyedropper dabs bypassed the bus;
+        // refreshing it eagerly here closes a 1-frame staleness gap).
+        self.params_dirty = true;
     }
 
     /// Remove the extra background colour at `idx` (bounds-checked).
@@ -480,6 +522,8 @@ impl BgRemovalTool {
         if self.has_source() {
             self.rerun_preview();
         }
+        // Same rationale as `add_extra_color`.
+        self.params_dirty = true;
     }
 
     /// Sample the stored SOURCE snapshot at normalized UV `(u, v)`
@@ -808,6 +852,12 @@ impl BgRemovalTool {
         if changed && self.has_source() {
             self.rerun_preview();
         }
+        // Every UI edit marks the shell-side canvas-preview cache stale —
+        // parity with the pre-ADR-0040-TG-B `!bgremoval_ui_edits.is_empty()`
+        // gate. Some variants (`BrushSize` / `SetFalloff` / `Apply` /
+        // toggles) don't change the matte itself, but the previous code
+        // already invalidated the canvas preview for them; preserved here.
+        self.params_dirty = true;
     }
 }
 
@@ -858,29 +908,134 @@ impl Tool for BgRemovalTool {
     }
 
     fn handle_panel_event(&mut self, event: PanelEvent) {
+        // Docked-panel NodeIds (`BGR_*` in `ph2d_editor_core::ids`) are
+        // routed through `apply_ui_edit` so the semantic mapping
+        // (normalized slider → full-scale param, clamps, projections) lives
+        // exactly once. ADR-0040 TG-B replacement for the panel-side
+        // semantic mapping that used to live in `panel-bgremoval/event.rs`.
+        match event {
+            // Sliders (normalized 0..1).
+            PanelEvent::SetValue(id, v) if id == ids::BGR_TOLERANCE => {
+                self.apply_ui_edit(BgRemovalUiEdit::Tolerance(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_FEATHER => {
+                self.apply_ui_edit(BgRemovalUiEdit::Feather(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_REFINE => {
+                self.apply_ui_edit(BgRemovalUiEdit::Refine(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_GROW => {
+                self.apply_ui_edit(BgRemovalUiEdit::Grow(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_BRUSH_SIZE => {
+                self.apply_ui_edit(BgRemovalUiEdit::BrushSize(v as f32));
+                return;
+            }
+            // Number chips (same semantics as the matching slider).
+            PanelEvent::SetValue(id, v) if id == ids::BGR_TOLERANCE_NUM => {
+                self.apply_ui_edit(BgRemovalUiEdit::Tolerance(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_FEATHER_NUM => {
+                self.apply_ui_edit(BgRemovalUiEdit::Feather(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_REFINE_NUM => {
+                self.apply_ui_edit(BgRemovalUiEdit::Refine(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_GROW_NUM => {
+                self.apply_ui_edit(BgRemovalUiEdit::Grow(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::BGR_BRUSH_SIZE_NUM => {
+                self.apply_ui_edit(BgRemovalUiEdit::BrushSize(v as f32));
+                return;
+            }
+            // 4-way falloff segmented.
+            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_SMOOTH => {
+                self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Smooth));
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_SPHERE => {
+                self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Sphere));
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_SHARP => {
+                self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Sharp));
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_FALLOFF_CONSTANT => {
+                self.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
+                return;
+            }
+            // Buttons.
+            PanelEvent::Click(id) if id == ids::BGR_APPLY => {
+                self.apply_ui_edit(BgRemovalUiEdit::Apply);
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_EYEDROPPER => {
+                self.apply_ui_edit(BgRemovalUiEdit::ToggleEyedropper);
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_PROTECT => {
+                self.apply_ui_edit(BgRemovalUiEdit::ToggleProtectBrush);
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_PROTECT_CLEAR => {
+                self.apply_ui_edit(BgRemovalUiEdit::ClearProtectMask);
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_SHOW_MASK => {
+                self.apply_ui_edit(BgRemovalUiEdit::ToggleShowMask);
+                return;
+            }
+            _ => {}
+        }
+        // FloatingPanel built by `build_panel` — kept for parity with the
+        // pre-docked-panel path. Distinct NodeIds (`TOLERANCE_NODE = 504`
+        // etc.) so the two arm-sets never overlap.
+        let mut matched = false;
         let mut changed = false;
         match event {
             PanelEvent::SetValue(id, v) if id == TOLERANCE_NODE => {
                 self.params.chroma.tolerance = (v.clamp(0.0, 1.0) as f32) * 0.30;
                 changed = true;
+                matched = true;
             }
             PanelEvent::SetValue(id, v) if id == FEATHER_NODE => {
                 self.params.chroma.feather = (v.clamp(0.0, 1.0) as f32) * 0.20;
                 changed = true;
+                matched = true;
             }
             PanelEvent::SetValue(id, v) if id == REFINE_NODE => {
                 self.params.refinement.radius = (v.clamp(0.0, 1.0) * 100.0).round() as u32;
                 changed = true;
+                matched = true;
             }
             // One-shot trigger; the next build_panel emits a
             // fresh Toggle with on=false so the visual resets.
             PanelEvent::Toggle(id, on) if id == APPLY_NODE && on => {
                 self.pending_apply = true;
+                matched = true;
             }
             _ => {}
         }
         if changed && self.has_source() {
             self.rerun_preview();
+        }
+        // Parity with the docked-panel path (which routes through
+        // `apply_ui_edit` and so picks up the same dirty mark): any matched
+        // FloatingPanel edit invalidates the shell-side canvas-preview
+        // cache. Without this, sliders on the legacy panel would not
+        // refresh the on-canvas overlay until an unrelated event nudged
+        // `take_params_dirty`.
+        if matched {
+            self.params_dirty = true;
         }
     }
 
@@ -892,6 +1047,12 @@ impl Tool for BgRemovalTool {
         self.protect_brush_armed = false;
         self.protect_painting = false;
         self.protect_erase_mode = false;
+        // Clear the one-shot drain flags so a Cancel-mid-Apply (or any
+        // deactivation while the bridge hasn't yet drained the pending
+        // apply / dirty bit) does not fire a phantom bake nor a spurious
+        // canvas-preview rerun on the next activation.
+        self.pending_apply = false;
+        self.params_dirty = false;
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

@@ -1,10 +1,10 @@
 //! [`PaddingTool`] — stateful editor Tool for canvas padding / crop.
 //!
 //! Model: four signed per-edge pixel counts + a one-shot `pending_apply`
-//! flag. Far leaner than [`BgRemovalTool`](crate::tools::bgremoval) — no
-//! source snapshot, no thumbnail, no scratch, no live preview (those are
-//! v2). The tool reacts only to its panel widgets, never to the canvas
-//! (the §5.5 ENTREGÁVEL contract).
+//! flag. Far leaner than `ph2d_tool_bgremoval::BgRemovalTool` — no source
+//! snapshot, no thumbnail, no scratch, no live preview (those are v2).
+//! The tool reacts only to its panel widgets, never to the canvas (the
+//! §5.5 ENTREGÁVEL contract).
 //!
 //! ## Apply flow
 //!

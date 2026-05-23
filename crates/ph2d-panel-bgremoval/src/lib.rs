@@ -13,10 +13,11 @@
 //! unreachable from `HeroScreen`. So:
 //! - the host publishes a normalized [`BgRemovalUiSnapshot`] each frame
 //!   via [`set_current_bgremoval_snapshot`] → [`paint`] reads it;
-//! - panel edits flow out over `EditorAction::BgremovalUiEdit` → the
-//!   shell drains them into `BgRemovalTool::apply_ui_edit`.
+//! - panel edits flow out over `EditorAction::ToolPanelEvent` → the
+//!   shell calls `BgRemovalTool::handle_panel_event`, which routes
+//!   each event through `apply_ui_edit` (ADR-0040 TG-B).
 //!
-//! [`BgRemovalUiSnapshot`]: ph2d_editor_core::tools::bgremoval::BgRemovalUiSnapshot
+//! [`BgRemovalUiSnapshot`]: ph2d_tool_bgremoval::params::BgRemovalUiSnapshot
 
 #![forbid(unsafe_code)]
 

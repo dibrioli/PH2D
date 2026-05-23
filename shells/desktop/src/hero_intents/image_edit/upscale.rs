@@ -9,25 +9,34 @@ use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 
 use crate::hero_intents::texture_edit;
-use crate::{ImageEditSnapshot, drop_undo_pre_source_if_individual};
+use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot, drop_undo_pre_source_if_individual};
 
 /// Drain one Upscale-bake request: push the sprite's source RGBA
 /// into the active `UpscaleTool`, run the algorithm at full
-/// resolution, swap to a fresh Individual texture (resizing
-/// `Sprite.size` to keep the visual on-screen size the same — Upscale
-/// rewrites pixels at higher resolution but the world-space extent
-/// stays put), and capture undo.
+/// resolution, swap to a fresh Individual texture, **grow
+/// `Sprite.size` to the new pixel dim**, and reset `Transform.scale`
+/// to `±1` (flip-sign preserved).
+///
+/// Legacy parity (port of `EditorToolDispatcher.ts case 'upscale'` in
+/// `Game-Engine-Legada`):
+///
+/// ```ts
+/// sel.img    = upResult.canvas;
+/// sel.w      = upResult.canvas.width;   // pixel dim = world dim there
+/// sel.h      = upResult.canvas.height;
+/// sel.scaleX = sel.scaleX < 0 ? -1 : 1; // reset transform.scale
+/// sel.scaleY = sel.scaleY < 0 ? -1 : 1;
+/// ```
+///
+/// PH2D translation: `Sprite.size` is in WORLD meters (not pixels),
+/// so `new_size = out_pixels / pixels_per_meter`. Transform scale
+/// reset to `±1` ensures the visual size on screen equals the new
+/// world size — without the reset, an existing scale factor would
+/// double-multiply against the already-grown texture.
 ///
 /// Cross-sprite: caller iterates `Vec<u64>` (one entry per selected
 /// sprite); each call re-pushes the source so the bake matches the
 /// live sprite.
-///
-/// Mirror of `super::color_equalization::drain_color_equalization`
-/// (set_source_snapshot → run_full_resolution → texture swap) with
-/// one twist: `Sprite.size` is PRESERVED in world space (we pass
-/// `old_size_world` to `commit_edited_texture`), so the visual size
-/// stays the same and the user sees a higher-resolution version of
-/// the same sprite.
 ///
 /// Returns `true` if a toast was pushed (caller marks title dirty).
 #[allow(clippy::too_many_arguments)]
@@ -42,8 +51,8 @@ pub(crate) fn drain_upscale(
     image_edit_undo: &mut Option<ImageEditSnapshot>,
     ups: &mut ph2d_tool_upscale::UpscaleTool,
 ) -> bool {
-    let _ = project_pixels_per_meter; // size kept in world space (see doc above)
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+    let px_per_m = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
     let Some(src) =
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
@@ -55,6 +64,13 @@ pub(crate) fn drain_upscale(
     let old_translation = src.old_translation;
     let old_premultiplied = src.old_premultiplied;
     let old_anchor = src.old_anchor;
+    // Capture the prior Transform.scale signs BEFORE the commit so
+    // the reset below preserves a horizontal/vertical flip.
+    let (scale_sign_x, scale_sign_y) = sim
+        .world()
+        .get::<ph2d_ecs::Transform>(entity)
+        .map(|t| (t.scale.x.signum(), t.scale.y.signum()))
+        .unwrap_or((1.0, 1.0));
     // Resample kernels operate on straight-alpha RGBA per-channel —
     // round-trip back to the source alpha mode at the chokepoint so a
     // premultiplied BgRemoval result survives Upscale byte-faithful.
@@ -81,12 +97,22 @@ pub(crate) fn drain_upscale(
     } else {
         edited_straight
     };
-    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world) {
+    // Sprite.size GROWS by the upscale factor (in world meters).
+    let new_size_world = [out_w as f32 / px_per_m, out_h as f32 / px_per_m];
+    match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, new_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Upscale failed: {err}")));
             true
         }
         Ok(texture_id) => {
+            // Reset Transform.scale to ±1, preserving the flip sign.
+            // Without the reset, an existing scale factor would
+            // double-multiply against the already-grown texture and
+            // visually double the on-canvas size.
+            if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
+                t.scale.x = if scale_sign_x < 0.0 { -1.0 } else { 1.0 };
+                t.scale.y = if scale_sign_y < 0.0 { -1.0 } else { 1.0 };
+            }
             drop_undo_pre_source_if_individual(renderer, image_edit_undo);
             *image_edit_undo = Some(ImageEditSnapshot {
                 entity_bits,

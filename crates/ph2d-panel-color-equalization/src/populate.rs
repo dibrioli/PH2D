@@ -15,9 +15,11 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_color_equalization::params::{
-    BRIGHTNESS_DEFAULT, CLIP_LIMIT_DEFAULT, CONTRAST_DEFAULT, SATURATION_DEFAULT,
-    TILE_GRID_DEFAULT, brightness_to_slider, clip_limit_to_slider, contrast_to_slider,
-    saturation_to_slider, tile_grid_to_slider,
+    BRIGHTNESS_DEFAULT, BRIGHTNESS_MAX, BRIGHTNESS_MIN, CLIP_LIMIT_DEFAULT, CLIP_LIMIT_MAX,
+    CLIP_LIMIT_MIN, CONTRAST_DEFAULT, CONTRAST_MAX, CONTRAST_MIN, SATURATION_DEFAULT,
+    SATURATION_MAX, SATURATION_MIN, TILE_GRID_DEFAULT, TILE_GRID_MAX, TILE_GRID_MIN,
+    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, saturation_to_slider,
+    tile_grid_to_slider,
 };
 
 pub fn populate(store: &mut WidgetStore) {
@@ -91,6 +93,52 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+    }
+
+    // Per-chip drag step + bounds — the buffer-inferred heuristic
+    // ("." → 0.01 step, else 1.0) was tuned for chips with wide
+    // natural ranges (Inspector position 0..N×1000 px). CEQ chips have
+    // narrow ranges (brightness ±1, contrast 0.5..2.0, etc.) so the
+    // heuristic's `DRAG_RATE_X × step = 50 × 0.01 = 0.5 units/px` would
+    // cover the full range in 2-6 pixels — unusable. Targets here aim
+    // for "full range over ~200 px of drag" so the chip scrub matches
+    // the slider's feel.
+    let steps_and_bounds: [(_, f64, f64, f64); 5] = [
+        // (chip_id, step, min, max) — `delta = dom_dx * 50.0 * step`.
+        (
+            ids::CEQ_CLIP_LIMIT_NUM,
+            (CLIP_LIMIT_MAX - CLIP_LIMIT_MIN) as f64 / (200.0 * 50.0),
+            CLIP_LIMIT_MIN as f64,
+            CLIP_LIMIT_MAX as f64,
+        ),
+        (
+            ids::CEQ_TILE_GRID_NUM,
+            (TILE_GRID_MAX - TILE_GRID_MIN) as f64 / (200.0 * 50.0),
+            TILE_GRID_MIN as f64,
+            TILE_GRID_MAX as f64,
+        ),
+        (
+            ids::CEQ_BRIGHTNESS_NUM,
+            (BRIGHTNESS_MAX - BRIGHTNESS_MIN) as f64 / (200.0 * 50.0),
+            BRIGHTNESS_MIN as f64,
+            BRIGHTNESS_MAX as f64,
+        ),
+        (
+            ids::CEQ_CONTRAST_NUM,
+            (CONTRAST_MAX - CONTRAST_MIN) as f64 / (200.0 * 50.0),
+            CONTRAST_MIN as f64,
+            CONTRAST_MAX as f64,
+        ),
+        (
+            ids::CEQ_SATURATION_NUM,
+            (SATURATION_MAX - SATURATION_MIN) as f64 / (200.0 * 50.0),
+            SATURATION_MIN as f64,
+            SATURATION_MAX as f64,
+        ),
+    ];
+    for (chip_id, step, min, max) in steps_and_bounds {
+        store.register_chip_drag_step(chip_id, step);
+        store.register_chip_drag_bounds(chip_id, min, max);
     }
 }
 

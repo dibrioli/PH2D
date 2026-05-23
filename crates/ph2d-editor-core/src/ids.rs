@@ -118,6 +118,16 @@ pub const IMAGE_ACTION_REAL_SIZE: NodeId = hash_node_id("real_size");
 /// Condenses the legacy Image Padding + Directional Expand.
 pub const IMAGE_ACTION_PADDING: NodeId = hash_node_id("padding");
 
+/// Color Equalization panel marker NodeId. Right-docked in the
+/// Inspector geometry slot while the `color_equalization` tool is
+/// active. Hash matches `ph2d_tool_color_equalization::ids::CEQ_PANEL`
+/// (the tool crate owns the canonical const for its own widgets;
+/// editor-core mirrors it here so `paint_hero_screen`'s z_order
+/// fallback can walk the panel without a circular dep on the tool
+/// crate). Same hash key (`"panel.color_equalization"`), same
+/// resolved id.
+pub const CEQ_PANEL: NodeId = hash_node_id("panel.color_equalization");
+
 /// Image Tools action — Color Equalization pill. Stateful tool: opens
 /// the right-docked panel with 5 slider+chip rows (clip limit, tile
 /// grid size, brightness, contrast, saturation), an Auto-WB toggle,

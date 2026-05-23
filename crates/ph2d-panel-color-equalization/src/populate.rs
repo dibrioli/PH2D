@@ -74,13 +74,10 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+        // `link_slider_number` auto-marks `chip_id` as no-stepper too
+        // (see its doc) so the chip's right edge doesn't arm a phantom
+        // continuous-hold from the dispatch's default stepper carve.
         store.link_slider_number(slider_id, chip_id);
-        // The chip is painted as a bare pill via `paint_number_chip`
-        // (no stepper arrows), so disable the default stepper hit-test
-        // — otherwise a click on the chip's right edge would arm
-        // `number_stepper_hold` and keep incrementing the value while
-        // the pointer stays still (phantom continuous-hold).
-        store.mark_chip_no_stepper(chip_id);
     }
 }
 

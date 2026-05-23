@@ -468,9 +468,18 @@ impl WidgetStore {
     /// `number`'s value follows; when `number` commits a new value,
     /// `slider` follows. Caller is responsible for both ids being
     /// pre-registered as Slider and NumberInput respectively.
+    ///
+    /// Also auto-marks `number` as a no-stepper chip — every linked
+    /// pair in the codebase is painted via `paint_slider_with_chip*`
+    /// which uses `paint_number_chip` (a pill without stepper arrows).
+    /// The default stepper hit-test would carve a 16-22 px phantom
+    /// continuous-hold zone on the chip's right edge; the auto-mark
+    /// prevents the "valor sobe sozinho com mouse parado" bug from
+    /// silently coming back when a panel adds a new linked row.
     pub fn link_slider_number(&mut self, slider: NodeId, number: NodeId) {
         self.slider_to_number.insert(slider, number);
         self.number_to_slider.insert(number, slider);
+        self.chips_without_steppers.insert(number);
     }
 
     pub fn linked_number(&self, slider: NodeId) -> Option<NodeId> {

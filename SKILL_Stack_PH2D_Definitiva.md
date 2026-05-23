@@ -914,6 +914,15 @@ A receita virou **3 passos**: largar a pasta + rodar o sync + verificar. Sem edi
 
 **Se a tool tem panel docado próprio**: o `crates/ph2d-panel-<slug>/` é OUTRO crate (vide DIRETRIZ §3.2); ele pushea `EditorAction::ToolPanelEvent(PanelEvent::SetValue|Click(id, …))` e o shell rota via `Tool::handle_panel_event` automaticamente.
 
+**REGRA DURA — UI canônica = Widget Gallery (DIRETRIZ §4.2):** o painel `ph2d-panel-widget-gallery` (seed em `crates/ph2d-editor-core/src/screens/hero/pre_populate.rs`, showcase em `crates/ph2d-editor-core/src/widget/showcase/`) é a ÚNICA fonte de verdade para layout, registro e wiring de widgets. Painel novo COPIA literalmente — não inventa. Em especial:
+
+- **Slider + chip pareados → SEMPRE** `store.link_slider_number(slider, chip)` no populate. Sem o link você acaba escrevendo mirror manual em `apply_event` que dessincroniza entre frames e o clamp `0..1` não engata. Storage de chip e slider ficam no MESMO espaço `0..1`; unidade natural ("2.00", "+0.30", "8") vai via `display_override` no `paint_slider_with_chip_layout` (paint-only).
+- **Chip pill (`paint_number_chip`, sem setinhas) → SEMPRE** `store.mark_chip_no_stepper(chip)` no populate. O dispatch carve uma coluna de 16-22 px no lado direito de TODO `NumberInput` como hit-zone de stepper; pra pill (sem arrows visíveis) isso vira phantom continuous-hold (`number_stepper_hold` arma e `dispatch_tick` incrementa a cada 30 ms com cursor parado).
+- **Tempo real no canvas (game engine!) → tool stateful que altera pixels expõe `take_params_dirty()` + `preview_rgba()`**, e o shell tem `render_loop/<slug>_bridge.rs` espelhando `shells/desktop/src/render_loop/bgremoval_preview.rs` — refresh do cache `Arc<Vec<u8>>` quando `take_params_dirty()`, paint via `vector_scene.draw_image_rgba` sobre o footprint da sprite, cache zerado em Apply/deactivate. Sem isso o painel muda valor e canvas fica congelado.
+- **`apply_event` é forwarder thin**: ouve `ValueChanged(slider_id_OR_chip_id)`, lê `store.slider(slider_id).value`, emite `PanelEvent::SetValue(slider_id, track)`. Slider/chip já estão sincronizados via `link_slider_number` — não escreva mirror manual.
+
+Cada uma dessas regras já queimou ≥1× na slot 1 do Color Equalization (commits `3bf8806`, `903d63c`, `2f58b73`, `7b5f7c1`). Coordenador bounce se faltar qualquer item do checklist em DIRETRIZ §4.2.
+
 ## 15. Anti-patterns (NÃO faça)
 
 - ❌ `Arc<Mutex<T>>` em hot path. Use `parking_lot::RwLock` raramente, prefira channels (`crossbeam`) ou ECS.

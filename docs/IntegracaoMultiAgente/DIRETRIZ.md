@@ -629,6 +629,13 @@ Dois agentes adicionando duas features (mesma família ou não) **não tocam nen
 - [ ] Se stateful: `handle_panel_event` cobre 1:1 os NodeIds do panel docado; rota tudo via `apply_ui_edit` (sem duplicar clamps) — disciplina manual, sem arch-gate.
 - [ ] Se for um vertical de migração para `ImageEditTool` (raro — vide §3.8.3.1): `as_image_edit_mut` retorna `Some(self)`; quadteto `set_source` / `preview` / `take_pending_commit` / `run_full` honra straight-alpha RGBA8. Caso contrário (padrão atual), raster I/O fica em métodos próprios da concrete type via `as_any_mut` downcast.
 - [ ] Ícone: SVG em `docs/design/icons/` + IconId variant em ordem alfabética em `icons.rs`.
+- [ ] **Painel docado segue Widget Gallery (vide §4.2)**: cada slider+chip
+      tem `link_slider_number`; cada chip pill tem `mark_chip_no_stepper`;
+      storage chip+slider no mesmo espaço `0..1` (unidade natural só
+      em paint via `display_override`); se altera pixels existe
+      `render_loop/<slug>_bridge.rs` espelhando `bgremoval_preview.rs`
+      com refresh em `take_params_dirty()` e overlay `draw_image_rgba`;
+      `apply_event` é forwarder thin (sem mirror manual). Bounce se faltar.
 
 Estado vivo + loops autônomos:
 - Sistema de nós: [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md) + [`docs/plans/2026-05-node-waves.md`](../plans/2026-05-node-waves.md).
@@ -670,6 +677,7 @@ CSS aliases em [`docs/design/styles/tokens.css`](../../docs/design/styles/tokens
 | [`hr12_widgets_a11y`](../../crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs) | widget que não emite `Node` AccessKit |
 | [`architecture_widget_loc_cap`](../../crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs) | widget primitive > 500 LOC |
 | [`architecture_widget_showcase_coverage`](../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs) | widget existe mas não aparece no Widget Gallery showcase nem em opt-out |
+| [`architecture_panel_chip_pill_no_stepper`](../../crates/ph2d-editor-core/tests/architecture_panel_chip_pill_no_stepper.rs) | painel pinta `paint_slider_with_chip*` (pill sem setinhas) mas populate não chama `link_slider_number` nem `mark_chip_no_stepper` — phantom stepper que incrementa com mouse parado (§4.2) |
 | [`mockup_tokens_exist`](../../crates/ph2d-tokens/tests/mockup_tokens_exist.rs) | `var(--X)` em mockup HTML que não resolve em tokens.json/styles |
 | [`architecture_register_all_alphabetical`](../../crates/ph2d-tool-registry-init/tests/architecture_register_all_alphabetical.rs) | `register_all` / `register_all_tools` / Cargo deps fora da ordem alfabética (3 sub-checks) |
 | [`staleness`](../../crates/ph2d-tool-registry-init/tests/staleness.rs) (tools) | tool-sync esquecido — `register_all` / `register_all_tools` / Cargo deps divergem do scan de `crates/ph2d-tool-*` (3 sub-checks) |
@@ -702,6 +710,103 @@ Bases de conhecimento: [`docs/UI_Bugs/README.md`](../UI_Bugs/README.md) (UI gera
    2.b **Pertencimento é data-driven, não lista de ids hardcoded.** "É um image tool?" = está no cluster `"image_tools"` do manifest, resolvido por UM helper (`is_image_edit_tool`) — não `id == "x" || id == "y"` espalhado por N sites. Assim toda tool futura do grupo é coberta de graça e não há lista pra dessincronizar.
 
 3. **Diagnostique medindo, não chutando.** Bug de UI/input com repro: instrumente (env-gate, ex.: `PH2D_UIDBG`) o caminho exato e capture o estado real (id resolvido no hit, flags, frame) antes de propor fix. Reverta a instrumentação no fim. Duas "correções" às cegas do bug do Image Tools falharam por chutar (uma chegou a mover o Config — proibido); a 3ª resolveu medindo.
+
+### 4.2 Widget Gallery é a fonte de verdade — copie, não reinvente
+
+A panela [`ph2d-panel-widget-gallery`](../../crates/ph2d-panel-widget-gallery/)
+(showcase em [`crates/ph2d-editor-core/src/widget/showcase/`](../../crates/ph2d-editor-core/src/widget/showcase/)
+e seed em [`crates/ph2d-editor-core/src/screens/hero/pre_populate.rs`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs))
+é a **única fonte de verdade da UI**. Todo painel novo
+(Inspector, BgRemoval, Padding, Color Equalization, Equalize Sizes,
+Rasterize, Upscale, e tudo que vier) **DEVE** usar EXATAMENTE o
+mesmo padrão de cada widget que aparece no Gallery. Não há "minha
+variação compacta", "no meu painel é diferente", nem "simplifiquei
+porque achei melhor". Se o Gallery faz X, seu painel faz X.
+
+Por que radical assim: cada vez que um painel diverge do Gallery,
+**a regressão aparece no painel** mas **a causa está num gap
+arquitetural** (dispatch tratando dois widgets visualmente distintos
+como um só, link bidirecional não engatado, preview por frame
+ausente). Esses gaps queimaram 4× só na slot 1 do CEQ.
+
+#### Regras herdadas do Gallery (cada uma já queimou ≥1×)
+
+1. **Slider + chip pareados → SEMPRE `store.link_slider_number(slider_id, chip_id)`.**
+   O link engata mirror bidirecional automático no dispatch — drag
+   do slider atualiza o chip, scrub/typing no chip atualiza o
+   slider, e o `linked_slider`-bounded clamp (`0..1`) impede
+   overshoot. Sem o link, painel **acaba escrevendo mirror manual**
+   em `apply_event` que dessincroniza entre frames e o clamp não
+   engata.
+   **Padrão:** chip e slider compartilham o espaço `0..1`
+   no storage. Unidade natural ("2.00 clip", "+0.30 brightness",
+   "8 tile-grid") vai via `display_override` no
+   `paint_slider_with_chip_layout` — paint-only, não muda a
+   storage. Veja
+   [`pre_populate.rs:212-231`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)
+   (Speed slider/chip).
+   Já queimou: CEQ slot 1 (commit `3bf8806`).
+
+2. **Tempo real no canvas — todo slider que altera pixels publica preview por frame.**
+   Esta é uma game engine; o usuário deve ver o efeito MOVIMENTANDO
+   o slider, NÃO só ao clicar Apply. Para tools `(3)` stateful+panel:
+   tool expõe `take_params_dirty()` e `preview_rgba()`; a bridge no
+   shell em [`render_loop/<tool>_bridge.rs`](../../shells/desktop/src/render_loop/)
+   (espelho de
+   [`render_loop/bgremoval_preview.rs`](../../shells/desktop/src/render_loop/bgremoval_preview.rs))
+   refaz o cache `Arc<Vec<u8>>` quando `take_params_dirty()`, pinta o
+   RGBA com `vector_scene.draw_image_rgba` sobre o footprint da
+   sprite, e zera o cache em Apply/deactivate. Sem isso o painel
+   muda valores e o canvas fica congelado — UX inaceitável numa
+   game engine.
+   Já queimou: CEQ slot 1 (commit `903d63c`).
+
+3. **`paint_number_chip` (pill, sem setinhas) ≠ `paint_number_input_with_buffer` (boxed, com setinhas).**
+   O dispatch carve uma coluna de 16-22 px no lado direito de TODO
+   `InteractiveState::NumberInput` como hit-zone de stepper. Pra
+   boxed isso é correto (as setinhas são visíveis). Pra chip pill
+   isso é zona invisível: click no lado direito arma
+   `number_stepper_hold` e o `dispatch_tick` incrementa o valor a
+   cada 30 ms com cursor parado.
+   **Padrão:** ao registrar um chip pill (que aparece junto a um
+   slider via `paint_slider_with_chip*`), chame
+   `store.mark_chip_no_stepper(chip_id)` no populate.
+   Já queimou: CEQ slot 1 (commit `2f58b73`).
+
+4. **Chip drag = incremental delta, não absolute-from-Down.** O
+   dispatch usa modelo incremental (`step_dx = event - last`,
+   `advance_number_input_drag_anchor` por Move) pra que reversão
+   após clamp reverta IMEDIATAMENTE o valor. O modelo absoluto-de-
+   Down (que existia antes de `7b5f7c1`) pregava o valor no bound
+   até o cursor voltar até `start_x` — usuário arrastava de volta
+   e "nada acontecia".
+   **Coordenador:** se ver código de chip drag que computa
+   `dx_total = event.x - start_x`, isso é regressão; o correto é
+   `event.x - last_x` com anchor advance.
+
+#### Checklist antes de criar / mergear painel novo (Coordenador)
+
+Abra o Widget Gallery na UI rodando. Identifique TODO widget que o
+painel vai usar. **Copie literalmente** o setup correspondente do
+[`pre_populate.rs`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)
+— mesmos campos, mesmo `link_*`, mesmo registro. Único delta
+legítimo: `display_override` no paint (quando unidade natural ≠ `0..1`).
+
+Antes de mergear painel novo, confira no diff:
+
+- [ ] Cada slider+chip tem `store.link_slider_number(slider, chip)` no populate.
+- [ ] Cada chip pill tem `store.mark_chip_no_stepper(chip)` no populate.
+- [ ] Storage chip + slider no MESMO espaço (`0..1`); unidade natural
+      só em paint via `display_override`.
+- [ ] Se o painel altera pixels: existe `render_loop/<tool>_bridge.rs`
+      espelhando `bgremoval_preview.rs`, com refresh em
+      `take_params_dirty()` e overlay via `draw_image_rgba`.
+- [ ] `apply_event` é forwarder thin (lê o slider, emite
+      `PanelEvent::SetValue(slider_id, track)`) — sem mirror manual
+      slider↔chip.
+
+Faltou alguma → bounce pro Implementador antes de mergear. **Não
+"vou abrir exceção".**
 
 ---
 

@@ -53,6 +53,9 @@ pub fn populate(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
+    // Pill chip via `paint_number_chip` (no stepper arrows) — kill the
+    // dispatch's default phantom stepper carve. See DIRETRIZ §4.2.
+    store.mark_chip_no_stepper(ids::UPS_SCALE_NUM);
 }
 
 #[cfg(test)]

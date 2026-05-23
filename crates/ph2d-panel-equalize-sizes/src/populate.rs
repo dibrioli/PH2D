@@ -61,6 +61,9 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+        // Pill chip via `paint_number_chip` (no stepper arrows) — kill
+        // the dispatch's default phantom stepper carve. See DIRETRIZ §4.2.
+        store.mark_chip_no_stepper(chip_id);
     }
 
     // Grid-unit slider: unipolar, seeded to the default grid_unit's

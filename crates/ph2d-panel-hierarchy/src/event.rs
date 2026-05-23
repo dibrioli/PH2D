@@ -84,26 +84,26 @@ pub(crate) fn apply_event(
         // multi-select-aware HierSelectRow / HierRangeSelect BEFORE
         // updating the header selection label, so the shell drain
         // resolves row → entity + mutates GizmoStateGroup according
-        // to modifier semantics (Replace / Add / Toggle / Range).
-        // Replaces the legacy HierRowClick emission; that variant
-        // stays in the enum but is no longer raised from this panel.
+        // to modifier semantics (Replace / Add / Toggle). Replaces
+        // the legacy HierRowClick emission; that variant stays in
+        // the enum but is no longer raised from this panel.
+        // Onda 1 hotfix: Shift behaves as Toggle in the hierarchy
+        // (matches canvas + Enio's spec — "Se selecionada e clicada
+        // com Ctrl ou Shift, desselecionar apenas a que foi clicada").
+        // HierRangeSelect stays in the action bus for a future range-
+        // select variant, but isn't emitted from this panel anymore.
         let live_hit = state::live_entries_contains(id);
         if live_hit {
             let store = host.store();
             let shift = store.shift_held();
             let cmd = store.cmd_held();
-            if shift && !cmd {
-                host.bus_mut()
-                    .push(EditorAction::HierRangeSelect { row: id });
+            let modifier = if shift || cmd {
+                SelectModifier::Toggle
             } else {
-                let modifier = if cmd {
-                    SelectModifier::Toggle
-                } else {
-                    SelectModifier::Replace
-                };
-                host.bus_mut()
-                    .push(EditorAction::HierSelectRow { row: id, modifier });
-            }
+                SelectModifier::Replace
+            };
+            host.bus_mut()
+                .push(EditorAction::HierSelectRow { row: id, modifier });
         }
         if let Some(entry) = state::live_entry_for(id) {
             *host.selection_mut() = Some(HeroSelection {

@@ -65,7 +65,30 @@ pub(super) fn publish(
                 entry.selected = true;
             }
         }
+        // Onda 1 hotfix: centralise the header label sync to the
+        // multi-selection primary. Input handlers (canvas pick,
+        // Hierarchy panel click, modifier override) used to stamp
+        // hero.selection themselves and could race — e.g. Hierarchy
+        // Cmd+click on row A stamped label="A" BEFORE the bus drain
+        // toggled A out of the selection, leaving paint's label-match
+        // fallback to re-highlight A. Snapshotting it once here
+        // post-drain, against the post-toggle primary, removes the
+        // race entirely.
+        let primary_label = hero
+            .gizmo
+            .selection
+            .and_then(|bits| live.bridge.node_for(bits))
+            .and_then(|node| entries.get(&node).map(|e| (e.name.clone(), e.badge.clone())));
         ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
+        if let Some((label, badge)) = primary_label {
+            hero.selection = Some(ph2d_editor::HeroSelection {
+                label,
+                kind: badge.unwrap_or_else(|| "ENT".to_string()),
+                world_pos: (0.0, 0.0),
+            });
+        } else if hero.gizmo.selection.is_none() {
+            hero.selection = None;
+        }
     }
     // M14.4b: publish the demo camera + window dims so the
     // hero paints its world grid overlay. `canvas` is a

@@ -113,6 +113,41 @@ pub fn pick_sprites_at_world(present: &mut World, world_pos: [f32; 2]) -> Vec<u6
     hits
 }
 
+/// Fase 0f: return every sprite whose axis-aligned world bbox
+/// intersects the rect spanning `rect_min`..`rect_max`. Used by the
+/// canvas rubber-band box-select gesture. Rotation is approximated
+/// by the un-rotated AABB (same conservative simplification as
+/// [`pick_sprite_at_world`]); for unrotated sprites — the common case
+/// in PH2D — the result is exact. The order of returned bits matches
+/// archetype iteration; the caller deduplicates as needed.
+pub fn pick_sprites_in_world_rect(
+    present: &mut World,
+    rect_min: [f32; 2],
+    rect_max: [f32; 2],
+) -> Vec<u64> {
+    let mut hits: Vec<u64> = Vec::new();
+    let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();
+    for (sim_ref, gt, ri) in q.iter(present) {
+        let pos = gt.translation();
+        let half_w = ri.size[0] * 0.5;
+        let half_h = ri.size[1] * 0.5;
+        let cx = pos.x + ri.anchor[0];
+        let cy = pos.y + ri.anchor[1];
+        let smin_x = cx - half_w;
+        let smax_x = cx + half_w;
+        let smin_y = cy - half_h;
+        let smax_y = cy + half_h;
+        if smax_x >= rect_min[0]
+            && smin_x <= rect_max[0]
+            && smax_y >= rect_min[1]
+            && smin_y <= rect_max[1]
+        {
+            hits.push(sim_ref.0.to_bits());
+        }
+    }
+    hits
+}
+
 pub fn pick_sprite_at_world(present: &mut World, world_pos: [f32; 2]) -> Option<u64> {
     let mut best: Option<u64> = None;
     let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();

@@ -42,6 +42,29 @@
 //! Each migration removes that field from `HeroScreen` and the
 //! corresponding drain block from `main.rs` / `hero_intents.rs`.
 
+/// Modifier-key context for a [`EditorAction::SelectSprite`] event
+/// (Fase 0b — image-tools multi-select). The hero/panel side resolves
+/// the OS keyboard modifier into this enum before pushing; the shell
+/// dispatches the matching [`crate::screens::hero::GizmoStateGroup`]
+/// API call. Stays a plain enum (no `bitflags`) — modifiers in PH2D
+/// don't compose meaningfully (Shift+Cmd-click on the same element
+/// has no defined semantics in this version).
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum SelectModifier {
+    /// No modifier. Replaces the entire selection with the clicked
+    /// sprite as the new primary. Most common path.
+    #[default]
+    Replace,
+    /// Shift held. Adds the clicked sprite to the selection without
+    /// dropping current sprites. If already selected, no-op (Shift
+    /// re-click is idempotent; use [`Self::Toggle`] for off-on).
+    Add,
+    /// Cmd (macOS) / Ctrl (Linux/Windows) held. Toggles the clicked
+    /// sprite in the selection — adds if absent, removes if present.
+    /// Removing the primary promotes the oldest extra to primary.
+    Toggle,
+}
+
 /// One outbound intent from the editor to the shell. Variants are
 /// added incrementally as `pending_X` fields migrate into the bus.
 /// Each variant carries enough payload that the shell can dispatch
@@ -156,6 +179,47 @@ pub enum EditorAction {
     /// `NodeId`. Live (ECS) mode only; fixture-only rows don't
     /// raise this.
     HierRowClick { row: ph2d_a11y::NodeId },
+
+    /// Canvas multi-select event (Fase 0b). Raised by the desktop
+    /// shell's canvas pick handler after resolving the click to its
+    /// `entity_bits` and reading the OS modifier into a
+    /// [`SelectModifier`]. Shell drains by routing through the
+    /// matching `GizmoStateGroup` mutation: `Replace` →
+    /// `replace_selection`, `Add` → `add_to_selection`, `Toggle` →
+    /// `toggle_in_selection`. Hierarchy clicks use the row-keyed
+    /// twin [`Self::HierSelectRow`] since the panel cannot resolve
+    /// `NodeId → entity_bits` itself.
+    SelectSprite {
+        entity_bits: u64,
+        modifier: SelectModifier,
+    },
+
+    /// Hierarchy-panel multi-select event (Fase 0b). Twin of
+    /// [`Self::SelectSprite`] but keyed by the row's `NodeId` —
+    /// `ph2d-panel-hierarchy` does not have a `NodeId → Entity`
+    /// resolver, so the shell does the lookup via the live bridge
+    /// before applying the same `GizmoStateGroup` mutation. Replaces
+    /// the legacy [`Self::HierRowClick`] for new emitters; the legacy
+    /// variant stays in the enum for now to avoid churning shell
+    /// drain logic outside Fase 0e.
+    HierSelectRow {
+        row: ph2d_a11y::NodeId,
+        modifier: SelectModifier,
+    },
+
+    /// Hierarchy-panel range select (Fase 0b). Shift-click on a live
+    /// row with a primary already set: shell walks the hierarchy row
+    /// order from the current primary's row to `row` and calls
+    /// `add_to_selection` on every entity in between (inclusive). No-op
+    /// when nothing is selected (no anchor). Canvas clicks have no
+    /// natural linear order so they do not emit this variant.
+    HierRangeSelect { row: ph2d_a11y::NodeId },
+
+    /// Drop primary + extras in one go (Fase 0b). Raised by canvas
+    /// click on an empty area without modifier, and by pressing Esc
+    /// while a selection is active. Shell drains by calling
+    /// `GizmoStateGroup::clear_all_selection`.
+    ClearSelection,
 
     /// One-shot seed of the rename TextInput buffer when inline-
     /// rename mode opens. Payload: the row's `NodeId`. Shell reads
@@ -426,5 +490,51 @@ mod tests {
         // here loudly.
         fn assert_clone_partialeq<T: Clone + PartialEq>() {}
         assert_clone_partialeq::<EditorAction>();
+    }
+
+    #[test]
+    fn select_modifier_default_is_replace() {
+        assert_eq!(SelectModifier::default(), SelectModifier::Replace);
+    }
+
+    #[test]
+    fn selection_variants_round_trip_through_bus() {
+        let row_a = ph2d_a11y::NodeId(1);
+        let row_b = ph2d_a11y::NodeId(2);
+        let mut bus = ActionBus::new();
+        bus.push(EditorAction::SelectSprite {
+            entity_bits: 0xAAAA,
+            modifier: SelectModifier::Replace,
+        });
+        bus.push(EditorAction::HierSelectRow {
+            row: row_a,
+            modifier: SelectModifier::Add,
+        });
+        bus.push(EditorAction::HierSelectRow {
+            row: row_b,
+            modifier: SelectModifier::Toggle,
+        });
+        bus.push(EditorAction::HierRangeSelect { row: row_b });
+        bus.push(EditorAction::ClearSelection);
+        let drained: Vec<EditorAction> = bus.drain().collect();
+        assert_eq!(
+            drained,
+            vec![
+                EditorAction::SelectSprite {
+                    entity_bits: 0xAAAA,
+                    modifier: SelectModifier::Replace
+                },
+                EditorAction::HierSelectRow {
+                    row: row_a,
+                    modifier: SelectModifier::Add
+                },
+                EditorAction::HierSelectRow {
+                    row: row_b,
+                    modifier: SelectModifier::Toggle
+                },
+                EditorAction::HierRangeSelect { row: row_b },
+                EditorAction::ClearSelection,
+            ]
+        );
     }
 }

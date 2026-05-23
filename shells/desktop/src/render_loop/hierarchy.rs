@@ -13,10 +13,30 @@ use crate::HeroLive;
 use crate::hero_intents;
 use ph2d_ecs::PresentWorld;
 use ph2d_ecs::{Name, SimWorld, Transform};
+use ph2d_editor::action_bus::SelectModifier;
 use ph2d_editor::screens::hero::HierReparentIntent;
 use ph2d_editor::{HeroScreen, NodeId, Toast, ToastQueue, ViewFocusKind};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
+
+/// Fase 0e: hierarchy-side multi-select intent collected from the
+/// editor bus drain in `render_loop::mod`. The shell resolves
+/// `row → entity_bits` here (panel crate has no bridge access) and
+/// applies the matching `GizmoStateGroup` mutation. `Row` covers
+/// click + cmd-click + double-click; `Range` covers shift-click and
+/// walks the hierarchy order between the current primary's row and
+/// the target row, calling `add_to_selection` on every entity in
+/// between (inclusive).
+#[derive(Copy, Clone, Debug)]
+pub(super) enum HierarchySelectIntent {
+    Row {
+        row: NodeId,
+        modifier: SelectModifier,
+    },
+    Range {
+        row: NodeId,
+    },
+}
 
 /// Dispatches camera-reset, view-focus, and 9 hierarchy intents.
 /// Returns `true` if any dispatch pushed a toast.
@@ -30,6 +50,7 @@ pub(super) fn dispatch(
     reset_transform_row: Option<NodeId>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
+    hierarchy_select_intent: Option<HierarchySelectIntent>,
     rename_seed_row: Option<NodeId>,
     rename_commit: Option<(NodeId, String)>,
     hero: &mut HeroScreen,
@@ -178,14 +199,67 @@ pub(super) fn dispatch(
     }
     // M14.6 D: drain pending hierarchy-row click → sync
     // `gizmo_selection` to whichever entity the user just picked in
-    // the hierarchy panel. Inverse of the M14.7 A canvas-pick path
-    // (canvas → label sync runs further down when we publish
-    // gizmo_view).
+    // the hierarchy panel. Legacy single-select path (kept for
+    // double-click + any consumer still emitting the variant). Fase 0c
+    // shifted the Hierarchy panel to `HierSelectRow` / `HierRangeSelect`
+    // which carry modifier semantics — see the dispatch below.
     if let Some(row) = hierarchy_row_click
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
     {
-        hero.gizmo.selection = Some(entity_bits);
+        hero.gizmo.replace_selection(Some(entity_bits));
+    }
+    // Fase 0e: drain pending multi-select-aware hierarchy intent.
+    // Bridge resolves row → entity_bits; modifier picks the
+    // `GizmoStateGroup` mutation (Replace / Add / Toggle). Range walks
+    // the canonical hierarchy order between primary's row and target,
+    // adding every entity in between.
+    if let Some(intent) = hierarchy_select_intent
+        && let Some(live) = hero_live.as_ref()
+    {
+        match intent {
+            HierarchySelectIntent::Row { row, modifier } => {
+                if let Some(entity_bits) = live.bridge.entity_for(row) {
+                    match modifier {
+                        SelectModifier::Replace => {
+                            hero.gizmo.replace_selection(Some(entity_bits));
+                        }
+                        SelectModifier::Add => {
+                            hero.gizmo.add_to_selection(entity_bits);
+                        }
+                        SelectModifier::Toggle => {
+                            hero.gizmo.toggle_in_selection(entity_bits);
+                        }
+                    }
+                }
+            }
+            HierarchySelectIntent::Range { row: target_row } => {
+                let target_bits = live.bridge.entity_for(target_row);
+                let anchor_row = hero
+                    .gizmo
+                    .selection
+                    .and_then(|bits| live.bridge.node_for(bits));
+                if let (Some(target_bits), Some(anchor_row)) = (target_bits, anchor_row) {
+                    let order = hero.store.hierarchy_order();
+                    let i_anchor = order.iter().position(|n| *n == anchor_row);
+                    let i_target = order.iter().position(|n| *n == target_row);
+                    if let (Some(a), Some(t)) = (i_anchor, i_target) {
+                        let (lo, hi) = if a <= t { (a, t) } else { (t, a) };
+                        for n in &order[lo..=hi] {
+                            if let Some(bits) = live.bridge.entity_for(*n) {
+                                hero.gizmo.add_to_selection(bits);
+                            }
+                        }
+                    } else {
+                        hero.gizmo.add_to_selection(target_bits);
+                    }
+                } else if let Some(target_bits) = target_bits {
+                    // No anchor (nothing selected) — Shift-click on
+                    // an empty selection just adds the target.
+                    hero.gizmo.add_to_selection(target_bits);
+                }
+            }
+        }
     }
     // M14.7 polish: one-shot seed of the rename TextInput when rename
     // mode opens. `HierRenameSeed` is pushed by hero on the open path

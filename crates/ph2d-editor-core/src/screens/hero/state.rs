@@ -78,14 +78,28 @@ impl Default for ViewState {
 
 /// Canvas gizmo state — current selection bits, per-frame projection
 /// view, in-progress drag. Wave 2.5 promoted these from scattered
-/// fields; Wave 5 groups them.
-#[derive(Copy, Clone, Debug, Default)]
+/// fields; Wave 5 groups them. Fase 0a (image-tools multi-select):
+/// `selection` is the **primary** sprite (drives gizmo + inspector
+/// mirror, identical to pre-Fase-0 contract); `extra_selection` holds
+/// additional sprites for batch image-tool operations. Invariants
+/// enforced by the mutating API methods below: `extra_selection` is
+/// empty when `selection` is `None`, and never contains the primary
+/// nor duplicates. Direct field mutation is still allowed for
+/// single-select call-sites — to clear or replace the *whole*
+/// selection, call [`replace_selection`] or [`clear_all_selection`].
+#[derive(Clone, Debug, Default)]
 pub struct GizmoStateGroup {
     /// M14.7 A: sim-entity bits of the sprite currently selected for
     /// gizmo manipulation. Host's canvas-click handler runs
     /// `pick_sprite_at_world` against PresentWorld and writes here.
-    /// `None` = nothing selected.
+    /// `None` = nothing selected. With multi-select, this is the
+    /// **primary** of the selection.
     pub selection: Option<u64>,
+    /// Fase 0a: additional sprites in the multi-selection, beyond
+    /// `selection` (the primary). Image-tools drains iterate the
+    /// full selection via [`Self::iter_selected`]. Empty in single-
+    /// select flows, which remain the default.
+    pub extra_selection: Vec<u64>,
     /// M14.7 B: per-frame projection input for the gizmo painter.
     /// Host computes from `selection_bbox_world(present, selection)`
     /// plus current camera/window and pushes here just before
@@ -96,6 +110,76 @@ pub struct GizmoStateGroup {
     /// `cursor_screen`, calls `compute_gizmo_transform`, writes back
     /// to SimWorld; Up clears the field.
     pub drag: Option<crate::gizmo::GizmoDragState>,
+}
+
+impl GizmoStateGroup {
+    /// Iterates every selected sprite — primary first, then extras
+    /// in insertion order. Empty iterator when nothing is selected.
+    pub fn iter_selected(&self) -> impl Iterator<Item = u64> + '_ {
+        self.selection
+            .into_iter()
+            .chain(self.extra_selection.iter().copied())
+    }
+
+    /// Number of selected sprites (0..=1 + extras.len()).
+    pub fn selected_len(&self) -> usize {
+        self.selection.map_or(0, |_| 1) + self.extra_selection.len()
+    }
+
+    /// `true` when `bits` is currently selected (primary OR extra).
+    pub fn is_selected(&self, bits: u64) -> bool {
+        self.selection == Some(bits) || self.extra_selection.contains(&bits)
+    }
+
+    /// Drops both primary and extras. Equivalent to clicking an empty
+    /// area on the canvas in single-select mode.
+    pub fn clear_all_selection(&mut self) {
+        self.selection = None;
+        self.extra_selection.clear();
+    }
+
+    /// Replaces the whole selection with a single primary (or none),
+    /// discarding any extras. Drives single-click without modifier
+    /// and deselect-on-toggle.
+    pub fn replace_selection(&mut self, primary: Option<u64>) {
+        self.selection = primary;
+        self.extra_selection.clear();
+    }
+
+    /// Adds `bits` to the selection without unsetting current ones.
+    /// If nothing is selected, `bits` becomes primary. If `bits` is
+    /// already selected (primary or extra), no-op. Drives Shift-click.
+    pub fn add_to_selection(&mut self, bits: u64) {
+        if self.selection.is_none() {
+            self.selection = Some(bits);
+            return;
+        }
+        if self.is_selected(bits) {
+            return;
+        }
+        self.extra_selection.push(bits);
+    }
+
+    /// Toggles `bits` in the selection. If it was the primary, demote
+    /// the oldest extra to primary (or clear the selection if no
+    /// extras). If it was an extra, remove it. Otherwise add it as
+    /// an extra (or as primary if nothing was selected). Drives
+    /// Cmd/Ctrl-click on macOS / Windows.
+    pub fn toggle_in_selection(&mut self, bits: u64) {
+        if self.selection == Some(bits) {
+            self.selection = if self.extra_selection.is_empty() {
+                None
+            } else {
+                Some(self.extra_selection.remove(0))
+            };
+            return;
+        }
+        if let Some(pos) = self.extra_selection.iter().position(|&b| b == bits) {
+            self.extra_selection.remove(pos);
+            return;
+        }
+        self.add_to_selection(bits);
+    }
 }
 
 /// Grid subsystem state — per-frame projection view + paint config +
@@ -120,4 +204,126 @@ pub struct GridState {
     /// positions (via [`crate::grid_snap::GridSnapState::snap_world`]).
     /// Panel opens/closes via `TOPBAR_GRID_SETTINGS`.
     pub snap_state: crate::grid_snap::GridSnapState,
+}
+
+#[cfg(test)]
+mod selection_tests {
+    use super::GizmoStateGroup;
+
+    const A: u64 = 0x_AAAA_AAAA;
+    const B: u64 = 0x_BBBB_BBBB;
+    const C: u64 = 0x_CCCC_CCCC;
+
+    #[test]
+    fn default_is_empty() {
+        let g = GizmoStateGroup::default();
+        assert!(g.selection.is_none());
+        assert!(g.extra_selection.is_empty());
+        assert_eq!(g.selected_len(), 0);
+        assert_eq!(g.iter_selected().count(), 0);
+        assert!(!g.is_selected(A));
+    }
+
+    #[test]
+    fn replace_selection_clears_extras() {
+        let mut g = GizmoStateGroup::default();
+        g.selection = Some(A);
+        g.extra_selection = vec![B, C];
+        g.replace_selection(Some(B));
+        assert_eq!(g.selection, Some(B));
+        assert!(g.extra_selection.is_empty());
+        assert_eq!(g.selected_len(), 1);
+    }
+
+    #[test]
+    fn add_to_empty_sets_primary() {
+        let mut g = GizmoStateGroup::default();
+        g.add_to_selection(A);
+        assert_eq!(g.selection, Some(A));
+        assert!(g.extra_selection.is_empty());
+    }
+
+    #[test]
+    fn add_extra_appends_after_primary() {
+        let mut g = GizmoStateGroup::default();
+        g.add_to_selection(A);
+        g.add_to_selection(B);
+        g.add_to_selection(C);
+        assert_eq!(g.selection, Some(A));
+        assert_eq!(g.extra_selection, vec![B, C]);
+        assert_eq!(g.selected_len(), 3);
+        let all: Vec<u64> = g.iter_selected().collect();
+        assert_eq!(all, vec![A, B, C]);
+    }
+
+    #[test]
+    fn add_duplicate_is_noop() {
+        let mut g = GizmoStateGroup::default();
+        g.add_to_selection(A);
+        g.add_to_selection(B);
+        g.add_to_selection(A); // primary already selected
+        g.add_to_selection(B); // extra already selected
+        assert_eq!(g.selection, Some(A));
+        assert_eq!(g.extra_selection, vec![B]);
+    }
+
+    #[test]
+    fn toggle_off_primary_promotes_first_extra() {
+        let mut g = GizmoStateGroup::default();
+        g.add_to_selection(A);
+        g.add_to_selection(B);
+        g.add_to_selection(C);
+        g.toggle_in_selection(A);
+        assert_eq!(g.selection, Some(B));
+        assert_eq!(g.extra_selection, vec![C]);
+    }
+
+    #[test]
+    fn toggle_off_primary_with_no_extras_clears() {
+        let mut g = GizmoStateGroup::default();
+        g.selection = Some(A);
+        g.toggle_in_selection(A);
+        assert!(g.selection.is_none());
+        assert!(g.extra_selection.is_empty());
+    }
+
+    #[test]
+    fn toggle_off_extra_removes_it() {
+        let mut g = GizmoStateGroup::default();
+        g.add_to_selection(A);
+        g.add_to_selection(B);
+        g.add_to_selection(C);
+        g.toggle_in_selection(B);
+        assert_eq!(g.selection, Some(A));
+        assert_eq!(g.extra_selection, vec![C]);
+    }
+
+    #[test]
+    fn toggle_unselected_adds() {
+        let mut g = GizmoStateGroup::default();
+        g.toggle_in_selection(A); // empty → primary
+        assert_eq!(g.selection, Some(A));
+        g.toggle_in_selection(B); // primary present → extra
+        assert_eq!(g.extra_selection, vec![B]);
+    }
+
+    #[test]
+    fn clear_all_drops_everything() {
+        let mut g = GizmoStateGroup::default();
+        g.add_to_selection(A);
+        g.add_to_selection(B);
+        g.clear_all_selection();
+        assert!(g.selection.is_none());
+        assert!(g.extra_selection.is_empty());
+    }
+
+    #[test]
+    fn is_selected_checks_both_buckets() {
+        let mut g = GizmoStateGroup::default();
+        g.add_to_selection(A);
+        g.add_to_selection(B);
+        assert!(g.is_selected(A));
+        assert!(g.is_selected(B));
+        assert!(!g.is_selected(C));
+    }
 }

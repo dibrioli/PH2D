@@ -112,10 +112,15 @@ impl App {
         // correctly (Shift = fine adjustment). The ph2d-host
         // `PointerEvent` schema doesn't carry modifiers natively — the
         // store cache is the canonical bridge for now.
+        // Fase 0c: also push the Cmd (macOS super) / Ctrl modifier
+        // OR'd together — used by hierarchy + canvas multi-select to
+        // map a click into `SelectModifier::Toggle`.
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
             hero.store.set_shift_held(self.modifiers.shift_key());
+            hero.store
+                .set_cmd_held(self.modifiers.super_key() || self.modifiers.control_key());
         }
     }
 
@@ -171,6 +176,10 @@ impl App {
                 .pan_screen_delta(dx, dy, size.width as f32, size.height as f32);
             self.pan_anchor = Some(self.last_pointer);
             let _ = prev; // silence unused warning when feature shifts
+        }
+        // Fase 0f: extend the active rubber-band rect, if any.
+        if let Some(rb) = self.rubber_band.as_mut() {
+            rb.current_screen = self.last_pointer;
         }
         let evt = PointerEvent {
             x: self.last_pointer.0,
@@ -432,8 +441,42 @@ impl App {
                         } else {
                             hits.get(self.cycle_pick_idx).copied()
                         };
-                        hero.gizmo.selection = picked;
+                        // Fase 0d: read modifier state at click time —
+                        // Shift adds to the selection, Cmd/Ctrl toggles,
+                        // bare click replaces (legacy default). Modifier
+                        // clicks skip drag setup since the user is
+                        // adjusting selection, not moving sprites.
+                        let shift_held = self.modifiers.shift_key();
+                        let cmd_held = self.modifiers.super_key() || self.modifiers.control_key();
+                        let is_modifier_click = picked.is_some() && (shift_held || cmd_held);
                         if let Some(bits) = picked {
+                            if cmd_held {
+                                hero.gizmo.toggle_in_selection(bits);
+                            } else if shift_held {
+                                hero.gizmo.add_to_selection(bits);
+                            } else {
+                                hero.gizmo.replace_selection(Some(bits));
+                            }
+                        } else {
+                            // Empty click — Fase 0f: defer to PointerKind::Up
+                            // so we can distinguish "bare click on empty"
+                            // (= clear selection) from "start of a rubber-
+                            // band box-select drag" (= keep selection
+                            // until release, then resolve against the
+                            // dragged rect). Cmd on empty stays a no-op
+                            // (preserves built-up multi-selection). Shift
+                            // on empty starts an additive rubber-band.
+                            if !cmd_held {
+                                self.rubber_band = Some(crate::app_state::RubberBandState {
+                                    anchor_screen: (evt.x, evt.y),
+                                    current_screen: (evt.x, evt.y),
+                                    add_mode: shift_held,
+                                });
+                            }
+                        }
+                        if let Some(bits) = picked
+                            && !is_modifier_click
+                        {
                             let entity = ph2d_ecs::Entity::from_bits(bits);
                             if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
                                 let snap_t = ph2d_editor::TransformSnapshot {
@@ -457,20 +500,80 @@ impl App {
                         }
                         // ADR-0029 Phase C.2: live entries owned by the
                         // Hierarchy panel crate; reach via the public
-                        // thread-local snapshot.
-                        if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), picked) {
+                        // thread-local snapshot. With multi-select the
+                        // label mirrors the primary; the count is
+                        // surfaced via hero.gizmo.selected_len() at
+                        // paint time (Fase 0e polish).
+                        let primary = hero.gizmo.selection;
+                        if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
                             hero.selection = Some(ph2d_editor::HeroSelection {
                                 label: entry.name.clone(),
                                 kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                 world_pos: (0.0, 0.0),
                             });
-                        } else if picked.is_none() {
+                        } else if primary.is_none() {
                             hero.selection = None;
                         }
                         self.title_dirty = true;
                     }
                 }
                 PointerKind::Up => {
+                    // Fase 0f: resolve the rubber-band rect — pick every
+                    // sprite whose world bbox intersects, then apply
+                    // replace or add depending on `add_mode` (Shift held
+                    // at Down). A click that didn't drift more than 4 px
+                    // is treated as a bare click on empty: clear
+                    // selection if !add_mode, else preserve.
+                    if let Some(rb) = self.rubber_band.take() {
+                        let dx = rb.current_screen.0 - rb.anchor_screen.0;
+                        let dy = rb.current_screen.1 - rb.anchor_screen.1;
+                        let moved = (dx * dx + dy * dy) > 16.0; // > 4 px
+                        if moved {
+                            let window_size = gfx.surface.size();
+                            let world_a = gfx
+                                .camera
+                                .screen_to_world(rb.anchor_screen, window_size);
+                            let world_b = gfx
+                                .camera
+                                .screen_to_world(rb.current_screen, window_size);
+                            let rmin = [world_a[0].min(world_b[0]), world_a[1].min(world_b[1])];
+                            let rmax = [world_a[0].max(world_b[0]), world_a[1].max(world_b[1])];
+                            let bits = ph2d_render::pick_sprites_in_world_rect(
+                                gfx.present.world_mut(),
+                                rmin,
+                                rmax,
+                            );
+                            if !rb.add_mode {
+                                hero.gizmo.clear_all_selection();
+                            }
+                            for b in bits {
+                                hero.gizmo.add_to_selection(b);
+                            }
+                            // Sync the panel header label to the new
+                            // primary (Fase 0e parity).
+                            let primary = hero.gizmo.selection;
+                            if let Some(entry) =
+                                resolve_live_entry(gfx.hero_live.as_ref(), primary)
+                            {
+                                hero.selection = Some(ph2d_editor::HeroSelection {
+                                    label: entry.name.clone(),
+                                    kind: entry
+                                        .badge
+                                        .clone()
+                                        .unwrap_or_else(|| "ENT".to_string()),
+                                    world_pos: (0.0, 0.0),
+                                });
+                            } else if primary.is_none() {
+                                hero.selection = None;
+                            }
+                            self.title_dirty = true;
+                        } else if !rb.add_mode {
+                            // Bare click on empty = clear selection.
+                            hero.gizmo.clear_all_selection();
+                            hero.selection = None;
+                            self.title_dirty = true;
+                        }
+                    }
                     // Drop the drag — Transform is already committed
                     // up to the latest Move position.
                     hero.gizmo.drag = None;

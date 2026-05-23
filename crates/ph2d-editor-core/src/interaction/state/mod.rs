@@ -387,6 +387,12 @@ pub struct WidgetStore {
     /// adjustment). Pointer events don't carry modifiers natively in
     /// `ph2d-host::PointerEvent`; this is the canonical cache.
     pub(super) shift_held: bool,
+    /// Fase 0c: latest Cmd (macOS) / Ctrl (Linux/Windows) modifier
+    /// state, mirror of [`Self::shift_held`]. Shell pushes via
+    /// [`Self::set_cmd_held`] on every `ModifiersChanged`, OR'ing
+    /// `super_key()` and `control_key()` so panel handlers can treat
+    /// the two as interchangeable (toggle-select modifier).
+    pub(super) cmd_held: bool,
 }
 
 impl WidgetStore {
@@ -443,6 +449,7 @@ impl WidgetStore {
             number_input_drag: None,
             number_stepper_hold: None,
             shift_held: false,
+            cmd_held: false,
         }
     }
 
@@ -642,6 +649,18 @@ impl WidgetStore {
 
     pub fn set_shift_held(&mut self, held: bool) {
         self.shift_held = held;
+    }
+
+    /// Fase 0c: latest Cmd (macOS) / Ctrl (Linux/Windows) modifier
+    /// state. Shell pushes via [`Self::set_cmd_held`] on every
+    /// `WindowEvent::ModifiersChanged`. Hierarchy / canvas multi-
+    /// select handlers read this to map Click → toggle-select.
+    pub fn cmd_held(&self) -> bool {
+        self.cmd_held
+    }
+
+    pub fn set_cmd_held(&mut self, held: bool) {
+        self.cmd_held = held;
     }
 
     /// Read the hierarchy display order (empty = use fixture's

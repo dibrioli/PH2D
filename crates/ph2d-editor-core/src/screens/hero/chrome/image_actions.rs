@@ -13,12 +13,15 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
-    // One-shot image ops (Trim / Make Square / Real Size) — push a
-    // generic `OneShotImageOp` with the tool's id and current gizmo
-    // selection. Empty selection still consumes the click (parity with
-    // the legacy per-variant arms).
+    // One-shot image ops (Trim / Make Square / Real Size) — push one
+    // generic `OneShotImageOp` per selected sprite. Fase 0e broadcast:
+    // with single selection this is identical to the pre-Fase-0
+    // single-push path; with multi-select each selected sprite gets
+    // its own action, and the per-tool drain function in the shell
+    // applies the bake independently to each. Empty selection still
+    // consumes the click (parity with the legacy per-variant arms).
     if let Some(tool_id) = oneshot_tool_for(id) {
-        if let Some(entity_bits) = hero.gizmo.selection {
+        for entity_bits in hero.gizmo.iter_selected() {
             hero.bus.push(EditorAction::OneShotImageOp {
                 tool_id,
                 entity_bits,

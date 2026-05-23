@@ -340,13 +340,19 @@ impl crate::App {
             let mut reset_transform_row: Option<NodeId> = None;
             let mut delete_row: Option<NodeId> = None;
             let mut hierarchy_row_click: Option<NodeId> = None;
+            let mut hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent> = None;
             let mut rename_seed_row: Option<NodeId> = None;
             let mut rename_commit: Option<(NodeId, String)> = None;
             let mut view_focus_kind: Option<ph2d_editor::ViewFocusKind> = None;
             let mut reimport_entity: Option<u64> = None;
-            let mut trim_entity: Option<u64> = None;
-            let mut make_square_entity: Option<u64> = None;
-            let mut real_size_entity: Option<u64> = None;
+            // Fase 0e: per-sprite tools collect a Vec<u64> instead of
+            // Option<u64> so a multi-select OneShotImageOp broadcast
+            // applies the bake to every selected sprite (legacy
+            // single-select still works — the Vec just carries one
+            // entry). image_edit::dispatch iterates each Vec.
+            let mut trim_entities: Vec<u64> = Vec::new();
+            let mut make_square_entities: Vec<u64> = Vec::new();
+            let mut real_size_entities: Vec<u64> = Vec::new();
             let mut undo_image_edit = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
@@ -413,6 +419,47 @@ impl crate::App {
                     EditorAction::HierRowClick { row } => {
                         hierarchy_row_click.get_or_insert(row);
                     }
+                    // Fase 0e: multi-select-aware hierarchy click +
+                    // shift-range. Collect into a single latest-wins
+                    // intent — the dispatch resolves row → entity_bits
+                    // and applies the matching `GizmoStateGroup`
+                    // mutation. Range overrides Row when both arrive
+                    // in the same frame (the user can only be in one
+                    // selection-gesture at a time).
+                    EditorAction::HierSelectRow { row, modifier } => {
+                        if !matches!(
+                            hierarchy_select_intent,
+                            Some(hierarchy::HierarchySelectIntent::Range { .. })
+                        ) {
+                            hierarchy_select_intent =
+                                Some(hierarchy::HierarchySelectIntent::Row { row, modifier });
+                        }
+                    }
+                    EditorAction::HierRangeSelect { row } => {
+                        hierarchy_select_intent =
+                            Some(hierarchy::HierarchySelectIntent::Range { row });
+                    }
+                    // Fase 0e: canvas-side select via the bus (reserved
+                    // for callers that don't have direct hero access —
+                    // input_dispatch.rs:435 mutates hero.gizmo directly
+                    // because it already holds the borrow).
+                    EditorAction::SelectSprite {
+                        entity_bits,
+                        modifier,
+                    } => match modifier {
+                        ph2d_editor::action_bus::SelectModifier::Replace => {
+                            hero.gizmo.replace_selection(Some(entity_bits));
+                        }
+                        ph2d_editor::action_bus::SelectModifier::Add => {
+                            hero.gizmo.add_to_selection(entity_bits);
+                        }
+                        ph2d_editor::action_bus::SelectModifier::Toggle => {
+                            hero.gizmo.toggle_in_selection(entity_bits);
+                        }
+                    },
+                    EditorAction::ClearSelection => {
+                        hero.gizmo.clear_all_selection();
+                    }
                     EditorAction::HierRenameSeed { row } => {
                         rename_seed_row.get_or_insert(row);
                     }
@@ -435,13 +482,13 @@ impl crate::App {
                         entity_bits,
                     } => match tool_id {
                         "trim_transparency" => {
-                            trim_entity.get_or_insert(entity_bits);
+                            trim_entities.push(entity_bits);
                         }
                         "make_square" => {
-                            make_square_entity.get_or_insert(entity_bits);
+                            make_square_entities.push(entity_bits);
                         }
                         "real_size" => {
-                            real_size_entity.get_or_insert(entity_bits);
+                            real_size_entities.push(entity_bits);
                         }
                         "bgremoval" => {
                             bgremoval_leftover.push(oneshot);
@@ -588,6 +635,36 @@ impl crate::App {
                 &mut self.bgremoval_preview,
             );
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
+            // Fase 0f: overlay the active rubber-band rect on top of
+            // everything (panels, gizmo, hero chrome). Pure shell
+            // concern — coords stay in screen space so the rect
+            // doesn't shift if the camera pans mid-drag. Semi-
+            // transparent fill + 4 thin border rects (no stroke API
+            // on VectorScene yet; the 4-fills idiom matches the rest
+            // of the shell's overlay painters).
+            if let Some(rb) = self.rubber_band {
+                let (ax, ay) = rb.anchor_screen;
+                let (cx, cy) = rb.current_screen;
+                let x0 = ax.min(cx) as f64;
+                let y0 = ay.min(cy) as f64;
+                let x1 = ax.max(cx) as f64;
+                let y1 = ay.max(cy) as f64;
+                use ph2d_vector::{Color, Rect as VRect};
+                // Selection accent — design tokens use OKLCH; the
+                // sRGB approximation here is the canonical Selection
+                // color from `ColorToken::Selection` (~#3a8ee6 @ 25%
+                // fill, 100% border) baked at boot. Keeping it inline
+                // avoids threading the theme into render_loop just
+                // for one overlay; a follow-up can swap to a token
+                // lookup if the rubber-band needs theme parity.
+                let fill = Color::new([0.23, 0.56, 0.90, 0.18]);
+                let border = Color::new([0.23, 0.56, 0.90, 1.0]);
+                vector_scene.fill_rect(VRect::new(x0, y0, x1, y1), fill);
+                vector_scene.fill_rect(VRect::new(x0, y0, x1, y0 + 1.0), border);
+                vector_scene.fill_rect(VRect::new(x0, y1 - 1.0, x1, y1), border);
+                vector_scene.fill_rect(VRect::new(x0, y0, x0 + 1.0, y1), border);
+                vector_scene.fill_rect(VRect::new(x1 - 1.0, y0, x1, y1), border);
+            }
             // Hierarchy intent dispatch phase — camera reset +
             // view-focus + 9 hierarchy intents (visibility_toggle /
             // reparent / duplicate / add_child / reset_transform /
@@ -603,6 +680,7 @@ impl crate::App {
                 reset_transform_row,
                 delete_row,
                 hierarchy_row_click,
+                hierarchy_select_intent,
                 rename_seed_row,
                 rename_commit,
                 hero,
@@ -643,9 +721,9 @@ impl crate::App {
             // to sibling `image_edit.rs` as a free fn (Wave 3.2 stage A).
             // Returns whether any drain pushed a toast.
             if image_edit::dispatch(
-                trim_entity,
-                make_square_entity,
-                real_size_entity,
+                trim_entities,
+                make_square_entities,
+                real_size_entities,
                 padding_apply,
                 undo_image_edit,
                 hero,

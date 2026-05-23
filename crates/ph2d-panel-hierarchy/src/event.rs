@@ -12,7 +12,7 @@
 //! the typed `state` parameter directly.
 
 use crate::state;
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{EditorAction, SelectModifier};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{ContextMenuKind, InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
@@ -80,12 +80,30 @@ pub(crate) fn apply_event(
             }
             return EventOutcome::Consumed;
         }
-        // M14.6 D — click on a live hierarchy row → raise
-        // HierRowClick BEFORE the selection-label update below so
-        // the shell resolves row → entity in the next drain.
+        // Fase 0c — click on a live hierarchy row → raise the
+        // multi-select-aware HierSelectRow / HierRangeSelect BEFORE
+        // updating the header selection label, so the shell drain
+        // resolves row → entity + mutates GizmoStateGroup according
+        // to modifier semantics (Replace / Add / Toggle / Range).
+        // Replaces the legacy HierRowClick emission; that variant
+        // stays in the enum but is no longer raised from this panel.
         let live_hit = state::live_entries_contains(id);
         if live_hit {
-            host.bus_mut().push(EditorAction::HierRowClick { row: id });
+            let store = host.store();
+            let shift = store.shift_held();
+            let cmd = store.cmd_held();
+            if shift && !cmd {
+                host.bus_mut()
+                    .push(EditorAction::HierRangeSelect { row: id });
+            } else {
+                let modifier = if cmd {
+                    SelectModifier::Toggle
+                } else {
+                    SelectModifier::Replace
+                };
+                host.bus_mut()
+                    .push(EditorAction::HierSelectRow { row: id, modifier });
+            }
         }
         if let Some(entry) = state::live_entry_for(id) {
             *host.selection_mut() = Some(HeroSelection {
@@ -107,12 +125,18 @@ pub(crate) fn apply_event(
             return EventOutcome::Consumed;
         }
     }
-    // M14.7 polish — double-click on a live hierarchy row → push
-    // HierRowClick + SetViewFocus(Selected).
+    // M14.7 polish — double-click on a live hierarchy row → select
+    // the row (Replace, dropping any extras) + push SetViewFocus to
+    // reframe the camera. Fase 0c migrated this from the legacy
+    // HierRowClick emission to the new HierSelectRow variant so
+    // double-click goes through the same drain as single-click.
     if let WidgetEvent::DoubleClick(id) = ev
         && state::live_entries_contains(id)
     {
-        host.bus_mut().push(EditorAction::HierRowClick { row: id });
+        host.bus_mut().push(EditorAction::HierSelectRow {
+            row: id,
+            modifier: SelectModifier::Replace,
+        });
         host.bus_mut().push(EditorAction::SetViewFocus {
             kind: ViewFocusKind::Selected,
         });

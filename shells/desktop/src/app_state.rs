@@ -319,6 +319,28 @@ pub(crate) struct App {
     /// Cleared when the drag ends. Cached on `App` (not in
     /// `GizmoDragState`) so the pixel readback stays a shell concern.
     pub(crate) pivot_content_center: Option<[f32; 2]>,
+    /// Fase 0f: canvas rubber-band box select. `Some` while the user
+    /// is left-dragging on empty canvas (no sprite hit, no gizmo
+    /// handle hit). Anchored at the Down point in screen coords —
+    /// SCREEN, not world, so the rect stays put if the user pans the
+    /// camera mid-drag (Photoshop/Figma convention). On Up the rect
+    /// is converted to world coords and intersected against every
+    /// sprite's bbox via `pick_sprites_in_world_rect`.
+    pub(crate) rubber_band: Option<RubberBandState>,
+}
+
+/// Fase 0f: canvas rubber-band box-select state. Cleared on Up.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct RubberBandState {
+    /// Screen-space anchor (cursor position at Down), physical px.
+    pub(crate) anchor_screen: (f32, f32),
+    /// Screen-space current cursor (updated each CursorMoved while
+    /// the rubber-band is active).
+    pub(crate) current_screen: (f32, f32),
+    /// `true` when Shift was held at Down → resolve adds to the
+    /// existing selection. `false` → resolve replaces the selection
+    /// (clearing first).
+    pub(crate) add_mode: bool,
 }
 
 /// Cached on-canvas preview bitmap for the Background-Removal tool.

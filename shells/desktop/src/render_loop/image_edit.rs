@@ -28,9 +28,9 @@ use std::collections::BTreeMap;
 /// `true` iff any drain pushed a toast (caller sets `title_dirty`).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch(
-    trim_entity: Option<u64>,
-    make_square_entity: Option<u64>,
-    real_size_entity: Option<u64>,
+    trim_entities: Vec<u64>,
+    make_square_entities: Vec<u64>,
+    real_size_entities: Vec<u64>,
     padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)>,
     undo_image_edit: bool,
     hero: &mut HeroScreen,
@@ -65,8 +65,8 @@ pub(super) fn dispatch(
     // lived off-center inside the original frame. The shift
     // happens in pure-CPU pixel math (Y-flip handled inside
     // `recenter_after_crop`); HR-5-deterministic.
-    if let Some(entity_bits) = trim_entity
-        && hero_intents::drain_trim_transparency(
+    for entity_bits in trim_entities {
+        if hero_intents::drain_trim_transparency(
             entity_bits,
             hero.project.pixels_per_meter,
             sim,
@@ -75,9 +75,9 @@ pub(super) fn dispatch(
             atlas_asset_map,
             toasts,
             image_edit_undo,
-        )
-    {
-        title_dirty = true;
+        ) {
+            title_dirty = true;
+        }
     }
     // Make Square drain — parallel to Trim Transparency. Pads
     // the source image with transparent pixels on the shorter
@@ -92,8 +92,8 @@ pub(super) fn dispatch(
     // accumulating 0.5 px drift across Trim↔Square cycles);
     // C1 (release OLD individual texture id after a successful
     // re-acquire — was leaking GPU memory on repeated edits).
-    if let Some(entity_bits) = make_square_entity
-        && hero_intents::drain_make_square(
+    for entity_bits in make_square_entities {
+        if hero_intents::drain_make_square(
             entity_bits,
             hero.project.pixels_per_meter,
             sim,
@@ -102,9 +102,9 @@ pub(super) fn dispatch(
             atlas_asset_map,
             toasts,
             image_edit_undo,
-        )
-    {
-        title_dirty = true;
+        ) {
+            title_dirty = true;
+        }
     }
     // Real Size drain — reset the selected sprite's Transform scale to
     // 1:1 (preserving flip sign). Unlike Trim / Make Square this is a
@@ -112,7 +112,7 @@ pub(super) fn dispatch(
     // no pivot reproject (scale changes around the existing pivot). The
     // ±1 reset itself is the single-source-of-truth pure helper in
     // `ph2d-tool-real-size`.
-    if let Some(entity_bits) = real_size_entity {
+    for entity_bits in real_size_entities {
         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
             let new = ph2d_tool_real_size::real_size_scale([t.scale.x, t.scale.y]);

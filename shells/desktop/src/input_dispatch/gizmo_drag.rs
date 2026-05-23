@@ -201,25 +201,98 @@ impl App {
                     t.rotation = new_t.rotation;
                     t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
                 }
-                // Onda 1: group translate — only Translate kind drags
-                // the whole multi-selection together. Scale / Rotate
-                // stay primary-only until Onda 2 (group-pivot vs
-                // local-pivot transform modes need a UX decision per
-                // gizmo). Apply the SAME world delta the primary just
-                // took to every extra's snapshot start_translation;
-                // skips silently if the entity vanished mid-drag.
-                if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
-                    && !self.group_drag_starts.is_empty()
+                // Onda 1 + 2C.4: propagate the drag to the rest of the
+                // multi-selection. Three families:
+                //
+                // - Translate (any target): add the primary's world
+                //   delta to every extra's start translation.
+                // - Scale / Rotate with `PrimaryIndividual` /
+                //   `ExtraIndividual` target (LOCAL pivot — each
+                //   sprite transforms around its OWN anchor, position
+                //   stays put): scale.x *= factor.x; rotation +=
+                //   delta_angle; translation unchanged.
+                // - Scale / Rotate with `Global` target (group pivot
+                //   = global bbox center, stored on
+                //   `drag.pivot_world`): each sprite scales / rotates
+                //   AROUND that shared pivot, so its translation
+                //   shifts too.
+                //
+                // MovePivot stays primary-only (drag.kind ==
+                // MovePivot branch above writes Sprite.anchor; group
+                // semantics aren't defined for pivot relocation).
+                if !self.group_drag_starts.is_empty()
+                    && !matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot)
                 {
                     let dx = new_t.translation[0] - drag.start_transform.translation[0];
                     let dy = new_t.translation[1] - drag.start_transform.translation[1];
-                    for (extra_bits, start_xy) in self.group_drag_starts.iter().copied() {
-                        let extra_entity = ph2d_ecs::Entity::from_bits(extra_bits);
+                    let start_scale = drag.start_transform.scale;
+                    let new_scale = new_t.scale;
+                    let factor_x = if start_scale[0].abs() > f32::EPSILON {
+                        new_scale[0] / start_scale[0]
+                    } else {
+                        1.0
+                    };
+                    let factor_y = if start_scale[1].abs() > f32::EPSILON {
+                        new_scale[1] / start_scale[1]
+                    } else {
+                        1.0
+                    };
+                    let delta_rot = new_t.rotation - drag.start_transform.rotation;
+                    let is_translate = matches!(
+                        drag.kind,
+                        ph2d_editor::GizmoDragKind::Translate
+                    );
+                    let is_global = matches!(
+                        drag.target,
+                        ph2d_editor::GizmoTarget::Global
+                    );
+                    let pivot = drag.pivot_world;
+                    let (sin_d, cos_d) = delta_rot.sin_cos();
+                    for snap in self.group_drag_starts.iter().copied() {
+                        let extra_entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
+                        let st = snap.start_transform;
+                        let new_translation;
+                        let new_rotation;
+                        let new_scale_extra;
+                        if is_translate {
+                            // Translate: rigid body shift.
+                            new_translation =
+                                [st.translation[0] + dx, st.translation[1] + dy];
+                            new_rotation = st.rotation;
+                            new_scale_extra = st.scale;
+                        } else if is_global {
+                            // Group scale/rotate around the shared
+                            // global pivot. Compose: first scale by
+                            // (factor_x, factor_y), then rotate by
+                            // delta_rot, both around `pivot`.
+                            let rel_x = st.translation[0] - pivot[0];
+                            let rel_y = st.translation[1] - pivot[1];
+                            let scaled_x = rel_x * factor_x;
+                            let scaled_y = rel_y * factor_y;
+                            let rotated_x = scaled_x * cos_d - scaled_y * sin_d;
+                            let rotated_y = scaled_x * sin_d + scaled_y * cos_d;
+                            new_translation =
+                                [pivot[0] + rotated_x, pivot[1] + rotated_y];
+                            new_rotation = st.rotation + delta_rot;
+                            new_scale_extra =
+                                [st.scale[0] * factor_x, st.scale[1] * factor_y];
+                        } else {
+                            // Local scale/rotate: each sprite
+                            // transforms around its own anchor →
+                            // translation stays put; only scale /
+                            // rotation change.
+                            new_translation = st.translation;
+                            new_rotation = st.rotation + delta_rot;
+                            new_scale_extra =
+                                [st.scale[0] * factor_x, st.scale[1] * factor_y];
+                        }
                         if let Some(mut t) =
                             gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
                         {
                             t.translation =
-                                ph2d_core::Vec2::new(start_xy[0] + dx, start_xy[1] + dy);
+                                ph2d_core::Vec2::new(new_translation[0], new_translation[1]);
+                            t.rotation = new_rotation;
+                            t.scale = ph2d_core::Vec2::new(new_scale_extra[0], new_scale_extra[1]);
                         }
                     }
                 }

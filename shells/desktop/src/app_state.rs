@@ -327,15 +327,27 @@ pub(crate) struct App {
     /// is converted to world coords and intersected against every
     /// sprite's bbox via `pick_sprites_in_world_rect`.
     pub(crate) rubber_band: Option<RubberBandState>,
-    /// Onda 1: group-translate snapshot. Populated on PointerDown
-    /// that opens a Translate gizmo drag while `selected_len > 1`,
-    /// containing `(entity_bits, start_translation_xy)` for EVERY
-    /// extra sprite (primary's start_transform stays on
-    /// `GizmoDragState`). `advance_gizmo_drag` applies the same world
-    /// delta the primary just took to each entry, so the whole group
-    /// moves together. Cleared on PointerUp (and on every drag-open
-    /// that's NOT a multi-select translate).
-    pub(crate) group_drag_starts: Vec<(u64, [f32; 2])>,
+    /// Onda 1 + 2C.4: per-sprite snapshot captured at PointerDown when
+    /// a gizmo drag opens with `selected_len > 1`. Covers EVERY
+    /// selected sprite EXCEPT the drag's own primary (whose snapshot
+    /// lives on `GizmoDragState::start_transform`). `advance_gizmo_drag`
+    /// applies the primary's transform delta to each entry — Translate
+    /// adds the same world delta to each translation; Local Scale /
+    /// Rotate (target = PrimaryIndividual or ExtraIndividual) applies
+    /// the factor / angle around each sprite's OWN pivot; Global Scale
+    /// / Rotate (target = Global) applies around the shared global
+    /// pivot. Cleared on PointerUp (and on every drag-open that opens
+    /// a single-sprite drag).
+    pub(crate) group_drag_starts: Vec<GroupDragSnapshot>,
+}
+
+/// Onda 2C.4: per-sprite start snapshot for group transforms. Captured
+/// once at PointerDown — `advance_gizmo_drag` references it without
+/// re-reading PresentWorld each frame (avoids compounding mutations).
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct GroupDragSnapshot {
+    pub(crate) entity_bits: u64,
+    pub(crate) start_transform: ph2d_editor::TransformSnapshot,
 }
 
 /// Fase 0f: canvas rubber-band box-select state. Cleared on Up.

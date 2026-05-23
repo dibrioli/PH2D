@@ -499,23 +499,32 @@ impl App {
                                 anchor_is_center: use_center_anchor,
                                 target: effective_target,
                             });
-                            // Onda 1: snapshot every OTHER selected sprite's
-                            // start translation so advance_gizmo_drag can
-                            // apply the primary's world delta to the whole
-                            // group. Only meaningful for Translate kind;
-                            // Scale / Rotate stay primary-only until Onda 2.
+                            // Onda 1 + 2C.4: snapshot every OTHER selected
+                            // sprite's full start_transform so
+                            // advance_gizmo_drag can apply translate /
+                            // local-scale / local-rotate / global-scale /
+                            // global-rotate to the whole group. Captured
+                            // for ANY drag kind that touches multi-select
+                            // (Translate / Scale / Rotate) so the math
+                            // branches can fire uniformly later.
                             self.group_drag_starts.clear();
-                            if matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
-                                && hero.gizmo.selected_len() > 1
-                            {
+                            if hero.gizmo.selected_len() > 1 {
                                 for sel in hero.gizmo.iter_selected() {
                                     if sel == entity_bits {
                                         continue;
                                     }
                                     let e = ph2d_ecs::Entity::from_bits(sel);
                                     if let Some(t) = gfx.sim.world().get::<Transform>(e) {
-                                        self.group_drag_starts
-                                            .push((sel, [t.translation.x, t.translation.y]));
+                                        self.group_drag_starts.push(
+                                            crate::app_state::GroupDragSnapshot {
+                                                entity_bits: sel,
+                                                start_transform: ph2d_editor::TransformSnapshot {
+                                                    translation: [t.translation.x, t.translation.y],
+                                                    rotation: t.rotation,
+                                                    scale: [t.scale.x, t.scale.y],
+                                                },
+                                            },
+                                        );
                                     }
                                 }
                             }
@@ -629,13 +638,15 @@ impl App {
                                     anchor_is_center: false,
                                     target: ph2d_editor::GizmoTarget::PrimaryIndividual,
                                 });
-                                // Onda 1: snapshot start translations of
-                                // every OTHER selected sprite (skip the
-                                // drag's own primary — its snapshot lives
-                                // on GizmoDragState). Works whether the
-                                // user clicked the primary (skip primary,
-                                // capture extras) OR an extra (skip that
-                                // extra, capture primary + the rest).
+                                // Onda 1 + 2C.4: snapshot every OTHER
+                                // selected sprite's full start_transform
+                                // (skip the drag's own primary — its
+                                // snapshot lives on GizmoDragState).
+                                // Canvas pick always opens a Translate
+                                // drag; the same snapshots also feed
+                                // future scale/rotate handles on extras +
+                                // global (advance_gizmo_drag dispatches
+                                // by drag.kind + drag.target).
                                 self.group_drag_starts.clear();
                                 if hero.gizmo.selected_len() > 1 {
                                     for sel in hero.gizmo.iter_selected() {
@@ -644,8 +655,19 @@ impl App {
                                         }
                                         let e = ph2d_ecs::Entity::from_bits(sel);
                                         if let Some(t) = gfx.sim.world().get::<Transform>(e) {
-                                            self.group_drag_starts
-                                                .push((sel, [t.translation.x, t.translation.y]));
+                                            self.group_drag_starts.push(
+                                                crate::app_state::GroupDragSnapshot {
+                                                    entity_bits: sel,
+                                                    start_transform: ph2d_editor::TransformSnapshot {
+                                                        translation: [
+                                                            t.translation.x,
+                                                            t.translation.y,
+                                                        ],
+                                                        rotation: t.rotation,
+                                                        scale: [t.scale.x, t.scale.y],
+                                                    },
+                                                },
+                                            );
                                         }
                                     }
                                 }

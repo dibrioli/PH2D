@@ -63,6 +63,10 @@ ph2d-tool-color-equalization = { path = "../../crates/ph2d-tool-color-equalizati
 # `EqualizeSizesTool::run_full_resolution_multi` in one batch (see
 # render_loop/equalize_sizes_bridge.rs + hero_intents/image_edit.rs).
 ph2d-tool-equalize-sizes = { path = "../../crates/ph2d-tool-equalize-sizes" }
+# Rasterize one-shot — bakes Transform.scale + .rotation into the
+# sprite source pixels and resets Transform to identity (see
+# render_loop/image_edit.rs + hero_intents/image_edit.rs).
+ph2d-tool-rasterize = { path = "../../crates/ph2d-tool-rasterize" }
 # Wave 8 Phase 1 — panel registry install at boot. `register_all_panels()`
 # is mandatory BEFORE the first `HeroScreen::new` (audit B1 closure:
 # the previous auto-install in `HeroScreen::new` silently overrode

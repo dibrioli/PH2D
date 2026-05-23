@@ -52,6 +52,10 @@ pub fn tr(key: &str) -> &'static str {
         "tool.equalize_sizes.tooltip" => {
             "Equalize Sizes · normalize selection to Max / Fixed / Grid target"
         }
+        "tool.rasterize.label" => "Rasterize",
+        "tool.rasterize.tooltip" => {
+            "Rasterize · bake scale + rotation into pixels (reset Transform)"
+        }
         // Image-edit undo affordance.
         "edit.undo.label" => "Undo",
         "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",

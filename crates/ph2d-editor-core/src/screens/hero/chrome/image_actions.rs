@@ -56,6 +56,8 @@ fn oneshot_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
         Some("make_square")
     } else if id == ids::IMAGE_ACTION_REAL_SIZE {
         Some("real_size")
+    } else if id == ids::IMAGE_ACTION_RASTERIZE {
+        Some("rasterize")
     } else {
         None
     }

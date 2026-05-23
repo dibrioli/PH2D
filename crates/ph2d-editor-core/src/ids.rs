@@ -159,6 +159,16 @@ pub const IMAGE_ACTION_COLOR_EQUALIZATION: NodeId = hash_node_id("color_equaliza
 /// targets, so per-sprite `OneShotImageOp` broadcast won't work here).
 pub const IMAGE_ACTION_EQUALIZE_SIZES: NodeId = hash_node_id("equalize_sizes");
 
+/// Image Tools action — Rasterize pill. One-shot: bakes the sprite's
+/// active Transform (scale + rotation + flip) into the source pixel
+/// buffer and resets `Transform.scale = (1,1)` / `rotation = 0`. Click
+/// raises one `EditorAction::OneShotImageOp { tool_id: "rasterize",
+/// entity_bits }` per selected sprite; the shell drain calls
+/// `ph2d_tool_rasterize::rasterize`, commits via
+/// `texture_edit::commit_edited_texture`, then writes the identity
+/// Transform.
+pub const IMAGE_ACTION_RASTERIZE: NodeId = hash_node_id("rasterize");
+
 /// Padding panel widget NodeIds (typed `ph2d-panel-padding`, right-docked
 /// in the Inspector slot while the `padding` tool is active). Four signed
 /// per-edge rows — each a bipolar Slider (`PAD_*`) linked in real time to

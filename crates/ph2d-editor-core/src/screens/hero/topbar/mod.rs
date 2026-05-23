@@ -42,6 +42,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::IMAGE_ACTION_PADDING,
         ids::IMAGE_ACTION_COLOR_EQUALIZATION,
         ids::IMAGE_ACTION_EQUALIZE_SIZES,
+        ids::IMAGE_ACTION_RASTERIZE,
     ] {
         store.register(
             id,
@@ -109,6 +110,10 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ids::IMAGE_ACTION_EQUALIZE_SIZES,
             ph2d_i18n::tr("tool.equalize_sizes.tooltip"),
+        ),
+        (
+            ids::IMAGE_ACTION_RASTERIZE,
+            ph2d_i18n::tr("tool.rasterize.tooltip"),
         ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),

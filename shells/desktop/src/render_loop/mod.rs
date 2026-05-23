@@ -357,6 +357,7 @@ impl crate::App {
             let mut trim_entities: Vec<u64> = Vec::new();
             let mut make_square_entities: Vec<u64> = Vec::new();
             let mut real_size_entities: Vec<u64> = Vec::new();
+            let mut rasterize_entities: Vec<u64> = Vec::new();
             let mut undo_image_edit = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
@@ -495,6 +496,9 @@ impl crate::App {
                         }
                         "real_size" => {
                             real_size_entities.push(entity_bits);
+                        }
+                        "rasterize" => {
+                            rasterize_entities.push(entity_bits);
                         }
                         "bgremoval" => {
                             bgremoval_leftover.push(oneshot);
@@ -832,6 +836,7 @@ impl crate::App {
                 trim_entities,
                 make_square_entities,
                 real_size_entities,
+                rasterize_entities,
                 padding_apply,
                 color_equalization_apply.clone(),
                 equalize_sizes_apply.clone(),

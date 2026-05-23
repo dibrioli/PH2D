@@ -31,6 +31,7 @@ pub(super) fn dispatch(
     trim_entities: Vec<u64>,
     make_square_entities: Vec<u64>,
     real_size_entities: Vec<u64>,
+    rasterize_entities: Vec<u64>,
     padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)>,
     color_equalization_apply: Option<Vec<u64>>,
     equalize_sizes_apply: Option<Vec<u64>>,
@@ -96,6 +97,24 @@ pub(super) fn dispatch(
     // re-acquire — was leaking GPU memory on repeated edits).
     for entity_bits in make_square_entities {
         if hero_intents::drain_make_square(
+            entity_bits,
+            hero.project.pixels_per_meter,
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+            toasts,
+            image_edit_undo,
+        ) {
+            title_dirty = true;
+        }
+    }
+    // Rasterize drain — bake Transform.scale + .rotation into the
+    // source pixel buffer (Mitchell-Netravali resample + rotation) and
+    // reset Transform to identity. Per-sprite broadcast in the
+    // `OneShotImageOp` arm above; mirror of Trim / Make Square.
+    for entity_bits in rasterize_entities {
+        if hero_intents::drain_rasterize(
             entity_bits,
             hero.project.pixels_per_meter,
             sim,

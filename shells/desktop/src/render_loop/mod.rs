@@ -661,7 +661,11 @@ impl crate::App {
                 renderer,
                 asset_db,
                 atlas_asset_map,
+                camera,
+                window_size,
+                vector_scene,
                 &mut self.last_color_equalization_pushed_entity,
+                &mut self.color_equalization_preview,
             );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs (which paints the primary gizmo and only writes to

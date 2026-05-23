@@ -312,6 +312,11 @@ pub(crate) struct App {
     /// reflects the current selection. Reset to `None` on tool
     /// deactivate.
     pub(crate) last_color_equalization_pushed_entity: Option<u64>,
+    /// On-canvas live preview for the Color Equalization tool — drawn
+    /// over the primary sprite's footprint while the tool is active so
+    /// the user sees CLAHE + adjusts apply in real time. Cleared on
+    /// Apply (the bake replaces the texture) + on deactivate.
+    pub(crate) color_equalization_preview: Option<ColorEqualizationPreview>,
     /// Cached full-resolution Background-Removal preview for the active
     /// sprite. Recomputed only when params change / source changes /
     /// the tool (re)activates; the per-frame canvas overlay reuses the
@@ -389,6 +394,21 @@ pub(crate) struct BgremovalPreview {
     pub(crate) entity_bits: u64,
     /// Straight-alpha RGBA8, `width * height * 4`. `Arc` so the
     /// per-frame `VectorScene::draw_image_rgba` shares it cheaply.
+    pub(crate) rgba: std::sync::Arc<Vec<u8>>,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+}
+
+/// Cached on-canvas live preview bitmap for the Color Equalization
+/// tool — mirror of `BgremovalPreview`. Updated by
+/// `color_equalization_bridge::dispatch` when the tool flags
+/// `take_params_dirty()` true (a slider/chip/toggle just moved). The
+/// per-frame overlay paints this RGBA on top of the primary sprite's
+/// footprint while the tool is active, so the user sees the CLAHE +
+/// adjusts apply in real time. Cleared on Apply (the bake takes over)
+/// + on tool deactivate. Straight-alpha (Color EQ doesn't touch alpha).
+pub(crate) struct ColorEqualizationPreview {
+    pub(crate) entity_bits: u64,
     pub(crate) rgba: std::sync::Arc<Vec<u8>>,
     pub(crate) width: u32,
     pub(crate) height: u32,

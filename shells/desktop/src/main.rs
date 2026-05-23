@@ -147,6 +147,7 @@ impl App {
             cycle_pick_count: 0,
             last_bgremoval_pushed_entity: None,
             last_color_equalization_pushed_entity: None,
+            color_equalization_preview: None,
             bgremoval_preview: None,
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display

@@ -69,6 +69,8 @@ fn stateful_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
         Some("bgremoval")
     } else if id == ids::IMAGE_ACTION_PADDING {
         Some("padding")
+    } else if id == ids::IMAGE_ACTION_COLOR_EQUALIZATION {
+        Some("color_equalization")
     } else {
         None
     }

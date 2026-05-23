@@ -40,6 +40,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::IMAGE_ACTION_BGREMOVAL,
         ids::IMAGE_ACTION_REAL_SIZE,
         ids::IMAGE_ACTION_PADDING,
+        ids::IMAGE_ACTION_COLOR_EQUALIZATION,
     ] {
         store.register(
             id,
@@ -99,6 +100,10 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ids::IMAGE_ACTION_PADDING,
             ph2d_i18n::tr("tool.padding.tooltip"),
+        ),
+        (
+            ids::IMAGE_ACTION_COLOR_EQUALIZATION,
+            ph2d_i18n::tr("tool.color_equalization.tooltip"),
         ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),

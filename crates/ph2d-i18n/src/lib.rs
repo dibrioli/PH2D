@@ -44,6 +44,10 @@ pub fn tr(key: &str) -> &'static str {
         "tool.real_size.tooltip" => "Real Size · reset scale to 1:1",
         "tool.padding.label" => "Padding",
         "tool.padding.tooltip" => "Padding · expand or crop canvas edges",
+        "tool.color_equalization.label" => "Color EQ",
+        "tool.color_equalization.tooltip" => {
+            "Color Equalization · CLAHE + brightness/contrast/saturation + auto-WB"
+        }
         // Image-edit undo affordance.
         "edit.undo.label" => "Undo",
         "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",

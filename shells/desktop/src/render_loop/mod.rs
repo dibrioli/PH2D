@@ -17,6 +17,7 @@
 // drop back under the cap (2026-05-21: +SetPresentMode/RealSize tipped it).
 
 mod bgremoval_preview;
+mod color_equalization_bridge;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
@@ -333,6 +334,7 @@ impl crate::App {
             // variants collapse to a `bool` (idempotent — multiple
             // pushes in one frame = one dispatch).
             let mut activate_bgremoval = false;
+            let mut activate_color_equalization = false;
             let mut visibility_toggle_row: Option<NodeId> = None;
             let mut reparent_intent: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
             let mut duplicate_row: Option<NodeId> = None;
@@ -369,6 +371,7 @@ impl crate::App {
                     EditorAction::ActivateTool { tool_id } => match tool_id {
                         "bgremoval" => activate_bgremoval = true,
                         "padding" => activate_padding = true,
+                        "color_equalization" => activate_color_equalization = true,
                         _ => {}
                     },
                     // ADR-0040 TG-B: generic panel→tool channel. Route the
@@ -580,6 +583,19 @@ impl crate::App {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool · Padding"));
             }
+            // Color Equalization activation (mirror of Bg Removal /
+            // Padding above): clicking the Color EQ pill raises
+            // `ActivateTool { tool_id: "color_equalization" }`. Same
+            // mode_on gate — the pill only exists while Image Tools
+            // is on, but the reconcile below catches edge cases where
+            // the mode toggles off while a tool is still active.
+            if hero.image_edit.mode_on
+                && activate_color_equalization
+                && tools.set_active(&ph2d_editor::ToolId::new("color_equalization"))
+            {
+                self.title_dirty = true;
+                toasts.push(Toast::info("Tool · Color EQ"));
+            }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
             // TopBar Image Tools toggle (`image_edit.mode_on`) and the
             // ToolRegistry's active tool are otherwise decoupled: a
@@ -633,6 +649,19 @@ impl crate::App {
                 vector_scene,
                 &mut self.last_bgremoval_pushed_entity,
                 &mut self.bgremoval_preview,
+            );
+            // Color Equalization panel ⟷ tool bridge: drives panel
+            // visibility, refreshes the tool's source bitmap when the
+            // primary changes, publishes the snapshot the panel paints,
+            // and returns the multi-selection on Apply for the bake.
+            let color_equalization_apply = color_equalization_bridge::dispatch(
+                hero,
+                tools,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                &mut self.last_color_equalization_pushed_entity,
             );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs (which paints the primary gizmo and only writes to
@@ -779,6 +808,7 @@ impl crate::App {
                 make_square_entities,
                 real_size_entities,
                 padding_apply,
+                color_equalization_apply.clone(),
                 undo_image_edit,
                 hero,
                 sim,
@@ -816,6 +846,16 @@ impl crate::App {
                 && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {
+                self.title_dirty = true;
+            }
+            // Color Equalization Apply teardown — deactivate the tool
+            // (panel hides, sprite returns to its un-edited live state
+            // visually, multi-selection preserved). Mirror of Padding.
+            if color_equalization_apply.is_some()
+                && let Some(default_id) = tools.default_tool_id()
+                && tools.set_active(&default_id)
+            {
+                self.last_color_equalization_pushed_entity = None;
                 self.title_dirty = true;
             }
             // Legacy `FloatingPanel` Procreate-style paint was retired

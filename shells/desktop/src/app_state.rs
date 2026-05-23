@@ -304,6 +304,14 @@ pub(crate) struct App {
     /// while BgRemoval is the active tool to skip redundant
     /// pushes (the thumbnail rebuild + preview rerun are work).
     pub(crate) last_bgremoval_pushed_entity: Option<u64>,
+    /// Mirror of `last_bgremoval_pushed_entity` for the Color
+    /// Equalization tool. `Some(bits)` is the entity whose source
+    /// RGBA was last pushed into the active `ColorEqualizationTool`
+    /// preview cache. When the primary changes (or the tool just
+    /// activated) the bridge re-pushes so the panel's live thumbnail
+    /// reflects the current selection. Reset to `None` on tool
+    /// deactivate.
+    pub(crate) last_color_equalization_pushed_entity: Option<u64>,
     /// Cached full-resolution Background-Removal preview for the active
     /// sprite. Recomputed only when params change / source changes /
     /// the tool (re)activates; the per-frame canvas overlay reuses the

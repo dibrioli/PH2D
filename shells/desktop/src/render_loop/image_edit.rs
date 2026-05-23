@@ -32,6 +32,7 @@ pub(super) fn dispatch(
     make_square_entities: Vec<u64>,
     real_size_entities: Vec<u64>,
     padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)>,
+    color_equalization_apply: Option<Vec<u64>>,
     undo_image_edit: bool,
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -145,6 +146,39 @@ pub(super) fn dispatch(
         )
     {
         title_dirty = true;
+    }
+    // Color Equalization drain — multi-sprite Apply. The bridge
+    // returns the entire `iter_selected()` snapshot when the user
+    // pressed Apply, so we iterate and bake each sprite via the
+    // currently-active ColorEqualizationTool (its source snapshot is
+    // re-pushed per-entity here to avoid stale RGBA between bakes).
+    if let Some(bits_list) = color_equalization_apply {
+        let ceq_id = ph2d_editor::ToolId::new("color_equalization");
+        let ceq_active = tools.active().map(|t| t.id() == ceq_id).unwrap_or(false);
+        if ceq_active {
+            for entity_bits in bits_list {
+                let mut ran = false;
+                if let Some(tool) = tools.active_mut()
+                    && let Some(ceq) =
+                        tool.as_any_mut()
+                            .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
+                {
+                    ran = hero_intents::drain_color_equalization(
+                        entity_bits,
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                        toasts,
+                        image_edit_undo,
+                        ceq,
+                    );
+                }
+                if ran {
+                    title_dirty = true;
+                }
+            }
+        }
     }
     // Bg Removal drain — parallel to Trim Transparency, but
     // dimensions are preserved (the algorithm only mutates

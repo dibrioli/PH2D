@@ -118,6 +118,18 @@ pub const IMAGE_ACTION_REAL_SIZE: NodeId = hash_node_id("real_size");
 /// Condenses the legacy Image Padding + Directional Expand.
 pub const IMAGE_ACTION_PADDING: NodeId = hash_node_id("padding");
 
+/// Image Tools action — Color Equalization pill. Stateful tool: opens
+/// the right-docked panel with 5 slider+chip rows (clip limit, tile
+/// grid size, brightness, contrast, saturation), an Auto-WB toggle,
+/// and Cancel/Apply. Pipeline (CPU, zero-deps): CLAHE (Zuiderveld
+/// 1994), then brightness/contrast/saturation in linear sRGB, then
+/// optional Gray-World auto-WB. Click raises `EditorAction::ActivateTool
+/// { tool_id: "color_equalization" }`; Apply pushes one
+/// `EditorAction::OneShotImageOp { tool_id: "color_equalization",
+/// entity_bits }` per selected sprite, and the shell drain reads each
+/// sprite's source then bakes via the tool's `run_full_resolution`.
+pub const IMAGE_ACTION_COLOR_EQUALIZATION: NodeId = hash_node_id("color_equalization");
+
 /// Padding panel widget NodeIds (typed `ph2d-panel-padding`, right-docked
 /// in the Inspector slot while the `padding` tool is active). Four signed
 /// per-edge rows — each a bipolar Slider (`PAD_*`) linked in real time to

@@ -431,6 +431,79 @@ pub(crate) fn drain_color_equalization(
     }
 }
 
+/// Per-entity gather record for `drain_equalize_sizes`: the source-read
+/// metadata (`old_*` + alpha mode) paired with the entity_bits so the
+/// commit phase can rebuild the `SpriteImage`, restore the undo
+/// snapshot, and (in `compute_arrange_positions`) look up the current
+/// world translation by entity. Lifted out of the drain so it can be
+/// the parameter type for the arrange helper.
+struct EqsEntry {
+    bits: u64,
+    src: texture_edit::SourceRead,
+    input_alpha: ph2d_render::AlphaMode,
+}
+
+/// Compute the per-entity arrange-on-grid layout positions (port of
+/// the legacy `EqualizeModal.arrangeSprites` from
+/// `Game-Engine-Legada/apps/editor/src/tools/EqualizeModal.ts:296`):
+/// sort the selection by world `(y, x)`, lay them out in `cols ×
+/// rows` (cols = `ceil(sqrt(N))`), anchored at the selection's
+/// top-left snapped down to the grid origin. Cell center is at
+/// `origin + (col + 0.5) * cell` (X) / `origin - (row + 0.5) * cell`
+/// (Y; Y grows UP in PH2D world space).
+fn compute_arrange_positions(
+    entries: &[EqsEntry],
+    sim: &SimWorld,
+    cell_m: f32,
+    grid_origin: [f32; 2],
+) -> Vec<Option<[f32; 2]>> {
+    let n = entries.len();
+    if n == 0 || cell_m <= 0.0 {
+        return vec![None; n];
+    }
+    let mut posed: Vec<(usize, [f32; 2])> = Vec::with_capacity(n);
+    for (i, e) in entries.iter().enumerate() {
+        let entity = ph2d_ecs::Entity::from_bits(e.bits);
+        if let Some(t) = sim.world().get::<ph2d_ecs::Transform>(entity) {
+            posed.push((i, [t.translation.x, t.translation.y]));
+        }
+    }
+    // Sort by (y desc, x asc): the legacy modal used
+    // `a.y - b.y || a.x - b.x` in DOM coords (Y grows DOWN). PH2D Y
+    // grows UP, so reverse the Y sort to keep the same visual reading
+    // order (top → bottom, left → right).
+    posed.sort_by(|a, b| {
+        b.1[1]
+            .partial_cmp(&a.1[1])
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| {
+                a.1[0]
+                    .partial_cmp(&b.1[0])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+    });
+    let min_x = posed.iter().map(|p| p.1[0]).fold(f32::INFINITY, f32::min);
+    let max_y = posed
+        .iter()
+        .map(|p| p.1[1])
+        .fold(f32::NEG_INFINITY, f32::max);
+    // Snap the layout's top-left corner DOWN to the grid origin lattice
+    // (so cells align with the live Grid Snap overlay).
+    let start_x = ((min_x - grid_origin[0]) / cell_m).floor() * cell_m + grid_origin[0];
+    let start_y_top = ((max_y - grid_origin[1]) / cell_m).ceil() * cell_m + grid_origin[1];
+    let cols = (posed.len() as f32).sqrt().ceil().max(1.0) as usize;
+
+    let mut result: Vec<Option<[f32; 2]>> = vec![None; n];
+    for (i, (entry_idx, _)) in posed.iter().enumerate() {
+        let col = i % cols;
+        let row = i / cols;
+        let cx = start_x + (col as f32 + 0.5) * cell_m;
+        let cy = start_y_top - (row as f32 + 0.5) * cell_m;
+        result[*entry_idx] = Some([cx, cy]);
+    }
+    result
+}
+
 /// Drain the Equalize Sizes Apply latch over the multi-selection.
 ///
 /// Cross-sprite shape: collects per-entity `SpriteInput`s
@@ -481,15 +554,7 @@ pub(crate) fn drain_equalize_sizes(
     // order. We pair each `SpriteInput` with the source-read metadata
     // (`old_*` + alpha mode) so the commit phase can rebuild the
     // `SpriteImage` + restore the undo snapshot without re-reading.
-    struct Entry {
-        bits: u64,
-        src: texture_edit::SourceRead,
-        // The straight-alpha pixel buffer fed to the tool; reused
-        // verbatim into the output `SpriteImage` whenever the algorithm
-        // didn't realloc (fit-by-scale, no upscale).
-        input_alpha: ph2d_render::AlphaMode,
-    }
-    let mut entries: Vec<Entry> = Vec::with_capacity(bits_list.len());
+    let mut entries: Vec<EqsEntry> = Vec::with_capacity(bits_list.len());
     let mut inputs: Vec<ph2d_tool_equalize_sizes::SpriteInput> =
         Vec::with_capacity(bits_list.len());
     let mut skipped = 0usize;
@@ -540,7 +605,7 @@ pub(crate) fn drain_equalize_sizes(
             old_premultiplied: src.old_premultiplied,
             old_anchor: src.old_anchor,
         };
-        entries.push(Entry {
+        entries.push(EqsEntry {
             bits,
             src: src_shell,
             input_alpha: source_alpha,
@@ -559,24 +624,41 @@ pub(crate) fn drain_equalize_sizes(
     let outputs = eqs.run_full_resolution_multi(&inputs);
     debug_assert_eq!(outputs.len(), entries.len());
 
-    // Pre-compute snap-to-cell parameters once (Square kind in v1).
-    // The cell is in METERS (world space); `params.grid_unit` is in
-    // pixels (matches the bake), so we divide by px_per_m.
-    let align_positions = params_snapshot.align_to_grid
+    // Pre-compute arrange-on-grid layout (legacy `EqualizeModal`
+    // semantics): when `arrange_on_grid && target_mode == GridUnit`,
+    // lay sprites 1-per-cell sorted by world `(y, x)`, anchored at the
+    // selection's top-left snapped down to the grid origin.
+    //
+    // Output is a parallel array (`new_translations[i]` corresponds to
+    // `entries[i]`) so we can apply per-entity in Phase 3 without
+    // reshuffling outputs.
+    let arrange_positions = params_snapshot.arrange_on_grid
         && params_snapshot.target_mode == ph2d_tool_equalize_sizes::TargetMode::GridUnit;
     let cell_m = (params_snapshot.grid_unit as f32 / px_per_m).max(1.0e-3);
+    let new_translations: Vec<Option<[f32; 2]>> = if arrange_positions {
+        compute_arrange_positions(&entries, sim, cell_m, grid_origin)
+    } else {
+        vec![None; entries.len()]
+    };
 
     // Phase 3: commit per-entity. We need a separate counter for
     // "actually changed" because `out.changed = false` skips quietly.
     let mut applied = 0usize;
     let mut last_success: Option<(u64, texture_edit::SourceRead, u32, bool)> = None;
-    for (entry, out) in entries.into_iter().zip(outputs.into_iter()) {
-        if !out.changed {
+    for ((entry, out), maybe_pos) in entries
+        .into_iter()
+        .zip(outputs.into_iter())
+        .zip(new_translations.into_iter())
+    {
+        // Skip only when the bake produced NO change AND there's no
+        // arrange-on-grid layout move to apply — otherwise the sprite
+        // still needs its translation rewritten.
+        if !out.changed && maybe_pos.is_none() {
             continue;
         }
         let entity = ph2d_ecs::Entity::from_bits(entry.bits);
-        let buffer_changed =
-            (out.width, out.height) != (entry.src.image.width, entry.src.image.height);
+        let buffer_changed = out.changed
+            && (out.width, out.height) != (entry.src.image.width, entry.src.image.height);
         let mut produced_individual: Option<u32> = None;
         if buffer_changed {
             if out.width > max_dim || out.height > max_dim {
@@ -620,20 +702,13 @@ pub(crate) fn drain_equalize_sizes(
             }
         }
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
-            t.scale.x = out.new_scale_x;
-            t.scale.y = out.new_scale_y;
-            if align_positions {
-                // Snap translation to nearest Square-grid cell center.
-                // Cells are anchored at `grid_origin`; cell (0,0)
-                // occupies `[origin, origin + cell)`, so its center
-                // sits at `origin + cell/2`. The general center is
-                // `origin + (n + 0.5) * cell` for integer `n`.
-                let local_x = t.translation.x - grid_origin[0] - cell_m * 0.5;
-                let local_y = t.translation.y - grid_origin[1] - cell_m * 0.5;
-                let snapped_x = (local_x / cell_m).round() * cell_m + cell_m * 0.5;
-                let snapped_y = (local_y / cell_m).round() * cell_m + cell_m * 0.5;
-                t.translation.x = snapped_x + grid_origin[0];
-                t.translation.y = snapped_y + grid_origin[1];
+            if out.changed {
+                t.scale.x = out.new_scale_x;
+                t.scale.y = out.new_scale_y;
+            }
+            if let Some([nx, ny]) = maybe_pos {
+                t.translation.x = nx;
+                t.translation.y = ny;
             }
         }
         applied += 1;

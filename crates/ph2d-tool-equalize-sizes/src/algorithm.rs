@@ -93,18 +93,18 @@ pub fn compute_global_target(
     }
 }
 
-/// Per-sprite GridUnit target = ceil(visual / grid) * grid.
-fn grid_target_for(sprite: &SpriteInput, grid: u32) -> (u32, u32) {
+/// GridUnit target — uniform across the selection, derived from
+/// `(grid, offset)`: `target = (grid - offset, grid - offset)`. Mirrors
+/// the legacy `EqualizeModal.updateGridUnitState` ("Final size:
+/// `gridSize - offset` x `gridSize - offset` px"). Both axes use the
+/// same final dim — the original Modal had a single Offset slider that
+/// reduced both equally. `grid - offset` is clamped to `>= 1` so the
+/// caller can never produce a zero-extent texture.
+fn grid_uniform_target(grid: u32, offset: u32) -> (u32, u32) {
     let grid = grid.max(1);
-    let vw = ((sprite.width as f32) * sprite.scale_x.abs())
-        .round()
-        .max(1.0) as u32;
-    let vh = ((sprite.height as f32) * sprite.scale_y.abs())
-        .round()
-        .max(1.0) as u32;
-    let tw = vw.div_ceil(grid) * grid;
-    let th = vh.div_ceil(grid) * grid;
-    (tw.max(1), th.max(1))
+    let off = offset.min(grid / 2);
+    let dim = grid.saturating_sub(off).max(1);
+    (dim, dim)
 }
 
 /// Main entry point. Iterates `inputs` and produces one `SpriteOutput`
@@ -114,10 +114,18 @@ pub fn run_equalize_sizes(
     params: &EqualizeSizesParams,
 ) -> Vec<SpriteOutput> {
     let global_target = compute_global_target(inputs, params);
+    // Grid-mode target is uniform across the selection (cell - offset)
+    // — unlike pre-refactor `ceil(visual/cell)*cell` which was per-
+    // sprite and snapped UP. Port of legacy `EqualizeModal` semantics.
+    let grid_target = if params.target_mode == TargetMode::GridUnit {
+        Some(grid_uniform_target(params.grid_unit, params.grid_offset))
+    } else {
+        None
+    };
     let mut out = Vec::with_capacity(inputs.len());
     for s in inputs {
         let (tw, th) = match params.target_mode {
-            TargetMode::GridUnit => grid_target_for(s, params.grid_unit),
+            TargetMode::GridUnit => grid_target.unwrap_or((s.width.max(1), s.height.max(1))),
             _ => global_target.unwrap_or((s.width.max(1), s.height.max(1))),
         };
         out.push(equalize_one(s, tw, th, params));
@@ -554,10 +562,35 @@ mod tests {
     }
 
     #[test]
-    fn grid_unit_target_rounds_up() {
-        let s = sprite(50, 30, 1.0, 1.0);
-        // visual 50x30, grid 32 → ceil(50/32)*32 = 64; ceil(30/32)*32 = 32.
-        assert_eq!(grid_target_for(&s, 32), (64, 32));
+    fn grid_uniform_target_is_cell_minus_offset_both_axes() {
+        // cell 64, offset 0 → (64, 64).
+        assert_eq!(grid_uniform_target(64, 0), (64, 64));
+        // cell 64, offset 8 → (56, 56) — uniform reduction, both axes.
+        assert_eq!(grid_uniform_target(64, 8), (56, 56));
+        // Offset capped at cell/2 silently (caller's clamp).
+        assert_eq!(grid_uniform_target(32, 99), (16, 16));
+        // grid 0 (degenerate) → at least (1, 1) so no zero-dim texture.
+        assert_eq!(grid_uniform_target(0, 0), (1, 1));
+    }
+
+    #[test]
+    fn grid_mode_shrinks_sprites_to_cell_minus_offset() {
+        let mut p = EqualizeSizesParams::default();
+        p.target_mode = TargetMode::GridUnit;
+        p.grid_unit = 64;
+        p.grid_offset = 8;
+        p.rasterize_after = true;
+        let inputs = vec![
+            // Big sprite (128 visual) should shrink to (56, 56).
+            sprite(128, 128, 1.0, 1.0),
+            // Tiny sprite (8 visual) should grow to (56, 56) too —
+            // uniform target across the selection (legacy semantics).
+            sprite(8, 8, 1.0, 1.0),
+        ];
+        let out = run_equalize_sizes(&inputs, &p);
+        assert_eq!(out.len(), 2);
+        assert_eq!((out[0].width, out[0].height), (56, 56));
+        assert_eq!((out[1].width, out[1].height), (56, 56));
     }
 
     #[test]

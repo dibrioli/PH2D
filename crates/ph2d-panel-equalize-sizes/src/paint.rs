@@ -35,6 +35,9 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_tool_equalize_sizes::params::{TargetMode, UpscaleAlgorithm};
 use ph2d_vector::VectorScene;
 
+/// Label column width for Grid-mode slider rows. // LITERAL-PX-OK: panel grid metric
+const LABEL_COL_W: f32 = 72.0;
+
 pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(EqualizeSizesPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
@@ -134,30 +137,77 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
             y += row_h + row_gap;
         }
         TargetMode::GridUnit => {
-            // No slider/chip here: the cell size is owned by the Grid
-            // Snap tool. The shell bridge syncs `snapshot.grid_unit` (px)
-            // from `GridSnapState::square_cfg.cell_size * pixels_per_meter`
+            // Cell size is owned by the Grid Snap tool. The shell
+            // bridge syncs `snapshot.grid_unit` (px) from
+            // `GridSnapState::square_cfg.cell_size * pixels_per_meter`
             // each frame, so this label always reflects the live cell.
             let info_text = format!("Cell: {} px (from Grid Snap)", snapshot.grid_unit);
-            let info_rect = Rect::new(inner_x, y, inner_w, row_h);
             paint_text_centered(
                 text_system,
                 scene,
                 &info_text,
-                info_rect,
+                Rect::new(inner_x, y, inner_w, row_h),
                 TypeToken::Xs.px(),
                 resolve(ColorToken::Text2, theme),
             );
             y += row_h + row_gap;
 
-            // "Align position to grid" toggle — when on, the bake also
-            // snaps each sprite's `Transform.translation` to the
-            // nearest cell center (Square kind in v1).
+            // Offset slider + chip — slider track `0..1` maps to
+            // `0..(cell/2) px`; chip displays the raw px. Manual mirror
+            // (different storage domains) lives in `event::apply_event`.
+            // `Final size: (cell - offset) x (cell - offset)` row sits
+            // right under the slider as in the legacy `EqualizeModal`.
+            let max_off = (snapshot.grid_unit / 2).max(1);
+            let track = store
+                .slider(ids::EQS_GRID_OFFSET)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| snapshot.grid_offset as f32 / max_off as f32);
+            let chip_value = store
+                .number_value(ids::EQS_GRID_OFFSET_NUM)
+                .unwrap_or(snapshot.grid_offset as f64);
+            let chip_w = Spacing::Xl.px() * 2.0;
+            let display = format!("{} px", chip_value.round() as i64);
+            paint_slider_with_chip_layout(
+                Rect::new(inner_x, y, inner_w, row_h),
+                "Offset",
+                track,
+                chip_value,
+                Some(&display),
+                ids::EQS_GRID_OFFSET,
+                ids::EQS_GRID_OFFSET_NUM,
+                LABEL_COL_W,
+                chip_w,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+            y += row_h + row_gap;
+
+            let final_dim = snapshot
+                .grid_unit
+                .saturating_sub(snapshot.grid_offset.min(max_off))
+                .max(1);
+            let final_text = format!("Final size: {final_dim} x {final_dim} px");
+            paint_text_centered(
+                text_system,
+                scene,
+                &final_text,
+                Rect::new(inner_x, y, inner_w, row_h),
+                TypeToken::Xs.px(),
+                resolve(ColorToken::Text2, theme),
+            );
+            y += row_h + row_gap;
+
+            // "Arrange on Grid (1 per cell)" toggle — port of legacy
+            // `EqualizeModal.arrangeOnGrid`. When on, Apply lays the
+            // selection out 1-sprite-per-cell sorted by world `(y, x)`.
             paint_toggle_button(
                 Rect::new(inner_x, y, inner_w, row_h),
-                "Align position to grid",
-                ids::EQS_ALIGN_TO_GRID,
-                snapshot.align_to_grid,
+                "Arrange on Grid (1 per cell)",
+                ids::EQS_ARRANGE_ON_GRID,
+                snapshot.arrange_on_grid,
                 store,
                 hit_index,
                 scene,

@@ -133,15 +133,21 @@ impl Tool for EqualizeSizesTool {
                 let h = (v.round().max(0.0) as u32).max(1);
                 self.apply_ui_edit(EqualizeSizesUiEdit::SetFixedH(h));
             }
-            // ── Align-to-grid toggle (Grid mode) ─────────────────────
+            // ── Grid-mode controls (cell from Grid Snap, offset + arrange here) ──
             //
-            // No grid-unit slider/chip: the cell size is owned by the
-            // Grid Snap tool. The bridge calls
-            // `apply_ui_edit(SetGridUnit(cell_px))` each frame from the
-            // shell to keep `params.grid_unit` in sync with the live
-            // `GridSnapState`.
-            PanelEvent::Click(id) if id == ids::EQS_ALIGN_TO_GRID => {
-                self.apply_ui_edit(EqualizeSizesUiEdit::ToggleAlignToGrid);
+            // `grid_unit` is owned by the Grid Snap tool — the bridge
+            // calls `apply_ui_edit(SetGridUnit(cell_px))` each frame to
+            // keep `params.grid_unit` in sync. Here we only handle the
+            // panel's own controls: offset chip/slider (in px) and the
+            // "Arrange on Grid" toggle.
+            PanelEvent::SetValue(id, v)
+                if id == ids::EQS_GRID_OFFSET || id == ids::EQS_GRID_OFFSET_NUM =>
+            {
+                let o = v.round().max(0.0) as u32;
+                self.apply_ui_edit(EqualizeSizesUiEdit::SetGridOffset(o));
+            }
+            PanelEvent::Click(id) if id == ids::EQS_ARRANGE_ON_GRID => {
+                self.apply_ui_edit(EqualizeSizesUiEdit::ToggleArrangeOnGrid);
             }
             // ── Toggles ──────────────────────────────────────────────
             PanelEvent::Click(id) if id == ids::EQS_UPSCALE_IF_SMALLER => {
@@ -224,16 +230,23 @@ mod tests {
     }
 
     #[test]
-    fn align_to_grid_toggle_flips_via_panel_click() {
-        // The Grid-mode panel toggle routes `Click(EQS_ALIGN_TO_GRID)`
-        // to `ToggleAlignToGrid` (which xors `params.align_to_grid`).
-        // The grid unit itself is sync'd by the bridge, not the panel.
+    fn arrange_on_grid_toggle_flips_via_panel_click() {
         let mut t = EqualizeSizesTool::default();
-        assert!(!t.params().align_to_grid);
-        t.handle_panel_event(PanelEvent::Click(ids::EQS_ALIGN_TO_GRID));
-        assert!(t.params().align_to_grid);
-        t.handle_panel_event(PanelEvent::Click(ids::EQS_ALIGN_TO_GRID));
-        assert!(!t.params().align_to_grid);
+        assert!(!t.params().arrange_on_grid);
+        t.handle_panel_event(PanelEvent::Click(ids::EQS_ARRANGE_ON_GRID));
+        assert!(t.params().arrange_on_grid);
+        t.handle_panel_event(PanelEvent::Click(ids::EQS_ARRANGE_ON_GRID));
+        assert!(!t.params().arrange_on_grid);
+    }
+
+    #[test]
+    fn grid_offset_routes_through_panel_event() {
+        let mut t = EqualizeSizesTool::default();
+        // Default grid_unit is 32, so offset clamps to 0..16.
+        t.handle_panel_event(PanelEvent::SetValue(ids::EQS_GRID_OFFSET, 4.0));
+        assert_eq!(t.params().grid_offset, 4);
+        t.handle_panel_event(PanelEvent::SetValue(ids::EQS_GRID_OFFSET_NUM, 25.0));
+        assert_eq!(t.params().grid_offset, 16, "offset must clamp to cell/2");
     }
 
     #[test]

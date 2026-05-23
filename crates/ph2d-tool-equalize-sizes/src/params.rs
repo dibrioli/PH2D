@@ -67,10 +67,14 @@ pub struct EqualizeSizesUiSnapshot {
     pub upscale_if_smaller: bool,
     pub upscale_algorithm: UpscaleAlgorithm,
     pub rasterize_after: bool,
-    /// When `true` AND `target_mode == GridUnit`, the bake additionally
-    /// snaps each sprite's `Transform.translation` to the nearest cell
-    /// center (Square grid only in v1).
-    pub align_to_grid: bool,
+    /// Grid-mode "offset" (px). The target dim is `(grid_unit - offset,
+    /// grid_unit - offset)` — same value applied to both axes (legacy
+    /// `EqualizeModal` semantics). Clamped to `0..grid_unit/2`.
+    pub grid_offset: u32,
+    /// When `true` AND `target_mode == GridUnit`, Apply lays the
+    /// selection out 1 sprite per cell sorted by world `(y, x)`, like
+    /// the legacy "Arrange on Grid (1 per unit)" toggle.
+    pub arrange_on_grid: bool,
 }
 
 impl Default for EqualizeSizesUiSnapshot {
@@ -84,7 +88,8 @@ impl Default for EqualizeSizesUiSnapshot {
             upscale_if_smaller: false,
             upscale_algorithm: UpscaleAlgorithm::Lanczos3,
             rasterize_after: true,
-            align_to_grid: false,
+            grid_offset: 0,
+            arrange_on_grid: false,
         }
     }
 }
@@ -102,8 +107,10 @@ pub struct EqualizeSizesParams {
     pub upscale_if_smaller: bool,
     pub upscale_algorithm: UpscaleAlgorithm,
     pub rasterize_after: bool,
-    /// See [`EqualizeSizesUiSnapshot::align_to_grid`].
-    pub align_to_grid: bool,
+    /// See [`EqualizeSizesUiSnapshot::grid_offset`].
+    pub grid_offset: u32,
+    /// See [`EqualizeSizesUiSnapshot::arrange_on_grid`].
+    pub arrange_on_grid: bool,
 }
 
 impl Default for EqualizeSizesParams {
@@ -118,7 +125,8 @@ impl Default for EqualizeSizesParams {
             upscale_if_smaller: false,
             upscale_algorithm: UpscaleAlgorithm::Lanczos3,
             rasterize_after: true,
-            align_to_grid: false,
+            grid_offset: 0,
+            arrange_on_grid: false,
         }
     }
 }
@@ -139,6 +147,9 @@ pub enum EqualizeSizesUiEdit {
     /// panel has no slider/chip for grid unit; the cell size is owned
     /// by the Grid Snap tool and pushed in by the bridge every frame.
     SetGridUnit(u32),
+    /// Grid-mode offset (px) committed by the panel's offset
+    /// slider/chip. The tool clamps to `0..grid_unit/2`.
+    SetGridOffset(u32),
     /// Toggle button flipped — true means upscale small sprites with the
     /// selected `upscale_algorithm` before fitting to target.
     ToggleUpscaleIfSmaller,
@@ -147,10 +158,9 @@ pub enum EqualizeSizesUiEdit {
     /// Toggle button flipped — true means Mitchell-Netravali resample
     /// each sprite to its target canvas (baking scale into pixels).
     ToggleRasterizeAfter,
-    /// Toggle button flipped — true means the GridUnit-mode bake also
-    /// snaps each sprite's `Transform.translation` to the nearest cell
-    /// center.
-    ToggleAlignToGrid,
+    /// Toggle button flipped — true means Grid-mode Apply also lays
+    /// the selection out 1 sprite per cell sorted by world `(y, x)`.
+    ToggleArrangeOnGrid,
     /// Apply button pressed — the host drains a pending-apply latch and
     /// runs `run_full_resolution_multi` on the selection.
     Apply,
@@ -179,6 +189,16 @@ pub fn apply_ui_edit(params: &mut EqualizeSizesParams, edit: EqualizeSizesUiEdit
         }
         EqualizeSizesUiEdit::SetGridUnit(g) => {
             params.grid_unit = g.clamp(1, EQS_MAX_GRID_UNIT);
+            // Re-clamp offset since its max depends on grid_unit.
+            let max_off = params.grid_unit / 2;
+            if params.grid_offset > max_off {
+                params.grid_offset = max_off;
+            }
+            false
+        }
+        EqualizeSizesUiEdit::SetGridOffset(o) => {
+            let max_off = params.grid_unit / 2;
+            params.grid_offset = o.min(max_off);
             false
         }
         EqualizeSizesUiEdit::ToggleUpscaleIfSmaller => {
@@ -193,8 +213,8 @@ pub fn apply_ui_edit(params: &mut EqualizeSizesParams, edit: EqualizeSizesUiEdit
             params.rasterize_after = !params.rasterize_after;
             false
         }
-        EqualizeSizesUiEdit::ToggleAlignToGrid => {
-            params.align_to_grid = !params.align_to_grid;
+        EqualizeSizesUiEdit::ToggleArrangeOnGrid => {
+            params.arrange_on_grid = !params.arrange_on_grid;
             false
         }
         EqualizeSizesUiEdit::Apply => true,
@@ -211,7 +231,8 @@ pub fn snapshot_from_params(p: &EqualizeSizesParams) -> EqualizeSizesUiSnapshot 
         upscale_if_smaller: p.upscale_if_smaller,
         upscale_algorithm: p.upscale_algorithm,
         rasterize_after: p.rasterize_after,
-        align_to_grid: p.align_to_grid,
+        grid_offset: p.grid_offset,
+        arrange_on_grid: p.arrange_on_grid,
     }
 }
 
@@ -279,12 +300,39 @@ mod tests {
     }
 
     #[test]
-    fn toggle_align_to_grid_flips() {
+    fn toggle_arrange_on_grid_flips() {
         let mut p = EqualizeSizesParams::default();
-        assert!(!p.align_to_grid);
-        apply_ui_edit(&mut p, EqualizeSizesUiEdit::ToggleAlignToGrid);
-        assert!(p.align_to_grid);
-        apply_ui_edit(&mut p, EqualizeSizesUiEdit::ToggleAlignToGrid);
-        assert!(!p.align_to_grid);
+        assert!(!p.arrange_on_grid);
+        apply_ui_edit(&mut p, EqualizeSizesUiEdit::ToggleArrangeOnGrid);
+        assert!(p.arrange_on_grid);
+        apply_ui_edit(&mut p, EqualizeSizesUiEdit::ToggleArrangeOnGrid);
+        assert!(!p.arrange_on_grid);
+    }
+
+    #[test]
+    fn set_grid_offset_clamps_to_half_unit() {
+        let mut p = EqualizeSizesParams {
+            grid_unit: 64,
+            ..EqualizeSizesParams::default()
+        };
+        apply_ui_edit(&mut p, EqualizeSizesUiEdit::SetGridOffset(10));
+        assert_eq!(p.grid_offset, 10);
+        // Beyond `grid_unit / 2 = 32` clamps down.
+        apply_ui_edit(&mut p, EqualizeSizesUiEdit::SetGridOffset(99));
+        assert_eq!(p.grid_offset, 32);
+    }
+
+    #[test]
+    fn shrinking_grid_unit_reclamps_offset() {
+        let mut p = EqualizeSizesParams {
+            grid_unit: 64,
+            grid_offset: 30,
+            ..EqualizeSizesParams::default()
+        };
+        // grid_unit/2 was 32 (offset 30 fit). Now drop to 16
+        // (grid_unit=32) — offset must shrink to 16.
+        apply_ui_edit(&mut p, EqualizeSizesUiEdit::SetGridUnit(32));
+        assert_eq!(p.grid_unit, 32);
+        assert_eq!(p.grid_offset, 16);
     }
 }

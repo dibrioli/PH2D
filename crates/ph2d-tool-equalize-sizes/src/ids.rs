@@ -37,14 +37,23 @@ pub const EQS_MODE_GRID: NodeId = hash_node_id("eqsizes.mode_grid");
 pub const EQS_FIXED_W: NodeId = hash_node_id("eqsizes.fixed_w");
 pub const EQS_FIXED_H: NodeId = hash_node_id("eqsizes.fixed_h");
 
-// ── Grid-mode "Align position to grid" toggle ────────────────────────
-// Grid-mode has no slider/chip: the cell size is read from
-// `GridSnapState::square_cfg.cell_size` (in meters) and synced into
-// `params.grid_unit` (px) each frame by the bridge. The Align toggle
-// asks the bake to additionally snap each sprite's
-// `Transform.translation` to the nearest cell center (Square kind only
-// in v1; other kinds keep their position).
-pub const EQS_ALIGN_TO_GRID: NodeId = hash_node_id("eqsizes.align_to_grid");
+// ── Grid-mode controls (port of legacy EqualizeModal) ────────────────
+// Grid mode: cell size is read from `GridSnapState::square_cfg.cell_size`
+// (synced into `params.grid_unit` every frame by the bridge); `offset`
+// is a user-tunable padding that reduces the target dimensions to
+// `(cell - offset, cell - offset)`; `arrange_on_grid` lays out the
+// selection 1-per-cell sorted by world `(y, x)` on Apply.
+
+/// "Offset" slider (track `0..1`, Widget Gallery §4.2). Range maps to
+/// `0..cell/2` px at paint time (max depends on the live `grid_unit`).
+pub const EQS_GRID_OFFSET: NodeId = hash_node_id("eqsizes.grid_offset");
+/// Numeric chip paired with [`EQS_GRID_OFFSET`].
+pub const EQS_GRID_OFFSET_NUM: NodeId = hash_node_id("eqsizes.grid_offset_num");
+/// "Arrange on Grid (1 per cell)" toggle — when on, the Apply bake
+/// additionally lays the selection out 1 sprite per cell, sorted by
+/// `(y, x)` world position, anchored at the selection's top-left
+/// snapped to the grid origin.
+pub const EQS_ARRANGE_ON_GRID: NodeId = hash_node_id("eqsizes.arrange_on_grid");
 
 // ── Boolean toggles (painted as accent-when-on buttons) ──────────────
 pub const EQS_UPSCALE_IF_SMALLER: NodeId = hash_node_id("eqsizes.upscale_if_smaller");

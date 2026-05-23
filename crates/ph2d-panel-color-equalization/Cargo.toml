@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-panel-color-equalization"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Color Equalization panel — typed `Panel<State>` (ADR-0029).
+# Right-docked (Inspector geometry slot); visible only while the
+# `color_equalization` tool is active. Holds the sliders for the
+# Implementador's CLAHE + brightness + contrast + saturation +
+# auto-WB controls + Cancel / Apply. Coord pre-work stub — the
+# Implementador fills `paint`, `apply_event`, `populate`, and the
+# vocab snapshot in `ph2d-tool-color-equalization`.
+
+[dependencies]
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-a11y          = { path = "../ph2d-a11y" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }

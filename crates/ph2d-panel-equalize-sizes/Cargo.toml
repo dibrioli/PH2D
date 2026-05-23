@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-panel-equalize-sizes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Equalize Sizes panel — typed `Panel<State>` (ADR-0029).
+# Right-docked (Inspector geometry slot); visible only while the
+# `equalize_sizes` tool is active. Target dim input (max of selection /
+# fixed W×H / grid unit), toggles (upscale-if-smaller, automatic
+# rasterize), + Apply / Cancel. Multi-sprite obrigatório (Fase 0).
+# Coord pre-work stub.
+
+[dependencies]
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-a11y          = { path = "../ph2d-a11y" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }

@@ -35,8 +35,18 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     let mut reg = ph2d_editor_core::panel::PanelRegistry::new_empty();
     #[cfg(feature = "panel-bgremoval")]
     reg.push(ErasedPanel::new::<ph2d_panel_bgremoval::BgRemovalPanel>());
+    #[cfg(feature = "panel-color-equalization")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_color_equalization::ColorEqualizationPanel,
+    >());
+    #[cfg(feature = "panel-equalize-sizes")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_equalize_sizes::EqualizeSizesPanel,
+    >());
     #[cfg(feature = "panel-padding")]
     reg.push(ErasedPanel::new::<ph2d_panel_padding::PaddingPanel>());
+    #[cfg(feature = "panel-upscale")]
+    reg.push(ErasedPanel::new::<ph2d_panel_upscale::UpscalePanel>());
     #[cfg(feature = "panel-inspector")]
     reg.push(ErasedPanel::new::<ph2d_panel_inspector::InspectorPanel>());
     #[cfg(feature = "panel-hierarchy")]
@@ -62,7 +72,19 @@ mod tests {
         {
             n += 1;
         }
+        #[cfg(feature = "panel-color-equalization")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-equalize-sizes")]
+        {
+            n += 1;
+        }
         #[cfg(feature = "panel-padding")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-upscale")]
         {
             n += 1;
         }

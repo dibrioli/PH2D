@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-panel-upscale"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Upscale panel — typed `Panel<State>` (ADR-0029). Right-docked
+# (Inspector geometry slot); visible only while the `upscale` tool is
+# active. Algorithm dropdown (Lanczos3 / Nearest / xBR), scale slider
+# (1×–16×), preview, Apply / Cancel. Coord pre-work stub.
+
+[dependencies]
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-a11y          = { path = "../ph2d-a11y" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }

@@ -4121,6 +4121,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-color-equalization"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+]
+
+[[package]]
+name = "ph2d-panel-equalize-sizes"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+]
+
+[[package]]
 name = "ph2d-panel-grid-snap"
 version = "0.0.0"
 dependencies = [
@@ -4174,11 +4194,24 @@ version = "0.0.0"
 dependencies = [
  "ph2d-editor-core",
  "ph2d-panel-bgremoval",
+ "ph2d-panel-color-equalization",
+ "ph2d-panel-equalize-sizes",
  "ph2d-panel-grid-snap",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
+ "ph2d-panel-upscale",
  "ph2d-panel-widget-gallery",
+]
+
+[[package]]
+name = "ph2d-panel-upscale"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
 ]
 
 [[package]]

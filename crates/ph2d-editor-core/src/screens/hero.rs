@@ -809,6 +809,7 @@ pub fn paint_hero_screen(
         ids::PAD_PANEL,
         ids::CEQ_PANEL,
         ids::EQS_PANEL,
+        ids::UPS_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         crate::grid_snap::ids::GS_PANEL,

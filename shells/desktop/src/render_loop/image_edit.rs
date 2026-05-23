@@ -35,6 +35,7 @@ pub(super) fn dispatch(
     padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)>,
     color_equalization_apply: Option<Vec<u64>>,
     equalize_sizes_apply: Option<Vec<u64>>,
+    upscale_apply: Option<Vec<u64>>,
     undo_image_edit: bool,
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -231,6 +232,40 @@ pub(super) fn dispatch(
                 eqs,
             ) {
                 title_dirty = true;
+            }
+        }
+    }
+    // Upscale Apply drain — sabor 3 (mirror of Color Equalization),
+    // per-sprite. The bridge returns the full multi-selection on
+    // Apply; we downcast the active tool and bake each sprite via
+    // `drain_upscale` (which re-pushes the source per-entity to avoid
+    // stale RGBA between bakes).
+    if let Some(bits_list) = upscale_apply {
+        let ups_id = ph2d_editor::ToolId::new("upscale");
+        let ups_active = tools.active().map(|t| t.id() == ups_id).unwrap_or(false);
+        if ups_active {
+            for entity_bits in bits_list {
+                let mut ran = false;
+                if let Some(tool) = tools.active_mut()
+                    && let Some(ups) = tool
+                        .as_any_mut()
+                        .downcast_mut::<ph2d_tool_upscale::UpscaleTool>()
+                {
+                    ran = hero_intents::drain_upscale(
+                        entity_bits,
+                        hero.project.pixels_per_meter,
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                        toasts,
+                        image_edit_undo,
+                        ups,
+                    );
+                }
+                if ran {
+                    title_dirty = true;
+                }
             }
         }
     }

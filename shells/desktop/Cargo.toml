@@ -67,6 +67,11 @@ ph2d-tool-equalize-sizes = { path = "../../crates/ph2d-tool-equalize-sizes" }
 # sprite source pixels and resets Transform to identity (see
 # render_loop/image_edit.rs + hero_intents/image_edit.rs).
 ph2d-tool-rasterize = { path = "../../crates/ph2d-tool-rasterize" }
+# Upscale bake — stateful sabor 3. The shell drain pushes each
+# selected sprite's source RGBA into the active tool's preview cache
+# and runs `run_full_resolution` for the bake (see render_loop/
+# upscale_bridge.rs + hero_intents/image_edit.rs).
+ph2d-tool-upscale = { path = "../../crates/ph2d-tool-upscale" }
 # Wave 8 Phase 1 — panel registry install at boot. `register_all_panels()`
 # is mandatory BEFORE the first `HeroScreen::new` (audit B1 closure:
 # the previous auto-install in `HeroScreen::new` silently overrode
@@ -94,6 +99,7 @@ ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = 
 ph2d-panel-bgremoval = { path = "../../crates/ph2d-panel-bgremoval", optional = true }
 ph2d-panel-color-equalization = { path = "../../crates/ph2d-panel-color-equalization", optional = true }
 ph2d-panel-equalize-sizes = { path = "../../crates/ph2d-panel-equalize-sizes", optional = true }
+ph2d-panel-upscale = { path = "../../crates/ph2d-panel-upscale", optional = true }
 ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
@@ -167,6 +173,7 @@ default = [
     "panel-padding",
     "panel-color-equalization",
     "panel-equalize-sizes",
+    "panel-upscale",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -180,4 +187,5 @@ panel-bgremoval      = ["ph2d-panel-registry-init/panel-bgremoval", "dep:ph2d-pa
 panel-padding        = ["ph2d-panel-registry-init/panel-padding", "dep:ph2d-panel-padding"]
 panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization", "dep:ph2d-panel-color-equalization"]
 panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
+panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

@@ -3,12 +3,10 @@
 //! Per-frame logic (mirrors the other typed panels):
 //! - Visibility gate via [`PanelHostInternal::panel_visible`] +
 //!   stale-rect cleanup on hide.
-//! - Right-dock rect taken from `ctx.layout.inspector` (the Inspector's
-//!   geometry slot — same as bgremoval/padding share). The hero layout
-//!   does NOT define a dedicated `upscale` field; using `inspector`
-//!   keeps the foundational layout struct untouched (caminho A, §1.3)
-//!   while still rendering in the canonical right-dock position the
-//!   user expects for image-tool panels.
+//! - Right-dock rect from `ctx.layout.padding` (Inspector slot — same
+//!   alias the Bg Removal / Padding / Color EQ / Equalize Sizes panels
+//!   use; all image-tool docked panels are mutually exclusive and
+//!   reuse the slot).
 //! - Chrome publish (`set_panel_rect`) so dispatch can hit-test it.
 //! - Canonical chrome: dark-glass surface + corner dot,
 //!   [`paint_panel_title`], algorithm segmented group, scale
@@ -46,7 +44,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
         return;
     }
 
-    let rect: Rect = ctx.layout.inspector;
+    let rect: Rect = ctx.layout.padding;
     let theme = ctx.host.theme();
     let snapshot = state::current_snapshot();
 

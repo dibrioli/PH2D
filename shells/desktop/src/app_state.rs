@@ -317,6 +317,16 @@ pub(crate) struct App {
     /// the user sees CLAHE + adjusts apply in real time. Cleared on
     /// Apply (the bake replaces the texture) + on deactivate.
     pub(crate) color_equalization_preview: Option<ColorEqualizationPreview>,
+    /// Mirror of `last_color_equalization_pushed_entity` for the
+    /// Upscale tool. Reset to `None` on tool deactivate so the next
+    /// activation re-pushes the source against the current selection.
+    pub(crate) last_upscale_pushed_entity: Option<u64>,
+    /// On-canvas live preview for the Upscale tool — same shape as
+    /// `color_equalization_preview`. Drawn over the primary sprite's
+    /// footprint while the tool is active so the user sees the
+    /// algorithm + scale apply in real time. Cleared on Apply +
+    /// deactivate.
+    pub(crate) upscale_preview: Option<UpscalePreview>,
     /// Cached full-resolution Background-Removal preview for the active
     /// sprite. Recomputed only when params change / source changes /
     /// the tool (re)activates; the per-frame canvas overlay reuses the
@@ -408,6 +418,21 @@ pub(crate) struct BgremovalPreview {
 /// adjusts apply in real time. Cleared on Apply (the bake takes over)
 /// + on tool deactivate. Straight-alpha (Color EQ doesn't touch alpha).
 pub(crate) struct ColorEqualizationPreview {
+    pub(crate) entity_bits: u64,
+    pub(crate) rgba: std::sync::Arc<Vec<u8>>,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+}
+
+/// Cached on-canvas live preview bitmap for the Upscale tool — mirror
+/// of `ColorEqualizationPreview`. Updated by `upscale_bridge::dispatch`
+/// when the tool flags `take_params_dirty()` (algo or scale changed).
+/// The Upscale RGBA carries the source resampled by the active
+/// algorithm to a capped preview resolution (`PREVIEW_MAX_DIM`); the
+/// canvas overlay paints it scaled to the sprite footprint so the
+/// user sees the chosen algorithm + factor live. Cleared on Apply +
+/// on tool deactivate. Straight-alpha (Upscale doesn't touch alpha).
+pub(crate) struct UpscalePreview {
     pub(crate) entity_bits: u64,
     pub(crate) rgba: std::sync::Arc<Vec<u8>>,
     pub(crate) width: u32,

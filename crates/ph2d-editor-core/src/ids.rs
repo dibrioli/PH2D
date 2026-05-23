@@ -169,6 +169,22 @@ pub const IMAGE_ACTION_EQUALIZE_SIZES: NodeId = hash_node_id("equalize_sizes");
 /// Transform.
 pub const IMAGE_ACTION_RASTERIZE: NodeId = hash_node_id("rasterize");
 
+/// Upscale panel marker NodeId. Right-docked in the Inspector geometry
+/// slot while the `upscale` tool is active. Hash matches
+/// `ph2d_tool_upscale::tool::ids` namespace and
+/// `ph2d_panel_upscale::UpscalePanel::NODE_ID` — keeping the
+/// dispatcher's `panel_at` lookup, the typed panel registry, and
+/// `paint_hero_screen`'s z_order fallback consistent.
+pub const UPS_PANEL: NodeId = hash_node_id("panel.upscale");
+
+/// Image Tools action — Upscale pill. Stateful, sabor 3: opens the
+/// right-docked panel with a 3-way algorithm radio (Lanczos3 / Nearest
+/// / xBR), a 1×–16× scale slider paired with a number chip, and
+/// Cancel / Apply. Click raises `EditorAction::ActivateTool { tool_id:
+/// "upscale" }`; Apply arms the tool's latch, and the bridge drains
+/// it per-sprite via `UpscaleTool::run_full_resolution`.
+pub const IMAGE_ACTION_UPSCALE: NodeId = hash_node_id("upscale");
+
 /// Padding panel widget NodeIds (typed `ph2d-panel-padding`, right-docked
 /// in the Inspector slot while the `padding` tool is active). Four signed
 /// per-edge rows — each a bipolar Slider (`PAD_*`) linked in real time to

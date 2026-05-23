@@ -20,6 +20,7 @@ mod bgremoval_preview;
 mod color_equalization_bridge;
 mod equalize_sizes_bridge;
 mod hierarchy;
+mod upscale_bridge;
 mod image_edit;
 mod inspector_commits;
 mod motion_smoke;
@@ -337,6 +338,7 @@ impl crate::App {
             let mut activate_bgremoval = false;
             let mut activate_color_equalization = false;
             let mut activate_equalize_sizes = false;
+            let mut activate_upscale = false;
             let mut visibility_toggle_row: Option<NodeId> = None;
             let mut reparent_intent: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
             let mut duplicate_row: Option<NodeId> = None;
@@ -376,6 +378,7 @@ impl crate::App {
                         "padding" => activate_padding = true,
                         "color_equalization" => activate_color_equalization = true,
                         "equalize_sizes" => activate_equalize_sizes = true,
+                        "upscale" => activate_upscale = true,
                         _ => {}
                     },
                     // ADR-0040 TG-B: generic panel→tool channel. Route the
@@ -615,6 +618,16 @@ impl crate::App {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool · Equalize Sizes"));
             }
+            // Upscale activation (mirror of Color EQ / Equalize Sizes
+            // above). Click the Upscale pill → `ActivateTool { tool_id:
+            // "upscale" }`. Same mode_on gate.
+            if hero.image_edit.mode_on
+                && activate_upscale
+                && tools.set_active(&ph2d_editor::ToolId::new("upscale"))
+            {
+                self.title_dirty = true;
+                toasts.push(Toast::info("Tool · Upscale"));
+            }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
             // TopBar Image Tools toggle (`image_edit.mode_on`) and the
             // ToolRegistry's active tool are otherwise decoupled: a
@@ -692,6 +705,22 @@ impl crate::App {
             // work). Returns the full `iter_selected()` on Apply for
             // the cross-sprite `run_full_resolution_multi` bake.
             let equalize_sizes_apply = equalize_sizes_bridge::dispatch(hero, tools);
+            // Upscale panel ⟷ tool bridge — sabor 3 with on-canvas
+            // live preview (algo + scale apply each frame the user
+            // moves the slider). Mirror of `color_equalization_bridge`.
+            let upscale_apply = upscale_bridge::dispatch(
+                hero,
+                tools,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                camera,
+                window_size,
+                vector_scene,
+                &mut self.last_upscale_pushed_entity,
+                &mut self.upscale_preview,
+            );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs (which paints the primary gizmo and only writes to
             // hit_index, not hit_map — primary still goes through the
@@ -840,6 +869,7 @@ impl crate::App {
                 padding_apply,
                 color_equalization_apply.clone(),
                 equalize_sizes_apply.clone(),
+                upscale_apply.clone(),
                 undo_image_edit,
                 hero,
                 sim,
@@ -899,6 +929,17 @@ impl crate::App {
                 && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {
+                self.title_dirty = true;
+            }
+            // Upscale Apply teardown — mirror of Color EQ. Clear the
+            // preview cache + push-tracker so re-activating starts
+            // fresh against the new (post-bake) source.
+            if upscale_apply.is_some()
+                && let Some(default_id) = tools.default_tool_id()
+                && tools.set_active(&default_id)
+            {
+                self.last_upscale_pushed_entity = None;
+                self.upscale_preview = None;
                 self.title_dirty = true;
             }
             // Legacy `FloatingPanel` Procreate-style paint was retired

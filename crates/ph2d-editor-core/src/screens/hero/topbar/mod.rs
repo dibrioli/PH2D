@@ -43,6 +43,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::IMAGE_ACTION_COLOR_EQUALIZATION,
         ids::IMAGE_ACTION_EQUALIZE_SIZES,
         ids::IMAGE_ACTION_RASTERIZE,
+        ids::IMAGE_ACTION_UPSCALE,
     ] {
         store.register(
             id,
@@ -114,6 +115,10 @@ pub fn populate(store: &mut WidgetStore) {
         (
             ids::IMAGE_ACTION_RASTERIZE,
             ph2d_i18n::tr("tool.rasterize.tooltip"),
+        ),
+        (
+            ids::IMAGE_ACTION_UPSCALE,
+            ph2d_i18n::tr("tool.upscale.tooltip"),
         ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),

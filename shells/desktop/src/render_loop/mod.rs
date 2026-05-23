@@ -834,7 +834,7 @@ impl crate::App {
                 real_size_entities,
                 padding_apply,
                 color_equalization_apply.clone(),
-                equalize_sizes_apply,
+                equalize_sizes_apply.clone(),
                 undo_image_edit,
                 hero,
                 sim,
@@ -882,6 +882,18 @@ impl crate::App {
                 && tools.set_active(&default_id)
             {
                 self.last_color_equalization_pushed_entity = None;
+                self.title_dirty = true;
+            }
+            // Equalize Sizes Apply teardown — same shape as Padding /
+            // Color EQ: bake just ran, so switch back to the default
+            // tool. The panel auto-hides because its `panel_visible`
+            // gate keys off `tools.active().id() == "equalize_sizes"`
+            // and the bridge clears the published snapshot on the
+            // next frame.
+            if equalize_sizes_apply.is_some()
+                && let Some(default_id) = tools.default_tool_id()
+                && tools.set_active(&default_id)
+            {
                 self.title_dirty = true;
             }
             // Legacy `FloatingPanel` Procreate-style paint was retired

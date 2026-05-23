@@ -1,10 +1,12 @@
 //! ph2d-editor-core — Procreate-style canvas-first editor (M12, ADR-0023).
 //!
 //! ADR-0029 Phase B.2 absorbed the orchestrator content from `ph2d-editor`
-//! (HeroScreen, action_bus, grid_snap, tools, image_edit, screens/*) so
-//! panel crates can depend ONLY on this crate without pulling in the legacy
+//! (HeroScreen, action_bus, grid_snap, image_edit, screens/*) so panel
+//! crates can depend ONLY on this crate without pulling in the legacy
 //! `ph2d-editor` shim. Phase D deleted the legacy fn-pointer panel registry
 //! (every in-tree panel migrated to `panel::PANEL_REGISTRY` typed Panel<State>).
+//! ADR-0040 TG-B/C/D moved every tool impl AND vocabulary into satellite
+//! `ph2d-tool-*` crates and deleted `editor-core/src/tools/` outright.
 //!
 //! Foundation:
 //! - [`zones::Layout`] — 4-zone canonical positioning (top-left
@@ -16,10 +18,9 @@
 //!   ColorSwatch). Each follows the same pattern: data + state enum
 //!   + tokens + a11y::Node + colocated `paint_X` helper.
 //! - [`tool::Tool`] + [`tool::ToolRegistry`] — canonical contract
-//!   every editor tool implements.
-//! - [`tools`] — UI/action vocabulary for the stateful image tools
-//!   (params read by the action bus + panel crates); the tool impls
-//!   themselves live in `ph2d-tool-*` satellite crates (ADR-0040).
+//!   every editor tool implements. Tool impls and their UI/action
+//!   vocabulary live in `ph2d-tool-*` satellite crates (ADR-0040 — the
+//!   foundation no longer hosts a `tools` module).
 //! - [`zen::ZenMode`] — Tab-toggle workspace state.
 //! - [`toast::ToastQueue`] — non-modal notification stream.
 //! - [`paint`] — Vello lowering (`Paint` trait + `paint_text` helper).
@@ -54,7 +55,6 @@ pub mod toast;
 pub mod test_support;
 
 pub mod tool;
-pub mod tools;
 pub mod widget;
 pub mod zen;
 pub mod zones;

@@ -846,3 +846,148 @@ mesmo formato (sintoma / causa / fix / código).
   `screens/hero_ref/` e `screens/hero_ref.rs` foram removidos.
   Histórico preservado via
   `git log -- crates/ph2d-editor/src/screens/hero_ref/`.
+
+---
+
+## 11. Slot 1 — Color Equalization (2026-05-23)
+
+Quatro bugs em sequência ao fechar o end-to-end do primeiro tool das
+4 novas Image Tools (Color Equalization, Equalize Sizes, Rasterize,
+Upscale). Cada um aponta para o MESMO erro arquitetural maior:
+o painel novo divergiu sutilmente do setup canônico do Widget
+Gallery, e cada divergência expôs uma assunção implícita do
+dispatch/painter. Lição estrutural codificada em
+[`DIRETRIZ.md §4.2`](../IntegracaoMultiAgente/DIRETRIZ.md#42-widget-gallery-é-a-fonte-de-verdade--copie-não-reinvente)
++ arch-gate
+[`architecture_panel_chip_pill_no_stepper`](../../crates/ph2d-editor-core/tests/architecture_panel_chip_pill_no_stepper.rs).
+
+### 11.1 Preview ausente no canvas — slider muda valor, canvas não atualiza
+
+- **Sintoma**: usuário arrasta os sliders Brightness / Contrast /
+  Saturation no painel CEQ, valores numéricos mudam, mas a sprite no
+  canvas fica congelada. Só ao clicar Apply o efeito aparece — UX
+  inaceitável para uma game engine que é tempo-real-tudo.
+- **Causa**: shell tinha `color_equalization_bridge.rs` mas sem o
+  overlay-por-frame. O tool já expunha `take_params_dirty()` +
+  `preview_rgba()`; a bridge não chamava nenhum dos dois. Comparar
+  com `shells/desktop/src/render_loop/bgremoval_preview.rs` (que
+  ESTAVA correto desde o sprint anterior) revelou o gap.
+- **Fix**: adicionar `ColorEqualizationPreview { entity_bits, rgba:
+  Arc<Vec<u8>>, width, height }` em `app_state.rs`; bridge refaz o
+  cache quando `tool.take_params_dirty()`, pinta via
+  `vector_scene.draw_image_rgba` no footprint world-space da sprite,
+  zera em Apply / deactivate / selection-change.
+- **Lição estrutural** (DIRETRIZ §4.2.2): todo painel novo que altera
+  pixels TEM que vir com `render_loop/<slug>_bridge.rs` espelhando
+  `bgremoval_preview.rs`. **Coordenador bounce se faltar.**
+- **Código**: commit `903d63c`
+  ([`shells/desktop/src/render_loop/color_equalization_bridge.rs`](../../shells/desktop/src/render_loop/color_equalization_bridge.rs)).
+
+### 11.2 Chip drag absoluto-de-Down — clamp prega o valor no extremo
+
+- **Sintoma**: drag horizontal no chip funciona até bater na borda
+  do range, mas reverter o cursor não move o valor de volta. Usuário
+  arrasta de volta 50 px e "nada acontece" — o chip continua pregado
+  no max. Para destravar o usuário precisa voltar o cursor até a
+  posição de Down original.
+- **Causa**: `NumberInputDragState` calculava `dx_total = event.x -
+  start_x` (delta absoluto desde Down). Quando o valor batia o clamp
+  (linked-slider 0..1 ou bounds explícitos), o `dx_total` continuava
+  acumulando overshoot. Reverter o cursor só "consumia o overshoot"
+  até voltar a um `dx_total` dentro do range válido.
+- **Fix**: trocar para modelo incremental (Blender / After Effects):
+  `step_dx = event - last_x`, aplicar ao value ATUAL, avançar
+  `last_x` por Move via `advance_number_input_drag_anchor`. Reversão
+  produz `step_dx` negativo na PRÓXIMA Move e o value reverte
+  imediatamente.
+- **Lição estrutural** (DIRETRIZ §4.2.4): scrub gestures
+  (chip, sliders) usam SEMPRE delta incremental. `event.x - start_x`
+  no Move handler é regressão — pegue em revisão.
+- **Código**: commit `7b5f7c1`
+  ([`crates/ph2d-editor-core/src/interaction/dispatch/pointer.rs`](../../crates/ph2d-editor-core/src/interaction/dispatch/pointer.rs)
+  + [`drag.rs`](../../crates/ph2d-editor-core/src/interaction/drag.rs)).
+
+### 11.3 Phantom stepper — valor sobe sozinho com mouse parado
+
+- **Sintoma**: usuário clica no chip CEQ, segura o botão sem mover o
+  mouse, e o valor numérico sobe a cada 30 ms. Reportado como "os
+  valores continuam subindo mesmo se mouse parado!".
+- **Causa**: `apply_number_stepper_if_hit` recorta uma coluna de
+  16-22 px no lado direito do rect de TODO `InteractiveState::NumberInput`
+  como hit-zone de stepper arrow. Pra `paint_number_input_with_buffer`
+  (forma boxed do Inspector — setinhas visíveis) o comportamento
+  está correto. Pra `paint_number_chip` (forma pill da CEQ /
+  Padding / etc. — sem arrows visíveis) a hit-zone é INVISÍVEL:
+  click no lado direito arma `number_stepper_hold`, e
+  `dispatch_tick` repete o increment a cada 30 ms (após 250 ms de
+  delay inicial) enquanto o cursor fica parado.
+- **Fix**: side-table `chips_without_steppers: BTreeSet<NodeId>` no
+  `WidgetStore` + API `mark_chip_no_stepper(id)`. Dispatch pula o
+  stepper hit-test pra ids marcados. `link_slider_number(slider,
+  chip)` AUTO-MARCA o chip (todo caller no codebase é pill chip
+  pareado).
+- **Reincidência**: 4 painéis tinham o mesmo bug latente
+  (`padding`, `upscale`, `equalize-sizes` + CEQ). Padding e Upscale
+  já estavam em produção desde 2026-05-21 — usuário nunca clicava
+  exatamente nos 16-22 px do canto direito, então o bug ficou
+  dormente. Gate
+  [`architecture_panel_chip_pill_no_stepper`](../../crates/ph2d-editor-core/tests/architecture_panel_chip_pill_no_stepper.rs)
+  flushou os 4 ao mesmo tempo.
+- **Lição estrutural** (DIRETRIZ §4.2.3): a infra de input
+  ASSUMIA que toda NumberInput tem stepper arrows. Quando o painter
+  varia (pill vs boxed), o estado interativo TEM que carregar a
+  diferença — não dá pra deixar pro dispatch inferir.
+- **Código**: commit `2f58b73`
+  ([`crates/ph2d-editor-core/src/interaction/state/mod.rs`](../../crates/ph2d-editor-core/src/interaction/state/mod.rs)
+  + [`dispatch/pointer.rs`](../../crates/ph2d-editor-core/src/interaction/dispatch/pointer.rs)).
+
+### 11.4 Painel divergiu do Widget Gallery (causa raiz das três acima)
+
+- **Sintoma**: 11.1, 11.2 e 11.3 são manifestações distintas do
+  mesmo erro arquitetural — o painel CEQ foi populado a partir do
+  zero em vez de copiar o setup canônico `INSP_SAMPLE_SLIDER` +
+  `INSP_SAMPLE_SLIDER_CHIP` do
+  [`pre_populate.rs:212-231`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs).
+  Cada sutileza esquecida virou um bug:
+
+  | Esquecido no populate | Bug que aparece |
+  |-----------------------|-----------------|
+  | `link_slider_number(slider, chip)` | mirror manual em event.rs dessincroniza; chip/slider andam descolados |
+  | bridge `take_params_dirty()` + `draw_image_rgba` | canvas congelado, só Apply aplica (11.1) |
+  | storage chip em `0..1` (não unidade natural) | drag rate fica fora de escala; mistura de spaces no apply_event |
+  | `mark_chip_no_stepper` (auto via `link_slider_number`) | phantom stepper na coluna direita do chip (11.3) |
+
+- **Fix**: reescrever populate copiando linha por linha o Speed
+  setup; `event.rs` virou forwarder thin (sem mirror manual);
+  bridge ganhou overlay; arch-gate
+  `architecture_panel_chip_pill_no_stepper` enforça pra futuro.
+- **Lição estrutural** (DIRETRIZ §4.2): Widget Gallery é a ÚNICA
+  fonte de verdade. **Painel novo COPIA literalmente — não
+  reinventa.** Coordenador checklist obrigatório antes de mergear
+  painel: link, mark (auto via link), storage `0..1`, bridge
+  per-frame, `apply_event` forwarder. Faltou alguma → bounce.
+- **Código**: commit `3bf8806`
+  ([`crates/ph2d-panel-color-equalization/src/populate.rs`](../../crates/ph2d-panel-color-equalization/src/populate.rs)
+  + [`event.rs`](../../crates/ph2d-panel-color-equalization/src/event.rs))
+  + commit `fd37ca8` (DIRETRIZ §4.2 + arch-gate + 3 painéis latentes).
+
+### 11.5 `apply_number_stepper_if_hit` assume painter (gap arquitetural latente)
+
+- **Diagnóstico residual**: o dispatch tem várias suposições
+  silenciosas sobre o painter que NÃO são gateadas. A
+  "todo NumberInput tem stepper arrows" foi a que mordeu em §11.3;
+  outras provavelmente existem (axis-lock direction em chip drag,
+  buffer mutation while focused, etc.). Cada uma vai pra mordida
+  ⇒ side-table que diferencia o caso painter-específico do default.
+- **Lição estrutural**: quando uma helper assume "o painter X
+  desenha Y", documente a assunção no helper E adicione gate. Se a
+  assunção é difícil de gatear (dispatch que olha rect, não AST),
+  ofereça um opt-out explícito (`mark_*`) que painters não-padrão
+  chamam no populate.
+- **Próximo passo**: ao adicionar widget novo paint-only-variant
+  (analog ao `paint_number_chip` vs `paint_number_input_with_buffer`),
+  audit dispatch pra descobrir todas as zonas que carve sub-rect
+  do widget e listar em side-table ou cap.
+- **Código**: princípio aplicado em
+  [`mark_chip_no_stepper`](../../crates/ph2d-editor-core/src/interaction/state/mod.rs)
+  — model template pra futuras opt-outs paint-variant.

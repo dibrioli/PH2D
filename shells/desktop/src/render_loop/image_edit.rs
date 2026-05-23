@@ -196,9 +196,13 @@ pub(super) fn dispatch(
                 .as_any_mut()
                 .downcast_mut::<ph2d_tool_equalize_sizes::EqualizeSizesTool>()
         {
+            // Capture Square-grid origin before borrowing `tools` for
+            // the drain — the snap math (align-to-grid) anchors to it.
+            let grid_origin = hero.grid.snap_state.square_cfg.origin;
             if hero_intents::drain_equalize_sizes(
                 &bits_list,
                 hero.project.pixels_per_meter,
+                grid_origin,
                 sim,
                 renderer,
                 asset_db,

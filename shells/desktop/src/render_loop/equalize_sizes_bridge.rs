@@ -4,9 +4,15 @@
 //!
 //! 1. Drives the panel's visibility (shown iff `equalize_sizes`
 //!    is the active tool).
-//! 2. Publishes the per-frame `EqualizeSizesUiSnapshot` the panel
+//! 2. Syncs `params.grid_unit` (pixels) from the live
+//!    `GridSnapState::square_cfg.cell_size` (meters) via
+//!    `hero.project.pixels_per_meter`. The panel has no slider/chip
+//!    for grid unit — the Grid Snap tool owns it. Square kind only in
+//!    v1; the user picks the unit there, the EQS panel reflects it
+//!    read-only.
+//! 3. Publishes the per-frame `EqualizeSizesUiSnapshot` the panel
 //!    paints next frame.
-//! 3. Returns the current multi-selection iff Apply fired this frame
+//! 4. Returns the current multi-selection iff Apply fired this frame
 //!    — the caller runs the full-resolution multi bake via
 //!    `drain_equalize_sizes`.
 //!
@@ -21,16 +27,11 @@
 //!   this iteration — the user sees the effect after Apply. The tool
 //!   exposes no preview channel and a transform-only live preview
 //!   (rewriting `Transform.scale` in PresentWorld per frame) is a
-//!   future iteration not in scope of this wiring (DIRETRIZ §3.8.3.1
-//!   shape: production tools currently use `as_any_mut` downcast; the
-//!   generic preview channel is fan-out future work).
-//!
-//! Smoke note: the Apply bake itself still gives the visual feedback —
-//! Cancel from the panel emits `CancelActiveTool` and the orchestrator
-//! cleans up.
+//!   future iteration not in scope.
 
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
+use ph2d_tool_equalize_sizes::params::EqualizeSizesUiEdit;
 
 /// Returns `Some(entity_bits_list)` iff Apply fired this frame.
 pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Option<Vec<u64>> {
@@ -46,12 +47,24 @@ pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Optio
         return None;
     }
 
+    // Live cell size in pixels (Square kind). Other kinds keep
+    // whatever the last sync wrote — the panel's "Align" toggle is a
+    // no-op outside Square in v1.
+    let cell_m = hero.grid.snap_state.square_cfg.cell_size;
+    let ppm = hero.project.pixels_per_meter.max(1.0e-3);
+    let cell_px = (cell_m * ppm).round().max(1.0) as u32;
+
     let mut apply: Option<Vec<u64>> = None;
     if let Some(tool) = tools.active_mut()
         && let Some(eqs) = tool
             .as_any_mut()
             .downcast_mut::<ph2d_tool_equalize_sizes::EqualizeSizesTool>()
     {
+        // Sync grid cell from the Grid Snap state. This routes through
+        // `apply_ui_edit::SetGridUnit` so the clamp (1..EQS_MAX_GRID_UNIT)
+        // is honored single-source-of-truth.
+        eqs.apply_ui_edit(EqualizeSizesUiEdit::SetGridUnit(cell_px));
+
         if eqs.take_pending_apply() {
             let bits_list: Vec<u64> = hero.gizmo.iter_selected().collect();
             if !bits_list.is_empty() {

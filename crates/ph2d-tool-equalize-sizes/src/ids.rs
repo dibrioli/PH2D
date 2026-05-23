@@ -37,9 +37,14 @@ pub const EQS_MODE_GRID: NodeId = hash_node_id("eqsizes.mode_grid");
 pub const EQS_FIXED_W: NodeId = hash_node_id("eqsizes.fixed_w");
 pub const EQS_FIXED_H: NodeId = hash_node_id("eqsizes.fixed_h");
 
-// ── Grid-mode slider + chip ──────────────────────────────────────────
-pub const EQS_GRID_UNIT: NodeId = hash_node_id("eqsizes.grid_unit");
-pub const EQS_GRID_UNIT_NUM: NodeId = hash_node_id("eqsizes.grid_unit_num");
+// ── Grid-mode "Align position to grid" toggle ────────────────────────
+// Grid-mode has no slider/chip: the cell size is read from
+// `GridSnapState::square_cfg.cell_size` (in meters) and synced into
+// `params.grid_unit` (px) each frame by the bridge. The Align toggle
+// asks the bake to additionally snap each sprite's
+// `Transform.translation` to the nearest cell center (Square kind only
+// in v1; other kinds keep their position).
+pub const EQS_ALIGN_TO_GRID: NodeId = hash_node_id("eqsizes.align_to_grid");
 
 // ── Boolean toggles (painted as accent-when-on buttons) ──────────────
 pub const EQS_UPSCALE_IF_SMALLER: NodeId = hash_node_id("eqsizes.upscale_if_smaller");

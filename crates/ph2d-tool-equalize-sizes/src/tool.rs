@@ -24,7 +24,7 @@ use crate::algorithm::{SpriteInput, SpriteOutput, run_equalize_sizes};
 use crate::ids;
 use crate::params::{
     EqualizeSizesParams, EqualizeSizesUiEdit, EqualizeSizesUiSnapshot, TargetMode,
-    UpscaleAlgorithm, apply_ui_edit, slider_to_grid_unit, snapshot_from_params,
+    UpscaleAlgorithm, apply_ui_edit, snapshot_from_params,
 };
 
 /// Editor Tool implementing Equalize Sizes (Stateful, sabor 3).
@@ -133,17 +133,15 @@ impl Tool for EqualizeSizesTool {
                 let h = (v.round().max(0.0) as u32).max(1);
                 self.apply_ui_edit(EqualizeSizesUiEdit::SetFixedH(h));
             }
-            // ── Grid unit slider (track 0..1) ────────────────────────
+            // ── Align-to-grid toggle (Grid mode) ─────────────────────
             //
-            // The panel registers slider + chip in the SAME 0..1 storage
-            // (`link_slider_number`, Widget Gallery convention §4.2), so
-            // the forwarder only ever emits `SetValue(EQS_GRID_UNIT,
-            // track)` — even when the chip was the widget that changed.
-            // The chip's natural-unit display is paint-only via
-            // `display_override`. No `_NUM` branch needed.
-            PanelEvent::SetValue(id, v) if id == ids::EQS_GRID_UNIT => {
-                let g = slider_to_grid_unit(v as f32);
-                self.apply_ui_edit(EqualizeSizesUiEdit::SetGridUnit(g));
+            // No grid-unit slider/chip: the cell size is owned by the
+            // Grid Snap tool. The bridge calls
+            // `apply_ui_edit(SetGridUnit(cell_px))` each frame from the
+            // shell to keep `params.grid_unit` in sync with the live
+            // `GridSnapState`.
+            PanelEvent::Click(id) if id == ids::EQS_ALIGN_TO_GRID => {
+                self.apply_ui_edit(EqualizeSizesUiEdit::ToggleAlignToGrid);
             }
             // ── Toggles ──────────────────────────────────────────────
             PanelEvent::Click(id) if id == ids::EQS_UPSCALE_IF_SMALLER => {
@@ -226,12 +224,16 @@ mod tests {
     }
 
     #[test]
-    fn grid_slider_uses_curve() {
+    fn align_to_grid_toggle_flips_via_panel_click() {
+        // The Grid-mode panel toggle routes `Click(EQS_ALIGN_TO_GRID)`
+        // to `ToggleAlignToGrid` (which xors `params.align_to_grid`).
+        // The grid unit itself is sync'd by the bridge, not the panel.
         let mut t = EqualizeSizesTool::default();
-        t.handle_panel_event(PanelEvent::SetValue(ids::EQS_GRID_UNIT, 0.0));
-        assert_eq!(t.params().grid_unit, 1);
-        t.handle_panel_event(PanelEvent::SetValue(ids::EQS_GRID_UNIT, 1.0));
-        assert_eq!(t.params().grid_unit, crate::params::EQS_MAX_GRID_UNIT);
+        assert!(!t.params().align_to_grid);
+        t.handle_panel_event(PanelEvent::Click(ids::EQS_ALIGN_TO_GRID));
+        assert!(t.params().align_to_grid);
+        t.handle_panel_event(PanelEvent::Click(ids::EQS_ALIGN_TO_GRID));
+        assert!(!t.params().align_to_grid);
     }
 
     #[test]

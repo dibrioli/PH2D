@@ -25,19 +25,15 @@ use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
     paint_panel_title,
 };
+use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
-use ph2d_tool_equalize_sizes::params::{
-    TargetMode, UpscaleAlgorithm, grid_unit_to_slider, slider_to_grid_unit,
-};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tool_equalize_sizes::params::{TargetMode, UpscaleAlgorithm};
 use ph2d_vector::VectorScene;
-
-/// Label column width for slider rows. // LITERAL-PX-OK: panel grid metric
-const LABEL_COL_W: f32 = 72.0;
 
 pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(EqualizeSizesPanel::ID) {
@@ -138,30 +134,30 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
             y += row_h + row_gap;
         }
         TargetMode::GridUnit => {
-            // Widget Gallery convention §4.2: chip and slider share
-            // `0..1` storage (`link_slider_number`). The chip's natural
-            // unit (px) is paint-only via `display_override`, projected
-            // from the live slider track — NOT consulted from the chip's
-            // own stored value (which lives in track space too).
-            let chip_w = Spacing::Xl.px() * 2.0;
-            let track = store
-                .slider(ids::EQS_GRID_UNIT)
-                .map(|(_, v)| v)
-                .unwrap_or_else(|| grid_unit_to_slider(snapshot.grid_unit));
-            let chip_value = store
-                .number_value(ids::EQS_GRID_UNIT_NUM)
-                .unwrap_or(track as f64);
-            let px_display = slider_to_grid_unit(track).to_string();
-            paint_slider_with_chip_layout(
+            // No slider/chip here: the cell size is owned by the Grid
+            // Snap tool. The shell bridge syncs `snapshot.grid_unit` (px)
+            // from `GridSnapState::square_cfg.cell_size * pixels_per_meter`
+            // each frame, so this label always reflects the live cell.
+            let info_text = format!("Cell: {} px (from Grid Snap)", snapshot.grid_unit);
+            let info_rect = Rect::new(inner_x, y, inner_w, row_h);
+            paint_text_centered(
+                text_system,
+                scene,
+                &info_text,
+                info_rect,
+                TypeToken::Xs.px(),
+                resolve(ColorToken::Text2, theme),
+            );
+            y += row_h + row_gap;
+
+            // "Align position to grid" toggle — when on, the bake also
+            // snaps each sprite's `Transform.translation` to the
+            // nearest cell center (Square kind in v1).
+            paint_toggle_button(
                 Rect::new(inner_x, y, inner_w, row_h),
-                "Grid",
-                track,
-                chip_value,
-                Some(&px_display),
-                ids::EQS_GRID_UNIT,
-                ids::EQS_GRID_UNIT_NUM,
-                LABEL_COL_W,
-                chip_w,
+                "Align position to grid",
+                ids::EQS_ALIGN_TO_GRID,
+                snapshot.align_to_grid,
                 store,
                 hit_index,
                 scene,

@@ -448,6 +448,12 @@ pub(crate) fn drain_color_equalization(
 ///   write `Transform.scale.x/y = new_scale_x/y`; the texture stays
 ///   untouched.
 ///
+/// When `params.align_to_grid && params.target_mode == GridUnit`, AFTER
+/// the size bake we additionally snap each sprite's
+/// `Transform.translation` to the nearest Square-grid cell center
+/// (cell size = `params.grid_unit / pixels_per_meter`, grid origin =
+/// `grid_origin`). Square kind only in v1.
+///
 /// Single-level undo captures the LAST successful sprite (consistent
 /// with `drain_color_equalization`; cross-sprite undo is M14.x scope).
 ///
@@ -456,6 +462,7 @@ pub(crate) fn drain_color_equalization(
 pub(crate) fn drain_equalize_sizes(
     bits_list: &[u64],
     project_pixels_per_meter: f32,
+    grid_origin: [f32; 2],
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -548,8 +555,16 @@ pub(crate) fn drain_equalize_sizes(
     }
 
     // Phase 2: cross-sprite bake.
+    let params_snapshot = *eqs.params();
     let outputs = eqs.run_full_resolution_multi(&inputs);
     debug_assert_eq!(outputs.len(), entries.len());
+
+    // Pre-compute snap-to-cell parameters once (Square kind in v1).
+    // The cell is in METERS (world space); `params.grid_unit` is in
+    // pixels (matches the bake), so we divide by px_per_m.
+    let align_positions = params_snapshot.align_to_grid
+        && params_snapshot.target_mode == ph2d_tool_equalize_sizes::TargetMode::GridUnit;
+    let cell_m = (params_snapshot.grid_unit as f32 / px_per_m).max(1.0e-3);
 
     // Phase 3: commit per-entity. We need a separate counter for
     // "actually changed" because `out.changed = false` skips quietly.
@@ -607,6 +622,19 @@ pub(crate) fn drain_equalize_sizes(
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
             t.scale.x = out.new_scale_x;
             t.scale.y = out.new_scale_y;
+            if align_positions {
+                // Snap translation to nearest Square-grid cell center.
+                // Cells are anchored at `grid_origin`; cell (0,0)
+                // occupies `[origin, origin + cell)`, so its center
+                // sits at `origin + cell/2`. The general center is
+                // `origin + (n + 0.5) * cell` for integer `n`.
+                let local_x = t.translation.x - grid_origin[0] - cell_m * 0.5;
+                let local_y = t.translation.y - grid_origin[1] - cell_m * 0.5;
+                let snapped_x = (local_x / cell_m).round() * cell_m + cell_m * 0.5;
+                let snapped_y = (local_y / cell_m).round() * cell_m + cell_m * 0.5;
+                t.translation.x = snapped_x + grid_origin[0];
+                t.translation.y = snapped_y + grid_origin[1];
+            }
         }
         applied += 1;
         if let Some(tex_id) = produced_individual {

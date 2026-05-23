@@ -60,10 +60,17 @@ pub struct EqualizeSizesUiSnapshot {
     pub target_mode: TargetMode,
     pub fixed_w: u32,
     pub fixed_h: u32,
+    /// Grid cell size in pixels — mirror of `GridSnapState::square_cfg.cell_size`
+    /// converted via `pixels_per_meter`. Synced into the tool every
+    /// frame by the bridge (Grid mode panel shows it read-only).
     pub grid_unit: u32,
     pub upscale_if_smaller: bool,
     pub upscale_algorithm: UpscaleAlgorithm,
     pub rasterize_after: bool,
+    /// When `true` AND `target_mode == GridUnit`, the bake additionally
+    /// snaps each sprite's `Transform.translation` to the nearest cell
+    /// center (Square grid only in v1).
+    pub align_to_grid: bool,
 }
 
 impl Default for EqualizeSizesUiSnapshot {
@@ -77,6 +84,7 @@ impl Default for EqualizeSizesUiSnapshot {
             upscale_if_smaller: false,
             upscale_algorithm: UpscaleAlgorithm::Lanczos3,
             rasterize_after: true,
+            align_to_grid: false,
         }
     }
 }
@@ -89,10 +97,13 @@ pub struct EqualizeSizesParams {
     pub target_mode: TargetMode,
     pub fixed_w: u32,
     pub fixed_h: u32,
+    /// See [`EqualizeSizesUiSnapshot::grid_unit`].
     pub grid_unit: u32,
     pub upscale_if_smaller: bool,
     pub upscale_algorithm: UpscaleAlgorithm,
     pub rasterize_after: bool,
+    /// See [`EqualizeSizesUiSnapshot::align_to_grid`].
+    pub align_to_grid: bool,
 }
 
 impl Default for EqualizeSizesParams {
@@ -107,6 +118,7 @@ impl Default for EqualizeSizesParams {
             upscale_if_smaller: false,
             upscale_algorithm: UpscaleAlgorithm::Lanczos3,
             rasterize_after: true,
+            align_to_grid: false,
         }
     }
 }
@@ -123,7 +135,9 @@ pub enum EqualizeSizesUiEdit {
     SetFixedW(u32),
     /// H chip committed a new fixed-mode height (px).
     SetFixedH(u32),
-    /// Grid-mode slider or chip committed a new unit (px).
+    /// Bridge-only: sync `params.grid_unit` from `GridSnapState`. The
+    /// panel has no slider/chip for grid unit; the cell size is owned
+    /// by the Grid Snap tool and pushed in by the bridge every frame.
     SetGridUnit(u32),
     /// Toggle button flipped — true means upscale small sprites with the
     /// selected `upscale_algorithm` before fitting to target.
@@ -133,6 +147,10 @@ pub enum EqualizeSizesUiEdit {
     /// Toggle button flipped — true means Mitchell-Netravali resample
     /// each sprite to its target canvas (baking scale into pixels).
     ToggleRasterizeAfter,
+    /// Toggle button flipped — true means the GridUnit-mode bake also
+    /// snaps each sprite's `Transform.translation` to the nearest cell
+    /// center.
+    ToggleAlignToGrid,
     /// Apply button pressed — the host drains a pending-apply latch and
     /// runs `run_full_resolution_multi` on the selection.
     Apply,
@@ -175,6 +193,10 @@ pub fn apply_ui_edit(params: &mut EqualizeSizesParams, edit: EqualizeSizesUiEdit
             params.rasterize_after = !params.rasterize_after;
             false
         }
+        EqualizeSizesUiEdit::ToggleAlignToGrid => {
+            params.align_to_grid = !params.align_to_grid;
+            false
+        }
         EqualizeSizesUiEdit::Apply => true,
     }
 }
@@ -189,22 +211,8 @@ pub fn snapshot_from_params(p: &EqualizeSizesParams) -> EqualizeSizesUiSnapshot 
         upscale_if_smaller: p.upscale_if_smaller,
         upscale_algorithm: p.upscale_algorithm,
         rasterize_after: p.rasterize_after,
+        align_to_grid: p.align_to_grid,
     }
-}
-
-/// Map the grid-unit slider track `[0,1]` to a px value in
-/// `[1, EQS_MAX_GRID_UNIT]`. Linear (the slider is unipolar). Inverse of
-/// [`grid_unit_to_slider`].
-pub fn slider_to_grid_unit(track: f32) -> u32 {
-    let t = track.clamp(0.0, 1.0);
-    let v = (t * (EQS_MAX_GRID_UNIT as f32 - 1.0)).round() as u32 + 1;
-    v.clamp(1, EQS_MAX_GRID_UNIT)
-}
-
-/// Inverse of [`slider_to_grid_unit`].
-pub fn grid_unit_to_slider(g: u32) -> f32 {
-    let g = g.clamp(1, EQS_MAX_GRID_UNIT);
-    (g - 1) as f32 / (EQS_MAX_GRID_UNIT as f32 - 1.0)
 }
 
 #[cfg(test)]
@@ -271,18 +279,12 @@ mod tests {
     }
 
     #[test]
-    fn slider_to_grid_unit_round_trips() {
-        // The slider has finite resolution (steps of 1 px) so the round
-        // trip is *not* exact at every input — anchor at the endpoints
-        // and a midpoint where rounding is well-defined.
-        assert_eq!(slider_to_grid_unit(0.0), 1);
-        assert_eq!(slider_to_grid_unit(1.0), EQS_MAX_GRID_UNIT);
-        // Midpoint is implementation-defined to within 1 px.
-        let mid = slider_to_grid_unit(0.5);
-        assert!((mid as i32 - (EQS_MAX_GRID_UNIT as i32 / 2)).abs() <= 1);
-
-        // grid_unit_to_slider is the well-defined inverse direction.
-        assert!((grid_unit_to_slider(1) - 0.0).abs() < 1e-6);
-        assert!((grid_unit_to_slider(EQS_MAX_GRID_UNIT) - 1.0).abs() < 1e-6);
+    fn toggle_align_to_grid_flips() {
+        let mut p = EqualizeSizesParams::default();
+        assert!(!p.align_to_grid);
+        apply_ui_edit(&mut p, EqualizeSizesUiEdit::ToggleAlignToGrid);
+        assert!(p.align_to_grid);
+        apply_ui_edit(&mut p, EqualizeSizesUiEdit::ToggleAlignToGrid);
+        assert!(!p.align_to_grid);
     }
 }

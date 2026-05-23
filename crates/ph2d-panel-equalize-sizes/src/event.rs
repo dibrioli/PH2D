@@ -36,25 +36,6 @@ pub(crate) fn apply_event(
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
-        // Grid-unit slider drag OR chip scrub/typing — both end up with
-        // `slider(EQS_GRID_UNIT).value` (0..1) holding the canonical
-        // track via `link_slider_number`. Forward it; the tool projects
-        // through `slider_to_grid_unit` in `apply_ui_edit`.
-        WidgetEvent::ValueChanged(id)
-            if id == ids::EQS_GRID_UNIT || id == ids::EQS_GRID_UNIT_NUM =>
-        {
-            let track = host
-                .store()
-                .slider(ids::EQS_GRID_UNIT)
-                .map(|(_, v)| v)
-                .unwrap_or(0.0);
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                    ids::EQS_GRID_UNIT,
-                    track as f64,
-                )));
-            true
-        }
         // Fixed-mode W/H chips — standalone, raw px (no slider pairing,
         // no track translation). The tool's `apply_ui_edit` clamps to
         // `[1, EQS_MAX_FIXED_DIM]`.
@@ -71,6 +52,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 _ if id == ids::EQS_MODE_MAX
                     || id == ids::EQS_MODE_FIXED
                     || id == ids::EQS_MODE_GRID
+                    || id == ids::EQS_ALIGN_TO_GRID
                     || id == ids::EQS_UPSCALE_IF_SMALLER
                     || id == ids::EQS_RASTERIZE_AFTER
                     || id == ids::EQS_ALG_LANCZOS

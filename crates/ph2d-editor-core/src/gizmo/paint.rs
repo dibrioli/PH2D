@@ -529,6 +529,13 @@ pub fn paint_sprite_gizmo_keyed(
             corner_outer_rect_oriented(br, view.rotation, 1.0, -1.0),
         ),
     ];
+    // Onda 2 polish: paint a small ring at the centre of each rotate
+    // hover rect so the user can SEE the rotate zone (extras + global
+    // skip the cursor-over-rotate hover swap the primary uses; without
+    // a static visual cue the hit zone is invisible). Stroke-only
+    // accent ring 5 px radius — distinct from the filled scale-corner
+    // squares the user sees on the corners themselves.
+    let rotate_ring_color = resolve(ColorToken::Selection, theme);
     for (id, r) in rotate_rects {
         register_keyed_handle(
             hit_index,
@@ -537,6 +544,16 @@ pub fn paint_sprite_gizmo_keyed(
             id,
             GizmoDragKind::Rotate,
             r,
+        );
+        let cx = (r.x + r.w * 0.5) as f64;
+        let cy = (r.y + r.h * 0.5) as f64;
+        let ring = Circle::new(Point::new(cx, cy), (r.w * 0.4) as f64);
+        scene.inner_mut().stroke(
+            &ph2d_vector::Stroke::new(1.5),
+            ph2d_vector::Affine::IDENTITY,
+            rotate_ring_color,
+            None,
+            &ring,
         );
     }
 

@@ -266,6 +266,14 @@ pub(super) fn dispatch(
                 }
             }
             HierarchySelectIntent::Range { row: target_row } => {
+                // Onda 2 hotfix: Shift on the hierarchy = range TOGGLE
+                // (Enio: "selecionar e desselecionar todos os objetos
+                // entre os dois clicados na hierarquia"). For each row
+                // in the inclusive [anchor..target] interval, flip its
+                // membership in the selection set — present rows are
+                // removed; absent rows are added. Without an anchor
+                // (selection empty) the click degenerates to a single
+                // toggle of the target.
                 let target_bits = live.bridge.entity_for(target_row);
                 let anchor_row = hero
                     .gizmo
@@ -277,18 +285,17 @@ pub(super) fn dispatch(
                     let i_target = order.iter().position(|n| *n == target_row);
                     if let (Some(a), Some(t)) = (i_anchor, i_target) {
                         let (lo, hi) = if a <= t { (a, t) } else { (t, a) };
-                        for n in &order[lo..=hi] {
-                            if let Some(bits) = live.bridge.entity_for(*n) {
-                                hero.gizmo.add_to_selection(bits);
+                        let row_range: Vec<_> = order[lo..=hi].to_vec();
+                        for n in row_range {
+                            if let Some(bits) = live.bridge.entity_for(n) {
+                                hero.gizmo.toggle_in_selection(bits);
                             }
                         }
                     } else {
-                        hero.gizmo.add_to_selection(target_bits);
+                        hero.gizmo.toggle_in_selection(target_bits);
                     }
                 } else if let Some(target_bits) = target_bits {
-                    // No anchor (nothing selected) — Shift-click on
-                    // an empty selection just adds the target.
-                    hero.gizmo.add_to_selection(target_bits);
+                    hero.gizmo.toggle_in_selection(target_bits);
                 }
             }
         }

@@ -20,7 +20,6 @@ mod bgremoval_preview;
 mod color_equalization_bridge;
 mod equalize_sizes_bridge;
 mod hierarchy;
-mod upscale_bridge;
 mod image_edit;
 mod inspector_commits;
 mod motion_smoke;
@@ -28,6 +27,7 @@ mod padding_bridge;
 mod present;
 mod sim_extract;
 mod snapshots;
+mod upscale_bridge;
 
 use crate::*;
 

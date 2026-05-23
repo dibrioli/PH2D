@@ -41,11 +41,12 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::widget::{Slider, Toggle};
 
+use super::algorithm::islands::{self, IslandPayload};
 use super::algorithm::run_pipeline;
 use super::params::{
     BRUSH_SIZE_FULL_SCALE, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, BrushFalloff,
     DEFAULT_BRUSH_SIZE01, FEATHER_FULL_SCALE, GROW_FULL_SCALE, MAX_EXTRA_BG_COLORS,
-    REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
+    MIN_ISLAND_PIXELS_FULL_SCALE, REFINE_RADIUS_FULL_SCALE, TOLERANCE_FULL_SCALE,
 };
 use super::scratch::BgRemovalScratch;
 
@@ -175,6 +176,14 @@ pub struct BgRemovalTool {
     /// Whether the painted protection mask is drawn as an on-canvas tint
     /// overlay (the shell gates the overlay on this). Default `true`.
     show_mask: bool,
+
+    /// Per-island RGBA payloads stashed by `run_full_resolution` when
+    /// `params.separate_islands` is on. The shell drains them via
+    /// [`Self::take_pending_islands`] right after baking the main result
+    /// (or alongside it) and spawns one new sprite per entry. Empty when
+    /// the toggle is off, when an Apply hasn't run yet, or after the
+    /// host has drained.
+    pending_islands: Vec<IslandPayload>,
 }
 
 impl Default for BgRemovalTool {
@@ -205,6 +214,7 @@ impl Default for BgRemovalTool {
             falloff: BrushFalloff::default(),
             protect_erase_mode: false,
             show_mask: true,
+            pending_islands: Vec::new(),
         }
     }
 }
@@ -272,6 +282,17 @@ impl BgRemovalTool {
     /// Drain the pending-apply flag. Returns `true` exactly once
     /// after each Apply trigger. Host calls this in its per-frame
     /// drain loop; on `true` it runs the pipeline at full resolution.
+    /// Drain the per-island RGBA payloads produced by the last Apply
+    /// when `params.separate_islands` was on. Returns an empty Vec when
+    /// the toggle is off, no Apply has run yet, or the host already
+    /// drained. The shell typically calls this right after baking the
+    /// main result and spawns one new sprite per returned payload
+    /// (legacy parity — biggest island stays in the original sprite,
+    /// rest get sibling sprites positioned at their bounding-box origins).
+    pub fn take_pending_islands(&mut self) -> Vec<IslandPayload> {
+        std::mem::take(&mut self.pending_islands)
+    }
+
     pub fn take_pending_apply(&mut self) -> bool {
         let p = self.pending_apply;
         self.pending_apply = false;
@@ -576,6 +597,32 @@ impl BgRemovalTool {
         );
         out.clear();
         out.extend_from_slice(&self.scratch.output_rgba);
+
+        // Legacy parity: when "Separate Islands" is on, run CCL on the
+        // freshly composed RGBA and stash one payload per surviving
+        // component (filtered by `min_island_pixels`). The host drains
+        // via `take_pending_islands` and spawns the rest as sibling
+        // sprites — keeping the biggest one in the original. When the
+        // toggle is off, ensure the slot is empty so a stale post-Apply
+        // queue from a previous run doesn't leak.
+        //
+        // We read from `out` (just copied above) rather than
+        // `self.scratch.output_rgba` so `&mut self.scratch` (for the
+        // CCL label + queue buffers) doesn't clash with the source
+        // borrow inside the same call.
+        if self.params.separate_islands {
+            islands::extract(
+                out,
+                self.source_w,
+                self.source_h,
+                self.params.min_island_pixels.max(1),
+                &mut self.scratch,
+                &mut self.pending_islands,
+            );
+        } else {
+            self.pending_islands.clear();
+        }
+
         (self.source_w, self.source_h)
     }
 
@@ -763,6 +810,10 @@ impl BgRemovalTool {
             brush_size01: (self.brush_radius / BRUSH_SIZE_FULL_SCALE).clamp(0.0, 1.0),
             falloff: self.falloff,
             show_mask: self.show_mask,
+            separate_islands: self.params.separate_islands,
+            min_island_pixels01: ((self.params.min_island_pixels.saturating_sub(1)) as f32
+                / (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0))
+                .clamp(0.0, 1.0),
         }
     }
 
@@ -836,6 +887,22 @@ impl BgRemovalTool {
             BgRemovalUiEdit::ToggleShowMask => {
                 // Overlay-visibility only — no params, no matte rerun.
                 self.show_mask = !self.show_mask;
+            }
+            BgRemovalUiEdit::ToggleSeparateIslands => {
+                // Post-process gate only — the matte itself is unchanged
+                // by this toggle, so no preview rerun. Effect lands at
+                // Apply time (run_full_resolution runs CCL on the baked
+                // output when the flag is on).
+                self.params.separate_islands = !self.params.separate_islands;
+            }
+            BgRemovalUiEdit::SetMinIslandPixels(v) => {
+                // Linear normalized → integer pixel count in
+                // [1, MIN_ISLAND_PIXELS_FULL_SCALE]. Like ToggleSeparateIslands,
+                // this only matters at Apply time — no preview rerun.
+                let v = v.clamp(0.0, 1.0);
+                let scaled = (v * (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0)).round() as u32 + 1;
+                self.params.min_island_pixels =
+                    scaled.clamp(1, MIN_ISLAND_PIXELS_FULL_SCALE as u32);
             }
             BgRemovalUiEdit::Apply => {
                 self.pending_apply = true;
@@ -991,6 +1058,22 @@ impl Tool for BgRemovalTool {
             }
             PanelEvent::Click(id) if id == ids::BGR_SHOW_MASK => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleShowMask);
+                return;
+            }
+            // "Separate Islands" toggle + its min-pixel slider/chip. IDs
+            // owned by the tool crate (`crate::ids`) — declared next to
+            // the semantic mapping below so a parallel agent adding a
+            // peer feature doesn't collide on `editor-core/src/ids.rs`.
+            PanelEvent::Click(id) if id == crate::ids::BGR_SEPARATE_ISLANDS => {
+                self.apply_ui_edit(BgRemovalUiEdit::ToggleSeparateIslands);
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_MIN_ISLAND_PX => {
+                self.apply_ui_edit(BgRemovalUiEdit::SetMinIslandPixels(v as f32));
+                return;
+            }
+            PanelEvent::SetValue(id, v) if id == crate::ids::BGR_MIN_ISLAND_PX_NUM => {
+                self.apply_ui_edit(BgRemovalUiEdit::SetMinIslandPixels(v as f32));
                 return;
             }
             _ => {}
@@ -1576,5 +1659,79 @@ mod tests {
         assert_eq!(aspect_fit_within(100, 80, 512), (100, 80));
         assert_eq!(aspect_fit_within(1024, 512, 512), (512, 256));
         assert_eq!(aspect_fit_within(512, 1024, 512), (256, 512));
+    }
+
+    // ── Separate Islands tests ─────────────────────────────────────
+
+    #[test]
+    fn toggle_separate_islands_flips_param() {
+        let mut t = BgRemovalTool::default();
+        assert!(!t.params.separate_islands);
+        assert!(!t.ui_snapshot().separate_islands);
+        t.apply_ui_edit(BgRemovalUiEdit::ToggleSeparateIslands);
+        assert!(t.params.separate_islands);
+        assert!(t.ui_snapshot().separate_islands);
+        t.apply_ui_edit(BgRemovalUiEdit::ToggleSeparateIslands);
+        assert!(!t.params.separate_islands);
+    }
+
+    #[test]
+    fn set_min_island_pixels_maps_normalized_to_full_scale() {
+        let mut t = BgRemovalTool::default();
+        // 0.0 → 1 pixel (the minimum useful filter).
+        t.apply_ui_edit(BgRemovalUiEdit::SetMinIslandPixels(0.0));
+        assert_eq!(t.params.min_island_pixels, 1);
+        // 1.0 → full-scale ceiling.
+        t.apply_ui_edit(BgRemovalUiEdit::SetMinIslandPixels(1.0));
+        assert_eq!(
+            t.params.min_island_pixels,
+            MIN_ISLAND_PIXELS_FULL_SCALE as u32
+        );
+        // Out-of-range clamps.
+        t.apply_ui_edit(BgRemovalUiEdit::SetMinIslandPixels(2.0));
+        assert_eq!(
+            t.params.min_island_pixels,
+            MIN_ISLAND_PIXELS_FULL_SCALE as u32
+        );
+    }
+
+    #[test]
+    fn pending_islands_stays_empty_when_toggle_off() {
+        let mut t = BgRemovalTool::default();
+        t.set_source_snapshot(vec![255u8; 16 * 16 * 4], 16, 16);
+        // Toggle is off by default.
+        let mut out = Vec::new();
+        let _ = t.run_full_resolution(&mut out);
+        assert!(t.take_pending_islands().is_empty());
+    }
+
+    #[test]
+    fn take_pending_islands_is_one_shot() {
+        // Seed pending_islands by hand via the extraction algorithm —
+        // we can't reach the field through public API except via take,
+        // and an end-to-end test that exercises the pipeline depends
+        // on what `chroma::segment` picks as background for a contrived
+        // input. This test isolates the take semantics.
+        let rgba: Vec<u8> = (0..16 * 16).flat_map(|_| [255u8, 255, 255, 255]).collect();
+        let mut scratch = BgRemovalScratch::default();
+        let mut islands_out = Vec::new();
+        islands::extract(&rgba, 16, 16, 1, &mut scratch, &mut islands_out);
+        // Sanity: single opaque block ⇒ exactly one island.
+        assert_eq!(islands_out.len(), 1);
+
+        // Splice the pre-computed islands in as if `run_full_resolution`
+        // had populated them. (Test-only field access; the production
+        // path is the `if self.params.separate_islands` branch in
+        // `run_full_resolution`.)
+        let mut t = BgRemovalTool {
+            pending_islands: islands_out,
+            ..BgRemovalTool::default()
+        };
+        let drained = t.take_pending_islands();
+        assert_eq!(drained.len(), 1, "first drain returns the queue");
+        assert!(
+            t.take_pending_islands().is_empty(),
+            "second drain is empty (one-shot)"
+        );
     }
 }

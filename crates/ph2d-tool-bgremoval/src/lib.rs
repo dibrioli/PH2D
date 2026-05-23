@@ -24,10 +24,12 @@
 
 pub mod algorithm;
 pub mod icon;
+pub mod ids;
 pub mod params;
 pub mod scratch;
 pub mod tool;
 
+pub use algorithm::islands::IslandPayload;
 pub use tool::BgRemovalTool;
 
 /// Construct the BgRemoval tool as a boxed trait object for the

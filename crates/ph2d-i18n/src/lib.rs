@@ -57,9 +57,7 @@ pub fn tr(key: &str) -> &'static str {
             "Rasterize · bake scale + rotation into pixels (reset Transform)"
         }
         "tool.upscale.label" => "Upscale",
-        "tool.upscale.tooltip" => {
-            "Upscale · resize image up 1x..16x (Lanczos3 / Nearest / xBR)"
-        }
+        "tool.upscale.tooltip" => "Upscale · resize image up 1x..16x (Lanczos3 / Nearest / xBR)",
         // Image-edit undo affordance.
         "edit.undo.label" => "Undo",
         "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",

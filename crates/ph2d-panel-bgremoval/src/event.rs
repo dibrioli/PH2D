@@ -81,6 +81,7 @@ fn is_bgr_slider(id: NodeId) -> bool {
         || id == ids::BGR_REFINE
         || id == ids::BGR_GROW
         || id == ids::BGR_BRUSH_SIZE
+        || id == ids::BGR_MIN_ISLAND_PX
 }
 
 fn is_bgr_number(id: NodeId) -> bool {
@@ -89,6 +90,7 @@ fn is_bgr_number(id: NodeId) -> bool {
         || id == ids::BGR_REFINE_NUM
         || id == ids::BGR_GROW_NUM
         || id == ids::BGR_BRUSH_SIZE_NUM
+        || id == ids::BGR_MIN_ISLAND_PX_NUM
 }
 
 fn is_bgr_click(id: NodeId) -> bool {
@@ -101,6 +103,7 @@ fn is_bgr_click(id: NodeId) -> bool {
         || id == ids::BGR_PROTECT
         || id == ids::BGR_PROTECT_CLEAR
         || id == ids::BGR_SHOW_MASK
+        || id == ids::BGR_SEPARATE_ISLANDS
 }
 
 fn reset_button(host: &mut dyn PanelHostInternal, id: NodeId) {

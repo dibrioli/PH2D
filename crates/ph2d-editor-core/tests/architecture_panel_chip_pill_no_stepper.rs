@@ -69,10 +69,10 @@ fn walk_rs<F: FnMut(&Path, &str)>(root: &Path, mut f: F) {
             let path = entry.path();
             if path.is_dir() {
                 inner(&path, f);
-            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                if let Ok(text) = std::fs::read_to_string(&path) {
-                    f(&path, &text);
-                }
+            } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
+                && let Ok(text) = std::fs::read_to_string(&path)
+            {
+                f(&path, &text);
             }
         }
     }

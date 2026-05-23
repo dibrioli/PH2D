@@ -32,7 +32,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
-use ph2d_tool_bgremoval::params::BrushFalloff;
+use ph2d_tool_bgremoval::params::{BrushFalloff, MIN_ISLAND_PIXELS_FULL_SCALE};
 
 /// Label column width for slider rows (passed to the canonical
 /// `paint_slider_with_chip_layout`). // LITERAL-PX-OK: panel grid metric
@@ -153,6 +153,67 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         theme,
     );
     y += row_h + row_gap;
+
+    y += row_gap;
+
+    // ── Separate Islands toggle (+ Min Px slider when armed) ───────
+    // Legacy parity: when on, the Apply pass also runs connected-
+    // component extraction on the final matte and emits one RGBA
+    // payload per surviving component (the shell drains them into
+    // sibling sprites). Armed = Accent CTA; idle = ghost Default —
+    // same canonical `paint_button` as the other toggles.
+    let islands_state = if snapshot.separate_islands {
+        ButtonState::Pressed
+    } else {
+        store
+            .button_state(ids::BGR_SEPARATE_ISLANDS)
+            .unwrap_or(ButtonState::Normal)
+    };
+    let islands_kind = if snapshot.separate_islands {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let islands_rect = Rect::new(inner_x, y, inner_w, row_h);
+    let islands_btn = Button::new(ids::BGR_SEPARATE_ISLANDS, "Separate islands")
+        .kind(islands_kind)
+        .state(islands_state);
+    paint_button(&islands_btn, islands_rect, scene, text_system, theme);
+    hit_index.register(ids::BGR_SEPARATE_ISLANDS, islands_rect);
+    y += row_h + row_gap;
+
+    // Min-px slider — only shown when the toggle is armed (clutters the
+    // panel otherwise). Storage stays in normalized 0..1 (canonical
+    // `link_slider_number` clamp); the chip's display_override remaps
+    // to the integer pixel count `round(1 + v · (FULL_SCALE − 1))`
+    // so the user reads "4", "32", "128" instead of "0.012".
+    if snapshot.separate_islands {
+        let min_v = store
+            .slider(ids::BGR_MIN_ISLAND_PX)
+            .map(|(_, v)| v)
+            .unwrap_or(snapshot.min_island_pixels01);
+        let min_count =
+            ((min_v.clamp(0.0, 1.0) * (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0)).round() as u32 + 1)
+                .max(1);
+        let min_display = format!("{min_count}");
+        paint_slider_with_chip_layout(
+            Rect::new(inner_x, y, inner_w, row_h),
+            "Min px",
+            min_v,
+            min_count as f64,
+            Some(&min_display),
+            ids::BGR_MIN_ISLAND_PX,
+            ids::BGR_MIN_ISLAND_PX_NUM,
+            LABEL_COL_W,
+            chip_w,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        y += row_h + row_gap;
+    }
 
     y += row_gap;
 

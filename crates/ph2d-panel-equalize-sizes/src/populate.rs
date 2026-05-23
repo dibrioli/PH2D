@@ -128,11 +128,7 @@ mod tests {
         ] {
             assert!(store.button_state(id).is_some(), "button {id:?} missing");
         }
-        for id in [
-            ids::EQS_FIXED_W,
-            ids::EQS_FIXED_H,
-            ids::EQS_GRID_OFFSET_NUM,
-        ] {
+        for id in [ids::EQS_FIXED_W, ids::EQS_FIXED_H, ids::EQS_GRID_OFFSET_NUM] {
             assert!(
                 store.number_value(id).is_some(),
                 "number chip {id:?} missing"

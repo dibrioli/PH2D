@@ -152,6 +152,21 @@ pub struct BgRemovalParams {
     /// out multi-coloured / gradient backgrounds the corner-auto pass
     /// misses. Empty by default (auto only).
     pub extra_bg_colors: Vec<[u8; 3]>,
+    /// When true, an Apply pass also runs connected-component extraction
+    /// on the final alpha matte (8-connected, alpha ≥
+    /// [`ISLAND_ALPHA_THRESHOLD`] = opaque, others = background) and
+    /// stashes one RGBA payload per island in the tool for the host to
+    /// drain into new sprites. Off by default — the standard "knock out
+    /// the background, keep the sprite as one object" workflow is the
+    /// canonical case. Mirrors the legacy engine's "Separate Islands"
+    /// toggle in the BG Removal panel.
+    pub separate_islands: bool,
+    /// Minimum pixel count an island must have to be emitted; smaller
+    /// regions are discarded as noise. Range 1..=[`MIN_ISLAND_PIXELS_FULL_SCALE`].
+    /// Default 4 (legacy parity — small enough to keep small but legitimate
+    /// fragments, large enough to drop single-pixel speckle from anti-aliased
+    /// edges).
+    pub min_island_pixels: u32,
 }
 
 impl Default for BgRemovalParams {
@@ -164,6 +179,8 @@ impl Default for BgRemovalParams {
             // value `(grow01−0.5)·2`, so −0.10 ⇒ grow_px = −0.1·SCALE.
             grow_px: -0.1 * GROW_FULL_SCALE,
             extra_bg_colors: Vec::new(),
+            separate_islands: false,
+            min_island_pixels: DEFAULT_MIN_ISLAND_PIXELS,
         }
     }
 }
@@ -193,6 +210,25 @@ pub const BRUSH_SIZE_FULL_SCALE: f32 = 256.0;
 /// the default 256 full-scale). Single source for the tool field default
 /// + the snapshot default so they can't drift.
 pub const DEFAULT_BRUSH_SIZE01: f32 = 0.15;
+
+/// Full-scale mapping for the "Min island pixels" slider: normalized
+/// `1.0` ⇒ this many source pixels. Above this an island would have to
+/// be visually obvious for the user to drop it as "noise", so capping
+/// the slider here keeps the control responsive without losing useful
+/// range. Linear map: `min_pixels = round(1 + v · (FULL_SCALE − 1))`.
+pub const MIN_ISLAND_PIXELS_FULL_SCALE: f32 = 256.0;
+/// Default minimum-island-pixels filter (legacy parity — drops single-
+/// pixel speckle from anti-aliased edges; keeps small but legitimate
+/// fragments). Single source for the param default + the snapshot
+/// projection so they can't drift.
+pub const DEFAULT_MIN_ISLAND_PIXELS: u32 = 4;
+/// Alpha threshold used by [`super::algorithm::islands`] to classify
+/// each output pixel as foreground (`>= threshold`) or background
+/// (`< threshold`) when scanning for connected components. Mirrors the
+/// legacy engine's `alphaThreshold: 10` default — anti-aliased
+/// fringes (alpha ~5..15) still join the body they border, but pure
+/// punched-out background never anchors a stray island.
+pub const ISLAND_ALPHA_THRESHOLD: u8 = 10;
 
 /// Normalized projection of [`BgRemovalParams`] for the panel UI. All
 /// slider fields are in `0.0..=1.0`; the panel paints these directly as
@@ -244,6 +280,15 @@ pub struct BgRemovalUiSnapshot {
     /// overlay. Drives the Show-Mask toggle's pressed look + the shell's
     /// overlay gate.
     pub show_mask: bool,
+    /// Whether the "Separate Islands" toggle is on. Drives the toggle
+    /// button's pressed look + gates the Min-Px slider's visibility.
+    pub separate_islands: bool,
+    /// Min-island-pixels slider position, normalized
+    /// (`(min_island_pixels − 1) / (MIN_ISLAND_PIXELS_FULL_SCALE − 1)`).
+    /// The chip displays the unmapped integer pixel count via
+    /// `display_override`; storage stays in normalized `0..1` space so
+    /// the canonical `link_slider_number` clamp engages.
+    pub min_island_pixels01: f32,
 }
 
 impl Default for BgRemovalUiSnapshot {
@@ -267,6 +312,9 @@ impl Default for BgRemovalUiSnapshot {
             brush_size01: DEFAULT_BRUSH_SIZE01,
             falloff: BrushFalloff::Smooth,
             show_mask: true,
+            separate_islands: p.separate_islands,
+            min_island_pixels01: (p.min_island_pixels.saturating_sub(1) as f32)
+                / (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0),
         }
     }
 }
@@ -310,6 +358,15 @@ pub enum BgRemovalUiEdit {
     SetFalloff(BrushFalloff),
     /// Show-Mask toggle clicked — flips the on-canvas tint overlay.
     ToggleShowMask,
+    /// "Separate Islands" toggle clicked — flips
+    /// [`BgRemovalParams::separate_islands`]. The Apply pass will then
+    /// run connected-component extraction and stash per-island RGBA
+    /// payloads for the host to drain.
+    ToggleSeparateIslands,
+    /// "Min island pixels" slider moved (normalized `0..1`). Maps to
+    /// [`BgRemovalParams::min_island_pixels`] via the
+    /// [`MIN_ISLAND_PIXELS_FULL_SCALE`] linear range `1..=FULL_SCALE`.
+    SetMinIslandPixels(f32),
     /// Apply button pressed — commit at full resolution.
     Apply,
 }
@@ -333,6 +390,8 @@ mod tests {
         assert!(p.refinement.boundary_only);
         assert!((p.grow_px - (-0.1 * GROW_FULL_SCALE)).abs() < 1e-6);
         assert!(p.extra_bg_colors.is_empty());
+        assert!(!p.separate_islands);
+        assert_eq!(p.min_island_pixels, DEFAULT_MIN_ISLAND_PIXELS);
     }
 
     #[test]

@@ -104,6 +104,19 @@ pub struct BgRemovalScratch {
     /// this ring (promoted to 1 after the ring completes). Reused
     /// across runs (HR-3).
     pub bleed_valid: Vec<u8>,
+
+    /// Connected-component label buffer used by
+    /// `algorithm::islands::extract`. Size: `w*h`. Values: `0` = unvisited,
+    /// `-1` = background, `> 0` = island id. Cleared at the start of each
+    /// run; capacity persists across runs (HR-3 in the steady-state Apply
+    /// path).
+    pub labels: Vec<i32>,
+
+    /// BFS queue of pixel indices for `algorithm::islands::extract`. Holds
+    /// indices `0..(w*h)` so `u32` suffices for any image the engine
+    /// otherwise supports. Drained per-component then reused across
+    /// components in the same run.
+    pub island_queue: Vec<u32>,
 }
 
 impl BgRemovalScratch {

@@ -20,12 +20,12 @@ use crate::state::{self, EqualizeSizesPanelState, set_last_content_h, set_last_v
 use crate::{EqualizeSizesPanel, ids};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
     paint_panel_title,
 };
-use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
 };

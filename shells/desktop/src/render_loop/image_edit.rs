@@ -331,6 +331,7 @@ pub(super) fn dispatch(
             .expect("bgremoval_active gate guarantees a BgRemovalTool");
         if hero_intents::drain_bgremoval(
             entity_bits,
+            hero.project.pixels_per_meter,
             sim,
             renderer,
             asset_db,

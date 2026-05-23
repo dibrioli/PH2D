@@ -15,6 +15,7 @@
 pub mod chroma;
 pub mod compose;
 pub mod guided_filter;
+pub mod islands;
 
 use super::params::BgRemovalParams;
 use super::scratch::BgRemovalScratch;

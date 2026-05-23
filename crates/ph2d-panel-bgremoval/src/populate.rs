@@ -27,6 +27,10 @@ pub fn populate(store: &mut WidgetStore) {
         ids::BGR_FALLOFF_SPHERE,
         ids::BGR_FALLOFF_SHARP,
         ids::BGR_FALLOFF_CONSTANT,
+        // "Separate Islands" toggle — legacy parity. When on, an Apply
+        // pass also splits the result into one sprite per connected
+        // component (see `ph2d_tool_bgremoval::algorithm::islands`).
+        ids::BGR_SEPARATE_ISLANDS,
     ] {
         store.register(
             id,
@@ -47,6 +51,14 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::BGR_GROW, ids::BGR_GROW_NUM, d.grow01),
         // Protection-brush size (source-px radius, normalized).
         (ids::BGR_BRUSH_SIZE, ids::BGR_BRUSH_SIZE_NUM, d.brush_size01),
+        // Min island pixels (CCL noise filter). Storage is normalized
+        // 0..1; the paint pass remaps to an integer pixel count via
+        // `display_override` so the chip reads "1", "4", "32", ...
+        (
+            ids::BGR_MIN_ISLAND_PX,
+            ids::BGR_MIN_ISLAND_PX_NUM,
+            d.min_island_pixels01,
+        ),
     ] {
         store.register(
             slider_id,

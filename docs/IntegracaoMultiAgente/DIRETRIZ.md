@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.8 — 2026-05-22 · pós-ADR-0030..0040, princípio transversal **Tool↔Nó simétricos** (uma única receita de fan-out drop-crate em §3.8 cobre as duas famílias). Histórico de versões em §11 (v6.7+v6.8 detalhados; anteriores resumidas + `git log`).
+**Versão:** 6.9 — 2026-05-23 · regra "src/lib.rs primeiro" no briefing fan-out (§3.8.2 step 0), pós-incidente das 4 image-tools paralelas em 2026-05-23 que travou o workspace por crates novos sem lib.rs. v6.8 (2026-05-22): princípio transversal Tool↔Nó simétricos. Histórico em §11.
 **Audiência:** **toda LLM que entra no projeto.** Lê este doc inteiro antes de tocar em código. Quando o Enio descreve uma tarefa, seu **primeiro output é a TRIAGEM (§1.4)** — classifica e diz se precisa de Coordenador + Implementador ou só Implementador. **Doc único de implementação:** briefing pronto-pra-colar de drop-crate (§3.8) e receitas dos demais baldes vivem aqui; não há doc separado.
 
 ---
@@ -497,6 +497,16 @@ ANTES DE CODAR: leia o mapa node↔tool em DIRETRIZ §3.8.1 (entry points,
 contrato, vocab, templates) e copie o template do seu sabor.
 
 O QUE VOCÊ FAZ (só dentro da sua pasta):
+0. **PRIMEIRO arquivo a criar = `src/lib.rs`** (mesmo vazio, ou com
+   apenas `#![forbid(unsafe_code)]` + `pub mod placeholder;` que será
+   sobrescrito). Cargo recusa o manifest enquanto o crate-novo não
+   tiver `src/lib.rs` (ou `src/main.rs`) — e como o workspace usa
+   glob `crates/*`, **todas as outras sessões paralelas ficam
+   bloqueadas com `can't find library X` até esse arquivo existir**.
+   Já queimou no fan-out das 4 image-tools (2026-05-23): Cargo.toml
+   foi criado, mods auxiliares antes do lib.rs, workspace inteiro
+   travou. Regra: lib.rs primeiro, mesmo com 1 linha; depois Cargo.toml,
+   módulos auxiliares (`algorithm.rs`, `params.rs`, etc.) e o resto.
 1. Cargo.toml: deps mínimas.
    [node]  ph2d-nodegraph, ph2d-node-registry, e ph2d-expr se usar math
            por-elemento.
@@ -1080,6 +1090,7 @@ gh run watch <id> --exit-status
 
 ## 11. Versão + histórico
 
+- **6.9 — 2026-05-23:** Regra **"src/lib.rs PRIMEIRO"** no briefing fan-out (§3.8.2 step 0). Sem isso, todas as sessões paralelas que tentam `cargo check` ficam bloqueadas com `can't find library X` enquanto qualquer crate novo do `crates/*` glob tiver Cargo.toml sem `src/lib.rs`. Incidente que originou a regra: fan-out simultâneo das 4 image-tools (Color Equalization / Equalize Sizes / Rasterize / Upscale) em 2026-05-23 — vários Implementadores escreveram `Cargo.toml` + arquivos auxiliares (`params.rs`, `icon.rs`, `ids.rs`) ANTES do `src/lib.rs`, e a sessão paralela do Coord (Onda 2C de gizmos multi-select) ficou sem poder rodar `cargo check --workspace` por ~1h. A regra vale também pra panel novo em §3.2 (mas lá Coord faz sequencial → sem colisão real; ainda assim, criar `src/lib.rs` antes do resto vira boa higiene).
 - **6.8 — 2026-05-22:** **Princípio transversal Tool↔Nó simétricos** + condensação. Os antigos §3.8 (node fan-out) e §3.9 (tool fan-out), que viraram clones um do outro depois de TG-E, foram unificados num só **§3.8 "Fan-out drop-crate (A)"** com tabela node↔tool (§3.8.1), briefing parametrizado pronto-pra-colar (§3.8.2), sabores de tool (§3.8.3), garantia sem-colisão (§3.8.4) e checklist do revisor (§3.8.5). §1.4 triagem promove **Tool nova ⇒ (A) Implementador-só** (era (B) por inércia textual). §3.1 reduzida a redirect pro §3.8. §3.5 "modificar existente" agora aponta `crates/ph2d-tool-<slug>/` (a pasta `editor-core/src/tools/` foi deletada em TG-D `c4063b7`) com mapa pasta-canônica-por-feature. §3.6 foundational lista AMBOS os contratos congelados (nodegraph/expr + Tool/ImageEditTool/PanelEvent) com tabela simétrica de caps + ADR. §4 gates ganha `architecture_tool_contract_surface` (🔒 caps 10/4/4) + `architecture_contract_surface` (🔒 caps 2/1/8) + staleness + cycle_prevention anotado com 4 sub-checks. §9.2 caminhos reorganizada (Tool/Node lado-a-lado como (A); contratos congelados explicitados; registry-init marcados GERADO; nota "`editor-core/src/tools/` deletado em TG-D"). §10 referências lista ADRs 0030..0040 + tese node-centric + plano tool-isolation CLOSED. Header + §11 enxutos.
 - **6.7 — 2026-05-22:** ADR-0040 FECHADO via TG-A..TG-E — §3.1 neutralizado, §3.9 "Tool crate — fan-out" criado como irmão de §3.8 (unificado em 6.8). Arch-gate de panel auto-discover + cross-panel-dep ban + panel→tool edge codificada como permitida.
 - **Histórico anterior (v6.0..v6.6 + v4.0/v5.0 arquivadas):** vide `git log docs/IntegracaoMultiAgente/DIRETRIZ.md`. Resumo: v6.0 (modelo 2 papéis Coord+Impl, fluxo invertido); v6.1 (perf audit + §3.7 + §5.6); v6.3 (§7.0 fast-mode/ship); v6.4 (§4.1 regras UI que queimaram); v6.5 (arquitetura node-centric); v6.6 (doc único + §1.4 triagem).

@@ -199,13 +199,53 @@ impl UpscaleTool {
     /// resolution and write the result into `out`. Returns the output
     /// `(w, h)`.
     ///
+    /// Perf: both INPUT and OUTPUT are capped at [`PREVIEW_MAX_DIM`].
+    /// `canvas_src_rgba` is the source aspect-fit to that box (built
+    /// once per source push); at high scale factors (`16×`) the naive
+    /// output would be `8192²` and stall the slider drag, so we
+    /// dynamically further downscale the working source so
+    /// `working_dim × factor ≤ PREVIEW_MAX_DIM`. The shell's overlay
+    /// draws this preview scaled to the sprite's on-canvas footprint,
+    /// so a smaller working buffer doesn't change the perceived
+    /// preview quality at this factor.
+    ///
     /// No-op (returns `(0, 0)`, clears `out`) when no source is loaded.
     pub fn run_canvas_preview(&mut self, out: &mut Vec<u8>) -> (u32, u32) {
         if self.canvas_src_rgba.is_empty() {
             out.clear();
             return (0, 0);
         }
-        let r = self.run_algorithm(&self.canvas_src_rgba, self.canvas_src_w, self.canvas_src_h);
+        let factor = self
+            .params
+            .algorithm
+            .project_scale(self.params.scale_factor)
+            .max(1.0);
+        // Working source cap so the algorithm's output stays under
+        // PREVIEW_MAX_DIM: `out_dim = src_dim × factor ≤ MAX` ⇒
+        // `src_dim ≤ MAX / factor`. Always ≥ 1 px so a degenerate
+        // factor doesn't collapse the buffer.
+        let working_max_dim = ((PREVIEW_MAX_DIM as f32) / factor).floor().max(1.0) as u32;
+        let (src_w, src_h) = (self.canvas_src_w, self.canvas_src_h);
+        if src_w <= working_max_dim && src_h <= working_max_dim {
+            // canvas_src already fits — run the algorithm directly.
+            let r = self.run_algorithm(&self.canvas_src_rgba, src_w, src_h);
+            out.clear();
+            out.extend_from_slice(&r.pixels);
+            return (r.width, r.height);
+        }
+        // Downscale canvas_src → working_src for this factor. Cheap
+        // `Triangle` filter (the algorithm-under-test is what the user
+        // sees; the working buffer's resampler is invisible).
+        let (dw, dh) = aspect_fit_within(src_w, src_h, working_max_dim);
+        let src = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(
+            src_w,
+            src_h,
+            self.canvas_src_rgba.clone(),
+        )
+        .expect("canvas_src_rgba length matches canvas_src_w * canvas_src_h * 4");
+        let resized: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
+            image::imageops::resize(&src, dw, dh, image::imageops::FilterType::Triangle);
+        let r = self.run_algorithm(resized.as_raw(), dw, dh);
         out.clear();
         out.extend_from_slice(&r.pixels);
         (r.width, r.height)
@@ -394,16 +434,15 @@ impl Tool for UpscaleTool {
             PanelEvent::Click(id) if id == NODE_ALGO_XBR => {
                 self.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
             }
-            // Scale slider — `v` is the normalized track 0..1, mapped
-            // to a scale factor via `slider_to_scale`.
+            // Scale slider — `v` is the normalized track `0..1`,
+            // mapped to a scale factor via `slider_to_scale`. The
+            // panel's forwarder thin (Widget Gallery §4.2) only ever
+            // emits this id; the chip shares the same track storage
+            // via `link_slider_number` and never reaches the tool as
+            // a separate `_NUM` event.
             PanelEvent::SetValue(id, v) if id == NODE_SCALE => {
                 let factor = crate::params::slider_to_scale(v as f32);
                 self.apply_ui_edit(UpscaleUiEdit::Scale(factor));
-            }
-            // Scale number chip — `v` is the raw scale factor (the chip
-            // already commits a float; `apply_ui_edit` clamps).
-            PanelEvent::SetValue(id, v) if id == NODE_SCALE_NUM => {
-                self.apply_ui_edit(UpscaleUiEdit::Scale(v as f32));
             }
             PanelEvent::Click(id) if id == NODE_APPLY => {
                 self.apply_ui_edit(UpscaleUiEdit::Apply);
@@ -534,15 +573,17 @@ mod tests {
     }
 
     #[test]
-    fn handle_panel_event_routes_scale_slider_and_chip() {
+    fn handle_panel_event_routes_scale_slider() {
+        // Widget Gallery convention §4.2: chip + slider share `0..1`
+        // storage via `link_slider_number`, so the panel forwarder
+        // only emits the slider id. The tool projects the track via
+        // `slider_to_scale`.
         let mut t = UpscaleTool::default();
-        // Slider track 0.5 maps to the midpoint of [1.0, 16.0] = 8.5.
         t.handle_panel_event(PanelEvent::SetValue(NODE_SCALE, 0.5));
         let expected = slider_to_scale(0.5);
         assert!((t.params.scale_factor - expected).abs() < f32::EPSILON);
-        // Chip carries the raw factor as f64 directly.
-        t.handle_panel_event(PanelEvent::SetValue(NODE_SCALE_NUM, 4.0));
-        assert!((t.params.scale_factor - 4.0).abs() < f32::EPSILON);
+        t.handle_panel_event(PanelEvent::SetValue(NODE_SCALE, 1.0));
+        assert!((t.params.scale_factor - 16.0).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -578,21 +619,28 @@ mod tests {
     }
 
     #[test]
-    fn run_canvas_preview_caps_dims_to_preview_max() {
+    fn run_canvas_preview_caps_output_to_preview_max() {
         let mut t = UpscaleTool::default();
         // Build a source bigger than PREVIEW_MAX_DIM so the canvas-src
         // path actually downscales.
         let big = (PREVIEW_MAX_DIM + 50) as usize;
         let buf = vec![32u8; big * big * 4];
         t.set_source_snapshot(buf, big as u32, big as u32);
-        // The canvas-preview SRC is capped at PREVIEW_MAX_DIM; the
-        // output runs that × the scale factor.
+        // Both input AND output are capped at PREVIEW_MAX_DIM: at
+        // factor 2 the working src downscales to MAX/2, output = MAX.
         t.apply_ui_edit(UpscaleUiEdit::Scale(2.0));
         let mut out = Vec::new();
         let (w, h) = t.run_canvas_preview(&mut out);
-        // canvas_src is downscaled to PREVIEW_MAX_DIM², then upscaled
-        // 2× → 1024².
-        assert_eq!((w, h), (PREVIEW_MAX_DIM * 2, PREVIEW_MAX_DIM * 2));
+        assert_eq!((w, h), (PREVIEW_MAX_DIM, PREVIEW_MAX_DIM));
+
+        // And at factor 16 the cap still holds — without the cap the
+        // naive output would be `8192²` and stall the slider drag.
+        t.apply_ui_edit(UpscaleUiEdit::Scale(16.0));
+        let (w, h) = t.run_canvas_preview(&mut out);
+        assert!(
+            w <= PREVIEW_MAX_DIM && h <= PREVIEW_MAX_DIM,
+            "canvas preview must cap output at PREVIEW_MAX_DIM (got {w}×{h})"
+        );
     }
 
     #[test]

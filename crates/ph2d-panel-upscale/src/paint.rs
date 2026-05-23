@@ -31,7 +31,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
-use ph2d_tool_upscale::params::{UpscaleAlgorithm, scale_to_slider};
+use ph2d_tool_upscale::params::{UpscaleAlgorithm, scale_to_slider, slider_to_scale};
 
 /// Label column width for the slider row. // LITERAL-PX-OK: panel grid metric
 const LABEL_COL_W: f32 = 64.0;
@@ -97,21 +97,21 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     y += row_gap;
 
     // ── Scale slider + chip row ────────────────────────────────────
-    // Slider track is normalized 0..1; chip displays the raw factor
-    // (1.0..16.0). [`crate::event`] keeps the two in lock-step.
+    // Widget Gallery convention §4.2: chip and slider share `0..1`
+    // storage (`link_slider_number`). The chip's natural unit
+    // ("2.00×") is paint-only via `display_override`, projected from
+    // the live slider track — NOT consulted from the chip's stored
+    // value (which lives in track space too).
     let track = store
         .slider(ids::UPS_SCALE)
         .map(|(_, v)| v)
         .unwrap_or_else(|| scale_to_slider(snapshot.scale_factor));
-    let factor = store
-        .number_value(ids::UPS_SCALE_NUM)
-        .unwrap_or(snapshot.scale_factor as f64);
-    let factor_display = format!("{factor:.2}×");
+    let factor_display = format!("{:.2}×", slider_to_scale(track));
     paint_slider_with_chip_layout(
         Rect::new(inner_x, y, inner_w, row_h),
         "Scale",
         track,
-        factor,
+        track as f64,
         Some(&factor_display),
         ids::UPS_SCALE,
         ids::UPS_SCALE_NUM,

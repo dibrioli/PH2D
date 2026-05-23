@@ -15,9 +15,9 @@ que já queimaram**.
 | Slot | Tool                  | Crate tool                              | Crate panel                              | Sabor    | Status                                       |
 |------|-----------------------|------------------------------------------|------------------------------------------|----------|----------------------------------------------|
 | 1    | Color Equalization    | `ph2d-tool-color-equalization` ✅       | `ph2d-panel-color-equalization` ✅      | (3)      | **FECHADO** (commits `b54c865`..`71505dd`)   |
-| 2    | Equalize Sizes        | `ph2d-tool-equalize-sizes` ✅           | `ph2d-panel-equalize-sizes` ✅          | (3)      | **WIRING PENDENTE**                          |
-| 3    | Rasterize             | `ph2d-tool-rasterize` ✅                | (sem panel — sabor 1)                    | (1)      | **WIRING PENDENTE** (mais simples dos 3)     |
-| 4    | Upscale               | `ph2d-tool-upscale` ✅                  | `ph2d-panel-upscale` ✅                 | (3)      | **WIRING PENDENTE**                          |
+| 2    | Equalize Sizes        | `ph2d-tool-equalize-sizes` ✅           | `ph2d-panel-equalize-sizes` ✅          | (3)      | **FECHADO** (commits `2ae848d`..`4303a93`)   |
+| 3    | Rasterize             | `ph2d-tool-rasterize` ✅                | (sem panel — sabor 1)                    | (1)      | **FECHADO** (commit `ad0400a`)               |
+| 4    | Upscale               | `ph2d-tool-upscale` ✅                  | `ph2d-panel-upscale` ✅                 | (3)      | **FECHADO** (commit `88682ba` shell wiring + migração §4.2) |
 
 Tool + panel crates JÁ existem com algoritmo + UI implementados. **O que
 falta é o END-TO-END no shell** — botão na TopBar dispara a tool, painel
@@ -182,13 +182,11 @@ seu computando `event.x - start_x` no Move handler, é regressão.
 - Sem panel (sabor 1 não tem).
 - Shell wiring: **0% feito.** Use `trim_transparency` como template — é o sabor (1) mais simples.
 
-### Upscale
+### Upscale — FECHADO
 - Tool crate: completo (`tool.rs`, `params.rs`, `algorithm.rs` com Lanczos3/Nearest/xBR).
-- Panel crate: **migração §4.2 pendente.** Hoje:
-  - `populate.rs` registra slider+chip mas **NÃO** chama `link_slider_number`. `mark_chip_no_stepper` foi adicionado em `fd37ca8` mas é band-aid.
-  - `populate.rs` storage chip em `DEFAULT_SCALE_FACTOR as f64` (natural unit) — precisa migrar pra `scale_to_slider(...)`.
-  - `event.rs` tem mirror manual — precisa virar forwarder thin.
-- Shell wiring: **0% feito.**
+- Panel crate: migração §4.2 fechada — `populate.rs` registra slider+chip em `0..1` (track) + `link_slider_number(UPS_SCALE, UPS_SCALE_NUM)` (auto-marca no-stepper); `event.rs` virou forwarder thin; `paint.rs` lê track do slider e projeta `slider_to_scale(track)` no `display_override`.
+- Shell wiring: completo (commit `88682ba` — Cargo deps + feature, app_state, main, render_loop activate+bridge+apply teardown, upscale_bridge, hero_intents drain_upscale).
+- Perf: `run_canvas_preview` agora cap tanto INPUT quanto OUTPUT em `PREVIEW_MAX_DIM` — sem isso, factor 16× produzia 8192² output e travava o slider drag.
 
 ## 5. Sequência sugerida
 

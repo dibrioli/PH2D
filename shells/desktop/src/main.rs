@@ -139,6 +139,7 @@ impl App {
             // the first frame's measurement
             pivot_content_center: None,
             rubber_band: None,
+            group_drag_starts: Vec::new(),
             cycle_pick_world: None,
             cycle_pick_hits: Vec::new(),
             cycle_pick_idx: 0,

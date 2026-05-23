@@ -409,6 +409,26 @@ impl App {
                                 sprite_half_intrinsic,
                                 anchor_is_center: use_center_anchor,
                             });
+                            // Onda 1: snapshot every OTHER selected sprite's
+                            // start translation so advance_gizmo_drag can
+                            // apply the primary's world delta to the whole
+                            // group. Only meaningful for Translate kind;
+                            // Scale / Rotate stay primary-only until Onda 2.
+                            self.group_drag_starts.clear();
+                            if matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
+                                && hero.gizmo.selected_len() > 1
+                            {
+                                for sel in hero.gizmo.iter_selected() {
+                                    if sel == entity_bits {
+                                        continue;
+                                    }
+                                    let e = ph2d_ecs::Entity::from_bits(sel);
+                                    if let Some(t) = gfx.sim.world().get::<Transform>(e) {
+                                        self.group_drag_starts
+                                            .push((sel, [t.translation.x, t.translation.y]));
+                                    }
+                                }
+                            }
                         }
                     } else if hero.store.panel_at(evt.x, evt.y).is_none()
                         && hero.store.context_menu().is_none()
@@ -451,20 +471,29 @@ impl App {
                         // Smart-click preservation: bare click on a
                         // sprite that's already inside an active multi-
                         // selection KEEPS the whole set (user intends
-                        // to interact with the group — e.g. run a tool
-                        // over it — not collapse to single). Without
-                        // this, every click on a member of a multi-
-                        // selection would silently narrow it.
+                        // to interact with the group — e.g. drag the
+                        // group or run a tool — not collapse to single).
                         let preserves_multi = picked.is_some_and(|bits| {
                             hero.gizmo.selected_len() > 1 && hero.gizmo.is_selected(bits)
                         });
-                        let is_modifier_click =
-                            picked.is_some() && (shift_held || cmd_held || preserves_multi);
+                        // Drag-setup skip: modifier clicks adjust the
+                        // selection but should not start a gizmo drag
+                        // (the user is curating, not moving). Bare-
+                        // click in a multi-selection DOES start a drag
+                        // (group translate via the clicked sprite as
+                        // pivot, Onda 1).
+                        let is_modifier_click = picked.is_some() && (shift_held || cmd_held);
                         if let Some(bits) = picked {
-                            if cmd_held {
+                            if cmd_held || shift_held {
+                                // Onda 1: unify Shift + Cmd as toggle on
+                                // the canvas. Click on a sprite already
+                                // in the selection → removes JUST that
+                                // one. Click on a sprite outside → adds.
+                                // The Hierarchy panel keeps Shift = range
+                                // (list-style UX); the canvas has no
+                                // natural linear order, so toggle is the
+                                // sane semantic for both modifiers.
                                 hero.gizmo.toggle_in_selection(bits);
-                            } else if shift_held {
-                                hero.gizmo.add_to_selection(bits);
                             } else if preserves_multi {
                                 // No-op: multi-selection survives the click.
                             } else {
@@ -509,6 +538,26 @@ impl App {
                                     sprite_half_intrinsic: [0.0, 0.0],
                                     anchor_is_center: false,
                                 });
+                                // Onda 1: snapshot start translations of
+                                // every OTHER selected sprite (skip the
+                                // drag's own primary — its snapshot lives
+                                // on GizmoDragState). Works whether the
+                                // user clicked the primary (skip primary,
+                                // capture extras) OR an extra (skip that
+                                // extra, capture primary + the rest).
+                                self.group_drag_starts.clear();
+                                if hero.gizmo.selected_len() > 1 {
+                                    for sel in hero.gizmo.iter_selected() {
+                                        if sel == bits {
+                                            continue;
+                                        }
+                                        let e = ph2d_ecs::Entity::from_bits(sel);
+                                        if let Some(t) = gfx.sim.world().get::<Transform>(e) {
+                                            self.group_drag_starts
+                                                .push((sel, [t.translation.x, t.translation.y]));
+                                        }
+                                    }
+                                }
                             }
                         }
                         // ADR-0029 Phase C.2: live entries owned by the
@@ -590,6 +639,10 @@ impl App {
                     // Drop the drag — Transform is already committed
                     // up to the latest Move position.
                     hero.gizmo.drag = None;
+                    // Onda 1: release the group-translate snapshot so
+                    // the next single-select drag doesn't accidentally
+                    // pull stale extras along.
+                    self.group_drag_starts.clear();
                 }
                 _ => {}
             }

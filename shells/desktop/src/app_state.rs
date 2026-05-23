@@ -327,6 +327,15 @@ pub(crate) struct App {
     /// is converted to world coords and intersected against every
     /// sprite's bbox via `pick_sprites_in_world_rect`.
     pub(crate) rubber_band: Option<RubberBandState>,
+    /// Onda 1: group-translate snapshot. Populated on PointerDown
+    /// that opens a Translate gizmo drag while `selected_len > 1`,
+    /// containing `(entity_bits, start_translation_xy)` for EVERY
+    /// extra sprite (primary's start_transform stays on
+    /// `GizmoDragState`). `advance_gizmo_drag` applies the same world
+    /// delta the primary just took to each entry, so the whole group
+    /// moves together. Cleared on PointerUp (and on every drag-open
+    /// that's NOT a multi-select translate).
+    pub(crate) group_drag_starts: Vec<(u64, [f32; 2])>,
 }
 
 /// Fase 0f: canvas rubber-band box-select state. Cleared on Up.

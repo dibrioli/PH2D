@@ -201,6 +201,28 @@ impl App {
                     t.rotation = new_t.rotation;
                     t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
                 }
+                // Onda 1: group translate — only Translate kind drags
+                // the whole multi-selection together. Scale / Rotate
+                // stay primary-only until Onda 2 (group-pivot vs
+                // local-pivot transform modes need a UX decision per
+                // gizmo). Apply the SAME world delta the primary just
+                // took to every extra's snapshot start_translation;
+                // skips silently if the entity vanished mid-drag.
+                if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
+                    && !self.group_drag_starts.is_empty()
+                {
+                    let dx = new_t.translation[0] - drag.start_transform.translation[0];
+                    let dy = new_t.translation[1] - drag.start_transform.translation[1];
+                    for (extra_bits, start_xy) in self.group_drag_starts.iter().copied() {
+                        let extra_entity = ph2d_ecs::Entity::from_bits(extra_bits);
+                        if let Some(mut t) =
+                            gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
+                        {
+                            t.translation =
+                                ph2d_core::Vec2::new(start_xy[0] + dx, start_xy[1] + dy);
+                        }
+                    }
+                }
             }
         }
     }

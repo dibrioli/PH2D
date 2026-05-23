@@ -1,0 +1,27 @@
+# Color Equalization — multi-sprite color/tone adjustment tool. Image
+# Tools row, order 90 (right of padding 80, left of equalize_sizes
+# 100). Stateful + docked panel (sabor 3 da DIRETRIZ §3.8.3): CLAHE +
+# brightness/contrast/saturation + auto white balance, with live
+# preview and Apply/Cancel. Crate-irmão: ph2d-panel-color-equalization.
+#
+# Canonical source for `crates/ph2d-tool-color-equalization/src/lib.rs`.
+# `tool_manifest_design_sync` test asserts the two stay in sync.
+
+[tool]
+id          = "color_equalization"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 90
+a11y_role   = "Button"
+icon_slug   = "color-equalization"
+touches_sim = false
+
+[label]
+pt_br_inline = "Color EQ"
+en_us_inline = "Color Equalization"
+fluent_key   = "tool.color_equalization.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

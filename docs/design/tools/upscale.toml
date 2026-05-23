@@ -1,0 +1,29 @@
+# Upscale — multi-sprite resolution upscaling with 3 competing
+# algorithms covering the design space: Lanczos3 (default — photos &
+# realistic sprites), Nearest (pixel art exact — preserves grid),
+# xBR (pixel art enhanced — edge-aware corner blending, Hyllian 2011).
+# Image Tools row, order 120 (rightmost). Stateful + docked panel
+# (sabor 3): algorithm dropdown + scale slider (1×–16×) + live
+# preview + Apply/Cancel. Crate-irmão: ph2d-panel-upscale.
+#
+# Canonical source for `crates/ph2d-tool-upscale/src/lib.rs`.
+# `tool_manifest_design_sync` test asserts the two stay in sync.
+
+[tool]
+id          = "upscale"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 120
+a11y_role   = "Button"
+icon_slug   = "upscale"
+touches_sim = false
+
+[label]
+pt_br_inline = "Upscale"
+en_us_inline = "Upscale"
+fluent_key   = "tool.upscale.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

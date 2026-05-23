@@ -1,0 +1,28 @@
+# Equalize Sizes — multi-sprite canvas size normalization. Image
+# Tools row, order 100 (right of color_equalization 90, left of
+# rasterize 110). Stateful + docked panel (sabor 3): target dim (max
+# of selection / fixed W×H / grid unit) + toggle "upscale if smaller"
+# (delegates to Upscale internals) + automatic rasterize after scale.
+# Multi-sprite obrigatório. Crate-irmão: ph2d-panel-equalize-sizes.
+#
+# Canonical source for `crates/ph2d-tool-equalize-sizes/src/lib.rs`.
+# `tool_manifest_design_sync` test asserts the two stay in sync.
+
+[tool]
+id          = "equalize_sizes"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 100
+a11y_role   = "Button"
+icon_slug   = "equalize-sizes"
+touches_sim = false
+
+[label]
+pt_br_inline = "Equalize"
+en_us_inline = "Equalize Sizes"
+fluent_key   = "tool.equalize_sizes.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 0
+heap_script_mb = 0

@@ -182,6 +182,16 @@ pub struct WidgetStore {
     /// hosting screen at construction time.
     pub(super) slider_to_number: BTreeMap<NodeId, NodeId>,
     pub(super) number_to_slider: BTreeMap<NodeId, NodeId>,
+    /// NumberInput ids that are painted as bare `paint_number_chip`
+    /// pills (no up/down arrows). The dispatch's
+    /// `apply_number_stepper_if_hit` carves a stepper column out of
+    /// the right edge of EVERY NumberInput's hit rect by default —
+    /// fine for the boxed `paint_number_input_with_buffer` widget
+    /// (Inspector position etc.) which paints arrows visually, but
+    /// for pill chips it produces phantom-stepper continuous-hold
+    /// (mouse stopped, value still climbing). Membership here makes
+    /// the dispatch skip the stepper hit-test for the id.
+    pub(super) chips_without_steppers: std::collections::BTreeSet<NodeId>,
     /// Hex `TextInput` id → its parent `BlenderPicker` id, so the
     /// dispatch can parse the typed buffer on Enter / blur and apply
     /// the resulting color to the parent state.
@@ -409,6 +419,7 @@ impl WidgetStore {
             active_rect: None,
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
+            chips_without_steppers: std::collections::BTreeSet::new(),
             hex_to_blender_parent: BTreeMap::new(),
             blender_channel_chip: BTreeMap::new(),
             last_down_id: None,
@@ -468,6 +479,23 @@ impl WidgetStore {
 
     pub fn linked_slider(&self, number: NodeId) -> Option<NodeId> {
         self.number_to_slider.get(&number).copied()
+    }
+
+    /// Mark a NumberInput as a bare chip (no visible up/down arrows).
+    /// The dispatch then skips its stepper hit-test for this id, so a
+    /// click on the chip's right edge starts a drag instead of an
+    /// invisible continuous-hold that keeps incrementing while the
+    /// pointer stays still.
+    pub fn mark_chip_no_stepper(&mut self, id: NodeId) {
+        self.chips_without_steppers.insert(id);
+    }
+
+    /// Whether the given NumberInput id is painted as a bare chip (no
+    /// stepper arrows). Returns `false` by default for backwards
+    /// compatibility with boxed `paint_number_input_with_buffer`
+    /// widgets that DO paint arrows.
+    pub fn is_chip_no_stepper(&self, id: NodeId) -> bool {
+        self.chips_without_steppers.contains(&id)
     }
 
     /// Record the latest pointer-Down for double-click detection.

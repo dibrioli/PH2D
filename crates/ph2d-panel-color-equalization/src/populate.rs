@@ -75,6 +75,12 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
         store.link_slider_number(slider_id, chip_id);
+        // The chip is painted as a bare pill via `paint_number_chip`
+        // (no stepper arrows), so disable the default stepper hit-test
+        // — otherwise a click on the chip's right edge would arm
+        // `number_stepper_hold` and keep incrementing the value while
+        // the pointer stays still (phantom continuous-hold).
+        store.mark_chip_no_stepper(chip_id);
     }
 }
 

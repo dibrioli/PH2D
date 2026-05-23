@@ -642,7 +642,15 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // the caret or trigger select-all). M14.A also seeds
                 // a continuous-hold state so dispatch_tick can repeat
                 // while the arrow stays pressed.
+                //
+                // Skip the stepper hit-test entirely for chips painted
+                // as bare pills (`paint_number_chip`) — those don't
+                // draw arrows but the dispatch carves the right column
+                // out of every NumberInput's hit rect by default,
+                // producing a phantom continuous-hold that keeps
+                // climbing while the pointer is still.
                 let stepper_hit = !combo_cleared
+                    && !store.is_chip_no_stepper(id)
                     && apply_number_stepper_if_hit(
                         store,
                         id,

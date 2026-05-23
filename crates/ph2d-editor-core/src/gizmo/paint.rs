@@ -431,12 +431,7 @@ fn midpoint(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
 /// hint the GLOBAL bbox covering every selected sprite. `stroke_w`
 /// lets the caller distinguish extras (1.0 px) from global (2.0 px)
 /// from the primary (1.5 px) without three separate functions.
-pub fn paint_gizmo_outline(
-    scene: &mut VectorScene,
-    view: &GizmoView,
-    theme: Theme,
-    stroke_w: f32,
-) {
+pub fn paint_gizmo_outline(scene: &mut VectorScene, view: &GizmoView, theme: Theme, stroke_w: f32) {
     let cx_w = (view.bbox_min_world[0] + view.bbox_max_world[0]) * 0.5;
     let cy_w = (view.bbox_min_world[1] + view.bbox_max_world[1]) * 0.5;
     let hx_w = (view.bbox_max_world[0] - view.bbox_min_world[0]) * 0.5;
@@ -535,14 +530,7 @@ pub fn paint_sprite_gizmo_keyed(
         ),
     ];
     for (id, r) in rotate_rects {
-        register_keyed_handle(
-            hit_index,
-            hit_map,
-            target,
-            id,
-            GizmoDragKind::Rotate,
-            r,
-        );
+        register_keyed_handle(hit_index, hit_map, target, id, GizmoDragKind::Rotate, r);
     }
     // Onda 2 hotfix: mirror the primary gizmo's cursor-over-rotate
     // hover swap — when the cursor enters any of the rotate hit rects,

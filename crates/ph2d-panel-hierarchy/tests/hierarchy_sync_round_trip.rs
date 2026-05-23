@@ -244,5 +244,14 @@ fn hierarchy_row_click_raises_pending_for_live_entries() {
     let consumed = dispatch(&mut hero, &mut state, WidgetEvent::Click(row_id));
     assert!(consumed, "live-mode row click should consume");
     let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(drained, vec![EditorAction::HierRowClick { row: row_id }]);
+    // Onda 2: legacy `HierRowClick` was replaced by `HierSelectRow`
+    // (modifier-aware multi-select). Bare-click on a live row with no
+    // modifier emits Replace — selection swaps to just this row.
+    assert_eq!(
+        drained,
+        vec![EditorAction::HierSelectRow {
+            row: row_id,
+            modifier: ph2d_editor_core::action_bus::SelectModifier::Replace,
+        }]
+    );
 }

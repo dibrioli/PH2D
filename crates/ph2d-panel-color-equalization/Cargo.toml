@@ -21,7 +21,6 @@ authors.workspace = true
 ph2d-editor-core            = { path = "../ph2d-editor-core" }
 ph2d-a11y                   = { path = "../ph2d-a11y" }
 ph2d-tokens                 = { path = "../ph2d-tokens" }
-ph2d-tool-registry          = { path = "../ph2d-tool-registry" }
 # Vocab single-source-of-truth (DIRETRIZ §3.8.3 — sabor 3): snapshot type,
 # slider↔value projection helpers, and the panel NodeId consts live in
 # the tool crate. Panel → tool dep direction (allowed; tool depends on

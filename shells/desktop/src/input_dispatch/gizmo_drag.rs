@@ -338,14 +338,8 @@ impl App {
                         1.0
                     };
                     let delta_rot = new_t.rotation - drag.start_transform.rotation;
-                    let is_translate = matches!(
-                        drag.kind,
-                        ph2d_editor::GizmoDragKind::Translate
-                    );
-                    let is_global = matches!(
-                        drag.target,
-                        ph2d_editor::GizmoTarget::Global
-                    );
+                    let is_translate = matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate);
+                    let is_global = matches!(drag.target, ph2d_editor::GizmoTarget::Global);
                     let pivot = drag.pivot_world;
                     let (sin_d, cos_d) = delta_rot.sin_cos();
                     for snap in self.group_drag_starts.iter().copied() {
@@ -356,8 +350,7 @@ impl App {
                         let new_scale_extra;
                         if is_translate {
                             // Translate: rigid body shift.
-                            new_translation =
-                                [st.translation[0] + dx, st.translation[1] + dy];
+                            new_translation = [st.translation[0] + dx, st.translation[1] + dy];
                             new_rotation = st.rotation;
                             new_scale_extra = st.scale;
                         } else if is_global {
@@ -371,11 +364,9 @@ impl App {
                             let scaled_y = rel_y * factor_y;
                             let rotated_x = scaled_x * cos_d - scaled_y * sin_d;
                             let rotated_y = scaled_x * sin_d + scaled_y * cos_d;
-                            new_translation =
-                                [pivot[0] + rotated_x, pivot[1] + rotated_y];
+                            new_translation = [pivot[0] + rotated_x, pivot[1] + rotated_y];
                             new_rotation = st.rotation + delta_rot;
-                            new_scale_extra =
-                                [st.scale[0] * factor_x, st.scale[1] * factor_y];
+                            new_scale_extra = [st.scale[0] * factor_x, st.scale[1] * factor_y];
                         } else {
                             // Local scale/rotate: each sprite
                             // transforms around its own anchor →
@@ -383,11 +374,9 @@ impl App {
                             // rotation change.
                             new_translation = st.translation;
                             new_rotation = st.rotation + delta_rot;
-                            new_scale_extra =
-                                [st.scale[0] * factor_x, st.scale[1] * factor_y];
+                            new_scale_extra = [st.scale[0] * factor_x, st.scale[1] * factor_y];
                         }
-                        if let Some(mut t) =
-                            gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
+                        if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
                         {
                             t.translation =
                                 ph2d_core::Vec2::new(new_translation[0], new_translation[1]);

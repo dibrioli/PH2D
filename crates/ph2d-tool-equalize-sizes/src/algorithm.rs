@@ -498,6 +498,7 @@ fn resample_axis_mn(
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 

@@ -4130,7 +4130,6 @@ dependencies = [
  "ph2d-host",
  "ph2d-tokens",
  "ph2d-tool-color-equalization",
- "ph2d-tool-registry",
 ]
 
 [[package]]

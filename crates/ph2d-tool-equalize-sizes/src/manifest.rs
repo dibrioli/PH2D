@@ -1,8 +1,8 @@
 //! Equalize Sizes — [`ToolManifest`] declaration.
 //!
 //! Stateful tool: clicking `[Equalize]` in the Image Tools row opens a
-//! right-docked panel (target mode + W/H or grid unit + algorithm choice
-//! + Apply/Cancel); Apply iterates `hero.gizmo.iter_selected()` and
+//! right-docked panel (target mode + W/H or grid unit + algorithm choice,
+//! plus Apply/Cancel); Apply iterates `hero.gizmo.iter_selected()` and
 //! bakes each sprite per the params. The pure cross-sprite math is in
 //! [`crate::algorithm`]; the panel + shell wiring + commit are
 //! Coordinator integration on a clean tree (not part of this fan-out

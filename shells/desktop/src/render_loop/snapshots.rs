@@ -78,7 +78,11 @@ pub(super) fn publish(
             .gizmo
             .selection
             .and_then(|bits| live.bridge.node_for(bits))
-            .and_then(|node| entries.get(&node).map(|e| (e.name.clone(), e.badge.clone())));
+            .and_then(|node| {
+                entries
+                    .get(&node)
+                    .map(|e| (e.name.clone(), e.badge.clone()))
+            });
         ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
         if let Some((label, badge)) = primary_label {
             hero.selection = Some(ph2d_editor::HeroSelection {
@@ -179,58 +183,59 @@ pub(super) fn publish(
     // exact same world→view math. Single source of truth for the
     // affine decomposition + anchor compensation; any future render-
     // path tweak only touches this closure.
-    let build_view = |bits: u64,
-                      sim: &SimWorld,
-                      present: &mut PresentWorld|
-     -> Option<ph2d_editor::GizmoView> {
-        let sim_entity = ph2d_ecs::Entity::from_bits(bits);
-        let sprite = sim.world().get::<Sprite>(sim_entity)?;
-        let mut q = present
-            .world_mut()
-            .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
-        let gt = q.iter(present.world()).find_map(|(sref, gt)| {
-            if sref.0 == sim_entity {
-                Some(*gt)
-            } else {
-                None
-            }
-        })?;
-        let affine = gt.affine();
-        let col0_x = affine[0];
-        let col0_y = affine[1];
-        let col1_x = affine[2];
-        let col1_y = affine[3];
-        let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
-        let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
-        let rotation = col0_y.atan2(col0_x);
-        let p = gt.translation();
-        let half_w = sprite.size[0] * scale_x * 0.5;
-        let half_h = sprite.size[1] * scale_y * 0.5;
-        let ax = sprite.anchor[0] * scale_x;
-        let ay = sprite.anchor[1] * scale_y;
-        let (sin_r, cos_r) = rotation.sin_cos();
-        let cx = p.x + ax * cos_r - ay * sin_r;
-        let cy = p.y + ax * sin_r + ay * cos_r;
-        Some(ph2d_editor::GizmoView {
-            bbox_min_world: [cx - half_w, cy - half_h],
-            bbox_max_world: [cx + half_w, cy + half_h],
-            pivot_world: [p.x, p.y],
-            pivot_tool_active,
-            rotation,
-            camera_center: camera.center,
-            camera_height_world: camera.height_world,
-            window_w: window_size.width as f32,
-            window_h: window_size.height as f32,
-            canvas: ph2d_editor::zones::Rect::new(
-                0.0,
-                0.0,
-                window_size.width as f32,
-                window_size.height as f32,
-            ),
-            cursor_screen: Some(last_pointer),
-        })
-    };
-    hero.gizmo.view = hero.gizmo.selection.and_then(|bits| build_view(bits, sim, present));
+    let build_view =
+        |bits: u64, sim: &SimWorld, present: &mut PresentWorld| -> Option<ph2d_editor::GizmoView> {
+            let sim_entity = ph2d_ecs::Entity::from_bits(bits);
+            let sprite = sim.world().get::<Sprite>(sim_entity)?;
+            let mut q = present
+                .world_mut()
+                .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
+            let gt = q.iter(present.world()).find_map(|(sref, gt)| {
+                if sref.0 == sim_entity {
+                    Some(*gt)
+                } else {
+                    None
+                }
+            })?;
+            let affine = gt.affine();
+            let col0_x = affine[0];
+            let col0_y = affine[1];
+            let col1_x = affine[2];
+            let col1_y = affine[3];
+            let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
+            let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
+            let rotation = col0_y.atan2(col0_x);
+            let p = gt.translation();
+            let half_w = sprite.size[0] * scale_x * 0.5;
+            let half_h = sprite.size[1] * scale_y * 0.5;
+            let ax = sprite.anchor[0] * scale_x;
+            let ay = sprite.anchor[1] * scale_y;
+            let (sin_r, cos_r) = rotation.sin_cos();
+            let cx = p.x + ax * cos_r - ay * sin_r;
+            let cy = p.y + ax * sin_r + ay * cos_r;
+            Some(ph2d_editor::GizmoView {
+                bbox_min_world: [cx - half_w, cy - half_h],
+                bbox_max_world: [cx + half_w, cy + half_h],
+                pivot_world: [p.x, p.y],
+                pivot_tool_active,
+                rotation,
+                camera_center: camera.center,
+                camera_height_world: camera.height_world,
+                window_w: window_size.width as f32,
+                window_h: window_size.height as f32,
+                canvas: ph2d_editor::zones::Rect::new(
+                    0.0,
+                    0.0,
+                    window_size.width as f32,
+                    window_size.height as f32,
+                ),
+                cursor_screen: Some(last_pointer),
+            })
+        };
+    hero.gizmo.view = hero
+        .gizmo
+        .selection
+        .and_then(|bits| build_view(bits, sim, present));
     // Onda 2: rebuild the extras' views every frame. Cleared first so
     // a sprite that left the selection between frames stops painting.
     hero.gizmo.extra_views.clear();
@@ -274,24 +279,23 @@ pub(super) fn publish(
     {
         let primary_entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
         let world = sim.world();
-        let (delta_rot, factor_x, factor_y) = if let Some(t) =
-            world.get::<Transform>(primary_entity)
-        {
-            let dr = t.rotation - drag.start_transform.rotation;
-            let fx = if drag.start_transform.scale[0].abs() > f32::EPSILON {
-                t.scale.x / drag.start_transform.scale[0]
+        let (delta_rot, factor_x, factor_y) =
+            if let Some(t) = world.get::<Transform>(primary_entity) {
+                let dr = t.rotation - drag.start_transform.rotation;
+                let fx = if drag.start_transform.scale[0].abs() > f32::EPSILON {
+                    t.scale.x / drag.start_transform.scale[0]
+                } else {
+                    1.0
+                };
+                let fy = if drag.start_transform.scale[1].abs() > f32::EPSILON {
+                    t.scale.y / drag.start_transform.scale[1]
+                } else {
+                    1.0
+                };
+                (dr, fx, fy)
             } else {
-                1.0
+                (0.0, 1.0, 1.0)
             };
-            let fy = if drag.start_transform.scale[1].abs() > f32::EPSILON {
-                t.scale.y / drag.start_transform.scale[1]
-            } else {
-                1.0
-            };
-            (dr, fx, fy)
-        } else {
-            (0.0, 1.0, 1.0)
-        };
         let cx_s = (start.bbox_min_world[0] + start.bbox_max_world[0]) * 0.5;
         let cy_s = (start.bbox_min_world[1] + start.bbox_max_world[1]) * 0.5;
         let hw_s = (start.bbox_max_world[0] - start.bbox_min_world[0]) * 0.5;

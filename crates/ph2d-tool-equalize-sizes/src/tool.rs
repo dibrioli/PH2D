@@ -28,22 +28,13 @@ use crate::params::{
 };
 
 /// Editor Tool implementing Equalize Sizes (Stateful, sabor 3).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct EqualizeSizesTool {
     params: EqualizeSizesParams,
     /// Set `true` when the user presses Apply; the host drains via
     /// [`Self::take_pending_apply`] each frame and runs
     /// [`Self::run_full_resolution_multi`] over the selection.
     pending_apply: bool,
-}
-
-impl Default for EqualizeSizesTool {
-    fn default() -> Self {
-        Self {
-            params: EqualizeSizesParams::default(),
-            pending_apply: false,
-        }
-    }
 }
 
 impl EqualizeSizesTool {

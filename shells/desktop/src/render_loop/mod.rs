@@ -426,14 +426,14 @@ impl crate::App {
                     // mutation. Range overrides Row when both arrive
                     // in the same frame (the user can only be in one
                     // selection-gesture at a time).
-                    EditorAction::HierSelectRow { row, modifier } => {
+                    EditorAction::HierSelectRow { row, modifier }
                         if !matches!(
                             hierarchy_select_intent,
                             Some(hierarchy::HierarchySelectIntent::Range { .. })
-                        ) {
-                            hierarchy_select_intent =
-                                Some(hierarchy::HierarchySelectIntent::Row { row, modifier });
-                        }
+                        ) =>
+                    {
+                        hierarchy_select_intent =
+                            Some(hierarchy::HierarchySelectIntent::Row { row, modifier });
                     }
                     EditorAction::HierRangeSelect { row } => {
                         hierarchy_select_intent =

@@ -35,6 +35,13 @@ puffin = "puffin"
 # Brazilian Portuguese tokens that look like typos to en-US dictionaries.
 "nao" = "nao"
 "sim" = "sim"
+# "Fase" (pt-BR for "Phase") shows up throughout the multi-select
+# foundation rollout comments (Fase 0a..0f) and the Onda 2 hotfixes.
+Fase = "Fase"
+fase = "fase"
+# pt-BR plurals that typos-cli wants in English.
+individuais = "individuais"
+individual = "individual"
 # Technical terms that show up in shaders / numerics.
 texel = "texel"
 mipmap = "mipmap"

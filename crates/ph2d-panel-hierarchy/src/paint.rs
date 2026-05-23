@@ -245,7 +245,9 @@ fn paint_hierarchy_body(
         // pre-marked). Fall back to label match only for entries that
         // weren't marked — covers the fixture/demo path where there
         // is no live bridge.
-        if !entity.selected && let Some(sel_label) = selection_label {
+        if !entity.selected
+            && let Some(sel_label) = selection_label
+        {
             entity.selected = entity.name == sel_label;
         }
         entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);

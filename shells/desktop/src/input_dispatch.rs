@@ -1,3 +1,12 @@
+// ph2d-loc-cap: Onda 2C multi-select dispatch + hit_map routing +
+// click-vs-drag + group-translate snapshot capture grew this file
+// past the HR-18 600-LOC cap (currently ~900 LOC). The MouseInput
+// Down/Up arms are the bulk; the natural decomposition is to move
+// each Down sub-path (modifier override / pivot tool / gizmo handle /
+// canvas pick) and the Up resolver into siblings under
+// `input_dispatch/`, parallel to the existing eyedropper / gizmo_drag
+// / keyboard / protect_brush splits. That refactor lands as a
+// follow-up to Onda 2 once the gizmo polish is locked.
 //! Window-event dispatch — one method per `WindowEvent` variant.
 //!
 //! PR 9b of `docs/Migracao/2026-05-convention-by-discovery.md`:
@@ -316,31 +325,23 @@ impl App {
                     // entering the `is_specific_handle` branch which
                     // bypasses the canvas pick where toggle lives).
                     let shift_held_early = self.modifiers.shift_key();
-                    let cmd_held_early =
-                        self.modifiers.super_key() || self.modifiers.control_key();
+                    let cmd_held_early = self.modifiers.super_key() || self.modifiers.control_key();
                     if (shift_held_early || cmd_held_early)
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && hero.store.context_menu().is_none()
                     {
                         let window_size = gfx.surface.size();
-                        let world_pos =
-                            gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        let hits = ph2d_render::pick_sprites_at_world(
-                            gfx.present.world_mut(),
-                            world_pos,
-                        );
+                        let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                        let hits =
+                            ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
                         if let Some(bits) = hits.first().copied() {
                             hero.gizmo.toggle_in_selection(bits);
                             let primary = hero.gizmo.selection;
-                            if let Some(entry) =
-                                resolve_live_entry(gfx.hero_live.as_ref(), primary)
+                            if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary)
                             {
                                 hero.selection = Some(ph2d_editor::HeroSelection {
                                     label: entry.name.clone(),
-                                    kind: entry
-                                        .badge
-                                        .clone()
-                                        .unwrap_or_else(|| "ENT".to_string()),
+                                    kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                     world_pos: (0.0, 0.0),
                                 });
                             } else if primary.is_none() {
@@ -388,10 +389,9 @@ impl App {
                     // branch resolves the world position to a sprite
                     // via `pick_sprites_at_world` and opens a group
                     // translate drag.
-                    let is_keyed_translate = hit_map_entry.map(|h| matches!(
-                        h.kind,
-                        ph2d_editor::GizmoDragKind::Translate
-                    )).unwrap_or(false);
+                    let is_keyed_translate = hit_map_entry
+                        .map(|h| matches!(h.kind, ph2d_editor::GizmoDragKind::Translate))
+                        .unwrap_or(false);
                     // TOOL_PIVOT begin: when the Pivot transform tool is
                     // the active radio selection and the click lands on
                     // the selected sprite (or its pivot dot), open a
@@ -479,8 +479,7 @@ impl App {
                             // Global overrides pivot to the global bbox
                             // center so group transforms rotate/scale every
                             // sprite around a single shared point.
-                            let pivot = if let ph2d_editor::GizmoTarget::Global =
-                                effective_target
+                            let pivot = if let ph2d_editor::GizmoTarget::Global = effective_target
                                 && let Some(gv) = hero.gizmo.global_view.as_ref()
                             {
                                 [
@@ -692,14 +691,15 @@ impl App {
                                             self.group_drag_starts.push(
                                                 crate::app_state::GroupDragSnapshot {
                                                     entity_bits: sel,
-                                                    start_transform: ph2d_editor::TransformSnapshot {
-                                                        translation: [
-                                                            t.translation.x,
-                                                            t.translation.y,
-                                                        ],
-                                                        rotation: t.rotation,
-                                                        scale: [t.scale.x, t.scale.y],
-                                                    },
+                                                    start_transform:
+                                                        ph2d_editor::TransformSnapshot {
+                                                            translation: [
+                                                                t.translation.x,
+                                                                t.translation.y,
+                                                            ],
+                                                            rotation: t.rotation,
+                                                            scale: [t.scale.x, t.scale.y],
+                                                        },
                                                 },
                                             );
                                         }
@@ -739,12 +739,9 @@ impl App {
                         let moved = (dx * dx + dy * dy) > 16.0; // > 4 px
                         if moved {
                             let window_size = gfx.surface.size();
-                            let world_a = gfx
-                                .camera
-                                .screen_to_world(rb.anchor_screen, window_size);
-                            let world_b = gfx
-                                .camera
-                                .screen_to_world(rb.current_screen, window_size);
+                            let world_a = gfx.camera.screen_to_world(rb.anchor_screen, window_size);
+                            let world_b =
+                                gfx.camera.screen_to_world(rb.current_screen, window_size);
                             let rmin = [world_a[0].min(world_b[0]), world_a[1].min(world_b[1])];
                             let rmax = [world_a[0].max(world_b[0]), world_a[1].max(world_b[1])];
                             let bits = ph2d_render::pick_sprites_in_world_rect(
@@ -761,15 +758,11 @@ impl App {
                             // Sync the panel header label to the new
                             // primary (Fase 0e parity).
                             let primary = hero.gizmo.selection;
-                            if let Some(entry) =
-                                resolve_live_entry(gfx.hero_live.as_ref(), primary)
+                            if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary)
                             {
                                 hero.selection = Some(ph2d_editor::HeroSelection {
                                     label: entry.name.clone(),
-                                    kind: entry
-                                        .badge
-                                        .clone()
-                                        .unwrap_or_else(|| "ENT".to_string()),
+                                    kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                     world_pos: (0.0, 0.0),
                                 });
                             } else if primary.is_none() {
@@ -809,10 +802,7 @@ impl App {
                             {
                                 hero.selection = Some(ph2d_editor::HeroSelection {
                                     label: entry.name.clone(),
-                                    kind: entry
-                                        .badge
-                                        .clone()
-                                        .unwrap_or_else(|| "ENT".to_string()),
+                                    kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                     world_pos: (0.0, 0.0),
                                 });
                             }

@@ -461,6 +461,7 @@ fn rotate_mitchell_premult(src: &[f32], w: u32, h: u32, theta: f32) -> (Vec<f32>
 // ---------------------------------------------------------------------
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default, clippy::identity_op)]
 mod tests {
     use super::*;
 

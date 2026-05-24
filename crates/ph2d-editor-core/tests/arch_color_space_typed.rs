@@ -92,13 +92,19 @@ fn no_bare_byte_color_in_ui_or_raster_crates() {
     });
 
     let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let baseline_paths: Vec<PathBuf> = BASELINE.iter().map(|p| workspace_root.join(p)).collect();
+    // Audit M-2 fix: compare suffixes rather than canonicalize() —
+    // canonicalize() fails on deleted/symlink-broken paths and turns
+    // both sides into None == None, which would silently allow OR
+    // reject everything. Suffix match is robust to symlink form.
+    let baseline_suffixes: Vec<&str> = BASELINE.to_vec();
+    let _ = workspace_root; // kept for future use; suffix match is workspace-agnostic
 
     let mut violations: Vec<String> = Vec::new();
     for path in &files {
-        if baseline_paths
+        let path_str = path.to_string_lossy();
+        if baseline_suffixes
             .iter()
-            .any(|b| b.canonicalize().ok() == path.canonicalize().ok())
+            .any(|suffix| path_str.ends_with(suffix))
         {
             continue;
         }

@@ -4044,6 +4044,10 @@ name = "ph2d-light"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-loc-trend"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-mcp"
 version = "0.0.0"
 dependencies = [
@@ -4052,6 +4056,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "ph2d-memory-gc"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-net"

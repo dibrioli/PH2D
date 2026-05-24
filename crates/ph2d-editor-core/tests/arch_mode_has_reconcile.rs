@@ -37,6 +37,38 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
     ),
 ];
 
+/// Setters that reconcile via implementation-specific verbs (rather
+/// than `reconcile_*` / `invalidate_*` / `reset_*`). Each entry:
+/// (function name, verb that signals reconciliation, justification).
+/// The gate accepts the setter as reconciling iff its body contains
+/// the named verb. Adding here requires (a) confirming the verb is
+/// the canonical reconciliation for that subsystem and (b) the
+/// reconciliation actually flushes the downstream state the mode
+/// switch invalidates.
+///
+/// Etapa 6 M-1 refinement: the previous gate accepted ANY method
+/// call as evidence; a buggy setter like
+/// `self.mode = on; self.toast.show("…")` would pass. The new gate
+/// requires either a canonical helper name OR an explicit entry
+/// here naming the specific verb.
+const RECONCILES_VIA: &[(&str, &str, &str)] = &[
+    (
+        "set_present_mode",
+        "configure",
+        "wgpu: surface.configure() rebuilds the swapchain — the actual reconciliation",
+    ),
+    (
+        "set_filter_mode",
+        "rebuild_material_bind_group",
+        "ph2d-render renderer: rebuilds the material bind group bound to the old sampler",
+    ),
+    (
+        "set_filter_mode",
+        "create_sprite_sampler",
+        "ph2d-render atlas/individual: recreates the sampler — the dependent state itself",
+    ),
+];
+
 #[test]
 fn every_set_mode_setter_reconciles_or_is_benign() {
     let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -62,21 +94,25 @@ fn every_set_mode_setter_reconciles_or_is_benign() {
                 continue;
             }
             // Reconciliation signal: body either uses one of the
-            // canonical helper names OR makes at least one method call
-            // beyond the bare field write (which is what the bug
-            // pattern lacked). A "method call beyond field write" is a
-            // `.<ident>(` pattern that is NOT a `<field>.<field>` access
-            // (e.g. `self.surface.configure(...)`,
-            // `self.atlas.rebuild_caches()`, `crate::sampler::new(...)`).
+            // canonical helper names (reconcile_/invalidate_/reset_/
+            // on_mode_changed) OR matches the verb on the symbol's
+            // RECONCILES_VIA entry. ANY method call is NOT enough —
+            // that was the old over-loose gate that let a buggy
+            // `self.toast.show(…)` slip through.
             let canonical_helper = body.contains("reconcile_")
                 || body.contains("invalidate_")
                 || body.contains("reset_")
                 || body.contains("on_mode_changed");
-            let has_method_call = body_has_method_call(&body);
-            let reconciles = canonical_helper || has_method_call;
+            let via_specific_verb = RECONCILES_VIA
+                .iter()
+                .filter(|(name, _, _)| *name == fn_name)
+                .any(|(_, verb, _)| body.contains(verb));
+            let reconciles = canonical_helper || via_specific_verb;
             if !reconciles {
                 violations.push(format!(
-                    "{}::{} — body is a bare field write with no reconcile / method call",
+                    "{}::{} — body has no canonical reconcile call \
+                     (reconcile_*/invalidate_*/reset_*/on_mode_changed) \
+                     and no RECONCILES_VIA entry naming the specific verb",
                     path.display(),
                     fn_name
                 ));
@@ -160,101 +196,6 @@ fn extract_set_mode_setters(src: &str) -> Vec<(String, String)> {
         let body = src[body_start..=i].to_string();
         out.push((name, body));
         search_from = i + 1;
-    }
-    out
-}
-
-/// True if `body` contains at least one `.<ident>(` call that isn't
-/// a simple field access pattern. We strip strings and comments first
-/// so they don't false-positive.
-fn body_has_method_call(body: &str) -> bool {
-    let stripped = strip_strings_and_comments(body);
-    let bytes = stripped.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'.' {
-            // Look ahead: must be `.<ident>(` (with no whitespace, or
-            // ignore trailing whitespace before `(`).
-            let mut j = i + 1;
-            while j < bytes.len() && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'_') {
-                j += 1;
-            }
-            if j == i + 1 {
-                i += 1;
-                continue;
-            }
-            // After the ident, skip any whitespace.
-            let mut k = j;
-            while k < bytes.len() && bytes[k] == b' ' {
-                k += 1;
-            }
-            if k < bytes.len() && bytes[k] == b'(' {
-                // It's `.<ident>(...)` — a method call. Done.
-                return true;
-            }
-        }
-        // Also accept free-fn calls like `foo::bar(...)` or `crate::baz(...)`.
-        if bytes[i] == b':' && i + 1 < bytes.len() && bytes[i + 1] == b':' {
-            let mut j = i + 2;
-            while j < bytes.len() && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'_') {
-                j += 1;
-            }
-            if j > i + 2 {
-                let mut k = j;
-                while k < bytes.len() && bytes[k] == b' ' {
-                    k += 1;
-                }
-                if k < bytes.len() && bytes[k] == b'(' {
-                    return true;
-                }
-            }
-        }
-        i += 1;
-    }
-    false
-}
-
-/// Strip string and char literals + line/block comments. Naive but
-/// good enough for setter bodies.
-fn strip_strings_and_comments(src: &str) -> String {
-    let bytes = src.as_bytes();
-    let n = bytes.len();
-    let mut out = String::with_capacity(n);
-    let mut i = 0;
-    while i < n {
-        // Line comment
-        if i + 1 < n && bytes[i] == b'/' && bytes[i + 1] == b'/' {
-            while i < n && bytes[i] != b'\n' {
-                i += 1;
-            }
-            continue;
-        }
-        // Block comment
-        if i + 1 < n && bytes[i] == b'/' && bytes[i + 1] == b'*' {
-            i += 2;
-            while i + 1 < n && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
-                i += 1;
-            }
-            i = (i + 2).min(n);
-            continue;
-        }
-        // String literal
-        if bytes[i] == b'"' {
-            out.push('"');
-            i += 1;
-            while i < n && bytes[i] != b'"' {
-                if bytes[i] == b'\\' && i + 1 < n {
-                    i += 2;
-                    continue;
-                }
-                i += 1;
-            }
-            i = (i + 1).min(n);
-            out.push('"');
-            continue;
-        }
-        out.push(bytes[i] as char);
-        i += 1;
     }
     out
 }

@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-loc-trend"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Wave 10 / Etapa 6.3 — LOC trend detector. Records per-file LOC in
+# `metrics/loc-trend.json` and fails if a critical-file grew > 10% in
+# the last 30 days without an accompanying ADR. Prevents emergent
+# god-files.
+#
+# Library + binary. Pure std (zero deps).
+
+[lib]
+
+[[bin]]
+name = "ph2d-loc-trend"
+path = "src/main.rs"

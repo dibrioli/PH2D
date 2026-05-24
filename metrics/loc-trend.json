@@ -1,0 +1,22 @@
+{
+  "samples": [
+    {
+      "date": "2026-05-24",
+      "files": {
+        "crates/ph2d-editor-core/src/interaction/dispatch/pointer.rs": 1050,
+        "crates/ph2d-editor-core/src/lib.rs": 131,
+        "crates/ph2d-panel-bgremoval/src/paint.rs": 443,
+        "crates/ph2d-panel-color-equalization/src/paint.rs": 318,
+        "crates/ph2d-panel-color-equalization/src/paint_sections.rs": 559,
+        "crates/ph2d-panel-equalize-sizes/src/paint.rs": 438,
+        "crates/ph2d-panel-grid-snap/src/paint.rs": 513,
+        "crates/ph2d-panel-grid-snap/src/paint_helpers.rs": 490,
+        "crates/ph2d-panel-hierarchy/src/paint.rs": 372,
+        "crates/ph2d-panel-inspector/src/paint.rs": 355,
+        "crates/ph2d-panel-inspector/src/sections.rs": 419,
+        "crates/ph2d-tool-runtime/src/lib.rs": 633,
+        "shells/desktop/src/render_loop/mod.rs": 1006
+      }
+    }
+  ]
+}

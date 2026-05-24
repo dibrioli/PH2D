@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-memory-gc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Wave 10 / Etapa 6.4 — validates that paths referenced in
+# ~/.claude/projects/.../memory/MEMORY.md (or the equivalent project
+# memory file) still exist in the codebase. Auto-flags entries that
+# point at files/dirs that have been deleted or renamed.
+#
+# Library + binary. Pure std (zero deps) so it can run in any env.
+
+[lib]
+
+[[bin]]
+name = "ph2d-memory-gc"
+path = "src/main.rs"

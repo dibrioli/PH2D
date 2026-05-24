@@ -17,7 +17,7 @@
 | 3 — 3 arch-gates + drive_multi_preview_cache + fix C3 multi-Apply | ✅ COMPLETA | `666a85a` | 19 gates/helper verdes; 3 críticos + 3 altos fixados | [§E3](#etapa-3--3-arch-gates--drive_multi_preview_cache) |
 | 4 — panel-sync + chrome-sync + widget-sync (3 codegens) | ✅ COMPLETA | (pendente) | 6 staleness gates (3 panel + 2 chrome + 1 widget) + 12 helper tests | [§E4](#etapa-4--3-codegens-panelchromewidget-sync) |
 | 5 — Gates UI panel-\* + ph2d-color + classes de bug | ✅ COMPLETA | (pendente) | 5 UI gates estendidos + 4 gates ortogonais + LOC cap + arch_color_space_typed + ph2d-color (15 tests) | [§E5](#etapa-5--gates-ui-panel--ph2d-color--gates-ortogonais) |
-| 6 — Golden-image SSIM + drift + memory GC | ⏳ | — | — | — |
+| 6 — LOC drift + memory GC + audit refinements (6.1/6.2 deferidos) | 🟡 PARCIAL | (pendente) | LOC trend (6 tests) + memory GC (7 tests) + M-1/M-2 audit fixes | [§E6](#etapa-6--loc-trend--memory-gc--audit-refinements) |
 | 7 — Política merge-on-green + closure | ⏳ | — | — | — |
 
 ---
@@ -582,6 +582,106 @@ Apesar disso, smoke recomendado nos painéis tocados por substituição token + 
 - `crates/ph2d-editor-core/src/widget/slider_with_chip.rs` (CLAMP-OK ×2)
 - `crates/ph2d-editor-core/src/screens/hero/color_picker_demo.rs` (safe_clamp ×2)
 - `crates/ph2d-editor-core/src/interaction/dispatch/pointer.rs` (DRAG-ABS-OK ×2)
+
+---
+
+## Etapa 6 — LOC trend + memory GC + audit refinements
+
+**Commit:** (pendente)
+
+### Escopo realizado
+
+Etapa 6 partial — implementa os componentes self-contained (zero user-input
+requirement). Os componentes 6.1 (golden-image SSIM) e 6.2 (panel-canonical-
+template AST) são **deferidos para sessão com Enio in-the-loop**, pois exigem:
+
+- **6.1:** baseline PNGs (golden snapshots) que o Enio precisa visualmente aprovar.
+  Setup Vello headless é mecânico, mas a APPROVAL dos baselines é o gargalo
+  semântico. Plano: spawn em sessão dedicada quando Enio puder revisar
+  ~17 mockups iniciais (widgets primários + 9 panels).
+- **6.2:** decisão de formato canônico do template `__template__.rs`. Plano
+  original §6.2 (Coord-B + Implementador, 1-2 semanas) precisa do Coord-A
+  decidindo qual seção do `pre_populate.rs` vira fonte canônica. Spawn em
+  sessão com Enio aprovando o template inicial.
+
+**Componentes 6.3 + 6.4 entregues:**
+
+- **`tools/ph2d-loc-trend/`** — registra LOC dos 13 arquivos críticos em
+  `metrics/loc-trend.json` (samples por dia). Modos `record` / `check` /
+  `report`. Gate `check` falha se cresceu >10% nos últimos 30 dias.
+  Howard-Hinnant proleptic Gregorian math (zero deps).
+- **`tools/ph2d-memory-gc/`** — varre MEMORY.md + sibling .md files, extrai
+  markdown links + raw repo-rooted paths, reporta refs que não resolvem.
+  Resolution-smart: sibling-of-source vs workspace-root vs file:// URLs.
+
+**Audit fixes:**
+
+- **M-1 (Etapa 5 audit):** `arch_mode_has_reconcile` agora EXIGE keyword
+  canonical (`reconcile_*/invalidate_*/reset_*/on_mode_changed`) OU entry
+  explícita em `RECONCILES_VIA` (per-symbol verb whitelist). Removeu o
+  fallback "any method call passes" que deixava bug §2 escapar.
+- **M-2 (Etapa 5 audit):** `arch_color_space_typed` BASELINE agora compara
+  via suffix match (robusto a canonicalize() falhar em paths quebrados).
+
+### Testes automáticos rodados ✅
+
+```bash
+cargo test -p ph2d-loc-trend     # → 6/6 ok
+cargo test -p ph2d-memory-gc     # → 7/7 ok
+cargo test -p ph2d-editor-core --test arch_mode_has_reconcile  # → 2/2 ok
+cargo test -p ph2d-editor-core --test arch_color_space_typed   # → 4/4 ok
+
+# Live runs
+cargo run -p ph2d-loc-trend -- record
+# → recorded 13 critical file(s); metrics/loc-trend.json criado
+cargo run -p ph2d-loc-trend -- check
+# → no critical file grew > 10% in the last 30 days
+cargo run -p ph2d-memory-gc
+# → 13 broken reference(s) found (historical HANDOFFs arquivados — não-blocker)
+```
+
+### Componentes deferidos (Etapa 6 follow-up)
+
+- **6.1 Golden-image SSIM gate** — Vello headless + baseline PNGs em
+  `tests/golden/{widget,panel}/`. Spawn quando Enio puder aprovar mockups.
+- **6.2 panel-canonical-template AST gate** — `syn` AST visitor +
+  `__template__.rs` codegen. Spawn quando Coord-A decidir o template canônico.
+- **3 gates do §5.3 ainda deferidas:**
+  - `no_tofu_glyphs` ampliado (precisa tabela Inter glyph coverage)
+  - `docs_bugs_have_gates` (backfill 90 entries UI_Bugs + Image Tools)
+
+### Smoke manual pendente (Enio)
+
+**Smoke G15-G16:**
+
+- [ ] **G15 — LOC trend dashboard:** rodar `cargo run -p ph2d-loc-trend -- report`
+  e revisar números. Identificar se algum arquivo crítico está flertando com o
+  cap (>500 LOC sem ADR). `pointer.rs` (1050) e `render_loop/mod.rs` (1006) são
+  conhecidos — confirmar se são esperados ou se precisam de splits agendados.
+- [ ] **G16 — Memory GC triage:** rodar `cargo run -p ph2d-memory-gc` e decidir
+  caso-a-caso quais dos 13 broken refs (a) atualizar ao alvo correto,
+  (b) remover entry obsoleta, ou (c) marcar como link histórico que aponta a
+  HANDOFFs arquivados (cleanup futuro).
+
+### Métricas pós-Etapa 6 parcial
+
+- **Novos tools:** 2 (`ph2d-loc-trend` + `ph2d-memory-gc`) — ambos zero-dep, std-only
+- **Sample inicial loc-trend.json:** 13 arquivos críticos registrados
+- **Memory GC:** 13 broken refs reportados (signal real, não noise)
+- **Audit fixes:** 2 medium do Etapa 5 fechados (M-1 + M-2)
+- **Gates restantes do plano:** 6.1, 6.2, no_tofu ampliado, docs_bugs (todos
+  precisam input do Enio ou setup heavy)
+
+### Artefatos criados / modificados
+
+**Novos:**
+- `tools/ph2d-loc-trend/` — Cargo.toml + src/{lib.rs, main.rs}
+- `tools/ph2d-memory-gc/` — Cargo.toml + src/{lib.rs, main.rs}
+- `metrics/loc-trend.json` — primeiro sample (2026-05-24)
+
+**Modificados (audit refinements):**
+- `crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs` (M-1)
+- `crates/ph2d-editor-core/tests/arch_color_space_typed.rs` (M-2)
 
 ---
 

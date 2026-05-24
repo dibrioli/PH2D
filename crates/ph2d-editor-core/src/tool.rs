@@ -90,12 +90,12 @@ pub trait Tool: std::any::Any {
 
     /// Capability upcast: a tool that transforms the active entity's
     /// raster returns `Some(self)`; everything else uses the default
-    /// `None`. The shell drives **any** image-edit tool through one
-    /// generic path ([`ImageEditTool`]) without naming a concrete
+    /// `None`. The shell drives **any** raster-edit tool through one
+    /// generic path ([`RasterEditTool`]) without naming a concrete
     /// type — the contract that lets ferramentas de imagem viverem em
-    /// crates satélite (ADR-0040 §2.1). Implementors that also impl
-    /// [`ImageEditTool`] override with `{ Some(self) }`.
-    fn as_image_edit_mut(&mut self) -> Option<&mut dyn ImageEditTool> {
+    /// crates satélite (ADR-0040 §2.1, renomeado em ADR-0041). Implementors
+    /// that also impl [`RasterEditTool`] override with `{ Some(self) }`.
+    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> {
         None
     }
 
@@ -113,12 +113,12 @@ pub trait Tool: std::any::Any {
 
 /// A tool that produces new pixels for the active entity (background
 /// removal, padding, trim, make-square, real-size). The shell drives
-/// **every** `ImageEditTool` through a single generic loop (ADR-0040
-/// §2.1): feed the source when selection changes, recompute the
-/// preview as panel edits arrive (via [`Tool::handle_panel_event`]),
+/// **every** `RasterEditTool` through a single generic loop (ADR-0040
+/// §2.1, renamed under ADR-0041): feed the source when selection changes,
+/// recompute the preview as panel edits arrive (via [`Tool::handle_panel_event`]),
 /// and commit at full resolution when the tool asks. No per-tool
-/// `EditorAction` variant, no per-tool branch in the shell — adding an
-/// image-edit tool touches nothing central.
+/// `EditorAction` variant, no per-tool branch in the shell — adding a
+/// raster-edit tool touches nothing central.
 ///
 /// All buffers are straight-alpha RGBA8 (`w*h*4` bytes, row-major).
 /// Tool-specific interactions that don't fit this contract (eyedropper
@@ -127,20 +127,32 @@ pub trait Tool: std::any::Any {
 /// documented exception (ADR-0040 §3), generalized only if a second
 /// tool needs the same shape.
 ///
-/// 🔒 **FROZEN at ADR-0040 TG-E (2026-05-22).** Every image-edit tool
-/// crate implements this on top of [`Tool`]; growth ripples the fan-out.
-/// The cap is enforced by
-/// `tests/architecture_tool_contract_surface.rs::image_edit_tool_contract_is_capped`.
-pub trait ImageEditTool: Tool {
+/// **Naming:** renamed from `ImageEditTool` to `RasterEditTool` in
+/// ADR-0041 (Wave 10), to reserve the slot for parallel sub-traits in
+/// other domains (`VectorEditTool`, `PhysicsEditTool`, `NodeEmitTool`)
+/// without the raster family holding the generic name asymmetrically.
+///
+/// 🔒 **FROZEN at ADR-0040 TG-E + ADR-0041 (2026-05-23).** Every
+/// raster-edit tool crate implements this on top of [`Tool`]; growth
+/// ripples the fan-out. The cap is enforced by
+/// `tests/architecture_tool_contract_surface.rs::raster_edit_tool_contract_is_capped`.
+pub trait RasterEditTool: Tool {
     /// Hand the active entity's source pixels (straight alpha) to the
     /// tool when the selection changes. The tool caches them and
     /// computes whatever downscaled preview it needs internally.
     fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32);
 
-    /// Current preview as `(rgba, width, height)`, if the tool
-    /// produces a live preview. `None` while there is nothing to show
-    /// (no source yet, or a tool that only acts on commit).
-    fn preview(&self) -> Option<(&[u8], u32, u32)>;
+    /// Drains the tool's dirty flag and returns the current preview
+    /// frame if it changed since the last call (`None` if nothing
+    /// is dirty / nothing to preview yet). Implementors that don't
+    /// track dirty state may return `Some(...)` every call — the
+    /// shell pays one cache write per frame, well under HR-4 budget.
+    ///
+    /// Renamed from `preview(&self)` in ADR-0041: folding the dirty
+    /// check into the accessor lets the generic shell runtime retire
+    /// per-tool `take_params_dirty()` inherent calls (which today
+    /// require downcast to the concrete type).
+    fn current_preview(&mut self) -> Option<(&[u8], u32, u32)>;
 
     /// Drain the "user requested commit" flag (e.g. the Apply button).
     /// Returns `true` exactly once per request; the shell then calls
@@ -150,6 +162,18 @@ pub trait ImageEditTool: Tool {
     /// Run the edit at full source resolution, returning the new
     /// `(rgba, width, height)`. Called by the shell on commit.
     fn run_full(&mut self) -> (Vec<u8>, u32, u32);
+
+    /// Lifecycle hook: the tool was deactivated (either the user
+    /// switched tools, or the editor-wide Image Tools mode was toggled
+    /// off). The generic shell runtime calls this so concrete tools
+    /// no longer need a separate downcast path for "clear preview
+    /// overlay + drop pending_apply + release source buffer".
+    ///
+    /// Added in ADR-0041 (Wave 10). Separate from `Tool::on_deactivate`
+    /// because `Tool::on_deactivate` fires on **any** active-tool switch
+    /// (including between two raster tools), whereas this fires
+    /// specifically on leaving raster editing entirely.
+    fn deactivate(&mut self);
 }
 
 /// Owns the registered tools and tracks which one is active. The
@@ -433,13 +457,15 @@ mod tests {
         assert_eq!(reg.active().unwrap().id(), ToolId::new("a"));
     }
 
-    /// A minimal `ImageEditTool` that doubles the source size on commit
+    /// A minimal `RasterEditTool` that echoes its source on commit
     /// — exercises the generic capability upcast without any concrete
     /// tool. `Hooked` (a plain `Tool`) must NOT upcast; `Raster` must.
     struct Raster {
         id: ToolId,
         src: (Vec<u8>, u32, u32),
+        dirty: bool,
         pending: bool,
+        deactivated: u32,
     }
 
     impl Tool for Raster {
@@ -458,17 +484,18 @@ mod tests {
         fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
             self
         }
-        fn as_image_edit_mut(&mut self) -> Option<&mut dyn ImageEditTool> {
+        fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> {
             Some(self)
         }
     }
 
-    impl ImageEditTool for Raster {
+    impl RasterEditTool for Raster {
         fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
             self.src = (rgba, width, height);
+            self.dirty = true;
         }
-        fn preview(&self) -> Option<(&[u8], u32, u32)> {
-            if self.src.0.is_empty() {
+        fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
+            if !std::mem::take(&mut self.dirty) || self.src.0.is_empty() {
                 None
             } else {
                 Some((&self.src.0, self.src.1, self.src.2))
@@ -482,32 +509,46 @@ mod tests {
             // per-tool; here we only prove the dispatch wiring).
             self.src.clone()
         }
+        fn deactivate(&mut self) {
+            self.deactivated += 1;
+            self.src = (Vec::new(), 0, 0);
+            self.dirty = false;
+            self.pending = false;
+        }
     }
 
     #[test]
-    fn plain_tool_does_not_upcast_to_image_edit() {
+    fn plain_tool_does_not_upcast_to_raster_edit() {
         let (mut t, _, _) = hooked("plain");
-        assert!(t.as_image_edit_mut().is_none());
+        assert!(t.as_raster_edit_mut().is_none());
     }
 
     #[test]
-    fn image_edit_tool_upcasts_and_drives_through_generic_contract() {
+    fn raster_edit_tool_upcasts_and_drives_through_generic_contract() {
         let mut reg = ToolRegistry::new();
         reg.register(Box::new(Raster {
             id: ToolId::new("raster"),
             src: (Vec::new(), 0, 0),
+            dirty: false,
             pending: false,
+            deactivated: 0,
         }));
         reg.set_active(&ToolId::new("raster"));
         let tool = reg.active_mut().expect("active");
-        let ie = tool
-            .as_image_edit_mut()
-            .expect("Raster should upcast to ImageEditTool");
-        assert!(ie.preview().is_none(), "no source yet");
-        ie.set_source(vec![1, 2, 3, 4], 1, 1);
-        assert_eq!(ie.preview(), Some((&[1u8, 2, 3, 4][..], 1, 1)));
-        assert!(!ie.take_pending_commit(), "no commit requested");
-        let (px, w, h) = ie.run_full();
+        let re = tool
+            .as_raster_edit_mut()
+            .expect("Raster should upcast to RasterEditTool");
+        assert!(re.current_preview().is_none(), "no source yet");
+        re.set_source(vec![1, 2, 3, 4], 1, 1);
+        // First call after dirty: returns frame.
+        assert_eq!(re.current_preview(), Some((&[1u8, 2, 3, 4][..], 1, 1)));
+        // Second call without new source: dirty flag drained, returns None.
+        assert!(re.current_preview().is_none(), "dirty drained");
+        assert!(!re.take_pending_commit(), "no commit requested");
+        let (px, w, h) = re.run_full();
         assert_eq!((px, w, h), (vec![1, 2, 3, 4], 1, 1));
+        // deactivate() clears state.
+        re.deactivate();
+        assert!(re.current_preview().is_none());
     }
 }

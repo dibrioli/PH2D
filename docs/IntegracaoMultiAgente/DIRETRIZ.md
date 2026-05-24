@@ -1,6 +1,6 @@
 # Diretriz de Implementação Universal — PH2D
 
-**Versão:** 6.9 — 2026-05-23 · regra "src/lib.rs primeiro" no briefing fan-out (§3.8.2 step 0), pós-incidente das 4 image-tools paralelas em 2026-05-23 que travou o workspace por crates novos sem lib.rs. v6.8 (2026-05-22): princípio transversal Tool↔Nó simétricos. Histórico em §11.
+**Versão:** 6.10 — 2026-05-23 · Wave 10 / Etapa 0+1.A. Modelo "2 Coords" introduzido (§1.1: Coord-A foundational + Coord-B baldes, protocolo `docs/SESSION_ACTIVE.md`). `scripts/slot-env.sh` + `scripts/git-stage-guard.sh` formalizam isolamento por slot + anti-colisão git. CI paralelo feature-branch (`feat/**`) ativado em `.github/workflows/spike.yml`. Amendment ADR-0041 ao contrato congelado: rename `ImageEditTool → RasterEditTool` (futuro-proof para parallel sub-traits Vector/Physics/NodeEmit), método `Tool::as_image_edit_mut → as_raster_edit_mut`, `preview(&self) → current_preview(&mut self)` com drain de dirty interno, novo método `RasterEditTool::deactivate(&mut self)`. Cap `RasterEditTool` 4→5. v6.9 (2026-05-23): regra "src/lib.rs primeiro". v6.8 (2026-05-22): princípio transversal Tool↔Nó simétricos. Histórico em §11.
 **Audiência:** **toda LLM que entra no projeto.** Lê este doc inteiro antes de tocar em código. Quando o Enio descreve uma tarefa, seu **primeiro output é a TRIAGEM (§1.4)** — classifica e diz se precisa de Coordenador + Implementador ou só Implementador. **Doc único de implementação:** briefing pronto-pra-colar de drop-crate (§3.8) e receitas dos demais baldes vivem aqui; não há doc separado.
 
 ---
@@ -12,7 +12,7 @@
 > 0. Enio descreve a tarefa a uma sessão. **Antes de codar, o agente faz a TRIAGEM (§1.4): classifica o balde, diz se toca um contrato congelado, e informa ao Enio como proceder — só Implementador (A), Coordenador + Implementador (B), ou Coordenador-only + ADR (C).** O Enio age conforme a triagem.
 > 1. **Caminho (A) — drop-crate (fan-out, §3.8):** tarefa é **node novo OU tool nova**. Uma sessão Implementador sozinha: cria `crates/ph2d-{node,tool}-…/`, roda `cargo run -p ph2d-{node,tool}-sync`, staleness gates fecham o wiring. Zero edit central. Zero coordenação. Pode rodar em paralelo com outros Implementadores na mesma família ou na outra.
 > 2. **Caminho (B) — fluxo invertido (scaffold-primeiro):** tarefa é **painel/widget/chrome novo** (§3.2-3.4) — peças que ainda exigem edit central. Coordenador cria pasta + plugues centrais (Cargo.toml/showcase/dispatcher) + stubs verdes, entrega briefing pra Implementador preencher só dentro da pasta. Coordenador revisa, smoke com Enio, commit, push, babysit CI.
-> 3. **Caminho (C) — Coordenador-only + ADR:** tarefa toca contrato congelado (nodegraph/expr/Tool/ImageEditTool/PanelEvent — §3.6) ou foundational (tokens, editor-core, shells, arch tests). Evento raro. Não paraleliza, não delega.
+> 3. **Caminho (C) — Coordenador-only + ADR:** tarefa toca contrato congelado (nodegraph/expr/Tool/RasterEditTool/PanelEvent — §3.6) ou foundational (tokens, editor-core, shells, arch tests). Evento raro. Não paraleliza, não delega.
 >
 > **Enio não decide nada operacional.** Coordenador (quando há um) instrui Enio passo a passo. Enio é relay mecânico entre as sessões Claude Code.
 >
@@ -43,7 +43,7 @@ Leitura mínima de contexto técnico:
 
 ### 1.1 Os papéis
 
-**Coordenador-A (foundational)** — autoridade sobre **contratos, arch-gates, foundational crates, codegen tools, shells/desktop/, ADRs**. Convocado em caminho (C) (vide §3.6) ou para fazer scaffold de painel/widget/chrome (B). Responsável pelo **ship-de-jornada serial** (ship.sh + commit + push + babysit CI). Único autorizado a tocar contratos congelados (`Tool`/`ImageEditTool`/`PanelEvent` em ADR-0040 §7; `NodeOp`/`OpResolver`/`NodeManifest` em ADR-0039) — sempre via amendment ADR consolidado, nunca cap-bust ad-hoc.
+**Coordenador-A (foundational)** — autoridade sobre **contratos, arch-gates, foundational crates, codegen tools, shells/desktop/, ADRs**. Convocado em caminho (C) (vide §3.6) ou para fazer scaffold de painel/widget/chrome (B). Responsável pelo **ship-de-jornada serial** (ship.sh + commit + push + babysit CI). Único autorizado a tocar contratos congelados (`Tool`/`RasterEditTool`/`PanelEvent` em ADR-0040 §7; `NodeOp`/`OpResolver`/`NodeManifest` em ADR-0039) — sempre via amendment ADR consolidado, nunca cap-bust ad-hoc.
 
 **Coordenador-B (baldes)** — autoridade sobre **scaffolds de painel/widget/chrome novos**, sweeps de gates UI em `crates/ph2d-panel-*`, organização de smokes do Enio, gate-meta `tests/docs_bugs_have_gates.rs`. NÃO toca contratos congelados nem ship — escala Coord-A. Pode rodar em paralelo com Coord-A desde que respeite o protocolo SESSION_ACTIVE (vide §1.1.1).
 
@@ -144,7 +144,7 @@ TRIAGEM
 - Tarefa: <o que o Enio pediu, em 1 linha>
 - Balde: <§3.2 painel | §3.3 widget | §3.4 chrome | §3.5 modificar existente |
           §3.6 foundational | §3.7 cross-cutting | §3.8 drop-crate (node|tool)>
-- Toca um contrato congelado (nodegraph/expr OU Tool/ImageEditTool/PanelEvent)?
+- Toca um contrato congelado (nodegraph/expr OU Tool/RasterEditTool/PanelEvent)?
     <Não | Sim — exige ADR + bump de cap>
 - COMO PROCEDER:
     (A) Só Implementador — sessão isolada. Drop-crate + sync (§3.8). Sem scaffold central.
@@ -167,7 +167,7 @@ Tabela de decisão:
 | **Domínio com avaliador já existindo** (mais nós Motion etc.) | §3.8 | Não | **(A) Só Implementador** — vide primeira linha desta tabela. |
 | **Mudar tokens / editor-core (sem ser contrato) / shells / arch tests** | §3.6 | Não | **(C) Coordenador-only** — foundational, não paraleliza. |
 | **Mudar contrato de nós** (porta, tipo, formato, EvalCtx, motor) | §3.6 | **Sim — nodegraph/expr** | **(C) Coordenador-only + ADR** — bump do cap em `architecture_contract_surface.rs` + ADR estendendo 0039. |
-| **Mudar contrato de tools** (método novo em `Tool`/`ImageEditTool`, variant novo em `PanelEvent` ou `EditorAction::ToolPanelEvent`) | §3.6 | **Sim — Tool/ImageEditTool/PanelEvent** | **(C) Coordenador-only + ADR** — bump do cap em `architecture_tool_contract_surface.rs` + amendment de ADR-0040 §7. |
+| **Mudar contrato de tools** (método novo em `Tool`/`RasterEditTool`, variant novo em `PanelEvent` ou `EditorAction::ToolPanelEvent`) | §3.6 | **Sim — Tool/RasterEditTool/PanelEvent** | **(C) Coordenador-only + ADR** — bump do cap em `architecture_tool_contract_surface.rs` + amendment de ADR-0040 §7. |
 
 Heurística de uma frase: **feature de conteúdo (nó) OU peça de editor que manipula bitmap (tool) = drop-crate = (A) Implementador-só (§3.8). Peça do chrome que renderiza essas tools/nós (painel/widget/chrome) = (B) Coord faz o central primeiro. Mudar regra do jogo (contrato congelado, foundational) = (C) Coord-only + ADR.** Na dúvida entre A e B, pergunte: "isso exige editar QUALQUER arquivo fora de uma única pasta nova?" Se sim → (B). Se a única coisa fora da pasta é o wiring **gerado** (`ph2d-{node,tool}-sync`), ainda é **(A)**.
 
@@ -451,7 +451,7 @@ Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core`, `ph2d-a11y`, `ph2
 | Contrato | Arquivos congelados | Arch-gate (cap) | ADR | Mudar exige |
 |----------|--------------------|----|-----|-------------|
 | **Sistema de nós** (W2.T4, 2026-05-22) | `crates/ph2d-nodegraph/src/{lib.rs,node.rs,port.rs,effect.rs,attr.rs,cook.rs,graph.rs}` + `crates/ph2d-expr/src/lib.rs` | `crates/ph2d-nodegraph/tests/architecture_contract_surface.rs` — `NodeOp ≤ 2 métodos`, `OpResolver ≤ 1 método`, `NodeManifest ≤ 8 campos` | [ADR-0039](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md) | Bump do cap + ADR novo estendendo 0039 + (em `ph2d-expr`) re-provar paridade CPU↔WGSL |
-| **Sistema de tools** (TG-E, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (traits `Tool` + `ImageEditTool`, enum `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs` — `Tool ≤ 10 métodos`, `ImageEditTool ≤ 4 métodos`, `PanelEvent ≤ 4 variants` | [ADR-0040 §7](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) | Bump do cap + amendment de ADR-0040 §7 |
+| **Sistema de tools** (TG-E, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (traits `Tool` + `RasterEditTool`, enum `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs` — `Tool ≤ 10 métodos`, `RasterEditTool ≤ 5 métodos`, `PanelEvent ≤ 4 variants` | [ADR-0040 §7](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) | Bump do cap + amendment de ADR-0040 §7 |
 
 **O que NÃO mexe nesses contratos** (é fan-out drop-crate, vide §3.8, sem Coordenador):
 
@@ -498,8 +498,8 @@ Esta é a forma simétrica como a engine cresce: largar um crate isolado em `cra
 | Codegen | `cargo run -p ph2d-node-sync` | `cargo run -p ph2d-tool-sync` |
 | Wiring gerado | `register_all_nodes` + deps `Cargo.toml` (1 superfície) | `register_all` + `register_all_tools` + deps (3 superfícies) |
 | Gate de wiring | `cargo test -p ph2d-node-registry-init` (staleness) | `cargo test -p ph2d-tool-registry-init` (3 staleness + 3 alfabéticos) |
-| Contrato implementado | `NodeOp` + `NodeManifest` (em `ph2d-nodegraph`) | `Tool` + opcional `ImageEditTool` + `ToolManifest` (em `ph2d-editor-core` + `ph2d-tool-registry`) |
-| 🔒 Cap arch-gate | `architecture_contract_surface` — `NodeOp ≤ 2 / OpResolver ≤ 1 / NodeManifest ≤ 8 campos` (ADR-0039) | `architecture_tool_contract_surface` — `Tool ≤ 10 / ImageEditTool ≤ 4 / PanelEvent ≤ 4` (ADR-0040 §7) |
+| Contrato implementado | `NodeOp` + `NodeManifest` (em `ph2d-nodegraph`) | `Tool` + opcional `RasterEditTool` + `ToolManifest` (em `ph2d-editor-core` + `ph2d-tool-registry`) |
+| 🔒 Cap arch-gate | `architecture_contract_surface` — `NodeOp ≤ 2 / OpResolver ≤ 1 / NodeManifest ≤ 8 campos` (ADR-0039) | `architecture_tool_contract_surface` — `Tool ≤ 10 / RasterEditTool ≤ 5 / PanelEvent ≤ 4` (ADR-0040 §7 + ADR-0041) |
 | Entry point(s) do crate | `pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError>` | `pub fn register(reg: &mut Registry)` (manifest) e/ou `pub fn make() -> Box<dyn Tool>` (behavior); 3 sabores — vide §3.8.3 |
 | Vocab de canal (foundation) | portas tipadas (`PortType = domínio+dim+CLOCK`) + efeito + clock + params | `EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent(PanelEvent), CancelActiveTool}` (4 genéricos — sem variant per-tool) |
 | Membrana | `Pure`/`Temporal` (pull, isento HR-5) vs `Stateful` (gameplay, escreve sim) — `Graph::validate` prova | `tool-* → editor-core` OK; `editor-core ⊥ tool-*` gateado (`editor_core_has_no_concrete_tool_deps`) |
@@ -561,7 +561,7 @@ O QUE VOCÊ FAZ (só dentro da sua pasta):
                  site dos clamps/projeções. Para raster I/O do shell, siga
                  o padrão ATUAL: métodos próprios na concrete type
                  alcançados via as_any_mut downcast (vide BgRemoval /
-                 Padding). impl ImageEditTool é fan-out futuro — vide
+                 Padding). impl RasterEditTool é fan-out futuro — vide
                  §3.8.3.1; NÃO mova um tool pra esse canal de carona.
 3. [node] Teste golden: grafo source→seu-nó, register, g.validate(&ops),
          cook, asserta a saída.
@@ -582,7 +582,7 @@ O QUE VOCÊ NÃO TOCA:
 - 🔒 Contrato congelado (vide §3.8.1 cap). Mudança = Coordenador-only + ADR.
   [node]  ph2d-nodegraph, ph2d-expr, ph2d-node-registry,
           ph2d-node-registry-init/ (GERADO).
-  [tool]  crates/ph2d-editor-core/src/tool.rs (Tool/ImageEditTool/
+  [tool]  crates/ph2d-editor-core/src/tool.rs (Tool/RasterEditTool/
           PanelEvent), action_bus.rs::EditorAction (use os 4 genéricos),
           ph2d-tool-registry, ph2d-tool-registry-init/ (GERADO),
           o resto de ph2d-editor-core (foundational).
@@ -624,17 +624,17 @@ QUANDO TERMINAR, reporte ao Enio:
 |-------|-------|-----------|-------------|
 | **(1) One-shot stateless** | só `pub fn register` (manifest) | `-make-square/` · `-trim-transparency/` · `-real-size/` | Pill no chrome dispara algoritmo puro no Sprite ativo. Sem `impl Tool`. Shell drena via `EditorAction::OneShotImageOp`. |
 | **(2) Palette modal sem manifest** | só `pub fn make` (`Box<dyn Tool>`) | `-brush/` (`is_default=true`) · `-move/` | Cursor de canvas, sem pill no chrome. `impl Tool` + `build_panel` Procreate-style + `handle_panel_event`. Sem `ToolManifest`. |
-| **(3) Stateful + panel docado** | ambos `register` E `make` | `-padding/` (leve) · `-bgremoval/` (completo: preview cap + protect-mask + eyedropper via downcast) | Pill no chrome + panel próprio (`ph2d-panel-<slug>/`) + preview/commit raster. (1) + (2) + opcional `impl ImageEditTool` (vide §3.8.3.1). |
+| **(3) Stateful + panel docado** | ambos `register` E `make` | `-padding/` (leve) · `-bgremoval/` (completo: preview cap + protect-mask + eyedropper via downcast) | Pill no chrome + panel próprio (`ph2d-panel-<slug>/`) + preview/commit raster. (1) + (2) + opcional `impl RasterEditTool` (vide §3.8.3.1). |
 
 O `ph2d-tool-sync` é configurado pelas needles `"pub fn register("` (manifest) e `"pub fn make("` (behavior) — sabor (1) só entra em `register_all`, (2) só em `register_all_tools`, (3) entra nos dois.
 
-#### 3.8.3.1 Status atual do trait `ImageEditTool` (heads-up importante)
+#### 3.8.3.1 Status atual do trait `RasterEditTool` (heads-up importante)
 
-O sub-trait `ImageEditTool` (`set_source` / `preview` / `take_pending_commit` / `run_full`) está **definido e congelado no contrato** (ADR-0040 §2.1), mas **nenhum tool de produção implementa hoje** (`grep -rn "impl ImageEditTool" crates/ph2d-tool-*/` retorna zero). BgRemoval e Padding seguem rodando via métodos próprios da concrete type (BgRemoval: `set_source_snapshot` / `run_full_resolution`; Padding: análogo) que o shell alcança via `as_any_mut` downcast. A migração para o canal genérico `ImageEditTool` é fan-out futuro (não bloqueia tool nova; pode ser feito como tarefa separada). **Use BgRemoval/Padding como template do PADRÃO ATUAL (downcast); só implemente `ImageEditTool` se você for o agente migrando algum tool existente pra esse canal — caso em que vire um vertical próprio, não scope creep do tool novo.**
+O sub-trait `RasterEditTool` (`set_source` / `preview` / `take_pending_commit` / `run_full`) está **definido e congelado no contrato** (ADR-0040 §2.1), mas **nenhum tool de produção implementa hoje** (`grep -rn "impl RasterEditTool" crates/ph2d-tool-*/` retorna zero). BgRemoval e Padding seguem rodando via métodos próprios da concrete type (BgRemoval: `set_source_snapshot` / `run_full_resolution`; Padding: análogo) que o shell alcança via `as_any_mut` downcast. A migração para o canal genérico `RasterEditTool` é fan-out futuro (não bloqueia tool nova; pode ser feito como tarefa separada). **Use BgRemoval/Padding como template do PADRÃO ATUAL (downcast); só implemente `RasterEditTool` se você for o agente migrando algum tool existente pra esse canal — caso em que vire um vertical próprio, não scope creep do tool novo.**
 
 #### 3.8.4 Por que é sem-colisão (a garantia, vale pras duas famílias)
 
-Dois agentes adicionando duas features (mesma família ou não) **não tocam nenhum arquivo em comum**: cada um cria sua pasta; `workspace.members` é glob; superfícies centrais são geradas determinísticamente pelo sync entre marcadores codegen, e staleness gates pegam regen-esquecida. O contrato (`NodeOp`/`NodeManifest` em nodegraph; `Tool`/`ImageEditTool`/`PanelEvent` em editor-core) é o único acoplamento, e está congelado pelo arch-gate. **Para tool em particular**, a foundation `editor-core` está proibida de ganhar dep em qualquer `ph2d-tool-*` concreto (`editor_core_has_no_concrete_tool_deps`) — a única edge permitida é `tool-* → editor-core`.
+Dois agentes adicionando duas features (mesma família ou não) **não tocam nenhum arquivo em comum**: cada um cria sua pasta; `workspace.members` é glob; superfícies centrais são geradas determinísticamente pelo sync entre marcadores codegen, e staleness gates pegam regen-esquecida. O contrato (`NodeOp`/`NodeManifest` em nodegraph; `Tool`/`RasterEditTool`/`PanelEvent` em editor-core) é o único acoplamento, e está congelado pelo arch-gate. **Para tool em particular**, a foundation `editor-core` está proibida de ganhar dep em qualquer `ph2d-tool-*` concreto (`editor_core_has_no_concrete_tool_deps`) — a única edge permitida é `tool-* → editor-core`.
 
 #### 3.8.5 Checklist do revisor (se houver revisão)
 
@@ -655,7 +655,7 @@ Dois agentes adicionando duas features (mesma família ou não) **não tocam nen
 
 - [ ] `MANIFEST` completo (id único, cluster/zone/order coerentes com o palette) OU `is_default` correto (sabor 2 só Brush retorna true).
 - [ ] Se stateful: `handle_panel_event` cobre 1:1 os NodeIds do panel docado; rota tudo via `apply_ui_edit` (sem duplicar clamps) — disciplina manual, sem arch-gate.
-- [ ] Se for um vertical de migração para `ImageEditTool` (raro — vide §3.8.3.1): `as_image_edit_mut` retorna `Some(self)`; quadteto `set_source` / `preview` / `take_pending_commit` / `run_full` honra straight-alpha RGBA8. Caso contrário (padrão atual), raster I/O fica em métodos próprios da concrete type via `as_any_mut` downcast.
+- [ ] Se for um vertical de migração para `RasterEditTool` (raro — vide §3.8.3.1): `as_image_edit_mut` retorna `Some(self)`; quadteto `set_source` / `preview` / `take_pending_commit` / `run_full` honra straight-alpha RGBA8. Caso contrário (padrão atual), raster I/O fica em métodos próprios da concrete type via `as_any_mut` downcast.
 - [ ] Ícone: SVG em `docs/design/icons/` + IconId variant em ordem alfabética em `icons.rs`.
 - [ ] **Painel docado segue Widget Gallery (vide §4.2)**: cada slider+chip
       tem `link_slider_number`; cada chip pill tem `mark_chip_no_stepper`;
@@ -712,7 +712,7 @@ CSS aliases em [`docs/design/styles/tokens.css`](../../docs/design/styles/tokens
 | [`staleness`](../../crates/ph2d-node-registry-init/tests/staleness.rs) (nodes) | node-sync esquecido — `register_all_nodes` / Cargo deps divergem do scan de `crates/ph2d-node-*` |
 | [`architecture_panel_host_surface`](../../crates/ph2d-editor-core/tests/architecture_panel_host_surface.rs) | `PanelHost` cresce além de 12 métodos |
 | [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/architecture_cycle_prevention.rs) | 3 invariantes (+ 1 smoke): (1) `editor-core` ⊥ `panel-*` / `ph2d-editor`; (2) `editor-core` ⊥ tool-* (exceto `ph2d-tool-registry` data contract); (3) `panel-*` depende de `editor-core` E não de `ph2d-editor` E não de outro `panel-*` |
-| [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs) 🔒 | 🔒 ADR-0040: `Tool > 10 métodos` / `ImageEditTool > 4 métodos` / `PanelEvent > 4 variants` — mudar exige amendment de ADR-0040 §7 |
+| [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs) 🔒 | 🔒 ADR-0040 + ADR-0041: `Tool > 10 métodos` / `RasterEditTool > 5 métodos` / `PanelEvent > 4 variants` — mudar exige amendment ADR |
 | [`architecture_contract_surface`](../../crates/ph2d-nodegraph/tests/architecture_contract_surface.rs) 🔒 | 🔒 ADR-0039: `NodeOp > 2 métodos` / `OpResolver > 1 método` / `NodeManifest > 8 campos` — mudar exige ADR estendendo 0039 |
 | `tool_manifest_design_sync` | `docs/design/tools/<slug>.toml` divergente do `MANIFEST` const |
 | `node_id_collisions` | dois NodeIds chrome colidem |
@@ -1131,7 +1131,7 @@ Hard Rules completas em [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2
 | **Node crate novo (fan-out — caminho (A))** | `crates/ph2d-node-<domínio>-<slug>/` (wiring via `cargo run -p ph2d-node-sync`; gate `cargo test -p ph2d-node-registry-init`) |
 | **Tool crate novo (fan-out — caminho (A))** | `crates/ph2d-tool-<slug>/` (wiring via `cargo run -p ph2d-tool-sync`; gate `cargo test -p ph2d-tool-registry-init`) |
 | 🔒 Contrato de nós (congelado, ADR-0039) | `crates/ph2d-nodegraph/` + `crates/ph2d-expr/` (Coordenador-only + ADR) |
-| 🔒 Contrato de tools (congelado, ADR-0040 §7) | `crates/ph2d-editor-core/src/tool.rs` (`Tool` + `ImageEditTool` + `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) — Coordenador-only + ADR amendment |
+| 🔒 Contrato de tools (congelado, ADR-0040 §7) | `crates/ph2d-editor-core/src/tool.rs` (`Tool` + `RasterEditTool` + `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) — Coordenador-only + ADR amendment |
 | Painel novo (caminho (B)) | `crates/ph2d-panel-<slug>/` |
 | Widget primitive (caminho (B)) | `crates/ph2d-editor-core/src/widget/<slug>.rs` |
 | Chrome handler (caminho (B)) | `crates/ph2d-editor-core/src/screens/hero/chrome/<slug>.rs` |
@@ -1223,8 +1223,9 @@ gh run watch <id> --exit-status
 
 ## 11. Versão + histórico
 
+- **6.10 — 2026-05-23 (Wave 10 / Etapa 0+1.A):** Modelo **"2 Coords"** introduzido em §1.1 (Coord-A foundational, Coord-B baldes; sincronização via `docs/SESSION_ACTIVE.md`). Scripts novos: `slot-env.sh` (CARGO_TARGET_DIR por slot), `git-stage-guard.sh` (anti-colisão git, COORD_OVERRIDE bypass), `arch-gate-budget.sh` (tripwire >90s arch-tests). CI paralelo feature-branch em `spike.yml` (test matrix skip em `feat/**`). Amendment **ADR-0041** ao contrato congelado: trait `ImageEditTool` renomeado para `RasterEditTool` (futuro-proof para `VectorEditTool`/`PhysicsEditTool`/`NodeEmitTool`); `Tool::as_image_edit_mut` → `as_raster_edit_mut` (slot 9, cap inalterado); `RasterEditTool::preview(&self)` → `current_preview(&mut self)` (drena dirty internamente, retira a necessidade de downcast pra `take_params_dirty()`); novo método `RasterEditTool::deactivate(&mut self)` (lifecycle hook que o futuro `ph2d-tool-runtime` chama no shell genérico). Cap `RasterEditTool` 4→5. Plano vigente: [`docs/plans/2026-05-wave-10-perfection.md`](../plans/2026-05-wave-10-perfection.md) (v4 sintetizado de 9 auditorias adversariais).
 - **6.9 — 2026-05-23:** Regra **"src/lib.rs PRIMEIRO"** no briefing fan-out (§3.8.2 step 0). Sem isso, todas as sessões paralelas que tentam `cargo check` ficam bloqueadas com `can't find library X` enquanto qualquer crate novo do `crates/*` glob tiver Cargo.toml sem `src/lib.rs`. Incidente que originou a regra: fan-out simultâneo das 4 image-tools (Color Equalization / Equalize Sizes / Rasterize / Upscale) em 2026-05-23 — vários Implementadores escreveram `Cargo.toml` + arquivos auxiliares (`params.rs`, `icon.rs`, `ids.rs`) ANTES do `src/lib.rs`, e a sessão paralela do Coord (Onda 2C de gizmos multi-select) ficou sem poder rodar `cargo check --workspace` por ~1h. A regra vale também pra panel novo em §3.2 (mas lá Coord faz sequencial → sem colisão real; ainda assim, criar `src/lib.rs` antes do resto vira boa higiene).
-- **6.8 — 2026-05-22:** **Princípio transversal Tool↔Nó simétricos** + condensação. Os antigos §3.8 (node fan-out) e §3.9 (tool fan-out), que viraram clones um do outro depois de TG-E, foram unificados num só **§3.8 "Fan-out drop-crate (A)"** com tabela node↔tool (§3.8.1), briefing parametrizado pronto-pra-colar (§3.8.2), sabores de tool (§3.8.3), garantia sem-colisão (§3.8.4) e checklist do revisor (§3.8.5). §1.4 triagem promove **Tool nova ⇒ (A) Implementador-só** (era (B) por inércia textual). §3.1 reduzida a redirect pro §3.8. §3.5 "modificar existente" agora aponta `crates/ph2d-tool-<slug>/` (a pasta `editor-core/src/tools/` foi deletada em TG-D `c4063b7`) com mapa pasta-canônica-por-feature. §3.6 foundational lista AMBOS os contratos congelados (nodegraph/expr + Tool/ImageEditTool/PanelEvent) com tabela simétrica de caps + ADR. §4 gates ganha `architecture_tool_contract_surface` (🔒 caps 10/4/4) + `architecture_contract_surface` (🔒 caps 2/1/8) + staleness + cycle_prevention anotado com 4 sub-checks. §9.2 caminhos reorganizada (Tool/Node lado-a-lado como (A); contratos congelados explicitados; registry-init marcados GERADO; nota "`editor-core/src/tools/` deletado em TG-D"). §10 referências lista ADRs 0030..0040 + tese node-centric + plano tool-isolation CLOSED. Header + §11 enxutos.
+- **6.8 — 2026-05-22:** **Princípio transversal Tool↔Nó simétricos** + condensação. Os antigos §3.8 (node fan-out) e §3.9 (tool fan-out), que viraram clones um do outro depois de TG-E, foram unificados num só **§3.8 "Fan-out drop-crate (A)"** com tabela node↔tool (§3.8.1), briefing parametrizado pronto-pra-colar (§3.8.2), sabores de tool (§3.8.3), garantia sem-colisão (§3.8.4) e checklist do revisor (§3.8.5). §1.4 triagem promove **Tool nova ⇒ (A) Implementador-só** (era (B) por inércia textual). §3.1 reduzida a redirect pro §3.8. §3.5 "modificar existente" agora aponta `crates/ph2d-tool-<slug>/` (a pasta `editor-core/src/tools/` foi deletada em TG-D `c4063b7`) com mapa pasta-canônica-por-feature. §3.6 foundational lista AMBOS os contratos congelados (nodegraph/expr + Tool/RasterEditTool/PanelEvent) com tabela simétrica de caps + ADR. §4 gates ganha `architecture_tool_contract_surface` (🔒 caps 10/4/4) + `architecture_contract_surface` (🔒 caps 2/1/8) + staleness + cycle_prevention anotado com 4 sub-checks. §9.2 caminhos reorganizada (Tool/Node lado-a-lado como (A); contratos congelados explicitados; registry-init marcados GERADO; nota "`editor-core/src/tools/` deletado em TG-D"). §10 referências lista ADRs 0030..0040 + tese node-centric + plano tool-isolation CLOSED. Header + §11 enxutos.
 - **6.7 — 2026-05-22:** ADR-0040 FECHADO via TG-A..TG-E — §3.1 neutralizado, §3.9 "Tool crate — fan-out" criado como irmão de §3.8 (unificado em 6.8). Arch-gate de panel auto-discover + cross-panel-dep ban + panel→tool edge codificada como permitida.
 - **Histórico anterior (v6.0..v6.6 + v4.0/v5.0 arquivadas):** vide `git log docs/IntegracaoMultiAgente/DIRETRIZ.md`. Resumo: v6.0 (modelo 2 papéis Coord+Impl, fluxo invertido); v6.1 (perf audit + §3.7 + §5.6); v6.3 (§7.0 fast-mode/ship); v6.4 (§4.1 regras UI que queimaram); v6.5 (arquitetura node-centric); v6.6 (doc único + §1.4 triagem).
 

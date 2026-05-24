@@ -12,10 +12,12 @@
 //!
 //! Following the BgRemoval/Padding pattern, the shell reaches this
 //! concrete type via `as_any_mut` downcast (the public method below) —
-//! `ImageEditTool` would be the wrong shape because it assumes
-//! single-sprite (`set_source` / `run_full` of one buffer), and the
-//! generic channel isn't wired for cross-sprite yet (TG-* fan-out is
-//! still open — vide DIRETRIZ §3.8.3.1).
+//! `RasterEditTool` (renamed from `ImageEditTool` in ADR-0041) would be
+//! the wrong shape because it assumes single-sprite (`set_source` /
+//! `run_full` of one buffer), and the generic channel isn't wired for
+//! cross-sprite yet (Etapa 2 of the Wave 10 perfection plan addresses
+//! the 5 single-sprite tools; multi-sprite EqualizeSizes stays on the
+//! downcast pattern as a documented exception, vide DIRETRIZ §3.8.3.1).
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::tool::{PanelEvent, Tool};

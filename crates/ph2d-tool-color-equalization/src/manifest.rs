@@ -5,8 +5,9 @@
 //! and an Apply button. The pure pipeline lives in [`crate::algorithm`];
 //! the panel + shell bake follow the BgRemoval / Padding precedent
 //! (downcast via `as_any_mut`, full-resolution commit on the pending-apply
-//! latch — `ph2d-tool-color-equalization` does NOT implement `ImageEditTool`
-//! yet, per DIRETRIZ §3.8.3.1).
+//! latch — `ph2d-tool-color-equalization` does NOT implement `RasterEditTool`
+//! yet, per DIRETRIZ §3.8.3.1 — pending Etapa 2 of the Wave 10 perfection
+//! plan, which migrates the 5 stateful raster tools through the trait).
 //!
 //! ### Handler — shadow mode
 //! Like every Image Tools manifest, the real handler runs shell-side (it

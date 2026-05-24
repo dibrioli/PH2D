@@ -1,17 +1,17 @@
 //! Arch-gate: the substrate's contracts that *external tool crates implement*
-//! must stay tiny. Every `ph2d-tool-*` crate implements `Tool` (and, for image-
-//! edit tools, the sub-trait `ImageEditTool`). If these grow, the change ripples
+//! must stay tiny. Every `ph2d-tool-*` crate implements `Tool` (and, for raster-
+//! edit tools, the sub-trait `RasterEditTool`). If these grow, the change ripples
 //! to every tool in the workspace and re-serializes the multi-agent fan-out
 //! (the failure mode ADR-0040 was built to avoid).
 //!
 //! Mirrors `ph2d-nodegraph`'s `architecture_contract_surface` — the node-system
 //! freeze under ADR-0039 — and applies the same discipline to tools.
 //!
-//! **FROZEN at ADR-0040 TG-E (2026-05-22):** the caps below are pinned to the
-//! *current* surface (no headroom), so ANY addition to the tool-implemented
-//! contract now trips this gate and forces a conscious cap bump + ADR
-//! amendment. This is what makes the freeze bite — the fan-out builds against
-//! a fixed contract.
+//! **FROZEN at ADR-0040 TG-E (2026-05-22), amended at ADR-0041 (2026-05-23):**
+//! the caps below are pinned to the *current* surface (no headroom), so ANY
+//! addition to the tool-implemented contract now trips this gate and forces a
+//! conscious cap bump + ADR amendment. This is what makes the freeze bite —
+//! the fan-out builds against a fixed contract.
 //!
 //! How to raise a cap: bump the number here *and justify it in review*. A
 //! contract change is a rare, Coordenador-only event (the freeze discipline).
@@ -42,7 +42,7 @@ fn tool_contract_is_capped() {
         n <= 10,
         "Tool has {n} methods; cap is 10. FROZEN at ADR-0040 TG-E to the \
          current surface (id / label / icon_slug / build_panel / on_activate / \
-         on_deactivate / handle_panel_event / as_any_mut / as_image_edit_mut / \
+         on_deactivate / handle_panel_event / as_any_mut / as_raster_edit_mut / \
          is_default) — every `ph2d-tool-*` crate implements this, so any \
          growth ripples the whole fan-out. Adding a method is a \
          Coordenador-only contract change: bump the cap here + write the ADR-0040 \
@@ -51,17 +51,17 @@ fn tool_contract_is_capped() {
 }
 
 #[test]
-fn image_edit_tool_contract_is_capped() {
+fn raster_edit_tool_contract_is_capped() {
     let src = include_str!("../src/tool.rs");
-    let n = trait_method_count(src, "pub trait ImageEditTool");
+    let n = trait_method_count(src, "pub trait RasterEditTool");
     assert!(
-        n <= 4,
-        "ImageEditTool has {n} methods; cap is 4. FROZEN at ADR-0040 TG-E to \
-         the current surface (set_source / preview / take_pending_commit / \
-         run_full) — every image-edit tool crate implements this on top of \
-         `Tool`. Adding a method ripples to every image tool. A \
-         Coordenador-only contract change: bump the cap here + write the ADR-0040 \
-         amendment."
+        n <= 5,
+        "RasterEditTool has {n} methods; cap is 5. FROZEN at ADR-0040 TG-E \
+         + ADR-0041 to the current surface (set_source / current_preview / \
+         take_pending_commit / run_full / deactivate) — every raster-edit \
+         tool crate implements this on top of `Tool`. Adding a method \
+         ripples to every raster tool. A Coordenador-only contract change: \
+         bump the cap here + write the ADR-0040/0041 amendment."
     );
 }
 

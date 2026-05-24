@@ -884,7 +884,7 @@ Render: shell entrega `id<MTLTexture>` (iOS), `vk::Image` (Android), `wgpu::Surf
 
 **Adicionar uma tool ao editor (fan-out via codegen, [ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md) fechado 2026-05-22):**
 
-A receita virou **3 passos**: largar a pasta + rodar o sync + verificar. Sem edit central, sem variant novo de `EditorAction`. O contrato `Tool`/`ImageEditTool`/`PanelEvent` em `crates/ph2d-editor-core/src/tool.rs` está **congelado** (caps em `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs`).
+A receita virou **3 passos**: largar a pasta + rodar o sync + verificar. Sem edit central, sem variant novo de `EditorAction`. O contrato `Tool`/`RasterEditTool`/`PanelEvent` em `crates/ph2d-editor-core/src/tool.rs` está **congelado** (caps em `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs`).
 
 1. **Largue o crate** em `crates/ph2d-tool-<slug>/` (o glob de `workspace.members` cobre — NÃO edite o `Cargo.toml` raiz):
    - `Cargo.toml`: deps mínimas (`ph2d-tool-registry` + `ph2d-editor-core` p/ `Tool`/`FloatingPanel` se stateful + dom-específicas).
@@ -908,7 +908,7 @@ A receita virou **3 passos**: largar a pasta + rodar o sync + verificar. Sem edi
 **Exemplos canônicos:**
 - One-shot stateless: [`crates/ph2d-tool-trim-transparency/`](crates/ph2d-tool-trim-transparency/) ou [`make-square`](crates/ph2d-tool-make-square/) (só manifest + algorithm + icon, sem `impl Tool`).
 - Stateful leve: [`crates/ph2d-tool-padding/`](crates/ph2d-tool-padding/).
-- Stateful completo: [`crates/ph2d-tool-bgremoval/`](crates/ph2d-tool-bgremoval/) (preview cap + `ImageEditTool` + protect-mask + eyedropper via downcast).
+- Stateful completo: [`crates/ph2d-tool-bgremoval/`](crates/ph2d-tool-bgremoval/) (preview cap + `RasterEditTool` + protect-mask + eyedropper via downcast).
 
 **O que VOCÊ NÃO TOCA**: `Cargo.toml` raiz, `crates/ph2d-tool-registry-init/` (gerado), `crates/ph2d-editor-core/src/tool.rs` (contrato congelado — cap-bump exige amendment de ADR-0040), `EditorAction` (sem variant per-tool — use os 4 genéricos: `ActivateTool`, `OneShotImageOp`, `ToolPanelEvent`, `CancelActiveTool`).
 

@@ -117,9 +117,10 @@ fn editor_core_has_no_panel_or_editor_deps() {
 
 /// ADR-0040 T1.5 — editor-core must NOT depend on any concrete tool
 /// crate (`ph2d-tool-<slug>`). Tools are satellite crates that depend
-/// on editor-core (the `Tool`/`ImageEditTool` contract), never the
-/// reverse — the same foundation-layer invariant the panel crates
-/// already obey. `ph2d-tool-registry` (the data-contract leaf:
+/// on editor-core (the `Tool`/`RasterEditTool` contract — renamed from
+/// `ImageEditTool` in ADR-0041), never the reverse — the same
+/// foundation-layer invariant the panel crates already obey.
+/// `ph2d-tool-registry` (the data-contract leaf:
 /// `ToolManifest`/`Registry`/`Zone`) is exempt — it's the contract,
 /// not a tool, analogous to `ph2d-tokens`.
 ///
@@ -141,7 +142,7 @@ fn editor_core_has_no_concrete_tool_deps() {
             !dep.starts_with("ph2d-tool-"),
             "INVARIANT VIOLATED — `ph2d-editor-core` depends on `{dep}`. \
              editor-core is the foundation; tool crates depend on it via \
-             the `Tool`/`ImageEditTool` contract, never the reverse \
+             the `Tool`/`RasterEditTool` contract, never the reverse \
              (ADR-0040). Move the code into the tool crate, or — if a \
              test needs the tool's algorithm — make it a [dev-dependency]."
         );

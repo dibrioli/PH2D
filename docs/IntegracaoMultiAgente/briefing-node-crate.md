@@ -9,7 +9,7 @@
 > - **§3.8.1** — tabela node↔tool (pasta / codegen / wiring / cap / contrato / templates / pegadinhas)
 > - **§3.8.2** — briefing pronto-pra-colar (parametrizado `<family>` + blocos `[node]` / `[tool]`)
 > - **§3.8.3** — sabores de tool (tool-only)
-> - **§3.8.3.1** — status atual do `ImageEditTool` (tool-only, heads-up importante)
+> - **§3.8.3.1** — status atual do `RasterEditTool` (tool-only, heads-up importante; renomeado de `ImageEditTool` em ADR-0041)
 > - **§3.8.4** — garantia sem-colisão (vale pras duas famílias)
 > - **§3.8.5** — checklist do revisor (seção comum + node-específica + tool-específica)
 >

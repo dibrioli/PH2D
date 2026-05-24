@@ -17,9 +17,11 @@
 //! handled shell-side — the shell emits one `OneShotImageOp` per
 //! `hero.gizmo.iter_selected()`.
 //!
-//! `ImageEditTool` is intentionally NOT implemented (DIRETRIZ §3.8.3.1 —
-//! production tools currently use the `as_any_mut` downcast pattern; the
-//! generic image-edit channel is fan-out future work).
+//! `RasterEditTool` (renamed from `ImageEditTool` in ADR-0041) is
+//! intentionally NOT implemented yet (DIRETRIZ §3.8.3.1 — production
+//! tools currently use the `as_any_mut` downcast pattern; the generic
+//! raster-edit channel is fan-out Etapa 2 work in the Wave 10 perfection
+//! plan).
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::tool::{PanelEvent, Tool};

@@ -74,7 +74,7 @@ Tracker vivo: [`docs/HANDOFF_node_system.md`](docs/HANDOFF_node_system.md).
   **reestruturação tool-as-crate** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md))
   🔒 **CLOSED 2026-05-22** (TG-A..TG-E em uma jornada). Tool agora é satélite
   drop-in: `cargo run -p ph2d-tool-sync` regenera o wiring central, contrato
-  `Tool`/`ImageEditTool`/`PanelEvent` congelado por arch-gate. Receita pra
+  `Tool`/`RasterEditTool`/`PanelEvent` congelado por arch-gate. Receita pra
   tool nova em [DIRETRIZ §3.9](docs/IntegracaoMultiAgente/DIRETRIZ.md) + SKILL_Stack §"Adicionar uma tool".
 - [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) —
   M1..M13 do core pós-spike, todos mergeados (PRs #1-#30).

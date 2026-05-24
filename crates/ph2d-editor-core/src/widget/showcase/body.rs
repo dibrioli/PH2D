@@ -18,10 +18,16 @@ pub fn paint_showcase_body(
     // the hits here against the gallery's own NodeIds so the
     // BlenderHit dispatch (`DragHandle` / `ResizeHandle`) drives
     // `GAL_PANEL` independently of the Inspector.
-    let drag_handle_rect = panel_drag_handle_rect(rect);
+    let drag_handle_rect = panel_drag_handle_rect(
+        rect,
+        crate::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
+        crate::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
+    );
     let resize_handle_rect = panel_resize_handle_rect(rect);
+    let resize_handle_bl_rect = crate::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
     hit_index.register(ids::GAL_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::GAL_RESIZE_HANDLE, resize_handle_rect);
+    hit_index.register(ids::GAL_RESIZE_HANDLE_BL, resize_handle_bl_rect);
 
     // Header: title + subtitle + divider. Canonical panel title
     // (single source of truth — `panel_chrome::paint_panel_title`);
@@ -251,6 +257,14 @@ pub fn paint_showcase_body(
 
     scene.pop_layer();
     paint_panel_corner_dot(rect, scene, theme);
+    crate::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
+    // End-of-frame re-registration of the title-bar drag handle so it
+    // sits z-on-top of any body widget that scrolled into the header
+    // band (prevents click-through behind the title — DIRETRIZ chip-
+    // canon work, 2026-05-24). Close button at the right is OUTSIDE
+    // `drag_handle_rect` (we pass PANEL_HEADER_CLOSE_RESERVE), so it
+    // remains clickable.
     hit_index.register(ids::GAL_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::GAL_RESIZE_HANDLE, resize_handle_rect);
+    hit_index.register(ids::GAL_RESIZE_HANDLE_BL, resize_handle_bl_rect);
 }

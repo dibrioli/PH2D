@@ -51,6 +51,18 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         230,
         "Wave 11 §2.2 split done; parser counts nested struct-literal blocks",
     ),
+    // Wave 11 / UI canon panel-chrome work (2026-05-24): widened drag
+    // handle + added BL resize gripper require ~4 lines per panel
+    // (1 rect helper call, 2 hit registrations, 1 corner-dot paint).
+    // paint_hierarchy_body was already ~240 LOC pre-canon; split is
+    // deferred to its own follow-up Wave (one panel at a time, with
+    // smoke validation per DIRETRIZ §3.B.1).
+    (
+        "ph2d-panel-hierarchy/src/paint.rs",
+        "paint_hierarchy_body",
+        260,
+        "Wave 11 UI canon panel-chrome additions — split deferred to follow-up Wave",
+    ),
 ];
 
 #[test]

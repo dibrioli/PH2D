@@ -27,6 +27,8 @@ pub use crate::ids::GS_PANEL;
 pub const GS_DRAG_HANDLE: NodeId = NodeId(1001);
 pub const GS_RESIZE_HANDLE: NodeId = NodeId(1002);
 pub const GS_CLOSE: NodeId = NodeId(1003);
+/// Bottom-LEFT resize gripper. Mirror of [`GS_RESIZE_HANDLE`].
+pub const GS_RESIZE_HANDLE_BL: NodeId = NodeId(1004);
 
 // ─── Header ────────────────────────────────────────────────────
 pub const GS_KIND_DROPDOWN: NodeId = NodeId(1010);

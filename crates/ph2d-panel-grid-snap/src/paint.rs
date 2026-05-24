@@ -118,9 +118,17 @@ fn paint_body(
 ) {
     let theme = ctx.host.theme();
     paint_panel_surface(rect, ctx.scene, theme);
+    let drag_handle_rect = panel_drag_handle_rect(
+        rect,
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
+    );
+    let resize_handle_bl_rect =
+        ph2d_editor_core::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
     {
         let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(ids::GS_DRAG_HANDLE, panel_drag_handle_rect(rect));
+        hit_index.register(ids::GS_DRAG_HANDLE, drag_handle_rect);
+        hit_index.register(ids::GS_RESIZE_HANDLE_BL, resize_handle_bl_rect);
     }
 
     let inner_x = rect.x + PAD;
@@ -224,9 +232,16 @@ fn paint_body(
     }
 
     paint_panel_corner_dot(rect, ctx.scene, theme);
+    ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     {
         let hit_index = ctx.host.hit_index_mut();
+        // End-of-frame re-registration: drag + both resize handles go
+        // on TOP of the z-order so they win over any body widget that
+        // scrolled into the header / corner regions (DIRETRIZ panel-
+        // chrome canon, 2026-05-24).
+        hit_index.register(ids::GS_DRAG_HANDLE, drag_handle_rect);
         hit_index.register(ids::GS_RESIZE_HANDLE, panel_resize_handle_rect(rect));
+        hit_index.register(ids::GS_RESIZE_HANDLE_BL, resize_handle_bl_rect);
     }
 
     // Publish content_h / visible_h to the store + clamp scroll.

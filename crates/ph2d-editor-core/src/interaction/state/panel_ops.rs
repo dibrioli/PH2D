@@ -40,6 +40,27 @@ impl WidgetStore {
 
     pub fn end_panel_resize(&mut self) {
         self.panel_resize_anchor = None;
+        self.panel_resize_anchor_bl = None;
+    }
+
+    /// Begin a resize from the bottom-LEFT corner. The Move handler
+    /// (`dispatch::pointer`) treats this anchor differently from the
+    /// bottom-right one: it both grows the panel (resize delta) AND
+    /// shifts the panel offset, keeping the right edge anchored.
+    pub fn begin_panel_resize_bl(&mut self, panel: NodeId, cursor_x: f32, cursor_y: f32) {
+        self.panel_resize_anchor_bl = Some((panel, cursor_x, cursor_y));
+    }
+
+    /// Read the bottom-left resize anchor, if any. Sibling of
+    /// [`panel_resize_anchor`](Self::panel_resize_anchor).
+    pub fn panel_resize_anchor_bl(&self) -> Option<(NodeId, f32, f32)> {
+        self.panel_resize_anchor_bl
+    }
+
+    pub fn update_panel_resize_cursor_bl(&mut self, cursor_x: f32, cursor_y: f32) {
+        if let Some((panel, _, _)) = self.panel_resize_anchor_bl {
+            self.panel_resize_anchor_bl = Some((panel, cursor_x, cursor_y));
+        }
     }
 
     /// Move `panel_id` to the end of the z-order (= topmost). If

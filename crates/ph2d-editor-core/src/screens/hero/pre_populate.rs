@@ -498,4 +498,20 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandle,
         },
     );
+    // Bottom-LEFT resize handles (post-2026-05-24 chrome canon — every
+    // floating panel resizable from EITHER bottom corner).
+    store.register(
+        ids::INSP_RESIZE_HANDLE_BL,
+        InteractiveState::BlenderHit {
+            parent: ids::INSP_PANEL,
+            kind: BlenderHitKind::ResizeHandleBl,
+        },
+    );
+    store.register(
+        ids::HIER_RESIZE_HANDLE_BL,
+        InteractiveState::BlenderHit {
+            parent: ids::HIER_PANEL,
+            kind: BlenderHitKind::ResizeHandleBl,
+        },
+    );
 }

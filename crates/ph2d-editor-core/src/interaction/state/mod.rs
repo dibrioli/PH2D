@@ -232,6 +232,13 @@ pub struct WidgetStore {
     /// last_cursor_y). Move events apply (cursor − last) to the
     /// stored `panel_resize_delta`, then re-anchor.
     pub(super) panel_resize_anchor: Option<(NodeId, f32, f32)>,
+    /// In-progress panel resize from the bottom-LEFT corner — same
+    /// shape as [`panel_resize_anchor`] but the Move handler also
+    /// shifts the panel's stored offset (`panel_drag_offset`) so the
+    /// right edge stays anchored. Companion field rather than a mode
+    /// tag because only one resize is active at a time and the dispatch
+    /// can check both Options cheaply.
+    pub(super) panel_resize_anchor_bl: Option<(NodeId, f32, f32)>,
     /// Clipboard outbox — set by Cmd+C/X handlers; shell drains each
     /// frame via `take_clipboard_copy` and writes to the OS
     /// clipboard. `String` rather than a reference so the data lives
@@ -430,6 +437,7 @@ impl WidgetStore {
             blender_drag_anchor: None,
             panel_resize_delta: BTreeMap::new(),
             panel_resize_anchor: None,
+            panel_resize_anchor_bl: None,
             pending_clipboard_copy: None,
             pending_clipboard_paste: None,
             current_scene_name: String::from("Level_01"),

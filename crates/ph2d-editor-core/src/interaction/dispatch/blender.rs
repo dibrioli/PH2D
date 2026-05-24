@@ -201,6 +201,15 @@ pub(super) fn apply_blender_hit(
             store.begin_panel_resize(parent, px, py);
             None
         }
+        BlenderHitKind::ResizeHandleBl => {
+            // Down on the bottom-LEFT gripper — anchor the cursor so
+            // subsequent Moves shift the panel offset AND grow the
+            // resize delta in opposite directions, keeping the right
+            // edge stationary. Up clears the anchor (shared end via
+            // `end_panel_resize`).
+            store.begin_panel_resize_bl(parent, px, py);
+            None
+        }
         BlenderHitKind::VisibilityToggle => {
             // M14.6A: not dispatched through this `BlenderHit` arm —
             // the hierarchy eye uses an offset-NodeId companion

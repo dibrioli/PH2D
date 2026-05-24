@@ -44,6 +44,12 @@ pub enum BlenderHitKind {
     /// Bottom-right resize gripper. Down begins a resize; Move
     /// adjusts the parent's stored `(dw, dh)`; Up ends it.
     ResizeHandle,
+    /// Bottom-LEFT resize gripper. Mirror of [`ResizeHandle`]. Down
+    /// begins a BL-mode resize; Move adjusts the parent's stored
+    /// `(dw, dh)` AND `(dx, dy)` so the right edge stays put while
+    /// the left edge follows the cursor; Up ends it. Lets the user
+    /// grab the panel from either bottom corner.
+    ResizeHandleBl,
     /// M14.6A: eye icon on a hierarchy row — toggles the entity's
     /// `Visibility` component. Parent NodeId on the `BlenderHit` is
     /// the row's id; dispatcher sets `HeroScreen.pending_visibility_toggle`

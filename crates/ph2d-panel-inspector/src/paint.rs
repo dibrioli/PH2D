@@ -96,10 +96,20 @@ fn paint_inspector(
 ) {
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
-    let drag_handle_rect = panel_drag_handle_rect(rect);
+    let drag_handle_rect = panel_drag_handle_rect(
+        rect,
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
+        // Inspector has no close button — its visibility is governed
+        // by the TopBar toggle. Reserve nothing on the right so the
+        // drag area spans the full width.
+        0.0,
+    );
     let resize_handle_rect = panel_resize_handle_rect(rect);
+    let resize_handle_bl_rect =
+        ph2d_editor_core::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
+    hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
 
     // Canonical panel title (single source of truth — `panel_chrome`).
     let title_y = rect.y + PANEL_TITLE_BASELINE;
@@ -350,6 +360,8 @@ fn paint_inspector(
     scene.pop_layer();
 
     paint_panel_corner_dot(rect, scene, theme);
+    ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
+    hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
 }

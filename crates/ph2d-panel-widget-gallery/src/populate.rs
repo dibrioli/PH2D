@@ -26,6 +26,13 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandle,
         },
     );
+    store.register(
+        ids::GAL_RESIZE_HANDLE_BL,
+        InteractiveState::BlenderHit {
+            parent: ids::GAL_PANEL,
+            kind: BlenderHitKind::ResizeHandleBl,
+        },
+    );
     // Close (X) — plain Button so the panel's apply_event branch
     // (`id == GAL_CLOSE → panel_visible(widget_gallery) = false`) fires.
     store.register(

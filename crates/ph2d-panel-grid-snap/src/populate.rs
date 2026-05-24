@@ -36,6 +36,13 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandle,
         },
     );
+    store.register(
+        ids::GS_RESIZE_HANDLE_BL,
+        InteractiveState::BlenderHit {
+            parent: ids::GS_PANEL,
+            kind: BlenderHitKind::ResizeHandleBl,
+        },
+    );
     // Scrollbar thumb — must be in the store as `Plain` so dispatch's
     // `is_focusable` lets the Down handler seed the scrollbar drag.
     store.register(GRID_SETTINGS_SCROLLBAR_ID, InteractiveState::Plain);

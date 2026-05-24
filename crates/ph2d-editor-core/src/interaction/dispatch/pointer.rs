@@ -101,6 +101,23 @@ pub fn dispatch_pointer_with_text<'frame>(
                 store.set_panel_resize_delta(panel, new_dw, new_dh);
                 store.update_panel_resize_cursor(event.x, event.y);
             }
+            // Bottom-LEFT resize — mirror of the BR path above but
+            // also shifts the panel offset by the same x-delta so the
+            // RIGHT edge stays anchored while the LEFT edge follows
+            // the cursor. Width adjusts in the opposite direction
+            // (cursor right → width shrinks, cursor left → width
+            // grows). Height (cy) is identical to BR.
+            if let Some((panel, last_x, last_y)) = store.panel_resize_anchor_bl() {
+                let dx = event.x - last_x;
+                let dy = event.y - last_y;
+                let (cur_dw, cur_dh) = store.panel_resize_delta(panel);
+                let new_dw = cur_dw - dx;
+                let new_dh = cur_dh + dy;
+                store.set_panel_resize_delta(panel, new_dw, new_dh);
+                let (cur_off_x, cur_off_y) = store.blender_picker_offset(panel);
+                store.set_blender_picker_offset(panel, cur_off_x + dx, cur_off_y);
+                store.update_panel_resize_cursor_bl(event.x, event.y);
+            }
             // Scrollbar drag — translate the cursor's y-delta into
             // a `panel_scroll` delta via `widget::scrollbar::
             // delta_for_drag`. Snapshot of metrics taken at Down so

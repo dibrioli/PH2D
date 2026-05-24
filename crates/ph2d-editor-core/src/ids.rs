@@ -337,6 +337,10 @@ pub const INSP_DRAG_HANDLE: NodeId = hash_node_id("insp_drag_handle");
 /// Resize gripper at the Inspector's bottom-right corner. Registered
 /// as `BlenderHit { parent: INSP_PANEL, kind: ResizeHandle }`.
 pub const INSP_RESIZE_HANDLE: NodeId = hash_node_id("insp_resize_handle");
+/// Resize gripper at the Inspector's bottom-LEFT corner. Mirror of
+/// [`INSP_RESIZE_HANDLE`]. Registered as
+/// `BlenderHit { parent: INSP_PANEL, kind: ResizeHandleBl }`.
+pub const INSP_RESIZE_HANDLE_BL: NodeId = hash_node_id("insp_resize_handle_bl");
 
 // ── Inspector Transform editor (M14.A) ──────────────────────────────────────
 // Live binding for `ph2d_ecs::Transform` on the selected entity. The
@@ -407,6 +411,9 @@ pub const GAL_PANEL: NodeId = hash_node_id("gal_panel");
 pub const GAL_DRAG_HANDLE: NodeId = hash_node_id("gal_drag_handle");
 /// Resize gripper at the Widget Gallery's bottom-right corner.
 pub const GAL_RESIZE_HANDLE: NodeId = hash_node_id("gal_resize_handle");
+/// Resize gripper at the Widget Gallery's bottom-LEFT corner. Mirror
+/// of [`GAL_RESIZE_HANDLE`].
+pub const GAL_RESIZE_HANDLE_BL: NodeId = hash_node_id("gal_resize_handle_bl");
 /// Close (X) button at the top-right of the Widget Gallery — alternate
 /// way to dismiss the panel beyond clicking the TopBar palette pill.
 pub const GAL_CLOSE: NodeId = hash_node_id("gal_close");
@@ -414,6 +421,9 @@ pub const GAL_CLOSE: NodeId = hash_node_id("gal_close");
 pub const HIER_DRAG_HANDLE: NodeId = hash_node_id("hier_drag_handle");
 /// Resize gripper at the Hierarchy's bottom-right corner.
 pub const HIER_RESIZE_HANDLE: NodeId = hash_node_id("hier_resize_handle");
+/// Resize gripper at the Hierarchy's bottom-LEFT corner. Mirror of
+/// [`HIER_RESIZE_HANDLE`].
+pub const HIER_RESIZE_HANDLE_BL: NodeId = hash_node_id("hier_resize_handle_bl");
 
 // ── Inspector widget samples ───────────────────────────────────────────────
 // One of each canonical widget, parented to the Inspector panel.

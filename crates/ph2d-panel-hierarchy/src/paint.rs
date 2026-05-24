@@ -80,10 +80,19 @@ fn paint_hierarchy_body(
 ) -> std::collections::BTreeSet<ph2d_a11y::NodeId> {
     let rect = layout.hierarchy;
     paint_panel_surface(rect, scene, theme);
-    let drag_handle_rect = panel_drag_handle_rect(rect);
+    let drag_handle_rect = panel_drag_handle_rect(
+        rect,
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
+        // Hierarchy header has the Add (+) icon on the right; reserve
+        // wider so drag doesn't shadow the add hit.
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_ADD_RESERVE,
+    );
     let resize_handle_rect = panel_resize_handle_rect(rect);
+    let resize_handle_bl_rect =
+        ph2d_editor_core::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
     hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
+    hit_index.register(ids::HIER_RESIZE_HANDLE_BL, resize_handle_bl_rect);
 
     // Canonical panel title (single source of truth — `panel_chrome`).
     // Reserve ≈ICON_BTN_SIZE on the right for the header Add-button.
@@ -352,8 +361,10 @@ fn paint_hierarchy_body(
     }
     scene.pop_layer();
     paint_panel_corner_dot(rect, scene, theme);
+    ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
     hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
+    hit_index.register(ids::HIER_RESIZE_HANDLE_BL, resize_handle_bl_rect);
     let content_h = (y - start_y).max(0.0);
     set_last_hierarchy_content_h(content_h);
 

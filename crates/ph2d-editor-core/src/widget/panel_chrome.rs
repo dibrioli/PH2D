@@ -26,14 +26,33 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
-    ColorToken, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, Radius,
-    SECTION_GAP_PX, Spacing, StrokeToken, Theme, TypeToken,
+    ColorToken, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, Radius, Spacing,
+    StrokeToken, Theme, TypeToken,
 };
 use ph2d_vector::VectorScene;
 
 /// Title baseline inset from the panel's top edge. Single value so the
 /// title, the close/add button row, and the body-top offset all align.
 pub const PANEL_TITLE_BASELINE: f32 = 18.0; // LITERAL-PX-OK: canonical panel title baseline
+
+/// Default height of the title-bar drag band when the panel has only a
+/// title + subtitle in the header. Covers title baseline + subtitle
+/// line + a few px of margin so the cursor can grab the area visually
+/// associated with "the title". Panels with an interactive widget in
+/// the header BELOW the subtitle (search bar, mode chips) must pass a
+/// smaller value to [`panel_drag_handle_rect`] so the drag area
+/// doesn't shadow those widgets in the hit-test.
+pub const PANEL_HEADER_H_DEFAULT: f32 = 56.0; // LITERAL-PX-OK: title-baseline (18) + Lg.px(~18) + subtitle line (~14) + 6 px margin; sized to stop ABOVE Hierarchy's search bar (62)
+
+/// Width to leave clear on the right of the title bar for a single
+/// close-(X) icon button. Passed to [`panel_drag_handle_rect`] so the
+/// widened drag area doesn't shadow the close hit.
+pub const PANEL_HEADER_CLOSE_RESERVE: f32 = 40.0; // LITERAL-PX-OK: Xl2 close icon size + padding
+
+/// Width to leave clear on the right for a close-(X) + add-(+) pair.
+/// Used by Hierarchy (close + Add Entity) and any panel exposing more
+/// than one header affordance.
+pub const PANEL_HEADER_ADD_RESERVE: f32 = 80.0; // LITERAL-PX-OK: 2 × icon size + gap
 
 /// Canonical panel header title — **the single source of truth for the
 /// panel name text.** Every `ph2d-panel-*` crate paints its title
@@ -162,32 +181,24 @@ pub const PANEL_RESIZE_HANDLE_SIZE: f32 = PANEL_RESIZE_HANDLE_SIZE_PX;
 
 /// Floating-panel surface — standard BASE chrome for every panel
 /// (Inspector, Hierarchy, Widget Gallery, Grid Snap, …). Paints the
-/// rounded `BgElev` fill + 1px `Border` stroke + a tiny drag-pill
-/// at the top center. Run BEFORE the panel body so the body
-/// renders on top of the surface.
+/// rounded `BgElev` fill + 1px `Border` stroke. Run BEFORE the panel
+/// body so the body renders on top of the surface.
 ///
-/// The bottom-right resize-gripper dot is painted separately by
-/// [`paint_panel_corner_dot`] AFTER the body so body widgets don't
-/// cover it (the body's scrollable clip extends into the corner).
+/// Pre-2026-05-24 also painted a tiny 36×4 drag pill at the top
+/// center — removed when the drag hit-zone was widened to cover the
+/// full title bar ([`panel_drag_handle_rect`]). The title text itself
+/// is now the visual cue that "this band is grabbable", consistent
+/// with macOS/Windows title bars.
+///
+/// The corner resize-gripper dots are painted separately by
+/// [`paint_panel_corner_dot`] (BR) + [`paint_panel_corner_dot_bl`]
+/// (BL) AFTER the body so body widgets don't cover them.
 pub fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
     let radius = PANEL_RADIUS;
     // PanelBg = BgElev hue/L with ~0.92 alpha → panel reads as
     // floating glass over canvas while text contrast holds.
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::PanelBg, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
-    // Drag pill at the top center.
-    let handle = Rect::new(
-        rect.x + (rect.w - 36.0) * 0.5, // LITERAL-PX-OK: drag pill width 36 (chrome-specific dim)
-        rect.y + Spacing::Sm.px(),
-        36.0, // LITERAL-PX-OK: drag pill width 36 (chrome-specific dim)
-        4.0,  // LITERAL-PX-OK: drag pill height 4 (chrome-specific dim)
-    );
-    fill_rounded_rect(
-        scene,
-        handle,
-        Radius::Full.px(),
-        resolve(ColorToken::BorderEmph, theme),
-    );
 }
 
 /// Bottom-right resize-gripper corner accent. Painted at the END
@@ -219,16 +230,62 @@ pub fn panel_resize_handle_rect(panel: Rect) -> Rect {
     )
 }
 
-/// Rect of the top-center drag-pill hit zone for a panel whose
-/// outer rect is `panel`. 80×14 — wide enough to grab on touch +
-/// mouse.
-pub fn panel_drag_handle_rect(panel: Rect) -> Rect {
+/// Hit zone for the panel's title-bar drag band — **full-width**
+/// (minus `right_reserve` for header icons) × `header_h` from the top.
+///
+/// Pre-2026-05-24 this was a fixed 80×14 pill centered at the top,
+/// which was too narrow to grab reliably and exposed the body widgets
+/// scrolled BEHIND the title to spurious clicks. The wider band fixes
+/// both: the user can grab anywhere across the title to drag, AND
+/// when the same id is re-registered at the END of the panel paint
+/// it sits on top of any body widget that scrolled into the header
+/// area (the dispatch's last-registered-wins z-order blocks the
+/// click from reaching the scrolled-out-of-view widget).
+///
+/// **Both params are caller-computed:**
+/// - `header_h`: how far down the drag band extends — must stop
+///   BEFORE any interactive widget in the header (search bar in
+///   Hierarchy, mode chips in tool panels). [`PANEL_HEADER_H_DEFAULT`]
+///   is conservative for panels with only title + subtitle.
+/// - `right_reserve`: width to leave clear on the right for close /
+///   add / settings icons. [`PANEL_HEADER_CLOSE_RESERVE`] for just
+///   an X; [`PANEL_HEADER_ADD_RESERVE`] for X + one more icon.
+pub fn panel_drag_handle_rect(panel: Rect, header_h: f32, right_reserve: f32) -> Rect {
     Rect::new(
-        panel.x + (panel.w - 80.0) * 0.5, // LITERAL-PX-OK: drag hit-zone width 80 (chrome-specific)
-        panel.y + Spacing::Xxs.px(),
-        80.0, // LITERAL-PX-OK: drag hit-zone width 80
-        SECTION_GAP_PX,
+        panel.x,
+        panel.y,
+        (panel.w - right_reserve).max(0.0),
+        header_h,
     )
+}
+
+/// Rect of the bottom-LEFT resize-gripper hit zone for a panel whose
+/// outer rect is `panel`. Mirror of [`panel_resize_handle_rect`] (the
+/// bottom-right gripper) — same size, same offset, mirrored across
+/// the panel's vertical axis. Lets the user grab the panel from
+/// either bottom corner to resize.
+pub fn panel_resize_handle_rect_bl(panel: Rect) -> Rect {
+    Rect::new(
+        panel.x,
+        panel.y + panel.h - PANEL_RESIZE_HANDLE_SIZE,
+        PANEL_RESIZE_HANDLE_SIZE,
+        PANEL_RESIZE_HANDLE_SIZE,
+    )
+}
+
+/// Bottom-LEFT resize-gripper corner accent. Mirror of
+/// [`paint_panel_corner_dot`]. Painted AFTER body widgets so the
+/// dot sits on top of anything that drifted into the corner.
+pub fn paint_panel_corner_dot_bl(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    let dot_d = Spacing::Xs.px();
+    let inset = 7.0_f32; // LITERAL-PX-OK: corner-dot inset (specific accent geometry)
+    let dot = Rect::new(
+        rect.x + inset,
+        rect.y + rect.h - inset - dot_d,
+        dot_d,
+        dot_d,
+    );
+    fill_rounded_rect(scene, dot, dot_d * 0.5, resolve(ColorToken::Text2, theme));
 }
 
 /// Shared floating-panel clamp helper. Used by the hero

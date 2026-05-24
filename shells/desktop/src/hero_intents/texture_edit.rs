@@ -71,13 +71,13 @@ pub(crate) fn read_sprite_source(
                     width,
                     height,
                     pixels,
-                } => SpriteImage::new(*width, *height, pixels.to_vec(), AlphaMode::Straight),
+                } => SpriteImage::from_bytes(*width, *height, pixels.to_vec(), AlphaMode::Straight),
                 _ => return None,
             }
         }
         SpriteSource::Individual { texture_id } => {
             let (w, h, pixels) = renderer.readback_individual(texture_id).ok()?;
-            SpriteImage::new(
+            SpriteImage::from_bytes(
                 w,
                 h,
                 pixels,

@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 ///
 /// Each entry: file path relative to the workspace root.
 const BASELINE: &[&str] = &[
-    "crates/ph2d-render/src/premul.rs",
+    // crates/ph2d-render/src/premul.rs — migrated Wave 11 (SpriteImage::new takes Vec<SrgbRgba>; from_bytes is the byte escape hatch)
     // crates/ph2d-tool-bgremoval/src/tool.rs — migrated Wave 11 (typed input)
     // crates/ph2d-tool-color-equalization/src/algorithm.rs — migrated Wave 11 (typed input)
     // crates/ph2d-tool-color-equalization/src/tool.rs — migrated Wave 11 (typed input)

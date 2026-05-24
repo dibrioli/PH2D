@@ -76,8 +76,12 @@ pub(crate) fn drain_trim_transparency(
             height: result.bounds.height,
         },
     );
-    let edited =
-        ph2d_render::SpriteImage::new(result.width, result.height, result.pixels, src.image.alpha);
+    let edited = ph2d_render::SpriteImage::from_bytes(
+        result.width,
+        result.height,
+        result.pixels,
+        src.image.alpha,
+    );
     match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, new_size) {
         Err(err) => {
             toasts.push(Toast::error(format!("Trim failed: {err}")));

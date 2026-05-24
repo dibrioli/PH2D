@@ -85,9 +85,13 @@ pub(crate) fn drain_bgremoval(
         // it PREMULTIPLIED so the sprite shader's bilinear sample
         // composites the edge like the Vello preview
         // (premultiply-before-sample) — no purple/dark fringe.
-        let edited =
-            ph2d_render::SpriteImage::new(out_w, out_h, out, ph2d_render::AlphaMode::Straight)
-                .into_premultiplied();
+        let edited = ph2d_render::SpriteImage::from_bytes(
+            out_w,
+            out_h,
+            out,
+            ph2d_render::AlphaMode::Straight,
+        )
+        .into_premultiplied();
         return match texture_edit::commit_edited_texture(
             entity,
             sim,
@@ -126,7 +130,7 @@ pub(crate) fn drain_bgremoval(
     //
     // Bake premultiplied for all (mirror the no-island branch).
     let bake_premul = |w: u32, h: u32, rgba: Vec<u8>| {
-        ph2d_render::SpriteImage::new(w, h, rgba, ph2d_render::AlphaMode::Straight)
+        ph2d_render::SpriteImage::from_bytes(w, h, rgba, ph2d_render::AlphaMode::Straight)
             .into_premultiplied()
     };
     // Pixel-space (top-left, Y-down) bbox centre → world translation:

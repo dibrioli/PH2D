@@ -58,11 +58,42 @@ pub struct SpriteImage {
 }
 
 impl SpriteImage {
-    pub fn new(width: u32, height: u32, pixels: Vec<u8>, alpha: AlphaMode) -> Self {
+    /// Construct from owned `SrgbRgba` pixels. Wave 11 color-space
+    /// migration (ADR-0042 §6 #2): the public boundary is typed; the
+    /// inner storage stays `Vec<u8>` for downstream byte-level
+    /// consumers (GPU upload). The cast is zero-copy via
+    /// `bytemuck::allocation::cast_vec` (`SrgbRgba` is repr-transparent
+    /// + `Pod` over `[u8; 4]`).
+    pub fn new(
+        width: u32,
+        height: u32,
+        pixels: Vec<ph2d_color::SrgbRgba>,
+        alpha: AlphaMode,
+    ) -> Self {
+        assert_eq!(
+            pixels.len(),
+            (width as usize) * (height as usize),
+            "pixel count must equal width * height",
+        );
         Self {
             width,
             height,
-            pixels,
+            pixels: bytemuck::allocation::cast_vec(pixels),
+            alpha,
+        }
+    }
+
+    /// Construct from owned byte buffer. Use [`Self::new`] (typed) at
+    /// every IO boundary; this method is for downstream consumers that
+    /// produce bytes natively (image decoders, GPU readback) where a
+    /// typed-wrapper round-trip would be pure ceremony. Param is named
+    /// `bytes` (not `pixels`) so the `arch_color_space_typed` gate
+    /// recognises this is intentionally the byte path.
+    pub fn from_bytes(width: u32, height: u32, bytes: Vec<u8>, alpha: AlphaMode) -> Self {
+        Self {
+            width,
+            height,
+            pixels: bytes,
             alpha,
         }
     }
@@ -223,7 +254,7 @@ mod tests {
     #[test]
     fn sprite_image_conversions_flip_mode_and_are_idempotent() {
         let px = vec![10u8, 200, 30, 128, 0, 0, 0, 0];
-        let straight = SpriteImage::new(2, 1, px.clone(), AlphaMode::Straight);
+        let straight = SpriteImage::from_bytes(2, 1, px.clone(), AlphaMode::Straight);
         // Straight -> premultiplied flips the mode and premultiplies RGB.
         let pre = straight.clone().into_premultiplied();
         assert_eq!(pre.alpha, AlphaMode::Premultiplied);

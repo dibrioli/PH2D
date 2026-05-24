@@ -4290,6 +4290,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "bytemuck",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-gpu",

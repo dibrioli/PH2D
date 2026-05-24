@@ -114,8 +114,12 @@ pub(crate) fn drain_padding(
     // Color-agnostic resize (transparent border / crop): PRESERVE the
     // source alpha mode so a premultiplied BG-Removal result survives
     // byte-exact — the chokepoint re-derives `Sprite.premultiplied`.
-    let edited =
-        ph2d_render::SpriteImage::new(result.width, result.height, result.pixels, src.image.alpha);
+    let edited = ph2d_render::SpriteImage::from_bytes(
+        result.width,
+        result.height,
+        result.pixels,
+        src.image.alpha,
+    );
     match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, new_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Padding failed: {err}")));

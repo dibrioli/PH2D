@@ -162,7 +162,7 @@ pub(crate) fn drain_equalize_sizes(
         // separate handle to the original alpha mode (the round-trip
         // target) since `src.image` was moved.
         let src_shell = texture_edit::SourceRead {
-            image: ph2d_render::SpriteImage::new(
+            image: ph2d_render::SpriteImage::from_bytes(
                 w,
                 h,
                 Vec::new(),
@@ -235,7 +235,7 @@ pub(crate) fn drain_equalize_sizes(
             // from `img.alpha`, so we hand the straight-from-resample
             // buffer in straight if the source was straight, or
             // re-premultiplied otherwise.
-            let edited_straight = ph2d_render::SpriteImage::new(
+            let edited_straight = ph2d_render::SpriteImage::from_bytes(
                 out.width,
                 out.height,
                 out.rgba,

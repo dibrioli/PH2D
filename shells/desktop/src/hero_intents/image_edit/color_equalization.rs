@@ -62,7 +62,8 @@ pub(crate) fn drain_color_equalization(
     // Keep the OUTPUT in straight-alpha — Color EQ leaves alpha
     // untouched, so we round-trip exactly. The chokepoint flips
     // `Sprite.premultiplied` to match.
-    let edited = ph2d_render::SpriteImage::new(out_w, out_h, out, ph2d_render::AlphaMode::Straight);
+    let edited =
+        ph2d_render::SpriteImage::from_bytes(out_w, out_h, out, ph2d_render::AlphaMode::Straight);
     match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Color EQ failed: {err}")));

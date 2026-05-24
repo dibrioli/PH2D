@@ -97,7 +97,7 @@ pub(crate) fn drain_upscale(
         return true;
     }
     let edited_straight =
-        ph2d_render::SpriteImage::new(out_w, out_h, out, ph2d_render::AlphaMode::Straight);
+        ph2d_render::SpriteImage::from_bytes(out_w, out_h, out, ph2d_render::AlphaMode::Straight);
     let edited = if source_alpha.is_premultiplied() {
         edited_straight.into_premultiplied()
     } else {

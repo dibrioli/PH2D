@@ -80,7 +80,7 @@ pub(crate) fn drain_rasterize(
         )));
         return true;
     }
-    let edited_straight = ph2d_render::SpriteImage::new(
+    let edited_straight = ph2d_render::SpriteImage::from_bytes(
         result.width,
         result.height,
         result.pixels,

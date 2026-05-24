@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-chrome-sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[[bin]]
+name = "ph2d-chrome-sync"
+path = "src/main.rs"
+
+# Wave 10 / Etapa 4.2 — chrome-family codegen.
+# Scans `crates/ph2d-editor-core/src/screens/hero/chrome/*.rs` and
+# rewrites the `mod foo;` declaration block in `chrome/mod.rs`.
+#
+# Drop a chrome handler + `cargo run -p ph2d-chrome-sync`. The
+# `dispatch_all` chain stays hand-written (z-order is load-bearing per
+# the file's own doc-comment), but the `mod` declarations sync
+# automatically.
+
+[dependencies]

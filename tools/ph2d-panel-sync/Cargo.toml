@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-panel-sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[[bin]]
+name = "ph2d-panel-sync"
+path = "src/main.rs"
+
+# Wave 10 / Etapa 4.1 — panel-family codegen (mirror of ph2d-tool-sync).
+# Scans `crates/ph2d-panel-*` and rewrites:
+#   - crates/ph2d-panel-registry-init/src/lib.rs: build_typed_registry body
+#   - crates/ph2d-panel-registry-init/Cargo.toml: [dependencies] + [features]
+#
+# Drop a panel crate + `cargo run -p ph2d-panel-sync`. Zero hand-edit on the
+# registry-init central file (the staleness gate fails CI if forgot).
+
+[dependencies]

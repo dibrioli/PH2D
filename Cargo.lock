@@ -3875,6 +3875,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-chrome-sync"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-core"
 version = "0.0.0"
 dependencies = [
@@ -3911,6 +3915,7 @@ dependencies = [
  "bumpalo",
  "dhat",
  "ph2d-a11y",
+ "ph2d-chrome-sync",
  "ph2d-grid",
  "ph2d-host",
  "ph2d-i18n",
@@ -3920,6 +3925,7 @@ dependencies = [
  "ph2d-tool-registry",
  "ph2d-tool-trim-transparency",
  "ph2d-vector",
+ "ph2d-widget-sync",
  "smallvec",
 ]
 
@@ -4215,9 +4221,14 @@ dependencies = [
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
+ "ph2d-panel-sync",
  "ph2d-panel-upscale",
  "ph2d-panel-widget-gallery",
 ]
+
+[[package]]
+name = "ph2d-panel-sync"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-panel-upscale"
@@ -4505,6 +4516,10 @@ version = "0.0.0"
 dependencies = [
  "vello",
 ]
+
+[[package]]
+name = "ph2d-widget-sync"
+version = "0.0.0"
 
 [[package]]
 name = "pin-project"

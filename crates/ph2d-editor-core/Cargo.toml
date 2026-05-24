@@ -49,6 +49,10 @@ dhat = "0.3"
 # (it parses [dependencies] only) and creates no runtime cycle.
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
+# Wave 10 / Etapa 4.2 — staleness gate for chrome handler `mod` block.
+ph2d-chrome-sync = { path = "../../tools/ph2d-chrome-sync" }
+# Wave 10 / Etapa 4.3 — staleness gate for widget `mod` block.
+ph2d-widget-sync = { path = "../../tools/ph2d-widget-sync" }
 # ADR-0029 Phase C.1 NOTE: Inspector regression tests that need
 # `ph2d_panel_inspector::*` are scheduled to migrate to
 # `crates/ph2d-panel-inspector/tests/inspector_regression.rs` in

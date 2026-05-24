@@ -14,8 +14,8 @@
 | 1.A — Emenda ADR-0041 (rename + deactivate) | ✅ COMPLETA | `a03d830` | 769/769 workspace (T2 hook) | [§E1A](#etapa-1a--emenda-adr-0041) |
 | 1.B — `ph2d-tool-runtime` + BgRemoval impl | ✅ COMPLETA | `74b6d27` | 132 verdes (122 BgR + 10 runtime) | [§E1B](#etapa-1b--ph2d-tool-runtime--bgremoval-impl) |
 | 2 — CEQ + Upscale impl (Padding/EqSizes exception) | ✅ COMPLETA | `cbb9cb3` | 193 verdes; fix C1 cross-bridge | [§E2](#etapa-2--ceq--upscale-impl-rastereditool) |
-| 3 — 3 arch-gates + drive_multi_preview_cache + fix C3 multi-Apply | ✅ COMPLETA | (pendente) | 19 gates/helper verdes; 3 críticos + 3 altos fixados | [§E3](#etapa-3--3-arch-gates--drive_multi_preview_cache) |
-| 4 — panel-sync + chrome-sync + widget-sync | ⏳ | — | — | — |
+| 3 — 3 arch-gates + drive_multi_preview_cache + fix C3 multi-Apply | ✅ COMPLETA | `666a85a` | 19 gates/helper verdes; 3 críticos + 3 altos fixados | [§E3](#etapa-3--3-arch-gates--drive_multi_preview_cache) |
+| 4 — panel-sync + chrome-sync + widget-sync (3 codegens) | ✅ COMPLETA | (pendente) | 6 staleness gates (3 panel + 2 chrome + 1 widget) + 12 helper tests | [§E4](#etapa-4--3-codegens-panelchromewidget-sync) |
 | 5 — Gates UI panel-\* + ph2d-color + classes de bug | ⏳ | — | — | — |
 | 6 — Golden-image SSIM + drift + memory GC | ⏳ | — | — | — |
 | 7 — Política merge-on-green + closure | ⏳ | — | — | — |
@@ -384,6 +384,85 @@ Vide `audits/etapa-3.md`. Resumo:
 - `shells/desktop/src/app_state.rs` — ColorEqualizationPreview virou type alias
 - `shells/desktop/src/input_handlers.rs` — fix C3 (removeu drain duplicado)
 - `docs/Testes/audits/etapa-3.md` — full audit report
+
+---
+
+## Etapa 4 — 3 codegens (panel/chrome/widget-sync)
+
+**Commit:** (pendente)
+
+### Escopo
+
+Etapa 4 completa o trio de codegen tools que faltava (espelha o `ph2d-tool-sync` existente):
+
+- **`tools/ph2d-panel-sync/`** — varre `crates/ph2d-panel-*`, regenera `build_typed_registry` body + `[dependencies]` + `[features]` em `ph2d-panel-registry-init`. 9 panel crates atuais sincronizados automaticamente.
+- **`tools/ph2d-chrome-sync/`** — varre `crates/ph2d-editor-core/src/screens/hero/chrome/*.rs`, regenera `mod foo;` declarations. `dispatch_all` permanece hand-written (z-order load-bearing). 13 chrome handlers sincronizados.
+- **`tools/ph2d-widget-sync/`** — varre `crates/ph2d-editor-core/src/widget/{*.rs,subdirs/}`, regenera `mod foo;` declarations. `pub use` re-exports permanecem hand-written. 34 file widgets + 2 sub-dir widgets sincronizados.
+
+Resultado: adicionar painel/chrome/widget novo = drop arquivo + `cargo run -p ph2d-<x>-sync` + commit. Zero hand-edit central pra a parte mecânica (Cargo.toml deps + features pra panel; mod declarations pra chrome+widget).
+
+### Testes automáticos rodados ✅
+
+```bash
+# panel-sync — 3 staleness sub-gates (lib.rs semantic + Cargo deps + Cargo features)
+cargo test -p ph2d-panel-registry-init --tests
+# → 4/4 ok (1 lib + 3 staleness)
+
+# chrome-sync — 2 sub-gates (mod block + dispatch_all references)
+cargo test -p ph2d-editor-core --test architecture_chrome_dispatch_in_sync
+# → 2/2 ok
+
+# widget-sync — 1 sub-gate (mod block matches scan)
+cargo test -p ph2d-editor-core --test architecture_widget_mod_in_sync
+# → 1/1 ok
+
+# Codegen tools unit tests
+cargo test -p ph2d-panel-sync   # 4 unit tests
+cargo test -p ph2d-chrome-sync  # 3 unit tests
+cargo test -p ph2d-widget-sync  # 3 unit tests
+
+# Workspace + clippy + fmt
+cargo check --workspace                              → green
+cargo clippy --workspace --all-targets -- -D warnings → clean
+cargo fmt --all -- --check                            → clean
+```
+
+### Audit adversarial × 1 (escopo isolado — não tocou produção)
+
+Vide `audits/etapa-4.md`. Resumo:
+
+- **1 achado CRITICAL fixado pré-commit:**
+  - **[C-1]** `render_register_lines` em panel-sync emitia linha que ultrapassava 100 cols pra tipos longos (CEQ, EqualizeSizes, WidgetGallery). `cargo fmt` reformatava pra multi-linha → staleness gate quebrava no próximo pre-commit. Fix: gate compara **semanticamente** via `extract_registered_panels` (extrai `(crate_ident, struct_name)` pairs, formatação-tolerante); main do sync chama `cargo fmt` ao final pra deixar on-disk canônico.
+- **1 achado ALTO** (M-1) anotado mas DEFERIDO:
+  - `default = [...]` array em `panel-registry-init/Cargo.toml` é hand-written. Adicionar panel novo não regenera o `default` automaticamente — panel some silenciosamente se esquecer. Mitigação Etapa 4: doc-comment explícito + smoke do Enio. Fix completo (sync também regenera `default`) fica como follow-up Etapa 5.
+- **5 achados MÉDIO/BAIXO** anotados (false positives em parsers, paths frágeis em hipotéticos futuros): em `audits/etapa-4.md`.
+
+### Smoke manual pendente (Enio)
+
+**Smokes da Etapa 4 são puramente arquiteturais (zero mudança visual):**
+
+- [ ] **G6 painel drop-in:** crie um `crates/ph2d-panel-test/` minimal (Cargo.toml + src/lib.rs com `pub struct TestPanel; impl Panel for TestPanel { ... }`) → `cargo run -p ph2d-panel-sync` → painel aparece no registry sem hand-edit em registry-init. Smoke arquitetural (não precisa rodar o painel — só verificar que o registry-init compila com a nova entrada).
+- [ ] **G7 chrome handler drop-in:** crie um `chrome/test_handler.rs` minimal → `cargo run -p ph2d-chrome-sync` → `mod test_handler;` aparece no chrome/mod.rs.
+- [ ] **G8 widget drop-in:** crie um `widget/test_widget.rs` minimal → `cargo run -p ph2d-widget-sync` → `mod test_widget;` aparece no widget/mod.rs.
+- [ ] **G9 regressão completa:** rode `./play.command`, verifique que todos os painéis canônicos (BgR, CEQ, Upscale, EqSizes, Padding, Inspector, Hierarchy, WidgetGallery, GridSnap) aparecem normalmente. (Equivalente ao smoke pós-Etapa 1-3 — a Etapa 4 não tocou a runtime path.)
+
+### Métricas pós-Etapa 4
+
+- **Codegen tools:** 3 novos (`panel-sync`, `chrome-sync`, `widget-sync`) + 1 já existente (`tool-sync`) = 4 codegens ativos no projeto
+- **Hand-edited central files retirados:** `panel-registry-init/{src/lib.rs, Cargo.toml}` (3 regiões), `chrome/mod.rs` mod block, `widget/mod.rs` mod block = **5 regiões agora automaticamente sincronizadas**
+- **Staleness gates novos:** 6 (3 panel + 2 chrome + 1 widget) — toda regressão "esquecer de rodar sync" pega em CI
+- **Drop-in process pra adições:** painel/chrome/widget = drop file + sync + commit (mesmo padrão que tool/node já tinha)
+
+### Artefatos criados
+
+- `tools/ph2d-panel-sync/` — Cargo.toml + src/{lib.rs, main.rs}
+- `tools/ph2d-chrome-sync/` — Cargo.toml + src/{lib.rs, main.rs}
+- `tools/ph2d-widget-sync/` — Cargo.toml + src/{lib.rs, main.rs}
+- `crates/ph2d-panel-registry-init/tests/staleness.rs` — 3 sub-gates (semantic comparison)
+- `crates/ph2d-editor-core/tests/architecture_chrome_dispatch_in_sync.rs` — 2 sub-gates
+- `crates/ph2d-editor-core/tests/architecture_widget_mod_in_sync.rs` — 1 sub-gate
+- Markers `<ph2d-panel-sync:*>`, `<ph2d-chrome-sync:*>`, `<ph2d-widget-sync:*>` em arquivos centrais
+- `docs/Testes/audits/etapa-4.md` — full audit report
 
 ---
 

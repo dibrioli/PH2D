@@ -509,6 +509,20 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         },
     );
 
+    // Inspector live-section color-dot hit ids — registered as Plain
+    // so is_focusable returns true and apply_click can fire the
+    // section's color-picker handler (Inspector apply_event seeds
+    // INSP_BLENDER_PICKER). Same canon Widget Gallery's
+    // SECTION_COLOR_IDS use.
+    for id in [
+        ids::INSP_LIVE_NAME_COLOR,
+        ids::INSP_LIVE_VISIBILITY_COLOR,
+        ids::INSP_LIVE_TRANSFORM_COLOR,
+        ids::INSP_LIVE_RENDER_COLOR,
+    ] {
+        store.register(id, InteractiveState::Plain);
+    }
+
     // Bottom-LEFT resize handles (post-2026-05-24 chrome canon — every
     // floating panel resizable from EITHER bottom corner).
     store.register(

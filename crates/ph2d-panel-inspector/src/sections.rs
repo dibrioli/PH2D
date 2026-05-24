@@ -111,8 +111,12 @@ pub(crate) fn paint_transform_section(
 
     // Canonical section header (ALL-CAPS + collapse chevron + color-dot
     // slot per UI canon — `docs/UI_Padrao/components/section_header.md`).
-    // Reset is an ICON button (user feedback 2026-05-24: "coloque como
-    // ícone"). Square hit-zone in the right slot of the header band.
+    // Reset is an ICON button (user feedback 2026-05-24).
+    //
+    // Order LEFT → RIGHT: title · reset icon · color dot. The color
+    // dot lives at the FAR right (panel border), reset icon sits
+    // just to its left. Pre-2026-05-24 the order was reversed; user
+    // requested the swap.
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let reset_size = header_h; // square icon button matching header height
     let collapsed = store.is_collapsed(ids::INSP_LIVE_TRANSFORM_SECTION);
@@ -120,16 +124,26 @@ pub(crate) fn paint_transform_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
+    // Header rect spans the FULL panel width so paint_section_header
+    // anchors the color dot at the right edge (panel border).
     let header = SectionHeader::new(ids::INSP_LIVE_TRANSFORM_SECTION, "Transform")
         .collapsible(!collapsed)
         .color(rgba);
-    let header_rect = Rect::new(x, y, w - reset_size - Spacing::Sm.px(), header_h);
+    let header_rect = Rect::new(x, y, w, header_h);
+    // Reserve for the color dot at the right edge (≈ Md pad + 14 px
+    // dot diameter) — the reset icon slots just to the LEFT of it.
+    let color_slot_w = Spacing::Md.px() + 14.0; // LITERAL-PX-OK: color dot diameter (2 * radius 7)
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
     {
         hit_index.register(color_id, circle_rect);
     }
-    let reset_rect = Rect::new(x + w - reset_size, y, reset_size, reset_size);
+    let reset_rect = Rect::new(
+        x + w - color_slot_w - reset_size,
+        y,
+        reset_size,
+        reset_size,
+    );
     let reset_state = store
         .button_state(ids::INSP_TRANSFORM_RESET)
         .unwrap_or(ButtonState::Normal);

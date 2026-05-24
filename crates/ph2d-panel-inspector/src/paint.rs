@@ -111,9 +111,26 @@ fn paint_inspector(
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
 
-    // Canonical panel title (single source of truth — `panel_chrome`).
+    // Canonical panel title — reserve right slot for the X close
+    // button (UI canon post-2026-05-24: every panel except Hierarchy
+    // carries close X; vide `docs/UI_Padrao/components/panel_chrome.md`).
     let title_y = rect.y + PANEL_TITLE_BASELINE;
-    let title_size = paint_panel_title(rect, "Inspector", 0.0, scene, text_system, theme);
+    let title_size = paint_panel_title(
+        rect,
+        "Inspector",
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
+        scene,
+        text_system,
+        theme,
+    );
+    // X close → toggles inspector visibility (apply_event handler).
+    ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
+        rect,
+        ids::INSP_CLOSE,
+        hit_index,
+        scene,
+        theme,
+    );
     let sprite_for_header = current_inspector_sprite();
     let subtitle_owned;
     let subtitle: &str = match sprite_for_header.as_ref() {

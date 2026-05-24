@@ -273,6 +273,52 @@ pub fn panel_resize_handle_rect_bl(panel: Rect) -> Rect {
     )
 }
 
+/// Paint the canonical X close button at the top-right of a panel
+/// and register its hit rect against `close_id`. Returns the rect so
+/// callers can position other header affordances relative to it.
+///
+/// **UI canon (post-2026-05-24):** every floating panel EXCEPT
+/// Hierarchy carries this close button. For image-tool panels
+/// (BgRemoval, Padding, Color Equalization, Upscale, Equalize Sizes)
+/// the `close_id` is the SAME id as the panel's existing "Cancel"
+/// button — clicking the X dispatches the same `WidgetEvent::Click`
+/// the bottom Cancel button does, which the panel's `apply_event`
+/// translates to `EditorAction::CancelActiveTool`. No new handler
+/// needed. For visibility-toggle panels (Inspector, Widget Gallery,
+/// Grid Snap) the `close_id` is a panel-specific `*_CLOSE` constant
+/// that the panel's apply_event toggles via
+/// [`PanelHostInternal::set_panel_visible`].
+///
+/// Visually: 32×32 hit zone with a 16×16 X glyph centered. Color
+/// `Text2` (matches subtitle weight — affordance reads as chrome,
+/// not a primary action). Sits inside the [`PANEL_HEADER_CLOSE_RESERVE`]
+/// slot the [`panel_drag_handle_rect`] leaves clear on the right
+/// edge of the title band.
+pub fn paint_panel_close_button(
+    panel: Rect,
+    close_id: ph2d_a11y::NodeId,
+    hit_index: &mut crate::interaction::HitIndex,
+    scene: &mut VectorScene,
+    theme: Theme,
+) -> Rect {
+    let close_size = Spacing::Xl2.px();
+    let close_rect = Rect::new(
+        panel.x + panel.w - PANEL_HEAD_PAD - close_size,
+        panel.y + PANEL_TITLE_BASELINE - 2.0, // LITERAL-PX-OK: baseline-align with title text
+        close_size,
+        close_size,
+    );
+    hit_index.register(close_id, close_rect);
+    crate::paint::paint_icon(
+        scene,
+        crate::icons::IconId::Close,
+        close_rect,
+        resolve(ColorToken::Text2, theme),
+        StrokeToken::Default.px(),
+    );
+    close_rect
+}
+
 /// Bottom-LEFT resize-gripper corner accent. Mirror of
 /// [`paint_panel_corner_dot`]. Painted AFTER body widgets so the
 /// dot sits on top of anything that drifted into the corner.

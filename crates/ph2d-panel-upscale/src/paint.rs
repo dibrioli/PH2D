@@ -62,8 +62,15 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     let row_gap = Spacing::Sm.px();
     let chip_w = Spacing::Xl.px() * 2.0;
 
-    // Canonical panel title (single source of truth).
-    let title_size = paint_panel_title(rect, "Upscale", 0.0, ctx.scene, ctx.text_system, theme);
+    // Canonical panel title — reserve room for the X close button.
+    let title_size = paint_panel_title(
+        rect,
+        "Upscale",
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
     let mut y = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
     // Disjoint borrows: store + hit_index from host; scene + text_system
@@ -71,6 +78,15 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+
+    // X close button → UPS_CANCEL (routes to same handler as Cancel).
+    ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
+        rect,
+        ids::UPS_CANCEL,
+        hit_index,
+        scene,
+        theme,
+    );
 
     // ── Algorithm segmented selector ───────────────────────────────
     // 3 buttons in a row; the active one is the snapshot's algorithm.

@@ -73,9 +73,17 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     let title_size = paint_panel_title(
         rect,
         "Color Equalization",
-        0.0,
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
+        theme,
+    );
+    // X close button → CEQ_CANCEL (same handler as bottom Cancel).
+    ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
+        rect,
+        ids::CEQ_CANCEL,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
         theme,
     );
     // Body region (everything below the title, above the corner dot) is

@@ -498,6 +498,17 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandle,
         },
     );
+    // Inspector close (X) button. UI canon post-2026-05-24: every
+    // floating panel except Hierarchy carries a close X. Registered as
+    // a plain Button so the dispatch's is_focusable + apply_click
+    // fire on the X's hit rect.
+    store.register(
+        ids::INSP_CLOSE,
+        InteractiveState::Button {
+            state: crate::widget::ButtonState::Normal,
+        },
+    );
+
     // Bottom-LEFT resize handles (post-2026-05-24 chrome canon — every
     // floating panel resizable from EITHER bottom corner).
     store.register(

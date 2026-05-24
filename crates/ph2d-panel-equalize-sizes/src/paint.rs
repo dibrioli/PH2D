@@ -64,7 +64,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let title_size = paint_panel_title(
         rect,
         "Equalize Sizes",
-        0.0,
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
         theme,
@@ -74,6 +74,15 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+
+    // X close button → EQS_CANCEL (same handler as Cancel button).
+    ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
+        rect,
+        ids::EQS_CANCEL,
+        hit_index,
+        scene,
+        theme,
+    );
 
     // ── Section: Target mode (3-way radio) ──────────────────────────
     let mode_row = Rect::new(inner_x, y, inner_w, row_h);

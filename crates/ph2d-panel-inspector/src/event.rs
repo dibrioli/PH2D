@@ -27,6 +27,16 @@ pub(crate) fn apply_event(
 }
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    // Close (X) — hide the Inspector. Same effect as toggling the
+    // left-rail Inspector pill (vide `chrome/rail_panels.rs`). UI canon
+    // post-2026-05-24: every floating panel except Hierarchy has X.
+    if let WidgetEvent::Click(id) = ev
+        && id == ids::INSP_CLOSE
+    {
+        let next = !host.panel_visible("inspector");
+        host.set_panel_visible("inspector", next);
+        return true;
+    }
     // M14.5 inspector phase (6.4) — Reimport button.
     if let WidgetEvent::Click(id) = ev
         && id == ids::INSP_RENDER_SOURCE_REIMPORT

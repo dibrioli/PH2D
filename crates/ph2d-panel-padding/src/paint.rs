@@ -27,8 +27,8 @@ use crate::state::{self, PaddingPanelState, set_last_content_h, set_last_visible
 use crate::{PaddingPanel, ids};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
-    paint_panel_title,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
@@ -66,8 +66,16 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     let row_gap = Spacing::Sm.px();
     let chip_w = Spacing::Xl.px() * 2.0;
 
-    // Canonical panel title (single source of truth).
-    let title_size = paint_panel_title(rect, "Padding", 0.0, ctx.scene, ctx.text_system, theme);
+    // Canonical panel title — reserve room on the right for the X
+    // close button (UI canon post-2026-05-24).
+    let title_size = paint_panel_title(
+        rect,
+        "Padding",
+        PANEL_HEADER_CLOSE_RESERVE,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
     let mut y = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
     // Disjoint borrows: store + hit_index from host; scene + text_system
@@ -75,6 +83,12 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+
+    // Canonical X close button. The hit id is the panel's own
+    // Cancel id — clicking X dispatches the same WidgetEvent::Click
+    // the bottom Cancel button does, so apply_event routes it to
+    // EditorAction::CancelActiveTool with zero new wiring.
+    paint_panel_close_button(rect, ids::PAD_CANCEL, hit_index, scene, theme);
 
     // ── Four signed per-edge slider+chip rows ──────────────────────
     // Slider track = live stored value (smooth drag) ?? normalized

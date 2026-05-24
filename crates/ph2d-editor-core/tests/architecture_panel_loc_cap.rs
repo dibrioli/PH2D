@@ -71,8 +71,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/sections.rs",
         "paint_transform_section",
-        240,
-        "Wave 11 adaptive label-above layout — split deferred",
+        260,
+        "Wave 11 adaptive label-above + per-section narrow + Rotation align — split deferred",
     ),
 ];
 

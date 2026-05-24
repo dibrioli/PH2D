@@ -139,14 +139,37 @@ pub(crate) fn paint_transform_section(
     let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
     let axis_col_w = Spacing::Lg.px();
     let axis_label_font = TypeToken::Base.px();
-    let label_above_gap = Spacing::Xs.px();
+    let label_above_gap = Spacing::Xxs.px(); // tight gap between label-above + chip row
     let chip_min_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
 
-    // Adaptive row painter — picks inline (label LEFT of chips) when
-    // the panel is wide enough, else stacked (label ABOVE chips so
-    // the chips don't have to shrink past `chip_min_w`). UI canon
-    // 2026-05-24: number boxes must fit 7 digits; layout adapts to
-    // preserve that floor.
+    // Per-SECTION narrow check: if the WIDEST row (2-chip Position) wouldn't
+    // fit inline at MIN_W chips, the ENTIRE section uses stacked layout
+    // (label-above). Keeps Rotation aligned with Position/Scale — user
+    // feedback 2026-05-24: "a caixa única de Rotation deve se alinhar à
+    // caixa de X à esquerda e à direita". Per-row narrow would let Rotation
+    // go inline while Position stacks → misalignment.
+    let widest_chips_n_f = 2.0_f32;
+    let widest_inline_needed_w = label_col_w
+        + col_gap
+        + widest_chips_n_f * (axis_col_w + tag_box_gap + chip_min_w)
+        + (widest_chips_n_f - 1.0) * col_gap;
+    let section_narrow = w < widest_inline_needed_w;
+
+    // Two-chip equal-split width — single source of truth for ALL rows.
+    // Single-chip rows extend their chip to span (X start … Y end) =
+    // 2*two_chip_w + col_gap, so the lone Rotation chip lines up with
+    // X's left edge AND Y's right edge.
+    let chips_avail_w_section = if section_narrow {
+        w
+    } else {
+        w - label_col_w - col_gap
+    };
+    let two_chip_w = ((chips_avail_w_section
+        - 2.0 * (axis_col_w + tag_box_gap)
+        - col_gap)
+        / 2.0)
+        .max(0.0); // no MIN_W floor here — never overflow rect
+
     let paint_row = |scene: &mut VectorScene,
                      text_system: &mut TextSystem,
                      hit_index: &mut HitIndex,
@@ -158,52 +181,46 @@ pub(crate) fn paint_transform_section(
                      left_step: f64,
                      right: Option<(NodeId, &str, ColorToken, f64)>|
      -> f32 {
-        let chips_n = if right.is_some() { 2 } else { 1 };
-        let chips_n_f = chips_n as f32;
-        let chip_block = axis_col_w + tag_box_gap + chip_min_w;
-        let chips_w_needed = chips_n_f * chip_block + (chips_n_f - 1.0) * col_gap;
-        let inline_needed_w = label_col_w + col_gap + chips_w_needed;
-        let narrow = w < inline_needed_w;
-
-        let (chips_origin_x, chips_avail_w, label_y_offset, total_h) = if narrow {
-            // Stacked: label on row 1, chips on row 2 spanning full
-            // width. Chips grow to fill, never below `chip_min_w`.
-            (x, w, 0.0, field_h * 2.0 + label_above_gap)
+        let chips_origin_x = if section_narrow {
+            x
         } else {
-            // Inline: label LEFT, chips right of label. Chip box grows
-            // up to ((w - non_box_w) / chips_n) but never below the
-            // canonical MIN_W_PX.
-            (
-                x + label_col_w + col_gap,
-                w - label_col_w - col_gap,
-                0.0,
-                field_h,
-            )
+            x + label_col_w + col_gap
         };
+        let label_h_used = if section_narrow {
+            field_h
+        } else {
+            0.0_f32
+        };
+        let total_h = if section_narrow {
+            field_h + label_above_gap + field_h
+        } else {
+            field_h
+        };
+        let chips_y = row_y + label_h_used + if section_narrow { label_above_gap } else { 0.0 };
 
+        // Label — full-width on its own row when narrow; left column when inline.
         paint_text(
             text_system,
             scene,
             row_label,
             x,
-            row_y + label_y_offset + (field_h - label_font) * 0.5,
+            row_y + (field_h - label_font) * 0.5,
             label_font,
-            if narrow { w } else { label_col_w },
+            if section_narrow { w } else { label_col_w },
             label_color,
         );
 
-        let chips_y = if narrow {
-            row_y + field_h + label_above_gap
+        // Single-chip rows (Rotation) span from X-chip start to Y-chip end —
+        // alignment with the 2-chip rows above + below. Two-chip rows use
+        // `two_chip_w` for each chip.
+        let single_chip = right.is_none();
+        let left_box_w = if single_chip {
+            // 2 * two_chip_w + col_gap = X start to Y end (matches the
+            // 2-chip total inner span).
+            (two_chip_w * 2.0 + col_gap).max(0.0)
         } else {
-            row_y
+            two_chip_w
         };
-
-        // Distribute `chips_avail_w` across N (tag + chip) pairs.
-        let per_chip_w_target = (chips_avail_w
-            - chips_n_f * (axis_col_w + tag_box_gap)
-            - (chips_n_f - 1.0) * col_gap)
-            / chips_n_f;
-        let box_col_w = per_chip_w_target.max(chip_min_w);
 
         let left_tag_x = chips_origin_x;
         paint_text(
@@ -217,7 +234,7 @@ pub(crate) fn paint_transform_section(
             resolve(left_color, theme),
         );
         let left_box_x = left_tag_x + axis_col_w + tag_box_gap;
-        let left_rect = Rect::new(left_box_x, chips_y, box_col_w, field_h);
+        let left_rect = Rect::new(left_box_x, chips_y, left_box_w, field_h);
         hit_index.register(left_id, left_rect);
         let (state, value, buffer, caret, anchor) = read_number_input(store, left_id);
         let input = NumberInput::new(left_id, "", value)
@@ -234,7 +251,7 @@ pub(crate) fn paint_transform_section(
             theme,
         );
         if let Some((right_id, right_tag, right_color, right_step)) = right {
-            let right_tag_x = left_box_x + box_col_w + col_gap;
+            let right_tag_x = left_box_x + two_chip_w + col_gap;
             paint_text(
                 text_system,
                 scene,
@@ -246,7 +263,7 @@ pub(crate) fn paint_transform_section(
                 resolve(right_color, theme),
             );
             let right_box_x = right_tag_x + axis_col_w + tag_box_gap;
-            let right_rect = Rect::new(right_box_x, chips_y, box_col_w, field_h);
+            let right_rect = Rect::new(right_box_x, chips_y, two_chip_w, field_h);
             hit_index.register(right_id, right_rect);
             let (r_state, r_value, r_buffer, r_caret, r_anchor) =
                 read_number_input(store, right_id);

@@ -1,0 +1,195 @@
+# Wave 11 — Carry-overs from Wave 10 closure
+
+**Status:** Open (drafted 2026-05-24, immediately post Wave 10 close).
+**Closes:** [ADR-0042 §6 carry-over list](../architecture/decisions/0042-wave-10-closure.md#6-wave-11-carry-over-recommendations) + 2 BgRemoval regressions logged in [regressions.md](../Testes/regressions.md).
+**Maintainer:** Coord-A.
+
+---
+
+## 0. Intent
+
+Wave 10 closed with 7 documented carry-overs (architectural follow-ups) + 2 user-reported BgRemoval regressions. This doc converts that list into **scoped, executable plans** so any session can pick the highest-leverage item without re-reading Wave 10.
+
+Priority ordering reflects (a) user-blocking severity, (b) unblocking value (does it free other carry-overs?), (c) effort-to-payoff ratio.
+
+---
+
+## 1. Priority 1 — Unblocked, high-leverage
+
+### 1.1 BgRemoval R-1 — pickcolor + slider perf
+
+**Source:** `docs/Testes/regressions.md` R-1 (Enio smoke 2026-05-24).
+**Symptom:** every `add_extra_color` (eyedropper click) or slider tick sets `params_dirty`, triggering a ~50ms pipeline cook on the 512² canvas preview. At 60 Hz drag, the cook starves the frame budget — sliders feel sluggish.
+**Root cause:** preview cook runs SYNCHRONOUSLY on the main thread in `current_preview()`.
+
+**Fix paths (pick one, not both):**
+
+- **Path A — debounce on drag (1 day, simple, partial relief).**
+  Add a "drag in progress" flag set by the dispatch when the user starts dragging any slider. While the flag is on, `current_preview()` skips the full cook and uses a smaller cap (256² instead of 512²). Drag end clears the flag and triggers one full-res preview. Net: drag becomes smooth, final preview unchanged.
+
+- **Path B — async cook with double-buffer (3-5 days, padrão-ouro, full relief).**
+  Spawn the cook on a worker thread. `current_preview()` returns the LAST-good cached frame immediately; the worker pushes the new frame into a swap slot when ready. Drag becomes 60 Hz smooth regardless of cook cost. Requires careful borrow-management to keep the `BgRemovalParams` snapshot consistent between main + worker.
+
+**Recommendation:** Path A first (ships in 1 day), Path B as Wave 12+. Path A covers 80% of the symptom with 20% of the work; Path B is the architecturally correct version but its complexity warrants its own ADR.
+
+**Acceptance:** Eyedropper click + drag any slider at 60 Hz; no perceived stutter.
+
+---
+
+### 1.2 BgRemoval R-2 — preview-vs-final mask divergence
+
+**Source:** `docs/Testes/regressions.md` R-2 (Enio smoke 2026-05-24, updated observation 2026-05-24 evening — divergence may be illusory, the algorithm produces irregular mask on both surfaces).
+**Pre-investigation needed:** before committing to a fix, confirm whether (a) preview and full produce visibly different shapes (original theory) OR (b) both produce the same blobby mask and the apparent divergence was the user observing different overlays (protect-stroke vs final alpha). The Enio's follow-up message implies (b) is the actual state.
+
+**If (a) — divergence is real:** scale `params.grow_px` and `params.min_island_pixels` proportionally to the preview-vs-source ratio in `run_canvas_preview`. Existing constants `GROW_FULL_SCALE` and `MIN_ISLAND_PIXELS_FULL_SCALE` already exist; multiply by `preview_dim / source_dim` for the preview cook.
+
+**If (b) — algorithm just produces irregular mask:** revisit defaults. Likely the `min_island_pixels` default is too low (small noise islands survive). Try doubling the default and confirm visual improvement.
+
+**Acceptance:** preview overlay and post-Apply final image agree on the mask shape within ±2 px at the edge.
+
+---
+
+### 1.3 `ph2d-color` migration sweep — 10 BASELINE files
+
+**Source:** ADR-0042 §6 #2 + `arch_color_space_typed` BASELINE.
+**Setup done in Wave 10 post-ship polish:** `SrgbRgba` now declares `#[repr(transparent)]` over `[u8; 4]` + ships `iter_byte_slice` safe-code iterator. Zero-copy `bytemuck::cast_slice` is possible when a caller adds the dep.
+
+**Sweep order (smallest first → minimize risk of cascading breakage):**
+
+1. `crates/ph2d-render/src/premul.rs` (269 LOC) — foundational, touches every consumer. Migrate LAST despite being smallest, because a regression here propagates everywhere.
+2. `crates/ph2d-tool-padding/src/algorithm.rs` (300 LOC) — leaf tool, pure memcpy.
+3. `crates/ph2d-tool-make-square/src/algorithm.rs` (464 LOC) — leaf tool.
+4. `crates/ph2d-tool-trim-transparency/src/algorithm.rs` (523 LOC) — leaf tool, scans alpha.
+5. `crates/ph2d-tool-upscale/src/algorithm.rs` (685 LOC) — leaf tool, three kernels.
+6. `crates/ph2d-tool-upscale/src/tool.rs` — set_source_snapshot signature.
+7. `crates/ph2d-tool-bgremoval/src/tool.rs` — set_source_snapshot.
+8. `crates/ph2d-tool-color-equalization/src/algorithm.rs` (large) — compute_histogram + resize_bilinear_rgba.
+9. `crates/ph2d-tool-color-equalization/src/tool.rs` — set_source_snapshot.
+10. `crates/ph2d-tool-equalize-sizes/src/algorithm.rs` — lanczos3_resample + mitchell_resample.
+11. `crates/ph2d-render/src/premul.rs` — last, foundational.
+
+**Migration pattern per file:**
+
+```rust
+// Before:
+pub fn add_padding(rgba: &[u8], w: u32, h: u32, spec: PaddingSpec) -> PaddingResult { ... }
+
+// After:
+pub fn add_padding(pixels: &[SrgbRgba], w: u32, h: u32, spec: PaddingSpec) -> PaddingResult { ... }
+// Where PaddingResult { pixels: Vec<SrgbRgba>, ... }
+```
+
+Callers convert at the IO boundary using `bytemuck::cast_slice` (add `bytemuck = "1.x"` as an optional/leaf-only dep — DO NOT add to ph2d-color itself; the leaf tool's Cargo.toml absorbs it).
+
+**Acceptance:**
+- `arch_color_space_typed` BASELINE empties (every entry removed).
+- All workspace tests still pass — no behavioral change.
+- Visual smoke: each tool still produces identical output on a reference sprite.
+
+**Effort estimate:** 1-2 weeks per ADR-0042. POC done in Wave 10 post-ship (the repr-transparent setup); full sweep is mechanical-but-careful.
+
+---
+
+## 2. Priority 2 — Unblocked, smaller leverage
+
+### 2.1 GH Action wiring of `auto-merge-eligibility.sh`
+
+**Source:** ADR-0042 §6 #5.
+**Action:** Add `.github/workflows/auto-merge.yml` that runs on every PR open/synchronize event. The workflow:
+
+1. Checks out the PR base + head.
+2. Runs `scripts/auto-merge-eligibility.sh "${{ github.base_ref }}" "${{ github.head_ref }}"`.
+3. If exit 0 (eligible): comments on the PR with the "eligible — pending CI green" label.
+4. If exit 1: comments "coord review required" + posts the script's stderr explanation.
+
+When CI also goes green AND the PR has the "eligible" label, a follow-up workflow auto-merges.
+
+**Effort:** ~1 day. Single-file workflow + permissions config.
+
+**Acceptance:** Open a test PR touching only `crates/ph2d-panel-test/`; expect auto-merge after CI green.
+
+---
+
+### 2.2 Long-paint fns split (3 fns, recipe known)
+
+**Source:** ADR-0042 §6 #3 + `FN_OVERAGE_OK` in `architecture_panel_loc_cap.rs`.
+
+| File | Fn | Current LOC | Target | Recipe |
+|---|---|---:|---:|---|
+| `ph2d-panel-bgremoval/src/paint.rs` | `paint` | 401 | ≤ 200 | Same CEQ split (Etapa 5.2) — extract per-section helpers into a sibling `paint_sections.rs`. |
+| `ph2d-panel-grid-snap/src/paint.rs` | `paint_body` | 301 | ≤ 200 | Split into kind / target / display section helpers. |
+| `ph2d-panel-grid-snap/src/populate.rs` | `populate` | 214 | ≤ 200 | Split into per-section store init helpers. |
+
+**Pattern (from CEQ split):** each helper takes `&mut PaintCtx` (or `scene + text + store + hit_index + theme + y_in`) and returns the `y_out` cursor.
+
+**Effort:** 1-2 days per panel (smoke-validated). Total ~5 days.
+
+**Acceptance:** After each split:
+- `cargo test -p ph2d-editor-core --test architecture_panel_loc_cap` passes WITHOUT the file's `FN_OVERAGE_OK` entry.
+- Visual smoke: the panel renders identically (CEQ split was byte-exact; replicate that bar).
+
+---
+
+### 2.3 `docs_bugs_have_gates` backfill (90 entries)
+
+**Source:** ADR-0042 §6 #6.
+**Action:** Walk `docs/UI_Bugs/README.md` (77 entries) + `docs/Image Tools Bugs/README.md` (13 entries). For each `### N.M Title` heading, find or write a corresponding gate (in `crates/*/tests/`) AND append a `**Gate:** crates/.../tests/foo.rs::test_name` line under the heading. If no gate is appropriate (e.g. the bug is a one-off design fix), append `**Gate:** gate-deferred: <reason>` instead.
+
+Then enable the previously-deferred gate `tests/docs_bugs_have_gates.rs` that walks each `### ` entry and asserts the `**Gate:**` line exists.
+
+**Effort:** 1 day (backfill is mechanical; gate-writing only for entries that genuinely warrant a new gate — most map to existing arch gates).
+
+---
+
+## 3. Priority 3 — Blocked / needs Enio
+
+### 3.1 Golden-image SSIM gate
+
+**Source:** ADR-0042 §6 #1.
+**Blocked on:** Enio approving ~17 baseline PNGs (widgets + 9 panels).
+**Plan when unblocked:**
+1. Wire `vello` headless renderer into a test harness.
+2. For each blessed widget / panel, render to PNG → compare with `image::imageops::ssim` (or a custom SSIM impl).
+3. CI gate: fail if SSIM < 0.995 for any baseline.
+4. Rebaseline flag: `--update-baselines` in tests, generates new PNGs (PR review confirms visual match).
+
+**Estimated reduction in Enio smoke time:** ~70% per Wave 10 plan estimate.
+
+### 3.2 `panel-canonical-template` AST gate
+
+**Source:** ADR-0042 §6 #4.
+**Blocked on:** Coord-A deciding the canonical template structure (which section of `pre_populate.rs` is the source-of-truth shape).
+**Plan when unblocked:**
+1. Codegen `__template__.rs` from the chosen blessed source.
+2. `syn`-based AST visitor checks each `panel-*/src/populate.rs` against the template: link_slider_number coverage, slider↔chip storage parity, no `set_slider_value` in event.rs.
+
+### 3.3 `no_tofu_glyphs` amplified (U+2000–FFFF coverage)
+
+**Source:** ADR-0042 §6 #7.
+**Trigger to resume:** a real tofu bug ships outside the existing arrows/cmd block. The basic gate (arrows U+2190..21FF + cmd block U+2300..23FF) covered ≥80% of historical incidents.
+**Plan:** load Inter's glyph coverage table (via `ttf-parser` reading the bundled font), build a runtime allowlist, gate scans all UI strings against `c.is_in_inter_coverage()`.
+
+---
+
+## 4. Sequencing recommendation
+
+**Week 1:** R-1 Path A (BgRemoval debounce) + R-2 pre-investigation. Both contained, both visible to Enio.
+
+**Week 2-3:** ph2d-color migration sweep (10 files in order above). The biggest payoff is unlocking `arch_color_space_typed` BASELINE empty.
+
+**Week 4:** Long-paint fns split (3 panels) + GH Action wiring. Parallel work; each ~1-2 days.
+
+**Week 5:** docs_bugs_have_gates backfill + open ADR-0043 for golden-image SSIM design (so Enio can sign off baselines async).
+
+**Out of scope for Wave 11:** Path B async cook for BgRemoval (Wave 12+ — needs its own ADR), `panel-canonical-template` (waits on template decision), `no_tofu_glyphs` amplified (waits on real incident).
+
+---
+
+## 5. Open ADR drafts
+
+When the relevant Wave 11 work starts, open these ADRs:
+
+- **ADR-0043** — Golden-image SSIM strategy (which library, baseline storage, rebaseline workflow).
+- **ADR-0044** — Async preview cook architecture (worker thread, double-buffer, params snapshot consistency).
+
+These are PRE-DRAFTS — write them only when the work is about to start, not before.

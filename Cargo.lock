@@ -4008,6 +4008,7 @@ dependencies = [
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
  "ph2d-tool-registry-init",
+ "ph2d-tool-runtime",
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "ph2d-vector",
@@ -4462,6 +4463,14 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "toml",
+]
+
+[[package]]
+name = "ph2d-tool-runtime"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-editor-core",
 ]
 
 [[package]]

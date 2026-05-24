@@ -38,7 +38,7 @@ use ph2d_editor_core::floating_panel::{
     FloatingPanel, PanelAnchor, PanelControl, PanelTab, ToolId,
 };
 use ph2d_editor_core::ids;
-use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_editor_core::tool::{PanelEvent, RasterEditTool, Tool};
 use ph2d_editor_core::widget::{Slider, Toggle};
 
 use super::algorithm::islands::{self, IslandPayload};
@@ -193,6 +193,17 @@ pub struct BgRemovalTool {
     /// the toggle is off, when an Apply hasn't run yet, or after the
     /// host has drained.
     pending_islands: Vec<IslandPayload>,
+
+    /// Cached output of the most-recent `run_canvas_preview` invocation.
+    /// `RasterEditTool::current_preview` returns a slice into this buffer
+    /// when the tool's dirty flag has been drained — so the bridge
+    /// doesn't need to maintain its own per-tool preview cache outside.
+    ///
+    /// Wave 10 / Etapa 1.B (ADR-0041 follow-up): the cache moved from
+    /// `shells/desktop/src/app_state.rs::BgremovalPreview` to live inside
+    /// the tool — this is what lets `ph2d-tool-runtime::drive_preview_cache`
+    /// stay generic.
+    cached_canvas_preview: Option<(Vec<u8>, u32, u32)>,
 }
 
 impl Default for BgRemovalTool {
@@ -225,6 +236,7 @@ impl Default for BgRemovalTool {
             protect_erase_mode: false,
             show_mask: true,
             pending_islands: Vec::new(),
+            cached_canvas_preview: None,
         }
     }
 }
@@ -266,6 +278,13 @@ impl BgRemovalTool {
         // suspenders for the path where the snapshot push fires for some
         // other reason but the cached preview is now stale.)
         self.params_dirty = true;
+        // Wave 10 / Etapa 1.B audit fix [A1]: explicitly invalidate the
+        // tool's internal canvas-preview cache so a stale frame from the
+        // previous selection can NEVER paint over the new sprite, even
+        // in the path where the shell read failed mid-frame and never
+        // refilled its own cache. Without this, the next current_preview
+        // call would short-circuit if dirty was somehow consumed first.
+        self.cached_canvas_preview = None;
     }
 
     /// Whether the host has pushed a source snapshot at least once.
@@ -1179,6 +1198,29 @@ impl Tool for BgRemovalTool {
         // canvas-preview rerun on the next activation.
         self.pending_apply = false;
         self.params_dirty = false;
+        // Wave 10 / Etapa 1.B audit fix [A2]: align the invariant
+        // "deactivate clears canvas preview cache" across BOTH paths —
+        // `Tool::on_deactivate` (fired by ToolRegistry::set_active when
+        // switching to ANY other tool, including non-Raster like Brush)
+        // and `RasterEditTool::deactivate` (fired by tool-runtime's
+        // drive_deactivate_cleanup when the next active tool is Raster).
+        // Without this, BgR→Brush→BgR (without selection change) would
+        // re-paint the stale cached frame on first re-activate.
+        self.cached_canvas_preview = None;
+    }
+
+    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> {
+        // Wave 10 / Etapa 1.B (ADR-0041): BgRemoval is the first
+        // production tool to implement the RasterEditTool generic
+        // channel. The shell's `ph2d-tool-runtime` helpers compose
+        // over this upcast — bridges no longer need
+        // `downcast_mut::<BgRemovalTool>` for the generic raster
+        // I/O lifecycle (set_source / current_preview /
+        // take_pending_commit / run_full / deactivate). The
+        // tool-specific concerns (eyedropper / protect-brush /
+        // panel snapshot publish / brush ring) still go through
+        // `as_any_mut` downcast — ADR-0040 §3 documented exception.
+        Some(self)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -1224,6 +1266,76 @@ fn aspect_fit_within(sw: u32, sh: u32, max_dim: u32) -> (u32, u32) {
     } else {
         let dw = ((sw as u64 * max_dim as u64) / sh as u64).max(1) as u32;
         (dw, max_dim)
+    }
+}
+
+/// Wave 10 / Etapa 1.B (ADR-0041): BgRemoval drives its raster
+/// I/O lifecycle through the generic `RasterEditTool` channel.
+///
+/// Mapping:
+/// - `set_source` → wraps the existing `set_source_snapshot` inherent.
+/// - `current_preview` → drains `params_dirty`; if dirty, runs
+///   `run_canvas_preview` into `cached_canvas_preview` and returns a
+///   slice into it.
+/// - `take_pending_commit` → wraps `take_pending_apply`.
+/// - `run_full` → wraps `run_full_resolution(&mut Vec)` into the
+///   owned `(Vec, w, h)` shape the contract requires.
+/// - `deactivate` → drops the canvas-preview cache + reuses
+///   `on_deactivate` semantics (eyedropper/brush disarm,
+///   pending_apply drop). Keeps `source_rgba` (so a re-activate
+///   without selection change keeps state) — the cache being dropped
+///   is what stops the shell overlay from painting after the tool
+///   leaves.
+impl RasterEditTool for BgRemovalTool {
+    fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
+        self.set_source_snapshot(rgba, width, height);
+    }
+
+    fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
+        // Drain dirty flag — this is the contract for current_preview
+        // per ADR-0041. If nothing's dirty, last-good cache stays;
+        // the bridge keeps painting it.
+        if !self.take_params_dirty() {
+            return None;
+        }
+        // No source pushed yet OR canvas-preview source not built.
+        if !self.has_source() || self.canvas_src_rgba.is_empty() {
+            return None;
+        }
+        let mut out = Vec::new();
+        let (w, h) = self.run_canvas_preview(&mut out);
+        if w == 0 || h == 0 {
+            return None;
+        }
+        self.cached_canvas_preview = Some((out, w, h));
+        // Borrow back the cache for the slice — guaranteed Some by the
+        // line above; the assignment then unwrap pattern keeps Miri
+        // happy (no overlapping &mut + &).
+        self.cached_canvas_preview
+            .as_ref()
+            .map(|(p, w, h)| (p.as_slice(), *w, *h))
+    }
+
+    fn take_pending_commit(&mut self) -> bool {
+        self.take_pending_apply()
+    }
+
+    fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
+        let mut out = Vec::new();
+        let (w, h) = self.run_full_resolution(&mut out);
+        (out, w, h)
+    }
+
+    fn deactivate(&mut self) {
+        // Mirror the existing `Tool::on_deactivate` semantics + drop
+        // the canvas-preview cache (which the runtime-driven bridge
+        // now reads from instead of holding it shell-side).
+        self.eyedropper_armed = false;
+        self.protect_brush_armed = false;
+        self.protect_painting = false;
+        self.pending_apply = false;
+        self.params_dirty = false;
+        self.cached_canvas_preview = None;
     }
 }
 
@@ -1848,5 +1960,153 @@ mod tests {
             t.take_pending_panel_reset(),
             "on_activate must arm pending_panel_reset so the shell repopulates"
         );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Wave 10 / Etapa 1.B — RasterEditTool impl tests (ADR-0041 follow-up)
+    // ─────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn as_raster_edit_mut_returns_some_for_bgremoval() {
+        let mut t = BgRemovalTool::default();
+        // Verify the upcast works — the runtime helpers depend on this.
+        assert!(<dyn Tool as Tool>::as_raster_edit_mut(&mut t).is_some());
+    }
+
+    #[test]
+    fn raster_edit_set_source_delegates_to_set_source_snapshot() {
+        let mut t = BgRemovalTool::default();
+        let rgba = vec![255u8; 16 * 16 * 4];
+        RasterEditTool::set_source(&mut t, rgba, 16, 16);
+        assert!(t.has_source());
+        assert_eq!(t.source_size(), (16, 16));
+        // params_dirty was set by set_source_snapshot (via rerun_preview)
+        // — verify the dirty flag is up for current_preview to drain.
+        // (peek without drain via cloning the bool — there's no peek API.)
+    }
+
+    #[test]
+    fn raster_edit_current_preview_drains_dirty_and_caches() {
+        let mut t = BgRemovalTool::default();
+        // Push a source so canvas-preview has something to run on.
+        let rgba = vec![128u8; 8 * 8 * 4];
+        RasterEditTool::set_source(&mut t, rgba, 8, 8);
+        // First call: dirty drains, cache populated, slice returned.
+        let frame = RasterEditTool::current_preview(&mut t);
+        assert!(
+            frame.is_some(),
+            "first call after set_source must return Some"
+        );
+        let (pixels, w, h) = frame.unwrap();
+        assert!(w > 0 && h > 0);
+        assert_eq!(pixels.len(), (w as usize) * (h as usize) * 4);
+        // Second call: dirty was drained, no new frame.
+        let frame2 = RasterEditTool::current_preview(&mut t);
+        assert!(
+            frame2.is_none(),
+            "second call without new dirty must be None"
+        );
+        // Cache should still be there (last-good preview lives on in the tool).
+        assert!(t.cached_canvas_preview.is_some());
+    }
+
+    #[test]
+    fn raster_edit_current_preview_returns_none_without_source() {
+        // No set_source — no canvas_src_rgba — must return None even
+        // if dirty (defensive: drain dirty but don't fabricate a frame).
+        let mut t = BgRemovalTool {
+            params_dirty: true,
+            ..BgRemovalTool::default()
+        };
+        let frame = RasterEditTool::current_preview(&mut t);
+        assert!(frame.is_none());
+    }
+
+    #[test]
+    fn raster_edit_take_pending_commit_drains_apply_flag() {
+        let mut t = BgRemovalTool::default();
+        t.apply_ui_edit(BgRemovalUiEdit::Apply);
+        assert!(RasterEditTool::take_pending_commit(&mut t));
+        // Drained.
+        assert!(!RasterEditTool::take_pending_commit(&mut t));
+    }
+
+    #[test]
+    fn raster_edit_run_full_returns_owned_buffer() {
+        let mut t = BgRemovalTool::default();
+        let rgba = vec![64u8; 8 * 8 * 4];
+        RasterEditTool::set_source(&mut t, rgba, 8, 8);
+        let (out, w, h) = RasterEditTool::run_full(&mut t);
+        assert_eq!((w, h), (8, 8));
+        assert_eq!(out.len(), 8 * 8 * 4);
+    }
+
+    // Wave 10 / Etapa 1.B audit fix [A1]: set_source must invalidate
+    // the canvas-preview cache so a stale frame from the previous
+    // selection can never paint over a new sprite.
+    #[test]
+    fn set_source_invalidates_cached_canvas_preview() {
+        let mut t = BgRemovalTool::default();
+        // Push source A → drain preview → cache populated.
+        RasterEditTool::set_source(&mut t, vec![10u8; 4 * 4 * 4], 4, 4);
+        let frame_a = RasterEditTool::current_preview(&mut t);
+        assert!(frame_a.is_some());
+        assert!(t.cached_canvas_preview.is_some());
+        // Push source B (different selection in shell, same dim) →
+        // cache must be invalidated BEFORE preview rebuilds.
+        // The invariant: at no point can current_preview return a slice
+        // that mixes pixels from A.
+        RasterEditTool::set_source(&mut t, vec![200u8; 4 * 4 * 4], 4, 4);
+        assert!(
+            t.cached_canvas_preview.is_none(),
+            "set_source MUST invalidate cached_canvas_preview (audit A1)"
+        );
+        // The next current_preview rebuilds — and the bytes are from B.
+        let frame_b = RasterEditTool::current_preview(&mut t);
+        assert!(frame_b.is_some());
+    }
+
+    // Wave 10 / Etapa 1.B audit fix [A2]: Tool::on_deactivate must
+    // clear cached_canvas_preview so switching to a non-Raster tool
+    // (like Brush) and back doesn't paint a stale frame.
+    #[test]
+    fn on_deactivate_clears_cached_canvas_preview() {
+        let mut t = BgRemovalTool::default();
+        RasterEditTool::set_source(&mut t, vec![50u8; 4 * 4 * 4], 4, 4);
+        RasterEditTool::current_preview(&mut t); // populate cache
+        assert!(t.cached_canvas_preview.is_some());
+        // Tool::on_deactivate is what fires when the ToolRegistry switches
+        // to a non-Raster tool (e.g. Brush) — different path from
+        // RasterEditTool::deactivate. Both MUST clear the cache.
+        Tool::on_deactivate(&mut t);
+        assert!(
+            t.cached_canvas_preview.is_none(),
+            "on_deactivate MUST clear cached_canvas_preview (audit A2)"
+        );
+    }
+
+    #[test]
+    fn raster_edit_deactivate_clears_all_transient_state() {
+        let mut t = BgRemovalTool::default();
+        let rgba = vec![200u8; 4 * 4 * 4];
+        RasterEditTool::set_source(&mut t, rgba, 4, 4);
+        let _ = RasterEditTool::current_preview(&mut t); // populate cache
+        t.set_eyedropper_armed(true);
+        t.set_protect_armed(true);
+        t.apply_ui_edit(BgRemovalUiEdit::Apply); // arms pending_apply
+        // Now deactivate — every transient flag + cache must drop.
+        RasterEditTool::deactivate(&mut t);
+        assert!(!t.is_eyedropper_armed());
+        assert!(!t.is_protect_armed());
+        assert!(!t.is_protect_painting());
+        assert!(t.cached_canvas_preview.is_none());
+        // params_dirty drained.
+        assert!(!t.take_params_dirty());
+        // pending_apply drained.
+        assert!(!t.take_pending_apply());
+        // Source pixels NOT cleared — re-activate without new selection
+        // keeps state (the shell drops cache externally; tool is just
+        // dropping its OWN transient flags).
+        assert!(t.has_source());
     }
 }

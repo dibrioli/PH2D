@@ -34,6 +34,11 @@ ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
 # with a registry-driven dispatcher reading from this instance.
 ph2d-tool-registry = { path = "../../crates/ph2d-tool-registry" }
 ph2d-tool-registry-init = { path = "../../crates/ph2d-tool-registry-init" }
+# Wave 10 / Etapa 1.B — generic helpers for the per-tool bridges
+# (drive_source_push / drive_preview_cache / drive_pending_commit /
+# drive_deactivate_cleanup over `RasterEditTool`). Each *_bridge.rs
+# composes these so bridges shrink ~30-50 LOC each.
+ph2d-tool-runtime = { path = "../../crates/ph2d-tool-runtime" }
 # Background Removal — the shell constructs + downcasts to BgRemovalTool
 # (interactive preview, eyedropper, protect-brush) and runs the full-res
 # commit. Now its own crate (ADR-0040 T2); was reached via editor-core.

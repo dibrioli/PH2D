@@ -45,6 +45,16 @@ pub fn scan_tool_crates(crates_dir: &Path) -> Vec<String> {
             n.starts_with("ph2d-tool-")
                 && n != "ph2d-tool-registry"
                 && n != "ph2d-tool-registry-init"
+                // Wave 10 / Etapa 1.B audit fix [3.1]: ph2d-tool-runtime
+                // is shell-facing infra, not a tool. It bates the prefix
+                // `ph2d-tool-*` (kept for namespace consistency with
+                // ph2d-tool-registry / -registry-init) but exposes no
+                // `pub fn register` nor `pub fn make` — without this
+                // exclusion, `cargo_deps_in_sync_with_folder` would add
+                // an inert `ph2d-tool-runtime` dep to
+                // `ph2d-tool-registry-init/Cargo.toml` that nothing
+                // actually uses.
+                && n != "ph2d-tool-runtime"
         })
         .collect();
     names.sort();

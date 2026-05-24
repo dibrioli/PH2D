@@ -16,39 +16,35 @@
 
 **Mudanças no `crates/ph2d-editor-core/src/tool.rs`:**
 
+> **Correção pós-implementação (Etapa 1.A executada 2026-05-23, commit `a03d830`):** este bloco originalmente prometia `RasterFrame { pixels: Arc<[u8]>, layout: PixelLayout }` typed wrapper + `Tool` cap 10→11. A implementação real (e o ADR-0041 §2.4) **mantém assinaturas crus** (`Vec<u8>` / `(&[u8], u32, u32)`) porque os tipos típicos esperam o crate `ph2d-color` (Etapa 5). Cap `Tool` permanece em **10** (o método `as_image_edit_mut` foi renomeado para `as_raster_edit_mut`, mesmo slot). Cap `RasterEditTool` sobe de 4 → 5 (adicionando `deactivate`). Verdade canônica está em [ADR-0041](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md).
+
 ```rust
-// Renomeado de ImageEditTool → RasterEditTool (decisão #2 Enio)
-// Mantém doc-comment 🔒 FREEZE com data 2026-05-22
+// Renomeado de ImageEditTool → RasterEditTool (ADR-0041)
+// 🔒 FREEZE ADR-0040 TG-E + ADR-0041
 
 pub trait Tool {
-    // ... 10 métodos atuais mantidos
-    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> { None }  // NOVO
+    // ... 9 métodos atuais mantidos + as_raster_edit_mut (renomeado de
+    //     as_image_edit_mut, slot 9 — cap permanece 10)
+    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> { None }
 }
 
 pub trait RasterEditTool: Tool {
-    fn set_source(&mut self, src: ImageView<'_>);
-    
-    /// Drena dirty internamente; retorna referência ao buffer interno.
-    /// Buffer = Arc<[u8]> dentro do tool; shell clona barato (HR-3 friendly).
-    fn current_preview(&mut self) -> Option<RasterFrame>;
-    
+    fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32);
+    /// Drains o dirty flag interno; retorna slice do buffer cacheado
+    /// dentro do tool se houve mudança. `None` se nada novo.
+    fn current_preview(&mut self) -> Option<(&[u8], u32, u32)>;
     fn take_pending_commit(&mut self) -> bool;
-    fn run_full(&mut self) -> RasterBuf;
-    fn deactivate(&mut self);  // NOVO — antes vivia em método inerente
-}
-
-pub struct RasterFrame {
-    pub pixels: Arc<[u8]>,
-    pub width: u32,
-    pub height: u32,
-    pub layout: PixelLayout,  // Straight | Premultiplied — força typing
+    fn run_full(&mut self) -> (Vec<u8>, u32, u32);
+    fn deactivate(&mut self);  // NOVO — lifecycle hook (ADR-0041)
 }
 ```
 
-**Caps novos:**
-- `Tool` = 11 métodos (10 + `as_raster_edit_mut`)
+**Caps reais pós-Etapa 1.A:**
+- `Tool` = 10 métodos (rename de slot 9, sem bump)
 - `RasterEditTool` = 5 métodos (4 antigos + `deactivate`)
 - `PanelEvent` = 4 (sem mudança nesta wave)
+
+**`RasterFrame` typed wrapper / `Arc<[u8]>` interno / `PixelLayout`** ⇒ DIFERIDOS para Etapa 5 quando `ph2d-color` chegar. ADR-0041 §2.4 documenta a justificativa.
 
 **Rename ripple:** 17 hits em 6 arquivos (verificado via `grep -rn ImageEditTool`):
 - `crates/ph2d-editor-core/src/tool.rs` (definição + doctest)

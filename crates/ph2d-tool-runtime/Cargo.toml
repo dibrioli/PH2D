@@ -1,0 +1,40 @@
+[package]
+name = "ph2d-tool-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Wave 10 / Etapa 1.B (ADR-0041 follow-up).
+#
+# Generic helpers for the shell-side per-tool bridges that drive
+# RasterEditTool. Each bridge in shells/desktop/src/render_loop/*_bridge.rs
+# used to reimplement the same skeleton (drain dirty / cache preview /
+# capture apply selection / lifecycle cleanup). These helpers absorb the
+# generic skeleton so each bridge encolhe ~30-50 LOC e novos bridges são
+# trivially short.
+#
+# What this crate IS:
+#   - Pure helpers over the `RasterEditTool` trait surface.
+#   - No tool-concrete knowledge.
+#   - No shell types (Camera2d, WindowSize) — those stay in the bridges.
+#
+# What this crate is NOT:
+#   - A "one function drives all tools" god-runtime. Each tool has its
+#     own bridge file because each has tool-specific overlay/panel concerns
+#     (protect-mask tint, brush ring, panel snapshot publish — all
+#     genuinely tool-specific per ADR-0040 §3 documented exception).
+#   - A shell — it provides helpers; the shell composes them.
+#
+# LOC cap: arch-gate keeps this ≤500 LOC (prevents this becoming the
+# next god-crate successor of render_loop/mod.rs).
+
+[dependencies]
+ph2d-editor-core      = { path = "../ph2d-editor-core" }
+ph2d-ecs              = { path = "../ph2d-ecs" }
+
+[dev-dependencies]

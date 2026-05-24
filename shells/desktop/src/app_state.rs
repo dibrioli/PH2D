@@ -426,15 +426,15 @@ pub(crate) struct RubberBandState {
 }
 
 /// Cached on-canvas preview bitmap for the Background-Removal tool.
-pub(crate) struct BgremovalPreview {
-    /// Sprite the preview belongs to — invalidates when selection moves.
-    pub(crate) entity_bits: u64,
-    /// Straight-alpha RGBA8, `width * height * 4`. `Arc` so the
-    /// per-frame `VectorScene::draw_image_rgba` shares it cheaply.
-    pub(crate) rgba: std::sync::Arc<Vec<u8>>,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
-}
+///
+/// Wave 10 / Etapa 1.B: this type is now a re-export of the generic
+/// `ph2d_tool_runtime::PreviewCache` — same shape (entity_bits + Arc<Vec<u8>>
+/// rgba + width + height). The `BgremovalPreview` alias is kept so existing
+/// call sites that say `app_state::BgremovalPreview` still resolve;
+/// new code should prefer `ph2d_tool_runtime::PreviewCache` directly.
+/// (CEQ + Upscale previews keep their own structs until Etapa 2 migrates them
+/// to RasterEditTool too.)
+pub(crate) type BgremovalPreview = ph2d_tool_runtime::PreviewCache;
 
 /// Cached on-canvas live preview bitmap for the Color Equalization
 /// tool — mirror of `BgremovalPreview`. Updated by

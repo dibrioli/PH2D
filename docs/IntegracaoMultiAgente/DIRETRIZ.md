@@ -628,9 +628,26 @@ QUANDO TERMINAR, reporte ao Enio:
 
 O `ph2d-tool-sync` é configurado pelas needles `"pub fn register("` (manifest) e `"pub fn make("` (behavior) — sabor (1) só entra em `register_all`, (2) só em `register_all_tools`, (3) entra nos dois.
 
-#### 3.8.3.1 Status atual do trait `RasterEditTool` (heads-up importante)
+#### 3.8.3.1 Status atual do trait `RasterEditTool` (Wave 10 / Etapa 1.B)
 
-O sub-trait `RasterEditTool` (`set_source` / `preview` / `take_pending_commit` / `run_full`) está **definido e congelado no contrato** (ADR-0040 §2.1), mas **nenhum tool de produção implementa hoje** (`grep -rn "impl RasterEditTool" crates/ph2d-tool-*/` retorna zero). BgRemoval e Padding seguem rodando via métodos próprios da concrete type (BgRemoval: `set_source_snapshot` / `run_full_resolution`; Padding: análogo) que o shell alcança via `as_any_mut` downcast. A migração para o canal genérico `RasterEditTool` é fan-out futuro (não bloqueia tool nova; pode ser feito como tarefa separada). **Use BgRemoval/Padding como template do PADRÃO ATUAL (downcast); só implemente `RasterEditTool` se você for o agente migrando algum tool existente pra esse canal — caso em que vire um vertical próprio, não scope creep do tool novo.**
+O sub-trait `RasterEditTool` (`set_source` / `current_preview` / `take_pending_commit` / `run_full` / `deactivate`) está **definido e congelado no contrato** (ADR-0040 §2.1, renomeado + estendido em ADR-0041). **BgRemoval é o primeiro tool de produção a implementar** (Wave 10 / Etapa 1.B, 2026-05-23). Padding, Color Equalization, Upscale e Equalize Sizes estão **agendados para Etapa 2** do plano `docs/plans/2026-05-wave-10-perfection.md`.
+
+**Padrão canônico daqui pra frente para tool stateful que produz raster:**
+
+1. **No tool crate:** `impl RasterEditTool for <Tool>` com os 5 métodos. Cache interno via field `cached_canvas_preview: Option<(Vec<u8>, u32, u32)>`. **Critical:** `set_source` e `Tool::on_deactivate` DEVEM zerar o cache (audit Wave 10 §A1+A2 mostrou que pular isso causa stale-frame após selection drift ou tool switch).
+2. **No shell:** crie `shells/desktop/src/render_loop/<slug>_bridge.rs` espelhando `bgremoval_preview.rs`. Use os 4 helpers de `ph2d-tool-runtime`:
+   - `drive_source_push` — push pixels quando seleção drifta
+   - `drive_preview_cache` — drain `current_preview` → cache shell-side
+   - `drive_pending_commit` — capture iter_selected on Apply
+   - `drive_deactivate_cleanup` — limpa cache quando tool deativa
+3. **Bits tool-specific** (panel snapshot publish, brush ring, tint overlay, panel reset propagation) continuam via `as_any_mut().downcast_mut::<ConcreteTool>()` — **exceção documentada ADR-0040 §3**, NÃO é code smell.
+
+**Sites onde downcast permanece legítimo (allowlist Etapa 3):**
+- `shells/desktop/src/input_dispatch/eyedropper.rs` — captura cor via clique no canvas (BgR-specific affordance)
+- `shells/desktop/src/input_dispatch/protect_brush.rs` — dabs de proteção (BgR-specific)
+- Bridge per-tool quando precisa de overlay/panel snapshot específico
+
+**Template:** [`shells/desktop/src/render_loop/bgremoval_preview.rs`](../../shells/desktop/src/render_loop/bgremoval_preview.rs) é o exemplar de referência. Copie a estrutura (genérico via helpers + bits específicos via downcast) para próximos bridges da Etapa 2.
 
 #### 3.8.4 Por que é sem-colisão (a garantia, vale pras duas famílias)
 

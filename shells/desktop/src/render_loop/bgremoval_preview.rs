@@ -4,18 +4,30 @@
 //! function, run once per frame BEFORE `paint_hero_screen`. Behavior-
 //! preserving lift. Does, in order:
 //!
-//! 1. Pushes the active sprite's RGBA into the `BgRemovalTool` snapshot
-//!    when the selection drifts (so the tool segments the live pixels).
-//! 2. Drives the panel's visibility (shown iff bgremoval is active),
-//!    polls the tool for `take_params_dirty()` to gate the canvas-preview
-//!    rerun (panel events themselves are routed earlier in the frame via
-//!    `EditorAction::ToolPanelEvent → Tool::handle_panel_event` — ADR-0040
-//!    TG-B), fires the full-res commit on Apply, and publishes the
-//!    normalized snapshot the panel paints next frame.
-//! 3. (Re)computes the full-res straight-alpha preview and blits it on
-//!    top of the sprite's on-canvas footprint (the sprite itself is
-//!    suppressed from the sprite pass while previewing — see
-//!    `sim_extract`).
+//! 1. (Generic) Pushes the active sprite's RGBA into the `BgRemovalTool`
+//!    snapshot when the selection drifts — via
+//!    [`ph2d_tool_runtime::drive_source_push`] over the
+//!    [`RasterEditTool`] upcast (so the tool segments the live pixels).
+//! 2. (Generic) Drains `current_preview` via
+//!    [`ph2d_tool_runtime::drive_preview_cache`] into the shell's
+//!    `BgremovalPreview` cache (Arc-backed) for the on-canvas overlay.
+//! 3. (Generic) Captures the multi-sprite Apply selection via
+//!    [`ph2d_tool_runtime::drive_pending_commit`] (panel events that
+//!    flipped `pending_apply` arrived earlier in the frame via
+//!    `EditorAction::ToolPanelEvent → Tool::handle_panel_event`,
+//!    ADR-0040 TG-B).
+//! 4. (BgR-specific) Panel visibility (shown iff bgremoval is active,
+//!    Inspector hidden while active), panel-store reset on Reset click,
+//!    BgRemoval snapshot publish, protect-mask tint overlay, brush ring.
+//! 5. (BgR-specific) On-canvas overlay paints the cached preview RGBA
+//!    on top of the sprite's footprint (the sprite itself is suppressed
+//!    from the sprite pass while previewing — see `sim_extract`).
+//!
+//! Wave 10 / Etapa 1.B (ADR-0041 follow-up): the parts marked
+//! "(Generic)" used to be inlined ~80 LOC of per-tool boilerplate; they
+//! now live in `ph2d-tool-runtime` and are composed by helper calls.
+//! What stays here is BgR-specific (protect mask, brush ring, panel
+//! snapshot — all documented `as_any_mut` exceptions per ADR-0040 §3).
 
 use crate::app_state::BgremovalPreview;
 use ph2d_asset::{AssetDb, AssetId};
@@ -53,114 +65,94 @@ pub(super) fn dispatch(
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
         .unwrap_or(false);
-    // Snapshot push for the active BgRemovalTool — pushed once per
-    // (tool-active + new selection) tuple.
+
+    // ── (Generic) Source push when selection drifts ───────────────────────
+    // Wave 10 / Etapa 1.B: replaces the previous hand-written push block
+    // (~30 LOC) with one call to `drive_source_push` over the
+    // `as_raster_edit_mut()` upcast. The closure carries the
+    // shell-specific pixel readback (asset_db + sprite renderer).
     if bgremoval_is_active
-        && let Some(bits) = hero.gizmo.selection
-        && *last_bgremoval_pushed_entity != Some(bits)
+        && let Some(tool) = tools.active_mut()
+        && let Some(raster) = tool.as_raster_edit_mut()
     {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        // Single readback chokepoint: pixels arrive carrying their alpha
-        // mode (a prior premultiplied BG-Removal bake included). The
-        // segmentation snapshot reasons about true colours, so normalize
-        // to straight once.
-        if let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
-            entity,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-        ) {
-            let straight = src.image.into_straight();
-            if let Some(tool) = tools.active_mut()
-                && let Some(bg) = tool
-                    .as_any_mut()
-                    .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
-            {
-                bg.set_source_snapshot(straight.pixels, straight.width, straight.height);
-                *last_bgremoval_pushed_entity = Some(bits);
-            }
-        }
+        let _pushed = ph2d_tool_runtime::drive_source_push(
+            raster,
+            hero.gizmo.selection,
+            last_bgremoval_pushed_entity,
+            |entity| {
+                let src = crate::hero_intents::texture_edit::read_sprite_source(
+                    entity,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                )?;
+                // Single readback chokepoint: pixels arrive carrying their
+                // alpha mode (a prior premultiplied BG-Removal bake
+                // included). The segmentation snapshot reasons about true
+                // colours, so normalize to straight once.
+                let straight = src.image.into_straight();
+                Some(ph2d_tool_runtime::RasterSource {
+                    pixels: straight.pixels,
+                    width: straight.width,
+                    height: straight.height,
+                })
+            },
+        );
     }
-    // Visibility: shown iff bgremoval is the active tool (keyed
-    // "bgremoval" to match `BgRemovalPanel::ID`). Hide the Inspector
-    // while bgremoval is active (image tools dock into the
-    // Inspector slot).
+
+    // ── (BgR-specific) Panel visibility + Inspector toggle ────────────────
+    // Shown iff bgremoval is the active tool (keyed "bgremoval" to match
+    // `BgRemovalPanel::ID`). Hide the Inspector while bgremoval is active
+    // (image tools dock into the Inspector slot).
     hero.panel_visibility
         .insert("bgremoval", bgremoval_is_active);
     hero.panel_visibility
         .insert("inspector", !bgremoval_is_active);
-    // Multi-sprite Apply: capture the full `iter_selected()` snapshot so
-    // every selected sprite gets baked (mirror of Color EQ / Upscale).
-    // Pushed below as N `OneShotImageOp` actions, one per sprite — the
-    // shell drains them sequentially through `drain_bgremoval`.
-    let mut apply_selection: Vec<u64> = Vec::new();
-    let mut needs_panel_reset = false;
-    // Captured for the protection-mask overlay tint (built while the tool
-    // is borrowed below, drawn in the on-canvas overlay block).
+
+    // Captured for the protection-mask overlay tint + brush ring (built
+    // while the tool is borrowed below, drawn in the on-canvas overlay block).
     let theme = hero.theme;
     let mut protect_tint: Option<(Arc<Vec<u8>>, u32, u32)> = None;
-    // Brush-size ring gizmo: (brush radius in source px, source width).
-    // Set while the protection brush is armed; drawn at the cursor.
     let mut brush_ring: Option<(f32, u32)> = None;
+    let mut needs_panel_reset = false;
+    let mut apply_selection: Vec<u64> = Vec::new();
+
+    // ── (Mixed) Generic preview cache drain + BgR-specific extras ─────────
+    // The (Generic) parts go through tool-runtime helpers; the BgR-specific
+    // bits (panel snapshot, panel reset, protect tint, brush ring) keep
+    // their downcast — ADR-0040 §3 documented exception. We acquire the
+    // BgRemovalTool downcast once and do BOTH inside it so we don't
+    // borrow the tool twice (the runtime helpers take &mut dyn
+    // RasterEditTool; the BgR-specific bits take &mut BgRemovalTool).
     if let Some(tool) = tools.active_mut()
         && let Some(bg) = tool
             .as_any_mut()
             .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
     {
-        // ADR-0040 TG-B replaces the old `!bgremoval_ui_edits.is_empty()`
-        // gate with the tool's own `take_params_dirty` — panel events are
-        // routed straight into `handle_panel_event → apply_ui_edit` in the
-        // action-bus drain (`render_loop::mod.rs`), so by the time we
-        // reach this bridge the dirty flag already reflects every panel
-        // edit + every shell-side mutator (eyedropper / protect-brush /
-        // clear). Drained inside the `bg` borrow so it can flip cleanly.
-        let params_changed = bg.take_params_dirty();
-        if bg.take_pending_apply() {
-            apply_selection = hero.gizmo.iter_selected().collect();
-        }
-        // Reset just fired — stage a panel-store repopulation.
-        // Applied below after the `bg` borrow ends, since
-        // `hero.store` would alias with `tools.active_mut()` here.
+        // (Generic) Drain current_preview into the shell cache.
+        // ADR-0041: current_preview drains the tool's dirty flag, so the
+        // helper just needs to call it. Selection drift is handled by the
+        // helper's own invalidation pass.
+        ph2d_tool_runtime::drive_preview_cache(bg, hero.gizmo.selection, bgremoval_preview);
+
+        // (Generic) Capture the multi-sprite Apply selection.
+        apply_selection = ph2d_tool_runtime::drive_pending_commit(bg, hero.gizmo.iter_selected());
+
+        // (BgR-specific) Panel-store reset propagation.
         if bg.take_pending_panel_reset() {
             needs_panel_reset = true;
         }
+
+        // (BgR-specific) Snapshot publish for the docked panel.
         #[cfg(feature = "panel-bgremoval")]
         ph2d_panel_bgremoval::set_current_bgremoval_snapshot(if bgremoval_is_active {
             Some(bg.ui_snapshot())
         } else {
             None
         });
-        if bgremoval_is_active
-            && bg.has_source()
-            && let Some(bits) = hero.gizmo.selection
-        {
-            let stale = match &*bgremoval_preview {
-                Some(p) => params_changed || p.entity_bits != bits,
-                None => true,
-            };
-            if stale {
-                let mut out = Vec::new();
-                // Capped-resolution preview (PREVIEW_MAX_DIM) — NOT the
-                // full-res bake. Running the full pipeline at source
-                // resolution on every slider tick froze the UI in the
-                // GrabCut backend (a ~1M-node max-flow per drag event).
-                // The overlay is drawn scaled to the footprint anyway;
-                // Apply still bakes full-res via the Bgremoval action.
-                let (w, h) = bg.run_canvas_preview(&mut out);
-                *bgremoval_preview = Some(BgremovalPreview {
-                    entity_bits: bits,
-                    rgba: Arc::new(out),
-                    width: w,
-                    height: h,
-                });
-            }
-        } else {
-            *bgremoval_preview = None;
-        }
-        // Build the protection-mask overlay tint (drawn over the sprite
-        // footprint so the user sees their painted "keep" region). Gated
-        // on the Show-Mask toggle.
+
+        // (BgR-specific) Protection-mask overlay tint, gated on Show-Mask.
         if bgremoval_is_active && bg.show_mask() && bg.has_protect_mask() {
             let (mask, mw, mh) = bg.protect_mask_source();
             let accent = ColorToken::Accent.resolve(theme);
@@ -170,14 +162,34 @@ pub(super) fn dispatch(
                 protect_tint = Some((Arc::new(buf), tw, th));
             }
         }
-        // Brush-size ring: capture the radius (source px) + source width
-        // while the brush is armed; the overlay draws it at the cursor.
+
+        // (BgR-specific) Brush-size ring: capture the radius (source px)
+        // + source width while the brush is armed.
         if bgremoval_is_active && bg.is_protect_armed() {
             brush_ring = Some((bg.brush_radius_px(), bg.source_size().0));
         }
     }
-    if !bgremoval_is_active {
+
+    // ── (Generic) Deactivate cleanup when bgremoval is no longer active ───
+    // Wave 10 / Etapa 1.B: the cache used to be cleared in two ad-hoc
+    // sites (the `else` of the preview block + the `!bgremoval_is_active`
+    // tail check). Centralized via drive_deactivate_cleanup — which also
+    // calls `RasterEditTool::deactivate()` so the tool's own transient
+    // flags drop in sync.
+    if !bgremoval_is_active
+        && let Some(tool) = tools.active_mut()
+        && let Some(raster) = tool.as_raster_edit_mut()
+    {
+        ph2d_tool_runtime::drive_deactivate_cleanup(
+            raster,
+            bgremoval_preview,
+            last_bgremoval_pushed_entity,
+        );
+    } else if !bgremoval_is_active {
+        // Fallback for the case where active tool isn't a RasterEditTool
+        // (we can't call drive_deactivate_cleanup): just clear the cache.
         *bgremoval_preview = None;
+        *last_bgremoval_pushed_entity = None;
     }
     // Reset just fired — re-populate the panel's `WidgetStore` so
     // every slider knob / chip text snaps back to defaults. Without

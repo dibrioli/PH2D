@@ -454,6 +454,67 @@ mod tests {
 }
 ```
 
+#### `crates/ph2d-tool-grayscale/src/algorithm.rs`
+
+```rust
+//! Per-pixel luma conversion: Y = 0.2126R + 0.7152G + 0.0722B; alpha preserved.
+
+use ph2d_color::SrgbRgba;
+
+pub fn grayscale(pixels: &[SrgbRgba]) -> Vec<SrgbRgba> {
+    pixels
+        .iter()
+        .map(|p| {
+            let [r, g, b, a] = p.0;
+            let y = (0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32) as u8;
+            SrgbRgba([y, y, y, a])
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pure_red_becomes_dark_gray() {
+        let out = grayscale(&[SrgbRgba([255, 0, 0, 255])]);
+        // 0.2126 * 255 ≈ 54 = 0x36.
+        assert_eq!(out[0].0, [54, 54, 54, 255]);
+    }
+
+    #[test]
+    fn preserves_alpha() {
+        let out = grayscale(&[SrgbRgba([128, 128, 128, 200])]);
+        assert_eq!(out[0].0[3], 200);
+    }
+
+    #[test]
+    fn empty_input_is_total() {
+        assert!(grayscale(&[]).is_empty());
+    }
+}
+```
+
+#### `crates/ph2d-tool-grayscale/src/icon.rs`
+
+```rust
+//! Grayscale icon — half-filled circle (Lucide-style placeholder).
+//!
+//! In a real fan-out, port `docs/design/icons/grayscale.svg` byte-for-byte
+//! into the BezPath calls (this stub matches the manifest signature so the
+//! contract holds; replace before merge).
+
+use ph2d_vector::BezPath;
+
+pub fn grayscale_bezpath() -> BezPath {
+    // Placeholder: empty path. Replace with the SVG port — see
+    // crates/ph2d-tool-make-square/src/icon.rs for a worked example
+    // (BezPath::move_to + line_to + curve_to wiring).
+    BezPath::new()
+}
+```
+
 #### `docs/design/tools/grayscale.toml`
 
 ```toml

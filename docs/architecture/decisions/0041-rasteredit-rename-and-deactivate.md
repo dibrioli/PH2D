@@ -2,7 +2,7 @@
 
 **Status:** Accepted (2026-05-23)
 **Decisor(es):** Enio + Claude (Coord-A).
-**Estende:** [ADR-0040 §7](0040-tool-as-isolated-feature-crate.md) — the tool contract freeze. This is the **only sanctioned cap bump** in Wave 10; further amendments deferred per `docs/plans/2026-05-wave-10-perfection.md` §X.
+**Estende:** [ADR-0040 §7](0040-tool-as-isolated-feature-crate.md) — the tool contract freeze. This is the **only sanctioned cap bump** in Wave 10; further amendments deferred per `docs/archive/plans-completed/2026-05-wave-10-perfection.md` §X.
 **Tags:** wave-10, contract-amendment, frozen-contract
 
 ---
@@ -48,7 +48,7 @@ Lifecycle hook for "tool was deactivated". Separate from `Tool::on_deactivate` b
 
 ### 2.4 NOT bumped in this amendment
 
-The full v4 plan (`docs/plans/2026-05-wave-10-perfection.md` §II) initially proposed bumping `Tool` 10 → 11 (adding `as_raster_edit_mut`). Audit verification showed the method already exists at slot 9 today as `as_image_edit_mut` — renaming does not change the count. Cap stays at 10.
+The full v4 plan (`docs/archive/plans-completed/2026-05-wave-10-perfection.md` §II) initially proposed bumping `Tool` 10 → 11 (adding `as_raster_edit_mut`). Audit verification showed the method already exists at slot 9 today as `as_image_edit_mut` — renaming does not change the count. Cap stays at 10.
 
 The plan also reserved space for `RasterFrame` / `ImageView<'_>` / `ImageBuf` typed wrappers (preventing `Vec<u8>` shape drift). Those wait for the `ph2d-color` crate in Etapa 5 (typed color spaces); introducing them now without `ph2d-color` would be a half-typed contract. The interface stays `Vec<u8>` / `&[u8]` for now; cap is unchanged on that axis.
 
@@ -109,6 +109,6 @@ The `Raster` test struct in `crates/ph2d-editor-core/src/tool.rs::tests` is the 
 ## 6. Tracking
 
 - This ADR amends [ADR-0040 §7](0040-tool-as-isolated-feature-crate.md).
-- Part of [Wave 10 perfection plan](../../plans/2026-05-wave-10-perfection.md) Etapa 1.A.
+- Part of [Wave 10 perfection plan](../../archive/plans-completed/2026-05-wave-10-perfection.md) Etapa 1.A.
 - Tag baseline: `pre-perfection-2026-05-24`. Rollback via `git reset --hard pre-perfection-2026-05-24`.
 - Next step: Etapa 1.B (create `ph2d-tool-runtime` crate + migrate `BgRemovalTool` as the first `RasterEditTool` impl, with shell-delete codegen via extended `ph2d-tool-sync`).

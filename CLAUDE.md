@@ -59,25 +59,31 @@ verde — **não pusha antes**. 3. Push + babysit do CI (§7.3) até verde,
 corrigindo o que aparecer. O erro de CI é pego no ship.sh **antes** do
 push, não no CI vermelho 30min depois.
 
-## Plano operacional ativo
+## Planos operacionais ativos
 
-[`docs/plans/2026-05-node-waves.md`](docs/plans/2026-05-node-waves.md) —
-**sistema de nós node-centric** ([ADR-0030..0039](docs/architecture/decisions/)):
-W1 (neck) e W2 (vertical Motion) fechados + contrato CONGELADO (ADR-0039);
-**fan-out aberto** (Wave 3+: mais nós Motion, Shader, Sound, Gameplay, ferramentas
-imperativas). Receita pronta-pra-colar em [DIRETRIZ §3.8](docs/IntegracaoMultiAgente/DIRETRIZ.md#38-node-crate-novo--fan-out-o-caminho-principal-de-crescimento).
-Tracker vivo: [`docs/HANDOFF_node_system.md`](docs/HANDOFF_node_system.md).
+- [`docs/plans/2026-05-node-waves.md`](docs/plans/2026-05-node-waves.md) —
+  **sistema de nós node-centric** ([ADR-0030..0039](docs/architecture/decisions/)):
+  W1 (neck) e W2 (vertical Motion) fechados + contrato CONGELADO (ADR-0039);
+  **fan-out aberto** (Wave 3+: mais nós Motion, Shader, Sound, Gameplay).
+  Tracker vivo: [`docs/HANDOFF_node_system.md`](docs/HANDOFF_node_system.md).
+- [`docs/plans/2026-05-wave-11-carry-overs.md`](docs/plans/2026-05-wave-11-carry-overs.md) —
+  carry-overs pós-Wave 10 ([ADR-0042 §6](docs/architecture/decisions/0042-wave-10-closure.md)).
 
-**Histórico recente (concluído):**
+**Fan-out drop-crate (node OU tool):** receita única em
+[DIRETRIZ §3.8](docs/IntegracaoMultiAgente/DIRETRIZ.md) — briefing parametrizado
++ 2 exemplos pasted-ready em [`docs/IntegracaoMultiAgente/examples-fan-out.md`](docs/IntegracaoMultiAgente/examples-fan-out.md).
 
-- [`docs/plans/2026-05-tool-isolation-waves.md`](docs/plans/2026-05-tool-isolation-waves.md) —
-  **reestruturação tool-as-crate** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md))
-  🔒 **CLOSED 2026-05-22** (TG-A..TG-E em uma jornada). Tool agora é satélite
-  drop-in: `cargo run -p ph2d-tool-sync` regenera o wiring central, contrato
-  `Tool`/`RasterEditTool`/`PanelEvent` congelado por arch-gate. Receita pra
-  tool nova em [DIRETRIZ §3.9](docs/IntegracaoMultiAgente/DIRETRIZ.md) + SKILL_Stack §"Adicionar uma tool".
-- [`docs/plans/2026-05-post-spike.md`](docs/plans/2026-05-post-spike.md) —
-  M1..M13 do core pós-spike, todos mergeados (PRs #1-#30).
+**Contratos congelados:**
+
+- Nodes ([ADR-0039](docs/architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md))
+  — caps `NodeOp=2` / `OpResolver=1` / `NodeManifest=8`, gate
+  [`architecture_contract_surface`](crates/ph2d-nodegraph/tests/architecture_contract_surface.rs).
+- Tools ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md)
+  + [ADR-0041](docs/architecture/decisions/0041-rasteredit-rename-and-deactivate.md))
+  — caps `Tool=10` / `RasterEditTool=5` / `PanelEvent=4`, gate
+  [`architecture_tool_contract_surface`](crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs).
+
+Planos históricos vivem em [`docs/archive/plans-completed/`](docs/archive/plans-completed/).
 
 ## Design system
 

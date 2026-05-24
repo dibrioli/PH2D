@@ -2,7 +2,7 @@
 
 **Status:** Accepted (2026-05-24)
 **Decisor(es):** Enio + Claude (Coord-A, autonomous-loop session).
-**Refer:** [ADR-0030..0039 — node substrate](0030-node-system-as-substrate.md)..[ADR-0039 — nodegraph contract freeze](0039-nodegraph-contract-freeze-w2t4.md), [ADR-0040 — tool-as-isolated-crate](0040-tool-as-isolated-feature-crate.md), [ADR-0041 — RasterEditTool amendment](0041-rasteredit-rename-and-deactivate.md), [docs/plans/2026-05-wave-10-perfection.md](../../plans/2026-05-wave-10-perfection.md).
+**Refer:** [ADR-0030..0039 — node substrate](0030-multi-domain-node-engine.md)..[ADR-0039 — nodegraph contract freeze](0039-nodegraph-contract-freeze-w2t4.md), [ADR-0040 — tool-as-isolated-crate](0040-tool-as-isolated-feature-crate.md), [ADR-0041 — RasterEditTool amendment](0041-rasteredit-rename-and-deactivate.md), [docs/archive/plans-completed/2026-05-wave-10-perfection.md](../../archive/plans-completed/2026-05-wave-10-perfection.md).
 **Tags:** wave-10, closure, gates, ph2d-color, padrão-ouro
 
 ---
@@ -135,7 +135,7 @@ This ADR was applied successfully if:
 - [x] `scripts/auto-merge-eligibility.sh main HEAD` correctly identifies the Etapa 5 + Etapa 6 commits as `coord-review required` (because they touched `Cargo.lock` + `crates/ph2d-editor-core/`).
 - [x] `docs/Testes/README.md` has §E5 + §E6 sections with smoke checklists G10-G16 for Enio's final visual audit.
 - [x] `docs/architecture/decisions/0042-wave-10-closure.md` (this file) committed.
-- [ ] Deferred items 5.1/5.2/5.3.5/5.3.7/color-migration/long-paint-split tracked in `docs/plans/2026-05-wave-10-perfection.md` as "Wave 11 carry-over."
+- [ ] Deferred items 5.1/5.2/5.3.5/5.3.7/color-migration/long-paint-split tracked in `docs/archive/plans-completed/2026-05-wave-10-perfection.md` as "Wave 11 carry-over."
 
 ---
 

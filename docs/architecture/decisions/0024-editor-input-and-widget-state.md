@@ -5,7 +5,7 @@
 **Decisor:** Enio Oliveira Dias Brito
 **Implementador:** Claude Opus 4.7 (1M context)
 **Origem:** M13 hero screen shipou 31 widgets + tela `02-editor-main.html` em paint estático puro. Enio observou: "por que os componentes ainda não são interativos visualmente?". Resposta curta: falta input pipeline conectado aos widgets. Esta ADR fixa o modelo antes de codar.
-**Implementação:** rastreada em [`docs/plans/2026-05-editor-input-pipeline.md`](../../plans/2026-05-editor-input-pipeline.md).
+**Implementação:** rastreada em [`docs/archive/plans-completed/2026-05-editor-input-pipeline.md`](../../archive/plans-completed/2026-05-editor-input-pipeline.md).
 
 ## Contexto
 

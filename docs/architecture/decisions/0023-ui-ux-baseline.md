@@ -352,7 +352,7 @@ Plano original M12 (*"3 panels: scene tree, inspector, viewport"*) é **substitu
 
 ### Plano operacional
 
-`docs/plans/2026-05-post-spike.md` M12 row atualizada para refletir o novo escopo + dependência desta ADR.
+`docs/archive/plans-completed/2026-05-post-spike.md` M12 row atualizada para refletir o novo escopo + dependência desta ADR.
 
 ## Implementação / Rollout
 

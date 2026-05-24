@@ -212,7 +212,7 @@ crates/
 
 ### 7.2 Contratos congelados que o Painter respeita
 
-- **`Tool` / `ImageEditTool` / `PanelEvent`** (ADR-0040 §7, `architecture_tool_contract_surface`). O Painter implementa `Tool` certamente; `ImageEditTool` opcional — o padrão atual (BgRemoval/Padding) é downcast via `as_any_mut`, e o Painter segue esse padrão na v1.0. Migração para `ImageEditTool` é vertical separada futura (vide DIRETRIZ §3.8.3.1).
+- **`Tool` / `RasterEditTool` / `PanelEvent`** (ADR-0040 §7 + ADR-0041 rename, gate [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs); caps `Tool=10` / `RasterEditTool=5` / `PanelEvent=4`). O Painter implementa `Tool` certamente; `RasterEditTool` opcional — o padrão atual (BgRemoval/Padding) é downcast via `as_any_mut`, e o Painter segue esse padrão na v1.0. Migração para `RasterEditTool` é vertical separada futura.
 - **`EditorAction`** (4 variants genéricos). Painter usa:
   - `ActivateTool("painter")` quando o usuário troca pra Painter
   - `OneShotImageOp(...)` zero — Painter é stateful, não one-shot

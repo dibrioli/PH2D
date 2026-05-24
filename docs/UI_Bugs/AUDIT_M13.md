@@ -179,7 +179,7 @@ paleta no TopBar). Histórico do snapshot preservado via
 
 UI core funcional CONCLUÍDO. Próxima fase depende do projeto-piloto
 que vai exercitar o editor com cena real (M14+ em
-[`docs/plans/2026-05-post-spike.md`](../plans/2026-05-post-spike.md)).
+[`docs/archive/plans-completed/2026-05-post-spike.md`](../archive/plans-completed/2026-05-post-spike.md)).
 Gaps prováveis a serem expostos pelo piloto:
 - Scene-graph persistente conectado ao Hierarchy (DnD reparent →
   scene save).

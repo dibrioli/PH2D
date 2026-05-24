@@ -179,7 +179,7 @@ Princípios herdados:
 - [`ph2d-input`](../../crates/ph2d-input/) — Pencil/touch/mouse pure-data
 - [`ph2d-tokens`](../../crates/ph2d-tokens/) — design tokens semânticos (cor/spacing/radius/type/stroke)
 - [`ph2d-a11y`](../../crates/ph2d-a11y/) — AccessKit wrapper
-- [`ph2d-editor-core`](../../crates/ph2d-editor-core/) — Layout 4-zonas, FloatingPanel, ToolRegistry, Tool/ImageEditTool/PanelEvent traits
+- [`ph2d-editor-core`](../../crates/ph2d-editor-core/) — Layout 4-zonas, FloatingPanel, ToolRegistry, Tool/RasterEditTool/PanelEvent traits (RasterEditTool renomeado de ImageEditTool em ADR-0041)
 - [`ph2d-tool-bgremoval`](../../crates/ph2d-tool-bgremoval/) — Image Tool exemplo (sabor 3 stateful + panel)
 - [`ph2d-tool-padding`](../../crates/ph2d-tool-padding/) — Image Tool exemplo (sabor 3 leve)
 - [`ph2d-tool-registry`](../../crates/ph2d-tool-registry/) — ToolManifest + hash_node_id
@@ -208,7 +208,7 @@ Vide [README.md](README.md) §7.1. Sumário:
 
 - [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md) — tracker vivo do sistema de nós (W2 fechado + FREEZE)
 - [`docs/plans/2026-05-node-waves.md`](../plans/2026-05-node-waves.md) — plano node waves
-- [`docs/plans/2026-05-tool-isolation-waves.md`](../plans/2026-05-tool-isolation-waves.md) — plano isolation tools (CLOSED 2026-05-22)
+- [`docs/archive/plans-completed/2026-05-tool-isolation-waves.md`](../archive/plans-completed/2026-05-tool-isolation-waves.md) — plano isolation tools (CLOSED 2026-05-22)
 
 ### Memory canônica do LLM
 

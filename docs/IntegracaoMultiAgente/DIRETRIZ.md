@@ -1,516 +1,148 @@
-# Diretriz de Implementação Universal — PH2D
+# Diretriz de Implementação — PH2D
 
-**Versão:** 6.10 — 2026-05-23 · Wave 10 / Etapa 0+1.A. Modelo "2 Coords" introduzido (§1.1: Coord-A foundational + Coord-B baldes, protocolo `docs/SESSION_ACTIVE.md`). `scripts/slot-env.sh` + `scripts/git-stage-guard.sh` formalizam isolamento por slot + anti-colisão git. CI paralelo feature-branch (`feat/**`) ativado em `.github/workflows/spike.yml`. Amendment ADR-0041 ao contrato congelado: rename `ImageEditTool → RasterEditTool` (futuro-proof para parallel sub-traits Vector/Physics/NodeEmit), método `Tool::as_image_edit_mut → as_raster_edit_mut`, `preview(&self) → current_preview(&mut self)` com drain de dirty interno, novo método `RasterEditTool::deactivate(&mut self)`. Cap `RasterEditTool` 4→5. v6.9 (2026-05-23): regra "src/lib.rs primeiro". v6.8 (2026-05-22): princípio transversal Tool↔Nó simétricos. Histórico em §11.
-**Audiência:** **toda LLM que entra no projeto.** Lê este doc inteiro antes de tocar em código. Quando o Enio descreve uma tarefa, seu **primeiro output é a TRIAGEM (§1.4)** — classifica e diz se precisa de Coordenador + Implementador ou só Implementador. **Doc único de implementação:** briefing pronto-pra-colar de drop-crate (§3.8) e receitas dos demais baldes vivem aqui; não há doc separado.
+**Versão:** 7.0 — 2026-05-24 (reescrita pós-auditoria multi-agente readiness).
+**Audiência:** **toda LLM que entra no projeto.** Leia inteiro antes de tocar em código.
+
+> **Seu primeiro output sempre = TRIAGEM (§2).** Classifique a tarefa do Enio
+> e diga **como proceder** antes de codar.
 
 ---
 
 ## TL;DR
 
-> **Triagem primeiro. Dois papéis. Duas famílias-irmãs de fan-out. Zero colisão por construção.**
->
-> 0. Enio descreve a tarefa a uma sessão. **Antes de codar, o agente faz a TRIAGEM (§1.4): classifica o balde, diz se toca um contrato congelado, e informa ao Enio como proceder — só Implementador (A), Coordenador + Implementador (B), ou Coordenador-only + ADR (C).** O Enio age conforme a triagem.
-> 1. **Caminho (A) — drop-crate (fan-out, §3.8):** tarefa é **node novo OU tool nova**. Uma sessão Implementador sozinha: cria `crates/ph2d-{node,tool}-…/`, roda `cargo run -p ph2d-{node,tool}-sync`, staleness gates fecham o wiring. Zero edit central. Zero coordenação. Pode rodar em paralelo com outros Implementadores na mesma família ou na outra.
-> 2. **Caminho (B) — fluxo invertido (scaffold-primeiro):** tarefa é **painel/widget/chrome novo** (§3.2-3.4) — peças que ainda exigem edit central. Coordenador cria pasta + plugues centrais (Cargo.toml/showcase/dispatcher) + stubs verdes, entrega briefing pra Implementador preencher só dentro da pasta. Coordenador revisa, smoke com Enio, commit, push, babysit CI.
-> 3. **Caminho (C) — Coordenador-only + ADR:** tarefa toca contrato congelado (nodegraph/expr/Tool/RasterEditTool/PanelEvent — §3.6) ou foundational (tokens, editor-core, shells, arch tests). Evento raro. Não paraleliza, não delega.
->
-> **Enio não decide nada operacional.** Coordenador (quando há um) instrui Enio passo a passo. Enio é relay mecânico entre as sessões Claude Code.
->
-> **Norte arquitetural:** a engine cresce por **duas famílias de crate isolado simétricas** (ADR-0031, ADR-0040): nós (`crates/ph2d-node-*`, declarativos pull-side / FBP) e tools (`crates/ph2d-tool-*`, imperativos push-side / manipulação direta). Ambas wireadas por codegen (`tools/ph2d-node-sync`, `tools/ph2d-tool-sync`), ambas com contrato congelado por arch-gate. Adicionar feature de conteúdo OU peça de editor manipulando bitmap = drop-crate. Painel/widget/chrome do editor (que renderiza essas tools/nós) ainda passa pelo Coordenador.
+- **Dois papéis:** Coordenador (A foundational ou B baldes) + Implementador.
+- **Três caminhos** (descobertos via Triagem §2):
+  - **(A) Drop-crate (fan-out, §3.A)** — node ou tool nova. Implementador sozinho. Zero edit central. Paraleliza com outros (A).
+  - **(B) Scaffold central (§3.B)** — painel/widget/chrome. Coord-B faz scaffold + delega.
+  - **(C) Coord-only (§3.C)** — foundational ou contrato congelado. Não paraleliza. ADR se for contrato.
+- **Dois contratos congelados (§4)** com arch-gate ativo: nodes (ADR-0039) e tools (ADR-0040+0041). Mexer = (C).
+- **Enio é relay mecânico**, não decisor.
+- **Norte:** engine cresce por **duas famílias-irmãs** simétricas — `crates/ph2d-node-*` (declarativo, FBP) e `crates/ph2d-tool-*` (imperativo, manipulação direta). Ambas wireadas por codegen (`ph2d-{node,tool}-sync`). Adicionar conteúdo = drop-crate.
 
 ---
 
 ## 0. Antes de começar (sanity check obrigatório)
 
-Independentemente do papel que vai assumir, rode primeiro:
+Independente do papel, **rode primeiro**:
 
 ```bash
-git log --oneline -5                              # confirma HEAD
-git status -sb                                    # working tree clean?
-cargo check --workspace 2>&1 | tail -5            # baseline compila?
+git log --oneline -5             # confirma HEAD
+git status -sb                   # working tree limpo?
+cargo check --workspace 2>&1 | tail -5    # baseline compila?
 ```
 
-Se algo divergir do esperado (HEAD inesperado, working tree suja, build quebrado), **pare e reporte ao Enio** antes de qualquer ação.
+Algo divergente (HEAD inesperado, working dirty, build quebrado) → **pare e reporte ao Enio.**
 
-Leitura mínima de contexto técnico:
+**Leitura mínima:**
 - [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18 (Hard Rules) e §1 (arquitetura).
 - [`CLAUDE.md`](../../CLAUDE.md) (CI, push, batching).
-- Memória persistente do LLM em `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md` (perfil do Enio, feedback acumulado).
+- Memória persistente: `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`.
 
 ---
 
-## 1. O modelo
+## 1. Papéis + infra multi-agente
 
-### 1.1 Os papéis
+**Coordenador-A (foundational).** Autoridade sobre **contratos congelados, arch-gates, foundational crates, codegen tools, shells/desktop/, ADRs**. Único que toca os 2 contratos congelados (§4) — sempre via amendment ADR, nunca cap-bust ad-hoc. Responsável pelo **ship-de-jornada** (ship.sh + commit + push + babysit CI — §8).
 
-**Coordenador-A (foundational)** — autoridade sobre **contratos, arch-gates, foundational crates, codegen tools, shells/desktop/, ADRs**. Convocado em caminho (C) (vide §3.6) ou para fazer scaffold de painel/widget/chrome (B). Responsável pelo **ship-de-jornada serial** (ship.sh + commit + push + babysit CI). Único autorizado a tocar contratos congelados (`Tool`/`RasterEditTool`/`PanelEvent` em ADR-0040 §7; `NodeOp`/`OpResolver`/`NodeManifest` em ADR-0039) — sempre via amendment ADR consolidado, nunca cap-bust ad-hoc.
+**Coordenador-B (baldes).** Autoridade sobre **scaffolds de painel/widget/chrome novos**, sweeps de gates UI em `crates/ph2d-panel-*`, organização de smokes. **NÃO** toca contratos congelados nem ship — escala Coord-A. Pode rodar em paralelo com Coord-A via protocolo SESSION_ACTIVE.
 
-**Coordenador-B (baldes)** — autoridade sobre **scaffolds de painel/widget/chrome novos**, sweeps de gates UI em `crates/ph2d-panel-*`, organização de smokes do Enio, gate-meta `tests/docs_bugs_have_gates.rs`. NÃO toca contratos congelados nem ship — escala Coord-A. Pode rodar em paralelo com Coord-A desde que respeite o protocolo SESSION_ACTIVE (vide §1.1.1).
+**Implementador.** Sessão isolada, uma por feature. No caminho **(A)**: cria pasta + roda sync + testa, sem Coordenador. No caminho **(B)**: recebe pasta já plugada na árvore pelo Coord-B, edita **somente** dentro dela. Paraleliza com outros Implementadores sem coordenação direta — a arquitetura física garante não-colisão (glob `workspace.members` + codegen splice em marcadores).
 
-> **Wave 10 (2026-05-23):** modelo "2 Coords" introduzido para destravar paralelismo nas Etapas 4-6 da Wave 10 ([`docs/plans/2026-05-wave-10-perfection.md`](../plans/2026-05-wave-10-perfection.md)). Pre-Wave-10 era 1 Coord serial — vide v6.9 da DIRETRIZ. Se a Wave 10 demonstrar friction insustentável, reverter a 1 Coord serial.
+**Enio.** Humano que orquestra: abre sessões Claude Code, cola mensagens entre elas, roda smoke visual quando Coord pede. **Não decide nada operacional.**
 
-**Implementador** — sessão isolada, uma por feature. **No caminho (A)** (node/tool — §3.8), trabalha sem Coordenador: cria a pasta, roda o sync, testa. **No caminho (B)** (painel/widget/chrome — §3.2-3.4), recebe pasta já plugada na árvore pelo Coordenador-B e edita **somente** dentro dela. Em ambos os casos, reporta pronto. Pode rodar em paralelo com outros Implementadores sem coordenação direta — a arquitetura física garante que eles não colidem (glob de `workspace.members` + codegen splice em regiões marcadas, pra (A); pasta isolada já plugada, pra (B)).
+### 1.1 Protocolo SESSION_ACTIVE (sincronização entre os 2 Coords)
 
-Enio não é papel. Enio é o humano que orquestra: abre sessões Claude Code, cola mensagens entre elas, roda smoke visual quando um Coordenador pede.
+[`docs/SESSION_ACTIVE.md`](../SESSION_ACTIVE.md) é o canal entre Coord-A e Coord-B. Ao iniciar sessão, cada Coord:
 
-#### 1.1.1 Protocolo SESSION_ACTIVE (sincronização entre os 2 Coords)
+1. Lê o arquivo pra ver o que o outro está fazendo
+2. Edita a própria entrada: papel, pastas, ETA
+3. Se vai pisar em pasta do outro: **pausa e renegocia** via comentário no arquivo
 
-`docs/SESSION_ACTIVE.md` é o canal de coordenação leve entre Coord-A e Coord-B. Ao iniciar sessão, cada Coord:
+Ao terminar/pausar longo: limpa a própria entrada.
 
-1. Lê `docs/SESSION_ACTIVE.md` para ver o que o outro está fazendo agora
-2. Edita a entrada própria com: papel (A/B), pastas que vai tocar, ETA estimado
-3. Se vai tocar algo que conflita com o outro, **pausa e renegocia** via comentário no SESSION_ACTIVE
+### 1.2 Isolamento físico — `scripts/slot-env.sh`
 
-Ao terminar sessão (ou em ponto de pausa longa), limpa a entrada própria.
+Cada sessão roda `source scripts/slot-env.sh <slot-id>` no início para isolar `CARGO_TARGET_DIR` por slot. Sem isso, dois agentes paralelos serializam no lock de `target/`. Slot IDs: `coord-a`, `coord-b`, `impl-1..4`.
 
-Formato canônico do arquivo em [`docs/SESSION_ACTIVE.md`](../SESSION_ACTIVE.md). Esse arquivo é mais "post-it" do que "documento" — sobreviver entre commits OK, mas não é histórico.
+**RAM 8 GiB → máximo realista = 2-3 slots cargo-ativos simultâneos.** 4º causa swap thrashing.
 
-**Por que não usar Slack/Linear/etc.:** ambos os Coords são Claude Code agents, sem acesso a chat externo. Memória persistente do LLM (em `~/.claude/projects/.../memory/`) é per-projeto mas per-session, não cross-session em tempo real. Arquivo plano commitado é o canal mais simples que funciona pra coordenação assíncrona.
+### 1.3 Anti-colisão git — `scripts/git-stage-guard.sh`
 
-#### 1.1.2 Isolamento físico via `scripts/slot-env.sh`
+Pre-commit roda o guard que **rejeita stage fora da pasta declarada** (env `PH2D_SLOT_FOLDER`). Coords legítimos exportam `COORD_OVERRIDE=1` na sessão pra bypass. Padroniza a disciplina §7 sem depender de memória humana.
 
-Cada sessão Coord/Implementador roda `source scripts/slot-env.sh <slot-id>` no início para isolar `CARGO_TARGET_DIR` por slot. Sem isso, dois agentes compilando paralelamente serializam no lock de `target/` (vide §6.4 cargo lock). Slot IDs canônicos: `coord-a`, `coord-b`, `impl-1`, `impl-2`, `impl-3`, `impl-4`.
+### 1.4 As 3 obrigações do Implementador (sempre)
 
-RAM da máquina é 8 GiB → máximo realista: **2-3 slots cargo-ativos simultaneamente**. Se um 4º começar e houver swap thrashing, pause um.
+1. **ISOLAMENTO.** Edita **só** dentro da pasta exclusiva. Precisa algo fora? **Reporta** — não edita.
+2. **UI canônica.** Toda cor/espaço/raio/tipografia/stroke passa por tokens. Zero hex, zero `f32` literal de UI (§5).
+3. **Codificação rápida.** `cargo check -p <crate>` no editing burst. Sem `--workspace` em loop (§6).
 
-#### 1.1.3 Anti-colisão git via `scripts/git-stage-guard.sh`
+Pra violar uma? **Pare e reporte.** Quase certo o Coord não fez scaffold direito.
 
-Pre-commit roda `git-stage-guard.sh` que **rejeita stage fora da pasta declarada pelo slot** (env `PH2D_SLOT_FOLDER`). Coords legítimos exportam `COORD_OVERRIDE=1` na sessão para bypass. Padroniza a disciplina §6.1 sem precisar de memorização humana.
+---
 
-### 1.2 Dois caminhos: fan-out drop-crate vs fluxo invertido
+## 2. TRIAGEM — seu PRIMEIRO output
 
-Duas formas de adicionar coisa à árvore, escolhidas pela triagem (§1.4):
-
-**Caminho (A) — drop-crate (fan-out, sem Coordenador).** Aplica a **node novo OU tool nova** — receita única em §3.8. Implementador sozinho:
-
-```
-Implementador (uma sessão):
-  1. Cria crates/ph2d-{node,tool}-<slug>/ com lib.rs + manifest/register/make
-  2. Roda `cargo run -p ph2d-{node,tool}-sync` (regenera o wiring central)
-  3. cargo test -p ph2d-{node,tool}-<slug>           ← seu code
-     cargo test -p ph2d-{node,tool}-registry-init    ← staleness gate(s) fecham
-  4. Commit local, reporta pronto.
-```
-
-Zero edit central. Zero conflito git. Dois Implementadores adicionando dois nós (ou dois tools) **não tocam nenhum arquivo em comum** — `workspace.members` é glob (`crates/*`, `tools/*`), e as superfícies centrais são **geradas** entre marcadores codegen pelo `sync` da família: **node** tem 1 superfície (`register_all_nodes` em `ph2d-node-registry-init` + deps `Cargo.toml`); **tool** tem 3 (`register_all` manifests + `register_all_tools` `Box<dyn Tool>` em `ph2d-tool-registry-init` + deps `Cargo.toml`). Detalhe por família em §3.8.1.
-
-**Caminho (B) — fluxo invertido (Coordenador faz scaffold central primeiro).** Aplica a **painel/widget/chrome novo** (§3.2-3.4) — peças que ainda exigem edit central porque o registro é manual (showcase, dispatcher de chrome, features de panel-registry-init):
-
-```
-Enio: "Coordenador, vamos criar o painel Outline."
-   │
-   ▼
-Coordenador:
-  1. Decide: painel? widget? chrome? (vide §3.2-3.4)
-  2. Cria a pasta inteira com stubs verdes
-  3. Faz o(s) edit(s) central(is) específico(s) do balde
-     (panel-registry-init::register_all_panels alfabético,
-      widget/mod.rs, chrome dispatch_all, etc.)
-  4. cargo check do crate novo  →  verde
-  5. Briefing pro Implementador (§2)
-   │
-   ▼  (Enio abre nova sessão, cola briefing)
-   │
-Implementador:
-  6. Lê briefing + esta DIRETRIZ + sanity check
-  7. Edita SÓ dentro da pasta atribuída
-  8. cargo test do crate  →  verde
-  9. Commit local, reporta pronto
-   │
-   ▼
-Coordenador:
- 10. Revisa diff, pede smoke pro Enio
- 11. Em ciclo de ship: push + babysit CI (§7)
-```
-
-A partir do passo 5 o Implementador **nunca** toca arquivo fora da pasta dele. Por que dois caminhos? Porque painel/widget/chrome ainda não foram codegen'dos como nó e tool foram (ADR-0040 §2.3 generalizou pra tools, ADR-0031 fez pra nós — painel ainda tem `register_all_panels` editado à mão com `#[cfg(feature = "panel-<slug>")]`; widget tem `widget/mod.rs` e showcase central; chrome tem `dispatch_all`). Quando uma dessas peças virar codegen, migra pra (A).
-
-### 1.3 As 3 obrigações do Implementador (sempre, sem exceção)
-
-1. **ISOLAMENTO.** Edita **só** arquivos dentro da pasta exclusiva atribuída pelo Coordenador. Se precisa de algo fora (dep nova, mudança em foundational, novo NodeId), **reporta** ao Enio — não edita por conta própria.
-2. **UI canônica.** Toda cor, espaçamento, raio, tipografia, stroke **passa por tokens** (`ColorToken::X.resolve(theme)`, `Spacing::Lg.px()`, etc.). Zero hex, zero `f32` literal de UI. Vide §4.
-3. **Codificação rápida.** Usa `cargo check -p <crate>` durante editing burst. Não duplica trabalho do pre-commit hook. Não roda `--workspace` em loop. Vide §5.
-
-Se você é o Implementador e está pra violar uma das três, **pare e reporte**. Quase certamente significa que o Coordenador não fez o scaffold direito.
-
-### 1.4 Triagem — seu PRIMEIRO output (Coordenador ou só Implementador?)
-
-**Antes de tocar em código, antes de assumir um papel:** quando o Enio te descreve uma tarefa ("quero criar X"), seu primeiro output **não** é começar — é **classificar a tarefa e dizer ao Enio como proceder**. O Enio não sabe de antemão se precisa abrir uma sessão Coordenador + uma Implementador, ou se uma sessão Implementador sozinha resolve. **Você decide isso por ele e informa.**
-
-Responda ao Enio **exatamente** neste formato:
+Quando o Enio descreve uma tarefa, **antes de codar** responda exatamente neste formato:
 
 ```
 TRIAGEM
-- Tarefa: <o que o Enio pediu, em 1 linha>
-- Balde: <§3.2 painel | §3.3 widget | §3.4 chrome | §3.5 modificar existente |
-          §3.6 foundational | §3.7 cross-cutting | §3.8 drop-crate (node|tool)>
-- Toca um contrato congelado (nodegraph/expr OU Tool/RasterEditTool/PanelEvent)?
+- Tarefa: <1 linha do que o Enio pediu>
+- Caminho: (A) drop-crate | (B) scaffold | (C) Coord-only
+- Toca contrato congelado (nodegraph/expr OU Tool/RasterEditTool/PanelEvent)?
     <Não | Sim — exige ADR + bump de cap>
-- COMO PROCEDER:
-    (A) Só Implementador — sessão isolada. Drop-crate + sync (§3.8). Sem scaffold central.
-    (B) Coordenador + Implementador — scaffold central antes (painel/widget/chrome).
-    (C) Coordenador-only — foundational ou contrato congelado; não paraleliza, pode exigir ADR.
-- Razão: <por que esse caminho, em 1-2 linhas>
-- Se grande/ambíguo: <peças, e o que é isolável vs. compartilhado>
+- Razão: <1-2 linhas>
+- Se grande/ambíguo: <peças isoláveis vs. compartilhadas>
 ```
 
-Tabela de decisão:
+### Tabela de decisão
 
-| Tarefa | Balde | Toca contrato congelado? | Como proceder |
-|--------|-------|--------------------------|---------------|
-| **Nó novo OU tool nova** (any shape) — domínio/contrato existente | §3.8 | Não | **(A) Só Implementador** — drop-crate em `crates/ph2d-{node,tool}-…/` + `cargo run -p ph2d-{node,tool}-sync` + testa. Wiring gerado, zero edit central. Para tool: sem variant novo em `EditorAction`. |
-| **Modificar** nó/tool/feature existente (sem novo arquivo central) | §3.5 | Não | **(A) Só Implementador** — a pasta já existe; edite dentro dela. |
-| **Painel novo** (`ph2d-panel-<slug>` — docado a uma tool ou genérico) | §3.2 | Não | **(B) Coordenador + Implementador** — Coord plumba feature flag + linha em `register_all_panels` ANTES (peça não-codegen'd). |
-| **Widget primitive novo** (em `editor-core/src/widget/`) | §3.3 | Não | **(B) Coordenador + Implementador** — Coord adiciona em `widget/mod.rs` + cria seção do showcase ANTES. |
-| **Chrome handler novo** (TopBar/LeftRail/BottomHUD/ContextMenu) | §3.4 | Não | **(B) Coordenador + Implementador** — Coord adiciona em `chrome/mod.rs::dispatch_all` ANTES. |
-| **Avaliador novo (Wave-neck)** para um domínio sem avaliador ainda (Shader, Som, Gameplay) | §3.8 + Wave-neck (vide [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md)) | Não (usa o contrato), mas é greenfield grande | **(C) Coordenador-only** durante o neck — trabalho "tipo W2" serial; só depois de fechado, o domínio abre para fan-out (A). |
-| **Domínio com avaliador já existindo** (mais nós Motion etc.) | §3.8 | Não | **(A) Só Implementador** — vide primeira linha desta tabela. |
-| **Mudar tokens / editor-core (sem ser contrato) / shells / arch tests** | §3.6 | Não | **(C) Coordenador-only** — foundational, não paraleliza. |
-| **Mudar contrato de nós** (porta, tipo, formato, EvalCtx, motor) | §3.6 | **Sim — nodegraph/expr** | **(C) Coordenador-only + ADR** — bump do cap em `architecture_contract_surface.rs` + ADR estendendo 0039. |
-| **Mudar contrato de tools** (método novo em `Tool`/`RasterEditTool`, variant novo em `PanelEvent` ou `EditorAction::ToolPanelEvent`) | §3.6 | **Sim — Tool/RasterEditTool/PanelEvent** | **(C) Coordenador-only + ADR** — bump do cap em `architecture_tool_contract_surface.rs` + amendment de ADR-0040 §7. |
+| Tarefa | Caminho | Razão |
+|--------|---------|-------|
+| **Nó novo** (domínio com avaliador existente) | **(A) §3.A** | Drop-crate `crates/ph2d-node-<dom>-<slug>/` + `cargo run -p ph2d-node-sync`. Wiring gerado. |
+| **Tool nova** (any shape) | **(A) §3.A** | Drop-crate `crates/ph2d-tool-<slug>/` + `cargo run -p ph2d-tool-sync`. Sem variant novo em `EditorAction`. |
+| **Modificar** nó/tool existente | **(A) §3.D** | A pasta já existe — edite dentro dela. |
+| **Painel novo** (`ph2d-panel-<slug>`) | **(B) §3.B.1** | Coord plumba feature flag + `register_all_panels` ANTES. |
+| **Widget primitive novo** | **(B) §3.B.2** | Coord adiciona em `widget/mod.rs` + showcase ANTES. |
+| **Chrome handler novo** | **(B) §3.B.3** | Coord adiciona em `chrome/mod.rs::dispatch_all` ANTES. |
+| **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker em [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md). |
+| **Mudar tokens / editor-core (não-contrato) / shells / arch tests** | **(C)** | Foundational, não paraleliza. |
+| **Mudar contrato de nós** (porta, EvalCtx, motor) | **(C) + ADR** | Bump cap em `architecture_contract_surface.rs` + ADR estendendo 0039. |
+| **Mudar contrato de tools** (método em `Tool`/`RasterEditTool`, variant em `PanelEvent`) | **(C) + ADR** | Bump cap em `architecture_tool_contract_surface.rs` + amendment de ADR-0040 §7. |
 
-Heurística de uma frase: **feature de conteúdo (nó) OU peça de editor que manipula bitmap (tool) = drop-crate = (A) Implementador-só (§3.8). Peça do chrome que renderiza essas tools/nós (painel/widget/chrome) = (B) Coord faz o central primeiro. Mudar regra do jogo (contrato congelado, foundational) = (C) Coord-only + ADR.** Na dúvida entre A e B, pergunte: "isso exige editar QUALQUER arquivo fora de uma única pasta nova?" Se sim → (B). Se a única coisa fora da pasta é o wiring **gerado** (`ph2d-{node,tool}-sync`), ainda é **(A)**.
+**Heurística de 1 frase:** conteúdo (nó) OU peça que manipula bitmap (tool) = **(A) drop-crate**. Chrome que renderiza tools/nós (painel/widget/chrome) = **(B) Coord scaffold**. Mudar regra do jogo (contrato congelado, foundational) = **(C) Coord-only + ADR**.
 
-**Nota operacional pra caminho (A):** o `sync` vai sujar `crates/ph2d-{tool,node}-registry-init/src/lib.rs` + `Cargo.toml` (regenera entre marcadores codegen). Esse diff é **esperado e válido** — não viola a regra de "edita só dentro da pasta" da §1.3. O staleness gate em CI exige justamente essa regeneração — esquecer o sync é o que rederia CI, não rodá-lo.
+**Na dúvida A vs B:** "exige editar QUALQUER arquivo fora de UMA pasta nova?" Sim → (B). Único arquivo fora = wiring **gerado** (`ph2d-{node,tool}-sync`) → ainda **(A)**.
+
+**Diff do sync é esperado** — não viola §1.4 ISOLAMENTO. O staleness gate em CI exige a regeneração.
 
 ---
 
-## 2. Como Coordenador e Implementador se comunicam
+## 3. Receitas
 
-Enio é **relay mecânico**, não decisor.
+### 3.A Fan-out drop-crate (caminho (A)) — node OU tool
 
-### 2.1 Coordenador → Implementador (caminho B)
+Receita simétrica única. Drop a crate, roda o sync, gates fecham. **Sem coordenação, sem edit central.**
 
-Aplica APENAS ao caminho **(B)** (painel/widget/chrome — §3.2-3.4). Para caminho **(A)** (node/tool — §3.8), o briefing canônico parametrizado por família já está pronto-pra-colar em §3.8.2 — Enio cola direto numa sessão Implementador sem precisar de Coordenador.
+#### 3.A.1 Mapa node ↔ tool
 
-Quando o Coordenador precisa que o Implementador comece (caminho B), ele entrega ao Enio um briefing pronto-pra-colar com este formato:
-
-```
-═══════════════════════════════════════════════════════════════════
-BRIEFING — IMPLEMENTADOR · slot <N> · feature: <slug> (painel/widget/chrome)
-═══════════════════════════════════════════════════════════════════
-
-PASTA EXCLUSIVA: <ex: crates/ph2d-panel-<slug>/>
-
-ESTADO INICIAL (já plugado na árvore pelo Coordenador):
-- Cargo.toml      (deps prontos)
-- src/lib.rs      (impl <stub-do-balde> compilando verde)
-- (linha registrada em panel-registry-init / widget/mod.rs /
-   chrome dispatch_all — conforme balde)
-
-O QUE VOCÊ FAZ (preenche dentro da pasta):
-- <ex: paint do painel, apply_event, populate>
-- cargo test -p <crate-novo> verde
-
-O QUE VOCÊ NÃO TOCA (em hipótese alguma):
-- Qualquer arquivo fora da pasta atribuída
-- Cargo.toml raiz / panel-registry-init / widget/mod.rs / chrome/mod.rs
-  (já está feito pelo Coordenador)
-- crates/ph2d-tokens/* (foundational)
-- crates/ph2d-editor-core/* — exceto a pasta-balde indicada,
-  para widget/chrome (foundational por enquanto)
-- crates/ph2d-{node,tool}-* (outras famílias / outras sessões)
-- shells/*
-
-LEIA ANTES DE CODAR:
-- docs/IntegracaoMultiAgente/DIRETRIZ.md §1.3 (3 obrigações)
-- docs/IntegracaoMultiAgente/DIRETRIZ.md §4 (UI canônica)
-- docs/IntegracaoMultiAgente/DIRETRIZ.md §5 (codificação rápida)
-
-QUANDO TERMINAR:
-Reporte ao Enio nesta forma EXATA:
-  "Implementador slot <N> pronto. Commit local: <sha>. Aguardando revisão."
-═══════════════════════════════════════════════════════════════════
-```
-
-Enio copia esse bloco e cola numa sessão Claude Code nova. Implementador lê + executa.
-
-### 2.2 Implementador → Coordenador
-
-Quando Implementador termina, reporta ao Enio com a frase ritual:
-
-> "Implementador slot N pronto. Commit local: `<sha>`. Aguardando revisão."
-
-Enio cola essa frase na sessão do Coordenador. Coordenador faz `git log --oneline -3`, lê o diff, faz seus checks.
-
-### 2.3 Coordenador → Enio (instruções operacionais)
-
-Coordenador instrui Enio mecanicamente:
-
-- "Enio, rode `./play.command` e me diga se o painel Outline aparece na zona direita com o cabeçalho correto."
-- "Enio, abra uma sessão Claude Code nova e cole o briefing abaixo."
-- "Enio, confirma que posso pushar? Estou pronto."
-
-Enio executa sem decidir. Se Enio precisa decidir algo (escolher entre 2 abordagens, definir escopo), o Coordenador apresenta opções com recomendação primeiro, conforme preferência registrada em memória.
-
-### 2.4 Implementador → Coordenador (pedidos de fora-da-pasta)
-
-Se Implementador descobre que precisa:
-
-- Adicionar dep externa em `Cargo.toml` workspace
-- Mudar algo em `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core` (foundational)
-- Criar um NodeId novo, alocar um cluster id, etc.
-- Adicionar widget primitive novo que outras tools vão consumir
-
-**Para imediatamente.** Reporta ao Enio:
-
-> "Implementador slot N bloqueado. Preciso que o Coordenador faça: <descrição precisa>. Razão: <por quê>. Continuo após scaffold extra."
-
-Enio cola pro Coordenador. Coordenador faz o scaffold adicional, comita, libera o Implementador.
-
----
-
-## 3. Receitas canônicas — uma por balde
-
-Sete buckets, dois caminhos. O balde §3.8 (drop-crate node OU tool, fan-out simétrico) é **caminho (A)** — sem Coordenador. Os baldes §3.2-§3.4 (Painel/Widget/Chrome) são **fluxo invertido (B)** — Coordenador scaffold-primeiro. Os baldes §3.5-§3.7 cobrem casos transversais (modificar existente, foundational, cross-cutting). §3.1 é só um redirect histórico pro §3.8.
-
-### 3.1 Tool nova → vá direto pro §3.8
-
-> **🔒 ADR-0040 FECHADO (2026-05-22, TG-E `fc23647`).** Tool nova é **caminho (A) drop-crate**, junto com nó — receita única em **§3.8**. Sem scaffold central, sem variant novo em `EditorAction`. `editor-core/src/tools/` foi **deletado em TG-D `c4063b7`** (foundation ⊥ tools por `architecture_cycle_prevention::editor_core_has_no_concrete_tool_deps`). Os 3 sabores de tool (one-shot / palette modal / stateful + panel) estão tabelados em §3.8.3.
->
-> O scaffold pré-ADR-0040 (Coord criava Cargo.toml + editava `register_all` à mão + tocava `editor-core/src/tools/`) virou arqueologia — vide ADR-0040 §7 e [`docs/HANDOFF_tool_isolation_close.md`](../HANDOFF_tool_isolation_close.md) (banner: "EXECUTADO em 2026-05-22"; referência histórica do raciocínio, não fluxo vigente).
-
-### 3.2 Painel novo ("vamos criar o painel Outline")
-
-**Coordenador (scaffold):**
-
-1. Decide `slug` (`outline`), `DEFAULT_VISIBLE`, feature flag (`panel-outline`).
-2. Cria crate `crates/ph2d-panel-outline/` — `Cargo.toml` adiciona deps em `ph2d-editor-core` (Panel trait + PaintCtx + PanelHostInternal), `ph2d-a11y` (NodeId), `ph2d-tokens`, `ph2d-text`, `ph2d-vector`. Glob `workspace.members` (`crates/*`) cobre o crate sem edit em `Cargo.toml` raiz.
-3. Cria `src/lib.rs` com stub do `impl Panel` (vide [`crates/ph2d-panel-inspector/src/lib.rs`](../../crates/ph2d-panel-inspector/src/lib.rs) como template completo):
-   ```rust
-   #![forbid(unsafe_code)]
-   use ph2d_a11y::NodeId;
-   use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-   use ph2d_editor_core::panel::{
-       EventOutcome, PaintCtx, Panel, PanelHostInternal,
-   };
-   use ph2d_tool_registry::hash_node_id;
-
-   pub struct OutlinePanel;
-
-   #[derive(Default)]
-   pub struct OutlineState { /* placeholder */ }
-
-   impl Panel for OutlinePanel {
-       type State = OutlineState;
-       const ID: &'static str = "outline";
-       const NODE_ID: NodeId = hash_node_id("panel.outline");
-       const DEFAULT_VISIBLE: bool = false;
-
-       fn paint(_state: &mut Self::State, _ctx: &mut PaintCtx) {
-           // implementador preenche
-       }
-
-       fn apply_event(
-           _state: &mut Self::State,
-           _host: &mut dyn PanelHostInternal,
-           _ev: WidgetEvent,
-       ) -> EventOutcome {
-           EventOutcome::Ignored
-       }
-
-       fn populate(_store: &mut WidgetStore) {}
-   }
-   ```
-   **Notas factuais:**
-   - `Panel::paint` tem **2 parâmetros** (`state`, `ctx`); o host fica em `ctx.host` (campo de `PaintCtx`), não como parâmetro separado.
-   - O trait usado pelo host é `PanelHostInternal` (não `PanelHost`).
-   - `hash_node_id` vive em `ph2d-tool-registry`, não em `ph2d-a11y` (`ph2d-a11y` só expõe `NodeId` em si).
-4. Adiciona feature em `crates/ph2d-panel-registry-init/Cargo.toml` (o `default` atual lista 6 painéis — bgremoval, padding, inspector, hierarchy, widget-gallery, grid-snap; manter os existentes + acrescentar o novo):
-   ```toml
-   [features]
-   default = [
-       "panel-bgremoval", "panel-padding", "panel-inspector",
-       "panel-hierarchy", "panel-widget-gallery", "panel-grid-snap",
-       "panel-outline",
-   ]
-   panel-outline = ["dep:ph2d-panel-outline"]
-   ```
-   E adiciona em `[dependencies]`: `ph2d-panel-outline = { path = "../ph2d-panel-outline", optional = true }`.
-5. Adiciona em `crates/ph2d-panel-registry-init/src/lib.rs::build_typed_registry` (a ordem atual NÃO é alfabética — segue a ordem de migração ADR-0029; **não há gate alfabético pra panel-registry-init** diferente do tool-registry-init, então mantenha a ordem que faz sentido pro tipo de painel — image-tool panels primeiro, depois os de editor):
-   ```rust
-   #[cfg(feature = "panel-outline")]
-   reg.push(ErasedPanel::new::<ph2d_panel_outline::OutlinePanel>());
-   ```
-6. Atualiza `EXPECTED_TYPED` no `#[cfg(test)] mod tests` do `panel-registry-init` (incrementa contador `#[cfg(feature = "panel-outline")] { n += 1; }`).
-7. `cargo check -p ph2d-panel-outline` + `cargo test -p ph2d-panel-registry-init` verde.
-8. Commita + entrega briefing (vide §2.1).
-
-**Implementador:** preenche `OutlineState`, `paint`, `apply_event`, `populate`.
-
-### 3.3 Widget primitive novo ("precisamos de um ColorWheel")
-
-Widget primitive é "elemento de UI reutilizável" (botão, slider, dropdown, etc.) — vive em `crates/ph2d-editor-core/src/widget/`. Diferente de tool/painel: **é foundational**, consumido por vários painéis. Coordenador faz o scaffold completo e entrega ao Implementador apenas se for grande o suficiente; caso contrário Coordenador faz inteiro.
-
-**Coordenador (scaffold):**
-
-1. Cria `crates/ph2d-editor-core/src/widget/<slug>.rs` com pattern canônico (vide [`button.rs`](../../crates/ph2d-editor-core/src/widget/button.rs) como template):
-   ```rust
-   //! <one-liner>
-   use crate::interaction::HitIndex;
-   use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
-   use ph2d_text::TextSystem;
-   use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
-   use ph2d_vector::VectorScene;
-   use crate::paint::resolve;
-   use crate::zones::Rect;
-
-   #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-   pub enum ColorWheelState {
-       #[default] Normal, Hovered, Pressed, Focused, Disabled,
-   }
-
-   #[derive(Clone, Debug)]
-   pub struct ColorWheel { pub id: NodeId, /* … */ }
-
-   impl ColorWheel {
-       pub fn build_a11y(&self) -> Node {
-           NodeBuilder::new(Role::Slider).build()
-       }
-   }
-
-   pub fn paint_color_wheel(/* args canônicos */) { /* stub */ }
-   ```
-2. Adiciona em `widget/mod.rs` na ordem alfabética:
-   ```rust
-   mod color_wheel;
-   pub use color_wheel::{ColorWheel, ColorWheelState, paint_color_wheel};
-   ```
-3. Cria seção no showcase em `widget/showcase/` (copia layout de [`switches.rs`](../../crates/ph2d-editor-core/src/widget/showcase/switches.rs)). Arch test `architecture_widget_showcase_coverage` enforça que o widget aparece no showcase OU em opt-out justificado.
-4. `cargo check -p ph2d-editor-core` verde. Os 4 arch tests de widget devem passar:
-   - `architecture_widget_loc_cap` (≤500 LOC)
-   - `architecture_widget_showcase_coverage`
-   - `no_literal_color`
-   - `hr12_widgets_a11y`
-5. Commita + briefing (se entregar a Implementador).
-
-**Implementador:** preenche `paint_color_wheel` usando **só tokens** (zero hex, zero px literal), adiciona unit tests, ajusta seção do showcase.
-
-### 3.4 TopBar action / chrome affordance ("adicionar botão Settings → Snap toggle")
-
-Chrome (TopBar, LeftRail, BottomHUD, ContextMenu) tem handlers em [`crates/ph2d-editor-core/src/screens/hero/chrome/`](../../crates/ph2d-editor-core/src/screens/hero/chrome/). Cada handler = 1 arquivo (≤80 LOC típico) com função `pub fn apply(hero, event) -> bool`. Dispatcher central em `chrome/mod.rs`.
-
-**Coordenador:**
-
-1. Cria `crates/ph2d-editor-core/src/screens/hero/chrome/<slug>.rs` com stub:
-   ```rust
-   use crate::interaction::WidgetEvent;
-   use crate::screens::hero::HeroScreen;
-
-   pub fn apply(_hero: &mut HeroScreen, _event: WidgetEvent) -> bool {
-       false  // implementador preenche
-   }
-   ```
-2. Adiciona no dispatcher em `chrome/mod.rs` (preferencialmente alfabético — não há arch-gate alfabético pra chrome, então é convenção de higiene de merge, não regra):
-   ```rust
-   pub mod snap_toggle;
-   ```
-   E na fn `dispatch_all` adiciona `|| snap_toggle::apply(hero, event)`.
-3. Se o handler precisa de NodeIds novos, adiciona em `screens/hero/ids.rs` via `hash_node_id`.
-4. Se precisa item de menu/popover, adiciona em `pre_populate.rs` (ou pede ao Implementador).
-5. `cargo check -p ph2d-editor-core` verde. Briefing.
-
-**Implementador:** preenche corpo do handler.
-
-### 3.5 Modificar feature existente ("o ícone da tool Trim está errado", "o algoritmo de Padding tem bug", "o BgRemoval precisa de novo slider")
-
-Não há scaffold. A pasta já existe. **Caminho (A) Implementador-só** — Coordenador (se foi convocado) delega direto, ou o Enio abre uma sessão Implementador no balde correto e cola:
-
-```
-Implementador slot N: edite crates/ph2d-tool-<slug>/src/<arquivo>.rs.
-Tudo da feature vive no crate isolado (manifest + tool + algorithm + icon + params +
-panel docado em ph2d-panel-<slug>/ quando aplicável). Não toque em nada fora.
-Se o ajuste exigir edit em algum arquivo central (Cargo.toml raiz, EditorAction,
-contrato congelado, foundational), PARE e reporte — quase certo significa que
-a tarefa estava mal triada (§1.4).
-Reporte quando terminar.
-```
-
-Mapa rápido (pasta canônica por feature):
-
-| Feature | Pasta canônica |
-|---------|----------------|
-| Tool (algo / ícone / manifest / `impl Tool` / `handle_panel_event`) | `crates/ph2d-tool-<slug>/` |
-| Vocab UI de um tool (`<Slug>UiEdit`, `<Slug>UiSnapshot`, `<Slug>Params`) | `crates/ph2d-tool-<slug>/src/params.rs` (TG-B/TG-C migrou de editor-core) |
-| Panel docado de um tool | `crates/ph2d-panel-<slug>/` |
-| Nó | `crates/ph2d-node-<dom>-<slug>/` |
-| Painel genérico (Inspector/Hierarchy/etc.) | `crates/ph2d-panel-<slug>/` |
-| Widget primitive | `crates/ph2d-editor-core/src/widget/<slug>.rs` |
-| Chrome handler | `crates/ph2d-editor-core/src/screens/hero/chrome/<slug>.rs` |
-
-A pasta `crates/ph2d-editor-core/src/tools/` **não existe** desde ADR-0040 TG-D (`c4063b7`). Se a memória de uma LLM anterior te apontar pra lá, ignore — confie no `ls`.
-
-### 3.6 Mudança em foundational ("precisamos de um token de cor novo")
-
-Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core`, `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-tool-registry-init`, `ph2d-node-registry`, `ph2d-node-registry-init`, `ph2d-panel-registry-init`, `tools/ph2d-{node,tool}-sync`, `shells/*`, arch tests, **+ os dois contratos congelados abaixo**.
-
-**Foundational não é paralelizável.** Coordenador faz **sozinho**. Não delega.
-
-**Dois contratos congelados — paralelos, com mesma disciplina.** Mexer em qualquer um deles **não é só foundational, é evento raro Coordenador-only com ADR**. Os caps dos arch-gates estão apertados ao tamanho atual sem folga, então qualquer crescimento tripa o gate de propósito.
-
-| Contrato | Arquivos congelados | Arch-gate (cap) | ADR | Mudar exige |
-|----------|--------------------|----|-----|-------------|
-| **Sistema de nós** (W2.T4, 2026-05-22) | `crates/ph2d-nodegraph/src/{lib.rs,node.rs,port.rs,effect.rs,attr.rs,cook.rs,graph.rs}` + `crates/ph2d-expr/src/lib.rs` | `crates/ph2d-nodegraph/tests/architecture_contract_surface.rs` — `NodeOp ≤ 2 métodos`, `OpResolver ≤ 1 método`, `NodeManifest ≤ 8 campos` | [ADR-0039](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md) | Bump do cap + ADR novo estendendo 0039 + (em `ph2d-expr`) re-provar paridade CPU↔WGSL |
-| **Sistema de tools** (TG-E, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (traits `Tool` + `RasterEditTool`, enum `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs` — `Tool ≤ 10 métodos`, `RasterEditTool ≤ 5 métodos`, `PanelEvent ≤ 4 variants` | [ADR-0040 §7](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) | Bump do cap + amendment de ADR-0040 §7 |
-
-**O que NÃO mexe nesses contratos** (é fan-out drop-crate, vide §3.8, sem Coordenador):
-
-- Adicionar **nó novo** num domínio com avaliador existente — `ph2d-node-<dom>-<slug>/` + `cargo run -p ph2d-node-sync`.
-- Adicionar **tool novo** (any shape) — `ph2d-tool-<slug>/` + `cargo run -p ph2d-tool-sync`.
-- Adicionar **NodeId** novo num panel docado — só edita o crate do tool/panel.
-- Adicionar campo novo num `<Slug>UiEdit` enum — vive em `ph2d-tool-<slug>/src/params.rs`.
-
-Exemplo de mudança foundational (não-contrato): adicionar `ColorToken::AccentTeal`:
-1. Coord edita `docs/design/tokens.json` adicionando a chave em todos os 4 temas.
-2. Coord roda `cargo check -p ph2d-tokens` (build.rs regenera).
-3. Coord edita `crates/ph2d-tokens/src/color.rs` adicionando o variant.
-4. Coord roda `cargo test --workspace --exclude ph2d-asset` pra garantir nada quebrou.
-5. Coord commita: `feat(tokens): add ColorToken::AccentTeal`.
-
-### 3.7 Trabalho cross-cutting (perf audit, refactor cross-crate, manutenção de tests)
-
-Algumas tarefas não cabem em nenhum dos baldes acima (§3.2-3.6) porque tocam múltiplos crates por natureza — perf audit do workspace, deduplicação de pattern, migração de API antiga em N crates consumidores, sweep de lint novo, etc.
-
-**Coordenador autoriza explicitamente a exceção ao isolamento.** O briefing pro Implementador diz literalmente:
-
-> "Você toca tests em vários crates conforme os achados. Exceção autorizada à regra de uma pasta isolada da DIRETRIZ §1.3. Cada commit ainda fica T1 single-crate sempre que possível."
-
-**Regras desse bucket:**
-
-1. **Cada commit valida-se sozinho** — `cargo test -p <crate>` verde para o crate tocado, antes do commit. Pre-commit hook entra em T1 (single-crate, ~30s), não T2.
-2. **Não tocar production code de foundational sem motivo claro** — em audit de tests, mexer só nos tests (`tests/`, `#[cfg(test)] mod`). Production `pub fn` fica intocado salvo se a auditoria revelar API faltando (e nesse caso vira novo trabalho discutido com Enio).
-3. **Documentar risk surface** — no relatório final, listar todas as mudanças sutis de comportamento que CI pode capturar mas smoke local pode não ver (ex: "função X agora cacheia via `OnceLock` — primeiro caller paga, demais zero-init; tests confirmados que só fazem `&ctx` imutável").
-4. **Tokens canônicos continuam valendo** — geralmente N/A em test code, mas se tocar paint/widget, mesma regra de §4.
-
-**Exemplo real (2026-05-19 noite):** perf audit cortou nextest workspace de 14min para 1.5min via 6 commits, cada um T1 single-crate, todos verdes em CI. Detalhe na memória `project_perf_audit_2026_05_19.md`.
-
-### 3.8 Fan-out drop-crate (A) — node OU tool (uma receita, duas famílias)
-
-Esta é a forma simétrica como a engine cresce: largar um crate isolado em `crates/ph2d-{node,tool}-*/`, rodar o `sync` correspondente, gates fecham. Sem edit central, sem coordenação. **Garantia formal de não-colisão em §3.8.4.**
-
-**Diferença-chave vs. baldes (B) §3.2-3.4 (painel/widget/chrome):** lá o registro central é editado à mão (`register_all_panels` com `#[cfg(feature = …)]` / `widget/mod.rs` / `chrome/mod.rs::dispatch_all`), por isso precisam de scaffold-primeiro. Aqui não.
-
-#### 3.8.1 Mapa node ↔ tool (use ao preencher o briefing)
-
-| Aspecto | **Node** (declarativo, pull-side / FBP) | **Tool** (imperativo, push-side / manipulação direta) |
-|--------|----------------------------------------|------------------------------------------------------|
-| Pasta exclusiva | `crates/ph2d-node-<domínio>-<slug>/` | `crates/ph2d-tool-<slug>/` |
+| Aspecto | **Node** (declarativo, pull / FBP) | **Tool** (imperativo, push) |
+|---|---|---|
+| Pasta exclusiva | `crates/ph2d-node-<dom>-<slug>/` | `crates/ph2d-tool-<slug>/` |
 | Codegen | `cargo run -p ph2d-node-sync` | `cargo run -p ph2d-tool-sync` |
-| Wiring gerado | `register_all_nodes` + deps `Cargo.toml` (1 superfície) | `register_all` + `register_all_tools` + deps (3 superfícies) |
-| Gate de wiring | `cargo test -p ph2d-node-registry-init` (staleness) | `cargo test -p ph2d-tool-registry-init` (3 staleness + 3 alfabéticos) |
-| Contrato implementado | `NodeOp` + `NodeManifest` (em `ph2d-nodegraph`) | `Tool` + opcional `RasterEditTool` + `ToolManifest` (em `ph2d-editor-core` + `ph2d-tool-registry`) |
-| 🔒 Cap arch-gate | `architecture_contract_surface` — `NodeOp ≤ 2 / OpResolver ≤ 1 / NodeManifest ≤ 8 campos` (ADR-0039) | `architecture_tool_contract_surface` — `Tool ≤ 10 / RasterEditTool ≤ 5 / PanelEvent ≤ 4` (ADR-0040 §7 + ADR-0041) |
-| Entry point(s) do crate | `pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError>` | `pub fn register(reg: &mut Registry)` (manifest) e/ou `pub fn make() -> Box<dyn Tool>` (behavior); 3 sabores — vide §3.8.3 |
-| Vocab de canal (foundation) | portas tipadas (`PortType = domínio+dim+CLOCK`) + efeito + clock + params | `EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent(PanelEvent), CancelActiveTool}` (4 genéricos — sem variant per-tool) |
-| Membrana | `Pure`/`Temporal` (pull, isento HR-5) vs `Stateful` (gameplay, escreve sim) — `Graph::validate` prova | `tool-* → editor-core` OK; `editor-core ⊥ tool-*` gateado (`editor_core_has_no_concrete_tool_deps`) |
-| Templates | (Pure trivial) `crates/ph2d-node-debug-const/`; (Temporal + ph2d-expr + golden) `-debug-wave/`; (vertical Stateful-free, generator/cloner/modifier) `-motion-{grid,clone,transform}/` | sabor (1) one-shot: `-make-square/` / `-trim-transparency/` / `-real-size/`; (2) palette modal: `-brush/` (`is_default=true`) / `-move/`; (3) stateful + panel: `-padding/` / `-bgremoval/` (completo) |
-| Pegadinhas (gotchas) | `ctx.param("nome")` no eval (NUNCA `MANIFEST.params[..].default`); `param_as_count(v, max)` p/ alocação capada | `apply_ui_edit` = single-source-of-truth de clamps; `handle_panel_event` roteia NodeId → variant; ícone exige IconId variant em ordem alfabética em `ph2d-editor-core/src/icons.rs` |
+| Wiring gerado | `register_all_nodes` + deps (1 superfície) | `register_all` + `register_all_tools` + deps + 2 testes (5 superfícies) |
+| Gate wiring | `cargo test -p ph2d-node-registry-init` | `cargo test -p ph2d-tool-registry-init` |
+| Contrato | `NodeOp` + `NodeManifest` (`ph2d-nodegraph`) | `Tool` + opcional `RasterEditTool` + `ToolManifest` (`ph2d-editor-core` + `ph2d-tool-registry`) |
+| 🔒 Cap arch-gate | `NodeOp=2` / `OpResolver=1` / `NodeManifest=8` (ADR-0039) | `Tool=10` / `RasterEditTool=5` / `PanelEvent=4` (ADR-0040+0041) |
+| Entry points | `pub fn register(reg: &mut NodeRegistry) -> Result<…>` | `pub fn register(reg: &mut Registry)` (manifest) E/OU `pub fn make() -> Box<dyn Tool>` (behavior); 3 sabores §3.A.3 |
+| Vocab de canal | portas tipadas + effect + clock + params | `EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent(PanelEvent), CancelActiveTool}` (4 genéricos — sem variant per-tool) |
+| Templates | `ph2d-node-debug-const/` (Pure trivial) · `-debug-wave/` (Temporal + ph2d-expr + golden) · `-motion-{grid,clone,transform}/` (vertical Stateful-free) | `-make-square/` (sabor 1) · `-brush/` (sabor 2, `is_default=true`) · `-padding/` (sabor 3 leve) · `-bgremoval/` (sabor 3 completo) |
+| Pegadinhas | `ctx.param("nome")` no eval (nunca `MANIFEST.params[..].default`); `param_as_count(v, max)` p/ alocação capada | `apply_ui_edit` = single-source-of-truth de clamps; ícone exige IconId variant alfabético em `editor-core/src/icons.rs` |
 
-#### 3.8.2 Briefing pronto-pra-colar (Enio cola numa sessão Implementador nova)
+#### 3.A.2 Briefing pronto-pra-colar
 
-Substitua `<family>` por `node`/`tool`, `<slug>` pelo seu, e se for node preencha `<domínio>` (ex.: `motion`). **Convenção dos marcadores:** linhas/blocos prefixados com `[node]` valem só pra família node; idem `[tool]`. Quem cola apaga os blocos da família errada antes de mandar pro agente.
+Substitua `<family>` por `node`/`tool`, `<slug>` pelo seu, e (se node) `<domínio>`. Apague os blocos da família errada antes de mandar ao agente.
 
-> **Variante 100% paste-ready** (sem placeholder) em [`examples-fan-out.md`](examples-fan-out.md) — este mesmo briefing instantiated fim-a-fim para um node concreto (`ph2d-node-shader-blur`) e um tool concreto (`ph2d-tool-grayscale`), incluindo todos os arquivos a criar. Use a variante parametrizada abaixo quando quiser flexibilidade; use o exemplo concreto quando o agente é novo e o objetivo é zero-substituição-mental.
+> **Variante 100% paste-ready** (zero placeholder, com algorithm.rs + icon.rs preenchidos): [`examples-fan-out.md`](examples-fan-out.md) instancia esse briefing fim-a-fim para `ph2d-node-shader-blur` e `ph2d-tool-grayscale`. Use a parametrizada abaixo pra flexibilidade; use os exemplos concretos quando o agente é novo e o objetivo é zero-substituição-mental.
 
 ```
 ═══════════════════════════════════════════════════════════════════
@@ -520,439 +152,379 @@ BRIEFING — <family>-crate · slug: <slug>  [node]  · domínio: <domínio>
 PASTA EXCLUSIVA:
   [node]  crates/ph2d-node-<domínio>-<slug>/
   [tool]  crates/ph2d-tool-<slug>/
-(criada por você; o glob de workspace.members a inclui automaticamente —
-NÃO edite o Cargo.toml raiz.)
+Glob workspace.members cobre — NÃO edite Cargo.toml raiz.
 
-ANTES DE CODAR: leia o mapa node↔tool em DIRETRIZ §3.8.1 (entry points,
-contrato, vocab, templates) e copie o template do seu sabor.
+ANTES DE CODAR: leia DIRETRIZ §3.A.1 (mapa) + copie o template do seu
+sabor (vide §3.A.3 pra tool).
 
 O QUE VOCÊ FAZ (só dentro da sua pasta):
-0. **PRIMEIRO arquivo a criar = `src/lib.rs`** (mesmo vazio, ou com
-   apenas `#![forbid(unsafe_code)]` + `pub mod placeholder;` que será
-   sobrescrito). Cargo recusa o manifest enquanto o crate-novo não
-   tiver `src/lib.rs` (ou `src/main.rs`) — e como o workspace usa
-   glob `crates/*`, **todas as outras sessões paralelas ficam
-   bloqueadas com `can't find library X` até esse arquivo existir**.
-   Já queimou no fan-out das 4 image-tools (2026-05-23): Cargo.toml
-   foi criado, mods auxiliares antes do lib.rs, workspace inteiro
-   travou. Regra: lib.rs primeiro, mesmo com 1 linha; depois Cargo.toml,
-   módulos auxiliares (`algorithm.rs`, `params.rs`, etc.) e o resto.
+0. **`src/lib.rs` PRIMEIRO** (mesmo com 1 linha — `#![forbid(unsafe_code)]`).
+   Cargo recusa o manifest enquanto crate-novo não tem lib.rs; como o
+   workspace usa glob `crates/*`, TODAS as outras sessões paralelas
+   ficam bloqueadas com `can't find library X` até esse arquivo existir.
+   Regra: lib.rs primeiro, depois Cargo.toml, depois módulos auxiliares.
 1. Cargo.toml: deps mínimas.
-   [node]  ph2d-nodegraph, ph2d-node-registry, e ph2d-expr se usar math
+   [node]  ph2d-nodegraph, ph2d-node-registry, ph2d-expr se usar math
            por-elemento.
-   [tool]  ph2d-tool-registry (manifest + Zone) + ph2d-editor-core
-           (Tool / FloatingPanel se stateful) + ph2d-a11y + ph2d-core +
-           dom-específicas (ph2d-vector p/ ícone).
-2. src/lib.rs: implemente o contrato (vide §3.8.1 entry point(s)).
+   [tool]  ph2d-tool-registry, ph2d-editor-core (Tool / FloatingPanel
+           se stateful), ph2d-a11y, ph2d-core, ph2d-vector p/ ícone.
+2. src/lib.rs: implemente o contrato.
    [node]  pub const MANIFEST: NodeManifest { id (NodeTypeId::of(
-           "<dom>.<slug>")), name, inputs/outputs (PortSpec), effect
-           (Pure | Temporal | Stateful), clock, params, lowerings }
-           impl NodeOp { manifest(); eval(ctx) PURO — lê params via
-                         ctx.param("nome"); cape produto via
-                         param_as_count(v, max) se aloca; }
+           "<dom>.<slug>")), name, inputs/outputs, effect (Pure|
+           Temporal|Stateful), clock, params, lowerings };
+           impl NodeOp { manifest(); eval(ctx) — lê params via
+           ctx.param("nome"); cape via param_as_count(v, max) se aloca };
            pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError>
-   [tool]  Escolha o sabor pela tabela §3.8.3 e siga o template:
-           - (1) só pub const MANIFEST: ToolManifest + pub fn register
-                 + src/algorithm.rs puro.
-           - (2) src/tool.rs com impl Tool (id/label/icon_slug/build_panel/
-                 handle_panel_event/as_any_mut) + pub fn make.
-                 Brush é o único com is_default = true.
-           - (3) os dois (manifest + behavior) + crate-irmão
-                 ph2d-panel-<slug>/ (vide §3.2). handle_panel_event mapeia
-                 NodeIds do panel pra apply_ui_edit(<UiEdit>::X) — único
-                 site dos clamps/projeções. Para raster I/O do shell, siga
-                 o padrão ATUAL: métodos próprios na concrete type
-                 alcançados via as_any_mut downcast (vide BgRemoval /
-                 Padding). impl RasterEditTool é fan-out futuro — vide
-                 §3.8.3.1; NÃO mova um tool pra esse canal de carona.
-3. [node] Teste golden: grafo source→seu-nó, register, g.validate(&ops),
-         cook, asserta a saída.
-   [tool] Testes do crate: register attaches manifest / make builds /
-          panel layout / handle_panel_event clamping.
-4. ÍCONE (somente tool — node não tem pill no chrome).
-   [node] N/A.
-   [tool] src/icon.rs com BezPath (porte do
-         docs/design/icons/<slug>.svg, Lucide-style 24×24,
-         stroke="currentColor"). Se a tool tem pill no chrome, adicione
-         IconId variant em ph2d-editor-core/src/icons.rs em ORDEM
-         ALFABÉTICA — o gate enum_order_matches_svgs falha se sair de
-         ordem; NUNCA pule via --no-verify (quebra TODOS os ícones).
-         Se não tem SVG source, peça ao Enio.
+   [tool]  Escolha o sabor (§3.A.3) e siga o template.
+3. [node] Golden test: source→seu-nó, register, g.validate(&ops), cook,
+         asserta saída.
+   [tool] Tests: register attaches manifest / make builds / panel layout /
+         handle_panel_event clamping.
+4. ÍCONE (só tool — node não tem pill).
+   [tool] src/icon.rs com BezPath (porte docs/design/icons/<slug>.svg,
+         Lucide 24×24, stroke="currentColor"). Adicione IconId variant
+         em ph2d-editor-core/src/icons.rs em ORDEM ALFABÉTICA — gate
+         enum_order_matches_svgs falha se sair de ordem; NUNCA pule
+         via --no-verify (quebra TODOS os ícones).
 
 O QUE VOCÊ NÃO TOCA:
 - Qualquer arquivo fora da sua pasta.
-- 🔒 Contrato congelado (vide §3.8.1 cap). Mudança = Coordenador-only + ADR.
+- 🔒 Contrato congelado (vide §4). Mudança = Coord-only + ADR.
   [node]  ph2d-nodegraph, ph2d-expr, ph2d-node-registry,
           ph2d-node-registry-init/ (GERADO).
-  [tool]  crates/ph2d-editor-core/src/tool.rs (Tool/RasterEditTool/
-          PanelEvent), action_bus.rs::EditorAction (use os 4 genéricos),
+  [tool]  editor-core/src/tool.rs (Tool/RasterEditTool/PanelEvent),
+          action_bus.rs::EditorAction (use os 4 genéricos),
           ph2d-tool-registry, ph2d-tool-registry-init/ (GERADO),
-          o resto de ph2d-editor-core (foundational).
-- Cargo.toml raiz (glob cobre você).
+          resto de editor-core (foundational).
+- Cargo.toml raiz.
 
-WIRING (sem colisão, sem edição central):
-  cargo run -p ph2d-<family>-sync     # regenera o(s) register_all* + deps
-  cargo test -p ph2d-<family>-registry-init     # staleness gate(s) fecham
-  (staleness falha se esqueceu o sync; compilação do registry-init falha
-   se seu register/make tem assinatura errada.)
+WIRING (sem colisão, sem edit central):
+  cargo run -p ph2d-<family>-sync          # regenera tudo
+  cargo test -p ph2d-<family>-registry-init  # staleness fecha
 
-VALIDAÇÃO (codificação rápida, §5):
-  cargo check  -p ph2d-<family>-<slug>     # durante editing
-  cargo test   -p ph2d-<family>-<slug>     # golden / unit
+VALIDAÇÃO (§6):
+  cargo check  -p ph2d-<family>-<slug>
+  cargo test   -p ph2d-<family>-<slug>
   cargo clippy -p ... --all-targets -- -D warnings
   cargo fmt -p ...
 
 NOMES (gates ativos):
-  [node]  type name canônico = "<domínio>.<slug>", único cross-crate
-          (colisão pega no boot por RegistryError::Collision); atributos
-          de stream e params: identificadores simples (sem espaço/ponto).
-  [tool]  manifest id = "<slug>" único cross-crate (colisão pega no
-          Registry::build); label_key segue "tool.<slug>.label".
+  [node]  type name canônico = "<dom>.<slug>", único cross-crate
+          (colisão pega em RegistryError::Collision).
+  [tool]  manifest id = "<slug>" único; label_key = "tool.<slug>.label".
 
-SE PRECISAR DE ALGO FORA DA PASTA (dep externa nova, mudança no contrato
-congelado, novo domínio/avaliador, variant novo em EditorAction): PARE e
-reporte ao Enio (§2.4). Quase sempre significa que a tarefa não era
-fan-out puro — vide triagem §1.4.
+SE PRECISAR ALGO FORA (dep externa, contrato congelado, EditorAction
+variant, domínio novo): PARE e reporte ao Enio. Provavelmente não era
+fan-out puro — revise triagem §2.
 
-QUANDO TERMINAR, reporte ao Enio:
+QUANDO TERMINAR, reporte:
   "<Family> <slug> pronto. Commit local: <sha>. cargo test -p
    ph2d-<family>-<slug> e -p ph2d-<family>-registry-init verdes."
 ═══════════════════════════════════════════════════════════════════
 ```
 
-#### 3.8.3 Sabores de tool (escolha o template antes de colar o briefing)
+#### 3.A.3 Sabores de tool
 
 | Sabor | Expõe | Templates | Quando usar |
-|-------|-------|-----------|-------------|
-| **(1) One-shot stateless** | só `pub fn register` (manifest) | `-make-square/` · `-trim-transparency/` · `-real-size/` | Pill no chrome dispara algoritmo puro no Sprite ativo. Sem `impl Tool`. Shell drena via `EditorAction::OneShotImageOp`. |
-| **(2) Palette modal sem manifest** | só `pub fn make` (`Box<dyn Tool>`) | `-brush/` (`is_default=true`) · `-move/` | Cursor de canvas, sem pill no chrome. `impl Tool` + `build_panel` Procreate-style + `handle_panel_event`. Sem `ToolManifest`. |
-| **(3) Stateful + panel docado** | ambos `register` E `make` | `-padding/` (leve) · `-bgremoval/` (completo: preview cap + protect-mask + eyedropper via downcast) | Pill no chrome + panel próprio (`ph2d-panel-<slug>/`) + preview/commit raster. (1) + (2) + opcional `impl RasterEditTool` (vide §3.8.3.1). |
+|---|---|---|---|
+| **(1) One-shot stateless** | `pub fn register` (manifest) | `-make-square/` · `-trim-transparency/` · `-real-size/` · `-rasterize/` | Pill dispara algoritmo puro no Sprite ativo. Sem `impl Tool`. Shell drena via `EditorAction::OneShotImageOp`. |
+| **(2) Palette modal** | `pub fn make` (`Box<dyn Tool>`) | `-brush/` (`is_default=true`) · `-move/` | Cursor de canvas, sem pill. `impl Tool` + `build_panel` Procreate-style. Sem `ToolManifest`. |
+| **(3) Stateful + panel docado** | ambos `register` E `make` | `-padding/` (leve) · `-bgremoval/` (completo) · `-color-equalization/` · `-upscale/` | Pill + panel próprio (`ph2d-panel-<slug>/`) + preview/commit raster. (1)+(2)+opcional `impl RasterEditTool`. |
 
-O `ph2d-tool-sync` é configurado pelas needles `"pub fn register("` (manifest) e `"pub fn make("` (behavior) — sabor (1) só entra em `register_all`, (2) só em `register_all_tools`, (3) entra nos dois.
+O `ph2d-tool-sync` é configurado pelas needles `"pub fn register("` (manifest) e `"pub fn make("` (behavior) — sabor (1) só em `register_all`, (2) só em `register_all_tools`, (3) nos dois.
 
-#### 3.8.3.1 Status atual do trait `RasterEditTool` (Wave 10 / Etapa 2)
+#### 3.A.4 Trait `RasterEditTool` (heads-up importante)
 
-O sub-trait `RasterEditTool` (`set_source` / `current_preview` / `take_pending_commit` / `run_full` / `deactivate`) está **definido e congelado no contrato** (ADR-0040 §2.1, renomeado + estendido em ADR-0041). **3 tools de produção implementam** após Wave 10 / Etapa 2 (2026-05-24): **BgRemoval, Color Equalization, Upscale**. Padding e Equalize Sizes ficam como **documented exception** — Padding é geométrico-only (não tem source raster), Equalize Sizes é multi-sprite-required (não cabe no `set_source` single-buffer).
+Sub-trait com 5 métodos (`set_source` / `current_preview` / `take_pending_commit` / `run_full` / `deactivate`), congelado em ADR-0041. **3 tools de produção implementam** (BgRemoval, Color Equalization, Upscale). Padding e Equalize Sizes são exceção documentada (geométrico-only / multi-sprite-required).
 
-**Padrão canônico daqui pra frente para tool stateful que produz raster:**
+**Padrão pra tool stateful que produz raster:**
 
-1. **No tool crate:** `impl RasterEditTool for <Tool>` com os 5 métodos. Cache interno via field `cached_canvas_preview: Option<(Vec<u8>, u32, u32)>`. **Critical:** `set_source` e `Tool::on_deactivate` DEVEM zerar o cache (audit Wave 10 §A1+A2 mostrou que pular isso causa stale-frame após selection drift ou tool switch).
-2. **No shell:** crie `shells/desktop/src/render_loop/<slug>_bridge.rs` espelhando `bgremoval_preview.rs`. Use os 4 helpers de `ph2d-tool-runtime`:
-   - `drive_source_push` — push pixels quando seleção drifta
-   - `drive_preview_cache` — drain `current_preview` → cache shell-side
-   - `drive_pending_commit` — capture iter_selected on Apply
-   - `drive_deactivate_cleanup` — limpa cache quando tool deativa
-3. **Bits tool-specific** (panel snapshot publish, brush ring, tint overlay, panel reset propagation) continuam via `as_any_mut().downcast_mut::<ConcreteTool>()` — **exceção documentada ADR-0040 §3**, NÃO é code smell.
+1. **No tool crate:** `impl RasterEditTool for <Tool>` com os 5 métodos. Cache via `cached_canvas_preview: Option<(Vec<u8>, u32, u32)>`. **Critical:** `set_source` e `Tool::on_deactivate` DEVEM zerar o cache (audit Wave 10 §A1+A2: pular causa stale-frame).
+2. **No shell:** `shells/desktop/src/render_loop/<slug>_bridge.rs` espelhando `bgremoval_preview.rs`. Use os 4 helpers de `ph2d-tool-runtime`: `drive_source_push`, `drive_preview_cache`, `drive_pending_commit`, `drive_deactivate_cleanup`.
+3. **Bits tool-specific** (panel snapshot publish, brush ring, tint overlay) seguem via `as_any_mut().downcast_mut::<ConcreteTool>()` — **exceção documentada** (ADR-0040 §3), NÃO code smell.
 
-**Sites onde downcast permanece legítimo (allowlist Etapa 3):**
-- `shells/desktop/src/input_dispatch/eyedropper.rs` — captura cor via clique no canvas (BgR-specific affordance)
-- `shells/desktop/src/input_dispatch/protect_brush.rs` — dabs de proteção (BgR-specific)
-- Bridge per-tool quando precisa de overlay/panel snapshot específico (BgR/CEQ/Upscale: panel snapshot publish + tool-specific affordances)
-- `color_equalization_bridge.rs`: cache multi-sprite (`BTreeMap<u64, ColorEqualizationPreview>`) é arquitetural-genuíno; helpers single-cache não batem. Follow-up: `drive_multi_preview_cache` helper consolidaria — vide `docs/Testes/audits/etapa-2.md`.
-- `padding_bridge.rs` + `equalize_sizes_bridge.rs`: tools NÃO implementam `RasterEditTool` (vide texto acima — geométrico vs multi-sprite-required).
+**Template canônico:** [`shells/desktop/src/render_loop/bgremoval_preview.rs`](../../shells/desktop/src/render_loop/bgremoval_preview.rs).
 
-**Template:** [`shells/desktop/src/render_loop/bgremoval_preview.rs`](../../shells/desktop/src/render_loop/bgremoval_preview.rs) é o exemplar de referência. Copie a estrutura (genérico via helpers + bits específicos via downcast) para próximos bridges da Etapa 2.
+#### 3.A.5 Garantia formal de não-colisão
 
-#### 3.8.4 Por que é sem-colisão (a garantia, vale pras duas famílias)
+Dois agentes adicionando duas features (mesma família ou não) **não tocam nenhum arquivo em comum**: cada um cria sua pasta; `workspace.members` é glob; superfícies centrais são geradas determinísticamente pelo sync entre marcadores codegen, e staleness gates pegam regen-esquecida. O contrato é o único acoplamento — e está congelado pelo arch-gate (§4). **Para tool especificamente**, `editor-core` está proibida de ganhar dep em qualquer `ph2d-tool-*` concreto (`editor_core_has_no_concrete_tool_deps`) — a única edge permitida é `tool-* → editor-core`.
 
-Dois agentes adicionando duas features (mesma família ou não) **não tocam nenhum arquivo em comum**: cada um cria sua pasta; `workspace.members` é glob; superfícies centrais são geradas determinísticamente pelo sync entre marcadores codegen, e staleness gates pegam regen-esquecida. O contrato (`NodeOp`/`NodeManifest` em nodegraph; `Tool`/`RasterEditTool`/`PanelEvent` em editor-core) é o único acoplamento, e está congelado pelo arch-gate. **Para tool em particular**, a foundation `editor-core` está proibida de ganhar dep em qualquer `ph2d-tool-*` concreto (`editor_core_has_no_concrete_tool_deps`) — a única edge permitida é `tool-* → editor-core`.
+#### 3.A.6 Checklist do revisor
 
-#### 3.8.5 Checklist do revisor (se houver revisão)
-
-**Comum às duas famílias:**
-
-- [ ] `cargo run -p ph2d-<family>-sync` rodado; `cargo test -p ph2d-<family>-registry-init` verde.
-- [ ] arch-gate do contrato congelado verde (sem cap-bust não-autorizado).
+**Comum:**
+- [ ] `cargo run -p ph2d-<family>-sync` rodado; staleness verde.
+- [ ] arch-gate do contrato congelado verde (sem cap-bust).
 - [ ] clippy `--all-targets` + fmt limpos.
-- [ ] sem dep fora do contrato; contrato congelado intocado; sem variant novo em `EditorAction` ou em ports/effects.
+- [ ] Sem dep fora do contrato.
 
-**Específico de node:**
+**Node:**
+- [ ] `MANIFEST` completo (params + lowerings); nome canônico `"<dom>.<slug>"` único.
+- [ ] `eval` puro (sem global, sem IO); effect declarado bate; params via `ctx.param`; alocação capada via `param_as_count`.
+- [ ] Golden test verde.
 
-- [ ] `MANIFEST` completo (params + lowerings preenchidos); nome canônico `"<dom>.<slug>"` único.
-- [ ] `eval` puro (sem estado global, sem IO); efeito declarado bate (Stateful só se escreve sim); params lidos via `ctx.param`; alocação capada via `param_as_count`.
-- [ ] teste golden presente e verde.
+**Tool:**
+- [ ] `MANIFEST` completo OU `is_default` correto (sabor 2: só Brush é true).
+- [ ] Se stateful: `handle_panel_event` cobre 1:1 os NodeIds; rota tudo via `apply_ui_edit`.
+- [ ] Se `impl RasterEditTool`: `as_raster_edit_mut` retorna `Some(self)`; cache zerado em `set_source` + `on_deactivate`.
+- [ ] Ícone: SVG em `docs/design/icons/` + IconId alfabético em `icons.rs`.
+- [ ] **Painel docado segue Widget Gallery (§5.2)**: `link_slider_number`, `mark_chip_no_stepper`, storage `0..1`, bridge `<slug>_bridge.rs` se altera pixels.
 
-**Específico de tool:**
+### 3.B Scaffold central (caminho (B)) — Coord-B faz primeiro
 
-- [ ] `MANIFEST` completo (id único, cluster/zone/order coerentes com o palette) OU `is_default` correto (sabor 2 só Brush retorna true).
-- [ ] Se stateful: `handle_panel_event` cobre 1:1 os NodeIds do panel docado; rota tudo via `apply_ui_edit` (sem duplicar clamps) — disciplina manual, sem arch-gate.
-- [ ] Se for um vertical de migração para `RasterEditTool` (raro — vide §3.8.3.1): `as_image_edit_mut` retorna `Some(self)`; quadteto `set_source` / `preview` / `take_pending_commit` / `run_full` honra straight-alpha RGBA8. Caso contrário (padrão atual), raster I/O fica em métodos próprios da concrete type via `as_any_mut` downcast.
-- [ ] Ícone: SVG em `docs/design/icons/` + IconId variant em ordem alfabética em `icons.rs`.
-- [ ] **Painel docado segue Widget Gallery (vide §4.2)**: cada slider+chip
-      tem `link_slider_number`; cada chip pill tem `mark_chip_no_stepper`;
-      storage chip+slider no mesmo espaço `0..1` (unidade natural só
-      em paint via `display_override`); se altera pixels existe
-      `render_loop/<slug>_bridge.rs` espelhando `bgremoval_preview.rs`
-      com refresh em `take_params_dirty()` e overlay `draw_image_rgba`;
-      `apply_event` é forwarder thin (sem mirror manual). Bounce se faltar.
+Painel/widget/chrome ainda exigem edit central (não codegenado). Coord-B cria pasta + plugues centrais + stubs verdes, entrega briefing pra Implementador preencher.
 
-Estado vivo + loops autônomos:
-- Sistema de nós: [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md) + [`docs/plans/2026-05-node-waves.md`](../plans/2026-05-node-waves.md).
-- Sistema de tools: 🔒 CLOSED 2026-05-22 — [`docs/plans/2026-05-tool-isolation-waves.md`](../plans/2026-05-tool-isolation-waves.md); histórico do raciocínio em [`docs/HANDOFF_tool_isolation_close.md`](../HANDOFF_tool_isolation_close.md) (banner: "EXECUTADO em 2026-05-22").
+#### 3.B.1 Painel novo (`ph2d-panel-<slug>`)
+
+Coord:
+1. Decide `slug`, `DEFAULT_VISIBLE`, feature flag (`panel-<slug>`).
+2. Cria `crates/ph2d-panel-<slug>/` com `Cargo.toml` (deps: `ph2d-editor-core`, `ph2d-a11y`, `ph2d-tokens`, `ph2d-text`, `ph2d-vector`, `ph2d-tool-registry`).
+3. Cria `src/lib.rs` com stub `impl Panel` (template completo: [`ph2d-panel-inspector`](../../crates/ph2d-panel-inspector/src/lib.rs)). **Notas factuais:** `Panel::paint` tem 2 params (`state`, `ctx`); o host fica em `ctx.host` (campo de `PaintCtx`), não param separado; trait usado pelo host é `PanelHostInternal`; `hash_node_id` vive em `ph2d-tool-registry`.
+4. Em [`ph2d-panel-registry-init/Cargo.toml`](../../crates/ph2d-panel-registry-init/Cargo.toml): adiciona feature `panel-<slug> = ["dep:ph2d-panel-<slug>"]` + entrada em `[dependencies]` `{ path = "...", optional = true }` + inclui em `default = [...]`.
+5. Em `ph2d-panel-registry-init/src/lib.rs::build_typed_registry`: `#[cfg(feature = "panel-<slug>")] reg.push(ErasedPanel::new::<ph2d_panel_<slug>::Panel>());` (ordem não é alfabética — sem arch-gate, mantém ordem de migração ADR-0029).
+6. Atualiza `EXPECTED_TYPED` no `#[cfg(test)] mod tests` (incrementa contador).
+7. `cargo check -p ph2d-panel-<slug>` + `cargo test -p ph2d-panel-registry-init` verde.
+8. Commit + briefing pro Implementador (§2.B).
+
+Implementador: preenche `paint`, `apply_event`, `populate`, `State`.
+
+#### 3.B.2 Widget primitive novo (em `editor-core/src/widget/`)
+
+Coord:
+1. Cria `crates/ph2d-editor-core/src/widget/<slug>.rs` (template: [`button.rs`](../../crates/ph2d-editor-core/src/widget/button.rs)).
+2. Em `widget/mod.rs` (ordem alfabética): `mod <slug>; pub use <slug>::{...};`.
+3. Cria seção no showcase em `widget/showcase/` (copia layout de `switches.rs`). Arch test `architecture_widget_showcase_coverage` enforça.
+4. `cargo check -p ph2d-editor-core` + 4 arch-tests de widget verdes: `architecture_widget_loc_cap` (≤500 LOC), `architecture_widget_showcase_coverage`, `no_literal_color`, `hr12_widgets_a11y`.
+
+Implementador: preenche paint usando **só tokens**, adiciona tests, ajusta showcase.
+
+#### 3.B.3 Chrome handler novo
+
+Coord:
+1. Cria `editor-core/src/screens/hero/chrome/<slug>.rs` com stub: `pub fn apply(_hero, _event) -> bool { false }`.
+2. Adiciona em `chrome/mod.rs`: `pub mod <slug>;` + `|| <slug>::apply(hero, event)` em `dispatch_all` (ordem alfabética = higiene, sem arch-gate).
+3. Se precisa NodeIds: `screens/hero/ids.rs` via `hash_node_id`.
+4. `cargo check -p ph2d-editor-core` verde.
+
+Implementador: preenche corpo do handler.
+
+### 3.C Foundational + contratos congelados (caminho (C)) — Coord-A só
+
+Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core` (exceto widget/chrome scaffold de B), `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-{tool,node,panel}-registry-init`, `tools/ph2d-{node,tool}-sync`, `shells/*`, arch tests, **+ os 2 contratos congelados** (§4).
+
+**Não paralelizável. Coord-A faz sozinho.** Não delega.
+
+Exemplo (adicionar `ColorToken::AccentTeal`):
+1. Edita `docs/design/tokens.json` em todos 4 temas.
+2. `cargo check -p ph2d-tokens` (build.rs regenera).
+3. Edita `crates/ph2d-tokens/src/color.rs` adicionando variant.
+4. `cargo test --workspace --exclude ph2d-asset` (paranoia).
+5. Commit: `feat(tokens): add ColorToken::AccentTeal`.
+
+### 3.D Modificar feature existente
+
+Sem scaffold. Pasta já existe. **Caminho (A) Implementador-só** — Enio abre sessão Implementador e cola:
+
+```
+Edite crates/ph2d-<family>-<slug>/src/<arquivo>.rs. Tudo da feature
+vive no crate isolado (manifest + tool + algorithm + icon + params +
+panel docado em ph2d-panel-<slug>/ quando aplicável). Não toque em nada
+fora. Se exigir arquivo central (Cargo.toml raiz, EditorAction,
+contrato congelado, foundational): PARE e reporte — quase certo a
+tarefa estava mal triada.
+```
+
+Pasta canônica por feature:
+
+| Feature | Pasta |
+|---|---|
+| Tool (algo / ícone / manifest / `impl Tool` / `handle_panel_event`) | `crates/ph2d-tool-<slug>/` |
+| Vocab UI de um tool (`<Slug>UiEdit`, `…UiSnapshot`, `…Params`) | `crates/ph2d-tool-<slug>/src/params.rs` |
+| Panel docado de um tool | `crates/ph2d-panel-<slug>/` |
+| Nó | `crates/ph2d-node-<dom>-<slug>/` |
+| Painel genérico (Inspector/Hierarchy/etc.) | `crates/ph2d-panel-<slug>/` |
+| Widget primitive | `crates/ph2d-editor-core/src/widget/<slug>.rs` |
+| Chrome handler | `crates/ph2d-editor-core/src/screens/hero/chrome/<slug>.rs` |
+
+**A pasta `crates/ph2d-editor-core/src/tools/` NÃO existe** desde ADR-0040 TG-D (`c4063b7`). Memória/doc antigo apontando lá = stale.
+
+### 3.E Cross-cutting (perf audit, refactor cross-crate, sweep de lint)
+
+Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por natureza. **Coord-A autoriza explicitamente a exceção ao ISOLAMENTO** no briefing:
+
+> "Você toca tests em vários crates conforme os achados. Exceção autorizada à regra de uma pasta isolada (DIRETRIZ §1.4). Cada commit ainda fica T1 single-crate sempre que possível."
+
+**Regras:**
+1. Cada commit valida-se sozinho (`cargo test -p <crate>` verde antes).
+2. Não tocar production code de foundational sem motivo claro — em audit de tests, só `tests/` + `#[cfg(test)]`.
+3. Documentar risk surface no relatório final.
 
 ---
 
-## 4. UI canonical — única fonte de verdade
+## 4. Contratos congelados — caps + arch-gates
 
-Tudo de UI passa por tokens. Sem exceção. A cadeia é:
+**Dois contratos paralelos, mesma disciplina.** Mexer é Coord-A only + ADR.
+
+| Contrato | Arquivos | Arch-gate (cap) | ADR | Mudar exige |
+|---|---|---|---|---|
+| **Sistema de nós** (W2.T4, 2026-05-22) | `crates/ph2d-nodegraph/src/{lib,node,port,effect,attr,cook,graph}.rs` + `crates/ph2d-expr/src/lib.rs` | [`architecture_contract_surface`](../../crates/ph2d-nodegraph/tests/architecture_contract_surface.rs) — `NodeOp ≤ 2` métodos, `OpResolver ≤ 1` método, `NodeManifest ≤ 8` campos | [ADR-0039](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md) | Bump cap + ADR estendendo 0039 + (se `ph2d-expr`) re-provar paridade CPU↔WGSL |
+| **Sistema de tools** (TG-E + ADR-0041, 2026-05-22) | `crates/ph2d-editor-core/src/tool.rs` (`Tool`, `RasterEditTool`, `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) | [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs) — `Tool ≤ 10` métodos, `RasterEditTool ≤ 5` métodos, `PanelEvent ≤ 4` variants | [ADR-0040](../architecture/decisions/0040-tool-as-isolated-feature-crate.md) + [ADR-0041](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md) | Bump cap + amendment de ADR-0040 §7 |
+
+**O que NÃO mexe nesses contratos** (vide §3.A, sem Coord):
+
+- Nó novo num domínio com avaliador — `ph2d-node-<dom>-<slug>/` + sync.
+- Tool nova (any shape) — `ph2d-tool-<slug>/` + sync.
+- NodeId novo num panel docado — só edita o crate do tool/panel.
+- Campo novo num `<Slug>UiEdit` — vive em `ph2d-tool-<slug>/src/params.rs`.
+
+---
+
+## 5. UI canônica — única fonte de verdade
+
+Tudo de UI passa por **tokens**. Sem exceção.
 
 ```
-docs/design/tokens.json   (designer edita; 4 temas; OKLCH para cores)
-        │
-        │  (build.rs em ph2d-tokens lê e regenera)
+docs/design/tokens.json    (designer edita; 4 temas; OKLCH p/ cores)
+        │  (build.rs em ph2d-tokens regenera)
         ▼
-crates/ph2d-tokens/src/   (5 enums semânticos)
-   ├─ ColorToken          (33 variants — Bg0..Bg3, Text1..3, Accent*, Danger, Selection, etc.)
-   ├─ Spacing             (12 variants — Xxs..Xl4)
-   ├─ Radius              (7 variants — Xs..Full)
-   ├─ TypeToken           (9 sizes + FontWeight + LineHeight + LetterSpacing)
-   └─ StrokeToken         (5 variants — Hairline..Heavy)
+crates/ph2d-tokens/src/    (5 enums: ColorToken, Spacing, Radius, TypeToken, StrokeToken)
         │
-        │  (widget code consome)
         ▼
 let bg = ColorToken::Bg2.resolve(theme);
 let pad = Spacing::Lg.px();
-let r   = Radius::Md.px();
 ```
 
-CSS aliases em [`docs/design/styles/tokens.css`](../../docs/design/styles/tokens.css) servem para mockups HTML — o arch test `mockup_tokens_exist` garante que toda `var(--X)` em mockup resolve em `tokens.json` ou em alias CSS.
+### 5.1 Gates ativos
 
-**Gates ativos que enforçam o canônico:**
+Violação = build vermelho. Não há "vou abrir exceção".
 
-| Arch test | O que barra |
-|-----------|-------------|
-| [`no_literal_color`](../../crates/ph2d-editor-core/tests/no_literal_color.rs) | hex `0xRRGGBB`, `Color::rgba8(...)`, `Color::WHITE`, etc. em `widget/` ou `screens/` |
-| `no_magic_numeric` | `f32`/`f64` literais em UI fora do allowlist estrutural (`0.0`, `±0.5`, `±1.0`, `±2.0`) |
+| Gate | O que barra |
+|---|---|
+| [`no_literal_color`](../../crates/ph2d-editor-core/tests/no_literal_color.rs) | hex `0xRRGGBB`, `Color::rgba8(...)`, `Color::WHITE` em widget/screens |
+| `no_magic_numeric` | `f32`/`f64` literais em UI fora do allowlist (`0.0`, `±0.5`, `±1.0`, `±2.0`) |
 | [`hr12_widgets_a11y`](../../crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs) | widget que não emite `Node` AccessKit |
 | [`architecture_widget_loc_cap`](../../crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs) | widget primitive > 500 LOC |
-| [`architecture_widget_showcase_coverage`](../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs) | widget existe mas não aparece no Widget Gallery showcase nem em opt-out |
-| [`architecture_panel_chip_pill_no_stepper`](../../crates/ph2d-editor-core/tests/architecture_panel_chip_pill_no_stepper.rs) | painel pinta `paint_slider_with_chip*` (pill sem setinhas) mas populate não chama `link_slider_number` nem `mark_chip_no_stepper` — phantom stepper que incrementa com mouse parado (§4.2) |
-| [`mockup_tokens_exist`](../../crates/ph2d-tokens/tests/mockup_tokens_exist.rs) | `var(--X)` em mockup HTML que não resolve em tokens.json/styles |
-| [`architecture_register_all_alphabetical`](../../crates/ph2d-tool-registry-init/tests/architecture_register_all_alphabetical.rs) | `register_all` / `register_all_tools` / Cargo deps fora da ordem alfabética (3 sub-checks) |
-| [`staleness`](../../crates/ph2d-tool-registry-init/tests/staleness.rs) (tools) | tool-sync esquecido — `register_all` / `register_all_tools` / Cargo deps divergem do scan de `crates/ph2d-tool-*` (3 sub-checks) |
-| [`staleness`](../../crates/ph2d-node-registry-init/tests/staleness.rs) (nodes) | node-sync esquecido — `register_all_nodes` / Cargo deps divergem do scan de `crates/ph2d-node-*` |
-| [`architecture_panel_host_surface`](../../crates/ph2d-editor-core/tests/architecture_panel_host_surface.rs) | `PanelHost` cresce além de 12 métodos |
-| [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/architecture_cycle_prevention.rs) | 3 invariantes (+ 1 smoke): (1) `editor-core` ⊥ `panel-*` / `ph2d-editor`; (2) `editor-core` ⊥ tool-* (exceto `ph2d-tool-registry` data contract); (3) `panel-*` depende de `editor-core` E não de `ph2d-editor` E não de outro `panel-*` |
-| [`architecture_tool_contract_surface`](../../crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs) 🔒 | 🔒 ADR-0040 + ADR-0041: `Tool > 10 métodos` / `RasterEditTool > 5 métodos` / `PanelEvent > 4 variants` — mudar exige amendment ADR |
-| [`architecture_contract_surface`](../../crates/ph2d-nodegraph/tests/architecture_contract_surface.rs) 🔒 | 🔒 ADR-0039: `NodeOp > 2 métodos` / `OpResolver > 1 método` / `NodeManifest > 8 campos` — mudar exige ADR estendendo 0039 |
-| `tool_manifest_design_sync` | `docs/design/tools/<slug>.toml` divergente do `MANIFEST` const |
-| `node_id_collisions` | dois NodeIds chrome colidem |
+| [`architecture_widget_showcase_coverage`](../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs) | widget que não aparece no Widget Gallery (nem em opt-out) |
+| [`architecture_panel_chip_pill_no_stepper`](../../crates/ph2d-editor-core/tests/architecture_panel_chip_pill_no_stepper.rs) | chip pill sem `link_slider_number`/`mark_chip_no_stepper` (phantom stepper) |
+| `mockup_tokens_exist` | `var(--X)` em mockup HTML não resolve em tokens.json |
+| `architecture_register_all_alphabetical` | `register_all*` / Cargo deps fora de ordem |
+| `staleness` (tool + node) | sync esquecido |
+| [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/architecture_cycle_prevention.rs) | `editor-core` ⊥ `panel-*`/`ph2d-editor`; `editor-core` ⊥ `tool-*` (exceto `ph2d-tool-registry`); `panel-*` ⊥ outro `panel-*` |
+| 🔒 `architecture_tool_contract_surface` | caps Tool/RasterEditTool/PanelEvent (§4) |
+| 🔒 `architecture_contract_surface` (nodegraph) | caps NodeOp/OpResolver/NodeManifest (§4) |
+| `tool_manifest_design_sync` | `docs/design/tools/<slug>.toml` divergente do MANIFEST |
+| [`no_tofu_glyphs`](../../crates/ph2d-editor-core/tests/no_tofu_glyphs.rs) | glifos fora da fonte Inter bundled (setas, ⌘, ↵, ✕, ▸ etc.) viram tofu |
 
-Violação em qualquer um = build vermelho = Implementador refaz. Não há "vou abrir exceção".
+**Exceção declarada legítima:** comentário `// LITERAL-COLOR-OK: <razão>` ou `// LITERAL-PX-OK: <razão>` na mesma linha. Coord valida na revisão.
 
-**Exceção declarada legítima:** comentário `// LITERAL-COLOR-OK: <razão>` na mesma linha ou `// LITERAL-PX-OK: <razão>` para magic numeric. Use sparingly — Coordenador valida na revisão se a justificativa procede.
+### 5.2 Widget Gallery é a fonte de verdade
 
-### 4.1 Regras de UI que já queimaram (NÃO repita)
-
-Erros recorrentes que voltaram >1 vez. A regra 1 agora TEM gate automático
-(arch-test); as demais (2.x/3) ainda dependem de disciplina + revisão.
-Bases de conhecimento: [`docs/UI_Bugs/README.md`](../UI_Bugs/README.md) (UI geral) e [`docs/Image Tools Bugs/README.md`](../Image%20Tools%20Bugs/README.md) (Image Tools). **Leia antes de tocar em painter/dispatch/tool.**
-
-1. **Nenhum glifo fora da fonte bundled (Inter) em string de UI.** Seta/símbolo (`→ ⌘ ↵ ✕ ▸ …`) vira **tofu** (quadrado). Vale pra TODA string visível: toast, tooltip, label, pill. Use ASCII; o único não-ASCII seguro comprovado é `·` (U+00B7). Já queimou 3×: glifos Cmd/Return do topbar (UI_Bugs §9.19), a seta das toasts "Tool → X" (`b62e0c5`) e mais 27 ocorrências varridas no sweep final. **GATE:** [`crates/ph2d-editor-core/tests/no_tofu_glyphs.rs`](../../crates/ph2d-editor-core/tests/no_tofu_glyphs.rs) varre editor-core + shell e barra glifos dos blocos arrow (U+2190–21FF) e technical-symbols (U+2300–23FF) dentro de string literal (ignora comentários). CI vermelho se reincidir.
-
-2. **Estado de MODO e estado DERIVADO não podem viver desacoplados.** Se um toggle/modo de UI (ex.: `image_edit.mode_on`) governa o que aparece (tool ativo, painel, preview), quem desliga o modo é responsável por **desligar tudo** que ele expõe. O lugar certo é uma **reconciliação por frame** sobre estado derivado — **não** um *guard* pontual no caminho de clique. Guard trata "não deixar ligar"; **não** trata "já está ligado". Bug clássico: ferramenta de imagem (Bg Removal/Padding) seguia ativa com Image Tools desligado, painel/preview órfãos persistindo (Image Tools Bugs §2, `3ef9190`). **Implementador:** ao adicionar um modo que liga subsistemas, escreva também a reconciliação que os desliga quando o modo cai, e teste o ciclo liga→usa→desliga.
-
-   2.a **Enumere TODOS os caminhos de ativação.** Uma feature costuma ter >1 via de ligar (pill da TopBar, **tool palette**, atalho de teclado, bus action). Gatear só uma deixa o bug vivo pelas outras — foi exatamente o que aconteceu: pills gateadas, mas a tool palette chamava `set_active` direto e ressuscitava o image tool com o modo off (Image Tools Bugs §2.b, `32460b9`). Faça grep de TODOS os `set_active`/push de action do subsistema e cubra cada um, ou centralize.
-
-   2.c **Hit-test e paint do MESMO widget têm que ser gateados pela MESMA condição.** Um hit-test que roda onde o widget NÃO é pintado = **zona de clique invisível**. Caso real: a tool palette só pinta no caminho demo, mas o hit rodava sempre, sobrepondo o gear de Config no editor — clicar no Config trocava o tool silenciosamente (Image Tools Bugs §2.b, `952dc0c`). Sempre que um widget é condicional, condicione paint E hit juntos (idealmente pela mesma flag/expressão).
-
-   2.b **Pertencimento é data-driven, não lista de ids hardcoded.** "É um image tool?" = está no cluster `"image_tools"` do manifest, resolvido por UM helper (`is_image_edit_tool`) — não `id == "x" || id == "y"` espalhado por N sites. Assim toda tool futura do grupo é coberta de graça e não há lista pra dessincronizar.
-
-3. **Diagnostique medindo, não chutando.** Bug de UI/input com repro: instrumente (env-gate, ex.: `PH2D_UIDBG`) o caminho exato e capture o estado real (id resolvido no hit, flags, frame) antes de propor fix. Reverta a instrumentação no fim. Duas "correções" às cegas do bug do Image Tools falharam por chutar (uma chegou a mover o Config — proibido); a 3ª resolveu medindo.
-
-### 4.2 Widget Gallery é a fonte de verdade — copie, não reinvente
-
-A panela [`ph2d-panel-widget-gallery`](../../crates/ph2d-panel-widget-gallery/)
-(showcase em [`crates/ph2d-editor-core/src/widget/showcase/`](../../crates/ph2d-editor-core/src/widget/showcase/)
-e seed em [`crates/ph2d-editor-core/src/screens/hero/pre_populate.rs`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs))
-é a **única fonte de verdade da UI**. Todo painel novo
-(Inspector, BgRemoval, Padding, Color Equalization, Equalize Sizes,
-Rasterize, Upscale, e tudo que vier) **DEVE** usar EXATAMENTE o
-mesmo padrão de cada widget que aparece no Gallery. Não há "minha
-variação compacta", "no meu painel é diferente", nem "simplifiquei
-porque achei melhor". Se o Gallery faz X, seu painel faz X.
-
-Por que radical assim: cada vez que um painel diverge do Gallery,
-**a regressão aparece no painel** mas **a causa está num gap
-arquitetural** (dispatch tratando dois widgets visualmente distintos
-como um só, link bidirecional não engatado, preview por frame
-ausente). Esses gaps queimaram 4× só na slot 1 do CEQ.
+[`ph2d-panel-widget-gallery`](../../crates/ph2d-panel-widget-gallery/) (showcase em [`editor-core/src/widget/showcase/`](../../crates/ph2d-editor-core/src/widget/showcase/) + seed em [`pre_populate.rs`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)) é a **única fonte de verdade da UI**. Todo painel novo **DEVE** usar EXATAMENTE o mesmo padrão de cada widget que aparece no Gallery. Sem "minha variação compacta".
 
 #### Regras herdadas do Gallery (cada uma já queimou ≥1×)
 
-1. **Slider + chip pareados → SEMPRE `store.link_slider_number(slider_id, chip_id)`.**
-   O link engata mirror bidirecional automático no dispatch — drag
-   do slider atualiza o chip, scrub/typing no chip atualiza o
-   slider, e o `linked_slider`-bounded clamp (`0..1`) impede
-   overshoot. Sem o link, painel **acaba escrevendo mirror manual**
-   em `apply_event` que dessincroniza entre frames e o clamp não
-   engata.
-   **Padrão:** chip e slider compartilham o espaço `0..1`
-   no storage. Unidade natural ("2.00 clip", "+0.30 brightness",
-   "8 tile-grid") vai via `display_override` no
-   `paint_slider_with_chip_layout` — paint-only, não muda a
-   storage. Veja
-   [`pre_populate.rs:212-231`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)
-   (Speed slider/chip).
-   Já queimou: CEQ slot 1 (commit `3bf8806`).
+1. **Slider + chip pareados → SEMPRE `store.link_slider_number(slider_id, chip_id)`.** Engata mirror bidirecional automático + clamp `0..1`. Sem o link, painel escreve mirror manual que dessincroniza. Chip e slider compartilham espaço `0..1`; unidade natural ("2.00 clip", "+0.30 brightness") via `display_override` no `paint_slider_with_chip_layout` (paint-only). Veja [`pre_populate.rs:212-231`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs).
+2. **Tempo real no canvas — todo slider que altera pixels publica preview por frame.** Tool expõe `take_params_dirty()` + `current_preview()` (ou implementa `RasterEditTool` §3.A.4); bridge em [`render_loop/<tool>_bridge.rs`](../../shells/desktop/src/render_loop/) (espelho de [`bgremoval_preview.rs`](../../shells/desktop/src/render_loop/bgremoval_preview.rs)) refaz cache `Arc<Vec<u8>>` quando dirty, pinta com `vector_scene.draw_image_rgba`, zera em Apply/deactivate. Sem isso = canvas congela = UX inaceitável.
+3. **`paint_number_chip` (pill, sem setinhas) ≠ `paint_number_input_with_buffer` (boxed).** Dispatch carve coluna 16-22 px lado direito de TODO `NumberInput` como hit-zone de stepper. Pra chip pill = zona invisível: click direito arma `number_stepper_hold` → incrementa a cada 30ms com cursor parado. **Sempre chame `store.mark_chip_no_stepper(chip_id)` no populate.**
+4. **Chip drag = incremental delta**, não absolute-from-Down. Dispatch usa `step_dx = event - last` + `advance_number_input_drag_anchor` por Move. Modelo absoluto pregava valor no bound até cursor voltar até `start_x` — bug invisível.
 
-2. **Tempo real no canvas — todo slider que altera pixels publica preview por frame.**
-   Esta é uma game engine; o usuário deve ver o efeito MOVIMENTANDO
-   o slider, NÃO só ao clicar Apply. Para tools `(3)` stateful+panel:
-   tool expõe `take_params_dirty()` e `preview_rgba()`; a bridge no
-   shell em [`render_loop/<tool>_bridge.rs`](../../shells/desktop/src/render_loop/)
-   (espelho de
-   [`render_loop/bgremoval_preview.rs`](../../shells/desktop/src/render_loop/bgremoval_preview.rs))
-   refaz o cache `Arc<Vec<u8>>` quando `take_params_dirty()`, pinta o
-   RGBA com `vector_scene.draw_image_rgba` sobre o footprint da
-   sprite, e zera o cache em Apply/deactivate. Sem isso o painel
-   muda valores e o canvas fica congelado — UX inaceitável numa
-   game engine.
-   Já queimou: CEQ slot 1 (commit `903d63c`).
+### 5.3 Anti-padrões UI que já queimaram (NÃO repita)
 
-3. **`paint_number_chip` (pill, sem setinhas) ≠ `paint_number_input_with_buffer` (boxed, com setinhas).**
-   O dispatch carve uma coluna de 16-22 px no lado direito de TODO
-   `InteractiveState::NumberInput` como hit-zone de stepper. Pra
-   boxed isso é correto (as setinhas são visíveis). Pra chip pill
-   isso é zona invisível: click no lado direito arma
-   `number_stepper_hold` e o `dispatch_tick` incrementa o valor a
-   cada 30 ms com cursor parado.
-   **Padrão:** ao registrar um chip pill (que aparece junto a um
-   slider via `paint_slider_with_chip*`), chame
-   `store.mark_chip_no_stepper(chip_id)` no populate.
-   Já queimou: CEQ slot 1 (commit `2f58b73`).
+Bases de conhecimento: [`docs/UI_Bugs/README.md`](../UI_Bugs/README.md) e [`docs/Image Tools Bugs/README.md`](../Image%20Tools%20Bugs/README.md). **Leia antes de tocar em painter/dispatch/tool.**
 
-4. **Chip drag = incremental delta, não absolute-from-Down.** O
-   dispatch usa modelo incremental (`step_dx = event - last`,
-   `advance_number_input_drag_anchor` por Move) pra que reversão
-   após clamp reverta IMEDIATAMENTE o valor. O modelo absoluto-de-
-   Down (que existia antes de `7b5f7c1`) pregava o valor no bound
-   até o cursor voltar até `start_x` — usuário arrastava de volta
-   e "nada acontecia".
-   **Coordenador:** se ver código de chip drag que computa
-   `dx_total = event.x - start_x`, isso é regressão; o correto é
-   `event.x - last_x` com anchor advance.
+1. **Estado de MODO e estado DERIVADO não podem viver desacoplados.** Toggle/modo (ex: `image_edit.mode_on`) que governa o que aparece (tool, painel, preview): quem desliga o modo é responsável por **desligar tudo** que ele expõe. Lugar certo = **reconciliação por frame** sobre estado derivado, **não** guard pontual no click.
+2. **Enumere TODOS os caminhos de ativação.** Feature costuma ter >1 via de ligar (pill TopBar, tool palette, atalho, bus action). Gatear só uma deixa o bug vivo. Grep TODOS os `set_active`/push de action OU centralize.
+3. **Hit-test e paint do MESMO widget têm que ser gateados pela MESMA condição.** Hit-test rodando onde o widget NÃO é pintado = zona de clique invisível. Sempre condicione paint E hit juntos.
+4. **Pertencimento é data-driven, não lista de ids hardcoded.** "É image tool?" = está no cluster `"image_tools"` do manifest, resolvido por UM helper (`is_image_edit_tool`) — não `id == "x" || id == "y"` espalhado.
+5. **Diagnostique medindo, não chutando.** Bug de UI/input com repro: instrumente (env-gate `PH2D_UIDBG`) e capture estado real antes de propor fix. Reverta a instrumentação no fim.
 
-#### Checklist antes de criar / mergear painel novo (Coordenador)
-
-Abra o Widget Gallery na UI rodando. Identifique TODO widget que o
-painel vai usar. **Copie literalmente** o setup correspondente do
-[`pre_populate.rs`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)
-— mesmos campos, mesmo `link_*`, mesmo registro. Único delta
-legítimo: `display_override` no paint (quando unidade natural ≠ `0..1`).
-
-Antes de mergear painel novo, confira no diff:
+#### Checklist antes de mergear painel novo (Coord)
 
 - [ ] Cada slider+chip tem `store.link_slider_number(slider, chip)` no populate.
 - [ ] Cada chip pill tem `store.mark_chip_no_stepper(chip)` no populate.
-- [ ] Storage chip + slider no MESMO espaço (`0..1`); unidade natural
-      só em paint via `display_override`.
-- [ ] Se o painel altera pixels: existe `render_loop/<tool>_bridge.rs`
-      espelhando `bgremoval_preview.rs`, com refresh em
-      `take_params_dirty()` e overlay via `draw_image_rgba`.
-- [ ] `apply_event` é forwarder thin (lê o slider, emite
-      `PanelEvent::SetValue(slider_id, track)`) — sem mirror manual
-      slider↔chip.
+- [ ] Storage chip + slider no MESMO espaço (`0..1`); unidade natural só em paint via `display_override`.
+- [ ] Se altera pixels: existe `render_loop/<tool>_bridge.rs` espelhando `bgremoval_preview.rs`, refresh em `take_params_dirty()` + overlay via `draw_image_rgba`.
+- [ ] `apply_event` é forwarder thin (sem mirror manual slider↔chip).
 
-Faltou alguma → bounce pro Implementador antes de mergear. **Não
-"vou abrir exceção".**
+Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceção".
 
 ---
 
-## 5. Codificação rápida
+## 6. Codificação rápida
 
-Princípio: **não duplique o pre-commit hook** durante o editing burst. PORÉM o **hook ≠ CI** em dois pontos que já queimaram runs vermelhas — e antes do **push** (não a cada commit) é obrigação do Coordenador fechar esse gap:
+**Princípio:** não duplique o pre-commit hook durante editing burst. **Hook ≠ CI** em 2 pontos:
 
-1. **clippy `--all-targets`:** o tier **T2 workspace** roda `cargo clippy --workspace -- -D warnings` **SEM `--all-targets`** (cortado no perf audit 2026-05-19 por velocidade). Logo, **lints em código de teste (`#[cfg(test)]`) e atrás de feature NÃO são pegos localmente numa mudança multi-crate.** O CI roda o comando completo (`spike.yml`): `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`. (O tier T1, 1 crate isolado, ainda roda `--all-targets` — só o T2 workspace não.) **NÃO** use `--all-features` pra "verificar" — ela liga o path flecs do spike (`c11_flecs`) que o CI nem linta (falso-positivo).
-2. **arch-gates:** mudança estrutural (novo arquivo de widget, novo campo serializado) dispara arch-tests determinísticos (`*_OPT_OUT`, cook-hash) que só aparecem **depois** dos ~3min de compile do hook — cada miss = ciclo de ~5min perdido. Rode o gate do crate antes (vide §5.1).
+1. **clippy `--all-targets`:** o tier **T2 workspace** roda `cargo clippy --workspace -- -D warnings` **SEM `--all-targets`** (cortado no perf audit 2026-05-19 por velocidade). CI roda completo: `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings`.
+2. **arch-gates:** mudança estrutural (widget novo, campo serializado) dispara arch-tests que só aparecem após ~3min de compile do hook. Rode o gate do crate antes (§6.1).
 
-**Regra: antes do PUSH, rode o comando exato do CI** — `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` (segundos com build morno). E `git commit` SEMPRE em background (o hook estoura o timeout de 2min do shell em foreground).
+**Regra: antes do PUSH, rode `./scripts/ship.sh`** — paridade-CI completa (§8). E `git commit` SEMPRE em background (hook estoura timeout 2min em foreground).
 
-### 5.1 Tabela de validação
+### 6.1 Tabela de validação
 
 | Situação | Comando | Tempo |
-|----------|---------|-------|
+|---|---|---|
 | Editou 1 arquivo, quer ver se compila | `cargo check -p <crate>` | 3-15s |
 | Editou crate, quer rodar testes | `cargo test -p <crate>` | 5-30s |
 | Quer rodar UM teste | `cargo test -p <crate> -- <pattern>` | 1-5s |
-| Editou foundational, quer ver downstream | `cargo check --workspace` (NÃO test) | 30-60s warm |
+| Editou foundational, quer ver downstream | `cargo check --workspace` | 30-60s warm |
 | Vai commitar (T2 hook vai rodar) | **nada** — deixa o hook validar | 0s |
-| **Antes do push (paridade-CI completa, obrigatório)** | `./scripts/ship.sh` (fmt + clippy `--all-targets --features ph2d-spike/bevy_ecs` + machete + deny + audit + nextest `--workspace`; vide §7.0) | 3-8min warm |
-| Diagnóstico isolado de clippy (subset do ship.sh) | `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | 1-3min warm |
+| **Antes do push (obrigatório)** | `./scripts/ship.sh` | 3-8min warm |
 | Só mudou `.md` | **nada** — hook é T0 (skip) | 0s |
 
-### 5.2 LOC threshold (não interrompa o editing burst)
+### 6.2 LOC threshold (não interrompa o editing burst)
 
 | LOC editados | Comando OK |
-|--------------|-----------|
-| 0-400 | nada, continue editando |
+|---|---|
+| 0-400 | nada, continue |
 | 400-1200 | `cargo check -p <crate>` opcional |
 | 1200+ ou módulo inteiro | `cargo check -p <crate>` — sane stop |
 | Antes do commit | nada — hook valida |
 
-Não rode `cargo test` durante editing burst. Testes só no hook ou em diagnóstico de falha específica.
+**Não rode `cargo test` durante editing burst.** Só no hook ou em diagnóstico de falha específica.
 
-### 5.3 O que NÃO fazer
+### 6.3 O que NÃO fazer
 
-❌ `cargo test --workspace` depois de cada edit
-❌ `cargo clippy --workspace --all-targets` a cada COMMIT (mas SIM uma vez antes do PUSH — o T2 workspace NÃO cobre `--all-targets`; vide §5 intro)
-❌ Re-rodar testes que já passaram pra "confirmar"
-❌ Validar baseline no início da sessão se o último commit já está verde
-❌ `cargo build` antes de `cargo test` (test já compila)
-❌ Re-`Read` arquivo que acabou de editar (o tool já confirmou sucesso)
+- ❌ `cargo test --workspace` depois de cada edit
+- ❌ `cargo clippy --workspace --all-targets` a cada COMMIT (SIM antes do PUSH via ship.sh)
+- ❌ Re-rodar testes que já passaram pra "confirmar"
+- ❌ Validar baseline no início da sessão se último commit já está verde
+- ❌ `cargo build` antes de `cargo test` (test já compila)
+- ❌ Re-`Read` arquivo que acabou de editar
 
-### 5.4 Pre-commit hook tiered
+### 6.4 Pre-commit hook tiered
 
 | Tier | Ativa quando | Tempo |
-|------|--------------|-------|
+|---|---|---|
 | **T0** | só docs / `.md` / scripts | ~5s |
 | **T1** | arquivos de UM crate isolado | ~30s |
-| **T2 escopado** | multi-crate **sem** foundational/Cargo.toml/shells | ~30s-3min (nextest -p escopado) |
-| **T2 workspace** | `Cargo.toml/lock`, foundational, `shells/desktop/` | ~5-15min (workspace ripple) |
+| **T2 escopado** | multi-crate **sem** foundational/Cargo.toml/shells | ~30s-3min |
+| **T2 workspace** | `Cargo.toml/lock`, foundational, `shells/desktop/` | ~5-15min |
 
-Se acidentalmente trigar T2 workspace numa pasta isolada, provavelmente está staged junto com algo de outro agente — confira `git status --cached`.
+Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junto com algo de outro agente — confira `git status --cached`.
 
-**Cortes A+B (2026-05-19):** o hook NÃO roda mais `cargo test --doc --workspace` nem `clippy --all-targets`. Esses ficam pro CI. Implicações práticas:
+**Cortes A+B (2026-05-19):** hook NÃO roda `cargo test --doc --workspace` nem `clippy --all-targets`. Esses ficam pro CI. Implicações:
+- Doctest novo só verificado em CI. Quem cria valida manual com `cargo test --doc -p <crate>`.
+- Benches/examples só clippados em CI.
 
-- Doctest novo (`/// ```` `` em rustdoc) **só é verificado em CI**. Se você adicionar doctest e ele tiver typo, hook deixa passar; CI pega. Quem cria doctest valida manualmente com `cargo test --doc -p <crate>` antes de commitar.
-- Benches e examples (`#[bench]`, `examples/*.rs`) **só clippados em CI**. Mesma lógica: validação manual se alterou.
-- Em compensação, T2 caiu de ~40min pra segundos em commits típicos. Vide [`project_perf_audit_2026_05_19`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/project_perf_audit_2026_05_19.md) na memória.
+### 6.5 Como NÃO escrever test slow
 
-### 5.5 Reads cirúrgicos
+**❌ NÃO faça:**
+- `TextSystem::new()` — enumera fontes do sistema (25-77s × site). Use `TextSystem::without_system_fonts()`.
+- Alloc gigante pra exercitar limit-check (`RgbaImage::new(16384, 16384)` = 1 GiB). Use dimensão 1 px acima do limite (8193×1 = 32 KiB).
+- GPU init repetido por test. Use `OnceLock<Option<GpuContext>>` lazy module-level.
+- Font shaping real quando só precisa shape de palavra fixa.
 
-- `Read` com `offset` + `limit` em vez de ler arquivo inteiro
-- `Bash: grep -n` pra localizar primeiro, `Read` depois
-- 5 Reads em paralelo na mesma mensagem em vez de sequenciais
-- Para busca larga em código novo: subagent `Explore`
-
-### 5.6 Como NÃO escrever test slow
-
-Test lento mata a cadência. Em 2026-05-19 descobrimos 105 tests `SLOW` no workspace que consumiam 14min cache-quente (~83% disso era CoreText scan de fontes via `TextSystem::new()` em test code, 25-77s por chamada × 48 sites em editor-core). Cortes:
-
-**❌ NÃO faça em test:**
-
-- **`TextSystem::new()`** — enumera fontes do sistema via CoreText/Fontconfig. Pesado. Em test, use **`TextSystem::without_system_fonts()`** (pula scan + força `family_name = "InterVariable"` bundled).
-- **Alloc gigante pra exercitar limit-check** — ex: `RgbaImage::new(16384, 16384)` (1 GiB) só pra testar que `image::Limits` rejeita. Use dimensão **1 pixel acima** do limite (8193×1 = 32 KiB). `image::Limits` é checado contra IHDR antes da alloc.
-- **GPU init repetido por test** — `pollster::block_on(GpuContext::new_headless())` em cada `#[test]`. Use **`OnceLock<Option<GpuContext>>`** lazy module-level. Primeiro test paga, demais zero-init. `GpuContext: Clone` via `Arc` internals.
-- **Font shaping real** quando só precisa do shape de uma palavra fixa. Bundle uma fonte mínima ou use o mock fontique do ph2d-text.
-
-**✅ Faça em test:**
-
+**✅ Faça:**
 - Setup caro em `OnceLock` lazy, compartilhado entre tests do mesmo binário.
-- Input minimal: 1 caso simples + 1 caso edge. Não rode o algoritmo com corpus de 100 entradas.
-- IO real (font system, FSEvents watcher, network) → `#[ignore]` com doc-comment explicando + `cargo test -- --ignored` no CI separado, OU mover pra `tests/` integration.
-
-**Slow tests inerentes** (aceitos no chão dos ~99s pós-audit):
-- `ph2d-asset watcher_*` (~32s × 2) — FSEvents 5s deadline + 250ms poll cycles, security-critical
-- `ph2d-render` GPU init (~14-35s × 4-5 binários) — Metal driver cold load per binary
+- Input minimal: 1 caso simples + 1 caso edge.
+- IO real → `#[ignore]` + `cargo test -- --ignored` no CI separado.
 
 ---
 
-## 6. Disciplina git — anti-colisão entre sessões
+## 7. Anti-colisão git
 
-`git commit` é serializado pelo índice global do git. Se duas sessões têm arquivos staged ao mesmo tempo e uma roda commit, a segunda agarra os arquivos da primeira junto.
+`git commit` é serializado pelo índice global do git. Duas sessões com arquivos staged ao mesmo tempo: uma roda commit e agarra os arquivos da outra junto.
 
-### 6.1 Protocolo atômico stage→commit
+### 7.1 Protocolo atômico stage→commit
 
 ```bash
 # 1) Antes de stage: confira working tree
@@ -964,145 +536,110 @@ git add <arquivos-específicos>
 
 # 3) Antes de commit: confere índice
 git status --cached
-#    Tem arquivo que você não estagiou? Vazamento.
+#    Arquivo que não estagiou? Vazamento.
 #    git restore --staged <não-meus>
 
 # 4) Commit. Hook tiered roda automaticamente.
 git commit -m "<descrição em inglês, imperativo, <70 char>"
 ```
 
-Stage→commit é **uma operação contínua**. Não pause entre os dois passos.
+Stage→commit é **operação contínua**. Não pause entre os dois passos.
 
-### 6.2 Proibições
+### 7.2 Proibições
 
 - **Nunca** `git push --force` em main
 - **Nunca** `--no-verify` (se hook falha, fix root cause)
 - **Nunca** `git commit --amend` (sempre novo commit)
 - **Nunca** `git config` mudando settings do repo
-- **Nunca** `git restore --staged --worktree` em path fora da sua pasta sem coordenar (memória: feedback_destructive_git_outside_pasta)
+- **Nunca** `git restore --staged --worktree` em path fora da sua pasta sem coordenar
 
-### 6.3 Sintomas de colisão
+### 7.3 Sintomas de colisão
 
 | Sintoma | Recuperação |
-|---------|-------------|
-| `fatal: cannot lock ref 'HEAD'` no commit | Outra sessão commitou no meio. `git status` → diagnose. |
-| `git status` mostra M que você não tocou | Outro agente paralelo. NÃO comite. Reporte. |
-| `git log -1` mostra mensagem fundida (2 títulos, corpo truncado) | Colisão. Se NÃO pushado: `git reset --soft HEAD~1` + split + recommit. |
-| Hook trigga T2 quando você esperava T1 | `git status --cached` — provavelmente vazamento de outro agente. |
+|---|---|
+| `fatal: cannot lock ref 'HEAD'` no commit | Outra sessão commitou no meio. `git status` → diagnose |
+| `git status` mostra M que você não tocou | Outro agente paralelo. NÃO comite. Reporte |
+| `git log -1` mostra mensagem fundida (2 títulos) | Colisão. Se NÃO pushado: `git reset --soft HEAD~1` + split + recommit |
+| Hook trigga T2 quando esperava T1 | `git status --cached` — vazamento de outro agente |
 
-### 6.4 Armadilhas conhecidas
+### 7.4 Armadilhas conhecidas
 
-**Typos engine bloqueia palavras pt-BR ambíguas.** O hook roda `typos` (full project, respeita `.typos.toml`). Algumas palavras pt-BR têm forma idêntica a typos comuns em inglês — o engine bloqueia. Casos vistos:
+**Typos engine bloqueia palavras pt-BR ambíguas.** `erros` (typo de `errors`), `usso` (typo de `use`), `nao` sem acento (typo de `not`). Solução: prefira sinônimos ou use acento; se necessária, adicione exceção em `.typos.toml` `[default.extend-words]` **com justificativa no commit**, não esconda com `--no-verify`.
 
-| pt-BR escrito | typos vê como | Solução |
-|---------------|---------------|---------|
-| `erros` | typo de `errors` | usar `falhas`, `problemas`, ou inglês |
-| `usso` | typo de `use` | reescrever ou allowlist |
-| `nao` (sem acento) | typo de `not` | usar `não` (com acento) |
-
-**Regra prática:** comentários e doc em pt-BR — prefira palavras sem ambiguidade com inglês. Se a palavra "correta" em pt-BR é necessária e disparou typos, adicione exceção em `.typos.toml` (categoria `[default.extend-words]`) **com justificativa no commit**, não esconda com `--no-verify`.
-
-**Sintoma de cargo lock entre sessões.** Se você rodar `cargo check/build/test` enquanto outra sessão Claude Code paralela está rodando comando cargo, a segunda **espera silenciosamente** pelo `target/` lock. Não é crash — só lentidão inesperada. Se você não estava esperando demora, verifica `ps aux | grep cargo` antes de assumir que travou.
-
-**Hook T2 lento sem motivo.** Se T2 demora muito mais que o esperado (~5-15min com cache quente, ~25-40min full cold), checar:
-1. Cache pode ter sido invalidado por mudança em foundational/Cargo.toml recente.
-2. Algum teste novo virou slow inadvertidamente — vide §5.6.
-3. `target/` em rede/disco lento — mover pra SSD local.
+**Cargo lock entre sessões.** Se rodar `cargo` enquanto outra sessão Claude Code paralela está rodando, a 2ª **espera silenciosamente** pelo lock. Não é crash, só lentidão. Use `slot-env.sh` pra isolar (§1.2).
 
 ---
 
-## 7. Smoke + Push + CI (Coordenador absorve PRCI)
+## 8. Ship + Push + CI (Coord-A absorve PRCI)
 
-### 7.0 Fast mode (dia) vs Ship (fim do dia)
+### 8.1 Fast mode (dia) vs Ship (fim do dia)
 
-**Princípio: separar "implementar" de "entregar".** Validação completa + CI rodam **1× por jornada**, não 1× por commit. Quase todo o "tempo perdido" em commits/push/CI vem de validar a cada mudança — não faça isso.
+**Princípio: separe "implementar" de "entregar".** Validação completa + CI rodam **1× por jornada**, não 1× por commit.
 
-**De dia — fast mode (implementar sem fricção):**
-- Checkpoints com `git commit --no-verify` → **instantâneo**, pula o hook. Salva trabalho, permite reverter, sem o pedágio de ~5min do hook.
-- `cargo check -p <crate>` só quando quiser confirmar que compila. Nada de `--workspace`/test em loop (§5).
+**De dia — fast mode:**
+- Checkpoints com `git commit --no-verify` → instantâneo, pula hook. Salva trabalho, permite reverter.
+- `cargo check -p <crate>` só quando quiser confirmar. Sem `--workspace`/test em loop.
 - **ZERO push, ZERO CI durante o dia.**
 
-**Fim do dia — ship (Enio dispara: "commit" / "push" / "ship" / "fim do dia"):**
-O Coordenador entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entregar commits + push + CI **verdes, sem falta**:
-1. **`./scripts/ship.sh`** — roda a job de lint + test do CI inteira, local, de uma vez (fmt, clippy `--all-targets` com as features do CI, `cargo machete`, `cargo deny`, `cargo audit`, `nextest --workspace`). Paridade EXATA com `spike.yml`; o hook local NÃO cobre isso (§5: o perf audit cortou `--all-targets`, e o hook nunca rodou machete/deny/audit).
-2. Para CADA `✗` do ship.sh: diagnostica + corrige + re-roda. **NÃO pusha enquanto o ship.sh não estiver 100% verde.** É aqui que o erro de CI é pego — não no CI vermelho 30min depois.
-3. Organiza os checkpoints `--no-verify` do dia em commits limpos (squash se preciso).
-4. Push (§7.2) → babysit do CI (§7.3) até verde; em vermelho, diagnostica + corrige + re-push, loop até verde (escalona só após 3 falhas do MESMO job).
-5. Entrega: reporta o link da run verde ao Enio.
+**Fim do dia — ship (Enio dispara: "commit"/"push"/"ship"/"fim do dia"):**
+Coord-A entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entregar verde:
 
-### 7.1 Smoke local — antes do push
+1. **`./scripts/ship.sh`** — job de lint+test do CI inteira, local, de uma vez (fmt, clippy `--all-targets --features ph2d-spike/bevy_ecs`, `cargo machete`, `cargo deny`, `cargo audit`, `nextest --workspace`, `typos`). Paridade EXATA com `spike.yml`.
+2. Pra CADA `✗`: diagnostica + corrige + re-roda. **NÃO pusha enquanto não estiver 100% verde.**
+3. Organiza os checkpoints `--no-verify` do dia em commits limpos (squash se preciso).
+4. Push (§8.3) → babysit do CI (§8.4) até verde; em vermelho, fix + re-push até verde (escalona após 3 falhas do MESMO job).
+5. Reporta link da run verde ao Enio.
+
+### 8.2 Smoke local — antes do push
 
 ```bash
 ./play.command
 ```
 
-Smoke é responsabilidade do **Enio**, sob comando do Coordenador. O Coordenador escreve a checklist concreta:
+Smoke é do **Enio**, sob comando do Coord. Coord escreve checklist concreta:
 
 > "Enio, rode `./play.command` e verifica:
 > 1. App abre sem panic.
-> 2. Tool Transform aparece na TopBar Image Tools com ícone correto.
+> 2. Tool X aparece na TopBar Image Tools com ícone correto.
 > 3. Clique → ação esperada.
 > 4. Tools/Actions pré-existentes continuam funcionando.
 > 5. Sem regressão visual em Hierarchy / Inspector / Widget Gallery."
 
-Enio confirma item por item ou reporta o que viu de diferente.
+### 8.3 Push (Coord-A faz)
 
-### 7.2 Push (Coordenador faz)
-
-Batching policy: **push UMA vez por jornada**, no fim do ciclo. CI matrix (linux + macOS + windows + replay hash + bench) demora ~30min. Não push a cada commit.
+Batching: **push UMA vez por jornada**. CI matrix (linux + macOS + windows + replay hash + bench) demora ~30min.
 
 ```bash
+./scripts/ship.sh    # paridade-CI completa (§8.1)
+# Só pusha se ✓
 git push origin main
 ```
 
-Antes do push, Coordenador roda **uma vez** a paridade-CI completa local — via o script único (§7.0), que cobre TODOS os passos da job de lint + test (o comando manual antigo era incompleto: faltavam as features do clippy + machete/deny/audit, o que já reddened CI):
-
-```bash
-./scripts/ship.sh
-```
-
-`✓ CI-clean` → push. `✗` → corrige e re-roda antes de pushar.
-
-### 7.3 Babysit CI (Coordenador faz)
+### 8.4 Babysit CI
 
 ```bash
 gh run list --workflow=spike.yml --limit=1 --json databaseId,url
 ```
 
-Pega o run id. Polling com intervalo de **15 minutos** (`Monitor` com `sleep 900` ou `gh run watch <id>`):
-
-```bash
-bash -c '
-RUN_ID=<id>
-while true; do
-  st=$(gh run view "$RUN_ID" --json status -q .status)
-  cc=$(gh run view "$RUN_ID" --json conclusion -q .conclusion)
-  echo "[$(date +%H:%M:%S)] status=$st conclusion=$cc"
-  [ "$st" = "completed" ] && break
-  sleep 900
-done
-'
-```
-
-Cenários:
+Polling **15min** (`gh run watch <id>` ou Monitor com `sleep 900`).
 
 | Resultado | Resposta |
-|-----------|----------|
-| Success 9/9 | Coordenador reporta link da run + sha bom novo ao Enio. Ciclo fechado. |
-| Falha de código | Coordenador diagnostica (`gh run view --log-failed`), aplica fix mínimo local, commita, push, re-watch. |
-| Falha de infra (cache, network, rustup flaky) | Não conta. `gh run rerun --failed` + re-watch. |
-| 3 ciclos consecutivos de falha do mesmo job | Escalona pro Enio com diagnose + tentativas. |
+|---|---|
+| Success 9/9 | Reporta link + sha bom ao Enio. Ciclo fechado |
+| Falha de código | `gh run view --log-failed`, fix local, commit, push, re-watch |
+| Falha de infra (cache/network/rustup flaky) | `gh run rerun --failed` + re-watch |
+| 3 falhas consecutivas do mesmo job | Escala pro Enio com diagnose |
 
-CI rule de ouro: **fora do babysit, ninguém polla CI.** Push, link, próxima tarefa.
+**Regra de ouro:** fora do babysit, ninguém polla CI. Push, link, próxima tarefa.
 
-### 7.4 Comunicação pós-push pro Enio
+### 8.5 Comunicação pós-push
 
 ```
 ✓ Wave <N> pushed. CI run: https://github.com/dibrioli/PH2D/actions/runs/<id>
 Entrei em babysit. Reporto quando concluir.
 ```
 
-E quando termina:
+E ao terminar:
 
 ```
 ✓ CI verde 9/9 em <duração>. sha bom novo: <sha>.
@@ -1111,87 +648,83 @@ Ciclo fechado. Disponível para próxima ordem.
 
 ---
 
-## 8. Quando algo dá errado
+## 9. Quando algo dá errado
 
 | Sintoma | Resposta |
-|---------|----------|
-| Você não sabe o que fazer | Releia §0 + §1.1 + pergunte ao Enio |
-| Arquivo que não tocou aparece em `git status` | §6.3 (colisão entre sessões) |
+|---|---|
+| Não sabe o que fazer | Releia §0 + §1 + pergunte ao Enio |
+| Arquivo que não tocou em `git status` | §7.3 (colisão) |
 | Hook falha em fmt/clippy/test | Fix root cause; nunca `--no-verify` |
-| Hook trigga T2 quando esperava T1 | `git status --cached` — vazamento de outro agente |
-| Smoke quebrou no `./play.command` | Implementador diagnostica + fix local na pasta dele |
-| CI failure cíclico (3× mesmo job) | Coordenador escalona pro Enio |
-| Implementador descobre bug fora da pasta dele | Reporta ao Enio com diagnose; Coord faz |
-| Coord quer editar shared mas Implementador está working | Anuncie via Enio, espere Implementador chegar a estado estável, então edite |
-| Coord tem dúvida arquitetural | Apresente opções ao Enio com recomendação + tradeoff |
-| Memória diz X mas código diz Y | Confie no código. Atualize memória depois. |
+| Hook trigga T2 quando esperava T1 | `git status --cached` — vazamento |
+| Smoke quebrou em `./play.command` | Implementador diagnostica + fix local |
+| CI failure cíclico (3× mesmo job) | Coord escalona pro Enio |
+| Implementador descobre bug fora da pasta | Reporta ao Enio com diagnose; Coord faz |
+| Coord quer editar shared mas Impl está working | Anuncie via Enio, espere Impl chegar a estado estável, edite |
+| Coord tem dúvida arquitetural | Opções pro Enio com recomendação + tradeoff |
+| Memória diz X mas código diz Y | Confie no código. Atualize memória depois |
 
 ---
 
-## 9. Cheat-sheet
+## 10. Cheat-sheet
 
-### 9.1 Hard Rules ativas (CI-gated)
+### 10.1 Hard Rules CI-gated
 
-| HR | Conteúdo | Onde |
-|----|----------|------|
+| HR | Conteúdo | Gate |
+|---|---|---|
 | HR-3 | Zero-alloc no dispatcher hot-path | `interaction_dispatch_no_alloc` |
 | HR-5 | Determinism cross-platform | CI replay-hash matrix (3 OS) |
 | HR-12 | A11y obrigatória | `hr12_widgets_a11y` |
 | HR-13 | Memory budget declarado | manifest `memory_budget` |
 | HR-15 | Zero hex + zero hardcoded UI string | `no_literal_color` + `hr15_no_hardcoded_ui_strings` |
-| HR-18 | Files em `shells/<plat>/src/` ≤ 600 LOC | `file_loc_caps` |
+| HR-18 | `shells/<plat>/src/` ≤ 600 LOC | `file_loc_caps` |
 | (Wave 9) | Widget primitive ≤ 500 LOC | `architecture_widget_loc_cap` |
 | (Wave 9) | Widget aparece no showcase | `architecture_widget_showcase_coverage` |
 
-Hard Rules completas em [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18.
+Completo em [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18.
 
-### 9.2 Caminhos físicos canônicos
+### 10.2 Caminhos canônicos
 
 | O que | Onde |
-|-------|------|
-| **Node crate novo (fan-out — caminho (A))** | `crates/ph2d-node-<domínio>-<slug>/` (wiring via `cargo run -p ph2d-node-sync`; gate `cargo test -p ph2d-node-registry-init`) |
-| **Tool crate novo (fan-out — caminho (A))** | `crates/ph2d-tool-<slug>/` (wiring via `cargo run -p ph2d-tool-sync`; gate `cargo test -p ph2d-tool-registry-init`) |
-| 🔒 Contrato de nós (congelado, ADR-0039) | `crates/ph2d-nodegraph/` + `crates/ph2d-expr/` (Coordenador-only + ADR) |
-| 🔒 Contrato de tools (congelado, ADR-0040 §7) | `crates/ph2d-editor-core/src/tool.rs` (`Tool` + `RasterEditTool` + `PanelEvent`) + canal genérico em `crates/ph2d-editor-core/src/action_bus.rs` (`EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent, CancelActiveTool}`) — Coordenador-only + ADR amendment |
-| Painel novo (caminho (B)) | `crates/ph2d-panel-<slug>/` |
+|---|---|
+| **Node crate** (fan-out (A)) | `crates/ph2d-node-<dom>-<slug>/` |
+| **Tool crate** (fan-out (A)) | `crates/ph2d-tool-<slug>/` |
+| Painel (caminho (B)) | `crates/ph2d-panel-<slug>/` |
 | Widget primitive (caminho (B)) | `crates/ph2d-editor-core/src/widget/<slug>.rs` |
 | Chrome handler (caminho (B)) | `crates/ph2d-editor-core/src/screens/hero/chrome/<slug>.rs` |
-| Vocab UI de um tool (`<Slug>UiEdit`, `<Slug>UiSnapshot`, `<Slug>Params`) | `crates/ph2d-tool-<slug>/src/params.rs` (TG-B/TG-C — não mais em editor-core) |
-| **Tool registry init (GERADO por `ph2d-tool-sync`)** | `crates/ph2d-tool-registry-init/src/lib.rs` (`register_all` manifests + `register_all_tools` `Box<dyn Tool>`) + `Cargo.toml` deps |
-| **Node registry init (GERADO por `ph2d-node-sync`)** | `crates/ph2d-node-registry-init/src/lib.rs` (`register_all_nodes`) + `Cargo.toml` deps (2 staleness sub-checks: register_all_nodes + Cargo deps) |
-| Codegen tool-sync | `tools/ph2d-tool-sync/` (lib + binário) |
-| Codegen node-sync | `tools/ph2d-node-sync/` (lib + binário) |
-| Panel registry init (manual — caminho (B)) | `crates/ph2d-panel-registry-init/src/lib.rs::register_all_panels` (features `panel-<slug>`) |
+| Vocab UI de um tool | `crates/ph2d-tool-<slug>/src/params.rs` |
+| 🔒 Contrato de nós | `crates/ph2d-nodegraph/` + `crates/ph2d-expr/` |
+| 🔒 Contrato de tools | `crates/ph2d-editor-core/src/tool.rs` + `action_bus.rs` |
+| **Tool registry (GERADO)** | `crates/ph2d-tool-registry-init/` |
+| **Node registry (GERADO)** | `crates/ph2d-node-registry-init/` |
+| Panel registry (manual) | `crates/ph2d-panel-registry-init/src/lib.rs` |
+| Codegens | `tools/ph2d-{node,tool,panel,chrome,widget}-sync/` |
 | Widget showcase | `crates/ph2d-editor-core/src/widget/showcase/` |
-| Tokens source | `docs/design/tokens.json` |
-| Tokens Rust | `crates/ph2d-tokens/src/` (codegen via build.rs) |
+| Tokens source | `docs/design/tokens.json` → build.rs gera `crates/ph2d-tokens/src/` |
 | Tool design TOML | `docs/design/tools/<slug>.toml` |
 | Icon SVG | `docs/design/icons/<slug>.svg` |
-| Mockup HTML | `docs/design/screens/*.html` |
-| Workspace members (glob) | `Cargo.toml` raiz — `members = ["crates/*", "tools/*", "shells/desktop", "tests/spike"]` (qualquer pasta `crates/ph2d-{node,tool}-*` é coberta automaticamente) |
-| Shell init (registro = 2 chamadas pós-`new`) | `shells/desktop/src/init.rs` — `let mut tools = ToolRegistry::new(); ph2d_tool_registry_init::register_all_tools(&mut tools); tools.activate_default();` (3 linhas, 2 chamadas) |
+| Shell init | `shells/desktop/src/init.rs` |
 | Arch tests editor | `crates/ph2d-editor-core/tests/` |
-| Arch tests tokens | `crates/ph2d-tokens/tests/` |
-| Arch tests tool registry | `crates/ph2d-tool-registry-init/tests/` (3 staleness + 3 alfabéticos) |
-| Arch tests node registry | `crates/ph2d-node-registry-init/tests/` (staleness) |
 | Arch tests contrato tool 🔒 | `crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs` |
 | Arch tests contrato nodegraph 🔒 | `crates/ph2d-nodegraph/tests/architecture_contract_surface.rs` |
 
-**Removido com ADR-0040 TG-D (`c4063b7`, 2026-05-22):** a pasta `crates/ph2d-editor-core/src/tools/` (que era onde viviam impl de tools antes do isolamento) **foi deletada**. Foundation ⊥ tools agora é gateado (`architecture_cycle_prevention::editor_core_has_no_concrete_tool_deps`). Se uma memória / doc antigo te apontar pra esse caminho, é stale.
+**Removido em ADR-0040 TG-D (`c4063b7`):** `crates/ph2d-editor-core/src/tools/` foi **deletado**. Foundation ⊥ tools gateado. Memória/doc apontando lá = stale.
 
-### 9.3 Comandos mais usados
+### 10.3 Comandos mais usados
 
 ```bash
 # Implementador — durante edição
-cargo check -p ph2d-tool-<slug>
-cargo test  -p ph2d-tool-<slug>
-cargo test  -p ph2d-tool-<slug> -- some_pattern
+cargo check -p ph2d-<family>-<slug>
+cargo test  -p ph2d-<family>-<slug>
+cargo test  -p ph2d-<family>-<slug> -- some_pattern
 
-# Coordenador — antes do push (paridade-CI completa, obrigatório)
-./scripts/ship.sh   # fmt + clippy --all-targets --features ph2d-spike/bevy_ecs
-                    # + machete + deny + audit + nextest --workspace (vide §7.0)
+# Drop-crate fan-out — Implementador roda após criar a pasta
+cargo run  -p ph2d-<family>-sync          # regenera wiring
+cargo test -p ph2d-<family>-registry-init # staleness fecha
 
-# Coordenador — push + babysit
+# Coord-A — antes do push (paridade-CI completa, obrigatório)
+./scripts/ship.sh
+
+# Coord-A — push + babysit
 git push origin main
 gh run list --workflow=spike.yml --limit=1
 gh run watch <id> --exit-status
@@ -1199,61 +732,36 @@ gh run watch <id> --exit-status
 
 ---
 
-## 10. Referências canônicas
+## 11. Referências canônicas
 
-- **Stack + Hard Rules + "Adicionar uma tool" em 3 passos:** [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)
+- **Stack + Hard Rules + "Adicionar uma tool":** [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md)
 - **Operacional dia-a-dia + CI:** [`CLAUDE.md`](../../CLAUDE.md)
+- **Exemplos fan-out 100% paste-ready:** [`examples-fan-out.md`](examples-fan-out.md)
+- **Tracker vivo do fan-out de nodes:** [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md)
+- **Plano de nodes (W1+W2 fechados, W3+ aberto):** [`docs/plans/2026-05-node-waves.md`](../plans/2026-05-node-waves.md)
+- **Plano Wave 11 carry-overs:** [`docs/plans/2026-05-wave-11-carry-overs.md`](../plans/2026-05-wave-11-carry-overs.md)
 
-**ADRs estruturais (ordem cronológica, leitura indispensável pra entender as duas famílias):**
+**ADRs estruturais (leitura indispensável):**
 
-- [ADR-0027 — Convention-by-discovery (tools como crates isolados, semente)](../architecture/decisions/0027-convention-by-discovery.md)
-- [ADR-0028 — Wave 2 codegen + design canonical](../architecture/decisions/0028-wave-2-codegen-design-canonical.md)
-- [ADR-0029 — Trait-driven panel host (Panel<State> + dual-path → typed-only)](../architecture/decisions/0029-trait-driven-panel-host.md)
-- [ADR-0030 — Multi-domain node engine (decisão-mãe do sistema de nós)](../architecture/decisions/0030-multi-domain-node-engine.md)
-- [ADR-0031 — Nó E ferramenta como unidade de feature (princípio FBP unificado)](../architecture/decisions/0031-node-and-tool-as-feature-unit.md)
-- [ADR-0032 — `ph2d-nodegraph` substrato (7 primitivos + cook)](../architecture/decisions/0032-nodegraph-substrate.md)
-- [ADR-0033 — Shared compute `ph2d-expr` (paridade CPU↔WGSL)](../architecture/decisions/0033-shared-compute-expr.md)
-- [ADR-0034 — Plural evaluators (shader/audio/motion/gameplay)](../architecture/decisions/0034-plural-evaluators.md)
-- [ADR-0035 — Cook vs live + attribute stream](../architecture/decisions/0035-cook-vs-live-and-attribute-stream.md)
-- [ADR-0036 — Gameplay authoring (blocks + nodes → Luau)](../architecture/decisions/0036-gameplay-authoring-blocks-and-nodes.md)
-- [ADR-0037 — Stable entity wire id + SceneDoc](../architecture/decisions/0037-stable-entity-wire-id-scenedoc.md)
-- [ADR-0038 — Artist-first node UX](../architecture/decisions/0038-artist-first-node-ux.md)
-- 🔒 [ADR-0039 — Nodegraph contract FREEZE (W2.T4)](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md)
-- 🔒 [ADR-0040 — Tool as isolated feature crate (FREEZE TG-E)](../architecture/decisions/0040-tool-as-isolated-feature-crate.md)
-
-**Briefing de fan-out drop-crate (cobre as duas famílias):**
-
-- **§3.8** — receita única: tabela node↔tool (§3.8.1), briefing parametrizado pronto-pra-colar (§3.8.2), sabores de tool (§3.8.3), garantia sem-colisão (§3.8.4), checklist do revisor (§3.8.5).
-- Stub histórico do node-crate briefing original: [`briefing-node-crate.md`](briefing-node-crate.md) (redireciona pro §3.8).
-- Histórico do raciocínio que fechou ADR-0040 (não vigente pra implementação nova): [`docs/HANDOFF_tool_isolation_close.md`](../HANDOFF_tool_isolation_close.md).
-
-**Estado vivo + loops autônomos:**
-
-- Sistema de nós — tracker vivo + loop autônomo do fan-out: [`docs/HANDOFF_node_system.md`](../HANDOFF_node_system.md)
-- Plano do sistema de nós (status W1+W2 fechados, W3+ aberto): [`docs/plans/2026-05-node-waves.md`](../plans/2026-05-node-waves.md)
-- Plano da isolação de tools (🔒 CLOSED 2026-05-22): [`docs/plans/2026-05-tool-isolation-waves.md`](../plans/2026-05-tool-isolation-waves.md)
-
-**Migração + tese arquitetural:**
-
-- [Tese node-centric (substrato unificado + avaliadores plurais)](../Migracao/2026-05-node-centric-architecture.md)
-- [Três gargalos do paralelismo foundational](../Migracao/2026-05-foundational-parallelism-three-bottlenecks.md)
+- [ADR-0027 Convention-by-discovery](../architecture/decisions/0027-convention-by-discovery.md)
+- [ADR-0029 Trait-driven panel host](../architecture/decisions/0029-trait-driven-panel-host.md)
+- [ADR-0030 Multi-domain node engine](../architecture/decisions/0030-multi-domain-node-engine.md)
+- [ADR-0031 Node E tool como unidade de feature](../architecture/decisions/0031-node-and-tool-as-feature-unit.md)
+- [ADR-0032 `ph2d-nodegraph` substrato](../architecture/decisions/0032-nodegraph-substrate.md)
+- [ADR-0033 `ph2d-expr` shared compute](../architecture/decisions/0033-shared-compute-expr.md)
+- 🔒 [ADR-0039 Nodegraph contract FREEZE](../architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md)
+- 🔒 [ADR-0040 Tool as isolated feature crate](../architecture/decisions/0040-tool-as-isolated-feature-crate.md)
+- 🔒 [ADR-0041 RasterEdit rename + deactivate](../architecture/decisions/0041-rasteredit-rename-and-deactivate.md)
+- [ADR-0042 Wave 10 closure](../architecture/decisions/0042-wave-10-closure.md)
 
 **Memória LLM (auto-loaded):** `~/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/MEMORY.md`
 
----
-
-## 11. Versão + histórico
-
-- **6.10 — 2026-05-23 (Wave 10 / Etapa 0+1.A):** Modelo **"2 Coords"** introduzido em §1.1 (Coord-A foundational, Coord-B baldes; sincronização via `docs/SESSION_ACTIVE.md`). Scripts novos: `slot-env.sh` (CARGO_TARGET_DIR por slot), `git-stage-guard.sh` (anti-colisão git, COORD_OVERRIDE bypass), `arch-gate-budget.sh` (tripwire >90s arch-tests). CI paralelo feature-branch em `spike.yml` (test matrix skip em `feat/**`). Amendment **ADR-0041** ao contrato congelado: trait `ImageEditTool` renomeado para `RasterEditTool` (futuro-proof para `VectorEditTool`/`PhysicsEditTool`/`NodeEmitTool`); `Tool::as_image_edit_mut` → `as_raster_edit_mut` (slot 9, cap inalterado); `RasterEditTool::preview(&self)` → `current_preview(&mut self)` (drena dirty internamente, retira a necessidade de downcast pra `take_params_dirty()`); novo método `RasterEditTool::deactivate(&mut self)` (lifecycle hook que o futuro `ph2d-tool-runtime` chama no shell genérico). Cap `RasterEditTool` 4→5. Plano vigente: [`docs/plans/2026-05-wave-10-perfection.md`](../plans/2026-05-wave-10-perfection.md) (v4 sintetizado de 9 auditorias adversariais).
-- **6.9 — 2026-05-23:** Regra **"src/lib.rs PRIMEIRO"** no briefing fan-out (§3.8.2 step 0). Sem isso, todas as sessões paralelas que tentam `cargo check` ficam bloqueadas com `can't find library X` enquanto qualquer crate novo do `crates/*` glob tiver Cargo.toml sem `src/lib.rs`. Incidente que originou a regra: fan-out simultâneo das 4 image-tools (Color Equalization / Equalize Sizes / Rasterize / Upscale) em 2026-05-23 — vários Implementadores escreveram `Cargo.toml` + arquivos auxiliares (`params.rs`, `icon.rs`, `ids.rs`) ANTES do `src/lib.rs`, e a sessão paralela do Coord (Onda 2C de gizmos multi-select) ficou sem poder rodar `cargo check --workspace` por ~1h. A regra vale também pra panel novo em §3.2 (mas lá Coord faz sequencial → sem colisão real; ainda assim, criar `src/lib.rs` antes do resto vira boa higiene).
-- **6.8 — 2026-05-22:** **Princípio transversal Tool↔Nó simétricos** + condensação. Os antigos §3.8 (node fan-out) e §3.9 (tool fan-out), que viraram clones um do outro depois de TG-E, foram unificados num só **§3.8 "Fan-out drop-crate (A)"** com tabela node↔tool (§3.8.1), briefing parametrizado pronto-pra-colar (§3.8.2), sabores de tool (§3.8.3), garantia sem-colisão (§3.8.4) e checklist do revisor (§3.8.5). §1.4 triagem promove **Tool nova ⇒ (A) Implementador-só** (era (B) por inércia textual). §3.1 reduzida a redirect pro §3.8. §3.5 "modificar existente" agora aponta `crates/ph2d-tool-<slug>/` (a pasta `editor-core/src/tools/` foi deletada em TG-D `c4063b7`) com mapa pasta-canônica-por-feature. §3.6 foundational lista AMBOS os contratos congelados (nodegraph/expr + Tool/RasterEditTool/PanelEvent) com tabela simétrica de caps + ADR. §4 gates ganha `architecture_tool_contract_surface` (🔒 caps 10/4/4) + `architecture_contract_surface` (🔒 caps 2/1/8) + staleness + cycle_prevention anotado com 4 sub-checks. §9.2 caminhos reorganizada (Tool/Node lado-a-lado como (A); contratos congelados explicitados; registry-init marcados GERADO; nota "`editor-core/src/tools/` deletado em TG-D"). §10 referências lista ADRs 0030..0040 + tese node-centric + plano tool-isolation CLOSED. Header + §11 enxutos.
-- **6.7 — 2026-05-22:** ADR-0040 FECHADO via TG-A..TG-E — §3.1 neutralizado, §3.9 "Tool crate — fan-out" criado como irmão de §3.8 (unificado em 6.8). Arch-gate de panel auto-discover + cross-panel-dep ban + panel→tool edge codificada como permitida.
-- **Histórico anterior (v6.0..v6.6 + v4.0/v5.0 arquivadas):** vide `git log docs/IntegracaoMultiAgente/DIRETRIZ.md`. Resumo: v6.0 (modelo 2 papéis Coord+Impl, fluxo invertido); v6.1 (perf audit + §3.7 + §5.6); v6.3 (§7.0 fast-mode/ship); v6.4 (§4.1 regras UI que queimaram); v6.5 (arquitetura node-centric); v6.6 (doc único + §1.4 triagem).
+**Histórico anterior** (v6.0..v6.10): `git log docs/IntegracaoMultiAgente/DIRETRIZ.md`. Arquivados pre-v6.0: `docs/archive/multi-agente-pre-v6.0/`.
 
 ---
 
 ## 12. Quando esta diretriz fica obsoleta
 
-Se a arquitetura mudar materialmente (ex.: surge um terceiro papel, ou o fluxo invertido vira fluxo lateral), atualize esta diretriz in-place e bump a versão. **Não fragmente em múltiplos docs** — a lição dos 4 docs antigos que dessincronizaram é que um doc único é mais fácil de manter atualizado.
+Se a arquitetura mudar materialmente (3º papel surge, fluxo invertido vira lateral, contrato 3 surge), atualize **in-place** e bump versão. **Não fragmente em múltiplos docs** — lição dos 4 docs antigos que dessincronizaram é que doc único é mais fácil de manter.
 
-Se você é LLM lendo isto depois de uma mudança arquitetural maior e a diretriz contradiz o código, **confie no código**, reporte ao Enio com diagnose, e atualize esta diretriz quando autorizado.
+LLM lendo isto depois de mudança arquitetural maior e diretriz contradiz código: **confie no código**, reporte ao Enio com diagnose, atualize quando autorizado.

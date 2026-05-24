@@ -1,6 +1,8 @@
-# Wave 10 — Tracker de Testes e Smokes Visuais
+# Wave 10 — Tracker de Testes e Smokes Visuais (HISTÓRICO)
 
-**Propósito:** registro de TODOS os testes automáticos rodados e TODOS os smokes visuais pendentes em cada etapa da [Wave 10 perfection plan](../plans/2026-05-wave-10-perfection.md). O Enio audita visualmente ao final da wave usando este doc como checklist.
+**Status:** Wave 10 fechada em 2026-05-23 ([ADR-0042](../architecture/decisions/0042-wave-10-closure.md)). Este doc é histórico — não é o tracker corrente.
+
+**Propósito original:** registro de TODOS os testes automáticos rodados e TODOS os smokes visuais pendentes em cada etapa da Wave 10 perfection plan (arquivada em [`docs/archive/plans-completed/2026-05-wave-10-perfection.md`](../archive/plans-completed/2026-05-wave-10-perfection.md)). O Enio auditou visualmente ao final da wave usando este doc como checklist.
 
 **Princípio:** "padrão ouro / puro sangue / definitivo" — toda mudança ou tem gate automático passando OU tem checklist explícita pra smoke manual. Nada fica "se você lembrar de testar".
 
@@ -291,7 +293,7 @@ Vide `audits/etapa-2.md`. Resumo:
 - `shells/desktop/src/app_state.rs` — `UpscalePreview` virou type alias `PreviewCache`
 - `crates/ph2d-tool-runtime/src/lib.rs` — warning expandido em `drive_deactivate_cleanup` + 1 test C1 regression
 - `docs/IntegracaoMultiAgente/DIRETRIZ.md` §3.8.3.1 atualizada
-- `docs/plans/2026-05-wave-10-perfection.md` §II nota pós-execução
+- `docs/archive/plans-completed/2026-05-wave-10-perfection.md` §II nota pós-execução
 
 ---
 

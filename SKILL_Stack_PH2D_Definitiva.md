@@ -211,12 +211,14 @@ _PH2D_definitiva/
 ├── runtime/
 │   └── luau/                     # ⏳ tipos .d.luau gerados (popular em M13+ quando catálogo estabilizar)
 ├── docs/
-│   ├── HANDOFF.md                # documento histórico de bootstrap (2026-05-08)
-│   ├── architecture/decisions/   # ADRs (0003, 0019, 0020, 0021, 0022, 0023 todos Accepted)
-│   ├── plans/2026-05-post-spike.md # plano de marcos M1-M13 com status atualizado
+│   ├── architecture/decisions/   # ADRs 0003..0042 (0030..0041 = node + tool isolation)
+│   ├── plans/                    # planos vigentes (node-waves, wave-11-carry-overs)
+│   ├── IntegracaoMultiAgente/    # DIRETRIZ.md + briefing-node-crate.md + examples-fan-out.md
+│   ├── HANDOFF_node_system.md    # tracker vivo do fan-out de nodes
 │   ├── design/                   # design system: PROMPT_CLAUDE_DESIGN.md + component-library.html (vide §11.9)
 │   ├── scripting/                # exemplos Luau + MCP prompts (c6/c15/c16 do spike)
-│   └── spike/                    # plano + report do spike fechado (histórico)
+│   ├── spike/                    # plano + report do spike fechado (histórico)
+│   └── archive/                  # plans-completed/, handoffs-completed/, migracao-waves-completed/, multi-agente-pre-v6.0/
 ├── tests/
 │   └── spike/                    # fixtures do spike de scripting (parte do workspace ainda)
 └── .github/workflows/            # spike.yml (CI principal) + miri.yml — clippy + fmt + nextest + deny + audit + machete + typos + bindgen-check + cross-OS hash + MSRV

@@ -201,6 +201,19 @@ pub fn paint_number_input_with_buffer(
     } else {
         ColorToken::Text1
     };
+    // Push a clip rect over the text area so long values (e.g.
+    // "-141.881" at narrow chip widths) get cropped instead of
+    // visually bleeding into the stepper column or beyond the
+    // border. Parley wraps on word boundaries; numbers have none, so
+    // without this clip the digits would render past `inner_x + inner_w`.
+    // UI canon post-2026-05-24: numbers ALWAYS stay inside the box.
+    let text_clip = ph2d_vector::Rect::new(
+        inner_x as f64,
+        rect.y as f64,
+        (inner_x + inner_w) as f64,
+        (rect.y + rect.h) as f64,
+    );
+    scene.push_clip(&text_clip);
     if input.state == TextInputState::Focused
         && buffer.is_some()
         && let Some(anchor) = selection_anchor
@@ -258,6 +271,7 @@ pub fn paint_number_input_with_buffer(
         );
         fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
+    scene.pop_layer();
 
     let icon_color = resolve(ColorToken::Text2, theme);
     paint_icon(

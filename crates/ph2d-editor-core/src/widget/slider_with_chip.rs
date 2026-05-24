@@ -245,6 +245,17 @@ pub fn paint_number_chip(
             .width()
     };
     let text_start = rect.x + (text_area_w - total_w) * 0.5;
+    // Clip the text-area rect so long values (e.g. "-141.881" at
+    // narrow chip widths) crop at the chip border instead of bleeding
+    // into the stepper column. UI canon post-2026-05-24: numbers
+    // ALWAYS stay inside the box, regardless of digit length.
+    let text_clip = ph2d_vector::Rect::new(
+        rect.x as f64,
+        rect.y as f64,
+        text_area_right as f64,
+        (rect.y + rect.h) as f64,
+    );
+    scene.push_clip(&text_clip);
     if focused
         && let Some(anchor) = selection_anchor
         && anchor != caret
@@ -300,6 +311,7 @@ pub fn paint_number_chip(
         );
         fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
+    scene.pop_layer();
     // Stepper arrows (up + down) on the right edge — same column the
     // dispatch carves for `apply_number_stepper_if_hit`. Color tracks the
     // chip text color (Text2) — dimmer than the value text to keep the

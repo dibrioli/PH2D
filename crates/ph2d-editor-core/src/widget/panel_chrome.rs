@@ -53,11 +53,23 @@ pub const SECTION_LABEL_TO_CONTROL_PX: f32 = 4.0; // LITERAL-PX-OK: ≈ Spacing:
 pub const SECTION_INNER_ROW_GAP_PX: f32 = 8.0; // LITERAL-PX-OK: ≈ Spacing::Sm.px()
 
 /// Canonical vertical spacing AFTER the last control of a section and
-/// BEFORE the [`paint_section_separator`] call. Standardized across
-/// every section so the visual rhythm of "content → separator → next
-/// header" is identical (Visible / Transform / Render Source all
-/// match — user feedback 2026-05-24).
-pub const SECTION_BOTTOM_PAD_PX: f32 = 8.0; // LITERAL-PX-OK: ≈ Spacing::Sm.px()
+/// BEFORE the [`paint_section_separator`] call.
+///
+/// **Set to 0 in 2026-05-24** because the separator itself already
+/// contributes `SEPARATOR_PAD_Y` (~10 px) of breathing room on EACH
+/// side. Adding SECTION_BOTTOM_PAD on top of that produced asymmetric
+/// vertical rhythm: top-gap = separator's below-pad (10 px) but
+/// bottom-gap = SECTION_BOTTOM_PAD + separator's above-pad (8 + 10 =
+/// 18 px). The "Visible descentralizado em relação aos separadores"
+/// bug. Zeroing this constant makes both gaps equal to the
+/// separator's own pad — sections appear centered between their
+/// separators.
+///
+/// Kept as a `pub const` (instead of removed) so call sites stay
+/// stable and the canon is documented at one place. If a future
+/// section legitimately needs extra trailing pad, bump this in a
+/// separate commit with smoke evidence.
+pub const SECTION_BOTTOM_PAD_PX: f32 = 0.0;
 
 /// Default height of the title-bar drag band when the panel has only a
 /// title + subtitle in the header. Covers title baseline + subtitle

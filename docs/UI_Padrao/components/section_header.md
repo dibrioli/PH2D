@@ -74,7 +74,7 @@ em [`widget/panel_chrome.rs`](../../../crates/ph2d-editor-core/src/widget/panel_
 |---|---|---|
 | `SECTION_LABEL_TO_CONTROL_PX` | 4 px (Xxs) | Gap entre **label** (ex: "Position (px)") e o **control imediatamente abaixo** (chip row, segmented group, etc.) quando o label está em sua própria linha. |
 | `SECTION_INNER_ROW_GAP_PX` | 8 px (Sm) | Gap entre **rows consecutivas DENTRO** de uma seção (ex: Position → Rotation → Scale; Strategy → Pixel format → Reimport). |
-| `SECTION_BOTTOM_PAD_PX` | 8 px (Sm) | Gap entre **última row da seção** e a `paint_section_separator` chamada DEPOIS. Todas as seções (Visible / Transform / Render Source / Name) usam o MESMO valor — garante ritmo idêntico entre seções. |
+| `SECTION_BOTTOM_PAD_PX` | **0 px (2026-05-24)** | Gap extra entre **última row da seção** e a `paint_section_separator`. Zerado porque o separador já contribui `SEPARATOR_PAD_Y` (≈10 px) acima E abaixo da própria linha; adicionar pad-extra criava assimetria visível (top-gap=10 px, bottom-gap=18 px → seção "encostada" no separador de cima). Com 0, ambos os gaps = 10 px, seção visualmente centralizada entre seus separadores. Mantido como constante (não removido) pra estabilidade da API. |
 
 `SEPARATOR_PAD_Y` (definido em [`widget/showcase/mod.rs`](../../../crates/ph2d-editor-core/src/widget/showcase/mod.rs)) controla o espaço acima E abaixo da linha separadora (Md = 10 px cada lado). Não confundir com `SECTION_BOTTOM_PAD_PX`, que é o gap ANTES do separador.
 

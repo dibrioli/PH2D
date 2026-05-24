@@ -154,20 +154,25 @@ fn role_to_design(r: Role) -> &'static str {
 }
 
 /// Map manifest id → expected `icon_slug` value in the matching TOML.
-/// New tools extend this. Image Tools row coverage as of 2026-05-23
-/// (image_tools_4 batch).
+/// **Codegen'd by `ph2d-tool-sync`** from `docs/design/tools/*.toml`
+/// — adding a new tool with a design TOML is enough; the match arms
+/// regenerate. The `#[rustfmt::skip]` keeps rustfmt from reformatting
+/// around the codegen markers.
+#[rustfmt::skip]
 fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
     Some(match manifest_id {
-        "trim_transparency" => "trim-transparency",
-        "make_square" => "make-square",
+        // <ph2d-tool-sync:icon-slugs:begin>
         "bgremoval" => "bg-removal",
-        "grid_snap" => "grid-settings",
-        "real_size" => "real-size",
-        "padding" => "padding",
         "color_equalization" => "color-equalization",
         "equalize_sizes" => "equalize-sizes",
+        "grid_snap" => "grid-settings",
+        "make_square" => "make-square",
+        "padding" => "padding",
         "rasterize" => "rasterize",
+        "real_size" => "real-size",
+        "trim_transparency" => "trim-transparency",
         "upscale" => "upscale",
+        // <ph2d-tool-sync:icon-slugs:end>
         _ => return None,
     })
 }

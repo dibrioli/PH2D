@@ -27,6 +27,19 @@ pub const TOOLS_END: &str = "// <ph2d-tool-sync:tools:end>";
 /// Markers delimiting the generated region in `Cargo.toml` (TOML comments).
 pub const TOML_BEGIN: &str = "# <ph2d-tool-sync:begin>";
 pub const TOML_END: &str = "# <ph2d-tool-sync:end>";
+/// Markers delimiting the codegen'd canonical paint order of the
+/// `image_tools` cluster (consumed by the
+/// `image_tools_cluster_in_canonical_order` test). Sourced from each
+/// tool's `docs/design/tools/<id>.toml` `[tool].order` field — the
+/// designer-canonical source the registry already validates against.
+pub const IMAGE_TOOLS_ORDER_BEGIN: &str = "// <ph2d-tool-sync:image-tools-order:begin>";
+pub const IMAGE_TOOLS_ORDER_END: &str = "// <ph2d-tool-sync:image-tools-order:end>";
+/// Markers delimiting the codegen'd `id -> icon_slug` match arms inside
+/// `expected_icon_slug` (used by `every_design_icon_slug_points_at_a_real_svg`
+/// and `every_registered_manifest_has_matching_design_toml`). Sourced from
+/// each `docs/design/tools/<id>.toml` `[tool].icon_slug` field.
+pub const ICON_SLUGS_BEGIN: &str = "// <ph2d-tool-sync:icon-slugs:begin>";
+pub const ICON_SLUGS_END: &str = "// <ph2d-tool-sync:icon-slugs:end>";
 
 /// Scan `crates_dir` for tool crates (`ph2d-tool-*`), excluding the registry
 /// contract crate and the registry-init aggregator themselves. Returns kebab
@@ -111,6 +124,164 @@ pub fn render_cargo_dep_lines(crates: &[String]) -> Vec<String> {
         .collect()
 }
 
+/// Fields scraped from a `docs/design/tools/<id>.toml`'s `[tool]` table.
+/// The design TOML is the designer-canonical source the registry already
+/// validates against (`every_registered_manifest_has_matching_design_toml`);
+/// we re-read it here to drive two registry-init tests that previously
+/// duplicated this same data by hand — extending tool-sync to derive them
+/// from the same TOML closes the fan-out friction documented in
+/// `feedback_fanout_registry_init_friction.md`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DesignEntry {
+    pub id: String,
+    pub cluster: String,
+    pub order: u32,
+    pub icon_slug: String,
+}
+
+/// Parse one design TOML's `[tool]` table for the four fields we consume.
+/// Pure-std line scan (matches the rest of this lib's "dependency-free
+/// codegen" property). Returns `Err(missing_field_name)` if any required
+/// field is absent — the caller surfaces that with the file path so a
+/// malformed TOML never silently disappears from the codegen output
+/// (the silent-drop variant of this parser would cause downstream
+/// staleness gates to fail with a generic "lists differ" message and
+/// no breadcrumb to the bad TOML).
+pub fn parse_design_toml(text: &str) -> Result<DesignEntry, &'static str> {
+    let mut in_tool = false;
+    let mut id: Option<String> = None;
+    let mut cluster: Option<String> = None;
+    let mut order: Option<u32> = None;
+    let mut icon_slug: Option<String> = None;
+    for raw in text.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(section) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            in_tool = section.trim() == "tool";
+            continue;
+        }
+        if !in_tool {
+            continue;
+        }
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = key.trim();
+        let value = value.trim();
+        match key {
+            "id" => id = strip_quotes(value).map(str::to_string),
+            "cluster" => cluster = strip_quotes(value).map(str::to_string),
+            "icon_slug" => icon_slug = strip_quotes(value).map(str::to_string),
+            "order" => order = strip_inline_comment(value).trim().parse::<u32>().ok(),
+            _ => {}
+        }
+    }
+    Ok(DesignEntry {
+        id: id.ok_or("id")?,
+        cluster: cluster.ok_or("cluster")?,
+        order: order.ok_or("order")?,
+        icon_slug: icon_slug.ok_or("icon_slug")?,
+    })
+}
+
+/// Strip a trailing TOML inline comment (`key = value # comment`).
+/// Quote-aware: the `#` must be OUTSIDE a quoted string, so an
+/// `icon_slug = "#hash"` value is preserved verbatim. The previous
+/// naive `split('#').next()` truncated such strings silently — gold-
+/// standard audit catch (2026-05-24).
+fn strip_inline_comment(value: &str) -> &str {
+    let bytes = value.as_bytes();
+    let mut in_quote: Option<u8> = None;
+    for (i, &b) in bytes.iter().enumerate() {
+        match (in_quote, b) {
+            (None, b'"') => in_quote = Some(b'"'),
+            (None, b'\'') => in_quote = Some(b'\''),
+            (Some(q), c) if c == q => in_quote = None,
+            (None, b'#') => return &value[..i],
+            _ => {}
+        }
+    }
+    value
+}
+
+fn strip_quotes(value: &str) -> Option<&str> {
+    let value = strip_inline_comment(value).trim();
+    value
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .or_else(|| value.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
+}
+
+/// Scan `design_dir` for `*.toml` (skipping `README.md` & friends),
+/// parse each, and return entries sorted alphabetically by `id`. The
+/// alphabetical sort is deterministic + matches the merge-conflict-hygiene
+/// convention the rest of the registry follows. Panics with the file
+/// path if any TOML is malformed — the design TOMLs are checked-in
+/// source-of-truth, not user input, so a parse failure is a hard error
+/// that needs an explicit fix, not a silent drop from the codegen.
+pub fn scan_design_tomls(design_dir: &Path) -> Vec<DesignEntry> {
+    let mut entries: Vec<DesignEntry> = std::fs::read_dir(design_dir)
+        .expect("design dir readable")
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("toml"))
+        .map(|e| {
+            let path = e.path();
+            let text = std::fs::read_to_string(&path)
+                .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+            parse_design_toml(&text).unwrap_or_else(|missing| {
+                panic!(
+                    "design TOML {} is missing required field `{missing}` in [tool] — \
+                     ph2d-tool-sync cannot codegen without it",
+                    path.display()
+                )
+            })
+        })
+        .collect();
+    entries.sort_by(|a, b| a.id.cmp(&b.id));
+    entries
+}
+
+/// Render the `image_tools` cluster's canonical paint order as Rust
+/// string-literal lines (the body of the `expected: &[&str] = &[ ... ]`
+/// array inside `image_tools_cluster_in_canonical_order`). Order is
+/// `(design.order, id)` — exactly what `Registry::cluster` produces, so
+/// the gate stays a pure parity check.
+///
+/// Indented 8 spaces to sit cleanly inside the array literal at function
+/// scope depth 2 (the host file's `#[rustfmt::skip]` keeps rustfmt out).
+pub fn render_image_tools_order_lines(entries: &[DesignEntry]) -> Vec<String> {
+    let mut filtered: Vec<&DesignEntry> = entries
+        .iter()
+        .filter(|e| e.cluster == "image_tools")
+        .collect();
+    filtered.sort_by(|a, b| (a.order, &a.id).cmp(&(b.order, &b.id)));
+    filtered
+        .iter()
+        .map(|e| format!("        \"{}\",", e.id))
+        .collect()
+}
+
+/// Render the `id -> icon_slug` match arms (the body of the `match
+/// manifest_id` block inside `expected_icon_slug`). Arms are sorted by
+/// id alphabetically — the same merge-stable order the registry uses.
+///
+/// Indented 8 spaces to sit inside the `Some(match manifest_id { ... })`
+/// block (the host file's `#[rustfmt::skip]` keeps rustfmt out). Sorts
+/// internally so the function's output contract holds even if the
+/// caller passes unordered entries (the production caller
+/// `scan_design_tomls` already sorts; the defensive sort makes the
+/// function's doc claim self-enforcing).
+pub fn render_icon_slug_lines(entries: &[DesignEntry]) -> Vec<String> {
+    let mut sorted: Vec<&DesignEntry> = entries.iter().collect();
+    sorted.sort_by(|a, b| a.id.cmp(&b.id));
+    sorted
+        .iter()
+        .map(|e| format!("        \"{}\" => \"{}\",", e.id, e.icon_slug))
+        .collect()
+}
+
 /// Replace the lines strictly between the `begin` and `end` marker lines with
 /// `body_lines`, preserving the marker lines themselves (and everything else).
 /// Marker match is on the trimmed line, so indentation is irrelevant.
@@ -175,5 +346,143 @@ mod tests {
         let once = splice_lines(content, TOML_BEGIN, TOML_END, &["b = 2".to_string()]);
         let twice = splice_lines(&once, TOML_BEGIN, TOML_END, &["b = 2".to_string()]);
         assert_eq!(once, twice);
+    }
+
+    #[test]
+    fn parse_design_toml_extracts_tool_fields() {
+        let text = r#"
+# leading comment
+[tool]
+id          = "bgremoval"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 60
+a11y_role   = "Button"
+icon_slug   = "bg-removal"
+touches_sim = false
+
+[label]
+fluent_key  = "tool.bgremoval.label"
+"#;
+        let entry = parse_design_toml(text).expect("parses");
+        assert_eq!(entry.id, "bgremoval");
+        assert_eq!(entry.cluster, "image_tools");
+        assert_eq!(entry.order, 60);
+        assert_eq!(entry.icon_slug, "bg-removal");
+    }
+
+    #[test]
+    fn parse_design_toml_ignores_other_sections() {
+        // `id` outside [tool] must not leak into the result.
+        let text = r#"
+[label]
+id = "wrong"
+
+[tool]
+id = "real"
+cluster = "image_tools"
+order = 1
+icon_slug = "real-icon"
+"#;
+        let entry = parse_design_toml(text).expect("parses");
+        assert_eq!(entry.id, "real");
+    }
+
+    #[test]
+    fn parse_design_toml_preserves_hash_inside_quoted_string() {
+        // Regression for the audit catch: the previous `split('#').next()`
+        // truncated quoted strings containing `#`. Quote-aware comment
+        // stripping must keep the literal value intact.
+        let text = r#"
+[tool]
+id = "with_hash"
+cluster = "image_tools"
+order = 1
+icon_slug = "color-#7f3f"
+"#;
+        let entry = parse_design_toml(text).expect("parses");
+        assert_eq!(entry.icon_slug, "color-#7f3f");
+    }
+
+    #[test]
+    fn parse_design_toml_strips_inline_comment_after_integer() {
+        // `order = 60  # canonical paint position` must parse as 60.
+        let text = r#"
+[tool]
+id = "ok"
+cluster = "image_tools"
+order = 60  # canonical paint position (Wave 2 PR 11.4)
+icon_slug = "ok"
+"#;
+        let entry = parse_design_toml(text).expect("parses");
+        assert_eq!(entry.order, 60);
+    }
+
+    #[test]
+    fn parse_design_toml_names_missing_field() {
+        // No silent None on malformed: the caller gets the field name
+        // so `scan_design_tomls` can panic with the file path.
+        let text = "[tool]\nid = \"foo\"\ncluster = \"image_tools\"\norder = 1\n";
+        let err = parse_design_toml(text).expect_err("missing icon_slug");
+        assert_eq!(err, "icon_slug");
+    }
+
+    #[test]
+    fn render_image_tools_order_filters_and_sorts() {
+        let entries = vec![
+            DesignEntry {
+                id: "upscale".into(),
+                cluster: "image_tools".into(),
+                order: 120,
+                icon_slug: "upscale".into(),
+            },
+            DesignEntry {
+                id: "grid_snap".into(),
+                cluster: "topbar_settings".into(),
+                order: 10,
+                icon_slug: "grid-settings".into(),
+            },
+            DesignEntry {
+                id: "trim_transparency".into(),
+                cluster: "image_tools".into(),
+                order: 40,
+                icon_slug: "trim-transparency".into(),
+            },
+        ];
+        let lines = render_image_tools_order_lines(&entries);
+        assert_eq!(
+            lines,
+            vec![
+                "        \"trim_transparency\",".to_string(),
+                "        \"upscale\",".to_string(),
+            ],
+            "grid_snap (wrong cluster) excluded; image_tools sorted by order"
+        );
+    }
+
+    #[test]
+    fn render_icon_slug_emits_alphabetical_match_arms() {
+        let entries = vec![
+            DesignEntry {
+                id: "upscale".into(),
+                cluster: "image_tools".into(),
+                order: 120,
+                icon_slug: "upscale".into(),
+            },
+            DesignEntry {
+                id: "bgremoval".into(),
+                cluster: "image_tools".into(),
+                order: 60,
+                icon_slug: "bg-removal".into(),
+            },
+        ];
+        let lines = render_icon_slug_lines(&entries);
+        assert_eq!(
+            lines,
+            vec![
+                "        \"bgremoval\" => \"bg-removal\",".to_string(),
+                "        \"upscale\" => \"upscale\",".to_string(),
+            ],
+        );
     }
 }

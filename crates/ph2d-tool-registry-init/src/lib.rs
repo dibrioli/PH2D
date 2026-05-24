@@ -86,35 +86,37 @@ mod tests {
         );
     }
 
+    /// Wave 2 PR 11.4 contract: every Image Tools action pill comes
+    /// from the `image_tools` cluster, ordered by manifest `order` field.
+    /// `Registry::cluster` sorts by `(order, id)`, so this is the
+    /// canonical paint order. The expected list is **codegen'd by
+    /// `ph2d-tool-sync`** from `docs/design/tools/*.toml` (the same
+    /// designer-canonical source `every_registered_manifest_has_matching_design_toml`
+    /// validates against) — adding a new image_tools tool means dropping
+    /// a design TOML + running `cargo run -p ph2d-tool-sync`; this test
+    /// updates itself. The `#[rustfmt::skip]` keeps rustfmt from
+    /// reformatting around the codegen markers.
     #[test]
+    #[rustfmt::skip]
     fn image_tools_cluster_in_canonical_order() {
-        // Wave 2 PR 11.4 contract: every Image Tools action pill comes
-        // from the `image_tools` cluster, ordered by manifest
-        // `order` field. `Registry::cluster` sorts by `(order, id)`,
-        // so this is the canonical paint order: trim (40), make_square
-        // (50), bgremoval (60), real_size (70), padding (80),
-        // color_equalization (90), equalize_sizes (100), rasterize
-        // (110), upscale (120). Extended for the image_tools_4 batch
-        // (2026-05-23) — the 4 Image Tools sessions add their entry to
-        // this list as the canonical order grows.
         let mut reg = Registry::default();
         register_all(&mut reg);
         reg.build().expect("registry should build");
         let cluster = reg.cluster("image_tools");
         let ids: Vec<&str> = cluster.iter().map(|m| m.id).collect();
-        assert_eq!(
-            ids,
-            vec![
-                "trim_transparency",
-                "make_square",
-                "bgremoval",
-                "real_size",
-                "padding",
-                "color_equalization",
-                "equalize_sizes",
-                "rasterize",
-                "upscale",
-            ]
-        );
+        let expected: &[&str] = &[
+        // <ph2d-tool-sync:image-tools-order:begin>
+        "trim_transparency",
+        "make_square",
+        "bgremoval",
+        "real_size",
+        "padding",
+        "color_equalization",
+        "equalize_sizes",
+        "rasterize",
+        "upscale",
+        // <ph2d-tool-sync:image-tools-order:end>
+        ];
+        assert_eq!(ids, expected);
     }
 }

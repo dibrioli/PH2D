@@ -14,9 +14,10 @@
 //! Twin of `ph2d-node-sync` (ADR-0040).
 
 use ph2d_tool_sync::{
-    RS_BEGIN, RS_END, TOML_BEGIN, TOML_END, TOOLS_BEGIN, TOOLS_END, filter_exposing,
-    render_cargo_dep_lines, render_register_lines, render_register_tools_lines, scan_tool_crates,
-    splice_lines,
+    ICON_SLUGS_BEGIN, ICON_SLUGS_END, IMAGE_TOOLS_ORDER_BEGIN, IMAGE_TOOLS_ORDER_END, RS_BEGIN,
+    RS_END, TOML_BEGIN, TOML_END, TOOLS_BEGIN, TOOLS_END, filter_exposing, render_cargo_dep_lines,
+    render_icon_slug_lines, render_image_tools_order_lines, render_register_lines,
+    render_register_tools_lines, scan_design_tomls, scan_tool_crates, splice_lines,
 };
 use std::path::Path;
 
@@ -25,6 +26,10 @@ fn main() {
         .join("../../crates")
         .canonicalize()
         .expect("crates dir resolves");
+    let design_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/design/tools")
+        .canonicalize()
+        .expect("design dir resolves");
 
     let tool_crates = scan_tool_crates(&crates_dir);
     // Split by capability: manifest (chrome) vs behavior (palette modal).
@@ -34,6 +39,7 @@ fn main() {
     // `pub fn register_thing` or `pub fn make_thumbnail`. (M1 fix.)
     let manifest_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn register(");
     let modal_crates = filter_exposing(&crates_dir, &tool_crates, "pub fn make(");
+    let design_entries = scan_design_tomls(&design_dir);
     let init = crates_dir.join("ph2d-tool-registry-init");
 
     rewrite(
@@ -49,6 +55,18 @@ fn main() {
         &render_register_tools_lines(&modal_crates),
     );
     rewrite(
+        &init.join("src/lib.rs"),
+        IMAGE_TOOLS_ORDER_BEGIN,
+        IMAGE_TOOLS_ORDER_END,
+        &render_image_tools_order_lines(&design_entries),
+    );
+    rewrite(
+        &init.join("tests/tool_manifest_design_sync.rs"),
+        ICON_SLUGS_BEGIN,
+        ICON_SLUGS_END,
+        &render_icon_slug_lines(&design_entries),
+    );
+    rewrite(
         &init.join("Cargo.toml"),
         TOML_BEGIN,
         TOML_END,
@@ -56,10 +74,12 @@ fn main() {
     );
 
     println!(
-        "ph2d-tool-sync: {} crate(s) total; {} manifest, {} modal (make).",
+        "ph2d-tool-sync: {} crate(s) total; {} manifest, {} modal (make); \
+         {} design TOML(s) regenerated.",
         tool_crates.len(),
         manifest_crates.len(),
         modal_crates.len(),
+        design_entries.len(),
     );
 }
 

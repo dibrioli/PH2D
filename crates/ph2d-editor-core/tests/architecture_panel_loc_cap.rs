@@ -35,12 +35,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     // follow-up Etapa (one panel at a time, with smoke validation).
     // Entries here are frozen at the current LOC — adding any new LOC
     // requires the underlying fn to be split first.
-    (
-        "ph2d-panel-bgremoval/src/paint.rs",
-        "paint",
-        410,
-        "Wave 10 follow-up: split into per-section helpers (mask/preview/cta)",
-    ),
+    // ph2d-panel-bgremoval/src/paint.rs::paint — split Wave 11 §2.2
+    // (paint_sections.rs sibling); orchestrator is ≤ 80 LOC.
     (
         "ph2d-panel-grid-snap/src/paint.rs",
         "paint_body",

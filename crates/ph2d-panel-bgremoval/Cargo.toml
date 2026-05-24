@@ -25,6 +25,11 @@ ph2d-editor-core    = { path = "../ph2d-editor-core" }
 ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
 ph2d-a11y           = { path = "../ph2d-a11y" }
 ph2d-tokens         = { path = "../ph2d-tokens" }
+# Wave 11 §2.2: paint_sections.rs takes &mut VectorScene / &mut TextSystem
+# directly (instead of the &mut PaintCtx the orchestrator owns) so each
+# section helper is a pure y-cursor function with no host coupling.
+ph2d-vector         = { path = "../ph2d-vector" }
+ph2d-text           = { path = "../ph2d-text" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }

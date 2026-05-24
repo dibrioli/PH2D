@@ -48,8 +48,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-grid-snap/src/populate.rs",
         "populate",
-        230,
-        "Wave 11 §2.2 split done; parser counts nested struct-literal blocks",
+        235,
+        "Wave 11 §2.2 split done; parser counts nested struct-literal blocks (+1 store.register call 2026-05-24 GS_TITLE_COLOR)",
     ),
     // Wave 11 / UI canon panel-chrome work (2026-05-24): widened drag
     // handle + added BL resize gripper require ~4 lines per panel

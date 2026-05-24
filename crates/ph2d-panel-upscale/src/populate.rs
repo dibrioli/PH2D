@@ -17,6 +17,8 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 use ph2d_tool_upscale::params::{DEFAULT_SCALE_FACTOR, scale_to_slider};
 
 pub fn populate(store: &mut WidgetStore) {
+    // Panel-level color tag (UI canon post-2026-05-24).
+    store.register(ids::UPS_TITLE_COLOR, InteractiveState::Plain);
     // Algorithm segmented buttons + Cancel + Apply: five Buttons.
     for id in [
         ids::UPS_ALGO_LANCZOS3,

@@ -6,6 +6,8 @@
 //! internal writes `crate::ids::CEQ_*`, and the tool's
 //! `handle_panel_event` matches against the same hashes.
 
+pub use ph2d_editor_core::ids::{CEQ_TITLE_COLOR, INSP_BLENDER_PICKER};
+
 pub use ph2d_tool_color_equalization::ids::{
     CEQ_APPLY, CEQ_AUTO_COLORS, CEQ_AUTO_CONTRAST, CEQ_AUTO_LEVELS, CEQ_AUTO_WB, CEQ_BRIGHTNESS,
     CEQ_BRIGHTNESS_NUM, CEQ_CANCEL, CEQ_CLIP_LIMIT, CEQ_CLIP_LIMIT_NUM, CEQ_CONTRAST,

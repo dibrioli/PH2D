@@ -36,6 +36,21 @@ pub(crate) fn apply_event(
 }
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if let WidgetEvent::Click(id) = ev
+        && id == ids::UPS_TITLE_COLOR
+    {
+        let seed = host
+            .store()
+            .widget_color(id)
+            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return true;
+    }
     match ev {
         // Algorithm segmented buttons — three Click variants, each
         // forwarded as a `PanelEvent::Click` so the tool routes to

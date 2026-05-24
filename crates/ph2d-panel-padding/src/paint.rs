@@ -89,6 +89,15 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     // the bottom Cancel button does, so apply_event routes it to
     // EditorAction::CancelActiveTool with zero new wiring.
     paint_panel_close_button(rect, ids::PAD_CANCEL, hit_index, scene, theme);
+    // Canonical color-dot tag (same affordance as Inspector sections).
+    ph2d_editor_core::widget::panel_chrome::paint_panel_title_color_dot(
+        rect,
+        ids::PAD_TITLE_COLOR,
+        store,
+        hit_index,
+        scene,
+        theme,
+    );
 
     // ── Four signed per-edge slider+chip rows ──────────────────────
     // Slider track = live stored value (smooth drag) ?? normalized

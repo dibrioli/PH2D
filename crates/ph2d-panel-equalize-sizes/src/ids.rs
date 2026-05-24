@@ -8,6 +8,8 @@
 //! a convenience re-export so the panel's internal modules can write
 //! `crate::ids::EQS_*`.
 
+pub use ph2d_editor_core::ids::{EQS_TITLE_COLOR, INSP_BLENDER_PICKER};
+
 pub use ph2d_tool_equalize_sizes::ids::{
     EQS_ALG_LANCZOS, EQS_ALG_NEAREST, EQS_ALG_XBR, EQS_APPLY, EQS_ARRANGE_ON_GRID, EQS_CANCEL,
     EQS_FIXED_H, EQS_FIXED_W, EQS_GRID_OFFSET, EQS_GRID_OFFSET_NUM, EQS_MODE_FIXED, EQS_MODE_GRID,

@@ -76,6 +76,14 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     // X close button — routes to BGR_CANCEL (same handler as the
     // bottom Cancel button: pushes CancelActiveTool).
     paint_panel_close_button(rect, ids::BGR_CANCEL, hit_index, scene, theme);
+    ph2d_editor_core::widget::panel_chrome::paint_panel_title_color_dot(
+        rect,
+        ids::BGR_TITLE_COLOR,
+        store,
+        hit_index,
+        scene,
+        theme,
+    );
 
     y = paint_slider_rows(
         scene,

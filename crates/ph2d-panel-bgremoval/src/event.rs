@@ -30,6 +30,21 @@ pub(crate) fn apply_event(
 }
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if let WidgetEvent::Click(id) = ev
+        && id == ids::BGR_TITLE_COLOR
+    {
+        let seed = host
+            .store()
+            .widget_color(id)
+            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return true;
+    }
     match ev {
         // Slider drag — read the freshly-dispatched value and forward it
         // normalized. The tool maps 0..1 back to full scale.

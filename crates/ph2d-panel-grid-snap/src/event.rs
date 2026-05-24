@@ -46,6 +46,22 @@ pub(crate) fn apply_event(
         host.set_panel_visible(GridSnapPanel::ID, next);
         return EventOutcome::Consumed;
     }
+    // GS_TITLE_COLOR — panel-level color tag (UI canon post-2026-05-24).
+    if let WidgetEvent::Click(id) = ev
+        && id == ph2d_editor_core::ids::GS_TITLE_COLOR
+    {
+        let seed = host
+            .store()
+            .widget_color(id)
+            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ph2d_editor_core::ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return EventOutcome::Consumed;
+    }
     // GS_COLOR_PICKER click — open the BlenderColorPicker bound to
     // the grid-snap color slot, seeding widget_color from the live
     // `state.color_rgba` so the picker reads the right initial hue.

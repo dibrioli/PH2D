@@ -21,6 +21,9 @@ use ph2d_editor_core::widget::{
 };
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    // Panel-level color tag (UI canon post-2026-05-24).
+    store.register(ids::GS_TITLE_COLOR, InteractiveState::Plain);
+
     // Panel chrome — Blender drag/resize handles same as Widget Gallery.
     store.register(
         ids::GS_DRAG_HANDLE,

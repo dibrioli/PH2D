@@ -30,6 +30,10 @@ pub const GS_CLOSE: NodeId = NodeId(1003);
 /// Bottom-LEFT resize gripper. Mirror of [`GS_RESIZE_HANDLE`].
 pub const GS_RESIZE_HANDLE_BL: NodeId = NodeId(1004);
 
+// Re-export from the root ids module so `crate::grid_snap::ids::GS_TITLE_COLOR`
+// works the same as `crate::ids::GS_TITLE_COLOR`.
+pub use crate::ids::GS_TITLE_COLOR;
+
 // ─── Header ────────────────────────────────────────────────────
 pub const GS_KIND_DROPDOWN: NodeId = NodeId(1010);
 pub const GS_KIND_OPT_SQUARE: NodeId = NodeId(1011);

@@ -8,6 +8,8 @@
 //! re-derives the same hashes from the same string keys; both sides
 //! match by construction because the hash is deterministic.
 
+pub use ph2d_editor_core::ids::{INSP_BLENDER_PICKER, UPS_TITLE_COLOR};
+
 pub use ph2d_tool_upscale::tool::ids::{
     UPS_ALGO_LANCZOS3, UPS_ALGO_NEAREST, UPS_ALGO_XBR, UPS_APPLY, UPS_CANCEL, UPS_RESET, UPS_SCALE,
     UPS_SCALE_NUM,

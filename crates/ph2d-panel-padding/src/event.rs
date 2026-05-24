@@ -64,6 +64,22 @@ pub(crate) fn apply_event(
 }
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    // Panel-title color tag → open BlenderPicker (UI canon 2026-05-24).
+    if let WidgetEvent::Click(id) = ev
+        && id == ids::PAD_TITLE_COLOR
+    {
+        let seed = host
+            .store()
+            .widget_color(id)
+            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return true;
+    }
     match ev {
         // Edge slider dragged — read the live track, forward it as-is to
         // the tool (which maps to px), and mirror the px into the paired

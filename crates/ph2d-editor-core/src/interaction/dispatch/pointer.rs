@@ -175,7 +175,15 @@ pub fn dispatch_pointer_with_text<'frame>(
                         // 45° diagonal defaults to horizontal (the
                         // primary scrub axis).
                         let horizontal = dx_total.abs() >= dy_total.abs();
-                        store.promote_number_input_drag_to_slider(horizontal);
+                        // Pass cursor position so the promotion re-anchors
+                        // `last_x`/`last_y` here — otherwise the same Move
+                        // that crossed the threshold would apply the
+                        // entire ~5 px Down→here delta as a value JUMP.
+                        store.promote_number_input_drag_to_slider(
+                            horizontal,
+                            event.x,
+                            event.y,
+                        );
                     }
                 }
                 // Re-read after the potential promotion.

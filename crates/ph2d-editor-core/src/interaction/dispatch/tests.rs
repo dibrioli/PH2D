@@ -1481,20 +1481,26 @@ fn read_value(store: &WidgetStore, id: NodeId) -> f64 {
 fn number_input_body_drag_horizontal_uses_fast_rate() {
     let (mut store, hits, rect) = number_input_setup(5.0);
     let arena = Bump::new();
-    // Body click — anywhere left of the up/down rects on the right
-    // edge. (rect.x + 10) puts us comfortably inside the body.
     let _ = dispatch_pointer(
         &mut store,
         &hits,
         pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
         &arena,
     );
-    // Move right 10 px → dx=10, dy=0 → delta = 10 * 50 * step = 500.
-    // (Step is 1.0 for buffer "5" — no decimal.)
+    // Move 1: cross the 4 px threshold. Promotion re-anchors
+    // `last_x` to here so the threshold-crossing distance is NOT
+    // added as a value jump (post-2026-05-24 canon).
     let _ = dispatch_pointer(
         &mut store,
         &hits,
-        pointer(PointerKind::Move, rect.x + 20.0, rect.y + rect.h * 0.5),
+        pointer(PointerKind::Move, rect.x + 15.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    // Move 2: 10 px past the anchor → dx=10, dy=0 → delta = 10*50*1 = 500.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 25.0, rect.y + rect.h * 0.5),
         &arena,
     );
     let v = read_value(&store, NodeId(77));
@@ -1517,14 +1523,26 @@ fn number_input_body_drag_vertical_uses_slow_rate_and_inverts() {
         pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
         &arena,
     );
-    // Move up 10 px → dx=0, dy=-10 → delta = (0 - (-10) * 5) * 1 = 50.
+    // Move 1: -5 px crosses threshold + locks vertical, no delta
+    // (promote re-anchors).
     let _ = dispatch_pointer(
         &mut store,
         &hits,
         pointer(
             PointerKind::Move,
             rect.x + 10.0,
-            rect.y + rect.h * 0.5 - 10.0,
+            rect.y + rect.h * 0.5 - 5.0,
+        ),
+        &arena,
+    );
+    // Move 2: another -10 px → dy=-10 → delta = -(-10)*5*1 = 50.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(
+            PointerKind::Move,
+            rect.x + 10.0,
+            rect.y + rect.h * 0.5 - 15.0,
         ),
         &arena,
     );
@@ -1546,10 +1564,18 @@ fn number_input_body_drag_with_shift_uses_fine_rate() {
         pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
         &arena,
     );
+    // Move 1: cross threshold (no delta — post-2026-05-24 re-anchor).
     let _ = dispatch_pointer(
         &mut store,
         &hits,
-        pointer(PointerKind::Move, rect.x + 20.0, rect.y + rect.h * 0.5),
+        pointer(PointerKind::Move, rect.x + 15.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    // Move 2: 10 px past anchor → delta = 10*50*0.001 = 0.5.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 25.0, rect.y + rect.h * 0.5),
         &arena,
     );
     let v = read_value(&store, NodeId(77));
@@ -1575,22 +1601,31 @@ fn number_input_body_drag_locked_axis_persists_through_off_axis_wobble() {
         pointer(PointerKind::Down, down_x, down_y),
         &arena,
     );
-    // Move horizontally past the 4 px threshold → horizontal
-    // axis locks. dx=5 → delta = 5*50 = 250.
+    // Move 1: cross threshold horizontally → axis locks horizontal,
+    // promote re-anchors `last_x` to here, no delta.
     let _ = dispatch_pointer(
         &mut store,
         &hits,
         pointer(PointerKind::Move, down_x + 5.0, down_y),
         &arena,
     );
-    assert!((read_value(&store, NodeId(77)) - 250.0).abs() < 1e-6);
-    // Now drift vertically a lot (dy=86 >> dx=5). Without the
-    // lock, vertical would dominate → delta = -(-86)*5 = 430 → value 430.
-    // With the lock, horizontal stays active → value still 250.
+    assert!((read_value(&store, NodeId(77)) - 0.0).abs() < 1e-6);
+    // Move 2: another 5 px right → step_dx=5 → delta = 5*50 = 250.
     let _ = dispatch_pointer(
         &mut store,
         &hits,
-        pointer(PointerKind::Move, down_x + 5.0, down_y + 86.0),
+        pointer(PointerKind::Move, down_x + 10.0, down_y),
+        &arena,
+    );
+    assert!((read_value(&store, NodeId(77)) - 250.0).abs() < 1e-6);
+    // Now drift vertically a lot (dy=86 with x staying put). Without
+    // the lock, vertical would dominate → delta = -(-86)*5 = 430 →
+    // value would jump to 680. With horizontal lock, dy is zeroed
+    // and step_dx=0 → value stays 250.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, down_x + 10.0, down_y + 86.0),
         &arena,
     );
     let v = read_value(&store, NodeId(77));
@@ -1598,12 +1633,10 @@ fn number_input_body_drag_locked_axis_persists_through_off_axis_wobble() {
         (v - 250.0).abs() < 1e-6,
         "horizontal axis lock leaked: expected 250.0 got {v}"
     );
-    // Up clears the drag (and the lock). A new Down + drag would
-    // pick a fresh axis based on its own first-move dominance.
     let _ = dispatch_pointer(
         &mut store,
         &hits,
-        pointer(PointerKind::Up, down_x + 5.0, down_y + 86.0),
+        pointer(PointerKind::Up, down_x + 10.0, down_y + 86.0),
         &arena,
     );
     assert!(store.number_input_drag().is_none());
@@ -1625,13 +1658,22 @@ fn number_input_body_drag_locks_to_dominant_axis() {
         pointer(PointerKind::Down, down_x, down_y),
         &arena,
     );
-    // Horizontal-dominant: dx=20, dy=5. Without axis-lock:
-    //   delta = (20*50 - 5*5) * 1 = 1000 - 25 = 975
-    // With axis-lock: dy is zeroed, delta = 20*50 = 1000.
+    // Move 1: horizontal-dominant cross (dx=20, dy=5) → locks
+    // horizontal, promote re-anchors to (down+20, down+5). No delta
+    // applied this frame.
     let _ = dispatch_pointer(
         &mut store,
         &hits,
         pointer(PointerKind::Move, down_x + 20.0, down_y + 5.0),
+        &arena,
+    );
+    assert!((read_value(&store, NodeId(77)) - 0.0).abs() < 1e-6);
+    // Move 2: another 20 px right, 5 px down → step_dx=20, step_dy=5.
+    // With axis locked horizontal, dy is zeroed → delta = 20*50 = 1000.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, down_x + 40.0, down_y + 10.0),
         &arena,
     );
     let v = read_value(&store, NodeId(77));
@@ -1657,15 +1699,20 @@ fn number_input_body_drag_refreshes_buffer_in_realtime() {
         pointer(PointerKind::Down, down_x, down_y),
         &arena,
     );
-    // Move right past threshold.
+    // Move 1: cross threshold (no delta — re-anchor).
     let _ = dispatch_pointer(
         &mut store,
         &hits,
-        pointer(PointerKind::Move, down_x + 10.0, down_y),
+        pointer(PointerKind::Move, down_x + 5.0, down_y),
         &arena,
     );
-    // Buffer must mirror the new value, not the start value's
-    // formatted form ("0").
+    // Move 2: 10 px past anchor → delta = 10*50 = 500 → buffer = "500".
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, down_x + 15.0, down_y),
+        &arena,
+    );
     let buffer = store.text(NodeId(77)).unwrap_or("").to_string();
     assert_eq!(
         buffer, "500",
@@ -1799,11 +1846,17 @@ fn esc_clears_in_flight_number_input_drag() {
 fn drag_slider_last_committed_anchors_until_up_commits() {
     let (mut store, hits, rect) = number_input_setup(7.0);
     let arena = Bump::new();
-    // Down + Move past threshold → drag in flight.
+    // Down + Move 1 (cross threshold, no delta) + Move 2 (apply delta).
     let _ = dispatch_pointer(
         &mut store,
         &hits,
         pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 15.0, rect.y + rect.h * 0.5),
         &arena,
     );
     let _ = dispatch_pointer(
@@ -1864,6 +1917,13 @@ fn set_number_value_preserves_last_committed_during_drag() {
         &mut store,
         &hits,
         pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    // Move 1: cross threshold (no delta). Move 2: apply delta.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 15.0, rect.y + rect.h * 0.5),
         &arena,
     );
     let _ = dispatch_pointer(
@@ -1984,12 +2044,18 @@ fn drag_move_does_not_advance_last_committed() {
         _ => -1.0,
     };
     assert_eq!(initial_last_committed, 42.0);
-    // Down → Move past threshold → value advances, last_committed
-    // must NOT.
+    // Down → Move 1 (cross) → Move 2 (apply delta). Value advances,
+    // last_committed must NOT.
     let _ = dispatch_pointer(
         &mut store,
         &hits,
         pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 15.0, rect.y + rect.h * 0.5),
         &arena,
     );
     let _ = dispatch_pointer(

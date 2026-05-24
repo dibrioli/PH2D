@@ -86,6 +86,17 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
         ctx.scene,
         theme,
     );
+    {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        ph2d_editor_core::widget::panel_chrome::paint_panel_title_color_dot(
+            rect,
+            ids::CEQ_TITLE_COLOR,
+            store,
+            hit_index,
+            ctx.scene,
+            theme,
+        );
+    }
     // Body region (everything below the title, above the corner dot) is
     // clipped + scrolled. CEQ grew past the dock height once Phase 2/3
     // landed (~810 px against a ~600 px panel). Wheel + scrollbar route

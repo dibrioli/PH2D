@@ -389,6 +389,71 @@ pub fn panel_resize_handle_rect_bl(panel: Rect) -> Rect {
     )
 }
 
+/// Paint the canonical title-bar color dot for a panel and register
+/// its hit rect against `color_id`. The dot sits just LEFT of the
+/// close button slot (or at the right edge if there's no close), so
+/// it never collides with the X. Color comes from
+/// `store.widget_color(color_id)`; default is neutral gray.
+///
+/// **UI canon (post-2026-05-24):** every panel can carry a user-pickable
+/// color tag in its title bar. Click opens the canonical BlenderPicker
+/// (via the panel's apply_event). Same affordance Inspector sections
+/// already expose via [`color_circle_hit_rect`] — uniform across panel
+/// types so the user always knows the dot means "open the picker".
+pub fn paint_panel_title_color_dot(
+    panel: Rect,
+    color_id: ph2d_a11y::NodeId,
+    store: &crate::interaction::WidgetStore,
+    hit_index: &mut crate::interaction::HitIndex,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let rgba = store
+        .widget_color(color_id)
+        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default
+    let radius_px = 7.0_f32; // LITERAL-PX-OK: shared with section_header dot
+    let close_reserve = PANEL_HEADER_CLOSE_RESERVE; // align with close slot reserve
+    let cx = panel.x + panel.w - close_reserve - radius_px;
+    let cy = panel.y + PANEL_TITLE_BASELINE - radius_px * 0.5;
+    let dot = Rect::new(cx - radius_px, cy - radius_px, radius_px * 2.0, radius_px * 2.0);
+    let fill = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color
+    let circle = ph2d_vector::Circle::new(
+        ph2d_vector::Point::new(cx as f64, cy as f64),
+        radius_px as f64,
+    );
+    use ph2d_vector::{Affine, Brush, Fill};
+    scene.inner_mut().fill(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Solid(fill),
+        None,
+        &circle,
+    );
+    let ring = ph2d_vector::Circle::new(
+        ph2d_vector::Point::new(cx as f64, cy as f64),
+        (radius_px + 0.5) as f64,
+    );
+    scene.inner_mut().stroke(
+        &ph2d_vector::Stroke::new(1.0),
+        Affine::IDENTITY,
+        &Brush::Solid(resolve(ColorToken::Border, theme)),
+        None,
+        &ring,
+    );
+    // Slightly enlarged hit rect for fingers / mice — square around the
+    // dot with Xs padding each side.
+    let hit_pad = Spacing::Xs.px();
+    hit_index.register(
+        color_id,
+        Rect::new(
+            dot.x - hit_pad,
+            dot.y - hit_pad,
+            dot.w + hit_pad * 2.0,
+            dot.h + hit_pad * 2.0,
+        ),
+    );
+}
+
 /// Rect of the canonical X close button for a panel — same geometry
 /// `paint_panel_close_button` paints into. Exposed so panels with a
 /// scrollable body can RE-REGISTER the close hit at end-of-frame

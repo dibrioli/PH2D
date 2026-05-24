@@ -417,6 +417,18 @@ pub const INSP_LIVE_NAME_COLOR: NodeId = hash_node_id("insp_live_name_color");
 pub const INSP_LIVE_VISIBILITY_COLOR: NodeId = hash_node_id("insp_live_visibility_color");
 pub const INSP_LIVE_TRANSFORM_COLOR: NodeId = hash_node_id("insp_live_transform_color");
 pub const INSP_LIVE_RENDER_COLOR: NodeId = hash_node_id("insp_live_render_color");
+
+/// Per-image-tool-panel title-bar color dots — same picker affordance
+/// as Inspector live sections, applied at the PANEL level for
+/// transient image-tool panels that don't have nested sections.
+/// User feedback 2026-05-24: "Color dot click nos image-tool panels
+/// (mesmo pattern do Inspector)".
+pub const PAD_TITLE_COLOR: NodeId = hash_node_id("pad_title_color");
+pub const BGR_TITLE_COLOR: NodeId = hash_node_id("bgr_title_color");
+pub const CEQ_TITLE_COLOR: NodeId = hash_node_id("ceq_title_color");
+pub const UPS_TITLE_COLOR: NodeId = hash_node_id("ups_title_color");
+pub const EQS_TITLE_COLOR: NodeId = hash_node_id("eqs_title_color");
+pub const GS_TITLE_COLOR: NodeId = hash_node_id("gs_title_color");
 /// Widget Gallery floating panel — root id. The gallery is a Procreate-
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].

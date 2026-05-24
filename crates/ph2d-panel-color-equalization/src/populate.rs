@@ -24,6 +24,8 @@ use ph2d_tool_color_equalization::params::{
 };
 
 pub fn populate(store: &mut WidgetStore) {
+    // Panel-level color tag (UI canon post-2026-05-24).
+    store.register(ids::CEQ_TITLE_COLOR, InteractiveState::Plain);
     for id in [
         ids::CEQ_CANCEL,
         ids::CEQ_APPLY,

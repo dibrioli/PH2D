@@ -687,12 +687,28 @@ impl WidgetStore {
     /// decides at the moment of promotion based on `|dx| vs |dy|`.
     /// Subsequent calls (the threshold is already crossed) are no-ops
     /// so the axis can't flip mid-drag.
-    pub fn promote_number_input_drag_to_slider(&mut self, axis_horizontal: bool) {
+    ///
+    /// `cursor_x`/`cursor_y` re-anchor the incremental `last_x`/`last_y`
+    /// to the cursor position AT promotion time. Without this, the
+    /// SAME Move that crosses the threshold would compute its step
+    /// delta from `start_x` (Down position) → applies the entire
+    /// threshold-crossing distance (≈5 px × DRAG_RATE) as an instant
+    /// JUMP before the user perceives any drag motion. Re-anchoring
+    /// makes the promotion frame contribute a zero-delta and
+    /// subsequent Moves compute their deltas from "here".
+    pub fn promote_number_input_drag_to_slider(
+        &mut self,
+        axis_horizontal: bool,
+        cursor_x: f32,
+        cursor_y: f32,
+    ) {
         if let Some(drag) = self.number_input_drag.as_mut()
             && !drag.crossed_threshold
         {
             drag.crossed_threshold = true;
             drag.axis_horizontal = axis_horizontal;
+            drag.last_x = cursor_x;
+            drag.last_y = cursor_y;
         }
     }
 

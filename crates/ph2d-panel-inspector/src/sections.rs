@@ -116,10 +116,19 @@ pub(crate) fn paint_transform_section(
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let reset_size = header_h; // square icon button matching header height
     let collapsed = store.is_collapsed(ids::INSP_LIVE_TRANSFORM_SECTION);
+    let color_id = ids::INSP_LIVE_TRANSFORM_COLOR;
+    let rgba = store
+        .widget_color(color_id)
+        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
     let header = SectionHeader::new(ids::INSP_LIVE_TRANSFORM_SECTION, "Transform")
-        .collapsible(!collapsed);
+        .collapsible(!collapsed)
+        .color(rgba);
     let header_rect = Rect::new(x, y, w - reset_size - Spacing::Sm.px(), header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
+    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
+    {
+        hit_index.register(color_id, circle_rect);
+    }
     let reset_rect = Rect::new(x + w - reset_size, y, reset_size, reset_size);
     let reset_state = store
         .button_state(ids::INSP_TRANSFORM_RESET)
@@ -370,15 +379,19 @@ pub(crate) fn paint_render_source_section(
     let row_h = line_font + row_gap;
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let collapsed = store.is_collapsed(ids::INSP_LIVE_RENDER_SECTION);
+    let color_id = ids::INSP_LIVE_RENDER_COLOR;
+    let rgba = store
+        .widget_color(color_id)
+        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
     let header = SectionHeader::new(ids::INSP_LIVE_RENDER_SECTION, "Render Source")
-        .collapsible(!collapsed);
-    paint_section_header(
-        &header,
-        Rect::new(x, y, w, header_h),
-        scene,
-        text_system,
-        theme,
-    );
+        .collapsible(!collapsed)
+        .color(rgba);
+    let header_rect = Rect::new(x, y, w, header_h);
+    paint_section_header(&header, header_rect, scene, text_system, theme);
+    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
+    {
+        hit_index.register(color_id, circle_rect);
+    }
     if collapsed {
         return y + header_h;
     }

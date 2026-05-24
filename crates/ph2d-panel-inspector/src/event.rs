@@ -27,6 +27,32 @@ pub(crate) fn apply_event(
 }
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    // Section color-dot click — seed the canonical BlenderPicker
+    // pointing at the section's color id, exact same flow Widget
+    // Gallery uses for its `SECTION_COLOR_IDS`. The picker writes
+    // chosen rgba back via `set_widget_color(<color_id>, rgba)`
+    // (drained in hero.rs:760), and the next `paint_section_header`
+    // call paints the dot in that color. UI canon 2026-05-24:
+    // every section can carry a per-user accent color.
+    if let WidgetEvent::Click(id) = ev
+        && matches!(
+            id,
+            ids::INSP_LIVE_TRANSFORM_COLOR | ids::INSP_LIVE_RENDER_COLOR
+        )
+    {
+        let seed = host
+            .store()
+            .widget_color(id)
+            .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral seed
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return true;
+    }
+
     // Close (X) — hide the Inspector. Same effect as toggling the
     // left-rail Inspector pill (vide `chrome/rail_panels.rs`). UI canon
     // post-2026-05-24: every floating panel except Hierarchy has X.

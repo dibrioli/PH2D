@@ -18,7 +18,7 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_group;
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
     paint_slider_with_chip_layout,
@@ -331,7 +331,7 @@ pub(crate) fn paint_protect_brush(
         );
         y += row_h + row_gap;
 
-        paint_segmented_group(
+        let falloff_h = paint_segmented_group_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),
             &[
                 (
@@ -360,7 +360,7 @@ pub(crate) fn paint_protect_brush(
             theme,
             hit_index,
         );
-        y += row_h + row_gap;
+        y += falloff_h + row_gap;
     }
 
     if snapshot.protect_brush_armed || snapshot.has_protect_mask {

@@ -24,7 +24,7 @@ use crate::{UpscalePanel, ids};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
-    paint_panel_title, paint_segmented_group,
+    paint_panel_title, paint_segmented_group_adaptive,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
@@ -108,8 +108,8 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
         ),
     ];
     let seg_rect = Rect::new(inner_x, y, inner_w, row_h);
-    paint_segmented_group(seg_rect, &segs, scene, text_system, theme, hit_index);
-    y += row_h + row_gap;
+    let alg_h = paint_segmented_group_adaptive(seg_rect, &segs, scene, text_system, theme, hit_index);
+    y += alg_h + row_gap;
     y += row_gap;
 
     // ── Scale slider + chip row ────────────────────────────────────

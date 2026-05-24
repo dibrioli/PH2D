@@ -86,6 +86,34 @@ A chave do canon: passo 4 explicitamente filtra `HIER_PANEL`.
 
 Quando "Create note" é clicada, `apply_event` calcula `before_section` via [`section_index_below_body_y`](../../../crates/ph2d-editor-core/src/widget/showcase/state.rs) (screen-y do click → body-y → índice da seção que contém aquele y).
 
+## Blocker arquitetural (broadcast pros image-tool panels)
+
+`paint_one_note` recebe um `slot: usize` e usa esse índice pra puxar
+**NodeIds globais** (`NOTE_SLOT_IDS[slot]`, `NOTE_TITLE_IDS[slot]`,
+`NOTE_BODY_IDS[slot]`) — definidos em [`crate::ids`](../../../crates/ph2d-editor-core/src/ids.rs)
+como arrays pré-alocados (até ~12 slots). Esses IDs são REGISTRADOS
+no `WidgetStore` UMA vez pelo Inspector pre_populate; cada slot
+corresponde a um `TextInput` (title) + outro (body).
+
+**Limitação:** dois painéis usando notes ao mesmo tempo COMPARTILHAM
+o mesmo espaço de slots — slot 0 no BgRemoval edita o MESMO TextInput
+que slot 0 no Inspector. Texto se mistura.
+
+**Por que Inspector + Widget Gallery funcionam hoje:** ambos consomem
+as mesmas notas porque Widget Gallery foi originalmente um SHOWCASE
+do Inspector (mesmas ids, mesmas notas). Não há conflito visível
+porque a maioria dos usuários só edita notas num painel por vez.
+
+**Pra broadcast real (próximo refactor):** introduzir slot arrays
+**per-panel** — `NOTE_TITLE_IDS_BGREMOVAL`, `NOTE_TITLE_IDS_CEQ`,
+etc., ou trocar pro modelo "NodeId derivado de (panel_id, slot)"
+gerado dinamicamente. Documentar como sub-projeto.
+
+Status atual: CreateNote menu **funciona** em todos os painéis exceto
+Hierarchy (dispatch filter desde `cab4cf8`), mas as notas criadas em
+painéis sem Inspector-style paint stayed orphan no store — não
+aparecem visualmente. Isso é fix de paint, não de dispatch.
+
 ## Pendências
 
 - **Broadcast pros outros painéis Inspector-type:** BgRemoval, Padding, Color Equalization, Upscale, Equalize Sizes, Grid Snap não chamam `notes_for_panel` nem renderizam notas. Requer:

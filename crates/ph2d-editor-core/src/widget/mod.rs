@@ -75,7 +75,10 @@ pub use dropdown::{
 pub use icon_button::{IconButtonStyle, IconGlyph, paint_icon_button};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
-pub use number_input::{NumberInput, paint_number_input, paint_number_input_with_buffer};
+pub use number_input::{
+    MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, paint_number_input,
+    paint_number_input_with_buffer,
+};
 pub use pill_group::{PILL_PADDING_PX, PillGroup, paint_pill_group};
 pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_popover_clip};
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};

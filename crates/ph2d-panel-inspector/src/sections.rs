@@ -7,7 +7,9 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_group;
+use ph2d_editor_core::widget::panel_chrome::{
+    paint_segmented_group, paint_segmented_group_adaptive,
+};
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, NumberInput,
@@ -136,10 +138,15 @@ pub(crate) fn paint_transform_section(
     let tag_box_gap = Spacing::Xxs.px();
     let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
     let axis_col_w = Spacing::Lg.px();
-    let non_box_w = label_col_w + col_gap * 2.0 + (axis_col_w + tag_box_gap) * 2.0;
-    let box_col_w = ((w - non_box_w) * 0.5).max(40.0); // LITERAL-PX-OK: minimum field box width
     let axis_label_font = TypeToken::Base.px();
+    let label_above_gap = Spacing::Xs.px();
+    let chip_min_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
 
+    // Adaptive row painter — picks inline (label LEFT of chips) when
+    // the panel is wide enough, else stacked (label ABOVE chips so
+    // the chips don't have to shrink past `chip_min_w`). UI canon
+    // 2026-05-24: number boxes must fit 7 digits; layout adapts to
+    // preserve that floor.
     let paint_row = |scene: &mut VectorScene,
                      text_system: &mut TextSystem,
                      hit_index: &mut HitIndex,
@@ -149,30 +156,68 @@ pub(crate) fn paint_transform_section(
                      left_tag: &str,
                      left_color: ColorToken,
                      left_step: f64,
-                     right: Option<(NodeId, &str, ColorToken, f64)>| {
+                     right: Option<(NodeId, &str, ColorToken, f64)>|
+     -> f32 {
+        let chips_n = if right.is_some() { 2 } else { 1 };
+        let chips_n_f = chips_n as f32;
+        let chip_block = axis_col_w + tag_box_gap + chip_min_w;
+        let chips_w_needed = chips_n_f * chip_block + (chips_n_f - 1.0) * col_gap;
+        let inline_needed_w = label_col_w + col_gap + chips_w_needed;
+        let narrow = w < inline_needed_w;
+
+        let (chips_origin_x, chips_avail_w, label_y_offset, total_h) = if narrow {
+            // Stacked: label on row 1, chips on row 2 spanning full
+            // width. Chips grow to fill, never below `chip_min_w`.
+            (x, w, 0.0, field_h * 2.0 + label_above_gap)
+        } else {
+            // Inline: label LEFT, chips right of label. Chip box grows
+            // up to ((w - non_box_w) / chips_n) but never below the
+            // canonical MIN_W_PX.
+            (
+                x + label_col_w + col_gap,
+                w - label_col_w - col_gap,
+                0.0,
+                field_h,
+            )
+        };
+
         paint_text(
             text_system,
             scene,
             row_label,
             x,
-            row_y + (field_h - label_font) * 0.5,
+            row_y + label_y_offset + (field_h - label_font) * 0.5,
             label_font,
-            label_col_w,
+            if narrow { w } else { label_col_w },
             label_color,
         );
-        let left_tag_x = x + label_col_w + col_gap;
+
+        let chips_y = if narrow {
+            row_y + field_h + label_above_gap
+        } else {
+            row_y
+        };
+
+        // Distribute `chips_avail_w` across N (tag + chip) pairs.
+        let per_chip_w_target = (chips_avail_w
+            - chips_n_f * (axis_col_w + tag_box_gap)
+            - (chips_n_f - 1.0) * col_gap)
+            / chips_n_f;
+        let box_col_w = per_chip_w_target.max(chip_min_w);
+
+        let left_tag_x = chips_origin_x;
         paint_text(
             text_system,
             scene,
             left_tag,
             left_tag_x,
-            row_y + (field_h - axis_label_font) * 0.5,
+            chips_y + (field_h - axis_label_font) * 0.5,
             axis_label_font,
             axis_col_w,
             resolve(left_color, theme),
         );
         let left_box_x = left_tag_x + axis_col_w + tag_box_gap;
-        let left_rect = Rect::new(left_box_x, row_y, box_col_w, field_h);
+        let left_rect = Rect::new(left_box_x, chips_y, box_col_w, field_h);
         hit_index.register(left_id, left_rect);
         let (state, value, buffer, caret, anchor) = read_number_input(store, left_id);
         let input = NumberInput::new(left_id, "", value)
@@ -195,13 +240,13 @@ pub(crate) fn paint_transform_section(
                 scene,
                 right_tag,
                 right_tag_x,
-                row_y + (field_h - axis_label_font) * 0.5,
+                chips_y + (field_h - axis_label_font) * 0.5,
                 axis_label_font,
                 axis_col_w,
                 resolve(right_color, theme),
             );
             let right_box_x = right_tag_x + axis_col_w + tag_box_gap;
-            let right_rect = Rect::new(right_box_x, row_y, box_col_w, field_h);
+            let right_rect = Rect::new(right_box_x, chips_y, box_col_w, field_h);
             hit_index.register(right_id, right_rect);
             let (r_state, r_value, r_buffer, r_caret, r_anchor) =
                 read_number_input(store, right_id);
@@ -219,6 +264,7 @@ pub(crate) fn paint_transform_section(
                 theme,
             );
         }
+        total_h
     };
 
     let unit = current_display_unit();
@@ -226,7 +272,7 @@ pub(crate) fn paint_transform_section(
         ph2d_editor_core::project::DisplayUnit::Meters => ("Position (m)", 0.01_f64), // LITERAL-PX-OK: NumberInput step
         ph2d_editor_core::project::DisplayUnit::Pixels => ("Position (px)", 1.0_f64),
     };
-    paint_row(
+    let h_pos = paint_row(
         scene,
         text_system,
         hit_index,
@@ -243,8 +289,8 @@ pub(crate) fn paint_transform_section(
             pos_step,
         )),
     );
-    cur_y += field_h + row_gap;
-    paint_row(
+    cur_y += h_pos + row_gap;
+    let h_rot = paint_row(
         scene,
         text_system,
         hit_index,
@@ -256,8 +302,8 @@ pub(crate) fn paint_transform_section(
         1.0,
         None,
     );
-    cur_y += field_h + row_gap;
-    paint_row(
+    cur_y += h_rot + row_gap;
+    let h_scale = paint_row(
         scene,
         text_system,
         hit_index,
@@ -269,7 +315,7 @@ pub(crate) fn paint_transform_section(
         0.1, // LITERAL-PX-OK: scale NumberInput step
         Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
     );
-    cur_y += field_h + Spacing::Xs.px();
+    cur_y += h_scale + Spacing::Xs.px();
 
     cur_y
 }
@@ -349,8 +395,10 @@ pub(crate) fn paint_render_source_section(
     );
     cur_y += label_font + Spacing::Xs.px();
     let strategy_btn_h = ROW_H_PX;
-    // Canonical segmented GROUP (central layout + gap).
-    paint_segmented_group(
+    // Adaptive segmented GROUP — when the panel is narrow, drops
+    // "Hand-packed" (the longest) to its own row instead of wrapping
+    // the label. Returns the actual height used.
+    let strat_h = paint_segmented_group_adaptive(
         Rect::new(x, cur_y, w, strategy_btn_h),
         &[
             (
@@ -374,7 +422,7 @@ pub(crate) fn paint_render_source_section(
         theme,
         hit_index,
     );
-    cur_y += strategy_btn_h + Spacing::Md.px();
+    cur_y += strat_h + Spacing::Md.px();
     let storage_detail = match info.source_kind {
         InspectorSpriteSource::Atlas { key } => format!("Atlas key: {}", key),
         InspectorSpriteSource::Individual { texture_id } => {

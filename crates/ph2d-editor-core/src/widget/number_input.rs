@@ -117,7 +117,7 @@ impl NumberInput {
 /// scale chip width with available space (e.g. slider+chip composites)
 /// must clamp the chip below this floor. User feedback:
 /// "não permita que a caixa seja redimencionada para menor que isso".
-pub const MIN_W_PX: f32 = 80.0; // LITERAL-PX-OK: 7 digits at Sm (~6 px each) + padding + stepper column
+pub const MIN_W_PX: f32 = 96.0; // LITERAL-PX-OK: 7 digits + sign + decimal at Sm (~6.5 px each = ~58 px) + Lg.px() left pad + 22 px stepper column
 
 /// Width of the up/down stepper column carved out of the right edge
 /// of every NumberInput / chip hit rect. Sized 60% of the host height,

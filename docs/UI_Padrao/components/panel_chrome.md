@@ -105,6 +105,39 @@ Cada uma registrada em [`pre_populate.rs`](../../../crates/ph2d-editor-core/src/
 - [ ] Novo painel declara 2 NodeIds resize (BR + BL) + popula em `BlenderHit { parent, kind: ResizeHandle | ResizeHandleBl }`.
 - [ ] Ícones no header (X, Add) ficam dentro do `right_reserve` — não overlam com `drag_handle_rect`.
 
+## Layout adaptativo (canon 2026-05-24)
+
+Painéis encolhem (resize do user, dock estreito). Os widgets internos
+NÃO devem encolher abaixo dos limites que quebram leitura. Padrões
+canônicos pra adaptar:
+
+### Number-input rows: label-acima quando estreito
+
+Quando uma linha não cabe em `label LEFT + tag + chip + tag + chip`
+sem reduzir o chip abaixo de [`NUMBER_INPUT_MIN_W_PX = 96`](../../../crates/ph2d-editor-core/src/widget/number_input.rs):
+
+- O label sobe pra linha de cima (sozinho, full-width).
+- Os chips ficam na linha de baixo, dividindo `rect.w` igualmente,
+  cada um ≥ MIN_W_PX.
+
+Referência viva: [`crates/ph2d-panel-inspector/src/sections.rs::paint_transform_section`](../../../crates/ph2d-panel-inspector/src/sections.rs) (closure `paint_row`).
+
+### Segmented button rows: drop 1-by-1 pra linha abaixo
+
+Quando uma linha de botões segmentados (Atlas / Individual / Hand-packed
+etc.) não cabe na largura disponível: **NÃO** quebre o label dentro
+do botão ("Hand-\npacked" — anti-pattern). Use
+[`paint_segmented_group_adaptive`](../../../crates/ph2d-editor-core/src/widget/panel_chrome.rs).
+
+Comportamento:
+
+1. Mede a largura natural de cada label (text + padding).
+2. Se a soma > rect.w, desce o ÚLTIMO botão pra linha abaixo (full-width).
+3. Repete se necessário (próximo botão desce; cada um ocupa sua própria row).
+4. Retorna a altura total usada. Caller avança `cur_y` pelo retorno.
+
+Demote-order: do fim pra começo (preserva os botões "primários" da esquerda na top row).
+
 ## Anti-padrões
 
 - **Pill estreita 80×14 no topo** → user não consegue grab confiável. Use full-width.

@@ -63,6 +63,17 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         260,
         "Wave 11 UI canon panel-chrome additions — split deferred to follow-up Wave",
     ),
+    // Wave 11 UI canon: paint_transform_section gained adaptive
+    // layout (label-above when narrow + per-row returned height).
+    // Add ~40 LOC for the if-narrow branch + closure return path.
+    // Split into header/inline-row/stacked-row helpers is a follow-up
+    // (one panel at a time, with smoke).
+    (
+        "ph2d-panel-inspector/src/sections.rs",
+        "paint_transform_section",
+        240,
+        "Wave 11 adaptive label-above layout — split deferred",
+    ),
 ];
 
 #[test]

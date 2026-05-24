@@ -16,7 +16,7 @@
 | Elemento | Onde | Notas |
 |---|---|---|
 | Chevron `▼/▶` | esquerda | Sempre pintado. `▼` = aberto, `▶` = fechado. Click no chevron OU no header inteiro = toggle. |
-| Título | centro-esquerda | **ALL CAPS** sempre. Font `TypeToken::Sm`, cor `Text1`. `String` é guardada case-original; uppercase só no paint via `.to_uppercase()`. |
+| Título | centro-esquerda | **ALL CAPS** sempre. Font `TypeToken::Sm` em **`FontWeight::SEMI_BOLD` (600 = "quase negrito")**, cor `Text1`. Mesmo peso que o título do painel (`paint_panel_title`). `String` é guardada case-original; uppercase só no paint via `.to_uppercase()`. Painter usa `paint_text_title` (não `paint_text`). |
 | Color dot | direita | Círculo `7 px` raio, fill = RGBA escolhido pelo usuário, ring de 1 px `Border` pra contraste. Click abre color picker da seção. Quando ausente, fallback é o count chip legado. |
 
 ## Regras absolutas (canon)

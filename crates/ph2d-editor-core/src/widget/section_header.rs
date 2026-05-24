@@ -7,7 +7,9 @@
 //! "Advanced (7)", "Inputs (24)" etc.
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve};
+use crate::paint::{
+    fill_rounded_rect, paint_icon, paint_text_centered, paint_text_title, resolve,
+};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -118,12 +120,11 @@ pub fn paint_section_header(
     );
     cursor_x += icon_w + Spacing::Sm.px();
 
-    // Bigger, bolder label in UPPERCASE — the §x.x design refresh
-    // ditched the tiny lowercase title in favor of a clear section
-    // banner. Parley has no weight-700 font in the editor's stack
-    // (text/lib.rs: "no italics, no weight"), so visual emphasis is
-    // built from font_size (Sm instead of Xs) + Text1 contrast +
-    // case folding.
+    // Label in UPPERCASE, painted at SEMI_BOLD (600) to match panel
+    // titles — user feedback 2026-05-24 ("quase negrito"). Parley
+    // supports the InterVariable axis (text/system.rs `layout_with_weight`),
+    // so the editor stack DOES expose weights now (the older
+    // text/lib.rs comment "no italics, no weight" is stale).
     let font = TypeToken::Sm.px();
     let label_y = rect.y + (rect.h - font) * 0.5;
     let label_w = if header.count.is_some() {
@@ -132,7 +133,7 @@ pub fn paint_section_header(
         (rect.x + rect.w - cursor_x - pad_x).max(0.0)
     };
     let upper = header.label.to_uppercase();
-    paint_text(
+    paint_text_title(
         text_system,
         scene,
         &upper,

@@ -30,11 +30,25 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // Close (X) — hide the Inspector. Same effect as toggling the
     // left-rail Inspector pill (vide `chrome/rail_panels.rs`). UI canon
     // post-2026-05-24: every floating panel except Hierarchy has X.
+    //
+    // Sync the left-rail RAIL_SHOW_INSPECTOR button state so its
+    // Pressed/Normal visual tracks the panel's actual visibility —
+    // without this, hiding via X leaves the rail toggle stuck
+    // Pressed (bug reported 2026-05-24).
     if let WidgetEvent::Click(id) = ev
         && id == ids::INSP_CLOSE
     {
         let next = !host.panel_visible("inspector");
         host.set_panel_visible("inspector", next);
+        if let Some(InteractiveState::Button { state }) =
+            host.store_mut().get_mut(ids::RAIL_SHOW_INSPECTOR)
+        {
+            *state = if next {
+                ButtonState::Pressed
+            } else {
+                ButtonState::Normal
+            };
+        }
         return true;
     }
     // M14.5 inspector phase (6.4) — Reimport button.

@@ -25,6 +25,11 @@ use ph2d_grid::square::SquareNeighborhood;
 use ph2d_grid::staggered::StaggerParity;
 use ph2d_grid::tri::TriNeighborhood;
 
+/// World-space lower-bound for cell-size / tile / bounds floats —
+/// in METERS (not pixels). Used to clamp configuration inputs so the
+/// grid renderer doesn't divide by ~zero. Not a UI design metric.
+const MIN_CELL_SIZE_M: f32 = 0.01; // LITERAL-PX-OK: world-space minimum (meters), not a UI value
+
 pub(crate) fn apply_event(
     _state: &mut GridSnapPanelState,
     host: &mut dyn PanelHostInternal,
@@ -111,25 +116,27 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
     let v_m = display_to_meters(v);
     if id == ids::GS_CFG_CELL_SIZE {
         match state.kind {
-            GridKind::Square => state.square_cfg.cell_size = v_m.max(0.01),
-            GridKind::Hex => state.hex_cfg.cell_size = v_m.max(0.01),
+            GridKind::Square => state.square_cfg.cell_size = v_m.max(MIN_CELL_SIZE_M),
+            GridKind::Hex => state.hex_cfg.cell_size = v_m.max(MIN_CELL_SIZE_M),
             GridKind::StaggeredSquare => {
-                state.staggered_square_cfg.cell_w = v_m.max(0.01);
-                state.staggered_square_cfg.cell_h = v_m.max(0.01);
+                state.staggered_square_cfg.cell_w = v_m.max(MIN_CELL_SIZE_M);
+                state.staggered_square_cfg.cell_h = v_m.max(MIN_CELL_SIZE_M);
             }
-            GridKind::StaggeredHex => state.staggered_hex_cfg.hex.cell_size = v_m.max(0.01),
-            GridKind::Tri => state.tri_cfg.edge_length = v_m.max(0.01),
-            GridKind::Chunks => state.chunks_cfg.cell_size = v_m.max(0.01),
+            GridKind::StaggeredHex => {
+                state.staggered_hex_cfg.hex.cell_size = v_m.max(MIN_CELL_SIZE_M)
+            }
+            GridKind::Tri => state.tri_cfg.edge_length = v_m.max(MIN_CELL_SIZE_M),
+            GridKind::Chunks => state.chunks_cfg.cell_size = v_m.max(MIN_CELL_SIZE_M),
             _ => {}
         }
         return true;
     }
     if id == ids::GS_CFG_ISO_TILE_W {
-        state.iso_cfg.tile_w = v_m.max(0.01);
+        state.iso_cfg.tile_w = v_m.max(MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_ISO_TILE_H {
-        state.iso_cfg.tile_h = v_m.max(0.01);
+        state.iso_cfg.tile_h = v_m.max(MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_QT_MAX_PER_LEAF {
@@ -168,7 +175,7 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
         state.square_cfg.spacing_major = v_m.max(state.square_cfg.cell_size);
         return true;
     }
-    let to_u8 = |v: f64| v.clamp(0.0, 255.0) as u8;
+    let to_u8 = |v: f64| v.clamp(0.0, 255.0) as u8; // LITERAL-PX-OK: sRGB byte upper-bound (color component, not a UI metric)
     if id == ids::GS_CFG_COLOR_R {
         state.color_rgba[0] = to_u8(v);
         return true;
@@ -186,7 +193,7 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
         return true;
     }
     if id == ids::GS_CFG_SNAP_MAGNETISM_RADIUS {
-        state.snap_magnetism_radius = v_m.clamp(0.0, 10.0);
+        state.snap_magnetism_radius = v_m.clamp(0.0, 10.0); // LITERAL-PX-OK: magnetism radius upper-bound in meters (world-space)
         return true;
     }
     if id == ids::GS_PROBE_A_X {
@@ -207,20 +214,24 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
     }
     if id == ids::GS_CFG_QT_BOUNDS_MIN_X {
         state.quadtree_cfg.bounds.min[0] = v_m;
-        state.quadtree_cfg.bounds.max[0] = state.quadtree_cfg.bounds.max[0].max(v_m + 0.01);
+        state.quadtree_cfg.bounds.max[0] =
+            state.quadtree_cfg.bounds.max[0].max(v_m + MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_QT_BOUNDS_MIN_Y {
         state.quadtree_cfg.bounds.min[1] = v_m;
-        state.quadtree_cfg.bounds.max[1] = state.quadtree_cfg.bounds.max[1].max(v_m + 0.01);
+        state.quadtree_cfg.bounds.max[1] =
+            state.quadtree_cfg.bounds.max[1].max(v_m + MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_QT_BOUNDS_MAX_X {
-        state.quadtree_cfg.bounds.max[0] = v_m.max(state.quadtree_cfg.bounds.min[0] + 0.01);
+        state.quadtree_cfg.bounds.max[0] =
+            v_m.max(state.quadtree_cfg.bounds.min[0] + MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_QT_BOUNDS_MAX_Y {
-        state.quadtree_cfg.bounds.max[1] = v_m.max(state.quadtree_cfg.bounds.min[1] + 0.01);
+        state.quadtree_cfg.bounds.max[1] =
+            v_m.max(state.quadtree_cfg.bounds.min[1] + MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_QT_DEMO_POINTS {
@@ -233,20 +244,24 @@ fn apply_value_changed(state: &mut GridSnapState, id: NodeId, store: &WidgetStor
     }
     if id == ids::GS_CFG_VORONOI_BOUNDS_MIN_X {
         state.voronoi_cfg.bounds.min[0] = v_m;
-        state.voronoi_cfg.bounds.max[0] = state.voronoi_cfg.bounds.max[0].max(v_m + 0.01);
+        state.voronoi_cfg.bounds.max[0] =
+            state.voronoi_cfg.bounds.max[0].max(v_m + MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_VORONOI_BOUNDS_MIN_Y {
         state.voronoi_cfg.bounds.min[1] = v_m;
-        state.voronoi_cfg.bounds.max[1] = state.voronoi_cfg.bounds.max[1].max(v_m + 0.01);
+        state.voronoi_cfg.bounds.max[1] =
+            state.voronoi_cfg.bounds.max[1].max(v_m + MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_VORONOI_BOUNDS_MAX_X {
-        state.voronoi_cfg.bounds.max[0] = v_m.max(state.voronoi_cfg.bounds.min[0] + 0.01);
+        state.voronoi_cfg.bounds.max[0] =
+            v_m.max(state.voronoi_cfg.bounds.min[0] + MIN_CELL_SIZE_M);
         return true;
     }
     if id == ids::GS_CFG_VORONOI_BOUNDS_MAX_Y {
-        state.voronoi_cfg.bounds.max[1] = v_m.max(state.voronoi_cfg.bounds.min[1] + 0.01);
+        state.voronoi_cfg.bounds.max[1] =
+            v_m.max(state.voronoi_cfg.bounds.min[1] + MIN_CELL_SIZE_M);
         return true;
     }
     false

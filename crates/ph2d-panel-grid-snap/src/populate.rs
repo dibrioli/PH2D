@@ -112,7 +112,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::GS_OPACITY_SLIDER,
         InteractiveState::Slider {
             state: SliderState::Normal,
-            value: 0.75,
+            value: 0.75, // LITERAL-PX-OK: default opacity (normalized 0..1, not a UI metric)
             orientation: SliderOrientation::Horizontal,
         },
     );

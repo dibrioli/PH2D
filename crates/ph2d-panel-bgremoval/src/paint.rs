@@ -35,8 +35,8 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_bgremoval::params::{BrushFalloff, MIN_ISLAND_PIXELS_FULL_SCALE};
 
 /// Label column width for slider rows (passed to the canonical
-/// `paint_slider_with_chip_layout`). // LITERAL-PX-OK: panel grid metric
-const LABEL_COL_W: f32 = 76.0;
+/// `paint_slider_with_chip_layout`).
+const LABEL_COL_W: f32 = 76.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
 
 pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(BgRemovalPanel::ID) {
@@ -131,8 +131,10 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         .map(|(_, v)| v)
         .unwrap_or(snapshot.grow01);
     let signed = (grow_v - 0.5) * 2.0;
-    let grow_display = if signed.abs() < 0.005 {
-        "0.00".to_string()
+    // LITERAL-PX-OK below: 0.005 = display rounding epsilon for −1..+1 grow readout
+    let grow_eps = 0.005_f32; // LITERAL-PX-OK: display rounding epsilon for −1..+1 grow readout
+    let grow_display = if signed.abs() < grow_eps {
+        "0.00".to_string() // LITERAL-PX-OK: zero-centred grow display string (numeric value, not a UI metric)
     } else {
         format!("{signed:+.2}")
     };

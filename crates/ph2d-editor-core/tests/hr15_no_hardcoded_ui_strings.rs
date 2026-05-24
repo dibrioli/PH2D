@@ -39,13 +39,19 @@ const BASELINE: &[(&str, usize)] = &[
     // gallery (peripheral agents read it to see canonical widget
     // appearance). i18n migration tracked separately.
     ("showcase/inputs.rs", 2),
+    // Wave 10 / Etapa 5.1: panel-* extension. Hardcoded placeholders
+    // for chrome fields (name input, search) — replaced when Fluent
+    // runtime ships. Path key is `<crate>/src/<rel>`.
+    ("ph2d-panel-hierarchy/src/paint.rs", 1),
+    ("ph2d-panel-inspector/src/sections.rs", 1),
 ];
 
 #[test]
 fn no_new_hardcoded_ui_strings_in_widgets() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/widget");
+    let widget_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/widget");
+    let crates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut counts: Vec<(String, usize)> = Vec::new();
-    walk(&root, &root, &mut |relpath, abspath| {
+    walk(&widget_root, &widget_root, &mut |relpath, abspath| {
         if abspath.extension().and_then(|s| s.to_str()) != Some("rs") {
             return;
         }
@@ -57,6 +63,50 @@ fn no_new_hardcoded_ui_strings_in_widgets() {
             counts.push((rel, n));
         }
     });
+    // Wave 10 / Etapa 5.1: extend scope to panel-* crates. Their hardcoded
+    // strings get frozen via PANEL_BASELINE — gate prevents NET ADDITIONS
+    // while Fluent runtime is pending. Path key is `<crate>/src/<rel>`.
+    if let Ok(entries) = fs::read_dir(&crates_root) {
+        let mut panel_dirs: Vec<PathBuf> = entries
+            .flatten()
+            .filter_map(|e| {
+                let path = e.path();
+                let name = path.file_name()?.to_str()?.to_string();
+                if path.is_dir()
+                    && name.starts_with("ph2d-panel-")
+                    && name != "ph2d-panel-registry-init"
+                {
+                    Some(path)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        panel_dirs.sort();
+        for panel_dir in &panel_dirs {
+            let src = panel_dir.join("src");
+            if !src.is_dir() {
+                continue;
+            }
+            let crate_name = panel_dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+            walk(&src, &src, &mut |relpath, abspath| {
+                if abspath.extension().and_then(|s| s.to_str()) != Some("rs") {
+                    return;
+                }
+                let content = fs::read_to_string(abspath).expect("read panel file");
+                let production = strip_test_modules(&content);
+                let n = count_violations(&production);
+                if n > 0 {
+                    let rel = relpath.to_string_lossy().replace('\\', "/");
+                    counts.push((format!("{crate_name}/src/{rel}"), n));
+                }
+            });
+        }
+    }
 
     let mut errors = Vec::new();
 

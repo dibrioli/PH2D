@@ -43,8 +43,8 @@ pub fn current_picker_rect(layout: &HeroLayout, store: &WidgetStore) -> Option<R
     let min_y = layout.canvas.y;
     let max_y = layout.canvas.y + layout.canvas.h - 60.0; // LITERAL-PX-OK: drag handle min height inside canvas (chrome-specific)
     Some(Rect::new(
-        (base_x + dx).clamp(min_x, max_x),
-        (base_y + dy).clamp(min_y, max_y),
+        crate::math::safe_clamp(base_x + dx, min_x, max_x),
+        crate::math::safe_clamp(base_y + dy, min_y, max_y),
         PICKER_W,
         PICKER_H,
     ))

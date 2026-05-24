@@ -17,7 +17,7 @@ use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
 use ph2d_grid::tri::TriNeighborhood;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 use super::layout::ROW_GAP;
@@ -41,7 +41,7 @@ pub(crate) fn paint_section_label(
         w,
         resolve(ColorToken::Text1, theme),
     );
-    let after_title_y = y + ph2d_tokens::TypeToken::Md.px() + 8.0;
+    let after_title_y = y + ph2d_tokens::TypeToken::Md.px() + Spacing::Md.px();
     // Accent-colored separator line — same visual as Inspector's
     // `paint_section_separator` (Border token reads as invisible on
     // dark themes; Accent reads as the canonical section divider).
@@ -53,7 +53,7 @@ pub(crate) fn paint_section_label(
         1.0,
     );
     fill_rounded_rect(scene, sep, 0.5, resolve(ColorToken::Accent, theme));
-    after_title_y + 1.0 + 8.0
+    after_title_y + 1.0 + Spacing::Md.px()
 }
 
 /// Big individual Snap toggle at the top of the panel — primary
@@ -74,7 +74,7 @@ pub(crate) fn paint_snap_top_toggle(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
-    let h = 44.0_f32;
+    let h = 44.0_f32; // LITERAL-PX-OK: primary CTA height (Snap toggle hero) — taller than ROW_H so it reads as the panel's main action
     let rect = Rect::new(x, y, w, h);
     let on = state.snap_enabled;
     // Canonical primary CTA: ON → Accent kind; OFF → Default (ghost
@@ -157,10 +157,10 @@ pub(crate) fn paint_kind_button_grid(
         (GridKind::Voronoi, "Voronoi", ids::GS_KIND_OPT_VORONOI),
         (GridKind::Chunks, "Chunks", ids::GS_KIND_OPT_CHUNKS),
     ];
-    let cols = 3.0_f32;
-    let gap = 6.0_f32;
-    let col_w = ((w - gap * (cols - 1.0)) / cols).max(40.0);
-    let h = 28.0_f32;
+    let cols = 3.0_f32; // LITERAL-PX-OK: kind-button grid column count (math constant)
+    let gap = Spacing::Sm.px();
+    let col_w = ((w - gap * (cols - 1.0)) / cols).max(40.0); // LITERAL-PX-OK: minimum column width for kind buttons (panel-specific design floor)
+    let h = ROW_H_PX;
     let mut cy = y;
     for (row_i, chunk) in entries.chunks(3).enumerate() {
         let row_y = y + row_i as f32 * (h + gap);
@@ -199,8 +199,8 @@ pub(crate) fn paint_target_button_stack(
     store: &WidgetStore,
     state: &GridSnapState,
 ) -> f32 {
-    let h = 28.0_f32;
-    let gap = 6.0_f32;
+    let h = ROW_H_PX;
+    let gap = Spacing::Sm.px();
     let entries: [(SnapTarget, &str, NodeId); 5] = [
         (SnapTarget::Center, "Center", ids::GS_SNAP_CENTER),
         (
@@ -271,10 +271,10 @@ pub(crate) fn paint_neighborhood_button_row(
         w,
         resolve(ColorToken::Text2, theme),
     );
-    let y = y + label_font + 4.0;
+    let y = y + label_font + Spacing::Xs.px();
 
-    let h = 28.0_f32;
-    let gap = 6.0_f32;
+    let h = ROW_H_PX;
+    let gap = Spacing::Sm.px();
     let half_w = (w - gap) * 0.5;
     let (label_l, id_l, label_r, id_r, active_idx) = match family {
         NeighborhoodFamily::Square => {
@@ -359,12 +359,12 @@ pub(crate) fn paint_labeled_segmented_row(
         w,
         resolve(ColorToken::Text2, theme),
     );
-    let y = y + label_font + 4.0;
+    let y = y + label_font + Spacing::Xs.px();
 
-    let h = 28.0_f32;
-    let gap = 6.0_f32;
+    let h = ROW_H_PX;
+    let gap = Spacing::Sm.px();
     let n = options.len() as f32;
-    let cell_w = ((w - gap * (n - 1.0)) / n).max(40.0);
+    let cell_w = ((w - gap * (n - 1.0)) / n).max(40.0); // LITERAL-PX-OK: minimum cell width for segmented row (panel-specific design floor)
     for (i, (lbl, oid)) in options.iter().enumerate() {
         let rx = x + i as f32 * (cell_w + gap);
         let rect = Rect::new(rx, y, cell_w, h);
@@ -434,12 +434,12 @@ pub(crate) fn paint_color_swatch_row(
         row.x,
         row.y + (row.h - label_font) * 0.5,
         label_font,
-        row.w - 56.0,
+        row.w - 56.0, // LITERAL-PX-OK: reserve for color swatch on the right (Inspector-matched)
         resolve(ColorToken::Text2, theme),
     );
     // Swatch tile on the right — size mirrors Inspector swatches.
-    let swatch_w = 48.0_f32;
-    let swatch_h = (row.h - 4.0).max(16.0);
+    let swatch_w = Spacing::Xl4.px();
+    let swatch_h = (row.h - Spacing::Xs.px()).max(Spacing::Xl.px());
     let swatch_rect = Rect::new(
         row.x + row.w - swatch_w,
         row.y + (row.h - swatch_h) * 0.5,

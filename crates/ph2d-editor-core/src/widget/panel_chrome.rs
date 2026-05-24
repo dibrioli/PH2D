@@ -270,8 +270,8 @@ pub fn clamp_panel_rect(
     let max_bottom = viewport.y + viewport.h - Spacing::Md.px();
     let min_y = viewport.y - base.y;
     let max_y = (max_bottom - MIN_H) - base.y;
-    let dx = off.0.clamp(min_x, max_x);
-    let dy = off.1.clamp(min_y.min(max_y), max_y);
+    let dx = crate::math::safe_clamp(off.0, min_x, max_x);
+    let dy = crate::math::safe_clamp(off.1, min_y, max_y);
     let new_y = base.y + dy;
     let natural_bottom = new_y + new_h_user;
     let final_h = if natural_bottom > max_bottom {

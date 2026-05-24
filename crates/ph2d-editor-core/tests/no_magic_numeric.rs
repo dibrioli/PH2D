@@ -293,13 +293,35 @@ fn in_test_module(ranges: &[(usize, usize)], byte_offset: usize) -> bool {
 #[test]
 fn no_magic_numeric_in_widget_or_screens() {
     let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    // Wave 6+7 Phase 2: widget/ migrated to ph2d-editor-core/. Scan
-    // both crates' source trees so the rule still covers every
-    // primitive + every chrome painter.
-    let scan_roots = [
+    let crates_root = crate_root.join("..");
+    // Wave 6+7 Phase 2: widget/ migrated to ph2d-editor-core/.
+    // Wave 10 / Etapa 5.1: panel-* crates joined the scan (every docked
+    // panel paints UI; their f32/f64 literals were previously a blind spot).
+    let mut scan_roots: Vec<PathBuf> = vec![
         crate_root.join("../ph2d-editor-core/src/widget"),
         crate_root.join("src/screens"),
     ];
+    // Discover ph2d-panel-* src dirs dynamically.
+    if let Ok(entries) = fs::read_dir(&crates_root) {
+        let mut panel_srcs: Vec<PathBuf> = entries
+            .flatten()
+            .filter_map(|e| {
+                let path = e.path();
+                let name = path.file_name()?.to_str()?.to_string();
+                if path.is_dir()
+                    && name.starts_with("ph2d-panel-")
+                    && name != "ph2d-panel-registry-init"
+                {
+                    let src = path.join("src");
+                    if src.is_dir() { Some(src) } else { None }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        panel_srcs.sort();
+        scan_roots.extend(panel_srcs);
+    }
 
     let mut hits: Vec<String> = Vec::new();
     for root in &scan_roots {

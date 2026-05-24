@@ -308,16 +308,48 @@ fn path_is_allowlisted(path: &Path) -> bool {
     false
 }
 
+/// Wave 10 / Etapa 5.1 — discover all `crates/ph2d-panel-*/src/` roots
+/// dynamically so the gate auto-includes future panel crates without
+/// hand-edits. Excludes the registry-init aggregator (no UI code).
+fn discover_panel_src_roots(crates_root: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    let Ok(entries) = fs::read_dir(crates_root) else {
+        return out;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if name.starts_with("ph2d-panel-") && name != "ph2d-panel-registry-init" {
+            let src = path.join("src");
+            if src.is_dir() {
+                out.push(src);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
 #[test]
 fn no_hex_color_literals_in_widget_or_screens() {
     let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let crates_root = crate_root.join("..");
     // Wave 6+7 Phase 2: widget/ migrated to ph2d-editor-core/. Scan
     // both crates' source trees so the rule still covers every
     // primitive + every chrome painter.
-    let scan_roots = [
+    // Wave 10 / Etapa 5.1: panel-* crates joined the scan (every
+    // docked panel like Inspector / Hierarchy / BgRemoval panels paints
+    // UI; their color literals were previously a blind spot).
+    let mut scan_roots: Vec<PathBuf> = vec![
         crate_root.join("../ph2d-editor-core/src/widget"),
         crate_root.join("src/screens"),
     ];
+    scan_roots.extend(discover_panel_src_roots(&crates_root));
 
     let mut hits: Vec<String> = Vec::new();
     for root in &scan_roots {

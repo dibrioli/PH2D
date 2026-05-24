@@ -33,8 +33,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_upscale::params::{UpscaleAlgorithm, scale_to_slider, slider_to_scale};
 
-/// Label column width for the slider row. // LITERAL-PX-OK: panel grid metric
-const LABEL_COL_W: f32 = 64.0;
+/// Label column width for the slider row.
+const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
 
 pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(UpscalePanel::ID) {

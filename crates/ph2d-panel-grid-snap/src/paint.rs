@@ -43,7 +43,7 @@ use ph2d_editor_core::widget::{
     scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::ColorToken;
+use ph2d_tokens::{ColorToken, Density, Spacing, StrokeToken};
 
 pub(crate) fn paint(_state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(GridSnapPanel::ID) {
@@ -138,12 +138,12 @@ fn paint_body(
     paint_panel_title(
         rect,
         "Grid Settings",
-        32.0,
+        Spacing::Xl3.px(),
         ctx.scene,
         ctx.text_system,
         theme,
-    ); // LITERAL-PX-OK: close-button reserve
-    let close_size = 22.0_f32;
+    );
+    let close_size = Density::Compact.row_h_px();
     let close_rect = Rect::new(
         rect.x + rect.w - close_size - PAD,
         title_y - 2.0,
@@ -155,7 +155,7 @@ fn paint_body(
         ph2d_editor_core::icons::IconId::Close,
         close_rect,
         resolve(ColorToken::Text2, theme),
-        1.5,
+        StrokeToken::Default.px(),
     );
     {
         let hit_index = ctx.host.hit_index_mut();
@@ -429,10 +429,10 @@ fn paint_body(
 pub fn default_rect(viewport_w: f32, viewport_h: f32) -> Rect {
     // Width matches Inspector (`style::INSPECTOR_W = 304`) per Enio's
     // 2026-05-15 redesign so the two floating panels read as siblings.
-    let w = 304.0_f32.min(viewport_w - 16.0);
-    let h = 640.0_f32.min(viewport_h - 16.0).max(440.0);
-    let x = ((viewport_w - w) * 0.5).max(8.0);
-    let y = ((viewport_h - h) * 0.5).max(8.0);
+    let w = 304.0_f32.min(viewport_w - 16.0); // LITERAL-PX-OK: Inspector-matched floating-panel width (304) + 16 viewport edge inset
+    let h = 640.0_f32.min(viewport_h - 16.0).max(440.0); // LITERAL-PX-OK: default panel height (640) clamped to viewport with 440 floor + 16 inset
+    let x = ((viewport_w - w) * 0.5).max(8.0); // LITERAL-PX-OK: 8 = minimum panel edge inset
+    let y = ((viewport_h - h) * 0.5).max(8.0); // LITERAL-PX-OK: 8 = minimum panel edge inset
     Rect::new(x, y, w, h)
 }
 

@@ -92,9 +92,9 @@ pub fn paint_color_wheel(cp: &BlenderColorPicker, rect: Rect, scene: &mut Vector
     const CURSOR_OUTER_HALF: f32 = 1.5;
     let inset = CURSOR_R + CURSOR_OUTER_HALF;
     let cur_x =
-        (rect.x + s.clamp(0.0, 1.0) * rect.w).clamp(rect.x + inset, rect.x + rect.w - inset);
+        (rect.x + s.clamp(0.0, 1.0) * rect.w).clamp(rect.x + inset, rect.x + rect.w - inset); // CLAMP-OK: rect-bound visual cursor clamp (bounds well-formed by construction)
     let cur_y = (rect.y + (1.0 - v.clamp(0.0, 1.0)) * rect.h)
-        .clamp(rect.y + inset, rect.y + rect.h - inset);
+        .clamp(rect.y + inset, rect.y + rect.h - inset); // CLAMP-OK: rect-bound visual cursor clamp (bounds well-formed by construction)
     let cursor = Circle::new(Point::new(cur_x as f64, cur_y as f64), CURSOR_R as f64);
     let outer = Stroke::new(3.0);
     let inner = Stroke::new(1.5);

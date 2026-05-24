@@ -3879,6 +3879,10 @@ name = "ph2d-chrome-sync"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-color"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-core"
 version = "0.0.0"
 dependencies = [

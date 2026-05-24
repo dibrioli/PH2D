@@ -66,7 +66,7 @@ pub fn paint_value_slider(
     let h = cp.hsv_h;
     let thumb_w = 4.0_f32;
     let thumb_x = (rect.x + h.clamp(0.0, 1.0) * rect.w - thumb_w * 0.5)
-        .clamp(rect.x, rect.x + rect.w - thumb_w);
+        .clamp(rect.x, rect.x + rect.w - thumb_w); // CLAMP-OK: rect-bound visual thumb clamp (bounds well-formed by construction)
     let thumb_rect = Rect::new(thumb_x, rect.y, thumb_w, rect.h);
     fill_rounded_rect(scene, thumb_rect, 2.0, resolve(ColorToken::Text1, theme));
     stroke_rounded_rect(scene, thumb_rect, 2.0, 1.0, resolve(ColorToken::Bg0, theme));

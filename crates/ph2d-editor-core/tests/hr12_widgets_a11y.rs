@@ -95,10 +95,11 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
 
 #[test]
 fn every_widget_file_wires_a11y() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/widget");
+    let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let widget_root = crate_root.join("src/widget");
     let opt_out: Vec<&str> = A11Y_OPT_OUT.iter().map(|(p, _)| *p).collect();
     let mut violations = Vec::new();
-    walk(&root, &root, &mut |relpath, abspath| {
+    walk(&widget_root, &widget_root, &mut |relpath, abspath| {
         if abspath.extension().and_then(|s| s.to_str()) != Some("rs") {
             return;
         }
@@ -118,15 +119,132 @@ fn every_widget_file_wires_a11y() {
             violations.push(rel);
         }
     });
+
+    // Wave 10 / Etapa 5.1: extend scope to panel-* crates. Panel files
+    // either (a) wire a11y directly (panels with a custom a11y root —
+    // e.g. composite chrome), OR (b) DELEGATE all a11y to widget
+    // primitives they call (paint_button, paint_toggle, paint_slider…
+    // — every widget primitive owns its own AccessKit emission). To
+    // make this delegation explicit AND testable, the gate accepts
+    // either: `use ph2d_a11y` import, OR a call to a canonical widget
+    // primitive (`paint_button`, `paint_toggle`, etc.). Files that
+    // satisfy neither (pure-paint helpers with no widget interaction)
+    // go on PANEL_DELEGATE_OK below with a one-line justification.
+    let crates_root = crate_root.join("..");
+    let panel_delegate_ok: &[(&str, &str)] = PANEL_A11Y_DELEGATE_OK;
+    let delegate_ok_paths: Vec<&str> = panel_delegate_ok.iter().map(|(p, _)| *p).collect();
+    if let Ok(entries) = fs::read_dir(&crates_root) {
+        let mut panel_dirs: Vec<PathBuf> = entries
+            .flatten()
+            .filter_map(|e| {
+                let path = e.path();
+                let name = path.file_name()?.to_str()?.to_string();
+                if path.is_dir()
+                    && name.starts_with("ph2d-panel-")
+                    && name != "ph2d-panel-registry-init"
+                {
+                    Some(path)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        panel_dirs.sort();
+        for panel_dir in &panel_dirs {
+            let src = panel_dir.join("src");
+            if !src.is_dir() {
+                continue;
+            }
+            let crate_name = panel_dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+            walk(&src, &src, &mut |relpath, abspath| {
+                if abspath.extension().and_then(|s| s.to_str()) != Some("rs") {
+                    return;
+                }
+                let rel = relpath.to_string_lossy().replace('\\', "/");
+                // Skip non-paint panel files. State/event/id/populate/sync
+                // are panel internals that DON'T paint UI (state machine,
+                // input dispatch, NodeId tables, store init, value-sync).
+                // The paint-orchestrator files (paint*.rs) are where a11y
+                // delegation must surface.
+                let base = relpath.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                let is_paint_file = base.starts_with("paint")
+                    || base == "sections.rs"  // inspector sections paint
+                    || base == "paint_kinds.rs"
+                    || base == "paint_rows.rs"
+                    || base == "paint_helpers.rs";
+                if !is_paint_file {
+                    return;
+                }
+                if rel == "mod.rs" || rel == "lib.rs" {
+                    return; // re-export / glue
+                }
+                let key = format!("{crate_name}/src/{rel}");
+                if delegate_ok_paths.contains(&key.as_str()) {
+                    return;
+                }
+                let content = fs::read_to_string(abspath).expect("read panel file");
+                let has_direct_a11y =
+                    content.contains("use ph2d_a11y") || content.contains("ph2d_a11y::");
+                // Canonical widget primitives — calling these wires a11y
+                // transitively (each owns its own AccessKit emission).
+                let delegates_to_widgets =
+                    WIDGET_DELEGATE_MARKERS.iter().any(|m| content.contains(m));
+                if !has_direct_a11y && !delegates_to_widgets {
+                    violations.push(key);
+                }
+            });
+        }
+    }
+
     assert!(
         violations.is_empty(),
-        "HR-12 violation — widget files without AccessKit wiring \
-         (must `use ph2d_a11y::...`):\n  {}\n\n\
+        "HR-12 violation — widget/panel files without AccessKit wiring \
+         (must `use ph2d_a11y::...` OR delegate to a canonical widget \
+         primitive: {WIDGET_DELEGATE_MARKERS:?}):\n  {}\n\n\
          If a file genuinely has no user-facing semantics, add it to \
-         A11Y_OPT_OUT in this test with a 1-line justification.",
+         A11Y_OPT_OUT (widget files) or PANEL_A11Y_DELEGATE_OK \
+         (panel files) in this test with a 1-line justification.",
         violations.join("\n  "),
     );
 }
+
+/// Canonical widget primitives. Calling any of these inside a panel
+/// file means a11y is wired transitively (the primitive owns its own
+/// AccessKit emission). Keep in sync with `src/widget/` paint helpers.
+const WIDGET_DELEGATE_MARKERS: &[&str] = &[
+    "paint_button",
+    "paint_toggle",
+    "paint_slider",
+    "paint_number_input",
+    "paint_text_input",
+    "paint_color_swatch",
+    "paint_list_item",
+    "paint_chip",
+    "paint_icon_button",
+    "paint_segmented",
+    "paint_dropdown",
+    "paint_popover",
+    "paint_card",
+    "panel_chrome::",
+    "paint_panel_title",
+    "paint_panel_surface",
+];
+
+/// Panel files that paint via vector/text primitives only (no widget
+/// interaction → no a11y to wire). Each entry: (path key, why).
+const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // CEQ histogram strip — pure RGB-bar visualization (read-only chart,
+    // no widget interaction, no AccessKit semantics). Split out from
+    // `paint.rs` to satisfy Wave 10 LOC cap.
+    (
+        "ph2d-panel-color-equalization/src/paint_histogram.rs",
+        "read-only histogram visualization, no a11y semantics",
+    ),
+];
 
 fn walk(root: &Path, dir: &Path, cb: &mut dyn FnMut(&Path, &Path)) {
     for entry in fs::read_dir(dir).expect("read widget dir") {

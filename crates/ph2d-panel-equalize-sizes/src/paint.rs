@@ -35,8 +35,8 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_tool_equalize_sizes::params::{TargetMode, UpscaleAlgorithm};
 use ph2d_vector::VectorScene;
 
-/// Label column width for Grid-mode slider rows. // LITERAL-PX-OK: panel grid metric
-const LABEL_COL_W: f32 = 72.0;
+/// Label column width for Grid-mode slider rows.
+const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
 
 pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(EqualizeSizesPanel::ID) {
@@ -411,7 +411,7 @@ fn paint_labeled_chip(
     // (zero-width) slider track — keeps a single source of truth for
     // chip paint and label baseline; the slider region collapses behind
     // the label column.
-    let chip_w = (rect.w * 0.55).max(Spacing::Xl.px() * 2.0);
+    let chip_w = (rect.w * 0.55).max(Spacing::Xl.px() * 2.0); // LITERAL-PX-OK: chip-vs-label split ratio (visual proportion)
     let label_col = (rect.w - chip_w - Spacing::Sm.px()).max(Spacing::Md.px());
     let display = value.round().to_string();
     paint_slider_with_chip_layout(

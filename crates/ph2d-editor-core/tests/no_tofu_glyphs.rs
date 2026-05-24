@@ -148,10 +148,34 @@ fn tofu_in_strings(src: &str) -> Vec<(usize, char)> {
 #[test]
 fn no_tofu_glyphs_in_ui_strings() {
     let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let scan_roots = [
+    let crates_root = crate_root.join("..");
+    let mut scan_roots: Vec<PathBuf> = vec![
         crate_root.join("src"),
         crate_root.join("../../shells/desktop/src"),
     ];
+    // Wave 10 / Etapa 5.1: panel-* crates paint UI strings (panel titles,
+    // toggle labels, section headers). They were a blind spot — any
+    // arrow/cmd glyph there rendered as a tofu box in production UI.
+    if let Ok(entries) = fs::read_dir(&crates_root) {
+        let mut panel_srcs: Vec<PathBuf> = entries
+            .flatten()
+            .filter_map(|e| {
+                let path = e.path();
+                let name = path.file_name()?.to_str()?.to_string();
+                if path.is_dir()
+                    && name.starts_with("ph2d-panel-")
+                    && name != "ph2d-panel-registry-init"
+                {
+                    let src = path.join("src");
+                    if src.is_dir() { Some(src) } else { None }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        panel_srcs.sort();
+        scan_roots.extend(panel_srcs);
+    }
     let mut files = Vec::new();
     for r in &scan_roots {
         collect_rs(r, &mut files);

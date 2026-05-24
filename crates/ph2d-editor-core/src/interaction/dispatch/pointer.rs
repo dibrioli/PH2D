@@ -147,8 +147,8 @@ pub fn dispatch_pointer_with_text<'frame>(
             // pre-drag buffer visible.)
             let mut number_input_drag_consumed = None;
             if let Some(drag) = store.number_input_drag() {
-                let dx_total = event.x - drag.start_x;
-                let dy_total = event.y - drag.start_y;
+                let dx_total = event.x - drag.start_x; // DRAG-ABS-OK: total distance from press (threshold-crossing test only — actual value uses step_dx)
+                let dy_total = event.y - drag.start_y; // DRAG-ABS-OK: total distance from press (threshold-crossing test only — actual value uses step_dy)
                 if !drag.crossed_threshold {
                     let dist_sq = dx_total * dx_total + dy_total * dy_total;
                     let thr = drag::NUMBER_INPUT_DRAG_THRESHOLD_PX;

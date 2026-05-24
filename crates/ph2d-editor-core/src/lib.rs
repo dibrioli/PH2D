@@ -41,6 +41,7 @@ pub mod icons;
 pub mod ids;
 pub mod image_edit;
 pub mod interaction;
+pub mod math;
 pub mod paint;
 pub mod panel;
 pub mod project;

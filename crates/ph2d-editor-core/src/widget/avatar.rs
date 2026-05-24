@@ -100,7 +100,7 @@ pub fn paint_avatar(
     } else {
         ColorToken::Text1
     };
-    let size = (rect.h * 0.5).clamp(TypeToken::Sm.px(), TypeToken::Lg.px());
+    let size = (rect.h * 0.5).clamp(TypeToken::Sm.px(), TypeToken::Lg.px()); // CLAMP-OK: token-literal bounds (both non-NaN, Sm < Lg by construction)
     paint_text_centered(text_system, scene, &glyph, rect, size, resolve(fg, theme));
 }
 

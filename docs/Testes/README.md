@@ -16,7 +16,7 @@
 | 2 — CEQ + Upscale impl (Padding/EqSizes exception) | ✅ COMPLETA | `cbb9cb3` | 193 verdes; fix C1 cross-bridge | [§E2](#etapa-2--ceq--upscale-impl-rastereditool) |
 | 3 — 3 arch-gates + drive_multi_preview_cache + fix C3 multi-Apply | ✅ COMPLETA | `666a85a` | 19 gates/helper verdes; 3 críticos + 3 altos fixados | [§E3](#etapa-3--3-arch-gates--drive_multi_preview_cache) |
 | 4 — panel-sync + chrome-sync + widget-sync (3 codegens) | ✅ COMPLETA | (pendente) | 6 staleness gates (3 panel + 2 chrome + 1 widget) + 12 helper tests | [§E4](#etapa-4--3-codegens-panelchromewidget-sync) |
-| 5 — Gates UI panel-\* + ph2d-color + classes de bug | ⏳ | — | — | — |
+| 5 — Gates UI panel-\* + ph2d-color + classes de bug | ✅ COMPLETA | (pendente) | 5 UI gates estendidos + 4 gates ortogonais + LOC cap + arch_color_space_typed + ph2d-color (15 tests) | [§E5](#etapa-5--gates-ui-panel--ph2d-color--gates-ortogonais) |
 | 6 — Golden-image SSIM + drift + memory GC | ⏳ | — | — | — |
 | 7 — Política merge-on-green + closure | ⏳ | — | — | — |
 
@@ -463,6 +463,125 @@ Vide `audits/etapa-4.md`. Resumo:
 - `crates/ph2d-editor-core/tests/architecture_widget_mod_in_sync.rs` — 1 sub-gate
 - Markers `<ph2d-panel-sync:*>`, `<ph2d-chrome-sync:*>`, `<ph2d-widget-sync:*>` em arquivos centrais
 - `docs/Testes/audits/etapa-4.md` — full audit report
+
+---
+
+## Etapa 5 — Gates UI panel-\* + ph2d-color + gates ortogonais
+
+**Commit:** (pendente)
+
+### Escopo
+
+Etapa 5 fecha a frente de "blindagem ortogonal" do plano Wave 10:
+
+1. **5 gates UI estendidos** a `crates/ph2d-panel-*/src/**` — antes só varriam `editor-core/src/{widget,screens}/`. Painéis tinham um blind spot que escondeu cores literais, números mágicos, glifos tofu e strings hardcoded em paint orchestrators.
+2. **Sweep das 69 violations** em panel-bgremoval / panel-color-equalization / panel-equalize-sizes / panel-grid-snap (52 sites) / panel-padding / panel-upscale — substituídas por tokens `ph2d_tokens::{Spacing,Radius,StrokeToken,TypeToken,Density,ROW_H_PX}` (preferencial) ou markers `// LITERAL-PX-OK: <reason>` (caso non-design genuíno: world-space epsilons em metros, sRGB byte normalize, panel grid metrics específicos).
+3. **CEQ paint.rs split** (824 LOC monolítico → 318 + 555 + 137 LOC em 3 arquivos; `paint()` de 590 LOC virou orchestrator de 58 LOC). 5 section helpers em sibling `paint_sections.rs` + `paint_histogram.rs`. Render order preservado byte-por-byte.
+4. **LOC cap gate novo** (`architecture_panel_loc_cap.rs`): 600 LOC/arquivo + 200 LOC/função. 3 funções long-paint anotadas como follow-up Etapa 6 (bgremoval/paint::paint 401, grid-snap/paint::paint_body 301, grid-snap/populate::populate 214).
+5. **4 gates ortogonais novos** (4 de 7 do plano §5.3):
+   - `arch_no_absolute_drag_pattern` — Burning 4 class (event.x - start_x bug); marker DRAG-ABS-OK aceito p/ threshold-crossing tests legítimos.
+   - `arch_no_char_count_widths` — chars().count() * GLYPH_W bug class; sugere text_system.measure_text.
+   - `arch_safe_clamp_only` — força `crate::math::safe_clamp` (NaN-aware, swap-tolerant) p/ clamp com bounds dinâmicos; marker CLAMP-OK p/ bounds construction-by-design seguros.
+   - `arch_mode_has_reconcile` — Image Tools Bug §2 class; setters `set_*_mode` precisam reconciliar (chamada de método além do field write); BENIGN_SET_MODE pra exceções documentadas.
+6. **Crate `ph2d-color`** com `LinearRgba`, `SrgbRgba`, `Premultiplied<T>`, `OklchColor` (4 módulos + 15 unit tests). Conversões EXPLÍCITAS (`to_linear`/`to_srgb`/`premultiply`/`unmultiply`) — nenhuma `From` impl implícita.
+7. **`arch_color_space_typed` gate** com BASELINE frozen (10 arquivos existentes que ainda passam `rgba: &[u8]` em assinaturas públicas). Novo código DEVE usar `&[SrgbRgba]` / `&[LinearRgba]` / `Premultiplied<T>`. Migração dos 10 sites é follow-up Etapa 5.4 (1-2 semanas, fora do escopo deste commit).
+
+**3 gates do plano §5.3 deferidas a Etapa 6** (precondições):
+- `no_tofu_glyphs` ampliado (U+2000-FFFF menos faixa Inter) — precisa tabela de cobertura Inter, complexo.
+- `tests/docs_bugs_have_gates.rs` — backfill de 90 entradas em UI_Bugs + Image Tools Bugs.
+- `panel-canonical-template` AST-aware — plano já o diferia a §6.2.
+
+### Testes automáticos rodados ✅
+
+```bash
+# 5 gates UI extended (panel-* scope)
+cargo test -p ph2d-editor-core --test no_literal_color --test no_magic_numeric \
+  --test hr12_widgets_a11y --test hr15_no_hardcoded_ui_strings --test no_tofu_glyphs
+# → 11/11 ok (incl. detector smokes)
+
+# 4 gates ortogonais novos
+cargo test -p ph2d-editor-core --test arch_no_absolute_drag_pattern \
+  --test arch_no_char_count_widths --test arch_safe_clamp_only \
+  --test arch_mode_has_reconcile --test arch_color_space_typed
+# → 12/12 ok (incl. detector smokes)
+
+# LOC cap novo
+cargo test -p ph2d-editor-core --test architecture_panel_loc_cap
+# → 2/2 ok (file + fn caps)
+
+# ph2d-color crate
+cargo test -p ph2d-color
+# → 15/15 ok (linear + srgb + premultiplied + oklch round-trips)
+
+# Workspace
+cargo check --workspace
+# → green
+
+# Compatibilidade dos painéis tocados
+cargo check -p ph2d-panel-grid-snap -p ph2d-panel-bgremoval \
+  -p ph2d-panel-color-equalization -p ph2d-panel-equalize-sizes \
+  -p ph2d-panel-padding -p ph2d-panel-upscale
+# → green
+```
+
+### Audit adversarial × 1
+
+Vide `audits/etapa-5.md` (pendente — agente em background).
+
+### Smoke manual pendente (Enio)
+
+**Smokes da Etapa 5 são quase 100% arquiteturais — mudanças visuais são zero by design** (tokens resolvem para os MESMOS valores numéricos que os literais substituíam; CEQ split preservou byte-equality de paint order).
+
+Apesar disso, smoke recomendado nos painéis tocados por substituição token + CEQ split:
+
+- [ ] **G10 — CEQ paint integridade pós-split:** abrir um sprite → ativar Color Equalization → mexer 3 sliders (Brightness, Contrast, Vibrance) + 1 dropdown (LUT) + clicar 1 auto button (Auto WB) + Reset + Apply. Esperado: comportamento idêntico ao pré-split, histograma renderiza, popovers abrem na ordem correta (popover em cima do scrollbar; scrollbar em cima do CTA).
+- [ ] **G11 — Grid-Snap layout sanity:** topbar → Grid Settings → abrir painel → trocar Kind (Square/Hex/Iso/...) → mexer Cell Size NumberInput → conferir color swatch row tamanho idêntico, snap toggle CTA height 44px, kind-button-grid 3×3 com 28px row height. (Cobre as 19 substituições do paint_helpers.rs.)
+- [ ] **G12 — bgremoval/upscale/padding/equalize-sizes/CEQ chrome:** abrir cada painel, conferir alturas de label column (76/64/64/72/84 px respectivamente — devem renderizar idênticas ao pré-Etapa 5). LITERAL-PX-OK markers preservam os valores.
+- [ ] **G13 — drag panel chrome:** arrastar painel pra fora dos limites do viewport, soltar perto da borda esquerda/direita/topo/baixo. Esperado: `safe_clamp` migrado em panel_chrome.rs preserva o comportamento idêntico — sem snap visual diferente.
+- [ ] **G14 — color picker visual integrity:** abrir BlenderColorPicker em qualquer painel → mexer wheel + slider → conferir cursor e thumb seguem o cursor sem stutter. (Cobre os 5 sites CLAMP-OK marcados em wheel/value_slider/slider_with_chip.)
+
+### Métricas pós-Etapa 5
+
+- **Gates UI total:** 5 estendidos a panel-* + 5 gates ortogonais novos = **10 gates novos/estendidos**
+- **Tokens substituídos por literais:** 69 sites em panel-* migrados (≥80% para tokens; restante em LITERAL-PX-OK justificado)
+- **CEQ paint() LOC:** 590 → 58 (orchestrator); arquivo: 824 → 318 (paint) + 555 (sections) + 137 (histogram)
+- **Novo crate:** `ph2d-color` (4 módulos, 15 tests, ~470 LOC total) — primeiro typed color crate do projeto
+- **safe_clamp ativo:** 4 callsites (panel_chrome ×2, color_picker_demo ×2)
+- **arch_color_space_typed BASELINE:** 10 arquivos legacy frozen; novo código forçado a typed wrappers
+
+### Artefatos criados / modificados
+
+**Novos:**
+- `crates/ph2d-color/` — Cargo.toml + src/{lib.rs, linear.rs, srgb.rs, premultiplied.rs, oklch.rs}
+- `crates/ph2d-editor-core/src/math.rs` — `safe_clamp` helper + 3 tests
+- `crates/ph2d-editor-core/tests/architecture_panel_loc_cap.rs`
+- `crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs`
+- `crates/ph2d-editor-core/tests/arch_no_char_count_widths.rs`
+- `crates/ph2d-editor-core/tests/arch_safe_clamp_only.rs`
+- `crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs`
+- `crates/ph2d-editor-core/tests/arch_color_space_typed.rs`
+- `crates/ph2d-panel-color-equalization/src/paint_sections.rs`
+- `crates/ph2d-panel-color-equalization/src/paint_histogram.rs`
+
+**Modificados (gates estendidos):**
+- `crates/ph2d-editor-core/tests/{no_literal_color,no_magic_numeric,hr12_widgets_a11y,hr15_no_hardcoded_ui_strings,no_tofu_glyphs}.rs`
+- `crates/ph2d-editor-core/src/lib.rs` (+ `pub mod math`)
+
+**Modificados (token substituições):**
+- `crates/ph2d-panel-bgremoval/src/paint.rs` (3 sites)
+- `crates/ph2d-panel-color-equalization/src/paint.rs` (split + 4 sites)
+- `crates/ph2d-panel-equalize-sizes/src/paint.rs` (2 sites)
+- `crates/ph2d-panel-grid-snap/src/{event,layout,paint,paint_helpers,paint_rows,populate}.rs` (52 sites)
+- `crates/ph2d-panel-padding/src/paint.rs` (1 site)
+- `crates/ph2d-panel-upscale/src/paint.rs` (1 site)
+
+**Modificados (safe_clamp migração + markers):**
+- `crates/ph2d-editor-core/src/widget/panel_chrome.rs` (safe_clamp ×2)
+- `crates/ph2d-editor-core/src/widget/avatar.rs` (CLAMP-OK)
+- `crates/ph2d-editor-core/src/widget/blender_color_picker/{wheel,value_slider}.rs` (CLAMP-OK)
+- `crates/ph2d-editor-core/src/widget/slider_with_chip.rs` (CLAMP-OK ×2)
+- `crates/ph2d-editor-core/src/screens/hero/color_picker_demo.rs` (safe_clamp ×2)
+- `crates/ph2d-editor-core/src/interaction/dispatch/pointer.rs` (DRAG-ABS-OK ×2)
 
 ---
 

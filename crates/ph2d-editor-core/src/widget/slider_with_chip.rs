@@ -239,7 +239,7 @@ pub fn paint_number_chip(
         };
         let sel_top = rect.y + Spacing::Xs.px();
         let sel_bot = rect.y + rect.h - Spacing::Xs.px();
-        let sel_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0);
+        let sel_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0); // CLAMP-OK: rect-bound text-selection clamp (bounds well-formed by construction)
         let sel_w = mid_w.min(rect.x + rect.w - 2.0 - sel_x);
         if sel_w > 0.0 {
             let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
@@ -262,7 +262,7 @@ pub fn paint_number_chip(
         } else {
             text_system.prefix_width(prefix, font_size)
         };
-        let caret_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0);
+        let caret_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0); // CLAMP-OK: rect-bound caret clamp (bounds well-formed by construction)
         let caret_top = rect.y + Spacing::Xs.px();
         let caret_bot = rect.y + rect.h - Spacing::Xs.px();
         let caret_rect = Rect::new(

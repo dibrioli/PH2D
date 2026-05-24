@@ -341,14 +341,14 @@ pub(crate) fn paint_labeled_toggle(
         row.x,
         row.y + (row.h - LABEL_FONT_SIZE) * 0.5,
         LABEL_FONT_SIZE,
-        row.w - 60.0,
+        row.w - 60.0, // LITERAL-PX-OK: reserve for toggle widget + edge inset
         resolve(ColorToken::Text1, theme),
     );
 
-    let toggle_w = 40.0;
-    let toggle_h = 20.0;
+    let toggle_w = 40.0; // LITERAL-PX-OK: canonical compact toggle width (matches Inspector toggles)
+    let toggle_h = 20.0; // LITERAL-PX-OK: canonical compact toggle height (matches Inspector toggles)
     let toggle_rect = Rect::new(
-        row.x + row.w - toggle_w - 4.0,
+        row.x + row.w - toggle_w - Spacing::Xs.px(),
         row.y + (row.h - toggle_h) * 0.5,
         toggle_w,
         toggle_h,

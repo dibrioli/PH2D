@@ -74,7 +74,13 @@ pub(crate) fn paint_visibility_row(
     w: f32,
     y: f32,
 ) -> f32 {
-    let row_h = 24.0_f32; // LITERAL-PX-OK: compact checkbox row
+    // Tight row that matches the checkbox's actual visual height (~18
+    // px = label baseline + box). Pre-canon was 24 px → extra ~6 px
+    // padding below the checkbox before SECTION_BOTTOM_PAD_PX,
+    // making the gap to the separator visibly larger than Transform's
+    // (user 2026-05-24: "espaço entre visible e separador fora do
+    // padrão"). Now both sections finish at the same visual rhythm.
+    let row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height (box 16 + label baseline)
     let (state, value) = match store.checkbox(ids::INSP_VISIBILITY_CHECK) {
         Some(pair) => pair,
         None => (CheckboxState::Normal, CheckboxValue::Checked),
@@ -218,13 +224,14 @@ pub(crate) fn paint_transform_section(
         );
 
         // Single-chip rows (Rotation) span from X-chip start to Y-chip end —
-        // alignment with the 2-chip rows above + below. Two-chip rows use
-        // `two_chip_w` for each chip.
+        // alignment with the 2-chip rows above + below. The span must
+        // include: chip_X + col_gap + Y-tag slot + chip_Y =
+        // 2*two_chip_w + col_gap + axis_col_w + tag_box_gap.
+        // The previous formula missed `axis_col_w + tag_box_gap` and
+        // left Rotation ending short of Y-chip's right edge.
         let single_chip = right.is_none();
         let left_box_w = if single_chip {
-            // 2 * two_chip_w + col_gap = X start to Y end (matches the
-            // 2-chip total inner span).
-            (two_chip_w * 2.0 + col_gap).max(0.0)
+            (two_chip_w * 2.0 + col_gap + axis_col_w + tag_box_gap).max(0.0)
         } else {
             two_chip_w
         };

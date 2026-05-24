@@ -40,6 +40,9 @@ pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Optio
         .map(|t| t.id() == ph2d_editor::ToolId::new("equalize_sizes"))
         .unwrap_or(false);
     hero.panel_visibility.insert("equalize_sizes", active);
+    // Image tools dock into the Inspector slot — hide Inspector while
+    // the tool is active, restore on deactivate.
+    hero.panel_visibility.insert("inspector", !active);
 
     if !active {
         #[cfg(feature = "panel-equalize-sizes")]
@@ -55,6 +58,7 @@ pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Optio
     let cell_px = (cell_m * ppm).round().max(1.0) as u32;
 
     let mut apply: Option<Vec<u64>> = None;
+    let mut needs_panel_reset = false;
     if let Some(tool) = tools.active_mut()
         && let Some(eqs) = tool
             .as_any_mut()
@@ -71,8 +75,18 @@ pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Optio
                 apply = Some(bits_list);
             }
         }
+        if eqs.take_pending_panel_reset() {
+            needs_panel_reset = true;
+        }
         #[cfg(feature = "panel-equalize-sizes")]
         ph2d_panel_equalize_sizes::set_current_equalize_sizes_snapshot(Some(eqs.ui_snapshot()));
+    }
+    if needs_panel_reset {
+        ph2d_editor::panel::with_registry_opt(|reg| {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_tool_equalize_sizes::ids::EQS_PANEL) {
+                reg.panels_mut()[idx].populate(&mut hero.store);
+            }
+        });
     }
 
     apply

@@ -155,8 +155,20 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
 
     y += row_gap;
 
-    // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
+    // ── Reset (ghost, full width) row ──────────────────────────────
     let btn_gap = Spacing::Sm.px();
+    let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
+    let reset_state = store
+        .button_state(ids::PAD_RESET)
+        .unwrap_or(ButtonState::Normal);
+    let reset = Button::new(ids::PAD_RESET, "Reset to Defaults")
+        .kind(ButtonKind::Default)
+        .state(reset_state);
+    paint_button(&reset, reset_rect, scene, text_system, theme);
+    hit_index.register(ids::PAD_RESET, reset_rect);
+    y += row_h + row_gap;
+
+    // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
     let half_btn = ((inner_w - btn_gap) * 0.5).max(0.0);
     let cancel_rect = Rect::new(inner_x, y, half_btn, row_h);
     let cancel_state = store

@@ -238,7 +238,7 @@ mod tests {
             texture_id: 0,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
-            _pad: 0,
+            z_order: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()
@@ -266,7 +266,7 @@ mod tests {
             texture_id: 0,
             premultiplied: 0.0,
             anchor,
-            _pad: 0,
+            z_order: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()

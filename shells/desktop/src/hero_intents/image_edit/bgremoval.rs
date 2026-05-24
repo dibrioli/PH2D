@@ -9,7 +9,7 @@ use ph2d_render::SpriteRenderer;
 use ph2d_tool_bgremoval::BgRemovalTool;
 
 use crate::hero_intents::texture_edit;
-use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot, drop_undo_pre_source_if_individual};
+use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot};
 
 /// Drain a `pending_bgremoval` Tool Action: run the BgRemoval
 /// algorithm at the sprite's full resolution and swap to a fresh
@@ -38,7 +38,7 @@ pub(crate) fn drain_bgremoval(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     toasts: &mut ToastQueue,
-    image_edit_undo: &mut Option<ImageEditSnapshot>,
+    pending_undo_entries: &mut Vec<ImageEditSnapshot>,
     bg: &mut BgRemovalTool,
     last_bgremoval_pushed_entity: &mut Option<u64>,
 ) -> bool {
@@ -95,8 +95,7 @@ pub(crate) fn drain_bgremoval(
                 true
             }
             Ok(texture_id) => {
-                drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-                *image_edit_undo = Some(ImageEditSnapshot {
+                pending_undo_entries.push(ImageEditSnapshot {
                     entity_bits,
                     pre_source: old_source,
                     pre_size: old_size_world,
@@ -161,8 +160,7 @@ pub(crate) fn drain_bgremoval(
                 t.translation.x = largest_centre[0];
                 t.translation.y = largest_centre[1];
             }
-            drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-            *image_edit_undo = Some(ImageEditSnapshot {
+            pending_undo_entries.push(ImageEditSnapshot {
                 entity_bits,
                 pre_source: old_source,
                 pre_size: old_size_world,

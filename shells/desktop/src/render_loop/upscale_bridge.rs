@@ -50,6 +50,9 @@ pub(super) fn dispatch(
         .map(|t| t.id() == ph2d_editor::ToolId::new("upscale"))
         .unwrap_or(false);
     hero.panel_visibility.insert("upscale", active);
+    // Image tools dock into the Inspector slot — hide Inspector while
+    // the tool is active, restore on deactivate.
+    hero.panel_visibility.insert("inspector", !active);
 
     if !active {
         *last_pushed_entity = None;
@@ -90,6 +93,7 @@ pub(super) fn dispatch(
     }
 
     let mut apply: Option<Vec<u64>> = None;
+    let mut needs_panel_reset = false;
     if let Some(tool) = tools.active_mut()
         && let Some(ups) = tool
             .as_any_mut()
@@ -100,6 +104,9 @@ pub(super) fn dispatch(
             if !bits_list.is_empty() {
                 apply = Some(bits_list);
             }
+        }
+        if ups.take_pending_panel_reset() {
+            needs_panel_reset = true;
         }
         // (Re)compute the on-canvas preview when params changed since
         // the last frame. Gate the COPY into the shell-side
@@ -124,6 +131,15 @@ pub(super) fn dispatch(
         }
         #[cfg(feature = "panel-upscale")]
         ph2d_panel_upscale::set_current_upscale_snapshot(Some(ups.ui_snapshot()));
+    }
+
+    // Reset just fired — re-populate panel store.
+    if needs_panel_reset {
+        ph2d_editor::panel::with_registry_opt(|reg| {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_panel_upscale::ids::UPS_PANEL) {
+                reg.panels_mut()[idx].populate(&mut hero.store);
+            }
+        });
     }
 
     // Apply clears the cache so the overlay stops painting once the

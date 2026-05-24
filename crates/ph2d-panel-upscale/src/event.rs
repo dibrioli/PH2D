@@ -74,6 +74,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
+        // Reset-all — algorithm + scale back to defaults.
+        WidgetEvent::Click(id) if id == ids::UPS_RESET => {
+            reset_button(host, id);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
         // Cancel — abandon + deactivate. Shell switches back to the
         // default tool, hiding the panel.
         WidgetEvent::Click(id) if id == ids::UPS_CANCEL => {

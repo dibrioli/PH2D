@@ -27,14 +27,36 @@ pub const TILE_GRID_MIN: u32 = 4;
 pub const TILE_GRID_MAX: u32 = 16;
 pub const TILE_GRID_DEFAULT: u32 = 8;
 
-/// Brightness / Contrast / Saturation slider ranges.
+/// Phase 1 tonal stage ranges. All in normalized natural units; the
+/// pipeline projects them onto the right working space (linear sRGB or
+/// OKLab) inside [`crate::algorithm::adjust_tonal`].
 ///
-/// All three are applied in **linear-light sRGB** after CLAHE. Brightness
-/// is an additive offset in `[−1, +1]` (linear units; clamped to `[0, 1]`
-/// before delinearization). Contrast is a multiplicative scale around
-/// `0.5` in `[0.5, 2.0]` (`1.0` = identity). Saturation is a mix between
-/// linear-luma grayscale and the original, where `0` = identity, `−1` =
-/// fully desaturated, `+1` = twice the chroma (mix factor `1 + v`).
+/// - **Exposure** (EV stops, `[-3, +3]`, `0` = identity) — multiplicative
+///   `pow(2, ev)` in linear sRGB with soft-knee highlight compression.
+/// - **Temperature** (`[-1, +1]`) — photographer convention: `+1` warm
+///   (target 2000K Bradford), `-1` cool (target 10000K), `0` D65 neutral.
+/// - **Tint** (`[-1, +1]`) — green/magenta shift, luminance-preserving in
+///   linear sRGB. `+1` magenta, `-1` green.
+/// - **Brightness** (`[-1, +1]`) — multiplicative `m = 1 + b` in linear
+///   sRGB. Pure black stays black (mirrors legacy semantics, distinct
+///   from additive offset which lifts blacks to grey).
+/// - **Contrast** (`[0.5, 2.0]`, `1.0` = identity) — S-curve around the
+///   perceptual midpoint `0.18` (18 % grey) in linear sRGB.
+/// - **Vibrance** (`[-1, +1]`) — smart saturation in OKLab; boosts chroma
+///   inversely to current chroma (skin-tone protection).
+/// - **Saturation** (`[-1, +1]`) — uniform chroma scale in OKLab.
+pub const EXPOSURE_MIN: f32 = -3.0;
+pub const EXPOSURE_MAX: f32 = 3.0;
+pub const EXPOSURE_DEFAULT: f32 = 0.0;
+
+pub const TEMPERATURE_MIN: f32 = -1.0;
+pub const TEMPERATURE_MAX: f32 = 1.0;
+pub const TEMPERATURE_DEFAULT: f32 = 0.0;
+
+pub const TINT_MIN: f32 = -1.0;
+pub const TINT_MAX: f32 = 1.0;
+pub const TINT_DEFAULT: f32 = 0.0;
+
 pub const BRIGHTNESS_MIN: f32 = -1.0;
 pub const BRIGHTNESS_MAX: f32 = 1.0;
 pub const BRIGHTNESS_DEFAULT: f32 = 0.0;
@@ -43,9 +65,48 @@ pub const CONTRAST_MIN: f32 = 0.5;
 pub const CONTRAST_MAX: f32 = 2.0;
 pub const CONTRAST_DEFAULT: f32 = 1.0;
 
+pub const VIBRANCE_MIN: f32 = -1.0;
+pub const VIBRANCE_MAX: f32 = 1.0;
+pub const VIBRANCE_DEFAULT: f32 = 0.0;
+
 pub const SATURATION_MIN: f32 = -1.0;
 pub const SATURATION_MAX: f32 = 1.0;
 pub const SATURATION_DEFAULT: f32 = 0.0;
+
+// ── Phase 2 (Effects: sharpen + denoise) ──────────────────────────
+//
+// - **Sharpen amount** (`[0, 2]`): strength of the Laplacian / Unsharp
+//   mask kernel. `0` = identity, `1` = canonical, `2` = aggressive.
+// - **Sharpen radius** (`[0.5, 3.0]`): kernel reach. `≤ 1` uses the fast
+//   Laplacian 3×3; `> 1` switches to Unsharp Mask (Gaussian blur).
+// - **Denoise strength** (`[0, 1]`): bilateral filter parameters scale
+//   with this. `0` = no denoise. WGSL strongly recommended at strength
+//   > 0.5 in 1024² previews (CPU cost is O(N·r²)).
+pub const SHARPEN_AMOUNT_MIN: f32 = 0.0;
+pub const SHARPEN_AMOUNT_MAX: f32 = 2.0;
+pub const SHARPEN_AMOUNT_DEFAULT: f32 = 0.0;
+
+pub const SHARPEN_RADIUS_MIN: f32 = 0.5;
+pub const SHARPEN_RADIUS_MAX: f32 = 3.0;
+pub const SHARPEN_RADIUS_DEFAULT: f32 = 1.0;
+
+pub const DENOISE_STRENGTH_MIN: f32 = 0.0;
+pub const DENOISE_STRENGTH_MAX: f32 = 1.0;
+pub const DENOISE_STRENGTH_DEFAULT: f32 = 0.0;
+
+// ── Phase 3 (LUT color grading) ──────────────────────────────────
+//
+// Two slots for procedural LUT presets (`lut_preset_1`, `lut_preset_2`),
+// blended by `lut_mix` (`0` = preset 1 only, `1` = preset 2 only) and
+// then applied at `lut_intensity` (`0` = original, `1` = full LUT). When
+// both presets are `LutPreset::None` the stage is skipped entirely.
+pub const LUT_INTENSITY_MIN: f32 = 0.0;
+pub const LUT_INTENSITY_MAX: f32 = 1.0;
+pub const LUT_INTENSITY_DEFAULT: f32 = 1.0;
+
+pub const LUT_MIX_MIN: f32 = 0.0;
+pub const LUT_MIX_MAX: f32 = 1.0;
+pub const LUT_MIX_DEFAULT: f32 = 0.5;
 
 // ── Slider ↔ value projection helpers ─────────────────────────────
 //
@@ -77,6 +138,30 @@ pub fn slider_to_tile_grid(track: f32) -> u32 {
     unproject01(track, TILE_GRID_MIN as f32, TILE_GRID_MAX as f32).round() as u32
 }
 
+pub fn exposure_to_slider(v: f32) -> f32 {
+    project01(v, EXPOSURE_MIN, EXPOSURE_MAX)
+}
+
+pub fn slider_to_exposure(track: f32) -> f32 {
+    unproject01(track, EXPOSURE_MIN, EXPOSURE_MAX)
+}
+
+pub fn temperature_to_slider(v: f32) -> f32 {
+    project01(v, TEMPERATURE_MIN, TEMPERATURE_MAX)
+}
+
+pub fn slider_to_temperature(track: f32) -> f32 {
+    unproject01(track, TEMPERATURE_MIN, TEMPERATURE_MAX)
+}
+
+pub fn tint_to_slider(v: f32) -> f32 {
+    project01(v, TINT_MIN, TINT_MAX)
+}
+
+pub fn slider_to_tint(track: f32) -> f32 {
+    unproject01(track, TINT_MIN, TINT_MAX)
+}
+
 pub fn brightness_to_slider(v: f32) -> f32 {
     project01(v, BRIGHTNESS_MIN, BRIGHTNESS_MAX)
 }
@@ -93,6 +178,14 @@ pub fn slider_to_contrast(track: f32) -> f32 {
     unproject01(track, CONTRAST_MIN, CONTRAST_MAX)
 }
 
+pub fn vibrance_to_slider(v: f32) -> f32 {
+    project01(v, VIBRANCE_MIN, VIBRANCE_MAX)
+}
+
+pub fn slider_to_vibrance(track: f32) -> f32 {
+    unproject01(track, VIBRANCE_MIN, VIBRANCE_MAX)
+}
+
 pub fn saturation_to_slider(v: f32) -> f32 {
     project01(v, SATURATION_MIN, SATURATION_MAX)
 }
@@ -101,15 +194,85 @@ pub fn slider_to_saturation(track: f32) -> f32 {
     unproject01(track, SATURATION_MIN, SATURATION_MAX)
 }
 
+pub fn sharpen_amount_to_slider(v: f32) -> f32 {
+    project01(v, SHARPEN_AMOUNT_MIN, SHARPEN_AMOUNT_MAX)
+}
+
+pub fn slider_to_sharpen_amount(track: f32) -> f32 {
+    unproject01(track, SHARPEN_AMOUNT_MIN, SHARPEN_AMOUNT_MAX)
+}
+
+pub fn sharpen_radius_to_slider(v: f32) -> f32 {
+    project01(v, SHARPEN_RADIUS_MIN, SHARPEN_RADIUS_MAX)
+}
+
+pub fn slider_to_sharpen_radius(track: f32) -> f32 {
+    unproject01(track, SHARPEN_RADIUS_MIN, SHARPEN_RADIUS_MAX)
+}
+
+pub fn denoise_strength_to_slider(v: f32) -> f32 {
+    project01(v, DENOISE_STRENGTH_MIN, DENOISE_STRENGTH_MAX)
+}
+
+pub fn slider_to_denoise_strength(track: f32) -> f32 {
+    unproject01(track, DENOISE_STRENGTH_MIN, DENOISE_STRENGTH_MAX)
+}
+
+pub fn lut_intensity_to_slider(v: f32) -> f32 {
+    project01(v, LUT_INTENSITY_MIN, LUT_INTENSITY_MAX)
+}
+
+pub fn slider_to_lut_intensity(track: f32) -> f32 {
+    unproject01(track, LUT_INTENSITY_MIN, LUT_INTENSITY_MAX)
+}
+
+pub fn lut_mix_to_slider(v: f32) -> f32 {
+    project01(v, LUT_MIX_MIN, LUT_MIX_MAX)
+}
+
+pub fn slider_to_lut_mix(track: f32) -> f32 {
+    unproject01(track, LUT_MIX_MIN, LUT_MIX_MAX)
+}
+
 /// Authoritative parameter bag fed into [`crate::algorithm::run_pipeline`].
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ColorEqualizationParams {
     pub clip_limit: f32,
     pub tile_grid_size: u32,
+    pub exposure: f32,
+    pub temperature: f32,
+    pub tint: f32,
     pub brightness: f32,
     pub contrast: f32,
+    pub vibrance: f32,
     pub saturation: f32,
+    // ── Phase 2 effects ───────────────────────────────────────────
+    pub sharpen_amount: f32,
+    pub sharpen_radius: f32,
+    pub denoise_strength: f32,
+    // ── Phase 2 automatic adjustments (toggles) ───────────────────
+    pub auto_levels: bool,
+    pub auto_contrast: bool,
+    pub auto_colors: bool,
     pub auto_wb: bool,
+    // ── Phase 3 LUT color grading ─────────────────────────────────
+    pub lut_preset_1: crate::lut_presets::LutPreset,
+    pub lut_preset_2: crate::lut_presets::LutPreset,
+    pub lut_intensity: f32,
+    pub lut_mix: f32,
+    // ── Phase 5 Posterize / Quantize ──────────────────────────────
+    /// Posterize levels per channel. `0` (default) is off; valid range
+    /// is `2..=16` (mirror of the legacy panel's discrete options
+    /// `2, 3, 4, 6, 8, 16`).
+    pub posterize_levels: u32,
+    /// Floyd-Steinberg dithering during posterize. Default `true` —
+    /// dithered output reads cleaner on gradients (the on-by-default
+    /// behaviour of the legacy panel).
+    pub posterize_dithering: bool,
+    /// K-Means++ quantize colour count. `0` (default) is off; valid
+    /// range is `2..=256` (legacy panel offers `4, 8, 16, 32, 64, 128,
+    /// 256`).
+    pub quantize_colors: u32,
 }
 
 impl Default for ColorEqualizationParams {
@@ -117,25 +280,71 @@ impl Default for ColorEqualizationParams {
         Self {
             clip_limit: CLIP_LIMIT_DEFAULT,
             tile_grid_size: TILE_GRID_DEFAULT,
+            exposure: EXPOSURE_DEFAULT,
+            temperature: TEMPERATURE_DEFAULT,
+            tint: TINT_DEFAULT,
             brightness: BRIGHTNESS_DEFAULT,
             contrast: CONTRAST_DEFAULT,
+            vibrance: VIBRANCE_DEFAULT,
             saturation: SATURATION_DEFAULT,
+            sharpen_amount: SHARPEN_AMOUNT_DEFAULT,
+            sharpen_radius: SHARPEN_RADIUS_DEFAULT,
+            denoise_strength: DENOISE_STRENGTH_DEFAULT,
+            auto_levels: false,
+            auto_contrast: false,
+            auto_colors: false,
             auto_wb: false,
+            lut_preset_1: crate::lut_presets::LutPreset::None,
+            lut_preset_2: crate::lut_presets::LutPreset::None,
+            lut_intensity: LUT_INTENSITY_DEFAULT,
+            lut_mix: LUT_MIX_DEFAULT,
+            posterize_levels: 0,
+            posterize_dithering: true,
+            quantize_colors: 0,
         }
     }
 }
 
 impl ColorEqualizationParams {
-    /// True when every adjustment is a no-op (CLAHE redistribution at
-    /// `clip_limit=1` is a uniform CDF that produces the source back; B/C/S
-    /// at their identity defaults touch nothing; auto-WB off). Callers can
-    /// skip the bake + undo entry.
+    /// True when every adjustment is a no-op: CLAHE redistribution at
+    /// `clip_limit=1` (uniform CDF), every Phase 1 tonal param at its
+    /// identity value, every Phase 2 effect at `0`, all auto-* toggles
+    /// off, Posterize / Quantize disabled. Callers can skip the bake
+    /// + undo entry.
     pub fn is_noop(self) -> bool {
         (self.clip_limit - CLIP_LIMIT_MIN).abs() < f32::EPSILON
-            && self.brightness == 0.0
-            && self.contrast == 1.0
-            && self.saturation == 0.0
+            && self.tonal_is_identity()
+            && self.sharpen_amount == 0.0
+            && self.denoise_strength == 0.0
+            && !self.auto_levels
+            && !self.auto_contrast
+            && !self.auto_colors
             && !self.auto_wb
+            && self.lut_is_identity()
+            && self.posterize_levels < crate::algorithm::POSTERIZE_LEVELS_MIN
+            && self.quantize_colors < crate::algorithm::QUANTIZE_COLORS_MIN
+    }
+
+    /// True when the Phase 3 LUT stage is a no-op: both preset slots
+    /// are `None`, OR `lut_intensity` is `0` (forced bypass).
+    pub fn lut_is_identity(self) -> bool {
+        use crate::lut_presets::LutPreset;
+        self.lut_intensity <= 0.0
+            || (self.lut_preset_1 == LutPreset::None && self.lut_preset_2 == LutPreset::None)
+    }
+
+    /// True when the Phase 1 tonal stages produce identity output (so
+    /// `adjust_tonal` can be skipped entirely). All seven knobs at their
+    /// default ⇒ identity. Separate from [`Self::is_noop`] because CLAHE
+    /// and auto-WB can still be active while the tonal stack is neutral.
+    pub fn tonal_is_identity(self) -> bool {
+        self.exposure == 0.0
+            && self.temperature == 0.0
+            && self.tint == 0.0
+            && self.brightness == 0.0
+            && (self.contrast - 1.0).abs() < f32::EPSILON
+            && self.vibrance == 0.0
+            && self.saturation == 0.0
     }
 }
 
@@ -146,20 +355,51 @@ impl ColorEqualizationParams {
 /// `ph2d_panel_color_equalization::set_current_snapshot`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ColorEqualizationUiSnapshot {
+    // Normalized slider positions (0..1).
     pub clip_limit01: f32,
     pub tile_grid01: f32,
+    pub exposure01: f32,
+    pub temperature01: f32,
+    pub tint01: f32,
     pub brightness01: f32,
     pub contrast01: f32,
+    pub vibrance01: f32,
     pub saturation01: f32,
+    pub sharpen_amount01: f32,
+    pub sharpen_radius01: f32,
+    pub denoise_strength01: f32,
+    pub lut_intensity01: f32,
+    pub lut_mix01: f32,
+    pub auto_levels: bool,
+    pub auto_contrast: bool,
+    pub auto_colors: bool,
     pub auto_wb: bool,
-    /// Raw values, mirrored so number chips can paint the natural unit
-    /// (clip limit `2.0`, tile grid `8`, etc.) without recomputing the
-    /// inverse projection inside the panel.
+    pub lut_preset_1: crate::lut_presets::LutPreset,
+    pub lut_preset_2: crate::lut_presets::LutPreset,
+    /// Posterize levels per channel — `0` = off, else `2..=16`. Panel
+    /// paints as a dropdown of discrete options.
+    pub posterize_levels: u32,
+    pub posterize_dithering: bool,
+    /// Quantize colour count — `0` = off, else `2..=256`. Panel paints
+    /// as a dropdown of discrete options.
+    pub quantize_colors: u32,
+    // Raw values mirrored so chips can paint the natural unit
+    // (EV stops, ±1 brightness, etc.) without recomputing inverse
+    // projections in the panel.
     pub clip_limit: f32,
     pub tile_grid_size: u32,
+    pub exposure: f32,
+    pub temperature: f32,
+    pub tint: f32,
     pub brightness: f32,
     pub contrast: f32,
+    pub vibrance: f32,
     pub saturation: f32,
+    pub sharpen_amount: f32,
+    pub sharpen_radius: f32,
+    pub denoise_strength: f32,
+    pub lut_intensity: f32,
+    pub lut_mix: f32,
 }
 
 impl Default for ColorEqualizationUiSnapshot {
@@ -168,15 +408,41 @@ impl Default for ColorEqualizationUiSnapshot {
         Self {
             clip_limit01: clip_limit_to_slider(p.clip_limit),
             tile_grid01: tile_grid_to_slider(p.tile_grid_size),
+            exposure01: exposure_to_slider(p.exposure),
+            temperature01: temperature_to_slider(p.temperature),
+            tint01: tint_to_slider(p.tint),
             brightness01: brightness_to_slider(p.brightness),
             contrast01: contrast_to_slider(p.contrast),
+            vibrance01: vibrance_to_slider(p.vibrance),
             saturation01: saturation_to_slider(p.saturation),
+            sharpen_amount01: sharpen_amount_to_slider(p.sharpen_amount),
+            sharpen_radius01: sharpen_radius_to_slider(p.sharpen_radius),
+            denoise_strength01: denoise_strength_to_slider(p.denoise_strength),
+            lut_intensity01: lut_intensity_to_slider(p.lut_intensity),
+            lut_mix01: lut_mix_to_slider(p.lut_mix),
+            auto_levels: p.auto_levels,
+            auto_contrast: p.auto_contrast,
+            auto_colors: p.auto_colors,
             auto_wb: p.auto_wb,
+            lut_preset_1: p.lut_preset_1,
+            lut_preset_2: p.lut_preset_2,
+            posterize_levels: p.posterize_levels,
+            posterize_dithering: p.posterize_dithering,
+            quantize_colors: p.quantize_colors,
             clip_limit: p.clip_limit,
             tile_grid_size: p.tile_grid_size,
+            exposure: p.exposure,
+            temperature: p.temperature,
+            tint: p.tint,
             brightness: p.brightness,
             contrast: p.contrast,
+            vibrance: p.vibrance,
             saturation: p.saturation,
+            sharpen_amount: p.sharpen_amount,
+            sharpen_radius: p.sharpen_radius,
+            denoise_strength: p.denoise_strength,
+            lut_intensity: p.lut_intensity,
+            lut_mix: p.lut_mix,
         }
     }
 }
@@ -199,6 +465,18 @@ pub enum ColorEqualizationUiEdit {
     TileGridSlider(f32),
     /// Tile grid chip edited (natural unit, rounded to integer).
     TileGrid(u32),
+    /// Exposure slider moved (normalized).
+    ExposureSlider(f32),
+    /// Exposure chip edited (EV stops, `-3..+3`).
+    Exposure(f32),
+    /// Temperature slider moved (normalized).
+    TemperatureSlider(f32),
+    /// Temperature chip edited (natural unit, `-1..+1`; +1 warm).
+    Temperature(f32),
+    /// Tint slider moved (normalized).
+    TintSlider(f32),
+    /// Tint chip edited (natural unit, `-1..+1`; +1 magenta).
+    Tint(f32),
     /// Brightness slider moved (normalized).
     BrightnessSlider(f32),
     /// Brightness chip edited (natural unit, `-1..+1`).
@@ -207,14 +485,68 @@ pub enum ColorEqualizationUiEdit {
     ContrastSlider(f32),
     /// Contrast chip edited (natural unit, `0.5..2.0`).
     Contrast(f32),
+    /// Vibrance slider moved (normalized).
+    VibranceSlider(f32),
+    /// Vibrance chip edited (natural unit, `-1..+1`).
+    Vibrance(f32),
     /// Saturation slider moved (normalized).
     SaturationSlider(f32),
     /// Saturation chip edited (natural unit, `-1..+1`).
     Saturation(f32),
+    /// Sharpen amount slider moved (normalized).
+    SharpenAmountSlider(f32),
+    /// Sharpen amount chip edited (natural unit, `0..2`).
+    SharpenAmount(f32),
+    /// Sharpen radius slider moved (normalized).
+    SharpenRadiusSlider(f32),
+    /// Sharpen radius chip edited (natural unit, `0.5..3`).
+    SharpenRadius(f32),
+    /// Denoise strength slider moved (normalized).
+    DenoiseStrengthSlider(f32),
+    /// Denoise strength chip edited (natural unit, `0..1`).
+    DenoiseStrength(f32),
+    /// Auto Levels toggle flipped.
+    ToggleAutoLevels,
+    /// Auto Contrast toggle flipped.
+    ToggleAutoContrast,
+    /// Auto Colors toggle flipped.
+    ToggleAutoColors,
     /// Auto-WB toggle flipped.
     ToggleAutoWb,
+    /// Cycle LUT slot 1 to the next procedural preset (wraps).
+    /// Kept alongside [`Self::SetLutPreset1`] for keyboard/cycle UX.
+    CycleLutPreset1Next,
+    /// Cycle LUT slot 1 to the previous preset (wraps).
+    CycleLutPreset1Prev,
+    /// Cycle LUT slot 2 to the next preset (wraps).
+    CycleLutPreset2Next,
+    /// Cycle LUT slot 2 to the previous preset (wraps).
+    CycleLutPreset2Prev,
+    /// LUT slot 1 set directly to `preset` (panel dropdown selection).
+    SetLutPreset1(crate::lut_presets::LutPreset),
+    /// LUT slot 2 set directly to `preset` (panel dropdown selection).
+    SetLutPreset2(crate::lut_presets::LutPreset),
+    /// Posterize levels set directly. `0` = off; valid `2..=16`.
+    SetPosterizeLevels(u32),
+    /// Toggle Floyd-Steinberg dithering in posterize.
+    ToggleDithering,
+    /// K-Means++ quantize colour count. `0` = off; valid `2..=256`.
+    SetQuantizeColors(u32),
+    /// LUT intensity slider moved (normalized `0..1`).
+    LutIntensitySlider(f32),
+    /// LUT intensity chip edited (natural unit, `0..1`).
+    LutIntensity(f32),
+    /// LUT mix slider moved (normalized `0..1`; `0` = slot 1, `1` = slot 2).
+    LutMixSlider(f32),
+    /// LUT mix chip edited (natural unit, `0..1`).
+    LutMix(f32),
     /// Apply pressed — bake at full resolution on every selected sprite.
     Apply,
+    /// Reset every param to its default in one click. Fired by the
+    /// panel's Reset button AND by the tool's `on_activate` so a
+    /// reopened panel never inherits the previous session's slider
+    /// positions.
+    ResetAll,
 }
 
 /// Apply one UI edit against the live params with clamps centralized.
@@ -235,6 +567,24 @@ pub fn apply_ui_edit(params: &mut ColorEqualizationParams, edit: ColorEqualizati
         ColorEqualizationUiEdit::TileGrid(n) => {
             params.tile_grid_size = n.clamp(TILE_GRID_MIN, TILE_GRID_MAX);
         }
+        ColorEqualizationUiEdit::ExposureSlider(v) => {
+            params.exposure = slider_to_exposure(v);
+        }
+        ColorEqualizationUiEdit::Exposure(v) => {
+            params.exposure = v.clamp(EXPOSURE_MIN, EXPOSURE_MAX);
+        }
+        ColorEqualizationUiEdit::TemperatureSlider(v) => {
+            params.temperature = slider_to_temperature(v);
+        }
+        ColorEqualizationUiEdit::Temperature(v) => {
+            params.temperature = v.clamp(TEMPERATURE_MIN, TEMPERATURE_MAX);
+        }
+        ColorEqualizationUiEdit::TintSlider(v) => {
+            params.tint = slider_to_tint(v);
+        }
+        ColorEqualizationUiEdit::Tint(v) => {
+            params.tint = v.clamp(TINT_MIN, TINT_MAX);
+        }
         ColorEqualizationUiEdit::BrightnessSlider(v) => {
             params.brightness = slider_to_brightness(v);
         }
@@ -247,18 +597,107 @@ pub fn apply_ui_edit(params: &mut ColorEqualizationParams, edit: ColorEqualizati
         ColorEqualizationUiEdit::Contrast(v) => {
             params.contrast = v.clamp(CONTRAST_MIN, CONTRAST_MAX);
         }
+        ColorEqualizationUiEdit::VibranceSlider(v) => {
+            params.vibrance = slider_to_vibrance(v);
+        }
+        ColorEqualizationUiEdit::Vibrance(v) => {
+            params.vibrance = v.clamp(VIBRANCE_MIN, VIBRANCE_MAX);
+        }
         ColorEqualizationUiEdit::SaturationSlider(v) => {
             params.saturation = slider_to_saturation(v);
         }
         ColorEqualizationUiEdit::Saturation(v) => {
             params.saturation = v.clamp(SATURATION_MIN, SATURATION_MAX);
         }
+        ColorEqualizationUiEdit::SharpenAmountSlider(v) => {
+            params.sharpen_amount = slider_to_sharpen_amount(v);
+        }
+        ColorEqualizationUiEdit::SharpenAmount(v) => {
+            params.sharpen_amount = v.clamp(SHARPEN_AMOUNT_MIN, SHARPEN_AMOUNT_MAX);
+        }
+        ColorEqualizationUiEdit::SharpenRadiusSlider(v) => {
+            params.sharpen_radius = slider_to_sharpen_radius(v);
+        }
+        ColorEqualizationUiEdit::SharpenRadius(v) => {
+            params.sharpen_radius = v.clamp(SHARPEN_RADIUS_MIN, SHARPEN_RADIUS_MAX);
+        }
+        ColorEqualizationUiEdit::DenoiseStrengthSlider(v) => {
+            params.denoise_strength = slider_to_denoise_strength(v);
+        }
+        ColorEqualizationUiEdit::DenoiseStrength(v) => {
+            params.denoise_strength = v.clamp(DENOISE_STRENGTH_MIN, DENOISE_STRENGTH_MAX);
+        }
+        ColorEqualizationUiEdit::ToggleAutoLevels => {
+            params.auto_levels = !params.auto_levels;
+        }
+        ColorEqualizationUiEdit::ToggleAutoContrast => {
+            params.auto_contrast = !params.auto_contrast;
+        }
+        ColorEqualizationUiEdit::ToggleAutoColors => {
+            params.auto_colors = !params.auto_colors;
+        }
         ColorEqualizationUiEdit::ToggleAutoWb => {
             params.auto_wb = !params.auto_wb;
+        }
+        ColorEqualizationUiEdit::CycleLutPreset1Next => {
+            params.lut_preset_1 = params.lut_preset_1.next();
+        }
+        ColorEqualizationUiEdit::CycleLutPreset1Prev => {
+            params.lut_preset_1 = params.lut_preset_1.prev();
+        }
+        ColorEqualizationUiEdit::CycleLutPreset2Next => {
+            params.lut_preset_2 = params.lut_preset_2.next();
+        }
+        ColorEqualizationUiEdit::CycleLutPreset2Prev => {
+            params.lut_preset_2 = params.lut_preset_2.prev();
+        }
+        ColorEqualizationUiEdit::SetLutPreset1(preset) => {
+            params.lut_preset_1 = preset;
+        }
+        ColorEqualizationUiEdit::SetLutPreset2(preset) => {
+            params.lut_preset_2 = preset;
+        }
+        ColorEqualizationUiEdit::SetPosterizeLevels(n) => {
+            // `0` (off) passes through; valid range else is clamped to
+            // the legacy panel's `2..=16` ceiling.
+            params.posterize_levels = if n < crate::algorithm::POSTERIZE_LEVELS_MIN {
+                0
+            } else {
+                n.min(crate::algorithm::POSTERIZE_LEVELS_MAX)
+            };
+        }
+        ColorEqualizationUiEdit::ToggleDithering => {
+            params.posterize_dithering = !params.posterize_dithering;
+        }
+        ColorEqualizationUiEdit::SetQuantizeColors(n) => {
+            params.quantize_colors = if n < crate::algorithm::QUANTIZE_COLORS_MIN {
+                0
+            } else {
+                n.min(crate::algorithm::QUANTIZE_COLORS_MAX)
+            };
+        }
+        ColorEqualizationUiEdit::LutIntensitySlider(v) => {
+            params.lut_intensity = slider_to_lut_intensity(v);
+        }
+        ColorEqualizationUiEdit::LutIntensity(v) => {
+            params.lut_intensity = v.clamp(LUT_INTENSITY_MIN, LUT_INTENSITY_MAX);
+        }
+        ColorEqualizationUiEdit::LutMixSlider(v) => {
+            params.lut_mix = slider_to_lut_mix(v);
+        }
+        ColorEqualizationUiEdit::LutMix(v) => {
+            params.lut_mix = v.clamp(LUT_MIX_MIN, LUT_MIX_MAX);
         }
         // Apply does not mutate params; the tool latches a separate
         // pending-apply flag.
         ColorEqualizationUiEdit::Apply => return false,
+        // Reset every adjustment back to the default-constructed state
+        // (CLAHE off, all tonal at identity, no LUT, no posterize /
+        // quantize, every auto-* off). Returns `true` so the preview
+        // rebuilds against the now-clean params on the next idle frame.
+        ColorEqualizationUiEdit::ResetAll => {
+            *params = ColorEqualizationParams::default();
+        }
     }
     *params != before
 }

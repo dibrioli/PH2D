@@ -697,7 +697,7 @@ impl crate::App {
                 window_size,
                 vector_scene,
                 &mut self.last_color_equalization_pushed_entity,
-                &mut self.color_equalization_preview,
+                &mut self.color_equalization_previews,
             );
             // Equalize Sizes panel ⟷ tool bridge — multi-sprite, no
             // per-frame on-canvas preview (the visual effect is the
@@ -861,6 +861,10 @@ impl crate::App {
             // Image-edit drain phase + file-picker import — extracted
             // to sibling `image_edit.rs` as a free fn (Wave 3.2 stage A).
             // Returns whether any drain pushed a toast.
+            // `padding_apply` carries a `Vec<u64>` (not `Copy`) — capture
+            // the Apply-fired flag here so the teardown below can run
+            // after the dispatch consumes the value.
+            let padding_apply_fired = padding_apply.is_some();
             if image_edit::dispatch(
                 trim_entities,
                 make_square_entities,
@@ -903,7 +907,7 @@ impl crate::App {
             }
             // Padding Apply teardown — deactivate the tool so the panel
             // hides + the Inspector returns, exactly like Bg Removal.
-            if padding_apply.is_some()
+            if padding_apply_fired
                 && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {

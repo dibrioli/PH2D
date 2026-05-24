@@ -43,6 +43,10 @@ pub struct PaddingTool {
     /// Set `true` when the user presses Apply; the host drains it via
     /// [`Self::take_pending_apply`] and bakes at full resolution.
     pending_apply: bool,
+    /// Set `true` by Reset / on_activate. Shell drains via
+    /// [`Self::take_pending_panel_reset`] and re-runs
+    /// `Panel::populate` so the slider visuals snap back to 0.
+    pending_panel_reset: bool,
 }
 
 impl Default for PaddingTool {
@@ -54,6 +58,7 @@ impl Default for PaddingTool {
             left: 0,
             recenter_pivot: true,
             pending_apply: false,
+            pending_panel_reset: false,
         }
     }
 }
@@ -83,7 +88,26 @@ impl PaddingTool {
             PaddingUiEdit::Left(v) => self.left = v,
             PaddingUiEdit::TogglePivotRecenter => self.recenter_pivot = !self.recenter_pivot,
             PaddingUiEdit::Apply => self.pending_apply = true,
+            PaddingUiEdit::ResetAll => {
+                // Defaults: zero padding all sides + pivot-recenter ON
+                // (matches the `Default` ctor of `PaddingTool`).
+                self.top = 0;
+                self.right = 0;
+                self.bottom = 0;
+                self.left = 0;
+                self.recenter_pivot = true;
+                // Stage panel-store repopulation so sliders/chips
+                // snap visually back to 0 (shell drains the flag).
+                self.pending_panel_reset = true;
+            }
         }
+    }
+
+    /// Drain the panel-reset request. The shell calls this each frame
+    /// and re-runs `Panel::populate(store)` when it returns `true` so
+    /// the slider knob + chip text snap back to defaults.
+    pub fn take_pending_panel_reset(&mut self) -> bool {
+        std::mem::take(&mut self.pending_panel_reset)
     }
 
     /// Whether Apply should recenter the pivot (recalculate the sprite
@@ -135,13 +159,16 @@ impl Tool for PaddingTool {
         panel
     }
 
+    fn on_activate(&mut self) {
+        // Defaults load on every fresh panel open. Routed through
+        // `apply_ui_edit::ResetAll` so the panel snapshot (next
+        // frame) reflects the cleared per-edge fields.
+        self.apply_ui_edit(PaddingUiEdit::ResetAll);
+    }
+
     fn on_deactivate(&mut self) {
         // Clear only the pending-apply latch so a tool switch can't fire a
-        // stray bake. The per-edge spec + pivot mode PERSIST across
-        // activations (mirrors Bg Removal keeping its params): the panel's
-        // slider/chip widget stores also persist, so resetting the spec
-        // here would desync the painted fields from the tool the next time
-        // the panel opens.
+        // stray bake.
         self.pending_apply = false;
     }
 
@@ -186,6 +213,9 @@ impl Tool for PaddingTool {
             }
             PanelEvent::Click(id) if id == ids::PAD_APPLY => {
                 self.apply_ui_edit(PaddingUiEdit::Apply);
+            }
+            PanelEvent::Click(id) if id == ids::PAD_RESET => {
+                self.apply_ui_edit(PaddingUiEdit::ResetAll);
             }
             _ => {}
         }
@@ -248,6 +278,67 @@ mod tests {
         // pending-apply latch is cleared.
         assert_eq!(t.spec(), (20, 0, 0, 0));
         assert!(!t.take_pending_apply());
+    }
+
+    #[test]
+    fn spec_stays_stable_across_multi_sprite_drain_cycle() {
+        // Padding's bake (`add_padding`) is stateless — the tool only
+        // holds the spec + the one-shot pending_apply latch. The shell
+        // drains pending_apply once per Apply, then loops over selected
+        // sprites calling add_padding(rgba, w, h, spec) for each. This
+        // test verifies the spec stays stable through that loop (no
+        // accidental mutation by `take_pending_apply` etc.) so all N
+        // sprites get padded with the SAME spec the user set.
+        // Regression cover for the multi-sprite drain pattern (§12.9).
+        let mut t = PaddingTool::default();
+        t.apply_ui_edit(PaddingUiEdit::Top(10));
+        t.apply_ui_edit(PaddingUiEdit::Right(-5));
+        t.apply_ui_edit(PaddingUiEdit::Bottom(3));
+        t.apply_ui_edit(PaddingUiEdit::Left(-2));
+        t.apply_ui_edit(PaddingUiEdit::Apply);
+        // Drain (one-shot Apply latch).
+        assert!(t.take_pending_apply());
+        // Now simulate the shell looping over N sprites — `spec()` is
+        // called once per sprite, must return the same value every time
+        // (no internal mutation between draws).
+        let spec = t.spec();
+        let recenter = t.recenter_pivot();
+        for _ in 0..5 {
+            assert_eq!(t.spec(), spec, "spec drift across multi-sprite loop");
+            assert_eq!(
+                t.recenter_pivot(),
+                recenter,
+                "recenter_pivot drift across multi-sprite loop",
+            );
+        }
+        assert_eq!(spec, (10, -5, 3, -2));
+        assert!(recenter);
+    }
+
+    #[test]
+    fn on_activate_resets_state_and_arms_panel_repopulate() {
+        // Regression cover for the §12.3 / §12.4 UI_Bugs entries:
+        // `on_activate` must route through `apply_ui_edit::ResetAll` so
+        // (a) state goes back to defaults AND (b) `pending_panel_reset`
+        // arms so the shell bridge re-runs `Panel::populate(store)` and
+        // the slider knobs visually snap to 0.
+        let mut t = PaddingTool::default();
+        // Dirty the state — simulates a previous session.
+        t.apply_ui_edit(PaddingUiEdit::Top(20));
+        t.apply_ui_edit(PaddingUiEdit::TogglePivotRecenter);
+        assert_eq!(t.spec(), (20, 0, 0, 0));
+        assert!(!t.recenter_pivot());
+        // Drain any stray reset flag first.
+        let _ = t.take_pending_panel_reset();
+
+        t.on_activate();
+
+        assert_eq!(t.spec(), (0, 0, 0, 0));
+        assert!(t.recenter_pivot());
+        assert!(
+            t.take_pending_panel_reset(),
+            "on_activate must arm pending_panel_reset so the shell repopulates"
+        );
     }
 
     #[test]

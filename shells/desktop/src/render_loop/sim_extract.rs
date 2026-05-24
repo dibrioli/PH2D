@@ -64,6 +64,15 @@ pub(super) fn run(
     let atlas = renderer.atlas();
     present.world_mut().clear_entities();
     ph2d_ecs::extract!(*sim => *present, |sim_w, present_w| {
+        // Sequential `z_order` assigned in `propagate_transforms`
+        // traversal order (DFS of the ChildOf tree, with roots
+        // collated by `RootOrder`). Stamping the counter onto every
+        // `RenderInstance` lets the renderer sort by `(z_order,
+        // texture_id)` so the visual order mirrors the Hierarchy
+        // panel — without it, a Color-EQ/BgRemoval/Padding bake that
+        // promotes an Atlas sprite (texture_id=0) to Individual
+        // (>0) would silently float to the front of the scene.
+        let mut z_counter: u32 = 0;
         propagate_transforms(
             sim_w,
             prop_state,
@@ -118,6 +127,8 @@ pub(super) fn run(
                             ([0.0, 0.0, 1.0, 1.0], texture_id)
                         }
                     };
+                    let z_order = z_counter;
+                    z_counter += 1;
                     builder.insert(RenderInstance {
                         world_pos: [p.x, p.y],
                         size: [spr.size[0] * scale_x, spr.size[1] * scale_y],
@@ -134,7 +145,7 @@ pub(super) fn run(
                         // so the shader's `anchor + quad*size` stays in
                         // one consistent (world-scaled) local frame.
                         anchor: [spr.anchor[0] * scale_x, spr.anchor[1] * scale_y],
-                        _pad: 0,
+                        z_order,
                     });
                 }
             },

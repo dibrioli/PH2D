@@ -1,20 +1,21 @@
 //! Color Equalization panel ⟷ tool bridge + on-canvas live preview.
 //!
-//! Mirror of `bgremoval_preview.rs`. Run once per frame BEFORE
-//! `paint_hero_screen`. Does, in order:
+//! Run once per frame BEFORE `paint_hero_screen`. Does, in order:
 //!
 //! 1. Drives the panel's visibility (shown iff `color_equalization`
 //!    is the active tool, keyed `"color_equalization"`).
-//! 2. Pushes the source bitmap of the (multi-select) primary sprite
-//!    into the tool's preview cache when the primary changes.
-//! 3. Publishes the per-frame `ColorEqualizationUiSnapshot` the panel
+//! 2. Publishes the per-frame `ColorEqualizationUiSnapshot` the panel
 //!    paints next frame.
-//! 4. (Re)computes the full-res straight-alpha preview when the tool
-//!    reports `take_params_dirty()` and caches it on the shell side
-//!    as `Arc<Vec<u8>>`. The overlay below paints it on top of the
-//!    sprite's on-canvas footprint so adjustments are visible LIVE.
+//! 3. Drains the panel-staged dropdown close requests.
+//! 4. Multi-sprite preview rebuild: when params have changed AND the
+//!    user is NOT currently dragging a CEQ slider/chip, regenerate the
+//!    full-resolution-pipeline preview RGBA for EVERY selected sprite
+//!    and cache the bitmaps in `app_state.color_equalization_previews`.
+//!    Skipped while dragging so the user gets latency-free knob travel
+//!    and the heavy pipeline (Quantize / Bilateral) only runs once
+//!    when the slider is released.
 //! 5. Returns the current multi-selection iff Apply fired this frame
-//!    — the caller runs the full-resolution bake via
+//!    — the caller runs the per-sprite bake via
 //!    `drain_color_equalization`.
 
 use crate::app_state::ColorEqualizationPreview;
@@ -42,124 +43,251 @@ pub(super) fn dispatch(
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
     last_pushed_entity: &mut Option<u64>,
-    color_equalization_preview: &mut Option<ColorEqualizationPreview>,
+    color_equalization_previews: &mut BTreeMap<u64, ColorEqualizationPreview>,
 ) -> Option<Vec<u64>> {
     let active = tools
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("color_equalization"))
         .unwrap_or(false);
     hero.panel_visibility.insert("color_equalization", active);
+    // Image tools dock into the Inspector slot — hide the Inspector
+    // while the tool is active so the slot isn't double-claimed (the
+    // typed registry would paint both and Inspector wins the
+    // z-order). On deactivate, restore the Inspector to visible so
+    // the user goes back to the inspector-by-default canvas state.
+    hero.panel_visibility.insert("inspector", !active);
 
     if !active {
         *last_pushed_entity = None;
-        *color_equalization_preview = None;
+        color_equalization_previews.clear();
         #[cfg(feature = "panel-color-equalization")]
         ph2d_panel_color_equalization::set_current_snapshot(None);
         return None;
     }
 
-    // Push source bitmap when the primary selection changed (or the
-    // tool just activated). Without this, `preview_rgba()` returns an
-    // empty buffer and the canvas overlay stays blank.
-    let primary = hero.gizmo.selection;
-    if primary != *last_pushed_entity
-        && let Some(bits) = primary
-    {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        if let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
-            entity,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-        ) {
-            let straight = src.image.into_straight();
-            if let Some(tool) = tools.active_mut()
-                && let Some(ceq) =
-                    tool.as_any_mut()
-                        .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
-            {
-                ceq.set_source_snapshot(straight.pixels, straight.width, straight.height);
-            }
-        }
-        *last_pushed_entity = primary;
-        // Selection changed → drop stale preview cache so we rebuild
-        // against the new sprite on the next dirty tick.
-        *color_equalization_preview = None;
-    }
+    // ── Detect "user is actively dragging a CEQ slider/chip" ────────
+    // Pipeline reruns are the expensive part (Quantize alone can hit
+    // 50-150 ms / preview at 512²). Skip rebuilds while a CEQ slider
+    // or chip is the active widget — the existing preview overlays
+    // stay on screen so the knob travel feels instantaneous. On
+    // release (`active_id` flips back to `None`) the dirty flag
+    // triggers a full rebuild for every selected sprite at full
+    // quality.
+    let dragging_ceq = matches!(hero.store.active_id(), Some(id) if is_ceq_drag_widget(id));
 
+    // Snapshot the live multi-selection before we borrow `tools.active_mut()`.
+    let primary = hero.gizmo.selection;
+    let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
+
+    // ── Drain panel-staged state from the tool ──────────────────────
+    // Three things drained in one borrow:
+    //   - `pending_apply`  → returned to the caller as `apply`
+    //   - `pending_close_lut_dropdown` → applied to the store BELOW
+    //     (after the `ceq` borrow ends, since `hero.store` aliases)
+    //   - `params_dirty`   → consumed only when NOT dragging; while
+    //     dragging the flag stays set so the release-frame rebuild
+    //     fires
     let mut apply: Option<Vec<u64>> = None;
+    let mut close_dropdown: Option<u8> = None;
+    let mut needs_preview_rebuild = false;
+    let mut needs_panel_reset = false;
     if let Some(tool) = tools.active_mut()
         && let Some(ceq) = tool
             .as_any_mut()
             .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
     {
-        if ceq.take_pending_apply() {
-            let bits_list: Vec<u64> = hero.gizmo.iter_selected().collect();
-            if !bits_list.is_empty() {
-                apply = Some(bits_list);
-            }
+        if ceq.take_pending_apply() && !selected.is_empty() {
+            apply = Some(selected.clone());
         }
-        // (Re)compute the on-canvas preview when params changed since
-        // the last frame. The tool's `preview_rgba()` lazily reruns
-        // the pipeline on its internal `preview_dirty` flag — we
-        // gate the COPY into the shell-side `Arc<Vec<u8>>` on
-        // `take_params_dirty()` so we don't realloc + memcpy every
-        // frame, only when there's actually a new image.
-        let needs_refresh = ceq.take_params_dirty()
-            || color_equalization_preview
-                .as_ref()
-                .map(|p| Some(p.entity_bits) != primary)
-                .unwrap_or(true);
-        if needs_refresh && let Some(bits) = primary {
-            let (rgba, w, h) = ceq.preview_rgba();
-            if !rgba.is_empty() && w > 0 && h > 0 {
-                *color_equalization_preview = Some(ColorEqualizationPreview {
-                    entity_bits: bits,
-                    rgba: Arc::new(rgba.to_vec()),
-                    width: w,
-                    height: h,
-                });
-            }
+        close_dropdown = ceq.take_pending_close_lut_dropdown();
+        needs_panel_reset = ceq.take_pending_panel_reset();
+        if !dragging_ceq {
+            needs_preview_rebuild = ceq.take_params_dirty();
         }
         #[cfg(feature = "panel-color-equalization")]
         ph2d_panel_color_equalization::set_current_snapshot(Some(ceq.ui_snapshot()));
     }
 
-    // Apply clears the cache so the overlay stops painting once the
-    // bake has replaced the sprite texture (otherwise we'd paint the
-    // pre-commit copy on top of the new texture and the user would
-    // see a "ghost" until tool deactivation).
-    if apply.is_some() {
-        *color_equalization_preview = None;
+    // Reset just fired (Reset button or fresh activation) — re-populate
+    // the panel's `WidgetStore` entries so every slider knob + chip
+    // text snaps back to the default-constructed track value. Without
+    // this, `params` resets but the slider visuals stay where the user
+    // dragged them (the panel paints `store.slider(id)` value, not the
+    // snapshot). We call `Panel::populate` via the registry lookup —
+    // it's the same function `register_all_panels` runs at boot, so
+    // it knows every CEQ widget's default state in one place.
+    if needs_panel_reset {
+        ph2d_editor::panel::with_registry_opt(|reg| {
+            if let Some(idx) =
+                reg.find_by_panel_node_id(ph2d_tool_color_equalization::ids::CEQ_PANEL)
+            {
+                reg.panels_mut()[idx].populate(&mut hero.store);
+            }
+        });
     }
 
-    // ── On-canvas overlay ──────────────────────────────────────────
-    // Paint the preview RGBA over the primary sprite's footprint —
-    // the sprite stays underneath (no suppression like BgRemoval since
-    // Color EQ preserves alpha + dims, so the overlay covers it
-    // pixel-perfect with the new RGB values).
-    if let Some(preview) = color_equalization_preview.as_ref() {
-        let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
-        if let (Some(tr), Some(sprite)) = (
-            sim.world().get::<ph2d_ecs::Transform>(entity),
-            sim.world().get::<Sprite>(entity),
-        ) {
-            let cx = tr.translation.x + sprite.anchor[0];
-            let cy = tr.translation.y + sprite.anchor[1];
-            let (sw, sh) = (sprite.size[0], sprite.size[1]);
-            let (x0, y0) = camera.world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
-            let (x1, y1) = camera.world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
-            let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
-            vector_scene.draw_image_rgba(
-                &preview.rgba,
-                preview.width,
-                preview.height,
-                (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
-                quality,
-            );
+    // Selection-change forces a rebuild too: if the cached set differs
+    // from the live selection (added/removed sprites), regenerate.
+    let cache_keys: std::collections::BTreeSet<u64> =
+        color_equalization_previews.keys().copied().collect();
+    let live_keys: std::collections::BTreeSet<u64> = selected.iter().copied().collect();
+    let selection_changed = cache_keys != live_keys;
+    if selection_changed {
+        // Drop entries for sprites that left the selection so we don't
+        // keep painting stale overlays after the user shift-clicks
+        // them out.
+        color_equalization_previews.retain(|k, _| live_keys.contains(k));
+        // Don't rebuild MID-DRAG just because selection shifted — but
+        // for a true selection change while idle, force the rebuild so
+        // newly-selected sprites get a preview immediately.
+        if !dragging_ceq {
+            needs_preview_rebuild = true;
         }
     }
 
+    // ── Multi-sprite preview rebuild ───────────────────────────────
+    // For each selected sprite: read its current source bitmap, push it
+    // into the tool, run the full pipeline, store the resulting RGBA
+    // in the per-sprite cache. The tool's `preview_rgba()` is
+    // single-source by construction — we loop shell-side and swap the
+    // source per iteration. Tool state (`source_rgba`) is left holding
+    // whichever sprite came last; the next rebuild overwrites it.
+    if needs_preview_rebuild && !selected.is_empty() {
+        for entity_bits in &selected {
+            let entity = ph2d_ecs::Entity::from_bits(*entity_bits);
+            let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
+                entity,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+            ) else {
+                continue;
+            };
+            let straight = src.image.into_straight();
+            let (sw, sh) = (straight.width, straight.height);
+            let pixels = straight.pixels;
+
+            // Borrow the tool fresh inside the loop (each iteration
+            // re-snapshots + runs the pipeline). The downcast is
+            // O(1); the cost is the pipeline.
+            if let Some(tool) = tools.active_mut()
+                && let Some(ceq) =
+                    tool.as_any_mut()
+                        .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
+            {
+                ceq.set_source_snapshot(pixels, sw, sh);
+                let (rgba, w, h) = ceq.preview_rgba();
+                if !rgba.is_empty() && w > 0 && h > 0 {
+                    color_equalization_previews.insert(
+                        *entity_bits,
+                        ColorEqualizationPreview {
+                            entity_bits: *entity_bits,
+                            rgba: Arc::new(rgba.to_vec()),
+                            width: w,
+                            height: h,
+                        },
+                    );
+                }
+            }
+        }
+        // Track which sprite the tool's source currently mirrors so
+        // an immediate Apply doesn't double-push for the primary.
+        *last_pushed_entity = selected.last().copied();
+    }
+
+    // ── Dropdown close (post-borrow store mutation) ────────────────
+    if let Some(slot) = close_dropdown {
+        let chip_id = match slot {
+            1 => ph2d_tool_color_equalization::ids::CEQ_LUT_1_DROPDOWN,
+            2 => ph2d_tool_color_equalization::ids::CEQ_LUT_2_DROPDOWN,
+            3 => ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
+            _ => ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
+        };
+        if let Some(ph2d_editor::InteractiveState::Dropdown { open, .. }) =
+            hero.store.get_mut(chip_id)
+        {
+            *open = false;
+        }
+    }
+
+    // ── Apply clears the cache + ends the live overlay session ─────
+    // (the per-sprite bake replaces every selected sprite's texture;
+    // continuing to paint the stale RGBA over them would read as a
+    // ghost until tool deactivation.)
+    if apply.is_some() {
+        color_equalization_previews.clear();
+    }
+
+    // ── On-canvas overlay (per cached preview) ──────────────────────
+    // Each entry is painted over its OWN sprite's footprint — multi-
+    // select shows the edited look on EVERY selected sprite. The
+    // sprite stays underneath the overlay (Color EQ preserves alpha +
+    // dims, so the overlay covers it pixel-perfect with the new RGB
+    // values).
+    let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
+    for preview in color_equalization_previews.values() {
+        let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
+        let (Some(tr), Some(sprite)) = (
+            sim.world().get::<ph2d_ecs::Transform>(entity),
+            sim.world().get::<Sprite>(entity),
+        ) else {
+            continue;
+        };
+        let cx = tr.translation.x + sprite.anchor[0];
+        let cy = tr.translation.y + sprite.anchor[1];
+        let (sw, sh) = (sprite.size[0], sprite.size[1]);
+        let (x0, y0) = camera.world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
+        let (x1, y1) = camera.world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
+        vector_scene.draw_image_rgba(
+            &preview.rgba,
+            preview.width,
+            preview.height,
+            (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
+            quality,
+        );
+    }
+    let _ = primary; // primary is read above for the snapshot path only.
+
     apply
+}
+
+/// `true` iff `id` is a CEQ slider/chip whose drag should pause
+/// preview rebuilds (Quantize / Bilateral / Posterize are heavy
+/// enough that running them per frame stalls the slider visibly).
+/// Buttons (Apply, Auto-*) aren't included — their interaction is a
+/// single tap, no multi-frame drag.
+fn is_ceq_drag_widget(id: ph2d_editor::NodeId) -> bool {
+    use ph2d_tool_color_equalization::ids as cids;
+    let sliders_and_chips: [ph2d_editor::NodeId; 28] = [
+        cids::CEQ_CLIP_LIMIT,
+        cids::CEQ_CLIP_LIMIT_NUM,
+        cids::CEQ_TILE_GRID,
+        cids::CEQ_TILE_GRID_NUM,
+        cids::CEQ_EXPOSURE,
+        cids::CEQ_EXPOSURE_NUM,
+        cids::CEQ_TEMPERATURE,
+        cids::CEQ_TEMPERATURE_NUM,
+        cids::CEQ_TINT,
+        cids::CEQ_TINT_NUM,
+        cids::CEQ_BRIGHTNESS,
+        cids::CEQ_BRIGHTNESS_NUM,
+        cids::CEQ_CONTRAST,
+        cids::CEQ_CONTRAST_NUM,
+        cids::CEQ_VIBRANCE,
+        cids::CEQ_VIBRANCE_NUM,
+        cids::CEQ_SATURATION,
+        cids::CEQ_SATURATION_NUM,
+        cids::CEQ_SHARPEN_AMOUNT,
+        cids::CEQ_SHARPEN_AMOUNT_NUM,
+        cids::CEQ_SHARPEN_RADIUS,
+        cids::CEQ_SHARPEN_RADIUS_NUM,
+        cids::CEQ_DENOISE_STRENGTH,
+        cids::CEQ_DENOISE_STRENGTH_NUM,
+        cids::CEQ_LUT_INTENSITY,
+        cids::CEQ_LUT_INTENSITY_NUM,
+        cids::CEQ_LUT_MIX,
+        cids::CEQ_LUT_MIX_NUM,
+    ];
+    sliders_and_chips.contains(&id)
 }

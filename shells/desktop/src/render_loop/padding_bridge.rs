@@ -26,13 +26,11 @@ use ph2d_render::{Camera2d, Sprite};
 use ph2d_tokens::ColorToken;
 use ph2d_vector::{Affine, Brush, Color, Rect, Stroke, VectorScene};
 
-/// Returns `Some((entity_bits, spec, recenter_pivot))` iff Apply fired
-/// this frame — the caller runs the full-resolution bake against that
-/// selection with the captured per-edge spec + pivot mode and then tears
-/// the tool down (deactivate + restore Inspector), exactly like the
-/// Bg-Removal apply teardown. The spec + pivot flag are captured here
-/// (while the tool is borrowed) so the bake site doesn't have to
-/// re-borrow `tools`.
+/// Returns `Some((spec, recenter_pivot, bits_list))` iff Apply fired this
+/// frame — the caller bakes the spec into EACH selected sprite (one drain
+/// per `iter_selected()` entry, same shape as Color EQ). The spec + pivot
+/// flag are captured here (while the tool is borrowed) so the bake site
+/// doesn't have to re-borrow `tools`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
@@ -41,38 +39,47 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
-) -> Option<(u64, ph2d_tool_padding::PaddingSpec, bool)> {
+) -> Option<(ph2d_tool_padding::PaddingSpec, bool, Vec<u64>)> {
     let padding_is_active = tools
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("padding"))
         .unwrap_or(false);
-    // Visibility: shown iff padding is the active tool.
+    // Visibility: shown iff padding is the active tool. Image tools
+    // dock into the Inspector slot, so hide the Inspector while
+    // padding is active and restore it on deactivate.
     hero.panel_visibility.insert("padding", padding_is_active);
+    hero.panel_visibility
+        .insert("inspector", !padding_is_active);
 
-    let mut apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)> = None;
+    let mut apply: Option<(ph2d_tool_padding::PaddingSpec, bool, Vec<u64>)> = None;
     // Captured while the tool is borrowed; used for the on-canvas preview
     // after the borrow ends (the preview needs `sim` + `camera`, not the
     // tool).
     let mut preview_spec: Option<(i32, i32, i32, i32, bool)> = None;
+    let mut needs_panel_reset = false;
     if let Some(tool) = tools.active_mut()
         && let Some(pad) = tool
             .as_any_mut()
             .downcast_mut::<ph2d_tool_padding::PaddingTool>()
     {
-        if pad.take_pending_apply()
-            && let Some(bits) = hero.gizmo.selection
-        {
-            let (top, right, bottom, left) = pad.spec();
-            apply = Some((
-                bits,
-                ph2d_tool_padding::PaddingSpec {
-                    top,
-                    right,
-                    bottom,
-                    left,
-                },
-                pad.recenter_pivot(),
-            ));
+        if pad.take_pending_apply() {
+            let bits_list: Vec<u64> = hero.gizmo.iter_selected().collect();
+            if !bits_list.is_empty() {
+                let (top, right, bottom, left) = pad.spec();
+                apply = Some((
+                    ph2d_tool_padding::PaddingSpec {
+                        top,
+                        right,
+                        bottom,
+                        left,
+                    },
+                    pad.recenter_pivot(),
+                    bits_list,
+                ));
+            }
+        }
+        if pad.take_pending_panel_reset() {
+            needs_panel_reset = true;
         }
         #[cfg(feature = "panel-padding")]
         ph2d_panel_padding::set_current_padding_snapshot(if padding_is_active {
@@ -84,6 +91,14 @@ pub(super) fn dispatch(
             let (top, right, bottom, left) = pad.spec();
             preview_spec = Some((top, right, bottom, left, pad.recenter_pivot()));
         }
+    }
+    // Re-populate after `pad` borrow ends (aliases `hero.store`).
+    if needs_panel_reset {
+        ph2d_editor::panel::with_registry_opt(|reg| {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor::ids::PAD_PANEL) {
+                reg.panels_mut()[idx].populate(&mut hero.store);
+            }
+        });
     }
 
     // ── Live preview ────────────────────────────────────────────────

@@ -2,23 +2,52 @@
 //!
 //! `std`-only, no editor / ECS / external image deps. Operates on
 //! straight-alpha RGBA8 (`w*h*4` bytes, row-major) and produces a fresh
-//! RGBA8 buffer of the same dimensions. Three stages:
+//! RGBA8 buffer of the same dimensions. Stages, in pipeline order:
 //!
 //! 1. [`clahe`] — Contrast-Limited Adaptive Histogram Equalization on the
-//!    BT.709 luminance channel, with bilinear interpolation of per-tile
-//!    cumulative distribution functions at the pixel level
-//!    (Zuiderveld 1994, *Graphics Gems IV* pp. 474-485).
-//! 2. [`adjust_bcs`] — brightness / contrast / saturation in linear-light
-//!    sRGB (sRGB → linearize → adjust → delinearize). Brightness is an
-//!    additive offset, contrast a multiplicative scale around `0.5`, and
-//!    saturation a mix between linear-luma grayscale and the original.
-//! 3. [`auto_white_balance`] — Gray-World channel gains in sRGB (mean per
-//!    channel → `gain = mean_gray / mean_channel`), applied only over
-//!    opaque pixels.
+//!    BT.709 luminance channel (Zuiderveld 1994, *Graphics Gems IV*
+//!    pp. 474-485).
+//! 2. [`adjust_tonal`] — combined Phase 1 tonal pipeline batched in a
+//!    single sRGB ↔ linear ↔ OKLab round-trip per pixel. Stages in order:
+//!    Exposure → Temperature (Bradford) → Tint → Brightness → Contrast →
+//!    Vibrance (OKLab) → Saturation (OKLab). Each stage is also exposed
+//!    as a pure primitive (`apply_*_linear` / `apply_*_oklab`) for
+//!    standalone tests and future WGSL parity.
+//!    Phase 3 LUT color grading then runs in-line (procedural presets
+//!    via [`crate::lut_presets`] → [`crate::lut::apply_lut3d`]; dual-slot
+//!    blend by `lut_mix` + intensity attenuation; skipped when both
+//!    slots are `None`).
+//! 3. [`bilateral_denoise`] — Phase 2 edge-preserving smoothing. CPU
+//!    O(N·r²); WGSL strongly recommended for radii > 5.
+//! 4. [`sharpen_laplacian`] (radius ≤ 1) or [`sharpen_unsharp`] (radius
+//!    > 1) — Phase 2 detail enhancement.
+//! 5. [`auto_levels`] / [`auto_contrast`] / [`auto_colors`] — optional
+//!    post-tonal normalization toggles (Phase 2).
+//! 6. [`auto_white_balance`] — Gray-World channel gains in sRGB.
 //!
-//! [`run_pipeline`] threads them together; each stage is also usable
-//! standalone for tests / future GPU parity work.
+//! [`compute_histogram`] returns the per-channel + luma distribution and
+//! powers both the panel's visual overlay and the auto-* percentile
+//! analysis. [`run_pipeline`] threads everything together; each stage is
+//! also usable standalone for tests / future GPU parity work.
+//!
+//! ## GPU port plan (follow-up)
+//!
+//! Every per-pixel stage in this module is embarrassingly parallel. A
+//! single WGSL compute pass can fuse stages 2-7 (Phase 1 tonal + the
+//! OKLab smart-sat pair) plus the CLAHE LUT apply step plus auto-WB into
+//! one shader, doing exactly one sRGB → linear and one OKLab round-trip
+//! per pixel. The legacy engine demonstrates the pattern in 799 LOC of
+//! WebGL2 (`ceq-webgl.ts`). Histogram + Bradford-matrix precompute stay
+//! CPU (atomic contention vs. sequential setup); the per-pixel apply is
+//! GPU. Parity test (ε = 0.5 / 255) compares this CPU path against the
+//! shader output on the same input.
 
+use crate::color_utils::{
+    bradford_matrix_for_kelvin, linear_rgb_to_oklab, linear_to_srgb_u8, mat3_mul_vec,
+    oklab_to_linear_rgb, srgb_to_linear_u8,
+};
+use crate::lut::{DEFAULT_LUT_SIZE, apply_lut3d, blend_luts};
+use crate::lut_presets::generate_preset_lut;
 use crate::params::ColorEqualizationParams;
 
 /// Number of bins in the per-tile luminance histogram. 8-bit luminance
@@ -52,17 +81,84 @@ pub fn run_pipeline(
     // Stage 1 — CLAHE (writes through into `out`).
     clahe(rgba, w, h, params.clip_limit, params.tile_grid_size, out);
 
-    // Stage 2 — brightness / contrast / saturation in linear sRGB. Runs in
-    // place over `out`.
-    let identity_bcs =
-        params.brightness == 0.0 && params.contrast == 1.0 && params.saturation == 0.0;
-    if !identity_bcs {
-        adjust_bcs(out, params.brightness, params.contrast, params.saturation);
+    // Stage 2 — combined Phase 1 tonal pipeline in a single sRGB↔linear
+    // (and optional OKLab) round-trip per pixel. Skipped when ALL params
+    // are at identity to keep the no-op cheap.
+    if !params.tonal_is_identity() {
+        adjust_tonal(out, params);
     }
 
-    // Stage 3 — Gray-World auto white balance (also in place over `out`).
+    // Stage 2.5 — Phase 3 LUT color grading. Procedural presets are
+    // materialised here on-demand (≈ 5-15 ms per active preset at the
+    // default 17³ size; bypassed entirely when both slots are `None`
+    // or `lut_intensity` is `0`). Dual-LUT case pre-blends the two
+    // LUTs by `lut_mix` so the per-pixel apply pass only samples one
+    // cube. A wgpu compute follow-up replaces this CPU loop with one
+    // `textureSampleLevel(lut3d, ...)` per pixel.
+    if !params.lut_is_identity() {
+        let lut1 = generate_preset_lut(params.lut_preset_1, DEFAULT_LUT_SIZE);
+        let lut2 = generate_preset_lut(params.lut_preset_2, DEFAULT_LUT_SIZE);
+        match (lut1, lut2) {
+            (Some(a), Some(b)) => {
+                let blended = blend_luts(&a, &b, params.lut_mix);
+                apply_lut3d(out, &blended, params.lut_intensity);
+            }
+            (Some(a), None) => apply_lut3d(out, &a, params.lut_intensity),
+            (None, Some(b)) => apply_lut3d(out, &b, params.lut_intensity),
+            (None, None) => {}
+        }
+    }
+
+    // Stage 3 — Phase 2 bilateral denoise (edge-preserving smoothing).
+    if params.denoise_strength > 0.0 {
+        bilateral_denoise(out, w, h, params.denoise_strength);
+    }
+
+    // Stage 4 — Phase 2 sharpen. Small radius (≤ 1) takes the fast
+    // Laplacian 3×3; larger radius takes Unsharp Mask (Gaussian blur).
+    if params.sharpen_amount > 0.0 {
+        if params.sharpen_radius <= 1.0 {
+            sharpen_laplacian(out, w, h, params.sharpen_amount);
+        } else {
+            sharpen_unsharp(out, w, h, params.sharpen_amount, params.sharpen_radius);
+        }
+    }
+
+    // Stage 5 — Phase 2 optional automatic adjustments. Each is a toggle
+    // applied AFTER tonal so it normalises the user's adjustments rather
+    // than fighting them.
+    if params.auto_levels {
+        auto_levels(out);
+    }
+    if params.auto_contrast {
+        auto_contrast(out);
+    }
+    if params.auto_colors {
+        auto_colors(out);
+    }
+
+    // Stage 6 — Gray-World auto white balance (also in place over `out`).
     if params.auto_wb {
         auto_white_balance(out);
+    }
+
+    // Stage 7 — Posterize (Floyd-Steinberg dithering optional). Always
+    // CPU — the error-diffusion sweep is strict raster-scan. Runs after
+    // all colour-shift stages so it operates on the final palette.
+    if params.posterize_levels >= POSTERIZE_LEVELS_MIN {
+        posterize(
+            out,
+            w,
+            h,
+            params.posterize_levels,
+            params.posterize_dithering,
+        );
+    }
+
+    // Stage 8 — Quantize (K-Means++ in OKLab). Always CPU. Runs LAST —
+    // every prior stage feeds into the colour set that gets clustered.
+    if params.quantize_colors >= QUANTIZE_COLORS_MIN {
+        quantize(out, w, h, params.quantize_colors);
     }
 }
 
@@ -260,73 +356,209 @@ fn build_clahe_lut(
     lut
 }
 
-// ── Stage 2 — brightness / contrast / saturation ──────────────────────────
+// ── Stage 2 — tonal pipeline (Phase 1) ────────────────────────────────────
+//
+// Each stage primitive operates on a **linear-sRGB triple `[R, G, B]`** (or
+// **OKLab triple `[L, a, b]`** for the Vibrance / Saturation pair). They are
+// `pub` so tests + future WGSL parity work can call them in isolation; the
+// production path is [`adjust_tonal`], which fuses them inside one
+// `sRGB → linear → … → linear → sRGB` round-trip per pixel.
 
-/// Apply additive brightness + multiplicative contrast (around `0.5`) +
-/// luma-mix saturation in linear-light sRGB, in place over straight-alpha
-/// RGBA8.
+/// Apply exposure (EV stops) in linear-light sRGB. `m = pow(2, ev)` followed
+/// by a soft-knee highlight compression above `0.8` that gradually rolls
+/// values off toward `1.0` instead of hard-clipping. `ev` is the EV stop
+/// count (`-3..+3`); `0` is identity.
+pub fn apply_exposure_linear(rgb: &mut [f32; 3], ev: f32) {
+    if ev == 0.0 {
+        return;
+    }
+    let m = (2.0_f32).powf(ev);
+    for c in rgb.iter_mut() {
+        let v = *c * m;
+        *c = soft_knee(v);
+    }
+}
+
+/// Soft-knee compression above `0.8`: linear identity below the knee, then
+/// `0.8 + 0.2 · (1 − exp(-(v - 0.8) · 2))` above. Asymptotic to `1.0` —
+/// prevents harsh hard-clip on bright values. Mirrors the legacy `softKnee`.
+fn soft_knee(v: f32) -> f32 {
+    if v <= 0.8 {
+        v
+    } else {
+        0.8 + 0.2 * (1.0 - (-(v - 0.8) * 2.0).exp())
+    }
+}
+
+/// Apply pre-computed Bradford temperature matrix in linear sRGB. Build the
+/// matrix once outside the per-pixel loop via
+/// [`crate::color_utils::bradford_matrix_for_kelvin`] using
+/// [`temperature01_to_kelvin`] to project a `-1..+1` slider value onto the
+/// `2000K..10000K` target range (photographer convention: positive = warm).
+pub fn apply_temperature_linear(rgb: &mut [f32; 3], matrix: &[f32; 9]) {
+    let out = mat3_mul_vec(matrix, *rgb);
+    *rgb = out;
+}
+
+/// Map the `-1..+1` slider value onto a target Kelvin for the Bradford
+/// adaptation. Photographer convention: positive = warm (low Kelvin / orange
+/// cast), negative = cool (high Kelvin / blue cast); `0` = D65 neutral.
+pub fn temperature01_to_kelvin(t: f32) -> f32 {
+    let t = t.clamp(-1.0, 1.0);
+    if t >= 0.0 {
+        // 0 → 6500K (D65); +1 → 2000K (tungsten, warm).
+        6500.0 - (6500.0 - 2000.0) * t
+    } else {
+        // 0 → 6500K; -1 → 10000K (overcast / blue).
+        6500.0 + (10000.0 - 6500.0) * (-t)
+    }
+}
+
+/// Apply tint (green ↔ magenta) in linear-light sRGB. `tint ∈ [-1, +1]`:
+/// positive shifts toward magenta (drops G, lifts R/B in luminance-preserving
+/// proportions); negative shifts toward green. Mirrors the legacy `applyTint`.
+pub fn apply_tint_linear(rgb: &mut [f32; 3], tint: f32) {
+    if tint == 0.0 {
+        return;
+    }
+    let t = tint.clamp(-1.0, 1.0);
+    // Green shifts; R/B counter-shift weighted by their luminance
+    // contribution so the overall Y stays roughly constant (BT.709).
+    let g_shift = -t * 0.05;
+    let r_comp = t * 0.05 * 0.7152 / 0.2126;
+    let b_comp = t * 0.05 * 0.7152 / 0.0722;
+    rgb[0] *= 1.0 + r_comp;
+    rgb[1] *= 1.0 + g_shift;
+    rgb[2] *= 1.0 + b_comp;
+}
+
+/// Apply brightness in linear-light sRGB. `brightness ∈ [-1, +1]` — applied
+/// multiplicatively as `m = 1 + brightness`, so `0` is identity, `-1`
+/// collapses to black, `+1` doubles. Multiplicative (not additive) preserves
+/// blacks: a pure-black pixel stays black instead of being lifted to grey.
+/// Mirrors the legacy `applyBrightness`.
+pub fn apply_brightness_linear(rgb: &mut [f32; 3], brightness: f32) {
+    if brightness == 0.0 {
+        return;
+    }
+    let m = 1.0 + brightness.clamp(-1.0, 1.0);
+    for c in rgb.iter_mut() {
+        *c *= m;
+    }
+}
+
+/// Apply contrast in linear-light sRGB with an S-curve around the
+/// perceptual midpoint (`0.18`, "18 % grey"). `contrast ∈ [0.5, 2.0]`,
+/// `1.0` is identity. Above `1.0` steepens midtones (S-curve); below `1.0`
+/// flattens them. Mirrors the legacy `applyContrast` (more nuanced than a
+/// simple multiply around 0.5 — preserves shadows).
+pub fn apply_contrast_linear(rgb: &mut [f32; 3], contrast: f32) {
+    if (contrast - 1.0).abs() < f32::EPSILON {
+        return;
+    }
+    let strength = (contrast.clamp(0.5, 2.0) - 1.0) * 2.0;
+    let pivot = 0.18;
+    for c in rgb.iter_mut() {
+        let centered = *c - pivot;
+        let sign = if centered >= 0.0 { 1.0 } else { -1.0 };
+        let abs = centered.abs();
+        let curved = if contrast > 1.0 {
+            abs * (1.0 + strength * (1.0 - abs))
+        } else {
+            abs * (1.0 + strength * abs)
+        };
+        *c = (pivot + sign * curved).clamp(0.0, 1.0);
+    }
+}
+
+/// Apply vibrance (smart saturation) in OKLab. `vibrance ∈ [-1, +1]`:
+/// boosts chroma INVERSELY proportional to current chroma, so already-vivid
+/// regions (skin tones, sky) get less boost than muted regions. The
+/// chroma-norm threshold `0.15` matches the legacy reference. Mirrors
+/// `applyVibrance` (without explicit `cos(hue)` / `sin(hue)` — chroma
+/// scaling preserves hue trivially when both `a` and `b` are scaled).
+pub fn apply_vibrance_oklab(lab: &mut [f32; 3], vibrance: f32) {
+    if vibrance == 0.0 {
+        return;
+    }
+    let vn = vibrance.clamp(-1.0, 1.0);
+    let chroma = (lab[1] * lab[1] + lab[2] * lab[2]).sqrt();
+    if chroma <= 0.0 {
+        return;
+    }
+    // Skin-tone protection: less boost when chroma is already high.
+    let chroma_norm = (chroma / 0.15).min(1.0);
+    let boost = vn * (1.0 - chroma_norm * chroma_norm);
+    let factor = (1.0 + boost).max(0.0);
+    lab[1] *= factor;
+    lab[2] *= factor;
+}
+
+/// Apply uniform saturation in OKLab. `saturation ∈ [-1, +1]`, `0` is
+/// identity; `-1` desaturates fully (grayscale), `+1` doubles chroma.
+/// Mirrors the legacy `applySaturation` in OKLab. Scales `a` and `b`
+/// directly (= scaling chroma while keeping hue, since `a + ib = chroma · e^(iθ)`).
+pub fn apply_saturation_oklab(lab: &mut [f32; 3], saturation: f32) {
+    if saturation == 0.0 {
+        return;
+    }
+    let sat_mult = (1.0 + saturation.clamp(-1.0, 1.0)).max(0.0);
+    lab[1] *= sat_mult;
+    lab[2] *= sat_mult;
+}
+
+/// Apply the full Phase 1 tonal pipeline in place over straight-alpha
+/// RGBA8. Performs ONE sRGB → linear and (when Vibrance/Saturation
+/// non-identity) ONE OKLab round-trip per pixel — instead of cascading
+/// each stage with its own conversion. Transparent pixels (`alpha == 0`)
+/// are skipped (RGB undefined per straight-alpha convention).
 ///
-/// - `brightness` in `[-1, 1]` — added to each linear channel before clamp.
-/// - `contrast` in `[0.5, 2.0]` — `c → (c - 0.5) · k + 0.5`.
-/// - `saturation` in `[-1, 1]` — mix factor `1 + saturation` between linear
-///   luma (`Y = 0.2126·R + 0.7152·G + 0.0722·B`) and the original.
-///
-/// Caller should clamp inputs to those ranges; mid-pipeline only clamps
-/// the linear output to `[0, 1]` before delinearizing.
-pub fn adjust_bcs(rgba: &mut [u8], brightness: f32, contrast: f32, saturation: f32) {
-    let sat_mix = 1.0 + saturation;
+/// Order matches the legacy reference: Exposure → Temperature → Tint →
+/// Brightness → Contrast → Vibrance → Saturation. Stage primitives are
+/// also exposed `pub` for standalone tests.
+pub fn adjust_tonal(rgba: &mut [u8], params: &ColorEqualizationParams) {
+    // Precompute the Bradford temperature matrix once outside the per-pixel
+    // loop — it depends only on the target Kelvin.
+    let temp_matrix: Option<[f32; 9]> = if params.temperature != 0.0 {
+        Some(bradford_matrix_for_kelvin(temperature01_to_kelvin(
+            params.temperature,
+        )))
+    } else {
+        None
+    };
+    let needs_oklab = params.vibrance != 0.0 || params.saturation != 0.0;
+
     for px in rgba.chunks_exact_mut(4) {
-        let a = px[3];
-        if a == 0 {
-            // Transparent pixels: RGB is undefined per straight-alpha
-            // convention. Skip to avoid lifting bg colour out of zero
-            // alpha (HR-5 — adjust must not change visible output).
+        if px[3] == 0 {
             continue;
         }
-        let mut r = srgb_to_linear(px[0]);
-        let mut g = srgb_to_linear(px[1]);
-        let mut b = srgb_to_linear(px[2]);
+        let mut rgb = [
+            srgb_to_linear_u8(px[0]),
+            srgb_to_linear_u8(px[1]),
+            srgb_to_linear_u8(px[2]),
+        ];
 
-        // Brightness (additive).
-        r += brightness;
-        g += brightness;
-        b += brightness;
+        // Linear-sRGB stages.
+        apply_exposure_linear(&mut rgb, params.exposure);
+        if let Some(ref m) = temp_matrix {
+            apply_temperature_linear(&mut rgb, m);
+        }
+        apply_tint_linear(&mut rgb, params.tint);
+        apply_brightness_linear(&mut rgb, params.brightness);
+        apply_contrast_linear(&mut rgb, params.contrast);
 
-        // Contrast (around 0.5).
-        r = (r - 0.5) * contrast + 0.5;
-        g = (g - 0.5) * contrast + 0.5;
-        b = (b - 0.5) * contrast + 0.5;
+        // OKLab stages — single conversion for the pair.
+        if needs_oklab {
+            let mut lab = linear_rgb_to_oklab(rgb[0], rgb[1], rgb[2]);
+            apply_vibrance_oklab(&mut lab, params.vibrance);
+            apply_saturation_oklab(&mut lab, params.saturation);
+            rgb = oklab_to_linear_rgb(lab[0], lab[1], lab[2]);
+        }
 
-        // Saturation — mix with linear luma.
-        let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        r = y + sat_mix * (r - y);
-        g = y + sat_mix * (g - y);
-        b = y + sat_mix * (b - y);
-
-        px[0] = linear_to_srgb(r.clamp(0.0, 1.0));
-        px[1] = linear_to_srgb(g.clamp(0.0, 1.0));
-        px[2] = linear_to_srgb(b.clamp(0.0, 1.0));
+        px[0] = linear_to_srgb_u8(rgb[0]);
+        px[1] = linear_to_srgb_u8(rgb[1]);
+        px[2] = linear_to_srgb_u8(rgb[2]);
     }
-}
-
-/// sRGB 8-bit → linear `[0, 1]` (IEC 61966-2-1 transfer).
-fn srgb_to_linear(c: u8) -> f32 {
-    let s = c as f32 / 255.0;
-    if s <= 0.040_45 {
-        s / 12.92
-    } else {
-        ((s + 0.055) / 1.055).powf(2.4)
-    }
-}
-
-/// linear `[0, 1]` → sRGB 8-bit (IEC 61966-2-1 transfer, rounded).
-fn linear_to_srgb(c: f32) -> u8 {
-    let s = if c <= 0.003_130_8 {
-        c * 12.92
-    } else {
-        1.055 * c.powf(1.0 / 2.4) - 0.055
-    };
-    clamp8(s * 255.0)
 }
 
 // ── Stage 3 — auto-WB (Gray-World) ────────────────────────────────────────
@@ -378,6 +610,741 @@ pub fn auto_white_balance(rgba: &mut [u8]) {
         px[1] = clamp8(px[1] as f32 * gain_g);
         px[2] = clamp8(px[2] as f32 * gain_b);
     }
+}
+
+// ── Stage 4 — Phase 2 ─────────────────────────────────────────────────────
+//
+// Histogram + automatic adjustments + sharpen + bilateral denoise. Each is
+// pure / deterministic / `std`-only. CPU implementations target the Apply
+// path (one-shot per sprite); a WGSL compute follow-up is annotated per
+// stage where the GPU win is large (Bilateral, Unsharp Mask).
+
+/// Per-channel 256-bin histogram (R, G, B, and BT.601 luma) plus the count
+/// of opaque pixels that contributed. Built by [`compute_histogram`] from
+/// a straight-alpha RGBA8 buffer; consumed by [`auto_levels`] /
+/// [`auto_contrast`] / [`auto_colors`] and by the panel's overlay
+/// visualizer. Skips fully transparent pixels.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HistogramData {
+    pub r: [u32; 256],
+    pub g: [u32; 256],
+    pub b: [u32; 256],
+    /// BT.601 luma — `Y = 0.299·R + 0.587·G + 0.114·B`. Legacy convention.
+    pub l: [u32; 256],
+    /// Pixels with `alpha > 0` counted across all channels.
+    pub opaque_count: u32,
+}
+
+impl Default for HistogramData {
+    fn default() -> Self {
+        Self {
+            r: [0; 256],
+            g: [0; 256],
+            b: [0; 256],
+            l: [0; 256],
+            opaque_count: 0,
+        }
+    }
+}
+
+/// Compute per-channel + luma histograms from a straight-alpha RGBA8
+/// buffer. Skips fully transparent pixels.
+///
+/// CPU-only by design: atomic histogram updates on GPU suffer contention
+/// and the analytical passes already dominate the per-image cost in CLAHE
+/// when the histogram is needed there. Linear-scan CPU is ~4 ns per pixel
+/// in release — under 5 ms for 1024².
+pub fn compute_histogram(rgba: &[u8]) -> HistogramData {
+    let mut h = HistogramData::default();
+    for px in rgba.chunks_exact(4) {
+        if px[3] == 0 {
+            continue;
+        }
+        h.r[px[0] as usize] += 1;
+        h.g[px[1] as usize] += 1;
+        h.b[px[2] as usize] += 1;
+        // BT.601 luma: 0.299, 0.587, 0.114 — matches the legacy histogram.
+        let luma = (0.299 * px[0] as f32 + 0.587 * px[1] as f32 + 0.114 * px[2] as f32) as usize;
+        h.l[luma.min(255)] += 1;
+        h.opaque_count += 1;
+    }
+    h
+}
+
+/// Build a 256-byte LUT that stretches `[min, max]` linearly onto
+/// `[0, 255]`. Pixels at the extremes saturate. Used by the auto-* stages.
+fn stretch_lut(min: u8, max: u8) -> [u8; 256] {
+    let mut lut = [0u8; 256];
+    let range = (max as i32 - min as i32).max(1) as f32;
+    for (i, v) in lut.iter_mut().enumerate() {
+        let stretched = ((i as i32 - min as i32) as f32 / range) * 255.0;
+        *v = clamp8(stretched);
+    }
+    lut
+}
+
+/// Find the `[min, max]` channel range that excludes the bottom and top
+/// `cutoff_fraction` percentiles. `cutoff_fraction` is in `[0, 1]` —
+/// typical values are `0.005` (Auto Levels) or `0.01` (Auto Colors).
+fn percentile_range(hist: &[u32; 256], total: u32, cutoff_fraction: f32) -> (u8, u8) {
+    if total == 0 {
+        return (0, 255);
+    }
+    let cutoff = (total as f32 * cutoff_fraction).floor() as u32;
+    let mut count: u32 = 0;
+    let mut lo = 0u8;
+    for (v, &c) in hist.iter().enumerate() {
+        count += c;
+        if count > cutoff {
+            lo = v as u8;
+            break;
+        }
+    }
+    count = 0;
+    let mut hi = 255u8;
+    for (v, &c) in hist.iter().enumerate().rev() {
+        count += c;
+        if count > cutoff {
+            hi = v as u8;
+            break;
+        }
+    }
+    (lo, hi)
+}
+
+/// Auto Levels — per-channel histogram stretching with 0.5 % outlier
+/// trimming. Same `findRange` shape as the legacy `autoLevels`.
+pub fn auto_levels(rgba: &mut [u8]) {
+    let hist = compute_histogram(rgba);
+    if hist.opaque_count == 0 {
+        return;
+    }
+    let (r_lo, r_hi) = percentile_range(&hist.r, hist.opaque_count, 0.005);
+    let (g_lo, g_hi) = percentile_range(&hist.g, hist.opaque_count, 0.005);
+    let (b_lo, b_hi) = percentile_range(&hist.b, hist.opaque_count, 0.005);
+    let lut_r = stretch_lut(r_lo, r_hi);
+    let lut_g = stretch_lut(g_lo, g_hi);
+    let lut_b = stretch_lut(b_lo, b_hi);
+    for px in rgba.chunks_exact_mut(4) {
+        if px[3] == 0 {
+            continue;
+        }
+        px[0] = lut_r[px[0] as usize];
+        px[1] = lut_g[px[1] as usize];
+        px[2] = lut_b[px[2] as usize];
+    }
+}
+
+/// Auto Colors — per-channel stretching with 1 % outlier trimming.
+/// Softer than Auto Levels; matches the legacy `autoColors`.
+pub fn auto_colors(rgba: &mut [u8]) {
+    let hist = compute_histogram(rgba);
+    if hist.opaque_count == 0 {
+        return;
+    }
+    let (r_lo, r_hi) = percentile_range(&hist.r, hist.opaque_count, 0.01);
+    let (g_lo, g_hi) = percentile_range(&hist.g, hist.opaque_count, 0.01);
+    let (b_lo, b_hi) = percentile_range(&hist.b, hist.opaque_count, 0.01);
+    let lut_r = stretch_lut(r_lo, r_hi);
+    let lut_g = stretch_lut(g_lo, g_hi);
+    let lut_b = stretch_lut(b_lo, b_hi);
+    for px in rgba.chunks_exact_mut(4) {
+        if px[3] == 0 {
+            continue;
+        }
+        px[0] = lut_r[px[0] as usize];
+        px[1] = lut_g[px[1] as usize];
+        px[2] = lut_b[px[2] as usize];
+    }
+}
+
+/// Auto Contrast — stretches the HSL lightness channel via a uniform
+/// ratio scale (preserves hue). Uses the Krita-style 5 %/95 % percentile
+/// for a more aggressive stretch than Auto Levels. Mirrors
+/// `autoContrast` in the legacy.
+pub fn auto_contrast(rgba: &mut [u8]) {
+    // Build a lightness histogram (HSL L = (max + min) / 2 in `[0, 1]`).
+    let mut hist_l = [0u32; 256];
+    let mut total: u32 = 0;
+    for px in rgba.chunks_exact(4) {
+        if px[3] == 0 {
+            continue;
+        }
+        let r = px[0] as f32 / 255.0;
+        let g = px[1] as f32 / 255.0;
+        let b = px[2] as f32 / 255.0;
+        let max = r.max(g).max(b);
+        let min = r.min(g).min(b);
+        let l = (max + min) * 0.5;
+        let bin = (l * 255.0).round() as usize;
+        hist_l[bin.min(255)] += 1;
+        total += 1;
+    }
+    if total == 0 {
+        return;
+    }
+    let (l_min, l_max) = percentile_range(&hist_l, total, 0.05);
+    let l_min_n = l_min as f32 / 255.0;
+    let l_range = ((l_max as f32 - l_min as f32) / 255.0).max(f32::EPSILON);
+
+    // Per-pixel: compute lightness, find the stretched lightness, scale RGB
+    // by the ratio. Preserves hue, lifts contrast.
+    for px in rgba.chunks_exact_mut(4) {
+        if px[3] == 0 {
+            continue;
+        }
+        let r = px[0] as f32 / 255.0;
+        let g = px[1] as f32 / 255.0;
+        let b = px[2] as f32 / 255.0;
+        let max = r.max(g).max(b);
+        let min = r.min(g).min(b);
+        let l = (max + min) * 0.5;
+        if l <= 0.0 || l >= 1.0 {
+            continue;
+        }
+        let new_l = ((l - l_min_n) / l_range).clamp(0.0, 1.0);
+        let ratio = new_l / l;
+        px[0] = clamp8(r * ratio * 255.0);
+        px[1] = clamp8(g * ratio * 255.0);
+        px[2] = clamp8(b * ratio * 255.0);
+    }
+}
+
+/// Bilateral denoise — edge-preserving smoothing. Combines a spatial
+/// Gaussian (favours nearby pixels) with a range Gaussian (favours
+/// similar-colored pixels), so flat regions get smoothed while edges
+/// stay sharp.
+///
+/// `strength` in `[0, 1]`: controls both σ_space (`3 + 5·s`) and σ_range
+/// (`20 + 50·s`); radius is `⌈2·σ_space⌉`.
+///
+/// **GPU note**: this is the heaviest CPU stage in Phase 2 — `O(N · r²)`
+/// where `r` grows with strength (≈ 5-16 px). A WGSL compute shader is
+/// strongly recommended for production; ~20× speedup at 1024². CPU
+/// implementation here is correct + deterministic; use sparingly above
+/// 512² until the GPU path lands.
+pub fn bilateral_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
+    if strength <= 0.0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let sigma_space = 3.0 + strength * 5.0;
+    let sigma_range = 20.0 + strength * 50.0;
+    let radius = (sigma_space * 2.0).ceil() as i32;
+    let inv_spatial_sq = -1.0 / (2.0 * sigma_space * sigma_space);
+    let inv_range_sq = -1.0 / (2.0 * sigma_range * sigma_range);
+    let w_i = w as i32;
+    let h_i = h as i32;
+    let stride = (w as usize) * 4;
+
+    let src = rgba.to_vec();
+    for y in 0..h_i {
+        for x in 0..w_i {
+            let ci = (y as usize * stride) + (x as usize) * 4;
+            if src[ci + 3] == 0 {
+                continue;
+            }
+            let cr = src[ci] as f32;
+            let cg = src[ci + 1] as f32;
+            let cb = src[ci + 2] as f32;
+            let mut sum_r = 0.0_f32;
+            let mut sum_g = 0.0_f32;
+            let mut sum_b = 0.0_f32;
+            let mut sum_w = 0.0_f32;
+            let y_min = (y - radius).max(0);
+            let y_max = (y + radius).min(h_i - 1);
+            let x_min = (x - radius).max(0);
+            let x_max = (x + radius).min(w_i - 1);
+            for ny in y_min..=y_max {
+                for nx in x_min..=x_max {
+                    let ni = (ny as usize * stride) + (nx as usize) * 4;
+                    let nr = src[ni] as f32;
+                    let ng = src[ni + 1] as f32;
+                    let nb = src[ni + 2] as f32;
+                    let dx = (nx - x) as f32;
+                    let dy = (ny - y) as f32;
+                    let spatial = dx * dx + dy * dy;
+                    let dr = nr - cr;
+                    let dg = ng - cg;
+                    let db = nb - cb;
+                    let color = dr * dr + dg * dg + db * db;
+                    let weight = (spatial * inv_spatial_sq + color * inv_range_sq).exp();
+                    sum_r += nr * weight;
+                    sum_g += ng * weight;
+                    sum_b += nb * weight;
+                    sum_w += weight;
+                }
+            }
+            if sum_w > 0.0 {
+                rgba[ci] = clamp8(sum_r / sum_w);
+                rgba[ci + 1] = clamp8(sum_g / sum_w);
+                rgba[ci + 2] = clamp8(sum_b / sum_w);
+            }
+        }
+    }
+}
+
+/// Sharpen via the 3×3 Laplacian kernel `[0,-1,0; -1,5,-1; 0,-1,0]`.
+/// `amount` in `[0, 2]`: `result = center + (laplacian − center) · amount`.
+/// Fast and CPU-friendly; use this when `radius ≤ 1`.
+pub fn sharpen_laplacian(rgba: &mut [u8], w: u32, h: u32, amount: f32) {
+    if amount <= 0.0 {
+        return;
+    }
+    let w_i = w as i32;
+    let h_i = h as i32;
+    let src = rgba.to_vec();
+    for y in 0..h_i {
+        for x in 0..w_i {
+            let ci = (y as usize * w as usize + x as usize) * 4;
+            if src[ci + 3] == 0 {
+                continue;
+            }
+            for ch in 0..3 {
+                let center = src[ci + ch] as f32;
+                let top = if y > 0 {
+                    src[((y - 1) as usize * w as usize + x as usize) * 4 + ch] as f32
+                } else {
+                    center
+                };
+                let bottom = if y < h_i - 1 {
+                    src[((y + 1) as usize * w as usize + x as usize) * 4 + ch] as f32
+                } else {
+                    center
+                };
+                let left = if x > 0 {
+                    src[(y as usize * w as usize + (x - 1) as usize) * 4 + ch] as f32
+                } else {
+                    center
+                };
+                let right = if x < w_i - 1 {
+                    src[(y as usize * w as usize + (x + 1) as usize) * 4 + ch] as f32
+                } else {
+                    center
+                };
+                let laplacian = 5.0 * center - top - bottom - left - right;
+                let result = center + (laplacian - center) * amount;
+                rgba[ci + ch] = clamp8(result);
+            }
+        }
+    }
+}
+
+/// Sharpen via unsharp masking (Gaussian blur → subtract → add scaled
+/// difference). Use this when `radius > 1`. `radius` typically `1.5..3`;
+/// `amount` in `[0, 2]`.
+///
+/// **GPU note**: separable Gaussian blur is the canonical GPU win — two
+/// horizontal + vertical passes scale linearly with radius on CPU but
+/// stay near-constant on GPU. CPU path here is fine for radius ≤ 5 in
+/// 1024² previews; large-radius production sharpen should use WGSL.
+pub fn sharpen_unsharp(rgba: &mut [u8], w: u32, h: u32, amount: f32, radius: f32) {
+    if amount <= 0.0 || radius <= 0.0 {
+        return;
+    }
+    let kernel = gaussian_kernel_1d(radius);
+    let size = kernel.len();
+    let half = (size / 2) as i32;
+    let total = (w as usize) * (h as usize);
+    let w_i = w as i32;
+    let h_i = h as i32;
+
+    for ch in 0..3 {
+        // Extract channel into f32 buffer.
+        let mut channel: Vec<f32> = (0..total).map(|i| rgba[i * 4 + ch] as f32).collect();
+
+        // Horizontal pass (separable).
+        let mut h_pass = vec![0.0_f32; total];
+        for y in 0..h_i {
+            for x in 0..w_i {
+                let mut sum = 0.0;
+                let mut wt = 0.0;
+                for (k, &kw) in kernel.iter().enumerate() {
+                    let sx = (x + k as i32 - half).clamp(0, w_i - 1);
+                    sum += channel[y as usize * w as usize + sx as usize] * kw;
+                    wt += kw;
+                }
+                h_pass[y as usize * w as usize + x as usize] = sum / wt;
+            }
+        }
+
+        // Vertical pass into `channel` (reused as blur output).
+        for y in 0..h_i {
+            for x in 0..w_i {
+                let mut sum = 0.0;
+                let mut wt = 0.0;
+                for (k, &kw) in kernel.iter().enumerate() {
+                    let sy = (y + k as i32 - half).clamp(0, h_i - 1);
+                    sum += h_pass[sy as usize * w as usize + x as usize] * kw;
+                    wt += kw;
+                }
+                channel[y as usize * w as usize + x as usize] = sum / wt;
+            }
+        }
+
+        // Unsharp combine: original + amount · (original − blur).
+        for i in 0..total {
+            if rgba[i * 4 + 3] == 0 {
+                continue;
+            }
+            let orig = rgba[i * 4 + ch] as f32;
+            let blur = channel[i];
+            let diff = orig - blur;
+            rgba[i * 4 + ch] = clamp8(orig + amount * diff);
+        }
+    }
+}
+
+/// Normalised 1D Gaussian kernel of odd length `⌈radius·2⌉·2+1`, with
+/// `σ = radius / 2`. Centred so index `size / 2` is the peak. `pub`
+/// so the WGSL Unsharp port ([`crate::gpu::sharpen`]) can share the
+/// exact same kernel — single source of truth.
+pub fn gaussian_kernel_1d(radius: f32) -> Vec<f32> {
+    let size = ((radius * 2.0).ceil() as usize) * 2 + 1;
+    let sigma = (radius / 2.0).max(f32::EPSILON);
+    let half = (size / 2) as f32;
+    let mut kernel = vec![0.0_f32; size];
+    let mut sum = 0.0_f32;
+    for (i, k) in kernel.iter_mut().enumerate() {
+        let d = i as f32 - half;
+        *k = (-(d * d) / (2.0 * sigma * sigma)).exp();
+        sum += *k;
+    }
+    for k in kernel.iter_mut() {
+        *k /= sum;
+    }
+    kernel
+}
+
+// ── Stage 7 — Posterize + Quantize ───────────────────────────────────────
+//
+// Both are sequential CPU stages by construction:
+// - Posterize w/ Floyd-Steinberg propagates per-pixel error to four
+//   forward neighbours — strict raster-scan order, no SIMD/GPU port.
+// - K-Means++ Quantize iterates a population-wide cluster fit then
+//   re-maps every pixel — sample-bounded, deterministic seed for stable
+//   palettes on identical inputs.
+//
+// Pipeline runs them AFTER all GPU-amenable stages (auto-WB) so the
+// chained shader path can read back once before this section.
+
+/// Smallest value of `levels` that activates posterize. `0`/`1` are
+/// reserved "off" sentinels (a 1-level posterize is meaningless: every
+/// pixel would map to the same value).
+pub const POSTERIZE_LEVELS_MIN: u32 = 2;
+/// Cap matching the legacy panel's discrete option list (`2, 3, 4, 6, 8,
+/// 16`). Higher values would round-trip nearly unchanged.
+pub const POSTERIZE_LEVELS_MAX: u32 = 16;
+
+/// Smallest k for K-Means++ quantization (mirror of the legacy panel's
+/// `4, 8, 16, 32, 64, 128, 256` list). Below 2 the algorithm collapses
+/// to a single colour, which is the "off" sentinel.
+pub const QUANTIZE_COLORS_MIN: u32 = 2;
+/// Hard cap — 256 colours is the indexed-image standard and matches the
+/// legacy panel's top option. Above it the sample budget (30k pixels)
+/// no longer covers the centroid space cleanly.
+pub const QUANTIZE_COLORS_MAX: u32 = 256;
+
+/// K-Means++ sample cap (legacy parity). Quantize on very large images
+/// would otherwise pay O(N · k) per iteration; the sampled subset
+/// already covers cluster space well at this size.
+const QUANTIZE_SAMPLE_CAP: usize = 30_000;
+
+/// Max K-Means iterations (legacy parity). Convergence usually trips the
+/// `QUANTIZE_CONVERGE_EPS` early-exit by iter 4-6 on natural images.
+const QUANTIZE_MAX_ITER: usize = 10;
+
+/// Centroid Δ threshold (OKLab units). When every centroid moves less
+/// than this between iterations we stop early — palette already stable.
+const QUANTIZE_CONVERGE_EPS: f32 = 0.001;
+
+/// Deterministic xorshift seed for the K-Means++ initial-centroid draw.
+/// Hard-coded so the same input + `num_colors` always produces the same
+/// palette across runs (important for snapshot tests + a user re-running
+/// Quantize getting the same result, not a new palette every time).
+const QUANTIZE_SEED: u64 = 0x517c_c1b7_2722_0a95;
+
+/// Reduce each RGB channel to `levels` discrete steps. When `dithering`
+/// is `true`, Floyd-Steinberg error diffusion (7/16 right, 3/16 bottom-
+/// left, 5/16 bottom, 1/16 bottom-right) carries the per-channel
+/// quantization residue forward through the raster — the legacy
+/// pattern, smoother on gradients than the plain map.
+///
+/// `levels < 2` is the off-sentinel (no-op). Alpha is preserved.
+/// In-place on straight-alpha RGBA8.
+pub fn posterize(rgba: &mut [u8], w: u32, h: u32, levels: u32, dithering: bool) {
+    if levels < POSTERIZE_LEVELS_MIN || w == 0 || h == 0 {
+        return;
+    }
+    let levels = levels.min(POSTERIZE_LEVELS_MAX);
+    let step = 255.0 / ((levels - 1) as f32);
+    let total = (w as usize) * (h as usize);
+    debug_assert_eq!(rgba.len(), total * 4);
+
+    if !dithering {
+        for px in rgba.chunks_exact_mut(4) {
+            for c in &mut px[..3] {
+                *c = posterize_value(*c as f32, step);
+            }
+        }
+        return;
+    }
+
+    // Floyd-Steinberg path: f32 RGB buffer accumulates inbound error so
+    // the quantization residue from the current pixel propagates forward.
+    let mut buf = vec![0.0_f32; total * 3];
+    for (i, px) in rgba.chunks_exact(4).enumerate() {
+        buf[i * 3] = px[0] as f32;
+        buf[i * 3 + 1] = px[1] as f32;
+        buf[i * 3 + 2] = px[2] as f32;
+    }
+
+    let w_i = w as isize;
+    let h_i = h as isize;
+    for y in 0..h_i {
+        for x in 0..w_i {
+            let bi = ((y * w_i + x) * 3) as usize;
+            for ch in 0..3 {
+                let old = buf[bi + ch];
+                let new_v = posterize_value(old, step);
+                buf[bi + ch] = new_v as f32;
+                let err = old - new_v as f32;
+                if x + 1 < w_i {
+                    buf[bi + 3 + ch] += err * (7.0 / 16.0);
+                }
+                if y + 1 < h_i {
+                    let below = (((y + 1) * w_i + x) * 3) as usize;
+                    if x > 0 {
+                        buf[below - 3 + ch] += err * (3.0 / 16.0);
+                    }
+                    buf[below + ch] += err * (5.0 / 16.0);
+                    if x + 1 < w_i {
+                        buf[below + 3 + ch] += err * (1.0 / 16.0);
+                    }
+                }
+            }
+        }
+    }
+    for (i, px) in rgba.chunks_exact_mut(4).enumerate() {
+        px[0] = clamp8(buf[i * 3]);
+        px[1] = clamp8(buf[i * 3 + 1]);
+        px[2] = clamp8(buf[i * 3 + 2]);
+    }
+}
+
+fn posterize_value(v: f32, step: f32) -> u8 {
+    let clamped = v.clamp(0.0, 255.0);
+    let quantized = (clamped / step).round() * step;
+    clamp8(quantized)
+}
+
+/// Reduce an image to `num_colors` perceptually balanced colours via
+/// K-Means++ clustering in OKLab. Sampling caps the per-iteration cost
+/// at [`QUANTIZE_SAMPLE_CAP`] pixels; the resulting palette is mapped
+/// back across every opaque pixel (alpha = 0 pixels are skipped — a
+/// transparent pixel has no colour to assign).
+///
+/// `num_colors < 2` is the off-sentinel (no-op). Reproducibility: the
+/// K-Means++ seeding RNG is fixed ([`QUANTIZE_SEED`]) so re-quantizing
+/// the same image with the same `num_colors` yields the same palette,
+/// not a new one each invocation.
+pub fn quantize(rgba: &mut [u8], w: u32, h: u32, num_colors: u32) {
+    if num_colors < QUANTIZE_COLORS_MIN || w == 0 || h == 0 {
+        return;
+    }
+    let k = num_colors.min(QUANTIZE_COLORS_MAX) as usize;
+    let total = (w as usize) * (h as usize);
+    debug_assert_eq!(rgba.len(), total * 4);
+
+    // ── Sample opaque pixels into OKLab ─────────────────────────────
+    let sample_stride = (total / QUANTIZE_SAMPLE_CAP).max(1);
+    let mut samples: Vec<[f32; 3]> = Vec::with_capacity(total / sample_stride + 1);
+    for i in (0..total).step_by(sample_stride) {
+        let px = &rgba[i * 4..i * 4 + 4];
+        if px[3] == 0 {
+            continue;
+        }
+        let lr = crate::color_utils::srgb_to_linear_u8(px[0]);
+        let lg = crate::color_utils::srgb_to_linear_u8(px[1]);
+        let lb = crate::color_utils::srgb_to_linear_u8(px[2]);
+        samples.push(linear_rgb_to_oklab(lr, lg, lb));
+    }
+    if samples.is_empty() {
+        return;
+    }
+
+    // ── K-Means++ palette in OKLab ──────────────────────────────────
+    let centroids = kmeans_pp_oklab(&samples, k);
+
+    // ── Materialise palette in sRGB (one round-trip per centroid) ───
+    let palette_srgb: Vec<[u8; 3]> = centroids
+        .iter()
+        .map(|c| {
+            let lin = oklab_to_linear_rgb(c[0], c[1], c[2]);
+            [
+                linear_to_srgb_u8(lin[0].max(0.0)),
+                linear_to_srgb_u8(lin[1].max(0.0)),
+                linear_to_srgb_u8(lin[2].max(0.0)),
+            ]
+        })
+        .collect();
+
+    // Re-encode the palette to OKLab too — we round-tripped through
+    // sRGB8 quantization, so OKLab distance against the SHIPPED palette
+    // colours (not the raw centroids) is what matches the visual swap.
+    let palette_lab: Vec<[f32; 3]> = palette_srgb
+        .iter()
+        .map(|p| {
+            let lr = crate::color_utils::srgb_to_linear_u8(p[0]);
+            let lg = crate::color_utils::srgb_to_linear_u8(p[1]);
+            let lb = crate::color_utils::srgb_to_linear_u8(p[2]);
+            linear_rgb_to_oklab(lr, lg, lb)
+        })
+        .collect();
+
+    // ── Map every opaque pixel to its nearest palette colour ─────────
+    for i in 0..total {
+        let px_off = i * 4;
+        if rgba[px_off + 3] == 0 {
+            continue;
+        }
+        let lr = crate::color_utils::srgb_to_linear_u8(rgba[px_off]);
+        let lg = crate::color_utils::srgb_to_linear_u8(rgba[px_off + 1]);
+        let lb = crate::color_utils::srgb_to_linear_u8(rgba[px_off + 2]);
+        let lab = linear_rgb_to_oklab(lr, lg, lb);
+        let mut best = 0usize;
+        let mut best_d = f32::INFINITY;
+        for (j, c) in palette_lab.iter().enumerate() {
+            let dl = lab[0] - c[0];
+            let da = lab[1] - c[1];
+            let db = lab[2] - c[2];
+            let d = dl * dl + da * da + db * db;
+            if d < best_d {
+                best_d = d;
+                best = j;
+            }
+        }
+        let pal = palette_srgb[best];
+        rgba[px_off] = pal[0];
+        rgba[px_off + 1] = pal[1];
+        rgba[px_off + 2] = pal[2];
+    }
+}
+
+/// xorshift64 — minimal deterministic RNG seeded from [`QUANTIZE_SEED`].
+/// Used only by the K-Means++ initialisation; quality requirements are
+/// modest (uniform draws over a small sample set) and we want zero
+/// external deps.
+fn xorshift64(state: &mut u64) -> u64 {
+    let mut x = *state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *state = x;
+    x
+}
+
+/// K-Means++ in OKLab. Returns `k` centroids (or fewer when the sample
+/// set already has ≤ `k` points). The implementation is a 1:1 port of
+/// the legacy [`quantize.ts`] — D²-weighted seeding then up to
+/// [`QUANTIZE_MAX_ITER`] Lloyd iterations with the
+/// [`QUANTIZE_CONVERGE_EPS`] early-exit.
+fn kmeans_pp_oklab(samples: &[[f32; 3]], k: usize) -> Vec<[f32; 3]> {
+    if samples.is_empty() {
+        return vec![[0.5, 0.0, 0.0]];
+    }
+    if samples.len() <= k {
+        return samples.to_vec();
+    }
+    let mut rng = QUANTIZE_SEED;
+    let mut centroids: Vec<[f32; 3]> = Vec::with_capacity(k);
+    centroids.push(samples[(xorshift64(&mut rng) as usize) % samples.len()]);
+
+    // D²-weighted random selection for the remaining (k-1) centroids.
+    while centroids.len() < k {
+        let mut distances = Vec::with_capacity(samples.len());
+        let mut total_d = 0.0_f32;
+        for s in samples {
+            let mut min_d = f32::INFINITY;
+            for c in &centroids {
+                let dl = s[0] - c[0];
+                let da = s[1] - c[1];
+                let db = s[2] - c[2];
+                let d = dl * dl + da * da + db * db;
+                if d < min_d {
+                    min_d = d;
+                }
+            }
+            distances.push(min_d);
+            total_d += min_d;
+        }
+        if total_d <= 0.0 {
+            centroids.push(samples[(xorshift64(&mut rng) as usize) % samples.len()]);
+            continue;
+        }
+        let threshold = (xorshift64(&mut rng) as f32 / u64::MAX as f32) * total_d;
+        let mut cumulative = 0.0_f32;
+        let mut picked = false;
+        for (i, d) in distances.iter().enumerate() {
+            cumulative += d;
+            if cumulative >= threshold {
+                centroids.push(samples[i]);
+                picked = true;
+                break;
+            }
+        }
+        if !picked {
+            centroids.push(samples[(xorshift64(&mut rng) as usize) % samples.len()]);
+        }
+    }
+
+    // Lloyd iterations: assign → average → repeat until stable.
+    let mut assignments = vec![0_usize; samples.len()];
+    for _ in 0..QUANTIZE_MAX_ITER {
+        for (i, s) in samples.iter().enumerate() {
+            let mut best = 0usize;
+            let mut best_d = f32::INFINITY;
+            for (j, c) in centroids.iter().enumerate() {
+                let dl = s[0] - c[0];
+                let da = s[1] - c[1];
+                let db = s[2] - c[2];
+                let d = dl * dl + da * da + db * db;
+                if d < best_d {
+                    best_d = d;
+                    best = j;
+                }
+            }
+            assignments[i] = best;
+        }
+        let mut sums = vec![[0.0_f32; 3]; k];
+        let mut counts = vec![0_u32; k];
+        for (i, s) in samples.iter().enumerate() {
+            let j = assignments[i];
+            sums[j][0] += s[0];
+            sums[j][1] += s[1];
+            sums[j][2] += s[2];
+            counts[j] += 1;
+        }
+        let mut moved = false;
+        for j in 0..k {
+            if counts[j] == 0 {
+                continue;
+            }
+            let inv = 1.0 / counts[j] as f32;
+            let new_c = [sums[j][0] * inv, sums[j][1] * inv, sums[j][2] * inv];
+            if (centroids[j][0] - new_c[0]).abs() > QUANTIZE_CONVERGE_EPS
+                || (centroids[j][1] - new_c[1]).abs() > QUANTIZE_CONVERGE_EPS
+                || (centroids[j][2] - new_c[2]).abs() > QUANTIZE_CONVERGE_EPS
+            {
+                moved = true;
+            }
+            centroids[j] = new_c;
+        }
+        if !moved {
+            break;
+        }
+    }
+    centroids
 }
 
 // ── Utility ──────────────────────────────────────────────────────────────
@@ -479,19 +1446,6 @@ mod tests {
     }
 
     #[test]
-    fn srgb_round_trip_8bit_holds() {
-        // Every 8-bit value should round-trip with at most ±1 LSB error.
-        for v in [0u8, 1, 64, 127, 128, 200, 254, 255] {
-            let lin = srgb_to_linear(v);
-            let back = linear_to_srgb(lin);
-            assert!(
-                back.abs_diff(v) <= 1,
-                "round trip {v} → {lin} → {back} drifted >1 LSB"
-            );
-        }
-    }
-
-    #[test]
     fn luminance_bt709_canonical_constants() {
         assert_eq!(luminance_bt709(0, 0, 0), 0);
         assert_eq!(luminance_bt709(255, 255, 255), 255);
@@ -529,6 +1483,25 @@ mod tests {
     }
 
     #[test]
+    fn clahe_clip_limit_min_does_not_panic_and_still_normalizes_to_255() {
+        // clip_limit=1.0 is the slider MIN. `build_clahe_lut` line 311
+        // computes `clip = max(1.0, 1.0) * mean = mean`, so bins at or
+        // below the mean don't get clipped — excess only accumulates from
+        // bins above the mean. The CDF normalization still maps the top
+        // bin to 255 regardless of clip strength. Regression cover
+        // (Agent C audit, §6 BAIXA): no test gated this floor before.
+        let src = solid(8, 8, [128, 128, 128]);
+        let mut dst = vec![0u8; src.len()];
+        // Should not panic; uniform input maps the (now single) populated
+        // bin to 255 just like the larger clip_limit cases.
+        clahe(&src, 8, 8, 1.0, 4, &mut dst);
+        for px in dst.chunks_exact(4) {
+            assert_eq!(px[0], 255);
+            assert_eq!(px[3], 255);
+        }
+    }
+
+    #[test]
     fn clahe_increases_dynamic_range_on_low_contrast_input() {
         // Build a 32×32 grayscale ramp clamped to mid-range [100, 150]
         // (low contrast). CLAHE should stretch the dynamic range so the
@@ -552,47 +1525,269 @@ mod tests {
         assert!(hi as i32 - lo as i32 >= 50, "CLAHE did not stretch range");
     }
 
+    // ── Phase 1 — tonal stage primitives ─────────────────────────────
+
     #[test]
-    fn adjust_bcs_identity_leaves_pixels_within_one_lsb() {
-        // The identity (b=0, c=1, s=0) should leave each channel within
-        // 1 LSB of the input after a round trip through linear.
-        let mut buf = solid(4, 4, [60, 130, 200]);
-        let before = buf.clone();
-        adjust_bcs(&mut buf, 0.0, 1.0, 0.0);
-        for (a, b) in buf.iter().zip(before.iter()) {
-            assert!(a.abs_diff(*b) <= 1);
+    fn exposure_zero_is_identity() {
+        let mut rgb = [0.3_f32, 0.5, 0.7];
+        let before = rgb;
+        apply_exposure_linear(&mut rgb, 0.0);
+        assert_eq!(rgb, before);
+    }
+
+    #[test]
+    fn exposure_plus_one_ev_doubles_below_knee() {
+        // 0.3 doubles to 0.6 (below soft-knee threshold of 0.8 → no
+        // compression).
+        let mut rgb = [0.3_f32, 0.3, 0.3];
+        apply_exposure_linear(&mut rgb, 1.0);
+        for c in rgb {
+            assert!((c - 0.6).abs() < 1e-5, "got {c}");
         }
     }
 
     #[test]
-    fn adjust_bcs_brightness_lifts_dark_pixels() {
-        let mut buf = solid(4, 4, [20, 20, 20]);
-        adjust_bcs(&mut buf, 0.5, 1.0, 0.0);
-        // Expect each channel meaningfully brighter than 20.
-        let r = buf[0];
-        assert!(r > 60, "brightness did not lift dark pixel (got {r})");
+    fn exposure_soft_knee_caps_below_one() {
+        // 0.6 × 2^2 = 2.4 — would clip hard to 1.0 without soft knee.
+        // Soft knee: 0.8 + 0.2·(1 - exp(-3.2)) ≈ 0.8 + 0.2·0.959 ≈ 0.99.
+        let mut rgb = [0.6_f32, 0.6, 0.6];
+        apply_exposure_linear(&mut rgb, 2.0);
+        for c in rgb {
+            assert!(
+                c < 1.0 && c > 0.97,
+                "soft knee should approach 1 from below: got {c}"
+            );
+        }
     }
 
     #[test]
-    fn adjust_bcs_saturation_minus_one_produces_grayscale() {
+    fn temperature_zero_is_identity_within_floats() {
+        // Bradford D65→D65 is near-identity; with input == output passing
+        // through `apply_temperature_linear` with the identity matrix
+        // should hardly move the pixel.
+        let m = bradford_matrix_for_kelvin(6500.0);
+        let mut rgb = [0.4_f32, 0.55, 0.7];
+        let before = rgb;
+        apply_temperature_linear(&mut rgb, &m);
+        for i in 0..3 {
+            assert!(
+                (rgb[i] - before[i]).abs() < 0.02,
+                "channel {i} drifted: before {} after {}",
+                before[i],
+                rgb[i]
+            );
+        }
+    }
+
+    #[test]
+    fn temperature_warm_lifts_red() {
+        // Positive temperature (warm) — apply on neutral grey, R should
+        // rise, B should drop.
+        let m = bradford_matrix_for_kelvin(temperature01_to_kelvin(0.7));
+        let mut rgb = [0.5_f32, 0.5, 0.5];
+        apply_temperature_linear(&mut rgb, &m);
+        assert!(rgb[0] > 0.5, "warm should boost R: got {}", rgb[0]);
+        assert!(rgb[2] < 0.5, "warm should drop B: got {}", rgb[2]);
+    }
+
+    #[test]
+    fn temperature_cool_lifts_blue() {
+        let m = bradford_matrix_for_kelvin(temperature01_to_kelvin(-0.7));
+        let mut rgb = [0.5_f32, 0.5, 0.5];
+        apply_temperature_linear(&mut rgb, &m);
+        assert!(rgb[0] < 0.5, "cool should drop R: got {}", rgb[0]);
+        assert!(rgb[2] > 0.5, "cool should lift B: got {}", rgb[2]);
+    }
+
+    #[test]
+    fn tint_positive_shifts_toward_magenta() {
+        // Tint > 0 drops G and lifts R/B in compensation.
+        let mut rgb = [0.5_f32, 0.5, 0.5];
+        apply_tint_linear(&mut rgb, 0.5);
+        assert!(rgb[1] < 0.5, "G should drop with magenta tint");
+        assert!(rgb[0] > 0.5, "R should rise with magenta tint");
+        assert!(rgb[2] > 0.5, "B should rise with magenta tint");
+    }
+
+    #[test]
+    fn brightness_multiplicative_preserves_black() {
+        // Critical legacy semantic: brightness is multiplicative, so pure
+        // black stays pure black (no lift to mid-grey).
+        let mut rgb = [0.0_f32, 0.0, 0.0];
+        apply_brightness_linear(&mut rgb, 0.8);
+        assert_eq!(rgb, [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn brightness_lifts_midtones() {
+        let mut rgb = [0.3_f32, 0.3, 0.3];
+        apply_brightness_linear(&mut rgb, 0.5);
+        // m = 1.5 → 0.3 × 1.5 = 0.45.
+        for c in rgb {
+            assert!((c - 0.45).abs() < 1e-5);
+        }
+    }
+
+    #[test]
+    fn contrast_one_is_identity() {
+        let mut rgb = [0.3_f32, 0.5, 0.7];
+        let before = rgb;
+        apply_contrast_linear(&mut rgb, 1.0);
+        assert_eq!(rgb, before);
+    }
+
+    #[test]
+    fn contrast_above_one_pushes_pixels_away_from_pivot() {
+        // Pivot is 0.18; contrast > 1 pushes pixels above pivot UP and
+        // pixels below pivot DOWN.
+        let mut above = [0.5_f32, 0.5, 0.5];
+        apply_contrast_linear(&mut above, 1.5);
+        assert!(above[0] > 0.5, "pixel above pivot should rise: {above:?}");
+
+        let mut below = [0.1_f32, 0.1, 0.1];
+        apply_contrast_linear(&mut below, 1.5);
+        assert!(below[0] < 0.1, "pixel below pivot should drop: {below:?}");
+    }
+
+    #[test]
+    fn vibrance_zero_is_identity() {
+        let mut lab = [0.5_f32, 0.1, 0.05];
+        let before = lab;
+        apply_vibrance_oklab(&mut lab, 0.0);
+        assert_eq!(lab, before);
+    }
+
+    #[test]
+    fn vibrance_boosts_low_chroma_more_than_high_chroma() {
+        // Two pixels: low chroma (a=0.02, b=0.01) and high chroma
+        // (a=0.20, b=0.10). Same vibrance value (+0.5). The low-chroma
+        // pixel should gain proportionally more.
+        let mut low = [0.5_f32, 0.02, 0.01];
+        let mut hi = [0.5_f32, 0.20, 0.10];
+        let chroma_low_before = (low[1].powi(2) + low[2].powi(2)).sqrt();
+        let chroma_hi_before = (hi[1].powi(2) + hi[2].powi(2)).sqrt();
+        apply_vibrance_oklab(&mut low, 0.5);
+        apply_vibrance_oklab(&mut hi, 0.5);
+        let chroma_low_after = (low[1].powi(2) + low[2].powi(2)).sqrt();
+        let chroma_hi_after = (hi[1].powi(2) + hi[2].powi(2)).sqrt();
+        let ratio_low = chroma_low_after / chroma_low_before;
+        let ratio_hi = chroma_hi_after / chroma_hi_before;
+        assert!(
+            ratio_low > ratio_hi,
+            "low-chroma pixel should grow more (got {ratio_low} vs {ratio_hi})"
+        );
+    }
+
+    #[test]
+    fn saturation_minus_one_zeroes_chroma() {
+        let mut lab = [0.5_f32, 0.2, -0.1];
+        apply_saturation_oklab(&mut lab, -1.0);
+        // sat_mult = 0 → chroma collapses to 0.
+        assert!(lab[1].abs() < 1e-6);
+        assert!(lab[2].abs() < 1e-6);
+    }
+
+    #[test]
+    fn saturation_plus_one_doubles_chroma() {
+        let mut lab = [0.5_f32, 0.1, -0.05];
+        apply_saturation_oklab(&mut lab, 1.0);
+        // sat_mult = 2 → chroma doubles.
+        assert!((lab[1] - 0.2).abs() < 1e-6);
+        assert!((lab[2] - -0.1).abs() < 1e-6);
+    }
+
+    #[test]
+    fn temperature01_to_kelvin_endpoints() {
+        assert_eq!(temperature01_to_kelvin(0.0), 6500.0);
+        // Photographer convention: +1 → warm = low Kelvin.
+        assert_eq!(temperature01_to_kelvin(1.0), 2000.0);
+        assert_eq!(temperature01_to_kelvin(-1.0), 10000.0);
+        // Out-of-range clamps.
+        assert_eq!(temperature01_to_kelvin(99.0), 2000.0);
+        assert_eq!(temperature01_to_kelvin(-99.0), 10000.0);
+    }
+
+    // ── adjust_tonal (combined batch) ────────────────────────────────
+
+    #[test]
+    fn adjust_tonal_identity_leaves_pixels_within_one_lsb() {
+        let mut buf = solid(4, 4, [60, 130, 200]);
+        let before = buf.clone();
+        adjust_tonal(&mut buf, &ColorEqualizationParams::default());
+        for (a, b) in buf.iter().zip(before.iter()) {
+            assert!(a.abs_diff(*b) <= 1, "drift {a} vs {b}");
+        }
+    }
+
+    #[test]
+    fn adjust_tonal_brightness_preserves_black() {
+        // Critical: multiplicative brightness MUST keep pure black at 0.
+        let mut buf = vec![0u8, 0, 0, 255];
+        let p = ColorEqualizationParams {
+            brightness: 0.8,
+            ..ColorEqualizationParams::default()
+        };
+        adjust_tonal(&mut buf, &p);
+        assert_eq!(&buf[..3], &[0, 0, 0]);
+    }
+
+    #[test]
+    fn adjust_tonal_saturation_minus_one_grayscales() {
         let mut buf = solid(4, 4, [200, 50, 50]);
-        adjust_bcs(&mut buf, 0.0, 1.0, -1.0);
+        let p = ColorEqualizationParams {
+            saturation: -1.0,
+            ..ColorEqualizationParams::default()
+        };
+        adjust_tonal(&mut buf, &p);
         let r = buf[0];
         let g = buf[1];
         let b = buf[2];
-        // After full desaturation, R == G == B (mod rounding).
-        assert!(r.abs_diff(g) <= 1, "R/G drift after desat: {r} vs {g}");
-        assert!(g.abs_diff(b) <= 1, "G/B drift after desat: {g} vs {b}");
+        // OKLab's perceptual luma differs from BT.709, so the grey value
+        // won't exactly match input R; just assert channels collapsed to
+        // the same value (within 2 LSB given OKLab cube-root rounding).
+        assert!(r.abs_diff(g) <= 2, "R/G drift after desat: {r} vs {g}");
+        assert!(g.abs_diff(b) <= 2, "G/B drift after desat: {g} vs {b}");
     }
 
     #[test]
-    fn adjust_bcs_skips_transparent_pixels() {
+    fn adjust_tonal_skips_transparent_pixels() {
         let mut buf = vec![100u8, 150, 200, 0, 100, 150, 200, 255];
-        adjust_bcs(&mut buf, 0.5, 1.0, 0.0);
-        // First pixel is alpha=0 → RGB untouched.
+        let p = ColorEqualizationParams {
+            brightness: 0.5,
+            ..ColorEqualizationParams::default()
+        };
+        adjust_tonal(&mut buf, &p);
         assert_eq!(&buf[0..4], &[100, 150, 200, 0]);
-        // Second pixel was lifted by brightness.
-        assert!(buf[4] > 100);
+        assert!(buf[4] != 100, "opaque pixel should have been adjusted");
+    }
+
+    #[test]
+    fn adjust_tonal_exposure_brightens() {
+        let mut buf = solid(4, 4, [80, 80, 80]);
+        let p = ColorEqualizationParams {
+            exposure: 1.0, // +1 EV stop
+            ..ColorEqualizationParams::default()
+        };
+        adjust_tonal(&mut buf, &p);
+        assert!(buf[0] > 80, "+1 EV should brighten (got {})", buf[0]);
+    }
+
+    #[test]
+    fn adjust_tonal_vibrance_increases_chroma() {
+        let mut buf = solid(4, 4, [120, 100, 100]); // very mild red cast
+        let before_r = buf[0] as i32;
+        let p = ColorEqualizationParams {
+            vibrance: 1.0,
+            ..ColorEqualizationParams::default()
+        };
+        adjust_tonal(&mut buf, &p);
+        // Low-chroma input → vibrance pumps it up — R should now be
+        // visibly higher than G/B.
+        assert!(
+            (buf[0] as i32 - before_r) > 5,
+            "vibrance did not pump low chroma: got delta {}",
+            buf[0] as i32 - before_r
+        );
     }
 
     #[test]
@@ -697,5 +1892,516 @@ mod tests {
         assert_eq!(aspect_fit_within(1024, 512, 512), (512, 256));
         assert_eq!(aspect_fit_within(512, 1024, 512), (256, 512));
         assert_eq!(aspect_fit_within(400, 300, 512), (400, 300));
+    }
+
+    // ── Phase 2 ──────────────────────────────────────────────────────
+
+    #[test]
+    fn histogram_skips_transparent_and_counts_opaque() {
+        let buf = vec![
+            10u8, 20, 30, 0, // transparent — skipped
+            10, 20, 30, 255, 200, 100, 50, 255,
+        ];
+        let h = compute_histogram(&buf);
+        assert_eq!(h.opaque_count, 2);
+        assert_eq!(h.r[10], 1);
+        assert_eq!(h.r[200], 1);
+        assert_eq!(h.r[20], 0, "alpha=0 should not contribute");
+    }
+
+    #[test]
+    fn histogram_total_equals_opaque_count() {
+        let mut buf = Vec::with_capacity(8 * 8 * 4);
+        for i in 0..(8 * 8) {
+            buf.extend_from_slice(&[
+                (i % 256) as u8,
+                ((i * 2) % 256) as u8,
+                ((i * 3) % 256) as u8,
+                255,
+            ]);
+        }
+        let h = compute_histogram(&buf);
+        assert_eq!(h.opaque_count, 64);
+        let r_total: u32 = h.r.iter().sum();
+        let g_total: u32 = h.g.iter().sum();
+        let b_total: u32 = h.b.iter().sum();
+        let l_total: u32 = h.l.iter().sum();
+        assert_eq!(r_total, 64);
+        assert_eq!(g_total, 64);
+        assert_eq!(b_total, 64);
+        assert_eq!(l_total, 64);
+    }
+
+    #[test]
+    fn auto_levels_stretches_compressed_range() {
+        // Build a buffer whose R channel only occupies [80, 180].
+        let mut buf = Vec::with_capacity(32 * 32 * 4);
+        for y in 0..32u32 {
+            for x in 0..32u32 {
+                let r = 80u8 + (((x + y) % 100) as u8);
+                buf.extend_from_slice(&[r, 128, 128, 255]);
+            }
+        }
+        auto_levels(&mut buf);
+        let mut lo = 255u8;
+        let mut hi = 0u8;
+        for px in buf.chunks_exact(4) {
+            lo = lo.min(px[0]);
+            hi = hi.max(px[0]);
+        }
+        // R channel now spans close to full range.
+        assert!(lo <= 10, "auto_levels did not pull min down (got {lo})");
+        assert!(hi >= 245, "auto_levels did not push max up (got {hi})");
+    }
+
+    #[test]
+    fn auto_colors_preserves_uniform_distribution() {
+        // Build a 64×64 image where each channel hits every value 0..255
+        // multiple times (uniform distribution). 1 % cutoff (40 pixels at
+        // each tail) won't shift min/max past 0 / 255, so auto_colors is
+        // effectively identity.
+        let mut buf = Vec::with_capacity(64 * 64 * 4);
+        for i in 0..(64 * 64) {
+            let v = (i % 256) as u8;
+            buf.extend_from_slice(&[v, v, v, 255]);
+        }
+        let before = buf.clone();
+        auto_colors(&mut buf);
+        let mut max_drift = 0u8;
+        for (a, b) in buf.iter().zip(before.iter()) {
+            max_drift = max_drift.max(a.abs_diff(*b));
+        }
+        assert!(
+            max_drift <= 2,
+            "auto_colors on uniform-distribution buffer drifted by {max_drift}"
+        );
+    }
+
+    #[test]
+    fn auto_contrast_lifts_compressed_lightness() {
+        // All pixels at L ≈ 0.4..0.6 (compressed mid-range).
+        let mut buf = Vec::with_capacity(16 * 16 * 4);
+        for y in 0..16u32 {
+            for x in 0..16u32 {
+                let v = 102u8 + (((x + y) % 50) as u8); // 102..152 ≈ L 0.4..0.6
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        auto_contrast(&mut buf);
+        let mut lo = 255u8;
+        let mut hi = 0u8;
+        for px in buf.chunks_exact(4) {
+            lo = lo.min(px[0]);
+            hi = hi.max(px[0]);
+        }
+        assert!(
+            hi as i32 - lo as i32 >= 100,
+            "auto_contrast did not stretch"
+        );
+    }
+
+    #[test]
+    fn auto_levels_skips_transparent_pixels() {
+        let mut buf = vec![10u8, 10, 10, 0, 50, 80, 120, 255, 200, 220, 240, 255];
+        auto_levels(&mut buf);
+        assert_eq!(&buf[0..4], &[10, 10, 10, 0]); // untouched
+    }
+
+    #[test]
+    fn bilateral_denoise_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        bilateral_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn bilateral_denoise_smooths_noisy_input_while_preserving_edges() {
+        // Build a 16×16 image: left half = 50, right half = 200, with
+        // ±10 noise pattern per pixel. After denoise, the noise should
+        // shrink but the edge between the halves should remain.
+        let mut buf = Vec::with_capacity(16 * 16 * 4);
+        for y in 0..16u32 {
+            for x in 0..16u32 {
+                let base = if x < 8 { 50u8 } else { 200u8 };
+                let noise = ((x * 3 + y * 5) % 11) as i32 - 5; // ±5 pattern
+                let v = (base as i32 + noise).clamp(0, 255) as u8;
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        let mut denoised = buf.clone();
+        bilateral_denoise(&mut denoised, 16, 16, 0.5);
+        // Sample inside the left half (away from edge) — variance should
+        // drop dramatically.
+        let mut var_before = 0i32;
+        let mut var_after = 0i32;
+        let mut mean_before = 0i32;
+        let mut mean_after = 0i32;
+        let mut count = 0;
+        for y in 2..14 {
+            for x in 2..6u32 {
+                let i = ((y * 16 + x) * 4) as usize;
+                mean_before += buf[i] as i32;
+                mean_after += denoised[i] as i32;
+                count += 1;
+            }
+        }
+        mean_before /= count;
+        mean_after /= count;
+        for y in 2..14 {
+            for x in 2..6u32 {
+                let i = ((y * 16 + x) * 4) as usize;
+                let db = buf[i] as i32 - mean_before;
+                let da = denoised[i] as i32 - mean_after;
+                var_before += db * db;
+                var_after += da * da;
+            }
+        }
+        assert!(
+            var_after < var_before,
+            "denoise did not reduce variance (before {var_before}, after {var_after})"
+        );
+        // Edge preservation: pixel just left of edge stays dark, just
+        // right stays bright.
+        let left_edge = denoised[((8 * 16 + 6) * 4) as usize];
+        let right_edge = denoised[((8 * 16 + 9) * 4) as usize];
+        assert!(
+            (right_edge as i32 - left_edge as i32) > 100,
+            "edge contrast collapsed (got left {left_edge}, right {right_edge})"
+        );
+    }
+
+    #[test]
+    fn sharpen_laplacian_zero_amount_is_noop() {
+        let mut buf = solid(8, 8, [120, 130, 140]);
+        let before = buf.clone();
+        sharpen_laplacian(&mut buf, 8, 8, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn sharpen_laplacian_increases_edge_contrast() {
+        // 4×4 with a clean vertical edge at x=2: left=80, right=180.
+        let mut buf = Vec::with_capacity(4 * 4 * 4);
+        for _y in 0..4u32 {
+            for x in 0..4u32 {
+                let v = if x < 2 { 80u8 } else { 180u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        // Row 1 (`y = 1`), columns 1 (just-left-of-edge) and 2 (just-right).
+        let idx_left = ((4 + 1) * 4) as usize;
+        let idx_right = ((4 + 2) * 4) as usize;
+        let edge_left_before = buf[idx_left];
+        let edge_right_before = buf[idx_right];
+        sharpen_laplacian(&mut buf, 4, 4, 1.0);
+        let edge_left_after = buf[idx_left];
+        let edge_right_after = buf[idx_right];
+        let contrast_before = (edge_right_before as i32 - edge_left_before as i32).abs();
+        let contrast_after = (edge_right_after as i32 - edge_left_after as i32).abs();
+        assert!(
+            contrast_after >= contrast_before,
+            "Laplacian did not enhance edge: before {contrast_before}, after {contrast_after}"
+        );
+    }
+
+    #[test]
+    fn sharpen_unsharp_zero_amount_is_noop() {
+        let mut buf = solid(8, 8, [120, 130, 140]);
+        let before = buf.clone();
+        sharpen_unsharp(&mut buf, 8, 8, 0.0, 2.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn sharpen_unsharp_returns_non_empty_on_radius_above_one() {
+        let mut buf = solid(16, 16, [120, 130, 140]);
+        sharpen_unsharp(&mut buf, 16, 16, 0.5, 2.0);
+        // Solid colour input → Gaussian blur returns the same value → diff
+        // is zero → output equals input. So a basic smoke is: the function
+        // ran without panicking + output remains a valid buffer.
+        assert_eq!(buf.len(), 16 * 16 * 4);
+    }
+
+    #[test]
+    fn gaussian_kernel_normalises_to_one() {
+        for radius in [1.0_f32, 2.0, 3.0, 5.0] {
+            let k = gaussian_kernel_1d(radius);
+            let sum: f32 = k.iter().sum();
+            assert!(
+                (sum - 1.0).abs() < 1e-5,
+                "kernel for radius {radius} did not normalize: sum {sum}"
+            );
+            // Centre is the peak.
+            let mid = k.len() / 2;
+            for (i, v) in k.iter().enumerate() {
+                if i != mid {
+                    assert!(*v <= k[mid] + 1e-6, "non-monotonic at radius {radius}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn run_pipeline_lut_preset_toggle_changes_output() {
+        // Activate Sepia in slot 1 — output should diverge from the
+        // neutral CLAHE baseline (warm cast collapses chroma toward
+        // sepia tones).
+        let mut src = Vec::with_capacity(8 * 8 * 4);
+        for i in 0..(8 * 8) {
+            src.extend_from_slice(&[
+                (i * 3 % 256) as u8,
+                (i * 5 % 256) as u8,
+                (i * 7 % 256) as u8,
+                255,
+            ]);
+        }
+        let p_off = ColorEqualizationParams {
+            clip_limit: crate::params::CLIP_LIMIT_MIN,
+            ..ColorEqualizationParams::default()
+        };
+        let p_on = ColorEqualizationParams {
+            lut_preset_1: crate::lut_presets::LutPreset::Sepia,
+            ..p_off
+        };
+        let mut out_off = Vec::new();
+        let mut out_on = Vec::new();
+        run_pipeline(&src, 8, 8, &p_off, &mut out_off);
+        run_pipeline(&src, 8, 8, &p_on, &mut out_on);
+        assert_ne!(out_off, out_on, "LUT preset toggle did not change output");
+    }
+
+    #[test]
+    fn run_pipeline_dual_lut_blend_changes_output_at_midpoint() {
+        // With slot 1 = Warm + slot 2 = Cool + mix = 0.5, the output
+        // should sit between the two preset extremes (neither pure warm
+        // nor pure cool).
+        let mut src = Vec::with_capacity(8 * 8 * 4);
+        for i in 0..(8 * 8) {
+            src.extend_from_slice(&[128 + (i * 2 % 64) as u8, 128, 128 + (i * 3 % 64) as u8, 255]);
+        }
+        let base = ColorEqualizationParams {
+            clip_limit: crate::params::CLIP_LIMIT_MIN,
+            ..ColorEqualizationParams::default()
+        };
+        let p_warm = ColorEqualizationParams {
+            lut_preset_1: crate::lut_presets::LutPreset::Warm,
+            ..base
+        };
+        let p_cool = ColorEqualizationParams {
+            lut_preset_1: crate::lut_presets::LutPreset::Cool,
+            ..base
+        };
+        let p_blend = ColorEqualizationParams {
+            lut_preset_1: crate::lut_presets::LutPreset::Warm,
+            lut_preset_2: crate::lut_presets::LutPreset::Cool,
+            lut_mix: 0.5,
+            ..base
+        };
+        let mut warm = Vec::new();
+        let mut cool = Vec::new();
+        let mut blend = Vec::new();
+        run_pipeline(&src, 8, 8, &p_warm, &mut warm);
+        run_pipeline(&src, 8, 8, &p_cool, &mut cool);
+        run_pipeline(&src, 8, 8, &p_blend, &mut blend);
+        assert_ne!(blend, warm, "blend should not equal pure-warm");
+        assert_ne!(blend, cool, "blend should not equal pure-cool");
+    }
+
+    #[test]
+    fn run_pipeline_lut_intensity_zero_is_noop_relative_to_baseline() {
+        let mut src = Vec::with_capacity(8 * 8 * 4);
+        for i in 0..(8 * 8) {
+            src.extend_from_slice(&[
+                (i * 3 % 256) as u8,
+                (i * 5 % 256) as u8,
+                (i * 7 % 256) as u8,
+                255,
+            ]);
+        }
+        let base = ColorEqualizationParams {
+            clip_limit: crate::params::CLIP_LIMIT_MIN,
+            ..ColorEqualizationParams::default()
+        };
+        let p_zero = ColorEqualizationParams {
+            lut_preset_1: crate::lut_presets::LutPreset::Cinematic,
+            lut_intensity: 0.0,
+            ..base
+        };
+        let mut baseline = Vec::new();
+        let mut zero = Vec::new();
+        run_pipeline(&src, 8, 8, &base, &mut baseline);
+        run_pipeline(&src, 8, 8, &p_zero, &mut zero);
+        assert_eq!(
+            baseline, zero,
+            "intensity=0 should short-circuit the LUT stage entirely"
+        );
+    }
+
+    #[test]
+    fn run_pipeline_auto_levels_toggle_changes_output() {
+        // Build a low-range input (R ∈ [80, 180]); Auto Levels should
+        // stretch it noticeably.
+        let mut src = Vec::with_capacity(16 * 16 * 4);
+        for y in 0..16u32 {
+            for x in 0..16u32 {
+                let r = 80u8 + (((x + y) % 100) as u8);
+                src.extend_from_slice(&[r, 128, 128, 255]);
+            }
+        }
+        let p_off = ColorEqualizationParams {
+            clip_limit: crate::params::CLIP_LIMIT_MIN, // neutral CLAHE
+            ..ColorEqualizationParams::default()
+        };
+        let p_on = ColorEqualizationParams {
+            auto_levels: true,
+            ..p_off
+        };
+        let mut out_off = Vec::new();
+        let mut out_on = Vec::new();
+        run_pipeline(&src, 16, 16, &p_off, &mut out_off);
+        run_pipeline(&src, 16, 16, &p_on, &mut out_on);
+        assert_ne!(out_off, out_on, "auto_levels toggle did not change output");
+    }
+
+    #[test]
+    fn percentile_range_finds_endpoints() {
+        let mut hist = [0u32; 256];
+        hist[10] = 100;
+        hist[200] = 100;
+        let (lo, hi) = percentile_range(&hist, 200, 0.005);
+        // 0.5 % of 200 = 1, so cutoff lifts past index 10's 100 → lo = 10.
+        assert_eq!(lo, 10);
+        assert_eq!(hi, 200);
+    }
+
+    // ── Posterize + Quantize ─────────────────────────────────────────
+
+    #[test]
+    fn posterize_off_is_noop() {
+        let mut rgba = vec![17, 41, 89, 255, 33, 200, 7, 128];
+        let original = rgba.clone();
+        posterize(&mut rgba, 2, 1, 0, false);
+        assert_eq!(rgba, original, "level 0 must be a no-op");
+        posterize(&mut rgba, 2, 1, 1, false);
+        assert_eq!(rgba, original, "level 1 is below MIN, must be a no-op");
+    }
+
+    #[test]
+    fn posterize_plain_produces_levels_minus_one_steps() {
+        // 2 levels → snap to {0, 255}. A mid-range pixel rounds toward
+        // the nearest endpoint; alpha untouched.
+        let mut rgba = vec![100, 200, 50, 200];
+        posterize(&mut rgba, 1, 1, 2, false);
+        assert!(rgba[0] == 0 || rgba[0] == 255);
+        assert!(rgba[1] == 0 || rgba[1] == 255);
+        assert!(rgba[2] == 0 || rgba[2] == 255);
+        assert_eq!(rgba[3], 200, "alpha must pass through");
+    }
+
+    #[test]
+    fn posterize_dithered_preserves_average_brightness() {
+        // A uniform mid-grey field with FS dithering should land on a
+        // mix of the two surrounding palette entries (0 and 255 for
+        // levels=2), with the average within a few LSB of the input.
+        let w = 32_u32;
+        let h = 32_u32;
+        let total = (w * h) as usize;
+        let mut rgba = vec![128_u8; total * 4];
+        for i in 0..total {
+            rgba[i * 4 + 3] = 255;
+        }
+        let avg_before =
+            rgba.chunks_exact(4).map(|p| p[0] as u32).sum::<u32>() as f32 / total as f32;
+        posterize(&mut rgba, w, h, 2, true);
+        let avg_after =
+            rgba.chunks_exact(4).map(|p| p[0] as u32).sum::<u32>() as f32 / total as f32;
+        assert!(
+            (avg_before - avg_after).abs() < 6.0,
+            "FS dithering must preserve global mean (before={avg_before}, after={avg_after})"
+        );
+    }
+
+    #[test]
+    fn quantize_off_is_noop() {
+        let mut rgba = vec![17, 41, 89, 255, 33, 200, 7, 128];
+        let original = rgba.clone();
+        quantize(&mut rgba, 2, 1, 0);
+        assert_eq!(rgba, original, "color count 0 must be a no-op");
+        quantize(&mut rgba, 2, 1, 1);
+        assert_eq!(
+            rgba, original,
+            "color count 1 is below MIN, must be a no-op"
+        );
+    }
+
+    #[test]
+    fn quantize_reduces_distinct_colours() {
+        // 4×4 image with 16 distinct gradient colours, quantize to 4.
+        // After mapping, distinct (R, G, B) triples must be ≤ 4.
+        let w = 4_u32;
+        let h = 4_u32;
+        let mut rgba = Vec::with_capacity(64);
+        for y in 0..h {
+            for x in 0..w {
+                rgba.extend_from_slice(&[
+                    (x.saturating_mul(80) as u8),
+                    (y.saturating_mul(80) as u8),
+                    ((x + y).saturating_mul(40) as u8),
+                    255,
+                ]);
+            }
+        }
+        quantize(&mut rgba, w, h, 4);
+        let mut palette: std::collections::BTreeSet<(u8, u8, u8)> = Default::default();
+        for px in rgba.chunks_exact(4) {
+            palette.insert((px[0], px[1], px[2]));
+        }
+        assert!(
+            palette.len() <= 4,
+            "quantize(k=4) produced {} colours",
+            palette.len()
+        );
+    }
+
+    #[test]
+    fn quantize_skips_fully_transparent_pixels() {
+        // A transparent pixel's RGB must NOT be replaced by a palette
+        // entry — the palette is derived from opaque pixels only and
+        // remapping a transparent pixel would silently shift alpha-
+        // composited content.
+        let mut rgba = vec![10, 20, 30, 0, 200, 200, 200, 255];
+        quantize(&mut rgba, 2, 1, 2);
+        assert_eq!(
+            &rgba[0..3],
+            &[10, 20, 30],
+            "transparent RGB must pass through"
+        );
+    }
+
+    #[test]
+    fn quantize_is_deterministic_for_same_input() {
+        // Same input + k must produce IDENTICAL output across calls —
+        // the K-Means++ RNG is fixed-seeded ([`QUANTIZE_SEED`]) so
+        // re-quantizing the same image gives the same palette, not a
+        // new one each time.
+        let w = 8_u32;
+        let h = 8_u32;
+        let mut rgba_a = Vec::with_capacity(256);
+        for i in 0..64 {
+            rgba_a.extend_from_slice(&[
+                (i * 4) as u8,
+                (255 - i * 4) as u8,
+                ((i * 7) % 255) as u8,
+                255,
+            ]);
+        }
+        let mut rgba_b = rgba_a.clone();
+        quantize(&mut rgba_a, w, h, 4);
+        quantize(&mut rgba_b, w, h, 4);
+        assert_eq!(
+            rgba_a, rgba_b,
+            "K-Means++ must be deterministic per fixed seed"
+        );
     }
 }

@@ -24,12 +24,16 @@
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
-use super::algorithm::{aspect_fit_within, resize_bilinear_rgba, run_pipeline};
+use super::algorithm::{
+    HistogramData, aspect_fit_within, compute_histogram, resize_bilinear_rgba, run_pipeline,
+};
 use super::ids;
 use super::params::{
     ColorEqualizationParams, ColorEqualizationUiEdit, ColorEqualizationUiSnapshot, apply_ui_edit,
-    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, saturation_to_slider,
-    tile_grid_to_slider,
+    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, denoise_strength_to_slider,
+    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider, saturation_to_slider,
+    sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
+    tint_to_slider, vibrance_to_slider,
 };
 
 /// Side cap (px) for the live preview overlay. The preview re-runs the
@@ -78,6 +82,22 @@ pub struct ColorEqualizationTool {
     /// Apply trigger). The shell uses this as the gate for rerunning the
     /// on-canvas live preview — mirrors `BgRemovalTool::take_params_dirty`.
     params_dirty: bool,
+
+    /// `Some(slot)` (1 or 2) when the user just picked an option from the
+    /// LUT slot's grouped dropdown — the panel paint reads this and
+    /// force-closes that dropdown's open state on the next frame.
+    /// Without it, the popover would stay open until the user clicked
+    /// the chip again. Drained via [`Self::take_pending_close_lut_dropdown`].
+    pending_close_lut_dropdown: Option<u8>,
+
+    /// `true` when the params were just reset to defaults (Reset button
+    /// OR `on_activate`). The shell bridge drains this and re-runs
+    /// `Panel::populate(store)` so the slider knob / chip text
+    /// positions snap back to defaults too — without this, only the
+    /// params struct resets while the WidgetStore retains whatever
+    /// drag position the user last left (knobs stay where they were,
+    /// but pipeline runs against defaults — a confusing desync).
+    pending_panel_reset: bool,
 }
 
 impl ColorEqualizationTool {
@@ -127,6 +147,24 @@ impl ColorEqualizationTool {
         std::mem::take(&mut self.params_dirty)
     }
 
+    /// Drain the "close this LUT dropdown" request. Returns `Some(slot)`
+    /// (1 or 2) exactly once after the user picks an option from the
+    /// grouped dropdown; the panel calls this each paint and force-flips
+    /// the matching `InteractiveState::Dropdown.open` to `false`.
+    pub fn take_pending_close_lut_dropdown(&mut self) -> Option<u8> {
+        self.pending_close_lut_dropdown.take()
+    }
+
+    /// Drain the "panel store needs repopulation" request. Returns
+    /// `true` exactly once after Reset or `on_activate` fired
+    /// `apply_ui_edit::ResetAll`; the shell bridge then calls
+    /// `Panel::populate(store)` to snap every slider knob + chip
+    /// text back to the default-constructed state. Mirrors the other
+    /// `take_pending_*` drains.
+    pub fn take_pending_panel_reset(&mut self) -> bool {
+        std::mem::take(&mut self.pending_panel_reset)
+    }
+
     /// Project the live params into the snapshot the typed
     /// `ph2d-panel-color-equalization` paints. Host publishes a fresh
     /// snapshot once per frame while the tool is active.
@@ -134,16 +172,56 @@ impl ColorEqualizationTool {
         ColorEqualizationUiSnapshot {
             clip_limit01: clip_limit_to_slider(self.params.clip_limit),
             tile_grid01: tile_grid_to_slider(self.params.tile_grid_size),
+            exposure01: exposure_to_slider(self.params.exposure),
+            temperature01: temperature_to_slider(self.params.temperature),
+            tint01: tint_to_slider(self.params.tint),
             brightness01: brightness_to_slider(self.params.brightness),
             contrast01: contrast_to_slider(self.params.contrast),
+            vibrance01: vibrance_to_slider(self.params.vibrance),
             saturation01: saturation_to_slider(self.params.saturation),
+            sharpen_amount01: sharpen_amount_to_slider(self.params.sharpen_amount),
+            sharpen_radius01: sharpen_radius_to_slider(self.params.sharpen_radius),
+            denoise_strength01: denoise_strength_to_slider(self.params.denoise_strength),
+            lut_intensity01: lut_intensity_to_slider(self.params.lut_intensity),
+            lut_mix01: lut_mix_to_slider(self.params.lut_mix),
+            auto_levels: self.params.auto_levels,
+            auto_contrast: self.params.auto_contrast,
+            auto_colors: self.params.auto_colors,
             auto_wb: self.params.auto_wb,
+            lut_preset_1: self.params.lut_preset_1,
+            lut_preset_2: self.params.lut_preset_2,
+            posterize_levels: self.params.posterize_levels,
+            posterize_dithering: self.params.posterize_dithering,
+            quantize_colors: self.params.quantize_colors,
             clip_limit: self.params.clip_limit,
             tile_grid_size: self.params.tile_grid_size,
+            exposure: self.params.exposure,
+            temperature: self.params.temperature,
+            tint: self.params.tint,
             brightness: self.params.brightness,
             contrast: self.params.contrast,
+            vibrance: self.params.vibrance,
             saturation: self.params.saturation,
+            sharpen_amount: self.params.sharpen_amount,
+            sharpen_radius: self.params.sharpen_radius,
+            denoise_strength: self.params.denoise_strength,
+            lut_intensity: self.params.lut_intensity,
+            lut_mix: self.params.lut_mix,
         }
+    }
+
+    /// Compute the histogram of the current preview (Phase 2). Pulls
+    /// `preview_rgba()` first so the histogram reflects the active
+    /// params; returns the default (empty) histogram when no source is
+    /// loaded yet. The shell is expected to publish this once per frame
+    /// to `ph2d_panel_color_equalization::set_current_histogram` so the
+    /// panel overlay paints up-to-date bins.
+    pub fn preview_histogram(&mut self) -> HistogramData {
+        let (rgba, _, _) = self.preview_rgba();
+        if rgba.is_empty() {
+            return HistogramData::default();
+        }
+        compute_histogram(rgba)
     }
 
     /// Apply one panel-originated edit against the live params. Re-runs
@@ -156,6 +234,13 @@ impl ColorEqualizationTool {
             self.params_dirty = true;
             return;
         }
+        // Reset also stages a panel-store repopulation (shell drains via
+        // `take_pending_panel_reset`) so the slider knobs / chip text
+        // snap back to defaults — without it, only `params` resets
+        // while the WidgetStore keeps the last drag positions.
+        if matches!(edit, ColorEqualizationUiEdit::ResetAll) {
+            self.pending_panel_reset = true;
+        }
         if apply_ui_edit(&mut self.params, edit) && self.has_source() {
             self.preview_dirty = true;
         }
@@ -165,19 +250,67 @@ impl ColorEqualizationTool {
     /// Borrow the current preview RGBA + its dimensions. Returns an empty
     /// slice + `(0, 0)` until a source is pushed. Lazily reruns the
     /// pipeline when `preview_dirty` is set.
+    ///
+    /// Uses the GPU [`ChainedPipelineCache`](super::gpu::ChainedPipelineCache)
+    /// when built with `--features gpu` AND an adapter is available;
+    /// falls back to the CPU pipeline when either fails. The GPU
+    /// chain at 512² typically costs ~15-30 ms (vs. 150-380 ms CPU
+    /// when Quantize / Bilateral are active), reclaiming the budget
+    /// the debounce-on-release strategy assumed.
     pub fn preview_rgba(&mut self) -> (&[u8], u32, u32) {
         if self.preview_dirty && self.has_source() {
             self.preview_rgba.clear();
-            run_pipeline(
-                &self.preview_src_rgba,
-                self.preview_src_w,
-                self.preview_src_h,
-                &self.params,
-                &mut self.preview_rgba,
+            self.preview_rgba.resize(
+                (self.preview_src_w as usize) * (self.preview_src_h as usize) * 4,
+                0,
             );
+            let ran_on_gpu = self.try_preview_gpu();
+            if !ran_on_gpu {
+                run_pipeline(
+                    &self.preview_src_rgba,
+                    self.preview_src_w,
+                    self.preview_src_h,
+                    &self.params,
+                    &mut self.preview_rgba,
+                );
+            }
             self.preview_dirty = false;
         }
         (&self.preview_rgba, self.preview_src_w, self.preview_src_h)
+    }
+
+    /// Try to run the preview through the GPU chain. Returns `true`
+    /// when it ran (and `self.preview_rgba` holds the result), `false`
+    /// to signal the caller should run the CPU fallback. Always
+    /// returns `false` when the crate is built without `--features
+    /// gpu`. With the feature, uses the process-wide cached
+    /// [`super::gpu::try_preview_chain`] so the ~10-20 ms pipeline
+    /// compile is paid once, not per slider release.
+    #[cfg(not(feature = "gpu"))]
+    fn try_preview_gpu(&mut self) -> bool {
+        false
+    }
+    #[cfg(feature = "gpu")]
+    fn try_preview_gpu(&mut self) -> bool {
+        use super::gpu::{try_headless_gpu, try_preview_chain};
+        let Some(gpu) = try_headless_gpu() else {
+            return false;
+        };
+        let Some(chain) = try_preview_chain() else {
+            return false;
+        };
+        // `run_chained` consumes its `rgba` in place — seed with the
+        // preview source (the chain reads input + writes output to
+        // the same buffer via texture upload + readback).
+        self.preview_rgba.copy_from_slice(&self.preview_src_rgba);
+        chain.run_chained(
+            &gpu,
+            &mut self.preview_rgba,
+            self.preview_src_w,
+            self.preview_src_h,
+            &self.params,
+        );
+        true
     }
 
     /// Run the full-resolution pipeline against the cached source and
@@ -198,6 +331,28 @@ impl ColorEqualizationTool {
             out,
         );
         (self.source_w, self.source_h)
+    }
+
+    /// GPU twin of [`Self::run_full_resolution`] — chains every GPU stage
+    /// (Phase 1 tonal batch, LUT, bilateral, sharpen, auto-WB) into one
+    /// upload + N dispatches + one readback via
+    /// [`super::gpu::ChainedPipelineCache`]. CLAHE + auto-* normalisations
+    /// still run CPU-side inside the chain. Returns `None` when no GPU
+    /// adapter is available (CI runners, headless without Metal/Vulkan);
+    /// callers should fall back to [`Self::run_full_resolution`] in that
+    /// case.
+    #[cfg(feature = "gpu")]
+    pub fn run_full_resolution_gpu(&mut self, out: &mut Vec<u8>) -> Option<(u32, u32)> {
+        use super::gpu::{ChainedPipelineCache, try_headless_gpu};
+        assert!(self.has_source(), "set_source_snapshot must run first");
+        let gpu = try_headless_gpu()?;
+        let cache = ChainedPipelineCache::new(&gpu);
+        let expected = (self.source_w as usize) * (self.source_h as usize) * 4;
+        out.clear();
+        out.resize(expected, 0);
+        out.copy_from_slice(&self.source_rgba);
+        cache.run_chained(&gpu, out, self.source_w, self.source_h, &self.params);
+        Some((self.source_w, self.source_h))
     }
 
     /// Build [`Self::preview_src_rgba`] — the source downscaled to fit
@@ -246,13 +401,24 @@ impl Tool for ColorEqualizationTool {
         panel
     }
 
+    fn on_activate(&mut self) {
+        // Reset every adjustment back to defaults so re-opening the
+        // panel never inherits a previous session's slider state.
+        // MUST route through `apply_ui_edit::ResetAll` (not assign
+        // `params` directly) so the `pending_panel_reset` flag is
+        // staged for the bridge to drain — without that, only the
+        // tool's params reset while the WidgetStore keeps the user's
+        // last drag positions and the sliders stay visually stuck.
+        self.apply_ui_edit(ColorEqualizationUiEdit::ResetAll);
+    }
+
     fn on_deactivate(&mut self) {
         // Clear the one-shot drain flags so a cancel-mid-Apply (or any
         // deactivation while the bridge hasn't yet drained) does not fire
         // a phantom bake nor a spurious preview rerun on next activation.
-        // Params persist (mirrors Padding / BgRemoval).
         self.pending_apply = false;
         self.params_dirty = false;
+        self.pending_close_lut_dropdown = None;
     }
 
     fn handle_panel_event(&mut self, event: PanelEvent) {
@@ -261,18 +427,30 @@ impl Tool for ColorEqualizationTool {
         // centralizes the clamps — every NodeId match here just routes to
         // the matching variant.
         match event {
-            // Sliders.
+            // Sliders (normalized 0..1 track).
             PanelEvent::SetValue(id, v) if id == ids::CEQ_CLIP_LIMIT => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::ClipLimitSlider(v as f32));
             }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_TILE_GRID => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::TileGridSlider(v as f32));
             }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_EXPOSURE => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ExposureSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_TEMPERATURE => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::TemperatureSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_TINT => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::TintSlider(v as f32));
+            }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_BRIGHTNESS => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::BrightnessSlider(v as f32));
             }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_CONTRAST => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::ContrastSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_VIBRANCE => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::VibranceSlider(v as f32));
             }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_SATURATION => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::SaturationSlider(v as f32));
@@ -284,16 +462,131 @@ impl Tool for ColorEqualizationTool {
             PanelEvent::SetValue(id, v) if id == ids::CEQ_TILE_GRID_NUM => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::TileGrid(v.round() as u32));
             }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_EXPOSURE_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::Exposure(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_TEMPERATURE_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::Temperature(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_TINT_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::Tint(v as f32));
+            }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_BRIGHTNESS_NUM => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::Brightness(v as f32));
             }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_CONTRAST_NUM => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::Contrast(v as f32));
             }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_VIBRANCE_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::Vibrance(v as f32));
+            }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_SATURATION_NUM => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::Saturation(v as f32));
             }
+            // Phase 2 sliders.
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_SHARPEN_AMOUNT => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::SharpenAmountSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_SHARPEN_AMOUNT_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::SharpenAmount(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_SHARPEN_RADIUS => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::SharpenRadiusSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_SHARPEN_RADIUS_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::SharpenRadius(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_DENOISE_STRENGTH => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::DenoiseStrengthSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_DENOISE_STRENGTH_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::DenoiseStrength(v as f32));
+            }
+            // Phase 3 LUT sliders.
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_LUT_INTENSITY => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::LutIntensitySlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_LUT_INTENSITY_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::LutIntensity(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_LUT_MIX => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::LutMixSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_LUT_MIX_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::LutMix(v as f32));
+            }
+            // Phase 3 LUT grouped-select option clicks. The dropdown chip
+            // toggle is handled automatically by `InteractiveState::
+            // Dropdown` in the dispatch (chip is registered in
+            // populate.rs); we only need to react to OPTION clicks here.
+            // Guarded by `CEQ_LUT_{1,2}_OPTS.contains(&id)` so this arm
+            // doesn't shadow the auto-* button arms below.
+            PanelEvent::Click(id) if ids::CEQ_LUT_1_OPTS.contains(&id) => {
+                let idx = ids::CEQ_LUT_1_OPTS
+                    .iter()
+                    .position(|o| *o == id)
+                    .unwrap_or(0);
+                let preset = crate::lut_presets::LutPreset::ALL[idx];
+                self.apply_ui_edit(ColorEqualizationUiEdit::SetLutPreset1(preset));
+                self.pending_close_lut_dropdown = Some(1);
+            }
+            PanelEvent::Click(id) if ids::CEQ_LUT_2_OPTS.contains(&id) => {
+                let idx = ids::CEQ_LUT_2_OPTS
+                    .iter()
+                    .position(|o| *o == id)
+                    .unwrap_or(0);
+                let preset = crate::lut_presets::LutPreset::ALL[idx];
+                self.apply_ui_edit(ColorEqualizationUiEdit::SetLutPreset2(preset));
+                self.pending_close_lut_dropdown = Some(2);
+            }
+            // Phase 5 Posterize option click. Mirror of LUT — option
+            // NodeIds are unique per dropdown so the guard is
+            // sufficient; `pending_close_lut_dropdown` is reused with
+            // slot tags 3 (Posterize) / 4 (Quantize) so the panel's
+            // close drain handles all four dropdowns uniformly.
+            PanelEvent::Click(id) if ids::CEQ_POSTERIZE_OPTS.contains(&id) => {
+                let idx = ids::CEQ_POSTERIZE_OPTS
+                    .iter()
+                    .position(|o| *o == id)
+                    .unwrap_or(0);
+                let levels = ids::CEQ_POSTERIZE_LEVELS[idx];
+                self.apply_ui_edit(ColorEqualizationUiEdit::SetPosterizeLevels(levels));
+                self.pending_close_lut_dropdown = Some(3);
+            }
+            PanelEvent::Click(id) if ids::CEQ_QUANTIZE_OPTS.contains(&id) => {
+                let idx = ids::CEQ_QUANTIZE_OPTS
+                    .iter()
+                    .position(|o| *o == id)
+                    .unwrap_or(0);
+                let colors = ids::CEQ_QUANTIZE_COLORS[idx];
+                self.apply_ui_edit(ColorEqualizationUiEdit::SetQuantizeColors(colors));
+                self.pending_close_lut_dropdown = Some(4);
+            }
+            PanelEvent::Click(id) if id == ids::CEQ_POSTERIZE_DITHERING => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleDithering);
+            }
+            PanelEvent::Toggle(id, _) if id == ids::CEQ_POSTERIZE_DITHERING => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleDithering);
+            }
             // Toggles + buttons.
+            PanelEvent::Click(id) if id == ids::CEQ_AUTO_LEVELS => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoLevels);
+            }
+            PanelEvent::Toggle(id, _) if id == ids::CEQ_AUTO_LEVELS => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoLevels);
+            }
+            PanelEvent::Click(id) if id == ids::CEQ_AUTO_CONTRAST => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoContrast);
+            }
+            PanelEvent::Toggle(id, _) if id == ids::CEQ_AUTO_CONTRAST => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoContrast);
+            }
+            PanelEvent::Click(id) if id == ids::CEQ_AUTO_COLORS => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoColors);
+            }
+            PanelEvent::Toggle(id, _) if id == ids::CEQ_AUTO_COLORS => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoColors);
+            }
             PanelEvent::Click(id) if id == ids::CEQ_AUTO_WB => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoWb);
             }
@@ -302,6 +595,9 @@ impl Tool for ColorEqualizationTool {
             }
             PanelEvent::Click(id) if id == ids::CEQ_APPLY => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::Apply);
+            }
+            PanelEvent::Click(id) if id == ids::CEQ_RESET => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::ResetAll);
             }
             _ => {}
         }
@@ -434,6 +730,69 @@ mod tests {
         let (w, h) = t.run_full_resolution(&mut out);
         assert_eq!((w, h), (7, 11));
         assert_eq!(out.len(), 7 * 11 * 4);
+    }
+
+    #[test]
+    fn run_full_resolution_works_after_per_sprite_source_swap() {
+        // Mirrors the shell drain pattern: one ColorEqualizationTool
+        // instance bakes N sprites in sequence via
+        // set_source_snapshot → run_full_resolution per entity. Each
+        // bake must reflect the CURRENT snapshot, not leftover state
+        // from a previous sprite. This is the contract `drain_color_
+        // equalization` depends on for multi-select Apply.
+        let mut t = ColorEqualizationTool::default();
+        // Apply non-trivial params so the pipeline actually runs (defaults
+        // would still bake CLAHE, but we force a tonal change too).
+        t.handle_panel_event(PanelEvent::SetValue(ids::CEQ_BRIGHTNESS, 1.0));
+
+        // Sprite 1: red source.
+        t.set_source_snapshot(solid(4, 4, [200, 50, 30]), 4, 4);
+        let mut out1 = Vec::new();
+        let (w1, h1) = t.run_full_resolution(&mut out1);
+        assert_eq!((w1, h1), (4, 4));
+        let red_first_px = out1[0];
+
+        // Sprite 2: different size + colour. The tool MUST re-bake
+        // against the fresh snapshot, not reuse out1's dims/pixels.
+        t.set_source_snapshot(solid(8, 6, [30, 200, 50]), 8, 6);
+        let mut out2 = Vec::new();
+        let (w2, h2) = t.run_full_resolution(&mut out2);
+        assert_eq!((w2, h2), (8, 6));
+        assert_eq!(out2.len(), 8 * 6 * 4);
+        // Pixel 0 of sprite 2 starts from green source — must differ
+        // from sprite 1's red pixel under the same brightness boost.
+        assert_ne!(red_first_px, out2[0], "per-sprite source swap leaked state");
+        // Sprite 2 should have a green-dominant pixel after boost.
+        assert!(out2[1] > out2[0]);
+        assert!(out2[1] > out2[2]);
+    }
+
+    #[test]
+    fn on_activate_resets_params_and_arms_panel_repopulate() {
+        // Regression cover (§12.3 / §12.4 UI_Bugs): `on_activate` MUST
+        // route through `apply_ui_edit::ResetAll` so (a) params snap to
+        // defaults AND (b) `pending_panel_reset` arms so the shell
+        // bridge re-runs `Panel::populate(store)` and the slider knobs
+        // visually snap back. Direct mutation of `self.params` bypasses
+        // the flag and leaves sliders stuck — that bug shipped twice
+        // this session.
+        let mut t = ColorEqualizationTool::default();
+        // Dirty the state — simulate a prior session.
+        t.handle_panel_event(PanelEvent::SetValue(ids::CEQ_BRIGHTNESS, 1.0));
+        t.handle_panel_event(PanelEvent::Click(ids::CEQ_AUTO_WB));
+        assert!((t.params.brightness - 1.0).abs() < 1e-5);
+        assert!(t.params.auto_wb);
+        // Drain any stray reset flag first.
+        let _ = t.take_pending_panel_reset();
+
+        t.on_activate();
+
+        let dft = ColorEqualizationUiSnapshot::default();
+        assert_eq!(t.ui_snapshot(), dft, "on_activate must reset params");
+        assert!(
+            t.take_pending_panel_reset(),
+            "on_activate must arm pending_panel_reset"
+        );
     }
 
     #[test]

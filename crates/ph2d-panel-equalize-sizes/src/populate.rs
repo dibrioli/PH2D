@@ -44,6 +44,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::EQS_ALG_XBR,
         ids::EQS_CANCEL,
         ids::EQS_APPLY,
+        ids::EQS_RESET,
     ] {
         store.register(
             id,

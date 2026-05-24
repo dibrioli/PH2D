@@ -369,6 +369,10 @@ pub enum BgRemovalUiEdit {
     SetMinIslandPixels(f32),
     /// Apply button pressed — commit at full resolution.
     Apply,
+    /// Reset every adjustment back to defaults (sliders, toggles,
+    /// extra-bg picks, painted protection mask). Fired by the panel's
+    /// Reset button AND by the tool's `on_activate`.
+    ResetAll,
 }
 
 #[cfg(test)]

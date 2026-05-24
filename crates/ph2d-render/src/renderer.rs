@@ -332,13 +332,17 @@ impl SpriteRenderer {
         for inst in q.iter(present.world()) {
             self.scratch.push(*inst);
         }
-        // M14.5 C: sort by texture_id so individually-textured sprites
-        // group into contiguous runs. Stable sort keeps insertion
-        // order within each texture (matters once a Z-sort lands and
-        // tie-breaking has to preserve same-z ordering). For the
-        // typical workload (≤ a few thousand instances, < 10 distinct
-        // textures) the O(N log N) cost is dwarfed by GPU work.
-        self.scratch.sort_by_key(|i| i.texture_id);
+        // Sort by (z_order, texture_id). z_order is the extract-time
+        // sequential counter from `propagate_transforms`'s DFS so the
+        // render order matches the Hierarchy panel — without this an
+        // image-tool bake that flipped a sprite from Atlas (id=0) to
+        // Individual (id>0) silently jumped to the front because the
+        // old `sort_by_key(i.texture_id)` grouped all Atlas before
+        // any Individual. The texture_id tiebreaker still groups same-
+        // texture instances into contiguous runs within an unchanged
+        // z slice (e.g. two sprites authored back-to-back in the
+        // hierarchy that share the atlas keep one bind group switch).
+        self.scratch.sort_by_key(|i| (i.z_order, i.texture_id));
         compute_runs(&self.scratch, &mut self.runs);
         let count = self
             .instance_buffer
@@ -443,7 +447,7 @@ mod tests {
             texture_id,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
-            _pad: 0,
+            z_order: 0,
         }
     }
 

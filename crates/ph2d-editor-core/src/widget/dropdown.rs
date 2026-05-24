@@ -111,17 +111,37 @@ impl<T: Clone + PartialEq> Dropdown<T> {
             .map(|o| o.label.as_str())
     }
 
-    /// Floating popover panel that wraps every option row when the
-    /// dropdown is open. Sits just below the chip with a small
-    /// breathing gap so the chip's bottom border + the panel's top
-    /// border don't fuse into a single line. Tight: only the
-    /// `POPOVER_PANEL_PAD_Y` of internal vertical room — option rows
-    /// touch the panel chrome edge-to-edge minus that small pad.
+    /// Popover rect below the chip. Use [`Self::popover_rect_clamped`]
+    /// when the chip can sit near the screen edge.
     pub fn popover_rect(&self, chip: Rect) -> Rect {
-        let row_h = chip.h;
-        let count = self.options.len().max(1) as f32;
-        let h = row_h * count + POPOVER_PANEL_PAD_Y * 2.0;
+        let h = chip.h * self.options.len().max(1) as f32 + POPOVER_PANEL_PAD_Y * 2.0;
         Rect::new(chip.x, chip.y + chip.h + POPOVER_GAP, chip.w, h)
+    }
+
+    /// Like [`Self::popover_rect`] but flips ABOVE the chip when below
+    /// overflows `viewport`. Falls back to the side with more room +
+    /// clamped height when neither fits.
+    pub fn popover_rect_clamped(&self, chip: Rect, viewport: Rect) -> Rect {
+        let row_h = chip.h;
+        let wanted_h = row_h * self.options.len().max(1) as f32 + POPOVER_PANEL_PAD_Y * 2.0;
+        let space_below = (viewport.y + viewport.h) - (chip.y + chip.h + POPOVER_GAP);
+        let space_above = (chip.y - POPOVER_GAP) - viewport.y;
+        let min_h = row_h + POPOVER_PANEL_PAD_Y * 2.0;
+        if wanted_h <= space_below {
+            Rect::new(chip.x, chip.y + chip.h + POPOVER_GAP, chip.w, wanted_h)
+        } else if wanted_h <= space_above {
+            Rect::new(chip.x, chip.y - POPOVER_GAP - wanted_h, chip.w, wanted_h)
+        } else if space_below >= space_above {
+            Rect::new(
+                chip.x,
+                chip.y + chip.h + POPOVER_GAP,
+                chip.w,
+                space_below.max(min_h),
+            )
+        } else {
+            let h = space_above.max(min_h);
+            Rect::new(chip.x, chip.y - POPOVER_GAP - h, chip.w, h)
+        }
     }
 
     /// Open-list option row rect. The host rect is the *closed* chip;
@@ -129,8 +149,19 @@ impl<T: Clone + PartialEq> Dropdown<T> {
     /// Tight horizontal inset so each row reads as part of the panel,
     /// not a free-floating sub-rect.
     pub fn option_rect(&self, chip: Rect, index: usize) -> Rect {
-        let panel = self.popover_rect(chip);
-        let row_h = chip.h;
+        self.option_rect_in_panel(self.popover_rect(chip), chip.h, index)
+    }
+
+    /// Same as [`Self::option_rect`] but takes a pre-computed panel
+    /// rect — use this when the popover was placed via
+    /// [`Self::popover_rect_clamped`] so the option rows land inside
+    /// the actual (possibly flipped) popover, not the default below-
+    /// chip one.
+    pub fn option_rect_in(&self, chip: Rect, panel: Rect, index: usize) -> Rect {
+        self.option_rect_in_panel(panel, chip.h, index)
+    }
+
+    fn option_rect_in_panel(&self, panel: Rect, row_h: f32, index: usize) -> Rect {
         Rect::new(
             panel.x + POPOVER_PANEL_PAD_X,
             panel.y + POPOVER_PANEL_PAD_Y + row_h * index as f32,
@@ -279,6 +310,20 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_dropdown_popover_in_viewport(dd, chip_rect, None, scene, text_system, theme);
+}
+
+/// Variant of [`paint_dropdown_popover`] that flips above when below
+/// overflows `viewport`. Panels paint chips near the bottom of the
+/// screen pass `PaintCtx::viewport` here so option lists stay on-screen.
+pub fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    chip_rect: Rect,
+    viewport: Option<Rect>,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     if !dd.open {
         return;
     }
@@ -288,7 +333,10 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
     // call was "tire toda transparência da lista do dropdown".
     // `opaque(token)` forces alpha to 255 while keeping the token's
     // RGB so the color still tracks the theme.
-    let panel = dd.popover_rect(chip_rect);
+    let panel = match viewport {
+        Some(vp) => dd.popover_rect_clamped(chip_rect, vp),
+        None => dd.popover_rect(chip_rect),
+    };
     let panel_radius = Radius::Md.px();
     fill_rounded_rect(
         scene,
@@ -305,7 +353,7 @@ pub fn paint_dropdown_popover<T: Clone + PartialEq>(
     );
     let font_size = TypeToken::Base.px();
     for (i, opt) in dd.options.iter().enumerate() {
-        let r = dd.option_rect(chip_rect, i);
+        let r = dd.option_rect_in(chip_rect, panel, i);
         let is_selected = dd.selected.as_ref() == Some(&opt.value);
         if is_selected {
             // Use the saturated `Accent` (alpha-255 by token) for

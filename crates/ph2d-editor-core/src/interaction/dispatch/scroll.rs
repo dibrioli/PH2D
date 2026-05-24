@@ -74,6 +74,8 @@ pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::GAL_PANEL)
     } else if id == crate::widget::GRID_SETTINGS_SCROLLBAR_ID {
         Some(crate::ids::GS_PANEL)
+    } else if id == crate::widget::COLOR_EQUALIZATION_SCROLLBAR_ID {
+        Some(crate::ids::CEQ_PANEL)
     } else {
         None
     }

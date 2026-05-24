@@ -54,7 +54,10 @@ pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
             texture_id: 0,
-            _pad: 0,
+            // Node-graph emit doesn't have a hierarchy slot — every
+            // motion node's instances share `z_order = 0`. Renderer's
+            // tiebreaker (`texture_id`) groups them into one run.
+            z_order: 0,
         })
         .collect()
 }

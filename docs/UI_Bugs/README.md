@@ -991,3 +991,377 @@ dispatch/painter. Lição estrutural codificada em
 - **Código**: princípio aplicado em
   [`mark_chip_no_stepper`](../../crates/ph2d-editor-core/src/interaction/state/mod.rs)
   — model template pra futuras opt-outs paint-variant.
+
+---
+
+## 12. Color Equalization Phase 2+ + 4 sister image tools (2026-05-23+)
+
+Bugs do polish e fan-out das image-tools depois do slot 1 fechar.
+§11 cobriu o setup base (preview overlay, drag delta, stepper opt-out,
+populate divergence). Esta seção cobre o que apareceu DEPOIS, ao
+expandir CEQ (Phase 1→5: tonal+LUT+sharpen+denoise+posterize+quantize)
+e replicar pros 4 image-tools restantes (Padding, BgRemoval, Upscale,
+EqualizeSizes).
+
+### 12.1 Event-router incompleto — controles novos silenciosamente mortos
+
+- **Sintoma**: usuário arrasta sliders de Exposure / Vibrance /
+  Saturation / Sharpen / Denoise / LUT no painel CEQ — knob mexe, mas
+  o pipeline não roda. Mesma coisa pros 47 options dos dropdowns LUT/
+  Posterize/Quantize: clica, popover fecha, mas a opção não aplica.
+- **Causa**: `panel/event.rs::apply_event` é o chokepoint que
+  traduz `WidgetEvent::ValueChanged/Click` → `EditorAction::ToolPanelEvent`.
+  O CEQ era um `slider_for_widget` com hardcoded 5 ids (Clip / Tile /
+  Brightness / Contrast / Saturation) — Phase 1+2+3+5 adicionou 9
+  sliders + 47 option ids + 4 botões mas ninguém atualizou a tabela.
+  Tudo que faltava caía no `_ => false` → tool nunca via o evento.
+- **Fix**: tabela `pairs: &[(slider_id, chip_id)]` cobrindo TODOS os 14
+  slider+chip pairs registrados em populate; `is_dropdown_option(id)`
+  varrendo `CEQ_LUT_{1,2}_OPTS` + `CEQ_POSTERIZE_OPTS` +
+  `CEQ_QUANTIZE_OPTS`; `FORWARD_CLICK_IDS: &[NodeId]` lista todos os
+  botões que viram `PanelEvent::Click`. Doc-comment do módulo diz
+  explícito: "add a new control here whenever you wire one in
+  populate".
+- **Lição estrutural**: `populate.rs` registra widgets no store + paint
+  pinta + dispatch infere clicks — mas a tradução pro tool é manual.
+  Adicionar slider/chip/dropdown novo SEM cobrir o router é deixar
+  um controle morto, sem warning. Considerar arch-test que liste
+  todos NodeIds registrados em populate e checke se cada um tem arm
+  no router OU está numa allowlist explícita.
+- **Código**: [`crates/ph2d-panel-color-equalization/src/event.rs`](../../crates/ph2d-panel-color-equalization/src/event.rs).
+
+### 12.2 Dropdown option NodeIds DEVEM ser registrados como Button
+
+- **Sintoma**: dropdowns abrem (chip click toggla `open`), popover
+  pinta opções, usuário clica numa opção — NADA acontece. Sem evento.
+- **Causa**: `dispatch::pointer::Down` só seta `active`/`active_rect`
+  para ids que passam por `is_focusable(store, id)`. Esse helper
+  retorna `false` quando `store.get(id) == None`. Os 47 option
+  NodeIds eram só hit-registered (paint cria os rects no
+  `hit_index_mut`) mas nunca registrados como InteractiveState. Down
+  acertava o rect, `is_focusable` falhava, Up não chamava
+  `apply_click`, nenhum `Click(option_id)` event saía. O Inspector
+  showcase tinha o mesmo gap mas como ninguém clica em "sample
+  dropdown options" em produção, o bug ficou dormente.
+- **Fix**: `populate` registra cada option id como
+  `InteractiveState::Button { state: Normal }`. O paint continua
+  igual. Down agora passa is_focusable → Up chama apply_click → Click
+  event fluiu pro tool.
+- **Lição estrutural**: o pattern "option NodeIds são só visuais,
+  não precisa store entry" é FALSO. Toda hit-registered NodeId que
+  precisa de Click event tem que estar no WidgetStore. Compõe com
+  §11.3 (chip pill vs boxed): há várias suposições silenciosas no
+  dispatch sobre o WidgetStore — quando o painter desvia, o estado
+  interativo TAMBÉM precisa desviar.
+- **Código**: [`crates/ph2d-panel-color-equalization/src/populate.rs`
+  — bloco `Dropdown option ids MUST be registered too`](../../crates/ph2d-panel-color-equalization/src/populate.rs).
+
+### 12.3 `on_activate` direto-em-params bypassa pending_panel_reset
+
+- **Sintoma**: usuário mexe sliders, fecha o painel (Cancel/Apply),
+  reabre — sliders ficam visualmente PRESOS na posição anterior, mas
+  o pipeline roda contra defaults (chips mostram defaults). Desync
+  brutal entre slider knob e chip number.
+- **Causa**: o tool resetava `self.params = Default::default()`
+  direto no `on_activate`. Não passava pelo `apply_ui_edit::ResetAll`,
+  então a flag `pending_panel_reset` nunca era setada. A flag
+  controla quando o bridge re-chama `Panel::populate(store)` —
+  populate sobrescreve os valores do WidgetStore com defaults. Sem
+  re-populate, o store mantém as posições do último drag e o paint
+  lê dele.
+- **Fix**: `on_activate` chama `self.apply_ui_edit(ResetAll)` — mesma
+  path do botão Reset. Single chokepoint pra reset → flag sempre
+  staged → bridge sempre repopulates → slider visual sincroniza com
+  params.
+- **Lição estrutural**: tool reset state em DOIS lugares (botão
+  Reset + on_activate) tem que routar pela MESMA `apply_ui_edit`
+  variant — qualquer atalho que assigne `self.params = default`
+  direto vai esquecer flags downstream. Mesmo padrão de
+  "single chokepoint para mutação" do §11.4.
+- **Código**: [`crates/ph2d-tool-color-equalization/src/tool.rs`
+  `on_activate`](../../crates/ph2d-tool-color-equalization/src/tool.rs).
+
+### 12.4 Reset sem repopulate desincroniza slider visual ⟷ params
+
+- **Sintoma**: clicar "Reset to Defaults" zera os params (vê pela
+  ausência de efeito no canvas) mas os sliders ficam nas posições do
+  último drag.
+- **Causa**: panel paint lê o slider track do `store.slider(id).value`,
+  NÃO do snapshot dos params. `apply_ui_edit::ResetAll` mexia em
+  `params` mas não tocava no store. O store mantinha o valor
+  arrastado.
+- **Fix**: novo padrão para os 5 image-tools — campo
+  `pending_panel_reset: bool` no tool struct; `apply_ui_edit::ResetAll`
+  seta `true`; bridge drena via `take_pending_panel_reset()`; quando
+  true, bridge chama `Panel::populate(&mut hero.store)` via
+  `panel::with_registry_opt(|reg| reg.find_by_panel_node_id(...)`.
+  Populate sobrescreve cada slider/chip com o valor default (já que
+  `WidgetStore::register` overwrites existing entries). Slider snap
+  visual + chip texto resetam juntos com os params.
+- **Lição estrutural**: panel state vive em DOIS lugares — `params`
+  (tool) + `WidgetStore` (interaction). Reset tem que tocar nos dois.
+  O padrão "pending_X flag + bridge drains" generaliza pra qualquer
+  refresh-on-action que precise atravessar a fronteira tool↔store.
+- **Código**: 5 tool crates + 5 bridges
+  ([`color_equalization_bridge.rs`](../../shells/desktop/src/render_loop/color_equalization_bridge.rs)
+  é o template).
+
+### 12.5 Renderer sort por texture_id puro → Individual sprites pulam pra frente
+
+- **Sintoma**: aplicar CEQ / BgRemoval / Padding / Trim / MakeSquare
+  em uma sprite que estava ATRÁS de outras → ela visualmente "salta"
+  pra frente, sem que a Hierarchy panel mude a ordem.
+- **Causa**: `SpriteRenderer::render` fazia `scratch.sort_by_key(|i|
+  i.texture_id)`. `ATLAS_TEXTURE_ID = 0` < qualquer Individual id.
+  Toda sprite Atlas pinta ANTES de qualquer Individual. `commit_edited_texture`
+  vira a source de Atlas → Individual, então sprite recém-editada
+  pula pra trás na ordem de pintura = aparece por cima.
+- **Fix**: novo campo `RenderInstance.z_order: u32` (replace do
+  `_pad: u32`, mesma posição/alinhamento, sem mudança de vertex
+  layout). `sim_extract` atribui counter sequencial em
+  `propagate_transforms` (DFS da ChildOf tree, com roots collated por
+  RootOrder — mesma ordem da Hierarchy panel). Renderer agora faz
+  `sort_by_key(|i| (i.z_order, i.texture_id))` — z primeiro
+  (correto), texture_id como tiebreaker (batching dentro de mesmo z
+  slice, mantém run-grouping pra mesma texture quando adjacentes na
+  z-order).
+- **Lição estrutural**: tem 6 image-tools que chamam
+  `commit_edited_texture`; o bug afetava TODOS, não só CEQ. Quando o
+  renderer sort por proxy (texture_id como proxy de "z"), qualquer
+  refactor que mude a quantidade de tipos texture_id (Atlas + N
+  Individual) muda a ordem visual. Sort por dimensão CORRETA (z) +
+  proxy como tiebreaker.
+- **Código**: [`crates/ph2d-render/src/sprite.rs RenderInstance.z_order`](../../crates/ph2d-render/src/sprite.rs);
+  [`crates/ph2d-render/src/renderer.rs render` sort](../../crates/ph2d-render/src/renderer.rs);
+  [`shells/desktop/src/render_loop/sim_extract.rs z_counter`](../../shells/desktop/src/render_loop/sim_extract.rs).
+
+### 12.6 Live preview mono-sprite em multi-seleção
+
+- **Sintoma**: multi-select 2-3 sprites com CEQ ativo, ajusta sliders
+  — só a PRIMARY mostra o efeito ao vivo. Apply baka em todas mas o
+  usuário não consegue prever o look antes do bake.
+- **Causa**: `app_state.color_equalization_preview: Option<ColorEqualizationPreview>`
+  — apenas UM preview cacheado, indexado pelo entity_bits da primary.
+- **Fix**: virou `BTreeMap<u64, ColorEqualizationPreview>`. Bridge
+  loop por `iter_selected()`: para cada entity, push source no tool,
+  roda pipeline, cacheia. Selection-change retain só os keys vivos
+  (evict pra sprites que saíram da seleção). Overlay paint itera o
+  Map, desenha cada preview no footprint da sua sprite.
+- **Lição estrutural**: qualquer feature stateful-per-entity (preview,
+  overlay, computed state) em tool multi-select TEM que cachear por
+  entity desde o dia 1. `Option<X>` vs `BTreeMap<EntityBits, X>` é
+  diferença arquitetural que vira refactor não-trivial depois.
+- **Código**: [`shells/desktop/src/app_state.rs color_equalization_previews`](../../shells/desktop/src/app_state.rs);
+  [`color_equalization_bridge.rs` loop multi-sprite](../../shells/desktop/src/render_loop/color_equalization_bridge.rs).
+
+### 12.7 Preview heavy precisa de debounce-on-release, não per-frame
+
+- **Sintoma**: arrastar slider de CEQ é LENTO — frame rate cai a
+  ~5-10 fps em sprites grandes ou com Quantize ativo.
+- **Causa**: bridge fazia `take_params_dirty()` a cada frame; tool
+  rerunava pipeline completo (CLAHE + 7 tonal + LUT + bilateral +
+  sharpen + auto-* + auto-WB + posterize + quantize). Quantize sozinho
+  é 50-150ms; bilateral com strength alto é 30-80ms. Em multi-sprite
+  isso é N × per_frame_cost.
+- **Fix**: detectar drag ativo via `hero.store.active_id()` matching
+  contra os ids de slider/chip da tool. Durante drag NÃO drena
+  `params_dirty` (flag persiste). Em release (`active_id` flipa pra
+  None), drena e roda pipeline pra TODAS as sprites selecionadas em
+  full quality. Slider knob feel: instantâneo. Apply visual: aparece
+  no release.
+- **Decisão UX**: explicitamente combinado com o usuário —
+  "Ao arrastar qualquer slider não muda em tempo real, ao soltar o
+  slider aplica a todas com qualidade full". Trade-off: perde-se
+  preview ao vivo durante drag, ganha-se responsividade do knob +
+  quality full no Apply.
+- **Lição estrutural**: pipeline com N estágios CPU pesados (>20ms)
+  + slider drag DEVE ser debounced on-release. `take_params_dirty`
+  per-frame era o pattern dos paineis baratos; o CEQ growup pra
+  9-stage pipeline rompeu a suposição.
+- **Código**: [`color_equalization_bridge.rs is_ceq_drag_widget`](../../shells/desktop/src/render_loop/color_equalization_bridge.rs).
+
+### 12.8 Image-tool ativo deve esconder Inspector
+
+- **Sintoma**: abre CEQ/BgRemoval/Padding/Upscale/EqualizeSizes —
+  Inspector continua visível por baixo, ambos tentam pintar no slot
+  da direita, z-order resolve aleatório.
+- **Causa**: image-tool panels usam `ctx.layout.padding` (o mesmo
+  slot que Inspector). Não há mutex visual — cada panel pinta no seu
+  rect. Inspector renderiza primeiro, image-tool por cima (ou
+  vice-versa dependendo de z bump).
+- **Fix**: cada bridge faz `hero.panel_visibility.insert("inspector",
+  !active)` ao lado do próprio toggle de visibility. Tool ativo =>
+  Inspector escondido. Tool deactivate (Cancel/Apply) => Inspector
+  visível de volta. Como apenas 1 image-tool é ativo por vez
+  (mutex de set_active), não há corrida entre eles.
+- **Lição estrutural**: docks visuais (slots compartilhados) NÃO
+  são auto-resolvidos pelo renderer. Painel que dock no mesmo slot
+  de outro panel precisa explicitar "eu hide o outro quando ativo".
+- **Código**: 5 bridges ([color_equalization_bridge.rs:52](../../shells/desktop/src/render_loop/color_equalization_bridge.rs)
+  + 4 sister bridges).
+
+### 12.9 Bridge monosprite → multi-sprite via `iter_selected()`
+
+- **Sintoma**: Padding e BgRemoval só editam a primary sprite mesmo
+  com 2+ selecionadas via Shift-click.
+- **Causa**: bridges capturavam `hero.gizmo.selection` (singular
+  Option<u64>) em vez de `hero.gizmo.iter_selected().collect()`. CEQ
+  + Upscale + EqualizeSizes já usavam iter_selected; Padding e
+  BgRemoval ficaram pra trás na migração.
+- **Fix**: Padding bridge passou a retornar `Option<(spec, recenter,
+  Vec<u64>)>` e o drain itera. BgRemoval bridge pushia N
+  `OneShotImageOp` actions (um por sprite) — o existing leftover loop
+  já drainava cada um sequencialmente.
+- **Lição estrutural**: ao adicionar feature multi-select, audit
+  EVERY bridge — facil ficar 60% migrado e 40% latente.
+- **Código**: [`padding_bridge.rs:44`](../../shells/desktop/src/render_loop/padding_bridge.rs);
+  [`bgremoval_preview.rs:93`](../../shells/desktop/src/render_loop/bgremoval_preview.rs).
+
+### 12.10 Dropdown popover overflow → flip ABOVE quando não cabe
+
+- **Sintoma**: clicar Posterize / Quantize / LUT dropdowns perto do
+  rodapé do painel CEQ → popover extende abaixo do viewport, opções
+  do fim ficam cortadas off-screen.
+- **Causa**: `Dropdown::popover_rect(chip)` sempre coloca o popover
+  BELOW chip com gap. Sem awareness de viewport bound.
+- **Fix**: novo método `popover_rect_clamped(chip, viewport)`. Prefer
+  below quando cabe, flip above quando não, fallback no lado com
+  mais espaço + clamp de altura. Novo `paint_dropdown_popover_in_viewport`
+  aceita `Option<Rect>` viewport e usa o clamped. CEQ panel passa
+  `ctx.viewport` nos 4 dropdowns + `option_rect_in(chip, panel_rect,
+  i)` pra registrar hits no rect REAL (flipped quando preciso).
+- **Lição estrutural**: floating popovers/menus/tooltips DEVEM
+  considerar viewport bounds. Sem isso, mesmo um Dropdown bem feito
+  vira inutilizável em painéis altos. Future: extender pra horizontal
+  flip também (popovers a partir da margem direita).
+- **Código**: [`crates/ph2d-editor-core/src/widget/dropdown.rs popover_rect_clamped`](../../crates/ph2d-editor-core/src/widget/dropdown.rs).
+
+### 12.11 GPU pipeline cache via OnceLock — 1× compile, N× dispatch
+
+- **Sintoma**: preview GPU teoricamente é ~5-10× mais rápido que CPU,
+  mas se cada rebuild instanciar `ChainedPipelineCache::new(&gpu)`
+  paga 10-20ms de pipeline compile a cada slider release.
+- **Fix**: `gpu::try_preview_chain() -> Option<&'static
+  ChainedPipelineCache>` cacheia o cache num `OnceLock` process-wide.
+  Compile paga 1× no primeiro preview, subsequente chamadas são puro
+  upload + dispatches + readback (~5-20ms a 512²). Distinct do
+  per-Apply `ChainedPipelineCache::new` (que reconstrói porque Apply
+  é raro e em full-res o overhead é dwarfed pelo dispatch).
+- **Lição estrutural**: wgpu pipeline objects são Arc-backed mas o
+  shader compile + bind-group-layout build não. Cache deve ser
+  cross-call quando o uso é hot (preview-per-release).
+- **Código**: [`crates/ph2d-tool-color-equalization/src/gpu/mod.rs try_preview_chain`](../../crates/ph2d-tool-color-equalization/src/gpu/mod.rs).
+
+### 12.12 Luminância em sRGB: BT.709 em LINEAR + re-encode pra perceptual
+
+- **Sintoma**: 3 LUT presets (Film Noir, Sepia, Bleach Bypass) ficavam
+  "menos bons que a engine de referência". A diferença era sutil — red
+  ~40% mais escuro que esperado nas highlights.
+- **Causa em camadas**:
+  1. Port inicial usava `luma_bt709_norm = 0.2126·R + 0.7152·G +
+     0.0722·B` aplicado em sRGB gamma-encoded — convenção "rec.709
+     luma" comum mas tecnicamente errada.
+  2. Engine TS de referência usava `0.299·R + 0.587·G + 0.114·B`
+     (BT.601), também em gamma-encoded — antigo "rec.601 luma",
+     herança de NTSC/PAL.
+  3. AMBAS são wrong colorimetricamente. sRGB tem primárias BT.709,
+     então a Y verdadeira é `0.2126·Rlinear + 0.7152·Glinear +
+     0.0722·Blinear` (coeficientes BT.709 em LINEAR space).
+- **Fix**: `luma_srgb(r, g, b)`: decode sRGB→linear, aplica BT.709 em
+  linear, re-encode Y_linear→sRGB. Devolve um perceptual brightness
+  em [0,1] colorimetricamente correto. Custo: 4 pow() por pixel nos
+  3 presets — negligível com debounce on-release.
+- **Lição estrutural**: "BT.709 vs BT.601" é dimensão errada quando
+  trabalhando em sRGB. A pergunta certa é "GAMMA-encoded shortcut vs
+  LINEAR-light proper". sRGB primaries → BT.709 coefficients em
+  LINEAR space → encode Y pra perceptual. Documente o por-que no
+  docstring do helper pra próximo refactor não silenciosamente
+  voltar pro shortcut.
+- **Código**: [`crates/ph2d-tool-color-equalization/src/color_utils.rs luma_srgb`](../../crates/ph2d-tool-color-equalization/src/color_utils.rs).
+
+### 12.13 CEQ panel sem scroll quando conteúdo overflowing
+
+- **Sintoma**: CEQ panel (~810px após Phase 2/3 adicionou histogram +
+  14 sliders + LUT dropdowns + Posterize + Quantize + 4 auto buttons
+  + CTA) não cabia no dock (~600px). Controles do rodapé invisíveis,
+  unclickable. User dizia "scroll é padrão nos painéis do app" —
+  CEQ não tinha.
+- **Causa**: `panel_scroll` infra existia em `WidgetStore` (usada por
+  GridSnap, Inspector, Widget Gallery) mas CEQ panel paint nunca
+  wirou. `state.rs` tinha thread-locals `LAST_CONTENT_H` /
+  `LAST_VISIBLE_H` como "parity placeholder", nunca usados.
+- **Fix**: copiar pattern do GridSnap — `push_clip(body_rect)`,
+  `y = body_top - scroll`, paint, `pop_layer`, calcular `content_h
+  = (y + scroll) - body_top`, `set_panel_content_h/visible_h` no
+  store, `paint_scrollbar` + register thumb hit. Novo
+  `COLOR_EQUALIZATION_SCROLLBAR_ID` em editor-core scrollbar.rs +
+  mapping em `dispatch::scroll::scrollbar_panel_for_id`. Hits
+  registrados no espaço scrollado matching cliques scrollados — sem
+  desync.
+- **Lição estrutural**: scroll DEVE ser padrão pra painéis com
+  conteúdo dinâmico. Adicionar 2-3 controles "sem scroll" parece OK
+  até o painel cruzar o threshold. Future-proof: arch-test que
+  exija content_h/visible_h publish em todo Panel<State>.
+- **Código**: [`crates/ph2d-panel-color-equalization/src/paint.rs`
+  scroll block](../../crates/ph2d-panel-color-equalization/src/paint.rs);
+  [`crates/ph2d-editor-core/src/widget/scrollbar.rs COLOR_EQUALIZATION_SCROLLBAR_ID`](../../crates/ph2d-editor-core/src/widget/scrollbar.rs).
+
+### 12.14 Dropdown labels longos truncam em chips estreitos
+
+- **Sintoma**: LUT preset options pintavam "Cinematic › Blockbuster",
+  "Atmosphere › Golden Hour" — labels com prefix de grupo. No popover
+  com chip width ~135px, texto wrappava em 2 linhas e era cortado
+  pelo row_h.
+- **Fix**: dropei o prefix. `LutPreset::ALL` já está clusterizado por
+  grupo (None, 3 Cinematic, 4 Atmosphere, 4 Vintage, 4 Stylized) —
+  ordem visual basta como signal de grouping, sem precisar prefixar
+  cada label. Chip + opções cabem em uma linha. Header de grupo
+  seria nice-to-have (precisa widget extension) — deferido.
+- **Lição estrutural**: ao decidir entre "prefix label pra clareza"
+  vs "espaço apertado", PREFIRA ordem implícita (ordem da lista) +
+  separators visuais se possível. Prefixar todo item escala mal.
+- **Código**: [`crates/ph2d-panel-color-equalization/src/paint.rs
+  lut_options_for_slot`](../../crates/ph2d-panel-color-equalization/src/paint.rs).
+
+### 12.15 Multi-sprite undo restaurava só a última sprite (CRITICAL data-loss)
+
+- **Sintoma**: Apply de qualquer image-tool sobre N>1 sprites
+  selecionadas + Cmd+Z restaurava APENAS a última. As N-1 anteriores
+  ficavam com pixels baked permanentemente. Bug latente em todos os
+  8 image-tools (Trim/Make Square/Rasterize/Padding/CEQ/EqualizeSizes/
+  Upscale/BgRemoval). Confirmado pelo Agent B da auditoria 2026-05-23.
+- **Causa raiz arquitetural**: `image_edit_undo:
+  Option<ImageEditSnapshot>` era SLOT ÚNICO. Cada per-sprite drain
+  fazia `drop_undo_pre_source_if_individual(slot)` + `*slot = Some(snap)`
+  — o loop multi-sprite sobrescrevia N-1 vezes, deixando apenas a
+  última. `app_state.rs:173` documentava como "Single-level by
+  design… Future M14.x replaces this with a proper command stack".
+- **Fix arquitetural**: introduzir `ImageEditTransaction { entries:
+  Vec<ImageEditSnapshot>, label: &'static str }` em
+  [`app_state.rs`](../../shells/desktop/src/app_state.rs).
+  Cada per-sprite drain agora APPENDA num `pending_undo_entries:
+  &mut Vec<ImageEditSnapshot>` (assinatura mudou). Após cada loop
+  multi-sprite, o orquestrador em
+  [`render_loop/image_edit.rs`](../../shells/desktop/src/render_loop/image_edit.rs)
+  chama `commit_image_edit_transaction(renderer, slot, pending)` que:
+  (a) libera as pre-source textures da transação ANTERIOR; (b) seta
+  `slot = Some(ImageEditTransaction { entries: pending, label })`.
+  `drain_undo_image_edit` em
+  [`image_edit/undo.rs`](../../shells/desktop/src/hero_intents/image_edit/undo.rs)
+  itera todas as entradas (reverse) restaurando Sprite + Transform +
+  liberando post-edit textures. Toast adapta: "Color EQ" vs
+  "Color EQ (5 sprites)".
+- **Helper renomeado**: `drop_undo_pre_source_if_individual` →
+  `drop_undo_pre_sources_if_individual` (plural) — itera entries.
+- **Sentinel preservado**: EqualizeSizes' fit-by-scale entries usam
+  `post_individual_id = 0` (sem texture acquire); undo skipa o release.
+- **Lição estrutural**: "single-level by design" + comment apontando
+  pra M14.x = débito que sangra produção. Quando a refatoração couber
+  em ~10 arquivos e a alternativa é data-loss silenciosa, fazer
+  agora. A ergonomia de drains (push em vez de replace) ficou MAIS
+  limpa que a anterior — bug-fix entregou também simplificação.
+- **Código**: 11 arquivos:
+  [`shells/desktop/src/app_state.rs`](../../shells/desktop/src/app_state.rs),
+  [`main.rs commit_image_edit_transaction`](../../shells/desktop/src/main.rs),
+  [`render_loop/image_edit.rs`](../../shells/desktop/src/render_loop/image_edit.rs),
+  [`hero_intents/image_edit/{undo,color_equalization,bgremoval,padding,upscale,equalize_sizes,make_square,rasterize,trim_transparency}.rs`](../../shells/desktop/src/hero_intents/image_edit/).

@@ -115,6 +115,15 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
+        // Reset-all button — snap every per-edge field back to 0 +
+        // pivot-recenter to default. Routes to the tool's
+        // `apply_ui_edit::ResetAll`.
+        WidgetEvent::Click(id) if id == ids::PAD_RESET => {
+            reset_button(host, id);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
         // Cancel — abandon + deactivate the tool. Shell switches back to
         // the default tool via `CancelActiveTool`, hiding this panel and
         // restoring the Inspector.

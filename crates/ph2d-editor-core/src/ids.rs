@@ -206,6 +206,10 @@ pub const PAD_LEFT_NUM: NodeId = hash_node_id("pad_left_num");
 pub const PAD_PIVOT_RECENTER: NodeId = hash_node_id("pad_pivot_recenter");
 pub const PAD_APPLY: NodeId = hash_node_id("pad_apply");
 pub const PAD_CANCEL: NodeId = hash_node_id("pad_cancel");
+/// Reset-all button — returns every per-edge padding back to 0 and
+/// the pivot-recenter toggle to its default. Also fires from the
+/// tool's `on_activate`.
+pub const PAD_RESET: NodeId = hash_node_id("pad_reset");
 
 pub const HIERARCHY_ADD: NodeId = hash_node_id("hierarchy_add");
 
@@ -248,6 +252,10 @@ pub const BGR_REFINE_NUM: NodeId = hash_node_id("bgr_refine_num");
 pub const BGR_GROW_NUM: NodeId = hash_node_id("bgr_grow_num");
 /// Apply button — commits the removal at full resolution.
 pub const BGR_APPLY: NodeId = hash_node_id("bgr_apply");
+/// Reset-all button — returns every param to its default in one click.
+/// The tool also runs this from `on_activate` so reopening the panel
+/// never inherits a previous session's slider/toggle state.
+pub const BGR_RESET: NodeId = hash_node_id("bgr_reset");
 /// Cancel button — abandons the preview and deactivates the tool
 /// (returns to the Inspector).
 pub const BGR_CANCEL: NodeId = hash_node_id("bgr_cancel");

@@ -15,6 +15,7 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [
         ids::BGR_APPLY,
         ids::BGR_CANCEL,
+        ids::BGR_RESET,
         // Eyedropper toggle. Swatches need NO store entry — they're
         // paint-time hit registrations from a fixed id pool.
         ids::BGR_EYEDROPPER,

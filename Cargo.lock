@@ -3994,6 +3994,7 @@ dependencies = [
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
  "ph2d-panel-registry-init",
+ "ph2d-panel-upscale",
  "ph2d-render",
  "ph2d-script",
  "ph2d-text",
@@ -4003,10 +4004,12 @@ dependencies = [
  "ph2d-tool-equalize-sizes",
  "ph2d-tool-make-square",
  "ph2d-tool-padding",
+ "ph2d-tool-rasterize",
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
  "ph2d-tool-registry-init",
  "ph2d-tool-trim-transparency",
+ "ph2d-tool-upscale",
  "ph2d-vector",
  "postcard",
  "rfd",
@@ -4132,8 +4135,10 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-color-equalization",
+ "ph2d-vector",
 ]
 
 [[package]]
@@ -4343,11 +4348,16 @@ dependencies = [
 name = "ph2d-tool-color-equalization"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
+ "half",
  "ph2d-a11y",
  "ph2d-core",
  "ph2d-editor-core",
+ "ph2d-gpu",
  "ph2d-tool-registry",
  "ph2d-vector",
+ "pollster",
+ "wgpu",
 ]
 
 [[package]]

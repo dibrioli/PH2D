@@ -119,6 +119,15 @@ pub struct BgRemovalTool {
     /// `handle_panel_event` directly.
     params_dirty: bool,
 
+    /// `true` when the params were just reset to defaults (Reset
+    /// button OR `on_activate`). The shell bridge drains via
+    /// [`Self::take_pending_panel_reset`] and re-runs
+    /// `Panel::populate(store)` so the slider knob / chip text
+    /// positions snap back to defaults — without this, only the
+    /// params struct resets while the WidgetStore retains whatever
+    /// drag position the user last left.
+    pending_panel_reset: bool,
+
     /// Whether the panel eyedropper is armed. While `true`, the shell's
     /// canvas click-drag handler samples the source pixel under the
     /// cursor and feeds it to [`Self::add_extra_color`]. Reset on
@@ -200,6 +209,7 @@ impl Default for BgRemovalTool {
             scratch: BgRemovalScratch::default(),
             pending_apply: false,
             params_dirty: false,
+            pending_panel_reset: false,
             eyedropper_armed: false,
             protect_brush_armed: false,
             protect_painting: false,
@@ -304,6 +314,10 @@ impl BgRemovalTool {
     /// since the last call. The shell uses this as the gate for
     /// rerunning the on-canvas live preview (ADR-0040 TG-B replacement
     /// for the old `!bgremoval_ui_edits.is_empty()` check).
+    pub fn take_pending_panel_reset(&mut self) -> bool {
+        std::mem::take(&mut self.pending_panel_reset)
+    }
+
     pub fn take_params_dirty(&mut self) -> bool {
         std::mem::take(&mut self.params_dirty)
     }
@@ -914,6 +928,24 @@ impl BgRemovalTool {
                 self.protect_painting = false;
                 self.protect_erase_mode = false;
             }
+            BgRemovalUiEdit::ResetAll => {
+                // Snap params back to defaults AND wipe the painted
+                // protection mask + extra-bg picks (those are part of
+                // the per-session edit, not durable state). Disarm
+                // every armed gesture so the next interaction starts
+                // clean. The `on_activate` hook calls this too, so a
+                // reopened panel always starts from a known clean
+                // slate.
+                self.params = crate::params::BgRemovalParams::default();
+                self.protect_mask.fill(0);
+                self.eyedropper_armed = false;
+                self.protect_brush_armed = false;
+                self.protect_painting = false;
+                self.protect_erase_mode = false;
+                // Stage the panel-store repopulation (shell drains via
+                // `take_pending_panel_reset`).
+                self.pending_panel_reset = true;
+            }
         }
         if changed && self.has_source() {
             self.rerun_preview();
@@ -1044,6 +1076,10 @@ impl Tool for BgRemovalTool {
                 self.apply_ui_edit(BgRemovalUiEdit::Apply);
                 return;
             }
+            PanelEvent::Click(id) if id == ids::BGR_RESET => {
+                self.apply_ui_edit(BgRemovalUiEdit::ResetAll);
+                return;
+            }
             PanelEvent::Click(id) if id == ids::BGR_EYEDROPPER => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleEyedropper);
                 return;
@@ -1119,6 +1155,14 @@ impl Tool for BgRemovalTool {
         if matched {
             self.params_dirty = true;
         }
+    }
+
+    fn on_activate(&mut self) {
+        // Defaults load on every fresh panel open — no carryover from a
+        // previous session. Routed through `apply_ui_edit::ResetAll`
+        // so the panel preview rebuilds against the cleaned params on
+        // the next idle frame (same code path the Reset button uses).
+        self.apply_ui_edit(crate::params::BgRemovalUiEdit::ResetAll);
     }
 
     fn on_deactivate(&mut self) {
@@ -1732,6 +1776,77 @@ mod tests {
         assert!(
             t.take_pending_islands().is_empty(),
             "second drain is empty (one-shot)"
+        );
+    }
+
+    #[test]
+    fn run_full_resolution_works_after_per_sprite_source_swap() {
+        // Mirrors the shell's multi-Apply drain pattern: one
+        // BgRemovalTool instance bakes N sprites in sequence via
+        // set_source_snapshot → run_full_resolution per entity. Each
+        // bake must reflect the CURRENT snapshot, not leak state
+        // (source_w/h, scratch buffer dims) from the prior sprite.
+        // Regression cover (§12.6 / §12.9 UI_Bugs + Agent D gap).
+        let mut t = BgRemovalTool::default();
+
+        // Sprite 1: 8×8 red.
+        let mut buf1 = Vec::with_capacity(8 * 8 * 4);
+        for _ in 0..(8 * 8) {
+            buf1.extend_from_slice(&[200, 30, 30, 255]);
+        }
+        t.set_source_snapshot(buf1, 8, 8);
+        let mut out1 = Vec::new();
+        let (w1, h1) = t.run_full_resolution(&mut out1);
+        assert_eq!((w1, h1), (8, 8));
+        assert_eq!(out1.len(), 8 * 8 * 4);
+
+        // Sprite 2: different dims + colour. Must re-bake against the
+        // fresh snapshot, not reuse out1's dims.
+        let mut buf2 = Vec::with_capacity(12 * 5 * 4);
+        for _ in 0..(12 * 5) {
+            buf2.extend_from_slice(&[30, 200, 50, 255]);
+        }
+        t.set_source_snapshot(buf2, 12, 5);
+        let mut out2 = Vec::new();
+        let (w2, h2) = t.run_full_resolution(&mut out2);
+        assert_eq!((w2, h2), (12, 5), "per-sprite source swap leaked dims");
+        assert_eq!(out2.len(), 12 * 5 * 4);
+    }
+
+    #[test]
+    fn on_activate_resets_params_and_arms_panel_repopulate() {
+        // Regression cover (§12.3 / §12.4 UI_Bugs): `on_activate` must
+        // route through `apply_ui_edit::ResetAll` so (a) params snap to
+        // defaults AND (b) `pending_panel_reset` arms so the shell
+        // bridge re-runs `Panel::populate(store)` and the slider knobs
+        // visually snap back to defaults.
+        let default_snap = BgRemovalUiSnapshot::default();
+        let dirty_tolerance01 = if (default_snap.tolerance01 - 0.1).abs() < 1e-3 {
+            0.9_f32
+        } else {
+            0.1_f32
+        };
+        let mut t = BgRemovalTool::default();
+        t.apply_ui_edit(BgRemovalUiEdit::Tolerance(dirty_tolerance01));
+        assert!(
+            (t.ui_snapshot().tolerance01 - default_snap.tolerance01).abs() > 0.01,
+            "test setup must actually dirty tolerance01"
+        );
+        // Drain any stray reset flag first.
+        let _ = t.take_pending_panel_reset();
+
+        t.on_activate();
+
+        let after = t.ui_snapshot();
+        assert!(
+            (after.tolerance01 - default_snap.tolerance01).abs() < 1e-5,
+            "on_activate must restore default tolerance01 (got {} expected {})",
+            after.tolerance01,
+            default_snap.tolerance01,
+        );
+        assert!(
+            t.take_pending_panel_reset(),
+            "on_activate must arm pending_panel_reset so the shell repopulates"
         );
     }
 }

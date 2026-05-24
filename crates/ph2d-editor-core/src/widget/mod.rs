@@ -60,7 +60,7 @@ pub use context_menu::{ContextMenu, ContextMenuEntry, paint_context_menu};
 pub use divider::{Divider, DividerOrientation, paint_divider};
 pub use dropdown::{
     Dropdown, DropdownOption, DropdownState, paint_dropdown, paint_dropdown_chip,
-    paint_dropdown_popover,
+    paint_dropdown_popover, paint_dropdown_popover_in_viewport,
 };
 pub use icon_button::{IconButtonStyle, IconGlyph, paint_icon_button};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
@@ -73,10 +73,10 @@ pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
 };
 pub use scrollbar::{
-    GALLERY_SCROLLBAR_ID, GRID_SETTINGS_SCROLLBAR_ID, HIERARCHY_SCROLLBAR_ID,
-    INSPECTOR_SCROLLBAR_ID, SCROLLBAR_W, delta_for_drag as scrollbar_delta_for_drag,
-    is_needed as scrollbar_is_needed, paint_scrollbar, thumb_rect as scrollbar_thumb_rect,
-    track_rect as scrollbar_track_rect,
+    COLOR_EQUALIZATION_SCROLLBAR_ID, GALLERY_SCROLLBAR_ID, GRID_SETTINGS_SCROLLBAR_ID,
+    HIERARCHY_SCROLLBAR_ID, INSPECTOR_SCROLLBAR_ID, SCROLLBAR_W,
+    delta_for_drag as scrollbar_delta_for_drag, is_needed as scrollbar_is_needed, paint_scrollbar,
+    thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
 };
 pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};

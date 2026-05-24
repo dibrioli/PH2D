@@ -154,6 +154,8 @@ pub enum UpscaleUiEdit {
     Scale(f32),
     /// Apply pressed — bake at full resolution.
     Apply,
+    /// Reset every param back to default (algorithm + scale).
+    ResetAll,
 }
 
 #[cfg(test)]

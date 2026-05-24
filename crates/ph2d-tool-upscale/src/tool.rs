@@ -53,6 +53,7 @@ const NODE_SCALE: NodeId = hash_node_id("upscale.scale");
 const NODE_SCALE_NUM: NodeId = hash_node_id("upscale.scale.num");
 const NODE_APPLY: NodeId = hash_node_id("upscale.apply");
 const NODE_CANCEL: NodeId = hash_node_id("upscale.cancel");
+const NODE_RESET: NodeId = hash_node_id("upscale.reset");
 
 /// Panel widget `NodeId`s as a const-evaluated table (used by both the
 /// panel crate to register/paint and the tool to route events).
@@ -74,6 +75,8 @@ pub mod ids {
     pub const UPS_APPLY: NodeId = super::NODE_APPLY;
     /// Cancel button.
     pub const UPS_CANCEL: NodeId = super::NODE_CANCEL;
+    /// Reset-all button — algorithm + scale back to defaults.
+    pub const UPS_RESET: NodeId = super::NODE_RESET;
 }
 
 /// Editor Tool implementing the stateful Upscale feature.
@@ -115,6 +118,10 @@ pub struct UpscaleTool {
     /// pipeline at full resolution against the active sprite and
     /// writes back a new Individual texture.
     pending_apply: bool,
+    /// Set `true` by Reset / on_activate. Shell drains via
+    /// `take_pending_panel_reset` and re-runs `Panel::populate` so
+    /// the slider knob + chip text snap back to defaults.
+    pending_panel_reset: bool,
 
     /// Set to `true` by any mutator that changes what the shell's
     /// on-canvas preview reflects (algorithm or scale). The shell
@@ -175,6 +182,10 @@ impl UpscaleTool {
     /// Drain the params-dirty flag. Returns `true` exactly once when
     /// any mutator has run since the last call; the shell uses this
     /// as the gate for rerunning the on-canvas live preview.
+    pub fn take_pending_panel_reset(&mut self) -> bool {
+        std::mem::take(&mut self.pending_panel_reset)
+    }
+
     pub fn take_params_dirty(&mut self) -> bool {
         std::mem::take(&mut self.params_dirty)
     }
@@ -278,6 +289,10 @@ impl UpscaleTool {
             }
             UpscaleUiEdit::Apply => {
                 self.pending_apply = true;
+            }
+            UpscaleUiEdit::ResetAll => {
+                self.params = crate::params::UpscaleParams::default();
+                self.pending_panel_reset = true;
             }
         }
         if self.has_source() {
@@ -408,12 +423,17 @@ impl Tool for UpscaleTool {
         panel
     }
 
+    fn on_activate(&mut self) {
+        // Defaults load on every fresh panel open (algorithm + scale
+        // back to `UpscaleParams::default()`).
+        self.apply_ui_edit(UpscaleUiEdit::ResetAll);
+    }
+
     fn on_deactivate(&mut self) {
         // Clear one-shot drain flags so a Cancel-mid-Apply (or any
         // deactivation while the bridge hasn't yet drained) does not
         // fire a phantom bake nor a spurious canvas-preview rerun on
-        // the next activation. Algorithm + scale persist across
-        // activations (the user usually wants the same setting again).
+        // the next activation.
         self.pending_apply = false;
         self.params_dirty = false;
     }
@@ -446,6 +466,9 @@ impl Tool for UpscaleTool {
             }
             PanelEvent::Click(id) if id == NODE_APPLY => {
                 self.apply_ui_edit(UpscaleUiEdit::Apply);
+            }
+            PanelEvent::Click(id) if id == NODE_RESET => {
+                self.apply_ui_edit(UpscaleUiEdit::ResetAll);
             }
             _ => {}
         }
@@ -640,6 +663,59 @@ mod tests {
         assert!(
             w <= PREVIEW_MAX_DIM && h <= PREVIEW_MAX_DIM,
             "canvas preview must cap output at PREVIEW_MAX_DIM (got {w}×{h})"
+        );
+    }
+
+    #[test]
+    fn run_full_resolution_works_after_per_sprite_source_swap() {
+        // Mirrors the shell's multi-Apply drain pattern: one UpscaleTool
+        // instance bakes N sprites in sequence via set_source_snapshot
+        // → run_full_resolution per entity. Each bake must reflect the
+        // CURRENT snapshot dims, not leak source_w/source_h from the
+        // previous sprite. Regression cover (§12.6 + Agent D gap).
+        let mut t = UpscaleTool::default();
+        t.apply_ui_edit(UpscaleUiEdit::Scale(2.0));
+
+        // Sprite 1: 4×4.
+        t.set_source_snapshot(vec![100u8; 4 * 4 * 4], 4, 4);
+        let mut out1 = Vec::new();
+        let (w1, h1) = t.run_full_resolution(&mut out1);
+        assert_eq!((w1, h1), (8, 8));
+        assert_eq!(out1.len(), 8 * 8 * 4);
+
+        // Sprite 2: different dims (5×7) — must re-bake against new
+        // snapshot, not reuse sprite-1 dims.
+        t.set_source_snapshot(vec![50u8; 5 * 7 * 4], 5, 7);
+        let mut out2 = Vec::new();
+        let (w2, h2) = t.run_full_resolution(&mut out2);
+        assert_eq!((w2, h2), (10, 14), "per-sprite source swap leaked dims");
+        assert_eq!(out2.len(), 10 * 14 * 4);
+    }
+
+    #[test]
+    fn on_activate_resets_params_and_arms_panel_repopulate() {
+        // Regression cover (§12.3 / §12.4 UI_Bugs): `on_activate` must
+        // route through `apply_ui_edit::ResetAll` so (a) params snap to
+        // defaults AND (b) `pending_panel_reset` arms so the shell
+        // bridge re-runs `Panel::populate(store)` and the slider knobs
+        // visually snap back to defaults.
+        let mut t = UpscaleTool::default();
+        // Dirty the state — simulate a prior session.
+        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
+        t.apply_ui_edit(UpscaleUiEdit::Scale(8.0));
+        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Xbr);
+        assert!((t.params.scale_factor - 8.0).abs() < f32::EPSILON);
+        // Drain any stray reset flag first.
+        let _ = t.take_pending_panel_reset();
+
+        t.on_activate();
+
+        let dft = UpscaleParams::default();
+        assert_eq!(t.params.algorithm, dft.algorithm);
+        assert!((t.params.scale_factor - dft.scale_factor).abs() < f32::EPSILON);
+        assert!(
+            t.take_pending_panel_reset(),
+            "on_activate must arm pending_panel_reset so the shell repopulates"
         );
     }
 

@@ -17,7 +17,12 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 pub fn populate(store: &mut WidgetStore) {
     // Cancel / Apply + the pivot-mode toggle (a Button painted as an
     // accent toggle, like Bg Removal's Show-Mask).
-    for id in [ids::PAD_CANCEL, ids::PAD_APPLY, ids::PAD_PIVOT_RECENTER] {
+    for id in [
+        ids::PAD_CANCEL,
+        ids::PAD_APPLY,
+        ids::PAD_RESET,
+        ids::PAD_PIVOT_RECENTER,
+    ] {
         store.register(
             id,
             InteractiveState::Button {
@@ -68,7 +73,12 @@ mod tests {
     fn populate_registers_all_controls() {
         let mut store = WidgetStore::with_capacity(16);
         populate(&mut store);
-        for id in [ids::PAD_CANCEL, ids::PAD_APPLY, ids::PAD_PIVOT_RECENTER] {
+        for id in [
+            ids::PAD_CANCEL,
+            ids::PAD_APPLY,
+            ids::PAD_RESET,
+            ids::PAD_PIVOT_RECENTER,
+        ] {
             assert!(store.button_state(id).is_some(), "button {id:?} missing");
         }
         for id in [ids::PAD_TOP, ids::PAD_RIGHT, ids::PAD_BOTTOM, ids::PAD_LEFT] {

@@ -83,10 +83,19 @@ pub(super) fn dispatch(
         }
     }
     // Visibility: shown iff bgremoval is the active tool (keyed
-    // "bgremoval" to match `BgRemovalPanel::ID`).
+    // "bgremoval" to match `BgRemovalPanel::ID`). Hide the Inspector
+    // while bgremoval is active (image tools dock into the
+    // Inspector slot).
     hero.panel_visibility
         .insert("bgremoval", bgremoval_is_active);
-    let mut apply_selection: Option<u64> = None;
+    hero.panel_visibility
+        .insert("inspector", !bgremoval_is_active);
+    // Multi-sprite Apply: capture the full `iter_selected()` snapshot so
+    // every selected sprite gets baked (mirror of Color EQ / Upscale).
+    // Pushed below as N `OneShotImageOp` actions, one per sprite — the
+    // shell drains them sequentially through `drain_bgremoval`.
+    let mut apply_selection: Vec<u64> = Vec::new();
+    let mut needs_panel_reset = false;
     // Captured for the protection-mask overlay tint (built while the tool
     // is borrowed below, drawn in the on-canvas overlay block).
     let theme = hero.theme;
@@ -108,7 +117,13 @@ pub(super) fn dispatch(
         // clear). Drained inside the `bg` borrow so it can flip cleanly.
         let params_changed = bg.take_params_dirty();
         if bg.take_pending_apply() {
-            apply_selection = hero.gizmo.selection;
+            apply_selection = hero.gizmo.iter_selected().collect();
+        }
+        // Reset just fired — stage a panel-store repopulation.
+        // Applied below after the `bg` borrow ends, since
+        // `hero.store` would alias with `tools.active_mut()` here.
+        if bg.take_pending_panel_reset() {
+            needs_panel_reset = true;
         }
         #[cfg(feature = "panel-bgremoval")]
         ph2d_panel_bgremoval::set_current_bgremoval_snapshot(if bgremoval_is_active {
@@ -164,12 +179,26 @@ pub(super) fn dispatch(
     if !bgremoval_is_active {
         *bgremoval_preview = None;
     }
-    if let Some(bits) = apply_selection {
-        hero.bus
-            .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
-                tool_id: "bgremoval",
-                entity_bits: bits,
-            });
+    // Reset just fired — re-populate the panel's `WidgetStore` so
+    // every slider knob / chip text snaps back to defaults. Without
+    // this, `params` resets but the slider visuals stay where the
+    // user dragged them (panel paints `store.slider(id)`, not the
+    // snapshot).
+    if needs_panel_reset {
+        ph2d_editor::panel::with_registry_opt(|reg| {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor::ids::BGR_PANEL) {
+                reg.panels_mut()[idx].populate(&mut hero.store);
+            }
+        });
+    }
+    if !apply_selection.is_empty() {
+        for bits in &apply_selection {
+            hero.bus
+                .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                    tool_id: "bgremoval",
+                    entity_bits: *bits,
+                });
+        }
         // Committed result becomes the new sprite texture; drop the
         // preview so the overlay stops painting the pre-commit copy.
         // The caller deactivates the tool on the returned flag so the
@@ -241,7 +270,7 @@ pub(super) fn dispatch(
             }
         }
     }
-    apply_selection.is_some()
+    !apply_selection.is_empty()
 }
 
 /// Build a capped-resolution RGBA tint image from a source-resolution

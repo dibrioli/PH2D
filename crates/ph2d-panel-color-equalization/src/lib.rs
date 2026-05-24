@@ -32,7 +32,7 @@ mod paint;
 mod populate;
 pub mod state;
 
-pub use state::{last_content_h, last_visible_h, set_current_snapshot};
+pub use state::{last_content_h, last_visible_h, set_current_histogram, set_current_snapshot};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

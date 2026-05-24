@@ -164,6 +164,9 @@ pub enum EqualizeSizesUiEdit {
     /// Apply button pressed — the host drains a pending-apply latch and
     /// runs `run_full_resolution_multi` on the selection.
     Apply,
+    /// Reset every param back to default. Fired by the panel's Reset
+    /// button AND by the tool's `on_activate`.
+    ResetAll,
 }
 
 /// Apply one panel-originated edit against [`EqualizeSizesParams`].
@@ -218,6 +221,10 @@ pub fn apply_ui_edit(params: &mut EqualizeSizesParams, edit: EqualizeSizesUiEdit
             false
         }
         EqualizeSizesUiEdit::Apply => true,
+        EqualizeSizesUiEdit::ResetAll => {
+            *params = EqualizeSizesParams::default();
+            false
+        }
     }
 }
 

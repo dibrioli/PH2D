@@ -203,7 +203,18 @@ pub struct RenderInstance {
     /// `vertex_attr_offsets_match_struct` test pins this). `0` = shared
     /// atlas; `> 0` = an `IndividualTextureStore` handle.
     pub texture_id: u32,
-    pub _pad: u32,
+    /// Render order key (CPU-side; NOT a vertex attribute). Lower =
+    /// painted first (BEHIND). The renderer sorts instances by
+    /// `(z_order, texture_id)` so the visual order matches the
+    /// Hierarchy panel — without this an image-tool bake that
+    /// promotes an Atlas sprite to Individual (`commit_edited_texture`)
+    /// would silently float to the front of the scene because the
+    /// previous `sort_by_key(|i| i.texture_id)` grouped Atlas (id=0)
+    /// before every Individual (id>0). Extract populates a sequential
+    /// counter in `propagate_transforms` traversal order, which
+    /// mirrors the hierarchy DFS — that's the same order the
+    /// Hierarchy panel paints.
+    pub z_order: u32,
 }
 
 impl PresentComponent for RenderInstance {}
@@ -300,7 +311,7 @@ mod tests {
             texture_id: RenderInstance::ATLAS_TEXTURE_ID,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
-            _pad: 0,
+            z_order: 0,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
@@ -335,7 +346,7 @@ mod tests {
         // attribute's byte offset from the running sum of the FORMATS
         // listed — it knows nothing about the Rust struct. So every
         // GPU-read field MUST sit contiguously, in attribute order,
-        // before any CPU-only field (`texture_id`, `_pad`). If a future
+        // before any CPU-only field (`texture_id`, `z_order`). If a future
         // edit interleaves a non-attribute field (as the original
         // `premultiplied` placement did — it sat after `texture_id`, so
         // `@location(7)` silently read `texture_id`'s bytes), this test

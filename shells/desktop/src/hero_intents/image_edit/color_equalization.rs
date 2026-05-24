@@ -8,8 +8,8 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 
+use crate::ImageEditSnapshot;
 use crate::hero_intents::texture_edit;
-use crate::{ImageEditSnapshot, drop_undo_pre_source_if_individual};
 
 /// Drain one `EditorAction::OneShotImageOp { tool_id:
 /// "color_equalization", entity_bits }`: push the sprite's source
@@ -32,7 +32,7 @@ pub(crate) fn drain_color_equalization(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     toasts: &mut ToastQueue,
-    image_edit_undo: &mut Option<ImageEditSnapshot>,
+    pending_undo_entries: &mut Vec<ImageEditSnapshot>,
     ceq: &mut ph2d_tool_color_equalization::ColorEqualizationTool,
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
@@ -68,8 +68,7 @@ pub(crate) fn drain_color_equalization(
             true
         }
         Ok(texture_id) => {
-            drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-            *image_edit_undo = Some(ImageEditSnapshot {
+            pending_undo_entries.push(ImageEditSnapshot {
                 entity_bits,
                 pre_source: old_source,
                 pre_size: old_size_world,

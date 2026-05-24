@@ -64,6 +64,9 @@ pub const EQS_ALG_LANCZOS: NodeId = hash_node_id("eqsizes.alg_lanczos");
 pub const EQS_ALG_NEAREST: NodeId = hash_node_id("eqsizes.alg_nearest");
 pub const EQS_ALG_XBR: NodeId = hash_node_id("eqsizes.alg_xbr");
 
-// ── Apply / Cancel ───────────────────────────────────────────────────
+// ── Apply / Cancel / Reset ───────────────────────────────────────────
 pub const EQS_APPLY: NodeId = hash_node_id("eqsizes.apply");
 pub const EQS_CANCEL: NodeId = hash_node_id("eqsizes.cancel");
+/// Reset-all button — every param back to default. Also fires from
+/// the tool's `on_activate`.
+pub const EQS_RESET: NodeId = hash_node_id("eqsizes.reset");

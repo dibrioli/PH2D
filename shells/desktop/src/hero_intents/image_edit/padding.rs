@@ -9,7 +9,7 @@ use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer};
 
 use crate::hero_intents::texture_edit;
-use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot, drop_undo_pre_source_if_individual};
+use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot};
 
 /// Drain a Padding Apply: resize the selected sprite's source bitmap by
 /// the tool's signed per-edge `spec` (positive = transparent expand,
@@ -40,7 +40,7 @@ pub(crate) fn drain_padding(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     toasts: &mut ToastQueue,
-    image_edit_undo: &mut Option<ImageEditSnapshot>,
+    pending_undo_entries: &mut Vec<ImageEditSnapshot>,
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let px_per_m = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
@@ -128,8 +128,7 @@ pub(crate) fn drain_padding(
             if let Some(mut sprite) = sim.world_mut().get_mut::<Sprite>(entity) {
                 sprite.anchor = new_anchor;
             }
-            drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-            *image_edit_undo = Some(ImageEditSnapshot {
+            pending_undo_entries.push(ImageEditSnapshot {
                 entity_bits,
                 pre_source: src.old_source,
                 pre_size: src.old_size_world,

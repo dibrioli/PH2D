@@ -84,4 +84,8 @@ pub enum PaddingUiEdit {
     TogglePivotRecenter,
     /// Apply pressed — bake the resized canvas at full resolution.
     Apply,
+    /// Reset every per-edge padding back to 0 and the pivot-recenter
+    /// toggle to its default. Fired by the panel's Reset button AND
+    /// by the tool's `on_activate`.
+    ResetAll,
 }

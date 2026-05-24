@@ -24,6 +24,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::UPS_ALGO_XBR,
         ids::UPS_APPLY,
         ids::UPS_CANCEL,
+        ids::UPS_RESET,
     ] {
         store.register(
             id,

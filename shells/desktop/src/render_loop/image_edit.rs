@@ -16,7 +16,10 @@
 //! 1-frame-no-defer contract from the pre-Wave-2.5 `pending_bgremoval`
 //! field.
 
-use crate::{ImageEditSnapshot, hero_intents, image_import::import_image_at_camera};
+use crate::{
+    ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction, hero_intents,
+    image_import::import_image_at_camera,
+};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
@@ -32,7 +35,7 @@ pub(super) fn dispatch(
     make_square_entities: Vec<u64>,
     real_size_entities: Vec<u64>,
     rasterize_entities: Vec<u64>,
-    padding_apply: Option<(u64, ph2d_tool_padding::PaddingSpec, bool)>,
+    padding_apply: Option<(ph2d_tool_padding::PaddingSpec, bool, Vec<u64>)>,
     color_equalization_apply: Option<Vec<u64>>,
     equalize_sizes_apply: Option<Vec<u64>>,
     upscale_apply: Option<Vec<u64>>,
@@ -43,7 +46,7 @@ pub(super) fn dispatch(
     asset_db: &AssetDb,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
     toasts: &mut ToastQueue,
-    image_edit_undo: &mut Option<ImageEditSnapshot>,
+    image_edit_undo: &mut Option<ImageEditTransaction>,
     tools: &mut ToolRegistry,
     camera: &Camera2d,
     next_import_cell: &mut u32,
@@ -69,19 +72,23 @@ pub(super) fn dispatch(
     // lived off-center inside the original frame. The shift
     // happens in pure-CPU pixel math (Y-flip handled inside
     // `recenter_after_crop`); HR-5-deterministic.
-    for entity_bits in trim_entities {
-        if hero_intents::drain_trim_transparency(
-            entity_bits,
-            hero.project.pixels_per_meter,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-            toasts,
-            image_edit_undo,
-        ) {
-            title_dirty = true;
+    {
+        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        for entity_bits in trim_entities {
+            if hero_intents::drain_trim_transparency(
+                entity_bits,
+                hero.project.pixels_per_meter,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                toasts,
+                &mut pending,
+            ) {
+                title_dirty = true;
+            }
         }
+        commit_image_edit_transaction(renderer, image_edit_undo, pending);
     }
     // Make Square drain — parallel to Trim Transparency. Pads
     // the source image with transparent pixels on the shorter
@@ -96,37 +103,45 @@ pub(super) fn dispatch(
     // accumulating 0.5 px drift across Trim↔Square cycles);
     // C1 (release OLD individual texture id after a successful
     // re-acquire — was leaking GPU memory on repeated edits).
-    for entity_bits in make_square_entities {
-        if hero_intents::drain_make_square(
-            entity_bits,
-            hero.project.pixels_per_meter,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-            toasts,
-            image_edit_undo,
-        ) {
-            title_dirty = true;
+    {
+        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        for entity_bits in make_square_entities {
+            if hero_intents::drain_make_square(
+                entity_bits,
+                hero.project.pixels_per_meter,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                toasts,
+                &mut pending,
+            ) {
+                title_dirty = true;
+            }
         }
+        commit_image_edit_transaction(renderer, image_edit_undo, pending);
     }
     // Rasterize drain — bake Transform.scale + .rotation into the
     // source pixel buffer (Mitchell-Netravali resample + rotation) and
     // reset Transform to identity. Per-sprite broadcast in the
     // `OneShotImageOp` arm above; mirror of Trim / Make Square.
-    for entity_bits in rasterize_entities {
-        if hero_intents::drain_rasterize(
-            entity_bits,
-            hero.project.pixels_per_meter,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-            toasts,
-            image_edit_undo,
-        ) {
-            title_dirty = true;
+    {
+        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        for entity_bits in rasterize_entities {
+            if hero_intents::drain_rasterize(
+                entity_bits,
+                hero.project.pixels_per_meter,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                toasts,
+                &mut pending,
+            ) {
+                title_dirty = true;
+            }
         }
+        commit_image_edit_transaction(renderer, image_edit_undo, pending);
     }
     // Real Size drain — reset the selected sprite's Transform scale to
     // 1:1 (preserving flip sign). Unlike Trim / Make Square this is a
@@ -147,26 +162,29 @@ pub(super) fn dispatch(
             }
         }
     }
-    // Padding Apply drain — resize the selected sprite's source by the
-    // tool's signed per-edge spec (`add_padding`), swap to a fresh
-    // Individual texture, and reproject the pivot so the original
-    // content's world position holds. Parallel to Make Square; the spec
-    // was captured from the active `PaddingTool` by `padding_bridge`.
-    if let Some((entity_bits, spec, recenter_pivot)) = padding_apply
-        && hero_intents::drain_padding(
-            entity_bits,
-            spec,
-            recenter_pivot,
-            hero.project.pixels_per_meter,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-            toasts,
-            image_edit_undo,
-        )
-    {
-        title_dirty = true;
+    // Padding Apply drain — multi-sprite. The bridge captures the full
+    // `iter_selected()` snapshot on Apply along with the shared per-edge
+    // spec + pivot mode; we bake the same spec into each selected
+    // sprite (one drain per entity, mirror of Color EQ).
+    if let Some((spec, recenter_pivot, bits_list)) = padding_apply {
+        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        for entity_bits in bits_list {
+            if hero_intents::drain_padding(
+                entity_bits,
+                spec,
+                recenter_pivot,
+                hero.project.pixels_per_meter,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                toasts,
+                &mut pending,
+            ) {
+                title_dirty = true;
+            }
+        }
+        commit_image_edit_transaction(renderer, image_edit_undo, pending);
     }
     // Color Equalization drain — multi-sprite Apply. The bridge
     // returns the entire `iter_selected()` snapshot when the user
@@ -177,6 +195,7 @@ pub(super) fn dispatch(
         let ceq_id = ph2d_editor::ToolId::new("color_equalization");
         let ceq_active = tools.active().map(|t| t.id() == ceq_id).unwrap_or(false);
         if ceq_active {
+            let mut pending: Vec<ImageEditSnapshot> = Vec::new();
             for entity_bits in bits_list {
                 let mut ran = false;
                 if let Some(tool) = tools.active_mut()
@@ -191,7 +210,7 @@ pub(super) fn dispatch(
                         asset_db,
                         atlas_asset_map,
                         toasts,
-                        image_edit_undo,
+                        &mut pending,
                         ceq,
                     );
                 }
@@ -199,6 +218,7 @@ pub(super) fn dispatch(
                     title_dirty = true;
                 }
             }
+            commit_image_edit_transaction(renderer, image_edit_undo, pending);
         }
     }
     // Equalize Sizes drain — multi-sprite Apply. Cross-sprite: Max
@@ -219,6 +239,7 @@ pub(super) fn dispatch(
             // Capture Square-grid origin before borrowing `tools` for
             // the drain — the snap math (align-to-grid) anchors to it.
             let grid_origin = hero.grid.snap_state.square_cfg.origin;
+            let mut pending: Vec<ImageEditSnapshot> = Vec::new();
             if hero_intents::drain_equalize_sizes(
                 &bits_list,
                 hero.project.pixels_per_meter,
@@ -228,11 +249,12 @@ pub(super) fn dispatch(
                 asset_db,
                 atlas_asset_map,
                 toasts,
-                image_edit_undo,
+                &mut pending,
                 eqs,
             ) {
                 title_dirty = true;
             }
+            commit_image_edit_transaction(renderer, image_edit_undo, pending);
         }
     }
     // Upscale Apply drain — sabor 3 (mirror of Color Equalization),
@@ -244,6 +266,7 @@ pub(super) fn dispatch(
         let ups_id = ph2d_editor::ToolId::new("upscale");
         let ups_active = tools.active().map(|t| t.id() == ups_id).unwrap_or(false);
         if ups_active {
+            let mut pending: Vec<ImageEditSnapshot> = Vec::new();
             for entity_bits in bits_list {
                 let mut ran = false;
                 if let Some(tool) = tools.active_mut()
@@ -259,7 +282,7 @@ pub(super) fn dispatch(
                         asset_db,
                         atlas_asset_map,
                         toasts,
-                        image_edit_undo,
+                        &mut pending,
                         ups,
                     );
                 }
@@ -267,6 +290,7 @@ pub(super) fn dispatch(
                     title_dirty = true;
                 }
             }
+            commit_image_edit_transaction(renderer, image_edit_undo, pending);
         }
     }
     // Bg Removal drain — parallel to Trim Transparency, but
@@ -329,6 +353,7 @@ pub(super) fn dispatch(
                     .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
             })
             .expect("bgremoval_active gate guarantees a BgRemovalTool");
+        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
         if hero_intents::drain_bgremoval(
             entity_bits,
             hero.project.pixels_per_meter,
@@ -337,12 +362,13 @@ pub(super) fn dispatch(
             asset_db,
             atlas_asset_map,
             toasts,
-            image_edit_undo,
+            &mut pending,
             bg,
             last_bgremoval_pushed_entity,
         ) {
             title_dirty = true;
         }
+        commit_image_edit_transaction(renderer, image_edit_undo, pending);
     }
     // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click)
     // pushes `EditorAction::UndoImageEdit` onto the bus; the

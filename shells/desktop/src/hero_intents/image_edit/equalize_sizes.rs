@@ -9,7 +9,7 @@ use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 
 use crate::hero_intents::texture_edit;
-use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot, drop_undo_pre_source_if_individual};
+use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot};
 
 /// Per-entity gather record for `drain_equalize_sizes`: the source-read
 /// metadata (`old_*` + alpha mode) paired with the entity_bits so the
@@ -110,7 +110,7 @@ pub(crate) fn drain_equalize_sizes(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     toasts: &mut ToastQueue,
-    image_edit_undo: &mut Option<ImageEditSnapshot>,
+    pending_undo_entries: &mut Vec<ImageEditSnapshot>,
     eqs: &mut ph2d_tool_equalize_sizes::EqualizeSizesTool,
 ) -> bool {
     if bits_list.is_empty() {
@@ -206,10 +206,11 @@ pub(crate) fn drain_equalize_sizes(
         vec![None; entries.len()]
     };
 
-    // Phase 3: commit per-entity. We need a separate counter for
-    // "actually changed" because `out.changed = false` skips quietly.
+    // Phase 3: commit per-entity. Each successful sprite pushes an
+    // entry into the caller's `pending_undo_entries` so the cross-sprite
+    // Apply restores ALL sprites on Cmd+Z (the old single-slot design
+    // only restored the last one — §1 audit CRITICAL data-loss bug).
     let mut applied = 0usize;
-    let mut last_success: Option<(u64, texture_edit::SourceRead, u32, bool)> = None;
     for ((entry, out), maybe_pos) in entries.into_iter().zip(outputs).zip(new_translations) {
         // Skip only when the bake produced NO change AND there's no
         // arrange-on-grid layout move to apply — otherwise the sprite
@@ -273,15 +274,19 @@ pub(crate) fn drain_equalize_sizes(
             }
         }
         applied += 1;
-        if let Some(tex_id) = produced_individual {
-            last_success = Some((entry.bits, entry.src, tex_id, true));
-        } else if last_success.is_none() {
-            // Fit-by-scale only — preserve enough metadata for an undo
-            // that restores the scale (no texture id since none was
-            // produced). We mark this as "no-individual" so the undo
-            // drainer skips the texture release.
-            last_success = Some((entry.bits, entry.src, 0, false));
-        }
+        // Append THIS sprite to the transaction. `produced_individual`
+        // None ⇒ fit-by-scale path (no texture acquired); we record `0`
+        // as the sentinel the undo drainer already tolerates.
+        pending_undo_entries.push(ImageEditSnapshot {
+            entity_bits: entry.bits,
+            pre_source: entry.src.old_source,
+            pre_size: entry.src.old_size_world,
+            pre_translation: entry.src.old_translation,
+            pre_premultiplied: entry.src.old_premultiplied,
+            pre_anchor: entry.src.old_anchor,
+            post_individual_id: produced_individual.unwrap_or(0),
+            label: "Equalize Sizes",
+        });
     }
 
     if applied == 0 {
@@ -289,36 +294,16 @@ pub(crate) fn drain_equalize_sizes(
         return true;
     }
 
-    // Single-level undo: snapshot the LAST successful sprite. Cross-
-    // sprite undo (a stack of N snapshots) is M14.x scope.
-    if let Some((bits, src, texture_id, had_individual)) = last_success {
-        drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-        *image_edit_undo = Some(ImageEditSnapshot {
-            entity_bits: bits,
-            pre_source: src.old_source,
-            pre_size: src.old_size_world,
-            pre_translation: src.old_translation,
-            pre_premultiplied: src.old_premultiplied,
-            pre_anchor: src.old_anchor,
-            // `0` is a sentinel for fit-by-scale (no individual texture
-            // was acquired); the undo drainer's
-            // `drop_undo_pre_source_if_individual` guard already
-            // tolerates a missing acquire.
-            post_individual_id: if had_individual { texture_id } else { 0 },
-            label: "Equalize Sizes",
-        });
-    }
-
     if skipped > 0 {
         toasts.push(Toast::success(format!(
-            "Equalize Sizes · {} sprite(s), {} skipped · Cmd+Z undoes last",
+            "Equalize Sizes · {} sprite(s), {} skipped · Cmd+Z to undo",
             applied, skipped
         )));
     } else if applied == 1 {
         toasts.push(Toast::success("Equalize Sizes applied · Cmd+Z to undo"));
     } else {
         toasts.push(Toast::success(format!(
-            "Equalize Sizes · {} sprites · Cmd+Z undoes last",
+            "Equalize Sizes · {} sprites · Cmd+Z to undo",
             applied
         )));
     }

@@ -164,22 +164,45 @@ pub(crate) struct AppGfx {
     /// Visibility / Name). Loaded into the registry via
     /// `register_render_components` at boot.
     pub(crate) sprite_type_id: u64,
-    /// Single-level undo for image-edit actions (Trim Transparency,
-    /// Make Square). Captures the pre-edit Sprite source / size /
-    /// Transform translation so Cmd+Z (or TOOL_UNDO click) restores
-    /// the previous state. The full editor undo system is M14.x scope;
-    /// image-edits are the only path that ships undo in this milestone.
+    /// Single-level image-edit undo — one TRANSACTION (covers a whole
+    /// multi-sprite Apply) per slot. Cmd+Z (or TOOL_UNDO click) restores
+    /// every sprite the transaction touched. The full editor undo system
+    /// (a multi-transaction stack rooted in `EditorCommandQueue`) is
+    /// M14.x scope.
     ///
-    /// Single-level by design: each new image-edit overwrites the
-    /// snapshot (releasing the now-orphaned individual texture if the
-    /// PRE-edit state was on one). Future M14.x replaces this with a
-    /// proper command stack rooted in `EditorCommandQueue`.
-    pub(crate) image_edit_undo: Option<ImageEditSnapshot>,
+    /// **Cross-sprite contract** (was the §1 audit CRITICAL): each
+    /// per-sprite drain appends ONE `ImageEditSnapshot` to the in-flight
+    /// `pending_entries` vec the orchestrator owns; once the multi-sprite
+    /// loop completes, the orchestrator commits a single
+    /// `ImageEditTransaction` here, releasing the previous transaction's
+    /// pre-edit individual textures (if any). Undo pops the whole vec —
+    /// restoring N sprites in one keypress — instead of just the last
+    /// sprite the old single-slot design retained.
+    pub(crate) image_edit_undo: Option<ImageEditTransaction>,
 }
 
-/// Pre-edit snapshot of a sprite that an image-edit action mutated.
-/// Owned by [`AppGfx::image_edit_undo`]; populated by the Trim / Make
-/// Square drainers, consumed by [`AppGfx::undo_image_edit`].
+/// One Apply pass — covers `entries.len()` sprites (1 for a single-sprite
+/// tool like Trim, N for a multi-sprite Apply like Color EQ over a
+/// selection). Restored atomically by `drain_undo_image_edit`.
+pub(crate) struct ImageEditTransaction {
+    /// One entry per sprite the Apply pass mutated. Drained in reverse
+    /// on undo (conventional — irrelevant here since each entry targets
+    /// a distinct entity, but keeps the restore order deterministic).
+    pub(crate) entries: Vec<ImageEditSnapshot>,
+    /// Toast label for the transaction (`"Color EQ"`, `"Bg Removal"`,
+    /// `"Padding"`, …). One label per transaction even when N sprites
+    /// were touched — the user sees ONE undo toast.
+    pub(crate) label: &'static str,
+}
+
+/// Pre-edit snapshot of ONE sprite that an image-edit action mutated.
+/// Multiple `ImageEditSnapshot`s aggregate into an
+/// [`ImageEditTransaction`] for multi-sprite Apply (one entry per
+/// affected sprite). Populated by the 8 image-edit drainers
+/// (`drain_trim_transparency` / `drain_make_square` / `drain_rasterize`
+/// / `drain_padding` / `drain_color_equalization` / `drain_upscale` /
+/// `drain_equalize_sizes` / `drain_bgremoval`), consumed by
+/// `drain_undo_image_edit`.
 pub(crate) struct ImageEditSnapshot {
     /// Bevy entity bits of the sprite the edit targeted.
     pub(crate) entity_bits: u64,
@@ -312,11 +335,15 @@ pub(crate) struct App {
     /// reflects the current selection. Reset to `None` on tool
     /// deactivate.
     pub(crate) last_color_equalization_pushed_entity: Option<u64>,
-    /// On-canvas live preview for the Color Equalization tool — drawn
-    /// over the primary sprite's footprint while the tool is active so
-    /// the user sees CLAHE + adjusts apply in real time. Cleared on
-    /// Apply (the bake replaces the texture) + on deactivate.
-    pub(crate) color_equalization_preview: Option<ColorEqualizationPreview>,
+    /// On-canvas live previews for the Color Equalization tool — one
+    /// entry per CURRENTLY-SELECTED sprite (mirrors the multi-select
+    /// Apply set). The preview overlay paints each entry over its
+    /// sprite's footprint so the user sees the edited result on EVERY
+    /// selected sprite when the slider is released. Keyed by
+    /// `entity_bits`; entries for sprites that left the selection get
+    /// pruned on the next rebuild. Cleared on Apply + deactivate.
+    pub(crate) color_equalization_previews:
+        std::collections::BTreeMap<u64, ColorEqualizationPreview>,
     /// Mirror of `last_color_equalization_pushed_entity` for the
     /// Upscale tool. Reset to `None` on tool deactivate so the next
     /// activation re-pushes the source against the current selection.

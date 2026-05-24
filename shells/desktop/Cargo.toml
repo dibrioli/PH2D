@@ -57,7 +57,9 @@ ph2d-tool-padding = { path = "../../crates/ph2d-tool-padding" }
 # sprite's source RGBA into the active tool's preview cache and runs
 # `run_full_resolution` for the bake (see render_loop/
 # color_equalization_bridge.rs + hero_intents/image_edit.rs).
-ph2d-tool-color-equalization = { path = "../../crates/ph2d-tool-color-equalization" }
+ph2d-tool-color-equalization = { path = "../../crates/ph2d-tool-color-equalization", features = [
+    "gpu",
+] }
 # Equalize Sizes bake — multi-sprite size normalization. The shell drain
 # collects per-sprite inputs from `hero.gizmo.iter_selected()` and runs
 # `EqualizeSizesTool::run_full_resolution_multi` in one batch (see

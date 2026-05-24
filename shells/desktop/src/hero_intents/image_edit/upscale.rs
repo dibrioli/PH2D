@@ -9,7 +9,7 @@ use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 
 use crate::hero_intents::texture_edit;
-use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot, drop_undo_pre_source_if_individual};
+use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot};
 
 /// Drain one Upscale-bake request: push the sprite's source RGBA
 /// into the active `UpscaleTool`, run the algorithm at full
@@ -48,7 +48,7 @@ pub(crate) fn drain_upscale(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     toasts: &mut ToastQueue,
-    image_edit_undo: &mut Option<ImageEditSnapshot>,
+    pending_undo_entries: &mut Vec<ImageEditSnapshot>,
     ups: &mut ph2d_tool_upscale::UpscaleTool,
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
@@ -113,8 +113,7 @@ pub(crate) fn drain_upscale(
                 t.scale.x = if scale_sign_x < 0.0 { -1.0 } else { 1.0 };
                 t.scale.y = if scale_sign_y < 0.0 { -1.0 } else { 1.0 };
             }
-            drop_undo_pre_source_if_individual(renderer, image_edit_undo);
-            *image_edit_undo = Some(ImageEditSnapshot {
+            pending_undo_entries.push(ImageEditSnapshot {
                 entity_bits,
                 pre_source: old_source,
                 pre_size: old_size_world,

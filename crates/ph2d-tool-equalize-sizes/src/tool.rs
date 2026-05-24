@@ -35,6 +35,10 @@ pub struct EqualizeSizesTool {
     /// [`Self::take_pending_apply`] each frame and runs
     /// [`Self::run_full_resolution_multi`] over the selection.
     pending_apply: bool,
+    /// Set `true` by Reset / on_activate. Shell drains via
+    /// `take_pending_panel_reset` and re-runs `Panel::populate` so
+    /// the slider knobs / chips snap back to defaults.
+    pending_panel_reset: bool,
 }
 
 impl EqualizeSizesTool {
@@ -54,9 +58,16 @@ impl EqualizeSizesTool {
     /// the only side effect at the tool layer is flipping the
     /// pending-apply latch on `Apply`.
     pub fn apply_ui_edit(&mut self, edit: EqualizeSizesUiEdit) {
+        if matches!(edit, EqualizeSizesUiEdit::ResetAll) {
+            self.pending_panel_reset = true;
+        }
         if apply_ui_edit(&mut self.params, edit) {
             self.pending_apply = true;
         }
+    }
+
+    pub fn take_pending_panel_reset(&mut self) -> bool {
+        std::mem::take(&mut self.pending_panel_reset)
     }
 
     /// Drain the pending-apply latch. Returns `true` exactly once after
@@ -101,11 +112,14 @@ impl Tool for EqualizeSizesTool {
         panel
     }
 
+    fn on_activate(&mut self) {
+        // Defaults load on every fresh panel open (mode / W,H / grid /
+        // toggles back to `EqualizeSizesParams::default()`).
+        self.apply_ui_edit(EqualizeSizesUiEdit::ResetAll);
+    }
+
     fn on_deactivate(&mut self) {
-        // Drop only the pending-apply latch — params (mode / W,H / grid
-        // / toggles) persist across activations, mirroring Bg Removal +
-        // Padding semantics so the user can flip away and back without
-        // losing their setup.
+        // Drop only the pending-apply latch on deactivation.
         self.pending_apply = false;
     }
 
@@ -175,6 +189,9 @@ impl Tool for EqualizeSizesTool {
             // ── Apply (arms the latch the shell drains next frame) ───
             PanelEvent::Click(id) if id == ids::EQS_APPLY => {
                 self.apply_ui_edit(EqualizeSizesUiEdit::Apply);
+            }
+            PanelEvent::Click(id) if id == ids::EQS_RESET => {
+                self.apply_ui_edit(EqualizeSizesUiEdit::ResetAll);
             }
             // Cancel is handled at the panel layer via
             // `EditorAction::CancelActiveTool` (shell switches back to
@@ -290,6 +307,33 @@ mod tests {
         assert_eq!(t.params().target_mode, TargetMode::Fixed);
         assert_eq!(t.params().fixed_w, 123);
         assert!(!t.take_pending_apply());
+    }
+
+    #[test]
+    fn on_activate_resets_params_and_arms_panel_repopulate() {
+        // Regression cover (§12.3 / §12.4 UI_Bugs): `on_activate` must
+        // route through `apply_ui_edit::ResetAll` so (a) params snap to
+        // defaults AND (b) `pending_panel_reset` arms so the shell
+        // bridge re-runs `Panel::populate(store)` and the slider knobs
+        // visually snap back to defaults.
+        let mut t = EqualizeSizesTool::default();
+        // Dirty the state — simulate a prior session.
+        t.handle_panel_event(PanelEvent::Click(ids::EQS_MODE_FIXED));
+        t.handle_panel_event(PanelEvent::SetValue(ids::EQS_FIXED_W, 512.0));
+        t.handle_panel_event(PanelEvent::Click(ids::EQS_ARRANGE_ON_GRID));
+        assert_eq!(t.params().target_mode, TargetMode::Fixed);
+        assert_eq!(t.params().fixed_w, 512);
+        assert!(t.params().arrange_on_grid);
+        // Drain any stray reset flag first.
+        let _ = t.take_pending_panel_reset();
+
+        t.on_activate();
+
+        assert_eq!(*t.params(), EqualizeSizesParams::default());
+        assert!(
+            t.take_pending_panel_reset(),
+            "on_activate must arm pending_panel_reset so the shell repopulates"
+        );
     }
 
     #[test]

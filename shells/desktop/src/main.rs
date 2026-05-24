@@ -51,7 +51,8 @@ mod theme;
 mod winit_host;
 
 pub(crate) use app_state::{
-    App, AppGfx, HeroLive, ImageEditSnapshot, is_image_edit_tool, palette_visible_tool_indices,
+    App, AppGfx, HeroLive, ImageEditSnapshot, ImageEditTransaction, is_image_edit_tool,
+    palette_visible_tool_indices,
 };
 
 // forwarding::* moved to input_dispatch.rs (PR 9b).
@@ -147,7 +148,7 @@ impl App {
             cycle_pick_count: 0,
             last_bgremoval_pushed_entity: None,
             last_color_equalization_pushed_entity: None,
-            color_equalization_preview: None,
+            color_equalization_previews: std::collections::BTreeMap::new(),
             last_upscale_pushed_entity: None,
             upscale_preview: None,
             bgremoval_preview: None,
@@ -290,19 +291,41 @@ impl ApplicationHandler for App {
 pub(crate) const EPS_PIXELS_PER_METER: f32 = 0.01;
 
 /// When the image-edit undo slot is being overwritten by a new edit,
-/// release the previous snapshot's pre-edit Individual texture (if
-/// any) so the now-orphaned texture doesn't leak. Atlas-backed
-/// pre-sources don't need release — they share the texture via the
-/// asset_db. No-op when the slot is empty.
-pub(crate) fn drop_undo_pre_source_if_individual(
+/// release every pre-edit Individual texture across the previous
+/// transaction's entries (multi-sprite Apply leaves N entries; the
+/// single-sprite case degenerates to N=1). Atlas-backed pre-sources
+/// don't need release — they share the texture via the asset_db.
+/// No-op when the slot is empty.
+pub(crate) fn drop_undo_pre_sources_if_individual(
     renderer: &mut SpriteRenderer,
-    slot: &mut Option<ImageEditSnapshot>,
+    slot: &mut Option<ImageEditTransaction>,
 ) {
-    if let Some(prev) = slot.take()
-        && let ph2d_render::SpriteSource::Individual { texture_id } = prev.pre_source
-    {
-        renderer.individual_mut().release(texture_id);
+    if let Some(prev) = slot.take() {
+        for entry in prev.entries {
+            if let ph2d_render::SpriteSource::Individual { texture_id } = entry.pre_source {
+                renderer.individual_mut().release(texture_id);
+            }
+        }
     }
+}
+
+/// Commit `entries` (one per sprite the multi-sprite Apply touched) as
+/// the new undo transaction, releasing the previous transaction's
+/// pre-edit individual textures. No-op when `entries.is_empty()` (no
+/// sprite actually changed → nothing to undo). The transaction label
+/// comes from the first entry; per-drain code pushes the same label on
+/// every entry it appends, so all N entries agree by construction.
+pub(crate) fn commit_image_edit_transaction(
+    renderer: &mut SpriteRenderer,
+    slot: &mut Option<ImageEditTransaction>,
+    entries: Vec<ImageEditSnapshot>,
+) {
+    if entries.is_empty() {
+        return;
+    }
+    let label = entries[0].label;
+    drop_undo_pre_sources_if_individual(renderer, slot);
+    *slot = Some(ImageEditTransaction { entries, label });
 }
 
 /// Floor for the world-space side length of an imported sprite.

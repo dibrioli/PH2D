@@ -99,6 +99,7 @@ fn is_bgr_click(id: NodeId) -> bool {
         || id == ids::BGR_FALLOFF_SHARP
         || id == ids::BGR_FALLOFF_CONSTANT
         || id == ids::BGR_APPLY
+        || id == ids::BGR_RESET
         || id == ids::BGR_EYEDROPPER
         || id == ids::BGR_PROTECT
         || id == ids::BGR_PROTECT_CLEAR

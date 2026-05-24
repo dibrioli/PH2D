@@ -83,14 +83,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
         scene,
         theme,
     );
-    ph2d_editor_core::widget::panel_chrome::paint_panel_title_color_dot(
-        rect,
-        ids::EQS_TITLE_COLOR,
-        store,
-        hit_index,
-        scene,
-        theme,
-    );
+    // Color dot + notes intentionally NOT broadcast to image-tool panels.
 
     // ── Section: Target mode (3-way radio) ──────────────────────────
     let mode_row = Rect::new(inner_x, y, inner_w, row_h);

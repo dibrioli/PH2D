@@ -404,17 +404,23 @@ pub fn dispatch_pointer_with_text<'frame>(
                             section: section_id,
                         },
                     });
-                } else if let Some(panel) = panel_under.filter(|p| *p != crate::ids::HIER_PANEL) {
+                } else if let Some(panel) = panel_under.filter(|p| {
+                    *p != crate::ids::HIER_PANEL
+                        && *p != crate::ids::PAD_PANEL
+                        && *p != crate::ids::BGR_PANEL
+                        && *p != crate::ids::CEQ_PANEL
+                        && *p != crate::ids::UPS_PANEL
+                        && *p != crate::ids::EQS_PANEL
+                }) {
                     // `before_section` is filled in by apply_event
                     // — only the inspector knows the screen→body
                     // conversion + section y-ranges.
                     //
-                    // Hierarchy is excluded by design: it has no notes
-                    // (rows are entities, not paragraphs) and the empty-
-                    // space right-click was surfacing "Create note"
-                    // there spuriously. UI canon post-2026-05-24:
-                    // notes + outlines live in Inspector-type panels
-                    // only (DIRETRIZ §5.2).
+                    // Hierarchy + image-tool panels (PAD/BGR/CEQ/UPS/EQS)
+                    // are excluded by design — these are transient
+                    // operation surfaces, not annotation surfaces. UI
+                    // canon post-2026-05-24: notes + outlines live in
+                    // Inspector + Widget Gallery only.
                     store.open_context_menu(ContextMenuRequest {
                         x: event.x,
                         y: event.y,

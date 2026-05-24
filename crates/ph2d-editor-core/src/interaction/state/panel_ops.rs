@@ -90,8 +90,19 @@ impl WidgetStore {
 
     /// Painter publishes its panel rect each frame so wheel
     /// dispatch can find which panel is under the cursor.
+    ///
+    /// Also bumps the panel to the top of z-order so
+    /// [`panel_at`](Self::panel_at) prefers a panel that actually
+    /// painted this frame over one that left a stale rect when it
+    /// hid without calling [`clear_panel_rect`](Self::clear_panel_rect).
+    /// This matters for the right-dock slot shared by Inspector +
+    /// image-tool panels: when CEQ activates, Inspector skips its
+    /// paint but Inspector's last-frame rect persists in the map.
+    /// Without z-bumping, `panel_at` could route wheel events to
+    /// INSP_PANEL — CEQ's scroll value never moves.
     pub fn set_panel_rect(&mut self, panel: NodeId, rect: Rect) {
         self.panel_rects.insert(panel, rect);
+        self.bump_panel_z(panel);
     }
 
     /// Read the published rect of a panel. Returns `None` when no
@@ -137,12 +148,21 @@ impl WidgetStore {
         self.panel_visible_h.get(&panel).copied()
     }
 
-    /// Find the panel whose rect contains `(x, y)`. Walks all
-    /// registered panels and returns the first match. Acceptable
-    /// because there are only a handful of panels (~3-5); for
-    /// dozens, switch to the same back-to-front Vec approach as
-    /// [`crate::interaction::HitIndex`].
+    /// Find the panel whose rect contains `(x, y)`. Walks
+    /// [`panel_z_order`](Self::panel_z_order) in reverse so the
+    /// topmost (most-recently-painted) panel wins — necessary when
+    /// two panels share a rect (Inspector + image-tool panels share
+    /// the right dock) and one of them left a stale rect entry.
+    /// Falls back to a linear walk for panels not yet in z-order
+    /// (e.g. very first frame after activation).
     pub fn panel_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        for id in self.panel_z_order.iter().rev() {
+            if let Some(rect) = self.panel_rects.get(id) {
+                if rect.contains(x, y) {
+                    return Some(*id);
+                }
+            }
+        }
         for (id, rect) in &self.panel_rects {
             if rect.contains(x, y) {
                 return Some(*id);

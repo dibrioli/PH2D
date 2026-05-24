@@ -87,14 +87,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
         scene,
         theme,
     );
-    ph2d_editor_core::widget::panel_chrome::paint_panel_title_color_dot(
-        rect,
-        ids::UPS_TITLE_COLOR,
-        store,
-        hit_index,
-        scene,
-        theme,
-    );
+    // Color dot + notes intentionally NOT broadcast to image-tool panels.
 
     // ── Algorithm segmented selector ───────────────────────────────
     // 3 buttons in a row; the active one is the snapshot's algorithm.

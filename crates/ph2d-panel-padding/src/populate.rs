@@ -15,11 +15,6 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub fn populate(store: &mut WidgetStore) {
-    // Panel-level color tag — same affordance as Inspector live
-    // section color dots (UI canon post-2026-05-24). Plain so
-    // is_focusable + apply_click route to the panel's color handler.
-    store.register(ids::PAD_TITLE_COLOR, InteractiveState::Plain);
-
     // Cancel / Apply + the pivot-mode toggle (a Button painted as an
     // accent toggle, like Bg Removal's Show-Mask).
     for id in [

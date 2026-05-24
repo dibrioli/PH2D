@@ -30,8 +30,6 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 use ph2d_tool_equalize_sizes::params::EqualizeSizesUiSnapshot;
 
 pub fn populate(store: &mut WidgetStore) {
-    // Panel-level color tag (UI canon post-2026-05-24).
-    store.register(ids::EQS_TITLE_COLOR, InteractiveState::Plain);
     // Every plain button (modes, algorithm, toggles incl. Arrange,
     // Cancel/Apply).
     for id in [

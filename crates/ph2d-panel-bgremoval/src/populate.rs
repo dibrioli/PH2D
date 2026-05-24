@@ -12,8 +12,6 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 use ph2d_tool_bgremoval::params::BgRemovalUiSnapshot;
 
 pub fn populate(store: &mut WidgetStore) {
-    // Panel-level color tag (UI canon post-2026-05-24).
-    store.register(ids::BGR_TITLE_COLOR, InteractiveState::Plain);
     for id in [
         ids::BGR_APPLY,
         ids::BGR_CANCEL,

@@ -160,7 +160,15 @@ pub(crate) fn paint_transform_section(
     let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
     let axis_col_w = Spacing::Lg.px();
     let axis_label_font = TypeToken::Base.px();
-    let label_above_gap = SECTION_LABEL_TO_CONTROL_PX;
+    // Tighter than SECTION_LABEL_TO_CONTROL_PX (4 px): in narrow
+    // label-above mode the label sits directly over the chip BORDER,
+    // and the border itself already gives visual breathing room — 4 px
+    // on top of that read as a "chasm" (user feedback 2026-05-24:
+    // "esse espaço entre as labels e as caixas deve ser menor (metade)").
+    // Halved to 2 px for the chip-specific case; buttons (Render
+    // Source's Strategy/Pixel format) keep the full 4 px because the
+    // ghost-button outline is softer than a chip border.
+    let label_above_gap = SECTION_LABEL_TO_CONTROL_PX * 0.5;
     let chip_min_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
 
     // Per-SECTION narrow check: if the WIDEST row (2-chip Position) wouldn't

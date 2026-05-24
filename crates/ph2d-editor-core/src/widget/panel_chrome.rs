@@ -35,6 +35,30 @@ use ph2d_vector::VectorScene;
 /// title, the close/add button row, and the body-top offset all align.
 pub const PANEL_TITLE_BASELINE: f32 = 18.0; // LITERAL-PX-OK: canonical panel title baseline
 
+/// Canonical vertical spacing between a section's LABEL and the
+/// control immediately below it (number-input row, segmented group,
+/// chip row). Used by every section painter — Transform's
+/// label-above row, Render Source's "Strategy" / "Pixel format"
+/// labels, etc. UI canon 2026-05-24: tight gap so labels read as
+/// "for this control" without a chasm in between.
+///
+/// Doc: `docs/UI_Padrao/components/section_header.md` §"Vertical
+/// spacing — single source of truth".
+pub const SECTION_LABEL_TO_CONTROL_PX: f32 = 4.0; // LITERAL-PX-OK: ≈ Spacing::Xxs.px()
+
+/// Canonical vertical spacing between two consecutive rows INSIDE a
+/// section (e.g. Position → Rotation → Scale in Transform). Bigger
+/// than [`SECTION_LABEL_TO_CONTROL_PX`] so siblings read as separate
+/// rows, smaller than the inter-section separator.
+pub const SECTION_INNER_ROW_GAP_PX: f32 = 8.0; // LITERAL-PX-OK: ≈ Spacing::Sm.px()
+
+/// Canonical vertical spacing AFTER the last control of a section and
+/// BEFORE the [`paint_section_separator`] call. Standardized across
+/// every section so the visual rhythm of "content → separator → next
+/// header" is identical (Visible / Transform / Render Source all
+/// match — user feedback 2026-05-24).
+pub const SECTION_BOTTOM_PAD_PX: f32 = 8.0; // LITERAL-PX-OK: ≈ Spacing::Sm.px()
+
 /// Default height of the title-bar drag band when the panel has only a
 /// title + subtitle in the header. Covers title baseline + subtitle
 /// line + a few px of margin so the cursor can grab the area visually

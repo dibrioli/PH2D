@@ -8,13 +8,16 @@ use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
 use ph2d_editor_core::widget::panel_chrome::{
-    paint_segmented_group, paint_segmented_group_adaptive,
+    SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group,
+    paint_segmented_group_adaptive,
 };
 use ph2d_editor_core::widget::showcase::read_number_input;
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, NumberInput,
-    SectionHeader, TextInput, TextInputState, paint_button, paint_checkbox,
-    paint_number_input_with_buffer, paint_section_header, paint_text_input_with_buffer,
+    Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, IconButtonStyle,
+    IconGlyph, NumberInput, SectionHeader, TextInput, TextInputState, paint_button, paint_checkbox,
+    paint_icon_button, paint_number_input_with_buffer, paint_section_header,
+    paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -57,7 +60,7 @@ pub(crate) fn paint_entity_name_row(
         text_system,
         theme,
     );
-    y + row_h + Spacing::Sm.px()
+    y + row_h + SECTION_BOTTOM_PAD_PX
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -82,7 +85,7 @@ pub(crate) fn paint_visibility_row(
         .state(state)
         .value(value);
     paint_checkbox(&checkbox, host, scene, text_system, theme);
-    y + row_h + Spacing::Sm.px()
+    y + row_h + SECTION_BOTTOM_PAD_PX
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -103,24 +106,28 @@ pub(crate) fn paint_transform_section(
 
     // Canonical section header (ALL-CAPS + collapse chevron + color-dot
     // slot per UI canon — `docs/UI_Padrao/components/section_header.md`).
-    // Reset button sits to the right of the header band.
+    // Reset is an ICON button (user feedback 2026-05-24: "coloque como
+    // ícone"). Square hit-zone in the right slot of the header band.
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let reset_w = 80.0_f32; // LITERAL-PX-OK: Reset button explicit width
-    let reset_h = 24.0_f32; // LITERAL-PX-OK: Reset button compact height
+    let reset_size = header_h; // square icon button matching header height
     let collapsed = store.is_collapsed(ids::INSP_LIVE_TRANSFORM_SECTION);
     let header = SectionHeader::new(ids::INSP_LIVE_TRANSFORM_SECTION, "Transform")
         .collapsible(!collapsed);
-    let header_rect = Rect::new(x, y, w - reset_w - Spacing::Sm.px(), header_h);
+    let header_rect = Rect::new(x, y, w - reset_size - Spacing::Sm.px(), header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
-    let reset_rect = Rect::new(x + w - reset_w, y - Spacing::Xxs.px(), reset_w, reset_h);
+    let reset_rect = Rect::new(x + w - reset_size, y, reset_size, reset_size);
     let reset_state = store
         .button_state(ids::INSP_TRANSFORM_RESET)
         .unwrap_or(ButtonState::Normal);
     hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
-    let reset_btn = Button::new(ids::INSP_TRANSFORM_RESET, "Reset")
-        .kind(ButtonKind::Default)
-        .state(reset_state);
-    paint_button(&reset_btn, reset_rect, scene, text_system, theme);
+    paint_icon_button(
+        reset_rect,
+        IconGlyph::Builtin(IconId::Reset),
+        IconButtonStyle::Plain,
+        reset_state,
+        scene,
+        theme,
+    );
     // Collapsed → return after painting just the header. Body fields
     // (Position / Rotation / Scale) are skipped so the section
     // visually folds to a single row. Click on the header toggles
@@ -139,7 +146,7 @@ pub(crate) fn paint_transform_section(
     let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
     let axis_col_w = Spacing::Lg.px();
     let axis_label_font = TypeToken::Base.px();
-    let label_above_gap = Spacing::Xxs.px(); // tight gap between label-above + chip row
+    let label_above_gap = SECTION_LABEL_TO_CONTROL_PX;
     let chip_min_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
 
     // Per-SECTION narrow check: if the WIDEST row (2-chip Position) wouldn't
@@ -332,7 +339,7 @@ pub(crate) fn paint_transform_section(
         0.1, // LITERAL-PX-OK: scale NumberInput step
         Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
     );
-    cur_y += h_scale + Spacing::Xs.px();
+    cur_y += h_scale + SECTION_BOTTOM_PAD_PX;
 
     cur_y
 }
@@ -349,8 +356,10 @@ pub(crate) fn paint_render_source_section(
     y: f32,
     info: &InspectorSpriteInfo,
 ) -> f32 {
+    // Match Transform's row-label style — Sm font, Text2 color — so
+    // Render Source feels visually identical (user feedback 2026-05-24).
     let line_font = TypeToken::Sm.px();
-    let label_font = TypeToken::Xs.px();
+    let label_font = TypeToken::Sm.px();
     let row_gap = Spacing::Xs.px();
     let row_h = line_font + row_gap;
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
@@ -384,7 +393,7 @@ pub(crate) fn paint_render_source_section(
             yy,
             label_font,
             w,
-            resolve(ColorToken::Text3, theme),
+            resolve(ColorToken::Text2, theme),
         );
         yy += label_font + 2.0;
         paint_text(
@@ -408,9 +417,9 @@ pub(crate) fn paint_render_source_section(
         cur_y,
         label_font,
         w,
-        resolve(ColorToken::Text3, theme),
+        resolve(ColorToken::Text2, theme),
     );
-    cur_y += label_font + Spacing::Xs.px();
+    cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
     let strategy_btn_h = ROW_H_PX;
     // Adaptive segmented GROUP — when the panel is narrow, drops
     // "Hand-packed" (the longest) to its own row instead of wrapping
@@ -439,7 +448,9 @@ pub(crate) fn paint_render_source_section(
         theme,
         hit_index,
     );
-    cur_y += strat_h + Spacing::Md.px();
+    // Inter-row gap inside Render Source — matches Transform's row_gap
+    // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
+    cur_y += strat_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
     let storage_detail = match info.source_kind {
         InspectorSpriteSource::Atlas { key } => format!("Atlas key: {}", key),
         InspectorSpriteSource::Individual { texture_id } => {
@@ -461,13 +472,12 @@ pub(crate) fn paint_render_source_section(
         cur_y,
         label_font,
         w,
-        resolve(ColorToken::Text3, theme),
+        resolve(ColorToken::Text2, theme),
     );
-    cur_y += label_font + Spacing::Xs.px();
+    cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
     let btn_h = ROW_H_PX;
-    // Canonical segmented GROUP: RGBA8 active, RGBA16 not selected
-    // (format switch is V1-fixed at RGBA8).
-    paint_segmented_group(
+    // Adaptive segmented GROUP — same canon as Strategy above.
+    let fmt_h = paint_segmented_group_adaptive(
         Rect::new(x, cur_y, w, btn_h),
         &[
             ("RGBA8", true, ids::INSP_RENDER_FORMAT_RGBA8),
@@ -478,7 +488,7 @@ pub(crate) fn paint_render_source_section(
         theme,
         hit_index,
     );
-    cur_y += btn_h + Spacing::Md.px();
+    cur_y += fmt_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
 
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);
@@ -493,5 +503,5 @@ pub(crate) fn paint_render_source_section(
         .kind(ButtonKind::Default)
         .state(state);
     paint_button(&btn, btn_rect, scene, text_system, theme);
-    cur_y + reimport_h + Spacing::Xs.px()
+    cur_y + reimport_h + SECTION_BOTTOM_PAD_PX
 }

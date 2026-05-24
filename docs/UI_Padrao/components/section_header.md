@@ -65,6 +65,21 @@ Click esquerdo em qualquer lugar do header band toggla a seção. Estado persist
 4. Section painter lê `store.is_collapsed($section_id)`. Passa `!collapsed` pro `SectionHeader::collapsible(...)` (chevron `▼`/`▶`). Se collapsed, retorna depois de pintar só o header — pula o body.
 5. `is_focusable` retorna `true` pra qualquer id `is_collapsible_section`, mesmo sem InteractiveState — caso contrário o dispatch nem chegaria a `apply_click`.
 
+## Vertical spacing — single source of truth (canon 2026-05-24)
+
+Toda seção respeita o mesmo ritmo vertical, definido por constantes
+em [`widget/panel_chrome.rs`](../../../crates/ph2d-editor-core/src/widget/panel_chrome.rs):
+
+| Constante | Valor | Onde aplica |
+|---|---|---|
+| `SECTION_LABEL_TO_CONTROL_PX` | 4 px (Xxs) | Gap entre **label** (ex: "Position (px)") e o **control imediatamente abaixo** (chip row, segmented group, etc.) quando o label está em sua própria linha. |
+| `SECTION_INNER_ROW_GAP_PX` | 8 px (Sm) | Gap entre **rows consecutivas DENTRO** de uma seção (ex: Position → Rotation → Scale; Strategy → Pixel format → Reimport). |
+| `SECTION_BOTTOM_PAD_PX` | 8 px (Sm) | Gap entre **última row da seção** e a `paint_section_separator` chamada DEPOIS. Todas as seções (Visible / Transform / Render Source / Name) usam o MESMO valor — garante ritmo idêntico entre seções. |
+
+`SEPARATOR_PAD_Y` (definido em [`widget/showcase/mod.rs`](../../../crates/ph2d-editor-core/src/widget/showcase/mod.rs)) controla o espaço acima E abaixo da linha separadora (Md = 10 px cada lado). Não confundir com `SECTION_BOTTOM_PAD_PX`, que é o gap ANTES do separador.
+
+**Regra:** seções declaradas em qualquer panel-crate (não só Inspector) **DEVEM** consumir essas constantes, não hardcodar Spacing tokens. Se a constante não couber, levante issue — não improvise.
+
 ## Pendências (próximos checkpoints)
 
 - **Click no color dot → abrir color picker.** [`color_circle_hit_rect`](../../../crates/ph2d-editor-core/src/widget/section_header.rs) já expõe o rect; falta dispatch wiring + handler que abre BlenderColorPicker associado.

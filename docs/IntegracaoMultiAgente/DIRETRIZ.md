@@ -510,6 +510,8 @@ Esta é a forma simétrica como a engine cresce: largar um crate isolado em `cra
 
 Substitua `<family>` por `node`/`tool`, `<slug>` pelo seu, e se for node preencha `<domínio>` (ex.: `motion`). **Convenção dos marcadores:** linhas/blocos prefixados com `[node]` valem só pra família node; idem `[tool]`. Quem cola apaga os blocos da família errada antes de mandar pro agente.
 
+> **Variante 100% paste-ready** (sem placeholder) em [`examples-fan-out.md`](examples-fan-out.md) — este mesmo briefing instantiated fim-a-fim para um node concreto (`ph2d-node-shader-blur`) e um tool concreto (`ph2d-tool-grayscale`), incluindo todos os arquivos a criar. Use a variante parametrizada abaixo quando quiser flexibilidade; use o exemplo concreto quando o agente é novo e o objetivo é zero-substituição-mental.
+
 ```
 ═══════════════════════════════════════════════════════════════════
 BRIEFING — <family>-crate · slug: <slug>  [node]  · domínio: <domínio>

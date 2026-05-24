@@ -17,4 +17,10 @@
 > [`DIRETRIZ.md` §1.4](DIRETRIZ.md) — node novo e tool nova são ambos
 > caminho **(A) Só Implementador**, simétricos.
 >
+> **Quer um exemplo paste-ready?** [`examples-fan-out.md`](examples-fan-out.md)
+> traz o briefing §3.8.2 **instantiated fim-a-fim** para um node concreto
+> (`ph2d-node-shader-blur`) e um tool concreto (`ph2d-tool-grayscale`), com
+> todos os arquivos a criar — zero placeholder. Adicionado 2026-05-24 pra
+> fechar o atrito identificado na auditoria multi-agente readiness.
+>
 > Não edite este stub — edite o §3.8 do DIRETRIZ (doc único, não fragmentar).

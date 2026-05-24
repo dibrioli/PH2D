@@ -406,34 +406,68 @@ pub(crate) fn paint_render_source_section(
     // No inner separator — orchestrator draws it AFTER section content.
     let mut cur_y = y + header_h;
 
+    // Adaptive label/value row: when there's room, paint inline
+    // ("Storage   Atlas · key 0"); else fall back to stacked
+    // (label above, value below). User feedback 2026-05-24:
+    // "coloque numa mesma linha melhor escrito e formatado, e
+    // tambem capaz de se adaptar a largura do painel".
     let paint_pair = |scene: &mut VectorScene,
                       text_system: &mut TextSystem,
                       label: &str,
                       value: &str,
-                      mut yy: f32|
+                      yy: f32|
      -> f32 {
-        paint_text(
-            text_system,
-            scene,
-            label,
-            x,
-            yy,
-            label_font,
-            w,
-            resolve(ColorToken::Text2, theme),
-        );
-        yy += label_font + 2.0;
-        paint_text(
-            text_system,
-            scene,
-            value,
-            x,
-            yy,
-            line_font,
-            w,
-            resolve(ColorToken::Text1, theme),
-        );
-        yy + row_h + row_gap
+        let gap = Spacing::Md.px();
+        let label_w = text_system.layout(label, label_font, f32::INFINITY).width();
+        let value_w_natural = text_system.layout(value, line_font, f32::INFINITY).width();
+        if label_w + gap + value_w_natural <= w {
+            // Inline: label LEFT (Text2), value flush after the gap (Text1).
+            paint_text(
+                text_system,
+                scene,
+                label,
+                x,
+                yy,
+                label_font,
+                label_w,
+                resolve(ColorToken::Text2, theme),
+            );
+            paint_text(
+                text_system,
+                scene,
+                value,
+                x + label_w + gap,
+                yy,
+                line_font,
+                w - label_w - gap,
+                resolve(ColorToken::Text1, theme),
+            );
+            yy + line_font + row_gap
+        } else {
+            // Stacked: label above, value below.
+            paint_text(
+                text_system,
+                scene,
+                label,
+                x,
+                yy,
+                label_font,
+                w,
+                resolve(ColorToken::Text2, theme),
+            );
+            let yy2 = yy + label_font + 2.0;
+            paint_text(
+                text_system,
+                scene,
+                value,
+                x,
+                yy2,
+                line_font,
+                w,
+                resolve(ColorToken::Text1, theme),
+            );
+            yy2 + row_h + row_gap
+        }
     };
 
     paint_text(
@@ -478,16 +512,20 @@ pub(crate) fn paint_render_source_section(
     // Inter-row gap inside Render Source — matches Transform's row_gap
     // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
     cur_y += strat_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
+    // Cleaner phrasing — strategy name + key/id separated by middle
+    // dot (the only ASCII-safe non-ASCII glyph allowed in UI strings;
+    // vide no_tofu_glyphs gate). Pre-canon was "Atlas key: 0" /
+    // "Texture id: 5" with the strategy redundantly named.
     let storage_detail = match info.source_kind {
-        InspectorSpriteSource::Atlas { key } => format!("Atlas key: {}", key),
+        InspectorSpriteSource::Atlas { key } => format!("Atlas \u{00b7} key {}", key),
         InspectorSpriteSource::Individual { texture_id } => {
-            format!("Texture id: {}", texture_id)
+            format!("Individual \u{00b7} texture {}", texture_id)
         }
-        InspectorSpriteSource::HandPacked => "Hand-packed (atlas asset)".to_string(),
+        InspectorSpriteSource::HandPacked => "Hand-packed".to_string(),
     };
     cur_y = paint_pair(scene, text_system, "Storage", &storage_detail, cur_y);
     if let Some((pw, ph)) = info.source_pixels {
-        let px_str = format!("{} × {} px", pw, ph);
+        let px_str = format!("{} \u{00d7} {} px", pw, ph);
         cur_y = paint_pair(scene, text_system, "Source", &px_str, cur_y);
     }
 

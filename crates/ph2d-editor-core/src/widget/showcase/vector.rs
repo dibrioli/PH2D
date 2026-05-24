@@ -39,10 +39,14 @@ pub(super) fn paint_vector_section(
         return y;
     }
 
-    // Match Inspector Transform row layout exactly: X tag + chip + Y tag + chip.
+    // Match Inspector Transform row layout: X tag + chip + Y tag + chip.
+    // axis_col_w bumped to 14 px (was 12 = Spacing::Lg.px()) to guarantee
+    // the X/Y glyph at TypeToken::Base font fits without parley clipping
+    // it to the column width. Original Vector3Editor used (host.h*0.7).max(14),
+    // so 14 is the documented floor for axis labels.
     let col_gap = Spacing::Md.px();
     let tag_box_gap = Spacing::Xxs.px();
-    let axis_col_w = Spacing::Lg.px();
+    let axis_col_w = 14.0_f32; // LITERAL-PX-OK: floor from Vector3Editor canon
     let axis_label_font = TypeToken::Base.px();
 
     let two_chip_w = ((w - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0);
@@ -60,7 +64,7 @@ pub(super) fn paint_vector_section(
         x,
         y + (FIELD_H - axis_label_font) * 0.5,
         axis_label_font,
-        axis_col_w,
+        axis_col_w + tag_box_gap,
         resolve(ColorToken::Danger, theme),
     );
     let x_box_x = x + axis_col_w + tag_box_gap;
@@ -87,7 +91,7 @@ pub(super) fn paint_vector_section(
         y_tag_x,
         y + (FIELD_H - axis_label_font) * 0.5,
         axis_label_font,
-        axis_col_w,
+        axis_col_w + tag_box_gap,
         resolve(ColorToken::Success, theme),
     );
     let y_box_x = y_tag_x + axis_col_w + tag_box_gap;

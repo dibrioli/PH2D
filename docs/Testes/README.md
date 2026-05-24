@@ -13,8 +13,8 @@
 | 0 — Infraestrutura multi-agente | ✅ COMPLETA | `d9379ee` | scripts smoke + workspace check | [§E0](#etapa-0--infraestrutura) |
 | 1.A — Emenda ADR-0041 (rename + deactivate) | ✅ COMPLETA | `a03d830` | 769/769 workspace (T2 hook) | [§E1A](#etapa-1a--emenda-adr-0041) |
 | 1.B — `ph2d-tool-runtime` + BgRemoval impl | ✅ COMPLETA | `74b6d27` | 132 verdes (122 BgR + 10 runtime) | [§E1B](#etapa-1b--ph2d-tool-runtime--bgremoval-impl) |
-| 2 — CEQ + Upscale impl (Padding/EqSizes exception) | ✅ COMPLETA | (pendente) | 193 verdes (131 CEQ + 52 Upscale + 10 runtime); fix C1 cross-bridge | [§E2](#etapa-2--ceq--upscale-impl-rastereditool) |
-| 3 — Gates + apaga shell legacy | ⏳ | — | — | — |
+| 2 — CEQ + Upscale impl (Padding/EqSizes exception) | ✅ COMPLETA | `cbb9cb3` | 193 verdes; fix C1 cross-bridge | [§E2](#etapa-2--ceq--upscale-impl-rastereditool) |
+| 3 — 3 arch-gates + drive_multi_preview_cache + fix C3 multi-Apply | ✅ COMPLETA | (pendente) | 19 gates/helper verdes; 3 críticos + 3 altos fixados | [§E3](#etapa-3--3-arch-gates--drive_multi_preview_cache) |
 | 4 — panel-sync + chrome-sync + widget-sync | ⏳ | — | — | — |
 | 5 — Gates UI panel-\* + ph2d-color + classes de bug | ⏳ | — | — | — |
 | 6 — Golden-image SSIM + drift + memory GC | ⏳ | — | — | — |
@@ -292,6 +292,98 @@ Vide `audits/etapa-2.md`. Resumo:
 - `crates/ph2d-tool-runtime/src/lib.rs` — warning expandido em `drive_deactivate_cleanup` + 1 test C1 regression
 - `docs/IntegracaoMultiAgente/DIRETRIZ.md` §3.8.3.1 atualizada
 - `docs/plans/2026-05-wave-10-perfection.md` §II nota pós-execução
+
+---
+
+## Etapa 3 — 3 arch-gates + drive_multi_preview_cache
+
+**Commit:** (pendente)
+
+### Escopo
+
+Esta etapa **fecha o ciclo Wave 10 Etapas 1+2** com 3 invariantes arquiteturais permanentes (anti-regressão) + 1 helper genérico + 1 fix funcional crítico:
+
+1. **`drive_multi_preview_cache` helper** (`crates/ph2d-tool-runtime/`) — generaliza o loop multi-sprite preview do CEQ.
+2. **`color_equalization_bridge` migra** pra usar o helper (elimina 1 downcast).
+3. **3 arch-gates novos** travam regressão por construção:
+   - `architecture_no_per_tool_branch_in_render_loop` (shell)
+   - `architecture_no_downcast_to_concrete_tool_in_shell` (shell) — allowlist explícita
+   - `architecture_image_tool_kind_contract` (registry-init) — tools cluster=image_tools devem `impl RasterEditTool` OU estar em exception
+4. **Fix [C3] crítico**: `input_handlers.rs` tinha drain duplicado de `take_pending_apply` que regredia multi-select Apply pra single-sprite. Bloco removido — bridges cobrem com `drive_pending_commit`.
+
+### Testes automáticos rodados ✅
+
+```bash
+# Gate #1 — render_loop/mod.rs per-tool branch count
+cargo test -p ph2d-host-desktop --test architecture_no_per_tool_branch_in_render_loop
+# → 1/1 ok (baseline cap=16 snapped to current count)
+
+# Gate #2 — downcast allowlist
+cargo test -p ph2d-host-desktop --test architecture_no_downcast_to_concrete_tool_in_shell
+# → 1/1 ok (allowlist: 6 reais — eyedropper, protect_brush, 4 bridges)
+
+# Gate #3 — image_tool kind contract
+cargo test -p ph2d-tool-registry-init --test architecture_image_tool_kind_contract
+# → 1/1 ok (exceptions: padding, equalize-sizes, 4 one-shots)
+
+# Runtime com helper novo + tests A1 regression
+cargo test -p ph2d-tool-runtime
+# → 16/16 ok (15 unit + 1 arch-gate; cap bumped 500→650 LOC)
+
+# Workspace + clippy
+cargo check --workspace                         → green
+cargo clippy --workspace --all-targets          → clean
+```
+
+### Audit adversarial × 1 (single, em vez de ×2 — escopo isolado)
+
+Vide `audits/etapa-3.md`. Resumo:
+
+- **3 achados CRITICAL fixados pré-commit:**
+  - **[C1]** Allowlist de gate #2 tinha 5 entries fantasma (hero_intents/image_edit/*.rs) — pre-concedia permissão sem necessidade. Fix: removidos. Allowlist agora só tem entries com downcasts reais.
+  - **[C2]** Baseline cap gate #1 era 20 com 4 unidades de folga "achatada". Snapped pra 16 (count real). Gate agora falha em qualquer adição.
+  - **[C3]** Drain duplicado de `take_pending_apply` em `input_handlers.rs` + `bgremoval_preview.rs` competiam (destructive). Input-handlers vencia, bridge sempre via `false` → multi-select Apply via panel toggle só bakava primary sprite. **Bloco removido do input_handlers.rs**; bridge canônico cobre multi-sprite via `drive_pending_commit`.
+- **3 achados ALTO fixados:**
+  - **[A1]** `drive_multi_preview_cache` mantinha cache stale quando `read_source` falhava transientemente. Fix: `cache.remove(bits)` no path miss + novo test regression.
+  - **[A2]** Doc-comment `BgremovalPreview` em app_state.rs dizia "CEQ + Upscale keep own structs until Etapa 2" — stale (Etapa 2 já migrou). Atualizado.
+  - **[A3]** Doc-comment módulo `color_equalization_bridge.rs` dizia "future drive_multi_preview_cache". Fix: agora documenta status pós-Etapa 3 (helper existe e é usado).
+- **5 achados MÉDIO/BAIXO** anotados (não bloqueantes — alguns como follow-up pra Wave 11+):
+  - M1: marker `ARCH-ALLOW: per-tool-branch` ainda não usado em produção (escape-hatch reservada).
+  - M2: gate #1 não detecta literais multi-line (`concat!` / raw strings) — heurística aceita pra Etapa 3 baseline.
+  - B5: gate #3 não cobre `impl RasterEditTool for` em sub-dirs do `src/` — todos os 3 impls atuais estão no root `src/tool.rs`, baixo risco.
+
+### Smoke manual pendente (Enio)
+
+**Crítico [C3] fix smoke (regression de multi-select Apply):**
+
+- [ ] **G1 BgR Apply Toggle via panel + multi-select:** ativar BgR → shift-click 3 sprites → no painel docado, clicar Apply Toggle → **todos os 3 sprites devem ser bakados** (não só primary). Era exatamente o bug que [C3] corrigiu.
+- [ ] **G2 CEQ Apply via panel + multi-select:** ativar CEQ → multi-select 3 sprites → clicar Apply → todos os 3 bakados (já estava OK; teste de regressão).
+- [ ] **G3 Upscale Apply via panel + multi-select:** idem (já estava OK).
+
+**Gate functional smokes:**
+
+- [ ] **G4 CEQ multi-sprite preview live:** shift-select 2-3 sprites → ativar CEQ → arrastar Exposure slider → todos sprites têm overlay atualizando em paralelo (a função `drive_multi_preview_cache` agora cobre o loop).
+- [ ] **G5 CEQ atlas miss simulado:** difícil reproduzir sem injetar fault. Verificar via test (A1 regression cobre).
+
+### Métricas pós-Etapa 3
+
+- **`render_loop/mod.rs` per-tool mentions:** 16 (snapped baseline; bumping down encouraged em Etapas 4-7)
+- **Downcasts `<ConcreteTool>` no shell:** 6 reais allowlistados (eyedropper, protect_brush, 4 bridges com affordances específicas) — era 17 pre-Etapa-3
+- **`ph2d-tool-runtime`:** 598/650 LOC (52 LOC de folga; cap final pra Wave 10)
+- **Tools implementando `RasterEditTool`:** 3 (BgR/CEQ/Upscale) + 6 exceptions (Padding, EqSizes, MakeSquare, RealSize, Rasterize, TrimTransparency)
+- **`ColorEqualizationPreview`:** virou type alias para `PreviewCache` (uniformização completa BgR/CEQ/Upscale)
+
+### Artefatos modificados
+
+- `crates/ph2d-tool-runtime/src/lib.rs` — `drive_multi_preview_cache` helper + 4 tests + fix A1
+- `crates/ph2d-tool-runtime/tests/architecture_runtime_loc_cap.rs` — cap 500→650
+- `shells/desktop/tests/architecture_no_per_tool_branch_in_render_loop.rs` — NOVO gate #1
+- `shells/desktop/tests/architecture_no_downcast_to_concrete_tool_in_shell.rs` — NOVO gate #2 com allowlist
+- `crates/ph2d-tool-registry-init/tests/architecture_image_tool_kind_contract.rs` — NOVO gate #3
+- `shells/desktop/src/render_loop/color_equalization_bridge.rs` — usa drive_multi_preview_cache
+- `shells/desktop/src/app_state.rs` — ColorEqualizationPreview virou type alias
+- `shells/desktop/src/input_handlers.rs` — fix C3 (removeu drain duplicado)
+- `docs/Testes/audits/etapa-3.md` — full audit report
 
 ---
 

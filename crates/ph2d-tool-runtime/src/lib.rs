@@ -31,6 +31,7 @@
 
 use ph2d_ecs::Entity;
 use ph2d_editor_core::tool::RasterEditTool;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// Cached preview frame the shell paints between dirty-drain calls.
@@ -150,6 +151,86 @@ pub fn drive_preview_cache(
         height,
     });
     true
+}
+
+/// Drains `current_preview` for **every entity in `selection_iter`** by
+/// cycling the source for each one and capturing per-entity frames in
+/// a `BTreeMap` cache. Entries for entities no longer in the selection
+/// are dropped before the cycle so the cache always mirrors the live
+/// selection set.
+///
+/// Wave 10 / Etapa 3 (per audit etapa-2.md follow-up M1): generalizes
+/// the multi-sprite preview loop used by Color Equalization (per-sprite
+/// preview) so the bridge no longer needs a hand-written downcast loop.
+///
+/// `read_source` is the shell-specific closure that reads pixels for
+/// each entity (typically wraps `texture_edit::read_sprite_source`).
+/// Returns the count of frames produced this call (helpful for telemetry
+/// + tests; bridges usually ignore it).
+///
+/// **Forces a rebuild for each entity** by calling `set_source` then
+/// `current_preview` — this is intentional for the CEQ shape where the
+/// tool is single-buffer + the bridge cycles through sprites. The
+/// caller is responsible for gating "when to call this" (e.g., CEQ
+/// gates on `dragging_ceq` plus a `params_dirty` snapshot before the
+/// loop). After this call, `tool` will be left holding whichever
+/// entity came last — that's fine because the next legitimate drive
+/// (next dirty tick) will re-cycle the selection.
+///
+/// **Returns the count of frames written to `cache` this call.** Zero
+/// when `selection_iter` is empty or every `read_source` returned None.
+pub fn drive_multi_preview_cache<I, F>(
+    tool: &mut dyn RasterEditTool,
+    selection_iter: I,
+    cache: &mut BTreeMap<u64, PreviewCache>,
+    mut read_source: F,
+) -> usize
+where
+    I: IntoIterator<Item = u64>,
+    F: FnMut(Entity) -> Option<RasterSource>,
+{
+    let selection: Vec<u64> = selection_iter.into_iter().collect();
+    // Drop cache entries for entities no longer in the live selection
+    // (mirror of CEQ's hand-written `live_keys` retain).
+    let live_keys: std::collections::BTreeSet<u64> = selection.iter().copied().collect();
+    cache.retain(|k, _| live_keys.contains(k));
+
+    let mut produced = 0usize;
+    for bits in &selection {
+        let entity = Entity::from_bits(*bits);
+        let src = match read_source(entity) {
+            Some(s) => s,
+            None => {
+                // Wave 10 / Etapa 3 audit fix [A1]: when read_source
+                // fails (e.g. atlas miss transient), DROP any pre-existing
+                // cache entry for this entity. Otherwise the bridge would
+                // keep painting a frame computed with stale parameters
+                // while the user moves sliders — visually equivalent to
+                // a lie. Removing is the honest signal "preview
+                // unavailable for this sprite right now".
+                cache.remove(bits);
+                continue;
+            }
+        };
+        tool.set_source(src.pixels, src.width, src.height);
+        // current_preview drains dirty + returns the freshly computed frame.
+        // set_source above marks dirty, so the first call after it returns Some.
+        let (pixels, width, height) = match tool.current_preview() {
+            Some((p, w, h)) => (p.to_vec(), w, h),
+            None => continue, // tool refused (shouldn't happen post-set_source)
+        };
+        cache.insert(
+            *bits,
+            PreviewCache {
+                entity_bits: *bits,
+                rgba: Arc::new(pixels),
+                width,
+                height,
+            },
+        );
+        produced += 1;
+    }
+    produced
 }
 
 /// Drains `RasterEditTool::take_pending_commit()` and, if `true`,
@@ -429,6 +510,111 @@ mod tests {
         assert_eq!(wrong_tool.deactivate_calls, 1);
         assert!(wrong_tool.src.is_none());
         assert!(!wrong_tool.pending_commit);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Etapa 3 — drive_multi_preview_cache (per-sprite cache cycling)
+    // ──────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn drive_multi_preview_cache_produces_one_frame_per_selection_entry() {
+        let mut tool = EchoRasterTool::new();
+        let mut cache: BTreeMap<u64, PreviewCache> = BTreeMap::new();
+        let produced = drive_multi_preview_cache(&mut tool, vec![1u64, 2, 3], &mut cache, |_| {
+            Some(dummy_source(2, 2))
+        });
+        assert_eq!(produced, 3);
+        assert_eq!(cache.len(), 3);
+        assert!(cache.contains_key(&1));
+        assert!(cache.contains_key(&2));
+        assert!(cache.contains_key(&3));
+    }
+
+    #[test]
+    fn drive_multi_preview_cache_drops_entries_outside_selection() {
+        let mut tool = EchoRasterTool::new();
+        let mut cache: BTreeMap<u64, PreviewCache> = BTreeMap::new();
+        // First call: 3 entities in selection.
+        drive_multi_preview_cache(&mut tool, vec![1u64, 2, 3], &mut cache, |_| {
+            Some(dummy_source(1, 1))
+        });
+        assert_eq!(cache.len(), 3);
+        // Second call: only entity 2 remains in selection.
+        let produced = drive_multi_preview_cache(&mut tool, vec![2u64], &mut cache, |_| {
+            Some(dummy_source(1, 1))
+        });
+        assert_eq!(produced, 1);
+        assert_eq!(cache.len(), 1);
+        assert!(cache.contains_key(&2));
+        assert!(!cache.contains_key(&1));
+        assert!(!cache.contains_key(&3));
+    }
+
+    // Wave 10 / Etapa 3 audit fix [A1]: when read_source fails, the
+    // helper must REMOVE any existing cache entry for that entity
+    // (not silently keep a stale frame).
+    #[test]
+    fn drive_multi_preview_cache_drops_stale_entry_on_read_miss() {
+        let mut tool = EchoRasterTool::new();
+        let mut cache: BTreeMap<u64, PreviewCache> = BTreeMap::new();
+        // First call: populate cache for entities 1 and 2.
+        drive_multi_preview_cache(&mut tool, vec![1u64, 2], &mut cache, |_| {
+            Some(dummy_source(1, 1))
+        });
+        assert_eq!(cache.len(), 2);
+        // Second call: entity 2 still in selection but read_source fails
+        // for it (transient atlas miss). Stale entry MUST be dropped.
+        drive_multi_preview_cache(&mut tool, vec![1u64, 2], &mut cache, |e| {
+            if e.to_bits() == 2 {
+                None
+            } else {
+                Some(dummy_source(1, 1))
+            }
+        });
+        assert!(cache.contains_key(&1));
+        assert!(
+            !cache.contains_key(&2),
+            "stale cache entry for entity 2 must be dropped when its \
+             read_source returns None (audit A1)"
+        );
+    }
+
+    #[test]
+    fn drive_multi_preview_cache_skips_unreadable_entities() {
+        let mut tool = EchoRasterTool::new();
+        let mut cache: BTreeMap<u64, PreviewCache> = BTreeMap::new();
+        let produced = drive_multi_preview_cache(
+            &mut tool,
+            vec![1u64, 2, 3],
+            &mut cache,
+            // Read fails for entity 2 (e.g. atlas miss).
+            |e| {
+                if e.to_bits() == 2 {
+                    None
+                } else {
+                    Some(dummy_source(2, 2))
+                }
+            },
+        );
+        assert_eq!(produced, 2);
+        assert_eq!(cache.len(), 2);
+        assert!(!cache.contains_key(&2));
+    }
+
+    #[test]
+    fn drive_multi_preview_cache_empty_selection_clears_cache() {
+        let mut tool = EchoRasterTool::new();
+        let mut cache: BTreeMap<u64, PreviewCache> = BTreeMap::new();
+        drive_multi_preview_cache(&mut tool, vec![1u64, 2], &mut cache, |_| {
+            Some(dummy_source(1, 1))
+        });
+        assert_eq!(cache.len(), 2);
+        // Empty selection → retain prunes everything.
+        let produced = drive_multi_preview_cache(&mut tool, std::iter::empty(), &mut cache, |_| {
+            Some(dummy_source(1, 1))
+        });
+        assert_eq!(produced, 0);
+        assert!(cache.is_empty());
     }
 
     #[test]

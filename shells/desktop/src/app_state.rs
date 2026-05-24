@@ -427,28 +427,23 @@ pub(crate) struct RubberBandState {
 
 /// Cached on-canvas preview bitmap for the Background-Removal tool.
 ///
-/// Wave 10 / Etapa 1.B: this type is now a re-export of the generic
-/// `ph2d_tool_runtime::PreviewCache` — same shape (entity_bits + Arc<Vec<u8>>
-/// rgba + width + height). The `BgremovalPreview` alias is kept so existing
-/// call sites that say `app_state::BgremovalPreview` still resolve;
-/// new code should prefer `ph2d_tool_runtime::PreviewCache` directly.
-/// (CEQ + Upscale previews keep their own structs until Etapa 2 migrates them
-/// to RasterEditTool too.)
+/// Wave 10 / Etapa 3 STATUS: all three image-tool previews (BgR, CEQ,
+/// Upscale) are now aliases of the generic `ph2d_tool_runtime::PreviewCache`
+/// — same shape (entity_bits + Arc<Vec<u8>> rgba + width + height). The
+/// type aliases are kept so existing call sites that say
+/// `app_state::BgremovalPreview` / `ColorEqualizationPreview` /
+/// `UpscalePreview` still resolve; new code should prefer
+/// `ph2d_tool_runtime::PreviewCache` directly via the `drive_*` helpers.
 pub(crate) type BgremovalPreview = ph2d_tool_runtime::PreviewCache;
 
 /// Cached on-canvas live preview bitmap for the Color Equalization
-/// tool — kept as the struct shape because CEQ is multi-sprite
-/// (the bridge holds a `BTreeMap<u64, ColorEqualizationPreview>`,
-/// one entry per selected sprite). The single-cache helpers in
-/// `ph2d-tool-runtime` cover BgRemoval / Upscale (single-cache); a
-/// future `drive_multi_preview_cache` would let CEQ migrate too.
-/// Tracking issue: docs/Testes/audits/etapa-2.md.
-pub(crate) struct ColorEqualizationPreview {
-    pub(crate) entity_bits: u64,
-    pub(crate) rgba: std::sync::Arc<Vec<u8>>,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
-}
+/// tool. Wave 10 / Etapa 3: now uniformized with BgR + Upscale as
+/// the generic `ph2d_tool_runtime::PreviewCache`. CEQ still holds
+/// a `BTreeMap<u64, ColorEqualizationPreview>` (one entry per
+/// selected sprite — CEQ paints per-sprite previews), driven by
+/// the new `drive_multi_preview_cache` helper that replaced the
+/// hand-written loop + downcast.
+pub(crate) type ColorEqualizationPreview = ph2d_tool_runtime::PreviewCache;
 
 /// Cached on-canvas live preview bitmap for the Upscale tool.
 ///

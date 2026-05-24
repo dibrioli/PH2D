@@ -305,27 +305,32 @@ impl App {
         {
             active.handle_panel_event(event);
             self.title_dirty = true;
-            // Drain BgRemoval's Apply Toggle: when on, the Tool sets
-            // `pending_apply = true` inside `handle_panel_event`.
-            // Push `EditorAction::OneShotImageOp { tool_id: "bgremoval",
-            // entity_bits }` so the per-frame drain in `render_frame`
-            // runs the algorithm at full resolution against the live
-            // sprite. Wave 2.5 PR 11.8b3: bus migration (was
-            // `hero.pending_bgremoval = Some(bits)`). ADR-0040 TG-A
-            // genericized the variant (was `EditorAction::Bgremoval`).
-            if let Some(bg) = active
-                .as_any_mut()
-                .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
-                && bg.take_pending_apply()
-                && let Some(hero) = gfx.hero_screen.as_mut()
-                && let Some(bits) = hero.gizmo.selection
-            {
-                hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
-                        tool_id: "bgremoval",
-                        entity_bits: bits,
-                    });
-            }
+            // Wave 10 / Etapa 3 audit fix [C3]: removed the BgRemoval
+            // Apply Toggle drain that was here. Two reasons:
+            //
+            // 1. **Multi-select regression**: it pushed a single
+            //    `OneShotImageOp { entity_bits: hero.gizmo.selection }`
+            //    (primary only), but the canonical bridge in
+            //    `render_loop/bgremoval_preview.rs` uses
+            //    `drive_pending_commit(bg, hero.gizmo.iter_selected())`
+            //    — multi-sprite. Two competing drains of the same
+            //    `take_pending_apply` (destructive) meant the input-
+            //    handlers path won and the bridge always saw `false`,
+            //    so multi-select Apply via panel toggle only baked the
+            //    primary sprite. Regression silently introduced before
+            //    Wave 10.
+            //
+            // 2. **Trait surface coverage**: with BgR (Etapa 1.B) +
+            //    CEQ + Upscale (Etapa 2) all on RasterEditTool, the
+            //    bridges' `drive_pending_commit` is the canonical
+            //    drain for every raster Apply path. Keeping a parallel
+            //    drain here would re-introduce the bug for the new
+            //    tools too.
+            //
+            // The bridge runs every frame BEFORE `paint_hero_screen`
+            // (per `render_loop/mod.rs::dispatch_bus_drain` order), so
+            // latency between the click and the OneShotImageOp is at
+            // most 1 frame — visually equivalent to the old path.
         }
     }
 }

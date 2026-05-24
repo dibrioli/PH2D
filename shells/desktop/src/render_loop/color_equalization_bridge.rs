@@ -18,16 +18,22 @@
 //!    — the caller runs the per-sprite bake via
 //!    `drain_color_equalization`.
 //!
-//! ### Wave 10 / Etapa 2 status
+//! ### Wave 10 / Etapa 3 status (audit fix [A3])
 //!
-//! CEQ tool implements `RasterEditTool` (semantically uniform with
-//! BgR + Upscale). However the bridge **keeps its multi-cache shape**
-//! (`BTreeMap<u64, ColorEqualizationPreview>`) because CEQ paints a
-//! preview per selected sprite — the single-cache helpers in
-//! `ph2d-tool-runtime` (`drive_source_push` / `drive_preview_cache`)
-//! don't fit. Only `drive_pending_commit` is used here (compatible —
-//! Apply is single-shot). A future `drive_multi_preview_cache` helper
-//! would let CEQ migrate fully; see `docs/Testes/audits/etapa-2.md`.
+//! Fully migrated to the generic runtime channel:
+//! - `drive_pending_commit` for multi-sprite Apply (Etapa 2).
+//! - `drive_multi_preview_cache` for the per-sprite preview rebuild loop
+//!   (Etapa 3 — replaced the hand-written downcast loop). The
+//!   `BTreeMap<u64, ColorEqualizationPreview>` is now a
+//!   `BTreeMap<u64, PreviewCache>` (type alias) driven by the runtime
+//!   helper; `ColorEqualizationPreview` is a re-export of
+//!   `ph2d_tool_runtime::PreviewCache`.
+//!
+//! Residual downcast (1): panel snapshot publish via
+//! `set_current_snapshot(Some(ceq.ui_snapshot()))` + dropdown-close drain.
+//! Both are CEQ-specific affordances per ADR-0040 §3 (documented
+//! exception). Allowlisted in
+//! `tests/architecture_no_downcast_to_concrete_tool_in_shell.rs`.
 
 use crate::app_state::ColorEqualizationPreview;
 use ph2d_asset::AssetDb;
@@ -39,7 +45,6 @@ use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 /// Returns `Some(entity_bits_list)` iff Apply fired this frame.
 #[allow(clippy::too_many_arguments)]
@@ -162,53 +167,42 @@ pub(super) fn dispatch(
     }
 
     // ── Multi-sprite preview rebuild ───────────────────────────────
-    // For each selected sprite: read its current source bitmap, push it
-    // into the tool, run the full pipeline, store the resulting RGBA
-    // in the per-sprite cache. The tool's `preview_rgba()` is
-    // single-source by construction — we loop shell-side and swap the
-    // source per iteration. Tool state (`source_rgba`) is left holding
-    // whichever sprite came last; the next rebuild overwrites it.
-    if needs_preview_rebuild && !selected.is_empty() {
-        for entity_bits in &selected {
-            let entity = ph2d_ecs::Entity::from_bits(*entity_bits);
-            let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
-                entity,
-                sim,
-                renderer,
-                asset_db,
-                atlas_asset_map,
-            ) else {
-                continue;
-            };
-            let straight = src.image.into_straight();
-            let (sw, sh) = (straight.width, straight.height);
-            let pixels = straight.pixels;
-
-            // Borrow the tool fresh inside the loop (each iteration
-            // re-snapshots + runs the pipeline). The downcast is
-            // O(1); the cost is the pipeline.
-            if let Some(tool) = tools.active_mut()
-                && let Some(ceq) =
-                    tool.as_any_mut()
-                        .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
-            {
-                ceq.set_source_snapshot(pixels, sw, sh);
-                let (rgba, w, h) = ceq.preview_rgba();
-                if !rgba.is_empty() && w > 0 && h > 0 {
-                    color_equalization_previews.insert(
-                        *entity_bits,
-                        ColorEqualizationPreview {
-                            entity_bits: *entity_bits,
-                            rgba: Arc::new(rgba.to_vec()),
-                            width: w,
-                            height: h,
-                        },
-                    );
-                }
-            }
-        }
-        // Track which sprite the tool's source currently mirrors so
-        // an immediate Apply doesn't double-push for the primary.
+    // Wave 10 / Etapa 3 (audit etapa-2.md M1 follow-up): the hand-written
+    // loop + per-iteration downcast was retired in favor of
+    // `drive_multi_preview_cache`, which:
+    //   - drops cache entries no longer in selection
+    //   - cycles set_source → current_preview per entity
+    //   - returns count of frames produced this call (ignored here)
+    // The closure carries the shell-specific pixel readback. The tool's
+    // single-source nature is honored by the helper (it cycles per
+    // entity). Tool state ends up holding whichever entity came last —
+    // `last_pushed_entity` tracks that so an immediate Apply doesn't
+    // double-push for the primary.
+    if needs_preview_rebuild
+        && !selected.is_empty()
+        && let Some(tool) = tools.active_mut()
+        && let Some(raster) = tool.as_raster_edit_mut()
+    {
+        ph2d_tool_runtime::drive_multi_preview_cache(
+            raster,
+            selected.iter().copied(),
+            color_equalization_previews,
+            |entity| {
+                let src = crate::hero_intents::texture_edit::read_sprite_source(
+                    entity,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                )?;
+                let straight = src.image.into_straight();
+                Some(ph2d_tool_runtime::RasterSource {
+                    pixels: straight.pixels,
+                    width: straight.width,
+                    height: straight.height,
+                })
+            },
+        );
         *last_pushed_entity = selected.last().copied();
     }
 

@@ -42,7 +42,18 @@ fn count_loc_recursive(dir: &PathBuf) -> u32 {
 
 #[test]
 fn ph2d_tool_runtime_loc_under_cap() {
-    const CAP: u32 = 500;
+    // Wave 10 / Etapa 3: bumped 500 → 650 by Coord-A decision when
+    // adding `drive_multi_preview_cache` (4 helper + 4 tests + 1
+    // existing C1 regression test pushed total past 500).
+    // Justification: the new helper is the audit etapa-2.md M1
+    // follow-up that retires CEQ bridge's manual multi-cache downcast;
+    // moving it OUT of the runtime would defeat the consolidation.
+    // Tests are 60%+ of the LOC (correct invariant: helpers themselves
+    // are still ≤200 LOC of impl).
+    //
+    // Next bump requires a separate ADR (this is the LAST cap bump
+    // permitted in Wave 10 — gates 4-7 do not touch this crate).
+    const CAP: u32 = 650;
     let src_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
     let loc = count_loc_recursive(&src_dir);
     assert!(

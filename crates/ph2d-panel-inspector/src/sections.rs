@@ -105,8 +105,9 @@ pub(crate) fn paint_transform_section(
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let reset_w = 80.0_f32; // LITERAL-PX-OK: Reset button explicit width
     let reset_h = 24.0_f32; // LITERAL-PX-OK: Reset button compact height
+    let collapsed = store.is_collapsed(ids::INSP_LIVE_TRANSFORM_SECTION);
     let header = SectionHeader::new(ids::INSP_LIVE_TRANSFORM_SECTION, "Transform")
-        .collapsible(true);
+        .collapsible(!collapsed);
     let header_rect = Rect::new(x, y, w - reset_w - Spacing::Sm.px(), header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     let reset_rect = Rect::new(x + w - reset_w, y - Spacing::Xxs.px(), reset_w, reset_h);
@@ -118,6 +119,13 @@ pub(crate) fn paint_transform_section(
         .kind(ButtonKind::Default)
         .state(reset_state);
     paint_button(&reset_btn, reset_rect, scene, text_system, theme);
+    // Collapsed → return after painting just the header. Body fields
+    // (Position / Rotation / Scale) are skipped so the section
+    // visually folds to a single row. Click on the header toggles
+    // back via the dispatch (apply_click → toggle_collapsed).
+    if collapsed {
+        return y + header_h;
+    }
     // No inner separator — the orchestrator (paint.rs) draws ONE
     // separator AFTER this section's content. Pre-2026-05-24 this fn
     // also painted a separator between title and params, which broke
@@ -283,8 +291,9 @@ pub(crate) fn paint_render_source_section(
     let row_gap = Spacing::Xs.px();
     let row_h = line_font + row_gap;
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
+    let collapsed = store.is_collapsed(ids::INSP_LIVE_RENDER_SECTION);
     let header = SectionHeader::new(ids::INSP_LIVE_RENDER_SECTION, "Render Source")
-        .collapsible(true);
+        .collapsible(!collapsed);
     paint_section_header(
         &header,
         Rect::new(x, y, w, header_h),
@@ -292,6 +301,9 @@ pub(crate) fn paint_render_source_section(
         text_system,
         theme,
     );
+    if collapsed {
+        return y + header_h;
+    }
     // No inner separator — orchestrator draws it AFTER section content.
     let mut cur_y = y + header_h;
 

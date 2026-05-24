@@ -53,15 +53,22 @@ SectionHeader {
 - aberto: fundo transparente, chevron `▼`
 - fechado: fundo `Bg3` tinted, chevron `▶`
 
-## Pendências (wiring de interação)
+## Collapse — wiring completo (2026-05-24)
 
-Pintura está canônica. O que falta:
+Click esquerdo em qualquer lugar do header band toggla a seção. Estado persiste em [`WidgetStore::collapsed`](../../../crates/ph2d-editor-core/src/interaction/state/chrome_ops.rs) (já existia pre-canon; o trabalho de 2026-05-24 só plugou no dispatch + orquestrador).
 
-- **Click no chevron / header → toggle collapsible.** Dispatch ainda não tem handler. Cada painel orquestrador precisa: hit-register o header rect com `$section_id`, drenar click via `apply_event`, mutar estado de visibility da seção.
+**Fluxo:**
+
+1. `pre_populate` (ou panel `populate`) chama `store.mark_collapsible_section($section_id)` pra cada seção do painel — registra qual id é "section header" elegível pra toggle.
+2. Orquestrador (ex: Inspector `live_section!` macro) hit-registra `$section_id` cobrindo o header band.
+3. Dispatch (`apply_click`) checa `store.is_collapsible_section(id)` antes do match de InteractiveState — se true, chama `store.toggle_collapsed(id)` + emite `WidgetEvent::Click(id)`.
+4. Section painter lê `store.is_collapsed($section_id)`. Passa `!collapsed` pro `SectionHeader::collapsible(...)` (chevron `▼`/`▶`). Se collapsed, retorna depois de pintar só o header — pula o body.
+5. `is_focusable` retorna `true` pra qualquer id `is_collapsible_section`, mesmo sem InteractiveState — caso contrário o dispatch nem chegaria a `apply_click`.
+
+## Pendências (próximos checkpoints)
+
 - **Click no color dot → abrir color picker.** [`color_circle_hit_rect`](../../../crates/ph2d-editor-core/src/widget/section_header.rs) já expõe o rect; falta dispatch wiring + handler que abre BlenderColorPicker associado.
-- **Persistir collapse/color state.** Provavelmente em `WidgetStore::section_outline_color` (já existe pra outline cor) — análogo `section_color_dot` + `section_collapsed`.
-
-Implementação prevista pra checkpoint subsequente.
+- **Broadcast pros outros painéis Inspector-type** (BgRemoval, Padding, CEQ, Upscale, EqSizes, Grid Snap) — adotar o mesmo padrão de `paint_section_header` + `mark_collapsible_section`.
 
 ## Checklist quando criar seção nova
 

@@ -22,6 +22,15 @@ use bumpalo::collections::Vec as BumpVec;
 use ph2d_a11y::NodeId;
 
 pub(super) fn is_focusable(store: &WidgetStore, id: NodeId) -> bool {
+    // Section headers (UI canon: every section is collapsible) are
+    // hit-registered without an InteractiveState entry — the painter
+    // just calls `hit_index.register($section_id, header_rect)`. They
+    // need to be focusable so click→active→apply_click fires the
+    // collapse toggle. Checked BEFORE the `store.get(id)` match so a
+    // section id never falls through to the `None → false` arm.
+    if store.is_collapsible_section(id) {
+        return true;
+    }
     match store.get(id) {
         Some(InteractiveState::Button { state }) => *state != ButtonState::Disabled,
         Some(InteractiveState::Toggle { state, .. }) => *state != ToggleState::Disabled,
@@ -42,6 +51,19 @@ pub(super) fn apply_click<'a>(
     id: NodeId,
     events: &mut BumpVec<'a, WidgetEvent>,
 ) {
+    // Section header collapse-toggle: every id marked via
+    // `mark_collapsible_section` (registered at pre_populate / panel
+    // populate time per UI canon — `docs/UI_Padrao/components/section_header.md`)
+    // flips its `section_collapsed` state on left-click. Handled BEFORE
+    // the `InteractiveState` switch because section headers have no
+    // InteractiveState entry (the painter registers a bare hit rect,
+    // not a widget state). Still emits Click(id) so panels that want
+    // to react (e.g. close a dropdown, deselect) can.
+    if store.is_collapsible_section(id) {
+        store.toggle_collapsed(id);
+        events.push(WidgetEvent::Click(id));
+        return;
+    }
     // Upgrade to `DoubleClick(id)` when the matching Down flagged
     // this as a double-click on the same id. Consumed once per
     // gesture so a single click after that doesn't carry the flag.

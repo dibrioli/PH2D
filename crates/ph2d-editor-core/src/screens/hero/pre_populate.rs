@@ -514,4 +514,30 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
             kind: BlenderHitKind::ResizeHandleBl,
         },
     );
+
+    // Every section header that the Inspector + Widget Gallery paint
+    // is collapse-toggle eligible. UI canon post-2026-05-24: every
+    // section is collapsible (vide
+    // `docs/UI_Padrao/components/section_header.md`). Each id is
+    // marked here once; the dispatch flips collapse on left-click.
+    for id in [
+        // Inspector live sections.
+        ids::INSP_LIVE_NAME_SECTION,
+        ids::INSP_LIVE_VISIBILITY_SECTION,
+        ids::INSP_LIVE_TRANSFORM_SECTION,
+        ids::INSP_LIVE_RENDER_SECTION,
+        // Widget Gallery showcase sections.
+        ids::INSP_SECTION_INPUTS,
+        ids::INSP_SECTION_SLIDER,
+        ids::INSP_SECTION_SWITCHES,
+        ids::INSP_SECTION_LISTS,
+        ids::INSP_SECTION_VECTOR,
+        ids::INSP_SECTION_STATUS,
+        ids::INSP_SECTION_COLOR,
+        ids::INSP_SECTION_ACTIONS,
+        ids::INSP_SECTION_IDENTITY,
+        ids::INSP_SECTION_CARD,
+    ] {
+        store.mark_collapsible_section(id);
+    }
 }

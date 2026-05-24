@@ -192,6 +192,16 @@ pub struct WidgetStore {
     /// (mouse stopped, value still climbing). Membership here makes
     /// the dispatch skip the stepper hit-test for the id.
     pub(super) chips_without_steppers: std::collections::BTreeSet<NodeId>,
+    /// NodeIds eligible for collapse-toggle on left-click. Populated by
+    /// `pre_populate` / panel `populate` for every `paint_section_header`
+    /// site. The dispatch consults this set to decide whether a click
+    /// on `id` should flip the section's collapse state (vs. doing
+    /// nothing). Separate from `collapsed` (defined in chrome_ops:
+    /// `is_collapsed` / `toggle_collapsed`) because the absence of a
+    /// key in `collapsed` means "open by default", not "not
+    /// collapsible" — without this guard the dispatch couldn't tell a
+    /// section header click from any other Plain hit.
+    pub(super) collapsible_sections: std::collections::BTreeSet<NodeId>,
     /// Hex `TextInput` id → its parent `BlenderPicker` id, so the
     /// dispatch can parse the typed buffer on Enter / blur and apply
     /// the resulting color to the parent state.
@@ -427,6 +437,7 @@ impl WidgetStore {
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
             chips_without_steppers: std::collections::BTreeSet::new(),
+            collapsible_sections: std::collections::BTreeSet::new(),
             hex_to_blender_parent: BTreeMap::new(),
             blender_channel_chip: BTreeMap::new(),
             last_down_id: None,
@@ -523,6 +534,23 @@ impl WidgetStore {
     /// deprecated [`mark_chip_no_stepper`](Self::mark_chip_no_stepper).
     pub fn is_chip_no_stepper(&self, id: NodeId) -> bool {
         self.chips_without_steppers.contains(&id)
+    }
+
+    /// Mark a section header NodeId as collapse-toggle eligible.
+    /// Called from `pre_populate` / panel `populate` for every
+    /// `paint_section_header` site so the dispatch knows a left-click
+    /// on `id` should flip the collapse state via the existing
+    /// [`toggle_collapsed`](Self::toggle_collapsed) API. UI canon
+    /// post-2026-05-24: every section is collapsible (vide
+    /// `docs/UI_Padrao/components/section_header.md`).
+    pub fn mark_collapsible_section(&mut self, id: NodeId) {
+        self.collapsible_sections.insert(id);
+    }
+
+    /// True iff the section is registered as collapse-toggle eligible.
+    /// Dispatch consults this before firing the toggle on a click.
+    pub fn is_collapsible_section(&self, id: NodeId) -> bool {
+        self.collapsible_sections.contains(&id)
     }
 
     /// Record the latest pointer-Down for double-click detection.

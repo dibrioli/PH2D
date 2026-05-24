@@ -1,8 +1,14 @@
 //! Showcase `paint_vector_section` painter.
 //!
-//! Extracted from monolithic `showcase.rs` in Wave 6+7 Phase 1.C.
+//! Pre-2026-05-24: rendered via `Vector3Editor` (3 axes X/Y/Z). User
+//! feedback (2026-05-24): "retire z do widget gallery e coloque as
+//! caixas numéricas no padrão do inspector que é a referência" —
+//! Inspector is a 2D editor, so VECTOR is now X+Y only and the chips
+//! match Inspector's Transform-row style exactly (paint_number_input_with_buffer
+//! directly, with Danger/Success tags + canonical chip width).
 
 use super::*;
+use crate::widget::panel_chrome::{SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_vector_section(
@@ -27,44 +33,77 @@ pub(super) fn paint_vector_section(
         ids::INSP_SECTION_VECTOR,
         ids::INSP_SECTION_VECTOR_COLOR,
         "Vector",
-        3,
+        2,
     );
     if !open {
         return y;
     }
-    let r = Rect::new(x, y, w, FIELD_H);
-    // Pull each axis' live state from the store so focus/typing
-    // actually drives the chip. Previously this rendered via the
-    // static `paint_vector3_editor` which never reads the in-progress
-    // edit buffer — clicking a chip "focused" it visually (border
-    // accent) but every keystroke vanished because the painter kept
-    // showing `input.value` regardless. See `docs/UI_Bugs/README.md`
-    // §9.14.
+
+    // Match Inspector Transform row layout exactly: X tag + chip + Y tag + chip.
+    let col_gap = Spacing::Md.px();
+    let tag_box_gap = Spacing::Xxs.px();
+    let axis_col_w = Spacing::Lg.px();
+    let axis_label_font = TypeToken::Base.px();
+
+    let two_chip_w = ((w - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0);
+
+    y += SECTION_LABEL_TO_CONTROL_PX;
+
     let (sx, vx, bx, cx, ax) = read_number_input(store, ids::INSP_SAMPLE_V3_X);
     let (sy, vy, by, cy, ay) = read_number_input(store, ids::INSP_SAMPLE_V3_Y);
-    let (sz, vz, bz, cz, az) = read_number_input(store, ids::INSP_SAMPLE_V3_Z);
-    let nx = NumberInput::new(ids::INSP_SAMPLE_V3_X, "X", vx).state(sx);
-    let ny = NumberInput::new(ids::INSP_SAMPLE_V3_Y, "Y", vy).state(sy);
-    let nz = NumberInput::new(ids::INSP_SAMPLE_V3_Z, "Z", vz).state(sz);
-    let v3 = Vector3Editor::new(NodeId(0), "Position", nx, ny, nz);
-    crate::widget::paint_vector3_editor_with_state(
-        &v3,
-        [Some(bx), Some(by), Some(bz)],
-        [cx, cy, cz],
-        [ax, ay, az],
-        r,
+
+    // X tag.
+    paint_text(
+        text_system,
+        scene,
+        "X",
+        x,
+        y + (FIELD_H - axis_label_font) * 0.5,
+        axis_label_font,
+        axis_col_w,
+        resolve(ColorToken::Danger, theme),
+    );
+    let x_box_x = x + axis_col_w + tag_box_gap;
+    let x_rect = Rect::new(x_box_x, y, two_chip_w, FIELD_H);
+    hit_index.register(ids::INSP_SAMPLE_V3_X, x_rect);
+    let nx = NumberInput::new(ids::INSP_SAMPLE_V3_X, "", vx).state(sx);
+    crate::widget::paint_number_input_with_buffer(
+        &nx,
+        Some(bx),
+        cx,
+        ax,
+        x_rect,
         scene,
         text_system,
         theme,
     );
-    let rects = v3.field_rects(r);
-    for (id, fr) in [
-        (ids::INSP_SAMPLE_V3_X, rects[0]),
-        (ids::INSP_SAMPLE_V3_Y, rects[1]),
-        (ids::INSP_SAMPLE_V3_Z, rects[2]),
-    ] {
-        hit_index.register(id, fr);
-    }
-    y += FIELD_H;
-    y
+
+    // Y tag.
+    let y_tag_x = x_box_x + two_chip_w + col_gap;
+    paint_text(
+        text_system,
+        scene,
+        "Y",
+        y_tag_x,
+        y + (FIELD_H - axis_label_font) * 0.5,
+        axis_label_font,
+        axis_col_w,
+        resolve(ColorToken::Success, theme),
+    );
+    let y_box_x = y_tag_x + axis_col_w + tag_box_gap;
+    let y_rect = Rect::new(y_box_x, y, two_chip_w, FIELD_H);
+    hit_index.register(ids::INSP_SAMPLE_V3_Y, y_rect);
+    let ny = NumberInput::new(ids::INSP_SAMPLE_V3_Y, "", vy).state(sy);
+    crate::widget::paint_number_input_with_buffer(
+        &ny,
+        Some(by),
+        cy,
+        ay,
+        y_rect,
+        scene,
+        text_system,
+        theme,
+    );
+
+    y + FIELD_H + SECTION_BOTTOM_PAD_PX
 }

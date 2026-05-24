@@ -47,3 +47,6 @@ docs/design/uploads/
 # checkouts spawned by the Agent tool) and any other harness state
 # under .claude/. These are per-machine and should never enter repo.
 .claude/
+
+# Wave 10 / slot-env.sh — per-session cargo target dirs (never committed)
+target-slots/

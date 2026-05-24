@@ -41,13 +41,41 @@ Leitura mínima de contexto técnico:
 
 ## 1. O modelo
 
-### 1.1 Os dois papéis
+### 1.1 Os papéis
 
-**Coordenador** — única autoridade global, **convocado quando a triagem (§1.4) pede caminho (B) ou (C)**, OU no momento de ship (fim de jornada, §7) mesmo que tudo tenha sido caminho (A): ship é serializado por uma única sessão. Quando a jornada foi 100% (A) sem Coord, Enio promove um dos Implementadores a Coord pro ship (ou abre uma sessão Coord nova). Centraliza tudo que é "arquivo compartilhado não-codegen'd" (painel/widget/chrome + foundational + contratos congelados). Faz scaffold de feature nova *antes* do Implementador começar (caminho B). Revisa entrega. No ship: ship.sh + commit + push + babysit CI. Absorve o papel que antes era PRCI.
+**Coordenador-A (foundational)** — autoridade sobre **contratos, arch-gates, foundational crates, codegen tools, shells/desktop/, ADRs**. Convocado em caminho (C) (vide §3.6) ou para fazer scaffold de painel/widget/chrome (B). Responsável pelo **ship-de-jornada serial** (ship.sh + commit + push + babysit CI). Único autorizado a tocar contratos congelados (`Tool`/`ImageEditTool`/`PanelEvent` em ADR-0040 §7; `NodeOp`/`OpResolver`/`NodeManifest` em ADR-0039) — sempre via amendment ADR consolidado, nunca cap-bust ad-hoc.
 
-**Implementador** — sessão isolada, uma por feature. **No caminho (A)** (node/tool — §3.8), trabalha sem Coordenador: cria a pasta, roda o sync, testa. **No caminho (B)** (painel/widget/chrome — §3.2-3.4), recebe pasta já plugada na árvore pelo Coordenador e edita **somente** dentro dela. Em ambos os casos, reporta pronto. Pode rodar em paralelo com outros Implementadores sem coordenação direta — a arquitetura física garante que eles não colidem (glob de `workspace.members` + codegen splice em regiões marcadas, pra (A); pasta isolada já plugada, pra (B)).
+**Coordenador-B (baldes)** — autoridade sobre **scaffolds de painel/widget/chrome novos**, sweeps de gates UI em `crates/ph2d-panel-*`, organização de smokes do Enio, gate-meta `tests/docs_bugs_have_gates.rs`. NÃO toca contratos congelados nem ship — escala Coord-A. Pode rodar em paralelo com Coord-A desde que respeite o protocolo SESSION_ACTIVE (vide §1.1.1).
 
-Enio não é papel. Enio é o humano que orquestra: abre sessões Claude Code, cola mensagens entre elas, roda smoke visual quando o Coordenador pede.
+> **Wave 10 (2026-05-23):** modelo "2 Coords" introduzido para destravar paralelismo nas Etapas 4-6 da Wave 10 ([`docs/plans/2026-05-wave-10-perfection.md`](../plans/2026-05-wave-10-perfection.md)). Pre-Wave-10 era 1 Coord serial — vide v6.9 da DIRETRIZ. Se a Wave 10 demonstrar friction insustentável, reverter a 1 Coord serial.
+
+**Implementador** — sessão isolada, uma por feature. **No caminho (A)** (node/tool — §3.8), trabalha sem Coordenador: cria a pasta, roda o sync, testa. **No caminho (B)** (painel/widget/chrome — §3.2-3.4), recebe pasta já plugada na árvore pelo Coordenador-B e edita **somente** dentro dela. Em ambos os casos, reporta pronto. Pode rodar em paralelo com outros Implementadores sem coordenação direta — a arquitetura física garante que eles não colidem (glob de `workspace.members` + codegen splice em regiões marcadas, pra (A); pasta isolada já plugada, pra (B)).
+
+Enio não é papel. Enio é o humano que orquestra: abre sessões Claude Code, cola mensagens entre elas, roda smoke visual quando um Coordenador pede.
+
+#### 1.1.1 Protocolo SESSION_ACTIVE (sincronização entre os 2 Coords)
+
+`docs/SESSION_ACTIVE.md` é o canal de coordenação leve entre Coord-A e Coord-B. Ao iniciar sessão, cada Coord:
+
+1. Lê `docs/SESSION_ACTIVE.md` para ver o que o outro está fazendo agora
+2. Edita a entrada própria com: papel (A/B), pastas que vai tocar, ETA estimado
+3. Se vai tocar algo que conflita com o outro, **pausa e renegocia** via comentário no SESSION_ACTIVE
+
+Ao terminar sessão (ou em ponto de pausa longa), limpa a entrada própria.
+
+Formato canônico do arquivo em [`docs/SESSION_ACTIVE.md`](../SESSION_ACTIVE.md). Esse arquivo é mais "post-it" do que "documento" — sobreviver entre commits OK, mas não é histórico.
+
+**Por que não usar Slack/Linear/etc.:** ambos os Coords são Claude Code agents, sem acesso a chat externo. Memória persistente do LLM (em `~/.claude/projects/.../memory/`) é per-projeto mas per-session, não cross-session em tempo real. Arquivo plano commitado é o canal mais simples que funciona pra coordenação assíncrona.
+
+#### 1.1.2 Isolamento físico via `scripts/slot-env.sh`
+
+Cada sessão Coord/Implementador roda `source scripts/slot-env.sh <slot-id>` no início para isolar `CARGO_TARGET_DIR` por slot. Sem isso, dois agentes compilando paralelamente serializam no lock de `target/` (vide §6.4 cargo lock). Slot IDs canônicos: `coord-a`, `coord-b`, `impl-1`, `impl-2`, `impl-3`, `impl-4`.
+
+RAM da máquina é 8 GiB → máximo realista: **2-3 slots cargo-ativos simultaneamente**. Se um 4º começar e houver swap thrashing, pause um.
+
+#### 1.1.3 Anti-colisão git via `scripts/git-stage-guard.sh`
+
+Pre-commit roda `git-stage-guard.sh` que **rejeita stage fora da pasta declarada pelo slot** (env `PH2D_SLOT_FOLDER`). Coords legítimos exportam `COORD_OVERRIDE=1` na sessão para bypass. Padroniza a disciplina §6.1 sem precisar de memorização humana.
 
 ### 1.2 Dois caminhos: fan-out drop-crate vs fluxo invertido
 

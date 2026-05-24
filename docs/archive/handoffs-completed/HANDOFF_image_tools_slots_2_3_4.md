@@ -1,5 +1,14 @@
 # HANDOFF — Image Tools slots 2/3/4 (shell wiring + Widget Gallery migration)
 
+> 🔒 **CONCLUÍDO 2026-05-23.** Arquivado pelo Coord-A em Wave 10 / Etapa 0.7.
+> Slots 2/3/4 (Equalize Sizes, Rasterize, Upscale) foram wireados e ship-ados
+> (commits `2ae848d`, `ad0400a`, `88682ba`, `4303a93` etc.). Referência
+> histórica das 4 burnings da slot 1 CEQ (que originaram as regras desta
+> migração) permanece em `docs/UI_Bugs/README.md §11`. Para wiring de tool
+> nova hoje, consulte:
+> - [`docs/IntegracaoMultiAgente/DIRETRIZ.md`](../../IntegracaoMultiAgente/DIRETRIZ.md) §3.8 + §4.2
+> - [`docs/plans/2026-05-wave-10-perfection.md`](../../plans/2026-05-wave-10-perfection.md) (RasterEditTool genérico em curso, vai eliminar a maioria do wiring shell ainda manual aqui)
+
 **Status:** ABERTO 2026-05-23 · Coord pré-trabalho concluído · 1 sessão Implementador.
 **Branch:** `main` (HEAD = `71505dd` na escrita deste handoff). 33 commits locais acima de `origin/main`.
 

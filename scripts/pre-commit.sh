@@ -37,6 +37,14 @@ note() { printf "${B}[pre-commit]${N} %s\n" "$1"; }
 ok()   { printf "${G}[pre-commit]${N} %s\n" "$1"; }
 die()  { printf "${R}[pre-commit FAIL]${N} %s\n" "$1" >&2; exit 1; }
 
+# ── Wave 10 / Etapa 0.2 — anti-collision guard for parallel agents ─────────
+# Runs FIRST so a stage outside the slot folder fails before any cargo
+# invocation (saving minutes per false-stage incident). Bypass via
+# COORD_OVERRIDE=1 in the shell session.
+if [ -x "$ROOT_DIR/scripts/git-stage-guard.sh" ]; then
+    "$ROOT_DIR/scripts/git-stage-guard.sh" || die "git-stage-guard rejected the staged paths"
+fi
+
 # ── Collect staged paths ──────────────────────────────────────────────────
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 if [ -z "$STAGED" ]; then

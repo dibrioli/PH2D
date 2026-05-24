@@ -1,8 +1,21 @@
 name: spike
 
+# Wave 10 / Etapa 0.4 — parallel feature-branch CI.
+# Triggers:
+#   push main/spike/**   → FULL run (lint + msrv + test matrix 3 OS, ~30-45min)
+#   push feat/**         → FAST subset (lint + msrv only, ~8-12min)
+#                           Matrix test job is gated to NOT run on feat/*.
+#                           Use a PR to main to get full matrix before merge.
+#   PR to main           → FULL run (matrix test before merging)
+#
+# Rationale: with the 2-Coords + 4-Implementors parallel model (DIRETRIZ §1.1
+# post Wave 10), every Implementor pushes their own feat/* branch. Running
+# the full 30-45min matrix on every push would queue runs and serialize
+# work. Lint+MSRV (~8-12min on cold cache, ~3-5min warm) gives 90% of the
+# value for 20% of the time — and PR-to-main still gates the full matrix.
 on:
   push:
-    branches: [main, "spike/**"]
+    branches: [main, "spike/**", "feat/**"]
   pull_request:
     branches: [main]
 
@@ -127,6 +140,11 @@ jobs:
     name: ${{ matrix.os }} — workspace check + tests
     runs-on: ${{ matrix.os }}
     needs: [lint, msrv]
+    # Wave 10 / Etapa 0.4 — skip on feat/** branches.
+    # Feat branches get lint+msrv only (fast feedback ~8-12min).
+    # Full matrix runs on PR-to-main and on push to main/spike.
+    # If a feat/* push REALLY needs the full matrix (rare), open the PR.
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/heads/spike/')
     # sccache was added in Phase 2 but caused all 3 OSes to fail
     # (run 25840452466): GitHub Actions artifact-cache service
     # returned HTTP 400 ("Our services aren't available right now"),

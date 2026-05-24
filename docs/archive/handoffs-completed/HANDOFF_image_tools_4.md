@@ -1,5 +1,12 @@
 # HANDOFF — 4 Image Tools em paralelo (drop-crate)
 
+> 🔒 **CONCLUÍDO 2026-05-23.** Arquivado pelo Coord-A em Wave 10 / Etapa 0.7.
+> Os 4 image tools (Color Equalization, Equalize Sizes, Rasterize, Upscale)
+> foram entregues e ship-ados (commits `b54c865..3e90f9a`). Referência
+> histórica apenas. Para trabalho futuro:
+> - [`docs/IntegracaoMultiAgente/DIRETRIZ.md`](../../IntegracaoMultiAgente/DIRETRIZ.md) §3.8 (fan-out canônico)
+> - [`docs/plans/2026-05-wave-10-perfection.md`](../../plans/2026-05-wave-10-perfection.md) (RasterEditTool em curso)
+
 **Status:** ABERTO 2026-05-23. 4 sessões Implementador paralelas.
 **Pre-work Coord (concluído):**
 

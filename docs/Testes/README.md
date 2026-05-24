@@ -18,7 +18,7 @@
 | 4 — panel-sync + chrome-sync + widget-sync (3 codegens) | ✅ COMPLETA | (pendente) | 6 staleness gates (3 panel + 2 chrome + 1 widget) + 12 helper tests | [§E4](#etapa-4--3-codegens-panelchromewidget-sync) |
 | 5 — Gates UI panel-\* + ph2d-color + classes de bug | ✅ COMPLETA | (pendente) | 5 UI gates estendidos + 4 gates ortogonais + LOC cap + arch_color_space_typed + ph2d-color (15 tests) | [§E5](#etapa-5--gates-ui-panel--ph2d-color--gates-ortogonais) |
 | 6 — LOC drift + memory GC + audit refinements (6.1/6.2 deferidos) | 🟡 PARCIAL | (pendente) | LOC trend (6 tests) + memory GC (7 tests) + M-1/M-2 audit fixes | [§E6](#etapa-6--loc-trend--memory-gc--audit-refinements) |
-| 7 — Política merge-on-green + closure | ⏳ | — | — | — |
+| 7 — Política merge-on-green + closure ADR-0042 | ✅ COMPLETA | (pendente) | auto-merge-eligibility.sh + ADR-0042 closure + carry-over Wave 11 | [§E7](#etapa-7--auto-merge-eligibility--adr-0042-closure) |
 
 ---
 
@@ -682,6 +682,70 @@ cargo run -p ph2d-memory-gc
 **Modificados (audit refinements):**
 - `crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs` (M-1)
 - `crates/ph2d-editor-core/tests/arch_color_space_typed.rs` (M-2)
+
+---
+
+## Etapa 7 — auto-merge-eligibility + ADR-0042 closure
+
+**Commit:** (pendente — este)
+
+### Escopo
+
+Etapa 7 fecha a Wave 10 com:
+
+- **`scripts/auto-merge-eligibility.sh`** — implementação da política §7.1.
+  Exit 0 sse: (i) diff só em `crates/ph2d-{node,tool,panel}-<slug>/` OU
+  `docs/Testes/`, (ii) zero foundational paths tocados (workspace Cargo,
+  scripts/, .github/, ADRs, DIRETRIZ, CLAUDE.md, SKILL_, shells/, core
+  crates incluindo color/tokens/render/gpu/text/runtime, tools/), (iii)
+  no máximo 1 crate drop tocado. Fail-safe = coord-review em qualquer
+  ambiguidade.
+- **ADR-0042 Wave 10 closure** — cita commits-âncora, sumariza contratos
+  congelados, lista gates ativos, registra carry-over para Wave 11.
+- **GH Action wiring** do auto-merge-eligibility = Wave 11 follow-up
+  (per plano §7.2: "policy first, automation next").
+- **DIRETRIZ §1.4 rewrite** = Wave 11 follow-up (per plano §7.4: depende
+  do `tools/ph2d-triagem` que não ficou no escopo desta sessão).
+
+### Testes automáticos rodados ✅
+
+```bash
+# Smoke do script
+bash scripts/auto-merge-eligibility.sh HEAD~1 HEAD
+# → "auto-merge: foundational path touched (Cargo.lock) — coord-review required"
+# (esperado — Etapa 6 tocou Cargo.lock + tools/, ambos foundational)
+
+# Closure ADR is just a doc; no automated test (cited in ADR-0042 §4
+# acceptance criteria).
+```
+
+### Smoke manual pendente (Enio)
+
+- [ ] **G17 — auto-merge policy validation:** revisar `scripts/auto-merge-eligibility.sh`.
+  A política está correta? Ajustar `FOUNDATIONAL_PATTERNS` se algum path
+  crítico ficou de fora. Decidir quando ativar a GH Action (Wave 11).
+- [ ] **G18 — ADR-0042 leitura:** ler `docs/architecture/decisions/0042-wave-10-closure.md`,
+  confirmar §6 carry-over list, decidir prioridade Wave 11.
+- [ ] **G19 — Smoke final consolidado (G1-G18):** executar TODOS os smokes
+  visuais G1-G18 nas etapas 0..7 do tracker antes de declarar Wave 10
+  "shipped" e taggear `wave-10-complete`.
+
+### Métricas finais Wave 10
+
+Vide ADR-0042 §5 stats:
+
+- **9 commits** (`d9379ee` Etapa 0 → ADR-0042 closure)
+- **2 novos crates** (`ph2d-color`, `ph2d-editor-core::math` mod)
+- **5 novos tools** (3 sync codegens + loc-trend + memory-gc)
+- **11 novos gates** ativos
+- **69 violations** swept (no_magic_numeric panel-* extension)
+- **CEQ paint split** 824 → 318+555+137 LOC
+- **4 audits adversariais** (1-3 critical fixes pré-commit cada)
+
+### Artefatos criados
+
+- `scripts/auto-merge-eligibility.sh` — política §7.1
+- `docs/architecture/decisions/0042-wave-10-closure.md` — closure ADR
 
 ---
 

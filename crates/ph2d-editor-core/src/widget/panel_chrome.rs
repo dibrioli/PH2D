@@ -236,8 +236,10 @@ pub fn panel_drag_handle_rect(panel: Rect) -> Rect {
 /// each floating panel's `paint_fn` thunk (Widget Gallery, Grid
 /// Snap — they own their base rect lazily). Two clamps:
 ///
-/// 1. Horizontal: keep ≥60px of the panel inside the viewport so
-///    the user can always grab the drag bar back.
+/// 1. Horizontal: the panel stays FULLY inside the viewport — left
+///    edge ≥ `viewport.left`, right edge ≤ `viewport.right`. (Wave 10
+///    Etapa 5 smoke fix — previously kept only 60 px visible on the
+///    far side, which let the rest extend off-screen.)
 /// 2. Vertical: the panel's top stays inside the viewport and its
 ///    bottom never crosses `viewport.bottom - 8`. When the user
 ///    drags DOWN past where `base.h` fits, the panel auto-shrinks
@@ -265,8 +267,12 @@ pub fn clamp_panel_rect(
     let clamped_dw = new_w - base.w;
     let clamped_dh = new_h_user - base.h;
 
-    let max_x = (viewport.x + viewport.w - 60.0) - base.x; // LITERAL-PX-OK: drag clamp right inset (chrome-specific)
-    let min_x = (viewport.x + 60.0) - (base.x + new_w); // LITERAL-PX-OK: drag clamp left inset (chrome-specific)
+    // Horizontal clamp: full containment. Panel.left ≥ viewport.left,
+    // panel.right ≤ viewport.right. Since `max_w = viewport.w * 0.7`
+    // caps the panel below the viewport width, the clamp range
+    // `[min_x, max_x]` is always non-degenerate (max_x > min_x).
+    let max_x = (viewport.x + viewport.w) - (base.x + new_w);
+    let min_x = viewport.x - base.x;
     let max_bottom = viewport.y + viewport.h - Spacing::Md.px();
     let min_y = viewport.y - base.y;
     let max_y = (max_bottom - MIN_H) - base.y;

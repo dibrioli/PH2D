@@ -1,0 +1,118 @@
+name: auto-merge
+
+# Wave 11 §2.1 (ADR-0042 §6 #5) — automate the merge-on-green policy
+# already shipped as `scripts/auto-merge-eligibility.sh` (Wave 10
+# Etapa 7.1). The shell script defines the policy; this workflow is
+# just plumbing: run the script, label the PR, and (when also CI-green)
+# merge.
+#
+# Eligibility (per the script): a PR is auto-mergeable iff
+#   (i)   every changed path is inside `crates/ph2d-{node,tool,panel}-<slug>/`
+#         OR `docs/Testes/`,
+#   (ii)  no foundational / contract-frozen path is touched,
+#   (iii) at most one drop-crate is touched.
+# Fail-safe: any ambiguity → coord-review required (job exits non-zero,
+# no auto-merge label is applied).
+#
+# Status: WIRING ONLY. The merge action itself uses the standard
+# `gh pr merge --auto --squash` so the PR sits queued until CI also
+# goes green (`merge-on-green` semantics built into GitHub).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+# Concurrency: cancel any in-flight run for the same PR so the latest
+# diff is what gets evaluated.
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  eligibility-check:
+    name: drop-crate eligibility (auto-merge-eligibility.sh)
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so the script can `git diff base...head`.
+          fetch-depth: 0
+
+      - name: Run scripts/auto-merge-eligibility.sh
+        id: eligibility
+        run: |
+          # The script reads ${BASE_REF}...${HEAD_REF} and writes its
+          # verdict to stdout (eligible) or stderr (review required).
+          # We capture both streams so the PR comment can quote the
+          # full explanation.
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          set +e
+          OUT=$(bash scripts/auto-merge-eligibility.sh "$BASE_SHA" "$HEAD_SHA" 2>&1)
+          STATUS=$?
+          set -e
+          {
+            echo "stdout<<EOF"
+            echo "$OUT"
+            echo "EOF"
+            echo "status=$STATUS"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::notice::auto-merge eligibility check decided: coord-review required"
+          else
+            echo "::notice::auto-merge eligibility check decided: ELIGIBLE"
+          fi
+          exit "$STATUS"
+
+      - name: Label eligible PR for auto-merge
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --add-label "auto-merge-eligible"
+
+      - name: Enable GitHub auto-merge (squash)
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # `--auto` queues the merge; it actually fires only when all
+          # required CI checks (spike.yml matrix) come back green and
+          # required reviews are satisfied.
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --auto --squash --delete-branch
+
+      - name: Comment review-required when ineligible
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Multi-line comment via heredoc to gh's stdin.
+          gh pr comment "${{ github.event.pull_request.number }}" --body "$(cat <<'EOF'
+          ## ⚠️ Coord review required
+
+          `scripts/auto-merge-eligibility.sh` flagged this PR as not
+          eligible for the Wave 10 §7.1 auto-merge policy. The script's
+          verdict:
+
+          ```
+          ${{ steps.eligibility.outputs.stdout }}
+          ```
+
+          **Why this matters:** auto-merge is reserved for true
+          drop-crate fan-out (a single new `crates/ph2d-{node,tool,panel}-*/`
+          crate, no foundational touch). Anything else — workspace
+          `Cargo.toml`, scripts/, .github/, ADRs, the core/runtime/registry/
+          render/color/tokens crates, the shell, etc. — needs a Coord
+          looking at it before merge.
+
+          Action: ping Coord-A in the review queue. No reroll needed.
+          EOF
+          )"

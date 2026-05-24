@@ -273,6 +273,24 @@ pub fn panel_resize_handle_rect_bl(panel: Rect) -> Rect {
     )
 }
 
+/// Rect of the canonical X close button for a panel — same geometry
+/// `paint_panel_close_button` paints into. Exposed so panels with a
+/// scrollable body can RE-REGISTER the close hit at end-of-frame
+/// (after body widgets register their potentially-scrolled rects)
+/// so the click-block z-order doesn't accidentally bury the close
+/// hit. Without the re-register, a body widget that scrolled into
+/// the title-bar band ends up on top of close in the dispatch's
+/// back-to-front `HitIndex` walk.
+pub fn panel_close_button_rect(panel: Rect) -> Rect {
+    let close_size = Spacing::Xl2.px();
+    Rect::new(
+        panel.x + panel.w - PANEL_HEAD_PAD - close_size,
+        panel.y + PANEL_TITLE_BASELINE - 2.0, // LITERAL-PX-OK: baseline-align with title text
+        close_size,
+        close_size,
+    )
+}
+
 /// Paint the canonical X close button at the top-right of a panel
 /// and register its hit rect against `close_id`. Returns the rect so
 /// callers can position other header affordances relative to it.
@@ -301,13 +319,7 @@ pub fn paint_panel_close_button(
     scene: &mut VectorScene,
     theme: Theme,
 ) -> Rect {
-    let close_size = Spacing::Xl2.px();
-    let close_rect = Rect::new(
-        panel.x + panel.w - PANEL_HEAD_PAD - close_size,
-        panel.y + PANEL_TITLE_BASELINE - 2.0, // LITERAL-PX-OK: baseline-align with title text
-        close_size,
-        close_size,
-    );
+    let close_rect = panel_close_button_rect(panel);
     hit_index.register(close_id, close_rect);
     crate::paint::paint_icon(
         scene,

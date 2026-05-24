@@ -242,6 +242,12 @@ fn paint_body(
         hit_index.register(ids::GS_DRAG_HANDLE, drag_handle_rect);
         hit_index.register(ids::GS_RESIZE_HANDLE, panel_resize_handle_rect(rect));
         hit_index.register(ids::GS_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+        // Re-register close AFTER drag/resize so scrolled body widgets
+        // behind the title can't shadow it.
+        hit_index.register(
+            ids::GS_CLOSE,
+            ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
+        );
     }
 
     // Publish content_h / visible_h to the store + clamp scroll.

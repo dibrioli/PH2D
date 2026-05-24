@@ -107,6 +107,18 @@ impl NumberInput {
     }
 }
 
+/// Canonical minimum width (px) for ANY number input — boxed
+/// [`paint_number_input_with_buffer`] or chip
+/// [`crate::widget::paint_number_chip`]. Sized to fit 7 digit-chars
+/// at the canon Sm font (12 px) + canonical padding + stepper column.
+///
+/// **UI canon post-2026-05-24:** callers MUST reserve at least this
+/// many px of horizontal space for a number input. Panel layouts that
+/// scale chip width with available space (e.g. slider+chip composites)
+/// must clamp the chip below this floor. User feedback:
+/// "não permita que a caixa seja redimencionada para menor que isso".
+pub const MIN_W_PX: f32 = 80.0; // LITERAL-PX-OK: 7 digits at Sm (~6 px each) + padding + stepper column
+
 /// Width of the up/down stepper column carved out of the right edge
 /// of every NumberInput / chip hit rect. Sized 60% of the host height,
 /// clamped to 16-22 px so it stays clickable on dense rows but doesn't
@@ -192,10 +204,19 @@ pub fn paint_number_input_with_buffer(
             value_text_owned.as_str()
         }
     };
-    let font_size = TypeToken::Base.px();
+    // Sm (12 px) instead of Base (13 px) — user feedback 2026-05-24:
+    // smaller font reads as "compact input field"; combined with
+    // MIN_W_PX, fits 7 digits ("-1234.5" / "12345.67") without
+    // overflow.
+    let font_size = TypeToken::Sm.px();
     let inner_x = rect.x + pad_x;
     let inner_y = rect.y + (rect.h - font_size) * 0.5;
-    let inner_w = (rect.w - pad_x * 2.0 - chip_w).max(0.0);
+    // Right edge of text-area abuts the stepper column directly — no
+    // extra padding on the right. User feedback 2026-05-24:
+    // "deixe apenas as setas ocluírem o número" (the previous extra
+    // `-pad_x` on the right created an unnecessary blank gap between
+    // the cropped number and the arrows).
+    let inner_w = (rect.w - pad_x - chip_w).max(0.0);
     let label_color = if input.state == TextInputState::Disabled {
         ColorToken::TextDisabled
     } else {

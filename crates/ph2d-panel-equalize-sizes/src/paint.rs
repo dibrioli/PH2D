@@ -333,6 +333,11 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let used_h = (y - rect.y + PANEL_HEAD_PAD).min(rect.h);
     set_last_content_h(used_h);
     set_last_visible_h(rect.h);
+
+    hit_index.register(
+        ids::EQS_CANCEL,
+        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
+    );
 }
 
 /// Paint a horizontal row of N equal-width buttons that behave as a

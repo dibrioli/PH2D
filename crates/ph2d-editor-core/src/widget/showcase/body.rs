@@ -268,10 +268,15 @@ pub fn paint_showcase_body(
     // End-of-frame re-registration of the title-bar drag handle so it
     // sits z-on-top of any body widget that scrolled into the header
     // band (prevents click-through behind the title — DIRETRIZ chip-
-    // canon work, 2026-05-24). Close button at the right is OUTSIDE
-    // `drag_handle_rect` (we pass PANEL_HEADER_CLOSE_RESERVE), so it
-    // remains clickable.
+    // canon work, 2026-05-24). Close button must be re-registered AFTER
+    // drag so it wins over the drag rect on its small overlap zone
+    // AND wins over any body widget that scrolled into its position
+    // (bug reported 2026-05-24: close stopped working after scroll).
     hit_index.register(ids::GAL_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::GAL_RESIZE_HANDLE, resize_handle_rect);
     hit_index.register(ids::GAL_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+    hit_index.register(
+        ids::GAL_CLOSE,
+        crate::widget::panel_chrome::panel_close_button_rect(rect),
+    );
 }

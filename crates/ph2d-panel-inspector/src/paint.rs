@@ -386,4 +386,11 @@ fn paint_inspector(
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+    // Re-register close AFTER drag so scrolled body widgets behind
+    // the title can't shadow it (bug pattern reported 2026-05-24
+    // for Widget Gallery; same surface here).
+    hit_index.register(
+        ids::INSP_CLOSE,
+        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
+    );
 }

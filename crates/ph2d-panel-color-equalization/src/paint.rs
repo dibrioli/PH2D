@@ -112,6 +112,13 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     // later section / panel.
     paint_pending_popovers(ctx);
     paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+
+    // Re-register close at end-of-frame so scrolled body widgets
+    // behind the title can't shadow it (canon — vide panel_chrome doc).
+    ctx.host.hit_index_mut().register(
+        ids::CEQ_CANCEL,
+        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
+    );
 }
 
 /// Paint every body section inside the active scroll clip. Returns the

@@ -37,7 +37,10 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 pub const DEFAULT_LABEL_W: f32 = 70.0; // LITERAL-PX-OK: slider-with-chip default label column width (chrome-specific)
-pub const DEFAULT_CHIP_W: f32 = 60.0; // LITERAL-PX-OK: slider-with-chip default numeric chip width (chrome-specific)
+/// Default chip width — bumped to the canonical number-input minimum
+/// post-2026-05-24 (vide [`crate::widget::number_input::MIN_W_PX`]).
+/// Sized to fit 7 digits at Sm font + padding + stepper column.
+pub const DEFAULT_CHIP_W: f32 = crate::widget::number_input::MIN_W_PX;
 
 /// Paint a label + slider track + numeric chip composite using the
 /// canonical layout. Both `slider_id` and `chip_id` register in the

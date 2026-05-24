@@ -180,28 +180,20 @@ fn paint_inspector(
             _ => trailing_notes.push((idx, note)),
         }
     }
+    // Section macro: paints the section, then the outline (if any),
+    // then notes anchored to THIS section (at the END, before the
+    // separator the caller adds next). UI canon post-2026-05-24:
+    // notes belong VISUALLY to the section the user right-clicked,
+    // grouped inside it. Pre-canon notes painted ABOVE the header.
     macro_rules! live_section {
         ($section_id:expr, $section_idx:expr, $header_h:expr, $body:block) => {{
-            for (slot, note) in &notes_per_section[$section_idx] {
-                paint_one_note(
-                    scene,
-                    text_system,
-                    hit_index,
-                    store,
-                    inner_x,
-                    inner_w,
-                    &mut y,
-                    note,
-                    *slot,
-                );
-            }
             let y_before = y;
             push_section_top_y(&mut section_tops_y, y_before - body_top_y);
             hit_index.register(
                 $section_id,
                 Rect::new(inner_x, y_before, inner_w, $header_h),
             );
-            let new_y: f32 = $body;
+            let mut new_y: f32 = $body;
             if let Some(color_idx) = store.section_outline_color($section_id) {
                 let rgba = HIGHLIGHTER_RGBA[color_idx.min(4) as usize];
                 let pad = Spacing::Xs.px();
@@ -219,6 +211,19 @@ fn paint_inspector(
                     Radius::Md.px(),
                     StrokeToken::Thick.px(),
                     outline_color,
+                );
+            }
+            for (slot, note) in &notes_per_section[$section_idx] {
+                paint_one_note(
+                    scene,
+                    text_system,
+                    hit_index,
+                    store,
+                    inner_x,
+                    inner_w,
+                    &mut new_y,
+                    note,
+                    *slot,
                 );
             }
             new_y

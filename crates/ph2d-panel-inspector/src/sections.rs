@@ -5,14 +5,14 @@ use crate::state::current_display_unit;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, paint_text_title, resolve};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group;
-use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
+use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, NumberInput,
-    TextInput, TextInputState, paint_button, paint_checkbox, paint_number_input_with_buffer,
-    paint_text_input_with_buffer,
+    SectionHeader, TextInput, TextInputState, paint_button, paint_checkbox,
+    paint_number_input_with_buffer, paint_section_header, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -99,18 +99,16 @@ pub(crate) fn paint_transform_section(
     let row_gap = Spacing::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
 
-    paint_text_title(
-        text_system,
-        scene,
-        "Transform",
-        x,
-        y,
-        TypeToken::Md.px(),
-        w - 90.0, // LITERAL-PX-OK: width budget for title, reserves 90px for the Reset button
-        resolve(ColorToken::Text1, theme),
-    );
+    // Canonical section header (ALL-CAPS + collapse chevron + color-dot
+    // slot per UI canon — `docs/UI_Padrao/components/section_header.md`).
+    // Reset button sits to the right of the header band.
+    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let reset_w = 80.0_f32; // LITERAL-PX-OK: Reset button explicit width
     let reset_h = 24.0_f32; // LITERAL-PX-OK: Reset button compact height
+    let header = SectionHeader::new(ids::INSP_LIVE_TRANSFORM_SECTION, "Transform")
+        .collapsible(true);
+    let header_rect = Rect::new(x, y, w - reset_w - Spacing::Sm.px(), header_h);
+    paint_section_header(&header, header_rect, scene, text_system, theme);
     let reset_rect = Rect::new(x + w - reset_w, y - Spacing::Xxs.px(), reset_w, reset_h);
     let reset_state = store
         .button_state(ids::INSP_TRANSFORM_RESET)
@@ -120,8 +118,11 @@ pub(crate) fn paint_transform_section(
         .kind(ButtonKind::Default)
         .state(reset_state);
     paint_button(&reset_btn, reset_rect, scene, text_system, theme);
-    let mut cur_y = y + TypeToken::Md.px() + 10.0; // LITERAL-PX-OK: title baseline + breathing gap
-    cur_y = paint_section_separator(scene, theme, x, w, cur_y);
+    // No inner separator — the orchestrator (paint.rs) draws ONE
+    // separator AFTER this section's content. Pre-2026-05-24 this fn
+    // also painted a separator between title and params, which broke
+    // the "separators go BETWEEN sections" canon (DIRETRIZ §5.2).
+    let mut cur_y = y + header_h;
 
     let col_gap = Spacing::Md.px();
     let tag_box_gap = Spacing::Xxs.px();
@@ -281,18 +282,18 @@ pub(crate) fn paint_render_source_section(
     let label_font = TypeToken::Xs.px();
     let row_gap = Spacing::Xs.px();
     let row_h = line_font + row_gap;
-    paint_text_title(
-        text_system,
+    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
+    let header = SectionHeader::new(ids::INSP_LIVE_RENDER_SECTION, "Render Source")
+        .collapsible(true);
+    paint_section_header(
+        &header,
+        Rect::new(x, y, w, header_h),
         scene,
-        "Render Source",
-        x,
-        y,
-        TypeToken::Md.px(),
-        w,
-        resolve(ColorToken::Text1, theme),
+        text_system,
+        theme,
     );
-    let mut cur_y = y + TypeToken::Md.px() + Spacing::Md.px();
-    cur_y = paint_section_separator(scene, theme, x, w, cur_y);
+    // No inner separator — orchestrator draws it AFTER section content.
+    let mut cur_y = y + header_h;
 
     let paint_pair = |scene: &mut VectorScene,
                       text_system: &mut TextSystem,

@@ -136,14 +136,19 @@ pub fn paint_showcase_body(
             }
         };
     }
-    // Section macro: paints any notes anchored here, then the
-    // section, then the colored outline (if the user picked one via
-    // right-click → "Section outline"), then a separator. Each
-    // iteration also records the section's body-relative top y so
-    // `section_index_below_body_y` works.
+    // Section macro: paints the section, then the colored outline (if
+    // the user picked one via right-click → "Section outline"), then
+    // any notes anchored to THIS section (at the end of the section,
+    // BEFORE the separator — UI canon post-2026-05-24), then the
+    // separator. Each iteration also records the section's body-
+    // relative top y so `section_index_below_body_y` works.
+    //
+    // Pre-canon, notes painted ABOVE the section header (separator
+    // between section and note). User complaint 2026-05-24: notes
+    // should belong VISUALLY to the section the user right-clicked,
+    // grouped INSIDE it before the separator that ends it.
     macro_rules! section {
         ($f:ident, $section_id:expr) => {
-            paint_pending_notes!();
             let y_before = y;
             push_section_top_y(&mut section_tops_y, y_before - body_top_y);
             let new_y = $f(
@@ -175,7 +180,9 @@ pub fn paint_showcase_body(
                     outline_color,
                 );
             }
-            y = paint_section_separator(scene, theme, inner_x, inner_w, new_y);
+            y = new_y;
+            paint_pending_notes!();
+            y = paint_section_separator(scene, theme, inner_x, inner_w, y);
             #[allow(unused_assignments)]
             {
                 section_idx += 1;

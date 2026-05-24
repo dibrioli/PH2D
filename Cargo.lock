@@ -3881,6 +3881,9 @@ version = "0.0.0"
 [[package]]
 name = "ph2d-color"
 version = "0.0.0"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "ph2d-core"
@@ -3917,9 +3920,11 @@ name = "ph2d-editor-core"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "bytemuck",
  "dhat",
  "ph2d-a11y",
  "ph2d-chrome-sync",
+ "ph2d-color",
  "ph2d-grid",
  "ph2d-host",
  "ph2d-i18n",
@@ -3980,10 +3985,12 @@ dependencies = [
  "arboard",
  "bevy_ecs",
  "bumpalo",
+ "bytemuck",
  "core-graphics",
  "gilrs",
  "image",
  "ph2d-asset",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor",
@@ -4352,8 +4359,10 @@ dependencies = [
 name = "ph2d-tool-bgremoval"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
  "image",
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-tool-registry",
@@ -4375,6 +4384,7 @@ dependencies = [
  "bytemuck",
  "half",
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-gpu",
@@ -4388,7 +4398,9 @@ dependencies = [
 name = "ph2d-tool-equalize-sizes"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-tool-registry",
@@ -4410,6 +4422,7 @@ name = "ph2d-tool-make-square"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-tool-registry",
  "ph2d-vector",
@@ -4428,6 +4441,7 @@ name = "ph2d-tool-padding"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-tool-registry",
@@ -4505,6 +4519,7 @@ name = "ph2d-tool-trim-transparency"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-tool-registry",
  "ph2d-vector",
@@ -4514,7 +4529,9 @@ dependencies = [
 name = "ph2d-tool-upscale"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-tool-registry",

@@ -49,6 +49,11 @@ dhat = "0.3"
 # (it parses [dependencies] only) and creates no runtime cycle.
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
+# Wave 11 — typed-color migration: the integration test
+# make_square_algorithm.rs casts its Vec<u8> fixtures into &[SrgbRgba]
+# via bytemuck::cast_slice before calling the migrated APIs.
+ph2d-color = { path = "../ph2d-color" }
+bytemuck = "1"
 # Wave 10 / Etapa 4.2 — staleness gate for chrome handler `mod` block.
 ph2d-chrome-sync = { path = "../../tools/ph2d-chrome-sync" }
 # Wave 10 / Etapa 4.3 — staleness gate for widget `mod` block.

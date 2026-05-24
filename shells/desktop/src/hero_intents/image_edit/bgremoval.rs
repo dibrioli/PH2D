@@ -61,7 +61,12 @@ pub(crate) fn drain_bgremoval(
     // (a re-run on an already-baked premultiplied sprite is recovered here).
     let straight = src.image.into_straight();
     let mut out: Vec<u8> = Vec::new();
-    bg.set_source_snapshot(straight.pixels, straight.width, straight.height);
+    // Wave 11 migration (ADR-0042 §6 #2): typed `Vec<SrgbRgba>` input.
+    bg.set_source_snapshot(
+        bytemuck::allocation::cast_vec(straight.pixels),
+        straight.width,
+        straight.height,
+    );
     let (out_w, out_h) = bg.run_full_resolution(&mut out);
     // After the bake, the tool may have produced per-island RGBA
     // payloads (when `params.separate_islands` is on). Drain them

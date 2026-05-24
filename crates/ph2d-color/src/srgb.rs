@@ -10,13 +10,15 @@ use crate::LinearRgba;
 /// sRGB-encoded RGBA, 8-bit per channel.
 ///
 /// `#[repr(transparent)]` over `[u8; 4]` so the layout is bit-exact
-/// with a packed `[r, g, b, a]` quad — this is the boundary contract
-/// every PH2D image tool will adopt during the Wave 11 color-space
-/// migration. External IO speaks `&[u8]`; internal pipelines speak
-/// `&[SrgbRgba]`. Zero-copy reinterpretation between the two forms is
-/// possible via the `bytemuck` crate (added when a Wave 11 caller
-/// needs it — the ph2d-color crate stays dep-free until then).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+/// with a packed `[r, g, b, a]` quad. The `Pod` + `Zeroable` derives
+/// make this the boundary contract every PH2D image tool will adopt
+/// during the Wave 11 color-space migration:
+///
+/// - External IO (decoders, file readers) speaks `&[u8]`.
+/// - Internal pipelines speak `&[SrgbRgba]`.
+/// - The cast between the two is zero-copy via
+///   [`bytemuck::cast_slice`] — same memory, just typed.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct SrgbRgba(pub [u8; 4]);
 

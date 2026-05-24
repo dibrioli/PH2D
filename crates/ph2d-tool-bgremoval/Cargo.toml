@@ -24,6 +24,12 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-core = { path = "../ph2d-core" }
+# Typed color wrapper — Wave 11 migration (ADR-0042 §6 #2): the
+# `set_source_snapshot` inherent takes `Vec<SrgbRgba>` instead of
+# `Vec<u8>`. Storage stays `Vec<u8>` (downstream consumes bytes);
+# the cast is zero-copy via `bytemuck::allocation::cast_vec`.
+ph2d-color = { path = "../ph2d-color" }
+bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # imageops::resize (lanczos) for the preview thumbnail downscale. Decoders
 # stripped — operates on already-decoded RGBA (ph2d-asset is the decode
 # boundary).

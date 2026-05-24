@@ -6,3 +6,14 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 publish.workspace = true
+
+# `bytemuck` derive for Pod + Zeroable on SrgbRgba so callers can
+# zero-copy reinterpret between `&[u8]` (the IO boundary, asset
+# decoders, png/jpeg readers) and `&[SrgbRgba]` (the algorithm-side
+# typed buffer) via `bytemuck::cast_slice`. Wave 11 color-space
+# migration sweep (ADR-0042 §6 #2) leans on this.
+#
+# bytemuck is zero-deps + std-only — small, audited, the Rust
+# ecosystem's canonical solution for repr-transparent zero-copy.
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }

@@ -253,9 +253,11 @@ impl BgRemovalTool {
     /// the thumbnail and re-renders the preview with the current
     /// params.
     ///
-    /// `rgba` must be straight-alpha RGBA8 of length `w * h * 4`.
-    pub fn set_source_snapshot(&mut self, rgba: Vec<u8>, w: u32, h: u32) {
-        assert_eq!(rgba.len(), (w as usize) * (h as usize) * 4);
+    /// `pixels` must be straight-alpha `SrgbRgba` of length `w * h`.
+    /// Internally re-stored as `Vec<u8>` (downstream consumes bytes);
+    /// the cast is zero-copy via `bytemuck::cast_vec`.
+    pub fn set_source_snapshot(&mut self, pixels: Vec<ph2d_color::SrgbRgba>, w: u32, h: u32) {
+        assert_eq!(pixels.len(), (w as usize) * (h as usize));
         // The protection mask is spatial — a genuinely different image
         // invalidates it. Re-feeding the SAME dimensions (e.g. the Apply
         // re-read of the same sprite) preserves it so the bake honours
@@ -265,7 +267,7 @@ impl BgRemovalTool {
             self.protect_mask_w = 0;
             self.protect_mask_h = 0;
         }
-        self.source_rgba = rgba;
+        self.source_rgba = bytemuck::allocation::cast_vec(pixels);
         self.source_w = w;
         self.source_h = h;
         self.rebuild_thumbnail();
@@ -1288,7 +1290,10 @@ fn aspect_fit_within(sw: u32, sh: u32, max_dim: u32) -> (u32, u32) {
 ///   leaves.
 impl RasterEditTool for BgRemovalTool {
     fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
-        self.set_source_snapshot(rgba, width, height);
+        // Trait signature stays `Vec<u8>` (ADR-0041). Wave 11 typed
+        // migration on the inherent `set_source_snapshot` — zero-copy
+        // cast via bytemuck (SrgbRgba is repr-transparent + Pod).
+        self.set_source_snapshot(bytemuck::allocation::cast_vec(rgba), width, height);
     }
 
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
@@ -1415,7 +1420,7 @@ mod tests {
     fn set_source_snapshot_marks_has_source_true() {
         let mut t = BgRemovalTool::default();
         let buf = vec![255u8; 8 * 8 * 4];
-        t.set_source_snapshot(buf, 8, 8);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 8, 8);
         assert!(t.has_source());
     }
 
@@ -1426,7 +1431,7 @@ mod tests {
         // a same-size buffer.
         let mut t = BgRemovalTool::default();
         let buf = vec![255u8; 32 * 32 * 4];
-        t.set_source_snapshot(buf, 32, 32);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 32, 32);
         assert_eq!(t.thumbnail_w, THUMB_SIZE);
         assert_eq!(t.thumbnail_h, THUMB_SIZE);
         assert_eq!(
@@ -1446,7 +1451,7 @@ mod tests {
         // gate in `handle_panel_event`.
         let mut t = BgRemovalTool::default();
         let buf = vec![255u8; 32 * 32 * 4];
-        t.set_source_snapshot(buf, 32, 32);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 32, 32);
         let baseline = t.preview_rgba().to_vec();
         t.handle_panel_event(PanelEvent::SetValue(TOLERANCE_NODE, 0.9));
         // Preview ran again (length preserved; content may differ —
@@ -1587,13 +1592,13 @@ mod tests {
         // 2×2 source with 4 distinct colours: TL red, TR green,
         // BL blue, BR white.
         let mut t = BgRemovalTool::default();
-        let buf = vec![
+        let buf: Vec<u8> = vec![
             255, 0, 0, 255, // (0,0) red
             0, 255, 0, 255, // (1,0) green
             0, 0, 255, 255, // (0,1) blue
             255, 255, 255, 255, // (1,1) white
         ];
-        t.set_source_snapshot(buf, 2, 2);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 2, 2);
         assert_eq!(t.sample_source_at_uv(0.0, 0.0), Some([255, 0, 0]));
         assert_eq!(t.sample_source_at_uv(1.0, 0.0), Some([0, 255, 0]));
         assert_eq!(t.sample_source_at_uv(0.0, 1.0), Some([0, 0, 255]));
@@ -1666,7 +1671,7 @@ mod tests {
         assert!(!t.has_protect_mask());
 
         let buf = vec![255u8; 32 * 32 * 4];
-        t.set_source_snapshot(buf, 32, 32);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 32, 32);
         // Hard (Constant) falloff so the whole disc is full strength.
         t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
         t.paint_protect_at_uv(0.5, 0.5, 6.0);
@@ -1685,7 +1690,11 @@ mod tests {
         // Smooth falloff: strength must be max at the centre and decay to
         // ~0 at the rim along a row through the dab.
         let mut t = BgRemovalTool::default();
-        t.set_source_snapshot(vec![255u8; 64 * 64 * 4], 64, 64);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![255u8; 64 * 64 * 4]),
+            64,
+            64,
+        );
         t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Smooth));
         let r = 20.0;
         t.paint_protect_at_uv(0.5, 0.5, r);
@@ -1703,7 +1712,11 @@ mod tests {
     #[test]
     fn erase_protect_subtracts_strength() {
         let mut t = BgRemovalTool::default();
-        t.set_source_snapshot(vec![255u8; 32 * 32 * 4], 32, 32);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![255u8; 32 * 32 * 4]),
+            32,
+            32,
+        );
         t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
         // Paint a hard disc, then erase the centre with a hard dab.
         t.paint_protect_at_uv(0.5, 0.5, 8.0);
@@ -1720,7 +1733,11 @@ mod tests {
     #[test]
     fn erase_on_empty_mask_is_noop() {
         let mut t = BgRemovalTool::default();
-        t.set_source_snapshot(vec![255u8; 16 * 16 * 4], 16, 16);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![255u8; 16 * 16 * 4]),
+            16,
+            16,
+        );
         t.erase_protect_at_uv(0.5, 0.5, 4.0);
         assert!(
             !t.has_protect_mask(),
@@ -1754,7 +1771,7 @@ mod tests {
     fn clear_protect_mask_wipes_it() {
         let mut t = BgRemovalTool::default();
         let buf = vec![255u8; 16 * 16 * 4];
-        t.set_source_snapshot(buf, 16, 16);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 16, 16);
         t.paint_protect_at_uv(0.5, 0.5, 3.0);
         assert!(t.has_protect_mask());
         t.clear_protect_mask();
@@ -1767,14 +1784,22 @@ mod tests {
     #[test]
     fn new_image_dims_clear_stale_protect_mask() {
         let mut t = BgRemovalTool::default();
-        t.set_source_snapshot(vec![255u8; 16 * 16 * 4], 16, 16);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![255u8; 16 * 16 * 4]),
+            16,
+            16,
+        );
         t.paint_protect_at_uv(0.5, 0.5, 3.0);
         assert!(t.has_protect_mask());
         // Same dims → preserved (Apply re-feed case).
-        t.set_source_snapshot(vec![128u8; 16 * 16 * 4], 16, 16);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![128u8; 16 * 16 * 4]),
+            16,
+            16,
+        );
         assert!(t.has_protect_mask(), "same-dims re-feed keeps the mask");
         // Different dims → cleared.
-        t.set_source_snapshot(vec![255u8; 8 * 8 * 4], 8, 8);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(vec![255u8; 8 * 8 * 4]), 8, 8);
         assert!(!t.has_protect_mask(), "new dimensions drop the stale mask");
     }
 
@@ -1783,7 +1808,7 @@ mod tests {
         let mut t = BgRemovalTool::default();
         // 1024×512 source → capped to PREVIEW_MAX_DIM on the long axis.
         let buf = vec![255u8; 1024 * 512 * 4];
-        t.set_source_snapshot(buf, 1024, 512);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 1024, 512);
         let mut out = Vec::new();
         let (cw, ch) = t.run_canvas_preview(&mut out);
         assert_eq!(cw, PREVIEW_MAX_DIM);
@@ -1795,7 +1820,7 @@ mod tests {
     fn canvas_preview_small_source_passes_through() {
         let mut t = BgRemovalTool::default();
         let buf = vec![255u8; 64 * 48 * 4];
-        t.set_source_snapshot(buf, 64, 48);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 64, 48);
         let mut out = Vec::new();
         let (cw, ch) = t.run_canvas_preview(&mut out);
         assert_eq!((cw, ch), (64, 48), "sub-cap source is not upscaled");
@@ -1854,7 +1879,11 @@ mod tests {
     #[test]
     fn pending_islands_stays_empty_when_toggle_off() {
         let mut t = BgRemovalTool::default();
-        t.set_source_snapshot(vec![255u8; 16 * 16 * 4], 16, 16);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![255u8; 16 * 16 * 4]),
+            16,
+            16,
+        );
         // Toggle is off by default.
         let mut out = Vec::new();
         let _ = t.run_full_resolution(&mut out);
@@ -1902,11 +1931,11 @@ mod tests {
         let mut t = BgRemovalTool::default();
 
         // Sprite 1: 8×8 red.
-        let mut buf1 = Vec::with_capacity(8 * 8 * 4);
+        let mut buf1: Vec<u8> = Vec::with_capacity(8 * 8 * 4);
         for _ in 0..(8 * 8) {
-            buf1.extend_from_slice(&[200, 30, 30, 255]);
+            buf1.extend_from_slice(&[200u8, 30, 30, 255]);
         }
-        t.set_source_snapshot(buf1, 8, 8);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf1), 8, 8);
         let mut out1 = Vec::new();
         let (w1, h1) = t.run_full_resolution(&mut out1);
         assert_eq!((w1, h1), (8, 8));
@@ -1914,11 +1943,11 @@ mod tests {
 
         // Sprite 2: different dims + colour. Must re-bake against the
         // fresh snapshot, not reuse out1's dims.
-        let mut buf2 = Vec::with_capacity(12 * 5 * 4);
+        let mut buf2: Vec<u8> = Vec::with_capacity(12 * 5 * 4);
         for _ in 0..(12 * 5) {
-            buf2.extend_from_slice(&[30, 200, 50, 255]);
+            buf2.extend_from_slice(&[30u8, 200, 50, 255]);
         }
-        t.set_source_snapshot(buf2, 12, 5);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf2), 12, 5);
         let mut out2 = Vec::new();
         let (w2, h2) = t.run_full_resolution(&mut out2);
         assert_eq!((w2, h2), (12, 5), "per-sprite source swap leaked dims");

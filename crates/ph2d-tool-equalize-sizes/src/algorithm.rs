@@ -164,7 +164,7 @@ fn equalize_one(s: &SpriteInput, tw: u32, th: u32, params: &EqualizeSizesParams)
     if params.rasterize_after {
         // Bake to exact (tw, th) via Mitchell-Netravali. Scale resets to
         // ±1 (sign preserved so the flip is kept).
-        let (rgba2, w2, h2) = mitchell_resample(&buf, bw, bh, tw, th);
+        let (rgba2, w2, h2) = mitchell_resample(bytemuck::cast_slice(&buf), bw, bh, tw, th);
         let changed = buffer_changed
             || (w2, h2) != (s.width, s.height)
             || (s.scale_x.abs() - 1.0).abs() > 1e-4
@@ -229,7 +229,13 @@ fn upscale_to_at_least(
         UpscaleAlgorithm::Lanczos3 => {
             let dw = (w as f32 * fx).round() as u32;
             let dh = (h as f32 * fy).round() as u32;
-            lanczos3_resample(rgba, w, h, dw.max(min_w), dh.max(min_h))
+            lanczos3_resample(
+                bytemuck::cast_slice(rgba),
+                w,
+                h,
+                dw.max(min_w),
+                dh.max(min_h),
+            )
         }
         UpscaleAlgorithm::Xbr => {
             // Integer factor only; pick the smallest integer that fits both axes.
@@ -246,7 +252,13 @@ fn upscale_to_at_least(
             } else {
                 let dw = (w as f32 * fx).round() as u32;
                 let dh = (h as f32 * fy).round() as u32;
-                lanczos3_resample(rgba, w, h, dw.max(min_w), dh.max(min_h))
+                lanczos3_resample(
+                    bytemuck::cast_slice(rgba),
+                    w,
+                    h,
+                    dw.max(min_w),
+                    dh.max(min_h),
+                )
             }
         }
     }
@@ -298,7 +310,14 @@ fn lanczos3_weight(t: f32) -> f32 {
 /// Resample `rgba` from `(sw, sh)` to `(dw, dh)` using Lanczos3.
 /// Per-axis (sep), normalized so kernel partial sums never bias the
 /// output brightness near image borders.
-pub fn lanczos3_resample(rgba: &[u8], sw: u32, sh: u32, dw: u32, dh: u32) -> (Vec<u8>, u32, u32) {
+pub fn lanczos3_resample(
+    pixels: &[ph2d_color::SrgbRgba],
+    sw: u32,
+    sh: u32,
+    dw: u32,
+    dh: u32,
+) -> (Vec<u8>, u32, u32) {
+    let rgba: &[u8] = bytemuck::cast_slice(pixels);
     if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
         return (rgba.to_vec(), sw, sh);
     }
@@ -418,7 +437,14 @@ fn mitchell_weight(t: f32) -> f32 {
 
 /// Resample `rgba` from `(sw, sh)` to `(dw, dh)` using
 /// Mitchell-Netravali (B = C = 1/3). Separable, normalized.
-pub fn mitchell_resample(rgba: &[u8], sw: u32, sh: u32, dw: u32, dh: u32) -> (Vec<u8>, u32, u32) {
+pub fn mitchell_resample(
+    pixels: &[ph2d_color::SrgbRgba],
+    sw: u32,
+    sh: u32,
+    dw: u32,
+    dh: u32,
+) -> (Vec<u8>, u32, u32) {
+    let rgba: &[u8] = bytemuck::cast_slice(pixels);
     if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
         return (rgba.to_vec(), sw, sh);
     }
@@ -691,7 +717,7 @@ mod tests {
         // Resampling a solid color must produce the same solid color
         // (all weights normalize, brightness invariant).
         let src = solid(8, 8, [50, 100, 150]);
-        let (out, w, h) = lanczos3_resample(&src, 8, 8, 16, 16);
+        let (out, w, h) = lanczos3_resample(bytemuck::cast_slice(&src), 8, 8, 16, 16);
         assert_eq!((w, h), (16, 16));
         for chunk in out.chunks_exact(4) {
             assert_eq!(chunk[0], 50);
@@ -704,7 +730,7 @@ mod tests {
     #[test]
     fn mitchell_resample_preserves_solid_color() {
         let src = solid(8, 8, [50, 100, 150]);
-        let (out, w, h) = mitchell_resample(&src, 8, 8, 5, 11);
+        let (out, w, h) = mitchell_resample(bytemuck::cast_slice(&src), 8, 8, 5, 11);
         assert_eq!((w, h), (5, 11));
         for chunk in out.chunks_exact(4) {
             assert_eq!(chunk[0], 50);

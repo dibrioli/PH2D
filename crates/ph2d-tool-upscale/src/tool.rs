@@ -96,14 +96,16 @@ pub struct UpscaleTool {
 }
 
 impl UpscaleTool {
-    /// Push a fresh source RGBA snapshot from the host. Just stores
-    /// the pixels — Apply-only model means there's no preview cook to
+    /// Push a fresh source snapshot from the host. Just stores the
+    /// pixels — Apply-only model means there's no preview cook to
     /// trigger here.
     ///
-    /// `rgba` must be straight-alpha RGBA8 of length `w * h * 4`.
-    pub fn set_source_snapshot(&mut self, rgba: Vec<u8>, w: u32, h: u32) {
-        assert_eq!(rgba.len(), (w as usize) * (h as usize) * 4);
-        self.source_rgba = rgba;
+    /// `pixels` must be straight-alpha `SrgbRgba` of length `w * h`.
+    /// Internally re-stored as `Vec<u8>` (downstream `SpriteImage::new`
+    /// consumes bytes); the cast is zero-copy via `bytemuck::cast_vec`.
+    pub fn set_source_snapshot(&mut self, pixels: Vec<ph2d_color::SrgbRgba>, w: u32, h: u32) {
+        assert_eq!(pixels.len(), (w as usize) * (h as usize));
+        self.source_rgba = bytemuck::allocation::cast_vec(pixels);
         self.source_w = w;
         self.source_h = h;
     }
@@ -197,10 +199,13 @@ impl UpscaleTool {
             .params
             .algorithm
             .project_scale(self.params.scale_factor);
+        // Wave 11 migration: the 3 algorithm publics take `&[SrgbRgba]`.
+        // Cast zero-copy here so internal byte-level callers stay byte-level.
+        let pixels: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(rgba);
         match self.params.algorithm {
-            UpscaleAlgorithm::Lanczos3 => upscale_lanczos3(rgba, w, h, factor),
-            UpscaleAlgorithm::Nearest => upscale_nearest(rgba, w, h, factor),
-            UpscaleAlgorithm::Xbr => upscale_xbr(rgba, w, h, factor),
+            UpscaleAlgorithm::Lanczos3 => upscale_lanczos3(pixels, w, h, factor),
+            UpscaleAlgorithm::Nearest => upscale_nearest(pixels, w, h, factor),
+            UpscaleAlgorithm::Xbr => upscale_xbr(pixels, w, h, factor),
         }
     }
 }
@@ -307,7 +312,11 @@ impl Tool for UpscaleTool {
 /// - `deactivate` → drain pending_apply.
 impl RasterEditTool for UpscaleTool {
     fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
-        self.set_source_snapshot(rgba, width, height);
+        // Trait signature stays `Vec<u8>` (ADR-0041 contract). Wave 11
+        // typed migration only changes the inherent `set_source_snapshot`
+        // — convert here via `bytemuck::cast_vec` (zero-copy: `SrgbRgba`
+        // is repr-transparent + Pod over `[u8; 4]`).
+        self.set_source_snapshot(bytemuck::allocation::cast_vec(rgba), width, height);
     }
 
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
@@ -356,7 +365,7 @@ mod tests {
     fn set_source_snapshot_marks_has_source_and_stores_dims() {
         let mut t = UpscaleTool::default();
         let buf = vec![128u8; 8 * 8 * 4];
-        t.set_source_snapshot(buf, 8, 8);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 8, 8);
         assert!(t.has_source());
         assert_eq!(t.source_size(), (8, 8));
     }
@@ -441,7 +450,7 @@ mod tests {
     fn current_preview_always_returns_none() {
         // Apply-only contract — never expose a live preview frame.
         let mut t = UpscaleTool::default();
-        t.set_source_snapshot(vec![100u8; 4 * 4 * 4], 4, 4);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(vec![100u8; 4 * 4 * 4]), 4, 4);
         t.apply_ui_edit(UpscaleUiEdit::Scale(2.0));
         t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
         assert!(RasterEditTool::current_preview(&mut t).is_none());
@@ -451,7 +460,7 @@ mod tests {
     fn run_full_resolution_writes_expected_dims() {
         let mut t = UpscaleTool::default();
         let buf = vec![200u8; 4 * 4 * 4];
-        t.set_source_snapshot(buf, 4, 4);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 4, 4);
         t.apply_ui_edit(UpscaleUiEdit::Scale(2.0));
         let mut out = Vec::new();
         let (w, h) = t.run_full_resolution(&mut out);
@@ -470,7 +479,7 @@ mod tests {
         t.apply_ui_edit(UpscaleUiEdit::Scale(2.0));
 
         // Sprite 1: 4×4.
-        t.set_source_snapshot(vec![100u8; 4 * 4 * 4], 4, 4);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(vec![100u8; 4 * 4 * 4]), 4, 4);
         let mut out1 = Vec::new();
         let (w1, h1) = t.run_full_resolution(&mut out1);
         assert_eq!((w1, h1), (8, 8));
@@ -478,7 +487,7 @@ mod tests {
 
         // Sprite 2: different dims (5×7) — must re-bake against new
         // snapshot, not reuse sprite-1 dims.
-        t.set_source_snapshot(vec![50u8; 5 * 7 * 4], 5, 7);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(vec![50u8; 5 * 7 * 4]), 5, 7);
         let mut out2 = Vec::new();
         let (w2, h2) = t.run_full_resolution(&mut out2);
         assert_eq!((w2, h2), (10, 14), "per-sprite source swap leaked dims");

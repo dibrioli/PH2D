@@ -47,12 +47,10 @@ pub(crate) fn drain_trim_transparency(
         )));
         return true;
     };
-    let result = ph2d_tool_trim_transparency::trim_transparency(
-        &src.image.pixels,
-        src.image.width,
-        src.image.height,
-        0,
-    );
+    // Wave 11 migration (ADR-0042 §6 #2): typed `&[SrgbRgba]` input.
+    let typed: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(&src.image.pixels);
+    let result =
+        ph2d_tool_trim_transparency::trim_transparency(typed, src.image.width, src.image.height, 0);
     if !result.trimmed {
         toasts.push(Toast::info(ph2d_i18n::tr(
             "tool.trim_transparency.toast.nothing",

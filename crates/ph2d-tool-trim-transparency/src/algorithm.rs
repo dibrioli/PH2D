@@ -17,6 +17,12 @@
 /// describe its extent. For an entirely-transparent input the
 /// returned `bounds` is `{x: 0, y: 0, width: 1, height: 1}` and
 /// `pixels` is a single fully-transparent RGBA pixel (legacy parity).
+///
+/// Wave 11 color-space migration (ADR-0042 §6 #2): the input
+/// signature is typed (`&[SrgbRgba]` instead of `&[u8]`). Output
+/// keeps `Vec<u8>` (downstream `SpriteImage::new` consumes bytes).
+use ph2d_color::SrgbRgba;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bounds {
     pub x: u32,
@@ -71,7 +77,12 @@ pub struct TrimResult {
 /// Pure integer comparison + byte copy. Bit-identical across all
 /// platforms; safe for inclusion in any deterministic asset cooking
 /// pipeline (HR-5 implication — this never reads back from GPU).
-pub fn trim_transparency(rgba: &[u8], width: u32, height: u32, alpha_threshold: u8) -> TrimResult {
+pub fn trim_transparency(
+    pixels: &[SrgbRgba],
+    width: u32,
+    height: u32,
+    alpha_threshold: u8,
+) -> TrimResult {
     let w = width as usize;
     let h = height as usize;
 
@@ -79,11 +90,9 @@ pub fn trim_transparency(rgba: &[u8], width: u32, height: u32, alpha_threshold: 
         return all_transparent_sentinel();
     }
     assert_eq!(
-        rgba.len(),
-        w.checked_mul(h)
-            .and_then(|n| n.checked_mul(4))
-            .expect("rgba dimensions overflow usize"),
-        "rgba buffer length must equal width * height * 4",
+        pixels.len(),
+        w.checked_mul(h).expect("pixel dimensions overflow usize"),
+        "pixel buffer length must equal width * height",
     );
 
     // ---- Edge scans ----------------------------------------------------
@@ -92,9 +101,9 @@ pub fn trim_transparency(rgba: &[u8], width: u32, height: u32, alpha_threshold: 
 
     let mut min_y = h;
     'top: for y in 0..h {
-        let row = y * w * 4;
+        let row = y * w;
         for x in 0..w {
-            if rgba[row + x * 4 + 3] > alpha_threshold {
+            if pixels[row + x].a() > alpha_threshold {
                 min_y = y;
                 break 'top;
             }
@@ -106,9 +115,9 @@ pub fn trim_transparency(rgba: &[u8], width: u32, height: u32, alpha_threshold: 
 
     let mut max_y = min_y;
     'bot: for y in (min_y..h).rev() {
-        let row = y * w * 4;
+        let row = y * w;
         for x in 0..w {
-            if rgba[row + x * 4 + 3] > alpha_threshold {
+            if pixels[row + x].a() > alpha_threshold {
                 max_y = y;
                 break 'bot;
             }
@@ -121,7 +130,7 @@ pub fn trim_transparency(rgba: &[u8], width: u32, height: u32, alpha_threshold: 
     let mut min_x = w;
     'left: for x in 0..w {
         for y in min_y..=max_y {
-            if rgba[y * w * 4 + x * 4 + 3] > alpha_threshold {
+            if pixels[y * w + x].a() > alpha_threshold {
                 min_x = x;
                 break 'left;
             }
@@ -134,7 +143,7 @@ pub fn trim_transparency(rgba: &[u8], width: u32, height: u32, alpha_threshold: 
     let mut max_x = min_x;
     'right: for x in (min_x..w).rev() {
         for y in min_y..=max_y {
-            if rgba[y * w * 4 + x * 4 + 3] > alpha_threshold {
+            if pixels[y * w + x].a() > alpha_threshold {
                 max_x = x;
                 break 'right;
             }
@@ -146,11 +155,13 @@ pub fn trim_transparency(rgba: &[u8], width: u32, height: u32, alpha_threshold: 
     let trimmed = !(min_x == 0 && min_y == 0 && bw == w && bh == h);
 
     // ---- Copy out ------------------------------------------------------
+    // Output stays as Vec<u8> (downstream SpriteImage::new wants bytes).
     let mut out = Vec::with_capacity(bw * bh * 4);
-    let row_bytes = bw * 4;
     for y in min_y..=max_y {
-        let src_start = y * w * 4 + min_x * 4;
-        out.extend_from_slice(&rgba[src_start..src_start + row_bytes]);
+        let row_start_px = y * w + min_x;
+        for col in 0..bw {
+            out.extend_from_slice(&pixels[row_start_px + col].0);
+        }
     }
 
     TrimResult {
@@ -190,25 +201,26 @@ fn all_transparent_sentinel() -> TrimResult {
 mod tests {
     use super::*;
 
-    /// Build an RGBA buffer of `w*h*4` bytes, filled with `(0,0,0,alpha)`.
-    fn solid_alpha(w: usize, h: usize, alpha: u8) -> Vec<u8> {
-        let mut v = vec![0u8; w * h * 4];
-        for i in (3..v.len()).step_by(4) {
-            v[i] = alpha;
-        }
-        v
+    /// Build a `w*h` SrgbRgba buffer filled with `(0,0,0,alpha)`.
+    fn solid_alpha(w: usize, h: usize, alpha: u8) -> Vec<SrgbRgba> {
+        vec![SrgbRgba([0, 0, 0, alpha]); w * h]
     }
 
     /// Put an opaque pixel (`alpha=255`) at `(x, y)` inside an
-    /// otherwise-transparent `w*h` buffer.
-    fn pixel(w: usize, h: usize, x: usize, y: usize) -> Vec<u8> {
-        let mut v = vec![0u8; w * h * 4];
-        let i = y * w * 4 + x * 4;
-        v[i] = 255;
-        v[i + 1] = 255;
-        v[i + 2] = 255;
-        v[i + 3] = 255;
+    /// otherwise-transparent `w*h` SrgbRgba buffer.
+    fn pixel(w: usize, h: usize, x: usize, y: usize) -> Vec<SrgbRgba> {
+        let mut v = vec![SrgbRgba([0, 0, 0, 0]); w * h];
+        v[y * w + x] = SrgbRgba([255, 255, 255, 255]);
         v
+    }
+
+    /// Pack a packed-bytes Vec<u8> into Vec<SrgbRgba> (1:1 chunking).
+    fn pack(bytes: Vec<u8>) -> Vec<SrgbRgba> {
+        assert!(bytes.len().is_multiple_of(4));
+        bytes
+            .chunks_exact(4)
+            .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
+            .collect()
     }
 
     #[test]
@@ -246,7 +258,10 @@ mod tests {
             }
         );
         assert!(!r.trimmed);
-        assert_eq!(r.pixels, rgba);
+        // Output (bytes) should match input (SrgbRgba) byte-for-byte.
+        for (i, p) in rgba.iter().enumerate() {
+            assert_eq!(&r.pixels[i * 4..i * 4 + 4], &p.0);
+        }
     }
 
     #[test]
@@ -303,16 +318,17 @@ mod tests {
         // 16x16 image with an opaque 4x3 rect at (5,2)..(8,4) inclusive.
         let w = 16;
         let h = 16;
-        let mut rgba = vec![0u8; w * h * 4];
+        let mut rgba_bytes = vec![0u8; w * h * 4];
         for y in 2..=4 {
             for x in 5..=8 {
                 let i = y * w * 4 + x * 4;
-                rgba[i] = 200;
-                rgba[i + 1] = 100;
-                rgba[i + 2] = 50;
-                rgba[i + 3] = 255;
+                rgba_bytes[i] = 200;
+                rgba_bytes[i + 1] = 100;
+                rgba_bytes[i + 2] = 50;
+                rgba_bytes[i + 3] = 255;
             }
         }
+        let rgba = pack(rgba_bytes);
         let r = trim_transparency(&rgba, w as u32, h as u32, 0);
         assert_eq!(
             r.bounds,
@@ -338,9 +354,10 @@ mod tests {
     #[test]
     fn threshold_excludes_alpha_at_or_below() {
         // Single pixel with alpha = 10. Threshold 10 → below cut.
-        let mut rgba = vec![0u8; 4 * 4 * 4];
+        let mut rgba_bytes = vec![0u8; 4 * 4 * 4];
         let i = 2 * 4 * 4 + 2 * 4; // pixel (2,2)
-        rgba[i + 3] = 10;
+        rgba_bytes[i + 3] = 10;
+        let rgba = pack(rgba_bytes);
         let r = trim_transparency(&rgba, 4, 4, 10);
         // No pixel exceeds threshold → sentinel.
         assert_eq!(
@@ -370,9 +387,10 @@ mod tests {
         // 4x4. (0,0) has alpha=200 (opaque-ish). (3,3) has alpha=5.
         // With threshold=10, only (0,0) defines bounds → result is 1x1
         // at (0,0). The alpha=5 pixel is not in the trimmed output.
-        let mut rgba = vec![0u8; 4 * 4 * 4];
-        rgba[3] = 200; // pixel (0,0) alpha
-        rgba[(3 * 4 * 4 + 3 * 4) + 3] = 5; // pixel (3,3) alpha
+        let mut rgba_bytes = vec![0u8; 4 * 4 * 4];
+        rgba_bytes[3] = 200; // pixel (0,0) alpha
+        rgba_bytes[(3 * 4 * 4 + 3 * 4) + 3] = 5; // pixel (3,3) alpha
+        let rgba = pack(rgba_bytes);
         let r = trim_transparency(&rgba, 4, 4, 10);
         assert_eq!(
             r.bounds,
@@ -396,12 +414,13 @@ mod tests {
         // Bounds defined by two opaque pixels at (0,0) and (3,3).
         // The pixel at (1,1) has alpha=5. Since (1,1) is inside the
         // bounding box, its bytes must appear unchanged in the result.
-        let mut rgba = vec![0u8; 4 * 4 * 4];
-        rgba[idx(0, 0, 4) + 3] = 255; // (0,0) alpha
-        rgba[idx(3, 3, 4) + 3] = 255; // (3,3) alpha
+        let mut rgba_bytes = vec![0u8; 4 * 4 * 4];
+        rgba_bytes[idx(0, 0, 4) + 3] = 255; // (0,0) alpha
+        rgba_bytes[idx(3, 3, 4) + 3] = 255; // (3,3) alpha
         let i = idx(1, 1, 4);
-        rgba[i] = 99;
-        rgba[i + 3] = 5;
+        rgba_bytes[i] = 99;
+        rgba_bytes[i + 3] = 5;
+        let rgba = pack(rgba_bytes);
         let r = trim_transparency(&rgba, 4, 4, 10);
         assert_eq!(
             r.bounds,
@@ -421,7 +440,7 @@ mod tests {
 
     #[test]
     fn zero_width_returns_sentinel() {
-        let r = trim_transparency(&[], 0, 5, 0);
+        let r = trim_transparency(&[] as &[SrgbRgba], 0, 5, 0);
         assert_eq!(
             r.bounds,
             Bounds {
@@ -436,7 +455,7 @@ mod tests {
 
     #[test]
     fn zero_height_returns_sentinel() {
-        let r = trim_transparency(&[], 5, 0, 0);
+        let r = trim_transparency(&[] as &[SrgbRgba], 5, 0, 0);
         assert_eq!(
             r.bounds,
             Bounds {
@@ -450,9 +469,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "rgba buffer length must equal")]
+    #[should_panic(expected = "pixel buffer length must equal")]
     fn buffer_length_mismatch_panics() {
-        let rgba = vec![0u8; 3]; // claims 4x4 but only 3 bytes
+        let rgba = vec![SrgbRgba([0, 0, 0, 0]); 3]; // claims 4x4 but only 3 pixels
         let _ = trim_transparency(&rgba, 4, 4, 0);
     }
 
@@ -461,11 +480,12 @@ mod tests {
         // 8x4. Opaque column at x=5.
         let w = 8;
         let h = 4;
-        let mut rgba = vec![0u8; w * h * 4];
+        let mut rgba_bytes = vec![0u8; w * h * 4];
         for y in 0..h {
             let i = y * w * 4 + 5 * 4;
-            rgba[i + 3] = 255;
+            rgba_bytes[i + 3] = 255;
         }
+        let rgba = pack(rgba_bytes);
         let r = trim_transparency(&rgba, w as u32, h as u32, 0);
         assert_eq!(
             r.bounds,
@@ -483,11 +503,12 @@ mod tests {
         // 6x10. Opaque row at y=7.
         let w = 6;
         let h = 10;
-        let mut rgba = vec![0u8; w * h * 4];
+        let mut rgba_bytes = vec![0u8; w * h * 4];
         for x in 0..w {
             let i = 7 * w * 4 + x * 4;
-            rgba[i + 3] = 255;
+            rgba_bytes[i + 3] = 255;
         }
+        let rgba = pack(rgba_bytes);
         let r = trim_transparency(&rgba, w as u32, h as u32, 0);
         assert_eq!(
             r.bounds,

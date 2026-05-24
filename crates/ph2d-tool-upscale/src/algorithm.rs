@@ -28,6 +28,7 @@
 //! one intermediate buffer in the separable pass.
 
 use crate::params::SCALE_FULL_SCALE;
+use ph2d_color::SrgbRgba;
 
 /// Lanczos kernel support: kernel half-width in source pixels. Lanczos3
 /// reads `2 * SUPPORT = 6` source samples per destination pixel per axis.
@@ -62,7 +63,8 @@ fn dst_dims(src_w: u32, src_h: u32, factor: f32) -> (u32, u32) {
 ///
 /// Accepts any factor; the destination has rectangular runs for
 /// non-integer factors.
-pub fn upscale_nearest(rgba: &[u8], src_w: u32, src_h: u32, factor: f32) -> UpscaleResult {
+pub fn upscale_nearest(pixels: &[SrgbRgba], src_w: u32, src_h: u32, factor: f32) -> UpscaleResult {
+    let rgba: &[u8] = bytemuck::cast_slice(pixels);
     debug_assert_eq!(rgba.len(), (src_w as usize) * (src_h as usize) * 4);
     let (dw, dh) = dst_dims(src_w, src_h, factor);
     let mut out = vec![0u8; (dw as usize) * (dh as usize) * 4];
@@ -198,7 +200,8 @@ fn mirror_index(i: i32, dim: i32) -> usize {
 /// (no premultiply — matches the rest of the Image Tools pipeline).
 /// Final clamp to `0..=255` is `round()` then `clamp`, never `as u8`
 /// truncation (which would bias dark).
-pub fn upscale_lanczos3(rgba: &[u8], src_w: u32, src_h: u32, factor: f32) -> UpscaleResult {
+pub fn upscale_lanczos3(pixels: &[SrgbRgba], src_w: u32, src_h: u32, factor: f32) -> UpscaleResult {
+    let rgba: &[u8] = bytemuck::cast_slice(pixels);
     debug_assert_eq!(rgba.len(), (src_w as usize) * (src_h as usize) * 4);
     let (dw, dh) = dst_dims(src_w, src_h, factor);
     if src_w == 0 || src_h == 0 {
@@ -318,7 +321,8 @@ fn clamp_u8(v: f32) -> u8 {
 /// Pixel-equality test: byte-exact RGBA8 match (the canonical
 /// definition; perceptual / YUV-thresholded variants would belong to
 /// a follow-up vertical that migrates to full Hyllian xBR).
-pub fn upscale_xbr(rgba: &[u8], src_w: u32, src_h: u32, factor: f32) -> UpscaleResult {
+pub fn upscale_xbr(pixels: &[SrgbRgba], src_w: u32, src_h: u32, factor: f32) -> UpscaleResult {
+    let rgba: &[u8] = bytemuck::cast_slice(pixels);
     debug_assert_eq!(rgba.len(), (src_w as usize) * (src_h as usize) * 4);
     let f = match factor.round() as i32 {
         ..=2 => 2u32,
@@ -464,6 +468,15 @@ fn scale3x(rgba: &[u8], sw: u32, sh: u32) -> UpscaleResult {
 mod tests {
     use super::*;
 
+    /// Convert a packed-bytes Vec<u8> to Vec<SrgbRgba> (1:1 chunking).
+    fn pack(bytes: Vec<u8>) -> Vec<SrgbRgba> {
+        assert!(bytes.len().is_multiple_of(4));
+        bytes
+            .chunks_exact(4)
+            .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
+            .collect()
+    }
+
     /// Build a uniform `w × h` opaque solid `rgb` for setup.
     fn solid(w: u32, h: u32, rgb: [u8; 3]) -> Vec<u8> {
         let mut v = Vec::with_capacity((w * h * 4) as usize);
@@ -497,7 +510,7 @@ mod tests {
     #[test]
     fn nearest_at_factor_one_is_identity() {
         let src = solid(3, 2, [10, 20, 30]);
-        let r = upscale_nearest(&src, 3, 2, 1.0);
+        let r = upscale_nearest(&pack(src.clone()), 3, 2, 1.0);
         assert_eq!((r.width, r.height), (3, 2));
         assert_eq!(r.pixels, src);
     }
@@ -507,7 +520,7 @@ mod tests {
         // 2×2 input: TL=red, others=blue; @ 2× expect 4×4 with red TL block.
         let mut src = solid(2, 2, [0, 0, 255]);
         src[0..4].copy_from_slice(&[255, 0, 0, 255]); // (0,0) = red
-        let r = upscale_nearest(&src, 2, 2, 2.0);
+        let r = upscale_nearest(&pack(src.clone()), 2, 2, 2.0);
         assert_eq!((r.width, r.height), (4, 4));
         // The red pixel must occupy the full TL 2×2 block.
         for y in 0..2 {
@@ -522,7 +535,7 @@ mod tests {
     #[test]
     fn nearest_handles_non_integer_factor() {
         let src = solid(4, 4, [100, 100, 100]);
-        let r = upscale_nearest(&src, 4, 4, 1.5);
+        let r = upscale_nearest(&pack(src.clone()), 4, 4, 1.5);
         assert_eq!((r.width, r.height), (6, 6));
         // Every output pixel is the uniform source colour.
         for y in 0..6 {
@@ -537,7 +550,7 @@ mod tests {
     #[test]
     fn lanczos3_at_factor_one_is_near_identity_on_flat() {
         let src = solid(8, 8, [120, 80, 40]);
-        let r = upscale_lanczos3(&src, 8, 8, 1.0);
+        let r = upscale_lanczos3(&pack(src.clone()), 8, 8, 1.0);
         assert_eq!((r.width, r.height), (8, 8));
         // Solid colour must come back inside ±1 (round/clamp).
         for y in 0..8 {
@@ -558,7 +571,7 @@ mod tests {
         // A flat colour must stay flat (DC preserved) and the alpha
         // channel must clamp at 255 — no negative-lobe undershoot.
         let src = solid(4, 4, [50, 150, 200]);
-        let r = upscale_lanczos3(&src, 4, 4, 2.0);
+        let r = upscale_lanczos3(&pack(src.clone()), 4, 4, 2.0);
         assert_eq!((r.width, r.height), (8, 8));
         // Centre pixel — well clear of any edge mirroring; should equal
         // the source DC exactly within round/clamp tolerance.
@@ -574,7 +587,7 @@ mod tests {
         // doesn't drift). Lanczos negative lobes can push slightly past
         // 255 — clamp_u8 must catch.
         let src = solid(8, 8, [200, 50, 25]);
-        let r = upscale_lanczos3(&src, 8, 8, 2.5);
+        let r = upscale_lanczos3(&pack(src.clone()), 8, 8, 2.5);
         for p in r.pixels.chunks(4) {
             assert_eq!(p[3], 255, "alpha must clamp at 255, got {}", p[3]);
         }
@@ -585,18 +598,18 @@ mod tests {
     #[test]
     fn xbr_clamps_factor_to_two_three_four() {
         let src = solid(2, 2, [0, 0, 0]);
-        assert_eq!(upscale_xbr(&src, 2, 2, 1.0).width, 4); // → Scale2x
-        assert_eq!(upscale_xbr(&src, 2, 2, 2.0).width, 4);
-        assert_eq!(upscale_xbr(&src, 2, 2, 3.0).width, 6);
-        assert_eq!(upscale_xbr(&src, 2, 2, 4.0).width, 8);
-        assert_eq!(upscale_xbr(&src, 2, 2, 7.5).width, 8); // → Scale4x
+        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 1.0).width, 4); // → Scale2x
+        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 2.0).width, 4);
+        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 3.0).width, 6);
+        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 4.0).width, 8);
+        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 7.5).width, 8); // → Scale4x
     }
 
     #[test]
     fn xbr_flat_input_replicates_all_pixels() {
         // Flat-region fast path: every output pixel must equal source E.
         let src = solid(4, 4, [80, 80, 80]);
-        let r = upscale_xbr(&src, 4, 4, 2.0);
+        let r = upscale_xbr(&pack(src.clone()), 4, 4, 2.0);
         assert_eq!((r.width, r.height), (8, 8));
         for y in 0..8 {
             for x in 0..8 {
@@ -630,7 +643,7 @@ mod tests {
         let mut src = row(r, r, k);
         src.extend(row(r, e, k));
         src.extend(row(e, e, k));
-        let out = upscale_xbr(&src, 3, 3, 2.0);
+        let out = upscale_xbr(&pack(src.clone()), 3, 3, 2.0);
         assert_eq!((out.width, out.height), (6, 6));
         // Centre source pixel `(1,1) = e`. Its 2×2 output sits at
         // dst (2..4, 2..4). With B=r, H=e, D=r, F=k:
@@ -648,7 +661,7 @@ mod tests {
     #[test]
     fn xbr_scale3x_produces_3x3_blocks_per_source_pixel() {
         let src = solid(2, 2, [200, 200, 200]);
-        let r = upscale_xbr(&src, 2, 2, 3.0);
+        let r = upscale_xbr(&pack(src.clone()), 2, 2, 3.0);
         assert_eq!((r.width, r.height), (6, 6));
         // Flat → every pixel matches source.
         for y in 0..6 {
@@ -661,7 +674,7 @@ mod tests {
     #[test]
     fn xbr_scale4x_chains_two_scale2x_passes() {
         let src = solid(3, 3, [40, 40, 40]);
-        let r = upscale_xbr(&src, 3, 3, 4.0);
+        let r = upscale_xbr(&pack(src.clone()), 3, 3, 4.0);
         assert_eq!((r.width, r.height), (12, 12));
         for y in 0..12 {
             for x in 0..12 {

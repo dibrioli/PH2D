@@ -33,15 +33,15 @@ use std::path::{Path, PathBuf};
 /// Each entry: file path relative to the workspace root.
 const BASELINE: &[&str] = &[
     "crates/ph2d-render/src/premul.rs",
-    "crates/ph2d-tool-bgremoval/src/tool.rs",
-    "crates/ph2d-tool-color-equalization/src/algorithm.rs",
-    "crates/ph2d-tool-color-equalization/src/tool.rs",
-    "crates/ph2d-tool-equalize-sizes/src/algorithm.rs",
-    "crates/ph2d-tool-make-square/src/algorithm.rs",
-    "crates/ph2d-tool-padding/src/algorithm.rs",
-    "crates/ph2d-tool-trim-transparency/src/algorithm.rs",
-    "crates/ph2d-tool-upscale/src/algorithm.rs",
-    "crates/ph2d-tool-upscale/src/tool.rs",
+    // crates/ph2d-tool-bgremoval/src/tool.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-color-equalization/src/algorithm.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-color-equalization/src/tool.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-equalize-sizes/src/algorithm.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-make-square/src/algorithm.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-padding/src/algorithm.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-trim-transparency/src/algorithm.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-upscale/src/algorithm.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-tool-upscale/src/tool.rs — migrated Wave 11 (typed input)
 ];
 
 #[test]

@@ -26,7 +26,7 @@ authors.workspace = true
 # LSB per channel) so callers can flip the switch without diff'ing
 # pixels.
 default = []
-gpu = ["dep:ph2d-gpu", "dep:wgpu", "dep:bytemuck", "dep:half", "dep:pollster"]
+gpu = ["dep:ph2d-gpu", "dep:wgpu", "dep:half", "dep:pollster", "bytemuck/derive"]
 
 [dependencies]
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
@@ -39,6 +39,8 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # MemoryBudget type for the manifest budget declaration (HR-13).
 ph2d-core = { path = "../ph2d-core" }
+# Typed color wrapper (SrgbRgba) — Wave 11 migration (ADR-0042 §6 #2).
+ph2d-color = { path = "../ph2d-color" }
 
 # ── Phase 4 GPU stack (optional, gated by `gpu` feature) ──────────
 # Shared GpuContext (Device + Queue) — same one the shell holds, so
@@ -46,8 +48,11 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-gpu = { path = "../ph2d-gpu", optional = true }
 # Pinned to workspace's wgpu version (28) to avoid ABI drift.
 wgpu = { version = "28", optional = true }
-# `Pod` / `Zeroable` for safe `&[u8]` ↔ `&[u32]` ↔ uniform-buffer casts.
-bytemuck = { version = "1", optional = true, features = ["derive"] }
+# `Pod` / `Zeroable` for safe `&[u8]` ↔ `&[u32]` ↔ uniform-buffer casts
+# AND for Wave 11 typed-color cast_vec at the source-snapshot boundary.
+# Always available (not gated on `gpu`) — the `derive` sub-feature only
+# activates under `gpu`.
+bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # f32 → f16 for the LUT3D rgba16float upload (rgba32float is not
 # universally filterable without the FLOAT32_FILTERABLE feature; f16
 # is filterable on every adapter).

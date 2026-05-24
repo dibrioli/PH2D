@@ -48,8 +48,10 @@ pub(crate) fn drain_make_square(
         )));
         return true;
     };
-    let result =
-        ph2d_tool_make_square::make_square(&src.image.pixels, src.image.width, src.image.height);
+    // Wave 11 migration (ADR-0042 §6 #2): make_square takes typed
+    // `&[SrgbRgba]`. Zero-copy cast via bytemuck.
+    let typed: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(&src.image.pixels);
+    let result = ph2d_tool_make_square::make_square(typed, src.image.width, src.image.height);
     if !result.made_square {
         toasts.push(Toast::info(ph2d_i18n::tr(
             "tool.make_square.toast.already_square",

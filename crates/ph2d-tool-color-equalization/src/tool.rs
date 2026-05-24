@@ -108,10 +108,12 @@ impl ColorEqualizationTool {
     /// marks the preview dirty so the next per-frame paint re-runs the
     /// pipeline against it.
     ///
-    /// `rgba` must be straight-alpha RGBA8 of length `w * h * 4`.
-    pub fn set_source_snapshot(&mut self, rgba: Vec<u8>, w: u32, h: u32) {
-        assert_eq!(rgba.len(), (w as usize) * (h as usize) * 4);
-        self.source_rgba = rgba;
+    /// `pixels` must be straight-alpha `SrgbRgba` of length `w * h`.
+    /// Internally stored as `Vec<u8>` (downstream consumes bytes);
+    /// cast via `bytemuck::cast_vec` is zero-copy.
+    pub fn set_source_snapshot(&mut self, pixels: Vec<ph2d_color::SrgbRgba>, w: u32, h: u32) {
+        assert_eq!(pixels.len(), (w as usize) * (h as usize));
+        self.source_rgba = bytemuck::allocation::cast_vec(pixels);
         self.source_w = w;
         self.source_h = h;
         self.rebuild_preview_src();
@@ -223,7 +225,7 @@ impl ColorEqualizationTool {
         if rgba.is_empty() {
             return HistogramData::default();
         }
-        compute_histogram(rgba)
+        compute_histogram(bytemuck::cast_slice(rgba))
     }
 
     /// Apply one panel-originated edit against the live params. Re-runs
@@ -269,7 +271,7 @@ impl ColorEqualizationTool {
             let ran_on_gpu = self.try_preview_gpu();
             if !ran_on_gpu {
                 run_pipeline(
-                    &self.preview_src_rgba,
+                    bytemuck::cast_slice(&self.preview_src_rgba),
                     self.preview_src_w,
                     self.preview_src_h,
                     &self.params,
@@ -326,7 +328,7 @@ impl ColorEqualizationTool {
     pub fn run_full_resolution(&mut self, out: &mut Vec<u8>) -> (u32, u32) {
         assert!(self.has_source(), "set_source_snapshot must run first");
         run_pipeline(
-            &self.source_rgba,
+            bytemuck::cast_slice(&self.source_rgba),
             self.source_w,
             self.source_h,
             &self.params,
@@ -372,8 +374,13 @@ impl ColorEqualizationTool {
             self.preview_src_rgba.clear();
             self.preview_src_rgba.extend_from_slice(&self.source_rgba);
         } else {
-            self.preview_src_rgba =
-                resize_bilinear_rgba(&self.source_rgba, self.source_w, self.source_h, dw, dh);
+            self.preview_src_rgba = resize_bilinear_rgba(
+                bytemuck::cast_slice(&self.source_rgba),
+                self.source_w,
+                self.source_h,
+                dw,
+                dh,
+            );
         }
         self.preview_src_w = dw;
         self.preview_src_h = dh;
@@ -640,7 +647,7 @@ impl Tool for ColorEqualizationTool {
 ///   + params_dirty + close-LUT-dropdown).
 impl RasterEditTool for ColorEqualizationTool {
     fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
-        self.set_source_snapshot(rgba, width, height);
+        self.set_source_snapshot(bytemuck::allocation::cast_vec(rgba), width, height);
     }
 
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
@@ -766,7 +773,7 @@ mod tests {
     fn set_source_snapshot_marks_has_source_true() {
         let mut t = ColorEqualizationTool::default();
         let buf = solid(8, 8, [120, 80, 200]);
-        t.set_source_snapshot(buf, 8, 8);
+        t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 8, 8);
         assert!(t.has_source());
         assert_eq!(t.source_size(), (8, 8));
     }
@@ -774,7 +781,11 @@ mod tests {
     #[test]
     fn preview_is_built_lazily_after_param_edit() {
         let mut t = ColorEqualizationTool::default();
-        t.set_source_snapshot(solid(8, 8, [180, 120, 60]), 8, 8);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(solid(8, 8, [180, 120, 60])),
+            8,
+            8,
+        );
         // Drain the initial dirty marker that source-push armed.
         let _ = t.preview_rgba();
         t.handle_panel_event(PanelEvent::SetValue(ids::CEQ_BRIGHTNESS, 1.0));
@@ -790,7 +801,11 @@ mod tests {
     fn preview_caps_at_max_dim_for_large_sources() {
         let mut t = ColorEqualizationTool::default();
         // 1024² source → preview at 512² (PREVIEW_MAX_DIM).
-        t.set_source_snapshot(solid(1024, 1024, [128, 128, 128]), 1024, 1024);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(solid(1024, 1024, [128, 128, 128])),
+            1024,
+            1024,
+        );
         let (rgba, w, h) = t.preview_rgba();
         assert_eq!(w, PREVIEW_MAX_DIM);
         assert_eq!(h, PREVIEW_MAX_DIM);
@@ -800,7 +815,11 @@ mod tests {
     #[test]
     fn run_full_resolution_returns_source_dims() {
         let mut t = ColorEqualizationTool::default();
-        t.set_source_snapshot(solid(7, 11, [50, 100, 200]), 7, 11);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(solid(7, 11, [50, 100, 200])),
+            7,
+            11,
+        );
         let mut out = Vec::new();
         let (w, h) = t.run_full_resolution(&mut out);
         assert_eq!((w, h), (7, 11));
@@ -821,7 +840,11 @@ mod tests {
         t.handle_panel_event(PanelEvent::SetValue(ids::CEQ_BRIGHTNESS, 1.0));
 
         // Sprite 1: red source.
-        t.set_source_snapshot(solid(4, 4, [200, 50, 30]), 4, 4);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(solid(4, 4, [200, 50, 30])),
+            4,
+            4,
+        );
         let mut out1 = Vec::new();
         let (w1, h1) = t.run_full_resolution(&mut out1);
         assert_eq!((w1, h1), (4, 4));
@@ -829,7 +852,11 @@ mod tests {
 
         // Sprite 2: different size + colour. The tool MUST re-bake
         // against the fresh snapshot, not reuse out1's dims/pixels.
-        t.set_source_snapshot(solid(8, 6, [30, 200, 50]), 8, 6);
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(solid(8, 6, [30, 200, 50])),
+            8,
+            6,
+        );
         let mut out2 = Vec::new();
         let (w2, h2) = t.run_full_resolution(&mut out2);
         assert_eq!((w2, h2), (8, 6));
@@ -877,7 +904,11 @@ mod tests {
         let mut boxed: Box<dyn Tool> = Box::new(ColorEqualizationTool::default());
         let any = boxed.as_any_mut();
         let tool = any.downcast_mut::<ColorEqualizationTool>().unwrap();
-        tool.set_source_snapshot(solid(4, 4, [10, 20, 30]), 4, 4);
+        tool.set_source_snapshot(
+            bytemuck::allocation::cast_vec(solid(4, 4, [10, 20, 30])),
+            4,
+            4,
+        );
         assert!(tool.has_source());
     }
 

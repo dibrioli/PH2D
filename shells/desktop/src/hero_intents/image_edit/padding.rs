@@ -55,7 +55,11 @@ pub(crate) fn drain_padding(
         return true;
     };
     let (src_w, src_h) = (src.image.width, src.image.height);
-    let result = ph2d_tool_padding::add_padding(&src.image.pixels, src_w, src_h, spec);
+    // Wave 11 migration (ADR-0042 §6 #2): add_padding now takes typed
+    // `&[SrgbRgba]` instead of raw `&[u8]`. `SrgbRgba` is
+    // `#[repr(transparent)]` + `bytemuck::Pod`, so the cast is zero-copy.
+    let typed_pixels: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(&src.image.pixels);
+    let result = ph2d_tool_padding::add_padding(typed_pixels, src_w, src_h, spec);
     if !result.changed {
         toasts.push(Toast::info("Padding: nothing changed"));
         return true;

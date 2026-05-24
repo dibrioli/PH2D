@@ -55,7 +55,8 @@ pub(crate) fn drain_color_equalization(
     let straight = src.image.into_straight();
     let (w, h) = (straight.width, straight.height);
     let mut out: Vec<u8> = Vec::new();
-    ceq.set_source_snapshot(straight.pixels, w, h);
+    // Wave 11 migration (ADR-0042 §6 #2): typed `Vec<SrgbRgba>` input.
+    ceq.set_source_snapshot(bytemuck::allocation::cast_vec(straight.pixels), w, h);
     let (out_w, out_h) = ceq.run_full_resolution(&mut out);
     debug_assert_eq!((out_w, out_h), (w, h), "Color EQ must preserve dimensions");
     // Keep the OUTPUT in straight-alpha — Color EQ leaves alpha

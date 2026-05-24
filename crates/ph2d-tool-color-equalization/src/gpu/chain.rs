@@ -448,7 +448,7 @@ mod tests {
         label: &str,
     ) {
         let mut cpu_out = Vec::new();
-        run_pipeline(rgba, w, h, params, &mut cpu_out);
+        run_pipeline(bytemuck::cast_slice(rgba), w, h, params, &mut cpu_out);
 
         let mut gpu_out = rgba.to_vec();
         cache.run_chained(gpu, &mut gpu_out, w, h, params);

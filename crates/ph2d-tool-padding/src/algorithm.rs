@@ -1,10 +1,20 @@
 //! Padding — pure canvas-resize logic.
 //!
-//! `std`-only, no editor/ECS coupling: consumes straight-alpha RGBA8 +
-//! a signed [`PaddingSpec`] and returns a fresh RGBA8 buffer plus the
-//! pixel offset of the original content inside the new canvas. Port of
-//! the legacy `addPadding` (Game-Engine-Legada/.../image/padding.ts),
-//! which also subsumes `directionalExpand` (single-edge case).
+//! `std`-only, no editor/ECS coupling: consumes a straight-alpha
+//! `&[SrgbRgba]` source + a signed [`PaddingSpec`] and returns a
+//! fresh RGBA8 byte buffer plus the pixel offset of the original
+//! content inside the new canvas. Port of the legacy `addPadding`
+//! (Game-Engine-Legada/.../image/padding.ts), which also subsumes
+//! `directionalExpand` (single-edge case).
+//!
+//! Wave 11 color-space migration (ADR-0042 §6 #2): the input
+//! signature is typed (`&[SrgbRgba]` instead of `&[u8]`) so the
+//! IO boundary is explicit. The output keeps `Vec<u8>` because the
+//! downstream consumer (`ph2d_render::SpriteImage::new`) takes
+//! bytes; the caller can `bytemuck::cast_vec` if it wants the typed
+//! form back.
+
+use ph2d_color::SrgbRgba;
 
 /// Signed per-edge padding, in pixels. Positive = expand that edge with
 /// fully-transparent pixels; negative = crop that many pixels off the
@@ -52,9 +62,10 @@ pub struct PaddingResult {
     pub changed: bool,
 }
 
-/// Resize `rgba` (straight-alpha RGBA8, length `w*h*4`) by a signed
-/// per-edge `spec`. Positive edges add transparent pixels; negative edges
-/// crop. Crops are clamped so the content stays ≥ 1px on each axis.
+/// Resize `pixels` (straight-alpha `SrgbRgba`, length `w*h`) by a
+/// signed per-edge `spec`. Positive edges add transparent pixels;
+/// negative edges crop. Crops are clamped so the content stays ≥ 1px
+/// on each axis.
 ///
 /// Faithful port of the legacy `addPadding` (`packages/tools/.../padding.ts`),
 /// which also subsumes `directionalExpand` (drag a single edge → one field).
@@ -72,7 +83,7 @@ pub struct PaddingResult {
 ///
 /// Pin with tests: pure expand (transparent border), pure crop, mixed
 /// expand+crop on opposite edges, over-crop clamp to 1px, no-op spec.
-pub fn add_padding(rgba: &[u8], w: u32, h: u32, spec: PaddingSpec) -> PaddingResult {
+pub fn add_padding(pixels: &[SrgbRgba], w: u32, h: u32, spec: PaddingSpec) -> PaddingResult {
     // i64 throughout the geometry math: source dims are u32 and the signed
     // pads can be large, so this stays clear of overflow before the final
     // clamp back to u32. (Mirrors the legacy `addPadding`, which works in
@@ -111,11 +122,16 @@ pub fn add_padding(rgba: &[u8], w: u32, h: u32, spec: PaddingSpec) -> PaddingRes
     //    copyable span is the overlap of the content rect with both the
     //    source and the destination — bounds-checked so any degenerate spec
     //    (or a 0×0 source) simply copies nothing instead of panicking.
-    let mut pixels = vec![0u8; (new_w_i * new_h_i * 4) as usize];
+    //
+    //    The output stays as a byte buffer (4× the pixel count) because the
+    //    downstream consumer (`SpriteImage::new`) takes `Vec<u8>`. Inside
+    //    the loop we walk pixel-by-pixel through the typed input slice and
+    //    write each pixel's 4 bytes into the output.
+    let mut bytes = vec![0u8; (new_w_i * new_h_i * 4) as usize];
 
     if src_w > 0 && src_h > 0 {
-        let src_stride = (src_w * 4) as usize;
-        let dst_stride = (new_w_i * 4) as usize;
+        let src_stride_px = src_w as usize; // pixels per row of source
+        let dst_stride_bytes = (new_w_i * 4) as usize;
 
         let span_w = content_w
             .min(src_w - crop_left)
@@ -129,10 +145,14 @@ pub fn add_padding(rgba: &[u8], w: u32, h: u32, spec: PaddingSpec) -> PaddingRes
         for row in 0..span_h {
             let sy = (crop_top + row) as usize;
             let dy = (pad_top + row) as usize;
-            let src_off = sy * src_stride + (crop_left as usize) * 4;
-            let dst_off = dy * dst_stride + (pad_left as usize) * 4;
-            let bytes = (span_w * 4) as usize;
-            pixels[dst_off..dst_off + bytes].copy_from_slice(&rgba[src_off..src_off + bytes]);
+            let src_row_start_px = sy * src_stride_px + crop_left as usize;
+            let dst_row_start_byte = dy * dst_stride_bytes + (pad_left as usize) * 4;
+            let span_px = span_w as usize;
+            for col in 0..span_px {
+                let px = pixels[src_row_start_px + col].0;
+                let off = dst_row_start_byte + col * 4;
+                bytes[off..off + 4].copy_from_slice(&px);
+            }
         }
     }
 
@@ -145,7 +165,7 @@ pub fn add_padding(rgba: &[u8], w: u32, h: u32, spec: PaddingSpec) -> PaddingRes
     let changed = new_w != w || new_h != h || pivot_delta_x != 0 || pivot_delta_y != 0;
 
     PaddingResult {
-        pixels,
+        pixels: bytes,
         width: new_w,
         height: new_h,
         pivot_delta_x,
@@ -167,24 +187,24 @@ mod tests {
     use super::*;
 
     /// A `w`×`h` canvas where every pixel is the opaque solid `[r,g,b,255]`.
-    fn solid(w: u32, h: u32, rgb: [u8; 3]) -> Vec<u8> {
-        let mut v = Vec::with_capacity((w * h * 4) as usize);
+    fn solid(w: u32, h: u32, rgb: [u8; 3]) -> Vec<SrgbRgba> {
+        let mut v = Vec::with_capacity((w * h) as usize);
         for _ in 0..(w * h) {
-            v.extend_from_slice(&[rgb[0], rgb[1], rgb[2], 255]);
+            v.push(SrgbRgba::opaque(rgb[0], rgb[1], rgb[2]));
         }
         v
     }
 
-    /// Read the RGBA pixel at `(x, y)` from a `w`-wide RGBA8 buffer.
+    /// Read the RGBA pixel at `(x, y)` from a `w`-wide RGBA8 byte buffer.
     fn px(buf: &[u8], w: u32, x: u32, y: u32) -> [u8; 4] {
         let i = ((y * w + x) * 4) as usize;
         [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]]
     }
 
-    /// Overwrite the RGBA pixel at `(x, y)` in a `w`-wide RGBA8 buffer.
-    fn set_px(buf: &mut [u8], w: u32, x: u32, y: u32, rgba: [u8; 4]) {
-        let i = ((y * w + x) * 4) as usize;
-        buf[i..i + 4].copy_from_slice(&rgba);
+    /// Overwrite the pixel at `(x, y)` in a `w`-wide `SrgbRgba` buffer.
+    fn set_px(buf: &mut [SrgbRgba], w: u32, x: u32, y: u32, rgba: [u8; 4]) {
+        let i = (y * w + x) as usize;
+        buf[i] = SrgbRgba(rgba);
     }
 
     #[test]
@@ -192,7 +212,11 @@ mod tests {
         let src = solid(4, 3, [10, 20, 30]);
         let r = add_padding(&src, 4, 3, PaddingSpec::default());
         assert_eq!((r.width, r.height), (4, 3));
-        assert_eq!(r.pixels, src);
+        // Output bytes match the source bytes (each SrgbRgba is 4 bytes).
+        assert_eq!(r.pixels.len(), src.len() * 4);
+        for (i, p) in src.iter().enumerate() {
+            assert_eq!(r.pixels[i * 4..i * 4 + 4], p.0);
+        }
         assert_eq!((r.pivot_delta_x, r.pivot_delta_y), (0, 0));
         assert!(!r.changed);
     }

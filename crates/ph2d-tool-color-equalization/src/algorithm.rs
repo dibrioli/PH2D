@@ -64,12 +64,13 @@ const HISTOGRAM_BINS: usize = 256;
 /// Caller may pass an empty `Vec<u8>` on first call; subsequent calls
 /// reuse the allocation.
 pub fn run_pipeline(
-    rgba: &[u8],
+    pixels: &[ph2d_color::SrgbRgba],
     w: u32,
     h: u32,
     params: &ColorEqualizationParams,
     out: &mut Vec<u8>,
 ) {
+    let rgba: &[u8] = bytemuck::cast_slice(pixels);
     let expected = (w as usize) * (h as usize) * 4;
     assert_eq!(rgba.len(), expected, "rgba length must match w*h*4");
     out.clear();
@@ -654,7 +655,8 @@ impl Default for HistogramData {
 /// and the analytical passes already dominate the per-image cost in CLAHE
 /// when the histogram is needed there. Linear-scan CPU is ~4 ns per pixel
 /// in release — under 5 ms for 1024².
-pub fn compute_histogram(rgba: &[u8]) -> HistogramData {
+pub fn compute_histogram(pixels: &[ph2d_color::SrgbRgba]) -> HistogramData {
+    let rgba: &[u8] = bytemuck::cast_slice(pixels);
     let mut h = HistogramData::default();
     for px in rgba.chunks_exact(4) {
         if px[3] == 0 {
@@ -715,7 +717,7 @@ fn percentile_range(hist: &[u32; 256], total: u32, cutoff_fraction: f32) -> (u8,
 /// Auto Levels — per-channel histogram stretching with 0.5 % outlier
 /// trimming. Same `findRange` shape as the legacy `autoLevels`.
 pub fn auto_levels(rgba: &mut [u8]) {
-    let hist = compute_histogram(rgba);
+    let hist = compute_histogram(bytemuck::cast_slice(rgba));
     if hist.opaque_count == 0 {
         return;
     }
@@ -738,7 +740,7 @@ pub fn auto_levels(rgba: &mut [u8]) {
 /// Auto Colors — per-channel stretching with 1 % outlier trimming.
 /// Softer than Auto Levels; matches the legacy `autoColors`.
 pub fn auto_colors(rgba: &mut [u8]) {
-    let hist = compute_histogram(rgba);
+    let hist = compute_histogram(bytemuck::cast_slice(rgba));
     if hist.opaque_count == 0 {
         return;
     }
@@ -1382,7 +1384,14 @@ pub fn aspect_fit_within(sw: u32, sh: u32, max_dim: u32) -> (u32, u32) {
 /// dep). Maps each destination pixel back to a fractional source position
 /// and bilinearly samples the four neighbours per channel (alpha
 /// included).
-pub fn resize_bilinear_rgba(src: &[u8], sw: u32, sh: u32, dw: u32, dh: u32) -> Vec<u8> {
+pub fn resize_bilinear_rgba(
+    src_pixels: &[ph2d_color::SrgbRgba],
+    sw: u32,
+    sh: u32,
+    dw: u32,
+    dh: u32,
+) -> Vec<u8> {
+    let src: &[u8] = bytemuck::cast_slice(src_pixels);
     let mut dst = vec![0u8; (dw as usize) * (dh as usize) * 4];
     if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
         return dst;
@@ -1833,7 +1842,7 @@ mod tests {
         let src = solid(8, 8, [120, 80, 200]);
         let p = ColorEqualizationParams::default();
         let mut out = Vec::new();
-        run_pipeline(&src, 8, 8, &p, &mut out);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p, &mut out);
         assert_eq!(out.len(), src.len());
     }
 
@@ -1861,8 +1870,8 @@ mod tests {
         };
         let mut out_off = Vec::new();
         let mut out_on = Vec::new();
-        run_pipeline(&src, 8, 8, &p_off, &mut out_off);
-        run_pipeline(&src, 8, 8, &p_on, &mut out_on);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_off, &mut out_off);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_on, &mut out_on);
         assert_ne!(
             out_off, out_on,
             "auto-wb flag did not affect pipeline output"
@@ -1872,7 +1881,7 @@ mod tests {
     #[test]
     fn resize_bilinear_identity() {
         let src = solid(4, 4, [100, 150, 200]);
-        let dst = resize_bilinear_rgba(&src, 4, 4, 4, 4);
+        let dst = resize_bilinear_rgba(bytemuck::cast_slice(&src), 4, 4, 4, 4);
         for (a, b) in dst.iter().zip(src.iter()) {
             assert!(a.abs_diff(*b) <= 1);
         }
@@ -1881,7 +1890,7 @@ mod tests {
     #[test]
     fn resize_bilinear_halves_dims() {
         let src = solid(8, 8, [100, 150, 200]);
-        let dst = resize_bilinear_rgba(&src, 8, 8, 4, 4);
+        let dst = resize_bilinear_rgba(bytemuck::cast_slice(&src), 8, 8, 4, 4);
         assert_eq!(dst.len(), 4 * 4 * 4);
         // Solid colour → bilinear is identity-coloured.
         assert_eq!(&dst[..4], &[100, 150, 200, 255]);
@@ -1902,7 +1911,7 @@ mod tests {
             10u8, 20, 30, 0, // transparent — skipped
             10, 20, 30, 255, 200, 100, 50, 255,
         ];
-        let h = compute_histogram(&buf);
+        let h = compute_histogram(bytemuck::cast_slice(&buf));
         assert_eq!(h.opaque_count, 2);
         assert_eq!(h.r[10], 1);
         assert_eq!(h.r[200], 1);
@@ -1920,7 +1929,7 @@ mod tests {
                 255,
             ]);
         }
-        let h = compute_histogram(&buf);
+        let h = compute_histogram(bytemuck::cast_slice(&buf));
         assert_eq!(h.opaque_count, 64);
         let r_total: u32 = h.r.iter().sum();
         let g_total: u32 = h.g.iter().sum();
@@ -2166,8 +2175,8 @@ mod tests {
         };
         let mut out_off = Vec::new();
         let mut out_on = Vec::new();
-        run_pipeline(&src, 8, 8, &p_off, &mut out_off);
-        run_pipeline(&src, 8, 8, &p_on, &mut out_on);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_off, &mut out_off);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_on, &mut out_on);
         assert_ne!(out_off, out_on, "LUT preset toggle did not change output");
     }
 
@@ -2201,9 +2210,9 @@ mod tests {
         let mut warm = Vec::new();
         let mut cool = Vec::new();
         let mut blend = Vec::new();
-        run_pipeline(&src, 8, 8, &p_warm, &mut warm);
-        run_pipeline(&src, 8, 8, &p_cool, &mut cool);
-        run_pipeline(&src, 8, 8, &p_blend, &mut blend);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_warm, &mut warm);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_cool, &mut cool);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_blend, &mut blend);
         assert_ne!(blend, warm, "blend should not equal pure-warm");
         assert_ne!(blend, cool, "blend should not equal pure-cool");
     }
@@ -2230,8 +2239,8 @@ mod tests {
         };
         let mut baseline = Vec::new();
         let mut zero = Vec::new();
-        run_pipeline(&src, 8, 8, &base, &mut baseline);
-        run_pipeline(&src, 8, 8, &p_zero, &mut zero);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &base, &mut baseline);
+        run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p_zero, &mut zero);
         assert_eq!(
             baseline, zero,
             "intensity=0 should short-circuit the LUT stage entirely"
@@ -2259,8 +2268,8 @@ mod tests {
         };
         let mut out_off = Vec::new();
         let mut out_on = Vec::new();
-        run_pipeline(&src, 16, 16, &p_off, &mut out_off);
-        run_pipeline(&src, 16, 16, &p_on, &mut out_on);
+        run_pipeline(bytemuck::cast_slice(&src), 16, 16, &p_off, &mut out_off);
+        run_pipeline(bytemuck::cast_slice(&src), 16, 16, &p_on, &mut out_on);
         assert_ne!(out_off, out_on, "auto_levels toggle did not change output");
     }
 

@@ -12,8 +12,16 @@
 // Both islands now live in their own crates (ADR-0040 T1.5 / T3); this
 // test consumes their public APIs as dev-dependencies. The editor-core
 // facades were removed so the foundation has no tool dep at runtime.
+use ph2d_color::SrgbRgba;
 use ph2d_tool_make_square::{make_square, square_bezpath};
 use ph2d_tool_trim_transparency::trim_transparency;
+
+/// Cast a packed-RGBA byte slice to `&[SrgbRgba]` (zero-copy via
+/// `bytemuck`). Wave 11 migration shim — the algorithms moved from
+/// `&[u8]` to typed `&[SrgbRgba]`.
+fn as_pixels(bytes: &[u8]) -> &[SrgbRgba] {
+    bytemuck::cast_slice(bytes)
+}
 
 #[test]
 fn behaviour_wider_than_tall_preserves_original_pixels_at_centered_offset() {
@@ -34,7 +42,7 @@ fn behaviour_wider_than_tall_preserves_original_pixels_at_centered_offset() {
             rgba[i + 3] = 255;
         }
     }
-    let r = make_square(&rgba, w as u32, h as u32);
+    let r = make_square(as_pixels(&rgba), w as u32, h as u32);
     assert!(r.made_square);
     assert_eq!(r.size, 8);
     assert_eq!(r.offset_x, 0);
@@ -59,7 +67,7 @@ fn behaviour_wider_than_tall_preserves_original_pixels_at_centered_offset() {
 #[test]
 fn behaviour_already_square_is_noop_with_made_square_false() {
     let rgba = vec![42u8; 16 * 16 * 4];
-    let r = make_square(&rgba, 16, 16);
+    let r = make_square(as_pixels(&rgba), 16, 16);
     assert!(!r.made_square);
     assert_eq!(r.size, 16);
     assert_eq!(r.offset_x, 0);
@@ -109,7 +117,7 @@ fn round_trip_trim_then_make_square_then_trim_preserves_bbox_and_pixels() {
     }
 
     // Trim 1 — crops to the 5×3 bbox.
-    let t1 = trim_transparency(&rgba, w as u32, h as u32, 0);
+    let t1 = trim_transparency(as_pixels(&rgba), w as u32, h as u32, 0);
     assert!(t1.trimmed);
     assert_eq!(t1.width, rect.2 as u32);
     assert_eq!(t1.height, rect.3 as u32);
@@ -120,7 +128,7 @@ fn round_trip_trim_then_make_square_then_trim_preserves_bbox_and_pixels() {
     }
 
     // MakeSquare — pad 5×3 → 5×5 (height diff = 2, even).
-    let ms = make_square(&t1.pixels, t1.width, t1.height);
+    let ms = make_square(as_pixels(&t1.pixels), t1.width, t1.height);
     assert!(ms.made_square);
     assert_eq!(ms.size, 5);
     assert_eq!(ms.offset_x, 0);
@@ -128,7 +136,7 @@ fn round_trip_trim_then_make_square_then_trim_preserves_bbox_and_pixels() {
 
     // Trim 2 — should recover the original 5×3 bbox with identical
     // pixels (round-trip invariant).
-    let t2 = trim_transparency(&ms.pixels, ms.size, ms.size, 0);
+    let t2 = trim_transparency(as_pixels(&ms.pixels), ms.size, ms.size, 0);
     assert!(t2.trimmed);
     assert_eq!(t2.width, rect.2 as u32, "width after round-trip");
     assert_eq!(t2.height, rect.3 as u32, "height after round-trip");

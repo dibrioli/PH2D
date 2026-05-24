@@ -76,7 +76,13 @@ pub(crate) fn drain_upscale(
     // premultiplied BgRemoval result survives Upscale byte-faithful.
     let source_alpha = src.image.alpha;
     let straight = src.image.into_straight();
-    ups.set_source_snapshot(straight.pixels, straight.width, straight.height);
+    // Wave 11 migration (ADR-0042 §6 #2): typed `Vec<SrgbRgba>` input.
+    // Zero-copy cast via bytemuck (SrgbRgba is repr-transparent + Pod).
+    ups.set_source_snapshot(
+        bytemuck::allocation::cast_vec(straight.pixels),
+        straight.width,
+        straight.height,
+    );
     let mut out: Vec<u8> = Vec::new();
     let (out_w, out_h) = ups.run_full_resolution(&mut out);
     // GPU texture cap — at 16× the worst case is `16384 × 16384`, which

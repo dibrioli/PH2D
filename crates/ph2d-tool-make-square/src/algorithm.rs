@@ -13,11 +13,12 @@
 //! and CSS centered-background, so callers can predict where the
 //! original lands.
 //!
-//! No external deps: `std` only. The module is intentionally
-//! self-contained so the integration test under `tests/` can pull it
-//! in via `#[path]` without depending on the rest of `ph2d-editor`
-//! (same island contract as `trim_transparency` — see
-//! `INTEGRATION.md`).
+//! Wave 11 color-space migration (ADR-0042 §6 #2): the input
+//! signature is typed (`&[SrgbRgba]` instead of `&[u8]`) so the
+//! IO boundary is explicit. The output keeps `Vec<u8>` because the
+//! downstream consumer (`ph2d_render::SpriteImage::new`) takes bytes.
+
+use ph2d_color::SrgbRgba;
 
 /// Output of [`make_square`].
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -41,12 +42,12 @@ pub struct MakeSquareResult {
     pub made_square: bool,
 }
 
-/// Pad an RGBA8 image with fully-transparent pixels on its shorter
-/// axis so the result is a perfect square. Source pixels are copied
-/// verbatim into the centered sub-region of the new canvas; nothing
-/// is cropped, resampled, or colour-shifted.
+/// Pad an `SrgbRgba` image with fully-transparent pixels on its
+/// shorter axis so the result is a perfect square. Source pixels are
+/// copied verbatim into the centered sub-region of the new canvas;
+/// nothing is cropped, resampled, or colour-shifted.
 ///
-/// `rgba` must be `width * height * 4` bytes long; mismatch panics.
+/// `pixels` must be `width * height` long; mismatch panics.
 ///
 /// ## Centering convention
 ///
@@ -75,7 +76,7 @@ pub struct MakeSquareResult {
 /// Allocation is fine here: this action is dispatched from a user
 /// click, not from a HR-3 hot path (render / physics / audio /
 /// editor_layout).
-pub fn make_square(rgba: &[u8], width: u32, height: u32) -> MakeSquareResult {
+pub fn make_square(pixels: &[SrgbRgba], width: u32, height: u32) -> MakeSquareResult {
     let w = width as usize;
     let h = height as usize;
 
@@ -83,16 +84,25 @@ pub fn make_square(rgba: &[u8], width: u32, height: u32) -> MakeSquareResult {
         return degenerate_sentinel();
     }
     assert_eq!(
-        rgba.len(),
-        w.checked_mul(h)
-            .and_then(|n| n.checked_mul(4))
-            .expect("rgba dimensions overflow usize"),
-        "rgba buffer length must equal width * height * 4",
+        pixels.len(),
+        w.checked_mul(h).expect("pixel dimensions overflow usize"),
+        "pixel buffer length must equal width * height",
     );
+
+    // Helper to flatten the typed pixel slice into a fresh Vec<u8> of
+    // length 4*count. Used both in the already-square fast path and as
+    // the basis for the padded output below.
+    let to_bytes = |slice: &[SrgbRgba]| -> Vec<u8> {
+        let mut v = Vec::with_capacity(slice.len() * 4);
+        for p in slice {
+            v.extend_from_slice(&p.0);
+        }
+        v
+    };
 
     if w == h {
         return MakeSquareResult {
-            pixels: rgba.to_vec(),
+            pixels: to_bytes(pixels),
             size: width,
             offset_x: 0,
             offset_y: 0,
@@ -105,12 +115,15 @@ pub fn make_square(rgba: &[u8], width: u32, height: u32) -> MakeSquareResult {
     let offset_y = (size - h) / 2;
 
     let mut out = vec![0u8; size * size * 4];
-    let row_bytes_in = w * 4;
-    let stride_out = size * 4;
+    let stride_out_bytes = size * 4;
     for y in 0..h {
-        let src = y * row_bytes_in;
-        let dst = (y + offset_y) * stride_out + offset_x * 4;
-        out[dst..dst + row_bytes_in].copy_from_slice(&rgba[src..src + row_bytes_in]);
+        let src_row_start_px = y * w;
+        let dst_row_start_byte = (y + offset_y) * stride_out_bytes + offset_x * 4;
+        for col in 0..w {
+            let px = pixels[src_row_start_px + col].0;
+            let off = dst_row_start_byte + col * 4;
+            out[off..off + 4].copy_from_slice(&px);
+        }
     }
 
     MakeSquareResult {
@@ -145,25 +158,25 @@ mod tests {
         (y * w + x) * 4
     }
 
-    /// Build an RGBA buffer of `w*h*4` bytes with one opaque pixel
-    /// `(255, 255, 255, 255)` at `(x, y)`.
-    fn pixel(w: usize, h: usize, x: usize, y: usize) -> Vec<u8> {
-        let mut v = vec![0u8; w * h * 4];
-        let i = idx(x, y, w);
-        v[i] = 255;
-        v[i + 1] = 255;
-        v[i + 2] = 255;
-        v[i + 3] = 255;
+    /// Build a single bright pixel at `(x, y)` in a `w*h` SrgbRgba buffer.
+    fn pixel(w: usize, h: usize, x: usize, y: usize) -> Vec<SrgbRgba> {
+        let mut v = vec![SrgbRgba([0, 0, 0, 0]); w * h];
+        v[y * w + x] = SrgbRgba([255, 255, 255, 255]);
         v
     }
 
-    /// Fill every pixel's alpha to 255 to mark an entire buffer as opaque.
-    fn opaque(w: usize, h: usize) -> Vec<u8> {
-        let mut v = vec![0u8; w * h * 4];
-        for i in (3..v.len()).step_by(4) {
-            v[i] = 255;
-        }
-        v
+    /// All-opaque-black `w*h` SrgbRgba buffer.
+    fn opaque(w: usize, h: usize) -> Vec<SrgbRgba> {
+        vec![SrgbRgba([0, 0, 0, 255]); w * h]
+    }
+
+    /// Convert a packed-bytes Vec<u8> to Vec<SrgbRgba> (1:1 chunking).
+    fn pack(bytes: Vec<u8>) -> Vec<SrgbRgba> {
+        assert!(bytes.len().is_multiple_of(4));
+        bytes
+            .chunks_exact(4)
+            .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
+            .collect()
     }
 
     #[test]
@@ -174,7 +187,10 @@ mod tests {
         assert_eq!(r.offset_x, 0);
         assert_eq!(r.offset_y, 0);
         assert!(!r.made_square);
-        assert_eq!(r.pixels, rgba);
+        // Output is bytes; reconstruct typed for byte-equal comparison.
+        for (i, p) in rgba.iter().enumerate() {
+            assert_eq!(&r.pixels[i * 4..i * 4 + 4], &p.0);
+        }
     }
 
     #[test]
@@ -265,16 +281,17 @@ mod tests {
         // (x + offset_x, y + offset_y) with identical RGBA bytes.
         let w = 2usize;
         let h = 4usize;
-        let mut rgba = vec![0u8; w * h * 4];
+        let mut rgba_bytes = vec![0u8; w * h * 4];
         for y in 0..h {
             for x in 0..w {
                 let i = idx(x, y, w);
-                rgba[i] = 10 + (x as u8) * 20;
-                rgba[i + 1] = 30 + (y as u8) * 10;
-                rgba[i + 2] = 70;
-                rgba[i + 3] = 200;
+                rgba_bytes[i] = 10 + (x as u8) * 20;
+                rgba_bytes[i + 1] = 30 + (y as u8) * 10;
+                rgba_bytes[i + 2] = 70;
+                rgba_bytes[i + 3] = 200;
             }
         }
+        let rgba = pack(rgba_bytes.clone());
         let r = make_square(&rgba, w as u32, h as u32);
         assert_eq!(r.size, 4);
         assert_eq!(r.offset_x, 1);
@@ -289,7 +306,7 @@ mod tests {
                 );
                 assert_eq!(
                     &r.pixels[d..d + 4],
-                    &rgba[s..s + 4],
+                    &rgba_bytes[s..s + 4],
                     "mismatch at src ({x},{y})",
                 );
             }
@@ -302,14 +319,15 @@ mod tests {
         // must be `(0, 0, 0, 0)` — every byte, not just alpha.
         let w = 3;
         let h = 5;
-        let mut rgba = vec![0u8; w * h * 4];
+        let mut rgba_bytes = vec![0u8; w * h * 4];
         for y in 0..h {
             for x in 0..w {
                 let i = idx(x, y, w);
-                rgba[i] = 255;
-                rgba[i + 3] = 255;
+                rgba_bytes[i] = 255;
+                rgba_bytes[i + 3] = 255;
             }
         }
+        let rgba = pack(rgba_bytes);
         let r = make_square(&rgba, w as u32, h as u32);
         let s = r.size as usize;
         for y in 0..s {
@@ -326,7 +344,7 @@ mod tests {
         let r = make_square(&rgba, 1, 1);
         assert_eq!(r.size, 1);
         assert!(!r.made_square);
-        assert_eq!(r.pixels, rgba);
+        assert_eq!(&r.pixels[..], &rgba[0].0);
     }
 
     #[test]
@@ -348,14 +366,15 @@ mod tests {
         let rgba = opaque(7, 3);
         let r1 = make_square(&rgba, 7, 3);
         assert!(r1.made_square);
-        let r2 = make_square(&r1.pixels, r1.size, r1.size);
+        let r1_typed = pack(r1.pixels.clone());
+        let r2 = make_square(&r1_typed, r1.size, r1.size);
         assert!(!r2.made_square);
         assert_eq!(r2.pixels, r1.pixels);
     }
 
     #[test]
     fn zero_width_returns_sentinel() {
-        let r = make_square(&[], 0, 5);
+        let r = make_square(&[] as &[SrgbRgba], 0, 5);
         assert_eq!(r.size, 1);
         assert_eq!(r.pixels, vec![0, 0, 0, 0]);
         assert!(r.made_square);
@@ -363,7 +382,7 @@ mod tests {
 
     #[test]
     fn zero_height_returns_sentinel() {
-        let r = make_square(&[], 5, 0);
+        let r = make_square(&[] as &[SrgbRgba], 5, 0);
         assert_eq!(r.size, 1);
         assert_eq!(r.pixels, vec![0, 0, 0, 0]);
         assert!(r.made_square);
@@ -371,15 +390,15 @@ mod tests {
 
     #[test]
     fn zero_by_zero_returns_sentinel() {
-        let r = make_square(&[], 0, 0);
+        let r = make_square(&[] as &[SrgbRgba], 0, 0);
         assert_eq!(r.size, 1);
         assert!(r.made_square);
     }
 
     #[test]
-    #[should_panic(expected = "rgba buffer length must equal")]
+    #[should_panic(expected = "pixel buffer length must equal")]
     fn buffer_length_mismatch_panics() {
-        let rgba = vec![0u8; 3];
+        let rgba = vec![SrgbRgba([0, 0, 0, 0]); 3];
         let _ = make_square(&rgba, 4, 4);
     }
 
@@ -387,9 +406,9 @@ mod tests {
     /// guard catches both directions, but only the undershoot side had
     /// an explicit test until now.
     #[test]
-    #[should_panic(expected = "rgba buffer length must equal")]
+    #[should_panic(expected = "pixel buffer length must equal")]
     fn buffer_length_overshoot_panics() {
-        let rgba = vec![0u8; 4 * 4 * 4 + 8]; // 8 trailing bytes
+        let rgba = vec![SrgbRgba([0, 0, 0, 0]); 4 * 4 + 2]; // 2 trailing pixels
         let _ = make_square(&rgba, 4, 4);
     }
 
@@ -408,12 +427,13 @@ mod tests {
     /// exactly so the asymmetric split is regression-protected.
     #[test]
     fn odd_height_diff_splits_floor_leading_ceil_trailing() {
-        let mut rgba = vec![0u8; 5 * 2 * 4];
+        let mut rgba_bytes = vec![0u8; 5 * 2 * 4];
         // Mark the original 5×2 strip with a non-zero pattern so we
         // can verify which rows are padded.
-        for (i, byte) in rgba.iter_mut().enumerate() {
+        for (i, byte) in rgba_bytes.iter_mut().enumerate() {
             *byte = (i as u8).wrapping_add(1); // never 0 → distinguishable from pad
         }
+        let rgba = pack(rgba_bytes.clone());
         let r = make_square(&rgba, 5, 2);
         assert!(r.made_square);
         assert_eq!(r.size, 5);
@@ -440,7 +460,7 @@ mod tests {
                 let dst_i = ((src_y + 1) * s + x) * 4;
                 assert_eq!(
                     &r.pixels[dst_i..dst_i + 4],
-                    &rgba[src_i..src_i + 4],
+                    &rgba_bytes[src_i..src_i + 4],
                     "original (y={src_y}, x={x}) preserved at dst y={}",
                     src_y + 1
                 );
@@ -452,7 +472,7 @@ mod tests {
     fn output_pixels_buffer_length_always_matches_size_squared() {
         let cases = [(8, 8), (1, 1), (32, 16), (16, 32), (5, 1), (1, 5), (7, 3)];
         for (w, h) in cases {
-            let rgba = vec![0u8; w * h * 4];
+            let rgba = vec![SrgbRgba([0, 0, 0, 0]); w * h];
             let r = make_square(&rgba, w as u32, h as u32);
             assert_eq!(
                 r.pixels.len() as u32,

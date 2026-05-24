@@ -31,6 +31,11 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # MemoryBudget type for the manifest budget declaration (HR-13).
 ph2d-core = { path = "../ph2d-core" }
+# Typed color wrapper (SrgbRgba) — Wave 11 migration: the 3 upscale
+# algorithm publics take `&[SrgbRgba]`, internally casting to `&[u8]`
+# via bytemuck for the byte-level kernel implementations.
+ph2d-color = { path = "../ph2d-color" }
+bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # `image` dep removed Etapa 2 follow-up — Apply-only model dropped all
 # preview-thumbnail / canvas-preview infrastructure that used
 # `imageops::resize`. The 3 production kernels (Lanczos3 / Nearest /

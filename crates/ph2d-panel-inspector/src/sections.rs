@@ -8,8 +8,7 @@ use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
 use ph2d_editor_core::widget::panel_chrome::{
-    SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group,
-    paint_segmented_group_adaptive,
+    SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group_adaptive,
 };
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::icons::IconId;

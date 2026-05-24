@@ -83,18 +83,11 @@ impl NumberInput {
     }
 
     pub fn up_rect(&self, host: Rect) -> Rect {
-        let chip_w = stepper_width(host);
-        Rect::new(host.x + host.w - chip_w, host.y, chip_w, host.h * 0.5)
+        stepper_up_rect(host)
     }
 
     pub fn down_rect(&self, host: Rect) -> Rect {
-        let chip_w = stepper_width(host);
-        Rect::new(
-            host.x + host.w - chip_w,
-            host.y + host.h * 0.5,
-            chip_w,
-            host.h * 0.5,
-        )
+        stepper_down_rect(host)
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -114,8 +107,37 @@ impl NumberInput {
     }
 }
 
-fn stepper_width(host: Rect) -> f32 {
+/// Width of the up/down stepper column carved out of the right edge
+/// of every NumberInput / chip hit rect. Sized 60% of the host height,
+/// clamped to 16-22 px so it stays clickable on dense rows but doesn't
+/// dominate compact chips.
+///
+/// Exposed `pub` so `slider_with_chip::paint_number_chip` and the
+/// stepper hit-test in `dispatch::number_input` use the SAME formula —
+/// the chip canon (post-2026-05-24) paints arrows in this exact column,
+/// and the dispatch's `apply_number_stepper_if_hit` carves this same
+/// rect for the click→step affordance.
+pub fn stepper_width(host: Rect) -> f32 {
     (host.h * 0.6).clamp(16.0, 22.0) // LITERAL-PX-OK: stepper column sized 60% of input height with min/max
+}
+
+/// Rect of the `up` arrow (top half of the stepper column). Standalone
+/// fn so `paint_number_chip` can paint identical arrows without a
+/// `NumberInput` instance.
+pub fn stepper_up_rect(host: Rect) -> Rect {
+    let chip_w = stepper_width(host);
+    Rect::new(host.x + host.w - chip_w, host.y, chip_w, host.h * 0.5)
+}
+
+/// Rect of the `down` arrow (bottom half of the stepper column).
+pub fn stepper_down_rect(host: Rect) -> Rect {
+    let chip_w = stepper_width(host);
+    Rect::new(
+        host.x + host.w - chip_w,
+        host.y + host.h * 0.5,
+        chip_w,
+        host.h * 0.5,
+    )
 }
 
 pub fn paint_number_input(

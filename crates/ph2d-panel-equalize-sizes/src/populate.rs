@@ -7,9 +7,9 @@
 //!   (Arrange-on-grid / upscale-if-smaller / rasterize-after),
 //!   **Cancel / Apply** — all plain buttons.
 //! - **Fixed-mode W/H chips** (`EQS_FIXED_W`, `EQS_FIXED_H`) — standalone
-//!   `NumberInput` widgets storing pixels (natural unit). Explicitly
-//!   marked `mark_chip_no_stepper` so the dispatch's default phantom-
-//!   stepper carve doesn't fire on their right edge.
+//!   `NumberInput` widgets storing pixels (natural unit). Paint via
+//!   canonical `paint_number_chip` (arrows + click-drag h/v + step-on-
+//!   click; chip canon post-2026-05-24).
 //! - **Grid-mode "Offset" slider + chip** (`EQS_GRID_OFFSET`,
 //!   `EQS_GRID_OFFSET_NUM`) — Widget Gallery §4.2 pair: both store the
 //!   raw offset in PIXELS, paired via `link_slider_number`. The slider
@@ -55,8 +55,8 @@ pub fn populate(store: &mut WidgetStore) {
     }
 
     // Fixed-mode W/H chips — standalone (no slider pair). Storage in
-    // pixels (natural unit). Explicit `mark_chip_no_stepper` because
-    // there's no `link_slider_number` here to auto-mark.
+    // pixels (natural unit). Post-2026-05-24: chips paint arrows; the
+    // stepper click→step affordance is the canon for every chip.
     let defaults = EqualizeSizesUiSnapshot::default();
     for (chip_id, default_px) in [
         (ids::EQS_FIXED_W, defaults.fixed_w),
@@ -73,7 +73,6 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
-        store.mark_chip_no_stepper(chip_id);
     }
 
     // Grid-mode Offset slider + chip — slider stores TRACK `0..1`, chip
@@ -81,8 +80,7 @@ pub fn populate(store: &mut WidgetStore) {
     // not "0.25"). Storage is intentionally NOT shared because the chip
     // and slider domains differ, so we cannot use `link_slider_number`:
     // [`crate::event`] mirrors the two manually each frame the user
-    // edits one. We mark the chip `no_stepper` explicitly so the
-    // dispatch's default phantom-stepper carve doesn't fire.
+    // edits one.
     let default_offset = defaults.grid_offset as f64;
     store.register(
         ids::EQS_GRID_OFFSET,
@@ -103,7 +101,6 @@ pub fn populate(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
-    store.mark_chip_no_stepper(ids::EQS_GRID_OFFSET_NUM);
 }
 
 #[cfg(test)]
@@ -139,12 +136,13 @@ mod tests {
     }
 
     #[test]
-    fn offset_chip_marked_no_stepper() {
-        // Mirror lives in event.rs (manual — slider track is 0..1 but
-        // the chip stores pixels), so the chip must be explicitly
-        // marked or the arch gate fails.
+    fn offset_chip_paints_steppers_like_every_other_chip() {
+        // Post-2026-05-24 chip canon: every chip paints arrows and the
+        // dispatch's stepper hit-test is the canon click→step
+        // affordance — no chip is "no-stepper" anymore. Asserts the
+        // opposite of the old `offset_chip_marked_no_stepper` test.
         let mut store = WidgetStore::with_capacity(32);
         populate(&mut store);
-        assert!(store.is_chip_no_stepper(ids::EQS_GRID_OFFSET_NUM));
+        assert!(!store.is_chip_no_stepper(ids::EQS_GRID_OFFSET_NUM));
     }
 }

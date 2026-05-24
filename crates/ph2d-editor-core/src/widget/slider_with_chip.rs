@@ -25,9 +25,11 @@
 //! [`paint_slider_with_chip_layout`] if a particular row needs a
 //! wider chip or label.
 
+use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve, stroke_rounded_rect};
 use crate::widget::TextInputState;
+use crate::widget::number_input::{stepper_down_rect, stepper_up_rect, stepper_width};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -169,15 +171,32 @@ pub fn paint_slider_with_chip_layout(
     }
 }
 
-/// Paint a compact numeric chip (interactive NumberInput-style):
-/// background, optional focus border, centered text, caret, and
-/// selection highlight. Used by [`paint_slider_with_chip`] and
-/// callable directly when a chip needs to live somewhere a slider
-/// row layout doesn't fit.
+/// Paint the canonical numeric chip — background, optional focus border,
+/// centered text, caret, selection highlight, **plus the up/down stepper
+/// arrows** carved from the right edge of the rect.
+///
+/// **Canon (post-2026-05-24):** every numeric chip in the app paints
+/// arrows. The dispatch's [`apply_number_stepper_if_hit`] already carves
+/// the same right-edge column for click→step, and
+/// [`crate::widget::number_input::stepper_width`] is the single source
+/// of truth for that column's width — chip and dispatch always agree.
+///
+/// Pre-2026-05-24 there was a "pill" variant (no arrows) used by
+/// slider+chip composites; that variant produced "chip looks like
+/// plain text" affordance and forced every panel to remember
+/// [`crate::interaction::WidgetStore::mark_chip_no_stepper`] to avoid
+/// a phantom-stepper hold bug. Both problems went away by always
+/// painting arrows (and dropping the no-stepper opt-out in
+/// [`crate::interaction::WidgetStore::link_slider_number`]).
+///
+/// Used by [`paint_slider_with_chip`] and callable directly when a chip
+/// needs to live somewhere a slider row layout doesn't fit.
 ///
 /// `display_override` wins over `value` when present (e.g. for chips
-/// that display engineering units while the linked slider still
-/// drives a 0..1 normalised value).
+/// that display engineering units while the linked slider still drives
+/// a 0..1 normalised value).
+///
+/// [`apply_number_stepper_if_hit`]: crate::interaction::dispatch
 #[allow(clippy::too_many_arguments)]
 pub fn paint_number_chip(
     rect: Rect,
@@ -211,6 +230,12 @@ pub fn paint_number_chip(
             display_owned.as_str()
         }
     };
+    // Reserve the right-edge column for the stepper arrows and center the
+    // text in what's left. Without this, long values would slide into the
+    // arrow column visually.
+    let chip_stepper_w = stepper_width(rect);
+    let text_area_w = (rect.w - chip_stepper_w).max(0.0);
+    let text_area_right = rect.x + text_area_w;
     let font_size = TypeToken::Xs.px();
     let total_w = if display.is_empty() {
         0.0
@@ -219,7 +244,7 @@ pub fn paint_number_chip(
             .layout(display, font_size, f32::INFINITY)
             .width()
     };
-    let text_start = rect.x + (rect.w - total_w) * 0.5;
+    let text_start = rect.x + (text_area_w - total_w) * 0.5;
     if focused
         && let Some(anchor) = selection_anchor
         && anchor != caret
@@ -239,18 +264,20 @@ pub fn paint_number_chip(
         };
         let sel_top = rect.y + Spacing::Xs.px();
         let sel_bot = rect.y + rect.h - Spacing::Xs.px();
-        let sel_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0); // CLAMP-OK: rect-bound text-selection clamp (bounds well-formed by construction)
-        let sel_w = mid_w.min(rect.x + rect.w - 2.0 - sel_x);
+        let sel_x = (text_start + prefix_w).clamp(rect.x + 2.0, text_area_right - 2.0); // CLAMP-OK: rect-bound text-selection clamp (bounds well-formed by construction)
+        let sel_w = mid_w.min(text_area_right - 2.0 - sel_x);
         if sel_w > 0.0 {
             let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
             fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
         }
     }
+    // Centered text inside the reduced text-area rect (not the full chip).
+    let text_area_rect = Rect::new(rect.x, rect.y, text_area_w, rect.h);
     paint_text_centered(
         text_system,
         scene,
         display,
-        rect,
+        text_area_rect,
         font_size,
         resolve(ColorToken::Text1, theme),
     );
@@ -262,7 +289,7 @@ pub fn paint_number_chip(
         } else {
             text_system.prefix_width(prefix, font_size)
         };
-        let caret_x = (text_start + prefix_w).clamp(rect.x + 2.0, rect.x + rect.w - 2.0); // CLAMP-OK: rect-bound caret clamp (bounds well-formed by construction)
+        let caret_x = (text_start + prefix_w).clamp(rect.x + 2.0, text_area_right - 2.0); // CLAMP-OK: rect-bound caret clamp (bounds well-formed by construction)
         let caret_top = rect.y + Spacing::Xs.px();
         let caret_bot = rect.y + rect.h - Spacing::Xs.px();
         let caret_rect = Rect::new(
@@ -273,4 +300,23 @@ pub fn paint_number_chip(
         );
         fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
+    // Stepper arrows (up + down) on the right edge — same column the
+    // dispatch carves for `apply_number_stepper_if_hit`. Color tracks the
+    // chip text color (Text2) — dimmer than the value text to keep the
+    // chip from looking busy.
+    let icon_color = resolve(ColorToken::Text2, theme);
+    paint_icon(
+        scene,
+        IconId::ChevronUp,
+        stepper_up_rect(rect),
+        icon_color,
+        StrokeToken::Default.px(),
+    );
+    paint_icon(
+        scene,
+        IconId::ChevronDown,
+        stepper_down_rect(rect),
+        icon_color,
+        StrokeToken::Default.px(),
+    );
 }

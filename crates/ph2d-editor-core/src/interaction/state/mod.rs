@@ -469,17 +469,19 @@ impl WidgetStore {
     /// `slider` follows. Caller is responsible for both ids being
     /// pre-registered as Slider and NumberInput respectively.
     ///
-    /// Also auto-marks `number` as a no-stepper chip — every linked
-    /// pair in the codebase is painted via `paint_slider_with_chip*`
-    /// which uses `paint_number_chip` (a pill without stepper arrows).
-    /// The default stepper hit-test would carve a 16-22 px phantom
-    /// continuous-hold zone on the chip's right edge; the auto-mark
-    /// prevents the "valor sobe sozinho com mouse parado" bug from
-    /// silently coming back when a panel adds a new linked row.
+    /// Post-2026-05-24: this no longer auto-marks the chip as
+    /// no-stepper. The canon `paint_number_chip` always paints up/down
+    /// arrows now, and the dispatch's stepper hit-test is the desired
+    /// behavior for every chip — including chips linked to a slider.
+    /// Phantom-stepper-while-still is impossible because there is no
+    /// "no-arrow chip" variant anymore. See
+    /// [`mark_chip_no_stepper`](Self::mark_chip_no_stepper) for the
+    /// (deprecated) opt-out and the gate
+    /// `architecture_no_chip_without_steppers` that prevents
+    /// re-introducing pills sans-arrows.
     pub fn link_slider_number(&mut self, slider: NodeId, number: NodeId) {
         self.slider_to_number.insert(slider, number);
         self.number_to_slider.insert(number, slider);
-        self.chips_without_steppers.insert(number);
     }
 
     pub fn linked_number(&self, slider: NodeId) -> Option<NodeId> {
@@ -490,19 +492,27 @@ impl WidgetStore {
         self.number_to_slider.get(&number).copied()
     }
 
-    /// Mark a NumberInput as a bare chip (no visible up/down arrows).
-    /// The dispatch then skips its stepper hit-test for this id, so a
-    /// click on the chip's right edge starts a drag instead of an
-    /// invisible continuous-hold that keeps incrementing while the
-    /// pointer stays still.
+    /// **Deprecated (2026-05-24).** Marking a NumberInput as
+    /// no-stepper made sense when `paint_number_chip` painted a bare
+    /// pill — clicking the (invisible) right column armed a
+    /// continuous-hold that climbed silently. After unification, every
+    /// chip paints arrows and the click→step behavior is the desired
+    /// affordance everywhere. Kept as a back-compat no-op for one wave
+    /// while in-tree callers are removed; CI gate
+    /// `architecture_no_chip_without_steppers` prevents reintroducing
+    /// a chip variant that needs it. To be deleted in Wave 12.
+    #[deprecated(
+        since = "Wave 11",
+        note = "all chips paint arrows now; the dispatch's stepper hit-test is the canon"
+    )]
     pub fn mark_chip_no_stepper(&mut self, id: NodeId) {
         self.chips_without_steppers.insert(id);
     }
 
-    /// Whether the given NumberInput id is painted as a bare chip (no
-    /// stepper arrows). Returns `false` by default for backwards
-    /// compatibility with boxed `paint_number_input_with_buffer`
-    /// widgets that DO paint arrows.
+    /// Whether the given NumberInput id is painted without stepper
+    /// arrows. Always `false` for new code (post-2026-05-24 chip
+    /// canon) — kept for back-compat with any in-flight call to the
+    /// deprecated [`mark_chip_no_stepper`](Self::mark_chip_no_stepper).
     pub fn is_chip_no_stepper(&self, id: NodeId) -> bool {
         self.chips_without_steppers.contains(&id)
     }

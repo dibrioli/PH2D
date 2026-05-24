@@ -57,11 +57,10 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
-        // The chip is painted as a pill via `paint_number_chip` (no
-        // stepper arrows). Disable the dispatch's default stepper
-        // hit-test so the chip's right edge can't arm a phantom
-        // `number_stepper_hold`. See DIRETRIZ §4.2.
-        store.mark_chip_no_stepper(chip_id);
+        // Post-2026-05-24: chips paint arrows; the dispatch's stepper
+        // hit-test is the canon affordance for every chip. No-stepper
+        // opt-out removed (vide `link_slider_number` rustdoc).
+        let _ = chip_id;
     }
 }
 

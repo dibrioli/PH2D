@@ -151,11 +151,17 @@ Gate da Etapa 2. Verificar:
 
 ### ETAPA 2 — Fan-out 4 tools paralelas (1.5-2 semanas, batches de 2)
 
+> **Correção pós-implementação (Etapa 2 executada 2026-05-24, commit pendente):** o plano abaixo prometia migrar 4 tools (Padding + CEQ + Upscale + EqSizes). **Realidade:** estudo prévio descobriu que 2 desses NÃO cabem no contrato `RasterEditTool`:
+> - **Padding** é geométrico-only (carrega 4 ints + flags; bake é função pura stateless `add_padding(rgba, w, h, spec)`; nenhum source raster cacheado). Forçar trait stateful seria astronaut architecture.
+> - **EqualizeSizes** é multi-sprite-required: o modo `MaxOfSelection` depende do W/H global da seleção inteira para computar target dims — não cabe em `set_source(rgba, w, h)` single-buffer.
+>
+> Etapa 2 entregou **CEQ + Upscale** (os 2 sabor-(3) com live preview single-cache que de fato cabem). **Padding + EqualizeSizes ficaram como documented exception** (DIRETRIZ §3.8.3.1) — continuam funcionando via downcast (ADR-0040 §3 já tipifica). Verdade canônica de status em [docs/Testes/README.md §E2](../Testes/README.md). Audit completo (incluindo o fix C1 cross-bridge crítico) em [docs/Testes/audits/etapa-2.md](../Testes/audits/etapa-2.md).
+
 **Pré-requisito:** Etapa 1 fechada + `docs/MIGRATION_TEMPLATE.md` redigido por Coord-A (1 dia pós-1.C).
 
 **Batches de 2 (RAM 8 GiB limita, decisão #3 Enio):**
-- Batch 1 (Semana 3): Padding + Color Equalization
-- Batch 2 (Semana 4): Upscale + Equalize Sizes
+- Batch 1 (Semana 3): Padding + Color Equalization → ~~Padding (exception) +~~ Color Equalization
+- Batch 2 (Semana 4): Upscale + Equalize Sizes → Upscale + ~~Equalize Sizes (exception)~~
 
 **Cada Implementador, na pasta exclusiva:**
 1. `impl RasterEditTool for <Tool>`

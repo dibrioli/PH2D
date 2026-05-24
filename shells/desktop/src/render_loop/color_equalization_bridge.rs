@@ -17,6 +17,17 @@
 //! 5. Returns the current multi-selection iff Apply fired this frame
 //!    — the caller runs the per-sprite bake via
 //!    `drain_color_equalization`.
+//!
+//! ### Wave 10 / Etapa 2 status
+//!
+//! CEQ tool implements `RasterEditTool` (semantically uniform with
+//! BgR + Upscale). However the bridge **keeps its multi-cache shape**
+//! (`BTreeMap<u64, ColorEqualizationPreview>`) because CEQ paints a
+//! preview per selected sprite — the single-cache helpers in
+//! `ph2d-tool-runtime` (`drive_source_push` / `drive_preview_cache`)
+//! don't fit. Only `drive_pending_commit` is used here (compatible —
+//! Apply is single-shot). A future `drive_multi_preview_cache` helper
+//! would let CEQ migrate fully; see `docs/Testes/audits/etapa-2.md`.
 
 use crate::app_state::ColorEqualizationPreview;
 use ph2d_asset::AssetDb;
@@ -96,8 +107,13 @@ pub(super) fn dispatch(
             .as_any_mut()
             .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
     {
-        if ceq.take_pending_apply() && !selected.is_empty() {
-            apply = Some(selected.clone());
+        // (Generic) Multi-sprite Apply capture via runtime helper —
+        // ADR-0041 contract. CEQ tool now implements RasterEditTool, so
+        // `take_pending_commit` (= take_pending_apply) goes through the
+        // generic channel.
+        let bits = ph2d_tool_runtime::drive_pending_commit(ceq, selected.iter().copied());
+        if !bits.is_empty() {
+            apply = Some(bits);
         }
         close_dropdown = ceq.take_pending_close_lut_dropdown();
         needs_panel_reset = ceq.take_pending_panel_reset();

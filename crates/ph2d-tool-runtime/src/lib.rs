@@ -172,9 +172,10 @@ where
     selection_iter.into_iter().collect()
 }
 
-/// Lifecycle cleanup invoked when the bridge detects the raster tool
-/// is no longer the active tool (the user switched, or the editor's
-/// Image Tools mode toggled off).
+/// Lifecycle cleanup invoked when the bridge ALREADY HAS A HANDLE to
+/// **its own** [`RasterEditTool`] (typically reached via a registry
+/// API the bridge owns — NOT via `tools.active_mut()`, see safety
+/// notice below).
 ///
 /// Calls `RasterEditTool::deactivate()` so the tool drops its source
 /// buffer + dirty flag + pending_apply (ADR-0041), and zeroes the
@@ -182,6 +183,25 @@ where
 /// overlay on top of the freshly restored sprite.
 ///
 /// Idempotent: safe to call every frame when inactive.
+///
+/// # ⚠️ Safety / Anti-pattern (Wave 10 / Etapa 2 audit [C1])
+///
+/// **Never** call this with `tools.active_mut()` as the `tool` argument
+/// from a bridge whose own tool is NOT the currently-active one.
+/// `tools.active_mut()` returns the **currently-active** tool — which
+/// may be a DIFFERENT raster tool (e.g. CEQ when a Brush-bridge is
+/// running on its inactive path). Calling `deactivate()` on the wrong
+/// tool zeroes that tool's state and breaks its session.
+///
+/// **In practice:** the [`Tool::on_deactivate`] hook is invoked by
+/// [`ToolRegistry::set_active`] when a tool transitions away from
+/// active, and every `RasterEditTool` impl in this project already
+/// mirrors `deactivate`'s clearing logic in its `on_deactivate`. So
+/// bridges typically just need to clear their own shell-side cache
+/// when their tool is inactive — they do NOT need to call this helper
+/// at all in the inactive path. The helper exists for the rare case
+/// where a bridge needs to drive a foreign tool through the trait
+/// surface (none today; reserved for future composition patterns).
 pub fn drive_deactivate_cleanup(
     tool: &mut dyn RasterEditTool,
     cache: &mut Option<PreviewCache>,
@@ -381,6 +401,34 @@ mod tests {
         assert_eq!(tool.deactivate_calls, 1);
         assert!(cache.is_none());
         assert_eq!(last, None);
+    }
+
+    // Wave 10 / Etapa 2 audit [C1] regression test: when a bridge passes
+    // a foreign tool (e.g. via tools.active_mut() pointing at someone
+    // else's RasterEditTool), this helper still does what it says — but
+    // that's exactly the anti-pattern the helper's doc-comment warns
+    // against. This test documents that the helper has NO awareness of
+    // ownership; bridges MUST not call it on the wrong tool.
+    #[test]
+    fn drive_deactivate_cleanup_unconditionally_deactivates_passed_tool() {
+        // Simulate: bridge for tool X is in "inactive" path, but
+        // `tools.active_mut()` returns tool Y (a different raster tool
+        // in session). If the bridge wrongly passes Y, Y.deactivate()
+        // fires — which is the C1 bug. This test exists to keep the
+        // helper's behavior frozen and force any future change to
+        // re-confront the warning in the doc-comment.
+        let mut wrong_tool = EchoRasterTool::new();
+        wrong_tool.set_source(vec![1; 16], 2, 2);
+        let _ = wrong_tool.current_preview(); // populates internal cache
+        wrong_tool.pending_commit = true; // arm pending
+        let mut cache: Option<PreviewCache> = None;
+        let mut last: Option<u64> = None;
+        drive_deactivate_cleanup(&mut wrong_tool, &mut cache, &mut last);
+        // The wrong tool got its state stripped — proving the C1 bug
+        // shape. Bridges are responsible for not calling on foreign tools.
+        assert_eq!(wrong_tool.deactivate_calls, 1);
+        assert!(wrong_tool.src.is_none());
+        assert!(!wrong_tool.pending_commit);
     }
 
     #[test]

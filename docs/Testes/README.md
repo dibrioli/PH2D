@@ -12,8 +12,8 @@
 |---|---|---|---|---|
 | 0 — Infraestrutura multi-agente | ✅ COMPLETA | `d9379ee` | scripts smoke + workspace check | [§E0](#etapa-0--infraestrutura) |
 | 1.A — Emenda ADR-0041 (rename + deactivate) | ✅ COMPLETA | `a03d830` | 769/769 workspace (T2 hook) | [§E1A](#etapa-1a--emenda-adr-0041) |
-| 1.B — `ph2d-tool-runtime` + BgRemoval impl | ✅ COMPLETA | (pendente) | 132 verdes (122 BgR + 10 runtime) | [§E1B](#etapa-1b--ph2d-tool-runtime--bgremoval-impl) |
-| 2 — 4 tools impl `RasterEditTool` | ⏳ | — | — | — |
+| 1.B — `ph2d-tool-runtime` + BgRemoval impl | ✅ COMPLETA | `74b6d27` | 132 verdes (122 BgR + 10 runtime) | [§E1B](#etapa-1b--ph2d-tool-runtime--bgremoval-impl) |
+| 2 — CEQ + Upscale impl (Padding/EqSizes exception) | ✅ COMPLETA | (pendente) | 193 verdes (131 CEQ + 52 Upscale + 10 runtime); fix C1 cross-bridge | [§E2](#etapa-2--ceq--upscale-impl-rastereditool) |
 | 3 — Gates + apaga shell legacy | ⏳ | — | — | — |
 | 4 — panel-sync + chrome-sync + widget-sync | ⏳ | — | — | — |
 | 5 — Gates UI panel-\* + ph2d-color + classes de bug | ⏳ | — | — | — |
@@ -196,6 +196,102 @@ Vide `audits/etapa-1b.md` para o relatório completo. Resumo:
 - `tools/ph2d-tool-sync/src/lib.rs` — exclusion list estendida
 - DIRETRIZ §3.8.3.1 reescrita (status atual RasterEditTool)
 - v4 plan §I corrigido (caps + RasterFrame diferido)
+
+---
+
+## Etapa 2 — CEQ + Upscale impl RasterEditTool
+
+**Commit:** (pendente — será adicionado ao finalizar)
+
+### Escopo realista (corrigido pós-estudo)
+
+v4 plan §II Etapa 2 originalmente listava 4 tools (Padding + CEQ + Upscale + EqualizeSizes). **Estudo dos tools mostrou que 2 não cabem no contrato `RasterEditTool`:**
+
+- **Padding** é geométrico-only (não tem source raster nem preview de pixels — só carrega 4 inteiros + flags; bake é stateless function pura). Forçar trait stateful seria astronaut architecture. **Documented exception.**
+- **EqualizeSizes** é multi-sprite-required (mode `MaxOfSelection` depende do W/H global da seleção inteira). Não cabe em `set_source(rgba, w, h)` single-buffer. **Documented exception.**
+
+Etapa 2 entrega **CEQ + Upscale** (os 2 sabor-(3) com live preview single-cache que de fato cabem). Padding + EqualizeSizes mantêm path atual (downcast — exceção documentada ADR-0040 §3 + DIRETRIZ §3.8.3.1).
+
+### Testes automáticos rodados ✅
+
+```bash
+# CEQ implementa RasterEditTool — 7 tests novos + 124 pré-existentes
+cargo test -p ph2d-tool-color-equalization --lib
+# → 131/131 ok
+
+# Upscale implementa RasterEditTool — 7 tests novos + 45 pré-existentes + cache field
+cargo test -p ph2d-tool-upscale --lib
+# → 52/52 ok
+
+# Runtime ganhou 1 test C1 regression (drive_deactivate_cleanup wrong-tool warn)
+cargo test -p ph2d-tool-runtime
+# → 11/11 ok (10 anteriores + 1 novo regression test)
+
+# Arch-gate cap inalterado
+cargo test -p ph2d-editor-core --test architecture_tool_contract_surface
+# → 3/3 ok (Tool=10 / RasterEditTool=5 / PanelEvent=4)
+
+# Workspace + clippy
+cargo check --workspace                                     # → green
+cargo clippy -p ph2d-host-desktop --all-targets -- -D warnings  # → clean
+```
+
+### Audit adversarial × 2
+
+Vide `audits/etapa-2.md`. Resumo:
+
+- **1 achado CRITICAL [C1]** corrigido pré-commit:
+  - `drive_deactivate_cleanup` chamado em `tools.active_mut()` no path inativo do bridge **zerava state de outras RasterEditTools** que estivessem ativas (CEQ/Upscale/BgR cruzados). Cenário: usuário com BgR ativo + slider em movimento → frame do Upscale bridge rodava `Upscale_bridge::dispatch` (inativo) → chamava `BgR.deactivate()` (errado tool!) → drenava `pending_apply`/`params_dirty`/`cached_canvas_preview` da BgR → preview congelava, Apply não disparava. Fix: removido `drive_deactivate_cleanup` cross-bridge; cada bridge limpa SÓ cache local. `Tool::on_deactivate` da própria tool (chamado por `ToolRegistry::set_active`) cobre a limpeza interna corretamente (já confirmado por fixes A1+A2 da Etapa 1.B). Doc-comment do helper foi reforçado com warning explícito; novo test `drive_deactivate_cleanup_unconditionally_deactivates_passed_tool` documenta a invariante (helper não tem awareness de ownership — bridges devem nunca passar foreign tool).
+- **3 achados DOC** corrigidos pré-commit:
+  - v4 plan §II Etapa 2 atualizado com nota pós-execução (CEQ+Upscale migrados; Padding+EqSizes exception).
+  - DIRETRIZ §3.8.3.1 atualizada (3 tools implementam; Padding/EqSizes documented exception).
+  - DIRETRIZ §3.8.5 checklist permanece (rename ImageEditTool já foi feito em Etapa 1.A).
+- **1 follow-up DEFERIDO para Etapa 3** (não bloqueia commit):
+  - `drive_multi_preview_cache` helper — `ph2d-tool-runtime` tem 101 LOC de folga (399/500), helper trivial (~40 LOC) que generalizaria o loop multi-sprite do CEQ. Anotado em audits/etapa-2.md.
+
+### Smoke manual pendente (Enio)
+
+**CEQ (5 smokes — espelham os de BgR):**
+
+- [ ] **S1 CEQ happy path:** abrir CEQ → multi-select 2 sprites → mover Exposure/Contrast/Vibrance → ver preview live atualizar em ambos os sprites → Apply → bake em todos selecionados.
+- [ ] **S2 CEQ selection drift (cobre fix A1 mirror):** CEQ ativo + sprite A → shift-click sprite B → preview de B aparece sem ghost de A; preview cache_keys segue iter_selected.
+- [ ] **S3 CEQ → Brush → CEQ (cobre fix A2 mirror):** preview deve recomputar (não frame stale do session anterior).
+- [ ] **S4 CEQ dropdown LUT:** abrir um dos 4 dropdowns (LUT 1/2 / Posterize / Quantize), escolher opção → preview atualizar + dropdown fechar sozinho (close_dropdown path).
+- [ ] **S5 CEQ Reset durante drag:** arrastar slider + clicar Reset → todos voltam ao default (sliders/chips visualmente snapped) + preview desaparece.
+
+**Upscale (4 smokes):**
+
+- [ ] **U1 Upscale happy path:** abrir Upscale → trocar algoritmo (Lanczos/Nearest/xBR) → ver overlay no canvas + thumb no panel → mover scale slider → preview live atualiza → Apply → sprite.size cresce pelo factor (vide fix `f47c3a9`), overlay some, undo restaura.
+- [ ] **U2 Upscale selection drift (cobre fix A1):** Upscale ativo + sprite A → seleciona B → overlay migra para B sem frame stale de A. Especialmente teste com tamanhos muito diferentes.
+- [ ] **U3 Upscale → Brush → Upscale (cobre fix A2):** cache_canvas_preview limpa, recomputa na reativação.
+- [ ] **U4 Upscale + outros raster ativos NÃO interferem (cobre fix C1 CRÍTICO!):**
+  - Cenário 1: ativar Upscale + mover scale slider rapidamente → Apply ainda funciona, preview live sustenta-se. (Confirma que BgR/CEQ bridges não estão zerando state via cross-call.)
+  - Cenário 2: ativar BgR + ajustar Tolerance + Apply → ver bake. (Confirma que Upscale bridge inativo não destrói BgR's state.)
+  - Cenário 3: ativar CEQ + ajustar Brightness + Apply → ver bake. (Confirma idem.)
+
+**Padding / EqualizeSizes (regression — NÃO migraram, devem continuar funcionais):**
+
+- [ ] **Padding:** 4 sliders Top/Right/Bottom/Left + pivot recenter + Apply → canvas cresce + sprite reanchorado.
+- [ ] **EqualizeSizes:** ativar → MaxOfSelection + 3 sprites de tamanhos diferentes → todos viram do mesmo tamanho do maior W/H.
+
+### Métricas pós-Etapa 2
+
+- `ph2d-tool-runtime`: 399 → 422 LOC (~78 LOC de folga até cap 500; `drive_multi_preview_cache` cabe na Etapa 3)
+- Downcasts `<ConcreteTool>` no shell: ~17 (multi-sprite-loop CEQ ainda tem 1 que vai sair com `drive_multi_preview_cache` em Etapa 3)
+- Tools implementando `RasterEditTool`: 3 (BgR + CEQ + Upscale). Esperado pós-Etapa 5: idem (Padding/EqSizes = documented exception permanente).
+- `UpscalePreview` virou type alias `PreviewCache` (uniforme com BgR). `ColorEqualizationPreview` permanece struct (multi-cache; helper genérico futuro em Etapa 3).
+
+### Artefatos modificados
+
+- `crates/ph2d-tool-color-equalization/src/tool.rs` — `impl RasterEditTool` + `as_raster_edit_mut` override + 7 tests novos
+- `crates/ph2d-tool-upscale/src/tool.rs` — field `cached_canvas_preview` + `impl RasterEditTool` + 7 tests novos + fixes A1+A2 mirror
+- `shells/desktop/src/render_loop/upscale_bridge.rs` — refactor usando 4 helpers + fix C1 (inactive path limpa só local)
+- `shells/desktop/src/render_loop/color_equalization_bridge.rs` — mini-refactor `drive_pending_commit`
+- `shells/desktop/src/render_loop/bgremoval_preview.rs` — fix C1 (idem)
+- `shells/desktop/src/app_state.rs` — `UpscalePreview` virou type alias `PreviewCache`
+- `crates/ph2d-tool-runtime/src/lib.rs` — warning expandido em `drive_deactivate_cleanup` + 1 test C1 regression
+- `docs/IntegracaoMultiAgente/DIRETRIZ.md` §3.8.3.1 atualizada
+- `docs/plans/2026-05-wave-10-perfection.md` §II nota pós-execução
 
 ---
 

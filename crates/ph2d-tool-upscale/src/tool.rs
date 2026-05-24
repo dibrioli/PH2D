@@ -22,7 +22,7 @@
 //!    reached via `as_any_mut` downcast).
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
-use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_editor_core::tool::{PanelEvent, RasterEditTool, Tool};
 use ph2d_tool_registry::hash_node_id;
 
 use ph2d_a11y::NodeId;
@@ -128,6 +128,20 @@ pub struct UpscaleTool {
     /// polls via [`Self::take_params_dirty`] to gate live-preview
     /// reruns.
     params_dirty: bool,
+
+    /// Cached output of the most-recent on-canvas preview run
+    /// (`run_canvas_preview`). `RasterEditTool::current_preview` returns
+    /// a slice into this buffer when the tool's dirty flag has been
+    /// drained — the shell bridge no longer needs to manage the cache
+    /// externally.
+    ///
+    /// Wave 10 / Etapa 2 (ADR-0041 follow-up): mirrors `BgRemovalTool`'s
+    /// `cached_canvas_preview` field. Distinct from `preview_rgba` (which
+    /// is the THUMB preview the panel paints in its docked slot); the
+    /// canvas overlay needs the LARGER capped preview, hence a separate
+    /// cache. Cleared on `set_source` and `deactivate` (audit fixes
+    /// A1+A2 from Etapa 1.B).
+    cached_canvas_preview: Option<(Vec<u8>, u32, u32)>,
 }
 
 impl UpscaleTool {
@@ -145,6 +159,11 @@ impl UpscaleTool {
         self.rebuild_canvas_src();
         self.rerun_preview();
         self.params_dirty = true;
+        // Wave 10 / Etapa 2 audit fix [A1] (mirror of BgRemoval Etapa 1.B):
+        // explicitly invalidate the canvas-preview cache so a stale frame
+        // from the previous selection's source can NEVER paint over the
+        // newly pushed pixels.
+        self.cached_canvas_preview = None;
     }
 
     /// Whether the host has pushed a source snapshot at least once.
@@ -436,6 +455,11 @@ impl Tool for UpscaleTool {
         // the next activation.
         self.pending_apply = false;
         self.params_dirty = false;
+        // Wave 10 / Etapa 2 audit fix [A2] (mirror of BgRemoval Etapa 1.B):
+        // align the invariant "deactivate clears canvas-preview cache"
+        // across BOTH paths — Tool::on_deactivate (registry switch) and
+        // RasterEditTool::deactivate (tool-runtime drive_deactivate_cleanup).
+        self.cached_canvas_preview = None;
     }
 
     fn handle_panel_event(&mut self, event: PanelEvent) {
@@ -474,8 +498,76 @@ impl Tool for UpscaleTool {
         }
     }
 
+    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> {
+        // Wave 10 / Etapa 2 (ADR-0041): Upscale joins BgRemoval + CEQ on
+        // the RasterEditTool generic channel. The shell's tool-runtime
+        // helpers compose over this upcast — bridges no longer need
+        // `downcast_mut::<UpscaleTool>` for the generic raster I/O
+        // lifecycle. Upscale-specific concerns (panel snapshot publish,
+        // preview_size for thumb slot) still go via `as_any_mut` downcast
+        // — ADR-0040 §3 documented exception.
+        Some(self)
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+/// Wave 10 / Etapa 2 (ADR-0041): Upscale drives its raster I/O
+/// lifecycle through the generic `RasterEditTool` channel.
+///
+/// Mapping:
+/// - `set_source` → wraps `set_source_snapshot` (which internally
+///   triggers `rerun_preview` to refresh `preview_rgba`).
+/// - `current_preview` → drains `params_dirty`; if dirty + has source +
+///   non-empty cache, returns a ref into the already-populated
+///   `preview_rgba` field. Upscale eager-recomputes on every
+///   `apply_ui_edit` via `rerun_preview`, so no extra `run_canvas_preview`
+///   call is needed in the dirty path.
+/// - `take_pending_commit` → wraps `take_pending_apply`.
+/// - `run_full` → wraps `run_full_resolution(&mut Vec)`.
+/// - `deactivate` → mirrors `Tool::on_deactivate` (drain pending_apply
+///   + params_dirty).
+impl RasterEditTool for UpscaleTool {
+    fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
+        self.set_source_snapshot(rgba, width, height);
+    }
+
+    fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
+        if !self.take_params_dirty() {
+            return None;
+        }
+        if !self.has_source() || self.canvas_src_rgba.is_empty() {
+            return None;
+        }
+        let mut out = Vec::new();
+        let (w, h) = self.run_canvas_preview(&mut out);
+        if w == 0 || h == 0 {
+            return None;
+        }
+        self.cached_canvas_preview = Some((out, w, h));
+        self.cached_canvas_preview
+            .as_ref()
+            .map(|(p, w, h)| (p.as_slice(), *w, *h))
+    }
+
+    fn take_pending_commit(&mut self) -> bool {
+        self.take_pending_apply()
+    }
+
+    fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
+        let mut out = Vec::new();
+        let (w, h) = self.run_full_resolution(&mut out);
+        (out, w, h)
+    }
+
+    fn deactivate(&mut self) {
+        // Mirror Tool::on_deactivate so the generic shell-runtime
+        // deactivate path is equivalent to the registry-switch path.
+        self.pending_apply = false;
+        self.params_dirty = false;
+        self.cached_canvas_preview = None;
     }
 }
 
@@ -732,5 +824,82 @@ mod tests {
         assert_eq!(aspect_fit_within(100, 50, 200), (100, 50));
         // 400 × 200 with cap 200 → 200 × 100.
         assert_eq!(aspect_fit_within(400, 200, 200), (200, 100));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Wave 10 / Etapa 2 — RasterEditTool impl tests (ADR-0041 follow-up)
+    // ─────────────────────────────────────────────────────────────────────
+
+    fn solid_rgba(w: u32, h: u32, rgb: [u8; 3]) -> Vec<u8> {
+        let mut v = Vec::with_capacity((w * h * 4) as usize);
+        for _ in 0..(w * h) {
+            v.extend_from_slice(&[rgb[0], rgb[1], rgb[2], 255]);
+        }
+        v
+    }
+
+    #[test]
+    fn as_raster_edit_mut_returns_some_for_upscale() {
+        let mut t = UpscaleTool::default();
+        assert!(<dyn Tool as Tool>::as_raster_edit_mut(&mut t).is_some());
+    }
+
+    #[test]
+    fn raster_edit_set_source_delegates() {
+        let mut t = UpscaleTool::default();
+        RasterEditTool::set_source(&mut t, solid_rgba(8, 8, [100, 150, 200]), 8, 8);
+        assert!(t.has_source());
+        assert_eq!(t.source_size(), (8, 8));
+    }
+
+    #[test]
+    fn raster_edit_current_preview_drains_dirty() {
+        let mut t = UpscaleTool::default();
+        RasterEditTool::set_source(&mut t, solid_rgba(4, 4, [128, 128, 128]), 4, 4);
+        let frame = RasterEditTool::current_preview(&mut t);
+        assert!(
+            frame.is_some(),
+            "first call after set_source must return Some"
+        );
+        let (pixels, w, h) = frame.unwrap();
+        assert!(pixels.len() >= 4 && w > 0 && h > 0);
+        let frame2 = RasterEditTool::current_preview(&mut t);
+        assert!(frame2.is_none(), "dirty drained — no new frame");
+    }
+
+    #[test]
+    fn raster_edit_current_preview_none_without_source() {
+        // simulate dirty without source
+        let mut t = UpscaleTool {
+            params_dirty: true,
+            ..UpscaleTool::default()
+        };
+        assert!(RasterEditTool::current_preview(&mut t).is_none());
+    }
+
+    #[test]
+    fn raster_edit_take_pending_commit_drains() {
+        let mut t = UpscaleTool::default();
+        t.apply_ui_edit(UpscaleUiEdit::Apply);
+        assert!(RasterEditTool::take_pending_commit(&mut t));
+        assert!(!RasterEditTool::take_pending_commit(&mut t));
+    }
+
+    #[test]
+    fn raster_edit_run_full_returns_owned_buffer() {
+        let mut t = UpscaleTool::default();
+        RasterEditTool::set_source(&mut t, solid_rgba(4, 4, [50, 100, 150]), 4, 4);
+        let (out, w, h) = RasterEditTool::run_full(&mut t);
+        assert!(w >= 4 && h >= 4); // upscaled
+        assert_eq!(out.len(), (w as usize) * (h as usize) * 4);
+    }
+
+    #[test]
+    fn raster_edit_deactivate_clears_transient_flags() {
+        let mut t = UpscaleTool::default();
+        t.apply_ui_edit(UpscaleUiEdit::Apply);
+        RasterEditTool::deactivate(&mut t);
+        assert!(!t.take_pending_apply());
+        assert!(!t.take_params_dirty());
     }
 }

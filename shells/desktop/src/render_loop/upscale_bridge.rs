@@ -1,22 +1,26 @@
 //! Upscale panel ⟷ tool bridge + on-canvas live preview.
 //!
-//! Mirror of `color_equalization_bridge.rs` (sabor 3 with live preview).
-//! Run once per frame BEFORE `paint_hero_screen`. Does, in order:
+//! Wave 10 / Etapa 2 refactor (ADR-0041): uses `ph2d-tool-runtime`
+//! helpers (mirror of `bgremoval_preview.rs` from Etapa 1.B) so the
+//! generic raster I/O lifecycle stays in one place. Upscale-specific
+//! bits (panel snapshot publish, panel reset propagation) keep their
+//! downcast — ADR-0040 §3 documented exception.
 //!
-//! 1. Drives the panel's visibility (shown iff `upscale` is the active
-//!    tool, keyed `"upscale"`).
-//! 2. Pushes the source bitmap of the (multi-select) primary sprite
-//!    into the tool's preview cache when the primary changes.
-//! 3. Publishes the per-frame `UpscaleUiSnapshot` the panel paints
-//!    next frame.
-//! 4. (Re)computes the on-canvas preview RGBA by running the active
-//!    algorithm on the cached canvas-preview source when the tool
-//!    flags `take_params_dirty()`; caches it shell-side as
-//!    `Arc<Vec<u8>>`. The overlay below paints it on top of the
-//!    primary sprite's footprint so the user sees the chosen
-//!    algorithm + factor LIVE.
-//! 5. Returns the current multi-selection iff Apply fired this frame
-//!    — the caller runs the full-resolution bake via `drain_upscale`.
+//! Frame order:
+//!
+//! 1. (Generic) Source push via [`ph2d_tool_runtime::drive_source_push`]
+//!    when primary selection drifts (rebuilds the thumbnail + canvas
+//!    source inside the tool).
+//! 2. (Mixed) Drain `current_preview` into the shell cache via
+//!    [`ph2d_tool_runtime::drive_preview_cache`]; capture multi-sprite
+//!    Apply selection via
+//!    [`ph2d_tool_runtime::drive_pending_commit`]; Upscale-specific
+//!    panel-reset + snapshot publish via downcast.
+//! 3. (Generic) Deactivate cleanup via
+//!    [`ph2d_tool_runtime::drive_deactivate_cleanup`] when no longer
+//!    the active raster tool.
+//! 4. (Upscale-specific) On-canvas overlay paints the cached preview
+//!    RGBA on top of the primary sprite's footprint.
 
 use crate::app_state::UpscalePreview;
 use ph2d_asset::AssetDb;
@@ -28,7 +32,6 @@ use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 /// Returns `Some(entity_bits_list)` iff Apply fired this frame.
 #[allow(clippy::too_many_arguments)]
@@ -54,6 +57,20 @@ pub(super) fn dispatch(
     // the tool is active, restore on deactivate.
     hero.panel_visibility.insert("inspector", !active);
 
+    // ── Inactive path — clear LOCAL bridge state only ────────────────────
+    // Wave 10 / Etapa 2 audit [C1 CRITICAL fix]: previous version called
+    // `drive_deactivate_cleanup` on `tools.active_mut()` here — but that
+    // returns the CURRENTLY-ACTIVE tool (which may be another RasterEditTool
+    // like BgR or CEQ), NOT the Upscale tool we're a bridge for. Calling
+    // `RasterEditTool::deactivate()` on the wrong tool zeroes the state
+    // of whichever raster tool happens to be active (drains pending_apply,
+    // params_dirty, cached_canvas_preview, etc.) — destroying its drag.
+    //
+    // The Upscale tool's own `Tool::on_deactivate` already fires when
+    // `ToolRegistry::set_active` switches AWAY from Upscale (see
+    // `tool.rs::ToolRegistry::set_active`); that path mirrors the
+    // RasterEditTool::deactivate semantics. The bridge only needs to
+    // clear its own shell-side cache here.
     if !active {
         *last_pushed_entity = None;
         *upscale_preview = None;
@@ -62,36 +79,35 @@ pub(super) fn dispatch(
         return None;
     }
 
-    // Push source bitmap when the primary selection changed (or the
-    // tool just activated). Without this, the tool's preview cache is
-    // empty and the on-canvas overlay stays blank.
-    let primary = hero.gizmo.selection;
-    if primary != *last_pushed_entity
-        && let Some(bits) = primary
+    // ── (Generic) Source push when primary selection drifts ───────────────
+    if let Some(tool) = tools.active_mut()
+        && let Some(raster) = tool.as_raster_edit_mut()
     {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        if let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
-            entity,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-        ) {
-            let straight = src.image.into_straight();
-            if let Some(tool) = tools.active_mut()
-                && let Some(ups) = tool
-                    .as_any_mut()
-                    .downcast_mut::<ph2d_tool_upscale::UpscaleTool>()
-            {
-                ups.set_source_snapshot(straight.pixels, straight.width, straight.height);
-            }
-        }
-        *last_pushed_entity = primary;
-        // Selection changed → drop stale preview cache so we rebuild
-        // against the new sprite on the next dirty tick.
-        *upscale_preview = None;
+        ph2d_tool_runtime::drive_source_push(
+            raster,
+            hero.gizmo.selection,
+            last_pushed_entity,
+            |entity| {
+                let src = crate::hero_intents::texture_edit::read_sprite_source(
+                    entity,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                )?;
+                let straight = src.image.into_straight();
+                Some(ph2d_tool_runtime::RasterSource {
+                    pixels: straight.pixels,
+                    width: straight.width,
+                    height: straight.height,
+                })
+            },
+        );
     }
 
+    // ── (Mixed) Generic preview cache + Apply capture + Upscale-specific ──
+    // Single downcast block: both runtime-helpers (need &mut dyn
+    // RasterEditTool) and Upscale-specific concerns share the borrow.
     let mut apply: Option<Vec<u64>> = None;
     let mut needs_panel_reset = false;
     if let Some(tool) = tools.active_mut()
@@ -99,41 +115,27 @@ pub(super) fn dispatch(
             .as_any_mut()
             .downcast_mut::<ph2d_tool_upscale::UpscaleTool>()
     {
-        if ups.take_pending_apply() {
-            let bits_list: Vec<u64> = hero.gizmo.iter_selected().collect();
-            if !bits_list.is_empty() {
-                apply = Some(bits_list);
-            }
+        // (Generic) Drain current_preview into shell cache.
+        ph2d_tool_runtime::drive_preview_cache(ups, hero.gizmo.selection, upscale_preview);
+
+        // (Generic) Capture multi-sprite Apply selection.
+        let bits = ph2d_tool_runtime::drive_pending_commit(ups, hero.gizmo.iter_selected());
+        if !bits.is_empty() {
+            apply = Some(bits);
         }
+
+        // (Upscale-specific) Panel-store reset propagation.
         if ups.take_pending_panel_reset() {
             needs_panel_reset = true;
         }
-        // (Re)compute the on-canvas preview when params changed since
-        // the last frame. Gate the COPY into the shell-side
-        // `Arc<Vec<u8>>` on `take_params_dirty()` so we don't realloc +
-        // memcpy every frame, only when there's actually a new image.
-        let needs_refresh = ups.take_params_dirty()
-            || upscale_preview
-                .as_ref()
-                .map(|p| Some(p.entity_bits) != primary)
-                .unwrap_or(true);
-        if needs_refresh && let Some(bits) = primary {
-            let mut buf = Vec::new();
-            let (w, h) = ups.run_canvas_preview(&mut buf);
-            if !buf.is_empty() && w > 0 && h > 0 {
-                *upscale_preview = Some(UpscalePreview {
-                    entity_bits: bits,
-                    rgba: Arc::new(buf),
-                    width: w,
-                    height: h,
-                });
-            }
-        }
+
+        // (Upscale-specific) Snapshot publish for the docked panel.
         #[cfg(feature = "panel-upscale")]
         ph2d_panel_upscale::set_current_upscale_snapshot(Some(ups.ui_snapshot()));
     }
 
-    // Reset just fired — re-populate panel store.
+    // Reset just fired — re-populate panel store (post-borrow because
+    // hero.store aliases tools.active_mut() above).
     if needs_panel_reset {
         ph2d_editor::panel::with_registry_opt(|reg| {
             if let Some(idx) = reg.find_by_panel_node_id(ph2d_panel_upscale::ids::UPS_PANEL) {
@@ -150,13 +152,13 @@ pub(super) fn dispatch(
         *upscale_preview = None;
     }
 
-    // ── On-canvas overlay ──────────────────────────────────────────
-    // Paint the preview RGBA over the primary sprite's footprint —
-    // the sprite stays underneath. Upscale never reduces dims, so
-    // the overlay covers the sprite footprint (which we scale to
-    // match the on-screen sprite size; the underlying sprite shows
-    // around any aspect-fit gap, but Upscale preserves source aspect,
-    // so the overlay fits the footprint exactly when factor > 1).
+    // ── On-canvas overlay (Upscale-specific paint) ────────────────────────
+    // Paint the preview RGBA over the primary sprite's footprint — the
+    // sprite stays underneath. Upscale never reduces dims, so the overlay
+    // covers the sprite footprint (which we scale to match the on-screen
+    // sprite size; the underlying sprite shows around any aspect-fit gap,
+    // but Upscale preserves source aspect, so the overlay fits the
+    // footprint exactly when factor > 1).
     if let Some(preview) = upscale_preview.as_ref() {
         let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
         if let (Some(tr), Some(sprite)) = (

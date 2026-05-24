@@ -628,9 +628,9 @@ QUANDO TERMINAR, reporte ao Enio:
 
 O `ph2d-tool-sync` é configurado pelas needles `"pub fn register("` (manifest) e `"pub fn make("` (behavior) — sabor (1) só entra em `register_all`, (2) só em `register_all_tools`, (3) entra nos dois.
 
-#### 3.8.3.1 Status atual do trait `RasterEditTool` (Wave 10 / Etapa 1.B)
+#### 3.8.3.1 Status atual do trait `RasterEditTool` (Wave 10 / Etapa 2)
 
-O sub-trait `RasterEditTool` (`set_source` / `current_preview` / `take_pending_commit` / `run_full` / `deactivate`) está **definido e congelado no contrato** (ADR-0040 §2.1, renomeado + estendido em ADR-0041). **BgRemoval é o primeiro tool de produção a implementar** (Wave 10 / Etapa 1.B, 2026-05-23). Padding, Color Equalization, Upscale e Equalize Sizes estão **agendados para Etapa 2** do plano `docs/plans/2026-05-wave-10-perfection.md`.
+O sub-trait `RasterEditTool` (`set_source` / `current_preview` / `take_pending_commit` / `run_full` / `deactivate`) está **definido e congelado no contrato** (ADR-0040 §2.1, renomeado + estendido em ADR-0041). **3 tools de produção implementam** após Wave 10 / Etapa 2 (2026-05-24): **BgRemoval, Color Equalization, Upscale**. Padding e Equalize Sizes ficam como **documented exception** — Padding é geométrico-only (não tem source raster), Equalize Sizes é multi-sprite-required (não cabe no `set_source` single-buffer).
 
 **Padrão canônico daqui pra frente para tool stateful que produz raster:**
 
@@ -645,7 +645,9 @@ O sub-trait `RasterEditTool` (`set_source` / `current_preview` / `take_pending_c
 **Sites onde downcast permanece legítimo (allowlist Etapa 3):**
 - `shells/desktop/src/input_dispatch/eyedropper.rs` — captura cor via clique no canvas (BgR-specific affordance)
 - `shells/desktop/src/input_dispatch/protect_brush.rs` — dabs de proteção (BgR-specific)
-- Bridge per-tool quando precisa de overlay/panel snapshot específico
+- Bridge per-tool quando precisa de overlay/panel snapshot específico (BgR/CEQ/Upscale: panel snapshot publish + tool-specific affordances)
+- `color_equalization_bridge.rs`: cache multi-sprite (`BTreeMap<u64, ColorEqualizationPreview>`) é arquitetural-genuíno; helpers single-cache não batem. Follow-up: `drive_multi_preview_cache` helper consolidaria — vide `docs/Testes/audits/etapa-2.md`.
+- `padding_bridge.rs` + `equalize_sizes_bridge.rs`: tools NÃO implementam `RasterEditTool` (vide texto acima — geométrico vs multi-sprite-required).
 
 **Template:** [`shells/desktop/src/render_loop/bgremoval_preview.rs`](../../shells/desktop/src/render_loop/bgremoval_preview.rs) é o exemplar de referência. Copie a estrutura (genérico via helpers + bits específicos via downcast) para próximos bridges da Etapa 2.
 

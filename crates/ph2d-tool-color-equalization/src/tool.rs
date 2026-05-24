@@ -24,7 +24,7 @@
 //! plan).
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
-use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_editor_core::tool::{PanelEvent, RasterEditTool, Tool};
 
 use super::algorithm::{
     HistogramData, aspect_fit_within, compute_histogram, resize_bilinear_rgba, run_pipeline,
@@ -605,8 +605,81 @@ impl Tool for ColorEqualizationTool {
         }
     }
 
+    fn as_raster_edit_mut(&mut self) -> Option<&mut dyn RasterEditTool> {
+        // Wave 10 / Etapa 2 (ADR-0041): CEQ joins BgRemoval as the
+        // second production tool on the RasterEditTool generic channel.
+        // The shell's tool-runtime helpers compose over this upcast —
+        // bridges no longer need `downcast_mut::<ColorEqualizationTool>`
+        // for the generic raster I/O lifecycle (set_source /
+        // current_preview / take_pending_commit / run_full / deactivate).
+        // CEQ-specific concerns (panel snapshot, LUT dropdown close,
+        // histogram) still go through `as_any_mut` downcast — ADR-0040
+        // §3 documented exception.
+        Some(self)
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+/// Wave 10 / Etapa 2 (ADR-0041): CEQ drives its raster I/O lifecycle
+/// through the generic `RasterEditTool` channel.
+///
+/// Mapping:
+/// - `set_source` → wraps `set_source_snapshot`.
+/// - `current_preview` → drains `params_dirty`; if dirty, calls
+///   `preview_rgba()` (which internally recomputes when
+///   `preview_dirty` and returns a ref to the internal cache).
+///   No extra field needed — CEQ's existing `preview_rgba` is the cache.
+/// - `take_pending_commit` → wraps `take_pending_apply`.
+/// - `run_full` → wraps `run_full_resolution(&mut Vec)` into the
+///   owned `(Vec, w, h)` shape the contract requires. Tries GPU first
+///   (when `feature = "gpu"`), falls back to CPU.
+/// - `deactivate` → mirrors `Tool::on_deactivate` (drain pending_apply
+///   + params_dirty + close-LUT-dropdown).
+impl RasterEditTool for ColorEqualizationTool {
+    fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
+        self.set_source_snapshot(rgba, width, height);
+    }
+
+    fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
+        if !self.take_params_dirty() {
+            return None;
+        }
+        if !self.has_source() {
+            return None;
+        }
+        let (pixels, w, h) = self.preview_rgba();
+        if pixels.is_empty() || w == 0 || h == 0 {
+            return None;
+        }
+        Some((pixels, w, h))
+    }
+
+    fn take_pending_commit(&mut self) -> bool {
+        self.take_pending_apply()
+    }
+
+    fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
+        let mut out = Vec::new();
+        // Prefer GPU path when `--features gpu` is on (15-30 ms at 512²);
+        // CPU fallback when not (150-380 ms when Bilateral/Quantize armed).
+        // Parity with the legacy bridge logic pre-Wave-10.
+        #[cfg(feature = "gpu")]
+        if let Some((w, h)) = self.run_full_resolution_gpu(&mut out) {
+            return (out, w, h);
+        }
+        let (w, h) = self.run_full_resolution(&mut out);
+        (out, w, h)
+    }
+
+    fn deactivate(&mut self) {
+        // Mirror `Tool::on_deactivate` so the generic shell-runtime
+        // deactivate path is equivalent to the registry-switch path.
+        self.pending_apply = false;
+        self.params_dirty = false;
+        self.pending_close_lut_dropdown = None;
     }
 }
 
@@ -806,5 +879,77 @@ mod tests {
         let tool = any.downcast_mut::<ColorEqualizationTool>().unwrap();
         tool.set_source_snapshot(solid(4, 4, [10, 20, 30]), 4, 4);
         assert!(tool.has_source());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Wave 10 / Etapa 2 — RasterEditTool impl tests (ADR-0041 follow-up)
+    // ─────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn as_raster_edit_mut_returns_some_for_ceq() {
+        let mut t = ColorEqualizationTool::default();
+        assert!(<dyn Tool as Tool>::as_raster_edit_mut(&mut t).is_some());
+    }
+
+    #[test]
+    fn raster_edit_set_source_delegates() {
+        let mut t = ColorEqualizationTool::default();
+        RasterEditTool::set_source(&mut t, solid(8, 8, [100, 150, 200]), 8, 8);
+        assert!(t.has_source());
+        assert_eq!(t.source_size(), (8, 8));
+    }
+
+    #[test]
+    fn raster_edit_current_preview_drains_dirty() {
+        let mut t = ColorEqualizationTool::default();
+        RasterEditTool::set_source(&mut t, solid(8, 8, [128, 128, 128]), 8, 8);
+        // First call after set_source: dirty drains, preview returned.
+        let frame = RasterEditTool::current_preview(&mut t);
+        assert!(
+            frame.is_some(),
+            "first call after set_source must return Some"
+        );
+        let (pixels, w, h) = frame.unwrap();
+        assert!(pixels.len() >= 4 && w > 0 && h > 0);
+        // Second call without new edit: drained, returns None.
+        let frame2 = RasterEditTool::current_preview(&mut t);
+        assert!(frame2.is_none(), "dirty drained — no new frame");
+    }
+
+    #[test]
+    fn raster_edit_current_preview_none_without_source() {
+        let mut t = ColorEqualizationTool {
+            params_dirty: true,
+            ..ColorEqualizationTool::default()
+        };
+        assert!(RasterEditTool::current_preview(&mut t).is_none());
+    }
+
+    #[test]
+    fn raster_edit_take_pending_commit_drains() {
+        let mut t = ColorEqualizationTool::default();
+        t.apply_ui_edit(ColorEqualizationUiEdit::Apply);
+        assert!(RasterEditTool::take_pending_commit(&mut t));
+        assert!(!RasterEditTool::take_pending_commit(&mut t));
+    }
+
+    #[test]
+    fn raster_edit_run_full_returns_owned_buffer() {
+        let mut t = ColorEqualizationTool::default();
+        RasterEditTool::set_source(&mut t, solid(4, 4, [50, 100, 150]), 4, 4);
+        let (out, w, h) = RasterEditTool::run_full(&mut t);
+        assert!(w > 0 && h > 0);
+        assert_eq!(out.len(), (w as usize) * (h as usize) * 4);
+    }
+
+    #[test]
+    fn raster_edit_deactivate_clears_transient_flags() {
+        let mut t = ColorEqualizationTool::default();
+        t.apply_ui_edit(ColorEqualizationUiEdit::Apply);
+        // params_dirty + pending_apply both should be set after Apply.
+        // (apply_ui_edit marks dirty for every edit + arms pending_apply).
+        RasterEditTool::deactivate(&mut t);
+        assert!(!t.take_pending_apply());
+        assert!(!t.take_params_dirty());
     }
 }

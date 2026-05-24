@@ -437,13 +437,12 @@ pub(crate) struct RubberBandState {
 pub(crate) type BgremovalPreview = ph2d_tool_runtime::PreviewCache;
 
 /// Cached on-canvas live preview bitmap for the Color Equalization
-/// tool — mirror of `BgremovalPreview`. Updated by
-/// `color_equalization_bridge::dispatch` when the tool flags
-/// `take_params_dirty()` true (a slider/chip/toggle just moved). The
-/// per-frame overlay paints this RGBA on top of the primary sprite's
-/// footprint while the tool is active, so the user sees the CLAHE +
-/// adjusts apply in real time. Cleared on Apply (the bake takes over)
-/// + on tool deactivate. Straight-alpha (Color EQ doesn't touch alpha).
+/// tool — kept as the struct shape because CEQ is multi-sprite
+/// (the bridge holds a `BTreeMap<u64, ColorEqualizationPreview>`,
+/// one entry per selected sprite). The single-cache helpers in
+/// `ph2d-tool-runtime` cover BgRemoval / Upscale (single-cache); a
+/// future `drive_multi_preview_cache` would let CEQ migrate too.
+/// Tracking issue: docs/Testes/audits/etapa-2.md.
 pub(crate) struct ColorEqualizationPreview {
     pub(crate) entity_bits: u64,
     pub(crate) rgba: std::sync::Arc<Vec<u8>>,
@@ -451,20 +450,15 @@ pub(crate) struct ColorEqualizationPreview {
     pub(crate) height: u32,
 }
 
-/// Cached on-canvas live preview bitmap for the Upscale tool — mirror
-/// of `ColorEqualizationPreview`. Updated by `upscale_bridge::dispatch`
-/// when the tool flags `take_params_dirty()` (algo or scale changed).
-/// The Upscale RGBA carries the source resampled by the active
-/// algorithm to a capped preview resolution (`PREVIEW_MAX_DIM`); the
-/// canvas overlay paints it scaled to the sprite footprint so the
-/// user sees the chosen algorithm + factor live. Cleared on Apply +
-/// on tool deactivate. Straight-alpha (Upscale doesn't touch alpha).
-pub(crate) struct UpscalePreview {
-    pub(crate) entity_bits: u64,
-    pub(crate) rgba: std::sync::Arc<Vec<u8>>,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
-}
+/// Cached on-canvas live preview bitmap for the Upscale tool.
+///
+/// Wave 10 / Etapa 2: re-exported as the generic
+/// `ph2d_tool_runtime::PreviewCache` (same shape as BgRemoval —
+/// entity_bits + Arc<Vec<u8>> rgba + width + height). The
+/// `UpscalePreview` alias is kept so existing call sites still
+/// resolve; new code uses `PreviewCache` directly via the
+/// `drive_*` helpers in `ph2d-tool-runtime`.
+pub(crate) type UpscalePreview = ph2d_tool_runtime::PreviewCache;
 
 /// True for any tool that belongs to the **Image Tools** group — i.e.
 /// whose manifest is registered in the `"image_tools"` cluster (Bg

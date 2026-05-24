@@ -170,24 +170,22 @@ pub(super) fn dispatch(
         }
     }
 
-    // ── (Generic) Deactivate cleanup when bgremoval is no longer active ───
-    // Wave 10 / Etapa 1.B: the cache used to be cleared in two ad-hoc
-    // sites (the `else` of the preview block + the `!bgremoval_is_active`
-    // tail check). Centralized via drive_deactivate_cleanup — which also
-    // calls `RasterEditTool::deactivate()` so the tool's own transient
-    // flags drop in sync.
-    if !bgremoval_is_active
-        && let Some(tool) = tools.active_mut()
-        && let Some(raster) = tool.as_raster_edit_mut()
-    {
-        ph2d_tool_runtime::drive_deactivate_cleanup(
-            raster,
-            bgremoval_preview,
-            last_bgremoval_pushed_entity,
-        );
-    } else if !bgremoval_is_active {
-        // Fallback for the case where active tool isn't a RasterEditTool
-        // (we can't call drive_deactivate_cleanup): just clear the cache.
+    // ── Inactive path — clear LOCAL bridge state only ────────────────────
+    // Wave 10 / Etapa 2 audit [C1 CRITICAL fix]: previous version called
+    // `drive_deactivate_cleanup` on `tools.active_mut()` here, but that
+    // returns the CURRENTLY-ACTIVE tool (which may be CEQ or Upscale —
+    // other RasterEditTools), NOT the BgRemoval tool we're a bridge for.
+    // Calling `RasterEditTool::deactivate()` on the wrong tool zeroes
+    // the state of whichever raster tool is active (drains its
+    // pending_apply, params_dirty, cached_canvas_preview, etc.) —
+    // destroying its session.
+    //
+    // BgRemoval's own `Tool::on_deactivate` already fires when
+    // `ToolRegistry::set_active` switches AWAY from bgremoval, and that
+    // path already clears `cached_canvas_preview` + all transient flags
+    // (Etapa 1.B audit fix A2). The bridge only needs to clear its own
+    // shell-side cache here.
+    if !bgremoval_is_active {
         *bgremoval_preview = None;
         *last_bgremoval_pushed_entity = None;
     }

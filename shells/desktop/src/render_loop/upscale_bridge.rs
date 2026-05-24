@@ -55,7 +55,19 @@ pub(super) fn dispatch(
     hero.panel_visibility.insert("upscale", active);
     // Image tools dock into the Inspector slot — hide Inspector while
     // the tool is active, restore on deactivate.
-    hero.panel_visibility.insert("inspector", !active);
+    //
+    // Wave 10 Etapa 4 smoke fix (Enio 2026-05-24): edge-triggered, not
+    // level. See bgremoval_preview.rs for the full rationale (the
+    // level-triggered version stomped on the rail toggle every frame
+    // while inactive).
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
+        let was = LAST_ACTIVE.swap(active, Ordering::Relaxed);
+        if was != active {
+            hero.panel_visibility.insert("inspector", !active);
+        }
+    }
 
     // ── Inactive path — clear LOCAL bridge state only ────────────────────
     // Wave 10 / Etapa 2 audit [C1 CRITICAL fix]: previous version called

@@ -41,8 +41,16 @@ pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Optio
         .unwrap_or(false);
     hero.panel_visibility.insert("equalize_sizes", active);
     // Image tools dock into the Inspector slot — hide Inspector while
-    // the tool is active, restore on deactivate.
-    hero.panel_visibility.insert("inspector", !active);
+    // the tool is active, restore on deactivate. Edge-triggered (Wave
+    // 10 Etapa 4 smoke fix — see bgremoval_preview.rs for rationale).
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
+        let was = LAST_ACTIVE.swap(active, Ordering::Relaxed);
+        if was != active {
+            hero.panel_visibility.insert("inspector", !active);
+        }
+    }
 
     if !active {
         #[cfg(feature = "panel-equalize-sizes")]

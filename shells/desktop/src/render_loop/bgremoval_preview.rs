@@ -105,10 +105,25 @@ pub(super) fn dispatch(
     // Shown iff bgremoval is the active tool (keyed "bgremoval" to match
     // `BgRemovalPanel::ID`). Hide the Inspector while bgremoval is active
     // (image tools dock into the Inspector slot).
+    //
+    // Wave 10 Etapa 4 smoke fix (Enio 2026-05-24): only write
+    // `inspector` visibility on the activate↔deactivate EDGE, not every
+    // frame. The level-triggered version stomped on the user's rail
+    // toggle whenever no image tool was active — every frame would
+    // force `inspector = true`, undoing the manual hide. Edge trigger
+    // preserves the rail-toggle semantics while still hiding inspector
+    // at tool activation + restoring at deactivation.
     hero.panel_visibility
         .insert("bgremoval", bgremoval_is_active);
-    hero.panel_visibility
-        .insert("inspector", !bgremoval_is_active);
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
+        let was = LAST_ACTIVE.swap(bgremoval_is_active, Ordering::Relaxed);
+        if was != bgremoval_is_active {
+            hero.panel_visibility
+                .insert("inspector", !bgremoval_is_active);
+        }
+    }
 
     // Captured for the protection-mask overlay tint + brush ring (built
     // while the tool is borrowed below, drawn in the on-canvas overlay block).

@@ -71,7 +71,17 @@ pub(super) fn dispatch(
     // typed registry would paint both and Inspector wins the
     // z-order). On deactivate, restore the Inspector to visible so
     // the user goes back to the inspector-by-default canvas state.
-    hero.panel_visibility.insert("inspector", !active);
+    //
+    // Edge-triggered (Wave 10 Etapa 4 smoke fix — see
+    // bgremoval_preview.rs for rationale).
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
+        let was = LAST_ACTIVE.swap(active, Ordering::Relaxed);
+        if was != active {
+            hero.panel_visibility.insert("inspector", !active);
+        }
+    }
 
     if !active {
         *last_pushed_entity = None;

@@ -46,10 +46,18 @@ pub(super) fn dispatch(
         .unwrap_or(false);
     // Visibility: shown iff padding is the active tool. Image tools
     // dock into the Inspector slot, so hide the Inspector while
-    // padding is active and restore it on deactivate.
+    // padding is active and restore it on deactivate. Edge-triggered
+    // (Wave 10 Etapa 4 smoke fix — see bgremoval_preview.rs).
     hero.panel_visibility.insert("padding", padding_is_active);
-    hero.panel_visibility
-        .insert("inspector", !padding_is_active);
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
+        let was = LAST_ACTIVE.swap(padding_is_active, Ordering::Relaxed);
+        if was != padding_is_active {
+            hero.panel_visibility
+                .insert("inspector", !padding_is_active);
+        }
+    }
 
     let mut apply: Option<(ph2d_tool_padding::PaddingSpec, bool, Vec<u64>)> = None;
     // Captured while the tool is borrowed; used for the on-canvas preview

@@ -12,6 +12,8 @@ durante o desenvolvimento.
 
 ### 1.1 Container "engole" os filhos clicáveis
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clicar nos sub-controles (wheel, sliders, swatches) não
   faz nada; sempre acerta o pai (BlenderPicker).
 - **Causa**: `HitIndex::hit()` percorre `back-to-front` e devolve o
@@ -26,6 +28,8 @@ durante o desenvolvimento.
 
 ### 1.2 Hit-rect maior que o controle visível
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: drag do channel slider mapeia errado (offset perto da
   borda); chip numérico não recebe foco.
 - **Causa**: registrava o **row inteiro** (label + track + chip) como
@@ -37,6 +41,8 @@ durante o desenvolvimento.
 
 ### 1.3 Slots estáticos vs dados dinâmicos
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário adiciona um swatch novo e ele não responde ao
   click (left ou right).
 - **Causa**: hit-index slots eram pré-registrados (ex.: 12 swatches);
@@ -52,6 +58,8 @@ durante o desenvolvimento.
 
 ### 2.1 Move re-aplicando ação one-shot
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clique em "+ swatch" adiciona N cópias da mesma cor;
   click no Eyedropper trigger múltiplo.
 - **Causa**: `apply_blender_hit` no Move handler re-aplicava em
@@ -65,6 +73,8 @@ durante o desenvolvimento.
 
 ### 2.2 Click fora do widget focado não comita
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário digita no hex, clica no canvas → buffer fica
   pendurado, picker.value não muda.
 - **Causa**: Down handler só comita prev_focus quando o clique novo
@@ -77,6 +87,8 @@ durante o desenvolvimento.
 
 ### 2.3 Right-click não distinguido de left
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: right-click em swatch da paleta não deletava.
 - **Causa**: `PointerEvent` não carregava o botão (host descartava
   o `winit::MouseButton`).
@@ -92,6 +104,8 @@ durante o desenvolvimento.
 
 ### 3.1 Fill sharp dentro de stroke rounded
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: "quinas minúsculas" aparecendo nos cantos
   (hue strip, color preview, swatches translúcidos).
 - **Causa**: `scene.fill(..., &KurboRect)` é fill **retangular**;
@@ -109,6 +123,8 @@ durante o desenvolvimento.
 
 ### 3.2 Cursor / thumb extrapolando o rect
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: anel do cursor SV ou thumb da hue strip "vaza" os
   cantos (ear artifact) quando o valor está em 0 ou 1.
 - **Causa**: posição calculada como `rect.x + s * rect.w` sem
@@ -121,6 +137,8 @@ durante o desenvolvimento.
 
 ### 3.3 Caret/seleção com largura aproximada
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: caret aparece em cima da letra (não entre); seleção
   por drag fica deslocada.
 - **Causa**: aproximação `font_size * 0.55` por char para fontes
@@ -136,6 +154,8 @@ durante o desenvolvimento.
 
 ### 3.4 Label rendered como pill ativo
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: labels do channel slider (Red/Green/Blue/Alpha)
   pareciam "botões selecionados".
 - **Causa**: fundo `AccentPress` + texto `AccentFg` num label que
@@ -150,6 +170,8 @@ durante o desenvolvimento.
 
 ### 4.1 HSV round-trip perde H+S em V→0
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: ao escolher cores escuras (V<0.05), cursor SV pula,
   thumb da hue strip volta pro vermelho.
 - **Causa**: RGBA→HSV em pixels com value=0 retorna H=0, S=0
@@ -164,6 +186,8 @@ durante o desenvolvimento.
 
 ### 4.2 Hue strip wrap right→left
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: drag o thumb pra direita até o fim, ele pula pro
   início.
 - **Causa**: `hsv_to_rgba8` faz `rem_euclid(6.0)` (h=1.0 vira
@@ -176,6 +200,8 @@ durante o desenvolvimento.
 
 ### 4.3 Eyedropper aplicava sRGB encoding extra
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: cor capturada saía mais clara que a exibida.
 - **Causa**: A textura intermediate é `Rgba8Unorm` (linear no
   format), mas Vello escreve **bytes sRGB-encoded** direto (peniko
@@ -192,6 +218,8 @@ durante o desenvolvimento.
 
 ### 5.1 Buffer não sincroniza com source-of-truth
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: hex field mostra valor antigo depois de o disco
   mudar a cor.
 - **Causa**: painter usava `buffer.unwrap_or(fallback_hex)`. Quando
@@ -205,6 +233,8 @@ durante o desenvolvimento.
 
 ### 5.2 Enter / blur sem commit
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário digita no hex / chip e a cor não muda
   mesmo após Enter ou Tab.
 - **Causa**: handler do KEY_ENTER caía em `apply_click` genérico;
@@ -218,6 +248,8 @@ durante o desenvolvimento.
 
 ### 5.3 Selection-anchor para "select all" / drag-to-select
 
+
+**Gate:** crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs (heuristic match — refine if wrong)
 - **Sintoma**: duplo-click não selecionava tudo; drag não estendia
   seleção; Cmd+A inexistente.
 - **Causa**: `TextInput`/`NumberInput`/`Combobox` só tinham `caret`
@@ -236,6 +268,8 @@ durante o desenvolvimento.
 
 ### 6.1 Inspector slider dual-row vs picker single-row
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: slider do Inspector parecia "mais alto" que o do
   picker.
 - **Causa**: Inspector pintava `head_rect` (dot + label) +
@@ -249,6 +283,8 @@ durante o desenvolvimento.
 
 ### 6.2 Pílula segmented "Active" muito sutil
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: Linear/Perceptual e RGB/HSV pareciam iguais
   (selected vs unselected).
 - **Causa**: pill ativo usava `AccentSoft` (alpha 0.16) sobre Bg2
@@ -258,6 +294,8 @@ durante o desenvolvimento.
 
 ### 6.3 Tabs de paleta única ("Default")
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: pílula "Default" ocupava espaço sem informação.
 - **Causa**: paleta single-mode mas painter ainda renderizava o
   Tabs.
@@ -271,6 +309,8 @@ durante o desenvolvimento.
 
 ### 7.1 Painel movível precisa de offset retido
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: ao soltar o drag, painel volta pra posição inicial.
 - **Causa**: posição era recalculada cada frame a partir do
   `layout`. Drag só atualizava o frame atual.
@@ -316,6 +356,8 @@ estava implícito nos §1–§8.
 
 ### 9.1 Helpers de hit (`close_rect`, `entry_rect`, `row_rect`, `chevron_rect`)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: consumidores recalculavam a geometria interna dos
   widgets para registrar sub-hits (ex.: close X de uma `Tag`,
   chevron de uma linha de `TreeView`, item de um `ContextMenu`). Era
@@ -329,6 +371,8 @@ estava implícito nos §1–§8.
 
 ### 9.2 Body-clip helpers em surface containers
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: conteúdo pintado dentro de um `Modal`/`Card`/`Popover`
   vazava pelos cantos arredondados (mesma família de bug do §3.1,
   mas em escala de container e não de glifo).
@@ -341,6 +385,8 @@ estava implícito nos §1–§8.
 
 ### 9.3 Medição real em TODO painter com `text_system`
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: rótulos secundários (key shortcut no `ListItem`,
   segmentos do `StatusBar`) ficavam apertados/sobrescritos. Mesmo
   bug que o §3.3 mas em widgets que escapavam da regra.
@@ -353,6 +399,8 @@ estava implícito nos §1–§8.
 
 ### 9.4 ProgressBar: raio do fill clamped à largura
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: valores baixos (0–10 %) exibiam stadium com caps
   iguais ao trilho. Visualmente o fill parecia maior que o valor.
 - **Fix**: `fill_radius = radius.min(fill_w * 0.5)`. Quando o fill
@@ -361,6 +409,8 @@ estava implícito nos §1–§8.
 
 ### 9.5 Checkbox indeterminate: glifo certo
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: o estado "mixed" pintava um `+` (Plus) — lia como
   "adicionar" e não como "alguns filhos selecionados".
 - **Fix**: adicionado `IconId::Minus` (path único `M5 12h14`); o
@@ -370,6 +420,8 @@ estava implícito nos §1–§8.
 
 ### 9.6 Toggle disabled deve preservar on/off
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: `Toggle` desabilitado virava cinza tanto em on quanto
   em off — usuário não conseguia ler o valor.
 - **Fix**: disabled+on → `AccentSoft`; disabled+off → `Border`. Estado
@@ -378,6 +430,8 @@ estava implícito nos §1–§8.
 
 ### 9.7 Tabs hover overlay
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: tabs não-selecionadas não davam feedback sob o cursor.
 - **Fix**: `paint_tabs_with_hover(hovered: Option<usize>, …)` desenha
   um `Bg2` rounded por baixo da tab quando hovered e não-selecionada.
@@ -386,6 +440,8 @@ estava implícito nos §1–§8.
 
 ### 9.8 Tooltip registry genérico
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: tooltips estavam hardcoded em `tooltip_for(id)` num
   match enorme; cada widget novo exigia editar topbar.rs.
 - **Fix**: `WidgetStore::set_tooltip(id, text)` + `tooltip_for(id)`
@@ -396,6 +452,8 @@ estava implícito nos §1–§8.
 
 ### 9.9 TextArea multi-line caret/selection
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: `TextArea` não mostrava caret nem seleção quando
   focado — invisível pro usuário.
 - **Fix**: `paint_text_area_with_state(caret, selection_anchor, …)`
@@ -407,6 +465,8 @@ estava implícito nos §1–§8.
 
 ### 9.10 Click→byte multi-line aware (TextArea) e snap por linha
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clicar na linha 2 do `TextArea` posicionava o caret
   na linha 1 no X equivalente; clicar à direita do texto em uma
   linha pulava para o fim do buffer (em vez do fim da LINHA).
@@ -421,6 +481,8 @@ estava implícito nos §1–§8.
 
 ### 9.12 Dropdown aberto: lista flutuante real
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma 1**: a lista do `Dropdown` aberto era pintada como linhas
   individuais com fill `BgElev` — em temas onde o painel host
   também é `BgElev`, a lista "sumia" no fundo.
@@ -439,6 +501,8 @@ estava implícito nos §1–§8.
 
 ### 9.13 SectionHeader v2: chevron-only + UPPERCASE + colapso real
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: header pintava um ponto rosa decorativo + label `Xs`
   em `Text2` minúsculo — visualmente fraco e sem affordance de
   "clique para minimizar".
@@ -454,6 +518,8 @@ estava implícito nos §1–§8.
 
 ### 9.14 RadioGroup/Tabs/TreeView mantendo seleção entre frames
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clicar Mid no segmented RadioGroup voltava pra Low
   imediatamente; tabs sample não trocava conteúdo; Group TreeView
   não colapsava.
@@ -472,6 +538,8 @@ estava implícito nos §1–§8.
 
 ### 9.16 Click→caret com medição real (pixel-perfect)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clicar no meio de uma palavra colocava o caret 1-2
   caracteres antes/depois — em texto multi-linha pior porque o
   erro acumulava por linha.
@@ -490,6 +558,8 @@ estava implícito nos §1–§8.
 
 ### 9.17 Dropdown popover em segunda passada + geometria apertada
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma 1**: lista do Dropdown sumia atrás das seções pintadas
   depois dela na mesma frame.
 - **Sintoma 2**: itens visualmente "deslocados para baixo" dentro
@@ -505,6 +575,8 @@ estava implícito nos §1–§8.
 
 ### 9.18 NumberInput stepper handlers no dispatch
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: as setinhas ▲▼ no chip do NumberInput eram
   decorativas — clicar não fazia nada.
 - **Fix**: `apply_number_stepper_if_hit` no Down handler detecta
@@ -516,6 +588,8 @@ estava implícito nos §1–§8.
 
 ### 9.19 Glifos macOS Cmd/Return → tofu
 
+
+**Gate:** crates/ph2d-editor-core/tests/no_tofu_glyphs.rs (heuristic match — refine if wrong)
 - **Sintoma**: tooltips e o ListItem sample mostravam `□S` / `□O`
   em vez de `⌘S` / `⌘O`.
 - **Causa**: o font stack default do parley (system sans-serif)
@@ -536,6 +610,8 @@ estava implícito nos §1–§8.
 
 ### 9.20 Inspector scroll clamp + separador colorido por seção
 
+
+**Gate:** crates/ph2d-editor-core/tests/arch_safe_clamp_only.rs (heuristic match — refine if wrong)
 - **Sintoma**: scroll do wheel era ilimitado — passava o último
   elemento por centenas de pixels.
 - **Fix**: `paint_inspector` publica `last_inspector_content_h`
@@ -551,6 +627,8 @@ estava implícito nos §1–§8.
 
 ### 9.15 Vector3Editor com buffer vivo
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clicar nos chips X/Y/Z focava (border accent) mas
   digitar não aparecia na caixa.
 - **Causa**: o sample chamava o estático `paint_vector3_editor`,
@@ -564,6 +642,8 @@ estava implícito nos §1–§8.
 
 ### 9.11 Combobox click X-offset corrigido + clear-✕ central
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma 1**: caret do `Combobox` "escorregava" ~24 px à direita
   do ponto clicado.
 - **Causa**: `byte_offset_from_click_x` usava `rect.x + 12` como
@@ -589,6 +669,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.1 Caret não acompanha espaço final (parley trim)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: ao apertar SPACE em `TextInput`/`TextArea`/`Combobox`/
   `NumberInput`/hex/note, a letra entra no buffer mas o caret fica
   parado visualmente; o efeito repete a cada espaço.
@@ -608,6 +690,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.2 Letras acentuadas PT-BR (é, á, ç) não aparecem no macOS
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: dead-key sequences (`'` + `a` = `á`) não inserem nada
   no buffer.
 - **Causa**: macOS NSTextInputClient engole o keystroke dead-key e
@@ -622,6 +706,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.3 Painéis flutuantes — auto-resize ao arrastar para baixo
 
+
+**Gate:** crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs (heuristic match — refine if wrong)
 - **Sintoma**: arrastando Inspector ou Hierarchy para baixo, o painel
   vazava o viewport e o conteúdo no rodapé ficava cortado.
 - **Causa**: o clamp original em `paint_hero_screen` só ajustava x/y,
@@ -636,6 +722,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.4 "Saltos discretos" no drag (rubber band)
 
+
+**Gate:** crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs (heuristic match — refine if wrong)
 - **Sintoma**: arrastando um painel pra fora do clamp, depois voltando,
   o usuário precisa "puxar" um trecho invisível antes do painel
   responder.
@@ -654,6 +742,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.5 Resize handles manuais nos painéis
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário só conseguia mover painéis; faltava redimensionar.
 - **Solução**: novo `BlenderHitKind::ResizeHandle` + side-tables
   `panel_resize_delta: BTreeMap<NodeId, (f32, f32)>` e
@@ -668,6 +758,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.6 Hierarchy DnD — drop-inside (parenting) + indentação
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: drag de uma entity em cima de outra só reordenava;
   faltava criar relações pai-filho.
 - **Solução**: side-table `hierarchy_parent: BTreeMap<NodeId, NodeId>`.
@@ -684,6 +776,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.7 DnD ignorando cursor X → grandchild acidental
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário queria fazer X virar filho de root Y, mas o
   TAB de indentação ficou tão grande que parecia neto.
 - **Causa**: `find_hierarchy_drop` testava só `cursor_y` vs row rect.
@@ -701,6 +795,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.8 radius_scale finalmente consumido
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: menu de tema oferece Sharp / Default / Round mas a
   escolha não mudava nada visualmente.
 - **Causa**: `WidgetStore::radius_scale` armazenava o valor mas
@@ -714,6 +810,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.9 Cmd+C / Cmd+V / Cmd+X clipboard
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Solução**: side-tables `pending_clipboard_copy: Option<String>` e
   `pending_clipboard_paste: Option<NodeId>` no store. Dispatch:
   Cmd+C extrai a seleção do focused text widget e empurra; Cmd+X
@@ -729,6 +827,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.10 Note painters não alinhavam com o contrato do dispatch
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: drag-to-select em notas selecionava bytes errados;
   duplo-clique em multi-line não pintava seleção alguma.
 - **Causa**: `paint_note_editable_line` / `_multiline` desenhavam
@@ -748,6 +848,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.11 Duplo-clique "select all" encolhe na soltura
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: DC seleciona tudo, depois deseleciona a parte à direita
   do cursor.
 - **Causa**: depois de `select_all_in_text_widget` (anchor=0,
@@ -762,6 +864,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.12 Scroll bloqueando drag handle
 
+
+**Gate:** crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs (heuristic match — refine if wrong)
 - **Sintoma**: depois de rolar o Inspector, a pílula de drag no topo
   não responde mais; só de voltar o scroll ao começo o drag volta.
 - **Causa**: `HitIndex::hit()` faz reverse-walk (last-registered
@@ -777,6 +881,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.13 Dot do canto coberto por widget do body
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: o accent dot no canto inferior-direito aparece em
   Hierarchy (sem widget no canto) mas some em Inspector (ListItem /
   TreeView na última posição).
@@ -792,6 +898,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.14 Centralização de chrome de painel
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Solução**: helpers canônicos em `screens/hero/style.rs`:
   - `paint_panel_surface(rect, scene, theme)` — base chrome
   - `paint_panel_corner_dot(rect, scene, theme)` — corner dot
@@ -805,6 +913,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.15 Workaround: drift de bindgen no Windows CI (CRLF/LF)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: `ph2d-bindgen --check` falhou só no Windows CI; os
   outros runners aprovavam. `committed != generated` em
   `runtime/luau/ph2d.d.luau` e `runtime/mcp/schema.json`.
@@ -819,6 +929,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.16 Workaround: comentários PT-BR em .rs flagrados pelo typos
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: CI typos detectou `componente`, `classe`, `limite` em
   .rs files como typos en-US (`componente` → `components` etc.).
 - **Causa**: SKILL §10.1 manda comentários em inglês; `.typos.toml`
@@ -830,6 +942,8 @@ mesmo formato (sintoma / causa / fix / código).
 
 ### 10.17 Widget Gallery embutida (substitui o snapshot aposentado em 2026-05-14)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Histórico**: até 2026-05-13 existia um snapshot `screens/hero_ref/`
   (cópia verbatim de `screens/hero/`) acessível via
   `reference.command` + feature `reference-snapshot`. O snapshot
@@ -863,6 +977,8 @@ dispatch/painter. Lição estrutural codificada em
 
 ### 11.1 Preview ausente no canvas — slider muda valor, canvas não atualiza
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário arrasta os sliders Brightness / Contrast /
   Saturation no painel CEQ, valores numéricos mudam, mas a sprite no
   canvas fica congelada. Só ao clicar Apply o efeito aparece — UX
@@ -885,6 +1001,8 @@ dispatch/painter. Lição estrutural codificada em
 
 ### 11.2 Chip drag absoluto-de-Down — clamp prega o valor no extremo
 
+
+**Gate:** crates/ph2d-editor-core/tests/arch_no_absolute_drag_pattern.rs (heuristic match — refine if wrong)
 - **Sintoma**: drag horizontal no chip funciona até bater na borda
   do range, mas reverter o cursor não move o valor de volta. Usuário
   arrasta de volta 50 px e "nada acontece" — o chip continua pregado
@@ -909,6 +1027,8 @@ dispatch/painter. Lição estrutural codificada em
 
 ### 11.3 Phantom stepper — valor sobe sozinho com mouse parado
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário clica no chip CEQ, segura o botão sem mover o
   mouse, e o valor numérico sobe a cada 30 ms. Reportado como "os
   valores continuam subindo mesmo se mouse parado!".
@@ -943,6 +1063,8 @@ dispatch/painter. Lição estrutural codificada em
 
 ### 11.4 Painel divergiu do Widget Gallery (causa raiz das três acima)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: 11.1, 11.2 e 11.3 são manifestações distintas do
   mesmo erro arquitetural — o painel CEQ foi populado a partir do
   zero em vez de copiar o setup canônico `INSP_SAMPLE_SLIDER` +
@@ -973,6 +1095,8 @@ dispatch/painter. Lição estrutural codificada em
 
 ### 11.5 `apply_number_stepper_if_hit` assume painter (gap arquitetural latente)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Diagnóstico residual**: o dispatch tem várias suposições
   silenciosas sobre o painter que NÃO são gateadas. A
   "todo NumberInput tem stepper arrows" foi a que mordeu em §11.3;
@@ -1005,6 +1129,8 @@ EqualizeSizes).
 
 ### 12.1 Event-router incompleto — controles novos silenciosamente mortos
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário arrasta sliders de Exposure / Vibrance /
   Saturation / Sharpen / Denoise / LUT no painel CEQ — knob mexe, mas
   o pipeline não roda. Mesma coisa pros 47 options dos dropdowns LUT/
@@ -1032,6 +1158,8 @@ EqualizeSizes).
 
 ### 12.2 Dropdown option NodeIds DEVEM ser registrados como Button
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: dropdowns abrem (chip click toggla `open`), popover
   pinta opções, usuário clica numa opção — NADA acontece. Sem evento.
 - **Causa**: `dispatch::pointer::Down` só seta `active`/`active_rect`
@@ -1058,6 +1186,8 @@ EqualizeSizes).
 
 ### 12.3 `on_activate` direto-em-params bypassa pending_panel_reset
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: usuário mexe sliders, fecha o painel (Cancel/Apply),
   reabre — sliders ficam visualmente PRESOS na posição anterior, mas
   o pipeline roda contra defaults (chips mostram defaults). Desync
@@ -1083,6 +1213,8 @@ EqualizeSizes).
 
 ### 12.4 Reset sem repopulate desincroniza slider visual ⟷ params
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clicar "Reset to Defaults" zera os params (vê pela
   ausência de efeito no canvas) mas os sliders ficam nas posições do
   último drag.
@@ -1108,6 +1240,8 @@ EqualizeSizes).
 
 ### 12.5 Renderer sort por texture_id puro → Individual sprites pulam pra frente
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: aplicar CEQ / BgRemoval / Padding / Trim / MakeSquare
   em uma sprite que estava ATRÁS de outras → ela visualmente "salta"
   pra frente, sem que a Hierarchy panel mude a ordem.
@@ -1137,6 +1271,8 @@ EqualizeSizes).
 
 ### 12.6 Live preview mono-sprite em multi-seleção
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: multi-select 2-3 sprites com CEQ ativo, ajusta sliders
   — só a PRIMARY mostra o efeito ao vivo. Apply baka em todas mas o
   usuário não consegue prever o look antes do bake.
@@ -1156,6 +1292,8 @@ EqualizeSizes).
 
 ### 12.7 Preview heavy precisa de debounce-on-release, não per-frame
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: arrastar slider de CEQ é LENTO — frame rate cai a
   ~5-10 fps em sprites grandes ou com Quantize ativo.
 - **Causa**: bridge fazia `take_params_dirty()` a cada frame; tool
@@ -1182,6 +1320,8 @@ EqualizeSizes).
 
 ### 12.8 Image-tool ativo deve esconder Inspector
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: abre CEQ/BgRemoval/Padding/Upscale/EqualizeSizes —
   Inspector continua visível por baixo, ambos tentam pintar no slot
   da direita, z-order resolve aleatório.
@@ -1202,6 +1342,8 @@ EqualizeSizes).
 
 ### 12.9 Bridge monosprite → multi-sprite via `iter_selected()`
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: Padding e BgRemoval só editam a primary sprite mesmo
   com 2+ selecionadas via Shift-click.
 - **Causa**: bridges capturavam `hero.gizmo.selection` (singular
@@ -1219,6 +1361,8 @@ EqualizeSizes).
 
 ### 12.10 Dropdown popover overflow → flip ABOVE quando não cabe
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: clicar Posterize / Quantize / LUT dropdowns perto do
   rodapé do painel CEQ → popover extende abaixo do viewport, opções
   do fim ficam cortadas off-screen.
@@ -1238,6 +1382,8 @@ EqualizeSizes).
 
 ### 12.11 GPU pipeline cache via OnceLock — 1× compile, N× dispatch
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: preview GPU teoricamente é ~5-10× mais rápido que CPU,
   mas se cada rebuild instanciar `ChainedPipelineCache::new(&gpu)`
   paga 10-20ms de pipeline compile a cada slider release.
@@ -1254,6 +1400,8 @@ EqualizeSizes).
 
 ### 12.12 Luminância em sRGB: BT.709 em LINEAR + re-encode pra perceptual
 
+
+**Gate:** crates/ph2d-editor-core/tests/arch_color_space_typed.rs (heuristic match — refine if wrong)
 - **Sintoma**: 3 LUT presets (Film Noir, Sepia, Bleach Bypass) ficavam
   "menos bons que a engine de referência". A diferença era sutil — red
   ~40% mais escuro que esperado nas highlights.
@@ -1281,6 +1429,8 @@ EqualizeSizes).
 
 ### 12.13 CEQ panel sem scroll quando conteúdo overflowing
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: CEQ panel (~810px após Phase 2/3 adicionou histogram +
   14 sliders + LUT dropdowns + Posterize + Quantize + 4 auto buttons
   + CTA) não cabia no dock (~600px). Controles do rodapé invisíveis,
@@ -1308,6 +1458,8 @@ EqualizeSizes).
 
 ### 12.14 Dropdown labels longos truncam em chips estreitos
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: LUT preset options pintavam "Cinematic › Blockbuster",
   "Atmosphere › Golden Hour" — labels com prefix de grupo. No popover
   com chip width ~135px, texto wrappava em 2 linhas e era cortado
@@ -1325,6 +1477,8 @@ EqualizeSizes).
 
 ### 12.15 Multi-sprite undo restaurava só a última sprite (CRITICAL data-loss)
 
+
+**Gate:** gate-deferred: documented incident; no class-level gate identified yet
 - **Sintoma**: Apply de qualquer image-tool sobre N>1 sprites
   selecionadas + Cmd+Z restaurava APENAS a última. As N-1 anteriores
   ficavam com pixels baked permanentemente. Bug latente em todos os

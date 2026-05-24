@@ -8,7 +8,16 @@
 use crate::LinearRgba;
 
 /// sRGB-encoded RGBA, 8-bit per channel.
+///
+/// `#[repr(transparent)]` over `[u8; 4]` so the layout is bit-exact
+/// with a packed `[r, g, b, a]` quad — this is the boundary contract
+/// every PH2D image tool will adopt during the Wave 11 color-space
+/// migration. External IO speaks `&[u8]`; internal pipelines speak
+/// `&[SrgbRgba]`. Zero-copy reinterpretation between the two forms is
+/// possible via the `bytemuck` crate (added when a Wave 11 caller
+/// needs it — the ph2d-color crate stays dep-free until then).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[repr(transparent)]
 pub struct SrgbRgba(pub [u8; 4]);
 
 impl SrgbRgba {
@@ -38,6 +47,29 @@ impl SrgbRgba {
     /// Underlying byte slice.
     pub const fn as_bytes(&self) -> &[u8; 4] {
         &self.0
+    }
+
+    /// Iterate a packed-RGBA byte slice as a sequence of typed
+    /// `SrgbRgba` values. Each chunk-of-4 in `bytes` yields one pixel.
+    ///
+    /// Use this at the IO boundary where the buffer arrives as
+    /// `&[u8]` and the algorithm wants `SrgbRgba`. The iterator is
+    /// zero-copy by virtue of `chunks_exact(4)` — no allocation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `bytes.len() % 4 != 0`. The caller's invariant is
+    /// "this is RGBA8 image data" — a non-multiple-of-4 length is a
+    /// programmer error worth catching loudly.
+    pub fn iter_byte_slice(bytes: &[u8]) -> impl Iterator<Item = Self> + '_ {
+        assert!(
+            bytes.len().is_multiple_of(4),
+            "SrgbRgba::iter_byte_slice: length {} is not a multiple of 4",
+            bytes.len()
+        );
+        bytes
+            .chunks_exact(4)
+            .map(|c| Self::new(c[0], c[1], c[2], c[3]))
     }
 
     /// Explicit conversion to linear-light RGBA. The sRGB transfer

@@ -4514,7 +4514,6 @@ dependencies = [
 name = "ph2d-tool-upscale"
 version = "0.0.0"
 dependencies = [
- "image",
  "ph2d-a11y",
  "ph2d-core",
  "ph2d-editor-core",

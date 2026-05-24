@@ -20,10 +20,8 @@
 //!   A full Hyllian xBR is tracked as a fan-out follow-up vertical.
 //!
 //! All three operate on straight-alpha RGBA8 (`length = w * h * 4`)
-//! and return `(Vec<u8>, dst_w, dst_h)`. No external image deps:
-//! `image::imageops::resize` is used ONLY in the tool's preview
-//! thumbnail builder (cheap box-quality), never in these production
-//! kernels.
+//! and return `(Vec<u8>, dst_w, dst_h)`. No external image deps —
+//! the kernels are pure Rust on raw byte slices.
 //!
 //! HR-5 (determinism): kernels are pure (input → output is a function),
 //! no global state, no `mul_add`, no allocation beyond the output and

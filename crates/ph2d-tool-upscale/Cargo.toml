@@ -31,7 +31,8 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # MemoryBudget type for the manifest budget declaration (HR-13).
 ph2d-core = { path = "../ph2d-core" }
-# imageops::resize (Triangle) for the panel preview thumbnail downscale,
-# mirroring ph2d-tool-bgremoval. Decoders stripped — operates on
-# already-decoded RGBA (ph2d-asset is the decode boundary).
-image = { version = "0.25", default-features = false }
+# `image` dep removed Etapa 2 follow-up — Apply-only model dropped all
+# preview-thumbnail / canvas-preview infrastructure that used
+# `imageops::resize`. The 3 production kernels (Lanczos3 / Nearest /
+# xBR) live in `algorithm.rs` and operate on raw `&[u8]` slices, no
+# external image deps.

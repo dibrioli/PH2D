@@ -21,6 +21,7 @@ mod event;
 pub mod ids;
 mod layout;
 mod paint;
+mod paint_body_sections;
 mod paint_helpers;
 mod paint_kinds;
 mod paint_rows;

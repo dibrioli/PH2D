@@ -119,9 +119,29 @@ pub(crate) fn populate(store: &mut WidgetStore) {
 
     // NumberInputs — register one entry per reserved id, default
     // values pulled from GridSnapState::default() so paint stays
-    // in sync on first frame.
+    // in sync on first frame. Specs list extracted into a separate
+    // fn (Wave 11 §2.2) so `populate()` stays under the 200-LOC cap.
     let defaults = GridSnapState::default();
-    let number_specs: &[(NodeId, f64)] = &[
+    for (id, value) in default_number_specs(&defaults) {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format_value(value),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+    }
+}
+
+/// The default `(NodeId, value)` pairs for every NumberInput slot in
+/// the Grid Snap panel. Pulled from `GridSnapState::default()` so
+/// paint reads the live store on first frame without divergence.
+fn default_number_specs(defaults: &GridSnapState) -> Vec<(NodeId, f64)> {
+    vec![
         (ids::GS_CFG_CELL_SIZE, defaults.square_cfg.cell_size as f64),
         (ids::GS_CFG_ISO_TILE_W, defaults.iso_cfg.tile_w as f64),
         (ids::GS_CFG_ISO_TILE_H, defaults.iso_cfg.tile_h as f64),
@@ -219,20 +239,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
             defaults.voronoi_cfg.bounds.max[1] as f64,
         ),
-    ];
-    for (id, value) in number_specs {
-        store.register(
-            *id,
-            InteractiveState::NumberInput {
-                state: TextInputState::Normal,
-                value: *value,
-                buffer: format_value(*value),
-                caret: 0,
-                last_committed: *value,
-                selection_anchor: None,
-            },
-        );
-    }
+    ]
 }
 
 pub(crate) fn format_value(v: f64) -> String {

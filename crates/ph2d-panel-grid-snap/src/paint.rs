@@ -17,18 +17,11 @@
 
 use crate::GridSnapPanel;
 use crate::ids;
-use crate::layout::{PAD, ROW_GAP, ROW_H};
-use crate::paint_helpers::{
-    paint_color_swatch_row, paint_kind_button_grid, paint_labeled_segmented_row,
-    paint_section_label, paint_snap_top_toggle, paint_target_button_stack,
-};
-use crate::paint_kinds::paint_kind_config;
-use crate::paint_rows::{
-    paint_number_row_from_state, paint_opacity_slider_row, paint_show_overlay_row,
-};
+use crate::layout::{PAD, ROW_GAP};
+use crate::paint_helpers::paint_snap_top_toggle;
 use crate::state::{
     GridSnapPanelState, meters_to_display, set_current_display_unit, set_last_content_h,
-    set_last_visible_h, unit_suffix_paren,
+    set_last_visible_h,
 };
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -188,194 +181,19 @@ fn paint_body(
     }
     y += ROW_GAP * 2.0;
 
-    // ─── Grid Kind section ──────────────────────────────────────
-    y = paint_section_label(
-        "Grid Kind",
+    // Wave 11 §2.2: 4 section helpers in `paint_body_sections.rs`.
+    y = crate::paint_body_sections::paint_grid_kind_section(ctx, state, inner_x, inner_w, y);
+    y = crate::paint_body_sections::paint_target_section(ctx, state, inner_x, inner_w, y);
+    y = crate::paint_body_sections::paint_display_section(ctx, state, inner_x, inner_w, y);
+    y = crate::paint_body_sections::paint_inspect_section(
+        ctx,
+        state,
+        display_unit,
+        ppm,
         inner_x,
         inner_w,
         y,
-        ctx.scene,
-        ctx.text_system,
-        theme,
     );
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        y = paint_kind_button_grid(
-            inner_x,
-            inner_w,
-            y,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-    }
-    y += ROW_GAP;
-
-    // Per-kind config rows.
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        y = paint_kind_config(
-            inner_x,
-            inner_w,
-            y,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-    }
-    y += ROW_GAP * 2.0;
-
-    // ─── Target section ─────────────────────────────────────────
-    y = paint_section_label(
-        "Target",
-        inner_x,
-        inner_w,
-        y,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        y = paint_target_button_stack(
-            inner_x,
-            inner_w,
-            y,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-        y = paint_number_row_from_state(
-            "Subdivisions",
-            ids::GS_CFG_SNAP_SUBDIVISIONS,
-            state.snap_subdivisions as f64,
-            inner_x,
-            inner_w,
-            y,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-        );
-        let mag_label = format!("Magnetism radius{}", unit_suffix_paren());
-        y = paint_number_row_from_state(
-            &mag_label,
-            ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
-            meters_to_display(state.snap_magnetism_radius),
-            inner_x,
-            inner_w,
-            y,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-        );
-    }
-    y += ROW_GAP * 2.0;
-
-    // ─── Display section ────────────────────────────────────────
-    y = paint_section_label(
-        "Display",
-        inner_x,
-        inner_w,
-        y,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    let overlay_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        paint_show_overlay_row(
-            overlay_row,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-    }
-    y += ROW_H + ROW_GAP;
-    let opacity_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        paint_opacity_slider_row(
-            opacity_row,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-    }
-    y += ROW_H + ROW_GAP;
-    let color_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        paint_color_swatch_row(
-            color_row,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-    }
-    y += ROW_H + ROW_GAP;
-    // Layer-order segmented row (In front / Behind).
-    let layer_idx = if state.grid_in_front { 0 } else { 1 };
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        y = paint_labeled_segmented_row(
-            "Layer",
-            &[
-                ("In front", ids::GS_LAYER_IN_FRONT),
-                ("Behind", ids::GS_LAYER_BEHIND),
-            ],
-            layer_idx,
-            inner_x,
-            inner_w,
-            y,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-        );
-    }
-    y += ROW_GAP;
-
-    // ─── Inspect section ────────────────────────────────────────
-    let inspect_h = ph2d_editor_core::grid_snap::inspect::height();
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        ph2d_editor_core::grid_snap::inspect::paint(
-            Rect::new(inner_x, y, inner_w, inspect_h),
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-            display_unit,
-            ppm,
-        );
-    }
-    y += inspect_h;
 
     ctx.scene.pop_layer();
 

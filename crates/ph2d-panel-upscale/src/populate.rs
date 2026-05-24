@@ -61,6 +61,23 @@ pub fn populate(store: &mut WidgetStore) {
     // its doc) so the dispatch's default stepper carve on the chip's
     // right edge doesn't arm a phantom continuous-hold.
     store.link_slider_number(ids::UPS_SCALE, ids::UPS_SCALE_NUM);
+
+    // Hover tooltips for the 3 algorithm chips so the user knows which
+    // algorithm suits which image kind. Each text fits in a single line
+    // at the canonical tooltip width; no out-of-font glyphs (use ASCII
+    // and `\u{00b7}` middot only — see no_tofu_glyphs gate).
+    store.set_tooltip(
+        ids::UPS_ALGO_LANCZOS3,
+        "Lanczos3 \u{00b7} smooth gradients \u{00b7} photos / illustrations \u{00b7} default",
+    );
+    store.set_tooltip(
+        ids::UPS_ALGO_NEAREST,
+        "Nearest \u{00b7} keeps hard pixel edges \u{00b7} pixel art / tile sprites",
+    );
+    store.set_tooltip(
+        ids::UPS_ALGO_XBR,
+        "xBR \u{00b7} edge-aware pixel-art upscale \u{00b7} 2x / 3x / 4x only",
+    );
 }
 
 #[cfg(test)]

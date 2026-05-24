@@ -4,8 +4,10 @@
 //! Stateful tool, active in the TopBar `image_tools` cluster. Opens a
 //! docked panel (`ph2d-panel-upscale`) with a 3-way algorithm selector
 //! (Lanczos3 / Nearest / xBR), a scale slider (1×–16×), and Apply /
-//! Cancel. Pixel work runs at full resolution on commit; the panel's
-//! live preview uses a downscaled thumbnail (cap [`tool::PREVIEW_MAX_DIM`]).
+//! Cancel. **Apply-only** — there is NO live preview overlay and NO
+//! realtime feedback during slider drag (Wave 10 Etapa 2 follow-up).
+//! Pixel work runs at full resolution only when the Apply button is
+//! pressed; until then the canvas shows the original sprite untouched.
 //!
 //! ADR-0040 — this crate owns the whole feature: the [`MANIFEST`]
 //! (data), [`UpscaleTool`] (behavior, `impl ph2d_editor_core::tool::Tool`),
@@ -48,10 +50,10 @@ pub const MANIFEST: ToolManifest = ToolManifest {
         on_deactivate: shadow_handler as HandlerFn,
         on_panel_event: shadow_handler as HandlerFn,
     },
-    // Preview thumbnail caps at PREVIEW_MAX_DIM (512²) RGBA8 ≈ 1 MB; the
-    // full-res bake stages into the existing texture pool (same as the
-    // other Image Tools), so the leaf manifest declares 0 (host-side
-    // pool is already budgeted).
+    // Apply-only model (Wave 10 Etapa 2 follow-up): no preview buffers
+    // — the full-res bake stages into the existing texture pool (same
+    // as the other Image Tools), so the leaf manifest declares 0
+    // (host-side pool is already budgeted).
     memory_budget: MemoryBudget::new(0, 0, 0),
     touches_sim: false,
     mcp: McpExposure::reserved(),

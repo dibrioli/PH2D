@@ -49,29 +49,21 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     }
 }
 
-/// Paint a rail-style chip with a horizontal sub-label in the
-/// group-backdrop's TOP GUTTER.
+/// Paint a rail-style chip with a horizontal sub-label IMEDIATAMENTE
+/// acima do chip (compact stack, no breathing space above the label —
+/// Enio 2026-05-25: "caiba apenas os botões e as labels praticamente
+/// sem espaços").
 ///
-/// MIRRORS `widget::tool_rail::paint_tool_rail` Icon entry EXACTLY for
-/// the chip itself: same `Radius::Sm`, same BgElev fill, same Border
-/// stroke (1 px Normal, Accent under press), same Text2/Accent icon
-/// foreground modulated by `ButtonState`. The matrix is copied
-/// verbatim — DO NOT diverge.
-///
-/// Layout — horizontal analogue of the rail's vertical layout:
-///   - In the rail, the rotated sub-label hugs the LEFT edge of the
-///     RailBg backdrop (left gutter); chip sits to its right.
-///   - Here, the label hugs the TOP edge of the same RailBg backdrop
-///     (top gutter), anchored at `viewport_y + Xxs` — "quase tocando
-///     no topo" per Enio 2026-05-24.
-///   - Chip is centered vertically in `chip_col` (the topbar row).
+/// Chip itself MIRRORS `widget::tool_rail::paint_tool_rail` Icon
+/// entry EXACTLY: same `Radius::Sm`, BgElev fill, Border stroke
+/// (1 px Normal, Accent under press), Text2/Accent icon foreground
+/// per `ButtonState`. Matrix copied verbatim — DO NOT diverge.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_topbar_rail_chip(
     chip_id: NodeId,
     glyph: IconGlyph<'_>,
     label: &str,
     chip_col: Rect,
-    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -87,10 +79,13 @@ pub(super) fn paint_topbar_rail_chip(
     let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
     // Label band height = rail's `LABEL_VISUAL_EXTENT_PX = 11.0`.
     let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
-    // Chip centered vertically in the topbar row; label rides the
-    // backdrop's top gutter (see label_rect below).
+    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+    // Compact stack (label + gap + chip) centered vertically in the
+    // topbar row — matches the row taken up by `paint_topbar_group_backdrop`.
+    let stack_h = label_band_h + label_to_chip_gap + chip_px;
+    let stack_y = chip_col.y + (chip_col.h - stack_h) * 0.5;
     let chip_x = chip_col.x + (chip_col.w - chip_px) * 0.5;
-    let chip_y = chip_col.y + (chip_col.h - chip_px) * 0.5;
+    let chip_y = stack_y + label_band_h + label_to_chip_gap;
     let chip_rect = Rect::new(chip_x, chip_y, chip_px, chip_px);
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
@@ -137,11 +132,9 @@ pub(super) fn paint_topbar_rail_chip(
             StrokeToken::Default.px(),
         ),
     }
-    // --- Label band: rides the backdrop's TOP GUTTER (the backdrop
-    // extends up to viewport_y; anchoring the label at viewport_y + Xxs
-    // puts it "quase tocando no topo" — Enio 2026-05-24).
-    let label_y = viewport_y + Spacing::Xxs.px();
-    let label_rect = Rect::new(chip_col.x, label_y, chip_col.w, label_band_h);
+    // --- Label band: sits directly above the chip (gap mirrors the
+    // rail's `LABEL_TO_CHIP_GAP_PX`).
+    let label_rect = Rect::new(chip_col.x, stack_y, chip_col.w, label_band_h);
     let label_clip = ph2d_vector::Rect::new(
         label_rect.x as f64,
         label_rect.y as f64,
@@ -171,7 +164,6 @@ pub(super) fn paint_top_bar_cluster(
     id: NodeId,
     cluster: &fixture::TopBarCluster,
     rect: Rect,
-    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -245,7 +237,6 @@ pub(super) fn paint_top_bar_cluster(
                 IconGlyph::Builtin(*icon),
                 label,
                 rect,
-                viewport_y,
                 scene,
                 text_system,
                 theme,
@@ -325,7 +316,6 @@ pub(super) fn paint_top_bar_cluster(
                     IconGlyph::Builtin(*icon),
                     label,
                     col,
-                    viewport_y,
                     scene,
                     text_system,
                     theme,
@@ -350,7 +340,6 @@ pub(super) fn paint_top_bar_cluster(
                     IconGlyph::Builtin(*icon),
                     label,
                     col,
-                    viewport_y,
                     scene,
                     text_system,
                     theme,

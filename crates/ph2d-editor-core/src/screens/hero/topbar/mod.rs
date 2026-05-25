@@ -388,18 +388,9 @@ fn paint_image_action_row(
             PillIcon::FromManifest(path) => IconGlyph::Path(path),
             PillIcon::Legacy(icon) => IconGlyph::Builtin(*icon),
         };
-        // `IconButtonStyle::Chip` always pints fill BgElev + Border on
-        // the rect, which on top of the group backdrop reads as the
-        // "moldura intermediária" Enio rejected. Switch to `Plain` in
-        // Normal so the icon sits directly on the backdrop; `Chip` only
-        // when there's actual interaction state to surface.
-        let pill_style = match state {
-            ButtonState::Normal | ButtonState::Loading | ButtonState::Disabled => {
-                IconButtonStyle::Plain
-            }
-            _ => IconButtonStyle::Chip,
-        };
-        paint_icon_button(rect, glyph, pill_style, state, scene, theme);
+        // Plain in every state — only the icon sits on the backdrop
+        // (Enio 2026-05-25: "retire tudo mais").
+        paint_icon_button(rect, glyph, IconButtonStyle::Plain, state, scene, theme);
         rx = rect.x + rect.w + gap;
     }
 }

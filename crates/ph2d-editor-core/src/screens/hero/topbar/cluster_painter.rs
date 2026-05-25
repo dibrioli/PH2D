@@ -91,42 +91,11 @@ fn paint_topbar_rail_chip(
     let chip_rect = Rect::new(chip_x, chip_y, chip_px, chip_px);
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
-    // --- Mirror of paint_tool_rail Icon entry (tool_rail.rs:248-280) ---
-    //
-    // In Normal, suppress fill + border so the chip is just the icon
-    // glyph painted directly on the group backdrop. The rail paints
-    // Border 1 px in Normal too (tool_rail.rs:265) but the chip fills
-    // its narrow column there, so the border visually merges with the
-    // backdrop edge and reads as frameless. The topbar's backdrop is
-    // wide; the same border becomes a hard moldura BETWEEN the
-    // backdrop and the icon — Enio 2026-05-24 ("backdrops indesejados
-    // entre o fundo e os botões"). Hovered/Pressed/Active still pull
-    // fill + border so click affordance is preserved with the exact
-    // same tokens as the rail.
-    let radius = Radius::Sm.px();
-    let is_active = state == ButtonState::Pressed;
-    let bg = match state {
-        ButtonState::Hovered | ButtonState::Focused => Some(ColorToken::BgElev),
-        ButtonState::Pressed => Some(ColorToken::AccentSoft),
-        _ if is_active => Some(ColorToken::AccentSoft),
-        _ => None,
-    };
-    if let Some(bg) = bg {
-        fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
-    }
-    let border = match state {
-        ButtonState::Hovered | ButtonState::Focused => Some((ColorToken::BorderEmph, 1.0)),
-        ButtonState::Pressed => Some((ColorToken::Accent, StrokeToken::Default.px())),
-        _ if is_active => Some((ColorToken::Accent, StrokeToken::Default.px())),
-        _ => None,
-    };
-    if let Some((border, border_w)) = border {
-        stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
-    }
+    // No fill, no border — Enio 2026-05-25: "Deixe só os ícones como
+    // botões e o fundo onde estão as labels. retire tudo mais."
     let fg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
         ButtonState::Pressed => ColorToken::Accent,
-        _ if is_active => ColorToken::Accent,
         _ => ColorToken::Text2,
     };
     paint_icon(scene, icon, chip_rect, resolve(fg, theme), StrokeToken::Default.px());

@@ -26,15 +26,17 @@
 /// (atlas + individual sprite textures) and the Vello image preview.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub enum ImageFilterMode {
-    /// Nearest-neighbor sampling — crisp, blocky pixels. The default:
-    /// PH2D is a sprite/pixel-art editor, and integer-scaled pixel art
-    /// is the expected look out of the box. Maps to
+    /// Nearest-neighbor sampling — crisp, blocky pixels. Maps to
     /// `wgpu::FilterMode::Nearest` and `peniko::ImageQuality::Low`.
-    #[default]
     PixelArt,
-    /// Bilinear sampling — smooth, anti-aliased edges. Better for
-    /// HD-2D / hand-drawn sprites resampled at non-integer scale. Maps
-    /// to `wgpu::FilterMode::Linear` and `peniko::ImageQuality::High`.
+    /// Bilinear sampling — smooth, anti-aliased edges. The default,
+    /// matching `ProjectSettings::default().image_filter`. Maps to
+    /// `wgpu::FilterMode::Linear` and `peniko::ImageQuality::High`.
+    /// Enio 2026-05-25: "Smooth deve ser o padrão" — antes o
+    /// renderer abria em PixelArt enquanto o Settings marcava Smooth,
+    /// divergência que aparecia no canvas com sampling Nearest na
+    /// primeira frame.
+    #[default]
     Smooth,
 }
 
@@ -53,10 +55,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_is_pixel_art() {
-        // PH2D is a pixel-art-first editor; the out-of-the-box look
-        // must be crisp Nearest sampling.
-        assert_eq!(ImageFilterMode::default(), ImageFilterMode::PixelArt);
+    fn default_is_smooth() {
+        // Matches `ProjectSettings::default().image_filter` so the
+        // canvas sampler and the Settings menu checkmark agree on
+        // first paint (Enio 2026-05-25 fix).
+        assert_eq!(ImageFilterMode::default(), ImageFilterMode::Smooth);
     }
 
     #[test]

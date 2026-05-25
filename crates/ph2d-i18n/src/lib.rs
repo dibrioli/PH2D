@@ -20,7 +20,10 @@
 //!
 //! ```
 //! use ph2d_i18n::tr;
-//! assert_eq!(tr("tool.trim_transparency.label"), "Trim Transparency");
+//! // Image-tool labels are abreviados (cap 5 chars) pra caber no chip;
+//! // o tooltip mantém o nome legível por extenso.
+//! assert_eq!(tr("tool.trim_transparency.label"), "TRIM");
+//! assert_eq!(tr("tool.trim_transparency.tooltip"), "Trim Transparency");
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 
@@ -33,30 +36,32 @@
 /// with arguments) at that point.
 pub fn tr(key: &str) -> &'static str {
     match key {
-        // Image Tools — action row pills.
-        "tool.trim_transparency.label" => "Trim Transparency",
+        // Image Tools — action row pills. Labels abreviados (Enio
+        // 2026-05-25): cabem na coluna do chip (44 px) sem clip; o
+        // tooltip mantém o nome completo + descrição.
+        "tool.trim_transparency.label" => "TRIM",
         "tool.trim_transparency.tooltip" => "Trim Transparency",
-        "tool.make_square.label" => "Make Square",
+        "tool.make_square.label" => "SQUAR",
         "tool.make_square.tooltip" => "Make Square",
-        "tool.bgremoval.label" => "Bg Removal",
+        "tool.bgremoval.label" => "BGRMV",
         "tool.bgremoval.tooltip" => "Background Removal · 3",
-        "tool.real_size.label" => "Real Size",
+        "tool.real_size.label" => "SIZE",
         "tool.real_size.tooltip" => "Real Size · reset scale to 1:1",
-        "tool.padding.label" => "Padding",
+        "tool.padding.label" => "PAD",
         "tool.padding.tooltip" => "Padding · expand or crop canvas edges",
-        "tool.color_equalization.label" => "Color EQ",
+        "tool.color_equalization.label" => "CEQ",
         "tool.color_equalization.tooltip" => {
             "Color Equalization · CLAHE + brightness/contrast/saturation + auto-WB"
         }
-        "tool.equalize_sizes.label" => "Equalize Sizes",
+        "tool.equalize_sizes.label" => "EQSZ",
         "tool.equalize_sizes.tooltip" => {
             "Equalize Sizes · normalize selection to Max / Fixed / Grid target"
         }
-        "tool.rasterize.label" => "Rasterize",
+        "tool.rasterize.label" => "RASTR",
         "tool.rasterize.tooltip" => {
             "Rasterize · bake scale + rotation into pixels (reset Transform)"
         }
-        "tool.upscale.label" => "Upscale",
+        "tool.upscale.label" => "UPSC",
         "tool.upscale.tooltip" => "Upscale · resize image up 1x..16x (Lanczos3 / Nearest / xBR)",
         // Image-edit undo affordance.
         "edit.undo.label" => "Undo",
@@ -92,8 +97,11 @@ mod tests {
 
     #[test]
     fn known_keys_round_trip_to_english() {
-        assert_eq!(tr("tool.trim_transparency.label"), "Trim Transparency");
-        assert_eq!(tr("tool.make_square.label"), "Make Square");
+        // Image-tool labels were abreviated 2026-05-25 to fit the
+        // 44-px chip column; tooltips keep the long English form.
+        assert_eq!(tr("tool.trim_transparency.label"), "TRIM");
+        assert_eq!(tr("tool.trim_transparency.tooltip"), "Trim Transparency");
+        assert_eq!(tr("tool.make_square.label"), "SQUAR");
         assert_eq!(tr("edit.undo.label"), "Undo");
     }
 

@@ -83,6 +83,11 @@ pub struct HeroSelection {
 pub struct HeroScreen {
     pub id: NodeId,
     pub theme: Theme,
+    /// Text rendering strategy — orthogonal to `theme`. `Default`
+    /// preserva o visual histórico; `Crisp` aplica snap-X + boost
+    /// de FontWeight por faixa de tamanho. Persistência: runtime-only
+    /// (não save). Toggle via `Settings ▸ Text rendering ▸ ...`.
+    pub text_rendering: ph2d_tokens::TextRendering,
     pub selection: Option<HeroSelection>,
     /// Per-widget interactive state (hover/press/focus). Pre-populated
     /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
@@ -354,6 +359,7 @@ impl HeroScreen {
         Self {
             id,
             theme: Theme::Forge,
+            text_rendering: ph2d_tokens::TextRendering::Default,
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),
@@ -605,6 +611,9 @@ pub fn paint_hero_screen(
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.
     crate::paint::set_radius_scale(hero.store.radius_scale());
+    // Same pattern for the text-rendering strategy — read by
+    // `paint_text*` via the `paint::text_rendering()` thread-local.
+    crate::paint::set_text_rendering(hero.text_rendering);
     // Stash the viewport so chrome event handlers in `chrome/` can
     // make smart layout decisions (cascade submenu side-flip etc.).
     hero.last_viewport = viewport;
@@ -839,6 +848,18 @@ pub fn paint_hero_screen(
     crate::panel::with_registry_opt(|reg| {
         for panel_id in z_order {
             if let Some(idx) = reg.find_by_panel_node_id(panel_id) {
+                // Hit barrier: register the panel rect BEFORE the
+                // widgets inside `panel.paint()` so the gizmo's hit
+                // rects (registered earlier this frame) don't bleed
+                // through the panel surface. `HitIndex::hit()` walks
+                // back-to-front, so internal panel widgets registered
+                // by `paint()` below still outrank this barrier — only
+                // empty panel area falls back to it. Enio 2026-05-25:
+                // "alças do gizmo da sprite podem ser acessadas
+                // através dos painéis. Isso não pode acontecer."
+                if let Some(panel_rect) = hero.store.panel_rect(panel_id) {
+                    hero.hit_index.register(panel_id, panel_rect);
+                }
                 let mut typed_ctx = crate::panel::PaintCtx {
                     host: hero,
                     layout: &layout,

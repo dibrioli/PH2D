@@ -107,8 +107,8 @@ pub use text_area::{
 pub use text_input::{TextInput, TextInputState, paint_text_input, paint_text_input_with_buffer};
 pub use toggle::{Toggle, ToggleState, paint_toggle};
 pub use tool_rail::{
-    COMPOUND_TOTAL_H_PX, DIVIDER_GAP_PX, RailButtonSize, TOOL_CHIP_PX, TOOL_RAIL_WIDTH_PX,
-    ToolRail, ToolRailEntry, paint_tool_rail,
+    CHIP_X_OFFSET_PX, COMPOUND_TOTAL_H_PX, DIVIDER_GAP_PX, RailButtonSize, TOOL_CHIP_PX,
+    TOOL_RAIL_WIDTH_PX, ToolRail, ToolRailEntry, paint_tool_rail,
 };
 pub use tooltip::{Tooltip, paint_tooltip};
 pub use tree_view::{TreeNode, TreeView, paint_tree_view};

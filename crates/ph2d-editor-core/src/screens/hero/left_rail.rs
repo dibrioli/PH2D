@@ -195,33 +195,31 @@ pub fn paint_left_rail(
     );
     paint_tool_rail(&rail, rail_rect, scene, text_system, theme, store);
 
+    // Hit-rects MUST mirror exactly what `paint_tool_rail` paints —
+    // which uses `store.rail_button_size().chip_px()` and the rail's
+    // `CHIP_X_OFFSET_PX`, not the static `TOOL_CHIP_PX` const. Before
+    // 2026-05-25 this loop used the static const, so picking Medium /
+    // Large in the Themes menu painted bigger chips but registered
+    // hits as if they were Small — clicking one chip activated the
+    // wrong one further down (Enio report).
+    let chip_px = store.rail_button_size().chip_px();
     let mut y = rail_rect.y;
     let gap = Spacing::Xs.px();
-    let chip_x = rail_rect.x + (rail_rect.w - crate::widget::TOOL_CHIP_PX) * 0.5;
+    let chip_x = rail_rect.x + crate::widget::CHIP_X_OFFSET_PX;
     for (i, entry) in rail.entries.iter().enumerate() {
         if i > 0 {
             y += gap;
         }
         match entry {
             ToolRailEntry::Icon { id, .. } => {
-                let chip = Rect::new(
-                    chip_x,
-                    y,
-                    crate::widget::TOOL_CHIP_PX,
-                    crate::widget::TOOL_CHIP_PX,
-                );
+                let chip = Rect::new(chip_x, y, chip_px, chip_px);
                 hit_index.register(*id, chip);
-                y += crate::widget::TOOL_CHIP_PX;
+                y += chip_px;
             }
             ToolRailEntry::Compound { id, .. } => {
-                let chip = Rect::new(
-                    chip_x,
-                    y,
-                    crate::widget::TOOL_CHIP_PX,
-                    crate::widget::TOOL_CHIP_PX,
-                );
+                let chip = Rect::new(chip_x, y, chip_px, chip_px);
                 hit_index.register(*id, chip);
-                y += crate::widget::COMPOUND_TOTAL_H_PX;
+                y += chip_px;
             }
             ToolRailEntry::Divider => {
                 y += crate::widget::DIVIDER_GAP_PX * 2.0 + 1.0;

@@ -47,11 +47,35 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
-/// Apply a [`WidgetEvent`] against LeftRail widgets. Returns true
-/// iff the event was consumed. Stub for now — switching the active
-/// transform tool is a follow-up PR.
-pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+/// Apply a [`WidgetEvent`] against LeftRail widgets. Returns false
+/// so other dispatch handlers (rail_tools, rail_panels, …) still
+/// react; this only side-effect-prints the clicked chip's name
+/// (Enio 2026-05-25: "cada um dos componentes deve ao click
+/// imprimir seu nome no console").
+pub fn apply_event(_store: &mut WidgetStore, event: WidgetEvent) -> bool {
+    if let WidgetEvent::Click(id) = event
+        && let Some(name) = left_rail_chip_name(id)
+    {
+        println!("[rail] click: {name}");
+    }
     false
+}
+
+fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
+    Some(match id {
+        x if x == ids::RAIL_SHOW_INSPECTOR => "Show Inspector",
+        x if x == ids::RAIL_SHOW_HIERARCHY => "Show Hierarchy",
+        x if x == ids::TOOL_TRANSLATE => "Translate",
+        x if x == ids::TOOL_ROTATE => "Rotate",
+        x if x == ids::TOOL_SCALE => "Scale",
+        x if x == ids::TOOL_PIVOT => "Pivot",
+        x if x == ids::TOOL_SPACE => "Coordinate Space",
+        x if x == ids::TOOL_PROJECTION => "Projection",
+        x if x == ids::TOOL_HOME => "Frame View",
+        x if x == ids::TOOL_UNDO => "Undo",
+        x if x == ids::TOOL_REDO => "Redo",
+        _ => return None,
+    })
 }
 
 pub fn paint_left_rail(

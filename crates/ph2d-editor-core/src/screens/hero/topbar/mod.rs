@@ -140,12 +140,48 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
-/// Apply a [`WidgetEvent`] against TopBar widgets. Returns true iff
-/// the event was consumed. Stub for now — TopBar buttons currently
-/// only carry hover/press visual feedback; project-level reactions
-/// (Save flush, Play start, etc.) land in follow-up PRs.
-pub fn apply_event(_store: &mut WidgetStore, _event: WidgetEvent) -> bool {
+/// Apply a [`WidgetEvent`] against TopBar widgets. Returns false so
+/// the chrome dispatch chain can still react (Save → menu, Play →
+/// run, etc.); this handler only side-effect-prints the clicked
+/// chip's name to stdout (Enio 2026-05-25: "cada um dos componentes
+/// deve ao click imprimir seu nome no console").
+pub fn apply_event(_store: &mut WidgetStore, event: WidgetEvent) -> bool {
+    if let WidgetEvent::Click(id) = event
+        && let Some(name) = topbar_chip_name(id)
+    {
+        println!("[topbar] click: {name}");
+    }
     false
+}
+
+fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
+    Some(match id {
+        x if x == ids::TOPBAR_THEME => "Theme (PH2D)",
+        x if x == ids::TOPBAR_PROJECT => "Project",
+        x if x == ids::TOPBAR_SAVE => "Save",
+        x if x == ids::TOPBAR_SAVE_AS => "Save As",
+        x if x == ids::TOPBAR_OPEN => "Open",
+        x if x == ids::TOPBAR_IMAGE_TOOLS => "Image Tools",
+        x if x == ids::TOPBAR_PLAY_BUTTON => "Play",
+        x if x == ids::TOPBAR_PAUSE => "Pause",
+        x if x == ids::TOPBAR_RESET => "Reset",
+        x if x == ids::TOPBAR_RIGHT_LAYERS => "Layers",
+        x if x == ids::TOPBAR_RIGHT_ASSETS => "Assets",
+        x if x == ids::TOPBAR_RIGHT_SCRIPT => "Script",
+        x if x == ids::TOPBAR_WIDGET_GALLERY => "Widget Gallery",
+        x if x == ids::TOPBAR_GRID_SETTINGS => "Grid Settings",
+        x if x == ids::TOPBAR_SETTINGS => "Settings",
+        x if x == ids::IMAGE_ACTION_TRIM => "Trim Transparency",
+        x if x == ids::IMAGE_ACTION_MAKE_SQUARE => "Make Square",
+        x if x == ids::IMAGE_ACTION_BGREMOVAL => "BG Removal",
+        x if x == ids::IMAGE_ACTION_REAL_SIZE => "Real Size",
+        x if x == ids::IMAGE_ACTION_PADDING => "Padding",
+        x if x == ids::IMAGE_ACTION_COLOR_EQUALIZATION => "Color Equalization",
+        x if x == ids::IMAGE_ACTION_EQUALIZE_SIZES => "Equalize Sizes",
+        x if x == ids::IMAGE_ACTION_RASTERIZE => "Rasterize",
+        x if x == ids::IMAGE_ACTION_UPSCALE => "Upscale",
+        _ => return None,
+    })
 }
 
 /// Paint a Tooltip floating just above the currently hovered widget.

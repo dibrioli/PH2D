@@ -384,15 +384,22 @@ fn paint_image_action_row(
         let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
         hit_index.register(pill.id, rect);
         let state = store.button_state(pill.id).unwrap_or(ButtonState::Normal);
-        // Canonical framed icon-chip — single source of truth (was a
-        // hand-rolled fill+stroke+icon here). Manifest pills carry a
-        // `BezPath` glyph, which `ButtonKind` can't hold, so the glyph is
-        // a paint-time `IconGlyph`.
         let glyph = match &pill.icon {
             PillIcon::FromManifest(path) => IconGlyph::Path(path),
             PillIcon::Legacy(icon) => IconGlyph::Builtin(*icon),
         };
-        paint_icon_button(rect, glyph, IconButtonStyle::Chip, state, scene, theme);
+        // `IconButtonStyle::Chip` always pints fill BgElev + Border on
+        // the rect, which on top of the group backdrop reads as the
+        // "moldura intermediária" Enio rejected. Switch to `Plain` in
+        // Normal so the icon sits directly on the backdrop; `Chip` only
+        // when there's actual interaction state to surface.
+        let pill_style = match state {
+            ButtonState::Normal | ButtonState::Loading | ButtonState::Disabled => {
+                IconButtonStyle::Plain
+            }
+            _ => IconButtonStyle::Chip,
+        };
+        paint_icon_button(rect, glyph, pill_style, state, scene, theme);
         rx = rect.x + rect.w + gap;
     }
 }

@@ -92,26 +92,37 @@ fn paint_topbar_rail_chip(
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
     // --- Mirror of paint_tool_rail Icon entry (tool_rail.rs:248-280) ---
-    // EXACT matrix — fill BgElev / border 1 px Border in Normal, same
-    // hover/press/active escalation as the rail. The "moldura aninhada"
-    // perception (Enio 2026-05-24) was the GROUP BACKDROP behind the
-    // chips, not the chip's own border — that's what was removed.
+    //
+    // In Normal, suppress fill + border so the chip is just the icon
+    // glyph painted directly on the group backdrop. The rail paints
+    // Border 1 px in Normal too (tool_rail.rs:265) but the chip fills
+    // its narrow column there, so the border visually merges with the
+    // backdrop edge and reads as frameless. The topbar's backdrop is
+    // wide; the same border becomes a hard moldura BETWEEN the
+    // backdrop and the icon — Enio 2026-05-24 ("backdrops indesejados
+    // entre o fundo e os botões"). Hovered/Pressed/Active still pull
+    // fill + border so click affordance is preserved with the exact
+    // same tokens as the rail.
     let radius = Radius::Sm.px();
     let is_active = state == ButtonState::Pressed;
     let bg = match state {
-        ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
-        ButtonState::Pressed => ColorToken::AccentSoft,
-        _ if is_active => ColorToken::AccentSoft,
-        _ => ColorToken::BgElev,
+        ButtonState::Hovered | ButtonState::Focused => Some(ColorToken::BgElev),
+        ButtonState::Pressed => Some(ColorToken::AccentSoft),
+        _ if is_active => Some(ColorToken::AccentSoft),
+        _ => None,
     };
-    fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
-    let (border, border_w) = match state {
-        ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
-        ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
-        _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
-        _ => (ColorToken::Border, 1.0),
+    if let Some(bg) = bg {
+        fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
+    }
+    let border = match state {
+        ButtonState::Hovered | ButtonState::Focused => Some((ColorToken::BorderEmph, 1.0)),
+        ButtonState::Pressed => Some((ColorToken::Accent, StrokeToken::Default.px())),
+        _ if is_active => Some((ColorToken::Accent, StrokeToken::Default.px())),
+        _ => None,
     };
-    stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+    if let Some((border, border_w)) = border {
+        stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+    }
     let fg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
         ButtonState::Pressed => ColorToken::Accent,

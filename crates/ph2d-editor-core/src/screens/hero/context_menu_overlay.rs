@@ -121,6 +121,22 @@ fn id_is_currently_selected(
     if id == filter_id {
         return true;
     }
+    // Text rendering — value lives on the `paint::text_rendering`
+    // thread-local (published per-frame from `HeroScreen.text_rendering`),
+    // so we can read it here without threading another param through.
+    let text_id = match crate::paint::text_rendering() {
+        ph2d_tokens::TextRendering::Default => ids::CTX_MENU_TEXT_DEFAULT,
+        ph2d_tokens::TextRendering::CrispLight => ids::CTX_MENU_TEXT_CRISP_LIGHT,
+        ph2d_tokens::TextRendering::Crisp => ids::CTX_MENU_TEXT_CRISP,
+        ph2d_tokens::TextRendering::CrispHeavy => ids::CTX_MENU_TEXT_CRISP_HEAVY,
+    };
+    if id == text_id {
+        return true;
+    }
+    // Display (VSync/Immediate) intentionally NOT covered yet — the
+    // present-mode lives in the shell, not in core state. Adding a
+    // checkmark would require a `HeroScreen.vsync` mirror; deferred to
+    // a coordinated change with whoever owns the shell wiring.
     false
 }
 

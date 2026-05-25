@@ -609,7 +609,12 @@ pub fn paint_hero_screen(
     // make smart layout decisions (cascade submenu side-flip etc.).
     hero.last_viewport = viewport;
 
-    let mut layout = HeroLayout::for_viewport_mirrored(viewport, hero.view.ui_mirrored);
+    // Rail width follows the user's Themes-menu rail-button-size
+    // preset (Small / Medium / Large; default Small). Switching size
+    // shifts Inspector/Hierarchy x-positions accordingly.
+    let rail_w = hero.store.rail_button_size().rail_width_px();
+    let mut layout =
+        HeroLayout::for_viewport_mirrored_with_rail_w(viewport, hero.view.ui_mirrored, rail_w);
     // Apply user-driven panel drag offsets to the Inspector +
     // Hierarchy rects. The offsets live on the WidgetStore's
     // `blender_picker_offset` side-table (panel-agnostic — the

@@ -241,4 +241,14 @@ impl WidgetStore {
     pub fn set_radius_scale(&mut self, scale: f32) {
         self.radius_scale = scale.max(0.0);
     }
+
+    /// Current rail-button size preset (Small / Medium / Large) — set
+    /// from the Themes menu (2026-05-24).
+    pub fn rail_button_size(&self) -> crate::widget::RailButtonSize {
+        self.rail_button_size
+    }
+
+    pub fn set_rail_button_size(&mut self, size: crate::widget::RailButtonSize) {
+        self.rail_button_size = size;
+    }
 }

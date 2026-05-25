@@ -579,6 +579,12 @@ pub const CTX_MENU_THEME_BLUEPRINT: NodeId = hash_node_id("ctx_menu_theme_bluepr
 pub const CTX_MENU_RADIUS_SHARP: NodeId = hash_node_id("ctx_menu_radius_sharp");
 pub const CTX_MENU_RADIUS_DEFAULT: NodeId = hash_node_id("ctx_menu_radius_default");
 pub const CTX_MENU_RADIUS_ROUND: NodeId = hash_node_id("ctx_menu_radius_round");
+// Rail-button size presets — also exposed via the theme menu
+// (added 2026-05-24). Default is Small (the new canon); Large is the
+// pre-2026-05-24 size; Medium is the halfway point.
+pub const CTX_MENU_RAIL_SIZE_SMALL: NodeId = hash_node_id("ctx_menu_rail_size_small");
+pub const CTX_MENU_RAIL_SIZE_MEDIUM: NodeId = hash_node_id("ctx_menu_rail_size_medium");
+pub const CTX_MENU_RAIL_SIZE_LARGE: NodeId = hash_node_id("ctx_menu_rail_size_large");
 /// "Mirror UI" entry in the theme menu — toggles
 /// `HeroScreen::ui_mirrored`, which swaps Hierarchy ↔ Inspector
 /// horizontally.

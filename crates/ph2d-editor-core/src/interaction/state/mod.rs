@@ -360,6 +360,12 @@ pub struct WidgetStore {
     /// Centralized so the topbar theme menu drives the look in one
     /// place.
     pub(super) radius_scale: f32,
+    /// Rail button size preset (Small / Medium / Large). User-toggled
+    /// via the Themes menu (2026-05-24); painters in
+    /// [`crate::widget::tool_rail`] and the hero orchestrator
+    /// ([`crate::screens::hero`]) read this to pick the chip edge
+    /// and rail column width.
+    pub(super) rail_button_size: crate::widget::RailButtonSize,
     /// Hierarchy row display order. When non-empty, the hierarchy
     /// painter walks this list instead of the fixture's default
     /// order. Mutated by drag-and-drop (`Down + Move > threshold +
@@ -470,6 +476,7 @@ impl WidgetStore {
             widget_colors: BTreeMap::new(),
             scrollbar_drag: None,
             radius_scale: 1.0,
+            rail_button_size: crate::widget::RailButtonSize::default(),
             hierarchy_order: Vec::new(),
             hierarchy_parent: BTreeMap::new(),
             hierarchy_collapsed: std::collections::BTreeSet::new(),

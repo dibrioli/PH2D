@@ -145,7 +145,7 @@ pub fn paint_left_rail(
         layout.left_rail.x,
         layout.left_rail.y,
         layout.left_rail.w,
-        rail.preferred_height(),
+        rail.preferred_height(store.rail_button_size()),
     );
     // Frosted-glass backing so the vertical labels (INSP / HIER /
     // MOVE / …) have a stable contrast platform when the rail sits

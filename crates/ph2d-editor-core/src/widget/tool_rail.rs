@@ -48,6 +48,36 @@ const LABEL_TO_CHIP_GAP_PX: f32 = 3.0; // LITERAL-PX-OK: sub-label → chip gap 
 /// Resulting chip-x offset from the rail's left edge.
 const CHIP_X_OFFSET_PX: f32 = LABEL_LEFT_PAD + LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX;
 
+/// Runtime-configurable rail button size — surfaced in the Themes
+/// menu (2026-05-24). `Small` is the canonical default
+/// (matches [`TOOL_CHIP_PX`]); `Large` is the pre-2026-05-24 size;
+/// `Medium` is the halfway point.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum RailButtonSize {
+    #[default]
+    Small,
+    Medium,
+    Large,
+}
+
+impl RailButtonSize {
+    /// Chip edge (square) in px for this size preset.
+    pub const fn chip_px(self) -> f32 {
+        match self {
+            // LITERAL-PX-OK: user-facing preset values (Themes menu).
+            Self::Small => 36.0,
+            Self::Medium => 40.0,
+            Self::Large => 44.0,
+        }
+    }
+
+    /// Total rail column width for this size preset (mirrors
+    /// [`TOOL_RAIL_WIDTH_PX`] formula but using this size's chip px).
+    pub fn rail_width_px(self) -> f32 {
+        CHIP_X_OFFSET_PX + self.chip_px() + Spacing::Xs.px()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum ToolRailEntry {
     Icon {
@@ -112,11 +142,13 @@ impl ToolRailEntry {
         self
     }
 
-    /// Vertical extent this entry needs.
-    pub fn height(&self) -> f32 {
+    /// Vertical extent this entry needs at the given button size.
+    /// `size` is the runtime [`RailButtonSize`] (defaults to `Small`
+    /// in the store's initial state).
+    pub fn height(&self, size: RailButtonSize) -> f32 {
         match self {
-            Self::Icon { .. } => TOOL_CHIP_PX,
-            Self::Compound { .. } => COMPOUND_TOTAL_H_PX,
+            Self::Icon { .. } => size.chip_px(),
+            Self::Compound { .. } => size.chip_px(),
             Self::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         }
     }
@@ -138,14 +170,14 @@ impl ToolRail {
         }
     }
 
-    pub fn preferred_height(&self) -> f32 {
+    pub fn preferred_height(&self, size: RailButtonSize) -> f32 {
         let gap = Spacing::Xs.px();
         let mut total = 0.0_f32;
         for (i, e) in self.entries.iter().enumerate() {
             if i > 0 {
                 total += gap;
             }
-            total += e.height();
+            total += e.height(size);
         }
         total
     }
@@ -199,6 +231,7 @@ pub fn paint_tool_rail(
     let chip_x = rect.x + CHIP_X_OFFSET_PX;
     let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
     let gap = Spacing::Xs.px();
+    let chip_px = store.rail_button_size().chip_px();
     let mut y = rect.y;
     for (i, entry) in rail.entries.iter().enumerate() {
         if i > 0 {
@@ -212,7 +245,7 @@ pub fn paint_tool_rail(
                 sub,
                 ..
             } => {
-                let chip_rect = Rect::new(chip_x, y, TOOL_CHIP_PX, TOOL_CHIP_PX);
+                let chip_rect = Rect::new(chip_x, y, chip_px, chip_px);
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
                 let radius = Radius::Sm.px();
@@ -260,10 +293,10 @@ pub fn paint_tool_rail(
                     // is legible on canvas.
                     resolve(ColorToken::Text2, theme),
                 );
-                y += TOOL_CHIP_PX;
+                y += chip_px;
             }
             ToolRailEntry::Compound { id, face, sub, .. } => {
-                let chip_rect = Rect::new(chip_x, y, TOOL_CHIP_PX, TOOL_CHIP_PX);
+                let chip_rect = Rect::new(chip_x, y, chip_px, chip_px);
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
                 let radius = Radius::Sm.px();
@@ -307,7 +340,7 @@ pub fn paint_tool_rail(
                     // is legible on canvas.
                     resolve(ColorToken::Text2, theme),
                 );
-                y += COMPOUND_TOTAL_H_PX;
+                y += chip_px;
             }
             ToolRailEntry::Divider => {
                 y += DIVIDER_GAP_PX;
@@ -395,8 +428,9 @@ mod tests {
 
     #[test]
     fn preferred_height_sums_entries() {
-        let h = fixture().preferred_height();
-        assert!(h > TOOL_CHIP_PX * 5.0);
+        let size = RailButtonSize::default();
+        let h = fixture().preferred_height(size);
+        assert!(h > size.chip_px() * 5.0);
     }
 
     #[test]
@@ -431,7 +465,8 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let rail = fixture();
-        let host = Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height());
+        let size = RailButtonSize::default();
+        let host = Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height(size));
         let store = crate::interaction::WidgetStore::with_capacity(0);
         paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::Forge, &store);
     }
@@ -446,9 +481,10 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let store = crate::interaction::WidgetStore::with_capacity(0);
+        let size = RailButtonSize::default();
         paint_tool_rail(
             &rail,
-            Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height()),
+            Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height(size)),
             &mut scene,
             &mut text,
             Theme::Sunstone,

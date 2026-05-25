@@ -64,6 +64,19 @@ impl HeroLayout {
     }
 
     pub fn for_viewport_mirrored(viewport: Rect, mirrored: bool) -> Self {
+        Self::for_viewport_mirrored_with_rail_w(viewport, mirrored, RAIL_W)
+    }
+
+    /// Layout constructor with an explicit rail-column width. Used by
+    /// the hero orchestrator when the user picks a non-default
+    /// [`crate::widget::RailButtonSize`] preset in the Themes menu
+    /// (2026-05-24) — the rail shrinks/grows and Inspector/Hierarchy
+    /// x-positions follow.
+    pub fn for_viewport_mirrored_with_rail_w(
+        viewport: Rect,
+        mirrored: bool,
+        rail_w: f32,
+    ) -> Self {
         let top_bar = Rect::new(
             viewport.x + EDGE_PAD,
             viewport.y + EDGE_PAD,
@@ -73,15 +86,15 @@ impl HeroLayout {
         let chrome_top = top_bar.y + top_bar.h + TOPBAR_GAP;
         let chrome_bot = viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H - Spacing::Md.px();
         let chrome_h = (chrome_bot - chrome_top).max(0.0);
-        let left_rail = Rect::new(viewport.x, chrome_top, RAIL_W, chrome_h);
+        let left_rail = Rect::new(viewport.x, chrome_top, rail_w, chrome_h);
         let (hierarchy_x, inspector_x) = if mirrored {
             (
                 viewport.x + viewport.w - EDGE_PAD - HIERARCHY_W,
-                viewport.x + RAIL_W + EDGE_PAD,
+                viewport.x + rail_w + EDGE_PAD,
             )
         } else {
             (
-                viewport.x + RAIL_W + EDGE_PAD,
+                viewport.x + rail_w + EDGE_PAD,
                 viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W,
             )
         };

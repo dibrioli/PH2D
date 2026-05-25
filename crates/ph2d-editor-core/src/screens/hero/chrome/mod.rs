@@ -57,6 +57,7 @@ mod image_tools_toggle;
 mod io_menu;
 mod radius;
 mod rail_panels;
+mod rail_size;
 mod rail_tools;
 mod scene_picker;
 mod settings_filter;
@@ -72,6 +73,7 @@ mod view_toggles;
 pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     theme::apply(hero, event)
         || radius::apply(hero, event)
+        || rail_size::apply(hero, event)
         || view_toggles::apply(hero, event)
         || rail_tools::apply(hero, event)
         || rail_panels::apply(hero, event)

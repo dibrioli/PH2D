@@ -118,6 +118,9 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_RADIUS_SHARP, "— Corners: Sharp", None),
             (ids::CTX_MENU_RADIUS_DEFAULT, "— Corners: Default", None),
             (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
+            (ids::CTX_MENU_RAIL_SIZE_SMALL, "— Rail Buttons: Small", None),
+            (ids::CTX_MENU_RAIL_SIZE_MEDIUM, "— Rail Buttons: Medium", None),
+            (ids::CTX_MENU_RAIL_SIZE_LARGE, "— Rail Buttons: Large", None),
             (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
             (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
             // "Show Grid" removed — Grid Settings panel now owns the

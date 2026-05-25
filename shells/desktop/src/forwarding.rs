@@ -124,21 +124,30 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     let Some(hero) = gfx.hero_screen.as_ref() else {
         return false;
     };
-    use ph2d_editor::screens::hero::ids::{GAL_PANEL, HIER_PANEL, INSP_PANEL};
+    use ph2d_editor::screens::hero::ids::{
+        BGR_PANEL, CEQ_PANEL, EQS_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL, UPS_PANEL,
+    };
     let inside = |panel_id| {
         hero.store
             .panel_rect(panel_id)
             .map(|r| r.contains(x, y))
             .unwrap_or(false)
     };
-    // Floating panels (Widget Gallery + Grid Settings) intercept the
-    // wheel so it scrolls the panel body instead of zooming the camera
-    // underneath. `panel_rect(...)` is only published while the panel
-    // is visible, so each check is false in the panel's closed state.
+    // Every panel that publishes a rect intercepts the wheel so it
+    // scrolls the panel body instead of zooming the camera underneath.
+    // `panel_rect(...)` is only published while the panel is visible,
+    // so each check is false in the panel's closed state. Image-tool
+    // panels (CEQ/BGR/PAD/UPS/EQS) added 2026-05-24 — without them
+    // CEQ's wheel routed to camera zoom instead of panel scroll.
     inside(INSP_PANEL)
         || inside(HIER_PANEL)
         || inside(GAL_PANEL)
         || inside(ph2d_editor::grid_snap::ids::GS_PANEL)
+        || inside(BGR_PANEL)
+        || inside(PAD_PANEL)
+        || inside(CEQ_PANEL)
+        || inside(UPS_PANEL)
+        || inside(EQS_PANEL)
 }
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live

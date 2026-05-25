@@ -176,13 +176,28 @@ pub(super) fn paint_top_bar_cluster(
     let pad_x = Spacing::Md.px();
     let icon_w = 18.0; // LITERAL-PX-OK: chev icon dim (chrome accent)
     let font = TypeToken::Sm.px();
-    // Cluster "frame" (BgElev fill + Border stroke Radius::Xl)
-    // removed 2026-05-25 (Enio: "deixar os botões apenas sobre os
-    // Backdrop"). Theme + Project shrink to chip_px height so they
-    // align with the rail-style chips of Save/Open/etc.
+    // Theme + Project are "wide chips" — share the chip-row Y of the
+    // rail-style chips (Save/Open/IMG sit below their label, both
+    // anchored in the backdrop top via viewport_y). Width is the
+    // full cluster width (set per cluster in `cluster_width`), height
+    // = chip_px so the BgElev fill + Border stroke read identically
+    // to the icon chips, just wider (Enio 2026-05-25: "aparência
+    // similar aos botões embora mais largos").
     let chip_px = store.rail_button_size().chip_px();
-    let inner_y = rect.y + (rect.h - chip_px) * 0.5;
+    let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
+    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+    let inner_y = viewport_y + Spacing::Xxs.px() + label_band_h + label_to_chip_gap;
     let inner = Rect::new(rect.x, inner_y, rect.w, chip_px);
+    // Wide-chip surface: same tokens as `paint_topbar_rail_chip`'s
+    // Normal state — BgElev fill + Border 1 px stroke + Sm radius.
+    fill_rounded_rect(scene, inner, Radius::Sm.px(), resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(
+        scene,
+        inner,
+        Radius::Sm.px(),
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     match cluster {
         TopBarCluster::Theme { label: _ } => {
             hit_index.register(id, inner);

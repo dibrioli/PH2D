@@ -287,6 +287,7 @@ pub fn paint_top_bar(
                 theme,
                 Rect::new(layout.top_bar.x, layout.top_bar.y, left_w, row_h),
                 store.rail_button_size().chip_px(),
+                layout.viewport.y,
                 hit_index,
             );
         }
@@ -300,6 +301,7 @@ pub fn paint_top_bar(
             *id,
             cluster,
             rect,
+            layout.viewport.y,
             scene,
             text_system,
             theme,
@@ -362,6 +364,7 @@ pub fn paint_top_bar(
             theme,
             Rect::new(right_x, layout.top_bar.y, right_w, row_h),
             store.rail_button_size().chip_px(),
+            layout.viewport.y,
             hit_index,
         );
     }
@@ -372,6 +375,7 @@ pub fn paint_top_bar(
             *id,
             cluster,
             rect,
+            layout.viewport.y,
             scene,
             text_system,
             theme,
@@ -395,6 +399,7 @@ fn paint_topbar_group_backdrop(
     theme: Theme,
     group_rect: Rect,
     chip_px: f32,
+    viewport_y: f32,
     hit_index: &mut HitIndex,
 ) {
     let pad_h = Spacing::Sm.px();
@@ -402,7 +407,8 @@ fn paint_topbar_group_backdrop(
     let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
     let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
     let bg_h = chip_px + label_to_chip_gap + label_band_h + pad_v * 2.0;
-    let bg_y = group_rect.y + (group_rect.h - bg_h) * 0.5;
+    // Colado no topo da viewport (Enio 2026-05-25).
+    let bg_y = viewport_y;
     let bg = Rect::new(
         group_rect.x - pad_h,
         bg_y,
@@ -452,6 +458,7 @@ fn paint_image_action_row(
             theme,
             Rect::new(start_x, layout.top_bar.y, total_w, row_h),
             store.rail_button_size().chip_px(),
+            layout.viewport.y,
             hit_index,
         );
     }
@@ -472,6 +479,7 @@ fn paint_image_action_row(
             glyph,
             label,
             col,
+            layout.viewport.y,
             scene,
             text_system,
             theme,

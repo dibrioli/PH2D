@@ -64,6 +64,7 @@ pub(super) fn paint_topbar_rail_chip(
     glyph: IconGlyph<'_>,
     label: &str,
     chip_col: Rect,
+    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -80,10 +81,10 @@ pub(super) fn paint_topbar_rail_chip(
     // Label band height = rail's `LABEL_VISUAL_EXTENT_PX = 11.0`.
     let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
     let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
-    // Compact stack (label + gap + chip) centered vertically in the
-    // topbar row — matches the row taken up by `paint_topbar_group_backdrop`.
-    let stack_h = label_band_h + label_to_chip_gap + chip_px;
-    let stack_y = chip_col.y + (chip_col.h - stack_h) * 0.5;
+    // Stack starts at the top of the backdrop (which is glued to the
+    // viewport top via `paint_topbar_group_backdrop`). `Xxs` inner pad
+    // mirrors what the backdrop reserves on top.
+    let stack_y = viewport_y + Spacing::Xxs.px();
     let chip_x = chip_col.x + (chip_col.w - chip_px) * 0.5;
     let chip_y = stack_y + label_band_h + label_to_chip_gap;
     let chip_rect = Rect::new(chip_x, chip_y, chip_px, chip_px);
@@ -164,6 +165,7 @@ pub(super) fn paint_top_bar_cluster(
     id: NodeId,
     cluster: &fixture::TopBarCluster,
     rect: Rect,
+    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -237,6 +239,7 @@ pub(super) fn paint_top_bar_cluster(
                 IconGlyph::Builtin(*icon),
                 label,
                 rect,
+                viewport_y,
                 scene,
                 text_system,
                 theme,
@@ -316,6 +319,7 @@ pub(super) fn paint_top_bar_cluster(
                     IconGlyph::Builtin(*icon),
                     label,
                     col,
+                    viewport_y,
                     scene,
                     text_system,
                     theme,
@@ -340,6 +344,7 @@ pub(super) fn paint_top_bar_cluster(
                     IconGlyph::Builtin(*icon),
                     label,
                     col,
+                    viewport_y,
                     scene,
                     text_system,
                     theme,

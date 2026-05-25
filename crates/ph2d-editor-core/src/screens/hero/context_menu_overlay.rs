@@ -225,40 +225,17 @@ pub fn paint_context_menu_overlay(
             ),
         ],
         // Settings cluster (gear) — TOP-LEVEL categories. Each entry
-        // ending in "\u{2003}\u{203A}" (em-space + single right-pointing
-        // angle quotation mark "›") opens its dedicated submenu.
-        // U+203A is a typographic glyph (not an emoji) — Enio
-        // 2026-05-25: "menu e submenus de settings ainda fora do
-        // padrão, usando emojis e não ícones". Trocou U+25B6 (BLACK
-        // RIGHT-POINTING TRIANGLE) por U+203A pra remover a aparência
-        // "emoji". Ambos estão em InterVariable.ttf, U+203A é mais
-        // discreto.
+        // gets a real `IconId::ChevronRight` painted at the right edge
+        // by the row loop below (matched by `kind == SettingsMenu`),
+        // not a Unicode glyph inside the label string. Enio 2026-05-25:
+        // "menu e submenus de settings ainda fora do padrão, usando
+        // emojis e não ícones".
         ContextMenuKind::SettingsMenu => &[
-            (
-                ids::CTX_MENU_SETTINGS_PPM,
-                "Pixels per meter\u{2003}\u{203A}",
-                None,
-            ),
-            (
-                ids::CTX_MENU_SETTINGS_UNIT,
-                "Display unit\u{2003}\u{203A}",
-                None,
-            ),
-            (
-                ids::CTX_MENU_SETTINGS_FILTER,
-                "Image filter\u{2003}\u{203A}",
-                None,
-            ),
-            (
-                ids::CTX_MENU_SETTINGS_DISPLAY,
-                "Display\u{2003}\u{203A}",
-                None,
-            ),
-            (
-                ids::CTX_MENU_SETTINGS_TEXT,
-                "Text rendering\u{2003}\u{203A}",
-                None,
-            ),
+            (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter", None),
+            (ids::CTX_MENU_SETTINGS_UNIT, "Display unit", None),
+            (ids::CTX_MENU_SETTINGS_FILTER, "Image filter", None),
+            (ids::CTX_MENU_SETTINGS_DISPLAY, "Display", None),
+            (ids::CTX_MENU_SETTINGS_TEXT, "Text rendering", None),
         ],
         // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
         // presets as before the cascade, just one click deeper.
@@ -416,6 +393,25 @@ pub fn paint_context_menu_overlay(
                 theme,
             ),
         );
+        // Cascade indicator on the SettingsMenu rows — real
+        // `IconId::ChevronRight` glyph at the right edge, replacing
+        // the Unicode U+25B6 / U+203A trailing character. Enio
+        // 2026-05-25: "usando emojis e não ícones".
+        if matches!(req.kind, ContextMenuKind::SettingsMenu) {
+            let chev = Rect::new(
+                r.x + r.w - pad_x - icon_size,
+                icon_y,
+                icon_size,
+                icon_size,
+            );
+            paint_icon(
+                scene,
+                IconId::ChevronRight,
+                chev,
+                resolve(ColorToken::Text3, theme),
+                StrokeToken::Default.px(),
+            );
+        }
     }
 }
 

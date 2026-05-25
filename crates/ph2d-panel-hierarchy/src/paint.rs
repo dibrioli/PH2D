@@ -292,7 +292,12 @@ fn paint_hierarchy_body(
             let row_inner_pad = 2.0_f32; // LITERAL-PX-OK: row inset (sync with row.rs)
             let chev_col_w = Spacing::Lg.px(); // sync with row.rs chev_w
             let half_chev = chev_col_w * 0.5;
-            let line_color = resolve(ColorToken::Border, theme);
+            // Tree lines: bumped from `Border` → `Text3` 2026-05-24
+            // per user: "linhas com mais contraste pois quase não
+            // aparecem no fundo". Text3 reads as a soft chrome dim
+            // (≈ same as the panel chevrons) so the relationship is
+            // clear without competing with the row content.
+            let line_color = resolve(ColorToken::Text3, theme);
             for c in 0..(depth as usize) {
                 let col_chev_x = rect.x
                     + body_pad

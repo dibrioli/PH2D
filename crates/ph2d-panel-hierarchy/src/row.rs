@@ -56,7 +56,11 @@ pub(crate) fn paint_hierarchy_row(
     // to the panel's left edge.
     let pad = 2.0_f32; // LITERAL-PX-OK: row inset (chrome-specific, Godot-tight)
     let chev_w = Spacing::Lg.px();
-    let chev_pad = Spacing::Xs.px();
+    // Chev → icon gap tightened Xs (4) → Xxs (2) 2026-05-24 per user:
+    // "quero os ícones mais próximos das setas". Godot's Scene panel
+    // packs them flush together; we keep a 2-px hairline so click
+    // targets don't visually merge.
+    let chev_pad = Spacing::Xxs.px();
     let chev_x = rect.x + pad;
     if has_children {
         let chev_rect = Rect::new(chev_x, rect.y + (rect.h - chev_w) * 0.5, chev_w, chev_w);
@@ -179,7 +183,9 @@ pub(crate) fn paint_hierarchy_row(
         right_x -= badge_w + Spacing::Sm.px();
     }
 
-    let name_x = icon_rect.x + icon_w + Spacing::Md.px();
+    // Icon → name gap tightened Md (8) → Xs (4) 2026-05-24 per user:
+    // "nome mais próximos dos ícones".
+    let name_x = icon_rect.x + icon_w + Spacing::Xs.px();
     let name_color = if entity.muted {
         ColorToken::TextDisabled
     } else if direct_match {

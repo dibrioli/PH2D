@@ -880,6 +880,7 @@ pub fn paint_hero_screen(
         hero.theme,
         &mut hero.hit_index,
         &hero.store,
+        &hero.project,
         viewport,
     );
     // M14.4e: file-drop overlay sits above EVERY layer (chrome,

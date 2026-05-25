@@ -51,6 +51,78 @@ fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rec
 /// paint user-placed notes.
 pub use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 
+/// Does `id` correspond to the currently-active choice for any of
+/// the single-choice menus? The row paint draws an accent bullet
+/// next to the row whose id matches, mirroring SceneList's "current
+/// scene" indicator (2026-05-24 menu standardization).
+///
+/// One function covers every menu because IDs are unique across all
+/// menu kinds — checking `id == active_theme_id || id == active_radius
+/// _id || ...` is unambiguous and avoids threading `kind` through the
+/// row loop.
+fn id_is_currently_selected(
+    id: NodeId,
+    theme: Theme,
+    store: &WidgetStore,
+    project: &crate::project::ProjectSettings,
+) -> bool {
+    use crate::project::{DisplayUnit, ImageFilterMode};
+    use crate::widget::RailButtonSize;
+    let theme_id = match theme {
+        Theme::Forge => ids::CTX_MENU_THEME_FORGE,
+        Theme::Workshop => ids::CTX_MENU_THEME_PAINT,
+        Theme::Sunstone => ids::CTX_MENU_THEME_SUNSTONE,
+        Theme::Blueprint => ids::CTX_MENU_THEME_BLUEPRINT,
+    };
+    if id == theme_id {
+        return true;
+    }
+    let radius_id = if store.radius_scale() < 0.5 {
+        ids::CTX_MENU_RADIUS_SHARP
+    } else if store.radius_scale() > 1.3 {
+        ids::CTX_MENU_RADIUS_ROUND
+    } else {
+        ids::CTX_MENU_RADIUS_DEFAULT
+    };
+    if id == radius_id {
+        return true;
+    }
+    let rail_id = match store.rail_button_size() {
+        RailButtonSize::Small => ids::CTX_MENU_RAIL_SIZE_SMALL,
+        RailButtonSize::Medium => ids::CTX_MENU_RAIL_SIZE_MEDIUM,
+        RailButtonSize::Large => ids::CTX_MENU_RAIL_SIZE_LARGE,
+    };
+    if id == rail_id {
+        return true;
+    }
+    let ppm_id = match project.pixels_per_meter as i32 {
+        16 => Some(ids::CTX_MENU_PPM_16),
+        32 => Some(ids::CTX_MENU_PPM_32),
+        100 => Some(ids::CTX_MENU_PPM_100),
+        256 => Some(ids::CTX_MENU_PPM_256),
+        1024 => Some(ids::CTX_MENU_PPM_1024),
+        _ => None,
+    };
+    if ppm_id == Some(id) {
+        return true;
+    }
+    let unit_id = match project.display_unit {
+        DisplayUnit::Meters => ids::CTX_MENU_UNIT_METERS,
+        DisplayUnit::Pixels => ids::CTX_MENU_UNIT_PIXELS,
+    };
+    if id == unit_id {
+        return true;
+    }
+    let filter_id = match project.image_filter {
+        ImageFilterMode::PixelArt => ids::CTX_MENU_FILTER_PIXELART,
+        ImageFilterMode::Smooth => ids::CTX_MENU_FILTER_SMOOTH,
+    };
+    if id == filter_id {
+        return true;
+    }
+    false
+}
+
 /// Paint the open context menu (if any) and register hit rects for
 /// each item. Called last in the hero paint pipeline so the menu
 /// always sits on top.
@@ -64,6 +136,7 @@ pub fn paint_context_menu_overlay(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    project: &crate::project::ProjectSettings,
     viewport: Rect,
 ) {
     let Some(req) = store.context_menu() else {
@@ -245,6 +318,10 @@ pub fn paint_context_menu_overlay(
     // Rows.
     let row_x = rect.x + Spacing::Xs.px();
     let row_w = rect.w - Spacing::Xs.px() * 2.0;
+    // Bullet column width — same gap SceneList uses (bullet x +
+    // 10 px → text x). Painted on every row so labels align whether
+    // the row is current or not.
+    let bullet_col_w: f32 = 10.0; // LITERAL-PX-OK: chrome-specific bullet→text gap
     for (i, (id, label, swatch)) in items.iter().enumerate() {
         let r = Rect::new(row_x, rect.y + PAD_Y + ROW_H * i as f32, row_w, ROW_H);
         hit_index.register(*id, r);
@@ -254,9 +331,29 @@ pub fn paint_context_menu_overlay(
         let pad_x = Spacing::Md.px();
         let icon_size = SECTION_GAP_PX;
         let icon_y = r.y + (r.h - icon_size) * 0.5;
-        let glyph_x = r.x + pad_x;
+        // Bullet for currently-selected item (SceneList parity,
+        // 2026-05-24 menu standardization).
+        let is_current = id_is_currently_selected(*id, theme, store, project);
+        let bullet_x = r.x + pad_x;
+        if is_current {
+            let dot = ph2d_vector::Circle::new(
+                ph2d_vector::Point::new(bullet_x as f64, (r.y + r.h * 0.5) as f64),
+                3.0, // LITERAL-PX-OK: bullet dot radius (chrome accent, matches SceneList)
+            );
+            scene.inner_mut().fill(
+                ph2d_vector::Fill::NonZero,
+                ph2d_vector::Affine::IDENTITY,
+                &ph2d_vector::Brush::Solid(resolve(ColorToken::Accent, theme)),
+                None,
+                &dot,
+            );
+        }
+        let glyph_x = bullet_x + bullet_col_w;
         // Leading visual: color swatch for outline picks, "+" icon
-        // for create-note. Keeps the menu legible without text alone.
+        // for create-note. Painted to the right of the bullet column
+        // so the bullet always lines up flush-left.
+        let has_glyph = swatch.is_some()
+            || matches!(req.kind, ContextMenuKind::CreateNote { .. });
         if let Some(rgba) = swatch {
             let sw = Rect::new(glyph_x, icon_y, icon_size, icon_size);
             fill_rounded_rect(
@@ -275,7 +372,11 @@ pub fn paint_context_menu_overlay(
                 StrokeToken::Default.px(),
             );
         }
-        let text_x = glyph_x + icon_size + Spacing::Sm.px();
+        let text_x = if has_glyph {
+            glyph_x + icon_size + Spacing::Sm.px()
+        } else {
+            glyph_x
+        };
         let text_y = r.y + (r.h - TypeToken::Sm.px()) * 0.5;
         paint_text(
             text_system,
@@ -285,7 +386,14 @@ pub fn paint_context_menu_overlay(
             text_y,
             TypeToken::Sm.px(),
             (r.x + r.w - text_x - pad_x).max(0.0),
-            resolve(ColorToken::Text1, theme),
+            resolve(
+                if is_current {
+                    ColorToken::Text1
+                } else {
+                    ColorToken::Text2
+                },
+                theme,
+            ),
         );
     }
 }

@@ -188,7 +188,8 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
             let chip_value = store
                 .number_value(ids::EQS_GRID_OFFSET_NUM)
                 .unwrap_or(snapshot.grid_offset as f64);
-            let chip_w = Spacing::Xl.px() * 2.0;
+            // Canonical chip width — 72 px (was 32, user 2026-05-24).
+            let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
             let display = format!("{} px", chip_value.round() as i64);
             paint_slider_with_chip_layout(
                 Rect::new(inner_x, y, inner_w, row_h),

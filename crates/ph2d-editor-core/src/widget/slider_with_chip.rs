@@ -122,13 +122,16 @@ pub fn paint_slider_with_chip_layout(
     // Plain text label, no pill background — the previous AccentPress
     // fill made every label read as a "selected button"; channel rows
     // are not interactive at the label, so a chrome-less label keeps
-    // the eye on the slider track.
+    // the eye on the slider track. Size = Sm (12 px) — bumped from
+    // `Xs - 1` (10 px) 2026-05-24 per user feedback that slider row
+    // labels were unreadably small in both Widget Gallery + image-tool
+    // panels.
     paint_text_centered(
         text_system,
         scene,
         label,
         label_rect,
-        TypeToken::Xs.px() - 1.0,
+        TypeToken::Sm.px(),
         resolve(ColorToken::Text2, theme),
     );
 

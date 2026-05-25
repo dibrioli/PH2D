@@ -79,7 +79,8 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
         inner_w: (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
         row_h: ROW_H_PX,
         row_gap: Spacing::Sm.px(),
-        chip_w: Spacing::Xl.px() * 2.0,
+        // Canonical chip width — 72 px (was 32, user 2026-05-24).
+        chip_w: ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
         label_col_w: LABEL_COL_W,
     };
 

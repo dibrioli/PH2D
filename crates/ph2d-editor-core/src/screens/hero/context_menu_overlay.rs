@@ -126,17 +126,23 @@ fn id_is_currently_selected(
     // so we can read it here without threading another param through.
     let text_id = match crate::paint::text_rendering() {
         ph2d_tokens::TextRendering::Default => ids::CTX_MENU_TEXT_DEFAULT,
-        ph2d_tokens::TextRendering::CrispLight => ids::CTX_MENU_TEXT_CRISP_LIGHT,
-        ph2d_tokens::TextRendering::Crisp => ids::CTX_MENU_TEXT_CRISP,
         ph2d_tokens::TextRendering::CrispHeavy => ids::CTX_MENU_TEXT_CRISP_HEAVY,
+        ph2d_tokens::TextRendering::CrispHeavyPlus => ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
     };
     if id == text_id {
         return true;
     }
-    // Display (VSync/Immediate) intentionally NOT covered yet — the
-    // present-mode lives in the shell, not in core state. Adding a
-    // checkmark would require a `HeroScreen.vsync` mirror; deferred to
-    // a coordinated change with whoever owns the shell wiring.
+    // Display submenu (VSync / Immediate) — store mirrors the last
+    // value `settings_present::apply` published; default `true` matches
+    // the shell's `Fifo` baseline.
+    let display_id = if store.present_vsync() {
+        ids::CTX_MENU_DISPLAY_VSYNC
+    } else {
+        ids::CTX_MENU_DISPLAY_IMMEDIATE
+    };
+    if id == display_id {
+        return true;
+    }
     false
 }
 
@@ -296,9 +302,8 @@ pub fn paint_context_menu_overlay(
         // Crisp Heavy (100/70/40).
         ContextMenuKind::SettingsTextSubmenu => &[
             (ids::CTX_MENU_TEXT_DEFAULT, "Default", None),
-            (ids::CTX_MENU_TEXT_CRISP_LIGHT, "Crisp Light", None),
-            (ids::CTX_MENU_TEXT_CRISP, "Crisp", None),
             (ids::CTX_MENU_TEXT_CRISP_HEAVY, "Crisp Heavy", None),
+            (ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS, "Crisp Heavy +", None),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is

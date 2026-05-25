@@ -251,4 +251,15 @@ impl WidgetStore {
     pub fn set_rail_button_size(&mut self, size: crate::widget::RailButtonSize) {
         self.rail_button_size = size;
     }
+
+    /// Cached VSync flag the shell last applied. Mirrors the present
+    /// mode so the Settings → Display submenu paint can mark the
+    /// active row (the swap chain itself is owned by the shell).
+    pub fn present_vsync(&self) -> bool {
+        self.present_vsync
+    }
+
+    pub fn set_present_vsync(&mut self, vsync: bool) {
+        self.present_vsync = vsync;
+    }
 }

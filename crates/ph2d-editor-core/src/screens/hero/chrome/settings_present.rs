@@ -27,7 +27,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return true;
     }
     // Display submenu options — push the present-mode change to the
-    // shell and close the menu.
+    // shell, mirror in store so the menu's "selected" bullet can
+    // find the active row, and close the menu.
     let vsync = if id == ids::CTX_MENU_DISPLAY_VSYNC {
         true
     } else if id == ids::CTX_MENU_DISPLAY_IMMEDIATE {
@@ -35,6 +36,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     } else {
         return false;
     };
+    hero.store.set_present_vsync(vsync);
     hero.bus.push(EditorAction::SetPresentMode { vsync });
     hero.store.close_context_menu();
     true

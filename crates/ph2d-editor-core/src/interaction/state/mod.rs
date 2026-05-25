@@ -366,6 +366,12 @@ pub struct WidgetStore {
     /// ([`crate::screens::hero`]) read this to pick the chip edge
     /// and rail column width.
     pub(super) rail_button_size: crate::widget::RailButtonSize,
+    /// Cached present-mode (VSync ON vs OFF). Source of truth still
+    /// lives in the shell (it owns the swap chain), but the core
+    /// mirrors the last value the user picked in Settings → Display
+    /// so menu paint can show a "selected" bullet next to the active
+    /// row. Default `true` matches the shell's `Fifo` baseline.
+    pub(super) present_vsync: bool,
     /// Hierarchy row display order. When non-empty, the hierarchy
     /// painter walks this list instead of the fixture's default
     /// order. Mutated by drag-and-drop (`Down + Move > threshold +
@@ -477,6 +483,7 @@ impl WidgetStore {
             scrollbar_drag: None,
             radius_scale: 1.0,
             rail_button_size: crate::widget::RailButtonSize::default(),
+            present_vsync: true,
             hierarchy_order: Vec::new(),
             hierarchy_parent: BTreeMap::new(),
             hierarchy_collapsed: std::collections::BTreeSet::new(),

@@ -79,10 +79,48 @@ thread_local! {
     static RADIUS_SCALE: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
 }
 
+// Thread-local global text-rendering strategy. Lets the user pick
+// Default / Crisp in the Settings ▸ Text rendering submenu and have
+// every `paint_text*` call (99+ sites across panels and chrome)
+// apply the strategy uniformly without threading it through every
+// signature. Set via `set_text_rendering` before paint, read via
+// `text_rendering`. Defaults to `TextRendering::Default` so any
+// non-paint context (tests, scrambled call orders) gets the historic
+// look. Mirrors the `RADIUS_SCALE` pattern above.
+thread_local! {
+    static TEXT_RENDERING: std::cell::Cell<ph2d_tokens::TextRendering> =
+        const { std::cell::Cell::new(ph2d_tokens::TextRendering::Default) };
+}
+
 /// Set the global radius scale for the current thread (paint runs).
 /// Clamped to non-negative; pass `1.0` to reset.
 pub fn set_radius_scale(scale: f32) {
     RADIUS_SCALE.with(|s| s.set(scale.max(0.0)));
+}
+
+/// Set the global text-rendering strategy for the current thread
+/// (paint runs). Called by the shell once per frame, mirroring
+/// `set_radius_scale`.
+pub fn set_text_rendering(mode: ph2d_tokens::TextRendering) {
+    TEXT_RENDERING.with(|c| c.set(mode));
+}
+
+/// Read the current text-rendering strategy. Defaults to
+/// `TextRendering::Default`.
+pub fn text_rendering() -> ph2d_tokens::TextRendering {
+    TEXT_RENDERING.with(|c| c.get())
+}
+
+/// Apply the snap strategy to a glyph X. `None` returns `x` unchanged
+/// (preserves subpixel kerning); `Half` snaps to 0.5 px (preserves ~50 %
+/// of kerning); `Full` snaps to 1 px integer (full pixel alignment, no
+/// subpixel kerning). Trade-off documented on [`ph2d_tokens::SnapX`].
+fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
+    match snap {
+        ph2d_tokens::SnapX::None => x,
+        ph2d_tokens::SnapX::Half => (x * 2.0).round() * 0.5,
+        ph2d_tokens::SnapX::Full => x.round(),
+    }
 }
 
 /// Read the current global radius scale.
@@ -281,7 +319,8 @@ fn paint_text_weighted(
     color: Color,
     weight: FontWeight,
 ) {
-    let layout = text_system.layout_with_weight(text, font_size, max_width, weight);
+    let rendering = text_rendering();
+    let layout = text_system.layout_for_rendering(text, font_size, max_width, weight, rendering);
     let inner = scene.inner_mut();
     // Snap the text origin to integer pixels: hinting snaps stems to the
     // glyph's local pixel grid, but if the *baseline* lands at a
@@ -290,6 +329,9 @@ fn paint_text_weighted(
     // `rect.y + (rect.h - font_size) * 0.5`. Rounding here makes every
     // caller crisp without each one having to remember to align.
     let translate = Affine::translate((x.round() as f64, y.round() as f64));
+    let params = rendering.params();
+    let snap_x = params.snap_x;
+    let hint = params.hint;
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
@@ -301,11 +343,21 @@ fn paint_text_weighted(
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
-                // Vello 0.8 defaults to `hint: false` — glyphs are
-                // rendered at floating-point positions which looks
-                // soft at UI sizes. Auto-hinting (skrifa) snaps stems
-                // to the pixel grid for crisp small-text rendering.
-                .hint(true)
+                // Hint per preset. `true` snapa stems ao pixel grid
+                // (crisp); `false` deixa o eixo wght variable fluir
+                // sem quantização (necessário para CrispHeavy ficar
+                // visualmente distinto de Crisp a 11-12 px).
+                .hint(hint)
+                // **Critical**: forward parley's per-run variation
+                // coordinates (already includes the wght axis we
+                // pushed in `layout_for_rendering`). Without this,
+                // Vello rasterizes glyphs with the font's default
+                // axis values — Inter Variable falls back to ~Regular
+                // 400 regardless of which weight stop was selected,
+                // so Crisp Heavy looks identical to Crisp. The slice
+                // is `&[i16]` on both sides (parley + vello typedef
+                // NormalizedCoord = i16), so no conversion needed.
+                .normalized_coords(run.normalized_coords())
                 .brush(color)
                 .transform(translate)
                 .draw(
@@ -313,9 +365,10 @@ fn paint_text_weighted(
                     glyph_run.positioned_glyphs().map(|g| Glyph {
                         id: g.id,
                         // Snap glyph Y to integer to keep the baseline
-                        // pixel-aligned per glyph. X stays fractional
-                        // to preserve parley's kerning subtleties.
-                        x: g.x,
+                        // pixel-aligned per glyph. X snap depends on
+                        // the current `TextRendering` preset's
+                        // `SnapX` strategy (None / Half / Full).
+                        x: snap_x_apply(g.x, snap_x),
                         y: g.y.round(),
                     }),
                 );
@@ -342,11 +395,21 @@ pub fn paint_text_rotated_ccw(
     max_width: f32,
     color: Color,
 ) {
-    let layout = text_system.layout(text, font_size, max_width);
+    // Apply the same TextRendering strategy as the straight painter
+    // — `layout_for_rendering` bumps the FontWeight per the preset's
+    // tier and the rotated glyph loop honors snap-X (pre-rotation
+    // coords; the 90° rotation is axis-aligned so post-rotation pixel
+    // alignment is preserved by the snap).
+    let rendering = text_rendering();
+    let layout =
+        text_system.layout_for_rendering(text, font_size, max_width, FontWeight::MEDIUM, rendering);
     let inner = scene.inner_mut();
     // Rotate 90° CCW around the anchor, then translate to it.
     let transform = Affine::translate((anchor_x as f64, anchor_y as f64))
         * Affine::rotate(-std::f64::consts::FRAC_PI_2);
+    let params = rendering.params();
+    let snap_x = params.snap_x;
+    let hint = params.hint;
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(glyph_run) = item else {
@@ -358,19 +421,25 @@ pub fn paint_text_rotated_ccw(
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
-                // Hinting under a 90° rotation: skrifa's autohinter
-                // snaps to the *layout* pixel grid (pre-rotation),
-                // which still gives crisper stems than no hinting —
-                // the post-rotation result aligns to the rotated
-                // pixel grid 1:1 since the rotation is axis-aligned.
-                .hint(true)
+                // Hint per preset (same as the straight painter — see
+                // `paint_text_weighted`). Hinting under a 90° rotation:
+                // skrifa snaps to the *layout* pixel grid pre-rotation,
+                // axis-aligned so post-rotation grid alignment is 1:1.
+                .hint(hint)
+                // Forward parley's per-run variation coords (wght +
+                // opsz). See `paint_text_weighted` for why this is
+                // critical — without it Vello ignores the weight stop.
+                .normalized_coords(run.normalized_coords())
                 .brush(color)
                 .transform(transform)
                 .draw(
                     Fill::NonZero,
                     glyph_run.positioned_glyphs().map(|g| Glyph {
                         id: g.id,
-                        x: g.x,
+                        // Snap X pre-rotation in Crisp; rotation
+                        // turns this into snap-Y in screen space —
+                        // which aligns rotated stems to columns.
+                        x: snap_x_apply(g.x, snap_x),
                         y: g.y,
                     }),
                 );
@@ -639,6 +708,19 @@ mod tests {
         assert!((scale_radius(999.0) - 999.0).abs() < f32::EPSILON);
         assert!((scale_radius(8.0) - 12.8).abs() < 1e-4);
         set_radius_scale(1.0);
+    }
+
+    /// `text_rendering` thread-local round-trip + default.
+    #[test]
+    fn text_rendering_thread_local_roundtrip() {
+        // Start from a known state; not testing default-on-fresh-thread
+        // (other tests in this binary may have set the cell).
+        set_text_rendering(ph2d_tokens::TextRendering::Default);
+        assert_eq!(text_rendering(), ph2d_tokens::TextRendering::Default);
+        set_text_rendering(ph2d_tokens::TextRendering::CrispHeavy);
+        assert_eq!(text_rendering(), ph2d_tokens::TextRendering::CrispHeavy);
+        // Reset so we don't leak state into sibling tests.
+        set_text_rendering(ph2d_tokens::TextRendering::Default);
     }
 
     /// Token → Vello color round-trips bytes accurately enough for

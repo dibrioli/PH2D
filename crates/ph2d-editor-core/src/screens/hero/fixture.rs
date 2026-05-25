@@ -27,6 +27,11 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
     use crate::screens::hero::ids;
     vec![
         (ids::TOPBAR_THEME, TopBarCluster::theme("Forge")),
+        // Level / scene selector — moved to the LEFT side 2026-05-24
+        // (user: "o seletor de level deve ser deslocado para esquerda
+        // ao lado do seletor de themes") so the engine identity +
+        // current scene sit together as one identity block.
+        (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
         (
             ids::TOPBAR_SAVE,
             TopBarCluster::single("Save", IconId::Save),
@@ -44,7 +49,6 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_IMAGE_TOOLS,
             TopBarCluster::single("Image Tools", IconId::Image),
         ),
-        (ids::TOPBAR_PROJECT, TopBarCluster::project("Level_01")),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

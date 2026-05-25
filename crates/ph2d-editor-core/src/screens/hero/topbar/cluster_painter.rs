@@ -26,7 +26,7 @@ use super::super::style::icon_button_fg;
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;
     match cluster {
-        TopBarCluster::Theme { .. } => 132.0, // LITERAL-PX-OK: Theme chip width (chrome dim)
+        TopBarCluster::Theme { .. } => 100.0, // LITERAL-PX-OK: Theme chip — narrowed 132 → 100 (PH2D + dots + chev only, user 2026-05-24)
         TopBarCluster::Single { .. } => 40.0 + PILL_PADDING_PX * 2.0, // LITERAL-PX-OK: Single-icon cluster base width 40px (chrome dim)
         TopBarCluster::Project { .. } => 156.0, // LITERAL-PX-OK: Project chip width (chrome dim)
         // Play cluster now holds 3 controls (Play 32 + Pause 24 +

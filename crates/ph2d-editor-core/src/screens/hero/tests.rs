@@ -730,8 +730,11 @@ fn paint_top_bar_image_tools_mode_swaps_right_side() {
         hits.rect_for(ids::IMAGE_ACTION_TRIM).is_some(),
         "trim action pill must be hit-registered when image_tools_mode is on",
     );
+    // PROJECT moved to LEFT half 2026-05-24 (user request: "o seletor
+    // de level deve ser deslocado para esquerda ao lado do seletor de
+    // themes") — it's now in the always-painted left section, so it
+    // stays hit-registered in image_tools mode along with the rest.
     for default_right in [
-        ids::TOPBAR_PROJECT,
         ids::TOPBAR_PLAY_BUTTON,
         ids::TOPBAR_RIGHT_LAYERS,
         ids::TOPBAR_SETTINGS,
@@ -741,7 +744,8 @@ fn paint_top_bar_image_tools_mode_swaps_right_side() {
             "right-side default cluster {default_right:?} must NOT be registered in image_tools mode",
         );
     }
-    // Left half stays intact — Save/Open/ImageTools are still hit-able.
+    // Left half stays intact — Project/Save/Open/ImageTools still hit-able.
+    assert!(hits.rect_for(ids::TOPBAR_PROJECT).is_some());
     assert!(hits.rect_for(ids::TOPBAR_SAVE).is_some());
     assert!(hits.rect_for(ids::TOPBAR_OPEN).is_some());
     assert!(hits.rect_for(ids::TOPBAR_IMAGE_TOOLS).is_some());

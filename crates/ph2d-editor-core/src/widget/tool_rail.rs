@@ -317,14 +317,27 @@ pub fn paint_tool_rail(
                     ButtonState::Pressed => ColorToken::Accent,
                     _ => ColorToken::Text1,
                 };
+                // Clip face text to the chip rect so longer labels
+                // ("Selected", "Global") don't overflow the button
+                // edges when the user picks Small rail size (chip <
+                // text width). Font drops Xs → Xxs (11 → 10 px) to
+                // give labels more room before the clip kicks in.
+                let face_clip = ph2d_vector::Rect::new(
+                    chip_rect.x as f64,
+                    chip_rect.y as f64,
+                    (chip_rect.x + chip_rect.w) as f64,
+                    (chip_rect.y + chip_rect.h) as f64,
+                );
+                scene.push_clip(&face_clip);
                 paint_text_centered(
                     text_system,
                     scene,
                     face,
                     chip_rect,
-                    TypeToken::Xs.px(),
+                    TypeToken::Xxs.px(),
                     resolve(face_color, theme),
                 );
+                scene.pop_layer();
                 paint_sub_label_vertical(
                     text_system,
                     scene,

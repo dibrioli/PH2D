@@ -217,7 +217,9 @@ pub fn paint_top_bar(
     let row_h = layout.top_bar.h;
     let mut x = layout.top_bar.x;
     let gap = Spacing::Md.px();
-    let split = 4.min(clusters.len());
+    // Left half now holds 5 clusters: Theme, Project (Level), Save,
+    // Open, Image Tools (Project moved here 2026-05-24).
+    let split = 5.min(clusters.len());
     // Left half is always painted — the Image Tools mode keeps the
     // identity / Save / Open / ImageTools cluster visible so the user
     // can exit the mode by clicking ImageTools again.

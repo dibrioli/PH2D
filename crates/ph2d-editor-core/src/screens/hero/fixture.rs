@@ -58,7 +58,7 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // ground-truth. State on `HeroScreen::widget_gallery_visible`.
         (
             ids::TOPBAR_WIDGET_GALLERY,
-            TopBarCluster::single("WIDG", IconId::Palette),
+            TopBarCluster::single("WIDGET", IconId::Palette),
         ),
         // Grid Settings — opens the floating Grid Settings panel
         // (grid-snap subsystem: 9 grid kinds + snap policy + overlay
@@ -73,7 +73,7 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // px/m presets and project-level toggles.
         (
             ids::TOPBAR_SETTINGS,
-            TopBarCluster::single("STNGS", IconId::Settings),
+            TopBarCluster::single("SETTINGS", IconId::Settings),
         ),
     ]
 }

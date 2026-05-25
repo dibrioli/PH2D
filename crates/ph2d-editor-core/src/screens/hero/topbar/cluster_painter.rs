@@ -148,7 +148,12 @@ pub(super) fn paint_topbar_rail_chip(
     // letras"). Fixture labels longer than 5 chars must abbreviate
     // themselves (e.g. "Image Tools" → "IMG"); we hard-cap here so
     // any drift through i18n still fits.
-    let short: String = label.chars().take(5).collect::<String>().to_uppercase();
+    // Hard-cap labels at 8 chars (Enio 2026-05-25: bumped from 5 to
+    // accommodate SCRIPT / WIDGET / SETTINGS in full). Fixture labels
+    // longer than 8 must abbreviate themselves; anything beyond the
+    // chip column width also gets visually clipped by the push_clip
+    // below.
+    let short: String = label.chars().take(8).collect::<String>().to_uppercase();
     crate::paint::paint_text_centered(
         text_system,
         scene,

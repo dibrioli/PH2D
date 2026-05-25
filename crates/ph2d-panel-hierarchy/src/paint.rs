@@ -141,7 +141,11 @@ fn paint_hierarchy_body(
     widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
 
     let header_bottom = title_y + TypeToken::Md.px() + TypeToken::Xs.px() + 18.0; // LITERAL-PX-OK: header baseline composite
-    let body_pad = Spacing::Md.px();
+    // Body padding reduced (Md → Xs) 2026-05-24 per user feedback
+    // ("nomes mais próximos da borda esquerda do painel (quase sem
+    // padding)") — Godot's Scene panel sits text flush with the
+    // panel chrome. Search field + rows now share this tighter inset.
+    let body_pad = Spacing::Xs.px();
 
     let search_h = ROW_H_PX;
     let search_rect = Rect::new(
@@ -277,6 +281,66 @@ fn paint_hierarchy_body(
             is_collapsed,
             direct_match,
         );
+        // Godot-style tree lines connecting parents to children. For
+        // each ancestor depth column c < depth, draw a vertical line
+        // (full row height) if a future row at depth ≥ c exists and
+        // the column is still "alive" (no closer-up ancestor closes
+        // it). The deepest column (c == depth - 1) gets an L-stub:
+        // vertical down to mid-row, then horizontal to the chevron.
+        if depth > 0 {
+            // Internal row pad matches `row.rs::49` exactly.
+            let row_inner_pad = 2.0_f32; // LITERAL-PX-OK: row inset (sync with row.rs)
+            let chev_col_w = Spacing::Lg.px(); // sync with row.rs chev_w
+            let half_chev = chev_col_w * 0.5;
+            let line_color = resolve(ColorToken::Border, theme);
+            for c in 0..(depth as usize) {
+                let col_chev_x = rect.x
+                    + body_pad
+                    + c as f32 * INDENT_PX
+                    + row_inner_pad;
+                let line_x = col_chev_x + half_chev;
+                let is_my_column = c == (depth as usize) - 1;
+                if is_my_column {
+                    let vert = Rect::new(
+                        line_x - 0.5, // LITERAL-PX-OK: 1-px line centered
+                        row_rect.y,
+                        1.0,
+                        row_rect.h * 0.5,
+                    );
+                    ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
+                    let next_col_chev = rect.x
+                        + body_pad
+                        + (c + 1) as f32 * INDENT_PX
+                        + row_inner_pad;
+                    let h_stub = Rect::new(
+                        line_x,
+                        row_rect.y + row_rect.h * 0.5 - 0.5,
+                        (next_col_chev - line_x).max(0.0),
+                        1.0,
+                    );
+                    ph2d_editor_core::paint::fill_rounded_rect(scene, h_stub, 0.0, line_color);
+                } else {
+                    // Continues past me iff some row j > i has depth
+                    // == c+1 before any row drops below c+1.
+                    let target = c as u32 + 1;
+                    let mut continues = false;
+                    for j in (i + 1)..depths.len() {
+                        let d = depths[j];
+                        if d < target {
+                            break;
+                        }
+                        if d == target {
+                            continues = true;
+                            break;
+                        }
+                    }
+                    if continues {
+                        let vert = Rect::new(line_x - 0.5, row_rect.y, 1.0, row_rect.h);
+                        ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
+                    }
+                }
+            }
+        }
         if is_renaming {
             let icon_x_local = rect.x
                 + Spacing::Md.px()

@@ -45,11 +45,19 @@ pub(crate) fn paint_hierarchy_row(
             resolve(ColorToken::Accent, theme),
         );
     }
-    let indent_w = Spacing::Xl.px() * entity.indent as f32;
-    let pad = 10.0_f32; // LITERAL-PX-OK: row inset between Spacing::Md(8) and Lg(12); chrome-specific dim
+    // Indent + body padding are ALREADY applied by the caller
+    // (`paint.rs::244 — row_rect.x = rect.x + body_pad + indent`).
+    // Duplicating either here doubled the visual indent and pushed
+    // children much further right than Godot's Scene panel pattern
+    // — user 2026-05-24: "atualmente o ícone e nome do filho fica
+    // muito mais deslocado para direita que o pai, mas deve ser
+    // como na godot: deslocar o filho para direita apenas a largura
+    // do ícone." Internal `pad` reduced 10 → 2 so names sit close
+    // to the panel's left edge.
+    let pad = 2.0_f32; // LITERAL-PX-OK: row inset (chrome-specific, Godot-tight)
     let chev_w = Spacing::Lg.px();
     let chev_pad = Spacing::Xs.px();
-    let chev_x = rect.x + pad + indent_w;
+    let chev_x = rect.x + pad;
     if has_children {
         let chev_rect = Rect::new(chev_x, rect.y + (rect.h - chev_w) * 0.5, chev_w, chev_w);
         let chev_icon = if is_collapsed {

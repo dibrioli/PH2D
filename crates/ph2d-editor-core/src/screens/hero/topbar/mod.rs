@@ -52,12 +52,14 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Group backdrops — Plain so clicks on empty backdrop space
-    // emit `Click(<backdrop_id>)` that `apply_event` prints.
+    // Group backdrops + per-cluster frames — Plain so clicks on the
+    // empty space emit `Click(<id>)` that `apply_event` prints.
     for id in [
         ids::TOPBAR_LEFT_BACKDROP,
         ids::TOPBAR_RIGHT_BACKDROP,
         ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
+        ids::TOPBAR_CLUSTER_PLAY_FRAME,
+        ids::TOPBAR_CLUSTER_RIGHT_FRAME,
     ] {
         store.register(id, InteractiveState::Plain);
     }
@@ -192,6 +194,8 @@ fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::TOPBAR_LEFT_BACKDROP => "Left Backdrop",
         x if x == ids::TOPBAR_RIGHT_BACKDROP => "Right Backdrop",
         x if x == ids::TOPBAR_IMAGE_TOOLS_BACKDROP => "Image Tools Backdrop",
+        x if x == ids::TOPBAR_CLUSTER_PLAY_FRAME => "Play Cluster Frame",
+        x if x == ids::TOPBAR_CLUSTER_RIGHT_FRAME => "Right Cluster Frame",
         _ => return None,
     })
 }

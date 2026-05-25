@@ -306,6 +306,10 @@ pub(super) fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Play => {
+            // Register the cluster frame hit FIRST so chip hits win on
+            // overlap (HitIndex walks back-to-front). Empty space
+            // between/around chips reports `Click(CLUSTER_PLAY_FRAME)`.
+            hit_index.register(ids::TOPBAR_CLUSTER_PLAY_FRAME, rect);
             // 2026-05-24 Stage 2 — each transport button becomes its
             // own rail-style chip with a label above (Play / Pause /
             // Reset). Replaces the hand-rolled 3-icon row.
@@ -337,6 +341,9 @@ pub(super) fn paint_top_bar_cluster(
             }
         }
         TopBarCluster::Right => {
+            // Same pattern as the Play arm — frame hit first, chips win
+            // on overlap.
+            hit_index.register(ids::TOPBAR_CLUSTER_RIGHT_FRAME, rect);
             // 2026-05-24 Stage 2 — each viewport mode becomes its own
             // rail-style chip with a label above.
             let col_w = rect.w / 3.0; // LITERAL-PX-OK: 3 chip columns in this cluster

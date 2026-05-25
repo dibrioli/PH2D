@@ -102,22 +102,38 @@ fn paint_topbar_rail_chip(
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
     // --- Mirror of paint_tool_rail Icon entry (tool_rail.rs:248-280) ---
+    //
+    // Geometry caveat: the rail paints chips that nearly fill its
+    // narrow backdrop column, so the chip's 1 px `Border` stroke
+    // visually merges with the backdrop edge and reads as "frameless".
+    // The topbar's backdrop is WIDE — each chip is an island in the
+    // middle of it, so the same 1 px Border reads as a hard moldura
+    // around each chip (feedback Enio 2026-05-24: "moldura que não
+    // existe, como se fosse um outro fundo"). We therefore SUPPRESS
+    // fill + border in `Normal` so the chip reduces to the bare icon
+    // glyph (the look the rail achieves by geometric coincidence).
+    // Hovered / Pressed / Active still paint fill + border so click
+    // affordance is preserved — identical tokens to the rail.
     let radius = Radius::Sm.px();
     let is_active = state == ButtonState::Pressed;
     let bg = match state {
-        ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
-        ButtonState::Pressed => ColorToken::AccentSoft,
-        _ if is_active => ColorToken::AccentSoft,
-        _ => ColorToken::BgElev,
+        ButtonState::Hovered | ButtonState::Focused => Some(ColorToken::BgElev),
+        ButtonState::Pressed => Some(ColorToken::AccentSoft),
+        _ if is_active => Some(ColorToken::AccentSoft),
+        _ => None,
     };
-    fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
-    let (border, border_w) = match state {
-        ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
-        ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
-        _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
-        _ => (ColorToken::Border, 1.0),
+    if let Some(bg) = bg {
+        fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
+    }
+    let border = match state {
+        ButtonState::Hovered | ButtonState::Focused => Some((ColorToken::BorderEmph, 1.0)),
+        ButtonState::Pressed => Some((ColorToken::Accent, StrokeToken::Default.px())),
+        _ if is_active => Some((ColorToken::Accent, StrokeToken::Default.px())),
+        _ => None,
     };
-    stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+    if let Some((border, border_w)) = border {
+        stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+    }
     let fg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
         ButtonState::Pressed => ColorToken::Accent,
@@ -139,10 +155,13 @@ fn paint_topbar_rail_chip(
         (label_rect.y + label_rect.h) as f64,
     );
     scene.push_clip(&label_clip);
+    // UPPERCASE to match the rail's vertical sub-labels (INSP / HIER /
+    // MOVE / …). Feedback Enio 2026-05-24.
+    let upper = label.to_uppercase();
     crate::paint::paint_text_centered(
         text_system,
         scene,
-        label,
+        &upper,
         label_rect,
         sub_font,
         resolve(ColorToken::Text2, theme),

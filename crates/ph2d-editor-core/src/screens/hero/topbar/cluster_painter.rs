@@ -188,18 +188,22 @@ pub(super) fn paint_top_bar_cluster(
     let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
     let inner_y = viewport_y + Spacing::Xxs.px() + label_band_h + label_to_chip_gap;
     let inner = Rect::new(rect.x, inner_y, rect.w, chip_px);
-    // Wide-chip surface: same tokens as `paint_topbar_rail_chip`'s
-    // Normal state — BgElev fill + Border 1 px stroke + Sm radius.
-    fill_rounded_rect(scene, inner, Radius::Sm.px(), resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(
-        scene,
-        inner,
-        Radius::Sm.px(),
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    // Wide-chip surface (fill BgElev + border Border 1 px Radius::Sm)
+    // ONLY for Theme + Project. Single/Play/Right delegate to
+    // `paint_topbar_rail_chip`, which paints its own per-chip surface.
+    let paint_wide_chip = |scene: &mut VectorScene| {
+        fill_rounded_rect(scene, inner, Radius::Sm.px(), resolve(ColorToken::BgElev, theme));
+        stroke_rounded_rect(
+            scene,
+            inner,
+            Radius::Sm.px(),
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    };
     match cluster {
         TopBarCluster::Theme { label: _ } => {
+            paint_wide_chip(scene);
             hit_index.register(id, inner);
             let label = "PH2D";
             let mut cx = inner.x + pad_x + Spacing::Xs.px();
@@ -263,6 +267,7 @@ pub(super) fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Project { name } => {
+            paint_wide_chip(scene);
             hit_index.register(id, inner);
             let icon_size = 22.0_f32; // LITERAL-PX-OK: Project chip icon size (specific accent dim)
             let icon_rect = Rect::new(

@@ -213,7 +213,9 @@ pub fn paint_tool_rail(
                 ..
             } => {
                 let chip_rect = Rect::new(chip_x, y, TOOL_CHIP_PX, TOOL_CHIP_PX);
-                let radius = Radius::Lg.px();
+                // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
+                // feedback that rail buttons looked too bubbly.
+                let radius = Radius::Sm.px();
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
                 let bg = match state {
@@ -262,7 +264,9 @@ pub fn paint_tool_rail(
             }
             ToolRailEntry::Compound { id, face, sub, .. } => {
                 let chip_rect = Rect::new(chip_x, y, TOOL_CHIP_PX, TOOL_CHIP_PX);
-                let radius = Radius::Lg.px();
+                // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
+                // feedback that rail buttons looked too bubbly.
+                let radius = Radius::Sm.px();
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let bg = match state {
                     ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,

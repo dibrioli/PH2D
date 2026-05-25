@@ -55,18 +55,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn scale_strictly_increasing_until_full() {
-        let scale = [
+    fn scale_monotonic_until_full() {
+        // `Md` was halved 8 → 4 px on 2026-05-24 to soften the default
+        // card/inner-panel corners. That made Md (4) < Sm (6), which is
+        // an intentional inversion — Md is "default cards" not "between
+        // Sm and Lg by size." The remaining tiers (Xs, Sm, Lg, Xl, Xl2)
+        // are still strictly increasing.
+        let scale_excluding_md = [
             Radius::Xs,
             Radius::Sm,
-            Radius::Md,
             Radius::Lg,
             Radius::Xl,
             Radius::Xl2,
         ];
-        for w in scale.windows(2) {
+        for w in scale_excluding_md.windows(2) {
             assert!(w[0].px() < w[1].px(), "{:?} → {:?}", w[0], w[1]);
         }
         assert!(Radius::Full.px() > Radius::Xl2.px());
+        // Sanity: Md should sit at the floor of the scale (≤ Xs is OK).
+        assert!(Radius::Md.px() <= Radius::Sm.px());
     }
 }

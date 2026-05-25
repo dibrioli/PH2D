@@ -41,8 +41,8 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
         // Play / Right multi-icon clusters host 3 chip columns each
         // (Play/Pause/Reset; Layers/Assets/Script) — per user 2026-05-24
         // each icon becomes its own labeled chip.
-        TopBarCluster::Play => TOPBAR_RAIL_CHIP_W * 3.0,
-        TopBarCluster::Right => TOPBAR_RAIL_CHIP_W * 3.0,
+        TopBarCluster::Play => TOPBAR_RAIL_CHIP_W * 3.0, // LITERAL-PX-OK: 3 chip columns (Play/Pause/Reset)
+        TopBarCluster::Right => TOPBAR_RAIL_CHIP_W * 3.0, // LITERAL-PX-OK: 3 chip columns (Layers/Assets/Script)
     }
 }
 
@@ -98,7 +98,13 @@ fn paint_topbar_rail_chip(
         ButtonState::Pressed => ColorToken::Accent,
         _ => ColorToken::Text2,
     };
-    paint_icon(scene, icon, chip_rect, resolve(fg, theme), StrokeToken::Default.px());
+    paint_icon(
+        scene,
+        icon,
+        chip_rect,
+        resolve(fg, theme),
+        StrokeToken::Default.px(),
+    );
     // --- Label band: rides the backdrop's TOP GUTTER (the backdrop
     // extends up to viewport_y; anchoring the label at viewport_y + Xxs
     // puts it "quase tocando no topo" — Enio 2026-05-24).
@@ -282,9 +288,12 @@ pub(super) fn paint_top_bar_cluster(
             // 2026-05-24 Stage 2 — each transport button becomes its
             // own rail-style chip with a label above (Play / Pause /
             // Reset). Replaces the hand-rolled 3-icon row.
-            let _ = (paint_icon_button, IconGlyph::Builtin(IconId::Play),
-                     IconButtonStyle::Plain); // keep imports alive
-            let col_w = rect.w / 3.0;
+            let _ = (
+                paint_icon_button,
+                IconGlyph::Builtin(IconId::Play),
+                IconButtonStyle::Plain,
+            ); // keep imports alive
+            let col_w = rect.w / 3.0; // LITERAL-PX-OK: 3 chip columns in this cluster
             let entries = [
                 (id, IconId::Play, "Play"),
                 (ids::TOPBAR_PAUSE, IconId::Pause, "Pause"),
@@ -293,7 +302,15 @@ pub(super) fn paint_top_bar_cluster(
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
-                    *chip_id, *icon, label, col, viewport_y, scene, text_system, theme, hit_index,
+                    *chip_id,
+                    *icon,
+                    label,
+                    col,
+                    viewport_y,
+                    scene,
+                    text_system,
+                    theme,
+                    hit_index,
                     store,
                 );
             }
@@ -301,7 +318,7 @@ pub(super) fn paint_top_bar_cluster(
         TopBarCluster::Right => {
             // 2026-05-24 Stage 2 — each viewport mode becomes its own
             // rail-style chip with a label above.
-            let col_w = rect.w / 3.0;
+            let col_w = rect.w / 3.0; // LITERAL-PX-OK: 3 chip columns in this cluster
             let entries = [
                 (ids::TOPBAR_RIGHT_LAYERS, IconId::Layers, "Layers"),
                 (ids::TOPBAR_RIGHT_ASSETS, IconId::Asset, "Assets"),
@@ -310,7 +327,15 @@ pub(super) fn paint_top_bar_cluster(
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
-                    *chip_id, *icon, label, col, viewport_y, scene, text_system, theme, hit_index,
+                    *chip_id,
+                    *icon,
+                    label,
+                    col,
+                    viewport_y,
+                    scene,
+                    text_system,
+                    theme,
+                    hit_index,
                     store,
                 );
             }

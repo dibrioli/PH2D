@@ -61,13 +61,7 @@ mod tests {
         // an intentional inversion — Md is "default cards" not "between
         // Sm and Lg by size." The remaining tiers (Xs, Sm, Lg, Xl, Xl2)
         // are still strictly increasing.
-        let scale_excluding_md = [
-            Radius::Xs,
-            Radius::Sm,
-            Radius::Lg,
-            Radius::Xl,
-            Radius::Xl2,
-        ];
+        let scale_excluding_md = [Radius::Xs, Radius::Sm, Radius::Lg, Radius::Xl, Radius::Xl2];
         for w in scale_excluding_md.windows(2) {
             assert!(w[0].px() < w[1].px(), "{:?} → {:?}", w[0], w[1]);
         }

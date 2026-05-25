@@ -179,11 +179,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                         // `last_x`/`last_y` here — otherwise the same Move
                         // that crossed the threshold would apply the
                         // entire ~5 px Down→here delta as a value JUMP.
-                        store.promote_number_input_drag_to_slider(
-                            horizontal,
-                            event.x,
-                            event.y,
-                        );
+                        store.promote_number_input_drag_to_slider(horizontal, event.x, event.y);
                     }
                 }
                 // Re-read after the potential promotion.

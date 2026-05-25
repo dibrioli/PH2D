@@ -299,10 +299,7 @@ fn paint_hierarchy_body(
             // clear without competing with the row content.
             let line_color = resolve(ColorToken::Text3, theme);
             for c in 0..(depth as usize) {
-                let col_chev_x = rect.x
-                    + body_pad
-                    + c as f32 * INDENT_PX
-                    + row_inner_pad;
+                let col_chev_x = rect.x + body_pad + c as f32 * INDENT_PX + row_inner_pad;
                 let line_x = col_chev_x + half_chev;
                 let is_my_column = c == (depth as usize) - 1;
                 if is_my_column {
@@ -313,10 +310,8 @@ fn paint_hierarchy_body(
                         row_rect.h * 0.5,
                     );
                     ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
-                    let next_col_chev = rect.x
-                        + body_pad
-                        + (c + 1) as f32 * INDENT_PX
-                        + row_inner_pad;
+                    let next_col_chev =
+                        rect.x + body_pad + (c + 1) as f32 * INDENT_PX + row_inner_pad;
                     let h_stub = Rect::new(
                         line_x,
                         row_rect.y + row_rect.h * 0.5 - 0.5,
@@ -329,8 +324,7 @@ fn paint_hierarchy_body(
                     // == c+1 before any row drops below c+1.
                     let target = c as u32 + 1;
                     let mut continues = false;
-                    for j in (i + 1)..depths.len() {
-                        let d = depths[j];
+                    for &d in &depths[(i + 1)..] {
                         if d < target {
                             break;
                         }

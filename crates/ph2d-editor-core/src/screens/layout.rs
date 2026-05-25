@@ -72,11 +72,7 @@ impl HeroLayout {
     /// [`crate::widget::RailButtonSize`] preset in the Themes menu
     /// (2026-05-24) — the rail shrinks/grows and Inspector/Hierarchy
     /// x-positions follow.
-    pub fn for_viewport_mirrored_with_rail_w(
-        viewport: Rect,
-        mirrored: bool,
-        rail_w: f32,
-    ) -> Self {
+    pub fn for_viewport_mirrored_with_rail_w(viewport: Rect, mirrored: bool, rail_w: f32) -> Self {
         let top_bar = Rect::new(
             viewport.x + EDGE_PAD,
             viewport.y + EDGE_PAD,

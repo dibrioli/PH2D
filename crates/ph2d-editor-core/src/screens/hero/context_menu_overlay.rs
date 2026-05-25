@@ -77,9 +77,10 @@ fn id_is_currently_selected(
     if id == theme_id {
         return true;
     }
+    const RADIUS_ROUND_THRESH: f32 = 1.3; // LITERAL-PX-OK: midpoint between Default(1.0) and Round(1.5) radius preset
     let radius_id = if store.radius_scale() < 0.5 {
         ids::CTX_MENU_RADIUS_SHARP
-    } else if store.radius_scale() > 1.3 {
+    } else if store.radius_scale() > RADIUS_ROUND_THRESH {
         ids::CTX_MENU_RADIUS_ROUND
     } else {
         ids::CTX_MENU_RADIUS_DEFAULT
@@ -192,7 +193,11 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_RADIUS_DEFAULT, "— Corners: Default", None),
             (ids::CTX_MENU_RADIUS_ROUND, "— Corners: Round", None),
             (ids::CTX_MENU_RAIL_SIZE_SMALL, "— Rail Buttons: Small", None),
-            (ids::CTX_MENU_RAIL_SIZE_MEDIUM, "— Rail Buttons: Medium", None),
+            (
+                ids::CTX_MENU_RAIL_SIZE_MEDIUM,
+                "— Rail Buttons: Medium",
+                None,
+            ),
             (ids::CTX_MENU_RAIL_SIZE_LARGE, "— Rail Buttons: Large", None),
             (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
             (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
@@ -352,8 +357,7 @@ pub fn paint_context_menu_overlay(
         // Leading visual: color swatch for outline picks, "+" icon
         // for create-note. Painted to the right of the bullet column
         // so the bullet always lines up flush-left.
-        let has_glyph = swatch.is_some()
-            || matches!(req.kind, ContextMenuKind::CreateNote { .. });
+        let has_glyph = swatch.is_some() || matches!(req.kind, ContextMenuKind::CreateNote { .. });
         if let Some(rgba) = swatch {
             let sw = Rect::new(glyph_x, icon_y, icon_size, icon_size);
             fill_rounded_rect(

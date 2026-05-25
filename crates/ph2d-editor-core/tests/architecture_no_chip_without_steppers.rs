@@ -130,8 +130,8 @@ fn paint_number_chip_paints_steppers() {
         .join("src")
         .join("widget")
         .join("slider_with_chip.rs");
-    let text = std::fs::read_to_string(&file)
-        .unwrap_or_else(|e| panic!("read {}: {e}", file.display()));
+    let text =
+        std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("read {}: {e}", file.display()));
     let code = code_only(&text);
     let signals = [
         ("IconId::ChevronUp", "the `up` arrow paint call"),

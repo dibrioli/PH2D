@@ -528,8 +528,8 @@ impl WidgetStore {
     /// `architecture_no_chip_without_steppers` prevents reintroducing
     /// a chip variant that needs it. To be deleted in Wave 12.
     #[deprecated(
-        since = "Wave 11",
-        note = "all chips paint arrows now; the dispatch's stepper hit-test is the canon"
+        since = "0.0.0",
+        note = "all chips paint arrows now; the dispatch's stepper hit-test is the canon (Wave 11)"
     )]
     pub fn mark_chip_no_stepper(&mut self, id: NodeId) {
         self.chips_without_steppers.insert(id);

@@ -250,9 +250,7 @@ pub fn paint_slider_with_chip_layout_adaptive(
         rect.w,
         resolve(ColorToken::Text1, theme),
     );
-    let lower_y = rect.y
-        + label_row_h
-        + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
+    let lower_y = rect.y + label_row_h + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
     let lower_rect = Rect::new(rect.x, lower_y, rect.w, rect.h);
     paint_slider_with_chip_layout(
         lower_rect,

@@ -344,7 +344,12 @@ fn paint_topbar_group_backdrop(
         group_rect.w + pad_h * 2.0,
         bottom_y - top_y,
     );
-    fill_rounded_rect(scene, bg, Radius::Lg.px(), resolve(ColorToken::RailBg, theme));
+    fill_rounded_rect(
+        scene,
+        bg,
+        Radius::Lg.px(),
+        resolve(ColorToken::RailBg, theme),
+    );
 }
 
 /// Paint the image-action row that occupies the right half of the

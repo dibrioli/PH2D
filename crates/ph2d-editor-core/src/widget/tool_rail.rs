@@ -64,10 +64,9 @@ impl RailButtonSize {
     /// Chip edge (square) in px for this size preset.
     pub const fn chip_px(self) -> f32 {
         match self {
-            // LITERAL-PX-OK: user-facing preset values (Themes menu).
-            Self::Small => 36.0,
-            Self::Medium => 40.0,
-            Self::Large => 44.0,
+            Self::Small => 36.0,  // LITERAL-PX-OK: Themes-menu preset (Small)
+            Self::Medium => 40.0, // LITERAL-PX-OK: Themes-menu preset (Medium)
+            Self::Large => 44.0,  // LITERAL-PX-OK: Themes-menu preset (Large)
         }
     }
 
@@ -285,12 +284,10 @@ pub fn paint_tool_rail(
                     sub_font,
                     rect.x,
                     chip_rect,
-                    // M14.5 round 4: labels sit directly on the canvas
-                    // when chrome floats over the game RT — `Text3`
-                    // (dim grey) reads almost invisibly against any
-                    // mid-luminance backdrop. `Text2` keeps the
-                    // hierarchy below the chip's primary content but
-                    // is legible on canvas.
+                    // M14.5 r4: Text2 keeps the label legible on the
+                    // canvas-floating chrome without competing with the
+                    // chip's primary content (Text3 was invisible on
+                    // mid-luminance backdrops).
                     resolve(ColorToken::Text2, theme),
                 );
                 y += chip_px;
@@ -345,12 +342,7 @@ pub fn paint_tool_rail(
                     sub_font,
                     rect.x,
                     chip_rect,
-                    // M14.5 round 4: labels sit directly on the canvas
-                    // when chrome floats over the game RT — `Text3`
-                    // (dim grey) reads almost invisibly against any
-                    // mid-luminance backdrop. `Text2` keeps the
-                    // hierarchy below the chip's primary content but
-                    // is legible on canvas.
+                    // M14.5 r4: see Icon arm note.
                     resolve(ColorToken::Text2, theme),
                 );
                 y += chip_px;

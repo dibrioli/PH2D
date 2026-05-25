@@ -3,6 +3,7 @@
 
 use crate::state::current_display_unit;
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
@@ -11,7 +12,6 @@ use ph2d_editor_core::widget::panel_chrome::{
     SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group_adaptive,
 };
 use ph2d_editor_core::widget::showcase::read_number_input;
-use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, IconButtonStyle,
     IconGlyph, NumberInput, SectionHeader, TextInput, TextInputState, paint_button, paint_checkbox,
@@ -138,12 +138,7 @@ pub(crate) fn paint_transform_section(
     {
         hit_index.register(color_id, circle_rect);
     }
-    let reset_rect = Rect::new(
-        x + w - color_slot_w - reset_size,
-        y,
-        reset_size,
-        reset_size,
-    );
+    let reset_rect = Rect::new(x + w - color_slot_w - reset_size, y, reset_size, reset_size);
     let reset_state = store
         .button_state(ids::INSP_TRANSFORM_RESET)
         .unwrap_or(ButtonState::Normal);
@@ -207,11 +202,8 @@ pub(crate) fn paint_transform_section(
     } else {
         w - label_col_w - col_gap
     };
-    let two_chip_w = ((chips_avail_w_section
-        - 2.0 * (axis_col_w + tag_box_gap)
-        - col_gap)
-        / 2.0)
-        .max(0.0); // no MIN_W floor here — never overflow rect
+    let two_chip_w =
+        ((chips_avail_w_section - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0); // no MIN_W floor here — never overflow rect
 
     let paint_row = |scene: &mut VectorScene,
                      text_system: &mut TextSystem,
@@ -229,11 +221,7 @@ pub(crate) fn paint_transform_section(
         } else {
             x + label_col_w + col_gap
         };
-        let label_h_used = if section_narrow {
-            field_h
-        } else {
-            0.0_f32
-        };
+        let label_h_used = if section_narrow { field_h } else { 0.0_f32 };
         let total_h = if section_narrow {
             field_h + label_above_gap + field_h
         } else {
@@ -499,7 +487,7 @@ pub(crate) fn paint_render_source_section(
     // Adaptive segmented GROUP — when the panel is narrow, drops
     // "Hand-packed" (the longest) to its own row instead of wrapping
     // the label. Returns the actual height used.
-    let strat_h = paint_segmented_group_adaptive(
+    let strategy_h = paint_segmented_group_adaptive(
         Rect::new(x, cur_y, w, strategy_btn_h),
         &[
             (
@@ -525,7 +513,7 @@ pub(crate) fn paint_render_source_section(
     );
     // Inter-row gap inside Render Source — matches Transform's row_gap
     // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
-    cur_y += strat_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
+    cur_y += strategy_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
     // Cleaner phrasing — strategy name + key/id separated by middle
     // dot (the only ASCII-safe non-ASCII glyph allowed in UI strings;
     // vide no_tofu_glyphs gate). Pre-canon was "Atlas key: 0" /

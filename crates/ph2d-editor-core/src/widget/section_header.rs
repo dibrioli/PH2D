@@ -7,9 +7,7 @@
 //! "Advanced (7)", "Inputs (24)" etc.
 
 use crate::icons::IconId;
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text_centered, paint_text_title, resolve,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, paint_text_title, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;

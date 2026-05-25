@@ -37,9 +37,7 @@ fn widget_primitives_under_loc_cap() {
     let mut offenders: Vec<(String, usize)> = Vec::new();
     visit(&widget_dir(), &mut offenders);
     offenders.retain(|(path, loc)| {
-        let allow = FILE_OVERAGE_OK
-            .iter()
-            .find(|(p, _, _)| path.ends_with(p));
+        let allow = FILE_OVERAGE_OK.iter().find(|(p, _, _)| path.ends_with(p));
         match allow {
             Some((_, cap, _)) => *loc > *cap,
             None => true,

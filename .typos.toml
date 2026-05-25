@@ -42,6 +42,12 @@ fase = "fase"
 # pt-BR plurals that typos-cli wants in English.
 individuais = "individuais"
 individual = "individual"
+# More pt-BR tokens that appear inside user-feedback quotes in code
+# comments and tests (kept verbatim to preserve the user's voice).
+nomes = "nomes"
+componentes = "componentes"
+seletor = "seletor"
+momento = "momento"
 # Technical terms that show up in shaders / numerics.
 texel = "texel"
 mipmap = "mipmap"

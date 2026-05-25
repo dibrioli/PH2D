@@ -415,7 +415,12 @@ pub fn paint_panel_title_color_dot(
     let close_reserve = PANEL_HEADER_CLOSE_RESERVE; // align with close slot reserve
     let cx = panel.x + panel.w - close_reserve - radius_px;
     let cy = panel.y + PANEL_TITLE_BASELINE - radius_px * 0.5;
-    let dot = Rect::new(cx - radius_px, cy - radius_px, radius_px * 2.0, radius_px * 2.0);
+    let dot = Rect::new(
+        cx - radius_px,
+        cy - radius_px,
+        radius_px * 2.0,
+        radius_px * 2.0,
+    );
     let fill = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: user-color
     let circle = ph2d_vector::Circle::new(
         ph2d_vector::Point::new(cx as f64, cy as f64),

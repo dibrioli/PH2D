@@ -46,9 +46,8 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     }
 }
 
-/// Paint a rail-style chip with a horizontal sub-label ABOVE —
-/// horizontal counterpart of the side rail's chip + vertical-rotated
-/// label arrangement.
+/// Paint a rail-style chip with a horizontal sub-label in the
+/// group-backdrop's TOP GUTTER.
 ///
 /// MIRRORS `widget::tool_rail::paint_tool_rail` Icon entry EXACTLY for
 /// the chip itself: same `Radius::Sm`, same BgElev fill, same Border
@@ -56,18 +55,20 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
 /// foreground modulated by `ButtonState`. The matrix is copied
 /// verbatim — DO NOT diverge.
 ///
-/// Layout: `label_band_h + label_to_chip_gap + chip_px` is centered
-/// vertically inside `chip_col` (the topbar row). The chip sits
-/// directly in the chrome — there is NO group backdrop behind the
-/// chips (removed 2026-05-24, Enio: "retire os quadros atrás dos
-/// botões"). Each chip is therefore a stand-alone affordance, same
-/// as the side rail's icon chips.
+/// Layout — horizontal analogue of the rail's vertical layout:
+///   - In the rail, the rotated sub-label hugs the LEFT edge of the
+///     RailBg backdrop (left gutter); chip sits to its right.
+///   - Here, the label hugs the TOP edge of the same RailBg backdrop
+///     (top gutter), anchored at `viewport_y + Xxs` — "quase tocando
+///     no topo" per Enio 2026-05-24.
+///   - Chip is centered vertically in `chip_col` (the topbar row).
 #[allow(clippy::too_many_arguments)]
 fn paint_topbar_rail_chip(
     chip_id: NodeId,
     icon: IconId,
     label: &str,
     chip_col: Rect,
+    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -83,12 +84,10 @@ fn paint_topbar_rail_chip(
     let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
     // Label band height = rail's `LABEL_VISUAL_EXTENT_PX = 11.0`.
     let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
-    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
-    // Center the label+chip stack vertically within the topbar row.
-    let stack_h = label_band_h + label_to_chip_gap + chip_px;
-    let stack_y = chip_col.y + (chip_col.h - stack_h) * 0.5;
+    // Chip centered vertically in the topbar row; label rides the
+    // backdrop's top gutter (see label_rect below).
     let chip_x = chip_col.x + (chip_col.w - chip_px) * 0.5;
-    let chip_y = stack_y + label_band_h + label_to_chip_gap;
+    let chip_y = chip_col.y + (chip_col.h - chip_px) * 0.5;
     let chip_rect = Rect::new(chip_x, chip_y, chip_px, chip_px);
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
@@ -120,9 +119,11 @@ fn paint_topbar_rail_chip(
         _ => ColorToken::Text2,
     };
     paint_icon(scene, icon, chip_rect, resolve(fg, theme), StrokeToken::Default.px());
-    // --- Label band: sits directly above the chip with `label_to_chip_gap`
-    // between them, mirroring the rail's `LABEL_TO_CHIP_GAP_PX`.
-    let label_rect = Rect::new(chip_col.x, stack_y, chip_col.w, label_band_h);
+    // --- Label band: rides the backdrop's TOP GUTTER (the backdrop
+    // extends up to viewport_y; anchoring the label at viewport_y + Xxs
+    // puts it "quase tocando no topo" — Enio 2026-05-24).
+    let label_y = viewport_y + Spacing::Xxs.px();
+    let label_rect = Rect::new(chip_col.x, label_y, chip_col.w, label_band_h);
     let label_clip = ph2d_vector::Rect::new(
         label_rect.x as f64,
         label_rect.y as f64,
@@ -149,6 +150,7 @@ pub(super) fn paint_top_bar_cluster(
     id: NodeId,
     cluster: &fixture::TopBarCluster,
     rect: Rect,
+    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -227,6 +229,7 @@ pub(super) fn paint_top_bar_cluster(
                 *icon,
                 label,
                 rect,
+                viewport_y,
                 scene,
                 text_system,
                 theme,
@@ -310,7 +313,8 @@ pub(super) fn paint_top_bar_cluster(
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
-                    *chip_id, *icon, label, col, scene, text_system, theme, hit_index, store,
+                    *chip_id, *icon, label, col, viewport_y, scene, text_system, theme, hit_index,
+                    store,
                 );
             }
         }
@@ -326,7 +330,8 @@ pub(super) fn paint_top_bar_cluster(
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
-                    *chip_id, *icon, label, col, scene, text_system, theme, hit_index, store,
+                    *chip_id, *icon, label, col, viewport_y, scene, text_system, theme, hit_index,
+                    store,
                 );
             }
         }

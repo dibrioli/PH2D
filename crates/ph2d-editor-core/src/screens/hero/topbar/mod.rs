@@ -5,7 +5,7 @@ use super::fixture;
 use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::widget::{
     ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, Tooltip, paint_icon_button,
     paint_tooltip,
@@ -220,9 +220,27 @@ pub fn paint_top_bar(
     // Left half now holds 5 clusters: Theme, Project (Level), Save,
     // Open, Image Tools (Project moved here 2026-05-24).
     let split = 5.min(clusters.len());
-    // Group backdrops removed 2026-05-24 (Enio: "retire os quadros
-    // atrás dos botões"). Chips paint their own fill+border like the
-    // rail's individual chips; no second-layer plate behind them.
+    // Single agrupador backdrop spanning ALL left clusters (Enio
+    // 2026-05-24: "Os componentes da esquerda devem ter apenas 1
+    // fundo"). RailBg + radius Lg, top edge glued to viewport.y so
+    // it touches the top of the screen.
+    {
+        let mut left_w = 0.0_f32;
+        for (i, (_, c)) in clusters[..split].iter().enumerate() {
+            if i > 0 {
+                left_w += gap;
+            }
+            left_w += cluster_width(c);
+        }
+        if left_w > 0.0 {
+            paint_topbar_group_backdrop(
+                scene,
+                theme,
+                Rect::new(layout.top_bar.x, layout.top_bar.y, left_w, row_h),
+                layout.viewport.y,
+            );
+        }
+    }
     // Left half is always painted — the Image Tools mode keeps the
     // identity / Save / Open / ImageTools cluster visible so the user
     // can exit the mode by clicking ImageTools again.
@@ -232,6 +250,7 @@ pub fn paint_top_bar(
             *id,
             cluster,
             rect,
+            layout.viewport.y,
             scene,
             text_system,
             theme,
@@ -274,7 +293,16 @@ pub fn paint_top_bar(
         right_w += cluster_width(c);
     }
     let right_x = layout.top_bar.x + layout.top_bar.w - right_w;
-    // No right-group backdrop — see comment in the left-cluster loop.
+    // Single agrupador backdrop spanning ALL right clusters (Enio
+    // 2026-05-24: "Os componentes da direita apenas um fundo").
+    if right_w > 0.0 {
+        paint_topbar_group_backdrop(
+            scene,
+            theme,
+            Rect::new(right_x, layout.top_bar.y, right_w, row_h),
+            layout.viewport.y,
+        );
+    }
     let mut rx = right_x;
     for (id, cluster) in right_clusters {
         let rect = Rect::new(rx, layout.top_bar.y, cluster_width(cluster), row_h);
@@ -282,6 +310,7 @@ pub fn paint_top_bar(
             *id,
             cluster,
             rect,
+            layout.viewport.y,
             scene,
             text_system,
             theme,
@@ -290,6 +319,32 @@ pub fn paint_top_bar(
         );
         rx = rect.x + rect.w + gap;
     }
+}
+
+/// Paint the agrupador backdrop behind a topbar cluster group (Enio
+/// 2026-05-24: "1 fundo só"). Same `ColorToken::RailBg` token the side
+/// rail's backing uses, so the topbar and the left rail share their
+/// frosted-glass colour. Top edge is glued to `viewport_top` so the
+/// backdrop touches the top of the screen ("o fundo deve ser colado
+/// do topo do screen"). Horizontal `Sm` bleed on each side keeps the
+/// chips from sitting flush with the backdrop's rounded corners.
+fn paint_topbar_group_backdrop(
+    scene: &mut VectorScene,
+    theme: Theme,
+    group_rect: Rect,
+    viewport_top: f32,
+) {
+    let pad_h = Spacing::Sm.px();
+    let pad_v = Spacing::Xxs.px();
+    let top_y = viewport_top.min(group_rect.y - pad_v);
+    let bottom_y = group_rect.y + group_rect.h + pad_v;
+    let bg = Rect::new(
+        group_rect.x - pad_h,
+        top_y,
+        group_rect.w + pad_h * 2.0,
+        bottom_y - top_y,
+    );
+    fill_rounded_rect(scene, bg, Radius::Lg.px(), resolve(ColorToken::RailBg, theme));
 }
 
 /// Paint the image-action row that occupies the right half of the
@@ -314,8 +369,16 @@ fn paint_image_action_row(
     let pills = image_action_pills();
     let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
-    // No group backdrop for the image-tools action row — same reason
-    // as the default-mode clusters; pills carry their own framing.
+    // Single agrupador backdrop spanning ALL image-tool pills (Enio
+    // 2026-05-24: "Os botões dos image tools também um fundo só").
+    if total_w > 0.0 {
+        paint_topbar_group_backdrop(
+            scene,
+            theme,
+            Rect::new(start_x, layout.top_bar.y, total_w, row_h),
+            layout.viewport.y,
+        );
+    }
     let mut rx = start_x;
     for pill in &pills {
         let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);

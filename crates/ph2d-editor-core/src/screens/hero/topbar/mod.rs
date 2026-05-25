@@ -309,16 +309,20 @@ pub fn paint_top_bar(
             store,
         );
         // Active-state ring on the ImageTools chip when the mode is
-        // on. Pre-2026-05-25 this stroked the full `rect` at Xl
-        // radius — sobra da era do cluster com pill grande, ficou
-        // como "moldura invisível" depois que o pill foi removido.
-        // Agora pinta no chip rect (chip_px, Radius::Sm) alinhado
-        // com o glyph.
+        // on. Must mirror `paint_topbar_rail_chip` chip_rect exactly:
+        // stack_y = viewport_y + Xxs, chip_y = stack_y + label_band
+        // + gap. Centralizar em rect.h fica deslocado porque o
+        // backdrop é compacto e colado no topo (não no centro do
+        // top_bar).
         if image_tools_mode && *id == ids::TOPBAR_IMAGE_TOOLS {
             let chip_px = store.rail_button_size().chip_px();
+            let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
+            let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+            let stack_y = layout.viewport.y + Spacing::Xxs.px();
+            let chip_y = stack_y + label_band_h + label_to_chip_gap;
             let chip_rect = Rect::new(
                 rect.x + (rect.w - chip_px) * 0.5,
-                rect.y + (rect.h - chip_px) * 0.5,
+                chip_y,
                 chip_px,
                 chip_px,
             );
@@ -409,12 +413,7 @@ fn paint_topbar_group_backdrop(
     let bg_h = chip_px + label_to_chip_gap + label_band_h + pad_v * 2.0;
     // Colado no topo da viewport (Enio 2026-05-25).
     let bg_y = viewport_y;
-    let bg = Rect::new(
-        group_rect.x - pad_h,
-        bg_y,
-        group_rect.w + pad_h * 2.0,
-        bg_h,
-    );
+    let bg = Rect::new(group_rect.x - pad_h, bg_y, group_rect.w + pad_h * 2.0, bg_h);
     hit_index.register(id, bg);
     fill_rounded_rect(
         scene,
@@ -618,7 +617,9 @@ pub fn image_action_a11y_nodes(
 /// 600-LOC cap. Same private surface as before; both functions
 /// remain `pub(super)`-callable from `paint_top_bar`.
 mod cluster_painter;
-use cluster_painter::{TOPBAR_RAIL_CHIP_W, cluster_width, paint_top_bar_cluster, paint_topbar_rail_chip};
+use cluster_painter::{
+    TOPBAR_RAIL_CHIP_W, cluster_width, paint_top_bar_cluster, paint_topbar_rail_chip,
+};
 
 #[cfg(test)]
 mod tests {

@@ -23,12 +23,13 @@ use super::super::fixture;
 use super::super::ids;
 use super::super::style::icon_button_fg;
 
-/// Width allocated to one rail-style chip + its label-above column
-/// (2026-05-24 Stage-2 topbar redesign). Chip = `Spacing::Xl2`
-/// (= 32 px); column gives ~28 px of breathing room around the chip
-/// so 6–8 char labels read without clipping. Longer labels truncate
-/// via the clip layer in `paint_topbar_rail_chip`.
-const TOPBAR_RAIL_CHIP_W: f32 = 60.0; // LITERAL-PX-OK: chip column width (chrome dim)
+/// Width allocated to one rail-style chip column. Chip = 36 px
+/// (Small `RailButtonSize`) + 4 px margin each side = 44 px column.
+/// This mirrors the side rail's chip-to-column ratio so the chip's
+/// 1 px Border visually merges with the backdrop edge (the "frameless"
+/// rail look). Longer labels truncate via the clip layer in
+/// `paint_topbar_rail_chip`.
+const TOPBAR_RAIL_CHIP_W: f32 = 44.0; // LITERAL-PX-OK: chip column width = chip_px(36) + 4 px margin × 2
 
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;
@@ -91,11 +92,31 @@ fn paint_topbar_rail_chip(
     let chip_rect = Rect::new(chip_x, chip_y, chip_px, chip_px);
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
-    // No fill, no border — Enio 2026-05-25: "Deixe só os ícones como
-    // botões e o fundo onde estão as labels. retire tudo mais."
+    // Matriz EXATA do rail (tool_rail.rs:248-280). With the narrower
+    // 44 px column, the chip's 1 px Border now sits within 4 px of the
+    // backdrop edge — the same chip/backdrop ratio the rail has,
+    // making the border read as part of the chrome instead of a
+    // "moldura intermediária".
+    let radius = Radius::Sm.px();
+    let is_active = state == ButtonState::Pressed;
+    let bg = match state {
+        ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+        ButtonState::Pressed => ColorToken::AccentSoft,
+        _ if is_active => ColorToken::AccentSoft,
+        _ => ColorToken::BgElev,
+    };
+    fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
+    let (border, border_w) = match state {
+        ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
+        ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
+        _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
+        _ => (ColorToken::Border, 1.0),
+    };
+    stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
     let fg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
         ButtonState::Pressed => ColorToken::Accent,
+        _ if is_active => ColorToken::Accent,
         _ => ColorToken::Text2,
     };
     paint_icon(

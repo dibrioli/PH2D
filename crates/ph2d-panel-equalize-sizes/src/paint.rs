@@ -28,7 +28,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
+    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -191,7 +191,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
             // Canonical chip width — 72 px (was 32, user 2026-05-24).
             let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
             let display = format!("{} px", chip_value.round() as i64);
-            paint_slider_with_chip_layout(
+            let used = paint_slider_with_chip_layout_adaptive(
                 Rect::new(inner_x, y, inner_w, row_h),
                 "Offset",
                 track,
@@ -207,7 +207,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
                 text_system,
                 theme,
             );
-            y += row_h + row_gap;
+            y += used + row_gap;
 
             let final_dim = snapshot
                 .grid_unit
@@ -443,7 +443,7 @@ fn paint_labeled_chip(
     let chip_w = (rect.w * 0.55).max(Spacing::Xl.px() * 2.0); // LITERAL-PX-OK: chip-vs-label split ratio (visual proportion)
     let label_col = (rect.w - chip_w - Spacing::Sm.px()).max(Spacing::Md.px());
     let display = value.round().to_string();
-    paint_slider_with_chip_layout(
+    let _ = paint_slider_with_chip_layout_adaptive(
         rect,
         label,
         0.0, // slider track value (hidden by zero-width)

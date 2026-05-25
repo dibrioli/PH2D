@@ -21,7 +21,7 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
-    paint_slider_with_chip_layout,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -70,7 +70,7 @@ pub(crate) fn paint_slider_rows(
         ),
     ] {
         let value = store.slider(id).map(|(_, v)| v).unwrap_or(fallback);
-        paint_slider_with_chip_layout(
+        let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),
             label,
             value,
@@ -86,7 +86,7 @@ pub(crate) fn paint_slider_rows(
             text_system,
             theme,
         );
-        y += row_h + row_gap;
+        y += used + row_gap;
     }
     y
 }
@@ -119,7 +119,7 @@ pub(crate) fn paint_grow_shrink(
     } else {
         format!("{signed:+.2}")
     };
-    paint_slider_with_chip_layout(
+    let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(inner_x, y, inner_w, row_h),
         "Grow",
         grow_v,
@@ -135,7 +135,7 @@ pub(crate) fn paint_grow_shrink(
         text_system,
         theme,
     );
-    y += row_h + row_gap;
+    y += used + row_gap;
     y += row_gap; // extra spacing after grow
     y
 }
@@ -185,7 +185,7 @@ pub(crate) fn paint_islands(
             ((min_v.clamp(0.0, 1.0) * (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0)).round() as u32 + 1)
                 .max(1);
         let min_display = format!("{min_count}");
-        paint_slider_with_chip_layout(
+        let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),
             "Min px",
             min_v,
@@ -201,7 +201,7 @@ pub(crate) fn paint_islands(
             text_system,
             theme,
         );
-        y += row_h + row_gap;
+        y += used + row_gap;
     }
     y += row_gap; // extra spacing after islands block
     y
@@ -313,7 +313,7 @@ pub(crate) fn paint_protect_brush(
             .slider(ids::BGR_BRUSH_SIZE)
             .map(|(_, v)| v)
             .unwrap_or(snapshot.brush_size01);
-        paint_slider_with_chip_layout(
+        let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),
             "Size",
             size_v,
@@ -329,7 +329,7 @@ pub(crate) fn paint_protect_brush(
             text_system,
             theme,
         );
-        y += row_h + row_gap;
+        y += used + row_gap;
 
         let falloff_h = paint_segmented_group_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),

@@ -32,7 +32,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
+    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -134,7 +134,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
             .unwrap_or(snap_px as f64)
             .round() as i64;
         let px_display = px.to_string();
-        paint_slider_with_chip_layout(
+        let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(inner_x, y, inner_w, row_h),
             label,
             track,
@@ -150,7 +150,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
             text_system,
             theme,
         );
-        y += row_h + row_gap;
+        y += used + row_gap;
     }
 
     y += row_gap;

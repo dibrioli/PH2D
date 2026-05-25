@@ -29,7 +29,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout,
+    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -140,7 +140,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
         .map(|(_, v)| v)
         .unwrap_or_else(|| scale_to_slider(snapshot.scale_factor));
     let factor_display = format!("{:.2}×", slider_to_scale(track));
-    paint_slider_with_chip_layout(
+    let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(inner_x, y, inner_w, row_h),
         "Scale",
         track,
@@ -156,7 +156,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
         text_system,
         theme,
     );
-    y += row_h + row_gap;
+    y += used + row_gap;
 
     // ── Reset (ghost, full width) row ──────────────────────────────
     let btn_gap = Spacing::Sm.px();

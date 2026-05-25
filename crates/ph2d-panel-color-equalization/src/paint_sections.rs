@@ -20,7 +20,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, paint_button,
-    paint_dropdown_chip, paint_slider_with_chip_layout,
+    paint_dropdown_chip, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -196,7 +196,7 @@ pub(crate) fn paint_slider_rows_section(
             .map(|(_, v)| v)
             .unwrap_or(row.snap_track);
         let chip_value = store.number_value(row.chip_id).unwrap_or(row.snap_chip);
-        paint_slider_with_chip_layout(
+        let used = paint_slider_with_chip_layout_adaptive(
             Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
             row.label,
             track,
@@ -212,7 +212,7 @@ pub(crate) fn paint_slider_rows_section(
             text_system,
             theme,
         );
-        y += layout.row_h + layout.row_gap;
+        y += used + layout.row_gap;
     }
     y
 }

@@ -180,6 +180,99 @@ pub fn paint_slider_with_chip_layout(
     }
 }
 
+/// Adaptive variant of [`paint_slider_with_chip_layout`] — when the
+/// label + slider + chip won't fit horizontally inside `rect.w`, the
+/// label demotes to its own row ABOVE the slider+chip row (the
+/// slider+chip then takes the full width on the lower row).
+///
+/// UI canon 2026-05-24 (user: "vamos tornar todos os sliders
+/// adaptáveis à largura do painel. Na largura padrão fica como está
+/// mas no momento em que o painel fica mais estreito, a label dos
+/// slider passa para linha de cima. Como fizemos com as caixas de
+/// texto"). Mirrors the demote-on-narrow pattern in
+/// [`crate::widget::panel_chrome::paint_segmented_group_adaptive`].
+///
+/// Returns the total vertical extent used (`rect.h` in horizontal
+/// mode; `rect.h * 2 + SECTION_LABEL_TO_CONTROL_PX` in stacked mode).
+/// Callers advance their y-cursor by the returned value.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_slider_with_chip_layout_adaptive(
+    rect: Rect,
+    label: &str,
+    value: f32,
+    chip_value: f64,
+    display_override: Option<&str>,
+    slider_id: NodeId,
+    chip_id: NodeId,
+    label_w: f32,
+    chip_w: f32,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) -> f32 {
+    let gap = Spacing::Sm.px();
+    // Minimum slider track width before we'd rather demote the label.
+    // ~60 px is the chrome floor: tiny but still draggable; below this
+    // the slider becomes nearly useless.
+    let min_slider_w: f32 = 60.0; // LITERAL-PX-OK: slider chrome floor
+    let needed = label_w + chip_w + gap * 2.0 + min_slider_w;
+    if rect.w >= needed {
+        paint_slider_with_chip_layout(
+            rect,
+            label,
+            value,
+            chip_value,
+            display_override,
+            slider_id,
+            chip_id,
+            label_w,
+            chip_w,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        return rect.h;
+    }
+    // Stacked: label on top row, slider+chip on bottom row at full width.
+    let font = TypeToken::Base.px();
+    let label_row_h = rect.h;
+    paint_text(
+        text_system,
+        scene,
+        label,
+        rect.x,
+        rect.y + (label_row_h - font) * 0.5,
+        font,
+        rect.w,
+        resolve(ColorToken::Text1, theme),
+    );
+    let lower_y = rect.y
+        + label_row_h
+        + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
+    let lower_rect = Rect::new(rect.x, lower_y, rect.w, rect.h);
+    paint_slider_with_chip_layout(
+        lower_rect,
+        "", // label already painted above
+        value,
+        chip_value,
+        display_override,
+        slider_id,
+        chip_id,
+        0.0, // give all width to slider+chip
+        chip_w,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    label_row_h + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX + rect.h
+}
+
 /// Paint the canonical numeric chip — background, optional focus border,
 /// centered text, caret, selection highlight, **plus the up/down stepper
 /// arrows** carved from the right edge of the rect.

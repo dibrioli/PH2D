@@ -181,14 +181,19 @@ pub(super) fn paint_left_label(
     y: f32,
     row_h: f32,
 ) {
-    let label_y = y + (row_h - TypeToken::Xs.px()) * 0.5;
+    // Font bumped Xs (11 px) → Sm (12 px) on 2026-05-24 per user
+    // feedback that "Value"/"Snap to grid" / etc were too small next
+    // to the slider rows (which already paint labels at Sm). Single
+    // canon site, so all showcase rows align.
+    let font = TypeToken::Sm.px();
+    let label_y = y + (row_h - font) * 0.5;
     paint_text(
         text_system,
         scene,
         label,
         x,
         label_y,
-        TypeToken::Xs.px(),
+        font,
         label_w,
         resolve(ColorToken::Text2, theme),
     );

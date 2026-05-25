@@ -27,7 +27,9 @@
 
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve, stroke_rounded_rect};
+use crate::paint::{
+    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+};
 use crate::widget::TextInputState;
 use crate::widget::number_input::{stepper_down_rect, stepper_up_rect, stepper_width};
 use crate::zones::Rect;
@@ -119,20 +121,21 @@ pub fn paint_slider_with_chip_layout(
     );
     let chip_rect = Rect::new(rect.x + rect.w - chip_w, rect.y, chip_w, rect.h);
 
-    // Plain text label, no pill background — the previous AccentPress
-    // fill made every label read as a "selected button"; channel rows
-    // are not interactive at the label, so a chrome-less label keeps
-    // the eye on the slider track. Size = Sm (12 px) — bumped from
-    // `Xs - 1` (10 px) 2026-05-24 per user feedback that slider row
-    // labels were unreadably small in both Widget Gallery + image-tool
-    // panels.
-    paint_text_centered(
+    // Plain text label, LEFT-aligned (canon 2026-05-24, user:
+    // "padrão para fonts das labels [...] deve ser como está no
+    // painel grid settings"). Grid Settings rows use Base (13 px) +
+    // Text1 + left-align via `paint_text`; mirroring here so every
+    // row layout looks the same regardless of which painter renders it.
+    let font = TypeToken::Base.px();
+    paint_text(
         text_system,
         scene,
         label,
-        label_rect,
-        TypeToken::Sm.px(),
-        resolve(ColorToken::Text2, theme),
+        label_rect.x,
+        label_rect.y + (label_rect.h - font) * 0.5,
+        font,
+        label_rect.w,
+        resolve(ColorToken::Text1, theme),
     );
 
     // Track background + filled portion — shared canonical painter so

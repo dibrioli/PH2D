@@ -181,11 +181,11 @@ pub(super) fn paint_left_label(
     y: f32,
     row_h: f32,
 ) {
-    // Font bumped Xs (11 px) → Sm (12 px) on 2026-05-24 per user
-    // feedback that "Value"/"Snap to grid" / etc were too small next
-    // to the slider rows (which already paint labels at Sm). Single
-    // canon site, so all showcase rows align.
-    let font = TypeToken::Sm.px();
+    // Canon (2026-05-24): all field labels follow the Grid Settings
+    // pattern — Base font (13 px) + Text1 + left-align via
+    // `paint_text`. Was Xs/Sm at various points; user pinned it on
+    // Grid Settings as the source of truth so this stays in sync.
+    let font = TypeToken::Base.px();
     let label_y = y + (row_h - font) * 0.5;
     paint_text(
         text_system,
@@ -195,7 +195,7 @@ pub(super) fn paint_left_label(
         label_y,
         font,
         label_w,
-        resolve(ColorToken::Text2, theme),
+        resolve(ColorToken::Text1, theme),
     );
 }
 

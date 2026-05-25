@@ -45,10 +45,8 @@ const LABEL_VISUAL_EXTENT_PX: f32 = 11.0; // LITERAL-PX-OK: rotated sub-label gl
 /// Gap between the right edge of the rotated sub-label and the
 /// left edge of the chip.
 const LABEL_TO_CHIP_GAP_PX: f32 = 3.0; // LITERAL-PX-OK: sub-label → chip gap (chrome-specific)
-/// Resulting chip-x offset from the rail's left edge. Public so the
-/// hero's `left_rail::paint_left_rail` hit-register loop can mirror
-/// `paint_tool_rail`'s chip x exactly (instead of drifting via the
-/// static `TOOL_CHIP_PX` constant).
+/// Resulting chip-x offset from the rail's left edge. Public so
+/// `left_rail::paint_left_rail`'s hit-register mirrors this exactly.
 pub const CHIP_X_OFFSET_PX: f32 = LABEL_LEFT_PAD + LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX;
 
 /// Runtime-configurable rail button size — surfaced in the Themes

@@ -15,9 +15,7 @@ use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_icon_path, paint_text, resolve, stroke_rounded_rect,
-};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button};
 use crate::zones::Rect;
 
@@ -111,28 +109,12 @@ pub(super) fn paint_topbar_rail_chip(
         _ => (ColorToken::Border, 1.0),
     };
     stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
-    let fg = match state {
-        ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
-        ButtonState::Pressed => ColorToken::Accent,
-        _ if is_active => ColorToken::Accent,
-        _ => ColorToken::Text2,
-    };
-    match glyph {
-        IconGlyph::Builtin(id) => paint_icon(
-            scene,
-            id,
-            chip_rect,
-            resolve(fg, theme),
-            StrokeToken::Default.px(),
-        ),
-        IconGlyph::Path(p) => paint_icon_path(
-            scene,
-            p,
-            chip_rect,
-            resolve(fg, theme),
-            StrokeToken::Default.px(),
-        ),
-    }
+    // Route through the canonical icon-button painter (Plain style: no
+    // extra fill/border, only the glyph), so the `paint_icon_path` arch
+    // gate doesn't fire here. `icon_tint(state)` inside `paint_icon_button`
+    // produces the same Text2/Text1/Accent/TextDisabled mapping the
+    // hand-rolled `fg` branch did.
+    paint_icon_button(chip_rect, glyph, IconButtonStyle::Plain, state, scene, theme);
     // --- Label band: sits directly above the chip (gap mirrors the
     // rail's `LABEL_TO_CHIP_GAP_PX`).
     let label_rect = Rect::new(chip_col.x, stack_y, chip_col.w, label_band_h);

@@ -61,11 +61,6 @@ pub const TOPBAR_SETTINGS: NodeId = hash_node_id("topbar_settings");
 pub const TOPBAR_LEFT_BACKDROP: NodeId = hash_node_id("topbar_left_backdrop");
 pub const TOPBAR_RIGHT_BACKDROP: NodeId = hash_node_id("topbar_right_backdrop");
 pub const TOPBAR_IMAGE_TOOLS_BACKDROP: NodeId = hash_node_id("topbar_image_tools_backdrop");
-/// Per-cluster framed plate (BgElev fill + Border stroke, Radius::Xl)
-/// that wraps a multi-chip cluster's chips. Click on the empty
-/// frame space (between/around the chips) lands on these ids.
-pub const TOPBAR_CLUSTER_PLAY_FRAME: NodeId = hash_node_id("topbar_cluster_play_frame");
-pub const TOPBAR_CLUSTER_RIGHT_FRAME: NodeId = hash_node_id("topbar_cluster_right_frame");
 /// Image Tools cluster — toggle entry-point for the image-editing
 /// action row (Trim Transparency in V1; BG Removal / Equalize / etc.
 /// to follow). Click flips the TopBar between Edit mode and

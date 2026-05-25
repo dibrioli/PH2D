@@ -165,27 +165,22 @@ pub(super) fn paint_top_bar_cluster(
     store: &WidgetStore,
 ) {
     use fixture::TopBarCluster;
-    let radius = Radius::Xl.px();
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
     let pad_x = Spacing::Md.px();
     let icon_w = 18.0; // LITERAL-PX-OK: chev icon dim (chrome accent)
     let font = TypeToken::Sm.px();
+    // Cluster "frame" (BgElev fill + Border stroke Radius::Xl)
+    // removed 2026-05-25 (Enio: "deixar os botões apenas sobre os
+    // Backdrop"). Theme + Project shrink to chip_px height so they
+    // align with the rail-style chips of Save/Open/etc.
+    let chip_px = store.rail_button_size().chip_px();
+    let inner_y = rect.y + (rect.h - chip_px) * 0.5;
+    let inner = Rect::new(rect.x, inner_y, rect.w, chip_px);
     match cluster {
         TopBarCluster::Theme { label: _ } => {
-            // Register the whole cluster as a clickable hit so the
-            // dispatch can open the ThemeSelector context menu on
-            // Primary Down. Other clusters (Single, Project, ...)
-            // are hit-registered in their own arms below; we add it
-            // here for Theme.
-            hit_index.register(id, rect);
-            // Display "PH2D" as the chip label — the cluster acts as
-            // the engine's identity chip + theme picker entry-point.
-            // (Theme's display name is still surfaced in the menu's
-            // own items.)
+            hit_index.register(id, inner);
             let label = "PH2D";
-            let mut cx = rect.x + pad_x + Spacing::Xs.px();
-            let cy = rect.y + rect.h * 0.5;
+            let mut cx = inner.x + pad_x + Spacing::Xs.px();
+            let cy = inner.y + inner.h * 0.5;
             for (i, token) in [ColorToken::Accent, ColorToken::AccentSoft]
                 .iter()
                 .enumerate()
@@ -200,8 +195,8 @@ pub(super) fn paint_top_bar_cluster(
                 );
                 cx += if i == 0 { 10.0 } else { 0.0 }; // LITERAL-PX-OK: inter-accent-dot spacing in PH2D logo (decorative)
             }
-            let label_x = rect.x + pad_x + 28.0; // LITERAL-PX-OK: label inset after the PH2D accent-dot logo
-            let label_y = rect.y + (rect.h - font) * 0.5;
+            let label_x = inner.x + pad_x + 28.0; // LITERAL-PX-OK: label inset after the PH2D accent-dot logo
+            let label_y = inner.y + (inner.h - font) * 0.5;
             paint_text(
                 text_system,
                 scene,
@@ -209,12 +204,12 @@ pub(super) fn paint_top_bar_cluster(
                 label_x,
                 label_y,
                 font,
-                rect.w - (label_x - rect.x) - Spacing::Xl2.px(),
+                inner.w - (label_x - inner.x) - Spacing::Xl2.px(),
                 resolve(ColorToken::Text1, theme),
             );
             let chev_rect = Rect::new(
-                rect.x + rect.w - pad_x - icon_w,
-                rect.y + (rect.h - icon_w) * 0.5,
+                inner.x + inner.w - pad_x - icon_w,
+                inner.y + (inner.h - icon_w) * 0.5,
                 icon_w,
                 icon_w,
             );
@@ -245,18 +240,11 @@ pub(super) fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Project { name } => {
-            // Project chip is the entry-point for the SceneList
-            // popover (search + scene rows). Register the whole
-            // cluster as a clickable hit; dispatch opens the menu
-            // on Primary Down.
-            hit_index.register(id, rect);
-            // Leading glyph: the Blender `scene_data` icon ("scene")
-            // — was an Avatar('E') initial; replaced because the
-            // chip now reads as "current scene", not "project owner".
+            hit_index.register(id, inner);
             let icon_size = 22.0_f32; // LITERAL-PX-OK: Project chip icon size (specific accent dim)
             let icon_rect = Rect::new(
-                rect.x + pad_x,
-                rect.y + (rect.h - icon_size) * 0.5,
+                inner.x + pad_x,
+                inner.y + (inner.h - icon_size) * 0.5,
                 icon_size,
                 icon_size,
             );
@@ -267,25 +255,21 @@ pub(super) fn paint_top_bar_cluster(
                 resolve(ColorToken::Text2, theme),
                 StrokeToken::Default.px(),
             );
-            // Prefer the store's current scene name (mutated by
-            // SceneList row clicks); fall back to the fixture name.
             let store_name = store.current_scene_name();
             let display = if store_name.is_empty() {
                 name.as_str()
             } else {
                 store_name
             };
-            // Reserve room on the right for the dropdown chevron so
-            // the name doesn't overlap it.
             let chev_size = SECTION_GAP_PX;
             let chev_rect = Rect::new(
-                rect.x + rect.w - pad_x - chev_size,
-                rect.y + (rect.h - chev_size) * 0.5,
+                inner.x + inner.w - pad_x - chev_size,
+                inner.y + (inner.h - chev_size) * 0.5,
                 chev_size,
                 chev_size,
             );
             let name_x = icon_rect.x + icon_size + Spacing::Md.px();
-            let name_y = rect.y + (rect.h - font) * 0.5;
+            let name_y = inner.y + (inner.h - font) * 0.5;
             let name_w = (chev_rect.x - name_x - Spacing::Sm.px()).max(0.0);
             paint_text(
                 text_system,
@@ -306,10 +290,6 @@ pub(super) fn paint_top_bar_cluster(
             );
         }
         TopBarCluster::Play => {
-            // Register the cluster frame hit FIRST so chip hits win on
-            // overlap (HitIndex walks back-to-front). Empty space
-            // between/around chips reports `Click(CLUSTER_PLAY_FRAME)`.
-            hit_index.register(ids::TOPBAR_CLUSTER_PLAY_FRAME, rect);
             // 2026-05-24 Stage 2 — each transport button becomes its
             // own rail-style chip with a label above (Play / Pause /
             // Reset). Replaces the hand-rolled 3-icon row.
@@ -341,9 +321,6 @@ pub(super) fn paint_top_bar_cluster(
             }
         }
         TopBarCluster::Right => {
-            // Same pattern as the Play arm — frame hit first, chips win
-            // on overlap.
-            hit_index.register(ids::TOPBAR_CLUSTER_RIGHT_FRAME, rect);
             // 2026-05-24 Stage 2 — each viewport mode becomes its own
             // rail-style chip with a label above.
             let col_w = rect.w / 3.0; // LITERAL-PX-OK: 3 chip columns in this cluster

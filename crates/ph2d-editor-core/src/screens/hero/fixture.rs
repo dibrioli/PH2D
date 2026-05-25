@@ -47,7 +47,7 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // action row land in a follow-up.
         (
             ids::TOPBAR_IMAGE_TOOLS,
-            TopBarCluster::single("Image Tools", IconId::Image),
+            TopBarCluster::single("IMG", IconId::Image),
         ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
@@ -58,7 +58,7 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // ground-truth. State on `HeroScreen::widget_gallery_visible`.
         (
             ids::TOPBAR_WIDGET_GALLERY,
-            TopBarCluster::single("Widget Gallery", IconId::Palette),
+            TopBarCluster::single("WIDG", IconId::Palette),
         ),
         // Grid Settings — opens the floating Grid Settings panel
         // (grid-snap subsystem: 9 grid kinds + snap policy + overlay
@@ -66,14 +66,14 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
         // subsystem, NOT a Tool, NOT in the LeftRail).
         (
             ids::TOPBAR_GRID_SETTINGS,
-            TopBarCluster::single("Grid Settings", IconId::GridSettings),
+            TopBarCluster::single("GRID", IconId::GridSettings),
         ),
         // Settings (gear) — moved to the end of the bar per
         // ImageToolsV1 spec. Still opens SettingsMenu context with
         // px/m presets and project-level toggles.
         (
             ids::TOPBAR_SETTINGS,
-            TopBarCluster::single("Settings", IconId::Settings),
+            TopBarCluster::single("STNGS", IconId::Settings),
         ),
     ]
 }

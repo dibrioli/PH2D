@@ -307,14 +307,25 @@ pub fn paint_top_bar(
             hit_index,
             store,
         );
-        // Active-state ring on the ImageTools pill when the mode is on
-        // — uses the theme's Accent token so it reads on every theme.
+        // Active-state ring on the ImageTools chip when the mode is
+        // on. Pre-2026-05-25 this stroked the full `rect` at Xl
+        // radius — sobra da era do cluster com pill grande, ficou
+        // como "moldura invisível" depois que o pill foi removido.
+        // Agora pinta no chip rect (chip_px, Radius::Sm) alinhado
+        // com o glyph.
         if image_tools_mode && *id == ids::TOPBAR_IMAGE_TOOLS {
+            let chip_px = store.rail_button_size().chip_px();
+            let chip_rect = Rect::new(
+                rect.x + (rect.w - chip_px) * 0.5,
+                rect.y + (rect.h - chip_px) * 0.5,
+                chip_px,
+                chip_px,
+            );
             stroke_rounded_rect(
                 scene,
-                rect,
-                Radius::Xl.px(),
-                2.0,
+                chip_rect,
+                Radius::Sm.px(),
+                ph2d_tokens::StrokeToken::Default.px(),
                 resolve(ColorToken::Accent, theme),
             );
         }

@@ -149,13 +149,16 @@ pub(super) fn paint_topbar_rail_chip(
         (label_rect.y + label_rect.h) as f64,
     );
     scene.push_clip(&label_clip);
-    // UPPERCASE to match the rail's vertical sub-labels (INSP / HIER /
-    // MOVE / …). Feedback Enio 2026-05-24.
-    let upper = label.to_uppercase();
+    // UPPERCASE + truncate to ≤5 chars (Enio 2026-05-25: "contraia
+    // todos os nomes ou transforma em em siglas para caber em até 5
+    // letras"). Fixture labels longer than 5 chars must abbreviate
+    // themselves (e.g. "Image Tools" → "IMG"); we hard-cap here so
+    // any drift through i18n still fits.
+    let short: String = label.chars().take(5).collect::<String>().to_uppercase();
     crate::paint::paint_text_centered(
         text_system,
         scene,
-        &upper,
+        &short,
         label_rect,
         sub_font,
         resolve(ColorToken::Text2, theme),

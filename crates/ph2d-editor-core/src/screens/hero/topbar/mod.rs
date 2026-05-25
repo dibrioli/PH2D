@@ -238,6 +238,7 @@ pub fn paint_top_bar(
                 scene,
                 theme,
                 Rect::new(layout.top_bar.x, layout.top_bar.y, left_w, row_h),
+                layout.viewport.y,
             );
         }
     }
@@ -299,6 +300,7 @@ pub fn paint_top_bar(
             scene,
             theme,
             Rect::new(right_x, layout.top_bar.y, right_w, row_h),
+            layout.viewport.y,
         );
     }
     let mut rx = right_x;
@@ -323,14 +325,24 @@ pub fn paint_top_bar(
 /// like the side rail's tray). Inset is `Sm` horizontally + a tiny
 /// vertical bleed so per-cluster strokes don't sit flush with the
 /// backdrop edge.
-fn paint_topbar_group_backdrop(scene: &mut VectorScene, theme: Theme, group_rect: Rect) {
+fn paint_topbar_group_backdrop(
+    scene: &mut VectorScene,
+    theme: Theme,
+    group_rect: Rect,
+    viewport_top: f32,
+) {
     let pad_h = Spacing::Sm.px();
     let pad_v = Spacing::Xxs.px();
+    // Top edge extends up to viewport top — user 2026-05-24: "o fundo
+    // deve se expandir até o topo da tela". Bottom edge keeps the
+    // small symmetric Xxs inset.
+    let top_y = viewport_top.min(group_rect.y - pad_v);
+    let bottom_y = group_rect.y + group_rect.h + pad_v;
     let bg = Rect::new(
         group_rect.x - pad_h,
-        group_rect.y - pad_v,
+        top_y,
         group_rect.w + pad_h * 2.0,
-        group_rect.h + pad_v * 2.0,
+        bottom_y - top_y,
     );
     fill_rounded_rect(scene, bg, Radius::Lg.px(), resolve(ColorToken::RailBg, theme));
 }
@@ -365,6 +377,7 @@ fn paint_image_action_row(
             scene,
             theme,
             Rect::new(start_x, layout.top_bar.y, total_w, row_h),
+            layout.viewport.y,
         );
     }
     let mut rx = start_x;

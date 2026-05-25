@@ -46,10 +46,21 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     }
 }
 
-/// Paint a rail-style chip with a horizontal label above (canonical
-/// topbar button look post-2026-05-24). `chip_col` is the column
-/// allocation for this chip; chip itself is `Spacing::Xl2` square,
-/// centered horizontally inside the column.
+/// Paint a rail-style chip with a horizontal sub-label ABOVE — the
+/// horizontal counterpart of the side rail's chip + vertical-rotated
+/// label arrangement. The visual style of the chip itself
+/// (radius, colors, border) MIRRORS `widget::tool_rail::paint_tool_rail`
+/// Icon entry EXACTLY (Sm radius, BgElev fill, Border stroke, Text2
+/// icon foreground — modulated by button state).
+///
+/// Differences vs the side rail:
+///   - Label sits ABOVE the chip (horizontal) instead of LEFT-of-chip
+///     (vertical-rotated). The user's directive 2026-05-24: "use
+///     exatamente o mesmo arranjo, contudo horizontal."
+///   - Label uses the rail's same `sub_font` formula
+///     (`Xs.px() - 2 ≈ 9 px`) and `Text2` color.
+///   - `chip_col.h` should accommodate label_band + gap + chip; the
+///     stack is centered vertically in `chip_col`.
 #[allow(clippy::too_many_arguments)]
 fn paint_topbar_rail_chip(
     chip_id: NodeId,
@@ -62,40 +73,61 @@ fn paint_topbar_rail_chip(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    let chip_size = Spacing::Xl2.px(); // 32 px
-    let label_font = TypeToken::Xxs.px();
-    let label_band_h = label_font + 2.0;
-    let label_to_chip_gap = 2.0_f32; // LITERAL-PX-OK: chrome-tight gap (label band → chip)
-    let total_h = label_band_h + label_to_chip_gap + chip_size;
-    let stack_y = chip_col.y + (chip_col.h - total_h) * 0.5;
-    let chip_x = chip_col.x + (chip_col.w - chip_size) * 0.5;
+    // Chip size mirrors the rail. Read from store so the Themes-menu
+    // RailButtonSize preset (Small/Medium/Large) affects the topbar
+    // too — they're meant to look identical.
+    let chip_px = store.rail_button_size().chip_px();
+    // Label font: same formula as `paint_tool_rail` (line 232):
+    //   `(Xs.px() - 2.0).max(Md.px())` → 9 px under the default tokens.
+    let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
+    // Gap between label and chip: same value the rail uses
+    // (`LABEL_TO_CHIP_GAP_PX = 3.0` in tool_rail.rs:47).
+    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+    // Label band height = font size + small ascender margin (mirrors
+    // the rail's `LABEL_VISUAL_EXTENT_PX = 11.0` envelope).
+    let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
+    // Stack anchored to the TOP of the column so the label "almost
+    // touches" the top of the screen (user 2026-05-24). The backdrop
+    // is extended up to viewport.y by the caller, so this label sits
+    // close to the screen edge.
+    let stack_y = chip_col.y;
+    let chip_x = chip_col.x + (chip_col.w - chip_px) * 0.5;
     let chip_rect = Rect::new(
         chip_x,
         stack_y + label_band_h + label_to_chip_gap,
-        chip_size,
-        chip_size,
+        chip_px,
+        chip_px,
     );
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
+    // --- Mirror of paint_tool_rail Icon entry (tool_rail.rs:248-280) ---
     let radius = Radius::Sm.px();
+    let is_active = state == ButtonState::Pressed; // topbar buttons aren't tool-active-flagged
     let bg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
         ButtonState::Pressed => ColorToken::AccentSoft,
+        _ if is_active => ColorToken::AccentSoft,
         _ => ColorToken::BgElev,
     };
     fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
     let (border, border_w) = match state {
         ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
         ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
+        _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
         _ => (ColorToken::Border, 1.0),
     };
     stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
     let fg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
         ButtonState::Pressed => ColorToken::Accent,
+        _ if is_active => ColorToken::Accent,
         _ => ColorToken::Text2,
     };
     paint_icon(scene, icon, chip_rect, resolve(fg, theme), StrokeToken::Default.px());
+    // --- Label band: horizontal counterpart of paint_sub_label_vertical ---
+    // Same font + color as the rail; positioned ABOVE the chip instead
+    // of LEFT-of. Clipped to chip_col.w so longer labels truncate
+    // instead of overflowing into siblings.
     let label_rect = Rect::new(chip_col.x, stack_y, chip_col.w, label_band_h);
     let label_clip = ph2d_vector::Rect::new(
         label_rect.x as f64,
@@ -109,7 +141,7 @@ fn paint_topbar_rail_chip(
         scene,
         label,
         label_rect,
-        label_font,
+        sub_font,
         resolve(ColorToken::Text2, theme),
     );
     scene.pop_layer();

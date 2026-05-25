@@ -225,31 +225,38 @@ pub fn paint_context_menu_overlay(
             ),
         ],
         // Settings cluster (gear) — TOP-LEVEL categories. Each entry
-        // ending in "\u{2003}\u{25b6}" (em-space + black right-
-        // pointing triangle) opens its dedicated submenu (replaces
-        // this menu). U+25B6 IS present in `InterVariable.ttf` —
-        // U+25B8 (smaller triangle) is not, which was the earlier
-        // tofu the user reported. Future categories (Snap, Theme,
-        // etc.) line up here.
+        // ending in "\u{2003}\u{203A}" (em-space + single right-pointing
+        // angle quotation mark "›") opens its dedicated submenu.
+        // U+203A is a typographic glyph (not an emoji) — Enio
+        // 2026-05-25: "menu e submenus de settings ainda fora do
+        // padrão, usando emojis e não ícones". Trocou U+25B6 (BLACK
+        // RIGHT-POINTING TRIANGLE) por U+203A pra remover a aparência
+        // "emoji". Ambos estão em InterVariable.ttf, U+203A é mais
+        // discreto.
         ContextMenuKind::SettingsMenu => &[
             (
                 ids::CTX_MENU_SETTINGS_PPM,
-                "Pixels per meter\u{2003}\u{25b6}",
+                "Pixels per meter\u{2003}\u{203A}",
                 None,
             ),
             (
                 ids::CTX_MENU_SETTINGS_UNIT,
-                "Display unit\u{2003}\u{25b6}",
+                "Display unit\u{2003}\u{203A}",
                 None,
             ),
             (
                 ids::CTX_MENU_SETTINGS_FILTER,
-                "Image filter\u{2003}\u{25b6}",
+                "Image filter\u{2003}\u{203A}",
                 None,
             ),
             (
                 ids::CTX_MENU_SETTINGS_DISPLAY,
-                "Display\u{2003}\u{25b6}",
+                "Display\u{2003}\u{203A}",
+                None,
+            ),
+            (
+                ids::CTX_MENU_SETTINGS_TEXT,
+                "Text rendering\u{2003}\u{203A}",
                 None,
             ),
         ],
@@ -289,6 +296,16 @@ pub fn paint_context_menu_overlay(
                 "Immediate (no stutter)",
                 None,
             ),
+        ],
+        // Text rendering submenu — 4 presets, monotonic in
+        // aggressiveness: Default (historic) → Crisp Light
+        // (boost 30/20/10 + snap-X) → Crisp (60/40/20) →
+        // Crisp Heavy (100/70/40).
+        ContextMenuKind::SettingsTextSubmenu => &[
+            (ids::CTX_MENU_TEXT_DEFAULT, "Default", None),
+            (ids::CTX_MENU_TEXT_CRISP_LIGHT, "Crisp Light", None),
+            (ids::CTX_MENU_TEXT_CRISP, "Crisp", None),
+            (ids::CTX_MENU_TEXT_CRISP_HEAVY, "Crisp Heavy", None),
         ],
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is

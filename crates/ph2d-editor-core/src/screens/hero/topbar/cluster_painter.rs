@@ -46,9 +46,9 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     }
 }
 
-/// Paint a rail-style chip with a horizontal sub-label in the
-/// backdrop's TOP GUTTER — horizontal counterpart of the side rail's
-/// chip + vertical-rotated label arrangement.
+/// Paint a rail-style chip with a horizontal sub-label ABOVE —
+/// horizontal counterpart of the side rail's chip + vertical-rotated
+/// label arrangement.
 ///
 /// MIRRORS `widget::tool_rail::paint_tool_rail` Icon entry EXACTLY for
 /// the chip itself: same `Radius::Sm`, same BgElev fill, same Border
@@ -56,27 +56,18 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
 /// foreground modulated by `ButtonState`. The matrix is copied
 /// verbatim — DO NOT diverge.
 ///
-/// Geometry — the rail/topbar analogy:
-///   - In the rail, the rotated sub-label hugs the LEFT edge of the
-///     `RailBg` backdrop (the "left gutter") and the chip sits to its
-///     right, with `LABEL_TO_CHIP_GAP_PX = 3` between them.
-///   - Here, the label hugs the TOP edge of the topbar group backdrop
-///     (the "top gutter") at `viewport_y + Xxs`, and the chip sits
-///     vertically centered in the topbar row below it.
-///   - Crucially, the chip and the label are visually SEPARATE — the
-///     label is anchored to the backdrop, not to the chip — so the
-///     chip's 1 px Border doesn't read as a frame wrapping the label
-///     too. (User feedback 2026-05-24: "Parece que vc criou 2 botões,
-///     1 por dentro do outro" — the previous layout stacked label +
-///     chip tightly inside the same column, making the chip's border
-///     look like it framed both.)
+/// Layout: `label_band_h + label_to_chip_gap + chip_px` is centered
+/// vertically inside `chip_col` (the topbar row). The chip sits
+/// directly in the chrome — there is NO group backdrop behind the
+/// chips (removed 2026-05-24, Enio: "retire os quadros atrás dos
+/// botões"). Each chip is therefore a stand-alone affordance, same
+/// as the side rail's icon chips.
 #[allow(clippy::too_many_arguments)]
 fn paint_topbar_rail_chip(
     chip_id: NodeId,
     icon: IconId,
     label: &str,
     chip_col: Rect,
-    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -92,48 +83,36 @@ fn paint_topbar_rail_chip(
     let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
     // Label band height = rail's `LABEL_VISUAL_EXTENT_PX = 11.0`.
     let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
-    // Chip centered vertically in the topbar row. The label is NOT
-    // stacked above it inside the same column — it lives independently
-    // in the backdrop's top gutter (see label_rect below). This is the
-    // anti-"2-botões-aninhados" fix.
+    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+    // Center the label+chip stack vertically within the topbar row.
+    let stack_h = label_band_h + label_to_chip_gap + chip_px;
+    let stack_y = chip_col.y + (chip_col.h - stack_h) * 0.5;
     let chip_x = chip_col.x + (chip_col.w - chip_px) * 0.5;
-    let chip_y = chip_col.y + (chip_col.h - chip_px) * 0.5;
+    let chip_y = stack_y + label_band_h + label_to_chip_gap;
     let chip_rect = Rect::new(chip_x, chip_y, chip_px, chip_px);
     hit_index.register(chip_id, chip_rect);
     let state = store.button_state(chip_id).unwrap_or(ButtonState::Normal);
     // --- Mirror of paint_tool_rail Icon entry (tool_rail.rs:248-280) ---
-    //
-    // Geometry caveat: the rail paints chips that nearly fill its
-    // narrow backdrop column, so the chip's 1 px `Border` stroke
-    // visually merges with the backdrop edge and reads as "frameless".
-    // The topbar's backdrop is WIDE — each chip is an island in the
-    // middle of it, so the same 1 px Border reads as a hard moldura
-    // around each chip (feedback Enio 2026-05-24: "moldura que não
-    // existe, como se fosse um outro fundo"). We therefore SUPPRESS
-    // fill + border in `Normal` so the chip reduces to the bare icon
-    // glyph (the look the rail achieves by geometric coincidence).
-    // Hovered / Pressed / Active still paint fill + border so click
-    // affordance is preserved — identical tokens to the rail.
+    // EXACT matrix — fill BgElev / border 1 px Border in Normal, same
+    // hover/press/active escalation as the rail. The "moldura aninhada"
+    // perception (Enio 2026-05-24) was the GROUP BACKDROP behind the
+    // chips, not the chip's own border — that's what was removed.
     let radius = Radius::Sm.px();
     let is_active = state == ButtonState::Pressed;
     let bg = match state {
-        ButtonState::Hovered | ButtonState::Focused => Some(ColorToken::BgElev),
-        ButtonState::Pressed => Some(ColorToken::AccentSoft),
-        _ if is_active => Some(ColorToken::AccentSoft),
-        _ => None,
+        ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
+        ButtonState::Pressed => ColorToken::AccentSoft,
+        _ if is_active => ColorToken::AccentSoft,
+        _ => ColorToken::BgElev,
     };
-    if let Some(bg) = bg {
-        fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
-    }
-    let border = match state {
-        ButtonState::Hovered | ButtonState::Focused => Some((ColorToken::BorderEmph, 1.0)),
-        ButtonState::Pressed => Some((ColorToken::Accent, StrokeToken::Default.px())),
-        _ if is_active => Some((ColorToken::Accent, StrokeToken::Default.px())),
-        _ => None,
+    fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
+    let (border, border_w) = match state {
+        ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
+        ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
+        _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
+        _ => (ColorToken::Border, 1.0),
     };
-    if let Some((border, border_w)) = border {
-        stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
-    }
+    stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
     let fg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
         ButtonState::Pressed => ColorToken::Accent,
@@ -141,13 +120,9 @@ fn paint_topbar_rail_chip(
         _ => ColorToken::Text2,
     };
     paint_icon(scene, icon, chip_rect, resolve(fg, theme), StrokeToken::Default.px());
-    // --- Label band: sits in the backdrop's TOP GUTTER, not above the
-    // chip inside its column. The backdrop extends up to viewport_y;
-    // anchoring the label at `viewport_y + Xxs` puts it "quase tocando
-    // no topo" (user 2026-05-24) and visually divorces it from the
-    // chip's border below.
-    let label_y = viewport_y + Spacing::Xxs.px();
-    let label_rect = Rect::new(chip_col.x, label_y, chip_col.w, label_band_h);
+    // --- Label band: sits directly above the chip with `label_to_chip_gap`
+    // between them, mirroring the rail's `LABEL_TO_CHIP_GAP_PX`.
+    let label_rect = Rect::new(chip_col.x, stack_y, chip_col.w, label_band_h);
     let label_clip = ph2d_vector::Rect::new(
         label_rect.x as f64,
         label_rect.y as f64,
@@ -174,7 +149,6 @@ pub(super) fn paint_top_bar_cluster(
     id: NodeId,
     cluster: &fixture::TopBarCluster,
     rect: Rect,
-    viewport_y: f32,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -253,7 +227,6 @@ pub(super) fn paint_top_bar_cluster(
                 *icon,
                 label,
                 rect,
-                viewport_y,
                 scene,
                 text_system,
                 theme,
@@ -337,8 +310,7 @@ pub(super) fn paint_top_bar_cluster(
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
-                    *chip_id, *icon, label, col, viewport_y, scene, text_system, theme, hit_index,
-                    store,
+                    *chip_id, *icon, label, col, scene, text_system, theme, hit_index, store,
                 );
             }
         }
@@ -354,8 +326,7 @@ pub(super) fn paint_top_bar_cluster(
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
-                    *chip_id, *icon, label, col, viewport_y, scene, text_system, theme, hit_index,
-                    store,
+                    *chip_id, *icon, label, col, scene, text_system, theme, hit_index, store,
                 );
             }
         }

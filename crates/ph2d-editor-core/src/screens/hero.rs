@@ -627,6 +627,14 @@ pub fn paint_hero_screen(
         style::clamp_panel_rect(layout.hierarchy, hier_off, hier_resize, viewport);
     layout.inspector = insp_rect;
     layout.hierarchy = hier_rect;
+    // Image-tool panels (BgRemoval, Padding, CEQ, Upscale, Equalize
+    // Sizes) share the right-dock slot with Inspector. Mirror the
+    // resized + dragged rect so they paint at the same position and
+    // size when active. The handles inside those panels parent to
+    // INSP_PANEL too (single dock-slot persistence — resizing CEQ
+    // also resizes the Inspector when the user switches back).
+    layout.bgremoval = insp_rect;
+    layout.padding = insp_rect;
     if (insp_clamped_off.0 - insp_off.0).abs() > f32::EPSILON
         || (insp_clamped_off.1 - insp_off.1).abs() > f32::EPSILON
     {

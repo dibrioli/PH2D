@@ -52,6 +52,15 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Group backdrops — Plain so clicks on empty backdrop space
+    // emit `Click(<backdrop_id>)` that `apply_event` prints.
+    for id in [
+        ids::TOPBAR_LEFT_BACKDROP,
+        ids::TOPBAR_RIGHT_BACKDROP,
+        ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
+    ] {
+        store.register(id, InteractiveState::Plain);
+    }
     // Search input for the project-chip Scene List popover. Lives
     // here so opening the menu doesn't have to allocate state on
     // demand — its buffer is just filtered against the scene list
@@ -180,6 +189,9 @@ fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::IMAGE_ACTION_EQUALIZE_SIZES => "Equalize Sizes",
         x if x == ids::IMAGE_ACTION_RASTERIZE => "Rasterize",
         x if x == ids::IMAGE_ACTION_UPSCALE => "Upscale",
+        x if x == ids::TOPBAR_LEFT_BACKDROP => "Left Backdrop",
+        x if x == ids::TOPBAR_RIGHT_BACKDROP => "Right Backdrop",
+        x if x == ids::TOPBAR_IMAGE_TOOLS_BACKDROP => "Image Tools Backdrop",
         _ => return None,
     })
 }
@@ -270,10 +282,12 @@ pub fn paint_top_bar(
         }
         if left_w > 0.0 {
             paint_topbar_group_backdrop(
+                ids::TOPBAR_LEFT_BACKDROP,
                 scene,
                 theme,
                 Rect::new(layout.top_bar.x, layout.top_bar.y, left_w, row_h),
                 layout.viewport.y,
+                hit_index,
             );
         }
     }
@@ -333,10 +347,12 @@ pub fn paint_top_bar(
     // 2026-05-24: "Os componentes da direita apenas um fundo").
     if right_w > 0.0 {
         paint_topbar_group_backdrop(
+            ids::TOPBAR_RIGHT_BACKDROP,
             scene,
             theme,
             Rect::new(right_x, layout.top_bar.y, right_w, row_h),
             layout.viewport.y,
+            hit_index,
         );
     }
     let mut rx = right_x;
@@ -365,10 +381,12 @@ pub fn paint_top_bar(
 /// do topo do screen"). Horizontal `Sm` bleed on each side keeps the
 /// chips from sitting flush with the backdrop's rounded corners.
 fn paint_topbar_group_backdrop(
+    id: NodeId,
     scene: &mut VectorScene,
     theme: Theme,
     group_rect: Rect,
     viewport_top: f32,
+    hit_index: &mut HitIndex,
 ) {
     let pad_h = Spacing::Sm.px();
     let pad_v = Spacing::Xxs.px();
@@ -380,6 +398,9 @@ fn paint_topbar_group_backdrop(
         group_rect.w + pad_h * 2.0,
         bottom_y - top_y,
     );
+    // Register the hit FIRST so chips painted afterwards win the hit
+    // (HitIndex walks back-to-front).
+    hit_index.register(id, bg);
     fill_rounded_rect(
         scene,
         bg,
@@ -414,10 +435,12 @@ fn paint_image_action_row(
     // 2026-05-24: "Os botões dos image tools também um fundo só").
     if total_w > 0.0 {
         paint_topbar_group_backdrop(
+            ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
             scene,
             theme,
             Rect::new(start_x, layout.top_bar.y, total_w, row_h),
             layout.viewport.y,
+            hit_index,
         );
     }
     let mut rx = start_x;

@@ -36,6 +36,7 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    store.register(ids::RAIL_BACKDROP, InteractiveState::Plain);
     if let Some(InteractiveState::Button { state }) = store.get_mut(ids::TOOL_TRANSLATE) {
         *state = ButtonState::Pressed;
     }
@@ -74,6 +75,7 @@ fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::TOOL_HOME => "Frame View",
         x if x == ids::TOOL_UNDO => "Undo",
         x if x == ids::TOOL_REDO => "Redo",
+        x if x == ids::RAIL_BACKDROP => "Rail Backdrop",
         _ => return None,
     })
 }
@@ -182,6 +184,9 @@ pub fn paint_left_rail(
         rail_rect.w,
         rail_rect.h + Spacing::Sm.px() * 2.0,
     );
+    // Register backdrop hit FIRST so chip hits (registered below by
+    // the chip loop) win when overlapping (HitIndex walks back-to-front).
+    hit_index.register(ids::RAIL_BACKDROP, bg_rect);
     fill_rounded_rect(
         scene,
         bg_rect,

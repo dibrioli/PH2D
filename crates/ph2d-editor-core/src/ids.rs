@@ -55,6 +55,12 @@ pub const TOPBAR_OPEN: NodeId = hash_node_id("topbar_open");
 /// with project-level toggles (pixels-per-meter presets, future
 /// global config). Added M14.4d retrofit.
 pub const TOPBAR_SETTINGS: NodeId = hash_node_id("topbar_settings");
+/// Frosted-glass agrupador backdrops behind each topbar cluster
+/// group. Painted before the chips so clicks on chips win; clicks
+/// on the empty backdrop space land here.
+pub const TOPBAR_LEFT_BACKDROP: NodeId = hash_node_id("topbar_left_backdrop");
+pub const TOPBAR_RIGHT_BACKDROP: NodeId = hash_node_id("topbar_right_backdrop");
+pub const TOPBAR_IMAGE_TOOLS_BACKDROP: NodeId = hash_node_id("topbar_image_tools_backdrop");
 /// Image Tools cluster — toggle entry-point for the image-editing
 /// action row (Trim Transparency in V1; BG Removal / Equalize / etc.
 /// to follow). Click flips the TopBar between Edit mode and
@@ -226,6 +232,10 @@ pub const TOOL_REDO: NodeId = hash_node_id("tool_redo");
 /// `Pressed` state == panel currently visible.
 pub const RAIL_SHOW_INSPECTOR: NodeId = hash_node_id("rail_show_inspector");
 pub const RAIL_SHOW_HIERARCHY: NodeId = hash_node_id("rail_show_hierarchy");
+/// Frosted-glass backdrop of the side rail. Painted before the
+/// chips so chip clicks win; clicks on the rail's empty space
+/// (between chips, around dividers) land here.
+pub const RAIL_BACKDROP: NodeId = hash_node_id("rail_backdrop");
 
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and

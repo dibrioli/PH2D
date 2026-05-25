@@ -5,7 +5,7 @@ use super::fixture;
 use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::widget::{
     ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, Tooltip, paint_icon_button,
     paint_tooltip,
@@ -220,6 +220,27 @@ pub fn paint_top_bar(
     // Left half now holds 5 clusters: Theme, Project (Level), Save,
     // Open, Image Tools (Project moved here 2026-05-24).
     let split = 5.min(clusters.len());
+    // Group backdrop (2026-05-24, user: "Tudo à esquerda inclusive
+    // seletor de themes e levels num fundo, todos à direita, outro
+    // fundo"). Paint a RailBg-colored rounded plate spanning the left
+    // cluster group BEFORE individual clusters — mirrors the side
+    // rail's frosted-glass backing.
+    {
+        let mut left_w = 0.0_f32;
+        for (i, (_, c)) in clusters[..split].iter().enumerate() {
+            if i > 0 {
+                left_w += gap;
+            }
+            left_w += cluster_width(c);
+        }
+        if left_w > 0.0 {
+            paint_topbar_group_backdrop(
+                scene,
+                theme,
+                Rect::new(layout.top_bar.x, layout.top_bar.y, left_w, row_h),
+            );
+        }
+    }
     // Left half is always painted — the Image Tools mode keeps the
     // identity / Save / Open / ImageTools cluster visible so the user
     // can exit the mode by clicking ImageTools again.
@@ -264,10 +285,22 @@ pub fn paint_top_bar(
     // Settings) right-aligned to the bar.
     let right_clusters = &clusters[split..];
     let mut right_w = 0.0_f32;
-    for (_, c) in right_clusters {
-        right_w += cluster_width(c) + gap;
+    for (i, (_, c)) in right_clusters.iter().enumerate() {
+        if i > 0 {
+            right_w += gap;
+        }
+        right_w += cluster_width(c);
     }
-    let right_x = layout.top_bar.x + layout.top_bar.w - right_w + gap.max(0.0);
+    let right_x = layout.top_bar.x + layout.top_bar.w - right_w;
+    // Right-group backdrop (2026-05-24 redesign — sibling of the left
+    // group). Painted before the clusters so they layer on top.
+    if right_w > 0.0 {
+        paint_topbar_group_backdrop(
+            scene,
+            theme,
+            Rect::new(right_x, layout.top_bar.y, right_w, row_h),
+        );
+    }
     let mut rx = right_x;
     for (id, cluster) in right_clusters {
         let rect = Rect::new(rx, layout.top_bar.y, cluster_width(cluster), row_h);
@@ -283,6 +316,23 @@ pub fn paint_top_bar(
         );
         rx = rect.x + rect.w + gap;
     }
+}
+
+/// Paint a frosted-glass backing for a topbar cluster group
+/// (2026-05-24 redesign — user request to visually group the chips
+/// like the side rail's tray). Inset is `Sm` horizontally + a tiny
+/// vertical bleed so per-cluster strokes don't sit flush with the
+/// backdrop edge.
+fn paint_topbar_group_backdrop(scene: &mut VectorScene, theme: Theme, group_rect: Rect) {
+    let pad_h = Spacing::Sm.px();
+    let pad_v = Spacing::Xxs.px();
+    let bg = Rect::new(
+        group_rect.x - pad_h,
+        group_rect.y - pad_v,
+        group_rect.w + pad_h * 2.0,
+        group_rect.h + pad_v * 2.0,
+    );
+    fill_rounded_rect(scene, bg, Radius::Lg.px(), resolve(ColorToken::RailBg, theme));
 }
 
 /// Paint the image-action row that occupies the right half of the
@@ -307,6 +357,16 @@ fn paint_image_action_row(
     let pills = image_action_pills();
     let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
+    // Group backdrop for the image-tools action row (2026-05-24
+    // redesign — siblings of the left/right group backdrops in
+    // default mode).
+    if total_w > 0.0 {
+        paint_topbar_group_backdrop(
+            scene,
+            theme,
+            Rect::new(start_x, layout.top_bar.y, total_w, row_h),
+        );
+    }
     let mut rx = start_x;
     for pill in &pills {
         let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);

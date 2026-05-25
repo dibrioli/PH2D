@@ -328,7 +328,7 @@ pub fn paint_top_bar(
 
     if image_tools_mode {
         // Mode on — replace the right half with the image-action row.
-        paint_image_action_row(layout, scene, theme, hit_index, store, gap);
+        paint_image_action_row(layout, scene, text_system, theme, hit_index, store);
         return;
     }
 
@@ -421,15 +421,18 @@ fn paint_topbar_group_backdrop(
 fn paint_image_action_row(
     layout: &HeroLayout,
     scene: &mut VectorScene,
+    text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    gap: f32,
 ) {
+    let _ = (paint_icon_button, IconButtonStyle::Plain, PILL_PADDING_PX); // keep imports alive
     let row_h = layout.top_bar.h;
-    let pill_w = 40.0 + PILL_PADDING_PX * 2.0; // LITERAL-PX-OK: TopBar action pill base width (chrome dim, matches single-cluster width)
     let pills = image_action_pills();
-    let total_w = pill_w * pills.len() as f32 + gap * pills.len().saturating_sub(1) as f32;
+    // Image-tool chips share the same column width + paint contract
+    // as the rest of the topbar (Enio 2026-05-25: "no mesmo padrão
+    // dos outros pois estão grandes, sem bordas e sem nomes acima").
+    let total_w = TOPBAR_RAIL_CHIP_W * pills.len() as f32;
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
     // Single agrupador backdrop spanning ALL image-tool pills (Enio
     // 2026-05-24: "Os botões dos image tools também um fundo só").
@@ -443,19 +446,30 @@ fn paint_image_action_row(
             hit_index,
         );
     }
-    let mut rx = start_x;
-    for pill in &pills {
-        let rect = Rect::new(rx, layout.top_bar.y, pill_w, row_h);
-        hit_index.register(pill.id, rect);
-        let state = store.button_state(pill.id).unwrap_or(ButtonState::Normal);
+    for (i, pill) in pills.iter().enumerate() {
+        let col = Rect::new(
+            start_x + TOPBAR_RAIL_CHIP_W * i as f32,
+            layout.top_bar.y,
+            TOPBAR_RAIL_CHIP_W,
+            row_h,
+        );
         let glyph = match &pill.icon {
             PillIcon::FromManifest(path) => IconGlyph::Path(path),
             PillIcon::Legacy(icon) => IconGlyph::Builtin(*icon),
         };
-        // Plain in every state — only the icon sits on the backdrop
-        // (Enio 2026-05-25: "retire tudo mais").
-        paint_icon_button(rect, glyph, IconButtonStyle::Plain, state, scene, theme);
-        rx = rect.x + rect.w + gap;
+        let label = ph2d_i18n::tr(pill.label_key);
+        paint_topbar_rail_chip(
+            pill.id,
+            glyph,
+            label,
+            col,
+            layout.viewport.y,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+        );
     }
 }
 
@@ -588,7 +602,7 @@ pub fn image_action_a11y_nodes(
 /// 600-LOC cap. Same private surface as before; both functions
 /// remain `pub(super)`-callable from `paint_top_bar`.
 mod cluster_painter;
-use cluster_painter::{cluster_width, paint_top_bar_cluster};
+use cluster_painter::{TOPBAR_RAIL_CHIP_W, cluster_width, paint_top_bar_cluster, paint_topbar_rail_chip};
 
 #[cfg(test)]
 mod tests {

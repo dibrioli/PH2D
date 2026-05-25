@@ -15,7 +15,9 @@ use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
 
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::paint::{
+    fill_rounded_rect, paint_icon, paint_icon_path, paint_text, resolve, stroke_rounded_rect,
+};
 use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, PILL_PADDING_PX, paint_icon_button};
 use crate::zones::Rect;
 
@@ -29,7 +31,7 @@ use super::super::style::icon_button_fg;
 /// 1 px Border visually merges with the backdrop edge (the "frameless"
 /// rail look). Longer labels truncate via the clip layer in
 /// `paint_topbar_rail_chip`.
-const TOPBAR_RAIL_CHIP_W: f32 = 44.0; // LITERAL-PX-OK: chip column width = chip_px(36) + 4 px margin × 2
+pub(super) const TOPBAR_RAIL_CHIP_W: f32 = 44.0; // LITERAL-PX-OK: chip column width = chip_px(36) + 4 px margin × 2
 
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;
@@ -64,9 +66,9 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
 ///     no topo" per Enio 2026-05-24.
 ///   - Chip is centered vertically in `chip_col` (the topbar row).
 #[allow(clippy::too_many_arguments)]
-fn paint_topbar_rail_chip(
+pub(super) fn paint_topbar_rail_chip(
     chip_id: NodeId,
-    icon: IconId,
+    glyph: IconGlyph<'_>,
     label: &str,
     chip_col: Rect,
     viewport_y: f32,
@@ -119,13 +121,22 @@ fn paint_topbar_rail_chip(
         _ if is_active => ColorToken::Accent,
         _ => ColorToken::Text2,
     };
-    paint_icon(
-        scene,
-        icon,
-        chip_rect,
-        resolve(fg, theme),
-        StrokeToken::Default.px(),
-    );
+    match glyph {
+        IconGlyph::Builtin(id) => paint_icon(
+            scene,
+            id,
+            chip_rect,
+            resolve(fg, theme),
+            StrokeToken::Default.px(),
+        ),
+        IconGlyph::Path(p) => paint_icon_path(
+            scene,
+            p,
+            chip_rect,
+            resolve(fg, theme),
+            StrokeToken::Default.px(),
+        ),
+    }
     // --- Label band: rides the backdrop's TOP GUTTER (the backdrop
     // extends up to viewport_y; anchoring the label at viewport_y + Xxs
     // puts it "quase tocando no topo" — Enio 2026-05-24).
@@ -228,7 +239,7 @@ pub(super) fn paint_top_bar_cluster(
             let _ = icon_button_fg(ButtonState::Normal); // keep import alive
             paint_topbar_rail_chip(
                 id,
-                *icon,
+                IconGlyph::Builtin(*icon),
                 label,
                 rect,
                 viewport_y,
@@ -308,7 +319,7 @@ pub(super) fn paint_top_bar_cluster(
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
                     *chip_id,
-                    *icon,
+                    IconGlyph::Builtin(*icon),
                     label,
                     col,
                     viewport_y,
@@ -333,7 +344,7 @@ pub(super) fn paint_top_bar_cluster(
                 let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
                     *chip_id,
-                    *icon,
+                    IconGlyph::Builtin(*icon),
                     label,
                     col,
                     viewport_y,

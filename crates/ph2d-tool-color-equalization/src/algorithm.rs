@@ -79,8 +79,22 @@ pub fn run_pipeline(
         return;
     }
 
-    // Stage 1 — CLAHE (writes through into `out`).
-    clahe(rgba, w, h, params.clip_limit, params.tile_grid_size, out);
+    // Fast-path: identity params → copy source through, skip every
+    // stage. Mirrors the GPU chain's zero-dispatch shortcut
+    // (`chain_identity_params_short_circuits_to_no_dispatches`).
+    if params.is_noop() {
+        out.copy_from_slice(rgba);
+        return;
+    }
+
+    // Stage 1 — CLAHE (writes through into `out`). Skipped at the
+    // identity clip limit so the per-tile CDF reconstruction can't
+    // tint the image when CLAHE is effectively off.
+    if params.clip_limit > crate::params::CLIP_LIMIT_MIN {
+        clahe(rgba, w, h, params.clip_limit, params.tile_grid_size, out);
+    } else {
+        out.copy_from_slice(rgba);
+    }
 
     // Stage 2 — combined Phase 1 tonal pipeline in a single sRGB↔linear
     // (and optional OKLab) round-trip per pixel. Skipped when ALL params

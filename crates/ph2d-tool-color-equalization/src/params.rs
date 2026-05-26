@@ -11,13 +11,19 @@
 //! the same normalized space the sliders use.
 
 /// Full-scale clip limit (Zuiderveld). Slider track `0..1` maps onto
-/// `1.0..=CLIP_LIMIT_MAX` (the canonical CLAHE range; `2.0` is the
-/// default and matches the OpenCV reference implementation). Anything
-/// below `1.0` collapses to a uniform redistribution (no contrast
-/// boost); anything above ≈ 4.0 starts to amplify noise harshly.
+/// `1.0..=CLIP_LIMIT_MAX` (the canonical CLAHE range). `1.0` collapses
+/// to a uniform redistribution (no contrast boost — CLAHE off);
+/// `2.0` matches the OpenCV reference; anything above ≈ 4.0 starts
+/// to amplify noise harshly.
+///
+/// Default = `1.0` (identity / off). Audit fix: a default of `2.0`
+/// (OpenCV reference) caused the tool to silently alter the image the
+/// moment it activated, before the user touched any slider — and the
+/// CLAHE chroma reconstruction in RGB amplifies that into visible
+/// blotches in soft areas. Identity-by-default lets the user opt in.
 pub const CLIP_LIMIT_MIN: f32 = 1.0;
 pub const CLIP_LIMIT_MAX: f32 = 4.0;
-pub const CLIP_LIMIT_DEFAULT: f32 = 2.0;
+pub const CLIP_LIMIT_DEFAULT: f32 = 1.0;
 
 /// Tile grid size — image is partitioned into `N×N` square tiles.
 /// `N = 8` is the canonical default (Zuiderveld); below `4` the

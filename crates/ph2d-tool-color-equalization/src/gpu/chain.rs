@@ -464,11 +464,11 @@ mod tests {
 
     #[test]
     fn chain_identity_params_short_circuits_to_no_dispatches() {
-        // `ColorEqualizationParams::default()` is NOT identity — its
-        // `clip_limit` is `CLIP_LIMIT_DEFAULT = 2.0`, which activates
-        // CLAHE. Identity = `clip_limit = CLIP_LIMIT_MIN` AND every
-        // tonal/Phase 2/Phase 3 knob at its default. That combination
-        // is what `is_noop()` recognises and what the chain shortcuts.
+        // Post-2026-05 audit: `ColorEqualizationParams::default()` IS
+        // identity now (`CLIP_LIMIT_DEFAULT = CLIP_LIMIT_MIN = 1.0`).
+        // The test still spells `clip_limit: CLIP_LIMIT_MIN` for
+        // clarity / future-proofing — `is_noop()` keys off the
+        // canonical identity value, not the field default.
         let Some(gpu) = try_headless_gpu() else {
             return;
         };

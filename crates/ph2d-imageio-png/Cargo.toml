@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-imageio-png"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-png` — PNG import + export (W0.T5 stub; W1.T1 expands
+# to 16-bit + sBIT + ICC). First format crate to prove the W0 vertical:
+# bytes → DecodedImage::Flat round-trip via the `image` 0.25 wrapper.
+# Mirrors the convention `ph2d-tool-make-square/` sets: single crate
+# owns Cargo.toml + src/lib.rs (manifest+import+export+tests).
+
+[dependencies]
+# Contract crate — ImageImporter / ImageExporter / DecodedImage etc.
+ph2d-imageio = { path = "../ph2d-imageio" }
+# Typed wire pixel — SrgbRgba is the 8-bit sRGB channel container.
+ph2d-color   = { path = "../ph2d-color" }
+# Pure-Rust PNG codec (already a transitive workspace dep via ph2d-asset).
+# `default-features = false` + `features = ["png"]` keeps wasm-friendly
+# (no rayon, no jpeg-decoder pulls).
+image = { version = "0.25", default-features = false, features = ["png"] }

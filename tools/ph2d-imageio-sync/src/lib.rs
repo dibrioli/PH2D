@@ -177,9 +177,13 @@ mod tests {
 
     #[test]
     fn splice_replaces_between_markers_only() {
-        let content =
-            "head\n    // <ph2d-imageio-sync:importers:begin>\n    OLD;\n    // <ph2d-imageio-sync:importers:end>\ntail\n";
-        let out = splice_lines(content, IMPORTERS_BEGIN, IMPORTERS_END, &["    NEW;".to_string()]);
+        let content = "head\n    // <ph2d-imageio-sync:importers:begin>\n    OLD;\n    // <ph2d-imageio-sync:importers:end>\ntail\n";
+        let out = splice_lines(
+            content,
+            IMPORTERS_BEGIN,
+            IMPORTERS_END,
+            &["    NEW;".to_string()],
+        );
         assert_eq!(
             out,
             "head\n    // <ph2d-imageio-sync:importers:begin>\n    NEW;\n    // <ph2d-imageio-sync:importers:end>\ntail\n"

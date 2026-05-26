@@ -17,47 +17,48 @@
 
 use ph2d_imageio::{ExporterRegistry, ImporterRegistry};
 
-/// Register every importer with `reg`. The body is codegen'd between the
-/// markers below.
+/// Register every importer with `reg`. The body is codegen'd between
+/// the markers below — adding a format = drop a `crates/ph2d-imageio-*`
+/// crate exposing `pub fn register_importer` + run `cargo run -p
+/// ph2d-imageio-sync`. Never hand-edit between the markers.
 ///
-/// `#[allow(unused_variables)]` covers the W0 window before W0.T5 lands
-/// the first PNG stub — once the codegen populates the body with at
-/// least one `<crate>::register_importer(reg);` line, `reg` is actually
-/// used and the allow becomes a harmless no-op. Removed by W0.T5.
-#[allow(unused_variables)]
+/// Order of calls does not affect correctness — [`ImporterRegistry::find_for`]
+/// dispatches by [`ph2d_imageio::ImageImporter::supports`], not source
+/// order. Alphabetical order in the codegen is merge-conflict hygiene.
 pub fn register_all_importers(reg: &mut ImporterRegistry) {
     // <ph2d-imageio-sync:importers:begin>
+    ph2d_imageio_png::register_importer(reg);
     // <ph2d-imageio-sync:importers:end>
 }
 
-/// Register every exporter with `reg`. Body codegen'd.
-///
-/// Same `#[allow(unused_variables)]` rationale as
-/// [`register_all_importers`]; removed by W0.T5 (PNG stub exposes
-/// `register_exporter` too).
-#[allow(unused_variables)]
+/// Register every exporter with `reg`. Body codegen'd. Same rationale
+/// as [`register_all_importers`]: dispatch is by
+/// [`ph2d_imageio::ImageExporter::supports_format`] against
+/// [`ph2d_imageio::ExportOpts::format`], not source order.
 pub fn register_all_exporters(reg: &mut ExporterRegistry) {
     // <ph2d-imageio-sync:exporters:begin>
+    ph2d_imageio_png::register_exporter(reg);
     // <ph2d-imageio-sync:exporters:end>
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_imageio::MagicHint;
 
     #[test]
-    fn register_all_importers_builds_empty_registry() {
-        // W0 state: no format crates registered yet. Smoke that the
-        // function compiles and the registry stays empty.
+    fn register_all_importers_wires_png() {
         let mut reg = ImporterRegistry::new();
         register_all_importers(&mut reg);
-        assert!(reg.is_empty());
+        assert_eq!(reg.len(), 1, "PNG importer should be wired (W0.T5)");
+        assert!(reg.find_for(MagicHint::Extension("png")).is_some());
+        assert!(reg.find_for(MagicHint::Extension("jpeg")).is_none());
     }
 
     #[test]
-    fn register_all_exporters_builds_empty_registry() {
+    fn register_all_exporters_wires_png() {
         let mut reg = ExporterRegistry::new();
         register_all_exporters(&mut reg);
-        assert!(reg.is_empty());
+        assert_eq!(reg.len(), 1, "PNG exporter should be wired (W0.T5)");
     }
 }

@@ -29,6 +29,7 @@ ph2d-imageio = { path = "../ph2d-imageio" }
 # <ph2d-imageio-sync:begin>
 ph2d-imageio-jpeg = { path = "../ph2d-imageio-jpeg" }
 ph2d-imageio-png = { path = "../ph2d-imageio-png" }
+ph2d-imageio-webp = { path = "../ph2d-imageio-webp" }
 # <ph2d-imageio-sync:end>
 
 [dev-dependencies]

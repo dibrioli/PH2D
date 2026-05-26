@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-imageio-webp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-webp` — WebP decode + lossless encode (W1.T3). Pure-Rust
+# via `image` 0.25's bundled `image-webp` backend. Lossy encoder would
+# need a libwebp C binding which violates HR-1; deferred to W2+ if a
+# pure-Rust lossy WebP encoder lands upstream (or if we lift HR-1 for
+# this specific format).
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+image = { version = "0.25", default-features = false, features = ["webp"] }

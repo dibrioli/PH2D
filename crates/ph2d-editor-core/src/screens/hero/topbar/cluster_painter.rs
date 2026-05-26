@@ -30,6 +30,11 @@ use super::super::style::icon_button_fg;
 /// rail look). Longer labels truncate via the clip layer in
 /// `paint_topbar_rail_chip`.
 pub(super) const TOPBAR_RAIL_CHIP_W: f32 = 44.0; // LITERAL-PX-OK: chip column width = chip_px(36) + 4 px margin × 2
+/// Small visual breathing space between adjacent chips inside the
+/// same multi-chip cluster (Play/Pause/Reset, Layers/Assets/Script,
+/// Image Tools row). Enio 2026-05-25: "crie um pequeno espaço
+/// entre os botões."
+pub(super) const TOPBAR_INTER_CHIP_GAP: f32 = 2.0; // LITERAL-PX-OK: inter-chip gap (Spacing::Xxs equivalent)
 
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;
@@ -41,9 +46,9 @@ pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
         TopBarCluster::Project { .. } => 156.0, // LITERAL-PX-OK: Project chip width (chrome dim)
         // Play / Right multi-icon clusters host 3 chip columns each
         // (Play/Pause/Reset; Layers/Assets/Script) — per user 2026-05-24
-        // each icon becomes its own labeled chip.
-        TopBarCluster::Play => TOPBAR_RAIL_CHIP_W * 3.0, // LITERAL-PX-OK: 3 chip columns (Play/Pause/Reset)
-        TopBarCluster::Right => TOPBAR_RAIL_CHIP_W * 3.0, // LITERAL-PX-OK: 3 chip columns (Layers/Assets/Script)
+        // each icon becomes its own labeled chip. +2 inter-chip gaps.
+        TopBarCluster::Play => TOPBAR_RAIL_CHIP_W * 3.0 + TOPBAR_INTER_CHIP_GAP * 2.0, // LITERAL-PX-OK: 3 chip columns + 2 inter-chip gaps
+        TopBarCluster::Right => TOPBAR_RAIL_CHIP_W * 3.0 + TOPBAR_INTER_CHIP_GAP * 2.0, // LITERAL-PX-OK: 3 chip columns + 2 inter-chip gaps
     }
 }
 
@@ -313,14 +318,15 @@ pub(super) fn paint_top_bar_cluster(
                 IconGlyph::Builtin(IconId::Play),
                 IconButtonStyle::Plain,
             ); // keep imports alive
-            let col_w = rect.w / 3.0; // LITERAL-PX-OK: 3 chip columns in this cluster
+            let col_w = TOPBAR_RAIL_CHIP_W;
+            let col_stride = col_w + TOPBAR_INTER_CHIP_GAP;
             let entries = [
                 (id, IconId::Play, "Play"),
                 (ids::TOPBAR_PAUSE, IconId::Pause, "Pause"),
                 (ids::TOPBAR_RESET, IconId::Reset, "Reset"),
             ];
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
-                let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
+                let col = Rect::new(rect.x + col_stride * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
                     *chip_id,
                     IconGlyph::Builtin(*icon),
@@ -338,14 +344,15 @@ pub(super) fn paint_top_bar_cluster(
         TopBarCluster::Right => {
             // 2026-05-24 Stage 2 — each viewport mode becomes its own
             // rail-style chip with a label above.
-            let col_w = rect.w / 3.0; // LITERAL-PX-OK: 3 chip columns in this cluster
+            let col_w = TOPBAR_RAIL_CHIP_W;
+            let col_stride = col_w + TOPBAR_INTER_CHIP_GAP;
             let entries = [
                 (ids::TOPBAR_RIGHT_LAYERS, IconId::Layers, "Layers"),
                 (ids::TOPBAR_RIGHT_ASSETS, IconId::Asset, "Assets"),
                 (ids::TOPBAR_RIGHT_SCRIPT, IconId::Script, "Script"),
             ];
             for (i, (chip_id, icon, label)) in entries.iter().enumerate() {
-                let col = Rect::new(rect.x + col_w * i as f32, rect.y, col_w, rect.h);
+                let col = Rect::new(rect.x + col_stride * i as f32, rect.y, col_w, rect.h);
                 paint_topbar_rail_chip(
                     *chip_id,
                     IconGlyph::Builtin(*icon),

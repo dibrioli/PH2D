@@ -443,11 +443,13 @@ fn paint_image_action_row(
     let _ = (paint_icon_button, IconButtonStyle::Plain, PILL_PADDING_PX); // keep imports alive
     let row_h = layout.top_bar.h;
     let pills = image_action_pills();
-    // Image-tool chips share the same column width + paint contract
-    // as the rest of the topbar (Enio 2026-05-25: "no mesmo padrão
-    // dos outros pois estão grandes, sem bordas e sem nomes acima").
-    let total_w = TOPBAR_RAIL_CHIP_W * pills.len() as f32;
+    // Image-tool chips share the same column width + inter-chip gap
+    // as the topbar's Play / Right clusters.
+    let chip_count = pills.len() as f32;
+    let total_w = TOPBAR_RAIL_CHIP_W * chip_count
+        + TOPBAR_INTER_CHIP_GAP * (chip_count - 1.0).max(0.0);
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
+    let col_stride = TOPBAR_RAIL_CHIP_W + TOPBAR_INTER_CHIP_GAP;
     // Single agrupador backdrop spanning ALL image-tool pills (Enio
     // 2026-05-24: "Os botões dos image tools também um fundo só").
     if total_w > 0.0 {
@@ -463,7 +465,7 @@ fn paint_image_action_row(
     }
     for (i, pill) in pills.iter().enumerate() {
         let col = Rect::new(
-            start_x + TOPBAR_RAIL_CHIP_W * i as f32,
+            start_x + col_stride * i as f32,
             layout.top_bar.y,
             TOPBAR_RAIL_CHIP_W,
             row_h,
@@ -618,7 +620,8 @@ pub fn image_action_a11y_nodes(
 /// remain `pub(super)`-callable from `paint_top_bar`.
 mod cluster_painter;
 use cluster_painter::{
-    TOPBAR_RAIL_CHIP_W, cluster_width, paint_top_bar_cluster, paint_topbar_rail_chip,
+    TOPBAR_INTER_CHIP_GAP, TOPBAR_RAIL_CHIP_W, cluster_width, paint_top_bar_cluster,
+    paint_topbar_rail_chip,
 };
 
 #[cfg(test)]

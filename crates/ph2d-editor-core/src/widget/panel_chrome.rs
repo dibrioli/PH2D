@@ -310,8 +310,14 @@ pub const PANEL_RESIZE_HANDLE_SIZE: f32 = PANEL_RESIZE_HANDLE_SIZE_PX;
 /// [`paint_panel_corner_dot`] (BR) + [`paint_panel_corner_dot_bl`]
 /// (BL) AFTER the body so body widgets don't cover them.
 pub fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    let radius = PANEL_RADIUS;
-    // PanelBg = BgElev hue/L with ~0.92 alpha → panel reads as
+    // Mirror the chip radius (Radius::Sm) so panels and topbar/rail
+    // chips share the same corner family. `fill_rounded_rect` runs the
+    // value through `scale_radius()` so the Themes-menu Sharp/Default/
+    // Round preset still applies uniformly. Enio 2026-05-25: "coloque
+    // os raios das quinas dos painéis igual aos raios das quinas dos
+    // botões seguindo a escolha de raio de quinas do menu Themes".
+    let radius = Radius::Sm.px();
+    // PanelBg = BgElev hue/L with ~0.96 alpha → panel reads as
     // floating glass over canvas while text contrast holds.
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::PanelBg, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));

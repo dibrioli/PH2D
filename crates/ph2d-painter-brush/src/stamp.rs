@@ -48,16 +48,16 @@ use bytemuck::{Pod, Zeroable};
 pub struct Stamp {
     // ↓ ordem é ABI — não reordene sem amendment de ADR-0044.
     pub position_world: [f32; 2],  //  0..8   x, y in canvas-world pixels
-    pub size_px: f32,              //  8..12  diameter em pixels
-    pub rotation_rad: f32,         // 12..16  rotação do stamp
-    pub pressure: f32,             // 16..20  [0, 1] pós pressure_curve
-    pub tilt: f32,                 // 20..24  [0, π/2] pós tilt_curve
-    pub azimuth: f32,              // 24..28  [0, 2π)
-    pub barrel_roll: f32,          // 28..32  [0, 2π); 0 se device não suporta
+    pub size_px: f32, //  8..12  bounding-box side em pixels (major-axis diameter para shapes não-circulares — `shape_roundness < 1.0` comprime no eixo perpendicular dentro do mesmo footprint quadrado; audit 2026-05-26 D-3.L13)
+    pub rotation_rad: f32, // 12..16  rotação do stamp
+    pub pressure: f32, // 16..20  [0, 1] pós pressure_curve
+    pub tilt: f32,    // 20..24  [0, π/2] pós tilt_curve
+    pub azimuth: f32, // 24..28  [0, 2π)
+    pub barrel_roll: f32, // 28..32  [0, 2π); 0 se device não suporta
     pub color_oklab: [f32; 4], // 32..48  OKLab (L, a, b, α) — STRAIGHT alpha; shader premultiplies em cs_stamp (audit 2026-05-26 D-2.C1)
-    pub opacity: f32, // 48..52  [0, 1] stroke-level opacity após taper_opacity dynamic; flow é ortogonal
+    pub opacity: f32, // 48..52  [0, 1] stroke-level opacity após taper_opacity dynamic — orthogonal to `flow`; the shader multiplies `opacity * flow * shape * color.alpha` to form the per-pixel premul alpha. **Spec drift note (audit 2026-05-26 D-3.M12):** spec §1.4 originally described this as "[0,1] pós flow + taper opacity", which suggested flow was already folded in. Implementation diverged for clarity (flow varies per stamp, opacity per stroke); spec amendment is a follow-up doc task (ADR-0044 §2.3 freezes the ABI, not the semantics)
     pub flow: f32,    // 52..56  [0, 1] per-stamp flow do brush (independente de opacity)
-    pub wet_amount: f32, // 56..60  [0, 1] dilution * wet_load (se wet_mix_enabled)
+    pub wet_amount: f32, // 56..60  [0, 1] wet-mix amount; semantics is per-mode (audit 2026-05-26 D-3.H5): for `RenderingMode::IntenseBlending` = `pull` factor (spec §1.5.2 — `wet_mix.pull` from §1.3.7); for other modes the StampScheduler may pack `dilution * load` here as wet ink reservoir surrogate (T-wet-mix W7+ may split into a separate ABI slot if needed)
     pub shape_layer: u32, // 60..64  índice no shape atlas (Builtin slot OR Imported)
     pub grain_layer: u32, // 64..68  0xFFFFFFFF se sem grain; Procedural usa bit-flag em flags
     pub grain_offset_uv: [f32; 2], // 68..76  offset da grain (WGSL: ler como 2× escalar — vide module doc)

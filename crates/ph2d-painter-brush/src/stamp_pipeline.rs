@@ -83,14 +83,34 @@ impl StampGlobals {
 /// Compute pipeline + bind group layout for `cs_stamp`. Build once at
 /// app startup, reuse across frames.
 ///
-/// **Allocations:** construction creates one [`wgpu::ShaderModule`],
-/// one [`wgpu::BindGroupLayout`], one [`wgpu::PipelineLayout`], one
+/// ## Allocation profile
+///
+/// Construction creates one [`wgpu::ShaderModule`], one
+/// [`wgpu::BindGroupLayout`], one [`wgpu::PipelineLayout`], one
 /// [`wgpu::ComputePipeline`] — all expected at init time, not in the
-/// HR-3 hot path. The per-frame [`Self::encode`] is `&self` and
-/// allocates only the per-dispatch upload buffers (stamps + globals),
-/// which are throwaway-scoped to the encoder lifetime; T-perf in W5+
-/// can elevate them to a recycled pool if `painter_stamp_specialize_
-/// when_budget_pressure` flips hard.
+/// HR-3 hot path. The per-frame [`Self::encode`] allocates **up to
+/// ~384 KB of GPU memory** per call (4096 stamps × 96 B for the
+/// storage buffer + 16 B for the globals uniform + bind group object).
+/// Acceptable W1 trade-off per ADR-0044 §2.9 (W1 unified rampa →
+/// W5+ specialized scheduler with recycled buffer pool); the gate
+/// `painter_stamp_specialize_when_budget_pressure` (ADR-0044 §2.10)
+/// trips this transition when the painter sub-budget headroom drops
+/// below 15 %. T-perf W5+ promotes these to a transient ring.
+///
+/// ## Dispatch model
+///
+/// Spec §1.8.2 sketches `dispatch(stamp_count, 1, 1) + stamps[wid.x]`
+/// in its pseudo-code, and `ceil(size/8)²` workgroups *per stamp* in
+/// prose — those are mutually incompatible. T1.4 picks a 3D dispatch
+/// `(wg_x, wg_y, N)` with `stamps[wg.z]` so smaller stamps early-out
+/// via the local-id bounds check inside the shader, at the cost of
+/// dispatching `max_footprint² × N` threads even when the stroke is
+/// heterogeneous (a 256-px stamp next to 999 8-px stamps spawns
+/// `32² × 1000` workgroups; 99.9% early-out). Acceptable W1 because
+/// Day-5 strokes are uniform-sized; W5+ pre-grouping by `RenderingMode`
+/// collapses heterogeneous strokes into per-mode dispatches via a
+/// separate scheduler — see ADR-0044 §2.9. Spec §1.8.2 amendment is a
+/// follow-up doc task.
 pub struct StampPipeline {
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
@@ -245,12 +265,25 @@ impl StampPipeline {
         let stamps = &stamps[..stamps.len().min(MAX_STAMPS_PER_DISPATCH)];
 
         // Footprint = largest finite, positive, in-spec size_px (clamped
-        // to MAX_STAMP_SIZE_PX). Filters NaN/Inf/zero defensively;
-        // if every stamp is degenerate we emit no GPU work (audit
-        // 2026-05-26 D-2.H1).
+        // to MAX_STAMP_SIZE_PX). Filters NaN/Inf/zero defensively in
+        // BOTH `size_px` and `position_world` (audit 2026-05-26
+        // D-2.H1 + Auditor1 follow-up): if either coordinate is
+        // non-finite, the shader-side `i32(floor(world_f + 0.5))`
+        // conversion is implementation-defined on out-of-range
+        // (SPIR-V `OpConvertFToS` is UB; Metal saturates; D3D12 varies).
+        // The shader's `world < 0 || >= canvas_w/h` bounds check is the
+        // last line of defense, but catching this CPU-side keeps the
+        // GPU dispatch deterministic. If every stamp is degenerate we
+        // emit no GPU work.
+        fn is_stamp_finite(s: &Stamp) -> bool {
+            s.size_px.is_finite()
+                && s.size_px > 0.0
+                && s.position_world[0].is_finite()
+                && s.position_world[1].is_finite()
+        }
         let max_footprint = stamps
             .iter()
-            .filter(|s| s.size_px.is_finite() && s.size_px > 0.0)
+            .filter(|s| is_stamp_finite(s))
             .map(|s| (s.size_px.ceil() as u32).min(MAX_STAMP_SIZE_PX))
             .max()
             .unwrap_or(0);
@@ -382,9 +415,13 @@ mod tests {
         // This is where a `vec2<f32>` at offset 68 would surface as
         // alignment violation, per the WGSL spec align(8) rule.
         //
-        // Capabilities is intentionally empty so the test catches a
-        // future shader edit that pulls in a capability the wgpu
-        // baseline device doesn't request (audit 2026-05-26 D-2.M6).
+        // `Capabilities::empty()` is stricter than the wgpu runtime
+        // baseline (`Capabilities::default()` enables MULTISAMPLED_SHADING
+        // + CUBE_ARRAY_TEXTURES). Running validation with `empty()`
+        // catches any future shader edit that pulls in a capability
+        // outside the bare-minimum WebGPU compute surface — even one
+        // that wgpu would silently accept (audit 2026-05-26 D-2.F6+D-3
+        // refinement).
         let module = naga::front::wgsl::parse_str(STAMP_WGSL).expect("stamp.wgsl must parse");
         let mut validator = naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
@@ -446,5 +483,66 @@ mod tests {
     fn max_stamp_size_px_matches_spec() {
         // Spec §1.3.11: PropertiesParams::max_size_px range 1..=2048.
         assert_eq!(MAX_STAMP_SIZE_PX, 2048);
+    }
+
+    #[test]
+    fn shader_oklab_coefficients_bit_identical_with_rust() {
+        // Audit 2026-05-26 D-3.H7 — prove zero-ULP drift between the OKLab
+        // matrix coefficients embedded as literals in stamp.wgsl and the
+        // Rust path in `ph2d_color::OklabColor::to_linear`. HR-5
+        // (determinism where promised) requires CPU/GPU paths to agree
+        // bit-exactly; without this gate, a future shader edit that
+        // trims a digit (e.g. `0.3963377774` → `0.39633778`) would slip
+        // through silently.
+        //
+        // Method:
+        // 1. Assert each WGSL literal string appears verbatim in STAMP_WGSL.
+        // 2. Parse each WGSL literal via Rust `f32::FromStr` (IEEE 754
+        //    round-to-nearest-even per Rust std::str docs, matching naga's
+        //    own parse path in `naga::front::wgsl`).
+        // 3. Assert parsed `to_bits()` equals the Rust literal's `to_bits()`.
+        //
+        // 15 coefficients = 9 forward (CPU `OklabColor::from_linear`) + 6
+        // inverse (`OklabColor::to_linear` AND `oklab_to_linear_srgb`
+        // shader-side). The shader only uses inverse; CPU forward is for
+        // tests + future T-color full encode paths.
+        let inverse_pairs: &[(&str, f32)] = &[
+            // OKLab → LMS (3 + 3 + 3 = 9 used in shader inverse + CPU inverse)
+            ("0.3963377774", 0.396_337_78),
+            ("0.2158037573", 0.215_803_76),
+            ("0.1055613458", 0.105_561_346),
+            ("0.0638541728", 0.063_854_17),
+            ("0.0894841775", 0.089_484_18),
+            ("1.2914855480", 1.291_485_5),
+            // LMS³ → linear sRGB (9 coefficients, with signs baked into matrix)
+            ("4.0767416621", 4.076_741_7),
+            ("3.3077115913", 3.307_711_6),
+            ("0.2309699292", 0.230_969_94),
+            ("1.2684380046", 1.268_438),
+            ("2.6097574011", 2.609_757_4),
+            ("0.3413193965", 0.341_319_38),
+            ("0.0041960863", 0.004_196_086_3),
+            ("0.7034186147", 0.703_418_6),
+            ("1.7076147010", 1.707_614_7),
+        ];
+
+        for (wgsl_lit, rust_lit) in inverse_pairs {
+            assert!(
+                STAMP_WGSL.contains(wgsl_lit),
+                "WGSL literal `{wgsl_lit}` not found verbatim in stamp.wgsl — \
+                 shader-side OKLab coefficient drift",
+            );
+            let parsed: f32 = wgsl_lit
+                .parse()
+                .unwrap_or_else(|e| panic!("WGSL literal `{wgsl_lit}` failed f32 parse: {e:?}"));
+            assert_eq!(
+                parsed.to_bits(),
+                rust_lit.to_bits(),
+                "OKLab matrix coefficient drift: WGSL `{wgsl_lit}` parses to bits \
+                 0x{:08x}, Rust literal `{rust_lit}` is bits 0x{:08x}",
+                parsed.to_bits(),
+                rust_lit.to_bits(),
+            );
+        }
     }
 }

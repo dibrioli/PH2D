@@ -81,6 +81,12 @@ struct Globals {
 }
 
 // Flag bitmask — sync with crates/ph2d-painter-brush/src/stamp.rs::FLAG_*.
+// T1.4 consumes only HOVER_PREVIEW and PREDICTED_SAMPLE (defensive early-out
+// per ADR-0050); the remaining bits (FLIP_X/Y, GRAIN_BEHAVIOR_MOVING,
+// BURNT_EDGES, WET_EDGES, LUMINANCE_BLENDING, GRAIN_PROCEDURAL, FLUID_SAMPLE)
+// will be wired by the corresponding subsystems in T1.5+ (shape atlas),
+// W7+ (wet mix), W15+ (fluid). Declared here so naga matches the Rust ABI
+// at parse time and so the bitmask layout stays single-source.
 const FLAG_SHAPE_FLIP_X: u32           = 1u;
 const FLAG_SHAPE_FLIP_Y: u32           = 2u;
 const FLAG_GRAIN_BEHAVIOR_MOVING: u32  = 4u;
@@ -91,6 +97,14 @@ const FLAG_GRAIN_PROCEDURAL: u32       = 64u;
 const FLAG_FLUID_SAMPLE: u32           = 128u;
 const FLAG_HOVER_PREVIEW: u32          = 256u;
 const FLAG_PREDICTED_SAMPLE: u32       = 512u;
+
+// Maximum stamp footprint in pixels (mirrors MAX_STAMP_SIZE_PX in
+// stamp.rs, which mirrors `PropertiesParams::max_size_px` upper bound
+// from spec §1.3.11). Shader-side clamp is defense-in-depth — the CPU
+// `encode()` path already filters and clamps, but this guards any
+// future caller that bypasses the canonical path via a custom dispatch
+// built on `StampPipeline::bind_group_layout` (audit 2026-05-26 D-3.H4).
+const MAX_STAMP_SIZE_PX: u32 = 2048u;
 
 @group(0) @binding(0) var<storage, read> stamps: array<Stamp>;
 @group(0) @binding(1) var<uniform> globals: Globals;
@@ -144,33 +158,62 @@ fn round_hard_shape(uv: vec2<f32>) -> f32 {
 
 // ── Six rendering modes (ADR-0044 §2.4 + spec §1.5.2) ──
 //
-// `src` is the stamp contribution in premultiplied-alpha linear sRGB
-// (color × alpha). `dst` is the previous canvas value at the same coord
-// (linear sRGB premultiplied). All operations preserve the
-// premultiplied invariant — caller can blend further without unmul.
+// **Premul invariant:** every mode below takes `src` and `dst` in
+// premultiplied-alpha linear sRGB, and returns a premultiplied
+// vec4<f32>. Callers can re-feed the result as `dst` in subsequent
+// dispatches (T1.5+ ping-pong) without ever needing to un/re-multiply
+// at the boundary — the canvas storage stays in premul throughout.
+//
+// **Glaze modes** (Light/Uniform/Intense/Heavy) accumulate alpha via
+// Porter-Duff-style "over" composition with mode-specific α attenuation.
+// **Blending modes** (Uniform/Intense Blending) do continuous color mix
+// (lerp in straight color space, re-premultiplied) — used for wet
+// media. Spec §1.5.2 mentions `+ accumulator` for Blending modes
+// (wet ink reservoir); the slot lands in T-wet-mix W7+ subsystem
+// (ADR-0044 §2.4 note — no Stamp ABI field for accumulator yet, so
+// T1.4 implements with accumulator ≡ 0).
 //
 // **T1.4 write-only stage:** since `canvas_out` is write-only, `dst` is
 // the *initial* (cleared/loaded) state for this dispatch — overlapping
 // stamps in the same dispatch race. Multi-stamp accumulation arrives
 // in T1.5 via per-stamp ping-pong. For Day 5 (single stamp on cleared
 // canvas) the result is identical to the W5+ correct path.
+//
+// **Out-of-gamut clamp policy (T1.4):** out-of-gamut OKLab inputs
+// produce negative LinearRGB components, which we clamp per-channel
+// to `[0,1]` BEFORE feeding the rendering modes (cs_stamp body). This
+// is a *component-clip* gamut map — not perceptually-correct. ADR-0051
+// (T-color full) defines the proper OKLCH chroma-reduction gamut map;
+// the boundary lands then. Documented behavior, not bug.
 
 fn light_glaze(src: vec4<f32>, dst: vec4<f32>) -> vec4<f32> {
-    // partial-preserve under: dst attenuated by only 0.6 × α_s
+    // Partial-preserve under: dst attenuated by only 0.6 × α_s.
     return src + dst * (1.0 - src.a * 0.6);
 }
 
 fn uniform_glaze(src: vec4<f32>, dst: vec4<f32>) -> vec4<f32> {
-    // Porter-Duff "over" — Photoshop Normal
+    // Porter-Duff "over" — Photoshop Normal.
     return src + dst * (1.0 - src.a);
 }
 
 fn intense_glaze(src: vec4<f32>, dst: vec4<f32>) -> vec4<f32> {
-    // alpha curve agressiva — covers faster but still allows layering
-    let aa = sqrt(max(src.a, 0.0));
-    let inv_alpha = 1.0 / max(src.a, 1e-6);
-    let src_unmul = src.rgb * inv_alpha;
-    return vec4<f32>(src_unmul * aa, aa) + dst * (1.0 - aa);
+    // Aggressive alpha curve — `α^0.5` covers faster while preserving
+    // layering. Spec §1.5.2: `new = s * α_s^0.5 + L * (1 - α_s^0.5)`,
+    // where `s` is the straight stamp color.
+    //
+    // Algebraic rearrangement preserves precision at small α: since
+    // `s_premul = s_straight * α_s`, we have
+    //   s_straight * sqrt(α_s) = s_premul / sqrt(α_s)
+    // so we can avoid the `1/α_s` blow-up that the naive
+    // `s_premul / α_s * sqrt(α_s)` would suffer at α_s → 0 (audit
+    // 2026-05-26 D-3.M15).
+    let alpha_s = clamp(src.a, 0.0, 1.0);
+    if alpha_s < 1e-6 {
+        return dst;
+    }
+    let aa = sqrt(alpha_s);
+    let src_curved_rgb = src.rgb / aa; // = src_straight * sqrt(α_s)
+    return vec4<f32>(src_curved_rgb, aa) + dst * (1.0 - aa);
 }
 
 fn heavy_glaze(src: vec4<f32>, dst: vec4<f32>) -> vec4<f32> {
@@ -179,24 +222,64 @@ fn heavy_glaze(src: vec4<f32>, dst: vec4<f32>) -> vec4<f32> {
 }
 
 fn uniform_blending(src: vec4<f32>, dst: vec4<f32>) -> vec4<f32> {
-    // continuous mix — straight-alpha lerp re-premultiplied
-    let inv_alpha = 1.0 / max(src.a, 1e-6);
-    let src_unmul = vec4<f32>(src.rgb * inv_alpha, 1.0);
-    return mix(dst, src_unmul, src.a);
+    // Continuous color mix preserving premultiplied invariant.
+    // Audit 2026-05-26 D-3.C2 fix: previous impl mixed premul `dst`
+    // with unmul `src`, breaking the invariant when `dst.a < 1`.
+    //
+    // Method: unmul both sides, lerp in straight color space by α_s,
+    // compute output alpha via Porter-Duff "over" (Blending modes
+    // still accumulate alpha to reach opaque after enough strokes),
+    // re-premultiply at the end.
+    //
+    // Spec §1.5.2 mentions `+ accumulator` for wet ink reservoir
+    // (ADR-0044 §2.4) — no Stamp ABI slot yet, treated as 0 here.
+    let alpha_s = src.a;
+    let alpha_d = dst.a;
+    let result_a = alpha_s + alpha_d * (1.0 - alpha_s);
+    if result_a < 1e-6 {
+        return vec4<f32>(0.0);
+    }
+    let src_rgb = src.rgb / max(alpha_s, 1e-6);
+    let dst_rgb = dst.rgb / max(alpha_d, 1e-6);
+    let mixed_rgb = mix(dst_rgb, src_rgb, alpha_s);
+    return vec4<f32>(mixed_rgb * result_a, result_a);
 }
 
 fn intense_blending(src: vec4<f32>, dst: vec4<f32>, wet: f32) -> vec4<f32> {
-    // Wet pull — partial smudge of dst color into src. wet=0 is identical
-    // to uniform_blending; wet=1 fully averages with the surface.
-    // Full smudge fluid sim is T-wet-mix W7+ (ADR-0044 §2.4 note).
-    let inv_alpha = 1.0 / max(src.a, 1e-6);
-    let src_unmul = src.rgb * inv_alpha;
+    // Wet pull — partial smudge of dst color into src before mix.
+    // `wet=0` collapses to `uniform_blending`; `wet=1` fully averages
+    // the brushed source with the canvas surface (smudge).
+    //
+    // **`wet` parameter semantics:** spec §1.5.2 names this `pull
+    // (= wet_mix.pull)`. The Stamp ABI compresses the wet-mix subsystem
+    // into a single `wet_amount` float (`stamp.rs:60`); the scheduler
+    // populates it with the `pull` factor for Intense Blending and
+    // with `dilution * load` for other wet contexts. Audit 2026-05-26
+    // D-3.H5 — divergence documented, no spec amendment yet
+    // (T-wet-mix W7+ will introduce slot separation if needed).
+    //
+    // Full Stokes-style smudge fluid sim is T-wet-mix W7+ (ADR-0049
+    // Fluid Brushes Extension).
+    let alpha_s = src.a;
+    let alpha_d = dst.a;
+    let result_a = alpha_s + alpha_d * (1.0 - alpha_s);
+    if result_a < 1e-6 {
+        return vec4<f32>(0.0);
+    }
+    let src_rgb = src.rgb / max(alpha_s, 1e-6);
+    let dst_rgb = dst.rgb / max(alpha_d, 1e-6);
     let pull = clamp(wet, 0.0, 1.0);
-    let smudged = mix(src_unmul, mix(src_unmul, dst.rgb, 0.5), pull);
-    return mix(dst, vec4<f32>(smudged, 1.0), src.a);
+    let smudged_src_rgb = mix(src_rgb, dst_rgb, 0.5 * pull);
+    let mixed_rgb = mix(dst_rgb, smudged_src_rgb, alpha_s);
+    return vec4<f32>(mixed_rgb * result_a, result_a);
 }
 
 fn apply_rendering_mode(mode: u32, src: vec4<f32>, dst: vec4<f32>, wet: f32) -> vec4<f32> {
+    // `pigment_mode` is a Stamp ABI slot (ADR-0044 §2.5) reserved for
+    // the Mixbox path; T1.4 W1-unified shader ignores the variant and
+    // always uses Linear pigment (lerp in OKLab-derived linear sRGB).
+    // Mixbox compute lands in T1.X+ — gated by `--features det-painter`
+    // exclusion per ADR-0044 §2.5.1.
     switch mode {
         case 0u: { return light_glaze(src, dst); }
         case 1u: { return uniform_glaze(src, dst); }
@@ -220,14 +303,17 @@ fn cs_stamp(
     let stamp = stamps[stamp_idx];
 
     // Skip degenerate stamps. Defense-in-depth — the CPU encode side
-    // already filters NaN/Inf/non-positive size_px, but a future caller
-    // bypassing `StampPipeline::encode` (e.g. a custom dispatch built on
-    // the bind group layout) could land here with garbage. WGSL `>` with
-    // NaN is always false, so `!(size_px > 0.0)` catches NaN cleanly.
+    // already filters NaN/Inf/non-positive size_px and clamps to
+    // `MAX_STAMP_SIZE_PX`, but a future caller bypassing
+    // `StampPipeline::encode` (e.g. a custom dispatch built on the
+    // bind group layout) could land here with garbage. WGSL `>` with
+    // NaN is always false, so `!(size_px > 0.0)` catches NaN cleanly;
+    // +Inf passes the `> 0` check but `min(ceil(+Inf), 2048)` saturates
+    // safely to 2048 instead of `u32::MAX` (audit 2026-05-26 D-3.H4+L9).
     if !(stamp.size_px > 0.0) {
         return;
     }
-    let footprint = u32(ceil(stamp.size_px));
+    let footprint = min(u32(ceil(stamp.size_px)), MAX_STAMP_SIZE_PX);
     if footprint == 0u {
         return;
     }
@@ -263,15 +349,17 @@ fn cs_stamp(
     // `StampScheduler` emits oriented stamps.
     //
     // Centering uses `f32` so odd footprints don't drift half a pixel
-    // (audit 2026-05-26 D-1.M1); sub-pixel `position_world` is rounded
-    // to nearest integer (`round()` — banker's-like) instead of
-    // truncated (audit 2026-05-26 D-1.M2). T1.5 may upgrade to bilinear
-    // sub-pixel write once the canvas is rgba16f (W5+).
+    // (audit 2026-05-26 D-1.M1); sub-pixel `position_world` is snapped
+    // to nearest integer via `floor(x + 0.5)` — IEEE 754 well-defined
+    // round-half-up, identical across Metal / Vulkan / D3D12 backends
+    // (audit 2026-05-26 D-2.F3 — WGSL `round()` halfway is impl-defined,
+    // `floor(x + 0.5)` is not). T1.5 may upgrade to bilinear sub-pixel
+    // write once the canvas is rgba16f (W5+).
     let center_offset = (footprint_f - 1.0) * 0.5;
     let world_x_f = stamp.position_world_x + f32(pixel_local_x) - center_offset;
     let world_y_f = stamp.position_world_y + f32(pixel_local_y) - center_offset;
-    let world_x = i32(round(world_x_f));
-    let world_y = i32(round(world_y_f));
+    let world_x = i32(floor(world_x_f + 0.5));
+    let world_y = i32(floor(world_y_f + 0.5));
     if world_x < 0
        || world_y < 0
        || world_x >= i32(globals.canvas_width)
@@ -285,11 +373,21 @@ fn cs_stamp(
         stamp.color_oklab_a,
         stamp.color_oklab_b,
     );
+    // Out-of-gamut OKLab → component-clip clamp to `[0,1]` BEFORE
+    // entering the rendering modes. T1.4 contract: write-only storage
+    // texture stays in `[0,1]` premultiplied space; downstream
+    // (T1.5+ ping-pong) reads `dst` already in that space. ADR-0051
+    // (T-color full) replaces this with perceptually-correct OKLCH
+    // chroma-reduction gamut map at the boundary. Audit 2026-05-26
+    // D-3.H8+M8 / D-2.F2.
+    let rgb_clamped = clamp(rgb_linear, vec3<f32>(0.0), vec3<f32>(1.0));
     // Combined alpha = stamp color alpha · brush opacity · flow · shape α.
-    let combined_alpha = stamp.color_oklab_alpha * stamp.opacity * stamp.flow * shape_alpha;
-    // Premultiplied source. Out-of-gamut OKLab can produce negative RGB —
-    // we let it flow; clamp at the final write below.
-    let src_premul = vec4<f32>(rgb_linear * combined_alpha, combined_alpha);
+    let combined_alpha = clamp(
+        stamp.color_oklab_alpha * stamp.opacity * stamp.flow * shape_alpha,
+        0.0,
+        1.0,
+    );
+    let src_premul = vec4<f32>(rgb_clamped * combined_alpha, combined_alpha);
 
     // T1.4 write-only stage: `dst` is the texture's initial state at this
     // pixel for THIS dispatch. With overlapping stamps in the same
@@ -304,7 +402,13 @@ fn cs_stamp(
     let dst = vec4<f32>(0.0, 0.0, 0.0, 0.0);
 
     let result = apply_rendering_mode(stamp.rendering_mode, src_premul, dst, stamp.wet_amount);
-    let result_clamped = clamp(result, vec4<f32>(0.0), vec4<f32>(1.0));
+    // NaN guard: WGSL `clamp(NaN, lo, hi)` is implementation-defined
+    // (Metal returns low, SPIR-V can propagate NaN). `result == result`
+    // is `false` only for NaN — replace NaN components with 0 before
+    // clamp to keep `textureStore(rgba8unorm, …)` deterministic across
+    // backends (audit 2026-05-26 D-2.F7).
+    let result_finite = select(vec4<f32>(0.0), result, result == result);
+    let result_clamped = clamp(result_finite, vec4<f32>(0.0), vec4<f32>(1.0));
 
     textureStore(canvas_out, coord, result_clamped);
 }

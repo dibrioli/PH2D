@@ -15,9 +15,20 @@
 //! - [`GrainSource`] — None / Bitmap / Procedural / Imported.
 //! - [`ProceduralGrain`] — SimplexNoise / GaborNoise / PaperWeave / SprayDot (Proposta 3).
 //!
-//! T1.3 status: **skeleton stub.** Tipos + defaults + library com brushes
-//! built-in. GPU compute pipeline (`StampPipeline`) é T1.4+; atlas real é
-//! T1.5+; Mixbox port WGSL é T-color+T1.X+; Procedural Grain compute é W5+.
+//! Status (T1.4 ship — 2026-05-26):
+//! - **Types + ABI:** `Brush` / 12 sub-structs / `Stamp` 96B align(16) ✓
+//! - **Library:** `ROUND_HARD` builtin + `round_hard_shape()` procedural CPU ✓
+//! - **GPU pipeline:** [`StampPipeline`] W1 unified compute shader (write-only
+//!   `rgba8unorm` storage texture, 6 RenderingMode, premul-consistent) ✓
+//! - **Shape atlas:** procedural inline in shader; texture-array atlas binding
+//!   T1.5+.
+//! - **Mixbox WGSL:** `pigment_mode` is a Stamp ABI slot but compute is T1.X+
+//!   (ADR-0044 §2.5; det-painter excluded per §2.5.1).
+//! - **Procedural Grain compute:** types in `procedural::*`; compute shader
+//!   wiring is W5+.
+//! - **Multi-stamp alpha-over:** T1.5+ ping-pong via `StampScheduler` (T1.4
+//!   write-only stage races overlapping stamps; single-stamp Day-5 smoke
+//!   unaffected).
 //!
 //! Crates consumidores (W1+):
 //! - `ph2d-tool-painter` (ADR-0043) — consome `BrushHandle` em `PainterParams.active_brush`.

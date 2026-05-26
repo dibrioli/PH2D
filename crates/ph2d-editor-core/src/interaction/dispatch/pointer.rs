@@ -372,6 +372,12 @@ pub fn dispatch_pointer_with_text<'frame>(
                         Some(row)
                     } else if let Some(row) = crate::ids::hier_expand_companion_to_row(id) {
                         Some(row)
+                    } else if let Some(row) = crate::ids::hier_lock_companion_to_row(id) {
+                        Some(row)
+                    } else if let Some(row) = crate::ids::hier_group_companion_to_row(id) {
+                        Some(row)
+                    } else if let Some(row) = crate::ids::hier_icon_companion_to_row(id) {
+                        Some(row)
                     } else {
                         Some(id)
                     }
@@ -631,17 +637,24 @@ pub fn dispatch_pointer_with_text<'frame>(
             // double-click window (and on the same id) selects all.
             let is_double_click = store.record_pointer_down(new_focus, event.timestamp_ns);
 
-            // Hierarchy chrome companions (eye toggle, chevron toggle)
-            // are registered in HitIndex but NOT in WidgetStore — the
+            // Hierarchy chrome companions (eye toggle, chevron toggle,
+            // lock toggle, group toggle, entity-icon focus) are
+            // registered in HitIndex but NOT in WidgetStore — the
             // painter has no &mut WidgetStore. The `is_focusable` gate
             // below would reject them. Capture them as ephemeral
             // buttons: set active+rect on Down so the Up branch fires
             // `apply_click`, whose `_` fallthrough pushes a generic
             // `WidgetEvent::Click(id)` for unregistered ids. Hero's
             // `apply_event` then routes by companion bit pattern.
+            // Enio 2026-05-26: lock + group + icon companions adicionados
+            // — sem isso clicks neles iam pra is_focusable, eram rejei-
+            // tados como não-registrados, e nunca emitiam Click.
             if let Some((id, rect)) = hit
                 && (crate::ids::hier_eye_companion_to_row(id).is_some()
-                    || crate::ids::hier_expand_companion_to_row(id).is_some())
+                    || crate::ids::hier_expand_companion_to_row(id).is_some()
+                    || crate::ids::hier_lock_companion_to_row(id).is_some()
+                    || crate::ids::hier_group_companion_to_row(id).is_some()
+                    || crate::ids::hier_icon_companion_to_row(id).is_some())
             {
                 store.set_active(Some(id));
                 store.set_active_rect(Some(rect));

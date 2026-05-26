@@ -170,8 +170,10 @@ pub(crate) fn paint_hierarchy_row(
         icon_btn,
         icon_btn,
     );
+    // Enio 2026-05-26: checked → branco mais forte; unchecked → cinza.
+    // Comportamento contrário ao olho (que escurece quando hidden).
     let group_color = if entity.group_locked {
-        ColorToken::Accent
+        ColorToken::Text1
     } else {
         ColorToken::Text3
     };
@@ -207,8 +209,9 @@ pub(crate) fn paint_hierarchy_row(
         icon_btn,
         icon_btn,
     );
+    // Enio 2026-05-26: ver comentário do group_color acima.
     let lock_color = if entity.locked {
-        ColorToken::Accent
+        ColorToken::Text1
     } else {
         ColorToken::Text3
     };

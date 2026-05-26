@@ -39,15 +39,15 @@ Depois de W0 fixar o contrato e a vertical PNG-stub provar end-to-end: caps do a
 **Política de cor:** sRGB-assumed-no-profile (sem ICC parsing). Pra fixture sintética + foto comum cobre 95% do caso. ICC entra em W2.
 
 Batch A (3 slots paralelos):
-- **W1.T1** — `crates/ph2d-imageio-png/`: import + export 8/16-bit + alpha + sBIT chunk. `image` 0.25. ⏳
-- **W1.T2** — `crates/ph2d-imageio-jpeg/`: import + export 8-bit RGB, EXIF orientation honrado, quality 0-100. `image` 0.25. ⏳
-- **W1.T3** — `crates/ph2d-imageio-webp/`: lossy + lossless + alpha + anim. `image` (decode) + `webp` 0.3 (encode). ⏳
+- **W1.T1** — `crates/ph2d-imageio-png/`: ✅ commit `ac50809`. Multi-color-type decode (Gray/GrayAlpha/RGB/RGBA/Indexed → 8-bit RGBA); 16-bit quantize-down documented; 32K dimension cap (bomb defence). 12 tests. **16-bit roundtrip + sBIT + ICC ficam W2** (sem cliente real em W1).
+- **W1.T2** — `crates/ph2d-imageio-jpeg/`: ✅ commit `4b2b657`. 8-bit RGB decode + encode; alpha dropped on export (JPEG composites against black); quality 1-100 clamped. 8 tests. **EXIF orientation honouring fica W2**.
+- **W1.T3** — `crates/ph2d-imageio-webp/`: ✅ commit `4423367`. Lossy + lossless decode; **encoder lossless-only** (pure-Rust image-webp; lossy encode precisa libwebp C = HR-1 violation, defer W2+); alpha preserved. 6 tests.
 
 Batch B (2 slots paralelos, após Batch A):
-- **W1.T4** — `crates/ph2d-imageio-gif/`: import + export anim → `Animated` ou flat 1ª frame. `image` + `gif` 0.13. ⏳
-- **W1.T5** — `crates/ph2d-imageio-ph2d-native/`: postcard + blake3 + `LayerStack` + history + HR-14 migration v1→v1. Round-trip total dos projetos Painter. ⏳
+- **W1.T4** — `crates/ph2d-imageio-gif/`: ✅ commit `3a84b1b`. Single-frame → `Flat`; multi-frame → `Animated(Vec<AnimFrame>)`; per-frame `delay_ms` + `offset_xy` preserved; **`dispose_op` + `transparent_index` ficam W2** (image::Frame opaque-wraps DisposalMethod). 7 tests (inclui anim roundtrip 3-frame).
+- **W1.T5** — `crates/ph2d-imageio-ph2d-native/`: ✅ commit `7270d40`. **Native Painter save format.** 52-byte header (magic + version u32 + blake3 32B + payload_len u64) + postcard envelope; preserves all 5 `DecodedImage` variants lossless (Flat/FlatHdr/Layered PSD-grade/Animated full-fidelity/Vector stub); HR-5 + HR-6 + HR-14 todos cobertos; schema mirror em `src/schema.rs`. 13 tests.
 
-**Aceitação W1:** 5 crates registrados via codegen; smoke Enio abre/salva `.png/.jpg/.webp/.gif/.ph2d` no Painter; CI verde 1× ao fim da onda.
+**Aceitação W1:** ✅ 5 crates registrados via codegen alphabetical (gif/jpeg/png/webp/ph2d-native); 81 testes verdes; smoke Enio do boot trace `5 importer(s), 5 exporter(s)` ainda pendente quando você quiser rodar `./play.command`.
 
 ## WAVE 2 — Profissional 2D · PARALELO intra-onda
 

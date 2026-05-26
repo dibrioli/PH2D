@@ -115,6 +115,15 @@ pub enum Ktx2Error {
     /// Declared mip-level data slice did not match the index.
     #[error("level {level}: data length mismatch")]
     LevelDataMismatch { level: u32 },
+
+    /// Container declares a non-2D layout: 3D texture
+    /// (`pixel_depth > 0`), cubemap (`face_count == 6`), or array
+    /// texture (`layer_count > 1`). Fase 1 only wires 2D sprites
+    /// — the renderer has no path for the other layouts yet.
+    /// Lifting the restriction is a foundational change (Fase 2):
+    /// `Ktx2Image` would need to carry layer/face arrays.
+    #[error("non-2D KTX2 layout not supported in Fase 1: {reason}")]
+    UnsupportedDimensionality { reason: &'static str },
 }
 
 // ── format enum ─────────────────────────────────────────────────────
@@ -302,6 +311,38 @@ pub struct Ktx2Image {
 
 // ── decode entry point ──────────────────────────────────────────────
 
+/// Reject KTX2 layouts that the Fase 1 renderer cannot consume:
+/// 3D textures, cubemaps, and array textures. The KTX2 header encodes
+/// these via three independent fields:
+///
+/// - `pixel_depth > 0` → 3D texture (`pixel_depth == 0` means 2D
+///   per spec).
+/// - `face_count == 6` → cubemap (spec allows only `1` or `6`).
+/// - `layer_count > 1` → texture array (`0` means "not an array",
+///   `1` is a degenerate single-layer array we still accept).
+///
+/// Split out from [`decode_ktx2_bytes`] so unit tests can drive it
+/// from a synthetic `ktx2::Header` (via `Header::from_bytes`) without
+/// having to fabricate a full KTX2 file (DFD + level index + payload).
+fn validate_2d_only(header: &ktx2::Header) -> Result<(), Ktx2Error> {
+    if header.pixel_depth > 0 {
+        return Err(Ktx2Error::UnsupportedDimensionality {
+            reason: "3D texture (pixel_depth > 0)",
+        });
+    }
+    if header.face_count > 1 {
+        return Err(Ktx2Error::UnsupportedDimensionality {
+            reason: "cubemap (face_count > 1)",
+        });
+    }
+    if header.layer_count > 1 {
+        return Err(Ktx2Error::UnsupportedDimensionality {
+            reason: "texture array (layer_count > 1)",
+        });
+    }
+    Ok(())
+}
+
 /// Parse a `.ktx2` byte buffer into a typed [`Ktx2Image`].
 ///
 /// The buffer is the entire file as read from disk (or any other
@@ -336,6 +377,12 @@ pub fn decode_ktx2_bytes(bytes: &[u8]) -> Result<Ktx2Image, Ktx2Error> {
             max: MAX_DIMENSION,
         });
     }
+
+    // 2D-only enforcement — Fase 1 has no path for 3D / cubemap /
+    // array textures in the renderer. Without this guard each of
+    // those layouts would silently decode the first plane / face /
+    // layer and discard the rest.
+    validate_2d_only(&header)?;
 
     // KTX2 spec: level_count == 0 means "engine generates the mip
     // pyramid" — we treat that as a single level (the base) and let
@@ -509,5 +556,94 @@ mod tests {
         assert!(Ktx2Format::Bc6hRgbUfloat.is_hdr());
         assert!(Ktx2Format::Bc6hRgbSfloat.is_hdr());
         assert!(!Ktx2Format::Unsupported(9999).is_hdr());
+    }
+
+    // ── dimensionality reject tests ─────────────────────────────────
+    //
+    // The `ktx2` crate's `Reader::new` validates the whole file (DFD +
+    // level index + payload bounds), so we can't drive it from a
+    // synthetic 80-byte header alone. But `validate_2d_only` operates
+    // on a parsed `ktx2::Header`, which `Header::from_bytes` builds
+    // from exactly 80 bytes — perfect for unit tests.
+
+    /// Build a valid 80-byte KTX2 header (magic + fields) with the
+    /// dimension knobs we want to flip. Defaults are a plain 2D
+    /// texture (8×8, no depth, no array, single face, RGBA8_SRGB).
+    fn build_header_bytes(pixel_depth: u32, layer_count: u32, face_count: u32) -> [u8; 80] {
+        let mut buf = [0u8; 80];
+        // Magic «KTX 20»\r\n\x1a\n (12 bytes).
+        buf[0..12].copy_from_slice(&[
+            0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A,
+        ]);
+        // VkFormat = 43 (R8G8B8A8_SRGB). Non-zero so Header parses.
+        buf[12..16].copy_from_slice(&43u32.to_le_bytes());
+        // typeSize = 1 (block-compressed/sRGB convention).
+        buf[16..20].copy_from_slice(&1u32.to_le_bytes());
+        // pixelWidth = 8 (non-zero — Header rejects zero width).
+        buf[20..24].copy_from_slice(&8u32.to_le_bytes());
+        // pixelHeight = 8.
+        buf[24..28].copy_from_slice(&8u32.to_le_bytes());
+        // pixelDepth — the knob.
+        buf[28..32].copy_from_slice(&pixel_depth.to_le_bytes());
+        // layerCount — the knob.
+        buf[32..36].copy_from_slice(&layer_count.to_le_bytes());
+        // faceCount — the knob (1 or 6 per spec; Header rejects 0).
+        buf[36..40].copy_from_slice(&face_count.to_le_bytes());
+        // levelCount = 1.
+        buf[40..44].copy_from_slice(&1u32.to_le_bytes());
+        // supercompressionScheme = 0 (none).
+        buf[44..48].copy_from_slice(&0u32.to_le_bytes());
+        // Index fields (DFD/KVD/SGD offsets+lengths) — left zero;
+        // `Header::from_bytes` doesn't dereference them.
+        buf
+    }
+
+    #[test]
+    fn validate_2d_only_accepts_plain_2d() {
+        // pixel_depth = 0, layer_count = 0 (non-array), face_count = 1.
+        let bytes = build_header_bytes(0, 0, 1);
+        let header = ktx2::Header::from_bytes(&bytes).expect("synthetic header parses");
+        assert!(validate_2d_only(&header).is_ok());
+    }
+
+    #[test]
+    fn validate_2d_only_accepts_single_layer_array() {
+        // layer_count = 1 — degenerate array, still 2D in practice.
+        let bytes = build_header_bytes(0, 1, 1);
+        let header = ktx2::Header::from_bytes(&bytes).expect("synthetic header parses");
+        assert!(validate_2d_only(&header).is_ok());
+    }
+
+    #[test]
+    fn validate_2d_only_rejects_3d_texture() {
+        let bytes = build_header_bytes(/* pixel_depth */ 4, 0, 1);
+        let header = ktx2::Header::from_bytes(&bytes).expect("synthetic header parses");
+        let err = validate_2d_only(&header).expect_err("3D must reject");
+        assert!(matches!(
+            err,
+            Ktx2Error::UnsupportedDimensionality { reason } if reason.contains("3D")
+        ));
+    }
+
+    #[test]
+    fn validate_2d_only_rejects_cubemap() {
+        let bytes = build_header_bytes(0, 0, /* face_count */ 6);
+        let header = ktx2::Header::from_bytes(&bytes).expect("synthetic header parses");
+        let err = validate_2d_only(&header).expect_err("cubemap must reject");
+        assert!(matches!(
+            err,
+            Ktx2Error::UnsupportedDimensionality { reason } if reason.contains("cubemap")
+        ));
+    }
+
+    #[test]
+    fn validate_2d_only_rejects_texture_array() {
+        let bytes = build_header_bytes(0, /* layer_count */ 8, 1);
+        let header = ktx2::Header::from_bytes(&bytes).expect("synthetic header parses");
+        let err = validate_2d_only(&header).expect_err("array must reject");
+        assert!(matches!(
+            err,
+            Ktx2Error::UnsupportedDimensionality { reason } if reason.contains("array")
+        ));
     }
 }

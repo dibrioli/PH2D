@@ -407,6 +407,7 @@ pub fn dispatch_pointer_with_text<'frame>(
                         && *p != crate::ids::CEQ_PANEL
                         && *p != crate::ids::UPS_PANEL
                         && *p != crate::ids::EQS_PANEL
+                        && *p != crate::grid_snap::ids::GS_PANEL
                 }) {
                     // `before_section` is filled in by apply_event
                     // — only the inspector knows the screen→body

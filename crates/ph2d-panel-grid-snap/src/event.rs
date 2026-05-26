@@ -35,12 +35,11 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
-    // TOPBAR_GRID_SETTINGS pill toggle — owned here because the id
-    // maps 1:1 to the grid-snap panel visibility (Phase C model:
-    // visibility lives in `panel_visibility` map, not on
-    // `GridSnapState`).
+    // TOPBAR_GRID_SETTINGS pill toggle + GS_CLOSE X — owned here so
+    // both abrir e fechar passem pelo mesmo set_panel_visible (Enio
+    // 2026-05-25: "O botão de fechar não fecha. Corrija isso.").
     if let WidgetEvent::Click(id) = ev
-        && id == ph2d_editor_core::ids::TOPBAR_GRID_SETTINGS
+        && (id == ph2d_editor_core::ids::TOPBAR_GRID_SETTINGS || id == ids::GS_CLOSE)
     {
         let next = !host.panel_visible(GridSnapPanel::ID);
         host.set_panel_visible(GridSnapPanel::ID, next);
@@ -318,14 +317,8 @@ fn active_hex_cfg_mut(state: &mut GridSnapState) -> &mut HexCfg {
 }
 
 fn apply_click(state: &mut GridSnapState, id: NodeId) -> bool {
-    if id == ids::GS_CLOSE {
-        // Phase C.4: visibility lives in `panel_visibility` map. The
-        // close-X is handled by the dispatcher above when entering
-        // `apply_event` via TOPBAR_*; here we still consume so the
-        // legacy callers expecting `true` for GS_CLOSE keep working.
-        // But the actual visibility flip is delegated below.
-        return true;
-    }
+    // GS_CLOSE handled in `apply_event` above (early dispatch
+    // alongside TOPBAR_GRID_SETTINGS).
     for (kind, opt_id) in kind_option_ids_in_order() {
         if id == opt_id {
             state.kind = kind;

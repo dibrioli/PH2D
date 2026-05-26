@@ -249,18 +249,10 @@ fn paint_body(
             ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
         );
     }
-    // Panel-level color tag (UI canon post-2026-05-24).
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        ph2d_editor_core::widget::panel_chrome::paint_panel_title_color_dot(
-            rect,
-            ids::GS_TITLE_COLOR,
-            store,
-            hit_index,
-            ctx.scene,
-            theme,
-        );
-    }
+    // Panel-level color tag removido 2026-05-25 (Enio: "no topo
+    // temos o círculo de marcar a cor. Retire isso."). O GS_TITLE_COLOR
+    // continua registrado no store mas sem hit/paint visual.
+    let _ = ids::GS_TITLE_COLOR;
 
     // Publish content_h / visible_h to the store + clamp scroll.
     {

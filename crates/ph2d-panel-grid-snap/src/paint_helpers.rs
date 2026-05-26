@@ -427,6 +427,11 @@ pub(crate) fn paint_color_swatch_row(
     state: &GridSnapState,
 ) {
     let label_font = ph2d_tokens::TypeToken::Base.px();
+    // Square swatch igual `widget::showcase::color` ("Tint" sample)
+    // — Enio 2026-05-25: "O seletor de cor está fora do padrão do
+    // seletor de cor do painel Widget Gallery. Corrija."
+    let swatch_size = ph2d_editor_core::widget::SwatchSize::Md;
+    let swatch_px = swatch_size.px();
     paint_text(
         text_system,
         scene,
@@ -434,23 +439,19 @@ pub(crate) fn paint_color_swatch_row(
         row.x,
         row.y + (row.h - label_font) * 0.5,
         label_font,
-        row.w - 56.0, // LITERAL-PX-OK: reserve for color swatch on the right (Inspector-matched)
+        row.w - swatch_px - Spacing::Sm.px(),
         resolve(ColorToken::Text2, theme),
     );
-    // Swatch tile on the right — size mirrors Inspector swatches.
-    let swatch_w = Spacing::Xl4.px();
-    let swatch_h = (row.h - Spacing::Xs.px()).max(Spacing::Xl.px());
     let swatch_rect = Rect::new(
-        row.x + row.w - swatch_w,
-        row.y + (row.h - swatch_h) * 0.5,
-        swatch_w,
-        swatch_h,
+        row.x + row.w - swatch_px,
+        row.y + (row.h - swatch_px) * 0.5,
+        swatch_px,
+        swatch_px,
     );
     let rgba = store
         .widget_color(ids::GS_COLOR_PICKER)
         .unwrap_or(state.color_rgba);
-    // Canonical color swatch painter (single source of truth).
-    let cs = ColorSwatch::new(ids::GS_COLOR_PICKER, "", rgba);
+    let cs = ColorSwatch::new(ids::GS_COLOR_PICKER, "", rgba).size(swatch_size);
     paint_color_swatch(&cs, swatch_rect, scene, theme);
     hit_index.register(ids::GS_COLOR_PICKER, swatch_rect);
 }

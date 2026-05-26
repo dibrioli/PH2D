@@ -678,6 +678,36 @@ impl crate::App {
                     self.title_dirty = true;
                 }
             }
+            // Reconcile Image Tools pill ButtonState ↔ active tool. Each pill
+            // whose manifest id matches `tools.active()` is forced to Pressed;
+            // pills holding a stale Pressed (tool no longer active) drop back
+            // to Normal. Hovered/click-transient states are preserved (we only
+            // touch the Normal↔Pressed transitions).
+            //
+            // Data-driven via `installed_registry().cluster("image_tools")` —
+            // zero hardcoded tool id (anti-padrão Image Tools Bugs §2.b
+            // fechado em T1.2). New tools dropped via fan-out drop-crate
+            // inherit the highlight wiring automatically.
+            {
+                let active_id_string: Option<String> =
+                    tools.active().map(|t| t.id().0.clone());
+                if let Some(reg) = ph2d_editor::installed_registry() {
+                    for manifest in reg.cluster("image_tools") {
+                        let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
+                        let should_press = active_id_string.as_deref() == Some(manifest.id);
+                        if let Some(ph2d_editor::InteractiveState::Button { state }) =
+                            hero.store.get_mut(pill_id)
+                        {
+                            use ph2d_editor::widget::ButtonState;
+                            match (*state, should_press) {
+                                (ButtonState::Normal, true) => *state = ButtonState::Pressed,
+                                (ButtonState::Pressed, false) => *state = ButtonState::Normal,
+                                _ => {} // preserve Hovered + already-consistent
+                            }
+                        }
+                    }
+                }
+            }
             // Padding panel ⟷ tool bridge — publishes the snapshot, draws
             // the live (non-destructive) canvas-bounds preview, and returns
             // the (selection, spec, pivot mode) to bake on Apply. Panel

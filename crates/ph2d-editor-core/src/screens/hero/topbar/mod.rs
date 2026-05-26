@@ -44,6 +44,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::IMAGE_ACTION_EQUALIZE_SIZES,
         ids::IMAGE_ACTION_RASTERIZE,
         ids::IMAGE_ACTION_UPSCALE,
+        ids::IMAGE_ACTION_PAINTER,
     ] {
         store.register(
             id,
@@ -129,6 +130,10 @@ pub fn populate(store: &mut WidgetStore) {
             ids::IMAGE_ACTION_UPSCALE,
             ph2d_i18n::tr("tool.upscale.tooltip"),
         ),
+        (
+            ids::IMAGE_ACTION_PAINTER,
+            ph2d_i18n::tr("tool.painter.tooltip"),
+        ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_BUTTON, "Run \u{00b7} \u{2318}\u{21b5}"),
@@ -189,6 +194,7 @@ fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::IMAGE_ACTION_EQUALIZE_SIZES => "Equalize Sizes",
         x if x == ids::IMAGE_ACTION_RASTERIZE => "Rasterize",
         x if x == ids::IMAGE_ACTION_UPSCALE => "Upscale",
+        x if x == ids::IMAGE_ACTION_PAINTER => "Painter",
         x if x == ids::TOPBAR_LEFT_BACKDROP => "Left Backdrop",
         x if x == ids::TOPBAR_RIGHT_BACKDROP => "Right Backdrop",
         x if x == ids::TOPBAR_IMAGE_TOOLS_BACKDROP => "Image Tools Backdrop",

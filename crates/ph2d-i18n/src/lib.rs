@@ -63,6 +63,8 @@ pub fn tr(key: &str) -> &'static str {
         }
         "tool.upscale.label" => "UPSC",
         "tool.upscale.tooltip" => "Upscale · resize image up 1x..16x (Lanczos3 / Nearest / xBR)",
+        "tool.painter.label" => "PNTR",
+        "tool.painter.tooltip" => "Painter · sucessor do Procreate (brush engine GPU, history vetorial, MCP)",
         // Image-edit undo affordance.
         "edit.undo.label" => "Undo",
         "edit.undo.image_edit.toast_hint" => "Undo: Cmd+Z",

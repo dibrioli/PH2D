@@ -191,6 +191,13 @@ pub const UPS_PANEL: NodeId = hash_node_id("panel.upscale");
 /// it per-sprite via `UpscaleTool::run_full_resolution`.
 pub const IMAGE_ACTION_UPSCALE: NodeId = hash_node_id("upscale");
 
+/// Image Tools action — Painter pill. Stateful workhorse (sucessor do
+/// Procreate, cascata W0 ratificada 2026-05-26 — ADRs 0043..0053). Click
+/// raises `EditorAction::ActivateTool { tool_id: "painter" }`; activation
+/// installs the takeover model (suprime chrome PH2D normal + instala
+/// chrome Procreate-style + sidebar — vide ADR-0043 §1.1).
+pub const IMAGE_ACTION_PAINTER: NodeId = hash_node_id("painter");
+
 /// Padding panel widget NodeIds (typed `ph2d-panel-padding`, right-docked
 /// in the Inspector slot while the `padding` tool is active). Four signed
 /// per-edge rows — each a bipolar Slider (`PAD_*`) linked in real time to

@@ -77,6 +77,8 @@ fn stateful_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
         Some("equalize_sizes")
     } else if id == ids::IMAGE_ACTION_UPSCALE {
         Some("upscale")
+    } else if id == ids::IMAGE_ACTION_PAINTER {
+        Some("painter")
     } else {
         None
     }

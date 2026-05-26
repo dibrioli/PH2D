@@ -170,10 +170,11 @@ pub(crate) fn paint_hierarchy_row(
         icon_btn,
         icon_btn,
     );
-    // Enio 2026-05-26: checked → branco mais forte; unchecked → cinza.
-    // Comportamento contrário ao olho (que escurece quando hidden).
+    // Enio 2026-05-26: checked → Accent (cor de destaque do tema);
+    // unchecked → Text3 (cinza). Olho NÃO usa accent — segue o seu
+    // próprio padrão.
     let group_color = if entity.group_locked {
-        ColorToken::Text1
+        ColorToken::Accent
     } else {
         ColorToken::Text3
     };
@@ -211,7 +212,7 @@ pub(crate) fn paint_hierarchy_row(
     );
     // Enio 2026-05-26: ver comentário do group_color acima.
     let lock_color = if entity.locked {
-        ColorToken::Text1
+        ColorToken::Accent
     } else {
         ColorToken::Text3
     };

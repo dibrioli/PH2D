@@ -54,10 +54,16 @@ impl Tool for PainterTool {
         // T1.2 implementará: pushar `painter_active = true` no HeroScreen
         // para acionar takeover (suprime chrome PH2D normal; ADR-0043 §1.1).
         self.params.takeover_active = true;
+        // T1.2 smoke 🟦 Day 3 do plano §4: clicar pill → terminal mostra ativação.
+        // PH2D não tem convenção de logging consolidada; `println!` é o canon
+        // de smoke (bgremoval e outros tools idem). Migração para log/tracing
+        // proper acontece quando ADR de logging cross-projeto ratificar.
+        println!("painter activated");
     }
 
     fn on_deactivate(&mut self) {
         self.params.takeover_active = false;
+        println!("painter deactivated");
     }
 
     fn handle_panel_event(&mut self, _event: ph2d_editor_core::tool::PanelEvent) {

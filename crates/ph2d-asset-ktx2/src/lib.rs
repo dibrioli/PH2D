@@ -215,18 +215,22 @@ impl Ktx2Format {
         )
     }
 
-    /// `true` if this format carries HDR (>8 bpc / float) data.
-    /// Drives the Sprite source decision in `ph2d-render` between the
-    /// SDR atlas path and the HDR `GameRt` path.
+    /// `true` if this format can carry values **outside** the `[0, 1]`
+    /// sRGB-equivalent range — i.e. floating-point storage. Drives the
+    /// Sprite source decision in `ph2d-render` between the SDR atlas
+    /// path and the HDR `GameRt` path.
+    ///
+    /// Note: `Rgba16Unorm` is **not** HDR by this definition — it has
+    /// 16 bits of *precision* per channel but the storage still
+    /// represents `[0, 1]` like RGBA8. Use it for things like high-
+    /// precision masks or normals, not for high-luminance content.
+    /// HDR requires float storage (`Rgba16Float`, `Rgba32Float`,
+    /// `Bc6hRgb{Ufloat,Sfloat}`).
     #[must_use]
     pub fn is_hdr(self) -> bool {
         matches!(
             self,
-            Self::Rgba16Unorm
-                | Self::Rgba16Float
-                | Self::Rgba32Float
-                | Self::Bc6hRgbUfloat
-                | Self::Bc6hRgbSfloat
+            Self::Rgba16Float | Self::Rgba32Float | Self::Bc6hRgbUfloat | Self::Bc6hRgbSfloat
         )
     }
 
@@ -234,45 +238,103 @@ impl Ktx2Format {
     /// header) to our typed enum. Unknown values fall back to
     /// [`Self::Unsupported`].
     ///
-    /// VkFormat numeric values are from the Vulkan registry; the ones
-    /// listed here are stable across Vulkan releases.
+    /// The numeric values are matched against the constants the
+    /// upstream `ktx2` crate exposes (`ktx2::Format::*`), which
+    /// mirror the Khronos Vulkan registry. Using the crate's
+    /// constants instead of hard-coded integers means a typo in any
+    /// VkFormat ID is caught at compile time.
     #[must_use]
     pub fn from_vk_format(raw: u32) -> Self {
-        // Vulkan VkFormat numeric values — Khronos registry.
-        match raw {
-            37 => Self::Rgba8Unorm,     // VK_FORMAT_R8G8B8A8_UNORM
-            43 => Self::Rgba8UnormSrgb, // VK_FORMAT_R8G8B8A8_SRGB
-            91 => Self::Rgba16Unorm,    // VK_FORMAT_R16G16B16A16_UNORM
-            97 => Self::Rgba16Float,    // VK_FORMAT_R16G16B16A16_SFLOAT
-            109 => Self::Rgba32Float,   // VK_FORMAT_R32G32B32A32_SFLOAT
+        use ktx2::Format as F;
 
-            133 => Self::Bc1RgbaUnorm, // VK_FORMAT_BC1_RGBA_UNORM_BLOCK
-            134 => Self::Bc1RgbaUnormSrgb, // VK_FORMAT_BC1_RGBA_SRGB_BLOCK
-            137 => Self::Bc3RgbaUnorm, // VK_FORMAT_BC3_UNORM_BLOCK
-            138 => Self::Bc3RgbaUnormSrgb, // VK_FORMAT_BC3_SRGB_BLOCK
-            139 => Self::Bc4RUnorm,    // VK_FORMAT_BC4_UNORM_BLOCK
-            141 => Self::Bc5RgUnorm,   // VK_FORMAT_BC5_UNORM_BLOCK
-            143 => Self::Bc6hRgbUfloat, // VK_FORMAT_BC6H_UFLOAT_BLOCK
-            144 => Self::Bc6hRgbSfloat, // VK_FORMAT_BC6H_SFLOAT_BLOCK
-            145 => Self::Bc7RgbaUnorm, // VK_FORMAT_BC7_UNORM_BLOCK
-            146 => Self::Bc7RgbaUnormSrgb, // VK_FORMAT_BC7_SRGB_BLOCK
-
-            147 => Self::Etc2Rgb8Unorm, // VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK
-            148 => Self::Etc2Rgb8UnormSrgb, // VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK
-            151 => Self::Etc2Rgba8Unorm, // VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK
-            152 => Self::Etc2Rgba8UnormSrgb, // VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK
-
-            157 => Self::Astc4x4RgbaUnorm, // VK_FORMAT_ASTC_4x4_UNORM_BLOCK
-            158 => Self::Astc4x4RgbaUnormSrgb, // VK_FORMAT_ASTC_4x4_SRGB_BLOCK
-            161 => Self::Astc5x5RgbaUnorm, // VK_FORMAT_ASTC_5x5_UNORM_BLOCK
-            162 => Self::Astc5x5RgbaUnormSrgb, // VK_FORMAT_ASTC_5x5_SRGB_BLOCK
-            165 => Self::Astc6x6RgbaUnorm, // VK_FORMAT_ASTC_6x6_UNORM_BLOCK
-            166 => Self::Astc6x6RgbaUnormSrgb, // VK_FORMAT_ASTC_6x6_SRGB_BLOCK
-            171 => Self::Astc8x8RgbaUnorm, // VK_FORMAT_ASTC_8x8_UNORM_BLOCK
-            172 => Self::Astc8x8RgbaUnormSrgb, // VK_FORMAT_ASTC_8x8_SRGB_BLOCK
-
-            other => Self::Unsupported(other),
+        // Common reference shorthand for each variant the renderer
+        // is expected to consume in Fase 2.
+        if raw == F::R8G8B8A8_UNORM.value() {
+            return Self::Rgba8Unorm;
         }
+        if raw == F::R8G8B8A8_SRGB.value() {
+            return Self::Rgba8UnormSrgb;
+        }
+        if raw == F::R16G16B16A16_UNORM.value() {
+            return Self::Rgba16Unorm;
+        }
+        if raw == F::R16G16B16A16_SFLOAT.value() {
+            return Self::Rgba16Float;
+        }
+        if raw == F::R32G32B32A32_SFLOAT.value() {
+            return Self::Rgba32Float;
+        }
+
+        if raw == F::BC1_RGBA_UNORM_BLOCK.value() {
+            return Self::Bc1RgbaUnorm;
+        }
+        if raw == F::BC1_RGBA_SRGB_BLOCK.value() {
+            return Self::Bc1RgbaUnormSrgb;
+        }
+        if raw == F::BC3_UNORM_BLOCK.value() {
+            return Self::Bc3RgbaUnorm;
+        }
+        if raw == F::BC3_SRGB_BLOCK.value() {
+            return Self::Bc3RgbaUnormSrgb;
+        }
+        if raw == F::BC4_UNORM_BLOCK.value() {
+            return Self::Bc4RUnorm;
+        }
+        if raw == F::BC5_UNORM_BLOCK.value() {
+            return Self::Bc5RgUnorm;
+        }
+        if raw == F::BC6H_UFLOAT_BLOCK.value() {
+            return Self::Bc6hRgbUfloat;
+        }
+        if raw == F::BC6H_SFLOAT_BLOCK.value() {
+            return Self::Bc6hRgbSfloat;
+        }
+        if raw == F::BC7_UNORM_BLOCK.value() {
+            return Self::Bc7RgbaUnorm;
+        }
+        if raw == F::BC7_SRGB_BLOCK.value() {
+            return Self::Bc7RgbaUnormSrgb;
+        }
+
+        if raw == F::ETC2_R8G8B8_UNORM_BLOCK.value() {
+            return Self::Etc2Rgb8Unorm;
+        }
+        if raw == F::ETC2_R8G8B8_SRGB_BLOCK.value() {
+            return Self::Etc2Rgb8UnormSrgb;
+        }
+        if raw == F::ETC2_R8G8B8A8_UNORM_BLOCK.value() {
+            return Self::Etc2Rgba8Unorm;
+        }
+        if raw == F::ETC2_R8G8B8A8_SRGB_BLOCK.value() {
+            return Self::Etc2Rgba8UnormSrgb;
+        }
+
+        if raw == F::ASTC_4x4_UNORM_BLOCK.value() {
+            return Self::Astc4x4RgbaUnorm;
+        }
+        if raw == F::ASTC_4x4_SRGB_BLOCK.value() {
+            return Self::Astc4x4RgbaUnormSrgb;
+        }
+        if raw == F::ASTC_5x5_UNORM_BLOCK.value() {
+            return Self::Astc5x5RgbaUnorm;
+        }
+        if raw == F::ASTC_5x5_SRGB_BLOCK.value() {
+            return Self::Astc5x5RgbaUnormSrgb;
+        }
+        if raw == F::ASTC_6x6_UNORM_BLOCK.value() {
+            return Self::Astc6x6RgbaUnorm;
+        }
+        if raw == F::ASTC_6x6_SRGB_BLOCK.value() {
+            return Self::Astc6x6RgbaUnormSrgb;
+        }
+        if raw == F::ASTC_8x8_UNORM_BLOCK.value() {
+            return Self::Astc8x8RgbaUnorm;
+        }
+        if raw == F::ASTC_8x8_SRGB_BLOCK.value() {
+            return Self::Astc8x8RgbaUnormSrgb;
+        }
+
+        Self::Unsupported(raw)
     }
 }
 
@@ -307,6 +369,17 @@ pub struct Ktx2Image {
     /// Mip pyramid from level 0 (largest) to level N-1. Always at
     /// least one entry.
     pub mip_levels: Vec<MipLevel>,
+}
+
+impl Ktx2Image {
+    /// Shorthand for `&self.mip_levels[0]` — the largest, full-
+    /// resolution level. Always present: the decoder rejects files
+    /// with zero mip levels as `InvalidContainer`, so this never
+    /// panics for an `Ktx2Image` produced by [`decode_ktx2_bytes`].
+    #[must_use]
+    pub fn base_level(&self) -> &MipLevel {
+        &self.mip_levels[0]
+    }
 }
 
 // ── decode entry point ──────────────────────────────────────────────
@@ -356,6 +429,34 @@ fn validate_2d_only(header: &ktx2::Header) -> Result<(), Ktx2Error> {
 /// `TotalBytesExceeded`), and `UnsupportedSupercompression` for files
 /// that artists ship through a chain that compressed them with zstd
 /// / BasisLZ.
+///
+/// # Examples
+///
+/// Garbage input returns a structured error — no panic:
+///
+/// ```
+/// use ph2d_asset_ktx2::{decode_ktx2_bytes, Ktx2Error};
+///
+/// let result = decode_ktx2_bytes(&[0u8; 32]);
+/// assert!(matches!(result, Err(Ktx2Error::InvalidContainer(_))));
+/// ```
+///
+/// On success, `Ktx2Image::base_level` is the easiest way to reach
+/// the full-resolution bytes:
+///
+/// ```no_run
+/// # use ph2d_asset_ktx2::{decode_ktx2_bytes, Ktx2Format};
+/// # fn read_file() -> Vec<u8> { unimplemented!() }
+/// let bytes = read_file();
+/// let image = decode_ktx2_bytes(&bytes).expect("file is a valid KTX2");
+/// let base = image.base_level();
+/// assert_eq!((base.width, base.height), (image.width, image.height));
+/// match image.format {
+///     Ktx2Format::Bc7RgbaUnormSrgb => { /* desktop-compressed path */ }
+///     Ktx2Format::Rgba8UnormSrgb => { /* uncompressed sRGB path */ }
+///     other => panic!("unexpected format {other:?}"),
+/// }
+/// ```
 pub fn decode_ktx2_bytes(bytes: &[u8]) -> Result<Ktx2Image, Ktx2Error> {
     let reader =
         ktx2::Reader::new(bytes).map_err(|e| Ktx2Error::InvalidContainer(format!("{e:?}")))?;
@@ -469,6 +570,8 @@ pub fn decode_ktx2_bytes(bytes: &[u8]) -> Result<Ktx2Image, Ktx2Error> {
 mod tests {
     use super::*;
 
+    // ── garbage-input rejection (no fixture needed) ────────────────
+
     /// Empty buffer must error, not panic.
     #[test]
     fn decode_empty_bytes_errors() {
@@ -495,112 +598,196 @@ mod tests {
         assert!(matches!(result, Err(Ktx2Error::InvalidContainer(_))));
     }
 
-    /// VkFormat values come from the Vulkan registry — exercise the
-    /// canonical entries we listed to catch typos in the mapping.
+    // ── VkFormat mapping coverage ─────────────────────────────────
+
+    /// The full canonical mapping. The (raw, expected) pairs are
+    /// built from `ktx2::Format::*` constants — if any of the Vulkan
+    /// registry IDs we use is wrong, this stops compiling (typed
+    /// reference) rather than passing with a typo (raw integer
+    /// literal).
+    fn canonical_format_table() -> Vec<(u32, Ktx2Format)> {
+        use ktx2::Format as F;
+        vec![
+            (F::R8G8B8A8_UNORM.value(), Ktx2Format::Rgba8Unorm),
+            (F::R8G8B8A8_SRGB.value(), Ktx2Format::Rgba8UnormSrgb),
+            (F::R16G16B16A16_UNORM.value(), Ktx2Format::Rgba16Unorm),
+            (F::R16G16B16A16_SFLOAT.value(), Ktx2Format::Rgba16Float),
+            (F::R32G32B32A32_SFLOAT.value(), Ktx2Format::Rgba32Float),
+            (F::BC1_RGBA_UNORM_BLOCK.value(), Ktx2Format::Bc1RgbaUnorm),
+            (F::BC1_RGBA_SRGB_BLOCK.value(), Ktx2Format::Bc1RgbaUnormSrgb),
+            (F::BC3_UNORM_BLOCK.value(), Ktx2Format::Bc3RgbaUnorm),
+            (F::BC3_SRGB_BLOCK.value(), Ktx2Format::Bc3RgbaUnormSrgb),
+            (F::BC4_UNORM_BLOCK.value(), Ktx2Format::Bc4RUnorm),
+            (F::BC5_UNORM_BLOCK.value(), Ktx2Format::Bc5RgUnorm),
+            (F::BC6H_UFLOAT_BLOCK.value(), Ktx2Format::Bc6hRgbUfloat),
+            (F::BC6H_SFLOAT_BLOCK.value(), Ktx2Format::Bc6hRgbSfloat),
+            (F::BC7_UNORM_BLOCK.value(), Ktx2Format::Bc7RgbaUnorm),
+            (F::BC7_SRGB_BLOCK.value(), Ktx2Format::Bc7RgbaUnormSrgb),
+            (
+                F::ETC2_R8G8B8_UNORM_BLOCK.value(),
+                Ktx2Format::Etc2Rgb8Unorm,
+            ),
+            (
+                F::ETC2_R8G8B8_SRGB_BLOCK.value(),
+                Ktx2Format::Etc2Rgb8UnormSrgb,
+            ),
+            (
+                F::ETC2_R8G8B8A8_UNORM_BLOCK.value(),
+                Ktx2Format::Etc2Rgba8Unorm,
+            ),
+            (
+                F::ETC2_R8G8B8A8_SRGB_BLOCK.value(),
+                Ktx2Format::Etc2Rgba8UnormSrgb,
+            ),
+            (
+                F::ASTC_4x4_UNORM_BLOCK.value(),
+                Ktx2Format::Astc4x4RgbaUnorm,
+            ),
+            (
+                F::ASTC_4x4_SRGB_BLOCK.value(),
+                Ktx2Format::Astc4x4RgbaUnormSrgb,
+            ),
+            (
+                F::ASTC_5x5_UNORM_BLOCK.value(),
+                Ktx2Format::Astc5x5RgbaUnorm,
+            ),
+            (
+                F::ASTC_5x5_SRGB_BLOCK.value(),
+                Ktx2Format::Astc5x5RgbaUnormSrgb,
+            ),
+            (
+                F::ASTC_6x6_UNORM_BLOCK.value(),
+                Ktx2Format::Astc6x6RgbaUnorm,
+            ),
+            (
+                F::ASTC_6x6_SRGB_BLOCK.value(),
+                Ktx2Format::Astc6x6RgbaUnormSrgb,
+            ),
+            (
+                F::ASTC_8x8_UNORM_BLOCK.value(),
+                Ktx2Format::Astc8x8RgbaUnorm,
+            ),
+            (
+                F::ASTC_8x8_SRGB_BLOCK.value(),
+                Ktx2Format::Astc8x8RgbaUnormSrgb,
+            ),
+        ]
+    }
+
+    /// Every entry in the canonical table must round-trip through
+    /// `from_vk_format`. Exhaustive — not a representative sample.
     #[test]
-    fn vk_format_mapping_canonical_values() {
-        assert_eq!(Ktx2Format::from_vk_format(37), Ktx2Format::Rgba8Unorm);
-        assert_eq!(Ktx2Format::from_vk_format(43), Ktx2Format::Rgba8UnormSrgb);
-        assert_eq!(Ktx2Format::from_vk_format(97), Ktx2Format::Rgba16Float);
-        assert_eq!(Ktx2Format::from_vk_format(145), Ktx2Format::Bc7RgbaUnorm);
-        assert_eq!(
-            Ktx2Format::from_vk_format(146),
-            Ktx2Format::Bc7RgbaUnormSrgb
-        );
-        assert_eq!(
-            Ktx2Format::from_vk_format(166),
-            Ktx2Format::Astc6x6RgbaUnormSrgb
-        );
-        assert_eq!(
-            Ktx2Format::from_vk_format(152),
-            Ktx2Format::Etc2Rgba8UnormSrgb
-        );
+    fn vk_format_mapping_via_ktx2_constants() {
+        for (raw, expected) in canonical_format_table() {
+            assert_eq!(
+                Ktx2Format::from_vk_format(raw),
+                expected,
+                "VkFormat {raw} (= {expected:?}) misroutes",
+            );
+        }
     }
 
     /// Unknown VkFormat must surface as `Unsupported(raw)` rather
     /// than silently mapping to something.
     #[test]
     fn vk_format_unknown_is_unsupported() {
-        // 9999 isn't a real VkFormat — pick anything outside our
-        // mapped subset.
+        use ktx2::Format as F;
+
+        // 9999 isn't a real VkFormat — pick anything outside our subset.
         assert_eq!(
             Ktx2Format::from_vk_format(9999),
             Ktx2Format::Unsupported(9999)
         );
         // VK_FORMAT_R4G4_UNORM_PACK8 (1) is real but we don't use it.
         assert_eq!(Ktx2Format::from_vk_format(1), Ktx2Format::Unsupported(1));
+        // BC2 (135 / 136) is a real VkFormat we deliberately omitted
+        // because no PH2D pipeline targets it (BC3 supersedes for
+        // alpha-having sprites). Document the omission via test.
+        assert_eq!(
+            Ktx2Format::from_vk_format(F::BC2_UNORM_BLOCK.value()),
+            Ktx2Format::Unsupported(F::BC2_UNORM_BLOCK.value()),
+        );
     }
 
-    /// Compressed-vs-uncompressed classification is consumed by
-    /// downstream code that picks the upload path.
+    // ── classifier exhaustiveness ─────────────────────────────────
+
+    /// Every canonical (= non-`Unsupported`) variant. Kept in lockstep
+    /// with [`Ktx2Format`] — adding a variant without updating this
+    /// table fails the exhaustiveness tests below.
+    fn all_canonical_formats() -> Vec<Ktx2Format> {
+        canonical_format_table()
+            .into_iter()
+            .map(|(_, f)| f)
+            .collect()
+    }
+
+    /// `is_compressed` must return `true` for every BC*/ASTC*/ETC2*
+    /// variant and `false` for every uncompressed RGBA variant.
     #[test]
-    fn is_compressed_matches_family() {
-        assert!(!Ktx2Format::Rgba8UnormSrgb.is_compressed());
-        assert!(!Ktx2Format::Rgba16Float.is_compressed());
-        assert!(Ktx2Format::Bc7RgbaUnormSrgb.is_compressed());
-        assert!(Ktx2Format::Bc6hRgbSfloat.is_compressed());
-        assert!(Ktx2Format::Astc6x6RgbaUnormSrgb.is_compressed());
-        assert!(Ktx2Format::Etc2Rgba8UnormSrgb.is_compressed());
-        // Unsupported can't be reasoned about.
+    fn is_compressed_exhaustive() {
+        for f in all_canonical_formats() {
+            let expected = matches!(
+                f,
+                Ktx2Format::Rgba8Unorm
+                    | Ktx2Format::Rgba8UnormSrgb
+                    | Ktx2Format::Rgba16Unorm
+                    | Ktx2Format::Rgba16Float
+                    | Ktx2Format::Rgba32Float
+            );
+            assert_eq!(f.is_compressed(), !expected, "is_compressed for {f:?}");
+        }
+        // `Unsupported` is opaque — caller cannot reason about it.
         assert!(!Ktx2Format::Unsupported(9999).is_compressed());
     }
 
-    /// HDR classification gates the SDR atlas vs HDR `GameRt` path
-    /// in the future renderer wire-up.
+    /// `is_hdr` must return `true` ONLY for float-storage variants.
+    /// Rgba16Unorm specifically must be FALSE — it has 16 bits of
+    /// precision but the storage range is `[0, 1]`, identical to
+    /// RGBA8 from a dynamic-range standpoint.
     #[test]
-    fn is_hdr_matches_family() {
-        assert!(!Ktx2Format::Rgba8UnormSrgb.is_hdr());
-        assert!(!Ktx2Format::Bc7RgbaUnormSrgb.is_hdr());
-        assert!(Ktx2Format::Rgba16Float.is_hdr());
-        assert!(Ktx2Format::Rgba32Float.is_hdr());
-        assert!(Ktx2Format::Bc6hRgbUfloat.is_hdr());
-        assert!(Ktx2Format::Bc6hRgbSfloat.is_hdr());
+    fn is_hdr_exhaustive() {
+        for f in all_canonical_formats() {
+            let expected = matches!(
+                f,
+                Ktx2Format::Rgba16Float
+                    | Ktx2Format::Rgba32Float
+                    | Ktx2Format::Bc6hRgbUfloat
+                    | Ktx2Format::Bc6hRgbSfloat
+            );
+            assert_eq!(f.is_hdr(), expected, "is_hdr for {f:?}");
+        }
+        // Explicit anti-regression — Rgba16Unorm has precision, not range.
+        assert!(!Ktx2Format::Rgba16Unorm.is_hdr());
         assert!(!Ktx2Format::Unsupported(9999).is_hdr());
     }
 
-    // ── dimensionality reject tests ─────────────────────────────────
+    // ── dimensionality reject tests (header-only fixture) ──────────
     //
-    // The `ktx2` crate's `Reader::new` validates the whole file (DFD +
-    // level index + payload bounds), so we can't drive it from a
-    // synthetic 80-byte header alone. But `validate_2d_only` operates
-    // on a parsed `ktx2::Header`, which `Header::from_bytes` builds
-    // from exactly 80 bytes — perfect for unit tests.
+    // `validate_2d_only` operates on a parsed `ktx2::Header`, which
+    // `Header::from_bytes` builds from exactly 80 bytes — cheaper than
+    // a full KTX2 file for the layout-shape tests below.
 
-    /// Build a valid 80-byte KTX2 header (magic + fields) with the
-    /// dimension knobs we want to flip. Defaults are a plain 2D
+    /// Build a valid 80-byte KTX2 header. Defaults are a plain 2D
     /// texture (8×8, no depth, no array, single face, RGBA8_SRGB).
     fn build_header_bytes(pixel_depth: u32, layer_count: u32, face_count: u32) -> [u8; 80] {
         let mut buf = [0u8; 80];
-        // Magic «KTX 20»\r\n\x1a\n (12 bytes).
         buf[0..12].copy_from_slice(&[
             0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A,
         ]);
-        // VkFormat = 43 (R8G8B8A8_SRGB). Non-zero so Header parses.
-        buf[12..16].copy_from_slice(&43u32.to_le_bytes());
-        // typeSize = 1 (block-compressed/sRGB convention).
-        buf[16..20].copy_from_slice(&1u32.to_le_bytes());
-        // pixelWidth = 8 (non-zero — Header rejects zero width).
-        buf[20..24].copy_from_slice(&8u32.to_le_bytes());
-        // pixelHeight = 8.
-        buf[24..28].copy_from_slice(&8u32.to_le_bytes());
-        // pixelDepth — the knob.
+        buf[12..16].copy_from_slice(&43u32.to_le_bytes()); // VK_FORMAT_R8G8B8A8_SRGB
+        buf[16..20].copy_from_slice(&1u32.to_le_bytes()); // type_size
+        buf[20..24].copy_from_slice(&8u32.to_le_bytes()); // pixel_width
+        buf[24..28].copy_from_slice(&8u32.to_le_bytes()); // pixel_height
         buf[28..32].copy_from_slice(&pixel_depth.to_le_bytes());
-        // layerCount — the knob.
         buf[32..36].copy_from_slice(&layer_count.to_le_bytes());
-        // faceCount — the knob (1 or 6 per spec; Header rejects 0).
         buf[36..40].copy_from_slice(&face_count.to_le_bytes());
-        // levelCount = 1.
-        buf[40..44].copy_from_slice(&1u32.to_le_bytes());
-        // supercompressionScheme = 0 (none).
-        buf[44..48].copy_from_slice(&0u32.to_le_bytes());
-        // Index fields (DFD/KVD/SGD offsets+lengths) — left zero;
-        // `Header::from_bytes` doesn't dereference them.
+        buf[40..44].copy_from_slice(&1u32.to_le_bytes()); // level_count
+        buf[44..48].copy_from_slice(&0u32.to_le_bytes()); // supercompression = none
         buf
     }
 
     #[test]
     fn validate_2d_only_accepts_plain_2d() {
-        // pixel_depth = 0, layer_count = 0 (non-array), face_count = 1.
         let bytes = build_header_bytes(0, 0, 1);
         let header = ktx2::Header::from_bytes(&bytes).expect("synthetic header parses");
         assert!(validate_2d_only(&header).is_ok());
@@ -647,25 +834,62 @@ mod tests {
         ));
     }
 
-    // ── positive round-trip via synthetic fixture ──────────────────
+    // ── full-file synthetic fixture builder ────────────────────────
     //
-    // The dev box has no `.ktx2` files lying around and we don't want
-    // to commit a binary fixture before there's an asset pipeline
-    // contract for it. The upstream `ktx2` crate exposes enough public
-    // API (`Basic::from_format`, `Block::to_vec`, `Header::as_bytes`,
-    // `LevelIndex::as_bytes`) to build a fully valid KTX2 file in
-    // memory — that proves our decoder accepts spec-compliant input,
-    // not just rejects garbage.
+    // The upstream `ktx2` crate exposes enough public API to build a
+    // fully spec-compliant KTX2 in memory: `Basic::from_format` for
+    // the DFD, `Header::as_bytes` + `LevelIndex::as_bytes` for the
+    // layout, and `Block::to_vec` to serialise the DFD block. The
+    // `FixtureSpec` knobs below let each test pinpoint one error
+    // path or success scenario.
 
-    /// Build a minimal valid KTX2 buffer: 2D RGBA8_SRGB, 1×1 px, 1 mip,
-    /// no supercompression, no KVD, no SGD. Pixel = `[0xFF, 0x00,
-    /// 0x80, 0xFF]` (hot magenta with full alpha) so the round-trip
-    /// is observable.
-    fn build_synthetic_rgba8_srgb_1x1() -> Vec<u8> {
+    /// Knobs for [`build_fixture`]. Per-test sites flip only the
+    /// fields they care about; the rest stay at the
+    /// `valid_rgba8_srgb_1x1()` defaults.
+    struct FixtureSpec {
+        width: u32,
+        height: u32,
+        pixel_depth: u32,
+        layer_count: u32,
+        face_count: u32,
+        /// `(payload, declared_uncompressed_byte_length)` per level.
+        /// `None` declared-length = use `payload.len()` (the well-
+        /// formed case). Forcing a mismatch drives the
+        /// `LevelDataMismatch` path.
+        levels: Vec<(Vec<u8>, Option<u64>)>,
+        /// Overwrite header bytes 12..16 (raw VkFormat). `None` keeps
+        /// the typed `Format::R8G8B8A8_SRGB`. `Some(0)` triggers
+        /// `MissingFormat`.
+        raw_format_override: Option<u32>,
+        /// Overwrite header bytes 44..48 (raw supercompression
+        /// scheme). `None` keeps zero (uncompressed). `Some(2)`
+        /// drives the `UnsupportedSupercompression` path (zstd).
+        raw_supercompression_override: Option<u32>,
+    }
+
+    impl FixtureSpec {
+        /// Canonical valid file: 2D RGBA8_SRGB, 1×1, 1 mip, hot magenta.
+        fn valid_rgba8_srgb_1x1() -> Self {
+            Self {
+                width: 1,
+                height: 1,
+                pixel_depth: 0,
+                layer_count: 0,
+                face_count: 1,
+                levels: vec![(vec![0xFF, 0x00, 0x80, 0xFF], None)],
+                raw_format_override: None,
+                raw_supercompression_override: None,
+            }
+        }
+    }
+
+    /// Construct a KTX2 byte buffer following `spec`. Tests must not
+    /// pass malformed specs (e.g. `levels.is_empty()`) — only
+    /// well-known shapes that exercise the decoder's branches.
+    fn build_fixture(spec: &FixtureSpec) -> Vec<u8> {
         use ktx2::dfd::{Basic, Block};
         use ktx2::{Format, Header, Index, LevelIndex};
 
-        // DFD section: 4-byte total-size prefix + serialized Basic block.
         let (basic, type_size) =
             Basic::from_format(Format::R8G8B8A8_SRGB).expect("R8G8B8A8_SRGB is a known format");
         let block_bytes = Block::Basic(basic).to_vec();
@@ -674,25 +898,42 @@ mod tests {
         dfd_section.extend_from_slice(&dfd_total_size.to_le_bytes());
         dfd_section.extend_from_slice(&block_bytes);
 
-        // Layout: header (80) + level index (24 × 1) + DFD + level data.
-        // Level data is aligned to lcm(4, texel_block_size) per spec; for
-        // uncompressed RGBA8 that's 4.
+        let level_count = spec.levels.len() as u32;
         let level_index_offset: u32 = 80;
-        let dfd_byte_offset: u32 = level_index_offset + 24;
+        let level_index_len: u32 = level_count * 24;
+        let dfd_byte_offset: u32 = level_index_offset + level_index_len;
         let dfd_byte_length: u32 = u32::try_from(dfd_section.len()).expect("DFD len fits in u32");
-        let level_data_offset_raw = dfd_byte_offset + dfd_byte_length;
-        let level_data_offset = (level_data_offset_raw + 3) & !3;
-        let level_data_length: u64 = 4; // 1 px × 4 bytes RGBA8
+        // Level data is aligned to lcm(4, texel_block_size); for the
+        // RGBA8 / BC* / ASTC sizes we test, 4 is always a safe LCM
+        // multiple. `Reader::new` also enforces `dfd_end < input.len()`
+        // strictly — so we always leave at least 1 byte of slack
+        // between the DFD and the first level (rounding `dfd_end + 4`
+        // down to the next multiple of 4 satisfies both invariants
+        // even when every payload is empty).
+        let mut level_data_offset = (dfd_byte_offset + dfd_byte_length + 4) & !3;
+
+        // Pre-compute each level's stored byte offset + payload size,
+        // tracking running offset for the level index.
+        let mut level_offsets: Vec<(u64, u64, u64)> = Vec::with_capacity(spec.levels.len());
+        for (payload, declared_override) in &spec.levels {
+            let byte_length = payload.len() as u64;
+            let declared = declared_override.unwrap_or(byte_length);
+            level_offsets.push((u64::from(level_data_offset), byte_length, declared));
+            // Each level aligned to 4 (KTX2 mip-padding).
+            let next = (level_data_offset + payload.len() as u32 + 3) & !3;
+            level_data_offset = next;
+        }
+        let total_len = level_data_offset as usize;
 
         let header = Header {
             format: Some(Format::R8G8B8A8_SRGB),
             type_size,
-            pixel_width: 1,
-            pixel_height: 1,
-            pixel_depth: 0,
-            layer_count: 0,
-            face_count: 1,
-            level_count: 1,
+            pixel_width: spec.width,
+            pixel_height: spec.height,
+            pixel_depth: spec.pixel_depth,
+            layer_count: spec.layer_count,
+            face_count: spec.face_count,
+            level_count,
             supercompression_scheme: None,
             index: Index {
                 dfd_byte_offset,
@@ -704,49 +945,263 @@ mod tests {
             },
         };
 
-        let level_index = LevelIndex {
-            byte_offset: u64::from(level_data_offset),
-            byte_length: level_data_length,
-            uncompressed_byte_length: level_data_length,
-        };
-
-        let total_len = level_data_offset as usize + level_data_length as usize;
         let mut buf = vec![0u8; total_len];
         buf[0..80].copy_from_slice(&header.as_bytes());
-        buf[80..104].copy_from_slice(&level_index.as_bytes());
+
+        // Level index — one 24-byte entry per level.
+        for (i, &(byte_offset, byte_length, declared)) in level_offsets.iter().enumerate() {
+            let entry = LevelIndex {
+                byte_offset,
+                byte_length,
+                uncompressed_byte_length: declared,
+            };
+            let start = 80 + i * 24;
+            buf[start..start + 24].copy_from_slice(&entry.as_bytes());
+        }
+
+        // DFD section.
         buf[dfd_byte_offset as usize..(dfd_byte_offset + dfd_byte_length) as usize]
             .copy_from_slice(&dfd_section);
-        // Hot magenta — distinguishable from zeroed padding.
-        buf[level_data_offset as usize..level_data_offset as usize + 4]
-            .copy_from_slice(&[0xFF, 0x00, 0x80, 0xFF]);
+
+        // Each level's payload at its declared offset.
+        for ((payload, _), &(byte_offset, _, _)) in spec.levels.iter().zip(&level_offsets) {
+            let start = byte_offset as usize;
+            buf[start..start + payload.len()].copy_from_slice(payload);
+        }
+
+        // Apply byte-level overrides AFTER `Header::as_bytes` wrote
+        // the typed fields — the only way to forge values the typed
+        // `Header` constructor refuses to represent.
+        if let Some(raw) = spec.raw_format_override {
+            buf[12..16].copy_from_slice(&raw.to_le_bytes());
+        }
+        if let Some(raw) = spec.raw_supercompression_override {
+            buf[44..48].copy_from_slice(&raw.to_le_bytes());
+        }
 
         buf
     }
 
+    // ── positive round-trips ──────────────────────────────────────
+
     #[test]
     fn decode_synthetic_rgba8_1x1_round_trips() {
-        let bytes = build_synthetic_rgba8_srgb_1x1();
+        let bytes = build_fixture(&FixtureSpec::valid_rgba8_srgb_1x1());
         let image = decode_ktx2_bytes(&bytes).expect("valid synthetic file decodes");
 
         assert_eq!(image.format, Ktx2Format::Rgba8UnormSrgb);
         assert_eq!(image.width, 1);
         assert_eq!(image.height, 1);
         assert_eq!(image.mip_levels.len(), 1);
-
-        let mip = &image.mip_levels[0];
-        assert_eq!(mip.width, 1);
-        assert_eq!(mip.height, 1);
-        assert_eq!(mip.data.as_ref(), &[0xFF, 0x00, 0x80, 0xFF]);
+        assert_eq!(image.base_level().data.as_ref(), &[0xFF, 0x00, 0x80, 0xFF]);
     }
 
     #[test]
     fn decode_synthetic_format_classifies_correctly() {
-        // Same buffer drives the classifier helpers — sanity-check that
-        // an end-to-end decoded RGBA8_SRGB is reported as uncompressed
-        // SDR (the SDR atlas path in the future renderer).
-        let bytes = build_synthetic_rgba8_srgb_1x1();
+        let bytes = build_fixture(&FixtureSpec::valid_rgba8_srgb_1x1());
         let image = decode_ktx2_bytes(&bytes).expect("decodes");
         assert!(!image.format.is_compressed());
         assert!(!image.format.is_hdr());
     }
+
+    #[test]
+    fn decode_synthetic_4x4_with_three_mips_round_trips() {
+        // 4×4 base, 2×2 mip1, 1×1 mip2. Each level filled with a
+        // distinct byte pattern so a mip-order bug shows up in the
+        // assertions.
+        let mip0 = vec![0xAA; 4 * 4 * 4]; // 4×4 × RGBA8 = 64 B
+        let mip1 = vec![0xBB; 2 * 2 * 4]; // 16 B
+        let mip2 = vec![0xCC; 4]; // 1×1 × RGBA8 = 4 B
+        let spec = FixtureSpec {
+            width: 4,
+            height: 4,
+            levels: vec![
+                (mip0.clone(), None),
+                (mip1.clone(), None),
+                (mip2.clone(), None),
+            ],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let image = decode_ktx2_bytes(&bytes).expect("3-mip RGBA8 decodes");
+
+        assert_eq!(image.width, 4);
+        assert_eq!(image.height, 4);
+        assert_eq!(image.mip_levels.len(), 3);
+        assert_eq!(
+            (image.mip_levels[0].width, image.mip_levels[0].height),
+            (4, 4)
+        );
+        assert_eq!(
+            (image.mip_levels[1].width, image.mip_levels[1].height),
+            (2, 2)
+        );
+        assert_eq!(
+            (image.mip_levels[2].width, image.mip_levels[2].height),
+            (1, 1)
+        );
+        assert_eq!(image.mip_levels[0].data.as_ref(), mip0.as_slice());
+        assert_eq!(image.mip_levels[1].data.as_ref(), mip1.as_slice());
+        assert_eq!(image.mip_levels[2].data.as_ref(), mip2.as_slice());
+    }
+
+    #[test]
+    fn decode_synthetic_npot_5x3_mip_rounding() {
+        // 5×3 has the awkward halving: mip1 = max(1, 5>>1) × max(1, 3>>1)
+        // = 2×1, mip2 = max(1, 5>>2) × max(1, 3>>2) = 1×1.
+        let mip0 = vec![0x11; 5 * 3 * 4]; // 60 B
+        let mip1 = vec![0x22; 2 * 4]; // 2×1 × RGBA8 = 8 B
+        let mip2 = vec![0x33; 4]; // 1×1 × RGBA8 = 4 B
+        let spec = FixtureSpec {
+            width: 5,
+            height: 3,
+            levels: vec![(mip0, None), (mip1, None), (mip2, None)],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let image = decode_ktx2_bytes(&bytes).expect("NPOT 5×3 decodes");
+
+        assert_eq!(image.mip_levels.len(), 3);
+        assert_eq!(
+            (image.mip_levels[0].width, image.mip_levels[0].height),
+            (5, 3)
+        );
+        assert_eq!(
+            (image.mip_levels[1].width, image.mip_levels[1].height),
+            (2, 1)
+        );
+        assert_eq!(
+            (image.mip_levels[2].width, image.mip_levels[2].height),
+            (1, 1)
+        );
+    }
+
+    #[test]
+    fn base_level_returns_mip_zero() {
+        // Confirms the ergonomic accessor matches `mip_levels[0]`.
+        let bytes = build_fixture(&FixtureSpec::valid_rgba8_srgb_1x1());
+        let image = decode_ktx2_bytes(&bytes).unwrap();
+        let by_accessor = image.base_level();
+        let by_index = &image.mip_levels[0];
+        assert_eq!(by_accessor.width, by_index.width);
+        assert_eq!(by_accessor.height, by_index.height);
+        assert_eq!(by_accessor.data.as_ref(), by_index.data.as_ref());
+    }
+
+    // ── decoder rejection paths via the fixture builder ────────────
+
+    #[test]
+    fn decode_rejects_zero_dimension() {
+        // `Header::from_bytes` refuses pixel_width == 0, but pixel_height
+        // can be zero (the spec uses it for 1D textures). Our decoder
+        // catches it before any other check.
+        let spec = FixtureSpec {
+            height: 0,
+            levels: vec![(Vec::new(), None)],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("zero height must reject");
+        assert!(matches!(err, Ktx2Error::ZeroDimension));
+    }
+
+    #[test]
+    fn decode_rejects_bounds_exceeded_width() {
+        let spec = FixtureSpec {
+            width: MAX_DIMENSION + 1,
+            levels: vec![(vec![0u8; 4], None)],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("oversize width must reject");
+        assert!(
+            matches!(err, Ktx2Error::BoundsExceeded { dim, max }
+                if dim == MAX_DIMENSION + 1 && max == MAX_DIMENSION),
+            "got {err:?}",
+        );
+    }
+
+    #[test]
+    fn decode_rejects_bounds_exceeded_height() {
+        let spec = FixtureSpec {
+            height: MAX_DIMENSION + 1,
+            levels: vec![(vec![0u8; 4], None)],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("oversize height must reject");
+        assert!(matches!(err, Ktx2Error::BoundsExceeded { .. }));
+    }
+
+    #[test]
+    fn decode_rejects_too_many_levels() {
+        // 17 levels (MAX_LEVELS = 16). Each payload is empty so the
+        // file stays tiny; the cap fires before any payload is read.
+        let levels = (0..(MAX_LEVELS + 1))
+            .map(|_| (Vec::new(), None))
+            .collect::<Vec<_>>();
+        let spec = FixtureSpec {
+            levels,
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("too many levels must reject");
+        assert!(
+            matches!(err, Ktx2Error::TooManyLevels { count, max }
+                if count == MAX_LEVELS + 1 && max == MAX_LEVELS),
+            "got {err:?}",
+        );
+    }
+
+    #[test]
+    fn decode_rejects_missing_format() {
+        // Override the raw VkFormat field to 0 (VK_FORMAT_UNDEFINED).
+        // The container is otherwise valid (DFD is still RGBA8_SRGB
+        // shaped), but our decoder demands an explicit format.
+        let spec = FixtureSpec {
+            raw_format_override: Some(0),
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("VK_FORMAT_UNDEFINED must reject");
+        assert!(matches!(err, Ktx2Error::MissingFormat), "got {err:?}");
+    }
+
+    #[test]
+    fn decode_rejects_supercompression_zstd() {
+        // Scheme 2 = zstd per the KTX2 spec.
+        let spec = FixtureSpec {
+            raw_supercompression_override: Some(2),
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("zstd SS must reject");
+        assert!(
+            matches!(err, Ktx2Error::UnsupportedSupercompression { raw: 2 }),
+            "got {err:?}",
+        );
+    }
+
+    #[test]
+    fn decode_rejects_level_data_mismatch() {
+        // Payload is 4 bytes but the level index claims 5.
+        let spec = FixtureSpec {
+            levels: vec![(vec![0xFF, 0x00, 0x80, 0xFF], Some(5))],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("declared/actual mismatch must reject");
+        assert!(
+            matches!(err, Ktx2Error::LevelDataMismatch { level: 0 }),
+            "got {err:?}",
+        );
+    }
+
+    // ── defensive guards NOT covered by unit tests ────────────────
+    //
+    // `Ktx2Error::TotalBytesExceeded` triggers only if cumulative
+    // mip payloads exceed 512 MiB — exercising it would require a
+    // ~512 MiB allocation in test, which violates the slow-test
+    // policy. The guard is one `saturating_add` plus a compare; it
+    // is verified by inspection.
 }

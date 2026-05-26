@@ -58,7 +58,7 @@ crates/ph2d-color/
     mixbox_space.rs # MixboxColorSpace NEW — define onde Mixbox opera
 ```
 
-LOC cap `ph2d-color` ADR-0042 §2.1 era 1500; revisto para **≤ 2500** com novos módulos (cap-amend ratificado por esta ADR).
+**LOC cap `ph2d-color` (fonte canônica única — esta ADR):** **≤ 2500 LOC**. ADR-0042 §2.3 criou o crate (~700 LOC inicial Wave 10) sem cap formal numérico; esta ADR fixa o cap **agora** acomodando os 4 novos módulos (`oklab.rs`, `display_p3.rs`, `prophoto.rs`, `hdr.rs`, `profile.rs`, `mixbox_space.rs`). Não há "drift" de ADR-0042 — esta é a primeira fixação numérica. Gate: `architecture_color_crate_loc_cap_2500`.
 
 ### 2.2 `ColorProfile` enum — cap **= 8 variants FROZEN** (v1 = 7)
 
@@ -209,7 +209,7 @@ Gate `color_picker_warns_on_gamut_clip`: cor fora do `ColorProfile` ativo do can
 | `MixboxColorSpace` (apenas LinearSrgb canon) | = 1 FROZEN |
 | `ExportFormat` variants | ≤ 8 (v1 = 6) |
 | `HdrFormat` variants | ≤ 4 (v1 = 2: OpenExr, HeicRec2100) |
-| `ph2d-color` crate LOC | ≤ 2500 (bumped from 1500 ADR-0042 §2.1) |
+| `ph2d-color` crate LOC | ≤ 2500 (fonte canônica única — esta ADR §2.1; ADR-0042 §2.3 não tinha cap numérico) |
 
 ### 2.10 Arch-gate `painter_contract_surface::color_pipeline`
 
@@ -251,7 +251,7 @@ mod color_pipeline {
 
 ### Negativas / Custos
 
-- **`ph2d-color` LOC cap 1500 → 2500.** Bump justificado mas é growth crate foundational. Mitigação: módulos isolados (`display_p3.rs`, `prophoto.rs`, `hdr.rs`), cada um auditável separadamente.
+- **`ph2d-color` LOC cap fixado em 2500 (primeira fixação numérica).** Crate foundational cresce de ~700 LOC (ADR-0042 baseline) para target ~2200 LOC com módulos novos; cap 2500 dá 300 LOC de headroom. Mitigação: módulos isolados (`display_p3.rs`, `prophoto.rs`, `hdr.rs`, etc.), cada um auditável separadamente.
 - **Mixbox P3-aware overhead ~12 mat ops/sample.** ~0.05ms em 4096 stamps; aceitável vs ganho cor.
 - **HDR storage 2× memory.** Max layers em HDR canvas cai pela metade. UX explica em "Create Canvas" dialog (já planejado em §2.5).
 - **8 ColorProfile variants frozen.** Profiles emergentes (e.g., Rec.2020 SDR para TV) precisam ADR-amend — não silently extendable. Aceito vs caos.

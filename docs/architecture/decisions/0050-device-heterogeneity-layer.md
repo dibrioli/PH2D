@@ -209,6 +209,8 @@ impl DriverQuirk {
 }
 ```
 
+**Forward-ref:** `GpuId` é definido em [ADR-0053 §2.2](0053-cross-platform-tier.md) (`ph2d-host` device capability extension). Esta ADR consome o tipo opaco; canônico em ADR-0053. ADR-0043 §2.6 tabela tipos importados registra fonte.
+
 **Cap:** `DriverQuirk ≤ 32 variants` (catálogo cresce com telemetry de produção; cada quirk descoberto entra como amendment + bump).
 
 ### 2.6 `HoverState`

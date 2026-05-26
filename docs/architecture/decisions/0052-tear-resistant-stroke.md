@@ -249,7 +249,7 @@ pub enum SuspendState {
 
 ### 2.6 `PlatformHost::on_suspend_imminent()` — trait extension
 
-ADR-0051 já amenda `ph2d-host::PlatformHost` (gyroscope). Esta ADR adiciona método paralelo:
+ADR-0049 já amenda `ph2d-host::PlatformHost` (`gyroscope()`). Esta ADR adiciona métodos paralelos:
 
 ```rust
 pub trait PlatformHost {

@@ -194,10 +194,15 @@ pub fn run_pipeline(
 /// fall back to fewer tiles (corner = 1, edge = 2, interior = 4) by
 /// clamping the tile-centre indices.
 ///
-/// RGB is reconstructed from the new luminance via a hue-preserving
-/// multiplicative scale (`scale = new_L / max(old_L, 1)`), then clamped
-/// per-channel — this keeps the original chroma while moving the
-/// brightness onto the equalized curve. Alpha passes through unchanged.
+/// Hue / chroma preservation runs in **BT.709 YCbCr (full range, sRGB
+/// gamma-encoded)** — mirrors OpenCV `cvtColor BGR2YCrCb + equalize Y +
+/// merge` / Krita's CLAHE pipeline. The histogram + LUT are built over
+/// `Y` only; `Cb` and `Cr` (cached at original-pixel precision) are
+/// reattached after the equalized `Y` is interpolated. The legacy
+/// `scale = new_L / max(old_L, 1)` reconstruction shifted hue in dark
+/// pixels (`l_in ∈ {1, 2}` → scale > 50× → one channel saturating
+/// before the others) and bled tile-CDF differences into chroma in soft
+/// areas — the YCbCr split removes both. Alpha passes through unchanged.
 pub fn clahe(src: &[u8], w: u32, h: u32, clip_limit: f32, tile_grid_size: u32, dst: &mut [u8]) {
     let n_px = (w as usize) * (h as usize);
     assert_eq!(src.len(), n_px * 4);
@@ -210,10 +215,20 @@ pub fn clahe(src: &[u8], w: u32, h: u32, clip_limit: f32, tile_grid_size: u32, d
     // clamps to ≥4 already, but a tool consumer might bypass that.
     let n_tiles = tile_grid_size.max(1);
 
-    // 1. Luminance buffer (BT.709, straight-alpha sRGB → 8-bit luma).
+    // 1. Y / Cb / Cr buffers (BT.709 full-range, sRGB gamma).
+    //    Y as u8 because the histogram + LUT live in [0, 255]; Cb / Cr
+    //    as f32 to retain sub-LSB chroma precision through reattach.
     let mut luma = vec![0u8; n_px];
+    let mut cb = vec![0.0_f32; n_px];
+    let mut cr = vec![0.0_f32; n_px];
     for (i, px) in src.chunks_exact(4).enumerate() {
-        luma[i] = luminance_bt709(px[0], px[1], px[2]);
+        let r = px[0] as f32;
+        let g = px[1] as f32;
+        let b = px[2] as f32;
+        let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        luma[i] = clamp8(y);
+        cb[i] = (b - y) / 1.8556;
+        cr[i] = (r - y) / 1.5748;
     }
 
     // 2. Per-tile LUT table: `n_tiles * n_tiles` LUTs of 256 bytes each.
@@ -263,29 +278,21 @@ pub fn clahe(src: &[u8], w: u32, h: u32, clip_limit: f32, tile_grid_size: u32, d
             let l11 = luts[(ty_hi_c * n_tiles + tx_hi_c) as usize][l_in] as f32;
             let top = l00 + wx * (l10 - l00);
             let bot = l01 + wx * (l11 - l01);
-            let new_l = top + wy * (bot - top);
+            let new_y = top + wy * (bot - top);
+
+            // BT.709 full-range inverse: reattach the original Cb / Cr.
+            // Tile-CDF differences live only in `new_y`; hue stays put.
+            let cb_v = cb[idx];
+            let cr_v = cr[idx];
+            let r_out = new_y + 1.5748 * cr_v;
+            let g_out = new_y - 0.187_324 * cb_v - 0.468_124 * cr_v;
+            let b_out = new_y + 1.8556 * cb_v;
 
             let src_off = idx * 4;
-            let r = src[src_off];
-            let g = src[src_off + 1];
-            let b = src[src_off + 2];
-            let a = src[src_off + 3];
-            let scale = if l_in == 0 {
-                // Fully black pixel — no hue to preserve. Spread the new
-                // luma evenly across RGB (achromatic grey).
-                let v = clamp8(new_l);
-                dst[src_off] = v;
-                dst[src_off + 1] = v;
-                dst[src_off + 2] = v;
-                dst[src_off + 3] = a;
-                continue;
-            } else {
-                new_l / l_in as f32
-            };
-            dst[src_off] = clamp8(r as f32 * scale);
-            dst[src_off + 1] = clamp8(g as f32 * scale);
-            dst[src_off + 2] = clamp8(b as f32 * scale);
-            dst[src_off + 3] = a;
+            dst[src_off] = clamp8(r_out);
+            dst[src_off + 1] = clamp8(g_out);
+            dst[src_off + 2] = clamp8(b_out);
+            dst[src_off + 3] = src[src_off + 3];
         }
     }
 }
@@ -636,7 +643,7 @@ pub fn auto_white_balance(rgba: &mut [u8]) {
 // path (one-shot per sprite); a WGSL compute follow-up is annotated per
 // stage where the GPU win is large (Bilateral, Unsharp Mask).
 
-/// Per-channel 256-bin histogram (R, G, B, and BT.601 luma) plus the count
+/// Per-channel 256-bin histogram (R, G, B, and BT.709 luma) plus the count
 /// of opaque pixels that contributed. Built by [`compute_histogram`] from
 /// a straight-alpha RGBA8 buffer; consumed by [`auto_levels`] /
 /// [`auto_contrast`] / [`auto_colors`] and by the panel's overlay
@@ -646,7 +653,10 @@ pub struct HistogramData {
     pub r: [u32; 256],
     pub g: [u32; 256],
     pub b: [u32; 256],
-    /// BT.601 luma — `Y = 0.299·R + 0.587·G + 0.114·B`. Legacy convention.
+    /// BT.709 luma — `Y = 0.2126·R + 0.7152·G + 0.0722·B`. Matches the
+    /// sRGB primaries CLAHE / `luma_srgb` rely on; the older BT.601
+    /// (`0.299, 0.587, 0.114`) constants were for analog NTSC encoding
+    /// and don't reflect modern sRGB luminance.
     pub l: [u32; 256],
     /// Pixels with `alpha > 0` counted across all channels.
     pub opaque_count: u32,
@@ -681,8 +691,10 @@ pub fn compute_histogram(pixels: &[ph2d_color::SrgbRgba]) -> HistogramData {
         h.r[px[0] as usize] += 1;
         h.g[px[1] as usize] += 1;
         h.b[px[2] as usize] += 1;
-        // BT.601 luma: 0.299, 0.587, 0.114 — matches the legacy histogram.
-        let luma = (0.299 * px[0] as f32 + 0.587 * px[1] as f32 + 0.114 * px[2] as f32) as usize;
+        // BT.709 luma — sRGB primaries. Coefficients applied to sRGB
+        // gamma-encoded values (matches `algorithm::luminance_bt709`),
+        // not linear — fine for histogram bucketing.
+        let luma = (0.2126 * px[0] as f32 + 0.7152 * px[1] as f32 + 0.0722 * px[2] as f32) as usize;
         h.l[luma.min(255)] += 1;
         h.opaque_count += 1;
     }
@@ -776,55 +788,59 @@ pub fn auto_colors(rgba: &mut [u8]) {
     }
 }
 
-/// Auto Contrast — stretches the HSL lightness channel via a uniform
-/// ratio scale (preserves hue). Uses the Krita-style 5 %/95 % percentile
-/// for a more aggressive stretch than Auto Levels. Mirrors
-/// `autoContrast` in the legacy.
+/// Auto Contrast — stretches BT.709 **linear-light** luminance via a
+/// uniform ratio scale on linear-sRGB RGB (preserves hue). Uses 5 %/95 %
+/// percentile cut.
+///
+/// Linear-light Y is the correct lightness measure here: pure red
+/// (255,0,0) and pure blue (0,0,255) have HSL L = 0.5 each, but their
+/// linear luminances differ by ~3× (`Y_red ≈ 0.21`, `Y_blue ≈ 0.07`).
+/// HSL L would treat them as equivalent and the per-channel scale by
+/// `new_L/L` would push saturated pixels past 1.0 in one channel before
+/// the others — manifest as hue drift. BT.709 linear keeps the scale
+/// physically meaningful.
 pub fn auto_contrast(rgba: &mut [u8]) {
-    // Build a lightness histogram (HSL L = (max + min) / 2 in `[0, 1]`).
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+
+    // 1. Linear-luma histogram (256 bins over `[0, 1]`).
     let mut hist_l = [0u32; 256];
     let mut total: u32 = 0;
     for px in rgba.chunks_exact(4) {
         if px[3] == 0 {
             continue;
         }
-        let r = px[0] as f32 / 255.0;
-        let g = px[1] as f32 / 255.0;
-        let b = px[2] as f32 / 255.0;
-        let max = r.max(g).max(b);
-        let min = r.min(g).min(b);
-        let l = (max + min) * 0.5;
-        let bin = (l * 255.0).round() as usize;
+        let rl = srgb_to_linear_u8(px[0]);
+        let gl = srgb_to_linear_u8(px[1]);
+        let bl = srgb_to_linear_u8(px[2]);
+        let y = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+        let bin = (y.clamp(0.0, 1.0) * 255.0).round() as usize;
         hist_l[bin.min(255)] += 1;
         total += 1;
     }
     if total == 0 {
         return;
     }
-    let (l_min, l_max) = percentile_range(&hist_l, total, 0.05);
-    let l_min_n = l_min as f32 / 255.0;
-    let l_range = ((l_max as f32 - l_min as f32) / 255.0).max(f32::EPSILON);
+    let (lo, hi) = percentile_range(&hist_l, total, 0.05);
+    let lo_n = lo as f32 / 255.0;
+    let range = ((hi as f32 - lo as f32) / 255.0).max(f32::EPSILON);
 
-    // Per-pixel: compute lightness, find the stretched lightness, scale RGB
-    // by the ratio. Preserves hue, lifts contrast.
+    // 2. Per-pixel: stretch linear Y, scale linear RGB by the ratio, encode.
     for px in rgba.chunks_exact_mut(4) {
         if px[3] == 0 {
             continue;
         }
-        let r = px[0] as f32 / 255.0;
-        let g = px[1] as f32 / 255.0;
-        let b = px[2] as f32 / 255.0;
-        let max = r.max(g).max(b);
-        let min = r.min(g).min(b);
-        let l = (max + min) * 0.5;
-        if l <= 0.0 || l >= 1.0 {
+        let rl = srgb_to_linear_u8(px[0]);
+        let gl = srgb_to_linear_u8(px[1]);
+        let bl = srgb_to_linear_u8(px[2]);
+        let y = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+        if y <= 0.0 || y >= 1.0 {
             continue;
         }
-        let new_l = ((l - l_min_n) / l_range).clamp(0.0, 1.0);
-        let ratio = new_l / l;
-        px[0] = clamp8(r * ratio * 255.0);
-        px[1] = clamp8(g * ratio * 255.0);
-        px[2] = clamp8(b * ratio * 255.0);
+        let new_y = ((y - lo_n) / range).clamp(0.0, 1.0);
+        let ratio = new_y / y;
+        px[0] = linear_to_srgb_u8(rl * ratio);
+        px[1] = linear_to_srgb_u8(gl * ratio);
+        px[2] = linear_to_srgb_u8(bl * ratio);
     }
 }
 
@@ -1919,6 +1935,45 @@ mod tests {
         let mut out = Vec::new();
         run_pipeline(bytemuck::cast_slice(&src), 8, 8, &p, &mut out);
         assert_eq!(out.len(), src.len());
+    }
+
+    #[test]
+    fn run_pipeline_identity_round_trip_exact() {
+        // Phase 1 audit (2026-05): with `ColorEqualizationParams::default()`
+        // the pipeline must produce the source byte-for-byte. Defaults are
+        // engineered identity (`CLIP_LIMIT_DEFAULT = CLIP_LIMIT_MIN`,
+        // every tonal knob at its identity value, every Phase 2 toggle
+        // off, no LUT preset, no posterize / quantize). The fast-path
+        // guard in `run_pipeline` short-circuits on `is_noop()`; this
+        // test pins the guarantee so a future stage author can't break
+        // the "activating the tool with no edits is a no-op" invariant.
+        //
+        // Source spans every alpha state (opaque + semi-transparent +
+        // fully transparent) and four primary hues so any stage that
+        // sneaks in a unilateral mutation would diverge here.
+        let p = ColorEqualizationParams::default();
+        assert!(
+            p.is_noop(),
+            "test precondition: default params must be is_noop()"
+        );
+        let mut src = Vec::with_capacity(16 * 16 * 4);
+        for y in 0..16u8 {
+            for x in 0..16u8 {
+                let r = x.wrapping_mul(17);
+                let g = y.wrapping_mul(17);
+                let b = (x ^ y).wrapping_mul(17);
+                let a = match (x % 4, y % 4) {
+                    (0, _) => 0,
+                    (1, _) => 64,
+                    (2, _) => 128,
+                    _ => 255,
+                };
+                src.extend_from_slice(&[r, g, b, a]);
+            }
+        }
+        let mut out = Vec::new();
+        run_pipeline(bytemuck::cast_slice(&src), 16, 16, &p, &mut out);
+        assert_eq!(out, src, "default params must round-trip identity");
     }
 
     #[test]

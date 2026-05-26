@@ -47,6 +47,17 @@ pub struct TransformSnapshot {
     pub scale: [f32; 2],
 }
 
+impl TransformSnapshot {
+    /// Identity snapshot: zero translation/rotation + unit scale.
+    /// Used as the default `parent_world` for root entities (no
+    /// ancestor compose needed) and as a stable test fixture.
+    pub const IDENTITY: Self = Self {
+        translation: [0.0, 0.0],
+        rotation: 0.0,
+        scale: [1.0, 1.0],
+    };
+}
+
 /// Onda 2C: which gizmo the user clicked. Drives `advance_gizmo_drag`'s
 /// branch between primary-only, group-with-global-pivot, and group-
 /// with-local-pivots transforms.

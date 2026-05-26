@@ -102,6 +102,7 @@ fn translate_drag_moves_by_world_delta() {
         sprite_half_intrinsic: [0.0, 0.0],
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     let t = compute_gizmo_transform(
         &drag,
@@ -145,6 +146,7 @@ fn scale_corner_doubling_distance_doubles_scale() {
         sprite_half_intrinsic: [1.0, 1.0],
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     // We bypass the screen→world projection by overriding the
     // computed `now_world` via cursor_screen → its projection.
@@ -203,6 +205,7 @@ fn scale_edge_axis_only() {
         sprite_half_intrinsic: [1.0, 0.0],
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     let target_world = [3.0, 0.0];
     let aspect = c.window_w / c.window_h;
@@ -246,6 +249,7 @@ fn rotate_quarter_turn_adds_pi_over_two() {
         sprite_half_intrinsic: [0.0, 0.0],
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     let target_world = [0.0, 1.0];
     let aspect = c.window_w / c.window_h;
@@ -293,6 +297,7 @@ fn translate_with_ctrl_snaps_to_grid() {
         sprite_half_intrinsic: [0.0, 0.0],
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     let t = compute_gizmo_transform(
         &drag,
@@ -342,6 +347,7 @@ fn scale_corner_with_shift_locks_aspect_ratio() {
         sprite_half_intrinsic: [1.0, 1.0],
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     // Drag to (3, -1.5) world → ratio_x = 3, ratio_y = 1.5.
     // With Shift, both axes lock to the largest deviation, ratio_x=3.
@@ -396,6 +402,7 @@ fn rotate_with_shift_snaps_to_step() {
         sprite_half_intrinsic: [0.0, 0.0],
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     // Target angle ~32° (between 30° and 45°). Snap to 15° →
     // 30° = π/6 ≈ 0.5236.
@@ -673,6 +680,7 @@ fn scale_corner_default_anchor_keeps_opposite_corner_fixed() {
         sprite_half_intrinsic: [1.0, 1.0],
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     let target_corner = [13.0_f32, 10.0_f32];
     drag.cursor_screen = cursor_for_world(&c, target_corner);
@@ -718,6 +726,7 @@ fn scale_corner_center_anchor_keeps_translation_unchanged() {
         sprite_half_intrinsic: [1.0, 1.0],
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     drag.cursor_screen = cursor_for_world(&c, [13.0, 10.0]);
     let t = compute_gizmo_transform(
@@ -756,6 +765,7 @@ fn scale_edge_default_anchor_keeps_opposite_edge_fixed() {
         sprite_half_intrinsic: [1.0, 1.0],
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     drag.cursor_screen = cursor_for_world(&c, [13.0, 5.0]);
     let t = compute_gizmo_transform(
@@ -801,6 +811,7 @@ fn scale_corner_with_snap_closure_quantizes_cursor() {
         sprite_half_intrinsic: [1.0, 1.0],
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
     };
     drag.cursor_screen = cursor_for_world(&c, [2.6, 2.6]);
     // Closure snaps each axis to nearest integer meter.

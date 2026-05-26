@@ -90,17 +90,22 @@ impl HierarchySnapshot {
     }
 }
 
+/// Tuple of optional component refs the hierarchy walk fetches per
+/// entity. Aliased pra clippy `type_complexity` (era 5-field tuple
+/// inline).
+type HierarchyChainFetch = (
+    Option<&'static Name>,
+    Option<&'static Children>,
+    Option<&'static crate::Visibility>,
+    Option<&'static crate::Locked>,
+    Option<&'static crate::GroupedChildren>,
+);
+
 /// Pre-built query state for [`build_hierarchy_snapshot`]. One per
 /// app; constructed once at boot from `&mut SimWorld`.
 pub struct HierarchyWalkState {
     roots: QueryState<Entity, (With<Transform>, Without<ChildOf>)>,
-    chain: QueryState<(
-        Option<&'static Name>,
-        Option<&'static Children>,
-        Option<&'static crate::Visibility>,
-        Option<&'static crate::Locked>,
-        Option<&'static crate::GroupedChildren>,
-    )>,
+    chain: QueryState<HierarchyChainFetch>,
 }
 
 impl HierarchyWalkState {

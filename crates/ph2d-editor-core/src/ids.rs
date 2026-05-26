@@ -853,6 +853,11 @@ pub const EXPAND_TOGGLE_BIT: u64 = 1u64 << 61;
 pub const LOCK_TOGGLE_BIT: u64 = 1u64 << 60;
 /// 2026-05-26: bit 59 for the group-lock-toggle companion (per row).
 pub const GROUP_TOGGLE_BIT: u64 = 1u64 << 59;
+/// 2026-05-26: bit 58 for the entity-icon companion (per row). The
+/// hierarchy row's leading icon (Sprite glyph) has its own hit so
+/// double-click can be differentiated from a double-click on the row's
+/// name (focus vs rename).
+pub const ICON_COMPANION_BIT: u64 = 1u64 << 58;
 
 /// Wave 2 PR 11.3 guard: companion detection only fires when the
 /// un-masked id is below this threshold (i.e., looks like a real
@@ -943,6 +948,25 @@ pub fn hier_group_companion(row_id: NodeId) -> NodeId {
 pub fn hier_group_companion_to_row(id: NodeId) -> Option<NodeId> {
     if id.0 & GROUP_TOGGLE_BIT != 0 {
         let masked = id.0 & !GROUP_TOGGLE_BIT;
+        if masked < COMPANION_ROW_ID_MAX {
+            return Some(NodeId(masked));
+        }
+    }
+    None
+}
+
+/// 2026-05-26: entity-icon companion (left glyph in a hierarchy row).
+/// Double-click here triggers focus (View → Selected); double-click
+/// on the row's name body triggers rename.
+#[inline]
+pub fn hier_icon_companion(row_id: NodeId) -> NodeId {
+    NodeId(row_id.0 | ICON_COMPANION_BIT)
+}
+
+#[inline]
+pub fn hier_icon_companion_to_row(id: NodeId) -> Option<NodeId> {
+    if id.0 & ICON_COMPANION_BIT != 0 {
+        let masked = id.0 & !ICON_COMPANION_BIT;
         if masked < COMPANION_ROW_ID_MAX {
             return Some(NodeId(masked));
         }

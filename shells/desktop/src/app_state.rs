@@ -413,6 +413,10 @@ pub(crate) struct GroupDragSnapshot {
     /// fix: writes into the entity's LOCAL Transform must compensate
     /// for ancestor rotation/scale, or group-drags on children of
     /// rotated parents move along the local axis instead of world).
+    /// Allow dead_code: Fase 3 do gizmo parent fix (consumir esse
+    /// snapshot em `compute_gizmo_transform`) está pausada — campo é
+    /// capturado mas ainda não lido. Próxima sessão termina.
+    #[allow(dead_code)]
     pub(crate) parent_world: ph2d_editor::TransformSnapshot,
 }
 

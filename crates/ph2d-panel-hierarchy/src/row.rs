@@ -54,7 +54,7 @@ pub(crate) fn paint_hierarchy_row(
     // como na godot: deslocar o filho para direita apenas a largura
     // do ícone." Internal `pad` reduced 10 → 2 so names sit close
     // to the panel's left edge.
-    let pad = 2.0_f32; // LITERAL-PX-OK: row inset (chrome-specific, Godot-tight)
+    let pad = 8.0_f32; // LITERAL-PX-OK: row left-inset (Enio 2026-05-26: deslocar ícones esquerda + nome mais pra direita; antes era 2 px Godot-tight)
     let chev_w = Spacing::Lg.px();
     // Chev → icon gap tightened Xs (4) → Xxs (2) 2026-05-24 per user:
     // "quero os ícones mais próximos das setas". Godot's Scene panel
@@ -103,6 +103,19 @@ pub(crate) fn paint_hierarchy_row(
         resolve(icon_color, theme),
         StrokeToken::Default.px(),
     );
+    // Hit-register the entity icon as its own companion (2026-05-26):
+    // double-click on the icon focuses the view; double-click on the
+    // name body (row body) triggers rename.
+    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
+        let hit_pad = Spacing::Xxs.px();
+        let hit_rect = Rect::new(
+            icon_rect.x - hit_pad,
+            icon_rect.y - hit_pad,
+            icon_rect.w + hit_pad * 2.0,
+            icon_rect.h + hit_pad * 2.0,
+        );
+        idx.register(ids::hier_icon_companion(row_id), hit_rect);
+    }
 
     // Right-side icon cluster — eye colada na borda direita (pad 0)
     // e gap inter-icon Xxs (2 px) pra ficarem "bem juntos" (Enio

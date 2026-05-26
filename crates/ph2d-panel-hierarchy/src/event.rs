@@ -143,16 +143,15 @@ pub(crate) fn apply_event(
             return EventOutcome::Consumed;
         }
     }
-    // M14.7 polish — double-click on a live hierarchy row → select
-    // the row (Replace, dropping any extras) + push SetViewFocus to
-    // reframe the camera. Fase 0c migrated this from the legacy
-    // HierRowClick emission to the new HierSelectRow variant so
-    // double-click goes through the same drain as single-click.
+    // 2026-05-26 — double-click on the entity ICON (left glyph of a
+    // row) → focus camera on the row (was: double-click on row name).
+    // The icon has its own companion hit id since this commit.
     if let WidgetEvent::DoubleClick(id) = ev
-        && state::live_entries_contains(id)
+        && let Some(row_id) = ids::hier_icon_companion_to_row(id)
+        && state::live_entries_contains(row_id)
     {
         host.bus_mut().push(EditorAction::HierSelectRow {
-            row: id,
+            row: row_id,
             modifier: SelectModifier::Replace,
         });
         host.bus_mut().push(EditorAction::SetViewFocus {
@@ -160,9 +159,11 @@ pub(crate) fn apply_event(
         });
         return EventOutcome::Consumed;
     }
-    // M14.7 polish — long-press on a live hierarchy row → enter
-    // inline-rename mode.
-    if let WidgetEvent::LongPress(id) = ev
+    // 2026-05-26 — double-click on a live hierarchy row's NAME body →
+    // enter inline-rename mode (substitui o long-press). Pra não
+    // disparar quando o duplo-clique cai numa companion (eye / lock /
+    // group / icon), checa que `id` é o row id em si.
+    if let WidgetEvent::DoubleClick(id) = ev
         && state::live_entries_contains(id)
     {
         ph2d_editor_core::screens::hero::open_rename_public(host.store_mut());

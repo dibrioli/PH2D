@@ -53,6 +53,7 @@ momento = "momento"
 EXATA = "EXATA"
 exata = "exata"
 independente = "independente"
+excede = "excede"
 # Technical terms that show up in shaders / numerics.
 texel = "texel"
 mipmap = "mipmap"

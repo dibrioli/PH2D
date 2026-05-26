@@ -99,7 +99,16 @@ pub fn detect_subject_interior(
     dilate3x3(edge_a, edge_b, wi, hi);
     erode3x3(edge_b, edge_a, wi, hi);
     flood_from_border(edge_a, rgba, wi, hi, visited, queue);
-    finalise_protect(rgba, visited, n, out_protect);
+    // Re-use `edge_b` (closing scratch, no longer needed) as the
+    // BFS distance buffer for the soft falloff. Pixels deep inside
+    // the silhouette get full strength (255 — preserves the
+    // "extraordinary" interior lock); pixels near the silhouette
+    // edge get LOWER strength so the chroma sliders (Tolerance,
+    // Feather, Refine, Grow) can still fine-tune them via the
+    // existing soft-band + grow/shrink path (Enio 2026-05-26: "os
+    // ajustes finos conseguidos através dos sliders não se aplicam,
+    // fazendo a ferramenta muito rígida").
+    finalise_protect_with_falloff(rgba, visited, edge_b, wi, hi, queue, out_protect);
 }
 
 /// Y' = 0.299R + 0.587G + 0.114B, integer-approx (Rec.601).
@@ -318,14 +327,108 @@ fn flood_from_border(
     }
 }
 
-/// `auto_protect = 255` where the pixel is opaque AND not reached by
-/// the border flood. Includes silhouette edge pixels (they're barriers,
-/// so flood never visits them — their `visited` stays 0 too) so the
-/// outline itself is force-kept.
-fn finalise_protect(rgba: &[u8], visited: &[u8], n: usize, out: &mut [u8]) {
+/// Soft-falloff finalise step. Computes a BFS distance map from the
+/// silhouette boundary (= every pixel the border flood reached, plus
+/// transparent pixels) into the interior, then maps distance → protect
+/// strength via a linear ramp: pixels right against the boundary get
+/// `0` (the sliders fully decide their fate), pixels
+/// [`DISTANCE_TO_FULL_LOCK`] hops deep or further get `255` (full
+/// force-keep — the "extraordinary" interior preservation Enio asked
+/// us to keep). The 1-px-wide ramp band between is what gives the
+/// chroma sliders authority to fine-tune the silhouette edge.
+///
+/// `distance` is a scratch buffer (size `n`); the function overwrites
+/// it and the caller can drop it after. We reuse `edge_b` (the closing
+/// scratch — no longer needed at this point) so no new field is added
+/// to [`crate::scratch::BgRemovalScratch`].
+fn finalise_protect_with_falloff(
+    rgba: &[u8],
+    visited: &[u8],
+    distance: &mut [u8],
+    w: usize,
+    h: usize,
+    queue: &mut Vec<u32>,
+    out: &mut [u8],
+) {
+    let n = w * h;
+    // `u8::MAX` = not yet reached. Outside pixels (visited != 0) are
+    // seeded with distance 0 and pushed to the queue; interior pixels
+    // (visited == 0, opaque) get a distance == hop-count from their
+    // nearest outside neighbour.
+    for d in distance.iter_mut().take(n) {
+        *d = u8::MAX;
+    }
+    queue.clear();
     for i in 0..n {
-        let opaque = rgba[i * 4 + 3] > 0;
-        out[i] = if opaque && visited[i] == 0 { 255 } else { 0 };
+        if visited[i] != 0 {
+            distance[i] = 0;
+            queue.push(i as u32);
+        }
+    }
+    // Iterative BFS — `cursor` walks the queue front so we never pop
+    // (preserves FIFO order, which is what gives uniform distance
+    // rings; a DFS-style `pop()` would skew distances near concave
+    // outlines).
+    let mut cursor = 0usize;
+    while cursor < queue.len() {
+        let i = queue[cursor] as usize;
+        cursor += 1;
+        let d = distance[i];
+        if d == u8::MAX {
+            continue; // safety; shouldn't happen
+        }
+        let next_d = d.saturating_add(1);
+        let x = i % w;
+        let y = i / w;
+        let neighbours = [
+            if x > 0 { Some(i - 1) } else { None },
+            if x + 1 < w { Some(i + 1) } else { None },
+            if y > 0 { Some(i - w) } else { None },
+            if y + 1 < h { Some(i + w) } else { None },
+        ];
+        for maybe_ni in neighbours.iter() {
+            if let Some(ni) = *maybe_ni {
+                if visited[ni] != 0 {
+                    continue;
+                }
+                if rgba[ni * 4 + 3] == 0 {
+                    continue;
+                }
+                if distance[ni] != u8::MAX {
+                    continue;
+                }
+                distance[ni] = next_d;
+                queue.push(ni as u32);
+            }
+        }
+    }
+    // Ramp distance → strength.
+    // Width of the band where the sliders fully override the auto-
+    // protect — outside this band the lock is total (preserves the
+    // "extraordinary" interior). Tuned to 8 px so on a 256² preview
+    // (the canvas-preview default) the band is ~3% of the silhouette
+    // radius, narrow enough to leave the bulk of the subject locked
+    // but wide enough that Feather + Grow can shape the edge.
+    const DISTANCE_TO_FULL_LOCK: u32 = 8;
+    for i in 0..n {
+        if rgba[i * 4 + 3] == 0 {
+            out[i] = 0;
+            continue;
+        }
+        if visited[i] != 0 {
+            out[i] = 0;
+            continue;
+        }
+        let d = distance[i] as u32;
+        out[i] = if d == u8::MAX as u32 {
+            // Fully enclosed pocket with no path to outside (very
+            // rare given the multi-side seed). Treat as deep lock.
+            255
+        } else if d >= DISTANCE_TO_FULL_LOCK {
+            255
+        } else {
+            ((d * 255) / DISTANCE_TO_FULL_LOCK) as u8
+        };
     }
 }
 
@@ -444,6 +547,68 @@ mod tests {
             prot[outside], 0,
             "bg outside the silhouette must remain unlocked"
         );
+    }
+
+    /// Soft falloff invariants: deep interior stays at 255 (the
+    /// "extraordinary" lock the user praised), pixels close to the
+    /// silhouette edge get LOWER protect strength so the chroma
+    /// sliders still have authority there (Enio 2026-05-26 fine-tune
+    /// ask).
+    #[test]
+    fn protect_strength_ramps_from_edge_to_interior() {
+        // Big enough square subject (80×80) so the centre is well
+        // beyond DISTANCE_TO_FULL_LOCK (8 px) from any rim, while the
+        // pixel right next to the dark rim is at distance == 2 (the
+        // rim itself sits a hop away inside the silhouette).
+        let w = 100u32;
+        let h = 100u32;
+        let n = (w as usize) * (h as usize);
+        let mut rgba = vec![0u8; n * 4];
+        // Beige bg.
+        for i in 0..n {
+            rgba[i * 4] = 220;
+            rgba[i * 4 + 1] = 200;
+            rgba[i * 4 + 2] = 170;
+            rgba[i * 4 + 3] = 255;
+        }
+        // Dark subject 80×80 filling 10..90 in both axes.
+        for y in 10..90 {
+            for x in 10..90 {
+                let i = y * (w as usize) + x;
+                rgba[i * 4] = 40;
+                rgba[i * 4 + 1] = 40;
+                rgba[i * 4 + 2] = 40;
+            }
+        }
+        let mut luma = vec![0u8; n];
+        let mut mag = vec![0u16; n];
+        let mut e_a = vec![0u8; n];
+        let mut e_b = vec![0u8; n];
+        let mut vis = vec![0u8; n];
+        let mut q = Vec::with_capacity(n);
+        let mut prot = vec![0u8; n];
+        detect_subject_interior(
+            &rgba, w, h, &mut luma, &mut mag, &mut e_a, &mut e_b, &mut vis, &mut q, &mut prot,
+        );
+        // Deep centre — well beyond the ramp band — must be fully locked.
+        let centre = 50 * 100 + 50;
+        assert_eq!(prot[centre], 255, "deep interior must stay at 255 lock");
+        // A pixel right next to where the dark rim starts (just inside
+        // the silhouette, ~2 px from the edge) must have a LOWER
+        // protect than the centre — that's what gives the sliders
+        // authority over the silhouette outline.
+        let near_edge = 13 * 100 + 50; // 3 px deep on y axis
+        assert!(
+            prot[near_edge] < 255,
+            "near-edge pixel must be partially protected, got {}",
+            prot[near_edge]
+        );
+        assert!(
+            prot[near_edge] > 0,
+            "near-edge pixel must still have SOME protect (non-zero)"
+        );
+        // And outside the silhouette is unprotected (sanity).
+        assert_eq!(prot[0], 0, "exterior corner must remain unlocked");
     }
 
     /// A degenerate tiny image must not panic and must return all-zero

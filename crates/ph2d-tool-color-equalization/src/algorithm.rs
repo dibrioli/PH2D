@@ -945,61 +945,87 @@ pub fn bilateral_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
     }
 }
 
-/// Sharpen via the 3×3 Laplacian kernel `[0,-1,0; -1,5,-1; 0,-1,0]`.
-/// `amount` in `[0, 2]`: `result = center + (laplacian − center) · amount`.
-/// Fast and CPU-friendly; use this when `radius ≤ 1`.
+/// Sharpen via the 3×3 Laplacian kernel `[0,-1,0; -1,5,-1; 0,-1,0]` in
+/// **linear sRGB**. `amount` in `[0, 2]`:
+/// `result = center + (laplacian − center) · amount`. Fast and CPU-
+/// friendly; use this when `radius ≤ 1`.
+///
+/// Linear-space sharpening avoids the gamma-space asymmetry of the old
+/// path (sRGB compresses shadows → equal-amplitude ringing was perceived
+/// stronger in dark areas than in highlights). Linear ringing is
+/// uniformly visible across the tonal range.
 pub fn sharpen_laplacian(rgba: &mut [u8], w: u32, h: u32, amount: f32) {
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+
     if amount <= 0.0 {
         return;
     }
     let w_i = w as i32;
     let h_i = h as i32;
-    let src = rgba.to_vec();
+    let stride = w as usize;
+    let n_px = (w as usize) * (h as usize);
+
+    // Pre-linearize once; reused for 4 neighbour lookups per pixel × 3
+    // channels — amortises the sRGB transfer.
+    let mut src_lin: Vec<[f32; 3]> = Vec::with_capacity(n_px);
+    for px in rgba.chunks_exact(4) {
+        src_lin.push([
+            srgb_to_linear_u8(px[0]),
+            srgb_to_linear_u8(px[1]),
+            srgb_to_linear_u8(px[2]),
+        ]);
+    }
+
     for y in 0..h_i {
         for x in 0..w_i {
-            let ci = (y as usize * w as usize + x as usize) * 4;
-            if src[ci + 3] == 0 {
+            let cidx = (y as usize) * stride + (x as usize);
+            let ci = cidx * 4;
+            if rgba[ci + 3] == 0 {
                 continue;
             }
+            let center = src_lin[cidx];
+            let top = if y > 0 {
+                src_lin[cidx - stride]
+            } else {
+                center
+            };
+            let bottom = if y < h_i - 1 {
+                src_lin[cidx + stride]
+            } else {
+                center
+            };
+            let left = if x > 0 { src_lin[cidx - 1] } else { center };
+            let right = if x < w_i - 1 {
+                src_lin[cidx + 1]
+            } else {
+                center
+            };
             for ch in 0..3 {
-                let center = src[ci + ch] as f32;
-                let top = if y > 0 {
-                    src[((y - 1) as usize * w as usize + x as usize) * 4 + ch] as f32
-                } else {
-                    center
-                };
-                let bottom = if y < h_i - 1 {
-                    src[((y + 1) as usize * w as usize + x as usize) * 4 + ch] as f32
-                } else {
-                    center
-                };
-                let left = if x > 0 {
-                    src[(y as usize * w as usize + (x - 1) as usize) * 4 + ch] as f32
-                } else {
-                    center
-                };
-                let right = if x < w_i - 1 {
-                    src[(y as usize * w as usize + (x + 1) as usize) * 4 + ch] as f32
-                } else {
-                    center
-                };
-                let laplacian = 5.0 * center - top - bottom - left - right;
-                let result = center + (laplacian - center) * amount;
-                rgba[ci + ch] = clamp8(result);
+                let laplacian = 5.0 * center[ch] - top[ch] - bottom[ch] - left[ch] - right[ch];
+                let result = center[ch] + (laplacian - center[ch]) * amount;
+                rgba[ci + ch] = linear_to_srgb_u8(result);
             }
         }
     }
 }
 
 /// Sharpen via unsharp masking (Gaussian blur → subtract → add scaled
-/// difference). Use this when `radius > 1`. `radius` typically `1.5..3`;
-/// `amount` in `[0, 2]`.
+/// difference) in **linear sRGB**. Use this when `radius > 1`. `radius`
+/// typically `1.5..3`; `amount` in `[0, 2]`.
+///
+/// Why linear: Gaussian blur of gamma-encoded values darkens edges
+/// (mean(sRGB_dark, sRGB_light) ≠ sRGB(mean(linear_dark, linear_light))).
+/// In sharpen the visible effect is asymmetric ringing — undershoots
+/// in shadows are exaggerated, overshoots in highlights are muted. The
+/// linear-space pipeline keeps both edges symmetric.
 ///
 /// **GPU note**: separable Gaussian blur is the canonical GPU win — two
 /// horizontal + vertical passes scale linearly with radius on CPU but
 /// stay near-constant on GPU. CPU path here is fine for radius ≤ 5 in
 /// 1024² previews; large-radius production sharpen should use WGSL.
 pub fn sharpen_unsharp(rgba: &mut [u8], w: u32, h: u32, amount: f32, radius: f32) {
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+
     if amount <= 0.0 || radius <= 0.0 {
         return;
     }
@@ -1011,8 +1037,11 @@ pub fn sharpen_unsharp(rgba: &mut [u8], w: u32, h: u32, amount: f32, radius: f32
     let h_i = h as i32;
 
     for ch in 0..3 {
-        // Extract channel into f32 buffer.
-        let mut channel: Vec<f32> = (0..total).map(|i| rgba[i * 4 + ch] as f32).collect();
+        // Extract channel as **linear** sRGB into f32 buffer.
+        let mut channel: Vec<f32> = (0..total)
+            .map(|i| srgb_to_linear_u8(rgba[i * 4 + ch]))
+            .collect();
+        let original_lin: Vec<f32> = channel.clone();
 
         // Horizontal pass (separable).
         let mut h_pass = vec![0.0_f32; total];
@@ -1029,7 +1058,7 @@ pub fn sharpen_unsharp(rgba: &mut [u8], w: u32, h: u32, amount: f32, radius: f32
             }
         }
 
-        // Vertical pass into `channel` (reused as blur output).
+        // Vertical pass into `channel` (reused as blur output, in linear).
         for y in 0..h_i {
             for x in 0..w_i {
                 let mut sum = 0.0;
@@ -1043,15 +1072,16 @@ pub fn sharpen_unsharp(rgba: &mut [u8], w: u32, h: u32, amount: f32, radius: f32
             }
         }
 
-        // Unsharp combine: original + amount · (original − blur).
+        // Unsharp combine in linear: `original + amount · (original − blur)`.
+        // Encode back to sRGB on write.
         for i in 0..total {
             if rgba[i * 4 + 3] == 0 {
                 continue;
             }
-            let orig = rgba[i * 4 + ch] as f32;
+            let orig = original_lin[i];
             let blur = channel[i];
             let diff = orig - blur;
-            rgba[i * 4 + ch] = clamp8(orig + amount * diff);
+            rgba[i * 4 + ch] = linear_to_srgb_u8(orig + amount * diff);
         }
     }
 }
@@ -1133,6 +1163,17 @@ const QUANTIZE_SEED: u64 = 0x517c_c1b7_2722_0a95;
 ///
 /// `levels < 2` is the off-sentinel (no-op). Alpha is preserved.
 /// In-place on straight-alpha RGBA8.
+///
+/// **Color space: sRGB gamma (intentional).** The Tier 3 audit considered
+/// migrating to linear sRGB for theoretical consistency with the other
+/// Phase 2 stages, but FS dithering in linear preserves *physical* light
+/// average rather than *perceptual* brightness — a uniform mid-grey 128
+/// would dither to ~21% white pixels (linear mean 0.214 = sRGB 128) and
+/// the perceived brightness would shift drastically. Pixel-art workflows
+/// expect the dithered mosaic to read as the same grey, so the
+/// quantization step + error diffusion stay in sRGB. This is also what
+/// every reference implementation (legacy engine, Aseprite, GIMP)
+/// expects, so palette outputs stay byte-compatible.
 pub fn posterize(
     rgba: &mut [u8],
     w: u32,

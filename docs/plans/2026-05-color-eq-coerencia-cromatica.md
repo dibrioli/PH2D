@@ -1,6 +1,6 @@
 # Plano — Coerência cromática do tool Color Equalization
 
-**Aberto:** 2026-05-26 · **Status:** Tier 1 + Tier 2 fechados. Tier 3 pendente.
+**Aberto:** 2026-05-26 · **Status:** Tier 1 + Tier 2 + Tier 3 fechados.
 
 Auditoria identificou que a pipeline tem um núcleo perceptual coerente
 (`adjust_tonal` em linear sRGB / OKLab; `quantize` em OKLab) cercado de
@@ -48,12 +48,24 @@ saída YCbCr coincide com a antiga RGB-scale.
 Resultado: 131/131 verde (perdemos o teste do `luminance_bt709`
 removido pelo dead-code cleanup; 132−1=131). Zero quebra em byte-exact.
 
-## Tier 3 — lapidação
+## Tier 3 — lapidação (fechado)
 
-- [ ] **`sharpen` Laplacian / Unsharp em linear sRGB** — ringing
-  uniforme entre sombras/luzes.
-- [ ] **`posterize` Floyd-Steinberg em linear sRGB** — gradientes
-  mais suaves.
+- [x] **`sharpen_laplacian` em linear sRGB** — pre-linearização única
+  do source; 4 lookups de vizinhos por canal. Output reencoda sRGB.
+- [x] **`sharpen_unsharp` (Gaussian blur) em linear sRGB** — canal
+  extraído como linear; horizontal+vertical pass em linear; combine
+  `orig + amount·(orig − blur)` em linear; encode sRGB no write. Mata
+  o ringing assimétrico entre sombras (overshoot exagerado) e luzes.
+- [x] **Posterize / FS dither: decisão deliberada de manter em sRGB
+  gamma.** Auditado e documentado in-line ([algorithm.rs#L1163](crates/ph2d-tool-color-equalization/src/algorithm.rs#L1163)).
+  FS em linear preservaria *física* (mean(luz) mantida) mas violaria
+  *percepção*: cinza médio 128 dithering em linear viraria ~21% pixels
+  brancos (linear mean 0.214 = sRGB 128) e o usuário veria um
+  gradient drasticamente mais escuro. Pixel-art workflows (legacy,
+  Aseprite, GIMP) esperam preservation **percebida** — manter sRGB
+  é o caminho correto, não o subótimo.
+
+Resultado: 131/131 verde. Zero teste byte-exact quebrou.
 
 ## Fora de escopo
 

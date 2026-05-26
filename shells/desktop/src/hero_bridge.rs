@@ -180,6 +180,8 @@ mod tests {
             parent,
             depth,
             visible: true,
+            locked: false,
+            group_locked: false,
         }
     }
 
@@ -261,6 +263,8 @@ mod tests {
                 parent: None,
                 depth: 0,
                 visible: true,
+                locked: false,
+                group_locked: false,
             }],
         };
         let (ordered, entries) = m.sync_from_snapshot(&snap);

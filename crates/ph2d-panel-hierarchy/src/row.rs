@@ -105,9 +105,10 @@ pub(crate) fn paint_hierarchy_row(
     );
     // Hit-register the entity icon as its own companion (2026-05-26):
     // double-click on the icon focuses the view; double-click on the
-    // name body (row body) triggers rename.
+    // name body (row body) triggers rename. Hit pad Md (8 px) — alvo
+    // mais generoso (Enio: "expanda um pouco a área sensível").
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
-        let hit_pad = Spacing::Xxs.px();
+        let hit_pad = Spacing::Md.px();
         let hit_rect = Rect::new(
             icon_rect.x - hit_pad,
             icon_rect.y - hit_pad,
@@ -174,9 +175,14 @@ pub(crate) fn paint_hierarchy_row(
     } else {
         ColorToken::Text3
     };
+    let group_icon = if entity.group_locked {
+        IconId::Group
+    } else {
+        IconId::Ungroup
+    };
     paint_icon(
         scene,
-        IconId::Folder,
+        group_icon,
         group_rect,
         resolve(group_color, theme),
         StrokeToken::Default.px(),
@@ -206,9 +212,14 @@ pub(crate) fn paint_hierarchy_row(
     } else {
         ColorToken::Text3
     };
+    let lock_icon = if entity.locked {
+        IconId::LockKeyhole
+    } else {
+        IconId::LockKeyholeOpen
+    };
     paint_icon(
         scene,
-        IconId::Lock,
+        lock_icon,
         lock_rect,
         resolve(lock_color, theme),
         StrokeToken::Default.px(),

@@ -45,6 +45,14 @@ fn slider_for_widget(id: NodeId) -> Option<NodeId> {
         (ids::CEQ_DENOISE_STRENGTH, ids::CEQ_DENOISE_STRENGTH_NUM),
         (ids::CEQ_LUT_INTENSITY, ids::CEQ_LUT_INTENSITY_NUM),
         (ids::CEQ_LUT_MIX, ids::CEQ_LUT_MIX_NUM),
+        (
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+        ),
+        (
+            ids::CEQ_POSTERIZE_DITHER_GRAIN,
+            ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+        ),
     ];
     pairs
         .iter()

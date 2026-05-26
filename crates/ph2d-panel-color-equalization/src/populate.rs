@@ -15,12 +15,14 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_tool_color_equalization::params::{
     BRIGHTNESS_DEFAULT, CLIP_LIMIT_DEFAULT, CONTRAST_DEFAULT, DENOISE_STRENGTH_DEFAULT,
-    EXPOSURE_DEFAULT, LUT_INTENSITY_DEFAULT, LUT_MIX_DEFAULT, SATURATION_DEFAULT,
-    SHARPEN_AMOUNT_DEFAULT, SHARPEN_RADIUS_DEFAULT, TEMPERATURE_DEFAULT, TILE_GRID_DEFAULT,
-    TINT_DEFAULT, VIBRANCE_DEFAULT, brightness_to_slider, clip_limit_to_slider, contrast_to_slider,
-    denoise_strength_to_slider, exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider,
-    saturation_to_slider, sharpen_amount_to_slider, sharpen_radius_to_slider,
-    temperature_to_slider, tile_grid_to_slider, tint_to_slider, vibrance_to_slider,
+    EXPOSURE_DEFAULT, LUT_INTENSITY_DEFAULT, LUT_MIX_DEFAULT, POSTERIZE_DITHER_GRAIN_DEFAULT,
+    POSTERIZE_DITHER_STRENGTH_DEFAULT, SATURATION_DEFAULT, SHARPEN_AMOUNT_DEFAULT,
+    SHARPEN_RADIUS_DEFAULT, TEMPERATURE_DEFAULT, TILE_GRID_DEFAULT, TINT_DEFAULT, VIBRANCE_DEFAULT,
+    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, denoise_strength_to_slider,
+    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider,
+    posterize_dither_grain_to_slider, posterize_dither_strength_to_slider, saturation_to_slider,
+    sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
+    tint_to_slider, vibrance_to_slider,
 };
 
 pub fn populate(store: &mut WidgetStore) {
@@ -85,7 +87,7 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
-    let rows: [(_, _, f32); 14] = [
+    let rows: [(_, _, f32); 16] = [
         (
             ids::CEQ_CLIP_LIMIT,
             ids::CEQ_CLIP_LIMIT_NUM,
@@ -155,6 +157,16 @@ pub fn populate(store: &mut WidgetStore) {
             ids::CEQ_LUT_MIX,
             ids::CEQ_LUT_MIX_NUM,
             lut_mix_to_slider(LUT_MIX_DEFAULT),
+        ),
+        (
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+            posterize_dither_strength_to_slider(POSTERIZE_DITHER_STRENGTH_DEFAULT),
+        ),
+        (
+            ids::CEQ_POSTERIZE_DITHER_GRAIN,
+            ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+            posterize_dither_grain_to_slider(POSTERIZE_DITHER_GRAIN_DEFAULT),
         ),
     ];
     for (slider_id, chip_id, track) in rows {
@@ -232,6 +244,8 @@ mod tests {
             ids::CEQ_DENOISE_STRENGTH,
             ids::CEQ_LUT_INTENSITY,
             ids::CEQ_LUT_MIX,
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+            ids::CEQ_POSTERIZE_DITHER_GRAIN,
         ] {
             assert!(store.slider(id).is_some(), "slider {id:?} missing");
         }
@@ -250,6 +264,8 @@ mod tests {
             ids::CEQ_DENOISE_STRENGTH_NUM,
             ids::CEQ_LUT_INTENSITY_NUM,
             ids::CEQ_LUT_MIX_NUM,
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+            ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
         ] {
             assert!(store.number_value(id).is_some(), "chip {id:?} missing");
         }
@@ -274,6 +290,14 @@ mod tests {
             (ids::CEQ_DENOISE_STRENGTH, ids::CEQ_DENOISE_STRENGTH_NUM),
             (ids::CEQ_LUT_INTENSITY, ids::CEQ_LUT_INTENSITY_NUM),
             (ids::CEQ_LUT_MIX, ids::CEQ_LUT_MIX_NUM),
+            (
+                ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+                ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+            ),
+            (
+                ids::CEQ_POSTERIZE_DITHER_GRAIN,
+                ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+            ),
         ] {
             assert_eq!(store.linked_number(slider), Some(chip));
             assert_eq!(store.linked_slider(chip), Some(slider));

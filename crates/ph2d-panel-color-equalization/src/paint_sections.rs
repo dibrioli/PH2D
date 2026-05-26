@@ -383,6 +383,60 @@ pub(crate) fn paint_posterize_quantize_section(
 
     let mut y = chip_y + layout.row_h + layout.row_gap;
 
+    // Dither Strength + Grain sliders (Enio 2026-05-26). Pintados como
+    // duas linhas slider+chip adaptativos (mesmo padrão de Phase 1/2).
+    let dither_strength_track = store
+        .slider(ids::CEQ_POSTERIZE_DITHER_STRENGTH)
+        .map(|(_, v)| v)
+        .unwrap_or(snapshot.posterize_dither_strength01);
+    let dither_strength_chip = store
+        .number_value(ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM)
+        .unwrap_or(snapshot.posterize_dither_strength as f64);
+    let dither_strength_display = format!("{:.2}", snapshot.posterize_dither_strength);
+    let used = paint_slider_with_chip_layout_adaptive(
+        Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
+        "Dither Strength",
+        dither_strength_track,
+        dither_strength_chip,
+        Some(&dither_strength_display),
+        ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+        ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+        layout.label_col_w,
+        layout.chip_w,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += used + layout.row_gap;
+
+    let dither_grain_track = store
+        .slider(ids::CEQ_POSTERIZE_DITHER_GRAIN)
+        .map(|(_, v)| v)
+        .unwrap_or(snapshot.posterize_dither_grain01);
+    let dither_grain_chip = store
+        .number_value(ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM)
+        .unwrap_or(snapshot.posterize_dither_grain as f64);
+    let dither_grain_display = format!("{}", snapshot.posterize_dither_grain);
+    let used = paint_slider_with_chip_layout_adaptive(
+        Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
+        "Dither Grain",
+        dither_grain_track,
+        dither_grain_chip,
+        Some(&dither_grain_display),
+        ids::CEQ_POSTERIZE_DITHER_GRAIN,
+        ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+        layout.label_col_w,
+        layout.chip_w,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += used + layout.row_gap;
+
     // Quantize label + dropdown chip — full width.
     paint_text(
         text_system,

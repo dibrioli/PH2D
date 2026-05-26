@@ -153,6 +153,8 @@ pub fn run_pipeline(
             h,
             params.posterize_levels,
             params.posterize_dithering,
+            params.posterize_dither_strength,
+            params.posterize_dither_grain,
         );
     }
 
@@ -1074,7 +1076,15 @@ const QUANTIZE_SEED: u64 = 0x517c_c1b7_2722_0a95;
 ///
 /// `levels < 2` is the off-sentinel (no-op). Alpha is preserved.
 /// In-place on straight-alpha RGBA8.
-pub fn posterize(rgba: &mut [u8], w: u32, h: u32, levels: u32, dithering: bool) {
+pub fn posterize(
+    rgba: &mut [u8],
+    w: u32,
+    h: u32,
+    levels: u32,
+    dithering: bool,
+    dither_strength: f32,
+    dither_grain: u32,
+) {
     if levels < POSTERIZE_LEVELS_MIN || w == 0 || h == 0 {
         return;
     }
@@ -1083,7 +1093,14 @@ pub fn posterize(rgba: &mut [u8], w: u32, h: u32, levels: u32, dithering: bool) 
     let total = (w as usize) * (h as usize);
     debug_assert_eq!(rgba.len(), total * 4);
 
-    if !dithering {
+    let strength = if !dithering {
+        0.0
+    } else {
+        dither_strength.clamp(0.0, 1.0)
+    };
+    let grain = dither_grain.clamp(1, 8);
+
+    if strength <= f32::EPSILON {
         for px in rgba.chunks_exact_mut(4) {
             for c in &mut px[..3] {
                 *c = posterize_value(*c as f32, step);
@@ -1092,17 +1109,49 @@ pub fn posterize(rgba: &mut [u8], w: u32, h: u32, levels: u32, dithering: bool) 
         return;
     }
 
-    // Floyd-Steinberg path: f32 RGB buffer accumulates inbound error so
-    // the quantization residue from the current pixel propagates forward.
-    let mut buf = vec![0.0_f32; total * 3];
-    for (i, px) in rgba.chunks_exact(4).enumerate() {
-        buf[i * 3] = px[0] as f32;
-        buf[i * 3 + 1] = px[1] as f32;
-        buf[i * 3 + 2] = px[2] as f32;
+    // Floyd-Steinberg path. Grain>1 downsamples to a (w/grain × h/grain)
+    // working buffer (block average), runs FS on that grid, then re-
+    // upsamples (nearest) into the output. Grain=1 is per-pixel FS.
+    let gw = w.div_ceil(grain);
+    let gh = h.div_ceil(grain);
+    let gtotal = (gw as usize) * (gh as usize);
+    let mut buf = vec![0.0_f32; gtotal * 3];
+
+    if grain == 1 {
+        for (i, px) in rgba.chunks_exact(4).enumerate() {
+            buf[i * 3] = px[0] as f32;
+            buf[i * 3 + 1] = px[1] as f32;
+            buf[i * 3 + 2] = px[2] as f32;
+        }
+    } else {
+        for by in 0..gh {
+            for bx in 0..gw {
+                let x0 = (bx * grain) as usize;
+                let y0 = (by * grain) as usize;
+                let x1 = (x0 + grain as usize).min(w as usize);
+                let y1 = (y0 + grain as usize).min(h as usize);
+                let mut acc = [0.0_f32; 3];
+                let mut count = 0u32;
+                for y in y0..y1 {
+                    for x in x0..x1 {
+                        let pi = (y * w as usize + x) * 4;
+                        acc[0] += rgba[pi] as f32;
+                        acc[1] += rgba[pi + 1] as f32;
+                        acc[2] += rgba[pi + 2] as f32;
+                        count += 1;
+                    }
+                }
+                let bi = ((by * gw + bx) as usize) * 3;
+                let inv = if count == 0 { 0.0 } else { 1.0 / count as f32 };
+                buf[bi] = acc[0] * inv;
+                buf[bi + 1] = acc[1] * inv;
+                buf[bi + 2] = acc[2] * inv;
+            }
+        }
     }
 
-    let w_i = w as isize;
-    let h_i = h as isize;
+    let w_i = gw as isize;
+    let h_i = gh as isize;
     for y in 0..h_i {
         for x in 0..w_i {
             let bi = ((y * w_i + x) * 3) as usize;
@@ -1127,10 +1176,22 @@ pub fn posterize(rgba: &mut [u8], w: u32, h: u32, levels: u32, dithering: bool) 
             }
         }
     }
-    for (i, px) in rgba.chunks_exact_mut(4).enumerate() {
-        px[0] = clamp8(buf[i * 3]);
-        px[1] = clamp8(buf[i * 3 + 1]);
-        px[2] = clamp8(buf[i * 3 + 2]);
+
+    // Sample (downsampled) buffer back to full res; lerp with the
+    // per-pixel plain posterize result by `strength`.
+    for y in 0..h as usize {
+        for x in 0..w as usize {
+            let bx = (x / grain as usize).min(gw as usize - 1);
+            let by = (y / grain as usize).min(gh as usize - 1);
+            let bi = (by * gw as usize + bx) * 3;
+            let pi = (y * w as usize + x) * 4;
+            for ch in 0..3 {
+                let dith = buf[bi + ch];
+                let plain = posterize_value(rgba[pi + ch] as f32, step) as f32;
+                let out = plain + (dith - plain) * strength;
+                rgba[pi + ch] = clamp8(out);
+            }
+        }
     }
 }
 
@@ -2290,9 +2351,9 @@ mod tests {
     fn posterize_off_is_noop() {
         let mut rgba = vec![17, 41, 89, 255, 33, 200, 7, 128];
         let original = rgba.clone();
-        posterize(&mut rgba, 2, 1, 0, false);
+        posterize(&mut rgba, 2, 1, 0, false, 1.0, 1);
         assert_eq!(rgba, original, "level 0 must be a no-op");
-        posterize(&mut rgba, 2, 1, 1, false);
+        posterize(&mut rgba, 2, 1, 1, false, 1.0, 1);
         assert_eq!(rgba, original, "level 1 is below MIN, must be a no-op");
     }
 
@@ -2301,7 +2362,7 @@ mod tests {
         // 2 levels → snap to {0, 255}. A mid-range pixel rounds toward
         // the nearest endpoint; alpha untouched.
         let mut rgba = vec![100, 200, 50, 200];
-        posterize(&mut rgba, 1, 1, 2, false);
+        posterize(&mut rgba, 1, 1, 2, false, 1.0, 1);
         assert!(rgba[0] == 0 || rgba[0] == 255);
         assert!(rgba[1] == 0 || rgba[1] == 255);
         assert!(rgba[2] == 0 || rgba[2] == 255);
@@ -2322,7 +2383,7 @@ mod tests {
         }
         let avg_before =
             rgba.chunks_exact(4).map(|p| p[0] as u32).sum::<u32>() as f32 / total as f32;
-        posterize(&mut rgba, w, h, 2, true);
+        posterize(&mut rgba, w, h, 2, true, 1.0, 1);
         let avg_after =
             rgba.chunks_exact(4).map(|p| p[0] as u32).sum::<u32>() as f32 / total as f32;
         assert!(

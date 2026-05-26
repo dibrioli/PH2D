@@ -27,6 +27,64 @@ use super::drag::{GizmoDragKind, GizmoDragState, TransformSnapshot};
 /// Pure function — no I/O, no allocation (closure dispatch only).
 /// Tested directly against canonical input/output cases in `tests::*`
 /// below.
+/// Convert a WORLD-space delta `(dx, dy)` into the LOCAL frame of an
+/// entity whose parent has the given world transform. Inverse rotation
+/// then divide by parent scale — used by the gizmo drag handlers so
+/// writes into the entity's LOCAL `Transform` reflect what the user
+/// sees in world coordinates. `IDENTITY` parent → pass-through.
+#[inline]
+pub fn world_delta_to_local(parent: TransformSnapshot, dx: f32, dy: f32) -> [f32; 2] {
+    let (sin_i, cos_i) = (-parent.rotation).sin_cos();
+    let sx = if parent.scale[0].abs() > 1e-6 {
+        parent.scale[0]
+    } else {
+        1.0
+    };
+    let sy = if parent.scale[1].abs() > 1e-6 {
+        parent.scale[1]
+    } else {
+        1.0
+    };
+    let dx_unrot = dx * cos_i - dy * sin_i;
+    let dy_unrot = dx * sin_i + dy * cos_i;
+    [dx_unrot / sx, dy_unrot / sy]
+}
+
+/// Convert a WORLD-space translation into the LOCAL frame of an
+/// entity whose parent has the given world transform. Used when the
+/// gizmo math produces a new world-space position that must be
+/// written back to the entity's LOCAL `Transform.translation`.
+#[inline]
+pub fn world_translation_to_local(parent: TransformSnapshot, world: [f32; 2]) -> [f32; 2] {
+    world_delta_to_local(
+        parent,
+        world[0] - parent.translation[0],
+        world[1] - parent.translation[1],
+    )
+}
+
+/// Compose `parent` (world) with `child` (local) into a single
+/// world-space `TransformSnapshot`. Mirrors `ph2d_ecs::Transform::
+/// compose`. Used by the gizmo drag handlers so pivot/scale math
+/// observes the entity's TRUE world placement (not just its local
+/// snapshot).
+#[inline]
+pub fn compose_snapshot(parent: TransformSnapshot, child: TransformSnapshot) -> TransformSnapshot {
+    let (sin, cos) = parent.rotation.sin_cos();
+    let sx = child.translation[0] * parent.scale[0];
+    let sy = child.translation[1] * parent.scale[1];
+    let rx = sx * cos - sy * sin;
+    let ry = sx * sin + sy * cos;
+    TransformSnapshot {
+        translation: [parent.translation[0] + rx, parent.translation[1] + ry],
+        rotation: parent.rotation + child.rotation,
+        scale: [
+            parent.scale[0] * child.scale[0],
+            parent.scale[1] * child.scale[1],
+        ],
+    }
+}
+
 pub fn compute_gizmo_transform(
     drag: &GizmoDragState,
     camera: &GizmoCamera,
@@ -50,8 +108,12 @@ pub fn compute_gizmo_transform(
         GizmoDragKind::Translate => {
             let dx = now_world[0] - drag.start_cursor_world[0];
             let dy = now_world[1] - drag.start_cursor_world[1];
-            let mut new_x = drag.start_transform.translation[0] + dx;
-            let mut new_y = drag.start_transform.translation[1] + dy;
+            // Inverse parent: world delta → entity's LOCAL frame.
+            // Sem isso, child de pai rotacionado movia ao longo do
+            // eixo local (rotacionado) em vez do eixo visual (world).
+            let [dx_l, dy_l] = world_delta_to_local(drag.parent_world, dx, dy);
+            let mut new_x = drag.start_transform.translation[0] + dx_l;
+            let mut new_y = drag.start_transform.translation[1] + dy_l;
             // Ctrl/Cmd: quantize the resulting position (NOT the
             // delta) to the snap_move grid. Snapping the delta would
             // drift with cursor jitter near the threshold; snapping
@@ -69,14 +131,11 @@ pub fn compute_gizmo_transform(
         }
         GizmoDragKind::ScaleCorner { dx_sign, dy_sign } => {
             // Pivot stays fixed at the opposite-corner location.
-            // We let the user drag the corner to where the cursor
-            // is; the scale factor is the ratio of the new corner-
-            // pivot vector vs the original one — measured along the
-            // sprite's LOCAL axes (rotated by `start_transform.
-            // rotation`), not world axes. Without the inverse-rot
-            // step a rotated sprite scales uniformly even when the
-            // user drags along one local axis only.
-            let rot = drag.start_transform.rotation;
+            // Ratio measured along the chip's WORLD axes (= parent
+            // rotation + local rotation); pre-parent-fix usava
+            // local-only, então child de pai rotacionado escalava
+            // ao longo do eixo torto.
+            let rot = drag.parent_world.rotation + drag.start_transform.rotation;
             let cos_r = rot.cos();
             let sin_r = rot.sin();
             let start_dx = drag.start_cursor_world[0] - drag.pivot_world[0];
@@ -126,13 +185,16 @@ pub fn compute_gizmo_transform(
             let translation = if drag.anchor_is_center {
                 drag.start_transform.translation
             } else {
-                opposite_anchor_translation(
+                let world_t = opposite_anchor_translation(
                     drag.pivot_world,
                     drag.sprite_half_intrinsic,
                     [-dx_sign, -dy_sign],
                     [scale_x, scale_y],
-                    drag.start_transform.rotation,
-                )
+                    rot,
+                );
+                // `opposite_anchor_translation` produz world coords;
+                // a Transform.translation que vamos escrever é LOCAL.
+                world_translation_to_local(drag.parent_world, world_t)
             };
             TransformSnapshot {
                 translation,
@@ -142,12 +204,11 @@ pub fn compute_gizmo_transform(
         }
         GizmoDragKind::ScaleEdge { axis, sign } => {
             // Axis-only scale: one component changes, the other
-            // sticks to its start value. Like ScaleCorner, the ratio
-            // is measured in the sprite's LOCAL frame so the active
-            // axis matches the user's perceived "X edge" / "Y edge"
-            // even when the sprite is rotated.
+            // sticks to its start value. Ratio em WORLD axes do chip
+            // (= parent + local rotation); compense parent-rotation
+            // pra child de pai rotacionado escalar no eixo visual.
             let axis = axis.min(1) as usize;
-            let rot = drag.start_transform.rotation;
+            let rot = drag.parent_world.rotation + drag.start_transform.rotation;
             let cos_r = rot.cos();
             let sin_r = rot.sin();
             let start_dx = drag.start_cursor_world[0] - drag.pivot_world[0];
@@ -188,13 +249,14 @@ pub fn compute_gizmo_transform(
             let translation = if drag.anchor_is_center {
                 drag.start_transform.translation
             } else {
-                opposite_anchor_translation(
+                let world_t = opposite_anchor_translation(
                     drag.pivot_world,
                     drag.sprite_half_intrinsic,
                     opposite_local_sign,
                     scale,
-                    drag.start_transform.rotation,
-                )
+                    rot,
+                );
+                world_translation_to_local(drag.parent_world, world_t)
             };
             TransformSnapshot {
                 translation,
@@ -250,27 +312,37 @@ pub fn move_pivot_transform(
     start: TransformSnapshot,
     quad_center_world: [f32; 2],
     target_world: [f32; 2],
+    parent_world: TransformSnapshot,
 ) -> ([f32; 2], [f32; 2]) {
+    // World rotation/scale composed: child under rotated/scaled parent
+    // sees its quad at `parent_rot + local_rot` and scale `parent_scale
+    // * local_scale`. Sem isso, MovePivot em filho de pai rotacionado
+    // ancorava errado (Enio 2026-05-26 fix).
+    let world_rot = parent_world.rotation + start.rotation;
+    let world_scale_x = parent_world.scale[0] * start.scale[0];
+    let world_scale_y = parent_world.scale[1] * start.scale[1];
     let dx = quad_center_world[0] - target_world[0];
     let dy = quad_center_world[1] - target_world[1];
-    // World delta → local frame (inverse rotation: world +X = (cos,
-    // sin), world +Y = (-sin, cos)), then ÷ scale to get the intrinsic
-    // anchor (extract re-multiplies by scale, mirroring `size`).
-    let cos_r = start.rotation.cos();
-    let sin_r = start.rotation.sin();
+    // World delta → entity-local intrinsic frame (inverse world
+    // rotation), then ÷ world scale to get the intrinsic anchor.
+    let cos_r = world_rot.cos();
+    let sin_r = world_rot.sin();
     let local_x = dx * cos_r + dy * sin_r;
     let local_y = -dx * sin_r + dy * cos_r;
-    let sx = if start.scale[0].abs() < 1e-6 {
+    let sx = if world_scale_x.abs() < 1e-6 {
         1.0
     } else {
-        start.scale[0]
+        world_scale_x
     };
-    let sy = if start.scale[1].abs() < 1e-6 {
+    let sy = if world_scale_y.abs() < 1e-6 {
         1.0
     } else {
-        start.scale[1]
+        world_scale_y
     };
-    (target_world, [local_x / sx, local_y / sy])
+    // `target_world` é world-space; pra escrever em LOCAL Transform.
+    // translation, desfaz parent (rotation + scale + translation).
+    let new_local_translation = world_translation_to_local(parent_world, target_world);
+    (new_local_translation, [local_x / sx, local_y / sy])
 }
 
 /// World-space snap candidates for the TOOL_PIVOT drag: the quad

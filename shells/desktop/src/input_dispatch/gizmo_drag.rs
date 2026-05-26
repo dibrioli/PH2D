@@ -109,6 +109,7 @@ impl App {
                     drag.start_transform,
                     drag.pivot_world,
                     target,
+                    drag.parent_world,
                 );
                 if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
                     t.translation = ph2d_core::Vec2::new(new_translation[0], new_translation[1]);
@@ -349,22 +350,34 @@ impl App {
                         let new_rotation;
                         let new_scale_extra;
                         if is_translate {
-                            // Translate: rigid body shift.
-                            new_translation = [st.translation[0] + dx, st.translation[1] + dy];
+                            // Translate: rigid body shift em WORLD.
+                            // Convert WORLD delta → extra's LOCAL frame
+                            // via inverse-parent (Enio 2026-05-26 fix:
+                            // child de pai rotacionado no grupo movia
+                            // ao longo do eixo local, não world).
+                            let [dx_l, dy_l] =
+                                ph2d_editor::world_delta_to_local(snap.parent_world, dx, dy);
+                            new_translation = [st.translation[0] + dx_l, st.translation[1] + dy_l];
                             new_rotation = st.rotation;
                             new_scale_extra = st.scale;
                         } else if is_global {
                             // Group scale/rotate around the shared
-                            // global pivot. Compose: first scale by
-                            // (factor_x, factor_y), then rotate by
-                            // delta_rot, both around `pivot`.
-                            let rel_x = st.translation[0] - pivot[0];
-                            let rel_y = st.translation[1] - pivot[1];
+                            // global pivot. Compute new position em
+                            // WORLD (via st.translation projetada pra
+                            // world), depois converte de volta pra
+                            // LOCAL via inverse-parent.
+                            let st_world = ph2d_editor::compose_snapshot(snap.parent_world, st);
+                            let rel_x = st_world.translation[0] - pivot[0];
+                            let rel_y = st_world.translation[1] - pivot[1];
                             let scaled_x = rel_x * factor_x;
                             let scaled_y = rel_y * factor_y;
                             let rotated_x = scaled_x * cos_d - scaled_y * sin_d;
                             let rotated_y = scaled_x * sin_d + scaled_y * cos_d;
-                            new_translation = [pivot[0] + rotated_x, pivot[1] + rotated_y];
+                            let world_new = [pivot[0] + rotated_x, pivot[1] + rotated_y];
+                            new_translation = ph2d_editor::world_translation_to_local(
+                                snap.parent_world,
+                                world_new,
+                            );
                             new_rotation = st.rotation + delta_rot;
                             new_scale_extra = [st.scale[0] * factor_x, st.scale[1] * factor_y];
                         } else {

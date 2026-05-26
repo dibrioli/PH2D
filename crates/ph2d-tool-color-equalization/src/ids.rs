@@ -138,6 +138,17 @@ pub const CEQ_RESET: NodeId = hash_node_id("color_eq.reset");
 // and stages a one-shot close.
 pub const CEQ_POSTERIZE_DROPDOWN: NodeId = hash_node_id("color_eq.posterize.dropdown");
 pub const CEQ_POSTERIZE_DITHERING: NodeId = hash_node_id("color_eq.posterize.dithering");
+/// Dither strength slider (Enio 2026-05-26): controla a intensidade da
+/// difusão de erro Floyd-Steinberg sobre o posterize.
+pub const CEQ_POSTERIZE_DITHER_STRENGTH: NodeId =
+    hash_node_id("color_eq.posterize.dither_strength");
+pub const CEQ_POSTERIZE_DITHER_STRENGTH_NUM: NodeId =
+    hash_node_id("color_eq.posterize.dither_strength.num");
+/// Dither grain slider (Enio 2026-05-26): tile size `1..=8` para grão
+/// chunky de dither (estilo pixel-art).
+pub const CEQ_POSTERIZE_DITHER_GRAIN: NodeId = hash_node_id("color_eq.posterize.dither_grain");
+pub const CEQ_POSTERIZE_DITHER_GRAIN_NUM: NodeId =
+    hash_node_id("color_eq.posterize.dither_grain.num");
 pub const CEQ_QUANTIZE_DROPDOWN: NodeId = hash_node_id("color_eq.quantize.dropdown");
 
 /// Posterize options in panel order. Index 0 = off (level `0`); else
@@ -214,6 +225,10 @@ mod tests {
             CEQ_RESET,
             CEQ_POSTERIZE_DROPDOWN,
             CEQ_POSTERIZE_DITHERING,
+            CEQ_POSTERIZE_DITHER_STRENGTH,
+            CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+            CEQ_POSTERIZE_DITHER_GRAIN,
+            CEQ_POSTERIZE_DITHER_GRAIN_NUM,
             CEQ_QUANTIZE_DROPDOWN,
         ];
         for (i, a) in all.iter().enumerate() {

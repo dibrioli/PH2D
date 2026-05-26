@@ -108,6 +108,15 @@ pub const LUT_MIX_MIN: f32 = 0.0;
 pub const LUT_MIX_MAX: f32 = 1.0;
 pub const LUT_MIX_DEFAULT: f32 = 0.5;
 
+// ── Phase 5 (Posterize dither knobs) — Enio 2026-05-26 ────────────
+pub const POSTERIZE_DITHER_STRENGTH_MIN: f32 = 0.0;
+pub const POSTERIZE_DITHER_STRENGTH_MAX: f32 = 1.0;
+pub const POSTERIZE_DITHER_STRENGTH_DEFAULT: f32 = 1.0;
+
+pub const POSTERIZE_DITHER_GRAIN_MIN: u32 = 1;
+pub const POSTERIZE_DITHER_GRAIN_MAX: u32 = 8;
+pub const POSTERIZE_DITHER_GRAIN_DEFAULT: u32 = 1;
+
 // ── Slider ↔ value projection helpers ─────────────────────────────
 //
 // The panel paints normalized track `0..1`; the tool stores the natural
@@ -234,6 +243,42 @@ pub fn slider_to_lut_mix(track: f32) -> f32 {
     unproject01(track, LUT_MIX_MIN, LUT_MIX_MAX)
 }
 
+pub fn posterize_dither_strength_to_slider(v: f32) -> f32 {
+    project01(
+        v,
+        POSTERIZE_DITHER_STRENGTH_MIN,
+        POSTERIZE_DITHER_STRENGTH_MAX,
+    )
+}
+
+pub fn slider_to_posterize_dither_strength(track: f32) -> f32 {
+    unproject01(
+        track,
+        POSTERIZE_DITHER_STRENGTH_MIN,
+        POSTERIZE_DITHER_STRENGTH_MAX,
+    )
+}
+
+pub fn posterize_dither_grain_to_slider(v: u32) -> f32 {
+    project01(
+        v as f32,
+        POSTERIZE_DITHER_GRAIN_MIN as f32,
+        POSTERIZE_DITHER_GRAIN_MAX as f32,
+    )
+}
+
+pub fn slider_to_posterize_dither_grain(track: f32) -> u32 {
+    let raw = unproject01(
+        track,
+        POSTERIZE_DITHER_GRAIN_MIN as f32,
+        POSTERIZE_DITHER_GRAIN_MAX as f32,
+    );
+    raw.round().clamp(
+        POSTERIZE_DITHER_GRAIN_MIN as f32,
+        POSTERIZE_DITHER_GRAIN_MAX as f32,
+    ) as u32
+}
+
 /// Authoritative parameter bag fed into [`crate::algorithm::run_pipeline`].
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ColorEqualizationParams {
@@ -269,6 +314,15 @@ pub struct ColorEqualizationParams {
     /// dithered output reads cleaner on gradients (the on-by-default
     /// behaviour of the legacy panel).
     pub posterize_dithering: bool,
+    /// Dither strength (Enio 2026-05-26): `0.0` = plain quantization,
+    /// `1.0` = full FS dither output. Lerp between plain and dithered
+    /// per-pixel results. Only effective when `posterize_dithering` is
+    /// `true`. Default `1.0` preserves legacy behaviour.
+    pub posterize_dither_strength: f32,
+    /// Dither grain (Enio 2026-05-26): `1` = per-pixel dither, `N` =
+    /// block-averaged dither on `NxN` tiles (chunky pixel-art look).
+    /// Valid `1..=8`. Default `1` preserves legacy behaviour.
+    pub posterize_dither_grain: u32,
     /// K-Means++ quantize colour count. `0` (default) is off; valid
     /// range is `2..=256` (legacy panel offers `4, 8, 16, 32, 64, 128,
     /// 256`).
@@ -300,6 +354,8 @@ impl Default for ColorEqualizationParams {
             lut_mix: LUT_MIX_DEFAULT,
             posterize_levels: 0,
             posterize_dithering: true,
+            posterize_dither_strength: POSTERIZE_DITHER_STRENGTH_DEFAULT,
+            posterize_dither_grain: POSTERIZE_DITHER_GRAIN_DEFAULT,
             quantize_colors: 0,
         }
     }
@@ -380,6 +436,12 @@ pub struct ColorEqualizationUiSnapshot {
     /// paints as a dropdown of discrete options.
     pub posterize_levels: u32,
     pub posterize_dithering: bool,
+    /// Dither knobs (Enio 2026-05-26). Strength/Grain como slider 01 +
+    /// raw pra chip painters.
+    pub posterize_dither_strength01: f32,
+    pub posterize_dither_strength: f32,
+    pub posterize_dither_grain01: f32,
+    pub posterize_dither_grain: u32,
     /// Quantize colour count — `0` = off, else `2..=256`. Panel paints
     /// as a dropdown of discrete options.
     pub quantize_colors: u32,
@@ -428,6 +490,12 @@ impl Default for ColorEqualizationUiSnapshot {
             lut_preset_2: p.lut_preset_2,
             posterize_levels: p.posterize_levels,
             posterize_dithering: p.posterize_dithering,
+            posterize_dither_strength01: posterize_dither_strength_to_slider(
+                p.posterize_dither_strength,
+            ),
+            posterize_dither_strength: p.posterize_dither_strength,
+            posterize_dither_grain01: posterize_dither_grain_to_slider(p.posterize_dither_grain),
+            posterize_dither_grain: p.posterize_dither_grain,
             quantize_colors: p.quantize_colors,
             clip_limit: p.clip_limit,
             tile_grid_size: p.tile_grid_size,
@@ -530,6 +598,14 @@ pub enum ColorEqualizationUiEdit {
     SetPosterizeLevels(u32),
     /// Toggle Floyd-Steinberg dithering in posterize.
     ToggleDithering,
+    /// Dither strength slider moved (normalized `0..1`).
+    DitherStrengthSlider(f32),
+    /// Dither strength chip edited (natural `0..1`).
+    DitherStrength(f32),
+    /// Dither grain slider moved (normalized `0..1` → `1..=8`).
+    DitherGrainSlider(f32),
+    /// Dither grain chip edited (natural integer `1..=8`).
+    DitherGrain(u32),
     /// K-Means++ quantize colour count. `0` = off; valid `2..=256`.
     SetQuantizeColors(u32),
     /// LUT intensity slider moved (normalized `0..1`).
@@ -668,6 +744,20 @@ pub fn apply_ui_edit(params: &mut ColorEqualizationParams, edit: ColorEqualizati
         }
         ColorEqualizationUiEdit::ToggleDithering => {
             params.posterize_dithering = !params.posterize_dithering;
+        }
+        ColorEqualizationUiEdit::DitherStrengthSlider(v) => {
+            params.posterize_dither_strength = slider_to_posterize_dither_strength(v);
+        }
+        ColorEqualizationUiEdit::DitherStrength(v) => {
+            params.posterize_dither_strength =
+                v.clamp(POSTERIZE_DITHER_STRENGTH_MIN, POSTERIZE_DITHER_STRENGTH_MAX);
+        }
+        ColorEqualizationUiEdit::DitherGrainSlider(v) => {
+            params.posterize_dither_grain = slider_to_posterize_dither_grain(v);
+        }
+        ColorEqualizationUiEdit::DitherGrain(v) => {
+            params.posterize_dither_grain =
+                v.clamp(POSTERIZE_DITHER_GRAIN_MIN, POSTERIZE_DITHER_GRAIN_MAX);
         }
         ColorEqualizationUiEdit::SetQuantizeColors(n) => {
             params.quantize_colors = if n < crate::algorithm::QUANTIZE_COLORS_MIN {

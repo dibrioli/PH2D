@@ -856,7 +856,12 @@ fn opposite_anchor_translation_no_rotation() {
 fn move_pivot_keeps_quad_fixed_identity() {
     // Quad center at origin; drag the pivot to (3, 0). The anchor must
     // re-pin the quad: pivot + anchor == quad_center.
-    let (t, a) = move_pivot_transform(snapshot(0.0, 0.0), [0.0, 0.0], [3.0, 0.0]);
+    let (t, a) = move_pivot_transform(
+        snapshot(0.0, 0.0),
+        [0.0, 0.0],
+        [3.0, 0.0],
+        TransformSnapshot::IDENTITY,
+    );
     assert_eq!(t, [3.0, 0.0]);
     assert!(
         (a[0] + 3.0).abs() < 1e-5 && a[1].abs() < 1e-5,
@@ -877,7 +882,7 @@ fn move_pivot_divides_out_scale() {
         rotation: 0.0,
         scale: [2.0, 2.0],
     };
-    let (t, a) = move_pivot_transform(s, [0.0, 0.0], [4.0, 0.0]);
+    let (t, a) = move_pivot_transform(s, [0.0, 0.0], [4.0, 0.0], TransformSnapshot::IDENTITY);
     assert_eq!(t, [4.0, 0.0]);
     assert!(
         (a[0] + 2.0).abs() < 1e-5 && a[1].abs() < 1e-5,
@@ -895,7 +900,7 @@ fn move_pivot_inverse_rotates_world_delta() {
         rotation: std::f32::consts::FRAC_PI_2,
         scale: [1.0, 1.0],
     };
-    let (t, a) = move_pivot_transform(s, [0.0, 0.0], [0.0, 2.0]);
+    let (t, a) = move_pivot_transform(s, [0.0, 0.0], [0.0, 2.0], TransformSnapshot::IDENTITY);
     let (sin_r, cos_r) = s.rotation.sin_cos();
     let world = [
         t[0] + a[0] * cos_r - a[1] * sin_r,

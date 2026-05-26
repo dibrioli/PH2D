@@ -329,6 +329,8 @@ impl ChainedPipelineCache {
                 h,
                 params.posterize_levels,
                 params.posterize_dithering,
+                params.posterize_dither_strength,
+                params.posterize_dither_grain,
             );
         }
         if needs_quantize {

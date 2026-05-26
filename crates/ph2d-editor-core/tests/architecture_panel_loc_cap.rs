@@ -24,7 +24,15 @@ const PANEL_FN_LOC_CAP: usize = 200;
 /// (relative path under `crates/`, allowed LOC, why). Driving every
 /// entry to zero is the goal; new entries require Coord-A sign-off.
 const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
-    // (none — all panel-* files fit 600 LOC after Etapa 5.2 sweep)
+    // Enio 2026-05-26: paint_sections.rs cresceu com Dither Strength +
+    // Dither Grain sliders (2 rows novas dentro de
+    // paint_posterize_quantize_section). Split em paint_helpers.rs é
+    // follow-up; mantém o cap visível enquanto isso.
+    (
+        "ph2d-panel-color-equalization/src/paint_sections.rs",
+        660,
+        "Enio 2026-05-26 dither strength+grain rows — split deferred",
+    ),
 ];
 
 /// Per-function overage allowance. Each entry:
@@ -73,6 +81,15 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         "paint_transform_section",
         260,
         "Wave 11 adaptive label-above + per-section narrow + Rotation align — split deferred",
+    ),
+    // Enio 2026-05-26: paint_hierarchy_row cresceu com os 2 novos
+    // ícones (lock + group) + companion hit registers + ícone-foco
+    // double-click hit zone. Split por section é follow-up.
+    (
+        "ph2d-panel-hierarchy/src/row.rs",
+        "paint_hierarchy_row",
+        300,
+        "Enio 2026-05-26 lock/group icons + icon-companion hit zone — split deferred",
     ),
 ];
 

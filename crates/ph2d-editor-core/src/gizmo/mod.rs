@@ -43,5 +43,6 @@ pub use drag::{GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, TransformSn
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id};
 pub use paint::{GizmoView, paint_gizmo_outline, paint_sprite_gizmo, paint_sprite_gizmo_keyed};
 pub use transform::{
-    anchor_pivot_world, compute_gizmo_transform, move_pivot_transform, pivot_snap_candidates,
+    anchor_pivot_world, compose_snapshot, compute_gizmo_transform, move_pivot_transform,
+    pivot_snap_candidates, world_delta_to_local, world_translation_to_local,
 };

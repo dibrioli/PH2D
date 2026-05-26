@@ -54,6 +54,12 @@ EXATA = "EXATA"
 exata = "exata"
 independente = "independente"
 excede = "excede"
+# pt-BR verb conjugations e nouns adicionais em comments do Gizmo
+# parent-fix e CEQ dither (Enio 2026-05-26 round).
+converte = "converte"
+separe = "separe"
+erro = "erro"
+compense = "compense"
 # Technical terms that show up in shaders / numerics.
 texel = "texel"
 mipmap = "mipmap"

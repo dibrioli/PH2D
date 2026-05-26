@@ -33,7 +33,8 @@ use super::ids;
 use super::params::{
     ColorEqualizationParams, ColorEqualizationUiEdit, ColorEqualizationUiSnapshot, apply_ui_edit,
     brightness_to_slider, clip_limit_to_slider, contrast_to_slider, denoise_strength_to_slider,
-    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider, saturation_to_slider,
+    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider,
+    posterize_dither_grain_to_slider, posterize_dither_strength_to_slider, saturation_to_slider,
     sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
     tint_to_slider, vibrance_to_slider,
 };
@@ -196,6 +197,14 @@ impl ColorEqualizationTool {
             lut_preset_2: self.params.lut_preset_2,
             posterize_levels: self.params.posterize_levels,
             posterize_dithering: self.params.posterize_dithering,
+            posterize_dither_strength01: posterize_dither_strength_to_slider(
+                self.params.posterize_dither_strength,
+            ),
+            posterize_dither_strength: self.params.posterize_dither_strength,
+            posterize_dither_grain01: posterize_dither_grain_to_slider(
+                self.params.posterize_dither_grain,
+            ),
+            posterize_dither_grain: self.params.posterize_dither_grain,
             quantize_colors: self.params.quantize_colors,
             clip_limit: self.params.clip_limit,
             tile_grid_size: self.params.tile_grid_size,
@@ -523,6 +532,18 @@ impl Tool for ColorEqualizationTool {
             }
             PanelEvent::SetValue(id, v) if id == ids::CEQ_LUT_MIX_NUM => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::LutMix(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_POSTERIZE_DITHER_STRENGTH => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::DitherStrengthSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::DitherStrength(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_POSTERIZE_DITHER_GRAIN => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::DitherGrainSlider(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::DitherGrain(v as u32));
             }
             // Phase 3 LUT grouped-select option clicks. The dropdown chip
             // toggle is handled automatically by `InteractiveState::

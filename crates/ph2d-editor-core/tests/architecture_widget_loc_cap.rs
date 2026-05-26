@@ -21,12 +21,19 @@ const WIDGET_LOC_CAP: usize = 500;
 /// added ~6 new canonical helpers, pushing it past 500. Splitting
 /// into a folder of sub-files is a follow-up; for now keep the file
 /// cohesive with an overage entry.
-const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[(
-    "src/widget/panel_chrome.rs",
-    640,
-    "Wave 11 UI canon: shared chrome helpers (close button + close rect + BL resize/dot + \
-     adaptive segmented group + header constants). Split into sub-folder is a follow-up.",
-)];
+const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
+    (
+        "src/widget/panel_chrome.rs",
+        640,
+        "Wave 11 UI canon: shared chrome helpers (close button + close rect + BL resize/dot + \
+         adaptive segmented group + header constants). Split into sub-folder is a follow-up.",
+    ),
+    (
+        "src/widget/dropdown.rs",
+        515,
+        "Dropdown chip + popover + option-row paint live cohesively; split é follow-up.",
+    ),
+];
 
 fn widget_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/widget")

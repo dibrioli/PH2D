@@ -510,10 +510,16 @@ impl App {
                                     (gv.bbox_min_world[1] + gv.bbox_max_world[1]) * 0.5,
                                 ]
                             } else {
+                                // Composição parent×local pra que o
+                                // pivot world seja correto mesmo com pai
+                                // rotacionado/escalonado (Enio 2026-05-26
+                                // fix: child de pai rotacionado tinha
+                                // pivot calculado como root).
+                                let world_snap = ph2d_editor::compose_snapshot(parent_world, snap);
                                 ph2d_editor::anchor_pivot_world(
                                     gkind,
                                     sprite_half_intrinsic,
-                                    snap,
+                                    world_snap,
                                     use_center_anchor,
                                 )
                             };

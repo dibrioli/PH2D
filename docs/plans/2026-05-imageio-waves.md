@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** W0 quase fechada (T1-T6 ✅ shipped; T7 aguarda ratificação Proposed → Accepted após auditoria 5-lente remediada — 6 commits locais).
+**Status:** **W0 FECHADA** 2026-05-26 — ADR-0054 `Accepted`. Contrato congelado + caps frozen + auditoria 5-lente remediada + smoke pós-remediação. **Fan-out W1 aberto** (mas antes resolver C-C1 OneShotImageOp em W1.T0 decision gate).
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -28,7 +28,7 @@ Um **neck serial** (contrato `ImageImporter`/`ImageExporter`/`DecodedImage` + co
 - **W0.T5** — Stub PNG (`crates/ph2d-imageio-png/`) decode + encode via `image` 0.25 prova o pipeline end-to-end: `arquivo bytes → DecodedImage::Flat → bytes` round-trip bit-exact. ✅ commit `3db01b6`.
 - **W0.T6** — Wiring boot em `shells/desktop/src/init.rs`: chama `register_all_importers` + `register_all_exporters` 1× no startup, após `register_all_tools`. ✅ commit `f002b6a` + smoke do Enio confirmado: `imageio registries built (1 importer(s), 1 exporter(s))`.
 - **W0.T6.5** — **Auditoria adversarial 5-lente** (2026-05-26): 4 CRITICAL + 11 HIGH + 9 MEDIUM + 12 LOW. Remediação pré-ratificação em 3 batches (contract data model + HR/quality + docs). ✅ `[remediation-commit-pending]`.
-- **W0.T7** — ADR-0054 `Proposed` → `Accepted`. Estende ADRs Painter (0043..0053) + ADR-0040 (tool isolation). Cobre: contrato congelado, color pipeline strategy (sRGB-assumed W1 / ICC W2 / HDR W3 / OKLCH internal sempre), `DecodedImage::Vector` modelado desde W0, EditorAction strategy (defer pra W1.T0 — vide ADR §2.4 amended). ⏳ aguarda smoke ratificação Enio.
+- **W0.T7** — ADR-0054 `Proposed` → `Accepted`. ✅ ratificado 2026-05-26. Smoke pós-remediação confirmado pelo Enio: `[553ms] ADR-0054 W0.T6: imageio registries built (1 importer(s), 1 exporter(s))`. Contrato CONGELADO; mudanças daqui em diante = amendment Coord-A.
 
 ## 🔒 FREEZE (gate do fan-out) — após W0.T5 + smoke do Enio
 

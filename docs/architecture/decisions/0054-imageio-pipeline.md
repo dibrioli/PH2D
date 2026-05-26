@@ -1,6 +1,6 @@
 # ADR-0054 — Image I/O pipeline (contrato `ImageImporter`/`ImageExporter` + canal genérico + registro por codegen)
 
-**Status:** Proposed (W0 quase fechada — T1-T6 ✅ shipped + auditoria 5-lente remediada; aguarda smoke do Enio para ratificar `Accepted`)
+**Status:** Accepted (W0 fechada 2026-05-26 — T1-T6 ✅ shipped + auditoria 5-lente remediada + smoke pós-remediação confirmado pelo Enio: `[553ms] ADR-0054 W0.T6: imageio registries built (1 importer(s), 1 exporter(s))`)
 **Data:** 2026-05-26
 **Decisor(es):** Enio + Claude (arquiteto).
 **Estende:** ADR-0031 (família como unidade FBP), ADR-0040 (tool isolation — mesmo padrão satélite drop-in), ADR-0044/0046/0051 (Painter color profile/blend modes — fonte de verdade para `RenderingMode` e `ColorProfile`).
@@ -210,7 +210,7 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | W0.T5 stub `ph2d-imageio-png` | ✅ | `3db01b6` | PngImporter + PngExporter; round-trip bit-exact + byte-exact determinism (HR-5) |
 | W0.T6 wiring shell desktop | ✅ | `f002b6a` | `AppGfx.imageio_{importers,exporters}`; smoke do Enio `1 importer(s), 1 exporter(s)` confirmado |
 | W0.T6.5 auditoria 5-lente paralela | ✅ | `[pending]` | 4 CRITICAL + 11 HIGH + 9 MEDIUM + 12 LOW; remediação inline (3 batches) |
-| W0.T7 ratificação Proposed→Accepted | ⏳ | — | Aguarda smoke pós-remediação Enio |
+| W0.T7 ratificação Proposed→Accepted | ✅ | `[ratification-commit]` | Smoke pós-remediação Enio: `[553ms] imageio registries built (1 importer, 1 exporter)`; W0 FECHADA |
 
 ### Remediação pós-auditoria (2026-05-26)
 

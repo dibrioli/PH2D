@@ -338,6 +338,7 @@ impl crate::App {
             let mut activate_bgremoval = false;
             let mut activate_color_equalization = false;
             let mut activate_equalize_sizes = false;
+            let mut activate_painter = false;
             let mut activate_upscale = false;
             let mut visibility_toggle_row: Option<NodeId> = None;
             let mut lock_toggle_row: Option<NodeId> = None;
@@ -380,6 +381,7 @@ impl crate::App {
                         "padding" => activate_padding = true,
                         "color_equalization" => activate_color_equalization = true,
                         "equalize_sizes" => activate_equalize_sizes = true,
+                        "painter" => activate_painter = true,
                         "upscale" => activate_upscale = true,
                         _ => {}
                     },
@@ -635,6 +637,19 @@ impl crate::App {
             {
                 self.title_dirty = true;
                 toasts.push(Toast::info("Tool · Upscale"));
+            }
+            // Painter activation (mirror of Upscale above). Click the
+            // Painter pill → `ActivateTool { tool_id: "painter" }`. Same
+            // mode_on gate. Cascata W0 ratificada 2026-05-26 (ADR-0043..0053);
+            // T1.2 ship com smoke println via `Tool::on_activate`. Source push
+            // genérico via RasterEditTool ship em T1.4+ (substitui o padrão
+            // hardcoded por canal genérico ADR-0041 cross-tool).
+            if hero.image_edit.mode_on
+                && activate_painter
+                && tools.set_active(&ph2d_editor::ToolId::new("painter"))
+            {
+                self.title_dirty = true;
+                toasts.push(Toast::info("Tool · Painter"));
             }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
             // TopBar Image Tools toggle (`image_edit.mode_on`) and the

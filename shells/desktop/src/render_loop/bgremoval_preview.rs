@@ -230,59 +230,78 @@ pub(super) fn dispatch(
         // overlay never re-runs against the freshly baked sprite.
         *bgremoval_preview = None;
     }
-    // On-canvas preview overlay (straight-alpha, on top of the
-    // suppressed sprite's footprint).
+    // On-canvas preview overlay — replaces the suppressed sprite
+    // visually. Computes the FULL image-local → screen affine
+    // (translation + rotation + scale + anchor + camera projection)
+    // so the overlay tracks rotated / scaled sprites pixel-accurately
+    // (Enio 2026-05-26: the old axis-aligned dest rect drifted off
+    // the sprite once it spun).
     if let Some(preview) = &*bgremoval_preview {
         let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
         if let (Some(tr), Some(sprite)) = (
             sim.world().get::<ph2d_ecs::Transform>(entity),
             sim.world().get::<Sprite>(entity),
         ) {
-            // Center the preview on the sprite's VISIBLE quad center —
-            // pivot (translation) + anchor — NOT the pivot itself. Once
-            // TOOL_PIVOT / Padding-Keep moves the pivot off-center
-            // (anchor != 0) the two diverge; without the anchor term the
-            // preview slides off the sprite. (No scale/rotation term —
-            // parity with this overlay's axis-aligned, unscaled footprint.)
-            let cx = tr.translation.x + sprite.anchor[0];
-            let cy = tr.translation.y + sprite.anchor[1];
-            let (sw, sh) = (sprite.size[0], sprite.size[1]);
-            let (x0, y0) = camera.world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
-            let (x1, y1) = camera.world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
-            // Single source of truth: the preview's sampling quality is
-            // derived from the SAME app-wide ImageFilterMode that drives
-            // the wgpu sprite sampler. PixelArt → nearest, Smooth →
-            // bicubic — so the on-canvas preview matches the sprite the
-            // Apply will bake.
+            let img_to_screen = sprite_image_to_screen_affine(
+                preview.width,
+                preview.height,
+                &tr,
+                &sprite,
+                camera,
+                window_size,
+            );
             let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
-            vector_scene.draw_image_rgba(
+            vector_scene.draw_image_rgba_transformed(
                 &preview.rgba,
                 preview.width,
                 preview.height,
-                (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
+                img_to_screen,
                 quality,
             );
-            // Protection-mask tint on top — a semitransparent accent wash
-            // over the painted "keep" pixels. Same footprint rect, so it
-            // tracks the sprite transform like the preview.
+            // Protection-mask tint on top — same affine so it tracks
+            // the sprite transform like the preview.
             if let Some((tint, tw, th)) = &protect_tint {
-                vector_scene.draw_image_rgba(
+                let tint_to_screen = sprite_image_to_screen_affine(
+                    *tw,
+                    *th,
+                    &tr,
+                    &sprite,
+                    camera,
+                    window_size,
+                );
+                vector_scene.draw_image_rgba_transformed(
                     tint,
                     *tw,
                     *th,
-                    (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
+                    tint_to_screen,
                     quality,
                 );
             }
-            // Brush-size ring at the cursor — the source-px radius mapped
-            // to screen via the footprint scale (footprint_w / source_w).
+            // Brush-size ring at the cursor — the source-px radius
+            // mapped to screen via the footprint scale (extracted
+            // from the affine's per-axis magnitude).
             if let (Some((r_src, src_w)), Some((cur_x, cur_y))) = (
                 brush_ring,
                 crate::input_dispatch::protect_brush::brush_cursor(),
             ) && src_w > 0
             {
-                let footprint_w = (x1 - x0).abs();
-                let r_screen = r_src * footprint_w / src_w as f32;
+                // Scale factor from source pixels → screen pixels on
+                // the X axis. `Affine` matrix is [a b c; d e f]; the
+                // column vector `[a, d]` is image-X mapped to screen
+                // — its magnitude is the per-pixel scale.
+                let m = sprite_image_to_screen_affine(
+                    preview.width,
+                    preview.height,
+                    &tr,
+                    &sprite,
+                    camera,
+                    window_size,
+                )
+                .as_coeffs();
+                let pixel_scale = (m[0] * m[0] + m[1] * m[1]).sqrt() as f32; // |col 0|
+                let src_to_screen =
+                    pixel_scale * preview.width as f32 / src_w as f32;
+                let r_screen = r_src * src_to_screen;
                 let accent = ColorToken::Accent.resolve(theme);
                 let color = Color::from_rgba8(accent.r, accent.g, accent.b, 255);
                 vector_scene.inner_mut().stroke(
@@ -296,6 +315,49 @@ pub(super) fn dispatch(
         }
     }
     !apply_selection.is_empty()
+}
+
+/// Build the affine that maps image-local pixel coords (0..image_w,
+/// 0..image_h, Y-down) to screen pixels (Y-down). Chains:
+///   image-px → unit → sprite-local meters (Y-flip, size scale) →
+///   transform.scale → transform.rotation → anchor offset →
+///   translation (pivot) → camera projection.
+///
+/// Reused by every overlay layer (preview RGBA, protect tint) so they
+/// share the EXACT same destination geometry — no per-layer drift.
+fn sprite_image_to_screen_affine(
+    image_w: u32,
+    image_h: u32,
+    tr: &ph2d_ecs::Transform,
+    sprite: &Sprite,
+    camera: &Camera2d,
+    window_size: WindowSize,
+) -> Affine {
+    let image_w = image_w as f64;
+    let image_h = image_h as f64;
+    let size_w = sprite.size[0] as f64;
+    let size_h = sprite.size[1] as f64;
+    // image-px → centered, with Y flipped (image-Y is down, world-Y up):
+    //   (px, py) ↦ ((px/w - 0.5) * size_w, (0.5 - py/h) * size_h)
+    let img_to_local =
+        Affine::scale_non_uniform(size_w / image_w, -size_h / image_h)
+            * Affine::translate((-image_w * 0.5, -image_h * 0.5));
+    // Sprite-local meters → world. Mirror of the sprite renderer's
+    // composite: scale → rotate → anchor offset → translation pivot.
+    let local_to_world =
+        Affine::translate((tr.translation.x as f64, tr.translation.y as f64))
+            * Affine::rotate(tr.rotation as f64)
+            * Affine::translate((sprite.anchor[0] as f64, sprite.anchor[1] as f64))
+            * Affine::scale_non_uniform(tr.scale.x as f64, tr.scale.y as f64);
+    // World → screen. Y flips (world-Y up, screen-Y down). Uniform
+    // scale `k = window.height / camera.height_world` (square pixels).
+    let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);
+    let world_to_screen = Affine::translate((
+        window_size.width as f64 * 0.5,
+        window_size.height as f64 * 0.5,
+    )) * Affine::scale_non_uniform(k, -k)
+        * Affine::translate((-camera.center[0] as f64, -camera.center[1] as f64));
+    world_to_screen * local_to_world * img_to_local
 }
 
 /// Build a capped-resolution RGBA tint image from a source-resolution

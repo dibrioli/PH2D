@@ -90,10 +90,34 @@ impl VectorScene {
         if width == 0 || height == 0 {
             return;
         }
+        let (x0, y0, x1, y1) = dest;
+        let sx = (x1 - x0) / width as f64;
+        let sy = (y1 - y0) / height as f64;
+        let transform = Affine::translate((x0, y0)) * Affine::scale_non_uniform(sx, sy);
+        self.draw_image_rgba_transformed(rgba, width, height, transform, quality);
+    }
+
+    /// Same as [`Self::draw_image_rgba`] but takes the full image-local
+    /// (pixels 0..width, 0..height) → screen-pixel affine transform.
+    /// Used when the destination is rotated / scaled / sheared — e.g.
+    /// the Background-Removal preview overlay tracking a rotated
+    /// sprite (Enio 2026-05-26): the axis-aligned `dest` rect of
+    /// `draw_image_rgba` collapses the orientation, so the overlay
+    /// would visibly drift off the sprite once it spins.
+    pub fn draw_image_rgba_transformed(
+        &mut self,
+        rgba: &Arc<Vec<u8>>,
+        width: u32,
+        height: u32,
+        transform: Affine,
+        quality: ImageQuality,
+    ) {
+        if width == 0 || height == 0 {
+            return;
+        }
         if rgba.len() != (width as usize) * (height as usize) * 4 {
             return;
         }
-        let (x0, y0, x1, y1) = dest;
         let image = ImageData {
             data: Blob::new(rgba.clone()),
             format: ImageFormat::Rgba8,
@@ -101,9 +125,6 @@ impl VectorScene {
             width,
             height,
         };
-        let sx = (x1 - x0) / width as f64;
-        let sy = (y1 - y0) / height as f64;
-        let transform = Affine::translate((x0, y0)) * Affine::scale_non_uniform(sx, sy);
         let brush = ImageBrush::new(image).with_quality(quality);
         self.inner.draw_image(brush.as_ref(), transform);
     }

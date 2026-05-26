@@ -1,6 +1,6 @@
 # ADR-0043 — Painter contract (`ph2d-tool-painter` surface + caps)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, sessão Painter W0).
 **Pré-requisitos:** [ADR-0040 — tool-as-isolated-feature-crate](0040-tool-as-isolated-feature-crate.md), [ADR-0041 — RasterEditTool rename + deactivate](0041-rasteredit-rename-and-deactivate.md), [ADR-0042 — Wave 10 closure](0042-wave-10-closure.md).
 **Sub-contratos congelados por ADRs irmãs:** 0044 (Brush Engine GPU + Mixbox + Procedural Grain), 0045 (Adjustment Layers), 0046 (Stroke Vector History), 0047 (MCP Stroke Engine), 0048 (Stroke Inspector), 0049 (Fluid Brushes Extension), 0050 (Device heterogeneity), 0051 (Color profile pipeline), 0052 (Tear-resistant stroke commit), 0053 (Cross-platform tier policy).

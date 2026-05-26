@@ -1,6 +1,6 @@
 # ADR-0045 — Adjustment Layers contract (12 non-destructive + 5 destructive-only)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, sessão Painter W0).
 **Pré-requisitos:** [ADR-0043 — Painter contract](0043-painter-contract.md), [ADR-0044 — Brush Engine GPU](0044-brush-engine-gpu.md).
 **Spec normativa:** [`docs/Painter_projeto/02_layers.md`](../../Painter_projeto/02_layers.md) §2.10.X (Crítica A absorvida) + [`06_selection_transform_adjustments.md`](../../Painter_projeto/06_selection_transform_adjustments.md) §6.3.

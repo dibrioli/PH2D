@@ -1,6 +1,6 @@
 # ADR-0049 — Fluid Brushes Extension (`ph2d-painter-fluid`, opt-in W15)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, sessão Painter W0).
 **Pré-requisitos:** [ADR-0043 — Painter contract](0043-painter-contract.md), [ADR-0044 — Brush Engine GPU](0044-brush-engine-gpu.md).
 **Spec normativa:** [`docs/Painter_projeto/14_inovacoes_extraordinarias.md`](../../Painter_projeto/14_inovacoes_extraordinarias.md) §14.6 (Proposta 4) + [`08_performance_memory.md`](../../Painter_projeto/08_performance_memory.md) §8.2.2.

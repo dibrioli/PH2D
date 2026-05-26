@@ -68,6 +68,12 @@ push, não no CI vermelho 30min depois.
   Tracker vivo: [`docs/HANDOFF_node_system.md`](docs/HANDOFF_node_system.md).
 - [`docs/plans/2026-05-wave-11-carry-overs.md`](docs/plans/2026-05-wave-11-carry-overs.md) —
   carry-overs pós-Wave 10 ([ADR-0042 §6](docs/architecture/decisions/0042-wave-10-closure.md)).
+- [`docs/Painter_projeto/15_plano_de_implementacao.md`](docs/Painter_projeto/15_plano_de_implementacao.md) —
+  **Painter (sucessor do Procreate)** — W0 ratificado 2026-05-26 com **11 ADRs Accepted**
+  ([ADR-0043..0053](docs/architecture/decisions/)); W1 aberta (T0.8 = criar crate
+  `ph2d-painter-contracts/` homestead arch-gate). Mandato §0 padrão-ouro absoluto;
+  regra [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)
+  ativa. Handoff: [`docs/HANDOFF_painter.md`](docs/HANDOFF_painter.md).
 
 **Fan-out drop-crate (node OU tool):** receita única em
 [DIRETRIZ §3.8](docs/IntegracaoMultiAgente/DIRETRIZ.md) — briefing parametrizado
@@ -82,6 +88,11 @@ push, não no CI vermelho 30min depois.
   + [ADR-0041](docs/architecture/decisions/0041-rasteredit-rename-and-deactivate.md))
   — caps `Tool=10` / `RasterEditTool=5` / `PanelEvent=4`, gate
   [`architecture_tool_contract_surface`](crates/ph2d-editor-core/tests/architecture_tool_contract_surface.rs).
+- Painter ([ADR-0043..0053](docs/architecture/decisions/)) — cascata W0 ratificada
+  2026-05-26 com 11 ADRs Accepted. Caps principais: `PainterUiEdit ≤ 24` / `Brush ≤ 168` recursivo /
+  `Stamp = 96B align(16) ABI` / `RenderingMode = 6 FROZEN` / `AdjustmentKind ≤ 32 (24 ship v1)` /
+  `ColorProfile = 8 FROZEN` / `DeviceTier = 5 FROZEN`. Homestead gates:
+  `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs` (W1 T0.8 cria).
 
 Planos históricos vivem em [`docs/archive/plans-completed/`](docs/archive/plans-completed/).
 

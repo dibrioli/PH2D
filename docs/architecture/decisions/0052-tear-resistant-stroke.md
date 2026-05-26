@@ -1,6 +1,6 @@
 # ADR-0052 — Tear-resistant stroke commit + crash recovery (journal + auto-save + suspend handling)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, cascata W0 rework regra perfeição).
 **Pré-requisitos:** [ADR-0046 — Stroke Vector History](0046-stroke-vector-history.md).
 **Motivação:** sense-check veterano paint stack 2026-05-26 (gap #4 "tear-resistant stroke commit / app suspend mid-stroke"). Procreate sangrou esse exato bug em 2014-2017.

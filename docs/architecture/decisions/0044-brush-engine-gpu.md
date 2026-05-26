@@ -1,6 +1,6 @@
 # ADR-0044 — Brush Engine GPU contract (Brush + Stamp + Mixbox + Procedural Grain)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, sessão Painter W0).
 **Pré-requisitos:** [ADR-0040](0040-tool-as-isolated-feature-crate.md), [ADR-0041](0041-rasteredit-rename-and-deactivate.md), [ADR-0043 — Painter contract](0043-painter-contract.md).
 **Spec normativa:** [`docs/Painter_projeto/01_brush_engine.md`](../../Painter_projeto/01_brush_engine.md) (§1.1..§1.12) + [`14_inovacoes_extraordinarias.md`](../../Painter_projeto/14_inovacoes_extraordinarias.md) (Propostas 2 e 3 absorvidas).

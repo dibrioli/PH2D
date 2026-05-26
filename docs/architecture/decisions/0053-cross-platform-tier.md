@@ -1,6 +1,6 @@
 # ADR-0053 — Cross-platform tier policy (universal feature parity + graceful degrade)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, cascata W0 rework regra perfeição).
 **Pré-requisitos:** [ADR-0043 — Painter contract](0043-painter-contract.md), [ADR-0049 — Fluid Brushes](0049-fluid-brushes.md), [ADR-0050 — Device heterogeneity](0050-device-heterogeneity-layer.md), [ADR-0051 — Color profile pipeline](0051-color-profile-pipeline.md).
 **Motivação:** audit padrão-ouro 2026-05-26 (C5 "features marquise só rodam em desktop / iPad Pro M1+"). Sense-check veterano (cross-platform claims sem device coverage).

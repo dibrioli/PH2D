@@ -1,6 +1,6 @@
 # ADR-0051 — Color profile pipeline (sRGB / Linear scRGB / Display P3 / ProPhoto / OKLab invariants)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, cascata W0 rework regra perfeição).
 **Pré-requisitos:** [ADR-0042 — Wave 10 closure (`ph2d-color`)](0042-wave-10-closure.md), [ADR-0044 — Brush Engine GPU](0044-brush-engine-gpu.md), [ADR-0046 — Stroke Vector History](0046-stroke-vector-history.md).
 **Spec normativa:** [`docs/Painter_projeto/03_color.md`](../../Painter_projeto/03_color.md) + [`08_performance_memory.md`](../../Painter_projeto/08_performance_memory.md).

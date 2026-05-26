@@ -1,6 +1,6 @@
 # ADR-0048 — Stroke Inspector retroativo (W14)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, sessão Painter W0).
 **Pré-requisitos:** [ADR-0043 — Painter contract](0043-painter-contract.md), [ADR-0044 — Brush Engine GPU](0044-brush-engine-gpu.md), [ADR-0046 — Stroke Vector History](0046-stroke-vector-history.md), [ADR-0047 — MCP Stroke Engine](0047-painter-mcp-stroke-engine.md).
 **Spec normativa:** [`docs/Painter_projeto/01_brush_engine.md`](../../Painter_projeto/01_brush_engine.md) §1.14.5.

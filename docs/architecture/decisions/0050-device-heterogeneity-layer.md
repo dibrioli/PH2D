@@ -1,6 +1,6 @@
 # ADR-0050 — Device heterogeneity layer (pointer source + per-device curves + palm rejection + driver quirks)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, cascata W0 rework regra perfeição).
 **Pré-requisitos:** [ADR-0043 — Painter contract](0043-painter-contract.md), [ADR-0046 — Stroke Vector History](0046-stroke-vector-history.md).
 **Spec normativa:** [`docs/Painter_projeto/07_pencil_pipeline.md`](../../Painter_projeto/07_pencil_pipeline.md) (pencil pipeline) + [`05_gestos_input.md`](../../Painter_projeto/05_gestos_input.md) (gestos).

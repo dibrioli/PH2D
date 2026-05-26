@@ -1,6 +1,6 @@
 # ADR-0046 — Stroke Vector History format (`.ph2d-painter` v1)
 
-**Status:** Proposed (2026-05-26)
+**Status:** Accepted (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, sessão Painter W0).
 **Pré-requisitos:** [ADR-0043 — Painter contract](0043-painter-contract.md), [ADR-0044 — Brush Engine GPU](0044-brush-engine-gpu.md).
 **Spec normativa:** [`docs/Painter_projeto/01_brush_engine.md`](../../Painter_projeto/01_brush_engine.md) §1.14 + [`08_performance_memory.md`](../../Painter_projeto/08_performance_memory.md) §8.2 (memory budget).

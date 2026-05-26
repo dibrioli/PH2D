@@ -8,9 +8,10 @@
 //! publishes scroll bounds back to the store.
 
 use crate::state::{
-    self, current_inspector_name_is_some, current_inspector_sprite, current_inspector_transform,
-    current_inspector_visibility, last_inspector_content_h, last_inspector_visible_h,
-    set_last_inspector_content_h, set_last_inspector_visible_h,
+    self, current_display_unit, current_inspector_name_is_some, current_inspector_sprite,
+    current_inspector_transform, current_inspector_visibility, current_pixels_per_meter,
+    last_inspector_content_h, last_inspector_visible_h, set_last_inspector_content_h,
+    set_last_inspector_visible_h,
 };
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
@@ -135,7 +136,18 @@ fn paint_inspector(
     let subtitle_owned;
     let subtitle: &str = match sprite_for_header.as_ref() {
         Some(info) => {
-            subtitle_owned = format!("{:.3} × {:.3} m", info.world_size[0], info.world_size[1]);
+            let unit = current_display_unit();
+            let ppm = current_pixels_per_meter();
+            let w = unit.from_meters(info.world_size[0], ppm);
+            let h = unit.from_meters(info.world_size[1], ppm);
+            subtitle_owned = match unit {
+                ph2d_editor_core::project::DisplayUnit::Meters => {
+                    format!("{:.3} × {:.3} {}", w, h, unit.suffix())
+                }
+                ph2d_editor_core::project::DisplayUnit::Pixels => {
+                    format!("{:.0} × {:.0} {}", w, h, unit.suffix())
+                }
+            };
             subtitle_owned.as_str()
         }
         None => "",

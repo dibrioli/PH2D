@@ -111,7 +111,6 @@ pub(crate) fn current_display_unit() -> ph2d_editor_core::project::DisplayUnit {
     CURRENT_DISPLAY_UNIT.with(|c| c.get())
 }
 
-#[allow(dead_code)]
 pub(crate) fn current_pixels_per_meter() -> f32 {
     CURRENT_PIXELS_PER_METER.with(|c| c.get())
 }

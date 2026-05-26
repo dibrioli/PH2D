@@ -20,7 +20,7 @@ use crate::state::{self, EqualizeSizesPanelState, set_last_content_h, set_last_v
 use crate::{EqualizeSizesPanel, ids};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -28,12 +28,14 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, EQUALIZE_SIZES_SCROLLBAR_ID, paint_button, paint_scrollbar,
+    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
-use ph2d_tool_equalize_sizes::params::{TargetMode, UpscaleAlgorithm};
+use ph2d_tool_equalize_sizes::params::{EqualizeSizesUiSnapshot, TargetMode, UpscaleAlgorithm};
 use ph2d_vector::VectorScene;
 
 /// Label column width for Grid-mode slider rows.
@@ -83,21 +85,58 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
     );
-    let mut y = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-
-    // X close button → EQS_CANCEL (same handler as Cancel button).
+    // X close button → EQS_CANCEL (painted before clip so it sits on
+    // chrome, not inside the scrollable body).
     ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
         rect,
         ids::EQS_CANCEL,
-        hit_index,
-        scene,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
         theme,
     );
     // Color dot + notes intentionally NOT broadcast to image-tool panels.
+
+    // Body region clipped + scrolled — conditional sub-sections (Fixed
+    // chips, Grid offset + arrange toggle, upscale algorithm row) push
+    // the body past dock height. Enio 2026-05-26 "padrão central do
+    // app é painel com scroll". Wheel + scrollbar route via
+    // `EQUALIZE_SIZES_SCROLLBAR_ID` → `EQS_PANEL`.
+    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll = ctx.host.store().panel_scroll(ids::EQS_PANEL);
+
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    let y_after = paint_body_sections(ctx, &snapshot, inner_x, inner_w, row_h, row_gap, body_top - scroll);
+    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    set_last_content_h(content_h);
+    set_last_visible_h(body_h);
+    ctx.scene.pop_layer();
+
+    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+
+    ctx.host.hit_index_mut().register(
+        ids::EQS_CANCEL,
+        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_body_sections(
+    ctx: &mut PaintCtx,
+    snapshot: &EqualizeSizesUiSnapshot,
+    inner_x: f32,
+    inner_w: f32,
+    row_h: f32,
+    row_gap: f32,
+    y_in: f32,
+) -> f32 {
+    let theme = ctx.host.theme();
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let mut y = y_in;
 
     // ── Section: Target mode (3-way radio) ──────────────────────────
     let mode_row = Rect::new(inner_x, y, inner_w, row_h);
@@ -345,15 +384,38 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     paint_button(&apply, apply_rect, scene, text_system, theme);
     hit_index.register(ids::EQS_APPLY, apply_rect);
     y += row_h;
+    y
+}
 
-    let used_h = (y - rect.y + PANEL_HEAD_PAD).min(rect.h);
-    set_last_content_h(used_h);
-    set_last_visible_h(rect.h);
-
-    hit_index.register(
-        ids::EQS_CANCEL,
-        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
-    );
+fn paint_scrollbar_and_publish(
+    ctx: &mut PaintCtx,
+    body_rect: Rect,
+    content_h: f32,
+    body_h: f32,
+    scroll: f32,
+    theme: Theme,
+) {
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        let is_active = matches!(
+            ctx.host.store().scrollbar_drag(),
+            Some(d) if d.panel == ids::EQS_PANEL
+        );
+        paint_scrollbar(
+            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(EQUALIZE_SIZES_SCROLLBAR_ID, thumb);
+    }
+    let store = ctx.host.store_mut();
+    store.set_panel_content_h(ids::EQS_PANEL, content_h);
+    store.set_panel_visible_h(ids::EQS_PANEL, body_h);
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::EQS_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::EQS_PANEL, max_scroll);
+    }
 }
 
 /// Paint a horizontal row of N equal-width buttons that behave as a

@@ -129,6 +129,23 @@ pub const GRID_SETTINGS_SCROLLBAR_ID: NodeId = NodeId(823);
 /// past the dock height once Phase 2/3 (sharpen/denoise/LUT) landed.
 /// Independent thumb id so dispatch can route drag-scroll cleanly.
 pub const COLOR_EQUALIZATION_SCROLLBAR_ID: NodeId = NodeId(824);
+/// Bg Removal panel scrollbar — same image-tools dock slot as
+/// Color Equalization; the Protect-brush sub-section (Size slider +
+/// 4-falloff segmented + Show-mask + Clear) pushes the panel past
+/// the dock height. Independent thumb id keeps dispatch from
+/// aliasing CEQ's scroll state when both tools are toggled.
+pub const BG_REMOVAL_SCROLLBAR_ID: NodeId = NodeId(825);
+/// Padding panel scrollbar — image-tools dock; Reset/Cancel/Apply
+/// drift off the dock once the user shrinks the panel. Enio 2026-05-26:
+/// "padrão central do app é painel com scroll. corrija todos".
+pub const PADDING_SCROLLBAR_ID: NodeId = NodeId(826);
+/// Upscale panel scrollbar — same image-tools dock; same overflow
+/// pattern as Padding.
+pub const UPSCALE_SCROLLBAR_ID: NodeId = NodeId(827);
+/// Equalize Sizes panel scrollbar — image-tools dock; conditional
+/// sub-sections (Fixed chips, Grid offset slider + arrange toggle,
+/// upscale algorithm row) easily push the body past dock height.
+pub const EQUALIZE_SIZES_SCROLLBAR_ID: NodeId = NodeId(828);
 
 #[cfg(test)]
 mod tests {

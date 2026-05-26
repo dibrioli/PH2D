@@ -477,10 +477,15 @@ impl BgRemovalTool {
 
         // Interpolate intermediate dabs between the previous (u, v)
         // and this one so a fast drag draws a continuous trail
-        // instead of spaced discs. STAMP_SPACING_FRAC = 0.25 → ≥4
-        // dabs per radius of cursor motion (Procreate-style default).
-        // First dab of a stroke (no anchor yet) just stamps once.
-        const STAMP_SPACING_FRAC: f32 = 0.25;
+        // instead of spaced discs. STAMP_SPACING_FRAC = 0.05 → 20
+        // dabs per radius of cursor motion. Tight overlap is required
+        // to mask the Smooth-falloff per-disc ripple — at 0.25 the
+        // mask still showed visible bumps along the stroke (Enio
+        // 2026-05-26 round 2: "a pintura da máscara ainda não é
+        // perfeitamente regular"). 0.05 trades a 4× higher dab count
+        // for a visually uniform trail (cheap: each dab is just the
+        // disc's bbox scan and `max`-accumulates).
+        const STAMP_SPACING_FRAC: f32 = 0.05;
         let spacing_px = (r * STAMP_SPACING_FRAC).max(0.5);
         if let Some((lu, lv)) = self.last_protect_uv {
             let du_px = (u - lu) * (w as f32 - 1.0);

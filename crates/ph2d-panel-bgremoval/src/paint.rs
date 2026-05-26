@@ -23,14 +23,19 @@ use crate::paint_sections::{
 };
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
 use crate::{BgRemovalPanel, ids};
+use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
     panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
+use ph2d_editor_core::widget::{
+    BG_REMOVAL_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
+};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 
 pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(BgRemovalPanel::ID) {
@@ -82,110 +87,135 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
     );
-    let mut y = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
-
-    // Disjoint borrows: store + hit_index from host; scene + text_system
-    // are sibling fields on ctx; theme is a Copy.
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
 
     // X close button — routes to BGR_CANCEL (same handler as the
     // bottom Cancel button: pushes CancelActiveTool).
-    paint_panel_close_button(rect, ids::BGR_CANCEL, hit_index, scene, theme);
+    paint_panel_close_button(
+        rect,
+        ids::BGR_CANCEL,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
+        theme,
+    );
     // Color dot + notes intentionally NOT broadcast to image-tool panels.
 
-    y = paint_slider_rows(
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
+    // Body region (everything below the title, above the corner dot) is
+    // clipped + scrolled. The Bg Removal panel grew past the dock height
+    // when the protection-brush sub-section landed (Size slider +
+    // 4-falloff segmented + Show-mask + Clear protection) — without
+    // scroll the bottom controls (Reset / Cancel / Apply) sit outside
+    // the dock rect. Wheel + scrollbar route through
+    // `BG_REMOVAL_SCROLLBAR_ID` → `BGR_PANEL` so every control stays
+    // reachable.
+    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll = ctx.host.store().panel_scroll(ids::BGR_PANEL);
+
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    let y_after = paint_body_sections(
+        ctx,
         &snapshot,
         inner_x,
         inner_w,
         row_h,
         row_gap,
         chip_w,
-        y,
-    );
-    y = paint_grow_shrink(
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
-        &snapshot,
-        inner_x,
-        inner_w,
-        row_h,
-        row_gap,
-        chip_w,
-        y,
-    );
-    y = paint_islands(
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
-        &snapshot,
-        inner_x,
-        inner_w,
-        row_h,
-        row_gap,
-        chip_w,
-        y,
-    );
-    y = paint_eyedropper_swatches(
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
-        &snapshot,
-        inner_x,
-        inner_w,
-        row_h,
-        row_gap,
-        y,
-    );
-    y = paint_protect_brush(
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
-        &snapshot,
-        inner_x,
-        inner_w,
-        row_h,
-        row_gap,
-        chip_w,
-        y,
-    );
-    y = paint_apply_cta(
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
-        inner_x,
-        inner_w,
-        row_h,
-        row_gap,
-        y,
+        body_top - scroll,
     );
 
-    // Body fits without scroll; publish height as both content + visible
-    // so the orchestrator's scroll clamp is a no-op.
-    let used_h = (y - rect.y + PANEL_HEAD_PAD).min(rect.h);
-    set_last_content_h(used_h);
-    set_last_visible_h(rect.h);
+    // `content_h` is the painted body height in body-local coords (undo
+    // the scroll subtraction we applied when laying out from `body_top
+    // - scroll`). The scrollbar uses this against `body_h` to decide
+    // whether it's needed and how tall the thumb is.
+    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    set_last_content_h(content_h);
+    set_last_visible_h(body_h);
+    ctx.scene.pop_layer();
 
-    // Re-register close at end-of-frame (canon — vide panel_chrome doc).
-    hit_index.register(
+    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+
+    // Re-register close at end-of-frame so scrolled body widgets behind
+    // the title can't shadow it (canon — vide panel_chrome doc).
+    ctx.host.hit_index_mut().register(
         ids::BGR_CANCEL,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
     );
+}
+
+/// Paint every body section inside the active scroll clip. Returns the
+/// final `y` after the Apply CTA row.
+#[allow(clippy::too_many_arguments)]
+fn paint_body_sections(
+    ctx: &mut PaintCtx,
+    snapshot: &ph2d_tool_bgremoval::params::BgRemovalUiSnapshot,
+    inner_x: f32,
+    inner_w: f32,
+    row_h: f32,
+    row_gap: f32,
+    chip_w: f32,
+    y_in: f32,
+) -> f32 {
+    let theme = ctx.host.theme();
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let mut y = y_in;
+    y = paint_slider_rows(
+        scene, text_system, store, hit_index, theme, snapshot, inner_x, inner_w, row_h, row_gap,
+        chip_w, y,
+    );
+    y = paint_grow_shrink(
+        scene, text_system, store, hit_index, theme, snapshot, inner_x, inner_w, row_h, row_gap,
+        chip_w, y,
+    );
+    y = paint_islands(
+        scene, text_system, store, hit_index, theme, snapshot, inner_x, inner_w, row_h, row_gap,
+        chip_w, y,
+    );
+    y = paint_eyedropper_swatches(
+        scene, text_system, store, hit_index, theme, snapshot, inner_x, inner_w, row_h, row_gap, y,
+    );
+    y = paint_protect_brush(
+        scene, text_system, store, hit_index, theme, snapshot, inner_x, inner_w, row_h, row_gap,
+        chip_w, y,
+    );
+    paint_apply_cta(
+        scene, text_system, store, hit_index, theme, inner_x, inner_w, row_h, row_gap, y,
+    )
+}
+
+/// Paint the vertical scrollbar (only if needed) and publish
+/// `content_h` / `visible_h` to the store so wheel dispatch can bound
+/// the offset against painter-known metrics. Also clamps any over-scroll
+/// left over from a content shrink in the previous frame.
+fn paint_scrollbar_and_publish(
+    ctx: &mut PaintCtx,
+    body_rect: Rect,
+    content_h: f32,
+    body_h: f32,
+    scroll: f32,
+    theme: Theme,
+) {
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        let is_active = matches!(
+            ctx.host.store().scrollbar_drag(),
+            Some(d) if d.panel == ids::BGR_PANEL
+        );
+        paint_scrollbar(
+            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(BG_REMOVAL_SCROLLBAR_ID, thumb);
+    }
+    let store = ctx.host.store_mut();
+    store.set_panel_content_h(ids::BGR_PANEL, content_h);
+    store.set_panel_visible_h(ids::BGR_PANEL, body_h);
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::BGR_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::BGR_PANEL, max_scroll);
+    }
 }

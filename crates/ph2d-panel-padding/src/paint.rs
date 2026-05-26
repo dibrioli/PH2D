@@ -25,6 +25,7 @@
 
 use crate::state::{self, PaddingPanelState, set_last_content_h, set_last_visible_h};
 use crate::{PaddingPanel, ids};
+use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -33,10 +34,12 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, PADDING_SCROLLBAR_ID, paint_button, paint_scrollbar,
+    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_padding::params::px_to_slider;
 
 /// Label column width for slider rows.
@@ -64,7 +67,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
-    // Dock-slot drag + resize handles. Reuse Inspector's IDs because
+    // Dock-slot drag + resize handles. Reuse Inspector IDs because
     // image-tool panels share the right dock slot — the resize delta
     // persists when the user switches between Inspector / image tool.
     {
@@ -96,22 +99,61 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
     );
-    let mut y = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
-    // Disjoint borrows: store + hit_index from host; scene + text_system
-    // are sibling fields on ctx; theme is Copy.
+    // Canonical X close button (painted before the clip so it sits on
+    // the chrome, not inside the scrollable body).
+    paint_panel_close_button(
+        rect,
+        ids::PAD_CANCEL,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
+        theme,
+    );
+    // Color dot + notes intentionally NOT broadcast to image-tool
+    // panels (user 2026-05-24).
+
+    // Body region (everything below the title, above the corner dot) is
+    // clipped + scrolled — Enio 2026-05-26 "padrão central do app é
+    // painel com scroll. corrija todos". Wheel + scrollbar route through
+    // `PADDING_SCROLLBAR_ID` → `PAD_PANEL`.
+    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll = ctx.host.store().panel_scroll(ids::PAD_PANEL);
+
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    let y_after = paint_body_sections(
+        ctx, &snapshot, inner_x, inner_w, row_h, row_gap, chip_w, body_top - scroll,
+    );
+    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    set_last_content_h(content_h);
+    set_last_visible_h(body_h);
+    ctx.scene.pop_layer();
+
+    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+
+    ctx.host.hit_index_mut().register(
+        ids::PAD_CANCEL,
+        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_body_sections(
+    ctx: &mut PaintCtx,
+    snapshot: &ph2d_tool_padding::params::PaddingUiSnapshot,
+    inner_x: f32,
+    inner_w: f32,
+    row_h: f32,
+    row_gap: f32,
+    chip_w: f32,
+    y_in: f32,
+) -> f32 {
+    let theme = ctx.host.theme();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-
-    // Canonical X close button. The hit id is the panel's own
-    // Cancel id — clicking X dispatches the same WidgetEvent::Click
-    // the bottom Cancel button does, so apply_event routes it to
-    // EditorAction::CancelActiveTool with zero new wiring.
-    paint_panel_close_button(rect, ids::PAD_CANCEL, hit_index, scene, theme);
-    // Color dot + notes intentionally NOT broadcast to image-tool
-    // panels (user 2026-05-24): these are transient operation panels,
-    // not annotation surfaces. Inspector keeps both.
+    let mut y = y_in;
 
     // ── Four signed per-edge slider+chip rows ──────────────────────
     // Slider track = live stored value (smooth drag) ?? normalized
@@ -162,7 +204,7 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     // Accent (pressed) = Recenter: the bake recalculates the sprite
     // translation so the original content stays world-fixed. Ghost
     // (idle) = Keep: the translation is left unchanged (canvas resizes
-    // around the current pivot). Snapshot-driven look, like Bg Removal's
+    // around the current pivot). Snapshot-driven look, like Bg Removal
     // Show-Mask toggle.
     let pivot_on = snapshot.recenter_pivot;
     let pivot_state = if pivot_on {
@@ -226,17 +268,36 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     paint_button(&apply, apply_rect, scene, text_system, theme);
     hit_index.register(ids::PAD_APPLY, apply_rect);
     y += row_h;
+    y
+}
 
-    // Body fits without scroll; publish height as both content + visible
-    // so the orchestrator's scroll clamp is a no-op.
-    let used_h = (y - rect.y + PANEL_HEAD_PAD).min(rect.h);
-    set_last_content_h(used_h);
-    set_last_visible_h(rect.h);
-
-    // Re-register close at end-of-frame so any future scroll-on-body
-    // refactor can't shadow it from the back-to-front HitIndex walk.
-    hit_index.register(
-        ids::PAD_CANCEL,
-        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
-    );
+fn paint_scrollbar_and_publish(
+    ctx: &mut PaintCtx,
+    body_rect: Rect,
+    content_h: f32,
+    body_h: f32,
+    scroll: f32,
+    theme: Theme,
+) {
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        let is_active = matches!(
+            ctx.host.store().scrollbar_drag(),
+            Some(d) if d.panel == ids::PAD_PANEL
+        );
+        paint_scrollbar(
+            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(PADDING_SCROLLBAR_ID, thumb);
+    }
+    let store = ctx.host.store_mut();
+    store.set_panel_content_h(ids::PAD_PANEL, content_h);
+    store.set_panel_visible_h(ids::PAD_PANEL, body_h);
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::PAD_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::PAD_PANEL, max_scroll);
+    }
 }

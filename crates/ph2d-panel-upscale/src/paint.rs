@@ -21,6 +21,7 @@
 
 use crate::state::{self, UpscalePanelState, set_last_content_h, set_last_visible_h};
 use crate::{UpscalePanel, ids};
+use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -29,10 +30,12 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, UPSCALE_SCROLLBAR_ID, paint_button, paint_scrollbar,
+    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_upscale::params::{UpscaleAlgorithm, scale_to_slider, slider_to_scale};
 
 /// Label column width for the slider row.
@@ -89,23 +92,59 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
     );
-    let mut y = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
-    // Disjoint borrows: store + hit_index from host; scene + text_system
-    // are sibling fields on ctx; theme is Copy.
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-
-    // X close button → UPS_CANCEL (routes to same handler as Cancel).
+    // X close button → UPS_CANCEL (painted before clip so it sits on
+    // chrome, not inside the scrollable body).
     ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
         rect,
         ids::UPS_CANCEL,
-        hit_index,
-        scene,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
         theme,
     );
     // Color dot + notes intentionally NOT broadcast to image-tool panels.
+
+    // Body region clipped + scrolled (Enio 2026-05-26 "padrão central do
+    // app é painel com scroll"). Wheel + scrollbar route through
+    // `UPSCALE_SCROLLBAR_ID` → `UPS_PANEL`.
+    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll = ctx.host.store().panel_scroll(ids::UPS_PANEL);
+
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    let y_after = paint_body_sections(
+        ctx, &snapshot, inner_x, inner_w, row_h, row_gap, chip_w, body_top - scroll,
+    );
+    let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
+    set_last_content_h(content_h);
+    set_last_visible_h(body_h);
+    ctx.scene.pop_layer();
+
+    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+
+    ctx.host.hit_index_mut().register(
+        ids::UPS_CANCEL,
+        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_body_sections(
+    ctx: &mut PaintCtx,
+    snapshot: &ph2d_tool_upscale::params::UpscaleUiSnapshot,
+    inner_x: f32,
+    inner_w: f32,
+    row_h: f32,
+    row_gap: f32,
+    chip_w: f32,
+    y_in: f32,
+) -> f32 {
+    let theme = ctx.host.theme();
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let mut y = y_in;
 
     // ── Algorithm segmented selector ───────────────────────────────
     // 3 buttons in a row; the active one is the snapshot's algorithm.
@@ -195,15 +234,36 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     paint_button(&apply, apply_rect, scene, text_system, theme);
     hit_index.register(ids::UPS_APPLY, apply_rect);
     y += row_h;
+    y
+}
 
-    // Body fits without scroll; publish height as both content + visible
-    // so the orchestrator's scroll clamp is a no-op.
-    let used_h = (y - rect.y + PANEL_HEAD_PAD).min(rect.h);
-    set_last_content_h(used_h);
-    set_last_visible_h(rect.h);
-
-    hit_index.register(
-        ids::UPS_CANCEL,
-        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
-    );
+fn paint_scrollbar_and_publish(
+    ctx: &mut PaintCtx,
+    body_rect: Rect,
+    content_h: f32,
+    body_h: f32,
+    scroll: f32,
+    theme: Theme,
+) {
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        let is_active = matches!(
+            ctx.host.store().scrollbar_drag(),
+            Some(d) if d.panel == ids::UPS_PANEL
+        );
+        paint_scrollbar(
+            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(UPSCALE_SCROLLBAR_ID, thumb);
+    }
+    let store = ctx.host.store_mut();
+    store.set_panel_content_h(ids::UPS_PANEL, content_h);
+    store.set_panel_visible_h(ids::UPS_PANEL, body_h);
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::UPS_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::UPS_PANEL, max_scroll);
+    }
 }

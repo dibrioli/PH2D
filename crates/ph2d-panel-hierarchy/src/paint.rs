@@ -291,8 +291,10 @@ fn paint_hierarchy_body(
         // it). The deepest column (c == depth - 1) gets an L-stub:
         // vertical down to mid-row, then horizontal to the chevron.
         if depth > 0 {
-            // Internal row pad matches `row.rs::49` exactly.
-            let row_inner_pad = 2.0_f32; // LITERAL-PX-OK: row inset (sync with row.rs)
+            // Internal row pad MUST match `row.rs::pad` exactly — both
+            // resolve to `Spacing::Xxs.px()` (= 2 px). Drift = vertical
+            // tree line stops sitting under the parent's chevron.
+            let row_inner_pad = Spacing::Xxs.px();
             let chev_col_w = Spacing::Lg.px(); // sync with row.rs chev_w
             let half_chev = chev_col_w * 0.5;
             // Tree lines: bumped from `Border` → `Text3` 2026-05-24
@@ -301,16 +303,48 @@ fn paint_hierarchy_body(
             // (≈ same as the panel chevrons) so the relationship is
             // clear without competing with the row content.
             let line_color = resolve(ColorToken::Text3, theme);
+            // Inter-row gap (set by `y += HIER_ROW_H + Spacing::Xxs.px()`
+            // below). Extend each vertical segment by this amount on the
+            // bottom so it fuses with the next row's segment without a
+            // visible break, AND extend "my column" upward to the
+            // parent's chevron mid-line so the L-stub touches the
+            // parent's arrow (Enio 2026-05-26 round 2: "não vamos
+            // deixar esses espaços entre as linhas, mas desenhe a
+            // linha até chegar bem perto da setinha ou da outra linha").
+            let row_gap = Spacing::Xxs.px();
+            let parent_chev_y = row_rect.y - HIER_ROW_H * 0.5 - row_gap;
             for c in 0..(depth as usize) {
                 let col_chev_x = rect.x + body_pad + c as f32 * INDENT_PX + row_inner_pad;
                 let line_x = col_chev_x + half_chev;
                 let is_my_column = c == (depth as usize) - 1;
+                // Does column `c+1` continue past row i? (Some future
+                // row has depth ≥ c+1 before any row drops below c+1.)
+                let target = c as u32 + 1;
+                let mut continues = false;
+                for &d in &depths[(i + 1)..] {
+                    if d < target {
+                        break;
+                    }
+                    if d == target {
+                        continues = true;
+                        break;
+                    }
+                }
                 if is_my_column {
+                    // Vertical reaches up to the parent's chevron and
+                    // down to either mid-row (L-stub, last child) or
+                    // past the inter-row gap (T-junction, has siblings
+                    // after).
+                    let vert_bot = if continues {
+                        row_rect.y + row_rect.h + row_gap
+                    } else {
+                        row_rect.y + row_rect.h * 0.5
+                    };
                     let vert = Rect::new(
                         line_x - 0.5, // LITERAL-PX-OK: 1-px line centered
-                        row_rect.y,
+                        parent_chev_y,
                         1.0,
-                        row_rect.h * 0.5,
+                        (vert_bot - parent_chev_y).max(0.0),
                     );
                     ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
                     let next_col_chev =
@@ -322,24 +356,16 @@ fn paint_hierarchy_body(
                         1.0,
                     );
                     ph2d_editor_core::paint::fill_rounded_rect(scene, h_stub, 0.0, line_color);
-                } else {
-                    // Continues past me iff some row j > i has depth
-                    // == c+1 before any row drops below c+1.
-                    let target = c as u32 + 1;
-                    let mut continues = false;
-                    for &d in &depths[(i + 1)..] {
-                        if d < target {
-                            break;
-                        }
-                        if d == target {
-                            continues = true;
-                            break;
-                        }
-                    }
-                    if continues {
-                        let vert = Rect::new(line_x - 0.5, row_rect.y, 1.0, row_rect.h);
-                        ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
-                    }
+                } else if continues {
+                    // Ancestor column passes through this row; extend
+                    // by `row_gap` so it meets the next row's segment.
+                    let vert = Rect::new(
+                        line_x - 0.5,
+                        row_rect.y,
+                        1.0,
+                        row_rect.h + row_gap,
+                    );
+                    ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
                 }
             }
         }

@@ -45,16 +45,15 @@ pub(crate) fn paint_hierarchy_row(
             resolve(ColorToken::Accent, theme),
         );
     }
-    // Indent + body padding are ALREADY applied by the caller
-    // (`paint.rs::244 — row_rect.x = rect.x + body_pad + indent`).
-    // Duplicating either here doubled the visual indent and pushed
-    // children much further right than Godot's Scene panel pattern
-    // — user 2026-05-24: "atualmente o ícone e nome do filho fica
-    // muito mais deslocado para direita que o pai, mas deve ser
-    // como na godot: deslocar o filho para direita apenas a largura
-    // do ícone." Internal `pad` reduced 10 → 2 so names sit close
-    // to the panel's left edge.
-    let pad = 8.0_f32; // LITERAL-PX-OK: row left-inset (Enio 2026-05-26: deslocar ícones esquerda + nome mais pra direita; antes era 2 px Godot-tight)
+    // Internal row inset. MUST match `paint.rs::row_inner_pad` — the
+    // parentesco tree lines in `paint.rs` are drawn at
+    // `col_chev_x + half_chev` using row_inner_pad as the inner offset.
+    // If pad ≠ row_inner_pad, the vertical guide line drifts horizontally
+    // away from the chevron of the parent row (Enio 2026-05-26: "A linha
+    // que mostra parentesco deveria sair exatamente abaixo da setinha
+    // mas está deslocada. Para corrigir coloque mais para a esquerda
+    // a setinha, o ícone e o nome dos objetos").
+    let pad = Spacing::Xxs.px(); // sync with paint.rs::row_inner_pad
     let chev_w = Spacing::Lg.px();
     // Chev → icon gap tightened Xs (4) → Xxs (2) 2026-05-24 per user:
     // "quero os ícones mais próximos das setas". Godot's Scene panel
@@ -105,17 +104,16 @@ pub(crate) fn paint_hierarchy_row(
     );
     // Hit-register the entity icon as its own companion (2026-05-26):
     // double-click on the icon focuses the view; double-click on the
-    // name body (row body) triggers rename. Hit pad Md (8 px) — alvo
-    // mais generoso (Enio: "expanda um pouco a área sensível").
+    // name body (row body) triggers rename. Hit area = icon glyph
+    // EXACTLY (zero padding) — Enio 2026-05-26 round 2: "a área
+    // sensível ao duplo clique sobre o ícone à esquerda do nome do
+    // objeto em hierarquia ficou muito grande e atrapalha clicar
+    // na seta à esquerda do ícone. Ajuste ao tamanho do ícone".
+    // Any positive pad would extend left past the icon edge into
+    // the chev_pad gap (2 px) and onto the chevron itself, since
+    // companion ids registered later in HitIndex win.
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
-        let hit_pad = Spacing::Md.px();
-        let hit_rect = Rect::new(
-            icon_rect.x - hit_pad,
-            icon_rect.y - hit_pad,
-            icon_rect.w + hit_pad * 2.0,
-            icon_rect.h + hit_pad * 2.0,
-        );
-        idx.register(ids::hier_icon_companion(row_id), hit_rect);
+        idx.register(ids::hier_icon_companion(row_id), icon_rect);
     }
 
     // Right-side icon cluster — eye colada na borda direita (pad 0)

@@ -632,10 +632,18 @@ pub fn dispatch_pointer_with_text<'frame>(
                 store.set_focus(None);
             }
 
-            // Detect double-click against the previous Down. Anything
-            // landing on a TextInput / NumberInput within the
-            // double-click window (and on the same id) selects all.
-            let is_double_click = store.record_pointer_down(new_focus, event.timestamp_ns);
+            // Detect double-click against the previous Down. Use the
+            // raw hit id (not `new_focus`) so hierarchy companion ids
+            // — which are hit-registered but absent from `WidgetStore`,
+            // so `is_focusable` rejects them and `new_focus` is None —
+            // can still arm `pending_double_click`. Without this,
+            // double-click on the hierarchy entity-icon never upgrades
+            // to `WidgetEvent::DoubleClick(icon_companion_id)` and the
+            // panel's "focus camera on row" gesture never fires
+            // (Enio 2026-05-26: "O duplo clique no ícone deveria focar
+            // o objeto no canvas, mas não funciona").
+            let down_id = hit.map(|(id, _)| id);
+            let is_double_click = store.record_pointer_down(down_id, event.timestamp_ns);
 
             // Hierarchy chrome companions (eye toggle, chevron toggle,
             // lock toggle, group toggle, entity-icon focus) are

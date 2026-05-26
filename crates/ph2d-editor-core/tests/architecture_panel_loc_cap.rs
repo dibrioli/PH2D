@@ -68,8 +68,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/paint.rs",
         "paint_hierarchy_body",
-        260,
-        "Wave 11 UI canon panel-chrome additions — split deferred to follow-up Wave",
+        320,
+        "Wave 11 UI canon panel-chrome additions + Enio 2026-05-26 tree-line gap elimination (vertical reaches parent chevron + extends through inter-row gap) — split deferred to follow-up Wave",
     ),
     // Wave 11 UI canon: paint_transform_section gained adaptive
     // layout (label-above when narrow + per-row returned height).

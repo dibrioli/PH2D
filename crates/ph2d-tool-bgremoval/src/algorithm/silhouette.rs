@@ -109,6 +109,15 @@ pub fn detect_subject_interior(
     // ajustes finos conseguidos através dos sliders não se aplicam,
     // fazendo a ferramenta muito rígida").
     finalise_protect_with_falloff(rgba, visited, edge_b, wi, hi, queue, out_protect);
+    // Trapped-pocket unprotect (Enio 2026-05-26 round 3 "algumas
+    // áreas apertadas não são retiradas"). After the gradient is in
+    // place, walk interior connected components and unprotect those
+    // that are BOTH small (≤ 1% of image) AND average-bg-similar.
+    // That's what gets the gap between fingers / inside concavities
+    // back to "remove me" without touching the chroma pipeline.
+    // Reuses `edge_b` (no longer needed after distance) as the
+    // labeled-component scratch.
+    unprotect_small_bg_pockets(rgba, visited, edge_a, edge_b, wi, hi, queue, out_protect);
 }
 
 /// Y' = 0.299R + 0.587G + 0.114B, integer-approx (Rec.601).
@@ -432,6 +441,155 @@ fn finalise_protect_with_falloff(
     }
 }
 
+/// Walk interior connected components (visited == 0, non-edge,
+/// opaque) and unprotect those that are both SMALL and average to a
+/// colour close to the exterior bg. That's exactly the
+/// trapped-pocket case Enio reported: tight concavities (between
+/// fingers, inside curls) where the bg colour leaks but the flood
+/// can't penetrate because the closing seals the entry.
+///
+/// Components larger than the size threshold are left alone — they
+/// can't be "tight pockets" by definition (e.g. the main subject
+/// body, or a legitimate bg-coloured interior region like the
+/// inside of a transparent jewel which a separate
+/// `protects_interior_patch_matching_bg_colour` test ensures stays
+/// locked).
+///
+/// `labeled` is workspace storage (reuses `edge_b` from the closing
+/// step, which is no longer needed at this point). `queue` likewise
+/// reuses the silhouette BFS queue.
+fn unprotect_small_bg_pockets(
+    rgba: &[u8],
+    visited: &[u8],
+    edge_mask: &[u8],
+    labeled: &mut [u8],
+    w: usize,
+    h: usize,
+    queue: &mut Vec<u32>,
+    out_protect: &mut [u8],
+) {
+    let n = w * h;
+    if n == 0 {
+        return;
+    }
+    // 1% of image, floor 64 px. At 256² preview this is ~655 px; at
+    // 2048² source ~42k px. Tight concavities between fingers/curls
+    // are well under both ceilings even on full-res; legitimate
+    // bg-coloured interior regions (transparent jewels, inset
+    // panels) are typically much larger.
+    let size_threshold = (n / 100).max(64);
+
+    // Compute exterior (bg) average colour from the flood-reached
+    // pixels. Skips transparent (those don't carry colour) so the
+    // average reflects only real exterior pixels.
+    let (bg_r, bg_g, bg_b) = {
+        let mut sum_r: u64 = 0;
+        let mut sum_g: u64 = 0;
+        let mut sum_b: u64 = 0;
+        let mut count: u64 = 0;
+        for i in 0..n {
+            if visited[i] != 0 && rgba[i * 4 + 3] > 0 {
+                sum_r += rgba[i * 4] as u64;
+                sum_g += rgba[i * 4 + 1] as u64;
+                sum_b += rgba[i * 4 + 2] as u64;
+                count += 1;
+            }
+        }
+        if count == 0 {
+            return; // no exterior detected — nothing to compare against
+        }
+        (
+            (sum_r / count) as i32,
+            (sum_g / count) as i32,
+            (sum_b / count) as i32,
+        )
+    };
+
+    // Component-average colour within √TIGHT_BG_DIST_SQ RGB units of
+    // bg counts as "bg-like enough to unprotect". 30 RGB ≈ a faint
+    // tonal shift on a uniform background — well past sub-pixel
+    // chroma noise. Squared because we never sqrt.
+    const TIGHT_BG_DIST_SQ: i32 = 30 * 30 * 3; // 2700
+
+    for v in labeled.iter_mut().take(n) {
+        *v = 0;
+    }
+
+    for start in 0..n {
+        if labeled[start] != 0 {
+            continue;
+        }
+        if visited[start] != 0 {
+            continue; // exterior
+        }
+        if edge_mask[start] != 0 {
+            continue; // barrier
+        }
+        if rgba[start * 4 + 3] == 0 {
+            continue; // transparent
+        }
+
+        // BFS this component into `queue`, summing colour.
+        queue.clear();
+        queue.push(start as u32);
+        labeled[start] = 1;
+        let mut head = 0usize;
+        let mut sum_r: i64 = 0;
+        let mut sum_g: i64 = 0;
+        let mut sum_b: i64 = 0;
+        while head < queue.len() {
+            let i = queue[head] as usize;
+            head += 1;
+            sum_r += rgba[i * 4] as i64;
+            sum_g += rgba[i * 4 + 1] as i64;
+            sum_b += rgba[i * 4 + 2] as i64;
+            let x = i % w;
+            let y = i / w;
+            let candidates = [
+                if x > 0 { Some(i - 1) } else { None },
+                if x + 1 < w { Some(i + 1) } else { None },
+                if y > 0 { Some(i - w) } else { None },
+                if y + 1 < h { Some(i + w) } else { None },
+            ];
+            for maybe_ni in candidates.iter() {
+                if let Some(ni) = *maybe_ni {
+                    if labeled[ni] != 0 {
+                        continue;
+                    }
+                    if visited[ni] != 0 {
+                        continue;
+                    }
+                    if edge_mask[ni] != 0 {
+                        continue;
+                    }
+                    if rgba[ni * 4 + 3] == 0 {
+                        continue;
+                    }
+                    labeled[ni] = 1;
+                    queue.push(ni as u32);
+                }
+            }
+        }
+
+        let size = queue.len();
+        if size == 0 || size >= size_threshold {
+            continue; // big component → leave protected
+        }
+        let avg_r = (sum_r / size as i64) as i32;
+        let avg_g = (sum_g / size as i64) as i32;
+        let avg_b = (sum_b / size as i64) as i32;
+        let dr = avg_r - bg_r;
+        let dg = avg_g - bg_g;
+        let db = avg_b - bg_b;
+        let dist_sq = dr * dr + dg * dg + db * db;
+        if dist_sq < TIGHT_BG_DIST_SQ {
+            for &idx in queue.iter() {
+                out_protect[idx as usize] = 0;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -609,6 +767,71 @@ mod tests {
         );
         // And outside the silhouette is unprotected (sanity).
         assert_eq!(prot[0], 0, "exterior corner must remain unlocked");
+    }
+
+    /// A trapped pocket between two close subjects (with the same bg
+    /// colour leaking into the gap) must be UN-protected so the
+    /// chroma pipeline can remove it (Enio 2026-05-26 "algumas
+    /// áreas apertadas não são retiradas"). Build a 60×40 image
+    /// with two 10×30 dark vertical bars separated by a 6-px gap;
+    /// inside the gap is exactly the same beige as the outer bg.
+    /// Without the pocket pruner the gap would be auto-protected
+    /// (interior of the combined silhouette → never removed); with
+    /// the pruner those gap pixels go back to strength 0.
+    #[test]
+    fn trapped_pocket_with_bg_colour_is_unprotected() {
+        let w = 60u32;
+        let h = 40u32;
+        let n = (w as usize) * (h as usize);
+        let bg = [220u8, 200, 170];
+        let mut rgba = vec![0u8; n * 4];
+        for i in 0..n {
+            rgba[i * 4] = bg[0];
+            rgba[i * 4 + 1] = bg[1];
+            rgba[i * 4 + 2] = bg[2];
+            rgba[i * 4 + 3] = 255;
+        }
+        // Left bar: x=20..30, y=5..35 (dark).
+        // Right bar: x=36..46, y=5..35 (dark; gap between is x=30..36 = 6 px).
+        for y in 5..35 {
+            for x in 20..30 {
+                let i = y * 60 + x;
+                rgba[i * 4] = 25;
+                rgba[i * 4 + 1] = 25;
+                rgba[i * 4 + 2] = 25;
+            }
+            for x in 36..46 {
+                let i = y * 60 + x;
+                rgba[i * 4] = 25;
+                rgba[i * 4 + 1] = 25;
+                rgba[i * 4 + 2] = 25;
+            }
+        }
+        let mut luma = vec![0u8; n];
+        let mut mag = vec![0u16; n];
+        let mut e_a = vec![0u8; n];
+        let mut e_b = vec![0u8; n];
+        let mut vis = vec![0u8; n];
+        let mut q = Vec::with_capacity(n);
+        let mut prot = vec![0u8; n];
+        detect_subject_interior(
+            &rgba, w, h, &mut luma, &mut mag, &mut e_a, &mut e_b, &mut vis, &mut q, &mut prot,
+        );
+        // Centre of the gap (x=33, y=20) must NOT be protected — it
+        // is bg-coloured AND in a tight pocket.
+        let gap_centre = 20 * 60 + 33;
+        assert_eq!(
+            prot[gap_centre], 0,
+            "trapped pocket with bg colour must be unprotected (got {})",
+            prot[gap_centre]
+        );
+        // Centre of the LEFT bar (dark, definitely subject) stays locked.
+        let bar_centre = 20 * 60 + 25;
+        assert!(
+            prot[bar_centre] > 0,
+            "subject bar interior must remain protected (got {})",
+            prot[bar_centre]
+        );
     }
 
     /// A degenerate tiny image must not panic and must return all-zero

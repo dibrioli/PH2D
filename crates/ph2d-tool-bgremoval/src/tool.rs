@@ -786,6 +786,17 @@ impl BgRemovalTool {
         if !has_user && !has_auto {
             return false;
         }
+        // CRITICAL: silhouette runs BEFORE `run_pipeline` — and
+        // `run_pipeline` is what normally calls `scratch.ensure`. So
+        // every silhouette buffer (luma / sobel / edge / visited /
+        // auto_protect_mask) must be sized to THIS run's dims here,
+        // or the indexing inside the silhouette inner loops walks
+        // off the end of a buffer left at the previous tick's dims
+        // (Enio 2026-05-26: clicking Detect-subject closed the app —
+        // the thumbnail run before was 160², the canvas preview here
+        // is ~256², and `luma[160²..256²]` was OOB).
+        self.scratch
+            .ensure(self.source_w, self.source_h, self.params.refinement.color_guide);
         self.combined_protect.clear();
         self.combined_protect.resize(n, 0);
         if has_auto {
@@ -831,6 +842,13 @@ impl BgRemovalTool {
         if !has_user && !has_auto {
             return false;
         }
+        // Silhouette runs BEFORE `run_pipeline` — size the scratch
+        // buffers to this run's dims now, otherwise `luma[i]` etc.
+        // walk off the end of a buffer left at the previous tick's
+        // dims. See `prepare_combined_protect_full` for the full
+        // diagnosis.
+        self.scratch
+            .ensure(dw, dh, self.params.refinement.color_guide);
         self.combined_protect.clear();
         self.combined_protect.resize(n, 0);
         if has_auto {

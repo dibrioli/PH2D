@@ -59,13 +59,29 @@ pub fn detect_subject_interior(
     let wi = w as usize;
     let hi = h as usize;
     let n = wi * hi;
-    debug_assert_eq!(rgba.len(), n * 4);
-    debug_assert!(luma.len() >= n);
-    debug_assert!(sobel_mag.len() >= n);
-    debug_assert!(edge_a.len() >= n);
-    debug_assert!(edge_b.len() >= n);
-    debug_assert!(visited.len() >= n);
-    debug_assert!(out_protect.len() >= n);
+
+    // Runtime guards (NOT `debug_assert!` — those evaporate in
+    // release builds; an undersized scratch buffer would then walk
+    // off the end of `luma`/`sobel_mag`/etc. and abort the process).
+    // Bail with a zeroed mask if any caller forgot to resize the
+    // scratch to this run's dims. The canonical caller
+    // (`BgRemovalTool::prepare_combined_protect_*`) calls
+    // `scratch.ensure(w, h, …)` exactly for this; the guard is
+    // defense-in-depth so a future caller can't crash the app the
+    // way clicking Detect-subject did on 2026-05-26.
+    if rgba.len() < n * 4
+        || luma.len() < n
+        || sobel_mag.len() < n
+        || edge_a.len() < n
+        || edge_b.len() < n
+        || visited.len() < n
+        || out_protect.len() < n
+    {
+        for v in out_protect.iter_mut().take(n) {
+            *v = 0;
+        }
+        return;
+    }
 
     if wi < 3 || hi < 3 {
         for v in out_protect.iter_mut().take(n) {

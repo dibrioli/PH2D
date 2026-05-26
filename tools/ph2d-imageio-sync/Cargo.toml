@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-imageio-sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Both a library (the scan + render logic, shared with the staleness gate in
+# `ph2d-imageio-registry-init/tests/staleness.rs`) and a binary (the rewriter
+# invoked by `cargo run -p ph2d-imageio-sync`). Dependency-free: pure-std
+# codegen. Mirrors `ph2d-tool-sync` and `ph2d-node-sync`.
+[lib]
+
+[[bin]]
+name = "ph2d-imageio-sync"
+path = "src/main.rs"

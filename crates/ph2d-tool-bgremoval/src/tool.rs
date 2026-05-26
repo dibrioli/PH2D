@@ -204,6 +204,16 @@ pub struct BgRemovalTool {
     /// the tool — this is what lets `ph2d-tool-runtime::drive_preview_cache`
     /// stay generic.
     cached_canvas_preview: Option<(Vec<u8>, u32, u32)>,
+
+    /// Last (u, v) painted in the current stroke — anchor used by
+    /// `stamp_protect` to interpolate intermediate dabs between the
+    /// previous cursor position and the current one. Without this, a
+    /// fast drag produces visibly spaced discs along the path (Enio
+    /// 2026-05-26: "máscara apresenta pintura não regular, como se o
+    /// espaço entre os pontos de pintura fossem muito grandes").
+    /// `None` outside an active stroke; reset by
+    /// [`Self::set_protect_painting`] on pointer-up.
+    last_protect_uv: Option<(f32, f32)>,
 }
 
 impl Default for BgRemovalTool {
@@ -237,6 +247,7 @@ impl Default for BgRemovalTool {
             show_mask: true,
             pending_islands: Vec::new(),
             cached_canvas_preview: None,
+            last_protect_uv: None,
         }
     }
 }
@@ -388,8 +399,14 @@ impl BgRemovalTool {
     }
 
     /// Set the protection-brush dab-drag state (shell sets `true` on
-    /// pointer-down over the sprite, `false` on pointer-up).
+    /// pointer-down over the sprite, `false` on pointer-up). Clearing
+    /// the flag also drops `last_protect_uv` so the next stroke
+    /// doesn't draw an interpolated line from the previous stroke's
+    /// final dab to the new starting position.
     pub fn set_protect_painting(&mut self, painting: bool) {
+        if !painting {
+            self.last_protect_uv = None;
+        }
         self.protect_painting = painting;
     }
 
@@ -430,9 +447,13 @@ impl BgRemovalTool {
     }
 
     /// Shared dab kernel for paint (`erase = false`) / erase (`erase =
-    /// true`). Walks the bounding box of the disc, computes the falloff
-    /// strength per covered pixel, and either `max`-accumulates (paint) or
-    /// `saturating_sub`-removes (erase).
+    /// true`). Lazy-sizes the mask, then walks the segment from the
+    /// previous stroke anchor to `(u, v)` placing intermediate dabs
+    /// every `STAMP_SPACING_FRAC * radius` SOURCE pixels. Without the
+    /// interpolation a fast drag draws discrete discs along the path
+    /// (Enio 2026-05-26: "espaço entre os pontos de pintura fossem
+    /// muito grandes"); 4 dabs per radius (0.25 spacing) gives a
+    /// continuous painterly trail with cheap accumulation.
     fn stamp_protect(&mut self, u: f32, v: f32, radius_px: f32, erase: bool) {
         if !self.has_source() {
             return;
@@ -452,9 +473,48 @@ impl BgRemovalTool {
         }
         let u = u.clamp(0.0, 1.0);
         let v = v.clamp(0.0, 1.0);
+        let r = radius_px.max(0.5);
+
+        // Interpolate intermediate dabs between the previous (u, v)
+        // and this one so a fast drag draws a continuous trail
+        // instead of spaced discs. STAMP_SPACING_FRAC = 0.25 → ≥4
+        // dabs per radius of cursor motion (Procreate-style default).
+        // First dab of a stroke (no anchor yet) just stamps once.
+        const STAMP_SPACING_FRAC: f32 = 0.25;
+        let spacing_px = (r * STAMP_SPACING_FRAC).max(0.5);
+        if let Some((lu, lv)) = self.last_protect_uv {
+            let du_px = (u - lu) * (w as f32 - 1.0);
+            let dv_px = (v - lv) * (h as f32 - 1.0);
+            let dist_px = (du_px * du_px + dv_px * dv_px).sqrt();
+            let n_steps = (dist_px / spacing_px).ceil().max(1.0) as u32;
+            for i in 1..=n_steps {
+                let t = i as f32 / n_steps as f32;
+                let iu = lu + (u - lu) * t;
+                let iv = lv + (v - lv) * t;
+                self.stamp_single(iu, iv, r, erase);
+            }
+        } else {
+            self.stamp_single(u, v, r, erase);
+        }
+        self.last_protect_uv = Some((u, v));
+
+        // Protect dab mutates the mask (force-keep region for compose).
+        // The matte itself only re-segments on pointer-up (shell drops
+        // its cached preview there); but the on-canvas tint overlay
+        // reads the mask each frame and the canvas preview gate uses
+        // this flag — mark dirty so a follow-up render-loop tick sees
+        // the new mask without waiting for an unrelated edit.
+        self.params_dirty = true;
+    }
+
+    /// Stamp a single brush disc into `protect_mask` at UV `(u, v)`
+    /// with `r` SOURCE-px radius. Assumes the mask has already been
+    /// lazy-sized by the caller. Falloff strength accumulates via
+    /// `max` (paint) or `saturating_sub` (erase).
+    fn stamp_single(&mut self, u: f32, v: f32, r: f32, erase: bool) {
+        let (w, h) = (self.source_w, self.source_h);
         let cx = u * (w as f32 - 1.0);
         let cy = v * (h as f32 - 1.0);
-        let r = radius_px.max(0.5);
         let inv_r = 1.0 / r;
         let x0 = (cx - r).floor().max(0.0) as u32;
         let x1 = ((cx + r).ceil() as i64).clamp(0, w as i64 - 1) as u32;
@@ -480,13 +540,6 @@ impl BgRemovalTool {
                 };
             }
         }
-        // Protect dab mutates the mask (force-keep region for compose).
-        // The matte itself only re-segments on pointer-up (shell drops
-        // its cached preview there); but the on-canvas tint overlay
-        // reads the mask each frame and the canvas preview gate uses
-        // this flag — mark dirty so a follow-up render-loop tick sees
-        // the new mask without waiting for an unrelated edit.
-        self.params_dirty = true;
     }
 
     /// Protection-brush radius in SOURCE pixels (the unit the shell passes
@@ -1743,6 +1796,75 @@ mod tests {
             !t.has_protect_mask(),
             "erase without a painted mask is inert"
         );
+    }
+
+    #[test]
+    fn stroke_interpolation_fills_gap_between_distant_dabs() {
+        // Two dabs spaced 30 px apart within one stroke with a small
+        // radius (4 px) — before stroke interpolation, the midpoint
+        // was untouched ("bolinhas" visible along the path). After
+        // the fix, the segment is continuously covered.
+        let mut t = BgRemovalTool::default();
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![255u8; 64 * 64 * 4]),
+            64,
+            64,
+        );
+        t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
+        let r = 4.0;
+        // Stroke begins at (10, 32), ends at (40, 32) — 30 px horizontal.
+        let w = 63.0_f32;
+        let h = 63.0_f32;
+        t.paint_protect_at_uv(10.0 / w, 32.0 / h, r);
+        t.paint_protect_at_uv(40.0 / w, 32.0 / h, r);
+        let (mask, _, _) = t.protect_mask_source();
+        // Walk the midline: every pixel from (10..=40, 32) must be
+        // touched. A single gap = the bug Enio reported.
+        for x in 10..=40 {
+            let i = 32 * 64 + x;
+            assert!(
+                mask[i] >= 200,
+                "px {x} on the stroke path must be protected (got {})",
+                mask[i]
+            );
+        }
+        // Outside the stroke band stays untouched.
+        let outside = 50 * 64 + 50;
+        assert_eq!(mask[outside], 0);
+    }
+
+    #[test]
+    fn stroke_anchor_resets_between_strokes() {
+        // Stroke 1: paint at (10, 10). Pointer-up. Stroke 2: paint at
+        // (50, 50). The line connecting them must NOT be filled — the
+        // anchor reset on pointer-up prevents cross-stroke interpolation.
+        let mut t = BgRemovalTool::default();
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(vec![255u8; 64 * 64 * 4]),
+            64,
+            64,
+        );
+        t.apply_ui_edit(BgRemovalUiEdit::SetFalloff(BrushFalloff::Constant));
+        let r = 3.0;
+        let scale = 63.0_f32;
+        // First stroke.
+        t.set_protect_painting(true);
+        t.paint_protect_at_uv(10.0 / scale, 10.0 / scale, r);
+        t.set_protect_painting(false); // pointer-up — resets anchor.
+        // Second stroke, far away.
+        t.set_protect_painting(true);
+        t.paint_protect_at_uv(50.0 / scale, 50.0 / scale, r);
+        t.set_protect_painting(false);
+        let (mask, _, _) = t.protect_mask_source();
+        // The mid-segment between the two strokes must remain untouched.
+        let mid = 30 * 64 + 30;
+        assert_eq!(
+            mask[mid], 0,
+            "no interpolation across pointer-up boundary (mid-segment must be clean)"
+        );
+        // Both stroke endpoints ARE painted.
+        assert!(mask[10 * 64 + 10] > 200);
+        assert!(mask[50 * 64 + 50] > 200);
     }
 
     #[test]

@@ -28,6 +28,21 @@ bytemuck = { version = "1", features = ["derive"] }
 # blake3 hash para BrushParamsHash + dedup em stroke history (ADR-0046).
 blake3 = "1"
 # GPU wrapper para StampPipeline compute (T1.4 ship). Adicionado em T1.3
-# (audit 2026-05-26 C-G1) pre-empt — T1.4 vai criar src/stamp_pipeline.rs
-# que importa ph2d-gpu sem precisar refactor Cargo.toml.
+# (audit 2026-05-26 C-G1) pre-empt — T1.4 wires `StampPipeline` via
+# `ph2d-gpu::GpuContext` + direct `wgpu` types for the bind group layout.
 ph2d-gpu = { path = "../ph2d-gpu" }
+# Direct `wgpu` dep for ComputePipeline/BindGroupLayout/etc types
+# referenced by `stamp_pipeline.rs`. Version pinned to match `ph2d-gpu`
+# (transitive resolution would otherwise risk version skew on minor
+# bumps — Comfy post-mortem cited in SKILL §15).
+wgpu = "28"
+
+[dev-dependencies]
+# naga reflection in stamp_pipeline tests:
+# - `stamp_wgsl_parses_via_naga` / `stamp_wgsl_validates_via_naga`
+#   catch syntax + analyzer errors before GPU init.
+# - `shader_stamp_struct_size_matches_rust_abi` is the audit D-F9
+#   follow-up: WGSL `Stamp` size must equal the Rust 96-byte ABI.
+# - `shader_workgroup_size_is_8x8x1` enforces spec §1.8.2.
+# Dev-dep only — production paths never reach the reflection helper.
+naga = "28"

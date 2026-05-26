@@ -9,7 +9,7 @@
 //! Conversion to / from sRGB is provided via OKLab as an intermediate
 //! (the standard reference path).
 
-use crate::{LinearRgba, SrgbRgba};
+use crate::{LinearRgba, OklabColor, SrgbRgba};
 
 /// A color in OKLCH coordinates.
 ///
@@ -34,44 +34,27 @@ impl OklchColor {
         Self { l, c, h, a: 1.0 }
     }
 
-    /// Convert to linear-light sRGB via OKLab → linear sRGB matrix.
+    /// Convert to linear-light sRGB via the OKLab → linear sRGB matrix.
     /// Out-of-gamut values are NOT clamped here; chain `.to_srgb()` to
     /// land in display range.
+    ///
+    /// Implementation: convert polar OKLCH → cartesian OKLab → linear,
+    /// delegating the LMS-cubed matrix to [`OklabColor::to_linear`] so
+    /// the 9 matrix coefficients live in a single place (no drift
+    /// risk between the two color types).
+    #[inline]
+    #[must_use]
     pub fn to_linear(self) -> LinearRgba {
-        let (l_lab, a_lab, b_lab) = oklch_to_oklab(self.l, self.c, self.h);
-        let (r, g, b) = oklab_to_linear_rgb(l_lab, a_lab, b_lab);
-        LinearRgba::new(r, g, b, self.a)
+        let h_rad = self.h.to_radians();
+        OklabColor::new(self.l, self.c * h_rad.cos(), self.c * h_rad.sin(), self.a).to_linear()
     }
 
     /// Convert to sRGB byte form.
+    #[inline]
+    #[must_use]
     pub fn to_srgb(self) -> SrgbRgba {
         self.to_linear().to_srgb()
     }
-}
-
-#[inline]
-fn oklch_to_oklab(l: f32, c: f32, h_deg: f32) -> (f32, f32, f32) {
-    let h_rad = h_deg.to_radians();
-    (l, c * h_rad.cos(), c * h_rad.sin())
-}
-
-/// Björn Ottosson OKLab → linear sRGB (D65). Standard reference
-/// implementation; see <https://bottosson.github.io/posts/oklab/>.
-#[inline]
-fn oklab_to_linear_rgb(l: f32, a: f32, b: f32) -> (f32, f32, f32) {
-    let l_ = l + 0.396_337_78 * a + 0.215_803_76 * b;
-    let m_ = l - 0.105_561_346 * a - 0.063_854_17 * b;
-    let s_ = l - 0.089_484_18 * a - 1.291_485_5 * b;
-
-    let l3 = l_ * l_ * l_;
-    let m3 = m_ * m_ * m_;
-    let s3 = s_ * s_ * s_;
-
-    (
-        4.076_741_7 * l3 - 3.307_711_6 * m3 + 0.230_969_94 * s3,
-        -1.268_438 * l3 + 2.609_757_4 * m3 - 0.341_319_38 * s3,
-        -0.004_196_086_3 * l3 - 0.703_418_6 * m3 + 1.707_614_7 * s3,
-    )
 }
 
 #[cfg(test)]

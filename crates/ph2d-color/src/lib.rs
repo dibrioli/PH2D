@@ -11,12 +11,14 @@
 //!
 //! ## Type map
 //!
-//! | Type              | Channels        | Encoding                | Notes                                     |
-//! |-------------------|-----------------|-------------------------|-------------------------------------------|
-//! | [`SrgbRgba`]      | `[u8; 4]`       | sRGB gamma + 8-bit       | Wire format (file IO, web, panels)        |
-//! | [`LinearRgba`]    | `[f32; 4]`      | linear-light, [0..1]     | Render math (blending, filters)           |
-//! | [`Premultiplied<T>`] | wraps `T`    | alpha-premultiplied      | Marker — required for `wgpu` blend modes  |
-//! | [`OklchColor`]    | `f32 × 4`       | OKLCH (L,C,H,A)          | Design tokens, hue-stable interpolation   |
+//! | Type                | Channels        | Encoding                  | Notes                                          |
+//! |---------------------|-----------------|---------------------------|------------------------------------------------|
+//! | [`SrgbRgba`]        | `[u8; 4]`       | sRGB gamma + 8-bit        | Wire format (file IO, web, panels)             |
+//! | [`LinearRgba`]      | `[f32; 4]`      | linear-light, [0..1]      | Render math (blending, filters)                |
+//! | [`Premultiplied<T>`]| wraps `T`       | alpha-premultiplied       | Marker — required for `wgpu` blend modes       |
+//! | [`OklchColor`]      | `f32 × 4`       | OKLCH (L,C,H,A) polar     | Design tokens, hue-stable interpolation        |
+//! | [`OklabColor`]      | `f32 × 4` Pod   | OKLab (L,a,b,α) cartesian | Brush stamp wire format (ADR-0044 §2.3)        |
+//! | [`MixboxLinearSrgb`]| alias `LinearRgba` | linear-light, [0..1]   | Mixbox pigment mixing working space (ADR-0044 §2.5) |
 //!
 //! ## Conversion rules
 //!
@@ -38,11 +40,15 @@
 #![forbid(unsafe_code)]
 
 pub mod linear;
+pub mod mixbox_space;
+pub mod oklab;
 pub mod oklch;
 pub mod premultiplied;
 pub mod srgb;
 
 pub use linear::LinearRgba;
+pub use mixbox_space::MixboxLinearSrgb;
+pub use oklab::OklabColor;
 pub use oklch::OklchColor;
 pub use premultiplied::Premultiplied;
 pub use srgb::SrgbRgba;

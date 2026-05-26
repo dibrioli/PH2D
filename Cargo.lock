@@ -4057,6 +4057,13 @@ name = "ph2d-i18n"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-imageio"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+]
+
+[[package]]
 name = "ph2d-input"
 version = "0.0.0"
 dependencies = [
@@ -4164,9 +4171,11 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "bytemuck",
+ "naga",
  "ph2d-gpu",
  "postcard",
  "serde",
+ "wgpu",
 ]
 
 [[package]]

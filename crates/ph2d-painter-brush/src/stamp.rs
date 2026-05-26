@@ -54,12 +54,12 @@ pub struct Stamp {
     pub tilt: f32,                 // 20..24  [0, π/2] pós tilt_curve
     pub azimuth: f32,              // 24..28  [0, 2π)
     pub barrel_roll: f32,          // 28..32  [0, 2π); 0 se device não suporta
-    pub color_oklab: [f32; 4],     // 32..48  OKLab (premultiplied alpha em a)
-    pub opacity: f32,              // 48..52  [0, 1] pós flow + taper opacity
-    pub flow: f32,                 // 52..56  [0, 1] flow do brush
-    pub wet_amount: f32,           // 56..60  [0, 1] dilution * wet_load (se wet_mix_enabled)
-    pub shape_layer: u32,          // 60..64  índice no shape atlas (Builtin slot OR Imported)
-    pub grain_layer: u32,          // 64..68  0xFFFFFFFF se sem grain; Procedural usa bit-flag em flags
+    pub color_oklab: [f32; 4], // 32..48  OKLab (L, a, b, α) — STRAIGHT alpha; shader premultiplies em cs_stamp (audit 2026-05-26 D-2.C1)
+    pub opacity: f32, // 48..52  [0, 1] stroke-level opacity após taper_opacity dynamic; flow é ortogonal
+    pub flow: f32,    // 52..56  [0, 1] per-stamp flow do brush (independente de opacity)
+    pub wet_amount: f32, // 56..60  [0, 1] dilution * wet_load (se wet_mix_enabled)
+    pub shape_layer: u32, // 60..64  índice no shape atlas (Builtin slot OR Imported)
+    pub grain_layer: u32, // 64..68  0xFFFFFFFF se sem grain; Procedural usa bit-flag em flags
     pub grain_offset_uv: [f32; 2], // 68..76  offset da grain (WGSL: ler como 2× escalar — vide module doc)
     pub grain_scale: f32,          // 76..80  scale da grain
     pub flags: u32,                // 80..84  bitmask (vide FLAG_* consts abaixo)
@@ -128,6 +128,22 @@ impl Stamp {
         assert_eq!(self._pad, 0, "Stamp._pad must be 0 (ABI reservado)");
     }
 }
+
+/// Maximum number of stamps the [`StampPipeline`](crate::StampPipeline) will
+/// dispatch in a single `encode()` call. Mirrors the per-frame pool cap
+/// declared in spec [`docs/Painter_projeto/01_brush_engine.md`](
+/// ../../../docs/Painter_projeto/01_brush_engine.md) §1.4 — 4096 stamps × 96B
+/// = 384 KB / frame. Hot-path callers (`StampScheduler`) must flush at this
+/// cap; the pipeline `debug_assert!`s it on entry (audit 2026-05-26 D-2.H2).
+pub const MAX_STAMPS_PER_DISPATCH: usize = 4096;
+
+/// Maximum `size_px` a single stamp may declare. Mirrors the upper bound of
+/// `PropertiesParams::max_size_px` (`1.0..=2048.0`) from spec §1.3.11. The
+/// pipeline clamps to this before dispatching so that an out-of-spec
+/// `Stamp.size_px` (NaN / Inf / extremely large value) cannot produce a
+/// workgroup count that violates `wgpu::Limits::max_compute_workgroups_per_
+/// dimension` (audit 2026-05-26 D-2.H1).
+pub const MAX_STAMP_SIZE_PX: u32 = 2048;
 
 // `Stamp::flags` bitmask layout. Manter sync com WGSL shader (ADR-0044 §1.8.2).
 // Bits 0..=6 são v1 ship. Bits 7..=9 RESERVADOS para ADR-0049/0050 (audit C-G3).

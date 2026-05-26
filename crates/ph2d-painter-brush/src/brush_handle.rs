@@ -21,8 +21,13 @@ impl BrushHandle {
 
     /// Construct a built-in BrushHandle. `slot` deve ser < 64 (built-in
     /// Library reserva os 64 primeiros slots).
+    ///
+    /// **`assert!` em release (audit 2026-05-26 D-F4):** ADR-0044 §2.8
+    /// prescreve `assert!`; release build sem o check permitiria
+    /// `new_builtin(64)` produzir handle válido invalido. Bit-31 collision
+    /// (e.g., `new_builtin(0x80000001).is_imported() == true`) seria UB-like.
     pub fn new_builtin(slot: u32) -> Self {
-        debug_assert!(
+        assert!(
             slot < 64,
             "built-in BrushHandle slot must be < 64; got {}",
             slot
@@ -32,8 +37,11 @@ impl BrushHandle {
 
     /// Construct an imported BrushHandle. `atlas_layer` é o slot livre no
     /// brush atlas; bit 31 é setado para marcar como imported.
+    ///
+    /// `assert!` em release (audit D-F4): atlas_layer NÃO pode ter bit-31
+    /// setado (collide com IMPORTED_FLAG). Vide [`Self::new_builtin`].
     pub fn new_imported(atlas_layer: u32) -> Self {
-        debug_assert!(
+        assert!(
             atlas_layer & Self::IMPORTED_FLAG == 0,
             "atlas_layer must fit in 31 bits; got {:#x}",
             atlas_layer

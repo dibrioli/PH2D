@@ -27,3 +27,7 @@ postcard = { version = "1", features = ["use-std"] }
 bytemuck = { version = "1", features = ["derive"] }
 # blake3 hash para BrushParamsHash + dedup em stroke history (ADR-0046).
 blake3 = "1"
+# GPU wrapper para StampPipeline compute (T1.4 ship). Adicionado em T1.3
+# (audit 2026-05-26 C-G1) pre-empt — T1.4 vai criar src/stamp_pipeline.rs
+# que importa ph2d-gpu sem precisar refactor Cargo.toml.
+ph2d-gpu = { path = "../ph2d-gpu" }

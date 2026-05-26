@@ -7,16 +7,25 @@
 //! **NÃO FUNCIONA em --features det-painter** (ADR-0044 §2.5.1) — fallback
 //! Linear; port Q-fixed-point é follow-up registrado.
 
-/// Linear interpolation entre duas cores sRGB via Mixbox pigment mixing.
-/// Stub T1.3: retorna o input `b` (não-funcional). Substitui em T-color+T1.X+.
+/// Pigment-mixing lerp entre duas cores sRGB 8-bit.
+///
+/// **API canônica desde T1.3 (audit 2026-05-26 B-A2):** nome SEM suffix
+/// `_stub`. T1.3 implementa fallback Linear no internal (mesma identidade
+/// que `PigmentMode::Linear` produz); T-color+T1.X+ substitui o internal por
+/// Kubelka-Munk subtrativo real **sem mudar a signature**. Callers W1-W4
+/// não precisam refactor quando a impl real ship.
+///
+/// **NÃO FUNCIONA em `--features det-painter`** (ADR-0044 §2.5.1) — fallback
+/// `PigmentMode::Linear` é forçado pelo resolve_pigment_mode upstream.
 ///
 /// Refs:
 /// - Paper: Sochorová+Jamriška 2021 ACM TOG 40(6).
 /// - Open-source impl: <https://github.com/scrtwpns/mixbox> (CC0/MIT, ~700 LOC C).
-pub fn mixbox_lerp_srgb8_stub(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
-    // T1.3 stub: fallback linear lerp em sRGB. T-color implementa Kubelka-Munk
-    // subtrativo real via 7 pigment primaries (Hansa Yellow, Cadmium Red,
-    // Cobalt Blue, Phthalo Green, Burnt Sienna, Titanium White, Carbon Black).
+pub fn mixbox_lerp_srgb8(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
+    // T1.3 internal: fallback linear lerp em sRGB. T-color implementa
+    // Kubelka-Munk subtrativo real via 7 pigment primaries (Hansa Yellow,
+    // Cadmium Red, Cobalt Blue, Phthalo Green, Burnt Sienna, Titanium
+    // White, Carbon Black) AQUI MESMO sem mudar API.
     let t = t.clamp(0.0, 1.0);
     [
         ((a[0] as f32) * (1.0 - t) + (b[0] as f32) * t) as u8,
@@ -25,8 +34,9 @@ pub fn mixbox_lerp_srgb8_stub(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
     ]
 }
 
-/// Mixbox linear lerp em Linear sRGB (canonical Mixbox space). Stub T1.3.
-pub fn mixbox_lerp_linear_stub(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+/// Pigment-mixing lerp em Linear sRGB (canonical Mixbox color space — ADR-0051
+/// §2.4 I3). API canônica desde T1.3.
+pub fn mixbox_lerp_linear(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
     let t = t.clamp(0.0, 1.0);
     [
         a[0] * (1.0 - t) + b[0] * t,
@@ -40,26 +50,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn stub_lerp_at_t0_returns_a() {
+    fn lerp_at_t0_returns_a() {
         let a = [10, 20, 30];
         let b = [200, 100, 50];
-        assert_eq!(mixbox_lerp_srgb8_stub(a, b, 0.0), a);
+        assert_eq!(mixbox_lerp_srgb8(a, b, 0.0), a);
     }
 
     #[test]
-    fn stub_lerp_at_t1_returns_b() {
+    fn lerp_at_t1_returns_b() {
         let a = [10, 20, 30];
         let b = [200, 100, 50];
-        assert_eq!(mixbox_lerp_srgb8_stub(a, b, 1.0), b);
+        assert_eq!(mixbox_lerp_srgb8(a, b, 1.0), b);
     }
 
     #[test]
-    fn stub_lerp_linear_clamps_t() {
+    fn lerp_linear_clamps_t() {
         let a = [0.0, 0.5, 1.0];
         let b = [1.0, 1.0, 1.0];
         // t > 1.0 deve clamp para 1.0 → retorna b.
-        assert_eq!(mixbox_lerp_linear_stub(a, b, 2.0), b);
+        assert_eq!(mixbox_lerp_linear(a, b, 2.0), b);
         // t < 0.0 deve clamp para 0.0 → retorna a.
-        assert_eq!(mixbox_lerp_linear_stub(a, b, -1.0), a);
+        assert_eq!(mixbox_lerp_linear(a, b, -1.0), a);
     }
 }

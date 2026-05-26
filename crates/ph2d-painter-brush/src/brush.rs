@@ -82,7 +82,15 @@ impl Brush {
         // T1.3 stub: serialize whole Brush via postcard, hash via blake3.
         // T1.4+ pode otimizar: serialize só os campos params-relevant (sem
         // about.reset_points / about.created_at_ms / signature_uri).
-        let bytes = postcard::to_allocvec(self).unwrap_or_default();
+        //
+        // **Panic vs unwrap_or_default (audit 2026-05-26 B-C1):** se postcard
+        // serialize falhar (caso impossível para Brush bem-formed, mas type
+        // system não prova), `unwrap_or_default` retornaria `Vec::new()` cujo
+        // blake3 é constante (`af1349b9...`). TODOS brushes mal-formed
+        // colapsariam no mesmo hash, violando contrato de identidade do
+        // `StrokeRecord.brush_params_hash` (ADR-0046 §2.2 dedup). Escolhemos
+        // panic explícito sobre corrupção silenciosa.
+        let bytes = postcard::to_allocvec(self).expect("Brush must serialize via postcard");
         *blake3::hash(&bytes).as_bytes()
     }
 }

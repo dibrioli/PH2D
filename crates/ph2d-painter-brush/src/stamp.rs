@@ -5,6 +5,36 @@
 //!
 //! **Não reordene fields.** A ordem é ABI — shader WGSL lê os offsets exatos.
 //! Mudanças exigem ADR-amend explícito + bump de version.
+//!
+//! ## WGSL interop hazard (audit 2026-05-26 D-F1)
+//!
+//! `grain_offset_uv: [f32; 2]` está em offset **68**, que NÃO é múltiplo de 8.
+//! WGSL `vec2<f32>` requer align 8 em qualquer address space (uniform OU
+//! storage; apenas `vec3<f32>` é relaxado em storage). Se o shader declarar
+//! `grain_offset_uv: vec2<f32>` espelhando 1:1 esta struct, o compilador
+//! `naga` ou (a) rejeita o pipeline, ou (b) insere 4 bytes de padding antes
+//! desse field — shifting todos os 5 fields seguintes (grain_scale/flags/
+//! rendering_mode/pigment_mode/_pad) e explodindo size para 100 bytes WGSL-side.
+//!
+//! **Workaround obrigatório no WGSL shader (T1.4 stamp.wgsl):** ler como
+//! **dois `f32` escalares** (`grain_offset_u: f32` em offset 68, `grain_offset_v:
+//! f32` em offset 72), NÃO como `vec2<f32>`. Construir vec2 no shader manualmente:
+//!
+//! ```wgsl
+//! struct Stamp {
+//!     // ... offsets 0..68 ...
+//!     grain_offset_u: f32,  // offset 68
+//!     grain_offset_v: f32,  // offset 72
+//!     grain_scale: f32,     // offset 76
+//!     // ... offsets 80..96 ...
+//! }
+//! fn grain_offset_uv(s: Stamp) -> vec2<f32> {
+//!     return vec2<f32>(s.grain_offset_u, s.grain_offset_v);
+//! }
+//! ```
+//!
+//! O Rust side mantém `[f32; 2]` (align 4 nativo) — só o shader-side precisa
+//! da disciplina escalar. Re-layout requer amendment ADR-0044 + bump version.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -29,23 +59,44 @@ pub struct Stamp {
     pub flow: f32,                 // 52..56  [0, 1] flow do brush
     pub wet_amount: f32,           // 56..60  [0, 1] dilution * wet_load (se wet_mix_enabled)
     pub shape_layer: u32,          // 60..64  índice no shape atlas (Builtin slot OR Imported)
-    pub grain_layer: u32, // 64..68  0xFFFFFFFF se sem grain; Procedural usa bit-flag em flags
-    pub grain_offset_uv: [f32; 2], // 68..76  offset da grain dentro do shape
-    pub grain_scale: f32, // 76..80  scale da grain
-    pub flags: u32,       // 80..84  bitmask (vide FLAG_* consts abaixo)
-    pub rendering_mode: u32, // 84..88  0..=5 conforme `RenderingMode` enum
-    pub pigment_mode: u32, // 88..92  0=Linear, 1=Mixbox (ADR-0044 §2.5)
-    pub _pad: u32,        // 92..96  alinhamento 16 (reservado)
+    pub grain_layer: u32,          // 64..68  0xFFFFFFFF se sem grain; Procedural usa bit-flag em flags
+    pub grain_offset_uv: [f32; 2], // 68..76  offset da grain (WGSL: ler como 2× escalar — vide module doc)
+    pub grain_scale: f32,          // 76..80  scale da grain
+    pub flags: u32,                // 80..84  bitmask (vide FLAG_* consts abaixo)
+    pub rendering_mode: u32,       // 84..88  0..=5 conforme `RenderingMode` enum
+    pub pigment_mode: u32,         // 88..92  0=Linear, 1=Mixbox (ADR-0044 §2.5)
+    _pad: u32,                     // 92..96  reservado; mantido 0 em det-mode (audit D-F7)
 }
 
-// Compile-time ABI guards (ADR-0044 §2.3) — falham build se layout mudar.
+// Compile-time ABI guards (ADR-0044 §2.3 + audit 2026-05-26 D-F3) — falham
+// build se layout mudar. size+align não bastam (reorder silencioso passa);
+// per-field offset_of! garante ordem exata.
 const _: () = assert!(core::mem::size_of::<Stamp>() == 96);
 const _: () = assert!(core::mem::align_of::<Stamp>() == 16);
+const _: () = assert!(core::mem::offset_of!(Stamp, position_world) == 0);
+const _: () = assert!(core::mem::offset_of!(Stamp, size_px) == 8);
+const _: () = assert!(core::mem::offset_of!(Stamp, rotation_rad) == 12);
+const _: () = assert!(core::mem::offset_of!(Stamp, pressure) == 16);
+const _: () = assert!(core::mem::offset_of!(Stamp, tilt) == 20);
+const _: () = assert!(core::mem::offset_of!(Stamp, azimuth) == 24);
+const _: () = assert!(core::mem::offset_of!(Stamp, barrel_roll) == 28);
+const _: () = assert!(core::mem::offset_of!(Stamp, color_oklab) == 32);
+const _: () = assert!(core::mem::offset_of!(Stamp, opacity) == 48);
+const _: () = assert!(core::mem::offset_of!(Stamp, flow) == 52);
+const _: () = assert!(core::mem::offset_of!(Stamp, wet_amount) == 56);
+const _: () = assert!(core::mem::offset_of!(Stamp, shape_layer) == 60);
+const _: () = assert!(core::mem::offset_of!(Stamp, grain_layer) == 64);
+const _: () = assert!(core::mem::offset_of!(Stamp, grain_offset_uv) == 68);
+const _: () = assert!(core::mem::offset_of!(Stamp, grain_scale) == 76);
+const _: () = assert!(core::mem::offset_of!(Stamp, flags) == 80);
+const _: () = assert!(core::mem::offset_of!(Stamp, rendering_mode) == 84);
+const _: () = assert!(core::mem::offset_of!(Stamp, pigment_mode) == 88);
 
 impl Stamp {
     /// Stamp zero (safety helper para pool init via `bytemuck::zeroed`).
+    /// **Único construtor "from scratch":** garante `_pad == 0` (det-mode
+    /// hash invariant, audit D-F7). Callers mutam fields user-facing após.
     pub const fn zeroed() -> Self {
-        // SAFETY proxy via const expression — Pod+Zeroable garantem layout válido.
         Self {
             position_world: [0.0, 0.0],
             size_px: 0.0,
@@ -68,9 +119,19 @@ impl Stamp {
             _pad: 0,
         }
     }
+
+    /// Verifica que `_pad == 0`. Usado por encode paths em det-mode
+    /// (ADR-0046 §2.8) antes de hash p/ garantir bit-identical cross-OS.
+    /// `_pad` é private no source mas `bytemuck::pod_read_unaligned`
+    /// pode trazer bytes lixo de buffers externos.
+    pub fn assert_pad_zero(&self) {
+        assert_eq!(self._pad, 0, "Stamp._pad must be 0 (ABI reservado)");
+    }
 }
 
 // `Stamp::flags` bitmask layout. Manter sync com WGSL shader (ADR-0044 §1.8.2).
+// Bits 0..=6 são v1 ship. Bits 7..=9 RESERVADOS para ADR-0049/0050 (audit C-G3).
+// Bits 10..=31 livres para flags futuras.
 pub const FLAG_SHAPE_FLIP_X: u32 = 1 << 0;
 pub const FLAG_SHAPE_FLIP_Y: u32 = 1 << 1;
 pub const FLAG_GRAIN_BEHAVIOR_MOVING: u32 = 1 << 2;
@@ -78,7 +139,18 @@ pub const FLAG_BURNT_EDGES: u32 = 1 << 3;
 pub const FLAG_WET_EDGES: u32 = 1 << 4;
 pub const FLAG_LUMINANCE_BLENDING: u32 = 1 << 5;
 pub const FLAG_GRAIN_PROCEDURAL: u32 = 1 << 6;
-// bits 7..32 reservados para flags futuras.
+/// **RESERVADO ADR-0049 §2.3** — fluid sim per-stamp opt-in (W15+).
+/// Setado pelo StampScheduler quando brush tem `fluid_enabled=true` AND
+/// device tier ativou fluid (`PlatformHost::fluid_capable()` true).
+pub const FLAG_FLUID_SAMPLE: u32 = 1 << 7;
+/// **RESERVADO ADR-0050 §2.6** — stamp "fantasma" de hover preview (Pencil
+/// hover state). Setado para stamps pre-down; descartado em commit.
+pub const FLAG_HOVER_PREVIEW: u32 = 1 << 8;
+/// **RESERVADO ADR-0050 §2.8** — Apple Pencil 4ms prediction sample.
+/// Setado para predicted points; descartado em stroke commit (não entra
+/// em StrokeRecord.points).
+pub const FLAG_PREDICTED_SAMPLE: u32 = 1 << 9;
+// bits 10..32 reservados para flags futuras.
 
 #[cfg(test)]
 mod tests {
@@ -128,10 +200,50 @@ mod tests {
             FLAG_WET_EDGES,
             FLAG_LUMINANCE_BLENDING,
             FLAG_GRAIN_PROCEDURAL,
+            FLAG_FLUID_SAMPLE,
+            FLAG_HOVER_PREVIEW,
+            FLAG_PREDICTED_SAMPLE,
         ];
         // Cada flag é uma única bit-position; OR de todos = soma.
         let or_all: u32 = all.iter().fold(0, |acc, f| acc | f);
         let sum: u32 = all.iter().sum();
         assert_eq!(or_all, sum, "flags must be distinct bits");
+    }
+
+    #[test]
+    fn stamp_field_layout_golden_bytes() {
+        // Audit 2026-05-26 D-F2: reorder silencioso de fields passaria
+        // size+align tests mas quebra ABI shader. Golden bytes layout
+        // detecta reorder ao verificar bytes em offsets exatos.
+        let mut s = Stamp::zeroed();
+        s.position_world = [1.0, 2.0];
+        s.size_px = 3.0;
+        s.color_oklab = [10.0, 20.0, 30.0, 40.0];
+        s.shape_layer = 0x12345678;
+        s.pigment_mode = 1; // Mixbox
+
+        let bytes = bytemuck::bytes_of(&s);
+
+        // position_world.x = 1.0 IEEE 754 LE = 00 00 80 3F
+        assert_eq!(&bytes[0..4], &[0x00, 0x00, 0x80, 0x3F]);
+        // position_world.y = 2.0 = 00 00 00 40
+        assert_eq!(&bytes[4..8], &[0x00, 0x00, 0x00, 0x40]);
+        // size_px = 3.0 = 00 00 40 40
+        assert_eq!(&bytes[8..12], &[0x00, 0x00, 0x40, 0x40]);
+        // color_oklab[0] = 10.0 em offset 32
+        assert_eq!(&bytes[32..36], &[0x00, 0x00, 0x20, 0x41]);
+        // color_oklab[3] = 40.0 em offset 44
+        assert_eq!(&bytes[44..48], &[0x00, 0x00, 0x20, 0x42]);
+        // shape_layer = 0x12345678 em offset 60 (u32 LE)
+        assert_eq!(&bytes[60..64], &[0x78, 0x56, 0x34, 0x12]);
+        // pigment_mode = 1 em offset 88
+        assert_eq!(&bytes[88..92], &[0x01, 0x00, 0x00, 0x00]);
+        // _pad em offset 92 deve ser 0
+        assert_eq!(&bytes[92..96], &[0x00, 0x00, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn stamp_assert_pad_zero_passes_for_zeroed() {
+        Stamp::zeroed().assert_pad_zero();
     }
 }

@@ -1,0 +1,34 @@
+[package]
+name = "ph2d-tool-painter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Painter — Stateful workhorse tool, isolated crate (ADR-0040 + ADR-0043).
+# Cascata W0 ratificada 2026-05-26 (11 ADRs 0043..0053). Esta crate
+# implementa o contrato ADR-0043 (`PainterTool` + `PainterParams` +
+# `PainterUiEdit` + `PainterUiSnapshot`).
+#
+# T1.1 skeleton: panic-com-todo!() nos métodos que precisam de brush
+# engine real (T1.4+). Pill registrada em T1.2. Brush real T1.3 ph2d-painter-brush.
+
+[dependencies]
+# Tool trait + FloatingPanel + widgets the PainterTool builds on.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# ToolManifest + ToolHandler + Registry + Zone + McpExposure.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# BezPath for the painter icon (icon.rs).
+ph2d-vector = { path = "../ph2d-vector" }
+# Role for a11y_role no MANIFEST.
+ph2d-a11y = { path = "../ph2d-a11y" }
+# MemoryBudget for HR-13 boot check.
+ph2d-core = { path = "../ph2d-core" }
+# Typed color (Stamp.color_oklab pipeline em T1.4+).
+ph2d-color = { path = "../ph2d-color" }
+# serde for PainterParams + PainterUiEdit + PainterUiSnapshot.
+serde = { version = "1", features = ["derive"] }

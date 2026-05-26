@@ -1,0 +1,98 @@
+#![forbid(unsafe_code)]
+
+//! ph2d-tool-painter — Painter (sucessor do Procreate), isolated tool crate.
+//!
+//! Stateful workhorse tool — active in the TopBar `image_tools` cluster.
+//! Takeover model when activated (suprime chrome PH2D normal e instala
+//! topbar+sidebar Procreate-style; vide [ADR-0043 §1.1](../../../docs/architecture/decisions/0043-painter-contract.md)).
+//!
+//! Cascata W0 ratificada em 2026-05-26 (11 ADRs: 0043..0053). Esta crate
+//! implementa o contrato ADR-0043 (`PainterTool` + `PainterParams` +
+//! `PainterUiEdit` + `PainterUiSnapshot`). Sub-sistemas adjacentes vivem em
+//! crates filhos:
+//! - `ph2d-painter-brush` — Brush/Stamp/atlas/Mixbox/ProceduralGrain (ADR-0044)
+//! - `ph2d-painter-stroke` — StrokeHistory + WAL + recovery (ADR-0046+0052)
+//! - `ph2d-painter-input` — PointerSource + curves + palm rejection (ADR-0050)
+//! - `ph2d-painter-mcp` — MCP streaming (ADR-0047)
+//! - `ph2d-painter-fluid` — Shallow Water sim opt-in (ADR-0049)
+//! - `ph2d-panel-painter-*` — sidebar / layers / brush-studio / inspector / color
+//!
+//! W1 T1.1 status: **skeleton stub.** `Tool` impl com painc-com-`todo!()`
+//! nos métodos que exigem brush engine real (W1 T1.4+). Smoke W1 day 1:
+//! abrir app sem panic. Pill ainda não aparece (T1.2 implementa).
+
+pub mod icon;
+pub mod params;
+pub mod tool;
+
+pub use params::{PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot};
+pub use tool::PainterTool;
+
+use ph2d_a11y::Role;
+use ph2d_core::MemoryBudget;
+use ph2d_tool_registry::{HandlerFn, McpExposure, Registry, ToolHandler, ToolManifest, Zone};
+
+/// Construct the Painter tool as a boxed trait object for the behavior
+/// `ToolRegistry`. Codegen target for `ph2d-tool-sync` (`register_all_tools`).
+pub fn make() -> Box<dyn ph2d_editor_core::tool::Tool> {
+    Box::new(PainterTool::default())
+}
+
+/// Shadow-mode handlers (stubs até a stamp pipeline GPU ship em T1.4+).
+fn shadow_handler() {}
+
+pub const MANIFEST: ToolManifest = ToolManifest {
+    id: "painter",
+    label_key: "tool.painter.label",
+    icon_fn: icon::painter_bezpath,
+    // `image_tools` cluster — pill na TopBar lado da Image Tools toggle.
+    // Order 70: depois de bgremoval (60), make_square (50), trim_transparency (40).
+    // Painter é workhorse → ocupa slot rightmost da fileira de pills.
+    zone: Zone::TopRight,
+    cluster: "image_tools",
+    order: 70,
+    a11y_role: Role::Button,
+    handler: ToolHandler::Stateful {
+        on_activate: shadow_handler as HandlerFn,
+        on_deactivate: shadow_handler as HandlerFn,
+        on_panel_event: shadow_handler as HandlerFn,
+    },
+    // Worst-case working buffer: 4K canvas RGBA8 layer texture
+    // (~64 MB). Reserved against ram_mb so HR-13 boot check fires
+    // se plataforma com budget apertado tentar Painter ativo.
+    memory_budget: MemoryBudget::new(0, 64, 0),
+    touches_sim: false,
+    mcp: McpExposure::reserved(),
+};
+
+pub fn register(reg: &mut Registry) {
+    reg.register(&MANIFEST);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn register_attaches_manifest_to_registry() {
+        let mut reg = Registry::default();
+        register(&mut reg);
+        assert_eq!(reg.manifests().len(), 1);
+        assert_eq!(reg.manifests()[0].id, "painter");
+    }
+
+    #[test]
+    fn make_constructs_boxed_tool() {
+        let tool = make();
+        assert_eq!(
+            tool.id(),
+            ph2d_editor_core::floating_panel::ToolId::new("painter")
+        );
+    }
+
+    #[test]
+    fn manifest_matches_iconid_slug() {
+        // MANIFEST.id deve bater com IconId::Painter.slug() ("painter").
+        assert_eq!(MANIFEST.id, "painter");
+    }
+}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-painter" aria-label="Painter">
+  <!-- Lucide-derived paintbrush-2 glyph. Source of truth for icon::painter_bezpath. -->
+  <!-- Bristle pad (top): horizontal bar 5..19 at y=12, with a notch carved out -->
+  <path d="M5 12V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8"/>
+  <!-- Handle: drops down from bristle pad center, anchor at user grip -->
+  <path d="M14 19.9V16h3a2 2 0 0 0 2-2v-2H5v2c0 1.1.9 2 2 2h3v3.9a2 2 0 1 0 4 0Z"/>
+  <!-- Ferrule reinforcement strokes -->
+  <path d="M8 2v4"/>
+  <path d="M16 2v4"/>
+</svg>

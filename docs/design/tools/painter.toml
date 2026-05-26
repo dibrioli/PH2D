@@ -1,0 +1,28 @@
+# Painter — Stateful workhorse tool. Sucessor do Procreate.
+# Cascata W0 ratificada 2026-05-26 (11 ADRs 0043..0053).
+#
+# Quando ativo, instala takeover model: suprime chrome PH2D normal
+# (topbar + sidebar) e instala chrome Procreate-style + sidebar +
+# Brush Studio modal (W5). Worst-case working buffer: 4K canvas
+# RGBA8 layer texture (~64 MB; reserved via memory_budget.ram_mb).
+#
+# Canonical source para `crates/ph2d-tool-painter/src/lib.rs`.
+
+[tool]
+id          = "painter"
+cluster     = "image_tools"
+zone        = "top_right"
+order       = 70
+a11y_role   = "Button"
+icon_slug   = "painter"
+touches_sim = false
+
+[label]
+pt_br_inline = "Painter"
+en_us_inline = "Painter"
+fluent_key   = "tool.painter.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 64
+heap_script_mb = 0

@@ -4477,6 +4477,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-tool-painter"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-color",
+ "ph2d-core",
+ "ph2d-editor-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-tool-rasterize"
 version = "0.0.0"
 dependencies = [
@@ -4521,6 +4534,7 @@ dependencies = [
  "ph2d-tool-make-square",
  "ph2d-tool-move",
  "ph2d-tool-padding",
+ "ph2d-tool-painter",
  "ph2d-tool-rasterize",
  "ph2d-tool-real-size",
  "ph2d-tool-registry",

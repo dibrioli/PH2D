@@ -33,6 +33,7 @@ pub fn register_all(reg: &mut Registry) {
     ph2d_tool_grid_snap::register(reg);
     ph2d_tool_make_square::register(reg);
     ph2d_tool_padding::register(reg);
+    ph2d_tool_painter::register(reg);
     ph2d_tool_rasterize::register(reg);
     ph2d_tool_real_size::register(reg);
     ph2d_tool_trim_transparency::register(reg);
@@ -54,6 +55,7 @@ pub fn register_all_tools(reg: &mut ToolRegistry) {
     reg.register(ph2d_tool_equalize_sizes::make());
     reg.register(ph2d_tool_move::make());
     reg.register(ph2d_tool_padding::make());
+    reg.register(ph2d_tool_painter::make());
     reg.register(ph2d_tool_upscale::make());
     // <ph2d-tool-sync:tools:end>
 }
@@ -109,6 +111,7 @@ mod tests {
         "trim_transparency",
         "make_square",
         "bgremoval",
+        "painter",
         "real_size",
         "padding",
         "color_equalization",

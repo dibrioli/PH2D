@@ -297,13 +297,6 @@ pub fn clahe(src: &[u8], w: u32, h: u32, clip_limit: f32, tile_grid_size: u32, d
     }
 }
 
-/// BT.709 luminance of straight-alpha sRGB (`Y = 0.2126·R + 0.7152·G +
-/// 0.0722·B`, rounded to 8 bits).
-fn luminance_bt709(r: u8, g: u8, b: u8) -> u8 {
-    let y = 0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32;
-    clamp8(y)
-}
-
 /// `[start, end)` tile span across `total` pixels for `idx`-th tile of
 /// `n_tiles` (integer split with the trailing tile absorbing the remainder
 /// so total coverage stays exact).
@@ -588,37 +581,46 @@ pub fn adjust_tonal(rgba: &mut [u8], params: &ColorEqualizationParams) {
 // ── Stage 3 — auto-WB (Gray-World) ────────────────────────────────────────
 
 /// Gray-World auto white balance applied in place over straight-alpha
-/// RGBA8 in sRGB space.
+/// RGBA8 — runs in **linear sRGB**, not gamma-encoded.
 ///
-/// Averages R / G / B independently over opaque pixels (`alpha > 0`), then
-/// computes `gain = mean_gray / mean_channel` per channel and rescales
-/// every pixel. Transparent pixels are skipped (no contribution to the
-/// mean, no rescale) so a sprite with a transparent border is balanced
-/// against the visible subject only.
+/// Why linear: averaging luminance is a physical operation (mean of
+/// light), and sRGB is a perceptual encoding that compresses shadows.
+/// Averaging gamma-encoded values pulls the mean toward the dark end and
+/// biases the gains — visible as drifted WB in high-contrast scenes (sun
+/// + shadow). Decoding to linear before averaging restores the photon-
+/// space invariant gray-world depends on.
+///
+/// Averages linear R / G / B independently over opaque pixels (`alpha >
+/// 0`), then computes `gain = mean_gray / mean_channel` per channel and
+/// rescales every pixel in linear space before re-encoding sRGB.
+/// Transparent pixels are skipped (no contribution to the mean, no
+/// rescale).
 ///
 /// Falls back to a no-op when there are no opaque pixels or any channel
 /// mean is zero (a fully black or single-channel image — no information to
 /// balance against).
 pub fn auto_white_balance(rgba: &mut [u8]) {
-    let mut sum_r: u64 = 0;
-    let mut sum_g: u64 = 0;
-    let mut sum_b: u64 = 0;
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+
+    let mut sum_r = 0.0_f64;
+    let mut sum_g = 0.0_f64;
+    let mut sum_b = 0.0_f64;
     let mut count: u64 = 0;
     for px in rgba.chunks_exact(4) {
         if px[3] == 0 {
             continue;
         }
-        sum_r += px[0] as u64;
-        sum_g += px[1] as u64;
-        sum_b += px[2] as u64;
+        sum_r += srgb_to_linear_u8(px[0]) as f64;
+        sum_g += srgb_to_linear_u8(px[1]) as f64;
+        sum_b += srgb_to_linear_u8(px[2]) as f64;
         count += 1;
     }
     if count == 0 {
         return;
     }
-    let mean_r = sum_r as f32 / count as f32;
-    let mean_g = sum_g as f32 / count as f32;
-    let mean_b = sum_b as f32 / count as f32;
+    let mean_r = (sum_r / count as f64) as f32;
+    let mean_g = (sum_g / count as f64) as f32;
+    let mean_b = (sum_b / count as f64) as f32;
     if mean_r == 0.0 || mean_g == 0.0 || mean_b == 0.0 {
         return;
     }
@@ -630,9 +632,12 @@ pub fn auto_white_balance(rgba: &mut [u8]) {
         if px[3] == 0 {
             continue;
         }
-        px[0] = clamp8(px[0] as f32 * gain_r);
-        px[1] = clamp8(px[1] as f32 * gain_g);
-        px[2] = clamp8(px[2] as f32 * gain_b);
+        let r_lin = srgb_to_linear_u8(px[0]) * gain_r;
+        let g_lin = srgb_to_linear_u8(px[1]) * gain_g;
+        let b_lin = srgb_to_linear_u8(px[2]) * gain_b;
+        px[0] = linear_to_srgb_u8(r_lin);
+        px[1] = linear_to_srgb_u8(g_lin);
+        px[2] = linear_to_srgb_u8(b_lin);
     }
 }
 
@@ -692,8 +697,8 @@ pub fn compute_histogram(pixels: &[ph2d_color::SrgbRgba]) -> HistogramData {
         h.g[px[1] as usize] += 1;
         h.b[px[2] as usize] += 1;
         // BT.709 luma — sRGB primaries. Coefficients applied to sRGB
-        // gamma-encoded values (matches `algorithm::luminance_bt709`),
-        // not linear — fine for histogram bucketing.
+        // gamma-encoded values (matches the inline Y in `clahe`), not
+        // linear — fine for histogram bucketing.
         let luma = (0.2126 * px[0] as f32 + 0.7152 * px[1] as f32 + 0.0722 * px[2] as f32) as usize;
         h.l[luma.min(255)] += 1;
         h.opaque_count += 1;
@@ -850,40 +855,63 @@ pub fn auto_contrast(rgba: &mut [u8]) {
 /// stay sharp.
 ///
 /// `strength` in `[0, 1]`: controls both σ_space (`3 + 5·s`) and σ_range
-/// (`20 + 50·s`); radius is `⌈2·σ_space⌉`.
+/// (`(20 + 50·s) / 255` in **linear-sRGB units**); radius is `⌈2·σ_space⌉`.
 ///
-/// **GPU note**: this is the heaviest CPU stage in Phase 2 — `O(N · r²)`
-/// where `r` grows with strength (≈ 5-16 px). A WGSL compute shader is
-/// strongly recommended for production; ~20× speedup at 1024². CPU
-/// implementation here is correct + deterministic; use sparingly above
-/// 512² until the GPU path lands.
+/// The range Gaussian operates in **linear sRGB**: the per-channel diff
+/// is computed against linear-decoded values, so the similarity metric is
+/// uniform across the tonal range. The previous gamma-space implementation
+/// was over-aggressive in shadows (sRGB compresses dark values, so a
+/// gamma-Δ=10 in shadows is perceptually huge vs. the same Δ in highlights)
+/// — visible as flatter shadows than highlights at any non-zero strength.
+///
+/// **GPU note**: heaviest CPU stage in Phase 2 — `O(N · r²)` where `r`
+/// grows with strength (≈ 5-16 px). A WGSL compute shader is strongly
+/// recommended for production; ~20× speedup at 1024². CPU implementation
+/// here is correct + deterministic; use sparingly above 512² until the
+/// GPU path lands.
 pub fn bilateral_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+
     if strength <= 0.0 {
         return;
     }
     let strength = strength.clamp(0.0, 1.0);
     let sigma_space = 3.0 + strength * 5.0;
-    let sigma_range = 20.0 + strength * 50.0;
+    // Original calibration was σ_range = 20..70 over the sRGB [0,255]
+    // range; rescaling by 1/255 lands the same numeric weight into the
+    // linear-sRGB [0,1] domain. Numerically the sigma is the same; the
+    // *content* of the diffs is now perceptually uniform.
+    let sigma_range = (20.0 + strength * 50.0) / 255.0;
     let radius = (sigma_space * 2.0).ceil() as i32;
     let inv_spatial_sq = -1.0 / (2.0 * sigma_space * sigma_space);
     let inv_range_sq = -1.0 / (2.0 * sigma_range * sigma_range);
     let w_i = w as i32;
     let h_i = h as i32;
-    let stride = (w as usize) * 4;
+    let stride_pix = w as usize;
+    let stride_rgba = stride_pix * 4;
+    let n_px = (w as usize) * (h as usize);
 
-    let src = rgba.to_vec();
+    // Pre-linearize the entire source once. The bilateral kernel reads
+    // each pixel `O(r²)` times per output — paying the sRGB transfer
+    // upfront amortises across the whole window.
+    let mut src_lin: Vec<[f32; 3]> = Vec::with_capacity(n_px);
+    for px in rgba.chunks_exact(4) {
+        src_lin.push([
+            srgb_to_linear_u8(px[0]),
+            srgb_to_linear_u8(px[1]),
+            srgb_to_linear_u8(px[2]),
+        ]);
+    }
+    let alpha: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
+
     for y in 0..h_i {
         for x in 0..w_i {
-            let ci = (y as usize * stride) + (x as usize) * 4;
-            if src[ci + 3] == 0 {
+            let cidx = (y as usize) * stride_pix + (x as usize);
+            if alpha[cidx] == 0 {
                 continue;
             }
-            let cr = src[ci] as f32;
-            let cg = src[ci + 1] as f32;
-            let cb = src[ci + 2] as f32;
-            let mut sum_r = 0.0_f32;
-            let mut sum_g = 0.0_f32;
-            let mut sum_b = 0.0_f32;
+            let c = src_lin[cidx];
+            let mut sum = [0.0_f32; 3];
             let mut sum_w = 0.0_f32;
             let y_min = (y - radius).max(0);
             let y_max = (y + radius).min(h_i - 1);
@@ -891,28 +919,27 @@ pub fn bilateral_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
             let x_max = (x + radius).min(w_i - 1);
             for ny in y_min..=y_max {
                 for nx in x_min..=x_max {
-                    let ni = (ny as usize * stride) + (nx as usize) * 4;
-                    let nr = src[ni] as f32;
-                    let ng = src[ni + 1] as f32;
-                    let nb = src[ni + 2] as f32;
+                    let nidx = (ny as usize) * stride_pix + (nx as usize);
+                    let n = src_lin[nidx];
                     let dx = (nx - x) as f32;
                     let dy = (ny - y) as f32;
                     let spatial = dx * dx + dy * dy;
-                    let dr = nr - cr;
-                    let dg = ng - cg;
-                    let db = nb - cb;
+                    let dr = n[0] - c[0];
+                    let dg = n[1] - c[1];
+                    let db = n[2] - c[2];
                     let color = dr * dr + dg * dg + db * db;
                     let weight = (spatial * inv_spatial_sq + color * inv_range_sq).exp();
-                    sum_r += nr * weight;
-                    sum_g += ng * weight;
-                    sum_b += nb * weight;
+                    sum[0] += n[0] * weight;
+                    sum[1] += n[1] * weight;
+                    sum[2] += n[2] * weight;
                     sum_w += weight;
                 }
             }
             if sum_w > 0.0 {
-                rgba[ci] = clamp8(sum_r / sum_w);
-                rgba[ci + 1] = clamp8(sum_g / sum_w);
-                rgba[ci + 2] = clamp8(sum_b / sum_w);
+                let ci = (y as usize) * stride_rgba + (x as usize) * 4;
+                rgba[ci] = linear_to_srgb_u8(sum[0] / sum_w);
+                rgba[ci + 1] = linear_to_srgb_u8(sum[1] / sum_w);
+                rgba[ci + 2] = linear_to_srgb_u8(sum[2] / sum_w);
             }
         }
     }
@@ -1543,14 +1570,6 @@ mod tests {
         assert_eq!(clamp8(127.6), 128);
         assert_eq!(clamp8(255.0), 255);
         assert_eq!(clamp8(999.0), 255);
-    }
-
-    #[test]
-    fn luminance_bt709_canonical_constants() {
-        assert_eq!(luminance_bt709(0, 0, 0), 0);
-        assert_eq!(luminance_bt709(255, 255, 255), 255);
-        // Pure green is the heaviest BT.709 channel: 0.7152·255 ≈ 182.
-        assert!(luminance_bt709(0, 255, 0).abs_diff(182) <= 1);
     }
 
     #[test]

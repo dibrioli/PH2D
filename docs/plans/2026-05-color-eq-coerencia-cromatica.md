@@ -1,6 +1,6 @@
 # Plano — Coerência cromática do tool Color Equalization
 
-**Aberto:** 2026-05-26 · **Status:** Tier 1 fechado.
+**Aberto:** 2026-05-26 · **Status:** Tier 1 + Tier 2 fechados. Tier 3 pendente.
 
 Auditoria identificou que a pipeline tem um núcleo perceptual coerente
 (`adjust_tonal` em linear sRGB / OKLab; `quantize` em OKLab) cercado de
@@ -33,14 +33,20 @@ teste byte-exact existente do CLAHE quebrou — os 4 que pinavam bytes
 eram todos sobre input uniforme ou grayscale, onde Cb = Cr = 0 e a
 saída YCbCr coincide com a antiga RGB-scale.
 
-## Tier 2 — coerência percebida (próximo)
+## Tier 2 — coerência percebida (fechado)
 
-- [ ] **`auto_white_balance` Gray-World em linear sRGB** — média de
+- [x] **`auto_white_balance` Gray-World em linear sRGB** — média de
   luz é em linear, não em gamma. Em imagens contrastadas (sol+sombra)
-  o WB em sRGB gamma é enviesado.
-- [ ] **`bilateral denoise` range Gaussian em luminância linear** —
-  similaridade em sRGB gamma é não-uniforme (mais agressivo em
-  sombras que em luzes); usar luminância linear uniformiza.
+  o WB em sRGB gamma é enviesado. Sumas em f64 pra precisão.
+- [x] **`bilateral denoise` range similarity em linear sRGB** —
+  pré-linearizamos o source uma vez (amortiza sobre `O(r²)` lookups
+  por pixel), σ_range mantida numericamente (`(20+50·s)/255`) e
+  reinterpretada como linear. Output reencoda sRGB. Removemos o
+  hot-path de `clamp8(f32 0..255)`. Mantido o nome do método e a
+  assinatura — só o domínio do range mudou.
+
+Resultado: 131/131 verde (perdemos o teste do `luminance_bt709`
+removido pelo dead-code cleanup; 132−1=131). Zero quebra em byte-exact.
 
 ## Tier 3 — lapidação
 

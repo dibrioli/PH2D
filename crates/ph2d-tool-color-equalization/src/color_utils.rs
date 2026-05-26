@@ -278,10 +278,10 @@ fn hue_to_rgb(p: f32, q: f32, t: f32) -> f32 {
 ///   each at compile-time-optimised f32 — negligible against the
 ///   pipeline's other stages, and the LUT runs are debounced so
 ///   they only fire on slider release.
-/// - CLAHE has its own `algorithm::luminance_bt709` (u8 in /
-///   u8 out, gamma-encoded shortcut) for its own histogram pipeline;
-///   we deliberately don't share a formula — CLAHE's per-bin LUT
-///   reasoning needs the shortcut to round-trip exactly.
+/// - CLAHE has its own inline BT.709 Y (gamma-encoded sRGB → f32 Y,
+///   then `clamp8` to u8) for its histogram pipeline; we deliberately
+///   don't share a formula — CLAHE's per-bin LUT reasoning needs the
+///   gamma-space shortcut to round-trip exactly.
 pub fn luma_srgb(r: f32, g: f32, b: f32) -> f32 {
     let rlin = srgb_to_linear(r);
     let glin = srgb_to_linear(g);

@@ -191,8 +191,11 @@ fn paint_hierarchy_body(
     scene.push_clip(&clip);
     let start_y = body_top - scroll_y;
     let mut y = start_y;
-    let scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
-    let row_w = (rect.w - body_pad * 2.0 - scrollbar_reserve).max(0.0);
+    // Enio 2026-05-26: ícones do row colados na borda direita do
+    // painel — sem reserva pra scrollbar (que sobrepõe). Antes:
+    // `row_w = rect.w - body_pad*2 - (SCROLLBAR_W + Sm)`.
+    let _scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
+    let row_w = (rect.w - body_pad).max(0.0);
     let entities_by_id: std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity> =
         if let Some(live) = current_live_entries() {
             live

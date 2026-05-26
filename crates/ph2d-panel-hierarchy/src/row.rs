@@ -122,7 +122,7 @@ pub(crate) fn paint_hierarchy_row(
     // e gap inter-icon Xxs (2 px) pra ficarem "bem juntos" (Enio
     // 2026-05-26). Antes: pad=2 + gap=Sm (6).
     let icon_cluster_pad = 0.0_f32; // LITERAL-PX-OK: chrome inset, Enio request
-    let icon_cluster_gap = Spacing::Xxs.px();
+    let icon_cluster_gap = 0.0_f32; // LITERAL-PX-OK: Enio 2026-05-26 "reduza a distância entre os ícones"
     let mut right_x = rect.x + rect.w - icon_cluster_pad;
     let eye_icon = if entity.visible {
         IconId::Eye

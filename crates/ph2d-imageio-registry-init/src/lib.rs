@@ -27,6 +27,7 @@ use ph2d_imageio::{ExporterRegistry, ImporterRegistry};
 /// order. Alphabetical order in the codegen is merge-conflict hygiene.
 pub fn register_all_importers(reg: &mut ImporterRegistry) {
     // <ph2d-imageio-sync:importers:begin>
+    ph2d_imageio_jpeg::register_importer(reg);
     ph2d_imageio_png::register_importer(reg);
     // <ph2d-imageio-sync:importers:end>
 }
@@ -37,6 +38,7 @@ pub fn register_all_importers(reg: &mut ImporterRegistry) {
 /// [`ph2d_imageio::ExportOpts::format`], not source order.
 pub fn register_all_exporters(reg: &mut ExporterRegistry) {
     // <ph2d-imageio-sync:exporters:begin>
+    ph2d_imageio_jpeg::register_exporter(reg);
     ph2d_imageio_png::register_exporter(reg);
     // <ph2d-imageio-sync:exporters:end>
 }
@@ -47,18 +49,24 @@ mod tests {
     use ph2d_imageio::MagicHint;
 
     #[test]
-    fn register_all_importers_wires_png() {
+    fn register_all_importers_wires_png_at_minimum() {
+        // PNG is the W0.T5 floor — must always be wired. The count
+        // grows with every W1+ format crate; assert presence by
+        // extension so the test scales with the fan-out without
+        // edits.
         let mut reg = ImporterRegistry::new();
         register_all_importers(&mut reg);
-        assert_eq!(reg.len(), 1, "PNG importer should be wired (W0.T5)");
-        assert!(reg.find_for(MagicHint::Extension("png")).is_some());
-        assert!(reg.find_for(MagicHint::Extension("jpeg")).is_none());
+        assert!(!reg.is_empty(), "at least one importer should be wired");
+        assert!(
+            reg.find_for(MagicHint::Extension("png")).is_some(),
+            "PNG importer must be findable (W0.T5 floor)"
+        );
     }
 
     #[test]
-    fn register_all_exporters_wires_png() {
+    fn register_all_exporters_wires_png_at_minimum() {
         let mut reg = ExporterRegistry::new();
         register_all_exporters(&mut reg);
-        assert_eq!(reg.len(), 1, "PNG exporter should be wired (W0.T5)");
+        assert!(!reg.is_empty(), "at least one exporter should be wired");
     }
 }

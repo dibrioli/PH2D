@@ -1,14 +1,17 @@
 //! Upscale panel `populate` — pre-registers the panel's widget slots
 //! in the `WidgetStore` at host boot (once, via `Panel::populate`).
 //!
-//! Layout (Widget Gallery convention, DIRETRIZ §4.2):
+//! Layout:
 //! - 3 segmented buttons for the algorithm selector
 //!   (Lanczos3 / Nearest / xBR).
-//! - 1 slider + 1 NumberInput chip for the scale factor, **paired
-//!   via `link_slider_number`**. Both widgets store the normalized
-//!   track in `0..1`; the chip's natural-unit display ("2.00×") is
-//!   paint-only via `display_override`. The dispatch handles
-//!   drag / clamp / chip↔slider mirror for free — no manual mirror.
+//! - 1 slider + 1 NumberInput chip for the scale factor. Slider stores
+//!   the normalized track in `0..1`; chip stores the **natural scale
+//!   factor** in `[1.0, SCALE_FULL_SCALE]`. The pair is NOT wired via
+//!   `link_slider_number` — that helper couples both widgets in the
+//!   same `0..1` space, but the user must be able to type "2" and get
+//!   2× (not track=2.0 → clamp 1.0 → 16×). Mirror is manual in
+//!   [`crate::event`] (slider drag → chip factor; chip commit → slider
+//!   track). Mirrors the Padding panel's chip-in-natural-unit pattern.
 //! - Cancel + Apply buttons.
 
 use crate::ids;
@@ -34,9 +37,10 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
-    // Scale slider + chip — both stored in the SAME `0..1` track space
-    // (Widget Gallery convention §4.2). The chip's natural-unit display
-    // ("2.00×") is computed in paint via `slider_to_scale(track)`.
+    // Scale slider in track space (0..1) + scale chip in natural unit
+    // (factor in [1.0, SCALE_FULL_SCALE]). The pair is NOT linked via
+    // `link_slider_number`; `crate::event` mirrors them manually so the
+    // user can type "2" → 2× (not "0.067" for track).
     let track = scale_to_slider(DEFAULT_SCALE_FACTOR);
     store.register(
         ids::UPS_SCALE,
@@ -46,21 +50,18 @@ pub fn populate(store: &mut WidgetStore) {
             orientation: SliderOrientation::Horizontal,
         },
     );
+    let factor = DEFAULT_SCALE_FACTOR as f64;
     store.register(
         ids::UPS_SCALE_NUM,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
-            value: track as f64,
-            buffer: format_number(track as f64),
+            value: factor,
+            buffer: format_number(factor),
             caret: 0,
-            last_committed: track as f64,
+            last_committed: factor,
             selection_anchor: None,
         },
     );
-    // `link_slider_number` auto-marks the chip as no-stepper too (see
-    // its doc) so the dispatch's default stepper carve on the chip's
-    // right edge doesn't arm a phantom continuous-hold.
-    store.link_slider_number(ids::UPS_SCALE, ids::UPS_SCALE_NUM);
 
     // Hover tooltips for the 3 algorithm chips so the user knows which
     // algorithm suits which image kind. Each text fits in a single line
@@ -105,31 +106,26 @@ mod tests {
     }
 
     #[test]
-    fn scale_slider_and_chip_seeded_to_default_track() {
+    fn scale_slider_seeded_in_track_chip_in_natural_factor() {
         let mut store = WidgetStore::with_capacity(8);
         populate(&mut store);
-        let expected = scale_to_slider(DEFAULT_SCALE_FACTOR);
+        // Slider lives in track space (0..1).
+        let expected_track = scale_to_slider(DEFAULT_SCALE_FACTOR);
         let (_, v) = store.slider(ids::UPS_SCALE).unwrap();
-        assert!((v - expected).abs() < f32::EPSILON);
-        // Chip storage is ALSO in track space (Widget Gallery §4.2).
-        let chip_v = store.number_value(ids::UPS_SCALE_NUM).unwrap() as f32;
-        assert!((chip_v - expected).abs() < f32::EPSILON);
+        assert!((v - expected_track).abs() < f32::EPSILON);
+        // Chip lives in natural unit (factor in [1, 16]).
+        let chip_v = store.number_value(ids::UPS_SCALE_NUM).unwrap();
+        assert!((chip_v - DEFAULT_SCALE_FACTOR as f64).abs() < f64::EPSILON);
     }
 
     #[test]
-    fn scale_pair_is_linked() {
-        // `link_slider_number` engages the dispatch's bidirectional
-        // mirror + clamp + auto no-stepper marking — without it the
-        // panel re-creates the slot 1 (Color Equalization) bugs.
+    fn scale_pair_is_not_linked() {
+        // Manual mirror in `crate::event` — see populate module doc.
+        // Linking would force chip and slider into the same 0..1 space
+        // and break "type 2 → 2×".
         let mut store = WidgetStore::with_capacity(8);
         populate(&mut store);
-        assert_eq!(
-            store.linked_number(ids::UPS_SCALE),
-            Some(ids::UPS_SCALE_NUM)
-        );
-        assert_eq!(
-            store.linked_slider(ids::UPS_SCALE_NUM),
-            Some(ids::UPS_SCALE)
-        );
+        assert_eq!(store.linked_number(ids::UPS_SCALE), None);
+        assert_eq!(store.linked_slider(ids::UPS_SCALE_NUM), None);
     }
 }

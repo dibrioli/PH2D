@@ -345,7 +345,7 @@ mod mcp {
 |---|---|---|
 | `mcp_paint_strokes_round_trip` | ph2d-painter-mcp | `StrokeSpec → record → query → ref → inspect` recupera spec equivalente (módulo timestamp e uuid). |
 | `mcp_paint_strokes_requires_token` | idem | Call sem `confirmation_token` válido → `MissingConfirmationToken`. |
-| `mcp_paint_strokes_batch_cap_enforced` | idem | Batch > 1000 strokes → `StrokesTooLarge`. |
+| `mcp_paint_strokes_batch_cap_enforced` | idem | Batch > 5000 strokes → `StrokesTooLarge`. |
 | `mcp_modify_stroke_path_offset_replace_mutex` | idem | `StrokeMods { path_offset: Some, path_replace: Some }` → `PathReplaceAndOffsetConflict`. |
 | `mcp_audit_log_appended_per_call` | idem | Após call destructive, audit.log ganha 1 nova linha JSON válida. |
 | `mcp_query_strokes_filter_combinations` | idem | Filtros AND-combined (bbox + brush + color_near) retornam ∩ correto. |
@@ -367,7 +367,7 @@ mod mcp {
 ### Negativas / Custos
 
 - **Token issuance é human-in-the-loop.** Não automatável em CI. Mitigação: `--unsafe-mcp` para test envs; tokens via env var em dev runs.
-- **`StrokesTooLarge { cap: 1000 }` pode parecer apertado.** LLM grandes prompts (e.g., "preencha canvas inteiro com hachura") viram múltiplos calls — fluxo natural via batching. Mitigação documentada em quality engineering (§2.13).
+- **`StrokesTooLarge { cap: 5000 }` cobre maioria dos casos hatching/wash mas mantém ceiling.** LLM grandes prompts além de 5k (e.g., "preencha canvas 8K inteiro com pencil noise") viram múltiplos calls — fluxo natural via batching. Mitigação documentada em quality engineering (§2.13). Calibração final pós-perf em W13 T-N.
 - **Audit log cresce 5 MB/dia em uso pesado.** Rotação automática (100 MB → roll) limita a ~500 MB total. Aceito.
 - **Conversion `f32 → Q16.16` introduz quantização determinística.** ULP drift possível em coords não-grid-aligned. Garantido só para coords < 32768 (limite Q16.16). Spec já cap canvas em 16384×8192 (§2.5 02_layers.md).
 - **`StrokeMods.path_replace` cap 4096 points.** Pode bater em strokes muito longos (~30 segundos sem release). Bypass: split em múltiplas operações `mod_stroke`. Edge case raríssimo.

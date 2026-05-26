@@ -328,6 +328,7 @@ mod stroke_history {
     #[test] fn layer_snapshot_field_count_is_capped()       { /* ≤ 8 */ }
     #[test] fn snapshot_storage_variant_count_is_capped()   { /* ≤ 4 */ }
     #[test] fn paint_project_field_count_is_capped()        { /* ≤ 12 */ }
+    #[test] fn canvas_info_field_count_is_capped()          { /* ≤ 8 (§2.7.1) */ }
     #[test] fn paint_project_cache_field_count_is_capped()  { /* ≤ 8 — sidecar (§2.7.2) */ }
     #[test] fn reproject_mode_variant_count_is_capped()     { /* ≤ 4 */ }
     #[test] fn painter_memory_budget_field_count_is_capped() { /* ≤ 8 */ }

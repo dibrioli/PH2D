@@ -269,8 +269,24 @@ Esta ADR usa tipos definidos em outros crates / ADRs. Para evitar deriva, cada t
 | `Token` (HR-11) | ADR-0047 §2.10 | `ph2d-painter-mcp` |
 | `StrokeId = Uuid` | ADR-0046 §2.2 | `ph2d-painter-stroke` |
 | `BrushParamsHash = [u8; 32]` | ADR-0044 §2.2 (blake3) | `ph2d-painter-brush` (re-export) |
+| `ToolMode { Paint, Smudge, Erase }` | ADR-0046 §2.4 | `ph2d-painter-stroke` |
+| `LayerStack` | TBD W3 (data model raster + adjustment) — provisório `ph2d-painter-brush` | TBD W3 ADR ratifica |
 
 **Tipos "TBD W-N home"** são placeholders. Cada W-N que materializar o tipo registra em sua ADR de wave + commit que migra esta tabela. ADRs da cascata W0 **não pre-decidem** o crate-home; apenas registram a dep.
+
+#### 2.6.1 `PainterMode` (UI) vs `ToolMode` (history) — mapping congelado
+
+Audit 2026-05-26 flagged naming drift cross-ADR. Decisão: **dois enums separados** intencionalmente, com mapping fixo:
+
+| `PainterMode` (UI sidebar — ADR-0043 §2.3) | ↔ | `ToolMode` (stroke history — ADR-0046 §2.4) |
+|---|---|---|
+| `Brush` | ↔ | `Paint` |
+| `Smudge` | ↔ | `Smudge` |
+| `Eraser` | ↔ | `Erase` |
+
+**Razão:** UI usa nomes do usuário ("Brush", "Eraser" — botões da sidebar); history usa nomes do schema serializável ("Paint" é o ato; "Erase" é o tempo verbal canônico para serialização postcard). Conversão acontece em `PainterTool::handle_panel_event` (one-line `match`).
+
+**Risco de divergência:** se variant nova for adicionada em um sem o par, gate `painter_mode_tool_mode_mapping_total` (em `painter_contract_surface` ADR-0044 §2.11 ou aditivo W1 T-N) falha.
 
 ---
 
@@ -279,7 +295,7 @@ Esta ADR usa tipos definidos em outros crates / ADRs. Para evitar deriva, cada t
 ### Positivas
 
 - **Drop-crate fan-out vale pro Painter.** Toda task W1..W15 que adiciona uma feature ao Painter cai em um destes baldes:
-  - (A) nova variant em `PainterUiEdit` (dentro do cap 20) — fan-out drop-in;
+  - (A) nova variant em `PainterUiEdit` (dentro do cap 24) — fan-out drop-in;
   - (A) novo field em `PainterUiSnapshot` ou `PainterParams` (dentro do cap) — fan-out drop-in;
   - (A) novo crate satélite `ph2d-panel-painter-*` ou `ph2d-painter-*` — fan-out drop-in via DIRETRIZ §3.A;
   - (C) Coord-A ADR-amend (raríssimo).
@@ -291,7 +307,7 @@ Esta ADR usa tipos definidos em outros crates / ADRs. Para evitar deriva, cada t
 
 - **PainterTool é o primeiro Tool 'workhorse'** — se a moldura `RasterEditTool` apertar (e.g., precisar de canvas-event hook trait-level), exige ADR-amend bumpando caps 10/5/4. Mitigação: spec já é v1 madura; risco identificado e watch-listed.
 - **`BrushHandle` cross-crate** — `PainterParams.active_brush: BrushHandle` cria dep `ph2d-tool-painter → ph2d-painter-brush`. Já está no design (Cargo.toml §2.1), apenas registro o custo.
-- **Caps são opinion-shaped.** 20/18/12 são chutes calibrados (+20-33% sobre baseline bgremoval). Se W2 sidebar pedir mais que 5 variants além do estimado v1, vira ADR-amend (T-W2.X). Aceito — é o trade-off do design "freeze cedo, amend explicitamente".
+- **Caps são opinion-shaped.** 24/18/12 são chutes calibrados (audit 2026-05-26 bumpou 20→24 após contagem realista de variants por wave). Se W9+W11+W14 combinadas pedirem mais que 9 variants além do v1, vira ADR-amend (T-W-N.X). Aceito — é o trade-off do design "freeze cedo, amend explicitamente".
 
 ### Neutras
 

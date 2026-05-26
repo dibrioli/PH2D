@@ -87,7 +87,10 @@ pub(super) fn dispatch(
         *last_pushed_entity = None;
         color_equalization_previews.clear();
         #[cfg(feature = "panel-color-equalization")]
-        ph2d_panel_color_equalization::set_current_snapshot(None);
+        {
+            ph2d_panel_color_equalization::set_current_snapshot(None);
+            ph2d_panel_color_equalization::set_current_histogram(None);
+        }
         return None;
     }
 
@@ -137,6 +140,11 @@ pub(super) fn dispatch(
         }
         #[cfg(feature = "panel-color-equalization")]
         ph2d_panel_color_equalization::set_current_snapshot(Some(ceq.ui_snapshot()));
+        // Publish histogram do preview pra "visor" do painel (faltava,
+        // por isso aparecia preto — Enio 2026-05-26 "O visor não
+        // funciona, está com fundo preto").
+        #[cfg(feature = "panel-color-equalization")]
+        ph2d_panel_color_equalization::set_current_histogram(Some(ceq.preview_histogram()));
     }
 
     // Reset just fired (Reset button or fresh activation) — re-populate

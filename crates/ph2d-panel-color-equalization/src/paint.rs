@@ -31,8 +31,8 @@ use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_corner_dot, paint_panel_surface, paint_panel_title, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
     COLOR_EQUALIZATION_SCROLLBAR_ID, Dropdown, DropdownState, paint_dropdown_popover_in_viewport,
@@ -61,6 +61,9 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     ctx.host.store_mut().set_panel_rect(ids::CEQ_PANEL, rect);
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
+    // BL resize gripper dot — sem isso o usuário não vê affordance
+    // do BL handle (que já é hit-registrado abaixo). Enio 2026-05-26.
+    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles (shared with Inspector).
     {
@@ -84,9 +87,12 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
         label_col_w: LABEL_COL_W,
     };
 
+    // Título curto pra caber em 1 linha mesmo com painel estreito
+    // (Enio 2026-05-26: "nome do painel fica cortado abaixo do
+    // monitor. Corrija isso.").
     let title_size = paint_panel_title(
         rect,
-        "Color Equalization",
+        "Color EQ",
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,

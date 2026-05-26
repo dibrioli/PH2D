@@ -259,6 +259,16 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     let inner_x = rect.x + pad_x;
     let inner_y = rect.y + (rect.h - font_size) * 0.5;
     let inner_w = (chevron_rect.x - inner_x - Spacing::Md.px()).max(0.0);
+    // Hard-clip ao chip rect — `paint_text` pode wrap/overflow em
+    // colunas estreitas (sem clip, a label "2 Levels" escapava pra
+    // fora do chip do CEQ — Enio 2026-05-26).
+    let clip = ph2d_vector::Rect::new(
+        rect.x as f64,
+        rect.y as f64,
+        (rect.x + rect.w) as f64,
+        (rect.y + rect.h) as f64,
+    );
+    scene.push_clip(&clip);
     if let Some(label) = dd.selected_label() {
         paint_text(
             text_system,
@@ -282,6 +292,7 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
             resolve(placeholder_color, theme),
         );
     }
+    scene.pop_layer();
     let chevron_color = resolve(ColorToken::Text2, theme);
     let icon = if dd.open {
         IconId::ChevronUp

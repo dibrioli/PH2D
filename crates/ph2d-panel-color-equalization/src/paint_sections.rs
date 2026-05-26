@@ -18,13 +18,14 @@ use crate::ids;
 use crate::state::{self, PendingDropdownPopover};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, paint_button,
     paint_dropdown_chip, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_tool_color_equalization::lut_presets::LutPreset;
 use ph2d_tool_color_equalization::params::{
     ColorEqualizationUiSnapshot, brightness_to_slider, clip_limit_to_slider, contrast_to_slider,
@@ -300,8 +301,26 @@ pub(crate) fn paint_posterize_quantize_section(
 ) -> f32 {
     let gap = Spacing::Sm.px();
     let half = ((layout.inner_w - gap) * 0.5).max(0.0);
+    // Mini-label acima de cada dropdown (Enio 2026-05-26: "Esses
+    // dropdown precisam de labels para o usuário saber do que se
+    // trata"). Font Xs / cor Text2 / pequeno gap, igual o padrão
+    // do topbar rail chips.
+    let mini_label_font = ph2d_tokens::TypeToken::Xs.px();
+    let mini_label_h = mini_label_font + 2.0; // LITERAL-PX-OK: tight ascent margin
+    let label_gap = 2.0_f32; // LITERAL-PX-OK: gap label→dropdown
 
-    // Posterize chip (left half).
+    // Posterize label + dropdown chip (left half).
+    paint_text(
+        text_system,
+        scene,
+        "Posterize",
+        layout.inner_x,
+        y_in,
+        mini_label_font,
+        half,
+        resolve(ColorToken::Text2, theme),
+    );
+    let chip_y = y_in + mini_label_h + label_gap;
     let post_open = matches!(
         store.get(ids::CEQ_POSTERIZE_DROPDOWN),
         Some(InteractiveState::Dropdown { open: true, .. })
@@ -311,7 +330,7 @@ pub(crate) fn paint_posterize_quantize_section(
     } else {
         DropdownState::Normal
     };
-    let post_chip_rect = Rect::new(layout.inner_x, y_in, half, layout.row_h);
+    let post_chip_rect = Rect::new(layout.inner_x, chip_y, half, layout.row_h);
     let post_dd = Dropdown::new(
         ids::CEQ_POSTERIZE_DROPDOWN,
         "Posterize".to_string(),
@@ -329,8 +348,19 @@ pub(crate) fn paint_posterize_quantize_section(
         });
     }
 
-    // Dither toggle (right half).
-    let dith_rect = Rect::new(layout.inner_x + half + gap, y_in, half, layout.row_h);
+    // Dither toggle (right half) — paint label "Dither" acima também
+    // pra parity visual com Posterize/Quantize.
+    paint_text(
+        text_system,
+        scene,
+        "Dither",
+        layout.inner_x + half + gap,
+        y_in,
+        mini_label_font,
+        half,
+        resolve(ColorToken::Text2, theme),
+    );
+    let dith_rect = Rect::new(layout.inner_x + half + gap, chip_y, half, layout.row_h);
     let dith_active = snapshot.posterize_dithering;
     let dith_kind = if dith_active {
         ButtonKind::Accent
@@ -351,9 +381,20 @@ pub(crate) fn paint_posterize_quantize_section(
     paint_button(&dith_button, dith_rect, scene, text_system, theme);
     hit_index.register(ids::CEQ_POSTERIZE_DITHERING, dith_rect);
 
-    let mut y = y_in + layout.row_h + layout.row_gap;
+    let mut y = chip_y + layout.row_h + layout.row_gap;
 
-    // Quantize chip — full width.
+    // Quantize label + dropdown chip — full width.
+    paint_text(
+        text_system,
+        scene,
+        "Quantize",
+        layout.inner_x,
+        y,
+        mini_label_font,
+        layout.inner_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    y += mini_label_h + label_gap;
     let quant_open = matches!(
         store.get(ids::CEQ_QUANTIZE_DROPDOWN),
         Some(InteractiveState::Dropdown { open: true, .. })

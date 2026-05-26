@@ -146,19 +146,46 @@ Antes de abrir W2.0.1, Coord-A executa: `cargo search qcms` + verificação de l
 
 O ICC pipeline é foundational para W2 (sem ele, PSD/TIFF perdem profile preservation = data-loss). Bloqueio aqui = bloqueio de W2 inteira; o viability gate evita descobrir isso no meio do batch.
 
-### 2.4 `EditorAction` strategy — defer pra W1.T0 decision gate
+### 2.4 Import/export é I/O direto via registry — NÃO atravessa `EditorAction`
 
-**Audit C-C1 (2026-05-26) found a contradiction**: o `OneShotImageOp` atual é `{ tool_id: &'static str, entity_bits: u64 }` — **NÃO TEM** campo `payload` para carregar `PathBuf` + `ExportOpts`. A formulação original desta seção prometia o reuso com payload, mas isso exige amendment ADR-0040 §7 que adiciona o campo (ou cria sub-variant).
+**Recalibração 2026-05-26 (pós-survey de engines de mercado).** A formulação original desta seção (e a auditoria C-C1 que derivou dela) partia da premissa errada: "import/export deve passar pelo canal genérico de `EditorAction` reusando `OneShotImageOp` com payload". Pesquisa de patterns nas engines de referência mostra que **nenhuma** delas faz isso. O padrão dominante é **chamada direta polimórfica via registry**, independente do action bus do editor.
 
-**Decisão revisada**: W0 não resolve essa questão. **W1.T0 decision gate** (pré-fan-out W1) escolhe entre:
+#### Padrão observado nas engines de mercado
 
-- **(α)** Amendment ADR-0040 §7 acrescentando `payload: ImageOpPayload` ao `OneShotImageOp` (bump cap tuple-arity ou adicionar 5º variant `EditorAction::ImageOp`).
-- **(β)** Side-channel via `AppGfx::pending_image_io: Cell<Option<(PathBuf, ExportOpts)>>` — bypass do `EditorAction` enum entirely (defensivo, mas viola o spírito "tudo passa pelo canal genérico").
-- **(γ)** Cancelar o invariante "sem variant per-feature" especificamente para image I/O, criando `EditorAction::{ImportImage, ExportImage}` — mais legível em código de chamada, mas slippery-slope para outras features futuras.
+| Engine | Mecanismo de import/export |
+|---|---|
+| **Unity** | `AssetDatabase.LoadAssetAtPath<T>(path)` + `AssetImporter` subclass per format. Chamada direta de método estático. |
+| **Unreal** | `UFactory` polimórfico per format (PNGFactory, JPEGFactory, …); `FAssetToolsModule::ImportAssetsWithDialog` chama a factory direta. |
+| **Godot** | `ResourceImporter` virtual class + `ResourceImporterManager` registry com `import_threaded_request(path)`. Singleton method call. |
+| **Bevy** (Rust, mais próximo) | `AssetLoader` trait + `AssetServer::load(path)` retorna `Handle<T>`. Method call em singleton global. |
+| **Krita** (raster 2D pro) | `KisImportExportManager::importDocument(path)` com filter polimórfico. Manager method call. |
+| **Blender** | `bpy.ops.import_*` operators per format. Operator system (direto, não enum genérico). |
 
-Coord-A escolhe + amendment ADR no momento que W1.T1 (PNG full implementation) precisar do canal funcional. **Até lá, W0 a vertical PNG stub não consome `EditorAction` — o smoke do Enio testou apenas registry-build no boot.**
+**Conclusão**: action enums (estilo `EditorAction`) servem para **ações simuladas undoable** — "mover sprite", "mudar opacidade", "deletar layer" — coisas que vivem no mundo do jogo, são serializáveis para replay/network/MCP, e têm efeito uniforme. **Import/export é categoria diferente**: I/O com o sistema operacional, dados heterogêneos por formato (PSD ≠ JPEG opts), receptor específico (o importer do formato detectado, não "qualquer tool ativo"), e não-undoable da mesma forma (você fecha o documento; não "desfaz abrir").
 
-ADR-0040 §4 "sem variant per-feature" permanece o norte; a decisão real é qual mecanismo cumpre esse norte sem quebrar o canal.
+#### Padrão canônico no PH2D (alinhado ao mercado)
+
+```rust
+// Quando o usuário clica "Open…" no menu:
+let path = host.file_dialog().pick().await?;                    // shell pede ao OS
+let bytes = std::fs::read(&path)?;                              // shell lê
+let importer = gfx.imageio_importers
+    .find_for(MagicHint::Bytes(&bytes))?;                        // registry escolhe
+let img = importer.import(&bytes, &ImportOpts::default())?;     // chamada direta
+spawn_sprite_from(img, gfx);                                     // resultado vai pro ECS
+```
+
+**Zero `EditorAction` envolvido.** Mesma forma do Bevy `AssetServer::load()`. O canal `EditorAction` (ADR-0040 frozen) permanece intocado para o que ele foi feito — ações simuladas. Import/export é função do **shell direto via a registry** que esta ADR já entrega em W0.T6.
+
+#### Implicações
+
+- **ADR-0040 §7 frozen continua intocado.** Não há amendment necessário.
+- **`OneShotImageOp` permanece `{ tool_id, entity_bits }`** — sem campo payload novo.
+- **Audit C-C1 é resolvido**, não deferred: a "contradição" desaparece quando reconhecemos que import/export não é assunto do `EditorAction`.
+- **Audit C-H1 + C-H3 (chrome derivation)** ainda valem como tarefas reais de W1.T1 (file dialog filter + io_menu items derivados da registry), mas são UX surface, não action-bus.
+- **W1 fan-out abre sem decision gate** — o W1.T0 que esta seção criava na formulação anterior fica obsoleto.
+
+ADR-0040 §4 "sem variant per-feature" continua o norte. Import/export simplesmente nunca foi candidato a variant.
 
 ### 2.5 HR cumpridas
 
@@ -235,10 +262,13 @@ Findings actionable fechados antes de ratificar (`feedback-perfection-no-deferra
 - **E-M1** `Error::fluent_key(&self) -> &'static str` (HR-15 i18n surface).
 - **A-L1** `impl From<std::io::Error> for Error` para `?` propagation nos satélites.
 
+**Resolved post-Accepted (2026-05-26 market-pattern survey):**
+
+- **C-C1** "EditorAction payload" — **RESOLVIDO via pattern survey** das engines de mercado (Unity / Unreal / Godot / Bevy / Krita / Blender). Import/export NUNCA é candidato a `EditorAction` — é chamada direta via `ImporterRegistry::find_for` no shell. ADR-0040 §7 intocado. §2.4 reescrita. **W1.T0 decision gate eliminado** — W1 abre direto.
+
 **Deferred com decisão registrada** (não-blocker para `Accepted`):
 
-- **C-C1** EditorAction payload — W1.T0 decision gate (§2.4).
-- **C-H1, C-H3** Chrome derivation (file dialog filter + io_menu items) — W1.T1 follow-up (slot reservado no headroom do contrato).
+- **C-H1, C-H3** Chrome derivation (file dialog filter + io_menu items derivados da registry) — W1.T1 follow-up (slot reservado no headroom do contrato).
 - **D-M** qcms vs moxcms — W2.0.1 viability gate (§2.3.1).
 - **D-M** HEIC — out-of-scope v1 com rationale + alternativas pesquisadas (§1.1).
 - **C-M2** Cargo.lock merge hotspot — herdado de ADR-0040; mitigation documentada em plano.

@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 FECHADA** 2026-05-26 — ADR-0054 `Accepted`. Contrato congelado + caps frozen + auditoria 5-lente remediada + smoke pós-remediação. **Fan-out W1 aberto** (mas antes resolver C-C1 OneShotImageOp em W1.T0 decision gate).
+**Status:** **W0 FECHADA** 2026-05-26 — ADR-0054 `Accepted`. Contrato congelado + caps frozen + auditoria 5-lente remediada + smoke pós-remediação + market-pattern survey (Unity/Unreal/Godot/Bevy/Krita/Blender) resolveu C-C1. **Fan-out W1 aberto sem decision gate.**
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -103,7 +103,7 @@ Total: 14-18 dias wall-clock; 22-27 sessões Claude.
 
 ## Achados em aberto (não-bloqueiam W0)
 
-- **`EditorAction` strategy** — Em W0.T7 confirmar: import/export rota via `OneShotImageOp { tool_id: "imageio_import", payload }` reusando canal genérico (alinha "sem variant per-feature" ADR-0040), OU amendment ADR-0040 adicionando 2 variants `ImportImage`/`ExportImage`. **Recomendação: reuso** (sem inflar cap `EditorAction`).
+- ~~**`EditorAction` strategy**~~ — **RESOLVIDO 2026-05-26 via market-pattern survey.** Import/export é chamada direta no shell via `ImporterRegistry::find_for` (padrão Unity/Unreal/Godot/Bevy/Krita/Blender). NUNCA atravessa `EditorAction`. ADR-0054 §2.4 reescrita.
 - **HEIC futuro** — Quando decoder puro-Rust de HEVC chegar (rust-libheif puro Rust em discussão upstream), reabre como W4.T?.
 - **PDF export** — Vello backend PDF (kurbo+peniko) pode entregar export PDF como bônus em W3 via `pdf-writer` 0.10, mas não está priorizado.
 - **RAW câmera** (DNG/CR2/NEF/ARW) — fora de escopo v1; entra em W4+ se demanda real aparecer.

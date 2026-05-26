@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-imageio-gif"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-gif` — GIF decode + encode (W1.T4). First W1 format
+# that produces `DecodedImage::Animated` for multi-frame sources;
+# single-frame GIFs come back as `Flat` like PNG/JPEG/WebP. Pure-Rust
+# via image 0.25's gif feature (bundled image-gif backend).
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+image = { version = "0.25", default-features = false, features = ["gif"] }

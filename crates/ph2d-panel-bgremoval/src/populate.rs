@@ -32,6 +32,11 @@ pub fn populate(store: &mut WidgetStore) {
         // pass also splits the result into one sprite per connected
         // component (see `ph2d_tool_bgremoval::algorithm::islands`).
         ids::BGR_SEPARATE_ISLANDS,
+        // "Detect subject" toggle — edge-aware silhouette upgrade
+        // (Enio 2026-05-26). Without this register the dispatcher
+        // doesn't recognise the id as a clickable button and the
+        // click is silently dropped.
+        ids::BGR_AUTO_PROTECT_SUBJECT,
     ] {
         store.register(
             id,

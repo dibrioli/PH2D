@@ -21,6 +21,7 @@ use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
 use ph2d_editor::{HeroScreen, Layout as EditorLayout, NodeId, ToastQueue, ToolRegistry, ZenMode};
 use ph2d_gpu::SurfaceContext;
 use ph2d_host::WindowSize;
+use ph2d_imageio::{ExporterRegistry, ImporterRegistry};
 use ph2d_input::InputState;
 use ph2d_render::{Camera2d, Compositor, GameRt, SpriteRenderer, Tonemap, VelloPass};
 use ph2d_script::ScriptHost;
@@ -179,6 +180,24 @@ pub(crate) struct AppGfx {
     /// restoring N sprites in one keypress — instead of just the last
     /// sprite the old single-slot design retained.
     pub(crate) image_edit_undo: Option<ImageEditTransaction>,
+    /// ADR-0054 W0.T6 — image I/O importer registry populated at boot
+    /// by `ph2d_imageio_registry_init::register_all_importers`. Held on
+    /// `AppGfx` so future Open-file paths (W1+) can `find_for` a
+    /// recognized format and decode straight to `DecodedImage`. Empty
+    /// outside the format crates' coverage (W0: PNG only).
+    #[allow(
+        dead_code,
+        reason = "W0.T6 stages the registry; W1+ wires Open into find_for"
+    )]
+    pub(crate) imageio_importers: ImporterRegistry,
+    /// ADR-0054 W0.T6 — image I/O exporter registry populated at boot
+    /// by `ph2d_imageio_registry_init::register_all_exporters`. Held
+    /// for future Save-as paths (W1+).
+    #[allow(
+        dead_code,
+        reason = "W0.T6 stages the registry; W1+ wires Save into find_for"
+    )]
+    pub(crate) imageio_exporters: ExporterRegistry,
 }
 
 /// One Apply pass — covers `entries.len()` sprites (1 for a single-sprite

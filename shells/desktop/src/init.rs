@@ -26,6 +26,7 @@ use ph2d_editor::{
 };
 use ph2d_gpu::{GpuContext, SurfaceContext};
 use ph2d_host::{Lifecycle, PlatformHost};
+use ph2d_imageio::{ExporterRegistry, ImporterRegistry};
 use ph2d_render::{Camera2d, Compositor, GameRt, SpriteRenderer, TextureAtlas, Tonemap, VelloPass};
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
@@ -291,6 +292,23 @@ pub(crate) fn build_initial_state(
         manifest_count,
     );
 
+    // ADR-0054 W0.T6: image I/O registries populated at boot. Same
+    // "drop a crate, zero central edit" mechanism as the tool registry
+    // above — `ph2d-imageio-sync` regenerates the bodies from a scan of
+    // `crates/ph2d-imageio-*`. W0.T5 wires PNG only; W1+ adds JPEG /
+    // WebP / GIF / .ph2d-native; W2+ adds PSD/ORA/TIFF/APNG; W3+ adds
+    // EXR/AVIF/JXL/HDR/SVG.
+    let mut imageio_importers = ImporterRegistry::new();
+    let mut imageio_exporters = ExporterRegistry::new();
+    ph2d_imageio_registry_init::register_all_importers(&mut imageio_importers);
+    ph2d_imageio_registry_init::register_all_exporters(&mut imageio_exporters);
+    println!(
+        "[{:>6}ms] ADR-0054 W0.T6: imageio registries built ({} importer(s), {} exporter(s))",
+        handler.elapsed_ms(),
+        imageio_importers.len(),
+        imageio_exporters.len(),
+    );
+
     let gfx = AppGfx {
         surface,
         renderer,
@@ -337,6 +355,8 @@ pub(crate) fn build_initial_state(
         name_type_id: stable_type_id("ph2d::ecs::Name"),
         sprite_type_id: stable_type_id("ph2d::render::Sprite"),
         image_edit_undo: None,
+        imageio_importers,
+        imageio_exporters,
     };
 
     (window, host, gfx)

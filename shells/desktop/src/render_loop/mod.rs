@@ -104,6 +104,11 @@ impl crate::App {
             name_type_id,
             sprite_type_id,
             image_edit_undo,
+            // ADR-0054 W0.T6: registries held but not yet consumed
+            // inside the render loop — W1 wires Open/Save user paths
+            // through `imageio_importers.find_for(...)`.
+            imageio_importers: _,
+            imageio_exporters: _,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;

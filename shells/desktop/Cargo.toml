@@ -40,6 +40,9 @@ ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
 # with a registry-driven dispatcher reading from this instance.
 ph2d-tool-registry = { path = "../../crates/ph2d-tool-registry" }
 ph2d-tool-registry-init = { path = "../../crates/ph2d-tool-registry-init" }
+# ADR-0054 W0.T6: image I/O registries populated at boot.
+ph2d-imageio = { path = "../../crates/ph2d-imageio" }
+ph2d-imageio-registry-init = { path = "../../crates/ph2d-imageio-registry-init" }
 # Wave 10 / Etapa 1.B — generic helpers for the per-tool bridges
 # (drive_source_push / drive_preview_cache / drive_pending_commit /
 # drive_deactivate_cleanup over `RasterEditTool`). Each *_bridge.rs

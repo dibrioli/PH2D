@@ -9,7 +9,7 @@
 //! owns the codegen'd `register_all_*` functions; the *types* live with
 //! the traits they collect.
 
-use crate::{ExportOpts, ImageExporter, ImageImporter, MagicHint};
+use crate::{ExportOpts, ImageExporter, ImageImporter, MagicHint, MagicMatch};
 
 /// Boot-time collection of [`ImageImporter`]s. Built by
 /// `ph2d_imageio_registry_init::register_all_importers` (codegen'd by
@@ -29,21 +29,30 @@ impl ImporterRegistry {
         Self::default()
     }
 
-    /// Append an importer. Order doesn't affect correctness (first match
-    /// wins in [`Self::find_for`]), but the codegen emits registrations
-    /// in `ls`-sorted order so two builds produce identical state.
+    /// Append an importer. Order doesn't affect correctness — confidence
+    /// (audit A-M1) decides dispatch in [`Self::find_for`]. The codegen
+    /// emits registrations in `ls`-sorted order so two builds produce
+    /// identical state.
     pub fn register(&mut self, importer: Box<dyn ImageImporter>) {
         self.importers.push(importer);
     }
 
-    /// First importer whose [`ImageImporter::supports`] returns `true`
-    /// for `hint`. `None` = no recognized format.
+    /// Best [`ImageImporter`] for `hint`: [`MagicMatch::Strong`] wins
+    /// immediately; otherwise the first [`MagicMatch::Weak`] survives.
+    /// `None` = no recognized format. Audit A-M1 (2026-05-26): was
+    /// first-`bool`-true wins; now confidence-aware so PSB doesn't
+    /// silently win over PSD when both match the same magic prefix.
     #[must_use]
     pub fn find_for(&self, hint: MagicHint<'_>) -> Option<&dyn ImageImporter> {
-        self.importers
-            .iter()
-            .find(|i| i.supports(hint))
-            .map(std::convert::AsRef::as_ref)
+        let mut weak: Option<&dyn ImageImporter> = None;
+        for imp in &self.importers {
+            match imp.supports(hint) {
+                MagicMatch::Strong => return Some(imp.as_ref()),
+                MagicMatch::Weak if weak.is_none() => weak = Some(imp.as_ref()),
+                _ => {}
+            }
+        }
+        weak
     }
 
     /// Total number of registered importers — used by the staleness
@@ -86,7 +95,7 @@ impl ExporterRegistry {
     pub fn find_for(&self, opts: &ExportOpts) -> Option<&dyn ImageExporter> {
         self.exporters
             .iter()
-            .find(|e| e.supports_format(&opts.format))
+            .find(|e| e.supports_format(opts.format))
             .map(std::convert::AsRef::as_ref)
     }
 
@@ -106,15 +115,31 @@ impl ExporterRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{DecodedImage, Error, ExportOpts, ImportOpts};
+    use crate::{DecodedImage, Error, ExportFormat, ExportOpts, ImportOpts};
 
-    struct AlwaysYesImporter;
-    impl ImageImporter for AlwaysYesImporter {
-        fn supports(&self, _hint: MagicHint<'_>) -> bool {
-            true
+    struct StrongOnExtension;
+    impl ImageImporter for StrongOnExtension {
+        fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
+            match hint {
+                MagicHint::Extension(_) => MagicMatch::Strong,
+                _ => MagicMatch::None,
+            }
         }
         fn import(&self, _src: &[u8], _opts: &ImportOpts) -> Result<DecodedImage, Error> {
-            Err(Error::Decode("test stub".into()))
+            Err(Error::Decode("test stub strong".into()))
+        }
+    }
+
+    struct WeakOnExtension;
+    impl ImageImporter for WeakOnExtension {
+        fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
+            match hint {
+                MagicHint::Extension(_) => MagicMatch::Weak,
+                _ => MagicMatch::None,
+            }
+        }
+        fn import(&self, _src: &[u8], _opts: &ImportOpts) -> Result<DecodedImage, Error> {
+            Err(Error::Decode("test stub weak".into()))
         }
     }
 
@@ -128,15 +153,47 @@ mod tests {
     #[test]
     fn registered_importer_is_findable() {
         let mut reg = ImporterRegistry::new();
-        reg.register(Box::new(AlwaysYesImporter));
+        reg.register(Box::new(StrongOnExtension));
         assert_eq!(reg.len(), 1);
         assert!(reg.find_for(MagicHint::Extension("anything")).is_some());
     }
 
+    /// Audit A-M1 (2026-05-26): Strong wins even when Weak is
+    /// registered first. This is the entire point of `MagicMatch`.
+    #[test]
+    fn strong_match_beats_earlier_weak() {
+        let mut reg = ImporterRegistry::new();
+        reg.register(Box::new(WeakOnExtension)); // registered first
+        reg.register(Box::new(StrongOnExtension)); // strong wins
+        let found = reg
+            .find_for(MagicHint::Extension("anything"))
+            .expect("strong matches");
+        let err = found.import(&[], &ImportOpts::default()).unwrap_err();
+        let Error::Decode(msg) = err else {
+            panic!("expected Decode");
+        };
+        assert_eq!(msg, "test stub strong");
+    }
+
+    /// Audit A-M1: with no Strong match, first Weak survives.
+    #[test]
+    fn first_weak_wins_when_no_strong() {
+        let mut reg = ImporterRegistry::new();
+        reg.register(Box::new(WeakOnExtension));
+        let found = reg
+            .find_for(MagicHint::Extension("anything"))
+            .expect("weak matches");
+        let err = found.import(&[], &ImportOpts::default()).unwrap_err();
+        let Error::Decode(msg) = err else {
+            panic!("expected Decode");
+        };
+        assert_eq!(msg, "test stub weak");
+    }
+
     struct PngLikeExporter;
     impl ImageExporter for PngLikeExporter {
-        fn supports_format(&self, fmt: &str) -> bool {
-            fmt == "png"
+        fn supports_format(&self, fmt: ExportFormat) -> bool {
+            fmt == ExportFormat::Png
         }
         fn export(&self, _img: &DecodedImage, _opts: &ExportOpts) -> Result<Vec<u8>, Error> {
             Ok(vec![0x89, b'P', b'N', b'G'])
@@ -148,11 +205,11 @@ mod tests {
         let mut reg = ExporterRegistry::new();
         reg.register(Box::new(PngLikeExporter));
         let opts_png = ExportOpts {
-            format: "png".into(),
+            format: ExportFormat::Png,
             ..ExportOpts::default()
         };
         let opts_jpeg = ExportOpts {
-            format: "jpeg".into(),
+            format: ExportFormat::Jpeg,
             ..ExportOpts::default()
         };
         assert!(reg.find_for(&opts_png).is_some());

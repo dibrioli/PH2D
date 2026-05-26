@@ -59,9 +59,15 @@ mod registry;
 
 pub use buffer::ImageBuffer;
 pub use color::ColorProfile;
-pub use decoded::{AnimFrame, BlendMode, DecodedImage, Layer, LayerStack, VectorDoc};
+pub use decoded::{
+    AnimBlendOp, AnimFrame, BlendMode, DecodedImage, DisposeOp, Layer, LayerEffect,
+    LayerEffectKind, LayerKind, LayerStack, VectorDoc,
+};
 pub use error::Error;
 pub use exporter::ImageExporter;
 pub use importer::ImageImporter;
-pub use opts::{ExportOpts, ImportOpts, MagicHint, ToneMap};
+pub use opts::{
+    ColorProfileStrictness, ExportFormat, ExportOpts, ImportOpts, MagicHint, MagicMatch,
+    MetadataPolicy, ToneMap,
+};
 pub use registry::{ExporterRegistry, ImporterRegistry};

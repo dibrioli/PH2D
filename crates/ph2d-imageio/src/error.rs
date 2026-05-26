@@ -1,9 +1,10 @@
-//! Image I/O error type. **Cap FROZEN at 8 variants** by ADR-0054 §2.1
-//! arch-gate `error_variant_count_is_capped`.
+//! Image I/O error type. **Cap RAISED to 11 variants** by audit
+//! finding A-H4 (2026-05-26); ADR-0054 §2.1 arch-gate
+//! `error_variant_count_is_capped`.
 //!
-//! Variants name failure *categories*, not formats. Per-format detail goes
-//! in the inner `String` payload (decode/encode messages) so this enum
-//! stays small.
+//! Variants name failure *categories*, not formats. Per-format detail
+//! goes in the inner `String` payload (decode/encode messages) so this
+//! enum stays small.
 
 use std::fmt;
 
@@ -20,7 +21,9 @@ pub enum Error {
     Encode(String),
     /// The file format is recognized but this implementation does not
     /// handle it (e.g. PSD v2.0+ specific layer types, AVIF lossless
-    /// without rav1e support).
+    /// without rav1e support). Also raised when
+    /// [`crate::ImportOpts::color_profile_strictness`] is `Strict` and
+    /// the importer cannot satisfy the target profile (audit A-H5).
     Unsupported(String),
     /// Unexpected EOF reading the source bytes.
     Truncated,
@@ -36,8 +39,49 @@ pub enum Error {
     /// `DecodedImage::FlatHdr` with `ToneMap::None` — refuse instead of
     /// silently clipping highlights.
     HdrUnsupported,
+    /// Allocation refused — e.g. EXR 16K×16K float = 4 GiB exceeds
+    /// process/budget limit. Added by audit A-H4 so callers can
+    /// distinguish "we can't decode this file size" from
+    /// `Decode(String)` and skip retry. (HR-13 memory budget surface.)
+    OutOfMemory,
+    /// Source declares dimensions that exceed our hard cap (decompression
+    /// bomb defence — PNG IHDR claiming 65535×65535 with 1 byte/pixel
+    /// would fill 4 GiB). Inner string carries the offending dimension
+    /// for log. Added by audit A-H4.
+    DimensionExceedsLimit,
+    /// Long-running decode was cancelled by the caller (e.g. user
+    /// hit Esc on a slow PSD parse, or a cancellation token fired).
+    /// Importers MAY honour cancellation cooperatively; PR opens W1+.
+    /// Added by audit A-H4.
+    Cancelled,
     /// Escape hatch. Used sparingly; prefer the specific variants above.
     Custom(String),
+}
+
+impl Error {
+    /// Fluent message key for user-facing display (HR-15). The shell's
+    /// i18n layer resolves these against `locales/<lang>.ftl`. Inner
+    /// string payloads (when present) become Fluent variables.
+    ///
+    /// Audit E-M1 (2026-05-26): `Display` impl returns hardcoded English
+    /// for dev/log usage; user-facing UI MUST route through `fluent_key`
+    /// + Fluent bundle.
+    #[must_use]
+    pub const fn fluent_key(&self) -> &'static str {
+        match self {
+            Self::Decode(_) => "imageio.error.decode",
+            Self::Encode(_) => "imageio.error.encode",
+            Self::Unsupported(_) => "imageio.error.unsupported",
+            Self::Truncated => "imageio.error.truncated",
+            Self::IccCorrupted => "imageio.error.icc-corrupted",
+            Self::MissingLayer => "imageio.error.missing-layer",
+            Self::HdrUnsupported => "imageio.error.hdr-unsupported",
+            Self::OutOfMemory => "imageio.error.out-of-memory",
+            Self::DimensionExceedsLimit => "imageio.error.dimension-exceeds-limit",
+            Self::Cancelled => "imageio.error.cancelled",
+            Self::Custom(_) => "imageio.error.custom",
+        }
+    }
 }
 
 impl fmt::Display for Error {
@@ -52,9 +96,26 @@ impl fmt::Display for Error {
             Error::HdrUnsupported => {
                 f.write_str("HDR image cannot be exported to this LDR-only format without tone-map")
             }
+            Error::OutOfMemory => {
+                f.write_str("image too large to allocate (exceeds process/budget memory)")
+            }
+            Error::DimensionExceedsLimit => {
+                f.write_str("image dimensions exceed hard cap (decompression-bomb defence)")
+            }
+            Error::Cancelled => f.write_str("decode/encode was cancelled by the caller"),
             Error::Custom(s) => write!(f, "{s}"),
         }
     }
 }
 
 impl std::error::Error for Error {}
+
+impl From<std::io::Error> for Error {
+    /// Audit A-L1: format crates wrapping `std::io::Read`-based
+    /// decoders benefit from `?` propagation. Maps to `Decode(String)`
+    /// because IO errors at the imageio layer are always source-byte
+    /// problems (the caller hands us the bytes; we never read files).
+    fn from(e: std::io::Error) -> Self {
+        Self::Decode(e.to_string())
+    }
+}

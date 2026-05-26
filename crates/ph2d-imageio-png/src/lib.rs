@@ -7,12 +7,13 @@
 //!
 //! ### What this stub covers (W0.T5)
 //!
-//! - Magic-byte + extension `supports()` recognition.
+//! - Magic-byte (Strong) + extension (Weak) `supports()` recognition.
 //! - 8-bit RGBA decode + encode (the workhorse `ImageBuffer<SrgbRgba>`
 //!   wire shape).
 //! - sRGB color profile assumed (no ICC parsing) — per ADR-0054 §2.3
 //!   W1 policy.
 //! - Lossless bit-exact round-trip test against a 2×2 fixture.
+//! - HR-5 byte-exact determinism test for the encoder.
 //!
 //! ### What W1.T1 will add (out of W0 scope)
 //!
@@ -23,8 +24,8 @@
 
 use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
-    ColorProfile, DecodedImage, Error, ExportOpts, ExporterRegistry, ImageBuffer, ImageExporter,
-    ImageImporter, ImportOpts, ImporterRegistry, MagicHint,
+    ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
+    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
 };
 
 /// Register the PNG importer with `reg`. Codegen-wired into
@@ -48,10 +49,12 @@ pub struct PngImporter;
 const PNG_MAGIC: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
 
 impl ImageImporter for PngImporter {
-    fn supports(&self, hint: MagicHint<'_>) -> bool {
+    fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
         match hint {
-            MagicHint::Bytes(b) => b.starts_with(&PNG_MAGIC),
-            MagicHint::Extension(ext) => ext.eq_ignore_ascii_case("png"),
+            MagicHint::Bytes(b) if b.starts_with(&PNG_MAGIC) => MagicMatch::Strong,
+            MagicHint::Bytes(_) => MagicMatch::None,
+            MagicHint::Extension(ext) if ext.eq_ignore_ascii_case("png") => MagicMatch::Weak,
+            MagicHint::Extension(_) => MagicMatch::None,
         }
     }
 
@@ -83,8 +86,8 @@ impl ImageImporter for PngImporter {
 pub struct PngExporter;
 
 impl ImageExporter for PngExporter {
-    fn supports_format(&self, fmt: &str) -> bool {
-        fmt.eq_ignore_ascii_case("png")
+    fn supports_format(&self, fmt: ExportFormat) -> bool {
+        matches!(fmt, ExportFormat::Png)
     }
 
     fn export(&self, img: &DecodedImage, _opts: &ExportOpts) -> Result<Vec<u8>, Error> {
@@ -136,36 +139,55 @@ impl ImageExporter for PngExporter {
 mod tests {
     use super::*;
 
+    fn fixture_2x2() -> ImageBuffer<SrgbRgba> {
+        ImageBuffer {
+            width: 2,
+            height: 2,
+            pixels: vec![
+                SrgbRgba([255, 0, 0, 255]),
+                SrgbRgba([0, 255, 0, 255]),
+                SrgbRgba([0, 0, 255, 255]),
+                SrgbRgba([128, 128, 128, 200]),
+            ],
+            color_profile: ColorProfile::Srgb,
+        }
+    }
+
     #[test]
-    fn supports_recognizes_png_magic_bytes() {
+    fn supports_recognizes_png_magic_strong() {
         let imp = PngImporter;
-        assert!(imp.supports(MagicHint::Bytes(&PNG_MAGIC)));
-        // Extra bytes after magic still match.
+        // Audit A-M1: magic bytes are Strong (unique recognition).
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&PNG_MAGIC)),
+            MagicMatch::Strong
+        );
         let mut padded = PNG_MAGIC.to_vec();
         padded.extend_from_slice(&[0; 32]);
-        assert!(imp.supports(MagicHint::Bytes(&padded)));
-        // Wrong magic doesn't match.
-        assert!(!imp.supports(MagicHint::Bytes(&[0xff, 0xd8, 0xff, 0xe0])));
-        // Empty doesn't match.
-        assert!(!imp.supports(MagicHint::Bytes(&[])));
+        assert_eq!(imp.supports(MagicHint::Bytes(&padded)), MagicMatch::Strong);
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&[0xff, 0xd8, 0xff, 0xe0])),
+            MagicMatch::None
+        );
+        assert_eq!(imp.supports(MagicHint::Bytes(&[])), MagicMatch::None);
     }
 
     #[test]
-    fn supports_recognizes_png_extension_case_insensitive() {
+    fn supports_recognizes_png_extension_weak() {
         let imp = PngImporter;
-        assert!(imp.supports(MagicHint::Extension("png")));
-        assert!(imp.supports(MagicHint::Extension("PNG")));
-        assert!(imp.supports(MagicHint::Extension("Png")));
-        assert!(!imp.supports(MagicHint::Extension("jpeg")));
-        assert!(!imp.supports(MagicHint::Extension("")));
+        // Audit A-M1: extension is Weak (could be wrong file with .png name).
+        assert_eq!(imp.supports(MagicHint::Extension("png")), MagicMatch::Weak);
+        assert_eq!(imp.supports(MagicHint::Extension("PNG")), MagicMatch::Weak);
+        assert_eq!(imp.supports(MagicHint::Extension("Png")), MagicMatch::Weak);
+        assert_eq!(imp.supports(MagicHint::Extension("jpeg")), MagicMatch::None);
+        assert_eq!(imp.supports(MagicHint::Extension("")), MagicMatch::None);
     }
 
     #[test]
-    fn exporter_recognizes_png_format_case_insensitive() {
+    fn exporter_recognizes_png_format() {
         let exp = PngExporter;
-        assert!(exp.supports_format("png"));
-        assert!(exp.supports_format("PNG"));
-        assert!(!exp.supports_format("jpeg"));
+        assert!(exp.supports_format(ExportFormat::Png));
+        assert!(!exp.supports_format(ExportFormat::Jpeg));
+        assert!(!exp.supports_format(ExportFormat::Webp));
     }
 
     /// The core W0.T5 vertical: synthesize a 2×2 fixture in memory,
@@ -174,28 +196,16 @@ mod tests {
     /// HR-6 derived (asset = hash blake3 of conteúdo, not bytes-on-wire).
     #[test]
     fn roundtrip_2x2_image_preserves_pixels_bit_exact() {
-        let original_pixels = vec![
-            SrgbRgba([255, 0, 0, 255]),     // red
-            SrgbRgba([0, 255, 0, 255]),     // green
-            SrgbRgba([0, 0, 255, 255]),     // blue
-            SrgbRgba([128, 128, 128, 200]), // grey with semi-alpha
-        ];
-        let buffer = ImageBuffer::<SrgbRgba> {
-            width: 2,
-            height: 2,
-            pixels: original_pixels.clone(),
-            color_profile: ColorProfile::Srgb,
-        };
+        let original = fixture_2x2();
         let bytes = PngExporter
             .export(
-                &DecodedImage::Flat(buffer),
+                &DecodedImage::Flat(original.clone()),
                 &ExportOpts {
-                    format: "png".into(),
+                    format: ExportFormat::Png,
                     ..ExportOpts::default()
                 },
             )
             .expect("PNG export should succeed");
-        // PNG signature check on the produced bytes.
         assert!(bytes.starts_with(&PNG_MAGIC), "output bytes are not PNG");
 
         let decoded = PngImporter
@@ -207,14 +217,36 @@ mod tests {
         assert_eq!(out.width, 2);
         assert_eq!(out.height, 2);
         assert_eq!(out.color_profile, ColorProfile::Srgb);
-        assert_eq!(
-            out.pixels.len(),
-            original_pixels.len(),
-            "pixel count must match",
-        );
-        for (i, (got, want)) in out.pixels.iter().zip(original_pixels.iter()).enumerate() {
+        assert_eq!(out.pixels.len(), original.pixels.len());
+        for (i, (got, want)) in out.pixels.iter().zip(original.pixels.iter()).enumerate() {
             assert_eq!(got.0, want.0, "pixel {i} drifted across round-trip");
         }
+    }
+
+    /// Audit E-H1 (HR-5 determinism): exporting the same buffer twice
+    /// must produce byte-exact identical output. PNG via `image` 0.25
+    /// MUST NOT emit a `tIME` chunk by default (it doesn't, but the
+    /// test guards future drift if upstream changes encoder defaults).
+    #[test]
+    fn export_is_byte_exact_deterministic() {
+        let buf = fixture_2x2();
+        let opts = ExportOpts {
+            format: ExportFormat::Png,
+            ..ExportOpts::default()
+        };
+        let bytes_a = PngExporter
+            .export(&DecodedImage::Flat(buf.clone()), &opts)
+            .expect("first export");
+        let bytes_b = PngExporter
+            .export(&DecodedImage::Flat(buf), &opts)
+            .expect("second export");
+        assert_eq!(
+            bytes_a, bytes_b,
+            "HR-5: PNG export must be byte-exact for the same input. \
+             If this fails, the `image` 0.25 encoder picked up a \
+             non-deterministic chunk (tIME, comments, etc) — pin the \
+             encoder via `png::Encoder` direct API."
+        );
     }
 
     #[test]
@@ -232,7 +264,7 @@ mod tests {
             .export(
                 &fake_hdr,
                 &ExportOpts {
-                    format: "png".into(),
+                    format: ExportFormat::Png,
                     ..ExportOpts::default()
                 },
             )
@@ -241,5 +273,7 @@ mod tests {
             matches!(err, Error::HdrUnsupported),
             "expected HdrUnsupported, got {err:?}"
         );
+        // Audit E-M1 (HR-15): error must carry a Fluent key for UI.
+        assert_eq!(err.fluent_key(), "imageio.error.hdr-unsupported");
     }
 }

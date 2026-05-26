@@ -134,10 +134,11 @@ fn error_variant_count_is_capped() {
     let src = include_str!("../src/error.rs");
     let n = enum_variant_count(src, "pub enum Error {");
     assert!(
-        n <= 8,
-        "Error has {n} variants; cap is 8. FROZEN at ADR-0054 W0.T4 to the \
-         current surface (Decode / Encode / Unsupported / Truncated / \
-         IccCorrupted / MissingLayer / HdrUnsupported / Custom). Per-format \
+        n <= 11,
+        "Error has {n} variants; cap is 11. RAISED 8→11 by audit A-H4 \
+         (2026-05-26) to add OutOfMemory + DimensionExceedsLimit + Cancelled \
+         (decompression-bomb defence + HR-13 memory budget surface + \
+         cooperative cancellation). Frozen again at this cap. Per-format \
          detail goes in the inner `String` payload — prefer that to a new \
          variant. Coord-A contract change: bump + amendment."
     );

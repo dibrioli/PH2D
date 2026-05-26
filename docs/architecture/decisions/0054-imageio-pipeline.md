@@ -1,6 +1,6 @@
 # ADR-0054 — Image I/O pipeline (contrato `ImageImporter`/`ImageExporter` + canal genérico + registro por codegen)
 
-**Status:** Proposed (W0 em execução; será `Accepted` após smoke do Enio da vertical PNG-stub)
+**Status:** Proposed (W0 quase fechada — T1-T6 ✅ shipped + auditoria 5-lente remediada; aguarda smoke do Enio para ratificar `Accepted`)
 **Data:** 2026-05-26
 **Decisor(es):** Enio + Claude (arquiteto).
 **Estende:** ADR-0031 (família como unidade FBP), ADR-0040 (tool isolation — mesmo padrão satélite drop-in), ADR-0044/0046/0051 (Painter color profile/blend modes — fonte de verdade para `RenderingMode` e `ColorProfile`).
@@ -22,6 +22,16 @@ O Painter (sucessor do Procreate, ADRs 0043..0053) precisa **abrir e salvar arqu
 Adicionar formato hoje exigiria: criar lógica em algum crate central + variant de `EditorAction` per-formato + match no shell + entrada de chrome. **É o mesmo problema que ADR-0040 resolveu para tools**: edit central triplo por feature, não escala, serializa multi-agente.
 
 Esta ADR aplica o **mecanismo já provado pelo sistema de nós (ADR-0039) e tools (ADR-0040)** à família image-io: drop-crate isolado + codegen + arch-gate + contrato congelado. 16 formatos planejados em 3 ondas paralelas pós-freeze (W1=5, W2=4, W3=5; +2 foundational).
+
+### 1.1 HEIC explicitly out-of-scope (audit D-M follow-up)
+
+A decisão "puro-Rust only" (decisão #1 do Enio em 2026-05-26) **descarta HEIC v1**. Crates pesquisados em 2026-05:
+
+- **`libheif-rs`** (binding C de libheif) — viola HR-1 (não-puro-Rust core).
+- **`heif`** crate (crates.io) — apenas decode parcial sem maintenance ativo.
+- **HEVC decoders puros Rust** — não há implementação madura. HEVC é patent-heavy (royalty para MPEG-LA), e o esforço da Rust community concentrou-se em AV1 (`rav1d` puro-Rust). ChromeOS internamente decodifica HEVC via hardware; sem fallback software puro-Rust disponível.
+
+Implicação UI: usuário iPad que tira foto em HEIC precisa converter offline para JPEG/PNG antes de abrir no Painter. Documentar essa restrição em UI error message via `imageio.error.unsupported` Fluent key. Reabre como W4 quando decoder HEVC puro Rust maduro emergir.
 
 ## 2. Decisão
 
@@ -76,14 +86,30 @@ pub enum ColorProfile {
 
 | Item | Cap | Surface atual |
 |---|---|---|
-| `ImageImporter` métodos | ≤ 3 | `supports` + `import` (2 — folga 1 para feature futura) |
+| `ImageImporter` métodos | ≤ 3 | `supports` + `import` (2 — folga 1 reservada p/ W1.T1 chrome derivation, audit C-H1) |
 | `ImageExporter` métodos | ≤ 3 | `supports_format` + `export` (2 — folga 1) |
-| `DecodedImage` variants | ≤ 5 | `Flat` + `FlatHdr` + `Layered` + `Animated` + `Vector` (5 — frozen) |
-| `ExportOpts` campos | ≤ 6 | `format` + `quality` + `color_profile` + `preserve_layers` + `tone_map` + `metadata` (6) |
+| `DecodedImage` variants | ≤ 5 | `Flat` + `FlatHdr` + `Layered` + `Animated` + `Vector` (5 — frozen; SVG SMIL rasteriza para `Animated`) |
+| `ExportOpts` campos | ≤ 6 | `format` + `quality` + `color_profile` + `preserve_layers` + `tone_map` + `metadata` (6, todos enums type-safe) |
 | `ColorProfile` variants | ≤ 8 | `Srgb`/`DisplayP3`/`AdobeRgb`/`ProPhoto`/`LinearRec709`/`LinearRec2020`/`Custom`/`Unknown` (8 — frozen) |
-| `Error` variants | ≤ 8 | folga para mensagens de domain (`Decode`/`Encode`/`Unsupported`/`Truncated`/`IcCorrupted`/`MissingLayer`/`HdrUnsupported`/`Custom`) |
+| `Error` variants | ≤ 11 | `Decode`/`Encode`/`Unsupported`/`Truncated`/`IccCorrupted`/`MissingLayer`/`HdrUnsupported`/`OutOfMemory`/`DimensionExceedsLimit`/`Cancelled`/`Custom` (11 — raised 8→11 by audit A-H4 para cobrir OOM + decompression-bomb defence + cooperative cancellation) |
 
 Mudar qualquer cap = evento raro Coord-A only + amendment ADR-0054.
+
+### 2.1.1 Data-model types NÃO arch-gated (audit clarification)
+
+Os tipos abaixo são **data model** (every encoder/decoder reads, no implementer trait): podem crescer sem amendment. O arch-gate cobre apenas trait surfaces que **todo format crate implementa**:
+
+- **`BlendMode`** — 24 variants + `Custom(u16)`. PSD/ORA têm 27+ blend modes; o `Custom(u16)` preserva opcode PSD para round-trip byte-exact em modos desconhecidos.
+- **`Layer`** — campos (kind, pixels, opacity, blend_mode, visible, mask, effects, color_profile, version).
+- **`LayerKind`** — `Pixel/Group/Adjustment/Text/Smart` (modela PSD layer richness; audit A-C2).
+- **`LayerEffect` + `LayerEffectKind`** — DropShadow/Glow/Stroke/Bevel/ColorOverlay/GradientOverlay/PatternOverlay/Custom.
+- **`LayerStack`** — campos (`version: u32` HR-14, canvas dims, layers, color_profile).
+- **`AnimFrame`** — campos (image, delay_ms, offset_xy, dispose_op, blend_op, transparent_index — audit A-C3 para GIF/APNG fidelity).
+- **`DisposeOp` / `AnimBlendOp`** — variants modelam GIF/APNG disposal/blend.
+- **`VectorDoc`** — campos (W3 expand sem amendment).
+- **`ExportFormat`** — 14 variants (cobre W1+W2+W3 + `Ph2dNative`); cresce com cada formato adicionado.
+
+Estes tipos têm `Custom(_)` escape hatches onde aplicável para garantir round-trip byte-exact mesmo quando a versão atual não modela o opcode/feature.
 
 ### 2.2 Codegen + workspace.members glob
 
@@ -106,16 +132,33 @@ pub fn register_all_importers(reg: &mut ImporterRegistry) {
 | Onda | Política | Por quê |
 |---|---|---|
 | **W1** Universal | sRGB-assumed-no-profile (sem ICC parsing) | Foto comum + fixtures sintéticas cobrem 95% do uso; perfeição de color trava ship |
-| **W2** Profissional | ICC parsing ativo via `qcms` 0.x (Mozilla puro-Rust) — sRGB/P3/AdobeRGB/ProPhoto/Custom preservados byte-exact | PSD/TIFF profissional carregam profile; descartar = corromper output do usuário |
+| **W2** Profissional | ICC parsing ativo via `qcms` 0.x **OU fallback `moxcms`** (vide §W2.0.1) — sRGB/P3/AdobeRGB/ProPhoto/Custom preservados byte-exact | PSD/TIFF profissional carregam profile; descartar = corromper output do usuário |
 | **W3** HDR + vetor | linear-f32 + Rec709/Rec2020; tone-map fallback (Reinhard/ACES) pra LDR export | EXR/AVIF-10bit/JXL-HDR são float linear; tone-map só se exportador target é sRGB |
 
 **Internal canonical:** OKLCH/linear-f32 (alinha ADR-0044 Painter brush engine + ADR-0051 ColorProfile FROZEN 8B). Conversão na fronteira: import → linear → OKLCH (Painter native); export → linear → encoded color space do formato target.
 
-### 2.4 `EditorAction` strategy — reuso de `OneShotImageOp`
+### 2.3.1 W2.0.1 ICC pipeline — viability gate (audit D-M)
 
-ADR-0040 congelou `EditorAction` em 4 variants genéricos. Importar/exportar **NÃO** ganha variant novo. Em vez disso, reusa `OneShotImageOp { tool_id: "imageio_import", entity_bits, payload }` (e `"imageio_export"`), onde `payload` carrega path + opts. Cap `EditorAction` permanece 4 (sem amendment ADR-0040 §7).
+Antes de abrir W2.0.1, Coord-A executa: `cargo search qcms` + verificação de last-release date no crates.io + scan do CHANGELOG. `qcms` é projeto Mozilla histórico; se o crate estiver dormente (>12 meses sem release), W2.0.1 pivota para:
 
-**Por quê:** ADR-0040 §4 estabeleceu "sem variant per-feature" como invariante. Image I/O é mais uma feature drop-in; criar variants `ImportImage`/`ExportImage` violaria o invariante e adicionaria pressão pro próximo agente justificar **mais** variants depois (slippery slope).
+- **`moxcms` 0.5+** (puro-Rust, mantido ativamente em 2026, suporte a ICC v2 + v4) — fallback primário.
+- **Implementação local** de ICC v2 lookup matricial (sRGB/P3/AdobeRGB hardcoded; Custom → identidade) — fallback se ambos crates falharem.
+
+O ICC pipeline é foundational para W2 (sem ele, PSD/TIFF perdem profile preservation = data-loss). Bloqueio aqui = bloqueio de W2 inteira; o viability gate evita descobrir isso no meio do batch.
+
+### 2.4 `EditorAction` strategy — defer pra W1.T0 decision gate
+
+**Audit C-C1 (2026-05-26) found a contradiction**: o `OneShotImageOp` atual é `{ tool_id: &'static str, entity_bits: u64 }` — **NÃO TEM** campo `payload` para carregar `PathBuf` + `ExportOpts`. A formulação original desta seção prometia o reuso com payload, mas isso exige amendment ADR-0040 §7 que adiciona o campo (ou cria sub-variant).
+
+**Decisão revisada**: W0 não resolve essa questão. **W1.T0 decision gate** (pré-fan-out W1) escolhe entre:
+
+- **(α)** Amendment ADR-0040 §7 acrescentando `payload: ImageOpPayload` ao `OneShotImageOp` (bump cap tuple-arity ou adicionar 5º variant `EditorAction::ImageOp`).
+- **(β)** Side-channel via `AppGfx::pending_image_io: Cell<Option<(PathBuf, ExportOpts)>>` — bypass do `EditorAction` enum entirely (defensivo, mas viola o spírito "tudo passa pelo canal genérico").
+- **(γ)** Cancelar o invariante "sem variant per-feature" especificamente para image I/O, criando `EditorAction::{ImportImage, ExportImage}` — mais legível em código de chamada, mas slippery-slope para outras features futuras.
+
+Coord-A escolhe + amendment ADR no momento que W1.T1 (PNG full implementation) precisar do canal funcional. **Até lá, W0 a vertical PNG stub não consome `EditorAction` — o smoke do Enio testou apenas registry-build no boot.**
+
+ADR-0040 §4 "sem variant per-feature" permanece o norte; a decisão real é qual mecanismo cumpre esse norte sem quebrar o canal.
 
 ### 2.5 HR cumpridas
 
@@ -156,16 +199,47 @@ ADR-0040 congelou `EditorAction` em 4 variants genéricos. Importar/exportar **N
 
 ## 5. Histórico de execução
 
-W0 abre 2026-05-26.
+W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 
-| Task | Estado | Commit |
-|---|---|---|
-| W0.T1 contrato `ph2d-imageio` | ⏳ em execução | — |
-| W0.T2 `tools/ph2d-imageio-sync` | ⏳ pendente | — |
-| W0.T3 `ph2d-imageio-registry-init` | ⏳ pendente | — |
-| W0.T4 arch-gate `architecture_imageio_contract_surface` | ⏳ pendente | — |
-| W0.T5 stub `ph2d-imageio-png` (prova end-to-end) | ⏳ pendente | — |
-| W0.T6 wiring shell desktop | ⏳ pendente | — |
-| W0.T7 ratificação (Proposed → Accepted) | ⏳ aguarda smoke do Enio | — |
+| Task | Estado | Commit | Notas |
+|---|---|---|---|
+| W0.T1 contrato `ph2d-imageio` | ✅ | `8d8d79e` | 10 arquivos (lib + 7 módulos + arch-gate + Cargo); 13 testes verdes |
+| W0.T2 `tools/ph2d-imageio-sync` | ✅ | `262a414` | Codegen lib+bin pure-std mirror de tool-sync; 7 unit tests |
+| W0.T3 `ph2d-imageio-registry-init` | ✅ | `262a414` | Aggregation point + staleness gate (3 tests) |
+| W0.T4 arch-gate `architecture_imageio_contract_surface` | ✅ | `8d8d79e` + remediação | 6 cap tests (Error cap raised 8→11 pós-audit A-H4) |
+| W0.T5 stub `ph2d-imageio-png` | ✅ | `3db01b6` | PngImporter + PngExporter; round-trip bit-exact + byte-exact determinism (HR-5) |
+| W0.T6 wiring shell desktop | ✅ | `f002b6a` | `AppGfx.imageio_{importers,exporters}`; smoke do Enio `1 importer(s), 1 exporter(s)` confirmado |
+| W0.T6.5 auditoria 5-lente paralela | ✅ | `[pending]` | 4 CRITICAL + 11 HIGH + 9 MEDIUM + 12 LOW; remediação inline (3 batches) |
+| W0.T7 ratificação Proposed→Accepted | ⏳ | — | Aguarda smoke pós-remediação Enio |
 
-(Histórico de execução vai sendo atualizado conforme W0 fecha cada task. Padrão: ADR-0040 §7.)
+### Remediação pós-auditoria (2026-05-26)
+
+Findings actionable fechados antes de ratificar (`feedback-perfection-no-deferrals` ativo):
+
+- **A-C1** (CRITICAL) `BlendMode` 6→24 variants + `Custom(u16)` opcode-preserving — documentado data-model não-arch-gated.
+- **A-C2** (CRITICAL) `Layer` ganhou `kind: LayerKind`, `effects: Vec<LayerEffect>`, `color_profile: Option<ColorProfile>`. `LayerKind` modela Pixel/Group/Adjustment/Text/Smart.
+- **A-C3** (CRITICAL) `AnimFrame` ganhou `offset_xy`, `dispose_op`, `blend_op`, `transparent_index` — GIF/APNG round-trip fidelidade.
+- **A-H1** `ExportOpts.format: String` → `ExportFormat` enum (14 variants + `extension()` + `mime_type()`).
+- **A-H3** `DecodedImage::Vector` SMIL decision: rasteriza para `Animated` em W3 (documentado no doc do `Animated` variant).
+- **A-H4** `Error` cap 8→11: `OutOfMemory`/`DimensionExceedsLimit`/`Cancelled`.
+- **A-H5** `ImportOpts.color_profile_strictness` enum (Lenient/Strict).
+- **A-M1** `MagicMatch::{Strong, Weak, None}` substitui `bool` em `ImageImporter::supports`; `ImporterRegistry::find_for` dispatcha por confidence (Strong > Weak).
+- **A-M2** Per-layer `color_profile: Option<ColorProfile>` (PSD smart objects).
+- **A-M3** `MetadataPolicy::{All, StripPrivacy, None}` (era `bool`).
+- **A-L2** `MagicHint::Bytes` documenta "≥ 32 bytes ou EOF".
+- **C-C1** Defer explícito W1.T0 decision gate para `EditorAction` payload (vide §2.4 revisada).
+- **C-H2** `tests/architecture_register_all_alphabetical.rs` portado (3 tests: importers + exporters + Cargo deps).
+- **D-H/D-M** Plan tracker atualizado com SHAs + status; PSD write estimate revisado; HEIC + qcms viability gates documentados.
+- **E-H1** PNG byte-exact determinism test adicionado (HR-5).
+- **E-H2** `LayerStack` + `Layer` ganharam `version: u32` (HR-14 save format migration).
+- **E-M1** `Error::fluent_key(&self) -> &'static str` (HR-15 i18n surface).
+- **A-L1** `impl From<std::io::Error> for Error` para `?` propagation nos satélites.
+
+**Deferred com decisão registrada** (não-blocker para `Accepted`):
+
+- **C-C1** EditorAction payload — W1.T0 decision gate (§2.4).
+- **C-H1, C-H3** Chrome derivation (file dialog filter + io_menu items) — W1.T1 follow-up (slot reservado no headroom do contrato).
+- **D-M** qcms vs moxcms — W2.0.1 viability gate (§2.3.1).
+- **D-M** HEIC — out-of-scope v1 com rationale + alternativas pesquisadas (§1.1).
+- **C-M2** Cargo.lock merge hotspot — herdado de ADR-0040; mitigation documentada em plano.
+- **C-M3** Per-format feature gate — W2/W3 follow-up (door aberta em §2.2).

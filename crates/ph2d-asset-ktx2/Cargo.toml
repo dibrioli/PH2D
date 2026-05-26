@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-asset-ktx2"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Khronos KTX2 texture container — Fase 1: codec-only library crate
+# (isolated from `ph2d-asset` and `ph2d-render` per the safe fan-out
+# plan, 2026-05-26). Returns its OWN `Ktx2Image` struct; integration
+# with `Asset::*` / `wgpu::TextureFormat` lives in Fase 2 behind a
+# dedicated ADR (memory-budget HR-13 + per-platform format matrix).
+#
+# `ktx2 = "0.5"` is gfx-rs's read-only parser — no GPU deps, no
+# transcode, no supercompression layer (zstd / BasisLZ blocked until
+# the ADR decides whether to add them). `thiserror` mirrors the
+# error-shape convention used by `ph2d-asset::AssetError`.
+[dependencies]
+ktx2 = "0.5"
+thiserror = "2"

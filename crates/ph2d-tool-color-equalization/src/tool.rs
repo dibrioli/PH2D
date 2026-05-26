@@ -283,13 +283,30 @@ impl ColorEqualizationTool {
                     bytemuck::cast_slice(&self.preview_src_rgba),
                     self.preview_src_w,
                     self.preview_src_h,
-                    &self.params,
+                    &self.preview_scaled_params(),
                     &mut self.preview_rgba,
                 );
             }
             self.preview_dirty = false;
         }
         (&self.preview_rgba, self.preview_src_w, self.preview_src_h)
+    }
+
+    /// Enio 2026-05-26: dither grain é em pixels absolutos. Preview
+    /// roda em resolução reduzida (`preview_src_w` × `preview_src_h`)
+    /// — sem escalar, blocos do dither apareciam visualmente MAIORES
+    /// no preview que no resultado final (grain=4 num preview 512 é
+    /// 1/128 da largura; no source 2048 é 1/512). Aqui escalamos a
+    /// grain pela razão preview/source pra paridade visual.
+    fn preview_scaled_params(&self) -> crate::params::ColorEqualizationParams {
+        let mut p = self.params;
+        if self.source_w > 0 && self.preview_src_w > 0 && p.posterize_dither_grain > 1 {
+            let ratio = self.preview_src_w as f32 / self.source_w as f32;
+            let scaled =
+                ((p.posterize_dither_grain as f32 * ratio).round() as u32).max(1);
+            p.posterize_dither_grain = scaled;
+        }
+        p
     }
 
     /// Try to run the preview through the GPU chain. Returns `true`
@@ -316,12 +333,13 @@ impl ColorEqualizationTool {
         // preview source (the chain reads input + writes output to
         // the same buffer via texture upload + readback).
         self.preview_rgba.copy_from_slice(&self.preview_src_rgba);
+        let params = self.preview_scaled_params();
         chain.run_chained(
             &gpu,
             &mut self.preview_rgba,
             self.preview_src_w,
             self.preview_src_h,
-            &self.params,
+            &params,
         );
         true
     }

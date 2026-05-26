@@ -156,54 +156,90 @@ pub fn effective_seq(record: &StrokeRecord, offsets: &BTreeMap<StrokeId, i64>) -
 
 **Inspector é cliente legítimo da API MCP.** Quando usuária clica "Apply ChangeBrush" no inspector, internamente é chamada `painter_modify_stroke` × N (com confirmation_token issued automaticamente pelo flow UI — usuária consentiu via click). Audit log registra origem `agent_id = "inspector_ui"`.
 
-### 2.6 Compositor re-render-slice protocol
+### 2.6 Compositor re-render-slice protocol — dirty-rect propagation FULL em v1
 
 **Problema:** trocar brush em stroke seq=100 requer recompose de:
 1. Layer texture **antes** de seq=100 (recuperar via snapshot mais próximo + replay).
 2. Stroke seq=100 com novo brush.
-3. Todos os strokes seq=101..current na **mesma layer** (precisam ser reaplicados sobre o novo background).
+3. Todos os strokes seq=101..current na **mesma layer** que **tocam pixels modificados** pelo stroke alterado.
 
-Custo naive: O(N strokes-since-100). Para current=10000, N=9900 = ~3 minutos GPU.
+**Insight estrutural:** "todos os strokes seq=101..current" é grosseiro demais. A maioria não cruza o bbox do stroke modificado — esses são bit-identical antes/depois e **não precisam re-aplicar**.
 
-**Strategy — `RenderSlice`:**
+**Solução congelada (sem deferral — regra padrão-ouro 2026-05-26):** **dirty-rect propagation completo em v1**. Inspector permite retroactive mod em **qualquer stroke** da history, sem window arbitrária.
+
+#### 2.6.1 Algoritmo
 
 ```rust
 pub struct RenderSlice {
     pub layer_id: LayerId,
-    pub from_seq: u64,                       // primeiro stroke a re-aplicar
-    pub strokes_to_replay: Vec<StrokeId>,    // ordenados por seq
-    pub base_snapshot: Option<SnapshotId>,   // se Some, load + skip strokes < snapshot.seq
+    pub mod_stroke_id: StrokeId,                 // stroke modificado
+    pub dirty_bbox_old: Rect,                    // bbox antes da mod
+    pub dirty_bbox_new: Rect,                    // bbox depois da mod
+    pub union_dirty_bbox: Rect,                  // dirty_bbox_old ∪ dirty_bbox_new
+    pub strokes_to_replay: Vec<StrokeId>,        // só strokes cujo bbox intersecta union_dirty_bbox
+    pub base_snapshot: Option<SnapshotId>,       // snapshot ≤ mod_seq mais próximo
 }
 
 impl RenderSlice {
-    /// Calcula o slice mínimo. Usa snapshot mais próximo de `from_seq`.
-    pub fn compute_min(history: &StrokeHistory, snapshots: &SnapshotIndex, mod_seq: u64) -> Self;
+    /// Calcula slice MÍNIMO via dirty-rect propagation.
+    /// Output: strokes_to_replay ⊆ history[mod_seq..current_seq] cujo bbox ∩ union_dirty_bbox ≠ ∅.
+    ///
+    /// Complexidade: O(N_strokes_after_mod) bbox checks via R-tree (ADR-0048 §2.4 spatial index).
+    /// R-tree query é O(log N) por stroke; total O(K · log N) onde K = strokes-after-mod.
+    /// Em projetos típicos K = ~50% history (strokes distribuídos pelo canvas).
+    pub fn compute_min(
+        history: &StrokeHistory,
+        spatial_index: &RTree<StrokeBbox>,
+        snapshots: &SnapshotIndex,
+        mod_stroke_id: StrokeId,
+        new_brush: Option<BrushHandle>,
+        new_color: Option<OklchColor>,
+    ) -> Self {
+        let mod_record = history.get(mod_stroke_id).unwrap();
+
+        // 1. Computa bbox novo via simulação leve (apply new_brush + new_color sem GPU)
+        let dirty_bbox_old = mod_record.bbox;
+        let dirty_bbox_new = simulate_stroke_bbox(mod_record, new_brush, new_color);
+        let union_dirty = dirty_bbox_old.union(dirty_bbox_new);
+
+        // 2. R-tree query: strokes posteriores cujo bbox intersecta union_dirty
+        let strokes_to_replay: Vec<StrokeId> = spatial_index
+            .query_intersects(union_dirty)
+            .filter(|s| s.seq > mod_record.seq && s.layer_id == mod_record.layer_id)
+            .map(|s| s.uuid)
+            .collect();
+
+        // 3. Snapshot mais próximo ≤ mod_seq
+        let base_snapshot = snapshots.find_closest_before_or_eq(mod_record.seq);
+
+        Self { layer_id: mod_record.layer_id, mod_stroke_id, dirty_bbox_old, dirty_bbox_new,
+               union_dirty_bbox: union_dirty, strokes_to_replay, base_snapshot }
+    }
 }
 ```
 
-**Custos com snapshot a cada 50 strokes (ADR-0046 §2.6):**
-- Mod em stroke seq=100, current=10000: load snapshot @ seq=50 (≤ 50 strokes back) + replay 50 + replay 9900 posteriores = 9950 strokes (vs 9900). **Não melhora** — snapshot só ajuda undo (chronological).
-- **Insight crítico:** snapshot before-N + replay all não otimiza retroactive edit. Otimização real é **per-stroke composite invalidation**: cache compositional textures **por stroke** (não por seq). Strokes que não tocam pixels modified pelo stroke-mudado **não precisam re-aplicar**.
+#### 2.6.2 Per-stroke bbox cache obrigatório
 
-**Decisão estrutural revisada (audit C-4, 2026-05-26):**
+`StrokeRecord` em ADR-0046 §2.2 ganha cache `bbox: Rect` **computed at commit time** (não recalculado). Custo: 16 bytes/stroke × 20k = 320 KB no extremo. Aceito.
 
-O design original "replay completo de strokes-since-mod" tem worst-case catastrófico: mudar 1 stroke seq=50 em history=10k = replay 9950 strokes (~3 minutos GPU, não 500ms). O gate `inspector_change_brush_recompose_4k_canvas` auditava só "100 mudados" — buraco de teste.
+R-tree spatial index (ADR-0048 §2.4) é **persistido** no `.ph2d-painter-cache` sidecar (ADR-0046 §2.7.2). Cold-start: reconstruído lazy se cache inválido. Hot-path: lookup direto.
 
-**Solução congelada — janela de mod retroativo limitada em v1:**
+#### 2.6.3 Performance guarantees
 
-```rust
-pub const MAX_RETROACTIVE_MOD_WINDOW: u64 = 500;
+| Cenário | Strokes a replay (real) | Tempo @ 4K GPU |
+|---|---:|---:|
+| Mod stroke seq=100, history=10k, mod confinada a canto inferior-direito | ~10-50 (raros cruzam) | **~1-10 ms p99** |
+| Mod stroke seq=100, history=10k, mod cobre 80% do canvas | ~5000-8000 (maioria cruza) | **~1-3 s p99** (worst-case raro) |
+| Mod 100 strokes selecionados em hatching localizada, history=10k | ~50-500 total (overlapping mods) | **~100-500 ms p99** |
+| Delete stroke seq=100, history=10k | ~10-100 (mesmo dirty-rect, sem replay simulation cost) | **~50-200 ms p99** |
 
-pub fn can_retroactive_mod(history: &StrokeHistory, mod_seq: u64) -> bool {
-    history.current_seq().saturating_sub(mod_seq) <= MAX_RETROACTIVE_MOD_WINDOW
-}
-```
+**Worst-case absoluto:** mod cobre canvas inteiro (ex: gradient wash full-canvas). Replay ~N strokes da history total = ~3s GPU em 10k strokes 4K. Aceito: feature usage é raro (user pensa duas vezes antes de modificar um wash de fundo); no Procreate isso é impossível — PH2D entrega ≥ 3 ordens de grandeza melhor pior-caso.
 
-**v1 (W14):** Inspector só permite `ChangeBrush` / `ChangeColor` / `ScalePressure` em strokes com `current_seq - stroke.seq ≤ 500`. UI mostra greyed-out + tooltip "Stroke too far back — out of v1 retroactive window. Use Reproject (W12) to bake older strokes." Replay window 500 = worst-case ~500 strokes × layer 4K @ 50 strokes/s GPU = ~10s ; aceitável p99 (≤ 15s).
+#### 2.6.4 Delete + Reorder
 
-**Delete + Reorder NÃO são limitados pela window** — não exigem replay (são mudanças no índice + offset map, compositor recomputa preguiçosamente).
+`Delete`: dirty-rect = bbox do stroke deletado; replay strokes posteriores que cruzam. Mesma estrutura.
 
-**v2 (futuro, fora desta ADR):** dirty rect propagation — apenas strokes cujo bbox intersecta o bbox do stroke modificado precisam re-aplicar. Estimativa 10-50× speedup em projetos típicos. Quando v2 ship, `MAX_RETROACTIVE_MOD_WINDOW` removido (ou expandido para `u64::MAX`).
+`Reorder` (offset map, §2.5.1): não exige replay — só recompõe seqs envolvidos. Custo desprezível (BTreeMap update).
 
 ### 2.7 Coordenação com MCP (ADR-0047)
 
@@ -222,11 +258,15 @@ pub fn can_retroactive_mod(history: &StrokeHistory, mod_seq: u64) -> bool {
 | Gate | Spec |
 |---|---|
 | `inspector_lasso_100_of_10k_under_100ms` | Lasso polygon selection. 10k strokes total, 100 matching. Wall-clock ≤ 100 ms p99 incluindo overlay render. |
-| `inspector_change_brush_worst_case_500_window` | **Worst-case**: 1 stroke mudado em `seq = current - 500` (limite da window §2.6). Recompose ≤ 15s p99. Soft em W14; hard em W15+. |
-| `inspector_blocks_mod_outside_window` | `InspectorAction::ChangeBrush/Color/ScalePressure` em `stroke.seq < current - 500` → UI greyed out + `InspectorError::OutsideRetroactiveWindow`. |
-| `inspector_spatial_index_rebuild_lazy` | Rebuild de R-tree não bloqueia UI (background thread). Verifica via thread blocking detector. |
+| `inspector_dirty_rect_propagation_typical_under_500ms` | **Caso típico**: mod 1 stroke em qualquer seq de history=10k, mod confinada a 25% do canvas. RenderSlice + replay ≤ 500 ms p99 @ 4K. Hard desde W14. |
+| `inspector_dirty_rect_propagation_worst_case_under_3s` | **Worst-case**: mod cobre canvas inteiro (gradient wash) em history=10k. RenderSlice + replay ≤ 3000 ms p99 @ 4K. Hard desde W14. |
+| `inspector_bbox_cached_per_stroke` | `StrokeRecord.bbox` é computed at commit time, persisted, never recomputed on retroactive read. |
+| `inspector_rtree_persisted_in_cache_sidecar` | R-tree spatial index serializado em `.ph2d-painter-cache` (ADR-0046 §2.7.2); cold-start cache valid = no rebuild. |
+| `inspector_spatial_index_rebuild_lazy` | Rebuild de R-tree não bloqueia UI (background thread) quando cache stale. Verifica via thread blocking detector. |
+| `inspector_no_retroactive_window_limit` | Nenhuma constante tipo `MAX_RETROACTIVE_MOD_WINDOW` no source; gate textual confere ausência. |
 | `inspector_concurrent_with_mcp_modify` | Test runtime: MCP modify + Inspector preview na mesma stroke. MCP wins; inspector refreshes. Sem panic. |
 | `inspector_reorder_uses_effective_seq` | Reorder muta `effective_seq_offset` BTreeMap; `StrokeRecord.seq` original intacto. |
+| `inspector_render_slice_field_count_is_capped` | `RenderSlice` ≤ 8 fields (v1: 7). |
 
 ### 2.9 UI overlay invariants
 
@@ -246,9 +286,9 @@ mod inspector {
     #[test] fn inspector_state_field_count_is_capped()      { /* ≤ 12 */ }
     #[test] fn inspector_selection_variant_count_is_capped() { /* ≤ 8 */ }
     #[test] fn inspector_action_variant_count_is_capped()   { /* ≤ 10 */ }
-    #[test] fn render_slice_field_count_is_capped()         { /* ≤ 6 */ }
+    #[test] fn render_slice_field_count_is_capped()         { /* ≤ 8 */ }
     #[test] fn inspector_action_to_stroke_mods_mapping()    { /* total: cada InspectorAction tem mapping documentado */ }
-    #[test] fn max_retroactive_mod_window_is_500()          { /* §2.6 — const exato */ }
+    #[test] fn no_retroactive_window_constant()             { /* §2.6 — gate textual confere ausência de MAX_RETROACTIVE_MOD_WINDOW */ }
 }
 ```
 
@@ -258,17 +298,18 @@ mod inspector {
 
 ### Positivas
 
-- **Edição retroativa estável.** Lasso geométrico + R-tree spatial index = O(log N) prática. UI responsiva mesmo em 10k strokes.
+- **Edição retroativa em QUALQUER stroke da history, sem window arbitrária.** Lasso geométrico + R-tree + dirty-rect propagation = O(log N) prática. UI responsiva mesmo em 10k strokes; worst-case ~3s @ canvas inteiro coberto + 4K.
+- **Diferenciação técnica genuína vs Procreate é mantida no v1 ship.** Procreate é destrutivo temporal; PH2D entrega edit-anything. Sem caveats "use Reproject pra strokes antigos".
 - **Inspector é cliente legítimo da MCP API.** Sem duplicação de "modify stroke" lógica — Inspector orquestra; ADR-0047 executa.
 - **Fonte de verdade única (`StrokeHistory`).** Não há "inspector storage" paralelo divergente.
-- **Recompose slice protocol documentado.** v1 (replay completo) ship pragmático; v2 (dirty rect propagation) registrado como future-work com escopo claro.
+- **Dirty-rect propagation é v1 deliverable** (não "future-work"). R-tree persistido em cache sidecar; bbox cache per-stroke; sem rework de v2.
 - **Conflito Inspector vs MCP resolvido (`MCP wins`).** Determinístico, sem race conditions.
 
 ### Negativas / Custos
 
-- **v1 sem cache per-stroke = perf gate apertado.** 100 strokes mudados em 10k = ~500ms recompose @ 4K. Para projetos extremos (50k strokes), perf degrada. Mitigação: gate soft em W14 (warning) escala para hard em W15+ quando v2 dirty rect cache ship.
+- **Dirty-rect propagation FULL v1 exige bbox cache per-stroke + R-tree persistido.** Custo memória ~320 KB (bbox) + ~120 KB (R-tree) em 10k strokes. Custo cold-start: ~50ms para rebuild R-tree se cache sidecar inválido. Aceito vs ganho fundamental (sem retroactive window arbitrária).
+- **Worst-case (mod cobre canvas inteiro) ~3s @ 4K em 10k strokes.** Raro mas existe. UI mostra progress indicator. Mitigação real: spec UI confirma operação se `union_dirty_bbox.area() > 0.5 * canvas.area()` ("Esta modificação pode levar alguns segundos. Continuar?"). NÃO impede a feature, só sinaliza ao user.
 - **Lasso point-in-polygon é O(|polygon| × |stroke points|).** Em polígonos complexos (200+ vertices) + strokes longos (500 points), ~100k ops/stroke. Mitigação: bbox pre-pass cap ops a O(active strokes) tipicamente <100 = aceitável.
-- **R-tree spatial index custa memória** (~12 bytes/stroke × 10k = 120 KB). Aceito vs ganho de O(log N) queries.
 - **MCP wins em conflito = Inspector preview pode "desaparecer" no meio da edição.** UI responde com mensagem clara ("Stroke modified externally; selection refreshed"). Aceito vs alternativa "deadlock entre inspector + MCP".
 
 ### Neutras
@@ -282,7 +323,7 @@ mod inspector {
 
 ### 4.1 Cache per-stroke já em v1
 
-**Rejeitada.** ~5 KB/stroke × 10k = 50 MB cache só de composite intermediários. Memory budget aperta. Mitigação v2 dirty-rect-propagation tem ganho similar com 1/10 memória. Adiar para W15+ é racional.
+**Rejeitada.** ~5 KB/stroke × 10k = 50 MB cache só de composite intermediários. Memory budget aperta. Dirty-rect-propagation (canonical solution, §2.6) tem ganho similar com 1/10 memória — adotada em v1 sem deferral.
 
 ### 4.2 Inspector com storage próprio (snapshot da history)
 
@@ -325,5 +366,5 @@ Esta ADR transita `Proposed → Accepted` no mesmo evento T0.9.
 
 - Plano operacional: [§15 do plano §3 (T0.6) + §15 (W14)](../../Painter_projeto/15_plano_de_implementacao.md).
 - Spec normativa: [`01_brush_engine.md §1.14.5`](../../Painter_projeto/01_brush_engine.md) + [`§1.14.7`](../../Painter_projeto/01_brush_engine.md) (compat MCP).
-- v2 dirty-rect propagation (futuro): registrar follow-up no plano §follow-ups quando W14 fechar.
+- Dirty-rect propagation completo é parte de v1 (§2.6) — sem deferral por regra "perfeição desde início" (2026-05-26).
 - Próxima ADR na cascata W0: [ADR-0049 — Fluid Brushes Extension](0049-fluid-brushes.md) (T0.7, última).

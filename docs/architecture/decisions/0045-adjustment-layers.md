@@ -51,12 +51,12 @@ pub struct AdjustmentLayer {
 
 **Sub-cap:** `Option<MaskData>` é serializado por boundary (Some/None) — `MaskData` é estrutura própria (raster) que herda cap do tipo Layer raster (não tratado aqui).
 
-### 2.3 `AdjustmentKind` enum — cap **≤ 24 variants** (v1 usa 12 non-destructive)
+### 2.3 `AdjustmentKind` enum — cap **≤ 32 variants** (v1 ship com 24 non-destructive)
 
 ```rust
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum AdjustmentKind {
-    // === Non-destructive v1 (suportam AdjustmentLayer) — 12 ===
+    // === Tier 1 — Core v1 ship (12, espelha Procreate + base Photoshop) ===
     HueSaturationBrightness,
     ColorBalance,
     Curves,
@@ -69,16 +69,32 @@ pub enum AdjustmentKind {
     Sharpen,
     Halftone,
     ChromaticAberration,
-    // === 12 slots de headroom — pista da longa cauda Photoshop ===
-    // Reserved (sem ADR-amend obrigatória, dentro do cap):
-    //   Vibrance, ColorLookupLUT, PhotoFilter, Posterize, Threshold,
-    //   Invert, Levels, SelectiveColor, ChannelMixer, Exposure,
-    //   ShadowsHighlights, BlackAndWhite.
-    // Cada um exige sub-Params struct + tab entry §2.6 + sub-gate.
+    // === Tier 2 — Photoshop staples (12 — ship em v1 também, regra perfeição 2026-05-26) ===
+    Vibrance,
+    ColorLookupLut,                          // 3D LUT, .cube format support
+    PhotoFilter,                             // warming/cooling
+    Posterize,
+    Threshold,
+    Invert,
+    Levels,                                  // black point + gamma + white point
+    SelectiveColor,
+    ChannelMixer,
+    Exposure,
+    ShadowsHighlights,
+    BlackAndWhite,                           // 6 channels desaturation control
+    // === 8 slots de headroom — longa cauda emergente 2026+ ===
+    // (e.g., Match Color, Replace Color non-destructive, Range Adjust, Lens Blur,
+    //  Outer Glow, Inner Shadow, Drop Shadow, AI-driven adjustments futuro)
 }
 ```
 
-**Razão do cap 24 (bump de 16 — audit 2026-05-26):** "sucessor do Procreate" precisa cobrir longa cauda Photoshop (~25 non-destructive ships) sem amendment a cada um. Procreate só tem ~6 adjustments; Photoshop tem 25+. PH2D na ambição padrão-ouro fica no meio do espectro com folga.
+**Razão do bump 24 → 32 (audit padrão-ouro 2026-05-26 + regra perfeição):**
+
+- Audit gold-standard flagged: "PH2D fica no meio do espectro com folga" = Procreate+ + meio Photoshop, NÃO padrão-ouro absoluto.
+- Photoshop ship 25+ non-destructive layered adjustments. PH2D na ambição "sucessor do Procreate, padrão-ouro" precisa **cobrir os 24 Photoshop staples no v1 ship**, não em ADR-amends iterativos.
+- Tier 1 + Tier 2 = 24 variants em v1 ship. Cap 32 deixa 8 slots para emergentes pos-1.0 sem ADR-amend imediato.
+
+**Implementation cost de Tier 2 (12 adjustments adicionais):** Cada um precisa sub-Params struct + compositor function + PSD mapping (5/12 mapeiam 1:1 PSD — Vibrance, Levels, SelectiveColor, ChannelMixer, BlackAndWhite). Trabalho estimado: ~2-3 semanas em W4 (vs ~1.5 semanas só com Tier 1). Wave 4 timeline absorve.
 
 **Nota crucial:** os **5 destructive-only** (Liquify, Clone, Recolor, Glitch, Mesh Warp) **NÃO** são variants de `AdjustmentKind` — vivem em **`DestructiveAdjustment`** enum separado (§2.4). Razão: o gate textual `adjustment_kind_variant_count_is_capped` audita variants que CONSTROEM `AdjustmentLayer`; ter destructive aí seria fonte de bug ("crie AdjustmentLayer kind=Liquify" → silenciosamente impossível). Separar em dois enums é o que o **type system** já queria nos contar.
 
@@ -105,13 +121,14 @@ pub enum DestructiveAdjustment {
 
 Cada `DestructiveAdjustment` aplica em modos **Layer (destructive)** ou **Pencil (Adjustment Brush stroke)** — vide [`06_selection_transform_adjustments.md §6.3.1`](../../Painter_projeto/06_selection_transform_adjustments.md). Nunca cria layer.
 
-### 2.5 `AdjustmentParams` enum — cap **≤ 16 variants** (matches `AdjustmentKind`)
+### 2.5 `AdjustmentParams` enum — cap **≤ 32 variants** (matches `AdjustmentKind`)
 
 Discriminated union onde **variant name == AdjustmentKind variant**:
 
 ```rust
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum AdjustmentParams {
+    // Tier 1
     HueSaturationBrightness(HsbParams),
     ColorBalance(ColorBalanceParams),
     Curves(CurvesParams),
@@ -124,7 +141,20 @@ pub enum AdjustmentParams {
     Sharpen(SharpenParams),
     Halftone(HalftoneParams),
     ChromaticAberration(ChromaticAberrationParams),
-    // === 4 slots de headroom (pair com AdjustmentKind) ===
+    // Tier 2 (v1 ship per regra perfeição)
+    Vibrance(VibranceParams),
+    ColorLookupLut(ColorLookupLutParams),
+    PhotoFilter(PhotoFilterParams),
+    Posterize(PosterizeParams),
+    Threshold(ThresholdParams),
+    Invert(InvertParams),
+    Levels(LevelsParams),
+    SelectiveColor(SelectiveColorParams),
+    ChannelMixer(ChannelMixerParams),
+    Exposure(ExposureParams),
+    ShadowsHighlights(ShadowsHighlightsParams),
+    BlackAndWhite(BlackAndWhiteParams),
+    // === 8 slots de headroom (pair com AdjustmentKind) ===
 }
 ```
 
@@ -142,22 +172,41 @@ fn matches(layer: &AdjustmentLayer) -> bool {
 }
 ```
 
-### 2.6 Sub-params caps por kind
+### 2.6 Sub-params caps por kind (24 v1 + 8 headroom)
+
+**Tier 1:**
 
 | Kind | Sub-struct | Cap fields |
 |---|---|---|
 | `HueSaturationBrightness` | `HsbParams { h, s, b }` | ≤ 6 |
-| `ColorBalance` | `ColorBalanceParams { cyan_red, magenta_green, yellow_blue, scope: ShadowsMidtonesHighlights, preserve_luminosity }` | ≤ 8 |
-| `Curves` | `CurvesParams { points_rgb: ControlPoints, points_r: ControlPoints, points_g: ControlPoints, points_b: ControlPoints }` (cada `ControlPoints` ≤ 8) | ≤ 6 |
-| `GradientMap` | `GradientMapParams { stops: Vec<ColorStop>, interpolation: GradientInterp }` (stops ≤ 16) | ≤ 4 |
+| `ColorBalance` | `ColorBalanceParams { cyan_red, magenta_green, yellow_blue, scope, preserve_luminosity }` | ≤ 8 |
+| `Curves` | `CurvesParams { points_rgb, points_r, points_g, points_b }` (cada `ControlPoints` ≤ 8) | ≤ 6 |
+| `GradientMap` | `GradientMapParams { stops: Vec<ColorStop>, interpolation }` (stops ≤ 16) | ≤ 4 |
 | `BrightnessContrast` | `BrightnessContrastParams { brightness, contrast, legacy }` | ≤ 4 |
 | `GaussianBlur` | `GaussianBlurParams { radius }` | ≤ 4 |
 | `MotionBlur` | `MotionBlurParams { distance, angle }` | ≤ 4 |
 | `Bloom` | `BloomParams { threshold, intensity, radius, falloff }` | ≤ 6 |
-| `Noise` | `NoiseParams { amount, kind: NoiseKind, monochromatic }` | ≤ 6 |
+| `Noise` | `NoiseParams { amount, kind, monochromatic }` | ≤ 6 |
 | `Sharpen` | `SharpenParams { amount, radius, mask_edges }` | ≤ 4 |
-| `Halftone` | `HalftoneParams { dot_size, angle, shape: HalftoneShape }` | ≤ 6 |
+| `Halftone` | `HalftoneParams { dot_size, angle, shape }` | ≤ 6 |
 | `ChromaticAberration` | `ChromaticAberrationParams { red_shift, green_shift, blue_shift, falloff_center }` | ≤ 6 |
+
+**Tier 2 (v1 ship — regra perfeição 2026-05-26):**
+
+| Kind | Sub-struct | Cap fields |
+|---|---|---|
+| `Vibrance` | `VibranceParams { vibrance, saturation }` (boost selective) | ≤ 4 |
+| `ColorLookupLut` | `ColorLookupLutParams { lut_3d: LutHandle, intensity, profile }` (handle ref para .cube cached) | ≤ 6 |
+| `PhotoFilter` | `PhotoFilterParams { temperature, density, preserve_luminosity }` | ≤ 4 |
+| `Posterize` | `PosterizeParams { levels }` (2..=32) | ≤ 2 |
+| `Threshold` | `ThresholdParams { threshold }` (0..=255) | ≤ 2 |
+| `Invert` | `InvertParams {}` (no params; toggle) | ≤ 2 |
+| `Levels` | `LevelsParams { black_point, gamma, white_point, output_black, output_white }` per-channel (RGB+master = 4×5 = 20 fields semantically; flat = 8 fields struct) | ≤ 10 |
+| `SelectiveColor` | `SelectiveColorParams { reds: CmykAdjust, yellows: CmykAdjust, greens: CmykAdjust, cyans: CmykAdjust, blues: CmykAdjust, magentas: CmykAdjust, whites: CmykAdjust, neutrals: CmykAdjust, blacks: CmykAdjust, method: RelativeOrAbsolute }` | ≤ 12 |
+| `ChannelMixer` | `ChannelMixerParams { red_out: [f32;4], green_out: [f32;4], blue_out: [f32;4], monochromatic }` (4=[r,g,b,constant]) | ≤ 6 |
+| `Exposure` | `ExposureParams { exposure_ev, offset, gamma_correction }` | ≤ 4 |
+| `ShadowsHighlights` | `ShadowsHighlightsParams { shadows_amount, shadows_tonal_width, shadows_radius, highlights_amount, highlights_tonal_width, highlights_radius, color_correction, midtone_contrast }` | ≤ 10 |
+| `BlackAndWhite` | `BlackAndWhiteParams { reds, yellows, greens, cyans, blues, magentas, tint_color: Option<OklchColor>, tint_amount }` | ≤ 10 |
 
 Caps por sub-struct preservam composabilidade (`AdjustmentParams` size estável; serialização postcard sem deslocamento de ID).
 
@@ -191,26 +240,42 @@ impl CompositorCache {
 
 **Budget:** slider drag em adjustment layer @ 4K, 10 layers, recompose ≤ 1 ms (gate `adjustment_layer_recomposition_perf_4k` em §2.11). Esse número é o **upper bound**, não target.
 
-### 2.8 PSD interop mapping (W16) — congelado
+### 2.8 PSD interop mapping (W16) — congelado (Tier 1 + Tier 2 = 24 adjustments)
 
-12 adjustments → PSD adjustment layer types. Tabela definitiva:
+24 adjustments → PSD adjustment layer types. Tabela definitiva:
 
 | `AdjustmentKind` PH2D | PSD type key | Mapping |
 |---|---|---|
+| **Tier 1** | | |
 | `HueSaturationBrightness` | `hsbr` ("Hue/Saturation") | **1:1** |
 | `ColorBalance` | `cobl` ("Color Balance") | **1:1** |
 | `Curves` | `curv` ("Curves") | **1:1** |
 | `GradientMap` | `grdm` ("Gradient Map") | **1:1** |
 | `BrightnessContrast` | `brit` ("Brightness/Contrast") | **1:1** |
-| `GaussianBlur` | (no direct adjustment layer) | **Baked** on export |
+| `GaussianBlur` | (filter, não layer) | **Baked** on export |
 | `MotionBlur` | (idem) | **Baked** |
 | `Bloom` | (PS-specific filter; sem layer equivalente) | **Baked** |
 | `Noise` | (filter, não layer) | **Baked** |
 | `Sharpen` | (filter, não layer) | **Baked** |
 | `Halftone` | (filter, não layer) | **Baked** |
 | `ChromaticAberration` | (filter, não layer) | **Baked** |
+| **Tier 2** | | |
+| `Vibrance` | `vibA` ("Vibrance") | **1:1** |
+| `ColorLookupLut` | `clrL` ("Color Lookup") | **1:1** |
+| `PhotoFilter` | `phfl` ("Photo Filter") | **1:1** |
+| `Posterize` | `post` ("Posterize") | **1:1** |
+| `Threshold` | `thrs` ("Threshold") | **1:1** |
+| `Invert` | `nvrt` ("Invert") | **1:1** |
+| `Levels` | `levl` ("Levels") | **1:1** |
+| `SelectiveColor` | `selc` ("Selective Color") | **1:1** |
+| `ChannelMixer` | `mixr` ("Channel Mixer") | **1:1** |
+| `Exposure` | `expA` ("Exposure") | **1:1** |
+| `ShadowsHighlights` | (filter em PS, não layer) | **Baked** |
+| `BlackAndWhite` | `blwh` ("Black & White") | **1:1** |
 
-**5 mapeiam 1:1 / 7 baked**, exatamente como spec §2.10.X.5. Warning logado no export para os 7 baked (usuária sabe o que está acontecendo). Import PSD reverso: 5 adjustments-1:1 voltam como `AdjustmentLayer`; baked não-detectáveis viram raster (Photoshop comportamento esperado).
+**Total: 16 mapeiam 1:1 / 8 baked** (vs 5/7 anterior). PH2D suporta agora **mais adjustment layer types nativos** que Procreate (que tem 0 layered) e quase paridade com Photoshop. Warning logado no export para os 8 baked.
+
+**Import PSD reverso:** 16 adjustments-1:1 voltam como `AdjustmentLayer`; 8 baked não-detectáveis viram raster (Photoshop comportamento esperado).
 
 ### 2.9 5 destructive-only — razões técnicas congeladas
 
@@ -231,9 +296,9 @@ Adicionado ao homestead `crates/ph2d-painter-contracts/tests/architecture_painte
 ```rust
 mod adjustments {
     #[test] fn adjustment_layer_field_count_is_capped()       { /* ≤ 12 */ }
-    #[test] fn adjustment_kind_variant_count_is_capped()      { /* ≤ 24 */ }
+    #[test] fn adjustment_kind_variant_count_is_capped()      { /* ≤ 32 (v1 = 24 ship) */ }
     #[test] fn destructive_adjustment_variant_count_is_capped() { /* ≤ 8 */ }
-    #[test] fn adjustment_params_variant_count_is_capped()    { /* ≤ 16 */ }
+    #[test] fn adjustment_params_variant_count_is_capped()    { /* ≤ 32 (v1 = 24 ship) */ }
     #[test] fn adjustment_layer_kind_params_match()           { /* invariant runtime */ }
     #[test] fn psd_mapping_is_canonical()                     { /* 5 layered + 7 baked */ }
 }

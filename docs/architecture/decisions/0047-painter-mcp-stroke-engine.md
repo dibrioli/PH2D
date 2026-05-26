@@ -269,7 +269,35 @@ impl TokenRegistry {
 
 Token issuance é **side-channel humano** (CLI prompt + UI dialog). Não é gerado por LLM. Aceitável também: flag `--unsafe-mcp` no servidor de desenvolvimento (auditável).
 
-**Batch cap:** `painter_paint_strokes` rejeita batches > **5000 strokes** por call (`StrokesTooLarge`). Audit M-10 (2026-05-26) flagged cap original 1000 como arbitrário; bump para 5000 cobre hatching de canvas inteiro (~3-5k strokes típico) em single call. Calibração final via perf measurement em W13 T-N (gate `mcp_paint_strokes_batch_p99_under_5s`). LLM ainda quebra em múltiplos calls para work intensivo (10k+), com audit log per-batch.
+**Batch cap + streaming protocol:** `painter_paint_strokes` aceita batches grandes via **streaming chunk protocol** (sem cap arbitrário em strokes count; cap em **chunk latency**):
+
+- **Per-chunk cap: ≤ 500 strokes** (latency-bounded, ~3-5s p99 paint pipeline em 4K canvas).
+- **Sessão grande: chunks múltiplos** sequencial dentro do mesmo `painter_paint_strokes` call.
+- **API atualizada:** `painter_paint_strokes` retorna `StreamHandle` em vez de `Vec<StrokeId>` síncrono:
+
+```rust
+#[mcp_tool(name = "painter_paint_strokes", destructive = true, streaming = true)]
+pub fn painter_paint_strokes(
+    canvas_id: CanvasId,
+    layer_id: LayerId,
+    brush_handle: BrushHandle,
+    strokes: Vec<StrokeSpec>,                // qualquer tamanho; engine chunka
+    confirmation_token: Token,
+) -> StreamHandle<StrokeProgressEvent>;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum StrokeProgressEvent {
+    ChunkStarted { chunk_index: u32, chunk_size: u32 },
+    StrokeCompleted { stroke_id: StrokeId, chunk_index: u32 },
+    ChunkCompleted { chunk_index: u32, strokes_committed: u32 },
+    BatchCompleted { total_strokes: u32, total_duration_ms: u64 },
+    Error { chunk_index: u32, error: McpError },
+}
+```
+
+Audit M-10 (2026-05-26) flagged cap original 1000 arbitrário. Audit sense-check veterano flagged latency: "5000 strokes × 256 points × JSON-RPC = 30+s antes do paint pipeline tocar". **Solução streaming:** chunks ≤ 500 strokes; LLM e UI consomem progress events em real-time; UI never freezes.
+
+**Backpressure:** se UI thread saturada (frame drops > 5 consecutivos), engine pausa chunking; resume quando UI responsiva. `StreamHandle` cancel-able via `painter_cancel_stroke_batch(stream_handle)` (5ª MCP tool).
 
 ### 2.11 Audit log — JSON Lines schema congelado
 
@@ -307,10 +335,13 @@ Token issuance é **side-channel humano** (CLI prompt + UI dialog). Não é gera
 | `Token` | = 1 field (Uuid newtype) |
 | `IssuedToken` | ≤ 8 fields |
 | `AuditLogEntry` | ≤ 16 fields |
-| MCP tools count | ≤ 8 (v1 = 4) |
-| Batch cap (`paint_strokes`) | 5000 strokes/call (calibrar W13 T-N) |
+| MCP tools count | ≤ 8 (v1 = 5: paint/modify/query/inspect/cancel_batch) |
+| **Chunk cap (`paint_strokes`)** | ≤ 500 strokes/chunk (latency-bounded; total batch sem cap arbitrário) |
+| Chunk p99 latency target | ≤ 5s @ 4K canvas |
 | `StrokeMods.path_replace` cap | 4096 points |
 | `StrokeSpec.points.len()` | ≤ 65535 (ADR-0046 §2.2 — herda Q16.16 fixed-point limit) |
+| `StreamHandle` fields | ≤ 4 (v1 = 3) |
+| `StrokeProgressEvent` variants | ≤ 8 (v1 = 5) |
 
 ### 2.13 Quality emerges via prompting (responsabilidade-fora-do-contrato)
 
@@ -345,7 +376,11 @@ mod mcp {
 |---|---|---|
 | `mcp_paint_strokes_round_trip` | ph2d-painter-mcp | `StrokeSpec → record → query → ref → inspect` recupera spec equivalente (módulo timestamp e uuid). |
 | `mcp_paint_strokes_requires_token` | idem | Call sem `confirmation_token` válido → `MissingConfirmationToken`. |
-| `mcp_paint_strokes_batch_cap_enforced` | idem | Batch > 5000 strokes → `StrokesTooLarge`. |
+| `mcp_paint_strokes_chunks_at_500` | idem | Batch > 500 strokes é automaticamente chunked em ≤ 500/chunk. Sem `StrokesTooLarge` por tamanho de batch. |
+| `mcp_paint_strokes_chunk_p99_under_5s` | idem | Cada chunk completa pipeline em ≤ 5s p99 @ 4K canvas. Hard desde W13. |
+| `mcp_paint_strokes_stream_progress_events` | idem | Cliente MCP recebe `ChunkStarted` / `StrokeCompleted` / `ChunkCompleted` / `BatchCompleted` em ordem; UI consome em real-time. |
+| `mcp_paint_strokes_backpressure_pauses_chunking` | idem | UI frame drops > 5 consecutivos → engine pausa próximo chunk; resume quando UI responsiva. |
+| `mcp_cancel_stroke_batch_aborts_mid_stream` | idem | `painter_cancel_stroke_batch(handle)` interrompe stream; commits parciais permanecem em history. |
 | `mcp_modify_stroke_path_offset_replace_mutex` | idem | `StrokeMods { path_offset: Some, path_replace: Some }` → `PathReplaceAndOffsetConflict`. |
 | `mcp_audit_log_appended_per_call` | idem | Após call destructive, audit.log ganha 1 nova linha JSON válida. |
 | `mcp_query_strokes_filter_combinations` | idem | Filtros AND-combined (bbox + brush + color_near) retornam ∩ correto. |
@@ -367,7 +402,7 @@ mod mcp {
 ### Negativas / Custos
 
 - **Token issuance é human-in-the-loop.** Não automatável em CI. Mitigação: `--unsafe-mcp` para test envs; tokens via env var em dev runs.
-- **`StrokesTooLarge { cap: 5000 }` cobre maioria dos casos hatching/wash mas mantém ceiling.** LLM grandes prompts além de 5k (e.g., "preencha canvas 8K inteiro com pencil noise") viram múltiplos calls — fluxo natural via batching. Mitigação documentada em quality engineering (§2.13). Calibração final pós-perf em W13 T-N.
+- **Streaming protocol** elimina o trade-off batch-cap-arbitrário. Batches grandes (50k strokes) viram chunks ≤ 500 com progress events. UI nunca freeze; LLM workflow real-time. Audit sense-check 2026-05-26 closed.
 - **Audit log cresce 5 MB/dia em uso pesado.** Rotação automática (100 MB → roll) limita a ~500 MB total. Aceito.
 - **Conversion `f32 → Q16.16` introduz quantização determinística.** ULP drift possível em coords não-grid-aligned. Garantido só para coords < 32768 (limite Q16.16). Spec já cap canvas em 16384×8192 (§2.5 02_layers.md).
 - **`StrokeMods.path_replace` cap 4096 points.** Pode bater em strokes muito longos (~30 segundos sem release). Bypass: split em múltiplas operações `mod_stroke`. Edge case raríssimo.

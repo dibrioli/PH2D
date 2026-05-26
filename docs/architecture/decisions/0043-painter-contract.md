@@ -3,7 +3,7 @@
 **Status:** Proposed (2026-05-26)
 **Decisor(es):** Enio + Claude (Coord-A, sessão Painter W0).
 **Pré-requisitos:** [ADR-0040 — tool-as-isolated-feature-crate](0040-tool-as-isolated-feature-crate.md), [ADR-0041 — RasterEditTool rename + deactivate](0041-rasteredit-rename-and-deactivate.md), [ADR-0042 — Wave 10 closure](0042-wave-10-closure.md).
-**Sub-contratos congelados por ADRs irmãs:** 0044 (Brush Engine GPU + Mixbox + Procedural Grain), 0045 (Adjustment Layers), 0046 (Stroke Vector History), 0047 (MCP Stroke Engine), 0048 (Stroke Inspector), 0049 (Fluid Brushes Extension).
+**Sub-contratos congelados por ADRs irmãs:** 0044 (Brush Engine GPU + Mixbox + Procedural Grain), 0045 (Adjustment Layers), 0046 (Stroke Vector History), 0047 (MCP Stroke Engine), 0048 (Stroke Inspector), 0049 (Fluid Brushes Extension), 0050 (Device heterogeneity), 0051 (Color profile pipeline), 0052 (Tear-resistant stroke commit), 0053 (Cross-platform tier policy).
 **Spec normativa:** [`docs/Painter_projeto/`](../../Painter_projeto/) (16 docs + plano §15) — esta ADR fixa o **contrato de superfície** do `PainterTool`; a spec detalha o **comportamento**.
 **Tags:** painter, wave-0, contract, drop-crate, padrão-ouro
 
@@ -244,9 +244,15 @@ crates/ph2d-painter-contracts/
 - **MCP tool schemas (`StrokeSpec`, `StrokeMods`, `StrokeFilter`, `StrokeRef`)** — **ADR-0047**.
 - **Inspector `InspectorState` + lasso geometric matching + recompose slice** — **ADR-0048**.
 - **Fluid sim parameters + `FluidSim` + `FluidParams` + `GravitySource`** — **ADR-0049**.
-- **`PlatformHost::gyroscope()` trait extension em `ph2d-host`** — **ADR-0049 §2.2** (sancionado: amend foundational autorizado por esta ADR-0043 §2.5 — único bump de trait foundational da cascata).
-- **`MemoryBudget::fluid_capable()` + `PerfBudget::fluid_headroom_ms()` métodos inerentes em `ph2d-host`** — **ADR-0049 §2.9, §2.10**.
-- **`MemoryBudget::stroke_history_mb` campo em `ph2d-host`** — **ADR-0046 §2.5** (sancionado: amend foundational autorizado por esta ADR-0043 §2.5).
+- **`PlatformHost::gyroscope()` trait extension em `ph2d-host`** — **ADR-0049 §2.2** (autorizado).
+- **`PlatformHost::on_suspend_imminent()` + `on_resume()` trait extension** — **ADR-0052 §2.6** (autorizado).
+- **`PlatformHost::device_capability()` trait extension** — **ADR-0053 §2.5** (autorizado).
+- **`PlatformHost::thermal_state()` trait extension** — **ADR-0053 §2.7** (autorizado).
+- **`MemoryBudget::fluid_capable()` + `PerfBudget::fluid_headroom_ms()` métodos inerentes** — **ADR-0049 §2.9, §2.10**.
+- **`MemoryBudget::Painter` field + sub-struct `PainterMemoryBudget`** — **ADR-0046 §2.10**.
+- **`DeviceCapability` + `DeviceTier` + `GpuId` + `ThermalState` em `ph2d-host`** — **ADR-0053**.
+- **`PointerSource` em `ph2d-painter-input`** (consumed pela trait `PlatformHost::current_input_source()`, opcional) — **ADR-0050 §2.2**.
+- **`ColorProfile` enum + 4 novos módulos em `ph2d-color`** (oklab/display_p3/prophoto/hdr/profile/mixbox_space) — **ADR-0051 §2.1, §2.2**. `ph2d-color` LOC cap bump 1500 → 2500.
 - **Bump de `Tool`/`RasterEditTool`/`PanelEvent` caps** — frozen por ADR-0040+0041, intocados aqui.
 - **Canvas-event surface trait** (substituto pro path `BrushTool` proto). v1 reusa o path existente; eventual trait-extraction é wave futura.
 
@@ -271,6 +277,16 @@ Esta ADR usa tipos definidos em outros crates / ADRs. Para evitar deriva, cada t
 | `BrushParamsHash = [u8; 32]` | ADR-0044 §2.2 (blake3) | `ph2d-painter-brush` (re-export) |
 | `ToolMode { Paint, Smudge, Erase }` | ADR-0046 §2.4 | `ph2d-painter-stroke` |
 | `LayerStack` | TBD W3 (data model raster + adjustment) — provisório `ph2d-painter-brush` | TBD W3 ADR ratifica |
+| `PointerSource` | ADR-0050 §2.2 | `ph2d-painter-input` |
+| `PressureCurve` / `TiltCurve` / `BarrelCurve` | ADR-0050 §2.3 | `ph2d-painter-input` |
+| `PalmRejection` / `PalmRejectionConfig` | ADR-0050 §2.4 | `ph2d-painter-input` |
+| `DriverQuirk` / `HoverState` / `PredictionState` | ADR-0050 §2.5, §2.6, §2.8 | `ph2d-painter-input` |
+| `ColorProfile` / `ExportFormat` / `HdrFormat` | ADR-0051 §2.2, §2.7 | `ph2d-color` |
+| `OklabColor` / `DisplayP3` / `ProPhoto` / `Rec2100Pq` | ADR-0051 §2.1 | `ph2d-color` |
+| `PartialStroke` / `FlushPolicy` / `AutoSavePolicy` | ADR-0052 §2.2, §2.4 | `ph2d-painter-stroke` |
+| `RecoveryState` / `SuspendState` | ADR-0052 §2.3, §2.5 | `ph2d-painter-stroke` |
+| `DeviceTier` / `DeviceCapability` / `GpuId` / `ThermalState` | ADR-0053 §2.2, §2.7 | `ph2d-host` (extension) |
+| `StreamHandle` / `StrokeProgressEvent` | ADR-0047 §2.10 | `ph2d-painter-mcp` |
 
 **Tipos "TBD W-N home"** são placeholders. Cada W-N que materializar o tipo registra em sua ADR de wave + commit que migra esta tabela. ADRs da cascata W0 **não pre-decidem** o crate-home; apenas registram a dep.
 

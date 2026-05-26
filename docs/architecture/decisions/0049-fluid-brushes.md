@@ -26,7 +26,7 @@ Sem contrato congelado:
 - **Graceful degrade vira por-feature.** "Brush check fluid_capable" vs "platform check has_gyro" reimplementam.
 - **`PlatformHost::gyroscope()` extension não-trivial.** Tocar `ph2d-host` mexe trait foundational que existe em todos os shells.
 
-ADR-0043 §2.5 cedeu este território a esta ADR. Ela é **última na cascata W0** porque é **opt-in** e **deferível** — se W15 falha ou estoura prazo, Painter v1.0 ship sem fluid sim ([§14.6.9](../../Painter_projeto/14_inovacoes_extraordinarias.md) registra "degradação aceitável").
+ADR-0043 §2.5 cedeu este território a esta ADR. Ela é **última na cascata W0** porque tem **maior risco técnico**, mas **NÃO é deferível** — regra de produto "perfeição desde início, sem adiamentos" (2026-05-26) obriga ship com fluid em W15 ou ADR de retração explícita (não silenciosa "wave estourou prazo").
 
 ---
 
@@ -262,12 +262,40 @@ pub fn fluid_step_det(sim: &mut FluidSim, brush: &Brush, dt_q1616: i32) {
 
 **Gate:** `fluid_det_replay_cross_os` — replay de stroke molhado @ 256² em Linux/macOS/Windows/Web (WASM) devolve `blake3` idêntico. Soft em W15; hard em W16+.
 
-### 2.12 Risk policy: W15 deferral é aceitável
+### 2.12 Device matrix coverage — gate hard de ship (sem deferral)
 
-Por [§14.6.9](../../Painter_projeto/14_inovacoes_extraordinarias.md):
-- Se W15 falha ou estoura prazo, Painter v1.0 ship **sem** fluid sim — degradação aceitável.
-- Wave 15 ≫ wave dependência (W1-W14). Fluid é última feature.
-- Crate `ph2d-painter-fluid` pode ser **deletado/postponed** sem amendment desta ADR — feature flag canon torna a remoção mecânica.
+Por regra "perfeição desde início, sem adiamentos" (2026-05-26): fluid sim **ship em v1.0** ou ADR de retração explícita com aprovação Enio. Crate `ph2d-painter-fluid` não é "deletável silenciosamente" — `--features fluid` é canon, e a probabilidade de cobrir mid-tier ≥ 80% é o blocker concreto.
+
+#### 2.12.1 Device matrix obrigatória (W15 T-2 prototype)
+
+Antes de W15 T-3+ prosseguir, fluid sim deve passar **device matrix test** com cobertura mínima:
+
+| Device tier | Devices alvo | Cobertura mínima |
+|---|---|---:|
+| **High** (must-pass 100%) | Apple M1+/M2/M3, RDNA1+ desktop, Apple Pencil 2+ iPad Pro M1+ | **100%** |
+| **Mid** (must-pass ≥80%) | Apple A14+ iPad Air, Adreno 650+, Mali G77+, Intel Iris Xe, RDNA1 mobile | **≥80%** |
+| **Low** (graceful — sem hard requirement) | Adreno 6xx older, Mali G7x older, Intel UHD, iPad 2018, Web WGPU baseline | **≥30%** com graceful degrade explícito |
+
+**Pass criteria por device:**
+1. Crash-free em 1000 frames de stroke contínuo com `fluid_enabled` brush.
+2. Frame budget ≤ 3.5 ms p99 para fluid pass.
+3. Memory delta ≤ 35 MB (cap +5MB sobre §2.10 budget).
+4. Driver compute compaction não trava (Adreno 650 known issue).
+5. Jacobi iterations 1..=8 stable sem timeout (Mali G77 known issue).
+
+#### 2.12.2 Abort criteria + decisão de produto
+
+Se device matrix em W15 T-2 retornar:
+
+- **Mid coverage < 80%:** STOP W15. Coord-A escreve ADR-0049-amendment-1 com decisão explícita:
+  - (a) **Retract fluid de v1.0:** flag default-off em produção; ADR-0053 (Cross-platform tier policy) registra como "Painter Pro feature, post-1.0 GA".
+  - (b) **Reduzir escopo fluid:** apenas Apple/RDNA1 desktop; remover Android/Intel/Web do scope; ADR-0053 documenta gap.
+  - Decisão precisa **aprovação Enio explícita**. Sem aprovação, default = (a) retract.
+- **Mid coverage ≥ 80%:** prossegue W15 T-3+. Devices que falham em runtime caem para wet_mix matemático (graceful degrade §2.8) com **telemetry de incidência** (não só `fluid_capable() = false`).
+
+#### 2.12.3 Telemetry de produção (W15 T-5 obrigatório)
+
+ADR-0049 spec exige (não opcional): cada fluid_pass que aborta em runtime via crash-detector / timeout / driver-error registra evento no audit log. Após 30 dias de produção, % de fluid_capable() devices que efetivamente ativaram fluid sim ≥ 90% (calibração via real telemetry, não probing CPU at boot).
 
 ### 2.13 Caps numéricos
 
@@ -319,7 +347,7 @@ mod fluid {
 - **Graceful degrade documentado.** Mid/Low devices recebem wet-mix matemático; identidade do brush mantida.
 - **`PlatformHost::gyroscope()` é extensão mínima** (1 método com default `None`). Shells existentes não quebram.
 - **Det-mode CPU fallback** preserva HR-5 replay cross-OS (ainda que 10× mais lento).
-- **W15 deferral aceitável.** Falha não impacta v1.0 ship.
+- **W15 deferral NÃO é aceitável** (regra 2026-05-26). Fluid ship em v1.0 ou ADR-0049-amendment-1 retrata explicitamente com decisão Enio. Telemetry pós-ship calibra continuamente.
 
 ### Negativas / Custos
 

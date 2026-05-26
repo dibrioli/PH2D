@@ -223,6 +223,21 @@ pub struct BgRemovalTool {
     /// needs. Sized lazily to the current `(w * h)` and reused across
     /// runs (HR-3). Driven by [`Self::prepare_combined_protect`].
     combined_protect: Vec<u8>,
+
+    /// Edge-aware silhouette mask computed at SOURCE resolution and
+    /// cached across canvas-preview ticks (Enio 2026-05-26 "tente
+    /// tornar o preview mais fiel"). Computing at source resolution
+    /// guarantees the preview's silhouette outline + soft-falloff
+    /// band match what Apply will produce — without the cache, the
+    /// preview ran its own silhouette at the ~256² canvas resolution,
+    /// so `DISTANCE_TO_FULL_LOCK = 8` covered ~3% of the image vs
+    /// ~0.4% in full-res, producing visibly more edge transparency.
+    /// Nearest-resampled into `scratch.auto_protect_mask` at canvas
+    /// dims when the preview runs. `cached_auto_protect_for` holds
+    /// the dims this buffer was computed for (`None` = not computed
+    /// or stale).
+    cached_auto_protect_source: Vec<u8>,
+    cached_auto_protect_for: Option<(u32, u32)>,
 }
 
 impl Default for BgRemovalTool {
@@ -258,6 +273,8 @@ impl Default for BgRemovalTool {
             cached_canvas_preview: None,
             last_protect_uv: None,
             combined_protect: Vec::new(),
+            cached_auto_protect_source: Vec::new(),
+            cached_auto_protect_for: None,
         }
     }
 }
@@ -308,6 +325,10 @@ impl BgRemovalTool {
         // refilled its own cache. Without this, the next current_preview
         // call would short-circuit if dirty was somehow consumed first.
         self.cached_canvas_preview = None;
+        // Source pixels changed → the cached source-resolution silhouette
+        // is stale (its outline reflects the previous image's edges).
+        // Force a recompute on the next pipeline tick that needs it.
+        self.cached_auto_protect_for = None;
     }
 
     /// Whether the host has pushed a source snapshot at least once.
@@ -786,35 +807,15 @@ impl BgRemovalTool {
         if !has_user && !has_auto {
             return false;
         }
-        // CRITICAL: silhouette runs BEFORE `run_pipeline` — and
-        // `run_pipeline` is what normally calls `scratch.ensure`. So
-        // every silhouette buffer (luma / sobel / edge / visited /
-        // auto_protect_mask) must be sized to THIS run's dims here,
-        // or the indexing inside the silhouette inner loops walks
-        // off the end of a buffer left at the previous tick's dims
-        // (Enio 2026-05-26: clicking Detect-subject closed the app —
-        // the thumbnail run before was 160², the canvas preview here
-        // is ~256², and `luma[160²..256²]` was OOB).
-        self.scratch
-            .ensure(self.source_w, self.source_h, self.params.refinement.color_guide);
+        if has_auto {
+            self.ensure_auto_protect_cached_at_source();
+        }
         self.combined_protect.clear();
         self.combined_protect.resize(n, 0);
-        if has_auto {
-            silhouette::detect_subject_interior(
-                &self.source_rgba,
-                self.source_w,
-                self.source_h,
-                &mut self.scratch.luma,
-                &mut self.scratch.sobel_mag,
-                &mut self.scratch.edge_a,
-                &mut self.scratch.edge_b,
-                &mut self.scratch.silhouette_visited,
-                &mut self.scratch.silhouette_queue,
-                &mut self.scratch.auto_protect_mask,
-            );
+        if has_auto && self.cached_auto_protect_source.len() == n {
             for i in 0..n {
-                if self.scratch.auto_protect_mask[i] > self.combined_protect[i] {
-                    self.combined_protect[i] = self.scratch.auto_protect_mask[i];
+                if self.cached_auto_protect_source[i] > self.combined_protect[i] {
+                    self.combined_protect[i] = self.cached_auto_protect_source[i];
                 }
             }
         }
@@ -828,6 +829,45 @@ impl BgRemovalTool {
         true
     }
 
+    /// Recompute the source-resolution silhouette into
+    /// `cached_auto_protect_source` if it's missing or stale (dim
+    /// mismatch). No-op once cached.
+    fn ensure_auto_protect_cached_at_source(&mut self) {
+        if !self.has_source() {
+            self.cached_auto_protect_source.clear();
+            self.cached_auto_protect_for = None;
+            return;
+        }
+        let target = (self.source_w, self.source_h);
+        let n = (target.0 as usize) * (target.1 as usize);
+        if self.cached_auto_protect_for == Some(target)
+            && self.cached_auto_protect_source.len() == n
+        {
+            return;
+        }
+        // Size scratch + cache to source dims.
+        self.scratch.ensure(
+            target.0,
+            target.1,
+            self.params.refinement.color_guide,
+        );
+        self.cached_auto_protect_source.clear();
+        self.cached_auto_protect_source.resize(n, 0);
+        silhouette::detect_subject_interior(
+            &self.source_rgba,
+            target.0,
+            target.1,
+            &mut self.scratch.luma,
+            &mut self.scratch.sobel_mag,
+            &mut self.scratch.edge_a,
+            &mut self.scratch.edge_b,
+            &mut self.scratch.silhouette_visited,
+            &mut self.scratch.silhouette_queue,
+            &mut self.cached_auto_protect_source,
+        );
+        self.cached_auto_protect_for = Some(target);
+    }
+
     /// Canvas-preview variant: resamples the user protect mask down to
     /// `(dw, dh)` and runs the silhouette directly on `canvas_src_rgba`
     /// (cheap at preview resolution — ~3ms at 256² on M-series).
@@ -838,35 +878,46 @@ impl BgRemovalTool {
             return false;
         }
         let has_user = !self.protect_mask.is_empty();
-        let has_auto = self.params.auto_protect_subject && !self.canvas_src_rgba.is_empty();
+        let has_auto = self.params.auto_protect_subject && self.has_source();
         if !has_user && !has_auto {
             return false;
         }
-        // Silhouette runs BEFORE `run_pipeline` — size the scratch
-        // buffers to this run's dims now, otherwise `luma[i]` etc.
-        // walk off the end of a buffer left at the previous tick's
-        // dims. See `prepare_combined_protect_full` for the full
-        // diagnosis.
+        // Compute the silhouette at SOURCE resolution + cache. This
+        // is what gives the preview the SAME outline + soft-falloff
+        // band geometry as Apply: at canvas resolution
+        // `DISTANCE_TO_FULL_LOCK = 8` would cover ~3% of the image
+        // (visibly soft edges) while at source resolution it covers
+        // ~0.4% (sharp edges, matching Apply). The cache means we
+        // only pay the source-res silhouette cost ONCE per source
+        // change, not every preview tick.
+        if has_auto {
+            self.ensure_auto_protect_cached_at_source();
+        }
+        // Size scratch + combined_protect to the canvas dims for the
+        // pipeline run that follows.
         self.scratch
             .ensure(dw, dh, self.params.refinement.color_guide);
         self.combined_protect.clear();
         self.combined_protect.resize(n, 0);
-        if has_auto {
-            silhouette::detect_subject_interior(
-                &self.canvas_src_rgba,
-                dw,
-                dh,
-                &mut self.scratch.luma,
-                &mut self.scratch.sobel_mag,
-                &mut self.scratch.edge_a,
-                &mut self.scratch.edge_b,
-                &mut self.scratch.silhouette_visited,
-                &mut self.scratch.silhouette_queue,
-                &mut self.scratch.auto_protect_mask,
-            );
-            for i in 0..n {
-                if self.scratch.auto_protect_mask[i] > self.combined_protect[i] {
-                    self.combined_protect[i] = self.scratch.auto_protect_mask[i];
+        if has_auto && !self.cached_auto_protect_source.is_empty() {
+            // Nearest-resample source-resolution mask down to canvas
+            // dims (same pattern as `resize_protect_into`). The
+            // source band is `DISTANCE_TO_FULL_LOCK = 8` pixels;
+            // downsample collapses that to ~1 preview pixel, so the
+            // preview's silhouette ramp is as tight as Apply's.
+            let sw = self.source_w as u64;
+            let sh = self.source_h as u64;
+            let dw_u = dw as u64;
+            let dh_u = dh as u64;
+            for y in 0..dh as usize {
+                let sy = (((y as u64) * sh) / dh_u).min(sh - 1) as usize;
+                for x in 0..dw as usize {
+                    let sx = (((x as u64) * sw) / dw_u).min(sw - 1) as usize;
+                    let v = self.cached_auto_protect_source[sy * (sw as usize) + sx];
+                    let dst = y * (dw as usize) + x;
+                    if v > self.combined_protect[dst] {
+                        self.combined_protect[dst] = v;
+                    }
                 }
             }
         }

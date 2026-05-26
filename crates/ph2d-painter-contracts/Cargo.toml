@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-painter-contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Homestead dos arch-gates dos contratos do Painter (ADR-0043..0053
+# ratificados 2026-05-26). Library vazia em produção; toda a lógica
+# vive em `tests/architecture_painter_contract_surface.rs` que audita
+# o source dos crates filhos via grep estrutural + walkdir.
+#
+# ZERO deps de runtime — o gate ativa antes dos crates filhos existirem
+# (em W0/T0.8) e continua válido conforme eles nascem (W1+ fan-out).
+
+[dependencies]
+
+[dev-dependencies]
+walkdir = "2"

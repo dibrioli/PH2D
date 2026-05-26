@@ -53,6 +53,19 @@ pub(crate) fn apply_event(
             host.store_mut().toggle_hierarchy_collapsed(row_id);
             return EventOutcome::Consumed;
         }
+        // 2026-05-26 — lock + group companion ids. Shell drains
+        // HierToggleLock/HierToggleGroup and (un)inserts the matching
+        // ECS component on the row's entity.
+        if let Some(row_id) = ids::hier_lock_companion_to_row(id) {
+            host.bus_mut()
+                .push(EditorAction::HierToggleLock { row: row_id });
+            return EventOutcome::Consumed;
+        }
+        if let Some(row_id) = ids::hier_group_companion_to_row(id) {
+            host.bus_mut()
+                .push(EditorAction::HierToggleGroup { row: row_id });
+            return EventOutcome::Consumed;
+        }
         // M14.6 F — per-row right-click context menu actions.
         if id == ids::CTX_MENU_HIER_DUPLICATE
             || id == ids::CTX_MENU_HIER_ADD_CHILD

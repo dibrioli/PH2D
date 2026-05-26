@@ -140,6 +140,17 @@ pub enum EditorAction {
     /// on `SimWorld`.
     HierToggleVisibility { row: ph2d_a11y::NodeId },
 
+    /// 2026-05-26 — user clicked the per-row lock icon. Shell drains
+    /// and flips presence of `ph2d_ecs::Locked` on the row's entity
+    /// (only the entity is locked; descendants remain editable).
+    HierToggleLock { row: ph2d_a11y::NodeId },
+
+    /// 2026-05-26 — user clicked the per-row "group lock" (folder)
+    /// icon. Shell drains and flips presence of
+    /// `ph2d_ecs::GroupedChildren` on the row's entity (descendants
+    /// locked; the entity itself remains editable).
+    HierToggleGroup { row: ph2d_a11y::NodeId },
+
     /// Drag-and-drop reparent for a hierarchy row. Payload mirrors
     /// the `WidgetEvent::HierReparent` event one-to-one. `new_parent
     /// = None` is a root-level drop; `before`/`after` position the

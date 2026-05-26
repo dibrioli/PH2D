@@ -124,4 +124,13 @@ pub struct GizmoDragState {
     /// `advance_gizmo_drag` between single-sprite, multi with global
     /// pivot, and multi with local pivots.
     pub target: GizmoTarget,
+    /// World-space [`Transform`] of the entity's PARENT chain, captured
+    /// at Down. `IDENTITY` for root entities. Used by
+    /// [`compute_gizmo_transform`] to convert world-space cursor
+    /// deltas back into the entity's LOCAL frame before writing to the
+    /// SimWorld — without this, dragging a child of a rotated parent
+    /// moves along the local (rotated) axis instead of the visual axis.
+    /// Populated via `ph2d_ecs::parent_world_transform` at the Down
+    /// handler.
+    pub parent_world: TransformSnapshot,
 }

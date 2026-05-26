@@ -153,6 +153,8 @@ impl EntityNodeMap {
                     visible: entry.visible,
                     selected: false,
                     muted: false,
+                    locked: entry.locked,
+                    group_locked: entry.group_locked,
                 },
             );
         }

@@ -78,6 +78,8 @@ mod tests {
             visible: true,
             selected: false,
             muted: false,
+            locked: false,
+            group_locked: false,
         }
     }
 

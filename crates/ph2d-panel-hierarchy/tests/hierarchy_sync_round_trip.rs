@@ -73,6 +73,8 @@ fn make_entry(name: &str) -> HierarchyEntity {
         visible: true,
         selected: false,
         muted: false,
+        locked: false,
+        group_locked: false,
     }
 }
 
@@ -238,6 +240,8 @@ fn hierarchy_row_click_raises_pending_for_live_entries() {
             visible: true,
             selected: false,
             muted: false,
+            locked: false,
+            group_locked: false,
         },
     );
     ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &[row_id], entries);

@@ -104,7 +104,12 @@ pub(crate) fn paint_hierarchy_row(
         StrokeToken::Default.px(),
     );
 
-    let mut right_x = rect.x + rect.w - pad;
+    // Right-side icon cluster — eye colada na borda direita (pad 0)
+    // e gap inter-icon Xxs (2 px) pra ficarem "bem juntos" (Enio
+    // 2026-05-26). Antes: pad=2 + gap=Sm (6).
+    let icon_cluster_pad = 0.0_f32; // LITERAL-PX-OK: chrome inset, Enio request
+    let icon_cluster_gap = Spacing::Xxs.px();
+    let mut right_x = rect.x + rect.w - icon_cluster_pad;
     let eye_icon = if entity.visible {
         IconId::Eye
     } else {
@@ -139,7 +144,73 @@ pub(crate) fn paint_hierarchy_row(
         );
         idx.register(ids::hier_eye_companion(row_id), hit_rect);
     }
-    right_x -= eye_size + Spacing::Sm.px();
+    right_x -= eye_size + icon_cluster_gap;
+    // ── Group lock (folder icon) — pinta SE locked, sempre clicável.
+    // À esquerda do olho. Click toggla `GroupedChildren` em SimWorld
+    // via EditorAction::HierToggleGroup (handler no shell). Enio
+    // 2026-05-26: "Agrupar: vc pode manipular o pai mas não os filhos".
+    let icon_btn = eye_size;
+    let group_rect = Rect::new(
+        right_x - icon_btn,
+        rect.y + (rect.h - icon_btn) * 0.5,
+        icon_btn,
+        icon_btn,
+    );
+    let group_color = if entity.group_locked {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text3
+    };
+    paint_icon(
+        scene,
+        IconId::Folder,
+        group_rect,
+        resolve(group_color, theme),
+        StrokeToken::Default.px(),
+    );
+    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
+        let hit_pad = Spacing::Xs.px();
+        let hit_rect = Rect::new(
+            group_rect.x - hit_pad,
+            group_rect.y - hit_pad,
+            group_rect.w + hit_pad * 2.0,
+            group_rect.h + hit_pad * 2.0,
+        );
+        idx.register(ids::hier_group_companion(row_id), hit_rect);
+    }
+    right_x -= icon_btn + icon_cluster_gap;
+    // ── Lock individual (cadeado) — Enio: "Cadeado trava apenas o
+    // objeto. Se este objeto tiver filhos, os filhos podem ser
+    // manipulados". Sempre pintado, cor reflete estado.
+    let lock_rect = Rect::new(
+        right_x - icon_btn,
+        rect.y + (rect.h - icon_btn) * 0.5,
+        icon_btn,
+        icon_btn,
+    );
+    let lock_color = if entity.locked {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text3
+    };
+    paint_icon(
+        scene,
+        IconId::Lock,
+        lock_rect,
+        resolve(lock_color, theme),
+        StrokeToken::Default.px(),
+    );
+    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
+        let hit_pad = Spacing::Xs.px();
+        let hit_rect = Rect::new(
+            lock_rect.x - hit_pad,
+            lock_rect.y - hit_pad,
+            lock_rect.w + hit_pad * 2.0,
+            lock_rect.h + hit_pad * 2.0,
+        );
+        idx.register(ids::hier_lock_companion(row_id), hit_rect);
+    }
+    right_x -= icon_btn + icon_cluster_gap;
     if let Some(swatch) = entity.swatch {
         let sw = SECTION_GAP_PX;
         let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);
@@ -150,7 +221,7 @@ pub(crate) fn paint_hierarchy_row(
             swatch,
         );
         ph2d_editor_core::widget::paint_color_swatch(&cs, sw_rect, scene, theme);
-        right_x -= sw + Spacing::Sm.px();
+        right_x -= sw + icon_cluster_gap;
     }
     if let Some(badge) = &entity.badge {
         let badge_w = ICON_BTN_SIZE_PX;
@@ -180,7 +251,7 @@ pub(crate) fn paint_hierarchy_row(
                 TagState::Normal
             });
         paint_tag(&tag, badge_rect, scene, text_system, theme);
-        right_x -= badge_w + Spacing::Sm.px();
+        right_x -= badge_w + icon_cluster_gap;
     }
 
     // Icon → name gap tightened Md (8) → Xs (4) 2026-05-24 per user:
@@ -193,14 +264,33 @@ pub(crate) fn paint_hierarchy_row(
     } else {
         ColorToken::Text1
     };
-    paint_text(
-        text_system,
-        scene,
-        &entity.name,
-        name_x,
-        rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
-        TypeToken::Sm.px(),
-        (right_x - name_x).max(0.0),
-        resolve(name_color, theme),
-    );
+    // Hard clip ao espaço entre name_x e o icon cluster — sem clip,
+    // `paint_text` faz wrap quando a string excede a largura (nomes
+    // longos quebravam em 2 linhas E invadiam os ícones). Com clip,
+    // letras à direita simplesmente não aparecem (Enio 2026-05-26:
+    // "As letras da direita do nome que invadirão os ícones devem
+    // simplesmente não aparecer. Não podem sobrepor os ícones").
+    // Reservar gap pequeno antes do primeiro ícone (não colado).
+    let name_right_limit = right_x - Spacing::Xxs.px();
+    let name_w = (name_right_limit - name_x).max(0.0);
+    if name_w > 0.0 {
+        let name_clip = ph2d_vector::Rect::new(
+            name_x as f64,
+            rect.y as f64,
+            (name_x + name_w) as f64,
+            (rect.y + rect.h) as f64,
+        );
+        scene.push_clip(&name_clip);
+        paint_text(
+            text_system,
+            scene,
+            &entity.name,
+            name_x,
+            rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            name_w,
+            resolve(name_color, theme),
+        );
+        scene.pop_layer();
+    }
 }

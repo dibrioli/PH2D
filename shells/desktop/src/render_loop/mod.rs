@@ -340,6 +340,8 @@ impl crate::App {
             let mut activate_equalize_sizes = false;
             let mut activate_upscale = false;
             let mut visibility_toggle_row: Option<NodeId> = None;
+            let mut lock_toggle_row: Option<NodeId> = None;
+            let mut group_toggle_row: Option<NodeId> = None;
             let mut reparent_intent: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
             let mut duplicate_row: Option<NodeId> = None;
             let mut add_child_row: Option<NodeId> = None;
@@ -410,6 +412,12 @@ impl crate::App {
                     EditorAction::UndoImageEdit => undo_image_edit = true,
                     EditorAction::HierToggleVisibility { row } => {
                         visibility_toggle_row.get_or_insert(row);
+                    }
+                    EditorAction::HierToggleLock { row } => {
+                        lock_toggle_row.get_or_insert(row);
+                    }
+                    EditorAction::HierToggleGroup { row } => {
+                        group_toggle_row.get_or_insert(row);
                     }
                     EditorAction::HierReparent(intent) => {
                         reparent_intent.get_or_insert(intent);
@@ -815,6 +823,8 @@ impl crate::App {
             if hierarchy::dispatch(
                 view_focus_kind,
                 visibility_toggle_row,
+                lock_toggle_row,
+                group_toggle_row,
                 reparent_intent,
                 duplicate_row,
                 add_child_row,

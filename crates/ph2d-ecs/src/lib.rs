@@ -53,8 +53,9 @@ pub use present::{PresentComponent, PresentWorld};
 pub use root_order::RootOrder;
 pub use sim::{SimComponent, SimWorld};
 pub use transform::{
-    GlobalTransform, SimRef, Transform, TransformPropagationState, WorklistBuf,
-    propagate_transforms, propagate_transforms_into_present,
+    GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
+    WorklistBuf, is_locked_for_edit, parent_world_transform, propagate_transforms,
+    propagate_transforms_into_present,
 };
 pub use visibility::Visibility;
 

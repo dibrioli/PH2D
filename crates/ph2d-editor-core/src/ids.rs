@@ -847,6 +847,12 @@ pub const EYE_TOGGLE_BIT: u64 = 1u64 << 62;
 /// bit from `EYE_TOGGLE_BIT` so the two companions stay
 /// distinguishable in `apply_event`.
 pub const EXPAND_TOGGLE_BIT: u64 = 1u64 << 61;
+/// 2026-05-26: bit 60 for the lock-toggle companion (per row). Same
+/// pattern as eye/expand — masked with `row_id.0` so dispatch can
+/// recognize a click on the row's lock icon.
+pub const LOCK_TOGGLE_BIT: u64 = 1u64 << 60;
+/// 2026-05-26: bit 59 for the group-lock-toggle companion (per row).
+pub const GROUP_TOGGLE_BIT: u64 = 1u64 << 59;
 
 /// Wave 2 PR 11.3 guard: companion detection only fires when the
 /// un-masked id is below this threshold (i.e., looks like a real
@@ -901,6 +907,42 @@ pub fn hier_expand_companion(row_id: NodeId) -> NodeId {
 pub fn hier_expand_companion_to_row(id: NodeId) -> Option<NodeId> {
     if id.0 & EXPAND_TOGGLE_BIT != 0 {
         let masked = id.0 & !EXPAND_TOGGLE_BIT;
+        if masked < COMPANION_ROW_ID_MAX {
+            return Some(NodeId(masked));
+        }
+    }
+    None
+}
+
+/// 2026-05-26: lock-toggle companion (per hierarchy row). Mirrors
+/// `hier_eye_companion` — XORs `LOCK_TOGGLE_BIT` so dispatch can
+/// recognize a click on the row's lock icon.
+#[inline]
+pub fn hier_lock_companion(row_id: NodeId) -> NodeId {
+    NodeId(row_id.0 | LOCK_TOGGLE_BIT)
+}
+
+#[inline]
+pub fn hier_lock_companion_to_row(id: NodeId) -> Option<NodeId> {
+    if id.0 & LOCK_TOGGLE_BIT != 0 {
+        let masked = id.0 & !LOCK_TOGGLE_BIT;
+        if masked < COMPANION_ROW_ID_MAX {
+            return Some(NodeId(masked));
+        }
+    }
+    None
+}
+
+/// 2026-05-26: group-lock-toggle companion (per hierarchy row).
+#[inline]
+pub fn hier_group_companion(row_id: NodeId) -> NodeId {
+    NodeId(row_id.0 | GROUP_TOGGLE_BIT)
+}
+
+#[inline]
+pub fn hier_group_companion_to_row(id: NodeId) -> Option<NodeId> {
+    if id.0 & GROUP_TOGGLE_BIT != 0 {
+        let masked = id.0 & !GROUP_TOGGLE_BIT;
         if masked < COMPANION_ROW_ID_MAX {
             return Some(NodeId(masked));
         }

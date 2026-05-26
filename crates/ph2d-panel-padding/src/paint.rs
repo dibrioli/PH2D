@@ -29,8 +29,8 @@ use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title,
-    panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    paint_panel_surface, paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
+    panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,

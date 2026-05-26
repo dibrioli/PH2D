@@ -412,12 +412,19 @@ impl App {
                             ph2d_render::pick_sprite_at_world(gfx.present.world_mut(), world_pos)
                                 == Some(entity_bits);
                         if (on_pivot_dot || on_sprite)
+                            && !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
                             && let Some(t) = gfx.sim.world().get::<Transform>(entity)
                         {
                             let snap_t = ph2d_editor::TransformSnapshot {
                                 translation: [t.translation.x, t.translation.y],
                                 rotation: t.rotation,
                                 scale: [t.scale.x, t.scale.y],
+                            };
+                            let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
+                            let parent_world = ph2d_editor::TransformSnapshot {
+                                translation: [pw.translation.x, pw.translation.y],
+                                rotation: pw.rotation,
+                                scale: [pw.scale.x, pw.scale.y],
                             };
                             let sprite = gfx.sim.world().get::<ph2d_render::Sprite>(entity);
                             let anchor = sprite.map(|s| s.anchor).unwrap_or([0.0, 0.0]);
@@ -443,6 +450,7 @@ impl App {
                                 sprite_half_intrinsic: half,
                                 anchor_is_center: false,
                                 target: ph2d_editor::GizmoTarget::PrimaryIndividual,
+                                parent_world,
                             });
                             began_pivot = true;
                         }
@@ -457,6 +465,11 @@ impl App {
                         }
                     {
                         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+                        // 2026-05-26 — bloqueia drag se entidade tem
+                        // `Locked` OU ancestral tem `GroupedChildren`.
+                        if ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity) {
+                            return;
+                        }
                         let window_size = gfx.surface.size();
                         let start_world = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                         if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
@@ -464,6 +477,16 @@ impl App {
                                 translation: [t.translation.x, t.translation.y],
                                 rotation: t.rotation,
                                 scale: [t.scale.x, t.scale.y],
+                            };
+                            // Enio 2026-05-26 fix: capture parent's world
+                            // transform so compute_gizmo_transform can
+                            // unrotate/unscale the delta before writing
+                            // back to the entity's LOCAL Transform.
+                            let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
+                            let parent_world = ph2d_editor::TransformSnapshot {
+                                translation: [pw.translation.x, pw.translation.y],
+                                rotation: pw.rotation,
+                                scale: [pw.scale.x, pw.scale.y],
                             };
                             let use_center_anchor =
                                 self.modifiers.control_key() || self.modifiers.super_key();
@@ -518,6 +541,7 @@ impl App {
                                 sprite_half_intrinsic,
                                 anchor_is_center: use_center_anchor,
                                 target: effective_target,
+                                parent_world,
                             });
                             // Onda 1 + 2C.4: snapshot every OTHER selected
                             // sprite's full start_transform so
@@ -535,6 +559,8 @@ impl App {
                                     }
                                     let e = ph2d_ecs::Entity::from_bits(sel);
                                     if let Some(t) = gfx.sim.world().get::<Transform>(e) {
+                                        let epw =
+                                            ph2d_ecs::parent_world_transform(gfx.sim.world(), e);
                                         self.group_drag_starts.push(
                                             crate::app_state::GroupDragSnapshot {
                                                 entity_bits: sel,
@@ -542,6 +568,14 @@ impl App {
                                                     translation: [t.translation.x, t.translation.y],
                                                     rotation: t.rotation,
                                                     scale: [t.scale.x, t.scale.y],
+                                                },
+                                                parent_world: ph2d_editor::TransformSnapshot {
+                                                    translation: [
+                                                        epw.translation.x,
+                                                        epw.translation.y,
+                                                    ],
+                                                    rotation: epw.rotation,
+                                                    scale: [epw.scale.x, epw.scale.y],
                                                 },
                                             },
                                         );
@@ -652,11 +686,19 @@ impl App {
                             && !is_modifier_click
                         {
                             let entity = ph2d_ecs::Entity::from_bits(bits);
-                            if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
+                            if !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
+                                && let Some(t) = gfx.sim.world().get::<Transform>(entity)
+                            {
                                 let snap_t = ph2d_editor::TransformSnapshot {
                                     translation: [t.translation.x, t.translation.y],
                                     rotation: t.rotation,
                                     scale: [t.scale.x, t.scale.y],
+                                };
+                                let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
+                                let parent_world = ph2d_editor::TransformSnapshot {
+                                    translation: [pw.translation.x, pw.translation.y],
+                                    rotation: pw.rotation,
+                                    scale: [pw.scale.x, pw.scale.y],
                                 };
                                 let pivot = [t.translation.x, t.translation.y];
                                 hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
@@ -670,6 +712,7 @@ impl App {
                                     sprite_half_intrinsic: [0.0, 0.0],
                                     anchor_is_center: false,
                                     target: ph2d_editor::GizmoTarget::PrimaryIndividual,
+                                    parent_world,
                                 });
                                 // Onda 1 + 2C.4: snapshot every OTHER
                                 // selected sprite's full start_transform
@@ -688,6 +731,10 @@ impl App {
                                         }
                                         let e = ph2d_ecs::Entity::from_bits(sel);
                                         if let Some(t) = gfx.sim.world().get::<Transform>(e) {
+                                            let epw = ph2d_ecs::parent_world_transform(
+                                                gfx.sim.world(),
+                                                e,
+                                            );
                                             self.group_drag_starts.push(
                                                 crate::app_state::GroupDragSnapshot {
                                                     entity_bits: sel,
@@ -700,6 +747,14 @@ impl App {
                                                             rotation: t.rotation,
                                                             scale: [t.scale.x, t.scale.y],
                                                         },
+                                                    parent_world: ph2d_editor::TransformSnapshot {
+                                                        translation: [
+                                                            epw.translation.x,
+                                                            epw.translation.y,
+                                                        ],
+                                                        rotation: epw.rotation,
+                                                        scale: [epw.scale.x, epw.scale.y],
+                                                    },
                                                 },
                                             );
                                         }

@@ -140,10 +140,10 @@ pub struct HierarchyDragState {
 }
 
 /// Hold duration that turns a still pointer-Down on a hierarchy row
-/// into a `WidgetEvent::LongPress`. 600 ms matches macOS Finder /
-/// iOS rename gestures — short enough to feel responsive, long
-/// enough that a regular slow click doesn't accidentally fire it.
-pub const LONG_PRESS_THRESHOLD_NS: u128 = 600_000_000;
+/// into a `WidgetEvent::LongPress`. 400 ms — Enio 2026-05-26 pediu
+/// pra reduzir um pouco do 600 ms anterior (macOS Finder padrão).
+/// Continua longo o suficiente pra não disparar em click normal.
+pub const LONG_PRESS_THRESHOLD_NS: u128 = 400_000_000;
 
 /// State of an in-progress drag on a scrollbar thumb.
 #[derive(Copy, Clone, Debug, PartialEq)]

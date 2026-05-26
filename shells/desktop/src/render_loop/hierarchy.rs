@@ -44,6 +44,8 @@ pub(super) enum HierarchySelectIntent {
 pub(super) fn dispatch(
     view_focus_kind: Option<ViewFocusKind>,
     visibility_toggle_row: Option<NodeId>,
+    lock_toggle_row: Option<NodeId>,
+    group_toggle_row: Option<NodeId>,
     reparent_intent: Option<HierReparentIntent>,
     duplicate_row: Option<NodeId>,
     add_child_row: Option<NodeId>,
@@ -105,6 +107,36 @@ pub(super) fn dispatch(
             entry.insert(ph2d_ecs::Visibility {
                 hidden: !was_hidden,
             });
+        }
+    }
+    // 2026-05-26 — drain Lock + GroupedChildren toggles. Mesma
+    // pattern do visibility_toggle_row.
+    if let Some(row_id) = lock_toggle_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row_id)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        let sim_w = sim.world_mut();
+        if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
+            if entry.get::<ph2d_ecs::Locked>().is_some() {
+                entry.remove::<ph2d_ecs::Locked>();
+            } else {
+                entry.insert(ph2d_ecs::Locked);
+            }
+        }
+    }
+    if let Some(row_id) = group_toggle_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row_id)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        let sim_w = sim.world_mut();
+        if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
+            if entry.get::<ph2d_ecs::GroupedChildren>().is_some() {
+                entry.remove::<ph2d_ecs::GroupedChildren>();
+            } else {
+                entry.insert(ph2d_ecs::GroupedChildren);
+            }
         }
     }
     // M14.6B: drain pending hierarchy reparent intent — translate

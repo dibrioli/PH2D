@@ -409,6 +409,11 @@ pub(crate) struct App {
 pub(crate) struct GroupDragSnapshot {
     pub(crate) entity_bits: u64,
     pub(crate) start_transform: ph2d_editor::TransformSnapshot,
+    /// World transform of this entity's parent chain (Enio 2026-05-26
+    /// fix: writes into the entity's LOCAL Transform must compensate
+    /// for ancestor rotation/scale, or group-drags on children of
+    /// rotated parents move along the local axis instead of world).
+    pub(crate) parent_world: ph2d_editor::TransformSnapshot,
 }
 
 /// Fase 0f: canvas rubber-band box-select state. Cleared on Up.

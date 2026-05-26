@@ -125,6 +125,13 @@ pub struct HierarchyEntity {
     pub visible: bool,
     pub selected: bool,
     pub muted: bool,
+    /// Mirrors `ph2d_ecs::Locked` — entity's own transform is locked
+    /// against gizmo edits. Renders a lock icon next to the eye.
+    pub locked: bool,
+    /// Mirrors `ph2d_ecs::GroupedChildren` — all descendants are
+    /// locked while THIS entity remains editable. Renders a folder
+    /// icon in the right-side cluster.
+    pub group_locked: bool,
 }
 
 /// Placeholder hierarchy until the pilot project wires real entities.
@@ -140,6 +147,8 @@ pub fn hierarchy() -> Vec<HierarchyEntity> {
         visible: true,
         selected: false,
         muted: false,
+        locked: false,
+        group_locked: false,
     }]
 }
 

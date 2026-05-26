@@ -139,6 +139,72 @@ impl Default for Transform {
 
 impl SimComponent for Transform {}
 
+/// Compose the world-space [`Transform`] of the parent chain of `entity`
+/// by walking `ChildOf` bottom-up and re-composing top-down via
+/// [`Transform::compose`]. Returns [`Transform::IDENTITY`] when `entity`
+/// is a root (no `ChildOf`).
+///
+/// Used by the gizmo drag pipeline (`shells/desktop/src/input_dispatch`)
+/// so writes into the entity's LOCAL `Transform` correctly compensate
+/// for ancestor rotation/scale — without this helper, a child of a
+/// rotated parent translates/scales along the local (rotated) axis
+/// instead of the visual (world) axis.
+///
+/// Allocates a small `Vec<Transform>` for the chain (depth is usually
+/// 0–3); fine for one-shot lookup at gesture start.
+/// Marker: this entity's `Transform` is locked against gizmo edits.
+/// The gizmo Down handler queries `is_locked_for_edit()` and rejects
+/// the gesture when the marker is present. Children of a `Locked`
+/// entity remain editable (use [`GroupedChildren`] to lock descendants).
+/// Enio 2026-05-26: "Cadeado trava apenas o objeto".
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Locked;
+
+impl SimComponent for Locked {}
+
+/// Marker: this entity's DESCENDANTS are locked against gizmo edits,
+/// but the entity itself remains editable. Enio 2026-05-26: "Agrupar:
+/// você pode manipular o objeto pai do grupo mas não os seus filhos".
+/// Recursive — every entity whose ancestor chain contains a
+/// `GroupedChildren` carrier is considered locked.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GroupedChildren;
+
+impl SimComponent for GroupedChildren {}
+
+/// True iff `entity` has `Locked`, OR any ancestor (via `ChildOf`)
+/// has `GroupedChildren`. Used by the gizmo Down handlers to reject
+/// drag gestures on locked entities.
+pub fn is_locked_for_edit(world: &World, entity: Entity) -> bool {
+    if world.get::<Locked>(entity).is_some() {
+        return true;
+    }
+    let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
+    while let Some(p) = cur {
+        if world.get::<GroupedChildren>(p).is_some() {
+            return true;
+        }
+        cur = world.get::<ChildOf>(p).map(|c| c.parent());
+    }
+    false
+}
+
+pub fn parent_world_transform(world: &World, entity: Entity) -> Transform {
+    let mut chain: Vec<Transform> = Vec::new();
+    let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
+    while let Some(p) = cur {
+        if let Some(t) = world.get::<Transform>(p) {
+            chain.push(*t);
+        }
+        cur = world.get::<ChildOf>(p).map(|c| c.parent());
+    }
+    let mut acc = Transform::IDENTITY;
+    for t in chain.iter().rev() {
+        acc = Transform::compose(acc, *t);
+    }
+    acc
+}
+
 /// World-space affine transform as a 3×3 column-major matrix.
 ///
 /// Computed per-frame by [`propagate_transforms`] from a chain of

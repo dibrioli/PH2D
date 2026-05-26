@@ -47,6 +47,12 @@ pub struct HierarchyEntry {
     /// user has toggled the hierarchy eye-icon. Default `true` for
     /// entities without a [`Visibility`](crate::Visibility) component.
     pub visible: bool,
+    /// 2026-05-26: `true` iff entity carries [`crate::Locked`]. Gizmo
+    /// edits on this entity are rejected; descendants remain editable.
+    pub locked: bool,
+    /// 2026-05-26: `true` iff entity carries [`crate::GroupedChildren`].
+    /// Descendants are locked while THIS entity remains editable.
+    pub group_locked: bool,
 }
 
 /// DFS-ordered flat view of the sim hierarchy. Each `build_*` pass
@@ -92,6 +98,8 @@ pub struct HierarchyWalkState {
         Option<&'static Name>,
         Option<&'static Children>,
         Option<&'static crate::Visibility>,
+        Option<&'static crate::Locked>,
+        Option<&'static crate::GroupedChildren>,
     )>,
 }
 
@@ -99,7 +107,13 @@ impl HierarchyWalkState {
     pub fn new(world: &mut World) -> Self {
         Self {
             roots: world.query_filtered::<Entity, (With<Transform>, Without<ChildOf>)>(),
-            chain: world.query::<(Option<&Name>, Option<&Children>, Option<&crate::Visibility>)>(),
+            chain: world.query::<(
+                Option<&Name>,
+                Option<&Children>,
+                Option<&crate::Visibility>,
+                Option<&crate::Locked>,
+                Option<&crate::GroupedChildren>,
+            )>(),
         }
     }
 }
@@ -151,7 +165,7 @@ pub fn build_hierarchy_snapshot(
     }
 
     while let Some((entity, depth, parent)) = scratch.pop() {
-        let Ok((name, children, vis)) = state.chain.get(sim_w, entity) else {
+        let Ok((name, children, vis, lk, grp)) = state.chain.get(sim_w, entity) else {
             continue;
         };
         out.entries.push(HierarchyEntry {
@@ -160,6 +174,8 @@ pub fn build_hierarchy_snapshot(
             parent: parent.map(|p| p.to_bits()),
             depth,
             visible: !vis.is_some_and(|v| v.hidden),
+            locked: lk.is_some(),
+            group_locked: grp.is_some(),
         });
         if let Some(children) = children {
             // Push children in reverse so DFS visits the first child

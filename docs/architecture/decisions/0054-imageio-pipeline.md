@@ -237,7 +237,13 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | W0.T5 stub `ph2d-imageio-png` | ✅ | `3db01b6` | PngImporter + PngExporter; round-trip bit-exact + byte-exact determinism (HR-5) |
 | W0.T6 wiring shell desktop | ✅ | `f002b6a` | `AppGfx.imageio_{importers,exporters}`; smoke do Enio `1 importer(s), 1 exporter(s)` confirmado |
 | W0.T6.5 auditoria 5-lente paralela | ✅ | `[pending]` | 4 CRITICAL + 11 HIGH + 9 MEDIUM + 12 LOW; remediação inline (3 batches) |
-| W0.T7 ratificação Proposed→Accepted | ✅ | `[ratification-commit]` | Smoke pós-remediação Enio: `[553ms] imageio registries built (1 importer, 1 exporter)`; W0 FECHADA |
+| W0.T7 ratificação Proposed→Accepted | ✅ | `2011fe6` + `80f3174` | Smoke pós-remediação Enio: `[553ms] imageio registries built (1 importer, 1 exporter)`; W0 FECHADA; C-C1 resolvido via market-pattern survey |
+| **W1.T1** PNG-full | ✅ | `ac50809` | Multi-color-type decode, 32K bomb defence, 12 tests |
+| **W1.T2** JPEG | ✅ | `4b2b657` | 8-bit RGB + quality clamp, 8 tests |
+| **W1.T3** WebP | ✅ | `4423367` | Lossy decode + lossless encode (pure-Rust), 6 tests |
+| **W1.T4** GIF | ✅ | `3a84b1b` | Single→Flat / multi→Animated, 7 tests |
+| **W1.T5** .ph2d-native | ✅ | `7270d40` | All 5 DecodedImage variants lossless; HR-5+6+14, 13 tests |
+| **ONDA 1 FECHADA** | ✅ | 5 commits | 5 format crates registrados; 81 testes verdes na família |
 
 ### Remediação pós-auditoria (2026-05-26)
 

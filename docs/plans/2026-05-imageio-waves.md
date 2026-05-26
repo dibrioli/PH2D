@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 FECHADA** 2026-05-26 — ADR-0054 `Accepted`. Contrato congelado + caps frozen + auditoria 5-lente remediada + smoke pós-remediação + market-pattern survey (Unity/Unreal/Godot/Bevy/Krita/Blender) resolveu C-C1. **Fan-out W1 aberto sem decision gate.**
+**Status:** **W0 + W1 FECHADAS** 2026-05-26 — ADR-0054 `Accepted`; 5 format crates universais wired (gif/jpeg/png/webp/ph2d-native); 81 testes verdes na família imageio; 13 commits locais. **W2 (profissional 2D) aberta.**
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 

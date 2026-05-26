@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-painter-brush"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Brush engine core — Brush struct + 12 sub-structs + Stamp 96B ABI freeze
+# + BrushHandle bit-31 + RenderingMode 6 FROZEN + PigmentMode + GrainSource +
+# ProceduralGrain + atlas/library/mixbox stubs.
+#
+# T1.3 entrega tipos + defaults. GPU compute pipeline (StampPipeline) é T1.4+;
+# atlas real é T1.5+; Mixbox WGSL é T-color+T1.X+; Procedural Grain compute
+# é W5+.
+#
+# Contrato congelado por ADR-0044 (cascata W0 ratificada 2026-05-26).
+
+[dependencies]
+# HR-14 versionado postcard binary serialization (.ph2d-brush format).
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["use-std"] }
+# bytemuck Pod+Zeroable derive — Stamp 96B ABI freeze CPU↔GPU.
+bytemuck = { version = "1", features = ["derive"] }
+# blake3 hash para BrushParamsHash + dedup em stroke history (ADR-0046).
+blake3 = "1"

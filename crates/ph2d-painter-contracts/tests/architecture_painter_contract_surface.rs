@@ -385,17 +385,24 @@ mod brush_engine {
 
     #[test]
     fn stamp_is_pod_zeroable() {
-        // `#[derive(... bytemuck::Pod, bytemuck::Zeroable ...)]` no Stamp.
+        // `#[derive(... Pod, Zeroable ...)]` no Stamp (path opcional).
         let src = crate_source(CRATE);
         if src.is_empty() {
             return;
         }
-        // Heuristic: o derive aparece adjacent a `struct Stamp`.
-        if let Some(body) = find_decl_body(&src, "struct", "Stamp") {
-            let _ = body; // body found = struct exists; checa derives no source full
+        // Heuristic: aceita ambas formas: `bytemuck::Pod` OU `Pod` (via use).
+        // O importante é que ambos os trait names apareçam no source — o
+        // compilador valida o trait bound real (compile-time + tests).
+        if let Some(_body) = find_decl_body(&src, "struct", "Stamp") {
+            // Aceita ambas formas: `bytemuck::Pod` (full path) OU `Pod` (via use).
+            // Same para Zeroable. Heuristic: `Pod, Zeroable` OR `Zeroable, Pod`
+            // (em qualquer ordem dentro de #[derive(...)]).
+            let has_pod_zero = src.contains("Pod, Zeroable")
+                || src.contains("Zeroable, Pod")
+                || (src.contains("bytemuck::Pod") && src.contains("bytemuck::Zeroable"));
             assert!(
-                src.contains("bytemuck::Pod") && src.contains("bytemuck::Zeroable"),
-                "[stamp_is_pod_zeroable] Stamp must derive bytemuck::Pod + Zeroable (ADR-0044 §2.3)"
+                has_pod_zero,
+                "[stamp_is_pod_zeroable] Stamp must derive Pod + Zeroable (ADR-0044 §2.3)"
             );
         }
     }
@@ -1108,7 +1115,10 @@ mod meta {
         assert!(!stripped.contains("block"), "block comment must be elided");
         assert!(!stripped.contains("multi"), "block multi-line elided");
         assert!(stripped.contains("let x"), "code preserved");
-        assert!(stripped.contains("let y"), "code after block comment preserved");
+        assert!(
+            stripped.contains("let y"),
+            "code after block comment preserved"
+        );
     }
 
     #[test]

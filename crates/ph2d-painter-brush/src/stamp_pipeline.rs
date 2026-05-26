@@ -3,25 +3,32 @@
 //! ../../../docs/architecture/decisions/0044-brush-engine-gpu.md) and
 //! [spec §1.8.2](../../../docs/Painter_projeto/01_brush_engine.md).
 //!
-//! ## Scope (T1.4)
+//! ## Scope (T1.5)
 //!
 //! Build the compute pipeline + bind group layout, encode a dispatch
-//! that processes an arbitrary slice of [`Stamp`]s. Workgroup is 8×8;
+//! that processes an arbitrary slice of [`Stamp`]s reading from
+//! `canvas_in` and writing into `canvas_out`. Workgroup is 8×8;
 //! dispatch is 3D — Z carries the stamp index, X·Y cover the largest
 //! stamp's bounding-box footprint in 8-pixel blocks. Threads outside
 //! smaller stamps' boxes early-out.
 //!
-//! ## Limitation registered as W5+ follow-up
+//! ## Two-texture ping-pong (T1.5)
 //!
-//! `canvas_out` is bound write-only (`texture_storage_2d<rgba8unorm,
-//! write>`) — portable across every wgpu 28 adapter. Without read-side
-//! access on the same texture, stamps that overlap in the SAME dispatch
-//! produce undefined ordering. Single-stamp dispatches (Day 5 smoke)
-//! are unaffected. Multi-stamp alpha-over correctness lands in T1.5
-//! when `StampScheduler` emits stamps with temporal ordering and the
-//! pipeline gains a per-stamp ping-pong path (ADR-0044 §2.9
-//! W5+-specialized rampa). The public API of [`StampPipeline::encode`]
-//! does not change at that transition.
+//! `canvas_in` is `texture_2d<f32>` (read, @binding(3)); `canvas_out`
+//! is `texture_storage_2d<rgba8unorm, write>` (write, @binding(2)).
+//! The caller is expected to bind DIFFERENT texture views to the two
+//! bindings — same view in both is a wgpu validation error when one
+//! is storage-write.
+//!
+//! For strict temporal ordering across overlapping stamps, callers
+//! (e.g. [`StampScheduler`]) dispatch one stamp at a time and swap
+//! the textures (A↔B) between calls. Multi-stamp single-dispatch is
+//! valid only when the caller has proved the stamps in the slice
+//! don't overlap pixelwise — otherwise the per-pixel order is
+//! undefined (two workgroups writing the same texel race).
+//!
+//! Single-texture `read_write` storage on `rgba8unorm` requires
+//! adapter-specific features and is gated to W5+ via ADR-0044 §2.9.
 //!
 //! ## Naga reflection self-test
 //!
@@ -118,16 +125,23 @@ pub struct StampPipeline {
 
 impl StampPipeline {
     /// Build the pipeline. Compiles [`STAMP_WGSL`], constructs the
-    /// bind group layout with three entries:
+    /// bind group layout with four entries:
     ///
-    /// | Binding | Type                                         | Visibility |
-    /// |---------|----------------------------------------------|------------|
-    /// | 0       | storage buffer (read) — `array<Stamp>`        | compute    |
-    /// | 1       | uniform buffer — `StampGlobals`              | compute    |
-    /// | 2       | storage texture (write) — `rgba8unorm`        | compute    |
+    /// | Binding | Type                                          | Visibility |
+    /// |---------|-----------------------------------------------|------------|
+    /// | 0       | storage buffer (read) — `array<Stamp>`         | compute    |
+    /// | 1       | uniform buffer — `StampGlobals`               | compute    |
+    /// | 2       | storage texture (write) — `rgba8unorm`         | compute    |
+    /// | 3       | sampled texture (read) — `texture_2d<f32>`     | compute    |
     ///
     /// `min_binding_size` is set on bindings 0 and 1 so wgpu validation
     /// catches any mismatch at dispatch time.
+    ///
+    /// Binding 3 (`canvas_in`) is `sample_type: Float { filterable: false }`
+    /// — `textureLoad` doesn't sample, but the binding still has to
+    /// declare its data shape. `filterable: false` works on every wgpu
+    /// 28 backend without feature requests; `rgba8unorm` is always
+    /// loadable as `Float`.
     pub fn new(gpu: &GpuContext) -> Self {
         let device = gpu.device.as_ref();
 
@@ -174,6 +188,20 @@ impl StampPipeline {
                     },
                     count: None,
                 },
+                // @binding(3) — canvas read texture (ping-pong source).
+                // `Float { filterable: false }` matches `textureLoad` which
+                // doesn't sample. `rgba8unorm` is universally loadable as
+                // Float on every wgpu 28 backend without feature requests.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -210,13 +238,29 @@ impl StampPipeline {
         &self.bind_group_layout
     }
 
-    /// Encode a single compute dispatch that applies `stamps` onto
-    /// `canvas_out`. Returns immediately if `stamps` is empty or if
-    /// every stamp's `size_px` is non-finite / non-positive.
+    /// Encode a single compute dispatch that applies `stamps` reading
+    /// from `canvas_in` and writing into `canvas_out`. Returns
+    /// immediately if `stamps` is empty or if every stamp's `size_px`
+    /// is non-finite / non-positive.
     ///
     /// `canvas_dims` is the canvas size in pixels — used for the
     /// shader's bounds check (stamps that fall off the edge are
     /// clipped per-thread).
+    ///
+    /// ## Ping-pong contract
+    ///
+    /// **`canvas_in` and `canvas_out` MUST refer to DIFFERENT
+    /// textures** (different `wgpu::Texture` resources, not just
+    /// different views). Same texture in both bindings violates wgpu
+    /// validation when one of the views is storage-write. Callers
+    /// alternate A↔B between dispatches so each stamp's output is the
+    /// next stamp's input — preserving Porter-Duff alpha-over ordering
+    /// across overlapping stamps in a stroke.
+    ///
+    /// For batches of stamps known not to overlap pixelwise, a single
+    /// dispatch with `stamps.len() > 1` is valid — same-dispatch
+    /// per-pixel ordering is undefined only when two workgroups
+    /// (different stamps) target the same texel.
     ///
     /// ## Input contracts (HR-3 + audit 2026-05-26 D-2.H1+H2)
     ///
@@ -245,6 +289,7 @@ impl StampPipeline {
         gpu: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         stamps: &[Stamp],
+        canvas_in: &wgpu::TextureView,
         canvas_out: &wgpu::TextureView,
         canvas_dims: (u32, u32),
     ) {
@@ -330,6 +375,10 @@ impl StampPipeline {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(canvas_out),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(canvas_in),
                 },
             ],
         });

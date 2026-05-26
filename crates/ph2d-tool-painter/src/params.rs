@@ -177,10 +177,25 @@ pub struct PainterParams {
 
 impl Default for PainterParams {
     fn default() -> Self {
+        // **Day-7 marker:** `active_color` defaults to OPAQUE VIBRANT
+        // ORANGE — not black. Round 1 (A-C2/B-C2) fixed the alpha=0
+        // bug; round 3 (R3-LE-3) caught that black-on-black is still
+        // invisible. An L=0.7 / C=0.18 / H≈0.5rad (~28.6°) color is
+        // clearly visible against neutral or dark sprites, on most
+        // common backgrounds (sand-tan / amber / orange spectrum is a
+        // safe high-contrast pick on a typical asset palette). W2's
+        // proper color picker UI will override this on first use; the
+        // default exists only to make the Day-7 smoke succeed without
+        // any user color selection.
         Self {
             size_px: 32.0,
             opacity: 1.0,
-            active_color: OklchColor::default(),
+            active_color: OklchColor {
+                l: 0.70,
+                c: 0.18,
+                h: 0.5,
+                a: 1.0,
+            },
             secondary_color: OklchColor::default(),
             active_brush: BrushHandle::default(),
             mode: PainterMode::default(),
@@ -208,6 +223,24 @@ mod tests {
         assert_eq!(p.opacity, 1.0);
         assert_eq!(p.version, 1);
         assert!(p.symmetry.is_none());
+        // Audit T1.5 round 2 F5: Day-7 marker contract — default color
+        // MUST be opaque (alpha = 1.0). Without this assert a future
+        // regression resetting active_color to all-zero (alpha=0) would
+        // silently make every stroke invisible.
+        assert_eq!(
+            p.active_color.a, 1.0,
+            "Day-7 marker: PainterParams::default().active_color.a must be 1.0 \
+             (opaque) so input-dispatch strokes produce visible paint"
+        );
+        // Audit T1.5 round 3 R3-LE-3: default color MUST have non-zero
+        // chroma (otherwise opaque black, invisible on dark sprites).
+        // The Day-7 smoke must produce a visibly-colored stamp without
+        // the user touching a color picker.
+        assert!(
+            p.active_color.c > 0.05,
+            "Day-7 marker: default active_color must have visible chroma; got c={}",
+            p.active_color.c
+        );
     }
 
     #[test]

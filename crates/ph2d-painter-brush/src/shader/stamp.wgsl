@@ -8,19 +8,29 @@
 // (`ceil(max_footprint / 8)²`). Threads outside a smaller stamp's box
 // early-out via bounds check.
 //
-// ## Output / ping-pong (T1.4 scope)
+// ## Output / ping-pong (T1.5 scope)
 //
-// `canvas_out` is `texture_storage_2d<rgba8unorm, write>` (write-only —
-// portable baseline; read_write storage on rgba8unorm requires
-// adapter-specific features and is gated to W5+ via ADR-0044 §2.9).
+// **Two-texture ping-pong** (T1.5 ship). The pipeline binds DIFFERENT
+// textures on `canvas_in` (read, `texture_2d<f32>` @binding(3)) and
+// `canvas_out` (write, `texture_storage_2d<rgba8unorm>` @binding(2)) —
+// the caller alternates A/B on each dispatch so the previous stamp's
+// result is visible to the next stamp's blend, preserving Porter-Duff
+// alpha-over ordering across overlapping stamps.
 //
-// **Limitation registered as follow-up:** without read-side access,
-// stamps that overlap in the SAME dispatch produce undefined ordering
-// (last-thread-wins race). For Day 5 single-stamp validation this is
-// inconsequential. Multi-stamp alpha-over correctness lands in T1.5
-// when the StampScheduler emits stamps with temporal ordering (ping-pong
-// canvas A↔B per stamp); see ADR-0044 §2.9 + spec §1.8.3 caminho
-// W5+-especializado.
+// Why not single-texture read+write? `read_write` storage on
+// `rgba8unorm` requires adapter-specific features (wgpu
+// `Features::TEXTURE_FORMAT_RGBA8UNORM_STORAGE` + the read+write
+// access combo); the two-texture path is the portable baseline that
+// works on every wgpu 28 backend (Metal/Vulkan/DX12/GL/WebGPU). W5+
+// may upgrade to single-texture when the tier policy (ADR-0053)
+// declares the feature available.
+//
+// **Per-dispatch ordering inside a workgroup:** when a single dispatch
+// carries multiple stamps via `stamps[wg.z]`, overlap between two
+// stamps in the SAME dispatch still has undefined order at the pixel
+// (two workgroups writing the same texel race). Callers wanting strict
+// temporal ordering MUST dispatch one stamp at a time and swap A↔B
+// between calls; that's the StampScheduler's contract.
 //
 // ## ABI mirror — Stamp 96 bytes (ADR-0044 §2.3)
 //
@@ -109,6 +119,12 @@ const MAX_STAMP_SIZE_PX: u32 = 2048u;
 @group(0) @binding(0) var<storage, read> stamps: array<Stamp>;
 @group(0) @binding(1) var<uniform> globals: Globals;
 @group(0) @binding(2) var canvas_out: texture_storage_2d<rgba8unorm, write>;
+// T1.5: ping-pong read texture — the previous frame's canvas state.
+// `texture_2d<f32>` (sampled, no sampler — accessed via `textureLoad`),
+// portable across every wgpu 28 backend. Caller MUST bind a DIFFERENT
+// texture here than `canvas_out` (same texture in both bindings is a
+// validation error in wgpu when one of the views is storage-write).
+@group(0) @binding(3) var canvas_in: texture_2d<f32>;
 
 fn stamp_grain_offset_uv(s: Stamp) -> vec2<f32> {
     return vec2<f32>(s.grain_offset_u, s.grain_offset_v);
@@ -173,11 +189,11 @@ fn round_hard_shape(uv: vec2<f32>) -> f32 {
 // (ADR-0044 §2.4 note — no Stamp ABI field for accumulator yet, so
 // T1.4 implements with accumulator ≡ 0).
 //
-// **T1.4 write-only stage:** since `canvas_out` is write-only, `dst` is
-// the *initial* (cleared/loaded) state for this dispatch — overlapping
-// stamps in the same dispatch race. Multi-stamp accumulation arrives
-// in T1.5 via per-stamp ping-pong. For Day 5 (single stamp on cleared
-// canvas) the result is identical to the W5+ correct path.
+// **T1.5 ping-pong stage:** `dst` is loaded from `canvas_in` (read-only
+// texture bound separately from `canvas_out`). Caller ping-pongs A↔B
+// across stamps so each stamp's output is visible to the next stamp's
+// blend. Premul invariant preserved end-to-end — canvas storage stays
+// in premultiplied linear sRGB throughout the stroke.
 //
 // **Out-of-gamut clamp policy (T1.4):** out-of-gamut OKLab inputs
 // produce negative LinearRGB components, which we clamp per-channel
@@ -389,17 +405,23 @@ fn cs_stamp(
     );
     let src_premul = vec4<f32>(rgb_clamped * combined_alpha, combined_alpha);
 
-    // T1.4 write-only stage: `dst` is the texture's initial state at this
-    // pixel for THIS dispatch. With overlapping stamps in the same
-    // dispatch the result depends on dispatch order (race). Day 5 smoke
-    // = 1 stamp on cleared canvas, no overlap, no race.
+    // T1.5 ping-pong: `dst` is the previous canvas state at this pixel
+    // (caller binds different textures to `canvas_in` and `canvas_out`
+    // and swaps A↔B between stamps). For the very first stamp of a
+    // stroke, the caller initializes `canvas_in` with the source image
+    // (set_source pixels), so `dst` carries the existing artwork.
     //
-    // T1.5 ping-pong: caller binds `canvas_in: texture_2d<f32>` at
-    // @binding(3) and calls `textureLoad(canvas_in, coord, 0)` here
-    // before applying the rendering mode; this shader's public dispatch
-    // surface absorbs that change without breaking T1.4 callers (extra
-    // binding is `Some` only in the W5+ pipeline variant).
-    let dst = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    // **Premul invariant:** `canvas_in` storage is premultiplied linear
+    // sRGB (caller guarantees by uploading set_source RGBA through the
+    // straight→premul conversion before the first dispatch). The shader
+    // never un/re-multiplies at the boundary — `dst` enters the
+    // rendering-mode functions in the same premul space they expect.
+    //
+    // `textureLoad` with a constant mip level 0 is the portable read on
+    // every wgpu 28 backend; no sampler needed. `vec4<i32>(coord)` is
+    // safe because the bounds check above guarantees `world_x/world_y`
+    // are in `[0, canvas_w/h)`.
+    let dst = textureLoad(canvas_in, coord, 0);
 
     let result = apply_rendering_mode(stamp.rendering_mode, src_premul, dst, stamp.wet_amount);
     // NaN guard: WGSL `clamp(NaN, lo, hi)` is implementation-defined

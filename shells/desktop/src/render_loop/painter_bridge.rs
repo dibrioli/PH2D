@@ -1,0 +1,199 @@
+//! Painter panel ⟷ tool bridge + on-canvas live preview (W1 T1.5).
+//!
+//! Modeled after `bgremoval_preview.rs` but **without** protect-mask
+//! tint / brush ring / panel snapshot publish (those land in W2 with
+//! the Procreate-style sidebar). What stays:
+//!
+//! 1. (Generic) Pushes the active sprite's RGBA into `PainterTool`
+//!    via [`ph2d_tool_runtime::drive_source_push`] over the
+//!    [`RasterEditTool`] upcast (so the canvas reflects the live
+//!    sprite pixels at stroke start).
+//! 2. (Generic) Drains `current_preview` via
+//!    [`ph2d_tool_runtime::drive_preview_cache`] into the shell's
+//!    `PainterPreview` cache for the on-canvas overlay.
+//! 3. (Generic) Captures multi-sprite Apply selection via
+//!    [`ph2d_tool_runtime::drive_pending_commit`] — request_commit
+//!    sets the flag; bridge converts to `EditorAction::OneShotImageOp`.
+//! 4. (Painter-specific) Inactive-path cache clear (mirror of
+//!    BgRemoval's safety pattern after the Wave 10 C1 audit fix).
+//! 5. (Painter-specific) On-canvas overlay paints the cached canvas
+//!    RGBA on top of the sprite footprint (sprite suppression is W2 —
+//!    T1.5 MVP relies on canvas alpha covering source).
+//!
+//! ## Cleanup semantics
+//!
+//! Apply (`pending_commit` true) returns the multi-sprite selection;
+//! the caller drops the preview cache and pushes
+//! `EditorAction::OneShotImageOp { tool_id: "painter", entity_bits }`
+//! per entity. `Painter`'s `run_full` returns the canvas RGBA which the
+//! shell's image_edit dispatch writes back into the sprite texture
+//! (same path as bgremoval / CEQ / upscale).
+//!
+//! ## Sprite suppression
+//!
+//! T1.5 MVP intentionally does NOT suppress the underlying sprite in
+//! sim_extract while a stroke is in flight — the canvas overlay paints
+//! on top with full alpha so the user sees the painted state directly.
+//! W2 may add suppression once the sidebar gains an "isolate stroke"
+//! affordance.
+
+use crate::app_state::PainterPreview;
+use ph2d_asset::{AssetDb, AssetId};
+use ph2d_ecs::SimWorld;
+use ph2d_editor::HeroScreen;
+use ph2d_editor::ToolRegistry;
+use ph2d_host::WindowSize;
+use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
+use ph2d_vector::VectorScene;
+use std::collections::BTreeMap;
+
+/// Returns `true` iff an Apply committed this frame (caller tears the
+/// tool down — deactivate + restore Inspector — so the on-canvas overlay
+/// stops re-rendering on top of the freshly baked sprite).
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub(super) fn dispatch(
+    hero: &mut HeroScreen,
+    tools: &mut ToolRegistry,
+    sim: &SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    vector_scene: &mut VectorScene,
+    last_painter_pushed_entity: &mut Option<u64>,
+    painter_preview: &mut Option<PainterPreview>,
+) -> bool {
+    let painter_is_active = tools
+        .active()
+        .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+        .unwrap_or(false);
+
+    // ── (Generic) Source push when selection drifts ───────────────────────
+    //
+    // **R3-LF-2 fix:** skip source-push WHILE a stroke is active. The
+    // bridge's job is to prepare the canvas for fresh painting; if the
+    // user is mid-drag and `gizmo.selection` happens to drift (e.g.,
+    // programmatic re-select via Hierarchy ctrl-click), pushing a new
+    // source mid-stroke wholesale REPLACES `canvas_rgba` and silently
+    // discards every stamp deposited in the current stroke. The defensive
+    // `end_stroke()` inside `set_source` only stops FUTURE stamps — it
+    // doesn't recover the lost ones. Gating here keeps the in-flight
+    // canvas alive; selection drift will be honoured on the next stroke
+    // (Up → next Down).
+    let painter_in_stroke = if painter_is_active {
+        tools
+            .active_mut()
+            .and_then(|t| {
+                t.as_any_mut()
+                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
+            })
+            .is_some_and(|p| p.is_stroke_active())
+    } else {
+        false
+    };
+    if painter_is_active
+        && !painter_in_stroke
+        && let Some(tool) = tools.active_mut()
+        && let Some(raster) = tool.as_raster_edit_mut()
+    {
+        let _pushed = ph2d_tool_runtime::drive_source_push(
+            raster,
+            hero.gizmo.selection,
+            last_painter_pushed_entity,
+            |entity| {
+                let src = crate::hero_intents::texture_edit::read_sprite_source(
+                    entity,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                )?;
+                // Painter's canvas storage is RGBA8 straight (matches
+                // bgremoval's into_straight() discipline). Subsequent
+                // CPU stamp render reads/writes straight; alpha-over
+                // arithmetic in cpu_render does the premul dance per
+                // pixel. T-perf W5+ migration to GPU pipeline will
+                // straight→premul at upload boundary (cpu_render.rs §).
+                let straight = src.image.into_straight();
+                // Audit T1.5 round 1 B-M4: reject degenerate sources
+                // (zero-sized) at the boundary; PainterTool::set_source
+                // would silently accept a 0×0 canvas and `queue_pointer`
+                // would early-out invisibly.
+                if straight.width == 0 || straight.height == 0 {
+                    return None;
+                }
+                Some(ph2d_tool_runtime::RasterSource {
+                    pixels: straight.pixels,
+                    width: straight.width,
+                    height: straight.height,
+                })
+            },
+        );
+    }
+
+    // Audit T1.5 round 1 B-H2: NO ghost `panel_visibility` insert. Painter
+    // has no docked panel in T1.5 (sidebar lands W2 via
+    // `ph2d-panel-painter`); inserting into the BTreeMap every frame just
+    // to flip an unread bit risks colliding with the W2 sidebar's own
+    // panel_visibility key. The Painter pill's pressed state is computed
+    // directly off `tools.active().id()` in the topbar paint pass.
+
+    let mut apply_selection: Vec<u64> = Vec::new();
+
+    // ── (Generic) Drain current_preview + capture Apply ───────────────────
+    // ADR-0041: current_preview drains the tool's dirty flag, so the
+    // helper just needs to call it. Selection drift is handled by the
+    // helper's own invalidation pass.
+    if let Some(tool) = tools.active_mut()
+        && let Some(raster) = tool.as_raster_edit_mut()
+    {
+        ph2d_tool_runtime::drive_preview_cache(raster, hero.gizmo.selection, painter_preview);
+        apply_selection =
+            ph2d_tool_runtime::drive_pending_commit(raster, hero.gizmo.iter_selected());
+    }
+
+    // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,
+    // which `on_deactivate` already cleared via `ToolRegistry::set_active`).
+    // Mirror of bgremoval C1 audit fix.
+    if !painter_is_active {
+        *painter_preview = None;
+        *last_painter_pushed_entity = None;
+    }
+    if !apply_selection.is_empty() {
+        for bits in &apply_selection {
+            hero.bus
+                .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                    tool_id: "painter",
+                    entity_bits: *bits,
+                });
+        }
+        *painter_preview = None;
+    }
+    // On-canvas preview overlay (straight-alpha, on top of the sprite's
+    // footprint). T1.5 MVP: the underlying sprite is NOT suppressed —
+    // canvas alpha covers it; user sees the painted result directly.
+    if let Some(preview) = &*painter_preview {
+        let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
+        if let (Some(tr), Some(sprite)) = (
+            sim.world().get::<ph2d_ecs::Transform>(entity),
+            sim.world().get::<Sprite>(entity),
+        ) {
+            let cx = tr.translation.x + sprite.anchor[0];
+            let cy = tr.translation.y + sprite.anchor[1];
+            let (sw, sh) = (sprite.size[0], sprite.size[1]);
+            let (x0, y0) = camera.world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
+            let (x1, y1) = camera.world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
+            let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
+            vector_scene.draw_image_rgba(
+                &preview.rgba,
+                preview.width,
+                preview.height,
+                (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
+                quality,
+            );
+        }
+    }
+    !apply_selection.is_empty()
+}

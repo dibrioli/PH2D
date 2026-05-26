@@ -30,5 +30,7 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-core = { path = "../ph2d-core" }
 # Typed color (Stamp.color_oklab pipeline em T1.4+).
 ph2d-color = { path = "../ph2d-color" }
+# Brush engine — Stamp ABI + Scheduler + cpu_render apply (T1.5).
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # serde for PainterParams + PainterUiEdit + PainterUiSnapshot.
 serde = { version = "1", features = ["derive"] }

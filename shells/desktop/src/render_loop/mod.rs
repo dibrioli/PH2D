@@ -24,6 +24,7 @@ mod image_edit;
 mod inspector_commits;
 mod motion_smoke;
 mod padding_bridge;
+mod painter_bridge;
 mod present;
 mod sim_extract;
 mod snapshots;
@@ -373,6 +374,11 @@ impl crate::App {
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
+            // Painter Apply leftover — same shape as bgremoval (drained
+            // back into the bus so `image_edit::dispatch`'s
+            // `painter_active` gate runs AFTER any same-frame
+            // ActivateTool resolution). Day-7 ship.
+            let mut painter_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             for action in hero.bus.drain() {
                 use ph2d_editor::action_bus::EditorAction;
                 match action {
@@ -516,6 +522,9 @@ impl crate::App {
                         "bgremoval" => {
                             bgremoval_leftover.push(oneshot);
                         }
+                        "painter" => {
+                            painter_leftover.push(oneshot);
+                        }
                         _ => {}
                     },
                     EditorAction::InspectorTransformEdit(info) => {
@@ -569,6 +578,9 @@ impl crate::App {
                 }
             }
             for a in bgremoval_leftover {
+                hero.bus.push(a);
+            }
+            for a in painter_leftover {
                 hero.bus.push(a);
             }
             // Drain the `EditorAction::ActivateTool { tool_id: "bgremoval" }`
@@ -657,8 +669,7 @@ impl crate::App {
             // fechado em T1.2). New tools dropped via fan-out drop-crate
             // inherit the highlight wiring automatically.
             {
-                let active_id_string: Option<String> =
-                    tools.active().map(|t| t.id().0.clone());
+                let active_id_string: Option<String> = tools.active().map(|t| t.id().0.clone());
                 if let Some(reg) = ph2d_editor::installed_registry() {
                     for manifest in reg.cluster("image_tools") {
                         let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
@@ -741,6 +752,23 @@ impl crate::App {
                 vector_scene,
                 &mut self.last_upscale_pushed_entity,
                 &mut self.upscale_preview,
+            );
+            // Painter panel ⟷ tool bridge (W1 T1.5) — source push +
+            // current_preview drain + pending_commit capture; on-canvas
+            // overlay paints the canvas RGBA over the sprite footprint.
+            // Sidebar Procreate-style lands in W2 (ph2d-panel-painter).
+            let painter_apply_committed = painter_bridge::dispatch(
+                hero,
+                tools,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                camera,
+                window_size,
+                vector_scene,
+                &mut self.last_painter_pushed_entity,
+                &mut self.painter_preview,
             );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs (which paints the primary gizmo and only writes to
@@ -909,6 +937,7 @@ impl crate::App {
                 camera,
                 next_import_cell,
                 &mut self.last_bgremoval_pushed_entity,
+                &mut self.last_painter_pushed_entity,
             ) {
                 self.title_dirty = true;
             }
@@ -967,6 +996,18 @@ impl crate::App {
             {
                 self.last_upscale_pushed_entity = None;
                 self.upscale_preview = None;
+                self.title_dirty = true;
+            }
+            // Painter Apply teardown (W1 T1.5) — same shape as BgR /
+            // Upscale: deactivate the tool so the chrome returns to its
+            // pre-painting state, and clear the preview/push-tracker so
+            // re-activating starts fresh against the freshly-baked sprite.
+            if painter_apply_committed
+                && let Some(default_id) = tools.default_tool_id()
+                && tools.set_active(&default_id)
+            {
+                self.last_painter_pushed_entity = None;
+                self.painter_preview = None;
                 self.title_dirty = true;
             }
             // Legacy `FloatingPanel` Procreate-style paint was retired

@@ -381,6 +381,18 @@ pub(crate) struct App {
     /// own texture is untouched; the overlay just paints on top, so
     /// Apply (which re-reads the original source) and undo stay correct.
     pub(crate) bgremoval_preview: Option<BgremovalPreview>,
+    /// Last entity whose source RGBA was pushed into the active
+    /// `PainterTool`. Reset to `None` on tool deactivate so the next
+    /// activation re-pushes against the current selection. Same shape
+    /// as `last_bgremoval_pushed_entity` — Wave 10 driver helpers
+    /// (`ph2d_tool_runtime::drive_source_push`) consume it directly.
+    pub(crate) last_painter_pushed_entity: Option<u64>,
+    /// Cached on-canvas live preview for the Painter tool — drained
+    /// from `PainterTool::current_preview` each frame the canvas was
+    /// painted into. Drawn over the sprite footprint until the user
+    /// commits (Apply) which bakes the canvas into the sprite texture.
+    /// Cleared on Apply + deactivate.
+    pub(crate) painter_preview: Option<PainterPreview>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap
@@ -463,6 +475,11 @@ pub(crate) struct RubberBandState {
 /// `UpscalePreview` still resolve; new code should prefer
 /// `ph2d_tool_runtime::PreviewCache` directly via the `drive_*` helpers.
 pub(crate) type BgremovalPreview = ph2d_tool_runtime::PreviewCache;
+
+/// Cached on-canvas live preview bitmap for the Painter tool (W1 T1.5).
+/// Same generic `ph2d_tool_runtime::PreviewCache` shape as BgR / CEQ /
+/// Upscale — `drive_source_push` + `drive_preview_cache` consume directly.
+pub(crate) type PainterPreview = ph2d_tool_runtime::PreviewCache;
 
 /// Cached on-canvas live preview bitmap for the Color Equalization
 /// tool. Wave 10 / Etapa 3: now uniformized with BgR + Upscale as

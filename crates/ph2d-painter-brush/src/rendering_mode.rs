@@ -9,13 +9,20 @@ use serde::{Deserialize, Serialize};
 
 /// Modo de composição do stamp na layer (ADR-0044 §2.4 + spec §1.5.2).
 /// 6 variants FROZEN. WGSL shader lê como `u32` direto.
+///
+/// **Default = `UniformGlaze`** (audit T1.5 round 1 A-M1): alinha com o
+/// fallback `default → uniform_glaze` do shader `apply_rendering_mode`
+/// switch (`stamp.wgsl::default` arm), e é o equivalente do "Normal" do
+/// Photoshop/Procreate — primeira pintura previsível. `LightGlaze`
+/// (anterior default) é aquarela leve, surpreendente para o user que
+/// espera Porter-Duff over.
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum RenderingMode {
     /// `new = s * α_s + L * (1 - α_s * 0.6)` — aquarela leve.
-    #[default]
     LightGlaze = 0,
     /// `new = s * α_s + L * (1 - α_s)` — Porter-Duff "over" puro (Photoshop Normal).
+    #[default]
     UniformGlaze = 1,
     /// Alpha curve agressiva — cobre rápido, ainda permite sobreposição.
     IntenseGlaze = 2,
@@ -43,6 +50,23 @@ impl RenderingMode {
         Self::UniformBlending,
         Self::IntenseBlending,
     ];
+
+    /// Decode a `u32` (typically `Stamp.rendering_mode`) into a
+    /// `RenderingMode`. Unknown discriminants fall back to
+    /// `UniformGlaze` — same default branch as the shader's
+    /// `apply_rendering_mode` switch (`stamp.wgsl::default → uniform_glaze`).
+    #[must_use]
+    pub const fn from_u32(v: u32) -> Self {
+        match v {
+            0 => Self::LightGlaze,
+            1 => Self::UniformGlaze,
+            2 => Self::IntenseGlaze,
+            3 => Self::HeavyGlaze,
+            4 => Self::UniformBlending,
+            5 => Self::IntenseBlending,
+            _ => Self::UniformGlaze,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -62,7 +86,11 @@ mod tests {
     }
 
     #[test]
-    fn default_is_light_glaze() {
-        assert_eq!(RenderingMode::default(), RenderingMode::LightGlaze);
+    fn default_matches_shader_fallback() {
+        // Audit T1.5 round 1 A-M1: enum default + shader fallback both
+        // resolve to UniformGlaze. Drift between them = silent visual
+        // change for "default-constructed" Stamps vs garbage discriminants.
+        assert_eq!(RenderingMode::default(), RenderingMode::UniformGlaze);
+        assert_eq!(RenderingMode::from_u32(99), RenderingMode::UniformGlaze);
     }
 }

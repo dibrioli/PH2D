@@ -51,6 +51,7 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     next_import_cell: &mut u32,
     last_bgremoval_pushed_entity: &mut Option<u64>,
+    last_painter_pushed_entity: &mut Option<u64>,
 ) -> bool {
     let mut title_dirty = false;
 
@@ -365,6 +366,73 @@ pub(super) fn dispatch(
             &mut pending,
             bg,
             last_bgremoval_pushed_entity,
+        ) {
+            title_dirty = true;
+        }
+        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+    }
+    // ── Painter Apply drain (W1 T1.5) ─────────────────────────────────────
+    //
+    // **R3-LF-1 fix:** drain the `painter` OneShotImageOp UNCONDITIONALLY
+    // (drop the variant whether or not Painter is currently the active
+    // tool). The previous "filter-and-repush" pattern from bgremoval is
+    // wrong for Painter — bgremoval needs defer-until-active because its
+    // ActivateTool races with OneShotImageOp emission across frames;
+    // Painter's commit comes from `painter_bridge` and is only emitted
+    // when Painter is active, so by the time this drain runs the gate
+    // is either correct (active, bake the entity) or the request is
+    // stale (tool switched mid-frame — drop, don't loop forever on the
+    // bus).
+    let painter_id = ph2d_editor::ToolId::new("painter");
+    let painter_active = tools
+        .active()
+        .map(|t| t.id() == painter_id)
+        .unwrap_or(false);
+    let painter_entity = {
+        let mut found: Option<u64> = None;
+        let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+            .bus
+            .drain()
+            .filter_map(|a| match a {
+                ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                    tool_id: "painter",
+                    entity_bits,
+                } => {
+                    // Consume regardless of `painter_active`. If active,
+                    // bake. If not (tool switched mid-frame), the request
+                    // is stale — drop it cleanly so it can't loop forever.
+                    if painter_active && found.is_none() {
+                        found = Some(entity_bits);
+                    }
+                    None
+                }
+                other => Some(other),
+            })
+            .collect();
+        for a in leftovers {
+            hero.bus.push(a);
+        }
+        found
+    };
+    if let Some(entity_bits) = painter_entity {
+        let painter = tools
+            .active_mut()
+            .and_then(|t| {
+                t.as_any_mut()
+                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
+            })
+            .expect("painter_active gate guarantees a PainterTool");
+        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        if hero_intents::drain_painter(
+            entity_bits,
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+            toasts,
+            &mut pending,
+            painter,
+            last_painter_pushed_entity,
         ) {
             title_dirty = true;
         }

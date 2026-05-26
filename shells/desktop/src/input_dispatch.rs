@@ -49,6 +49,7 @@ use crate::forwarding::{
 mod eyedropper;
 mod gizmo_drag;
 mod keyboard;
+mod painter_input;
 pub(crate) mod protect_brush;
 
 impl App {
@@ -170,6 +171,12 @@ impl App {
         // progress, every motion paints/erases another disc into the keep
         // mask. Early-return so it doesn't also drive a gizmo drag / slider.
         if self.protect_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Painter stroke drag (SHELL-only, T1.5): while a stroke is open
+        // every motion deposits another stamp via the StampScheduler. Early-
+        // return so it doesn't move the sprite or drive a gizmo.
+        if self.painter_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -299,9 +306,31 @@ impl App {
             {
                 return;
             }
+            // Painter stroke down (SHELL-only, T1.5): Primary Down over the
+            // sprite footprint opens a stroke + carimba the first stamp.
+            // Consumes the event so it doesn't pick/move the sprite.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_painter_paint_down(evt.x, evt.y) =>
+            {
+                return;
+            }
+            // **R3-LE-2 fix:** Painter active + Primary Down OUTSIDE the
+            // sprite footprint (cursor on empty canvas / different sprite
+            // area). Without this guard the click falls through to the
+            // gizmo/rubber-band logic and OPENS a selection-rectangle while
+            // painting mode is active — a wrong-mode interaction (Procreate
+            // never opens selection while a brush tool is active). Consume
+            // the event silently — equivalent to "click landed off-canvas",
+            // no paint, no selection change.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.painter_active_consume_canvas_click() =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                 self.eyedropper_dragging = false;
                 self.end_protect_paint();
+                self.end_painter_paint();
             }
             _ => {}
         }

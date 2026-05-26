@@ -34,6 +34,25 @@ pub struct BgRemovalScratch {
     /// `algorithm::compose` for soft-band synthesis.
     pub delta_e: Vec<f32>,
 
+    /// Per-pixel Oklab color, cached during `fill_delta_e_sq`. Size:
+    /// `w*h`. Lets the extras-folding loop in `algorithm::chroma::segment`
+    /// reuse the conversion done for ΔE-to-bg instead of running
+    /// `srgb_to_oklab` K extra times per pixel (the K×N hotpath that
+    /// froze sliders once the user picked more than one extra colour
+    /// — Enio 2026-05-26). Transparent pixels keep the sentinel
+    /// `[0,0,0]`; readers must guard via `rgba[base+3] != 0`.
+    pub pixels_oklab: Vec<[f32; 3]>,
+
+    /// Per-pixel "near to any user-picked extra background colour"
+    /// predicate (1 = within tol² of at least one extra, 0 = no).
+    /// Size: `w*h`. Computed by `algorithm::chroma::segment` and used
+    /// AFTER flood/threshold to OR pixels into the bg mask without
+    /// participating in flood propagation (so a single bad pick can't
+    /// bridge a foreground region — the catastrophic flood
+    /// amplification that hid the entire sprite when ANY extra was
+    /// picked).
+    pub is_near_extra: Vec<u8>,
+
     /// Segmentation mask: 0 = background, 255 = foreground. Size:
     /// `w*h`. Owned by `algorithm::chroma`. Read by
     /// `algorithm::guided_filter::refine`.
@@ -131,6 +150,8 @@ impl BgRemovalScratch {
         // survive across pipeline runs; each step writes every pixel
         // it cares about.
         self.delta_e.resize(n, 0.0);
+        self.pixels_oklab.resize(n, [0.0, 0.0, 0.0]);
+        self.is_near_extra.resize(n, 0);
         self.mask.resize(n, 0);
         self.alpha_f32.resize(n, 0.0);
         self.guide_f32.resize(guide_n, 0.0);

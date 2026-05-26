@@ -112,6 +112,20 @@ pub fn write_output(
         && let SegmentResult::Chroma { bg_oklab } = segment
     {
         let bg = super::chroma::oklab_to_srgb8(*bg_oklab);
+        // When the user has picked extras, soft-edges adjacent to an
+        // is_near_extra=1 pixel have a "bg side" whose true colour is
+        // the extra pick, NOT the auto-detected bg. Applying the
+        // `(C − (1−a)·bg)/a` formula with the wrong bg zeroes one
+        // hue channel and amplifies the complementary pair → a
+        // magenta/pink fringe (Enio 2026-05-26: "aparece um rosa
+        // completamente estranho... como se o próprio algoritmo
+        // usasse um rosa por trás da imagem"). Skip despill on any
+        // soft-edge pixel within the 3×3 neighbourhood of an extras
+        // pixel. Non-extras soft-edges keep the existing despill so
+        // the auto-bg path is unchanged.
+        let has_extras = !params.extra_bg_colors.is_empty();
+        let wi = w as usize;
+        let hi = h as usize;
         for i in 0..n {
             if protect.is_some_and(|pm| pm[i] > 0) {
                 continue;
@@ -119,6 +133,9 @@ pub fn write_output(
             let base = i * 4;
             let a = scratch.output_rgba[base + 3];
             if a == 0 || a == 255 {
+                continue;
+            }
+            if has_extras && is_near_extras_3x3(&scratch.is_near_extra, i, wi, hi) {
                 continue;
             }
             let af = (a as f32) * (1.0 / 255.0);
@@ -163,6 +180,28 @@ pub fn write_output(
 ///
 /// Grayscale morphology: each 1-px pass replaces every alpha with the
 /// min (erode) or max (dilate) over its 3×3 (8-connected + self)
+/// True iff pixel `i` (in a `w × h` grid) has any 3×3-neighbour with
+/// `is_near_extra[n] != 0`. Cheap branch (≤9 reads) gated by
+/// `!extra_colors.is_empty()` in the despill path, so non-extras runs
+/// pay nothing.
+fn is_near_extras_3x3(is_near_extra: &[u8], i: usize, w: usize, h: usize) -> bool {
+    let x = i % w;
+    let y = i / w;
+    let x_min = x.saturating_sub(1);
+    let x_max = (x + 1).min(w.saturating_sub(1));
+    let y_min = y.saturating_sub(1);
+    let y_max = (y + 1).min(h.saturating_sub(1));
+    for yy in y_min..=y_max {
+        let row = yy * w;
+        for xx in x_min..=x_max {
+            if is_near_extra[row + xx] != 0 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// neighbourhood, repeated `radius` times ≈ a Chebyshev-disc of that
 /// radius. RGB is untouched — eroded pixels simply become transparent;
 /// the subsequent edge bleed re-colours the freshly transparent collar.

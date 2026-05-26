@@ -130,27 +130,58 @@ pub fn segment(
         0.0
     };
     let tol_sq = tol * tol;
-    fill_delta_e_sq(rgba, n, bg_oklab, &mut scratch.delta_e);
+    fill_delta_e_sq(
+        rgba,
+        n,
+        bg_oklab,
+        &mut scratch.delta_e,
+        &mut scratch.pixels_oklab,
+    );
 
-    // Fold in every extra user-picked background colour: a pixel's
-    // ΔE² becomes the MIN distance to {bg_oklab} ∪ {extra colours}, so
-    // being close to ANY reference classifies it as background.
-    // Everything downstream (flood / threshold / interior sweep / soft
-    // band) then works unchanged. Transparent pixels keep their forced
-    // 0.0 (already handled by `fill_delta_e_sq`); we skip them here too.
-    for &rgb in extra_colors {
-        let extra_oklab = srgb_to_oklab(rgb[0], rgb[1], rgb[2]);
-        for (i, d) in scratch.delta_e.iter_mut().enumerate().take(n) {
+    // Build the "near any user-picked extra" predicate WITHOUT
+    // touching `delta_e`. Critical bug fix (Enio 2026-05-26 audit):
+    // the previous code did `delta_e[i] = min(d_bg, d_extra...)`,
+    // which means a single extra colour lowered the global ΔE field
+    // that drives `border_bg_confidence`, flood seeding, flood
+    // PROPAGATION, and the interior-pocket sweep. The flood then
+    // bridged the foreground via paths of pixels merely similar to
+    // the extra, devouring the entire image. By computing extras as a
+    // separate per-pixel bool and OR'ing it into the mask AFTER the
+    // flood, extras can only knock out pixels directly close to a
+    // pick — no cascading. Uses the cached `pixels_oklab` so cost is
+    // K × N float-distance ops (no `srgb_to_oklab` in the inner
+    // loop): for K=5 at 512² that's ~1.3 M ops instead of ~1.3 M
+    // `srgb_to_oklab` calls (~5× cheaper).
+    for v in scratch.is_near_extra[..n].iter_mut() {
+        *v = 0;
+    }
+    if !extra_colors.is_empty() {
+        // K ≤ MAX_EXTRA_BG_COLORS (12), so a stack array fits.
+        let mut extra_oklabs: [[f32; 3]; crate::params::MAX_EXTRA_BG_COLORS] =
+            [[0.0; 3]; crate::params::MAX_EXTRA_BG_COLORS];
+        let k = extra_colors.len().min(crate::params::MAX_EXTRA_BG_COLORS);
+        for (i, &rgb) in extra_colors.iter().take(k).enumerate() {
+            extra_oklabs[i] = srgb_to_oklab(rgb[0], rgb[1], rgb[2]);
+        }
+        for i in 0..n {
             let base = i * 4;
             if rgba[base + 3] == 0 {
                 continue;
             }
-            let p = srgb_to_oklab(rgba[base], rgba[base + 1], rgba[base + 2]);
-            *d = d.min(oklab_dist_sq(p, extra_oklab));
+            let p = scratch.pixels_oklab[i];
+            for &e in extra_oklabs.iter().take(k) {
+                if oklab_dist_sq(p, e) <= tol_sq {
+                    scratch.is_near_extra[i] = 1;
+                    break;
+                }
+            }
         }
     }
 
-    // 3 — decide flood vs threshold-only.
+    // 3 — decide flood vs threshold-only. Uses the UNCORRUPTED `delta_e`
+    // (relative to the auto-detected bg) so border confidence reflects
+    // the actual border similarity to that bg — not an extras-amplified
+    // value that would force the flood path on every pick.
     let use_flood = params.use_flood && {
         let conf = border_bg_confidence(&scratch.delta_e, w, h, tol_sq);
         conf >= BORDER_BG_CONFIDENCE_FLOOR
@@ -188,6 +219,18 @@ pub fn segment(
         // Fallback: global threshold. No connectivity guard.
         for i in 0..n {
             scratch.mask[i] = if scratch.delta_e[i] <= tol_sq { 0 } else { 255 };
+        }
+    }
+
+    // 5 — extras post-pass. Pixels directly near any user pick become
+    // hard background WITHOUT participating in flood propagation. This
+    // is what makes Pick Colors safe again: a single bad pick can only
+    // remove pixels of that colour, not bridge through the subject.
+    if !extra_colors.is_empty() {
+        for i in 0..n {
+            if scratch.is_near_extra[i] != 0 {
+                scratch.mask[i] = 0;
+            }
         }
     }
 
@@ -500,22 +543,36 @@ fn kmeans_k2(samples: &[[f32; 3]], assignments: &mut [u8]) -> [f32; 3] {
 /// = 0` because the k-means centroid accumulator can drift by a few
 /// ULPs vs. a fresh round-trip through `srgb_to_oklab`.
 ///
-/// Serial — fast enough at 4k (~10 ns/px).
-fn fill_delta_e_sq(rgba: &[u8], n: usize, bg_oklab: [f32; 3], out: &mut [f32]) {
-    debug_assert!(out.len() >= n);
+/// Serial — fast enough at 4k (~10 ns/px). Caches each pixel's OkLab
+/// into `oklab_out` so the extras-folding loop in [`segment`] can
+/// reuse the conversion (was K×N before the cache — a 5-extra slider
+/// drag at 512² did ~1.3 M `srgb_to_oklab` calls per pipeline run and
+/// visibly froze the UI).
+fn fill_delta_e_sq(
+    rgba: &[u8],
+    n: usize,
+    bg_oklab: [f32; 3],
+    delta_e_out: &mut [f32],
+    oklab_out: &mut [[f32; 3]],
+) {
+    debug_assert!(delta_e_out.len() >= n);
+    debug_assert!(oklab_out.len() >= n);
     // Below this, `oklab_dist_sq` is dominated by float noise from
     // the round-trip; floor to exact 0 so the `<=` test against a
     // user `tol_sq = 0` still treats matches as background.
     const FP_NOISE_FLOOR_SQ: f32 = 1.0e-6;
-    for (i, out_i) in out.iter_mut().enumerate().take(n) {
+    for i in 0..n {
         let base = i * 4;
         if rgba[base + 3] == 0 {
-            *out_i = 0.0;
+            delta_e_out[i] = 0.0;
+            // Sentinel for transparent — readers must guard via alpha.
+            oklab_out[i] = [0.0, 0.0, 0.0];
             continue;
         }
         let p = srgb_to_oklab(rgba[base], rgba[base + 1], rgba[base + 2]);
+        oklab_out[i] = p;
         let d = oklab_dist_sq(p, bg_oklab);
-        *out_i = if d < FP_NOISE_FLOOR_SQ { 0.0 } else { d };
+        delta_e_out[i] = if d < FP_NOISE_FLOOR_SQ { 0.0 } else { d };
     }
 }
 
@@ -1198,5 +1255,83 @@ mod tests {
         );
         // The green border is still background.
         assert_eq!(s2.mask[0], 0, "green border must remain background");
+    }
+
+    #[test]
+    fn extra_color_does_not_cascade_via_flood_into_subject() {
+        // Regression for Enio 2026-05-26 "adição de novas cores através
+        // do pick colors provoca o desaparecimento de toda imagem".
+        //
+        // Setup: 80×80 image, green bg (auto-detected at corners), with a
+        // SOLID RED 40×40 block in the centre (the "subject"). The user
+        // picks a *single* extra colour that happens to be SIMILAR (but
+        // not identical) to a different region of the bg — say a slightly
+        // brighter green halo. Before the fix, the extras-min-fold
+        // lowered ΔE² everywhere along that hue band, `border_bg_confidence`
+        // shot above the gate, the flood fired and propagated inward
+        // through the band, and the entire red block got swallowed.
+        //
+        // After the fix: extras are an isolated pixel-wise predicate
+        // applied AFTER the flood, so a single distant pick cannot bridge
+        // through the subject. The red block must remain foreground.
+        let red = [220u8, 30, 30];
+        let rgba = make_image(80, 80, [0, 200, 0], Some((red, 20, 20, 40, 40)));
+        // Pick a green CLOSE TO the auto bg (within typical tolerance).
+        // This is the worst case for the old code: the extras fold would
+        // collapse delta_e across the whole green sea, and the flood
+        // would walk happily over any green-adjacent pixel.
+        let extra_green = [40u8, 220, 30];
+        let mut s = BgRemovalScratch::default();
+        s.ensure(80, 80, false);
+        // Use_flood ON — this is the path the old bug exploded under.
+        let _ = segment(&rgba, 80, 80, &default_params(), &[extra_green], &mut s);
+
+        // The centre of the red block MUST still be foreground.
+        let centre = 40 * 80 + 40;
+        assert_eq!(
+            s.mask[centre], 255,
+            "subject must survive when a SINGLE extra colour is added \
+             (regression: flood used to bridge through any pixel within \
+             tol of the extra, devouring the foreground)"
+        );
+        // And the corner is still bg (sanity).
+        assert_eq!(s.mask[0], 0, "green border still bg");
+        // The red block as a whole must be foreground (count fg pixels in
+        // the 40×40 block — at least 95% should survive; a few edge
+        // pixels can be soft-band).
+        let mut fg_in_block = 0;
+        for y in 20..60 {
+            for x in 20..60 {
+                if s.mask[y * 80 + x] != 0 {
+                    fg_in_block += 1;
+                }
+            }
+        }
+        assert!(
+            fg_in_block >= 40 * 40 * 95 / 100,
+            "≥95% of the red block must survive, got {fg_in_block}/{}",
+            40 * 40
+        );
+    }
+
+    #[test]
+    fn extras_cache_pixels_oklab_is_populated_for_non_transparent() {
+        // Sanity check on the new `pixels_oklab` cache so a future
+        // refactor can't silently break the `fill_delta_e_sq` →
+        // extras-loop handoff.
+        let rgba = make_image(8, 8, [120, 80, 200], None);
+        let mut s = BgRemovalScratch::default();
+        s.ensure(8, 8, false);
+        let _ = segment(&rgba, 8, 8, &default_params(), &[], &mut s);
+        // All pixels are non-transparent → all should have a populated
+        // OkLab cache (not the all-zero sentinel).
+        let any_zero = s.pixels_oklab.iter().any(|&[l, a, b]| {
+            l == 0.0 && a == 0.0 && b == 0.0
+        });
+        assert!(
+            !any_zero,
+            "fill_delta_e_sq must populate pixels_oklab for every \
+             non-transparent pixel (else the extras loop re-converts)"
+        );
     }
 }

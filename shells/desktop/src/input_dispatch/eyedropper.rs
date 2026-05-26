@@ -39,6 +39,19 @@ impl App {
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return false;
         };
+        // Bail when the click lands on ANY published panel rect — the
+        // eyedropper consumes the event "regardless of in/out" of the
+        // sprite to keep the canvas from moving/deselecting, but that
+        // also swallowed Down events headed for sliders inside the
+        // BgRemoval panel, leaving them clickable but un-draggable
+        // (Enio 2026-05-26: "ao selecionar cores com pick colors os
+        // sliders não podem mais ser arrastados e sim clicados").
+        // Panels paint on top of the canvas, so a click on the panel
+        // is unambiguously panel-targeted — let the widget dispatcher
+        // route it.
+        if hero.store.panel_at(px, py).is_some() {
+            return false;
+        }
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };
@@ -81,8 +94,17 @@ impl App {
             let v = (py - lo_y) / (hi_y - lo_y);
             if let Some(rgb) = bg.sample_source_at_uv(u, v) {
                 bg.add_extra_color(rgb);
-                // Force the on-canvas overlay to recompute next frame.
-                self.bgremoval_preview = None;
+                // `add_extra_color` already flips `params_dirty=true`,
+                // so the bridge's `drive_preview_cache` re-runs the
+                // pipeline next frame. We deliberately do NOT drop
+                // `self.bgremoval_preview` here (was: `= None`) — the
+                // segmentation is slow when the user has several picks
+                // (Enio 2026-05-26: was "imagem desaparece" because
+                // ~18 frames rendered with no overlay while the
+                // pipeline rebuilt). Keeping the last good cache lets
+                // the canvas keep painting the previous matte until
+                // the new one is ready, so the user sees a smooth
+                // transition instead of a black flash.
             }
         }
         // Consumed regardless of in/out so the click doesn't move or

@@ -31,20 +31,6 @@
 
 use crate::app_state::BgremovalPreview;
 use ph2d_asset::{AssetDb, AssetId};
-
-/// Master switch for the on-canvas live preview overlay (Enio
-/// 2026-05-26 — turned off while iterating on the silhouette
-/// algorithm; the preview was diverging from Apply enough that
-/// looking at it was misleading). When `false`:
-///   • `drive_preview_cache` is skipped (the tool doesn't run the
-///     canvas-preview pipeline tick).
-///   • The cache is force-cleared each frame, so no stale Some
-///     paints from a previous run.
-///   • The overlay paint block at the end becomes a no-op (it
-///     gates on `if let Some(preview) = …`).
-/// Apply is untouched — it goes through `run_full_resolution`, not
-/// the preview path. Flip back to `true` to re-enable.
-const PREVIEW_OVERLAY_ENABLED: bool = false;
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
@@ -163,13 +149,7 @@ pub(super) fn dispatch(
         // ADR-0041: current_preview drains the tool's dirty flag, so the
         // helper just needs to call it. Selection drift is handled by the
         // helper's own invalidation pass.
-        if PREVIEW_OVERLAY_ENABLED {
-            ph2d_tool_runtime::drive_preview_cache(bg, hero.gizmo.selection, bgremoval_preview);
-        } else {
-            // Belt + suspenders: clear any cached preview so a stale
-            // frame from before the disable can't leak through.
-            *bgremoval_preview = None;
-        }
+        ph2d_tool_runtime::drive_preview_cache(bg, hero.gizmo.selection, bgremoval_preview);
 
         // (Generic) Capture the multi-sprite Apply selection.
         apply_selection = ph2d_tool_runtime::drive_pending_commit(bg, hero.gizmo.iter_selected());

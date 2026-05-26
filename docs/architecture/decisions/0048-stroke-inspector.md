@@ -121,12 +121,27 @@ pub enum InspectorAction {
     ScalePressure(f32),
     /// Delete strokes (cronológico-independente — só remove os da selection).
     Delete,
-    /// Re-ordena strokes da selection movendo `delta` posições no `seq` order.
-    /// Útil para "mover stroke pra cima/baixo no stack temporal".
+    /// Re-ordena strokes da selection movendo `delta` posições no **`effective_seq`** order
+    /// (NÃO no `seq` original — vide §2.5.1). Útil para "mover stroke pra cima/baixo
+    /// no stack temporal sem violar a monotonicidade de `seq`."
     Reorder { delta: i64 },
     // === 4 slots de headroom (e.g., ChangePressureCurve, ChangeBrushParams, …) ===
 }
 ```
+
+#### 2.5.1 Reorder semantics — `effective_seq` ortogonal ao `seq` original
+
+Audit M-11 (2026-05-26): mudar `StrokeRecord.seq` em-place viola ADR-0046 §2.2 "monotônico per-canvas (ordem cronológica)" — `seq` é o relógio do canvas, não pode mover.
+
+**Solução congelada:** `LayerStack` ganha (em W3 implementation) um campo paralelo `effective_seq_offset: BTreeMap<StrokeId, i64>` (sparse — só strokes reordenados aparecem). Render order = `seq + effective_seq_offset.get(uuid).unwrap_or(&0)`. Replay continua usando `seq` original (determinismo HR-5 preservado). Compositor consulta `effective_seq` via helper.
+
+```rust
+pub fn effective_seq(record: &StrokeRecord, offsets: &BTreeMap<StrokeId, i64>) -> i64 {
+    record.seq as i64 + offsets.get(&record.uuid).copied().unwrap_or(0)
+}
+```
+
+**Custo:** `BTreeMap` cresce com strokes reordenados (typically ≪ N strokes). Sem impacto no `.ph2d-painter` v1 — offset map vive em `LayerStack` data (W3 ADR ratifica). Para esta ADR-0048, é contrato: `Reorder` mutates offset map, não `seq`.
 
 **`InspectorAction → StrokeMods` mapping** (quando inspector chama ADR-0047 internamente):
 
@@ -170,9 +185,25 @@ impl RenderSlice {
 - Mod em stroke seq=100, current=10000: load snapshot @ seq=50 (≤ 50 strokes back) + replay 50 + replay 9900 posteriores = 9950 strokes (vs 9900). **Não melhora** — snapshot só ajuda undo (chronological).
 - **Insight crítico:** snapshot before-N + replay all não otimiza retroactive edit. Otimização real é **per-stroke composite invalidation**: cache compositional textures **por stroke** (não por seq). Strokes que não tocam pixels modified pelo stroke-mudado **não precisam re-aplicar**.
 
-**Decisão estrutural:**
-- v1 (W14): **sem cache per-stroke**. Replay completo de strokes-since-mod na layer. Performance gate ≤ 100 ms para 100 mudados em 10k history (vide §2.8).
-- v2 (futuro, **fora desta ADR**): dirty rect propagation — apenas strokes cujo bbox intersecta o bbox do stroke modificado precisam re-aplicar. Estimativa 10-50× speedup em projetos típicos.
+**Decisão estrutural revisada (audit C-4, 2026-05-26):**
+
+O design original "replay completo de strokes-since-mod" tem worst-case catastrófico: mudar 1 stroke seq=50 em history=10k = replay 9950 strokes (~3 minutos GPU, não 500ms). O gate `inspector_change_brush_recompose_4k_canvas` auditava só "100 mudados" — buraco de teste.
+
+**Solução congelada — janela de mod retroativo limitada em v1:**
+
+```rust
+pub const MAX_RETROACTIVE_MOD_WINDOW: u64 = 500;
+
+pub fn can_retroactive_mod(history: &StrokeHistory, mod_seq: u64) -> bool {
+    history.current_seq().saturating_sub(mod_seq) <= MAX_RETROACTIVE_MOD_WINDOW
+}
+```
+
+**v1 (W14):** Inspector só permite `ChangeBrush` / `ChangeColor` / `ScalePressure` em strokes com `current_seq - stroke.seq ≤ 500`. UI mostra greyed-out + tooltip "Stroke too far back — out of v1 retroactive window. Use Reproject (W12) to bake older strokes." Replay window 500 = worst-case ~500 strokes × layer 4K @ 50 strokes/s GPU = ~10s ; aceitável p99 (≤ 15s).
+
+**Delete + Reorder NÃO são limitados pela window** — não exigem replay (são mudanças no índice + offset map, compositor recomputa preguiçosamente).
+
+**v2 (futuro, fora desta ADR):** dirty rect propagation — apenas strokes cujo bbox intersecta o bbox do stroke modificado precisam re-aplicar. Estimativa 10-50× speedup em projetos típicos. Quando v2 ship, `MAX_RETROACTIVE_MOD_WINDOW` removido (ou expandido para `u64::MAX`).
 
 ### 2.7 Coordenação com MCP (ADR-0047)
 
@@ -191,9 +222,11 @@ impl RenderSlice {
 | Gate | Spec |
 |---|---|
 | `inspector_lasso_100_of_10k_under_100ms` | Lasso polygon selection. 10k strokes total, 100 matching. Wall-clock ≤ 100 ms p99 incluindo overlay render. |
-| `inspector_change_brush_recompose_4k_canvas` | 100 strokes mudados em layer 4K. Recompose ≤ 500 ms p99. Soft em W14; hard em W15+. |
+| `inspector_change_brush_worst_case_500_window` | **Worst-case**: 1 stroke mudado em `seq = current - 500` (limite da window §2.6). Recompose ≤ 15s p99. Soft em W14; hard em W15+. |
+| `inspector_blocks_mod_outside_window` | `InspectorAction::ChangeBrush/Color/ScalePressure` em `stroke.seq < current - 500` → UI greyed out + `InspectorError::OutsideRetroactiveWindow`. |
 | `inspector_spatial_index_rebuild_lazy` | Rebuild de R-tree não bloqueia UI (background thread). Verifica via thread blocking detector. |
 | `inspector_concurrent_with_mcp_modify` | Test runtime: MCP modify + Inspector preview na mesma stroke. MCP wins; inspector refreshes. Sem panic. |
+| `inspector_reorder_uses_effective_seq` | Reorder muta `effective_seq_offset` BTreeMap; `StrokeRecord.seq` original intacto. |
 
 ### 2.9 UI overlay invariants
 
@@ -206,6 +239,8 @@ Quando `overlay_visible = true`:
 
 ### 2.10 Arch-gate `painter_contract_surface::inspector`
 
+Adicionado ao homestead `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs`:
+
 ```rust
 mod inspector {
     #[test] fn inspector_state_field_count_is_capped()      { /* ≤ 12 */ }
@@ -213,6 +248,7 @@ mod inspector {
     #[test] fn inspector_action_variant_count_is_capped()   { /* ≤ 10 */ }
     #[test] fn render_slice_field_count_is_capped()         { /* ≤ 6 */ }
     #[test] fn inspector_action_to_stroke_mods_mapping()    { /* total: cada InspectorAction tem mapping documentado */ }
+    #[test] fn max_retroactive_mod_window_is_500()          { /* §2.6 — const exato */ }
 }
 ```
 
@@ -275,7 +311,7 @@ cargo test -p ph2d-panel-painter-inspector
 cargo test -p ph2d-panel-painter-inspector --test inspector_concurrent_with_mcp_modify
 # Concurrency test: MCP modify + inspector preview na mesma stroke.
 
-cargo test -p ph2d-painter-brush --test architecture_painter_contract_surface
+cargo test -p ph2d-painter-contracts --test architecture_painter_contract_surface
 # Caps cumulativos (ADRs 0043+0044+0045+0046+0047+0048).
 ```
 

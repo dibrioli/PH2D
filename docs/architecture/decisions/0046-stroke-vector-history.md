@@ -32,31 +32,43 @@ ADR-0043 §2.5 + ADR-0044 cederam esse território a esta ADR. ADRs irmãs 0047 
 
 ## 2. Decisão
 
-### 2.1 Crate `ph2d-painter-stroke` (W1 T1.X)
+### 2.1 Crate `ph2d-painter-stroke` (W1 T1.X) — leaf crate
 
 ```
 crates/ph2d-painter-stroke/
-  Cargo.toml         # deps: serde, postcard, blake3, uuid, ph2d-color
+  Cargo.toml         # deps: serde, postcard, blake3, uuid, ph2d-color, ph2d-painter-brush
+                     # (DEP em brush APENAS para os tipos opacos BrushHandle + BrushParamsHash;
+                     #  brush NÃO dep stroke — sentido único.)
   src/lib.rs         # #![forbid(unsafe_code)] PRIMEIRO
-  src/record.rs      # StrokeRecord + RawPointerSample + ToolMode
+  src/record.rs      # StrokeRecord + RawPointerSample + ToolMode + pub type StrokeId
   src/history.rs     # StrokeHistory enum (Full | Ring) + invariants
   src/persistence.rs # .ph2d-painter postcard schema v1 (HR-14)
   src/snapshot.rs    # SnapshotBuilder (every-N-strokes layer texture cache)
   src/reproject.rs   # Reproject protocol (W12 implementation entry point)
   src/determinism.rs # fixed-point Q16.16/Q8.8 helpers + RNG-per-stroke
-  tests/             # arch + persistence round-trip + det-mode bit-identical
+  tests/             # persistence round-trip + det-mode bit-identical
 ```
 
-Sem dep direta de `ph2d-painter-brush` — esta ADR fixa o **schema serializável** (Records, History, Persistence). Resolução do `BrushHandle → Brush` real é responsabilidade de `ph2d-tool-painter` (ADR-0043) ao consumir history. Decoupling preserva fan-out drop-crate.
+**Dependência cross-crate (autoridade direção):**
+
+```
+ph2d-painter-stroke  ──→  ph2d-painter-brush  (tipos opacos: BrushHandle, BrushParamsHash)
+ph2d-painter-brush   ──→  (nada do Painter — é o leaf da brush engine)
+```
+
+`ph2d-painter-stroke` é **NÃO-folha** (dep `ph2d-painter-brush`). A audit 2026-05-26 (A1) flagged inversão prévia. Correção: `BrushHandle` é tipo opaco simples (ADR-0044 §2.8); importar do crate-fonte é canon. Resolução `BrushHandle → Brush` runtime (lookup em `Library`) acontece em `ph2d-tool-painter` (consumer de ambos).
 
 ### 2.2 `StrokeRecord` schema — cap **≤ 16 fields**
 
 Baseline §1.14.1: 11 campos. Cap = **16** (+ 5 slots de headroom para evolução W12-W15).
 
 ```rust
+/// Type alias canônico — referenciado por ADRs 0047, 0048.
+pub type StrokeId = Uuid;
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StrokeRecord {
-    pub uuid: Uuid,                          // identidade global do stroke
+    pub uuid: StrokeId,                      // identidade global do stroke
     pub seq: u64,                            // monotônico per-canvas (ordem cronológica)
     pub timestamp_ms: u64,                   // wall-clock approx (NÃO determinístico)
     pub brush_handle: BrushHandle,           // resolvido contra Library + atlas (ADR-0044)
@@ -72,7 +84,9 @@ pub struct StrokeRecord {
 }
 ```
 
-**`brush_params_hash` (blake3, 32 bytes):** SI a `Brush` em si fosse copiada por stroke, o `.ph2d-painter` explodiria (12k strokes × ~5KB Brush ≈ 60 MB só de duplicação). Hash refere-se a tabela deduplicada `brush_snapshots: BTreeMap<BrushParamsHash, Brush>` na persistence (§2.7).
+**`BrushParamsHash`:** type alias `pub type BrushParamsHash = [u8; 32];` definido em `ph2d-painter-brush` (computed via `Brush::params_blake3()` impl method). Se a `Brush` em si fosse copiada por stroke, o `.ph2d-painter` explodiria (12k strokes × ~5KB Brush ≈ 60 MB só de duplicação). Hash refere-se a tabela deduplicada `brush_snapshots: BTreeMap<BrushParamsHash, Brush>` na persistence (§2.7).
+
+**Cap reserva `points: Vec<RawPointerSample>` — `len() ≤ 65535` (u16)** (audit B-3). Strokes muito longos (>22 minutos sem release) ficam impossíveis pelo type system. Caso edge gritante (fluid sim watercolor pintando 30min): split implícito no commit do stroke (não nessa ADR; W1 implementation detail).
 
 ### 2.3 `RawPointerSample` — cap **≤ 12 fields**
 
@@ -154,6 +168,7 @@ pub struct LayerSnapshot {
     pub texture_blake3: [u8; 32],            // content-addressed (dedup)
     pub texture_data: SnapshotStorage,       // InMemory(Vec<u8>) | OnDisk(PathBuf)
     pub timestamp_ms: u64,
+    pub version: u32,                        // sidecar version v1 = 1 (HR-14 NOT obrigatório; regenerável)
 }
 
 pub enum SnapshotStorage {
@@ -164,17 +179,18 @@ pub enum SnapshotStorage {
 ```
 
 **Cap politica:**
-- `LayerSnapshot ≤ 8 fields`
+- `LayerSnapshot ≤ 8 fields` (v1 usa 6)
 - `SnapshotStorage ≤ 4 variants` (v1 usa 2)
+- `PaintProjectCache ≤ 8 fields` (v1 usa 6)
 - Snapshots **evictáveis sob memory pressure** (LRU em offload disk; metadata fica em RAM).
 
 Snapshots NÃO entram em `StrokeHistory` — vivem em `Snapshots` struct paralelo. Razão: history é semântica de **input** (o que usuária fez); snapshots são **cache** (otimização derivada). Separar permite invalidar cache sem tocar history.
 
-### 2.7 `.ph2d-painter` schema v1 (HR-14 versionado)
+### 2.7 Persistence — `PaintProject` (canon) + `PaintProjectCache` (sidecar)
 
-**Formato:** postcard binário (NÃO JSON, NÃO bincode) — HR-14 canon do projeto, eficiente em fixed-point + varint, decoder zero-alloc.
+**Audit 2026-05-26 (C-3) flag:** snapshots são **cache** (não-essencial pra reproduzir o canvas), gravar dentro do canon força migração HR-14 quando snapshot schema mudar. **Separação congelada:**
 
-**Layout congelado:**
+#### 2.7.1 `.ph2d-painter` — canon savefile (HR-14 versionado)
 
 ```
 PaintProject (v1)
@@ -182,22 +198,39 @@ PaintProject (v1)
 ├── version: u32                             // = 1
 ├── canvas: CanvasInfo { width, height, color_profile, ppm }
 ├── layer_stack: LayerStack                  // raster + adjustment layers (ADR-0045)
-├── history: StrokeHistory                   // §2.5
+├── history: StrokeHistory                   // §2.5 — fonte de verdade vetorial
 ├── brush_snapshots: Vec<(BrushParamsHash, Brush)>  // dedup table (§2.2)
-├── snapshots: Vec<LayerSnapshot>            // cache (§2.6); pode ser truncado em save-as-portable
 ├── created_at: u64                          // ms since epoch
 ├── modified_at: u64                          // idem
 └── checksum: blake3([magic..modified_at])   // integrity guard
 ```
 
-**HR-14 migration policy:**
+**Top-level cap:** ≤ 12 fields (v1: 9). `CanvasInfo` cap ≤ 8 fields. Tudo aqui é **essencial** para reconstruir o canvas — replay de history sobre layer_stack vazio produz pixel-perfect output.
+
+#### 2.7.2 `.ph2d-painter-cache` — sidecar cache (NÃO HR-14-versionado obrigatório)
+
+Arquivo separado, ao lado do `.ph2d-painter`. Pode ser **deletado/regenerado** a qualquer momento sem perda de dados:
+
+```
+PaintProjectCache (v1)
+├── magic: [u8; 18]                          // "PH2D-PAINTER-CACHE"
+├── version: u32                             // = 1
+├── source_blake3: [u8; 32]                  // hash do .ph2d-painter sibling — invalida se desbatido
+├── snapshots: Vec<LayerSnapshot>            // §2.6
+├── spatial_index: Option<SerializedRTree>   // R-tree de bboxes (ADR-0048 §2.4); pode estar vazia
+└── generated_at: u64
+```
+
+**Top-level cap:** ≤ 8 fields (v1: 6). Não exige migration chain — versions futuras podem só ignorar sidecars antigos e regenerar.
+
+**Cleanup policy:** se `source_blake3` não bate com `.ph2d-painter` atual, cache descartado silenciosamente (regenera on-demand). Sidecar nunca "atrasa" o save do canon.
+
+**HR-14 migration policy (canon `.ph2d-painter`):**
 - v1 → v2 quando schema mudar. v2 reader **deve** ler v1 (forward-compat is mandatory).
 - Writer sempre emite latest version.
 - Migration helpers em `persistence.rs::migrate_v{N}_to_v{N+1}`.
 
-**Cap:**
-- Top-level `PaintProject` struct ≤ 12 fields (v1: 9).
-- `CanvasInfo` ≤ 8 fields.
+**HR-14 NOT obrigatório (sidecar `.ph2d-painter-cache`):** sidecar é regenerável. v1 → v2 = bump version, old readers regeneram. Sem migration chain.
 
 ### 2.8 Determinismo opt-in (`--features det-painter`)
 
@@ -251,13 +284,31 @@ pub enum ReprojectMode {
 - `ReprojectMode` ≤ 4 variants
 - `ReprojectError` ≤ 8 variants
 
-### 2.10 Memory budget (atualiza [`08 §8.2`](../../Painter_projeto/08_performance_memory.md))
+### 2.10 Memory budget + extension em `ph2d-host::MemoryBudget` (autorizado por ADR-0043 §2.5)
 
-| Bucket | Budget | Notas |
+Esta ADR amenda `ph2d-host::MemoryBudget` com um campo agregado de buckets Painter:
+
+```rust
+pub struct MemoryBudget {
+    // ... campos existentes ...
+    pub painter: PainterMemoryBudget,
+}
+
+pub struct PainterMemoryBudget {
+    pub stroke_history_mb: u32,              // §2.5 tier selection input
+    pub snapshot_cap_mb: u32,                // §2.6 LRU cap
+    pub atlas_shape_mb: u32,                 // ADR-0044 §1.8.1
+    pub atlas_grain_mb: u32,                 // idem
+}
+```
+
+Cap: `PainterMemoryBudget ≤ 8 fields` (v1: 4). Plataformas runtime instanciam via host-side detection (memory probing + tier classification).
+
+| Bucket | Budget default | Notas |
 |---|---|---|
 | Stroke history (`Vec<StrokeRecord>`) | 150 MB | ~20k strokes default; eviction NÃO automática (é history, não cache) |
 | Snapshots (`LayerSnapshot`) | 200 MB (cap LRU) | offload disk sob pressure; metadata permanece RAM |
-| Brush snapshots (dedup table) | 10 MB | ~1k brush variants no extremo; tipicamente <100 KB |
+| Brush snapshots (dedup table) | 10 MB | ~1k brush variants no extremo; typically <100 KB |
 | Atlas Shape (R8) | 4 MB | static após boot |
 | Atlas Grain (R8) | 32 MB | static após boot (Procedural Grain reduziu de 64 MB; ADR-0044) |
 
@@ -265,24 +316,26 @@ Total Painter overhead estável: ~400 MB no extremo. Cabe em macOS desktop (16 G
 
 ### 2.11 Arch-gate `painter_contract_surface::stroke_history`
 
-Adicionado ao arquivo único `crates/ph2d-painter-brush/tests/architecture_painter_contract_surface.rs` (ADRs 0043-0049 compartilham o arquivo; é o canon do plano §3):
+Adicionado ao arquivo único `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs` (homestead congelado per ADR-0043 §2.4; sem deps de runtime; audita texto cross-crate):
 
 ```rust
 mod stroke_history {
     #[test] fn stroke_record_field_count_is_capped()        { /* ≤ 16 */ }
     #[test] fn raw_pointer_sample_field_count_is_capped()   { /* ≤ 12 */ }
+    #[test] fn stroke_record_points_len_capped_at_u16()     { /* len ≤ 65535 — runtime + textual */ }
     #[test] fn tool_mode_variant_count_is_capped()          { /* ≤ 6 */ }
     #[test] fn stroke_history_variant_count_is_capped()     { /* ≤ 4 */ }
     #[test] fn layer_snapshot_field_count_is_capped()       { /* ≤ 8 */ }
     #[test] fn snapshot_storage_variant_count_is_capped()   { /* ≤ 4 */ }
     #[test] fn paint_project_field_count_is_capped()        { /* ≤ 12 */ }
+    #[test] fn paint_project_cache_field_count_is_capped()  { /* ≤ 8 — sidecar (§2.7.2) */ }
     #[test] fn reproject_mode_variant_count_is_capped()     { /* ≤ 4 */ }
+    #[test] fn painter_memory_budget_field_count_is_capped() { /* ≤ 8 */ }
+    #[test] fn stroke_id_is_uuid()                          { /* StrokeId == Uuid alias */ }
 }
 ```
 
-Cross-crate: `ph2d-painter-stroke` re-exporta tipos; o gate em `ph2d-painter-brush` consome via `use ph2d_painter_stroke::*` (dep cíclica evitada: brush dep stroke não; stroke é folha).
-
-**Correção:** o gate **migra** para `crates/ph2d-painter-stroke/tests/architecture_painter_contract_surface.rs` se a inversão de dep ficar mais natural em W1 implementação. Decisão final em W1 T1.X (criação dos crates). Esta ADR fixa as **caps**; localização do test é detalhe.
+Localização **congelada** em `ph2d-painter-contracts` (audit C3, 2026-05-26): sem migração futura para outro crate; o homestead independente é o canon. Auditoria textual cross-crate via `walkdir + grep estrutural` — gate não importa tipos dos crates filhos em runtime.
 
 ### 2.12 Gates de comportamento
 
@@ -359,7 +412,7 @@ cargo test -p ph2d-painter-stroke
 cargo test -p ph2d-painter-stroke --features det-painter
 # Replay cross-OS determinismo (CI roda em Linux+macOS+Windows+Web).
 
-cargo test -p ph2d-painter-brush --test architecture_painter_contract_surface
+cargo test -p ph2d-painter-contracts --test architecture_painter_contract_surface
 # 16-24 sub-tests cumulativos (ADR-0043 + 0044 + 0045 + 0046).
 ```
 

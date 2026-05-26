@@ -100,11 +100,13 @@ impl RasterEditTool for PainterTool { /* 5 métodos canônicos, sem add */ }
 
 ### 2.3 Tipos UI — caps numéricos
 
-#### `PainterUiEdit` — **≤ 20 variants**
+#### `PainterUiEdit` — **≤ 24 variants**
 
-Eventos da sidebar Painter + topbar tool-switching, traduzidos do `PanelEvent` genérico para semântica Painter dentro de `handle_panel_event`. Baseline calibração: bgremoval = 15 variants (canônico Wave 10); CEQ = 41 (outlier, segmentado em slider+chip pares). Painter sidebar tem **escopo menor que CEQ** (chips advanced viv·em no Brush Studio panel separado, não no sidebar), mas **maior que bgremoval** (workhorse com mais controles). **Cap = 15 × 1.33 = 20** (4-5 variants de headroom acima do estimado canon).
+Eventos da sidebar Painter + topbar tool-switching, traduzidos do `PanelEvent` genérico para semântica Painter dentro de `handle_panel_event`. Baseline calibração: bgremoval = 15 variants (canônico Wave 10); CEQ = 41 (outlier, segmentado em slider+chip pares). Painter sidebar tem **escopo menor que CEQ** (chips advanced vivem no Brush Studio panel separado, não no sidebar), mas **maior que bgremoval** (workhorse com mais controles, evolução multi-wave).
 
-Variants esperados v1 (~15, com 5 slots de headroom):
+**Cap = 24** — bump original de 20 → 24 (audit adversarial 2026-05-26): contagem realista de variants exige headroom para W9 Drawing Assist (~3 variants — symmetry axis, radial N, mirror offset), W11 Animation Assist (~2 variants — onion-skin toggle, fps), W14 Inspector entry (~1 variant — OpenInspector). v1 ~15 + W9 3 + W11 2 + W14 1 = ~21; cap 24 deixa 3 slots residuais.
+
+Variants esperados v1 (~15, com slots de headroom para waves futuras):
 
 ```rust
 #[derive(Clone, Debug, PartialEq)]
@@ -135,7 +137,11 @@ pub enum PainterUiEdit {
     ResetSidebar,
     // Symmetry quick-toggle (W9 Drawing Assist)
     ToggleSymmetry,
-    // === 5 slots de headroom para waves futuras ===
+    // === ~9 slots de headroom para waves futuras ===
+    // W9: SetSymmetryAxis(SymmetryAxis), SetRadialN(u8), SetMirrorOffset(f32)
+    // W11: ToggleOnionSkin, SetAnimFps(f32)
+    // W14: OpenInspector
+    // 3 residual
 }
 ```
 
@@ -199,38 +205,72 @@ pub struct PainterParams {
 
 **Não cabe aqui:** parâmetros do brush ativo (vivem em `Brush` ADR-0044), layer state (panel-painter-layers), stroke history estado (`ph2d-painter-stroke`), color picker mode (panel-painter-color).
 
-### 2.4 Arch-gate `painter_contract_surface`
+### 2.4 Arch-gate `painter_contract_surface` — homestead `ph2d-painter-contracts` (T0.8, NÃO diferido)
 
-**Localização canônica:** `crates/ph2d-painter-brush/tests/architecture_painter_contract_surface.rs`.
+**Localização canônica congelada:** `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs`. Crate dedicado, **criado em T0.8 da cascata W0** (não em W1).
 
-**Conteúdo enforcement:**
+**Conteúdo do crate `ph2d-painter-contracts/`:**
 
-```rust
-// O gate audita o source de ph2d-tool-painter::params via grep textual
-// (mesmo padrão de architecture_tool_contract_surface.rs):
-//
-//   • painter_ui_edit_variant_count_is_capped     — conta variants de PainterUiEdit ≤ 20
-//   • painter_ui_snapshot_field_count_is_capped   — conta fields de PainterUiSnapshot ≤ 18
-//   • painter_params_field_count_is_capped        — conta fields de PainterParams ≤ 12
-//
-// Caps adicionais do ADR-0044 (Brush, Stamp) ficam no mesmo arquivo de teste
-// mas em funções separadas — uma ADR-amend cada uma, mecânica idêntica
-// a architecture_tool_contract_surface.
+```
+crates/ph2d-painter-contracts/
+  Cargo.toml         # SEM deps de runtime — só std + walkdir (audita texto)
+  src/lib.rs         # #![forbid(unsafe_code)] — mod stub vazio
+  tests/architecture_painter_contract_surface.rs
+                     # Audita o TEXTO dos arquivos crates/ph2d-{tool-painter,
+                     # painter-brush, painter-stroke, painter-mcp,
+                     # panel-painter-inspector, painter-fluid}/src/**/*.rs
+                     # via grep estrutural + walkdir.
+                     # Em W0/T0.8 esses crates não existem ainda — testes
+                     # passam vacuamente (no files found = ok).
+                     # Em W1+ conforme crates filhos nascem, testes ativam
+                     # automaticamente sem nova edição.
 ```
 
-**Status do gate em W0:** **diferido pra W1 T1.3** (criação do crate `ph2d-painter-brush`). Razão: o arquivo de teste exige que o crate exista (Cargo recusa `tests/*.rs` sem manifesto). Criar crate-fantasma em W0 só pro gate seria edição central que esta ADR explicitamente evita. Esta ADR fixa o **texto do contrato** (caps + variant lists); o gate **só verifica** que o crate, quando nascer, não exceda. T1.3 (skeleton `ph2d-painter-brush`) inclui o stub do gate com caps inicialmente 0/0/0 que crescem conforme T1.4+ implementa.
+**Razão da revisão (audit 2026-05-26):** o deferral original "T0.8 desliza pra W1 T1.3" criava janela ~14 dias onde caps congelados em W0 não tinham enforcement. Audit A-6 sinalizou corretamente como "crate-fantasma mal-disfarçado". Crate dedicado de contratos sem deps de runtime resolve: zero acoplamento aos crates filhos, gate ativa lazy conforme eles nascem.
 
-### 2.5 O que esta ADR **NÃO** decide
+**Conteúdo enforcement (cobertura cumulativa ADR-0043..0049):** vide ADR-0044 §2.11 (tabela cumulativa de tests).
 
-- **Brush struct cap** (`Brush ≤ N campos`) — ADR-0044.
-- **Stamp layout / alinhamento** — ADR-0044.
-- **AdjustmentKind variants** — ADR-0045.
-- **StrokeRecord schema** — ADR-0046.
-- **MCP tool schemas** — ADR-0047.
-- **Inspector compositor protocol** — ADR-0048.
-- **Fluid sim parameters** — ADR-0049.
+**T0.8 do plano §3 atualizado:** "Criar crate `ph2d-painter-contracts/` com arch-gate textual; sem deps de runtime; testes ativam lazy quando crates filhos nascem em W1+."
+
+### 2.5 O que esta ADR **NÃO** decide (delegação congelada às ADRs irmãs)
+
+- **Brush struct cap** (`Brush ≤ N campos`) — **ADR-0044** (modelo de cap duplo top-level + sub-structs, §2.2).
+- **Stamp layout / alinhamento** — **ADR-0044** (96 bytes, repr(C, align(16)), ABI freeze).
+- **`BrushHandle` tipo** — **ADR-0044 §2.8** (fonte única canônica).
+- **`RenderingMode` / `PigmentMode` / `GrainSource` / `ProceduralGrain` enums** — **ADR-0044**.
+- **`AdjustmentKind` + `AdjustmentParams` + `AdjustmentLayer`** — **ADR-0045**.
+- **`StrokeRecord` schema + `StrokeHistory` enum + `.ph2d-painter` v1** — **ADR-0046**.
+- **`StrokeId = Uuid` type alias** — **ADR-0046 §2.2** (fonte única).
+- **MCP tool schemas (`StrokeSpec`, `StrokeMods`, `StrokeFilter`, `StrokeRef`)** — **ADR-0047**.
+- **Inspector `InspectorState` + lasso geometric matching + recompose slice** — **ADR-0048**.
+- **Fluid sim parameters + `FluidSim` + `FluidParams` + `GravitySource`** — **ADR-0049**.
+- **`PlatformHost::gyroscope()` trait extension em `ph2d-host`** — **ADR-0049 §2.2** (sancionado: amend foundational autorizado por esta ADR-0043 §2.5 — único bump de trait foundational da cascata).
+- **`MemoryBudget::fluid_capable()` + `PerfBudget::fluid_headroom_ms()` métodos inerentes em `ph2d-host`** — **ADR-0049 §2.9, §2.10**.
+- **`MemoryBudget::stroke_history_mb` campo em `ph2d-host`** — **ADR-0046 §2.5** (sancionado: amend foundational autorizado por esta ADR-0043 §2.5).
 - **Bump de `Tool`/`RasterEditTool`/`PanelEvent` caps** — frozen por ADR-0040+0041, intocados aqui.
 - **Canvas-event surface trait** (substituto pro path `BrushTool` proto). v1 reusa o path existente; eventual trait-extraction é wave futura.
+
+### 2.6 Tipos importados de fora — fonte canônica
+
+Esta ADR usa tipos definidos em outros crates / ADRs. Para evitar deriva, cada tipo tem **fonte única**:
+
+| Tipo | Definido em | Crate |
+|---|---|---|
+| `BrushHandle` | ADR-0044 §2.8 | `ph2d-painter-brush` |
+| `OklchColor` | ADR-0042 | `ph2d-color` |
+| `BlendMode` | (compositor) — TBD W4 home | `ph2d-painter-brush` ou `ph2d-painter-canvas` |
+| `LayerId` | LayerStack data model — TBD W3 home | `ph2d-painter-brush` (ou crate futuro) |
+| `CanvasId` | TBD W1 — `ph2d-editor-core` ou novo | `ph2d-editor-core` |
+| `MaskData` | LayerStack — TBD W3 home | idem |
+| `OklchColor`, `SrgbRgba`, etc. | ADR-0042 | `ph2d-color` |
+| `ThumbHandle` | TBD W2 (sidebar) | `ph2d-painter-brush` (atlas-resident) |
+| `SymmetryAxis` | W9 — TBD | `ph2d-tool-painter` (interno) |
+| `NodeId` | ADR-0023 (a11y) | `ph2d-a11y` |
+| `Token` (HR-11) | ADR-0047 §2.10 | `ph2d-painter-mcp` |
+| `StrokeId = Uuid` | ADR-0046 §2.2 | `ph2d-painter-stroke` |
+| `BrushParamsHash = [u8; 32]` | ADR-0044 §2.2 (blake3) | `ph2d-painter-brush` (re-export) |
+
+**Tipos "TBD W-N home"** são placeholders. Cada W-N que materializar o tipo registra em sua ADR de wave + commit que migra esta tabela. ADRs da cascata W0 **não pre-decidem** o crate-home; apenas registram a dep.
 
 ---
 
@@ -290,8 +330,8 @@ Após esta ADR ser ratificada (T0.9) e W1 T1.3 criar o crate `ph2d-painter-brush
 
 ```sh
 # Gate de contrato Painter (W1 T1.3+)
-cargo test -p ph2d-painter-brush --test architecture_painter_contract_surface
-# Deve passar com caps: PainterUiEdit ≤ 20, PainterUiSnapshot ≤ 18, PainterParams ≤ 12.
+cargo test -p ph2d-painter-contracts --test architecture_painter_contract_surface
+# Deve passar com caps: PainterUiEdit ≤ 24, PainterUiSnapshot ≤ 18, PainterParams ≤ 12.
 
 # Drop-crate fan-out OK
 cargo run -p ph2d-tool-sync

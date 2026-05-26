@@ -51,12 +51,12 @@ pub struct AdjustmentLayer {
 
 **Sub-cap:** `Option<MaskData>` é serializado por boundary (Some/None) — `MaskData` é estrutura própria (raster) que herda cap do tipo Layer raster (não tratado aqui).
 
-### 2.3 `AdjustmentKind` enum — cap **≤ 16 variants** (v1 usa 12 non-destructive + 5 destructive-only = 17 ativos; vide §2.4)
+### 2.3 `AdjustmentKind` enum — cap **≤ 24 variants** (v1 usa 12 non-destructive)
 
 ```rust
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum AdjustmentKind {
-    // === Non-destructive (suportam AdjustmentLayer) — 12 ===
+    // === Non-destructive v1 (suportam AdjustmentLayer) — 12 ===
     HueSaturationBrightness,
     ColorBalance,
     Curves,
@@ -69,9 +69,16 @@ pub enum AdjustmentKind {
     Sharpen,
     Halftone,
     ChromaticAberration,
-    // === 4 slots de headroom para non-destructive futuros ===
+    // === 12 slots de headroom — pista da longa cauda Photoshop ===
+    // Reserved (sem ADR-amend obrigatória, dentro do cap):
+    //   Vibrance, ColorLookupLUT, PhotoFilter, Posterize, Threshold,
+    //   Invert, Levels, SelectiveColor, ChannelMixer, Exposure,
+    //   ShadowsHighlights, BlackAndWhite.
+    // Cada um exige sub-Params struct + tab entry §2.6 + sub-gate.
 }
 ```
+
+**Razão do cap 24 (bump de 16 — audit 2026-05-26):** "sucessor do Procreate" precisa cobrir longa cauda Photoshop (~25 non-destructive ships) sem amendment a cada um. Procreate só tem ~6 adjustments; Photoshop tem 25+. PH2D na ambição padrão-ouro fica no meio do espectro com folga.
 
 **Nota crucial:** os **5 destructive-only** (Liquify, Clone, Recolor, Glitch, Mesh Warp) **NÃO** são variants de `AdjustmentKind` — vivem em **`DestructiveAdjustment`** enum separado (§2.4). Razão: o gate textual `adjustment_kind_variant_count_is_capped` audita variants que CONSTROEM `AdjustmentLayer`; ter destructive aí seria fonte de bug ("crie AdjustmentLayer kind=Liquify" → silenciosamente impossível). Separar em dois enums é o que o **type system** já queria nos contar.
 
@@ -219,12 +226,12 @@ impl CompositorCache {
 
 ### 2.10 Arch-gate `painter_contract_surface::adjustments`
 
-Adicionado ao arquivo único `crates/ph2d-painter-brush/tests/architecture_painter_contract_surface.rs`:
+Adicionado ao homestead `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs` (localização congelada per ADR-0043 §2.4):
 
 ```rust
 mod adjustments {
     #[test] fn adjustment_layer_field_count_is_capped()       { /* ≤ 12 */ }
-    #[test] fn adjustment_kind_variant_count_is_capped()      { /* ≤ 16 */ }
+    #[test] fn adjustment_kind_variant_count_is_capped()      { /* ≤ 24 */ }
     #[test] fn destructive_adjustment_variant_count_is_capped() { /* ≤ 8 */ }
     #[test] fn adjustment_params_variant_count_is_capped()    { /* ≤ 16 */ }
     #[test] fn adjustment_layer_kind_params_match()           { /* invariant runtime */ }
@@ -294,7 +301,7 @@ mod adjustments {
 ## 5. Verificação
 
 ```sh
-cargo test -p ph2d-painter-brush --test architecture_painter_contract_surface
+cargo test -p ph2d-painter-contracts --test architecture_painter_contract_surface
 # 16 sub-tests cumulativos (ADR-0043 + 0044 + 0045). Adjustments mod = 6 testes.
 
 cargo test -p ph2d-painter-brush

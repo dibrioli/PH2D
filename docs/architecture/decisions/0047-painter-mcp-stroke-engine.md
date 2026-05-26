@@ -96,14 +96,17 @@ Schema **input do LLM** — distinto de `StrokeRecord` (schema **interno**, ADR-
 ```rust
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StrokeSpec {
-    pub points: Vec<StrokePoint>,            // path bruto (cap §2.4)
+    pub points: Vec<StrokePoint>,            // path bruto (cap §2.4); len ≤ 65535 (ADR-0046 §2.2)
     pub primary_color: OklchColor,
     pub secondary_color: Option<OklchColor>,
     pub tool_mode: ToolMode,                 // Paint | Smudge | Erase (ADR-0046)
     pub rng_seed: Option<u64>,               // determinismo opt-in (None = engine escolhe)
-    // === 3 slots de headroom ===
+    pub version: u32,                        // HR-14 schema versioning — v1 = 1
+    // === 2 slots de headroom ===
 }
 ```
+
+**`version: u32` é OBRIGATÓRIO** (audit A3, 2026-05-26): LLM-facing schema serializável precisa de migration chain. Breaking changes futuros (e.g., adicionar `barrel_roll`) viram v2; reader engine sabe migrar v1 → v2.
 
 ### 2.4 `StrokePoint` — cap **≤ 8 fields** (v1 usa 5)
 
@@ -266,7 +269,7 @@ impl TokenRegistry {
 
 Token issuance é **side-channel humano** (CLI prompt + UI dialog). Não é gerado por LLM. Aceitável também: flag `--unsafe-mcp` no servidor de desenvolvimento (auditável).
 
-**Batch cap:** `painter_paint_strokes` rejeita batches > 1000 strokes por call (`StrokesTooLarge`). LLM grandes prompts viram múltiplos calls (audit log per-batch).
+**Batch cap:** `painter_paint_strokes` rejeita batches > **5000 strokes** por call (`StrokesTooLarge`). Audit M-10 (2026-05-26) flagged cap original 1000 como arbitrário; bump para 5000 cobre hatching de canvas inteiro (~3-5k strokes típico) em single call. Calibração final via perf measurement em W13 T-N (gate `mcp_paint_strokes_batch_p99_under_5s`). LLM ainda quebra em múltiplos calls para work intensivo (10k+), com audit log per-batch.
 
 ### 2.11 Audit log — JSON Lines schema congelado
 
@@ -305,8 +308,9 @@ Token issuance é **side-channel humano** (CLI prompt + UI dialog). Não é gera
 | `IssuedToken` | ≤ 8 fields |
 | `AuditLogEntry` | ≤ 16 fields |
 | MCP tools count | ≤ 8 (v1 = 4) |
-| Batch cap (`paint_strokes`) | 1000 strokes/call |
+| Batch cap (`paint_strokes`) | 5000 strokes/call (calibrar W13 T-N) |
 | `StrokeMods.path_replace` cap | 4096 points |
+| `StrokeSpec.points.len()` | ≤ 65535 (ADR-0046 §2.2 — herda Q16.16 fixed-point limit) |
 
 ### 2.13 Quality emerges via prompting (responsabilidade-fora-do-contrato)
 
@@ -320,7 +324,7 @@ ADR-0047 **não** garante qualidade — garante **superfície estável** para qu
 
 ### 2.14 Arch-gate `painter_contract_surface::mcp`
 
-Adicionado ao arquivo compartilhado `tests/architecture_painter_contract_surface.rs` (vive em `ph2d-painter-brush` ou `ph2d-painter-stroke`; localização decide W1):
+Adicionado ao arquivo compartilhado `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs` (homestead congelado per ADR-0043 §2.4):
 
 ```rust
 mod mcp {
@@ -412,7 +416,7 @@ cargo test -p ph2d-painter-mcp
 cargo test -p ph2d-painter-mcp --features det-painter
 # Determinismo end-to-end com rng_seed.
 
-cargo test -p ph2d-painter-brush --test architecture_painter_contract_surface
+cargo test -p ph2d-painter-contracts --test architecture_painter_contract_surface
 # Caps cumulativos (ADRs 0043+0044+0045+0046+0047).
 ```
 

@@ -82,7 +82,9 @@ pub trait PlatformHost {
 
 ### 2.3 `Brush.fluid_enabled` — opt-in per-brush
 
-Adicionado ao `Brush` struct (ADR-0044) como campo NOVO em sub-struct `RenderingParams` (§1.3.6). **Conta no cap `Brush ≤ 160` de ADR-0044** — está dentro do orçamento.
+Adicionado ao `Brush` struct (ADR-0044) como campo NOVO em sub-struct `RenderingParams` (§1.3.6). **Bumpa o sub-cap específico** de `RenderingParams` em ADR-0044 §2.2.1 de **9 → 10** fields. Cap atualizado nesta cascata simultânea — ADR-0044 §2.2.1 tabela já reflete o 10 (com cap ≤ 14, 4 slots restantes).
+
+Sem essa nota explícita o gate `brush_sub_caps_per_substruct` quebra silenciosamente quando ADR-0049 implementação ship. Audit C2 (2026-05-26) flagged.
 
 ```rust
 // crates/ph2d-painter-brush/src/brush.rs
@@ -231,7 +233,7 @@ impl PerfBudget {
 
 Cap: `PerfBudget` adiciona 1 método; `MemoryBudget` adiciona 1 método. **Sem amend de trait** (são impls inerentes em structs, não em traits).
 
-### 2.11 Det-mode CPU fallback
+### 2.11 Det-mode CPU fallback — perf realista + res 256² (audit A-7)
 
 Quando `--features det-painter`:
 
@@ -239,12 +241,26 @@ Quando `--features det-painter`:
 #[cfg(feature = "det-painter")]
 pub fn fluid_step_det(sim: &mut FluidSim, brush: &Brush, dt_q1616: i32) {
     // Tudo CPU. Sem GPU compute. Sem fast-math. Sem FMA.
-    // Implementação reference: Stam 1999 Stable Fluids em f64 com compiler_fence.
-    // ~10× mais lento que GPU; aceito em CI replay tests.
+    // Implementação reference: Stam 1999 Stable Fluids em f64 + compiler_fence.
+    // RESOLUÇÃO REDUZIDA: det-mode usa fluid_size = 256² (não 1024² do GPU mode);
+    // ~16× menos pixels, ~16× mais rápido vs det-mode @ full res.
+    // Trade-off aceito: det-mode é CI / cross-OS verification, NÃO production paint.
 }
 ```
 
-**Gate:** `fluid_det_replay_cross_os` — replay de stroke molhado em Linux/macOS/Windows/Web (WASM) devolve `blake3` idêntico. Soft em W15; hard em W16+.
+**Perf realista (audit 2026-05-26 corrigiu otimismo prévio):**
+
+| Modo | Res fluid | Tempo / step | Strokes/s det @ 4K canvas |
+|---|---|---|---|
+| GPU (production) | 1024² | ~0.25 ms | ~50 |
+| CPU det @ 256² (corrigido) | 256² | **~10 ms** | **~5** |
+| ~~CPU det @ 1024² (claim original "10× slower")~~ | ~~1024²~~ | ~~~150 ms~~ | ~~~0.3~~ |
+
+**Decisão:** det-mode CPU sempre roda em 256² (não 1024²). CI replay test com 100 frames = ~1 segundo × N OSes — viável. Production paint usa GPU 1024² — não-determinístico mas estética OK (HR-5 não exige determinismo em PresentWorld).
+
+**Re-medição obrigatória em W15 T-2 prototype:** Stam 1999 CPU 256² em Apple M2 single-threaded. Se medida real exceder 50 ms / step, reduzir res para 128².
+
+**Gate:** `fluid_det_replay_cross_os` — replay de stroke molhado @ 256² em Linux/macOS/Windows/Web (WASM) devolve `blake3` idêntico. Soft em W15; hard em W16+.
 
 ### 2.12 Risk policy: W15 deferral é aceitável
 
@@ -261,7 +277,7 @@ Por [§14.6.9](../../Painter_projeto/14_inovacoes_extraordinarias.md):
 | `FluidParams` | ≤ 12 fields |
 | `GravitySource` | ≤ 6 variants |
 | `PlatformHost::gyroscope()` | +1 método (default `None`) |
-| `Brush.rendering.fluid_enabled: bool` | +1 campo (dentro do `Brush ≤ 160` ADR-0044) |
+| `Brush.rendering.fluid_enabled: bool` | +1 campo em `RenderingParams` (sub-cap 9 → 10; cap ≤ 14 ADR-0044 §2.2.1) |
 | `MemoryBudget::fluid_capable()` | +1 método inerente |
 | `PerfBudget::fluid_headroom_ms()` | +1 método inerente |
 | Fluid texture res | = 1/4 canvas (frozen) |
@@ -269,13 +285,16 @@ Por [§14.6.9](../../Painter_projeto/14_inovacoes_extraordinarias.md):
 
 ### 2.14 Arch-gate `painter_contract_surface::fluid`
 
+Adicionado ao homestead `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs`:
+
 ```rust
 #[cfg(feature = "fluid")]
 mod fluid {
-    #[test] fn fluid_sim_field_count_is_capped()       { /* ≤ 12 */ }
-    #[test] fn fluid_params_field_count_is_capped()    { /* ≤ 12 */ }
+    #[test] fn fluid_sim_field_count_is_capped()        { /* ≤ 12 */ }
+    #[test] fn fluid_params_field_count_is_capped()     { /* ≤ 12 */ }
     #[test] fn gravity_source_variant_count_is_capped() { /* ≤ 6 */ }
-    #[test] fn fluid_pass_eligible_decision_table()    { /* truth table de §2.8 */ }
+    #[test] fn fluid_pass_eligible_decision_table()     { /* truth table de §2.8 */ }
+    #[test] fn fluid_det_mode_uses_256_res()            { /* §2.11 — res 256² em det builds */ }
 }
 ```
 

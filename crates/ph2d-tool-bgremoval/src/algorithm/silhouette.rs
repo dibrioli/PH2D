@@ -410,6 +410,15 @@ fn finalise_protect_with_falloff(
     // radius, narrow enough to leave the bulk of the subject locked
     // but wide enough that Feather + Grow can shape the edge.
     const DISTANCE_TO_FULL_LOCK: u32 = 8;
+    // Minimum strength applied to any interior pixel — `force_keep`
+    // raises alpha to `max(alpha, strength)`, so pixels right against
+    // the silhouette rim (distance 1-2) used to floor at 31-63 →
+    // chroma could still drop them to ~25% opacity, visible as
+    // "pequena penetração" on the rim (Enio 2026-05-26 round 4).
+    // Floor at 128 keeps rim pixels at ≥ 50% opacity, masking the
+    // penetration; sliders still have authority in the 128..255
+    // band so Feather + Grow + Refine can shape the edge.
+    const MIN_INTERIOR_STRENGTH: u32 = 128;
     for i in 0..n {
         if rgba[i * 4 + 3] == 0 {
             out[i] = 0;
@@ -427,7 +436,8 @@ fn finalise_protect_with_falloff(
         } else if d >= DISTANCE_TO_FULL_LOCK {
             255
         } else {
-            ((d * 255) / DISTANCE_TO_FULL_LOCK) as u8
+            let linear = (d * 255) / DISTANCE_TO_FULL_LOCK;
+            linear.max(MIN_INTERIOR_STRENGTH).min(255) as u8
         };
     }
 }

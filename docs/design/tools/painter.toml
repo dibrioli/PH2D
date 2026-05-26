@@ -12,7 +12,7 @@
 id          = "painter"
 cluster     = "image_tools"
 zone        = "top_right"
-order       = 70
+order       = 130
 a11y_role   = "Button"
 icon_slug   = "painter"
 touches_sim = false

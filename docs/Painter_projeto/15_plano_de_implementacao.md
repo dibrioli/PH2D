@@ -269,9 +269,25 @@ Smokes do Enio por wave. Cada smoke é o **único critério que vale** para a wa
 
 **Caminho:** **(A) Drop-crate fan-out** per DIRETRIZ v7.0 §3.A.
 
-**Crates a criar:** `ph2d-tool-painter`, `ph2d-painter-brush`, `ph2d-painter-stroke`.
+**Crates a criar (W1 — atualizado pós-audit 2026-05-26 Gap 2+3):**
+- **Sequenciais (T1.1..T1.6):** `ph2d-tool-painter`, `ph2d-painter-brush`, `ph2d-painter-stroke` (caminho crítico para primeira pintura).
+- **Paralelos (T-input/T-color/T-durability/T-tier):** materializam ADRs ratificados W0 que **precisam estar disponíveis ANTES do smoke Day 7** (primeira pintura), senão Stamp.color_oklab fica em color space ambíguo, Apple Pencil tilt/pressure ficam dummies, stroke perdido em crash mid-stroke, e tier detection é incidental. Vide §4.X abaixo.
 
-**Estimativa total:** ~10-14 dias (1 implementador full-time).
+**Estimativa total:** ~14-18 dias (1 implementador full-time) — bump de 10-14 → 14-18 para acomodar T-input/T-color/T-durability/T-tier (~4-5 dias paralelos a T1.3..T1.6). Audit C confirmou em 2026-05-26: smoke "primeira pintura" Day 7 com sabor Procreate exige Mixbox + Apple Pencil pipeline + Linear sRGB working color + WAL — todos integrados.
+
+### §4.X — Tasks paralelas a T1.3..T1.6 (audit 2026-05-26 Gap 2+3)
+
+**T-input — Crate `ph2d-painter-input` (ADR-0050 §2.1)** — precede T1.5 brush implementation. Conteúdo: `PointerSource` enum + per-device `PressureCurve`/`TiltCurve`/`BarrelCurve` + `PalmRejection` state machine + `DriverQuirk` catálogo + `HoverState` + Apple Pencil prediction. Sem ele, `RawPointerSample` em ADR-0046 §2.3 grava `device_source` dummy e Stamp ignora tilt/azimuth. Estimativa: 3-5 dias (medições reais cross-device).
+
+**T-color — Extensão `ph2d-color` (ADR-0051)** — paralelo a T1.3. Conteúdo: novos módulos `oklab.rs`, `display_p3.rs`, `prophoto.rs`, `hdr.rs`, `profile.rs`, `mixbox_space.rs` + `ColorProfile` enum FROZEN. Sem ele, `stamp.color_oklab` → `LinearSrgb working` conversion é hardcoded incidental; Mixbox roda em sRGB nominal vs linear ambíguo. Estimativa: 2-3 dias.
+
+**T-durability — Extensão `ph2d-painter-stroke::durability/` (ADR-0052)** — paralelo a T1.4 (commit stroke). Conteúdo: `StrokeJournal` WAL + `CrashRecovery` + `AutoSave` + `SuspendHandler` + `AtomicWriter`. Sem ele, stroke perdido em crash mid-stroke (Procreate sangrou 2014-2017). Estimativa: 3-4 dias.
+
+**T-tier — Extensão `ph2d-host` (ADR-0053)** — paralelo a T1.3. Conteúdo: `DeviceCapability` struct + `DeviceTier` enum FROZEN + `GpuId` catálogo + `ThermalState` + `PlatformHost::device_capability()` trait extension. Sem ele, escolha Mixbox GPU vs CPU é incidental; fluid sim ativação imune a heuristic. Estimativa: 2 dias.
+
+**T-codegen-stateful — Extensão `tool-sync` (audit F2 follow-up)** — paralelo a T1.X. Conteúdo: tool-sync regenera tabela `STATEFUL_TOOL_IDS` em `crates/ph2d-editor-core/src/screens/hero/chrome/image_actions.rs` (data fallback para pré-registry tests) + os 2 testes hand-maintained em registry-init. Estimativa: 1 dia.
+
+**Total W1 (sequencial + paralelo):** 14-18 dias, com smoke Day 7 ainda atingível se Implementador rodar tasks paralelas em background.
 
 ### T1.1 — Skeleton `ph2d-tool-painter`
 

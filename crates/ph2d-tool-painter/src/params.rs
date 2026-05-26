@@ -7,10 +7,28 @@
 //! - `PainterParams ≤ 12` fields
 //! - `PainterMode ≤ 6` variants
 //!
-//! T1.1 stub: structs com defaults sensatos; campos placeholder até T1.2+
-//! conectar sidebar real. Tipo opacos referenciados (`BrushHandle`,
-//! `ThumbHandle`, `SymmetryAxis`, `OklchColor`) ficam stubbed locally — quando
-//! crates filhos nascerem (T1.3 ph2d-painter-brush etc.), substituem.
+//! # T1.1 stubs + HR-14 forward-compat policy (audit 2026-05-26 F7)
+//!
+//! T1.1 ship com **stub types locais** (`BrushHandle(pub u32)`, `ThumbHandle(pub u32)`,
+//! `OklchColor { l,c,h,a: f32 }`, `SymmetryAxis`) que serão substituídos por canon
+//! quando crates filhos nascerem (T1.3 `ph2d-painter-brush`, etc.).
+//!
+//! **HR-14 forward-compat:** o stub `BrushHandle(pub u32)` é **estruturalmente
+//! idêntico** ao canon ADR-0044 §2.8 (`pub struct BrushHandle(u32)` com bit-31
+//! flag). Serde deserialization é newtype-tuple-transparent (`u32` wire) — savefiles
+//! v1 produzidos por T1.1 deserializam corretamente após T1.3 substituir o tipo,
+//! **desde que**:
+//!   1. T1.3 mantenha `pub struct BrushHandle(u32)` (mesma representação Serde).
+//!   2. T1.3 NÃO use `#[serde(rename)]` para mudar o nome lógico.
+//!   3. `OklchColor` no canon (ADR-0042 ph2d-color) deve ter mesmos 4 campos
+//!      l/c/h/a f32 OR usar `#[serde(remote)]` adapter.
+//!
+//! Validação em T1.3: round-trip test `PainterParams_v1_postcard_deserializes_in_t13`
+//! que grava com stub types e lê com canon types. Audit registrado como **gate
+//! de transição** (não bypass deferral).
+//!
+//! `SymmetryAxis` (W9) e `ThumbHandle` (W2 atlas) materializam em waves futuras —
+//! mesmo forward-compat policy aplica.
 
 use serde::{Deserialize, Serialize};
 

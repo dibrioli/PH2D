@@ -38,24 +38,32 @@ pub fn make() -> Box<dyn ph2d_editor_core::tool::Tool> {
     Box::new(PainterTool::default())
 }
 
-/// Shadow-mode handlers (stubs até a stamp pipeline GPU ship em T1.4+).
-fn shadow_handler() {}
+/// Placeholder handler para o slot `ToolHandler::Stateful` exigido pelo
+/// `ToolManifest`. **Nunca executa** — a semântica real de activate/
+/// deactivate/panel_event vive em `impl Tool for PainterTool` (tool.rs)
+/// via `ToolRegistry` dispatch. Esses handlers do manifest são vestígio
+/// estrutural pre-ADR-0040 (quando o registry de manifests também era
+/// behavior registry); hoje são no-op puro. Idem em outros tools
+/// (bgremoval/padding/etc.).
+fn noop_manifest_handler() {}
 
 pub const MANIFEST: ToolManifest = ToolManifest {
     id: "painter",
     label_key: "tool.painter.label",
     icon_fn: icon::painter_bezpath,
     // `image_tools` cluster — pill na TopBar lado da Image Tools toggle.
-    // Order 70: depois de bgremoval (60), make_square (50), trim_transparency (40).
-    // Painter é workhorse → ocupa slot rightmost da fileira de pills.
+    // Order 130: ÚLTIMO do cluster (rightmost real), depois de upscale (120).
+    // Painter é workhorse stateful, sucessor do Procreate; ocupa o slot
+    // rightmost como signature feature. Audit 2026-05-26 (C-1) corrigiu
+    // collision prévia com real_size=70.
     zone: Zone::TopRight,
     cluster: "image_tools",
-    order: 70,
+    order: 130,
     a11y_role: Role::Button,
     handler: ToolHandler::Stateful {
-        on_activate: shadow_handler as HandlerFn,
-        on_deactivate: shadow_handler as HandlerFn,
-        on_panel_event: shadow_handler as HandlerFn,
+        on_activate: noop_manifest_handler as HandlerFn,
+        on_deactivate: noop_manifest_handler as HandlerFn,
+        on_panel_event: noop_manifest_handler as HandlerFn,
     },
     // Worst-case working buffer: 4K canvas RGBA8 layer texture
     // (~64 MB). Reserved against ram_mb so HR-13 boot check fires

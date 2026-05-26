@@ -67,8 +67,9 @@ impl Tool for PainterTool {
     }
 
     fn handle_panel_event(&mut self, _event: ph2d_editor_core::tool::PanelEvent) {
-        // T1.2+ mapeia PanelEvent (NodeId) → PainterUiEdit semântico.
-        // Vide ADR-0043 §2.3.
+        // T1.3+ (sidebar real, ph2d-panel-painter W2): mapeia PanelEvent
+        // (NodeId) → PainterUiEdit semântico via `apply_ui_edit`. Vide
+        // ADR-0043 §2.3 + params.rs::PainterUiEdit.
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -116,7 +117,21 @@ impl RasterEditTool for PainterTool {
 
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
         // T1.1 stub: echo source (commit semantics tested per-tool; aqui só
-        // proves the dispatch wiring). T1.4+ ship full-res stamp render.
+        // proves the dispatch wiring). T1.4+ ship full-res stamp render via
+        // GPU compute pipeline (ADR-0044).
+        //
+        // Guard runtime: detecta bridge ativando o stub prematuramente.
+        // ImageEdit bridge não-existe pro Painter em T1.1 (Painter não está
+        // em image_edit::dispatch ainda), então chamar `run_full` agora é
+        // bug-mate: a layer commitaria source-unchanged silenciosamente
+        // (no-op no canvas, transação no-op no undo history). Audit 2026-05-26
+        // (M-1/F5) recomendou guard.
+        debug_assert!(
+            false,
+            "PainterTool::run_full is a T1.1 stub (echo source). \
+             T1.4+ ships the GPU stamp pipeline. If this fired, a bridge \
+             wired Painter into image_edit dispatch prematurely."
+        );
         (
             self.source_rgba.clone(),
             self.source_size.0,
@@ -188,6 +203,9 @@ mod tests {
 
     #[test]
     fn raster_edit_set_source_and_current_preview_round_trip() {
+        // T1.1 stub: validates set_source / current_preview / take_pending_commit /
+        // deactivate dispatch wiring. `run_full` é coberto por
+        // `run_full_panics_in_t11_stub` (debug_assert intencional).
         let mut t = PainterTool::default();
         let re = t.as_raster_edit_mut().unwrap();
         assert!(re.current_preview().is_none(), "no source yet");
@@ -195,9 +213,19 @@ mod tests {
         assert_eq!(re.current_preview(), Some((&[1u8, 2, 3, 4][..], 1, 1)));
         assert!(re.current_preview().is_none(), "dirty drained");
         assert!(!re.take_pending_commit(), "no commit requested");
-        let (px, w, h) = re.run_full();
-        assert_eq!((px, w, h), (vec![1, 2, 3, 4], 1, 1));
         re.deactivate();
         assert!(re.current_preview().is_none(), "deactivate cleared state");
+    }
+
+    #[test]
+    #[should_panic(expected = "T1.1 stub")]
+    fn run_full_panics_in_t11_stub() {
+        // Audit 2026-05-26 (M-1/F5): guard runtime detecta bridge prematuro.
+        // T1.4+ substituirá o stub por GPU stamp pipeline real (ADR-0044);
+        // este test então vira `assert_eq!(re.run_full(), ...)` real.
+        let mut t = PainterTool::default();
+        let re = t.as_raster_edit_mut().unwrap();
+        re.set_source(vec![1, 2, 3, 4], 1, 1);
+        let _ = re.run_full(); // debug_assert disparado
     }
 }

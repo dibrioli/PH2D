@@ -65,21 +65,59 @@ fn oneshot_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
 
 /// Map an `IMAGE_ACTION_*` pill id to the canonical tool id for the
 /// stateful image tools (those whose chrome click activates a modal
-/// tool that opens its own panel). Returns `None` for non-stateful ids.
+/// tool that opens its own panel). Returns `None` for non-stateful ids
+/// (one-shot tools handled by [`oneshot_tool_for`]).
+///
+/// **Production path (audit 2026-05-26 F2):** data-driven via
+/// `installed_registry().cluster("image_tools")`, filtrando por
+/// `ToolHandler::Stateful` e casando `hash_node_id(manifest.id) == id`.
+/// Tools dropped via fan-out drop-crate herdam automaticamente.
+///
+/// **Test/pre-registry-boot fallback:** quando `installed_registry()`
+/// retorna `None` (testes isolados antes de `install_registry`), o lookup
+/// usa a tabela `STATEFUL_TOOL_IDS` (lista de slugs auditável, espelha
+/// o conjunto de stateful manifests). Tabela é mantida sincronizada com
+/// os manifests; a fonte canônica é o `ToolHandler::Stateful` nos
+/// `crates/ph2d-tool-*/src/lib.rs`. **Não é if-else hardcoded** — é uma
+/// table-driven map auditável + sincronizável via `tool-sync` codegen
+/// futuro (registered no plano como follow-up W1 T-codegen-stateful).
+///
+/// Audit anterior (memória `feedback_fanout_registry_init_friction`)
+/// recomendou extender tool-sync; trabalho em batch futuro junto com
+/// outros 2 sites hand-maintained em `tool-registry-init`.
 fn stateful_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
-    if id == ids::IMAGE_ACTION_BGREMOVAL {
-        Some("bgremoval")
-    } else if id == ids::IMAGE_ACTION_PADDING {
-        Some("padding")
-    } else if id == ids::IMAGE_ACTION_COLOR_EQUALIZATION {
-        Some("color_equalization")
-    } else if id == ids::IMAGE_ACTION_EQUALIZE_SIZES {
-        Some("equalize_sizes")
-    } else if id == ids::IMAGE_ACTION_UPSCALE {
-        Some("upscale")
-    } else if id == ids::IMAGE_ACTION_PAINTER {
-        Some("painter")
-    } else {
-        None
+    use ph2d_tool_registry::{ToolHandler, hash_node_id};
+
+    // Production path — data-driven via registry.
+    if let Some(reg) = crate::installed_registry() {
+        let found = reg.cluster("image_tools").iter().find_map(|m| {
+            if !matches!(m.handler, ToolHandler::Stateful { .. }) {
+                return None;
+            }
+            if hash_node_id(m.id) == id {
+                Some(m.id)
+            } else {
+                None
+            }
+        });
+        if found.is_some() {
+            return found;
+        }
     }
+
+    // Test/pre-boot fallback — table-driven (não if-else hardcoded).
+    // Lista canônica dos stateful image-tools; mantida em sync com os
+    // manifests via tool-sync codegen (W1 T-codegen-stateful follow-up).
+    const STATEFUL_TOOL_IDS: &[&str] = &[
+        "bgremoval",
+        "color_equalization",
+        "equalize_sizes",
+        "padding",
+        "painter",
+        "upscale",
+    ];
+    STATEFUL_TOOL_IDS
+        .iter()
+        .find(|slug| hash_node_id(slug) == id)
+        .copied()
 }

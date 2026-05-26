@@ -332,14 +332,13 @@ impl crate::App {
             // `ActivateTool { tool_id: "bgremoval" }` fires (1-frame
             // defer edge case).
             //
-            // The `undo_image_edit` / `activate_bgremoval` flag-style
-            // variants collapse to a `bool` (idempotent — multiple
-            // pushes in one frame = one dispatch).
-            let mut activate_bgremoval = false;
-            let mut activate_color_equalization = false;
-            let mut activate_equalize_sizes = false;
-            let mut activate_painter = false;
-            let mut activate_upscale = false;
+            // Audit 2026-05-26 F1: 6 flags hardcoded per-tool (`activate_bgremoval`
+            // etc.) substituídas por uma única option `pending_image_tool_activation`.
+            // O drain único abaixo usa `installed_registry().cluster("image_tools")`
+            // + `Tool::label()` para dispatch data-driven. Painter + os 5 image-tools
+            // pré-existentes flow pelo mesmo canal — anti-padrão Image Tools Bugs
+            // §2.b fechado neste ponto da render loop.
+            let mut pending_image_tool_activation: Option<&'static str> = None;
             let mut visibility_toggle_row: Option<NodeId> = None;
             let mut lock_toggle_row: Option<NodeId> = None;
             let mut group_toggle_row: Option<NodeId> = None;
@@ -369,22 +368,18 @@ impl crate::App {
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
-            let mut activate_padding = false;
             for action in hero.bus.drain() {
                 use ph2d_editor::action_bus::EditorAction;
                 match action {
                     // ADR-0040 TG-A: generic activation. Per-tool flags
                     // preserve the existing mode_on gating / activation
                     // side effects after the drain.
-                    EditorAction::ActivateTool { tool_id } => match tool_id {
-                        "bgremoval" => activate_bgremoval = true,
-                        "padding" => activate_padding = true,
-                        "color_equalization" => activate_color_equalization = true,
-                        "equalize_sizes" => activate_equalize_sizes = true,
-                        "painter" => activate_painter = true,
-                        "upscale" => activate_upscale = true,
-                        _ => {}
-                    },
+                    // ADR-0040 TG-A: generic activation. Audit F1 (2026-05-26):
+                    // data-driven via cluster lookup no drain abaixo; sem
+                    // per-tool flag flooding.
+                    EditorAction::ActivateTool { tool_id } => {
+                        pending_image_tool_activation = Some(tool_id);
+                    }
                     // ADR-0040 TG-B: generic panel→tool channel. Route the
                     // event to the active tool's `handle_panel_event` —
                     // semantic mapping (slider id → typed UI edit) lives on
@@ -577,79 +572,47 @@ impl crate::App {
             // Same force-refresh of the snapshot push state as the
             // Digit3 shortcut below so the next snapshot push fires
             // against the current selection.
-            // Gated on `mode_on`: image tools are only reachable while
-            // Image Tools is on (the pills only exist then; the Digit3
-            // shortcut must also respect the mode). The reconcile below
-            // is the safety net, but gating here avoids a 1-frame
+            // Data-driven activation of any stateful image-tool (audit F1
+            // 2026-05-26 — substitui 6 drain blocks hardcoded per-tool).
+            // Gated on `mode_on`: image tools are only reachable while Image
+            // Tools toggle is on (the pills only exist then; the Digit3
+            // shortcut must also respect the mode). The reconcile below is
+            // the safety net, but gating here avoids a 1-frame
             // activate→deactivate flicker + a spurious toast.
-            if hero.image_edit.mode_on
-                && activate_bgremoval
-                && tools.set_active(&ph2d_editor::ToolId::new("bgremoval"))
-            {
-                self.last_bgremoval_pushed_entity = None;
-                self.title_dirty = true;
-                toasts.push(Toast::info("Tool · Bg Removal"));
-            }
-            // (Bg Removal + Padding cancel both go through the generic
-            // `EditorAction::CancelActiveTool` drain above — ADR-0040
-            // TG-B/TG-C.)
-            // Activate the stateful Padding tool (mirror of the
-            // Bg Removal activate above). Clicking the Padding pill
-            // raises `ActivateTool { tool_id: "padding" }`.
-            if hero.image_edit.mode_on
-                && activate_padding
-                && tools.set_active(&ph2d_editor::ToolId::new("padding"))
-            {
-                self.title_dirty = true;
-                toasts.push(Toast::info("Tool · Padding"));
-            }
-            // Color Equalization activation (mirror of Bg Removal /
-            // Padding above): clicking the Color EQ pill raises
-            // `ActivateTool { tool_id: "color_equalization" }`. Same
-            // mode_on gate — the pill only exists while Image Tools
-            // is on, but the reconcile below catches edge cases where
-            // the mode toggles off while a tool is still active.
-            if hero.image_edit.mode_on
-                && activate_color_equalization
-                && tools.set_active(&ph2d_editor::ToolId::new("color_equalization"))
-            {
-                self.title_dirty = true;
-                toasts.push(Toast::info("Tool · Color EQ"));
-            }
-            // Equalize Sizes activation (mirror of Color EQ above).
-            // Click the Equalize Sizes pill → `ActivateTool { tool_id:
-            // "equalize_sizes" }`. Same mode_on gate; the reconcile
-            // below catches the case where the user toggles Image Tools
-            // off while the tool is still active.
-            if hero.image_edit.mode_on
-                && activate_equalize_sizes
-                && tools.set_active(&ph2d_editor::ToolId::new("equalize_sizes"))
-            {
-                self.title_dirty = true;
-                toasts.push(Toast::info("Tool · Equalize Sizes"));
-            }
-            // Upscale activation (mirror of Color EQ / Equalize Sizes
-            // above). Click the Upscale pill → `ActivateTool { tool_id:
-            // "upscale" }`. Same mode_on gate.
-            if hero.image_edit.mode_on
-                && activate_upscale
-                && tools.set_active(&ph2d_editor::ToolId::new("upscale"))
-            {
-                self.title_dirty = true;
-                toasts.push(Toast::info("Tool · Upscale"));
-            }
-            // Painter activation (mirror of Upscale above). Click the
-            // Painter pill → `ActivateTool { tool_id: "painter" }`. Same
-            // mode_on gate. Cascata W0 ratificada 2026-05-26 (ADR-0043..0053);
-            // T1.2 ship com smoke println via `Tool::on_activate`. Source push
-            // genérico via RasterEditTool ship em T1.4+ (substitui o padrão
-            // hardcoded por canal genérico ADR-0041 cross-tool).
-            if hero.image_edit.mode_on
-                && activate_painter
-                && tools.set_active(&ph2d_editor::ToolId::new("painter"))
-            {
-                self.title_dirty = true;
-                toasts.push(Toast::info("Tool · Painter"));
+            //
+            // Cluster lookup via `installed_registry()` resolve o handler kind
+            // (Stateful vs OneShot) e o label canônico (`Tool::label()`); zero
+            // hardcoded id no dispatch. Tools dropped via fan-out drop-crate
+            // (incluindo Painter T1.1) flow pelo mesmo canal automaticamente.
+            //
+            // Legacy débito: `last_bgremoval_pushed_entity = None` reset é
+            // bgremoval-specific shell cache. Em T-N.X (refactor cache-per-tool
+            // map) substituído por `HashMap<ToolId, ShellCache>` ou hook em
+            // `Tool::on_activate` (ADR-0041). Por hoje, mantido inline.
+            if let Some(tool_id) = pending_image_tool_activation.take() {
+                let is_stateful_image_tool = ph2d_editor::installed_registry()
+                    .map(|reg| {
+                        reg.cluster("image_tools").iter().any(|m| {
+                            m.id == tool_id
+                                && matches!(
+                                    m.handler,
+                                    ph2d_tool_registry::ToolHandler::Stateful { .. }
+                                )
+                        })
+                    })
+                    .unwrap_or(false);
+                if hero.image_edit.mode_on
+                    && is_stateful_image_tool
+                    && tools.set_active(&ph2d_editor::ToolId::new(tool_id))
+                {
+                    self.title_dirty = true;
+                    if tool_id == "bgremoval" {
+                        self.last_bgremoval_pushed_entity = None;
+                    }
+                    if let Some(active) = tools.active() {
+                        toasts.push(Toast::info(format!("Tool · {}", active.label())));
+                    }
+                }
             }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
             // TopBar Image Tools toggle (`image_edit.mode_on`) and the

@@ -71,11 +71,27 @@ fn crate_loc(crate_name: &str) -> Option<usize> {
 
 /// Locate the `{ ... }` body of `pub <kind> <name>` (enum or struct).
 /// Returns the body slice between the outermost braces, or None.
+///
+/// **Tuple-struct guard (audit 2026-05-26 A-1):** `pub struct X(...)` é
+/// newtype tuple e NÃO tem body `{}`. Sem o guard, `find_decl_body` saltava
+/// para o próximo `{` no source (geralmente de outro struct/enum) e
+/// retornava body errado silenciosamente. Agora detectamos `(` antes do
+/// primeiro `{` no slice pós-prefix e retornamos `None` (tuple-struct
+/// não tem fields nominais para contar).
 fn find_decl_body<'a>(src: &'a str, kind: &str, name: &str) -> Option<&'a str> {
     let prefix = format!("pub {} {}", kind, name);
     let start = src.find(&prefix)?;
-    // Skip optional generics + where clause until '{'.
-    let body_start = start + src[start..].find('{')?;
+    // Tail após "pub <kind> <name>" — check para tuple-struct.
+    let tail = &src[start + prefix.len()..];
+    let paren_pos = tail.find('(');
+    let brace_pos = tail.find('{');
+    match (paren_pos, brace_pos) {
+        (Some(p), Some(b)) if p < b => return None, // tuple-struct (kind="struct")
+        (Some(_), None) => return None,             // tuple-struct sem braces depois
+        (None, None) => return None,                // declaração inválida
+        _ => {}                                     // brace antes — body normal
+    }
+    let body_start = start + prefix.len() + brace_pos.unwrap();
     let body_start_inner = body_start + 1;
     let bytes = src.as_bytes();
     let mut depth = 1usize;
@@ -94,6 +110,40 @@ fn find_decl_body<'a>(src: &'a str, kind: &str, name: &str) -> Option<&'a str> {
         i += 1;
     }
     None
+}
+
+/// Strip Rust line comments (`//`, `///`, `//!`) and block comments
+/// (`/* … */`) from a source string. Returns owned String with comment
+/// content elided (replaced by single space to preserve byte offsets
+/// approximately). Used by [`assert_absent_in_code`] to skip false
+/// positives in doc-comments (audit 2026-05-26 F10).
+fn strip_comments(src: &str) -> String {
+    let mut out = String::with_capacity(src.len());
+    let bytes = src.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        // Line comment: skip to end of line.
+        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'/' {
+            while i < bytes.len() && bytes[i] != b'\n' {
+                out.push(' ');
+                i += 1;
+            }
+            continue;
+        }
+        // Block comment: skip until "*/".
+        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'*' {
+            i += 2;
+            while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                out.push(' ');
+                i += 1;
+            }
+            i = (i + 2).min(bytes.len());
+            continue;
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
 }
 
 /// Count enum variants in `pub enum <name>`. None = enum not found (vacuous).
@@ -157,7 +207,12 @@ fn assert_contains(crate_name: &str, needle: &str, ctx: &str) {
     );
 }
 
-/// Assert a textual needle is ABSENT. `None` = vacuous.
+/// Assert a textual needle is ABSENT (legacy — busca raw including comments).
+/// Prefer [`assert_absent_in_code`] que ignora comments para evitar falsos
+/// positivos em docstrings (audit 2026-05-26 F10).
+///
+/// `None` = vacuous (crate absent).
+#[allow(dead_code)]
 #[track_caller]
 fn assert_absent(crate_name: &str, needle: &str, ctx: &str) {
     let src = crate_source(crate_name);
@@ -167,6 +222,26 @@ fn assert_absent(crate_name: &str, needle: &str, ctx: &str) {
     assert!(
         !src.contains(needle),
         "[{}] forbidden needle `{}` found in `{}`",
+        ctx,
+        needle,
+        crate_name
+    );
+}
+
+/// Assert a textual needle is ABSENT do CÓDIGO REAL (não em comments).
+/// `None` = vacuous (crate absent). Audit 2026-05-26 F10: gates como
+/// `no_retroactive_window_constant` precisam detectar a constante usada
+/// em code, não em doc que mencione "obsoleto MAX_RETROACTIVE_MOD_WINDOW".
+#[track_caller]
+fn assert_absent_in_code(crate_name: &str, needle: &str, ctx: &str) {
+    let src = crate_source(crate_name);
+    if src.is_empty() {
+        return;
+    }
+    let stripped = strip_comments(&src);
+    assert!(
+        !stripped.contains(needle),
+        "[{}] forbidden needle `{}` found in `{}` source (excluding comments)",
         ctx,
         needle,
         crate_name
@@ -709,7 +784,9 @@ mod inspector {
     #[test]
     fn no_retroactive_window_constant() {
         // ADR-0048 §2.6 — dirty-rect propagation FULL v1; SEM MAX_RETROACTIVE_MOD_WINDOW.
-        assert_absent(
+        // Use `assert_absent_in_code` para ignorar menções em doc-comments
+        // (audit 2026-05-26 F10).
+        assert_absent_in_code(
             CRATE,
             "MAX_RETROACTIVE_MOD_WINDOW",
             "MAX_RETROACTIVE_MOD_WINDOW removed (ADR-0048 §2.6 rework regra perfeição)",
@@ -1003,6 +1080,35 @@ mod meta {
         assert!(count_enum_variants("ph2d-tool-nonexistent-xyzzy", "FooBar").is_none());
         assert!(count_struct_fields("ph2d-tool-nonexistent-xyzzy", "FooBar").is_none());
         assert!(crate_loc("ph2d-tool-nonexistent-xyzzy").is_none());
+    }
+
+    #[test]
+    fn helper_returns_none_for_tuple_struct() {
+        // Audit 2026-05-26 A-1: tuple-struct sem body {} retornaria body
+        // do PRÓXIMO struct/enum se sem guard. Verificamos via
+        // ph2d-tool-painter::BrushHandle stub (tuple struct).
+        // Espera-se None (não Some(body of próximo decl).
+        let actual = count_struct_fields("ph2d-tool-painter", "BrushHandle");
+        // BrushHandle em params.rs:24 é `pub struct BrushHandle(pub u32);`
+        // — tuple-struct. Guard A-1 retorna None.
+        assert_eq!(
+            actual, None,
+            "tuple-struct BrushHandle must yield None (A-1 guard); got {:?}",
+            actual
+        );
+    }
+
+    #[test]
+    fn helper_strip_comments_works() {
+        // Audit 2026-05-26 F10: strip_comments deve elidir line + block
+        // comments, preservando code real.
+        let src = "// comment\nlet x = 1;\n/* block\nmulti\nline */let y = 2;";
+        let stripped = strip_comments(src);
+        assert!(!stripped.contains("comment"), "line comment must be elided");
+        assert!(!stripped.contains("block"), "block comment must be elided");
+        assert!(!stripped.contains("multi"), "block multi-line elided");
+        assert!(stripped.contains("let x"), "code preserved");
+        assert!(stripped.contains("let y"), "code after block comment preserved");
     }
 
     #[test]

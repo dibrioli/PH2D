@@ -111,13 +111,13 @@ mod tests {
         "trim_transparency",
         "make_square",
         "bgremoval",
-        "painter",
         "real_size",
         "padding",
         "color_equalization",
         "equalize_sizes",
         "rasterize",
         "upscale",
+        "painter",
         // <ph2d-tool-sync:image-tools-order:end>
         ];
         assert_eq!(ids, expected);

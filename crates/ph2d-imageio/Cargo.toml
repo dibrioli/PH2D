@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-imageio"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio` — foundational contract crate for image import/export
+# (ADR-0054, W0.T1). Defines the `ImageImporter` / `ImageExporter` traits,
+# the `DecodedImage` enum, `ImageBuffer<P>`, `ExportOpts`, `Error`,
+# `ColorProfile` and `MagicHint`.
+#
+# Lives in its own crate (not inside `ph2d-editor-core`) so that format
+# crates (`crates/ph2d-imageio-<slug>/`) can depend on it without creating
+# a cycle through `ph2d-editor-core`. Mirror of `ph2d-tool-registry`'s
+# separation rationale.
+#
+# Per HR-1 platform-agnostic, per ADR-0022 deterministic iteration
+# (no `HashMap` in public surface). Per ADR-0054 §2.1, the trait
+# surfaces below are FROZEN by the arch-gate
+# `tests/architecture_imageio_contract_surface.rs`.
+
+[dependencies]
+# ph2d-color — `SrgbRgba` (8-bit sRGB wire), `LinearRgba` (HDR float),
+# `OklchColor` (canonical Painter internal). Single source of truth for
+# colour types crossing the imageio boundary; ADR-0054 §2.3.
+ph2d-color = { path = "../ph2d-color" }

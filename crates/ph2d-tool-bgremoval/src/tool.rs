@@ -61,7 +61,16 @@ pub const THUMB_SIZE: u32 = 160;
 /// copy of the source downscaled to fit this box (aspect preserved, no
 /// letterbox) instead — keeping slider drags smooth. Apply still bakes
 /// at full source resolution via [`BgRemovalTool::run_full_resolution`].
-pub const PREVIEW_MAX_DIM: u32 = 512;
+///
+/// Enio 2026-05-26: "preciso da ferramenta atuando na imagem real em
+/// tempo real" — bumped from 512 to `u32::MAX` so the preview pipeline
+/// runs at the SAME resolution as Apply. Preview output is now
+/// byte-identical to Apply (no downsample-induced anti-alias drift,
+/// no silhouette resolution mismatch). Trade-off: slider drags on
+/// large sources (≥ 2K²) become laggy because every tick re-runs the
+/// full-res pipeline. Accepted by the user as the cost of "live on
+/// the real image".
+pub const PREVIEW_MAX_DIM: u32 = u32::MAX;
 
 // NodeId range 500..599 reserved for bgremoval panel controls
 // (clear of 100..199 brush/move and 1000..1099 grid_snap).
@@ -2122,15 +2131,17 @@ mod tests {
     }
 
     #[test]
-    fn canvas_preview_caps_resolution_and_runs() {
+    fn canvas_preview_runs_at_source_resolution() {
+        // PREVIEW_MAX_DIM was lifted to u32::MAX 2026-05-26 so the
+        // live preview pipeline is byte-identical to Apply (no
+        // downscale-induced anti-alias / silhouette divergence).
+        // The preview now passes the source through at native res.
         let mut t = BgRemovalTool::default();
-        // 1024×512 source → capped to PREVIEW_MAX_DIM on the long axis.
         let buf = vec![255u8; 1024 * 512 * 4];
         t.set_source_snapshot(bytemuck::allocation::cast_vec(buf), 1024, 512);
         let mut out = Vec::new();
         let (cw, ch) = t.run_canvas_preview(&mut out);
-        assert_eq!(cw, PREVIEW_MAX_DIM);
-        assert_eq!(ch, PREVIEW_MAX_DIM / 2);
+        assert_eq!((cw, ch), (1024, 512), "preview now runs at source dims");
         assert_eq!(out.len(), (cw as usize) * (ch as usize) * 4);
     }
 

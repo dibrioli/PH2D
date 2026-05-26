@@ -419,12 +419,7 @@ pub fn paint_context_menu_overlay(
         // the Unicode U+25B6 / U+203A trailing character. Enio
         // 2026-05-25: "usando emojis e não ícones".
         if matches!(req.kind, ContextMenuKind::SettingsMenu) {
-            let chev = Rect::new(
-                r.x + r.w - pad_x - icon_size,
-                icon_y,
-                icon_size,
-                icon_size,
-            );
+            let chev = Rect::new(r.x + r.w - pad_x - icon_size, icon_y, icon_size, icon_size);
             paint_icon(
                 scene,
                 IconId::ChevronRight,

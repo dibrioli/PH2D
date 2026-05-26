@@ -90,11 +90,18 @@ impl crate::App {
                 //   ↳ TRANSPARENT clear so any pixel the editor scene
                 //   doesn't paint stays α=0 and the compositor reveals
                 //   `game_rt_ldr` through it.
+                //
+                // AA selection: the current TextRendering preset's
+                // `prefer_msaa` flag drives whether Vello uses MSAA16
+                // (smoother glyph edges; CrispHeavyPlus) or its
+                // default Area analytical coverage (Default + CrispHeavy).
+                let prefer_msaa = ph2d_editor::paint::text_rendering().params().prefer_msaa;
                 if let Err(e) = vello_pass.render_to_intermediate(
                     surface.gpu(),
                     vector_scene.inner(),
                     (window_size.width, window_size.height),
                     VelloColor::TRANSPARENT,
+                    prefer_msaa,
                 ) {
                     eprintln!("M14.5 vello_pass.render_to_intermediate error: {e}");
                 }

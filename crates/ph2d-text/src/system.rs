@@ -31,6 +31,16 @@ use parley::{
 /// the axis range are clamped by skrifa.
 const OPSZ_TAG: u32 = tag_from_bytes(b"opsz");
 
+/// OpenType axis tag for "Weight" (`wght`). MUST be pushed alongside
+/// `opsz` in the `FontVariations` array — `StyleProperty::FontVariations`
+/// REPLACES the implicit axis settings that parley would otherwise
+/// derive from `StyleProperty::FontWeight`. Without an explicit `wght`
+/// entry, variable fonts (Inter Variable) fall back to the font's
+/// default weight (~Regular 400) regardless of the FontWeight selection,
+/// making FontWeight bumps invisible — exactly the "Crisp Heavy looks
+/// identical to Crisp" symptom seen on 2026-05-25.
+const WGHT_TAG: u32 = tag_from_bytes(b"wght");
+
 /// Inter Variable (v4.0, SIL OFL) — bundled so chrome text rasterizes
 /// to the same glyphs everywhere, independent of installed system fonts.
 /// Inter was designed for screen rendering without LCD subpixel AA,
@@ -45,18 +55,20 @@ const INTER_VARIABLE_TTF: &[u8] = include_bytes!("../fonts/InterVariable.ttf");
 /// future fontique breaking change, etc.) so we never panic at startup.
 const INTER_FAMILY: &str = "InterVariable";
 
-/// Cache key for a shaped layout. The layout is fully determined by the
-/// text, size, wrap width, and weight (the font stack + opsz variation
-/// are fixed per `TextSystem` / derived from `font_size`), so these four
-/// fields are an exact identity — no collision risk (unlike a hashed
-/// key). f32s are stored as raw bits so the key is `Eq + Ord` (workspace
-/// clippy bans `HashMap` per ADR-0022, so this is a `BTreeMap` key).
+/// Cache key for a shaped layout. The layout is fully determined by
+/// text, size, wrap width, weight, and letter-spacing (the font stack
+/// and opsz variation are fixed per `TextSystem` / derived from
+/// `font_size`), so these fields are an exact identity — no collision
+/// risk (unlike a hashed key). f32s are stored as raw bits so the key
+/// is `Eq + Ord` (workspace clippy bans `HashMap` per ADR-0022, so this
+/// is a `BTreeMap` key).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct LayoutCacheKey {
     text: String,
     font_size_bits: u32,
     max_width_bits: u32,
     weight_bits: u32,
+    letter_spacing_px_bits: u32,
 }
 
 /// Cap on cached shaped layouts. Steady-state UI text (panel labels, row
@@ -64,6 +76,36 @@ struct LayoutCacheKey {
 /// NumberInput/TextInput buffer) generates unique keys, so the cache is
 /// cleared wholesale once it overflows to bound memory. // LITERAL-OK: cache budget
 const LAYOUT_CACHE_CAP: usize = 1024;
+
+// Thread-local global text-rendering strategy. Lives here (not in
+// `ph2d-editor-core::paint`) so `TextSystem::prefix_width` can read it
+// internally — that fixes the caret-position bug where measurements
+// (which set caret X) used Medium 500 while glyphs rendered with the
+// boosted weight (ExtraBold 800) under CrispHeavy/Plus. Caret would
+// drift into the right-hand glyphs because the measurement underestimated
+// the advance.
+//
+// The thread-local is OWNED here; `ph2d-editor-core::paint` re-exposes
+// it via `set_text_rendering` / `text_rendering` thin wrappers so the
+// public API surface in that crate stays unchanged.
+thread_local! {
+    static ACTIVE_TEXT_RENDERING: std::cell::Cell<ph2d_tokens::TextRendering> =
+        const { std::cell::Cell::new(ph2d_tokens::TextRendering::Default) };
+}
+
+/// Set the active text-rendering strategy for the current thread.
+/// Called by the shell once per frame from `paint::set_text_rendering`,
+/// which delegates here. Read by `TextSystem::prefix_width` so
+/// measurements match what `paint_text*` will render.
+pub fn set_active_text_rendering(mode: ph2d_tokens::TextRendering) {
+    ACTIVE_TEXT_RENDERING.with(|c| c.set(mode));
+}
+
+/// Read the active text-rendering strategy. Defaults to
+/// `TextRendering::Default`.
+pub fn active_text_rendering() -> ph2d_tokens::TextRendering {
+    ACTIVE_TEXT_RENDERING.with(|c| c.get())
+}
 
 pub struct TextSystem {
     font_context: FontContext,
@@ -164,6 +206,33 @@ impl TextSystem {
         self.layout_with_weight(text, font_size, max_width, FontWeight::MEDIUM)
     }
 
+    /// Like [`Self::layout_with_weight`] but applies the
+    /// [`ph2d_tokens::TextRendering`] strategy: in `Default` it is
+    /// identical to `layout_with_weight(text, size, max_width, weight)`;
+    /// in Crisp/CrispHeavy/CrispHeavyPlus it bumps the nominal weight
+    /// by [`ph2d_tokens::crisp_weight_boost_for`] before shaping AND
+    /// applies the preset's `letter_spacing_em_dense` for body sizes.
+    /// Both affect shaping (advance widths) — must enter BEFORE the
+    /// parley layout, not after.
+    pub fn layout_for_rendering(
+        &mut self,
+        text: &str,
+        font_size: f32,
+        max_width: f32,
+        weight_nominal: FontWeight,
+        rendering: ph2d_tokens::TextRendering,
+    ) -> Layout<()> {
+        let effective_weight_val = effective_weight(weight_nominal, font_size, rendering);
+        let letter_spacing_px = effective_letter_spacing_px(font_size, rendering);
+        self.layout_inner(
+            text,
+            font_size,
+            max_width,
+            effective_weight_val,
+            letter_spacing_px,
+        )
+    }
+
     /// Like [`Self::layout`] but with an explicit `weight`. Use for
     /// titles (SemiBold 600) — diagonals in glyphs like "y" / "k" /
     /// "v" don't hint to the pixel grid cleanly at small sizes without
@@ -178,11 +247,26 @@ impl TextSystem {
         max_width: f32,
         weight: FontWeight,
     ) -> Layout<()> {
+        self.layout_inner(text, font_size, max_width, weight, 0.0)
+    }
+
+    /// Private builder. Single source of truth for the parley layout
+    /// path + cache. Other entry points (`layout`, `layout_with_weight`,
+    /// `layout_for_rendering`) are thin wrappers.
+    fn layout_inner(
+        &mut self,
+        text: &str,
+        font_size: f32,
+        max_width: f32,
+        weight: FontWeight,
+        letter_spacing_px: f32,
+    ) -> Layout<()> {
         let key = LayoutCacheKey {
             text: text.to_string(),
             font_size_bits: font_size.to_bits(),
             max_width_bits: max_width.to_bits(),
             weight_bits: weight.value().to_bits(),
+            letter_spacing_px_bits: letter_spacing_px.to_bits(),
         };
         if let Some(cached) = self.layout_cache.get(&key) {
             // Hit: clone the shaped layout (skips shape + line-break +
@@ -207,16 +291,28 @@ impl TextSystem {
         // bump to 600 for crisp diagonals. The variable axis lets
         // skrifa interpolate exactly without a separate font file.
         builder.push_default(StyleProperty::FontWeight(weight));
-        // Drive Inter's optical-size axis from the actual render
-        // size: at 12-14 px we get the heavier "Text" cut (better
-        // GPU rasterization without subpixel AA), at 20+ px the
-        // "Display" cut (tighter, more elegant proportions).
-        // `font_size` falls outside [14, 32] for headings/sub-text;
-        // skrifa clamps to the axis range so this is safe.
-        let variations = [FontVariation {
-            tag: OPSZ_TAG,
-            value: font_size,
-        }];
+        // Optional letter-spacing (in DIPs / px). 0.0 = no adjustment.
+        // CrispHeavyPlus uses negative values at small sizes to tighten
+        // the density that ExtraBold naturally opens.
+        if letter_spacing_px != 0.0 {
+            builder.push_default(StyleProperty::LetterSpacing(letter_spacing_px));
+        }
+        // Drive Inter's optical-size + weight axes explicitly. The
+        // opsz axis maps to render size (Text cut at 12-14 px → Display
+        // cut at 20+ px); `font_size` outside [14, 32] is clamped by
+        // skrifa. The wght axis MUST be pushed here — see WGHT_TAG
+        // docstring — otherwise `StyleProperty::FontWeight` selections
+        // are silently ignored on variable fonts.
+        let variations = [
+            FontVariation {
+                tag: OPSZ_TAG,
+                value: font_size,
+            },
+            FontVariation {
+                tag: WGHT_TAG,
+                value: weight.value(),
+            },
+        ];
         builder.push_default(StyleProperty::FontVariations(FontSettings::List(
             Cow::Borrowed(&variations),
         )));
@@ -244,21 +340,53 @@ impl TextSystem {
     /// Strategy: layout `prefix + SENTINEL`, then subtract the
     /// sentinel's width measured in isolation. The sentinel is a
     /// non-whitespace glyph so parley never trims it.
+    ///
+    /// **Uses the active `TextRendering` strategy** (read from the
+    /// `active_text_rendering()` thread-local) — without that, body
+    /// text caret in CrispHeavy/CrispHeavyPlus drifts INTO the next
+    /// glyph because measurements use Medium 500 while glyphs render
+    /// with the boosted weight. The fix is invisible to callers (same
+    /// signature, no new params).
     pub fn prefix_width(&mut self, prefix: &str, font_size: f32) -> f32 {
         if prefix.is_empty() {
             return 0.0;
         }
-        // Fast path: prefix has no trailing space → the plain
-        // layout already returns the correct width.
+        let rendering = active_text_rendering();
+        // Fast path: prefix has no trailing space → the plain layout
+        // (now rendering-aware) already returns the correct width.
         if !prefix.ends_with(' ') && !prefix.ends_with('\t') {
-            return self.layout(prefix, font_size, f32::INFINITY).width();
+            return self
+                .layout_for_rendering(
+                    prefix,
+                    font_size,
+                    f32::INFINITY,
+                    FontWeight::MEDIUM,
+                    rendering,
+                )
+                .width();
         }
         const SENTINEL: &str = "|";
         let mut combined = String::with_capacity(prefix.len() + SENTINEL.len());
         combined.push_str(prefix);
         combined.push_str(SENTINEL);
-        let w_with = self.layout(&combined, font_size, f32::INFINITY).width();
-        let w_sentinel = self.layout(SENTINEL, font_size, f32::INFINITY).width();
+        let w_with = self
+            .layout_for_rendering(
+                &combined,
+                font_size,
+                f32::INFINITY,
+                FontWeight::MEDIUM,
+                rendering,
+            )
+            .width();
+        let w_sentinel = self
+            .layout_for_rendering(
+                SENTINEL,
+                font_size,
+                f32::INFINITY,
+                FontWeight::MEDIUM,
+                rendering,
+            )
+            .width();
         (w_with - w_sentinel).max(0.0)
     }
 }
@@ -280,6 +408,47 @@ fn register_inter(font_context: &mut FontContext) -> Option<&'static str> {
         return None;
     }
     Some(INTER_FAMILY)
+}
+
+/// Min/max valid CSS font weights (parley/skrifa clamp to this range
+/// downstream; we clamp here for predictable test assertions and to
+/// keep the `FontWeight::new(...)` value within the spec-defined band).
+const WEIGHT_MIN: f32 = 100.0;
+const WEIGHT_MAX: f32 = 900.0;
+
+/// Compute the effective `FontWeight` given the nominal weight, font
+/// size, and rendering strategy. Reads the preset's
+/// `TextRenderingParams` once and dispatches through
+/// [`ph2d_tokens::crisp_weight_boost_for`]. `Default` returns the
+/// nominal unchanged because its params are all-zero. Result is
+/// clamped to `[100, 900]`.
+fn effective_weight(
+    nominal: FontWeight,
+    font_size: f32,
+    rendering: ph2d_tokens::TextRendering,
+) -> FontWeight {
+    let boost = ph2d_tokens::crisp_weight_boost_for(rendering.params(), font_size);
+    if boost == 0 {
+        return nominal;
+    }
+    let raw = nominal.value() + boost as f32;
+    FontWeight::new(raw.clamp(WEIGHT_MIN, WEIGHT_MAX))
+}
+
+/// Compute the effective letter-spacing (in DIPs / px) for the given
+/// font size + rendering strategy. The preset declares
+/// `letter_spacing_em_dense` (in ems) which is applied ONLY at body
+/// sizes (≤16 px) — large sizes don't need the tightening. Convert
+/// em→px by multiplying by `font_size`. Default and CrispHeavy both
+/// return 0.0 (no spacing change); CrispHeavyPlus returns a small
+/// negative at body sizes.
+const LETTER_SPACING_BODY_MAX_PX: f32 = 16.0;
+fn effective_letter_spacing_px(font_size: f32, rendering: ph2d_tokens::TextRendering) -> f32 {
+    let p = rendering.params();
+    if p.letter_spacing_em_dense == 0.0 || font_size > LETTER_SPACING_BODY_MAX_PX {
+        return 0.0;
+    }
+    p.letter_spacing_em_dense * font_size
 }
 
 #[cfg(test)]
@@ -363,6 +532,92 @@ mod tests {
             (10.0..40.0).contains(&height),
             "layout height {height} px out of expected range for 16 px font"
         );
+    }
+
+    /// Diagnostic: dump glyph widths for the same text at 8 weights.
+    /// Use `cargo test -p ph2d-text -- --nocapture diag_weight_widths`
+    /// to see the numbers. If widths don't change, the wght FontVariation
+    /// isn't actually driving Inter's variable axis.
+    #[test]
+    fn diag_weight_widths() {
+        let mut sys = TextSystem::without_system_fonts();
+        let text = "Inspector Hierarchy 0123";
+        eprintln!("\n=== weight diagnostic: '{text}' @ 11px ===");
+        for w in [300.0_f32, 400.0, 500.0, 550.0, 600.0, 700.0, 800.0, 900.0] {
+            let layout = sys.layout_with_weight(text, 11.0, f32::INFINITY, FontWeight::new(w));
+            eprintln!("  wght={:>5.0}  width={:>7.2}", w, layout.width());
+        }
+    }
+
+    #[test]
+    fn rendering_default_is_passthrough_weight() {
+        let mut sys = TextSystem::without_system_fonts();
+        let a = sys.layout_with_weight("Hello", 11.0, f32::INFINITY, FontWeight::MEDIUM);
+        let b = sys.layout_for_rendering(
+            "Hello",
+            11.0,
+            f32::INFINITY,
+            FontWeight::MEDIUM,
+            ph2d_tokens::TextRendering::Default,
+        );
+        assert_eq!(a.width(), b.width());
+        assert_eq!(a.height(), b.height());
+    }
+
+    #[test]
+    fn rendering_crisp_heavy_bumps_weight_in_body() {
+        let mut sys = TextSystem::without_system_fonts();
+        let a = sys.layout_with_weight("WWWWWW", 11.0, f32::INFINITY, FontWeight::MEDIUM);
+        let b = sys.layout_for_rendering(
+            "WWWWWW",
+            11.0,
+            f32::INFINITY,
+            FontWeight::MEDIUM,
+            ph2d_tokens::TextRendering::CrispHeavy,
+        );
+        // Boost of +300 (Medium 500 → ExtraBold 800) at 11 px gives Inter
+        // significantly heavier strokes → measurably wider advance over
+        // 6× W. Strict `>` (not `>=`) because the body tier guarantees
+        // a real bump, not just snap-X behavior.
+        assert!(
+            b.width() > a.width(),
+            "CrispHeavy layout must be wider than default at small sizes; default={} crisp_heavy={}",
+            a.width(),
+            b.width()
+        );
+    }
+
+    #[test]
+    fn rendering_crisp_heavy_no_op_at_large_size() {
+        let mut sys = TextSystem::without_system_fonts();
+        let a = sys.layout_with_weight("Hello", 32.0, f32::INFINITY, FontWeight::MEDIUM);
+        let b = sys.layout_for_rendering(
+            "Hello",
+            32.0,
+            f32::INFINITY,
+            FontWeight::MEDIUM,
+            ph2d_tokens::TextRendering::CrispHeavy,
+        );
+        // Boost is 0 above 20 px → identical to default.
+        assert_eq!(a.width(), b.width());
+    }
+
+    #[test]
+    fn effective_weight_default_passthrough() {
+        let nominal = FontWeight::MEDIUM;
+        let out = effective_weight(nominal, 11.0, ph2d_tokens::TextRendering::Default);
+        assert_eq!(out.value(), nominal.value());
+    }
+
+    #[test]
+    fn effective_weight_crisp_heavy_clamps_to_900() {
+        // FontWeight::BLACK is 900; +300 boost would overshoot to 1200.
+        let out = effective_weight(
+            FontWeight::BLACK,
+            11.0,
+            ph2d_tokens::TextRendering::CrispHeavy,
+        );
+        assert_eq!(out.value(), WEIGHT_MAX);
     }
 
     #[test]

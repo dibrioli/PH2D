@@ -119,7 +119,14 @@ pub(super) fn paint_topbar_rail_chip(
     // gate doesn't fire here. `icon_tint(state)` inside `paint_icon_button`
     // produces the same Text2/Text1/Accent/TextDisabled mapping the
     // hand-rolled `fg` branch did.
-    paint_icon_button(chip_rect, glyph, IconButtonStyle::Plain, state, scene, theme);
+    paint_icon_button(
+        chip_rect,
+        glyph,
+        IconButtonStyle::Plain,
+        state,
+        scene,
+        theme,
+    );
     // --- Label band: sits directly above the chip (gap mirrors the
     // rail's `LABEL_TO_CHIP_GAP_PX`).
     let label_rect = Rect::new(chip_col.x, stack_y, chip_col.w, label_band_h);
@@ -184,7 +191,12 @@ pub(super) fn paint_top_bar_cluster(
     // ONLY for Theme + Project. Single/Play/Right delegate to
     // `paint_topbar_rail_chip`, which paints its own per-chip surface.
     let paint_wide_chip = |scene: &mut VectorScene| {
-        fill_rounded_rect(scene, inner, Radius::Sm.px(), resolve(ColorToken::BgElev, theme));
+        fill_rounded_rect(
+            scene,
+            inner,
+            Radius::Sm.px(),
+            resolve(ColorToken::BgElev, theme),
+        );
         stroke_rounded_rect(
             scene,
             inner,

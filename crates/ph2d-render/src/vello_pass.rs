@@ -108,28 +108,40 @@ impl VelloPass {
     /// **without** the final blit onto a surface view. The intermediate
     /// stays available via [`intermediate_view`](Self::intermediate_view)
     /// so a downstream compositor can read it as a texture binding.
+    ///
+    /// `prefer_msaa` selects between `AaConfig::Msaa16` (more samples
+    /// per pixel; smoother glyph edges in unhinted text renderings) and
+    /// the default `AaConfig::Area` (analytical coverage; smoother for
+    /// thin vector strokes). Shells read the current text-rendering
+    /// preset's `prefer_msaa` flag before calling.
     pub fn render_to_intermediate(
         &mut self,
         gpu: &GpuContext,
         scene: &Scene,
         size: (u32, u32),
         bg_color: Color,
+        prefer_msaa: bool,
     ) -> Result<(), String> {
         self.ensure_size(gpu, size);
         let params = RenderParams {
             base_color: bg_color,
             width: self.last_size.0,
             height: self.last_size.1,
-            // M14.5 round 8: `Area` analytical coverage. MSAA16
-            // produced visible stippling on thin (1-1.5 px) strokes
-            // at near-axis angles — the 16 fixed sample positions
-            // hit-or-miss the stroke in patterns that read as
-            // pixelation. `Area` integrates coverage analytically
-            // per pixel, smoother for thin strokes and cheaper
-            // than MSAA16. The earlier "Area looks low-rez" note
-            // pre-dated the gamma-correct compositor + glyph-snap
-            // fixes; in the current pipeline Area wins.
-            antialiasing_method: AaConfig::Area,
+            // Default: `Area` analytical coverage. MSAA16 produced
+            // visible stippling on thin (1-1.5 px) vector strokes at
+            // near-axis angles — `Area` integrates coverage analytically
+            // per pixel, smoother for thin strokes and cheaper.
+            // CrispHeavyPlus opts INTO `Msaa16` because at body sizes
+            // with `hint=off`, more samples per pixel smooths the glyph
+            // edges noticeably without re-introducing stipple (glyphs
+            // aren't 1-1.5 px strokes at near-axis angles — the
+            // problem case is vectors). Renderer is initialized with
+            // `AaSupport::all()` so both are available.
+            antialiasing_method: if prefer_msaa {
+                AaConfig::Msaa16
+            } else {
+                AaConfig::Area
+            },
         };
         self.renderer
             .render_to_texture(

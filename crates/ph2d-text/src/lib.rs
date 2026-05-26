@@ -22,4 +22,4 @@
 pub mod system;
 
 pub use parley::{FontContext, FontWeight, Layout, LayoutContext, PositionedLayoutItem};
-pub use system::TextSystem;
+pub use system::{TextSystem, active_text_rendering, set_active_text_rendering};

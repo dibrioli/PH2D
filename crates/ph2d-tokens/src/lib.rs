@@ -67,5 +67,6 @@ pub use spacing::{Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing};
 pub use stroke::StrokeToken;
 pub use theme::{PanelLayout, Theme};
 pub use typography::{
-    FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight, TypeToken,
+    FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight, SnapX,
+    TextRendering, TextRenderingParams, TypeToken, crisp_weight_boost_for,
 };

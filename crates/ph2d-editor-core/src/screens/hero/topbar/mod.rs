@@ -320,12 +320,7 @@ pub fn paint_top_bar(
             let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
             let stack_y = layout.viewport.y + Spacing::Xxs.px();
             let chip_y = stack_y + label_band_h + label_to_chip_gap;
-            let chip_rect = Rect::new(
-                rect.x + (rect.w - chip_px) * 0.5,
-                chip_y,
-                chip_px,
-                chip_px,
-            );
+            let chip_rect = Rect::new(rect.x + (rect.w - chip_px) * 0.5, chip_y, chip_px, chip_px);
             stroke_rounded_rect(
                 scene,
                 chip_rect,
@@ -446,8 +441,8 @@ fn paint_image_action_row(
     // Image-tool chips share the same column width + inter-chip gap
     // as the topbar's Play / Right clusters.
     let chip_count = pills.len() as f32;
-    let total_w = TOPBAR_RAIL_CHIP_W * chip_count
-        + TOPBAR_INTER_CHIP_GAP * (chip_count - 1.0).max(0.0);
+    let total_w =
+        TOPBAR_RAIL_CHIP_W * chip_count + TOPBAR_INTER_CHIP_GAP * (chip_count - 1.0).max(0.0);
     let start_x = layout.top_bar.x + layout.top_bar.w - total_w;
     let col_stride = TOPBAR_RAIL_CHIP_W + TOPBAR_INTER_CHIP_GAP;
     // Single agrupador backdrop spanning ALL image-tool pills (Enio

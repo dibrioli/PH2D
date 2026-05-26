@@ -79,36 +79,27 @@ thread_local! {
     static RADIUS_SCALE: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
 }
 
-// Thread-local global text-rendering strategy. Lets the user pick
-// Default / Crisp in the Settings ▸ Text rendering submenu and have
-// every `paint_text*` call (99+ sites across panels and chrome)
-// apply the strategy uniformly without threading it through every
-// signature. Set via `set_text_rendering` before paint, read via
-// `text_rendering`. Defaults to `TextRendering::Default` so any
-// non-paint context (tests, scrambled call orders) gets the historic
-// look. Mirrors the `RADIUS_SCALE` pattern above.
-thread_local! {
-    static TEXT_RENDERING: std::cell::Cell<ph2d_tokens::TextRendering> =
-        const { std::cell::Cell::new(ph2d_tokens::TextRendering::Default) };
-}
-
 /// Set the global radius scale for the current thread (paint runs).
 /// Clamped to non-negative; pass `1.0` to reset.
 pub fn set_radius_scale(scale: f32) {
     RADIUS_SCALE.with(|s| s.set(scale.max(0.0)));
 }
 
-/// Set the global text-rendering strategy for the current thread
-/// (paint runs). Called by the shell once per frame, mirroring
-/// `set_radius_scale`.
+/// Set the active text-rendering strategy for the current thread.
+/// Called by the shell once per frame, mirroring `set_radius_scale`.
+/// Delegates to `ph2d_text::set_active_text_rendering` — the canonical
+/// thread-local lives there so `TextSystem::prefix_width` can read it
+/// internally (fixing the caret-position bug under CrispHeavy where
+/// measurements used Medium 500 while glyphs render ExtraBold 800).
 pub fn set_text_rendering(mode: ph2d_tokens::TextRendering) {
-    TEXT_RENDERING.with(|c| c.set(mode));
+    ph2d_text::set_active_text_rendering(mode);
 }
 
-/// Read the current text-rendering strategy. Defaults to
-/// `TextRendering::Default`.
+/// Read the active text-rendering strategy. Delegates to
+/// `ph2d_text::active_text_rendering` — see `set_text_rendering` for
+/// why the state lives in ph2d-text.
 pub fn text_rendering() -> ph2d_tokens::TextRendering {
-    TEXT_RENDERING.with(|c| c.get())
+    ph2d_text::active_text_rendering()
 }
 
 /// Apply the snap strategy to a glyph X. `None` returns `x` unchanged

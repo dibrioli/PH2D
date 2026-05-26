@@ -143,6 +143,12 @@ pub enum ContextMenuKind {
     /// Selecting one raises `EditorAction::SetPresentMode` so the shell
     /// reconfigures the surface.
     SettingsDisplaySubmenu,
+    /// Submenu opened when the user picks "Text rendering" — switches
+    /// the chrome text strategy between `Default` (historic AA-only)
+    /// and `Crisp` (snap-X + per-tier FontWeight boost). Selecting one
+    /// writes `HeroScreen.text_rendering`; the next frame's
+    /// `set_text_rendering` publishes the choice to `paint_text*`.
+    SettingsTextSubmenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `super::WidgetStore::current_scene_name`.

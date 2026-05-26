@@ -48,6 +48,11 @@ nomes = "nomes"
 componentes = "componentes"
 seletor = "seletor"
 momento = "momento"
+# pt-BR feminino de "exato/exact" — aparece em comments citando o que
+# Enio falou ("matriz EXATA do rail").
+EXATA = "EXATA"
+exata = "exata"
+independente = "independente"
 # Technical terms that show up in shaders / numerics.
 texel = "texel"
 mipmap = "mipmap"

@@ -271,6 +271,48 @@ pub(crate) fn paint_eyedropper_swatches(
     y
 }
 
+/// "Detect subject" toggle — edge-aware silhouette upgrade (Enio
+/// 2026-05-26). Single accent-when-on button; the tool runs the
+/// silhouette detector on every pipeline tick while it's on,
+/// force-keeping every pixel inside the detected subject contour.
+/// Sits between the eyedropper swatches and the protection brush.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_auto_protect_subject(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    theme: Theme,
+    snapshot: &BgRemovalUiSnapshot,
+    inner_x: f32,
+    inner_w: f32,
+    row_h: f32,
+    row_gap: f32,
+    mut y: f32,
+) -> f32 {
+    let on = snapshot.auto_protect_subject;
+    let btn_state = if on {
+        ButtonState::Pressed
+    } else {
+        store
+            .button_state(ids::BGR_AUTO_PROTECT_SUBJECT)
+            .unwrap_or(ButtonState::Normal)
+    };
+    let btn_kind = if on {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let rect = Rect::new(inner_x, y, inner_w, row_h);
+    let btn = Button::new(ids::BGR_AUTO_PROTECT_SUBJECT, "Detect subject")
+        .kind(btn_kind)
+        .state(btn_state);
+    paint_button(&btn, rect, scene, text_system, theme);
+    hit_index.register(ids::BGR_AUTO_PROTECT_SUBJECT, rect);
+    y += row_h + row_gap;
+    y
+}
+
 /// Protection brush toggle + (armed) brush size & falloff + show-mask
 /// + (mask exists) clear button.
 #[allow(clippy::too_many_arguments)]

@@ -43,6 +43,7 @@ use ph2d_editor_core::widget::{Slider, Toggle};
 
 use super::algorithm::islands::{self, IslandPayload};
 use super::algorithm::run_pipeline;
+use super::algorithm::silhouette;
 use super::params::{
     BRUSH_SIZE_FULL_SCALE, BgRemovalParams, BgRemovalUiEdit, BgRemovalUiSnapshot, BrushFalloff,
     DEFAULT_BRUSH_SIZE01, FEATHER_FULL_SCALE, GROW_FULL_SCALE, MAX_EXTRA_BG_COLORS,
@@ -214,6 +215,14 @@ pub struct BgRemovalTool {
     /// `None` outside an active stroke; reset by
     /// [`Self::set_protect_painting`] on pointer-up.
     last_protect_uv: Option<(f32, f32)>,
+
+    /// `max(user_protect_mask_resized, auto_protect_mask)` — what
+    /// `algorithm::run_pipeline` actually receives as its `protect`
+    /// argument. Lives on the tool (not `scratch`) so a `&` of this
+    /// buffer coexists with the `&mut self.scratch` `run_pipeline`
+    /// needs. Sized lazily to the current `(w * h)` and reused across
+    /// runs (HR-3). Driven by [`Self::prepare_combined_protect`].
+    combined_protect: Vec<u8>,
 }
 
 impl Default for BgRemovalTool {
@@ -248,6 +257,7 @@ impl Default for BgRemovalTool {
             pending_islands: Vec::new(),
             cached_canvas_preview: None,
             last_protect_uv: None,
+            combined_protect: Vec::new(),
         }
     }
 }
@@ -671,12 +681,13 @@ impl BgRemovalTool {
     pub fn run_full_resolution(&mut self, out: &mut Vec<u8>) -> (u32, u32) {
         assert!(self.has_source(), "set_source_snapshot must run first");
         // The protection mask is stored at source resolution, so it
-        // aligns 1:1 with the full-res pipeline input.
-        let protect: Option<&[u8]> = if self.protect_mask.len()
-            == (self.source_w as usize) * (self.source_h as usize)
-            && !self.protect_mask.is_empty()
-        {
-            Some(self.protect_mask.as_slice())
+        // aligns 1:1 with the full-res pipeline input. The combined
+        // mask folds in `auto_protect_subject` when the toggle is on
+        // (edge-aware silhouette upgrade — Enio 2026-05-26).
+        let has_protect = self.prepare_combined_protect_full();
+        let protect: Option<&[u8]> = if has_protect {
+            let n = (self.source_w as usize) * (self.source_h as usize);
+            Some(&self.combined_protect[..n])
         } else {
             None
         };
@@ -733,11 +744,12 @@ impl BgRemovalTool {
             return (0, 0);
         }
         let (cw, ch) = (self.canvas_src_w, self.canvas_src_h);
-        let protect: Option<&[u8]> = if self.protect_mask.is_empty() {
-            None
+        let has_protect = self.prepare_combined_protect_canvas(cw, ch);
+        let protect: Option<&[u8]> = if has_protect {
+            let n = (cw as usize) * (ch as usize);
+            Some(&self.combined_protect[..n])
         } else {
-            self.resize_protect_into(cw, ch);
-            Some(self.canvas_protect.as_slice())
+            None
         };
         run_pipeline(
             &self.canvas_src_rgba,
@@ -750,6 +762,105 @@ impl BgRemovalTool {
         out.clear();
         out.extend_from_slice(&self.scratch.output_rgba);
         (cw, ch)
+    }
+
+    /// Fold the user-painted protect mask (source-resolution, byte
+    /// per pixel) and — when `auto_protect_subject` is on — the
+    /// edge-aware silhouette mask into [`Self::combined_protect`].
+    /// Returns `true` iff at least one source contributed any non-zero
+    /// pixel (so the caller can hand `None` to the pipeline when no
+    /// protect mask is in play).
+    ///
+    /// Runs at SOURCE resolution. The auto-protect step calls
+    /// [`algorithm::silhouette::detect_subject_interior`] each Apply —
+    /// not cached because Apply is rare and Reset/source-change
+    /// invalidations were noisier than the recompute (the silhouette
+    /// is ~30ms at 2048², well under the Apply time budget).
+    fn prepare_combined_protect_full(&mut self) -> bool {
+        if !self.has_source() {
+            return false;
+        }
+        let n = (self.source_w as usize) * (self.source_h as usize);
+        let has_user = self.protect_mask.len() == n && !self.protect_mask.is_empty();
+        let has_auto = self.params.auto_protect_subject;
+        if !has_user && !has_auto {
+            return false;
+        }
+        self.combined_protect.clear();
+        self.combined_protect.resize(n, 0);
+        if has_auto {
+            silhouette::detect_subject_interior(
+                &self.source_rgba,
+                self.source_w,
+                self.source_h,
+                &mut self.scratch.luma,
+                &mut self.scratch.sobel_mag,
+                &mut self.scratch.edge_a,
+                &mut self.scratch.edge_b,
+                &mut self.scratch.silhouette_visited,
+                &mut self.scratch.silhouette_queue,
+                &mut self.scratch.auto_protect_mask,
+            );
+            for i in 0..n {
+                if self.scratch.auto_protect_mask[i] > self.combined_protect[i] {
+                    self.combined_protect[i] = self.scratch.auto_protect_mask[i];
+                }
+            }
+        }
+        if has_user {
+            for i in 0..n {
+                if self.protect_mask[i] > self.combined_protect[i] {
+                    self.combined_protect[i] = self.protect_mask[i];
+                }
+            }
+        }
+        true
+    }
+
+    /// Canvas-preview variant: resamples the user protect mask down to
+    /// `(dw, dh)` and runs the silhouette directly on `canvas_src_rgba`
+    /// (cheap at preview resolution — ~3ms at 256² on M-series).
+    /// Returns `true` iff `combined_protect` is non-empty.
+    fn prepare_combined_protect_canvas(&mut self, dw: u32, dh: u32) -> bool {
+        let n = (dw as usize) * (dh as usize);
+        if n == 0 {
+            return false;
+        }
+        let has_user = !self.protect_mask.is_empty();
+        let has_auto = self.params.auto_protect_subject && !self.canvas_src_rgba.is_empty();
+        if !has_user && !has_auto {
+            return false;
+        }
+        self.combined_protect.clear();
+        self.combined_protect.resize(n, 0);
+        if has_auto {
+            silhouette::detect_subject_interior(
+                &self.canvas_src_rgba,
+                dw,
+                dh,
+                &mut self.scratch.luma,
+                &mut self.scratch.sobel_mag,
+                &mut self.scratch.edge_a,
+                &mut self.scratch.edge_b,
+                &mut self.scratch.silhouette_visited,
+                &mut self.scratch.silhouette_queue,
+                &mut self.scratch.auto_protect_mask,
+            );
+            for i in 0..n {
+                if self.scratch.auto_protect_mask[i] > self.combined_protect[i] {
+                    self.combined_protect[i] = self.scratch.auto_protect_mask[i];
+                }
+            }
+        }
+        if has_user {
+            self.resize_protect_into(dw, dh);
+            for i in 0..n {
+                if self.canvas_protect[i] > self.combined_protect[i] {
+                    self.combined_protect[i] = self.canvas_protect[i];
+                }
+            }
+        }
+        true
     }
 
     /// Nearest-resample the source-resolution protection mask into
@@ -907,6 +1018,7 @@ impl BgRemovalTool {
             min_island_pixels01: ((self.params.min_island_pixels.saturating_sub(1)) as f32
                 / (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0))
                 .clamp(0.0, 1.0),
+            auto_protect_subject: self.params.auto_protect_subject,
         }
     }
 
@@ -987,6 +1099,12 @@ impl BgRemovalTool {
                 // Apply time (run_full_resolution runs CCL on the baked
                 // output when the flag is on).
                 self.params.separate_islands = !self.params.separate_islands;
+            }
+            BgRemovalUiEdit::ToggleAutoProtectSubject => {
+                // Edge-aware silhouette upgrade. Affects every pipeline
+                // run, so the matte rebuilds on the next preview tick.
+                self.params.auto_protect_subject = !self.params.auto_protect_subject;
+                changed = true;
             }
             BgRemovalUiEdit::SetMinIslandPixels(v) => {
                 // Linear normalized → integer pixel count in
@@ -1181,6 +1299,10 @@ impl Tool for BgRemovalTool {
             // peer feature doesn't collide on `editor-core/src/ids.rs`.
             PanelEvent::Click(id) if id == crate::ids::BGR_SEPARATE_ISLANDS => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleSeparateIslands);
+                return;
+            }
+            PanelEvent::Click(id) if id == crate::ids::BGR_AUTO_PROTECT_SUBJECT => {
+                self.apply_ui_edit(BgRemovalUiEdit::ToggleAutoProtectSubject);
                 return;
             }
             PanelEvent::SetValue(id, v) if id == crate::ids::BGR_MIN_ISLAND_PX => {

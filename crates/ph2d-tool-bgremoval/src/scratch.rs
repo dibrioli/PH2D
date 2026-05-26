@@ -136,6 +136,29 @@ pub struct BgRemovalScratch {
     /// otherwise supports. Drained per-component then reused across
     /// components in the same run.
     pub island_queue: Vec<u32>,
+
+    /// ── Edge-aware subject silhouette buffers (Enio 2026-05-26
+    /// "Detect subject" upgrade — see [`algorithm::silhouette`]). All
+    /// sized `w*h`. Owned by the silhouette module; populated only
+    /// when the user toggles `auto_protect_subject` on. Zeroes after
+    /// `ensure` so a stale state is observable. ─────────────────
+    ///
+    /// Y' = 0.299R + 0.587G + 0.114B grayscale, Rec.601.
+    pub luma: Vec<u8>,
+    /// L1 Sobel magnitude on `luma` (u16 to keep headroom).
+    pub sobel_mag: Vec<u16>,
+    /// Edge mask after Otsu threshold + closing 3×3 (1 = edge).
+    /// Two buffers ping-pong during the dilate → erode closing.
+    pub edge_a: Vec<u8>,
+    pub edge_b: Vec<u8>,
+    /// Border-flood visit marker (1 = reached from any image border).
+    pub silhouette_visited: Vec<u8>,
+    /// DFS/BFS stack for `flood_from_border`.
+    pub silhouette_queue: Vec<u32>,
+    /// Final force-keep mask (255 = inside silhouette / on silhouette
+    /// edge, 0 = exterior). Merged with the user-painted protect mask
+    /// before the existing pipeline runs.
+    pub auto_protect_mask: Vec<u8>,
 }
 
 impl BgRemovalScratch {
@@ -163,6 +186,21 @@ impl BgRemovalScratch {
         self.output_rgba.resize(n * 4, 0);
         self.morph_alpha.resize(n, 0);
         self.bleed_valid.resize(n, 0);
+
+        // Silhouette buffers (Detect-subject path; allocated whether
+        // or not the toggle is on so the tool can flip it without
+        // re-allocating mid-stroke).
+        self.luma.resize(n, 0);
+        self.sobel_mag.resize(n, 0);
+        self.edge_a.resize(n, 0);
+        self.edge_b.resize(n, 0);
+        self.silhouette_visited.resize(n, 0);
+        if self.silhouette_queue.capacity() < n {
+            let need = n - self.silhouette_queue.capacity();
+            self.silhouette_queue.reserve(need);
+        }
+        self.silhouette_queue.clear();
+        self.auto_protect_mask.resize(n, 0);
 
         let span_cap = (w as usize).saturating_mul(4);
         if self.spans.capacity() < span_cap {

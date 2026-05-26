@@ -167,6 +167,16 @@ pub struct BgRemovalParams {
     /// fragments, large enough to drop single-pixel speckle from anti-aliased
     /// edges).
     pub min_island_pixels: u32,
+    /// When true, runs the edge-aware silhouette detector
+    /// ([`crate::algorithm::silhouette`]) before the existing chroma
+    /// pipeline and force-keeps every pixel inside the detected
+    /// subject silhouette (Enio 2026-05-26: "evita retirar cores no
+    /// interior do assunto" — the case where bg colour also appears
+    /// inside the subject). The chroma + compose stages are NOT
+    /// modified — they just receive a richer force-keep mask
+    /// combining the user-painted protect mask with the auto-detected
+    /// silhouette interior. Off by default.
+    pub auto_protect_subject: bool,
 }
 
 impl Default for BgRemovalParams {
@@ -181,6 +191,7 @@ impl Default for BgRemovalParams {
             extra_bg_colors: Vec::new(),
             separate_islands: false,
             min_island_pixels: DEFAULT_MIN_ISLAND_PIXELS,
+            auto_protect_subject: false,
         }
     }
 }
@@ -289,6 +300,9 @@ pub struct BgRemovalUiSnapshot {
     /// `display_override`; storage stays in normalized `0..1` space so
     /// the canonical `link_slider_number` clamp engages.
     pub min_island_pixels01: f32,
+    /// Mirrors [`BgRemovalParams::auto_protect_subject`]. Drives the
+    /// "Detect subject" toggle button's pressed look in the panel.
+    pub auto_protect_subject: bool,
 }
 
 impl Default for BgRemovalUiSnapshot {
@@ -315,6 +329,7 @@ impl Default for BgRemovalUiSnapshot {
             separate_islands: p.separate_islands,
             min_island_pixels01: (p.min_island_pixels.saturating_sub(1) as f32)
                 / (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0),
+            auto_protect_subject: p.auto_protect_subject,
         }
     }
 }
@@ -373,6 +388,10 @@ pub enum BgRemovalUiEdit {
     /// extra-bg picks, painted protection mask). Fired by the panel's
     /// Reset button AND by the tool's `on_activate`.
     ResetAll,
+    /// "Detect subject" toggle clicked — flips
+    /// [`BgRemovalParams::auto_protect_subject`] (edge-aware silhouette
+    /// upgrade; Enio 2026-05-26).
+    ToggleAutoProtectSubject,
 }
 
 #[cfg(test)]

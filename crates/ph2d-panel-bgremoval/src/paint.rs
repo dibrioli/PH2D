@@ -18,8 +18,8 @@
 //! (each helper takes `y_in: f32` and returns `y_out: f32`).
 
 use crate::paint_sections::{
-    paint_apply_cta, paint_eyedropper_swatches, paint_grow_shrink, paint_islands,
-    paint_protect_brush, paint_slider_rows,
+    paint_apply_cta, paint_auto_protect_subject, paint_eyedropper_swatches, paint_grow_shrink,
+    paint_islands, paint_protect_brush, paint_slider_rows,
 };
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
 use crate::{BgRemovalPanel, ids};
@@ -174,6 +174,9 @@ fn paint_body_sections(
         chip_w, y,
     );
     y = paint_eyedropper_swatches(
+        scene, text_system, store, hit_index, theme, snapshot, inner_x, inner_w, row_h, row_gap, y,
+    );
+    y = paint_auto_protect_subject(
         scene, text_system, store, hit_index, theme, snapshot, inner_x, inner_w, row_h, row_gap, y,
     );
     y = paint_protect_brush(

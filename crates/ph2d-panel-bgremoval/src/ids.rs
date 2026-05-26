@@ -21,5 +21,5 @@ pub use ph2d_editor_core::ids::{
 };
 
 pub use ph2d_tool_bgremoval::ids::{
-    BGR_MIN_ISLAND_PX, BGR_MIN_ISLAND_PX_NUM, BGR_SEPARATE_ISLANDS,
+    BGR_AUTO_PROTECT_SUBJECT, BGR_MIN_ISLAND_PX, BGR_MIN_ISLAND_PX_NUM, BGR_SEPARATE_ISLANDS,
 };

@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-imageio-ph2d-native"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-ph2d-native` — Painter native `.ph2d` save format
+# (W1.T5). Container: 52-byte header + postcard payload + blake3
+# integrity check. Preserves all 5 DecodedImage variants
+# (Flat / FlatHdr / Layered / Animated / Vector) lossless round-trip.
+# HR-14 versioned (Ph2dNativeV1 today; migrate_v{N}_to_v{N+1} chain
+# scaffold for the inevitable schema diff).
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+# Binary serialization (deterministic, fast, no_std-compatible).
+postcard = { version = "1", default-features = false, features = ["alloc"] }
+# Content-addressed identity (HR-6).
+blake3 = { version = "1", default-features = false }
+# Serde infrastructure for the wire schema.
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }

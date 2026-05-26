@@ -646,4 +646,107 @@ mod tests {
             Ktx2Error::UnsupportedDimensionality { reason } if reason.contains("array")
         ));
     }
+
+    // ── positive round-trip via synthetic fixture ──────────────────
+    //
+    // The dev box has no `.ktx2` files lying around and we don't want
+    // to commit a binary fixture before there's an asset pipeline
+    // contract for it. The upstream `ktx2` crate exposes enough public
+    // API (`Basic::from_format`, `Block::to_vec`, `Header::as_bytes`,
+    // `LevelIndex::as_bytes`) to build a fully valid KTX2 file in
+    // memory — that proves our decoder accepts spec-compliant input,
+    // not just rejects garbage.
+
+    /// Build a minimal valid KTX2 buffer: 2D RGBA8_SRGB, 1×1 px, 1 mip,
+    /// no supercompression, no KVD, no SGD. Pixel = `[0xFF, 0x00,
+    /// 0x80, 0xFF]` (hot magenta with full alpha) so the round-trip
+    /// is observable.
+    fn build_synthetic_rgba8_srgb_1x1() -> Vec<u8> {
+        use ktx2::dfd::{Basic, Block};
+        use ktx2::{Format, Header, Index, LevelIndex};
+
+        // DFD section: 4-byte total-size prefix + serialized Basic block.
+        let (basic, type_size) =
+            Basic::from_format(Format::R8G8B8A8_SRGB).expect("R8G8B8A8_SRGB is a known format");
+        let block_bytes = Block::Basic(basic).to_vec();
+        let dfd_total_size: u32 = u32::try_from(4 + block_bytes.len()).expect("DFD fits in u32");
+        let mut dfd_section = Vec::with_capacity(dfd_total_size as usize);
+        dfd_section.extend_from_slice(&dfd_total_size.to_le_bytes());
+        dfd_section.extend_from_slice(&block_bytes);
+
+        // Layout: header (80) + level index (24 × 1) + DFD + level data.
+        // Level data is aligned to lcm(4, texel_block_size) per spec; for
+        // uncompressed RGBA8 that's 4.
+        let level_index_offset: u32 = 80;
+        let dfd_byte_offset: u32 = level_index_offset + 24;
+        let dfd_byte_length: u32 = u32::try_from(dfd_section.len()).expect("DFD len fits in u32");
+        let level_data_offset_raw = dfd_byte_offset + dfd_byte_length;
+        let level_data_offset = (level_data_offset_raw + 3) & !3;
+        let level_data_length: u64 = 4; // 1 px × 4 bytes RGBA8
+
+        let header = Header {
+            format: Some(Format::R8G8B8A8_SRGB),
+            type_size,
+            pixel_width: 1,
+            pixel_height: 1,
+            pixel_depth: 0,
+            layer_count: 0,
+            face_count: 1,
+            level_count: 1,
+            supercompression_scheme: None,
+            index: Index {
+                dfd_byte_offset,
+                dfd_byte_length,
+                kvd_byte_offset: 0,
+                kvd_byte_length: 0,
+                sgd_byte_offset: 0,
+                sgd_byte_length: 0,
+            },
+        };
+
+        let level_index = LevelIndex {
+            byte_offset: u64::from(level_data_offset),
+            byte_length: level_data_length,
+            uncompressed_byte_length: level_data_length,
+        };
+
+        let total_len = level_data_offset as usize + level_data_length as usize;
+        let mut buf = vec![0u8; total_len];
+        buf[0..80].copy_from_slice(&header.as_bytes());
+        buf[80..104].copy_from_slice(&level_index.as_bytes());
+        buf[dfd_byte_offset as usize..(dfd_byte_offset + dfd_byte_length) as usize]
+            .copy_from_slice(&dfd_section);
+        // Hot magenta — distinguishable from zeroed padding.
+        buf[level_data_offset as usize..level_data_offset as usize + 4]
+            .copy_from_slice(&[0xFF, 0x00, 0x80, 0xFF]);
+
+        buf
+    }
+
+    #[test]
+    fn decode_synthetic_rgba8_1x1_round_trips() {
+        let bytes = build_synthetic_rgba8_srgb_1x1();
+        let image = decode_ktx2_bytes(&bytes).expect("valid synthetic file decodes");
+
+        assert_eq!(image.format, Ktx2Format::Rgba8UnormSrgb);
+        assert_eq!(image.width, 1);
+        assert_eq!(image.height, 1);
+        assert_eq!(image.mip_levels.len(), 1);
+
+        let mip = &image.mip_levels[0];
+        assert_eq!(mip.width, 1);
+        assert_eq!(mip.height, 1);
+        assert_eq!(mip.data.as_ref(), &[0xFF, 0x00, 0x80, 0xFF]);
+    }
+
+    #[test]
+    fn decode_synthetic_format_classifies_correctly() {
+        // Same buffer drives the classifier helpers — sanity-check that
+        // an end-to-end decoded RGBA8_SRGB is reported as uncompressed
+        // SDR (the SDR atlas path in the future renderer).
+        let bytes = build_synthetic_rgba8_srgb_1x1();
+        let image = decode_ktx2_bytes(&bytes).expect("decodes");
+        assert!(!image.format.is_compressed());
+        assert!(!image.format.is_hdr());
+    }
 }

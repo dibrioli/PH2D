@@ -145,7 +145,12 @@ impl Default for UpscaleUiSnapshot {
 /// [`crate::UpscaleTool::handle_panel_event`], which maps the
 /// `NodeId` back to one of these variants and forwards it to
 /// `apply_ui_edit`. Single source of truth for clamping.
+///
+/// **Audit T1.6 R9 V1-H2:** `#[non_exhaustive]` mirrors the
+/// `BgRemovalUiEdit` precedent (R7 I1-1, commit `5f7680c`) — adding a
+/// variant downstream stays semver-additive for external `match`.
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum UpscaleUiEdit {
     /// Algorithm dropdown / segmented selection changed.
     SetAlgorithm(UpscaleAlgorithm),

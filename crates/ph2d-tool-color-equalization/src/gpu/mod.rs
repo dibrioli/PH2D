@@ -42,6 +42,7 @@ pub mod auto_wb;
 pub mod bilateral;
 pub mod chain;
 pub mod lut_apply;
+pub mod nlm;
 pub mod sharpen;
 pub mod tonal_batch;
 
@@ -49,6 +50,7 @@ pub use auto_wb::{AutoWbPipelines, auto_white_balance_gpu};
 pub use bilateral::{BilateralPipeline, bilateral_denoise_gpu};
 pub use chain::ChainedPipelineCache;
 pub use lut_apply::{LutApplyPipeline, apply_lut3d_gpu};
+pub use nlm::{NlmPipeline, nlm_denoise_gpu};
 pub use sharpen::{
     LaplacianSharpenPipeline, UnsharpSharpenPipeline, sharpen_laplacian_gpu, sharpen_unsharp_gpu,
 };

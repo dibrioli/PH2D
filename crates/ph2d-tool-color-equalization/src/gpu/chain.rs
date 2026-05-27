@@ -69,6 +69,10 @@ pub struct ChainedPipelineCache {
     pub tonal: TonalBatchPipeline,
     pub lut: LutApplyPipeline,
     pub bilateral: BilateralPipeline,
+    /// Non-Local Means denoise (Tier S, parity with legacy
+    /// `denoise-webgl.ts`). Selected at chain dispatch by
+    /// `params.denoise_method`.
+    pub nlm: super::nlm::NlmPipeline,
     pub laplacian: LaplacianSharpenPipeline,
     pub unsharp: UnsharpSharpenPipeline,
     pub auto_wb: AutoWbPipelines,
@@ -80,6 +84,7 @@ impl ChainedPipelineCache {
             tonal: TonalBatchPipeline::new(gpu),
             lut: LutApplyPipeline::new(gpu),
             bilateral: BilateralPipeline::new(gpu),
+            nlm: super::nlm::NlmPipeline::new(gpu),
             laplacian: LaplacianSharpenPipeline::new(gpu),
             unsharp: UnsharpSharpenPipeline::new(gpu),
             auto_wb: AutoWbPipelines::new(gpu),
@@ -208,15 +213,30 @@ impl ChainedPipelineCache {
                 }
             }
             if needs_bilateral {
-                self.bilateral.encode_into(
-                    gpu,
-                    &mut encoder,
-                    pong_view(current_in, &input_view, &view_a, &view_b),
-                    pong_view(current_out, &input_view, &view_a, &view_b),
-                    w,
-                    h,
-                    params.denoise_strength,
-                );
+                match params.denoise_method {
+                    crate::params::DenoiseMethod::Bilateral => {
+                        self.bilateral.encode_into(
+                            gpu,
+                            &mut encoder,
+                            pong_view(current_in, &input_view, &view_a, &view_b),
+                            pong_view(current_out, &input_view, &view_a, &view_b),
+                            w,
+                            h,
+                            params.denoise_strength,
+                        );
+                    }
+                    crate::params::DenoiseMethod::Nlm => {
+                        self.nlm.encode_into(
+                            gpu,
+                            &mut encoder,
+                            pong_view(current_in, &input_view, &view_a, &view_b),
+                            pong_view(current_out, &input_view, &view_a, &view_b),
+                            w,
+                            h,
+                            params.denoise_strength,
+                        );
+                    }
+                }
                 stages += 1;
                 last_written = current_out;
                 (current_in, current_out) = advance(current_in, current_out);

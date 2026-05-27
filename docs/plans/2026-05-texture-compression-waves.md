@@ -275,9 +275,22 @@ Quando destrancado:
 
 ---
 
-## §Open Issues / Vapor Dependencies (Round 3 Lente E findings deferidos para W1+)
+## §Open Issues / Vapor Dependencies (Lente E findings deferidos para W1+)
 
-Round 3 Lente E (test-coverage gates + enforceability) identificou que múltiplos gates prometidos no ADR-0055 §9 **dependem de runtimes/abstractions vapor** ou são **declarativos sem enforcement real**. Round 4 (esta sessão) NÃO resolve estes — são endereçados wave-by-wave quando dependências materializarem. ADR-0055 fica **Proposed** (não Accepted) até resolução.
+13 vapor dependencies catalogadas — dependências **adjacentes** ao escopo deste ADR. NÃO bloqueiam W1.T0 (regra `[[feedback-perfection-no-deferrals]]` refinada com escopo decisão-atual vs adjacente). Cada uma tem owner identificado (ADR slot reservado, wave de resolução, ou wontfix). ADR-0055-v4 é **Accepted** apesar destas — gates declarativos sem enforcement viraram Architecture-as-Code conforme ADR §5.
+
+### §Open Issues — Status verified sweep-grep 2026-05-27 noite (pré-W1.T0)
+
+| Issue | Status | Mudança desde Round 3 |
+|---|---|---|
+| **E3** Plugin trait + PluginBuilder::declare_budget | ❌ vapor (0 matches `trait Plugin\b`) | nenhuma |
+| **E4** release-game feature | ❌ vapor (0 matches em Cargo.toml) | nenhuma |
+| **E5** ph2d-i18n Fluent runtime + `t!()` macro | 🟡 **parcial** — crate skeleton existe (`crates/ph2d-i18n/`); zero `.ftl` files; FluentBundle só em comentários de teste; macro `t!()` vapor | crate skeleton MATERIALIZOU |
+| **E8** AssetWatcher .ktx2 extension | ❌ ainda hardcoded `is_png_extension` em `crates/ph2d-asset/src/watcher.rs:29/143/178` | nenhuma |
+
+(E1/E2/E6/E7/E9/E10/E11/E12/E13 não re-verificados nesta sessão — leitor de próxima sessão re-grep antes de W1.T1 conforme regra `feedback-audit-internal-state-grep`.)
+
+---
 
 ### E1 — `count_enum_variants` silently-passing pattern (foundational)
 **Problema**: Helper em `painter-contracts/tests/architecture_painter_contract_surface.rs` retorna `Option<usize>`; gates como `color_profile_variant_count_is_exact_8` / `device_tier_variant_count_is_exact_5` usam `if let Some(n) = ...` → **silenciosamente passam quando enum não existe**. ADR-0055 introduz mais gates desta família (`device_tier_variant_count_is_exact_5` quando DeviceTier materializar, futuros gates ao redor de TierIndex/PremulIntent).

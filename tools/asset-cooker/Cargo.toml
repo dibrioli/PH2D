@@ -28,3 +28,9 @@ serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 postcard = { version = "1", features = ["alloc"] }
 clap = { version = "4", features = ["derive"] }
+# Texture compression cooker — ADR-0055-v4 (Accepted 2026-05-27).
+# Multi-encoder unificado (bc7e ISPC, astcenc, etcpak, Compressonator, Intel ISPC)
+# via Connor Fitzgerald (wgpu core contributor). Lib API consumida em W1.T1.
+# Encoders C/C++ vendored aceitáveis sob critério HR-1 §2.7.1 (offline-only,
+# never embarcado em release-game bundle). Audit do source em W1.T2.
+ctt = "0.4.0"

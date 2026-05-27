@@ -112,6 +112,51 @@ impl VectorScene {
         transform: Affine,
         quality: ImageQuality,
     ) {
+        self.draw_image_rgba_with_alpha(
+            rgba,
+            width,
+            height,
+            transform,
+            quality,
+            ImageAlphaType::Alpha,
+        );
+    }
+
+    /// Like [`Self::draw_image_rgba_transformed`] but treats the input
+    /// RGBA as ALREADY premultiplied — Vello won't multiply again
+    /// before sampling. Use when the caller has produced premultiplied
+    /// bytes via the SAME formula the sprite renderer uses (the
+    /// canonical `ph2d_render::premultiply_rgba8`), so the overlay
+    /// composites byte-identically to the Apply path (Enio 2026-05-26:
+    /// "linha clara contornando a forma" was Vello's internal premul
+    /// rounding diverging from the wgpu shader's at sub-pixel edges).
+    pub fn draw_image_rgba_premultiplied_transformed(
+        &mut self,
+        rgba: &Arc<Vec<u8>>,
+        width: u32,
+        height: u32,
+        transform: Affine,
+        quality: ImageQuality,
+    ) {
+        self.draw_image_rgba_with_alpha(
+            rgba,
+            width,
+            height,
+            transform,
+            quality,
+            ImageAlphaType::AlphaPremultiplied,
+        );
+    }
+
+    fn draw_image_rgba_with_alpha(
+        &mut self,
+        rgba: &Arc<Vec<u8>>,
+        width: u32,
+        height: u32,
+        transform: Affine,
+        quality: ImageQuality,
+        alpha_type: ImageAlphaType,
+    ) {
         if width == 0 || height == 0 {
             return;
         }
@@ -121,7 +166,7 @@ impl VectorScene {
         let image = ImageData {
             data: Blob::new(rgba.clone()),
             format: ImageFormat::Rgba8,
-            alpha_type: ImageAlphaType::Alpha,
+            alpha_type,
             width,
             height,
         };

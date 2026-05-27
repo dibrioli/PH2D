@@ -250,21 +250,29 @@ pub(super) fn dispatch(
                 camera,
                 window_size,
             );
-            // Force bilinear (Medium) instead of the user's image-filter
-            // setting. The Vello bicubic kernel (selected by `Smooth`)
-            // overshoots on sharp alpha transitions — anti-aliased
-            // silhouette edges end up with R/G/B above 255 (clamped),
-            // reading as a brighter halo than the wgpu sprite shader
-            // produces from the same RGBA at Apply time (Enio 2026-05-26:
-            // "antes do apply uma linha clara contornando a forma.
-            // depois do apply some"). Bilinear has no negative lobes,
-            // so the overlay edge tones match Apply.
+            // Premultiply on the Rust side using the SAME formula the
+            // sprite renderer uses (`ph2d_render::premultiply_rgba8`,
+            // which is `into_premultiplied()` byte-for-byte), then
+            // hand the result to Vello as `AlphaPremultiplied`. That
+            // forces both paths (Vello overlay AND wgpu sprite shader)
+            // to composite the EXACT same byte values — no internal
+            // Vello premul rounding to diverge from the shader's.
+            //
+            // Enio 2026-05-26: "antes do apply uma linha clara
+            // contornando a forma. depois do apply some". The light
+            // halo was straight-alpha RGB at edge pixels being
+            // interpolated DIFFERENTLY by Vello's internal premul
+            // pass than by the sprite shader's. Premultiplying upfront
+            // closes that gap.
+            let mut premul_bytes = (*preview.rgba).clone();
+            ph2d_render::premultiply_rgba8(&mut premul_bytes);
+            let premul_arc = Arc::new(premul_bytes);
             let quality = match hero.project.image_filter {
                 ph2d_editor::ImageFilterMode::PixelArt => ImageQuality::Low,
                 ph2d_editor::ImageFilterMode::Smooth => ImageQuality::Medium,
             };
-            vector_scene.draw_image_rgba_transformed(
-                &preview.rgba,
+            vector_scene.draw_image_rgba_premultiplied_transformed(
+                &premul_arc,
                 preview.width,
                 preview.height,
                 img_to_screen,

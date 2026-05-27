@@ -25,6 +25,7 @@
 
 mod hierarchy;
 mod image_edit;
+mod sprite_merge;
 pub(crate) mod texture_edit;
 mod view;
 
@@ -34,4 +35,5 @@ pub(crate) use image_edit::{
     drain_padding, drain_painter, drain_rasterize, drain_trim_transparency, drain_undo_image_edit,
     drain_upscale,
 };
+pub(crate) use sprite_merge::{drain_merge_sprites, take_last_merge_result};
 pub(crate) use view::drain_view_focus;

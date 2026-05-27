@@ -79,7 +79,7 @@ Batch B (1 slot dedicado, sequencial após A — PSD é gargalo):
 
 ## WAVE 3 — HDR + next-gen + vetorial · PARALELO intra-onda
 
-### W3 pre-gates (Coord-A, 1 sessão) ✅ FECHADOS 2026-05-26 commit `f71f16a` + audit-remediation `[remediation-pending]`
+### W3 pre-gates (Coord-A, 1 sessão) ✅ FECHADOS 2026-05-26 commit `f71f16a` + audit-remediation `35cc149`
 
 3 gates pré-fan-out aplicados ao código já shipado de W1/W2 antes de abrir W3:
 
@@ -87,7 +87,7 @@ Batch B (1 slot dedicado, sequencial após A — PSD é gargalo):
 - **Gate 2 — Hex-baked Tier-1 fixtures**: APNG multi-frame, TIFF CMYK (K=0 + K>0 arms) + RGBA16 (endpoints + mid), ORA group nesting com 2 children. Real decoder paths agora exercitados; substring matches eliminados.
 - **Gate 3 — Golden blake3 hashes (single-platform Mac aarch64)**: PNG/TIFF/ORA/APNG têm `export_golden_blake3_local_drift_pinned_macos_silicon` gateados por `#[cfg]`. Scope = LOCAL drift guard apenas; CI matrix passa por `#[cfg]` gate. Multi-platform pinning deferido até primeira divergência observada. Vide ADR §2.6.1.
 
-**Auditoria W3.T0** (5-lens 2026-05-26): 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW; fechados inline em commit `[remediation-pending]`. Vide ADR §5.5.
+**Auditoria W3.T0** (5-lens 2026-05-26): 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW; fechados inline em commit `35cc149`. Vide ADR §5.5.
 
 ### W3.0 — Pré-fan-out (Coord-A, 1 sessão) — HDR + Vector ativos
 

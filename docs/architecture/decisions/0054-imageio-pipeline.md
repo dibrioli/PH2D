@@ -323,6 +323,28 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.3** nova auditoria pós-W3.T0.2 | ✅ | `2a41a0b` | 1 P0 (§5 row drift) + 6 HIGH (ColorProfile::Custom vapor + GIF semantica + EOF helper adoption parcial + APNG multi-frame test gap + math/docs drift + fmt P-mine) + 17 MEDIUM (test coverage 8 fixes + caps hoist + EOF gaps + variant context) + 12 LOW — vide §5.8 |
 | **W3.T0.4** nova auditoria pós-W3.T0.3 | ✅ | `cde3e44` | 1 CRITICAL (ORA `parse_stack` recursion DoS — uncatchable SIGSEGV via deep nesting) + 6 HIGH (caps hoist + GIF L-3 complete + fmt + tests count + 2 arquiteturais flag-pro-Enio) + 6 MEDIUM (zip-slip-via-XML + PsdDeny preventive + markdown drift + ORA layer count + ColorProfile::Srgb docs + deps tracking) + 10 LOW — vide §5.9 |
 | **W3.T0.5** nova auditoria pós-W3.T0.4 | ✅ | `4d7dfdd` | 1 CRITICAL (ORA `opacity` aceita `NaN`/`±Inf` — compositor poison + persiste no `.ph2d-native` save) + 1 HIGH meu (ZIP central directory amplification ~1.5 GiB) + 1 HIGH não-meu (X arquitetural: shells/desktop bypass imageio registry) + 2 MEDIUM (stack.xml `take(N)` cap + APNG test snake_case) — vide §5.10 |
+| **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `[remediation-pending]` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
+
+### 5.11 Convergence ratification — W3.T0.6 (2026-05-26)
+
+Auditoria adversarial 4-lente FINAL sobre commits `4d7dfdd` + `e366299` (W3.T0.5 remediation). Lentes especializadas em ângulos não-cobertos pelas 11 rondas anteriores:
+- **BB** race conditions / threading / async safety
+- **CC** hostile attribute combinations (combos, não single-attr)
+- **DD** git history coherence (35cc149..e366299)
+- **EE** ship.sh real-time MINE-ONLY (paridade CI)
+
+**Resultados:**
+
+- **BB GREEN** — 18 unit-struct drivers (9 importers + 9 exporters) + trait `Send + Sync + 'static` bound enforced; zero `static mut`/`lazy_static`/`OnceLock`/`Mutex`/`RwLock`/`RefCell`/`Cell` em todos os 11 crates; `psd 0.3.5` confirmado sem `thread::spawn`/`rayon`/`tokio` (catch_unwind suficiente); `ZipArchive<Cursor<&[u8]>>` re-entrante por instanciação per-call. Nenhum achado.
+- **CC 2 LOW forensic** — depth-check em `parse_stack` dispara ANTES de NaN-opacity check em deep-nested combos, mascarando intent malicioso pro engineering forensics (mensagem é "MAX_LAYER_DEPTH" em vez de "path traversal" / "NaN"). **Não é gap de segurança** — fail-fast no primeiro check é correto; sugestão de `tracing::warn!` deferida (imageio crates não importam `tracing`, decisão arquitetural).
+- **DD 2 doc gaps** — orphan T0.2 sem docs companion commit (funcionalmente fechado via row §5 inserida no audit-fix T0.3); plan W3.T0.5 placeholder `[remediation-pending]` não-substituído por `4d7dfdd`. Fix: substituição inline neste round.
+- **EE GREEN** — `cargo fmt --check`, `cargo clippy --all-targets -D warnings`, `typos`, `cargo machete`, `cargo test --tests` TODOS PASSAM isoladamente para os 11 crates. ship.sh real-time MINE-ONLY = GREEN. CI matrix push isolado seria verde (gap = outras sessões pendentes em painter-brush/asset-ktx2/shells/desktop).
+
+**PADRÃO-OURO RATIFICADO** ✓
+
+11 rounds de audit fechados; gates substantivos em runtime (caps OOM/recursion/NaN/path-traversal/ZIP-bomb); 141 tests Mac aarch64; ship.sh GREEN. Gap residual único = arquitetural não-meu (`shells/desktop/src/image_import.rs` bypass do registry, exige refactor de `ph2d-asset`).
+
+**Total Onda 2 pós-W3.T0.6**: 141 tests verdes Mac aarch64 (137 cross-OS, 4 goldens cfg-gated). Convergência declarada — próxima auditoria só justificável se mudança substantiva no código (ex.: W3 fan-out) ou se gap arquitetural for fechado.
 
 ### 5.10 Remediação pós-auditoria W3.T0.5 (2026-05-26)
 

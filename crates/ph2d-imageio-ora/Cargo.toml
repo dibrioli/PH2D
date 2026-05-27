@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-imageio-ora"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-ora` — OpenRaster (`.ora`) decode + encode (W2.T1).
+# Container: ZIP + `mimetype` (uncompressed STORE first) +
+# `stack.xml` (layer tree) + `data/layer<N>.png` + `mergedimage.png`.
+# Padrão aberto Krita/MyPaint — primeira ponte para fluxos de
+# illustration profissional fora do PSD.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+# Pure-Rust ZIP read/write. `default-features = false` keeps wasm
+# clean (no `time`, no `deflate64`).
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# Pure-Rust read-only XML parser; we hand-write the simple ORA XML
+# on export to avoid pulling a second XML dep.
+roxmltree = { version = "0.20", default-features = false }
+# PNG codec for the per-layer images embedded in the ZIP.
+image = { version = "0.25", default-features = false, features = ["png"] }

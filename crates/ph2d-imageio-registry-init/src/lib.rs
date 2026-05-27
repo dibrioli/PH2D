@@ -29,6 +29,7 @@ pub fn register_all_importers(reg: &mut ImporterRegistry) {
     // <ph2d-imageio-sync:importers:begin>
     ph2d_imageio_gif::register_importer(reg);
     ph2d_imageio_jpeg::register_importer(reg);
+    ph2d_imageio_ora::register_importer(reg);
     ph2d_imageio_ph2d_native::register_importer(reg);
     ph2d_imageio_png::register_importer(reg);
     ph2d_imageio_webp::register_importer(reg);
@@ -43,6 +44,7 @@ pub fn register_all_exporters(reg: &mut ExporterRegistry) {
     // <ph2d-imageio-sync:exporters:begin>
     ph2d_imageio_gif::register_exporter(reg);
     ph2d_imageio_jpeg::register_exporter(reg);
+    ph2d_imageio_ora::register_exporter(reg);
     ph2d_imageio_ph2d_native::register_exporter(reg);
     ph2d_imageio_png::register_exporter(reg);
     ph2d_imageio_webp::register_exporter(reg);

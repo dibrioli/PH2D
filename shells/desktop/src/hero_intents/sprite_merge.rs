@@ -268,7 +268,7 @@ pub(crate) fn drain_merge_sprites(
         .iter()
         .map(|s| s.world_max_y)
         .fold(f32::NEG_INFINITY, f32::max);
-    if !(union_max_x > union_min_x) || !(union_max_y > union_min_y) {
+    if union_max_x <= union_min_x || union_max_y <= union_min_y {
         toasts.push(Toast::error("Merge Sprites: degenerate union bounding box"));
         return true;
     }

@@ -358,6 +358,11 @@ impl crate::App {
             let mut add_child_row: Option<NodeId> = None;
             let mut reset_transform_row: Option<NodeId> = None;
             let mut delete_row: Option<NodeId> = None;
+            // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
+            // Carries the clicked row's `NodeId` (the merged sprite
+            // adopts that row's parent for Hierarchy placement); the
+            // drain reads the full multi-selection at apply time.
+            let mut merge_sprites_row: Option<NodeId> = None;
             let mut hierarchy_row_click: Option<NodeId> = None;
             let mut hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent> = None;
             let mut rename_seed_row: Option<NodeId> = None;
@@ -446,6 +451,9 @@ impl crate::App {
                     }
                     EditorAction::HierDelete { row } => {
                         delete_row.get_or_insert(row);
+                    }
+                    EditorAction::HierMergeSprites { row } => {
+                        merge_sprites_row.get_or_insert(row);
                     }
                     EditorAction::HierRowClick { row } => {
                         hierarchy_row_click.get_or_insert(row);
@@ -680,9 +688,9 @@ impl crate::App {
                         .unwrap_or(false);
                     if lost_painting {
                         toasts.push(Toast::warning(
-                            "Painter: pinturas não aplicadas foram descartadas \
-                             ao desligar Image Tools. Use Apply antes de \
-                             alternar o modo."
+                            "Painter: unflushed strokes were discarded when \
+                             Image Tools toggled off. Use Apply before \
+                             switching the mode."
                                 .to_string(),
                         ));
                     }
@@ -949,6 +957,74 @@ impl crate::App {
                 *sprite_type_id,
             ) {
                 self.title_dirty = true;
+            }
+            // Merge Sprites (Enio 2026-05-27, Hierarchy right-click).
+            // Drains BEFORE `image_edit::dispatch` so a same-frame
+            // image-edit on one of the originals (extremely unlikely
+            // path but documented) doesn't race with the despawn. The
+            // multi-selection comes from `hero.gizmo` — primary first,
+            // extras after. Right-clicked row resolves to the "primary
+            // anchor" the merged sprite parents under.
+            if let Some(row) = merge_sprites_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(primary_bits) = live.bridge.entity_for(row)
+            {
+                let in_selection = hero.gizmo.is_selected(primary_bits);
+                let selected_count = hero.gizmo.iter_selected().count();
+                // Audit B-M3: if the user right-clicked OUTSIDE the
+                // multi-selection (and they already had 2+ sprites
+                // selected), the previous behaviour silently fell back
+                // to "single-entity merge → <2 warning" which read as
+                // "select 2+ first" — misleading. Steer them to the
+                // actual fix.
+                if !in_selection && selected_count >= 2 {
+                    toasts.push(ph2d_editor::Toast::warning(
+                        "Merge Sprites: right-click on one of the selected sprites",
+                    ));
+                    self.title_dirty = true;
+                } else {
+                    let to_merge: Vec<u64> = if in_selection {
+                        hero.gizmo.iter_selected().collect()
+                    } else {
+                        vec![primary_bits]
+                    };
+                    if hero_intents::drain_merge_sprites(
+                        to_merge.clone(),
+                        primary_bits,
+                        hero.project.pixels_per_meter,
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                        toasts,
+                    ) {
+                        self.title_dirty = true;
+                    }
+                    // Clear merged entity_bits from gizmo so the global
+                    // gizmo doesn't paint over vanished entities
+                    // (mirror of Delete).
+                    for bits in &to_merge {
+                        if hero.gizmo.selection == Some(*bits) {
+                            hero.gizmo.selection = None;
+                        }
+                        hero.gizmo.extra_selection.retain(|b| b != bits);
+                    }
+                    // Audit B-H2: promote the freshly-spawned merged
+                    // entity to the selection so the user's next
+                    // action (Move, Apply tool, etc.) operates on the
+                    // merged result — matches Photoshop / Figma "after
+                    // merge, the merged layer IS the selection".
+                    if let Some(result) = hero_intents::take_last_merge_result() {
+                        hero.gizmo.replace_selection(Some(result.new_entity_bits));
+                    } else if hero.gizmo.selection.is_none()
+                        && !hero.gizmo.extra_selection.is_empty()
+                    {
+                        // Merge bailed before spawning — promote oldest
+                        // surviving extra (mirror of Delete's
+                        // headless-cleanup path).
+                        hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
+                    }
+                }
             }
             // Image-edit drain phase + file-picker import — extracted
             // to sibling `image_edit.rs` as a free fn (Wave 3.2 stage A).

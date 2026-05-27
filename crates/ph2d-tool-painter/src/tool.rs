@@ -12,15 +12,17 @@
 //! "primeira pintura visível" sem deferral funcional.
 //!
 //! T1.6 — Brush mature (shape variety + multi-stamp + rotation + color
-//! jitter). `ph2d-painter-brush` ganhou 3 procedural shape kernels com
-//! slot dispatch (`round_hard` slot 0, `round_soft` slot 1,
-//! `square_hard` slot 2), multi-stamp emission (`shape_count` 1..=16 +
-//! `shape_count_jitter`), rotation pipeline (`shape_rotation_follow` +
-//! `shape_scatter` + `shape_randomized`), flip bits (`shape_flip_x` /
-//! `shape_flip_y` aplicados ANTES da rotation em shape-local space), e
-//! Color Dynamics stamp-level jitter (hue/saturation/lightness/darkness
-//! com axis-tag isolation gate-proven). `PainterTool` API pública não
-//! muda — todas as novas capacidades são driven pelo `Brush.shape` +
+//! jitter). `ph2d-painter-brush` ganhou **4 procedural shape kernels**
+//! com slot dispatch (`round_hard` slot 0, `round_soft` slot 1,
+//! `square_hard` slot 2, `oval_hard` slot 3 — last added R4 V-2 como
+//! demo de `shape_rotation_follow` / calligraphic 2:1 oblong), multi-
+//! stamp emission (`shape_count` 1..=16 + `shape_count_jitter`),
+//! rotation pipeline (`shape_rotation_follow` + `shape_scatter` +
+//! `shape_randomized`), flip bits (`shape_flip_x` / `shape_flip_y`
+//! aplicados ANTES da rotation em shape-local space), e Color Dynamics
+//! stamp-level jitter (hue/saturation/lightness/darkness com axis-tag
+//! isolation gate-proven). `PainterTool` API pública não muda — todas
+//! as novas capacidades são driven pelo `Brush.shape` +
 //! `Brush.color_dynamics` que o tool já passa ao scheduler.
 //!
 //! W1 day 7 smoke: ativar Painter pill, clicar/arrastar no canvas → marcas
@@ -89,19 +91,32 @@
 //!   needed (whether "no hardcoded UI strings" covers toasts or only
 //!   widget labels). Painter is conforming to majority; no action.
 //!
-//! ## T1.6 audit follow-ups (rounds 1-5, 10 lentes distintas)
+//! ## T1.6 audit follow-ups (rounds 1-6, 13 lentes distintas)
 //!
-//! Round 1 (O atlas / P color / Q multi-stamp): 33 findings (0 Crit,
-//! 6 High, 15 Med, 12 Low). Round 2 (R regressions / S spec): 12
-//! findings (0 Crit, 0 High, 10 Med, 6 Low). Round 3 (T edge cases /
-//! U cross-OS HR-5 / W test quality / Z perf budget): 50 findings
-//! (3 Crit, 12 High, 23 Med, 12 Low). Round 4 (A1 R3-regression / V
-//! acceptance + ship readiness): 11 findings (3 Crit, 4 High, 6 Med,
-//! 4 Low). Round 5 (final verification, ≥2 fresh lenses): TBD.
+//! Round 1 (O atlas / P color / Q multi-stamp): **33 findings**
+//! (0 Crit, 6 High, 15 Med, 12 Low — sums 33 ✓).
+//! Round 2 (R regressions / S spec): **16 findings** (0 Crit, 0 High,
+//! 10 Med, 6 Low — sums 16 ✓; prior draft said "12" erroneously).
+//! Round 3 (T edge cases / U cross-OS HR-5 / W test quality / Z perf
+//! budget): **50 findings** (3 Crit, 12 High, 23 Med, 12 Low —
+//! sums 50 ✓).
+//! Round 4 (A1 R3-regression / V acceptance + ship readiness):
+//! **17 findings** (3 Crit, 4 High, 6 Med, 4 Low — sums 17 ✓; prior
+//! draft said "11" erroneously).
+//! Round 5 (B1 R4-regression / C1 acceptance verification):
+//! **10 findings** (0 Crit, 0 High, 4 Med, 6 Low — sums 10 ✓; padrão-
+//! ouro threshold atingido).
+//! Round 6 (D1 prod safety + panic surface / E1 recovery integrity /
+//! G1 doc cross-ref): **39 findings** (3 Crit, 7 High, 14 Med,
+//! 15 Low — sums 39; CRIT + HIGH remediated in-session here in R6
+//! close: lib.rs/cpu_render/tool.rs/shader doc drift "3→4 shapes"
+//! propagation + R2/R4 arithmetic fix + handoff §2.5 CI commits
+//! addendum + spec gate path footers + ToggleEyedropper mutex bypass
+//! fix in tool-bgremoval).
 //!
-//! **Cumulative T1.6 fingerprint**: 6 Crit + 22 High + 54 Med + 34
-//! Low = **116 findings across 5 rounds × 10 lenses**. All CRIT and
-//! HIGH remediated in-session (R3 + R4 + R5 fixes shipped):
+//! **Cumulative T1.6 fingerprint**: 9 Crit + 29 High + 72 Med + 55
+//! Low = **165 findings across 6 rounds × 13 lenses**. All CRIT and
+//! HIGH remediated in-session (R3 + R4 + R5 + R6 fixes shipped):
 //!
 //! R3: U-1 HR-5 language correction, U-2 det-painter feature flag plus
 //! arch-gate, Z-1 dhat HR-3 gate, T-1/T-2/U-5/U-10 finite guards,

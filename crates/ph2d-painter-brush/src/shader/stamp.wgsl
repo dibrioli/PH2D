@@ -163,6 +163,8 @@ fn oklab_to_linear_srgb(L: f32, a: f32, b: f32) -> vec3<f32> {
 //   0 = round_hard   (Hermite smoothstep on radial 0.85..=1.0)
 //   1 = round_soft   ((1 - d²)² radial — Gaussian-equivalent)
 //   2 = square_hard  (Chebyshev distance + smoothstep 0.90..=1.0)
+//   3 = oval_hard    (2:1 stretched radial — calligraphic pen-nib for
+//                     `shape_rotation_follow`; added R4 V-2)
 //
 // `smooth_t` (not `smooth`) — `smooth` is a reserved WGSL keyword (sampler
 // interpolation qualifier in fragment inputs).

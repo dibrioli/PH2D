@@ -80,6 +80,27 @@ pub fn run_pipeline(
     let segment_result =
         chroma::segment(rgba, w, h, &params.chroma, &params.extra_bg_colors, scratch);
 
+    // Step 1.5 — "Add area" injection (Enio 2026-05-27 "a área nova
+    // não é sujeita a ajustes finais com os sliders"). The user's
+    // flood-filled connected region enters the pipeline HERE, as hard
+    // background — `mask[i] = 0` + `delta_e[i] = 0` — instead of being
+    // capped at the end of compose. That puts every force-removed
+    // pixel through the SAME downstream path as the auto-detected bg:
+    // the Refine guided filter smooths its edge, Grow morphology
+    // grows / shrinks it, despill scrubs colour halos, bleed_edges
+    // fills the transparent collar. Result: the destructive area is
+    // now fully subject to every basal slider (Tolerance / Feather /
+    // Refine / Grow), exactly like the rest of the image.
+    if let Some(fr) = force_remove {
+        // Audit T1.6 R6 clippy: needless_range_loop fix.
+        for (idx, &flag) in fr.iter().enumerate().take((w as usize) * (h as usize)) {
+            if flag > 0 {
+                scratch.mask[idx] = 0;
+                scratch.delta_e[idx] = 0.0;
+            }
+        }
+    }
+
     // Step 2 — refinement (optional). Writes scratch.alpha_f32 if it
     // runs; otherwise compose falls back to mask + delta_e soft band.
     let did_refine = if params.refinement.radius > 0 {
@@ -91,7 +112,9 @@ pub fn run_pipeline(
 
     // Step 3 — compose. Writes scratch.output_rgba. The protection mask
     // is applied here as a final force-keep so a painted region stays
-    // opaque regardless of the refinement path.
+    // opaque regardless of the refinement path. `force_remove` is no
+    // longer a final cap — the injection at Step 1.5 above made it part
+    // of the regular pipeline, so we pass `None` here.
     compose::write_output(
         rgba,
         w,
@@ -100,7 +123,7 @@ pub fn run_pipeline(
         &segment_result,
         did_refine,
         protect,
-        force_remove,
+        None,
         scratch,
     );
 }

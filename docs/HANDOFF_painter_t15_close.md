@@ -102,11 +102,17 @@ built-ins canônicos).
   diferente (variação visível ao longo do stroke).
 - **`shape_rotation_follow = true`** → stamps oblongos (oval roundness <
   1) alinham com direção do stroke automaticamente.
-- **Arch-gates ainda verdes:** `ph2d-painter-contracts` 75 tests
-  pós-R3 (era 74 + `det_painter_feature_is_declared` adicionado em
-  rodada de audit T1.6 R3). Caps mantidos: PainterUiEdit≤24,
-  Brush≤14 top-level, ShapeParams≤20 fields, ColorDynamicsParams≤36,
-  Stamp=96B align(16).
+- **Arch-gates ainda verdes:** `ph2d-painter-contracts` **75 arch-gate
+  tests** pós-R3 (era 74 + `det_painter_feature_is_declared` adicionado
+  em audit T1.6 R3). Caps mantidos: PainterUiEdit≤24, Brush≤14
+  top-level, ShapeParams≤20 fields, ColorDynamicsParams≤36, Stamp=96B
+  align(16). **Behavioral tests separados:** `ph2d-painter-brush` lib
+  shipa **150+ unit tests** (R3+R4+R5 additions incluem
+  `oval_hard_*` × 5, `color_jitter_cross_channel_axis_independence`,
+  `det_random_distribution_*` × 2, `multi_quadrant_chroma`, etc) +
+  1 dhat integration test `painter_no_alloc_hot_path`.
+  `ph2d-tool-painter` shipa 23 tests. **Total painter-suite: ~250
+  tests verdes** (audit T1.6 G1-H3).
 - **HR-5 determinismo (revisado audit T1.6 U-1):** o subsistema
   **integer** (PRNG mixer wyhash + Stamp ABI byte layout + index
   arithmetic) é bit-identical cross-OS. O subsistema **float** (trig
@@ -146,11 +152,41 @@ built-ins canônicos).
   revisado — cross-OS bit-equality requer det-painter, ULP-bounded
   por default).
 - Auditoria adversarial ≥2 rounds × ≥2 lentes paralelas (rotacionar de
-  rounds 1-6 anteriores). Zero Crit/High aceito. **T1.6 entregou 5
-  rounds × 10 lentes distintas** (R1: O atlas / P color / Q multi-stamp;
+  rounds 1-6 anteriores). Zero Crit/High aceito. **T1.6 entregou 6
+  rounds × 13 lentes distintas** (R1: O atlas / P color / Q multi-stamp;
   R2: R regressions / S spec; R3: T edge cases / U cross-OS / W test
-  quality / Z perf; R4: A1 R3-regression / V acceptance) — exceeds
-  spec.
+  quality / Z perf; R4: A1 R3-regression / V acceptance; R5: B1 R4-
+  regression / C1 acceptance verification; R6: D1 prod safety / E1
+  recovery integrity / G1 doc cross-ref) — exceeds spec.
+
+### 2.5 CI close sequence (post-ship follow-ups, audit T1.6 G1-H2)
+
+Closing T1.6 in CI required 8 follow-up commits beyond the audit
+remediation commit `932316e` — surfacing alheia work-in-progress
+(bgremoval Add-Area feature) that was already dirty in the working
+tree when my clippy/fmt sweeps ran:
+
+| Commit | Rationale |
+|--------|-----------|
+| `4f8d266` | Cargo.lock dhat entry + fmt `color_eq_bridge.rs` |
+| `7dd462c` | `cargo fmt --all` sweep — 12 alheia files needing fmt |
+| `f6d8d0a` | Workspace clippy sweep (premul/silhouette/etc); collateral capture of bgremoval tool.rs (~506 LOC alheia WIP) |
+| `fe8544b` | Recovery: Add-Area symbols (panel-bgremoval ids/event/paint_sections/populate + tool params + protect_brush + editor-core ids) |
+| `4cb519d` | Recovery: bgremoval `run_pipeline` 7-arg signature (algorithm/mod.rs + compose.rs) |
+| `c8a4ebb` | Recovery: Add-Area FINAL (render renderer.rs `replace_individual_pixels` + 5 shell files) |
+| `c411c5f` | fmt color_equalization_bridge.rs (1 residual line) |
+| `08df125` | typos.toml whitelist (35 PT-BR tokens) + 3 EN typos fix |
+
+**Implication for alheia bgremoval agent:** `git pull --rebase` on
+return. Their Add-Area feature is 100% in origin/main but their LOCAL
+WIP redesign (binary-mask + un-protect pass in
+`prepare_combined_protect_canvas` — Enio 2026-05-27 follow-up to
+"área não é sujeita a ajustes finais") was NOT captured per audit
+T1.6 E1-5. Manual reconciliation needed.
+
+CI verde (final): https://github.com/dibrioli/PH2D/actions/runs/26497569381
+— all jobs success (lint + MSRV + workspace tests × ubuntu/macos/
+windows + C9 replay hash × 3 OS + C9 ECS comparison).
 
 ### 2.4 Esforço estimado
 

@@ -17,10 +17,13 @@
 //!
 //! Status (T1.6 ship — 2026-05-26):
 //! - **Types + ABI:** `Brush` / 12 sub-structs / `Stamp` 96B align(16) ✓
-//! - **Library (T1.6):** 3 procedural shapes shipped — `round_hard` (slot 0),
-//!   `round_soft` (slot 1), `square_hard` (slot 2). Slot dispatch via
-//!   `library::shape_alpha_for_slot` (CPU) + `stamp.wgsl::shape_alpha_for_
-//!   slot` (GPU); gate-protected by `cpu_shader_shape_kernels_textual_parity`.
+//! - **Library (T1.6 cumulative through R5):** **4 procedural shapes
+//!   shipped** — `round_hard` (slot 0), `round_soft` (slot 1),
+//!   `square_hard` (slot 2), `oval_hard` (slot 3 — added R4 V-2 as the
+//!   demo brush for `shape_rotation_follow`; calligraphic 2:1 oblong).
+//!   Slot dispatch via `library::shape_alpha_for_slot` (CPU) +
+//!   `stamp.wgsl::shape_alpha_for_slot` (GPU); gate-protected by
+//!   `cpu_shader_shape_kernels_textual_parity`.
 //! - **Shape atlas binding:** **deferred** to W6+ (when first custom-art
 //!   shape PNG ships — `flat_chisel`, `bristle_spread`, `splatter_spread`).
 //!   T1.6 chose procedural inline switch over `texture_2d_array<f32>`

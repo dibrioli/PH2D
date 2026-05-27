@@ -770,28 +770,25 @@ impl BgRemovalTool {
         }
         let tol = self.params.chroma.tolerance;
         let feat = self.params.chroma.feather.max(1e-6);
-        let tol_sq = tol * tol;
         let outer = tol + feat;
-        let outer_sq = outer * outer;
-        // Bridge zone (Enio 2026-05-27 "ainda resquícios"): the
-        // primary soft band stops at `outer`, so thin hatching / ink
-        // line-art crossing the background region (typical ΔE around
-        // 0.4–0.55 in Oklab vs a light-gray seed) sits just past the
-        // band and blocks propagation. Extending the flood's reach by
-        // 50 % — but keeping the *strength* contribution tapering
-        // smoothly to zero by `bridge_outer` — lets the algorithm
-        // walk through those barriers AND pulls the barrier pixels
-        // themselves into the destructive set with a partial alpha
-        // cut. Legs / line-art proper sit further out in Oklab and
-        // are still rejected (ΔE > bridge_outer).
-        const BRIDGE_RELAX_FACTOR: f32 = 2.0;
-        const BRIDGE_PEAK_STRENGTH: f32 = 230.0;
+        // Connectivity reach (Enio 2026-05-27 "a área nova não é
+        // sujeita a ajustes finais com os sliders"): the mask is now
+        // a BINARY "is in region" flag (not a per-pixel strength), and
+        // the pipeline (`algorithm::run_pipeline`) injects the region
+        // into `scratch.mask` + `scratch.delta_e` as hard background
+        // BEFORE refine + grow. That makes the destructive area
+        // subject to every basal slider — Refine smooths the edge via
+        // guided filter, Grow morphs it, Feather widens the connected
+        // region's reach (here) — exactly like the auto-detected bg.
+        //
+        // The flood-fill keeps a small relaxation factor over the
+        // basal soft band so thin hatching / ink barriers (ΔE just
+        // past `outer`) don't cut off the connectivity prematurely;
+        // the binary mask gates pipeline injection, not final alpha,
+        // so the relaxation only matters for reach.
+        const BRIDGE_RELAX_FACTOR: f32 = 1.5;
         let bridge_outer = outer * BRIDGE_RELAX_FACTOR;
         let bridge_outer_sq = bridge_outer * bridge_outer;
-        let bridge_span = (bridge_outer - outer).max(1e-6);
-        // Per-seed visited tracker. Reset between seeds so two seeds
-        // can write strength to the same pixel — the mask accumulates
-        // via `max`, so the stronger seed wins.
         let mut visited: Vec<bool> = vec![false; n];
         let mut queue: Vec<(u32, u32)> = Vec::new();
         for seed_idx in 0..self.add_area_seeds.len() {
@@ -799,15 +796,10 @@ impl BgRemovalTool {
             if sx >= w || sy >= h {
                 continue;
             }
-            // Reset per-seed visited.
             for v in visited.iter_mut() {
                 *v = false;
             }
             queue.clear();
-            // Seed colour in Oklab — sampled fresh from source so a
-            // re-evaluation after a slider change uses the same seed
-            // pixel even if source was re-pushed (selection drift
-            // clears seeds elsewhere).
             let seed_pixel = (sy as usize) * (w as usize) + (sx as usize);
             let seed_base = seed_pixel * 4;
             let seed_oklab = super::algorithm::chroma::srgb_to_oklab(
@@ -830,36 +822,11 @@ impl BgRemovalTool {
                 );
                 let de_sq = super::algorithm::chroma::oklab_dist_sq(p_oklab, seed_oklab);
                 if de_sq >= bridge_outer_sq {
-                    // Outside even the bridge band — reject AND stop
-                    // propagation. Legs / line-art proper land here.
                     continue;
                 }
-                // Three-zone strength matching the compose soft-band
-                // semantics + a wider bridge tail:
-                //   - `[0, tol²]`        → 255 (hard remove).
-                //   - `[tol², outer²]`   → soft band lerping 255 → 0
-                //     (`compose::write_output` parity).
-                //   - `[outer², bridge_outer²]` → bridge tail lerping
-                //     `BRIDGE_PEAK_STRENGTH → 0` so thin
-                //     hatching/line-art barriers caught in this zone
-                //     get a substantial alpha cut AND the flood walks
-                //     through them to reach the gray beyond.
-                let strength = if de_sq <= tol_sq {
-                    255u8
-                } else if de_sq <= outer_sq {
-                    let de = de_sq.max(0.0).sqrt();
-                    let t = ((de - tol) / feat).clamp(0.0, 1.0);
-                    ((1.0 - t) * 255.0).round().clamp(0.0, 255.0) as u8
-                } else {
-                    let de = de_sq.max(0.0).sqrt();
-                    let t = ((de - outer) / bridge_span).clamp(0.0, 1.0);
-                    ((1.0 - t) * BRIDGE_PEAK_STRENGTH).round().clamp(0.0, 255.0) as u8
-                };
-                // Accumulate via `max` so overlapping seeds keep the
-                // strongest one's strength at each shared pixel.
-                if strength > self.force_remove_mask[i] {
-                    self.force_remove_mask[i] = strength;
-                }
+                // Binary mark — the pipeline turns this into hard bg
+                // (mask=0, delta_e=0) before Refine + Grow run.
+                self.force_remove_mask[i] = 255;
                 if x > 0 {
                     queue.push((x - 1, y));
                 }
@@ -1040,17 +1007,19 @@ impl BgRemovalTool {
             return (0, 0);
         }
         let (cw, ch) = (self.canvas_src_w, self.canvas_src_h);
-        let has_protect = self.prepare_combined_protect_canvas(cw, ch);
         let n = (cw as usize) * (ch as usize);
         // Resample the source-resolution force-remove mask into the
-        // canvas dims BEFORE taking the immutable borrows below
-        // (mirror of `resize_protect_into`, but resize is the only
-        // mut-self call this branch needs — `prepare_combined_protect_canvas`
-        // already finished above).
+        // canvas dims FIRST so `prepare_combined_protect_canvas`
+        // below can subtract it from the protect buffer (the
+        // "Add area" pixels must NOT be force-kept by the silhouette
+        // / protect-brush mask, otherwise the chroma injection's
+        // `mask=0` would be overridden by `force_keep_protected` in
+        // compose — Enio 2026-05-27).
         let has_force_remove = !self.force_remove_mask.is_empty();
         if has_force_remove {
             self.resize_force_remove_into(cw, ch);
         }
+        let has_protect = self.prepare_combined_protect_canvas(cw, ch);
         let protect: Option<&[u8]> = if has_protect {
             Some(&self.combined_protect[..n])
         } else {
@@ -1116,6 +1085,22 @@ impl BgRemovalTool {
                 }
             }
         }
+        // "Add area" un-protects (Enio 2026-05-27): pixels the user
+        // explicitly flagged for removal can't be force-kept by the
+        // auto silhouette or the protect brush — otherwise compose's
+        // `force_keep_protected` would raise their alpha back up after
+        // the pipeline injected `mask=0` for them.
+        if self.force_remove_mask.len() == n {
+            for i in 0..n {
+                if self.force_remove_mask[i] > 0 {
+                    self.combined_protect[i] = 0;
+                }
+            }
+        }
+        // Even when neither auto-protect nor user-paint set anything,
+        // the unprotect pass may have left a non-empty combined buffer
+        // that the caller still wants to pass through — return true
+        // whenever ANY of the three sources contributed.
         true
     }
 
@@ -1213,6 +1198,17 @@ impl BgRemovalTool {
             for i in 0..n {
                 if self.canvas_protect[i] > self.combined_protect[i] {
                     self.combined_protect[i] = self.canvas_protect[i];
+                }
+            }
+        }
+        // "Add area" un-protects at canvas resolution — mirror of the
+        // full-res branch. `canvas_remove` is resampled by the caller
+        // (`run_canvas_preview`) BEFORE this method runs, so the
+        // canvas-dim buffer is ready here.
+        if self.canvas_remove.len() == n {
+            for i in 0..n {
+                if self.canvas_remove[i] > 0 {
+                    self.combined_protect[i] = 0;
                 }
             }
         }
@@ -1457,10 +1453,18 @@ impl BgRemovalTool {
                 changed = true;
             }
             BgRemovalUiEdit::ToggleEyedropper => {
-                // Flip the armed state. No preview rerun needed — arming
-                // the picker doesn't change params; sampling does (via
-                // `add_extra_color`).
-                self.eyedropper_armed = !self.eyedropper_armed;
+                // Audit T1.6 E1-3 fix: route through `set_eyedropper_armed`
+                // so the 3-way mutex (eyedropper / protect_brush /
+                // add_area) is enforced — earlier direct-flip path
+                // allowed both eyedropper AND add_area to stay armed
+                // simultaneously, with eyedropper silently winning the
+                // input_dispatch race because `try_eyedropper_sample`
+                // runs before `try_add_area_click`. Setter also keeps
+                // snapshot.add_area_armed and the panel button accent in
+                // sync. Sampling does change params (via
+                // `add_extra_color`) → preview rerun gated inside
+                // setter.
+                self.set_eyedropper_armed(!self.eyedropper_armed);
             }
             BgRemovalUiEdit::RemoveExtraColor(idx) => {
                 // `remove_extra_color` already reruns the preview itself.

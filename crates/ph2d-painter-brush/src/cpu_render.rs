@@ -11,11 +11,12 @@
 //!
 //! Para o **Day-7 marker** (primeira pintura visível) este módulo entrega
 //! a **mesma matemática** em CPU — kernels analíticos via
-//! `library::shape_alpha_for_slot()` (3 procedural slots wired T1.6:
-//! `round_hard` / `round_soft` / `square_hard`) + as mesmas constantes
-//! OKLab + as mesmas funções de rendering mode (em Rust, textualmente
-//! pinadas via gate `cpu_shader_shape_kernels_textual_parity` e
-//! algebricamente cobertas pelos rendering-mode parity tests). É o
+//! `library::shape_alpha_for_slot()` (**4 procedural slots wired T1.6**:
+//! `round_hard=0` / `round_soft=1` / `square_hard=2` / `oval_hard=3`
+//! — last one added R4 V-2) + as mesmas constantes OKLab + as mesmas
+//! funções de rendering mode (em Rust, textualmente pinadas via gate
+//! `cpu_shader_shape_kernels_textual_parity` e algebricamente cobertas
+//! pelos rendering-mode parity tests). É o
 //! caminho que valida que scheduler + Stamp ABI + rendering modes +
 //! shape kernels formam uma cadeia coerente, sem depender ainda da
 //! integração GPU end-to-end.
@@ -28,9 +29,10 @@
 //!   identical_with_rust` cobre.
 //! - **Shape dispatch (T1.6):** both CPU and shader call
 //!   `library::shape_alpha_for_slot(slot, u, v)` / `shape_alpha_for_slot`
-//!   on `stamp.shape_layer` — three procedural slots wired in T1.6
-//!   (`round_hard=0`, `round_soft=1`, `square_hard=2`). Each slot's
-//!   analytic formula is **independently pinned** in both CPU
+//!   on `stamp.shape_layer` — **four procedural slots wired in T1.6**
+//!   (`round_hard=0`, `round_soft=1`, `square_hard=2`, `oval_hard=3`
+//!   — last added R4 V-2 for `shape_rotation_follow` demo). Each
+//!   slot's analytic formula is **independently pinned** in both CPU
 //!   (`library::shape_*`) and shader (`stamp.wgsl::*_shape`) by the
 //!   textual gate `cpu_shader_shape_kernels_textual_parity` — runtime
 //!   CPU↔GPU pixel parity requires a wgpu device in CI and is tracked

@@ -179,6 +179,11 @@ Fonte e comportamento da Shape.
   artifact. Mantido como trade-off documentado: zero-latência ganha
   sobre estética do primeiro stamp.
 
+**Gate sources (audit T1.6 G1-H5):** todos os gates citados em §1.3.4.1
+vivem em `crates/ph2d-painter-brush/src/{stamp_scheduler.rs, library.rs,
+cpu_render.rs}` dentro do `mod tests`. Procurar por nome via
+`grep -rn "fn <gate_name>" crates/ph2d-painter-brush/src/`.
+
 ### 1.3.5 Grain
 
 Fonte e comportamento da Grain.
@@ -380,6 +385,11 @@ Mesmos parâmetros prefixados `stroke_*`.
   combinações). Strict bit-equality, não correlação estatística. Gate
   Pearson stylé statistical (`|r| < 0.05`) é W2+ refinement, mas a
   bit-equality é o invariante mais forte da família e está ativa em T1.6.
+
+**Gate sources (audit T1.6 G1-H5):** todos os gates citados em §1.3.8.1
+vivem em `crates/ph2d-painter-brush/src/stamp_scheduler.rs` dentro do
+`mod tests`. Lookup por nome:
+`grep -n "fn <gate_name>" crates/ph2d-painter-brush/src/stamp_scheduler.rs`.
 
 ### 1.3.9 Dynamics (modulação por velocidade do stroke)
 

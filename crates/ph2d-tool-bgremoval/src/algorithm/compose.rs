@@ -31,6 +31,15 @@ use super::SegmentResult;
 /// are forced fully opaque after the grow/shrink morphology and before
 /// the edge bleed, so a painted "keep" region survives every backend +
 /// refinement path. Pass `None` when nothing is painted.
+///
+/// `force_remove` is the symmetric destructive mask (Enio 2026-05-26):
+/// when present (one byte/pixel, `> 0` = strength of removal), the
+/// pixel's final alpha is lowered to `min(alpha, 255 - strength)`.
+/// Applied AFTER `force_keep_protected`, so a force-remove dab wins
+/// over a protect-brush dab AND over the silhouette auto-protect at
+/// the same pixel (the user explicitly painted "remove this" last —
+/// most-recent-intent wins). Used by the "Acrescentar Área" brush
+/// shown when Detect Subject is on.
 #[allow(clippy::too_many_arguments)]
 pub fn write_output(
     rgba: &[u8],
@@ -40,6 +49,7 @@ pub fn write_output(
     segment: &SegmentResult,
     did_refine: bool,
     protect: Option<&[u8]>,
+    force_remove: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) {
     let n = (w as usize) * (h as usize);
@@ -162,6 +172,20 @@ pub fn write_output(
         force_keep_protected(pm, n, scratch);
     }
 
+    // Symmetric destructive mask — the user's "Acrescentar Área" brush
+    // (Enio 2026-05-26). Applied AFTER force_keep so a force-remove dab
+    // wins over a protect dab at the same pixel (the more-recent
+    // intent), AND so it can override the silhouette auto-protect when
+    // Detect Subject leaks background through narrow gaps (the original
+    // use case: the area between the character's legs that the
+    // silhouette walker couldn't separate from the foreground).
+    // BEFORE the edge bleed for the same reason as force_keep — bleed
+    // only fills alpha==0 collars, and a force-removed pixel is
+    // intentionally alpha==0, so it joins the collar fill seamlessly.
+    if let Some(fr) = force_remove {
+        force_remove_painted(fr, n, scratch);
+    }
+
     // Edge bleed — fix the Apply-vs-preview edge fringe. The on-canvas
     // preview is clean because Vello's `draw_image` premultiplies BEFORE
     // bilinear sampling; the wgpu sprite shader samples the STRAIGHT
@@ -263,6 +287,27 @@ fn force_keep_protected(protect: &[u8], n: usize, scratch: &mut BgRemovalScratch
     for (i, &p) in protect.iter().enumerate().take(n) {
         let a = &mut scratch.output_rgba[i * 4 + 3];
         *a = (*a).max(p);
+    }
+}
+
+/// Symmetric counterpart to [`force_keep_protected`]: lower each
+/// pixel's alpha to `min(alpha, 255 - strength)`. A hard-painted core
+/// (strength=255) zeroes the alpha; a soft falloff rim cuts the alpha
+/// proportionally, so the brush's edge blends into the existing matte.
+/// RGB is untouched — invisible alpha=0 pixels don't sample anyway, and
+/// the partial-alpha rim keeps its existing colour (potentially
+/// despilled by an earlier pass).
+fn force_remove_painted(force_remove: &[u8], n: usize, scratch: &mut BgRemovalScratch) {
+    debug_assert!(force_remove.len() >= n);
+    for (i, &r) in force_remove.iter().enumerate().take(n) {
+        if r == 0 {
+            continue;
+        }
+        let a = &mut scratch.output_rgba[i * 4 + 3];
+        let max_alpha = 255u8.saturating_sub(r);
+        if *a > max_alpha {
+            *a = max_alpha;
+        }
     }
 }
 
@@ -420,7 +465,17 @@ mod tests {
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
 
-        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            false,
+            None,
+            None,
+            &mut scratch,
+        );
 
         assert_eq!(scratch.output_rgba[3], 255, "below tol_sq must keep fg");
         // Quarter-band: t ≈ 0.25 ⇒ alpha ≈ 64.
@@ -453,7 +508,17 @@ mod tests {
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
-        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            false,
+            None,
+            None,
+            &mut scratch,
+        );
         assert_eq!(scratch.output_rgba[3], 0, "mask=0 must produce alpha=0");
     }
 
@@ -488,7 +553,17 @@ mod tests {
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
-        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            false,
+            None,
+            None,
+            &mut scratch,
+        );
 
         // Alpha must equal mask, byte-for-byte. No delta_e leak.
         assert_eq!(scratch.output_rgba[3], 0);
@@ -524,6 +599,7 @@ mod tests {
             &segment,
             false,
             Some(&protect),
+            None,
             &mut scratch,
         );
         assert_eq!(
@@ -561,6 +637,7 @@ mod tests {
             &segment,
             false,
             Some(&protect),
+            None,
             &mut scratch,
         );
         // bg pixel lifted to the strength; fg pixel keeps its higher alpha.
@@ -598,7 +675,7 @@ mod tests {
 
         // Unprotected → despill rewrites the RGB (green removed).
         let mut s_un = make();
-        write_output(&rgba, w, h, &params, &segment, true, None, &mut s_un);
+        write_output(&rgba, w, h, &params, &segment, true, None, None, &mut s_un);
         assert_ne!(
             &s_un.output_rgba[0..3],
             &[20, 20, 20],
@@ -616,6 +693,7 @@ mod tests {
             &segment,
             true,
             Some(&protect),
+            None,
             &mut s_pr,
         );
         assert_eq!(
@@ -652,6 +730,7 @@ mod tests {
             &segment,
             false,
             Some(&protect),
+            None,
             &mut scratch,
         );
         assert_eq!(
@@ -677,7 +756,17 @@ mod tests {
             ..BgRemovalParams::default()
         };
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
-        write_output(&rgba, w, h, &params, &segment, true, None, &mut scratch);
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            true,
+            None,
+            None,
+            &mut scratch,
+        );
         assert_eq!(scratch.output_rgba[3], 0);
         assert_eq!(scratch.output_rgba[7], 128); // 0.5*255+0.5 = 128
         assert_eq!(scratch.output_rgba[11], 255);
@@ -813,10 +902,30 @@ mod tests {
         params.chroma.despill = false;
         let segment = SegmentResult::Chroma { bg_oklab: [0.0; 3] };
         // Path 1 (refined).
-        write_output(&rgba, w, h, &params, &segment, true, None, &mut scratch);
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            true,
+            None,
+            None,
+            &mut scratch,
+        );
         assert_eq!(&scratch.output_rgba[0..3], &[123, 45, 67]);
         // Path 2 (soft band).
-        write_output(&rgba, w, h, &params, &segment, false, None, &mut scratch);
+        write_output(
+            &rgba,
+            w,
+            h,
+            &params,
+            &segment,
+            false,
+            None,
+            None,
+            &mut scratch,
+        );
         assert_eq!(&scratch.output_rgba[0..3], &[123, 45, 67]);
     }
 }

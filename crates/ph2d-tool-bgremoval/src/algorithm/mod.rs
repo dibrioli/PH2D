@@ -42,6 +42,7 @@ pub fn run_pipeline(
     h: u32,
     params: &BgRemovalParams,
     protect: Option<&[u8]>,
+    force_remove: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) {
     let expected = (w as usize) * (h as usize) * 4;
@@ -58,6 +59,15 @@ pub fn run_pipeline(
             (w as usize) * (h as usize),
             "protect mask length must equal w*h (was {} expected {})",
             pm.len(),
+            (w as usize) * (h as usize)
+        );
+    }
+    if let Some(fr) = force_remove {
+        assert_eq!(
+            fr.len(),
+            (w as usize) * (h as usize),
+            "force_remove mask length must equal w*h (was {} expected {})",
+            fr.len(),
             (w as usize) * (h as usize)
         );
     }
@@ -90,6 +100,7 @@ pub fn run_pipeline(
         &segment_result,
         did_refine,
         protect,
+        force_remove,
         scratch,
     );
 }

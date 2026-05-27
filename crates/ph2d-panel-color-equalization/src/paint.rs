@@ -166,7 +166,7 @@ fn paint_body_sections(
     });
     y += HISTOGRAM_H + layout.row_gap;
 
-    // ── 14 slider+chip rows ────────────────────────────────────────
+    // ── 13 slider+chip rows ────────────────────────────────────────
     y = paint_slider_rows_section(
         scene,
         text_system,

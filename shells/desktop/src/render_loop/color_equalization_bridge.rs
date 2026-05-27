@@ -206,8 +206,8 @@ pub(super) fn dispatch(
         // the pipeline, and that helper re-armed `params_dirty` (see
         // `ColorEqualizationTool::set_source_snapshot`). Without
         // draining it again here, the NEXT frame would see dirty=true
-        // and re-bake (with identical params) every frame — FPS=1 with
-        // NLM on. Drain once to break the loop.
+        // and re-bake (with identical params) every frame — was FPS=1
+        // when a heavy stage was armed. Drain once to break the loop.
         if let Some(tool) = tools.active_mut()
             && let Some(ceq) = tool
                 .as_any_mut()

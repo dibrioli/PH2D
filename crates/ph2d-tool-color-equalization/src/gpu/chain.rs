@@ -2,7 +2,7 @@
 //!
 //! Each per-pipeline `dispatch_*_gpu` in this module is a self-contained
 //! upload + compute + readback round-trip — convenient for single-stage
-//! use, but in the full Color EQ flow that's **six** round-trips (CLAHE
+//! use, but in the full Color EQ flow that's **five** round-trips (CLAHE
 //! is CPU-only; everything else is GPU). At 5-15 ms overhead each, the
 //! round-trips alone dominate the budget for any image small enough to
 //! finish compute quickly.
@@ -16,12 +16,12 @@
 //!
 //! ## Total round-trip cost
 //!
-//! - Naive: 6 stages × (upload + dispatch + readback) ≈ 30-90 ms overhead.
+//! - Naive: 5 stages × (upload + dispatch + readback) ≈ 25-75 ms overhead.
 //! - Chained: 1 upload + 5 dispatches + 1 readback (+ 1 mid-flight
 //!   sums readback for auto-WB) ≈ 15-25 ms overhead.
 //!
 //! Total speedup at 1024² (where compute dominates instead of overhead)
-//! is closer to 6× CPU full-pipeline; at 4K it widens further as more
+//! is closer to 5× CPU full-pipeline; at 4K it widens further as more
 //! of the time would have gone into the redundant uploads/readbacks.
 //!
 //! ## Stage order
@@ -603,7 +603,7 @@ mod tests {
             auto_wb: true,
             ..Default::default()
         };
-        assert_chain_parity(&gpu, &cache, &buf, 64, 64, &params, 4, "full-stack");
+        assert_chain_parity(&gpu, &cache, &buf, 64, 64, &params, 5, "full-stack");
     }
 
     #[test]

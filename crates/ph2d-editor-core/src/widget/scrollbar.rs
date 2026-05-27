@@ -126,7 +126,7 @@ pub const GALLERY_SCROLLBAR_ID: NodeId = NodeId(822);
 /// Gallery, independent thumb id keeps dispatch from aliasing.
 pub const GRID_SETTINGS_SCROLLBAR_ID: NodeId = NodeId(823);
 /// Color Equalization panel scrollbar — image-tools docked panel grew
-/// past the dock height once Phase 2/3 (sharpen/denoise/LUT) landed.
+/// past the dock height once Phase 2/3 (sharpen/LUT) landed.
 /// Independent thumb id so dispatch can route drag-scroll cleanly.
 pub const COLOR_EQUALIZATION_SCROLLBAR_ID: NodeId = NodeId(824);
 /// Bg Removal panel scrollbar — same image-tools dock slot as

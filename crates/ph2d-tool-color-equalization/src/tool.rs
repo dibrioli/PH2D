@@ -266,8 +266,8 @@ impl ColorEqualizationTool {
     /// when built with `--features gpu` AND an adapter is available;
     /// falls back to the CPU pipeline when either fails. The GPU
     /// chain at 512² typically costs ~15-30 ms (vs. 150-380 ms CPU
-    /// when Quantize / Bilateral are active), reclaiming the budget
-    /// the debounce-on-release strategy assumed.
+    /// when Quantize is active), reclaiming the budget the
+    /// debounce-on-release strategy assumed.
     pub fn preview_rgba(&mut self) -> (&[u8], u32, u32) {
         if self.preview_dirty && self.has_source() {
             self.preview_rgba.clear();
@@ -362,8 +362,8 @@ impl ColorEqualizationTool {
     }
 
     /// GPU twin of [`Self::run_full_resolution`] — chains every GPU stage
-    /// (Phase 1 tonal batch, LUT, bilateral, sharpen, auto-WB) into one
-    /// upload + N dispatches + one readback via
+    /// (Phase 1 tonal batch, LUT, sharpen, auto-WB) into one upload +
+    /// N dispatches + one readback via
     /// [`super::gpu::ChainedPipelineCache`]. CLAHE + auto-* normalisations
     /// still run CPU-side inside the chain. Returns `None` when no GPU
     /// adapter is available (CI runners, headless without Metal/Vulkan);
@@ -375,12 +375,11 @@ impl ColorEqualizationTool {
         assert!(self.has_source(), "set_source_snapshot must run first");
         let gpu = try_headless_gpu()?;
         // Cached chain — `try_preview_chain` uses `OnceLock<…>` so the
-        // 7-pipeline compile (~200 ms) is paid once per process, not per
-        // slider release. Hot fix for the "NLM lento" Enio reported:
-        // without this, every live-bake tick on a 1024² preview was
-        // paying the full pipeline recompile BEFORE the NLM dispatch
-        // even started. With the cache, slider releases drop the
-        // chain-build overhead and only pay the GPU work.
+        // pipeline compile (~200 ms) is paid once per process, not per
+        // slider release. Without this, every live-bake tick on a 1024²
+        // preview paid the full pipeline recompile before the first
+        // dispatch even started; with the cache, slider releases drop
+        // the chain-build overhead and only pay the GPU work.
         let chain = try_preview_chain()?;
         let expected = (self.source_w as usize) * (self.source_h as usize) * 4;
         out.clear();
@@ -708,7 +707,7 @@ impl RasterEditTool for ColorEqualizationTool {
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
         let mut out = Vec::new();
         // Prefer GPU path when `--features gpu` is on (15-30 ms at 512²);
-        // CPU fallback when not (150-380 ms when Bilateral/Quantize armed).
+        // CPU fallback when not (150-380 ms when Quantize is armed).
         // Parity with the legacy bridge logic pre-Wave-10.
         #[cfg(feature = "gpu")]
         if let Some((w, h)) = self.run_full_resolution_gpu(&mut out) {

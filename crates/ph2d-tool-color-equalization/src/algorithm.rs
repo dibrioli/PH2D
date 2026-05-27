@@ -34,10 +34,10 @@
 //! ## GPU port plan (follow-up)
 //!
 //! Every per-pixel stage in this module is embarrassingly parallel. A
-//! single WGSL compute pass can fuse stages 2-7 (Phase 1 tonal + the
-//! OKLab smart-sat pair) plus the CLAHE LUT apply step plus auto-WB into
-//! one shader, doing exactly one sRGB → linear and one OKLab round-trip
-//! per pixel. The legacy engine demonstrates the pattern in 799 LOC of
+//! single WGSL compute pass can fuse the Phase 1 tonal pipeline (the
+//! seven stages + OKLab smart-sat pair) plus the CLAHE LUT apply step
+//! plus auto-WB into one shader, doing exactly one sRGB → linear and
+//! one OKLab round-trip per pixel. The legacy engine demonstrates the pattern in 799 LOC of
 //! WebGL2 (`ceq-webgl.ts`). Histogram + Bradford-matrix precompute stay
 //! CPU (atomic contention vs. sequential setup); the per-pixel apply is
 //! GPU. Parity test (ε = 0.5 / 255) compares this CPU path against the
@@ -125,7 +125,7 @@ pub fn run_pipeline(
         }
     }
 
-    // Stage 4 — Phase 2 sharpen. Small radius (≤ 1) takes the fast
+    // Stage 3 — Phase 2 sharpen. Small radius (≤ 1) takes the fast
     // Laplacian 3×3; larger radius takes Unsharp Mask (Gaussian blur).
     if params.sharpen_amount > 0.0 {
         if params.sharpen_radius <= 1.0 {
@@ -135,7 +135,7 @@ pub fn run_pipeline(
         }
     }
 
-    // Stage 5 — Phase 2 optional automatic adjustments. Each is a toggle
+    // Stage 4 — Phase 2 optional automatic adjustments. Each is a toggle
     // applied AFTER tonal so it normalises the user's adjustments rather
     // than fighting them.
     if params.auto_levels {
@@ -148,12 +148,12 @@ pub fn run_pipeline(
         auto_colors(out);
     }
 
-    // Stage 6 — Gray-World auto white balance (also in place over `out`).
+    // Stage 5 — Gray-World auto white balance (also in place over `out`).
     if params.auto_wb {
         auto_white_balance(out);
     }
 
-    // Stage 7 — Posterize (Floyd-Steinberg dithering optional). Always
+    // Stage 6 — Posterize (Floyd-Steinberg dithering optional). Always
     // CPU — the error-diffusion sweep is strict raster-scan. Runs after
     // all colour-shift stages so it operates on the final palette.
     if params.posterize_levels >= POSTERIZE_LEVELS_MIN {
@@ -168,7 +168,7 @@ pub fn run_pipeline(
         );
     }
 
-    // Stage 8 — Quantize (K-Means++ in OKLab). Always CPU. Runs LAST —
+    // Stage 7 — Quantize (K-Means++ in OKLab). Always CPU. Runs LAST —
     // every prior stage feeds into the colour set that gets clustered.
     if params.quantize_colors >= QUANTIZE_COLORS_MIN {
         quantize(out, w, h, params.quantize_colors);

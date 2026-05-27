@@ -124,9 +124,17 @@ pub fn run_pipeline(
         }
     }
 
-    // Stage 3 — Phase 2 bilateral denoise (edge-preserving smoothing).
+    // Stage 3 — Phase 2 denoise. Method picked by `params.denoise_method`
+    // (Bilateral edge-preserving / NLM patch-based — see `DenoiseMethod`).
     if params.denoise_strength > 0.0 {
-        bilateral_denoise(out, w, h, params.denoise_strength);
+        match params.denoise_method {
+            crate::params::DenoiseMethod::Bilateral => {
+                bilateral_denoise(out, w, h, params.denoise_strength);
+            }
+            crate::params::DenoiseMethod::Nlm => {
+                nlm_denoise(out, w, h, params.denoise_strength);
+            }
+        }
     }
 
     // Stage 4 — Phase 2 sharpen. Small radius (≤ 1) takes the fast
@@ -937,6 +945,121 @@ pub fn bilateral_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
             }
             if sum_w > 0.0 {
                 let ci = (y as usize) * stride_rgba + (x as usize) * 4;
+                rgba[ci] = linear_to_srgb_u8(sum[0] / sum_w);
+                rgba[ci + 1] = linear_to_srgb_u8(sum[1] / sum_w);
+                rgba[ci + 2] = linear_to_srgb_u8(sum[2] / sum_w);
+            }
+        }
+    }
+}
+
+/// Non-Local Means denoise (Buades 2005) in **linear sRGB**. For each
+/// pixel, compares its 7×7 patch to every patch within an adaptive
+/// search window and weights neighbours by `exp(-patch_distance² / h²)`.
+/// Preserves texture better than bilateral on natural images (skin,
+/// fabric, foliage) — port of the legacy engine's `applyDenoiseNLM`
+/// (Game-Engine-Legada/.../denoise.ts:110-189) with the linear-sRGB
+/// space upgrade applied uniformly across all denoise stages here.
+///
+/// Parameters (legacy parity, normalised to `[0, 1]` linear):
+/// - `patch_half = 3` (7×7 patch).
+/// - `search_half = clamp(w/8, 5, 10)` (adaptive search window).
+/// - `h = (10 + 90·strength) / 255` (filter strength in linear scale).
+///
+/// **Cost:** `O(N · search² · patch²)` — ~10× bilateral. Use the GPU
+/// path ([`crate::gpu::nlm`]) for live preview; CPU is Apply-grade.
+pub fn nlm_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+
+    if strength <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let patch_half: i32 = 3;
+    let search_half: i32 = ((w as i32) / 8).clamp(5, 10);
+    // Linear-sRGB scale: numerator (patch diffs) and denominator (h²) both
+    // shrink by 1/255², so the ratio `dist² / h²` is preserved against the
+    // legacy `[0, 255]` calibration → visual parity in the relative
+    // strength scale.
+    let h_param = (10.0 + strength * 90.0) / 255.0;
+    let h_sq = h_param * h_param;
+    let patch_area = ((2 * patch_half + 1) * (2 * patch_half + 1)) as f32;
+
+    let w_i = w as i32;
+    let h_i = h as i32;
+    let stride = w as usize;
+    let n_px = (w as usize) * (h as usize);
+
+    // Pre-linearize source once — each pixel is read ~`search² · patch²`
+    // times below, so the sRGB transfer pays itself off many times over.
+    let mut src_lin: Vec<[f32; 3]> = Vec::with_capacity(n_px);
+    for px in rgba.chunks_exact(4) {
+        src_lin.push([
+            srgb_to_linear_u8(px[0]),
+            srgb_to_linear_u8(px[1]),
+            srgb_to_linear_u8(px[2]),
+        ]);
+    }
+
+    for y in 0..h_i {
+        for x in 0..w_i {
+            let ci_pix = (y as usize) * stride + (x as usize);
+            if rgba[ci_pix * 4 + 3] == 0 {
+                continue;
+            }
+
+            let mut sum = [0.0_f32; 3];
+            let mut sum_w = 0.0_f32;
+
+            let sy_min = (y - search_half).max(0);
+            let sy_max = (y + search_half).min(h_i - 1);
+            let sx_min = (x - search_half).max(0);
+            let sx_max = (x + search_half).min(w_i - 1);
+
+            for ny in sy_min..=sy_max {
+                for nx in sx_min..=sx_max {
+                    let mut patch_dist = 0.0_f32;
+                    let mut patch_count = 0_i32;
+
+                    for py in -patch_half..=patch_half {
+                        let py1 = y + py;
+                        let py2 = ny + py;
+                        if py1 < 0 || py1 >= h_i || py2 < 0 || py2 >= h_i {
+                            continue;
+                        }
+                        for pdx in -patch_half..=patch_half {
+                            let px1 = x + pdx;
+                            let px2 = nx + pdx;
+                            if px1 < 0 || px1 >= w_i || px2 < 0 || px2 >= w_i {
+                                continue;
+                            }
+                            let i1 = (py1 as usize) * stride + (px1 as usize);
+                            let i2 = (py2 as usize) * stride + (px2 as usize);
+                            let dr = src_lin[i1][0] - src_lin[i2][0];
+                            let dg = src_lin[i1][1] - src_lin[i2][1];
+                            let db = src_lin[i1][2] - src_lin[i2][2];
+                            patch_dist += dr * dr + dg * dg + db * db;
+                            patch_count += 1;
+                        }
+                    }
+
+                    let norm_dist = if patch_count > 0 {
+                        patch_dist / (patch_count as f32 * 3.0)
+                    } else {
+                        patch_dist / (patch_area * 3.0)
+                    };
+                    let weight = (-norm_dist / h_sq).exp();
+
+                    let ni = (ny as usize) * stride + (nx as usize);
+                    sum[0] += src_lin[ni][0] * weight;
+                    sum[1] += src_lin[ni][1] * weight;
+                    sum[2] += src_lin[ni][2] * weight;
+                    sum_w += weight;
+                }
+            }
+
+            if sum_w > 0.0 {
+                let ci = ci_pix * 4;
                 rgba[ci] = linear_to_srgb_u8(sum[0] / sum_w);
                 rgba[ci + 1] = linear_to_srgb_u8(sum[1] / sum_w);
                 rgba[ci + 2] = linear_to_srgb_u8(sum[2] / sum_w);
@@ -2267,6 +2390,131 @@ mod tests {
         assert!(
             (right_edge as i32 - left_edge as i32) > 100,
             "edge contrast collapsed (got left {left_edge}, right {right_edge})"
+        );
+    }
+
+    #[test]
+    fn nlm_denoise_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        nlm_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn nlm_denoise_smooths_uniform_noisy_input() {
+        // 16×16 uniform mid-grey + ±5 noise. NLM should reduce variance
+        // in this flat scene; we sample the full image since there's no
+        // edge to bias us. The `8` border avoidance pattern used in the
+        // bilateral test would land entirely inside the patch+search
+        // reach (3+5=8) of any edge — NLM patches near an edge legitimately
+        // pull from both sides; the edge-preservation property is covered
+        // in its own test below.
+        let mut buf = Vec::with_capacity(16 * 16 * 4);
+        for y in 0..16u32 {
+            for x in 0..16u32 {
+                let noise = ((x * 3 + y * 5) % 11) as i32 - 5;
+                let v = (128 + noise).clamp(0, 255) as u8;
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        let mut denoised = buf.clone();
+        nlm_denoise(&mut denoised, 16, 16, 0.5);
+        let mut var_before = 0i64;
+        let mut var_after = 0i64;
+        let mut mean_before = 0i64;
+        let mut mean_after = 0i64;
+        let total = 16 * 16;
+        for i in 0..total {
+            mean_before += buf[i * 4] as i64;
+            mean_after += denoised[i * 4] as i64;
+        }
+        mean_before /= total as i64;
+        mean_after /= total as i64;
+        for i in 0..total {
+            let db = buf[i * 4] as i64 - mean_before;
+            let da = denoised[i * 4] as i64 - mean_after;
+            var_before += db * db;
+            var_after += da * da;
+        }
+        assert!(
+            var_after < var_before,
+            "NLM did not reduce variance on uniform noisy input (before {var_before}, after {var_after})"
+        );
+    }
+
+    #[test]
+    fn nlm_denoise_preserves_edge_contrast() {
+        // 32×32 with vertical edge at x=16. We sample 4 px out from the
+        // edge on each side (x=12 vs x=19) — at that distance the 7×7
+        // patches don't overlap the edge anymore, so the patch-based
+        // weighting sees clean same-side neighbours and the cross-side
+        // contrast is preserved. (NLM softens the cross-edge gradient at
+        // sub-patch distances by design: a patch centred on a pixel
+        // touching the edge has its own internal mixed pattern that
+        // matches the SYMMETRIC mixed pattern on the opposite side. This
+        // is the documented NLM behaviour, not a bug.)
+        let mut buf = Vec::with_capacity(32 * 32 * 4);
+        for y in 0..32u32 {
+            for x in 0..32u32 {
+                let v = if x < 16 { 50u8 } else { 200u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        let mut denoised = buf.clone();
+        nlm_denoise(&mut denoised, 32, 32, 0.5);
+        let left = denoised[((16 * 32 + 12) * 4) as usize];
+        let right = denoised[((16 * 32 + 19) * 4) as usize];
+        assert!(
+            (right as i32 - left as i32) > 100,
+            "NLM collapsed cross-edge contrast 4 px out (got left {left}, right {right})"
+        );
+    }
+
+    #[test]
+    fn nlm_denoise_skips_transparent_pixels() {
+        let mut buf = vec![80u8, 80, 80, 0, 80, 80, 80, 255];
+        nlm_denoise(&mut buf, 2, 1, 1.0);
+        // Pixel 0 (alpha=0) MUST stay untouched.
+        assert_eq!(&buf[0..4], &[80, 80, 80, 0]);
+    }
+
+    #[test]
+    fn nlm_denoise_method_selector_routes_in_pipeline() {
+        // run_pipeline with `denoise_method = Nlm` must pick the NLM path.
+        // We assert that the output for the same input + strength differs
+        // between Bilateral and NLM (they're different algorithms, parity
+        // would be impossible to guarantee — distinct outputs is the
+        // necessary contract that the selector actually selects).
+        use crate::params::DenoiseMethod;
+        let src = solid(16, 16, [120, 80, 60]);
+        // Add some structure to exercise the patch logic.
+        let mut src = src;
+        for y in 0..16 {
+            for x in 0..16 {
+                if (x + y) % 3 == 0 {
+                    let i = (y * 16 + x) as usize * 4;
+                    src[i] = 200;
+                }
+            }
+        }
+        let p_b = ColorEqualizationParams {
+            denoise_strength: 0.5,
+            denoise_method: DenoiseMethod::Bilateral,
+            ..ColorEqualizationParams::default()
+        };
+        let p_n = ColorEqualizationParams {
+            denoise_strength: 0.5,
+            denoise_method: DenoiseMethod::Nlm,
+            ..ColorEqualizationParams::default()
+        };
+        let mut out_b = Vec::new();
+        let mut out_n = Vec::new();
+        run_pipeline(bytemuck::cast_slice(&src), 16, 16, &p_b, &mut out_b);
+        run_pipeline(bytemuck::cast_slice(&src), 16, 16, &p_n, &mut out_n);
+        assert_ne!(
+            out_b, out_n,
+            "Bilateral and NLM produced identical output — pipeline selector is broken"
         );
     }
 

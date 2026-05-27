@@ -285,6 +285,20 @@ pub fn slider_to_posterize_dither_grain(track: f32) -> u32 {
     ) as u32
 }
 
+/// Denoise algorithm selector. Mirror of the legacy engine's
+/// `denoiseMethod` (Bilateral vs NLM). Bilateral is fast + edge-aware;
+/// NLM (Non-Local Means, Buades 2005) is patch-based and preserves
+/// texture in skin / fabric / foliage where bilateral over-smooths,
+/// at ~10× the CPU cost (GPU path closes most of the gap).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum DenoiseMethod {
+    /// Edge-preserving bilateral filter. Fastest. Default.
+    #[default]
+    Bilateral,
+    /// Patch-based Non-Local Means. Better on textured naturals.
+    Nlm,
+}
+
 /// Authoritative parameter bag fed into [`crate::algorithm::run_pipeline`].
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ColorEqualizationParams {
@@ -301,6 +315,9 @@ pub struct ColorEqualizationParams {
     pub sharpen_amount: f32,
     pub sharpen_radius: f32,
     pub denoise_strength: f32,
+    /// Which denoise algorithm `denoise_strength` drives. Default
+    /// `Bilateral` (compat with previously-baked snapshots).
+    pub denoise_method: DenoiseMethod,
     // ── Phase 2 automatic adjustments (toggles) ───────────────────
     pub auto_levels: bool,
     pub auto_contrast: bool,
@@ -350,6 +367,7 @@ impl Default for ColorEqualizationParams {
             sharpen_amount: SHARPEN_AMOUNT_DEFAULT,
             sharpen_radius: SHARPEN_RADIUS_DEFAULT,
             denoise_strength: DENOISE_STRENGTH_DEFAULT,
+            denoise_method: DenoiseMethod::default(),
             auto_levels: false,
             auto_contrast: false,
             auto_colors: false,

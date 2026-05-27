@@ -4159,12 +4159,22 @@ dependencies = [
  "ph2d-imageio-ph2d-native",
  "ph2d-imageio-png",
  "ph2d-imageio-sync",
+ "ph2d-imageio-tiff",
  "ph2d-imageio-webp",
 ]
 
 [[package]]
 name = "ph2d-imageio-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-imageio-tiff"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+ "ph2d-imageio",
+ "tiff",
+]
 
 [[package]]
 name = "ph2d-imageio-webp"

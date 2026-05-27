@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-imageio-tiff"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-tiff` — TIFF decode + encode (W2.T2).
+# Pure-Rust via `tiff` 0.11 (image-rs). Single-page → Flat,
+# multi-page → Layered (page N = Layer N). 16-bit channels quantize
+# down to 8-bit (documented loss, same policy as PNG). CMYK
+# converts to RGBA via the naive 1-K/255 formula without ICC; full
+# ICC pipeline lives in `.ph2d` and (future W2.0.1 client) PSD.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+tiff = { version = "0.11", default-features = false, features = ["deflate", "lzw"] }

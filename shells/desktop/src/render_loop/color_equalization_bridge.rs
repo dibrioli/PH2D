@@ -258,10 +258,7 @@ fn ensure_cached(
 /// shells/desktop) and falls back to CPU only when the GPU isn't
 /// available. The writeback happens outside this function so the tool
 /// borrow ends before `sim`/`renderer` are mutated.
-fn collect_live_bakes(
-    tools: &mut ToolRegistry,
-    selected: &[u64],
-) -> Vec<DrainTuple> {
+fn collect_live_bakes(tools: &mut ToolRegistry, selected: &[u64]) -> Vec<DrainTuple> {
     use ph2d_editor::tool::RasterEditTool;
     let Some(tool) = tools.active_mut() else {
         return Vec::new();

@@ -37,7 +37,7 @@ use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 use ph2d_tokens::{ColorToken, StrokeToken};
-use ph2d_vector::{Affine, Brush, Circle, Color, Stroke, VectorScene};
+use ph2d_vector::{Affine, Brush, Circle, Color, ImageQuality, Stroke, VectorScene};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -250,7 +250,19 @@ pub(super) fn dispatch(
                 camera,
                 window_size,
             );
-            let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
+            // Force bilinear (Medium) instead of the user's image-filter
+            // setting. The Vello bicubic kernel (selected by `Smooth`)
+            // overshoots on sharp alpha transitions — anti-aliased
+            // silhouette edges end up with R/G/B above 255 (clamped),
+            // reading as a brighter halo than the wgpu sprite shader
+            // produces from the same RGBA at Apply time (Enio 2026-05-26:
+            // "antes do apply uma linha clara contornando a forma.
+            // depois do apply some"). Bilinear has no negative lobes,
+            // so the overlay edge tones match Apply.
+            let quality = match hero.project.image_filter {
+                ph2d_editor::ImageFilterMode::PixelArt => ImageQuality::Low,
+                ph2d_editor::ImageFilterMode::Smooth => ImageQuality::Medium,
+            };
             vector_scene.draw_image_rgba_transformed(
                 &preview.rgba,
                 preview.width,
@@ -261,21 +273,9 @@ pub(super) fn dispatch(
             // Protection-mask tint on top — same affine so it tracks
             // the sprite transform like the preview.
             if let Some((tint, tw, th)) = &protect_tint {
-                let tint_to_screen = sprite_image_to_screen_affine(
-                    *tw,
-                    *th,
-                    &tr,
-                    &sprite,
-                    camera,
-                    window_size,
-                );
-                vector_scene.draw_image_rgba_transformed(
-                    tint,
-                    *tw,
-                    *th,
-                    tint_to_screen,
-                    quality,
-                );
+                let tint_to_screen =
+                    sprite_image_to_screen_affine(*tw, *th, &tr, &sprite, camera, window_size);
+                vector_scene.draw_image_rgba_transformed(tint, *tw, *th, tint_to_screen, quality);
             }
             // Brush-size ring at the cursor — the source-px radius
             // mapped to screen via the footprint scale (extracted
@@ -299,8 +299,7 @@ pub(super) fn dispatch(
                 )
                 .as_coeffs();
                 let pixel_scale = (m[0] * m[0] + m[1] * m[1]).sqrt() as f32; // |col 0|
-                let src_to_screen =
-                    pixel_scale * preview.width as f32 / src_w as f32;
+                let src_to_screen = pixel_scale * preview.width as f32 / src_w as f32;
                 let r_screen = r_src * src_to_screen;
                 let accent = ColorToken::Accent.resolve(theme);
                 let color = Color::from_rgba8(accent.r, accent.g, accent.b, 255);
@@ -339,16 +338,14 @@ fn sprite_image_to_screen_affine(
     let size_h = sprite.size[1] as f64;
     // image-px → centered, with Y flipped (image-Y is down, world-Y up):
     //   (px, py) ↦ ((px/w - 0.5) * size_w, (0.5 - py/h) * size_h)
-    let img_to_local =
-        Affine::scale_non_uniform(size_w / image_w, -size_h / image_h)
-            * Affine::translate((-image_w * 0.5, -image_h * 0.5));
+    let img_to_local = Affine::scale_non_uniform(size_w / image_w, -size_h / image_h)
+        * Affine::translate((-image_w * 0.5, -image_h * 0.5));
     // Sprite-local meters → world. Mirror of the sprite renderer's
     // composite: scale → rotate → anchor offset → translation pivot.
-    let local_to_world =
-        Affine::translate((tr.translation.x as f64, tr.translation.y as f64))
-            * Affine::rotate(tr.rotation as f64)
-            * Affine::translate((sprite.anchor[0] as f64, sprite.anchor[1] as f64))
-            * Affine::scale_non_uniform(tr.scale.x as f64, tr.scale.y as f64);
+    let local_to_world = Affine::translate((tr.translation.x as f64, tr.translation.y as f64))
+        * Affine::rotate(tr.rotation as f64)
+        * Affine::translate((sprite.anchor[0] as f64, sprite.anchor[1] as f64))
+        * Affine::scale_non_uniform(tr.scale.x as f64, tr.scale.y as f64);
     // World → screen. Y flips (world-Y up, screen-Y down). Uniform
     // scale `k = window.height / camera.height_world` (square pixels).
     let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);

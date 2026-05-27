@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-imageio-apng"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-apng` — Animated PNG decode (W2.T3) + single-frame
+# encode. Pure-Rust via `png` 0.18 direct (exposes APNG via
+# `animation_control` + `next_frame`) + `image` 0.25 for the
+# single-frame encode path. Multi-frame APNG encoding is deferred
+# (W3+); see crate doc.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+# Direct png 0.18 (not via image) so we can access the APNG-specific
+# `animation_control` + `frame_control` + per-frame disposal/blend
+# metadata that `image::DynamicImage` opaques away.
+png = { version = "0.18", default-features = false }
+# image 0.25 reused for the single-frame encode (consistent with
+# PNG/JPEG/WebP/GIF crates).
+image = { version = "0.25", default-features = false, features = ["png"] }

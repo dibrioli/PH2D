@@ -4100,6 +4100,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-imageio-apng"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-color",
+ "ph2d-imageio",
+ "png",
+]
+
+[[package]]
 name = "ph2d-imageio-gif"
 version = "0.0.0"
 dependencies = [
@@ -4153,6 +4163,7 @@ name = "ph2d-imageio-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-imageio",
+ "ph2d-imageio-apng",
  "ph2d-imageio-gif",
  "ph2d-imageio-jpeg",
  "ph2d-imageio-ora",

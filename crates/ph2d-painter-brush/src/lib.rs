@@ -15,20 +15,43 @@
 //! - [`GrainSource`] — None / Bitmap / Procedural / Imported.
 //! - [`ProceduralGrain`] — SimplexNoise / GaborNoise / PaperWeave / SprayDot (Proposta 3).
 //!
-//! Status (T1.4 ship — 2026-05-26):
+//! Status (T1.6 ship — 2026-05-26):
 //! - **Types + ABI:** `Brush` / 12 sub-structs / `Stamp` 96B align(16) ✓
-//! - **Library:** `ROUND_HARD` builtin + `round_hard_shape()` procedural CPU ✓
+//! - **Library (T1.6):** 3 procedural shapes shipped — `round_hard` (slot 0),
+//!   `round_soft` (slot 1), `square_hard` (slot 2). Slot dispatch via
+//!   `library::shape_alpha_for_slot` (CPU) + `stamp.wgsl::shape_alpha_for_
+//!   slot` (GPU); gate-protected by `cpu_shader_shape_kernels_textual_parity`.
+//! - **Shape atlas binding:** **deferred** to W6+ (when first custom-art
+//!   shape PNG ships — `flat_chisel`, `bristle_spread`, `splatter_spread`).
+//!   T1.6 chose procedural inline switch over `texture_2d_array<f32>`
+//!   binding because R8 atlas quantization would drift ~1/255 per pixel
+//!   CPU↔GPU and break HR-5. `library::build_shape_atlas()` rasterizer
+//!   ships; consumer ships in W6+. See `library.rs` header for rationale.
+//! - **Multi-stamp + rotation (T1.6):** `StampScheduler` honors
+//!   `shape_count` (1..=16 stamps per spacing step), `shape_count_jitter`,
+//!   `shape_rotation_follow` (atan2 stroke direction), `shape_scatter`
+//!   (per-stamp rotation jitter), `shape_randomized` (rotation base
+//!   lazy-init on first `advance` of the stroke when the brush has the
+//!   flag set — see `StampScheduler::stroke_rotation_base` field doc
+//!   for the mid-stroke brush-swap policy), and `shape_flip_x` /
+//!   `shape_flip_y` (flag bits). Non-radial shapes get a tight analytic
+//!   bounding-box scale `|cos θ| + |sin θ|` (peaks at √2 at 45°) when
+//!   rotated — see `library::rotated_footprint_scale`.
+//! - **Color Dynamics stamp-level jitter (T1.6):** per-stamp OKLab
+//!   perturbation — `stamp_lightness_jitter` (bidir L offset),
+//!   `stamp_darkness_jitter` (monotonic down), `stamp_hue_jitter`
+//!   (rotates a/b), `stamp_saturation_jitter` (scales a/b). Distinct PRNG
+//!   axis tags `0xC1..0xC4` so toggling one channel doesn't disturb the
+//!   others' stream. Stroke-level + pressure/tilt/barrel modulation is
+//!   deferred to T-color-full (ADR-0051).
 //! - **GPU pipeline:** [`StampPipeline`] W1 unified compute shader (write-only
-//!   `rgba8unorm` storage texture, 6 RenderingMode, premul-consistent) ✓
-//! - **Shape atlas:** procedural inline in shader; texture-array atlas binding
-//!   T1.5+.
-//! - **Mixbox WGSL:** `pigment_mode` is a Stamp ABI slot but compute is T1.X+
+//!   `rgba8unorm` storage texture, 6 RenderingMode, premul-consistent,
+//!   T1.5 ping-pong) ✓; T1.6 adds shape-layer dispatch + rotation/flip uv
+//!   transform inside `cs_stamp`.
+//! - **Mixbox WGSL:** `pigment_mode` is a Stamp ABI slot but compute is W5+
 //!   (ADR-0044 §2.5; det-painter excluded per §2.5.1).
 //! - **Procedural Grain compute:** types in `procedural::*`; compute shader
 //!   wiring is W5+.
-//! - **Multi-stamp alpha-over:** T1.5+ ping-pong via `StampScheduler` (T1.4
-//!   write-only stage races overlapping stamps; single-stamp Day-5 smoke
-//!   unaffected).
 //!
 //! Crates consumidores (W1+):
 //! - `ph2d-tool-painter` (ADR-0043) — consome `BrushHandle` em `PainterParams.active_brush`.

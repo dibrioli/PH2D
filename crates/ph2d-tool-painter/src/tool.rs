@@ -1,6 +1,8 @@
-//! `PainterTool` — impl Tool + RasterEditTool (T1.5 ship).
+//! `PainterTool` — impl Tool + RasterEditTool (T1.5 ship + T1.6 brush mature).
 //!
-//! T1.5 status: **RasterEditTool real (CPU stamp render)** —
+//! ## T1.5 + T1.6 status
+//!
+//! **T1.5 — RasterEditTool real (CPU stamp render):**
 //! [`crate::tool::PainterTool::queue_pointer`] aciona o [`StampScheduler`]
 //! sobre `canvas_rgba` via [`ph2d_painter_brush::apply_stamps`] (paridade
 //! ULP-bounded ao shader `stamp.wgsl`). `StampPipeline` (GPU compute) está
@@ -9,8 +11,24 @@
 //! cross-frame) é seguinte (T-perf W5+). CPU path entrega o Day-7 marker
 //! "primeira pintura visível" sem deferral funcional.
 //!
+//! T1.6 — Brush mature (shape variety + multi-stamp + rotation + color
+//! jitter). `ph2d-painter-brush` ganhou 3 procedural shape kernels com
+//! slot dispatch (`round_hard` slot 0, `round_soft` slot 1,
+//! `square_hard` slot 2), multi-stamp emission (`shape_count` 1..=16 +
+//! `shape_count_jitter`), rotation pipeline (`shape_rotation_follow` +
+//! `shape_scatter` + `shape_randomized`), flip bits (`shape_flip_x` /
+//! `shape_flip_y` aplicados ANTES da rotation em shape-local space), e
+//! Color Dynamics stamp-level jitter (hue/saturation/lightness/darkness
+//! com axis-tag isolation gate-proven). `PainterTool` API pública não
+//! muda — todas as novas capacidades são driven pelo `Brush.shape` +
+//! `Brush.color_dynamics` que o tool já passa ao scheduler.
+//!
 //! W1 day 7 smoke: ativar Painter pill, clicar/arrastar no canvas → marcas
-//! visíveis no sprite, alpha-over acumulando entre stamps.
+//! visíveis no sprite, alpha-over acumulando entre stamps. **Smoke T1.6
+//! sugerido:** trocar pra `round_soft` ou `square_hard` brush, configurar
+//! `shape_count=3 + shape_scatter=30°` + `stamp_hue_jitter=0.5`, traçar
+//! um arco → cluster de stamps rotacionados com hue variando ao longo
+//! do stroke.
 //!
 //! ## W2 follow-ups documentados (audit T1.5 rounds 3+4)
 //!
@@ -70,6 +88,76 @@
 //!   3 use `ph2d_i18n::tr(...)`. Workspace-wide HR-15 clarification
 //!   needed (whether "no hardcoded UI strings" covers toasts or only
 //!   widget labels). Painter is conforming to majority; no action.
+//!
+//! ## T1.6 audit follow-ups (rounds 1 + 2, 8 lentes × 2 rounds)
+//!
+//! Round 1 (lentes O atlas / P color / Q multi-stamp): 33 findings
+//! (0 Crit, 6 High, 15 Med, 12 Low). Round 2 (lentes R regressions / S
+//! spec compliance): 12 findings (0 Crit, 0 High, 10 Med, 6 Low). Total
+//! T1.6 fingerprint: **0 Crit, 6 High → all remediated; 25 Med → 13
+//! remediated + 12 deferred com rationale; 18 Low → 5 remediated + 13
+//! aceitos como defer/document-only**. Padrão-ouro threshold (zero
+//! Crit/High em round-2) atingido.
+//!
+//! Deferred to W2+ with explicit rationale:
+//!
+//! - **T-numerical-parity (O-2):** runtime CPU↔GPU pixel-parity test
+//!   requires wgpu device in CI. Today's textual gate
+//!   (`cpu_shader_shape_kernels_textual_parity`) pins each side
+//!   independently; a true bit-equality runtime test lands when GPU CI
+//!   ships. ETA: W2-W4 (alongside `painter_no_alloc_hot_path` dhat
+//!   integration).
+//! - **NFold rotational symmetry API (O-6):** current `shape_is_radial_
+//!   symmetric` is a boolean; future shapes with 4-fold / 2-fold /
+//!   asymmetric symmetry need a `SymmetryKind` enum + tight footprint
+//!   bound per kind. Lands with first asymmetric shape (W6+).
+//! - **`square_hard` AA band screen-px width drift (O-9):** the
+//!   smoothstep band thickness in screen pixels varies with rotation
+//!   because the band is shape-relative `[0.90, 1.0]`. Visible only on
+//!   `square_hard` at non-axis-aligned rotations. Pixel-derivative AA
+//!   (`fwidth`-equivalent in WGSL) lands W6+ once visual feedback
+//!   confirms the artifact matters.
+//! - **Pearson cross-channel correlation gate (P-5):** today's bit-
+//!   equality gate (`color_jitter_cross_channel_axis_independence`)
+//!   proves the strongest invariant; a statistical Pearson `|r| <
+//!   0.05` gate is W2+ refinement.
+//! - **HDR L clamp policy (P-6):** `apply_stamp_color_jitter` clamps L
+//!   to `[0, 1]` (sRGB-gamut assumption). HDR / Display P3 / Rec2020
+//!   profiles need a higher `MAX_OKLAB_L` const + a profile-aware
+//!   clamp. Lands when ADR-0048 ColorProfile expansion targets HDR
+//!   (T-color-full).
+//! - **`det_random` seed=0 degenerate (P-9):** at `stroke_seed=0`,
+//!   first-stamp PRNG output is dominated by `axis_tag` (low entropy).
+//!   No production code seeds with 0 (caller derives from pointer-time
+//!   plus entity plus brush hash), but a defensive `seed ^ 0x9E37...`
+//!   constant fold would harden the path. Defer.
+//! - **Perf bench gate `apply_stamp_color_jitter` (P-10):** worst-case
+//!   load (4096 stamps × 4 jitters all >0) costs ~120 µs estimated.
+//!   Within 4.5 ms Painter sub-budget but unmeasured. Criterion bench
+//!   infra lands W2+ alongside other perf gates.
+//! - **Denormal jitter flush-to-zero (P-11):** untrusted brush JSON
+//!   could carry sub-normal floats (10⁻⁴⁰). x86 without FTZ pays
+//!   100s of cycles on denormal multiply. Defer; brush-load validation
+//!   in `ph2d-painter-contracts` is the right home (W2+).
+//! - **First-stamp `[1.0, 0.0]` sentinel artifact (Q-9):** the first
+//!   stamp of a stroke with `shape_rotation_follow=true` uses 0°
+//!   rotation (no direction yet). Documented in spec §1.3.4.1. "First-
+//!   stamp deferral" (delay emission until second pointer arrives,
+//!   back-fill direction) is W2+ feature to eliminate the artifact.
+//! - **Hue jitter intermediate-slider curve (R-3):** PH2D uses linear
+//!   `slider × π` mapping; Procreate uses super-linear. UX A/B test
+//!   needed to decide — defer until brush studio panel ships (W5+).
+//! - **Asymmetric-shape flip gate (R-8):** `flip_preserves_output_for_
+//!   symmetric_shapes` is tautological for T1.6's doubly-symmetric
+//!   shapes. Real pixel-level flip gate requires asymmetric shape
+//!   (first one ships W6+ — `flat_chisel`). Tracker: search this file
+//!   for `FOLLOW-UP-W6` to find this entry.
+//! - **`shape_count_zero` brush-load validation (Q-7):** scheduler
+//!   clamps `shape_count=0 → 1` as defense-in-depth. Real fix is
+//!   validation at `ph2d-painter-contracts` brush-load time (typed
+//!   error). W2+ alongside other brush-param validators.
+//! - **`R6-LN-4` HR-15 Toast strings policy (round-1):** unchanged —
+//!   workspace-wide policy clarification pending.
 
 use std::sync::Arc;
 

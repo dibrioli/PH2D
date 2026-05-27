@@ -91,12 +91,13 @@ struct Globals {
 }
 
 // Flag bitmask — sync with crates/ph2d-painter-brush/src/stamp.rs::FLAG_*.
-// T1.4 consumes only HOVER_PREVIEW and PREDICTED_SAMPLE (defensive early-out
-// per ADR-0050); the remaining bits (FLIP_X/Y, GRAIN_BEHAVIOR_MOVING,
-// BURNT_EDGES, WET_EDGES, LUMINANCE_BLENDING, GRAIN_PROCEDURAL, FLUID_SAMPLE)
-// will be wired by the corresponding subsystems in T1.5+ (shape atlas),
-// W7+ (wet mix), W15+ (fluid). Declared here so naga matches the Rust ABI
-// at parse time and so the bitmask layout stays single-source.
+// **T1.6 consumes** HOVER_PREVIEW + PREDICTED_SAMPLE (early-out per
+// ADR-0050) AND FLIP_X + FLIP_Y (sample-coord transform in `cs_stamp`).
+// Remaining bits — GRAIN_BEHAVIOR_MOVING, BURNT_EDGES, WET_EDGES,
+// LUMINANCE_BLENDING, GRAIN_PROCEDURAL, FLUID_SAMPLE — will be wired by
+// the corresponding subsystems: T-grain W5+, T-wet-mix W7+, T-fluid
+// W15+. All bits declared here so naga matches the Rust ABI at parse
+// time and so the bitmask layout stays single-source.
 const FLAG_SHAPE_FLIP_X: u32           = 1u;
 const FLAG_SHAPE_FLIP_Y: u32           = 2u;
 const FLAG_GRAIN_BEHAVIOR_MOVING: u32  = 4u;
@@ -147,29 +148,71 @@ fn oklab_to_linear_srgb(L: f32, a: f32, b: f32) -> vec3<f32> {
     );
 }
 
-// Round-hard procedural shape. **Semantically-equivalent radial
-// smoothstep** of `library::round_hard_shape` (CPU side) — the same
-// analytic formula, but sampled on the GPU at the stamp's actual
-// footprint grid (the CPU atlas in `library.rs` is fixed 256² R8 for
-// T1.5+ atlas binding; the two grids differ for stamps where size_px ≠
-// 256 — they agree on the analytic curve, not on quantized pixels).
+// ── Procedural shape kernels (slot dispatch — T1.6) ──────────────────────
 //
-//   d        = ‖uv - (0.5, 0.5)‖ / 0.5           // normalized radial distance
-//   edge_t   = clamp((d - 0.85) / 0.15, 0, 1)    // smoothstep transition band
-//   smooth   = edge_t² · (3 - 2·edge_t)          // Hermite smoothstep
-//   alpha    = 1 - smooth                        // opaque core, fading edge
+// Each kernel is a pure function `(uv) -> alpha` analytically identical to
+// its CPU counterpart in `library.rs::shape_*`. The CPU side dispatches via
+// `shape_alpha_for_slot(slot, u, v)`; the shader dispatches via
+// `shape_alpha_for_slot(stamp.shape_layer, uv)`. **No atlas binding** —
+// shapes are 100 % procedural through T1.6 to preserve HR-5 cross-OS
+// bit-identical reproducibility (atlas R8 quantization would introduce
+// ~1/255 per-pixel drift). Atlas binding lands when the first custom-art
+// shape PNG ships (W6+: flat_chisel / bristle_spread / splatter_spread).
 //
-// Inline procedural is the T1.4 baseline (no shape atlas wired yet).
-// T1.5+ swaps this for an atlas sample via the shape texture array bound
-// at @group(0) @binding(3) — public API of StampPipeline absorbs the
-// change without breaking callers.
+// Slot canon (mirrors `library.rs::*_SLOT` constants — ABI):
+//   0 = round_hard   (Hermite smoothstep on radial 0.85..=1.0)
+//   1 = round_soft   ((1 - d²)² radial — Gaussian-equivalent)
+//   2 = square_hard  (Chebyshev distance + smoothstep 0.90..=1.0)
+//
+// `smooth_t` (not `smooth`) — `smooth` is a reserved WGSL keyword (sampler
+// interpolation qualifier in fragment inputs).
 fn round_hard_shape(uv: vec2<f32>) -> f32 {
-    let d = length(uv - vec2<f32>(0.5, 0.5)) / 0.5;
+    // Audit T1.6 O-3: WGSL `length()` is an intrinsic whose lowering on
+    // Metal / Vulkan / DX12 is implementation-defined (may use fused
+    // reciprocal-sqrt + multiply, or `sqrt(dot(v,v))`, or a backend-
+    // specific path). Cross-backend ULP equality is NOT mandated. The
+    // CPU side uses scalar `(dx*dx + dy*dy).sqrt()` — to keep the gate
+    // `cpu_shader_shape_kernels_textual_parity` honest (and to give CPU
+    // and GPU the same numerical pipeline), the shader uses the same
+    // scalar form, not `length()`.
+    let dx = uv.x - 0.5;
+    let dy = uv.y - 0.5;
+    let d = sqrt(dx * dx + dy * dy) / 0.5;
     let edge_t = clamp((d - 0.85) / 0.15, 0.0, 1.0);
-    // `smooth_t` (not `smooth`) — `smooth` is a reserved WGSL keyword
-    // (sampler interpolation qualifier in fragment inputs).
     let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);
     return 1.0 - smooth_t;
+}
+
+fn round_soft_shape(uv: vec2<f32>) -> f32 {
+    let dx = uv.x - 0.5;
+    let dy = uv.y - 0.5;
+    let d_sq = (dx * dx + dy * dy) / 0.25; // normalize over radius 0.5
+    if d_sq >= 1.0 {
+        return 0.0;
+    }
+    let one_minus_d_sq = 1.0 - d_sq;
+    return one_minus_d_sq * one_minus_d_sq;
+}
+
+fn square_hard_shape(uv: vec2<f32>) -> f32 {
+    let dx = abs(uv.x - 0.5);
+    let dy = abs(uv.y - 0.5);
+    let d = max(dx, dy) / 0.5;
+    let edge_t = clamp((d - 0.90) / 0.10, 0.0, 1.0);
+    let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);
+    return 1.0 - smooth_t;
+}
+
+// Dispatch a procedural shape by `shape_layer` slot. Out-of-range slots
+// fall back to `round_hard` (safer-degrade — same behavior as
+// `library::shape_alpha_for_slot`).
+fn shape_alpha_for_slot(slot: u32, uv: vec2<f32>) -> f32 {
+    switch slot {
+        case 0u: { return round_hard_shape(uv); }
+        case 1u: { return round_soft_shape(uv); }
+        case 2u: { return square_hard_shape(uv); }
+        default: { return round_hard_shape(uv); }
+    }
 }
 
 // ── Six rendering modes (ADR-0044 §2.4 + spec §1.5.2) ──
@@ -346,32 +389,74 @@ fn cs_stamp(
         return;
     }
 
-    // uv ∈ [0,1]² across the footprint using **pixel-center convention**
+    // uv_axis ∈ [0,1]² across the footprint using **pixel-center convention**
     // (pixel `i` lives at `uv = (i+0.5)/footprint`). Mirrors the
-    // texture-sample convention so atlas binding in T1.5 lands at the
-    // same sample positions (audit 2026-05-26 D-1.M1).
+    // texture-sample convention (audit 2026-05-26 D-1.M1).
+    //
+    // **T1.6 stamp-space transform pipeline** (apply in order):
+    //   1. axis-aligned uv → centered `[-0.5, +0.5]²`
+    //   2. flip — invert axis components per FLAG_SHAPE_FLIP_{X,Y}
+    //   3. rotate — apply `rotation_rad` rotation matrix
+    //   4. un-center → uv ∈ `[-Δ, 1+Δ]²` (Δ depends on rotation; outside
+    //      `[0, 1]²` → shape kernel returns 0)
+    //   5. dispatch shape by `stamp.shape_layer` slot
+    //
+    // The world-space write coordinate uses the original axis-aligned
+    // `(pixel_local_x, pixel_local_y) - center_offset` offset — only the
+    // **shape sample uv** rotates. The footprint stays axis-aligned (the
+    // bounding box). For non-radial shapes (`square_hard`) the
+    // `StampScheduler` enlarges `size_px` by √2 when `rotation_rad != 0`
+    // so the rotated shape stays inside the bounding box (see
+    // `library::rotated_footprint_scale`).
     let footprint_f = f32(footprint);
-    let uv = (vec2<f32>(f32(pixel_local_x), f32(pixel_local_y)) + vec2<f32>(0.5)) / footprint_f;
+    let center_offset = (footprint_f - 1.0) * 0.5;
+    let uv_axis = (vec2<f32>(f32(pixel_local_x), f32(pixel_local_y)) + vec2<f32>(0.5)) / footprint_f;
 
-    // T1.4 inline procedural shape (round_hard). T1.5 atlas sampling via
-    // `shape_layer` index. Shape × pressure/flow attenuation = stamp alpha.
-    let shape_alpha = round_hard_shape(uv);
+    // 1. Center to `[-0.5, +0.5]`.
+    var uv_centered = uv_axis - vec2<f32>(0.5);
+
+    // 2. Flip axes per flag bits. Done BEFORE rotation so flip+rotation
+    // composes as the user expects (flip is in shape-local space).
+    if (stamp.flags & FLAG_SHAPE_FLIP_X) != 0u {
+        uv_centered.x = -uv_centered.x;
+    }
+    if (stamp.flags & FLAG_SHAPE_FLIP_Y) != 0u {
+        uv_centered.y = -uv_centered.y;
+    }
+
+    // 3. Rotate the sample direction. We rotate by `-rotation_rad` here
+    // because we're transforming the **sample coordinate** into the
+    // shape's reference frame (inverse of the rotation we'd apply to the
+    // shape itself). `cos / sin` are IEEE-754 round-to-nearest in WGSL
+    // and naga lowers to backend `cos/sin` (Metal `cos`, SPIR-V
+    // `OpExtInst Sin/Cos`) — bit-identical to Rust's `f32::cos/sin`
+    // within the documented ULP tolerance (~1 ULP across backends).
+    let cos_r = cos(-stamp.rotation_rad);
+    let sin_r = sin(-stamp.rotation_rad);
+    let uv_rotated = vec2<f32>(
+        uv_centered.x * cos_r - uv_centered.y * sin_r,
+        uv_centered.x * sin_r + uv_centered.y * cos_r,
+    );
+
+    // 4. Un-center back to `[0, 1]` shape sample space. Outside `[0, 1]²`
+    // the shape kernel returns 0 — handled inside `shape_alpha_for_slot`
+    // (round_soft has explicit d_sq guard; round_hard/square_hard clamp
+    // edge_t to 1.0 → alpha 0).
+    let uv = uv_rotated + vec2<f32>(0.5);
+
+    // 5. Dispatch to per-slot shape kernel.
+    let shape_alpha = shape_alpha_for_slot(stamp.shape_layer, uv);
     if shape_alpha < (1.0 / 255.0) {
         return;
     }
 
-    // World-space pixel coords. T1.4 ignores `rotation_rad` (axis-aligned
-    // footprint); T1.5 applies the rotation matrix when the
-    // `StampScheduler` emits oriented stamps.
-    //
-    // Centering uses `f32` so odd footprints don't drift half a pixel
-    // (audit 2026-05-26 D-1.M1); sub-pixel `position_world` is snapped
-    // to nearest integer via `floor(x + 0.5)` — IEEE 754 well-defined
-    // round-half-up, identical across Metal / Vulkan / D3D12 backends
-    // (audit 2026-05-26 D-2.F3 — WGSL `round()` halfway is impl-defined,
-    // `floor(x + 0.5)` is not). T1.5 may upgrade to bilinear sub-pixel
-    // write once the canvas is rgba16f (W5+).
-    let center_offset = (footprint_f - 1.0) * 0.5;
+    // World-space pixel coords — axis-aligned write target (footprint is
+    // the bounding box; only the shape sample rotates). Centering uses
+    // `f32` so odd footprints don't drift half a pixel (audit 2026-05-26
+    // D-1.M1); sub-pixel `position_world` snaps to nearest integer via
+    // `floor(x + 0.5)` — IEEE 754 well-defined round-half-up, identical
+    // across Metal / Vulkan / D3D12 backends (audit 2026-05-26 D-2.F3 —
+    // WGSL `round()` halfway is impl-defined, `floor(x + 0.5)` is not).
     let world_x_f = stamp.position_world_x + f32(pixel_local_x) - center_offset;
     let world_y_f = stamp.position_world_y + f32(pixel_local_y) - center_offset;
     let world_x = i32(floor(world_x_f + 0.5));

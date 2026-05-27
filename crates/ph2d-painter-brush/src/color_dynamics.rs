@@ -18,7 +18,14 @@ pub struct ColorDynamicsParams {
     pub stamp_saturation_jitter: f32,
     pub stamp_lightness_jitter: f32,
     pub stamp_darkness_jitter: f32,
+    /// **T1.6 ⚠️ NOT WIRED — reserved for T-color-full (ADR-0051).** Toggling
+    /// this in T1.6 is a silent no-op at the scheduler; a `debug_assert!` in
+    /// `StampScheduler::apply_stamp_color_jitter` fires in tests/debug
+    /// builds. The slot exists in the canonical brush schema so future
+    /// brush files don't need migration when T-color-full wires it.
     pub stamp_secondary_color: bool,
+    /// **T1.6 ⚠️ NOT WIRED — reserved for T-color-full (ADR-0051).** See
+    /// note on `stamp_secondary_color`.
     pub stamp_secondary_amount: f32,
     // === Stroke-level jitter (fixado quando começa) — 6 fields ===
     pub stroke_hue_jitter: f32,

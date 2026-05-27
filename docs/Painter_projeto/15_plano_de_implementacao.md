@@ -289,6 +289,36 @@ Smokes do Enio por wave. Cada smoke é o **único critério que vale** para a wa
 
 **Total W1 (sequencial + paralelo):** 14-18 dias, com smoke Day 7 ainda atingível se Implementador rodar tasks paralelas em background.
 
+### §4.Y — Numeração efetiva (live tracking, 2026-05-26)
+
+A numeração T1.X abaixo é **planejada**. A execução real consolidou tasks
+adjacentes em commits únicos quando o caminho crítico para o smoke Day 7
+("primeira pintura visível") justificou:
+
+| Sessão                  | Tasks do plano absorvidas                                | Commits locais       |
+|-------------------------|----------------------------------------------------------|----------------------|
+| T1.1 (skeleton)         | T1.1                                                     | shipped              |
+| T1.2 (pill)             | T1.2                                                     | shipped              |
+| T1.3 (brush+stamp)      | T1.3                                                     | shipped              |
+| T1.4 (stamp pipeline)   | T1.4                                                     | shipped              |
+| **T1.5 (Day-7 marker)** | **T1.5 shader + T1.6 RasterEditTool + T1.7 bridge + T1.10 stroke loop (CPU MVP)** | shipped (smoke ✓)    |
+| **T1.6 (brush mature)** | shape variety (3 builtin) + multi-stamp + rotation + flip + Color Dynamics stamp jitter — **escopo NÃO no plano original**; insere capacidade brush real entre Day-7 marker e T1.8 stroke history | shipped              |
+| T1.7+ (TBD)             | T1.8 (stroke skeleton) + T1.9 (history integration) + T1.11 (audit final W1) | open                 |
+
+Razão para `T1.6 brush mature` não estar no plano original: o plano foi
+desenhado em 2026-05-23 assumindo que "1 brush axis-aligned" seria
+suficiente até W2 sidebar. Após o smoke Day 7 confirmado pelo Enio
+(2026-05-26), o handoff [`HANDOFF_painter_t15_close.md`](../HANDOFF_painter_t15_close.md)
+revisou: stroke history (T1.8..T1.10) tem pouco valor se grava strokes de
+"1 brush" repetido. Brush mature antes torna stroke history mais útil e
+o smoke das próximas waves mais perceptual. Decisão Enio 2026-05-26.
+
+T-input / T-color / T-durability / T-tier paralelos (§4.X) ainda **abertos**
+— foram desenhados como prerequisitos do smoke Day 7. T1.5 (CPU MVP) provou
+que o Day 7 atinge sem eles (color_oklab hardcoded incidental, Pencil
+dummies); eles voltam como prerequisitos do Brush Studio (W5+) e Pencil
+support real (W10+).
+
 ### T1.1 — Skeleton `ph2d-tool-painter`
 
 **Conteúdo:**

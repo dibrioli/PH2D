@@ -122,13 +122,70 @@ Fonte e comportamento da Shape.
 | `shape_horizontal_jitter` | f32 | 0.0..=1.0 | 0.0 | Idem horizontal. |
 | `shape_filtering` | enum | `None` / `Classic` / `Improved` | `Improved` | Antialiasing do stamp (Improved é bilinear high-quality em compute). |
 
+#### 1.3.4.1 Comportamentos T1.6 ratificados (audit-driven)
+
+- **`shape_randomized` × `break_segment`** (audit T1.6 Q-5): quando
+  `shape_randomized = true`, a rotação-base do stroke é fixada na primeira
+  emissão e **sobrevive a `break_segment`** (cursor sai do footprint mid-drag
+  e re-entra noutro local). Razão: do ponto de vista do usuário, o stroke
+  não terminou (pointer não foi solto) — manter a mesma rotação-base
+  garante padrão visualmente contínuo entre os segmentos. Um novo pointer-
+  down (begin_stroke) gera uma nova rotação-base.
+
+- **`shape_flip_x` / `shape_flip_y` composição com rotação** (audit T1.6 O-7):
+  flip é aplicado em **shape-local space** (ANTES da rotação), não em
+  world space. Tradução para o usuário: toggling flip em um brush
+  assimétrico (e.g. comma, hook, arrow tip — quando esses shipparem em
+  W6+) produz a ponta espelhada no MESMO ângulo de stroke, não o stroke
+  rotacionado no eixo flipado. Convention escolhida porque casa com
+  "espelhar o pincel" (intuição artista) vs "espelhar o traço" (convenção
+  mais matemática).
+
+- **`shape_count_jitter` boundary-clamp bias** (audit T1.6 Q-1): a
+  perturbação `n_effective = round(n + j·jitter·n)` com `j ∈ [-1, +1]`
+  é então clampada a `[1, 16]`. Em `n` próximo de 16 + `jitter = 1.0`,
+  metade do range superior colapsa em 16 — distribuição é viesada para
+  manter `n` próximo do nominal. Documentado: o slider expressa "intent
+  de variação" com saturação dura, não uma distribuição uniforme
+  perturbada. Não é bug, é trade-off intencional pra evitar UX confuso
+  ("por que minha conta de 16 às vezes vira 32?").
+
+- **`shape_count_jitter` PRNG sequence + spacing_jitter** (audit T1.6 P-4):
+  a sequência de spacing-jitter binds em `stamp_index` (advance per
+  pushed stamp, NOT per spacing step). Consequência: dois strokes que
+  diferem apenas em `shape_count` produzem sequências de spacing-jitter
+  diferentes — o `shape_count` é parte da identidade do brush e
+  intencionalmente produz fingerprint distinto.
+
+- **Tamanho efetivo máximo para shapes não-radiais rotacionadas** (audit
+  T1.6 Q-6): `PropertiesParams::max_size_px = 2048` (§1.3.11). Quando
+  o shape é não-radial (e.g. `square_hard`) E tem rotação ≠ 0, o
+  scheduler aumenta o bounding-box por `|cos θ| + |sin θ|` (até √2 em
+  45°). Mas o limite hard do Stamp ABI é `MAX_STAMP_SIZE_PX = 2048` —
+  então um brush com `size = 2048` + non-radial + rotation atinge o cap
+  e os **cantos do shape são cortados**. Limite prático efetivo para
+  non-radial rotated brushes é `2048/√2 ≈ 1448 px`. UI deve refletir
+  esse limite (W2+).
+
+- **`shape_rotation_follow` no primeiro stamp do stroke** (audit T1.6 Q-9):
+  o primeiro stamp de um stroke (pointer-down sem segundo pointer ainda)
+  usa direção sentinel `[1.0, 0.0]` → `atan2(0, 1) = 0` rotação. Os
+  stamps seguintes (após o segundo pointer chegar) usam a direção real
+  do segmento. Artifact visual: para shapes não-radiais com
+  `shape_rotation_follow = true`, o stamp inicial fica axis-aligned
+  independente da intenção do usuário. Aceitável em T1.6; W2+ pode
+  introduzir "first-stamp deferral" (atrasar emissão do primeiro stamp
+  até o segundo pointer chegar, back-fill direção) pra eliminar o
+  artifact. Mantido como trade-off documentado: zero-latência ganha
+  sobre estética do primeiro stamp.
+
 ### 1.3.5 Grain
 
 Fonte e comportamento da Grain.
 
 | Param | Tipo | Range / Valores | Default | Descrição |
 |-------|------|------------|---------|-----------|
-| `grain_source` | `GrainSource` | `Builtin(name)` ou `Imported(handle)` ou `None` | `None` | Identifica a textura Grain. Built-ins em §1.6.2. |
+| `grain_source` | `GrainSource` | `None` / `Bitmap(name)` / `Procedural(kind)` / `Imported(handle)` ✨ | `None` | Identifica a textura Grain. **Proposta 3 absorvida (ADR-0044)**: `Procedural` é axis novo — geração matemática em compute shader, tiling zero, resolução infinita. Built-ins bitmap em §1.6.7; built-ins procedural em §1.6.8. Detalhe do enum em §1.3.5.1. |
 | `grain_behavior` | enum | `Moving` / `Texturized` | `Texturized` | Moving = grain segue stroke (smeary); Texturized = grain estática "atrás" do stroke (papel). |
 | `grain_movement` | f32 | 0.0..=1.0 | 0.0 | Mistura entre os dois extremos. |
 | `grain_scale` | f32 | 0.05..=4.0 | 1.0 | Tamanho da Grain dentro da Shape. |
@@ -143,6 +200,61 @@ Fonte e comportamento da Grain.
 | `grain_contrast` | f32 | 0.0..=2.0 | 1.0 | Idem. |
 | `grain_filtering` | enum | `None` / `Classic` / `Improved` | `Improved` | Filter da Grain texture (idem Shape). |
 
+#### 1.3.5.1 `GrainSource` enum + `ProceduralGrain` variants
+
+```rust
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum GrainSource {
+    None,
+    /// Bitmap escaneado/desenhado, atlas-resident
+    Bitmap { atlas_layer: u32, blake3: [u8; 32] },
+    /// Procedural (gerado em compute shader, tiling zero, resolução infinita)
+    Procedural(ProceduralGrain),
+    /// Importado pelo usuário (PNG → atlas layer livre ou eviction LRU)
+    Imported { atlas_layer: u32, blake3: [u8; 32] },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ProceduralGrain {
+    /// Simplex Noise (Perlin moderno) — para noise-like genérico
+    SimplexNoise {
+        scale: f32,         // 0.1..=4.0
+        octaves: u32,       // 1..=8
+        persistence: f32,   // 0.0..=1.0
+        seed: u64,
+    },
+    /// Gabor Noise — para textura anisotrópica (fibras orientadas)
+    GaborNoise {
+        frequency: f32,     // ciclos por unidade
+        orientation: f32,   // radianos
+        anisotropy: f32,    // 0.0..=1.0 (0=isotrópico, 1=fortemente direcional)
+        seed: u64,
+    },
+    /// Paper Weave — simulação de trama de papel/tela
+    PaperWeave {
+        fiber_density: f32,    // fibras por unidade
+        fiber_anisotropy: f32, // direcionalidade das fibras
+        crossweave: bool,      // trama cruzada (vs paralela)
+        seed: u64,
+    },
+    /// Spray Dot — pontos pseudo-aleatórios para spray
+    SprayDot {
+        dot_density: f32,   // dots por unidade²
+        dot_size: f32,      // raio relativo
+        dot_jitter: f32,    // variação de tamanho
+        seed: u64,
+    },
+}
+```
+
+**Pipeline GPU para procedural grain:**
+
+Em vez de `textureSample()` do grain atlas, o compute shader chama `compute_procedural_grain(uv, kind, params, seed)` que retorna o valor `[0, 1]` direto. ~50-150 ops por sample dependendo do tipo (Simplex: ~50; PaperWeave: ~150). Dentro do budget (3.5ms) com folga em desktop M2/RDNA1; medir em mobile/web baseline.
+
+**Determinismo:** procedural grain é determinístico se `seed` é estável (não usar `time` como input). HR-5 mantido em det-mode.
+
+**Validação:** golden tests por procedural kind comparam contra referência rasterizada (CPU fallback bit-identical em det-mode).
+
 ### 1.3.6 Rendering
 
 Modos de blending intrínsecos do brush (independentes do blend mode da layer). Lista canônica abaixo. Para detalhe técnico de cada modo, ver §1.5.2.
@@ -150,6 +262,7 @@ Modos de blending intrínsecos do brush (independentes do blend mode da layer). 
 | Param | Tipo | Range / Valores | Default | Descrição |
 |-------|------|------------|---------|-----------|
 | `rendering_mode` | enum | `LightGlaze` / `UniformGlaze` / `IntenseGlaze` / `HeavyGlaze` / `UniformBlending` / `IntenseBlending` | `LightGlaze` | Modo de composição do stamp na layer (lookup table em §1.5.2). |
+| **`pigment_mode`** ✨ | enum | `Linear` / `Mixbox` | depende da categoria (vide §1.5.4) | **Axis ortogonal ao `rendering_mode`** (Proposta 2 — ADR-0044). Controla a matemática de mistura de cor entre stamp e layer. `Linear` = lerp em OKLab (Photoshop default). `Mixbox` = mistura subtrativa pigment-based (Kubelka-Munk simplificado, paper SIGGRAPH 2021 Sochorová+Jamriška). Azul + amarelo → verde vibrante (em vez de cinza lamacento). |
 | `flow` | f32 | 0.0..=1.0 | 1.0 | Multiplica o stamp alpha antes de blend. Diferente de opacity (que multiplica o stroke completo). |
 | `wet_edges` | bool | — | false | Acumula tinta nas bordas (efeito aquarela). |
 | `burnt_edges` | bool | — | false | Escurece bordas (efeito de carvão queimado / sumi-e seco). |
@@ -203,6 +316,70 @@ Mesmos parâmetros prefixados `stroke_*`.
 | `color_pressure_secondary` | f32 | 0.0..=1.0 | 0.0 | Pressão modula mistura com secondary. |
 
 **Tilt modulation**: idem prefixed `color_tilt_*`. **Barrel roll modulation**: idem `color_barrel_*` (Pencil Pro / Wacom barrel sensors apenas).
+
+#### 1.3.8.1 Comportamentos T1.6 ratificados (audit-driven)
+
+- **Composição `stamp_lightness_jitter` + `stamp_darkness_jitter`** (audit
+  T1.6 P-8): aplicação em ordem — lightness primeiro (bidirecional ±L),
+  darkness depois (puxa pra baixo do ponto onde lightness deixou).
+  Quando ambos > 0, a média L dos stamps no stroke desloca pra baixo.
+  Isso é semântica documentada: "darkness aplica EM CIMA do que lightness
+  fez", coerente com o user-model "primeiro espalho, depois posso só
+  escurecer". Gate `darkness_jitter_monotonic_down` pina o invariante
+  "L_out ≤ L_in quando só darkness > 0".
+
+- **Range `stamp_hue_jitter`** (audit T1.6 P-2 + R-1 + R-3): o slider
+  `0..=1` mapeia para **±180° de jitter angular** (não ±360°) —
+  mapeamento **linear** no angulo. No slider máximo (1.0) o stamp
+  recebe uma rotação de hue em `[-π, +π]`, e o gate
+  `hue_jitter_at_max_covers_full_hue_circle` prova **cobertura
+  exaustiva**: todos os 8 octantes da circunferência de hue são
+  visitados em 512 samples (probabilidade de qualquer octante ficar
+  vazio: ≈ 10⁻²⁹). Slider 0.5 = ±π/2 = metade do círculo. Razão pra
+  `* π` (não `* TAU`): usar ±360° tornaria a metade superior do slider
+  um dead-zone (rotação ≥ 2π wrap-around é identidade). Convenção
+  Procreate alinhada na endpoint top; intermediários podem diferir
+  (Procreate usa curva super-linear; PH2D usa linear pra previsibilidade).
+
+- **Hue jitter preserva chroma magnitude** (audit T1.6 P-7): rotação 2D
+  de `(a, b)` em OKLab preserva exatamente `sqrt(a² + b²)`. Para input
+  gray (`a = b = 0`), o output é exatamente `(0, 0)` em qualquer
+  rotação. Gates `color_hue_jitter_preserves_chroma_magnitude` +
+  `hue_jitter_preserves_zero_chroma`.
+
+- **Saturation `.max(0.0)` clamp** (audit T1.6 P-3): o multiplier
+  `(1 + j·jitter)` pode ir negativo quando `j = -1` e `jitter > 1` (já
+  clampado a 1.0). O `.max(0.0)` evita inverter o sinal de `(a, b)` —
+  saturation = 0 produz gray, NÃO o complemento. Gate
+  `saturation_jitter_does_not_flip_chroma_sign`.
+
+- **`stamp_secondary_color` / `stamp_secondary_amount` NÃO wired em T1.6**
+  (audit T1.6 P-1): essas duas slots existem no schema do brush
+  (`ColorDynamicsParams`) mas são **silenciosamente ignoradas** pelo
+  scheduler em T1.6 (deferred pra T-color-full / ADR-0051). Brush files
+  com essas flags ligadas carregam sem erro mas a pintura não muda. O
+  `apply_stamp_color_jitter` fira um `debug_assert!` em builds debug pra
+  sinalizar a discrepância. Pra W2+: T-color-full wires + remove o
+  assert.
+
+- **`stamp_alpha` invariante** (audit T1.6 cobertura): Color Dynamics
+  jitters NUNCA tocam alpha. `flow` (per-stamp, **wired T1.6**) e
+  `opacity` (per-stroke, **reservado — wired T1.7** com taper opacity +
+  stroke-level opacity slider; em T1.6 hardcoded a 1.0 com TODO em
+  `StampScheduler::push_one_stamp`) são os modulators canônicos de
+  alpha. Gate `color_alpha_preserved_through_jitter` cobre apenas a
+  invariância dos jitters; a wiring do opacity per-stroke entra com
+  T1.7.
+
+- **Determinismo HR-5 cross-channel** (audit T1.6 P-5 + S-4): cada
+  channel usa axis_tag distinto (`0xC1`..`0xC4`) pro mixer wyhash.
+  Toggling uma channel **não desloca** a PRNG stream das outras —
+  pinado por gate executável `color_jitter_cross_channel_axis_
+  independence`: rodar com lightness=0.5 + hue=0 vs lightness=0.5 +
+  hue=0.5 produz outputs L **byte-identical** (e simétrico pra outras
+  combinações). Strict bit-equality, não correlação estatística. Gate
+  Pearson stylé statistical (`|r| < 0.05`) é W2+ refinement, mas a
+  bit-equality é o invariante mais forte da família e está ativa em T1.6.
 
 ### 1.3.9 Dynamics (modulação por velocidade do stroke)
 
@@ -338,6 +515,70 @@ Notação: `s` = stamp color (premultiplied), `α_s` = stamp alpha (após shape 
 
 Lista canônica de 22 modos em [`02_layers.md`](02_layers.md) §2.2. O Painter brush expõe os mesmos via `stroke_blend_mode`. Default `Normal`.
 
+### 1.5.4 Pigment mode — Mixbox (axis ortogonal ao Rendering mode) ✨
+
+**Proposta 2 absorvida (ADR-0044).** O parâmetro `pigment_mode` controla a **matemática de mistura de cor** entre stamp e layer. Aplicado **antes** do Rendering mode escolher a fórmula de composição alpha.
+
+#### Linear (default em pencils/inks/markers/airbrushes)
+
+Mistura aditiva clássica em OKLab linear space:
+
+```
+new_color_oklab = mix(layer_oklab, stamp_oklab, blend_factor)
+```
+
+Determinística, previsível, rápida. **Apropriado quando o artista quer cores estáveis** — line art, hachuras, marker work. Azul sobre amarelo permanece azul-sobre-amarelo até a opacidade total.
+
+#### Mixbox (default em oils/watercolors/gouache)
+
+Mistura subtrativa baseada na teoria de pigmentos. Algoritmo: **Mixbox** (Šárka Sochorová + Ondřej Jamriška, SIGGRAPH 2021) — simplifica Kubelka-Munk com 7 pigmentos primários reais (Hansa Yellow, Cadmium Red, Cobalt Blue, Phthalo Green, Burnt Sienna, Titanium White, Carbon Black). Cada cor sRGB se projeta nesses 7 coeficientes; mistura ocorre no espaço K/S; resultado projeta de volta.
+
+```wgsl
+// pseudo-code, full impl em ph2d-painter-brush::mixbox
+fn mix_mixbox(c1: vec3<f32>, c2: vec3<f32>, t: f32) -> vec3<f32> {
+    let latent1 = srgb_to_mixbox_latent(c1);  // 7-vec K/S coefficients
+    let latent2 = srgb_to_mixbox_latent(c2);
+    let mixed   = mix(latent1, latent2, t);   // linear in K/S space
+    return mixbox_latent_to_srgb(mixed);
+}
+```
+
+**Custo:** ~30 ops adicionais por mistura (vs ~5 do Linear). 0 VRAM (LUT eliminado pelo paper original, substituído por polinomial). Dentro do budget.
+
+**Resultado visual:**
+
+| Linear | Mixbox |
+|--------|--------|
+| azul + amarelo = cinza-esverdeado morto | azul + amarelo = **verde vibrante** |
+| vermelho + verde = marrom escuro/cinza | vermelho + verde = **marrom quente natural** |
+| azul + vermelho = roxo/violeta razoável | azul + vermelho = **roxo profundo orgânico** |
+| amarelo + branco = creme limpo | amarelo + branco = **creme limpo** (idem; cores claras divergem pouco) |
+
+**Quando NÃO usar Mixbox:**
+- Pencils / inks (artista quer cor previsível).
+- Markers translúcidos (overlay de cores → Linear é mais previsível).
+- Adjustment Layer effects (operam em espaço linear).
+- Compositor de layers (blend modes da §02 são Linear; misturar paradigmas é confuso).
+
+**Quando usar:**
+- Brushes wet (oils, watercolors, gouache).
+- Pintura tradicional / studio painting workflow.
+- Quando "azul + amarelo = verde" é a intenção do artista.
+
+**Default per-brush:**
+
+| Brush categoria | `pigment_mode` default |
+|---|---|
+| Pencils | `Linear` |
+| Inks | `Linear` |
+| Markers | `Linear` |
+| Paints (oils) | **`Mixbox`** |
+| Watercolors | **`Mixbox`** |
+| Airbrushes | `Linear` |
+| (Gouache, futuro) | **`Mixbox`** |
+
+**Validação:** golden test `mixbox_blue_yellow_produces_green` no `ph2d-painter-brush`.
+
 ## 1.6 Default brush library
 
 12 brushes em 6 categorias. Filtro Blender-minimalismo: cada categoria tem **exatamente 2 brushes** (um "core" workhorse + um "expressive" com sabor). Strings em i18n (chave `painter.brush.<id>`).
@@ -378,11 +619,41 @@ Lista canônica de 22 modos em [`02_layers.md`](02_layers.md) §2.2. O Painter b
 
 `round_hard`, `round_soft`, `round_gradient_soft`, `round_soft_small`, `oval_soft`, `tapered_oval`, `flat_chisel`, `bristle_spread`, `splatter_spread`, `square_hard`.
 
-### 1.6.8 Grain source assets (built-in)
+### 1.6.8 Grain source assets (built-in) — pós-Proposta 3
 
-8 grains shipados:
+8 grains shipados, divididos em **Bitmap** (assinatura visual escaneada; mantida) e **Procedural** (W5+):
 
-`paper_subtle`, `charcoal_heavy`, `marker_streak`, `canvas_weave`, `watercolor_paper`, `spray_grain`, `noise_white`, `noise_pink`.
+| Grain | Source v1.0 | Razão |
+|-------|-------------|-------|
+| `paper_subtle` | **Procedural::SimplexNoise** (W5) | Noise genérico; escala melhor procedural |
+| `charcoal_heavy` | Bitmap (mantém) | Assinatura visual de carvão escaneado |
+| `marker_streak` | Bitmap (mantém) | Streak pattern específico |
+| `canvas_weave` | Bitmap (mantém) | Assinatura de tela Belga vs Cotton |
+| `watercolor_paper` | Bitmap (mantém) | Assinatura cold-press vs hot-press |
+| `spray_grain` | **Procedural::SprayDot** (W5) | Dots benefit de resolução infinita |
+| `noise_white` | **Procedural::SimplexNoise** (W5) | Noise puro; procedural ideal |
+| `noise_pink` | **Procedural::SimplexNoise** filtrado (W5) | Filtro pink após Simplex |
+
+**Resultado:** atlas VRAM cai de 64 MB → ~32 MB (4 grãos bitmap × 1024² × R8 = 4 MB cada).
+
+### 1.6.9 Mixbox defaults per-brush (pós-Proposta 2)
+
+| Brush | `pigment_mode` default |
+|-------|-----------------------|
+| `pencil_2b` | `Linear` |
+| `pencil_charcoal` | `Linear` |
+| `ink_studio_pen` | `Linear` |
+| `ink_brush_pen` | `Linear` |
+| `marker_fine` | `Linear` |
+| `marker_chisel` | `Linear` |
+| `oil_round` | **`Mixbox`** |
+| `oil_bristle` | **`Mixbox`** |
+| `watercolor_wash` | **`Mixbox`** |
+| `watercolor_detail` | **`Mixbox`** |
+| `airbrush_soft` | `Linear` |
+| `airbrush_textured` | `Linear` |
+
+Usuária pode override em Brush Studio. Custom brushes herdam default do template ao criar.
 
 ## 1.7 Brush Studio (UI de edição)
 
@@ -463,7 +734,7 @@ Stamps que cobrem mais de 8×8 px (tipicamente brush size > 8) precisam de múlt
 
 ### 1.8.3 Rendering mode dispatch
 
-**Decisão estrutural (2026-05-23, fechada em [README §11](README.md) #2):** W1 implementa **unified**; padrão ouro final é **especializado**. ADR-0042 ratificará a transição.
+**Decisão estrutural (2026-05-23, fechada em [README §11](README.md) #2):** W1 implementa **unified**; padrão ouro final é **especializado**. ADR-0044 ratificará a transição.
 
 #### W1 — unified (rampa)
 
@@ -502,7 +773,7 @@ fn cs_stamp(@builtin(workgroup_id) wid: vec3<u32>,
 2. `StampPipeline::encode()` itera modos não-vazios e despacha o pipeline correspondente.
 3. API pública `StampPipeline` inalterada.
 4. Test golden por modo continua o mesmo (output bit-identical se fórmula mantida).
-5. ADR-0042 amendment registra a transição.
+5. ADR-0044 amendment registra a transição.
 
 #### Gate `painter_stamp_specialize_when_budget_pressure`
 
@@ -587,7 +858,7 @@ UI: tool switching via top-bar (Brushes / Smudge / Eraser pills) ou atalhos B / 
 | `painter_rendering_modes_distinct` | `ph2d-painter-brush` | Cada um dos 6 Rendering modes produz output **distinto** (anti-regressão a single-mode bug). |
 | `painter_brush_format_roundtrip` | `ph2d-painter-brush` | `.ph2d-brush` save → load → idêntico (postcard determinístico). |
 | `painter_brush_format_version_migration` | `ph2d-painter-brush` | HR-14: v1 brush carrega; v2 (future) tem migrator. |
-| `painter_contract_surface` 🔒 | `ph2d-painter-brush` | Cap arch-gate: `Brush ≤ N campos`, `Stamp ≤ 96 bytes`, `RenderingMode ≤ 6 variants`. Mudar exige ADR-0042 amendment. |
+| `painter_contract_surface` 🔒 | `ph2d-painter-brush` | Cap arch-gate: `Brush ≤ N campos`, `Stamp ≤ 96 bytes`, `RenderingMode ≤ 6 variants`. Mudar exige ADR-0044 amendment. |
 | `painter_pressure_curve_monotonic` | `ph2d-painter-brush` | Pressure curve com defaults é monotônica não-decrescente (sanidade). |
 | `painter_procreate_importer_smoke` | `ph2d-painter-brush` | Fixture `.brush` Procreate importa sem panic e produz `Brush` válido. |
 | `painter_determinism_replay` (W11+) | `ph2d-painter-stroke` | HR-5: replay de stroke list reproduz bit-identical em 3 OS. |
@@ -599,4 +870,217 @@ UI: tool switching via top-bar (Brushes / Smudge / Eraser pills) ou atalhos B / 
 - Stroke ribbon-based (não-stamp) — incompatible com sabor Procreate.
 - "Smart" brushes (ML-generated) — fora do escopo v1.0.
 
-**Continua em:** [02_layers.md](02_layers.md) — camadas e blend modes.
+## 1.13 MCP Stroke Engine (Proposta 5 — W13 — ADR-0047) ✨
+
+**Decisão estrutural (2026-05-23):** o brush engine expõe API MCP first-class para que LLMs gerem **sequências de strokes reais com brushes nativos**, não pixels colados de modelo generativo externo.
+
+Filosofia: HR-10 elevada. Em vez de "LLM gera PNG → cola como layer", o LLM **executa** o pipeline de pintura com os mesmos brushes que o artista usa. Resultado 100% editável traço-a-traço pelo artista humano (Stroke Inspector W14).
+
+### 1.13.1 Tools MCP
+
+```rust
+/// Pinta uma sequência de strokes reais na layer alvo.
+/// O LLM constrói `Vec<StrokeSpec>` (path, pressure curve, color, brush ref);
+/// engine executa pelo mesmo stamp pipeline que o artista usa.
+#[mcp_tool(name = "painter_paint_strokes", destructive = true)]
+pub fn painter_paint_strokes(
+    canvas_id: CanvasId,
+    layer_id: LayerId,
+    brush_handle: BrushHandle,
+    strokes: Vec<StrokeSpec>,
+    confirmation_token: Token,  // HR-11
+) -> Result<Vec<StrokeId>>;
+
+/// Modifica um stroke existente retroativamente.
+/// Trabalho conjunto com Stroke Inspector (W14).
+#[mcp_tool(name = "painter_modify_stroke", destructive = true)]
+pub fn painter_modify_stroke(
+    stroke_id: StrokeId,
+    mods: StrokeMods,  // mudar brush, color, pressure curve, ou path delta
+    confirmation_token: Token,
+) -> Result<()>;
+
+/// Query strokes na layer ativa (filtros: bbox, brush, color, timestamp).
+/// Read-only — não exige token.
+#[mcp_tool(name = "painter_query_strokes")]
+pub fn painter_query_strokes(
+    canvas_id: CanvasId,
+    layer_id: LayerId,
+    filter: StrokeFilter,
+) -> Vec<StrokeRef>;
+
+/// Inspeção fina de um stroke específico.
+#[mcp_tool(name = "painter_inspect_stroke")]
+pub fn painter_inspect_stroke(stroke_id: StrokeId) -> StrokeRecord;
+```
+
+`StrokeSpec` (input):
+
+```rust
+#[derive(Serialize, Deserialize)]
+pub struct StrokeSpec {
+    pub points: Vec<StrokePoint>,           // path bruto
+    pub primary_color: OklchColor,
+    pub secondary_color: Option<OklchColor>,
+    pub tool_mode: ToolMode,                // Paint | Smudge | Erase
+    pub rng_seed: Option<u64>,              // determinismo opt-in
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StrokePoint {
+    pub position: Vec2,
+    pub pressure: f32,    // [0, 1]
+    pub tilt: f32,        // [0, π/2]
+    pub azimuth: f32,
+    pub timestamp_ms: u32,
+}
+```
+
+`StrokeMods` (modificação retroativa):
+
+```rust
+#[derive(Serialize, Deserialize)]
+pub struct StrokeMods {
+    pub new_brush: Option<BrushHandle>,
+    pub new_color: Option<OklchColor>,
+    pub pressure_scale: Option<f32>,
+    pub path_offset: Option<Vec2>,
+    pub path_replace: Option<Vec<StrokePoint>>,  // substituição completa
+}
+```
+
+### 1.13.2 Casos de uso
+
+1. **"Aplique hachura cruzada a grafite na seleção, seguindo o contorno da luz."**
+   - LLM analisa a seleção + light direction + textura do brush `pencil_2b`.
+   - Gera ~50-200 strokes paralelos com pressure curve apropriada.
+   - Engine executa via `painter_paint_strokes`.
+   - Resultado: 50-200 stroke records reais, editáveis pelo artista.
+
+2. **"Preencha o fundo desta seleção com aquarela `watercolor_wash`, gradiente do azul claro pro escuro."**
+   - LLM gera strokes wash com brush wet, color modulada por posição.
+   - Mixbox pigment mixing produz transições orgânicas (azul + cor existente).
+
+3. **"Refaça este line art que pintei com pencil como `ink_studio_pen`."**
+   - LLM via `painter_query_strokes(filter: { brush: pencil_2b })` lista strokes existentes.
+   - `painter_modify_stroke(stroke_id, StrokeMods { new_brush: ink_studio_pen })` para cada.
+   - Engine recompõe a layer.
+
+### 1.13.3 Governance (HR-11)
+
+`painter_paint_strokes` e `painter_modify_stroke` são marcados `destructive: true`. Token humano necessário (5 min, single-use) OU flag `--unsafe-mcp` no servidor.
+
+Audit log per-stroke: cada `painter_paint_strokes` gera entrada `audit.log` (JSON Lines) com: agent, brush, layer, strokes count, blake3 do estado antes/depois.
+
+### 1.13.4 Custo de implementação
+
+W13 estimativa: ~200 LOC do wrapper MCP + 50 LOC de governance + schemas. Stamp pipeline já é cliente lógico desses dados — wrapper apenas constrói `Vec<Stamp>` a partir de `StrokeSpec` e invoca. **0 nova infra GPU.**
+
+### 1.13.5 Quality emerges via prompting
+
+Tool MCP exposta ≠ LLM gera strokes esteticamente bons. **Qualidade emerge** via:
+1. Prompts de sistema com exemplos de bom hachuring/washing/lineart.
+2. Fine-tunes específicos (futuro).
+3. Painter system prompts que ensinam ao LLM os 12 default brushes e seus comportamentos.
+
+ADR-0047 cobre o **contrato técnico**. Quality engineering é trabalho contínuo pós-W13.
+
+## 1.14 Stroke Vector History (Proposta 1 base — W1 — ADR-0046) ✨
+
+**Decisão estrutural (2026-05-23):** stroke history é gravada **completa** (não-ring) no `.ph2d-painter`. É o **vetor oculto** do canvas. Habilita Reproject (W12), Stroke Inspector (W14), replay determinístico, e undo profundo sem fim arbitrário.
+
+### 1.14.1 Modelo
+
+`StrokeHistory` em `ph2d-painter-stroke`. Substitui o ring 250 do design original — agora é `Vec<StrokeRecord>` ilimitado (subject a memory budget §08).
+
+```rust
+#[derive(Serialize, Deserialize)]
+pub struct StrokeRecord {
+    pub uuid: Uuid,
+    pub seq: u64,                            // monotônico per-canvas
+    pub timestamp_ms: u64,                   // wall clock approx
+    pub brush_handle: BrushHandle,           // blake3 da brush ref
+    pub layer_target: LayerId,
+    pub primary_color: OklchColor,
+    pub secondary_color: Option<OklchColor>,
+    pub points: Vec<RawPointerSample>,       // path bruto antes de stabilization
+    pub rng_seed: u64,                       // determinismo
+    pub tool_mode: ToolMode,                 // Paint | Smudge | Erase
+    pub brush_params_snapshot: BrushParamsHash, // hash dos params no momento (para Reproject)
+}
+```
+
+### 1.14.2 Custo de RAM
+
+Por stroke típico (32-256 pontos × 64 B/ponto + metadata): **~2-20 KB**.
+
+Sessões típicas:
+- 1 hora pintura média (~500 strokes) = ~5 MB.
+- 4 horas pintura intensa (~5000 strokes) = ~50 MB.
+- 12 horas projeto longo (~20000 strokes) = ~200 MB.
+
+Memory budget §08 atualizado: **150 MB** dedicados a stroke history (vs 25 MB do ring 250 original). Em devices low-end (Web 200 MB total, Android entry), fallback ring 1000 strokes com warning *"Stroke history limited on this device; export to keep full history"*.
+
+### 1.14.3 Undo
+
+Undo agora opera no `Vec<StrokeRecord>`:
+1. Pop último stroke.
+2. Re-composite a partir do snapshot mais próximo OU re-run dos strokes até `seq-1`.
+
+Snapshots otimizam: a cada N strokes (default 50), snapshot da layer texture é tirado (blake3-addressed; deduplicado se idêntico). Undo de 1 stroke = load snapshot + re-run de ≤50 strokes. Cabe em 200ms p99.
+
+Snapshots evictáveis se memory pressure (LRU em offload).
+
+### 1.14.4 Reproject to Resolution (W12)
+
+Dialog "Reproject canvas to X×Y":
+1. Cria canvas novo com dimensions alvo + mesmo color profile.
+2. Para cada stroke em `StrokeHistory`:
+   - Re-aplica o brush em det-mode (CPU fallback se exato; GPU se aproximado é OK).
+   - Posições escalonadas linearmente para nova resolução.
+   - Pressure / tilt mantidos.
+3. Resultado: canvas em nova resolução, pixel-perfect em det-mode, bilinear-better em GPU mode.
+
+Performance:
+- Det-mode: ~5 strokes/segundo (CPU fallback lento). 5000 strokes = ~16 min.
+- GPU mode: ~50 strokes/segundo. 5000 strokes = ~100 segundos.
+
+Dialog mostra progress bar + estimativa. **Operação offline, não real-time.**
+
+### 1.14.5 Stroke Inspector (W14)
+
+UI dedicada acessada via Actions → Stroke Inspector (atalho `Ctrl+Shift+I`). Permite:
+- **Selecionar strokes** via lasso temporal no canvas (drag = seleção retangular ou freeform).
+- **Visualizar path** desenhado (overlay com pontos numerados).
+- **Trocar brush** retroativamente — compositor re-renderiza a slice afetada.
+- **Trocar color** retroativamente.
+- **Ajustar pressure curve** retroativamente (slider de scaling).
+- **Deletar stroke** específico (vs Undo que é cronológico).
+
+Vide ADR-0048.
+
+### 1.14.6 Determinismo (replay)
+
+Em det-mode (`--features det-painter`):
+- Posições em fixed-point Q16.16.
+- Pressure / tilt em Q8.8.
+- RNG seeded por stroke.
+- CPU fallback (sem GPU).
+
+Resultado: replay produz canvas **bit-identical** cross-platform. CI test `painter_replay_determinism` (W12+).
+
+Em modo padrão (GPU):
+- Replay aproximado (mesma estética; pode diferir em alguns ULPs).
+- Suficiente para Reproject visual mas não para verificação cross-platform.
+
+### 1.14.7 Compatibilidade com MCP Stroke Engine (§1.13)
+
+`StrokeRecord` é o que `painter_query_strokes` retorna (filtrável). `painter_modify_stroke` modifica diretamente o record. **Os dois sistemas compartilham a mesma fonte de verdade.**
+
+### 1.14.8 Persistence
+
+Stroke history vive no `.ph2d-painter` (HR-14 versionado, vide §09). Schema congelado em W12 (ADR-0046). Migration chain obrigatória.
+
+Tamanho do `.ph2d-painter` cresce com history; tipicamente 30-200 MB para projetos típicos. Razoável vs ~150 MB de Procreate `.procreate` files com time-lapse.
+
+**Continua em:** [02_layers.md](02_layers.md) — camadas e blend modes (com Adjustment Layers em W4).

@@ -52,6 +52,22 @@ pub const MAX_ANIMATION_FRAMES: u32 = 1024;
 /// hostile-input scenario).
 pub const MAX_DOCUMENT_PAGES: usize = 256;
 
+/// Maximum recursion depth in nested layer trees (ORA `<stack>` and
+/// future PSD groups). Audit-9 Lens T CRITICAL T-#1 (2026-05-26):
+/// without this cap, a hostile `stack.xml` with 50000 nested
+/// `<stack>` elements stack-overflows the 8 MiB default thread
+/// frame on macOS → SIGSEGV (not catchable by `catch_unwind`). 64
+/// covers any plausible artist organization (Krita ships with
+/// group-trees of depth 5-10 in practice).
+pub const MAX_LAYER_DEPTH: usize = 64;
+
+/// Maximum total layer count in a layered document. Audit-9 Lens T
+/// MEDIUM T-#2 (2026-05-26): defence against a hostile `stack.xml`
+/// listing N references to the same PNG (read amplification → OOM
+/// even within `MAX_LAYER_DEPTH`). 4096 is generous for real
+/// documents (Krita ships ~10 layers per file commonly).
+pub const MAX_LAYER_COUNT: usize = 4096;
+
 /// Compile-time sanity envelope. Catches typo regressions.
 const _SANITY: () = {
     assert!(MAX_RASTER_DIMENSION >= 16_384);
@@ -60,4 +76,6 @@ const _SANITY: () = {
     assert!(MAX_ICC_PROFILE_LEN >= 65_536); // ≥ 64 KiB
     assert!(MAX_ANIMATION_FRAMES >= 60); // ≥ 1 s @ 60 Hz
     assert!(MAX_DOCUMENT_PAGES >= 16); // ≥ 16 pages
+    assert!(MAX_LAYER_DEPTH >= 8); // ≥ 8 typical artist nesting
+    assert!(MAX_LAYER_COUNT >= 256); // ≥ 256 layers/file
 };

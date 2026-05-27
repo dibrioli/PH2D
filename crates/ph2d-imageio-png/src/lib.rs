@@ -88,15 +88,14 @@ impl ImageImporter for PngImporter {
         // already vetted the format via `supports()`, so this saves
         // ~µs of redundant inspection and avoids the rare case where
         // `image` would dispatch to a decoder we didn't enable.
-        let img = image::load_from_memory_with_format(src, image::ImageFormat::Png).map_err(
-            |e| {
+        let img =
+            image::load_from_memory_with_format(src, image::ImageFormat::Png).map_err(|e| {
                 // Audit-8 Lens L L-3 (2026-05-26): migrated to
                 // contract-level helper. Previously inline heuristic
                 // covered only 2 EOF signatures; helper covers 10
                 // canonical phrases across all upstream codecs.
                 Error::from_decoder_message(e.to_string())
-            },
-        )?;
+            })?;
         let (width, height) = (img.width(), img.height());
         if width == 0 || height == 0 {
             return Err(Error::Decode(format!(

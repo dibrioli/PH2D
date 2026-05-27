@@ -132,18 +132,16 @@ impl ImageImporter for GifImporter {
         }
         use image::AnimationDecoder;
         let cursor = std::io::Cursor::new(src);
-        let decoder = image::codecs::gif::GifDecoder::new(cursor)
-            .map_err(|e| {
-                // Audit-8 Lens L L-3 (2026-05-26): EOF helper.
-                Error::from_decoder_message(e.to_string())
-            })?;
+        let decoder = image::codecs::gif::GifDecoder::new(cursor).map_err(|e| {
+            // Audit-8 Lens L L-3 (2026-05-26): EOF helper.
+            Error::from_decoder_message(e.to_string())
+        })?;
         let frames: Vec<image::Frame> = decoder.into_frames().collect_frames().map_err(|e| {
-            let msg = e.to_string();
-            if msg.contains("unexpected end of file") || msg.contains("EOF") {
-                Error::Truncated
-            } else {
-                Error::Decode(msg)
-            }
+            // Audit-9 Lens Q HIGH Q-H1 (2026-05-26): the previous fix
+            // (audit-8 L-3) only migrated `GifDecoder::new`; this
+            // second entry-point still had inline heuristic. Now both
+            // route through the helper for uniform EOF semantics.
+            Error::from_decoder_message(e.to_string())
         })?;
 
         if frames.is_empty() {

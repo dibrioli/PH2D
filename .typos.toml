@@ -10,9 +10,10 @@ extend-ignore-identifiers-re = [
     "luau",
     "mlua",
     "Luau",
-    # PNG plural — typos-cli splits "PNGs" into "PN" + "Gs" and
-    # wants "ON" in place of "PN". Override via regex.
-    "PNGs",
+    # PNG plural — typos-cli splits "PNGs" into identifiers and reads
+    # "PN" wanting "ON". Audit-9 Lens O O-5 (2026-05-26): anchored
+    # regex `^PNGs$` instead of unanchored substring `PNGs`.
+    "^PNGs$",
 ]
 
 [default.extend-words]
@@ -82,8 +83,8 @@ thr = "thr"
 numer = "numer"
 # `foto` = pt-BR for "photo"; appears in ColorProfile comment.
 foto = "foto"
-# `PNGs` plural of PNG (typos-cli flags "PN" inside "PNGs" as ON).
-PNGs = "PNGs"
+# `PNGs` plural is handled by `^PNGs$` anchored regex above in
+# `extend-ignore-identifiers-re` (audit-9 Lens V cleanup, dedup).
 
 [files]
 extend-exclude = [

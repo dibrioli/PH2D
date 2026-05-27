@@ -744,4 +744,3 @@ mod tests {
     #[allow(dead_code)]
     fn _silence(_: SrgbRgba) {}
 }
-

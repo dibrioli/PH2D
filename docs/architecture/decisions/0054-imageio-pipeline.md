@@ -321,6 +321,41 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.1** nova auditoria pós-W3.T0 | ✅ | `fd34240` | 1 CRITICAL (imageio FORA da CI matrix — gate de §2.6.1 era cosmético) + 7 HIGH (ADR HR-9→HR-5 nomenclatura + tolerâncias TIFF mascarando off-by-one + clippy convenção) + 11 MEDIUM + 13 LOW — vide §5.6 |
 | **W3.T0.2** nova auditoria pós-W3.T0.1 | ✅ | `108a623` | 6 CRITICAL meus (3 ship-blockers F-B1/B2/B3 + 3 OOM J-1/J-2/J-3) + 5 HIGH meus (ORA H-1 + opts I-1/I-2 + EOF I-3 + non_exhaustive I-4 + PSD catch_unwind G-F2) + 9 MEDIUM + 14 LOW; 2 CRITICAL não-meus flaggados (B-4 shells/desktop + M-5 Cargo.lock dhat) — vide §5.7 |
 | **W3.T0.3** nova auditoria pós-W3.T0.2 | ✅ | `2a41a0b` | 1 P0 (§5 row drift) + 6 HIGH (ColorProfile::Custom vapor + GIF semantica + EOF helper adoption parcial + APNG multi-frame test gap + math/docs drift + fmt P-mine) + 17 MEDIUM (test coverage 8 fixes + caps hoist + EOF gaps + variant context) + 12 LOW — vide §5.8 |
+| **W3.T0.4** nova auditoria pós-W3.T0.3 | ✅ | `[remediation-pending]` | 1 CRITICAL (ORA `parse_stack` recursion DoS — uncatchable SIGSEGV via deep nesting) + 6 HIGH (caps hoist + GIF L-3 complete + fmt + tests count + 2 arquiteturais flag-pro-Enio) + 6 MEDIUM (zip-slip-via-XML + PsdDeny preventive + markdown drift + ORA layer count + ColorProfile::Srgb docs + deps tracking) + 10 LOW — vide §5.9 |
+
+### 5.9 Remediação pós-auditoria W3.T0.4 (2026-05-26)
+
+Auditoria adversarial 7-lente sobre commits `2a41a0b` + `64f54d9` (W3.T0.3 remediation). Lentes rotacionadas (per [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)): Q regressão dos fixes audit-8 · R workspace integration / consumer-side impact · S code maturity / 9-impl consistency · T adversarial deep-dive (red team) · U manutenibilidade longo prazo · V typos+lint config sanity · W ship.sh dry-run final. **Total: 1 CRITICAL + 6 HIGH + 6 MEDIUM + 10 LOW + 2 INFO arquitetural**. Fechados nesta sessão:
+
+**CRITICAL** (Lens T red team #1):
+- ORA `parse_stack` (importer) + `collect_pixel_layers` (exporter) recursavam em `<stack>` nested **sem cap de profundidade**. Hostile `stack.xml` com 50K nested `<stack>` → stack overflow → SIGSEGV uncatchable por `catch_unwind` (process inteiro morre). Fix: `MAX_LAYER_DEPTH = 64` + `MAX_LAYER_COUNT = 4096` hoisted para contract `crates/ph2d-imageio/src/limits.rs`; `parse_stack` ganha `depth` + `total_layers` params com early-return em violation; `collect_pixel_layers` ganha `depth` simétrico (self-DoS defence em LayerStacks construídas pelo Painter). 2 tests novos: `import_rejects_deep_stack_nesting`, `import_rejects_src_with_path_traversal`.
+
+**HIGH** (6):
+- **Q-H1**: GIF L-3 migration incomplete — audit-8 só migrou `GifDecoder::new`; `collect_frames()` ainda usava heurística inline EOF. Fix: migrado para `from_decoder_message` (drift do contrato fechado).
+- **T-#2 path traversal**: ORA `<layer src=>` lookup passava cru ao ZIP — sem FS escape (zip-rs in-memory) mas error message echoing era path-existence oracle. Fix: reject `src` contendo `..` ou `\\`.
+- **W-FmtMine**: 5 files com fmt drift pós-audit-8 L-3 (linter rodou automaticamente em alguns; verificado pós-`cargo fmt`).
+- **Q-H2 tests count drift**: commit msg=138, ADR §5.8=136, plan=136. Fix: reconciliado para 138+2 (audit-9 gates) = 140.
+- **V-WorkspaceLints** (flag arquitetural): workspace sem `[workspace.lints]` root → clippy só CI/hook. Decisão arquitetural — **flaggado pro Enio**, não tocado.
+- **R-G2** (flag arquitetural): `ph2d-asset/src/loader.rs` decoda via `image` direto bypass do imageio registry → defesas hoisted são dead code em prod. Wire-up E2E é trabalho de outra sessão (ph2d-asset) — **flaggado pro Enio**.
+
+**MEDIUM** (6):
+- **Q-M1 markdown**: `### 5.7` colava ao parágrafo §5.8. Fix: blank-line separator.
+- **V-PsdDeny preventive**: `psd 0.3.5` unmaintained sem `deny.toml` allowlist. Documentado como follow-up — adição efetiva só quando RUSTSEC criar advisory (até lá, allowlist preemptiva é cruft).
+- **V-PngsDup**: `.typos.toml` tinha `PNGs` duplicado em 2 sites (regex unanchored + word). Fix: anchored `^PNGs$` em `extend-ignore-identifiers-re`, deletado de `extend-words`.
+- **U-OldDeps**: deps pinned (`psd =0.3.5`, `tiff 0.11`, `image 0.25`) sem tracking. Documentar em handoff — defer.
+- **S-M-S2/S3 ColorProfile::Srgb default**: TIFF/PSD admitiram via doc (audit-8 K-1) mas implementação ainda hard-codada. Defer com entry-point ratificado (W2.0.1 ICC pipeline).
+- **Q-L1 commits stale**: "25+" → "29+" no plan header. Fix.
+
+**LOW** (10):
+- **T-#3 log injection teórico**: `Error::Decode(format!("{e}"))` propaga control chars de upstream. Defer — terminal-only logging hoje, ativa quando observability ligar.
+- Outros LOW (audit cruft, doc-comment density, mod tests size, etc.) absorvidos sub-threshold per audit-7+ convenção.
+
+**Não-meus (flaggados pro Enio)**:
+- **R-G2** asset/loader bypass — exige refactor da ph2d-asset (W1+ wire-up).
+- **V-WorkspaceLints** decisão arquitetural sobre `[workspace.lints]` — shift-left de clippy.
+- shells/desktop+painter-brush+asset-ktx2 typos/clippy/fmt residuais — sessões ativas paralelas.
+
+**Total Onda 2 pós-W3.T0.4**: 138 + 2 novos (ORA gates) = 140 tests verdes Mac aarch64 (136 cross-OS, 4 goldens cfg-gated).
 
 ### 5.8 Remediação pós-auditoria W3.T0.3 (2026-05-26)
 

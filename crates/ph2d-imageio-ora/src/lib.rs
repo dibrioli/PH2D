@@ -140,7 +140,14 @@ impl ImageImporter for OraImporter {
             .children()
             .find(|n| n.is_element() && n.tag_name().name() == "stack")
             .ok_or_else(|| Error::Decode("ORA stack.xml: missing root <stack>".into()))?;
-        let layers = parse_stack(&stack_node, &mut archive)?;
+        // Audit-9 Lens T CRITICAL T-#1 + Lens S H-S1 + Lens T MEDIUM T-#2
+        // (2026-05-26): bound recursion depth + total layer count
+        // BEFORE walking. Hostile stack.xml with 50K nested <stack>
+        // would stack-overflow the thread (uncatchable SIGSEGV).
+        // 4096 layers with duplicate src= refs would re-decompress
+        // the same PNG amplifying memory.
+        let mut total_layers: usize = 0;
+        let layers = parse_stack(&stack_node, &mut archive, 0, &mut total_layers)?;
 
         Ok(DecodedImage::Layered(LayerStack {
             version: 1,
@@ -204,12 +211,35 @@ fn decode_layer_png(bytes: &[u8]) -> Result<ImageBuffer<SrgbRgba>, Error> {
 /// Recursively parse a `<stack>` node. ORA lists children TOP-FIRST
 /// (consistent with SVG); our [`LayerStack::layers`] convention is
 /// bottom-up. Reverse on the way out.
+///
+/// Audit-9 Lens T CRITICAL T-#1 (2026-05-26): `depth` parameter caps
+/// nested `<stack>` recursion at [`MAX_LAYER_DEPTH`] to defend against
+/// stack-overflow DoS (uncatchable SIGSEGV). `total_layers` parameter
+/// caps cumulative layer count at [`MAX_LAYER_COUNT`] to defend
+/// against read-amplification via duplicate `src=` refs.
 fn parse_stack(
     node: &roxmltree::Node,
     archive: &mut ZipArchive<Cursor<&[u8]>>,
+    depth: usize,
+    total_layers: &mut usize,
 ) -> Result<Vec<Layer>, Error> {
+    if depth > ph2d_imageio::MAX_LAYER_DEPTH {
+        return Err(Error::Decode(format!(
+            "ORA <stack> nesting exceeds MAX_LAYER_DEPTH={} \
+             (DoS defence against stack overflow)",
+            ph2d_imageio::MAX_LAYER_DEPTH
+        )));
+    }
     let mut top_first: Vec<Layer> = Vec::new();
     for child in node.children().filter(|n| n.is_element()) {
+        *total_layers = total_layers.saturating_add(1);
+        if *total_layers > ph2d_imageio::MAX_LAYER_COUNT {
+            return Err(Error::Decode(format!(
+                "ORA layer count exceeds MAX_LAYER_COUNT={} \
+                 (DoS defence against read amplification)",
+                ph2d_imageio::MAX_LAYER_COUNT
+            )));
+        }
         let name = child.attribute("name").unwrap_or("").to_string();
         let opacity: f32 = child
             .attribute("opacity")
@@ -227,6 +257,15 @@ fn parse_stack(
                 let src_path = child
                     .attribute("src")
                     .ok_or_else(|| Error::Decode("ORA <layer> missing src= attr".into()))?;
+                // Audit-9 Lens T MEDIUM T-#2 (2026-05-26): reject `src=`
+                // containing `..` or backslash (zip-slip via XML — we
+                // don't write to disk, but echoing the path back in
+                // error messages would be a path-existence oracle).
+                if src_path.contains("..") || src_path.contains('\\') {
+                    return Err(Error::Decode(
+                        "ORA <layer src=>: path traversal segments rejected".into(),
+                    ));
+                }
                 let png_bytes = read_zip_bytes(archive, src_path)?;
                 let pixels = decode_layer_png(&png_bytes)?;
                 top_first.push(Layer {
@@ -243,7 +282,7 @@ fn parse_stack(
                 });
             }
             "stack" => {
-                let children = parse_stack(&child, archive)?;
+                let children = parse_stack(&child, archive, depth + 1, total_layers)?;
                 top_first.push(Layer {
                     version: 1,
                     name,
@@ -363,9 +402,13 @@ impl ImageExporter for OraExporter {
         // Walk the layer tree assigning indices to every Pixel layer
         // (groups don't get a PNG; their composite-op + opacity are
         // attributes on the <stack> node in stack.xml).
+        // Audit-9 Lens T (2026-05-26): defensive depth cap — even though
+        // the LayerStack here came from our own code (importer / Painter),
+        // a future bug could construct cycles or excessive nesting and
+        // self-DoS during export.
         let mut pixel_layers: Vec<(usize, ImageBuffer<SrgbRgba>)> = Vec::new();
         let mut next_idx = 0_usize;
-        collect_pixel_layers(&stack.layers, &mut next_idx, &mut pixel_layers);
+        collect_pixel_layers(&stack.layers, &mut next_idx, &mut pixel_layers, 0)?;
 
         // Build the ZIP.
         let mut out: Vec<u8> = Vec::new();
@@ -430,7 +473,15 @@ fn collect_pixel_layers(
     layers: &[Layer],
     next_idx: &mut usize,
     out: &mut Vec<(usize, ImageBuffer<SrgbRgba>)>,
-) {
+    depth: usize,
+) -> Result<(), Error> {
+    if depth > ph2d_imageio::MAX_LAYER_DEPTH {
+        return Err(Error::Encode(format!(
+            "ORA export: LayerStack nesting exceeds MAX_LAYER_DEPTH={} \
+             (self-DoS defence)",
+            ph2d_imageio::MAX_LAYER_DEPTH
+        )));
+    }
     // TOP-FIRST: our LayerStack is bottom-up, ORA paints top-first.
     for layer in layers.iter().rev() {
         match (&layer.kind, &layer.pixels) {
@@ -439,7 +490,7 @@ fn collect_pixel_layers(
                 *next_idx += 1;
             }
             (LayerKind::Group { children }, _) => {
-                collect_pixel_layers(children, next_idx, out);
+                collect_pixel_layers(children, next_idx, out, depth + 1)?;
             }
             // Adjustment / Text / Smart and pixel-less Pixel layers
             // skip (no PNG to emit). ORA spec doesn't model these
@@ -448,6 +499,7 @@ fn collect_pixel_layers(
             _ => {}
         }
     }
+    Ok(())
 }
 
 /// Hand-write the `stack.xml` document. ORA's XML is small enough
@@ -888,6 +940,101 @@ mod tests {
             xml_escape("<tag attr=\"value\" attr2='v2'>&amp;</tag>"),
             "&lt;tag attr=&quot;value&quot; attr2=&apos;v2&apos;&gt;&amp;amp;&lt;/tag&gt;"
         );
+    }
+
+    /// Audit-9 Lens T CRITICAL T-#1 (2026-05-26): gate the
+    /// MAX_LAYER_DEPTH cap against hostile stack.xml with deep
+    /// nesting that would stack-overflow the thread.
+    #[test]
+    fn import_rejects_deep_stack_nesting() {
+        // Build minimal ORA in-memory with MAX_LAYER_DEPTH+2 nested
+        // <stack> elements. We don't need a real ZIP — only the
+        // stack.xml parse path matters for this gate.
+        let depth = ph2d_imageio::MAX_LAYER_DEPTH + 2;
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<image w="1" h="1" version="0.0.5">
+  <stack composite-op="svg:src-over" opacity="1" visibility="visible">
+"#,
+        );
+        for _ in 0..depth {
+            xml.push_str(r#"    <stack composite-op="svg:src-over" opacity="1" visibility="visible">"#);
+            xml.push('\n');
+        }
+        for _ in 0..depth {
+            xml.push_str("    </stack>\n");
+        }
+        xml.push_str("  </stack>\n</image>\n");
+
+        // Wrap in a minimal ZIP with mimetype + stack.xml.
+        let mut zip_bytes: Vec<u8> = Vec::new();
+        {
+            let mut zip = ZipWriter::new(Cursor::new(&mut zip_bytes));
+            zip.start_file(
+                "mimetype",
+                SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+            )
+            .unwrap();
+            zip.write_all(b"image/openraster").unwrap();
+            zip.start_file("stack.xml", SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(xml.as_bytes()).unwrap();
+            zip.finish().unwrap();
+        }
+
+        let err = OraImporter
+            .import(&zip_bytes, &ImportOpts::default())
+            .expect_err("deep nesting must be rejected");
+        match err {
+            Error::Decode(msg) => {
+                assert!(
+                    msg.contains("MAX_LAYER_DEPTH"),
+                    "expected MAX_LAYER_DEPTH message: {msg}"
+                );
+            }
+            other => panic!("expected Decode with cap message, got: {other:?}"),
+        }
+    }
+
+    /// Audit-9 Lens T MEDIUM T-#2 (2026-05-26): gate path-traversal
+    /// rejection in `<layer src=>`. zip-rs doesn't write to disk so
+    /// there's no FS escape, but echoing the path back via error
+    /// message would be a path-existence oracle.
+    #[test]
+    fn import_rejects_src_with_path_traversal() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<image w="1" h="1" version="0.0.5">
+  <stack composite-op="svg:src-over" opacity="1" visibility="visible">
+    <layer src="../etc/passwd" name="evil" opacity="1" visibility="visible"/>
+  </stack>
+</image>
+"#;
+        let mut zip_bytes: Vec<u8> = Vec::new();
+        {
+            let mut zip = ZipWriter::new(Cursor::new(&mut zip_bytes));
+            zip.start_file(
+                "mimetype",
+                SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+            )
+            .unwrap();
+            zip.write_all(b"image/openraster").unwrap();
+            zip.start_file("stack.xml", SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(xml.as_bytes()).unwrap();
+            zip.finish().unwrap();
+        }
+        let err = OraImporter
+            .import(&zip_bytes, &ImportOpts::default())
+            .expect_err("path traversal must be rejected");
+        match err {
+            Error::Decode(msg) => {
+                assert!(
+                    msg.contains("path traversal"),
+                    "expected path-traversal message: {msg}"
+                );
+            }
+            other => panic!("expected Decode, got: {other:?}"),
+        }
     }
 
     /// Audit-8 Lens M + H-1 (2026-05-26): gate the spec H-1 fix.

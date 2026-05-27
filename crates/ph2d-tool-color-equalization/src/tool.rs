@@ -374,15 +374,22 @@ impl ColorEqualizationTool {
     /// case.
     #[cfg(feature = "gpu")]
     pub fn run_full_resolution_gpu(&mut self, out: &mut Vec<u8>) -> Option<(u32, u32)> {
-        use super::gpu::{ChainedPipelineCache, try_headless_gpu};
+        use super::gpu::{try_headless_gpu, try_preview_chain};
         assert!(self.has_source(), "set_source_snapshot must run first");
         let gpu = try_headless_gpu()?;
-        let cache = ChainedPipelineCache::new(&gpu);
+        // Cached chain — `try_preview_chain` uses `OnceLock<…>` so the
+        // 7-pipeline compile (~200 ms) is paid once per process, not per
+        // slider release. Hot fix for the "NLM lento" Enio reported:
+        // without this, every live-bake tick on a 1024² preview was
+        // paying the full pipeline recompile BEFORE the NLM dispatch
+        // even started. With the cache, slider releases drop the
+        // chain-build overhead and only pay the GPU work.
+        let chain = try_preview_chain()?;
         let expected = (self.source_w as usize) * (self.source_h as usize) * 4;
         out.clear();
         out.resize(expected, 0);
         out.copy_from_slice(&self.source_rgba);
-        cache.run_chained(&gpu, out, self.source_w, self.source_h, &self.params);
+        chain.run_chained(&gpu, out, self.source_w, self.source_h, &self.params);
         Some((self.source_w, self.source_h))
     }
 

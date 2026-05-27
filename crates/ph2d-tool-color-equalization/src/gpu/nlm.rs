@@ -220,8 +220,21 @@ pub fn nlm_denoise_gpu(rgba: &mut [u8], w: u32, h: u32, strength: f32, gpu: &Gpu
 /// WGSL compute kernel: per pixel, walk a `(2·search_half + 1)²` window
 /// of neighbour candidates; for each candidate compute a `(2·patch_half +
 /// 1)²` patch distance against the centre's patch; weight the neighbour
-/// by `exp(-patch_distance² / h²)`. Operates in linear sRGB (decode each
-/// `textureLoad`, encode the final `textureStore`).
+/// by `exp(-patch_distance² / h²)`. Operates in linear sRGB.
+///
+/// **Workgroup-shared tile cache** (Enio "muito lento" fix):
+/// The naïve per-thread `textureLoad` storm was the bottleneck — each
+/// thread re-read the same neighbourhood pixels 49× (one per patch cell)
+/// × N candidates. Now each workgroup cooperatively loads a `34 × 34`
+/// tile (8 px workgroup + 13 px halo for `search_half=10 + patch_half=3`)
+/// into `var<workgroup>` memory ONCE, then every read inside the patch
+/// loop goes through that shared memory (~80× fewer texture fetches).
+/// Tile size budget: `34 × 34 × 12 B = 13.9 KB` (under the 16 KB Vulkan
+/// minimum and the 32 KB typical Metal/macOS limit).
+///
+/// The patch + search dimensions are still controlled by uniforms so
+/// smaller inputs get a smaller effective window; the tile is sized for
+/// the worst case (`search_half=10`).
 const NLM_WGSL: &str = r#"
 struct Uniforms {
     inv_h_sq: f32,
@@ -233,6 +246,16 @@ struct Uniforms {
 @group(0) @binding(0) var input_tex: texture_2d<f32>;
 @group(0) @binding(1) var output_tex: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(2) var<uniform> u: Uniforms;
+
+const WG_SIZE: i32 = 8;
+// `search_half_max (10) + patch_half (3)` = 13. The tile spans the
+// workgroup's 8×8 plus this halo on every side.
+const TILE_RADIUS: i32 = 13;
+const TILE_SIZE: i32 = 34; // WG_SIZE + 2 * TILE_RADIUS
+const TILE_PIXELS: i32 = 1156; // TILE_SIZE * TILE_SIZE
+const PIXELS_PER_THREAD: i32 = 19; // ceil(TILE_PIXELS / 64)
+
+var<workgroup> tile: array<vec3<f32>, 1156>;
 
 fn srgb_to_linear_c(c: f32) -> f32 {
     if (c <= 0.04045) {
@@ -258,25 +281,55 @@ fn l2s(rgb: vec3<f32>) -> vec3<f32> {
 }
 
 @compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+fn main(
+    @builtin(global_invocation_id) gid: vec3<u32>,
+    @builtin(workgroup_id) wid: vec3<u32>,
+    @builtin(local_invocation_id) lid: vec3<u32>,
+) {
     let dims = textureDimensions(output_tex);
-    if (id.x >= dims.x || id.y >= dims.y) {
+    let dims_i = vec2<i32>(i32(dims.x), i32(dims.y));
+    let wg_origin = vec2<i32>(i32(wid.x) * WG_SIZE, i32(wid.y) * WG_SIZE);
+    let tile_origin = wg_origin - vec2<i32>(TILE_RADIUS);
+
+    // Cooperative tile load — 64 threads × 19 pixels covers 1216 ≥ 1156.
+    // Out-of-bounds neighbours clamp to edge (replicate); the patch loop
+    // below additionally skips truly-OOB patch pixels so the clamp is
+    // harmless when the actual NLM math hits the border.
+    let li = i32(lid.y * 8u + lid.x);
+    for (var k: i32 = 0; k < PIXELS_PER_THREAD; k = k + 1) {
+        let idx = li * PIXELS_PER_THREAD + k;
+        if (idx < TILE_PIXELS) {
+            let ty = idx / TILE_SIZE;
+            let tx = idx - ty * TILE_SIZE;
+            let world = clamp(
+                tile_origin + vec2<i32>(tx, ty),
+                vec2<i32>(0, 0),
+                dims_i - vec2<i32>(1, 1),
+            );
+            tile[idx] = s2l(textureLoad(input_tex, world, 0).rgb);
+        }
+    }
+    workgroupBarrier();
+
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    if (coord.x >= dims_i.x || coord.y >= dims_i.y) {
         return;
     }
-    let coord = vec2<i32>(i32(id.x), i32(id.y));
-    let dims_i = vec2<i32>(i32(dims.x), i32(dims.y));
-    let center_srgb = textureLoad(input_tex, coord, 0);
-    if (center_srgb.a == 0.0) {
-        textureStore(output_tex, coord, center_srgb);
+    let center_full = textureLoad(input_tex, coord, 0);
+    if (center_full.a == 0.0) {
+        textureStore(output_tex, coord, center_full);
         return;
     }
 
+    // Centre + neighbour coords inside the tile.
+    let center_local = vec2<i32>(
+        TILE_RADIUS + i32(lid.x),
+        TILE_RADIUS + i32(lid.y),
+    );
     let sh = u.search_half;
     let ph = u.patch_half;
 
-    var sum_r: f32 = 0.0;
-    var sum_g: f32 = 0.0;
-    var sum_b: f32 = 0.0;
+    var sum: vec3<f32> = vec3<f32>(0.0, 0.0, 0.0);
     var sum_w: f32 = 0.0;
 
     let sy_min = max(0, coord.y - sh);
@@ -286,6 +339,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     for (var ny: i32 = sy_min; ny <= sy_max; ny = ny + 1) {
         for (var nx: i32 = sx_min; nx <= sx_max; nx = nx + 1) {
+            // Neighbour position in the tile.
+            let n_local = vec2<i32>(nx - tile_origin.x, ny - tile_origin.y);
             var patch_dist: f32 = 0.0;
             var patch_count: f32 = 0.0;
             for (var py: i32 = -ph; py <= ph; py = py + 1) {
@@ -294,15 +349,15 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                 if (py1 < 0 || py1 >= dims_i.y || py2 < 0 || py2 >= dims_i.y) {
                     continue;
                 }
-                for (var px: i32 = -ph; px <= ph; px = px + 1) {
-                    let px1 = coord.x + px;
-                    let px2 = nx + px;
+                for (var pxoff: i32 = -ph; pxoff <= ph; pxoff = pxoff + 1) {
+                    let px1 = coord.x + pxoff;
+                    let px2 = nx + pxoff;
                     if (px1 < 0 || px1 >= dims_i.x || px2 < 0 || px2 >= dims_i.x) {
                         continue;
                     }
-                    let p1 = s2l(textureLoad(input_tex, vec2<i32>(px1, py1), 0).rgb);
-                    let p2 = s2l(textureLoad(input_tex, vec2<i32>(px2, py2), 0).rgb);
-                    let d = p1 - p2;
+                    let i1 = (center_local.y + py) * TILE_SIZE + (center_local.x + pxoff);
+                    let i2 = (n_local.y + py) * TILE_SIZE + (n_local.x + pxoff);
+                    let d = tile[i1] - tile[i2];
                     patch_dist = patch_dist + dot(d, d);
                     patch_count = patch_count + 1.0;
                 }
@@ -312,20 +367,18 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                 norm_dist = patch_dist / (patch_count * 3.0);
             }
             let weight = exp(norm_dist * u.inv_h_sq);
-            let n_lin = s2l(textureLoad(input_tex, vec2<i32>(nx, ny), 0).rgb);
-            sum_r = sum_r + n_lin.r * weight;
-            sum_g = sum_g + n_lin.g * weight;
-            sum_b = sum_b + n_lin.b * weight;
+            let n_lin = tile[n_local.y * TILE_SIZE + n_local.x];
+            sum = sum + n_lin * weight;
             sum_w = sum_w + weight;
         }
     }
 
-    var out_lin = s2l(center_srgb.rgb);
+    var out_lin = tile[center_local.y * TILE_SIZE + center_local.x];
     if (sum_w > 0.0) {
-        out_lin = vec3<f32>(sum_r, sum_g, sum_b) / sum_w;
+        out_lin = sum / sum_w;
     }
     let out_srgb = l2s(out_lin);
-    textureStore(output_tex, coord, vec4<f32>(out_srgb, center_srgb.a));
+    textureStore(output_tex, coord, vec4<f32>(out_srgb, center_full.a));
 }
 "#;
 

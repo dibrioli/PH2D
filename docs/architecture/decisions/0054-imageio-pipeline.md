@@ -252,7 +252,14 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W1.T4** GIF | ✅ | `3a84b1b` | Single→Flat / multi→Animated, 7 tests |
 | **W1.T5** .ph2d-native | ✅ | `7270d40` | All 5 DecodedImage variants lossless; HR-5+6+14, 13 tests |
 | **ONDA 1 FECHADA** | ✅ | 5 commits | 5 format crates registrados; 81 testes verdes na família |
-| **W1.T6** auditoria 5-lente Onda 1 | ✅ | `[remediation-commit]` | 4 CRITICAL + 13 HIGH + 13 MEDIUM + 15 LOW; remediação inline (memory `feedback-perfection-no-deferrals`) — vide §5.1 |
+| **W1.T6** auditoria 5-lente Onda 1 | ✅ | `9127011` | 4 CRITICAL + 13 HIGH + 13 MEDIUM + 15 LOW; remediação inline (memory `feedback-perfection-no-deferrals`) — vide §5.1 |
+| **W2.0.0** qcms viability gate | ✅ | `5d44e70` | Pivot moxcms 0.8.1 (puro-Rust, ativo) |
+| **W2.0.1+2+3** pre-fan-out | ✅ | `d6ecda5` | ICC per-format inline policy; LayerStack pre-cooked pela audit W1.T6 |
+| **W2.T1** ORA | ✅ | `3017a7d` | ZIP+XML+PNG layers; 15 blend modes; 12 tests |
+| **W2.T2** TIFF | ✅ | `689e798` | 8/16-bit + CMYK + multi-page; 9 tests |
+| **W2.T3** APNG | ✅ | `4694c18` | Decode multi-frame (acTL/fcTL); single-frame encode; 9 tests |
+| **W2.T4** PSD | ✅ | `4f79ba3` | Decode via psd 0.3.5; **export defer W3+ (escape hatch §5.2 W2.5)**; 6 tests |
+| **ONDA 2 FECHADA** | ✅ | 4 format crates + 36 tests | 9 format crates total na família imageio |
 
 ### 5.2 W2 abertura (amendment §W2, 2026-05-26)
 

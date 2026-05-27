@@ -322,6 +322,35 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.2** nova auditoria pós-W3.T0.1 | ✅ | `108a623` | 6 CRITICAL meus (3 ship-blockers F-B1/B2/B3 + 3 OOM J-1/J-2/J-3) + 5 HIGH meus (ORA H-1 + opts I-1/I-2 + EOF I-3 + non_exhaustive I-4 + PSD catch_unwind G-F2) + 9 MEDIUM + 14 LOW; 2 CRITICAL não-meus flaggados (B-4 shells/desktop + M-5 Cargo.lock dhat) — vide §5.7 |
 | **W3.T0.3** nova auditoria pós-W3.T0.2 | ✅ | `2a41a0b` | 1 P0 (§5 row drift) + 6 HIGH (ColorProfile::Custom vapor + GIF semantica + EOF helper adoption parcial + APNG multi-frame test gap + math/docs drift + fmt P-mine) + 17 MEDIUM (test coverage 8 fixes + caps hoist + EOF gaps + variant context) + 12 LOW — vide §5.8 |
 | **W3.T0.4** nova auditoria pós-W3.T0.3 | ✅ | `cde3e44` | 1 CRITICAL (ORA `parse_stack` recursion DoS — uncatchable SIGSEGV via deep nesting) + 6 HIGH (caps hoist + GIF L-3 complete + fmt + tests count + 2 arquiteturais flag-pro-Enio) + 6 MEDIUM (zip-slip-via-XML + PsdDeny preventive + markdown drift + ORA layer count + ColorProfile::Srgb docs + deps tracking) + 10 LOW — vide §5.9 |
+| **W3.T0.5** nova auditoria pós-W3.T0.4 | ✅ | `[remediation-pending]` | 1 CRITICAL (ORA `opacity` aceita `NaN`/`±Inf` — compositor poison + persiste no `.ph2d-native` save) + 1 HIGH meu (ZIP central directory amplification ~1.5 GiB) + 1 HIGH não-meu (X arquitetural: shells/desktop bypass imageio registry) + 2 MEDIUM (stack.xml `take(N)` cap + APNG test snake_case) — vide §5.10 |
+
+### 5.10 Remediação pós-auditoria W3.T0.5 (2026-05-26)
+
+Auditoria adversarial 3-lente sobre commits `cde3e44` + `952c020` (W3.T0.4 remediation). Lentes especializadas: X meta-audit holistic · Y test executable verification · Z final security review. **Total: 1 CRITICAL + 2 HIGH (1 meu + 1 arquitetural não-meu) + 2 MEDIUM + 0 LOW**. Lens Y retornou **GREEN** (140 tests todos executáveis). Fechados nesta sessão:
+
+**CRITICAL** (Lens Z #1):
+- ORA `opacity` parser aceitava `"NaN"`, `"inf"`, `"-inf"`, `"infinity"` via `f32::from_str` sem `is_finite()` check. Data poisoning class:
+  - Compositor `dst += src.rgb * opacity` propagaria NaN; render target inteiro → NaN.
+  - WGSL/Metal sampler com NaN → frame preto OU artifacts coloridos.
+  - `.ph2d-native` save persiste NaN em disco → multi-session poisoning.
+  - Audits 1-9 só cobriram escalares por dimensions/counts, nunca floats.
+  - Fix: `.filter(|v| v.is_finite()).map(|v| v.clamp(0.0, 1.0))` em `parse_stack`. Test `import_clamps_nan_and_inf_opacity_to_default` exercita 6 hostile strings.
+
+**HIGH** (1 meu + 1 não-meu):
+- **Z-#2** (meu): `ZipArchive::new` aceitava N entries sem cap. ZIP de 5 MiB declarando 8M false entries → ~1.5 GiB metadata residente antes do mimetype check. Fix: `MAX_ARCHIVE_ENTRIES = 8192` em contract `limits.rs` (= MAX_LAYER_COUNT + 2 + headroom); enforce em `OraImporter::import` pré-mimetype.
+- **X-HIGH-1** (não-meu — arquitetural): `shells/desktop/src/image_import.rs:38` chama `AssetDb::insert_image_bytes` (legado bypass do imageio registry). Os 10 rounds de audit patcharam código **fora do hot path em prod**. Refactor exige reescrita de `ph2d-asset` (outra sessão). Mesmo gap do R-G2 audit-9 e R-G2 audit-8 — flagado pro Enio como prerequisite de qualquer demonstração end-to-end W2 "abrir TIFF/PSD/ORA/APNG na UI usa imageio crates".
+
+**MEDIUM** (2):
+- **Z-#3** (meu): `read_zip_text("stack.xml")` sem `take(N)` cap → giant stack.xml de 500 MiB whitespace blowed past `String::read_to_string`. Fix: `file.take(MAX_ARCHIVE_TEXT_BYTES = 16 MiB)` antes do `read_to_string`. Cobre só stack.xml (único text entry); bytes entries (layer PNGs) tem cap implícito via `MAX_RASTER_DIMENSION² × 4`.
+- **M-1** (meu cosmético): APNG test `import_rejects_acTL_num_frames_above_max` violava snake_case. Fix: renomeado para `import_rejects_actl_num_frames_above_max`. Compilation warning fechado.
+
+**LOW**: zero. Lens X audit retornou só os 2 HIGH + 2 MEDIUM acima.
+
+**Defers preservados**:
+- X-HIGH-1 wire-up `shells/desktop → imageio registry`: arquitetural, próxima sessão.
+- Format-confusion bypass risk em `ph2d-asset/loader.rs` (audit-9 R-G2): mesma fix.
+
+**Total Onda 2 pós-W3.T0.5**: 140 + 1 (NaN reject) = 141 tests verdes Mac aarch64 (137 cross-OS, 4 goldens cfg-gated). 11 crates `ph2d-imageio-*` na CI matrix.
 
 ### 5.9 Remediação pós-auditoria W3.T0.4 (2026-05-26)
 

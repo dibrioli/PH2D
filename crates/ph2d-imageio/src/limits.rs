@@ -68,6 +68,23 @@ pub const MAX_LAYER_DEPTH: usize = 64;
 /// documents (Krita ships ~10 layers per file commonly).
 pub const MAX_LAYER_COUNT: usize = 4096;
 
+/// Maximum entries in a ZIP-container format (ORA). Audit-10 Lens Z
+/// HIGH #2 (2026-05-26): `ZipArchive::new` reads the entire central
+/// directory in memory at construction time; a hostile ZIP of 5 MiB
+/// declaring 8M false entries (each CDFH ~46 B compressed) inflates
+/// to ~1.5 GiB metadata. 8192 = `MAX_LAYER_COUNT` + 2 (mimetype +
+/// stack.xml) + comfortable headroom for `mergedimage.png` and
+/// future Thumbnails/.
+pub const MAX_ARCHIVE_ENTRIES: usize = 8192;
+
+/// Maximum size of a single text entry inside an archive (ORA
+/// `stack.xml`). Audit-10 Lens Z MEDIUM #3 (2026-05-26): hostile ORA
+/// could declare a 500 MiB `stack.xml` of whitespace (valid XML but
+/// blows past `String::read_to_string` without bound). 16 MiB covers
+/// any plausible layer-tree manifest (Krita's biggest XMP-ish
+/// manifests measured < 1 MiB) with comfortable margin.
+pub const MAX_ARCHIVE_TEXT_BYTES: u64 = 16 * 1024 * 1024;
+
 /// Compile-time sanity envelope. Catches typo regressions.
 const _SANITY: () = {
     assert!(MAX_RASTER_DIMENSION >= 16_384);
@@ -78,4 +95,6 @@ const _SANITY: () = {
     assert!(MAX_DOCUMENT_PAGES >= 16); // ≥ 16 pages
     assert!(MAX_LAYER_DEPTH >= 8); // ≥ 8 typical artist nesting
     assert!(MAX_LAYER_COUNT >= 256); // ≥ 256 layers/file
+    assert!(MAX_ARCHIVE_ENTRIES >= MAX_LAYER_COUNT + 2); // layers + mimetype + stack.xml
+    assert!(MAX_ARCHIVE_TEXT_BYTES >= 1024 * 1024); // ≥ 1 MiB stack.xml
 };

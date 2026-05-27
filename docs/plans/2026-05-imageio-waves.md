@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.4 audit-remediations** 2026-05-26 — ADR-0054 `Accepted`; **9 format crates** wired (apng/gif/jpeg/ora/ph2d-native/png/psd/tiff/webp); 11 imageio crates registrados no `spike.yml` nextest CI matrix; 138+ tests verdes Mac aarch64 (4 golden hashes `#[cfg]`-gated; +2 ORA recursion gates audit-9); 29+ commits locais. **W3 fan-out (HDR + vetor) próximo.**
+**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.5 audit-remediations** 2026-05-26 — ADR-0054 `Accepted`; **9 format crates** wired (apng/gif/jpeg/ora/ph2d-native/png/psd/tiff/webp); 11 imageio crates registrados no `spike.yml` nextest CI matrix; 141 tests verdes Mac aarch64 (4 golden hashes `#[cfg]`-gated); 31+ commits locais. **W3 fan-out (HDR + vetor) destrancado APÓS** wire-up `shells/desktop → imageio registry` (gap arquitetural flaggado em W3.T0.4+W3.T0.5).
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -95,7 +95,9 @@ Batch B (1 slot dedicado, sequencial após A — PSD é gargalo):
 
 **Auditoria W3.T0.3** (6-lens 2026-05-26 — rotacionadas K/L/M/N/O/P): 0 CRITICAL + 6 HIGH (ColorProfile::Custom vapor + GIF semantica + EOF helper adoption + APNG multi-frame test gap + docs drift + P-mine fmt) + 17 MEDIUM (test coverage de 5 fixes + caps hoist + EOF gaps + variant context) + 12 LOW + 1 P0 doc; fechados em commit `2a41a0b`+`64f54d9`. Vide ADR §5.8.
 
-**Auditoria W3.T0.4** (7-lens 2026-05-26 — rotacionadas Q/R/S/T/U/V/W): 1 CRITICAL (ORA `parse_stack` recursion bomb — stack overflow DoS) + 6 HIGH (Lens T-#1 caps; Q-H1 GIF L-3 incomplete migration; W-FmtMine; V-WorkspaceLints — flag arquitetural; R-G2 asset bypass — flag arquitetural; tests count drift) + 6 MEDIUM + 10 LOW; fechados em commit `[remediation-pending]`. Vide ADR §5.9.
+**Auditoria W3.T0.4** (7-lens 2026-05-26 — rotacionadas Q/R/S/T/U/V/W): 1 CRITICAL (ORA `parse_stack` recursion bomb — stack overflow DoS) + 6 HIGH (Lens T-#1 caps; Q-H1 GIF L-3 incomplete migration; W-FmtMine; V-WorkspaceLints — flag arquitetural; R-G2 asset bypass — flag arquitetural; tests count drift) + 6 MEDIUM + 10 LOW; fechados em commit `cde3e44`. Vide ADR §5.9.
+
+**Auditoria W3.T0.5** (3-lens 2026-05-26 — especializadas X/Y/Z): 1 CRITICAL (ORA `opacity` NaN/Inf data poisoning) + 1 HIGH meu (ZIP central directory amplification) + 1 HIGH não-meu (X arquitetural shells/desktop bypass) + 2 MEDIUM (stack.xml take(N) cap + APNG snake_case rename) + 0 LOW; Lens Y retornou GREEN. Fechados em commit `[remediation-pending]`. Vide ADR §5.10.
 
 ### W3.0 — Pré-fan-out (Coord-A, 1 sessão) — HDR + Vector ativos
 

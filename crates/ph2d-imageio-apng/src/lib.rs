@@ -730,7 +730,7 @@ mod tests {
     /// beyond the contract cap must be rejected with `Error::Decode`
     /// before any allocation.
     #[test]
-    fn import_rejects_acTL_num_frames_above_max() {
+    fn import_rejects_actl_num_frames_above_max() {
         // Synthesize an APNG with acTL claiming MAX_ANIMATION_FRAMES+1
         // frames. We don't need to actually write fdAT — the cap
         // check happens BEFORE we try to read the frames.

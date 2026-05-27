@@ -106,6 +106,18 @@ impl ImageImporter for OraImporter {
         let mut archive = ZipArchive::new(cursor)
             .map_err(|e| Error::from_decoder_message(format!("ORA ZIP open: {e}")))?;
 
+        // Audit-10 Lens Z HIGH #2 (2026-05-26): cap entry count. A
+        // hostile ZIP with 8M false entries inflates the central
+        // directory metadata to ~1.5 GiB before the mimetype check.
+        if archive.len() > ph2d_imageio::MAX_ARCHIVE_ENTRIES {
+            return Err(Error::Decode(format!(
+                "ORA archive has {} entries (> MAX_ARCHIVE_ENTRIES={}); \
+                 refuse to walk further (DoS defence)",
+                archive.len(),
+                ph2d_imageio::MAX_ARCHIVE_ENTRIES
+            )));
+        }
+
         // Validate mimetype.
         let mime = read_zip_text(&mut archive, "mimetype")?;
         if mime.trim() != "image/openraster" {
@@ -169,11 +181,19 @@ fn parse_dim_attr(node: &roxmltree::Node, key: &str) -> Result<u32, Error> {
 }
 
 fn read_zip_text(archive: &mut ZipArchive<Cursor<&[u8]>>, name: &str) -> Result<String, Error> {
-    let mut file = archive
+    let file = archive
         .by_name(name)
         .map_err(|e| Error::Decode(format!("ORA missing `{name}`: {e}")))?;
+    // Audit-10 Lens Z MEDIUM #3 (2026-05-26): cap via `Read::take` so
+    // a hostile entry declaring `uncompressed_size = u64::MAX` of
+    // whitespace doesn't blow `String::with_capacity` past
+    // `MAX_ARCHIVE_TEXT_BYTES`. The cap covers `stack.xml` (the only
+    // text entry we read) — bytes entries (PNG layers) use the
+    // implicit cap from `MAX_RASTER_DIMENSION² × 4`.
+    let mut bounded = file.take(ph2d_imageio::MAX_ARCHIVE_TEXT_BYTES);
     let mut buf = String::new();
-    file.read_to_string(&mut buf)
+    bounded
+        .read_to_string(&mut buf)
         .map_err(|e| Error::Decode(format!("ORA read `{name}`: {e}")))?;
     Ok(buf)
 }
@@ -241,9 +261,17 @@ fn parse_stack(
             )));
         }
         let name = child.attribute("name").unwrap_or("").to_string();
+        // Audit-10 Lens Z CRITICAL #1 (2026-05-26): reject `NaN` and
+        // `±Inf` in opacity — `f32::from_str` accepts them, and a
+        // NaN propagated through the compositor poisons the entire
+        // render target (and persists into `.ph2d-native` save →
+        // multi-session poisoning). Clamp finite values to [0, 1]
+        // per Layer::opacity contract.
         let opacity: f32 = child
             .attribute("opacity")
-            .and_then(|s| s.parse().ok())
+            .and_then(|s| s.parse::<f32>().ok())
+            .filter(|v| v.is_finite())
+            .map(|v| v.clamp(0.0, 1.0))
             .unwrap_or(1.0);
         let visible = child
             .attribute("visibility")
@@ -995,6 +1023,57 @@ mod tests {
                 );
             }
             other => panic!("expected Decode with cap message, got: {other:?}"),
+        }
+    }
+
+    /// Audit-10 Lens Z CRITICAL #1 (2026-05-26): gate the NaN/Inf
+    /// opacity rejection. Hostile ORA with `opacity="NaN"` would
+    /// propagate NaN into the compositor (uncatchable data poison).
+    #[test]
+    fn import_clamps_nan_and_inf_opacity_to_default() {
+        for hostile in ["NaN", "nan", "inf", "-inf", "infinity", "Infinity"] {
+            let xml = format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<image w="1" h="1" version="0.0.5">
+  <stack composite-op="svg:src-over" opacity="1" visibility="visible">
+    <stack composite-op="svg:src-over" opacity="{hostile}" visibility="visible">
+    </stack>
+  </stack>
+</image>
+"#
+            );
+            let mut zip_bytes: Vec<u8> = Vec::new();
+            {
+                let mut zip = ZipWriter::new(Cursor::new(&mut zip_bytes));
+                zip.start_file(
+                    "mimetype",
+                    SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+                )
+                .unwrap();
+                zip.write_all(b"image/openraster").unwrap();
+                zip.start_file("stack.xml", SimpleFileOptions::default())
+                    .unwrap();
+                zip.write_all(xml.as_bytes()).unwrap();
+                zip.finish().unwrap();
+            }
+            let decoded = OraImporter
+                .import(&zip_bytes, &ImportOpts::default())
+                .expect("must import (NaN→default)");
+            let DecodedImage::Layered(stack) = decoded else {
+                panic!("expected Layered");
+            };
+            assert_eq!(stack.layers.len(), 1, "group layer present");
+            let group = &stack.layers[0];
+            assert!(
+                group.opacity.is_finite(),
+                "{hostile} → opacity {} must be finite",
+                group.opacity
+            );
+            assert!(
+                (0.0..=1.0).contains(&group.opacity),
+                "{hostile} → opacity {} must be clamped to [0,1]",
+                group.opacity
+            );
         }
     }
 

@@ -694,6 +694,13 @@ pub const CTX_MENU_HIER_ADD_CHILD: NodeId = hash_node_id("ctx_menu_hier_add_chil
 /// M14.7 polish: per-row "Rename..." entry. Opens inline rename
 /// mode (the row's name turns into a TextInput).
 pub const CTX_MENU_HIER_RENAME: NodeId = hash_node_id("ctx_menu_hier_rename");
+/// Enio 2026-05-27: "Merge Sprites" entry — flattens the current
+/// multi-selection (≥ 2 sprites) into a single new Individual-texture
+/// sprite at the union bounding box, then despawns the originals.
+/// Always shown in the HierarchyRow menu; the drain handler emits a
+/// toast when fewer than 2 sprites are selected (silent no-op
+/// otherwise feels broken).
+pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merge_sprites");
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = hash_node_id("ctx_scene_search");
 pub const CTX_SCENE_ROW_0: NodeId = hash_node_id("ctx_scene_row_0");

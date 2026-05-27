@@ -72,6 +72,7 @@ pub(crate) fn apply_event(
             || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
             || id == ids::CTX_MENU_HIER_DELETE
             || id == ids::CTX_MENU_HIER_RENAME
+            || id == ids::CTX_MENU_HIER_MERGE_SPRITES
         {
             if let Some(req) = host.store_mut().consume_last_context_menu()
                 && let ContextMenuKind::HierarchyRow { row } = req.kind
@@ -85,6 +86,8 @@ pub(crate) fn apply_event(
                         .push(EditorAction::HierResetTransform { row });
                 } else if id == ids::CTX_MENU_HIER_DELETE {
                     host.bus_mut().push(EditorAction::HierDelete { row });
+                } else if id == ids::CTX_MENU_HIER_MERGE_SPRITES {
+                    host.bus_mut().push(EditorAction::HierMergeSprites { row });
                 } else if id == ids::CTX_MENU_HIER_RENAME {
                     ph2d_editor_core::screens::hero::open_rename_public(host.store_mut());
                     state.rename_target_row = Some(row);

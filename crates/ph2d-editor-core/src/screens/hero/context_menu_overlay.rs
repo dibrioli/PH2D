@@ -318,6 +318,7 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_HIER_RENAME, "Rename\u{2026}", None),
             (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),
             (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
+            (ids::CTX_MENU_HIER_MERGE_SPRITES, "Merge Sprites", None),
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],

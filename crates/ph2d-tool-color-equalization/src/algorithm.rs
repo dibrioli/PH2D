@@ -18,7 +18,7 @@
 //!    blend by `lut_mix` + intensity attenuation; skipped when both
 //!    slots are `None`).
 //! 3. [`sharpen_laplacian`] (radius ≤ 1) or [`sharpen_unsharp`] (radius
-//!    > 1) — Phase 2 detail enhancement. Denoise stage was evaluated
+//!    \> 1) — Phase 2 detail enhancement. Denoise stage was evaluated
 //!    (Bilateral, NLM, Guided Filter, À-Trous, Domain Transform,
 //!    Anisotropic Diffusion, TV-Chambolle, Wavelet Shrinkage) and
 //!    removed 2026-05-27 — none met the visual bar.

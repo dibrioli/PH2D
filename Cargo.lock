@@ -4318,6 +4318,7 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "bytemuck",
+ "dhat",
  "naga",
  "ph2d-gpu",
  "postcard",

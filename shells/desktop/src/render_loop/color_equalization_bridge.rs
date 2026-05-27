@@ -191,8 +191,8 @@ pub(super) fn dispatch(
         let bakes = collect_live_bakes(tools, &selected);
         for (entity_bits, pixels, w, h, size_world) in bakes {
             let entity = Entity::from_bits(entity_bits);
-            let image = SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight)
-                .into_premultiplied();
+            let image =
+                SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight).into_premultiplied();
             let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
         }
     }
@@ -265,9 +265,15 @@ fn collect_live_bakes(
     let mut bakes = Vec::with_capacity(selected.len());
     for &entity_bits in selected {
         let cached = SOURCE_CACHE.with(|c| {
-            c.borrow()
-                .get(&entity_bits)
-                .map(|cs| (cs.pixels.clone(), cs.width, cs.height, cs.size_world, cs.alpha))
+            c.borrow().get(&entity_bits).map(|cs| {
+                (
+                    cs.pixels.clone(),
+                    cs.width,
+                    cs.height,
+                    cs.size_world,
+                    cs.alpha,
+                )
+            })
         });
         let Some((pixels, w, h, size_world, alpha)) = cached else {
             continue;
@@ -294,7 +300,16 @@ fn revert_all_and_clear(sim: &mut SimWorld, renderer: &mut SpriteRenderer) {
         let mut cache = c.borrow_mut();
         let drained: Vec<_> = cache
             .iter()
-            .map(|(k, v)| (*k, v.pixels.clone(), v.width, v.height, v.size_world, v.alpha))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.pixels.clone(),
+                    v.width,
+                    v.height,
+                    v.size_world,
+                    v.alpha,
+                )
+            })
             .collect();
         cache.clear();
         drained
@@ -319,7 +334,16 @@ fn prune_and_revert_unselected(
         let stale = cache
             .iter()
             .filter(|(k, _)| !live.contains(k))
-            .map(|(k, v)| (*k, v.pixels.clone(), v.width, v.height, v.size_world, v.alpha))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.pixels.clone(),
+                    v.width,
+                    v.height,
+                    v.size_world,
+                    v.alpha,
+                )
+            })
             .collect::<Vec<_>>();
         cache.retain(|k, _| live.contains(k));
         stale

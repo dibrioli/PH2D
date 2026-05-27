@@ -1038,8 +1038,79 @@ pub(crate) fn box_blur(src: &[f32], dst: &mut [f32], tmp: &mut [f32], w: u32, h:
 /// (2..6); colour-edge σ = `0.05 + 0.20·(1 − strength)` (lower σ at
 /// high strength makes the filter cross weaker edges).
 pub fn atrous_wavelet_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
-    let _ = (rgba, w, h, strength);
-    // TODO: implement in follow-up commit.
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+    if strength <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let levels = (2.0 + 4.0 * strength).round() as i32;
+    let sigma_c = 0.05 + 0.20 * (1.0 - strength);
+    let inv_sigma_c_sq = -1.0 / (2.0 * sigma_c * sigma_c);
+
+    // B3-spline kernel [1, 4, 6, 4, 1] / 16. Pre-divide ladder.
+    let kernel: [f32; 5] = [1.0, 4.0, 6.0, 4.0, 1.0];
+
+    let w_i = w as i32;
+    let h_i = h as i32;
+    let w_us = w as usize;
+    let n = w_us * (h as usize);
+    let alpha: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
+
+    // Pre-linearise once; ping-pong buffers per channel.
+    let mut src_lin: Vec<[f32; 3]> = Vec::with_capacity(n);
+    for px in rgba.chunks_exact(4) {
+        src_lin.push([
+            srgb_to_linear_u8(px[0]),
+            srgb_to_linear_u8(px[1]),
+            srgb_to_linear_u8(px[2]),
+        ]);
+    }
+    let mut cur = src_lin.clone();
+    let mut next = vec![[0.0_f32; 3]; n];
+
+    for level in 0..levels {
+        let stride_px = 1_i32 << level;
+        for y in 0..h_i {
+            for x in 0..w_i {
+                let ci = (y as usize) * w_us + (x as usize);
+                let c = cur[ci];
+                let mut sum = [0.0_f32; 3];
+                let mut wsum = 0.0_f32;
+                for ky in 0..5_i32 {
+                    let ny = (y + (ky - 2) * stride_px).clamp(0, h_i - 1);
+                    for kx in 0..5_i32 {
+                        let nx = (x + (kx - 2) * stride_px).clamp(0, w_i - 1);
+                        let ni = (ny as usize) * w_us + (nx as usize);
+                        let n_lin = cur[ni];
+                        let dr = n_lin[0] - c[0];
+                        let dg = n_lin[1] - c[1];
+                        let db = n_lin[2] - c[2];
+                        let dist_sq = dr * dr + dg * dg + db * db;
+                        let edge_w = (dist_sq * inv_sigma_c_sq).exp();
+                        let kw = kernel[ky as usize] * kernel[kx as usize] / 256.0;
+                        let weight = kw * edge_w;
+                        sum[0] += n_lin[0] * weight;
+                        sum[1] += n_lin[1] * weight;
+                        sum[2] += n_lin[2] * weight;
+                        wsum += weight;
+                    }
+                }
+                let inv = if wsum > 0.0 { 1.0 / wsum } else { 0.0 };
+                next[ci] = [sum[0] * inv, sum[1] * inv, sum[2] * inv];
+            }
+        }
+        std::mem::swap(&mut cur, &mut next);
+    }
+
+    for i in 0..n {
+        if alpha[i] == 0 {
+            continue;
+        }
+        let bo = i * 4;
+        rgba[bo] = linear_to_srgb_u8(cur[i][0]);
+        rgba[bo + 1] = linear_to_srgb_u8(cur[i][1]);
+        rgba[bo + 2] = linear_to_srgb_u8(cur[i][2]);
+    }
 }
 
 /// Domain Transform denoise (Gastal & Oliveira 2011, "Domain Transform
@@ -2829,6 +2900,46 @@ mod tests {
         assert!(
             (right as i32 - left as i32) > 100,
             "Wavelet collapsed edge contrast (left {left}, right {right})"
+        );
+    }
+
+    #[test]
+    fn atrous_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        atrous_wavelet_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn atrous_smooths_uniform_noisy_input() {
+        let mut buf = uniform_noisy_buf(32, 32, 128, 5);
+        let before = variance_gray(&buf);
+        atrous_wavelet_denoise(&mut buf, 32, 32, 0.5);
+        let after = variance_gray(&buf);
+        assert!(
+            after < before,
+            "À-Trous did not reduce variance (before {before}, after {after})"
+        );
+    }
+
+    #[test]
+    fn atrous_preserves_edge_contrast() {
+        let mut buf = Vec::with_capacity(64 * 64 * 4);
+        for _y in 0..64 {
+            for x in 0..64u32 {
+                let v = if x < 32 { 50u8 } else { 200u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        atrous_wavelet_denoise(&mut buf, 64, 64, 0.5);
+        // Sample far from the edge (À-Trous reach grows fast: 2^level
+        // per axis; at strength 0.5 ≈ 4 levels = reach 16 px).
+        let left = buf[((32 * 64 + 8) * 4) as usize];
+        let right = buf[((32 * 64 + 55) * 4) as usize];
+        assert!(
+            (right as i32 - left as i32) > 100,
+            "À-Trous collapsed edge contrast (left {left}, right {right})"
         );
     }
 

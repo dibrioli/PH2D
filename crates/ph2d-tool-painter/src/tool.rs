@@ -306,7 +306,7 @@ impl Default for PainterTool {
 ///   sets `brush.stroke_path.spacing` (audit C1-2; needed to make
 ///   `shape_count > 1` clusters visually distinct rather than overlapping).
 ///
-/// Unparseable values fall back to default + emit `eprintln!` warning.
+/// Unparsable values fall back to default + emit `eprintln!` warning.
 /// Strips ASCII quotes from `PAINTER_SMOKE_BRUSH` to handle shell-quoting
 /// edge cases (audit R5-B1-4 defensive).
 ///

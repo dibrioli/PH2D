@@ -120,7 +120,7 @@ pub fn apply_stamps(canvas: &mut [u8], width: u32, height: u32, stamps: &[Stamp]
 fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp) {
     // Paridade com shader: filtra degenerate sizes antes de qualquer
     // arithmetic. Mantém canvas inalterado para inputs lixo. NaN é
-    // catched pelo `is_finite()` (não-finito); ≤ 0 captura zero/negativo.
+    // caught pelo `is_finite()` (não-finito); ≤ 0 captura zero/negativo.
     if !stamp.size_px.is_finite()
         || stamp.size_px <= 0.0
         || !stamp.position_world[0].is_finite()

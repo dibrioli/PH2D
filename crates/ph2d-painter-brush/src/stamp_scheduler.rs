@@ -1718,20 +1718,20 @@ mod tests {
             [-0.5, 0.0],
             [0.0, -0.5],
         ];
-        for &[ba, bb] in bases {
-            let base_chroma = (ba * ba + bb * bb).sqrt();
+        for &[axis_a, axis_b] in bases {
+            let base_chroma = (axis_a * axis_a + axis_b * axis_b).sqrt();
             for seed in 0..16 {
                 let mut s = StampScheduler::new();
                 s.begin_stroke(seed);
                 let mut brush = round_hard();
                 brush.color_dynamics.stamp_hue_jitter = 1.0;
                 brush.shape.shape_count = 4;
-                let stamps = s.advance(&brush, p(0.0, 0.0), 16.0, [0.5, ba, bb, 1.0]);
+                let stamps = s.advance(&brush, p(0.0, 0.0), 16.0, [0.5, axis_a, axis_b, 1.0]);
                 for st in stamps {
                     let chroma = (st.color_oklab[1].powi(2) + st.color_oklab[2].powi(2)).sqrt();
                     assert!(
                         (chroma - base_chroma).abs() < 1e-4,
-                        "seed {seed}, base ({ba}, {bb}): chroma drift {} vs {}",
+                        "seed {seed}, base ({axis_a}, {axis_b}): chroma drift {} vs {}",
                         chroma,
                         base_chroma
                     );

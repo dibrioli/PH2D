@@ -58,8 +58,11 @@
 //!   **ULP-bounded near alpha_s → 0:** o termo `1/max(alpha_s, 1e-6)`
 //!   no Uniform/Intense Blending pode acumular ULP drift entre
 //!   backends GPU (Metal/Vulkan/D3D12) e Rust f32 quando `alpha_s` é
-//!   muito pequeno; em região `alpha_s ∈ [1e-6, 1.0]` a paridade é
-//!   bit-identical (audit T1.5 round 1 A-M3).
+//!   muito pequeno; em região `alpha_s ∈ [1e-6, 1.0]` a paridade
+//!   textual é estável, mas o output em pixels permanece **ULP-bounded
+//!   (~1-4 ULP) cross-backend, NOT bit-identical** — `sqrt/cos/sin`
+//!   nas GPU backends têm precisão impl-defined per WGSL spec (audit
+//!   T1.6 U-1).
 //! - **Premul invariant:** funções `apply_rendering_mode` operam sobre
 //!   `vec4` premul (entrada e saída). Storage do canvas neste módulo é
 //!   STRAIGHT (mesma convenção do `bgremoval` template + RasterEditTool's
@@ -77,8 +80,10 @@
 //! `PainterTool::queue_pointer` passará a publicar Stamps em vez de
 //! aplicar CPU. A API pública (`current_preview`, `take_pending_commit`,
 //! etc.) não muda; só a implementação interna troca CPU→GPU. Este
-//! módulo permanece como path de validação cross-OS HR-5 (bit-identical
-//! reference para golden tests).
+//! módulo permanece como path de **reference** para golden tests dentro
+//! de **um mesmo Rust toolchain target** — cross-OS bit-identical
+//! requer `--features det-painter` + libm-pinned trig (T-numerical-
+//! parity W2+; audit T1.6 U-1).
 //!
 //! Follow-up registrado: GPU integration cycle não bloqueia Day-7
 //! ship; sessão T-perf substitui `apply_stamps` por `dispatch_stamps`
@@ -156,9 +161,16 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp) {
     // signs once per stamp (constant across all per-pixel iterations of
     // this stamp). Rotation by `-rotation_rad` because we transform the
     // sample coordinate into the shape's reference frame (inverse of the
-    // rotation we'd apply to the shape itself) — matches the shader.
-    let cos_r = (-stamp.rotation_rad).cos();
-    let sin_r = (-stamp.rotation_rad).sin();
+    // rotation we'd apply to the shape itself). Audit T1.6 U-9 (revised
+    // post A1-U9): use trig identity `cos(-x) = cos(x)` and `sin(-x) =
+    // -sin(x)` to (a) skip one unary-negation per stamp, and (b) avoid
+    // feeding a negated argument to backend intrinsics — which on
+    // Metal/Vulkan COULD take a different precision path than the base
+    // argument (theoretical concern, not measured). Both forms produce
+    // bit-identical outputs at ±0 (verified by `u9_trig_identity_old_
+    // vs_new_form_equivalence` test).
+    let cos_r = stamp.rotation_rad.cos();
+    let sin_r = -stamp.rotation_rad.sin();
     let flip_x_sign: f32 = if (stamp.flags & crate::stamp::FLAG_SHAPE_FLIP_X) != 0 {
         -1.0
     } else {
@@ -868,8 +880,22 @@ mod tests {
             "shader square_hard return-formula drifted (O-1 extension)"
         );
 
+        // oval_hard — full body. Stretched radial (2:1 oblong).
+        assert!(
+            shader_norm.contains("let dx = (uv.x - 0.5) / 0.5;"),
+            "shader oval_hard dx stretched drifted (V-2 R4 addition)"
+        );
+        assert!(
+            shader_norm.contains("let dy = (uv.y - 0.5) / 0.25;"),
+            "shader oval_hard dy stretched drifted (V-2 R4 addition)"
+        );
+        assert!(
+            shader_norm.contains("let d = sqrt(dx * dx + dy * dy);"),
+            "shader oval_hard radial sqrt drifted (V-2 R4 addition)"
+        );
+
         // shape_alpha_for_slot dispatch + 0 → round_hard / 1 → round_soft /
-        // 2 → square_hard / default → round_hard fallback.
+        // 2 → square_hard / 3 → oval_hard / default → round_hard fallback.
         assert!(
             shader_norm.contains("case 0u: { return round_hard_shape(uv); }"),
             "shader shape dispatch slot 0 drifted"
@@ -881,6 +907,10 @@ mod tests {
         assert!(
             shader_norm.contains("case 2u: { return square_hard_shape(uv); }"),
             "shader shape dispatch slot 2 drifted"
+        );
+        assert!(
+            shader_norm.contains("case 3u: { return oval_hard_shape(uv); }"),
+            "shader shape dispatch slot 3 drifted (V-2 R4 addition)"
         );
         assert!(
             shader_norm.contains("default: { return round_hard_shape(uv); }"),
@@ -916,15 +946,17 @@ mod tests {
             shader_norm.contains("if (stamp.flags & FLAG_SHAPE_FLIP_Y) != 0u {"),
             "shader flip_y check drifted"
         );
-        // Rotation by -rotation_rad (we rotate the SAMPLE coord into the
-        // shape's reference frame, hence the inverse).
+        // Rotation by -rotation_rad via trig identity (audit T1.6 U-9):
+        // `cos(-x) = cos(x)`, `sin(-x) = -sin(x)` — avoids feeding a
+        // negated argument to the backend intrinsic + eliminates ±0
+        // sign-bit drift at rotation_rad = 0.
         assert!(
-            shader_norm.contains("let cos_r = cos(-stamp.rotation_rad);"),
-            "shader rotation matrix uses cos(-rotation_rad) — parity gate"
+            shader_norm.contains("let cos_r = cos(stamp.rotation_rad);"),
+            "shader rotation matrix uses cos(stamp.rotation_rad) per U-9 identity"
         );
         assert!(
-            shader_norm.contains("let sin_r = sin(-stamp.rotation_rad);"),
-            "shader rotation matrix uses sin(-rotation_rad) — parity gate"
+            shader_norm.contains("let sin_r = -sin(stamp.rotation_rad);"),
+            "shader rotation matrix uses -sin(stamp.rotation_rad) per U-9 identity"
         );
     }
 
@@ -1012,6 +1044,20 @@ mod tests {
         assert_eq!(a, b, "round_hard pixels must be invariant under rotation");
     }
 
+    // FOLLOW-UP-W6: pixel-level flip gate that PROVES flip changes
+    // output (rather than being a no-op on symmetric shapes) requires
+    // an asymmetric shape kernel. Today's T1.6 shapes (round_hard /
+    // round_soft / square_hard) are doubly-symmetric → flip is
+    // visually a no-op by construction. When the first asymmetric
+    // shape ships in W6+ (`flat_chisel`, `bristle_spread`,
+    // `splatter_spread` per spec §1.6.7), add a parallel test:
+    //   `flip_x_mirrors_asymmetric_shape_pixels` — apply same stamp
+    //   with/without FLAG_SHAPE_FLIP_X on an asymmetric shape; assert
+    //   the canvas pixels differ in a mirror-image pattern.
+    // The current test (`flip_preserves_output_for_symmetric_shapes`)
+    // is TAUTOLOGICAL for T1.6 shapes but remains useful as a
+    // regression sentinel for the symmetric set.
+    // Audit T1.6 R-8 + W-2 + W-3 — search grep "FOLLOW-UP-W6" to find.
     #[test]
     fn flip_preserves_output_for_symmetric_shapes() {
         // All three T1.6 shape kernels (round_hard, round_soft, square_hard)

@@ -1122,6 +1122,33 @@ mod meta {
     }
 
     #[test]
+    fn det_painter_feature_is_declared() {
+        // Audit T1.6 U-2: ADR-0044 §2.5.1 + rustdoc in pigment.rs /
+        // mixbox.rs / procedural.rs / oklab.rs / stamp.wgsl /
+        // ph2d-painter-brush::lib.rs reference `--features det-painter`
+        // as the HR-5 cross-OS strict-determinism mode. The feature
+        // MUST be declared in `Cargo.toml` so `cargo build --features
+        // det-painter` doesn't error out. The behavior wiring is
+        // progressive (no-op today; lands with T-color-full + T-perf),
+        // but the declaration pins the contract.
+        let cargo_toml_path = workspace_root()
+            .join("crates")
+            .join("ph2d-painter-brush")
+            .join("Cargo.toml");
+        if !cargo_toml_path.exists() {
+            return; // vacuous — crate not yet shipped
+        }
+        let src = std::fs::read_to_string(&cargo_toml_path)
+            .expect("ph2d-painter-brush/Cargo.toml must be readable");
+        assert!(
+            src.contains("det-painter = []"),
+            "[features] det-painter = [] MUST be declared in \
+             crates/ph2d-painter-brush/Cargo.toml (audit T1.6 U-2); \
+             8 documentation sites + ADR-0044 §2.5.1 reference this feature"
+        );
+    }
+
+    #[test]
     fn helper_finds_existing_crate_source() {
         // ph2d-color existe na Wave 10. Sanity check: tem alguma LOC.
         if let Some(n) = crate_loc("ph2d-color") {

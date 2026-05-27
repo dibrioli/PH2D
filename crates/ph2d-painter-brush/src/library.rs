@@ -13,6 +13,7 @@
 //! | 0    | `round_hard`  | Opaque core with Hermite smoothstep edge     |
 //! | 1    | `round_soft`  | Radial gradient (Gaussian-like falloff)      |
 //! | 2    | `square_hard` | Axis-aligned square with smooth edge         |
+//! | 3    | `oval_hard`   | 2:1 oblong (Hermite smoothstep on stretched radius) |
 //!
 //! ## Why no atlas binding yet (T1.6 follow-up decision)
 //!
@@ -48,12 +49,19 @@ pub const ROUND_HARD_SLOT: u32 = 0;
 pub const ROUND_SOFT_SLOT: u32 = 1;
 /// Slot 2 — `square_hard` shape (axis-aligned filled square w/ smooth edge).
 pub const SQUARE_HARD_SLOT: u32 = 2;
+/// Slot 3 — `oval_hard` shape (2:1 oblong). **Audit T1.6 V-2:** shipped
+/// alongside the other 3 procedural kernels so the `shape_rotation_follow`
+/// smoke acceptance criterion ("stamps oblongos alinham com direção do
+/// stroke") has a brush that visually demonstrates rotation. Without
+/// oval_hard, the symmetric trio (round_hard / round_soft / square_hard)
+/// makes rotation visually invisible or near-invisible.
+pub const OVAL_HARD_SLOT: u32 = 3;
 
-/// Number of built-in shape slots populated by T1.6. Slots 3..32 reserved
+/// Number of built-in shape slots populated by T1.6. Slots 4..32 reserved
 /// for ADR-0044 §1.6.7 canon expansion (round_gradient_soft /
 /// round_soft_small / oval_soft / tapered_oval / flat_chisel /
-/// bristle_spread / splatter_spread + 2 free).
-pub const BUILTIN_SHAPE_SLOT_COUNT: u32 = 3;
+/// bristle_spread / splatter_spread + 1 free).
+pub const BUILTIN_SHAPE_SLOT_COUNT: u32 = 4;
 
 // ─── Per-shape brush constructors ─────────────────────────────────────────────
 
@@ -126,6 +134,48 @@ pub fn round_soft() -> Brush {
     }
 }
 
+/// `oval_hard` brush (slot 3). 2:1 oblong with a hard Hermite edge —
+/// the demo brush for `shape_rotation_follow=true`. Visually, the oval
+/// aligns its long axis to the stroke direction, giving the calligraphic
+/// "pen nib" feel. Pairs naturally with `shape_scatter > 0` (gentle
+/// per-stamp jitter on the oblong angle). Audit T1.6 V-2: shipped so the
+/// rotation-follow smoke acceptance criterion has a visually-meaningful
+/// brush; without it, the rotation pipeline is essentially invisible
+/// on the other 3 (radial / square-symmetric) shapes.
+pub fn oval_hard() -> Brush {
+    Brush {
+        stroke_path: StrokePathParams {
+            spacing: 0.05,
+            spacing_jitter: 0.0,
+            jitter_lateral: 0.0,
+            falloff: 0.0,
+        },
+        shape: ShapeParams {
+            shape_source: ShapeSource::Builtin {
+                atlas_layer: OVAL_HARD_SLOT,
+                name: "oval_hard".to_string(),
+            },
+            // Default rotation_follow=true so the oblong feel is the
+            // out-of-the-box experience; users can disable it if they
+            // want a fixed-angle pen.
+            shape_rotation_follow: true,
+            ..Default::default()
+        },
+        grain: GrainParams::default(),
+        rendering: RenderingParams {
+            rendering_mode: RenderingMode::UniformGlaze,
+            pigment_mode: PigmentMode::Linear,
+            flow: 1.0,
+            ..Default::default()
+        },
+        about: AboutParams {
+            name: "Oval Hard".to_string(),
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
 /// `square_hard` brush (slot 2). Axis-aligned filled square — useful as
 /// a chisel surrogate, or with `shape_rotation_follow=true` to align with
 /// the stroke direction. Third built-in for the T1.6 Day-N variety target.
@@ -166,6 +216,8 @@ pub const ROUND_HARD: BrushHandle = BrushHandle(ROUND_HARD_SLOT);
 pub const ROUND_SOFT: BrushHandle = BrushHandle(ROUND_SOFT_SLOT);
 /// Handle do `square_hard` (slot 2).
 pub const SQUARE_HARD: BrushHandle = BrushHandle(SQUARE_HARD_SLOT);
+/// Handle do `oval_hard` (slot 3). Audit T1.6 V-2.
+pub const OVAL_HARD: BrushHandle = BrushHandle(OVAL_HARD_SLOT);
 
 /// Dimensão lateral da Shape texture builtin (per ADR-0044 §1.8.1).
 pub const SHAPE_TILE_PX: u32 = 256;
@@ -222,6 +274,34 @@ pub fn shape_square_hard(u: f32, v: f32) -> f32 {
     1.0 - smooth
 }
 
+/// Procedural `oval_hard` (slot 3) — 2:1 oblong via stretched radial
+/// distance. The "horizontal" axis (in shape-local space) is twice as
+/// long as the "vertical" axis: `d² = (dx/0.5)² + (dy/0.25)²` so the
+/// iso-curve at d=1 is an ellipse with semi-axes (0.5, 0.25) — i.e., a
+/// horizontal oval inscribed in the lower/upper halves of the bbox.
+/// Hermite smoothstep on `[0.85, 1.0]` matches `round_hard`'s edge feel.
+///
+/// **Audit T1.6 V-2:** this is the brush that makes `shape_rotation_
+/// follow=true` visually meaningful. Without an oblong shape, the
+/// rotation pipeline (cos/sin transform of uv) renders no visible
+/// difference on the radially-symmetric `round_*` shapes, and only
+/// subtle differences on `square_hard` (4-fold symmetric).
+///
+/// The shape is NOT radially symmetric — `shape_is_radial_symmetric`
+/// returns false for `OVAL_HARD_SLOT`, and `rotated_footprint_scale`
+/// returns `|cos θ| + |sin θ| × √(aspect²)` … actually simpler: we
+/// keep `|cos θ| + |sin θ|` as a tight bound (correct for any
+/// inscribed ellipse up to its bounding rectangle).
+#[inline]
+pub fn shape_oval_hard(u: f32, v: f32) -> f32 {
+    let dx = (u - 0.5) / 0.5; // ±1 at horizontal edges
+    let dy = (v - 0.5) / 0.25; // ±1 at quarter-height (oval is 2:1)
+    let d = (dx * dx + dy * dy).sqrt();
+    let edge_t = ((d - 0.85) / 0.15).clamp(0.0, 1.0);
+    let smooth = edge_t * edge_t * (3.0 - 2.0 * edge_t);
+    1.0 - smooth
+}
+
 /// Dispatch a procedural shape function by `shape_layer` slot. Out-of-range
 /// slots fall back to `round_hard` (slot 0) — same safer-degrade behavior
 /// as the shader's `default:` arm. Documented behavior, not bug.
@@ -231,6 +311,7 @@ pub fn shape_alpha_for_slot(slot: u32, u: f32, v: f32) -> f32 {
         ROUND_HARD_SLOT => shape_round_hard(u, v),
         ROUND_SOFT_SLOT => shape_round_soft(u, v),
         SQUARE_HARD_SLOT => shape_square_hard(u, v),
+        OVAL_HARD_SLOT => shape_oval_hard(u, v),
         _ => shape_round_hard(u, v),
     }
 }
@@ -356,11 +437,17 @@ pub fn build_shape_atlas() -> Vec<u8> {
     atlas.extend_from_slice(&round_hard_shape());
     atlas.extend_from_slice(&round_soft_shape());
     atlas.extend_from_slice(&square_hard_shape());
+    atlas.extend_from_slice(&oval_hard_shape());
     debug_assert_eq!(
         atlas.len(),
         slot_bytes * (BUILTIN_SHAPE_SLOT_COUNT as usize)
     );
     atlas
+}
+
+/// Rasterize `oval_hard` to atlas slot bytes. T-atlas-binding consumer (W6+).
+pub fn oval_hard_shape() -> Vec<u8> {
+    rasterize_shape_to_atlas(shape_oval_hard)
 }
 
 #[cfg(test)]
@@ -423,6 +510,18 @@ mod library_shape_tests {
         assert_eq!(shape_round_soft(1.0, 0.5), 0.0);
         assert_eq!(shape_round_soft(0.5, 0.0), 0.0);
         assert_eq!(shape_round_soft(0.5, 1.0), 0.0);
+    }
+
+    #[test]
+    fn round_soft_kernel_corners_are_zero() {
+        // Audit T1.6 W-15: 4 corners (0,0), (0,1), (1,0), (1,1) are
+        // OUTSIDE the inscribed circle (d > 1) → alpha = 0 via the
+        // explicit `d_sq >= 1.0` early-out. Completes the 9-point
+        // canonical grid for kernel testing.
+        assert_eq!(shape_round_soft(0.0, 0.0), 0.0, "corner (0,0)");
+        assert_eq!(shape_round_soft(1.0, 0.0), 0.0, "corner (1,0)");
+        assert_eq!(shape_round_soft(0.0, 1.0), 0.0, "corner (0,1)");
+        assert_eq!(shape_round_soft(1.0, 1.0), 0.0, "corner (1,1)");
     }
 
     #[test]
@@ -533,11 +632,15 @@ mod library_shape_tests {
     fn build_shape_atlas_has_correct_size_and_order() {
         let atlas = build_shape_atlas();
         let slot_bytes = 256 * 256;
-        assert_eq!(atlas.len(), slot_bytes * 3);
+        // Audit T1.6 V-2: BUILTIN_SHAPE_SLOT_COUNT bumped from 3 to 4
+        // (oval_hard added). Atlas now has 4 × slot_bytes.
+        assert_eq!(atlas.len(), slot_bytes * 4);
         // Slot 0 = round_hard atlas; center must be opaque.
         assert_eq!(atlas[128 * 256 + 128], 255);
         // Slot 2 = square_hard atlas at center (offset 2 * slot_bytes).
         assert_eq!(atlas[2 * slot_bytes + 128 * 256 + 128], 255);
+        // Slot 3 = oval_hard atlas at center (offset 3 * slot_bytes).
+        assert_eq!(atlas[3 * slot_bytes + 128 * 256 + 128], 255);
     }
 }
 
@@ -605,9 +708,68 @@ mod tests {
 
     #[test]
     fn builtin_shape_slots_are_distinct() {
-        assert_ne!(ROUND_HARD_SLOT, ROUND_SOFT_SLOT);
-        assert_ne!(ROUND_HARD_SLOT, SQUARE_HARD_SLOT);
-        assert_ne!(ROUND_SOFT_SLOT, SQUARE_HARD_SLOT);
-        assert_eq!(BUILTIN_SHAPE_SLOT_COUNT, 3);
+        // Audit T1.6 V-2: oval_hard added as slot 3.
+        let slots = [
+            ROUND_HARD_SLOT,
+            ROUND_SOFT_SLOT,
+            SQUARE_HARD_SLOT,
+            OVAL_HARD_SLOT,
+        ];
+        let distinct: std::collections::BTreeSet<u32> = slots.iter().copied().collect();
+        assert_eq!(
+            distinct.len(),
+            slots.len(),
+            "all 4 builtin shape slots must be distinct"
+        );
+        assert_eq!(BUILTIN_SHAPE_SLOT_COUNT, 4);
+    }
+
+    #[test]
+    fn oval_hard_kernel_center_is_opaque() {
+        assert!((shape_oval_hard(0.5, 0.5) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn oval_hard_kernel_horizontal_axis_reaches_full_width() {
+        // At (1.0, 0.5) on horizontal axis: dx=1, dy=0, d=1 → edge band.
+        let alpha = shape_oval_hard(1.0, 0.5);
+        assert!(
+            alpha < 0.05,
+            "horizontal edge (1.0, 0.5) should be near-zero (d=1 → edge); got {alpha}"
+        );
+    }
+
+    #[test]
+    fn oval_hard_kernel_vertical_axis_stops_at_quarter_height() {
+        // The 2:1 oblong has semi-axes (0.5, 0.25). At (0.5, 0.75):
+        // dy = (0.75 - 0.5) / 0.25 = 1.0 → d = 1.0 → edge band.
+        let alpha = shape_oval_hard(0.5, 0.75);
+        assert!(
+            alpha < 0.05,
+            "vertical at quarter-height (0.5, 0.75) should be near-zero; got {alpha}"
+        );
+        // Just above the vertical edge: (0.5, 0.8) → dy = 1.2 → d > 1 → 0.
+        assert_eq!(
+            shape_oval_hard(0.5, 0.8),
+            0.0,
+            "outside oval vertically must be 0"
+        );
+    }
+
+    #[test]
+    fn oval_hard_is_non_radial() {
+        // Audit V-2: oval_hard MUST be flagged non-radial so
+        // `rotated_footprint_scale` enlarges the bbox under rotation.
+        assert!(
+            !shape_is_radial_symmetric(OVAL_HARD_SLOT),
+            "oval_hard slot must be classified non-radial for footprint enlargement"
+        );
+    }
+
+    #[test]
+    fn oval_hard_dispatch_routes_correctly() {
+        // shape_alpha_for_slot dispatches OVAL_HARD_SLOT to shape_oval_hard.
+        let (u, v) = (0.5_f32, 0.5_f32);
+        assert!((shape_alpha_for_slot(OVAL_HARD_SLOT, u, v) - shape_oval_hard(u, v)).abs() < 1e-9);
     }
 }

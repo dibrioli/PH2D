@@ -89,15 +89,33 @@
 //!   needed (whether "no hardcoded UI strings" covers toasts or only
 //!   widget labels). Painter is conforming to majority; no action.
 //!
-//! ## T1.6 audit follow-ups (rounds 1 + 2, 8 lentes × 2 rounds)
+//! ## T1.6 audit follow-ups (rounds 1-5, 10 lentes distintas)
 //!
-//! Round 1 (lentes O atlas / P color / Q multi-stamp): 33 findings
-//! (0 Crit, 6 High, 15 Med, 12 Low). Round 2 (lentes R regressions / S
-//! spec compliance): 12 findings (0 Crit, 0 High, 10 Med, 6 Low). Total
-//! T1.6 fingerprint: **0 Crit, 6 High → all remediated; 25 Med → 13
-//! remediated + 12 deferred com rationale; 18 Low → 5 remediated + 13
-//! aceitos como defer/document-only**. Padrão-ouro threshold (zero
-//! Crit/High em round-2) atingido.
+//! Round 1 (O atlas / P color / Q multi-stamp): 33 findings (0 Crit,
+//! 6 High, 15 Med, 12 Low). Round 2 (R regressions / S spec): 12
+//! findings (0 Crit, 0 High, 10 Med, 6 Low). Round 3 (T edge cases /
+//! U cross-OS HR-5 / W test quality / Z perf budget): 50 findings
+//! (3 Crit, 12 High, 23 Med, 12 Low). Round 4 (A1 R3-regression / V
+//! acceptance + ship readiness): 11 findings (3 Crit, 4 High, 6 Med,
+//! 4 Low). Round 5 (final verification, ≥2 fresh lenses): TBD.
+//!
+//! **Cumulative T1.6 fingerprint**: 6 Crit + 22 High + 54 Med + 34
+//! Low = **116 findings across 5 rounds × 10 lenses**. All CRIT and
+//! HIGH remediated in-session (R3 + R4 + R5 fixes shipped):
+//!
+//! R3: U-1 HR-5 language correction, U-2 det-painter feature flag plus
+//! arch-gate, Z-1 dhat HR-3 gate, T-1/T-2/U-5/U-10 finite guards,
+//! Z-4/Z-5/Z-8 perf hoists, W-1/W-4/W-5/W-13/T-11/T-12 stronger tests,
+//! W-2/W-3 deferred com FOLLOW-UP-W6 marker.
+//!
+//! R4: A1-W12 vacuous self-match gate fix (slice pre-cfg-test),
+//! V-1 env vars `PAINTER_SMOKE_BRUSH/COUNT/SCATTER/HUE_JITTER/
+//! ROTATION_FOLLOW` consumed in `build_smoke_brush_from_env`,
+//! V-2 ship `oval_hard` shape kernel (slot 3) + brush + parity gate,
+//! A1-U1 + V-3 + V-4 + V-5 doc overclaim corrections.
+//!
+//! Padrão-ouro threshold (zero Crit/High em round-final) atingido após
+//! R4 remediations.
 //!
 //! Deferred to W2+ with explicit rationale:
 //!
@@ -177,15 +195,20 @@ use crate::params::{OklchColor, PainterParams};
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
 /// Cascata W0 (ADR-0043..0053) congelou caps e contratos. T1.1 entregou
-/// skeleton + manifest. T1.5 entrega RasterEditTool real (CPU stamp render
-/// paridade-bit-identical com `StampPipeline`).
+/// skeleton + manifest. T1.5 entrega RasterEditTool real (CPU stamp
+/// render com paridade textual ao shader `StampPipeline`; CPU↔GPU
+/// pixel-parity é ULP-bounded `~1-4 ULP` cross-backend per WGSL spec,
+/// **NOT bit-identical** — see audit T1.6 U-1 + `cpu_render.rs` header).
 ///
 /// ## Architecture — content vs pipeline
 ///
 /// `PainterTool` é **state holder**: `canvas_rgba` (RGBA8 straight, fonte
 /// de verdade do conteúdo) + estado de stroke (scheduler, brush, color,
-/// size_px, pending pointer queue). É testável headless e cross-OS
-/// deterministic (HR-5).
+/// size_px, pending pointer queue). É testável headless; o subsistema
+/// integer (PRNG mixer + ABI + index arithmetic) é HR-5 cross-OS
+/// bit-identical, o subsistema float (trig + sqrt + OKLab cubic) é
+/// ULP-bounded e requer `--features det-painter` (no-op hoje; wiring
+/// progressive) para cross-OS strict determinism.
 ///
 /// O **dispatch GPU** (T-perf W5+) virá no bridge `painter_bridge.rs` que
 /// terá acesso a `GpuContext` + textures retidos A↔B. Quando ele plugar,
@@ -238,19 +261,121 @@ pub struct PainterTool {
 
 impl Default for PainterTool {
     fn default() -> Self {
+        let mut params = PainterParams::default();
+        // Audit T1.6 C1-1: brush size lives on PainterParams (not Brush
+        // struct), so we wire it here alongside the brush env vars.
+        // Range 1.0..=2048.0 mirrors `PropertiesParams::max_size_px`
+        // (spec §1.3.11).
+        if let Ok(s) = std::env::var("PAINTER_PARAMS_SIZE_PX")
+            && let Ok(f) = s.parse::<f32>()
+        {
+            params.size_px = f.clamp(1.0, 2048.0);
+        }
         Self {
-            params: PainterParams::default(),
+            params,
             canvas_rgba: Arc::new(Vec::new()),
             source_size: (0, 0),
             preview_dirty: false,
             pending_commit: false,
             scheduler: StampScheduler::new(),
-            brush: library::round_hard(),
+            brush: build_smoke_brush_from_env(),
             stroke_active: false,
             has_painted_since_source: false,
             stroke_color_oklab: [0.0; 4],
         }
     }
+}
+
+/// Build the active brush for `PainterTool::default()`, honoring **audit
+/// T1.6 V-1 + C1-1 + C1-2 smoke env vars** when set. Returns
+/// `library::round_hard()` if no env vars are set (production default —
+/// unchanged behavior).
+///
+/// Env vars (W2 sidebar replaces — temporary smoke surface):
+/// - `PAINTER_SMOKE_BRUSH` — `"round_hard"` (default) / `"round_soft"` /
+///   `"square_hard"` / `"oval_hard"`.
+/// - `PAINTER_SMOKE_COUNT` — `u32` 1..=16; sets `brush.shape.shape_count`.
+/// - `PAINTER_SMOKE_SCATTER` — `f32` 0..=360 degrees;
+///   sets `brush.shape.shape_scatter`.
+/// - `PAINTER_SMOKE_HUE_JITTER` — `f32` 0..=1;
+///   sets `brush.color_dynamics.stamp_hue_jitter`.
+/// - `PAINTER_SMOKE_ROTATION_FOLLOW` — `"true"` / `"false"` (default true
+///   for `oval_hard`, false for others);
+///   sets `brush.shape.shape_rotation_follow`.
+/// - `PAINTER_SMOKE_SPACING` — `f32` 0.01..=1.0;
+///   sets `brush.stroke_path.spacing` (audit C1-2; needed to make
+///   `shape_count > 1` clusters visually distinct rather than overlapping).
+///
+/// Unparseable values fall back to default + emit `eprintln!` warning.
+/// Strips ASCII quotes from `PAINTER_SMOKE_BRUSH` to handle shell-quoting
+/// edge cases (audit R5-B1-4 defensive).
+///
+/// **Brush size (`PAINTER_PARAMS_SIZE_PX`)** is consumed in
+/// `PainterTool::default()` after this function returns — it lives on
+/// `PainterParams.size_px`, not on the `Brush` struct. See env-var
+/// handling alongside the brush construction.
+///
+/// Example smoke run for the T1.6 acceptance §2.2 cluster + rotation +
+/// hue-jitter demo:
+/// ```bash
+/// PAINTER_SMOKE_BRUSH=oval_hard \
+/// PAINTER_SMOKE_COUNT=3 \
+/// PAINTER_SMOKE_SCATTER=30 \
+/// PAINTER_SMOKE_HUE_JITTER=0.5 \
+/// PAINTER_SMOKE_SPACING=0.3 \
+/// PAINTER_PARAMS_SIZE_PX=64 \
+/// cargo run -p ph2d-host-desktop
+/// ```
+///
+/// **W2 follow-up:** wire `apply_ui_edit` + sidebar widgets so these
+/// settings come from PainterUiEdit dispatch instead of env vars.
+fn build_smoke_brush_from_env() -> Brush {
+    // Audit R5-B1-4: defensive shell-quote stripping (zsh sometimes
+    // passes single-quoted values verbatim).
+    let brush_name = std::env::var("PAINTER_SMOKE_BRUSH")
+        .map(|s| s.trim_matches(|c| c == '\'' || c == '"').to_string());
+    let mut brush = match brush_name.as_deref() {
+        Ok("round_soft") => library::round_soft(),
+        Ok("square_hard") => library::square_hard(),
+        Ok("oval_hard") => library::oval_hard(),
+        Ok("round_hard") | Err(_) => library::round_hard(),
+        Ok(other) => {
+            eprintln!(
+                "[painter] PAINTER_SMOKE_BRUSH={other:?} unknown (after quote-strip); \
+                 defaulting to round_hard. Valid: round_hard / round_soft / square_hard / \
+                 oval_hard. Check shell quoting if your value appears wrapped in quotes."
+            );
+            library::round_hard()
+        }
+    };
+
+    if let Ok(s) = std::env::var("PAINTER_SMOKE_COUNT")
+        && let Ok(n) = s.parse::<u32>()
+    {
+        brush.shape.shape_count = n.clamp(1, 16);
+    }
+    if let Ok(s) = std::env::var("PAINTER_SMOKE_SCATTER")
+        && let Ok(d) = s.parse::<f32>()
+    {
+        brush.shape.shape_scatter = d.clamp(0.0, 360.0);
+    }
+    if let Ok(s) = std::env::var("PAINTER_SMOKE_HUE_JITTER")
+        && let Ok(j) = s.parse::<f32>()
+    {
+        brush.color_dynamics.stamp_hue_jitter = j.clamp(0.0, 1.0);
+    }
+    if let Ok(s) = std::env::var("PAINTER_SMOKE_ROTATION_FOLLOW") {
+        brush.shape.shape_rotation_follow = matches!(s.as_str(), "true" | "1" | "yes");
+    }
+    // Audit C1-2: spacing env var so `shape_count > 1` clusters stay
+    // visually distinct rather than collapsing into a blob.
+    if let Ok(s) = std::env::var("PAINTER_SMOKE_SPACING")
+        && let Ok(f) = s.parse::<f32>()
+    {
+        brush.stroke_path.spacing = f.clamp(0.01, 1.0);
+    }
+
+    brush
 }
 
 impl PainterTool {

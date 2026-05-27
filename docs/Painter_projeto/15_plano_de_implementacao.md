@@ -302,7 +302,7 @@ adjacentes em commits únicos quando o caminho crítico para o smoke Day 7
 | T1.3 (brush+stamp)      | T1.3                                                     | shipped              |
 | T1.4 (stamp pipeline)   | T1.4                                                     | shipped              |
 | **T1.5 (Day-7 marker)** | **T1.5 shader + T1.6 RasterEditTool + T1.7 bridge + T1.10 stroke loop (CPU MVP)** | shipped (smoke ✓)    |
-| **T1.6 (brush mature)** | shape variety (3 builtin) + multi-stamp + rotation + flip + Color Dynamics stamp jitter — **escopo NÃO no plano original**; insere capacidade brush real entre Day-7 marker e T1.8 stroke history | shipped              |
+| **T1.6 (brush mature)** | shape variety (**4 builtin** — round_hard / round_soft / square_hard / **oval_hard** added R4 V-2) + multi-stamp + rotation + flip + Color Dynamics stamp jitter + **`painter_no_alloc_hot_path` dhat HR-3 gate** (R3 Z-1; promoted from T1.7 deferral) + **`det-painter` feature flag scaffolding** (R3 U-2) + **8 NaN/finite guards** across scheduler/cpu_render (R3 T-1/T-2/T-12/U-5/U-10) + **smoke env vars** `PAINTER_SMOKE_*` for shell-bypass demo (R4 V-1) — **escopo NÃO no plano original**; insere capacidade brush real entre Day-7 marker e T1.8 stroke history; cresceu via 5 rounds × 10 lenses adversariais | shipped              |
 | T1.7+ (TBD)             | T1.8 (stroke skeleton) + T1.9 (history integration) + T1.11 (audit final W1) | open                 |
 
 Razão para `T1.6 brush mature` não estar no plano original: o plano foi

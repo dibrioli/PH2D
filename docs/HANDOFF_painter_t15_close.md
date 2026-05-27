@@ -102,27 +102,55 @@ built-ins canônicos).
   diferente (variação visível ao longo do stroke).
 - **`shape_rotation_follow = true`** → stamps oblongos (oval roundness <
   1) alinham com direção do stroke automaticamente.
-- **Arch-gates ainda verdes:** `ph2d-painter-contracts` 74 tests
-  (PainterUiEdit≤24, Brush≤14 top-level, ShapeParams≤20 fields,
-  ColorDynamicsParams≤36, Stamp=96B align(16)).
-- **HR-5 determinismo:** mesmo seed + mesmo brush params → mesmo
-  output bit-identical cross-OS. Gate `shader_oklab_coefficients_bit_
-  identical_with_rust` + `cpu_shader_textual_parity_all_six_modes`
-  permanecem verdes.
-- **HR-3 hot path:** scheduler.advance ainda zero-alloc (pool 4096
-  ainda absorve multi-stamp via `shape_count` × stamps_por_segment).
-  Verifique cap; se `shape_count > 1` em segments long fizer overflow,
-  documentar break point.
+- **Arch-gates ainda verdes:** `ph2d-painter-contracts` 75 tests
+  pós-R3 (era 74 + `det_painter_feature_is_declared` adicionado em
+  rodada de audit T1.6 R3). Caps mantidos: PainterUiEdit≤24,
+  Brush≤14 top-level, ShapeParams≤20 fields, ColorDynamicsParams≤36,
+  Stamp=96B align(16).
+- **HR-5 determinismo (revisado audit T1.6 U-1):** o subsistema
+  **integer** (PRNG mixer wyhash + Stamp ABI byte layout + index
+  arithmetic) é bit-identical cross-OS. O subsistema **float** (trig
+  `cos/sin/atan2`, `sqrt`, OKLab cubic) é **ULP-bounded ~1-4 ULP
+  cross-backend, NOT bit-identical** — `cos/sin/sqrt` lower to
+  backend intrinsics (Metal/Vulkan/D3D12) cuja precisão impl-defined
+  per WGSL spec, e `f32::cos/sin` Rust libm divergem entre
+  toolchain/targets. **HR-5 strict cross-OS** requer `--features
+  det-painter` (declarado em `crates/ph2d-painter-brush/Cargo.toml`
+  como audit T1.6 U-2; wiring progressive — currently no-op stub,
+  ativará com T-numerical-parity W2+ + Mixbox + GPU bypass).
+  Gates ativos: `shader_oklab_coefficients_bit_identical_with_rust`
+  (15 OKLab literals pinned), `cpu_shader_textual_parity_all_six_modes`
+  (rendering mode formulas pinned), `cpu_shader_shape_kernels_textual_parity`
+  (4 shape kernels pinned), `color_jitter_cross_channel_axis_independence`
+  (PRNG bit-equality within single target), `det_random_distribution_is_
+  roughly_uniform` + `det_random_axis_tag_independence_bit_distinct`
+  (mixer integer determinism), `det_painter_feature_is_declared` (feature
+  flag declared).
+- **HR-3 hot path:** scheduler.advance é provado **zero-alloc** via
+  novo gate `painter_no_alloc_hot_path` (dhat-rs, audit T1.6 Z-1).
+  Combined baseline (round_hard) + worst-case (square_hard +
+  shape_count=16 + 4 jitters + scatter + rotation_follow + randomized
+  + count_jitter) sob um único dhat::Profiler — 100 frames × 10
+  advances cada, total_blocks delta = 0 hard-asserted. Pool 4096
+  absorve multi-stamp; `pool_cap_respected_with_high_shape_count`
+  prova cap + capacity-equality (Vec não realloca).
 
 ### 2.3 Critério Day-N (T1.6 close)
 
-- Variedade visual visível ≥ 3 brushes built-in (round_hard /
-  round_soft / square_hard) com diferenças notáveis. Library expandida
-  em `library.rs`.
-- Color Dynamics stamp_hue_jitter funcional + bit-identical seed-
-  determinístico.
+- Variedade visual visível **4 brushes built-in** (round_hard /
+  round_soft / square_hard / **oval_hard** — `oval_hard` adicionado em
+  audit T1.6 V-2 pra dar demo visual de `shape_rotation_follow`)
+  com diferenças notáveis. Library expandida em `library.rs`.
+- Color Dynamics stamp_hue_jitter funcional + **bit-identical
+  within single Rust target** seed-determinístico (audit T1.6 U-1
+  revisado — cross-OS bit-equality requer det-painter, ULP-bounded
+  por default).
 - Auditoria adversarial ≥2 rounds × ≥2 lentes paralelas (rotacionar de
-  rounds 1-6 anteriores). Zero Crit/High aceito.
+  rounds 1-6 anteriores). Zero Crit/High aceito. **T1.6 entregou 5
+  rounds × 10 lentes distintas** (R1: O atlas / P color / Q multi-stamp;
+  R2: R regressions / S spec; R3: T edge cases / U cross-OS / W test
+  quality / Z perf; R4: A1 R3-regression / V acceptance) — exceeds
+  spec.
 
 ### 2.4 Esforço estimado
 

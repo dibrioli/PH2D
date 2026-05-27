@@ -19,6 +19,31 @@ authors.workspace = true
 #
 # Contrato congelado por ADR-0044 (cascata W0 ratificada 2026-05-26).
 
+[features]
+# **det-painter** — strict-determinism mode for HR-5 cross-OS bit-identical
+# reproducibility (audit T1.6 U-2 + ADR-0044 §2.5.1). When set:
+# - PigmentMode::Mixbox falls back to Linear (Mixbox polynomial uses
+#   f32 paths that diverge with FMA contraction across Apple Silicon
+#   AArch64 vs x86_64 Linux).
+# - GPU compute pipeline is skipped in favor of CPU `apply_stamps`
+#   (WGSL `cos/sin/sqrt` are ULP-bounded but not bit-identical
+#   cross-backend — Metal/Vulkan/D3D12 each lower differently).
+# - Mathematically-equivalent paths use libm-pinned trig + explicit
+#   no-FMA disciplines to keep CPU outputs identical across Rust
+#   toolchains.
+#
+# **T1.6 status:** the feature flag is **declared** here so callers can
+# opt in via `cargo build --features det-painter` without "feature does
+# not exist" errors. The actual `#[cfg(feature = "det-painter")]`
+# arms in code are wired progressively as the dependent subsystems
+# arrive (Mixbox → T-color-full ADR-0051; GPU bypass → T-perf W5+;
+# libm pinning → T-numerical-parity W2+). Until then, setting the
+# feature is a **no-op** on behavior — it ONLY signals intent.
+# Audit gate `det_painter_feature_is_declared` (in
+# `crates/ph2d-painter-contracts/`) pins this declaration so the
+# feature can never quietly disappear from Cargo.toml.
+det-painter = []
+
 [dependencies]
 # HR-14 versionado postcard binary serialization (.ph2d-brush format).
 serde = { version = "1", features = ["derive"] }
@@ -46,3 +71,11 @@ wgpu = "28"
 # - `shader_workgroup_size_is_8x8x1` enforces spec §1.8.2.
 # Dev-dep only — production paths never reach the reflection helper.
 naga = "28"
+
+# dhat for HR-3 zero-alloc gates on the hot path. Audit T1.6 Z-1: spec
+# §8.5 + §8.13 mandate `painter_no_alloc_hot_path` — the gate proves
+# multi-stamp emission + color jitter introduce zero heap allocations
+# per frame. Used in `tests/budget/painter_no_alloc.rs` (gated by
+# `#[cfg(not(miri))]` since dhat hooks the global allocator and
+# conflicts with miri's). Dev-dep only.
+dhat = "0.3"

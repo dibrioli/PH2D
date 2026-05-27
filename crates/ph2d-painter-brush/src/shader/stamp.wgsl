@@ -167,14 +167,19 @@ fn oklab_to_linear_srgb(L: f32, a: f32, b: f32) -> vec3<f32> {
 // `smooth_t` (not `smooth`) — `smooth` is a reserved WGSL keyword (sampler
 // interpolation qualifier in fragment inputs).
 fn round_hard_shape(uv: vec2<f32>) -> f32 {
-    // Audit T1.6 O-3: WGSL `length()` is an intrinsic whose lowering on
-    // Metal / Vulkan / DX12 is implementation-defined (may use fused
+    // Audit T1.6 O-3 + U-1: WGSL `length()` is an intrinsic whose lowering
+    // on Metal / Vulkan / DX12 is implementation-defined (may use fused
     // reciprocal-sqrt + multiply, or `sqrt(dot(v,v))`, or a backend-
     // specific path). Cross-backend ULP equality is NOT mandated. The
     // CPU side uses scalar `(dx*dx + dy*dy).sqrt()` — to keep the gate
     // `cpu_shader_shape_kernels_textual_parity` honest (and to give CPU
-    // and GPU the same numerical pipeline), the shader uses the same
-    // scalar form, not `length()`.
+    // and GPU the same numerical SOURCE pipeline), the shader uses the
+    // same scalar form, not `length()`. **Note:** writing the same
+    // formula in WGSL and Rust does NOT guarantee bit-identical
+    // runtime results — `sqrt`, `cos`, `sin` are ULP-bounded across
+    // backends (typically ≤1-4 ULP). HR-5 strict bit-identical requires
+    // the `det-painter` feature path (declared in Cargo.toml; wiring
+    // progressive — see ph2d-painter-brush::lib.rs Status section).
     let dx = uv.x - 0.5;
     let dy = uv.y - 0.5;
     let d = sqrt(dx * dx + dy * dy) / 0.5;
@@ -203,6 +208,18 @@ fn square_hard_shape(uv: vec2<f32>) -> f32 {
     return 1.0 - smooth_t;
 }
 
+// `oval_hard` (slot 3, audit T1.6 V-2) — 2:1 oblong via stretched
+// radial distance. Pairs with `shape_rotation_follow=true` to render a
+// calligraphic pen-nib that aligns its long axis to the stroke direction.
+fn oval_hard_shape(uv: vec2<f32>) -> f32 {
+    let dx = (uv.x - 0.5) / 0.5;
+    let dy = (uv.y - 0.5) / 0.25;
+    let d = sqrt(dx * dx + dy * dy);
+    let edge_t = clamp((d - 0.85) / 0.15, 0.0, 1.0);
+    let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);
+    return 1.0 - smooth_t;
+}
+
 // Dispatch a procedural shape by `shape_layer` slot. Out-of-range slots
 // fall back to `round_hard` (safer-degrade — same behavior as
 // `library::shape_alpha_for_slot`).
@@ -211,6 +228,7 @@ fn shape_alpha_for_slot(slot: u32, uv: vec2<f32>) -> f32 {
         case 0u: { return round_hard_shape(uv); }
         case 1u: { return round_soft_shape(uv); }
         case 2u: { return square_hard_shape(uv); }
+        case 3u: { return oval_hard_shape(uv); }
         default: { return round_hard_shape(uv); }
     }
 }
@@ -427,12 +445,23 @@ fn cs_stamp(
     // 3. Rotate the sample direction. We rotate by `-rotation_rad` here
     // because we're transforming the **sample coordinate** into the
     // shape's reference frame (inverse of the rotation we'd apply to the
-    // shape itself). `cos / sin` are IEEE-754 round-to-nearest in WGSL
-    // and naga lowers to backend `cos/sin` (Metal `cos`, SPIR-V
-    // `OpExtInst Sin/Cos`) — bit-identical to Rust's `f32::cos/sin`
-    // within the documented ULP tolerance (~1 ULP across backends).
-    let cos_r = cos(-stamp.rotation_rad);
-    let sin_r = sin(-stamp.rotation_rad);
+    // shape itself). Use trig identity `cos(-x) = cos(x)` and
+    // `sin(-x) = -sin(x)` to (a) skip one unary-negation per stamp, and
+    // (b) avoid feeding a backend intrinsic a negated argument — which
+    // on Metal/Vulkan COULD take a different precision path than the
+    // base argument (theoretical, not measured). Audit T1.6 U-9 +
+    // R5-B1-1: original draft claimed "eliminates ±0 sign-bit drift"
+    // but that was WRONG (`u9_trig_identity_old_vs_new_form_equivalence`
+    // test in scheduler proves both forms produce bit-identical outputs
+    // for ±0 inputs). `cos/sin` lower to backend intrinsics (Metal
+    // `metal::cos`, SPIR-V `OpExtInst Cos/Sin`, DX12 `cos/sin`); WGSL
+    // spec mandates ULP-bounded precision only (typically ≤1-4 ULP),
+    // **NOT bit-identical cross-backend** (audit T1.6 U-1). For HR-5
+    // strict cross-OS reproducibility, set `--features det-painter`
+    // (currently no-op; lookup-table-pinned trig lands T-numerical-
+    // parity W2+).
+    let cos_r = cos(stamp.rotation_rad);
+    let sin_r = -sin(stamp.rotation_rad);
     let uv_rotated = vec2<f32>(
         uv_centered.x * cos_r - uv_centered.y * sin_r,
         uv_centered.x * sin_r + uv_centered.y * cos_r,

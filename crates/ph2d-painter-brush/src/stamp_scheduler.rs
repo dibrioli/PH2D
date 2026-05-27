@@ -170,7 +170,21 @@ impl StampScheduler {
     /// Inicia um novo stroke. Reseta o estado interno mantendo a capacity do
     /// pool. `seed` deve ser derivado de inputs determinísticos pelo caller
     /// (tempo do pointer-down + entity bits + brush hash).
+    ///
+    /// **Audit T1.6 T-4:** `begin_stroke` is a HARD RESET — it clears
+    /// state even if a prior stroke was open (e.g. a click-no-drag whose
+    /// `end_stroke` got dropped). The `debug_assert!` fires in dev/test
+    /// builds when the prior stroke wasn't ended, so bridge bugs
+    /// (missed pointer-up event) surface immediately. Release builds
+    /// skip the check; the reset is correct in either case.
     pub fn begin_stroke(&mut self, seed: u64) {
+        debug_assert!(
+            !self.is_in_stroke(),
+            "begin_stroke called on non-ended stroke (prior end_stroke \
+             or break_segment missing — bridge bug or dropped pointer-up); \
+             state will be reset, but the previous stroke's stamps are \
+             discarded silently in release"
+        );
         self.pool.clear();
         self.last_point = None;
         self.residual_dist = 0.0;
@@ -316,6 +330,18 @@ impl StampScheduler {
             Some(last) => {
                 let delta = [sample.position[0] - last[0], sample.position[1] - last[1]];
                 let segment_len = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
+                // **Audit T1.6 T-12:** finite-overflow guard. The is_finite
+                // filter at advance entry catches NaN/Inf positions, but
+                // `[f32::MAX, 0]` to `[0, 0]` produces `delta = [-MAX, 0]`
+                // (finite), then `(-MAX)² = +Inf` overflow → `sqrt(Inf) =
+                // Inf` → `inv_len = 1/Inf = 0` → `ux/uy = -MAX * 0 = NaN`
+                // (0 × Inf is NaN per IEEE). Without this guard, the
+                // pool fills with 4096 NaN-position stamps that the GPU/
+                // CPU paths reject downstream — wasted work + corrupted
+                // residual_dist on the next advance.
+                if !segment_len.is_finite() {
+                    return &self.pool;
+                }
                 if segment_len < f32::EPSILON {
                     // Pointer ficou parado (jitter de driver / sample
                     // duplicado). Não emite stamp novo nem move last_point.
@@ -432,6 +458,13 @@ impl StampScheduler {
             crate::shape::ShapeSource::Builtin { atlas_layer, .. } => *atlas_layer,
             crate::shape::ShapeSource::Imported { atlas_layer, .. } => *atlas_layer,
         };
+        // **Audit T1.6 Z-4:** hoist the radial-symmetry check above the
+        // per-stamp loop. For radial shapes (default `round_hard`, also
+        // `round_soft`), `rotated_footprint_scale` short-circuits to
+        // 1.0 regardless of rotation_rad — no need to call it per stamp.
+        // Saves ~7 cycles × `effective_count` for the radial-default
+        // brushes (most common case).
+        let is_radial = crate::library::shape_is_radial_symmetric(shape_layer);
         let scatter_rad = brush.shape.shape_scatter.clamp(0.0, 360.0).to_radians();
         let follow_angle = if brush.shape.shape_rotation_follow {
             stroke_dir[1].atan2(stroke_dir[0])
@@ -439,6 +472,25 @@ impl StampScheduler {
             0.0
         };
         let base_rotation = self.stroke_rotation_base.unwrap_or(0.0);
+        // **Audit T1.6 Z-8:** hoist a single bool for "any color jitter
+        // active". For default brushes (all jitter = 0), we skip the
+        // 4× clamp + 4× comparison inside `apply_stamp_color_jitter`.
+        let cd_has_any_jitter = brush.color_dynamics.stamp_lightness_jitter > 0.0
+            || brush.color_dynamics.stamp_darkness_jitter > 0.0
+            || brush.color_dynamics.stamp_hue_jitter > 0.0
+            || brush.color_dynamics.stamp_saturation_jitter > 0.0;
+        // **Audit T1.6 A1-Z8-SKIP-INTENT-EROSION:** the
+        // `stamp_secondary_color` + `stamp_secondary_amount` reads
+        // (P-1 intentional-field-access signal) used to live inside
+        // `apply_stamp_color_jitter`. After Z-8 hoisting, calling that
+        // function is skipped for jitter-free brushes (the common
+        // case), erasing the read for grep-based "who reads these
+        // fields" searches. Pull the reads up to per-group scope so
+        // they ALWAYS execute once regardless of cd_has_any_jitter —
+        // 2-cycle cost, eliminates the false "field is forgotten"
+        // signal a future T-color-full implementer would see.
+        let _ = brush.color_dynamics.stamp_secondary_color;
+        let _ = brush.color_dynamics.stamp_secondary_amount;
 
         // **Audit T1.6 Q-11:** flag bits are per-GROUP (constant across
         // all N stamps in this `push_stamp_group` invocation). The
@@ -507,28 +559,31 @@ impl StampScheduler {
             // Per-stamp color jitter (OKLab L offset + (a,b) rotate/scale).
             // Distinct axis tags per channel (0xC1..0xC4) so a brush with
             // only `stamp_hue_jitter` set doesn't disturb the lightness
-            // axis's PRNG stream.
-            let color =
-                self.apply_stamp_color_jitter(color_oklab, &brush.color_dynamics, self.stamp_index);
+            // axis's PRNG stream. Z-8: skip the entire call when no
+            // channel is active (saves 4 clamps + 4 comparisons per stamp).
+            let color = if cd_has_any_jitter {
+                self.apply_stamp_color_jitter(color_oklab, &brush.color_dynamics, self.stamp_index)
+            } else {
+                color_oklab
+            };
 
             // Footprint enlargement: non-radial shape with rotation needs
             // an enlarged bounding box so the rotated shape isn't clipped.
             //
-            // **Audit T1.6 Q-6 — MAX_STAMP_SIZE_PX clamp swallows
-            // enlargement at upper-bound brushes.** When `diameter` is
-            // already at `MAX_STAMP_SIZE_PX = 2048`, the `* √2` would
-            // exceed the cap and `.min(MAX)` silently clips back to
-            // 2048, losing the enlargement → rotated square's corners
-            // GET CLIPPED. Effective practical upper limit for non-radial
-            // rotated brushes is `MAX / √2 ≈ 1448 px`. The upstream
-            // `PropertiesParams::max_size_px` (spec §1.3.11) advertises
-            // 2048 as the slider max; users who load a square_hard brush
-            // at full size + rotation see clipped corners. T1.6 ships
-            // the silent clip + this documentation; a UI-side validation
-            // that lowers the effective slider for non-radial brushes
-            // is a W2 follow-up.
-            let footprint_scale =
-                crate::library::rotated_footprint_scale(shape_layer, rotation_rad);
+            // **Audit T1.6 Z-4 + Q-6:** for radial shapes, short-circuit
+            // to scale=1.0 without the cos/sin call (hoisted `is_radial`
+            // above). For non-radial, the tight bound `|cos θ| + |sin θ|`
+            // peaks at √2 at 45°. When `diameter` is already at
+            // `MAX_STAMP_SIZE_PX = 2048`, the multiplied result clips
+            // back to 2048 → rotated square's corners GET CLIPPED.
+            // Effective practical upper limit for non-radial rotated
+            // brushes is `MAX / √2 ≈ 1448 px`. UI-side soft-cap is W2+
+            // follow-up.
+            let footprint_scale = if is_radial {
+                1.0
+            } else {
+                rotation_rad.cos().abs() + rotation_rad.sin().abs()
+            };
             let size_px = (diameter * footprint_scale).min(MAX_STAMP_SIZE_PX as f32);
 
             self.push_one_stamp(
@@ -560,6 +615,20 @@ impl StampScheduler {
         shape_layer: u32,
         flags: u32,
     ) {
+        // **Audit T1.6 U-10:** defense-in-depth — size_px must be
+        // positive finite at the push boundary. `advance` clamps
+        // `diameter` to `[1.0, MAX_STAMP_SIZE_PX]`, then `push_stamp_
+        // group` multiplies by `rotated_footprint_scale` (NaN-safe — NaN
+        // rotation_rad falls through to NaN scale → NaN size_px). The
+        // existing `debug_assert!(rotation_rad.is_finite())` (Q-8) plus
+        // this guard catch the entire non-finite stamp surface before
+        // it hits the Stamp ABI. Release builds skip (zero cost); the
+        // shader / CPU `apply_one_stamp` are still defense-in-depth at
+        // the dispatch boundary.
+        debug_assert!(
+            size_px.is_finite() && size_px > 0.0,
+            "push_one_stamp size_px must be positive finite; got {size_px}"
+        );
         let len_before = self.pool.len();
         let mut s = Stamp::zeroed();
         s.position_world = sample.position;
@@ -621,6 +690,35 @@ impl StampScheduler {
         // sees the field is "known reserved", not "forgotten").
         let _ = cd.stamp_secondary_color;
         let _ = cd.stamp_secondary_amount;
+
+        // **Audit T1.6 T-1 + T-2 + U-5:** symmetric finite-guard with
+        // the position/pressure filter at advance entry. NaN/Inf color
+        // would propagate through `l.clamp/.cos/.sin` and reach the
+        // Stamp.color_oklab field, then poison the shader's
+        // `oklab_to_linear_srgb` and CPU `apply_one_stamp` premul math.
+        // Return input unchanged on non-finite (downstream's
+        // `apply_one_stamp` is_finite filter then drops the stamp). The
+        // `debug_assert!` fires loudly in dev/test builds so the
+        // CALLER (PainterTool) gets immediate feedback on a bad
+        // PainterParams.primary_color.
+        if !color_oklab.iter().all(|c| c.is_finite()) {
+            debug_assert!(
+                false,
+                "apply_stamp_color_jitter received non-finite color_oklab \
+                 {:?} (caller should filter at queue_pointer — audit T1.6 T-1)",
+                color_oklab
+            );
+            // Audit T1.6 A1-T1: previous draft returned `color_oklab`
+            // unchanged on non-finite — but that propagates NaN/Inf
+            // through 6 layers (push_one_stamp → Stamp.color_oklab →
+            // GPU oklab_to_linear_srgb → clamp(NaN)=NaN → render
+            // mode → final per-pixel NaN guard catches it). Cleaner:
+            // return alpha=0 stamp, which the downstream
+            // `combined_alpha < 1/255` short-circuit drops at the
+            // first pixel — no NaN propagation.
+            return [0.0, 0.0, 0.0, 0.0];
+        }
+
         let [mut l, mut a, mut b, alpha] = color_oklab;
 
         // **Composition order rationale (audit T1.6 P-8):** the spec
@@ -684,27 +782,45 @@ impl StampScheduler {
         [l, a, b, alpha]
     }
 
-    /// PRNG determinístico — wyhash mixer com `(stroke_seed, stamp_index,
-    /// axis_tag)` como entrada. Retorna `[0.0, 1.0)`.
-    ///
-    /// Não usa `rand`: `SmallRng` etc. tem seeding variável cross-platform.
-    /// Mixer manual = bit-identico Mac/Linux/Windows. HR-5 cumprido.
+    /// Method wrapper kept for ergonomics inside the scheduler — delegates
+    /// to the free function [`det_random`]. **Audit T1.6 Z-5:** the
+    /// free-function form is the canonical entry point (no `&self` borrow
+    /// to confuse the optimizer's aliasing analysis on the hot path).
     #[inline]
     fn det_random(&self, stamp_index: u64, axis_tag: u64) -> f32 {
-        // wyhash-style: 3-fold xor-shift + multiply. Boa avalanche para
-        // uso de jitter sem dep externa.
-        let mut h = self
-            .stroke_seed
-            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
-            .wrapping_add(stamp_index);
-        h ^= h >> 32;
-        h = h.wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        h ^= axis_tag;
-        h = h.wrapping_mul(0x94D0_49BB_1331_11EB);
-        h ^= h >> 31;
-        // Top 24 bits → [0, 1) preserva precisão de f32 mantissa.
-        ((h >> 40) as f32) / ((1u64 << 24) as f32)
+        det_random(self.stroke_seed, stamp_index, axis_tag)
     }
+}
+
+/// PRNG determinístico — wyhash mixer com `(stroke_seed, stamp_index,
+/// axis_tag)` como entrada. Retorna `[0.0, 1.0)`.
+///
+/// **Free function (audit T1.6 Z-5)** — extraído de `StampScheduler`
+/// method form. Razão: o mixer é puro sobre seus 3 argumentos `u64`;
+/// não precisa de `&self`. Como free fn, o optimizer não precisa
+/// rastrear aliasing com os `&mut self` callers (push_stamp_group etc),
+/// e o `#[inline]` é mais agressivo. Espera-se 5-15% speedup no PRNG
+/// slice da hot path. Mantém-se também como method wrapper em
+/// `StampScheduler` por ergonomia em test/inner sites.
+///
+/// Não usa `rand`: `SmallRng` etc. tem seeding variável cross-platform.
+/// Mixer manual = bit-identico Mac/Linux/Windows **PARA ESTA INTEGER
+/// COMPUTATION** (audit T1.6 U-1) — os f32 trig/sqrt downstream NÃO
+/// são cross-OS bit-identical sem `--features det-painter`.
+#[inline]
+pub(crate) fn det_random(stroke_seed: u64, stamp_index: u64, axis_tag: u64) -> f32 {
+    // wyhash-style: 3-fold xor-shift + multiply. Boa avalanche para
+    // uso de jitter sem dep externa.
+    let mut h = stroke_seed
+        .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        .wrapping_add(stamp_index);
+    h ^= h >> 32;
+    h = h.wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    h ^= axis_tag;
+    h = h.wrapping_mul(0x94D0_49BB_1331_11EB);
+    h ^= h >> 31;
+    // Top 24 bits → [0, 1) preserva precisão de f32 mantissa.
+    ((h >> 40) as f32) / ((1u64 << 24) as f32)
 }
 
 #[cfg(test)]
@@ -722,23 +838,74 @@ mod tests {
 
     #[test]
     fn new_pool_has_max_capacity() {
+        // Audit T1.6 U-8: tightened from `>= MAX` to `== MAX`. Rust
+        // `Vec::with_capacity(N)` is allowed to allocate `>= N` (allocator
+        // discretion); macOS/Linux/Windows allocators all return exactly
+        // 4096 for this size today, but a future allocator change or a
+        // bump to a non-page-aligned MAX could break. Pinning equality
+        // makes the platform contract explicit.
         let s = StampScheduler::new();
-        assert_eq!(s.pool.capacity(), MAX_STAMPS_PER_DISPATCH);
+        assert_eq!(
+            s.pool.capacity(),
+            MAX_STAMPS_PER_DISPATCH,
+            "Vec::with_capacity({MAX_STAMPS_PER_DISPATCH}) must reserve \
+             exactly that many slots — HR-3 cap fence depends on the \
+             logical-len vs physical-capacity match"
+        );
         assert!(s.pool.is_empty());
         assert!(!s.is_in_stroke());
     }
 
     #[test]
     fn begin_stroke_resets_state() {
+        // Test the canonical clean path: end_stroke between begin_strokes.
+        // Audit T1.6 T-4: the debug_assert in begin_stroke catches
+        // dangling-stroke bugs (covered by `begin_stroke_hard_resets_
+        // dangling_stroke` below).
         let mut s = StampScheduler::new();
         s.begin_stroke(42);
         let brush = round_hard();
         let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
         assert!(s.is_in_stroke());
+        s.end_stroke();
         s.begin_stroke(99);
         assert!(s.pool.is_empty());
         assert!(!s.is_in_stroke());
         assert_eq!(s.stroke_seed, 99);
+    }
+
+    #[test]
+    fn begin_stroke_hard_resets_dangling_stroke() {
+        // Audit T1.6 T-4: a dropped end_stroke (bridge bug, missed
+        // pointer-up) leaves the scheduler with is_in_stroke()=true.
+        // The next begin_stroke MUST still hard-reset (and the
+        // debug_assert fires in debug builds to signal the bridge bug).
+        // Release behavior: silent reset is correct — strokes from the
+        // dropped pointer-up are discarded.
+        let mut s = StampScheduler::new();
+        s.begin_stroke(1);
+        let brush = round_hard();
+        let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+        assert!(s.is_in_stroke(), "stroke open after one advance");
+        // Skip end_stroke — simulate bridge dropping the pointer-up.
+        // begin_stroke must still recover.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            s.begin_stroke(2);
+        }));
+        if cfg!(debug_assertions) {
+            assert!(
+                result.is_err(),
+                "debug_assert!(!is_in_stroke) MUST fire when begin_stroke \
+                 is called on a non-ended stroke (T-4 bridge-bug signal)"
+            );
+            // After the assert panic, the StampScheduler may be in an
+            // inconsistent state — drop it. The behavioral check below
+            // runs on a fresh scheduler.
+        } else {
+            // Release: begin_stroke silently hard-resets.
+            assert!(!s.is_in_stroke(), "release: hard reset takes effect");
+            assert_eq!(s.stroke_seed, 2);
+        }
     }
 
     #[test]
@@ -792,9 +959,21 @@ mod tests {
             .map(|st| st.position_world)
             .collect();
 
-        // HR-5 cross-OS implicit: same input → bit-identical output (no
-        // floating-point lifestyle from `rand` etc.).
-        assert_eq!(a, b, "same seed must produce bit-identical positions");
+        // Audit T1.6 A1-U1-RESIDUE: this assertion runs both invocations
+        // in the SAME process → trivially bit-equal within a single
+        // Rust target. Cross-OS bit-equality of positions depends on
+        // `f32::sqrt`/integer-mul determinism — INTEGER ops are
+        // cross-OS bit-identical (wyhash mixer), but the `t_along *
+        // ux + perp * lat_offset` chain uses f32 arithmetic. Within a
+        // single Rust target it's deterministic; cross-OS HR-5 strict
+        // requires `--features det-painter` (no-op today). The U-1
+        // overclaim correction applies here as in
+        // `color_jitter_deterministic_across_runs`.
+        assert_eq!(
+            a, b,
+            "same seed must produce bit-identical positions within a \
+             single Rust target (cross-OS HR-5 requires det-painter)"
+        );
     }
 
     #[test]
@@ -1306,9 +1485,14 @@ mod tests {
     }
 
     #[test]
-    fn rotated_radial_shape_keeps_size_px_unchanged() {
-        // round_hard (radial-symmetric) with rotation — footprint stays
-        // at the original size_px (rotation invisible on circle).
+    fn radial_shape_short_circuits_footprint_scale_at_any_rotation() {
+        // Audit T1.6 W-16: rename from `rotated_radial_shape_keeps_size_
+        // px_unchanged` — the test was unclear about WHAT it proves.
+        // Actual invariant: `rotated_footprint_scale` short-circuits to
+        // 1.0 for radial slots regardless of rotation_rad value. So
+        // `size_px` is unchanged whether rotation is 0, π/4, or
+        // even an extreme value like 1e6 (the early-out bypasses
+        // cos/sin entirely — no NaN/Inf risk, no precision drift).
         let mut s = StampScheduler::new();
         s.begin_stroke(1);
         let mut brush = round_hard();
@@ -1322,6 +1506,19 @@ mod tests {
                 st.size_px
             );
         }
+        // Direct test of the short-circuit at extreme rotation values:
+        // proves the early-return path is taken (no cos/sin call → no
+        // NaN/overflow risk for radial shapes).
+        assert_eq!(
+            crate::library::rotated_footprint_scale(crate::library::ROUND_HARD_SLOT, 1.0e6,),
+            1.0,
+            "radial slot must short-circuit to 1.0 regardless of rotation"
+        );
+        assert_eq!(
+            crate::library::rotated_footprint_scale(crate::library::ROUND_SOFT_SLOT, -1.0e6,),
+            1.0,
+            "radial slot must short-circuit to 1.0 for negative extreme rotation"
+        );
     }
 
     #[test]
@@ -1339,6 +1536,229 @@ mod tests {
         assert!(
             distinct,
             "lightness_jitter must produce L variance; got {ls:?}"
+        );
+    }
+
+    #[test]
+    fn u9_trig_identity_old_vs_new_form_equivalence() {
+        // Audit T1.6 A1-U9: the U-9 fix replaced `(-x).cos() / (-x).sin()`
+        // with `x.cos() / -x.sin()` via trig identity. The original
+        // comment claimed this "eliminates ±0 sign-bit drift at
+        // rotation_rad = 0" — that was WRONG; both forms produce
+        // identical bit outputs for any finite input including ±0.
+        //
+        // Per IEEE 754:
+        //   cos(+0) = cos(-0) = +1.0 (both positive — no sign drift in cos)
+        //   sin(+0) = +0.0, sin(-0) = -0.0 (sign is preserved through sin)
+        //   Old form at rotation = +0: (-(+0)).sin() = (-0).sin() = -0
+        //   Old form at rotation = -0: (-(-0)).sin() = (+0).sin() = +0
+        //   New form at rotation = +0: -(+0).sin()  = -(+0)        = -0
+        //   New form at rotation = -0: -(-0).sin()  = -(-0)        = +0
+        // → OLD and NEW produce identical bit patterns for ±0.
+        //
+        // The REAL benefit of U-9 is (a) skip one unary-negation
+        // instruction per stamp, and (b) avoid feeding a backend
+        // intrinsic an argument-with-sign-flip, which on Metal/Vulkan
+        // could potentially take a different precision path than the
+        // base argument (theoretical; not measured). This test pins
+        // the equivalence between the two forms.
+        for raw in [
+            0.0_f32,
+            -0.0,
+            1.0,
+            -1.0,
+            core::f32::consts::PI,
+            -core::f32::consts::PI,
+            core::f32::consts::FRAC_PI_4,
+            1e6,
+            -1e-3,
+        ] {
+            let old_cos = (-raw).cos();
+            let old_sin = (-raw).sin();
+            let new_cos = raw.cos();
+            let new_sin = -raw.sin();
+            assert_eq!(
+                old_cos.to_bits(),
+                new_cos.to_bits(),
+                "cos({raw}) old (-x).cos vs new x.cos must be bit-equal"
+            );
+            assert_eq!(
+                old_sin.to_bits(),
+                new_sin.to_bits(),
+                "sin({raw}) old (-x).sin vs new -x.sin must be bit-equal"
+            );
+        }
+    }
+
+    #[test]
+    fn max_shape_count_matches_spec() {
+        // Audit T1.6 W-13: spec §1.3.4 freezes `shape_count` range to
+        // `1..=16`. The const MUST match. A future tweak that lowers
+        // the cap without spec update would silently break large-cluster
+        // brushes.
+        assert_eq!(
+            MAX_SHAPE_COUNT, 16,
+            "spec §1.3.4 freezes shape_count to 1..=16; update spec if changing"
+        );
+    }
+
+    #[test]
+    fn shape_count_one_plus_jitter_always_emits_at_least_one_stamp() {
+        // Audit T1.6 T-11: base_count=1 + count_jitter=1.0 + j≈-1 →
+        // perturbed=0 → .clamp(1, MAX) saves us. A future regression
+        // that removed the `.clamp(1, ...)` lower bound would let 0
+        // through and break the "one pointer = at least one stamp"
+        // invariant the bridge relies on.
+        for seed in 0..64 {
+            let mut s = StampScheduler::new();
+            s.begin_stroke(seed);
+            let mut brush = round_hard();
+            brush.shape.shape_count = 1;
+            brush.shape.shape_count_jitter = 1.0;
+            let stamps = s.advance(&brush, p(0.0, 0.0), 16.0, [0.0; 4]);
+            assert!(
+                !stamps.is_empty(),
+                "seed {seed}: base_count=1 + jitter=1.0 must emit ≥1 stamp"
+            );
+        }
+    }
+
+    #[test]
+    fn extreme_position_does_not_corrupt_pool() {
+        // Audit T1.6 T-12: position [f32::MAX, 0] then [0, 0] makes
+        // segment_len = Inf, which the new is_finite guard catches.
+        // Without the guard, ux/uy = NaN and pool fills with garbage.
+        let mut s = StampScheduler::new();
+        s.begin_stroke(1);
+        let brush = round_hard();
+        let _ = s.advance(
+            &brush,
+            PointerSample {
+                position: [f32::MAX, 0.0],
+                pressure: 0.5,
+                tilt: 0.0,
+            },
+            32.0,
+            [0.5, 0.0, 0.0, 1.0],
+        );
+        let stamps = s.advance(
+            &brush,
+            PointerSample {
+                position: [0.0, 0.0],
+                pressure: 0.5,
+                tilt: 0.0,
+            },
+            32.0,
+            [0.5, 0.0, 0.0, 1.0],
+        );
+        // segment_len = Inf → early return (no stamps from this advance).
+        assert!(
+            stamps.is_empty(),
+            "infinite segment_len must produce no stamps (T-12 guard); got {}",
+            stamps.len()
+        );
+    }
+
+    #[test]
+    fn det_random_distribution_is_roughly_uniform() {
+        // Audit T1.6 W-5: prior `det_random_in_unit_interval` only
+        // checked range; this proves the distribution is not severely
+        // biased. Bucket 4096 samples into 16 bins → expected 256/bin;
+        // assert each bin has 128..=512 (±100% loose chi-squared bound).
+        let mut buckets = [0_u32; 16];
+        for i in 0..4096 {
+            let v = det_random(0xDEAD_BEEF, i, 0xCD);
+            let bin = ((v * 16.0) as usize).min(15);
+            buckets[bin] += 1;
+        }
+        for (i, count) in buckets.iter().enumerate() {
+            assert!(
+                *count >= 128 && *count <= 512,
+                "bucket {i} count {count} out of [128, 512] — distribution biased"
+            );
+        }
+    }
+
+    #[test]
+    fn det_random_axis_tag_independence_bit_distinct() {
+        // Audit T1.6 W-5 + P-5: for a given (seed, stamp_index), two
+        // distinct axis_tag values must produce distinct outputs in
+        // the vast majority of cases. Bit-equality between axes would
+        // mean the mixer collapses axis_tag → silent correlation
+        // (P-5 risk).
+        let mut collisions = 0;
+        for i in 0..256 {
+            let a = det_random(0x1234_5678, i, 0xC1);
+            let b = det_random(0x1234_5678, i, 0xC2);
+            if a.to_bits() == b.to_bits() {
+                collisions += 1;
+            }
+        }
+        assert!(
+            collisions <= 1,
+            "axis_tag 0xC1 vs 0xC2 collided on {collisions}/256 stamp_indices \
+             (mixer avalanche too weak)"
+        );
+    }
+
+    #[test]
+    fn color_hue_jitter_preserves_chroma_magnitude_multi_quadrant() {
+        // Audit T1.6 W-1: prior test used base = (0.3, 0.2) — single
+        // quadrant. This sweeps all 4 quadrants + multiple chroma
+        // magnitudes. A bug like "rotation uses |angle|" or
+        // "swaps cos/sin sign" might preserve magnitude for (+, +) but
+        // break (-, +) or (+, -).
+        let bases: &[[f32; 2]] = &[
+            [0.3, 0.2],
+            [-0.3, 0.2],
+            [0.3, -0.2],
+            [-0.3, -0.2],
+            [0.5, 0.0],
+            [0.0, 0.5],
+            [-0.5, 0.0],
+            [0.0, -0.5],
+        ];
+        for &[ba, bb] in bases {
+            let base_chroma = (ba * ba + bb * bb).sqrt();
+            for seed in 0..16 {
+                let mut s = StampScheduler::new();
+                s.begin_stroke(seed);
+                let mut brush = round_hard();
+                brush.color_dynamics.stamp_hue_jitter = 1.0;
+                brush.shape.shape_count = 4;
+                let stamps = s.advance(&brush, p(0.0, 0.0), 16.0, [0.5, ba, bb, 1.0]);
+                for st in stamps {
+                    let chroma = (st.color_oklab[1].powi(2) + st.color_oklab[2].powi(2)).sqrt();
+                    assert!(
+                        (chroma - base_chroma).abs() < 1e-4,
+                        "seed {seed}, base ({ba}, {bb}): chroma drift {} vs {}",
+                        chroma,
+                        base_chroma
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn scatter_produces_distinct_bit_patterns() {
+        // Audit T1.6 W-4: replace the brittle "1e-3 difference" check
+        // with a bit-equality test. Each of N stamps in a group should
+        // have a distinct rotation_rad bit pattern (PRNG advances per
+        // stamp; collisions would mean axis 0xCD collapsed).
+        let mut s = StampScheduler::new();
+        s.begin_stroke(42);
+        let mut brush = round_hard();
+        brush.shape.shape_count = 16;
+        brush.shape.shape_scatter = 180.0;
+        let stamps = s.advance(&brush, p(0.0, 0.0), 16.0, [0.0; 4]);
+        assert_eq!(stamps.len(), 16);
+        let bit_patterns: std::collections::BTreeSet<u32> =
+            stamps.iter().map(|st| st.rotation_rad.to_bits()).collect();
+        assert_eq!(
+            bit_patterns.len(),
+            16,
+            "all 16 stamps must have DISTINCT rotation bit patterns (W-4)"
         );
     }
 
@@ -1393,9 +1813,16 @@ mod tests {
             .map(|st| st.color_oklab)
             .collect();
 
+        // Audit T1.6 U-1: bit-equality holds WITHIN a single Rust target
+        // (the test runs in one process). Cross-OS bit-equality of color
+        // jitter depends on `f32::cos`/`f32::sin` agreeing across libm
+        // versions — NOT guaranteed without `--features det-painter`
+        // + libm-pinned trig (currently no-op; T-numerical-parity W2+
+        // wires it).
         assert_eq!(
             out1, out2,
-            "color jitter must be bit-identical for same seed"
+            "color jitter must be bit-identical within a single Rust \
+             target for same seed (cross-OS HR-5 requires det-painter)"
         );
     }
 
@@ -1780,23 +2207,38 @@ mod tests {
 
     #[test]
     fn nan_rotation_debug_assert_present_in_source() {
-        // Audit T1.6 Q-8 + R-2 textual gate: the `debug_assert!` is a
-        // defense-in-depth guard for future code paths that might
-        // introduce NaN `rotation_rad`. A textual gate ensures the
-        // assert survives refactors. The runtime gate (above) is
-        // necessarily weak because we can't synthesize NaN via the
-        // public API today.
+        // Audit T1.6 Q-8 + R-2 + W-12 + A1-W12-SELF-MATCH textual gate:
+        // the `debug_assert!` is a defense-in-depth guard for future
+        // code paths that might introduce NaN `rotation_rad`. A textual
+        // gate ensures the assert survives refactors. The runtime gate
+        // (above) is necessarily weak because we can't synthesize NaN
+        // via the public API today.
         //
-        // R-2 fix: whitespace-normalize before contains() — pins the
-        // semantic invariant ("there is a debug_assert on rotation_rad
-        // being finite, somewhere in this file") rather than the
-        // cosmetic formatting (which rustfmt can churn through).
+        // **A1-W12-SELF-MATCH critical fix:** previous draft searched
+        // the WHOLE file (`include_str!("stamp_scheduler.rs")`) — but
+        // the test source itself contains the needle strings (in
+        // literal forms + assert messages), so the search self-matched
+        // even if the production `debug_assert!` was deleted. Vacuous
+        // gate. Fix: slice the source at the FIRST occurrence of
+        // `#[cfg(test)]` (start of the test module) and search ONLY
+        // in the prod half. Accepts BOTH whitespace-normalized forms
+        // (rustfmt collapses multi-line `debug_assert!(...)` into
+        // single-line in some configurations).
         let src = include_str!("stamp_scheduler.rs");
-        let normalized = src.split_whitespace().collect::<Vec<_>>().join(" ");
+        let test_module_start = src
+            .find("#[cfg(test)]")
+            .expect("expected #[cfg(test)] marker in source");
+        let prod_only = &src[..test_module_start];
+        let normalized = prod_only.split_whitespace().collect::<Vec<_>>().join(" ");
+        let with_space = normalized.contains("debug_assert!( rotation_rad.is_finite()");
+        let without_space = normalized.contains("debug_assert!(rotation_rad.is_finite()");
         assert!(
-            normalized.contains("debug_assert!( rotation_rad.is_finite()"),
-            "debug_assert!(rotation_rad.is_finite()) must exist in push_stamp_group \
-             (Q-8 defense-in-depth); whitespace-normalized search came back empty"
+            with_space || without_space,
+            "debug_assert!(rotation_rad.is_finite()) must exist in PRODUCTION \
+             code of push_stamp_group (Q-8 defense-in-depth); searched {} \
+             bytes of prod-only source (pre-#[cfg(test)] slice), neither \
+             with-space nor without-space form matched.",
+            prod_only.len()
         );
     }
 

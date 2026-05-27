@@ -51,6 +51,22 @@ Batch B (2 slots paralelos, após Batch A):
 
 ## WAVE 2 — Profissional 2D · PARALELO intra-onda
 
+### W2.0.0 — qcms viability gate (Coord-A, 15min — HARD BLOCKER de W2.0.1)
+
+Antes de abrir W2.0.1 (ICC pipeline), Coord-A executa em ≤15min:
+
+```bash
+cargo search qcms                                 # last release date?
+cargo search moxcms                               # fallback active?
+```
+
+E inspecionar:
+- `qcms` crate no crates.io: última release < 12 meses? Mantenedor responsivo?
+- Se qcms dormente → pivot para `moxcms` 0.5+ (puro-Rust, mantido).
+- Se ambos dormentes → escalar para Enio: opções são (a) implementar ICC v2 lookup matricial mínimo localmente; (b) escopo W2 cortar profile preservation; (c) HR-1 lift opt-in para `lcms2-rs` (binding C).
+
+**Bloqueia W2.0.1.** Sem decisão aqui, W2 inteira fica em risco de travar mid-batch.
+
 ### W2.0 — Pré-fan-out (Coord-A, 1 sessão)
 
 - **W2.0.1** — ICC profile parsing ativo. `ph2d-imageio::ColorProfile::Custom(IccBytes)` populado por importers que carregam ICC; conversão sRGB/P3/AdobeRGB/ProPhoto ↔ OKLCH internal via `qcms` 0.x (Mozilla puro-Rust) ou `lcms2-rs`. **Decisão**: `qcms` (Mozilla-maintained, mais simples).

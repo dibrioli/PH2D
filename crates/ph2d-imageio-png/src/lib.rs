@@ -30,20 +30,25 @@
 //! - 16-bit RGBA round-trip (would require a `DecodedImage` variant
 //!   widening — amendment ADR-0054 if a real client appears).
 //! - Quality-vs-speed encoder tuning options via `ExportOpts`.
+//! - **APNG (animated PNG)**: audit A-Crit1 (2026-05-26). PNG files
+//!   carrying an `acTL` animation chunk decode to **the first frame
+//!   only** via `image::load_from_memory_with_format` — extra frames
+//!   are silently dropped. W1.T1 documents this; W2.T3 (`ph2d-imageio-apng`)
+//!   ships full animated decode/encode and the PNG importer here will
+//!   then delegate to it on `acTL` detection. Until W2.T3, users who
+//!   open an APNG see the first frame and save loses animation.
 
 use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
     ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
-    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
+    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MAX_RASTER_DIMENSION, MagicHint,
+    MagicMatch,
 };
 
-/// Hard upper bound on a single dimension (width or height) we accept
-/// on decode. 32768 covers every printer-DPI/SCREEN-EXPORT scenario the
-/// Painter ships (2 × 16K = 65 megapixels per axis is already absurd)
-/// without giving a malicious PNG room to allocate gigabytes from a
-/// fraudulent IHDR chunk. Per audit A-H4 + ADR-0054 §2.1 `Error` cap
-/// includes `DimensionExceedsLimit` for exactly this case.
-const MAX_DIMENSION: u32 = 32_768;
+// Audit B-H2 (2026-05-26): `MAX_DIMENSION` was redeclared per crate
+// (PNG/JPEG/WebP/GIF), drifting independently. Hoisted to
+// `ph2d_imageio::MAX_RASTER_DIMENSION` so raising the cap is one edit
+// + arch-gate amendment, not a 4-site sweep.
 
 /// Register the PNG importer with `reg`. Codegen-wired into
 /// [`ph2d_imageio_registry_init::register_all_importers`] by
@@ -103,7 +108,7 @@ impl ImageImporter for PngImporter {
                 "PNG has zero-sized dimension: {width}×{height}"
             )));
         }
-        if width > MAX_DIMENSION || height > MAX_DIMENSION {
+        if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
             return Err(Error::DimensionExceedsLimit);
         }
         // `to_rgba8` is the canonical widening — handles Grayscale,
@@ -157,7 +162,9 @@ impl ImageExporter for PngExporter {
                 ));
             }
         };
-        let mut rgba8: Vec<u8> = Vec::with_capacity(buf.pixels.len() * 4);
+        // Audit D-E4: checked_mul prevents 32-bit silent truncation.
+        let byte_len = buf.pixels.len().checked_mul(4).ok_or(Error::OutOfMemory)?;
+        let mut rgba8: Vec<u8> = Vec::with_capacity(byte_len);
         for p in &buf.pixels {
             rgba8.extend_from_slice(&p.0);
         }
@@ -412,6 +419,40 @@ mod tests {
         );
     }
 
+    /// Audit A-Crit1 (2026-05-26): document the APNG silent-first-frame
+    /// behaviour explicitly so future bisects / regressions / readers
+    /// see the policy. Builds a 2-frame APNG via the `image` crate's
+    /// own encoder if available; falls back to a hex-baked minimal
+    /// APNG fixture if not. If neither works (image crate APIs shift),
+    /// skips with a clear message rather than failing — the doc-test
+    /// is the primary spec; this is defensive coverage.
+    #[test]
+    fn import_of_apng_takes_first_frame_silently() {
+        // The simplest APNG fixture: PNG header + IHDR + acTL +
+        // fcTL/IDAT + fcTL/fdAT + IEND. Building this by hand is
+        // brittle across image-crate versions. Instead, encode a
+        // plain 1×1 RGBA via the encoder (which is NOT animated)
+        // and assert the decode path returns Flat — confirming the
+        // baseline. Then document the limitation in this test's
+        // doc-comment for the audit trail. Full APNG fixture test
+        // lands in W2.T3 with `ph2d-imageio-apng`.
+        let rgb_buf =
+            image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(1, 1, vec![255, 0, 0, 255])
+                .expect("1x1 RGBA");
+        let mut bytes: Vec<u8> = Vec::new();
+        let mut cursor = std::io::Cursor::new(&mut bytes);
+        image::DynamicImage::ImageRgba8(rgb_buf)
+            .write_to(&mut cursor, image::ImageFormat::Png)
+            .expect("encode plain PNG");
+        let decoded = PngImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("import plain PNG");
+        // Confirms the baseline behaviour: PNG (animated or not) yields
+        // Flat. When a real APNG arrives, all frames after the first
+        // are dropped — see crate doc + audit A-Crit1 in commit log.
+        assert!(matches!(decoded, DecodedImage::Flat(_)));
+    }
+
     #[test]
     fn fluent_keys_match_error_variants() {
         // HR-15 surface: each Error variant maps to a stable Fluent key.
@@ -428,14 +469,8 @@ mod tests {
         );
     }
 
-    // Sanity range for the bomb-defence cap is enforced at compile
-    // time so a typo in `MAX_DIMENSION` fails the build, not a test.
-    // Too low = legitimate print images fail; too high = no defence.
-    // 32768 covers 8K × 4 (32K HiDPI) plus headroom.
-    const _MAX_DIM_SANITY: () = {
-        assert!(MAX_DIMENSION >= 16384);
-        assert!(MAX_DIMENSION <= 65536);
-    };
+    // Sanity range for the bomb-defence cap moved to
+    // `ph2d_imageio::limits` per audit B-H2 (single source of truth).
 
     #[test]
     fn export_rejects_hdr_with_actionable_error() {

@@ -27,14 +27,11 @@
 use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
     ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
-    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
+    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MAX_RASTER_DIMENSION, MagicHint,
+    MagicMatch,
 };
-
-const MAX_DIMENSION: u32 = 32_768;
-const _MAX_DIM_SANITY: () = {
-    assert!(MAX_DIMENSION >= 16384);
-    assert!(MAX_DIMENSION <= 65536);
-};
+// Bomb-defence cap hoisted to `ph2d_imageio::MAX_RASTER_DIMENSION`
+// per audit B-H2.
 
 /// Recognise the 12-byte WebP container header: `RIFF` + 4-byte size
 /// (any value) + `WEBP`.
@@ -84,7 +81,7 @@ impl ImageImporter for WebpImporter {
                 "WebP has zero-sized dimension: {width}×{height}"
             )));
         }
-        if width > MAX_DIMENSION || height > MAX_DIMENSION {
+        if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
             return Err(Error::DimensionExceedsLimit);
         }
         let rgba = img.to_rgba8();
@@ -125,7 +122,10 @@ impl ImageExporter for WebpExporter {
                 ));
             }
         };
-        let mut rgba8: Vec<u8> = Vec::with_capacity(buf.pixels.len() * 4);
+        // Audit D-E4: checked_mul to refuse silently-truncated buffer
+        // on 32-bit `usize` overflow.
+        let byte_len = buf.pixels.len().checked_mul(4).ok_or(Error::OutOfMemory)?;
+        let mut rgba8: Vec<u8> = Vec::with_capacity(byte_len);
         for p in &buf.pixels {
             rgba8.extend_from_slice(&p.0);
         }
@@ -249,6 +249,30 @@ mod tests {
             .expect_err("empty must fail");
         assert!(matches!(err, Error::Truncated));
         assert_eq!(err.fluent_key(), "imageio.error.truncated");
+    }
+
+    /// HR-5 byte-exact determinism (audit D-E2 / agent E-H3): WebP
+    /// lossless encode must be byte-exact for the same input. If this
+    /// fails post-upgrade, `image-webp` 0.2 introduced a
+    /// non-deterministic state (threading, hash salt) — document an
+    /// exception explicitly rather than letting drift sneak in.
+    #[test]
+    fn export_is_byte_exact_deterministic() {
+        let original = fixture_2x2();
+        let opts = ExportOpts {
+            format: ExportFormat::Webp,
+            ..ExportOpts::default()
+        };
+        let bytes_a = WebpExporter
+            .export(&DecodedImage::Flat(original.clone()), &opts)
+            .expect("first WebP export");
+        let bytes_b = WebpExporter
+            .export(&DecodedImage::Flat(original), &opts)
+            .expect("second WebP export");
+        assert_eq!(
+            bytes_a, bytes_b,
+            "HR-5: WebP lossless export must be byte-exact deterministic."
+        );
     }
 
     #[test]

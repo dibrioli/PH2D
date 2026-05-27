@@ -244,6 +244,41 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W1.T4** GIF | ✅ | `3a84b1b` | Single→Flat / multi→Animated, 7 tests |
 | **W1.T5** .ph2d-native | ✅ | `7270d40` | All 5 DecodedImage variants lossless; HR-5+6+14, 13 tests |
 | **ONDA 1 FECHADA** | ✅ | 5 commits | 5 format crates registrados; 81 testes verdes na família |
+| **W1.T6** auditoria 5-lente Onda 1 | ✅ | `[remediation-commit]` | 4 CRITICAL + 13 HIGH + 13 MEDIUM + 15 LOW; remediação inline (memory `feedback-perfection-no-deferrals`) — vide §5.1 |
+
+### 5.1 Remediação pós-auditoria Onda 1 (2026-05-26)
+
+Auditoria adversarial 5-lente sobre Onda 1 entregou 45 findings actionable. Fechados nesta sessão pré-W2:
+
+**CRITICAL:**
+- **E-1** inner version drift silenciosa em `LayerStackV1`/`LayerV1` — `schema::validate_v1_inner_versions` walk após postcard decode + test cobre `version=7` inner.
+- **A-Crit1** APNG silent first-frame em PNG — documentado em crate doc + test sentinel + amendment do plan (W2.T3 ships `ph2d-imageio-apng`).
+- **A-Crit2** GIF `collect_frames` sem cap — `MAX_FRAMES = 1024` cap antes do `into_frames` collect; documentado streaming W2+.
+- **C-C1** Cargo.lock uncommitted — commitado junto com a remediação (débito anterior dos 5 commits W1 documentado: bisect quebrado nesse range; daqui em diante OK).
+
+**HIGH:**
+- **B-H2** `MAX_DIMENSION` redeclarada 4× — hoisted para `ph2d_imageio::MAX_RASTER_DIMENSION` (single source of truth + compile-time sanity).
+- **B-M1** `From<std::io::Error> for Error` unused — removido (era encouragement para refactor errado).
+- **D-E2** HR-5 byte-exact tests missing em JPEG/WebP/GIF — 3 tests adicionados (~10 LOC cada).
+- **D-E4** `Vec::with_capacity(pixels.len() * 4)` sem overflow guard — `checked_mul` em 4 encode paths (PNG/JPEG/WebP/GIF) + 1 helper GIF (`anim_frame_to_image_frame`).
+- **`.ph2d-native` L1** `MAX_PAYLOAD_LEN = 4 GiB` exato overflow 32-bit — hoisted para `MAX_PH2D_PAYLOAD_LEN = u32::MAX as u64`.
+- **`.ph2d-native` L1** ICC profile sem cap — `MAX_ICC_PROFILE_LEN = 4 MiB` validado em `validate_color_profile_v1`.
+- **`.ph2d-native` L1** version=0 vs future schema — arm dedicado `0 => Error::Decode("uninitialized")` + test.
+
+**Deferred com decisão registrada** (não bloqueador):
+- **A-H1** JPEG sRGB-assumed sem ICC parsing — W2.0.1 quando ICC pipeline lands.
+- **A-H2** WebP lossy → lossless re-export warning — W2+ junto com lossy encoder.
+- **A-H3** GIF `dispose_op` semantic loss — W2 (image 0.26 ou `image-gif` direct dep).
+- **B-H1** Truncated heuristic por substring — aceitável até `image` 0.26 surface `ImageError::IoError(kind)`.
+- **B-M2** `ImportOpts.color_profile_strictness` Strict ignorado — W2.0.1 ICC pipeline materializa.
+- **B-M3** GIF single-frame round-trip Flat-vs-Animated ambiguidade — W2 spec choice.
+- **B-M4** WebP animated first-frame fallback silent — W2 amendment.
+- **B-M5** `ExportFormat::from_extension(&str)` — W1.T7 chrome integration helper.
+- **D-E3** HR-15 detail strings inglês hardcoded em `Display` — ADR follow-up: `Error::user_facing()` separa dev-log de UI.
+- **D-E5** HR-17 examples Luau import/export — W1+ scripting integration milestone.
+- **D-E6** HR-13 memory budget surface — re-export caps via `ph2d_imageio::limits` parcial; ADR §addendum ratifica "imageio off-hot, budget vive no shell AssetDb".
+- **E-H5** qcms hard deadline — adicionar W2.0.0 viability gate ao plan (faz parte deste commit).
+- **C-M3** per-format feature gate — W2/W3.
 
 ### Remediação pós-auditoria (2026-05-26)
 

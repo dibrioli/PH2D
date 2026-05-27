@@ -39,14 +39,18 @@ use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
     AnimBlendOp, AnimFrame, ColorProfile, DecodedImage, DisposeOp, Error, ExportFormat, ExportOpts,
     ExporterRegistry, ImageBuffer, ImageExporter, ImageImporter, ImportOpts, ImporterRegistry,
-    MagicHint, MagicMatch,
+    MAX_RASTER_DIMENSION, MagicHint, MagicMatch,
 };
+// Bomb-defence cap hoisted to `ph2d_imageio::MAX_RASTER_DIMENSION`.
 
-const MAX_DIMENSION: u32 = 32_768;
-const _MAX_DIM_SANITY: () = {
-    assert!(MAX_DIMENSION >= 16384);
-    assert!(MAX_DIMENSION <= 65536);
-};
+/// Maximum frame count we accept on import. Audit A-Crit2 (2026-05-26):
+/// `collect_frames()` on a 1000-frame 1024×1024 GIF allocates ~4 GiB
+/// without this cap; `OutOfMemory` downstream is too late for the
+/// `Cancelled`/UI-feedback path the shell will wire in W2+. 1024 frames
+/// at 4K resolution caps at ~32 GiB worst case (still big, but bounded;
+/// W2 will add per-frame streaming via the `image-gif` direct backend
+/// to lift this cap.) Real-world GIFs ship < 200 frames typically.
+const MAX_FRAMES: usize = 1024;
 
 /// GIF87a (`GIF87a`) and GIF89a (`GIF89a`) signatures. Both decoders
 /// accept either; we recognise both as Strong.
@@ -147,7 +151,14 @@ impl ImageImporter for GifImporter {
                 "GIF has zero-sized dimension: {w0}×{h0}"
             )));
         }
-        if w0 > MAX_DIMENSION || h0 > MAX_DIMENSION {
+        if w0 > MAX_RASTER_DIMENSION || h0 > MAX_RASTER_DIMENSION {
+            return Err(Error::DimensionExceedsLimit);
+        }
+        // Audit A-Crit2: refuse decompression-bomb GIFs claiming
+        // tens-of-thousands of frames. `collect_frames` already
+        // happened (we have the Vec), so this is mostly a guard
+        // against insane sources; the real fix is streaming in W2.
+        if frames.len() > MAX_FRAMES {
             return Err(Error::DimensionExceedsLimit);
         }
 
@@ -167,7 +178,14 @@ pub struct GifExporter;
 /// the single-frame `Flat → GIF` path and the multi-frame `Animated →
 /// GIF` path.
 fn anim_frame_to_image_frame(f: &AnimFrame) -> Result<image::Frame, Error> {
-    let mut rgba8: Vec<u8> = Vec::with_capacity(f.image.pixels.len() * 4);
+    // Audit D-E4: checked_mul prevents 32-bit silent truncation.
+    let byte_len = f
+        .image
+        .pixels
+        .len()
+        .checked_mul(4)
+        .ok_or(Error::OutOfMemory)?;
+    let mut rgba8: Vec<u8> = Vec::with_capacity(byte_len);
     for p in &f.image.pixels {
         rgba8.extend_from_slice(&p.0);
     }
@@ -399,6 +417,31 @@ mod tests {
             .import(&[], &ImportOpts::default())
             .expect_err("empty must fail");
         assert!(matches!(err, Error::Truncated));
+    }
+
+    /// HR-5 byte-exact determinism (audit D-E2 / agent E-H4): GIF
+    /// palette quantisation is deterministic on `image-gif` 0.13 with
+    /// our fixed config. If a future upgrade introduces a randomised
+    /// dithering seed or threaded palette pass, this test catches.
+    #[test]
+    fn export_is_byte_exact_deterministic() {
+        let original = fixture_frame([200, 100, 50, 255]);
+        let opts = ExportOpts {
+            format: ExportFormat::Gif,
+            ..ExportOpts::default()
+        };
+        let bytes_a = GifExporter
+            .export(&DecodedImage::Flat(original.clone()), &opts)
+            .expect("first GIF export");
+        let bytes_b = GifExporter
+            .export(&DecodedImage::Flat(original), &opts)
+            .expect("second GIF export");
+        assert_eq!(
+            bytes_a, bytes_b,
+            "HR-5: GIF export must be byte-exact deterministic. \
+             If this fails, `image-gif` introduced non-deterministic \
+             palette/dither state."
+        );
     }
 
     #[test]

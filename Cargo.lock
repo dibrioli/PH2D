@@ -973,6 +973,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ec7c5eb7a16992b1904d76c517d170ab353b0e0b3d5a0c81a8a0cd1037893cf"
 
 [[package]]
+name = "color_quant"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2025,6 +2031,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gif"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee8cfcc411d9adbbaba82fb72661cc1bcca13e8bba98b364e62b2dba8f960159"
+dependencies = [
+ "color_quant",
+ "weezl",
+]
+
+[[package]]
 name = "gilrs"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2564,6 +2580,8 @@ checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
+ "color_quant",
+ "gif",
  "image-webp",
  "moxcms",
  "num-traits",
@@ -4015,12 +4033,15 @@ dependencies = [
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-imageio",
+ "ph2d-imageio-registry-init",
  "ph2d-input",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-grid",
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-painter-brush",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
@@ -4038,6 +4059,7 @@ dependencies = [
  "ph2d-tool-equalize-sizes",
  "ph2d-tool-make-square",
  "ph2d-tool-padding",
+ "ph2d-tool-painter",
  "ph2d-tool-rasterize",
  "ph2d-tool-real-size",
  "ph2d-tool-registry",
@@ -4061,6 +4083,70 @@ name = "ph2d-imageio"
 version = "0.0.0"
 dependencies = [
  "ph2d-color",
+]
+
+[[package]]
+name = "ph2d-imageio-gif"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-color",
+ "ph2d-imageio",
+]
+
+[[package]]
+name = "ph2d-imageio-jpeg"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-color",
+ "ph2d-imageio",
+]
+
+[[package]]
+name = "ph2d-imageio-ph2d-native"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "ph2d-color",
+ "ph2d-imageio",
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-imageio-png"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-color",
+ "ph2d-imageio",
+]
+
+[[package]]
+name = "ph2d-imageio-registry-init"
+version = "0.0.0"
+dependencies = [
+ "ph2d-imageio",
+ "ph2d-imageio-gif",
+ "ph2d-imageio-jpeg",
+ "ph2d-imageio-ph2d-native",
+ "ph2d-imageio-png",
+ "ph2d-imageio-sync",
+ "ph2d-imageio-webp",
+]
+
+[[package]]
+name = "ph2d-imageio-sync"
+version = "0.0.0"
+
+[[package]]
+name = "ph2d-imageio-webp"
+version = "0.0.0"
+dependencies = [
+ "image",
+ "ph2d-color",
+ "ph2d-imageio",
 ]
 
 [[package]]
@@ -4501,9 +4587,9 @@ name = "ph2d-tool-painter"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
- "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
+ "ph2d-painter-brush",
  "ph2d-tool-registry",
  "ph2d-vector",
  "serde",

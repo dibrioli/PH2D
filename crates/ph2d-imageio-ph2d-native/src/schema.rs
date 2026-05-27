@@ -14,8 +14,8 @@
 
 use ph2d_color::{LinearRgba, SrgbRgba};
 use ph2d_imageio::{
-    AnimBlendOp, AnimFrame, BlendMode, ColorProfile, DecodedImage, DisposeOp, ImageBuffer, Layer,
-    LayerEffect, LayerEffectKind, LayerKind, LayerStack, VectorDoc,
+    AnimBlendOp, AnimFrame, BlendMode, ColorProfile, DecodedImage, DisposeOp, Error, ImageBuffer,
+    Layer, LayerEffect, LayerEffectKind, LayerKind, LayerStack, MAX_ICC_PROFILE_LEN, VectorDoc,
 };
 use serde::{Deserialize, Serialize};
 
@@ -181,6 +181,82 @@ pub enum AnimBlendOpV1 {
 pub struct VectorDocV1 {
     /// W3 expand. Empty in W1.
     _reserved: (),
+}
+
+// ----- conversions -----
+
+// ----- inner version + cap validation -----
+
+/// Walk a freshly-decoded [`Ph2dContentV1`] confirming every nested
+/// `version: u32` matches the schema this build knows about (= 1),
+/// and that no `ColorProfile::Custom` ICC blob exceeds
+/// [`MAX_ICC_PROFILE_LEN`].
+///
+/// Audit E-1 CRITICAL (2026-05-26): without this walk, a Painter-v2
+/// `.ph2d` written by a build that ships `LayerStack { version: 2, … }`
+/// or `Layer { version: 2, … }` would deserialize fine through `serde`
+/// + `postcard` (those are dumb integers in v1's shape) and **lose
+/// every v2-only field silently** as `From<LayerV1>` copies the bare
+/// `int` without validation. This is exactly the data-loss class
+/// HR-14 was written to prevent.
+pub fn validate_v1_inner_versions(content: &Ph2dContentV1) -> Result<(), Error> {
+    match content {
+        Ph2dContentV1::Flat(b) => validate_color_profile_v1(&b.color_profile),
+        Ph2dContentV1::FlatHdr(b) => validate_color_profile_v1(&b.color_profile),
+        Ph2dContentV1::Layered(stack) => validate_layer_stack_v1(stack),
+        Ph2dContentV1::Animated(frames) => {
+            for f in frames {
+                validate_color_profile_v1(&f.image.color_profile)?;
+            }
+            Ok(())
+        }
+        Ph2dContentV1::Vector(_) => Ok(()),
+    }
+}
+
+fn validate_layer_stack_v1(s: &LayerStackV1) -> Result<(), Error> {
+    if s.version != 1 {
+        return Err(Error::Unsupported(format!(
+            "LayerStack schema version {} not supported by this build (max: 1)",
+            s.version
+        )));
+    }
+    validate_color_profile_v1(&s.color_profile)?;
+    for l in &s.layers {
+        validate_layer_v1(l)?;
+    }
+    Ok(())
+}
+
+fn validate_layer_v1(l: &LayerV1) -> Result<(), Error> {
+    if l.version != 1 {
+        return Err(Error::Unsupported(format!(
+            "Layer schema version {} not supported by this build (max: 1)",
+            l.version
+        )));
+    }
+    if let Some(cp) = &l.color_profile {
+        validate_color_profile_v1(cp)?;
+    }
+    if let Some(b) = &l.pixels {
+        validate_color_profile_v1(&b.color_profile)?;
+    }
+    // Recurse into nested Group children.
+    if let LayerKindV1::Group { children } = &l.kind {
+        for child in children {
+            validate_layer_v1(child)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_color_profile_v1(cp: &ColorProfileV1) -> Result<(), Error> {
+    if let ColorProfileV1::Custom(bytes) = cp
+        && bytes.len() > MAX_ICC_PROFILE_LEN
+    {
+        return Err(Error::DimensionExceedsLimit);
+    }
+    Ok(())
 }
 
 // ----- conversions -----

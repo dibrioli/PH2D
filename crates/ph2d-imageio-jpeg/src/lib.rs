@@ -32,18 +32,11 @@
 use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
     ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
-    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
+    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MAX_RASTER_DIMENSION, MagicHint,
+    MagicMatch,
 };
-
-/// Hard dimension cap for decompression-bomb defence. Same as
-/// `ph2d-imageio-png::MAX_DIMENSION` rationale (32K covers 8K × 4 HiDPI
-/// with headroom).
-const MAX_DIMENSION: u32 = 32_768;
-
-const _MAX_DIM_SANITY: () = {
-    assert!(MAX_DIMENSION >= 16384);
-    assert!(MAX_DIMENSION <= 65536);
-};
+// Bomb-defence cap hoisted to `ph2d_imageio::MAX_RASTER_DIMENSION`
+// per audit B-H2 (was 4× duplicated across raster crates).
 
 /// JPEG's universal Start-of-Image marker prefix. Variations follow
 /// in the next 2 bytes (`FF E0`=JFIF, `FF E1`=Exif, `FF DB`=raw with
@@ -99,7 +92,7 @@ impl ImageImporter for JpegImporter {
                 "JPEG has zero-sized dimension: {width}×{height}"
             )));
         }
-        if width > MAX_DIMENSION || height > MAX_DIMENSION {
+        if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
             return Err(Error::DimensionExceedsLimit);
         }
         // JPEG sources have no alpha; `to_rgba8` synthesises 255 for
@@ -149,7 +142,11 @@ impl ImageExporter for JpegExporter {
         // JPEG has no alpha; the encoder composites against black
         // implicitly. Document this in tests so a re-import + alpha
         // mismatch isn't a surprise.
-        let mut rgba8: Vec<u8> = Vec::with_capacity(buf.pixels.len() * 4);
+        // Audit D-E4: `pixels.len() * 4` overflows on 32-bit targets
+        // for `width*height ≥ 1G pixels`. Off-hot path so the check is
+        // cheap; refuse instead of allocating a truncated buffer.
+        let byte_len = buf.pixels.len().checked_mul(4).ok_or(Error::OutOfMemory)?;
+        let mut rgba8: Vec<u8> = Vec::with_capacity(byte_len);
         for p in &buf.pixels {
             rgba8.extend_from_slice(&p.0);
         }
@@ -344,6 +341,32 @@ mod tests {
             .expect_err("empty must fail");
         assert!(matches!(err, Error::Truncated));
         assert_eq!(err.fluent_key(), "imageio.error.truncated");
+    }
+
+    /// HR-5 byte-exact determinism (audit D-E2 / agent E-H2): exporting
+    /// the same input twice must produce identical bytes. The `image`
+    /// 0.25 JpegEncoder MUST NOT embed timestamp/comment chunks; this
+    /// test guards future regression if upstream adds them.
+    #[test]
+    fn export_is_byte_exact_deterministic() {
+        let original = fixture_4x4();
+        let opts = ExportOpts {
+            format: ExportFormat::Jpeg,
+            quality: 90,
+            ..ExportOpts::default()
+        };
+        let bytes_a = JpegExporter
+            .export(&DecodedImage::Flat(original.clone()), &opts)
+            .expect("first JPEG export");
+        let bytes_b = JpegExporter
+            .export(&DecodedImage::Flat(original), &opts)
+            .expect("second JPEG export");
+        assert_eq!(
+            bytes_a, bytes_b,
+            "HR-5: JPEG export must be byte-exact for the same input + opts. \
+             If this fails, image 0.25 started emitting a non-deterministic \
+             chunk (timestamp/comment); pin via direct `jpeg-encoder` API."
+        );
     }
 
     #[test]

@@ -110,12 +110,11 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-impl From<std::io::Error> for Error {
-    /// Audit A-L1: format crates wrapping `std::io::Read`-based
-    /// decoders benefit from `?` propagation. Maps to `Decode(String)`
-    /// because IO errors at the imageio layer are always source-byte
-    /// problems (the caller hands us the bytes; we never read files).
-    fn from(e: std::io::Error) -> Self {
-        Self::Decode(e.to_string())
-    }
-}
+// Audit B-M1 (2026-05-26): the previously-shipped `From<std::io::Error>`
+// impl was unused — every format crate calls
+// `.map_err(|e| Error::Decode(e.to_string()))` on `image::ImageError`
+// (not `io::Error`). The impl encouraged the wrong refactor (replace
+// `image` map_err with `?`, which fails: `image::ImageError ≠ io::Error`)
+// and surfaced as dead code. Removed; if a future format crate needs
+// `io::Error` propagation it adds a one-line `.map_err` next to its
+// own code where the call site is obvious.

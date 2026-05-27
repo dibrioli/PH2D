@@ -29,14 +29,36 @@
 //! dispatches on the header `version` field. The scaffold is in
 //! place (importer reads version BEFORE deserialising); migration
 //! functions land as needed.
+//!
+//! **Inner version validation** (audit E-1 CRITICAL 2026-05-26): the
+//! envelope's top-level `version` is checked at the header, AND every
+//! nested `version: u32` field (`LayerStackV1.version`,
+//! `LayerV1.version` recursively into `LayerKind::Group`) is validated
+//! by [`schema::validate_v1_inner_versions`] before the `From` chain
+//! lowers to `DecodedImage`. Without this walk a Painter-v2 build
+//! writing `Layer { version: 2, … }` would silently round-trip through
+//! a v1 build, losing v2-only fields — exactly the data-loss class
+//! HR-14 was written to prevent.
+//!
+//! ### Out of scope (later waves)
+//!
+//! - **Schema v2+**: triggered by the first contract change adding
+//!   a wire-level field. Migration function `migrate_v1_to_v2(v1) → v2`
+//!   lands in the same commit that adds `Ph2dNativeV2`.
+//! - **Compressed payload**: `postcard` is uncompressed; a future
+//!   feature flag `compressed-payload` can wrap with `zstd` for files
+//!   approaching `MAX_PH2D_PAYLOAD_LEN`. No client today.
+//! - **Streaming decode**: import currently reads the full payload
+//!   into memory. Large `.ph2d` (> 100 MB) would benefit from
+//!   block-streaming via `postcard`'s `Cursor` adapter. No client today.
 
 mod schema;
 
 use ph2d_imageio::{
     DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageExporter, ImageImporter,
-    ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
+    ImportOpts, ImporterRegistry, MAX_PH2D_PAYLOAD_LEN, MagicHint, MagicMatch,
 };
-use schema::{Ph2dContentV1, Ph2dNativeV1};
+use schema::{Ph2dContentV1, Ph2dNativeV1, validate_v1_inner_versions};
 
 /// `.ph2d` 8-byte container magic. Distinctive enough to never collide
 /// with any other image format in the W1–W3 fan-out.
@@ -50,11 +72,9 @@ const HEADER_LEN: usize = 52;
 /// move to v2+; this constant only constrains the *writer*.
 const CURRENT_VERSION: u32 = 1;
 
-/// Hard cap on a single payload size — defence against a malicious
-/// header claiming `payload_len = u64::MAX`. 4 GiB covers any
-/// realistic Painter document; documents larger than that need an
-/// explicit ADR-0054 amendment.
-const MAX_PAYLOAD_LEN: u64 = 4 * 1024 * 1024 * 1024;
+// Hard cap on payload size is hoisted to
+// `ph2d_imageio::MAX_PH2D_PAYLOAD_LEN` per audit B-H2 (single source).
+// Value = `u32::MAX as u64` to avoid 32-bit `usize` overflow.
 
 /// Register the `.ph2d` importer.
 pub fn register_importer(reg: &mut ImporterRegistry) {
@@ -98,7 +118,7 @@ impl ImageImporter for Ph2dNativeImporter {
                 .try_into()
                 .map_err(|_| Error::Decode("header truncated reading payload_len".into()))?,
         );
-        if payload_len > MAX_PAYLOAD_LEN {
+        if payload_len > MAX_PH2D_PAYLOAD_LEN {
             return Err(Error::DimensionExceedsLimit);
         }
         let payload_start = HEADER_LEN;
@@ -119,6 +139,11 @@ impl ImageImporter for Ph2dNativeImporter {
         // Dispatch on schema version. v1 only today; v2+ adds a
         // migration arm here.
         match version {
+            // 0 is reserved for "uninitialized header" — distinct from
+            // a real future schema. Audit `.ph2d-native` L1 follow-up.
+            0 => Err(Error::Decode(
+                "`.ph2d` header version=0 (uninitialized or zeroed file)".into(),
+            )),
             1 => {
                 let v1: Ph2dNativeV1 = postcard::from_bytes(payload)
                     .map_err(|e| Error::Decode(format!("postcard decode failed: {e}")))?;
@@ -128,6 +153,13 @@ impl ImageImporter for Ph2dNativeImporter {
                         v1.version
                     )));
                 }
+                // Audit E-1 CRITICAL (2026-05-26): walk the envelope
+                // validating every nested `version: u32` field
+                // (LayerStackV1, LayerV1, recursively into Group).
+                // Without this, a Painter-v2 file with inner
+                // `Layer { version: 2, … }` would silently round-trip
+                // as v1 with v2 fields lost.
+                validate_v1_inner_versions(&v1.content)?;
                 Ok(v1.content.into())
             }
             other => Err(Error::Unsupported(format!(
@@ -525,6 +557,71 @@ mod tests {
         match err {
             Error::Unsupported(msg) => assert!(msg.contains("version 999")),
             other => panic!("expected Unsupported, got {other:?}"),
+        }
+    }
+
+    /// Audit E-1 CRITICAL (2026-05-26): a v1 envelope carrying an
+    /// inner `LayerStack { version: 7, … }` must be refused — not
+    /// silently passed through as v1. Synthesise such a payload by
+    /// hand (bypass `From<&LayerStack>` which would set version=1)
+    /// and confirm the importer rejects.
+    #[test]
+    fn import_rejects_inner_layer_stack_version_drift() {
+        use crate::schema::{ColorProfileV1, LayerStackV1, Ph2dContentV1, Ph2dNativeV1};
+        // Synthesise an envelope claiming LayerStack v7.
+        let envelope = Ph2dNativeV1 {
+            version: 1,
+            content: Ph2dContentV1::Layered(LayerStackV1 {
+                version: 7, // future schema — must be refused.
+                canvas_width: 1,
+                canvas_height: 1,
+                layers: Vec::new(),
+                color_profile: ColorProfileV1::Srgb,
+            }),
+        };
+        let payload: Vec<u8> = postcard::to_allocvec(&envelope).expect("encode");
+        let payload_len = payload.len() as u64;
+        let hash = blake3::hash(&payload);
+        let mut bytes: Vec<u8> = Vec::with_capacity(HEADER_LEN + payload.len());
+        bytes.extend_from_slice(PH2D_MAGIC);
+        bytes.extend_from_slice(&1_u32.to_le_bytes());
+        bytes.extend_from_slice(hash.as_bytes());
+        bytes.extend_from_slice(&payload_len.to_le_bytes());
+        bytes.extend_from_slice(&payload);
+
+        let err = Ph2dNativeImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect_err("v7 inner LayerStack must be refused");
+        match err {
+            Error::Unsupported(msg) => assert!(
+                msg.contains("LayerStack schema version 7"),
+                "expected version-7 error, got: {msg}"
+            ),
+            other => panic!("expected Unsupported, got {other:?}"),
+        }
+    }
+
+    /// Audit `.ph2d-native` L1 (2026-05-26): version=0 distinct from
+    /// future schema; should return Decode (uninitialized), not
+    /// Unsupported (future).
+    #[test]
+    fn import_rejects_version_zero_with_decode() {
+        let mut bytes = vec![0_u8; HEADER_LEN];
+        bytes[0..8].copy_from_slice(PH2D_MAGIC);
+        bytes[8..12].copy_from_slice(&0_u32.to_le_bytes());
+        let empty_hash = blake3::hash(b"");
+        bytes[12..44].copy_from_slice(empty_hash.as_bytes());
+        bytes[44..52].copy_from_slice(&0_u64.to_le_bytes());
+
+        let err = Ph2dNativeImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect_err("version 0 must fail");
+        match err {
+            Error::Decode(msg) => assert!(
+                msg.contains("version=0"),
+                "expected version-0 decode error, got: {msg}"
+            ),
+            other => panic!("expected Decode, got {other:?}"),
         }
     }
 

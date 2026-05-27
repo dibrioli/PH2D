@@ -108,7 +108,15 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let scroll = ctx.host.store().panel_scroll(ids::EQS_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
-    let y_after = paint_body_sections(ctx, &snapshot, inner_x, inner_w, row_h, row_gap, body_top - scroll);
+    let y_after = paint_body_sections(
+        ctx,
+        &snapshot,
+        inner_x,
+        inner_w,
+        row_h,
+        row_gap,
+        body_top - scroll,
+    );
     let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);

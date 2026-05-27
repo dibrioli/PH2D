@@ -1325,9 +1325,10 @@ mod tests {
         let _ = segment(&rgba, 8, 8, &default_params(), &[], &mut s);
         // All pixels are non-transparent → all should have a populated
         // OkLab cache (not the all-zero sentinel).
-        let any_zero = s.pixels_oklab.iter().any(|&[l, a, b]| {
-            l == 0.0 && a == 0.0 && b == 0.0
-        });
+        let any_zero = s
+            .pixels_oklab
+            .iter()
+            .any(|&[l, a, b]| l == 0.0 && a == 0.0 && b == 0.0);
         assert!(
             !any_zero,
             "fill_delta_e_sq must populate pixels_oklab for every \

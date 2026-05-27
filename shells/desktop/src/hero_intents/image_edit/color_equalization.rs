@@ -65,13 +65,9 @@ pub(crate) fn drain_color_equalization(
     // do the right thing at semi-transparent edges; straight bytes would
     // bilinear-blend RGB against the alpha=0 white-bleed neighbours and
     // produce a light halo around the silhouette).
-    let edited = ph2d_render::SpriteImage::from_bytes(
-        out_w,
-        out_h,
-        out,
-        ph2d_render::AlphaMode::Straight,
-    )
-    .into_premultiplied();
+    let edited =
+        ph2d_render::SpriteImage::from_bytes(out_w, out_h, out, ph2d_render::AlphaMode::Straight)
+            .into_premultiplied();
     match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Color EQ failed: {err}")));

@@ -958,7 +958,9 @@ mod tests {
 "#,
         );
         for _ in 0..depth {
-            xml.push_str(r#"    <stack composite-op="svg:src-over" opacity="1" visibility="visible">"#);
+            xml.push_str(
+                r#"    <stack composite-op="svg:src-over" opacity="1" visibility="visible">"#,
+            );
             xml.push('\n');
         }
         for _ in 0..depth {

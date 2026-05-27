@@ -359,12 +359,7 @@ fn paint_hierarchy_body(
                 } else if continues {
                     // Ancestor column passes through this row; extend
                     // by `row_gap` so it meets the next row's segment.
-                    let vert = Rect::new(
-                        line_x - 0.5,
-                        row_rect.y,
-                        1.0,
-                        row_rect.h + row_gap,
-                    );
+                    let vert = Rect::new(line_x - 0.5, row_rect.y, 1.0, row_rect.h + row_gap);
                     ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
                 }
             }

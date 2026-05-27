@@ -123,7 +123,14 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let y_after = paint_body_sections(
-        ctx, &snapshot, inner_x, inner_w, row_h, row_gap, chip_w, body_top - scroll,
+        ctx,
+        &snapshot,
+        inner_x,
+        inner_w,
+        row_h,
+        row_gap,
+        chip_w,
+        body_top - scroll,
     );
     let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);

@@ -195,7 +195,9 @@ fn otsu_threshold_u16(mag: &[u16], n: usize) -> u16 {
             best_bin = t;
         }
     }
-    ((best_bin as f32) * bin_scale).round().clamp(1.0, max_mag as f32) as u16
+    ((best_bin as f32) * bin_scale)
+        .round()
+        .clamp(1.0, max_mag as f32) as u16
 }
 
 fn threshold_to_mask(mag: &[u16], n: usize, threshold: u16, out: &mut [u8]) {

@@ -302,8 +302,7 @@ impl ColorEqualizationTool {
         let mut p = self.params;
         if self.source_w > 0 && self.preview_src_w > 0 && p.posterize_dither_grain > 1 {
             let ratio = self.preview_src_w as f32 / self.source_w as f32;
-            let scaled =
-                ((p.posterize_dither_grain as f32 * ratio).round() as u32).max(1);
+            let scaled = ((p.posterize_dither_grain as f32 * ratio).round() as u32).max(1);
             p.posterize_dither_grain = scaled;
         }
         p

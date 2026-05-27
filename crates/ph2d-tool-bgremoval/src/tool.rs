@@ -855,11 +855,8 @@ impl BgRemovalTool {
             return;
         }
         // Size scratch + cache to source dims.
-        self.scratch.ensure(
-            target.0,
-            target.1,
-            self.params.refinement.color_guide,
-        );
+        self.scratch
+            .ensure(target.0, target.1, self.params.refinement.color_guide);
         self.cached_auto_protect_source.clear();
         self.cached_auto_protect_source.resize(n, 0);
         silhouette::detect_subject_interior(

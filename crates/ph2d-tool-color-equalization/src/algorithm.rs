@@ -1215,8 +1215,175 @@ pub fn total_variation_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
 /// **Strength mapping**: threshold scale = `0.5 + 4·strength` (multiplies
 /// the universal T); 3 decomposition levels.
 pub fn wavelet_shrinkage_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
-    let _ = (rgba, w, h, strength);
-    // TODO: implement in follow-up commit.
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+    if strength <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let threshold_scale = 0.5 + 4.0 * strength;
+
+    let w_us = w as usize;
+    let h_us = h as usize;
+    let n = w_us * h_us;
+    let alpha: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
+
+    // Per channel: forward Haar DWT (up to 3 levels constrained by even
+    // dims), soft-threshold every detail band (LH/HL/HH at every level),
+    // inverse DWT.
+    let max_levels = 3_usize;
+    for ch in 0..3 {
+        let mut buf = vec![0.0_f32; n];
+        for (i, px) in rgba.chunks_exact(4).enumerate() {
+            buf[i] = srgb_to_linear_u8(px[ch]);
+        }
+        // Per-level dims; decompose while both dims divisible by 2.
+        let mut level_dims: Vec<(usize, usize)> = Vec::new();
+        let mut cw = w_us;
+        let mut ch_h = h_us;
+        for _ in 0..max_levels {
+            if cw < 2 || ch_h < 2 || cw % 2 != 0 || ch_h % 2 != 0 {
+                break;
+            }
+            level_dims.push((cw, ch_h));
+            haar_2d_forward(&mut buf, w_us, cw, ch_h);
+            cw /= 2;
+            ch_h /= 2;
+        }
+        // Universal threshold T = σ·√(2·ln N). σ estimated from HH1
+        // (top-level diagonal) via MAD; assumes Gaussian noise.
+        let sigma = estimate_sigma_hh1(&buf, w_us, &level_dims);
+        let t = sigma * (2.0 * (n as f32).ln()).sqrt() * threshold_scale;
+        // Soft-threshold detail bands at every level. Each level
+        // partitions sub-image into LL (top-left), LH (top-right),
+        // HL (bottom-left), HH (bottom-right) of half-dims.
+        for &(cw, ch_h) in &level_dims {
+            soft_threshold_details(&mut buf, w_us, cw, ch_h, t);
+        }
+        // Inverse DWT — reverse order.
+        for &(cw, ch_h) in level_dims.iter().rev() {
+            haar_2d_inverse(&mut buf, w_us, cw, ch_h);
+        }
+        for i in 0..n {
+            if alpha[i] == 0 {
+                continue;
+            }
+            rgba[i * 4 + ch] = linear_to_srgb_u8(buf[i]);
+        }
+    }
+}
+
+/// One level of 2D Haar DWT (orthonormal, /√2). Operates on the
+/// top-left `sub_w × sub_h` sub-region of `buf` (stride = `stride_w`).
+/// In-place, with a single-row scratch.
+fn haar_2d_forward(buf: &mut [f32], stride_w: usize, sub_w: usize, sub_h: usize) {
+    let inv_sqrt2 = std::f32::consts::FRAC_1_SQRT_2;
+    let half_w = sub_w / 2;
+    let half_h = sub_h / 2;
+
+    // Row pass: each row of length sub_w → first half = sum/√2, second half = diff/√2.
+    let mut row_tmp = vec![0.0_f32; sub_w];
+    for y in 0..sub_h {
+        let off = y * stride_w;
+        for i in 0..half_w {
+            let a = buf[off + 2 * i];
+            let b = buf[off + 2 * i + 1];
+            row_tmp[i] = (a + b) * inv_sqrt2;
+            row_tmp[half_w + i] = (a - b) * inv_sqrt2;
+        }
+        buf[off..off + sub_w].copy_from_slice(&row_tmp);
+    }
+
+    // Column pass: each column of height sub_h.
+    let mut col_tmp = vec![0.0_f32; sub_h];
+    for x in 0..sub_w {
+        for i in 0..half_h {
+            let a = buf[(2 * i) * stride_w + x];
+            let b = buf[(2 * i + 1) * stride_w + x];
+            col_tmp[i] = (a + b) * inv_sqrt2;
+            col_tmp[half_h + i] = (a - b) * inv_sqrt2;
+        }
+        for (i, v) in col_tmp.iter().enumerate().take(sub_h) {
+            buf[i * stride_w + x] = *v;
+        }
+    }
+}
+
+/// Inverse of `haar_2d_forward` on the same sub-region.
+fn haar_2d_inverse(buf: &mut [f32], stride_w: usize, sub_w: usize, sub_h: usize) {
+    let inv_sqrt2 = std::f32::consts::FRAC_1_SQRT_2;
+    let half_w = sub_w / 2;
+    let half_h = sub_h / 2;
+
+    // Column pass first (reverse of forward order).
+    let mut col_tmp = vec![0.0_f32; sub_h];
+    for x in 0..sub_w {
+        for i in 0..half_h {
+            let s = buf[i * stride_w + x];
+            let d = buf[(half_h + i) * stride_w + x];
+            col_tmp[2 * i] = (s + d) * inv_sqrt2;
+            col_tmp[2 * i + 1] = (s - d) * inv_sqrt2;
+        }
+        for (i, v) in col_tmp.iter().enumerate().take(sub_h) {
+            buf[i * stride_w + x] = *v;
+        }
+    }
+
+    // Row pass.
+    let mut row_tmp = vec![0.0_f32; sub_w];
+    for y in 0..sub_h {
+        let off = y * stride_w;
+        for i in 0..half_w {
+            let s = buf[off + i];
+            let d = buf[off + half_w + i];
+            row_tmp[2 * i] = (s + d) * inv_sqrt2;
+            row_tmp[2 * i + 1] = (s - d) * inv_sqrt2;
+        }
+        buf[off..off + sub_w].copy_from_slice(&row_tmp);
+    }
+}
+
+/// Soft-threshold the 3 detail bands (LH top-right, HL bottom-left,
+/// HH bottom-right) of one DWT level. Leaves LL (top-left) untouched.
+fn soft_threshold_details(buf: &mut [f32], stride_w: usize, sub_w: usize, sub_h: usize, t: f32) {
+    let half_w = sub_w / 2;
+    let half_h = sub_h / 2;
+    for y in 0..sub_h {
+        for x in 0..sub_w {
+            let in_ll = x < half_w && y < half_h;
+            if in_ll {
+                continue;
+            }
+            let i = y * stride_w + x;
+            let v = buf[i];
+            let s = v.signum();
+            buf[i] = s * (v.abs() - t).max(0.0);
+        }
+    }
+}
+
+/// Estimate Gaussian σ from the top-level HH band via median absolute
+/// deviation (Donoho's classical estimator). `level_dims[0]` = full
+/// (cw, ch_h) of level 1; HH1 lives at `[half_w..cw, half_h..ch_h]`.
+fn estimate_sigma_hh1(buf: &[f32], stride_w: usize, level_dims: &[(usize, usize)]) -> f32 {
+    if let Some(&(cw, ch_h)) = level_dims.first() {
+        let half_w = cw / 2;
+        let half_h = ch_h / 2;
+        let mut samples: Vec<f32> = Vec::with_capacity(half_w * half_h);
+        for y in half_h..ch_h {
+            for x in half_w..cw {
+                samples.push(buf[y * stride_w + x].abs());
+            }
+        }
+        if samples.is_empty() {
+            return 0.01;
+        }
+        samples.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let median = samples[samples.len() / 2];
+        // σ = MAD / 0.6745 (assuming Gaussian noise).
+        (median / 0.6745).max(1e-6)
+    } else {
+        0.01
+    }
 }
 
 /// Sharpen via the 3×3 Laplacian kernel `[0,-1,0; -1,5,-1; 0,-1,0]` in
@@ -2624,6 +2791,44 @@ mod tests {
         assert!(
             (right as i32 - left as i32) > 100,
             "TV collapsed edge contrast (left {left}, right {right})"
+        );
+    }
+
+    #[test]
+    fn wavelet_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        wavelet_shrinkage_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn wavelet_smooths_uniform_noisy_input() {
+        let mut buf = uniform_noisy_buf(32, 32, 128, 5);
+        let before = variance_gray(&buf);
+        wavelet_shrinkage_denoise(&mut buf, 32, 32, 0.6);
+        let after = variance_gray(&buf);
+        assert!(
+            after <= before,
+            "Wavelet did not reduce variance (before {before}, after {after})"
+        );
+    }
+
+    #[test]
+    fn wavelet_preserves_edge_contrast() {
+        let mut buf = Vec::with_capacity(32 * 32 * 4);
+        for _y in 0..32 {
+            for x in 0..32u32 {
+                let v = if x < 16 { 50u8 } else { 200u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        wavelet_shrinkage_denoise(&mut buf, 32, 32, 0.5);
+        let left = buf[((16 * 32 + 12) * 4) as usize];
+        let right = buf[((16 * 32 + 19) * 4) as usize];
+        assert!(
+            (right as i32 - left as i32) > 100,
+            "Wavelet collapsed edge contrast (left {left}, right {right})"
         );
     }
 

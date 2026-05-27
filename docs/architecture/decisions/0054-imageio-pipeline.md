@@ -137,14 +137,22 @@ pub fn register_all_importers(reg: &mut ImporterRegistry) {
 
 **Internal canonical:** OKLCH/linear-f32 (alinha ADR-0044 Painter brush engine + ADR-0051 ColorProfile FROZEN 8B). Conversão na fronteira: import → linear → OKLCH (Painter native); export → linear → encoded color space do formato target.
 
-### 2.3.1 W2.0.1 ICC pipeline — viability gate (audit D-M)
+### 2.3.1 W2.0.1 ICC pipeline — viability gate (audit D-M) ✅ RESOLVIDO 2026-05-26
 
-Antes de abrir W2.0.1, Coord-A executa: `cargo search qcms` + verificação de last-release date no crates.io + scan do CHANGELOG. `qcms` é projeto Mozilla histórico; se o crate estiver dormente (>12 meses sem release), W2.0.1 pivota para:
+**Gate W2.0.0 executado 2026-05-26 (Coord-A, ≤15min):**
 
-- **`moxcms` 0.5+** (puro-Rust, mantido ativamente em 2026, suporte a ICC v2 + v4) — fallback primário.
-- **Implementação local** de ICC v2 lookup matricial (sRGB/P3/AdobeRGB hardcoded; Custom → identidade) — fallback se ambos crates falharem.
+| Crate | Versão | Repo | Status | Decisão |
+|---|---|---|---|---|
+| `qcms` | 0.3.0 | FirefoxGraphics | versão velha (Firefox internalizou; crate público dormente) | ❌ rejeitado |
+| **`moxcms`** | **0.8.1** | awxkee (mantenedor ativo) | puro-Rust, Rust 1.85.0, SIMD AVX/SSE/NEON opt-in | ✅ **ESCOLHIDO** |
+| `lcms2` | 6.1.1 | Little CMS binding | C binding (libc + lcms2-sys) | ❌ viola HR-1 |
+| `appthere-color` | 0.1.1 | startup | v0.1 imaturo | ❌ deferred |
 
-O ICC pipeline é foundational para W2 (sem ele, PSD/TIFF perdem profile preservation = data-loss). Bloqueio aqui = bloqueio de W2 inteira; o viability gate evita descobrir isso no meio do batch.
+**Decisão**: ICC pipeline em W2.0.1 usa `moxcms` 0.8.1 puro-Rust como única dep. Mantenedor ativo (v0.8 atual indica releases recentes), Rust 1.85.0 alinha com nosso MSRV 1.92, features SIMD opt-in alinham com HR-3 (off-hot mas perf-friendly quando ativo).
+
+**Fallback** se moxcms travar mid-implementation: implementação local mínima de ICC v2 matrix lookup (sRGB/P3/AdobeRGB hardcoded; `Custom(IccBytes)` → identidade com warning). NÃO trocar para lcms2 sem amendment HR-1.
+
+ICC pipeline é foundational para W2 (sem ele, PSD/TIFF perdem profile preservation = data-loss). Bloqueio aqui = bloqueio de W2 inteira; o viability gate evitou descobrir isso no meio do batch.
 
 ### 2.4 Import/export é I/O direto via registry — NÃO atravessa `EditorAction`
 

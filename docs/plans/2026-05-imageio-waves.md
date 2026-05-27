@@ -51,21 +51,13 @@ Batch B (2 slots paralelos, após Batch A):
 
 ## WAVE 2 — Profissional 2D · PARALELO intra-onda
 
-### W2.0.0 — qcms viability gate (Coord-A, 15min — HARD BLOCKER de W2.0.1)
+### W2.0.0 — qcms viability gate (Coord-A, 15min — HARD BLOCKER de W2.0.1) ✅ RESOLVIDO 2026-05-26
 
-Antes de abrir W2.0.1 (ICC pipeline), Coord-A executa em ≤15min:
+Executado 2026-05-26 (Coord-A): `cargo search qcms / moxcms / lcms2 / appthere-color` + `cargo info` detalhes.
 
-```bash
-cargo search qcms                                 # last release date?
-cargo search moxcms                               # fallback active?
-```
+**Decisão: `moxcms` 0.8.1** (puro-Rust, mantenedor ativo, Rust 1.85.0 + SIMD opt-in). Veredicto detalhado em ADR-0054 §2.3.1. `qcms` 0.3.0 rejeitado (versão velha, Firefox internalizou). `lcms2` rejeitado (C binding viola HR-1).
 
-E inspecionar:
-- `qcms` crate no crates.io: última release < 12 meses? Mantenedor responsivo?
-- Se qcms dormente → pivot para `moxcms` 0.5+ (puro-Rust, mantido).
-- Se ambos dormentes → escalar para Enio: opções são (a) implementar ICC v2 lookup matricial mínimo localmente; (b) escopo W2 cortar profile preservation; (c) HR-1 lift opt-in para `lcms2-rs` (binding C).
-
-**Bloqueia W2.0.1.** Sem decisão aqui, W2 inteira fica em risco de travar mid-batch.
+**W2.0.1 ICC pipeline abre** com moxcms 0.8.1 como única dep. Fallback documentado: implementação local de ICC v2 matrix lookup mínima se moxcms travar mid-implementation.
 
 ### W2.0 — Pré-fan-out (Coord-A, 1 sessão)
 

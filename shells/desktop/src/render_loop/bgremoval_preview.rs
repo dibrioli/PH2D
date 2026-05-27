@@ -264,8 +264,19 @@ pub(super) fn dispatch(
             // interpolated DIFFERENTLY by Vello's internal premul
             // pass than by the sprite shader's. Premultiplying upfront
             // closes that gap.
+            // Use the GAMMA-CORRECT premultiply: srgb_decode → premul in
+            // linear → sRGB-encode. Three concurrent investigations
+            // (2026-05-26) converged on this: the sprite texture is
+            // `Rgba8UnormSrgb` (hw decode → linear bilinear) while the
+            // Vello atlas is `Rgba8Unorm` (raw bytes treated as
+            // linear). The plain `premultiply_rgba8` produced bytes
+            // both paths consumed but interpreted as DIFFERENT linear
+            // values — Vello edges ended up ~2× brighter (the "light
+            // halo" Enio reported). Linear-space premul + sRGB
+            // re-encode normalises that to the gamma-correct form
+            // both paths agree on.
             let mut premul_bytes = (*preview.rgba).clone();
-            ph2d_render::premultiply_rgba8(&mut premul_bytes);
+            ph2d_render::premultiply_rgba8_in_linear(&mut premul_bytes);
             let premul_arc = Arc::new(premul_bytes);
             let quality = match hero.project.image_filter {
                 ph2d_editor::ImageFilterMode::PixelArt => ImageQuality::Low,

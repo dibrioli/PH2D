@@ -132,6 +132,58 @@ pub fn premultiply_rgba8(rgba: &mut [u8]) {
     }
 }
 
+/// Gamma-correct premultiplied alpha: sRGB-decode each channel → multiply
+/// by linear alpha → sRGB-encode. The result is bytes whose interpretation
+/// as sRGB-encoded RGB equals `rgb_linear * a_linear` — exactly what a
+/// gamma-correct compositor expects.
+///
+/// Used by the BG-Removal preview overlay (Enio 2026-05-26): the
+/// straight `premultiply_rgba8` produced bytes that the sprite shader
+/// (sampling `Rgba8UnormSrgb` — hw decode → linear bilinear) and the
+/// Vello compositor (sampling `Rgba8Unorm` — raw bytes-as-linear) read
+/// as DIFFERENT linear values, producing a visible "light halo" at the
+/// silhouette edge on the overlay path. Pre-encoding in linear closes
+/// that gap: sprite hw-decode recovers the linear premul; Vello reads
+/// the sRGB-encoded bytes through its sRGB-space compose path with
+/// the SAME effective premul applied.
+///
+/// ~10× the CPU cost of `premultiply_rgba8` (3 f32 srgb_to_linear +
+/// 3 multiplies + 3 linear_to_srgb per pixel) — still <50 ms at 1K²
+/// on M-series, well within the per-frame budget already paid for the
+/// full-res preview pipeline.
+pub fn premultiply_rgba8_in_linear(rgba: &mut [u8]) {
+    for px in rgba.chunks_exact_mut(4) {
+        let a = px[3] as f32 / 255.0;
+        for c in 0..3 {
+            let srgb = px[c] as f32 / 255.0;
+            let linear = srgb_to_linear(srgb);
+            let premul = linear * a;
+            let out_srgb = linear_to_srgb(premul);
+            px[c] = (out_srgb * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
+        }
+    }
+}
+
+/// IEC 61966-2-1 sRGB → linear transfer.
+#[inline]
+fn srgb_to_linear(c: f32) -> f32 {
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// IEC 61966-2-1 linear → sRGB transfer.
+#[inline]
+fn linear_to_srgb(c: f32) -> f32 {
+    if c <= 0.0031308 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+    }
+}
+
 /// Convert PREMULTIPLIED RGBA8 back to STRAIGHT alpha in place:
 /// `rgb = min(255, round(rgb * 255 / a))` for `a > 0`, else `0`.
 ///

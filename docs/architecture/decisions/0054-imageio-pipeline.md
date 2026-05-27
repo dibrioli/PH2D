@@ -217,6 +217,29 @@ Quando um format container que **pode** carregar multi-frame / multi-page / mult
 
 **Audit-aware**: a nova auditoria (Lens C HR-3) flaggava inconsistência entre formats. Esta amendment **alinha o invariant** sem refactor de código já shipado (a tabela acima descreve o status quo dos 9 format crates).
 
+### 2.6.1 Golden blake3 hash scope — **single-platform pin** (W3.T0 amendment ratificado 2026-05-26)
+
+Os 4 testes `export_golden_blake3_local_drift_pinned_macos_silicon`
+(PNG/TIFF/ORA/APNG) **NÃO** são gates cross-platform. Por quê:
+
+- `image` + `png` + `tiff` crates dispatcham paths SIMD DEFLATE per-target
+  → bytes finais (still-valid) diferem entre `aarch64-apple-darwin`,
+  `x86_64-unknown-linux-gnu`, `x86_64-pc-windows-msvc`.
+- Pinar um único hash + rodar em matrix = "CI sempre vermelho até cap"
+  (anti-padrão; inverte o "loud divergence" que o gate promete).
+
+**Escopo atual (W3.T0)**: cada teste tem
+`#[cfg(all(target_os = "macos", target_arch = "aarch64"))]`. Roda
+apenas no host de dev (Mac Silicon do Enio). Função: pegar drift
+silencioso quando dependências de codec bumpam local + mudam bytes
+sem mudar major version.
+
+**Escopo futuro (W3+ ou primeira divergência observada)**: substituir
+o const único por tabela `&[(target, hash)]` cobrindo os 3 targets de
+CI. Captura inicial = primeira run verde de cada platform; hashes
+viram contratos. Entry-point por crate:
+`crates/ph2d-imageio-<fmt>/src/lib.rs::export_golden_blake3_local_drift_pinned_macos_silicon`.
+
 ### 2.5 HR cumpridas
 
 - **HR-1** (platform-agnostic): contrato puro Rust; libs C explicitamente proibidas (HEIC descartado por isso).
@@ -284,7 +307,39 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W2.T4** PSD | ✅ | `4f79ba3` | Decode via psd 0.3.5; **export defer W3+ (escape hatch §5.2 W2.5)**; 6 tests |
 | **ONDA 2 FECHADA** | ✅ | 4 format crates + 36 tests | 9 format crates total na família imageio |
 | **W2.T6** auditoria 5-lente Onda 2 | ✅ | `34605f2` | 1 CRITICAL + 8 HIGH + 13 MEDIUM + 12 LOW; remediação inline — vide §5.3 |
-| **W2.T6.1** nova auditoria pós-W2.T6 | ✅ | `[remediation-pending]` | 1 CRITICAL regression (PSD cap rejeita single-layer leg) + 3 HIGH residuais + 5 HIGH novos + ADR placeholders — remediação inline vide §5.4 |
+| **W2.T6.1** nova auditoria pós-W2.T6 | ✅ | `354b218` | 1 CRITICAL regression (PSD cap rejeita single-layer leg) + 3 HIGH residuais + 5 HIGH novos + ADR placeholders — remediação inline vide §5.4 |
+| **W3 pre-gates 1+2+3** | ✅ | `f71f16a` | (1) ADR §2.6 amendment; (2) hex-baked Tier-1 fixtures (APNG multi-frame, TIFF CMYK/RGBA16, ORA group nesting); (3) golden blake3 hashes (PNG/TIFF/ORA/APNG) — vide §5.5 |
+| **W3.T0** auditoria 5-lente pré-W3 | ✅ | `[remediation-pending]` | 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW — remediação inline vide §5.5 |
+
+### 5.5 Remediação pós-auditoria W3.T0 pré-W3 (2026-05-26)
+
+Auditoria adversarial 5-lente sobre o commit `f71f16a` (W3 pre-gates 1+2+3) entregou 1 CRITICAL + 4 HIGH + 9 MEDIUM + 12 LOW. Fechados nesta sessão:
+
+**CRITICAL** (Lens A + B convergem):
+- Golden blake3 hashes pinados em PNG/TIFF/ORA/APNG eram single-platform Mac-Silicon mas vinculados a "HR-9 cross-platform determinism". CI matrix Linux/Windows falharia 4+ jobs por design (SIMD DEFLATE divergente). Fix: `#[cfg(all(target_os = "macos", target_arch = "aarch64"))]` + renomeados pra `export_golden_blake3_local_drift_pinned_macos_silicon` + docstrings honestas + ADR §2.6.1 amendment formaliza scope single-platform. Multi-platform pinning deferido (entry: novo function name).
+
+**HIGH** (Lens B + E):
+- APNG `set_animated(2, 0)` sem comentário sobre `num_plays=0` ↔ infinite loop. Fix: comentário explícito + nota de que loop count é irrelevante pras assertions de extração de delay/offset/blend.
+- Lens E vagueness no defer de exporters lossy JPEG/WebP/GIF/BMP. Decisão registrada: gold hash de encoder lossy não é gate apropriado (encoder pode otimizar bytes sem mudar pixels) — defer permanente, não W3.
+
+**MEDIUM**:
+- TIFF CMYK test só cobria K=0 (pure-cyan). Fix: arm 2 com K=128 + C=M=Y=0 verificando que K-attenuation funciona; assertions ±1 pra rounding flavour.
+- TIFF RGBA16 test só cobria mid-value 0x8080. Fix: sweep de 3 arms (endpoint-low 0x0000, mid 0x8080, endpoint-high 0xFFFF) com ±1 tolerance per channel.
+- ADR §5 sem linha pra `f71f16a` (W3 pre-gates). Fix: linha nova + nova linha W3.T0 (auditoria atual).
+- ADR §5 W2.T6.1 placeholder `[remediation-pending]` corrigido pra `354b218`.
+- ADR §2.6 não disclosure-ava "single-platform pin, CI red expected". Fix: §2.6.1 amendment dedicada acima.
+- Plan `2026-05-imageio-waves.md` W3 status não atualizado pós-gates. Fix: §5.5.1 atualiza plan.
+
+**LOW**:
+- `let _ = layer.visible` em PSD fixture test era dead-code-as-validation. Fix: substituído por comment explicando que o campo é populado mas o valor exato da fixture upstream não é nosso contrato.
+- Outros LOWs (cosméticos: typos, naming) considerados sub-threshold pra remediação inline.
+
+**Defers permanentes (não-bloqueantes)**:
+- Multi-platform golden hash pin: até primeira divergência cross-OS observada na CI motivar custo de captura por target.
+- Lossy exporter goldens (JPEG/WebP/GIF/BMP): encoders lossy podem reotimizar bytes sem regredir pixels — gold hash não é semanticamente apropriado.
+- Lens C Tier-1 fixture expansion (APNG dispose_op variants, TIFF Gray8/A8/Gray16/GrayA16, ORA stack.xml malformed branches): expansion incremental, agendada pra W3.T1+ como tickets vivos (não pré-W3 gates).
+
+**Total Onda 2 pós-W3.T0**: 41+ tests verdes em PNG/TIFF/ORA/APNG/PSD (incluindo Mac-only goldens).
 
 ### 5.4 Remediação pós-nova-auditoria W2.T6.1 (2026-05-26)
 

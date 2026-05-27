@@ -60,9 +60,10 @@ fn import_real_psd_fixture_extracts_one_pixel_layer() {
     );
     assert!(a > 0, "alpha > 0 (visible)");
 
-    // Layer metadata fields extracted (don't pin exact values —
-    // upstream fixture may carry historical defaults).
-    let _ = layer.visible; // bool, validated by type check.
+    // Layer metadata fields extracted (don't pin exact values for
+    // `visible` — upstream fixture's layer is non-visible by historical
+    // default; the field IS populated by the importer, just not asserted
+    // because the upstream value is not our contract).
     assert_eq!(layer.blend_mode, BlendMode::Normal);
     assert!(
         (0.0..=1.0).contains(&layer.opacity),

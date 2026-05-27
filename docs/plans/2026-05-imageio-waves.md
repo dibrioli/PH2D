@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 + W1 + W2 FECHADAS** 2026-05-26 — ADR-0054 `Accepted`; **9 format crates** wired (apng/gif/jpeg/ora/ph2d-native/png/psd/tiff/webp); ~120 testes verdes; 22 commits locais. **W3 (HDR + vetor) aberta.**
+**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates 1+2+3 + W3.T0 audit-remediation** 2026-05-26 — ADR-0054 `Accepted`; **9 format crates** wired (apng/gif/jpeg/ora/ph2d-native/png/psd/tiff/webp); ~120 testes verdes (4 golden hashes `#[cfg]`-gated Mac aarch64); 23+ commits locais. **W3 fan-out (HDR + vetor) próximo.**
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -79,7 +79,17 @@ Batch B (1 slot dedicado, sequencial após A — PSD é gargalo):
 
 ## WAVE 3 — HDR + next-gen + vetorial · PARALELO intra-onda
 
-### W3.0 — Pré-fan-out (Coord-A, 1 sessão)
+### W3 pre-gates (Coord-A, 1 sessão) ✅ FECHADOS 2026-05-26 commit `f71f16a` + audit-remediation `[remediation-pending]`
+
+3 gates pré-fan-out aplicados ao código já shipado de W1/W2 antes de abrir W3:
+
+- **Gate 1 — ADR §2.6 amendment** (DecodedImage variant policy): collapse-when-trivial policy formalizada, alinhando 9 format crates. Vide ADR §2.6.
+- **Gate 2 — Hex-baked Tier-1 fixtures**: APNG multi-frame, TIFF CMYK (K=0 + K>0 arms) + RGBA16 (endpoints + mid), ORA group nesting com 2 children. Real decoder paths agora exercitados; substring matches eliminados.
+- **Gate 3 — Golden blake3 hashes (single-platform Mac aarch64)**: PNG/TIFF/ORA/APNG têm `export_golden_blake3_local_drift_pinned_macos_silicon` gateados por `#[cfg]`. Scope = LOCAL drift guard apenas; CI matrix passa por `#[cfg]` gate. Multi-platform pinning deferido até primeira divergência observada. Vide ADR §2.6.1.
+
+**Auditoria W3.T0** (5-lens 2026-05-26): 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW; fechados inline em commit `[remediation-pending]`. Vide ADR §5.5.
+
+### W3.0 — Pré-fan-out (Coord-A, 1 sessão) — HDR + Vector ativos
 
 - **W3.0.1** — HDR float pipeline ativo. `DecodedImage::FlatHdr(ImageBuffer<RgbaF32>)` populado; tone-map fallback (Reinhard/ACES) pra LDR export quando o exportador é sRGB-only; conversão linear-f32 ↔ OKLCH preserva dinâmica.
 - **W3.0.2** — Vector bridge ativo. `DecodedImage::Vector(VectorDoc)` populado: `kurbo::BezPath` + paint stack + transforms + clip paths; bridge `rasterize_at(dpi)` opt-in via Vello no import; export Painter vector layers → SVG/PDF.

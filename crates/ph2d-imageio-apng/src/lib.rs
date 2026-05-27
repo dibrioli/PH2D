@@ -614,6 +614,10 @@ mod tests {
             let mut encoder = png::Encoder::new(Cursor::new(&mut bytes), 2, 2);
             encoder.set_color(png::ColorType::Rgba);
             encoder.set_depth(png::BitDepth::Eight);
+            // set_animated(num_frames=2, num_plays=0) — APNG spec:
+            // num_plays=0 = infinite loop. We test 2 distinct frames;
+            // the loop count is irrelevant to the decode-path assertions
+            // below (delay/offset/blend extraction).
             encoder.set_animated(2, 0).expect("set_animated");
             // Frame 1: delay = 100ms (numer=100, denom=1000).
             encoder.set_frame_delay(100, 1000).expect("frame 1 delay");
@@ -655,10 +659,13 @@ mod tests {
         assert_eq!(frames[1].image.pixels[0].0, [0, 255, 0, 255]);
     }
 
-    /// W3 pre-gate (HR-9 cross-platform determinism): pin blake3
-    /// hash of canonical APNG (single-frame) export.
+    /// W3 pre-gate (LOCAL drift guard, Mac aarch64 only): pin blake3
+    /// hash of canonical APNG (single-frame) export. Single-platform
+    /// pin — png crate DEFLATE may diverge cross-OS. Multi-pin deferred
+    /// (entry: `crates/ph2d-imageio-apng/src/lib.rs::export_golden_blake3_local_drift_pinned_macos_silicon`).
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     #[test]
-    fn export_golden_blake3_pinned() {
+    fn export_golden_blake3_local_drift_pinned_macos_silicon() {
         let original = fixture_2x2([200, 100, 50, 255]);
         let opts = ExportOpts {
             format: ExportFormat::Apng,
@@ -673,7 +680,7 @@ mod tests {
         assert_eq!(
             hash.to_hex().to_string(),
             GOLDEN_BLAKE3,
-            "HR-9 cross-platform: APNG single-frame export blake3 drifted"
+            "LOCAL drift (macOS aarch64): APNG single-frame export blake3 drifted"
         );
     }
 

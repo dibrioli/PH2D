@@ -10,18 +10,12 @@
 
 ## Coord-A (foundational)
 
-**Status:** ATIVO 2026-05-27 noite — KTX2 Fase 2 W0 retomada após 2ª opinião de 3 LLMs externas convergir em Opção 4 (ADR enxuto + plano vivo canônico). Reescrevendo ADR-0055-v4 ≤200 LOC strategic-only; arquivando v3 (660 LOC com snippets de código); migrando tabela canon pro plano vivo.
+**Status:** INATIVO 2026-05-27 noite — KTX2 Fase 2 W0 fechada e W1.T0 destrancada. ADR-0055-v4 Accepted (101 LOC strategic-only, audit 9.3/10). 2 commits locais: `971e237` (v4 + plano vivo + HANDOFF) + `db6971c` (W1.T0: ctt dep + sweep-grep). Próxima retomada lê [HANDOFF §12](HANDOFF_ktx2_phase2.md) + [[project-ktx2-phase2-v4-accepted-2026-05-27]] antes de W1.T1.
 
-**Pastas tocadas nesta sessão (NÃO TOCAR — Coord-A own):**
-- `docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md` (reescrita v4)
-- `docs/archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md` (novo — backup v3)
-- `docs/plans/2026-05-texture-compression-waves.md` (header v4 + §Symbol Registry)
-- `docs/HANDOFF_ktx2_phase2.md` (§12 status)
-- `docs/SESSION_ACTIVE.md` (este arquivo)
-
-**Pastas reservadas (quando ativar futuro):**
+**Pastas reservadas (quando ativar):**
 - `scripts/` · `.github/workflows/` · contratos congelados (`crates/ph2d-nodegraph/`, `crates/ph2d-editor-core/src/tool.rs`)
 - `docs/IntegracaoMultiAgente/DIRETRIZ.md` · arch-gates em geral
+- `tools/asset-cooker/` (W1+ texture cook sub-command) · `crates/ph2d-asset/` (W1.T4 Asset variant) · `crates/ph2d-render/` (W2 wgpu pipeline)
 
 ---
 

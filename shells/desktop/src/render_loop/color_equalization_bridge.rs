@@ -187,7 +187,8 @@ pub(super) fn dispatch(
         let bakes = collect_live_bakes(tools, &selected);
         for (entity_bits, pixels, w, h, size_world) in bakes {
             let entity = Entity::from_bits(entity_bits);
-            let image = SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight);
+            let image = SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight)
+                .into_premultiplied();
             let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
         }
     }

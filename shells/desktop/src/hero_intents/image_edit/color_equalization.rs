@@ -59,11 +59,19 @@ pub(crate) fn drain_color_equalization(
     ceq.set_source_snapshot(bytemuck::allocation::cast_vec(straight.pixels), w, h);
     let (out_w, out_h) = ceq.run_full_resolution(&mut out);
     debug_assert_eq!((out_w, out_h), (w, h), "Color EQ must preserve dimensions");
-    // Keep the OUTPUT in straight-alpha — Color EQ leaves alpha
-    // untouched, so we round-trip exactly. The chokepoint flips
-    // `Sprite.premultiplied` to match.
-    let edited =
-        ph2d_render::SpriteImage::from_bytes(out_w, out_h, out, ph2d_render::AlphaMode::Straight);
+    // Premultiply byte-space on upload (mirrors the BG-Removal Apply
+    // path that fixed the silhouette halo: storing premul bytes in
+    // `Rgba8UnormSrgb` lets the sprite shader's hw sRGB-decode + bilinear
+    // do the right thing at semi-transparent edges; straight bytes would
+    // bilinear-blend RGB against the alpha=0 white-bleed neighbours and
+    // produce a light halo around the silhouette).
+    let edited = ph2d_render::SpriteImage::from_bytes(
+        out_w,
+        out_h,
+        out,
+        ph2d_render::AlphaMode::Straight,
+    )
+    .into_premultiplied();
     match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world) {
         Err(err) => {
             toasts.push(Toast::error(format!("Color EQ failed: {err}")));

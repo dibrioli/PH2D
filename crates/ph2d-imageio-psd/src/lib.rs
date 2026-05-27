@@ -52,13 +52,28 @@ const PSD_MAGIC: [u8; 6] = [b'8', b'B', b'P', b'S', 0x00, 0x01];
 /// of a generic "no importer" miss.
 const PSB_MAGIC: [u8; 6] = [b'8', b'B', b'P', b'S', 0x00, 0x02];
 
-/// Audit W2.T6 H-7: cap on total layer-pixel bytes a PSD may
-/// allocate. `psd` 0.3.5 returns full-canvas-sized buffers per
-/// layer; a 16K × 16K PSD with 200 layers is ~200 GB. We refuse
-/// before iterating if the total estimate exceeds this cap.
-/// 2 GiB = generous for realistic Painter use; documents larger
-/// need an explicit ADR amendment.
-const MAX_PSD_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+/// Audit W2.T6 H-7 + nova auditoria H-N1 (2026-05-26): cap on
+/// **multi-layer fan-out** of pixel bytes. `psd` 0.3.5 returns
+/// full-canvas-sized buffers per layer; a 16K × 16K PSD with 200
+/// layers = ~200 GB. We refuse the **fan-out**, not a single-layer
+/// legitimate PSD at max canvas dimension.
+///
+/// Cap is `n_layers × canvas_bytes` only when `n_layers > 1`. A
+/// 32768 × 32768 single-layer PSD allocates 4 GiB (= one canvas
+/// buffer) — legitimate; the cap previously refused it. With this
+/// fix, single-layer PSDs are bounded by `MAX_RASTER_DIMENSION`
+/// alone (the canvas dim check); multi-layer PSDs hit this cap.
+///
+/// 4 GiB = comfortable for typical multi-layer Painter use
+/// (e.g. 4096 × 4096 × 64 layers = 4 GiB exactly).
+const MAX_PSD_MULTI_LAYER_TOTAL_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+
+/// Hard cap on PSD source bytes — defense against decompression-bomb
+/// inputs (e.g. a PSD header claiming N layers + crafted RLE chunks
+/// that explode in memory). Checked BEFORE `psd::Psd::from_bytes`
+/// parses, because the `psd` crate allocates eagerly. Audit nova
+/// H-7 residual.
+const MAX_PSD_INPUT_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
 /// Register the PSD importer.
 pub fn register_importer(reg: &mut ImporterRegistry) {
@@ -105,6 +120,13 @@ impl ImageImporter for PsdImporter {
                     .into(),
             ));
         }
+        // Audit nova H-7 residual (2026-05-26): bound input size BEFORE
+        // calling `psd::Psd::from_bytes`, which allocates eagerly. A
+        // crafted PSD header claiming 200 layers can balloon during
+        // parse before we ever check `parsed.layers().len()`.
+        if (src.len() as u64) > MAX_PSD_INPUT_BYTES {
+            return Err(Error::OutOfMemory);
+        }
         let parsed =
             psd::Psd::from_bytes(src).map_err(|e| Error::Decode(format!("PSD parse: {e}")))?;
 
@@ -126,17 +148,24 @@ impl ImageImporter for PsdImporter {
         // groups would need our own decoder.
         let psd_layers = parsed.layers();
 
-        // Audit W2.T6 H-7: refuse decompression-bomb PSDs (16K × 16K
-        // canvas × 200 layers = ~200 GB allocation) before iterating.
+        // Audit W2.T6 H-7 + nova H-N1: refuse decompression-bomb PSDs
+        // (16K × 16K × 200 layers = ~200 GB) before iterating. Only
+        // apply the cap when n_layers > 1 — a single-layer 32K canvas
+        // is 4 GiB but legitimate, bounded by MAX_RASTER_DIMENSION.
         // `psd` 0.3.5 returns full-canvas buffers per layer so cost
         // is `n_layers × canvas_w × canvas_h × 4`.
-        let total_bytes = (psd_layers.len() as u64)
-            .checked_mul(canvas_width as u64)
-            .and_then(|n| n.checked_mul(canvas_height as u64))
-            .and_then(|n| n.checked_mul(4))
-            .ok_or(Error::OutOfMemory)?;
-        if total_bytes > MAX_PSD_TOTAL_BYTES {
-            return Err(Error::DimensionExceedsLimit);
+        if psd_layers.len() > 1 {
+            let total_bytes = (psd_layers.len() as u64)
+                .checked_mul(canvas_width as u64)
+                .and_then(|n| n.checked_mul(canvas_height as u64))
+                .and_then(|n| n.checked_mul(4))
+                .ok_or(Error::OutOfMemory)?;
+            if total_bytes > MAX_PSD_MULTI_LAYER_TOTAL_BYTES {
+                // Audit nova H-N2: report OOM (semantically correct)
+                // rather than DimensionExceedsLimit; the dims may be
+                // legitimate, it's the layer count × dims that overflows.
+                return Err(Error::OutOfMemory);
+            }
         }
         let mut layers: Vec<Layer> = Vec::with_capacity(psd_layers.len());
         for psd_layer in psd_layers {
@@ -413,6 +442,70 @@ mod tests {
             }
             other => panic!("expected Unsupported, got {other:?}"),
         }
+    }
+
+    /// Audit nova H-8 residual (2026-05-26): unit-test the
+    /// `map_psd_blend_mode_via_debug` helper directly so that if
+    /// `psd` 0.3.x derive Debug ever changes the variant-name repr
+    /// (e.g. via attribute or rename), this test fails LOUDLY
+    /// instead of every blend mode silently mapping to `Normal`.
+    /// Pin is `=0.3.5` so versions can't drift; this guards manual
+    /// version bumps without re-validation.
+    #[test]
+    fn map_psd_blend_mode_via_debug_covers_24_variants() {
+        // The 24 PSD variant names we ship. Match arms in
+        // `map_psd_blend_mode_via_debug` rely on these exact strings.
+        let pairs: &[(&str, BlendMode)] = &[
+            ("Normal", BlendMode::Normal),
+            ("Multiply", BlendMode::Multiply),
+            ("Screen", BlendMode::Screen),
+            ("Overlay", BlendMode::Overlay),
+            ("Darken", BlendMode::Darken),
+            ("Lighten", BlendMode::Lighten),
+            ("ColorBurn", BlendMode::ColorBurn),
+            ("ColorDodge", BlendMode::ColorDodge),
+            ("LinearBurn", BlendMode::LinearBurn),
+            ("LinearDodge", BlendMode::LinearDodge),
+            ("HardLight", BlendMode::HardLight),
+            ("SoftLight", BlendMode::SoftLight),
+            ("VividLight", BlendMode::VividLight),
+            ("LinearLight", BlendMode::LinearLight),
+            ("PinLight", BlendMode::PinLight),
+            ("HardMix", BlendMode::HardMix),
+            ("Difference", BlendMode::Difference),
+            ("Exclusion", BlendMode::Exclusion),
+            ("Subtract", BlendMode::Subtract),
+            ("Divide", BlendMode::Divide),
+            ("Hue", BlendMode::Hue),
+            ("Saturation", BlendMode::Saturation),
+            ("Color", BlendMode::Color),
+            ("Luminosity", BlendMode::Luminosity),
+        ];
+        for (debug_name, expected) in pairs {
+            let mapped = map_psd_blend_mode_via_debug(debug_name);
+            assert_eq!(
+                mapped, *expected,
+                "psd 0.3.5 Debug name {debug_name:?} must map to {expected:?}"
+            );
+        }
+        // Unknown variant falls to Normal (PassThrough + future).
+        assert_eq!(
+            map_psd_blend_mode_via_debug("PassThrough"),
+            BlendMode::Normal
+        );
+        assert_eq!(map_psd_blend_mode_via_debug("Dissolve"), BlendMode::Normal);
+        assert_eq!(
+            map_psd_blend_mode_via_debug("DarkerColor"),
+            BlendMode::Darken
+        );
+        assert_eq!(
+            map_psd_blend_mode_via_debug("LighterColor"),
+            BlendMode::Lighten
+        );
+        assert_eq!(
+            map_psd_blend_mode_via_debug("HypotheticalNewMode"),
+            BlendMode::Normal
+        );
     }
 
     #[test]

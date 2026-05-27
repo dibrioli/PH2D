@@ -253,6 +253,7 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W1.T5** .ph2d-native | ✅ | `7270d40` | All 5 DecodedImage variants lossless; HR-5+6+14, 13 tests |
 | **ONDA 1 FECHADA** | ✅ | 5 commits | 5 format crates registrados; 81 testes verdes na família |
 | **W1.T6** auditoria 5-lente Onda 1 | ✅ | `9127011` | 4 CRITICAL + 13 HIGH + 13 MEDIUM + 15 LOW; remediação inline (memory `feedback-perfection-no-deferrals`) — vide §5.1 |
+| **W0.T6.5** auditoria 5-lente Onda 0 | ✅ | `51ea6f6` | 4C+11H+9M+12L pré-W0.T7; remediação inline (substituído `[ratification-commit]` placeholders por commits reais) |
 | **W2.0.0** qcms viability gate | ✅ | `5d44e70` | Pivot moxcms 0.8.1 (puro-Rust, ativo) |
 | **W2.0.1+2+3** pre-fan-out | ✅ | `d6ecda5` | ICC per-format inline policy; LayerStack pre-cooked pela audit W1.T6 |
 | **W2.T1** ORA | ✅ | `3017a7d` | ZIP+XML+PNG layers; 15 blend modes; 12 tests |
@@ -260,7 +261,48 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W2.T3** APNG | ✅ | `4694c18` | Decode multi-frame (acTL/fcTL); single-frame encode; 9 tests |
 | **W2.T4** PSD | ✅ | `4f79ba3` | Decode via psd 0.3.5; **export defer W3+ (escape hatch §5.2 W2.5)**; 6 tests |
 | **ONDA 2 FECHADA** | ✅ | 4 format crates + 36 tests | 9 format crates total na família imageio |
-| **W2.T6** auditoria 5-lente Onda 2 | ✅ | `[remediation-commit]` | 1 CRITICAL + 8 HIGH + 13 MEDIUM + 12 LOW; remediação inline — vide §5.3 |
+| **W2.T6** auditoria 5-lente Onda 2 | ✅ | `34605f2` | 1 CRITICAL + 8 HIGH + 13 MEDIUM + 12 LOW; remediação inline — vide §5.3 |
+| **W2.T6.1** nova auditoria pós-W2.T6 | ✅ | `[remediation-pending]` | 1 CRITICAL regression (PSD cap rejeita single-layer leg) + 3 HIGH residuais + 5 HIGH novos + ADR placeholders — remediação inline vide §5.4 |
+
+### 5.4 Remediação pós-nova-auditoria W2.T6.1 (2026-05-26)
+
+Nova auditoria adversarial sobre o commit W2.T6 (`34605f2`) entregou 1 CRITICAL regression + 5 HIGH (3 residuais + 2 novos) + 8 MEDIUM + 6 LOW. Fechados nesta sessão:
+
+**CRITICAL regression:**
+- **H-N1** PSD cap `MAX_PSD_TOTAL_BYTES = 2 GiB` rejeitava single-layer PSD legítimo no canvas máximo (32K² × 4 = 4 GiB > 2 GiB). Fix: cap aplicado APENAS quando `n_layers > 1`; renomeado `MAX_PSD_MULTI_LAYER_TOTAL_BYTES = 4 GiB`. Single-layer continua bounded por `MAX_RASTER_DIMENSION` alone.
+
+**HIGH residuais (gaps na remediação anterior):**
+- **C-1 residual** APNG substring match `windows(4).any(|w| w == b"acTL")` false-positive em PNG com tEXt/iTXt contendo "acTL" string. Fix: chunk parser proper length-prefixed walk `[length:u32 BE][type:4][data][crc:4]` até IDAT. Test sentinel cobre tEXt-com-"acTL" case explicitamente.
+- **H-7 residual** PSD cap só checava pós-`from_bytes` que já alocou. Fix: `src.len() > MAX_PSD_INPUT_BYTES = 2 GiB` cap pre-parse + ainda OOM check em multi-layer fan-out pós-parse.
+- **H-8 residual** PSD pin `=0.3.5` sem assertion-guard. Fix: unit-test `map_psd_blend_mode_via_debug_covers_24_variants` direto com 24 strings literais — quebra LOUDLY se Debug repr drift.
+
+**HIGH novos:**
+- **H-N2** PSD cap error usava `DimensionExceedsLimit` quando o problema é layer count × canvas (não canvas dim). Fix: trocado para `OutOfMemory` (semanticamente correto).
+
+**MEDIUM novos (e ORA pendente):**
+- **M-N3** TIFF BigTIFF magic 4-byte sem verify bytes 4-7. Fix: `is_bigtiff_magic` strict — checa offset-size 0x0008 + reserved 0x0000 conforme BigTIFF spec.
+- **M-N4** ORA spec version `"0.0.6"` deve ser `"0.0.5"` (openraster.org/baseline atual). Fix: `ORA_SPEC_VERSION = "0.0.5"`.
+- **M-N2** ORA control char strip sem regression-guard test. Fix: `xml_escape_strips_control_chars_preserves_whitespace` test.
+
+**ADR/plan placeholders** (audit Lens E):
+- ADR §5 row `W2.T6 [remediation-commit]` → `34605f2`.
+- ADR §5 row `W1.T6` (era `[remediation-commit]`) → `9127011`.
+- Plan `W0.T4 [remediation-pending]` → `51ea6f6`.
+- Plan `W0.T6.5 [remediation-commit-pending]` → `51ea6f6`.
+
+**Deferred com concrete entry-points** (audit Lens E):
+- **HR-3** `DecodedImage` variant policy → **W3.0 pre-fan-out adiciona §2.6 amendment** com policy global (collapse-to-Flat-when-trivial vs preserve-container-type). Hard deadline.
+- **HR-9** cross-platform golden bytes → **antes de W3.T1 ratificar — bloqueia ratificação Onda 3** (matriz CI Linux/macOS/Windows).
+- **HR-15** detail strings inglês → **bloqueia W4 abertura**; `Error::user_facing() -> FluentMessage { key, args }` separa dev-log de UI.
+- **HR-17** examples Luau → **rótulo `won't-fix v1`** explícito (entram quando scripting integration milestone abrir, sem deadline).
+- **Test coverage fixtures real** → **antes de W3.T1 abrir** (hex-baked APNG 2-frame + PSD 1-layer fixture + TIFF CMYK).
+
+**Test count post-nova-remediação:**
+- ORA: 14 (era 12; +2: xml escape control chars + spec version pin)
+- TIFF: 10 (BigTIFF spec strict — substituiu test sem mudar contagem)
+- APNG: 9 (chunk parser proper — substituiu test)
+- PSD: 8 (era 7; +1: map_psd_blend_mode_via_debug coverage)
+- Total Onda 2 pós-W2.T6.1: 41 tests verdes
 
 ### 5.3 Remediação pós-auditoria Onda 2 (2026-05-26)
 

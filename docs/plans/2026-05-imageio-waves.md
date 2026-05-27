@@ -24,10 +24,10 @@ Um **neck serial** (contrato `ImageImporter`/`ImageExporter`/`DecodedImage` + co
 - **W0.T1** — `crates/ph2d-imageio/`: contrato (`trait ImageImporter`, `trait ImageExporter`, `DecodedImage`, `ImageBuffer<P>`, `ExportOpts`, `ImportOpts`, `Error`, `ColorProfile`, `MagicHint`). Reusa `ph2d-color::{SrgbRgba, LinearRgba, OklchColor}`. ✅ commit `8d8d79e`.
 - **W0.T2** — `tools/ph2d-imageio-sync/`: codegen (lib+bin) espelhando `tools/ph2d-tool-sync/`. Scan de `crates/ph2d-imageio-*` por `pub fn register_importer` e `pub fn register_exporter`; regenera entre marcadores. ✅ commit `262a414`.
 - **W0.T3** — `crates/ph2d-imageio-registry-init/`: corpo codegen'd com `register_all_importers` + `register_all_exporters`. Staleness gate em `tests/staleness.rs`. ✅ commit `262a414`.
-- **W0.T4** — Arch-gate `crates/ph2d-imageio/tests/architecture_imageio_contract_surface.rs`. ✅ commit `8d8d79e`; caps `Error` 8→11 raised pós-audit `[remediation-pending]`.
+- **W0.T4** — Arch-gate `crates/ph2d-imageio/tests/architecture_imageio_contract_surface.rs`. ✅ commit `8d8d79e`; caps `Error` 8→11 raised pós-audit `51ea6f6`.
 - **W0.T5** — Stub PNG (`crates/ph2d-imageio-png/`) decode + encode via `image` 0.25 prova o pipeline end-to-end: `arquivo bytes → DecodedImage::Flat → bytes` round-trip bit-exact. ✅ commit `3db01b6`.
 - **W0.T6** — Wiring boot em `shells/desktop/src/init.rs`: chama `register_all_importers` + `register_all_exporters` 1× no startup, após `register_all_tools`. ✅ commit `f002b6a` + smoke do Enio confirmado: `imageio registries built (1 importer(s), 1 exporter(s))`.
-- **W0.T6.5** — **Auditoria adversarial 5-lente** (2026-05-26): 4 CRITICAL + 11 HIGH + 9 MEDIUM + 12 LOW. Remediação pré-ratificação em 3 batches (contract data model + HR/quality + docs). ✅ `[remediation-commit-pending]`.
+- **W0.T6.5** — **Auditoria adversarial 5-lente** (2026-05-26): 4 CRITICAL + 11 HIGH + 9 MEDIUM + 12 LOW. Remediação pré-ratificação em 3 batches (contract data model + HR/quality + docs). ✅ commit `51ea6f6`.
 - **W0.T7** — ADR-0054 `Proposed` → `Accepted`. ✅ ratificado 2026-05-26. Smoke pós-remediação confirmado pelo Enio: `[553ms] ADR-0054 W0.T6: imageio registries built (1 importer(s), 1 exporter(s))`. Contrato CONGELADO; mudanças daqui em diante = amendment Coord-A.
 
 ## 🔒 FREEZE (gate do fan-out) — após W0.T5 + smoke do Enio

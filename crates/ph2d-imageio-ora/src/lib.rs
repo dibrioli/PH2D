@@ -71,10 +71,12 @@ pub struct OraImporter;
 /// ZIP local-file-header magic.
 const ZIP_MAGIC: [u8; 4] = [b'P', b'K', 0x03, 0x04];
 
-/// ORA spec version emitted in `stack.xml`. Audit W2.T6 MEDIUM:
-/// previously a magic string `"0.0.6"` inline; promoted to const so
-/// the writer + a test pin can agree on the value.
-const ORA_SPEC_VERSION: &str = "0.0.6";
+/// ORA spec version emitted in `stack.xml`. Audit nova M-N4
+/// (2026-05-26): was `"0.0.6"` but openraster.org/baseline declares
+/// `"0.0.5"`; strict consumers (older Krita / MyPaint) can reject
+/// a higher version. Downgrade to the documented spec. Const exists
+/// so writer + pin test agree.
+const ORA_SPEC_VERSION: &str = "0.0.5";
 
 impl ImageImporter for OraImporter {
     fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
@@ -862,6 +864,45 @@ mod tests {
             )
             .expect_err("HDR refused");
         assert!(matches!(err, Error::HdrUnsupported));
+    }
+
+    /// Audit nova M-N2 (2026-05-26): `xml_escape` must strip XML 1.0
+    /// control chars (U+0001..U+001F) while preserving tab/newline/
+    /// carriage return. Regression-guard test.
+    #[test]
+    fn xml_escape_strips_control_chars_preserves_whitespace() {
+        // Control chars stripped silently.
+        assert_eq!(xml_escape("ab\x07c\x1bd"), "abcd");
+        assert_eq!(xml_escape("name\x00with\x00nulls"), "namewithnulls");
+        // Whitespace preserved.
+        assert_eq!(
+            xml_escape("hello\tworld\nfoo\rbar"),
+            "hello\tworld\nfoo\rbar"
+        );
+        // Standard XML entities still escaped.
+        assert_eq!(
+            xml_escape("<tag attr=\"value\" attr2='v2'>&amp;</tag>"),
+            "&lt;tag attr=&quot;value&quot; attr2=&apos;v2&apos;&gt;&amp;amp;&lt;/tag&gt;"
+        );
+    }
+
+    /// Audit nova M-N4 (2026-05-26): pin the spec version so a
+    /// careless edit doesn't drift away from `"0.0.5"` and break
+    /// strict consumers.
+    #[test]
+    fn stack_xml_emits_documented_spec_version() {
+        let stack = LayerStack {
+            version: 1,
+            canvas_width: 1,
+            canvas_height: 1,
+            layers: vec![make_pixel_layer("L", [0, 0, 0, 0])],
+            color_profile: ColorProfile::Srgb,
+        };
+        let xml = write_stack_xml(&stack).expect("write");
+        assert!(
+            xml.contains(r#"version="0.0.5""#),
+            "stack.xml must emit ORA_SPEC_VERSION=0.0.5; got: {xml}"
+        );
     }
 
     /// HR-5 byte-exact determinism: `image-zip` 2 + our hand-written

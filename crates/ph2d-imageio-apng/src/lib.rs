@@ -54,21 +54,51 @@ use std::io::Cursor;
 /// PNG's 8-byte signature (APNG is layered on top of plain PNG).
 const PNG_MAGIC: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
 
-/// Look for an `acTL` chunk in the first few KB of a PNG byte buffer.
-/// APNG spec requires `acTL` to appear BEFORE the first `IDAT` (so the
-/// chunk is in the header region, easy to scan). We scan up to 64 KB
-/// defensively — enough to cover IHDR + iCCP + sBIT + sRGB + cHRM +
-/// gAMA + pHYs + tEXt headers without parsing them properly.
+/// Walk PNG chunks length-prefixed looking for a real `acTL` chunk
+/// type tag at chunk-header position (NOT inside `tEXt`/`iTXt`/`zTXt`
+/// chunk data). Audit residual C-1 (2026-05-26): the previous
+/// `windows(4).any(...)` substring scan false-positives on any PNG
+/// whose textual metadata mentions "acTL" — stealing PNG dispatch
+/// silently. Real APNGs put `acTL` at the **chunk header tag**
+/// position (bytes 4-7 after the chunk length DWORD).
 ///
-/// Audit W2.T6 C-1: without this sniff, APNG importer would claim
-/// `Strong` on every PNG byte stream and steal dispatch from the
-/// dedicated PNG importer (registry FIFO + alphabetical codegen
-/// order). With the sniff, plain PNG → `None` here, dispatch falls
-/// through to the PNG importer cleanly.
+/// PNG chunk format: `[length: u32 BE][type: 4 bytes][data][crc: u32]`.
+/// First chunk after the 8-byte magic is at offset 8.
+///
+/// Stops walking after first IDAT (per APNG spec acTL MUST precede
+/// IDAT) or after 64 KB / EOF / malformed chunk — whichever comes
+/// first. Off-hot (user-click path).
 fn has_actl_chunk(b: &[u8]) -> bool {
-    let scan_end = b.len().min(65_536);
-    // `acTL` 4-byte ASCII tag — searchable as a window.
-    b[..scan_end].windows(4).any(|w| w == b"acTL")
+    // PNG magic (8 bytes) + first chunk header (8 bytes minimum).
+    if b.len() < 16 {
+        return false;
+    }
+    let mut offset = 8_usize; // skip PNG magic
+    let scan_limit = b.len().min(65_536);
+    while offset + 8 <= scan_limit {
+        let length =
+            u32::from_be_bytes([b[offset], b[offset + 1], b[offset + 2], b[offset + 3]]) as usize;
+        let chunk_type = &b[offset + 4..offset + 8];
+        if chunk_type == b"acTL" {
+            return true;
+        }
+        if chunk_type == b"IDAT" {
+            // APNG spec: acTL MUST precede first IDAT. If we hit
+            // IDAT without seeing acTL, it's a plain PNG.
+            return false;
+        }
+        // Advance to next chunk: 4 length + 4 type + length data + 4 CRC.
+        let next_offset = offset
+            .checked_add(12)
+            .and_then(|n| n.checked_add(length))
+            .unwrap_or(usize::MAX);
+        if next_offset > scan_limit || next_offset <= offset {
+            // Overflow, malformed length, or past scan limit.
+            return false;
+        }
+        offset = next_offset;
+    }
+    false
 }
 
 /// Register the APNG importer.
@@ -363,27 +393,65 @@ mod tests {
         }
     }
 
+    /// Build a synthetic PNG chunk: `[len:u32 BE][type:4][data][crc:4]`.
+    /// CRC is a placeholder (`has_actl_chunk` doesn't verify CRC).
+    fn fake_chunk(tag: &[u8; 4], data: &[u8]) -> Vec<u8> {
+        let mut out = (data.len() as u32).to_be_bytes().to_vec();
+        out.extend_from_slice(tag);
+        out.extend_from_slice(data);
+        out.extend_from_slice(&[0; 4]); // fake CRC
+        out
+    }
+
     #[test]
-    fn supports_only_strong_when_actl_chunk_present() {
-        // Audit W2.T6 C-1: plain PNG magic without acTL must NOT
-        // dispatch to APNG (registry FIFO would steal PNG traffic).
+    fn supports_only_strong_when_actl_chunk_at_chunk_header() {
         let imp = ApngImporter;
+
+        // 1. Plain PNG magic alone (no chunks) — None.
         assert_eq!(
             imp.supports(MagicHint::Bytes(&PNG_MAGIC)),
             MagicMatch::None,
             "plain PNG magic alone must not claim Strong"
         );
-        // Synthesise a buffer with PNG magic + acTL marker further in.
-        let mut with_actl = PNG_MAGIC.to_vec();
-        with_actl.extend_from_slice(&[0; 16]); // fake IHDR padding
-        with_actl.extend_from_slice(b"acTL"); // chunk tag
-        with_actl.extend_from_slice(&[0; 16]); // fake chunk data
+
+        // 2. Plain PNG (magic + IHDR + IDAT — no acTL) — None.
+        let mut plain_png = PNG_MAGIC.to_vec();
+        plain_png.extend(fake_chunk(b"IHDR", &[0; 13]));
+        plain_png.extend(fake_chunk(b"IDAT", &[0; 16]));
         assert_eq!(
-            imp.supports(MagicHint::Bytes(&with_actl)),
-            MagicMatch::Strong,
-            "PNG magic + acTL → Strong (real APNG)"
+            imp.supports(MagicHint::Bytes(&plain_png)),
+            MagicMatch::None,
+            "PNG without acTL chunk must return None"
         );
-        // Non-PNG magic → None regardless.
+
+        // 3. Real APNG (magic + IHDR + acTL + IDAT) — Strong.
+        let mut real_apng = PNG_MAGIC.to_vec();
+        real_apng.extend(fake_chunk(b"IHDR", &[0; 13]));
+        real_apng.extend(fake_chunk(b"acTL", &[0; 8]));
+        real_apng.extend(fake_chunk(b"IDAT", &[0; 16]));
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&real_apng)),
+            MagicMatch::Strong,
+            "PNG with acTL at chunk header → Strong (real APNG)"
+        );
+
+        // 4. Audit residual C-1 (2026-05-26): tEXt chunk containing
+        // the literal string "acTL" in its DATA must NOT trigger
+        // false-positive. This was the gap of the previous
+        // substring scan.
+        let mut text_with_actl = PNG_MAGIC.to_vec();
+        text_with_actl.extend(fake_chunk(b"IHDR", &[0; 13]));
+        // tEXt chunk: keyword=null=text. Text mentions "acTL".
+        let text_data = b"Comment\0See acTL chunk in APNG spec";
+        text_with_actl.extend(fake_chunk(b"tEXt", text_data));
+        text_with_actl.extend(fake_chunk(b"IDAT", &[0; 16]));
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&text_with_actl)),
+            MagicMatch::None,
+            "PNG with 'acTL' as tEXt content must NOT false-positive"
+        );
+
+        // 5. Non-PNG magic → None regardless.
         assert_eq!(
             imp.supports(MagicHint::Bytes(b"not-a-png")),
             MagicMatch::None

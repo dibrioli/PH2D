@@ -66,8 +66,24 @@ fn is_tiff_magic(b: &[u8]) -> bool {
     b.starts_with(&TIFF_LE_MAGIC) || b.starts_with(&TIFF_BE_MAGIC)
 }
 
+/// Strict BigTIFF detection: not just the 4-byte magic, but the
+/// BigTIFF spec's bytes 4-7 (offset-size word = 0x0008, reserved =
+/// 0x0000). Audit nova M-N3 (2026-05-26): the 4-byte magic alone
+/// can false-positive on random binary files that happen to start
+/// with `II+\0`.
 fn is_bigtiff_magic(b: &[u8]) -> bool {
-    b.starts_with(&BIGTIFF_LE_MAGIC) || b.starts_with(&BIGTIFF_BE_MAGIC)
+    if b.len() < 8 {
+        return false;
+    }
+    if b.starts_with(&BIGTIFF_LE_MAGIC) {
+        // offset-size LE = 0x0008 at bytes 4-5; reserved 0x0000 at 6-7.
+        return b[4] == 0x08 && b[5] == 0x00 && b[6] == 0x00 && b[7] == 0x00;
+    }
+    if b.starts_with(&BIGTIFF_BE_MAGIC) {
+        // offset-size BE = 0x0008 at bytes 4-5; reserved 0x0000 at 6-7.
+        return b[4] == 0x00 && b[5] == 0x08 && b[6] == 0x00 && b[7] == 0x00;
+    }
+    false
 }
 
 /// Register the TIFF importer.
@@ -480,26 +496,47 @@ mod tests {
         assert_eq!(imp.supports(MagicHint::Bytes(&[])), MagicMatch::None);
     }
 
-    /// Audit W2.T6 H-2: BigTIFF magic recognized (Strong) so registry
-    /// lands here; import refuses with Unsupported pointing at
-    /// classic TIFF / .ph2d-native alternatives.
+    /// Audit W2.T6 H-2 + nova M-N3 (2026-05-26): BigTIFF requires
+    /// offset-size 0x0008 + reserved 0x0000 at bytes 4-7. Test both:
+    /// (a) full spec-compliant header → Strong + Unsupported,
+    /// (b) magic-only (bytes 4-7 garbage) → NOT Strong (avoids false
+    /// positive on random binary files starting with `II+\0`).
     #[test]
-    fn bigtiff_magic_strong_but_import_refuses() {
+    fn bigtiff_magic_requires_spec_bytes_strong_then_unsupported() {
         let imp = TiffImporter;
+        // Full-spec BigTIFF LE: II + 0x2B 0x00 + 0x08 0x00 + 0x00 0x00.
+        let mut full_le = BIGTIFF_LE_MAGIC.to_vec();
+        full_le.extend_from_slice(&[0x08, 0x00, 0x00, 0x00]);
+        full_le.extend_from_slice(&[0; 24]);
         assert_eq!(
-            imp.supports(MagicHint::Bytes(&BIGTIFF_LE_MAGIC)),
+            imp.supports(MagicHint::Bytes(&full_le)),
             MagicMatch::Strong,
-            "BigTIFF LE recognized"
+            "BigTIFF LE spec-compliant recognized"
         );
+
+        // Full-spec BigTIFF BE: MM + 0x00 0x2B + 0x00 0x08 + 0x00 0x00.
+        let mut full_be = BIGTIFF_BE_MAGIC.to_vec();
+        full_be.extend_from_slice(&[0x00, 0x08, 0x00, 0x00]);
+        full_be.extend_from_slice(&[0; 24]);
         assert_eq!(
-            imp.supports(MagicHint::Bytes(&BIGTIFF_BE_MAGIC)),
+            imp.supports(MagicHint::Bytes(&full_be)),
             MagicMatch::Strong,
-            "BigTIFF BE recognized"
+            "BigTIFF BE spec-compliant recognized"
         );
-        let mut bigtiff_header = BIGTIFF_LE_MAGIC.to_vec();
-        bigtiff_header.extend_from_slice(&[0; 32]);
+
+        // Magic-only with garbage bytes 4-7 → NOT Strong (avoid
+        // false-positive on coincidental binary).
+        let mut magic_only = BIGTIFF_LE_MAGIC.to_vec();
+        magic_only.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]);
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&magic_only)),
+            MagicMatch::None,
+            "BigTIFF magic without spec bytes 4-7 must NOT false-positive"
+        );
+
+        // Spec-compliant header passes through to import → Unsupported.
         let err = imp
-            .import(&bigtiff_header, &ImportOpts::default())
+            .import(&full_le, &ImportOpts::default())
             .expect_err("BigTIFF must be refused early");
         match err {
             Error::Unsupported(msg) => assert!(

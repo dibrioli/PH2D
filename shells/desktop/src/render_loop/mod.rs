@@ -770,6 +770,7 @@ impl crate::App {
                 vector_scene,
                 &mut self.last_color_equalization_pushed_entity,
                 &mut self.color_equalization_previews,
+                toasts,
             );
             // Equalize Sizes panel ⟷ tool bridge — multi-sprite, no
             // per-frame on-canvas preview (the visual effect is the

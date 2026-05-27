@@ -44,7 +44,7 @@ use crate::app_state::ColorEqualizationPreview;
 use crate::hero_intents::texture_edit;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_editor::{HeroScreen, ToolRegistry};
+use ph2d_editor::{HeroScreen, Toast, ToastQueue, ToolRegistry};
 use ph2d_host::WindowSize;
 use ph2d_render::{AlphaMode, Camera2d, SpriteImage, SpriteRenderer};
 use ph2d_vector::VectorScene;
@@ -91,6 +91,7 @@ pub(super) fn dispatch(
     vector_scene: &mut VectorScene,
     last_pushed_entity: &mut Option<u64>,
     color_equalization_previews: &mut BTreeMap<u64, ColorEqualizationPreview>,
+    toasts: &mut ToastQueue,
 ) -> Option<Vec<u64>> {
     // Overlay-era parameters retained for API stability — live-bake mode
     // never paints overlays, so these are intentionally unused.
@@ -114,7 +115,7 @@ pub(super) fn dispatch(
     // Edge: deactivated this frame → revert every cached sprite. Mirrors
     // the legacy "overlay disappears on tool exit" semantic.
     if was_active && !active {
-        revert_all_and_clear(sim, renderer);
+        revert_all_and_clear(sim, renderer, toasts);
     }
 
     if !active {
@@ -138,7 +139,7 @@ pub(super) fn dispatch(
     // Entities that left the selection get their pixels restored before
     // we drop them from the cache — the user shouldn't keep a stranded
     // baked sprite behind after shift-clicking out of it.
-    prune_and_revert_unselected(&selected, sim, renderer);
+    prune_and_revert_unselected(&selected, sim, renderer, toasts);
 
     // Newly-selected entities → seed cache from their *current* sprite
     // source (Atlas → asset bytes, Individual → GPU readback). Subsequent
@@ -185,7 +186,7 @@ pub(super) fn dispatch(
     // caller's drain runs. The drain re-reads the (now-original) sprite
     // source and writes the canonical undo entry from clean inputs.
     if !apply_bits.is_empty() {
-        revert_all_and_clear(sim, renderer);
+        revert_all_and_clear(sim, renderer, toasts);
         if let Some(slot) = close_dropdown {
             apply_dropdown_close(slot, hero);
         }
@@ -200,7 +201,13 @@ pub(super) fn dispatch(
             let entity = Entity::from_bits(entity_bits);
             let image =
                 SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight).into_premultiplied();
-            let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
+            if let Err(e) =
+                texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world)
+            {
+                toasts.push(Toast::error(format!(
+                    "Color Equalization: GPU texture upload failed ({e})"
+                )));
+            }
         }
         // `collect_live_bakes` called `set_source` on the tool to feed
         // the pipeline, and that helper re-armed `params_dirty` (see
@@ -312,7 +319,11 @@ fn collect_live_bakes(tools: &mut ToolRegistry, selected: &[u64]) -> Vec<DrainTu
 /// destroy the alpha=0 RGB bleed (`unpremultiply_rgba8` zeros it; a
 /// fresh `into_premultiplied` zeros it too) — the source of the halo
 /// Enio reported when Cancel was firing with a different alpha mode.
-fn revert_all_and_clear(sim: &mut SimWorld, renderer: &mut SpriteRenderer) {
+fn revert_all_and_clear(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    toasts: &mut ToastQueue,
+) {
     let entries: Vec<CachedDrain> = SOURCE_CACHE.with(|c| {
         let mut cache = c.borrow_mut();
         let drained: Vec<_> = cache
@@ -334,7 +345,13 @@ fn revert_all_and_clear(sim: &mut SimWorld, renderer: &mut SpriteRenderer) {
     for (entity_bits, pixels, w, h, size_world, alpha) in entries {
         let entity = Entity::from_bits(entity_bits);
         let image = SpriteImage::from_bytes(w, h, pixels, alpha);
-        let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
+        if let Err(e) =
+            texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world)
+        {
+            toasts.push(Toast::error(format!(
+                "Color Equalization: GPU texture upload failed during revert ({e})"
+            )));
+        }
     }
 }
 
@@ -344,6 +361,7 @@ fn prune_and_revert_unselected(
     selected: &[u64],
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
+    toasts: &mut ToastQueue,
 ) {
     let live: std::collections::BTreeSet<u64> = selected.iter().copied().collect();
     let stale: Vec<CachedDrain> = SOURCE_CACHE.with(|c| {
@@ -368,7 +386,13 @@ fn prune_and_revert_unselected(
     for (entity_bits, pixels, w, h, size_world, alpha) in stale {
         let entity = Entity::from_bits(entity_bits);
         let image = SpriteImage::from_bytes(w, h, pixels, alpha);
-        let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
+        if let Err(e) =
+            texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world)
+        {
+            toasts.push(Toast::error(format!(
+                "Color Equalization: GPU texture upload failed during deselect revert ({e})"
+            )));
+        }
     }
 }
 

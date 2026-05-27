@@ -36,8 +36,9 @@
 //!   `rendering_mode_premul_invariant_preserved`,
 //!   `uniform_blending_at_full_alpha_equals_src_color`,
 //!   `intense_glaze_precision_at_small_alpha` (round 1 A-H2) +
-//!   `uniform_glaze_cpu_shader_textual_parity` (round 2 F3) covam
-//!   propriedades algébricas + paridade textual com shader.
+//!   `cpu_shader_textual_parity_all_six_modes` (round 2 F3 + round
+//!   6 R6-LN-2) cobrem propriedades algébricas + paridade textual
+//!   com shader em todos os 6 modos.
 //!   **ULP-bounded near alpha_s → 0:** o termo `1/max(alpha_s, 1e-6)`
 //!   no Uniform/Intense Blending pode acumular ULP drift entre
 //!   backends GPU (Metal/Vulkan/D3D12) e Rust f32 quando `alpha_s` é
@@ -633,39 +634,53 @@ mod tests {
     }
 
     #[test]
-    fn uniform_glaze_cpu_shader_textual_parity() {
-        // Audit T1.5 round 2 F3 (MISSING-GATE-CPU-SHADER-PARITY). The
-        // claim "Funções idênticas às do shader" was only verified
-        // through invariant tests (Porter-Duff identity, alpha=sqrt,
-        // etc.). This test does a textual paridade check on the
-        // canonical formula of uniform_glaze in the WGSL source —
-        // catches a future drift where the shader's uniform_glaze gets
-        // rewritten without the CPU function being updated in lockstep.
+    fn cpu_shader_textual_parity_all_six_modes() {
+        // Audit T1.5 round 2 F3 + round 6 R6-LN-2: textual parity gate
+        // for ALL 6 rendering modes. Catches a future shader rewrite
+        // that preserves invariants (alpha collapse / over composition)
+        // but drifts the formula structure — CPU + shader would silently
+        // disagree on intermediate pixel values.
         //
-        // Method: whitespace-normalize STAMP_WGSL, then assert the
-        // canonical Porter-Duff "over" expression appears verbatim.
-        // The Rust function uses the same formula:
-        //   `src + dst * (1.0 - src.a)`  — both sides Porter-Duff.
+        // Method: whitespace-normalize STAMP_WGSL, then assert each
+        // mode's canonical formula entry-line appears verbatim.
         let shader = crate::stamp_pipeline::STAMP_WGSL;
         let norm = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
         let shader_norm = norm(shader);
-        // The shader's `uniform_glaze` body returns `src + dst * (1.0 -
-        // src.a)`. Whitespace-normalized substring is stable across
-        // formatting churn.
-        assert!(
-            shader_norm.contains("return src + dst * (1.0 - src.a);"),
-            "shader uniform_glaze formula drifted — Rust + shader must \
-             keep `src + dst * (1.0 - src.a)` in lockstep (audit F3)"
-        );
-        // Heavy glaze: `src + dst * (1.0 - src.a * 0.85)` followed by clamp.
-        assert!(
-            shader_norm.contains("let r = src + dst * (1.0 - src.a * 0.85);"),
-            "shader heavy_glaze formula drifted (audit F3)"
-        );
-        // Light glaze: `src + dst * (1.0 - src.a * 0.6)`.
+
+        // ── Glaze modes (Porter-Duff over with mode-specific α curve) ─
+        // light_glaze: `src + dst * (1.0 - src.a * 0.6)`.
         assert!(
             shader_norm.contains("return src + dst * (1.0 - src.a * 0.6);"),
-            "shader light_glaze formula drifted (audit F3)"
+            "shader light_glaze formula drifted (R2-F3)"
+        );
+        // uniform_glaze: Porter-Duff "over".
+        assert!(
+            shader_norm.contains("return src + dst * (1.0 - src.a);"),
+            "shader uniform_glaze formula drifted (R2-F3)"
+        );
+        // intense_glaze: alpha curve via `aa = sqrt(α_s)` precision-safe.
+        assert!(
+            shader_norm.contains("let aa = sqrt(alpha_s);"),
+            "shader intense_glaze sqrt-alpha curve drifted (R6-LN-2)"
+        );
+        // heavy_glaze: aggressive over with clamp.
+        assert!(
+            shader_norm.contains("let r = src + dst * (1.0 - src.a * 0.85);"),
+            "shader heavy_glaze formula drifted (R2-F3)"
+        );
+
+        // ── Blending modes (continuous mix in straight space + Porter-Duff α) ─
+        // Both blending modes share the `result_a = α_s + α_d * (1 - α_s)`
+        // Porter-Duff "over" alpha accumulation (premul invariant fix —
+        // round 1 D-3.C2).
+        assert!(
+            shader_norm.contains("let result_a = alpha_s + alpha_d * (1.0 - alpha_s);"),
+            "shader blending Porter-Duff alpha-over drifted (R6-LN-2 / C2)"
+        );
+        // intense_blending wet-mix smudge factor.
+        assert!(
+            shader_norm.contains("let pull = clamp(wet, 0.0, 1.0);"),
+            "shader intense_blending wet-pull factor drifted (R6-LN-2)"
         );
     }
 

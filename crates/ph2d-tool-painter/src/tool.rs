@@ -58,6 +58,18 @@
 //!   variant 6+ without updating `from_u32` would silent-fallback to
 //!   UniformGlaze. Mitigated by `MAX_RENDERING_MODES = 6 FROZEN` arch-
 //!   gate (ADR amendment required to add). Acceptable; doc.
+//! - **R6-LN-3 — HR-18 LOC cap policy ambiguity:** painter brush files
+//!   (cpu_render, stamp_scheduler, stamp_pipeline) exceed 600 total
+//!   lines when `#[cfg(test)]` modules are counted, but stay under
+//!   when prod-only. Workspace-wide policy concern (CLAUDE.md should
+//!   codify the cap as production-excluding-tests). Painter follows
+//!   existing convention; no action.
+//! - **R6-LN-4 — HR-15 hardcoded Toast strings:** `drain_painter` (+
+//!   bridge fallback toast) uses raw `Toast::error("...")` literals.
+//!   6 of 11 sibling image-edit drains follow the same pattern; only
+//!   3 use `ph2d_i18n::tr(...)`. Workspace-wide HR-15 clarification
+//!   needed (whether "no hardcoded UI strings" covers toasts or only
+//!   widget labels). Painter is conforming to majority; no action.
 
 use std::sync::Arc;
 
@@ -375,10 +387,13 @@ impl Tool for PainterTool {
         // T1.2 implementará: pushar `painter_active = true` no HeroScreen
         // para acionar takeover (suprime chrome PH2D normal; ADR-0043 §1.1).
         self.params.takeover_active = true;
-        // T1.2 smoke 🟦 Day 3 do plano §4: clicar pill → terminal mostra ativação.
-        // PH2D não tem convenção de logging consolidada; `println!` é o canon
-        // de smoke (bgremoval e outros tools idem). Migração para log/tracing
-        // proper acontece quando ADR de logging cross-projeto ratificar.
+        // **R6-LN-1 doc honesty:** `println!` é um marker T1.2 smoke
+        // temporário — remove quando o `tracing` crate joins the
+        // workspace (ADR pendente). NÃO é "convenção canônica do
+        // projeto" como a versão anterior do comentário afirmava: grep
+        // confirmou que nenhum outro tool de produção usa `println!`
+        // em runtime path. Painter é o único; é uma stub T1.5, não um
+        // estabelecido pattern.
         println!("painter activated");
     }
 
@@ -391,6 +406,7 @@ impl Tool for PainterTool {
         // the bridge's `last_painter_pushed_entity` reset (set None in
         // `painter_bridge::dispatch` inactive path) wouldn't be enough.
         <Self as RasterEditTool>::deactivate(self);
+        // R6-LN-1: T1.2 smoke marker, temporário (vide on_activate).
         println!("painter deactivated");
     }
 

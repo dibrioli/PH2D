@@ -33,10 +33,10 @@ use super::ids;
 use super::params::{
     ColorEqualizationParams, ColorEqualizationUiEdit, ColorEqualizationUiSnapshot, apply_ui_edit,
     brightness_to_slider, clip_limit_to_slider, contrast_to_slider, exposure_to_slider,
-    lut_intensity_to_slider, lut_mix_to_slider,
-    posterize_dither_grain_to_slider, posterize_dither_strength_to_slider, saturation_to_slider,
-    sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
-    tint_to_slider, vibrance_to_slider,
+    lut_intensity_to_slider, lut_mix_to_slider, posterize_dither_grain_to_slider,
+    posterize_dither_strength_to_slider, saturation_to_slider, sharpen_amount_to_slider,
+    sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider, tint_to_slider,
+    vibrance_to_slider,
 };
 
 /// Side cap (px) for the live preview overlay. The preview re-runs the

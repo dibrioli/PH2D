@@ -58,8 +58,9 @@ pub fn run_pipeline(
     force_remove: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) {
-    try_run_pipeline(rgba, w, h, params, protect, force_remove, scratch)
-        .expect("run_pipeline: buffer shape mismatch (use try_run_pipeline for recoverable callers)");
+    try_run_pipeline(rgba, w, h, params, protect, force_remove, scratch).expect(
+        "run_pipeline: buffer shape mismatch (use try_run_pipeline for recoverable callers)",
+    );
 }
 
 /// Error variants returned by [`try_run_pipeline`]. Audit T1.6 R7 J1-4.
@@ -278,15 +279,7 @@ mod tests {
         let mut scratch = BgRemovalScratch::default();
         let rgba = vec![0u8; 4 * 4 * 4]; // 64 bytes, ok
         let bad_protect = vec![0u8; 5]; // expected 16
-        let res = try_run_pipeline(
-            &rgba,
-            4,
-            4,
-            &params,
-            Some(&bad_protect),
-            None,
-            &mut scratch,
-        );
+        let res = try_run_pipeline(&rgba, 4, 4, &params, Some(&bad_protect), None, &mut scratch);
         match res {
             Err(PipelineError::BufferShape {
                 which,
@@ -309,15 +302,7 @@ mod tests {
         let mut scratch = BgRemovalScratch::default();
         let rgba = vec![0u8; 4 * 4 * 4];
         let bad_force = vec![0u8; 3];
-        let res = try_run_pipeline(
-            &rgba,
-            4,
-            4,
-            &params,
-            None,
-            Some(&bad_force),
-            &mut scratch,
-        );
+        let res = try_run_pipeline(&rgba, 4, 4, &params, None, Some(&bad_force), &mut scratch);
         match res {
             Err(PipelineError::BufferShape {
                 which,

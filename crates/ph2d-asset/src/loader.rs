@@ -116,7 +116,8 @@ pub fn is_supported_image_extension(path: &Path) -> bool {
             .map(|s| s.to_ascii_lowercase())
             .as_deref(),
         Some(
-            "png" | "webp"
+            "png"
+                | "webp"
                 | "jpg"
                 | "jpeg"
                 | "gif"
@@ -235,15 +236,15 @@ fn decode_via_imageio_registry(
 ) -> Result<Asset, AssetError> {
     let reg = imageio_registry();
     // Try magic-byte dispatch first (Strong > Weak).
-    let importer = reg.find_for(MagicHint::Bytes(bytes)).ok_or_else(|| {
-        AssetError::Decode {
+    let importer = reg
+        .find_for(MagicHint::Bytes(bytes))
+        .ok_or_else(|| AssetError::Decode {
             path: path_hint.map(Path::to_path_buf),
             message: format!(
                 "no imageio importer registered for detected format {detected_format:?} \
                  (try `.ph2d` or one of: PNG, WEBP, JPEG, GIF, TIFF, ORA, APNG, PSD)"
             ),
-        }
-    })?;
+        })?;
     let decoded = importer
         .import(bytes, &ImportOpts::default())
         .map_err(|e| AssetError::Decode {
@@ -258,7 +259,8 @@ fn decode_via_imageio_registry(
             // compat. SrgbRgba is `#[repr(C)] [u8; 4]` so bytemuck-
             // safe transmute would also work; the copy here is
             // ~4×width×height which is bounded by MAX_RASTER_DIMENSION.
-            let mut rgba_bytes: Vec<u8> = Vec::with_capacity((width as usize) * (height as usize) * 4);
+            let mut rgba_bytes: Vec<u8> =
+                Vec::with_capacity((width as usize) * (height as usize) * 4);
             for px in &buf.pixels {
                 rgba_bytes.extend_from_slice(&px.0);
             }

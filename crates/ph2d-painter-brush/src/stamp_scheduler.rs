@@ -2675,10 +2675,7 @@ mod tests {
                 continue;
             };
             let tail = &arglist[hex_start + 2..];
-            let hex: String = tail
-                .chars()
-                .take_while(|c| c.is_ascii_hexdigit())
-                .collect();
+            let hex: String = tail.chars().take_while(|c| c.is_ascii_hexdigit()).collect();
             if let Ok(n) = u32::from_str_radix(&hex, 16) {
                 found.insert(n);
             }
@@ -2686,11 +2683,10 @@ mod tests {
 
         // The registered production tags (matches the rustdoc table
         // above `pub(crate) fn det_random`).
-        let expected: std::collections::BTreeSet<u32> = [
-            0xA1, 0xB2, 0xC1, 0xC2, 0xC3, 0xC4, 0xCC, 0xCD, 0xCE,
-        ]
-        .into_iter()
-        .collect();
+        let expected: std::collections::BTreeSet<u32> =
+            [0xA1, 0xB2, 0xC1, 0xC2, 0xC3, 0xC4, 0xCC, 0xCD, 0xCE]
+                .into_iter()
+                .collect();
 
         assert_eq!(
             found, expected,

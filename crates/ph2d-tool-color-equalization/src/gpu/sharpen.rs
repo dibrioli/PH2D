@@ -613,9 +613,12 @@ pub fn sharpen_unsharp_gpu(
 
 // ── WGSL kernels ─────────────────────────────────────────────────
 
-/// 3×3 Laplacian: `5·center − top − bottom − left − right` per channel,
-/// then blend `center + (lap − center) · amount`. Edge pixels clamp the
-/// neighbour index (mirrors CPU `if y > 0 { ... } else { center }`).
+/// 3×3 Laplacian in **linear sRGB** (Tier 3 audit parity). Decodes
+/// center + 4 neighbours from sRGB to linear, applies the 5-cross kernel
+/// `5·center − top − bottom − left − right`, blends
+/// `center + (lap − center) · amount`, and encodes back to sRGB. Edge
+/// pixels clamp the neighbour index (mirrors CPU `if y > 0 { ... } else
+/// { center }`).
 const LAPLACIAN_WGSL: &str = r#"
 struct Uniforms {
     amount: f32,
@@ -628,6 +631,29 @@ struct Uniforms {
 @group(0) @binding(1) var output_tex: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(2) var<uniform> u: Uniforms;
 
+fn srgb_to_linear_c(c: f32) -> f32 {
+    if (c <= 0.04045) {
+        return c / 12.92;
+    }
+    return pow((c + 0.055) / 1.055, 2.4);
+}
+
+fn linear_to_srgb_c(c: f32) -> f32 {
+    let c_clamped = max(c, 0.0);
+    if (c_clamped <= 0.0031308) {
+        return c_clamped * 12.92;
+    }
+    return 1.055 * pow(c_clamped, 1.0 / 2.4) - 0.055;
+}
+
+fn s2l(rgb: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(srgb_to_linear_c(rgb.r), srgb_to_linear_c(rgb.g), srgb_to_linear_c(rgb.b));
+}
+
+fn l2s(rgb: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(linear_to_srgb_c(rgb.r), linear_to_srgb_c(rgb.g), linear_to_srgb_c(rgb.b));
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let dims = textureDimensions(output_tex);
@@ -636,33 +662,33 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     let coord = vec2<i32>(i32(id.x), i32(id.y));
     let dims_i = vec2<i32>(i32(dims.x), i32(dims.y));
-    let center = textureLoad(input_tex, coord, 0);
-    if (center.a == 0.0) {
-        // Match CPU: transparent passes through untouched.
-        textureStore(output_tex, coord, center);
+    let center_srgb = textureLoad(input_tex, coord, 0);
+    if (center_srgb.a == 0.0) {
+        textureStore(output_tex, coord, center_srgb);
         return;
     }
-    // CPU edge convention: when y == 0, "top" = center (no neighbour),
-    // i.e. clamp-to-self. Same for the other three.
     let top_coord    = vec2<i32>(coord.x, max(coord.y - 1, 0));
     let bottom_coord = vec2<i32>(coord.x, min(coord.y + 1, dims_i.y - 1));
     let left_coord   = vec2<i32>(max(coord.x - 1, 0), coord.y);
     let right_coord  = vec2<i32>(min(coord.x + 1, dims_i.x - 1), coord.y);
-    let top    = textureLoad(input_tex, top_coord, 0);
-    let bottom = textureLoad(input_tex, bottom_coord, 0);
-    let left   = textureLoad(input_tex, left_coord, 0);
-    let right  = textureLoad(input_tex, right_coord, 0);
+    let center = s2l(center_srgb.rgb);
+    let top    = s2l(textureLoad(input_tex, top_coord, 0).rgb);
+    let bottom = s2l(textureLoad(input_tex, bottom_coord, 0).rgb);
+    let left   = s2l(textureLoad(input_tex, left_coord, 0).rgb);
+    let right  = s2l(textureLoad(input_tex, right_coord, 0).rgb);
 
-    let laplacian = 5.0 * center.rgb - top.rgb - bottom.rgb - left.rgb - right.rgb;
-    let result = clamp(center.rgb + (laplacian - center.rgb) * u.amount, vec3<f32>(0.0), vec3<f32>(1.0));
-    textureStore(output_tex, coord, vec4<f32>(result, center.a));
+    let laplacian = 5.0 * center - top - bottom - left - right;
+    let result_lin = center + (laplacian - center) * u.amount;
+    let result_srgb = clamp(l2s(result_lin), vec3<f32>(0.0), vec3<f32>(1.0));
+    textureStore(output_tex, coord, vec4<f32>(result_srgb, center_srgb.a));
 }
 "#;
 
-/// Unsharp H pass: separable Gaussian blur along the X axis. Writes
-/// the blurred RGB + the alpha (preserved verbatim) into the
-/// `rgba16float` intermediate. CPU mirrors via `for k in 0..size`
-/// summing `channel[sx] * kernel[k]` with `sx = clamp(x + k - half)`.
+/// Unsharp H pass in **linear sRGB**: decodes each sampled sRGB pixel to
+/// linear, blurs in linear with the Gaussian kernel, writes the linear
+/// blur into the `rgba16float` intermediate (which has the headroom to
+/// store unclamped linear values). The V pass also reads linear and
+/// finishes with the combine + sRGB encode.
 const UNSHARP_H_WGSL: &str = r#"
 struct Uniforms {
     amount: f32,
@@ -675,6 +701,17 @@ struct Uniforms {
 @group(0) @binding(1) var h_pass: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(2) var<uniform> u: Uniforms;
 @group(0) @binding(3) var<storage, read> kernel: array<f32>;
+
+fn srgb_to_linear_c(c: f32) -> f32 {
+    if (c <= 0.04045) {
+        return c / 12.92;
+    }
+    return pow((c + 0.055) / 1.055, 2.4);
+}
+
+fn s2l(rgb: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(srgb_to_linear_c(rgb.r), srgb_to_linear_c(rgb.g), srgb_to_linear_c(rgb.b));
+}
 
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -690,25 +727,21 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     var wt = 0.0;
     for (var k: i32 = 0; k < u.kernel_size; k = k + 1) {
         let sx = clamp(coord.x + k - u.half, 0, dims_i.x - 1);
-        let sample = textureLoad(input_tex, vec2<i32>(sx, coord.y), 0).rgb;
+        let sample_lin = s2l(textureLoad(input_tex, vec2<i32>(sx, coord.y), 0).rgb);
         let kw = kernel[k];
-        sum_rgb = sum_rgb + sample * kw;
+        sum_rgb = sum_rgb + sample_lin * kw;
         wt = wt + kw;
     }
-    let blur = sum_rgb / wt;
-    // Preserve alpha verbatim — the V pass needs the ORIGINAL alpha to
-    // decide combine vs. passthrough, and it reads from `input_tex`
-    // directly. The intermediate's alpha channel is unused but we
-    // store `center.a` for debugging clarity.
-    textureStore(h_pass, coord, vec4<f32>(blur, center.a));
+    let blur_lin = sum_rgb / wt;
+    textureStore(h_pass, coord, vec4<f32>(blur_lin, center.a));
 }
 "#;
 
-/// Unsharp V + combine pass: separable Gaussian blur along the Y axis
-/// over the H-pass intermediate, then fuses the combine step
-/// (`orig + amount · (orig − blur)`) and writes the final
-/// `rgba8unorm`. Transparent pixels pass through untouched (matches
-/// CPU's `if rgba[i*4 + 3] == 0 { continue; }` on the combine loop).
+/// Unsharp V + combine pass in **linear sRGB**: blurs the H-pass
+/// intermediate (already linear) along the Y axis, decodes the original
+/// sRGB sample to linear, combines `orig_lin + amount·(orig_lin −
+/// blur_lin)`, encodes the result back to sRGB. Transparent pixels pass
+/// through untouched.
 const UNSHARP_V_WGSL: &str = r#"
 struct Uniforms {
     amount: f32,
@@ -723,6 +756,29 @@ struct Uniforms {
 @group(0) @binding(3) var<uniform> u: Uniforms;
 @group(0) @binding(4) var<storage, read> kernel: array<f32>;
 
+fn srgb_to_linear_c(c: f32) -> f32 {
+    if (c <= 0.04045) {
+        return c / 12.92;
+    }
+    return pow((c + 0.055) / 1.055, 2.4);
+}
+
+fn linear_to_srgb_c(c: f32) -> f32 {
+    let c_clamped = max(c, 0.0);
+    if (c_clamped <= 0.0031308) {
+        return c_clamped * 12.92;
+    }
+    return 1.055 * pow(c_clamped, 1.0 / 2.4) - 0.055;
+}
+
+fn s2l(rgb: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(srgb_to_linear_c(rgb.r), srgb_to_linear_c(rgb.g), srgb_to_linear_c(rgb.b));
+}
+
+fn l2s(rgb: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(linear_to_srgb_c(rgb.r), linear_to_srgb_c(rgb.g), linear_to_srgb_c(rgb.b));
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let dims = textureDimensions(output_tex);
@@ -731,9 +787,9 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     let coord = vec2<i32>(i32(id.x), i32(id.y));
     let dims_i = vec2<i32>(i32(dims.x), i32(dims.y));
-    let orig = textureLoad(input_tex, coord, 0);
-    if (orig.a == 0.0) {
-        textureStore(output_tex, coord, orig);
+    let orig_srgb = textureLoad(input_tex, coord, 0);
+    if (orig_srgb.a == 0.0) {
+        textureStore(output_tex, coord, orig_srgb);
         return;
     }
 
@@ -746,10 +802,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         sum_rgb = sum_rgb + sample * kw;
         wt = wt + kw;
     }
-    let blur = sum_rgb / wt;
-    let diff = orig.rgb - blur;
-    let result = clamp(orig.rgb + u.amount * diff, vec3<f32>(0.0), vec3<f32>(1.0));
-    textureStore(output_tex, coord, vec4<f32>(result, orig.a));
+    let blur_lin = sum_rgb / wt;
+    let orig_lin = s2l(orig_srgb.rgb);
+    let diff = orig_lin - blur_lin;
+    let result_lin = orig_lin + u.amount * diff;
+    let result_srgb = clamp(l2s(result_lin), vec3<f32>(0.0), vec3<f32>(1.0));
+    textureStore(output_tex, coord, vec4<f32>(result_srgb, orig_srgb.a));
 }
 "#;
 

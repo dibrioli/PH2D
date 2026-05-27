@@ -233,20 +233,21 @@ fn ensure_cached(
     });
 }
 
-/// Run `run_full_resolution` against every cached selected entity in a
-/// single tool borrow; the writeback happens outside this function so the
-/// tool borrow ends before `sim`/`renderer` are mutated.
+/// Pipeline each cached selected entity in a single tool borrow via the
+/// generic `RasterEditTool::run_full` path — that variant tries the
+/// GPU compute chain first (when `--features gpu` is on, which it is in
+/// shells/desktop) and falls back to CPU only when the GPU isn't
+/// available. The writeback happens outside this function so the tool
+/// borrow ends before `sim`/`renderer` are mutated.
 fn collect_live_bakes(
     tools: &mut ToolRegistry,
     selected: &[u64],
 ) -> Vec<(u64, Vec<u8>, u32, u32, [f32; 2])> {
+    use ph2d_editor::tool::RasterEditTool;
     let Some(tool) = tools.active_mut() else {
         return Vec::new();
     };
-    let Some(ceq) = tool
-        .as_any_mut()
-        .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
-    else {
+    let Some(raster) = tool.as_raster_edit_mut() else {
         return Vec::new();
     };
     let mut bakes = Vec::with_capacity(selected.len());
@@ -259,10 +260,9 @@ fn collect_live_bakes(
         let Some((pixels, w, h, size_world)) = cached else {
             continue;
         };
-        ceq.set_source_snapshot(bytemuck::allocation::cast_vec(pixels), w, h);
-        let mut out = Vec::new();
-        let _ = ceq.run_full_resolution(&mut out);
-        bakes.push((entity_bits, out, w, h, size_world));
+        RasterEditTool::set_source(raster, pixels, w, h);
+        let (out, ow, oh) = RasterEditTool::run_full(raster);
+        bakes.push((entity_bits, out, ow, oh, size_world));
     }
     bakes
 }

@@ -183,7 +183,12 @@ impl BilateralPipeline {
         }
         let strength = strength.clamp(0.0, 1.0);
         let sigma_space = 3.0 + strength * 5.0;
-        let sigma_range = 20.0 + strength * 50.0;
+        // Linear-sRGB domain (Tier 2 audit, parity with CPU
+        // `algorithm::bilateral_denoise`). σ_range stays numerically
+        // identical to the legacy [0,255] tuning when divided by 255 —
+        // the texture reads land in [0,1] after sRGB decode and the
+        // pixel diffs operate in that same scale.
+        let sigma_range = (20.0 + strength * 50.0) / 255.0;
         let radius = (sigma_space * 2.0).ceil() as i32;
         let uniforms = BilateralUniforms {
             inv_spatial_sq: -1.0 / (2.0 * sigma_space * sigma_space),
@@ -237,10 +242,12 @@ pub fn bilateral_denoise_gpu(rgba: &mut [u8], w: u32, h: u32, strength: f32, gpu
 /// the `(2r + 1)²` window centred on the pixel. Out-of-bounds neighbours
 /// are skipped (matching the CPU which iterates a clamped window).
 ///
-/// Multiplication by `255.0` keeps the colour-distance term in the same
-/// 0..255 unit space as the CPU `Uint8ClampedArray` — without this the
-/// range Gaussian's σ (20..70) would not align with the σ the CPU uses
-/// on its raw 8-bit values, and parity would drift by ~10 LSB.
+/// Operates in **linear sRGB** (Tier 2 audit parity with CPU
+/// `algorithm::bilateral_denoise`). Each `textureLoad` decodes sRGB →
+/// linear; range diffs + weighted sums live in `[0, 1]` linear; the
+/// final `textureStore` re-encodes linear → sRGB. σ_range is calibrated
+/// on the host (`(20 + 50·strength) / 255`) to match the same numeric
+/// weight in linear-[0,1] space.
 const BILATERAL_WGSL: &str = r#"
 struct Uniforms {
     inv_spatial_sq: f32,
@@ -253,6 +260,29 @@ struct Uniforms {
 @group(0) @binding(1) var output_tex: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(2) var<uniform> uniforms: Uniforms;
 
+fn srgb_to_linear_c(c: f32) -> f32 {
+    if (c <= 0.04045) {
+        return c / 12.92;
+    }
+    return pow((c + 0.055) / 1.055, 2.4);
+}
+
+fn linear_to_srgb_c(c: f32) -> f32 {
+    let c_clamped = max(c, 0.0);
+    if (c_clamped <= 0.0031308) {
+        return c_clamped * 12.92;
+    }
+    return 1.055 * pow(c_clamped, 1.0 / 2.4) - 0.055;
+}
+
+fn srgb_to_linear_rgb(rgb: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(srgb_to_linear_c(rgb.r), srgb_to_linear_c(rgb.g), srgb_to_linear_c(rgb.b));
+}
+
+fn linear_to_srgb_rgb(rgb: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(linear_to_srgb_c(rgb.r), linear_to_srgb_c(rgb.g), linear_to_srgb_c(rgb.b));
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let dims = textureDimensions(output_tex);
@@ -261,21 +291,14 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     let coord = vec2<i32>(i32(id.x), i32(id.y));
     let dims_i = vec2<i32>(i32(dims.x), i32(dims.y));
-    let center = textureLoad(input_tex, coord, 0);
+    let center_srgb = textureLoad(input_tex, coord, 0);
 
-    if (center.a == 0.0) {
-        // Transparent input is not part of the CPU loop's mean — but
-        // the CPU still writes (R, G, B unchanged because no
-        // neighbours contribute when only transparent pixels are read
-        // — actually CPU doesn't skip them either in the bilateral
-        // loop, see `algorithm::bilateral_denoise`). Pass-through.
-        textureStore(output_tex, coord, center);
+    if (center_srgb.a == 0.0) {
+        textureStore(output_tex, coord, center_srgb);
         return;
     }
 
-    let cr = center.r * 255.0;
-    let cg = center.g * 255.0;
-    let cb = center.b * 255.0;
+    let center_lin = srgb_to_linear_rgb(center_srgb.rgb);
 
     var sum_r = 0.0;
     var sum_g = 0.0;
@@ -290,30 +313,27 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             let nx = coord.x + dx;
             if (nx < 0 || nx >= dims_i.x) { continue; }
 
-            let neighbor = textureLoad(input_tex, vec2<i32>(nx, ny), 0);
-            let nr = neighbor.r * 255.0;
-            let ng = neighbor.g * 255.0;
-            let nb = neighbor.b * 255.0;
+            let neighbor_srgb = textureLoad(input_tex, vec2<i32>(nx, ny), 0);
+            let n_lin = srgb_to_linear_rgb(neighbor_srgb.rgb);
 
             let spatial = f32(dx * dx + dy * dy);
-            let dr_ = nr - cr;
-            let dg_ = ng - cg;
-            let db_ = nb - cb;
-            let color = dr_ * dr_ + dg_ * dg_ + db_ * db_;
+            let d = n_lin - center_lin;
+            let color = dot(d, d);
             let weight = exp(spatial * uniforms.inv_spatial_sq + color * uniforms.inv_range_sq);
 
-            sum_r = sum_r + nr * weight;
-            sum_g = sum_g + ng * weight;
-            sum_b = sum_b + nb * weight;
+            sum_r = sum_r + n_lin.r * weight;
+            sum_g = sum_g + n_lin.g * weight;
+            sum_b = sum_b + n_lin.b * weight;
             sum_w = sum_w + weight;
         }
     }
 
-    var out_rgb = vec3<f32>(center.r, center.g, center.b);
+    var out_lin = center_lin;
     if (sum_w > 0.0) {
-        out_rgb = vec3<f32>(sum_r, sum_g, sum_b) / sum_w / 255.0;
+        out_lin = vec3<f32>(sum_r, sum_g, sum_b) / sum_w;
     }
-    textureStore(output_tex, coord, vec4<f32>(out_rgb, center.a));
+    let out_srgb = linear_to_srgb_rgb(out_lin);
+    textureStore(output_tex, coord, vec4<f32>(out_srgb, center_srgb.a));
 }
 "#;
 

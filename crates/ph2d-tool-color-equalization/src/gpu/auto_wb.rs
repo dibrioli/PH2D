@@ -461,9 +461,14 @@ pub fn auto_white_balance_gpu(rgba: &mut [u8], w: u32, h: u32, gpu: &GpuContext)
     pipelines.dispatch(gpu, rgba, w, h);
 }
 
-/// WGSL reduce kernel: workgroup-shared atomic accumulators (4 slots)
-/// merged into 4 global atomics. Each opaque pixel contributes
-/// `round(channel · 255)` to its channel sum and `1` to the count.
+/// WGSL reduce kernel — **linear sRGB** (Tier 2 audit parity):
+/// workgroup-shared atomic accumulators (4 slots) merged into 4 global
+/// atomics. Each opaque pixel decodes sRGB → linear and contributes
+/// `round(linear · 255)` to its channel sum (and `1` to the count). The
+/// CPU sums linear values directly; the GPU scales by 255 only to fit
+/// u32 atomics — the ratio `mean_gray / mean_channel` used by
+/// [`AutoWbPipelines::compute_gains_from_sums`] is scale-invariant, so
+/// the final gains match CPU within `< 1/(255·N)` relative error.
 ///
 /// `var<workgroup> atomic<u32>` is the canonical pattern: 64 threads of
 /// a workgroup hit the same 4 shared slots (single cache line) instead
@@ -486,10 +491,16 @@ var<workgroup> local_sum_g: atomic<u32>;
 var<workgroup> local_sum_b: atomic<u32>;
 var<workgroup> local_count: atomic<u32>;
 
+fn srgb_to_linear_c(c: f32) -> f32 {
+    if (c <= 0.04045) {
+        return c / 12.92;
+    }
+    return pow((c + 0.055) / 1.055, 2.4);
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>,
         @builtin(local_invocation_index) lid: u32) {
-    // Thread 0 zeroes the workgroup-shared slots before accumulation.
     if (lid == 0u) {
         atomicStore(&local_sum_r, 0u);
         atomicStore(&local_sum_g, 0u);
@@ -502,11 +513,9 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>,
         let coord = vec2<i32>(i32(id.x), i32(id.y));
         let pixel = textureLoad(input_tex, coord, 0);
         if (pixel.a > 0.0) {
-            // Convert normalised [0, 1] back to byte [0, 255] so the
-            // sums match the CPU semantics exactly (CPU sums u8 raw).
-            let r = u32(round(pixel.r * 255.0));
-            let g = u32(round(pixel.g * 255.0));
-            let b = u32(round(pixel.b * 255.0));
+            let r = u32(round(srgb_to_linear_c(pixel.r) * 255.0));
+            let g = u32(round(srgb_to_linear_c(pixel.g) * 255.0));
+            let b = u32(round(srgb_to_linear_c(pixel.b) * 255.0));
             atomicAdd(&local_sum_r, r);
             atomicAdd(&local_sum_g, g);
             atomicAdd(&local_sum_b, b);
@@ -515,8 +524,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>,
     }
     workgroupBarrier();
 
-    // One thread per workgroup commits its partial sum to the global
-    // 4-slot atomic buffer. 64× fewer global atomics than naive.
     if (lid == 0u) {
         atomicAdd(&sums[0], atomicLoad(&local_sum_r));
         atomicAdd(&sums[1], atomicLoad(&local_sum_g));
@@ -526,8 +533,9 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>,
 }
 "#;
 
-/// WGSL apply kernel: per-pixel `clamp(channel · gain, 0, 1)`,
-/// preserves alpha + skips transparent pixels (CPU parity).
+/// WGSL apply kernel — **linear sRGB** (Tier 2 audit parity): decodes
+/// sRGB → linear, scales by per-channel gain, encodes linear → sRGB.
+/// Preserves alpha + skips transparent pixels (CPU parity).
 const AUTO_WB_APPLY_WGSL: &str = r#"
 struct Uniforms {
     gain_r: f32,
@@ -539,6 +547,21 @@ struct Uniforms {
 @group(0) @binding(0) var input_tex: texture_2d<f32>;
 @group(0) @binding(1) var output_tex: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(2) var<uniform> u: Uniforms;
+
+fn srgb_to_linear_c(c: f32) -> f32 {
+    if (c <= 0.04045) {
+        return c / 12.92;
+    }
+    return pow((c + 0.055) / 1.055, 2.4);
+}
+
+fn linear_to_srgb_c(c: f32) -> f32 {
+    let c_clamped = max(c, 0.0);
+    if (c_clamped <= 0.0031308) {
+        return c_clamped * 12.92;
+    }
+    return 1.055 * pow(c_clamped, 1.0 / 2.4) - 0.055;
+}
 
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -552,9 +575,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         textureStore(output_tex, coord, pixel);
         return;
     }
-    let out_r = clamp(pixel.r * u.gain_r, 0.0, 1.0);
-    let out_g = clamp(pixel.g * u.gain_g, 0.0, 1.0);
-    let out_b = clamp(pixel.b * u.gain_b, 0.0, 1.0);
+    let r_lin = srgb_to_linear_c(pixel.r) * u.gain_r;
+    let g_lin = srgb_to_linear_c(pixel.g) * u.gain_g;
+    let b_lin = srgb_to_linear_c(pixel.b) * u.gain_b;
+    let out_r = clamp(linear_to_srgb_c(r_lin), 0.0, 1.0);
+    let out_g = clamp(linear_to_srgb_c(g_lin), 0.0, 1.0);
+    let out_b = clamp(linear_to_srgb_c(b_lin), 0.0, 1.0);
     textureStore(output_tex, coord, vec4<f32>(out_r, out_g, out_b, pixel.a));
 }
 "#;

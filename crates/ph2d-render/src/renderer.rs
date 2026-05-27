@@ -184,6 +184,29 @@ impl SpriteRenderer {
         self.individual.readback(&self.gpu, texture_id)
     }
 
+    /// Convenience wrapper around [`IndividualTextureStore::replace_pixels`]
+    /// that hides the renderer-internal `GpuContext` + `material_bgl`
+    /// from callers. Used by tool live-preview bridges (BG-Removal,
+    /// 2026-05-26) that own a transient texture slot and refresh its
+    /// contents whenever the CPU-side preview cache produces a new
+    /// frame. Mirrors the `acquire_individual` ergonomics.
+    pub fn replace_individual_pixels(
+        &mut self,
+        texture_id: u32,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<(), IndividualTextureError> {
+        self.individual.replace_pixels(
+            &self.gpu,
+            &self.pipeline.material_bgl,
+            texture_id,
+            width,
+            height,
+            rgba,
+        )
+    }
+
     pub fn atlas(&self) -> &TextureAtlas {
         &self.atlas
     }

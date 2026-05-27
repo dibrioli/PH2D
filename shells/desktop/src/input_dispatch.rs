@@ -306,6 +306,15 @@ impl App {
             {
                 return;
             }
+            // "Add area" automatic selector: a Primary Down with the
+            // selector armed runs a single-click flood-fill from the
+            // clicked source pixel into the force-remove mask
+            // (Enio 2026-05-26). Mirror of the eyedropper sample dispatch.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_add_area_click(evt.x, evt.y) =>
+            {
+                return;
+            }
             // Painter stroke down (SHELL-only, T1.5): Primary Down over the
             // sprite footprint opens a stroke + carimba the first stamp.
             // Consumes the event so it doesn't pick/move the sprite.

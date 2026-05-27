@@ -215,20 +215,25 @@ impl crate::App {
         // (The proper fixed-step substep integration lands with the M10
         // gameplay sim; this is the M5 demo's stop-gap.)
         let dt = (wall_dt as f32).min(1.0 / 30.0);
-        // While the Background-Removal tool is active on a selection,
-        // suppress that sprite from the sprite pass — its live preview
-        // overlay (drawn later, on top of the Vello scene) stands in for
-        // it, so the removed (transparent) regions reveal the canvas
-        // backdrop rather than the untouched original underneath.
-        let bgremoval_preview_entity: Option<u64> = if tools
-            .active()
-            .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
-            .unwrap_or(false)
-        {
-            hero_screen.as_ref().and_then(|h| h.gizmo.selection)
-        } else {
-            None
-        };
+        // Lens F (2026-05-26): the Background-Removal live preview no
+        // longer suppresses the sprite + paints a Vello overlay on
+        // top; instead it injects a synthetic `PreviewOverride` that
+        // swaps the entity's `RenderInstance.texture_id` for a
+        // transient `IndividualTextureStore` slot owning the preview
+        // pixels. Same `Rgba8UnormSrgb` + sprite shader + premul
+        // blend as Apply → byte-for-byte parity. The GPU slot is
+        // populated by `bgremoval_preview::dispatch` LATER in the
+        // frame, so reading `self.bgremoval_preview_gpu` here picks
+        // up last frame's upload (1-frame lag is invisible — the
+        // preview is a continuous animation).
+        let bgremoval_preview_override: Option<sim_extract::PreviewOverride> = self
+            .bgremoval_preview_gpu
+            .map(|gpu| sim_extract::PreviewOverride {
+                entity_bits: gpu.entity_bits,
+                texture_id: gpu.texture_id,
+                // Byte-space premul upload + Apply uses the same flag.
+                premultiplied: true,
+            });
         // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the
         // canvas this frame — cook grid→transform→clone and publish its
         // RenderInstances instead of the M5 demo sim. Debug-only; off by default.
@@ -242,7 +247,7 @@ impl crate::App {
                 renderer,
                 prop_state,
                 worklist,
-                bgremoval_preview_entity,
+                bgremoval_preview_override,
             );
         }
 
@@ -713,6 +718,7 @@ impl crate::App {
                 vector_scene,
                 &mut self.last_bgremoval_pushed_entity,
                 &mut self.bgremoval_preview,
+                &mut self.bgremoval_preview_gpu,
             );
             // Color Equalization panel ⟷ tool bridge: drives panel
             // visibility, refreshes the tool's source bitmap when the

@@ -381,6 +381,17 @@ pub(crate) struct App {
     /// own texture is untouched; the overlay just paints on top, so
     /// Apply (which re-reads the original source) and undo stay correct.
     pub(crate) bgremoval_preview: Option<BgremovalPreview>,
+    /// Transient GPU texture backing the on-canvas BgRemoval preview
+    /// (Lens F, 2026-05-26). The bridge uploads the premultiplied
+    /// preview RGBA into an `IndividualTextureStore` slot once per
+    /// `Arc` swap; `sim_extract` injects a synthetic `RenderInstance`
+    /// pointing at this texture in place of the suppressed source
+    /// sprite, so the live preview goes through the SAME sprite
+    /// pipeline (Rgba8UnormSrgb + sprite.wgsl + premul blend) as Apply
+    /// — eliminating the gamma/blend-space halo that the Vello overlay
+    /// path introduced. `None` when the preview cache is `None` (tool
+    /// inactive, no source, or post-Apply).
+    pub(crate) bgremoval_preview_gpu: Option<BgremovalPreviewGpu>,
     /// Last entity whose source RGBA was pushed into the active
     /// `PainterTool`. Reset to `None` on tool deactivate so the next
     /// activation re-pushes against the current selection. Same shape
@@ -475,6 +486,36 @@ pub(crate) struct RubberBandState {
 /// `UpscalePreview` still resolve; new code should prefer
 /// `ph2d_tool_runtime::PreviewCache` directly via the `drive_*` helpers.
 pub(crate) type BgremovalPreview = ph2d_tool_runtime::PreviewCache;
+
+/// GPU-side companion to [`BgremovalPreview`] (Lens F, 2026-05-26).
+///
+/// Owns the transient `IndividualTextureStore` slot that backs the
+/// on-canvas live preview. The CPU-side `BgremovalPreview` cache is
+/// the source of truth (Arc-shared with the tool's `current_preview`);
+/// the bridge replays it onto this texture whenever the `Arc` buffer
+/// is swapped. `arc_ptr` is `Arc::as_ptr` of the last uploaded buffer
+/// — comparing it against the live cache's pointer detects a fresh
+/// preview without hashing pixels.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct BgremovalPreviewGpu {
+    /// Renderer-assigned id (the slot in `IndividualTextureStore`).
+    pub(crate) texture_id: u32,
+    /// Source-pixel width of the texture currently uploaded. Used to
+    /// detect resize → `replace_pixels` will rebuild the entry.
+    pub(crate) width: u32,
+    /// Source-pixel height of the texture currently uploaded.
+    pub(crate) height: u32,
+    /// `Arc::as_ptr` of the `rgba` buffer most recently uploaded,
+    /// stored as `usize` so the struct stays `Send + Sync` without an
+    /// unsafe impl — it's an identity token, never dereferenced. A
+    /// different value in the live cache means the tool produced a
+    /// new preview frame (or selection drifted) → re-upload.
+    pub(crate) arc_token: usize,
+    /// Entity whose source produced the uploaded pixels. Used as a
+    /// belt-and-suspenders check alongside `arc_token` so a
+    /// coincidental token reuse can't paint the wrong sprite.
+    pub(crate) entity_bits: u64,
+}
 
 /// Cached on-canvas live preview bitmap for the Painter tool (W1 T1.5).
 /// Same generic `ph2d_tool_runtime::PreviewCache` shape as BgR / CEQ /

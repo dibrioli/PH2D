@@ -16,6 +16,26 @@ use ph2d_ecs::{
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
+/// Per-frame override that swaps a sprite entity's texture binding
+/// for a transient one — used by the BG-Removal live preview (Lens F,
+/// 2026-05-26) so the preview pixels render through the SAME sprite
+/// pipeline (`Rgba8UnormSrgb` + `sprite.wgsl` + premul blend) as the
+/// Apply bake. Replaces the previous Vello-overlay path, which
+/// diverged from Apply in gamma + blend space and produced a visible
+/// halo at edge pixels.
+///
+/// When the extract pass emits a `RenderInstance` for `entity_bits`,
+/// it substitutes `texture_id` + `premultiplied` while leaving every
+/// other instance field (world position, size, rotation, anchor,
+/// tint, z_order) intact — so the override paints the SAME quad the
+/// source sprite would have, but sampling from the preview texture.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct PreviewOverride {
+    pub entity_bits: u64,
+    pub texture_id: u32,
+    pub premultiplied: bool,
+}
+
 /// Sim tick → extract pass. Caller provides the destructured
 /// `AppGfx` refs.
 pub(super) fn run(
@@ -25,13 +45,11 @@ pub(super) fn run(
     renderer: &SpriteRenderer,
     prop_state: &mut TransformPropagationState,
     worklist: &mut WorklistBuf,
-    // Entity (`to_bits`) to suppress from the sprite emit this frame.
-    // Used by the Background-Removal live preview: while the tool shows
-    // its on-canvas preview overlay, the *original* sprite must not
-    // render underneath, otherwise the preview's transparent (removed)
-    // regions would reveal the untouched original instead of the canvas
-    // backdrop. `None` = render everything.
-    exclude_entity: Option<u64>,
+    // Tool live-preview override: when `Some`, the entity's
+    // `RenderInstance` is emitted with `texture_id` + `premultiplied`
+    // replaced. `None` = emit every sprite from its own `Sprite`
+    // source.
+    preview_override: Option<PreviewOverride>,
 ) {
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
@@ -86,9 +104,9 @@ pub(super) fn run(
                 let hidden = sim
                     .get::<ph2d_ecs::Visibility>(sim_entity)
                     .is_some_and(|v| v.hidden);
-                let suppressed = exclude_entity == Some(sim_entity.to_bits());
+                let override_for_entity =
+                    preview_override.filter(|o| o.entity_bits == sim_entity.to_bits());
                 if !hidden
-                    && !suppressed
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
                 {
                     let p = gt.translation();
@@ -127,6 +145,20 @@ pub(super) fn run(
                             ([0.0, 0.0, 1.0, 1.0], texture_id)
                         }
                     };
+                    // Lens F (2026-05-26): if a tool's live preview
+                    // claims this entity, substitute the texture binding
+                    // for the preview's transient Individual texture +
+                    // its premultiplied flag. UV stays the full unit
+                    // rect (preview textures are atlas-free); every
+                    // other instance field (transform, size, anchor,
+                    // tint, z) is identical so the override paints the
+                    // SAME quad the source sprite would have.
+                    let (atlas_uv, texture_id, premultiplied_flag) =
+                        if let Some(ov) = override_for_entity {
+                            ([0.0, 0.0, 1.0, 1.0], ov.texture_id, ov.premultiplied)
+                        } else {
+                            (atlas_uv, texture_id, spr.premultiplied)
+                        };
                     let z_order = z_counter;
                     z_counter += 1;
                     builder.insert(RenderInstance {
@@ -139,7 +171,7 @@ pub(super) fn run(
                         // Flag the BG-Removal-baked premultiplied texture
                         // so the fragment skips its post-sample premultiply
                         // (fringe fix). Straight for every other sprite.
-                        premultiplied: if spr.premultiplied { 1.0 } else { 0.0 },
+                        premultiplied: if premultiplied_flag { 1.0 } else { 0.0 },
                         // Pivot offset: scale the intrinsic-local anchor
                         // by the same `GlobalTransform` scale as `size`,
                         // so the shader's `anchor + quad*size` stays in

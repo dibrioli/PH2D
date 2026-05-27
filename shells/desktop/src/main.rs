@@ -152,6 +152,7 @@ impl App {
             last_upscale_pushed_entity: None,
             upscale_preview: None,
             bgremoval_preview: None,
+            bgremoval_preview_gpu: None,
             last_painter_pushed_entity: None,
             painter_preview: None,
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first

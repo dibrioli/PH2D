@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-imageio-psd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-psd` — Adobe Photoshop Document (`.psd`) **import**
+# (W2.T4). Write is deferred per ADR-0054 W2.5 escape hatch — PSD
+# binary encoding compatible with Photoshop CC real is ~600 LOC
+# greenfield + golden-test cycles, not justified mid-W2 batch.
+# Lands W3 as `ph2d-imageio-psd-write` (or in-place when prioritised).
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+psd          = { version = "0.3" }

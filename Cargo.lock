@@ -4159,6 +4159,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-imageio-psd"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+ "ph2d-imageio",
+ "psd",
+]
+
+[[package]]
 name = "ph2d-imageio-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -4169,6 +4178,7 @@ dependencies = [
  "ph2d-imageio-ora",
  "ph2d-imageio-ph2d-native",
  "ph2d-imageio-png",
+ "ph2d-imageio-psd",
  "ph2d-imageio-sync",
  "ph2d-imageio-tiff",
  "ph2d-imageio-webp",
@@ -4970,6 +4980,15 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
+]
+
+[[package]]
+name = "psd"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a25f9b8cfffd65d911baf31a033239f7a0facb755faa2481575b70db5dc9195"
+dependencies = [
+ "thiserror 1.0.69",
 ]
 
 [[package]]

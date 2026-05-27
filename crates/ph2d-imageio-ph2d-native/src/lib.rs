@@ -145,8 +145,9 @@ impl ImageImporter for Ph2dNativeImporter {
                 "`.ph2d` header version=0 (uninitialized or zeroed file)".into(),
             )),
             1 => {
-                let v1: Ph2dNativeV1 = postcard::from_bytes(payload)
-                    .map_err(|e| Error::Decode(format!("postcard decode failed: {e}")))?;
+                let v1: Ph2dNativeV1 = postcard::from_bytes(payload).map_err(|e| {
+                    Error::from_decoder_message(format!("postcard decode failed: {e}"))
+                })?;
                 if v1.version != 1 {
                     return Err(Error::Decode(format!(
                         "header version=1 but payload claims version={}",

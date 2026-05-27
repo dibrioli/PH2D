@@ -10,7 +10,14 @@ use std::fmt;
 
 /// Error raised by [`crate::ImageImporter::import`] or
 /// [`crate::ImageExporter::export`].
+///
+/// `#[non_exhaustive]` (audit-7 Lens I HIGH I-4): variants in the cap
+/// FROZEN budget may not all be wired up yet (`IccCorrupted`,
+/// `Cancelled`, `Custom` currently emitted by zero format crates).
+/// Future-proofing the match-exhaustiveness lets us wire them without
+/// a breaking change to downstream callers.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// Bytes are syntactically corrupted or violate the format spec.
     /// Inner string is the importer's own diagnostic — propagated as-is
@@ -109,6 +116,36 @@ impl fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+impl Error {
+    /// Audit-7 Lens I HIGH I-3 (2026-05-26): map an upstream decoder
+    /// message to either `Error::Truncated` (if it looks EOF-shaped)
+    /// or `Error::Decode(msg)` otherwise. Centralized so every format
+    /// crate produces the same semantics — callers that distinguish
+    /// "user cancelled download" from "file corrupted" via
+    /// `match err { Truncated => retry; Decode => fail }` don't need
+    /// to learn per-format quirks.
+    ///
+    /// EOF signature set is empirical: `image-rs`, `png`, `tiff`,
+    /// `psd`, `zip`, `postcard` all emit one of these phrases when
+    /// they hit an incomplete stream.
+    #[must_use]
+    pub fn from_decoder_message(msg: impl Into<String>) -> Self {
+        let msg = msg.into();
+        let lower = msg.to_lowercase();
+        if lower.contains("unexpected end of file")
+            || lower.contains("unexpected eof")
+            || lower.contains("eof while parsing")
+            || lower.contains("end of stream")
+            || lower.contains("eof reached")
+            || lower.contains("not enough data")
+        {
+            Self::Truncated
+        } else {
+            Self::Decode(msg)
+        }
+    }
+}
 
 // Audit B-M1 (2026-05-26): the previously-shipped `From<std::io::Error>`
 // impl was unused — every format crate calls

@@ -320,6 +320,43 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0** auditoria 5-lente pré-W3 | ✅ | `35cc149` | 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW — remediação inline vide §5.5 |
 | **W3.T0.1** nova auditoria pós-W3.T0 | ✅ | `fd34240` | 1 CRITICAL (imageio FORA da CI matrix — gate de §2.6.1 era cosmético) + 7 HIGH (ADR HR-9→HR-5 nomenclatura + tolerâncias TIFF mascarando off-by-one + clippy convenção) + 11 MEDIUM + 13 LOW — vide §5.6 |
 
+### 5.7 Remediação pós-auditoria W3.T0.2 (2026-05-26)
+
+Auditoria adversarial 5-lente sobre commits `fd34240` + `1f94c1d` (W3.T0.1 remediation). Lentes rotacionadas: CI wire-up sanity (F) · fuzz/malformed-input (G) · spec compliance (H) · API ergonomics cross-crate (I) · perf/memory budget (J). **Total 7 CRITICAL + 11 HIGH + 13 MEDIUM + 15 LOW**. Fechados nesta sessão:
+
+**CRITICAL (apenas as 6 minhas; 2 são de outras sessões, flaggadas pro Enio):**
+- **F-B1 fmt**: `crates/ph2d-imageio-tiff/src/lib.rs:801` (chain `.write_image().expect()`). Fix: `cargo fmt -p ph2d-imageio-tiff`.
+- **F-B2 clippy**: `ph2d-imageio-ph2d-native/src/schema.rs:200-201` doc_lazy_continuation; `ph2d-imageio-gif/src/lib.rs:99` manual_checked_division. Fix: reescrita do parágrafo + `numer.checked_div(denom).unwrap_or(0)`.
+- **F-B3 typos**: 10 erros (`numer` × 7 método upstream `image-rs`, `PN` × 2 substring de "PNGs", `foto` × 1). Fix: `.typos.toml` allowlist (`numer`, `foto` extend-words; `PNGs` extend-ignore-identifiers-re).
+- **J-1 APNG OOM**: `Vec::with_capacity(act.num_frames as usize)` confiava em `u32::MAX` → 96 GiB. Fix: `MAX_FRAMES = 1024` cap simétrico ao GIF. **Bonus G-F3**: `.pop().expect("len==1")` → `.into_iter().next().ok_or_else(...)?` survive refactor.
+- **J-2 TIFF OOM**: `while decoder.more_images()` sem cap. Fix: `MAX_PAGES = 256` no loop.
+- **J-3 .ph2d-native OOM**: payload cap 4 GiB ok mas nested `ImageBuffer{width, height}` sem walker. Fix: `validate_dimensions_v1` em todos os sites (`Flat`, `FlatHdr`, `Layered.canvas`, `Layered.layers[].pixels/mask`, `Animated.frames`).
+
+**HIGH (6 minhas; outras 5 absorvidas ou deferidas):**
+- **H-1 ORA spec**: `<stack>` root sem `composite-op`/`opacity`/`visibility`. Krita strict reject. Fix: emit `<stack composite-op="svg:src-over" opacity="1" visibility="visible">`.
+- **I-1/I-2 opts dead window**: 9/9 crates ignoram TODOS os campos de `ImportOpts`/`ExportOpts`. Fix MÍNIMO: docstrings dos 2 structs declarando explicitamente "W2 honor status: NOT honored" + entry-points concretos por campo. Wiring real fica W2.0.1+ (ICC) e W3+ (HDR tone_map / metadata) — sem disso o caller fica em foot-gun silencioso. **NÃO** mudei call-sites (manteria contract estável mas exigiria match de variantes erradas em cada crate).
+- **I-3 EOF→Truncated**: heurística estava em 5 crates mas não em PSD/ORA/APNG/native. Fix: helper `Error::from_decoder_message()` no contract centraliza 6 sinais EOF (`unexpected end of file`, `eof while parsing`, `end of stream`, etc.); adotado em APNG (`read_info`, `next_frame`), `.ph2d-native` (postcard), PSD (`from_bytes`).
+- **I-4 dead variants**: `Error::IccCorrupted`/`Cancelled`/`Custom` mortas. Fix: `#[non_exhaustive]` em `Error` e `BlendMode` (que tem `Custom(u16)` admitindo crescimento) — variants no cap FROZEN mas o enum continua future-proof.
+- **G-F2 PSD panic**: `psd 0.3.5` unmaintained, panics em malformed input. Fix: `std::panic::catch_unwind` em volta de `psd::Psd::from_bytes` traduz panic em `Error::Decode("PSD parser panicked")`. Process não morre mais.
+
+**MEDIUM (abosrvidas ou deferidas com entry-points):**
+- J-4 (ORA encode clones) / J-5 (TIFF rgba8 per page) — perf optimization deferida até real-size benchmark mostrar fricção. Entry: `ora/src/lib.rs::write_layers_collect_pngs` e `tiff/src/lib.rs::export` loop.
+- H-3 PSD blend silent loss (Dissolve/DarkerColor) — exige nova API surface `LayerStack.import_warnings: Vec<String>` (cap FROZEN bloqueia). Deferido até W3.0.4 com gate explícito.
+- H-4 ORA mergedimage placeholder — W3 quando Painter compositor callable.
+- H-5 PNG sem sRGB/gAMA chunks — W2.0.1 ICC pipeline.
+- H-6 PSD signature 6 bytes — false-positive Strong em lixo, mas `psd::from_bytes` valida full sig; risco baixo. Deferido com nota.
+- I-5/6/7/8 (collapse policy doc, LayerKind Pixel-only, PsdExporter asymmetry) — doc explícito em `decoded.rs` + `ExportFormat::Psd` rustdoc, NÃO toquei nesta passagem (cap mudança bloqueia, doc cabe em audit follow-up).
+- G-F1 workspace glob (ph2d-painter-brush untracked) — VERIFICADO: tem Cargo.toml. NÃO quebra build.
+- G-F4 ORA zip-bomb / G-F5 TIFF pages — J-2 já cobriu pages; ORA zip-bomb fica MEDIUM defer (`MAX_ORA_ENTRIES` ~256 + `Read::take` cap por entry).
+- E-2 HR-1/HR-5 enforcement gate files do workspace — gap pre-existing, não escopo.
+
+**LOW**: absorvidos (nomenclatura, helpers cosméticos, fluent_key cross-crate).
+
+**Não-meus** (flaggados pro Enio):
+- **F-B4**: `shells/desktop/src/input_dispatch/protect_brush.rs:320,321` + `render_loop/bgremoval_preview.rs:201` chamam métodos inexistentes (`set_remove_painting`/`set_remove_erasing`/`is_remove_armed`). Compiler sugere `set_protect_painting`/`set_protect_erasing`/`is_eyedropper_armed`. **11 erros em `ph2d-host-desktop`** — bloqueia `cargo check --workspace --locked` (CI msrv).
+- **F-M5**: `Cargo.lock` tem `+ dhat` em `ph2d-painter-brush` unstaged. Quebra `cargo --locked`.
+- **Outros typos** em `crates/ph2d-painter-brush/`, `crates/ph2d-asset-ktx2/`, `shells/desktop/` (consome/ortogonal/construtor/mis) — sessão painter.
+
 ### 5.6 Remediação pós-auditoria W3.T0.1 (2026-05-26)
 
 Auditoria adversarial 5-lente sobre commits `35cc149` + `a5edbf1` (W3.T0 remediation) entregou 1 CRITICAL + 7 HIGH + 11 MEDIUM + 13 LOW. Lentes rotacionadas (per [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)): regressão da remediação · CI matrix simulation · rigor de assertions · consistência docs · HR coverage pós-demote. Fechados nesta sessão:

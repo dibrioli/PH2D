@@ -96,7 +96,7 @@ fn frame_to_anim_frame(frame: &image::Frame) -> AnimFrame {
     let (numer, denom) = frame.delay().numer_denom_ms();
     // Delay numer/denom: protect against zero denom (image 0.25 returns
     // (numer, 1) for typical GIF delays; defensive saturation here).
-    let delay_ms = if denom == 0 { 0 } else { numer / denom };
+    let delay_ms = numer.checked_div(denom).unwrap_or(0);
     AnimFrame {
         image,
         delay_ms,

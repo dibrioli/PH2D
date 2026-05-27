@@ -461,7 +461,13 @@ fn write_stack_xml(stack: &LayerStack) -> Result<String, Error> {
         stack.canvas_width, stack.canvas_height, ORA_SPEC_VERSION
     ));
     s.push('\n');
-    s.push_str("  <stack>");
+    // Audit-7 Lens H HIGH H1: ORA spec 0.0.5 §3.1 lists
+    // `composite-op`, `opacity`, `visibility` as valid `<stack>`
+    // attributes. Krita strict mode rejects `<stack>` without them.
+    // Emit the spec defaults — same values group-stacks use.
+    s.push_str(
+        r#"  <stack composite-op="svg:src-over" opacity="1" visibility="visible">"#,
+    );
     s.push('\n');
     let mut next_idx = 0_usize;
     // ORA paint order is TOP-FIRST; reverse our bottom-up list.
@@ -933,7 +939,9 @@ mod tests {
             .expect("ORA golden export");
         let hash = blake3::hash(&bytes);
         const GOLDEN_BLAKE3: &str =
-            "98753d06b9b4c700270f3995c39073e3fc71c5c5f3ce1370ed8fac015b8352b5";
+            // Re-captured 2026-05-26 after H1 fix (added composite-op/
+            // opacity/visibility attrs to root <stack> — spec compliance).
+            "16a0899379c45a3d9b4bf7c18c39f6ccede6155261ba70ed813d0dccc3195520";
         assert_eq!(
             hash.to_hex().to_string(),
             GOLDEN_BLAKE3,

@@ -143,9 +143,20 @@ impl ImageImporter for TiffImporter {
         // Decode first page.
         let first = decode_page(&mut decoder)?;
 
-        // Walk additional pages, if any.
+        // Walk additional pages, if any. Audit-7 Lens J CRITICAL J-2:
+        // cap page count — hostile TIFF with 10000 IFDs chained would
+        // attempt 10000 × MAX_RASTER_DIMENSION² alloc. Cap = 256 covers
+        // any plausible multi-page real-world TIFF (catalogue scans
+        // rarely exceed 100 pages); higher counts should split files.
+        const MAX_PAGES: usize = 256;
         let mut pages: Vec<ImageBuffer<SrgbRgba>> = vec![first];
         while decoder.more_images() {
+            if pages.len() >= MAX_PAGES {
+                return Err(Error::Decode(format!(
+                    "TIFF has more than MAX_PAGES={MAX_PAGES} IFDs; \
+                     refuse to walk further (potential DoS vector)"
+                )));
+            }
             decoder
                 .next_image()
                 .map_err(|e| Error::Decode(format!("TIFF next page: {e}")))?;
@@ -801,7 +812,8 @@ mod tests {
             let mut bytes: Vec<u8> = Vec::new();
             {
                 let mut enc = TiffEncoder::new(Cursor::new(&mut bytes)).expect("encoder init");
-                enc.write_image::<RGBA16>(1, 1, &rgba).expect("write RGBA16");
+                enc.write_image::<RGBA16>(1, 1, &rgba)
+                    .expect("write RGBA16");
             }
             bytes
         }

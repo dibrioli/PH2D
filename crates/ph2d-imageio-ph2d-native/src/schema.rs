@@ -15,7 +15,8 @@
 use ph2d_color::{LinearRgba, SrgbRgba};
 use ph2d_imageio::{
     AnimBlendOp, AnimFrame, BlendMode, ColorProfile, DecodedImage, DisposeOp, Error, ImageBuffer,
-    Layer, LayerEffect, LayerEffectKind, LayerKind, LayerStack, MAX_ICC_PROFILE_LEN, VectorDoc,
+    Layer, LayerEffect, LayerEffectKind, LayerKind, LayerStack, MAX_ICC_PROFILE_LEN,
+    MAX_RASTER_DIMENSION, VectorDoc,
 };
 use serde::{Deserialize, Serialize};
 
@@ -194,18 +195,25 @@ pub struct VectorDocV1 {
 ///
 /// Audit E-1 CRITICAL (2026-05-26): without this walk, a Painter-v2
 /// `.ph2d` written by a build that ships `LayerStack { version: 2, … }`
-/// or `Layer { version: 2, … }` would deserialize fine through `serde`
-/// + `postcard` (those are dumb integers in v1's shape) and **lose
-/// every v2-only field silently** as `From<LayerV1>` copies the bare
-/// `int` without validation. This is exactly the data-loss class
-/// HR-14 was written to prevent.
+/// or `Layer { version: 2, … }` would deserialize fine through serde
+/// and postcard (those are dumb integers in v1's shape) and lose every
+/// v2-only field silently as `From<LayerV1>` copies the bare integer
+/// without validation. This is exactly the data-loss class HR-14 was
+/// written to prevent.
 pub fn validate_v1_inner_versions(content: &Ph2dContentV1) -> Result<(), Error> {
     match content {
-        Ph2dContentV1::Flat(b) => validate_color_profile_v1(&b.color_profile),
-        Ph2dContentV1::FlatHdr(b) => validate_color_profile_v1(&b.color_profile),
+        Ph2dContentV1::Flat(b) => {
+            validate_dimensions_v1(b.width, b.height)?;
+            validate_color_profile_v1(&b.color_profile)
+        }
+        Ph2dContentV1::FlatHdr(b) => {
+            validate_dimensions_v1(b.width, b.height)?;
+            validate_color_profile_v1(&b.color_profile)
+        }
         Ph2dContentV1::Layered(stack) => validate_layer_stack_v1(stack),
         Ph2dContentV1::Animated(frames) => {
             for f in frames {
+                validate_dimensions_v1(f.image.width, f.image.height)?;
                 validate_color_profile_v1(&f.image.color_profile)?;
             }
             Ok(())
@@ -221,6 +229,7 @@ fn validate_layer_stack_v1(s: &LayerStackV1) -> Result<(), Error> {
             s.version
         )));
     }
+    validate_dimensions_v1(s.canvas_width, s.canvas_height)?;
     validate_color_profile_v1(&s.color_profile)?;
     for l in &s.layers {
         validate_layer_v1(l)?;
@@ -239,13 +248,35 @@ fn validate_layer_v1(l: &LayerV1) -> Result<(), Error> {
         validate_color_profile_v1(cp)?;
     }
     if let Some(b) = &l.pixels {
+        validate_dimensions_v1(b.width, b.height)?;
         validate_color_profile_v1(&b.color_profile)?;
+    }
+    if let Some(m) = &l.mask {
+        validate_dimensions_v1(m.width, m.height)?;
     }
     // Recurse into nested Group children.
     if let LayerKindV1::Group { children } = &l.kind {
         for child in children {
             validate_layer_v1(child)?;
         }
+    }
+    Ok(())
+}
+
+/// Audit-7 Lens J CRITICAL J-3 (2026-05-26): post-deserialize walker
+/// that enforces [`MAX_RASTER_DIMENSION`] on every nested
+/// `ImageBuffer*` in the tree. The pre-existing `MAX_PH2D_PAYLOAD_LEN`
+/// cap (4 GiB) bounds the raw bytes, but a postcard payload can
+/// legitimately fit under 4 GiB while declaring multiple nested
+/// `width: 65535, height: 65535` raster fields that, when reified
+/// into `Vec<SrgbRgba>`, blow past the per-buffer budget. This walker
+/// catches that class before the `From<ImageBufferSrgbV1>` reify
+/// allocates anything.
+fn validate_dimensions_v1(width: u32, height: u32) -> Result<(), Error> {
+    if width as u64 > MAX_RASTER_DIMENSION as u64
+        || height as u64 > MAX_RASTER_DIMENSION as u64
+    {
+        return Err(Error::DimensionExceedsLimit);
     }
     Ok(())
 }

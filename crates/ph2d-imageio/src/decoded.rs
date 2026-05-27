@@ -160,6 +160,14 @@ pub enum LayerKind {
 /// set) plus `Custom(u16)` to preserve unknown PSD blend opcodes
 /// byte-exact for round-trip. **Not arch-gated** per ADR-0054 §2.1
 /// non-capped clarification — data model, not trait surface.
+///
+/// **NOT `#[non_exhaustive]`** (audit-7 Lens I HIGH I-4 reverse,
+/// 2026-05-26): the `Custom(u16)` variant already serves the
+/// future-proofing role — any new PSD/ORA blend opcode goes through
+/// `Custom` byte-exact preserving downstream caller match
+/// exhaustiveness. Adding `#[non_exhaustive]` on top would force
+/// every internal `From<&BlendMode>` conversion to carry a wildcard
+/// arm without semantic value, since `Custom` is the wildcard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BlendMode {
     /// Standard `over` Porter-Duff composite. Default.

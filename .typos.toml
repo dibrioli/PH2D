@@ -10,6 +10,9 @@ extend-ignore-identifiers-re = [
     "luau",
     "mlua",
     "Luau",
+    # PNG plural — typos-cli splits "PNGs" into "PN" + "Gs" and
+    # wants "ON" in place of "PN". Override via regex.
+    "PNGs",
 ]
 
 [default.extend-words]
@@ -73,6 +76,14 @@ lod = "lod"
 # intentional — full `edge_threshold` is the input param, the suffix
 # `_thr` distinguishes the post-scale value used in inner-loop comparisons.
 thr = "thr"
+# `numer` = `numerator` shorthand used by upstream `image-rs`/`gif` crate
+# in `frame.delay().numer_denom_ms()`. We can't rename — typos-cli
+# wants "number" but we mirror their public API name.
+numer = "numer"
+# `foto` = pt-BR for "photo"; appears in ColorProfile comment.
+foto = "foto"
+# `PNGs` plural of PNG (typos-cli flags "PN" inside "PNGs" as ON).
+PNGs = "PNGs"
 
 [files]
 extend-exclude = [

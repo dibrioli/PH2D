@@ -145,7 +145,7 @@ impl ImageImporter for ApngImporter {
         decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
         let mut reader = decoder
             .read_info()
-            .map_err(|e| Error::Decode(format!("APNG read_info: {e}")))?;
+            .map_err(|e| Error::from_decoder_message(format!("APNG read_info: {e}")))?;
 
         let info = reader.info();
         let (width, height) = (info.width, info.height);
@@ -169,7 +169,19 @@ impl ImageImporter for ApngImporter {
                 Ok(DecodedImage::Flat(frame.image))
             }
             Some(act) => {
-                // Multi-frame APNG.
+                // Multi-frame APNG. Audit-7 Lens J CRITICAL J-1: cap
+                // num_frames pre-alloc — hostile acTL with `num_frames =
+                // u32::MAX` would attempt ~96 GiB allocation (96B per
+                // AnimFrame × u32::MAX). Cap symmetric to GIF's
+                // MAX_FRAMES = 1024 (sufficient for any real animation;
+                // longer sequences should use video formats).
+                const MAX_FRAMES: u32 = 1024;
+                if act.num_frames > MAX_FRAMES {
+                    return Err(Error::Decode(format!(
+                        "APNG acTL claims {} frames (> MAX_FRAMES={}); refuse to allocate",
+                        act.num_frames, MAX_FRAMES
+                    )));
+                }
                 let mut anim: Vec<AnimFrame> = Vec::with_capacity(act.num_frames as usize);
                 for _ in 0..act.num_frames {
                     let frame = read_one_frame(&mut reader, width, height, post_expand_color)?;
@@ -179,7 +191,15 @@ impl ImageImporter for ApngImporter {
                     return Err(Error::Decode("APNG acTL claims 0 frames".into()));
                 }
                 if anim.len() == 1 {
-                    Ok(DecodedImage::Flat(anim.pop().expect("len==1").image))
+                    // Audit-7 Lens G F3: use `.into_iter().next()` over
+                    // `.pop().expect()` — survives refactor that drops
+                    // the `len == 1` guard above.
+                    Ok(DecodedImage::Flat(
+                        anim.into_iter()
+                            .next()
+                            .ok_or_else(|| Error::Decode("APNG empty after dedup".into()))?
+                            .image,
+                    ))
                 } else {
                     Ok(DecodedImage::Animated(anim))
                 }
@@ -204,7 +224,7 @@ fn read_one_frame(
     let mut buf = vec![0u8; buffer_size];
     let output_info = reader
         .next_frame(&mut buf)
-        .map_err(|e| Error::Decode(format!("APNG next_frame: {e}")))?;
+        .map_err(|e| Error::from_decoder_message(format!("APNG next_frame: {e}")))?;
 
     // Per-frame metadata via fcTL (animation control sub-chunks).
     let info = reader.info();

@@ -60,6 +60,17 @@ pub enum MagicMatch {
 /// [`ColorProfileStrictness::Lenient`] in caller code to skip silently
 /// or use [`ColorProfileStrictness::Strict`] to receive
 /// [`crate::Error::Unsupported`] instead.
+///
+/// **W2 honor status (audit-7 Lens I HIGH I-1, 2026-05-26)**: all 9
+/// format crates currently IGNORE every field of `ImportOpts`. The
+/// `Strict` color-profile branch promised above is wired in ZERO
+/// importers — calls with `target_color_profile: Some(DisplayP3),
+/// color_profile_strictness: Strict` get `Ok(Flat(srgb_buffer))`
+/// silently, not `Error::Unsupported`. Wiring deferred until W2.0.1
+/// ICC pipeline (`moxcms` 0.8.1) provides the actual conversion; per
+/// HR-1 strict-honor is meaningless without a conversion target.
+/// Entry-point to wire: each crate's `fn import` body, audit-comment
+/// at the top of the function calling `opts.color_profile_strictness`.
 #[derive(Debug, Clone, Default)]
 pub struct ImportOpts {
     /// If `Some`, convert the decoded buffer's color profile to this on
@@ -96,6 +107,19 @@ pub enum ColorProfileStrictness {
 
 /// Caller specification for [`crate::ImageExporter::export`].
 /// **Cap FROZEN at 6 fields** by arch-gate.
+///
+/// **W2 honor status (audit-7 Lens I HIGH I-2, 2026-05-26)**: only
+/// `format` (dispatch) and `quality` (JPEG-only) are read by exporters
+/// today. `color_profile`, `preserve_layers`, `tone_map`, `metadata`
+/// are accepted but NOT honored — calls with `tone_map: Reinhard`
+/// against an HDR source still receive `Error::HdrUnsupported` as if
+/// it were `ToneMap::None`. Wiring deferred:
+/// - `color_profile` → W2.0.1 ICC pipeline (`moxcms` 0.8.1).
+/// - `preserve_layers` → W2+ flatten path on PNG/JPEG (layer-bearing
+///   formats already preserve by default).
+/// - `tone_map` → W3.T2 EXR + W3.T3 HDR-Radiance (when first HDR
+///   importer ships, every LDR exporter wires Reinhard/ACES).
+/// - `metadata` → W3+ EXIF/XMP pipeline.
 #[derive(Debug, Clone)]
 pub struct ExportOpts {
     /// Format identifier. Dispatched against

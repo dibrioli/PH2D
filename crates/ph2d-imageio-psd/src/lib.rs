@@ -127,8 +127,18 @@ impl ImageImporter for PsdImporter {
         if (src.len() as u64) > MAX_PSD_INPUT_BYTES {
             return Err(Error::OutOfMemory);
         }
-        let parsed =
-            psd::Psd::from_bytes(src).map_err(|e| Error::Decode(format!("PSD parse: {e}")))?;
+        // Audit-7 Lens G HIGH G-F2 (2026-05-26): `psd` 0.3.5 is
+        // unmaintained (last release 2020) and has a history of
+        // panicking on malformed input (channel data RLE truncated
+        // mid-stream, etc.). Since our source is `&[u8]` from
+        // arbitrary user input (drag-and-drop), isolate the
+        // third-party parser with `catch_unwind` so a hostile PSD
+        // returns `Error::Decode` instead of crashing the process.
+        let parsed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            psd::Psd::from_bytes(src)
+        }))
+        .map_err(|_| Error::Decode("PSD parser panicked on malformed input".into()))?
+        .map_err(|e| Error::from_decoder_message(format!("PSD parse: {e}")))?;
 
         let canvas_width = parsed.width();
         let canvas_height = parsed.height();

@@ -74,6 +74,17 @@ pub enum PipelineError {
         actual: usize,
         expected: usize,
     },
+    /// Audit T1.6 R9 T1-C1 (HANDOFF_bgremoval_audit_carryovers §2.1):
+    /// `w × h × 4` (rgba) or `w × h × 3` (color guide) overflows
+    /// `usize`. PH2D ships 64-bit so this requires absurd dimensions
+    /// (~`u32::MAX` on each axis — `n * 4 ≈ 2^66 > 2^64`), but the
+    /// variant exists for defense-in-depth on a hypothetical 32-bit
+    /// port and to surface a clean error before `scratch::ensure`
+    /// would panic inside `Vec::resize` (OOM) or wrap silently. The
+    /// caller surfaces this the same way as `BufferShape` — clear
+    /// the output buffer and let the next preview tick retry with
+    /// sane dimensions.
+    DimensionsTooLarge { w: u32, h: u32 },
 }
 
 impl std::fmt::Display for PipelineError {
@@ -86,6 +97,10 @@ impl std::fmt::Display for PipelineError {
             } => write!(
                 f,
                 "bgremoval pipeline: {which} buffer length mismatch (was {actual}, expected {expected})"
+            ),
+            PipelineError::DimensionsTooLarge { w, h } => write!(
+                f,
+                "bgremoval pipeline: dimensions {w}×{h} overflow usize (w*h*4 cannot be addressed)"
             ),
         }
     }
@@ -118,7 +133,21 @@ pub fn try_run_pipeline(
     force_remove: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) -> Result<(), PipelineError> {
-    let expected = (w as usize) * (h as usize) * 4;
+    // Audit T1.6 R9 T1-C1: validate `w * h * 4` fits in `usize` BEFORE
+    // computing the shape-check expected lengths and BEFORE calling
+    // `scratch.ensure` (which calls `Vec::resize(n*4, …)` and would
+    // panic on overflow / OOM rather than return a clean error). On
+    // 64-bit this is theoretical (requires `w, h ≈ u32::MAX`); the
+    // check costs one extra mul + branch and eliminates the panic
+    // surface for hypothetical 32-bit ports and adversarial inputs.
+    // `n*4 >= n*3 >= n`, so validating the largest multiplier covers
+    // every internal buffer sizing inside `scratch::ensure`.
+    let mask_expected = (w as usize)
+        .checked_mul(h as usize)
+        .ok_or(PipelineError::DimensionsTooLarge { w, h })?;
+    let expected = mask_expected
+        .checked_mul(4)
+        .ok_or(PipelineError::DimensionsTooLarge { w, h })?;
     if rgba.len() != expected {
         return Err(PipelineError::BufferShape {
             which: "rgba",
@@ -126,7 +155,6 @@ pub fn try_run_pipeline(
             expected,
         });
     }
-    let mask_expected = (w as usize) * (h as usize);
     if let Some(pm) = protect
         && pm.len() != mask_expected
     {
@@ -312,5 +340,38 @@ mod tests {
         let rgba = vec![0u8; 4 * 4 * 4];
         let res = try_run_pipeline(&rgba, 4, 4, &params, None, None, &mut scratch);
         assert!(res.is_ok(), "well-formed input must return Ok, got {res:?}");
+    }
+
+    /// Audit T1.6 R9 T1-C1: dimensions whose `w * h * 4` overflows
+    /// `usize` route through `Err(DimensionsTooLarge)` instead of
+    /// panicking inside `scratch::ensure`'s `Vec::resize`. The gate
+    /// is the validation BEFORE `scratch.ensure` is called — without
+    /// it, `(u32::MAX as usize) * (u32::MAX as usize) * 4` wraps to
+    /// a small number on 64-bit (`(2^32-1)^2 * 4 mod 2^64`) and
+    /// `Vec::resize` silently allocates a tiny buffer; subsequent
+    /// indexing in chroma::segment then reads OOB.
+    #[test]
+    fn try_run_pipeline_rejects_dimensions_that_overflow_usize() {
+        let params = BgRemovalParams::default();
+        let mut scratch = BgRemovalScratch::default();
+        // `u32::MAX * u32::MAX = 2^64 - 2^33 + 1`, which fits usize on
+        // 64-bit; the overflow is on the next `* 4` step. The empty
+        // rgba slice is intentional — the dimension check must reject
+        // before any shape check or scratch allocation.
+        let res = try_run_pipeline(&[], u32::MAX, u32::MAX, &params, None, None, &mut scratch);
+        match res {
+            Err(PipelineError::DimensionsTooLarge { w, h }) => {
+                assert_eq!(w, u32::MAX);
+                assert_eq!(h, u32::MAX);
+            }
+            other => panic!("expected DimensionsTooLarge err, got {other:?}"),
+        }
+        // Scratch must remain untouched (the buffers were never sized
+        // to the absurd dimensions). delta_e is the canary; if it
+        // resized to anything, the validation came too late.
+        assert!(
+            scratch.delta_e.is_empty(),
+            "scratch.delta_e leaked past the dimension check"
+        );
     }
 }

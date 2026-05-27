@@ -58,6 +58,11 @@ pub const CEQ_SHARPEN_RADIUS_NUM: NodeId = hash_node_id("color_eq.sharpen_radius
 pub const CEQ_DENOISE_STRENGTH: NodeId = hash_node_id("color_eq.denoise_strength");
 pub const CEQ_DENOISE_STRENGTH_NUM: NodeId = hash_node_id("color_eq.denoise_strength.num");
 
+/// Denoise method radio — two segmented buttons under the Denoise slider.
+/// Click maps to [`crate::params::ColorEqualizationUiEdit::SetDenoiseMethod`].
+pub const CEQ_DENOISE_METHOD_BILATERAL: NodeId = hash_node_id("color_eq.denoise_method.bilateral");
+pub const CEQ_DENOISE_METHOD_NLM: NodeId = hash_node_id("color_eq.denoise_method.nlm");
+
 // ── Phase 3 LUT color grading ─────────────────────────────────────
 // Two grouped-select dropdowns (legacy `createGroupedSelect` parity:
 // Cinematic / Atmosphere / Vintage / Stylized header rows separating

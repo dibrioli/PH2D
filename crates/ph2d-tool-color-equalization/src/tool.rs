@@ -187,6 +187,7 @@ impl ColorEqualizationTool {
             sharpen_amount01: sharpen_amount_to_slider(self.params.sharpen_amount),
             sharpen_radius01: sharpen_radius_to_slider(self.params.sharpen_radius),
             denoise_strength01: denoise_strength_to_slider(self.params.denoise_strength),
+            denoise_method: self.params.denoise_method,
             lut_intensity01: lut_intensity_to_slider(self.params.lut_intensity),
             lut_mix01: lut_mix_to_slider(self.params.lut_mix),
             auto_levels: self.params.auto_levels,
@@ -639,6 +640,17 @@ impl Tool for ColorEqualizationTool {
             }
             PanelEvent::Toggle(id, _) if id == ids::CEQ_AUTO_WB => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoWb);
+            }
+            // Denoise method radio — two segmented buttons under Denoise.
+            PanelEvent::Click(id) if id == ids::CEQ_DENOISE_METHOD_BILATERAL => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::SetDenoiseMethod(
+                    crate::params::DenoiseMethod::Bilateral,
+                ));
+            }
+            PanelEvent::Click(id) if id == ids::CEQ_DENOISE_METHOD_NLM => {
+                self.apply_ui_edit(ColorEqualizationUiEdit::SetDenoiseMethod(
+                    crate::params::DenoiseMethod::Nlm,
+                ));
             }
             PanelEvent::Click(id) if id == ids::CEQ_APPLY => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::Apply);

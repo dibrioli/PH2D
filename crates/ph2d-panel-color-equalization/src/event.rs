@@ -84,6 +84,8 @@ const FORWARD_CLICK_IDS: &[NodeId] = &[
     ids::CEQ_AUTO_COLORS,
     ids::CEQ_AUTO_WB,
     ids::CEQ_POSTERIZE_DITHERING,
+    ids::CEQ_DENOISE_METHOD_BILATERAL,
+    ids::CEQ_DENOISE_METHOD_NLM,
 ];
 
 pub(crate) fn apply_event(

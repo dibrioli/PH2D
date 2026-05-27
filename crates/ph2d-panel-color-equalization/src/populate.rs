@@ -35,6 +35,9 @@ pub fn populate(store: &mut WidgetStore) {
         ids::CEQ_AUTO_COLORS,
         ids::CEQ_AUTO_WB,
         ids::CEQ_POSTERIZE_DITHERING,
+        // Denoise method radio (two segmented buttons under Denoise).
+        ids::CEQ_DENOISE_METHOD_BILATERAL,
+        ids::CEQ_DENOISE_METHOD_NLM,
     ] {
         store.register(
             id,

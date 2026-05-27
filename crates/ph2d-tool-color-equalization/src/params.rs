@@ -448,6 +448,10 @@ pub struct ColorEqualizationUiSnapshot {
     pub sharpen_amount01: f32,
     pub sharpen_radius01: f32,
     pub denoise_strength01: f32,
+    /// Selected denoise algorithm — panel paints the segmented radio
+    /// (Bilateral / NLM) under the Denoise slider with `Accent` on the
+    /// active method.
+    pub denoise_method: DenoiseMethod,
     pub lut_intensity01: f32,
     pub lut_mix01: f32,
     pub auto_levels: bool,
@@ -504,6 +508,7 @@ impl Default for ColorEqualizationUiSnapshot {
             sharpen_amount01: sharpen_amount_to_slider(p.sharpen_amount),
             sharpen_radius01: sharpen_radius_to_slider(p.sharpen_radius),
             denoise_strength01: denoise_strength_to_slider(p.denoise_strength),
+            denoise_method: p.denoise_method,
             lut_intensity01: lut_intensity_to_slider(p.lut_intensity),
             lut_mix01: lut_mix_to_slider(p.lut_mix),
             auto_levels: p.auto_levels,
@@ -597,6 +602,10 @@ pub enum ColorEqualizationUiEdit {
     DenoiseStrengthSlider(f32),
     /// Denoise strength chip edited (natural unit, `0..1`).
     DenoiseStrength(f32),
+    /// Denoise method radio picked (Bilateral edge-preserving / NLM
+    /// patch-based). Panel emits this on the segmented buttons under the
+    /// Denoise slider.
+    SetDenoiseMethod(DenoiseMethod),
     /// Auto Levels toggle flipped.
     ToggleAutoLevels,
     /// Auto Contrast toggle flipped.
@@ -726,6 +735,9 @@ pub fn apply_ui_edit(params: &mut ColorEqualizationParams, edit: ColorEqualizati
         }
         ColorEqualizationUiEdit::DenoiseStrength(v) => {
             params.denoise_strength = v.clamp(DENOISE_STRENGTH_MIN, DENOISE_STRENGTH_MAX);
+        }
+        ColorEqualizationUiEdit::SetDenoiseMethod(m) => {
+            params.denoise_method = m;
         }
         ColorEqualizationUiEdit::ToggleAutoLevels => {
             params.auto_levels = !params.auto_levels;

@@ -22,8 +22,8 @@
 use crate::paint_histogram::paint_histogram_overlay;
 use crate::paint_sections::{
     SectionLayout, lut_options_for_slot, paint_apply_cta_section, paint_auto_buttons_section,
-    paint_lut_section, paint_posterize_quantize_section, paint_slider_rows_section,
-    posterize_options, quantize_options,
+    paint_denoise_method_section, paint_lut_section, paint_posterize_quantize_section,
+    paint_slider_rows_section, posterize_options, quantize_options,
 };
 use crate::state::{self, set_last_content_h, set_last_visible_h};
 use crate::{ColorEqualizationPanel, ColorEqualizationPanelState, ids};
@@ -168,6 +168,19 @@ fn paint_body_sections(
 
     // ── 14 slider+chip rows ────────────────────────────────────────
     y = paint_slider_rows_section(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        theme,
+        snapshot,
+        layout,
+        y,
+    );
+    y += layout.row_gap;
+
+    // ── Denoise method radio (Bilateral / NLM) ────────────────────
+    y = paint_denoise_method_section(
         scene,
         text_system,
         store,

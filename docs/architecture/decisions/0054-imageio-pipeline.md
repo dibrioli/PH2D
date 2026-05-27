@@ -324,6 +324,31 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.4** nova auditoria pós-W3.T0.3 | ✅ | `cde3e44` | 1 CRITICAL (ORA `parse_stack` recursion DoS — uncatchable SIGSEGV via deep nesting) + 6 HIGH (caps hoist + GIF L-3 complete + fmt + tests count + 2 arquiteturais flag-pro-Enio) + 6 MEDIUM (zip-slip-via-XML + PsdDeny preventive + markdown drift + ORA layer count + ColorProfile::Srgb docs + deps tracking) + 10 LOW — vide §5.9 |
 | **W3.T0.5** nova auditoria pós-W3.T0.4 | ✅ | `4d7dfdd` | 1 CRITICAL (ORA `opacity` aceita `NaN`/`±Inf` — compositor poison + persiste no `.ph2d-native` save) + 1 HIGH meu (ZIP central directory amplification ~1.5 GiB) + 1 HIGH não-meu (X arquitetural: shells/desktop bypass imageio registry) + 2 MEDIUM (stack.xml `take(N)` cap + APNG test snake_case) — vide §5.10 |
 | **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `84fd496` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
+| **W3.T1.0** wire-up `AssetDb → imageio registry` (fecha X-HIGH-1) | ✅ | `e54d41a` (multi-agent collision) | Bridge: `ph2d-asset/loader.rs::decode_via_imageio_registry` fallback acionado quando `image::guess_format` retorna Other. Estende `is_supported_image_extension` para gif/tiff/tif/ora/apng/psd/ph2d. Multi-layer/multi-frame/HDR/Vector retornam Error::Decode actionable. Tests: 46 ph2d-asset verdes; workspace check 1m 02s. **Colisão**: meus arquivos staged foram absorvidos pelo commit `e54d41a` (sessão KTX2 paralela) — conteúdo correto, atribuição confusa. Vide §5.12. |
+
+### 5.12 Wire-up `AssetDb → imageio registry` — W3.T1.0 (2026-05-27)
+
+Fechamento do **X-HIGH-1** (gap arquitetural flagado por audits 7-12): `AssetDb::insert_image_bytes` decodava via `image` 0.25 direto, bypass do imageio registry. Os 9 format crates auditados ficavam DEAD em prod.
+
+**Wire-up**:
+- `crates/ph2d-asset/Cargo.toml`: +`ph2d-color` +`ph2d-imageio` +`ph2d-imageio-registry-init` deps (verificado zero cycle).
+- `crates/ph2d-asset/src/loader.rs::imageio_registry()`: `OnceLock<ImporterRegistry>` process-global lazy-init via `register_all_importers` codegen.
+- `decode_via_imageio_registry()`: fallback path acionado quando `image::guess_format` retorna `Other`. Dispatch via `MagicHint::Bytes`; converte `DecodedImage::Flat(SrgbRgba)` → `Asset::ImageRgba8` (flatten via `Vec::extend_from_slice` bounded by `MAX_RASTER_DIMENSION`).
+- `is_supported_image_extension`: expandido de `{png/webp/jpg/jpeg}` para `+{gif/tiff/tif/ora/apng/psd/ph2d}`.
+- Multi-layer (ORA/PSD) + multi-frame (GIF/APNG) + HDR (FlatHdr) + Vector retornam `Error::Decode` com mensagem actionable apontando próxima onda de bridge.
+
+PNG/WEBP/JPEG continuam no legacy `image` 0.25 fast path (back-compat byte-exact; imageio crates upstream usam o MESMO `image` 0.25 transitive — zero duplicação de codec).
+
+**Não tocado**:
+- `shells/desktop/src/render_loop/mod.rs` linhas 108-112 (`imageio_importers: _, imageio_exporters: _` destructure dead-vars): outra sessão tinha modificações em progress no arquivo (Merge Sprites feature) — evitar conflito merge per [`feedback-parallel-agent-collision`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_parallel_agent_collision.md). Wire-up funcionalmente correto via `ph2d-asset` path = NÃO precisa do shell agora (registries lá ficam dead-vars até alguém querer usar `find_for(MagicHint::Extension(...))` direto, o que NÃO é o padrão recomendado per ADR §2.4).
+
+**Colisão multi-agente (registro)**: ao stage meus 3 arquivos (`Cargo.lock`, `ph2d-asset/Cargo.toml`, `loader.rs`), a sessão KTX2 paralela commitou `e54d41a` (docs adr-0055 + plan-vivo) e ABSORVEU 2 dos meus 3 arquivos staged. Conteúdo correto, atribuição confusa. Meu commit subsequente `52ee9d6` pegou só `Cargo.lock` que reverteu 1-line do staging duplo. Lição: per memory `feedback-parallel-agent-collision` — sempre `git status` ANTES de stage + commit cirurgicamente com paths explícitos, e EVITAR janelas longas entre stage e commit em sessões multi-agentes.
+
+**Tests pós-wire-up**: 46 ph2d-asset verdes (25 lib + 7 db + 8 watcher + 6 atlas, +1 supported_image_extension expandido); `cargo check --workspace` verde em 1m 02s. 11 imageio crates + 141 tests no CI matrix permanecem verdes.
+
+**X-HIGH-1 FECHADO** ✓ — pipeline imageio agora no hot path em prod.
+
+
 
 ### 5.11 Convergence ratification — W3.T0.6 (2026-05-26)
 

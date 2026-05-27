@@ -1121,8 +1121,103 @@ pub fn atrous_wavelet_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
 /// **Strength mapping**: σ_space = `30 + 80·strength`, σ_range =
 /// `(0.04 + 0.20·strength)` (linear sRGB units); 3 iterations.
 pub fn domain_transform_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
-    let _ = (rgba, w, h, strength);
-    // TODO: implement in follow-up commit.
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+    if strength <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let sigma_s = 30.0 + 80.0 * strength;
+    let sigma_r = 0.04 + 0.20 * strength;
+    let iters = 3_usize;
+
+    let w_us = w as usize;
+    let h_us = h as usize;
+    let n = w_us * h_us;
+    let alpha: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
+
+    // Pre-linearise source (one shared snapshot used to derive the
+    // domain-transform metric AND as the per-channel working buffer
+    // seed).
+    let mut src_lin: Vec<[f32; 3]> = Vec::with_capacity(n);
+    for px in rgba.chunks_exact(4) {
+        src_lin.push([
+            srgb_to_linear_u8(px[0]),
+            srgb_to_linear_u8(px[1]),
+            srgb_to_linear_u8(px[2]),
+        ]);
+    }
+
+    // ct_h[y, x] = x + (σ_s / σ_r) · Σ_{k<x} ‖I[k+1]−I[k]‖₁ (per row).
+    // ct_v[y, x] = y + (σ_s / σ_r) · Σ_{k<y} ‖I[k+1]−I[k]‖₁ (per col).
+    let ratio = sigma_s / sigma_r;
+    let mut ct_h = vec![0.0_f32; n];
+    for y in 0..h_us {
+        let off = y * w_us;
+        ct_h[off] = 0.0;
+        for x in 1..w_us {
+            let p0 = src_lin[off + x - 1];
+            let p1 = src_lin[off + x];
+            let d = (p1[0] - p0[0]).abs() + (p1[1] - p0[1]).abs() + (p1[2] - p0[2]).abs();
+            ct_h[off + x] = ct_h[off + x - 1] + 1.0 + ratio * d;
+        }
+    }
+    let mut ct_v = vec![0.0_f32; n];
+    for x in 0..w_us {
+        ct_v[x] = 0.0;
+        for y in 1..h_us {
+            let p0 = src_lin[(y - 1) * w_us + x];
+            let p1 = src_lin[y * w_us + x];
+            let d = (p1[0] - p0[0]).abs() + (p1[1] - p0[1]).abs() + (p1[2] - p0[2]).abs();
+            ct_v[y * w_us + x] = ct_v[(y - 1) * w_us + x] + 1.0 + ratio * d;
+        }
+    }
+
+    // 3 channels separately. Recursive filter passes use the same ct_h
+    // / ct_v (which were derived from the colour image — joint metric).
+    for ch in 0..3 {
+        let mut buf = vec![0.0_f32; n];
+        for i in 0..n {
+            buf[i] = src_lin[i][ch];
+        }
+        for i in 0..iters {
+            let sigma_h = sigma_s * (3.0_f32).sqrt() * (1u32 << (iters - 1 - i)) as f32
+                / ((1u32 << (2 * iters)) as f32 - 1.0).sqrt();
+            let a = (-(2.0_f32).sqrt() / sigma_h).exp();
+            // Horizontal recursive filter.
+            for y in 0..h_us {
+                let off = y * w_us;
+                for x in 1..w_us {
+                    let d = ct_h[off + x] - ct_h[off + x - 1];
+                    let ad = a.powf(d);
+                    buf[off + x] += ad * (buf[off + x - 1] - buf[off + x]);
+                }
+                for x in (0..w_us - 1).rev() {
+                    let d = ct_h[off + x + 1] - ct_h[off + x];
+                    let ad = a.powf(d);
+                    buf[off + x] += ad * (buf[off + x + 1] - buf[off + x]);
+                }
+            }
+            // Vertical recursive filter.
+            for x in 0..w_us {
+                for y in 1..h_us {
+                    let d = ct_v[y * w_us + x] - ct_v[(y - 1) * w_us + x];
+                    let ad = a.powf(d);
+                    buf[y * w_us + x] += ad * (buf[(y - 1) * w_us + x] - buf[y * w_us + x]);
+                }
+                for y in (0..h_us - 1).rev() {
+                    let d = ct_v[(y + 1) * w_us + x] - ct_v[y * w_us + x];
+                    let ad = a.powf(d);
+                    buf[y * w_us + x] += ad * (buf[(y + 1) * w_us + x] - buf[y * w_us + x]);
+                }
+            }
+        }
+        for i in 0..n {
+            if alpha[i] == 0 {
+                continue;
+            }
+            rgba[i * 4 + ch] = linear_to_srgb_u8(buf[i]);
+        }
+    }
 }
 
 /// Anisotropic diffusion denoise (Perona & Malik 1990). Iterative PDE
@@ -2940,6 +3035,44 @@ mod tests {
         assert!(
             (right as i32 - left as i32) > 100,
             "À-Trous collapsed edge contrast (left {left}, right {right})"
+        );
+    }
+
+    #[test]
+    fn dt_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        domain_transform_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn dt_smooths_uniform_noisy_input() {
+        let mut buf = uniform_noisy_buf(32, 32, 128, 5);
+        let before = variance_gray(&buf);
+        domain_transform_denoise(&mut buf, 32, 32, 0.5);
+        let after = variance_gray(&buf);
+        assert!(
+            after < before,
+            "DT did not reduce variance (before {before}, after {after})"
+        );
+    }
+
+    #[test]
+    fn dt_preserves_edge_contrast() {
+        let mut buf = Vec::with_capacity(32 * 32 * 4);
+        for _y in 0..32 {
+            for x in 0..32u32 {
+                let v = if x < 16 { 50u8 } else { 200u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        domain_transform_denoise(&mut buf, 32, 32, 0.5);
+        let left = buf[((16 * 32 + 12) * 4) as usize];
+        let right = buf[((16 * 32 + 19) * 4) as usize];
+        assert!(
+            (right as i32 - left as i32) > 100,
+            "DT collapsed edge contrast (left {left}, right {right})"
         );
     }
 

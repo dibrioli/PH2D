@@ -107,11 +107,51 @@ impl Brush {
     /// values constructed by the library — this exists for paths that
     /// can't statically guarantee well-formedness (e.g., a brush
     /// rehydrated from an external file).
-    pub fn try_params_blake3(&self) -> Result<BrushParamsHash, postcard::Error> {
-        let bytes = postcard::to_allocvec(self)?;
+    ///
+    /// **Audit T1.6 R8 P1-1:** error type is the local
+    /// [`BrushSerializeError`] (not `postcard::Error`) so a future
+    /// swap of postcard for a different serializer is NOT a breaking
+    /// API change. The wrapper holds a String message rather than
+    /// re-exporting the postcard variant set.
+    pub fn try_params_blake3(&self) -> Result<BrushParamsHash, BrushSerializeError> {
+        let bytes = postcard::to_allocvec(self).map_err(BrushSerializeError::from_postcard)?;
         Ok(*blake3::hash(&bytes).as_bytes())
     }
 }
+
+/// Error returned by [`Brush::try_params_blake3`]. Audit T1.6 R8 P1-1.
+///
+/// Holds a serializer-agnostic `String` message — the variant set is
+/// `#[non_exhaustive]` so adding new failure modes (e.g., a future
+/// `OversizedField` arm with structured details) is not a breaking
+/// change. Callers should pattern-match `_` or call `to_string()`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum BrushSerializeError {
+    /// The brush could not be serialized to its canonical wire form.
+    /// The message string captures the underlying serializer's
+    /// diagnostic; it is intended for diagnostic display only, not
+    /// for programmatic matching.
+    Postcard(String),
+}
+
+impl BrushSerializeError {
+    fn from_postcard(err: postcard::Error) -> Self {
+        BrushSerializeError::Postcard(err.to_string())
+    }
+}
+
+impl std::fmt::Display for BrushSerializeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BrushSerializeError::Postcard(msg) => {
+                write!(f, "brush serialize failed: {msg}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for BrushSerializeError {}
 
 #[cfg(test)]
 mod tests {

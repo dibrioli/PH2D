@@ -95,6 +95,20 @@ impl std::error::Error for PipelineError {}
 
 /// Fallible variant of [`run_pipeline`] — returns `Err(PipelineError)`
 /// on buffer-shape mismatch instead of panicking. Audit T1.6 R7 J1-4.
+///
+/// **Audit T1.6 R8 M1-2 — scratch contract on `Err` return:** if
+/// this function returns `Err(PipelineError::BufferShape{...})`,
+/// the `scratch` argument is left in **whatever state the prior
+/// successful call put it in** — `scratch.ensure(w, h, ...)` is
+/// deliberately NOT called before the shape checks, because the
+/// checks reject before we know the geometry is consistent with
+/// the scratch's prior `(w, h)`. The caller MUST NOT assume scratch
+/// matches the new `(w, h)` after an `Err`. The next call (after
+/// the caller fixes the buffer shape) re-runs `scratch.ensure` and
+/// grows the internal vectors as needed — safe by construction.
+/// A retry with a LARGER image immediately after an Err is fine;
+/// reading `scratch.output_rgba` between Err and the retry would
+/// see the prior call's pixels.
 pub fn try_run_pipeline(
     rgba: &[u8],
     w: u32,
@@ -194,4 +208,109 @@ pub fn try_run_pipeline(
 #[derive(Copy, Clone, Debug)]
 pub enum SegmentResult {
     Chroma { bg_oklab: [f32; 3] },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Audit T1.6 R8 N1-4: `try_run_pipeline` returns
+    /// `Err(PipelineError::BufferShape{...})` (NOT panic) on rgba
+    /// length mismatch. The shape-check is the contract that
+    /// distinguishes the fallible variant from the panicking one;
+    /// without this gate a regression dropping the check would
+    /// silently fall through to the chroma::segment indexing path
+    /// and panic anyway — defeating the whole point of the J1-4 fix.
+    #[test]
+    fn try_run_pipeline_returns_err_on_rgba_length_mismatch() {
+        let params = BgRemovalParams::default();
+        let mut scratch = BgRemovalScratch::default();
+        // Declare 4x4 (expected 64 bytes) but pass only 12 bytes.
+        let too_small = vec![0u8; 12];
+        let res = try_run_pipeline(&too_small, 4, 4, &params, None, None, &mut scratch);
+        match res {
+            Err(PipelineError::BufferShape {
+                which,
+                actual,
+                expected,
+            }) => {
+                assert_eq!(which, "rgba");
+                assert_eq!(actual, 12);
+                assert_eq!(expected, 64);
+            }
+            other => panic!("expected BufferShape rgba err, got {other:?}"),
+        }
+    }
+
+    /// Audit T1.6 R8 N1-4: protect mask length mismatch also routes
+    /// through the fallible Err arm.
+    #[test]
+    fn try_run_pipeline_returns_err_on_protect_mask_mismatch() {
+        let params = BgRemovalParams::default();
+        let mut scratch = BgRemovalScratch::default();
+        let rgba = vec![0u8; 4 * 4 * 4]; // 64 bytes, ok
+        let bad_protect = vec![0u8; 5]; // expected 16
+        let res = try_run_pipeline(
+            &rgba,
+            4,
+            4,
+            &params,
+            Some(&bad_protect),
+            None,
+            &mut scratch,
+        );
+        match res {
+            Err(PipelineError::BufferShape {
+                which,
+                actual,
+                expected,
+            }) => {
+                assert_eq!(which, "protect");
+                assert_eq!(actual, 5);
+                assert_eq!(expected, 16);
+            }
+            other => panic!("expected BufferShape protect err, got {other:?}"),
+        }
+    }
+
+    /// Audit T1.6 R8 N1-4: force_remove mask length mismatch also
+    /// routes through the fallible Err arm.
+    #[test]
+    fn try_run_pipeline_returns_err_on_force_remove_mask_mismatch() {
+        let params = BgRemovalParams::default();
+        let mut scratch = BgRemovalScratch::default();
+        let rgba = vec![0u8; 4 * 4 * 4];
+        let bad_force = vec![0u8; 3];
+        let res = try_run_pipeline(
+            &rgba,
+            4,
+            4,
+            &params,
+            None,
+            Some(&bad_force),
+            &mut scratch,
+        );
+        match res {
+            Err(PipelineError::BufferShape {
+                which,
+                actual,
+                expected,
+            }) => {
+                assert_eq!(which, "force_remove");
+                assert_eq!(actual, 3);
+                assert_eq!(expected, 16);
+            }
+            other => panic!("expected BufferShape force_remove err, got {other:?}"),
+        }
+    }
+
+    /// Audit T1.6 R8 N1-4: well-formed call returns `Ok(())`.
+    #[test]
+    fn try_run_pipeline_returns_ok_on_well_formed_input() {
+        let params = BgRemovalParams::default();
+        let mut scratch = BgRemovalScratch::default();
+        let rgba = vec![0u8; 4 * 4 * 4];
+        let res = try_run_pipeline(&rgba, 4, 4, &params, None, None, &mut scratch);
+        assert!(res.is_ok(), "well-formed input must return Ok, got {res:?}");
+    }
 }

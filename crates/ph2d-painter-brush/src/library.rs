@@ -219,6 +219,35 @@ pub const SQUARE_HARD: BrushHandle = BrushHandle(SQUARE_HARD_SLOT);
 /// Handle do `oval_hard` (slot 3). Audit T1.6 V-2.
 pub const OVAL_HARD: BrushHandle = BrushHandle(OVAL_HARD_SLOT);
 
+/// Look up the built-in `Brush` for a `BrushHandle`. Returns `None`
+/// for handles outside the built-in slot range (W2+ user brushes,
+/// future `BrushHandle` bit-31 user-slot flag per ADR-0044 §2.8).
+///
+/// **Audit T1.6 R8 P1-2:** R7 added `PainterTool::set_brush(handle,
+/// brush)` to keep `params.active_brush` and the runtime `Brush` in
+/// sync. Without this helper, every W2 `SelectBrush(handle)` handler
+/// had to hardcode a `match handle → constructor()` block — defeating
+/// the dual-mutation-prevention purpose by re-introducing the
+/// handle-to-construction mapping at every call site. With this
+/// helper the canonical W2 handler becomes:
+/// ```ignore
+/// PainterUiEdit::SelectBrush(handle) => {
+///     if let Some(brush) = library::brush_from_handle(handle) {
+///         painter.set_brush(handle, brush);
+///     }
+/// }
+/// ```
+#[must_use]
+pub fn brush_from_handle(handle: BrushHandle) -> Option<Brush> {
+    match handle {
+        ROUND_HARD => Some(round_hard()),
+        ROUND_SOFT => Some(round_soft()),
+        SQUARE_HARD => Some(square_hard()),
+        OVAL_HARD => Some(oval_hard()),
+        _ => None,
+    }
+}
+
 /// Dimensão lateral da Shape texture builtin (per ADR-0044 §1.8.1).
 pub const SHAPE_TILE_PX: u32 = 256;
 
@@ -321,12 +350,18 @@ pub fn shape_square_hard(u: f32, v: f32) -> f32 {
 /// 0°/45°/90°), but that's just write-target padding — the rendered
 /// pixels are bounded by the kernel, not the bbox.
 ///
-/// If a future requirement is "fill the entire bbox at θ=0" (i.e.
-/// circle-like with elliptical gradient), the kernel scaling needs
-/// to change (`dy = (v - 0.5) / 0.5` instead of `/ 0.25`), and the
-/// shape would then become radially-symmetric (`shape_is_radial_
-/// symmetric` returns true) so footprint enlargement is skipped.
-/// That's a different brush — not a fix to `oval_hard`.
+/// If a future requirement is "fill the entire bbox uniformly at
+/// θ=0", the kernel scaling needs to change (`dy = (v - 0.5) / 0.5`
+/// instead of `/ 0.25`) — but then `d² = ((u-0.5)² + (v-0.5)²)/0.25`
+/// is a **circle**, not an oval; the shape becomes radially-symmetric
+/// (`shape_is_radial_symmetric` should return true for it), footprint
+/// enlargement is skipped, and the gutters disappear because there
+/// are none — a uniform circle fills its bbox down to the corners
+/// only at the iso-curve diagonal, the rest stays transparent by the
+/// same `d > 1` rule. That's `round_hard`-with-different-edge-falloff,
+/// not a fix to `oval_hard` — the 2:1 aspect IS the brush's identity.
+/// Audit T1.6 R8 Q1-7 wording fix: prior draft said "circle-like with
+/// elliptical gradient" which is geometrically self-contradictory.
 #[inline]
 pub fn shape_oval_hard(u: f32, v: f32) -> f32 {
     let dx = (u - 0.5) / 0.5; // ±1 at horizontal edges
@@ -365,9 +400,23 @@ pub fn shape_is_radial_symmetric(slot: u32) -> bool {
 
 /// Bounding-box scale factor to apply to `size_px` when a stamp is
 /// rotated. Returns `1.0` if the shape is radially symmetric;
-/// otherwise returns the **tight analytic bound** `|cos θ| + |sin θ|`
-/// — the side length of the axis-aligned bounding box that contains a
-/// unit square rotated by θ.
+/// otherwise returns `|cos θ| + |sin θ|` — the side length of the
+/// axis-aligned bounding box that contains a **unit square** rotated
+/// by θ.
+///
+/// **Audit T1.6 R8 M1-4 — "tight" only for the square case.** This
+/// bound is exact (peaks at √2 at 45°) for the unit-square kernel
+/// (`shape_square_hard`). For the 2:1 oval kernel (`shape_oval_hard`)
+/// it is **conservative**, not tight: the tight semi-extent at θ=45°
+/// is `sqrt(0.5² · cos² + 0.25² · sin²) = sqrt(0.156) ≈ 0.395`,
+/// versus `(|cos|+|sin|)·0.5 = 0.707` — about 1.8× over-pad. We
+/// accept the over-pad as a uniform safety margin so the GPU compute
+/// dispatcher doesn't need a per-shape bbox formula (every shape
+/// stays inscribed at any rotation; the wasted pixels return
+/// `shape_alpha < 1/255` and get discarded). Future asymmetric
+/// kernels with their own tight bound can return a smaller scale via
+/// a per-slot dispatch — the `shape_is_radial_symmetric` short-circuit
+/// is the existing precedent.
 ///
 /// **Audit T1.6 O-5 — why the tight bound:** the previous draft used a
 /// discrete step (1.0 below an epsilon, √2 above). For non-radial

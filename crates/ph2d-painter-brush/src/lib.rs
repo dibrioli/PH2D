@@ -86,7 +86,7 @@ pub mod taper;
 pub mod wet_mix;
 
 pub use about::AboutParams;
-pub use brush::Brush;
+pub use brush::{Brush, BrushSerializeError};
 pub use brush_handle::{BrushHandle, BrushParamsHash};
 pub use color_dynamics::ColorDynamicsParams;
 pub use cpu_render::apply_stamps;
@@ -107,9 +107,9 @@ pub use grain::{
 // surface.
 pub use library::{
     BUILTIN_SHAPE_SLOT_COUNT, OVAL_HARD, OVAL_HARD_SLOT, ROUND_HARD, ROUND_HARD_SLOT, ROUND_SOFT,
-    ROUND_SOFT_SLOT, SQUARE_HARD, SQUARE_HARD_SLOT, oval_hard, round_hard, round_soft,
-    rotated_footprint_scale, shape_alpha_for_slot, shape_is_radial_symmetric, shape_oval_hard,
-    shape_round_hard, shape_round_soft, shape_square_hard, square_hard,
+    ROUND_SOFT_SLOT, SQUARE_HARD, SQUARE_HARD_SLOT, brush_from_handle, oval_hard, round_hard,
+    round_soft, rotated_footprint_scale, shape_alpha_for_slot, shape_is_radial_symmetric,
+    shape_oval_hard, shape_round_hard, shape_round_soft, shape_square_hard, square_hard,
 };
 pub use pencil::{CursorOutline, PencilParams};
 pub use pigment::PigmentMode;

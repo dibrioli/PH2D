@@ -225,6 +225,16 @@ use crate::params::{BrushHandle, OklchColor, PainterParams};
 /// ULP-bounded e requer `--features det-painter` (no-op hoje; wiring
 /// progressive) para cross-OS strict determinism.
 ///
+/// **Audit T1.6 R8 O1-2 — escopo do `det-painter`:** a regra
+/// "trig + sqrt + OKLab cubic precisa `det-painter`" se aplica a
+/// **operações que executam por-stamp/por-pixel** (cos/sin/sqrt
+/// dentro do shader e do scheduler). Operações IEEE 754
+/// determinísticas (`+`, `-`, `*`, `/`, `round`) e parsing
+/// (`f32::from_str` via ryu/dtoa) **NÃO** precisam de `det-painter`
+/// — são bit-identical cross-OS por construção. Em particular o
+/// `parse::<f32>()` das env vars smoke (`PAINTER_PARAMS_SIZE_PX`,
+/// `_SCATTER`, `_HUE_JITTER`, `_SPACING`) é HR-5-safe sem flag.
+///
 /// O **dispatch GPU** (T-perf W5+) virá no bridge `painter_bridge.rs` que
 /// terá acesso a `GpuContext` + textures retidos A↔B. Quando ele plugar,
 /// `queue_pointer` deixa de chamar `apply_stamps` (CPU) e passa a empilhar
@@ -529,6 +539,17 @@ impl PainterTool {
     /// the rest of `end_stroke` state — the caller is responsible for
     /// flushing visible stamps via `request_commit` BEFORE switching
     /// if mid-stroke flush is desired.
+    ///
+    /// **Audit T1.6 R8 M1-3 — `stroke_color_oklab` is intentionally
+    /// NOT refreshed here.** That cache lives across `set_brush`
+    /// because the color is part of `params.active_color`, not the
+    /// brush, and brush-switch shouldn't mutate it. The unconditional
+    /// `end_stroke()` above sets `stroke_active = false`, so the L1-5
+    /// `debug_assert!` in `queue_pointer` will fire before the stale
+    /// cache could be read by a stamp; the next `begin_stroke` then
+    /// refreshes the cache from the current `params.active_color`.
+    /// A future refactor that removes the `end_stroke()` call here
+    /// would re-open the staleness window — keep it.
     pub fn set_brush(&mut self, handle: BrushHandle, brush: Brush) {
         debug_assert!(
             !self.stroke_active,
@@ -552,6 +573,24 @@ impl PainterTool {
     #[must_use]
     pub fn active_brush_handle(&self) -> BrushHandle {
         self.params.active_brush
+    }
+
+    /// Borrow the active runtime [`Brush`]. Audit T1.6 R8 P1-3.
+    ///
+    /// W2 sidebar widgets that need to populate shape / color-
+    /// dynamics controls from the active brush state should call
+    /// this — without it, every widget had to either store a
+    /// duplicate copy of the brush or call back into a hardcoded
+    /// `match handle → constructor()` block (the latter defeats the
+    /// L1-4 / set_brush sync contract by re-introducing the manual
+    /// handle-to-construction mapping).
+    ///
+    /// Companion to [`Self::active_brush_handle`]: the handle is the
+    /// serializable identity, the brush is the runtime parameter
+    /// vector. The two must stay in sync via [`Self::set_brush`].
+    #[must_use]
+    pub fn active_brush(&self) -> &Brush {
+        &self.brush
     }
 
     /// "Brush lifted" — cursor saiu do footprint do sprite mid-drag.
@@ -952,6 +991,101 @@ mod tests {
     /// without its pointer-down) and the subsequent `drain_painter`
     /// would emit a "no strokes to apply" toast indistinguishable
     /// from "Apply ran with no paint".
+    /// **Audit T1.6 R8 N1-5 — `set_brush` keeps the handle and the
+    /// runtime brush in sync.** The dual-source-of-truth was the bug
+    /// L1-4 fixed; without a gate, a future refactor that drops one
+    /// of the two writes would silently break the contract.
+    ///
+    /// Note: `set_brush` takes `params::BrushHandle` (the local stub
+    /// from `params.rs`); `ph2d_painter_brush::OVAL_HARD` is the
+    /// canon `ph2d_painter_brush::BrushHandle`. HR-14 forward-compat
+    /// keeps them structurally identical (`pub struct
+    /// BrushHandle(u32)`) but they're distinct types; bridge via
+    /// the inner u32.
+    #[test]
+    fn set_brush_writes_both_handle_and_runtime_brush() {
+        use ph2d_painter_brush::library;
+        let mut t = PainterTool::default();
+        let new_handle = crate::params::BrushHandle(ph2d_painter_brush::OVAL_HARD_SLOT);
+        t.set_brush(new_handle, library::oval_hard());
+        assert_eq!(
+            t.active_brush_handle(),
+            new_handle,
+            "params.active_brush must be the new handle"
+        );
+        // The brush itself must be the runtime oval (we verify via the
+        // shape source slot which is publicly observable).
+        let brush_ref = t.active_brush();
+        match &brush_ref.shape.shape_source {
+            ph2d_painter_brush::shape::ShapeSource::Builtin { atlas_layer, .. } => {
+                assert_eq!(
+                    *atlas_layer,
+                    ph2d_painter_brush::OVAL_HARD_SLOT,
+                    "self.brush.shape_source slot must match the handle"
+                );
+            }
+            _ => panic!("expected Builtin shape source after set_brush"),
+        }
+    }
+
+    /// **Audit T1.6 R8 N1-5 — `set_brush` mid-stroke fires the
+    /// `debug_assert!` (L1-6 R7 contract).** The release-build
+    /// state-preservation path is exercised separately by
+    /// `set_brush_after_end_stroke_swaps_cleanly` below.
+    #[test]
+    #[should_panic(expected = "set_brush called mid-stroke")]
+    fn set_brush_mid_stroke_panics_in_debug() {
+        use ph2d_painter_brush::library;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(8, 8, [0; 4]), 8, 8);
+        t.begin_stroke(7);
+        let new_handle = crate::params::BrushHandle(ph2d_painter_brush::OVAL_HARD_SLOT);
+        t.set_brush(new_handle, library::oval_hard());
+    }
+
+    /// **Audit T1.6 R8 N1-5 — `set_brush` after a clean
+    /// `end_stroke` swaps both handle and runtime brush cleanly.**
+    /// Mirrors the canonical W2 sidebar flow: user finishes a
+    /// stroke, sidebar issues `SelectBrush(handle)`, the handler
+    /// calls `set_brush(handle, library::brush_from_handle(handle))`.
+    /// This is the happy path that proves the L1-4 sync invariant.
+    #[test]
+    fn set_brush_after_end_stroke_swaps_cleanly() {
+        use ph2d_painter_brush::library;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(8, 8, [0; 4]), 8, 8);
+        t.begin_stroke(7);
+        t.end_stroke();
+        assert!(!t.is_stroke_active());
+        let new_handle = crate::params::BrushHandle(ph2d_painter_brush::OVAL_HARD_SLOT);
+        t.set_brush(new_handle, library::oval_hard());
+        assert!(!t.is_stroke_active(), "stroke must remain closed");
+        assert_eq!(t.active_brush_handle(), new_handle);
+        // Verify the runtime brush swapped to oval (slot 3).
+        match &t.active_brush().shape.shape_source {
+            ph2d_painter_brush::shape::ShapeSource::Builtin { atlas_layer, .. } => {
+                assert_eq!(*atlas_layer, ph2d_painter_brush::OVAL_HARD_SLOT);
+            }
+            _ => panic!("expected Builtin oval after set_brush"),
+        }
+    }
+
+    /// **Audit T1.6 R8 N1-5 — `active_brush()` borrows the runtime
+    /// brush.** Pinned so removing the accessor (P1-3) becomes
+    /// compile-time observable.
+    #[test]
+    fn active_brush_returns_runtime_brush() {
+        let t = PainterTool::default();
+        // Default is round_hard. Verify atlas_layer is 0.
+        let brush = t.active_brush();
+        match &brush.shape.shape_source {
+            ph2d_painter_brush::shape::ShapeSource::Builtin { atlas_layer, .. } => {
+                assert_eq!(*atlas_layer, 0, "default brush is round_hard slot 0");
+            }
+            _ => panic!("default brush must use Builtin shape source"),
+        }
+    }
+
     #[test]
     #[should_panic(expected = "queue_pointer called without an active stroke")]
     fn queue_pointer_without_stroke_on_loaded_canvas_panics_in_debug() {

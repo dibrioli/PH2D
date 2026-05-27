@@ -489,6 +489,11 @@ mod tests {
     /// - Otherwise: real regression — encoder picked up
     ///   non-determinism (timestamp, SIMD-divergent compress, thread
     ///   scheduling). Investigate; pin via direct codec API if needed.
+    // CONVENTION: keep `const GOLDEN_BLAKE3` inside the fn body
+    // (below). If hoisted to module scope, clippy in CI lint job
+    // (ubuntu) won't see the test's cfg gate and may flag the
+    // const as unused on non-Mac targets. Source-level guardrail
+    // against accidental hoist (audit-6 Lens B HIGH).
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     #[test]
     fn export_golden_blake3_local_drift_pinned_macos_silicon() {

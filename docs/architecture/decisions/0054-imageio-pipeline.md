@@ -240,6 +240,14 @@ CI. Captura inicial = primeira run verde de cada platform; hashes
 viram contratos. Entry-point por crate:
 `crates/ph2d-imageio-<fmt>/src/lib.rs::export_golden_blake3_local_drift_pinned_macos_silicon`.
 
+**Formats lossy** (JPEG/WebP/GIF/BMP): **golden hash semanticamente
+inadequado, defer permanente** (não W3 nem futuro). Encoders lossy
+podem reotimizar bytes sem regredir pixels — um bump de quality LUT
+ou rate-distortion table muda o hash sem mudar a imagem. Para esses
+formats o gate é **pixel-roundtrip** (encode → decode → compare
+within ε) e não byte-pin. `.ph2d-native` é determinístico-por-design
+via `postcard` (HR-5 já satisfeito em todo target).
+
 ### 2.5 HR cumpridas
 
 - **HR-1** (platform-agnostic): contrato puro Rust; libs C explicitamente proibidas (HEIC descartado por isso).
@@ -310,13 +318,45 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W2.T6.1** nova auditoria pós-W2.T6 | ✅ | `354b218` | 1 CRITICAL regression (PSD cap rejeita single-layer leg) + 3 HIGH residuais + 5 HIGH novos + ADR placeholders — remediação inline vide §5.4 |
 | **W3 pre-gates 1+2+3** | ✅ | `f71f16a` | (1) ADR §2.6 amendment; (2) hex-baked Tier-1 fixtures (APNG multi-frame, TIFF CMYK/RGBA16, ORA group nesting); (3) golden blake3 hashes (PNG/TIFF/ORA/APNG) — vide §5.5 |
 | **W3.T0** auditoria 5-lente pré-W3 | ✅ | `35cc149` | 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW — remediação inline vide §5.5 |
+| **W3.T0.1** nova auditoria pós-W3.T0 | ✅ | `[remediation-pending]` | 1 CRITICAL (imageio FORA da CI matrix — gate de §2.6.1 era cosmético) + 7 HIGH (ADR HR-9→HR-5 nomenclatura + tolerâncias TIFF mascarando off-by-one + clippy convenção) + 11 MEDIUM + 13 LOW — vide §5.6 |
+
+### 5.6 Remediação pós-auditoria W3.T0.1 (2026-05-26)
+
+Auditoria adversarial 5-lente sobre commits `35cc149` + `a5edbf1` (W3.T0 remediation) entregou 1 CRITICAL + 7 HIGH + 11 MEDIUM + 13 LOW. Lentes rotacionadas (per [`feedback-audit-lens-diversity`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_audit_lens_diversity.md)): regressão da remediação · CI matrix simulation · rigor de assertions · consistência docs · HR coverage pós-demote. Fechados nesta sessão:
+
+**CRITICAL** (Lens B — descoberta arquitetural):
+- `ph2d-imageio-*` estava FORA do bloco `cargo nextest` da CI matrix em `.github/workflows/spike.yml`. **ZERO cobertura CI** dos 9 format crates desde W0 — o gate `#[cfg]` do round anterior era cosmético (protegia contra falha que jamais aconteceria). Fix: adicionados 11 crates (`ph2d-imageio` contract + 9 format crates + `ph2d-imageio-registry-init`) à lista de `-p` no nextest. Agora o `#[cfg]` de Mac aarch64 faz trabalho real: em Mac valida hash, em Linux/Windows pula 4 goldens mas roda os outros 60 testes (round-trip semântico, CMYK arms, RGBA16 sweep).
+
+**HIGH** (convergem em 3 grupos):
+- **Doc contradições** (Lens A1 + D1 + E1): ADR §5.4 linha 372 + §5.3 linha 410 prometiam "HR-9 cross-platform golden bytes → bloqueia ratificação Onda 3" — contradição direta com §2.6.1 (defer permanente). **Bonus E1**: a HR correta é **HR-5 cross-OS byte-exact** (HR-9 é GC em janelas, não cross-platform). Fix: nomenclatura corrigida nos 3 sites; defer relido como bloqueador real W3.T1 agora que CI matriz finalmente vai rodar imageio; entry-point per-target explícito.
+- **Tolerâncias TIFF mascarando off-by-one** (Lens C1+C2+C3 + A5): tests `cmyk8_decode_via_naive_conversion` e `rgba16_decode_quantizes_to_8bit` usavam ±1 tolerance em valores onde a fórmula é **exata** integer (sem rounding). `±1` aceitaria regressão `(v*255)/65535` sem `+32767` (off-by-one) silenciosamente. Fix: trocado para `assert_eq!` exato. CMYK ganhou 4 arms (K=0, K-only, cross-term C=K=128→63, pure-black K=255→0); RGBA16 ganhou 5-arm sweep (0x0000→0, 0x4040→64, 0x8080→128, 0xC0C0→192, 0xFFFF→255) + alpha-channel arm (0x8080→128, prova alpha NÃO sintetizado pra 255).
+- **CI clippy convenção frágil** (B2): se `const GOLDEN_BLAKE3` for promovido pra escopo de módulo, clippy `--workspace --all-targets` em ubuntu não veria o cfg gate. Fix: comment "CONVENTION: keep const inside fn" nos 4 crates.
+
+**MEDIUM**:
+- Commit message `35cc149` claimava `apng=15, png=14, psd=8+3, tiff=13 = 53` — APNG real=11 (não 15); ORA=15 omitida. Real total Mac aarch64 = 64 (14+13+15+11+8+3); Linux/Windows = 60. Nota retroativa no §5.5.
+- §5.5 detalhava 10 findings; row §5 W3.T0 claimava 26. Reconciliação convenção: 16 cosméticos sub-threshold absorvidos sem disclosure individual — convenção a partir de audit-7+ exige "X cosméticos absorvidos".
+- `ADR §5.4` `HR-9` nomenclatura → `HR-5` (corrigida em 3 sites: §5.5 + §5.4 entrada + §5.3 row).
+- `tests/architecture/no_os_in_core.rs` e `tests/determinism/replay_cross_platform.rs` referenciados em SKILL §256/§304 **NÃO EXISTEM** no workspace (Lens E F3): gap pre-existing, não regressão da remediação; HR-1 e HR-5 cross-OS estão sem gate executável em todo o repo, não só em imageio.
+- ADR §2.6.1 não cobria lossy quadrant (JPEG/WebP/GIF/BMP). Fix: parágrafo novo "defer permanente, pixel-roundtrip ao invés de byte-pin".
+
+**LOW (absorvidos no diff)**:
+- PSD `let _ = layer.visible` (audit-5 LOW removeu) virou `assert!(matches!(layer.visible, true | false))` (audit-6 Lens A LOW restaurou type-check gate sem pinar valor).
+- TIFF docstring do golden expandida com causa raiz "SIMD-divergent paths" (audit-6 Lens D LOW).
+- §2.6.1 lossy quadrant disclosure (audit-6 Lens D LOW D6).
+
+**Defers preservados**:
+- HR-1 / HR-5 enforcement gate files (`tests/architecture/*.rs` + `tests/determinism/*.rs`) — gap pre-existing do workspace, não escopo desta sessão imageio.
+- Multi-target golden hash table — agora destrancada por CI wire-up (B1); captura inicial cabe na primeira CI run verde após este commit.
+- LOW remanescentes (nomenclatura verbosa, etc.) — sub-threshold cosmético.
+
+**Total Onda 2 pós-W3.T0.1**: 64 tests verdes Mac aarch64 (60 cross-OS) com tolerâncias apertadas. Imageio finalmente no nextest da CI matrix.
 
 ### 5.5 Remediação pós-auditoria W3.T0 pré-W3 (2026-05-26)
 
 Auditoria adversarial 5-lente sobre o commit `f71f16a` (W3 pre-gates 1+2+3) entregou 1 CRITICAL + 4 HIGH + 9 MEDIUM + 12 LOW. Fechados nesta sessão:
 
 **CRITICAL** (Lens A + B convergem):
-- Golden blake3 hashes pinados em PNG/TIFF/ORA/APNG eram single-platform Mac-Silicon mas vinculados a "HR-9 cross-platform determinism". CI matrix Linux/Windows falharia 4+ jobs por design (SIMD DEFLATE divergente). Fix: `#[cfg(all(target_os = "macos", target_arch = "aarch64"))]` + renomeados pra `export_golden_blake3_local_drift_pinned_macos_silicon` + docstrings honestas + ADR §2.6.1 amendment formaliza scope single-platform. Multi-platform pinning deferido (entry: novo function name).
+- Golden blake3 hashes pinados em PNG/TIFF/ORA/APNG eram single-platform Mac-Silicon mas vinculados a "HR-5 cross-OS byte-exact" (corrigida nomenclatura — HR-9 é GC, não cross-platform; nomenclatura errada surgiu pre-W3.T0 em §5.4 + §5.3 + briefings; fixed audit-6). CI matrix Linux/Windows falharia 4+ jobs por design (SIMD DEFLATE divergente). Fix: `#[cfg(all(target_os = "macos", target_arch = "aarch64"))]` + renomeados pra `export_golden_blake3_local_drift_pinned_macos_silicon` + docstrings honestas + ADR §2.6.1 amendment formaliza scope single-platform. Multi-platform pinning deferido (entry: novo function name).
 
 **HIGH** (Lens B + E):
 - APNG `set_animated(2, 0)` sem comentário sobre `num_plays=0` ↔ infinite loop. Fix: comentário explícito + nota de que loop count é irrelevante pras assertions de extração de delay/offset/blend.
@@ -339,7 +379,9 @@ Auditoria adversarial 5-lente sobre o commit `f71f16a` (W3 pre-gates 1+2+3) entr
 - Lossy exporter goldens (JPEG/WebP/GIF/BMP): encoders lossy podem reotimizar bytes sem regredir pixels — gold hash não é semanticamente apropriado.
 - Lens C Tier-1 fixture expansion (APNG dispose_op variants, TIFF Gray8/A8/Gray16/GrayA16, ORA stack.xml malformed branches): expansion incremental, agendada pra W3.T1+ como tickets vivos (não pré-W3 gates).
 
-**Total Onda 2 pós-W3.T0**: 41+ tests verdes em PNG/TIFF/ORA/APNG/PSD (incluindo Mac-only goldens).
+**Total Onda 2 pós-W3.T0** (contagem real recapturada audit-6 Lens A/D): PNG=14 + TIFF=13 + ORA=15 + APNG=11 + PSD=8 lib + 3 fixture = **64 testes verdes em Mac aarch64**; em Linux/Windows = 60 (4 goldens `#[cfg]`-gated). O commit message original (`35cc149`) citava "apng=15, ... = 53" — erro de contagem manual via grep; refleta abaixo o real. ORA também foi omitida da soma do commit message. **Nota retroativa**: amend de commit é proibido pelo workflow, esta linha é o registro corrigido.
+
+**Reconciliação de findings audit-6 (Lens D MEDIUM)**: a row §5 W3.T0 original claimava "1 CRITICAL + 4 HIGH + 9 MEDIUM + 12 LOW" = 26 findings. §5.5 detalhava apenas 10 (1+2+6+1). Os 16 restantes (2 HIGH + 3 MEDIUM + 11 LOW) eram cosméticos absorvidos como sub-threshold sem disclosure individual. Convenção a partir de audit-7+: ou citar todos, ou explicitar "X cosméticos absorvidos".
 
 ### 5.4 Remediação pós-nova-auditoria W2.T6.1 (2026-05-26)
 
@@ -369,7 +411,7 @@ Nova auditoria adversarial sobre o commit W2.T6 (`34605f2`) entregou 1 CRITICAL 
 
 **Deferred com concrete entry-points** (audit Lens E):
 - **HR-3** `DecodedImage` variant policy → **W3.0 pre-fan-out adiciona §2.6 amendment** com policy global (collapse-to-Flat-when-trivial vs preserve-container-type). Hard deadline.
-- **HR-9** cross-platform golden bytes → **antes de W3.T1 ratificar — bloqueia ratificação Onda 3** (matriz CI Linux/macOS/Windows).
+- **HR-5** cross-OS byte-exact (corrige nomenclatura — HR-9 é GC, não cross-platform) → **antes de W3.T1 ratificar — bloqueia ratificação Onda 3** (matriz CI Linux/macOS/Windows). Per amendment §2.6.1 + audit-6 Lens B fix: o gate antigo (4 goldens) foi rebaixado a local drift guard. Substituto obrigatório: tabela `&[(target, hash)]` cobrindo `aarch64-apple-darwin` + `x86_64-unknown-linux-gnu` + `x86_64-pc-windows-msvc`, capturada via primeira run verde de cada job; entry-point por crate = `export_golden_blake3_local_drift_pinned_macos_silicon`. **Habilitado por audit-6 Lens B**: imageio crates agora estão no `spike.yml` nextest matrix.
 - **HR-15** detail strings inglês → **bloqueia W4 abertura**; `Error::user_facing() -> FluentMessage { key, args }` separa dev-log de UI.
 - **HR-17** examples Luau → **rótulo `won't-fix v1`** explícito (entram quando scripting integration milestone abrir, sem deadline).
 - **Test coverage fixtures real** → **antes de W3.T1 abrir** (hex-baked APNG 2-frame + PSD 1-layer fixture + TIFF CMYK).
@@ -407,7 +449,7 @@ Auditoria adversarial 5-lente sobre Onda 2 entregou 34 findings. Fechados nesta 
 - **HR-1** `ImportOpts::Strict` ignorado em 9 crates — W2.0.1 ICC pipeline materializa (Strict só faz sentido com ICC ativo).
 - **HR-2** `ExportOpts::preserve_layers` lido por zero crates — W2+ flatten path.
 - **HR-3** `DecodedImage` variant policy inconsistente — documentar no contrato em ADR amendment quando 1 cliente real reclamar.
-- **HR-9** Cross-platform determinism golden bytes — W3+ CI matrix.
+- **HR-5** Cross-OS byte-exact (corrige nomenclatura — não HR-9) — W3+ CI matrix (multi-target hash table; vide §5.4 entrada atualizada e §2.6.1).
 - **HR-13** PSD `MemoryBudget` declaração — `MAX_PSD_TOTAL_BYTES` é budget implícito; explicit declaration W3+.
 - **HR-15** detail strings inglês — mesma deferral W1 (ADR follow-up).
 - **HR-17** examples Luau — scripting integration milestone.

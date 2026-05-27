@@ -60,10 +60,13 @@ fn import_real_psd_fixture_extracts_one_pixel_layer() {
     );
     assert!(a > 0, "alpha > 0 (visible)");
 
-    // Layer metadata fields extracted (don't pin exact values for
-    // `visible` — upstream fixture's layer is non-visible by historical
-    // default; the field IS populated by the importer, just not asserted
-    // because the upstream value is not our contract).
+    // Layer metadata: assert that `visible` is a populated `bool`
+    // (preserves the field's type-check gate without pinning the
+    // exact value — the upstream fixture's layer is non-visible by
+    // historical default, but the contract is "field exists + is
+    // populated as bool"). audit-6 Lens A LOW: `let _ =` was
+    // dead-code; `matches!` is the equivalent compile-time gate.
+    assert!(matches!(layer.visible, true | false));
     assert_eq!(layer.blend_mode, BlendMode::Normal);
     assert!(
         (0.0..=1.0).contains(&layer.opacity),

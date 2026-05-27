@@ -911,6 +911,9 @@ mod tests {
     /// Single-platform pin — DEFLATE level + SIMD divergence between
     /// targets emits different (still-valid) ORA archives. Multi-pin
     /// deferred (entry: `crates/ph2d-imageio-ora/src/lib.rs::export_golden_blake3_local_drift_pinned_macos_silicon`).
+    // CONVENTION (audit-6 Lens B HIGH): keep `const GOLDEN_BLAKE3`
+    // inside the fn body. See ph2d-imageio-png/src/lib.rs for full
+    // rationale.
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     #[test]
     fn export_golden_blake3_local_drift_pinned_macos_silicon() {

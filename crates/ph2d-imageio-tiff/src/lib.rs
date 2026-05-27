@@ -709,105 +709,147 @@ mod tests {
     /// HR-5 byte-exact determinism: tiff 0.11 encoder must be
     /// deterministic. If this fails post-upgrade, document exception
     /// or pin via direct write_tag API.
-    /// W3 pre-gate fixture (audit C/H-3 + audit-5 Lens A MEDIUM):
+    /// W3 pre-gate fixture (audit-5 Lens A MEDIUM + audit-6 Lens C HIGH):
     /// exercise the CMYK8 decode branch with a real TIFF fixture
-    /// produced by `tiff` 0.11 encoder. Two arms:
+    /// produced by `tiff` 0.11 encoder. Four arms cover endpoint, K-only,
+    /// cross-term, and pure-black:
     /// - K=0 (pure-cyan): exercises the C-only path.
-    /// - K>0 (K=128 with C=M=Y=0): exercises the K-attenuates-everything
-    ///   path (without this arm we'd be silently relying on K=0 only).
+    /// - K-only (K=128, C=M=Y=0): exercises K-attenuates-everything.
+    /// - cross-term (C=K=128): exercises both factors multiplied — the
+    ///   real stress of "naive CMYK→RGB" (without this arm we'd only
+    ///   exercise trivial 255*inv_k/255 paths).
+    /// - K=255 pure-black: detects `255-K` underflow / missing-K bugs.
+    ///
+    /// Formula is exact integer (no rounding): `(255-C)*(255-K)/255`.
+    /// Audit-6 Lens C demand: tolerances were ±1 — masked off-by-one
+    /// from `>>8` regressions. Now `assert_eq!` exact.
     #[test]
     fn cmyk8_decode_via_naive_conversion() {
         use tiff::encoder::{TiffEncoder, colortype::CMYK8};
 
-        // Arm 1: pure-cyan K=0 → R=0, G=255, B=255.
-        let mut bytes: Vec<u8> = Vec::new();
-        {
-            let mut encoder = TiffEncoder::new(Cursor::new(&mut bytes)).expect("encoder init");
-            encoder
-                .write_image::<CMYK8>(1, 1, &[255, 0, 0, 0])
-                .expect("write CMYK8 cyan");
+        fn encode_cmyk_1x1(cmyk: [u8; 4]) -> Vec<u8> {
+            let mut bytes: Vec<u8> = Vec::new();
+            {
+                let mut enc = TiffEncoder::new(Cursor::new(&mut bytes)).expect("encoder init");
+                enc.write_image::<CMYK8>(1, 1, &cmyk).expect("write CMYK8");
+            }
+            bytes
         }
-        let DecodedImage::Flat(out) = TiffImporter
-            .import(&bytes, &ImportOpts::default())
-            .expect("CMYK decode arm 1")
-        else {
-            panic!("expected Flat");
-        };
-        assert_eq!(out.pixels[0].0, [0, 255, 255, 255], "arm 1: pure-cyan K=0");
+        fn decode_one(bytes: &[u8]) -> [u8; 4] {
+            let DecodedImage::Flat(out) = TiffImporter
+                .import(bytes, &ImportOpts::default())
+                .expect("CMYK decode")
+            else {
+                panic!("expected Flat");
+            };
+            out.pixels[0].0
+        }
 
-        // Arm 2: K=128, C=M=Y=0 → R = G = B = (255-0)*(255-128)/255 = 127.
-        let mut bytes2: Vec<u8> = Vec::new();
-        {
-            let mut encoder = TiffEncoder::new(Cursor::new(&mut bytes2)).expect("encoder init");
-            encoder
-                .write_image::<CMYK8>(1, 1, &[0, 0, 0, 128])
-                .expect("write CMYK8 with K>0");
-        }
-        let DecodedImage::Flat(out2) = TiffImporter
-            .import(&bytes2, &ImportOpts::default())
-            .expect("CMYK decode arm 2")
-        else {
-            panic!("expected Flat");
-        };
-        let [r, g, b, a] = out2.pixels[0].0;
-        // 255 * (255-128) / 255 = 127. Allow ±1 for integer rounding.
-        for (label, v) in [("R", r), ("G", g), ("B", b)] {
-            assert!((126..=128).contains(&v), "arm 2 ({label}): expected ~127, got {v}");
-        }
-        assert_eq!(a, 255, "arm 2: alpha synthesized opaque");
+        // Arm 1: pure-cyan K=0 → (255-255)*(255-0)/255=0, (255-0)*(255-0)/255=255.
+        assert_eq!(
+            decode_one(&encode_cmyk_1x1([255, 0, 0, 0])),
+            [0, 255, 255, 255],
+            "arm 1 pure-cyan K=0"
+        );
+
+        // Arm 2: K-only (K=128, C=M=Y=0) → all = (255*127)/255 = 127.
+        assert_eq!(
+            decode_one(&encode_cmyk_1x1([0, 0, 0, 128])),
+            [127, 127, 127, 255],
+            "arm 2 K-only K=128"
+        );
+
+        // Arm 3: cross-term C=K=128 → R = (127*127)/255 = 16129/255 = 63
+        // (integer truncation). G = B = (255*127)/255 = 127 (no C/M/Y).
+        // This arm catches regressions where the decoder loses one of
+        // the two factors (would emit 127 or 0).
+        assert_eq!(
+            decode_one(&encode_cmyk_1x1([128, 0, 0, 128])),
+            [63, 127, 127, 255],
+            "arm 3 cross-term C=K=128"
+        );
+
+        // Arm 4: pure-black K=255 → all = X*0/255 = 0. Catches
+        // `255-K` underflow or missing-K-term bugs.
+        assert_eq!(
+            decode_one(&encode_cmyk_1x1([0, 0, 0, 255])),
+            [0, 0, 0, 255],
+            "arm 4 pure-black K=255"
+        );
     }
 
-    /// W3 pre-gate fixture (audit-5 Lens B MEDIUM expansion):
-    /// exercise the 16-bit RGBA decode branch on three values to
-    /// validate the quantization formula `(v*255+32767)/65535` at
-    /// both endpoints AND mid-range — endpoints-only would miss
-    /// rounding drift, mid-only would miss off-by-one at 0/0xFFFF.
+    /// W3 pre-gate fixture (audit-5 Lens B + audit-6 Lens C HIGH):
+    /// exercise the 16-bit RGBA decode branch validating the
+    /// quantization formula `(v*255+32767)/65535` at endpoints + mid.
+    ///
+    /// Formula is exact integer (no rounding):
+    /// - 0x0000 → (0*255+32767)/65535 = 32767/65535 = 0
+    /// - 0x4040 → (16448*255+32767)/65535 = 4227007/65535 = 64
+    /// - 0x8080 → (32896*255+32767)/65535 = 8421247/65535 = 128
+    /// - 0xC0C0 → (49344*255+32767)/65535 = 12614287/65535 = 192
+    /// - 0xFFFF → (65535*255+32767)/65535 = 16744192/65535 = 255
+    ///
+    /// Audit-6 Lens C demand: tolerances were ±1 — masked off-by-one
+    /// regressions like `(v*255)/65535` (without `+32767`). Now
+    /// `assert_eq!` exact across the sweep + an alpha-channel arm
+    /// proving alpha is NOT synthesized-to-255 (regression guard).
     #[test]
     fn rgba16_decode_quantizes_to_8bit() {
         use tiff::encoder::{TiffEncoder, colortype::RGBA16};
 
-        // Three-arm sweep: endpoint low (0x0000) + mid (0x8080) +
-        // endpoint high (0xFFFF). Alpha kept opaque at 0xFFFF so it
-        // doesn't perturb the RGB quantization assertion.
-        for (label, raw, expected) in [
-            ("endpoint low", 0x0000_u16, 0_u8),
-            ("midpoint", 0x8080_u16, 128_u8),
-            ("endpoint high", 0xFFFF_u16, 255_u8),
-        ] {
+        fn encode_rgba16(rgba: [u16; 4]) -> Vec<u8> {
             let mut bytes: Vec<u8> = Vec::new();
             {
-                let mut encoder =
-                    TiffEncoder::new(Cursor::new(&mut bytes)).expect("encoder init");
-                encoder
-                    .write_image::<RGBA16>(1, 1, &[raw, raw, raw, 0xFFFF])
-                    .expect("write RGBA16");
+                let mut enc = TiffEncoder::new(Cursor::new(&mut bytes)).expect("encoder init");
+                enc.write_image::<RGBA16>(1, 1, &rgba).expect("write RGBA16");
             }
+            bytes
+        }
+        fn decode_one(bytes: &[u8]) -> [u8; 4] {
             let DecodedImage::Flat(out) = TiffImporter
-                .import(&bytes, &ImportOpts::default())
+                .import(bytes, &ImportOpts::default())
                 .expect("RGBA16 decode")
             else {
                 panic!("expected Flat");
             };
-            let v = out.pixels[0].0;
-            // ±1 tolerance for integer rounding flavour.
-            for (i, &c) in v.iter().take(3).enumerate() {
-                let lo = expected.saturating_sub(1);
-                let hi = expected.saturating_add(1);
-                assert!(
-                    (lo..=hi).contains(&c),
-                    "{label} ch{i}: got {c}, expected {expected}±1"
-                );
-            }
-            assert_eq!(v[3], 255, "{label}: alpha should round to 255");
+            out.pixels[0].0
         }
+
+        // 5-arm sweep — endpoints + mid-low + midpoint + mid-high.
+        // Alpha opaque at 0xFFFF so it doesn't perturb RGB asserts.
+        for (label, raw, expected) in [
+            ("endpoint low 0x0000", 0x0000_u16, 0_u8),
+            ("mid-low 0x4040", 0x4040_u16, 64_u8),
+            ("midpoint 0x8080", 0x8080_u16, 128_u8),
+            ("mid-high 0xC0C0", 0xC0C0_u16, 192_u8),
+            ("endpoint high 0xFFFF", 0xFFFF_u16, 255_u8),
+        ] {
+            let v = decode_one(&encode_rgba16([raw, raw, raw, 0xFFFF]));
+            assert_eq!(
+                v,
+                [expected, expected, expected, 255],
+                "{label}: expected RGBA=[{expected};3, 255]"
+            );
+        }
+
+        // Alpha-channel arm: alpha=0x8080 must quantize to 128 (NOT
+        // synthesized to 255). Catches a regression where the RGBA16
+        // fast-path replaces c[3] with literal 255.
+        let v = decode_one(&encode_rgba16([0xFFFF, 0xFFFF, 0xFFFF, 0x8080]));
+        assert_eq!(v, [255, 255, 255, 128], "alpha=0x8080 must round to 128");
     }
 
     /// W3 pre-gate (LOCAL drift guard, Mac aarch64 only): pin blake3
     /// hash of canonical TIFF export. Single-platform pin — tiff
-    /// 0.11 encoder may emit different (still-valid) bytes on
-    /// x86_64-linux/windows. CI matrix passes by `#[cfg]` gate;
-    /// multi-platform pinning deferred (entry:
+    /// 0.11 encoder uses SIMD-divergent paths per target, so bytes
+    /// differ between `aarch64-apple-darwin` /
+    /// `x86_64-unknown-linux-gnu` / `x86_64-pc-windows-msvc`.
+    /// CI matrix passes via `#[cfg]` gate; multi-platform pinning
+    /// deferred (entry:
     /// `crates/ph2d-imageio-tiff/src/lib.rs::export_golden_blake3_local_drift_pinned_macos_silicon`).
+    // CONVENTION (audit-6 Lens B HIGH): keep `const GOLDEN_BLAKE3`
+    // inside the fn body. See ph2d-imageio-png/src/lib.rs for full
+    // rationale.
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     #[test]
     fn export_golden_blake3_local_drift_pinned_macos_silicon() {

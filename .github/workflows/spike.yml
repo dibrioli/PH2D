@@ -272,6 +272,17 @@ jobs:
             -p ph2d-mcp \
             -p ph2d-editor \
             -p ph2d-asset-cooker \
+            -p ph2d-imageio \
+            -p ph2d-imageio-png \
+            -p ph2d-imageio-jpeg \
+            -p ph2d-imageio-webp \
+            -p ph2d-imageio-gif \
+            -p ph2d-imageio-ph2d-native \
+            -p ph2d-imageio-tiff \
+            -p ph2d-imageio-ora \
+            -p ph2d-imageio-apng \
+            -p ph2d-imageio-psd \
+            -p ph2d-imageio-registry-init \
             --cargo-profile ci-test --locked
 
       # Doctests aren't covered by nextest. ph2d-ecs has the

@@ -42,7 +42,6 @@ fn slider_for_widget(id: NodeId) -> Option<NodeId> {
         (ids::CEQ_SATURATION, ids::CEQ_SATURATION_NUM),
         (ids::CEQ_SHARPEN_AMOUNT, ids::CEQ_SHARPEN_AMOUNT_NUM),
         (ids::CEQ_SHARPEN_RADIUS, ids::CEQ_SHARPEN_RADIUS_NUM),
-        (ids::CEQ_DENOISE_STRENGTH, ids::CEQ_DENOISE_STRENGTH_NUM),
         (ids::CEQ_LUT_INTENSITY, ids::CEQ_LUT_INTENSITY_NUM),
         (ids::CEQ_LUT_MIX, ids::CEQ_LUT_MIX_NUM),
         (
@@ -70,16 +69,13 @@ fn is_dropdown_option(id: NodeId) -> bool {
         || ids::CEQ_LUT_2_OPTS.contains(&id)
         || ids::CEQ_POSTERIZE_OPTS.contains(&id)
         || ids::CEQ_QUANTIZE_OPTS.contains(&id)
-        || ids::CEQ_DENOISE_METHOD_OPTS.contains(&id)
 }
 
 /// All buttons + toggles that need to forward `Click` (and `Toggle`,
 /// for the toggleable buttons) to the tool. Cancel is handled
 /// separately because it raises `CancelActiveTool` instead of a tool
-/// panel event. The denoise-method dropdown chip is NOT forwarded —
-/// its `Click` toggles the dropdown's `open` flag via the shared
-/// `apply_click` path, and option clicks are forwarded by
-/// `is_dropdown_option` above.
+/// panel event. Option clicks are forwarded by `is_dropdown_option`
+/// above.
 const FORWARD_CLICK_IDS: &[NodeId] = &[
     ids::CEQ_APPLY,
     ids::CEQ_RESET,

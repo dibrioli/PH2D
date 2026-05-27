@@ -12,18 +12,18 @@
 //! in [`crate::paint_sections`]): a Phase 2 histogram overlay strip
 //! (R/G/B bars from the live preview, drawn with the `Danger` /
 //! `Success` / `Info` semantic tokens so the channel colours follow
-//! the active theme); fourteen labeled slider + chip rows for the
+//! the active theme); thirteen labeled slider + chip rows for the
 //! Phase 1 stages (clip, tile grid, exposure, temperature, tint,
 //! brightness, contrast, vibrance, saturation) and Phase 2 effects
-//! (sharpen amount, sharpen radius, denoise strength) and Phase 3 LUT
-//! intensity/mix; LUT-slot dropdowns; Posterize + Quantize dropdowns;
-//! a 2×2 auto-* toggle grid; and the Reset / Cancel + Apply CTA rows.
+//! (sharpen amount, sharpen radius) and Phase 3 LUT intensity/mix;
+//! LUT-slot dropdowns; Posterize + Quantize dropdowns; a 2×2 auto-*
+//! toggle grid; and the Reset / Cancel + Apply CTA rows.
 
 use crate::paint_histogram::paint_histogram_overlay;
 use crate::paint_sections::{
     SectionLayout, lut_options_for_slot, paint_apply_cta_section, paint_auto_buttons_section,
-    paint_denoise_method_section, paint_lut_section, paint_posterize_quantize_section,
-    paint_slider_rows_section, posterize_options, quantize_options,
+    paint_lut_section, paint_posterize_quantize_section, paint_slider_rows_section,
+    posterize_options, quantize_options,
 };
 use crate::state::{self, set_last_content_h, set_last_visible_h};
 use crate::{ColorEqualizationPanel, ColorEqualizationPanelState, ids};
@@ -168,19 +168,6 @@ fn paint_body_sections(
 
     // ── 14 slider+chip rows ────────────────────────────────────────
     y = paint_slider_rows_section(
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
-        snapshot,
-        layout,
-        y,
-    );
-    y += layout.row_gap;
-
-    // ── Denoise method radio (Bilateral / NLM) ────────────────────
-    y = paint_denoise_method_section(
         scene,
         text_system,
         store,
@@ -362,31 +349,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
                         .register(opt.id, dd.option_rect_in(p.chip, panel_rect, i));
                 }
             }
-            _ => {
-                // slot 5 → denoise method dropdown
-                let dd = Dropdown::new(
-                    ids::CEQ_DENOISE_METHOD_DROPDOWN,
-                    "Denoise Method".to_string(),
-                    crate::paint_sections::denoise_method_options(),
-                )
-                .selected(snapshot_for_popover.denoise_method)
-                .state(DropdownState::Focused)
-                .open(true);
-                paint_dropdown_popover_in_viewport(
-                    &dd,
-                    p.chip,
-                    Some(viewport),
-                    ctx.scene,
-                    ctx.text_system,
-                    theme,
-                );
-                let panel_rect = dd.popover_rect_clamped(p.chip, viewport);
-                for (i, opt) in dd.options.iter().enumerate() {
-                    ctx.host
-                        .hit_index_mut()
-                        .register(opt.id, dd.option_rect_in(p.chip, panel_rect, i));
-                }
-            }
+            _ => {}
         }
     }
 }

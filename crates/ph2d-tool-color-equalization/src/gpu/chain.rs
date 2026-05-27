@@ -8,7 +8,7 @@
 //! finish compute quickly.
 //!
 //! This module fuses them: one upload, ping-pong texA ↔ texB through
-//! the GPU stages (tonal → LUT → bilateral → sharpen → auto-WB), one
+//! the GPU stages (tonal → LUT → sharpen → auto-WB), one
 //! readback. The CPU-side pre-step (CLAHE) runs before the upload; the
 //! CPU↔GPU bounce inside auto-WB (sums readback → gains → apply) is
 //! unavoidable (a third compute pass to compute gains GPU-side would
@@ -32,15 +32,13 @@
 //! 2. Phase 1 tonal batch ([`super::TonalBatchPipeline`]).
 //! 3. LUT3D apply ([`super::LutApplyPipeline`]) — uses pre-blended LUT
 //!    when both slots are active, or the single active slot's LUT.
-//! 4. Denoise (CPU-only post-2026-05-27 audit; 6 filters in
-//!    [`crate::algorithm`] picked by `params.denoise_method`).
-//! 5. Sharpen ([`super::LaplacianSharpenPipeline`] when `radius ≤ 1`,
+//! 4. Sharpen ([`super::LaplacianSharpenPipeline`] when `radius ≤ 1`,
 //!    else [`super::UnsharpSharpenPipeline`]).
-//! 6. Auto Levels / Contrast / Colors (CPU still — these need a
+//! 5. Auto Levels / Contrast / Colors (CPU still — these need a
 //!    histogram pre-pass per stage; not yet ported). When toggled, we
 //!    readback before them, run on CPU, re-upload. Pre-ported they
 //!    fold into a single chain.
-//! 7. Auto-WB reduce + apply ([`super::AutoWbPipelines`]) — reduce →
+//! 6. Auto-WB reduce + apply ([`super::AutoWbPipelines`]) — reduce →
 //!    sums readback → host computes gains → apply.
 
 use super::{
@@ -66,11 +64,9 @@ enum Pong {
 /// Compiled GPU pipelines cached together. Tool keeps one instance per
 /// device; pipeline compile (~10-20 ms total) is paid once.
 ///
-/// Denoise is **CPU-only** after the 2026-05-27 audit (Bilateral + NLM
-/// retired in favour of 6 modern filters in [`crate::algorithm`]). The
-/// chain leaves denoise as a post-step the caller runs on the CPU output
-/// of `run_chained` — until a follow-up port any of the new filters to
-/// WGSL.
+/// Denoise was removed in the 2026-05-27 audit (Bilateral, NLM, Guided
+/// Filter, À-Trous, Domain Transform, Anisotropic Diffusion,
+/// TV-Chambolle and Wavelet Shrinkage all rejected on visual quality).
 pub struct ChainedPipelineCache {
     pub tonal: TonalBatchPipeline,
     pub lut: LutApplyPipeline,
@@ -132,9 +128,6 @@ impl ChainedPipelineCache {
 
         let needs_tonal = !params.tonal_is_identity();
         let needs_lut = !params.lut_is_identity();
-        // Denoise is CPU-only now (2026-05-27 audit). We track the flag
-        // so the post-chain CPU step knows when to run.
-        let needs_denoise = params.denoise_strength > 0.0;
         let needs_sharpen = params.sharpen_amount > 0.0;
         let needs_auto_levels = params.auto_levels;
         let needs_auto_contrast = params.auto_contrast;
@@ -146,8 +139,7 @@ impl ChainedPipelineCache {
         let any_cpu_auto = needs_auto_levels || needs_auto_contrast || needs_auto_colors;
         let any_cpu_after_wb = needs_posterize || needs_quantize;
 
-        if !any_gpu_stage && !any_cpu_auto && !needs_auto_wb && !any_cpu_after_wb && !needs_denoise
-        {
+        if !any_gpu_stage && !any_cpu_auto && !needs_auto_wb && !any_cpu_after_wb {
             return stages;
         }
 
@@ -214,8 +206,6 @@ impl ChainedPipelineCache {
                     (current_in, current_out) = advance(current_in, current_out);
                 }
             }
-            // Denoise stage no longer on GPU — handled as a CPU post-step
-            // after the chain. See `needs_denoise` block at the tail.
             if needs_sharpen {
                 if params.sharpen_radius <= 1.0 {
                     self.laplacian.encode_into(
@@ -258,37 +248,7 @@ impl ChainedPipelineCache {
             );
         }
 
-        // ── 5.5 CPU denoise post-stage (Bilateral/NLM retired). ──────
-        // Six interchangeable filters in [`crate::algorithm`]; method
-        // picked by `params.denoise_method`. Runs AFTER tonal/LUT/sharpen
-        // so it operates on the GPU output (already in `rgba`). Order
-        // matches `algorithm::run_pipeline`.
-        if needs_denoise {
-            use crate::params::DenoiseMethod;
-            match params.denoise_method {
-                DenoiseMethod::GuidedFilter => {
-                    algorithm::guided_filter_denoise(rgba, w, h, params.denoise_strength);
-                }
-                DenoiseMethod::AtrousWavelet => {
-                    algorithm::atrous_wavelet_denoise(rgba, w, h, params.denoise_strength);
-                }
-                DenoiseMethod::DomainTransform => {
-                    algorithm::domain_transform_denoise(rgba, w, h, params.denoise_strength);
-                }
-                DenoiseMethod::AnisotropicDiffusion => {
-                    algorithm::anisotropic_diffusion_denoise(rgba, w, h, params.denoise_strength);
-                }
-                DenoiseMethod::TotalVariation => {
-                    algorithm::total_variation_denoise(rgba, w, h, params.denoise_strength);
-                }
-                DenoiseMethod::WaveletShrinkage => {
-                    algorithm::wavelet_shrinkage_denoise(rgba, w, h, params.denoise_strength);
-                }
-            }
-            stages += 1;
-        }
-
-        // ── 6. CPU auto-* normalisations ─────────────────────────────
+        // ── 5. CPU auto-* normalisations ─────────────────────────────
         // Still CPU (each needs its own histogram pre-pass that we
         // haven't ported). When any of these are toggled, the GPU
         // readback above already brought the pixels back into `rgba`.
@@ -566,25 +526,6 @@ mod tests {
     }
 
     #[test]
-    fn chain_denoise_only_matches_cpu() {
-        // Denoise is CPU-only after the 2026-05-27 audit; the chain's
-        // post-step calls `crate::algorithm::guided_filter_denoise` (or
-        // the picked method). Parity is trivially exact because both
-        // sides run the same CPU function — but we keep the smoke test
-        // so a future GPU port has a target.
-        let Some(gpu) = try_headless_gpu() else {
-            return;
-        };
-        let cache = ChainedPipelineCache::new(&gpu);
-        let buf = gradient_buf(32, 32);
-        let params = ColorEqualizationParams {
-            denoise_strength: 0.5,
-            ..Default::default()
-        };
-        assert_chain_parity(&gpu, &cache, &buf, 32, 32, &params, 1, "denoise-cpu-post");
-    }
-
-    #[test]
     fn chain_sharpen_laplacian_matches_cpu() {
         let Some(gpu) = try_headless_gpu() else {
             return;
@@ -641,8 +582,8 @@ mod tests {
         };
         let cache = ChainedPipelineCache::new(&gpu);
         let buf = gradient_buf(64, 64);
-        // The full stack: CLAHE + every Phase 1 tonal + LUT blend + bilateral
-        // + sharpen + auto-WB. The CPU/GPU divergence compounds along the
+        // The full stack: CLAHE + every Phase 1 tonal + LUT blend +
+        // sharpen + auto-WB. The CPU/GPU divergence compounds along the
         // chain (each stage is at ε ≤ 1-4 LSB on its own); 5 LSB end-to-end
         // is the budgeted tolerance pinned in the chain docs.
         let params = ColorEqualizationParams {
@@ -657,13 +598,12 @@ mod tests {
             saturation: 0.15,
             lut_preset_1: LutPreset::Cinematic,
             lut_intensity: 0.7,
-            denoise_strength: 0.3,
             sharpen_amount: 0.4,
             sharpen_radius: 1.5,
             auto_wb: true,
             ..Default::default()
         };
-        assert_chain_parity(&gpu, &cache, &buf, 64, 64, &params, 5, "full-stack");
+        assert_chain_parity(&gpu, &cache, &buf, 64, 64, &params, 4, "full-stack");
     }
 
     #[test]

@@ -79,15 +79,12 @@ pub const SATURATION_MIN: f32 = -1.0;
 pub const SATURATION_MAX: f32 = 1.0;
 pub const SATURATION_DEFAULT: f32 = 0.0;
 
-// ── Phase 2 (Effects: sharpen + denoise) ──────────────────────────
+// ── Phase 2 (Effects: sharpen) ────────────────────────────────────
 //
 // - **Sharpen amount** (`[0, 2]`): strength of the Laplacian / Unsharp
 //   mask kernel. `0` = identity, `1` = canonical, `2` = aggressive.
 // - **Sharpen radius** (`[0.5, 3.0]`): kernel reach. `≤ 1` uses the fast
 //   Laplacian 3×3; `> 1` switches to Unsharp Mask (Gaussian blur).
-// - **Denoise strength** (`[0, 1]`): bilateral filter parameters scale
-//   with this. `0` = no denoise. WGSL strongly recommended at strength
-//   > 0.5 in 1024² previews (CPU cost is O(N·r²)).
 pub const SHARPEN_AMOUNT_MIN: f32 = 0.0;
 pub const SHARPEN_AMOUNT_MAX: f32 = 2.0;
 pub const SHARPEN_AMOUNT_DEFAULT: f32 = 0.0;
@@ -95,10 +92,6 @@ pub const SHARPEN_AMOUNT_DEFAULT: f32 = 0.0;
 pub const SHARPEN_RADIUS_MIN: f32 = 0.5;
 pub const SHARPEN_RADIUS_MAX: f32 = 3.0;
 pub const SHARPEN_RADIUS_DEFAULT: f32 = 1.0;
-
-pub const DENOISE_STRENGTH_MIN: f32 = 0.0;
-pub const DENOISE_STRENGTH_MAX: f32 = 1.0;
-pub const DENOISE_STRENGTH_DEFAULT: f32 = 0.0;
 
 // ── Phase 3 (LUT color grading) ──────────────────────────────────
 //
@@ -225,14 +218,6 @@ pub fn slider_to_sharpen_radius(track: f32) -> f32 {
     unproject01(track, SHARPEN_RADIUS_MIN, SHARPEN_RADIUS_MAX)
 }
 
-pub fn denoise_strength_to_slider(v: f32) -> f32 {
-    project01(v, DENOISE_STRENGTH_MIN, DENOISE_STRENGTH_MAX)
-}
-
-pub fn slider_to_denoise_strength(track: f32) -> f32 {
-    unproject01(track, DENOISE_STRENGTH_MIN, DENOISE_STRENGTH_MAX)
-}
-
 pub fn lut_intensity_to_slider(v: f32) -> f32 {
     project01(v, LUT_INTENSITY_MIN, LUT_INTENSITY_MAX)
 }
@@ -285,35 +270,14 @@ pub fn slider_to_posterize_dither_grain(track: f32) -> u32 {
     ) as u32
 }
 
-/// Denoise algorithm selector. Six interchangeable filters, each
-/// implemented in `algorithm.rs`. The legacy Bilateral + NLM were
-/// retired (2026-05-27 audit) in favour of this modern toolbox.
-///
-/// Default = `GuidedFilter` — best edge-preserving speed/quality
-/// trade-off, runs O(N) per pixel.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub enum DenoiseMethod {
-    /// Guided Filter (He, Sun, Tang — 2010). Edge-aware via local
-    /// linear regression. O(N), the recommended default.
-    #[default]
-    GuidedFilter,
-    /// À-Trous Wavelet edge-aware (Dammertz et al. 2010). Multi-scale.
-    AtrousWavelet,
-    /// Domain Transform (Gastal-Oliveira 2011). O(N) edge-aware,
-    /// separable + recursive.
-    DomainTransform,
-    /// Anisotropic Diffusion (Perona-Malik 1990). PDE iterative,
-    /// edge-attenuated diffusion.
-    AnisotropicDiffusion,
-    /// Total Variation (Rudin-Osher-Fatemi 1992 / Chambolle 2004).
-    /// Excellent for cartoon/flat regions; staircases on gradients.
-    TotalVariation,
-    /// Wavelet Shrinkage (Donoho-Johnstone 1995). Haar DWT + soft
-    /// thresholding. Fast classic baseline.
-    WaveletShrinkage,
-}
-
 /// Authoritative parameter bag fed into [`crate::algorithm::run_pipeline`].
+///
+/// **Denoise stage removed (2026-05-27)** — Bilateral / NLM / Guided
+/// Filter / À-Trous / Domain Transform / Anisotropic Diffusion / Total
+/// Variation / Wavelet Shrinkage all evaluated by Enio and rejected on
+/// visual quality grounds. CE no longer ships a denoise stage; users
+/// rely on the source image being clean (or run an external denoiser
+/// before importing).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ColorEqualizationParams {
     pub clip_limit: f32,
@@ -328,10 +292,6 @@ pub struct ColorEqualizationParams {
     // ── Phase 2 effects ───────────────────────────────────────────
     pub sharpen_amount: f32,
     pub sharpen_radius: f32,
-    pub denoise_strength: f32,
-    /// Which denoise algorithm `denoise_strength` drives. Default
-    /// `Bilateral` (compat with previously-baked snapshots).
-    pub denoise_method: DenoiseMethod,
     // ── Phase 2 automatic adjustments (toggles) ───────────────────
     pub auto_levels: bool,
     pub auto_contrast: bool,
@@ -380,8 +340,6 @@ impl Default for ColorEqualizationParams {
             saturation: SATURATION_DEFAULT,
             sharpen_amount: SHARPEN_AMOUNT_DEFAULT,
             sharpen_radius: SHARPEN_RADIUS_DEFAULT,
-            denoise_strength: DENOISE_STRENGTH_DEFAULT,
-            denoise_method: DenoiseMethod::default(),
             auto_levels: false,
             auto_contrast: false,
             auto_colors: false,
@@ -409,7 +367,6 @@ impl ColorEqualizationParams {
         (self.clip_limit - CLIP_LIMIT_MIN).abs() < f32::EPSILON
             && self.tonal_is_identity()
             && self.sharpen_amount == 0.0
-            && self.denoise_strength == 0.0
             && !self.auto_levels
             && !self.auto_contrast
             && !self.auto_colors
@@ -461,11 +418,6 @@ pub struct ColorEqualizationUiSnapshot {
     pub saturation01: f32,
     pub sharpen_amount01: f32,
     pub sharpen_radius01: f32,
-    pub denoise_strength01: f32,
-    /// Selected denoise algorithm — panel paints the segmented radio
-    /// (Bilateral / NLM) under the Denoise slider with `Accent` on the
-    /// active method.
-    pub denoise_method: DenoiseMethod,
     pub lut_intensity01: f32,
     pub lut_mix01: f32,
     pub auto_levels: bool,
@@ -501,7 +453,6 @@ pub struct ColorEqualizationUiSnapshot {
     pub saturation: f32,
     pub sharpen_amount: f32,
     pub sharpen_radius: f32,
-    pub denoise_strength: f32,
     pub lut_intensity: f32,
     pub lut_mix: f32,
 }
@@ -521,8 +472,6 @@ impl Default for ColorEqualizationUiSnapshot {
             saturation01: saturation_to_slider(p.saturation),
             sharpen_amount01: sharpen_amount_to_slider(p.sharpen_amount),
             sharpen_radius01: sharpen_radius_to_slider(p.sharpen_radius),
-            denoise_strength01: denoise_strength_to_slider(p.denoise_strength),
-            denoise_method: p.denoise_method,
             lut_intensity01: lut_intensity_to_slider(p.lut_intensity),
             lut_mix01: lut_mix_to_slider(p.lut_mix),
             auto_levels: p.auto_levels,
@@ -551,7 +500,6 @@ impl Default for ColorEqualizationUiSnapshot {
             saturation: p.saturation,
             sharpen_amount: p.sharpen_amount,
             sharpen_radius: p.sharpen_radius,
-            denoise_strength: p.denoise_strength,
             lut_intensity: p.lut_intensity,
             lut_mix: p.lut_mix,
         }
@@ -566,7 +514,11 @@ impl Default for ColorEqualizationUiSnapshot {
 /// Slider variants carry normalized `0.0..=1.0`; number-chip variants
 /// carry the natural unit. Both paths converge in `apply_ui_edit` so
 /// clamps live exactly once.
+/// **Audit T1.6 R9 V1-H2:** `#[non_exhaustive]` mirrors the
+/// `BgRemovalUiEdit` precedent (R7 I1-1) — additive variants no
+/// longer semver-break downstream `match`.
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum ColorEqualizationUiEdit {
     /// Clip limit slider moved (normalized).
     ClipLimitSlider(f32),
@@ -612,14 +564,6 @@ pub enum ColorEqualizationUiEdit {
     SharpenRadiusSlider(f32),
     /// Sharpen radius chip edited (natural unit, `0.5..3`).
     SharpenRadius(f32),
-    /// Denoise strength slider moved (normalized).
-    DenoiseStrengthSlider(f32),
-    /// Denoise strength chip edited (natural unit, `0..1`).
-    DenoiseStrength(f32),
-    /// Denoise method radio picked (Bilateral edge-preserving / NLM
-    /// patch-based). Panel emits this on the segmented buttons under the
-    /// Denoise slider.
-    SetDenoiseMethod(DenoiseMethod),
     /// Auto Levels toggle flipped.
     ToggleAutoLevels,
     /// Auto Contrast toggle flipped.
@@ -743,15 +687,6 @@ pub fn apply_ui_edit(params: &mut ColorEqualizationParams, edit: ColorEqualizati
         }
         ColorEqualizationUiEdit::SharpenRadius(v) => {
             params.sharpen_radius = v.clamp(SHARPEN_RADIUS_MIN, SHARPEN_RADIUS_MAX);
-        }
-        ColorEqualizationUiEdit::DenoiseStrengthSlider(v) => {
-            params.denoise_strength = slider_to_denoise_strength(v);
-        }
-        ColorEqualizationUiEdit::DenoiseStrength(v) => {
-            params.denoise_strength = v.clamp(DENOISE_STRENGTH_MIN, DENOISE_STRENGTH_MAX);
-        }
-        ColorEqualizationUiEdit::SetDenoiseMethod(m) => {
-            params.denoise_method = m;
         }
         ColorEqualizationUiEdit::ToggleAutoLevels => {
             params.auto_levels = !params.auto_levels;

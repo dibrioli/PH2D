@@ -29,9 +29,9 @@ use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_tool_color_equalization::lut_presets::LutPreset;
 use ph2d_tool_color_equalization::params::{
     ColorEqualizationUiSnapshot, brightness_to_slider, clip_limit_to_slider, contrast_to_slider,
-    denoise_strength_to_slider, exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider,
-    saturation_to_slider, sharpen_amount_to_slider, sharpen_radius_to_slider,
-    temperature_to_slider, tile_grid_to_slider, tint_to_slider, vibrance_to_slider,
+    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider, saturation_to_slider,
+    sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
+    tint_to_slider, vibrance_to_slider,
 };
 use ph2d_vector::VectorScene;
 
@@ -47,7 +47,7 @@ pub(crate) struct SectionLayout {
     pub label_col_w: f32,
 }
 
-// ── Slider rows (14 rows) ─────────────────────────────────────────────
+// ── Slider rows (13 rows) ─────────────────────────────────────────────
 
 struct SliderRow {
     label: &'static str,
@@ -58,7 +58,7 @@ struct SliderRow {
     chip_display: String,
 }
 
-fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [SliderRow; 14] {
+fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [SliderRow; 13] {
     [
         SliderRow {
             label: "Clip",
@@ -149,14 +149,6 @@ fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [SliderRow; 14] 
             chip_display: format!("{:.2}", snapshot.sharpen_radius),
         },
         SliderRow {
-            label: "Denoise",
-            slider_id: ids::CEQ_DENOISE_STRENGTH,
-            chip_id: ids::CEQ_DENOISE_STRENGTH_NUM,
-            snap_track: denoise_strength_to_slider(snapshot.denoise_strength),
-            snap_chip: snapshot.denoise_strength as f64,
-            chip_display: format!("{:.2}", snapshot.denoise_strength),
-        },
-        SliderRow {
             label: "LUT Intensity",
             slider_id: ids::CEQ_LUT_INTENSITY,
             chip_id: ids::CEQ_LUT_INTENSITY_NUM,
@@ -175,9 +167,9 @@ fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [SliderRow; 14] 
     ]
 }
 
-/// Twelve+two labeled slider+chip rows (Phase 1/2 stages — clip, tile
+/// Eleven+two labeled slider+chip rows (Phase 1/2 stages — clip, tile
 /// grid, exposure, temperature, tint, brightness, contrast, vibrance,
-/// saturation, sharpen amount + radius, denoise, LUT intensity + mix).
+/// saturation, sharpen amount + radius, LUT intensity + mix).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_slider_rows_section(
     scene: &mut VectorScene,
@@ -482,105 +474,6 @@ pub(crate) fn paint_posterize_quantize_section(
 // ── Auto-* 2×2 grid ──────────────────────────────────────────────────
 
 /// Auto Levels / Auto Contrast / Auto Colors / Auto WB in a 2×2 grid.
-/// Denoise method dropdown — a single chip "Method: <name>" under the
-/// Denoise slider, opening a popover with the six options in
-/// [`DenoiseMethod`]. Click on the chip auto-toggles `open` (shared
-/// dispatch on `InteractiveState::Dropdown`); option click routes via
-/// `PanelEvent::Click` → `SetDenoiseMethod`. Open popover is deferred to
-/// `paint_pending_popovers` (slot 5).
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_denoise_method_section(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    store: &WidgetStore,
-    hit_index: &mut HitIndex,
-    theme: Theme,
-    snapshot: &ColorEqualizationUiSnapshot,
-    layout: SectionLayout,
-    y_in: f32,
-) -> f32 {
-    let chip_rect = Rect::new(layout.inner_x, y_in, layout.inner_w, layout.row_h);
-    let open = matches!(
-        store.get(ids::CEQ_DENOISE_METHOD_DROPDOWN),
-        Some(InteractiveState::Dropdown { open: true, .. })
-    );
-    let state = if open {
-        DropdownState::Focused
-    } else {
-        DropdownState::Normal
-    };
-    let dd = Dropdown::new(
-        ids::CEQ_DENOISE_METHOD_DROPDOWN,
-        format!("Method: {}", denoise_method_label(snapshot.denoise_method)),
-        denoise_method_options(),
-    )
-    .selected(snapshot.denoise_method)
-    .state(state)
-    .open(open);
-    paint_dropdown_chip(&dd, chip_rect, scene, text_system, theme);
-    hit_index.register(ids::CEQ_DENOISE_METHOD_DROPDOWN, chip_rect);
-    if open {
-        state::push_pending_popover(PendingDropdownPopover {
-            slot: 5,
-            chip: chip_rect,
-        });
-    }
-    y_in + layout.row_h + layout.row_gap
-}
-
-/// Friendly label for the dropdown chip.
-fn denoise_method_label(m: ph2d_tool_color_equalization::params::DenoiseMethod) -> &'static str {
-    use ph2d_tool_color_equalization::params::DenoiseMethod;
-    match m {
-        DenoiseMethod::GuidedFilter => "Guided Filter",
-        DenoiseMethod::AtrousWavelet => "À-Trous Wavelet",
-        DenoiseMethod::DomainTransform => "Domain Transform",
-        DenoiseMethod::AnisotropicDiffusion => "Anisotropic Diffusion",
-        DenoiseMethod::TotalVariation => "Total Variation",
-        DenoiseMethod::WaveletShrinkage => "Wavelet Shrinkage",
-    }
-}
-
-/// Six options for the denoise-method dropdown. Order MUST match
-/// `CEQ_DENOISE_METHOD_OPTS` and `DenoiseMethod` so the tool-side
-/// position lookup works.
-pub(crate) fn denoise_method_options()
--> Vec<DropdownOption<ph2d_tool_color_equalization::params::DenoiseMethod>> {
-    use ph2d_tool_color_equalization::params::DenoiseMethod;
-    vec![
-        DropdownOption::new(
-            ids::CEQ_DENOISE_METHOD_OPTS[0],
-            DenoiseMethod::GuidedFilter,
-            "Guided Filter",
-        ),
-        DropdownOption::new(
-            ids::CEQ_DENOISE_METHOD_OPTS[1],
-            DenoiseMethod::AtrousWavelet,
-            "À-Trous Wavelet",
-        ),
-        DropdownOption::new(
-            ids::CEQ_DENOISE_METHOD_OPTS[2],
-            DenoiseMethod::DomainTransform,
-            "Domain Transform",
-        ),
-        DropdownOption::new(
-            ids::CEQ_DENOISE_METHOD_OPTS[3],
-            DenoiseMethod::AnisotropicDiffusion,
-            "Anisotropic Diffusion",
-        ),
-        DropdownOption::new(
-            ids::CEQ_DENOISE_METHOD_OPTS[4],
-            DenoiseMethod::TotalVariation,
-            "Total Variation",
-        ),
-        DropdownOption::new(
-            ids::CEQ_DENOISE_METHOD_OPTS[5],
-            DenoiseMethod::WaveletShrinkage,
-            "Wavelet Shrinkage",
-        ),
-    ]
-}
-
 /// Each toggles its own pipeline stage. Accent (pressed) = on.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_auto_buttons_section(

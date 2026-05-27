@@ -378,7 +378,7 @@ fn apply_dropdown_close(slot: u8, hero: &mut HeroScreen) {
         2 => ph2d_tool_color_equalization::ids::CEQ_LUT_2_DROPDOWN,
         3 => ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
         4 => ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
-        _ => ph2d_tool_color_equalization::ids::CEQ_DENOISE_METHOD_DROPDOWN,
+        _ => return,
     };
     if let Some(ph2d_editor::InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(chip_id)
     {
@@ -387,11 +387,11 @@ fn apply_dropdown_close(slot: u8, hero: &mut HeroScreen) {
 }
 
 /// `true` iff `id` is a CEQ slider/chip whose drag should pause
-/// pipeline rebuilds (Quantize / Bilateral / Posterize are heavy
-/// enough that running them per frame stalls the slider visibly).
+/// pipeline rebuilds (Quantize / Posterize are heavy enough that
+/// running them per frame stalls the slider visibly).
 fn is_ceq_drag_widget(id: ph2d_editor::NodeId) -> bool {
     use ph2d_tool_color_equalization::ids as cids;
-    let sliders_and_chips: [ph2d_editor::NodeId; 28] = [
+    let sliders_and_chips: [ph2d_editor::NodeId; 26] = [
         cids::CEQ_CLIP_LIMIT,
         cids::CEQ_CLIP_LIMIT_NUM,
         cids::CEQ_TILE_GRID,
@@ -414,8 +414,6 @@ fn is_ceq_drag_widget(id: ph2d_editor::NodeId) -> bool {
         cids::CEQ_SHARPEN_AMOUNT_NUM,
         cids::CEQ_SHARPEN_RADIUS,
         cids::CEQ_SHARPEN_RADIUS_NUM,
-        cids::CEQ_DENOISE_STRENGTH,
-        cids::CEQ_DENOISE_STRENGTH_NUM,
         cids::CEQ_LUT_INTENSITY,
         cids::CEQ_LUT_INTENSITY_NUM,
         cids::CEQ_LUT_MIX,

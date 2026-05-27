@@ -32,8 +32,8 @@ use super::algorithm::{
 use super::ids;
 use super::params::{
     ColorEqualizationParams, ColorEqualizationUiEdit, ColorEqualizationUiSnapshot, apply_ui_edit,
-    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, denoise_strength_to_slider,
-    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider,
+    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, exposure_to_slider,
+    lut_intensity_to_slider, lut_mix_to_slider,
     posterize_dither_grain_to_slider, posterize_dither_strength_to_slider, saturation_to_slider,
     sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
     tint_to_slider, vibrance_to_slider,
@@ -186,8 +186,6 @@ impl ColorEqualizationTool {
             saturation01: saturation_to_slider(self.params.saturation),
             sharpen_amount01: sharpen_amount_to_slider(self.params.sharpen_amount),
             sharpen_radius01: sharpen_radius_to_slider(self.params.sharpen_radius),
-            denoise_strength01: denoise_strength_to_slider(self.params.denoise_strength),
-            denoise_method: self.params.denoise_method,
             lut_intensity01: lut_intensity_to_slider(self.params.lut_intensity),
             lut_mix01: lut_mix_to_slider(self.params.lut_mix),
             auto_levels: self.params.auto_levels,
@@ -218,7 +216,6 @@ impl ColorEqualizationTool {
             saturation: self.params.saturation,
             sharpen_amount: self.params.sharpen_amount,
             sharpen_radius: self.params.sharpen_radius,
-            denoise_strength: self.params.denoise_strength,
             lut_intensity: self.params.lut_intensity,
             lut_mix: self.params.lut_mix,
         }
@@ -539,12 +536,6 @@ impl Tool for ColorEqualizationTool {
             PanelEvent::SetValue(id, v) if id == ids::CEQ_SHARPEN_RADIUS_NUM => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::SharpenRadius(v as f32));
             }
-            PanelEvent::SetValue(id, v) if id == ids::CEQ_DENOISE_STRENGTH => {
-                self.apply_ui_edit(ColorEqualizationUiEdit::DenoiseStrengthSlider(v as f32));
-            }
-            PanelEvent::SetValue(id, v) if id == ids::CEQ_DENOISE_STRENGTH_NUM => {
-                self.apply_ui_edit(ColorEqualizationUiEdit::DenoiseStrength(v as f32));
-            }
             // Phase 3 LUT sliders.
             PanelEvent::SetValue(id, v) if id == ids::CEQ_LUT_INTENSITY => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::LutIntensitySlider(v as f32));
@@ -647,27 +638,6 @@ impl Tool for ColorEqualizationTool {
             }
             PanelEvent::Toggle(id, _) if id == ids::CEQ_AUTO_WB => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoWb);
-            }
-            // Denoise method dropdown — option click routes to the
-            // matching variant. The 6 IDs in `CEQ_DENOISE_METHOD_OPTS`
-            // are aligned positionally with `DenoiseMethod` so the
-            // lookup is index-based; chip-open toggle is handled by the
-            // shared dispatch on `InteractiveState::Dropdown` (no event
-            // here) and the close is staged via
-            // `pending_close_lut_dropdown` (slot 5 reserved below).
-            PanelEvent::Click(id) if ids::CEQ_DENOISE_METHOD_OPTS.contains(&id) => {
-                use crate::params::DenoiseMethod;
-                let method = match ids::CEQ_DENOISE_METHOD_OPTS.iter().position(|&i| i == id) {
-                    Some(0) => DenoiseMethod::GuidedFilter,
-                    Some(1) => DenoiseMethod::AtrousWavelet,
-                    Some(2) => DenoiseMethod::DomainTransform,
-                    Some(3) => DenoiseMethod::AnisotropicDiffusion,
-                    Some(4) => DenoiseMethod::TotalVariation,
-                    Some(5) => DenoiseMethod::WaveletShrinkage,
-                    _ => DenoiseMethod::default(),
-                };
-                self.apply_ui_edit(ColorEqualizationUiEdit::SetDenoiseMethod(method));
-                self.pending_close_lut_dropdown = Some(5);
             }
             PanelEvent::Click(id) if id == ids::CEQ_APPLY => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::Apply);

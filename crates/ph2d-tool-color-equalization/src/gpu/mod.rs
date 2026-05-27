@@ -12,7 +12,6 @@
 //! | Stage                  | CPU | GPU | Status |
 //! |------------------------|-----|-----|--------|
 //! | LUT3D apply (trilinear)| ✓   | ✓   | [`lut_apply`] — Phase 4 |
-//! | Denoise (6 filters)    | ✓   |     | CPU-only post 2026-05-27 audit (Bilateral + NLM removed; Guided/À-Trous/Domain-Transform/Anisotropic/TV/Wavelet-Shrinkage in [`crate::algorithm`]) |
 //! | Phase 1 tonal batch    | ✓   | ✓   | [`tonal_batch`] — Phase 4.2 (7 stages fused, single sRGB ↔ linear ↔ OKLab round-trip) |
 //! | Sharpen Laplacian      | ✓   | ✓   | [`sharpen`] — Phase 4.3 (3×3, 1 pass, 4-neighbour) |
 //! | Sharpen Unsharp (Gauss)| ✓   | ✓   | [`sharpen`] — Phase 4.3 (separable H + V combine; the big GPU win for radius > 3) |
@@ -91,9 +90,9 @@ pub fn try_preview_chain() -> Option<&'static chain::ChainedPipelineCache> {
 
 // ── Cross-pipeline helpers ───────────────────────────────────────
 //
-// Five pipelines (LUT / Bilateral / Tonal / Sharpen × 2 / Auto-WB)
-// repeated the same texture-creation + readback boilerplate. Lifted
-// here so adding a sixth shader doesn't grow the per-module footprint
+// Four pipelines (LUT / Tonal / Sharpen × 2 / Auto-WB) repeated the
+// same texture-creation + readback boilerplate. Lifted here so
+// adding a fifth shader doesn't grow the per-module footprint
 // (and so a future shell-side cache can swap these out wholesale for
 // the texture-cached path without touching individual pipelines).
 

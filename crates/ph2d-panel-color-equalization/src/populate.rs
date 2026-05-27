@@ -14,15 +14,15 @@ use ph2d_editor_core::widget::{
     ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
 use ph2d_tool_color_equalization::params::{
-    BRIGHTNESS_DEFAULT, CLIP_LIMIT_DEFAULT, CONTRAST_DEFAULT, DENOISE_STRENGTH_DEFAULT,
-    EXPOSURE_DEFAULT, LUT_INTENSITY_DEFAULT, LUT_MIX_DEFAULT, POSTERIZE_DITHER_GRAIN_DEFAULT,
+    BRIGHTNESS_DEFAULT, CLIP_LIMIT_DEFAULT, CONTRAST_DEFAULT, EXPOSURE_DEFAULT,
+    LUT_INTENSITY_DEFAULT, LUT_MIX_DEFAULT, POSTERIZE_DITHER_GRAIN_DEFAULT,
     POSTERIZE_DITHER_STRENGTH_DEFAULT, SATURATION_DEFAULT, SHARPEN_AMOUNT_DEFAULT,
     SHARPEN_RADIUS_DEFAULT, TEMPERATURE_DEFAULT, TILE_GRID_DEFAULT, TINT_DEFAULT, VIBRANCE_DEFAULT,
-    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, denoise_strength_to_slider,
-    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider,
-    posterize_dither_grain_to_slider, posterize_dither_strength_to_slider, saturation_to_slider,
-    sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
-    tint_to_slider, vibrance_to_slider,
+    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, exposure_to_slider,
+    lut_intensity_to_slider, lut_mix_to_slider, posterize_dither_grain_to_slider,
+    posterize_dither_strength_to_slider, saturation_to_slider, sharpen_amount_to_slider,
+    sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider, tint_to_slider,
+    vibrance_to_slider,
 };
 
 pub fn populate(store: &mut WidgetStore) {
@@ -54,7 +54,6 @@ pub fn populate(store: &mut WidgetStore) {
         ids::CEQ_LUT_2_DROPDOWN,
         ids::CEQ_POSTERIZE_DROPDOWN,
         ids::CEQ_QUANTIZE_DROPDOWN,
-        ids::CEQ_DENOISE_METHOD_DROPDOWN,
     ] {
         store.register(
             id,
@@ -79,7 +78,6 @@ pub fn populate(store: &mut WidgetStore) {
         .chain(ids::CEQ_LUT_2_OPTS.iter())
         .chain(ids::CEQ_POSTERIZE_OPTS.iter())
         .chain(ids::CEQ_QUANTIZE_OPTS.iter())
-        .chain(ids::CEQ_DENOISE_METHOD_OPTS.iter())
     {
         store.register(
             *id,
@@ -89,7 +87,7 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
-    let rows: [(_, _, f32); 16] = [
+    let rows: [(_, _, f32); 15] = [
         (
             ids::CEQ_CLIP_LIMIT,
             ids::CEQ_CLIP_LIMIT_NUM,
@@ -144,11 +142,6 @@ pub fn populate(store: &mut WidgetStore) {
             ids::CEQ_SHARPEN_RADIUS,
             ids::CEQ_SHARPEN_RADIUS_NUM,
             sharpen_radius_to_slider(SHARPEN_RADIUS_DEFAULT),
-        ),
-        (
-            ids::CEQ_DENOISE_STRENGTH,
-            ids::CEQ_DENOISE_STRENGTH_NUM,
-            denoise_strength_to_slider(DENOISE_STRENGTH_DEFAULT),
         ),
         (
             ids::CEQ_LUT_INTENSITY,
@@ -243,7 +236,6 @@ mod tests {
             ids::CEQ_SATURATION,
             ids::CEQ_SHARPEN_AMOUNT,
             ids::CEQ_SHARPEN_RADIUS,
-            ids::CEQ_DENOISE_STRENGTH,
             ids::CEQ_LUT_INTENSITY,
             ids::CEQ_LUT_MIX,
             ids::CEQ_POSTERIZE_DITHER_STRENGTH,
@@ -263,7 +255,6 @@ mod tests {
             ids::CEQ_SATURATION_NUM,
             ids::CEQ_SHARPEN_AMOUNT_NUM,
             ids::CEQ_SHARPEN_RADIUS_NUM,
-            ids::CEQ_DENOISE_STRENGTH_NUM,
             ids::CEQ_LUT_INTENSITY_NUM,
             ids::CEQ_LUT_MIX_NUM,
             ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
@@ -289,7 +280,6 @@ mod tests {
             (ids::CEQ_SATURATION, ids::CEQ_SATURATION_NUM),
             (ids::CEQ_SHARPEN_AMOUNT, ids::CEQ_SHARPEN_AMOUNT_NUM),
             (ids::CEQ_SHARPEN_RADIUS, ids::CEQ_SHARPEN_RADIUS_NUM),
-            (ids::CEQ_DENOISE_STRENGTH, ids::CEQ_DENOISE_STRENGTH_NUM),
             (ids::CEQ_LUT_INTENSITY, ids::CEQ_LUT_INTENSITY_NUM),
             (ids::CEQ_LUT_MIX, ids::CEQ_LUT_MIX_NUM),
             (

@@ -48,3 +48,10 @@ ph2d-imageio-registry-init = { path = "../ph2d-imageio-registry-init" }
 
 [dev-dependencies]
 tempfile = "3"
+
+# Audit T1.6 CI: machete pega `ph2d-color` como unused — dep
+# adicionada por W3.T1.0 wire-up commit (52ee9d6) preparando
+# tipos `SrgbRgba` no path AssetDb → imageio. Wire real consumido
+# em W3.T2+. Mantém no machete-ignored até T2 efetivamente usar.
+[package.metadata.cargo-machete]
+ignored = ["ph2d-color"]

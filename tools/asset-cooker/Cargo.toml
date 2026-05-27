@@ -34,3 +34,9 @@ clap = { version = "4", features = ["derive"] }
 # Encoders C/C++ vendored aceitáveis sob critério HR-1 §2.7.1 (offline-only,
 # never embarcado em release-game bundle). Audit do source em W1.T2.
 ctt = "0.4.0"
+
+# Audit T1.6 CI: machete pega `ctt` como unused porque W1.T0 ainda
+# não wired (lib API consumida só em W1.T1+). Dep deliberada per
+# ADR-0055-v4; mantém no machete-ignored até T1.1.
+[package.metadata.cargo-machete]
+ignored = ["ctt"]

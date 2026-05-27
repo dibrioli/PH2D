@@ -33,6 +33,18 @@ postcard = { version = "1", features = ["alloc"] }
 # JSON parser for M14.5 B hand-packed atlases (Aseprite + TexturePacker
 # both export JSON). Aligned with ph2d-mcp's serde_json major.
 serde_json = "1"
+# ADR-0054 wire-up (W3.T1.0, 2026-05-27): bridge AssetDb decode path
+# to the imageio pipeline so user-imported TIFF/ORA/APNG/PSD/GIF/
+# .ph2d-native actually go through the 9 audited format crates (with
+# OOM caps, NaN reject, path-traversal reject, recursion bomb caps,
+# EOF semantics, etc.). Closes the X-HIGH-1 architectural gap flagged
+# repeatedly in audits 7-12 ("registries dead-on-arrival"). PNG/WEBP/
+# JPEG remain on the legacy `image` 0.25 path for back-compat (the
+# imageio versions of PNG/WEBP/JPEG share the same `image` 0.25
+# transitive dep, so no codec duplication — only dispatch glue).
+ph2d-color = { path = "../ph2d-color" }
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-imageio-registry-init = { path = "../ph2d-imageio-registry-init" }
 
 [dev-dependencies]
 tempfile = "3"

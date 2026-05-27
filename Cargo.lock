@@ -3881,6 +3881,9 @@ dependencies = [
  "blake3",
  "image",
  "notify",
+ "ph2d-color",
+ "ph2d-imageio",
+ "ph2d-imageio-registry-init",
  "postcard",
  "serde",
  "serde_json",
@@ -3932,6 +3935,7 @@ name = "ph2d-color"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "serde",
 ]
 
 [[package]]

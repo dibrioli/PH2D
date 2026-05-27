@@ -54,8 +54,20 @@ const TIFF_LE_MAGIC: [u8; 4] = [0x49, 0x49, 0x2A, 0x00];
 /// TIFF big-endian magic: `MM` + 0x00 0x2A.
 const TIFF_BE_MAGIC: [u8; 4] = [0x4D, 0x4D, 0x00, 0x2A];
 
+/// BigTIFF little-endian magic: `II` + 0x2B 0x00. Audit W2.T6 H-2:
+/// previously bare `is_tiff_magic` missed BigTIFF, so the registry
+/// silently fell through to extension matching. Now we recognize
+/// BigTIFF as Strong and refuse on import with a clear message.
+const BIGTIFF_LE_MAGIC: [u8; 4] = [0x49, 0x49, 0x2B, 0x00];
+/// BigTIFF big-endian magic: `MM` + 0x00 0x2B.
+const BIGTIFF_BE_MAGIC: [u8; 4] = [0x4D, 0x4D, 0x00, 0x2B];
+
 fn is_tiff_magic(b: &[u8]) -> bool {
     b.starts_with(&TIFF_LE_MAGIC) || b.starts_with(&TIFF_BE_MAGIC)
+}
+
+fn is_bigtiff_magic(b: &[u8]) -> bool {
+    b.starts_with(&BIGTIFF_LE_MAGIC) || b.starts_with(&BIGTIFF_BE_MAGIC)
 }
 
 /// Register the TIFF importer.
@@ -74,7 +86,12 @@ pub struct TiffImporter;
 impl ImageImporter for TiffImporter {
     fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
         match hint {
-            MagicHint::Bytes(b) if is_tiff_magic(b) => MagicMatch::Strong,
+            // Both classic TIFF and BigTIFF claim Strong; the import
+            // path distinguishes and refuses BigTIFF with an
+            // actionable message (audit W2.T6 H-2). Otherwise BigTIFF
+            // files would silently fall through to extension Weak +
+            // get a generic Decode error from `tiff::Decoder::new`.
+            MagicHint::Bytes(b) if is_tiff_magic(b) || is_bigtiff_magic(b) => MagicMatch::Strong,
             MagicHint::Bytes(_) => MagicMatch::None,
             MagicHint::Extension(ext) => {
                 if ext.eq_ignore_ascii_case("tiff") || ext.eq_ignore_ascii_case("tif") {
@@ -89,6 +106,19 @@ impl ImageImporter for TiffImporter {
     fn import(&self, src: &[u8], _opts: &ImportOpts) -> Result<DecodedImage, Error> {
         if src.is_empty() {
             return Err(Error::Truncated);
+        }
+        // Audit W2.T6 H-2: BigTIFF (`II+\0` / `MM\0+`) is a separate
+        // format with 64-bit offsets — `tiff` 0.11 can decode it but
+        // our wrapper doesn't expose the BigTIFF-specific quirks
+        // (>4 GB images, different tag widths). Refuse early with a
+        // clear message; future `ph2d-imageio-bigtiff` lands when a
+        // real client needs gigapixel raster.
+        if is_bigtiff_magic(src) {
+            return Err(Error::Unsupported(
+                "BigTIFF (II+\\0 / MM\\0+ magic) not supported in W2.T2; \
+                 use classic TIFF, PNG, or .ph2d-native for >4 GB images"
+                    .into(),
+            ));
         }
         let cursor = Cursor::new(src);
         let mut decoder =
@@ -448,6 +478,36 @@ mod tests {
             MagicMatch::None
         );
         assert_eq!(imp.supports(MagicHint::Bytes(&[])), MagicMatch::None);
+    }
+
+    /// Audit W2.T6 H-2: BigTIFF magic recognized (Strong) so registry
+    /// lands here; import refuses with Unsupported pointing at
+    /// classic TIFF / .ph2d-native alternatives.
+    #[test]
+    fn bigtiff_magic_strong_but_import_refuses() {
+        let imp = TiffImporter;
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&BIGTIFF_LE_MAGIC)),
+            MagicMatch::Strong,
+            "BigTIFF LE recognized"
+        );
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&BIGTIFF_BE_MAGIC)),
+            MagicMatch::Strong,
+            "BigTIFF BE recognized"
+        );
+        let mut bigtiff_header = BIGTIFF_LE_MAGIC.to_vec();
+        bigtiff_header.extend_from_slice(&[0; 32]);
+        let err = imp
+            .import(&bigtiff_header, &ImportOpts::default())
+            .expect_err("BigTIFF must be refused early");
+        match err {
+            Error::Unsupported(msg) => assert!(
+                msg.contains("BigTIFF"),
+                "expected BigTIFF in error message, got: {msg}"
+            ),
+            other => panic!("expected Unsupported, got {other:?}"),
+        }
     }
 
     #[test]

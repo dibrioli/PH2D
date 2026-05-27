@@ -18,4 +18,10 @@ authors.workspace = true
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
-psd          = { version = "0.3" }
+# Audit W2.T6 H-8: pin `=0.3.5` exact because our
+# `map_psd_blend_mode_via_debug` depends on the `Debug` derive's
+# variant-name representation being stable. A semver-minor bump
+# (0.3.6+) could rename or `#[non_exhaustive]`-mark variants and
+# silently make all blend modes fall through to `Normal`. Re-validate
+# the hack before unpinning.
+psd          = { version = "=0.3.5" }

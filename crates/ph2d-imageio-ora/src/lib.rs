@@ -71,10 +71,25 @@ pub struct OraImporter;
 /// ZIP local-file-header magic.
 const ZIP_MAGIC: [u8; 4] = [b'P', b'K', 0x03, 0x04];
 
+/// ORA spec version emitted in `stack.xml`. Audit W2.T6 MEDIUM:
+/// previously a magic string `"0.0.6"` inline; promoted to const so
+/// the writer + a test pin can agree on the value.
+const ORA_SPEC_VERSION: &str = "0.0.6";
+
 impl ImageImporter for OraImporter {
     fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
+        // Audit W2.T6 H-1 (2026-05-26): ZIP magic `PK\x03\x04` is
+        // generic — KRA, ODT, EPUB, JAR, .docx all start with it.
+        // Claiming `Strong` on bare ZIP magic meant ORA was stealing
+        // dispatch from every other ZIP-container format the registry
+        // would later host (.kra W3+ candidate, even our own
+        // .ph2d-native is a postcard container, NOT ZIP — false alarm
+        // was for KRA-like formats). Fix: claim only `Weak` on ZIP
+        // magic + Weak on extension. A future `peek_mimetype()` helper
+        // could promote to Strong, but until 2+ ZIP-container importers
+        // exist, the simple downgrade is enough.
         match hint {
-            MagicHint::Bytes(b) if b.starts_with(&ZIP_MAGIC) => MagicMatch::Strong,
+            MagicHint::Bytes(b) if b.starts_with(&ZIP_MAGIC) => MagicMatch::Weak,
             MagicHint::Bytes(_) => MagicMatch::None,
             MagicHint::Extension(ext) if ext.eq_ignore_ascii_case("ora") => MagicMatch::Weak,
             MagicHint::Extension(_) => MagicMatch::None,
@@ -440,8 +455,8 @@ fn write_stack_xml(stack: &LayerStack) -> Result<String, Error> {
     s.push_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
     s.push('\n');
     s.push_str(&format!(
-        r#"<image w="{}" h="{}" version="0.0.6">"#,
-        stack.canvas_width, stack.canvas_height
+        r#"<image w="{}" h="{}" version="{}">"#,
+        stack.canvas_width, stack.canvas_height, ORA_SPEC_VERSION
     ));
     s.push('\n');
     s.push_str("  <stack>");
@@ -501,8 +516,19 @@ fn write_layer_xml(
     Ok(())
 }
 
+/// Escape XML-significant characters AND strip XML 1.0-illegal control
+/// chars (U+0001..U+001F except `\t \n \r`). Audit W2.T6 MEDIUM:
+/// previously only escaped the 5 entities; a layer name containing
+/// `\x07` (BEL) or `\x1b` (ESC) produced XML that roxmltree rejects
+/// on re-import. Now control chars are silently dropped (less ideal
+/// than replacing with `?` but matches the spirit of XML strictness).
 fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
+    let stripped: String = s
+        .chars()
+        .filter(|&c| c == '\t' || c == '\n' || c == '\r' || c >= ' ')
+        .collect();
+    stripped
+        .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
@@ -556,15 +582,17 @@ mod tests {
     }
 
     #[test]
-    fn supports_recognizes_zip_magic_strong() {
+    fn supports_recognizes_zip_magic_weak_not_strong() {
+        // Audit W2.T6 H-1: ZIP magic is generic (KRA, ODT, EPUB, JAR
+        // also use it); claiming Strong would steal dispatch from
+        // other ZIP-container formats. Downgrade to Weak so callers
+        // explicitly route via `MagicHint::Extension("ora")` for
+        // certainty.
         let imp = OraImporter;
-        assert_eq!(
-            imp.supports(MagicHint::Bytes(&ZIP_MAGIC)),
-            MagicMatch::Strong
-        );
+        assert_eq!(imp.supports(MagicHint::Bytes(&ZIP_MAGIC)), MagicMatch::Weak);
         let mut padded = ZIP_MAGIC.to_vec();
         padded.extend_from_slice(&[0; 32]);
-        assert_eq!(imp.supports(MagicHint::Bytes(&padded)), MagicMatch::Strong);
+        assert_eq!(imp.supports(MagicHint::Bytes(&padded)), MagicMatch::Weak);
         assert_eq!(
             imp.supports(MagicHint::Bytes(b"not-a-zip-file")),
             MagicMatch::None

@@ -44,9 +44,21 @@ use ph2d_imageio::{
     LayerStack, MAX_RASTER_DIMENSION, MagicHint, MagicMatch,
 };
 
-/// PSD signature: `"8BPS"` followed by 2-byte big-endian version
-/// (`0x0001` = PSD; `0x0002` = PSB which we don't support yet).
+/// PSD signature: `"8BPS"` followed by 2-byte big-endian version.
 const PSD_MAGIC: [u8; 6] = [b'8', b'B', b'P', b'S', 0x00, 0x01];
+/// PSB (Photoshop Big) signature — same `8BPS` prefix + version
+/// `0x0002`. Audit W2.T6 H-6: claim Strong so registry lands here
+/// and `import` returns an actionable `Error::Unsupported` instead
+/// of a generic "no importer" miss.
+const PSB_MAGIC: [u8; 6] = [b'8', b'B', b'P', b'S', 0x00, 0x02];
+
+/// Audit W2.T6 H-7: cap on total layer-pixel bytes a PSD may
+/// allocate. `psd` 0.3.5 returns full-canvas-sized buffers per
+/// layer; a 16K × 16K PSD with 200 layers is ~200 GB. We refuse
+/// before iterating if the total estimate exceeds this cap.
+/// 2 GiB = generous for realistic Painter use; documents larger
+/// need an explicit ADR amendment.
+const MAX_PSD_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
 /// Register the PSD importer.
 pub fn register_importer(reg: &mut ImporterRegistry) {
@@ -67,9 +79,11 @@ impl ImageImporter for PsdImporter {
     fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
         match hint {
             MagicHint::Bytes(b) if b.starts_with(&PSD_MAGIC) => MagicMatch::Strong,
-            // `8BPS` without the `0x0001` PSD version is a PSB file
-            // (`0x0002`); we don't claim it — let registry-fallthrough
-            // surface an Unsupported.
+            // Audit W2.T6 H-6: PSB (`8BPS\0\x02`) claims Strong too,
+            // but `import` returns Unsupported immediately so the
+            // user sees an actionable error instead of generic
+            // "no importer".
+            MagicHint::Bytes(b) if b.starts_with(&PSB_MAGIC) => MagicMatch::Strong,
             MagicHint::Bytes(_) => MagicMatch::None,
             MagicHint::Extension(ext) if ext.eq_ignore_ascii_case("psd") => MagicMatch::Weak,
             MagicHint::Extension(_) => MagicMatch::None,
@@ -79,6 +93,17 @@ impl ImageImporter for PsdImporter {
     fn import(&self, src: &[u8], _opts: &ImportOpts) -> Result<DecodedImage, Error> {
         if src.is_empty() {
             return Err(Error::Truncated);
+        }
+        // Audit W2.T6 H-6: detect PSB early + return an actionable
+        // Unsupported. The `psd` crate would try to parse and fail
+        // with an obscure error otherwise.
+        if src.starts_with(&PSB_MAGIC) {
+            return Err(Error::Unsupported(
+                "PSB (Photoshop Big) format not supported. PSB targets >30000×30000 \
+                 canvases — open in Photoshop and \"Save As\" → PSD or use \
+                 `.ph2d-native` for full-fidelity layered save."
+                    .into(),
+            ));
         }
         let parsed =
             psd::Psd::from_bytes(src).map_err(|e| Error::Decode(format!("PSD parse: {e}")))?;
@@ -100,6 +125,19 @@ impl ImageImporter for PsdImporter {
         // `.ph2d-native`; the PSD layer-info-section parsing for
         // groups would need our own decoder.
         let psd_layers = parsed.layers();
+
+        // Audit W2.T6 H-7: refuse decompression-bomb PSDs (16K × 16K
+        // canvas × 200 layers = ~200 GB allocation) before iterating.
+        // `psd` 0.3.5 returns full-canvas buffers per layer so cost
+        // is `n_layers × canvas_w × canvas_h × 4`.
+        let total_bytes = (psd_layers.len() as u64)
+            .checked_mul(canvas_width as u64)
+            .and_then(|n| n.checked_mul(canvas_height as u64))
+            .and_then(|n| n.checked_mul(4))
+            .ok_or(Error::OutOfMemory)?;
+        if total_bytes > MAX_PSD_TOTAL_BYTES {
+            return Err(Error::DimensionExceedsLimit);
+        }
         let mut layers: Vec<Layer> = Vec::with_capacity(psd_layers.len());
         for psd_layer in psd_layers {
             let pixels_buf = layer_pixels(psd_layer, canvas_width, canvas_height)?;
@@ -293,15 +331,37 @@ mod tests {
             imp.supports(MagicHint::Bytes(&PSD_MAGIC)),
             MagicMatch::Strong
         );
-        // PSB version 0x0002 — NOT supported by W2.T4; must NOT match.
-        let psb = [b'8', b'B', b'P', b'S', 0x00, 0x02];
-        assert_eq!(imp.supports(MagicHint::Bytes(&psb)), MagicMatch::None);
         // Wrong signature.
         assert_eq!(
             imp.supports(MagicHint::Bytes(b"not-a-psd")),
             MagicMatch::None
         );
         assert_eq!(imp.supports(MagicHint::Bytes(&[])), MagicMatch::None);
+    }
+
+    /// Audit W2.T6 H-6: PSB (`8BPS\0\x02`) now claims Strong so the
+    /// registry lands here instead of failing with a generic "no
+    /// importer". Import returns actionable `Unsupported` directing
+    /// the user to PSD or `.ph2d-native`.
+    #[test]
+    fn psb_magic_strong_but_import_refuses_actionable() {
+        let imp = PsdImporter;
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&PSB_MAGIC)),
+            MagicMatch::Strong
+        );
+        let mut psb_header = PSB_MAGIC.to_vec();
+        psb_header.extend_from_slice(&[0; 32]);
+        let err = imp
+            .import(&psb_header, &ImportOpts::default())
+            .expect_err("PSB must be refused early");
+        match err {
+            Error::Unsupported(msg) => assert!(
+                msg.contains("PSB") && msg.contains(".ph2d-native"),
+                "expected PSB + .ph2d-native pointer, got: {msg}"
+            ),
+            other => panic!("expected Unsupported, got {other:?}"),
+        }
     }
 
     #[test]

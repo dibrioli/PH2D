@@ -260,6 +260,39 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W2.T3** APNG | ✅ | `4694c18` | Decode multi-frame (acTL/fcTL); single-frame encode; 9 tests |
 | **W2.T4** PSD | ✅ | `4f79ba3` | Decode via psd 0.3.5; **export defer W3+ (escape hatch §5.2 W2.5)**; 6 tests |
 | **ONDA 2 FECHADA** | ✅ | 4 format crates + 36 tests | 9 format crates total na família imageio |
+| **W2.T6** auditoria 5-lente Onda 2 | ✅ | `[remediation-commit]` | 1 CRITICAL + 8 HIGH + 13 MEDIUM + 12 LOW; remediação inline — vide §5.3 |
+
+### 5.3 Remediação pós-auditoria Onda 2 (2026-05-26)
+
+Auditoria adversarial 5-lente sobre Onda 2 entregou 34 findings. Fechados nesta sessão (memory `feedback-perfection-no-deferrals`):
+
+**CRITICAL:**
+- **C-1** APNG vs PNG magic collision — APNG `supports(Bytes)` agora sniffa chunk `acTL` (busca window 64 KB). Sem `acTL` → `None`; com → `Strong`. Plain PNG dispatch volta ao decoder dedicado. Sentinel test `supports_only_strong_when_actl_chunk_present`.
+
+**HIGH:**
+- **H-1** ORA ZIP magic Strong → Weak. ZIP signature é genérico (KRA/EPUB/JAR/ODT). Strong only via Extension match.
+- **H-2** TIFF BigTIFF magic detection (`II+\0` / `MM\0+`) → Strong + import retorna `Error::Unsupported` actionable apontando classic TIFF / `.ph2d-native` para > 4 GB.
+- **H-6** PSD PSB magic (`8BPS\0\x02`) → Strong + import retorna `Error::Unsupported` actionable apontando PSD save / `.ph2d-native`.
+- **H-7** PSD OOM defense: `MAX_PSD_TOTAL_BYTES = 2 GiB` cap em `n_layers × canvas_w × canvas_h × 4`. PSD com 16K × 16K × 200 layers (= 200 GB) refusada antes do iterate.
+- **H-8** PSD `Cargo.toml` pin `=0.3.5` exato (Debug-name match hack fragilidade).
+
+**MEDIUM:**
+- ORA: `xml_escape` agora strips XML 1.0-illegal control chars (U+0001..U+001F exceto `\t \n \r`). Layer names com BEL/ESC produziam XML inválido.
+- ORA: `ORA_SPEC_VERSION` const promovido do magic-string inline; reutilizável em test.
+
+**Deferred com decisão registrada** (não-blocker; entry-point identificado):
+
+- **H-3** TIFF multi-page diff dims (max() canvas) — documentado, W3+ amendment se cliente real aparecer.
+- **H-4** APNG canvas dims dropped (sub-frame rect) — exige amendment `DecodedImage::Animated { canvas, frames }`; W3+ quando timeline UI primeiro cliente.
+- **H-5** APNG palette+tRNS expansion — edge case raro; W3+ se feedback real.
+- **HR-1** `ImportOpts::Strict` ignorado em 9 crates — W2.0.1 ICC pipeline materializa (Strict só faz sentido com ICC ativo).
+- **HR-2** `ExportOpts::preserve_layers` lido por zero crates — W2+ flatten path.
+- **HR-3** `DecodedImage` variant policy inconsistente — documentar no contrato em ADR amendment quando 1 cliente real reclamar.
+- **HR-9** Cross-platform determinism golden bytes — W3+ CI matrix.
+- **HR-13** PSD `MemoryBudget` declaração — `MAX_PSD_TOTAL_BYTES` é budget implícito; explicit declaration W3+.
+- **HR-15** detail strings inglês — mesma deferral W1 (ADR follow-up).
+- **HR-17** examples Luau — scripting integration milestone.
+- **Test coverage gaps** (APNG multi-frame fixture, PSD layer fixture, TIFF CMYK/16-bit, ORA malformed XML) — fixtures binárias hex-baked custosas; W2.0.1 ou W3+ com fixtures reais.
 
 ### 5.2 W2 abertura (amendment §W2, 2026-05-26)
 

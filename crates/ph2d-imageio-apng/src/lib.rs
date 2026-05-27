@@ -19,11 +19,10 @@
 //!
 //! ### What W2.T3 covers
 //!
-//! - Magic: PNG `\x89PNG\r\n\x1a\n` (Strong); `"apng"` extension
-//!   (Weak). The `"png"` extension is owned by `ph2d-imageio-png`;
-//!   APNG-flavoured PNG files (server-side as `.png`) decode via
-//!   THAT crate which silently drops frames (audit W1.T1 A-Crit1
-//!   followed by `ph2d-imageio-png` doc note).
+//! - Magic: PNG `\x89PNG\r\n\x1a\n` **plus an `acTL` chunk** found
+//!   within the first 64 KB → `Strong` (audit W2.T6 C-1 fix). Plain
+//!   PNG (no `acTL`) → `None` so the dedicated PNG importer takes
+//!   over via registry dispatch. `"apng"` extension (Weak).
 //! - Decode: walk every `acTL.num_frames` frame via
 //!   `reader.next_frame()`; per-frame `delay_ms`, `offset_xy`,
 //!   `dispose_op`, `blend_op` extracted and preserved in `AnimFrame`.
@@ -55,6 +54,23 @@ use std::io::Cursor;
 /// PNG's 8-byte signature (APNG is layered on top of plain PNG).
 const PNG_MAGIC: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
 
+/// Look for an `acTL` chunk in the first few KB of a PNG byte buffer.
+/// APNG spec requires `acTL` to appear BEFORE the first `IDAT` (so the
+/// chunk is in the header region, easy to scan). We scan up to 64 KB
+/// defensively — enough to cover IHDR + iCCP + sBIT + sRGB + cHRM +
+/// gAMA + pHYs + tEXt headers without parsing them properly.
+///
+/// Audit W2.T6 C-1: without this sniff, APNG importer would claim
+/// `Strong` on every PNG byte stream and steal dispatch from the
+/// dedicated PNG importer (registry FIFO + alphabetical codegen
+/// order). With the sniff, plain PNG → `None` here, dispatch falls
+/// through to the PNG importer cleanly.
+fn has_actl_chunk(b: &[u8]) -> bool {
+    let scan_end = b.len().min(65_536);
+    // `acTL` 4-byte ASCII tag — searchable as a window.
+    b[..scan_end].windows(4).any(|w| w == b"acTL")
+}
+
 /// Register the APNG importer.
 pub fn register_importer(reg: &mut ImporterRegistry) {
     reg.register(Box::new(ApngImporter));
@@ -71,16 +87,17 @@ pub struct ApngImporter;
 impl ImageImporter for ApngImporter {
     fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
         match hint {
-            // Same magic as PNG — confidence relies on `acTL` presence
-            // observed at decode time. We claim Strong on PNG magic so
-            // when the caller specifically routes `.apng` files this
-            // way (via extension hint), dispatch lands here; for plain
-            // `.png` files the registry's first-match logic + PNG
-            // importer's Strong-on-bytes claim wins on the same magic.
-            // Net effect: callers using `MagicHint::Extension("apng")`
-            // hit us first; callers using only `MagicHint::Bytes` get
-            // the PNG importer (which drops APNG frames — documented).
-            MagicHint::Bytes(b) if b.starts_with(&PNG_MAGIC) => MagicMatch::Strong,
+            // Audit W2.T6 C-1 (2026-05-26): the previous version claimed
+            // `Strong` on bare PNG magic, but **registry FIFO** + the
+            // codegen-sorted order (`apng` before `png` alphabetical)
+            // meant every `.png` file routed via `MagicHint::Bytes`
+            // landed here instead of the dedicated PNG importer —
+            // performance regression and silent semantic shift. Fix:
+            // **sniff for the `acTL` chunk** inline; only claim Strong
+            // when this is actually an APNG.
+            MagicHint::Bytes(b) if b.starts_with(&PNG_MAGIC) && has_actl_chunk(b) => {
+                MagicMatch::Strong
+            }
             MagicHint::Bytes(_) => MagicMatch::None,
             MagicHint::Extension(ext) if ext.eq_ignore_ascii_case("apng") => MagicMatch::Weak,
             MagicHint::Extension(_) => MagicMatch::None,
@@ -347,12 +364,26 @@ mod tests {
     }
 
     #[test]
-    fn supports_recognizes_png_magic_strong() {
+    fn supports_only_strong_when_actl_chunk_present() {
+        // Audit W2.T6 C-1: plain PNG magic without acTL must NOT
+        // dispatch to APNG (registry FIFO would steal PNG traffic).
         let imp = ApngImporter;
         assert_eq!(
             imp.supports(MagicHint::Bytes(&PNG_MAGIC)),
-            MagicMatch::Strong
+            MagicMatch::None,
+            "plain PNG magic alone must not claim Strong"
         );
+        // Synthesise a buffer with PNG magic + acTL marker further in.
+        let mut with_actl = PNG_MAGIC.to_vec();
+        with_actl.extend_from_slice(&[0; 16]); // fake IHDR padding
+        with_actl.extend_from_slice(b"acTL"); // chunk tag
+        with_actl.extend_from_slice(&[0; 16]); // fake chunk data
+        assert_eq!(
+            imp.supports(MagicHint::Bytes(&with_actl)),
+            MagicMatch::Strong,
+            "PNG magic + acTL → Strong (real APNG)"
+        );
+        // Non-PNG magic → None regardless.
         assert_eq!(
             imp.supports(MagicHint::Bytes(b"not-a-png")),
             MagicMatch::None

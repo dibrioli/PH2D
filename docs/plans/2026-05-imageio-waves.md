@@ -73,7 +73,7 @@ Batch A (3 slots paralelos):
 - **W2.T3** — `crates/ph2d-imageio-apng/`: anim lossless + alpha. `apng` 0.3 ou custom sobre `png` crate. ⏳
 
 Batch B (1 slot dedicado, sequencial após A — PSD é gargalo):
-- **W2.T4** — `crates/ph2d-imageio-psd/`: import via `psd` 0.x (read-only crates.io); **export binário PS-compatible custom = greenfield** (header + color mode + image resources + layer/mask info + image data + global layer mask). Blend modes ↔ `BlendMode` (24 variants + `Custom(u16)`); `LayerKind {Pixel/Group/Adjustment/Text/Smart}` + `LayerEffect` preservation. Golden contra fixture Photoshop real. **Estimativa revisada pós-audit D-M**: 2-3 sessões solo + audit adversarial dedicada (vs 1 sessão original). Escape hatch: se export PSD slip a 1 semana, fork em ADR-0054.W2.5 com decisão "PSD write defer para W4 ou implementar via Lottie-style pipeline alternativo".
+- **W2.T4** — `crates/ph2d-imageio-psd/`: ✅ commit `4f79ba3` (import-only; **escape hatch §5.2 W2.5 invocado por antecipação**). Import via `psd` 0.3.5 (read-only crates.io); export retorna `Error::Unsupported` com mensagem citando ADR-0054 §5.2 + `.ph2d-native` alternative. 7 tests (pós-audit W2.T6 com PSB magic Strong + Unsupported actionable + n_layers × canvas cap defense). PSD write greenfield (~600 LOC + golden contra Photoshop real) fica W3+ quando UI Save As PSD virar primeiro cliente real.
 
 **Aceitação W2:** 4 crates registrados; smoke Enio abre PSD do Photoshop, edita, salva como ORA e re-importa idêntico no Painter; ICC P3 round-trip byte-exact; CI verde.
 

@@ -74,6 +74,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloca"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5a7d05ea6aea7e9e64d25b9156ba2fee3fdd659e34e41063cd2fc7cd020d7f4"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1305,10 +1314,35 @@ dependencies = [
  "cast",
  "ciborium",
  "clap",
- "criterion-plot",
+ "criterion-plot 0.6.0",
  "itertools 0.13.0",
  "num-traits",
  "oorandom",
+ "plotters",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "tinytemplate",
+ "walkdir",
+]
+
+[[package]]
+name = "criterion"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "950046b2aa2492f9a536f5f4f9a3de7b9e2476e575e05bd6c333371add4d98f3"
+dependencies = [
+ "alloca",
+ "anes",
+ "cast",
+ "ciborium",
+ "clap",
+ "criterion-plot 0.8.2",
+ "itertools 0.13.0",
+ "num-traits",
+ "oorandom",
+ "page_size",
  "plotters",
  "rayon",
  "regex",
@@ -1323,6 +1357,16 @@ name = "criterion-plot"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b1bcc0dc7dfae599d84ad0b1a55f80cde8af3725da8313b528da95ef783e338"
+dependencies = [
+ "cast",
+ "itertools 0.13.0",
+]
+
+[[package]]
+name = "criterion-plot"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8d80a2f4f5b554395e47b5d8305bc3d27813bacb73493eb1001e8f76dae29ea"
 dependencies = [
  "cast",
  "itertools 0.13.0",
@@ -1385,10 +1429,116 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctt"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8063297e2b9e1b9bda4a3c59c2b7c8a0353b07dd149ee63e6421ee9511e020d6"
+dependencies = [
+ "bytemuck",
+ "criterion 0.8.2",
+ "ctt-astcenc",
+ "ctt-bc7enc-rdo",
+ "ctt-compressonator",
+ "ctt-etcpak",
+ "ctt-intel-texture-compressor",
+ "ddsfile",
+ "fast_image_resize",
+ "half",
+ "ktx2",
+ "log",
+ "miniz_oxide",
+ "profiling",
+ "thiserror 2.0.18",
+ "zstd",
+]
+
+[[package]]
+name = "ctt-astcenc"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc14e58e27dc69fb00f3b2cd30064bee9078834472d180d92b401293ebdc541c"
+dependencies = [
+ "bitflags 2.11.1",
+ "cc",
+ "paste",
+]
+
+[[package]]
+name = "ctt-bc7enc-rdo"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "536e6d6ab48ad51ca2738d428c9838ddb907d3d800ba8fc5d6744d124059ef39"
+dependencies = [
+ "ctt-bc7enc-rdo-prebuilt",
+ "ispc-build-utils",
+]
+
+[[package]]
+name = "ctt-bc7enc-rdo-prebuilt"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9df7aa5ced45f166c35c6bd2b2f9d4ef6b5b61ba9103540fa8807e7470e0e2f6"
+dependencies = [
+ "ispc-build-utils",
+]
+
+[[package]]
+name = "ctt-compressonator"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09287abab51a222e7ba8288b09dd13832ce8cb71dc2e8f2c85a90ea23484be34"
+dependencies = [
+ "cc",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "ctt-etcpak"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d96a7afd22450c419c08df0521952ae82708d66b9ec3200b620bc3693d7b2852"
+dependencies = [
+ "cc",
+ "paste",
+]
+
+[[package]]
+name = "ctt-intel-texture-compressor"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7119f3c84357db0f434524eefc19612ce4713dd372cc8c692e316f9c2b36d415"
+dependencies = [
+ "cc",
+ "ctt-intel-texture-compressor-prebuilt",
+ "ispc-build-utils",
+]
+
+[[package]]
+name = "ctt-intel-texture-compressor-prebuilt"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc559c944172a34928e9c65b8f3d590411215c696437ee933b2a2b4c383a373"
+dependencies = [
+ "ispc-build-utils",
+]
+
+[[package]]
 name = "cursor-icon"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
+
+[[package]]
+name = "ddsfile"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8be425797f9962624aba78dee473dad28c15999e6ee6feb28ad3ee7928a3bc5b"
+dependencies = [
+ "bitflags 2.11.1",
+ "byteorder",
+ "enum-primitive-derive",
+ "num-traits",
+]
 
 [[package]]
 name = "debugid"
@@ -1600,6 +1750,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099"
 
 [[package]]
+name = "enum-primitive-derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba7795da175654fe16979af73f81f26a8ea27638d8d9823d317016888a63dc4c"
+dependencies = [
+ "num-traits",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "enumflags2"
 version = "0.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1681,6 +1842,18 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener",
  "pin-project-lite",
+]
+
+[[package]]
+name = "fast_image_resize"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12dd43e5011e8d8411a3215a0d57a2ec5c68282fb90eb5d7221fab0113442174"
+dependencies = [
+ "cfg-if",
+ "document-features",
+ "num-traits",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2357,6 +2530,7 @@ version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ea2d84b969582b4b1864a92dc5d27cd2b77b622a8d79306834f1be5ba20d84b"
 dependencies = [
+ "bytemuck",
  "cfg-if",
  "crunchy",
  "num-traits",
@@ -2665,6 +2839,15 @@ name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
+
+[[package]]
+name = "ispc-build-utils"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2baf25764b119c51183e25e55a38ec3533d5be2678ee7abd414c12a704512a5"
+dependencies = [
+ "find-msvc-tools",
+]
 
 [[package]]
 name = "itertools"
@@ -3722,6 +3905,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "page_size"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30d5b2194ed13191c1999ae0704b7839fb18384fa22e49b57eeaa97d79ce40da"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3895,6 +4088,7 @@ name = "ph2d-asset-cooker"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "ctt",
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
@@ -3935,6 +4129,7 @@ name = "ph2d-color"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "serde",
 ]
 
 [[package]]
@@ -4217,7 +4412,7 @@ dependencies = [
 name = "ph2d-input"
 version = "0.0.0"
 dependencies = [
- "criterion",
+ "criterion 0.7.0",
 ]
 
 [[package]]
@@ -4525,7 +4720,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "blake3",
- "criterion",
+ "criterion 0.7.0",
  "flate2",
  "flecs_ecs",
  "mlua",

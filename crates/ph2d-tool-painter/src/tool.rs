@@ -371,11 +371,8 @@ fn build_smoke_brush_from_env() -> Brush {
     // `.trim()` ASCII whitespace — `PAINTER_SMOKE_BRUSH= oval_hard`
     // (leading space, common after `=` typo) was previously falling
     // through to the catch-all warning + round_hard default.
-    let brush_name = std::env::var("PAINTER_SMOKE_BRUSH").map(|s| {
-        s.trim_matches(|c| c == '\'' || c == '"')
-            .trim()
-            .to_string()
-    });
+    let brush_name = std::env::var("PAINTER_SMOKE_BRUSH")
+        .map(|s| s.trim_matches(|c| c == '\'' || c == '"').trim().to_string());
     let mut brush = match brush_name.as_deref() {
         Ok("round_soft") => library::round_soft(),
         Ok("square_hard") => library::square_hard(),

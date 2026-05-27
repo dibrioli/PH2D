@@ -74,9 +74,9 @@ fn default_with_no_env_vars_is_round_hard_size_32() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     let tool = PainterTool::default();
     assert_eq!(
@@ -97,9 +97,9 @@ fn painter_smoke_brush_oval_hard_sets_oval_brush() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "oval_hard") };
     let tool = PainterTool::default();
@@ -118,9 +118,9 @@ fn painter_smoke_brush_round_soft_recognized() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "round_soft") };
     let tool = PainterTool::default();
@@ -139,9 +139,9 @@ fn painter_smoke_brush_square_hard_recognized() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "square_hard") };
     let tool = PainterTool::default();
@@ -163,9 +163,9 @@ fn painter_smoke_brush_with_leading_space_trims_ok() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", " oval_hard ") };
     let tool = PainterTool::default();
@@ -185,9 +185,9 @@ fn painter_smoke_brush_with_quotes_strips_ok() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "'oval_hard'") };
     let tool = PainterTool::default();
@@ -206,9 +206,9 @@ fn painter_params_size_px_clamps_to_2048() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_PARAMS_SIZE_PX", "9999") };
     let tool = PainterTool::default();
@@ -226,9 +226,9 @@ fn painter_params_size_px_clamps_to_1() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_PARAMS_SIZE_PX", "0") };
     let tool = PainterTool::default();
@@ -246,9 +246,9 @@ fn painter_params_size_px_64_passes_through() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_PARAMS_SIZE_PX", "64") };
     let tool = PainterTool::default();
@@ -266,9 +266,9 @@ fn rotation_follow_capital_true_accepted_after_l1_3() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     // Pin the base brush so we know what shape_rotation_follow default
     // would have been (oval_hard defaults to true; round_hard to false).
@@ -291,9 +291,9 @@ fn rotation_follow_off_recognized() {
     // suite as cargo-test parallelism re-acquires the lock). The
     // diagnostic names the originating test so the failing case is
     // visible in CI output instead of just `PoisonError`.
-    let _guard = ENV_LOCK
-        .lock()
-        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
+    let _guard = ENV_LOCK.lock().expect(
+        "ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause",
+    );
     clear_all_smoke_vars();
     // oval_hard defaults to true; explicit off must override.
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "oval_hard") };

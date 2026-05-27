@@ -135,7 +135,12 @@ impl Default for EqualizeSizesParams {
 /// `EditorAction::ToolPanelEvent(PanelEvent::…)` and rebuilt from the
 /// `NodeId` by `EqualizeSizesTool::handle_panel_event`. Inverse of
 /// [`EqualizeSizesUiSnapshot`].
+///
+/// Marked `#[non_exhaustive]` (Painter T1.6 R9 V1-H2) mirroring the
+/// `BgRemovalUiEdit` precedent (R7 I1-1): adding a new panel control
+/// must stay semver-additive for downstream crates.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EqualizeSizesUiEdit {
     /// Pick a target-dim mode (any of the 3 mode buttons).
     SetMode(TargetMode),

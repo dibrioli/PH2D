@@ -69,7 +69,14 @@ fn assert_active_shape_slot(tool: &PainterTool, expected_slot: u32, msg: &str) {
 
 #[test]
 fn default_with_no_env_vars_is_round_hard_size_32() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     let tool = PainterTool::default();
     assert_eq!(
@@ -85,7 +92,14 @@ fn default_with_no_env_vars_is_round_hard_size_32() {
 
 #[test]
 fn painter_smoke_brush_oval_hard_sets_oval_brush() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "oval_hard") };
     let tool = PainterTool::default();
@@ -99,7 +113,14 @@ fn painter_smoke_brush_oval_hard_sets_oval_brush() {
 
 #[test]
 fn painter_smoke_brush_round_soft_recognized() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "round_soft") };
     let tool = PainterTool::default();
@@ -113,7 +134,14 @@ fn painter_smoke_brush_round_soft_recognized() {
 
 #[test]
 fn painter_smoke_brush_square_hard_recognized() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "square_hard") };
     let tool = PainterTool::default();
@@ -130,7 +158,14 @@ fn painter_smoke_brush_with_leading_space_trims_ok() {
     // Audit R7 L1-9: `=` followed by accidental whitespace previously
     // hit the catch-all warning + round_hard default. After the
     // .trim() fix, `" oval_hard"` recognizes as `oval_hard`.
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", " oval_hard ") };
     let tool = PainterTool::default();
@@ -145,7 +180,14 @@ fn painter_smoke_brush_with_leading_space_trims_ok() {
 #[test]
 fn painter_smoke_brush_with_quotes_strips_ok() {
     // Audit R5-B1-4: zsh sometimes passes single-quoted values verbatim.
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "'oval_hard'") };
     let tool = PainterTool::default();
@@ -159,7 +201,14 @@ fn painter_smoke_brush_with_quotes_strips_ok() {
 
 #[test]
 fn painter_params_size_px_clamps_to_2048() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_PARAMS_SIZE_PX", "9999") };
     let tool = PainterTool::default();
@@ -172,7 +221,14 @@ fn painter_params_size_px_clamps_to_2048() {
 
 #[test]
 fn painter_params_size_px_clamps_to_1() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_PARAMS_SIZE_PX", "0") };
     let tool = PainterTool::default();
@@ -185,7 +241,14 @@ fn painter_params_size_px_clamps_to_1() {
 
 #[test]
 fn painter_params_size_px_64_passes_through() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     unsafe { std::env::set_var("PAINTER_PARAMS_SIZE_PX", "64") };
     let tool = PainterTool::default();
@@ -198,7 +261,14 @@ fn rotation_follow_capital_true_accepted_after_l1_3() {
     // Audit R7 L1-3: lowercase normalization + warn-on-unknown so
     // `=True` / `=TRUE` / `=on` don't silently fall to false.
     // R8 N1-2: assert the actual flag value, not just construction.
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     // Pin the base brush so we know what shape_rotation_follow default
     // would have been (oval_hard defaults to true; round_hard to false).
@@ -216,7 +286,14 @@ fn rotation_follow_capital_true_accepted_after_l1_3() {
 
 #[test]
 fn rotation_follow_off_recognized() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    // Audit T1.6 R9 R1-1: explicit `.expect` surfaces mutex poisoning
+    // (a panic mid-test would otherwise cascade silently across the
+    // suite as cargo-test parallelism re-acquires the lock). The
+    // diagnostic names the originating test so the failing case is
+    // visible in CI output instead of just `PoisonError`.
+    let _guard = ENV_LOCK
+        .lock()
+        .expect("ENV_LOCK poisoned by a prior test panic — see preceding test failure for root cause");
     clear_all_smoke_vars();
     // oval_hard defaults to true; explicit off must override.
     unsafe { std::env::set_var("PAINTER_SMOKE_BRUSH", "oval_hard") };

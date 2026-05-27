@@ -374,10 +374,20 @@ fn uniform_blending(src: [f32; 4], dst: [f32; 4]) -> [f32; 4] {
     if result_a < 1e-6 {
         return [0.0, 0.0, 0.0, 0.0];
     }
-    let inv_as = 1.0 / alpha_s.max(1e-6);
-    let inv_ad = 1.0 / alpha_d.max(1e-6);
-    let src_rgb = [src[0] * inv_as, src[1] * inv_as, src[2] * inv_as];
-    let dst_rgb = [dst[0] * inv_ad, dst[1] * inv_ad, dst[2] * inv_ad];
+    // **Audit T1.6 R9 S1-H1 — CPU↔GPU divide-per-channel parity.**
+    // Previous form pre-computed `inv_as = 1.0 / alpha.max(1e-6)`
+    // then multiplied 3× — IEEE 754 division + multiply produces
+    // results differing from per-channel division by 1-4 ULP at
+    // extreme alpha (near 1e-6). The shader (`stamp.wgsl`
+    // uniform_blending) divides per-channel; matching that form
+    // CPU-side closes the divergence so the
+    // `cpu_shader_textual_parity_all_six_modes` gate can tighten
+    // beyond the current "ULP-bounded" tolerance toward
+    // bit-equivalence (T-numerical-parity W2+).
+    let safe_as = alpha_s.max(1e-6);
+    let safe_ad = alpha_d.max(1e-6);
+    let src_rgb = [src[0] / safe_as, src[1] / safe_as, src[2] / safe_as];
+    let dst_rgb = [dst[0] / safe_ad, dst[1] / safe_ad, dst[2] / safe_ad];
     let mixed = [
         dst_rgb[0] + (src_rgb[0] - dst_rgb[0]) * alpha_s,
         dst_rgb[1] + (src_rgb[1] - dst_rgb[1]) * alpha_s,
@@ -399,10 +409,12 @@ fn intense_blending(src: [f32; 4], dst: [f32; 4], wet: f32) -> [f32; 4] {
     if result_a < 1e-6 {
         return [0.0, 0.0, 0.0, 0.0];
     }
-    let inv_as = 1.0 / alpha_s.max(1e-6);
-    let inv_ad = 1.0 / alpha_d.max(1e-6);
-    let src_rgb = [src[0] * inv_as, src[1] * inv_as, src[2] * inv_as];
-    let dst_rgb = [dst[0] * inv_ad, dst[1] * inv_ad, dst[2] * inv_ad];
+    // Audit T1.6 R9 S1-H1 (intense_blending parity): same per-channel
+    // divide form as `uniform_blending` above; matches the WGSL shader.
+    let safe_as = alpha_s.max(1e-6);
+    let safe_ad = alpha_d.max(1e-6);
+    let src_rgb = [src[0] / safe_as, src[1] / safe_as, src[2] / safe_as];
+    let dst_rgb = [dst[0] / safe_ad, dst[1] / safe_ad, dst[2] / safe_ad];
     let pull = wet.clamp(0.0, 1.0);
     let half_pull = 0.5 * pull;
     let smudged_src = [

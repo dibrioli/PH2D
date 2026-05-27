@@ -39,13 +39,15 @@ pub(crate) fn drain_painter(
     // without painting any stamp since the last `set_source`. Identity-
     // baking the source pixels wastes a fresh Individual texture + an
     // undo slot for no visual change.
-    // Audit T1.6 R7 J1-1 (HR-15): toasts em pt-BR alinhadas com o
-    // resto da UI (Hierarchy, Inspector, Image Tools). Audit R7 L1-5
-    // separa o wording "sem strokes" do "pointer-down não capturou"
-    // — o gate `has_painted_since_source` cobre AMBOS, mas o segundo
-    // só vira observável quando o debug_assert do queue_pointer dispara.
+    // **Audit T1.6 R9 — revert R7 J1-1 pt-BR translation.** R7
+    // audit lens J1 mis-cited HR-15 as mandating pt-BR. User
+    // feedback `feedback_app_ui_english_only` (2026-05-26) is
+    // authoritative and explicit: app UI strings stay in English.
+    // R7 L1-5 still applies (debug_assert distinguishes "no stroke
+    // opened" from "Apply ran with no paint" at the queue_pointer
+    // boundary).
     if !painter.has_painted_since_source() {
-        toasts.push(Toast::info("Painter: nenhum traço para aplicar"));
+        toasts.push(Toast::info("Painter: no strokes to apply"));
         return true;
     }
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
@@ -53,7 +55,7 @@ pub(crate) fn drain_painter(
         texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(
-            "Painter: fonte indisponível (chave Atlas faltando ou readback falhou)",
+            "Painter: source unavailable (Atlas key missing or readback failed)",
         ));
         return true;
     };
@@ -68,9 +70,7 @@ pub(crate) fn drain_painter(
     // sample, identical to bgremoval's discipline.
     let (canvas, w, h) = (painter as &mut dyn RasterEditTool).run_full();
     if canvas.is_empty() || w == 0 || h == 0 {
-        toasts.push(Toast::error(
-            "Painter: canvas vazio (nenhuma fonte foi carregada)",
-        ));
+        toasts.push(Toast::error("Painter: empty canvas (no source pushed)"));
         return true;
     }
     let edited =
@@ -78,7 +78,7 @@ pub(crate) fn drain_painter(
             .into_premultiplied();
     match texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world) {
         Err(err) => {
-            toasts.push(Toast::error(format!("Painter falhou: {err}")));
+            toasts.push(Toast::error(format!("Painter failed: {err}")));
             true
         }
         Ok(texture_id) => {
@@ -92,7 +92,7 @@ pub(crate) fn drain_painter(
                 post_individual_id: texture_id,
                 label: "Painter",
             });
-            toasts.push(Toast::success("Painter aplicado · Cmd+Z desfaz"));
+            toasts.push(Toast::success("Painter applied · Cmd+Z to undo"));
             *last_painter_pushed_entity = None;
             true
         }

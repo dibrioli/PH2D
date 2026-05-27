@@ -733,7 +733,17 @@ fn oklch_to_oklab(c: OklchColor) -> [f32; 4] {
     if !c.l.is_finite() || !c.c.is_finite() || !c.h.is_finite() || !c.a.is_finite() {
         return [0.0, 0.0, 0.0, 0.0];
     }
-    debug_assert!(
+    // **Audit T1.6 R9 T1-4 — promote to production assert.** R7 used
+    // `debug_assert!` which is silent in release builds; a caller
+    // passing degrees instead of radians would silently produce
+    // garbage colors with no diagnostic. Production assert fires
+    // in BOTH debug AND release so the call site is surfaced
+    // immediately the first time. The 4π upper bound (vs 2π) is
+    // deliberate margin: angles that wrapped past one full rotation
+    // due to accumulated arithmetic are still valid radians, but
+    // anything ≥ 4π is almost certainly degrees (most degree values
+    // exceed 4π ≈ 12.57).
+    assert!(
         c.h.abs() <= (4.0 * std::f32::consts::PI),
         "oklch_to_oklab: expected h in RADIANS (|h| ≤ 4π for safety margin); \
          got {} (looks like degrees — convert with `degrees.to_radians()`)",
@@ -1262,10 +1272,11 @@ mod tests {
     #[test]
     #[should_panic(expected = "RADIANS")]
     fn oklch_to_oklab_panics_on_degrees_input() {
-        // Audit T1.5 round 2 F8 (MISSING-GATE-DEBUG-ASSERT-RADIANS).
-        // `debug_assert!` is only active in debug builds; this test runs
-        // in debug AND verifies the safety message catches degree inputs
-        // (h = 360.0 > 4π ≈ 12.566).
+        // Audit T1.5 round 2 F8 + R9 T1-4: assertion is now a production
+        // `assert!` (not `debug_assert!`), so it fires in BOTH debug and
+        // release builds. Degree inputs (h = 360.0 > 4π ≈ 12.566) are
+        // surfaced immediately at the call site instead of silently
+        // producing garbage colors.
         let c = OklchColor {
             l: 0.5,
             c: 0.2,

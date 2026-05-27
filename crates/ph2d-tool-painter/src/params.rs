@@ -88,7 +88,14 @@ pub enum PainterMode {
 /// semântica Painter dentro de `Tool::handle_panel_event`.
 ///
 /// v1 ship: ~15 variants; headroom para W9 (3), W11 (2), W14 (1) + 3 residual.
+///
+/// **Audit T1.6 R9 V1-H2:** `#[non_exhaustive]` mirrors the
+/// `BgRemovalUiEdit` precedent (R7 I1-1). Additive variants no
+/// longer semver-break downstream `match`. Wire format (serde) is
+/// unaffected — `non_exhaustive` is a Rust-level exhaustiveness
+/// hint, not a serialization annotation.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[non_exhaustive]
 pub enum PainterUiEdit {
     // Sidebar sliders (normalized 0..=1)
     Size(f32),

@@ -17,7 +17,7 @@ use crate::{LinearRgba, OklabColor, SrgbRgba};
 /// - `c`: chroma `[0.0, ~0.4]` (display gamut clamp depends on hue)
 /// - `h`: hue in degrees `[0.0, 360.0)`
 /// - `a`: alpha `[0.0, 1.0]`
-#[derive(Copy, Clone, Debug, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 pub struct OklchColor {
     pub l: f32,
     pub c: f32,

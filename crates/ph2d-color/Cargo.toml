@@ -17,3 +17,9 @@ publish.workspace = true
 # ecosystem's canonical solution for repr-transparent zero-copy.
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
+# `serde` derives on `OklchColor` so the canonical type can round-trip
+# through postcard / JSON savefiles. The Painter `PainterParams` stub
+# embeds an `OklchColor` and serializes it; T1.3+ cutover (stub → canon)
+# would otherwise silently break v1 savefiles.
+# See `docs/HANDOFF_ph2d_color_oklch_serde.md` (Painter T1.6 R9 audit).
+serde = { version = "1", features = ["derive"] }

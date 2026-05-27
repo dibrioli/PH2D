@@ -320,7 +320,7 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0** auditoria 5-lente pré-W3 | ✅ | `35cc149` | 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW — remediação inline vide §5.5 |
 | **W3.T0.1** nova auditoria pós-W3.T0 | ✅ | `fd34240` | 1 CRITICAL (imageio FORA da CI matrix — gate de §2.6.1 era cosmético) + 7 HIGH (ADR HR-9→HR-5 nomenclatura + tolerâncias TIFF mascarando off-by-one + clippy convenção) + 11 MEDIUM + 13 LOW — vide §5.6 |
 | **W3.T0.2** nova auditoria pós-W3.T0.1 | ✅ | `108a623` | 6 CRITICAL meus (3 ship-blockers F-B1/B2/B3 + 3 OOM J-1/J-2/J-3) + 5 HIGH meus (ORA H-1 + opts I-1/I-2 + EOF I-3 + non_exhaustive I-4 + PSD catch_unwind G-F2) + 9 MEDIUM + 14 LOW; 2 CRITICAL não-meus flaggados (B-4 shells/desktop + M-5 Cargo.lock dhat) — vide §5.7 |
-| **W3.T0.3** nova auditoria pós-W3.T0.2 | ✅ | `[remediation-pending]` | 1 P0 (§5 row drift) + 6 HIGH (ColorProfile::Custom vapor + GIF semantica + EOF helper adoption parcial + APNG multi-frame test gap + math/docs drift + fmt P-mine) + 17 MEDIUM (test coverage 8 fixes + caps hoist + EOF gaps + variant context) + 12 LOW — vide §5.8 |
+| **W3.T0.3** nova auditoria pós-W3.T0.2 | ✅ | `2a41a0b` | 1 P0 (§5 row drift) + 6 HIGH (ColorProfile::Custom vapor + GIF semantica + EOF helper adoption parcial + APNG multi-frame test gap + math/docs drift + fmt P-mine) + 17 MEDIUM (test coverage 8 fixes + caps hoist + EOF gaps + variant context) + 12 LOW — vide §5.8 |
 
 ### 5.8 Remediação pós-auditoria W3.T0.3 (2026-05-26)
 

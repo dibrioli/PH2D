@@ -204,6 +204,14 @@ impl StampScheduler {
         // without lower bound).
         let spacing_px = (spacing_frac * diameter).max(1.0);
 
+        // **R4-LG-5 fix:** hoist brush-param clamps ABOVE the while-loop.
+        // `brush: &Brush` is read-only for the duration of this advance;
+        // these values are constant per stroke — re-evaluating them per
+        // stamp wastes ~7 cycles each iteration (LLVM can't prove
+        // invariance through the &Brush reference).
+        let jitter_amp = brush.stroke_path.spacing_jitter.clamp(0.0, 1.0);
+        let lat_amp = brush.stroke_path.jitter_lateral.clamp(0.0, 1.0);
+
         match self.last_point {
             None => {
                 // Primeiro pointer do stroke: deposita 1 stamp na posição.
@@ -241,7 +249,6 @@ impl StampScheduler {
                     // Spacing jitter — variação aleatória multiplicativa do
                     // intervalo até o próximo stamp. `spacing_jitter` em
                     // [0, 1]; jitter em [-J, +J] frações do spacing.
-                    let jitter_amp = brush.stroke_path.spacing_jitter.clamp(0.0, 1.0);
                     let j_offset = if jitter_amp > 0.0 {
                         let j = self.det_random(self.stamp_index, 0xA1) * 2.0 - 1.0;
                         j * jitter_amp * spacing_px
@@ -253,7 +260,6 @@ impl StampScheduler {
                     // Jitter lateral — deslocamento perpendicular ao stroke
                     // direction. `jitter_lateral` em [0, 1]; offset em
                     // [-L, +L] frações do diameter.
-                    let lat_amp = brush.stroke_path.jitter_lateral.clamp(0.0, 1.0);
                     let lat_offset = if lat_amp > 0.0 {
                         let l = self.det_random(self.stamp_index, 0xB2) * 2.0 - 1.0;
                         l * lat_amp * diameter

@@ -10,19 +10,25 @@ use serde::{Deserialize, Serialize};
 /// Modo de composição do stamp na layer (ADR-0044 §2.4 + spec §1.5.2).
 /// 6 variants FROZEN. WGSL shader lê como `u32` direto.
 ///
-/// **Default = `UniformGlaze`** (audit T1.5 round 1 A-M1): alinha com o
-/// fallback `default → uniform_glaze` do shader `apply_rendering_mode`
-/// switch (`stamp.wgsl::default` arm), e é o equivalente do "Normal" do
-/// Photoshop/Procreate — primeira pintura previsível. `LightGlaze`
-/// (anterior default) é aquarela leve, surpreendente para o user que
-/// espera Porter-Duff over.
+/// **Default = `LightGlaze`** (discriminant 0 — audit T1.5 round 4
+/// R4-LH-1 revert). Round 1 (A-M1) moved the default to `UniformGlaze`
+/// to align with the shader's `default:` arm — but that broke alignment
+/// with the **ABI hot path**: `Stamp::zeroed()` (the canonical
+/// `bytemuck::Zeroable` init) produces `rendering_mode = 0` →
+/// `from_u32(0)` → `LightGlaze`. And `RenderingParams::default` also
+/// uses `LightGlaze`. Three "defaults" must agree: enum default, Stamp
+/// ABI zero-decode, and brush params default — all now `LightGlaze`.
+/// The shader's `default:` fallback to `UniformGlaze` (used ONLY for
+/// out-of-range discriminants from corrupted GPU data) is the
+/// safer-degrade choice, intentionally distinct from the canonical
+/// default.
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum RenderingMode {
     /// `new = s * α_s + L * (1 - α_s * 0.6)` — aquarela leve.
+    #[default]
     LightGlaze = 0,
     /// `new = s * α_s + L * (1 - α_s)` — Porter-Duff "over" puro (Photoshop Normal).
-    #[default]
     UniformGlaze = 1,
     /// Alpha curve agressiva — cobre rápido, ainda permite sobreposição.
     IntenseGlaze = 2,
@@ -86,11 +92,17 @@ mod tests {
     }
 
     #[test]
-    fn default_matches_shader_fallback() {
-        // Audit T1.5 round 1 A-M1: enum default + shader fallback both
-        // resolve to UniformGlaze. Drift between them = silent visual
-        // change for "default-constructed" Stamps vs garbage discriminants.
-        assert_eq!(RenderingMode::default(), RenderingMode::UniformGlaze);
+    fn default_aligns_with_stamp_zeroed_abi() {
+        // Audit T1.5 round 4 R4-LH-1: the canonical default MUST align
+        // with the byte-0 ABI decode (Stamp::zeroed produces
+        // rendering_mode=0 → LightGlaze) AND with RenderingParams::default.
+        // Round 1 A-M1's UniformGlaze default broke this triangle; round 4
+        // reverts. Shader's `default:` fallback to UniformGlaze is the
+        // safer-degrade for OUT-OF-RANGE discriminants (e.g., 99), NOT
+        // the canonical default.
+        assert_eq!(RenderingMode::default(), RenderingMode::LightGlaze);
+        assert_eq!(RenderingMode::from_u32(0), RenderingMode::LightGlaze);
+        // Out-of-range still safe-degrades to UniformGlaze (shader parity).
         assert_eq!(RenderingMode::from_u32(99), RenderingMode::UniformGlaze);
     }
 }

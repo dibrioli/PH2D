@@ -32,12 +32,19 @@ impl App {
         // Capture entity_bits BEFORE the mutable borrow of self.gfx —
         // derive_seed needs it (audit T1.5 round 1 A-H4 / B-M3) and
         // re-borrowing self.gfx mid-function would conflict.
+        //
+        // **R4-LH-9 fix:** `painter_pointer_uv` already validated
+        // selection exists (returns None otherwise), so propagating via
+        // `?` is honest. Prior `.unwrap_or(0)` collapsed "no selection"
+        // into a fixed sentinel that could collide if the gate moved.
         let entity_bits = self
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.gizmo.selection)
-            .unwrap_or(0);
+            .and_then(|h| h.gizmo.selection);
+        let Some(entity_bits) = entity_bits else {
+            return false;
+        };
         let sample = uv_to_sample(u, v, src_w, src_h);
         let seed = PainterTool::derive_seed(
             sample.position[0],

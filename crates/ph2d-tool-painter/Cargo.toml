@@ -28,9 +28,11 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # MemoryBudget for HR-13 boot check.
 ph2d-core = { path = "../ph2d-core" }
-# Typed color (Stamp.color_oklab pipeline em T1.4+).
-ph2d-color = { path = "../ph2d-color" }
 # Brush engine — Stamp ABI + Scheduler + cpu_render apply (T1.5).
+# **Note (R5-J-1):** `ph2d-color` dep removed in T1.5 round 5 — was
+# forward-looking for `OklchColor` canon substitution (params.rs:48
+# stub comment). `cargo machete` rejected it as unused. Re-add when
+# T-color full lands and the stub gets replaced.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # serde for PainterParams + PainterUiEdit + PainterUiSnapshot.
 serde = { version = "1", features = ["derive"] }

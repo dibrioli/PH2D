@@ -296,6 +296,20 @@ impl StampPipeline {
         if stamps.is_empty() {
             return;
         }
+        // **R4-LH-7 fix:** debug-time same-texture guard. Caller MUST
+        // bind different physical textures to `canvas_in` and
+        // `canvas_out` (wgpu validation MAY catch it, but only in
+        // adapter-dependent debug paths). Pointer equality on the
+        // TextureView refs catches the common shell-side aliasing bug
+        // — same TextureView passed twice. Release builds skip the
+        // check; wgpu validation remains the last line of defense.
+        debug_assert!(
+            !std::ptr::eq(canvas_in, canvas_out),
+            "StampPipeline::encode: canvas_in and canvas_out must be \
+             DIFFERENT TextureViews — aliasing a storage-write view as a \
+             sampled-read view is undefined behavior on most backends \
+             (audit T1.5 round 4 R4-LH-7)"
+        );
 
         // HR-3 pool cap: callers must flush at MAX_STAMPS_PER_DISPATCH.
         // Debug build catches the violation loudly; release clamps so

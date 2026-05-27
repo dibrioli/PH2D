@@ -415,13 +415,19 @@ pub(super) fn dispatch(
         found
     };
     if let Some(entity_bits) = painter_entity {
-        let painter = tools
-            .active_mut()
-            .and_then(|t| {
-                t.as_any_mut()
-                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
-            })
-            .expect("painter_active gate guarantees a PainterTool");
+        // **R4-LH-2 fix:** soft-fall when the gate is wrong (e.g., a
+        // future refactor moves tool teardown ahead of this drain). The
+        // `.expect` panic was defensible by the gate logic at the time
+        // but turns into a prod-panic the moment the gate moves.
+        let Some(painter) = tools.active_mut().and_then(|t| {
+            t.as_any_mut()
+                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+        }) else {
+            toasts.push(Toast::error(
+                "Painter Apply: tool was inactive when bake fired (gate desynced)",
+            ));
+            return true;
+        };
         let mut pending: Vec<ImageEditSnapshot> = Vec::new();
         if hero_intents::drain_painter(
             entity_bits,

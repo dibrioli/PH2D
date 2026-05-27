@@ -7,12 +7,18 @@
 //! 1. (Generic) Pushes the active sprite's RGBA into `PainterTool`
 //!    via [`ph2d_tool_runtime::drive_source_push`] over the
 //!    [`RasterEditTool`] upcast (so the canvas reflects the live
-//!    sprite pixels at stroke start).
-//! 2. (Generic) Drains `current_preview` via
-//!    [`ph2d_tool_runtime::drive_preview_cache`] into the shell's
-//!    `PainterPreview` cache for the on-canvas overlay.
+//!    sprite pixels at stroke start). Gated on
+//!    `!is_stroke_active()` so mid-stroke selection drift doesn't
+//!    silently wipe the working canvas (R3-LF-2).
+//! 2. (Painter-specific, R4-LG-1 fast path) Zero-copy preview drain
+//!    via downcast + [`ph2d_tool_painter::PainterTool::take_preview_arc`]
+//!    — bypasses [`ph2d_tool_runtime::drive_preview_cache`] (which
+//!    would `to_vec` the buffer, costing ~960 MB/s of allocator churn
+//!    at 60 fps painting). Per-stroke painting now touches the
+//!    allocator only on `Arc::make_mut` cycles (~1 clone per
+//!    preview-drain frame).
 //! 3. (Generic) Captures multi-sprite Apply selection via
-//!    [`ph2d_tool_runtime::drive_pending_commit`] — request_commit
+//!    [`ph2d_tool_runtime::drive_pending_commit`] — `request_commit`
 //!    sets the flag; bridge converts to `EditorAction::OneShotImageOp`.
 //! 4. (Painter-specific) Inactive-path cache clear (mirror of
 //!    BgRemoval's safety pattern after the Wave 10 C1 audit fix).
@@ -142,16 +148,45 @@ pub(super) fn dispatch(
 
     let mut apply_selection: Vec<u64> = Vec::new();
 
-    // ── (Generic) Drain current_preview + capture Apply ───────────────────
-    // ADR-0041: current_preview drains the tool's dirty flag, so the
-    // helper just needs to call it. Selection drift is handled by the
-    // helper's own invalidation pass.
+    // ── Drain current_preview (FAST PATH) + capture Apply ─────────────────
+    //
+    // **R4-LG-1 fix:** bypass `drive_preview_cache` (which does a 16 MB
+    // `pixels.to_vec()` per dirty drain — at 60 fps painting that's ~960
+    // MB/s of allocator churn). Painter-specific downcast lets us pull
+    // the canvas as a 1-atomic-inc `Arc<Vec<u8>>` clone via
+    // `take_preview_arc()`. Net: per-stroke painting touches the
+    // allocator ONCE per `Arc::make_mut` cycle (i.e., once per preview-
+    // drain frame), not every pointer event.
+    //
+    // `drive_pending_commit` stays on the generic `&mut dyn RasterEditTool`
+    // path — it's only called once per Apply, not per frame.
     if let Some(tool) = tools.active_mut()
-        && let Some(raster) = tool.as_raster_edit_mut()
+        && let Some(painter) = tool
+            .as_any_mut()
+            .downcast_mut::<ph2d_tool_painter::PainterTool>()
     {
-        ph2d_tool_runtime::drive_preview_cache(raster, hero.gizmo.selection, painter_preview);
-        apply_selection =
-            ph2d_tool_runtime::drive_pending_commit(raster, hero.gizmo.iter_selected());
+        // Selection-drift invalidation (mirror of drive_preview_cache).
+        if let (Some(existing), Some(sel)) = (painter_preview.as_ref(), hero.gizmo.selection)
+            && existing.entity_bits != sel
+        {
+            *painter_preview = None;
+        }
+        // Zero-copy preview drain — populates cache iff a new frame
+        // arrived AND a sprite is selected to tag it with.
+        if let (Some(sel), Some((rgba, w, h))) = (hero.gizmo.selection, painter.take_preview_arc())
+        {
+            *painter_preview = Some(ph2d_tool_runtime::PreviewCache {
+                entity_bits: sel,
+                rgba,
+                width: w,
+                height: h,
+            });
+        }
+        // Apply / commit capture — same trait path as bgremoval.
+        apply_selection = ph2d_tool_runtime::drive_pending_commit(
+            painter as &mut dyn ph2d_editor::tool::RasterEditTool,
+            hero.gizmo.iter_selected(),
+        );
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,

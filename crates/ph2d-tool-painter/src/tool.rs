@@ -12,16 +12,18 @@
 //! W1 day 7 smoke: ativar Painter pill, clicar/arrastar no canvas → marcas
 //! visíveis no sprite, alpha-over acumulando entre stamps.
 //!
-//! ## W2 follow-ups documentados (audit T1.5 round 3)
+//! ## W2 follow-ups documentados (audit T1.5 rounds 3+4)
 //!
 //! - **R3-LE-4 — Commit path unwired:** `request_commit()` é `pub` mas
 //!   nenhum input handler do shell chama. Day-7 ship is preview-only;
 //!   `Esc` ou tool-switch perde a pintura. W2 wires the sidebar Apply
 //!   button (or `Cmd+Enter` shortcut) para `painter.request_commit()`.
-//! - **R3-LE-5 — Stale canvas after external mutation:** se outro tool
-//!   bakeia o sprite ativo enquanto Painter está ativo, `canvas_rgba`
-//!   fica stale. Bridge não re-pusha. W2 adiciona sprite-version
-//!   tracking ou invalida `last_painter_pushed_entity` cross-tool.
+//! - **R3-LE-5 / R4-LH-8 — Stale canvas after external mutation:** se
+//!   outro tool bakeia o sprite ativo enquanto Painter está ativo,
+//!   `canvas_rgba` fica stale. Bridge não re-pusha. W2 adiciona
+//!   sprite-version tracking ou invalida `last_painter_pushed_entity`
+//!   cross-tool. Manifesta visualmente como overlay esticado se sprite
+//!   muda dimensão mid-stroke.
 //! - **R3-LF-3 — Failed Apply destrói canvas:** se `drain_painter`
 //!   falhar (source unavailable / commit error), o teardown ainda
 //!   deactivates Painter → canvas perdido. W2 retorna `Result<(),
@@ -30,6 +32,34 @@
 //! - **R3-LF-4 — Cancel via tool-switch silently drops strokes:** today
 //!   tool switch zera o canvas sem warn. W2: emit `Toast::warning` em
 //!   `on_deactivate` quando canvas não-empty + has_painted_since_source.
+//! - **R4-LG-2 — PREMUL canvas storage:** today canvas storage é STRAIGHT
+//!   u8; cpu_render::apply_one_stamp paga 3 divisões + 8 multiplicações
+//!   per pixel pra premul/unpremul dance. PREMUL storage removeria a
+//!   dance (~35% speedup per-pixel) e alinharia com GPU `rgba8unorm`
+//!   pipeline. Refactor scope: cpu_render straight↔premul boundary
+//!   moves to set_source + run_full. Defer pra T-perf (alongside GPU
+//!   pipeline integration ou separadamente como otimização CPU MVP).
+//! - **R4-LG-3 — Per-pixel match dispatch hoist:** apply_rendering_mode
+//!   chama 6-way match dentro do per-pixel loop. LLVM unswitch should
+//!   fire mas CFG fragmentation (early-continue paths) pode bloquear.
+//!   Refactor: monomorfizar via const generic `fn apply_pixels::<const
+//!   MODE: u8>(...)`. Defer; bench primeiro pra justificar custo.
+//! - **R4-LG-6 — CPU MVP regime:** apply_stamps no CPU é HR-3 friendly
+//!   apenas em `size_px ≤ 256`. Sliders maiores quebram budget 4.5ms.
+//!   W2: UI soft-cap brush size em 256 até GPU pipeline T-perf W5+.
+//! - **R4-LH-4 — 32-bit usize overflow on wasm:** apply_stamps `idx`
+//!   computation poderia overflow em wasm32 com canvases > 16M pixels.
+//!   Cheap fix: `debug_assert!(canvas.len() <= isize::MAX as usize)` no
+//!   top de apply_stamps. Defer; wasm target ainda não é prioridade.
+//! - **R4-LH-6 — Silent clamp dispatch drop:** StampPipeline::encode
+//!   release-clamps stamps.len() > MAX silently. Add `tracing::warn!`
+//!   when tracing crate joins workspace.
+//! - **R4-LH-11 — `from_u32` forward-compat:** adding RenderingMode
+//!   variant 6+ without updating `from_u32` would silent-fallback to
+//!   UniformGlaze. Mitigated by `MAX_RENDERING_MODES = 6 FROZEN` arch-
+//!   gate (ADR amendment required to add). Acceptable; doc.
+
+use std::sync::Arc;
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
 use ph2d_editor_core::tool::{RasterEditTool, Tool};
@@ -64,10 +94,15 @@ use crate::params::{OklchColor, PainterParams};
 pub struct PainterTool {
     pub params: PainterParams,
     /// Working canvas — RGBA8 straight, sem gamma encoding (compatível com
-    /// `wgpu::TextureFormat::Rgba8Unorm`). Reinicializado em `set_source`,
-    /// mutado in-place por `queue_pointer`, devolvido por `current_preview`
-    /// + `run_full`, zerado em `deactivate`.
-    canvas_rgba: Vec<u8>,
+    /// `wgpu::TextureFormat::Rgba8Unorm`). **`Arc<Vec<u8>>`** (audit T1.5
+    /// round 4 R4-LG-1): bridge's `painter_preview` cache holds an Arc
+    /// clone of this same buffer (1 atomic increment per dirty drain
+    /// instead of `Vec::to_vec` 16 MB memcpy at 60 Hz). `queue_pointer`
+    /// mutates via `Arc::make_mut`: O(1) when refcount==1, O(N) clone
+    /// only on the FIRST mutation after the bridge took a new Arc —
+    /// amortized to one canvas-clone per "preview frame cycle" rather
+    /// than per pointer event.
+    canvas_rgba: Arc<Vec<u8>>,
     source_size: (u32, u32),
     preview_dirty: bool,
     pending_commit: bool,
@@ -85,13 +120,27 @@ pub struct PainterTool {
     /// false so a no-stroke Apply doesn't waste a fresh Individual texture
     /// + a no-op undo slot on identity-baking the source.
     has_painted_since_source: bool,
+    /// **R4-LG-4 cache:** color in OKLab form, refreshed at `begin_stroke`
+    /// from `params.active_color`. `queue_pointer` reads this instead of
+    /// recomputing `oklch_to_oklab` (two transcendentals per pointer
+    /// event) for every stamp.
+    ///
+    /// **R5-LI-N contract for W2 sidebar:** `PainterUiEdit::SetColor`
+    /// MUST gate on `!is_stroke_active()` OR explicitly refresh
+    /// `stroke_color_oklab` after writing `params.active_color`. A
+    /// write to `params.active_color` mid-stroke will NOT take effect
+    /// until the next `begin_stroke` — silent visual regression if the
+    /// sidebar handler doesn't honor this contract. Today
+    /// `handle_panel_event` is a no-op stub (line ~390) so the contract
+    /// can't be violated in T1.5; the constraint binds W2.
+    stroke_color_oklab: [f32; 4],
 }
 
 impl Default for PainterTool {
     fn default() -> Self {
         Self {
             params: PainterParams::default(),
-            canvas_rgba: Vec::new(),
+            canvas_rgba: Arc::new(Vec::new()),
             source_size: (0, 0),
             preview_dirty: false,
             pending_commit: false,
@@ -99,6 +148,7 @@ impl Default for PainterTool {
             brush: library::round_hard(),
             stroke_active: false,
             has_painted_since_source: false,
+            stroke_color_oklab: [0.0; 4],
         }
     }
 }
@@ -115,6 +165,10 @@ impl PainterTool {
         }
         self.scheduler.begin_stroke(seed);
         self.stroke_active = true;
+        // R4-LG-4: cache OKLab color at stroke boundary. UI updates to
+        // `params.active_color` between strokes — recomputing the two
+        // transcendentals per pointer event is pure waste otherwise.
+        self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
     }
 
     /// Empilha um pointer sample no scheduler e aplica os stamps gerados
@@ -124,19 +178,19 @@ impl PainterTool {
             return;
         }
         let size_px = self.effective_size_px();
-        let color_oklab = oklch_to_oklab(self.params.active_color);
         let stamps = self
             .scheduler
-            .advance(&self.brush, sample, size_px, color_oklab);
+            .advance(&self.brush, sample, size_px, self.stroke_color_oklab);
         if stamps.is_empty() {
             return;
         }
-        apply_stamps(
-            &mut self.canvas_rgba,
-            self.source_size.0,
-            self.source_size.1,
-            stamps,
-        );
+        // R4-LG-1: `Arc::make_mut` ⇒ unique-borrow path when refcount==1
+        // (zero alloc), clone-once when bridge cached the prior Arc
+        // (16 MB once per preview drain cycle, NOT per pointer event).
+        // Explicit `Vec<u8>` annotation prevents the compiler from
+        // coercing through `Arc<[u8]>::make_mut` (different impl).
+        let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
+        apply_stamps(canvas_vec, self.source_size.0, self.source_size.1, stamps);
         self.preview_dirty = true;
         self.has_painted_since_source = true;
     }
@@ -180,6 +234,30 @@ impl PainterTool {
     #[must_use]
     pub fn canvas_size(&self) -> (u32, u32) {
         self.source_size
+    }
+
+    /// **R4-LG-1 fast path:** zero-copy preview drain via Arc clone (1
+    /// atomic increment). Drains `preview_dirty` and returns the SAME
+    /// underlying `Arc<Vec<u8>>` the tool holds (no `to_vec`). The
+    /// bridge stashes this Arc in its `painter_preview` cache; the
+    /// canvas Vec stays shared between tool and bridge until the next
+    /// `queue_pointer` triggers `Arc::make_mut`, at which point ONE
+    /// `Vec::clone` happens.
+    ///
+    /// Prefer this over `RasterEditTool::current_preview` for the
+    /// per-frame cache drain path (`drive_preview_cache` does
+    /// `pixels.to_vec()` which at 60 fps × 16 MB is ~960 MB/s of
+    /// allocator churn — audit R4-LG-1).
+    #[must_use]
+    pub fn take_preview_arc(&mut self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
+            return None;
+        }
+        Some((
+            Arc::clone(&self.canvas_rgba),
+            self.source_size.0,
+            self.source_size.1,
+        ))
     }
 
     /// True iff at least one stamp landed in `canvas_rgba` since the
@@ -252,7 +330,17 @@ impl PainterTool {
 ///
 /// Audit T1.5 round 1 A-M2 / B-M5: assert defensiva captura uso errado
 /// (ex: alguém passa h em degrees > 2π).
+///
+/// **R4-LH-5 finite-guard:** if ANY component is non-finite (`pub params`
+/// surface allows external writes that may inject NaN/Inf), returns
+/// `[0, 0, 0, 0]` — `apply_stamps` filter chain treats alpha=0 as a
+/// no-op so the stroke silently fails closed instead of corrupting
+/// downstream math (NaN propagation through cos/sin → silent no-paint
+/// AFTER all per-pixel work).
 fn oklch_to_oklab(c: OklchColor) -> [f32; 4] {
+    if !c.l.is_finite() || !c.c.is_finite() || !c.h.is_finite() || !c.a.is_finite() {
+        return [0.0, 0.0, 0.0, 0.0];
+    }
     debug_assert!(
         c.h.abs() <= (4.0 * std::f32::consts::PI),
         "oklch_to_oklab: expected h in RADIANS (|h| ≤ 4π for safety margin); \
@@ -332,12 +420,17 @@ impl RasterEditTool for PainterTool {
     /// Inicializa o working canvas a partir do source do sprite. RGBA8
     /// straight; é o estado base sobre o qual os stamps depositam.
     fn set_source(&mut self, rgba: Vec<u8>, width: u32, height: u32) {
-        debug_assert_eq!(
+        // **R4-LH-3 fix:** production-grade length guard. A debug_assert
+        // here lets a release-build caller pass a mismatched buffer that
+        // then triggers undefined behavior in `apply_stamps` (or worse,
+        // silently produces a corrupted commit through the Apply-without-
+        // paint chain).
+        assert_eq!(
             rgba.len(),
             (width as usize) * (height as usize) * 4,
             "set_source rgba length must equal width*height*4"
         );
-        self.canvas_rgba = rgba;
+        self.canvas_rgba = Arc::new(rgba);
         self.source_size = (width, height);
         self.preview_dirty = true;
         // R3-LF-5: reset "painted since source" — fresh source = clean
@@ -367,15 +460,26 @@ impl RasterEditTool for PainterTool {
     /// place via CPU path. Não toca state — bridge é responsável por
     /// chamar `deactivate` se for o ciclo de fim-de-tool.
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
+        // **R5-LI-C fix:** `mem::replace` takes the original Arc out
+        // (leaving an empty stub) BEFORE `unwrap_or_clone` is called.
+        // Without this, `Arc::clone(&self.canvas_rgba)` bumps the
+        // refcount before unwrap sees it, forcing the clone branch
+        // ALWAYS. With mem::replace, the bridge already dropped its
+        // `painter_preview = None` in the Apply teardown path
+        // (`painter_bridge.rs:202`), so the take-out arc has refcount=1
+        // → `unwrap_or_clone` returns the inner Vec without allocation.
+        // The stub `Arc::new(Vec::new())` is harmless: `deactivate`
+        // immediately replaces it on the standard Apply teardown.
+        let canvas = std::mem::replace(&mut self.canvas_rgba, Arc::new(Vec::new()));
         (
-            self.canvas_rgba.clone(),
+            Arc::unwrap_or_clone(canvas),
             self.source_size.0,
             self.source_size.1,
         )
     }
 
     fn deactivate(&mut self) {
-        self.canvas_rgba.clear();
+        self.canvas_rgba = Arc::new(Vec::new());
         self.source_size = (0, 0);
         self.preview_dirty = false;
         self.pending_commit = false;

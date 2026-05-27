@@ -10,17 +10,9 @@
 
 ## Coord-A (foundational)
 
-**Status:** ATIVO — Crisp Text Rendering Fase 0 (plano em `docs/UI_Plans/2026-05-24-crisp-text-rendering.md`)
+**Status:** INATIVO — KTX2 Fase 2 W0 entregou ADR-0055 Round 3 Proposed (NÃO Accepted) + plano vivo com §Open Issues; sessão 2026-05-27 fechada. Próxima retomada lê [HANDOFF_ktx2_phase2.md §12](HANDOFF_ktx2_phase2.md) + [[project-ktx2-phase2-round3-proposed-2026-05-27]].
 
-**Pastas reservadas (em uso AGORA):**
-- `crates/ph2d-tokens/src/typography.rs` + `lib.rs` (F1)
-- `crates/ph2d-text/src/system.rs` (F2)
-- `crates/ph2d-editor-core/src/paint.rs` (F3)
-- `crates/ph2d-editor-core/src/screens/hero.rs` + `screens/hero/state.rs` (F4)
-- `crates/ph2d-editor-core/src/ids.rs` + `screens/hero/pre_populate.rs` + `screens/hero/chrome/settings_text.rs` (F5)
-- `screens/hero/chrome/mod.rs` (entrada nova em `dispatch_all`)
-
-**Pastas reservadas (referência geral, quando trabalho foundational):**
+**Pastas reservadas (quando ativar):**
 - `scripts/` · `.github/workflows/` · contratos congelados (`crates/ph2d-nodegraph/`, `crates/ph2d-editor-core/src/tool.rs`)
 - `docs/IntegracaoMultiAgente/DIRETRIZ.md` · arch-gates em geral
 

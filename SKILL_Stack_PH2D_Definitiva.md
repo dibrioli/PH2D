@@ -255,6 +255,19 @@ Cargo features são explosivas em combinação. Esta é a lista canônica; combi
 **Rationale:** permite iPad sandbox, Android SAF, Web OPFS, server auth headless — sem fork.
 **Enforced by:** teste em CI (`tests/architecture/no_os_in_core.rs`) que faz grep por padrões proibidos nos crates listados; falha o build.
 
+**Critério objetivo para FFI C/C++ vendored aceitável** (codificado por [ADR-0055](docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md) §2.7.1 + ADR-0054 §1.1 precedente):
+
+FFI C/C++ é aceitável SE **TODAS** as condições:
+1. **Offline tooling only** — código FFI nunca embarcado em app bundle release-game (`--features release-game` test confirma exclusão).
+2. **Reference implementation única OU best-of-domain benchmark-comprovada** — encoder/decoder canônico do domínio (e.g., bc7e da DirectXTex, astcenc da ARM, libpng).
+3. **Vendored via crate Cargo com `build.rs` reproducível** — `cargo build` produz binário sem download manual; prebuilt ISPC libs OK desde que attested (GitHub Artifact Attestation OU equivalent).
+4. **License compatible** com MIT/Apache-2.0 PH2D (incluindo sub-crates vendored, e.g., `AND Apache-2.0` para bc7enc_rdo content) — verificar `cargo info` antes de adoção.
+5. **Maintainer ativo** com commits < 12 meses OU PH2D pode fork sem fricção técnica.
+6. **NÃO patent-encumbered** — HEVC/H.265 / DTS / AAC / outros payloads royalty-bearing. Verificar via license search + IP review.
+
+Exemplos passando: `ctt` 0.4.0 + sub-crates (cooking offline ✓, refs canônicos ✓, build.rs vendored + GitHub Artifact Attestation ✓, MIT/Apache-2.0/Zlib ✓, 78 commits trunk recente ✓, sem patents conhecidos ✓).
+Exemplos falhando: `libheif` (ADR-0054 §1.1 rejeitada — libheif é reference HEIC, maintainer ativo Strukur GmbH **passa #5**, mas **falha #6** porque HEVC é patent-heavy MPEG-LA royalty).
+
 ### HR-2 — `unsafe` requer justificativa escrita
 **Rule:** todo bloco `unsafe` precisa de comentário acima explicando POR QUÊ é necessário e QUAIS invariantes garantem soundness.
 **Rationale:** `unsafe` em engine é inevitável (FFI, GPU hal interop), mas inspecionar dezenas de blocos sem contexto é como auditar criptografia no escuro.
@@ -625,10 +638,21 @@ Pipeline **deterministic + reproducible**: mesmo input + mesma versão de cooker
 
 **Adicionar importador novo:** ver §14.
 
-**Texture compression:**
-- Desktop: BC7 (RGBA), BC6H (HDR), BC4 (mask).
-- Mobile (iOS/Android): ASTC 6x6 default; 4x4 para UI/sprites críticos.
-- Web: BC + ASTC (depende de browser feature query); fallback para `rgba8unorm`.
+**Texture compression** ([ADR-0055](docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md) + Fase 1 [`crates/ph2d-asset-ktx2/`](crates/ph2d-asset-ktx2/)):
+
+- **Container**: KTX2 (read-only parser Fase 1; cooker offline emite via `ctt` 0.4.0).
+- **Cooker**: `tools/asset-cooker texture` sub-command invoca `ctt-cli` Rust crate (Cargo-installable, multi-encoder bc7e/Intel ISPC/Compressonator/etcpak/astcenc) em **runner canônico Linux x86_64 CI**; outputs versionados via Git LFS (HR-6 determinism).
+- **Runtime**: `wgpu::queue::write_texture` direto da KTX2 — NÃO transcoder runtime (sem CPU spike, sem WASM transcoder 500 KB).
+- **Per-tier matrix** (ADR-0053 `DeviceTier`):
+  - Desktop (Windows/Linux/macOS Intel + Apple Silicon Mac): **BC7** (SDR), **BC6H** (HDR W4+), **BC4** (R8 single-channel mask).
+  - iPad Apple7+/M1/M2/M3+ (Apple Silicon iPad): **BC7 ou ASTC 6×6** (cooker emite ambos; runtime escolhe via `MTLDevice.supportsBCTextureCompression` exposed by wgpu).
+  - iPhone (todas gens) + iPad antigo: **ASTC 6×6 LDR**, ASTC HDR (iOS 16.4+).
+  - Android: **ASTC 6×6 LDR** (4×4 critical UI), ASTC HDR (Vulkan 1.3 `VK_EXT_texture_compression_astc_hdr` device support), **ETC2 RGBA** fallback.
+  - Web (WebGPU Chrome 113+/Safari 19+/Firefox 145+): runtime `requestDevice` tentativa-fallback BC → ASTC → ETC2 → RGBA8.
+  - LowEnd / Constrained: ETC2 RGBA · BC1 emergency · RGBA8 uncompressed.
+- **Color management**: Linear sRGB working space + ACES tonemap shader output. **NÃO** ACEScg gamut.
+- **`ColorProfile` source-of-truth**: `ph2d-imageio::ColorProfile` ([ADR-0054](docs/architecture/decisions/0054-imageio-pipeline.md), 8 FROZEN). `ph2d-color::ColorProfile` da ADR-0051 ainda é vapor (não materializado).
+- **NÃO usar**: Basis Universal runtime · `ph2d-color-pipeline` crate paralelo · `AcescgLinear` working space (vide [ADR-0055](docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md) §6 anti-patterns).
 
 **Atlas packing:** offline, em `asset-cooker`. Heurística: max-rect com guillotine.
 
@@ -687,6 +711,8 @@ Cada subsistema declara budget em `Plugin::init` (HR-13). Tabela default por pla
 | Subsistema | iPad / iPhone | Android med | Desktop | Web |
 |---|---|---|---|---|
 | Render textures+meshes | 350 | 400 | 1200 | 200 |
+| └─ Texture compression W2+ delta ([ADR-0055](docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md)) | ~−150 | ~−180 | ~−500 | ~−80 |
+| └─ **Effective render textures+meshes (W2+ post-ship)** | **~200** | **~220** | **~700** | **~120** |
 | Audio buffers | 30 | 30 | 80 | 20 |
 | Physics state | 20 | 20 | 80 | 10 |
 | Lighting (RC) | 80 | 80 | 200 | 50 |

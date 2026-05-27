@@ -10,9 +10,16 @@
 
 ## Coord-A (foundational)
 
-**Status:** INATIVO — KTX2 Fase 2 W0 entregou ADR-0055 Round 3 Proposed (NÃO Accepted) + plano vivo com §Open Issues; sessão 2026-05-27 fechada. Próxima retomada lê [HANDOFF_ktx2_phase2.md §12](HANDOFF_ktx2_phase2.md) + [[project-ktx2-phase2-round3-proposed-2026-05-27]].
+**Status:** ATIVO 2026-05-27 noite — KTX2 Fase 2 W0 retomada após 2ª opinião de 3 LLMs externas convergir em Opção 4 (ADR enxuto + plano vivo canônico). Reescrevendo ADR-0055-v4 ≤200 LOC strategic-only; arquivando v3 (660 LOC com snippets de código); migrando tabela canon pro plano vivo.
 
-**Pastas reservadas (quando ativar):**
+**Pastas tocadas nesta sessão (NÃO TOCAR — Coord-A own):**
+- `docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md` (reescrita v4)
+- `docs/archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md` (novo — backup v3)
+- `docs/plans/2026-05-texture-compression-waves.md` (header v4 + §Symbol Registry)
+- `docs/HANDOFF_ktx2_phase2.md` (§12 status)
+- `docs/SESSION_ACTIVE.md` (este arquivo)
+
+**Pastas reservadas (quando ativar futuro):**
 - `scripts/` · `.github/workflows/` · contratos congelados (`crates/ph2d-nodegraph/`, `crates/ph2d-editor-core/src/tool.rs`)
 - `docs/IntegracaoMultiAgente/DIRETRIZ.md` · arch-gates em geral
 

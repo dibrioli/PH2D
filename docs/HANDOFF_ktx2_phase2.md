@@ -307,18 +307,17 @@ Coord-A futura: **ATIVAR** seção Coord-A no [`docs/SESSION_ACTIVE.md`](SESSION
 
 ---
 
-## §12 Status canônico no fim desta sessão (2026-05-27 noite — Round 4 fechamento)
+## §12 Status canônico no fim desta sessão (2026-05-27 noite — v4 Accepted, W0 fechada)
 
-- **ADR-0055-cooked-texture-compression-pipeline.md** — `Proposed` (Round 3 + Round 4 drift fix). 4 rounds audit consecutivos (R1: REJECT × 3 scores 4.5/4.5/5.0; R2: REJECT × 3 scores 6.5/6.5/5.2; R3: REJECT × 2 scores 6.5/6.2; R4 mecânico aplicado). Target padrão-ouro 9.0/10 não atingido. **NÃO Accepted** — gates-vapor explicitamente flagged em [§Open Issues plano vivo](../plans/2026-05-texture-compression-waves.md#open-issues--vapor-dependencies-round-3-lente-e-findings-deferidos-para-w1).
-- **`docs/plans/2026-05-texture-compression-waves.md`** — criado nesta sessão (W0.T5); inclui §Open Issues com 13 vapor dependencies para resolução wave-by-wave.
+**Diagnóstico que destravou:** 2ª opinião de 3 LLMs externas (consulta 2026-05-27 noite) convergiu em (a) metodologia quebrada para esta classe de ADR (auditoria adversarial sem oráculo = Goodhart's Law), (b) recomendação Opção 4 (ADR enxuto strategic-only + plano vivo canônico). v3 660 LOC com snippets de código gerava vapor verificável e ciclo R1→R4 sem convergência.
+
+- **ADR-0055-cooked-texture-compression-pipeline.md** — `Accepted` v4 enxuta (101 LOC strategic-only, sem snippets de código). v3 660 LOC arquivada em [`docs/archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md`](../archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md) como histórico do raciocínio.
+- **`docs/plans/2026-05-texture-compression-waves.md`** — plano vivo é agora **specification canônica**. Inclui §Symbol Registry (22 símbolos verificados migrados da tabela canon do v3), §Anti-Patterns (11 originais + 3 novos sobre over-specification), §Memory Budget Math (contas explícitas), §Open Issues E1..E13 (13 vapor dependencies adjacentes com owner identificado).
 - **HANDOFF §4 + §6.10** — patched (BC4 saving correto -50%, não 4×).
-- **SKILL §11.10** — reconciliada com ADR-0055 (cooker `ctt`, canonical-runner, iPad-BC hedge).
-- **SKILL §12.1** — memory budget delta W2+ provisional adicionado.
-- **SKILL HR-1 §2.7.1** — 6 critérios FFI codificados (split de 5 para 6 pós Round 4: patent-encumbered virou critério próprio #6).
-- **SESSION_ACTIVE.md** — Coord-A ATIVO (esta sessão); pastas reservadas documentadas; NÃO-TOCAR list dos agentes paralelos documentada.
-- **Nova memória** — [[feedback-audit-internal-state-grep]] criada + adicionada ao MEMORY.md.
-- **Trabalho não-comitado**: ~5 docs alterados (ADR-0055 NEW, plano NEW, HANDOFF patch, SKILL 3 sites, SESSION_ACTIVE, MEMORY.md + nova memória). Agentes paralelos do Painter T1.6 + color-eq também têm modificações não-comitadas em outras pastas — NÃO tocar ao commit (escopar `git add` ao meu trabalho).
-- **Próxima Coord-A retomada**: ler §1.2 + §1.3 do ADR Round 3 + §Open Issues do plano vivo + memória [[feedback-audit-internal-state-grep]] antes de W1.T0. Round 5 audit candidato se Enio quiser tentar Accepted (ainda viável após Lente E findings serem deferidos formalmente).
+- **SKILL §11.10 / §12.1 / HR-1 §2.7.1** — atualizadas em Round 1-3.
+- **SESSION_ACTIVE.md** — Coord-A ATIVO (esta sessão); pastas tocadas documentadas (5 docs); NÃO-TOCAR list dos agentes paralelos respeitada (commit escopado).
+- **Memória refinada** — `[[feedback-perfection-no-deferrals]]` ganhou escopo decisão-atual vs decisões-adjacentes (anti-inversão da própria regra). `[[feedback-audit-internal-state-grep]]` criada em Round 3.
+- **Próxima sessão Coord-A**: ler ADR-0055-v4 (curta) + §Symbol Registry + §Open Issues do plano vivo + memória `perfection-no-deferrals` refinada. **W1.T0 destrancada**: `cargo add ctt = "0.4.0"` em `tools/asset-cooker/Cargo.toml` + sweep-grep dos símbolos do registry (alguns podem ter materializado entre sessões, especialmente E3 Plugin trait e E5 ph2d-i18n) + audit do source do `ctt` (W1.T2, ~3h leitura).
 
 ---
 

@@ -1,8 +1,8 @@
 # Plano de waves — Cooked Texture Compression Pipeline (ADR-0055)
 
-**Data:** 2026-05-27
-**Status:** **W0 em andamento** — ADR-0055 Round 3 escrito após Round 2 REJECT × 3 + sweep-grep preventivo + 12 fixes inline. Round 3 audit (Lentes D + E) REJECT × 2 (scores 6.5/6.2). Round 4 mecânico aplicado para drift cross-doc (Lente D); Lente E findings deferidos para W1+ via §Open Issues. ADR fica **Proposed** (não Accepted) com gates-vapor explicitamente flagged.
-**Arquitetura:** [ADR-0055](../architecture/decisions/0055-cooked-texture-compression-pipeline.md) (Proposed Round 3).
+**Data:** 2026-05-27 (atualizado noite — v4 Accepted)
+**Status:** **W0 FECHADA 2026-05-27 noite** — ADR-0055-v4 Accepted (strategic-only ≤200 LOC) após 2ª opinião de 3 LLMs externas convergir em Opção 4 (ADR enxuto + plano vivo canônico). v3 Round 3+4 (660 LOC com snippets de código) arquivada em [`docs/archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md`](../archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md). Tabela canon de 22 símbolos migrada para §Symbol Registry deste plano. 13 vapor dependencies (E1..E13) catalogadas em §Open Issues. **W1.T0 destrancada** — próximo: `cargo add ctt` + sweep-grep E1..E13 + audit do source de `ctt`.
+**Arquitetura:** [ADR-0055-v4](../architecture/decisions/0055-cooked-texture-compression-pipeline.md) (Accepted strategic).
 **Consome (não toca):** Fase 1 codec puro `crates/ph2d-asset-ktx2/` (4 commits f30e225..b276cef, 1207 LOC, 26 tests, ✅ frozen).
 **Substrato:** mesmo padrão drop-crate + arch-gate de ADR-0040 (tools) / ADR-0054 (imageio), mas com particularidade: cooker mora em `tools/asset-cooker` (FROZEN 2026-05-22), não em crate satélite isolado.
 
@@ -39,6 +39,92 @@ Cada wave fecha com **auditoria 5-lente paralela** + smoke do Enio antes do pró
 
 ---
 
+## §Symbol Registry — verificações executadas pré-W1 (migrado de ADR v3 §1.3)
+
+Tabela canon de 22 símbolos/APIs verificados em código real no repo via `grep`/`cat`/`cargo info`/`ls` em 2026-05-27. Esta tabela é **canônica para implementador de W1+**: símbolos NOVOS introduzidos em waves estão marcados com a wave responsável. Símbolos vapor (não existem ainda mas serão criados) estão flagged.
+
+| Símbolo / API | Comando verificação | Estado real | Wave responsável |
+|---|---|---|---|
+| `ph2d_asset_ktx2::Ktx2Image` | `grep -n "pub struct Ktx2" crates/ph2d-asset-ktx2/src/lib.rs` | linha 365: `pub struct Ktx2Image { format, width, height, mip_levels }` | Fase 1 ✓ |
+| `Ktx2Image::premul_intent()` API | `grep "premul_intent" crates/ph2d-asset-ktx2/src/lib.rs` | NÃO existe | **W2.T-pre cria** |
+| `Ktx2Image::byte_size_estimate()` API | `grep "fn byte_size" crates/ph2d-asset-ktx2/src/lib.rs` | NÃO existe | **W1.T9 cria** |
+| `Ktx2Image::kvd: BTreeMap<String, Vec<u8>>` field | parser atual ignora `keyValueData` | NÃO existe (kvd descartado) | **W2.T-pre adiciona** |
+| `PremulIntent { Straight, Premultiplied, Unspecified }` enum | grep | NÃO existe | **W2.T-pre cria** |
+| `ph2d_core::MemoryBudget` | `cat crates/ph2d-core/src/budget.rs` | STRUCT `{ vram_mb: u32, ram_mb: u32, heap_script_mb: u32 }` + `MemoryBudget::new(...)`. **NÃO é enum**. | existe ✓ |
+| `trait Plugin` | `grep -rn "trait Plugin\b" crates/ --include="*.rs"` | ZERO matches — **VAPOR** (SKILL §HR-13 pattern aspirational) | **E3 §Open Issues** |
+| `ph2d_host::DeviceTier` enum | `grep -rn "pub enum DeviceTier" crates/` | ZERO matches — **VAPOR** (ADR-0053 cita mas não materializado; gate silently-passing) | **slot futuro** |
+| `ph2d_asset::TierIndex(u8)` newtype | grep | NÃO existe | **W1.T4 cria** (host-agnostic; alias-target quando DeviceTier materializar) |
+| `ph2d_asset::LogicalTextureId` mapping | grep | NÃO existe | **W1.T4 cria** (`LogicalTextureId → BTreeMap<TierIndex, AssetId>`) |
+| `ph2d_asset::AssetId([u8; 32])` | `cat crates/ph2d-asset/src/id.rs` | linha 17: existe, `Copy + Eq + Serialize` | existe ✓ |
+| `ph2d_asset::AssetDb` API | `grep "pub fn" crates/ph2d-asset/src/db.rs` | só `pub fn get(&self, id: &AssetId) -> Option<Arc<Asset>>` (linha 145). Content-addressed. | existe ✓ |
+| `Asset` enum shape | `grep -A 10 "pub enum Asset" crates/ph2d-asset/src/asset.rs` | 3 variants `ImageRgba8 \| Prefab \| Scene` + `#[non_exhaustive]`. Sem cap arch-gate. | **W1.T4 adiciona `TextureKtx2`** |
+| `SpriteSource` enum shape | `grep -A 8 "pub enum SpriteSource" crates/ph2d-render/src/sprite.rs` | 2 variants `Atlas \| Individual` + `Copy + Eq + Serialize`, NÃO `non_exhaustive`. `Sprite::VERSION = 3`. | **W2.T2 adiciona `CookedTexture` (breaking)** |
+| `InspectorSpriteSource` mirror | linha 231 `crates/ph2d-editor-core/src/screens/hero.rs` | 3 variants `Atlas \| Individual \| HandPacked` | **W2.T2 mirror sync** |
+| `RequestedSpriteStrategy` mirror | linha 307 idem | 3 variants idem | **W2.T2 mirror sync** |
+| `INSP_RENDER_STRATEGY_*` constants | linhas 418-420 `crates/ph2d-editor-core/src/ids.rs` | `_ATLAS`, `_INDIVIDUAL`, `_HANDPACKED` | **W2.T2 adiciona `_COOKED_TEXTURE`** |
+| `Ktx2Format` variants count | `awk '/pub enum Ktx2Format/,/^}/' lib.rs \| grep -E "^    [A-Z]" \| wc -l` | **28**: 5 uncompressed + 10 BC + 8 ASTC + 4 ETC2 + 1 Unsupported | Fase 1 ✓ |
+| `wgpu::PollType::wait_indefinitely()` | `grep "PollType" crates/ph2d-render/src/` | existe em `individual.rs:448` e `vello_pass.rs:222` | existe ✓ |
+| `wgpu = 28.0.0` | `cat Cargo.lock \| grep -A 1 '^name = "wgpu"'` | 28.0.0 confirmado | existe ✓ |
+| `ph2d_color::ColorProfile` enum | `grep -rn "pub enum ColorProfile" crates/ph2d-color/` | ZERO matches — **VAPOR** (ADR-0051 não materializou) | **fora deste escopo** |
+| `ph2d_imageio::ColorProfile` enum | `grep -A 30 "pub enum ColorProfile" crates/ph2d-imageio/src/color.rs:18` | 8 variants ✓ FROZEN gate ativo | existe ✓ |
+| `ctt = 0.4.0` crate | `cargo info ctt` | confirmed: 0.4.0, MSRV 1.90, license MIT/Apache-2.0/Zlib, repo cwfitzgerald/ctt | crates.io ✓ |
+| `.gitattributes` (Git LFS) | `ls .gitattributes` | NÃO existe — repo não LFS-ready | **W1.T11.5 setup** |
+| `ph2d-painter-brush` deps inclui `ph2d-asset` | `cat crates/ph2d-painter-brush/Cargo.toml` | ZERO `ph2d-asset` dep | **W3.T0 pre-task adiciona** |
+| `ph2d-painter-brush::atlas.rs` LOC | `wc -l crates/ph2d-painter-brush/src/atlas.rs` | 60 LOC stub (`AtlasStub` placeholder) | **W3.T1 substitui** (LOC estimate 600-800) |
+
+**Regra do registry**: ao implementar W1+, antes de citar qualquer símbolo em código novo, re-verificar via `grep`/`cat`. Símbolos podem ter materializado entre sessões (especialmente E3 Plugin trait, E5 ph2d-i18n). Memória [[feedback-audit-internal-state-grep]] é a versão expandida desta regra.
+
+---
+
+## §Anti-patterns — NÃO repetir (migrado de ADR v3 §6)
+
+Lista canônica dos anti-patterns identificados em ADR-0055 v1 (deletada 2026-05-26) que afundaram a versão original. Cada um vem com a verificação que detecta tentativas de re-introdução:
+
+1. ❌ **NÃO criar `ph2d-asset-basisu`** (runtime transcoder C++ FFI). Verificação: `grep -rn "ph2d-asset-basisu" --include="*.toml"` deve retornar zero.
+2. ❌ **NÃO criar `ph2d-color-pipeline`** crate paralelo. ADR-0042 mandato expande `ph2d-color` (cap 2500 LOC).
+3. ❌ **NÃO afirmar `basis-universal-rs >= 0.4`** sem `cargo search`. Real: 0.3.1 dormente Nov/2023, maintainer individual `aclysma`.
+4. ❌ **NÃO assumir BC universal em iOS**. iPhone (todas gens) sem BC; iPad Apple7+/M1+ tem BC opcional (`MTLDevice.supportsBCTextureCompression`); runtime feature query é source-of-truth.
+5. ❌ **NÃO escrever `-50% VRAM` (BC7 vs RGBA8)** sem mostrar a conta. Real: `BC7 8 bpp ÷ RGBA8 32 bpp = 0.25 → -75%`. Plano de saving canônico vide §5 v3 archived ou §Memory Budget abaixo.
+6. ❌ **NÃO amendar `ColorProfile` cap**. Dois ColorProfile distintos (ADR-0051 vapor + ADR-0054 FROZEN). Esta ADR não amenda nem materializa.
+7. ❌ **NÃO override HR-1 "pure-Rust"** sem critério objetivo. SKILL §HR-1 §2.7.1 codifica 6 critérios FFI C/C++ aceitáveis (offline-only, ref impl única, vendored Cargo, license compatible, maintainer ativo, NÃO patent-encumbered).
+8. ❌ **NÃO citar ADR-0009 como existente** (slot reservado SKILL §16, Holographic Radiance Cascades, ainda não escrito). Usar "slot futuro de ADR — ainda não numerado".
+9. ❌ **NÃO afirmar adoção industrial sem WebFetch oficial**. Cada claim sobre Unity/Unreal/Houdini/etc. precisa cite verificável.
+10. ❌ **NÃO confundir ACES tonemap com ACEScg working space**. PH2D = Linear sRGB working + ACES tonemap output.
+11. ❌ **NÃO modelar HDR sprite pipeline sem ecossistema de criação**. Procreate/PSD/Krita não exportam HDR mainstream. HDR (W4+) deferido até Painter export HDR real.
+
+**Anti-patterns introduzidos no próprio v3 (e NÃO repetir em planos futuros):**
+12. ❌ **NÃO escrever ADR com snippets de código** `pub fn foo()`. ADRs strategic-level documentam decisão; código vai no plano vivo ou no próprio código. Snippets em ADR são vapor verificável.
+13. ❌ **NÃO rodar 4 rounds de audit consecutivos** sem mudar método. Padrão R1→R4 do v3 trocou classe de drift por round sem convergir (Goodhart's Law).
+14. ❌ **NÃO aplicar `[[feedback-perfection-no-deferrals]]` a dependências adjacentes** (Plugin trait em outra crate, runtime em outra ADR). Regra é para gaps *dentro* do escopo da decisão atual.
+
+---
+
+## §Memory Budget Math (migrado de ADR v3 §5)
+
+Contas explícitas de saving — todas mostradas (anti-pattern #5):
+
+- **BC7 vs RGBA8 (desktop sprite)**: `BC7 8 bpp ÷ RGBA8 32 bpp = 0.25 → -75% saving`
+- **ASTC 6×6 vs RGBA8 (mobile sprite)**: `ASTC 6×6 3.56 bpp ÷ RGBA8 32 bpp = 0.111 → -89% saving`
+- **ASTC 4×4 vs RGBA8 (critical UI sprite)**: `ASTC 4×4 8 bpp ÷ RGBA8 32 bpp = 0.25 → -75% saving`
+- **ETC2 RGBA vs RGBA8 (Android fallback)**: `ETC2 RGBA 8 bpp ÷ RGBA8 32 bpp = 0.25 → -75% saving`
+- **BC4 vs R8 (brush atlas single-channel)**: `BC4 4 bpp ÷ R8 8 bpp = 0.5 → -50% saving` (não 4× — 4× só vale se source fosse RGBA8)
+- **BC6H vs RGBA16Float (desktop HDR sprite, W4+)**: `BC6H 8 bpp ÷ RGBA16F 64 bpp = 0.125 → -87.5% saving`
+
+**Projeção provisional W2+ (audit real W2.T5):**
+
+| Subsistema | Antes | Com texture compression | Assumption |
+|---|---|---|---|
+| Render textures+meshes iPad | 350 MB | ~200 MB | ASTC 6×6 = -89% sobre RGBA8 em 60% das texturas; meshes inalterados (~140MB fixed) |
+| Render textures+meshes Desktop | 1200 MB | ~500 MB | BC7 = -75% sobre RGBA8 em 80% das texturas; meshes inalterados (~240MB fixed) |
+| Painter brush atlas | Shape 4 MB + Grain 32-64 MB R8 = 36-68 MB | Shape 2 MB + Grain 16-32 MB BC4 = **18-34 MB (-50%)** | R8 source → BC4 cooked |
+
+**VRAM measurement API** (W2.T5):
+- `device.poll(PollType::wait_indefinitely())` NÃO mede VRAM (só drives command-completion).
+- Backend-specific introspection (Metal/D3D12/Vulkan) não cross-vendor via wgpu.
+- W2.T5 strategy: contar bytes via `compressed_size_per_format(format, w, h, mip_count) × num_textures` (deterministic, suficiente HR-13).
+
+---
+
 ## WAVE 0 — Foundation · COORD-A ONLY · em andamento
 
 | Task | Escopo | Status |
@@ -53,13 +139,13 @@ Cada wave fecha com **auditoria 5-lente paralela** + smoke do Enio antes do pró
 | **W0.T2 Round 4 mecânico** | Sync drift cross-doc (Lente D): plan header + status ticks + 25→28 variants + premul_intent unify + W1.T11.5 LFS + W2.T4 + mirror chain + Open Issues section | 🔄 em andamento 2026-05-27 |
 | **W0.T5** | Este plano vivo (era citado em ADR Round 1 mas não existia — Lente B C1 finding) | ✅ 2026-05-27 — este doc |
 | **W0 — HANDOFF §4 + §6.10 patch** | Corrigir "BC4 (4× saving)" → "(-50% real, R8→BC4)" + atlas size canonical | ✅ 2026-05-27 (HANDOFF_ktx2_phase2.md linhas 108 + 193) |
-| **W0.T2 Round 2** | Re-auditar ADR Round 2 com 3 lentes paralelas (target ≥ 8.5/10 → Accepted) | ⏳ próximo |
+| **W0.T2 Round 5+** | NÃO executado — diagnóstico 2ª opinião externa: Round 5 trocaria classe de drift sem convergir (Goodhart's Law). Substituído por v4 reescrita. | ❌ cancelado |
 | **W0.T3** | SKILL §11.10 update — reconciliar texto canon "Texture compression" com ADR-0055 (cooker `ctt`, canonical-runner, iPad-BC distinction) + HR-1 §2.7.1 critério FFI codificado (6 critérios pós Round 4 split) | ✅ 2026-05-27 (Round 4 incluindo iPad BC hedge consistente) |
 | **W0.T4** | SKILL §12.1 memory budget table — adicionar provisional W2+ + `compressed_size_per_format` accounting | ✅ 2026-05-27 |
-| **W0.T6** (opcional) | Se ACES tonemap helper for materializado em ph2d-color: `cooked_texture_aces.rs` ≤ 200 LOC sob cap 2500 (Round 4 rename: era `aces_tonemap.rs` que seria silent amendment ADR-0051 §2.1 module list) | ⏳ defer if not blocker (W2 shader pode inline) |
-| **W0.T7** | ADR-0055 Round 2 `Proposed` → `Accepted` após smoke Enio do plano + ship.sh limpo | ⏳ aguarda |
+| **W0.T6** (opcional) | Se ACES tonemap helper for materializado em ph2d-color: `cooked_texture_aces.rs` ≤ 200 LOC sob cap 2500 | ⏳ defer if not blocker (W2 shader pode inline) |
+| **W0.T7-v4** | ADR-0055-v4 enxuto (≤200 LOC strategic-only, sem snippets) `Proposed` → `Accepted`. v3 arquivada em `docs/archive/adrs-rounds-history/`. Tabela canon + anti-patterns + memory math migrados para §Symbol Registry / §Anti-patterns / §Memory Budget Math deste plano. Regra `feedback-perfection-no-deferrals` refinada com escopo decisão-atual vs decisões-adjacentes. | ✅ 2026-05-27 noite |
 
-**Aceitação W0:** ADR Round 2 Accepted; SKILL §11.10/§12.1 atualizadas; plano vivo populado; HANDOFF §4 corrigido; smoke Enio confirmado.
+**Aceitação W0:** ✅ Fechada 2026-05-27 noite. ADR-0055-v4 Accepted; SKILL §11.10/§12.1 atualizadas; plano vivo populado + §Symbol Registry / §Anti-Patterns / §Memory Budget Math / §Open Issues; HANDOFF §12 atualizado; W1.T0 destrancada.
 
 ---
 

@@ -378,7 +378,7 @@ mod tests {
         };
         // 32×32 with vertical edge at x=16.
         let mut buf = Vec::with_capacity(32 * 32 * 4);
-        for y in 0..32u32 {
+        for _y in 0..32u32 {
             for x in 0..32u32 {
                 let v = if x < 16 { 50u8 } else { 200u8 };
                 buf.extend_from_slice(&[v, v, v, 255]);

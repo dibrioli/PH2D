@@ -154,12 +154,12 @@ pub fn premultiply_rgba8(rgba: &mut [u8]) {
 pub fn premultiply_rgba8_in_linear(rgba: &mut [u8]) {
     for px in rgba.chunks_exact_mut(4) {
         let a = px[3] as f32 / 255.0;
-        for c in 0..3 {
-            let srgb = px[c] as f32 / 255.0;
+        for ch in px[..3].iter_mut() {
+            let srgb = *ch as f32 / 255.0;
             let linear = srgb_to_linear(srgb);
             let premul = linear * a;
             let out_srgb = linear_to_srgb(premul);
-            px[c] = (out_srgb * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
+            *ch = (out_srgb * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
         }
     }
 }

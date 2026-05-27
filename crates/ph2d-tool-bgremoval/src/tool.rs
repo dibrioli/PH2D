@@ -247,6 +247,41 @@ pub struct BgRemovalTool {
     /// or stale).
     cached_auto_protect_source: Vec<u8>,
     cached_auto_protect_for: Option<(u32, u32)>,
+
+    // ── "Add area" automatic selector (Enio 2026-05-26) ──
+    /// Whether the "Add area" selector is armed. Symmetric to the
+    /// eyedropper: while armed, a single click on the canvas runs a
+    /// flood-fill from the clicked source pixel and writes the
+    /// connected same-colour region into [`Self::force_remove_mask`]
+    /// — no drag, no brush. Mutually exclusive with
+    /// [`Self::protect_brush_armed`] + [`Self::eyedropper_armed`].
+    /// Reset on deactivate / Apply / Detect Subject OFF.
+    add_area_armed: bool,
+    /// FORCE-REMOVE mask at the SOURCE resolution
+    /// (`force_remove_mask_w × force_remove_mask_h`, one byte/pixel;
+    /// `255` = forced alpha=0, `0` = no force). Threaded into
+    /// `run_pipeline` as the compose `force_remove` argument; applied
+    /// after `force_keep_protected` so an added area wins over a
+    /// protect dab AND over the silhouette auto-protect (most-recent-
+    /// intent semantics).
+    force_remove_mask: Vec<u8>,
+    force_remove_mask_w: u32,
+    force_remove_mask_h: u32,
+    /// Force-remove mask nearest-resampled to the canvas-preview dims
+    /// (mirror of `canvas_protect`). Allocation persists across runs.
+    canvas_remove: Vec<u8>,
+    /// Source-pixel positions seeded by "Add area" clicks. Each entry
+    /// is a `(x, y)` index into `source_rgba` (the user-clicked pixel
+    /// at source resolution). The force-remove mask is REGENERATED
+    /// from these seeds whenever the user clicks again OR moves the
+    /// Tolerance / Feather sliders — so the destructive area tracks
+    /// the same soft-band math the compose path uses for the auto-
+    /// detected bg + extra picks. Cleared by Clear / ResetAll / source
+    /// swap. Re-using the seed pattern (not just baked alpha) is what
+    /// makes the destructive area honour slider changes after the
+    /// click, exactly like `extra_bg_colors` does for the chroma
+    /// backend (Enio 2026-05-27).
+    add_area_seeds: Vec<(u32, u32)>,
 }
 
 impl Default for BgRemovalTool {
@@ -284,6 +319,12 @@ impl Default for BgRemovalTool {
             combined_protect: Vec::new(),
             cached_auto_protect_source: Vec::new(),
             cached_auto_protect_for: None,
+            add_area_armed: false,
+            force_remove_mask: Vec::new(),
+            force_remove_mask_w: 0,
+            force_remove_mask_h: 0,
+            canvas_remove: Vec::new(),
+            add_area_seeds: Vec::new(),
         }
     }
 }
@@ -308,11 +349,18 @@ impl BgRemovalTool {
         // The protection mask is spatial — a genuinely different image
         // invalidates it. Re-feeding the SAME dimensions (e.g. the Apply
         // re-read of the same sprite) preserves it so the bake honours
-        // the painted region.
+        // the painted region. The force-remove mask + its seed list
+        // are also spatial → same dim-change invalidation.
         if w != self.protect_mask_w || h != self.protect_mask_h {
             self.protect_mask.clear();
             self.protect_mask_w = 0;
             self.protect_mask_h = 0;
+        }
+        if w != self.force_remove_mask_w || h != self.force_remove_mask_h {
+            self.force_remove_mask.clear();
+            self.force_remove_mask_w = 0;
+            self.force_remove_mask_h = 0;
+            self.add_area_seeds.clear();
         }
         self.source_rgba = bytemuck::allocation::cast_vec(pixels);
         self.source_w = w;
@@ -401,8 +449,15 @@ impl BgRemovalTool {
     }
 
     /// Set the eyedropper armed state (shell mirror of the panel toggle).
+    /// Arming the eyedropper disarms the protect brush + add-area
+    /// selector so the three canvas modes never fight over the same
+    /// click.
     pub fn set_eyedropper_armed(&mut self, armed: bool) {
         self.eyedropper_armed = armed;
+        if armed {
+            self.protect_brush_armed = false;
+            self.add_area_armed = false;
+        }
     }
 
     // ── Protection brush (SCAFFOLD — Coordinator) ──────────────────────
@@ -418,12 +473,13 @@ impl BgRemovalTool {
     }
 
     /// Set the protection-brush armed state (shell mirror of the panel
-    /// toggle). Arming the brush disarms the eyedropper so the two canvas
-    /// modes never fight over the same click.
+    /// toggle). Arming the brush disarms the eyedropper AND the add-area
+    /// selector so the three canvas modes never fight over the same click.
     pub fn set_protect_armed(&mut self, armed: bool) {
         self.protect_brush_armed = armed;
         if armed {
             self.eyedropper_armed = false;
+            self.add_area_armed = false;
         }
     }
 
@@ -552,39 +608,22 @@ impl BgRemovalTool {
         self.params_dirty = true;
     }
 
-    /// Stamp a single brush disc into `protect_mask` at UV `(u, v)`
-    /// with `r` SOURCE-px radius. Assumes the mask has already been
-    /// lazy-sized by the caller. Falloff strength accumulates via
-    /// `max` (paint) or `saturating_sub` (erase).
+    /// Stamp a single brush disc into the protection mask at UV
+    /// `(u, v)` with `r` SOURCE-px radius. Thin wrapper over the
+    /// generic [`stamp_disc_into`] free function — Protect and the
+    /// symmetric force-remove brush ("Acrescentar Área") share the
+    /// same kernel, only the mask buffer differs.
     fn stamp_single(&mut self, u: f32, v: f32, r: f32, erase: bool) {
-        let (w, h) = (self.source_w, self.source_h);
-        let cx = u * (w as f32 - 1.0);
-        let cy = v * (h as f32 - 1.0);
-        let inv_r = 1.0 / r;
-        let x0 = (cx - r).floor().max(0.0) as u32;
-        let x1 = ((cx + r).ceil() as i64).clamp(0, w as i64 - 1) as u32;
-        let y0 = (cy - r).floor().max(0.0) as u32;
-        let y1 = ((cy + r).ceil() as i64).clamp(0, h as i64 - 1) as u32;
-        let stride = w as usize;
-        let falloff = self.falloff;
-        for y in y0..=y1 {
-            let dy = y as f32 - cy;
-            for x in x0..=x1 {
-                let dx = x as f32 - cx;
-                let dist = (dx * dx + dy * dy).sqrt();
-                if dist > r {
-                    continue;
-                }
-                let s = falloff.strength(dist * inv_r);
-                let val = (s * 255.0 + 0.5) as u8;
-                let i = (y as usize) * stride + x as usize;
-                self.protect_mask[i] = if erase {
-                    self.protect_mask[i].saturating_sub(val)
-                } else {
-                    self.protect_mask[i].max(val)
-                };
-            }
-        }
+        stamp_disc_into(
+            &mut self.protect_mask,
+            self.source_w,
+            self.source_h,
+            self.falloff,
+            u,
+            v,
+            r,
+            erase,
+        );
     }
 
     /// Protection-brush radius in SOURCE pixels (the unit the shell passes
@@ -627,6 +666,227 @@ impl BgRemovalTool {
         }
         // Canvas-preview cache must rebuild (the matte just dropped the
         // forced-keep region).
+        self.params_dirty = true;
+    }
+
+    // ── "Add area" automatic selector (Enio 2026-05-26) ──
+    // Single-click flood-fill from a source pixel into the force-remove
+    // mask. Symmetric to the eyedropper: arm → click → algorithm runs.
+    // NOT a brush — there is no drag, no falloff, no per-pixel painting
+    // surface. Shown in the eyedropper-row slot when
+    // `auto_protect_subject` is on (Pick Colors doesn't apply to the
+    // silhouette path, so the slot is repurposed for this destructive
+    // selector).
+
+    /// Whether the "Add area" selector is armed.
+    pub fn is_add_area_armed(&self) -> bool {
+        self.add_area_armed
+    }
+
+    /// Set the "Add area" armed state. Arming it disarms the eyedropper
+    /// AND the protect brush so the three canvas modes never fight over
+    /// the same click.
+    pub fn set_add_area_armed(&mut self, armed: bool) {
+        self.add_area_armed = armed;
+        if armed {
+            self.eyedropper_armed = false;
+            self.protect_brush_armed = false;
+        }
+    }
+
+    /// Whether the force-remove mask currently holds any filled pixels.
+    pub fn has_force_remove_mask(&self) -> bool {
+        self.force_remove_mask.iter().any(|&v| v != 0)
+    }
+
+    /// Borrow the source-resolution force-remove mask: `(mask, w, h)`,
+    /// one byte/pixel (`255` = forced removed). Empty slice + `(0, 0)`
+    /// when nothing is filled.
+    pub fn force_remove_mask_source(&self) -> (&[u8], u32, u32) {
+        (
+            &self.force_remove_mask,
+            self.force_remove_mask_w,
+            self.force_remove_mask_h,
+        )
+    }
+
+    /// Single-click "Add area" seed. Called by the shell on a Primary
+    /// Down inside the sprite footprint while the selector is armed.
+    /// UV `(u, v)` is the clicked pixel in normalized `[0,1]` source
+    /// coords (origin top-left). Pushes the source-pixel position onto
+    /// [`Self::add_area_seeds`] and regenerates the force-remove mask
+    /// using the SAME soft-band math as the compose path: ΔE² in
+    /// Oklab space, hard removal inside `tolerance²`, lerp to zero
+    /// across the `[tolerance, tolerance+feather]` band, stop outside.
+    /// Connectivity is enforced by 4-connected BFS, so the destructive
+    /// region is bounded to the clicked sprite area (it doesn't bleed
+    /// globally the way `extra_bg_colors` does).
+    pub fn flood_fill_remove_at_uv(&mut self, u: f32, v: f32) {
+        if !self.has_source() {
+            return;
+        }
+        let (w, h) = (self.source_w, self.source_h);
+        if w == 0 || h == 0 {
+            return;
+        }
+        let cx = (u.clamp(0.0, 1.0) * (w as f32 - 1.0)).round() as u32;
+        let cy = (v.clamp(0.0, 1.0) * (h as f32 - 1.0)).round() as u32;
+        self.add_area_seeds.push((cx, cy));
+        self.regenerate_force_remove_mask();
+    }
+
+    /// Regenerate [`Self::force_remove_mask`] from
+    /// [`Self::add_area_seeds`] using the current `chroma.tolerance` /
+    /// `chroma.feather` slider values. Called on every click AND every
+    /// time the user moves Tolerance or Feather — so the destructive
+    /// area tracks the same soft-band math the basal chroma backend
+    /// uses for `extra_bg_colors`.
+    ///
+    /// Algorithm: for each seed, flood-fill 4-connected from the seed
+    /// position; per-pixel ΔE² in Oklab space against the seed's
+    /// source colour decides (a) whether to expand into the pixel —
+    /// reject when `de_sq >= (tol+feather)²` — and (b) the strength
+    /// written into the mask: `255` inside `tol²`, lerp `255 → 0`
+    /// across the soft band. Multiple seeds accumulate via `max`,
+    /// so overlapping areas keep the strongest seed's strength.
+    /// No-op when `add_area_seeds` is empty (mask cleared so the
+    /// pipeline skips the per-pixel min-clamp pass).
+    fn regenerate_force_remove_mask(&mut self) {
+        let (w, h) = (self.source_w, self.source_h);
+        let n = (w as usize) * (h as usize);
+        if n == 0 {
+            return;
+        }
+        self.force_remove_mask.clear();
+        self.force_remove_mask.resize(n, 0);
+        self.force_remove_mask_w = w;
+        self.force_remove_mask_h = h;
+        // Sync dirty so the canvas-preview cache rebuilds on the next
+        // bridge tick (the matte must reflect the new mask whether the
+        // seeds list changed or just the slider values).
+        self.params_dirty = true;
+        if self.add_area_seeds.is_empty() {
+            return;
+        }
+        let tol = self.params.chroma.tolerance;
+        let feat = self.params.chroma.feather.max(1e-6);
+        let tol_sq = tol * tol;
+        let outer = tol + feat;
+        let outer_sq = outer * outer;
+        // Bridge zone (Enio 2026-05-27 "ainda resquícios"): the
+        // primary soft band stops at `outer`, so thin hatching / ink
+        // line-art crossing the background region (typical ΔE around
+        // 0.4–0.55 in Oklab vs a light-gray seed) sits just past the
+        // band and blocks propagation. Extending the flood's reach by
+        // 50 % — but keeping the *strength* contribution tapering
+        // smoothly to zero by `bridge_outer` — lets the algorithm
+        // walk through those barriers AND pulls the barrier pixels
+        // themselves into the destructive set with a partial alpha
+        // cut. Legs / line-art proper sit further out in Oklab and
+        // are still rejected (ΔE > bridge_outer).
+        const BRIDGE_RELAX_FACTOR: f32 = 2.0;
+        const BRIDGE_PEAK_STRENGTH: f32 = 230.0;
+        let bridge_outer = outer * BRIDGE_RELAX_FACTOR;
+        let bridge_outer_sq = bridge_outer * bridge_outer;
+        let bridge_span = (bridge_outer - outer).max(1e-6);
+        // Per-seed visited tracker. Reset between seeds so two seeds
+        // can write strength to the same pixel — the mask accumulates
+        // via `max`, so the stronger seed wins.
+        let mut visited: Vec<bool> = vec![false; n];
+        let mut queue: Vec<(u32, u32)> = Vec::new();
+        for seed_idx in 0..self.add_area_seeds.len() {
+            let (sx, sy) = self.add_area_seeds[seed_idx];
+            if sx >= w || sy >= h {
+                continue;
+            }
+            // Reset per-seed visited.
+            for v in visited.iter_mut() {
+                *v = false;
+            }
+            queue.clear();
+            // Seed colour in Oklab — sampled fresh from source so a
+            // re-evaluation after a slider change uses the same seed
+            // pixel even if source was re-pushed (selection drift
+            // clears seeds elsewhere).
+            let seed_pixel = (sy as usize) * (w as usize) + (sx as usize);
+            let seed_base = seed_pixel * 4;
+            let seed_oklab = super::algorithm::chroma::srgb_to_oklab(
+                self.source_rgba[seed_base],
+                self.source_rgba[seed_base + 1],
+                self.source_rgba[seed_base + 2],
+            );
+            queue.push((sx, sy));
+            while let Some((x, y)) = queue.pop() {
+                let i = (y as usize) * (w as usize) + (x as usize);
+                if visited[i] {
+                    continue;
+                }
+                visited[i] = true;
+                let base = i * 4;
+                let p_oklab = super::algorithm::chroma::srgb_to_oklab(
+                    self.source_rgba[base],
+                    self.source_rgba[base + 1],
+                    self.source_rgba[base + 2],
+                );
+                let de_sq = super::algorithm::chroma::oklab_dist_sq(p_oklab, seed_oklab);
+                if de_sq >= bridge_outer_sq {
+                    // Outside even the bridge band — reject AND stop
+                    // propagation. Legs / line-art proper land here.
+                    continue;
+                }
+                // Three-zone strength matching the compose soft-band
+                // semantics + a wider bridge tail:
+                //   - `[0, tol²]`        → 255 (hard remove).
+                //   - `[tol², outer²]`   → soft band lerping 255 → 0
+                //     (`compose::write_output` parity).
+                //   - `[outer², bridge_outer²]` → bridge tail lerping
+                //     `BRIDGE_PEAK_STRENGTH → 0` so thin
+                //     hatching/line-art barriers caught in this zone
+                //     get a substantial alpha cut AND the flood walks
+                //     through them to reach the gray beyond.
+                let strength = if de_sq <= tol_sq {
+                    255u8
+                } else if de_sq <= outer_sq {
+                    let de = de_sq.max(0.0).sqrt();
+                    let t = ((de - tol) / feat).clamp(0.0, 1.0);
+                    ((1.0 - t) * 255.0).round().clamp(0.0, 255.0) as u8
+                } else {
+                    let de = de_sq.max(0.0).sqrt();
+                    let t = ((de - outer) / bridge_span).clamp(0.0, 1.0);
+                    ((1.0 - t) * BRIDGE_PEAK_STRENGTH).round().clamp(0.0, 255.0) as u8
+                };
+                // Accumulate via `max` so overlapping seeds keep the
+                // strongest one's strength at each shared pixel.
+                if strength > self.force_remove_mask[i] {
+                    self.force_remove_mask[i] = strength;
+                }
+                if x > 0 {
+                    queue.push((x - 1, y));
+                }
+                if x + 1 < w {
+                    queue.push((x + 1, y));
+                }
+                if y > 0 {
+                    queue.push((x, y - 1));
+                }
+                if y + 1 < h {
+                    queue.push((x, y + 1));
+                }
+            }
+        }
+    }
+
+    /// Wipe the entire force-remove mask AND the seed list. Reruns
+    /// the preview when a source is loaded so the matte un-removes
+    /// those pixels immediately.
+    pub fn clear_force_remove_mask(&mut self) {
+        self.force_remove_mask.clear();
+        self.force_remove_mask_w = 0;
+        self.force_remove_mask_h = 0;
+        self.add_area_seeds.clear();
+        if self.has_source() {
+            self.rerun_preview();
+        }
         self.params_dirty = true;
     }
 
@@ -715,9 +975,14 @@ impl BgRemovalTool {
         // mask folds in `auto_protect_subject` when the toggle is on
         // (edge-aware silhouette upgrade — Enio 2026-05-26).
         let has_protect = self.prepare_combined_protect_full();
+        let n = (self.source_w as usize) * (self.source_h as usize);
         let protect: Option<&[u8]> = if has_protect {
-            let n = (self.source_w as usize) * (self.source_h as usize);
             Some(&self.combined_protect[..n])
+        } else {
+            None
+        };
+        let force_remove: Option<&[u8]> = if self.force_remove_mask.len() == n {
+            Some(&self.force_remove_mask[..n])
         } else {
             None
         };
@@ -727,6 +992,7 @@ impl BgRemovalTool {
             self.source_h,
             &self.params,
             protect,
+            force_remove,
             &mut self.scratch,
         );
         out.clear();
@@ -775,9 +1041,23 @@ impl BgRemovalTool {
         }
         let (cw, ch) = (self.canvas_src_w, self.canvas_src_h);
         let has_protect = self.prepare_combined_protect_canvas(cw, ch);
+        let n = (cw as usize) * (ch as usize);
+        // Resample the source-resolution force-remove mask into the
+        // canvas dims BEFORE taking the immutable borrows below
+        // (mirror of `resize_protect_into`, but resize is the only
+        // mut-self call this branch needs — `prepare_combined_protect_canvas`
+        // already finished above).
+        let has_force_remove = !self.force_remove_mask.is_empty();
+        if has_force_remove {
+            self.resize_force_remove_into(cw, ch);
+        }
         let protect: Option<&[u8]> = if has_protect {
-            let n = (cw as usize) * (ch as usize);
             Some(&self.combined_protect[..n])
+        } else {
+            None
+        };
+        let force_remove: Option<&[u8]> = if has_force_remove && self.canvas_remove.len() == n {
+            Some(&self.canvas_remove[..n])
         } else {
             None
         };
@@ -787,6 +1067,7 @@ impl BgRemovalTool {
             ch,
             &self.params,
             protect,
+            force_remove,
             &mut self.scratch,
         );
         out.clear();
@@ -959,6 +1240,29 @@ impl BgRemovalTool {
         }
     }
 
+    /// Mirror of [`Self::resize_protect_into`] for the force-remove
+    /// mask. Nearest-resample the source-resolution force-remove mask
+    /// into `self.canvas_remove` at `(dw, dh)`.
+    fn resize_force_remove_into(&mut self, dw: u32, dh: u32) {
+        let n = (dw as usize) * (dh as usize);
+        self.canvas_remove.clear();
+        self.canvas_remove.resize(n, 0);
+        let (sw, sh) = (self.force_remove_mask_w, self.force_remove_mask_h);
+        if self.force_remove_mask.is_empty() || sw == 0 || sh == 0 || dw == 0 || dh == 0 {
+            return;
+        }
+        let (sw_u, sh_u) = (sw as u64, sh as u64);
+        let (dw_u, dh_u) = (dw as u64, dh as u64);
+        for y in 0..dh as usize {
+            let sy = (((y as u64) * sh_u) / dh_u).min(sh_u - 1) as usize;
+            for x in 0..dw as usize {
+                let sx = (((x as u64) * sw_u) / dw_u).min(sw_u - 1) as usize;
+                self.canvas_remove[y * dw as usize + x] =
+                    self.force_remove_mask[sy * sw as usize + sx];
+            }
+        }
+    }
+
     /// Aspect-fit `source_rgba` into a `THUMB_SIZE × THUMB_SIZE` RGBA8
     /// buffer with transparent letterbox borders. Uses
     /// `image::imageops::resize` with `Triangle` (cheap box-quality,
@@ -1027,12 +1331,13 @@ impl BgRemovalTool {
         // The 160² thumbnail preview is letterboxed; threading the
         // protection mask through it would need the same letterbox
         // remap. It is not the user-facing preview (the on-canvas
-        // overlay is), so it runs without protection.
+        // overlay is), so it runs without protection or force-remove.
         run_pipeline(
             &self.thumbnail_rgba,
             self.thumbnail_w,
             self.thumbnail_h,
             &self.params,
+            None,
             None,
             &mut self.scratch,
         );
@@ -1094,6 +1399,8 @@ impl BgRemovalTool {
                 / (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0))
                 .clamp(0.0, 1.0),
             auto_protect_subject: self.params.auto_protect_subject,
+            add_area_armed: self.add_area_armed,
+            has_force_remove_mask: self.has_force_remove_mask(),
         }
     }
 
@@ -1107,6 +1414,13 @@ impl BgRemovalTool {
         match edit {
             BgRemovalUiEdit::Tolerance(v) => {
                 self.params.chroma.tolerance = v.clamp(0.0, 1.0) * TOLERANCE_FULL_SCALE;
+                // "Add area" mask tracks Tolerance — re-flood from
+                // every seed so a slider drag widens / narrows the
+                // destructive region exactly like the basal chroma
+                // backend widens / narrows extras' reach.
+                if !self.add_area_seeds.is_empty() {
+                    self.regenerate_force_remove_mask();
+                }
                 changed = true;
             }
             BgRemovalUiEdit::Feather(v) => {
@@ -1124,6 +1438,12 @@ impl BgRemovalTool {
                 //     (sharp) … 1e-1 (very soft).
                 self.params.chroma.feather = v * FEATHER_FULL_SCALE;
                 self.params.refinement.epsilon = 1.0e-6 * 10.0_f32.powf(5.0 * v);
+                // "Add area" mask tracks Feather (it sets the outer
+                // edge of the soft band) — same retroactive re-flood
+                // pattern as Tolerance above.
+                if !self.add_area_seeds.is_empty() {
+                    self.regenerate_force_remove_mask();
+                }
                 changed = true;
             }
             BgRemovalUiEdit::Refine(v) => {
@@ -1179,7 +1499,28 @@ impl BgRemovalTool {
                 // Edge-aware silhouette upgrade. Affects every pipeline
                 // run, so the matte rebuilds on the next preview tick.
                 self.params.auto_protect_subject = !self.params.auto_protect_subject;
+                // Turning Detect Subject OFF hides the "Add area"
+                // button (the panel slot reverts to "Pick Colors").
+                // Auto-disarm + clear the force-remove mask so a stale
+                // armed state can't eat clicks intended for the
+                // eyedropper.
+                if !self.params.auto_protect_subject {
+                    self.add_area_armed = false;
+                    self.force_remove_mask.clear();
+                    self.force_remove_mask_w = 0;
+                    self.force_remove_mask_h = 0;
+                    self.add_area_seeds.clear();
+                }
                 changed = true;
+            }
+            BgRemovalUiEdit::ToggleAddArea => {
+                // Flip the armed state; arming disarms the eyedropper +
+                // protect brush (`set_add_area_armed` enforces the mutex).
+                self.set_add_area_armed(!self.add_area_armed);
+            }
+            BgRemovalUiEdit::ClearAddedAreas => {
+                // `clear_force_remove_mask` reruns the preview itself.
+                self.clear_force_remove_mask();
             }
             BgRemovalUiEdit::SetMinIslandPixels(v) => {
                 // Linear normalized → integer pixel count in
@@ -1193,27 +1534,33 @@ impl BgRemovalTool {
             BgRemovalUiEdit::Apply => {
                 self.pending_apply = true;
                 // A commit ends the picking session — disarm so a stale
-                // eyedropper / protect brush doesn't keep eating canvas
-                // clicks on the freshly baked sprite.
+                // eyedropper / protect brush / add-area selector doesn't
+                // keep eating canvas clicks on the freshly baked sprite.
                 self.eyedropper_armed = false;
                 self.protect_brush_armed = false;
                 self.protect_painting = false;
                 self.protect_erase_mode = false;
+                self.add_area_armed = false;
             }
             BgRemovalUiEdit::ResetAll => {
                 // Snap params back to defaults AND wipe the painted
-                // protection mask + extra-bg picks (those are part of
-                // the per-session edit, not durable state). Disarm
-                // every armed gesture so the next interaction starts
-                // clean. The `on_activate` hook calls this too, so a
-                // reopened panel always starts from a known clean
-                // slate.
+                // protection mask + force-remove mask + extra-bg picks
+                // (those are part of the per-session edit, not durable
+                // state). Disarm every armed gesture so the next
+                // interaction starts clean. The `on_activate` hook
+                // calls this too, so a reopened panel always starts
+                // from a known clean slate.
                 self.params = crate::params::BgRemovalParams::default();
                 self.protect_mask.fill(0);
+                self.force_remove_mask.clear();
+                self.force_remove_mask_w = 0;
+                self.force_remove_mask_h = 0;
+                self.add_area_seeds.clear();
                 self.eyedropper_armed = false;
                 self.protect_brush_armed = false;
                 self.protect_painting = false;
                 self.protect_erase_mode = false;
+                self.add_area_armed = false;
                 // Stage the panel-store repopulation (shell drains via
                 // `take_pending_panel_reset`).
                 self.pending_panel_reset = true;
@@ -1364,6 +1711,14 @@ impl Tool for BgRemovalTool {
                 self.apply_ui_edit(BgRemovalUiEdit::ClearProtectMask);
                 return;
             }
+            PanelEvent::Click(id) if id == ids::BGR_ADD_AREA => {
+                self.apply_ui_edit(BgRemovalUiEdit::ToggleAddArea);
+                return;
+            }
+            PanelEvent::Click(id) if id == ids::BGR_ADD_AREA_CLEAR => {
+                self.apply_ui_edit(BgRemovalUiEdit::ClearAddedAreas);
+                return;
+            }
             PanelEvent::Click(id) if id == ids::BGR_SHOW_MASK => {
                 self.apply_ui_edit(BgRemovalUiEdit::ToggleShowMask);
                 return;
@@ -1442,13 +1797,14 @@ impl Tool for BgRemovalTool {
     }
 
     fn on_deactivate(&mut self) {
-        // Disarm the eyedropper + protect brush so reactivating later
-        // starts clean and a stale armed state can't intercept canvas
-        // clicks meant for another tool.
+        // Disarm the eyedropper + protect brush + add-area selector
+        // so reactivating later starts clean and a stale armed state
+        // can't intercept canvas clicks meant for another tool.
         self.eyedropper_armed = false;
         self.protect_brush_armed = false;
         self.protect_painting = false;
         self.protect_erase_mode = false;
+        self.add_area_armed = false;
         // Clear the one-shot drain flags so a Cancel-mid-Apply (or any
         // deactivation while the bridge hasn't yet drained the pending
         // apply / dirty bit) does not fire a phantom bake nor a spurious
@@ -1482,6 +1838,57 @@ impl Tool for BgRemovalTool {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+/// Stamp a single brush disc into `mask` (one byte per pixel, sized
+/// to `w × h`) at UV `(u, v)` with `r` SOURCE-px radius. Falloff
+/// strength accumulates via `max` (paint) or `saturating_sub` (erase).
+///
+/// Free function so Protect + Acrescentar-Área brushes share the
+/// kernel without contesting a `&mut self` borrow over the mask field.
+/// 8 primitive args; the wrapper-struct refactor would force the
+/// optimizer to unwrap on each call (HR-3 hot-path concern), so we
+/// allow the lint here.
+#[allow(clippy::too_many_arguments)]
+fn stamp_disc_into(
+    mask: &mut [u8],
+    w: u32,
+    h: u32,
+    falloff: BrushFalloff,
+    u: f32,
+    v: f32,
+    r: f32,
+    erase: bool,
+) {
+    if mask.is_empty() || w == 0 || h == 0 {
+        return;
+    }
+    let cx = u * (w as f32 - 1.0);
+    let cy = v * (h as f32 - 1.0);
+    let inv_r = 1.0 / r;
+    let x0 = (cx - r).floor().max(0.0) as u32;
+    let x1 = ((cx + r).ceil() as i64).clamp(0, w as i64 - 1) as u32;
+    let y0 = (cy - r).floor().max(0.0) as u32;
+    let y1 = ((cy + r).ceil() as i64).clamp(0, h as i64 - 1) as u32;
+    let stride = w as usize;
+    for y in y0..=y1 {
+        let dy = y as f32 - cy;
+        for x in x0..=x1 {
+            let dx = x as f32 - cx;
+            let dist = (dx * dx + dy * dy).sqrt();
+            if dist > r {
+                continue;
+            }
+            let s = falloff.strength(dist * inv_r);
+            let val = (s * 255.0 + 0.5) as u8;
+            let i = (y as usize) * stride + x as usize;
+            mask[i] = if erase {
+                mask[i].saturating_sub(val)
+            } else {
+                mask[i].max(val)
+            };
+        }
     }
 }
 
@@ -1593,6 +2000,7 @@ impl RasterEditTool for BgRemovalTool {
         self.eyedropper_armed = false;
         self.protect_brush_armed = false;
         self.protect_painting = false;
+        self.add_area_armed = false;
         self.pending_apply = false;
         self.params_dirty = false;
         self.cached_canvas_preview = None;

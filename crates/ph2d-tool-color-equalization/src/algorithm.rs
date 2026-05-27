@@ -594,9 +594,9 @@ pub fn adjust_tonal(rgba: &mut [u8], params: &ColorEqualizationParams) {
 /// Why linear: averaging luminance is a physical operation (mean of
 /// light), and sRGB is a perceptual encoding that compresses shadows.
 /// Averaging gamma-encoded values pulls the mean toward the dark end and
-/// biases the gains — visible as drifted WB in high-contrast scenes (sun
-/// + shadow). Decoding to linear before averaging restores the photon-
-/// space invariant gray-world depends on.
+/// biases the gains — visible as drifted WB in high-contrast scenes
+/// (sun + shadow). Decoding to linear before averaging restores the
+/// photon-space invariant gray-world depends on.
 ///
 /// Averages linear R / G / B independently over opaque pixels (`alpha >
 /// 0`), then computes `gain = mean_gray / mean_channel` per channel and
@@ -2455,7 +2455,7 @@ mod tests {
         // matches the SYMMETRIC mixed pattern on the opposite side. This
         // is the documented NLM behaviour, not a bug.)
         let mut buf = Vec::with_capacity(32 * 32 * 4);
-        for y in 0..32u32 {
+        for _y in 0..32u32 {
             for x in 0..32u32 {
                 let v = if x < 16 { 50u8 } else { 200u8 };
                 buf.extend_from_slice(&[v, v, v, 255]);

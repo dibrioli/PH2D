@@ -13,14 +13,12 @@
 //!   3. Otsu threshold: histogram-based automatic split → binary edges.
 //!   4. Closing 3×3   : dilate(1) + erode(1) on edges (gap repair).
 //!   5. Border flood  : 4-connected from all 4 image borders; treat
-//!                      closed edges as barriers AND transparent
-//!                      pixels as already-outside (no leak through
-//!                      pre-keyed holes).
+//!      closed edges as barriers AND transparent pixels as
+//!      already-outside (no leak through pre-keyed holes).
 //!   6. Auto-protect  : 255 where alpha > 0 AND NOT reached by flood
-//!                      (so the interior AND the silhouette pixels
-//!                      themselves are force-kept). Transparent or
-//!                      reached pixels stay 0 — the chroma backend
-//!                      decides those.
+//!      (so the interior AND the silhouette pixels themselves are
+//!      force-kept). Transparent or reached pixels stay 0 — the chroma
+//!      backend decides those.
 //!
 //! Why this fixes "bege interior some" (Enio 2026-05-26): the chroma
 //! distance alone classifies an interior beige patch identical to bg
@@ -113,13 +111,12 @@ pub fn detect_subject_interior(
 
 /// Y' = 0.299R + 0.587G + 0.114B, integer-approx (Rec.601).
 fn compute_luma(rgba: &[u8], n: usize, out: &mut [u8]) {
-    for i in 0..n {
-        let base = i * 4;
-        let r = rgba[base] as u32;
-        let g = rgba[base + 1] as u32;
-        let b = rgba[base + 2] as u32;
+    for (px, dst) in rgba.chunks_exact(4).zip(out.iter_mut()).take(n) {
+        let r = px[0] as u32;
+        let g = px[1] as u32;
+        let b = px[2] as u32;
         // 77 + 150 + 29 = 256 → divide by 256 (>> 8) for [0..255].
-        out[i] = ((r * 77 + g * 150 + b * 29) >> 8) as u8;
+        *dst = ((r * 77 + g * 150 + b * 29) >> 8) as u8;
     }
 }
 

@@ -29,7 +29,7 @@
 //! What stays here is BgR-specific (protect mask, brush ring, panel
 //! snapshot — all documented `as_any_mut` exceptions per ADR-0040 §3).
 
-use crate::app_state::BgremovalPreview;
+use crate::app_state::{BgremovalPreview, BgremovalPreviewGpu};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
@@ -46,6 +46,14 @@ use std::sync::Arc;
 /// on-canvas preview overlay stops re-rendering on top of the freshly
 /// baked sprite, which otherwise reads as a ghost edge outline while the
 /// tool stays selected).
+///
+/// Lens F (2026-05-26): also owns the lifecycle of a transient
+/// `IndividualTextureStore` slot that backs the live preview through
+/// the sprite pipeline (replacing the gamma/blend-divergent Vello
+/// overlay). The slot id lives in `bgremoval_preview_gpu`; the next
+/// frame's `sim_extract` reads it directly to emit a
+/// [`PreviewOverride`](super::sim_extract::PreviewOverride) — no
+/// override is plumbed through this return.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub(super) fn dispatch(
@@ -60,6 +68,7 @@ pub(super) fn dispatch(
     vector_scene: &mut VectorScene,
     last_bgremoval_pushed_entity: &mut Option<u64>,
     bgremoval_preview: &mut Option<BgremovalPreview>,
+    bgremoval_preview_gpu: &mut Option<BgremovalPreviewGpu>,
 ) -> bool {
     let bgremoval_is_active = tools
         .active()
@@ -179,7 +188,8 @@ pub(super) fn dispatch(
         }
 
         // (BgR-specific) Brush-size ring: capture the radius (source px)
-        // + source width while the brush is armed.
+        // + source width while the protect brush is armed. The
+        // "Add area" selector is a single-click flood-fill — no ring.
         if bgremoval_is_active && bg.is_protect_armed() {
             brush_ring = Some((bg.brush_radius_px(), bg.source_size().0));
         }
@@ -216,6 +226,87 @@ pub(super) fn dispatch(
             }
         });
     }
+    // ── GPU lifecycle for the live-preview texture (Lens F, 2026-05-26) ──
+    // Replaces the old Vello image draw of the preview RGBA. Owns a
+    // transient `IndividualTextureStore` slot; uploads the
+    // premultiplied preview pixels into it whenever the CPU-side
+    // cache gets a fresh `Arc` (or the selection drifts to a
+    // different sprite, or the size changes). NEXT frame's
+    // `sim_extract` reads `bgremoval_preview_gpu` directly to emit a
+    // `PreviewOverride` — the sprite pipeline samples from THIS
+    // texture instead of the source sprite's original binding, so
+    // the live preview goes through the SAME wgpu sprite shader as
+    // Apply (`Rgba8UnormSrgb` + premul blend) → byte-for-byte parity,
+    // no Vello-internal gamma/blend divergence.
+    //
+    // Premultiplication: byte-space `premultiply_rgba8` mirrors
+    // EXACTLY what the Apply path does in
+    // `SpriteImage::into_premultiplied`. Both produce identical bytes
+    // that, when uploaded to `Rgba8UnormSrgb`, the GPU decodes to
+    // identical linear values for the sprite shader's bilinear
+    // sample. The gamma-correct variant from earlier (Fix C) is
+    // intentionally NOT used here — its job was to compensate for
+    // Vello's `Rgba8Unorm` raw-byte interpretation, which no longer
+    // applies once the preview leaves the Vello path entirely.
+    //
+    // The 1-frame lag introduced by reading `bgremoval_preview_gpu`
+    // on the NEXT frame's extract (this dispatch runs after the
+    // current frame's `sim_extract`) is imperceptible: the live
+    // preview is a continuous animation and a single ~16ms delay
+    // between parameter change and visible response is below the
+    // human flicker threshold.
+    match bgremoval_preview.as_ref() {
+        Some(preview) => {
+            let cache_token = Arc::as_ptr(&preview.rgba) as usize;
+            let needs_upload = match *bgremoval_preview_gpu {
+                None => true,
+                Some(gpu) => {
+                    gpu.arc_token != cache_token
+                        || gpu.entity_bits != preview.entity_bits
+                        || gpu.width != preview.width
+                        || gpu.height != preview.height
+                }
+            };
+            if needs_upload {
+                let mut premul_bytes = (*preview.rgba).clone();
+                ph2d_render::premultiply_rgba8(&mut premul_bytes);
+                let upload_result: Result<u32, _> = match *bgremoval_preview_gpu {
+                    Some(gpu) => renderer
+                        .replace_individual_pixels(
+                            gpu.texture_id,
+                            preview.width,
+                            preview.height,
+                            &premul_bytes,
+                        )
+                        .map(|()| gpu.texture_id),
+                    None => {
+                        renderer.acquire_individual(preview.width, preview.height, &premul_bytes)
+                    }
+                };
+                match upload_result {
+                    Ok(texture_id) => {
+                        *bgremoval_preview_gpu = Some(BgremovalPreviewGpu {
+                            texture_id,
+                            width: preview.width,
+                            height: preview.height,
+                            arc_token: cache_token,
+                            entity_bits: preview.entity_bits,
+                        });
+                    }
+                    Err(e) => {
+                        eprintln!("warn: bgremoval preview GPU upload failed: {e}");
+                        // Drop the stale slot; next frame retries.
+                        release_preview_texture(renderer, bgremoval_preview_gpu);
+                    }
+                }
+            }
+        }
+        None => {
+            release_preview_texture(renderer, bgremoval_preview_gpu);
+        }
+    }
+
+    // ── Apply commit dispatch ─────────────────────────────────────────────
     if !apply_selection.is_empty() {
         for bits in &apply_selection {
             hero.bus
@@ -225,75 +316,33 @@ pub(super) fn dispatch(
                 });
         }
         // Committed result becomes the new sprite texture; drop the
-        // preview so the overlay stops painting the pre-commit copy.
-        // The caller deactivates the tool on the returned flag so the
-        // overlay never re-runs against the freshly baked sprite.
+        // preview cache so the next frame's lifecycle releases the
+        // transient GPU slot and the override returns to `None`.
         *bgremoval_preview = None;
     }
-    // On-canvas preview overlay — replaces the suppressed sprite
-    // visually. Computes the FULL image-local → screen affine
-    // (translation + rotation + scale + anchor + camera projection)
-    // so the overlay tracks rotated / scaled sprites pixel-accurately
-    // (Enio 2026-05-26: the old axis-aligned dest rect drifted off
-    // the sprite once it spun).
+
+    // ── Protection-mask tint + brush-size ring (Vello, UI hints) ──────────
+    // The two remaining Vello overlays. They are UI affordances, not
+    // image data — alpha-blended hints on top of the live preview.
+    // They can stay in Vello because they don't need byte-for-byte
+    // parity with anything. Gated on the preview being loaded so they
+    // disappear in sync with the sprite-pipeline live preview.
     if let Some(preview) = &*bgremoval_preview {
         let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
         if let (Some(tr), Some(sprite)) = (
             sim.world().get::<ph2d_ecs::Transform>(entity),
             sim.world().get::<Sprite>(entity),
         ) {
-            let img_to_screen = sprite_image_to_screen_affine(
-                preview.width,
-                preview.height,
-                &tr,
-                &sprite,
-                camera,
-                window_size,
-            );
-            // Premultiply on the Rust side using the SAME formula the
-            // sprite renderer uses (`ph2d_render::premultiply_rgba8`,
-            // which is `into_premultiplied()` byte-for-byte), then
-            // hand the result to Vello as `AlphaPremultiplied`. That
-            // forces both paths (Vello overlay AND wgpu sprite shader)
-            // to composite the EXACT same byte values — no internal
-            // Vello premul rounding to diverge from the shader's.
-            //
-            // Enio 2026-05-26: "antes do apply uma linha clara
-            // contornando a forma. depois do apply some". The light
-            // halo was straight-alpha RGB at edge pixels being
-            // interpolated DIFFERENTLY by Vello's internal premul
-            // pass than by the sprite shader's. Premultiplying upfront
-            // closes that gap.
-            // Use the GAMMA-CORRECT premultiply: srgb_decode → premul in
-            // linear → sRGB-encode. Three concurrent investigations
-            // (2026-05-26) converged on this: the sprite texture is
-            // `Rgba8UnormSrgb` (hw decode → linear bilinear) while the
-            // Vello atlas is `Rgba8Unorm` (raw bytes treated as
-            // linear). The plain `premultiply_rgba8` produced bytes
-            // both paths consumed but interpreted as DIFFERENT linear
-            // values — Vello edges ended up ~2× brighter (the "light
-            // halo" Enio reported). Linear-space premul + sRGB
-            // re-encode normalises that to the gamma-correct form
-            // both paths agree on.
-            let mut premul_bytes = (*preview.rgba).clone();
-            ph2d_render::premultiply_rgba8_in_linear(&mut premul_bytes);
-            let premul_arc = Arc::new(premul_bytes);
             let quality = match hero.project.image_filter {
                 ph2d_editor::ImageFilterMode::PixelArt => ImageQuality::Low,
                 ph2d_editor::ImageFilterMode::Smooth => ImageQuality::Medium,
             };
-            vector_scene.draw_image_rgba_premultiplied_transformed(
-                &premul_arc,
-                preview.width,
-                preview.height,
-                img_to_screen,
-                quality,
-            );
-            // Protection-mask tint on top — same affine so it tracks
-            // the sprite transform like the preview.
+            // Protection-mask tint — same affine the suppressed
+            // sprite would use, so the tint tracks the live preview
+            // pixel-for-pixel even when the sprite is rotated/scaled.
             if let Some((tint, tw, th)) = &protect_tint {
                 let tint_to_screen =
-                    sprite_image_to_screen_affine(*tw, *th, &tr, &sprite, camera, window_size);
+                    sprite_image_to_screen_affine(*tw, *th, tr, sprite, camera, window_size);
                 vector_scene.draw_image_rgba_transformed(tint, *tw, *th, tint_to_screen, quality);
             }
             // Brush-size ring at the cursor — the source-px radius
@@ -304,15 +353,14 @@ pub(super) fn dispatch(
                 crate::input_dispatch::protect_brush::brush_cursor(),
             ) && src_w > 0
             {
-                // Scale factor from source pixels → screen pixels on
-                // the X axis. `Affine` matrix is [a b c; d e f]; the
-                // column vector `[a, d]` is image-X mapped to screen
-                // — its magnitude is the per-pixel scale.
+                // `Affine` matrix is [a b c; d e f]; the column vector
+                // `[a, d]` is image-X mapped to screen — its magnitude
+                // is the per-pixel scale on the X axis.
                 let m = sprite_image_to_screen_affine(
                     preview.width,
                     preview.height,
-                    &tr,
-                    &sprite,
+                    tr,
+                    sprite,
                     camera,
                     window_size,
                 )
@@ -333,6 +381,20 @@ pub(super) fn dispatch(
         }
     }
     !apply_selection.is_empty()
+}
+
+/// Release the live-preview's `IndividualTextureStore` slot (if any)
+/// and zero the cache. Called when the preview cache turns `None`
+/// (tool deactivated, source unavailable, post-Apply transition) and
+/// when an upload errors out — next frame's lifecycle re-acquires
+/// from scratch.
+fn release_preview_texture(
+    renderer: &mut SpriteRenderer,
+    bgremoval_preview_gpu: &mut Option<BgremovalPreviewGpu>,
+) {
+    if let Some(gpu) = bgremoval_preview_gpu.take() {
+        renderer.individual_mut().release(gpu.texture_id);
+    }
 }
 
 /// Build the affine that maps image-local pixel coords (0..image_w,

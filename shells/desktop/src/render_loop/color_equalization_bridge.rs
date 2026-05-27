@@ -67,8 +67,15 @@ struct CachedOriginal {
 
 thread_local! {
     static SOURCE_CACHE: RefCell<BTreeMap<u64, CachedOriginal>> =
-        RefCell::new(BTreeMap::new());
+        const { RefCell::new(BTreeMap::new()) };
 }
+
+/// Cache drain tuple — opaque alias to suppress `type_complexity` lint
+/// for the 6-field tuple used in revert/drain paths.
+type CachedDrain = (u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode);
+
+/// Tuple used by the active-tool drain path (5 fields — no AlphaMode).
+type DrainTuple = (u64, Vec<u8>, u32, u32, [f32; 2]);
 
 /// Returns `Some(entity_bits_list)` iff Apply fired this frame.
 #[allow(clippy::too_many_arguments)]
@@ -254,7 +261,7 @@ fn ensure_cached(
 fn collect_live_bakes(
     tools: &mut ToolRegistry,
     selected: &[u64],
-) -> Vec<(u64, Vec<u8>, u32, u32, [f32; 2])> {
+) -> Vec<DrainTuple> {
     use ph2d_editor::tool::RasterEditTool;
     let Some(tool) = tools.active_mut() else {
         return Vec::new();
@@ -296,7 +303,7 @@ fn collect_live_bakes(
 /// fresh `into_premultiplied` zeros it too) — the source of the halo
 /// Enio reported when Cancel was firing with a different alpha mode.
 fn revert_all_and_clear(sim: &mut SimWorld, renderer: &mut SpriteRenderer) {
-    let entries: Vec<(u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode)> = SOURCE_CACHE.with(|c| {
+    let entries: Vec<CachedDrain> = SOURCE_CACHE.with(|c| {
         let mut cache = c.borrow_mut();
         let drained: Vec<_> = cache
             .iter()
@@ -329,7 +336,7 @@ fn prune_and_revert_unselected(
     renderer: &mut SpriteRenderer,
 ) {
     let live: std::collections::BTreeSet<u64> = selected.iter().copied().collect();
-    let stale: Vec<(u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode)> = SOURCE_CACHE.with(|c| {
+    let stale: Vec<CachedDrain> = SOURCE_CACHE.with(|c| {
         let mut cache = c.borrow_mut();
         let stale = cache
             .iter()

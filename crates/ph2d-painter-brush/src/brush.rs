@@ -89,9 +89,27 @@ impl Brush {
         // blake3 é constante (`af1349b9...`). TODOS brushes mal-formed
         // colapsariam no mesmo hash, violando contrato de identidade do
         // `StrokeRecord.brush_params_hash` (ADR-0046 §2.2 dedup). Escolhemos
-        // panic explícito sobre corrupção silenciosa.
-        let bytes = postcard::to_allocvec(self).expect("Brush must serialize via postcard");
-        *blake3::hash(&bytes).as_bytes()
+        // panic explícito sobre corrupção silenciosa. Audit T1.6 R7 J1-2:
+        // see [`Self::try_params_blake3`] for the fallible variant used
+        // by import paths that want to skip a malformed brush and
+        // continue importing the rest of a batch.
+        self.try_params_blake3()
+            .expect("Brush must serialize via postcard")
+    }
+
+    /// Fallible variant of [`Self::params_blake3`]. Audit T1.6 R7 J1-2.
+    ///
+    /// Returns `Err` instead of panicking on serialize failure so
+    /// import paths and other recovery-friendly call sites can degrade
+    /// gracefully (skip the malformed brush, surface a toast) instead
+    /// of aborting the process. The infallibility rationale on the
+    /// panicking variant still holds for ordinary in-memory `Brush`
+    /// values constructed by the library — this exists for paths that
+    /// can't statically guarantee well-formedness (e.g., a brush
+    /// rehydrated from an external file).
+    pub fn try_params_blake3(&self) -> Result<BrushParamsHash, postcard::Error> {
+        let bytes = postcard::to_allocvec(self)?;
+        Ok(*blake3::hash(&bytes).as_bytes())
     }
 }
 

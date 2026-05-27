@@ -376,6 +376,50 @@ Mesmos parâmetros prefixados `stroke_*`.
   invariância dos jitters; a wiring do opacity per-stroke entra com
   T1.7.
 
+- **Slider semantics: saturating perturbation (não Gaussian centrada)**
+  (audit T1.6 R7 K1-4 + K1-5): `stamp_lightness_jitter = 1.0` com
+  `base_L = 0.5` produz distribuição uniforme em `[-0.5, +1.5]` antes
+  do `clamp(0, 1)` — fold dos tails dá `P(L=0) = P(L=1) = 25 %` +
+  `P(L ∈ (0,1)) = 50 %`. Visual: stroke **manchado** preto/branco em
+  alta freqüência, NÃO variação tonal suave. Mesma mecânica em
+  `stamp_saturation_jitter = 1.0`: `scale = 1 + j` ∈ `[0, 2]` → metade
+  dos stamps com chroma reduzida (washed out), metade boostada (pode
+  sair de gamut). Comportamento documentado, paralelo do
+  `shape_count_jitter` (Q-1) — o slider expressa "varia INTENSAMENTE"
+  com hard endpoint capture, não unbiased perturbation. UI guidance W2
+  sidebar: rotular metade superior do slider "(may clamp at extremes)"
+  ou soft-cap default brushes em 0.6. Distribuições alternativas
+  (triangular, beta) são W6+ artistic-knob, fora de T1.6.
+
+- **`shape_rotation_follow` continuous-angle unwrap** (audit T1.6 R7
+  K1-10): `atan2` retorna em `(-π, π]`, então um stroke que cruza a
+  ramificação (U-turn próximo ao +x axis, qualquer path cruzando -x
+  axis) viraria 2π entre dois samples consecutivos. Pra
+  `oval_hard` e futuras formas assimétricas (`flat_chisel`,
+  `splatter_spread`) isso causaria flip 180°/360° visível ("snap")
+  no traço calligráfico. Scheduler tracka `last_follow_angle` e
+  shifta cada novo `atan2` por múltiplo de `2π` mais próximo, mantendo
+  a curva angular contínua dentro de `(prev - π, prev + π]`.
+  Invisível em radial shapes (rotação é no-op). Reset em
+  `begin_stroke`/`end_stroke`; preservado em `break_segment` (mesmo
+  stroke conceitual cruzando gap de sprite). Gate
+  `follow_angle_unwraps_across_atan2_branch_cut`.
+
+- **`oval_hard` bbox 1:1 vs kernel 2:1** (audit T1.6 R7 K1-1 + K1-6):
+  o bbox do stamp é quadrado (`size_px × size_px`); o óvalo tem extent
+  intrínseco `D × D/2`. Em **qualquer rotação** o visível é uma pílula
+  `D × D/2` rotacionada por θ — os pixels fora do óvalo dentro do bbox
+  ficam **transparentes por construção** (kernel retorna alpha=0,
+  shader descarta abaixo de 1/255). Não é bug — uma forma 2:1 inscrita
+  num bbox 1:1 necessariamente desperdiça 50% da área quando alinhada
+  ao eixo. Com `shape_rotation_follow=true`, o long axis acompanha o
+  movimento → a espessura perpendicular ao stroke fica constante em
+  `D/2` (calligraphic "pen nib"). Bbox cresce `1.0 → √2 → 1.0` entre
+  0°/45°/90° (footprint enlargement `|cos|+|sin|`), mas isso é
+  write-target padding; os pixels renderizados são bounded pelo
+  kernel, não pelo bbox. Doc completo em
+  `crates/ph2d-painter-brush/src/library.rs::shape_oval_hard`.
+
 - **Determinismo HR-5 cross-channel** (audit T1.6 P-5 + S-4): cada
   channel usa axis_tag distinto (`0xC1`..`0xC4`) pro mixer wyhash.
   Toggling uma channel **não desloca** a PRNG stream das outras —

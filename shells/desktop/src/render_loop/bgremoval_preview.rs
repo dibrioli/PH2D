@@ -34,6 +34,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
+use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 use ph2d_tokens::{ColorToken, StrokeToken};
@@ -69,6 +70,7 @@ pub(super) fn dispatch(
     last_bgremoval_pushed_entity: &mut Option<u64>,
     bgremoval_preview: &mut Option<BgremovalPreview>,
     bgremoval_preview_gpu: &mut Option<BgremovalPreviewGpu>,
+    toasts: &mut ToastQueue,
 ) -> bool {
     let bgremoval_is_active = tools
         .active()
@@ -294,7 +296,14 @@ pub(super) fn dispatch(
                         });
                     }
                     Err(e) => {
-                        eprintln!("warn: bgremoval preview GPU upload failed: {e}");
+                        // Audit T1.6 R7 J1-3: surface GPU upload errors
+                        // via toast instead of an eprintln the user
+                        // never reads. The next frame retries
+                        // automatically (we drop the stale slot below).
+                        toasts.push(Toast::error(format!(
+                            "Bg Removal: upload da preview pra GPU falhou ({e}). \
+                             Tentando novamente no próximo frame."
+                        )));
                         // Drop the stale slot; next frame retries.
                         release_preview_texture(renderer, bgremoval_preview_gpu);
                     }

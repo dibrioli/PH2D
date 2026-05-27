@@ -36,6 +36,19 @@ use super::scratch::BgRemovalScratch;
 /// # Panics
 /// Panics if `rgba.len() != (w * h * 4) as usize`, or if `protect` is
 /// `Some` and its length is not `w * h`.
+///
+/// **Audit T1.6 R7 J1-4:** the panicking variant exists for internal
+/// callers that statically guarantee buffer-length invariants (the
+/// tool's own preview / commit paths, where the mask is allocated by
+/// the same crate from `(w, h)`). For paths that source buffers from
+/// less-controlled places (a future GPU readback, a file-import
+/// pipeline that batches sprites with mixed dimensions, the color-
+/// equalization live-bake collector that's seen `BufferShapeMismatch`
+/// regressions historically), use [`try_run_pipeline`] which returns
+/// `Err(PipelineError::BufferShape { … })` instead — the render
+/// thread stays alive, and the caller surfaces a `Toast::error` so
+/// the user sees what went wrong instead of losing unsaved work in
+/// every other tool to a hard process crash.
 pub fn run_pipeline(
     rgba: &[u8],
     w: u32,
@@ -45,31 +58,78 @@ pub fn run_pipeline(
     force_remove: Option<&[u8]>,
     scratch: &mut BgRemovalScratch,
 ) {
-    let expected = (w as usize) * (h as usize) * 4;
-    assert_eq!(
-        rgba.len(),
-        expected,
-        "rgba slice length must equal w*h*4 (was {} expected {})",
-        rgba.len(),
-        expected
-    );
-    if let Some(pm) = protect {
-        assert_eq!(
-            pm.len(),
-            (w as usize) * (h as usize),
-            "protect mask length must equal w*h (was {} expected {})",
-            pm.len(),
-            (w as usize) * (h as usize)
-        );
+    try_run_pipeline(rgba, w, h, params, protect, force_remove, scratch)
+        .expect("run_pipeline: buffer shape mismatch (use try_run_pipeline for recoverable callers)");
+}
+
+/// Error variants returned by [`try_run_pipeline`]. Audit T1.6 R7 J1-4.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum PipelineError {
+    /// One of the input buffers has the wrong length for the declared
+    /// `(w, h)`. `which` identifies the buffer (`"rgba"`, `"protect"`,
+    /// `"force_remove"`); `actual` / `expected` are byte lengths.
+    BufferShape {
+        which: &'static str,
+        actual: usize,
+        expected: usize,
+    },
+}
+
+impl std::fmt::Display for PipelineError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PipelineError::BufferShape {
+                which,
+                actual,
+                expected,
+            } => write!(
+                f,
+                "bgremoval pipeline: {which} buffer length mismatch (was {actual}, expected {expected})"
+            ),
+        }
     }
-    if let Some(fr) = force_remove {
-        assert_eq!(
-            fr.len(),
-            (w as usize) * (h as usize),
-            "force_remove mask length must equal w*h (was {} expected {})",
-            fr.len(),
-            (w as usize) * (h as usize)
-        );
+}
+
+impl std::error::Error for PipelineError {}
+
+/// Fallible variant of [`run_pipeline`] — returns `Err(PipelineError)`
+/// on buffer-shape mismatch instead of panicking. Audit T1.6 R7 J1-4.
+pub fn try_run_pipeline(
+    rgba: &[u8],
+    w: u32,
+    h: u32,
+    params: &BgRemovalParams,
+    protect: Option<&[u8]>,
+    force_remove: Option<&[u8]>,
+    scratch: &mut BgRemovalScratch,
+) -> Result<(), PipelineError> {
+    let expected = (w as usize) * (h as usize) * 4;
+    if rgba.len() != expected {
+        return Err(PipelineError::BufferShape {
+            which: "rgba",
+            actual: rgba.len(),
+            expected,
+        });
+    }
+    let mask_expected = (w as usize) * (h as usize);
+    if let Some(pm) = protect
+        && pm.len() != mask_expected
+    {
+        return Err(PipelineError::BufferShape {
+            which: "protect",
+            actual: pm.len(),
+            expected: mask_expected,
+        });
+    }
+    if let Some(fr) = force_remove
+        && fr.len() != mask_expected
+    {
+        return Err(PipelineError::BufferShape {
+            which: "force_remove",
+            actual: fr.len(),
+            expected: mask_expected,
+        });
     }
 
     scratch.ensure(w, h, params.refinement.color_guide);
@@ -126,6 +186,7 @@ pub fn run_pipeline(
         None,
         scratch,
     );
+    Ok(())
 }
 
 /// Side-channel data the chroma segmenter hands to the compose step

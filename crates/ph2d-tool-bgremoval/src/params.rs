@@ -357,7 +357,18 @@ impl Default for BgRemovalUiSnapshot {
 /// `NodeId` back to one of these variants and forwards it to
 /// `apply_ui_edit`. Slider values are normalized `0.0..=1.0`; the tool
 /// maps them back to full scale.
+/// **Audit T1.6 R7 I1-1:** `#[non_exhaustive]` marks this enum as
+/// open for additive growth across releases. Recovery commits added
+/// `ToggleAddArea` (+1) and `ClearAddedAreas` (+1); adding any new
+/// variant in a `pub enum` without `#[non_exhaustive]` is a
+/// semver-breaking change for every downstream crate that
+/// exhaustively `match`es. Tool-author-side `match` arms inside the
+/// crate still see all variants (Rust suppresses the
+/// `non_exhaustive_omitted_patterns` lint within the defining
+/// crate), so the contract that "every variant has a handler" is
+/// unaffected.
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum BgRemovalUiEdit {
     /// Tolerance slider moved (normalized).
     Tolerance(f32),

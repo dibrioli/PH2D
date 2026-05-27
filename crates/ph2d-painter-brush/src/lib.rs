@@ -94,7 +94,23 @@ pub use dynamics::DynamicsParams;
 pub use grain::{
     GrainBehavior, GrainBlendMode, GrainFiltering, GrainParams, GrainSource, GrainZoom,
 };
-pub use library::ROUND_HARD;
+// **Audit T1.6 R7 I1-3:** crate-root re-exports cover ALL canonical
+// library entry-points so downstream callers can `use ph2d_painter_
+// brush::{oval_hard, OVAL_HARD_SLOT, ...}` consistently. Mixing
+// `use ph2d_painter_brush::ROUND_HARD` (re-exported) with
+// `use ph2d_painter_brush::library::oval_hard` (deep import) was
+// silently the only pattern before — the asymmetry suggested
+// `oval_hard` was somehow "second-class" and would have rotted into
+// a future `pub(crate)` regression. Build/atlas internals
+// (`build_shape_atlas`, `round_soft_shape`, etc.) stay deep-imports
+// because they're construction-helpers, not the public brush
+// surface.
+pub use library::{
+    BUILTIN_SHAPE_SLOT_COUNT, OVAL_HARD, OVAL_HARD_SLOT, ROUND_HARD, ROUND_HARD_SLOT, ROUND_SOFT,
+    ROUND_SOFT_SLOT, SQUARE_HARD, SQUARE_HARD_SLOT, oval_hard, round_hard, round_soft,
+    rotated_footprint_scale, shape_alpha_for_slot, shape_is_radial_symmetric, shape_oval_hard,
+    shape_round_hard, shape_round_soft, shape_square_hard, square_hard,
+};
 pub use pencil::{CursorOutline, PencilParams};
 pub use pigment::PigmentMode;
 pub use procedural::ProceduralGrain;

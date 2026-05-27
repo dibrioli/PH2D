@@ -292,6 +292,41 @@ pub fn shape_square_hard(u: f32, v: f32) -> f32 {
 /// returns `|cos θ| + |sin θ| × √(aspect²)` … actually simpler: we
 /// keep `|cos θ| + |sin θ|` as a tight bound (correct for any
 /// inscribed ellipse up to its bounding rectangle).
+///
+/// # Bounding box vs visible oval (audit T1.6 R7 K1-1 / K1-6)
+///
+/// The stamp bbox is **square** (`size_px × size_px`); the oval's
+/// intrinsic extent is `1.0 × 0.5` of the bbox (long × short). So at
+/// **any** rotation the visible oval looks like a `D × D/2` pill
+/// rotated by θ, where `D = size_px`:
+///
+/// - θ = 0°  → horizontal oval, D wide × D/2 tall → top/bottom 25%
+///   bbox rows are transparent (gutters). **By construction**, not
+///   a bug: a 2:1 shape inside a 1:1 bbox necessarily wastes 50% of
+///   the bbox area when axis-aligned. The gutters mirror what the
+///   GPU computes (`shape_alpha < 1/255 → discard`).
+/// - θ = 45° → diagonal oval, bbox enlarged by `|cos|+|sin|=√2` so
+///   the rotated D×D/2 pill stays inscribed. Visible long axis is
+///   still D (rotations preserve length); the bbox merely grows to
+///   contain the rotated geometry.
+/// - θ = 90° → vertical oval, D/2 wide × D tall (transparent gutters
+///   now on left/right).
+///
+/// **K1-6 "size pulses with rotation" — false alarm.** The visible
+/// long axis of the oval stays at `D` for **every** θ; only the
+/// orientation rotates. With `shape_rotation_follow=true`, the long
+/// axis tracks the stroke direction, so the perpendicular-to-stroke
+/// thickness stays constant at `D/2` (the canonical calligraphic
+/// "pen nib" feel). The bbox area pulses (`1.0 → √2 → 1.0` between
+/// 0°/45°/90°), but that's just write-target padding — the rendered
+/// pixels are bounded by the kernel, not the bbox.
+///
+/// If a future requirement is "fill the entire bbox at θ=0" (i.e.
+/// circle-like with elliptical gradient), the kernel scaling needs
+/// to change (`dy = (v - 0.5) / 0.5` instead of `/ 0.25`), and the
+/// shape would then become radially-symmetric (`shape_is_radial_
+/// symmetric` returns true) so footprint enlargement is skipped.
+/// That's a different brush — not a fix to `oval_hard`.
 #[inline]
 pub fn shape_oval_hard(u: f32, v: f32) -> f32 {
     let dx = (u - 0.5) / 0.5; // ±1 at horizontal edges

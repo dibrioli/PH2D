@@ -654,6 +654,39 @@ impl crate::App {
                     .active()
                     .map(|t| crate::is_image_edit_tool(&t.id()))
                     .unwrap_or(false);
+                // **Audit T1.6 R7 L1-1 — destructive-deactivate warn.**
+                // Painter is registered in the `image_tools` cluster
+                // (for TopBar pill placement) but unlike bgremoval /
+                // padding / etc., Painter is a workhorse stateful tool:
+                // its `Tool::on_deactivate` → `RasterEditTool::deactivate`
+                // wipes `canvas_rgba` to `Vec::new()`. A user mid-paint
+                // who toggles Image Tools OFF previously lost every
+                // unflushed stroke silently — no warn, no toast, no
+                // recovery. Surface the loss via toast BEFORE the
+                // set_active fires the destructive deactivate path.
+                if active_is_image_tool
+                    && tools
+                        .active()
+                        .map(|t| t.id().0.as_str() == "painter")
+                        .unwrap_or(false)
+                {
+                    let lost_painting = tools
+                        .active_mut()
+                        .and_then(|t| {
+                            t.as_any_mut()
+                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                                .map(|p| p.has_painted_since_source())
+                        })
+                        .unwrap_or(false);
+                    if lost_painting {
+                        toasts.push(Toast::warning(
+                            "Painter: pinturas não aplicadas foram descartadas \
+                             ao desligar Image Tools. Use Apply antes de \
+                             alternar o modo."
+                                .to_string(),
+                        ));
+                    }
+                }
                 if active_is_image_tool
                     && let Some(default_id) = tools.default_tool_id()
                     && tools.set_active(&default_id)
@@ -719,6 +752,7 @@ impl crate::App {
                 &mut self.last_bgremoval_pushed_entity,
                 &mut self.bgremoval_preview,
                 &mut self.bgremoval_preview_gpu,
+                toasts,
             );
             // Color Equalization panel ⟷ tool bridge: drives panel
             // visibility, refreshes the tool's source bitmap when the

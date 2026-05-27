@@ -142,6 +142,22 @@ pub struct StampScheduler {
     /// re-randomization on brush change, it needs an explicit `reset_
     /// randomized_base()` API + a brush-hash tracking field.
     stroke_rotation_base: Option<f32>,
+    /// Last `follow_angle` emitted (unwrapped/continuous) for
+    /// `shape_rotation_follow=true`. `atan2` returns values in `(-π, π]`,
+    /// so a stroke that crosses the ±π discontinuity (typical U-turn,
+    /// or any path crossing the negative x-axis) jumps by ±2π between
+    /// consecutive samples. For radially-symmetric shapes that's
+    /// invisible; for `oval_hard` or future asymmetric shapes
+    /// (`flat_chisel`, `splatter_spread`) the rotated kernel sees a
+    /// 180°/360° "snap" that looks like a glitch to a calligrapher.
+    /// Audit T1.6 R7 K1-10: track the previous angle and shift the new
+    /// `atan2` result by the nearest multiple of `2π` so the per-stamp
+    /// `rotation_rad` traces a continuous curve. `None` until the first
+    /// `follow_angle` of this stroke; reset to `None` on
+    /// `begin_stroke` / `end_stroke`. `break_segment` does NOT reset —
+    /// the same stroke's pointer crossed a sprite gap, the rotation
+    /// pattern should still be continuous on re-entry.
+    last_follow_angle: Option<f32>,
 }
 
 impl Default for StampScheduler {
@@ -164,6 +180,7 @@ impl StampScheduler {
             stroke_seed: 0,
             stamp_index: 0,
             stroke_rotation_base: None,
+            last_follow_angle: None,
         }
     }
 
@@ -191,6 +208,7 @@ impl StampScheduler {
         self.stroke_seed = seed;
         self.stamp_index = 0;
         self.stroke_rotation_base = None;
+        self.last_follow_angle = None;
     }
 
     /// Finaliza o stroke atual. Limpa estado de continuação mas mantém
@@ -200,6 +218,7 @@ impl StampScheduler {
         self.last_point = None;
         self.residual_dist = 0.0;
         self.stroke_rotation_base = None;
+        self.last_follow_angle = None;
     }
 
     /// "Brush lifted" — interrompe o segmento atual SEM encerrar o stroke
@@ -466,8 +485,28 @@ impl StampScheduler {
         // brushes (most common case).
         let is_radial = crate::library::shape_is_radial_symmetric(shape_layer);
         let scatter_rad = brush.shape.shape_scatter.clamp(0.0, 360.0).to_radians();
+        // **Audit T1.6 R7 K1-10 — continuous-angle unwrap.** `atan2`
+        // returns values in `(-π, π]`; a stroke that crosses the ±π
+        // discontinuity (any path crossing the negative x-axis, or a
+        // U-turn near the +x-axis) jumps by ±2π between consecutive
+        // pointer samples. Add or subtract whole turns so the new
+        // angle lands within `(prev - π, prev + π]`. Invisible for
+        // radial shapes (rotation is a no-op); for `oval_hard` and
+        // future asymmetric shapes it kills the 180°/360° "snap".
+        // Reset across `begin_stroke`/`end_stroke`; preserved across
+        // `break_segment` (continuous user-intent stroke).
         let follow_angle = if brush.shape.shape_rotation_follow {
-            stroke_dir[1].atan2(stroke_dir[0])
+            let raw = stroke_dir[1].atan2(stroke_dir[0]);
+            let unwrapped = match self.last_follow_angle {
+                None => raw,
+                Some(prev) => {
+                    let diff = raw - prev;
+                    let turns = (diff / std::f32::consts::TAU).round();
+                    raw - turns * std::f32::consts::TAU
+                }
+            };
+            self.last_follow_angle = Some(unwrapped);
+            unwrapped
         } else {
             0.0
         };
@@ -733,6 +772,24 @@ impl StampScheduler {
         // this composition.
 
         // 1. Lightness offset (bidirectional).
+        //
+        // **Audit T1.6 R7 K1-4 — clamp-tail mass at extremes.** With
+        // `base_L = 0.5` and `l_jit = 1.0`, the unclamped distribution
+        // `L + j` is uniform on `[-0.5, +1.5]`; the `clamp(0, 1)` folds
+        // the tails into the endpoints, producing
+        //   P(L=0) = 25 %, P(L=1) = 25 %, P(L ∈ (0,1)) = 50 %.
+        // The user sees a SPLOTCHY stroke with high-frequency
+        // black/white speckles, NOT a "smooth gentle tonal variation".
+        // **Documented behavior, not a bug** — this is the same
+        // "saturating perturbation" semantic as `shape_count_jitter`
+        // (Q-1, lines 513-521 above). The slider expresses a "vary
+        // brightness intensely" intent with hard endpoint capture, not
+        // an unbiased Gaussian-like perturbation. Spec §1.3.8 cross-
+        // references this. UI guidance (W2 sidebar): label the upper
+        // half of the slider "(may clamp at black/white)" or soft-cap
+        // at 0.5 for the default brushes. Alternative distribution
+        // shapes (triangular, beta) are a W6+ artistic-knob feature,
+        // not a T1.6 invariant.
         let l_jit = cd.stamp_lightness_jitter.clamp(0.0, 1.0);
         if l_jit > 0.0 {
             let j = self.det_random(stamp_index, 0xC1) * 2.0 - 1.0;
@@ -771,6 +828,21 @@ impl StampScheduler {
 
         // 4. Saturation scale of (a, b). `.max(0.0)` avoids sign flip when
         // jitter pushes the multiplier negative.
+        //
+        // **Audit T1.6 R7 K1-5 — half-axis suppression at s_jit=1.0.**
+        // With `s_jit = 1.0`, `scale = 1 + j` ∈ `[0, 2]` (after `.max(0)`
+        // for `j = -1` corner). Half the stamps have `j < 0` →
+        // `scale < 1` → reduced chroma; the other half have `j > 0` →
+        // `scale > 1` → boosted chroma. The user's perceived stroke
+        // looks WASHED OUT relative to the primary because: (a) the
+        // boosted-chroma stamps may exit gamut and clamp, (b) the
+        // human visual system weights low-chroma noise heavier than
+        // high-chroma noise (Weber-Fechner). **Documented behavior**
+        // matching the Lightness case (K1-4) — the slider is a "vary
+        // intensely" knob with hard zero capture, not a centered
+        // Gaussian. Spec §1.3.8 cross-references. UI guidance: soft-
+        // cap default brushes at 0.6; W6+ may offer alternative
+        // distribution shapes as an artistic-knob extension.
         let s_jit = cd.stamp_saturation_jitter.clamp(0.0, 1.0);
         if s_jit > 0.0 {
             let j = self.det_random(stamp_index, 0xC4) * 2.0 - 1.0;
@@ -807,6 +879,35 @@ impl StampScheduler {
 /// Mixer manual = bit-identico Mac/Linux/Windows **PARA ESTA INTEGER
 /// COMPUTATION** (audit T1.6 U-1) — os f32 trig/sqrt downstream NÃO
 /// são cross-OS bit-identical sem `--features det-painter`.
+///
+/// # Axis-tag registry (audit T1.6 R7 I1-4)
+///
+/// `axis_tag` partitions the PRNG stream across independent jitter
+/// channels — same `(stroke_seed, stamp_index)` with different
+/// `axis_tag` yields **uncorrelated** outputs. Toggling one channel
+/// MUST NOT shift another channel's stream (gate
+/// `color_jitter_cross_channel_axis_independence` proves byte-equality).
+/// New callers within the crate MUST register their `axis_tag` here
+/// to avoid collision:
+///
+/// | tag    | channel                                                 |
+/// |--------|---------------------------------------------------------|
+/// | `0xC1` | `stamp_lightness_jitter`                                |
+/// | `0xC2` | `stamp_darkness_jitter`                                 |
+/// | `0xC3` | `stamp_hue_jitter`                                      |
+/// | `0xC4` | `stamp_saturation_jitter`                               |
+/// | `0xCD` | `shape_scatter` (per-stamp rotation offset)             |
+/// | `0xCE` | `shape_count_jitter` (group size perturbation)          |
+/// | `0xCF` | RESERVED — future per-stamp randomized flip (Q-11)      |
+/// | `0xD0` | RESERVED — future per-stamp randomized flip (Q-11)      |
+///
+/// `pub(crate)` is the right scope today (intra-crate only). The
+/// `#[doc(hidden)]` keeps rustdoc from publishing the contract
+/// publicly — a downstream crate that built on top of these exact
+/// wyhash constants would silently break HR-5 if a future
+/// `--features det-painter` swaps the mixer for an LUT-pinned form
+/// (audit T1.6 U-1 / R7 I1-4).
+#[doc(hidden)]
 #[inline]
 pub(crate) fn det_random(stroke_seed: u64, stamp_index: u64, axis_tag: u64) -> f32 {
     // wyhash-style: 3-fold xor-shift + multiply. Boa avalanche para
@@ -2375,5 +2476,46 @@ mod tests {
                  clamp actually fired; got {clamp_gap}"
             );
         }
+    }
+
+    /// Audit T1.6 R7 K1-10: `shape_rotation_follow=true` must produce a
+    /// **continuous** rotation angle across the ±π `atan2` branch cut.
+    /// A stroke that U-turns near the +x axis (e.g. moves right then
+    /// left, or any segment that crosses the negative x-axis) would
+    /// otherwise see a 2π jump in `follow_angle` between consecutive
+    /// stamps — invisible for radial shapes, but a 180° "snap" for
+    /// `oval_hard` and future asymmetric shapes (flat_chisel, etc.).
+    /// The scheduler tracks `last_follow_angle` and shifts each new
+    /// `atan2` result by `±2π·turns` so the per-stamp `rotation_rad`
+    /// trace stays within `(prev - π, prev + π]`.
+    #[test]
+    fn follow_angle_unwraps_across_atan2_branch_cut() {
+        use crate::library::oval_hard;
+        let mut s = StampScheduler::new();
+        s.begin_stroke(1);
+        let brush = oval_hard();
+        // Long horizontal stroke right (direction ≈ 0 rad).
+        let _ = s.advance(&brush, p(0.0, 0.0), 64.0, [0.0; 4]);
+        let last_right = {
+            let stamps_right = s.advance(&brush, p(200.0, 0.01), 64.0, [0.0; 4]);
+            assert!(!stamps_right.is_empty(), "right segment must emit stamps");
+            stamps_right.last().unwrap().rotation_rad
+        };
+        // Then a tight U-turn that ends up pointing back (-x direction).
+        // Direction crosses through +y, +x, and arrives near +π / -π.
+        let first_left = {
+            let stamps_left = s.advance(&brush, p(-200.0, 0.02), 64.0, [0.0; 4]);
+            assert!(!stamps_left.is_empty(), "u-turn segment must emit stamps");
+            stamps_left.first().unwrap().rotation_rad
+        };
+        // After unwrap, `rotation_rad` of consecutive stamps may differ
+        // by at most π (smooth direction change), NEVER by 2π — that
+        // would be the un-unwrapped branch-cut jump.
+        let delta = (first_left - last_right).abs();
+        assert!(
+            delta < std::f32::consts::PI + 0.05,
+            "follow_angle delta across branch cut must stay ≤ π (got {delta} rad); \
+             unwrap missing"
+        );
     }
 }

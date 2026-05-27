@@ -200,7 +200,7 @@ use ph2d_painter_brush::{
     Brush, MAX_STAMP_SIZE_PX, PointerSample, StampScheduler, apply_stamps, library,
 };
 
-use crate::params::{OklchColor, PainterParams};
+use crate::params::{BrushHandle, OklchColor, PainterParams};
 
 // Marker for the empty-apply guard (R3-LF-5): a stamp was actually
 // deposited since the last `set_source`. `drain_painter` early-returns
@@ -342,13 +342,30 @@ impl Default for PainterTool {
 /// cargo run -p ph2d-host-desktop
 /// ```
 ///
+/// **Audit T1.6 R7 L1-2:** in the editor that comes up, the Painter
+/// pill lives in the **Image Tools** cluster (TopBar topright). The
+/// pill is only painted when **Image Tools mode is ON** — toggle the
+/// Image Tools topbar control first, THEN click the Painter pill to
+/// activate the tool. Without that prerequisite step, the documented
+/// recipe above appears to do nothing because the pill itself is
+/// hidden (`palette_visible_tool_indices` filters tools by
+/// `is_image_edit_tool` × `image_tools_mode_on`). W2 sidebar follow-up
+/// may auto-enable Image Tools when `PAINTER_SMOKE_BRUSH` is set so
+/// the smoke recipe becomes a single env-var run.
+///
 /// **W2 follow-up:** wire `apply_ui_edit` + sidebar widgets so these
 /// settings come from PainterUiEdit dispatch instead of env vars.
 fn build_smoke_brush_from_env() -> Brush {
     // Audit R5-B1-4: defensive shell-quote stripping (zsh sometimes
-    // passes single-quoted values verbatim).
-    let brush_name = std::env::var("PAINTER_SMOKE_BRUSH")
-        .map(|s| s.trim_matches(|c| c == '\'' || c == '"').to_string());
+    // passes single-quoted values verbatim). Audit R7 L1-9: also
+    // `.trim()` ASCII whitespace — `PAINTER_SMOKE_BRUSH= oval_hard`
+    // (leading space, common after `=` typo) was previously falling
+    // through to the catch-all warning + round_hard default.
+    let brush_name = std::env::var("PAINTER_SMOKE_BRUSH").map(|s| {
+        s.trim_matches(|c| c == '\'' || c == '"')
+            .trim()
+            .to_string()
+    });
     let mut brush = match brush_name.as_deref() {
         Ok("round_soft") => library::round_soft(),
         Ok("square_hard") => library::square_hard(),
@@ -356,7 +373,7 @@ fn build_smoke_brush_from_env() -> Brush {
         Ok("round_hard") | Err(_) => library::round_hard(),
         Ok(other) => {
             eprintln!(
-                "[painter] PAINTER_SMOKE_BRUSH={other:?} unknown (after quote-strip); \
+                "[painter] PAINTER_SMOKE_BRUSH={other:?} unknown (after quote-strip + trim); \
                  defaulting to round_hard. Valid: round_hard / round_soft / square_hard / \
                  oval_hard. Check shell quoting if your value appears wrapped in quotes."
             );
@@ -379,8 +396,34 @@ fn build_smoke_brush_from_env() -> Brush {
     {
         brush.color_dynamics.stamp_hue_jitter = j.clamp(0.0, 1.0);
     }
-    if let Ok(s) = std::env::var("PAINTER_SMOKE_ROTATION_FOLLOW") {
-        brush.shape.shape_rotation_follow = matches!(s.as_str(), "true" | "1" | "yes");
+    // Audit R7 L1-3: lowercase + trim + explicit accept/reject so
+    // `=True`, `=TRUE`, `=on`, `=yes ` (trailing space), `=` (empty
+    // un-set) don't silently flip the brush default. Unknown values
+    // keep the brush default AND emit a warning so the user sees the
+    // typo instead of debugging a "rotation_follow stopped working"
+    // mystery.
+    if let Ok(raw) = std::env::var("PAINTER_SMOKE_ROTATION_FOLLOW") {
+        let s = raw.trim().to_ascii_lowercase();
+        match s.as_str() {
+            "true" | "1" | "yes" | "on" => brush.shape.shape_rotation_follow = true,
+            "false" | "0" | "no" | "off" => brush.shape.shape_rotation_follow = false,
+            "" => {
+                eprintln!(
+                    "[painter] PAINTER_SMOKE_ROTATION_FOLLOW is set but empty; \
+                     keeping brush default (rotation_follow={}). To clear, \
+                     `unset PAINTER_SMOKE_ROTATION_FOLLOW` instead.",
+                    brush.shape.shape_rotation_follow
+                );
+            }
+            other => {
+                eprintln!(
+                    "[painter] PAINTER_SMOKE_ROTATION_FOLLOW={other:?} unrecognized; \
+                     keeping brush default (rotation_follow={}). Expected: \
+                     true/1/yes/on or false/0/no/off (case-insensitive).",
+                    brush.shape.shape_rotation_follow
+                );
+            }
+        }
     }
     // Audit C1-2: spacing env var so `shape_count > 1` clusters stay
     // visually distinct rather than collapsing into a blob.
@@ -413,7 +456,25 @@ impl PainterTool {
 
     /// Empilha um pointer sample no scheduler e aplica os stamps gerados
     /// sobre `canvas_rgba` (CPU path T1.5). No-op se nenhum stroke ativo.
+    ///
+    /// **Audit T1.6 R7 L1-5:** silent no-op when `!self.stroke_active`
+    /// historically masked a bridge bug — a pointer-down handler that
+    /// forgot to call `begin_stroke` (or had its dispatch path
+    /// early-return before reaching it) would silently drop every drag
+    /// sample, and the subsequent `drain_painter` would emit a
+    /// `Toast::info("Painter: no strokes to apply")` indistinguishable
+    /// from "Apply ran with no paint". The `debug_assert!` here surfaces
+    /// the missed `begin_stroke` immediately in dev/test builds without
+    /// changing release behavior. Pair with the toast-wording follow-up
+    /// in `drain_painter` (separate dispatch site) for the full UX fix.
     pub fn queue_pointer(&mut self, sample: PointerSample) {
+        debug_assert!(
+            self.stroke_active || self.canvas_rgba.is_empty(),
+            "queue_pointer called without an active stroke on a non-empty \
+             canvas — the bridge wired pointer-move but not pointer-down. \
+             Sample {:?} silently dropped. Audit R7 L1-5.",
+            sample
+        );
         if !self.stroke_active || self.canvas_rgba.is_empty() {
             return;
         }
@@ -439,6 +500,58 @@ impl PainterTool {
     pub fn end_stroke(&mut self) {
         self.scheduler.end_stroke();
         self.stroke_active = false;
+    }
+
+    /// Swap the active brush atomically with the public-contract
+    /// `params.active_brush` handle. Guards against mid-stroke brush
+    /// changes by calling `end_stroke` first (the scheduler's
+    /// `residual_dist` / `stroke_rotation_base` / `last_follow_angle` /
+    /// `stamp_index` carry brush-specific state — replaying them under
+    /// a new brush's `spacing` / `shape_count` / `shape_rotation_follow`
+    /// is undefined and produces visible seams or double-stamps at the
+    /// switch boundary).
+    ///
+    /// **Audit T1.6 R7 L1-4:** `PainterParams.active_brush` (the
+    /// `BrushHandle` published in ADR-0043 §2.3 §2.8 stub) was never
+    /// read by `PainterTool` before this helper — `self.brush` was the
+    /// sole runtime source of truth. A W2 sidebar implementer reading
+    /// only the params surface (the published contract) would write a
+    /// `SelectBrush(handle)` handler that updates the snapshot but
+    /// leaves the rendered brush stale — silent regression with no
+    /// gate to catch it. This helper makes the two writes inseparable
+    /// AND adds the L1-6 end_stroke guard. `apply_ui_edit`'s future
+    /// `PainterUiEdit::SelectBrush` handler MUST go through here.
+    ///
+    /// Calling this with `is_stroke_active() == true` emits a
+    /// `debug_assert!` so the caller knows a stroke was silently
+    /// dropped; release builds end the stroke without warning. The
+    /// scheduler's `pool` (uncommitted stamps) is discarded along with
+    /// the rest of `end_stroke` state — the caller is responsible for
+    /// flushing visible stamps via `request_commit` BEFORE switching
+    /// if mid-stroke flush is desired.
+    pub fn set_brush(&mut self, handle: BrushHandle, brush: Brush) {
+        debug_assert!(
+            !self.stroke_active,
+            "set_brush called mid-stroke — the scheduler residual state \
+             carries brush-specific assumptions (spacing, rotation_base, \
+             follow_angle); switching under it produces visible seams. \
+             Audit R7 L1-6."
+        );
+        if self.stroke_active {
+            self.end_stroke();
+        }
+        self.params.active_brush = handle;
+        self.brush = brush;
+    }
+
+    /// Public accessor for the active `BrushHandle`. Equivalent to
+    /// `params.active_brush`, exposed as a function so future refactors
+    /// (e.g., derive `self.brush` lazily from a library lookup keyed by
+    /// handle — collapsing the two sources of truth) keep the public
+    /// API stable. Audit T1.6 R7 L1-4.
+    #[must_use]
+    pub fn active_brush_handle(&self) -> BrushHandle {
+        self.params.active_brush
     }
 
     /// "Brush lifted" — cursor saiu do footprint do sprite mid-drag.
@@ -812,8 +925,36 @@ mod tests {
         assert_eq!(out, src);
     }
 
+    /// **Audit T1.6 R7 L1-5 contract update:** `queue_pointer` without
+    /// an active stroke on a non-empty canvas is a `debug_assert!` in
+    /// dev/test builds (surface bridge bugs) AND a silent no-op in
+    /// release builds (preserve existing tolerance to dropped pointer-
+    /// down events). The empty-canvas branch stays a silent no-op in
+    /// all builds — that's the legitimate "tool inactive / no source
+    /// yet" case the original test was protecting.
     #[test]
-    fn queue_pointer_without_stroke_is_noop() {
+    fn queue_pointer_on_empty_canvas_is_silent_noop() {
+        let mut t = PainterTool::default();
+        // canvas_rgba is empty by default (no set_source called).
+        t.queue_pointer(PointerSample {
+            position: [4.0, 4.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        // No source, no panic, no preview state mutated.
+        assert!(t.current_preview().is_none());
+    }
+
+    /// **Audit T1.6 R7 L1-5:** the debug_assert fires in dev/test
+    /// builds when `queue_pointer` is invoked without a matching
+    /// `begin_stroke` on a non-empty canvas — the previous silent no-op
+    /// was masking bridge bugs (a pointer-move handler that ran
+    /// without its pointer-down) and the subsequent `drain_painter`
+    /// would emit a "no strokes to apply" toast indistinguishable
+    /// from "Apply ran with no paint".
+    #[test]
+    #[should_panic(expected = "queue_pointer called without an active stroke")]
+    fn queue_pointer_without_stroke_on_loaded_canvas_panics_in_debug() {
         let mut t = PainterTool::default();
         t.set_source(flat_source(8, 8, [0; 4]), 8, 8);
         let _ = t.current_preview(); // drain set_source dirty
@@ -822,9 +963,6 @@ mod tests {
             pressure: 1.0,
             tilt: 0.0,
         });
-        // Without begin_stroke, queue_pointer must be a no-op (state
-        // unchanged, dirty flag not set).
-        assert!(t.current_preview().is_none());
     }
 
     #[test]

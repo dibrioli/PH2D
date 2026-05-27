@@ -913,8 +913,119 @@ pub fn auto_contrast(rgba: &mut [u8]) {
 /// threshold; lower at high strength so stronger smoothing crosses
 /// weaker edges).
 pub fn guided_filter_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
-    let _ = (rgba, w, h, strength);
-    // TODO: implement in follow-up commit.
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+    if strength <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let r = (2.0 + 14.0 * strength).round() as i32;
+    let eps = {
+        let e = 0.05 + 0.20 * (1.0 - strength);
+        e * e
+    };
+
+    let w_us = w as usize;
+    let n = w_us * (h as usize);
+    let mut src_lin: Vec<[f32; 3]> = Vec::with_capacity(n);
+    let alpha: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
+    for px in rgba.chunks_exact(4) {
+        src_lin.push([
+            srgb_to_linear_u8(px[0]),
+            srgb_to_linear_u8(px[1]),
+            srgb_to_linear_u8(px[2]),
+        ]);
+    }
+
+    let mut out_lin = vec![[0.0_f32; 3]; n];
+    let mut scratch1 = vec![0.0_f32; n];
+    let mut scratch2 = vec![0.0_f32; n];
+    let mut mean_i = vec![0.0_f32; n];
+    let mut mean_ii = vec![0.0_f32; n];
+    let mut a_buf = vec![0.0_f32; n];
+    let mut b_buf = vec![0.0_f32; n];
+    let mut mean_a = vec![0.0_f32; n];
+    let mut mean_b = vec![0.0_f32; n];
+
+    // Self-guided: I (guide) = p (input). Per channel independently.
+    for ch in 0..3 {
+        for i in 0..n {
+            scratch1[i] = src_lin[i][ch];
+        }
+        box_blur(&scratch1, &mut mean_i, &mut scratch2, w, h, r);
+        for i in 0..n {
+            scratch2[i] = scratch1[i] * scratch1[i];
+        }
+        box_blur(&scratch2, &mut mean_ii, &mut scratch1, w, h, r);
+        // a = var(I) / (var(I) + ε); b = (1 − a)·mean_I
+        for i in 0..n {
+            let var = (mean_ii[i] - mean_i[i] * mean_i[i]).max(0.0);
+            a_buf[i] = var / (var + eps);
+            b_buf[i] = mean_i[i] * (1.0 - a_buf[i]);
+        }
+        box_blur(&a_buf, &mut mean_a, &mut scratch1, w, h, r);
+        box_blur(&b_buf, &mut mean_b, &mut scratch1, w, h, r);
+        // q = mean_a · I + mean_b. Re-read I from src_lin so we don't
+        // depend on scratch1 contents post-box-blur.
+        for i in 0..n {
+            out_lin[i][ch] = mean_a[i] * src_lin[i][ch] + mean_b[i];
+        }
+    }
+
+    for i in 0..n {
+        if alpha[i] == 0 {
+            continue;
+        }
+        let bo = i * 4;
+        rgba[bo] = linear_to_srgb_u8(out_lin[i][0]);
+        rgba[bo + 1] = linear_to_srgb_u8(out_lin[i][1]);
+        rgba[bo + 2] = linear_to_srgb_u8(out_lin[i][2]);
+    }
+}
+
+/// Box blur over a single-channel f32 buffer via separable cumulative
+/// sums (O(N) per axis, independent of radius). Reads `src`, writes
+/// `dst`; `tmp` is per-pass scratch of size `w·h`. `r` is the half-
+/// window radius (window = `2r+1`). Border clamps to edge (mirror of
+/// `clamp` on indices).
+pub(crate) fn box_blur(src: &[f32], dst: &mut [f32], tmp: &mut [f32], w: u32, h: u32, r: i32) {
+    let w_i = w as i32;
+    let h_i = h as i32;
+    let w_us = w as usize;
+    let win = (2 * r + 1) as f32;
+
+    // Horizontal pass: src → tmp.
+    for y in 0..h_i {
+        let row = (y as usize) * w_us;
+        let mut sum = 0.0_f32;
+        for k in -r..=r {
+            let x = k.clamp(0, w_i - 1) as usize;
+            sum += src[row + x];
+        }
+        tmp[row] = sum / win;
+        for x in 1..w_i {
+            let add = (x + r).clamp(0, w_i - 1) as usize;
+            let sub = (x - r - 1).clamp(0, w_i - 1) as usize;
+            sum += src[row + add] - src[row + sub];
+            tmp[row + x as usize] = sum / win;
+        }
+    }
+
+    // Vertical pass: tmp → dst.
+    for x in 0..w_i {
+        let col = x as usize;
+        let mut sum = 0.0_f32;
+        for k in -r..=r {
+            let y = k.clamp(0, h_i - 1) as usize;
+            sum += tmp[y * w_us + col];
+        }
+        dst[col] = sum / win;
+        for y in 1..h_i {
+            let add = (y + r).clamp(0, h_i - 1) as usize;
+            let sub = (y - r - 1).clamp(0, h_i - 1) as usize;
+            sum += tmp[add * w_us + col] - tmp[sub * w_us + col];
+            dst[y as usize * w_us + col] = sum / win;
+        }
+    }
 }
 
 /// À-Trous wavelet denoise — edge-aware (Dammertz et al. 2010, "Edge-
@@ -2241,6 +2352,77 @@ mod tests {
         let mut buf = vec![10u8, 10, 10, 0, 50, 80, 120, 255, 200, 220, 240, 255];
         auto_levels(&mut buf);
         assert_eq!(&buf[0..4], &[10, 10, 10, 0]); // untouched
+    }
+
+    // ── Denoise (6 methods) ───────────────────────────────────────────
+
+    fn uniform_noisy_buf(w: u32, h: u32, base: u8, noise_amp: i32) -> Vec<u8> {
+        let mut v = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                let noise = ((x * 3 + y * 5) % 11) as i32 - 5;
+                let n = (noise * noise_amp / 5).clamp(-noise_amp, noise_amp);
+                let val = (base as i32 + n).clamp(0, 255) as u8;
+                v.extend_from_slice(&[val, val, val, 255]);
+            }
+        }
+        v
+    }
+
+    fn variance_gray(buf: &[u8]) -> i64 {
+        let total = buf.len() / 4;
+        let mut sum: i64 = 0;
+        for i in 0..total {
+            sum += buf[i * 4] as i64;
+        }
+        let mean = sum / total as i64;
+        let mut var: i64 = 0;
+        for i in 0..total {
+            let d = buf[i * 4] as i64 - mean;
+            var += d * d;
+        }
+        var
+    }
+
+    #[test]
+    fn guided_filter_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        guided_filter_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn guided_filter_smooths_uniform_noisy_input() {
+        let mut buf = uniform_noisy_buf(32, 32, 128, 5);
+        let before = variance_gray(&buf);
+        guided_filter_denoise(&mut buf, 32, 32, 0.5);
+        let after = variance_gray(&buf);
+        assert!(
+            after < before,
+            "Guided Filter did not reduce variance (before {before}, after {after})"
+        );
+    }
+
+    #[test]
+    fn guided_filter_preserves_edge_contrast() {
+        // 32×32 step edge at x=16.
+        let mut buf = Vec::with_capacity(32 * 32 * 4);
+        for _y in 0..32 {
+            for x in 0..32u32 {
+                let v = if x < 16 { 50u8 } else { 200u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        guided_filter_denoise(&mut buf, 32, 32, 0.5);
+        // Sample far enough from the edge that the radius (≈ 9 px at
+        // strength 0.5) doesn't reach across.
+        let left = buf[((16 * 32 + 3) * 4) as usize];
+        let right = buf[((16 * 32 + 28) * 4) as usize];
+        assert!(
+            (right as i32 - left as i32) > 100,
+            "Guided Filter collapsed edge contrast (left {left}, right {right})"
+        );
     }
 
     #[test]

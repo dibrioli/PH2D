@@ -103,8 +103,8 @@ impl ImageImporter for OraImporter {
             return Err(Error::Truncated);
         }
         let cursor = Cursor::new(src);
-        let mut archive =
-            ZipArchive::new(cursor).map_err(|e| Error::Decode(format!("ORA ZIP open: {e}")))?;
+        let mut archive = ZipArchive::new(cursor)
+            .map_err(|e| Error::from_decoder_message(format!("ORA ZIP open: {e}")))?;
 
         // Validate mimetype.
         let mime = read_zip_text(&mut archive, "mimetype")?;
@@ -117,7 +117,7 @@ impl ImageImporter for OraImporter {
         // Parse stack.xml.
         let stack_xml = read_zip_text(&mut archive, "stack.xml")?;
         let doc = roxmltree::Document::parse(&stack_xml)
-            .map_err(|e| Error::Decode(format!("ORA stack.xml parse: {e}")))?;
+            .map_err(|e| Error::from_decoder_message(format!("ORA stack.xml parse: {e}")))?;
         let root = doc.root_element();
         if root.tag_name().name() != "image" {
             return Err(Error::Decode(
@@ -465,9 +465,7 @@ fn write_stack_xml(stack: &LayerStack) -> Result<String, Error> {
     // `composite-op`, `opacity`, `visibility` as valid `<stack>`
     // attributes. Krita strict mode rejects `<stack>` without them.
     // Emit the spec defaults — same values group-stacks use.
-    s.push_str(
-        r#"  <stack composite-op="svg:src-over" opacity="1" visibility="visible">"#,
-    );
+    s.push_str(r#"  <stack composite-op="svg:src-over" opacity="1" visibility="visible">"#);
     s.push('\n');
     let mut next_idx = 0_usize;
     // ORA paint order is TOP-FIRST; reverse our bottom-up list.
@@ -889,6 +887,27 @@ mod tests {
         assert_eq!(
             xml_escape("<tag attr=\"value\" attr2='v2'>&amp;</tag>"),
             "&lt;tag attr=&quot;value&quot; attr2=&apos;v2&apos;&gt;&amp;amp;&lt;/tag&gt;"
+        );
+    }
+
+    /// Audit-8 Lens M + H-1 (2026-05-26): gate the spec H-1 fix.
+    /// ORA spec 0.0.5 §3.1 requires `composite-op` / `opacity` /
+    /// `visibility` attrs on `<stack>` — Krita strict mode rejects
+    /// stacks without them. A regression here causes silent
+    /// rejection in real-world viewers.
+    #[test]
+    fn stack_xml_root_emits_required_attrs() {
+        let stack = LayerStack {
+            version: 1,
+            canvas_width: 1,
+            canvas_height: 1,
+            layers: vec![make_pixel_layer("L", [0, 0, 0, 0])],
+            color_profile: ColorProfile::Srgb,
+        };
+        let xml = write_stack_xml(&stack).expect("write");
+        assert!(
+            xml.contains(r#"<stack composite-op="svg:src-over" opacity="1" visibility="visible">"#),
+            "stack.xml root <stack> must carry spec-required attrs; got: {xml}"
         );
     }
 

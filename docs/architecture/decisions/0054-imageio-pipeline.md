@@ -319,10 +319,41 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3 pre-gates 1+2+3** | ✅ | `f71f16a` | (1) ADR §2.6 amendment; (2) hex-baked Tier-1 fixtures (APNG multi-frame, TIFF CMYK/RGBA16, ORA group nesting); (3) golden blake3 hashes (PNG/TIFF/ORA/APNG) — vide §5.5 |
 | **W3.T0** auditoria 5-lente pré-W3 | ✅ | `35cc149` | 1 CRITICAL (golden hashes single-platform vs CI matrix) + 4 HIGH + 9 MEDIUM + 12 LOW — remediação inline vide §5.5 |
 | **W3.T0.1** nova auditoria pós-W3.T0 | ✅ | `fd34240` | 1 CRITICAL (imageio FORA da CI matrix — gate de §2.6.1 era cosmético) + 7 HIGH (ADR HR-9→HR-5 nomenclatura + tolerâncias TIFF mascarando off-by-one + clippy convenção) + 11 MEDIUM + 13 LOW — vide §5.6 |
+| **W3.T0.2** nova auditoria pós-W3.T0.1 | ✅ | `108a623` | 6 CRITICAL meus (3 ship-blockers F-B1/B2/B3 + 3 OOM J-1/J-2/J-3) + 5 HIGH meus (ORA H-1 + opts I-1/I-2 + EOF I-3 + non_exhaustive I-4 + PSD catch_unwind G-F2) + 9 MEDIUM + 14 LOW; 2 CRITICAL não-meus flaggados (B-4 shells/desktop + M-5 Cargo.lock dhat) — vide §5.7 |
+| **W3.T0.3** nova auditoria pós-W3.T0.2 | ✅ | `[remediation-pending]` | 1 P0 (§5 row drift) + 6 HIGH (ColorProfile::Custom vapor + GIF semantica + EOF helper adoption parcial + APNG multi-frame test gap + math/docs drift + fmt P-mine) + 17 MEDIUM (test coverage 8 fixes + caps hoist + EOF gaps + variant context) + 12 LOW — vide §5.8 |
 
-### 5.7 Remediação pós-auditoria W3.T0.2 (2026-05-26)
+### 5.8 Remediação pós-auditoria W3.T0.3 (2026-05-26)
 
-Auditoria adversarial 5-lente sobre commits `fd34240` + `1f94c1d` (W3.T0.1 remediation). Lentes rotacionadas: CI wire-up sanity (F) · fuzz/malformed-input (G) · spec compliance (H) · API ergonomics cross-crate (I) · perf/memory budget (J). **Total 7 CRITICAL + 11 HIGH + 13 MEDIUM + 15 LOW**. Fechados nesta sessão:
+Auditoria adversarial 6-lente (rotacionadas per `feedback-audit-lens-diversity`): K round-trip integrity · L error path actionability · M test coverage post-audit-7 · N doc/ADR coverage · O regressão dos fixes audit-7 · P ship.sh dry-run simulation. **Total 0 CRITICAL · 6 HIGH · 17 MEDIUM · 12 LOW · 1 P0 doc · 4 P1 doc · 2 P2 doc**. Fechados nesta sessão:
+
+**P0 doc (Lens N)**: §5 row para `W3.T0.2` faltando. Fix: row inserida acima — referencia §5.7 + commit `108a623`. Convenção audit-7+ (estabelecida em §5.6) violada — registrado como regressão de disciplina.
+
+**HIGH (6 grupos)**:
+- **K-1 `ColorProfile::Custom` vapor**: TIFF/PSD doc-comments prometiam ICC byte-exact preservation mas zero importers populam o variant — apenas `ColorProfile::Srgb` hard-coded. Data-loss class HR-14 risco. Fix: docs honest-up em TIFF (`crates/ph2d-imageio-tiff/src/lib.rs` doc) + PSD (`crates/ph2d-imageio-psd/src/lib.rs` doc) declarando "W2 status: ICC blob preservation NOT YET wired (W2.0.1 + moxcms)". Entry-point per crate explícito.
+- **L-1 GIF semântica**: `Error::DimensionExceedsLimit` para frame-count overflow — categoricamente errado. Fix: trocado para `Error::Decode(format!("GIF claims {} frames (> MAX_FRAMES={}); refuse to allocate"))` espelhando APNG.
+- **L-3 EOF helper adoption parcial**: PNG/GIF/WebP/JPEG/ORA/TIFF mantinham heurística inline duplicada do `from_decoder_message` helper centralizado em audit-7. Fix: TODOS migrados via `Error::from_decoder_message(format!("..."))`. Drift do contrato fechado.
+- **K-2 APNG multi-frame export gap**: assimetria Animated→APNG_export = Unsupported documentada mas sem teste. Fix: teste novo `apng_animated_export_returns_unsupported_with_actionable_message` valida o gap explicitamente.
+- **N-P1 docs drift**: `math 6+2≠7 CRITICAL` no header §5.7; "X cosméticos absorvidos" disclosure ausente; `W3.0.4` entry-point inexistente; plan header não atualizado pós-T0.1/T0.2. Fix: §5.7 reconciliado, plan header + W3.0 sections atualizadas.
+- **P-mine 3 fmt errors**: `ora:465` + `schema.rs:273` + `psd:134` (audit-7 introduziu strings longas). Fix: `cargo fmt --all` no escopo imageio.
+
+**MEDIUM** (17 — 5 fechados, 12 absorvidos/deferidos):
+- **M test coverage**: 5 testes novos adicionados (APNG MAX_FRAMES rejection, TIFF MAX_PAGES rejection, validate_dimensions_v1 walker boundary, ORA `<stack>` attrs assert, EOF helper paramétrico). 3 fixes do audit-7 (catch_unwind, checked_div, opts no-op) ficam sem teste — `catch_unwind` defer-ok (precisa hostile fixture), `checked_div` defer-ok (path determinístico), `opts no-op` adicionado test-witness.
+- **O-1 caps duplicados**: `MAX_ANIMATION_FRAMES` + `MAX_DOCUMENT_PAGES` hoisted para `crates/ph2d-imageio/src/limits.rs`. APNG/GIF/TIFF importam do contract.
+- **O-2 `end of stream` falso positivo**: substring trocada por `"unexpected end of stream"` (image-rs/zip exato).
+- **L-4 EOF gaps**: helper expandido com `"truncated"`/`"incomplete"`/`"premature end"`/`"unexpected end-of-file"` (hífen).
+- **L-5/L-6 variant context**: defer permanente — promoção de unit-variant a tuple exigiria mudança ao cap FROZEN (=11). Mitigação: call-sites já fazem `Error::Decode(format!("X: ..."))` quando contexto crítico.
+- **K-3/K-4/K-5** (MAX_PAGES test fechado acima; JPEG ε defer W3 quando lossy benchmarks materializarem; RGBA16 round-trip defer até DecodedImage::Flat16 amendment).
+- **L-8 TIFF tile-based**: defer com nota — exige pre-decode tag inspection.
+- **L-9 MissingLayer genérico**: defer cosmético.
+
+**LOW** (12 — todos absorvidos como comments/docs ou sub-threshold):
+- **O-3** trait `ImageImporter::import` doc atualizado linkando `ImportOpts` para "W2 honor status".
+- **O-5** `.typos.toml` regex `PNGs` agora `^PNGs$` âncora.
+- Outros (nomenclatura, MissingLayer, etc.) sub-threshold.
+
+**Total Onda 2 pós-W3.T0.3**: 131 + 5 novos testes = 136 verdes Mac aarch64 (132 cross-OS, 4 goldens cfg-gated). Imageio na CI matrix com gates substantivos.### 5.7 Remediação pós-auditoria W3.T0.2 (2026-05-26)
+
+Auditoria adversarial 5-lente sobre commits `fd34240` + `1f94c1d` (W3.T0.1 remediation). Lentes rotacionadas: CI wire-up sanity (F) · fuzz/malformed-input (G) · spec compliance (H) · API ergonomics cross-crate (I) · perf/memory budget (J). **Total: 8 CRITICAL (6 meus + 2 não-meus de outras sessões) + 11 HIGH (6 meus + 5 absorvidos/deferidos) + 13 MEDIUM + 15 LOW (de 12 cosméticos absorvidos sub-threshold + 3 deferidos com entry-points)**. Audit-8 (`108a623` revisita Lens N): contagem retroativamente corrigida — header anterior dizia "7 CRITICAL" por erro de soma; real é 8 (6+2). Fechados nesta sessão:
 
 **CRITICAL (apenas as 6 minhas; 2 são de outras sessões, flaggadas pro Enio):**
 - **F-B1 fmt**: `crates/ph2d-imageio-tiff/src/lib.rs:801` (chain `.write_image().expect()`). Fix: `cargo fmt -p ph2d-imageio-tiff`.
@@ -350,7 +381,9 @@ Auditoria adversarial 5-lente sobre commits `fd34240` + `1f94c1d` (W3.T0.1 remed
 - G-F4 ORA zip-bomb / G-F5 TIFF pages — J-2 já cobriu pages; ORA zip-bomb fica MEDIUM defer (`MAX_ORA_ENTRIES` ~256 + `Read::take` cap por entry).
 - E-2 HR-1/HR-5 enforcement gate files do workspace — gap pre-existing, não escopo.
 
-**LOW**: absorvidos (nomenclatura, helpers cosméticos, fluent_key cross-crate).
+**LOW**: 15 entradas — 12 cosméticos absorvidos sub-threshold (nomenclatura, helpers cosméticos, fluent_key cross-crate, typos sub-threshold) + 3 deferidos com entry-points: ImportOpts trait doc drift (LOW), PNGs regex sem âncora (LOW), MissingLayer genérico (LOW). Convenção audit-7+ (per [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)): X cosméticos absorvidos disclosure obrigatório.
+
+**Total Onda 2 pós-W3.T0.2**: 131 testes verdes Mac aarch64 (127 cross-OS, 4 goldens cfg-gated). 11 crates `ph2d-imageio-*` na CI matrix.
 
 **Não-meus** (flaggados pro Enio):
 - **F-B4**: `shells/desktop/src/input_dispatch/protect_brush.rs:320,321` + `render_loop/bgremoval_preview.rs:201` chamam métodos inexistentes (`set_remove_painting`/`set_remove_erasing`/`is_remove_armed`). Compiler sugere `set_protect_painting`/`set_protect_erasing`/`is_eyedropper_armed`. **11 erros em `ph2d-host-desktop`** — bloqueia `cargo check --workspace --locked` (CI msrv).

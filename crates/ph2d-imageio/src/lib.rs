@@ -67,7 +67,10 @@ pub use decoded::{
 pub use error::Error;
 pub use exporter::ImageExporter;
 pub use importer::ImageImporter;
-pub use limits::{MAX_ICC_PROFILE_LEN, MAX_PH2D_PAYLOAD_LEN, MAX_RASTER_DIMENSION};
+pub use limits::{
+    MAX_ANIMATION_FRAMES, MAX_DOCUMENT_PAGES, MAX_ICC_PROFILE_LEN, MAX_PH2D_PAYLOAD_LEN,
+    MAX_RASTER_DIMENSION,
+};
 pub use opts::{
     ColorProfileStrictness, ExportFormat, ExportOpts, ImportOpts, MagicHint, MagicMatch,
     MetadataPolicy, ToneMap,

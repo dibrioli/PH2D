@@ -77,15 +77,13 @@ impl ImageImporter for JpegImporter {
         if src.is_empty() {
             return Err(Error::Truncated);
         }
-        let img =
-            image::load_from_memory_with_format(src, image::ImageFormat::Jpeg).map_err(|e| {
-                let msg = e.to_string();
-                if msg.contains("unexpected end of file") || msg.contains("EOF") {
-                    Error::Truncated
-                } else {
-                    Error::Decode(msg)
-                }
-            })?;
+        let img = image::load_from_memory_with_format(src, image::ImageFormat::Jpeg).map_err(
+            |e| {
+                // Audit-8 Lens L L-3 (2026-05-26): migrated to
+                // contract-level `Error::from_decoder_message` helper.
+                Error::from_decoder_message(e.to_string())
+            },
+        )?;
         let (width, height) = (img.width(), img.height());
         if width == 0 || height == 0 {
             return Err(Error::Decode(format!(

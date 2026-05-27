@@ -169,17 +169,17 @@ impl ImageImporter for ApngImporter {
                 Ok(DecodedImage::Flat(frame.image))
             }
             Some(act) => {
-                // Multi-frame APNG. Audit-7 Lens J CRITICAL J-1: cap
-                // num_frames pre-alloc — hostile acTL with `num_frames =
-                // u32::MAX` would attempt ~96 GiB allocation (96B per
-                // AnimFrame × u32::MAX). Cap symmetric to GIF's
-                // MAX_FRAMES = 1024 (sufficient for any real animation;
-                // longer sequences should use video formats).
-                const MAX_FRAMES: u32 = 1024;
-                if act.num_frames > MAX_FRAMES {
+                // Multi-frame APNG. Audit-7 Lens J CRITICAL J-1 +
+                // audit-8 Lens O O-1 (2026-05-26): hostile acTL with
+                // `num_frames = u32::MAX` would attempt ~96 GiB
+                // allocation (96B per AnimFrame × u32::MAX). Cap via
+                // `MAX_ANIMATION_FRAMES` hoisted to the contract
+                // (single source of truth shared with GIF).
+                if act.num_frames > ph2d_imageio::MAX_ANIMATION_FRAMES {
                     return Err(Error::Decode(format!(
-                        "APNG acTL claims {} frames (> MAX_FRAMES={}); refuse to allocate",
-                        act.num_frames, MAX_FRAMES
+                        "APNG acTL claims {} frames (> MAX_ANIMATION_FRAMES={}); refuse to allocate",
+                        act.num_frames,
+                        ph2d_imageio::MAX_ANIMATION_FRAMES
                     )));
                 }
                 let mut anim: Vec<AnimFrame> = Vec::with_capacity(act.num_frames as usize);
@@ -723,5 +723,46 @@ mod tests {
             .export(&DecodedImage::Flat(original), &opts)
             .expect("b");
         assert_eq!(a, b, "HR-5: APNG single-frame export must be byte-exact");
+    }
+
+    /// Audit-8 Lens M (2026-05-26): gate the MAX_ANIMATION_FRAMES cap
+    /// added by audit-7 J-1. Hostile acTL claiming `num_frames`
+    /// beyond the contract cap must be rejected with `Error::Decode`
+    /// before any allocation.
+    #[test]
+    fn import_rejects_acTL_num_frames_above_max() {
+        // Synthesize an APNG with acTL claiming MAX_ANIMATION_FRAMES+1
+        // frames. We don't need to actually write fdAT — the cap
+        // check happens BEFORE we try to read the frames.
+        let mut bytes: Vec<u8> = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(Cursor::new(&mut bytes), 2, 2);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder
+                .set_animated(ph2d_imageio::MAX_ANIMATION_FRAMES + 1, 0)
+                .expect("set_animated");
+            encoder.set_frame_delay(100, 1000).expect("delay");
+            let mut writer = encoder.write_header().expect("write_header");
+            // Frame 1: 4 RGBA pixels red. (The remaining frames won't
+            // be written; the importer should reject before reading.)
+            writer
+                .write_image_data(&[
+                    255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255,
+                ])
+                .expect("frame 1");
+        }
+        let err = ApngImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect_err("must reject");
+        match err {
+            Error::Decode(msg) => {
+                assert!(
+                    msg.contains("MAX_ANIMATION_FRAMES"),
+                    "expected MAX_ANIMATION_FRAMES message: {msg}"
+                );
+            }
+            other => panic!("expected Decode with cap message, got: {other:?}"),
+        }
     }
 }

@@ -133,12 +133,23 @@ impl Error {
     pub fn from_decoder_message(msg: impl Into<String>) -> Self {
         let msg = msg.into();
         let lower = msg.to_lowercase();
+        // Audit-8 Lens O O-2 + Lens L L-4 (2026-05-26): refined
+        // signature set. `"end of stream"` was a false positive in
+        // flate2 corruption paths ("end of stream marker found");
+        // tightened to `"unexpected end of stream"` (image-rs/zip
+        // exact). Added `"truncated"` / `"incomplete"` /
+        // `"premature end"` / `"end-of-file"` (with hyphen) per
+        // image-rs, psd, postcard, and zip empirical messages.
         if lower.contains("unexpected end of file")
+            || lower.contains("unexpected end-of-file")
             || lower.contains("unexpected eof")
             || lower.contains("eof while parsing")
-            || lower.contains("end of stream")
+            || lower.contains("unexpected end of stream")
             || lower.contains("eof reached")
             || lower.contains("not enough data")
+            || lower.contains("truncated")
+            || lower.contains("incomplete")
+            || lower.contains("premature end")
         {
             Self::Truncated
         } else {
@@ -155,3 +166,53 @@ impl Error {
 // and surfaced as dead code. Removed; if a future format crate needs
 // `io::Error` propagation it adds a one-line `.map_err` next to its
 // own code where the call site is obvious.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Audit-8 Lens M (2026-05-26): table-driven gate for the EOF
+    /// classifier. Without this, a refactor that drops one of the 10
+    /// substring matches (or accidentally case-folds an upstream
+    /// signature differently) regresses silently.
+    #[test]
+    fn from_decoder_message_classifies_known_eof_signals_to_truncated() {
+        for sig in [
+            "unexpected end of file",
+            "Unexpected END OF FILE", // case-insensitive
+            "unexpected end-of-file",
+            "unexpected eof",
+            "EOF while parsing PNG IHDR",
+            "got unexpected end of stream",
+            "eof reached before frame complete",
+            "not enough data for image header",
+            "truncated chunk at offset 42",
+            "file is incomplete",
+            "premature end of zip central directory",
+        ] {
+            assert!(
+                matches!(Error::from_decoder_message(sig), Error::Truncated),
+                "expected Truncated for {sig:?}"
+            );
+        }
+    }
+
+    /// Audit-8 Lens M: non-EOF signatures must fall through to
+    /// `Decode` — false-positive in flate2's `"end of stream marker"`
+    /// (which is NOT EOF but corruption) was the audit-8 O-2 fix.
+    #[test]
+    fn from_decoder_message_classifies_non_eof_to_decode() {
+        for sig in [
+            "checksum mismatch in PNG chunk",
+            "invalid TIFF tag 0x1234",
+            "end of stream marker found", // O-2: not Truncated (corruption)
+            "unsupported color type",
+            "malformed acTL chunk length",
+        ] {
+            assert!(
+                matches!(Error::from_decoder_message(sig), Error::Decode(_)),
+                "expected Decode for {sig:?}"
+            );
+        }
+    }
+}

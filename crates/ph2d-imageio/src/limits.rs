@@ -34,10 +34,30 @@ pub const MAX_PH2D_PAYLOAD_LEN: u64 = u32::MAX as u64;
 /// huge ICC chunks. Audit `.ph2d-native` L1.
 pub const MAX_ICC_PROFILE_LEN: usize = 4 * 1024 * 1024;
 
+/// Maximum frames in an animation (APNG/GIF/WebP-animated). Audit-8
+/// Lens O O-1 (2026-05-26): hoisted from private constants drifting
+/// independently in `ph2d-imageio-apng` and `ph2d-imageio-gif`
+/// (both = 1024 by coincidence, one `u32` + one `usize`). Now a
+/// contract-level concern with a single source of truth.
+///
+/// 1024 covers any plausible real animation (longer sequences belong
+/// in video formats, not animated rasters).
+pub const MAX_ANIMATION_FRAMES: u32 = 1024;
+
+/// Maximum pages in a multi-page document (TIFF). Audit-8 Lens O O-1
+/// (2026-05-26): hoisted from `ph2d-imageio-tiff::MAX_PAGES`.
+///
+/// 256 covers any plausible catalogue / book scan (longer files
+/// should split — TIFF chained IFDs of 10k pages is exclusively a
+/// hostile-input scenario).
+pub const MAX_DOCUMENT_PAGES: usize = 256;
+
 /// Compile-time sanity envelope. Catches typo regressions.
 const _SANITY: () = {
     assert!(MAX_RASTER_DIMENSION >= 16_384);
     assert!(MAX_RASTER_DIMENSION <= 65_536);
     assert!(MAX_PH2D_PAYLOAD_LEN >= 1_073_741_824); // ≥ 1 GiB
     assert!(MAX_ICC_PROFILE_LEN >= 65_536); // ≥ 64 KiB
+    assert!(MAX_ANIMATION_FRAMES >= 60); // ≥ 1 s @ 60 Hz
+    assert!(MAX_DOCUMENT_PAGES >= 16); // ≥ 16 pages
 };

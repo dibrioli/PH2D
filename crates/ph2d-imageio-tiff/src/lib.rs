@@ -25,11 +25,15 @@
 //!
 //! ### Out of scope (later waves)
 //!
-//! - ICC profile **conversion** (not just preservation): the iCCP tag
-//!   `Tag::IccProfile` bytes survive in `ColorProfile::Custom(...)`
-//!   but no transform is applied. PSD/TIFF round-trip preserves
-//!   profile byte-exact; W2.0.1 will wire `moxcms` 0.8.1 when the
-//!   first real client (PSD W2.T4) lands.
+//! - ICC profile **preservation AND conversion**. Audit-8 Lens K K-1
+//!   (2026-05-26): the previous doc claimed "iCCP tag survives in
+//!   `ColorProfile::Custom`" but this is **vapor** — the decoder
+//!   hard-codes `ColorProfile::Srgb` and never reads `Tag::IccProfile`.
+//!   ICC blob preservation will land in W2.0.1 with `moxcms` 0.8.1
+//!   wiring. **Entry-point**: `decode_page` (this file) — add
+//!   `decoder.find_tag(Tag::IccProfile)` read and surface as
+//!   `ColorProfile::Custom(Vec<u8>)`. Until then, TIFF round-trip
+//!   tags through ICC-bearing files **silently loses the profile**.
 //! - 16-bit RGBA round-trip (would need `DecodedImage::Flat16`
 //!   variant amendment).
 //! - LZW + JPEG-in-TIFF + Fax compression encoders (only deflate
@@ -137,24 +141,24 @@ impl ImageImporter for TiffImporter {
             ));
         }
         let cursor = Cursor::new(src);
-        let mut decoder =
-            Decoder::new(cursor).map_err(|e| Error::Decode(format!("TIFF decoder init: {e}")))?;
+        let mut decoder = Decoder::new(cursor)
+            .map_err(|e| Error::from_decoder_message(format!("TIFF decoder init: {e}")))?;
 
         // Decode first page.
         let first = decode_page(&mut decoder)?;
 
-        // Walk additional pages, if any. Audit-7 Lens J CRITICAL J-2:
-        // cap page count — hostile TIFF with 10000 IFDs chained would
-        // attempt 10000 × MAX_RASTER_DIMENSION² alloc. Cap = 256 covers
-        // any plausible multi-page real-world TIFF (catalogue scans
-        // rarely exceed 100 pages); higher counts should split files.
-        const MAX_PAGES: usize = 256;
+        // Walk additional pages, if any. Audit-7 Lens J CRITICAL J-2 +
+        // audit-8 Lens O O-1 (2026-05-26): cap via contract-level
+        // `MAX_DOCUMENT_PAGES` (hoisted from private const). Hostile
+        // TIFF with 10000 IFDs chained would attempt 10000 ×
+        // MAX_RASTER_DIMENSION² alloc.
         let mut pages: Vec<ImageBuffer<SrgbRgba>> = vec![first];
         while decoder.more_images() {
-            if pages.len() >= MAX_PAGES {
+            if pages.len() >= ph2d_imageio::MAX_DOCUMENT_PAGES {
                 return Err(Error::Decode(format!(
-                    "TIFF has more than MAX_PAGES={MAX_PAGES} IFDs; \
-                     refuse to walk further (potential DoS vector)"
+                    "TIFF has more than MAX_DOCUMENT_PAGES={} IFDs; \
+                     refuse to walk further (potential DoS vector)",
+                    ph2d_imageio::MAX_DOCUMENT_PAGES
                 )));
             }
             decoder

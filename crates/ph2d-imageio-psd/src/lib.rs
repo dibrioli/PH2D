@@ -32,10 +32,16 @@
 //!   parser (out of scope until first real client demands it; round-
 //!   trip via `.ph2d-native` is the canonical preservation path).
 //! - Layer effects (drop shadow / glow / stroke) — same as above.
-//! - ICC profile parsing — preserved as `ColorProfile::Custom` if
-//!   the `psd` crate surfaces it (TBD when we test against a real
-//!   profile-tagged PSD); ICC conversion via moxcms lands W2.0.1
-//!   when the first real client appears.
+//! - ICC profile preservation AND conversion. Audit-8 Lens K K-1
+//!   (2026-05-26): previous doc claimed "preserved as
+//!   `ColorProfile::Custom`" but this is **vapor** — the decoder
+//!   hard-codes `ColorProfile::Srgb` and never reads the embedded
+//!   ICC chunk. `psd` 0.3.5 does surface it via
+//!   `Psd::resource_block_iccp()`, but we don't yet route the bytes.
+//!   Entry-point: `import` (this file) — read ICC resource block and
+//!   set `ColorProfile::Custom(Vec<u8>)`. Until W2.0.1 ICC pipeline
+//!   ratifies the path, PSD imports with non-sRGB profile **silently
+//!   lose the profile**.
 
 use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
@@ -134,11 +140,10 @@ impl ImageImporter for PsdImporter {
         // arbitrary user input (drag-and-drop), isolate the
         // third-party parser with `catch_unwind` so a hostile PSD
         // returns `Error::Decode` instead of crashing the process.
-        let parsed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            psd::Psd::from_bytes(src)
-        }))
-        .map_err(|_| Error::Decode("PSD parser panicked on malformed input".into()))?
-        .map_err(|e| Error::from_decoder_message(format!("PSD parse: {e}")))?;
+        let parsed =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| psd::Psd::from_bytes(src)))
+                .map_err(|_| Error::Decode("PSD parser panicked on malformed input".into()))?
+                .map_err(|e| Error::from_decoder_message(format!("PSD parse: {e}")))?;
 
         let canvas_width = parsed.width();
         let canvas_height = parsed.height();

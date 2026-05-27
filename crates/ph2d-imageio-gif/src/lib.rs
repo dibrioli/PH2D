@@ -50,7 +50,11 @@ use ph2d_imageio::{
 /// at 4K resolution caps at ~32 GiB worst case (still big, but bounded;
 /// W2 will add per-frame streaming via the `image-gif` direct backend
 /// to lift this cap.) Real-world GIFs ship < 200 frames typically.
-const MAX_FRAMES: usize = 1024;
+/// Audit-8 Lens O O-1 (2026-05-26): use the contract-level
+/// `MAX_ANIMATION_FRAMES` instead of a private constant. Kept as a
+/// local alias only to preserve call-site readability without
+/// changing semantics — drop in a future cleanup pass.
+const MAX_FRAMES: usize = ph2d_imageio::MAX_ANIMATION_FRAMES as usize;
 
 /// GIF87a (`GIF87a`) and GIF89a (`GIF89a`) signatures. Both decoders
 /// accept either; we recognise both as Strong.
@@ -129,7 +133,10 @@ impl ImageImporter for GifImporter {
         use image::AnimationDecoder;
         let cursor = std::io::Cursor::new(src);
         let decoder = image::codecs::gif::GifDecoder::new(cursor)
-            .map_err(|e| Error::Decode(e.to_string()))?;
+            .map_err(|e| {
+                // Audit-8 Lens L L-3 (2026-05-26): EOF helper.
+                Error::from_decoder_message(e.to_string())
+            })?;
         let frames: Vec<image::Frame> = decoder.into_frames().collect_frames().map_err(|e| {
             let msg = e.to_string();
             if msg.contains("unexpected end of file") || msg.contains("EOF") {
@@ -158,8 +165,16 @@ impl ImageImporter for GifImporter {
         // tens-of-thousands of frames. `collect_frames` already
         // happened (we have the Vec), so this is mostly a guard
         // against insane sources; the real fix is streaming in W2.
+        // Audit-8 Lens L L-1 + Lens O O-1 (2026-05-26): use
+        // `Error::Decode` not `DimensionExceedsLimit` — frame count is
+        // NOT a dimension. Cap via contract-level
+        // `MAX_ANIMATION_FRAMES`. Mirrors APNG's MAX_FRAMES rejection.
         if frames.len() > MAX_FRAMES {
-            return Err(Error::DimensionExceedsLimit);
+            return Err(Error::Decode(format!(
+                "GIF claims {} frames (> MAX_ANIMATION_FRAMES={}); refuse to allocate",
+                frames.len(),
+                ph2d_imageio::MAX_ANIMATION_FRAMES
+            )));
         }
 
         if frames.len() == 1 {

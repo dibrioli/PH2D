@@ -53,12 +53,16 @@ use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Captured original of a selected sprite at the moment it entered a
-/// CEQ live-bake session. Pixels are straight-alpha RGBA8.
+/// CEQ live-bake session. Pixels are stored in the sprite's **native
+/// AlphaMode** (Atlas → Straight; Individual → premul flag derived) so a
+/// revert is byte-exact. The CE pipeline always works on straight input,
+/// so a `into_straight()` runs on demand per live-bake.
 struct CachedOriginal {
     pixels: Vec<u8>,
     width: u32,
     height: u32,
     size_world: [f32; 2],
+    alpha: AlphaMode,
 }
 
 thread_local! {
@@ -220,15 +224,22 @@ fn ensure_cached(
     else {
         return;
     };
-    let straight = src.image.into_straight();
+    let size_world = src.old_size_world;
+    let SpriteImage {
+        pixels,
+        width,
+        height,
+        alpha,
+    } = src.image;
     SOURCE_CACHE.with(|c| {
         c.borrow_mut().insert(
             entity_bits,
             CachedOriginal {
-                pixels: straight.pixels,
-                width: straight.width,
-                height: straight.height,
-                size_world: src.old_size_world,
+                pixels,
+                width,
+                height,
+                size_world,
+                alpha,
             },
         );
     });
@@ -256,58 +267,66 @@ fn collect_live_bakes(
         let cached = SOURCE_CACHE.with(|c| {
             c.borrow()
                 .get(&entity_bits)
-                .map(|cs| (cs.pixels.clone(), cs.width, cs.height, cs.size_world))
+                .map(|cs| (cs.pixels.clone(), cs.width, cs.height, cs.size_world, cs.alpha))
         });
-        let Some((pixels, w, h, size_world)) = cached else {
+        let Some((pixels, w, h, size_world, alpha)) = cached else {
             continue;
         };
-        RasterEditTool::set_source(raster, pixels, w, h);
+        // CE pipeline always works on straight RGBA; convert on demand
+        // (no-op for already-straight, decode for premul).
+        let straight = SpriteImage::from_bytes(w, h, pixels, alpha).into_straight();
+        RasterEditTool::set_source(raster, straight.pixels, w, h);
         let (out, ow, oh) = RasterEditTool::run_full(raster);
         bakes.push((entity_bits, out, ow, oh, size_world));
     }
     bakes
 }
 
-/// Restore every cached sprite to its original pixels and drop all
-/// cache entries.
+/// Restore every cached sprite to its **original** pixels + AlphaMode
+/// (byte-exact — Atlas-sourced sprites stay Straight, previously-baked
+/// Individual+Premul sprites stay Premul) and drop all cache entries.
+/// Re-encoding the cached bytes through a different alpha mode would
+/// destroy the alpha=0 RGB bleed (`unpremultiply_rgba8` zeros it; a
+/// fresh `into_premultiplied` zeros it too) — the source of the halo
+/// Enio reported when Cancel was firing with a different alpha mode.
 fn revert_all_and_clear(sim: &mut SimWorld, renderer: &mut SpriteRenderer) {
-    let entries: Vec<(u64, Vec<u8>, u32, u32, [f32; 2])> = SOURCE_CACHE.with(|c| {
+    let entries: Vec<(u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode)> = SOURCE_CACHE.with(|c| {
         let mut cache = c.borrow_mut();
         let drained: Vec<_> = cache
             .iter()
-            .map(|(k, v)| (*k, v.pixels.clone(), v.width, v.height, v.size_world))
+            .map(|(k, v)| (*k, v.pixels.clone(), v.width, v.height, v.size_world, v.alpha))
             .collect();
         cache.clear();
         drained
     });
-    for (entity_bits, pixels, w, h, size_world) in entries {
+    for (entity_bits, pixels, w, h, size_world, alpha) in entries {
         let entity = Entity::from_bits(entity_bits);
-        let image = SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight);
+        let image = SpriteImage::from_bytes(w, h, pixels, alpha);
         let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
     }
 }
 
 /// Drop cache entries for entities no longer in the selection, after
-/// restoring each of them to its original pixels.
+/// restoring each of them byte-exact to its original pixels + AlphaMode.
 fn prune_and_revert_unselected(
     selected: &[u64],
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
 ) {
     let live: std::collections::BTreeSet<u64> = selected.iter().copied().collect();
-    let stale: Vec<(u64, Vec<u8>, u32, u32, [f32; 2])> = SOURCE_CACHE.with(|c| {
+    let stale: Vec<(u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode)> = SOURCE_CACHE.with(|c| {
         let mut cache = c.borrow_mut();
         let stale = cache
             .iter()
             .filter(|(k, _)| !live.contains(k))
-            .map(|(k, v)| (*k, v.pixels.clone(), v.width, v.height, v.size_world))
+            .map(|(k, v)| (*k, v.pixels.clone(), v.width, v.height, v.size_world, v.alpha))
             .collect::<Vec<_>>();
         cache.retain(|k, _| live.contains(k));
         stale
     });
-    for (entity_bits, pixels, w, h, size_world) in stale {
+    for (entity_bits, pixels, w, h, size_world, alpha) in stale {
         let entity = Entity::from_bits(entity_bits);
-        let image = SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight);
+        let image = SpriteImage::from_bytes(w, h, pixels, alpha);
         let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
     }
 }

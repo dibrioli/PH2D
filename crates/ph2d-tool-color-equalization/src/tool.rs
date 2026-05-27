@@ -648,16 +648,26 @@ impl Tool for ColorEqualizationTool {
             PanelEvent::Toggle(id, _) if id == ids::CEQ_AUTO_WB => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::ToggleAutoWb);
             }
-            // Denoise method radio — two segmented buttons under Denoise.
-            PanelEvent::Click(id) if id == ids::CEQ_DENOISE_METHOD_BILATERAL => {
-                self.apply_ui_edit(ColorEqualizationUiEdit::SetDenoiseMethod(
-                    crate::params::DenoiseMethod::Bilateral,
-                ));
-            }
-            PanelEvent::Click(id) if id == ids::CEQ_DENOISE_METHOD_NLM => {
-                self.apply_ui_edit(ColorEqualizationUiEdit::SetDenoiseMethod(
-                    crate::params::DenoiseMethod::Nlm,
-                ));
+            // Denoise method dropdown — option click routes to the
+            // matching variant. The 6 IDs in `CEQ_DENOISE_METHOD_OPTS`
+            // are aligned positionally with `DenoiseMethod` so the
+            // lookup is index-based; chip-open toggle is handled by the
+            // shared dispatch on `InteractiveState::Dropdown` (no event
+            // here) and the close is staged via
+            // `pending_close_lut_dropdown` (slot 5 reserved below).
+            PanelEvent::Click(id) if ids::CEQ_DENOISE_METHOD_OPTS.contains(&id) => {
+                use crate::params::DenoiseMethod;
+                let method = match ids::CEQ_DENOISE_METHOD_OPTS.iter().position(|&i| i == id) {
+                    Some(0) => DenoiseMethod::GuidedFilter,
+                    Some(1) => DenoiseMethod::AtrousWavelet,
+                    Some(2) => DenoiseMethod::DomainTransform,
+                    Some(3) => DenoiseMethod::AnisotropicDiffusion,
+                    Some(4) => DenoiseMethod::TotalVariation,
+                    Some(5) => DenoiseMethod::WaveletShrinkage,
+                    _ => DenoiseMethod::default(),
+                };
+                self.apply_ui_edit(ColorEqualizationUiEdit::SetDenoiseMethod(method));
+                self.pending_close_lut_dropdown = Some(5);
             }
             PanelEvent::Click(id) if id == ids::CEQ_APPLY => {
                 self.apply_ui_edit(ColorEqualizationUiEdit::Apply);

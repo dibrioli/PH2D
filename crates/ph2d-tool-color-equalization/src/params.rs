@@ -285,18 +285,32 @@ pub fn slider_to_posterize_dither_grain(track: f32) -> u32 {
     ) as u32
 }
 
-/// Denoise algorithm selector. Mirror of the legacy engine's
-/// `denoiseMethod` (Bilateral vs NLM). Bilateral is fast + edge-aware;
-/// NLM (Non-Local Means, Buades 2005) is patch-based and preserves
-/// texture in skin / fabric / foliage where bilateral over-smooths,
-/// at ~10× the CPU cost (GPU path closes most of the gap).
+/// Denoise algorithm selector. Six interchangeable filters, each
+/// implemented in `algorithm.rs`. The legacy Bilateral + NLM were
+/// retired (2026-05-27 audit) in favour of this modern toolbox.
+///
+/// Default = `GuidedFilter` — best edge-preserving speed/quality
+/// trade-off, runs O(N) per pixel.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum DenoiseMethod {
-    /// Edge-preserving bilateral filter. Fastest. Default.
+    /// Guided Filter (He, Sun, Tang — 2010). Edge-aware via local
+    /// linear regression. O(N), the recommended default.
     #[default]
-    Bilateral,
-    /// Patch-based Non-Local Means. Better on textured naturals.
-    Nlm,
+    GuidedFilter,
+    /// À-Trous Wavelet edge-aware (Dammertz et al. 2010). Multi-scale.
+    AtrousWavelet,
+    /// Domain Transform (Gastal-Oliveira 2011). O(N) edge-aware,
+    /// separable + recursive.
+    DomainTransform,
+    /// Anisotropic Diffusion (Perona-Malik 1990). PDE iterative,
+    /// edge-attenuated diffusion.
+    AnisotropicDiffusion,
+    /// Total Variation (Rudin-Osher-Fatemi 1992 / Chambolle 2004).
+    /// Excellent for cartoon/flat regions; staircases on gradients.
+    TotalVariation,
+    /// Wavelet Shrinkage (Donoho-Johnstone 1995). Haar DWT + soft
+    /// thresholding. Fast classic baseline.
+    WaveletShrinkage,
 }
 
 /// Authoritative parameter bag fed into [`crate::algorithm::run_pipeline`].

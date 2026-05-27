@@ -58,10 +58,23 @@ pub const CEQ_SHARPEN_RADIUS_NUM: NodeId = hash_node_id("color_eq.sharpen_radius
 pub const CEQ_DENOISE_STRENGTH: NodeId = hash_node_id("color_eq.denoise_strength");
 pub const CEQ_DENOISE_STRENGTH_NUM: NodeId = hash_node_id("color_eq.denoise_strength.num");
 
-/// Denoise method radio — two segmented buttons under the Denoise slider.
-/// Click maps to [`crate::params::ColorEqualizationUiEdit::SetDenoiseMethod`].
-pub const CEQ_DENOISE_METHOD_BILATERAL: NodeId = hash_node_id("color_eq.denoise_method.bilateral");
-pub const CEQ_DENOISE_METHOD_NLM: NodeId = hash_node_id("color_eq.denoise_method.nlm");
+/// Denoise method dropdown — one chip under the Denoise slider opens a
+/// popover with six options (the six interchangeable denoisers in
+/// [`crate::algorithm`]). Click on the chip toggles `open`; click on an
+/// option routes to [`crate::params::ColorEqualizationUiEdit::SetDenoiseMethod`].
+pub const CEQ_DENOISE_METHOD_DROPDOWN: NodeId = hash_node_id("color_eq.denoise_method.dropdown");
+
+/// Per-option NodeIds aligned with [`crate::params::DenoiseMethod`] in
+/// the order: GuidedFilter, AtrousWavelet, DomainTransform,
+/// AnisotropicDiffusion, TotalVariation, WaveletShrinkage.
+pub const CEQ_DENOISE_METHOD_OPTS: [NodeId; 6] = [
+    hash_node_id("color_eq.denoise_method.opt.guided_filter"),
+    hash_node_id("color_eq.denoise_method.opt.atrous_wavelet"),
+    hash_node_id("color_eq.denoise_method.opt.domain_transform"),
+    hash_node_id("color_eq.denoise_method.opt.anisotropic_diffusion"),
+    hash_node_id("color_eq.denoise_method.opt.total_variation"),
+    hash_node_id("color_eq.denoise_method.opt.wavelet_shrinkage"),
+];
 
 // ── Phase 3 LUT color grading ─────────────────────────────────────
 // Two grouped-select dropdowns (legacy `createGroupedSelect` parity:

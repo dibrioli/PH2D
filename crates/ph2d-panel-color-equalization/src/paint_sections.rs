@@ -482,11 +482,12 @@ pub(crate) fn paint_posterize_quantize_section(
 // ── Auto-* 2×2 grid ──────────────────────────────────────────────────
 
 /// Auto Levels / Auto Contrast / Auto Colors / Auto WB in a 2×2 grid.
-/// Denoise method radio — two segmented buttons (Bilateral / NLM) on a
-/// single row. Active method is `Accent` + label suffix "On"; inactive is
-/// `Default`. The panel paints this immediately after the Denoise
-/// slider so the relationship is visually obvious. Click is forwarded to
-/// the tool via `PanelEvent::Click` → `SetDenoiseMethod`.
+/// Denoise method dropdown — a single chip "Method: <name>" under the
+/// Denoise slider, opening a popover with the six options in
+/// [`DenoiseMethod`]. Click on the chip auto-toggles `open` (shared
+/// dispatch on `InteractiveState::Dropdown`); option click routes via
+/// `PanelEvent::Click` → `SetDenoiseMethod`. Open popover is deferred to
+/// `paint_pending_popovers` (slot 5).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_denoise_method_section(
     scene: &mut VectorScene,
@@ -498,43 +499,86 @@ pub(crate) fn paint_denoise_method_section(
     layout: SectionLayout,
     y_in: f32,
 ) -> f32 {
-    use ph2d_tool_color_equalization::params::DenoiseMethod;
-    let gap = Spacing::Sm.px();
-    let half = ((layout.inner_w - gap) * 0.5).max(0.0);
-    let entries: [(ph2d_a11y::NodeId, DenoiseMethod, &str, &str); 2] = [
-        (
-            ids::CEQ_DENOISE_METHOD_BILATERAL,
-            DenoiseMethod::Bilateral,
-            "Bilateral",
-            "Bilateral · edge-aware",
-        ),
-        (
-            ids::CEQ_DENOISE_METHOD_NLM,
-            DenoiseMethod::Nlm,
-            "NLM",
-            "NLM · texture-preserving",
-        ),
-    ];
-    for (i, (id, method, off_label, on_label)) in entries.iter().enumerate() {
-        let on = snapshot.denoise_method == *method;
-        let bx = layout.inner_x + (i as f32) * (half + gap);
-        let btn_rect = Rect::new(bx, y_in, half, layout.row_h);
-        let state = if on {
-            ButtonState::Pressed
-        } else {
-            store.button_state(*id).unwrap_or(ButtonState::Normal)
-        };
-        let kind = if on {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        let label = if on { *on_label } else { *off_label };
-        let button = Button::new(*id, label).kind(kind).state(state);
-        paint_button(&button, btn_rect, scene, text_system, theme);
-        hit_index.register(*id, btn_rect);
+    let chip_rect = Rect::new(layout.inner_x, y_in, layout.inner_w, layout.row_h);
+    let open = matches!(
+        store.get(ids::CEQ_DENOISE_METHOD_DROPDOWN),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let state = if open {
+        DropdownState::Focused
+    } else {
+        DropdownState::Normal
+    };
+    let dd = Dropdown::new(
+        ids::CEQ_DENOISE_METHOD_DROPDOWN,
+        format!("Method: {}", denoise_method_label(snapshot.denoise_method)),
+        denoise_method_options(),
+    )
+    .selected(snapshot.denoise_method)
+    .state(state)
+    .open(open);
+    paint_dropdown_chip(&dd, chip_rect, scene, text_system, theme);
+    hit_index.register(ids::CEQ_DENOISE_METHOD_DROPDOWN, chip_rect);
+    if open {
+        state::push_pending_popover(PendingDropdownPopover {
+            slot: 5,
+            chip: chip_rect,
+        });
     }
     y_in + layout.row_h + layout.row_gap
+}
+
+/// Friendly label for the dropdown chip.
+fn denoise_method_label(m: ph2d_tool_color_equalization::params::DenoiseMethod) -> &'static str {
+    use ph2d_tool_color_equalization::params::DenoiseMethod;
+    match m {
+        DenoiseMethod::GuidedFilter => "Guided Filter",
+        DenoiseMethod::AtrousWavelet => "À-Trous Wavelet",
+        DenoiseMethod::DomainTransform => "Domain Transform",
+        DenoiseMethod::AnisotropicDiffusion => "Anisotropic Diffusion",
+        DenoiseMethod::TotalVariation => "Total Variation",
+        DenoiseMethod::WaveletShrinkage => "Wavelet Shrinkage",
+    }
+}
+
+/// Six options for the denoise-method dropdown. Order MUST match
+/// `CEQ_DENOISE_METHOD_OPTS` and `DenoiseMethod` so the tool-side
+/// position lookup works.
+pub(crate) fn denoise_method_options()
+-> Vec<DropdownOption<ph2d_tool_color_equalization::params::DenoiseMethod>> {
+    use ph2d_tool_color_equalization::params::DenoiseMethod;
+    vec![
+        DropdownOption::new(
+            ids::CEQ_DENOISE_METHOD_OPTS[0],
+            DenoiseMethod::GuidedFilter,
+            "Guided Filter",
+        ),
+        DropdownOption::new(
+            ids::CEQ_DENOISE_METHOD_OPTS[1],
+            DenoiseMethod::AtrousWavelet,
+            "À-Trous Wavelet",
+        ),
+        DropdownOption::new(
+            ids::CEQ_DENOISE_METHOD_OPTS[2],
+            DenoiseMethod::DomainTransform,
+            "Domain Transform",
+        ),
+        DropdownOption::new(
+            ids::CEQ_DENOISE_METHOD_OPTS[3],
+            DenoiseMethod::AnisotropicDiffusion,
+            "Anisotropic Diffusion",
+        ),
+        DropdownOption::new(
+            ids::CEQ_DENOISE_METHOD_OPTS[4],
+            DenoiseMethod::TotalVariation,
+            "Total Variation",
+        ),
+        DropdownOption::new(
+            ids::CEQ_DENOISE_METHOD_OPTS[5],
+            DenoiseMethod::WaveletShrinkage,
+            "Wavelet Shrinkage",
+        ),
+    ]
 }
 
 /// Each toggles its own pipeline stage. Accent (pressed) = on.

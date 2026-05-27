@@ -338,13 +338,38 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
                         .register(opt.id, dd.option_rect_in(p.chip, panel_rect, i));
                 }
             }
-            _ => {
+            4 => {
                 let dd = Dropdown::new(
                     ids::CEQ_QUANTIZE_DROPDOWN,
                     "Quantize".to_string(),
                     quantize_options(),
                 )
                 .selected(snapshot_for_popover.quantize_colors)
+                .state(DropdownState::Focused)
+                .open(true);
+                paint_dropdown_popover_in_viewport(
+                    &dd,
+                    p.chip,
+                    Some(viewport),
+                    ctx.scene,
+                    ctx.text_system,
+                    theme,
+                );
+                let panel_rect = dd.popover_rect_clamped(p.chip, viewport);
+                for (i, opt) in dd.options.iter().enumerate() {
+                    ctx.host
+                        .hit_index_mut()
+                        .register(opt.id, dd.option_rect_in(p.chip, panel_rect, i));
+                }
+            }
+            _ => {
+                // slot 5 → denoise method dropdown
+                let dd = Dropdown::new(
+                    ids::CEQ_DENOISE_METHOD_DROPDOWN,
+                    "Denoise Method".to_string(),
+                    crate::paint_sections::denoise_method_options(),
+                )
+                .selected(snapshot_for_popover.denoise_method)
                 .state(DropdownState::Focused)
                 .open(true);
                 paint_dropdown_popover_in_viewport(

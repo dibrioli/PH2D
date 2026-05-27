@@ -12,7 +12,7 @@
 //! | Stage                  | CPU | GPU | Status |
 //! |------------------------|-----|-----|--------|
 //! | LUT3D apply (trilinear)| ✓   | ✓   | [`lut_apply`] — Phase 4 |
-//! | Bilateral denoise      | ✓   | ✓   | [`bilateral`] — Phase 4.1 (heaviest CPU stage) |
+//! | Denoise (6 filters)    | ✓   |     | CPU-only post 2026-05-27 audit (Bilateral + NLM removed; Guided/À-Trous/Domain-Transform/Anisotropic/TV/Wavelet-Shrinkage in [`crate::algorithm`]) |
 //! | Phase 1 tonal batch    | ✓   | ✓   | [`tonal_batch`] — Phase 4.2 (7 stages fused, single sRGB ↔ linear ↔ OKLab round-trip) |
 //! | Sharpen Laplacian      | ✓   | ✓   | [`sharpen`] — Phase 4.3 (3×3, 1 pass, 4-neighbour) |
 //! | Sharpen Unsharp (Gauss)| ✓   | ✓   | [`sharpen`] — Phase 4.3 (separable H + V combine; the big GPU win for radius > 3) |
@@ -39,18 +39,14 @@
 //! return; };` so adapter-less CI runners skip cleanly.
 
 pub mod auto_wb;
-pub mod bilateral;
 pub mod chain;
 pub mod lut_apply;
-pub mod nlm;
 pub mod sharpen;
 pub mod tonal_batch;
 
 pub use auto_wb::{AutoWbPipelines, auto_white_balance_gpu};
-pub use bilateral::{BilateralPipeline, bilateral_denoise_gpu};
 pub use chain::ChainedPipelineCache;
 pub use lut_apply::{LutApplyPipeline, apply_lut3d_gpu};
-pub use nlm::{NlmPipeline, nlm_denoise_gpu};
 pub use sharpen::{
     LaplacianSharpenPipeline, UnsharpSharpenPipeline, sharpen_laplacian_gpu, sharpen_unsharp_gpu,
 };

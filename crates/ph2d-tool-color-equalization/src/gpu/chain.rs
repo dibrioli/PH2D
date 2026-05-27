@@ -63,16 +63,17 @@ enum Pong {
     B,
 }
 
-/// All six compiled GPU pipelines cached together. Tool keeps one
-/// instance per device; pipeline compile (~10-20 ms total) is paid once.
+/// Compiled GPU pipelines cached together. Tool keeps one instance per
+/// device; pipeline compile (~10-20 ms total) is paid once.
+///
+/// Denoise is **CPU-only** after the 2026-05-27 audit (Bilateral + NLM
+/// retired in favour of 6 modern filters in [`crate::algorithm`]). The
+/// chain leaves denoise as a post-step the caller runs on the CPU output
+/// of `run_chained` — until a follow-up port any of the new filters to
+/// WGSL.
 pub struct ChainedPipelineCache {
     pub tonal: TonalBatchPipeline,
     pub lut: LutApplyPipeline,
-    pub bilateral: BilateralPipeline,
-    /// Non-Local Means denoise (Tier S, parity with legacy
-    /// `denoise-webgl.ts`). Selected at chain dispatch by
-    /// `params.denoise_method`.
-    pub nlm: super::nlm::NlmPipeline,
     pub laplacian: LaplacianSharpenPipeline,
     pub unsharp: UnsharpSharpenPipeline,
     pub auto_wb: AutoWbPipelines,
@@ -83,8 +84,6 @@ impl ChainedPipelineCache {
         Self {
             tonal: TonalBatchPipeline::new(gpu),
             lut: LutApplyPipeline::new(gpu),
-            bilateral: BilateralPipeline::new(gpu),
-            nlm: super::nlm::NlmPipeline::new(gpu),
             laplacian: LaplacianSharpenPipeline::new(gpu),
             unsharp: UnsharpSharpenPipeline::new(gpu),
             auto_wb: AutoWbPipelines::new(gpu),
@@ -133,7 +132,9 @@ impl ChainedPipelineCache {
 
         let needs_tonal = !params.tonal_is_identity();
         let needs_lut = !params.lut_is_identity();
-        let needs_bilateral = params.denoise_strength > 0.0;
+        // Denoise is CPU-only now (2026-05-27 audit). We track the flag
+        // so the post-chain CPU step knows when to run.
+        let needs_denoise = params.denoise_strength > 0.0;
         let needs_sharpen = params.sharpen_amount > 0.0;
         let needs_auto_levels = params.auto_levels;
         let needs_auto_contrast = params.auto_contrast;
@@ -141,11 +142,12 @@ impl ChainedPipelineCache {
         let needs_auto_wb = params.auto_wb;
         let needs_posterize = params.posterize_levels >= algorithm::POSTERIZE_LEVELS_MIN;
         let needs_quantize = params.quantize_colors >= algorithm::QUANTIZE_COLORS_MIN;
-        let any_gpu_stage = needs_tonal || needs_lut || needs_bilateral || needs_sharpen;
+        let any_gpu_stage = needs_tonal || needs_lut || needs_sharpen;
         let any_cpu_auto = needs_auto_levels || needs_auto_contrast || needs_auto_colors;
         let any_cpu_after_wb = needs_posterize || needs_quantize;
 
-        if !any_gpu_stage && !any_cpu_auto && !needs_auto_wb && !any_cpu_after_wb {
+        if !any_gpu_stage && !any_cpu_auto && !needs_auto_wb && !any_cpu_after_wb && !needs_denoise
+        {
             return stages;
         }
 
@@ -212,35 +214,8 @@ impl ChainedPipelineCache {
                     (current_in, current_out) = advance(current_in, current_out);
                 }
             }
-            if needs_bilateral {
-                match params.denoise_method {
-                    crate::params::DenoiseMethod::Bilateral => {
-                        self.bilateral.encode_into(
-                            gpu,
-                            &mut encoder,
-                            pong_view(current_in, &input_view, &view_a, &view_b),
-                            pong_view(current_out, &input_view, &view_a, &view_b),
-                            w,
-                            h,
-                            params.denoise_strength,
-                        );
-                    }
-                    crate::params::DenoiseMethod::Nlm => {
-                        self.nlm.encode_into(
-                            gpu,
-                            &mut encoder,
-                            pong_view(current_in, &input_view, &view_a, &view_b),
-                            pong_view(current_out, &input_view, &view_a, &view_b),
-                            w,
-                            h,
-                            params.denoise_strength,
-                        );
-                    }
-                }
-                stages += 1;
-                last_written = current_out;
-                (current_in, current_out) = advance(current_in, current_out);
-            }
+            // Denoise stage no longer on GPU — handled as a CPU post-step
+            // after the chain. See `needs_denoise` block at the tail.
             if needs_sharpen {
                 if params.sharpen_radius <= 1.0 {
                     self.laplacian.encode_into(
@@ -281,6 +256,36 @@ impl ChainedPipelineCache {
                 w,
                 h,
             );
+        }
+
+        // ── 5.5 CPU denoise post-stage (Bilateral/NLM retired). ──────
+        // Six interchangeable filters in [`crate::algorithm`]; method
+        // picked by `params.denoise_method`. Runs AFTER tonal/LUT/sharpen
+        // so it operates on the GPU output (already in `rgba`). Order
+        // matches `algorithm::run_pipeline`.
+        if needs_denoise {
+            use crate::params::DenoiseMethod;
+            match params.denoise_method {
+                DenoiseMethod::GuidedFilter => {
+                    algorithm::guided_filter_denoise(rgba, w, h, params.denoise_strength);
+                }
+                DenoiseMethod::AtrousWavelet => {
+                    algorithm::atrous_wavelet_denoise(rgba, w, h, params.denoise_strength);
+                }
+                DenoiseMethod::DomainTransform => {
+                    algorithm::domain_transform_denoise(rgba, w, h, params.denoise_strength);
+                }
+                DenoiseMethod::AnisotropicDiffusion => {
+                    algorithm::anisotropic_diffusion_denoise(rgba, w, h, params.denoise_strength);
+                }
+                DenoiseMethod::TotalVariation => {
+                    algorithm::total_variation_denoise(rgba, w, h, params.denoise_strength);
+                }
+                DenoiseMethod::WaveletShrinkage => {
+                    algorithm::wavelet_shrinkage_denoise(rgba, w, h, params.denoise_strength);
+                }
+            }
+            stages += 1;
         }
 
         // ── 6. CPU auto-* normalisations ─────────────────────────────
@@ -561,7 +566,12 @@ mod tests {
     }
 
     #[test]
-    fn chain_bilateral_only_matches_cpu() {
+    fn chain_denoise_only_matches_cpu() {
+        // Denoise is CPU-only after the 2026-05-27 audit; the chain's
+        // post-step calls `crate::algorithm::guided_filter_denoise` (or
+        // the picked method). Parity is trivially exact because both
+        // sides run the same CPU function — but we keep the smoke test
+        // so a future GPU port has a target.
         let Some(gpu) = try_headless_gpu() else {
             return;
         };
@@ -571,7 +581,7 @@ mod tests {
             denoise_strength: 0.5,
             ..Default::default()
         };
-        assert_chain_parity(&gpu, &cache, &buf, 32, 32, &params, 3, "bilateral-only");
+        assert_chain_parity(&gpu, &cache, &buf, 32, 32, &params, 1, "denoise-cpu-post");
     }
 
     #[test]

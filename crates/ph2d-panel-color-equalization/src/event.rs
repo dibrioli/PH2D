@@ -70,12 +70,16 @@ fn is_dropdown_option(id: NodeId) -> bool {
         || ids::CEQ_LUT_2_OPTS.contains(&id)
         || ids::CEQ_POSTERIZE_OPTS.contains(&id)
         || ids::CEQ_QUANTIZE_OPTS.contains(&id)
+        || ids::CEQ_DENOISE_METHOD_OPTS.contains(&id)
 }
 
 /// All buttons + toggles that need to forward `Click` (and `Toggle`,
 /// for the toggleable buttons) to the tool. Cancel is handled
 /// separately because it raises `CancelActiveTool` instead of a tool
-/// panel event.
+/// panel event. The denoise-method dropdown chip is NOT forwarded —
+/// its `Click` toggles the dropdown's `open` flag via the shared
+/// `apply_click` path, and option clicks are forwarded by
+/// `is_dropdown_option` above.
 const FORWARD_CLICK_IDS: &[NodeId] = &[
     ids::CEQ_APPLY,
     ids::CEQ_RESET,
@@ -84,8 +88,6 @@ const FORWARD_CLICK_IDS: &[NodeId] = &[
     ids::CEQ_AUTO_COLORS,
     ids::CEQ_AUTO_WB,
     ids::CEQ_POSTERIZE_DITHERING,
-    ids::CEQ_DENOISE_METHOD_BILATERAL,
-    ids::CEQ_DENOISE_METHOD_NLM,
 ];
 
 pub(crate) fn apply_event(

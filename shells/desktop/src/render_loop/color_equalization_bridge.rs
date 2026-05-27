@@ -377,7 +377,8 @@ fn apply_dropdown_close(slot: u8, hero: &mut HeroScreen) {
         1 => ph2d_tool_color_equalization::ids::CEQ_LUT_1_DROPDOWN,
         2 => ph2d_tool_color_equalization::ids::CEQ_LUT_2_DROPDOWN,
         3 => ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
-        _ => ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
+        4 => ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
+        _ => ph2d_tool_color_equalization::ids::CEQ_DENOISE_METHOD_DROPDOWN,
     };
     if let Some(ph2d_editor::InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(chip_id)
     {

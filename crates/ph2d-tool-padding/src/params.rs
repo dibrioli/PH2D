@@ -70,7 +70,12 @@ impl Default for PaddingUiSnapshot {
 /// calls `PaddingTool::handle_panel_event`, which maps the `NodeId` back
 /// to one of these variants and forwards it to `apply_ui_edit`. Inverse
 /// of `PaddingTool::ui_snapshot`.
+///
+/// **Audit T1.6 R9 V1-H2:** `#[non_exhaustive]` mirrors the
+/// `BgRemovalUiEdit` precedent (R7 I1-1) — additive variants no
+/// longer semver-break downstream `match`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PaddingUiEdit {
     /// Top edge field edited (signed px).
     Top(i32),

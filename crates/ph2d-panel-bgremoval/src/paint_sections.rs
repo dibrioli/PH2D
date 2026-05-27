@@ -222,6 +222,51 @@ pub(crate) fn paint_eyedropper_swatches(
     row_gap: f32,
     mut y: f32,
 ) -> f32 {
+    // Lens-F follow-up (Enio 2026-05-26): Pick Colors doesn't apply
+    // when Detect Subject is on — the silhouette path bypasses the
+    // chroma backend entirely. Repurpose this slot as the "Add area"
+    // toggle that arms the automatic flood-fill selector (single click
+    // on canvas → algorithm picks the connected same-colour region
+    // into the force-remove mask). When Detect Subject is off, paint
+    // the original eyedropper toggle.
+    if snapshot.auto_protect_subject {
+        let add_area_state = if snapshot.add_area_armed {
+            ButtonState::Pressed
+        } else {
+            store
+                .button_state(ids::BGR_ADD_AREA)
+                .unwrap_or(ButtonState::Normal)
+        };
+        let add_area_kind = if snapshot.add_area_armed {
+            ButtonKind::Accent
+        } else {
+            ButtonKind::Default
+        };
+        let add_area_rect = Rect::new(inner_x, y, inner_w, row_h);
+        let add_area = Button::new(ids::BGR_ADD_AREA, "Add area")
+            .kind(add_area_kind)
+            .state(add_area_state);
+        paint_button(&add_area, add_area_rect, scene, text_system, theme);
+        hit_index.register(ids::BGR_ADD_AREA, add_area_rect);
+        y += row_h + row_gap;
+
+        // Clear button — visible only when the user has filled any
+        // force-remove pixels (mirror of `BGR_PROTECT_CLEAR`).
+        if snapshot.has_force_remove_mask {
+            let clear_state = store
+                .button_state(ids::BGR_ADD_AREA_CLEAR)
+                .unwrap_or(ButtonState::Normal);
+            let clear_rect = Rect::new(inner_x, y, inner_w, row_h);
+            let clear = Button::new(ids::BGR_ADD_AREA_CLEAR, "Clear added areas")
+                .kind(ButtonKind::Default)
+                .state(clear_state);
+            paint_button(&clear, clear_rect, scene, text_system, theme);
+            hit_index.register(ids::BGR_ADD_AREA_CLEAR, clear_rect);
+            y += row_h + row_gap;
+        }
+        return y;
+    }
+
     let eyedropper_state = if snapshot.eyedropper_armed {
         ButtonState::Pressed
     } else {

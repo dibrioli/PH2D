@@ -303,6 +303,20 @@ pub struct BgRemovalUiSnapshot {
     /// Mirrors [`BgRemovalParams::auto_protect_subject`]. Drives the
     /// "Detect subject" toggle button's pressed look in the panel.
     pub auto_protect_subject: bool,
+    /// Whether the "Add area" automatic selector is armed (Enio
+    /// 2026-05-26). When `true`, a single click on the canvas runs a
+    /// flood-fill from the clicked source pixel and writes the
+    /// connected same-colour region into the force-remove mask —
+    /// symmetric to the eyedropper's arm-then-single-click pattern,
+    /// not a brush. Drives the toggle button shown in the
+    /// eyedropper-row slot when Detect Subject is on (Pick Colors
+    /// doesn't apply to the silhouette path, so the slot is
+    /// repurposed for this destructive selector).
+    pub add_area_armed: bool,
+    /// Whether the force-remove mask currently holds any filled
+    /// pixels — drives the "Clear added area" button's visibility
+    /// (mirror of `has_protect_mask`).
+    pub has_force_remove_mask: bool,
 }
 
 impl Default for BgRemovalUiSnapshot {
@@ -330,6 +344,8 @@ impl Default for BgRemovalUiSnapshot {
             min_island_pixels01: (p.min_island_pixels.saturating_sub(1) as f32)
                 / (MIN_ISLAND_PIXELS_FULL_SCALE - 1.0),
             auto_protect_subject: p.auto_protect_subject,
+            add_area_armed: false,
+            has_force_remove_mask: false,
         }
     }
 }
@@ -392,6 +408,13 @@ pub enum BgRemovalUiEdit {
     /// [`BgRemovalParams::auto_protect_subject`] (edge-aware silhouette
     /// upgrade; Enio 2026-05-26).
     ToggleAutoProtectSubject,
+    /// "Add area" toggle clicked — flips the automatic flood-fill
+    /// selector's armed state. Mutex with the eyedropper + protect
+    /// brush (Enio 2026-05-26).
+    ToggleAddArea,
+    /// Clear-added-areas button pressed — wipes the entire force-
+    /// remove mask. Mirror of [`Self::ClearProtectMask`].
+    ClearAddedAreas,
 }
 
 #[cfg(test)]

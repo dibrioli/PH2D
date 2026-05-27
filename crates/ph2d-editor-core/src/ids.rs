@@ -287,6 +287,19 @@ pub const BGR_EYEDROPPER: NodeId = hash_node_id("bgr_eyedropper");
 pub const BGR_PROTECT: NodeId = hash_node_id("bgr_protect");
 /// Clear-protection button — wipes the painted protection mask.
 pub const BGR_PROTECT_CLEAR: NodeId = hash_node_id("bgr_protect_clear");
+/// "Add area" toggle — when armed, a single click on the canvas runs a
+/// flood-fill from the clicked source pixel, expanding to every
+/// 4-connected neighbour whose RGB is within a threshold of the seed,
+/// and marks the connected region in the FORCE-REMOVE mask: those
+/// pixels are forced to alpha=0 in the final compose, overriding both
+/// the silhouette auto-protect AND the user's protect-brush mask.
+/// Shown in the eyedropper row's slot ONLY when `auto_protect_subject`
+/// is on (Pick Colors doesn't apply to the silhouette path, so the slot
+/// is repurposed for this automatic destructive selector — Enio
+/// 2026-05-26). Symmetric to the eyedropper: arm → single click → done.
+pub const BGR_ADD_AREA: NodeId = hash_node_id("bgr_add_area");
+/// Clear button for the force-remove mask — mirror of `BGR_PROTECT_CLEAR`.
+pub const BGR_ADD_AREA_CLEAR: NodeId = hash_node_id("bgr_add_area_clear");
 /// Show-mask toggle — shows/hides the on-canvas protection-mask overlay
 /// tint (so the user can preview the clean result without the tint, or
 /// turn it back on to keep painting).

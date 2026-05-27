@@ -37,6 +37,15 @@ pub fn populate(store: &mut WidgetStore) {
         // doesn't recognise the id as a clickable button and the
         // click is silently dropped.
         ids::BGR_AUTO_PROTECT_SUBJECT,
+        // "Add area" toggle + its Clear button (Enio 2026-05-26) —
+        // symmetric to the eyedropper: arm → single click → flood-
+        // fill writes the connected same-colour region into the
+        // force-remove mask. Shown in the eyedropper-row slot when
+        // Detect Subject is on. Same dispatcher-register requirement
+        // as every other clickable id (see BGR_AUTO_PROTECT_SUBJECT
+        // comment above).
+        ids::BGR_ADD_AREA,
+        ids::BGR_ADD_AREA_CLEAR,
     ] {
         store.register(
             id,

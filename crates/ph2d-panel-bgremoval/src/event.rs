@@ -106,6 +106,8 @@ fn is_bgr_click(id: NodeId) -> bool {
         || id == ids::BGR_SHOW_MASK
         || id == ids::BGR_SEPARATE_ISLANDS
         || id == ids::BGR_AUTO_PROTECT_SUBJECT
+        || id == ids::BGR_ADD_AREA
+        || id == ids::BGR_ADD_AREA_CLEAR
 }
 
 fn reset_button(host: &mut dyn PanelHostInternal, id: NodeId) {

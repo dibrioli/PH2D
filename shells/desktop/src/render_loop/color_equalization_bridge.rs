@@ -202,6 +202,19 @@ pub(super) fn dispatch(
                 SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight).into_premultiplied();
             let _ = texture_edit::commit_edited_texture(entity, sim, renderer, &image, size_world);
         }
+        // `collect_live_bakes` called `set_source` on the tool to feed
+        // the pipeline, and that helper re-armed `params_dirty` (see
+        // `ColorEqualizationTool::set_source_snapshot`). Without
+        // draining it again here, the NEXT frame would see dirty=true
+        // and re-bake (with identical params) every frame — FPS=1 with
+        // NLM on. Drain once to break the loop.
+        if let Some(tool) = tools.active_mut()
+            && let Some(ceq) = tool
+                .as_any_mut()
+                .downcast_mut::<ph2d_tool_color_equalization::ColorEqualizationTool>()
+        {
+            let _ = ceq.take_params_dirty();
+        }
     }
 
     if let Some(slot) = close_dropdown {

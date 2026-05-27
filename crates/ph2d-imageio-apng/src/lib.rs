@@ -160,7 +160,7 @@ impl ImageImporter for ApngImporter {
 
         let animation_control = info.animation_control().copied();
         let post_expand_color = info.color_type;
-        drop(info); // releases the borrow before next_frame
+        let _ = info; // releases the borrow before next_frame
 
         match animation_control {
             None => {
@@ -209,7 +209,7 @@ fn read_one_frame(
     // Per-frame metadata via fcTL (animation control sub-chunks).
     let info = reader.info();
     let fc = info.frame_control().copied();
-    drop(info);
+    let _ = info;
 
     let (frame_w, frame_h) = (output_info.width, output_info.height);
     let offset_xy = fc
@@ -600,6 +600,81 @@ mod tests {
             .import(&[], &ImportOpts::default())
             .expect_err("empty");
         assert!(matches!(err, Error::Truncated));
+    }
+
+    /// W3 pre-gate fixture (audit C-1 + Lens C): exercise the
+    /// multi-frame decode path. Uses `png` 0.18's APNG encoder
+    /// (`set_animated` + `write_image_data` × N) to synthesize a
+    /// real 2-frame 2×2 APNG, then asserts our importer extracts
+    /// 2 frames with correct delays + offsets + dispose/blend ops.
+    #[test]
+    fn import_of_2_frame_apng_extracts_metadata() {
+        let mut bytes: Vec<u8> = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(Cursor::new(&mut bytes), 2, 2);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder.set_animated(2, 0).expect("set_animated");
+            // Frame 1: delay = 100ms (numer=100, denom=1000).
+            encoder.set_frame_delay(100, 1000).expect("frame 1 delay");
+            let mut writer = encoder.write_header().expect("write_header");
+            // Frame 1 data: 4 pixels red.
+            writer
+                .write_image_data(&[
+                    255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255,
+                ])
+                .expect("frame 1 IDAT");
+            // Frame 2: delay = 200ms.
+            writer.set_frame_delay(200, 1000).expect("frame 2 delay");
+            writer
+                .write_image_data(&[
+                    0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255,
+                ])
+                .expect("frame 2 fdAT");
+            writer.finish().expect("finish");
+        }
+
+        // Sanity: the synthesized buffer is a real APNG.
+        assert!(has_actl_chunk(&bytes), "synthesized APNG must have acTL");
+
+        let decoded = ApngImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("APNG import");
+        let DecodedImage::Animated(frames) = decoded else {
+            panic!("expected Animated for 2-frame APNG, got {decoded:?}");
+        };
+        assert_eq!(frames.len(), 2, "should extract 2 frames");
+        // delay_num=100, delay_den=1000 → delay_ms = 100 * 1000 / 1000 = 100.
+        assert_eq!(frames[0].delay_ms, 100, "frame 0 delay_ms");
+        assert_eq!(frames[1].delay_ms, 200, "frame 1 delay_ms");
+        // Frames at full canvas position.
+        assert_eq!(frames[0].offset_xy, (0, 0));
+        assert_eq!(frames[1].offset_xy, (0, 0));
+        // Per-frame pixel sanity.
+        assert_eq!(frames[0].image.pixels[0].0, [255, 0, 0, 255]);
+        assert_eq!(frames[1].image.pixels[0].0, [0, 255, 0, 255]);
+    }
+
+    /// W3 pre-gate (HR-9 cross-platform determinism): pin blake3
+    /// hash of canonical APNG (single-frame) export.
+    #[test]
+    fn export_golden_blake3_pinned() {
+        let original = fixture_2x2([200, 100, 50, 255]);
+        let opts = ExportOpts {
+            format: ExportFormat::Apng,
+            ..ExportOpts::default()
+        };
+        let bytes = ApngExporter
+            .export(&DecodedImage::Flat(original), &opts)
+            .expect("APNG golden export");
+        let hash = blake3::hash(&bytes);
+        const GOLDEN_BLAKE3: &str =
+            "9e683a5d773937c9ec0430de37f512909e835f787ceff258aa54a0325f03c8c8";
+        assert_eq!(
+            hash.to_hex().to_string(),
+            GOLDEN_BLAKE3,
+            "HR-9 cross-platform: APNG single-frame export blake3 drifted"
+        );
     }
 
     /// HR-5 byte-exact determinism (single-frame path; multi-frame

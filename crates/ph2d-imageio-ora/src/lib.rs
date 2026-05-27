@@ -905,6 +905,36 @@ mod tests {
         );
     }
 
+    /// W3 pre-gate (HR-9 cross-platform determinism): pin blake3
+    /// hash of canonical ORA export. ORA touches ZIP DEFLATE + image
+    /// PNG encoder + hand-written XML — multiple determinism layers.
+    /// CI matrix divergence = regression in any of those.
+    #[test]
+    fn export_golden_blake3_pinned() {
+        let stack = LayerStack {
+            version: 1,
+            canvas_width: 2,
+            canvas_height: 2,
+            layers: vec![make_pixel_layer("L1", [200, 100, 50, 255])],
+            color_profile: ColorProfile::Srgb,
+        };
+        let opts = ExportOpts {
+            format: ExportFormat::Ora,
+            ..ExportOpts::default()
+        };
+        let bytes = OraExporter
+            .export(&DecodedImage::Layered(stack), &opts)
+            .expect("ORA golden export");
+        let hash = blake3::hash(&bytes);
+        const GOLDEN_BLAKE3: &str =
+            "98753d06b9b4c700270f3995c39073e3fc71c5c5f3ce1370ed8fac015b8352b5";
+        assert_eq!(
+            hash.to_hex().to_string(),
+            GOLDEN_BLAKE3,
+            "HR-9 cross-platform: ORA export blake3 drifted"
+        );
+    }
+
     /// HR-5 byte-exact determinism: `image-zip` 2 + our hand-written
     /// XML + image-PNG encoder all deterministic; whole ORA bytes
     /// reproducible across runs.

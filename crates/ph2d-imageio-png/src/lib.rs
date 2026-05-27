@@ -472,6 +472,36 @@ mod tests {
     // Sanity range for the bomb-defence cap moved to
     // `ph2d_imageio::limits` per audit B-H2 (single source of truth).
 
+    /// W3 pre-gate (HR-9 cross-platform determinism): pin the blake3
+    /// hash of canonical PNG export bytes so a Linux↔macOS↔Windows
+    /// CI matrix divergence trips this test loud — not silent.
+    ///
+    /// If this test FAILS:
+    /// - Local first-time setup: copy the actual `0x...` hash printed
+    ///   in the assertion message into `GOLDEN_BLAKE3` const + commit.
+    /// - CI cross-OS divergence: real regression — encoder picked up
+    ///   non-determinism (timestamp, SIMD-divergent compress, thread
+    ///   scheduling). Investigate; pin via direct codec API if needed.
+    #[test]
+    fn export_golden_blake3_pinned() {
+        let original = fixture_2x2();
+        let opts = ExportOpts {
+            format: ExportFormat::Png,
+            ..ExportOpts::default()
+        };
+        let bytes = PngExporter
+            .export(&DecodedImage::Flat(original), &opts)
+            .expect("PNG golden export");
+        let hash = blake3::hash(&bytes);
+        const GOLDEN_BLAKE3: &str =
+            "30c1a80e53ed388661fe752c2845d5f220248071685cfb5fd89761cd601ceaa9";
+        assert_eq!(
+            hash.to_hex().to_string(),
+            GOLDEN_BLAKE3,
+            "HR-9 cross-platform: PNG export blake3 drifted"
+        );
+    }
+
     #[test]
     fn export_rejects_hdr_with_actionable_error() {
         // HR-6 derived: silent clipping of HDR to LDR is a data-loss

@@ -195,6 +195,28 @@ spawn_sprite_from(img, gfx);                                     // resultado va
 
 ADR-0040 §4 "sem variant per-feature" continua o norte. Import/export simplesmente nunca foi candidato a variant.
 
+### 2.6 `DecodedImage` variant policy — **collapse-when-trivial** (W3.0 gate ratificado 2026-05-26)
+
+Quando um format container que **pode** carregar multi-frame / multi-page / multi-layer recebe um arquivo trivial (1 frame / 1 page / 1 layer flat), qual variant de [`DecodedImage`] retornar?
+
+**Decisão**: **collapse-when-trivial**. Single-trivial-content → [`DecodedImage::Flat`] (ou `FlatHdr` para HDR). Multi-content → variant containerizado correspondente.
+
+| Format | Single | Multi |
+|---|---|---|
+| **PNG / JPEG / WebP / BMP** | `Flat` (não-multi nativo) | n/a |
+| **GIF** | `Flat` (1ª frame) | `Animated(Vec<AnimFrame>)` |
+| **APNG** | `Flat` (1ª frame se `acTL` ausente OR `acTL.num_frames == 1`) | `Animated` |
+| **TIFF** | `Flat` (single page) | `Layered` (multi-page → layers) |
+| **ORA** | `Layered` com 1 layer | `Layered` com N layers |
+| **PSD** | `Layered` com 1 layer (sempre) | `Layered` |
+| **.ph2d-native** | preserva variant do source byte-exact | idem |
+
+**Por quê collapse-when-trivial?** Reduz fricção no caller comum (95% do uso é flat raster); não perde informação (`Layered` com 1 layer e `Flat` carregam mesmo pixel data); rotas multi-* só aparecem quando o source as exigiu.
+
+**Exceção ORA/PSD**: por design carregam **stack semantics** (mesmo single-layer tem layer-name + opacity + blend mode). Manter `Layered` preserva metadata que collapse para `Flat` perderia. Caller que quer flat de ORA/PSD pode chamar helper `decoded.flatten()` (W3+ amendment se cliente real demandar).
+
+**Audit-aware**: a nova auditoria (Lens C HR-3) flaggava inconsistência entre formats. Esta amendment **alinha o invariant** sem refactor de código já shipado (a tabela acima descreve o status quo dos 9 format crates).
+
 ### 2.5 HR cumpridas
 
 - **HR-1** (platform-agnostic): contrato puro Rust; libs C explicitamente proibidas (HEIC descartado por isso).

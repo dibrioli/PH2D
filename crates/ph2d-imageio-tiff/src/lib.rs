@@ -709,6 +709,85 @@ mod tests {
     /// HR-5 byte-exact determinism: tiff 0.11 encoder must be
     /// deterministic. If this fails post-upgrade, document exception
     /// or pin via direct write_tag API.
+    /// W3 pre-gate fixture (audit C/H-3): exercise the CMYK8 decode
+    /// branch with a real TIFF fixture produced by `tiff` 0.11
+    /// encoder. Builds a 1×1 pure-cyan (C=255, M=0, Y=0, K=0) →
+    /// expect post-naive-conversion (R = 0, G=255, B=255, A=255).
+    #[test]
+    fn cmyk8_decode_via_naive_conversion() {
+        use tiff::encoder::{TiffEncoder, colortype::CMYK8};
+        let mut bytes: Vec<u8> = Vec::new();
+        {
+            let mut encoder = TiffEncoder::new(Cursor::new(&mut bytes)).expect("encoder init");
+            // 1×1 pure-cyan + opaque: C=255, M=0, Y=0, K=0.
+            encoder
+                .write_image::<CMYK8>(1, 1, &[255, 0, 0, 0])
+                .expect("write CMYK8");
+        }
+        let DecodedImage::Flat(out) = TiffImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("CMYK decode")
+        else {
+            panic!("expected Flat");
+        };
+        // Naive CMYK→RGB: R = (255-C) * (255-K) / 255 = 0 * 255 / 255 = 0.
+        //                 G = (255-0) * 255 / 255 = 255.
+        //                 B = (255-0) * 255 / 255 = 255.
+        //                 A = 255 (synthesized).
+        assert_eq!(out.pixels[0].0, [0, 255, 255, 255]);
+    }
+
+    /// W3 pre-gate fixture: exercise the 16-bit RGBA decode branch.
+    /// Builds a 1×1 with mid-grey 0x8080 channels; expect linear
+    /// quantization to ~128 (audit-aware fórmula
+    /// `(v*255+32767)/65535`).
+    #[test]
+    fn rgba16_decode_quantizes_to_8bit() {
+        use tiff::encoder::{TiffEncoder, colortype::RGBA16};
+        let mut bytes: Vec<u8> = Vec::new();
+        {
+            let mut encoder = TiffEncoder::new(Cursor::new(&mut bytes)).expect("encoder init");
+            encoder
+                .write_image::<RGBA16>(1, 1, &[0x8080, 0x8080, 0x8080, 0xFFFF])
+                .expect("write RGBA16");
+        }
+        let DecodedImage::Flat(out) = TiffImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("RGBA16 decode")
+        else {
+            panic!("expected Flat");
+        };
+        // Mid-grey 0x8080 → ~128 (within ±1 for rounding flavour).
+        let mid = out.pixels[0].0;
+        for (i, &v) in mid.iter().take(3).enumerate() {
+            assert!((127..=129).contains(&v), "channel {i} = {v}; expected ~128");
+        }
+        assert_eq!(mid[3], 255);
+    }
+
+    /// W3 pre-gate (HR-9 cross-platform determinism): pin blake3
+    /// hash of canonical TIFF export. CI matrix divergence later =
+    /// real regression in tiff 0.11 encoder cross-OS.
+    #[test]
+    fn export_golden_blake3_pinned() {
+        let original = fixture_2x2([200, 100, 50, 255]);
+        let opts = ExportOpts {
+            format: ExportFormat::Tiff,
+            ..ExportOpts::default()
+        };
+        let bytes = TiffExporter
+            .export(&DecodedImage::Flat(original), &opts)
+            .expect("TIFF golden export");
+        let hash = blake3::hash(&bytes);
+        const GOLDEN_BLAKE3: &str =
+            "9f1a5aceb551cd5e1be277da9c50de091d5fe45a99ddb2b65bc1af1ecee33d17";
+        assert_eq!(
+            hash.to_hex().to_string(),
+            GOLDEN_BLAKE3,
+            "HR-9 cross-platform: TIFF export blake3 drifted"
+        );
+    }
+
     #[test]
     fn export_is_byte_exact_deterministic() {
         let original = fixture_2x2([42, 84, 126, 255]);

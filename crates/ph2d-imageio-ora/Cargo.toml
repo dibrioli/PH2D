@@ -26,3 +26,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 roxmltree = { version = "0.20", default-features = false }
 # PNG codec for the per-layer images embedded in the ZIP.
 image = { version = "0.25", default-features = false, features = ["png"] }
+
+[dev-dependencies]
+# W3 pre-gate (HR-9 cross-platform determinism).
+blake3 = { version = "1", default-features = false }

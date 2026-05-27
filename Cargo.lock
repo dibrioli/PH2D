@@ -4103,6 +4103,7 @@ dependencies = [
 name = "ph2d-imageio-apng"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "image",
  "ph2d-color",
  "ph2d-imageio",
@@ -4131,6 +4132,7 @@ dependencies = [
 name = "ph2d-imageio-ora"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "image",
  "ph2d-color",
  "ph2d-imageio",
@@ -4153,6 +4155,7 @@ dependencies = [
 name = "ph2d-imageio-png"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "image",
  "ph2d-color",
  "ph2d-imageio",
@@ -4192,6 +4195,7 @@ version = "0.0.0"
 name = "ph2d-imageio-tiff"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "ph2d-color",
  "ph2d-imageio",
  "tiff",

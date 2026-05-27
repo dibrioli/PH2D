@@ -20,3 +20,10 @@ authors.workspace = true
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
 tiff = { version = "0.11", default-features = false, features = ["deflate", "lzw"] }
+
+[dev-dependencies]
+# W3 pre-gate (HR-9 cross-platform determinism): pin blake3 hashes of
+# canonical export bytes so a CI matrix divergence (Linux vs macOS vs
+# Windows produces different encoder output) trips a loud test, not a
+# silent drift.
+blake3 = { version = "1", default-features = false }

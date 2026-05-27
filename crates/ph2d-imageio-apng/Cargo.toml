@@ -25,3 +25,7 @@ png = { version = "0.18", default-features = false }
 # image 0.25 reused for the single-frame encode (consistent with
 # PNG/JPEG/WebP/GIF crates).
 image = { version = "0.25", default-features = false, features = ["png"] }
+
+[dev-dependencies]
+# W3 pre-gate (HR-9 cross-platform determinism).
+blake3 = { version = "1", default-features = false }

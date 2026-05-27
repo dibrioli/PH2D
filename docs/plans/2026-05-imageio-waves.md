@@ -61,9 +61,9 @@ Executado 2026-05-26 (Coord-A): `cargo search qcms / moxcms / lcms2 / appthere-c
 
 ### W2.0 — Pré-fan-out (Coord-A, 1 sessão)
 
-- **W2.0.1** — ICC profile parsing ativo. `ph2d-imageio::ColorProfile::Custom(IccBytes)` populado por importers que carregam ICC; conversão sRGB/P3/AdobeRGB/ProPhoto ↔ OKLCH internal via `qcms` 0.x (Mozilla puro-Rust) ou `lcms2-rs`. **Decisão**: `qcms` (Mozilla-maintained, mais simples).
-- **W2.0.2** — `LayerStack` expansão. Blend modes alinhados a `RenderingMode = 6 FROZEN` (ADR-0044/0046 Painter); opacity, mask, clipping, group, lock.
-- **W2.0.3** — ADR-0054 amendment §W2: ICC pipeline ativo; HEIC descartado com rationale.
+- **W2.0.1** — ICC pipeline policy: **per-format inline** com `moxcms` 0.8.1 (gate W2.0.0). Cada format crate W2 que carrega ICC (TIFF iCCP, PSD ImageResource 1039) adiciona `moxcms` dep e parseia inline. Refactor para `ph2d_imageio::icc` central API acontece quando 2º cliente independente chega. ✅ policy 2026-05-26.
+- **W2.0.2** — `LayerStack` expansão **já realizada pela audit W1.T6**: `BlendMode` (24 variants + `Custom(u16)` preservando opcodes PSD); `Layer` com `kind: LayerKind {Pixel/Group/Adjustment/Text/Smart}` + `effects: Vec<LayerEffect>` + `color_profile: Option<ColorProfile>` + `version: u32` (HR-14). PSD/ORA chegam encontrando shape pronto. ✅ pre-cooked.
+- **W2.0.3** — ADR-0054 amendment §5.2 W2 abertura: 3 decisões ratificadas + batches anunciados. ✅ 2026-05-26.
 
 ### W2.1 — Fan-out (4 crates; PSD sozinho por carga)
 

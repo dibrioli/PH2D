@@ -254,6 +254,18 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **ONDA 1 FECHADA** | ✅ | 5 commits | 5 format crates registrados; 81 testes verdes na família |
 | **W1.T6** auditoria 5-lente Onda 1 | ✅ | `[remediation-commit]` | 4 CRITICAL + 13 HIGH + 13 MEDIUM + 15 LOW; remediação inline (memory `feedback-perfection-no-deferrals`) — vide §5.1 |
 
+### 5.2 W2 abertura (amendment §W2, 2026-05-26)
+
+Onda 2 (profissional 2D) abre com 3 decisões pré-batch:
+
+- **ICC policy per-format inline** (W2.0.1): cada W2 format crate que carrega ICC (TIFF iCCP, PSD ImageResource 1039) adiciona `moxcms` 0.8.1 dep + parse inline. Não há `ph2d_imageio::icc` central crate hoje. Refactor para API unificada acontece quando 2º cliente independente aparecer (TIFF + PSD ambos shipados); evita over-engineering pré-cliente. ColorProfile já contém todos os variants necessários (Srgb/DisplayP3/AdobeRgb/ProPhoto/Custom).
+- **LayerStack pré-cooked pela auditoria W1.T6**: `BlendMode 24 + Custom(u16)`, `LayerKind {Pixel/Group/Adjustment/Text/Smart}`, `LayerEffect`, per-layer `color_profile: Option<…>`, `version: u32` (HR-14). PSD/ORA W2.1 chegam encontrando o data model pronto sem amendment adicional.
+- **HEIC permanece descartado** §1.1 (HEVC patent-heavy, sem decoder puro-Rust maduro). Reopen W4 quando upstream chegar.
+
+W2.1 batches:
+- **Batch A** (3 slots paralelos): `ph2d-imageio-ora` + `ph2d-imageio-tiff` + `ph2d-imageio-apng`.
+- **Batch B** (1 slot dedicado, sequencial): `ph2d-imageio-psd` (PSD write greenfield; 2-3 sessões + escape hatch ADR-0054.W2.5 se slip > 1 semana).
+
 ### 5.1 Remediação pós-auditoria Onda 1 (2026-05-26)
 
 Auditoria adversarial 5-lente sobre Onda 1 entregou 45 findings actionable. Fechados nesta sessão pré-W2:

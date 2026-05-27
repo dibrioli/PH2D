@@ -1128,8 +1128,82 @@ pub fn anisotropic_diffusion_denoise(rgba: &mut [u8], w: u32, h: u32, strength: 
 /// **Strength mapping**: λ = `0.02 + 0.20·strength` (linear sRGB);
 /// 50 iterations; τ = `1/8` (Chambolle stable step).
 pub fn total_variation_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
-    let _ = (rgba, w, h, strength);
-    // TODO: implement in follow-up commit.
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+    if strength <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let lambda = 0.02 + 0.20 * strength;
+    let tau = 1.0 / 8.0;
+    let iters = 50_usize;
+
+    let w_i = w as i32;
+    let h_i = h as i32;
+    let w_us = w as usize;
+    let n = w_us * (h as usize);
+    let alpha: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
+
+    for ch in 0..3 {
+        // f = observed (linear).
+        let mut f = vec![0.0_f32; n];
+        for (i, px) in rgba.chunks_exact(4).enumerate() {
+            f[i] = srgb_to_linear_u8(px[ch]);
+        }
+        // Dual variable p = (px, py).
+        let mut px = vec![0.0_f32; n];
+        let mut py = vec![0.0_f32; n];
+        let mut div_p = vec![0.0_f32; n];
+        for _ in 0..iters {
+            // div_p[i,j] = (px[i,j] − px[i,j−1]) + (py[i,j] − py[i−1,j]).
+            for y in 0..h_i {
+                for x in 0..w_i {
+                    let i = (y as usize) * w_us + (x as usize);
+                    let pxl = if x > 0 { px[i - 1] } else { 0.0 };
+                    let pyu = if y > 0 { py[i - w_us] } else { 0.0 };
+                    div_p[i] = (px[i] - pxl) + (py[i] - pyu);
+                }
+            }
+            // grad of (div_p − f/λ), then project p.
+            for y in 0..h_i {
+                for x in 0..w_i {
+                    let i = (y as usize) * w_us + (x as usize);
+                    let phi = div_p[i] - f[i] / lambda;
+                    // Forward gradient (clamp at boundary).
+                    let gx = if x + 1 < w_i {
+                        let r = (y as usize) * w_us + (x as usize) + 1;
+                        (div_p[r] - f[r] / lambda) - phi
+                    } else {
+                        0.0
+                    };
+                    let gy = if y + 1 < h_i {
+                        let d = (y as usize + 1) * w_us + (x as usize);
+                        (div_p[d] - f[d] / lambda) - phi
+                    } else {
+                        0.0
+                    };
+                    let new_px = px[i] + tau * gx;
+                    let new_py = py[i] + tau * gy;
+                    let mag = (new_px * new_px + new_py * new_py).sqrt();
+                    let denom = (1.0_f32).max(mag);
+                    px[i] = new_px / denom;
+                    py[i] = new_py / denom;
+                }
+            }
+        }
+        // u = f − λ·div(p).
+        for y in 0..h_i {
+            for x in 0..w_i {
+                let i = (y as usize) * w_us + (x as usize);
+                let pxl = if x > 0 { px[i - 1] } else { 0.0 };
+                let pyu = if y > 0 { py[i - w_us] } else { 0.0 };
+                let div = (px[i] - pxl) + (py[i] - pyu);
+                let u = f[i] - lambda * div;
+                if alpha[i] != 0 {
+                    rgba[i * 4 + ch] = linear_to_srgb_u8(u);
+                }
+            }
+        }
+    }
 }
 
 /// Wavelet Shrinkage denoise (Donoho-Johnstone 1995, "VisuShrink" via
@@ -2512,6 +2586,44 @@ mod tests {
         assert!(
             (right as i32 - left as i32) > 100,
             "Anisotropic collapsed edge contrast (left {left}, right {right})"
+        );
+    }
+
+    #[test]
+    fn tv_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        total_variation_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn tv_smooths_uniform_noisy_input() {
+        let mut buf = uniform_noisy_buf(32, 32, 128, 5);
+        let before = variance_gray(&buf);
+        total_variation_denoise(&mut buf, 32, 32, 0.4);
+        let after = variance_gray(&buf);
+        assert!(
+            after < before,
+            "TV did not reduce variance (before {before}, after {after})"
+        );
+    }
+
+    #[test]
+    fn tv_preserves_edge_contrast() {
+        let mut buf = Vec::with_capacity(32 * 32 * 4);
+        for _y in 0..32 {
+            for x in 0..32u32 {
+                let v = if x < 16 { 50u8 } else { 200u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        total_variation_denoise(&mut buf, 32, 32, 0.5);
+        let left = buf[((16 * 32 + 12) * 4) as usize];
+        let right = buf[((16 * 32 + 19) * 4) as usize];
+        assert!(
+            (right as i32 - left as i32) > 100,
+            "TV collapsed edge contrast (left {left}, right {right})"
         );
     }
 

@@ -1063,8 +1063,60 @@ pub fn domain_transform_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) 
 /// edge attenuation cancels out). λ = 0.20 (step size, stable for 4
 /// neighbours).
 pub fn anisotropic_diffusion_denoise(rgba: &mut [u8], w: u32, h: u32, strength: f32) {
-    let _ = (rgba, w, h, strength);
-    // TODO: implement in follow-up commit.
+    use crate::color_utils::{linear_to_srgb_u8, srgb_to_linear_u8};
+    if strength <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let strength = strength.clamp(0.0, 1.0);
+    let iters = (5.0 + 35.0 * strength).round() as usize;
+    let k = 0.10 * (1.0 - strength) + 0.02;
+    let k_sq = k * k;
+    let lambda = 0.20_f32;
+
+    let w_i = w as i32;
+    let h_i = h as i32;
+    let w_us = w as usize;
+    let n = w_us * (h as usize);
+
+    let alpha: Vec<u8> = rgba.iter().skip(3).step_by(4).copied().collect();
+
+    // Per channel independently. Process linear-sRGB f32 buffers.
+    for ch in 0..3 {
+        let mut buf = vec![0.0_f32; n];
+        for (i, px) in rgba.chunks_exact(4).enumerate() {
+            buf[i] = srgb_to_linear_u8(px[ch]);
+        }
+        let mut next = buf.clone();
+        for _ in 0..iters {
+            for y in 0..h_i {
+                for x in 0..w_i {
+                    let i = (y as usize) * w_us + (x as usize);
+                    let c = buf[i];
+                    let n_v = buf[((y - 1).max(0) as usize) * w_us + x as usize];
+                    let s_v = buf[((y + 1).min(h_i - 1) as usize) * w_us + x as usize];
+                    let w_v = buf[(y as usize) * w_us + (x - 1).max(0) as usize];
+                    let e_v = buf[(y as usize) * w_us + (x + 1).min(w_i - 1) as usize];
+                    let gn = n_v - c;
+                    let gs = s_v - c;
+                    let gw = w_v - c;
+                    let ge = e_v - c;
+                    let cn = 1.0 / (1.0 + (gn * gn) / k_sq);
+                    let cs = 1.0 / (1.0 + (gs * gs) / k_sq);
+                    let cw = 1.0 / (1.0 + (gw * gw) / k_sq);
+                    let ce = 1.0 / (1.0 + (ge * ge) / k_sq);
+                    next[i] = c + lambda * (cn * gn + cs * gs + cw * gw + ce * ge);
+                }
+            }
+            std::mem::swap(&mut buf, &mut next);
+        }
+        // Write channel back.
+        for i in 0..n {
+            if alpha[i] == 0 {
+                continue;
+            }
+            rgba[i * 4 + ch] = linear_to_srgb_u8(buf[i]);
+        }
+    }
 }
 
 /// Total Variation denoise (Rudin-Osher-Fatemi 1992, via Chambolle
@@ -2422,6 +2474,44 @@ mod tests {
         assert!(
             (right as i32 - left as i32) > 100,
             "Guided Filter collapsed edge contrast (left {left}, right {right})"
+        );
+    }
+
+    #[test]
+    fn anisotropic_zero_strength_is_noop() {
+        let mut buf = vec![10u8, 20, 30, 255, 50, 60, 70, 255];
+        let before = buf.clone();
+        anisotropic_diffusion_denoise(&mut buf, 2, 1, 0.0);
+        assert_eq!(buf, before);
+    }
+
+    #[test]
+    fn anisotropic_smooths_uniform_noisy_input() {
+        let mut buf = uniform_noisy_buf(32, 32, 128, 5);
+        let before = variance_gray(&buf);
+        anisotropic_diffusion_denoise(&mut buf, 32, 32, 0.4);
+        let after = variance_gray(&buf);
+        assert!(
+            after < before,
+            "Anisotropic did not reduce variance (before {before}, after {after})"
+        );
+    }
+
+    #[test]
+    fn anisotropic_preserves_edge_contrast() {
+        let mut buf = Vec::with_capacity(32 * 32 * 4);
+        for _y in 0..32 {
+            for x in 0..32u32 {
+                let v = if x < 16 { 50u8 } else { 200u8 };
+                buf.extend_from_slice(&[v, v, v, 255]);
+            }
+        }
+        anisotropic_diffusion_denoise(&mut buf, 32, 32, 0.5);
+        let left = buf[((16 * 32 + 12) * 4) as usize];
+        let right = buf[((16 * 32 + 19) * 4) as usize];
+        assert!(
+            (right as i32 - left as i32) > 100,
+            "Anisotropic collapsed edge contrast (left {left}, right {right})"
         );
     }
 

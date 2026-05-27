@@ -32,7 +32,8 @@
 //! 2. Phase 1 tonal batch ([`super::TonalBatchPipeline`]).
 //! 3. LUT3D apply ([`super::LutApplyPipeline`]) — uses pre-blended LUT
 //!    when both slots are active, or the single active slot's LUT.
-//! 4. Bilateral denoise ([`super::BilateralPipeline`]).
+//! 4. Denoise (CPU-only post-2026-05-27 audit; 6 filters in
+//!    [`crate::algorithm`] picked by `params.denoise_method`).
 //! 5. Sharpen ([`super::LaplacianSharpenPipeline`] when `radius ≤ 1`,
 //!    else [`super::UnsharpSharpenPipeline`]).
 //! 6. Auto Levels / Contrast / Colors (CPU still — these need a
@@ -43,9 +44,8 @@
 //!    sums readback → host computes gains → apply.
 
 use super::{
-    AutoWbPipelines, BilateralPipeline, LaplacianSharpenPipeline, LutApplyPipeline,
-    TonalBatchPipeline, UnsharpSharpenPipeline, auto_wb, make_input_texture, make_storage_texture,
-    readback_into,
+    AutoWbPipelines, LaplacianSharpenPipeline, LutApplyPipeline, TonalBatchPipeline,
+    UnsharpSharpenPipeline, auto_wb, make_input_texture, make_storage_texture, readback_into,
 };
 use crate::algorithm;
 use crate::lut::{DEFAULT_LUT_SIZE, blend_luts};

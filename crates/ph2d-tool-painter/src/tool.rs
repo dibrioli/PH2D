@@ -902,6 +902,109 @@ impl PainterTool {
             .is_some_and(|j| j.should_rotate())
     }
 
+    /// **W2.T2.1 — `PainterUiSnapshot` projection.** Snapshot read-only
+    /// que o sidebar (`ph2d-panel-painter-sidebar`) pinta a cada frame
+    /// (shell publica via `set_current_painter_snapshot` antes de paint).
+    ///
+    /// ADR-0043 §2.3 cap 18 fields; ADR-0040 TG-B unidirecional —
+    /// snapshot é display projection, edits voltam via `apply_ui_edit`.
+    #[must_use]
+    pub fn ui_snapshot(&self) -> crate::params::PainterUiSnapshot {
+        crate::params::PainterUiSnapshot {
+            size01: ((self.params.size_px - 1.0) / (MAX_STAMP_SIZE_PX as f32 - 1.0))
+                .clamp(0.0, 1.0),
+            opacity01: self.params.opacity.clamp(0.0, 1.0),
+            active_color: self.params.active_color,
+            secondary_color: self.params.secondary_color,
+            active_brush_thumb: crate::params::ThumbHandle::default(),
+            active_brush_name: format!("brush_{}", self.params.active_brush.0),
+            mode: self.params.mode,
+            eyedropper_armed: self.params.eyedropper_armed,
+            symmetry_enabled: self.params.symmetry.is_some(),
+            undo_enabled: self.stroke_history.len() > 0,
+            redo_enabled: false, // redo-stack é caller-side W11+ (vide T2.2)
+            stroke_in_flight: self.stroke_active,
+            takeover_active: self.params.takeover_active,
+            active_layer_name: String::new(),
+            active_layer_locked: false,
+        }
+    }
+
+    /// **W2.T2.1 — `PainterUiEdit` dispatch.** Mapeia ADR-0043 §2.3
+    /// sidebar edits para canon params. Caller (shell drains via
+    /// `EditorAction::ToolPanelEvent` → `handle_panel_event`) NÃO
+    /// re-implementa semântica — vive aqui pra single source of truth.
+    ///
+    /// **Anti-pattern (audit T1.6 R7 L1-4 / R8 M1-3):** caller que
+    /// muta `params.active_brush` diretamente perde o brush runtime
+    /// sync. Use `apply_ui_edit(PainterUiEdit::SelectBrush(h))` (que
+    /// chama `set_brush` internamente).
+    pub fn apply_ui_edit(&mut self, edit: crate::params::PainterUiEdit) {
+        match edit {
+            crate::params::PainterUiEdit::Size(v01) => {
+                // Sidebar normalizado 0..1 → size_px 1.0..=MAX_STAMP_SIZE_PX (2048).
+                let v = v01.clamp(0.0, 1.0);
+                self.params.size_px = 1.0 + v * (MAX_STAMP_SIZE_PX as f32 - 1.0);
+            }
+            crate::params::PainterUiEdit::Opacity(v01) => {
+                self.params.opacity = v01.clamp(0.0, 1.0);
+            }
+            crate::params::PainterUiEdit::SetColor(c) => {
+                // Audit S-8: NaN guard happens em `begin_stroke`; aqui
+                // só armazena (caller pode ter passado válido).
+                self.params.active_color = c;
+            }
+            crate::params::PainterUiEdit::SelectBrush(_h) => {
+                // T1.6 R7 L1-4 — `set_brush` exige Brush runtime alongside
+                // handle. Sidebar W2 ainda não tem brush library lookup;
+                // wire completo é W5 Brush Studio (carry-over T2.3).
+            }
+            crate::params::PainterUiEdit::ToggleBrushMode => {
+                self.params.mode = crate::params::PainterMode::Brush;
+            }
+            crate::params::PainterUiEdit::ToggleSmudgeMode => {
+                self.params.mode = crate::params::PainterMode::Smudge;
+            }
+            crate::params::PainterUiEdit::ToggleEraserMode => {
+                self.params.mode = crate::params::PainterMode::Eraser;
+            }
+            crate::params::PainterUiEdit::ToggleEyedropper => {
+                self.params.eyedropper_armed = !self.params.eyedropper_armed;
+            }
+            crate::params::PainterUiEdit::Undo => {
+                // Pop stroke do history. Re-render canvas requer replay
+                // engine (W11 T-replay full); W2.T2.2 ship com snapshot-
+                // based undo (texture clone preserved).
+                let _ = self.stroke_history.undo();
+            }
+            crate::params::PainterUiEdit::Redo => {
+                // Idem Undo — redo precisa do undo-stack mantido side-car
+                // (carry-over W11 T-replay).
+            }
+            crate::params::PainterUiEdit::ResetSidebar => {
+                // Long-press reset (ADR-0043 §2.3). Restore defaults
+                // EXCEPT history (preservado).
+                let defaults = crate::params::PainterParams::default();
+                self.params.size_px = defaults.size_px;
+                self.params.opacity = defaults.opacity;
+                self.params.active_color = defaults.active_color;
+                self.params.secondary_color = defaults.secondary_color;
+                self.params.mode = defaults.mode;
+                self.params.eyedropper_armed = false;
+                self.params.symmetry = None;
+            }
+            crate::params::PainterUiEdit::ToggleSymmetry => {
+                self.params.symmetry = match self.params.symmetry {
+                    None => Some(crate::params::SymmetryAxis::Vertical),
+                    Some(_) => None,
+                };
+            }
+            // OpenLayersPopover / OpenColorPopover / OpenBrushStudio são
+            // affordances visuais geridas shell-side (não mutam tool state).
+            _ => {}
+        }
+    }
+
     /// Desfaz o anexo de journal — drop libera advisory lock + registry.
     ///
     /// **Audit R-2:** se há stroke em-progresso quando detach acontece,
@@ -1297,10 +1400,38 @@ impl Tool for PainterTool {
         println!("painter deactivated");
     }
 
-    fn handle_panel_event(&mut self, _event: ph2d_editor_core::tool::PanelEvent) {
-        // T1.3+ (sidebar real, ph2d-panel-painter W2): mapeia PanelEvent
-        // (NodeId) → PainterUiEdit semântico via `apply_ui_edit`. Vide
-        // ADR-0043 §2.3 + params.rs::PainterUiEdit.
+    fn handle_panel_event(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
+        // **W2.T2.1:** ADR-0040 TG-B canal genérico — sidebar emite
+        // PanelEvent::SetValue(NodeId, f64) e PanelEvent::Activated(NodeId).
+        // Routing pra PainterUiEdit semantic + apply_ui_edit single source
+        // of truth (ADR-0043 §2.3).
+        use crate::params::PainterUiEdit;
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        match event {
+            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_SIZE_SLIDER => {
+                self.apply_ui_edit(PainterUiEdit::Size(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_SIZE_CHIP => {
+                self.apply_ui_edit(PainterUiEdit::Size(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_OPACITY_SLIDER => {
+                self.apply_ui_edit(PainterUiEdit::Opacity(v as f32));
+            }
+            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_OPACITY_CHIP => {
+                self.apply_ui_edit(PainterUiEdit::Opacity(v as f32));
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_UNDO_BUTTON => {
+                self.apply_ui_edit(PainterUiEdit::Undo);
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_REDO_BUTTON => {
+                self.apply_ui_edit(PainterUiEdit::Redo);
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE => {
+                self.apply_ui_edit(PainterUiEdit::ToggleEyedropper);
+            }
+            _ => {}
+        }
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

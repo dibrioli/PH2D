@@ -263,6 +263,20 @@ pub const RAIL_BACKDROP: NodeId = hash_node_id("rail_backdrop");
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `painter` tool is active. W2.T2.1 plan §5.
 pub const PAINTER_SIDEBAR_PANEL: NodeId = hash_node_id("painter_sidebar_panel");
+/// Size slider (size_px) no Painter sidebar (normalizado 0..1).
+pub const PAINTER_SIDEBAR_SIZE_SLIDER: NodeId = hash_node_id("painter_sidebar.size_slider");
+/// Chip numeric do size_slider (link via store.link_slider_number).
+pub const PAINTER_SIDEBAR_SIZE_CHIP: NodeId = hash_node_id("painter_sidebar.size_chip");
+/// Opacity slider no Painter sidebar (normalizado 0..1).
+pub const PAINTER_SIDEBAR_OPACITY_SLIDER: NodeId = hash_node_id("painter_sidebar.opacity_slider");
+/// Chip numeric do opacity_slider.
+pub const PAINTER_SIDEBAR_OPACITY_CHIP: NodeId = hash_node_id("painter_sidebar.opacity_chip");
+/// Botão Undo (sidebar). 2-finger gesture também dispara.
+pub const PAINTER_SIDEBAR_UNDO_BUTTON: NodeId = hash_node_id("painter_sidebar.undo_button");
+/// Botão Redo (sidebar). 3-finger gesture também dispara.
+pub const PAINTER_SIDEBAR_REDO_BUTTON: NodeId = hash_node_id("painter_sidebar.redo_button");
+/// Modifier square (centro da sidebar) — W2 default eyedropper-while-held.
+pub const PAINTER_SIDEBAR_MODIFIER_SQUARE: NodeId = hash_node_id("painter_sidebar.modifier_square");
 
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and

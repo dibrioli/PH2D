@@ -51,6 +51,12 @@ pub struct HeroLayout {
     /// `panel_visible("padding")`, which the shell drives from the
     /// active-tool id).
     pub padding: Rect,
+    /// Painter sidebar slot — shares the Inspector's right-dock geometry
+    /// (W2.T2.1 plan §5). Only painted while the `painter` tool is active
+    /// (the panel's own visibility gate keys off
+    /// `panel_visible("painter_sidebar")`, which the shell drives from
+    /// the active-tool id).
+    pub painter_sidebar: Rect,
     pub hierarchy: Rect,
     pub bottom_hud: Rect,
     /// Visible canvas region (between rail/inspector on the left
@@ -100,6 +106,9 @@ impl HeroLayout {
         let bgremoval = inspector;
         // Padding panel shares the Inspector's right-dock geometry too.
         let padding = inspector;
+        // Painter sidebar shares the Inspector's right-dock geometry —
+        // takeover mode replaces Inspector visually (W2.T2.1 plan §5).
+        let painter_sidebar = inspector;
         let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
         let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
         let bottom_hud = Rect::new(
@@ -115,6 +124,7 @@ impl HeroLayout {
             inspector,
             bgremoval,
             padding,
+            painter_sidebar,
             hierarchy,
             bottom_hud,
             canvas,

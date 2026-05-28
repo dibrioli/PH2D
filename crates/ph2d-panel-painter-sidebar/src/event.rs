@@ -37,10 +37,11 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 )));
             true
         }
-        // Button clicks — Undo/Redo/Modifier. Tool-agnostic Activate event.
-        WidgetEvent::Activated(id) if is_painter_sidebar_button(id) => {
+        // Button clicks — Undo/Redo/Modifier. PanelEvent::Click(NodeId)
+        // (ADR-0040 TG-E FROZEN cap — Click é o canal pra button-style).
+        WidgetEvent::Click(id) if is_painter_sidebar_button(id) => {
             host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::Activated(id)));
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
         _ => false,

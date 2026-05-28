@@ -76,6 +76,22 @@ pub(super) fn dispatch(
         .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
         .unwrap_or(false);
 
+    // ── (W2.T2.1) Sidebar visibility + Inspector takeover toggle ──────────
+    // Espelha o padrão BgRemoval/Padding bridge: panel sidebar é "takeover"
+    // do slot Inspector quando Painter ativo. Edge-triggered inspector hide
+    // pra não stompar toggle manual do rail (Wave 10 Etapa 4 fix).
+    hero.panel_visibility
+        .insert("painter_sidebar", painter_is_active);
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
+        let was = LAST_ACTIVE.swap(painter_is_active, Ordering::Relaxed);
+        if was != painter_is_active {
+            hero.panel_visibility
+                .insert("inspector", !painter_is_active);
+        }
+    }
+
     // ── (Generic) Source push when selection drifts ───────────────────────
     //
     // **R3-LF-2 fix:** skip source-push WHILE a stroke is active. The
@@ -187,6 +203,15 @@ pub(super) fn dispatch(
             painter as &mut dyn ph2d_editor::tool::RasterEditTool,
             hero.gizmo.iter_selected(),
         );
+
+        // (W2.T2.1) Snapshot publish pro docked sidebar — `painter_sidebar`
+        // panel paint() lê via thread_local current_snapshot.
+        #[cfg(feature = "panel-painter-sidebar")]
+        ph2d_panel_painter_sidebar::set_current_painter_snapshot(if painter_is_active {
+            Some(painter.ui_snapshot())
+        } else {
+            None
+        });
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,

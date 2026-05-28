@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations CONVERGÊNCIA RATIFICADA + W3.T1.0 wire-up + W3.T1..T5 fan-out + W3 wave-2 REAL DECODE** 2026-05-27 — ADR-0054 `Accepted`; **14 format crates** wired (3 W3 com decode real: HDR/EXR/JXL via `image`/`exr`/`jxl-oxide` puro-Rust; AVIF + SVG mantêm stubs documentados); 16 imageio crates registrados no `spike.yml` nextest CI matrix; **186+ tests verdes Mac aarch64** (181 + 21 wave-2 − 16 stubs removidos); 36+ commits locais.
+**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations CONVERGÊNCIA RATIFICADA + W3.T1.0 wire-up + W3.T1..T5 fan-out + W3 wave-2 REAL DECODE + W3.T4 AVIF REAL** 2026-05-27 — ADR-0054 `Accepted`; **14 format crates** wired (4 W3 com decode real: HDR/EXR/JXL/AVIF; SVG mantém parse-only stub aguardando ADR-0056 vector); 16 imageio crates registrados no `spike.yml` nextest CI matrix; **~195 tests verdes Mac aarch64**; 38+ commits locais.
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -116,7 +116,7 @@ Batch A (3 slots paralelos, puro Rust pequenos):
 - **W3.T3** — `crates/ph2d-imageio-hdr-radiance/`: ✅ commit `dc4ec6a` wave-2 — **real decode + encode** via `image` 0.25 `hdr` feature. RGBE ↔ LinearRgba round-trip 5% tolerance (shared-exp quantization). 6 tests.
 
 Batch B (2 slots paralelos):
-- **W3.T4** — `crates/ph2d-imageio-avif/`: ✅ commit `cc97cd4` — magic-only stub (ISOBMFF ftyp `avif`/`avis`); decode `avif-decode` + encode `ravif` 0.11 deferred.
+- **W3.T4** — `crates/ph2d-imageio-avif/`: ✅ commit `272d99d` wave-2.1 — **real decode** via `avif-decode = "1"` (libaom-based, puro Rust). 6 input paths (Rgb8/16, Rgba8/16, Gray8/16) → Flat<SrgbRgba>. HEIF brand rejection. Encode permanent-defer (`ravif = "0.13"` rav1e ~50 transitives). 9 tests.
 - **W3.T5** — `crates/ph2d-imageio-svg/`: ✅ commit `cc97cd4` — **REAL parse** via `usvg = "0.43"` (parse + simplify validation); retorna `DecodedImage::Vector(VectorDoc::default())`. `MAX_ARCHIVE_TEXT_BYTES = 16 MiB` cap blocks billion-laughs. Export deferred (ph2d-vector canonical types W3+).
 
 **Aceitação W3:** 5 crates registrados; smoke Enio: (a) abre EXR HDRi de Blender, edita exposure, salva AVIF 10-bit; (b) importa SVG Lucide, mantém vetorial editável no canvas, exporta SVG válido em Chrome/Safari/Firefox real; CI verde.

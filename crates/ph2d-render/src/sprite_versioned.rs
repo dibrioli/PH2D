@@ -230,3 +230,120 @@ pub enum SpriteVersioned {
     /// are positional — see module docs).
     V4(Sprite),
 }
+
+/// Error returned by [`load_sprite`] when a byte slice cannot be decoded
+/// into exactly one versioned sprite envelope.
+///
+/// Wrapping `postcard::Error` (instead of stringifying) preserves the
+/// underlying cause for callers that want to branch on it and keeps
+/// `source()` honest. Manual `Display`/`Error` impls match the crate's
+/// existing error style (see [`crate::individual::IndividualTextureError`]);
+/// the crate deliberately avoids a `thiserror` dependency.
+#[derive(Debug)]
+pub enum LoadError {
+    /// postcard failed to decode the bytes as a [`SpriteVersioned`]
+    /// envelope — a truncated blob, or an unknown discriminant (e.g. a
+    /// v2-or-older blob that predates the wrapper byte, which decodes as
+    /// garbage and surfaces here rather than silently corrupting).
+    /// Carries the underlying postcard error as the cause.
+    Deserialize(postcard::Error),
+    /// The envelope decoded successfully but the blob carries
+    /// `total - consumed` extra bytes after a complete sprite.
+    ///
+    /// Postcard ≤1.1.3's `from_bytes` does NOT cap input length — it
+    /// consumes a valid prefix and silently ignores the rest (pinned by
+    /// `tests/sprite_versioned_postcard.rs::versioned_load_silently_ignores_trailing_bytes_after_valid_v3`).
+    /// [`load_sprite`] is the W1.T1.6 defense layer that rejects that
+    /// padding instead: a single-sprite blob with trailing bytes is
+    /// corrupt or attacker-padded, never legitimate. The check uses the
+    /// consumed-length remainder rather than a fixed size cap, because
+    /// the V3/V4 wire is variable-width (a `u32::MAX` atlas key widens
+    /// the varint), so an exact `len ==` constant would be wrong.
+    TrailingBytes { consumed: usize, total: usize },
+}
+
+impl std::fmt::Display for LoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Deserialize(_) => {
+                write!(f, "failed to decode versioned sprite blob (postcard)")
+            }
+            Self::TrailingBytes { consumed, total } => write!(
+                f,
+                "versioned sprite blob has {} trailing byte(s) after a complete envelope \
+                 (consumed {consumed} of {total})",
+                total.saturating_sub(*consumed)
+            ),
+        }
+    }
+}
+
+impl std::error::Error for LoadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Deserialize(e) => Some(e),
+            Self::TrailingBytes { .. } => None,
+        }
+    }
+}
+
+impl From<postcard::Error> for LoadError {
+    fn from(e: postcard::Error) -> Self {
+        Self::Deserialize(e)
+    }
+}
+
+/// Canonical load entry point for a postcard-serialized sprite
+/// (ADR-0070-amendment-2 §4 dispatch + the W1.T1.6 trailing-byte cap).
+/// Decodes exactly one versioned wrapper, then dispatches: a `V3`
+/// envelope is run through [`Sprite::migrate_v3_to_v4`]; a `V4` envelope
+/// is returned directly (NOT re-migrated).
+///
+/// This is the ONE supported way to read a persisted sprite — callers
+/// (scene loader, cooker, prefab pipeline) must route through here
+/// rather than `postcard::from_bytes::<Sprite>` directly, because a raw
+/// `Sprite` decode would (a) skip the v3 migration and (b) misread a v3
+/// blob's leading `source` bytes. There is no fallback path: a blob
+/// without the wrapper discriminant byte (v2-or-older) fails to decode
+/// and returns [`LoadError::Deserialize`] — the correct behavior, never
+/// silent corruption.
+///
+/// ## Strict single-envelope contract
+///
+/// Unlike raw `postcard::from_bytes` (which silently ignores trailing
+/// bytes after a valid prefix — see [`LoadError::TrailingBytes`]),
+/// `load_sprite` uses `take_from_bytes` and rejects ANY leftover bytes.
+/// A single-sprite blob must be exactly one envelope; trailing padding
+/// is corruption or a crafted bomb, not a valid sprite.
+///
+/// `premultiplied` arrives `false` (it is `#[serde(skip)]`, never on the
+/// wire); the load/extract boundary rebuilds the runtime flag from
+/// texture-store context where applicable — see
+/// [`Sprite::migrate_v3_to_v4`].
+pub fn load_sprite(bytes: &[u8]) -> Result<Sprite, LoadError> {
+    let (versioned, rest) = postcard::take_from_bytes::<SpriteVersioned>(bytes)?;
+    if !rest.is_empty() {
+        return Err(LoadError::TrailingBytes {
+            consumed: bytes.len() - rest.len(),
+            total: bytes.len(),
+        });
+    }
+    let sprite = match versioned {
+        SpriteVersioned::V3(v3) => Sprite::migrate_v3_to_v4(v3),
+        SpriteVersioned::V4(v4) => v4,
+    };
+    // Spec §10.1 Nota Lens C M2: the struct's `version` field is
+    // redundant with the wrapper discriminant; this post-deserialize
+    // assert pins the `enum=V4 ↔ sprite.version=4` invariant. The
+    // migrator always emits 4; a V4 blob carries the saver's value,
+    // which a correctly-constructed sprite always sets to 4. A debug-
+    // only check (release loads stay branch-free for the hot path).
+    debug_assert_eq!(
+        sprite.version,
+        Sprite::VERSION,
+        "loaded sprite version {} != schema version {} (enum/field skew)",
+        sprite.version,
+        Sprite::VERSION
+    );
+    Ok(sprite)
+}

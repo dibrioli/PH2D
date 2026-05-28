@@ -61,9 +61,10 @@ pub use premul::{
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{QuadVertex, RenderInstance, Sprite, SpriteSource};
-// Only the wrapper enum is re-exported at crate root — `SpriteV3` is
-// internal migrator machinery (`#[doc(hidden)]` on the struct).
-// Tests reach it via `ph2d_render::sprite_versioned::SpriteV3`.
-pub use sprite_versioned::SpriteVersioned;
+// The wrapper enum + the canonical load path (`load_sprite` +
+// `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —
+// `SpriteV3` stays internal migrator machinery (`#[doc(hidden)]` on the
+// struct). Tests reach it via `ph2d_render::sprite_versioned::SpriteV3`.
+pub use sprite_versioned::{LoadError, SpriteVersioned, load_sprite};
 pub use tonemap::Tonemap;
 pub use vello_pass::VelloPass;

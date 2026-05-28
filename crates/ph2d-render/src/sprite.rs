@@ -298,6 +298,71 @@ impl Sprite {
         s.region_filter_clip = false;
         s
     }
+
+    /// Pure v3 → v4 schema migrator (spec
+    /// [`Sprite_projeto/10_schema_versionamento.md §10.2`], HR-14
+    /// mandatory). Maps every frozen v3 field forward verbatim and
+    /// initializes the 14 new v4 intrinsic-appearance fields to their
+    /// benign identity defaults (no visual change for a sprite that was
+    /// authored under v3). It is the SOLE working back-compat path —
+    /// `#[serde(default)]` on the v4 fields is documentary-only under
+    /// postcard (positional, non-self-describing; empirically pinned by
+    /// `tests/sprite_versioned_postcard.rs`), so loading a v3 blob
+    /// REQUIRES routing the deserialized [`SpriteV3`] through here
+    /// (ADR-0070-amendment-2). [`crate::sprite_versioned::load_sprite`]
+    /// is the wrapper-enum dispatch entry point that calls this.
+    ///
+    /// ## `region_filter_clip` is the one conditional field
+    ///
+    /// Atlas sprites share a 4096² texture, so the sampler must clamp to
+    /// the region rect or neighboring atlas tiles bleed across the edge
+    /// → `true`. Individual sprites own a native-resolution texture with
+    /// no neighbor to bleed → `false`. The `#[serde(default = ...)]`
+    /// helper on the field returns the Atlas value unconditionally and
+    /// is the WRONG value for Individual (anatomia §1.4 critical note),
+    /// which is exactly why the migrator — not a serde default — owns
+    /// this branch. Mirrors [`Sprite::atlas`]/[`Sprite::individual`].
+    ///
+    /// ## `premultiplied` is a verbatim value copy, NOT rebuilt here
+    ///
+    /// `premultiplied` is `#[serde(skip)]` in both [`SpriteV3`] and
+    /// [`Sprite`], so a wire-loaded `SpriteV3` always carries `false`
+    /// and this migrator faithfully copies that. Rebuilding the runtime
+    /// flag from [`crate::individual::IndividualTextureStore`] context
+    /// (only BG-Removal-Apply'd individuals are premultiplied — the
+    /// naive `matches!(source, Individual)` over-triggers) is the
+    /// CALLER's concern at the load/extract boundary, not this pure
+    /// transform's. Keeping it a value copy preserves
+    /// `migrate(in-memory v3 with premultiplied=true)` round-tripping —
+    /// the migrator never silently drops a field a caller set in memory.
+    pub fn migrate_v3_to_v4(v3: crate::sprite_versioned::SpriteV3) -> Sprite {
+        let region_filter_clip = matches!(v3.source, SpriteSource::Atlas { .. });
+        Sprite {
+            version: Self::VERSION,
+            source: v3.source,
+            size: v3.size,
+            tint: v3.tint,
+            anchor: v3.anchor,
+            premultiplied: v3.premultiplied,
+            // New v4 intrinsic-appearance fields — benign identity
+            // defaults (shared with the constructors' helper fns so the
+            // v4 default surface stays single-sourced).
+            self_tint: default_white(),
+            per_corner_tint: default_per_corner_white(),
+            tint_fill: false,
+            opacity: default_one(),
+            flip_x: false,
+            flip_y: false,
+            centered: default_true(),
+            offset: [0.0, 0.0],
+            hframes: default_one_u32(),
+            vframes: default_one_u32(),
+            frame: 0,
+            region_enabled: false,
+            region_rect: [0.0, 0.0, 0.0, 0.0],
+            region_filter_clip,
+        }
+    }
 }
 
 impl SimComponent for Sprite {}

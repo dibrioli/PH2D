@@ -25,6 +25,7 @@
 //!   runner CI workflow) + W1.T11.5 (Git LFS setup).
 
 pub mod cook;
+pub mod fixtures;
 pub mod target_matrix;
 
 pub use cook::{CookOptions, TextureCookError, cook, cook_all};

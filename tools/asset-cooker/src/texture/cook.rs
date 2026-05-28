@@ -207,23 +207,10 @@ pub fn cook_all(
 mod tests {
     use super::*;
 
-    /// Generate a deterministic 64×64 RGBA8 PNG fixture for tests.
-    /// Pattern: linear gradient red→blue + alpha gradient top→bottom.
-    fn fixture_png_64x64() -> Vec<u8> {
-        let mut img = image::RgbaImage::new(64, 64);
-        for (x, y, px) in img.enumerate_pixels_mut() {
-            let r = (x * 4) as u8; // 0..=252
-            let b = ((63 - x) * 4) as u8;
-            let g = 64u8;
-            let a = (y * 4) as u8;
-            *px = image::Rgba([r, g, b, a]);
-        }
-        let mut buf = Vec::new();
-        let mut cursor = std::io::Cursor::new(&mut buf);
-        img.write_to(&mut cursor, image::ImageFormat::Png)
-            .expect("encode test PNG");
-        buf
-    }
+    // W1.T11 fix: fixture moved to `crate::texture::fixtures::gradient_64x64`
+    // (pub). Tests aqui usam alias local pra evitar churn no test bodies.
+    // (`super` em test mod é `texture::cook`; `fixtures` é sibling → crate::texture::fixtures.)
+    use crate::texture::fixtures::gradient_64x64 as fixture_png_64x64;
 
     #[test]
     fn cook_64x64_desktop_sprite_color_emits_nonempty_ktx2() {

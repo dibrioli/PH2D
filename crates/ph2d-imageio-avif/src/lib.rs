@@ -1,51 +1,94 @@
 #![forbid(unsafe_code)]
-//! `ph2d-imageio-avif` — AVIF decode (W3.T4).
+//! `ph2d-imageio-avif` — AVIF magic recognition + (deferred) decode
+//! + encode (W3.T4).
 //!
-//! Pure-Rust decode via `avif-decode = "1"` (libaom-based — wraps
-//! `aom_decode` + `avif-parse` + `yuv` for chroma upsampling).
-//! Decodes still AVIF (`ftyp avif`) + sequence AVIF (`ftyp avis`,
-//! first-frame only — Animated bridge deferred). Output is RGBA8
-//! flat path (16-bit AVIF quantises to 8-bit via top-byte drop;
-//! HDR PQ/HLG would require a FlatHdr bridge — deferred to W3+).
+//! W3.T4 placeholder: recognizes AVIF magic via `ftyp` box detection
+//! so the registry dispatches here for `.avif` files; both import
+//! and export return `Error::Unsupported` with actionable messages
+//! pointing to the next wave when a real client (Painter HDR import
+//! demo) triggers full wire-up.
 //!
-//! Encode is **permanent-deferred** — pure-Rust encode via
-//! `ravif = "0.13"` pulls ~50 transitive crates (rav1e dep tree);
-//! wire-up only when first real export client (Painter HDR export
-//! demo) appears.
+//! ### Why still a stub (audit-15 deship history)
 //!
-//! Audit-14 wave-2.1 (2026-05-27): real decode replaces the magic-
-//! only-stub. Same pattern as JXL/EXR/HDR — strict subset shipped,
-//! HDR/multi-frame deferred until canonical FlatHdr/Animated
-//! bridges land. Mismatched HEIF brands (`mif1`/`heic`) rejected
-//! at magic-byte level (silent-data-corruption defence).
+//! `272d99d` (2026-05-27) shipped real decode via
+//! `avif-decode = "1"` but **audit-15** caught 1 CRITICAL + 6 HIGH
+//! + 8 MEDIUM in that dep tree:
+//!
+//! - **CRITICAL** RUSTSEC-2022-0040 `owning_ref` use-after-free
+//!   (no fix upstream) via `avif-decode → aom-decode →
+//!   owning_ref 0.4.1`. CI hard-fails `cargo audit`.
+//! - **HIGH** `libaom-sys 0.17` vendora 26 MB C source + cmake
+//!   build-script (+30-60s clean build × 3 platforms; WASM
+//!   impossible).
+//! - **HIGH** silent HDR PQ/HLG quantisation (asymmetry with the
+//!   JXL audit-14 fix that explicitly rejects HDR via
+//!   `hdr_type()`); plus `ColorProfile::Srgb` hardcoded mislabel
+//!   for Display-P3/BT.2020 wide-gamut.
+//! - **HIGH** `assert!` panic in `avif-parse` UUID-box parser
+//!   (hostile input).
+//! - **HIGH** `Vec::with_capacity(w*h)` allocated pre-decode from
+//!   AV1 sequence-header dims — 100k×100k claim OOMs before our
+//!   `MAX_RASTER_DIMENSION` post-decode cap.
+//! - **MEDIUM** upstream `unprem()` mathematically wrong
+//!   (`val/alpha/256 = 0` for `alpha < 255`) — premultiplied
+//!   AVIF turns black. Bug in the dep, not patchable here.
+//! - **MEDIUM** ~160 unsafe blocks across the transitive tree
+//!   (`lodepng = 97`, `owning_ref = 42`, `libaom-sys = 9`,
+//!   `aom-decode = 11`).
+//! - **MEDIUM** maintainer bus-factor = 1 (Kornel single-author
+//!   chain: avif-decode/aom-decode/avif-parse/yuv/imgref/rgb).
+//!
+//! Per
+//! [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md)
+//! and
+//! [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md):
+//! 1 unfixable RUSTSEC + 1 unfixable upstream math bug + 1 wave-2
+//! HDR asymmetry that wasn't even attempted is unshippable. The
+//! real decode commit was reverted; the magic-only stub stays
+//! until a better pure-Rust decoder candidate appears.
+//!
+//! **Real-decode candidates to re-evaluate** (in priority order):
+//! 1. `image = { features = ["avif-native"] }` — different dep
+//!    tree (uses `mp4parse` + `dav1d`-Rust); needs verification
+//!    that `owning_ref` is NOT pulled.
+//! 2. Wait for `avif-decode` 2.x to migrate to `safer_owning_ref`
+//!    + fix `unprem()` upstream.
+//! 3. Direct `libavif-sys` (C FFI, fastest but unsafe ABI surface).
+//!
+//! Audit-13 (2026-05-27): fan-out drop-crate per ADR-0054 §3.8.
+//! Audit-15 (2026-05-28): deship of `272d99d`. Vide ADR §5.17.
 
-use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
-    ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
-    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MAX_RASTER_DIMENSION, MagicHint,
-    MagicMatch,
+    DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageExporter, ImageImporter,
+    ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
 };
 
 /// AVIF magic: ISOBMFF `ftyp` box starting at byte 4, brand `avif`
-/// (still) or `avis` (sequence) at byte 8.
+/// or `avis` (still / sequence) at byte 8.
 fn is_avif_magic(b: &[u8]) -> bool {
     if b.len() < 12 {
         return false;
     }
+    // Bytes 4-7 = "ftyp".
     if &b[4..8] != b"ftyp" {
         return false;
     }
+    // Bytes 8-11 = "avif" (still) or "avis" (sequence).
     matches!(&b[8..12], b"avif" | b"avis")
 }
 
+/// Register the AVIF importer.
 pub fn register_importer(reg: &mut ImporterRegistry) {
     reg.register(Box::new(AvifImporter));
 }
 
+/// Register the AVIF exporter.
 pub fn register_exporter(reg: &mut ExporterRegistry) {
     reg.register(Box::new(AvifExporter));
 }
 
+/// AVIF import driver. W3.T4 placeholder — recognizes magic but
+/// returns Unsupported pointing the caller at the next wave.
 pub struct AvifImporter;
 
 impl ImageImporter for AvifImporter {
@@ -62,103 +105,17 @@ impl ImageImporter for AvifImporter {
         if src.is_empty() {
             return Err(Error::Truncated);
         }
-        // Audit-14 wave-2.1: defend against accidental decode of
-        // HEIF (`mif1`/`heic`) — magic check already rejects them
-        // but `Decoder::from_avif` might be permissive in some
-        // edge cases. Double-check is cheap.
-        if !is_avif_magic(src) {
-            return Err(Error::Decode(
-                "AVIF: ftyp brand is not `avif`/`avis` (HEIF would need ph2d-imageio-heif)".into(),
-            ));
-        }
-        let decoder = avif_decode::Decoder::from_avif(src)
-            .map_err(|e| Error::from_decoder_message(format!("AVIF decode init: {e}")))?;
-        let image = decoder
-            .to_image()
-            .map_err(|e| Error::from_decoder_message(format!("AVIF decode pixels: {e}")))?;
-        // Convert avif-decode's Image enum to our RGBA8 buffer.
-        // 16-bit channels quantise to 8-bit via top-byte drop
-        // (documented loss; same policy as PNG W1.T1).
-        let (width, height, pixels) = match image {
-            avif_decode::Image::Rgb8(img) => {
-                let (w, h) = (img.width(), img.height());
-                let pixels: Vec<SrgbRgba> = img
-                    .pixels()
-                    .map(|p| SrgbRgba([p.r, p.g, p.b, 255]))
-                    .collect();
-                (w as u32, h as u32, pixels)
-            }
-            avif_decode::Image::Rgb16(img) => {
-                let (w, h) = (img.width(), img.height());
-                let pixels: Vec<SrgbRgba> = img
-                    .pixels()
-                    .map(|p| SrgbRgba([(p.r >> 8) as u8, (p.g >> 8) as u8, (p.b >> 8) as u8, 255]))
-                    .collect();
-                (w as u32, h as u32, pixels)
-            }
-            avif_decode::Image::Rgba8(img) => {
-                let (w, h) = (img.width(), img.height());
-                let pixels: Vec<SrgbRgba> = img
-                    .pixels()
-                    .map(|p| SrgbRgba([p.r, p.g, p.b, p.a]))
-                    .collect();
-                (w as u32, h as u32, pixels)
-            }
-            avif_decode::Image::Rgba16(img) => {
-                let (w, h) = (img.width(), img.height());
-                let pixels: Vec<SrgbRgba> = img
-                    .pixels()
-                    .map(|p| {
-                        SrgbRgba([
-                            (p.r >> 8) as u8,
-                            (p.g >> 8) as u8,
-                            (p.b >> 8) as u8,
-                            (p.a >> 8) as u8,
-                        ])
-                    })
-                    .collect();
-                (w as u32, h as u32, pixels)
-            }
-            avif_decode::Image::Gray8(img) => {
-                let (w, h) = (img.width(), img.height());
-                let pixels: Vec<SrgbRgba> = img
-                    .pixels()
-                    .map(|p| SrgbRgba([p.0, p.0, p.0, 255]))
-                    .collect();
-                (w as u32, h as u32, pixels)
-            }
-            avif_decode::Image::Gray16(img) => {
-                let (w, h) = (img.width(), img.height());
-                let pixels: Vec<SrgbRgba> = img
-                    .pixels()
-                    .map(|p| {
-                        let c = (p.0 >> 8) as u8;
-                        SrgbRgba([c, c, c, 255])
-                    })
-                    .collect();
-                (w as u32, h as u32, pixels)
-            }
-        };
-        if width == 0 || height == 0 {
-            return Err(Error::Decode(format!(
-                "AVIF has zero-sized dimension: {width}×{height}"
-            )));
-        }
-        if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
-            return Err(Error::DimensionExceedsLimit);
-        }
-        Ok(DecodedImage::Flat(ImageBuffer {
-            width,
-            height,
-            pixels,
-            color_profile: ColorProfile::Srgb,
-        }))
+        Err(Error::Unsupported(
+            "AVIF decode deferred to W3+ — pure-Rust `avif-decode = \"1\"` \
+             wire-up lands when first real client (Painter HDR import demo) \
+             appears. Convert to PNG/WebP/EXR via external tool (cavif-rs, \
+             ffmpeg) for now."
+                .into(),
+        ))
     }
 }
 
-/// AVIF export driver. Permanent-deferred — `ravif = "0.13"` pulls
-/// rav1e (~50 transitive crates); wire-up only when first real
-/// export client (Painter HDR export demo) appears.
+/// AVIF export driver. W3.T4 placeholder.
 pub struct AvifExporter;
 
 impl ImageExporter for AvifExporter {
@@ -168,10 +125,9 @@ impl ImageExporter for AvifExporter {
 
     fn export(&self, _img: &DecodedImage, _opts: &ExportOpts) -> Result<Vec<u8>, Error> {
         Err(Error::Unsupported(
-            "AVIF encode deferred to W3+ — pure-Rust `ravif = \"0.13\"` \
-             (rav1e backend) pulls ~50 transitive crates; wire-up lands \
-             with first real export client (Painter HDR export demo). \
-             Convert via cavif CLI tool externally for now."
+            "AVIF encode deferred to W3+ — pure-Rust `ravif = \"0.11\"` \
+             (rav1e backend) wire-up lands when first real client \
+             (Painter HDR export demo) appears."
                 .into(),
         ))
     }
@@ -231,63 +187,53 @@ mod tests {
         assert!(matches!(err, Error::Truncated));
     }
 
-    /// Audit-14 wave-2.1 (2026-05-27): HEIF brand (`mif1`) with
-    /// otherwise-valid ISOBMFF header must be rejected at the
-    /// double-check inside `import`, not silently fed to
-    /// avif-decode (which might be permissive).
     #[test]
-    fn import_rejects_heif_brand_with_decode() {
-        let bytes = [
-            0x00, 0x00, 0x00, 0x18, b'f', b't', b'y', b'p', b'm', b'i', b'f', b'1', 0x00, 0x00,
-            0x00, 0x00,
-        ];
-        let err = AvifImporter
-            .import(&bytes, &ImportOpts::default())
-            .expect_err("HEIF must be rejected");
-        match err {
-            Error::Decode(msg) => assert!(
-                msg.contains("HEIF") || msg.contains("ftyp"),
-                "expected actionable HEIF rejection message, got: {msg}"
-            ),
-            other => panic!("expected Decode, got: {other:?}"),
-        }
-    }
-
-    #[test]
-    fn import_rejects_truncated_avif_with_actionable_error() {
-        // ftyp avif header but no actual content.
+    fn import_returns_unsupported_with_actionable_message() {
         let bytes = [
             0x00, 0x00, 0x00, 0x18, b'f', b't', b'y', b'p', b'a', b'v', b'i', b'f',
         ];
         let err = AvifImporter
             .import(&bytes, &ImportOpts::default())
-            .expect_err("truncated avif must error");
-        assert!(matches!(err, Error::Decode(_) | Error::Truncated));
+            .expect_err("decode deferred");
+        let msg = match err {
+            Error::Unsupported(s) => s,
+            other => panic!("expected Unsupported, got {other:?}"),
+        };
+        assert!(msg.contains("avif-decode"), "actionable: {msg}");
+    }
+
+    /// Audit-13 Lens FF F4 (2026-05-27): cover `avis` sequence brand
+    /// import path too — previous test only exercised still `avif`.
+    #[test]
+    fn import_avis_sequence_returns_unsupported_deferred() {
+        let bytes = [
+            0x00, 0x00, 0x00, 0x18, b'f', b't', b'y', b'p', b'a', b'v', b'i', b's',
+        ];
+        let err = AvifImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect_err("avis sequence decode deferred");
+        assert!(matches!(err, Error::Unsupported(_)));
+    }
+
+    #[test]
+    fn exporter_returns_unsupported() {
+        // `AvifExporter::export` returns Unsupported BEFORE looking
+        // at the image payload — `DecodedImage::Animated(vec![])` is
+        // the cheapest variant to construct in a test that doesn't
+        // import ph2d-color.
+        let err = AvifExporter.export(
+            &DecodedImage::Animated(vec![]),
+            &ExportOpts {
+                format: ExportFormat::Avif,
+                ..ExportOpts::default()
+            },
+        );
+        assert!(matches!(err, Err(Error::Unsupported(_))));
     }
 
     #[test]
     fn exporter_recognizes_avif_format() {
         assert!(AvifExporter.supports_format(ExportFormat::Avif));
         assert!(!AvifExporter.supports_format(ExportFormat::Png));
-    }
-
-    #[test]
-    fn exporter_returns_unsupported_deferred() {
-        let err = AvifExporter
-            .export(
-                &DecodedImage::Animated(vec![]),
-                &ExportOpts {
-                    format: ExportFormat::Avif,
-                    ..ExportOpts::default()
-                },
-            )
-            .expect_err("encode deferred");
-        match err {
-            Error::Unsupported(msg) => assert!(
-                msg.contains("ravif"),
-                "expected actionable ravif message: {msg}"
-            ),
-            other => panic!("expected Unsupported, got: {other:?}"),
-        }
     }
 }

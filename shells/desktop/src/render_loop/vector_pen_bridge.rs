@@ -95,10 +95,12 @@ pub(super) fn dispatch(
     // the *next* in-progress path (empty post-reset) on the same
     // tick, so no stale triangle stays on screen.
     if let Some(asset) = pen.take_committed_asset() {
-        match save_asset_to_disk(&asset) {
+        // `toasts.push(...)` returns a `bool` (capacity check); discard
+        // so the match arms type-check as `()`.
+        let _ = match save_asset_to_disk(&asset) {
             Ok(path) => toasts.push(Toast::info(format!("Vector saved: {path}"))),
             Err(e) => toasts.push(Toast::error(format!("Vector save failed: {e}"))),
-        }
+        };
     }
 
     // Step 2 — render in-progress preview. Skip when network is empty
@@ -128,8 +130,8 @@ pub(super) fn dispatch(
 /// directory. W2 will plumb the asset path through `AssetDb` + a real
 /// "save as" dialog; for the smoke Day-7 the user verifies file
 /// presence + can re-load via `load_and_validate_vector_asset`.
-fn save_asset_to_disk(asset: &ph2d_vector_doc::Ph2dVectorAsset) -> Result<String, String> {
-    let bytes = ph2d_vector_doc::save_vector_asset(asset).map_err(|e| e.to_string())?;
+fn save_asset_to_disk(asset: &ph2d_vector::Ph2dVectorAsset) -> Result<String, String> {
+    let bytes = ph2d_vector::save_vector_asset(asset).map_err(|e| e.to_string())?;
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())

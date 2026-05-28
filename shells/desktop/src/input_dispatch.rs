@@ -50,8 +50,8 @@ mod eyedropper;
 mod gizmo_drag;
 mod keyboard;
 mod painter_input;
-mod vector_pen_input;
 pub(crate) mod protect_brush;
+mod vector_pen_input;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {

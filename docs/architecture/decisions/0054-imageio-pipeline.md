@@ -326,10 +326,74 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `84fd496` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
 | **W3.T1.0** wire-up `AssetDb → imageio registry` (fecha X-HIGH-1) | ✅ | `e54d41a` (multi-agent collision) | Bridge: `ph2d-asset/loader.rs::decode_via_imageio_registry` fallback acionado quando `image::guess_format` retorna Other. Estende `is_supported_image_extension` para gif/tiff/tif/ora/apng/psd/ph2d. Multi-layer/multi-frame/HDR/Vector retornam Error::Decode actionable. Tests: 46 ph2d-asset verdes; workspace check 1m 02s. **Colisão**: meus arquivos staged foram absorvidos pelo commit `e54d41a` (sessão KTX2 paralela) — conteúdo correto, atribuição confusa. Vide §5.12. |
 | **W3.T1..T5** fan-out 5 format crates (AVIF/EXR/HDR/JXL/SVG) | ✅ | `cc97cd4` | 5 new crates per ADR §3.8 fan-out drop-crate: AVIF (W3.T4 magic-only stub), EXR (W3.T2 magic-only stub), HDR-Radiance (W3.T3 magic-only stub), JXL (W3.T1 magic-only stub), SVG (W3.T5 **real parse** via usvg 0.43 → VectorDoc). registry-init regenerated 9→14 via codegen. spike.yml +5 crates (16 imageio total). 35 new tests verdes (8+6+6+7+8). Vide §5.13. |
+| **W3.T4** AVIF re-ship — Path C `libavif-sys` decode+encode+HDR | ✅ | _(local)_ | Path C (candidate #3 do §5.17): `libavif-sys` codec-dav1d (decode) + codec-rav1e (encode pure-Rust). Decode real SDR/HDR (`nclx`+ICC→ColorProfile, PQ/HLG/linear EOTF, FlatHdr scene-linear), encode (lossless+lossy, 10-bit PQ HDR10). Verification: 0 RUSTSEC, zero owning_ref, licenças OK. `forbid(unsafe)` dropado (FFI) → `deny(unsafe_op_in_unsafe_fn)` + RAII + catch_unwind. CI ganhou meson+ninja+nasm 3-OS (handoff "vendored→sem CI install" era falso). 21 tests verdes. Vide §5.18. |
 | **W3.T4** AVIF real decode (DESHIPADO) | ❌ | `272d99d` → reverted `f034e9a` | Audit-15 6-lente revelou 1 CRITICAL (RUSTSEC-2022-0040 owning_ref UAF via avif-decode) + 6 HIGH + 8 MEDIUM (incl. upstream `unprem()` math bug, HDR PQ silent, libaom-sys 26MB C+cmake). Per `feedback-no-industrial-claims-without-verification` + `feedback-perfection-no-deferrals` UNSHIPPABLE. Revert restaura magic-only stub W3.T4. 3 candidate re-evaluation paths documentados em §5.17. |
 | **W3 wave-2.1** audit-14 remediation pós-wave-2 | ✅ | `5f9582b` | 3 CRITICAL (HDR Inf panic + JXL ColorProfile mislabel + JXL CMYK collision via auto-srgb-request) + 4 HIGH (HDR wide-DR docs + JXL HDR/multi-frame guards + alpha-drop warning) + 2 MEDIUM (written guard + doc honesty) — Lens NN/PP GREEN, OO inconclusivo (sessão paralela cobrindo end-to-end test) — vide §5.16 |
 | **W3 wave-2** real decode/encode em HDR/EXR/JXL | ✅ | `dc4ec6a` | Substitui magic-only-stubs de cc97cd4 por impl real. HDR-Radiance: image 0.25 hdr feature, encode+decode RGBE → LinearRgba; EXR: `exr = "1"` builder API, decode via closure-state struct; JXL: `jxl-oxide = "0.10"` decode-only first-frame para Flat path. AVIF + SVG mantêm stubs. 21 tests verdes (6 HDR + 7 EXR + 8 JXL). Vide §5.15. |
 | **W3.T1.5** nova auditoria pós-W3.T1..T5 | ✅ | `54a8a12` | 1 CRITICAL doc-honesty (EXR claim falso `exr=1` in Cargo.toml) + 3 HIGH (AVIF Cargo.toml vapor comment, SVG Cargo.toml promete rasterize-on-import inexistente, **HH-FIN-1 SVG security: `default_string_resolver` faz `std::fs::read(href)` em `<image href="/etc/passwd"/>`**) + 3 MEDIUM (JXL codestream test ausente + AVIF avis sequence test ausente + SVG hostile-input tests ausentes) + 1 P1 ship-blocker fmt — vide §5.14 |
+
+### 5.18 W3.T4 AVIF re-ship — Path C `libavif-sys` decode+encode+HDR real (2026-05-28)
+
+Re-ship do W3.T4 pós-deship (§5.17), agora visando **padrão-ouro** por
+decisão do Enio "o melhor possível, sem pensar em custos" (2026-05-28).
+Isso **inverte** as 3 economias do handoff Path A original (decode-only /
+reject-HDR / sem-CI-install): escopo agora é **Path C = decode E encode E
+HDR/wide-gamut real**.
+
+**Decisão de codec/dep**: `libavif-sys = "0.17.0+libavif.1.0.4"`
+(implementação de referência AOM `libavif`) com `codec-dav1d` (decode) +
+`codec-rav1e` (**encode pure-Rust**). `codec-aom` **rejeitado** — exigiria
+build C de 26 MB (libaom) + nasm, sem ganho de qualidade necessário pra um
+exporter de editor; rav1e é pure-Rust, menor superfície unsafe, HR-1-friendly.
+
+**Verification protocol (scratch `/tmp/avif-c-verify`, per
+[`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md))**:
+- `cargo audit`: **0 RUSTSEC**. Único warning `paste 1.0.15` unmaintained
+  (RUSTSEC-2024-0436) — **já no `ignore` do `deny.toml`**.
+- `cargo tree -e normal`: 68 crates; **zero `owning_ref`** (a classe que
+  matou Path A: eliminada). Sem `lodepng`/`aom-decode`/`avif-decode`.
+- `cargo deny check licenses`: árvore normal toda BSD-2/MIT/Apache/Unicode-3.0/
+  Unlicense — dentro do allowlist. `NCSA`/`LGPL` (libfuzzer-sys/r-efi) NÃO
+  estão na árvore normal sob nossas features.
+
+**Correção de claim do handoff (§5.18.1)**: o handoff afirmava "vendored →
+sem CI install". **FALSO** — os `*-sys` vendoram *source*, não binários:
+`libdav1d-sys` exige **meson + ninja**, rav1e (asm x86) exige **nasm**. Build
+local só passou após `brew install meson nasm`. `spike.yml` ganhou
+`Install AVIF build tools` nos jobs lint + MSRV (apt) + matrix 3-OS
+(apt/brew/choco). **Windows é o risco não-verificável localmente** —
+babysit do CI no 1º push.
+
+**Trade-off `forbid(unsafe_code)` (§5.18.2)**: o wrapper safe `libavif` 0.14
+é **8-bit RGBA only** (esconde `nclx`, depth, float) — incapaz de HDR real.
+HDR/wide-gamut exige `libavif-sys` FFI cru → `unsafe` vive no nosso crate.
+Decisão: **dropar `#![forbid(unsafe_code)]`** (único format-crate sem ele),
+substituído por `#![deny(unsafe_op_in_unsafe_fn)]`; todo bloco `unsafe`
+carrega `// SAFETY:` + RAII guards (`Decoder`/`Image`/`RgbScratch`/`RwData`)
+liberam toda alocação libavif em todo exit path + `catch_unwind` no boundary
+do parser. HDR real venceu o stub LDR-only.
+
+**Cobertura**:
+- **Decode**: `nclx` → `ColorProfile`; SDR 8-bit → `Flat`; PQ/HLG/linear/>8-bit/
+  BT.2020 → `FlatHdr` scene-linear (EOTF PQ SMPTE-2084 / HLG ARIB-B67 / linear /
+  sRGB invertida). **ICC embarcado override do nclx** (preservado byte-exact como
+  `ColorProfile::Custom`, capped `MAX_ICC_PROFILE_LEN`). Straight-alpha requestado
+  (unpremultiply se fonte premultiplied). Grid stitched pelo libavif. Animação
+  (`avis`) decoda 1º frame (Animated bridge W3+; documentado, não-silencioso).
+- **Encode**: rav1e; quality 0..100 (≥100 ⇒ lossless identity-matrix, RGB exato);
+  YUV444; `nclx` escrito da profile fonte (HDR → 10-bit PQ HDR10). FlatHdr→PQ,
+  Flat→sRGB. Layered/Animated/Vector → `Error::Unsupported` actionable.
+- **HR-13**: `imageDimensionLimit = MAX_RASTER_DIMENSION` no decoder C **antes**
+  do parse + re-check pós-parse.
+- **Determinismo (HR-5)**: EOTF usa `std` transcendentals (não libm-pinned) — decode
+  de pixel é *content I/O*, fora do replay-hash domain (o YUV dav1d C já não é
+  bit-idêntico cross-OS). Round-trip tests asseguram consistência forward/inverse,
+  não bit-equality cross-OS.
+
+**Testes**: 21 verdes Mac aarch64 (12 unit color/magic + 9 integração:
+magic_recognition, truncated, hostile_garbage, lossless+lossy roundtrip,
+**hdr_wide_gamut_roundtrip** 10-bit PQ Rec.2020, grid, reject-non-raster).
+Fixtures gerados in-process (encode→decode) — sem `.avif` externo.
 
 ### 5.17 W3.T4 AVIF deship — audit-15 reverteu `avif-decode 1.0` wire-up (2026-05-28)
 

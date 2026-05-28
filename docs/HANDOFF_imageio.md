@@ -1,8 +1,9 @@
 # HANDOFF — Image I/O pipeline (ADR-0054)
 
-**Status:** **W0..W3 closed** with W3.T4 AVIF *deshipped* and W3.T5 SVG
-parse-only stub.
-**Last commit (this session):** `eb4be4f` (docs §5.17 + plan).
+**Status:** **W0..W3 closed** with W3.T4 AVIF **re-shipped (Path C, real
+decode+encode+HDR)** and W3.T5 SVG parse-only stub.
+**Last commit (this session):** `eb4be4f` (docs §5.17 + plan); AVIF re-ship
+commits local (this session).
 **Date:** 2026-05-28.
 **Owner of this handoff:** LLM (any session) — Enio reviews on demand.
 
@@ -57,7 +58,7 @@ actionable defer message.
 | `ph2d-imageio-hdr-radiance` | W3.T3 | ✅ Real | ✅ Real | `image` 0.25 hdr feature; Inf/NaN/neg sanitise (audit-14 LL) |
 | `ph2d-imageio-exr` | W3.T2 | ✅ Real | ❌ Unsupported (defer) | `exr` 1.x closure-state walker |
 | `ph2d-imageio-jxl` | W3.T1 | ✅ Real (LDR) | ❌ Unsupported (permanent) | `jxl-oxide` 0.10 decode-only; HDR/Animated/CMYK reject |
-| `ph2d-imageio-avif` | W3.T4 | ❌ Stub | ❌ Stub | **DESHIPPED** in `f034e9a` — vide §5.17 |
+| `ph2d-imageio-avif` | W3.T4 | ✅ Real (SDR+HDR) | ✅ Real (SDR+HDR) | **RE-SHIPPED Path C** `libavif-sys` dav1d+rav1e — nclx+ICC→ColorProfile, PQ/HLG EOTF, 10-bit PQ HDR10 encode. FFI (no `forbid(unsafe)`), catch_unwind, RAII. Vide §5.18 |
 | `ph2d-imageio-svg` | W3.T5 | ⚠️ Parse-only | ❌ Unsupported (defer) | `usvg` 0.43 parse → `VectorDoc::default()`; awaits ADR-0056 |
 
 ## §2 — Audit timeline (15 rounds)
@@ -79,6 +80,7 @@ Every round used 5–7 adversarial lenses rotated per
 | Audit-13 | `54a8a12` | EXR doc-honesty + APNG cargo `numer` ignore | W3.T1.5 |
 | Audit-14 | `5f9582b` | **3 CRITICAL** HDR Inf panic + JXL ColorProfile/CMYK auto-srgb | W3 wave-2 |
 | Audit-15 | `f034e9a` | **DESHIP AVIF** — RUSTSEC + upstream bugs | W3.T4 deship |
+| Audit-16 | _(local)_ | **RE-SHIP AVIF Path C** `libavif-sys` (5-lens: closure/dep/spec/HR/regression) — verification clean (0 RUSTSEC, zero owning_ref); ICC-override + straight-alpha + dim-cap fixed inline | W3.T4 re-ship |
 
 ## §3 — Hard rules + defences (live)
 
@@ -108,11 +110,17 @@ Specific defences shipped:
 
 ### High-value
 
-1. **W3.T4 AVIF real decode** — `f034e9a` reverted `avif-decode = "1"` due to RUSTSEC-2022-0040 (owning_ref UAF) + upstream `unprem()` bug. **Three candidate paths** (vide §5.17):
-   - **(A)** `image = { features = ["avif-native"] }` — verify dep tree avoids `owning_ref` before adding.
-   - **(B)** Wait for `avif-decode 2.x` to migrate to `safer_owning_ref` + fix `unprem()` upstream.
-   - **(C)** `libavif-sys` direct (C FFI; fastest but unsafe ABI).
-   - **Verification protocol** for any candidate: `cargo audit` clean + `cargo tree | grep owning_ref` empty + grep `unsafe` count + bus-factor check + RUSTSEC search.
+1. **W3.T4 AVIF real decode — ✅ DONE (Path C, §5.18)**. Re-shipped 2026-05-28
+   via candidate **(C)** `libavif-sys` (codec-dav1d + codec-rav1e). Real
+   SDR+HDR decode/encode; verification clean (0 RUSTSEC, zero `owning_ref`).
+   **Residual follow-ups** (non-blocking):
+   - Multi-frame `avis` animation decodes first frame only (Animated bridge
+     W3+; HDR animation can't use `Animated`/`SrgbRgba` anyway).
+   - No fixture-based `too_large_dimensions` test (synthesizing a >32768px
+     AVIF in-process is impractical; the cap is set on the C decoder pre-parse
+     + re-checked post-parse — both code-inspectable).
+   - **CI Windows** meson+nasm+dav1d build is the unverified-locally risk —
+     babysit the first push.
 
 2. **W3.T5 SVG real vector body** — Currently parses via `usvg` 0.43 and returns `VectorDoc::default()` (empty stub). Real vector body needs amendment to the **FROZEN** contract type `VectorDoc` (currently `_reserved_for_w3: ()`). Outras sessões shipped `ph2d-vector-doc` per [ADR-0056](architecture/decisions/0056-vector-network-data-model.md). When ADR-0054 §2.1.1 amendment lands, SVG importer plugs `Ph2dVectorAsset` into `VectorDoc` body.
 

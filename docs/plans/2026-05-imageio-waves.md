@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations + W3.T1.0 wire-up + W3.T1..T5 fan-out + W3 wave-2 REAL DECODE + W3.T4 AVIF DESHIPADO (audit-15)** 2026-05-28 — ADR-0054 `Accepted`; **14 format crates** wired (3 W3 com decode real: HDR/EXR/JXL; AVIF + SVG mantêm stubs honest pós audit); 16 imageio crates registrados no `spike.yml` nextest CI matrix; **~187 tests verdes Mac aarch64**; 39+ commits locais; **RUSTSEC zero** (deship retirou owning_ref UAF).
+**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations + W3.T1.0 wire-up + W3.T1..T5 fan-out + W3 wave-2 REAL DECODE + W3.T4 AVIF RE-SHIPADO Path C (audit-16)** 2026-05-28 — ADR-0054 `Accepted`; **14 format crates** wired (4 W3 com decode real: HDR/EXR/JXL/**AVIF**; SVG parse-only stub); 16 imageio crates registrados no `spike.yml` nextest CI matrix; **~208 tests verdes Mac aarch64**; 40+ commits locais; **RUSTSEC zero** (Path C `libavif-sys` dav1d+rav1e: zero owning_ref).
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -116,7 +116,7 @@ Batch A (3 slots paralelos, puro Rust pequenos):
 - **W3.T3** — `crates/ph2d-imageio-hdr-radiance/`: ✅ commit `dc4ec6a` wave-2 — **real decode + encode** via `image` 0.25 `hdr` feature. RGBE ↔ LinearRgba round-trip 5% tolerance (shared-exp quantization). 6 tests.
 
 Batch B (2 slots paralelos):
-- **W3.T4** — `crates/ph2d-imageio-avif/`: ❌ commit `272d99d` **DESHIPADO** via `f034e9a` (audit-15). `avif-decode = "1"` carrega RUSTSEC-2022-0040 `owning_ref` UAF unfixable + upstream `unprem()` math bug + HDR PQ silent + libaom-sys 26 MB C vendored. Magic-only stub restaurado com 3 candidate paths documentados (image avif-native / avif-decode 2.x / libavif-sys). Vide ADR §5.17.
+- **W3.T4** — `crates/ph2d-imageio-avif/`: ✅ **RE-SHIPADO Path C** (2026-05-28, candidate #3). `libavif-sys` codec-dav1d (decode) + codec-rav1e (encode pure-Rust). Decode SDR/HDR real (`nclx`+ICC→ColorProfile, PQ/HLG/linear EOTF → FlatHdr scene-linear), encode lossless+lossy + 10-bit PQ HDR10. Verification limpa (0 RUSTSEC, zero `owning_ref`, licenças OK). `forbid(unsafe)` dropado (FFI) → `deny(unsafe_op_in_unsafe_fn)` + RAII + catch_unwind. CI ganhou meson+ninja+nasm 3-OS. 21 tests verdes. Vide ADR §5.18. _(Histórico: `272d99d` deshipado via `f034e9a` audit-15 — avif-decode RUSTSEC owning_ref; §5.17.)_
 - **W3.T5** — `crates/ph2d-imageio-svg/`: ✅ commit `cc97cd4` — **REAL parse** via `usvg = "0.43"` (parse + simplify validation); retorna `DecodedImage::Vector(VectorDoc::default())`. `MAX_ARCHIVE_TEXT_BYTES = 16 MiB` cap blocks billion-laughs. Export deferred (ph2d-vector canonical types W3+).
 
 **Aceitação W3:** 5 crates registrados; smoke Enio: (a) abre EXR HDRi de Blender, edita exposure, salva AVIF 10-bit; (b) importa SVG Lucide, mantém vetorial editável no canvas, exporta SVG válido em Chrome/Safari/Firefox real; CI verde.

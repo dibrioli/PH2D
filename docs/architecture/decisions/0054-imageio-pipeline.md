@@ -326,8 +326,42 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `84fd496` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
 | **W3.T1.0** wire-up `AssetDb → imageio registry` (fecha X-HIGH-1) | ✅ | `e54d41a` (multi-agent collision) | Bridge: `ph2d-asset/loader.rs::decode_via_imageio_registry` fallback acionado quando `image::guess_format` retorna Other. Estende `is_supported_image_extension` para gif/tiff/tif/ora/apng/psd/ph2d. Multi-layer/multi-frame/HDR/Vector retornam Error::Decode actionable. Tests: 46 ph2d-asset verdes; workspace check 1m 02s. **Colisão**: meus arquivos staged foram absorvidos pelo commit `e54d41a` (sessão KTX2 paralela) — conteúdo correto, atribuição confusa. Vide §5.12. |
 | **W3.T1..T5** fan-out 5 format crates (AVIF/EXR/HDR/JXL/SVG) | ✅ | `cc97cd4` | 5 new crates per ADR §3.8 fan-out drop-crate: AVIF (W3.T4 magic-only stub), EXR (W3.T2 magic-only stub), HDR-Radiance (W3.T3 magic-only stub), JXL (W3.T1 magic-only stub), SVG (W3.T5 **real parse** via usvg 0.43 → VectorDoc). registry-init regenerated 9→14 via codegen. spike.yml +5 crates (16 imageio total). 35 new tests verdes (8+6+6+7+8). Vide §5.13. |
+| **W3 wave-2.1** audit-14 remediation pós-wave-2 | ✅ | `5f9582b` | 3 CRITICAL (HDR Inf panic + JXL ColorProfile mislabel + JXL CMYK collision via auto-srgb-request) + 4 HIGH (HDR wide-DR docs + JXL HDR/multi-frame guards + alpha-drop warning) + 2 MEDIUM (written guard + doc honesty) — Lens NN/PP GREEN, OO inconclusivo (sessão paralela cobrindo end-to-end test) — vide §5.16 |
 | **W3 wave-2** real decode/encode em HDR/EXR/JXL | ✅ | `dc4ec6a` | Substitui magic-only-stubs de cc97cd4 por impl real. HDR-Radiance: image 0.25 hdr feature, encode+decode RGBE → LinearRgba; EXR: `exr = "1"` builder API, decode via closure-state struct; JXL: `jxl-oxide = "0.10"` decode-only first-frame para Flat path. AVIF + SVG mantêm stubs. 21 tests verdes (6 HDR + 7 EXR + 8 JXL). Vide §5.15. |
 | **W3.T1.5** nova auditoria pós-W3.T1..T5 | ✅ | `54a8a12` | 1 CRITICAL doc-honesty (EXR claim falso `exr=1` in Cargo.toml) + 3 HIGH (AVIF Cargo.toml vapor comment, SVG Cargo.toml promete rasterize-on-import inexistente, **HH-FIN-1 SVG security: `default_string_resolver` faz `std::fs::read(href)` em `<image href="/etc/passwd"/>`**) + 3 MEDIUM (JXL codestream test ausente + AVIF avis sequence test ausente + SVG hostile-input tests ausentes) + 1 P1 ship-blocker fmt — vide §5.14 |
+
+### 5.16 W3 wave-2 audit-14 — 3 CRITICAL + 4 HIGH fechados (2026-05-27)
+
+Auditoria adversarial 6-lente sobre commits `dc4ec6a` + `d734dd1` (W3 wave-2 real decode/encode). Lentes especializadas: **KK** closure correctness · **LL** RGBE precision + HDR edge cases · **MM** JXL channel/HDR · **NN** dep audit · **OO** asset bridge HDR · **PP** ship.sh real-time.
+
+**Resultados**:
+- **NN GREEN** — zero RUSTSEC, licenças OK, MSRV folgado, dep tree aceitável (jxl-oxide bus-factor=1 anotado).
+- **PP GREEN** — fmt+clippy+typos+machete+tests todos verdes nos 3 crates wave-2.
+- **OO inconclusivo** — agent travou; sessão paralela já estava cobrindo o end-to-end test via `ph2d-asset/Cargo.toml` adicionando `ph2d-imageio-hdr-radiance` como dev-dep.
+- **KK + LL + MM** convergem em 3 CRITICAL + 4 HIGH + 2 MEDIUM fechados.
+
+**CRITICAL (3)**:
+- **LL** HDR encode panic em `f32::INFINITY`: `image-0.25.10::HdrEncoder::encode` panic com "attempt to add with overflow". Real HDR EXR pode ter Inf legítimo (gamut clip) — DoS via export. Fix: sanitize non-finite + negative → 0.0 no encode boundary; test `export_sanitizes_non_finite_and_negative_without_panic` exercita Inf/NaN/Neg/-Inf.
+- **MM** JXL `ColorProfile::Srgb` hardcoded sem `request_color_encoding`: wide-gamut JXLs (Display-P3, Rec2020, BT.2100 PQ) renderizam no encoding nativo + quantizam como sRGB → crominância errada. Fix: `img.request_color_encoding(EnumColourEncoding::srgb(RenderingIntent::Relative))` ANTES de `render_frame` — agora `ColorProfile::Srgb` é truthful.
+- **MM + KK** JXL CMYK channels=4 collision com RGBA: `stream.channels() == 4` interpretado como RGBA mas pode ser CMYK (silent data corruption). Fix: `request_color_encoding(srgb)` auto-gamut-mapa CMYK → sRGB upstream do `Render::stream` — collision estruturalmente prevenida; match Cmyk redundante removido.
+
+**HIGH (4)**:
+- **MM** JXL HDR silent clamp[0,1]: PQ/HLG transfer fica white-saturated. Fix: `if img.hdr_type().is_some() { Error::Unsupported }` apontando FlatHdr bridge W3+.
+- **MM** JXL multi-frame silent first-frame: `render_frame(0)` sem checar count. Fix: `if num_loaded_keyframes() > 1 { Error::Unsupported }` apontando Animated bridge W3+.
+- **LL** HDR wide-DR loss não-documentado: shared-exp limit ~1:256 channel ratio; doc dizia "1% precision". Fix: crate doc declara limite real + alpha-drop policy + non-finite/negative sanitisation policy.
+- **MM** Zero real-decode coverage JXL: deferido W3.T1.6 quando fixture binário disponível (cjxl CLI).
+
+**MEDIUM (2)**:
+- **MM** `written == 0` guard aceitava partial-write 1..len-1. Fix: `written != planar.len()` — exige fill exato.
+- **MM** Doc-comment JXL mentia sobre cobertura ("HDR + alpha + animation in spec"). Fix: doc atualizada explicitando subset W3.T1 + lista de rejected paths.
+
+**LOW absorvidos / deferidos**:
+- MM `as u8` não-saturating (defer; clamp já garante range).
+- LL tolerância 5% sem golden bytes (defer W3.T3.x).
+- LL endianness assumption (defer; image-rs documenta NE).
+- LL `ColorProfile::LinearRec709` hardcoded sem ler header chromaticities (EXR `chromaticities` attr / Radiance `PRIMARIES=`) — defer W3+ ICC pipeline.
+
+**Total wave-2 pós-audit-14**: 22 tests verdes Mac aarch64 (7 HDR + 7 EXR + 8 JXL).
 
 ### 5.15 W3 wave-2 — real decode/encode em HDR/EXR/JXL (2026-05-27)
 

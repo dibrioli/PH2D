@@ -621,21 +621,35 @@ impl crate::App {
             // map) substituído por `HashMap<ToolId, ShellCache>` ou hook em
             // `Tool::on_activate` (ADR-0041). Por hoje, mantido inline.
             if let Some(tool_id) = pending_image_tool_activation.take() {
-                let is_stateful_image_tool = ph2d_editor::installed_registry()
-                    .map(|reg| {
-                        reg.cluster("image_tools").iter().any(|m| {
-                            m.id == tool_id
-                                && matches!(
-                                    m.handler,
-                                    ph2d_tool_registry::ToolHandler::Stateful { .. }
-                                )
-                        })
-                    })
-                    .unwrap_or(false);
-                if hero.image_edit.mode_on
-                    && is_stateful_image_tool
-                    && tools.set_active(&ph2d_editor::ToolId::new(tool_id))
-                {
+                // Look up the activating tool's cluster + Stateful gate.
+                // W1.T1.7 generalization: was "image_tools" only; now also
+                // accepts "vector_tools" (Pen tool ship). When a third
+                // cluster appears, add it here OR extract a generic
+                // `find_activatable_stateful_tool` helper.
+                let activating_cluster: Option<&'static str> =
+                    ph2d_editor::installed_registry().and_then(|reg| {
+                        for cluster_name in ["image_tools", "vector_tools"] {
+                            if reg.cluster(cluster_name).iter().any(|m| {
+                                m.id == tool_id
+                                    && matches!(
+                                        m.handler,
+                                        ph2d_tool_registry::ToolHandler::Stateful { .. }
+                                    )
+                            }) {
+                                return Some(cluster_name);
+                            }
+                        }
+                        None
+                    });
+                // Per-cluster activation gate. "image_tools" requires
+                // the IMG mode toggle; "vector_tools" has no toggle in
+                // W1 so always-on (Pen pill is direct-activate).
+                let gate_on = match activating_cluster {
+                    Some("image_tools") => hero.image_edit.mode_on,
+                    Some("vector_tools") => true,
+                    _ => false,
+                };
+                if gate_on && tools.set_active(&ph2d_editor::ToolId::new(tool_id)) {
                     self.title_dirty = true;
                     if tool_id == "bgremoval" {
                         self.last_bgremoval_pushed_entity = None;

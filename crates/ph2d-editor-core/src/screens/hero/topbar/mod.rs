@@ -25,6 +25,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_SAVE_AS,
         ids::TOPBAR_OPEN,
         ids::TOPBAR_IMAGE_TOOLS,
+        ids::TOPBAR_VECTOR_PEN,
         ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,

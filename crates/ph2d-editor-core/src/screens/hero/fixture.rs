@@ -49,6 +49,16 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_IMAGE_TOOLS,
             TopBarCluster::single("IMG", IconId::Image),
         ),
+        // W1.T1.7 MVP: Vector Pen tool always-visible single pill.
+        // Click activates the Pen tool (via chrome handler
+        // `vector_pen_toggle::apply` → `EditorAction::ActivateTool`).
+        // W2+ may consolidate under a "VECTOR" mode toggle (parallel
+        // to IMG) when more Vector tools (Pencil / Shape / Select)
+        // ship.
+        (
+            ids::TOPBAR_VECTOR_PEN,
+            TopBarCluster::single("PEN", IconId::VectorPen),
+        ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

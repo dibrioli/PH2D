@@ -67,6 +67,14 @@ pub const TOPBAR_IMAGE_TOOLS_BACKDROP: NodeId = hash_node_id("topbar_image_tools
 /// ImageTools mode; the state lives on
 /// [`crate::screens::HeroScreen::image_tools_mode`].
 pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
+/// Vector Pen tool cluster — TopBar single-pill that activates the
+/// Vector Module Pen tool (W1.T1.7). Click pushes
+/// `EditorAction::ActivateTool { tool_id: "vector_pen" }`; shell
+/// drain in `render_loop::mod` calls
+/// `tools.set_active(&ToolId::new("vector_pen"))`. MVP placement
+/// alongside the other right-side single pills; W2+ may move into a
+/// dedicated "vector_tools" mode toggle (parallel to Image Tools).
+pub const TOPBAR_VECTOR_PEN: NodeId = hash_node_id("topbar_vector_pen");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /

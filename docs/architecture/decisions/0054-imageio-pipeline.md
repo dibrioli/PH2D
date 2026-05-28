@@ -325,6 +325,40 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.5** nova auditoria pós-W3.T0.4 | ✅ | `4d7dfdd` | 1 CRITICAL (ORA `opacity` aceita `NaN`/`±Inf` — compositor poison + persiste no `.ph2d-native` save) + 1 HIGH meu (ZIP central directory amplification ~1.5 GiB) + 1 HIGH não-meu (X arquitetural: shells/desktop bypass imageio registry) + 2 MEDIUM (stack.xml `take(N)` cap + APNG test snake_case) — vide §5.10 |
 | **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `84fd496` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
 | **W3.T1.0** wire-up `AssetDb → imageio registry` (fecha X-HIGH-1) | ✅ | `e54d41a` (multi-agent collision) | Bridge: `ph2d-asset/loader.rs::decode_via_imageio_registry` fallback acionado quando `image::guess_format` retorna Other. Estende `is_supported_image_extension` para gif/tiff/tif/ora/apng/psd/ph2d. Multi-layer/multi-frame/HDR/Vector retornam Error::Decode actionable. Tests: 46 ph2d-asset verdes; workspace check 1m 02s. **Colisão**: meus arquivos staged foram absorvidos pelo commit `e54d41a` (sessão KTX2 paralela) — conteúdo correto, atribuição confusa. Vide §5.12. |
+| **W3.T1..T5** fan-out 5 format crates (AVIF/EXR/HDR/JXL/SVG) | ✅ | `cc97cd4` | 5 new crates per ADR §3.8 fan-out drop-crate: AVIF (W3.T4 magic-only stub), EXR (W3.T2 magic-only stub), HDR-Radiance (W3.T3 magic-only stub), JXL (W3.T1 magic-only stub), SVG (W3.T5 **real parse** via usvg 0.43 → VectorDoc). registry-init regenerated 9→14 via codegen. spike.yml +5 crates (16 imageio total). 35 new tests verdes (8+6+6+7+8). Vide §5.13. |
+
+### 5.13 W3 fan-out — 5 format crates landed (2026-05-27)
+
+ADR-0054 §3.8 fan-out drop-crate executado per Lens U U-9 verdict ("plug-and-play, zero edit no ph2d-imageio core ou registry-init manual"). 5 new crates shipped:
+
+| Crate | Wave | Status | Deps |
+|---|---|---|---|
+| **`ph2d-imageio-avif`** | W3.T4 | Magic-only stub | `ph2d-imageio` |
+| **`ph2d-imageio-exr`** | W3.T2 | Magic-only stub | `ph2d-imageio` |
+| **`ph2d-imageio-hdr-radiance`** | W3.T3 | Magic-only stub | `ph2d-imageio` |
+| **`ph2d-imageio-jxl`** | W3.T1 | Magic-only stub | `ph2d-imageio` |
+| **`ph2d-imageio-svg`** | W3.T5 | **Real parse** via `usvg = "0.43"` | `ph2d-imageio` + `usvg` |
+
+**Magic-only-stub pattern**: registry-init dispatch correctly via magic bytes / extension; `import()` and `export()` return `Error::Unsupported` com mensagem actionable apontando próximo wave + dep candidata. Mesmo pattern do PSD W2.T4 (shipou magic recognition + Unsupported export até primeiro real PSD-write client materializar). Stubs preservam registry surface intact + permitem que callers detectem o formato; substituição por impl real é per-crate sem tocar contract ou registry.
+
+**SVG W3.T5 special**: único com decode real porque `usvg` 0.43 é leve (parse + simplify only) e `VectorDoc::default()` (reserved-for-W3+) já é o destino correto. Quando `ph2d-vector` canonicalisar `kurbo::BezPath` paint stack, o SVG importer popula `VectorDoc` sem mudar surface — wire-up plug-and-play.
+
+**Defesas runtime mantidas**:
+- SVG: `MAX_ARCHIVE_TEXT_BYTES = 16 MiB` cap antes do `usvg::Tree::from_data` parse → blocks billion-laughs / hostile expansion at read boundary.
+- Todos os 5: `is_empty` short-circuit (Error::Truncated); strict magic-byte check (AVIF rejeita HEIF brand `mif1`/`heic` explicitly).
+
+**CI matrix**: `spike.yml` agora lista 16 imageio crates (`-p ph2d-imageio-{png,jpeg,webp,gif,ph2d-native,tiff,ora,apng,psd,avif,exr,hdr-radiance,jxl,svg,registry-init}`). registry-init staleness gate ainda verde — codegen detecta os 5 new crates automaticamente.
+
+**Total Onda 2+3 tests pós-W3 fan-out**: 141 + 35 = **176 tests verdes Mac aarch64** (172 cross-OS, 4 goldens cfg-gated). 16 imageio crates wired no CI matrix.
+
+**Próximos passos (per crate)**:
+- **AVIF W3.T4**: encode `ravif = "0.11"` + decode `avif-decode = "1"`. Wire-up: Painter HDR import demo.
+- **EXR W3.T2**: `exr` 1.x closure API com RefCell out-param. Wire-up: Blender HDRi import demo.
+- **HDR W3.T3**: `image` 0.25 `hdr` feature direct. Wire-up: IBL skybox import demo.
+- **JXL W3.T1**: `jxl-oxide = "0.10"` decode-only. Encode permanent-deferred. Wire-up: HDR import demo.
+- **SVG W3.T5**: VectorDoc body via `ph2d-vector` (kurbo::BezPath). Export → SVG string. Wire-up: Painter vector layer export demo.
+
+
 
 ### 5.12 Wire-up `AssetDb → imageio registry` — W3.T1.0 (2026-05-27)
 

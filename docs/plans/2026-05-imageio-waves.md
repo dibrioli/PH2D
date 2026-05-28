@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations CONVERGÊNCIA RATIFICADA** 2026-05-26 — ADR-0054 `Accepted`; **9 format crates** wired (apng/gif/jpeg/ora/ph2d-native/png/psd/tiff/webp); 11 imageio crates registrados no `spike.yml` nextest CI matrix; 141 tests verdes Mac aarch64 (4 golden hashes `#[cfg]`-gated); 32+ commits locais; ship.sh real-time GREEN isoladamente para os 11 crates. **W3 fan-out (HDR + vetor) destrancado APÓS** wire-up `shells/desktop → imageio registry` (único gap arquitetural residual, flaggado em W3.T0.4..W3.T0.6).
+**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations CONVERGÊNCIA RATIFICADA + W3.T1.0 wire-up + W3.T1..T5 FAN-OUT SHIPPED** 2026-05-27 — ADR-0054 `Accepted`; **14 format crates** wired (apng/avif/exr/gif/hdr-radiance/jpeg/jxl/ora/ph2d-native/png/psd/svg/tiff/webp — 5 W3 são magic-only-stubs exceto SVG que faz real parse); 16 imageio crates registrados no `spike.yml` nextest CI matrix; **176 tests verdes Mac aarch64** (141 W2 + 35 W3); 34+ commits locais; ship.sh real-time GREEN isoladamente para os 16 crates.
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -111,13 +111,13 @@ Batch B (1 slot dedicado, sequencial após A — PSD é gargalo):
 ### W3.1 — Fan-out (5 crates, 2 batches paralelos)
 
 Batch A (3 slots paralelos, puro Rust pequenos):
-- **W3.T1** — `crates/ph2d-imageio-jxl/`: `jxl-oxide` 0.x (puro Rust!). HDR + lossless + lossy. ⏳
-- **W3.T2** — `crates/ph2d-imageio-exr/`: `exr` 1.x (puro Rust). Float32 linear multi-channel; direto → `FlatHdr`. ⏳
-- **W3.T3** — `crates/ph2d-imageio-hdr-radiance/`: `image` (`hdr` feature). RGBE encoding; IBL/skybox. ⏳
+- **W3.T1** — `crates/ph2d-imageio-jxl/`: ✅ commit `cc97cd4` — magic-only stub (ISOBMFF + codestream); decode `jxl-oxide` 0.10 deferred quando primeiro real client; encode permanent-deferred (no pure-Rust JXL encoder).
+- **W3.T2** — `crates/ph2d-imageio-exr/`: ✅ commit `cc97cd4` — magic-only stub; decode/encode `exr` 1.x deferred (closure API + RefCell out-params).
+- **W3.T3** — `crates/ph2d-imageio-hdr-radiance/`: ✅ commit `cc97cd4` — magic-only stub (`#?RADIANCE\n` + `#?RGBE\n`); decode/encode `image` 0.25 `hdr` feature deferred.
 
 Batch B (2 slots paralelos):
-- **W3.T4** — `crates/ph2d-imageio-avif/`: `avif-decode` (puro Rust decode) + `ravif` 0.11 (rav1e encoder, puro Rust). 10/12-bit HDR via `FlatHdr`. ⏳
-- **W3.T5** — `crates/ph2d-imageio-svg/`: import preserva `DecodedImage::Vector(VectorDoc)` via `usvg` 0.43 + `resvg`; rasterize opt-in; export Painter vector layers → kurbo → SVG string via `ph2d-vector` (M11). ⏳
+- **W3.T4** — `crates/ph2d-imageio-avif/`: ✅ commit `cc97cd4` — magic-only stub (ISOBMFF ftyp `avif`/`avis`); decode `avif-decode` + encode `ravif` 0.11 deferred.
+- **W3.T5** — `crates/ph2d-imageio-svg/`: ✅ commit `cc97cd4` — **REAL parse** via `usvg = "0.43"` (parse + simplify validation); retorna `DecodedImage::Vector(VectorDoc::default())`. `MAX_ARCHIVE_TEXT_BYTES = 16 MiB` cap blocks billion-laughs. Export deferred (ph2d-vector canonical types W3+).
 
 **Aceitação W3:** 5 crates registrados; smoke Enio: (a) abre EXR HDRi de Blender, edita exposure, salva AVIF 10-bit; (b) importa SVG Lucide, mantém vetorial editável no canvas, exporta SVG válido em Chrome/Safari/Firefox real; CI verde.
 

@@ -26,7 +26,9 @@
 
 pub mod cook;
 pub mod fixtures;
+pub mod mip_gen;
 pub mod target_matrix;
 
 pub use cook::{CookOptions, TextureCookError, cook, cook_all};
+pub use mip_gen::{MipFilter, generate_mip_chain, mip_levels_for_dimensions};
 pub use target_matrix::{AssetClass, Tier, default_color_space_for, target_for};

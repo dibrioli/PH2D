@@ -2,10 +2,19 @@
 //! `ph2d-imageio-jxl` — JPEG XL decode (W3.T1).
 //!
 //! Pure-Rust via `jxl-oxide` 0.10. JXL is the next-gen lossless +
-//! lossy format (HDR + alpha + animation in spec); W3.T1 ships
-//! decode-only first-frame for LDR Flat path. Encode is permanent-
-//! deferred — jxl-oxide is decode-only as of 0.10; native JXL
-//! encode lands when a pure-Rust encoder materialises.
+//! lossy format (HDR + alpha + animation in spec). W3.T1 ships a
+//! **strict subset**: LDR Flat path only, first frame only, sRGB
+//! output via explicit `request_color_encoding` (wide-gamut JXLs
+//! are gamut-mapped to sRGB before quantisation), Gray/GrayA/RGB/
+//! RGBA only. **Rejected** with `Error::Unsupported`:
+//! - HDR JXL (`hdr_type() == Some(Pq | Hlg)`).
+//! - Multi-frame JXL (animation → `num_loaded_keyframes() > 1`).
+//! - CMYK / CMYKa (silent-corruption-prevention; needs colour
+//!   conversion that isn't wired yet).
+//!
+//! Encode is permanent-deferred — jxl-oxide is decode-only as of
+//! 0.10; native JXL encode lands when a pure-Rust encoder
+//! materialises (`zune-jxl`?).
 //!
 //! ### What W3.T1 covers
 //!
@@ -62,7 +71,7 @@ impl ImageImporter for JxlImporter {
         if src.is_empty() {
             return Err(Error::Truncated);
         }
-        let img = jxl_oxide::JxlImage::builder()
+        let mut img = jxl_oxide::JxlImage::builder()
             .read(std::io::Cursor::new(src))
             .map_err(|e| Error::from_decoder_message(format!("JXL decode init: {e}")))?;
         let width = img.width();
@@ -75,8 +84,44 @@ impl ImageImporter for JxlImporter {
         if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
             return Err(Error::DimensionExceedsLimit);
         }
-        // Render first frame (W3.T1 ships single-frame; multi-frame
-        // defers to Animated bridge).
+        // Audit-14 Lens MM CRITICAL (2026-05-27): JXL native encoding
+        // may be Display-P3, Rec2020, BT.2100 PQ, etc. — quantising
+        // those f32 buffers as if they were sRGB would mislabel
+        // wide-gamut content. Request sRGB explicitly so the
+        // decoder applies gamut conversion before we touch pixels;
+        // `ColorProfile::Srgb` is then truthful.
+        img.request_color_encoding(jxl_oxide::EnumColourEncoding::srgb(
+            jxl_oxide::RenderingIntent::Relative,
+        ));
+        // Audit-14 Lens MM HIGH (2026-05-27): reject HDR JXL (PQ/HLG
+        // transfer functions) explicitly. Silent clamp to [0,1]
+        // would lose the entire luminance range.
+        if img.hdr_type().is_some() {
+            return Err(Error::Unsupported(format!(
+                "JXL is HDR ({:?}); W3.T1 ships LDR Flat path only. \
+                 FlatHdr bridge deferred to W3+ (Painter HDR import demo).",
+                img.hdr_type()
+            )));
+        }
+        // Audit-14 Lens MM HIGH (2026-05-27): reject multi-frame JXL.
+        // `render_frame(0)` would silently drop the rest; Animated
+        // bridge is deferred to W3+.
+        let num_frames = img.num_loaded_keyframes();
+        if num_frames > 1 {
+            return Err(Error::Unsupported(format!(
+                "JXL has {num_frames} keyframes; W3.T1 ships single-frame only. \
+                 Animated bridge deferred to W3+."
+            )));
+        }
+        // Render first frame. Audit-14 Lens MM + KK note: with
+        // `request_color_encoding(srgb)` above, jxl-oxide
+        // gamut-maps CMYK/Cmyka sources to sRGB before the pixel
+        // stream — so `Render::stream().channels()` will be 3/4
+        // (Rgb/Rgba) for any input, never 4-but-actually-CMYK.
+        // The previous Cmyk-channel collision (channel-count match
+        // misinterpreting C/M/Y/K as R/G/B/A) is structurally
+        // prevented by the request_color_encoding above; no
+        // post-render check needed.
         let render = img
             .render_frame(0)
             .map_err(|e| Error::from_decoder_message(format!("JXL render frame 0: {e}")))?;
@@ -85,8 +130,18 @@ impl ImageImporter for JxlImporter {
         let pixel_count = (width as usize) * (height as usize);
         let mut planar = vec![0.0_f32; pixel_count * channels];
         let written = stream.write_to_buffer(&mut planar);
-        if written == 0 {
-            return Err(Error::Decode("JXL render stream returned 0 samples".into()));
+        // Audit-14 Lens MM MEDIUM (2026-05-27): the previous guard
+        // `written == 0` accepted partial fills (1..len-1) as
+        // success. `ImageStream::write_to_buffer` returns the
+        // number of f32 samples actually written; if it's not the
+        // full buffer the trailing pixels are garbage. Require
+        // exact fill.
+        if written != planar.len() {
+            return Err(Error::Decode(format!(
+                "JXL render stream wrote {written} samples; \
+                 expected {} ({pixel_count} pixels × {channels} channels)",
+                planar.len()
+            )));
         }
         // Quantize f32 [0..1] → u8 for the LDR Flat path. HDR JXL
         // (out-of-range floats) clamp to [0,1] — FlatHdr bridge in

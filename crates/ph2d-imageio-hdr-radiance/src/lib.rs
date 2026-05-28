@@ -18,6 +18,23 @@
 //! - HR-1: pure-Rust, no C bindings.
 //! - HR-13: dimension cap via `ph2d_imageio::MAX_RASTER_DIMENSION`.
 //!
+//! ### Known precision/behaviour (audit-14 Lens LL, 2026-05-27)
+//!
+//! - **Shared-exponent quantization**: RGBE uses one 8-bit exponent
+//!   shared across R/G/B. Channel ratios beyond ~1:256 lose the
+//!   smaller channels to zero (e.g. `(1000.0, 0.001, 0.0)` →
+//!   `(1000.0, 0.0, 0.0)` because the exponent dominated by R clamps
+//!   G/B mantissas to 0). For high-dynamic-range scene content with
+//!   wide per-channel ratios prefer EXR (float32 lossless).
+//! - **Alpha dropped on encode**: RGBE spec has no alpha channel.
+//!   Source alpha is silently discarded — round-trip through HDR
+//!   is RGB-only. Use `.ph2d-native` to preserve full RGBA.
+//! - **Non-finite + negative sanitised**: `Inf`/`NaN`/`-0.5` →
+//!   0.0 at encode boundary (audit-14 panic guard, see
+//!   `HdrRadianceExporter::export`). Real HDR EXR can have Inf;
+//!   importing that and re-exporting HDR sanitises rather than
+//!   crashing.
+//!
 //! Audit-13 W3.T1.5 wave-2 (2026-05-27): real impl replaces the
 //! magic-only-stub from cc97cd4 — `image` 0.25 hdr feature is a
 //! single dep + the decode/encode API is uniform with PNG/JPEG/WEBP.
@@ -128,11 +145,26 @@ impl ImageExporter for HdrRadianceExporter {
                 ));
             }
         };
+        // Audit-14 Lens LL CRITICAL (2026-05-27): `image-0.25.10`
+        // `HdrEncoder::encode` panics ("attempt to add with overflow")
+        // when fed `Rgb([INF, ..])`. Real EXR HDR can legitimately
+        // carry Inf (gamut-clip artefacts) — exporting that to RGBE
+        // would crash the process. Sanitize non-finite to 0.0 at
+        // encode boundary; alternative (Error::Encode) would block
+        // legitimate workflows where Inf is a sentinel.
+        //
+        // Negative values follow the same path: RGBE is unsigned-only
+        // per spec; encoder otherwise produces wrong bytes (negative
+        // mantissa). Clamp to [0, +∞).
+        //
         // RGBE drops alpha — Radiance HDR spec has no alpha channel.
         let rgb_pixels: Vec<image::Rgb<f32>> = buf
             .pixels
             .iter()
-            .map(|p| image::Rgb([p.r(), p.g(), p.b()]))
+            .map(|p| {
+                let sanitize = |v: f32| if v.is_finite() { v.max(0.0) } else { 0.0 };
+                image::Rgb([sanitize(p.r()), sanitize(p.g()), sanitize(p.b())])
+            })
             .collect();
         let mut out: Vec<u8> = Vec::new();
         let encoder = image::codecs::hdr::HdrEncoder::new(&mut out);
@@ -191,6 +223,52 @@ mod tests {
     fn exporter_recognizes_hdr_format() {
         assert!(HdrRadianceExporter.supports_format(ExportFormat::HdrRadiance));
         assert!(!HdrRadianceExporter.supports_format(ExportFormat::Png));
+    }
+
+    /// Audit-14 Lens LL CRITICAL (2026-05-27): hostile HDR pixels
+    /// with `f32::INFINITY` / `NaN` / negative values must NOT panic
+    /// the encoder. `image-0.25.10::HdrEncoder::encode` upstream
+    /// crashes on Inf ("attempt to add with overflow"); our wrapper
+    /// sanitises non-finite/negative to 0.0 at the encode boundary.
+    #[test]
+    fn export_sanitizes_non_finite_and_negative_without_panic() {
+        let hostile = ImageBuffer {
+            width: 2,
+            height: 2,
+            pixels: vec![
+                LinearRgba::new(f32::INFINITY, 1.0, 1.0, 1.0),
+                LinearRgba::new(f32::NAN, 0.5, 0.5, 1.0),
+                LinearRgba::new(-0.5, 1.0, 2.0, 1.0),
+                LinearRgba::new(1.0, f32::NEG_INFINITY, f32::NAN, 1.0),
+            ],
+            color_profile: ColorProfile::LinearRec709,
+        };
+        let bytes = HdrRadianceExporter
+            .export(
+                &DecodedImage::FlatHdr(hostile),
+                &ExportOpts {
+                    format: ExportFormat::HdrRadiance,
+                    ..ExportOpts::default()
+                },
+            )
+            .expect("hostile values must sanitise (not panic)");
+        assert!(bytes.starts_with(b"#?RADIANCE"), "magic still emitted");
+
+        // Re-decode and verify sanitization landed in valid floats.
+        let decoded = HdrRadianceImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("re-decode sanitised HDR");
+        let DecodedImage::FlatHdr(buf) = decoded else {
+            panic!("expected FlatHdr");
+        };
+        for (i, px) in buf.pixels.iter().enumerate() {
+            assert!(px.r().is_finite(), "px {i} R finite: {}", px.r());
+            assert!(px.g().is_finite(), "px {i} G finite: {}", px.g());
+            assert!(px.b().is_finite(), "px {i} B finite: {}", px.b());
+            assert!(px.r() >= 0.0, "px {i} R non-negative: {}", px.r());
+            assert!(px.g() >= 0.0, "px {i} G non-negative: {}", px.g());
+            assert!(px.b() >= 0.0, "px {i} B non-negative: {}", px.b());
+        }
     }
 
     /// Audit-13 wave-2 (2026-05-27): real round-trip test now that

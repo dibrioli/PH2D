@@ -263,11 +263,15 @@ mod tests {
                 assert_eq!(&pixels[..], &[10, 20, 30, 255]);
             }
             // Other variants are out of scope for this PNG-decode
-            // test — they have dedicated insert_postcard_* helpers
-            // and roundtrip tests in `prefab.rs` / `scene.rs`.
-            Asset::Prefab(_) | Asset::Scene(_) => {
+            // test — they have dedicated insert_postcard_* / cooked-texture
+            // helpers and roundtrip tests in `prefab.rs` / `scene.rs` /
+            // W1.T4 architecture_texture_ktx2.rs.
+            Asset::Prefab(_) | Asset::Scene(_) | Asset::TextureKtx2 { .. } => {
                 unreachable!("insert_png_bytes can only produce Asset::ImageRgba8")
             }
+            // `#[non_exhaustive]` Asset enum — future variants land via
+            // amendment (e.g., ADR-0055.1 evoluindo TextureKtx2 → Ktx2Image).
+            _ => unreachable!("insert_png_bytes can only produce Asset::ImageRgba8"),
         }
     }
 

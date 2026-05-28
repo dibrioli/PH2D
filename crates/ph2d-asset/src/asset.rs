@@ -28,6 +28,20 @@ pub enum Asset {
     Prefab(Arc<PrefabDoc>),
     /// Cooked scene — same Arc-sharing strategy as Prefab.
     Scene(Arc<SceneDoc>),
+    /// W1.T4 (ADR-0055-v4) — cooked GPU-compressed texture (KTX2 container).
+    /// `tier` indica qual platform tier este artefato é destinado (Desktop=BC7,
+    /// Mobile=ASTC, etc., per [`crate::TierIndex`] + cooker target matrix).
+    ///
+    /// `blob` carrega os bytes KTX2 raw — design pragmático W1.T4 noite
+    /// 2026-05-27: evita adicionar dep `ph2d-asset-ktx2` em `ph2d-asset/Cargo.toml`
+    /// (que tinha WIP alheio do imageio fan-out paralelo). Renderer W2 decodifica
+    /// via `ph2d_asset_ktx2::parse(&blob)` no upload path. Migration path para
+    /// `Arc<Ktx2Image>` decode-once via amendment ADR-0055.1 quando Cargo.toml
+    /// estiver disputável sem race.
+    TextureKtx2 {
+        tier: crate::TierIndex,
+        blob: Arc<Vec<u8>>,
+    },
 }
 
 impl Asset {
@@ -58,6 +72,9 @@ impl Asset {
                     + s.relations.len() * std::mem::size_of::<crate::scene::ChildOfPair>()
                     + std::mem::size_of_val(&**s)
             }
+            // W1.T4: cooked KTX2 blob — raw byte count (decoded Ktx2Image lives
+            // só no renderer cache W2; aqui Asset carries só os bytes serializados).
+            Self::TextureKtx2 { blob, .. } => blob.len(),
         }
     }
 }

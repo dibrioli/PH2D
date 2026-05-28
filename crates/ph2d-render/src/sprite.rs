@@ -61,11 +61,29 @@ impl SpriteSource {
 /// as long as `SpriteSource`'s variant order doesn't change.
 #[derive(Component, Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Sprite {
+    /// Schema version (HR-14 mitigation). Bumped 3 → 4 in W1 when the
+    /// 14 intrinsic-appearance fields below landed (Sprite Inspector v2,
+    /// ADR-0069/0070). Redundant with the `SpriteVersioned` wrapper
+    /// discriminant on the wire, but kept as an explicit field for
+    /// schema honesty + the migrator's `version ∈ {3, 4}` invariant
+    /// (anatomia §1.6) — accepted as Lens-C-M2 redundancy.
+    ///
+    /// `#[serde(default = "default_version_4")]` is documentary under
+    /// postcard (positional format; the attribute never fires — see
+    /// `sprite_versioned` module docs + ADR-0070-amendment-2): a V4
+    /// blob always carries `version` positionally. It activates only
+    /// under a hypothetical self-describing format swap.
+    #[serde(default = "default_version_4")]
+    pub version: u32,
     /// Where the pixels come from — shared atlas or individual texture.
     pub source: SpriteSource,
     /// Sprite size in world units (meters).
     pub size: [f32; 2],
     /// RGBA tint multiplied with the texel color in the fragment shader.
+    ///
+    /// v4 semantic refinement (ADR-0071): `tint` is the **inherited**
+    /// modulate — it cascades to descendants (Godot `modulate`). For a
+    /// non-inheriting per-sprite tint use [`Sprite::self_tint`].
     pub tint: [f32; 4],
     /// Offset, in INTRINSIC local meters (pre-`Transform::scale`,
     /// pre-rotation), from the entity's transform origin — the
@@ -110,6 +128,123 @@ pub struct Sprite {
     /// hash stable (no fixture churn) and deserializes as `false`.
     #[serde(skip)]
     pub premultiplied: bool,
+
+    // ─── NEW in v4 (Sprite Inspector v2; ADR-0069..0074) ──────────────
+    //
+    // Every `#[serde(default = ...)]` below is DOCUMENTARY under postcard
+    // (positional, non-self-describing): the attribute never fires because
+    // a V4 blob carries every field positionally. The sole back-compat
+    // path is the `SpriteVersioned` wrapper enum + `migrate_v3_to_v4`
+    // (W1.T1.6), per ADR-0070-amendment-2. The attributes are kept as a
+    // faithful mirror for a hypothetical self-describing format swap.
+    /// Self tint — does NOT cascade to children (Godot `self_modulate`).
+    /// Multiplies [`Sprite::tint`] for this sprite only. Default WHITE
+    /// (identity, zero visual effect).
+    #[serde(default = "default_white")]
+    pub self_tint: [f32; 4],
+    /// Per-corner tint — a 4-stop bilinear gradient with no custom
+    /// shader (Phaser-style). Order `[TopLeft, TopRight, BottomLeft,
+    /// BottomRight]`, each RGBA. Default all-WHITE = identity. 64 bytes.
+    #[serde(default = "default_per_corner_white")]
+    pub per_corner_tint: [[f32; 4]; 4],
+    /// Tint fill (Phaser `setTintFill`): when `true`, the texel RGB is
+    /// IGNORED and the tint color replaces it (colored silhouette /
+    /// damage flash) while alpha is preserved. Default `false`.
+    #[serde(default)]
+    pub tint_fill: bool,
+    /// Final opacity multiplier, orthogonal to `tint[3]`. `tint.a` is the
+    /// color's alpha (blend channel); `opacity` is a separate visibility
+    /// multiplier, independently animatable. Default `1.0`. Clamped to
+    /// `[0.0, 1.0]` and rejected on NaN/Inf by the setter (anatomia §1.6).
+    #[serde(default = "default_one")]
+    pub opacity: f32,
+    /// Logical horizontal flip (distinct from a negative `Transform`
+    /// scale — survives reparenting and keeps the gizmo upright).
+    #[serde(default)]
+    pub flip_x: bool,
+    /// Logical vertical flip. See [`Sprite::flip_x`].
+    #[serde(default)]
+    pub flip_y: bool,
+    /// When `true` (default, legacy v3 behavior) the sprite origin is the
+    /// quad center. When `false` the origin is top-left and [`offset`]
+    /// applies. Default `true`.
+    ///
+    /// [`offset`]: Sprite::offset
+    #[serde(default = "default_true")]
+    pub centered: bool,
+    /// Intrinsic image offset in pixels, applied AFTER `centered`. Lets
+    /// the pivot sit at e.g. the character's feet without touching the
+    /// `Transform`. Default `[0.0, 0.0]`.
+    #[serde(default)]
+    pub offset: [f32; 2],
+    /// Inline sprite-sheet horizontal frame count. `hframes × vframes`
+    /// divides the texture into a grid that [`frame`] indexes — no
+    /// separate `SpriteFrames` asset needed. Default `1` (single frame);
+    /// `>= 1` enforced by the setter.
+    ///
+    /// [`frame`]: Sprite::frame
+    #[serde(default = "default_one_u32")]
+    pub hframes: u32,
+    /// Inline sprite-sheet vertical frame count. See [`Sprite::hframes`].
+    #[serde(default = "default_one_u32")]
+    pub vframes: u32,
+    /// Active frame index into the `hframes × vframes` grid. Default `0`;
+    /// kept `< hframes * vframes` by the setter.
+    #[serde(default)]
+    pub frame: u32,
+    /// When `true`, the sprite samples the arbitrary sub-rect
+    /// [`region_rect`] instead of the whole texture. Default `false`.
+    ///
+    /// [`region_rect`]: Sprite::region_rect
+    #[serde(default)]
+    pub region_enabled: bool,
+    /// Sub-region rectangle `[x, y, w, h]` in texture pixels. Only read
+    /// when [`region_enabled`] is `true`. `w`/`h` kept `>= 0`.
+    ///
+    /// [`region_enabled`]: Sprite::region_enabled
+    #[serde(default)]
+    pub region_rect: [f32; 4],
+    /// Region filter clip — clamps the sampler to [`region_rect`] to stop
+    /// neighboring-texel bleed across atlas region edges. Default `true`
+    /// for Atlas sprites, `false` for Individual. The conditional default
+    /// is set by `migrate_v3_to_v4` / the constructors, NOT by this
+    /// `#[serde(default)]` (which returns the Atlas value `true` and is
+    /// the wrong value for Individual under a serde-default load — see
+    /// anatomia §1.4 critical note; the wrapper enum is the canonical
+    /// load path).
+    ///
+    /// [`region_rect`]: Sprite::region_rect
+    #[serde(default = "default_region_filter_clip")]
+    pub region_filter_clip: bool,
+}
+
+/// Default-helper functions for the v4 `#[serde(default = ...)]`
+/// attributes (anatomia §1.4). All documentary under postcard; see the
+/// field docs + `sprite_versioned` module docs.
+const fn default_version_4() -> u32 {
+    4
+}
+const fn default_white() -> [f32; 4] {
+    [1.0, 1.0, 1.0, 1.0]
+}
+const fn default_per_corner_white() -> [[f32; 4]; 4] {
+    [[1.0; 4]; 4]
+}
+const fn default_one() -> f32 {
+    1.0
+}
+const fn default_true() -> bool {
+    true
+}
+const fn default_one_u32() -> u32 {
+    1
+}
+/// Atlas-style default (`true`). NOTE: incorrect for Individual sprites,
+/// which need `false` — the conditional choice lives in
+/// `migrate_v3_to_v4` and [`Sprite::individual`], not here. This helper
+/// only backstops a hypothetical self-describing-format load.
+const fn default_region_filter_clip() -> bool {
+    true
 }
 
 impl Sprite {
@@ -118,34 +253,50 @@ impl Sprite {
     /// `Saveable` derive macro lands). Bumped to 2 when
     /// `atlas_index` became `source` in M14.5 C; to 3 when the
     /// serialized `anchor` (pivot offset) field landed for the
-    /// TOOL_PIVOT + Padding-Keep work.
-    pub const VERSION: u32 = 3;
+    /// TOOL_PIVOT + Padding-Keep work; to 4 for Sprite Inspector v2
+    /// (14 intrinsic-appearance fields; ADR-0069/0070).
+    pub const VERSION: u32 = 4;
 
     /// Convenience constructor for atlas-backed sprites — the
-    /// dominant case after M14.4d. Preserves the pre-M14.5 ergonomics
-    /// (`Sprite { atlas_index: K, size, tint }`) under a slightly
-    /// different name.
+    /// dominant case after M14.4d. Initializes every v4 field to its
+    /// identity/default so callers keep the pre-M14.5 ergonomics
+    /// (`Sprite::atlas(key, size, tint)`) while opting into the full
+    /// v4 schema. `region_filter_clip` defaults `true` (Atlas anti-bleed).
     pub fn atlas(key: u32, size: [f32; 2], tint: [f32; 4]) -> Self {
         Self {
+            version: Self::VERSION,
             source: SpriteSource::Atlas { key },
             size,
             tint,
             anchor: [0.0, 0.0],
             premultiplied: false,
+            self_tint: [1.0, 1.0, 1.0, 1.0],
+            per_corner_tint: [[1.0; 4]; 4],
+            tint_fill: false,
+            opacity: 1.0,
+            flip_x: false,
+            flip_y: false,
+            centered: true,
+            offset: [0.0, 0.0],
+            hframes: 1,
+            vframes: 1,
+            frame: 0,
+            region_enabled: false,
+            region_rect: [0.0, 0.0, 0.0, 0.0],
+            region_filter_clip: true,
         }
     }
 
     /// Convenience constructor for individual-texture sprites.
     /// `texture_id` must come from
-    /// `IndividualTextureStore::acquire`.
+    /// `IndividualTextureStore::acquire`. Identical to [`Sprite::atlas`]
+    /// except the source and `region_filter_clip` (`false` — Individual
+    /// textures are native-resolution, no atlas-neighbor bleed to clip).
     pub fn individual(texture_id: u32, size: [f32; 2], tint: [f32; 4]) -> Self {
-        Self {
-            source: SpriteSource::Individual { texture_id },
-            size,
-            tint,
-            anchor: [0.0, 0.0],
-            premultiplied: false,
-        }
+        let mut s = Self::atlas(0, size, tint);
+        s.source = SpriteSource::Individual { texture_id };
+        s.region_filter_clip = false;
+        s
     }
 }
 

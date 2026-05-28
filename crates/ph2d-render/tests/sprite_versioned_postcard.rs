@@ -63,11 +63,15 @@ const CANONICAL_FIXTURES: &[&str] = &[
 /// both the per-fixture length test and the oversized-trailing test.
 const CANONICAL_V3_WIRE_LEN: usize = 35;
 
-/// Match helper — exhaustive today (single V3 variant); grows a `V4
-/// => panic!()` arm when W1 lands.
+/// Match helper for the v3-fixture tests: every committed fixture is a
+/// `V3` envelope (discriminant 0x00), so a `V4` payload here is a
+/// fixture-generation regression, not a valid input.
 fn expect_v3(versioned: SpriteVersioned) -> SpriteV3 {
     match versioned {
         SpriteVersioned::V3(sprite) => sprite,
+        SpriteVersioned::V4(_) => {
+            panic!("v3 fixture decoded as V4 — discriminant/fixture regression")
+        }
     }
 }
 
@@ -242,41 +246,30 @@ fn fixtures_match_canonical_serialization() {
     }
 }
 
-#[test]
-fn spritev3_struct_wire_matches_live_sprite_v3() {
-    // Drift gate: live `Sprite` (v3 today; v4 in W1) and the frozen
-    // `SpriteV3` mirror MUST share byte-identical wire format while
-    // v3 is still the active schema. Serialize a `Sprite` directly,
-    // deserialize as `SpriteV3`, assert equality. Catches incidental
-    // edits to `Sprite` field order / type / serde attributes that
-    // desync from the frozen baseline.
-    let live = Sprite {
-        source: SpriteSource::Atlas { key: 7 },
-        size: [32.0, 48.0],
-        tint: [0.5, 0.75, 0.25, 1.0],
-        anchor: [-3.0, 4.5],
-        premultiplied: false,
-    };
-    let bytes = postcard::to_allocvec(&live).expect("serialize live v3 Sprite");
-    let frozen: SpriteV3 =
-        postcard::from_bytes(&bytes).expect("SpriteV3 wire format must match live Sprite v3 in W0");
-    assert_eq!(frozen.source, live.source);
-    assert_eq!(frozen.size, live.size);
-    assert_eq!(frozen.tint, live.tint);
-    assert_eq!(frozen.anchor, live.anchor);
-    assert!(!frozen.premultiplied);
-}
+// RETIRED in W1.T1.1 — `spritev3_struct_wire_matches_live_sprite_v3`.
+//
+// This was a W0→W1-window drift gate: while v3 was the active schema
+// it asserted the live `Sprite` and the frozen `SpriteV3` mirror shared
+// a byte-identical wire format. W1.T1.1 bumps the live `Sprite` to the
+// 20-field v4 schema, so the two intentionally diverge now — the whole
+// point of `SpriteV3` being a frozen mirror is that it stops tracking
+// live `Sprite`. The frozen v3 baseline is still pinned by
+// `fixtures_match_canonical_serialization` (SpriteV3 ↔ committed 35-byte
+// blobs) and `versioned_wrapper_total_wire_length_pin`, so retiring this
+// test loses no v3-stability coverage. Keeping it would only fail to
+// compile (the 5-field literal is gone) — re-adding it is a regression.
 
 #[test]
 fn spritev3_mirror_anchor_missing_blob_rejects_symmetric_with_live() {
-    // Lens E (R2) asymmetry pin: both `Sprite::anchor` and
-    // `SpriteV3::anchor` carry `#[serde(default)]`; both
-    // `Sprite::premultiplied` and `SpriteV3::premultiplied` carry
-    // `#[serde(skip)]`. We can't grep attributes from a test, but
-    // we CAN assert that a hypothetical anchor-missing blob behaves
-    // identically against both structs (both reject, because
-    // postcard ignores `#[serde(default)]`). Empirically validates
-    // the mirror invariant ADR-0070-amendment-2 §3 calls out.
+    // Lens E (R2) asymmetry pin, post-v4: a v3-shaped blob that ends
+    // after `tint` (no `anchor`) must be REJECTED by both the frozen
+    // `SpriteV3` (missing its trailing `anchor`, because postcard
+    // ignores `#[serde(default)]`) AND the live v4 `Sprite` (missing
+    // `anchor` plus all 14 v4 fields). Both still error — postcard is
+    // positional and non-self-describing — so the symmetry holds even
+    // though live `Sprite` is now v4. Empirically backs the claim that
+    // `#[serde(default)]` is documentary, not load-bearing, under
+    // postcard (ADR-0070-amendment-2 §2).
     let bytes_without_anchor: Vec<u8> = {
         // Hand-craft a v2-ish blob: source(Atlas, key=0) + size +
         // tint, but NO anchor. Postcard layout is positional; this
@@ -380,6 +373,66 @@ fn versioned_wrapper_round_trip_preserves_v3() {
     let restored: SpriteVersioned = postcard::from_bytes(&bytes)
         .expect("round-trip de of self-serialized bytes must always succeed");
     assert_eq!(restored, original);
+}
+
+#[test]
+fn sprite_versioned_v4_serializes_with_one_discriminant() {
+    // W1.T1.1 pin: the appended V4 variant MUST carry discriminant byte
+    // 0x01 (V3 stays 0x00). If a future edit reorders the enum, this
+    // catches it before a reorder silently invalidates every saved
+    // V4 blob (and every V3 blob, symmetrically).
+    let bytes = postcard::to_allocvec(&SpriteVersioned::V4(Sprite::atlas(
+        0,
+        [1.0, 1.0],
+        [1.0, 1.0, 1.0, 1.0],
+    )))
+    .expect("serialize V4 envelope");
+    assert_eq!(
+        bytes[0], 0x01,
+        "SpriteVersioned::V4 discriminant must be 0x01 (appended after V3=0x00); \
+         got 0x{:02x} — enum variant order regressed",
+        bytes[0]
+    );
+}
+
+#[test]
+fn versioned_wrapper_round_trip_preserves_v4() {
+    // Lock in the v4 wire from day one (no migrator needed — this is a
+    // pure V4↔V4 round trip). Exercises a non-default value in every
+    // field family: tint, self_tint, per_corner_tint, the flag bools,
+    // opacity, the sprite-sheet grid, offset, and the region rect — so a
+    // dropped/reordered field in the v4 layout fails here, not in prod.
+    let mut original = Sprite::individual(99, [128.0, 256.0], [0.5, 0.6, 0.7, 0.8]);
+    original.self_tint = [0.1, 0.2, 0.3, 0.9];
+    original.per_corner_tint = [
+        [1.0, 0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0, 0.0, 1.0],
+    ];
+    original.tint_fill = true;
+    original.opacity = 0.42;
+    original.flip_x = true;
+    original.flip_y = true;
+    original.centered = false;
+    original.offset = [3.0, -4.0];
+    original.hframes = 4;
+    original.vframes = 2;
+    original.frame = 5;
+    original.region_enabled = true;
+    original.region_rect = [8.0, 16.0, 32.0, 64.0];
+    // `individual()` already set region_filter_clip = false; keep it.
+
+    let bytes =
+        postcard::to_allocvec(&SpriteVersioned::V4(original)).expect("serialize V4 envelope");
+    let restored: SpriteVersioned = postcard::from_bytes(&bytes).expect("deserialize V4 envelope");
+    match restored {
+        SpriteVersioned::V4(s) => assert_eq!(
+            s, original,
+            "v4 round trip must preserve every wire field bit-for-bit"
+        ),
+        SpriteVersioned::V3(_) => panic!("V4 envelope dispatched as V3 — discriminant regression"),
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -51,7 +51,7 @@
 //! that aliases the two will reintroduce the tautology this whole
 //! task exists to prevent.
 
-use crate::sprite::SpriteSource;
+use crate::sprite::{Sprite, SpriteSource};
 
 /// Frozen snapshot of the v3 `Sprite` schema (W0 baseline; before
 /// the W1 bump to v4). Field order and serde attributes are a
@@ -200,14 +200,12 @@ pub fn canonical_v3_fixtures() -> [(&'static str, SpriteV3); 5] {
 ///   `SpriteVersioned` is purely a load/save boundary wrapper; it
 ///   should never appear in component storage or extract output.
 ///
-/// **Single variant in W0** — V4 lands in W1 once `Sprite` becomes
-/// the 20-field v4 schema. The current single-variant shape is the
-/// minimum needed to:
-/// 1. Generate frozen v3 fixtures (W0.T0.12) wrapped in
-///    `SpriteVersioned::V3(SpriteV3)` so the discriminant byte is on
-///    the wire from day one.
-/// 2. Validate the postcard dispatch path empirically (W0.T0.13)
-///    before depending on it for v3→v4 migration.
+/// **Two variants since W1.T1.1** — `V4` wraps the LIVE 20-field
+/// [`Sprite`] schema; `V3` keeps wrapping the frozen [`SpriteV3`]
+/// mirror so legacy blobs still load. The discriminant bytes are
+/// `V3 = 0x00` (frozen) and `V4 = 0x01` (appended). New saves wrap a
+/// `Sprite` in `V4(...)`; loads dispatch `V3 → migrate_v3_to_v4 → v4`
+/// (W1.T1.6) or `V4 → Sprite` directly.
 ///
 /// `#[non_exhaustive]` is INTENTIONALLY NOT applied: with the
 /// migrator (`crate::sprite_versioned::*` consumers + the future
@@ -225,4 +223,10 @@ pub enum SpriteVersioned {
     /// Legacy v3 payload — 5 fields, 4 on the wire (`premultiplied`
     /// is `#[serde(skip)]`). Discriminant byte 0x00.
     V3(SpriteV3),
+    /// Current v4 payload — the live [`Sprite`] schema (20 fields, 18
+    /// on the wire: `premultiplied` is `#[serde(skip)]`). Discriminant
+    /// byte 0x01, appended after `V3` so the frozen 0x00 fixtures keep
+    /// loading. Never reorder these variants (postcard discriminants
+    /// are positional — see module docs).
+    V4(Sprite),
 }

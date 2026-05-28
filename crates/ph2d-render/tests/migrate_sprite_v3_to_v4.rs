@@ -48,7 +48,10 @@ fn w0_stub_v3_fixtures_dispatch_through_wrapper_for_w1_migrator() {
         let versioned: SpriteVersioned = postcard::from_bytes(&bytes)
             .unwrap_or_else(|e| panic!("postcard wrapper-enum dispatch on {name} failed: {e}"));
         match versioned {
-            SpriteVersioned::V3(_) => {} // expected
+            SpriteVersioned::V3(_) => {} // expected — every committed fixture is a v3 envelope
+            SpriteVersioned::V4(_) => {
+                panic!("v3 fixture {name} dispatched as V4 — discriminant/fixture regression")
+            }
         }
     }
 }

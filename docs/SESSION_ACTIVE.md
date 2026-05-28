@@ -10,7 +10,7 @@
 
 ## Coord-A (foundational)
 
-**Status:** ATIVO 2026-05-28 — Sprite Inspector v2 W0 carry-over T0.12 + T0.13 + T1.3.5 (entregues padrão-ouro pós R1+R2+R3 audits para T0.12+T0.13; R1+R2 para T1.3.5; ADR-0070-amendment-2). Sessão única absorve Coord-A + Implementador (Enio 2026-05-28). Slot: `impl-sprite`. **T1.1..T1.14 (Sprite v3→v4 strategic schema bump) = próxima continuação; ainda NÃO iniciado.**
+**Status:** ATIVO 2026-05-28 — Sprite Inspector v2 W1. Continuação-audit dos 4 commits anteriores (cef1959/e3ad19f/5974a84/f9850bf) fechou **GO** (Lens B grep + Lens C gates 4/4 + 22/22 verdes; zero ≥HIGH; 1 LOW informacional sim_populate velocity-sin = demo-only, unreachable by c9_replay, não-fixado). **T1.1 (Sprite v3→v4, 20 fields) EM ANDAMENTO.** Sessão única absorve Coord-A + Implementador (Enio 2026-05-28). Slot: `impl-sprite`. **RESERVO `crates/ph2d-render/` (sprite.rs + sprite_versioned.rs + tests/sprite_versioned_postcard.rs).** T1.2..T1.14 a seguir.
 
 **Notas para próximo agente:**
 - W1.T1.6 migrator é **MANDATÓRIO** (não fallback) — ADR-0070-amendment-2 §3 reduziu o hybrid `#[serde(default)]` a single tier (wrapper enum único caminho).

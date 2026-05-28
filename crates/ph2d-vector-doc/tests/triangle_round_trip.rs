@@ -307,18 +307,126 @@ fn asset_bounds_defaults_match_adr_0056_section_2_6() {
     // executably so future drift (e.g. someone bumping
     // max_vertices: 100_000 → 1_000_000_000 silently) fails CI.
     let b = AssetBounds::default();
+    // ADR-0056 §2.6 originals.
     assert_eq!(b.max_vertices, 100_000);
     assert_eq!(b.max_segments, 200_000);
     assert_eq!(b.max_regions, 10_000);
     assert_eq!(b.max_edit_log_ops, 1_000_000);
     assert_eq!(b.max_embedded_assets, 64);
     assert_eq!(b.max_embedded_asset_size, 16 * 1024 * 1024);
-    // R1 audit Lens-D HIGH-D4/D5 + MED extensions.
+    // R1 audit Lens-D HIGH-D4/D5 + MED extensions
+    // (ADR-0056-amendment-2).
     assert_eq!(b.max_author_len, 256);
     assert_eq!(b.max_app_version_len, 64);
     assert_eq!(b.max_peer_clocks, 1024);
     assert_eq!(b.max_style_strokes, 4096);
     assert_eq!(b.max_style_fills, 4096);
+    // R2 audit Lens-F MED-F1 / MED-F2 extensions
+    // (ADR-0056-amendment-2).
+    assert_eq!(b.max_region_segments, 10_000);
+    assert_eq!(b.max_snapshots, 1000);
+}
+
+#[test]
+fn bounded_decode_rejects_oversized_app_version_string() {
+    // R2 audit Lens-F MED-F3: app_version cap was missing dedicated test.
+    let mut asset = Ph2dVectorAsset::default();
+    asset.metadata.app_version = "v".repeat(100); // > default 64
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "metadata.app_version");
+            assert_eq!(cap, 64);
+            assert_eq!(actual, 100);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
+}
+
+#[test]
+fn bounded_decode_rejects_oversized_style_strokes_table() {
+    // R2 audit Lens-F MED-F3: max_style_strokes cap was missing test.
+    use ph2d_vector_doc::StrokeStyle;
+    let mut asset = Ph2dVectorAsset::default();
+    for i in 0..5000_u32 {
+        asset.styles.strokes.insert(i, StrokeStyle::default());
+    }
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "styles.strokes");
+            assert_eq!(cap, 4096);
+            assert_eq!(actual, 5000);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
+}
+
+#[test]
+fn bounded_decode_rejects_oversized_style_fills_table() {
+    // R2 audit Lens-F MED-F3: max_style_fills cap was missing test.
+    use ph2d_vector_doc::FillSolid;
+    let mut asset = Ph2dVectorAsset::default();
+    for i in 0..5000_u32 {
+        asset.styles.fills.insert(i, FillSolid::default());
+    }
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "styles.fills");
+            assert_eq!(cap, 4096);
+            assert_eq!(actual, 5000);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
+}
+
+#[test]
+fn bounded_decode_rejects_oversized_region_segments() {
+    // R2 audit Lens-F MED-F1: a single region can smuggle huge segment
+    // refs past the global max_regions count.
+    let mut asset = Ph2dVectorAsset::default();
+    let mut region = Region::new(0, WindingRule::NonZero);
+    for i in 0..15_000_u32 {
+        region.segments.push((i, true));
+    }
+    asset.network.regions.push(region);
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "region.segments");
+            assert_eq!(cap, 10_000);
+            assert_eq!(actual, 15_000);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
+}
+
+#[test]
+fn bounded_decode_rejects_oversized_snapshots() {
+    // R2 audit Lens-F MED-F2: snapshot amplification cap.
+    use ph2d_vector_doc::NetworkSnapshot;
+    let mut asset = Ph2dVectorAsset::default();
+    for i in 0..1500_usize {
+        asset
+            .edit_log
+            .snapshots
+            .push((i, NetworkSnapshot::from(VectorNetwork::empty())));
+    }
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "edit_log.snapshots");
+            assert_eq!(cap, 1000);
+            assert_eq!(actual, 1500);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
 }
 
 #[test]

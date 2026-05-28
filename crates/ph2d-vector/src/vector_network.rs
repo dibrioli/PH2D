@@ -99,16 +99,15 @@ pub fn draw_vector_network(
 /// condition before drawing.
 ///
 /// One `Vec<PathEl>` allocation is performed up-front via
-/// `BezPath::with_capacity` sized for `2 + N * 2` elements (1 MoveTo +
-/// N CurveTo + 1 ClosePath, plus headroom — kurbo uses 2 elements
-/// per CurveTo when expressed as quads in some paths). No reallocation
-/// during the per-segment loop for typical region sizes.
+/// `BezPath::with_capacity` sized for exactly `2 + N` elements
+/// (1 MoveTo + N CurveTo + 1 ClosePath). `path.curve_to()` pushes
+/// exactly one `PathEl::CurveTo` — no reallocation during the loop.
 #[must_use]
 pub fn build_region_path(network: &VectorNetwork, region: &Region) -> BezPath {
     if region.segments.is_empty() {
         return BezPath::new();
     }
-    let capacity = 2 + region.segments.len() * 2;
+    let capacity = 2 + region.segments.len();
     let mut path = BezPath::with_capacity(capacity);
     let mut first = true;
 

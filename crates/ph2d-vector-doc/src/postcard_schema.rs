@@ -90,9 +90,10 @@ impl Default for Ph2dVectorAsset {
 
 /// Authoring metadata — author, timestamps, app version.
 ///
-/// Strings kept short (256 bytes max each) to bound deserialization
-/// memory. Bounded by the per-field length in postcard's varint length
-/// prefix; further enforcement happens in [`bounded_decode`].
+/// String length limits are enforced by [`bounded_decode`] via the
+/// [`AssetBounds`] caps:
+/// - `author`: ≤ `bounds.max_author_len` (default 256 bytes).
+/// - `app_version`: ≤ `bounds.max_app_version_len` (default 64 bytes).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AuthoringMetadata {
     /// Free-text author label.
@@ -132,10 +133,14 @@ pub enum EmbeddedKind {
 
 /// Per-collection size caps enforced by [`bounded_decode`].
 ///
-/// Defaults match ADR-0056 §2.6 (the original 6 caps) **plus** four
-/// extensions added during the W1.T1.2 R1 audit lens-D remediation:
-/// `max_author_len` / `max_app_version_len` / `max_peer_clocks` /
-/// `max_style_*` close memory-exhaustion vectors not covered by the
+/// Defaults match ADR-0056 §2.6 (the original 6 caps) **plus seven
+/// extensions** added during the W1.T1.2 R1+R2 audit remediations
+/// (documented in `0056-amendment-2.md`):
+/// - R1 lens-D: `max_author_len`, `max_app_version_len`,
+///   `max_peer_clocks`, `max_style_strokes`, `max_style_fills`.
+/// - R2 lens-F: `max_region_segments`, `max_snapshots`.
+///
+/// All seven close memory-exhaustion vectors not covered by the
 /// original §2.6 list.
 #[derive(Debug, Clone, Copy)]
 pub struct AssetBounds {
@@ -161,6 +166,12 @@ pub struct AssetBounds {
     pub max_style_strokes: usize,
     /// Maximum entries in [`StyleTable::fills`].
     pub max_style_fills: usize,
+    /// Maximum segments referenced by a single [`crate::Region`]
+    /// (R2 audit Lens-F MED-F1).
+    pub max_region_segments: usize,
+    /// Maximum entries in [`crate::EditLog::snapshots`]
+    /// (R2 audit Lens-F MED-F2).
+    pub max_snapshots: usize,
 }
 
 impl Default for AssetBounds {
@@ -177,6 +188,8 @@ impl Default for AssetBounds {
             max_peer_clocks: 1024,
             max_style_strokes: 4096,
             max_style_fills: 4096,
+            max_region_segments: 10_000,
+            max_snapshots: 1000,
         }
     }
 }
@@ -329,6 +342,23 @@ pub fn bounded_decode(
         "styles.fills",
         asset.styles.fills.len(),
         bounds.max_style_fills,
+    )?;
+    // R2 audit Lens-F MED-F1: inner cap so a 1-region asset can't
+    // smuggle 1M segrefs past the global `max_regions` count.
+    for r in &asset.network.regions {
+        check_bound(
+            "region.segments",
+            r.segments.len(),
+            bounds.max_region_segments,
+        )?;
+    }
+    // R2 audit Lens-F MED-F2: snapshot amplification — each snapshot
+    // contains a full VectorNetwork clone; 100k snapshots × 100k
+    // vertices each multiplies memory beyond the global caps.
+    check_bound(
+        "edit_log.snapshots",
+        asset.edit_log.snapshots.len(),
+        bounds.max_snapshots,
     )?;
     Ok(asset)
 }

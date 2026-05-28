@@ -1,8 +1,9 @@
 //! Event-sourced [`EditLog`] of [`VectorOp`]s.
 //!
 //! Per [ADR-0056 §2.8](../../../../docs/architecture/decisions/0056-vector-network-data-model.md).
-//! Cap: **VectorOp ≤ 16 variants** (current = 14 explicit + 2 reserved
-//! for ADR-0056-amendment-N expansion).
+//! Cap: **VectorOp ≤ 16 variants** (current = 13 explicit + 3 reserved —
+//! one slot earmarked for the future `BatchOp` reintroduction with a
+//! depth-bounded custom `Deserialize` per W1.T1.6).
 //!
 //! CRDT semantics (LWW + RGA + custom merge for tangents) detailed in
 //! [ADR-0057](../../../../docs/architecture/decisions/0057-vector-edit-dispatch-crdt.md);

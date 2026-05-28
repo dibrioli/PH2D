@@ -57,7 +57,10 @@ fn in_memory_only_lifecycle_pushes_to_history() {
     let recorded = t.stroke_history().iter().next().unwrap();
     assert_eq!(recorded.seq, 0, "primeiro stroke tem seq=0");
     assert_eq!(recorded.rng_seed, 42);
-    assert!(recorded.points.len() >= 1, "samples preservados em points");
+    assert!(
+        !recorded.points.is_empty(),
+        "samples preservados em points"
+    );
 }
 
 #[test]
@@ -416,12 +419,25 @@ fn detach_journal_cancels_active_stroke() {
         t.detach_journal();
     }
     let recovery = CrashRecovery::scan(path.clone()).expect("scan");
-    // Cancel emite WAL entry mas NÃO conta como recovered stroke
-    // (Cancel é terminator). Nenhum stroke deve aparecer.
+    // O WAL é append-only e o `Begin` foi fsynced eagerly em `begin_stroke`
+    // (durabilidade crash ADR-0052) — detach mid-stroke NÃO pode apagá-lo;
+    // emite um terminator `Cancel`. Recovery então classifica o stroke como
+    // `Cancelled` (descartado silenciosamente no boot), e NÃO como
+    // `InProgressAtCrash` (que dispararia o prompt "recover orphan work").
+    // A garantia sob teste: detach mid-stroke deixa ZERO strokes recuperáveis-
+    // como-vivos. (Contrato espelhado em recovery.rs::recovery_detects_cancelled,
+    // que prova recovered_strokes.len() == 1 + state Cancelled.)
     assert_eq!(
-        recovery.recovered_strokes.len(),
+        recovery.in_progress_at_crash().count(),
         0,
-        "cancelled stroke não vira recovered"
+        "detach mid-stroke não pode deixar Begin órfão recuperável-como-vivo"
+    );
+    assert!(
+        recovery
+            .recovered_strokes
+            .iter()
+            .all(|s| s.state == RecoveryState::Cancelled),
+        "o stroke do detach deve ser classificado Cancelled, não vivo"
     );
     std::fs::remove_file(&path).ok();
 }
@@ -446,10 +462,20 @@ fn deactivate_cancels_active_stroke_in_wal() {
         Tool::on_deactivate(&mut t);
     }
     let recovery = CrashRecovery::scan(path.clone()).expect("scan");
+    // Mesma semântica de `detach_journal_cancels_active_stroke`: o `Begin`
+    // já está no disco (append-only), então `on_deactivate` emite `Cancel` e
+    // recovery vê o stroke como `Cancelled`, nunca `InProgressAtCrash`.
     assert_eq!(
-        recovery.recovered_strokes.len(),
+        recovery.in_progress_at_crash().count(),
         0,
-        "deactivate-cancelled stroke não vira recovered"
+        "deactivate mid-stroke não pode deixar Begin órfão recuperável-como-vivo"
+    );
+    assert!(
+        recovery
+            .recovered_strokes
+            .iter()
+            .all(|s| s.state == RecoveryState::Cancelled),
+        "o stroke do deactivate deve ser classificado Cancelled, não vivo"
     );
     std::fs::remove_file(&path).ok();
 }

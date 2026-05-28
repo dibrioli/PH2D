@@ -618,16 +618,16 @@ impl PainterTool {
         // WAL nem in-memory history pra esse stroke" — explicit doc no
         // `last_wal_error()` accessor.
         let mut wal_accepted = true;
-        if let Some(journal) = self.stroke_journal.as_mut() {
-            if let Err(e) = journal.begin_stroke(partial.clone()) {
-                debug_assert!(
-                    false,
-                    "WAL begin_stroke failed: {:?} — degrading to in-memory mode",
-                    e
-                );
-                self.last_wal_error = Some(e);
-                wal_accepted = false;
-            }
+        if let Some(journal) = self.stroke_journal.as_mut()
+            && let Err(e) = journal.begin_stroke(partial.clone())
+        {
+            debug_assert!(
+                false,
+                "WAL begin_stroke failed: {:?} — degrading to in-memory mode",
+                e
+            );
+            self.last_wal_error = Some(e);
+            wal_accepted = false;
         }
         if wal_accepted || self.stroke_journal.is_none() {
             self.current_partial = Some(partial);
@@ -679,22 +679,46 @@ impl PainterTool {
         if !self.stroke_active || self.canvas_rgba.is_empty() {
             return;
         }
+        // **Raw-input vs render-output separation (root-cause fix, 2026-05-28):**
+        // the vectorial history (`current_samples` + WAL) is the SOURCE record
+        // for deterministic replay (W12 Reproject), Inspector (W14) and MCP
+        // queries (W13). It must capture EVERY finite input sample —
+        // independent of whether the brush *spacing* happened to emit a stamp
+        // on THIS event. Pré-fix, an early `return` on `stamps.is_empty()`
+        // silently dropped sub-spacing samples (slow drag where consecutive
+        // points fall inside `spacing_px`) and stationary pressure-only samples
+        // from history, making reproject lossy and breaking the
+        // `current_samples_len` / tilt-flag contracts. Stamp emission gates the
+        // CANVAS paint only; it must NEVER gate the input record below.
+        //
+        // Non-finite samples ARE still rejected (mirrors the scheduler's entry
+        // guard): NaN/Inf positions are driver garbage, never legitimate input,
+        // and would poison the Q16.16 history + WAL replay.
+        if !sample.position[0].is_finite()
+            || !sample.position[1].is_finite()
+            || !sample.pressure.is_finite()
+        {
+            return;
+        }
         let size_px = self.effective_size_px();
         let stamps = self
             .scheduler
             .advance(&self.brush, sample, size_px, self.stroke_color_oklab);
-        if stamps.is_empty() {
-            return;
+        // Render path: touch the canvas ONLY when the scheduler emitted stamps.
+        // Sub-spacing / stationary samples advance scheduler state
+        // (residual_dist, pressure) but paint nothing this event — the input
+        // record below still captures them.
+        if !stamps.is_empty() {
+            // R4-LG-1: `Arc::make_mut` ⇒ unique-borrow path when refcount==1
+            // (zero alloc), clone-once when bridge cached the prior Arc
+            // (16 MB once per preview drain cycle, NOT per pointer event).
+            // Explicit `Vec<u8>` annotation prevents the compiler from
+            // coercing through `Arc<[u8]>::make_mut` (different impl).
+            let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
+            apply_stamps(canvas_vec, self.source_size.0, self.source_size.1, stamps);
+            self.preview_dirty = true;
+            self.has_painted_since_source = true;
         }
-        // R4-LG-1: `Arc::make_mut` ⇒ unique-borrow path when refcount==1
-        // (zero alloc), clone-once when bridge cached the prior Arc
-        // (16 MB once per preview drain cycle, NOT per pointer event).
-        // Explicit `Vec<u8>` annotation prevents the compiler from
-        // coercing through `Arc<[u8]>::make_mut` (different impl).
-        let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
-        apply_stamps(canvas_vec, self.source_size.0, self.source_size.1, stamps);
-        self.preview_dirty = true;
-        self.has_painted_since_source = true;
 
         // T1.9: persist sample em history vetorial (in-memory) + journal.
         // Conversão `PointerSample (f32)` → `RawPointerSample (Q16.16 + Q8.8)`
@@ -836,9 +860,9 @@ impl PainterTool {
     /// wall-clock real (W11+) DEVE chamar `detach_journal` + `attach_journal`
     /// pra reset baseline, evitando flush storm.
     ///
-    /// **Audit R-7 — sync fsync na UI thread:** T1.9 wira `commit_stroke`
-    /// + `add_sample` DIRETO (sem worker thread). Mobile DEVE wire em
-    /// worker thread via canal SPSC (carry-over W11).
+    /// **Audit R-7 — sync fsync na UI thread:** T1.9 wira `commit_stroke` +
+    /// `add_sample` DIRETO (sem worker thread). Mobile DEVE wire em worker
+    /// thread via canal SPSC (carry-over W11).
     pub fn attach_journal(
         &mut self,
         journal_path: PathBuf,
@@ -887,11 +911,11 @@ impl PainterTool {
     /// journal não anexado OU sucesso. `JournalError` não impl `Clone`
     /// (postcard::Error ABI), por isso bool-return + borrow accessor.
     pub fn heartbeat_journal(&mut self, now_ms: u64) -> bool {
-        if let Some(journal) = self.stroke_journal.as_mut() {
-            if let Err(e) = journal.heartbeat(now_ms) {
-                self.last_wal_error = Some(e);
-                return true;
-            }
+        if let Some(journal) = self.stroke_journal.as_mut()
+            && let Err(e) = journal.heartbeat(now_ms)
+        {
+            self.last_wal_error = Some(e);
+            return true;
         }
         false
     }
@@ -926,7 +950,7 @@ impl PainterTool {
             mode: self.params.mode,
             eyedropper_armed: self.params.eyedropper_armed,
             symmetry_enabled: self.params.symmetry.is_some(),
-            undo_enabled: self.stroke_history.len() > 0,
+            undo_enabled: !self.stroke_history.is_empty(),
             redo_enabled: false, // redo-stack é caller-side W11+ (vide T2.2)
             stroke_in_flight: self.stroke_active,
             takeover_active: self.params.takeover_active,

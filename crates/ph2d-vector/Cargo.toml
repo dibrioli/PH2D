@@ -22,3 +22,21 @@ authors.workspace = true
 # `default-features = false` drops vello's CPU-pipeline-cache code
 # we don't use; the `wgpu` feature keeps GPU integration on.
 vello = { version = "0.8", default-features = false, features = ["wgpu"] }
+
+# Vector Module document data model — `VectorNetwork` /
+# `Vertex` / `Segment` / `Region` round-trip through the new
+# `vector_network.rs` Vello rendering bridge (W1.T1.3 per ADR-0059).
+# ph2d-vector remains the SOLE crate authorized to import `vello::*` /
+# `kurbo::*` direct (arch-gate `vello_kurbo_only_in_ph2d_vector` —
+# long-tail maintenance L6F1).
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+
+# OklchColor → sRGB conversion for region fill rendering. ph2d-vector
+# is positioned downstream of ph2d-color (foundational); no cycle risk.
+ph2d-color = { path = "../ph2d-color" }
+
+[dev-dependencies]
+# glam — used by inline tests in vector_network.rs to construct
+# `Vec2` vertex positions matching the ph2d-vector-doc data model
+# (which embeds `glam::Vec2`, not `kurbo::Vec2`). NOT a runtime dep.
+glam = "0.30"

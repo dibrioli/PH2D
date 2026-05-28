@@ -5243,7 +5243,24 @@ dependencies = [
 name = "ph2d-vector"
 version = "0.0.0"
 dependencies = [
+ "glam 0.30.10",
+ "ph2d-color",
+ "ph2d-vector-doc",
  "vello",
+]
+
+[[package]]
+name = "ph2d-vector-doc"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "glam 0.30.10",
+ "ph2d-color",
+ "ph2d-vector-traits",
+ "postcard",
+ "serde",
+ "smallvec",
+ "walkdir",
 ]
 
 [[package]]

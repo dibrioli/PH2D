@@ -21,8 +21,26 @@
 //! Linebender package.
 
 pub mod scene;
+pub mod vector_network;
 
 pub use scene::VectorScene;
+pub use vector_network::{build_region_path, draw_vector_network, oklch_to_color};
+
+// Re-export the Vector Module document types so downstream callers
+// (e.g. the W1.T1.7 shell bridge) can construct/inspect networks
+// without an extra `ph2d-vector-doc` import line. The arch-gate
+// `vello_kurbo_only_in_ph2d_vector` (long-tail L6F1 per ADR-0059)
+// pairs with this — outside crates should reach VectorNetwork
+// THROUGH ph2d-vector, not by importing ph2d-vector-doc directly,
+// except for crates inside the Vector Module's own data-model
+// territory (the doc crate's own consumers / tools / nodes).
+pub use ph2d_vector_doc::{
+    AssetBounds, AuthoringMetadata, BatchEntry, BooleanOp, BoundedDecodeError, EditLog,
+    EmbeddedAsset, FillRef, NetworkSnapshot, Ph2dVectorAsset, Region, RegionId, RepresentationMode,
+    Segment, SegmentId, SegmentRef, StrokeStyle, StyleRef, StyleRefMap, StyleTable, TangentSide,
+    TangentsCubic, VectorNetwork, VectorNetworkInvariant, VectorOp, Vertex, VertexId, VertexKind,
+    WindingRule, bounded_decode, load_vector_asset, save_vector_asset,
+};
 
 // Re-export the few kurbo/peniko primitives that callers need to
 // build paths and brushes. We reach for them via `vello::*` rather

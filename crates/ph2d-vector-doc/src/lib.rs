@@ -60,4 +60,7 @@ pub use postcard_schema::{
     bounded_decode, load_vector_asset, save_vector_asset,
 };
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
-pub use style::{FillRef, Segment, SegmentId, StrokeStyle, StyleRef, StyleRefMap, StyleTable};
+pub use style::{
+    FillRef, FillSolid, Segment, SegmentId, StrokeCap, StrokeJoin, StrokeStyle, StyleRef,
+    StyleRefMap, StyleTable,
+};

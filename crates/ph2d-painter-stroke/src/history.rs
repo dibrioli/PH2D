@@ -116,7 +116,20 @@ impl StrokeHistory {
     ///
     /// Retorna o stroke evictado (se houver) — caller pode logar ou persistir
     /// no `.ph2d-painter-cache` antes do drop.
+    ///
+    /// **Audit T1.9 S-10:** debug_assert garante `record.seq > max_seq` —
+    /// ADR-0046 §2.2 invariante "seq cresce sempre, replay determinístico
+    /// depende". Sem o gate, caller W11 que load + `set_next_seq(N < max)`
+    /// cria sequência não-monotônica silenciosamente; W12 Reproject ordena
+    /// errado, MCP `stroke_by_seq` ambíguo.
     pub fn push(&mut self, record: StrokeRecord) -> Option<StrokeRecord> {
+        debug_assert!(
+            self.max_seq().is_none_or(|max| record.seq > max),
+            "StrokeHistory::push: seq={} ≤ max={} viola ADR-0046 §2.2 \
+             monotonicity (audit T1.9 S-10) — set_next_seq baseline drift?",
+            record.seq,
+            self.max_seq().unwrap_or(0)
+        );
         match self {
             Self::Full(v) => {
                 v.push(record);

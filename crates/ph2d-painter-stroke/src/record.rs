@@ -39,6 +39,12 @@ pub const SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE: u32 = 1 << 17;
 /// Reader em replay determinístico deve cair pra spacing-based timing.
 pub const SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE: u32 = 1 << 18;
 
+/// Bit 19 — `tilt_q88` não é suportado pelo gerador deste sample (mouse,
+/// trackpad, MCP synthesized stroke). Reader que rotaciona brush por tilt
+/// (e.g., calligraphic brushes) deve usar fallback default angle.
+/// Audit T1.9 U-7.
+pub const SAMPLE_FLAG_TILT_UNAVAILABLE: u32 = 1 << 19;
+
 /// Bit 23 — `RawPointerSample` veio do branch "stroke capped at u16::MAX"
 /// (audit T1.9 Q-7); ou seja, o **stroke** foi forçado a end+begin pra
 /// continuar pintando. Reader em retrospect pode reconstituir cadeia.
@@ -59,6 +65,13 @@ pub struct StrokeRecord {
     /// Monotônico per-canvas, ordem cronológica (replay/ undo anchor).
     pub seq: u64,
     /// Wall-clock approx em ms desde epoch. NÃO determinístico — só time-lapse + audit.
+    ///
+    /// **Audit T1.9 U-9:** este campo + [`Self::uuid`] DEVEM ser excluídos
+    /// de qualquer hash determinístico futuro (e.g., `stroke_by_hash` MCP
+    /// queries W13, content-addressed dedup W14). Wall-clock difere entre
+    /// sessões pra mesmo gesto → hash differs → quebra dedup semantics.
+    /// Quando StrokeRecord ganhar `Hash` impl, use `impl Hash for Self`
+    /// manual que pula timestamp_ms + uuid.
     pub timestamp_ms: u64,
     /// Brush opaco (built-in slot ou imported atlas layer) — ADR-0044 §2.8.
     pub brush_handle: BrushHandle,
@@ -196,7 +209,15 @@ impl std::error::Error for CapExceeded {}
 /// **Audit T1.8 L4-H17 — `Hash` derived:** habilita dedup de samples
 /// consecutivos idênticos (Procreate-like sub-pixel delta filter) via
 /// `HashSet` em W13 MCP path. Custo zero — POD 28 bytes.
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+///
+/// **Audit T1.9 U-6 — `Hash` é MANUAL pra skip `flags`:** os sentinel
+/// availability flags (bits 16+) refletem o GERADOR do sample (PainterTool
+/// T1.9 vs MCP W13 vs T-input W11), NÃO o conteúdo conceitual. Sem skip,
+/// mesmo gesto produz hashes diferentes cross-engine ⇒ dedup pollute
+/// canon com duplicates "iguais em arte, diferentes em metadata-source".
+/// Bits 0..15 (stylus_button1/2, eraser_inverted) ENTRAM no hash — eles
+/// são input semântico.
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RawPointerSample {
     /// x em Q16.16 (coord canvas, ±32768 px).
     pub x_q1616: i32,
@@ -218,6 +239,25 @@ pub struct RawPointerSample {
     /// `ph2d-painter-input` (T-input) não nasce; vide [`crate::device`].
     pub device_source: PointerSource,
     // === 3 slots de headroom (e.g. orientation, hover_distance, twist) ===
+}
+
+impl std::hash::Hash for RawPointerSample {
+    /// **Audit T1.9 U-6:** hash skip de `flags` bits 16..=31 (sentinel
+    /// availability flags são per-gerador, não conteúdo). Stylus button
+    /// bits (0..=15) entram no hash. Output cross-engine deterministic.
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.x_q1616.hash(state);
+        self.y_q1616.hash(state);
+        self.pressure_q88.hash(state);
+        self.tilt_q88.hash(state);
+        self.azimuth_q88.hash(state);
+        self.barrel_roll_q88.hash(state);
+        self.timestamp_delta_us.hash(state);
+        // Mask: keep button bits (bits 0..15), drop sentinel/source bits.
+        let canonical_flags = self.flags & 0x0000_FFFF;
+        canonical_flags.hash(state);
+        self.device_source.hash(state);
+    }
 }
 
 /// Mode operacional do stroke. `#[repr(u32)]` pra serialização postcard

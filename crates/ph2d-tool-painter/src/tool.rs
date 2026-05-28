@@ -208,7 +208,7 @@ use ph2d_painter_stroke::{
     StrokeJournal, StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_saturating,
 };
 
-use crate::params::{BrushHandle, OklchColor, PainterParams};
+use crate::params::{BrushHandle, OklchColor, PainterMode, PainterParams};
 
 // Marker for the empty-apply guard (R3-LF-5): a stamp was actually
 // deposited since the last `set_source`. `drain_painter` early-returns
@@ -381,9 +381,10 @@ impl Default for PainterTool {
             stroke_history: StrokeHistory::default(),
             stroke_journal: None,
             current_partial: None,
-            // R-11 carry-over: 256 é OK pra strokes <10s; W11 sobe pra 2048
-            // se long-stroke profiling mostrar realloc significativa.
-            current_samples: Vec::with_capacity(256),
+            // **V-5:** lazy alloc — Default ficaria com ~7KB heap dead se
+            // PainterTool fosse instantiada pra registry preload sem nunca
+            // pintar. `begin_stroke` reserve(256) on-demand.
+            current_samples: Vec::new(),
             next_seq: 0,
             canvas_id: CanvasId(0),
             layer_target: LayerId(0),
@@ -561,7 +562,16 @@ impl PainterTool {
         self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
 
         // T1.9: construir PartialStroke + wire journal se ativo.
-        let primary = painter_color_to_stroke_oklch(self.params.active_color);
+        //
+        // **S-8 NaN guard:** `params.active_color` é pub field; bridge PCA
+        // pode escrever NaN/Inf inadvertently. OKLCH NaN persistido em WAL +
+        // canon explode em replay W12 (postcard preserva bits, mas brush
+        // matemática faz NaN propagation cascading). Sanitize aqui.
+        let primary = sanitize_oklch_or_default(self.params.active_color);
+        // **S-3:** `secondary_color` (Procreate long-press slot ADR-0046 §2.2)
+        // SEMPRE persistido em T1.9 wire — caller W2 sidebar refinará "in
+        // use" semantics em ADR-0046-amendment-2 (carry-over W11 S-15).
+        let secondary = Some(sanitize_oklch_or_default(self.params.secondary_color));
         // **R-5:** cache do `params_blake3` (postcard alloc + blake3 ~32B).
         // `set_brush` invalida; entre strokes, hit cache = 0 alloc.
         let brush_hash = match self.cached_brush_hash {
@@ -582,11 +592,26 @@ impl PainterTool {
             primary,
         );
         partial.rng_seed = seed;
-        partial.tool_mode = ToolMode::Paint;
-        // **Q-3/R-3 + Q-9:** se WAL falhar, captura em `last_wal_error`
-        // pro bridge W11 surface via [`Self::last_wal_error`]. Em release
-        // continua em modo "in-memory only"; em dev `debug_assert!` pega
-        // bugs de state machine ANTES de degradar silenciosamente.
+        // **S-1 wall-clock:** ADR-0046 §2.2 + ADR-0052 §2.2 prescrevem
+        // `started_at_ms` populated em Begin. Pré-S1, ficava 0 → quebrava
+        // time-lapse W11 + Inspector W14 chronology + audit log. Wall-clock
+        // é EXPLICITAMENTE não-determinístico (ADR-0046 §3 Neutras) ⇒ não
+        // entra em det-replay (vide U-9 doc em StrokeRecord).
+        partial.started_at_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        // **S-2 ToolMode mapping (ADR-0043 §2.6.1 congelado):**
+        partial.tool_mode = painter_mode_to_tool_mode(self.params.mode);
+        partial.secondary_color = secondary;
+        // **Q-3/R-3 + Q-9 + V-2:** se WAL falhar, captura em `last_wal_error`
+        // pro bridge W11 surface. NÃO materializa current_partial — assim
+        // queue_pointer/end_stroke não chamam add_sample/commit em journal
+        // sem Begin, evitando cascade `NoActiveStroke` que clobbed o erro
+        // original (V-2). PainterTool fica em modo "CPU-only painting; nem
+        // WAL nem in-memory history pra esse stroke" — explicit doc no
+        // `last_wal_error()` accessor.
+        let mut wal_accepted = true;
         if let Some(journal) = self.stroke_journal.as_mut() {
             if let Err(e) = journal.begin_stroke(partial.clone()) {
                 debug_assert!(
@@ -595,18 +620,33 @@ impl PainterTool {
                     e
                 );
                 self.last_wal_error = Some(e);
+                wal_accepted = false;
             }
         }
-        self.current_partial = Some(partial);
+        if wal_accepted || self.stroke_journal.is_none() {
+            self.current_partial = Some(partial);
+        } else {
+            // WAL anexado mas rejeitou begin → manter current_partial = None.
+            // queue_pointer/end_stroke vão tratar como "in-memory only stroke
+            // sem record" (V-2 cascade fix: nenhum WAL call subsequent).
+            self.current_partial = None;
+        }
         self.current_samples.clear();
+        // **V-7:** reserve cap lazy — Default mantém Vec::new() (V-5 fix);
+        // begin_stroke pre-aloca quando vai começar a popular.
+        if self.current_samples.capacity() < 256 {
+            self.current_samples.reserve(256);
+        }
         // Q-10/R-10: next_seq avança IFF PartialStroke foi materializado.
         // `checked_add` em vez de saturating: u64 overflow é fisicamente
         // impossível em uso humano (~580 anos a 1B strokes/s), mas LOUD
         // panic é melhor que silent dedup violando ADR-0046 §2.2.
-        self.next_seq = self
-            .next_seq
-            .checked_add(1)
-            .expect("next_seq u64 overflow — canvas needs canonical reset");
+        if self.current_partial.is_some() {
+            self.next_seq = self
+                .next_seq
+                .checked_add(1)
+                .expect("next_seq u64 overflow — canvas needs canonical reset");
+        }
     }
 
     /// Empilha um pointer sample no scheduler e aplica os stamps gerados
@@ -666,7 +706,14 @@ impl PainterTool {
         let raw = pointer_to_raw_sample(sample);
         if self.current_samples.len() < u16::MAX as usize {
             self.current_samples.push(raw);
-            if let Some(journal) = self.stroke_journal.as_mut() {
+            // **V-2 cascade fix:** only call journal.add_sample if journal
+            // has the corresponding Begin (current_stroke.is_some()). Sem
+            // o gate, journal.begin_stroke fail em begin_stroke leva todo
+            // add_sample subsequente a retornar NoActiveStroke, clobbando
+            // last_wal_error original (e.g. PayloadTooLarge → NoActiveStroke).
+            if let Some(journal) = self.stroke_journal.as_mut()
+                && journal.current_stroke.is_some()
+            {
                 let pseudo_now_ms = (self.current_samples.len() as u64) * 16;
                 // **Q-3/R-3:** captura erro WAL em `last_wal_error` em vez
                 // de silenciar. Bridge W11 surface via `last_wal_error()`.
@@ -717,12 +764,40 @@ impl PainterTool {
             self.current_samples.clear();
             return;
         };
-        let samples = std::mem::replace(&mut self.current_samples, Vec::with_capacity(256));
+        // **V-7:** mem::take em vez de mem::replace+Vec::with_capacity —
+        // begin_stroke pre-aloca, end_stroke não precisa re-alocar.
+        let samples = std::mem::take(&mut self.current_samples);
+        // **V-1/V-3 empty-stroke gate (CRITICAL):** pré-V1, set_source
+        // mid-stroke + begin_stroke implicit-cancel materializavam empty
+        // records → canon polluído com phantom strokes; W2 undo veria
+        // ghosts; W12 Reproject re-pintaria nada com seq consumido; W14
+        // Inspector mostraria rows vazias.
+        //
+        // Fix: se samples empty, RECYCLE seq + emit WAL Cancel em vez de
+        // Commit. Espelha o Q-2 recycle de begin_stroke implicit-cancel
+        // path. Preserva pre-T1.9 semantic "end_stroke sem painting = cancel".
+        if samples.is_empty() {
+            if let Some(journal) = self.stroke_journal.as_mut()
+                && journal.current_stroke.is_some()
+            {
+                let _ = journal.cancel_stroke();
+            }
+            // Recycle seq pra próximo stroke usar (Q-2 parity).
+            self.next_seq = partial.seq;
+            return;
+        }
         partial.samples_count_in_journal = samples.len() as u32;
         // Journal commit primeiro (preserva ordering "wrote to WAL before
         // history"); se WAL falhar, history ainda recebe (caller mobile
         // pode optar perder durability vs. perder stroke commit).
-        if let Some(journal) = self.stroke_journal.as_mut() {
+        //
+        // **V-2 cascade fix:** só chama commit_stroke se journal tem o
+        // Begin desse stroke. Sem o gate, journal_begin_stroke fail em
+        // begin_stroke (current_partial=None branch) levaria todo commit
+        // subsequent a retornar NoActiveStroke, clobbando last_wal_error.
+        if let Some(journal) = self.stroke_journal.as_mut()
+            && journal.current_stroke.is_some()
+        {
             let pseudo_now_ms = (samples.len() as u64) * 16;
             // **Q-3/R-3:** captura WAL commit failure pra surface bridge.
             if let Err(e) = journal.commit_stroke(pseudo_now_ms) {
@@ -731,6 +806,12 @@ impl PainterTool {
         }
         let record = partial_to_record(partial, samples);
         self.stroke_history.push(record);
+        // **S-5 WAL rotation:** após commit, checka se journal precisa
+        // rotacionar (cap 500 MiB OR 100 commits). T1.9 ship: rotate só
+        // depois de canon flush (caller W11 contract). Aqui apenas surface
+        // o sinal — caller polla via `should_rotate_journal()` accessor.
+        // Implementação completa = W11 carry-over S-5 (precisa coordenar
+        // com PaintProject save_canon).
     }
 
     /// Anexa um WAL `StrokeJournal` ao PainterTool. Caller (shell W11+)
@@ -761,6 +842,19 @@ impl PainterTool {
         if self.stroke_active || self.current_partial.is_some() {
             return Err(JournalError::AttachDuringActiveStroke);
         }
+        // **S-6 baseline check:** ADR-0046 §2.2 "seq cresce sempre, replay
+        // determinístico depende" + `set_next_seq` doc instrui caller passar
+        // `last_persisted_seq + 1` antes de attach. Sem o gate, caller que
+        // chame `load(canon)` → `attach_journal(...)` sem `set_next_seq` re-
+        // pinta com seq=0 colidindo com strokes históricos.
+        //
+        // debug_assert apenas em dev; release segue (caller deg risk).
+        debug_assert!(
+            self.next_seq > 0 || self.stroke_history.is_empty(),
+            "attach_journal: set_next_seq(last_persisted_seq + 1) obrigatório \
+             ANTES quando stroke_history não-vazio — ADR-0046 §2.2 monotonicity \
+             (audit T1.9 S-6)"
+        );
         // Defensive: se já tinha journal, drop ele primeiro (libera lock).
         // Q-5/R-8: reset baseline ms naturalmente via journal novo.
         self.stroke_journal = None;
@@ -769,6 +863,41 @@ impl PainterTool {
         let journal = StrokeJournal::open(journal_path, flush_policy)?;
         self.stroke_journal = Some(journal);
         Ok(())
+    }
+
+    /// **S-4 (audit T1.9):** emit WAL `Heartbeat` entry pra distinguir
+    /// "app crashou agora" de "WAL órfão de processo morto há semanas"
+    /// (ADR-0052 §2.3). Caller (shell W11+) DEVE invocar a 1Hz idle
+    /// (e.g., `Tool::on_tick` extension futuro) — sem heartbeat,
+    /// `CrashRecovery::scan` boot trata stale journal como recoverable
+    /// strokes velhos, mostrando UX prompt "Recover N strokes?" com
+    /// strokes irrelevantes.
+    ///
+    /// `journal::StrokeJournal::heartbeat` faz rate-limit interno (1Hz);
+    /// caller pode chamar mais frequentemente sem custo extra.
+    ///
+    /// Returns `None` se journal não anexado ou sucesso; `Some(err)` se
+    /// WAL escrita falhou (tipicamente Io). Caller can surface via toast.
+    pub fn heartbeat_journal(&mut self, now_ms: u64) -> Option<JournalError> {
+        if let Some(journal) = self.stroke_journal.as_mut() {
+            if let Err(e) = journal.heartbeat(now_ms) {
+                self.last_wal_error = Some(e);
+                return self.last_wal_error.as_ref().cloned();
+            }
+        }
+        None
+    }
+
+    /// **S-5 (audit T1.9):** check se WAL atingiu cap rotation (100 commits
+    /// OR 50 MiB). Caller (shell W11+) consulta ANTES de chamar
+    /// `rotate_journal` pra coordenar com canon save — rotate sem canon
+    /// flush pode perder strokes não-persistidos. Carry-over W11: PainterTool
+    /// implementar `rotate_journal_if_safe` que coordena com PaintProject.
+    #[must_use]
+    pub fn should_rotate_journal(&self) -> bool {
+        self.stroke_journal
+            .as_ref()
+            .is_some_and(|j| j.should_rotate())
     }
 
     /// Desfaz o anexo de journal — drop libera advisory lock + registry.
@@ -788,13 +917,31 @@ impl PainterTool {
 
     /// Configura `CanvasId` deste PainterTool. Caller (shell W11+) invoca
     /// quando canvas ativo muda. Default = `CanvasId(0)` (single-canvas).
+    ///
+    /// **S-7 (audit T1.9):** ADR-0052 §2.6 state machine `[idle] ↔
+    /// [stroke_active]` proíbe mutações cross-canvas mid-stroke. Sem
+    /// guard, mudar canvas_id mid-stroke confunde recovery (filtra
+    /// canvas antigo) + cross-canvas stroke pollution.
     pub fn set_canvas_id(&mut self, id: CanvasId) {
+        debug_assert!(
+            !self.stroke_active,
+            "set_canvas_id called mid-stroke — ADR-0052 §2.6 lifecycle \
+             violation (audit T1.9 S-7)"
+        );
         self.canvas_id = id;
     }
 
     /// Configura `LayerId` alvo pra próximos strokes. W3 layers nasce ⇒
     /// caller wire conforme active layer selection.
+    ///
+    /// **S-7 (audit T1.9):** mid-stroke = lifecycle violation. Vide
+    /// [`Self::set_canvas_id`] rationale.
     pub fn set_layer_target(&mut self, layer: LayerId) {
+        debug_assert!(
+            !self.stroke_active,
+            "set_layer_target called mid-stroke — ADR-0052 §2.6 lifecycle \
+             violation (audit T1.9 S-7)"
+        );
         self.layer_target = layer;
     }
 
@@ -802,7 +949,17 @@ impl PainterTool {
     /// Caller invoca após `load(canon_bytes)` passando
     /// `paint_project.last_persisted_seq().map(|s| s + 1).unwrap_or(0)`
     /// — anti-replay defense via `CrashRecovery::scan_with_baseline`.
+    ///
+    /// **S-7 (audit T1.9):** mid-stroke override é silent footgun —
+    /// current_partial já consumiu o next_seq antigo; override perdoa
+    /// progress de monotonicity ADR-0046 §2.2.
     pub fn set_next_seq(&mut self, seq: u64) {
+        debug_assert!(
+            !self.stroke_active,
+            "set_next_seq called mid-stroke — current_partial consumiu o \
+             seq antigo; override viola ADR-0046 §2.2 monotonicity \
+             (audit T1.9 S-7)"
+        );
         self.next_seq = seq;
     }
 
@@ -1267,14 +1424,23 @@ impl RasterEditTool for PainterTool {
 /// "azimuth desconhecido") → brushes que rotacionam por azimuth produzem
 /// arte determinística-mente DIFERENTE do stroke original.
 fn pointer_to_raw_sample(sample: PointerSample) -> RawPointerSample {
+    // **U-7 audit:** tilt flag setado quando sample.tilt == 0 (mouse/trackpad
+    // path NÃO produz tilt). Pencil/stylus com tilt real seta tilt > 0 ⇒
+    // flag NÃO setado. Wire T-input (W11+) override este heuristic com
+    // device_source-aware decision (e.g., Mouse always unavailable, Pencil
+    // always available).
+    let mut flags = SAMPLE_FLAG_AZIMUTH_UNAVAILABLE
+        | SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE
+        | SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE;
+    if sample.tilt == 0.0 {
+        flags |= SAMPLE_FLAG_TILT_UNAVAILABLE;
+    }
     RawPointerSample {
         x_q1616: f32_to_q1616_saturating(sample.position[0]),
         y_q1616: f32_to_q1616_saturating(sample.position[1]),
         pressure_q88: f32_to_q88(sample.pressure),
         tilt_q88: f32_to_q88(sample.tilt),
-        flags: SAMPLE_FLAG_AZIMUTH_UNAVAILABLE
-            | SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE
-            | SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE,
+        flags,
         ..Default::default()
     }
 }
@@ -1307,6 +1473,43 @@ fn partial_to_record(partial: PartialStroke, samples: Vec<RawPointerSample>) -> 
         rng_seed: partial.rng_seed,
         tool_mode: partial.tool_mode,
         version: partial.version,
+    }
+}
+
+/// **Audit S-2 (T1.9 spec compliance) — `PainterMode → ToolMode` mapping.**
+///
+/// ADR-0043 §2.6.1 congelou cross-ADR: `Brush ↔ Paint`, `Smudge ↔ Smudge`,
+/// `Eraser ↔ Erase`. Pré-S2, `begin_stroke` hardcoda `ToolMode::Paint` ⇒
+/// strokes em modo Eraser/Smudge gravados como Paint no canon → Reproject
+/// W12 pintava ao invés de apagar (catastrophic semantic bug latente).
+fn painter_mode_to_tool_mode(mode: PainterMode) -> ToolMode {
+    match mode {
+        PainterMode::Brush => ToolMode::Paint,
+        PainterMode::Smudge => ToolMode::Smudge,
+        PainterMode::Eraser => ToolMode::Erase,
+    }
+}
+
+/// **Audit S-8 (T1.9 spec compliance) — NaN/Inf guard pra OKLCH.**
+///
+/// `params.active_color` é `pub` field; bridge PCA pode escrever NaN/Inf
+/// inadvertently (e.g., `OklchColor::lerp(a, b, t)` com t=NaN). Postcard
+/// preserva bits → WAL + canon armazenam garbage; replay W12 + brush math
+/// produz NaN propagation cascading.
+///
+/// Sanitize: se qualquer field não-finite, retorna OKLCH default
+/// (achromatic black, alpha 1). Mesmo guard que `oklch_to_oklab` mas
+/// aplica a TODA copy pro PartialStroke (não só ao cache OKLab local).
+fn sanitize_oklch_or_default(c: OklchColor) -> StrokeOklchColor {
+    if c.l.is_finite() && c.c.is_finite() && c.h.is_finite() && c.a.is_finite() {
+        painter_color_to_stroke_oklch(c)
+    } else {
+        StrokeOklchColor {
+            l: 0.0,
+            c: 0.0,
+            h: 0.0,
+            a: 1.0,
+        }
     }
 }
 

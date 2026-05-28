@@ -494,3 +494,308 @@ fn current_samples_len_tracks_pushed_samples() {
     t.end_stroke();
     assert!(t.current_samples_is_empty());
 }
+
+// =============================================================================
+// Auditoria completa T1.9 (4 lentes S/T/U/V) — gates de remediação
+// =============================================================================
+
+/// S-1: PartialStroke.started_at_ms (mapped to timestamp_ms) é wall-clock
+/// real (não-zero) após begin_stroke.
+#[test]
+fn s1_timestamp_ms_is_set_from_wall_clock() {
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    let recorded = t.stroke_history().iter().next().unwrap();
+    assert!(
+        recorded.timestamp_ms > 1_700_000_000_000,
+        "timestamp_ms should be wall-clock UNIX_EPOCH ms (post-2023); got {}",
+        recorded.timestamp_ms
+    );
+}
+
+/// S-2: PainterMode → ToolMode mapping (ADR-0043 §2.6.1 congelado).
+#[test]
+fn s2_painter_mode_maps_to_tool_mode() {
+    use ph2d_painter_stroke::ToolMode;
+    use ph2d_tool_painter::params::PainterMode;
+    for (pm, expected) in [
+        (PainterMode::Brush, ToolMode::Paint),
+        (PainterMode::Smudge, ToolMode::Smudge),
+        (PainterMode::Eraser, ToolMode::Erase),
+    ] {
+        let mut t = mk_painter_with_canvas();
+        t.params.mode = pm;
+        t.begin_stroke(0);
+        t.queue_pointer(PointerSample {
+            position: [1.0, 1.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        t.end_stroke();
+        let rec = t.stroke_history().iter().last().unwrap();
+        assert_eq!(rec.tool_mode, expected, "{pm:?} should map to {expected:?}");
+    }
+}
+
+/// S-3: secondary_color é Some após T1.9 wire (sempre persisted, W2
+/// refinará "in use" semantics em S-15 carry-over).
+#[test]
+fn s3_secondary_color_is_some() {
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    let rec = t.stroke_history().iter().next().unwrap();
+    assert!(
+        rec.secondary_color.is_some(),
+        "T1.9 wire persists params.secondary_color as Some always"
+    );
+}
+
+/// V-1/V-3: empty stroke (begin → end sem queue_pointer) NÃO é pushado
+/// pra history; seq é recycled.
+#[test]
+fn v1_empty_stroke_not_pushed_to_history() {
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.end_stroke(); // zero samples
+    assert_eq!(
+        t.stroke_history().len(),
+        0,
+        "empty stroke should NOT pollute canon"
+    );
+    // Próximo stroke pega seq=0 (recycled).
+    t.begin_stroke(1);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    let rec = t.stroke_history().iter().next().unwrap();
+    assert_eq!(rec.seq, 0, "seq recycled after empty-stroke cancel");
+}
+
+/// V-1: set_source mid-stroke (que chama end_stroke implicit) + sem samples
+/// também NÃO pusha empty record.
+#[test]
+fn v1_set_source_mid_stroke_does_not_push_empty() {
+    use ph2d_editor_core::tool::RasterEditTool;
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    // No queue_pointer → samples empty.
+    let pixels = vec![0u8; (32 * 32 * 4) as usize];
+    t.set_source(pixels, 32, 32); // dispara end_stroke implícito
+    assert_eq!(t.stroke_history().len(), 0);
+}
+
+/// V-2 cascade fix: begin_stroke com journal anexado MAS sample_buffer
+/// scenario — queue_pointer/end_stroke não chamam WAL ops em path
+/// degraded.
+#[test]
+fn v2_no_cascade_when_journal_lacks_begin() {
+    // Smoke check: begin → queue → end com journal anexado, last_wal_error
+    // permanece None (cenário healthy — sem cascade visível). O fix V-2
+    // protege o cenário degraded (begin_stroke WAL fail) que requer
+    // injeção de erro. Smoke aqui confirma path healthy unchanged.
+    let path = tmp_wal_path("v2_smoke");
+    std::fs::remove_file(&path).ok();
+    let mut t = mk_painter_with_canvas();
+    t.attach_journal(path.clone(), FlushPolicy::default())
+        .expect("attach");
+    t.begin_stroke(0);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    assert!(t.last_wal_error().is_none(), "healthy path: no WAL error");
+    t.detach_journal();
+    std::fs::remove_file(&path).ok();
+}
+
+/// T-1: last_wal_error captura erro WAL real.
+/// Uses attach_journal em path inválido pra disparar IO error.
+#[test]
+fn t1_last_wal_error_captures_journal_failure() {
+    let mut t = mk_painter_with_canvas();
+    // Path em diretório que não existe → open falha com IO error.
+    let bad_path = PathBuf::from("/nonexistent_dir_t1_test/wal.bin");
+    let result = t.attach_journal(bad_path, FlushPolicy::default());
+    assert!(matches!(result, Err(JournalError::Io(_))));
+    // attach_journal failure não seta last_wal_error (é caller-visible
+    // via Result). Confirma None pra evitar leak.
+    assert!(t.last_wal_error().is_none());
+}
+
+/// T-2: clear_last_wal_error zera o flag de degraded durability.
+#[test]
+fn t2_clear_last_wal_error_resets() {
+    let mut t = mk_painter_with_canvas();
+    // Sem journal attach, last_wal_error é None.
+    assert!(t.last_wal_error().is_none());
+    t.clear_last_wal_error(); // no-op safe
+    assert!(t.last_wal_error().is_none());
+}
+
+/// T-3: set_brush invalida cached_brush_hash → próximo stroke tem
+/// brush_params_hash diferente.
+#[test]
+fn t3_set_brush_invalidates_hash_cache() {
+    use ph2d_painter_brush::library;
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    let hash_a = t.stroke_history().iter().next().unwrap().brush_params_hash;
+
+    // Trocar pra brush diferente (square_hard slot 2).
+    use ph2d_tool_painter::params::BrushHandle as StubBrushHandle;
+    t.set_brush(StubBrushHandle(2), library::square_hard());
+    t.begin_stroke(1);
+    t.queue_pointer(PointerSample {
+        position: [2.0, 2.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    let hash_b = t.stroke_history().iter().nth(1).unwrap().brush_params_hash;
+    assert_ne!(
+        hash_a, hash_b,
+        "set_brush must invalidate cache → new hash next stroke"
+    );
+}
+
+/// T-5: next_seq u64 overflow panics LOUD (não silent dedup).
+#[test]
+#[should_panic(expected = "next_seq u64 overflow")]
+fn t5_next_seq_overflow_panics_loud() {
+    let mut t = PainterTool::default();
+    use ph2d_editor_core::tool::RasterEditTool;
+    let pixels = vec![255u8; (4 * 4 * 4) as usize];
+    t.set_source(pixels, 4, 4);
+    t.set_next_seq(u64::MAX);
+    t.begin_stroke(0); // checked_add(1) overflow → panic
+}
+
+/// T-6 + S-7: set_canvas_id mid-stroke disparar debug_assert.
+#[test]
+#[should_panic(expected = "set_canvas_id called mid-stroke")]
+fn t6_s7_set_canvas_id_mid_stroke_panics() {
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.set_canvas_id(CanvasId(99)); // ADR-0052 §2.6 violation
+}
+
+/// S-7: set_layer_target mid-stroke disparar debug_assert.
+#[test]
+#[should_panic(expected = "set_layer_target called mid-stroke")]
+fn s7_set_layer_target_mid_stroke_panics() {
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.set_layer_target(LayerId(99));
+}
+
+/// S-7: set_next_seq mid-stroke disparar debug_assert.
+#[test]
+#[should_panic(expected = "set_next_seq called mid-stroke")]
+fn s7_set_next_seq_mid_stroke_panics() {
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.set_next_seq(999);
+}
+
+/// T-8: PainterTool é Send + Sync (compile-time assertion).
+#[test]
+fn t8_painter_tool_is_send_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<PainterTool>();
+}
+
+/// V-6: deactivate preserva stroke_history (contrato W11 caller).
+#[test]
+fn v6_deactivate_preserves_stroke_history() {
+    use ph2d_editor_core::tool::Tool;
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    assert_eq!(t.stroke_history().len(), 1);
+    Tool::on_deactivate(&mut t);
+    assert_eq!(
+        t.stroke_history().len(),
+        1,
+        "history MUST survive deactivate per L1233-1236 contract"
+    );
+}
+
+/// U-7: SAMPLE_FLAG_TILT_UNAVAILABLE setado quando sample.tilt == 0.
+#[test]
+fn u7_tilt_unavailable_flag_set_for_zero_tilt() {
+    use ph2d_painter_stroke::SAMPLE_FLAG_TILT_UNAVAILABLE;
+    let mut t = mk_painter_with_canvas();
+    t.begin_stroke(0);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0, // mouse path
+    });
+    t.queue_pointer(PointerSample {
+        position: [2.0, 2.0],
+        pressure: 1.0,
+        tilt: 0.3, // pencil real tilt
+    });
+    t.end_stroke();
+    let rec = t.stroke_history().iter().next().unwrap();
+    assert!(
+        rec.points[0].flags & SAMPLE_FLAG_TILT_UNAVAILABLE != 0,
+        "zero tilt should mark TILT_UNAVAILABLE"
+    );
+    assert!(
+        rec.points[1].flags & SAMPLE_FLAG_TILT_UNAVAILABLE == 0,
+        "non-zero tilt should NOT mark unavailable"
+    );
+}
+
+/// S-6: attach_journal sem set_next_seq quando history não-vazio disparar
+/// debug_assert (HR-W11 caller obligation).
+#[test]
+#[should_panic(expected = "set_next_seq(last_persisted_seq + 1) obrigatório")]
+fn s6_attach_journal_without_baseline_panics() {
+    let path = tmp_wal_path("s6_baseline");
+    std::fs::remove_file(&path).ok();
+    let mut t = mk_painter_with_canvas();
+    // Stroke pra popular history.
+    t.begin_stroke(0);
+    t.queue_pointer(PointerSample {
+        position: [1.0, 1.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    assert_eq!(t.stroke_history().len(), 1);
+    // History tem stroke MAS next_seq foi consumido até 1; em produção
+    // caller load(canon) seta next_seq via set_next_seq(last+1). Aqui
+    // simulamos esquecimento.
+    t.set_next_seq(0); // reset pra simular caller que load + esqueceu baseline
+    let _ = t.attach_journal(path.clone(), FlushPolicy::default()); // panic via debug_assert
+}

@@ -385,6 +385,154 @@ Ambos drenam `preview_dirty`; caller chamando ambos perde frame.
 
 ---
 
+### Painter T1.9 audit completo carry-overs (4 lentes S/T/U/V 2026-05-28)
+
+**Source:** 4-lente parallel audit pós-T1.9 commit `231d6cc` (S spec compliance
++ T test coverage + U HR-5 determinism + V regression). 50 findings totais:
+7 CRITICAL + 15 HIGH + 18 MEDIUM + 10 LOW. CRITICAL+HIGH+MEDIUM (40 itens)
+remediados in-code via commit follow-up; 10 LOWs aqui.
+
+**1. `samples_count_in_journal` divergence canon vs WAL** (S-13)
+
+`partial.samples_count_in_journal` é overwrite em `end_stroke` com `samples.len()`,
+mas WAL Begin entry foi emitida em t=0 com count=0. Recovery K-3 cross-validation
+em ADR-0052 implicitly assume Begin count = final count → desalinhada.
+
+**Plan:** wire `WalEntryType::BeginUpdate = 5` carregando `(StrokeId, final_samples_count: u32)`
+em commit (já em T-durability carry-over #4 — consolida).
+
+**Trigger:** W11 polish ou primeiro K-3 false-positive em prod.
+
+**2. painter-contracts gate enforcement verification** (S-14)
+
+ADR-0052 §2.9 prescreve gate `partial_stroke_field_count_is_capped ≤ 16`.
+Manual count = 13 OK, mas gate arch-test não confirmado rodando.
+
+**Plan:** rodar `cargo test -p ph2d-painter-contracts -- partial_stroke` em W11
+quando crate solidificar.
+
+**Trigger:** W1 T0.8 fechamento (`ph2d-painter-contracts` ship).
+
+**3. `secondary_color` "in use" semantics** (S-15 + S-3 carry-from-CRITICAL)
+
+T1.9 wire seta `secondary_color = Some(...)` sempre. ADR-0046 §2.2 deixou
+trigger semântico em aberto. W2 sidebar deve definir quando é "Some sse
+long-press slot armed" vs "always Some".
+
+**Plan:** ADR-0046-amendment-2 doc'ando trigger; código wire override em
+W2 quando palette UI ship.
+
+**Trigger:** W2 sidebar (palette/color picker) wire.
+
+**4. u16::MAX sample cap test (long-running)** (T-4)
+
+Cap exato + cap+1 path nunca exercitados em test (65k iterations slow para
+CI; ~5s nextest single test).
+
+**Plan:** mover pra `#[ignore]` test ou property-based (proptest) com
+seed fixo + small N (cap=128 modular cobre os mesmo branches).
+
+**Trigger:** primeiro report MCP-injected 100k+ stroke truncation issue.
+
+**5. attach_journal partial leftover degenerate state** (T-7)
+
+`if stroke_active || current_partial.is_some()` tem 2 condições. Caso
+`stroke_active=false MAS current_partial=Some` (estado inconsistente, só
+atingível via bug) sem test direct.
+
+**Plan:** `#[cfg(test)] pub(crate) fn _test_force_partial` setter +
+test específico OR deixar como defense-in-profundidade ungated.
+
+**Trigger:** primeiro bug report de state machine inconsistency.
+
+**6. End_stroke idempotence test robusto** (T-15)
+
+Doc diz "idempotente — chamar duas vezes é seguro". Atual sem teste
+explícito de side-effect-free no second call.
+
+**Plan:** test `end_stroke(); end_stroke();` + assert `stroke_history.len()`
+não muda + journal não recebe segunda commit emission.
+
+**Trigger:** W11 polish OR bridge bug reportado.
+
+**7. derive_seed NaN canvas_py + -Inf** (T-16)
+
+`derive_seed_determinism_and_collision_resistance` testa NaN canvas_px e
++Inf canvas_py. Branch -Inf + NaN canvas_py 50% sem cobertura.
+
+**Plan:** estender test existente com NaN canvas_py + -Inf canvas_px (5 LOC).
+
+**Trigger:** W11 polish.
+
+**8. Brush::params_blake3 cross-OS bit-stability** (U-2)
+
+`Brush` construction usa libm `sin/cos/sqrt/FMA` — 1 ULP cross-OS divergence
+em compute upstream do `Brush.shape.*`. `params_blake3` é deterministic
+GIVEN same Brush, mas Brush construction NÃO é cross-OS deterministic.
+
+**Plan:** ADR-0046 amendment §2.7 prescrevendo "Brush factory MUST round
+f32 fields para Q16.16 stable repr antes de gravar"; OR `libm` crate
+explicit pra trig (skip glibc/Accelerate dispatch).
+
+**Trigger:** W11 cross-OS CI run produzindo diff em `.ph2d-painter`
+canon bytes.
+
+**9. pseudo_now_ms wall-clock policy mismatch** (U-3)
+
+Sintético `len * 16` é deterministic mas FlushPolicy `Hybrid{ms:100}`
+default vai disparar sample-by-sample storm quando shell W11 wirar real
+wall-clock (clock skew sintético → wall causa `last_flush_ms` enormous diff).
+
+**Plan:** opção (a) T1.9 ship com FlushPolicy::EveryNSamples-only default
+(`ms` policy unreachable até W11 wire real clock + reset); (b) runtime
+gate em attach_journal recusa `Hybrid` policy quando detect clock drift.
+
+**Trigger:** W11 shell wire real wall-clock.
+
+**10. pressure_q88 docstring alignment** (U-5)
+
+`f32_to_q88` doc diz "[0, u16::MAX/256.0)" mas RawPointerSample.pressure_q88
+diz "[0, 1.0)". Inconsistência permite caller MCP passar pressure=5.0 sem
+validation → grava 1280 em WAL.
+
+**Plan:** `f32_to_q88_pressure` variant clamp em 256 + atualizar
+RawPointerSample docstring + adopt em pointer_to_raw_sample.
+
+**Trigger:** W11 polish OR primeiro MCP malformed sample report.
+
+**11. MAX_SAMPLES_PER_STROKE usize cross-arch** (U-8)
+
+`u16::MAX as usize` é OK em todas arches suportadas (32 + 64 bit). Filed
+pra completude; sem fix needed agora.
+
+**Plan:** doc nota "futuras caps byte-based devem usar u64 explicit em
+vez de usize".
+
+**Trigger:** primeira cap baseada em bytes.
+
+**12. OklchColor::sanitize cross-crate** (U-10)
+
+Sanitize de NaN/Inf hoje só em PainterTool (S-8 fix); ph2d-color seria
+o owner natural. Cross-crate refactor.
+
+**Plan:** mover `sanitize_oklch_or_default` (tool.rs) pra `OklchColor::sanitize`
+method em `ph2d-color`; tool.rs delega.
+
+**Trigger:** sessão Coord-A polishing ph2d-color (T-color full ship).
+
+**13. BrushHandle deserialize cross-version sanitize** (U-11)
+
+`brush_handle_stub_to_canon` fallback existe em conversion path mas NÃO
+em `impl<'de> Deserialize for BrushHandle` em ph2d-painter-brush. Legacy
+canon v3 com raw u32 = 100 (slot inválido v4) panica no load.
+
+**Plan:** mover clamp slot < 64 pra `impl Deserialize for BrushHandle`
+em ph2d-painter-brush + emit migration warning.
+
+**Trigger:** primeiro canon v3 load em v4 binary.
+
+---
+
 ## 5. Open ADR drafts
 
 When the relevant Wave 11 work starts, open these ADRs:

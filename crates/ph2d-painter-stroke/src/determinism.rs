@@ -50,6 +50,15 @@ pub fn f32_to_q1616_saturating(v: f32) -> i32 {
     if !v.is_finite() {
         return 0;
     }
+    // **U-4 (audit T1.9):** explicit subnormal flush-to-zero pra cross-OS
+    // determinism. SSE2 MXCSR.FTZ/DAZ (HPC env linking MKL/OpenBLAS) +
+    // ARM FPCR.FZ (embedded ports) + wasm32 V8 motors podem flush subnormal
+    // silenciosamente — multiplicação `v * 65536.0` em denormal produz
+    // 0 OR subnormal-multiple OS-dependent. Pre-flush explícito = OS-
+    // independent zero pra ALL subnormal/denormal inputs.
+    if v.abs() < f32::MIN_POSITIVE {
+        return 0;
+    }
     // Clamp to representable range pra evitar overflow no `as i32`.
     let scaled = (v * 65536.0).clamp(i32::MIN as f32, i32::MAX as f32);
     scaled as i32
@@ -102,6 +111,11 @@ pub const fn q88_to_f32(v: u16) -> f32 {
 #[must_use]
 pub fn f32_to_q88(v: f32) -> u16 {
     if !v.is_finite() || v <= 0.0 {
+        return 0;
+    }
+    // U-4: subnormal flush-to-zero pra cross-OS determinism (vide
+    // f32_to_q1616_saturating).
+    if v < f32::MIN_POSITIVE {
         return 0;
     }
     let scaled = (v * 256.0).clamp(0.0, u16::MAX as f32);

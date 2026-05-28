@@ -932,7 +932,14 @@ mod tests {
         }
         let bytes = std::fs::read(&path).expect("read");
         assert_eq!(&bytes[..12], JOURNAL_MAGIC.as_slice());
-        assert_eq!(&bytes[12..16], SCHEMA_VERSION.to_le_bytes().as_slice());
+        // **Audit T1.9 S-12:** WAL version é `JOURNAL_SCHEMA_VERSION`
+        // (ADR-0052 §2.2 P-12 — versão WAL ≠ canon). Hoje ambas são 1, mas
+        // ASSERT contra `SCHEMA_VERSION` passa por coincidência; bump canon
+        // pra 2 (W11) revela bug latente. Trocado pra const correto.
+        assert_eq!(
+            &bytes[12..16],
+            JOURNAL_SCHEMA_VERSION.to_le_bytes().as_slice()
+        );
         std::fs::remove_file(&path).ok();
     }
 

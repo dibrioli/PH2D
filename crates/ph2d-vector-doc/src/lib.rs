@@ -45,6 +45,7 @@ pub mod crdt;
 pub mod cubic;
 pub mod cubic_fit;
 pub mod deterministic;
+pub mod dormant;
 pub mod edit_log;
 pub mod network;
 pub mod postcard_schema;
@@ -53,7 +54,8 @@ pub mod spiro;
 pub mod style;
 
 pub use cubic::{TangentSide, TangentsCubic, Vertex, VertexId, VertexKind};
-pub use edit_log::{BatchEntry, BooleanOp, EditLog, NetworkSnapshot, VectorOp};
+pub use dormant::DormantFractureSet;
+pub use edit_log::{BooleanOp, EditLog, NetworkSnapshot, VectorOp};
 pub use network::{RepresentationMode, VectorNetwork, VectorNetworkInvariant};
 pub use postcard_schema::{
     AssetBounds, AuthoringMetadata, BoundedDecodeError, EmbeddedAsset, Ph2dVectorAsset,

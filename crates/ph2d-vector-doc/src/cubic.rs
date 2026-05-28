@@ -53,10 +53,13 @@ impl Vertex {
 /// Tangent-continuity intent at a vertex.
 ///
 /// **FROZEN at 4 variants** (ADR-0056 §2.3) — covers parity with
-/// Illustrator / Affinity / Figma editing semantics. Expansion requires
-/// an `0056-amendment-N.md` ADR.
+/// Illustrator / Affinity / Figma editing semantics. NOT marked
+/// `#[non_exhaustive]`: FROZEN explicitly promises exhaustive-match
+/// stability to downstream code (R1 audit Lens-B MED-1 + Lens-D MED-D9
+/// consistency with [`crate::WindingRule`] and
+/// [`crate::RepresentationMode`], both FROZEN and non-`non_exhaustive`).
+/// Expansion requires a new `0056-amendment-N.md` ADR.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[non_exhaustive]
 pub enum VertexKind {
     /// Tangents on either side of the vertex are mirrored (smooth, equal magnitude).
     Mirror,

@@ -14,16 +14,25 @@
 //! - Strokes are deferred to W2 (the stroke vocabulary lands with the
 //!   Pencil tool); W1 ships fill-only.
 //!
-//! ## Anti-padrões avoided
+//! ## Allocation behavior (HR-3 honest accounting)
 //!
-//! - **No allocation in the per-frame draw loop**: a single `BezPath` is
-//!   built and discarded per region. SmallVec inline budgets in the
-//!   network (32 vertices, 64 segments, 8 regions) keep typical
-//!   documents heap-free.
+//! - **Per-frame, per-region**: one `BezPath` is built and discarded.
+//!   `BezPath` is `Vec<PathEl>` internally — pre-sized via
+//!   `with_capacity(2 + segments * 2)` so the path needs at most one
+//!   heap alloc per region (no realloc on push). W2 lands a reusable
+//!   scratch `BezPath` cached in `VectorScene` to drop even that one.
+//! - **SmallVec inline budgets** in the **data model**
+//!   (`VectorNetwork.vertices/segments/regions`: 32/64/8 inline) keep
+//!   *typical* documents heap-free for the network itself — but the
+//!   per-region `BezPath` lives in the renderer, not the network, so
+//!   those budgets are unrelated to this draw routine.
 //! - **No `unsafe`** (`#![forbid(unsafe_code)]` at the crate root).
 //! - **`vello::*` / `kurbo::*` imports stay confined to this crate** —
-//!   arch-gate `vello_kurbo_only_in_ph2d_vector` (ADR-0059 §L6F1 + W2+
-//!   arch-gate landing).
+//!   target gate `vello_kurbo_only_in_ph2d_vector` is **planned for W2+**
+//!   (per ADR-0059 §2.8 + L6F1 long-tail); 20+ pre-existing crates
+//!   import vello/kurbo direct today and will need a whitelist or
+//!   migration. Until then this comment documents the intent, not an
+//!   enforced gate.
 
 use ph2d_color::OklchColor;
 use ph2d_vector_doc::{Region, VectorNetwork};
@@ -79,26 +88,40 @@ pub fn draw_vector_network(
 
 /// Build a closed `kurbo::BezPath` for one region.
 ///
-/// Pure function; testable without Vello. Returns an empty path if the
-/// region references segments that aren't in the network (validate the
-/// network upstream — this routine is permissive so a partially built
-/// network during interactive drawing still renders the well-formed
-/// regions).
+/// Pure function; testable without Vello.
+///
+/// **Strict mode**: if any segment in the region references a vertex
+/// or segment that isn't in the network, returns an empty path. A
+/// half-built polyline that silently "stitches across" the gap
+/// produces a self-intersecting fill that looks like a render bug —
+/// strict failure surfaces the data problem instead of masking it.
+/// Callers can `validate()` the network upstream to detect the
+/// condition before drawing.
+///
+/// One `Vec<PathEl>` allocation is performed up-front via
+/// `BezPath::with_capacity` sized for `2 + N * 2` elements (1 MoveTo +
+/// N CurveTo + 1 ClosePath, plus headroom — kurbo uses 2 elements
+/// per CurveTo when expressed as quads in some paths). No reallocation
+/// during the per-segment loop for typical region sizes.
 #[must_use]
 pub fn build_region_path(network: &VectorNetwork, region: &Region) -> BezPath {
-    let mut path = BezPath::new();
+    if region.segments.is_empty() {
+        return BezPath::new();
+    }
+    let capacity = 2 + region.segments.len() * 2;
+    let mut path = BezPath::with_capacity(capacity);
     let mut first = true;
 
     for &(seg_id, forward) in &region.segments {
         let Some(segment) = network.segments.iter().find(|s| s.id == seg_id) else {
-            continue;
+            return BezPath::new();
         };
         let (start_v, end_v, c1, c2) = if forward {
             let Some(s) = network.vertices.iter().find(|v| v.id == segment.start) else {
-                continue;
+                return BezPath::new();
             };
             let Some(e) = network.vertices.iter().find(|v| v.id == segment.end) else {
-                continue;
+                return BezPath::new();
             };
             (
                 s.pos,
@@ -108,10 +131,10 @@ pub fn build_region_path(network: &VectorNetwork, region: &Region) -> BezPath {
             )
         } else {
             let Some(s) = network.vertices.iter().find(|v| v.id == segment.end) else {
-                continue;
+                return BezPath::new();
             };
             let Some(e) = network.vertices.iter().find(|v| v.id == segment.start) else {
-                continue;
+                return BezPath::new();
             };
             (
                 s.pos,
@@ -133,9 +156,7 @@ pub fn build_region_path(network: &VectorNetwork, region: &Region) -> BezPath {
         );
     }
 
-    if !first {
-        path.close_path();
-    }
+    path.close_path();
     path
 }
 
@@ -188,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn triangle_region_builds_4_element_bezpath() {
+    fn triangle_region_builds_5_element_bezpath() {
         // 1 move_to + 3 curve_to + 1 close_path = 5 elements.
         let net = make_triangle_network();
         let path = build_region_path(&net, &net.regions[0]);
@@ -229,9 +250,10 @@ mod tests {
     }
 
     #[test]
-    fn region_with_dangling_segment_ref_renders_what_it_can() {
-        // Partial network (segment 99 doesn't exist) — should NOT panic
-        // and should still build an empty path (no closed loop).
+    fn region_with_dangling_segment_ref_yields_empty_path_strict_mode() {
+        // R1 audit Lens-B MED-2: strict mode aborts the path entirely
+        // on the first dangling ref instead of stitching across the
+        // gap and producing a self-intersecting fill.
         let mut net = VectorNetwork::empty();
         net.vertices.push(Vertex::auto(0, Vec2::ZERO));
         let mut region = Region::new(0, WindingRule::NonZero);
@@ -240,7 +262,28 @@ mod tests {
         let path = build_region_path(&net, &net.regions[0]);
         assert!(
             path.is_empty(),
-            "dangling ref should produce empty path, got {} elements",
+            "dangling ref should produce empty path (strict mode), got {} elements",
+            path.elements().len()
+        );
+    }
+
+    #[test]
+    fn region_with_partial_dangling_aborts_whole_region() {
+        // R1 audit Lens-B MED-2: even if the FIRST segments are valid,
+        // a later dangling segment aborts the whole region — the
+        // alternative is a partial polyline stitched across the gap,
+        // which looks like a render bug.
+        let mut net = VectorNetwork::empty();
+        net.vertices.push(Vertex::auto(0, Vec2::ZERO));
+        net.vertices.push(Vertex::auto(1, Vec2::new(10.0, 0.0)));
+        net.segments.push(Segment::straight(0, 0, 1));
+        let mut region = Region::new(0, WindingRule::NonZero);
+        region.segments.extend_from_slice(&[(0, true), (99, true)]); // (0) valid, then dangling
+        net.regions.push(region);
+        let path = build_region_path(&net, &net.regions[0]);
+        assert!(
+            path.is_empty(),
+            "partial dangling should abort whole region (strict mode); got {} elements",
             path.elements().len()
         );
     }
@@ -267,5 +310,42 @@ mod tests {
         let mut scene = Scene::new();
         let drawn = draw_vector_network(&mut scene, &net, &styles, Affine::IDENTITY);
         assert_eq!(drawn, 1);
+    }
+
+    #[test]
+    fn oklch_to_color_black_round_trips_to_near_black() {
+        // R1 audit Lens-D MED-D10 expansion: cover the BLACK case
+        // (only WHITE was tested originally).
+        let black_oklch = OklchColor::opaque(0.0, 0.0, 0.0);
+        let color = oklch_to_color(black_oklch);
+        let [r, g, b, _a] = color.components;
+        assert!(
+            r < 0.05 && g < 0.05 && b < 0.05,
+            "expected near-black, got [{r}, {g}, {b}]"
+        );
+    }
+
+    #[test]
+    fn oklch_to_color_alpha_is_preserved() {
+        // R1 audit Lens-D MED-D10: alpha previously untested.
+        let translucent = OklchColor {
+            l: 0.5,
+            c: 0.0,
+            h: 0.0,
+            a: 0.5,
+        };
+        let color = oklch_to_color(translucent);
+        let [_r, _g, _b, a] = color.components;
+        assert!((a - 0.5).abs() < 0.01, "expected alpha ~0.5, got {a}");
+    }
+
+    #[test]
+    fn oklch_to_color_red_maps_to_red_dominant_channel() {
+        // OKLCH (L=0.628, C=0.258, H=29.234°) ≈ sRGB red.
+        let red_oklch = OklchColor::opaque(0.628, 0.258, 29.234);
+        let color = oklch_to_color(red_oklch);
+        let [r, g, b, _a] = color.components;
+        assert!(r > g && r > b, "expected R-dominant, got [{r}, {g}, {b}]");
+        assert!(r > 0.5, "expected R > 0.5, got {r}");
     }
 }

@@ -17,11 +17,24 @@ use crate::network::{RepresentationMode, VectorNetwork};
 use crate::region::{RegionId, SegmentRef, WindingRule};
 use crate::style::{FillRef, SegmentId, StrokeStyle};
 
+// NOTE — `BatchOp` variant removed in W1.T1.2 R1 audit remediation
+// (CRIT-D1 + CRIT-D2). Original spec (ADR-0056 §2.8) defined
+// `BatchOp { ops: SmallVec<[Box<VectorOp>; 8]> }` for atomic
+// transactions, but Box recursion through `serde` is unbounded — a
+// malicious .ph2d-vector with nested `BatchOp` overflows the stack
+// during postcard `from_bytes` BEFORE `bounded_decode` runs. W1.T1.6
+// (CRDT) reintroduces the variant with a custom `Deserialize` impl
+// using a thread-local depth counter capped at ≤ 32 levels; until
+// then `EditLog::ops` is flat — atomicity is the editor's
+// responsibility (group N ops + apply together + undo as N steps).
+// Slot in the 16-cap is reserved.
+
 /// One mutation of a [`VectorNetwork`].
 ///
-/// **Cap (ADR-0056 §2.3 + §2.8):** ≤ **16 variants** (current: 14
-/// explicit + 2 reserved). Adding the 15th / 16th variant ships as
-/// `0056-amendment-N.md`; the 17th requires a new ADR entirely.
+/// **Cap (ADR-0056 §2.3 + §2.8):** ≤ **16 variants** (current: 13
+/// explicit + 3 reserved — one of the reserved slots holds the future
+/// `BatchOp` reintroduction in W1.T1.6 with a depth-bounded custom
+/// `Deserialize`; the others are open for amendment).
 ///
 /// Marked `#[non_exhaustive]` so downstream pattern matches force a
 /// fallback arm and survive future variant additions.
@@ -134,17 +147,6 @@ pub enum VectorOp {
         mode: RepresentationMode,
     },
 
-    /// Atomic batch of operations applied as one transaction (undo /
-    /// redo treats the batch as a single step).
-    ///
-    /// SmallVec inline cap: 8 ops per batch (covers typical Pen-tool
-    /// click-and-extrude that adds vertex + segment + region in one
-    /// gesture).
-    BatchOp {
-        /// Ordered sub-operations.
-        ops: SmallVec<[BatchEntry; 8]>,
-    },
-
     /// CRDT integrity checkpoint — a blake3 hash of the network state
     /// at this point. Periodically inserted (every 30 s per
     /// ADR-0057 §2.3) so out-of-sync replicas detect divergence.
@@ -152,23 +154,6 @@ pub enum VectorOp {
         /// blake3-256 hash (32 bytes) of the network at this point.
         hash: [u8; 32],
     },
-}
-
-/// One sub-op inside a [`VectorOp::BatchOp`].
-///
-/// Boxed to break the otherwise-infinite recursive size of `VectorOp`
-/// (which would contain `SmallVec<[VectorOp; 8]>` containing more
-/// `VectorOp`s). The `Box` adds an indirection per sub-op — acceptable
-/// since `BatchOp` is rare (typically 1-5 per second during pen drag).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct BatchEntry(pub Box<VectorOp>);
-
-impl BatchEntry {
-    /// Wrap a [`VectorOp`] into a [`BatchEntry`].
-    #[must_use]
-    pub fn new(op: VectorOp) -> Self {
-        Self(Box::new(op))
-    }
 }
 
 /// Boolean operation variants.
@@ -201,16 +186,21 @@ pub enum BooleanOp {
 /// Event-sourced log of [`VectorOp`]s applied to a [`VectorNetwork`].
 ///
 /// Replay of `ops[..N]` reconstructs the network at step `N`.
-/// Periodic [`NetworkSnapshot`]s (every 100 ops) accelerate seek to
-/// arbitrary positions without replaying from genesis.
+/// [`NetworkSnapshot`]s accelerate seek to arbitrary positions
+/// without replaying from genesis — but **insertion is the editor's
+/// responsibility**, not the log's. [`EditLog::push`] only appends to
+/// `ops`. Callers that want periodic snapshots construct a
+/// [`NetworkSnapshot`] and push to `snapshots` directly (recommended
+/// every 100 ops or on explicit "save" boundary).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EditLog {
     /// Append-only operation history.
     pub ops: Vec<VectorOp>,
 
-    /// Pinned snapshots (op-index → network state). Inserted every 100
-    /// ops so a 10 000-op session has 100 snapshots; seeking to op
-    /// 5 000 replays at most 100 ops from the nearest snapshot.
+    /// Pinned snapshots (op-index → network state). Inserted **by the
+    /// editor** at policy-defined points (typically every 100 ops);
+    /// seeking to op `N` replays at most `100` ops from the nearest
+    /// snapshot.
     pub snapshots: Vec<(usize, NetworkSnapshot)>,
 }
 
@@ -221,8 +211,8 @@ impl EditLog {
         Self::default()
     }
 
-    /// Append an op without snapshotting. Snapshotting policy is the
-    /// editor's responsibility (the log is a passive container).
+    /// Append an op. Snapshotting policy is the editor's responsibility
+    /// (this log is a passive container; see struct-level docs).
     pub fn push(&mut self, op: VectorOp) {
         self.ops.push(op);
     }

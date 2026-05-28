@@ -51,5 +51,19 @@ serde = { version = "1", features = ["derive"] }
 # crate small for deterministic replay.
 blake3 = { version = "1", default-features = false }
 
+[package.metadata.cargo-machete]
+# `blake3` — ADR-0056 §2.8 defines `VectorOp::Checkpoint { hash: blake3::Hash }`
+# (32-byte content hash for CRDT integrity). Storage is `[u8; 32]` for postcard
+# round-trip (blake3::Hash has no serde derives); helper construction (hashing
+# a `VectorNetwork` snapshot) lands with the CRDT replay engine in W1.T1.6.
+# Keeping the dep declared so the version pin (`= "1"`) is stable when T1.6
+# wires `blake3::hash(...)` for real.
+#
+# `ph2d-vector-traits` — ADR-0056 §2.1 lists the trait crate as a foundational
+# dep. W1.T1.2 doesn't consume it yet (data-model surface is pure structs);
+# W1.T1.6 will use `AnimValue::lerp` for tangent-handle CRDT merge per
+# ADR-0057. Removing + re-adding via Cargo.toml churn is wasteful.
+ignored = ["blake3", "ph2d-vector-traits"]
+
 [dev-dependencies]
 walkdir = "2"

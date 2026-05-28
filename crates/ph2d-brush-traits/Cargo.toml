@@ -30,3 +30,11 @@ glam = "0.30"
 # dep list because ADR-0067 §2.6 caps deps at exactly 3 — adding it
 # later would require an amendment.
 ph2d-color = { path = "../ph2d-color" }
+
+[package.metadata.cargo-machete]
+# `ph2d-color` is declared but unused in W1 — reserved for the
+# StampSpec color-tint expansion per ADR-0067 §2.6 (cap = 3 deps;
+# removing this dep then re-adding via amendment is more churn than
+# keeping it warm). Re-evaluate when an actual StampSpec color field
+# lands.
+ignored = ["ph2d-color"]

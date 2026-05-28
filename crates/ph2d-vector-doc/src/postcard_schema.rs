@@ -20,8 +20,9 @@ use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
 use crate::crdt::CrdtReplay;
+use crate::dormant::DormantFractureSet;
 use crate::edit_log::EditLog;
-use crate::network::VectorNetwork;
+use crate::network::{VECTOR_NETWORK_SCHEMA_VERSION, VectorNetwork};
 use crate::style::StyleTable;
 
 /// **Schema version** of the on-disk `.ph2d-vector` asset format.
@@ -64,6 +65,12 @@ pub struct Ph2dVectorAsset {
     /// Optional CRDT replay state — multi-agent local opt-in (W1.T1.6
     /// populates `crdt` module).
     pub crdt_state: Option<CrdtReplay>,
+
+    /// Optional dormant-fracture edge set per ADR-0063 (W16+ physics
+    /// integration). Pre-declared in W1 so the schema is
+    /// forward-compatible — adding the field later would force a
+    /// `PH2D_VECTOR_ASSET_SCHEMA_VERSION` bump 1 → 2 + migrator chain.
+    pub dormant_fractures: Option<DormantFractureSet>,
 }
 
 impl Default for Ph2dVectorAsset {
@@ -76,6 +83,7 @@ impl Default for Ph2dVectorAsset {
             metadata: AuthoringMetadata::default(),
             embedded_assets: SmallVec::new(),
             crdt_state: None,
+            dormant_fractures: None,
         }
     }
 }
@@ -124,7 +132,11 @@ pub enum EmbeddedKind {
 
 /// Per-collection size caps enforced by [`bounded_decode`].
 ///
-/// Defaults match ADR-0056 §2.6.
+/// Defaults match ADR-0056 §2.6 (the original 6 caps) **plus** four
+/// extensions added during the W1.T1.2 R1 audit lens-D remediation:
+/// `max_author_len` / `max_app_version_len` / `max_peer_clocks` /
+/// `max_style_*` close memory-exhaustion vectors not covered by the
+/// original §2.6 list.
 #[derive(Debug, Clone, Copy)]
 pub struct AssetBounds {
     /// Maximum vertex count.
@@ -139,6 +151,16 @@ pub struct AssetBounds {
     pub max_embedded_assets: usize,
     /// Maximum bytes per embedded asset.
     pub max_embedded_asset_size: usize,
+    /// Maximum bytes in [`AuthoringMetadata::author`].
+    pub max_author_len: usize,
+    /// Maximum bytes in [`AuthoringMetadata::app_version`].
+    pub max_app_version_len: usize,
+    /// Maximum entries in [`crate::CrdtReplay::peer_clocks`].
+    pub max_peer_clocks: usize,
+    /// Maximum entries in [`StyleTable::strokes`].
+    pub max_style_strokes: usize,
+    /// Maximum entries in [`StyleTable::fills`].
+    pub max_style_fills: usize,
 }
 
 impl Default for AssetBounds {
@@ -150,6 +172,11 @@ impl Default for AssetBounds {
             max_edit_log_ops: 1_000_000,
             max_embedded_assets: 64,
             max_embedded_asset_size: 16 * 1024 * 1024,
+            max_author_len: 256,
+            max_app_version_len: 64,
+            max_peer_clocks: 1024,
+            max_style_strokes: 4096,
+            max_style_fills: 4096,
         }
     }
 }
@@ -239,6 +266,14 @@ pub fn bounded_decode(
     if asset.version > PH2D_VECTOR_ASSET_SCHEMA_VERSION {
         return Err(BoundedDecodeError::UnknownSchemaVersion(asset.version));
     }
+    // Inner network has its own schema version — an asset legitimate at v1
+    // can wrap a network forged at v999 if we don't check here too
+    // (R1 audit Lens-B HIGH-3).
+    if asset.network.version > VECTOR_NETWORK_SCHEMA_VERSION {
+        return Err(BoundedDecodeError::UnknownSchemaVersion(
+            asset.network.version,
+        ));
+    }
     check_bound(
         "vertices",
         asset.network.vertices.len(),
@@ -267,6 +302,34 @@ pub fn bounded_decode(
             bounds.max_embedded_asset_size,
         )?;
     }
+    // R1 audit Lens-D HIGH-D4 / D5 / additional MED: string + crdt + style caps.
+    check_bound(
+        "metadata.author",
+        asset.metadata.author.len(),
+        bounds.max_author_len,
+    )?;
+    check_bound(
+        "metadata.app_version",
+        asset.metadata.app_version.len(),
+        bounds.max_app_version_len,
+    )?;
+    if let Some(crdt) = &asset.crdt_state {
+        check_bound(
+            "crdt_state.peer_clocks",
+            crdt.peer_clocks.len(),
+            bounds.max_peer_clocks,
+        )?;
+    }
+    check_bound(
+        "styles.strokes",
+        asset.styles.strokes.len(),
+        bounds.max_style_strokes,
+    )?;
+    check_bound(
+        "styles.fills",
+        asset.styles.fills.len(),
+        bounds.max_style_fills,
+    )?;
     Ok(asset)
 }
 

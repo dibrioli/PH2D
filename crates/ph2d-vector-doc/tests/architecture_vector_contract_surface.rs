@@ -117,6 +117,10 @@ fn count_struct_fields(crate_name: &str, struct_name: &str) -> Option<usize> {
     Some(count)
 }
 
+/// Vacuous-pass `assert ≤ max`: `None` (symbol absent) is allowed.
+///
+/// Use for **downstream / cross-crate** symbols that legitimately may
+/// not exist yet (W2+ fan-out crates).
 #[track_caller]
 fn assert_capped(actual: Option<usize>, max: usize, ctx: &str) {
     if let Some(n) = actual {
@@ -124,10 +128,38 @@ fn assert_capped(actual: Option<usize>, max: usize, ctx: &str) {
     }
 }
 
+/// Vacuous-pass `assert == expected`. Kept for symmetry with
+/// `assert_capped` — downstream tests may want to assert exact counts
+/// for cross-crate FROZEN enums. None currently use it but the helper
+/// stays for the next gate landing.
+#[allow(dead_code)]
 #[track_caller]
 fn assert_exact(actual: Option<usize>, expected: usize, ctx: &str) {
     if let Some(n) = actual {
         assert_eq!(n, expected, "[{ctx}] count {n} != expected {expected}");
+    }
+}
+
+/// **Strict** `assert ≤ max`: `None` (symbol absent) is a FAIL.
+///
+/// Use for **home-crate** (this crate's own) symbols that MUST exist —
+/// if `VectorOp` gets renamed to `VectorOperation` without updating the
+/// gate, this catches it instead of passing silently (R1 audit
+/// Lens-D HIGH-D6 mitigation).
+#[track_caller]
+fn assert_capped_strict(actual: Option<usize>, max: usize, ctx: &str) {
+    match actual {
+        Some(n) => assert!(n <= max, "[{ctx}] count {n} exceeds cap {max}"),
+        None => panic!("[{ctx}] required symbol NOT FOUND — refactor likely renamed it"),
+    }
+}
+
+/// **Strict** `assert == expected`: `None` is a FAIL.
+#[track_caller]
+fn assert_exact_strict(actual: Option<usize>, expected: usize, ctx: &str) {
+    match actual {
+        Some(n) => assert_eq!(n, expected, "[{ctx}] count {n} != expected {expected}"),
+        None => panic!("[{ctx}] required symbol NOT FOUND — refactor likely renamed it"),
     }
 }
 
@@ -139,7 +171,7 @@ const CRATE: &str = "ph2d-vector-doc";
 
 #[test]
 fn vector_op_variant_count_is_capped_at_16() {
-    assert_capped(
+    assert_capped_strict(
         count_enum_variants(CRATE, "VectorOp"),
         16,
         "VectorOp (ADR-0056 §2.3 + §2.8)",
@@ -148,7 +180,7 @@ fn vector_op_variant_count_is_capped_at_16() {
 
 #[test]
 fn vertex_field_count_is_capped_at_5() {
-    assert_capped(
+    assert_capped_strict(
         count_struct_fields(CRATE, "Vertex"),
         5,
         "Vertex (ADR-0056 §2.3)",
@@ -157,7 +189,7 @@ fn vertex_field_count_is_capped_at_5() {
 
 #[test]
 fn segment_field_count_is_capped_at_6() {
-    assert_capped(
+    assert_capped_strict(
         count_struct_fields(CRATE, "Segment"),
         6,
         "Segment (ADR-0056 §2.3)",
@@ -166,7 +198,7 @@ fn segment_field_count_is_capped_at_6() {
 
 #[test]
 fn region_field_count_is_capped_at_5() {
-    assert_capped(
+    assert_capped_strict(
         count_struct_fields(CRATE, "Region"),
         5,
         "Region (ADR-0056 §2.3)",
@@ -175,7 +207,7 @@ fn region_field_count_is_capped_at_5() {
 
 #[test]
 fn vertex_kind_is_frozen_at_4_variants() {
-    assert_exact(
+    assert_exact_strict(
         count_enum_variants(CRATE, "VertexKind"),
         4,
         "VertexKind FROZEN (ADR-0056 §2.3)",
@@ -184,7 +216,7 @@ fn vertex_kind_is_frozen_at_4_variants() {
 
 #[test]
 fn representation_mode_is_frozen_at_3_variants() {
-    assert_exact(
+    assert_exact_strict(
         count_enum_variants(CRATE, "RepresentationMode"),
         3,
         "RepresentationMode FROZEN (ADR-0056 §2.3)",
@@ -193,7 +225,7 @@ fn representation_mode_is_frozen_at_3_variants() {
 
 #[test]
 fn winding_rule_is_frozen_at_2_variants() {
-    assert_exact(
+    assert_exact_strict(
         count_enum_variants(CRATE, "WindingRule"),
         2,
         "WindingRule FROZEN (ADR-0056 §2.3)",

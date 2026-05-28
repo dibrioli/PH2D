@@ -9,9 +9,9 @@
 use glam::Vec2;
 use ph2d_vector_doc::postcard_schema::AssetBounds;
 use ph2d_vector_doc::{
-    BooleanOp, EditLog, FillRef, Ph2dVectorAsset, Region, RepresentationMode, Segment, TangentSide,
-    TangentsCubic, VectorNetwork, VectorOp, Vertex, VertexKind, WindingRule, bounded_decode,
-    load_vector_asset, save_vector_asset,
+    BooleanOp, EditLog, FillRef, Ph2dVectorAsset, Region, RepresentationMode, Segment, StrokeStyle,
+    TangentSide, TangentsCubic, VectorNetwork, VectorOp, Vertex, VertexKind, WindingRule,
+    bounded_decode, load_vector_asset, save_vector_asset,
 };
 use smallvec::smallvec;
 
@@ -175,6 +175,10 @@ fn vector_op_variants_round_trip_through_postcard() {
         VectorOp::SetAuthoringHint {
             mode: RepresentationMode::SpiroAssist,
         },
+        VectorOp::SetStrokeStyle {
+            seg: 0,
+            style: StrokeStyle::default(),
+        },
         VectorOp::Checkpoint { hash: [0xAB; 32] },
     ];
 
@@ -211,4 +215,119 @@ fn empty_default_asset_round_trips() {
     let bytes = save_vector_asset(&asset).expect("serialize");
     let decoded = load_vector_asset(&bytes).expect("deserialize");
     assert_eq!(decoded, asset);
+}
+
+#[test]
+fn bounded_decode_rejects_asset_too_large() {
+    // Build a >100 MB payload (just zeros — postcard will fail to parse,
+    // but the size check fires first).
+    let oversized = vec![0u8; ph2d_vector_doc::postcard_schema::MAX_ASSET_SIZE + 1];
+    let err = bounded_decode(&oversized, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::AssetTooLarge { size } => {
+            assert_eq!(size, oversized.len());
+        }
+        other => panic!("expected AssetTooLarge, got {other:?}"),
+    }
+}
+
+#[test]
+fn bounded_decode_rejects_unknown_outer_schema_version() {
+    // Forge an asset with version = 999 (future schema we don't understand).
+    let mut asset = Ph2dVectorAsset::default();
+    asset.version = 999;
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    assert!(
+        matches!(
+            err,
+            ph2d_vector_doc::BoundedDecodeError::UnknownSchemaVersion(999)
+        ),
+        "expected UnknownSchemaVersion(999), got {err:?}"
+    );
+}
+
+#[test]
+fn bounded_decode_rejects_unknown_inner_network_version() {
+    // R1 audit Lens-B HIGH-3: an asset legitimate at version=1 can still
+    // carry a network forged at version=999.
+    let mut asset = Ph2dVectorAsset::default();
+    asset.network.version = 999;
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    assert!(
+        matches!(
+            err,
+            ph2d_vector_doc::BoundedDecodeError::UnknownSchemaVersion(999)
+        ),
+        "expected UnknownSchemaVersion(999) on inner network, got {err:?}"
+    );
+}
+
+#[test]
+fn bounded_decode_rejects_oversized_author_string() {
+    let mut asset = Ph2dVectorAsset::default();
+    asset.metadata.author = "x".repeat(300); // > default 256
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "metadata.author");
+            assert_eq!(cap, 256);
+            assert_eq!(actual, 300);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
+}
+
+#[test]
+fn bounded_decode_rejects_oversized_peer_clocks_map() {
+    use ph2d_vector_doc::crdt::CrdtReplay;
+    let mut asset = Ph2dVectorAsset::default();
+    let mut crdt = CrdtReplay::new(7);
+    for i in 0..2000_u64 {
+        crdt.peer_clocks.insert(i, 0);
+    }
+    asset.crdt_state = Some(crdt);
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "crdt_state.peer_clocks");
+            assert_eq!(cap, 1024);
+            assert_eq!(actual, 2000);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
+}
+
+#[test]
+fn asset_bounds_defaults_match_adr_0056_section_2_6() {
+    // R1 audit Lens-A MED-2: pin the ADR-0056 §2.6 numerical caps
+    // executably so future drift (e.g. someone bumping
+    // max_vertices: 100_000 → 1_000_000_000 silently) fails CI.
+    let b = AssetBounds::default();
+    assert_eq!(b.max_vertices, 100_000);
+    assert_eq!(b.max_segments, 200_000);
+    assert_eq!(b.max_regions, 10_000);
+    assert_eq!(b.max_edit_log_ops, 1_000_000);
+    assert_eq!(b.max_embedded_assets, 64);
+    assert_eq!(b.max_embedded_asset_size, 16 * 1024 * 1024);
+    // R1 audit Lens-D HIGH-D4/D5 + MED extensions.
+    assert_eq!(b.max_author_len, 256);
+    assert_eq!(b.max_app_version_len, 64);
+    assert_eq!(b.max_peer_clocks, 1024);
+    assert_eq!(b.max_style_strokes, 4096);
+    assert_eq!(b.max_style_fills, 4096);
+}
+
+#[test]
+fn dormant_fractures_field_round_trips_through_postcard() {
+    // R1 audit Lens-A HIGH-1: dormant_fractures field pre-declared in
+    // v1 schema to avoid HR-14 version bump in W17+.
+    let mut asset = Ph2dVectorAsset::default();
+    asset.dormant_fractures = Some(ph2d_vector_doc::DormantFractureSet::default());
+    let bytes = save_vector_asset(&asset).expect("serialize");
+    let decoded = load_vector_asset(&bytes).expect("deserialize");
+    assert_eq!(decoded.dormant_fractures, asset.dormant_fractures);
 }

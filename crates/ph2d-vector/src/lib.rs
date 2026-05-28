@@ -28,18 +28,19 @@ pub use vector_network::{build_region_path, draw_vector_network, oklch_to_color}
 
 // Re-export the Vector Module document types so downstream callers
 // (e.g. the W1.T1.7 shell bridge) can construct/inspect networks
-// without an extra `ph2d-vector-doc` import line. The arch-gate
-// `vello_kurbo_only_in_ph2d_vector` (long-tail L6F1 per ADR-0059)
-// pairs with this — outside crates should reach VectorNetwork
-// THROUGH ph2d-vector, not by importing ph2d-vector-doc directly,
-// except for crates inside the Vector Module's own data-model
-// territory (the doc crate's own consumers / tools / nodes).
+// without an extra `ph2d-vector-doc` import line. The planned arch-gate
+// `vello_kurbo_only_in_ph2d_vector` (ADR-0059 §2.8 + L6F1 long-tail) —
+// **planned for W2+, NOT active today** — would force outside crates
+// to reach Vello/kurbo via this re-export wall. ~20 pre-existing crates
+// already import vello/kurbo direct (ph2d-editor-core, ph2d-render,
+// ph2d-imageio-svg, tool/panel crates, etc.); the W2+ gate landing
+// will need a whitelist or migration sweep.
 pub use ph2d_vector_doc::{
-    AssetBounds, AuthoringMetadata, BatchEntry, BooleanOp, BoundedDecodeError, EditLog,
-    EmbeddedAsset, FillRef, NetworkSnapshot, Ph2dVectorAsset, Region, RegionId, RepresentationMode,
-    Segment, SegmentId, SegmentRef, StrokeStyle, StyleRef, StyleRefMap, StyleTable, TangentSide,
-    TangentsCubic, VectorNetwork, VectorNetworkInvariant, VectorOp, Vertex, VertexId, VertexKind,
-    WindingRule, bounded_decode, load_vector_asset, save_vector_asset,
+    AssetBounds, AuthoringMetadata, BooleanOp, BoundedDecodeError, EditLog, EmbeddedAsset, FillRef,
+    NetworkSnapshot, Ph2dVectorAsset, Region, RegionId, RepresentationMode, Segment, SegmentId,
+    SegmentRef, StrokeStyle, StyleRef, StyleRefMap, StyleTable, TangentSide, TangentsCubic,
+    VectorNetwork, VectorNetworkInvariant, VectorOp, Vertex, VertexId, VertexKind, WindingRule,
+    bounded_decode, load_vector_asset, save_vector_asset,
 };
 
 // Re-export the few kurbo/peniko primitives that callers need to

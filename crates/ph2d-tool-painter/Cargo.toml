@@ -34,5 +34,12 @@ ph2d-core = { path = "../ph2d-core" }
 # stub comment). `cargo machete` rejected it as unused. Re-add when
 # T-color full lands and the stub gets replaced.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# Stroke Vector History + WAL durability (T1.9 wire — ADR-0046 + ADR-0052).
+# StrokeHistory (in-memory canon) + StrokeJournal (WAL append-only) +
+# PartialStroke (in-progress snapshot) + Q16.16 fixed-point helpers pra
+# converter PointerSample (f32) → RawPointerSample (HR-5 cross-OS).
+ph2d-painter-stroke = { path = "../ph2d-painter-stroke" }
+# OklchColor pra build PartialStroke.primary_color em begin_stroke wire (T1.9).
+ph2d-color = { path = "../ph2d-color" }
 # serde for PainterParams + PainterUiEdit + PainterUiSnapshot.
 serde = { version = "1", features = ["derive"] }

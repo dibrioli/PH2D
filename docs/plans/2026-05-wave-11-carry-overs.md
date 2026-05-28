@@ -305,6 +305,86 @@ ADR-0052 §2.5 specifica drain protocol em 5 steps mas crate só expõe state ma
 
 ---
 
+### Painter T1.9 carry-overs (auditoria 2-lente 2026-05-28: correctness Q + perf/concurrency R)
+
+**Source:** T1.9 wire (`StrokeHistory` + `StrokeJournal` em `PainterTool`).
+2 lentes paralelas (audit Q correctness + audit R perf/concurrency) =
+1 CRITICAL + 8 HIGH + 6 MEDIUM + 7 LOW. CRITICAL+HIGH+MEDIUM (14 itens)
+fechados in-code; 7 LOWs deferidos aqui.
+
+**1. Worker thread real pra `commit_stroke` + `add_sample` em mobile** (R-7)
+
+T1.9 wire chama `journal.add_sample()` + `journal.commit_stroke()` DIRETO
+na UI thread. Mobile (eMMC ~5-10ms fsync) × pencil 240Hz × Hybrid{n:8}
+flush = ~30 fsync/s = ~240ms/s perdidos só pra fsync.
+
+**Plan:** wire SPSC channel `(WalCommand, Result)` no shell W11+. UI thread
+push commands; worker thread executa `journal.*` + retorna result.
+
+**Trigger:** ship mobile real OR primeiro UX report iPad "Painter jank stroke contínuo".
+
+**2. `oklch_to_oklab` production `assert!` pode panicar `begin_stroke`** (Q-11)
+
+`params.active_color: OklchColor` é `pub` field; bridge/W2 sidebar handler
+que escrever `h` em degrees panica next `begin_stroke`.
+
+**Plan:** trocar `assert!` por clamp+warn em `oklch_to_oklab`
+(`debug_assert!` strict apenas dev); OR gate no `apply_ui_edit::SetColor`.
+
+**Trigger:** W2 sidebar handlers wire.
+
+**3. `CanvasId::UNASSIGNED` sentinel pra multi-canvas safety** (Q-12)
+
+Default `CanvasId(0)` é silent quando caller esquece `set_canvas_id` em
+multi-canvas → all strokes vazam pra CanvasId(0).
+
+**Plan:** trocar default por `CanvasId(u64::MAX) == UNASSIGNED`;
+`attach_journal` retorna `JournalError::CanvasIdUnassigned` se ainda for
+UNASSIGNED.
+
+**Trigger:** W11 multi-canvas wire.
+
+**4. `PartialStroke` Copy assertion lock-in** (R-4)
+
+`PartialStroke` é trivialmente clonável hoje (todos fields Copy).
+Adicionar Vec/String/Box nos 3 headroom slots introduz alloc per stroke
+silenciosamente.
+
+**Plan:** `static_assertions::assert_impl_all!(PartialStroke: Copy)` OU
+comment lock-in nos headroom slots.
+
+**Trigger:** primeira proposta de adicionar field non-Copy em PartialStroke.
+
+**5. `current_samples` cap inicial 256→2048 pra long-stroke realloc-free** (R-11)
+
+Long stroke 1k+ samples paga 2× realloc (256→512→1024→2048).
+
+**Plan:** trocar `Vec::with_capacity(256)` por `Vec::with_capacity(2048)`
+em ambas as linhas.
+
+**Trigger:** profiling mostrar realloc jitter mid-stroke.
+
+**6. `attach_journal` Windows cross-process race window** (R-12)
+
+Drop libera flock + open re-acquire tem μs-window onde outro processo pode
+"vencer" o lock. Linux/macOS atomic per-PID; Windows é per-handle.
+
+**Plan:** doc explícita "Windows race: caller deve retry com backoff em
+`AlreadyLocked`" OU API `swap_journal_atomic(new_path)`.
+
+**Trigger:** primeiro report Windows multi-instance conflict.
+
+**7. `take_preview_arc` + `current_preview` foot-gun (both drain)** (R-13)
+
+Ambos drenam `preview_dirty`; caller chamando ambos perde frame.
+
+**Plan:** doc explícita "AMBOS DRENAM `preview_dirty`" OU refactor
+`current_preview` read-only.
+
+**Trigger:** W11 bridge debug overlay.
+
+---
+
 ## 5. Open ADR drafts
 
 When the relevant Wave 11 work starts, open these ADRs:

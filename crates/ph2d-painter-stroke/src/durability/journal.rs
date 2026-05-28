@@ -248,6 +248,11 @@ pub struct StrokeJournal {
     file: File,
     /// Path canonicalizado pra remove do registry em Drop (audit O-2).
     canonical_path: PathBuf,
+    /// **Audit T1.9 R-6** — buffer reutilizável pra `flush_sample_batch`:
+    /// swap zero-alloc com `sample_buffer` em vez de `Vec::with_capacity(64)`
+    /// per-flush. A 30Hz pencil (240Hz polling + Hybrid{n:8}) eliminava
+    /// ~54 KB/s de allocator pressure steady-state.
+    reusable_batch_buffer: Vec<RawPointerSample>,
 }
 
 impl StrokeJournal {
@@ -331,6 +336,8 @@ impl StrokeJournal {
             commits_since_rotate: 0,
             file,
             canonical_path,
+            // R-6: pre-alocado uma vez aqui; swap subsequente é zero-alloc.
+            reusable_batch_buffer: Vec::with_capacity(64),
         })
     }
 
@@ -375,9 +382,12 @@ impl StrokeJournal {
 
     /// Flush imediato do sample_buffer atual (sem checar policy).
     ///
-    /// **Audit T-durability final N-1 — preserva capacity:** usa
-    /// `std::mem::replace` com `Vec::with_capacity(64)` pra que o próximo
-    /// batch NÃO pague 3 reallocs (1→2→4→8) — `take()` deixava cap=0.
+    /// **Audit T1.9 R-6 — zero-alloc steady-state:** swap entre
+    /// `sample_buffer` e `reusable_batch_buffer` em vez de
+    /// `Vec::with_capacity(64)` per flush. A 30Hz pencil eliminava
+    /// ~54 KB/s de allocator pressure que T-durability N-1 introduzia
+    /// pra "preservar capacity" — mas ao custo de 1 alloc per flush.
+    /// Reusable buffer faz ambos: cap preserved + zero alloc.
     pub fn flush_sample_batch(&mut self, now_ms: u64) -> Result<(), JournalError> {
         if self.sample_buffer.is_empty() {
             return Ok(());
@@ -387,14 +397,24 @@ impl StrokeJournal {
             .as_ref()
             .map(|s| s.uuid)
             .ok_or(JournalError::NoActiveStroke)?;
-        let batch: Vec<RawPointerSample> =
-            std::mem::replace(&mut self.sample_buffer, Vec::with_capacity(64));
-        let batch_len = batch.len() as u32;
+        // R-6: swap sample_buffer ↔ reusable_batch_buffer (zero alloc; só
+        // troca os 3 ponteiros internos de Vec). Após swap:
+        // - self.sample_buffer = buffer reusable vazio (cap preservada)
+        // - self.reusable_batch_buffer = batch cheio (cap preservada)
+        std::mem::swap(&mut self.sample_buffer, &mut self.reusable_batch_buffer);
+        let batch_len = self.reusable_batch_buffer.len() as u32;
+        // `mem::take` move o Vec cheio pra dentro de payload (sem alloc;
+        // reusable_batch_buffer fica Vec::new() temporariamente).
         let payload = SampleBatchPayload {
             stroke_id,
-            samples: batch,
+            samples: std::mem::take(&mut self.reusable_batch_buffer),
         };
-        self.append_entry(WalEntryType::SampleBatch, &payload)?;
+        let append_result = self.append_entry(WalEntryType::SampleBatch, &payload);
+        // Recupera o Vec do payload (preserva alloc cap) + clear pra
+        // estar pronto pro próximo swap.
+        self.reusable_batch_buffer = payload.samples;
+        self.reusable_batch_buffer.clear();
+        append_result?;
         if let Some(s) = self.current_stroke.as_mut() {
             s.samples_count_in_journal = s.samples_count_in_journal.saturating_add(batch_len);
         }
@@ -800,6 +820,10 @@ pub enum JournalError {
     /// `atomic_write` falhou durante `truncate_and_reset` — preserva causa.
     /// Audit M-5.
     AtomicWriteFailed(super::atomic_write::AtomicWriteError),
+    /// `PainterTool::attach_journal` chamado com stroke ativo
+    /// (`current_partial.is_some()`). Caller deve `end_stroke()` ou
+    /// abortar o stroke antes de attach (audit T1.9 Q-8/R-1).
+    AttachDuringActiveStroke,
 }
 
 impl std::fmt::Display for JournalError {
@@ -829,6 +853,10 @@ impl std::fmt::Display for JournalError {
                 "journal lock unavailable (cross-process flock OR in-process registry conflict — single-writer invariant)"
             ),
             Self::AtomicWriteFailed(e) => write!(f, "journal truncate_and_reset atomic_write: {e}"),
+            Self::AttachDuringActiveStroke => write!(
+                f,
+                "attach_journal called while a stroke is active (Q-8/R-1 — caller must end_stroke first)"
+            ),
         }
     }
 }
@@ -859,6 +887,7 @@ impl PartialEq for JournalError {
             }
             (Self::AlreadyLocked, Self::AlreadyLocked) => true,
             (Self::AtomicWriteFailed(a), Self::AtomicWriteFailed(b)) => a == b,
+            (Self::AttachDuringActiveStroke, Self::AttachDuringActiveStroke) => true,
             _ => false,
         }
     }

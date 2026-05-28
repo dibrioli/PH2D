@@ -192,12 +192,20 @@
 //! - **`R6-LN-4` HR-15 Toast strings policy (round-1):** unchanged —
 //!   workspace-wide policy clarification pending.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
+use ph2d_color::OklchColor as StrokeOklchColor;
 use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
 use ph2d_editor_core::tool::{RasterEditTool, Tool};
 use ph2d_painter_brush::{
-    Brush, MAX_STAMP_SIZE_PX, PointerSample, StampScheduler, apply_stamps, library,
+    Brush, BrushParamsHash, MAX_STAMP_SIZE_PX, PointerSample, StampScheduler, apply_stamps, library,
+};
+use ph2d_painter_stroke::{
+    CanvasId, FlushPolicy, JournalError, LayerId, PartialStroke, RawPointerSample,
+    SAMPLE_FLAG_AZIMUTH_UNAVAILABLE, SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE,
+    SAMPLE_FLAG_STROKE_SPLIT_BOUNDARY, SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeHistory,
+    StrokeJournal, StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_saturating,
 };
 
 use crate::params::{BrushHandle, OklchColor, PainterParams};
@@ -239,6 +247,26 @@ use crate::params::{BrushHandle, OklchColor, PainterParams};
 /// terá acesso a `GpuContext` + textures retidos A↔B. Quando ele plugar,
 /// `queue_pointer` deixa de chamar `apply_stamps` (CPU) e passa a empilhar
 /// stamps num buffer drainable pelo bridge — API pública intacta.
+///
+/// ## Threading contract (audit T1.9 R-9 + T-durability O-1)
+///
+/// `PainterTool` é auto-`Send + Sync` (todos os fields são Send+Sync), MAS
+/// todas as ops de mutação (`begin_stroke`/`queue_pointer`/`end_stroke`/
+/// `attach_journal`/`set_*`) tomam `&mut self`. Implicações:
+///
+/// - **`Arc<Mutex<PainterTool>>` é foot-gun para long-strokes.** Stroke
+///   típico = 1-3s; long-stroke (paint-bucket via path stroke, fluid sim,
+///   pen pressure-hold drag 30min) segura o Mutex por todo o intervalo,
+///   bloqueando MCP queries (W13) + Inspector live (W14) + `take_preview_arc`
+///   da UI thread. Pattern recomendado: canal SPSC (MCP/UI → PainterTool
+///   owner thread) ou snapshot-clone para queries read-only.
+/// - **`commit_stroke` faz fsync síncrono** (~5-10ms eMMC mobile, audit
+///   T-durability N-7 + T1.9 R-7). Mobile shell DEVE wire em worker
+///   thread; T1.9 ship com path direto + carry-over W11. Vide
+///   `StrokeJournal::commit_stroke` doc para SPSC pattern.
+/// - **`stroke_history()` read-only via `&self` ainda é Mutex-bloqueada**
+///   pq Rust `Mutex::lock()` é exclusive. Inspector W14 deve clonar o
+///   `StrokeHistory` snapshot ao invés de manter borrow live.
 pub struct PainterTool {
     pub params: PainterParams,
     /// Working canvas — RGBA8 straight, sem gamma encoding (compatível com
@@ -282,6 +310,48 @@ pub struct PainterTool {
     /// `handle_panel_event` is a no-op stub (line ~390) so the contract
     /// can't be violated in T1.5; the constraint binds W2.
     stroke_color_oklab: [f32; 4],
+    // === T1.9 fields — wire StrokeHistory + StrokeJournal (ADR-0046/0052) ===
+    /// In-memory canon de strokes commitados deste canvas. Source of truth
+    /// pra undo (W2) / Reproject (W12) / Inspector (W14) / MCP (W13).
+    pub stroke_history: StrokeHistory,
+    /// WAL writer opcional — quando `Some`, todo stroke é jornalado per-
+    /// sample/per-commit pra tear-resistant recovery (ADR-0052). `None` =
+    /// modo "in-memory only" (tests headless, MCP replay determinístico,
+    /// canvas efêmero sem persistence path).
+    ///
+    /// Caller wireia via [`Self::attach_journal`] após `Tool::on_activate`;
+    /// libera via [`Self::detach_journal`] pré-`Tool::on_deactivate` OR
+    /// `Drop` da PainterTool (RAII via StrokeJournal::Drop).
+    pub stroke_journal: Option<StrokeJournal>,
+    /// `PartialStroke` em-progresso (entre `begin_stroke` e `end_stroke`).
+    /// `Some` iff `stroke_active == true`. Materializado em `end_stroke`
+    /// como `StrokeRecord` via `partial_to_record` + push em history.
+    current_partial: Option<PartialStroke>,
+    /// Buffer in-memory de samples deste stroke (paralelo ao `StrokeJournal`
+    /// buffer quando journal ativo; ÚNICA fonte de verdade quando journal
+    /// é None). Cap u16::MAX preserva semântica ADR-0046 §2.2.
+    current_samples: Vec<RawPointerSample>,
+    /// Próximo `seq` pra novo stroke. Monotonic per-canvas; ADR-0046 §2.2
+    /// invariante "seq cresce sempre, replay determinístico depende".
+    /// Persistido em canon `.ph2d-painter` ⇒ caller restora via
+    /// `PaintProject::last_persisted_seq().unwrap_or(0) + 1` no load.
+    next_seq: u64,
+    /// Canvas identity — embedded em `PartialStroke.canvas_id` pra
+    /// `CrashRecovery::committed_for_canvas(id)` filter multi-canvas W11+.
+    canvas_id: CanvasId,
+    /// Layer alvo deste stroke. W3 layers nasce → caller seta via
+    /// `params.target_layer`; T1.9 default `LayerId(0)` (single-raster).
+    layer_target: LayerId,
+    /// **Audit T1.9 R-5** — cache do `Brush::params_blake3()` (postcard
+    /// serialize ~1KB + blake3 ~32B). Invalidado em [`Self::set_brush`].
+    /// Sem cache: 30 strokes/s × ~1KB alloc per `begin_stroke` no flicking
+    /// path. Com cache: 1 hash per brush change (raro).
+    cached_brush_hash: Option<BrushParamsHash>,
+    /// **Audit T1.9 Q-3/R-3** — última falha do WAL (begin/add_sample/commit).
+    /// `None` = sem erros desde a última `attach_journal`. Surface pro
+    /// bridge W11 emitir toast "Painter durability degraded — recent
+    /// strokes in-memory only" via [`Self::last_wal_error`].
+    last_wal_error: Option<JournalError>,
 }
 
 impl Default for PainterTool {
@@ -307,6 +377,18 @@ impl Default for PainterTool {
             stroke_active: false,
             has_painted_since_source: false,
             stroke_color_oklab: [0.0; 4],
+            // T1.9 defaults:
+            stroke_history: StrokeHistory::default(),
+            stroke_journal: None,
+            current_partial: None,
+            // R-11 carry-over: 256 é OK pra strokes <10s; W11 sobe pra 2048
+            // se long-stroke profiling mostrar realloc significativa.
+            current_samples: Vec::with_capacity(256),
+            next_seq: 0,
+            canvas_id: CanvasId(0),
+            layer_target: LayerId(0),
+            cached_brush_hash: None,
+            last_wal_error: None,
         }
     }
 }
@@ -446,12 +528,30 @@ fn build_smoke_brush_from_env() -> Brush {
 impl PainterTool {
     /// Inicia um novo stroke. Caller deriva `seed` de inputs determinísticos
     /// (e.g., `pointer_down_time_ms ^ entity_bits ^ brush_hash`).
-    /// No-op se já há um stroke ativo (caller esqueceu end_stroke).
+    ///
+    /// **Q-2 (audit T1.9):** se já há stroke ativo (caller esqueceu
+    /// `end_stroke`), o anterior é **cancelado** sem consumir `next_seq` —
+    /// `next_seq` só avança quando um stroke vai virar `StrokeRecord`
+    /// (ou seja, fim deste método com PartialStroke materializado).
     pub fn begin_stroke(&mut self, seed: u64) {
         if self.stroke_active {
             // Defensive: previous stroke didn't close cleanly. Encerra-o
             // implicitamente sem commit pra evitar state corruption.
             self.scheduler.end_stroke();
+            // T1.9: descarta PartialStroke + journal active stroke também.
+            // Sem commit = stroke aborted; journal sample-batch buffer
+            // limpo via cancel_stroke (não suja WAL).
+            if let Some(journal) = self.stroke_journal.as_mut()
+                && journal.current_stroke.is_some()
+            {
+                let _ = journal.cancel_stroke();
+            }
+            // Q-2: stroke cancelado NÃO consumiu next_seq — reciclar o seq
+            // do PartialStroke abandonado pra próximo stroke usar.
+            if let Some(p) = self.current_partial.take() {
+                self.next_seq = p.seq;
+            }
+            self.current_samples.clear();
         }
         self.scheduler.begin_stroke(seed);
         self.stroke_active = true;
@@ -459,6 +559,54 @@ impl PainterTool {
         // `params.active_color` between strokes — recomputing the two
         // transcendentals per pointer event is pure waste otherwise.
         self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
+
+        // T1.9: construir PartialStroke + wire journal se ativo.
+        let primary = painter_color_to_stroke_oklch(self.params.active_color);
+        // **R-5:** cache do `params_blake3` (postcard alloc + blake3 ~32B).
+        // `set_brush` invalida; entre strokes, hit cache = 0 alloc.
+        let brush_hash = match self.cached_brush_hash {
+            Some(h) => h,
+            None => {
+                let h = self.brush.params_blake3();
+                self.cached_brush_hash = Some(h);
+                h
+            }
+        };
+        let brush_handle_canon = brush_handle_stub_to_canon(self.params.active_brush);
+        let mut partial = PartialStroke::new(
+            self.next_seq,
+            self.canvas_id,
+            self.layer_target,
+            brush_handle_canon,
+            brush_hash,
+            primary,
+        );
+        partial.rng_seed = seed;
+        partial.tool_mode = ToolMode::Paint;
+        // **Q-3/R-3 + Q-9:** se WAL falhar, captura em `last_wal_error`
+        // pro bridge W11 surface via [`Self::last_wal_error`]. Em release
+        // continua em modo "in-memory only"; em dev `debug_assert!` pega
+        // bugs de state machine ANTES de degradar silenciosamente.
+        if let Some(journal) = self.stroke_journal.as_mut() {
+            if let Err(e) = journal.begin_stroke(partial.clone()) {
+                debug_assert!(
+                    false,
+                    "WAL begin_stroke failed: {:?} — degrading to in-memory mode",
+                    e
+                );
+                self.last_wal_error = Some(e);
+            }
+        }
+        self.current_partial = Some(partial);
+        self.current_samples.clear();
+        // Q-10/R-10: next_seq avança IFF PartialStroke foi materializado.
+        // `checked_add` em vez de saturating: u64 overflow é fisicamente
+        // impossível em uso humano (~580 anos a 1B strokes/s), mas LOUD
+        // panic é melhor que silent dedup violando ADR-0046 §2.2.
+        self.next_seq = self
+            .next_seq
+            .checked_add(1)
+            .expect("next_seq u64 overflow — canvas needs canonical reset");
     }
 
     /// Empilha um pointer sample no scheduler e aplica os stamps gerados
@@ -501,12 +649,203 @@ impl PainterTool {
         apply_stamps(canvas_vec, self.source_size.0, self.source_size.1, stamps);
         self.preview_dirty = true;
         self.has_painted_since_source = true;
+
+        // T1.9: persist sample em history vetorial (in-memory) + journal.
+        // Conversão `PointerSample (f32)` → `RawPointerSample (Q16.16 + Q8.8)`
+        // via helpers HR-5 cross-OS. Cap u16::MAX preserva semântica
+        // ADR-0046 §2.2; sample 65536+ é silenciosamente dropado pra
+        // não-bloquear UI (caller raramente atinge — strokes reais têm
+        // <512 samples).
+        //
+        // **Q-5/R-8 clock contract:** `pseudo_now_ms = len * 16` é
+        // SYNTHETIC tick — válido só enquanto T1.9 não wire wall-clock.
+        // Quando W11+ shell wirar `Instant::elapsed().as_millis()`,
+        // `attach_journal` DEVE ser invocado de novo (a journal nova
+        // nasce com `last_flush_ms = 0`, evitando flush storm da
+        // diferença sintético→wall-clock). Vide doc de `attach_journal`.
+        let raw = pointer_to_raw_sample(sample);
+        if self.current_samples.len() < u16::MAX as usize {
+            self.current_samples.push(raw);
+            if let Some(journal) = self.stroke_journal.as_mut() {
+                let pseudo_now_ms = (self.current_samples.len() as u64) * 16;
+                // **Q-3/R-3:** captura erro WAL em `last_wal_error` em vez
+                // de silenciar. Bridge W11 surface via `last_wal_error()`.
+                if let Err(e) = journal.add_sample(raw, pseudo_now_ms) {
+                    self.last_wal_error = Some(e);
+                }
+            }
+        } else {
+            // **Q-7:** cap u16::MAX hit. Drop silencioso é foot-gun pra
+            // MCP path que injeta 70k samples. T1.9 ship: warn via
+            // eprintln (until `tracing` joins workspace, R6-LN-1).
+            // W11+: auto-split em begin_stroke novo + sentinel
+            // `SAMPLE_FLAG_STROKE_SPLIT_BOUNDARY` no último sample
+            // pré-split. Carry-over em W11 stitched-stroke.
+            eprintln!(
+                "[ph2d-painter] queue_pointer: stroke hit MAX_SAMPLES_PER_STROKE \
+                 ({}); subsequent samples dropped until end_stroke. Long-stroke \
+                 split is W11 carry-over (audit T1.9 Q-7).",
+                u16::MAX
+            );
+        }
     }
 
     /// Finaliza o stroke atual. Idempotente — chamar duas vezes é seguro.
+    ///
+    /// **T1.9 — wire history + journal commit:** se houver `PartialStroke`
+    /// em-progresso, materializa pra `StrokeRecord` + push em
+    /// `stroke_history` + journal.commit_stroke (WAL Commit entry +
+    /// fsync). Sem PartialStroke ativo (e.g., end_stroke chamado 2× OR
+    /// begin_stroke seguiu sem queue_pointer), é no-op silencioso.
+    ///
+    /// Fsync síncrono (ADR-0052 §2.2 N-7 doc): caller mobile DEVE wire
+    /// em worker thread shell-side. T1.9 ship com path síncrono —
+    /// carry-over W11.
     pub fn end_stroke(&mut self) {
         self.scheduler.end_stroke();
         self.stroke_active = false;
+        // T1.9: materializar PartialStroke → StrokeRecord + history push.
+        let Some(mut partial) = self.current_partial.take() else {
+            // Nenhum PartialStroke ⇒ no-op. **Q-10:** defesa-em-profundidade
+            // — se journal por algum motivo tem stroke ativo, cancela
+            // explicitamente pra não deixar Begin órfão no WAL.
+            if let Some(journal) = self.stroke_journal.as_mut()
+                && journal.current_stroke.is_some()
+            {
+                let _ = journal.cancel_stroke();
+            }
+            self.current_samples.clear();
+            return;
+        };
+        let samples = std::mem::replace(&mut self.current_samples, Vec::with_capacity(256));
+        partial.samples_count_in_journal = samples.len() as u32;
+        // Journal commit primeiro (preserva ordering "wrote to WAL before
+        // history"); se WAL falhar, history ainda recebe (caller mobile
+        // pode optar perder durability vs. perder stroke commit).
+        if let Some(journal) = self.stroke_journal.as_mut() {
+            let pseudo_now_ms = (samples.len() as u64) * 16;
+            // **Q-3/R-3:** captura WAL commit failure pra surface bridge.
+            if let Err(e) = journal.commit_stroke(pseudo_now_ms) {
+                self.last_wal_error = Some(e);
+            }
+        }
+        let record = partial_to_record(partial, samples);
+        self.stroke_history.push(record);
+    }
+
+    /// Anexa um WAL `StrokeJournal` ao PainterTool. Caller (shell W11+)
+    /// invoca após `Tool::on_activate` quando canvas tem persistence path.
+    /// `flush_policy` default = `Hybrid { n: 8, ms: 100 }`.
+    ///
+    /// Retorna erro se:
+    /// - `journal_path` já está locked (outro processo / outra thread do
+    ///   mesmo processo via in-process registry).
+    /// - I/O falha (path inválido, permissions).
+    /// - **Audit Q-8/R-1:** `is_stroke_active()` (caller chamou attach
+    ///   no meio de um stroke) → `JournalError::AttachDuringActiveStroke`.
+    ///
+    /// **Audit Q-5/R-8 — clock contract:** o novo journal nasce com
+    /// `last_flush_ms = 0`. Caller que migra de sintético (T1.9) pra
+    /// wall-clock real (W11+) DEVE chamar `detach_journal` + `attach_journal`
+    /// pra reset baseline, evitando flush storm.
+    ///
+    /// **Audit R-7 — sync fsync na UI thread:** T1.9 wira `commit_stroke`
+    /// + `add_sample` DIRETO (sem worker thread). Mobile DEVE wire em
+    /// worker thread via canal SPSC (carry-over W11).
+    pub fn attach_journal(
+        &mut self,
+        journal_path: PathBuf,
+        flush_policy: FlushPolicy,
+    ) -> Result<(), JournalError> {
+        // Q-8/R-1: refuse mid-stroke attach pra não deixar stroke órfão.
+        if self.stroke_active || self.current_partial.is_some() {
+            return Err(JournalError::AttachDuringActiveStroke);
+        }
+        // Defensive: se já tinha journal, drop ele primeiro (libera lock).
+        // Q-5/R-8: reset baseline ms naturalmente via journal novo.
+        self.stroke_journal = None;
+        // Q-3/R-3: limpa estado degradado em re-attach.
+        self.last_wal_error = None;
+        let journal = StrokeJournal::open(journal_path, flush_policy)?;
+        self.stroke_journal = Some(journal);
+        Ok(())
+    }
+
+    /// Desfaz o anexo de journal — drop libera advisory lock + registry.
+    ///
+    /// **Audit R-2:** se há stroke em-progresso quando detach acontece,
+    /// emite `Cancel` no WAL ANTES do drop. Sem isso, o Begin permanecia
+    /// órfão → próxima `CrashRecovery::scan` via re-attach false-positiva
+    /// o stroke como `InProgressAtCrash`.
+    pub fn detach_journal(&mut self) {
+        if let Some(journal) = self.stroke_journal.as_mut()
+            && journal.current_stroke.is_some()
+        {
+            let _ = journal.cancel_stroke();
+        }
+        self.stroke_journal = None;
+    }
+
+    /// Configura `CanvasId` deste PainterTool. Caller (shell W11+) invoca
+    /// quando canvas ativo muda. Default = `CanvasId(0)` (single-canvas).
+    pub fn set_canvas_id(&mut self, id: CanvasId) {
+        self.canvas_id = id;
+    }
+
+    /// Configura `LayerId` alvo pra próximos strokes. W3 layers nasce ⇒
+    /// caller wire conforme active layer selection.
+    pub fn set_layer_target(&mut self, layer: LayerId) {
+        self.layer_target = layer;
+    }
+
+    /// Configura `next_seq` baseline pra anchor monotonic per-canvas.
+    /// Caller invoca após `load(canon_bytes)` passando
+    /// `paint_project.last_persisted_seq().map(|s| s + 1).unwrap_or(0)`
+    /// — anti-replay defense via `CrashRecovery::scan_with_baseline`.
+    pub fn set_next_seq(&mut self, seq: u64) {
+        self.next_seq = seq;
+    }
+
+    /// Read-only borrow do history (pra Reproject W12 / Inspector W14 /
+    /// MCP W13 queries).
+    #[must_use]
+    pub fn stroke_history(&self) -> &StrokeHistory {
+        &self.stroke_history
+    }
+
+    /// Take ownership do history (move-out — útil quando caller persiste
+    /// canon + drop tool). Substitui por `StrokeHistory::default()`.
+    pub fn take_stroke_history(&mut self) -> StrokeHistory {
+        std::mem::take(&mut self.stroke_history)
+    }
+
+    /// **Audit Q-1 getter** — testes/inspectors querem checar buffer
+    /// in-progress sem expor o `Vec` mutável.
+    #[must_use]
+    pub fn current_samples_len(&self) -> usize {
+        self.current_samples.len()
+    }
+
+    /// **Audit Q-1 getter** — equivalente a `current_samples_len() == 0`,
+    /// nome explícito pra assertions em tests.
+    #[must_use]
+    pub fn current_samples_is_empty(&self) -> bool {
+        self.current_samples.is_empty()
+    }
+
+    /// **Audit Q-3/R-3 surface** — último erro WAL desde o último
+    /// [`Self::attach_journal`]. `Some` = durability degraded (bridge W11
+    /// deve emitir toast "Stroke history WAL unavailable — recent strokes
+    /// in-memory only"). `None` após `attach_journal` bem-sucedido.
+    #[must_use]
+    pub fn last_wal_error(&self) -> Option<&JournalError> {
+        self.last_wal_error.as_ref()
+    }
+
+    /// **Audit Q-3/R-3** — limpa o flag de degraded durability após o
+    /// caller (bridge W11) ter mostrado o toast OU recuperado.
+    pub fn clear_last_wal_error(&mut self) {
+        self.last_wal_error = None;
     }
 
     /// Swap the active brush atomically with the public-contract
@@ -560,6 +899,8 @@ impl PainterTool {
         }
         self.params.active_brush = handle;
         self.brush = brush;
+        // R-5: brush mudou → hash cache stale.
+        self.cached_brush_hash = None;
     }
 
     /// Public accessor for the active `BrushHandle`. Equivalent to
@@ -889,6 +1230,109 @@ impl RasterEditTool for PainterTool {
         self.scheduler.end_stroke();
         self.stroke_active = false;
         self.has_painted_since_source = false;
+        // T1.9: drop journal (libera flock + in-process registry) +
+        // descarta PartialStroke em-progresso. `stroke_history` é
+        // PRESERVADO — caller decide se persiste no canon antes do
+        // Tool::on_deactivate.
+        //
+        // **Audit R-2:** se há stroke ativo no WAL, cancela ANTES de drop
+        // pra não deixar Begin órfão (recovery false-positivo
+        // InProgressAtCrash). Same fix que `detach_journal`.
+        if let Some(journal) = self.stroke_journal.as_mut()
+            && journal.current_stroke.is_some()
+        {
+            let _ = journal.cancel_stroke();
+        }
+        self.stroke_journal = None;
+        self.current_partial = None;
+        self.current_samples.clear();
+        self.last_wal_error = None;
+    }
+}
+
+// =============================================================================
+// T1.9 helpers (free fns) — conversões entre painter-brush + painter-stroke
+// =============================================================================
+
+/// Converte `PointerSample` (f32 raw input do scheduler) → `RawPointerSample`
+/// (Q16.16/Q8.8 fixed-point cross-OS HR-5). Caller chama em `queue_pointer`
+/// hot path; helpers `f32_to_q1616_saturating`/`f32_to_q88` são `#[inline]`
+/// + no-alloc.
+///
+/// **Audit Q-6** — sentinel flags pra distinguir "valor 0 real" de "campo
+/// não suportado pelo gerador". `PointerSample` (scheduler input) só
+/// carrega position/pressure/tilt — azimuth/barrel/timestamp_delta nascem
+/// só em `ph2d-painter-input` (T-input). Sem o flag, W12 Reproject + W13
+/// MCP replay leem `azimuth_q88 == 0` como "azimuth = 0 rad" (não
+/// "azimuth desconhecido") → brushes que rotacionam por azimuth produzem
+/// arte determinística-mente DIFERENTE do stroke original.
+fn pointer_to_raw_sample(sample: PointerSample) -> RawPointerSample {
+    RawPointerSample {
+        x_q1616: f32_to_q1616_saturating(sample.position[0]),
+        y_q1616: f32_to_q1616_saturating(sample.position[1]),
+        pressure_q88: f32_to_q88(sample.pressure),
+        tilt_q88: f32_to_q88(sample.tilt),
+        flags: SAMPLE_FLAG_AZIMUTH_UNAVAILABLE
+            | SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE
+            | SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE,
+        ..Default::default()
+    }
+}
+
+/// Converte `PainterTool` `OklchColor` (ph2d-tool-painter stub) → ph2d-color
+/// `OklchColor` (canonical type). Painter mantém type local em params.rs
+/// pra evitar dep transitive antes do T-color full (ADR-0051).
+fn painter_color_to_stroke_oklch(c: OklchColor) -> StrokeOklchColor {
+    StrokeOklchColor {
+        l: c.l,
+        c: c.c,
+        h: c.h,
+        a: c.a,
+    }
+}
+
+/// Materializa `PartialStroke` (in-progress) + `Vec<RawPointerSample>`
+/// (collected samples) num `StrokeRecord` (canon — push em StrokeHistory).
+fn partial_to_record(partial: PartialStroke, samples: Vec<RawPointerSample>) -> StrokeRecord {
+    StrokeRecord {
+        uuid: partial.uuid,
+        seq: partial.seq,
+        timestamp_ms: partial.started_at_ms,
+        brush_handle: partial.brush_handle,
+        brush_params_hash: partial.brush_params_hash,
+        layer_target: partial.layer_target,
+        primary_color: partial.primary_color,
+        secondary_color: partial.secondary_color,
+        points: samples,
+        rng_seed: partial.rng_seed,
+        tool_mode: partial.tool_mode,
+        version: partial.version,
+    }
+}
+
+/// **Audit Q-4** — converte `params::BrushHandle` (local stub, `pub u32`
+/// sem clamp) → `ph2d_painter_brush::BrushHandle` (canon ADR-0044 §2.8,
+/// `new_builtin` ASSERTA slot < 64 em release).
+///
+/// Sem o clamp explícito aqui, caller PCA escrevendo `params.active_brush =
+/// BrushHandle(100)` (via `PainterUiEdit::SelectBrush` futuro com library
+/// expandida) panicava o tool process no próximo `begin_stroke`. Fallback
+/// pra default + eprintln preserva session.
+fn brush_handle_stub_to_canon(stub: BrushHandle) -> ph2d_painter_brush::BrushHandle {
+    let raw = stub.0;
+    if raw & ph2d_painter_brush::BrushHandle::IMPORTED_FLAG != 0 {
+        ph2d_painter_brush::BrushHandle::new_imported(
+            raw & !ph2d_painter_brush::BrushHandle::IMPORTED_FLAG,
+        )
+    } else if raw < 64 {
+        ph2d_painter_brush::BrushHandle::new_builtin(raw)
+    } else {
+        eprintln!(
+            "[ph2d-painter] invalid built-in BrushHandle slot {raw} \
+             (must be < 64 per ADR-0044 §2.8); falling back to default \
+             (slot 0 = ROUND_HARD). Audit T1.9 Q-4."
+        );
+        ph2d_painter_brush::BrushHandle::default()
     }
 }
 

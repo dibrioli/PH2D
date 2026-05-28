@@ -17,6 +17,33 @@ use crate::device::{LayerId, PointerSource};
 /// ADRs 0047 (MCP) e 0048 (Inspector).
 pub type StrokeId = Uuid;
 
+// =============================================================================
+// RawPointerSample.flags bitset (ADR-0050 §2.7 — audit T1.9 Q-6)
+// =============================================================================
+//
+// Bits 0..2 reservados pra inputs do stylus (stylus_button1, stylus_button2,
+// eraser_inverted). Bits 16..23 são *sentinel availability flags* setados
+// pelo gerador do sample (PainterTool, MCP, etc.) pra distinguir "valor 0
+// real" de "campo não suportado nesta versão / pelo device". Readers W12+
+// (Reproject) consultam os flags antes de assumir que zeros são dados.
+
+/// Bit 16 — `azimuth_q88` não é suportado pelo gerador deste sample
+/// (e.g., PainterTool T1.9 antes do T-input wirar `ph2d-painter-input`).
+/// Reader deve tratar `azimuth_q88 == 0` como sentinel quando bit setado.
+pub const SAMPLE_FLAG_AZIMUTH_UNAVAILABLE: u32 = 1 << 16;
+
+/// Bit 17 — `barrel_roll_q88` não é suportado pelo gerador deste sample.
+pub const SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE: u32 = 1 << 17;
+
+/// Bit 18 — `timestamp_delta_us` não é suportado pelo gerador deste sample.
+/// Reader em replay determinístico deve cair pra spacing-based timing.
+pub const SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE: u32 = 1 << 18;
+
+/// Bit 23 — `RawPointerSample` veio do branch "stroke capped at u16::MAX"
+/// (audit T1.9 Q-7); ou seja, o **stroke** foi forçado a end+begin pra
+/// continuar pintando. Reader em retrospect pode reconstituir cadeia.
+pub const SAMPLE_FLAG_STROKE_SPLIT_BOUNDARY: u32 = 1 << 23;
+
 /// Pincelada vetorial completa.
 ///
 /// Ordem cronológica é dada por `seq` (monotônico per-canvas);

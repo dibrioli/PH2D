@@ -110,7 +110,9 @@ pub use persistence::{
     SerializedRTree, apply_migrations, load, save, validate_caps_post_deserialize,
 };
 pub use record::{
-    CapExceeded, MAX_SAMPLES_PER_STROKE, RawPointerSample, StrokeId, StrokeRecord, ToolMode,
+    CapExceeded, MAX_SAMPLES_PER_STROKE, RawPointerSample, SAMPLE_FLAG_AZIMUTH_UNAVAILABLE,
+    SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE, SAMPLE_FLAG_STROKE_SPLIT_BOUNDARY,
+    SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeId, StrokeRecord, ToolMode,
 };
 pub use reproject::{ProgressEvent, ReprojectError, ReprojectMode, reproject_canvas};
 pub use snapshot::{

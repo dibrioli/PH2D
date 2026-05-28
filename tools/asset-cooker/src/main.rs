@@ -180,6 +180,8 @@ fn run_texture_cook_all(
     asset_class: AssetClass,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let png_bytes = std::fs::read(input)?;
+    // cook_all retorna TODOS os bytes em memória antes de qualquer write — se
+    // o cook em si falhar, FS continua intacto.
     let artifacts = texture::cook_all(&png_bytes, asset_class)
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
     std::fs::create_dir_all(output_dir)?;
@@ -187,10 +189,23 @@ fn run_texture_cook_all(
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("cooked");
+
+    // Audit W1.T6 θ-H1 fix: write-with-cleanup-on-failure. Se algum write
+    // intermediário falha (disk full / permission), rm os arquivos já escritos
+    // pra evitar partial state em output_dir (Painter W3 Export dialog vai
+    // depender disso).
+    let mut written: Vec<std::path::PathBuf> = Vec::with_capacity(artifacts.len());
     for (tier, ktx2_bytes) in &artifacts {
         let filename = format!("{stem}-{}.ktx2", tier_filename(*tier));
         let out_path = output_dir.join(&filename);
-        std::fs::write(&out_path, ktx2_bytes)?;
+        if let Err(e) = std::fs::write(&out_path, ktx2_bytes) {
+            // Best-effort cleanup; if individual remove falha, ignore (já estamos
+            // em erro path; original error é o que importa relatar).
+            for p in &written {
+                let _ = std::fs::remove_file(p);
+            }
+            return Err(Box::new(e) as Box<dyn std::error::Error>);
+        }
         let id = ph2d_asset::AssetId::from_bytes(ktx2_bytes);
         println!(
             "✓ {} (tier={tier:?}, class={asset_class:?}) → {} ({} bytes, id {id})",
@@ -198,6 +213,7 @@ fn run_texture_cook_all(
             out_path.display(),
             ktx2_bytes.len(),
         );
+        written.push(out_path);
     }
     println!("✓ cook-all emitted {} artifacts", artifacts.len());
     Ok(())

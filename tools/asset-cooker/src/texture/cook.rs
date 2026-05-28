@@ -177,7 +177,12 @@ pub fn cook(source_bytes: &[u8], options: CookOptions) -> Result<Vec<u8>, Textur
 /// passthrough — mesmo path mas sem compressão.
 ///
 /// Erros: para-no-primeiro — se cook do tier N falhar, retorna `TextureCookError`
-/// sem tentar tiers subsequentes. Caller pode re-tentar com lista parcial.
+/// sem tentar tiers subsequentes. Audit W1.T6 η-M3 fix: a API NÃO expõe lista
+/// parcial (anteriormente comment alegava "caller pode re-tentar com lista
+/// parcial" — misleading; o Result não carrega o map parcial). Para retry,
+/// caller deve invocar `cook_all` novamente com source bytes preservados.
+/// Multi-thread `rayon::par_iter` per-tier deferido para wave futura (W3
+/// Painter Export dialog) onde latência de cook 4K source × 5 tiers importa.
 pub fn cook_all(
     source_bytes: &[u8],
     asset_class: AssetClass,

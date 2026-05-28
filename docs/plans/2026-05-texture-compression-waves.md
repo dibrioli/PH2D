@@ -373,6 +373,11 @@ Quando destrancado:
 **Wave/ADR resolution**: W3 entry gate `cap_overflow_blocks_w3` — falha CI se `ph2d-color` LOC > 2400 antes W3 começar. Se atingir, amendment ADR-0051 §2.1 cap (major event).
 **Mitigation interim**: W3.T1 LOC raised explicitly; pré-W3 audit checa cap status.
 
+### E14 — `ctt` 0.4.0 vendored ISPC encoders são thread-unsafe (W1.T6 audit θ)
+**Problema**: `cargo test -p ph2d-asset-cooker` em paralelo crasha (SIGTRAP / SIGBUS) determinísticamente quando ≥2 testes chamam `ctt::convert` simultaneamente. Causa: encoders C++ vendored (Intel ISPC, astcenc, bc7enc-rdo) têm global static state non-thread-safe. Serial passa 21/21.
+**Wave/ADR resolution**: avaliar `cargo nextest` (memory-isolated test runner) ou `serial_test` crate em W1.T15 audit final. Upstream `ctt` 0.4.0 issue worth tracking — pode ser fixed em 0.5.
+**Mitigation interim**: invocar `RUST_TEST_THREADS=1 cargo test -p ph2d-asset-cooker`. CI workflow W1.T10 deve incluir essa env var no step de test. `.cargo/config.toml [env]` NÃO funciona (testado 2026-05-28; cargo `[env]` aplica build-time, não runtime para libtest).
+
 ---
 
 ## Memórias relacionadas

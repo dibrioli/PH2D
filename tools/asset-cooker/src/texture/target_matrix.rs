@@ -131,6 +131,24 @@ pub fn default_color_space_for(asset_class: AssetClass) -> ctt::ColorSpace {
     }
 }
 
+// Audit W1.T6 θ-M2 fix: conversion `Tier → ph2d_asset::TierIndex`. Necessária
+// pra CLI / Painter W3 / asset-pipeline brush W3.T1 / qualquer caller que
+// queira registrar `cook_all` output no `LogicalTextureMap`. Sem essa glue
+// pública, cada consumer reimplementaria conversão isoladamente (risco de
+// quebrar HR-6 BTree ordering). Ordering preservada: `Tier::Desktop → 0`,
+// ..., `Tier::Constrained → 4` (alinha com `TierIndex::DESKTOP`..`CONSTRAINED`).
+impl From<Tier> for ph2d_asset::TierIndex {
+    fn from(value: Tier) -> Self {
+        match value {
+            Tier::Desktop => ph2d_asset::TierIndex::DESKTOP,
+            Tier::Mobile => ph2d_asset::TierIndex::MOBILE,
+            Tier::Web => ph2d_asset::TierIndex::WEB,
+            Tier::LowEnd => ph2d_asset::TierIndex::LOW_END,
+            Tier::Constrained => ph2d_asset::TierIndex::CONSTRAINED,
+        }
+    }
+}
+
 // Encoder constructors with Settings::default() per W1.T2.1 D1 — features
 // pinadas (encoder-bc7enc + encoder-astcenc + encoder-etcpak + encoder-intel,
 // encoder-amd OMITIDO). Arch-gate `architecture_ctt_features_pinned` valida.
@@ -223,6 +241,35 @@ mod tests {
         assert_eq!(default_color_space_for(AssetClass::CriticalUi), ctt::ColorSpace::Srgb);
         assert_eq!(default_color_space_for(AssetClass::SingleChannel), ctt::ColorSpace::Linear);
         assert_eq!(default_color_space_for(AssetClass::NormalMap), ctt::ColorSpace::Linear);
+    }
+
+    /// Audit W1.T6 η-L2: arch-gate cross-crate ordering — `Tier::Desktop as u8 == 0`,
+    /// ..., `Tier::Constrained as u8 == 4`. Mesmo mapping de `ph2d_asset::TierIndex::*::as_u8()`.
+    /// Se alguém reordenar Tier no enum, este test pega antes de quebrar HR-6
+    /// (postcard wire format de cooked-asset metadata depende dessa alinhamento).
+    #[test]
+    fn tier_ordering_matches_ph2d_asset_tier_index() {
+        let pairs = [
+            (Tier::Desktop, ph2d_asset::TierIndex::DESKTOP),
+            (Tier::Mobile, ph2d_asset::TierIndex::MOBILE),
+            (Tier::Web, ph2d_asset::TierIndex::WEB),
+            (Tier::LowEnd, ph2d_asset::TierIndex::LOW_END),
+            (Tier::Constrained, ph2d_asset::TierIndex::CONSTRAINED),
+        ];
+        for (tier, expected_ti) in pairs {
+            let converted: ph2d_asset::TierIndex = tier.into();
+            assert_eq!(
+                converted, expected_ti,
+                "Tier::{tier:?} MUST map to ph2d_asset::TierIndex::{} (u8={})",
+                expected_ti.name(),
+                expected_ti.as_u8()
+            );
+        }
+        // Verifica ordering canônica BTreeMap (HR-6 deterministic).
+        assert!(Tier::Desktop < Tier::Mobile);
+        assert!(Tier::Mobile < Tier::Web);
+        assert!(Tier::Web < Tier::LowEnd);
+        assert!(Tier::LowEnd < Tier::Constrained);
     }
 
     /// D3 guard: nenhum entry da matrix DEVE retornar Encoder::Auto para BC7 (que
